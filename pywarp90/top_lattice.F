@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.16 $, $Date: 2008/02/07 21:38:21 $
+c@(#) File top_lattice.F, version $Revision: 3.17 $, $Date: 2008/02/16 23:54:48 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -726,6 +726,8 @@ c============================================================================
              bgrdox(0) = bgrdox(nbgrd)
              bgrdoy(0) = bgrdoy(nbgrd)
              bgrdph(0) = bgrdph(nbgrd) 
+             bgrdot(0) = bgrdot(nbgrd)
+             bgrdop(0) = bgrdop(nbgrd)
              bgrdap(0) = bgrdap(nbgrd)
           endif
         endif
@@ -749,12 +751,6 @@ c     --- Note that this coding is not executed if bgrdns=0.
         if (bgrddyi(i) == 0.) bgrddyi(i) = 1./bgrddy(i)
         if (bgrddzi(i) == 0.) bgrddzi(i) = 1./bgrddz(i)
       enddo
-
-c     --- Calculate sines and cosines of bgrdph for efficiency
-      do i=0,nbgrd
-        bgrdsp(i) = sin(bgrdph(i)) 
-        bgrdcp(i) = cos(bgrdph(i)) 
-      enddo 
 
       return
       end
@@ -1315,12 +1311,14 @@ c============================================================================
       call setupbgrds
 
       nbgrdol = 0
-      if (nbgrd >= 0)
-     &  call getelemoverlaps(nbgrd,bgrdzs,bgrdze,bgrdol,zlatbuffer,nbgrdol)
+      
+      if (nbgrd < 0) return
+
+      call bgrdgetfulllength()
+      call getelemoverlaps(nbgrd,bgrdfs,bgrdfe,bgrdol,zlatbuffer,nbgrdol)
       call gchange("LatticeInternal",0)
-      if (nbgrd >= 0)
-     &  call getelemoverlapindices(nbgrd,bgrdol,nbgrdol,obgrdoi,obgrdio,obgrdii,
-     &                             obgrdnn)
+      call getelemoverlapindices(nbgrd,bgrdol,nbgrdol,obgrdoi,obgrdio,obgrdii,
+     &                           obgrdnn)
 
       return
       end
@@ -1383,7 +1381,6 @@ c  called after all of the element have been updated.
       call countemlts
       call countmmlts
       call countegrds
-      call countbgrds
       call countpgrds
       call countbsqgrads
 
@@ -1406,12 +1403,18 @@ c     --- elements) and then using them in the same routine
       call setupemlts
       call setupmmlts
       call setupegrds
-      call setupbgrds
       call setuppgrds
       call setupbsqgrads
 
 c     --- Get the overlap level of the lattice elements
       call getoverlaps()
+
+c     --- Note that bgrd elements must be handled specially.
+      call resetlatbgrd()
+
+c     --- resetlat no longer needs to be called, as long as no changes are
+c     --- made to the lattice.
+      lresetlat = .false.
 
       return 
       end 
@@ -1425,6 +1428,8 @@ c zlatbuffer is the amount of space (on meters) around each element. It is
 c used so that elements right next to each other but not strictly overlapping
 c are considered to be overlapping.
 
+c     --- Note that bgrd elements must be handled specially.
+
       ndrftol = 0
       nbendol = 0
       ndipool = 0
@@ -1435,7 +1440,6 @@ c are considered to be overlapping.
       nemltol = 0
       nmmltol = 0
       negrdol = 0
-      nbgrdol = 0
       npgrdol = 0
       nbsqgradol = 0
 
@@ -1459,8 +1463,6 @@ c are considered to be overlapping.
      &  call getelemoverlaps(nmmlt,mmltzs,mmltze,mmltol,zlatbuffer,nmmltol)
       if (negrd >= 0)
      &  call getelemoverlaps(negrd,egrdzs,egrdze,egrdol,zlatbuffer,negrdol)
-      if (nbgrd >= 0)
-     &  call getelemoverlaps(nbgrd,bgrdzs,bgrdze,bgrdol,zlatbuffer,nbgrdol)
       if (npgrd >= 0)
      &  call getelemoverlaps(npgrd,pgrdzs,pgrdze,pgrdol,zlatbuffer,npgrdol)
       if (nbsqgrad >= 0)
@@ -1499,9 +1501,6 @@ c Now, setup indicing arrays in LatticeInternal
       if (negrd >= 0)
      &  call getelemoverlapindices(negrd,egrdol,negrdol,oegrdoi,oegrdio,oegrdii,
      &                             oegrdnn)
-      if (nbgrd >= 0)
-     &  call getelemoverlapindices(nbgrd,bgrdol,nbgrdol,obgrdoi,obgrdio,obgrdii,
-     &                             obgrdnn)
       if (npgrd >= 0)
      &  call getelemoverlapindices(npgrd,pgrdol,npgrdol,opgrdoi,opgrdio,opgrdii,
      &                             opgrdnn)
@@ -1614,12 +1613,23 @@ c     --- element will by default be in overlap level 1.
       end
 c============================================================================ 
       subroutine setlatt
+      use Subtimerstop
       use InGen
       use Picglb
+      use Lattice,Only: lresetlat
 c  Sets the lattice data for the current beam location.
 c  These ride with the beam, just as the self-field does, and
 c  should be loaded at the same time.
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
+      if (lresetlat) call resetlat()
       call setlattzt(zbeam,time,fstype)
+
+!$OMP MASTER
+      if (ltoptimesubs) timesetlatt = timesetlatt + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c============================================================================ 
@@ -1947,13 +1957,15 @@ c          --- The grid points intentionally overlap to avoid roundoff errors.
 c        --- find index of nearest bgrd element
 c        --- The cbgrdid array calculated here is needed for the magnetic
 c        --- elements described by B field data on a 3-D grid.
+c        --- Note that the full lengths are used here, in case there is
+c        --- a rotation off the z-axis.
          do io=1,nbgrdol
-           call getelemid(zz,offset,nbgrd,bgrdzs,bgrdze,bgrdol,
+           call getelemid(zz,offset,nbgrd,bgrdfs,bgrdfe,bgrdol,
      &                    obgrdnn(io),obgrdoi(obgrdii(io)),obgrdio,
      &                    cbgrdid(iz,io),io)
 c          --- load lattice info into comoving 1d array
-           cbgrdzs(iz,io) = bgrdzs(cbgrdid(iz,io)) + offset
-           cbgrdze(iz,io) = bgrdze(cbgrdid(iz,io)) + offset
+           cbgrdzs(iz,io) = bgrdfs(cbgrdid(iz,io)) + offset
+           cbgrdze(iz,io) = bgrdfe(cbgrdid(iz,io)) + offset
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
            if (cbgrdzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
@@ -2027,7 +2039,7 @@ c     --- are in a bend.  There is probably a better way of doing this.
 c=============================================================================
       subroutine getelemid(z,offset,nelem,elemzs,elemze,elemol,
      &                     oelemnn,oelemoi,oelemio,id,io)
-      use Lattice
+      use Lattice,Only: zlatstrt,zlatperi
       integer(ISZ):: nelem,oelemnn,id,io
       real(kind=8):: z,offset,elemzs(0:nelem),elemze(0:nelem)
       integer(ISZ):: elemol(0:nelem),oelemoi(oelemnn),oelemio(0:nelem)
@@ -2094,6 +2106,7 @@ c --- of order. Also, make sure that id is within the proper bounds.
       else if (id < oelemoi(1)) then
         id = oelemoi(1)
       endif
+      id = oelemoi(1)
 
 c --- Make ii consistent with id
       ii = oelemio(id)
@@ -3692,8 +3705,9 @@ c        + u1 * v0 * w0 * egrdex(i+1,j  ,k  ,egrdid)
 c        + u0 * v1 * w0 * egrdex(i  ,j+1,k  ,egrdid)
 c        + ...
 
-      integer(ISZ):: io,ip,i,j,k,iz,ii,id
+      integer(ISZ):: io,ip,i,j,k,iz,ii,id,jp1
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,efac,xsign,ysign,zsign,txp,typ,temp
+      real(kind=8):: txp0,typ0
       real(kind=8):: tex,tey
 
 c  Evaluation of E, vectorized over particles
@@ -3741,6 +3755,14 @@ c         --- must be rotated back.
             txp =  temp*egrdcp(ii) + typ*egrdsp(ii) 
             typ = -temp*egrdsp(ii) + typ*egrdcp(ii) 
           endif 
+
+c         --- If data is in RZ, then replace x with the radius and y=ys
+          if (egrdrz(id)) then
+            txp0 = txp
+            typ0 = typ
+            txp = sqrt(txp**2 + typ**2)
+            typ = egrdys(ii)
+          endif
 
 c         --- Shift coordinates to measure from the edge of the field grid
           txp = txp - egrdxs(ii)
@@ -3801,29 +3823,36 @@ c         --- Calculate linear weights
           w0 = 1. - w1
 
 c         --- Only calculate for particles inside the E field grid
-          if (0 <= i .and. i < egrdnx .and.
-     &        0 <= j .and. j < egrdny .and.
-     &        0 <= k .and. k < egrdnz) then
+          if ((0 <= i .and. i < egrdnx) .and.
+     &        (0 <= j .and. j < egrdny .or. egrdrz(id)) .and. 
+     &        (0 <= k .and. k < egrdnz)) then
 
             efac = egrdsc(ii) + egrdsf(ii)
 
+            jp1 = j + 1
+            if (egrdrz(id)) then
+              jp1 = j
+              v0 = 1.
+              v1 = 0.
+            endif
+
             tex = xsign*efac*(u0*v0*w0*egrdex(i  ,j  ,k  ,id) +
      &                        u1*v0*w0*egrdex(i+1,j  ,k  ,id) +
-     &                        u0*v1*w0*egrdex(i  ,j+1,k  ,id) +
-     &                        u1*v1*w0*egrdex(i+1,j+1,k  ,id) +
+     &                        u0*v1*w0*egrdex(i  ,jp1,k  ,id) +
+     &                        u1*v1*w0*egrdex(i+1,jp1,k  ,id) +
      &                        u0*v0*w1*egrdex(i  ,j  ,k+1,id) +
      &                        u1*v0*w1*egrdex(i+1,j  ,k+1,id) +
-     &                        u0*v1*w1*egrdex(i  ,j+1,k+1,id) +
-     &                        u1*v1*w1*egrdex(i+1,j+1,k+1,id))
+     &                        u0*v1*w1*egrdex(i  ,jp1,k+1,id) +
+     &                        u1*v1*w1*egrdex(i+1,jp1,k+1,id))
 
             tey = ysign*efac*(u0*v0*w0*egrdey(i  ,j  ,k  ,id) +
      &                        u1*v0*w0*egrdey(i+1,j  ,k  ,id) +
-     &                        u0*v1*w0*egrdey(i  ,j+1,k  ,id) +
-     &                        u1*v1*w0*egrdey(i+1,j+1,k  ,id) +
+     &                        u0*v1*w0*egrdey(i  ,jp1,k  ,id) +
+     &                        u1*v1*w0*egrdey(i+1,jp1,k  ,id) +
      &                        u0*v0*w1*egrdey(i  ,j  ,k+1,id) +
      &                        u1*v0*w1*egrdey(i+1,j  ,k+1,id) +
-     &                        u0*v1*w1*egrdey(i  ,j+1,k+1,id) +
-     &                        u1*v1*w1*egrdey(i+1,j+1,k+1,id))
+     &                        u0*v1*w1*egrdey(i  ,jp1,k+1,id) +
+     &                        u1*v1*w1*egrdey(i+1,jp1,k+1,id))
 
 c            if (egrdsy(ii) == 2 .and. xsign*ysign < 0.) then
 c              temp = tex 
@@ -3838,6 +3867,18 @@ c               orientation if the element is rotated.
               tex = temp*egrdcp(ii) - tey*egrdsp(ii) 
               tey = temp*egrdsp(ii) + tey*egrdcp(ii)         
             endif 
+
+            if (egrdrz(id)) then
+c             --- For the RZ case, tbx now holds Er. Convert it to Ex and Ey.
+c             --- Note that this ignores Etheta (in tby) for now.
+              if (txp .ne. 0) then
+                tey = tex*typ0/txp
+                tex = tex*txp0/txp
+              else
+                tey = 0.
+                tex = tex
+              endif
+            endif
 
 c           --- tranverse field 
             ex(ip) = ex(ip) + tex
@@ -3893,6 +3934,10 @@ c  Evaluation of B, vectorized over particles
 
       if (.not. bgrds .or. .not. linbgrd(0)) return
 
+c     --- Calculate sines and cosines of bgrdph for efficiency
+      bgrdsp = sin(bgrdph) 
+      bgrdcp = cos(bgrdph) 
+
       do io=1,nbgrdol
         if (.not. linbgrd(io)) cycle
 
@@ -3902,7 +3947,6 @@ c         --- All particles are in the same z-cell
           iz = 0
           ii = cbgrdid(iz,io)
           id = bgrdid(ii)
-          k = (zz - cbgrdzs(iz,io))*bgrddzi(id)
 c         --- skip field accumulation if particles are outside of axial grid
           if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
         endif
@@ -4076,6 +4120,51 @@ c           --- tranverse field
           endif
 
         enddo
+      enddo
+
+      return
+      end
+c============================================================================ 
+      subroutine bgrdgetfulllength()
+      use Lattice
+      use LatticeInternal
+      use BGRDdata
+
+c Calculate the full axial length of the elements, including the extra length
+c that may be taken up if the element has a rotation away from the z-axis.
+c The results are put in bgrdfs and bgrdfe.
+
+      real(kind=8):: cmax(4),rmax,zcent,zhalflen
+      integer(ISZ):: ib,id
+
+      do ib = 0,nbgrd
+        if (bgrdot(ib) == 0.) then
+          bgrdfs(ib) = bgrdzs(ib)
+          bgrdfe(ib) = bgrdze(ib)
+        else
+
+          id = bgrdid(ib)
+
+c         --- Find the large transverse dimension. This checks the four corners
+c         --- of the transverse plane and finds the max.
+c         --- For now, this finds the max corner radius and rotates it by
+c         --- the angle bgrdot. This only provides a maximum. A more precise
+c         --- calculation would take bgrdph into account as well.
+          cmax(1) = bgrdxs(ib)**2 + bgrdys(ib)**2
+          cmax(2) = (bgrdxs(ib)+bgrddx(id)*bgrdnx)**2 + bgrdys(ib)**2
+          cmax(3) = bgrdxs(ib)**2 + (bgrdys(ib)+bgrddy(id)*bgrdny)**2
+          cmax(4) = (bgrdxs(ib)+bgrddx(id)*bgrdnx)**2 +
+     &              (bgrdys(ib)+bgrddy(id)*bgrdny)**2
+          rmax = sqrt(maxval(cmax))
+
+          zcent = 0.5*(bgrdzs(ib) + bgrdze(ib))
+          zhalflen = (bgrdze(ib) - bgrdzs(ib))/2.
+
+          bgrdfs(ib) = zcent - zhalflen*cos(bgrdot(ib)) - rmax*sin(bgrdot(ib))
+          bgrdfe(ib) = zcent + zhalflen*cos(bgrdot(ib)) + rmax*sin(bgrdot(ib))
+
+        endif
+
       enddo
 
       return

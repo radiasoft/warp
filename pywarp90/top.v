@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.230 $, $Date: 2008/02/13 18:16:09 $
+#@(#) File TOP.V, version $Revision: 3.231 $, $Date: 2008/02/16 23:54:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.230 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.231 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -179,6 +179,10 @@ runmaker character*(35) /" "/    # Name of person running code / special notes
 # Element starts must fall in [0,zlatperi), except perhaps for element 0.
 # Element ends must fall in (0,zlatperi], except for last element.
 # Element 0 is set using periodicity if user doesn't set it.
+lresetlat logical /.true./    # When true, setlatt will call resetlat.
+                              # This should be set to true whenever changes
+                              # in the lattice are made, such as adding new
+                              # elements.
 zlatperi  real    /0./    [m] # Periodicity length of lattice
 zlatstrt  real    /0./    [m] # Z of lattice start (added to element z's)
 zlatbuffer real   /0./    [m] # Buffer added to element lengths so nearby
@@ -434,8 +438,9 @@ bgrday(0:nbgrd)   _real [m]   # Aperture in bgrd elements in y
 bgrdox(0:nbgrd)   _real [m]   # Offset in x of bgrd elements
 bgrdoy(0:nbgrd)   _real [m]   # Offset in y of bgrd elements
 bgrdph(0:nbgrd)   _real [rad] # Phase angle of bgrd elements 
-bgrdsp(0:nbgrd)   _real [1]   # Sine   of bgrdph (auto-set) 
-bgrdcp(0:nbgrd)   _real [1]   # Cosine of bgrdph (auto-set) 
+bgrdot(0:nbgrd) _real [rad] /0./ # Offset angle theta relative to the z-axis.
+bgrdop(0:nbgrd) _real [rad] /0./ # Offset angle phi, rotation in the
+                                 # transverse plane.
 bgrdid(0:nbgrd)   _integer    # Index of to 3-D B field data sets (BGRDdata)
 bgrdsf(0:nbgrd) _real [1] /0./ # Scale factor to multiply 3-D B field data set
                                # BGRDdata. Field is scaled by (bgrdsc+bgrdsf)
@@ -446,6 +451,12 @@ bgrdsy(0:nbgrd) _integer /0/   # Level of symmetry in the bgrd data.
                                # Defaul is no symmetry.
 bgrdol(0:nbgrd)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
+bgrdsp(0:nbgrd)   _real [1]   # Sine   of bgrdph (auto-set) 
+bgrdcp(0:nbgrd)   _real [1]   # Cosine of bgrdph (auto-set) 
+bgrdfs(0:nbgrd)   _real [m]   # Full Z starts of 3-D grid of B field data
+                              # including rotation off z-axis (autoset)
+bgrdfe(0:nbgrd)   _real [m]   # Full Z ends of 3-D grid of B field data
+                              # including rotation off z-axis (autoset)
 pgrdzs(0:npgrd)   _real [m]   # Z starts of 3-D grid of potential data(PGRDdata)
 pgrdze(0:npgrd)   _real [m]   # Z ends of 3-D grid of potential data(PGRDdata)
 pgrdxs(0:npgrd)   _real [m]   # X starts of 3-D grid of potential data(PGRDdata)
@@ -564,6 +575,7 @@ egrddz(egrdns)   _real [m]   # Z cell size
 egrddxi(egrdns)  _real [1/m] # 1 over X cell size (autoset)
 egrddyi(egrdns)  _real [1/m] # 1 over Y cell size (autoset)
 egrddzi(egrdns)  _real [1/m] # 1 over Z cell size (autoset)
+egrdrz(egrdns)   _logical /0/ # When true, data is RZ only
 egrdex(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ex
 egrdey(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ey
 egrdez(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ez
@@ -2872,6 +2884,7 @@ timecopygrouptopart            real /0./
 timezpartbnd_slave             real /0./
 timereorgparticles_parallel    real /0./
 timecheckzpartbnd              real /0./
+timesetlatt                    real /0./
 timeparallel_sum_mmnts         real /0./
 timeparallel_sum_temperature   real /0./
 timeparallelsumrealarray       real /0./
