@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.103 $, $Date: 2008/02/13 02:22:30 $
+c@(#) File w3d_injection.F, version $Revision: 1.104 $, $Date: 2008/02/16 23:49:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -48,6 +48,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: zinj,ainj,ainji,ainjmini,binj,binji,binjmini
       real(kind=8):: apinj,bpinj,rinj,rinji,xpinj,ypinj,vzinj,ainjp1,binjp1
       real(kind=8):: sphericalcorrection
+      real(kind=8):: inte,qold,qadd
       real(kind=8):: vtx,vty,larmorfreq
       real(kind=8):: fulldt_s
       real(kind=8):: zmid,zleni,ztilt,gamma
@@ -810,9 +811,15 @@ c                   --- Child-Langmuir
                     rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
                   elseif (inject == 3) then
 c                   --- Gauss's law
-                    rnn = (eps0*inj_phi(ix,iy,ij)/
-     &     (inj_dz*abs(inj_d(ij)))-0.5*inj_rho(ix,iy,ij)*inj_dz)*
-     &     inj_dx*inj_dy/pgroup%sq(is)/pgroup%sw(is)/cos(inj_angl(ix,iy,ij))
+c                   rnn = (eps0*inj_phi(ix,iy,ij)/
+c    &     (inj_dz*abs(inj_d(ij)))-0.5*inj_rho(ix,iy,ij)*inj_dz)*
+c    &     inj_dx*inj_dy/pgroup%sq(is)/pgroup%sw(is)/cos(inj_angl(ix,iy,ij))
+                    inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))*
+     &                     inj_dx*inj_dy
+                    qold = inj_rho(ix,iy,ij)*inj_dx*inj_dy*inj_dz
+                    qadd = eps0*inte - 0.5*qold
+                    rnn = qadd/(pgroup%sq(is)*pgroup%sw(is))
+                    rnn = rnn/cos(inj_angl(ix,iy,ij))
                   endif
 
 c                 --- Make sure that rnn is >= 0.
