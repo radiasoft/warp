@@ -5,7 +5,7 @@
 Pickled based writer class PW by David Grote, LLNL
 Heavily modified from PW.py originally written by Paul Dubois, LLNL, to use
 pickle files.
-$Id: PWpickle.py,v 1.3 2008/02/20 23:24:57 dave Exp $
+$Id: PWpickle.py,v 1.4 2008/02/20 23:31:19 dave Exp $
 
 This puts everything into a dictionary and when close is called, pickles the
 dictionary into the file.
@@ -71,6 +71,9 @@ Note that only things which can be pickled and unpickled are written out.
 
     def __setattr__(self, name, value):
         self.write(name, value)
+
+    def __getattr__(self, name):
+        return self._pickledict[name]
 
     def __repr__(self):
         if self.is_open():
