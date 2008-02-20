@@ -5,7 +5,7 @@
 Pickled based writer class PW by David Grote, LLNL
 Heavily modified from PW.py originally written by Paul Dubois, LLNL, to use
 pickle files.
-$Id: PWpickle.py,v 1.2 2008/02/09 00:17:07 dave Exp $
+$Id: PWpickle.py,v 1.3 2008/02/20 23:24:57 dave Exp $
 
 This puts everything into a dictionary and when close is called, pickles the
 dictionary into the file.
@@ -36,9 +36,10 @@ Note that only things which can be pickled and unpickled are written out.
 
     file_type = "pickle"
 
-    def __init__(self, filename, mode='w'):
+    def __init__(self, filename, mode='w', protocol=-1):
         "PW(filename='', mode='w') creates filename" 
         self.__dict__['_filename'] = filename
+        self.__dict__['_protocol'] = protocol
         assert mode in ['w','a'],Exception("Improper mode: " + mode)
         if mode == 'a':
           # --- If append, read in all data from the file.
@@ -60,7 +61,7 @@ Note that only things which can be pickled and unpickled are written out.
 
             # --- Write out the dictionary of things to be pickled,
             # --- pickling it all at once.
-            cPickle.dump(self._pickledict,self._file)
+            cPickle.dump(self._pickledict,self._file,self._protocol)
 
             self._file.close()
 
@@ -107,7 +108,7 @@ Note that only things which can be pickled and unpickled are written out.
             # --- for large objects since they will be pickled twice, but this
             # --- is the only safe way.
             try:
-                q = cPickle.dumps(quantity,-1)
+                q = cPickle.dumps(quantity,self._protocol)
                 del q
             except:
                 warnings.warn('%s is being skipped since it could not be pickled'%name)
