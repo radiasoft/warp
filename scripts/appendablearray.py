@@ -1,9 +1,11 @@
 """Array type which can be appended to in an efficient way.
 """
-from warp import *
+__all__ = ['AppendableArray']
+import sys
+import numpy
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.14 2007/05/22 00:53:12 dave Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.15 2008/02/23 01:58:26 dave Exp $"
 
 class AppendableArray:
   """
@@ -39,7 +41,7 @@ Append a single unit like this
 >>> a.append(7.)
 
 or multiple units like this
->>> a.append(ones(5,'d'))
+>>> a.append(numpy.ones(5,'d'))
 
 The data can be obtained by directly indexing the instance, like this
 >>> print a[:4]
@@ -50,16 +52,16 @@ Other methods include len, data, setautobump, cleardata, reshape
   """
   def __init__(self,initlen=1,unitshape=None,typecode=None,autobump=100,
                initunit=None,aggressivebumping=0):
-    if typecode is None: typecode = gettypecode(zeros(1))
+    if typecode is None: typecode = numpy.zeros(1).dtype.char
     self._maxlen = initlen
     if initunit is None:
       self._typecode = typecode
       self._unitshape = unitshape
     else:
       # --- Get typecode and unitshape from initunit
-      if type(initunit) == ArrayType:
-        self._typecode = gettypecode(initunit)
-        self._unitshape = shape(initunit)
+      if isinstance(initunit,numpy.ndarray):
+        self._typecode = initunit.dtype.char
+        self._unitshape = initunit.shape
       else:
         if type(initunit) == IntType: self._typecode = 'i'
         else:                         self._typecode = 'd'
@@ -84,15 +86,15 @@ Other methods include len, data, setautobump, cleardata, reshape
       self._array[:len(self),...] = a
   def _allocatearray(self):
     if self._unitshape is None:
-      self._array = zeros(self._maxlen,self._typecode)
+      self._array = numpy.zeros(self._maxlen,self._typecode)
     else:
-      self._array = zeros([self._maxlen]+list(self._unitshape),self._typecode)
+      self._array = numpy.zeros([self._maxlen]+list(self._unitshape),self._typecode)
   def append(self,data):
     if self._unitshape is None:
       # --- If data is just a scalar, then set length to one. Otherwise
       # --- get length of data to add.
       try:
-        lendata = shape(data)[0]
+        lendata = len(data)
       except (TypeError,IndexError):
         lendata = 1
     else:
@@ -158,7 +160,7 @@ specified on creation.
     self._unitshape = newunitshape
     self._allocatearray()
     # --- Copy data from old to new
-    ii = [None] + list(minimum(oldunitshape,newunitshape))
+    ii = [None] + list(numpy.minimum(oldunitshape,newunitshape))
     ss = map(slice,ii)
     self._array[ss] = oldarray[ss]
 
