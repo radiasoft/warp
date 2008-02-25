@@ -132,12 +132,28 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- There is a special case, fselfb='p', which refers to the conductor
     # --- object that has the data generated relative to the particle domain,
     # --- which can be different from the field domain, especially in parallel.
-    if fselfb == 'p' and 'p' not in self.conductorobjects:
+    if fselfb == 'p':
       # --- In serial, just use a reference to the conductor object for the
-      # --- first iselfb group. In parallel, a whole new instance is created.
-      if not lparallel:
+      # --- first iselfb group.
+      if not lparallel and 'p' not in self.conductorobjects:
         self.conductorobjects['p'] = self.conductorobjects[top.fselfb[0]]
         self.installedconductorlists['p'] = self.installedconductorlists[top.fselfb[0]]
+      # --- In parallel, a whole new instance is created (using the
+      # --- setdefaults below).
+      # --- Check to make sure that the grid the conductor uses is consistent
+      # --- with the particle grid. This is needed so that the conductor
+      # --- data is updated when particle load balancing is done. If the
+      # --- data is not consistent, delete the conductor object so that
+      # --- everything is reinstalled.
+      try:
+        conductorobject = self.conductorobjects['p']
+        if (conductorobject.leveliz[0] != self.izpslave[self.my_index] or
+            conductorobject.levelnz[0] != self.nzpslave[self.my_index]):
+          del self.conductorobjects['p']
+          del self.installedconductorlists['p']
+      except KeyError:
+        # --- 'p' object has not yet been created anyway, so do nothing.
+        pass
 
     conductorobject = self.conductorobjects.setdefault(fselfb,ConductorType())
     installedconductorlist = self.installedconductorlists.setdefault(fselfb,[])
@@ -148,7 +164,8 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- it ensures that all conductors will be properly installed into
     # --- the conductor object.
     for conductordata in self.conductordatalist:
-      self._installconductor(conductorobject,installedconductorlist,conductordata,fselfb)
+      self._installconductor(conductorobject,installedconductorlist,
+                             conductordata,fselfb)
  
     # --- Return the desired conductor object
     return conductorobject
