@@ -61,7 +61,7 @@ from warp import *
 from generateconductors import *
 import __main__
 import copy
-lattice_version = "$Id: lattice.py,v 1.57 2008/01/23 23:49:55 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.58 2008/02/25 19:16:42 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -1146,7 +1146,7 @@ Or specify the data set
     top.egrdsc[top.negrd] = self.sc
     top.egrdid[top.negrd] = self.id
     return top.egrdze[top.negrd]
-    
+
 
 class Bgrd(Elem):
   """
@@ -1246,7 +1246,7 @@ Or specify the data set
     top.bgrdsc[top.nbgrd] = self.sc
     top.bgrdid[top.nbgrd] = self.id
     return top.bgrdze[top.nbgrd]
-    
+
 
 class Pgrd(Elem):
   """
@@ -1551,7 +1551,7 @@ information if the WARP lattice arrays is deleted.
   # --- For elements with seperate data sets, only the number
   # --- of data points is checked. Arrays are then later allocated and filled.
   zz = line.install(0.)
-  
+
   # --- Finish by setting some general parameters.
   if settunelen:
     if top.nquad >= 2:
@@ -1568,6 +1568,9 @@ information if the WARP lattice arrays is deleted.
       top.tunelen=0.5*(top.bgrdzs[2]+top.bgrdze[2]-top.bgrdzs[0]-top.bgrdze[0])
     elif top.npgrd >= 2:
       top.tunelen=0.5*(top.pgrdzs[2]+top.pgrdze[2]-top.pgrdzs[0]-top.pgrdze[0])
+
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
 
 ###############################################################################
 # --- Now, using above classes, read in and parse a MAD lattice file.
@@ -1637,6 +1640,49 @@ def getlattice(file):
 
 ###############################################################################
 ###############################################################################
+###############################################################################
+#########################################################################
+class TimeDependentLatticeElement(object):
+  def __init__(self,attr,id,time=None,data=None,func=None):
+    self.attr = attr
+    self.id = id
+    if func is None:
+      self.time = time
+      self.data = data
+    else:
+      self.func = func
+
+    # --- Setup data histories
+    self.htime = []
+    self.hdata = []
+
+    self.applydata()
+    installafterfs(self.applydata)
+
+  def applydata(self,time=None):
+    getattr(top,self.attr)[self.id] = self.getdata(time)
+
+  def getdata(self,time=None):
+    if time is None: time = top.time
+    if self.data is not None: return self.fromdata(time)
+    elif self.voltfunc is not None: return self.func(time)
+
+  def fromdata(self,time):
+    if time <= self.time[0]: return self.data[0]
+    if time >= self.time[-1]: return self.data[-1]
+    try:
+      test = self.index
+    except AttributeError:
+      self.index = 0
+    while self.time[self.index+1] < time: self.index = self.index + 1
+    wt = ((time - self.time[self.index])/
+          (self.time[self.index+1] - self.time[self.index]))
+    data = (self.data[self.index  ]*(1. - wt) +
+            self.data[self.index+1]*wt)
+    self.htime.append(time)
+    self.hdata.append(data)
+    return data
+
 #########################################################################
 # --- Utility routines to add in new elements into the middle of a lattice.
 
@@ -1698,6 +1744,9 @@ drft arrays with the same suffices:
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
 
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
+
   return ie
 
 # ----------------------------------------------------------------------------
@@ -1758,6 +1807,9 @@ bend arrays with the same suffices:
   # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
+
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
 
   return ie
 
@@ -1821,6 +1873,9 @@ dipo arrays with the same suffices:
   # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
+
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
 
   return ie
 
@@ -1908,6 +1963,9 @@ quad and qdel arrays with the same suffices:
       # --- There are two arrays which are 2-D, quadet, and quadbt.
       e[:,ie] = ldict[xx]
 
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
+
   return ie
 
 # ----------------------------------------------------------------------------
@@ -1965,6 +2023,9 @@ sext arrays with the same suffices:
   # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
+
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
 
   return ie
 
@@ -2064,6 +2125,9 @@ hele arrays with the same suffices:
     else:
       # --- These are quantities input for each multipole component
       e[:len(ldict[xx]),ie] = ldict[xx]
+
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
 
   return ie
 
@@ -2227,6 +2291,9 @@ emlt arrays with the same suffices:
         if phz is not None: top.esemltph[:n0,-ln:,-1] = transpose(array(phz))
         if phpz is not None: top.esemltphp[:n0,-ln:,-1] = transpose(array(phpz))
 
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
+
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to knowne its actual number.
   return ie,top.emltid[ie]
@@ -2387,6 +2454,9 @@ mmlt arrays with the same suffices:
         if phz is not None: top.msmmltph[:n0,-ln:,-1] = transpose(array(phz))
         if phpz is not None: top.msmmltphp[:n0,-ln:,-1] = transpose(array(phpz))
 
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
+
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to knowne its actual number.
   return ie,top.mmltid[ie]
@@ -2460,6 +2530,9 @@ accl arrays with the same suffices:
       # --- acclet is 2-D
       e[:,ie] = ldict[xx]
 
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
+
   return ie
 
 # ----------------------------------------------------------------------------
@@ -2467,7 +2540,8 @@ accl arrays with the same suffices:
 def addnewegrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,sp=0.,cp=0.,
                sf=0.,sc=1.,sy=0,dx=None,dy=None,ex=None,ey=None,ez=None,
-               nx=None,ny=None,nz=None):
+               rz=false,nx=None,ny=None,nz=None,
+               time=None,data=None,func=None):
   """
 Adds a new egrd element to the lattice. The element will be placed at the
 appropriate location.
@@ -2479,6 +2553,7 @@ takes precedence):
 Or, one or more 3-D field arrays may be specified
   - ex, ey, ez
   - dx,dy: transverse grid cell size must also be specified
+  - rz=false: set to true if data is RZ only
 The following are all optional and have the same meaning and default as the
 egrd arrays with the same suffices:
   - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,sy
@@ -2563,6 +2638,13 @@ of dx, dy, nx, ny, nz, must be passed in"""
     if ex is not None: top.egrdex[:nx+1,:ny+1,:nz+1,-1] = ex
     if ey is not None: top.egrdey[:nx+1,:ny+1,:nz+1,-1] = ey
     if ez is not None: top.egrdez[:nx+1,:ny+1,:nz+1,-1] = ez
+    top.egrdrz[-1] = rz
+
+  if (time is not None and data is not None) or func is not None:
+    TimeDependentLatticeElement('egrdsc',ie,time,data,func)
+
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
 
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to know its actual number.
@@ -2671,6 +2753,9 @@ of dx, dy, nx, ny, nz, must be passed in"""
     if by is not None: top.bgrdby[:nx+1,:ny+1,:nz+1,-1] = by
     if bz is not None: top.bgrdbz[:nx+1,:ny+1,:nz+1,-1] = bz
     top.bgrdrz[-1] = rz
+
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
 
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to know its actual number.
@@ -2794,6 +2879,9 @@ bsqgrad arrays with the same suffices:
 
     if bsqgrad is not None: top.bsqgrad[:,:nx+1,:ny+1,:nz+1,-1] = bsqgrad
 
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
+
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to know its actual number.
   return ie,top.bsqgradid[ie]
@@ -2893,9 +2981,144 @@ pgrd arrays with the same suffices:
     top.pgrddz[-1] = (ze - zs)/nz
     top.pgrd[:nx+1,:ny+1,:nz+1,-1] = phi
 
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
+
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to know its actual number.
   return ie,top.pgrdid[ie]
+
+# ----------------------------------------------------------------------------
+# --- Routines for creating more realistic versions of various elements.
+# ----------------------------------------------------------------------------
+# --- accelerating gap --- XXX
+def addgriddedgap(zcenter=None,gaplength=None,ap=None,apleft=None,apright=None,
+                  voltage=1.,
+                  lcylindrical=true,
+                  saveEsolver=false,tol=1.e-5,
+                  nx=None,ny=None,nz=None,
+                  dx=None,dy=None,dz=None,
+                  xmmin=None,xmmax=None,
+                  ymmin=None,ymmax=None,
+                  zmmin=None,zmmax=None,
+                  l4symtry=None,l2symtry=None,
+                  fringelen=None,
+                  **kw):
+  """
+Adds a gap using gridded data, via a egrd element.
+The E field is calculated by carrying out a solve of Poisson's equation.
+The boundary condition is two semi-infinite pipes with a gap between them.
+Input arguments:
+ - zcenter: z center of the solenoid windings
+ - gaplength: gap length
+ - ap: aperture of the pipe
+ - apleft,apright: aperture of the left and right pipes
+ - voltage=1.: voltage to put across the gap
+ - lcylindrical=true:
+ - nx,ny,nz,dx,dy,dz,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: all default from w3d
+ - saveEsolver=false: when true, the field solver used to calculated
+                      the fields is save as an attribute of the function.
+ - tol=1.e-5: convergence tolerence for the field solve relative to voltage
+ - fringelen=None: length of region before and after the gap to
+                   include the field fringe, in units of the pipe aperture.
+                   If given, this sets the z extent of the grid.
+  """
+
+  assert zcenter is not None,ValueError('zcenter must be given')
+  assert gaplength is not None,ValueError('gaplength must be given')
+  assert (ap is not None) or (apleft is not None and apright is not None),\
+         ValueError('ap must be given')
+
+  # --- Make sure that ap is set
+  if ap is None: ap = 0.5*(apleft + apright)
+
+  # --- If fringelen is given, calculate the z extent of the grid.
+  # --- The grid cell size will be close to that of the field solving grid.
+  if fringelen is not None:
+    zmmin = zcenter - gaplength/2. - fringelen*ap
+    zmmax = zcenter + gaplength/2. + fringelen*ap
+    if dz is None: dz = w3d.dz
+    nz = nint((zmmax - zmmin)/dz)
+    dz = (zmmax - zmmin)/w3d.nz
+    nz = nint((zmmax - zmmin)/dz)
+
+  # --- Note that the grid parameters are passed in using a separate dict
+  # --- instead of using the generic kw, since kw is expected to contain
+  # --- options that addnewegrd will know about, but the field solver not know.
+  # --- The values are only put in the dictionary if they are not None
+  # --- since the solver only checks for the presence of the options and not
+  # --- their value.
+  solverdict={}
+  if nx is not None: solverdict['nx'] = nx
+  if ny is not None: solverdict['ny'] = ny
+  if nz is not None: solverdict['nz'] = nz
+  if dx is not None: solverdict['dx'] = dx
+  if dy is not None: solverdict['dy'] = dy
+  if dz is not None: solverdict['dz'] = dz
+  if xmmin is not None: solverdict['xmmin'] = xmmin
+  if xmmax is not None: solverdict['xmmax'] = xmmax
+  if ymmin is not None: solverdict['ymmin'] = ymmin
+  if ymmax is not None: solverdict['ymmax'] = ymmax
+  if zmmin is not None: solverdict['zmmin'] = zmmin
+  if zmmax is not None: solverdict['zmmax'] = zmmax
+  solverdict['nslaves'] = 0
+  solverdict['boundxy'] = neumann
+  solverdict['bound0'] = neumann
+  solverdict['boundnz'] = neumann
+  if lcylindrical:
+    solverdict['ny'] = 0
+    Esolver = MultiGridRZ(**solverdict)
+    xx,zz = getmesh2d(0.,Esolver.dx,Esolver.nx,
+                      Esolver.zmmin,Esolver.dz,Esolver.nz)
+    yy = zeros(xx.shape,'d')
+  else:
+    if l4symtry is not None: solverdict['l4symtry'] = l4symtry
+    if l2symtry is not None: solverdict['l2symtry'] = l2symtry
+    Esolver = MultiGrid(**solverdict)
+    xx,yy,zz = getmesh3d(Esolver.xmmin,Esolver.dx,Esolver.nx,
+                         Esolver.ymmin,Esolver.dy,Esolver.ny,
+                         Esolver.zmmin,Esolver.dz,Esolver.nz)
+
+  if saveEsolver: addgriddedgap.Esolver = Esolver
+
+  # --- Add the pipe conductors
+  if apleft is None: apleft = ap
+  if apright is None: apright = ap
+  pipeleft = ZCylinderOut(radius=apleft,
+                          zlower=Esolver.zmmin,
+                          zupper=zcenter - gaplength/2.,
+                          voltage=+voltage/2)
+  piperght = ZCylinderOut(radius=apright,
+                          zlower=zcenter + gaplength/2.,
+                          zupper=Esolver.zmmax,
+                          voltage=-voltage/2)
+  Esolver.installconductor(pipeleft)
+  Esolver.installconductor(piperght)
+
+  # --- Set convergence tolerence (in Tesla)
+  Esolver.mgtol = voltage*tol*ones(3)
+
+  # --- Force some parameters, but save their
+  # --- value so they can be restored after the solve.
+  electrontemperature = w3d.electrontemperature.copy()
+  w3d.electrontemperature = 0. # turn of Boltzmann electrons
+
+  Esolver.solve()
+  Esolver.getselfe(recalculate=1)
+
+  w3d.electrontemperature = electrontemperature
+
+  # --- Do a little clean up.
+  uninstallconductors(pipeleft)
+  uninstallconductors(piperght)
+
+  # --- Now add in the gap
+  return addnewegrd(Esolver.zmmin,Esolver.zmmax,
+                    dx=Esolver.dx,dy=Esolver.dy,
+                    ex=Esolver.fieldp[0,...,0],
+                    ey=Esolver.fieldp[1,...,0],
+                    ez=Esolver.fieldp[2,...,0],
+                    rz=lcylindrical,ap=ap,**kw)
 
 # ----------------------------------------------------------------------------
 # --- Convenient plotting functions
@@ -3258,7 +3481,7 @@ such as contours, and cellarray.
 class Emitter:
   def __init__(self,a,b=None,ap=0.,bp=0.,x=0.,y=0.,z=0.,r=largepos,xp=0.,yp=0.,
                     theta=0.,phi=0.,amin=0.,bmin=0.,d=1.,f=1.,voltage=0.):
-    
+
     if b is None:b=a
     self.a=a
     self.b=b
@@ -3277,7 +3500,7 @@ class Emitter:
     self.d=d
     self.f=f
     self.voltage=voltage
-    
+
     if top.ainject[0]<>0:
       top.ninject+=1
       gchange('InjectVars')
@@ -3300,16 +3523,16 @@ class Emitter:
     top.inj_f[-1]       = f
     top.vinject[-1]     = voltage
 
-  def add_component(self,js=None,s=None,emitx=0.,emity=0.,vthperp=0.,vthz=0.,vz=0.,fraction=1.) : 
+  def add_component(self,js=None,s=None,emitx=0.,emity=0.,vthperp=0.,vthz=0.,vz=0.,fraction=1.):
     if js is None:
       try:
         js=s.jslist[0]
       except:
         raise('Error in Emitter.add_component: either js or s must be defined.')
-    
+
     gchange('InjectVars')
     top.vzinject[self.iinject,js] = vz
-    top.finject[self.iinject,js]  = fraction        
+    top.finject[self.iinject,js]  = fraction
     top.emitx_s[js] = emitx
     top.emity_s[js] = emity
     self.emitted_species.append(js)
