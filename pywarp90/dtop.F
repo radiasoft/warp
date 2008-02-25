@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.161 $, $Date: 2008/02/13 02:22:31 $
+c@(#) File DTOP.F, version $Revision: 3.162 $, $Date: 2008/02/25 15:21:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.161 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.162 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -3391,7 +3391,7 @@ c applies simple linear map
           scf = gaminv(i)/vbeam
           uxp = ux(i)*scf
           uyp = uy(i)*scf
-          uzp = (z(i)-uzb)/uzb
+          uzp = (uz(i)-uzb)/uzb
           x(i)  = Map(0,0)*xtmp   + Map(0,1)*uxp  
      &          + Map(0,2)*ytmp   + Map(0,3)*uyp  
      &          + Map(0,4)*ztmp   + Map(0,5)*uzp  
@@ -3419,5 +3419,112 @@ c applies simple linear map
         
         return
       end subroutine apply_map
+c=============================================================================
+
+c=============================================================================
+      subroutine apply_linear_map(n,x,y,z,ux,uy,uz,gaminv,vbeam,gammabar,
+     &                            ax1,ax2,bx1,bx2,dx1,dx2,dpx1,dpx2,Qx,xchrom,phasex,
+     &                            ay1,ay2,by1,by2,dy1,dy2,dpy1,dpy2,Qy,ychrom,phasey,eta,omegaz,phz)
+c applies linear map
+      integer(ISZ):: n,i
+      real(kind=8):: x(n),y(n),z(n),ux(n),uy(n),uz(n),gaminv(n),Map(0:5,0:5),vbeam,gammabar,
+     &               ax1,ax2,bx1,bx2,dx1,dx2,dpx1,dpx2,phasex,Qx,xchrom,
+     &               ay1,ay2,by1,by2,dy1,dy2,dpy1,dpy2,phasey,Qy,ychrom,eta,omegaz,phx,phy,phz
+      real(kind=8):: xtmp,ytmp,ztmp,scf,xpr,ypr,dpp,uzb
+
+        Map = 0.
+        Map(4,4) = cos(phz)
+        Map(5,5) = cos(phz)
+        Map(4,5) = -eta*vbeam/omegaz*sin(phz)
+        Map(5,4) = omegaz/(eta*vbeam)*sin(phz)
+c       Mx11 = sqrt(self.bx2/self.bx1)*(cos(phx)+self.ax1*sin(phx))
+c       Mx12 = sqrt(self.bx2*self.bx1)*sin(phx)
+c       Mx21 = -(1/sqrt(self.bx1*self.bx2)*((self.ax2-self.ax1)*cos(phx) + \c
+c               (1+self.ax1*self.ax2)*sin(phx)))
+c       Mx22 = sqrt(self.bx1/self.bx2)*(cos(phx) - self.ax2*sin(phx))
+c       My11 = sqrt(self.by2/self.by1)*(cos(phy)+self.ay1*sin(phy))
+c       My12 = sqrt(self.by2*self.by1)*sin(phy)
+c       My21 = -(1/sqrt(self.by1*self.by2)*((self.ay2-self.ay1)*cos(phy) + \
+c                (1+self.ay1*self.ay2)*sin(phy)))
+c       My22 = sqrt(self.by1/self.by2)*(cos(phy) - self.ay2*sin(phy))
+c       Mz11 = 1.
+c       if self.sync_flag:
+c        Mz12 = -self.eta*self.L
+c       else:
+c        Mz12 = 0   
+c       Mz21 = 0.
+c       Mz22 = 1.
+c       Tx13 = self.dx2 - Mx11*self.dx1 - Mx12*self.dpx1
+c       Tx23 = self.dpx2 - Mx21*self.dx1 - Mx22*self.dpx1
+c       Ty13 = self.dy2 - My11*self.dy1 - My12*self.dpy1
+c       Ty23 = self.dpy2 - My21*self.dy1 - My22*self.dpy1
+c       Be   = top.vbeam/top.clight
+c        if self.sync_flag:  
+c         Mz21    = (2*pi*self.mus)**2/(self.eta*Be*self.C)
+
+        uzb =  gammabar*vbeam
+        do i = 1,n
+          xtmp = x(i)
+          ytmp = y(i)
+          ztmp = z(i)
+          scf = gaminv(i)/vbeam
+          xpr = ux(i)*scf
+          ypr = uy(i)*scf
+          dpp = (uz(i)-uzb)/uzb
+
+          phx = phasex*(1. + xchrom*dpp/Qx)          !phase change based on value of chromaticity and dp 
+          phy = phasey*(1. + ychrom*dpp/Qy)          !phase change based on value of chromaticity and dp 
+          Map(0,0) = sqrt(bx2/bx1)*(cos(phx)+ax1*sin(phx))
+          Map(0,1) = sqrt(bx2*bx1)*sin(phx)
+          Map(1,0) = -(1/sqrt(bx1*bx2)*((ax2-ax1)*cos(phx) + (1+ax1*ax2)*sin(phx)))
+          Map(1,1) = sqrt(bx1/bx2)*(cos(phx) - ax2*sin(phx))
+          Map(2,2) = sqrt(by2/by1)*(cos(phy)+ay1*sin(phy))
+          Map(2,3) = sqrt(by2*by1)*sin(phy)
+          Map(3,2) = -(1/sqrt(by1*by2)*((ay2-ay1)*cos(phy) + (1+ay1*ay2)*sin(phy)))
+          Map(3,3) = sqrt(by1/by2)*(cos(phy) - ay2*sin(phy))
+          Map(0,5) = dx2  - Map(0,0)*dx1 - Map(0,1)*dpx1
+          Map(1,5) = dpx2 - Map(1,0)*dx1 - Map(1,1)*dpx1
+          Map(2,5) = dy2  - Map(2,2)*dy1 - Map(2,3)*dpy1
+          Map(3,5) = dpy2 - Map(3,2)*dy1 - Map(3,3)*dpy1
+
+          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr + Map(0,5)*dpp  
+                          
+          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr + Map(1,5)*dpp)/scf 
+                      
+          y(i)  = Map(2,2)*ytmp   + Map(2,3)*ypr + Map(2,5)*dpp        
+                       
+          uy(i) = (Map(3,2)*ytmp  + Map(3,3)*ypr + Map(3,5)*dpp)/scf    
+                      
+          z(i)  = Map(4,4)*ztmp   + Map(4,5)*dpp     
+                      
+          uz(i) = (Map(5,4)*ztmp  + Map(5,5)*dpp)*uzb + uzb     
+
+c          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr  
+c     &          + Map(0,2)*ytmp   + Map(0,3)*ypr  
+c     &          + Map(0,4)*ztmp   + Map(0,5)*dpp  
+                          
+c          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr  
+c     &          +  Map(1,2)*ytmp  + Map(1,3)*ypr  
+c     &          +  Map(1,4)*ztmp  + Map(1,5)*dpp)/scf 
+                      
+c          y(i)  = Map(2,0)*xtmp   + Map(2,1)*xpr  
+c     &          + Map(2,2)*ytmp   + Map(2,3)*ypr  
+c     &          + Map(2,4)*ztmp   + Map(2,5)*dpp        
+                       
+c          uy(i) = (Map(3,0)*xtmp  + Map(3,1)*xpr  
+c     &          +  Map(3,2)*ytmp  + Map(3,3)*ypr  
+c     &          +  Map(3,4)*ztmp  + Map(3,5)*dpp)/scf    
+                      
+c          z(i)  = Map(4,0)*xtmp   + Map(4,1)*xpr  
+c     &          + Map(4,2)*ytmp   + Map(4,3)*ypr  
+c     &          + Map(4,4)*ztmp   + Map(4,5)*dpp     
+                      
+c          uz(i) = (Map(5,0)*xtmp  + Map(5,1)*xpr  
+c     &          +  Map(5,2)*ytmp  + Map(5,3)*ypr  
+c     &          +  Map(5,4)*ztmp  + Map(5,5)*dpp)*uzb + uzb     
+        end do
+        
+        return
+      end subroutine apply_linear_map
 c=============================================================================
 
