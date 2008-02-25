@@ -23,8 +23,9 @@ getdatafromtextfile(): Reads in table data from a text file, returning an array
 from __future__ import generators # needed for yield statement for P2.2
 from warp import *
 import struct # needed for makefortranordered
+import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.22 2008/01/31 01:29:16 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.23 2008/02/25 19:22:01 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -264,7 +265,7 @@ except:
     return tt
 
 # --- Convenience function to read in data from a text file
-def getdatafromtextfile(filename,nskip=0,dims=[],nquantities=1,dtype='d',
+def getdatafromtextfileold(filename,nskip=0,dims=[],nquantities=1,dtype='d',
                         fortranordering=1,converter=float,mode='r',get_header=false):
   """
 Reads data in from a text file. The data is assumed to be laid out on a
@@ -344,6 +345,100 @@ Both produce an array of shape (2,4) that looks like
     data = transpose(data)
   else:
     data = transpose(data,[len(dims0)]+range(len(dims0)))
+
+  if get_header:
+    return data,header
+  else:
+    return data
+
+def getdatafromtextfile(filename,nskip=0,dims=[],dtype='d',fortranordering=1,
+                        converter=float,mode='r',get_header=false):
+  """
+Reads data in from a text file. The data is assumed to be laid out on a
+logically Cartesian mesh.
+ - filename: must be supplied
+ - nskip=0: numbers of lines at the beginning of the file to skip
+            e.g. lines with file info and comments
+ - dims=[]: must be supplied - the size of each dimension
+            The last dimension can be None - it will be calculated
+            automatically based on the amount of data in the file.
+ - fortranordering=1: when true, the data will be in fortran ordering, where
+                      the index that varies that fastest in the file will be
+                      the first index. Otherwise use C ordering.
+ - converter=float: Function which converts the strings into numbers. This should
+                    be the type of result desired. It should only be float or int,
+                    unless you know what you are doing.
+
+Here's an example data file called 'testdata':
+----------------------------------------------
+this line is skipped
+1 0.0379
+2 0.0583
+3 0.0768
+4 0.1201
+----------------------------------------------
+This can be read in with
+>>> dd = getdatafromtextfile('testdata',nskip=1,dims=[2,4])
+to produce an array of shape (2,4) that looks like
+>>> print dd
+[[ 1.    , 2.    , 3.    , 4.    ,]
+ [ 0.0379, 0.0583, 0.0768, 0.1201,]]
+
+The second dimension of dims can be None, meaning that all of the data
+will be read in and the size of that dimension will be determined
+automatically.
+>>> dd = getdatafromtextfile('testdata',nskip=1,dims=[2,None])
+>>> print dd
+[[ 1.    , 2.    , 3.    , 4.    ,]
+ [ 0.0379, 0.0583, 0.0768, 0.1201,]]
+
+  """
+  ff = open(filename,mode)
+
+  # --- Skip the number of lines at the top of the file as specified
+  header = []
+  for i in range(nskip):
+    header.append(ff.readline())
+
+  # --- If last dimension is given, calculate the total amount of data to
+  # --- be read in to give an exit condition for the loop below.
+  # --- This allows less than the whole file to be read in.
+  if dims[-1] is not None:
+    ntot = product(dims)
+  else:
+    ntot = None
+
+  # --- Loop over the file, reading in one line at a time.
+  # --- Each whole line is put into data at once.
+  # --- For the conversion of the strings into numbers, it is faster to use
+  # --- float or int rather than eval.
+  data = appendablearray.AppendableArray()
+  for line in ff.readlines():
+    dataline = map(converter,string.split(line))
+    data.append(dataline)
+    if ntot is not None and len(data) >= ntot: break
+
+  # --- Get the data out of the appendable array.
+  data = data[...]
+
+  # --- If last dimension is None, calculate it from the amount of data.
+  if dims[-1] is None:
+    ndata = len(data)
+    ndims = product(dims[:-1])
+    nlast = int(ndata/ndims)
+    assert nlast*ndims == ndata,"Amount of data does not conform to dims"
+    dims[-1] = nlast
+
+  if fortranordering:
+    # --- reverse the order of the dims
+    dims.reverse()
+
+  # --- Set array to have proper shape.
+  data.shape = tuple(dims)
+  if fortranordering:
+    data = transpose(data)
+  else:
+    data = transpose(data,[len(dims)-1]+range(len(dims)-1))
 
   if get_header:
     return data,header
