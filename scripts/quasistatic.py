@@ -16,7 +16,8 @@ class Quasistatic:
   def __init__(self,ions,MRroot=None,l_verbose=0,l_findmgparam=0,
                nparpgrp=top.nparpgrp,Ninit=1000,l_mode=1,l_selfe=1,l_selfi=1,maps=None,pboundxy=None,
                conductors=[],l_elecuniform=0,scraper=None,l_weakstrong=0,nelecperiod=1,
-               backgroundtype=Electron,l_push_z=true,l_inject_elec_MR=false,l_warpzmmnt=false):
+               backgroundtype=Electron,l_push_z=true,l_inject_elec_MR=false,l_warpzmmnt=false,
+               npushzperiod=1,lattice=None,l_freeze_xelec=false):
     w3d.solvergeom=w3d.XYgeom
     self.gridelecs=[]
     self.gridions=[]
@@ -69,6 +70,7 @@ class Quasistatic:
     self.dt = w3d.dz/top.vbeam # time step for pushing electrons
     self.nparpgrp = nparpgrp
     self.l_verbose = l_verbose
+    self.l_parallelverbose = 0
     self.l_findmgparam = l_findmgparam
     self.Ninit = Ninit
     self.l_mode = l_mode
@@ -144,7 +146,15 @@ class Quasistatic:
     self.l_timing=false
     self.l_warpzmmnt=l_warpzmmnt
     self.reset_timers()
-
+    self.l_freeze_xelec=l_freeze_xelec
+    self.npushzperiod=npushzperiod
+    self.lattice=lattice
+    if self.lattice is not None:
+      self.ist=0
+      self.nst=len(lattice)
+      top.dt=lattice[0].L/top.vbeam
+    self.ilcount=zeros(w3d.nzp+1)
+    
   def reset_timers(self):
     self.time_loop=0.
     self.time_sort=0.
@@ -187,7 +197,7 @@ class Quasistatic:
      # --- gather moments
      if top.it==0 or (me>=(npes-top.it) and ((top.it-(npes-me))%top.nhist)==0):
        if self.l_timing:ptime = wtime()
-       self.getmmnts()
+       self.getmmnts_zero()
        if self.l_timing: self.time_getmmnts += wtime()-ptime
 
      # --- compute scatter/gather weights for beam ions (linear weighting)
@@ -220,6 +230,14 @@ class Quasistatic:
          sp=self.slist[0]
          self.dist.append([sp.getx(),sp.gety(),sp.getvx(),sp.getvy()])
 
+     # --- must be called right before entering the main loop
+     # --- stores ions to be passed to previous processor in temporary arrays
+#     iz = 0
+#     if self.l_timing:ptime = wtime()
+#     self.store_ionstoprev()
+#     if self.l_timing: self.time_store_ionstoprev += wtime()-ptime
+#     self.apply_ions_bndconditions(iz)
+
      # --- loop over "3-D" grid mesh in z
      for iz in range(self.izmax-1,self.izmin-1,-1):
        self.iz=iz
@@ -228,7 +246,6 @@ class Quasistatic:
          if self.l_timing:ptime = wtime()
          self.sendrecv_storedions()
          if self.l_timing: self.time_sendrecv_storeions += wtime()-ptime
-
        if self.l_timing:ptime = wtime()
        # --- push ions velocity (2nd half)
        if me>=(npes-1-top.it):
@@ -302,7 +319,14 @@ class Quasistatic:
 
          # --- plot electrons
 #         if l_plotelec :self.plot_electrons()
-         if l_plotelec and iz<w3d.nz/max(1,npes)-1:self.plot_electrons()
+         if l_plotelec and (npes==1 or iz<w3d.nz/max(1,npes)-1):self.plot_electrons()
+
+       # --- gather moments
+       if iz<w3d.nzp-1 and (top.it==0 or (me>=(npes-top.it) and ((top.it-(npes-me))%top.nhist)==0)):
+         if self.l_timing:ptime = wtime()
+         self.getmmnts(iz+1)
+         if iz==0:self.getmmnts(iz)
+         if self.l_timing: self.time_getmmnts += wtime()-ptime
 
        if self.l_timing:ptime = wtime()
        # --- push ions
@@ -316,7 +340,14 @@ class Quasistatic:
          if iz==0:
            self.push_ions_velocity_full(iz)
            self.push_ions_positions(iz)
+           if self.l_timing:ptime = wtime()
+           self.store_ionstoprev()
+           if self.l_timing: self.time_store_ionstoprev += wtime()-ptime
            self.apply_ions_bndconditions(iz)
+           if self.lattice is not None:
+             self.ist = (self.ist+1)%self.nst
+             top.dt=self.lattice[self.ist].L/top.vbeam
+
        if self.l_timing: self.time_push_ions += wtime()-ptime
 
        if l_push_elec:
@@ -345,10 +376,6 @@ class Quasistatic:
      self.reset_rho1()
      if self.l_timing: self.time_reset_rho1 += wtime()-ptime
 #       if lparallel:mpi.barrier()
-
-     if self.l_timing:ptime = wtime()
-     self.store_ionstoprev()
-     if self.l_timing: self.time_store_ionstoprev += wtime()-ptime
        
      # --- clear electrons on processor 0, shift them to the previous ones for me>0
      self.clear_electrons()
@@ -356,6 +383,12 @@ class Quasistatic:
      
      # --- broadcast of mgparams from last processor
      if top.it==0:self.sendrecv_mgparams()
+
+     # --- store moments data
+     if top.it==0 or (me>=(npes-top.it) and ((top.it-(npes-me))%top.nhist)==0):
+       if self.l_timing:ptime = wtime()
+       self.getmmnts_store()
+       if self.l_timing: self.time_getmmnts += wtime()-ptime
 
      # --- update time, time counter
      top.time+=top.dt
@@ -432,22 +465,24 @@ class Quasistatic:
       self.ionstoprev = [0]
     else:
       self.ionstoprev = [len(ii)]
-      self.ionstoprev.append(pg.xp[il:iu].copy())
-      self.ionstoprev.append(pg.yp[il:iu].copy())
-      self.ionstoprev.append(pg.zp[il:iu].copy())
-      self.ionstoprev.append(pg.uxp[il:iu].copy())
-      self.ionstoprev.append(pg.uyp[il:iu].copy())
-      self.ionstoprev.append(pg.uzp[il:iu].copy())
-      self.ionstoprev.append(pg.gaminv[il:iu].copy())
-      self.ionstoprev.append(pg.ex[il:iu].copy())
-      self.ionstoprev.append(pg.ey[il:iu].copy())
-      self.ionstoprev.append(pg.ez[il:iu].copy())
-      self.ionstoprev.append(pg.bx[il:iu].copy())
-      self.ionstoprev.append(pg.by[il:iu].copy())
-      self.ionstoprev.append(pg.bz[il:iu].copy())
+      self.ionstoprev.append(take(pg.xp[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.yp[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.zp[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.uxp[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.uyp[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.uzp[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.gaminv[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.ex[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.ey[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.ez[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.bx[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.by[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.bz[il:iu],ii,0).copy())
       if pg.npid>0:
-        self.ionstoprev.append(pg.pid[il:iu,:].copy())
+        self.ionstoprev.append(take(pg.pid[il:iu,:],ii,0).copy())
     put(pg.gaminv,ii,0.)
+    processlostpart(pg,js+1,top.clearlostpart,top.time+top.dt*pg.ndts[js],top.zbeam)
+    self.set_sw(js)
     if self.l_verbose:print me,top.it,self.iz,'exit store_ionstoprev'
     
   def sendrecv_mgparams(self):
@@ -490,7 +525,7 @@ class Quasistatic:
     if me>0:
       mpi.send(self.ionstoprev,me-1)
       if self.ionstoprev[0]>0:
-        print me, 'sends ',self.ionstoprev[0],' ions to ',me-1
+        if self.l_parallelverbose:print me, 'sends ',self.ionstoprev[0],' ions to ',me-1
     # --- receives stored ions
     if me<npes-1:
       js = w3d.nzp-1
@@ -498,7 +533,7 @@ class Quasistatic:
       recved = mpirecv(me+1)
       np = recved[0]
       if np>0:
-        print me, 'recvs ',np,' ions from ',me+1
+        if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me+1
         if pg.npid>0:
           pid=self.recved[-1]
         else:
@@ -525,8 +560,10 @@ class Quasistatic:
         self.set_sw(js)
     if self.l_verbose:print me,top.it,self.iz,'exit sendrecv_storedions'
              
-  def sendparticlestonext(self,ii):
+  def sendparticlestonext(self,js,ii):
     if self.l_verbose:print me,top.it,self.iz,'enter sendparticlestonext'
+    pg = self.pgions
+    top.pgroup = pg
     tosend = []
     tosend.append(len(ii))
     if len(ii)>0:
@@ -545,10 +582,12 @@ class Quasistatic:
       tosend.append(take(pg.bz,ii))
       if top.npid>0:tosend.append(take(pg.pid,ii,0))
     mpi.send(tosend,me+1)
-    if self.ionstoprev[0]>0:
-      print me, 'sends ',self.ionstoprev[0],' ions to ',me+1
+    if tosend[0]>0:
+      if self.l_parallelverbose:print me, 'sends ',tosend[0],' ions to ',me+1
     if len(ii)>0:
       put(pg.gaminv,ii,0.)
+    processlostpart(pg,js+1,top.clearlostpart,top.time+top.dt*pg.ndts[js],top.zbeam)
+    self.set_sw(js)
     if self.l_verbose:print me,top.it,self.iz,'exit sendparticlestonext'
     
   def recvparticlesfromprevious(self):
@@ -558,7 +597,7 @@ class Quasistatic:
     recved = mpirecv(me-1)
     np = recved[0]
     if np>0:
-      print me, 'recvs ',np,' ions from ',me-1
+      if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me-1
       if top.npid>0:
         pid=self.recved[-1]
       else:
@@ -637,8 +676,8 @@ class Quasistatic:
       wz1i = (pg.zp[il:iu]-zmin)/w3d.dz
       # --- select particles within zmminp <--> zmmaxp
       ii = compress( (wz1i>=0.) & (wz1i<=1.), arange(np))
-      np =len(ii)
-      if np>0:
+      npi =len(ii)
+      if npi>0:
         wz1 = take(wz1i,ii)
         ii+=il
         xp = take(pg.xp,ii)
@@ -647,11 +686,11 @@ class Quasistatic:
         bg=frz.basegrid=self.gridionscp[0]
         mk_grids_ptr()
         reset_rzmgrid_rho()
-        rhoweightrz_weights(xp,yp,yp,wz1,np,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
+        rhoweightrz_weights(xp,yp,yp,wz1,npi,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
       # --- select particles outside bounds (> zmmaxp)
       ii = compress( wz1i>1., arange(np))
-      np =len(ii)
-      if np>0:
+      npi =len(ii)
+      if npi>0:
         wz0 = 1.-take(wz1i,ii)
         ii+=il
         xp = take(pg.xp,ii)
@@ -660,7 +699,7 @@ class Quasistatic:
         bg=frz.basegrid=self.gridionscp[1]
         mk_grids_ptr()
         reset_rzmgrid_rho()
-        rhoweightrz_weights(xp,yp,yp,wz0,np,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
+        rhoweightrz_weights(xp,yp,yp,wz0,npi,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
     # --- stacks rho to be sent to next processor
     if lparallel and me<npes-1:
       tosend=[]
@@ -674,7 +713,7 @@ class Quasistatic:
         tosend.append(g1.rho)
       mpi.send(tosend,me+1)
       del tosend
-      self.sendparticlestonext(ii)
+      self.sendparticlestonext(js,ii)
     if lparallel and me>0:
       g0 = self.gridions[0]
       g1 = self.gridions[1]
@@ -729,8 +768,12 @@ class Quasistatic:
             gammaadv(np,pg.gaminv[il:iu],pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
                      top.gamadv,top.lrelativ)
             if self.l_verbose:print me,top.it,self.iz,'me = ',me,';xpush'
-            xpush3d(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
-                    pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],self.dt)
+            if self.l_freeze_xelec:
+              xpush3d(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
+                      pg.uxp[il:iu]*0.,pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],self.dt)
+            else:
+              xpush3d(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
+                      pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],self.dt)
             pg.zp[il:iu]-=w3d.dz
 #            pli(frz.basegrid.phi);refresh()
 #            ppzx(js=1,color=red,msize=2);refresh()
@@ -783,8 +826,8 @@ class Quasistatic:
       iz = int((pg.zp[il:iu]-zmin)/w3d.dz) 
       if len(iz)>0:
         if min(iz)<-1 or max(iz)>1: print 'error iz',min(iz),max(iz) 
-      izleft = compress(iz<0,arange(pg.nps[js]))
-      izright = compress(iz>0,arange(pg.nps[js]))
+      izleft = il+compress(iz<0,arange(pg.nps[js]))
+      izright = il+compress(iz>0,arange(pg.nps[js]))
       if js==0 and len(izleft)>0:raise('Error in sort_ions_along_z:js==0 and len(izleft)>0')   
       if js==w3d.nzp-1 and len(izright)>0:raise('Error in sort_ions_along_z:js==w3d.nzp-1 and len(izright)>0')   
       if len(izleft)>0:
@@ -936,9 +979,9 @@ class Quasistatic:
 
   def set_sw(self,js):
       if self.l_verbose:print me,top.it,self.iz,'enter set_sw'
-      wz1 = self.get_sw(js)
+      wz0,wz1 = self.get_sw(js)
       self.wz1[js] = wz1
-      self.wz0[js] = 1.-wz1
+      self.wz0[js] = wz0
       if self.l_verbose:print me,top.it,self.iz,'exit set_sw'
         
   def gather_ions_fields(self):
@@ -1145,11 +1188,26 @@ class Quasistatic:
     if me>=(npes-1-top.it):
       pg = self.pgions
       np = pg.nps[js]
-      if np==0:return
       il = pg.ins[js]-1
       iu = il+pg.nps[js]
-      if self.l_maps:
-        if 1:
+      if self.lattice is not None:
+        if np>0:
+          zp=pg.zp[il:iu].copy()
+          self.lattice[self.ist].apply_transfer_map(pg,il,iu)
+        self.ilcount[js]+=1
+        istadd=1
+        while self.lattice[(self.ist+istadd)%self.nst].L==0.:
+          if np>0:self.lattice[(self.ist+istadd)%self.nst].apply_transfer_map(pg,il,iu)
+          self.ilcount[js]+=1
+          istadd+=1
+        if js==0:self.ist=(self.ist+istadd-1)%self.nst
+        if np>0:
+          dz = max(abs(pg.zp[il:iu]-zp))
+          if dz>w3d.dz:print 'Error in push_ions_positions: dz>w3d.dz',dz/w3d.dz
+      else:
+       if np==0:return
+       if self.l_maps:
+        if 0:
           apply_simple_map(np,
                            pg.xp[il:iu],
                            pg.yp[il:iu],
@@ -1158,23 +1216,15 @@ class Quasistatic:
                            pg.uzp[il:iu],
                            self.maps.Mtx,
                            self.maps.Mty)
-          if self.l_push_z:
-            pg.zp[il:iu]+=(pg.uzp[il:iu]*pg.gaminv[il:iu]-top.vbeam)*top.dt
+          if self.l_push_z and top.it%self.npushzperiod==0:
+            self.maps.apply_synchrotron_motion(pg,il,iu,top.dt*self.npushzperiod)
+#            pg.zp[il:iu]+=(pg.uzp[il:iu]*pg.gaminv[il:iu]-top.vbeam)*top.dt
         else:
-          apply_map(np,
-                           pg.xp[il:iu],
-                           pg.yp[il:iu],
-                           pg.zp[il:iu],
-                           pg.uxp[il:iu],
-                           pg.uyp[il:iu],
-                           pg.uzp[il:iu],
-                           pg.gaminv[il:iu],
-                           self.maps.Map,
-                           top.vbeam,
-                           top.gammabar)
+          self.maps.apply_transfer_map(pg,il,iu,top.dt,self.l_push_z)
         self.set_gamma(js)
-      else:
+       else:
         # --- push positions (average longitudinal velocity is removed)
+        if np==0:return
         if self.l_push_z:
            xpush3d(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
                    pg.uxp[il:iu],pg.uyp[il:iu],
@@ -1275,8 +1325,9 @@ class Quasistatic:
 #          ex = self.slist[0].getex()
 #          if me==0:ppco(x,y,ex,msize=3,ncolor=100);refresh()
 #        if iz==0:
-        self.electrons.ppxex(msize=2);refresh()
-#        self.electrons.ppxy(msize=1);refresh()
+#        self.electrons.ppxex(msize=2);refresh()
+        print 'plot_elec',self.iz
+        self.electrons.ppxy(msize=1,color='density',ncolor=100);refresh()
 #        else:
 #          self.slist[0].ppxex(msize=2);
 #        limits(w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
@@ -1411,80 +1462,91 @@ class Quasistatic:
 #    self.Ez[...] = (self.pgions.fselfb[0]/clight)**2*(potentialp[ix,iy,2:]-potentialp[ix,iy,:-2])/(2.*self.dz)
 #    fieldp[2,:,:,:,0] += Ez
 
-  def getmmnts(self):
-    if self.l_verbose:print me,top.it,self.iz,'enter getmmnts'
+  def getmmnts_zero(self):
+    if self.l_verbose:print me,top.it,self.iz,'enter getmmnts_zero'
     pg = self.pgions
-    self.pnum.append(sum(self.pgions.nps))
-    xbar = 0.
-    ybar = 0.
-    zbar = 0.
-    xpbar = 0.
-    ypbar = 0.
-    xpnbar = 0.
-    ypnbar = 0.
-    x2 = 0.
-    y2 = 0.
-    z2 = 0.
-    xp2 = 0.
-    yp2 = 0.
-    xxpbar = 0.
-    yypbar = 0.
-    xpn2 = 0.
-    ypn2 = 0.
-    xxpnbar = 0.
-    yypnbar = 0.
-    for js in range(self.pgions.ns):
-      x = getx(js=js,gather=0)
-      y = gety(js=js,gather=0)
-      z = getz(js=js,gather=0)
-      xp = getux(js=js,gather=0)/getuz(js=js,gather=0)
-      yp = getuy(js=js,gather=0)/getuz(js=js,gather=0)
-      gaminv = getgaminv(js=js,gather=0)
+    self.pnumtmp = 0
+    self.xbartmp = 0.
+    self.ybartmp = 0.
+    self.zbartmp = 0.
+    self.xpbartmp = 0.
+    self.ypbartmp = 0.
+    self.xpnbartmp = 0.
+    self.ypnbartmp = 0.
+    self.x2tmp = 0.
+    self.y2tmp = 0.
+    self.z2tmp = 0.
+    self.xp2tmp = 0.
+    self.yp2tmp = 0.
+    self.xxpbartmp = 0.
+    self.yypbartmp = 0.
+    self.xpn2tmp = 0.
+    self.ypn2tmp = 0.
+    self.xxpnbartmp = 0.
+    self.yypnbartmp = 0.
+    if self.l_verbose:print me,top.it,self.iz,'exit getmmnts_zero'
+    
+  def getmmnts(self,js):
+      if self.l_verbose:print me,top.it,self.iz,'enter getmmnts'
+      pg = self.pgions
+      self.pnumtmp += getn(js=js,gather=0,pgroup=pg)
+      x = getx(js=js,gather=0,pgroup=pg)
+      y = gety(js=js,gather=0,pgroup=pg)
+      z = getz(js=js,gather=0,pgroup=pg)
+      xp = getux(js=js,gather=0,pgroup=pg)/getuz(js=js,gather=0,pgroup=pg)
+      yp = getuy(js=js,gather=0,pgroup=pg)/getuz(js=js,gather=0,pgroup=pg)
+      gaminv = getgaminv(js=js,gather=0,pgroup=pg)
       beta = (1.-gaminv)*(1.+gaminv)
       gamma = 1./gaminv
       xpn = xp*beta*gamma
       ypn = yp*beta*gamma
-      xbar+=sum(x)      
-      ybar+=sum(y)      
-      zbar+=sum(z)      
-      xpbar+=sum(xp)      
-      ypbar+=sum(yp)      
-      xpnbar+=sum(xpn)      
-      ypnbar+=sum(ypn)      
-      x2+=sum(x*x)      
-      y2+=sum(y*y)      
-      z2+=sum(z*z)      
-      xp2+=sum(xp*xp)      
-      yp2+=sum(yp*yp)      
-      xpn2+=sum(xpn*xpn)      
-      ypn2+=sum(ypn*ypn)      
-      xxpbar+=sum(x*xp)      
-      yypbar+=sum(y*yp)      
-      xxpnbar+=sum(x*xpn)      
-      yypnbar+=sum(y*ypn)      
-    self.xbar.append(xbar)
-    self.ybar.append(ybar)
-    self.zbar.append(zbar)
-    self.xpbar.append(xpbar)
-    self.ypbar.append(ypbar)
-    self.x2.append(x2)
-    self.y2.append(y2)
-    self.z2.append(z2)
-    self.xp2.append(xp2)
-    self.yp2.append(yp2)
-    self.xxpbar.append(xxpbar)
-    self.yypbar.append(yypbar)
-    self.xpnbar.append(xpnbar)
-    self.ypnbar.append(ypnbar)
-    self.xpn2.append(xpn2)
-    self.ypn2.append(ypn2)
-    self.xxpnbar.append(xxpnbar)
-    self.yypnbar.append(yypnbar)
+      self.xbartmp+=sum(x)      
+      self.ybartmp+=sum(y)      
+      self.zbartmp+=sum(z)      
+      self.xpbartmp+=sum(xp)      
+      self.ypbartmp+=sum(yp)      
+      self.xpnbartmp+=sum(xpn)      
+      self.ypnbartmp+=sum(ypn)      
+      self.x2tmp+=sum(x*x)      
+      self.y2tmp+=sum(y*y)      
+      self.z2tmp+=sum(z*z)      
+      self.xp2tmp+=sum(xp*xp)      
+      self.yp2tmp+=sum(yp*yp)      
+      self.xpn2tmp+=sum(xpn*xpn)      
+      self.ypn2tmp+=sum(ypn*ypn)      
+      self.xxpbartmp+=sum(x*xp)      
+      self.yypbartmp+=sum(y*yp)      
+      self.xxpnbartmp+=sum(x*xpn)      
+      self.yypnbartmp+=sum(y*ypn)      
+      if self.l_verbose:print me,top.it,self.iz,'exit getmmnts'
+
+  def getmmnts_store(self):
+    if self.l_verbose:print me,top.it,self.iz,'enter getmmnts_store'
+    pg = self.pgions
+    self.pnum.append(self.pnumtmp)
+    self.xbar.append(self.xbartmp)
+    self.ybar.append(self.ybartmp)
+    self.zbar.append(self.zbartmp)
+    self.xpbar.append(self.xpbartmp)
+    self.ypbar.append(self.ypbartmp)
+    self.x2.append(self.x2tmp)
+    self.y2.append(self.y2tmp)
+    self.z2.append(self.z2tmp)
+    self.xp2.append(self.xp2tmp)
+    self.yp2.append(self.yp2tmp)
+    self.xxpbar.append(self.xxpbartmp)
+    self.yypbar.append(self.yypbartmp)
+    self.xpnbar.append(self.xpnbartmp)
+    self.ypnbar.append(self.ypnbartmp)
+    self.xpn2.append(self.xpn2tmp)
+    self.ypn2.append(self.ypn2tmp)
+    self.xxpnbar.append(self.xxpnbartmp)
+    self.yypnbar.append(self.yypnbartmp)
     if top.it==0 or not lparallel:
       self.timemmnts.append(top.time)
     else:
       self.timemmnts.append(top.time+(me-npes+1)*top.dt)
-    if self.l_verbose:print me,top.it,self.iz,'exit getmmnts'
+    if self.l_verbose:print me,top.it,self.iz,'exit getmmnts_store'
       
   def getpnum(self):
       if me==0:
