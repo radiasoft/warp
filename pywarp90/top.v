@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.231 $, $Date: 2008/02/16 23:54:48 $
+#@(#) File TOP.V, version $Revision: 3.232 $, $Date: 2008/02/25 15:20:29 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.231 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.232 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -972,6 +972,8 @@ ez0                       real /0./
    # Linear Ez field for bunching force
 vbeamfrm                  real [M/S]
    # Velocity of the beam frame.  Normally the same as vbeam.
+boost_gamma               real /1./
+   # gamma of boosted frame
 allspecl                  logical  /.false./
    # flag for making all time steps "special" ones
 depos                     character*8 /"direct1"/
@@ -2719,6 +2721,14 @@ apply_simple_map(n,x(n):real,y(n):real,ux(n):real,uy(n):real,uz(n):real,
        # applies simple linear map
 apply_map(n,x(n):real,y(n):real,z(n):real,ux(n):real,uy(n):real,uz(n):real,
             gaminv(n):real,Map(6,6):real,vbeam:real,gammabar:real) subroutine
+       # applies linear map
+apply_linear_map(n,x(n):real,y(n):real,z(n):real,ux(n):real,uy(n):real,uz(n):real,
+                 gaminv(n):real,vbeam:real,gammabar:real,
+                 ax1:real,ax2:real,bx1:real,bx2:real,dx1:real,dx2:real,
+                 dpx1:real,dpx2:real,Qx:real,xchrom:real,phasex:real,
+                 ay1:real,ay2:real,by1:real,by2:real,dy1:real,dy2:real,
+                 dpy1:real,dpy2:real,Qy:real,ychrom:real,phasey:real,
+                 eta:real,omegaz:real,phz:real) subroutine
        # applies linear map
 
 ******* Parallel:
