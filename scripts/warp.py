@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.159 2008/02/13 00:29:28 dave Exp $"
+warp_version = "$Id: warp.py,v 1.160 2008/02/25 19:24:39 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -1113,9 +1113,6 @@ from warpplots import *
 from histplots import *
 from pzplots import *
 from plot_conductor import *
-from lattice import *
-from solenoid import *
-from drawlattice import *
 from multigrid import MultiGrid
 from multigrid import MultiGridImplicit3D
 from multigridRZ import MultiGridRZ
@@ -1128,6 +1125,9 @@ from magnetostaticMG import MagnetostaticMG
 from MeshRefinementB import MRBlockB
 from species import *
 from particlescraper import ParticleScraper
+from lattice import *
+from drawlattice import *
+from solenoid import *
 
 # --- Import some online documentation modules.
 from warphelp import *
