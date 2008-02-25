@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.10 2008/02/14 21:59:47 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.11 2008/02/25 18:57:21 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -34,7 +34,7 @@ def B0pp(z,zcent,k,R,l):
   z = z - zcent
   c3 = 4*R**2 + (l - 2*z)**2
   c4 = 4*R**2 + (l + 2*z)**2
-  return (24*k*mu0*R**2*(-l/(c3)**2.5 + (2*z)/(c3)**2.5 - 
+  return (24*k*mu0*R**2*(-l/(c3)**2.5 + (2*z)/(c3)**2.5 -
                           l/(c4)**2.5 - (2*z)/(c4)**2.5))
 
 def B0ppp(z,zcent,k,R,l):
@@ -42,7 +42,7 @@ def B0ppp(z,zcent,k,R,l):
   z = z - zcent
   c3 = 4*R**2 + (l - 2*z)**2
   c4 = 4*R**2 + (l + 2*z)**2
-  return (192*k*mu0*R**2*(-(c3)**-2.5 + (c4)**-2.5 + 
+  return (192*k*mu0*R**2*(-(c3)**-2.5 + (c4)**-2.5 +
                    R**2*(5/(c3)**3.5 - 5/(c4)**3.5)))
 
 def B0p4(z,zcent,k,R,l):
@@ -71,7 +71,7 @@ def B0p6(z,zcent,k,R,l):
   c4 = 4*R**2 + (l + 2*z)**2
   return 322560*k*mu0*R**2*(l*(-c3**-4.5 - c4**-4.5 +
                                18*(c3**-5.5 + c4**-5.5)*R**2 +
-                               (-66/c3**6.5 - 66/c4**6.5)*R**4) + 
+                               (-66/c3**6.5 - 66/c4**6.5)*R**4) +
                             2*(c3**-4.5 - c4**-4.5 +
                                18*(-c3**-5.5 + c4**-5.5)*R**2 +
                                66*(c3**-6.5 - c4**-6.5)*R**4)*z)
@@ -130,7 +130,7 @@ included, up B0'''.
 
   zcent = (zi + zf)/2.
   l = (zf - zi)
-  
+
   if maxbz is not None:
     current = maxbz/(mu0*sum(1./sqrt(4.0*(rsheets/l)**2 + 1.0)))
   if current == 0.0:
@@ -378,7 +378,7 @@ Input arguments:
   # --- value so they can be restored after the solve.
   solvergeom = w3d.solvergeom
   ncmax = frz.mgridrz_ncmax
-  electrontemperature = w3d.electrontemperature 
+  electrontemperature = w3d.electrontemperature.copy()
   w3d.solvergeom = w3d.RZgeom
   frz.mgridrz_ncmax = 10000
   w3d.electrontemperature = 0. # turn of Boltzmann electrons
@@ -394,9 +394,9 @@ Input arguments:
   bb = Bsolver.field
   divb = fzeros(rr.shape,'d')
   divb[1:-1,1:-1] = (1./rr[1:-1,1:-1]*bb[0,1:-1,0,1:-1] +
-                       (bb[0,2:,0,1:-1] - bb[0,:-2,0,1:-1])/(2.*dx) + 
+                       (bb[0,2:,0,1:-1] - bb[0,:-2,0,1:-1])/(2.*dx) +
                      (bb[2,1:-1,0,2:]-bb[2,1:-1,0,:-2])/(2.*dz))
-  
+
   curlbt = fzeros(rr.shape,'d')
   curlbt[1:-1,1:-1] = (+(bb[0,1:-1,0,2:]-bb[0,1:-1,0,:-2])/(2.*dz)
                        -(bb[2,2:,0,1:-1] - bb[2,:-2,0,1:-1])/(2.*dx))
