@@ -103,7 +103,7 @@ import VPythonobjects
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.179 2008/02/13 18:57:23 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.180 2008/02/25 19:11:37 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -169,6 +169,10 @@ Installs the given conductors.
   # Then install it
   g.installdata(installrz,gridmode,solvergeom,conductors,gridrz)
   installedconductors.append(a)
+
+def uninstallconductors(a):
+  "Removes the conductors from the list of installed conductors"
+  installedconductors.remove(a)
 
 ##############################################################################
 ##############################################################################
