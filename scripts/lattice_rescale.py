@@ -1,10 +1,10 @@
-"""Function to scale lattice focusing strength to yield a target value of x-plane or y-plane undpressed phase advance.
+"""Function to scale lattice focusing strength to yield a target value of x-plane or y-plane undepressed phase advance.
 
 See Sven Chilton's Master's Report for full documentation: "Implementation of an iterative matching scheme for the Kapchinskij-Vladimirskij equations in WARP," UC Berkeley Nuclear Engineering Department, March 2008; LBL Report Number ?? 
 
 The functions listed below are included in this module.  To access more detailed documentation on a given function, enter either help(function_name) or doc(function_name) into the Python command line.
 
-  - rescalefunc(): Overarching function.  Determines the scaling factor by which to multiply the lattice focusing strength to yield the target j-plane undepressed phase advance, where j denotes either x or y, then resets lattice quantities appropriately.  Valid for target phase advances between 0 and 180 degrees.
+  - rescalefunc(): Overarching function.  Determines the scaling factor by which to multiply the lattice focusing strength to yield the target x- or y-plane undepressed phase advance, then resets lattice quantities appropriately.  Valid for target phase advances between 0 and 180 degrees.
   - rescale(): Multiplies all allocated top variables having to do with lattice focusing strength by scale factor a.
   - phasediff(): Temporarily resets lattice focusing strength, determines the corresponding value of x-plane undepressed phase advance, and returns the difference between this and the target x-plane phase advance.
 """
@@ -23,41 +23,46 @@ from scipy import optimize
 import envmatch_KVinvariant as matching
 
 ########################################################################
+# Add script name version and script documentation function            #
+########################################################################
+
+lattice_rescale_version = "$Id: lattice_rescale.py,v 1.2 2008/02/26 17:33:23 sven Exp $"
+def lattice_rescaledoc():
+  import lattice_rescale
+  print  lattice_rescale.__doc__
+
+########################################################################
 # Overarching lattice rescaling function                               #
 ########################################################################
 
-def rescalefunc(sigma0target,plane,rftol=1.e-16,steps=1000,error_stop=True):
+def rescalefunc(sigma0target,plane,da=0.1,rftol=1.e-16,
+                steps=1000,error_stop=True):
   """
-Determines by bisection root-finding the scale factor by which to multiply the lattice focusing strength so as to achieve a target value (sigma0target: in degrees per period) of x- or y-plane phase advance (sigma0), then resets appropriate lattice parameters.  The x- or y- plane choice (plane) is user set.  If the x-plane is chosen the y-plane phase-advance will be consistently modified and vice-versa.  Valid for target sigma0 values between 0 and 180 degrees.
+Determines by bisection root-finding the scale factor by which to multiply the lattice focusing strength so as to achieve a target value (sigma0target: in degrees per period) of x- or y-plane phase advance (sigma0), then resets appropriate lattice parameters.  The x- or y-plane choice (plane) is user-set.  If the x-plane is chosen, the y-plane phase advance will be consistently modified and vice-versa.  Valid for target sigma0 values between 0 and 180 degrees.
 
 Arguments:
   - sigma0target: Desired value of undepressed phase advance in degrees
   - plane = 'x': Specifies sigma0target as an x-plane quantity
           = 'y': Specifies sigma0target as a  y-plane quantity
+  - da = 0.1: Size by which to increase or decrease lattice strength scale to establish a bracket for root-finding
   - rftol = 1.e-16: Root find tolerance for lattice rescale 
   - steps = 1000: Number of evenly spaced intervals per lattice period
   - error_stop = True: Stops the program if an error trap is tripped
-
-Dummy return: True
 
 Notes:
 
 See Sven Chilton's Master's Report for full documentation: "Implementation of an iterative matching scheme for the Kapchinskij-Vladimirskij equations in WARP," UC Berkeley Nuclear Engineering Department, March 2008; LBL Report Number ?? 
 
-This package works by integrating principal orbit functions and root finding on a simple phase-advance constraint equation.  The principal orbits are integrated using functions in the envelope matching package envmatch_KVinvariant.py.   
+This package works by integrating principal orbit functions and root finding on a simple phase advance constraint equation.  The principal orbits are integrated using functions in the envelope matching package envmatch_KVinvariant.py.   
 
-If the bisection root-finding scheme ventures into an area of parameter space corresponding to a complex undepressed phase advance, the program will print warning messages.  As long as the target undepressed phase advance is between 0 and 180 degrees, simple tests indicate that the program will still converge to the physical answer in spite of these warning messages.  But the user is advised to check answers carefully in such exceptional situations.  
+If the bisection root-finding scheme ventures into an area of parameter space corresponding to a complex undepressed phase advance, the program will print warning messages.  As long as the target undepressed phase advance is between 0 and 180 degrees, simple tests indicate that the program will still converge to the physical answer in spite of these warning messages.  However, the user is advised to check answers carefully in such exceptional situations.  
   """
-  # Lattice Parameters
-  global lperiod,sigma0x,sigma0y
-  lperiod = top.zlatperi
-
   # Error Traps
   # --- Ensure plane is set correctly
   assert plane == 'x' or plane == 'y', 'Reset plane variable to x or y, in quotes' 
   # --- Check that period is physical 
   if error_stop:
-    assert lperiod > 0., 'Lattice period length must be strictly positive.'
+    assert top.zlatperi > 0., 'Lattice period length must be strictly positive.'
 
   #  --- Ensure that the parameter steps is a postive integer
   steps = int(abs(steps))
@@ -66,7 +71,7 @@ If the bisection root-finding scheme ventures into an area of parameter space co
   
   # Parameters for numerical integration of the principal orbit functions.
   #   Uses the envmatch_KVinvariant package 
-  matching.lperiod = lperiod
+  matching.lperiod = top.zlatperi
   
   matching.steps = steps
   
@@ -81,49 +86,72 @@ If the bisection root-finding scheme ventures into an area of parameter space co
   #   This works by first calculating the phase advances for the present
   #   lattice and then taking steps up or down in strength to establish
   #   a bracket.
-
-  # --- Step scale to establish bracket
-  da = 0.1 
-
+  
   # --- Calculate phase difference of orbit relative to target
   sigma0diff = phasediff(1.,plane,steps,error_stop,sigma0target)
-
-  # --- Phase advance of lattice is higher than target: scale down  
-  if sigma0diff >= 0.:
-    alist = [1.,1.-da]
-    dlist = [sigma0diff,
-             phasediff(1.-da,plane,steps,error_stop,sigma0target)]
-    while sign(dlist[-1]) == sign(dlist[-2]) and alist[-1] >= 0.:
-      alist.append(alist[-1]-da)
-      dlist.append(phasediff(alist[-1],plane,steps,error_stop,sigma0target))
-  # --- Phase advance of lattice is lower than target: scale up 
+  
+  # --- Phase advance of lattice is within tolerance rftol of target 
+  #     phase advance
+  if abs(sigma0diff)/sigma0target <= rftol:
+    # --- x-plane case
+    if plane == 'x':
+      print 'Lattice x-plane phase advance is within fractional tolerance'
+      print rftol,' of target phase advance', sigma0target
+      print 'Lattice strength variables (Voltages, fields, etc.)'
+      print 'have not been modified.'
+      return
+    # --- y-plane case
+    if plane == 'y':
+      print 'Lattice y-plane phase advance is within fractional tolerance'
+      print rftol,' of target phase advance', sigma0target
+      print 'Lattice strength variables (Voltages, fields, etc.)'
+      print 'have not been modified.'
+      return
+  # --- Phase advance of lattice is not within tolerance rftol of target 
+  #     phase advance
   else:
-    alist = [1.,1.+da]
-    dlist = [sigma0diff,
-             phasediff(1.+da,plane,steps,error_stop,sigma0target)]
-    while sign(dlist[-1]) == sign(dlist[-2]):
-      alist.append(alist[-1]+da)
-      dlist.append(phasediff(alist[-1],plane,steps,error_stop,sigma0target))
-  
-  # Use bracketed root-finding to compute the scale factor ac such that 
-  # ac*kappax yields the target value of sigma0x (kappax is the x-plane 
-  # lattice focusing function).    
-  
-  ac = optimize.bisect(phasediff,alist[-2],alist[-1],
-                       args=(plane,steps,error_stop,sigma0target),
-                       rtol=rftol)
-  
-  # Reset WARP lattice with the scale found and output message to user 
-  rescale(ac)
-  matching.latfunc(steps,error_stop)
-  
-  print 'Lattice focusing strength has been scaled by a factor ',ac
-  print 'to achieve a target ',plane,'-plane phase advance sigma0 ='
-  print sigma0target,' deg/period.'
-  print 'Lattice strength variables (Voltages, fields, etc.) have all been'
-  print 'rescaled consistently.'
-  
-  return True
+    # --- Phase advance of lattice is higher than target: scale down  
+    if sigma0diff >= 0.:
+      aupper = 1.
+      alower = 1.-da
+      dupper = sigma0diff
+      dlower = phasediff(1.-da,plane,steps,error_stop,sigma0target)
+      while sign(dlower) == sign(dupper) and alower >= 0.:
+        aupper = alower
+        alower = alower-da
+        dupper = dlower
+        dlower = phasediff(alower,plane,steps,error_stop,sigma0target)
+    # --- Phase advance of lattice is lower than target: scale up 
+    else:
+      alower = 1.
+      aupper = 1.+da
+      dlower = sigma0diff
+      dupper = phasediff(1.+da,plane,steps,error_stop,sigma0target)
+      while sign(dupper) == sign(dlower):
+        alower = aupper
+        aupper = aupper+da
+        dlower = dupper
+        dupper = phasediff(aupper,plane,steps,error_stop,sigma0target)
+    
+    # Use bracketed root-finding to compute the scale factor ac such that 
+    # ac*kappax yields the target value of sigma0x (kappax is the x-plane 
+    # lattice focusing function).    
+    
+    ac = optimize.bisect(phasediff,alower,aupper,
+                         args=(plane,steps,error_stop,sigma0target),
+                         rtol=rftol)
+    
+    # Reset WARP lattice with the scale found and output message to user 
+    rescale(ac)
+    matching.latfunc(steps,error_stop)
+    
+    print 'Lattice focusing strength has been scaled by a factor ',ac
+    print 'to achieve a target ',plane,'-plane phase advance sigma0 ='
+    print sigma0target,' deg/period.'
+    print 'Lattice strength variables (Voltages, fields, etc.) have all been'
+    print 'rescaled consistently.'
+    
+    return
 
 
 ########################################################################
@@ -173,7 +201,7 @@ Comments:
 
 def phasediff(a,plane,steps,error_stop,sigma0target):
   """
-Temporarily rescales the lattice focusing strength by a factor a and computes the difference between the corresponding j-plane phase advance after the rescale and the target j-plane phase advance, where j is either x or y
+Temporarily rescales the lattice focusing strength by a factor a and computes the difference between the corresponding x- or y-plane undepressed phase advance after the rescale and the target undepressed phase advance
 
 Input parameters:
 
@@ -190,12 +218,12 @@ Output: Difference between the undepressed phase advance of the scaled lattice a
   rescale(a)
 
   # Calculate phase advance of undepressed particle orbits in
-  #   the x- and y-planes 
+  # the x- and y-planes with the envmatch_KVinvariant package 
   matching.latfunc(steps,False)
   sigma0xlocal = top.sigma0x
   sigma0ylocal = top.sigma0y
 
-  # Remove the lattice rescale and recalulate phase advances consistently
+  # Remove the lattice rescale and recalculate phase advances consistently
   rescale(1./a)
   matching.latfunc(steps,error_stop)
 
