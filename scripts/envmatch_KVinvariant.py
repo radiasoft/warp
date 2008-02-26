@@ -64,7 +64,7 @@ from scipy import interpolate
 # Add script name version and script documentation function            #
 ########################################################################
 
-envmatch_KVinvariant_version = "$Id: envmatch_KVinvariant.py,v 1.1 2008/02/26 17:33:01 sven Exp $"
+envmatch_KVinvariant_version = "$Id: envmatch_KVinvariant.py,v 1.2 2008/02/26 22:19:38 sven Exp $"
 def envmatch_KVinvariantdoc():
   import envmatch_KVinvariant
   print  envmatch_KVinvariant.__doc__
@@ -133,17 +133,22 @@ Match() returns the following for all SolCase settings:
   - ryi: initial y-plane radius at the start of the lattice period 
   - rxpi: initial x-plane angle at the start of the lattice period 
   - rypi: initial y-plane angle at the start of the lattice period 
+  - sinitial: initial s value (start of the lattice period) [meters]
+  - sfinal: final s value (end of the lattice period) [meters]
+  - lperiod: lattice period length [meters]
   
 If SolCase = '0', Match() also runs WARP's envelope package with the same axial step size to effectively load the matched envelope radii in WARP's native variables (i.e, rx => env.aenv, ry => env.benv, rxp => env.apenv, ryp => env.bpenv). The initial conditions (rxi => top.a0, ryi => top.b0, rxpi => top.ap0, rypi => top.bp0) are also set consistently in WARP.  
 
 For all parameterization cases other than 0 (SolCase != '0'), Match() prints a message suggesting that the user reset the WARP perveance Q and emittances emitx and emity consistently with those calculated in the matched envelope specification.  The perveance will normally be reset in WARP by varying the beam current. 
   """
   # --- Lattice Parameters
-  global lperiod,sigma0x,sigma0y
+  global lperiod,sigma0x,sigma0y,si
   lperiod = top.zlatperi
   if error_stop:
     assert lperiod > 0., 'Lattice period length must be strictly positive.'
-  
+  si = top.zlatstrt
+  sinitial = si
+  sfinal   = si+lperiod
   sigma0x = top.sigma0x*(pi/180.) # [rad], not [deg]
   sigma0y = top.sigma0y*(pi/180.)
 
@@ -162,9 +167,7 @@ For all parameterization cases other than 0 (SolCase != '0'), Match() prints a m
   if rftol == 'auto': rftol = 10.*tol
   
   # Parameters for principal orbit calculations
-  global si,cxi,cxpi,sxi,sxpi,cyi,cypi,syi,sypi
-  si   = top.zlatstrt
-  
+  global cxi,cxpi,sxi,sxpi,cyi,cypi,syi,sypi
   cxi  = 1.;  cxpi = 0.;
   sxi  = 0.;  sxpi = 1.;
   cyi  = 1.;  cypi = 0.; 
@@ -276,7 +279,8 @@ For all parameterization cases other than 0 (SolCase != '0'), Match() prints a m
     top.b0  = ry[0]; top.bp0 = ryp[0]
     package("env"); generate(); step()
     return iterations,tolachieved,Q,emitx,emity,sigmax,sigmay,\
-           sigma0x,sigma0y,rx,ry,rxp,ryp,rxi,ryi,rxpi,rypi
+           sigma0x,sigma0y,rx,ry,rxp,ryp,rxi,ryi,rxpi,rypi,\
+           sinitial,sfinal,lperiod
   # Non-default parameterizations
   elif SolCase == '1'  or SolCase == '2'  or SolCase == '2a' or \
        SolCase == '2b' or SolCase == '3a' or SolCase == '3b':
@@ -387,7 +391,8 @@ For all parameterization cases other than 0 (SolCase != '0'), Match() prints a m
     rxpi = rxp[0] # initial x angle
     rypi = ryp[0] # initial y angle
     return iterations,tolachieved,Q,emitx,emity,sigmax,sigmay,\
-           sigma0x,sigma0y,rx,ry,rxp,ryp,rxi,ryi,rxpi,rypi
+           sigma0x,sigma0y,rx,ry,rxp,ryp,rxi,ryi,rxpi,rypi,\
+           sinitial,sfinal,lperiod
 
 
 ########################################################################
