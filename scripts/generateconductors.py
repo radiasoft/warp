@@ -103,7 +103,7 @@ import VPythonobjects
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.180 2008/02/25 19:11:37 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.181 2008/02/26 23:20:15 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3388,13 +3388,12 @@ Methods:
                       zsrfrvoutintercept,
                       kw=kw)
     self.rofzfunc = rofzfunc
-    self.lrofzfunc = rofzfunc is not None
     self.rmax = rmax
 
     # --- Deal with tablized data.
     # --- Make sure the input is consistent
     if operator.isSequenceType(rofzdata):
-      self.usedata = true
+      self.lrofzfunc = false
       self.zdata = zdata
       self.rofzdata = self.setdatadefaults(rofzdata,len(zdata),rmax)
       self.raddata = self.setdatadefaults(raddata,len(zdata)-1,None)
@@ -3407,7 +3406,7 @@ Methods:
     else:
       assert type(self.rofzfunc) in [FunctionType,StringType],\
              'The rofzfunc is not properly specified'
-      self.usedata = false
+      self.lrofzfunc = true
       if isinstance(self.rofzfunc,StringType):
         # --- Check if the rofzfunc is in main. Complain if it is not.
         import __main__
@@ -3429,15 +3428,15 @@ Methods:
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
     # --- If data arrays are specified, then put the data in the right place
-    if self.usedata:
+    if self.lrofzfunc:
+      rofzfunc.rofzfunc = self.rofzfunc
+    else:
       f3d.npnts_sr = len(self.zdata)
       f3d.z_sr = self.zdata
       f3d.r_sr = self.rofzdata
       f3d.rad_sr = self.raddata
       f3d.zc_sr = self.zcdata
       f3d.rc_sr = self.rcdata
-    else:
-      rofzfunc.rofzfunc = self.rofzfunc
 
     return Assembly.getkwlist(self)
 
@@ -3454,7 +3453,8 @@ Plots the r versus z
     """
     narcpoints = kw.get('narcpoints',40)
     rmax = kw.get('rmax',None)
-    r,z = self.getplotdata(self.rofzfunc,nzpoints,
+    rofzfunc.rofzfunc = self.rofzfunc
+    r,z = self.getplotdata(rofzfunc,nzpoints,
                            self.rofzdata,self.zdata,self.raddata,
                            self.rcdata,self.zcdata,narcpoints)
     if rmax is None: rmax = self.rmax
@@ -3525,13 +3525,12 @@ Methods:
                       zsrfrvinintercept,
                       kw=kw)
     self.rofzfunc = rofzfunc
-    self.lrofzfunc = rofzfunc is not None
     self.rmin = rmin
 
     # --- Deal with tablized data.
     # --- Make sure the input is consistent
     if operator.isSequenceType(rofzdata):
-      self.usedata = true
+      self.lrofzfunc = false
       self.zdata = zdata
       self.rofzdata = self.setdatadefaults(rofzdata,len(zdata),rmin)
       self.raddata = self.setdatadefaults(raddata,len(zdata)-1,None)
@@ -3544,7 +3543,7 @@ Methods:
     else:
       assert type(self.rofzfunc) in [FunctionType,StringType],\
              'The rofzfunc is not properly specified'
-      self.usedata = false
+      self.lrofzfunc = true
       if isinstance(self.rofzfunc,StringType):
         # --- Check if the rofzfunc is in main. Complain if it is not.
         import __main__
@@ -3560,23 +3559,23 @@ Methods:
     self.zmin = zmin
     self.zmax = zmax
 
-    if self.usedata: rmax = max(self.rofzdata)
-    else:            rmax = largepos
+    if self.lrofzfunc: rmax = largepos
+    else:              rmax = max(self.rofzdata)
     self.createextent([-rmax,-rmax,self.zmin],
                       [+rmax,+rmax,self.zmax])
 
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
     # --- If data arrays are specified, then put the data in the right place
-    if self.usedata:
+    if self.lrofzfunc:
+      rofzfunc.rofzfunc = self.rofzfunc
+    else:
       f3d.npnts_sr = len(self.zdata)
       f3d.z_sr = self.zdata
       f3d.r_sr = self.rofzdata
       f3d.rad_sr = self.raddata
       f3d.zc_sr = self.zcdata
       f3d.rc_sr = self.rcdata
-    else:
-      rofzfunc.rofzfunc = self.rofzfunc
 
     return Assembly.getkwlist(self)
 
@@ -3593,7 +3592,8 @@ Plots the r versus z
     """
     narcpoints = kw.get('narcpoints',40)
     rmin = kw.get('rmin',None)
-    r,z = self.getplotdata(self.rofzfunc,nzpoints,
+    rofzfunc.rofzfunc = self.rofzfunc
+    r,z = self.getplotdata(rofzfunc,nzpoints,
                            self.rofzdata,self.zdata,self.raddata,
                            self.rcdata,self.zcdata,narcpoints)
     if rmin is None: rmin = self.rmin
@@ -3662,13 +3662,11 @@ Methods:
                       kw=kw)
     self.rminofz = rminofz
     self.rmaxofz = rmaxofz
-    self.lrminofz = rminofz is not None
-    self.lrmaxofz = rmaxofz is not None
 
     # --- Deal with tablized data.
     # --- Making sure the input is consistent
     if operator.isSequenceType(zmindata):
-      self.usemindata = true
+      self.lrminofz = false
       self.zmindata = zmindata
       self.rminofzdata = self.setdatadefaults(rminofzdata,len(zmindata),0.)
       self.radmindata = self.setdatadefaults(radmindata,len(zmindata)-1,None)
@@ -3681,7 +3679,7 @@ Methods:
     else:
       assert type(self.rminofz) in [FunctionType,StringType],\
              'The rminofz is not properly specified'
-      self.usemindata = false
+      self.lrminofz = true
       zminmin = zmin
       zmaxmin = zmax
       if isinstance(self.rminofz,StringType):
@@ -3695,7 +3693,7 @@ Methods:
       self.zcmindata = None
 
     if operator.isSequenceType(zmaxdata):
-      self.usemaxdata = true
+      self.lrmaxofz = false
       self.zmaxdata = zmaxdata
       self.rmaxofzdata = self.setdatadefaults(rmaxofzdata,len(zmaxdata),
                                               largepos)
@@ -3709,7 +3707,7 @@ Methods:
     else:
       assert type(self.rmaxofz) in [FunctionType,StringType],\
              'The rmaxofz is not properly specified'
-      self.usemaxdata = false
+      self.lrmaxofz = true
       zminmax = zmin
       zmaxmax = zmax
       if isinstance(self.rmaxofz,StringType):
@@ -3737,33 +3735,33 @@ Methods:
     self.zmin = zmin
     self.zmax = zmax
 
-    if self.usemaxdata: rmax = max(self.rmaxofzdata)
-    else:               rmax = largepos
+    if self.lrmaxofz: rmax = largepos
+    else:             rmax = max(self.rmaxofzdata)
     self.createextent([-rmax,-rmax,self.zmin],
                       [+rmax,+rmax,self.zmax])
 
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
     # --- If data arrays are specified, then put the data in the right place
-    if self.usemindata:
+    if self.lrminofz:
+      rminofz.rminofz = self.rminofz
+    else:
       f3d.npnts_srmin = len(self.zmindata)
       f3d.z_srmin = self.zmindata
       f3d.r_srmin = self.rminofzdata
       f3d.rad_srmin = self.radmindata
       f3d.zc_srmin = self.zcmindata
       f3d.rc_srmin = self.rcmindata
-    else:
-      rminofz.rminofz = self.rminofz
 
-    if self.usemaxdata:
+    if self.lrmaxofz:
+      rmaxofz.rmaxofz = self.rmaxofz
+    else:
       f3d.npnts_srmax = len(self.zmaxdata)
       f3d.z_srmax = self.zmaxdata
       f3d.r_srmax = self.rmaxofzdata
       f3d.rad_srmax = self.radmaxdata
       f3d.zc_srmax = self.zcmaxdata
       f3d.rc_srmax = self.rcmaxdata
-    else:
-      rmaxofz.rmaxofz = self.rmaxofz
 
     return Assembly.getkwlist(self)
 
@@ -3777,10 +3775,12 @@ Plots the r versus z
  - narcpoints=40: number of points to draw along any circular arcs
     """
     narcpoints = kw.get('narcpoints',40)
-    ri,zi = self.getplotdata(self.rminofz,nzpoints,
+    rminofz.rminofz = self.rminofz
+    ri,zi = self.getplotdata(rminofz,nzpoints,
                              self.rminofzdata,self.zmindata,self.radmindata,
                              self.rcmindata,self.zcmindata,narcpoints)
-    ro,zo = self.getplotdata(self.rmaxofz,nzpoints,
+    rmaxofz.rmaxofz = self.rmaxofz
+    ro,zo = self.getplotdata(rmaxofz,nzpoints,
                              self.rmaxofzdata,self.zmaxdata,self.radmaxdata,
                              self.rcmaxdata,self.zcmaxdata,narcpoints)
     ro.reverse()
@@ -3797,30 +3797,30 @@ Creates internally the object to be used for visualization.
 For options, see documentation of VPythonobjects.VisualRevolution.
     """
     kw.update(kwdict)
-    if self.usemindata:
-      rminzmin = self.rminofzdata[0]
-      rminzmax = self.rminofzdata[-1]
-    else:
+    if self.lrminofz:
       f3d.srfrv_z = self.zmin
       self.rminofz()
       rminzmin = f3d.srfrv_r
       f3d.srfrv_z = self.zmax
       self.rminofz()
       rminzmax = f3d.srfrv_r
-    if self.usemaxdata:
-      rmaxzmin = self.rmaxofzdata[0]
-      rmaxzmax = self.rmaxofzdata[-1]
     else:
+      rminzmin = self.rminofzdata[0]
+      rminzmax = self.rminofzdata[-1]
+    if self.lrmaxofz:
       f3d.srfrv_z = self.zmin
       self.rmaxofz()
       rmaxzmin = f3d.srfrv_r
       f3d.srfrv_z = self.zmax
       self.rmaxofz()
       rmaxzmax = f3d.srfrv_r
+    else:
+      rmaxzmin = self.rmaxofzdata[0]
+      rmaxzmax = self.rmaxofzdata[-1]
     rendzmin = 0.5*(rminzmin + rmaxzmin)
     rendzmax = 0.5*(rminzmax + rmaxzmax)
 
-   #if self.usemindata and self.usemaxdata:
+   #if not self.lrminofz or not self.lrmaxofz:
 
    #  --- This doesn't quite work and I didn't want to put the effort
    #  --- in to fix it.
