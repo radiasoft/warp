@@ -103,7 +103,7 @@ import VPythonobjects
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.181 2008/02/26 23:20:15 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.182 2008/02/27 19:58:02 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3283,11 +3283,11 @@ data and make sure it is consistent.
              "Some of the input surface data is not the correct length"
     return data
 
-  def getplotdata(self,rfunc,npoints,
-                       rdata,zdata,raddata,rcdata,zcdata,narcpoints):
+  def getplotdata(self,lrfunc,rfunc,
+                  npoints,rdata,zdata,raddata,rcdata,zcdata,narcpoints):
     r = []
     z = []
-    if rfunc is not None:
+    if lrfunc:
       # --- Get the data from the rofz function
       if npoints is None:
         solver = getregisteredsolver()
@@ -3454,7 +3454,8 @@ Plots the r versus z
     narcpoints = kw.get('narcpoints',40)
     rmax = kw.get('rmax',None)
     rofzfunc.rofzfunc = self.rofzfunc
-    r,z = self.getplotdata(rofzfunc,nzpoints,
+    r,z = self.getplotdata(self.lrofzfunc,rofzfunc,
+                           nzpoints,
                            self.rofzdata,self.zdata,self.raddata,
                            self.rcdata,self.zcdata,narcpoints)
     if rmax is None: rmax = self.rmax
@@ -3593,7 +3594,8 @@ Plots the r versus z
     narcpoints = kw.get('narcpoints',40)
     rmin = kw.get('rmin',None)
     rofzfunc.rofzfunc = self.rofzfunc
-    r,z = self.getplotdata(rofzfunc,nzpoints,
+    r,z = self.getplotdata(self.lrofzfunc,rofzfunc,
+                           nzpoints,
                            self.rofzdata,self.zdata,self.raddata,
                            self.rcdata,self.zcdata,narcpoints)
     if rmin is None: rmin = self.rmin
@@ -3776,11 +3778,13 @@ Plots the r versus z
     """
     narcpoints = kw.get('narcpoints',40)
     rminofz.rminofz = self.rminofz
-    ri,zi = self.getplotdata(rminofz,nzpoints,
+    ri,zi = self.getplotdata(self.lrminofz,rminofz,
+                             nzpoints,
                              self.rminofzdata,self.zmindata,self.radmindata,
                              self.rcmindata,self.zcmindata,narcpoints)
     rmaxofz.rmaxofz = self.rmaxofz
-    ro,zo = self.getplotdata(rmaxofz,nzpoints,
+    ro,zo = self.getplotdata(self.lrmaxofz,rmaxofz,
+                             nzpoints,
                              self.rmaxofzdata,self.zmaxdata,self.radmaxdata,
                              self.rcmaxdata,self.zcmaxdata,narcpoints)
     ro.reverse()
