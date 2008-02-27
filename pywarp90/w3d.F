@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.394 $, $Date: 2008/02/13 02:22:30 $
+c@(#) File W3D.F, version $Revision: 3.395 $, $Date: 2008/02/27 13:42:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1504,6 +1504,7 @@ c=============================================================================
       use ParticleGroupmodule
       use GlobalVars
       use Subtimers3d
+      use Constant
       use InMesh3d
       use InGen
       use InGen3d
@@ -1544,13 +1545,16 @@ c     --- Create local pointers to the arrays in pgroup.
       integer(ISZ),pointer:: ins(:),nps(:)
 
       integer(ISZ):: isid,is,ismax,ip,ipmin,i,indts
-      real(kind=8):: uxpadv,uypadv,uzpadv,halfdt
+      real(kind=8):: uxpadv,uypadv,uzpadv,halfdt,invclightsq,uzboost
       real(kind=8):: fulldt_s,halfdt_s
       real(kind=8):: zgridprv_save
       real(kind=8),allocatable:: uxpo(:), uypo(:), uzpo(:)
       real(kind=8),allocatable:: exo(:),eyo(:),ezo(:),bxo(:),byo(:),bzo(:)
       real(kind=8),allocatable:: gaminvo(:)
       real(kind=8),allocatable:: bendres(:), bendradi(:)
+      real(kind=8),allocatable:: exlab(:),eylab(:),ezlab(:),
+     &                           bxlab(:),bylab(:),bzlab(:),
+     &                           zlab(:),uzlab(:),ginvlab(:)
 #ifdef _OPENMP
       real(kind=8),allocatable:: threadmaxp(:,:,:),threadminp(:,:,:)
       real(kind=8),allocatable:: threadzmmnts0(:,:,:),threadzmmnts(:,:,:,:)
@@ -1604,6 +1608,12 @@ c     --- Create local pointers to the arrays in pgroup.
       if (center == "synchv" .and. chdtspid>0) then
         allocate(exo(nparpgrp),eyo(nparpgrp),ezo(nparpgrp))
         allocate(bxo(nparpgrp),byo(nparpgrp),bzo(nparpgrp))
+      endif
+      if (boost_gamma>1.) then
+        allocate(exlab(nparpgrp),eylab(nparpgrp),ezlab(nparpgrp))
+        allocate(bxlab(nparpgrp),bylab(nparpgrp),bzlab(nparpgrp))
+        allocate(zlab(nparpgrp),uzlab(nparpgrp),ginvlab(nparpgrp))
+        invclightsq = 1./(clight*clight)
       endif
 
 #ifdef _OPENMP
@@ -1775,19 +1785,50 @@ c           --- Correct Ez_self for warped mesh effect
      &                    bendres,bendradi,bends,bnezflag,linbend)
 c           --- Add in Ez from axially-smoothed gaps 
             call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
-
-c           --- Add in ears and uniform focusing E field pieces
-            call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                    zbeam,zimax,zimin,straight,ifeears,eears,
-     &                    eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
-     &                    ex(ipmin),ey(ipmin),ez(ipmin),
-     &                    bx(ipmin),by(ipmin),bz(ipmin))
-c           --- Set quad, dipole E and B; All: Bz
-            call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                   gaminv(ipmin),-halfdt_s,halfdt_s,
-     &                   bx(ipmin),by(ipmin),bz(ipmin),
-     &                   ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
-     &                   bendres,bendradi,gammabar,fulldt_s)
+            if (boost_gamma==1.) then
+c             --- Add in ears and uniform focusing E field pieces
+              call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                      zbeam,zimax,zimin,straight,ifeears,eears,
+     &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
+     &                      ex(ipmin),ey(ipmin),ez(ipmin),
+     &                      bx(ipmin),by(ipmin),bz(ipmin))
+c             --- Set quad, dipole E and B; All: Bz
+              call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
+     &                     gaminv(ipmin),-halfdt_s,halfdt_s,
+     &                     bx(ipmin),by(ipmin),bz(ipmin),
+     &                     ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
+     &                     bendres,bendradi,gammabar,fulldt_s)
+            else
+              uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
+              exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
+              bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
+              zlab(1:ip) = boost_gamma*zp(ipmin:ipmin+ip-1)+uzboost*time  
+              uzlab(1:ip) = boost_gamma*uzp(ipmin:ipmin+ip-1)+uzboost/gaminv(ipmin:ipmin+ip-1)
+              ginvlab(1:ip) = 1./(boost_gamma/gaminv(ipmin:ipmin+ip-1)
+     &                      +     uzboost*uzp(ipmin:ipmin+ip-1)*invclightsq)
+c             --- Add in ears and uniform focusing E field pieces
+              call othere3d(ip,xp(ipmin),yp(ipmin),zlab(1),
+     &                      zbeam*boost_gamma+uzboost*time,
+     &                      zimax,zimin,straight,ifeears,eears,
+     &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
+     &                      exlab(1),eylab(1),ezlab(1),
+     &                      bxlab(1),bylab(1),bzlab(1))
+c             --- Set quad, dipole E and B; All: Bz
+              call exteb3d(ip,xp(ipmin),yp(ipmin),zlab(1),uzlab(1),
+     &                     ginvlab(1),-halfdt_s/boost_gamma,halfdt_s/boost_gamma,
+     &                     bxlab(1),bylab(1),bzlab(1),
+     &                     exlab(1),eylab(1),ezlab(1),sm(is),sq(is),
+     &                     bendres,bendradi,gammabar,fulldt_s/boost_gamma)
+              call seteb_in_boosted_frame(ip,exlab(1),eylab(1),ezlab(1),
+     &                                       bxlab(1),bylab(1),bzlab(1),
+     &                                       0.,0.,uzboost,boost_gamma)
+              ex(ipmin:ipmin+ip-1)=ex(ipmin:ipmin+ip-1)+exlab(1:ip)
+              ey(ipmin:ipmin+ip-1)=ey(ipmin:ipmin+ip-1)+eylab(1:ip)
+              ez(ipmin:ipmin+ip-1)=ez(ipmin:ipmin+ip-1)+ezlab(1:ip)
+              bx(ipmin:ipmin+ip-1)=bx(ipmin:ipmin+ip-1)+bxlab(1:ip)
+              by(ipmin:ipmin+ip-1)=by(ipmin:ipmin+ip-1)+bylab(1:ip)
+              bz(ipmin:ipmin+ip-1)=bz(ipmin:ipmin+ip-1)+bzlab(1:ip)
+            endif
 c           --- Correction to z on entry/exit to accelerator gap
             call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                    -halfdt_s, halfdt_s, fulldt_s, sm(1), sq(1), time)
@@ -1856,18 +1897,50 @@ c           --- Correct Ez_self for warped mesh effect
      &                    bendres,bendradi,bends,bnezflag,linbend)
 c           --- Add in Ez from axially-smoothed gaps 
             call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
-c           --- Add in ears and uniform focusing E field pieces
-            call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                    zbeam,zimax,zimin,straight,ifeears,eears,
-     &                    eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
-     &                    ex(ipmin),ey(ipmin),ez(ipmin),
-     &                    bx(ipmin),by(ipmin),bz(ipmin))
-c           --- Set quad, dipole E and B;  All: Bz
-            call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                   gaminv(ipmin),0.,halfdt_s,
-     &                   bx(ipmin),by(ipmin),bz(ipmin),
-     &                   ex(ipmin),ey(ipmin),ez(ipmin),
-     &                   sm(is),sq(is),bendres,bendradi,gammabar,fulldt_s)
+            if (boost_gamma==1.) then
+c             --- Add in ears and uniform focusing E field pieces
+              call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                      zbeam,zimax,zimin,straight,ifeears,eears,
+     &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
+     &                      ex(ipmin),ey(ipmin),ez(ipmin),
+     &                      bx(ipmin),by(ipmin),bz(ipmin))
+c             --- Set quad, dipole E and B; All: Bz
+              call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
+     &                     gaminv(ipmin),0.,halfdt_s,
+     &                     bx(ipmin),by(ipmin),bz(ipmin),
+     &                     ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
+     &                     bendres,bendradi,gammabar,fulldt_s)
+            else
+              uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
+              exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
+              bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
+              zlab(1:ip) = boost_gamma*zp(ipmin:ipmin+ip-1)+uzboost*time  
+              uzlab(1:ip) = boost_gamma*uzp(ipmin:ipmin+ip-1)+uzboost/gaminv(ipmin:ipmin+ip-1)
+              ginvlab(1:ip) = 1./(boost_gamma/gaminv(ipmin:ipmin+ip-1)
+     &                      +     uzboost*uzp(ipmin:ipmin+ip-1)*invclightsq)
+c             --- Add in ears and uniform focusing E field pieces
+              call othere3d(ip,xp(ipmin),yp(ipmin),zlab(1),
+     &                      zbeam*boost_gamma+uzboost*time,
+     &                      zimax,zimin,straight,ifeears,eears,
+     &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
+     &                      exlab(1),eylab(1),ezlab(1),
+     &                      bxlab(1),bylab(1),bzlab(1))
+c             --- Set quad, dipole E and B; All: Bz
+              call exteb3d(ip,xp(ipmin),yp(ipmin),zlab(1),uzlab(1),
+     &                     ginvlab(1),0.,halfdt_s/boost_gamma,
+     &                     bxlab(1),bylab(1),bzlab(1),
+     &                     exlab(1),eylab(1),ezlab(1),sm(is),sq(is),
+     &                     bendres,bendradi,gammabar,fulldt_s/boost_gamma)
+              call seteb_in_boosted_frame(ip,exlab(1),eylab(1),ezlab(1),
+     &                                       bxlab(1),bylab(1),bzlab(1),
+     &                                       0.,0.,uzboost,boost_gamma)
+              ex(ipmin:ipmin+ip-1)=ex(ipmin:ipmin+ip-1)+exlab(1:ip)
+              ey(ipmin:ipmin+ip-1)=ey(ipmin:ipmin+ip-1)+eylab(1:ip)
+              ez(ipmin:ipmin+ip-1)=ez(ipmin:ipmin+ip-1)+ezlab(1:ip)
+              bx(ipmin:ipmin+ip-1)=bx(ipmin:ipmin+ip-1)+bxlab(1:ip)
+              by(ipmin:ipmin+ip-1)=by(ipmin:ipmin+ip-1)+bylab(1:ip)
+              bz(ipmin:ipmin+ip-1)=bz(ipmin:ipmin+ip-1)+bzlab(1:ip)
+            endif
 c           --- Correction to z on entry/exit to accelerator gap
             call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                    0., halfdt_s, fulldt_s, sm(1), sq(1), time)
@@ -1951,6 +2024,7 @@ c             --- Correct Ez_self for warped mesh effect
      &                     bendres,bendradi,bends,bnezflag,linbend)
 c             --- Add in Ez from axially-smoothed gaps 
               call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
+            if (boost_gamma==1.) then
 c             --- Add in ears and uniform focusing E field pieces
               call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                      zbeam,zimax,zimin,straight,ifeears,eears,
@@ -1963,6 +2037,37 @@ c             --- Set quad, dipole E and B; All: Bz
      &                     bx(ipmin),by(ipmin),bz(ipmin),
      &                     ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
      &                     bendres,bendradi,gammabar,fulldt_s)
+            else
+              uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
+              exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
+              bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
+              zlab(1:ip) = boost_gamma*zp(ipmin:ipmin+ip-1)+uzboost*time  
+              uzlab(1:ip) = boost_gamma*uzp(ipmin:ipmin+ip-1)+uzboost/gaminv(ipmin:ipmin+ip-1)
+              ginvlab(1:ip) = 1./(boost_gamma/gaminv(ipmin:ipmin+ip-1)
+     &                      +     uzboost*uzp(ipmin:ipmin+ip-1)*invclightsq)
+c             --- Add in ears and uniform focusing E field pieces
+              call othere3d(ip,xp(ipmin),yp(ipmin),zlab(1),
+     &                      zbeam*boost_gamma+uzboost*time,
+     &                      zimax,zimin,straight,ifeears,eears,
+     &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
+     &                      exlab(1),eylab(1),ezlab(1),
+     &                      bxlab(1),bylab(1),bzlab(1))
+c             --- Set quad, dipole E and B; All: Bz
+              call exteb3d(ip,xp(ipmin),yp(ipmin),zlab(1),uzlab(1),
+     &                     ginvlab(1),-halfdt_s/boost_gamma,0.,
+     &                     bxlab(1),bylab(1),bzlab(1),
+     &                     exlab(1),eylab(1),ezlab(1),sm(is),sq(is),
+     &                     bendres,bendradi,gammabar,fulldt_s/boost_gamma)
+              call seteb_in_boosted_frame(ip,exlab(1),eylab(1),ezlab(1),
+     &                                       bxlab(1),bylab(1),bzlab(1),
+     &                                       0.,0.,uzboost,boost_gamma)
+              ex(ipmin:ipmin+ip-1)=ex(ipmin:ipmin+ip-1)+exlab(1:ip)
+              ey(ipmin:ipmin+ip-1)=ey(ipmin:ipmin+ip-1)+eylab(1:ip)
+              ez(ipmin:ipmin+ip-1)=ez(ipmin:ipmin+ip-1)+ezlab(1:ip)
+              bx(ipmin:ipmin+ip-1)=bx(ipmin:ipmin+ip-1)+bxlab(1:ip)
+              by(ipmin:ipmin+ip-1)=by(ipmin:ipmin+ip-1)+bylab(1:ip)
+              bz(ipmin:ipmin+ip-1)=bz(ipmin:ipmin+ip-1)+bzlab(1:ip)
+            endif
               if (pgroup%lebcancel_pusher) then
                 call ebcancelpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                                 ex(ipmin),ey(ipmin),ez(ipmin),
@@ -2065,6 +2170,15 @@ c     --- End of loop over speices.
       endif
 #endif
 
+      if (boost_gamma>1.) then
+        deallocate(exlab,eylab,ezlab)
+        deallocate(bxlab,bylab,bzlab)
+        deallocate(zlab,uzlab,ginvlab)
+      endif
+      if (center == "synchv" .and. chdtspid>0) then
+        deallocate(exo,eyo,ezo)
+        deallocate(bxo,byo,bzo)
+      endif
       deallocate(uxpo,uypo,uzpo)
       deallocate(gaminvo)
       deallocate(bendres, bendradi)
