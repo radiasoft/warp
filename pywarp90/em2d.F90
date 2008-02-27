@@ -46,8 +46,8 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
 
 !       computation of current at x n+1/2 v n+1/2
 
-        iixp0=int(xold)
-        ijxp0=int(yold)
+        iixp0=floor(xold)
+        ijxp0=floor(yold)
 
         xint=xold-iixp0
         yint=yold-ijxp0
@@ -69,8 +69,8 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
         sy0(5) = 0.
 !        sy0(6,iv) = 0.
 
-        iixp=int(x)
-        ijxp=int(y)
+        iixp=floor(x)
+        ijxp=floor(y)
         xint = x-iixp
         yint = y-ijxp
 
@@ -173,8 +173,8 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
 
         wq = wq*uzp(ip)*gaminv(ip)*invsurf
       
-        iixp=int(x)
-        ijxp=int(y)
+        iixp=floor(x)
+        ijxp=floor(y)
 
         xint = x-iixp
         yint = y-ijxp
@@ -213,8 +213,8 @@ end subroutine depose_jxjy_esirkepov_linear_serial
         x = (xp(ip)-xmin)*dxi
         y = (yp(ip)-ymin)*dyi
 
-        iixp=int(x)
-        ijxp=int(y)
+        iixp=floor(x)
+        ijxp=floor(y)
 
         xint=x-iixp
         yint=y-ijxp
@@ -259,8 +259,8 @@ end subroutine depose_jxjy_esirkepov_linear_serial
         x = (xp(ip)-xmin)*dxi
         y = (yp(ip)-ymin)*dyi
 
-        iixp=int(x)
-        ijxp=int(y)
+        iixp=floor(x)
+        ijxp=floor(y)
 
         xint=x-iixp
         yint=y-ijxp

@@ -7,6 +7,9 @@ module mod_bnd_cummer
 !use mod_EM2D_precision
 !use mod_system
 use EM2D_bnd
+#ifdef MPIPARALLEL
+use parallel
+#endif
 implicit none
 
 INTEGER(ISZ), parameter :: pml = 1, &
@@ -416,9 +419,18 @@ end subroutine move_window_bnd
 subroutine move_bnd(b)
   implicit none
 
-  INTEGER :: j, k, jf, kf, jb, kb,jk,jk1
+  INTEGER :: j, k, jf, kf, jb, kb,jk,jk1,i,ntop,kmin,kmax
   TYPE(type_bnd_cummer), POINTER :: b
   real(kind=8) :: oldval
+  real(kind=8):: bzrecv(b%nbndy,3),bztosend(b%nbndy,3)
+
+#ifdef MPIPARALLEL
+  include "mpif.h"
+  integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
+  integer(MPIISZ):: mpirequest
+  integer(MPIISZ):: w
+  integer(MPIISZ):: messid 
+#endif
 
   ! Bz
     do k = 1, b%nbndy
@@ -578,6 +590,90 @@ subroutine move_bnd(b)
    enddo
    enddo
    
+#ifdef MPIPARALLEL
+  if(my_index>0) then
+   do i = 1,2
+    messid=100
+!    write(0,*) my_index,' sends data to ',my_index-1
+    j = b%nbndx+1
+    if (i==1) then
+      kmin = 1
+      kmax = b%nbndy
+      ntop = b%ntop1
+    else
+      kmin = b%ny-b%nbndy+1
+      kmax = b%ny
+      ntop = b%ntop2
+    end if
+    do k = kmin, kmax
+      jk1 = ntop + k * b%n1x
+      jk = jk1 + j
+      Bztosend(k-kmin+1,1) = b%Bzxtild(jk)
+      Bztosend(k-kmin+1,2) = b%Bzytild(jk)
+      Bztosend(k-kmin+1,3) = b%Bz(jk)
+    end do
+    call MPI_ISEND(Bztosend,3*b%nbndy,MPI_DOUBLE_PRECISION, &
+                   my_index-1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+!    write(0,*) 'done'
+    messid=101
+!    write(0,*) my_index,' recv data from ',my_index-1
+    call MPI_RECV(Bzrecv,3*b%nbndy,MPI_DOUBLE_PRECISION, &
+                  my_index-1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+    j = b%nbndx+0
+    do k = kmin, kmax
+      jk1 = ntop + k * b%n1x
+      jk = jk1 + j
+      b%Bzxtild(jk) = Bzrecv(k-kmin+1,1)
+      b%Bzytild(jk) = Bzrecv(k-kmin+1,2)
+      b%Bz(jk) = Bzrecv(k-kmin+1,3)
+    end do
+!    write(0,*) 'done'
+   end do
+  end if
+
+  if(my_index<nslaves-1) then
+   do i = 1,2
+    messid=101
+!    write(0,*) my_index,' sends data to ',my_index+1
+    j = b%nx-b%nbndx+0
+    if (i==1) then
+      kmin = 1
+      kmax = b%nbndy
+      ntop = b%ntop1
+    else
+      kmin = b%ny-b%nbndy+1
+      kmax = b%ny
+      ntop = b%ntop2
+    end if
+    do k = kmin, kmax
+!      jk1 = b%ntop1 + k * b%n1x
+!      jk = jk1 + j
+    jk=ijk(b,j,k)
+      Bztosend(k-kmin+1,1) = b%Bzxtild(jk)
+      Bztosend(k-kmin+1,2) = b%Bzytild(jk)
+      Bztosend(k-kmin+1,3) = b%Bz(jk)
+    end do
+    call MPI_ISEND(Bztosend,3*b%nbndy,MPI_DOUBLE_PRECISION, &
+                   my_index+1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+!    write(0,*) 'done'
+    messid=100
+!    write(0,*) my_index,' recv data from ',my_index+1
+    call MPI_RECV(Bzrecv,3*b%nbndy,MPI_DOUBLE_PRECISION, &
+                  my_index+1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+    j = b%nx-b%nbndx+1
+    do k = kmin, kmax
+!      jk1 = b%ntop1 + k * b%n1x
+!      jk = jk1 + j
+    jk=ijk(b,j,k)
+      b%Bzxtild(jk) = Bzrecv(k-kmin+1,1)
+      b%Bzytild(jk) = Bzrecv(k-kmin+1,2)
+      b%Bz(jk) = Bzrecv(k-kmin+1,3)
+    end do
+!    write(0,*) 'done'
+   end do
+  end if
+#endif
+
   ! Ex
     do k = 2, b%nbndy
     jk1 = b%ntop1 + k*b%n1x

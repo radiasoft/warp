@@ -3,7 +3,9 @@
 !************* MODULE field  **********************************************
 
 module mod_field
-
+#ifdef MPIPARALLEL
+use Parallel
+#endif
 use EM2D_FIELDtypemodule
 USE mod_bnd
 USE mod_bnd_cummer, create_bnd_cummer => create_bnd, &
@@ -36,6 +38,13 @@ real(kind=8) :: dtsdx,dtsdy
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Exapr, Eyapr
 TYPE(EM2D_FIELDtype) :: f
 
+#ifdef MPIPARALLEL
+include "mpif.h"
+integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
+integer(MPIISZ):: mpirequest
+integer(MPIISZ):: w
+integer(MPIISZ):: messid 
+#endif
 dtsdx = dt/f%dx
 dtsdy = dt/f%dy
 
@@ -210,6 +219,33 @@ end if
 !  END do
 !  DEALLOCATE(Exapr,Eyapr)
 !END if
+#ifdef MPIPARALLEL
+  if(my_index>0) then
+    messid=100
+!    write(0,*) my_index,' sends data to ',my_index-1
+    call MPI_ISEND(f%Bz(1,:),size(f%Bz(1,:)),MPI_DOUBLE_PRECISION, &
+                   my_index-1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+!    write(0,*) 'done'
+    messid=101
+!    write(0,*) my_index,' recv data from ',my_index-1
+    call MPI_RECV(f%Bz(0,:),size(f%Bz(0,:)),MPI_DOUBLE_PRECISION, &
+                  my_index-1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+!    write(0,*) 'done'
+  end if
+  if(my_index<nslaves-1) then
+    messid=101
+!    write(0,*) my_index,' sends data to ',my_index+1
+    call MPI_ISEND(f%Bz(f%nx,:),size(f%Bz(1,:)),MPI_DOUBLE_PRECISION, &
+                   my_index+1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+!    write(0,*) 'done'
+    messid=100
+!    write(0,*) my_index,' recv data from ',my_index+1
+    call MPI_RECV(f%Bz(f%nx+1,:),size(f%Bz(0,:)),MPI_DOUBLE_PRECISION, &
+                  my_index+1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+!    write(0,*) 'done'
+  end if
+#endif
+
 
 end subroutine champ_b
 
@@ -223,6 +259,14 @@ real(kind=8) :: dt,dtsdx,dtsdy,mudt
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Bzapr
 
 real(kind=8) :: alpha = 0.!5
+
+#ifdef MPIPARALLEL
+include "mpif.h"
+integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
+integer(MPIISZ):: mpirequest
+integer(MPIISZ):: w
+integer(MPIISZ):: messid 
+#endif
 
 
 dtsdx = f%clight**2*dt/f%dx
@@ -423,6 +467,33 @@ end if
 !  END do
 !  DEALLOCATE(Bzapr)
 !END if
+#ifdef MPIPARALLEL
+  if(my_index>0) then
+    messid=100
+!    write(0,*) my_index,' sends data to ',my_index-1
+    call MPI_ISEND(f%Ez(1,:),size(f%Ez(1,:)),MPI_DOUBLE_PRECISION, &
+                   my_index-1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+!    write(0,*) 'done'
+    messid=101
+!    write(0,*) my_index,' recv data from ',my_index-1
+    call MPI_RECV(f%Ez(0,:),size(f%Ez(0,:)),MPI_DOUBLE_PRECISION, &
+                  my_index-1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+!    write(0,*) 'done'
+  end if
+  if(my_index<nslaves-1) then
+    messid=101
+!    write(0,*) my_index,' sends data to ',my_index+1
+    call MPI_ISEND(f%Ez(f%nx,:),size(f%Ez(1,:)),MPI_DOUBLE_PRECISION, &
+                   my_index+1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+!    write(0,*) 'done'
+    messid=100
+!    write(0,*) my_index,' recv data from ',my_index+1
+    call MPI_RECV(f%Ez(f%nx+1,:),size(f%Ez(0,:)),MPI_DOUBLE_PRECISION, &
+                  my_index+1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+!    write(0,*) 'done'
+  end if
+#endif
+
 
 if (f%l_apply_pml) then
   if(l_pml_cummer) then

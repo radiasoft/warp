@@ -11,8 +11,8 @@ except ImportError:
 ##############################################################################
 class EM2D(object):
   
-  __w3dinputs__ = ['solvergeom','nx','ny','nz',
-                   'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
+  __w3dinputs__ = ['solvergeom','nx','ny','nzlocal',
+                   'xmmin','xmmax','ymmin','ymmax','zmminlocal','zmmaxlocal',
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom']
   __em2dinputs__ = ['l_onegrid','l_copyfields','l_moving_window',
@@ -101,16 +101,15 @@ class EM2D(object):
       self.ymmax = self.xmmax
       self.dy = (self.ymmax - self.ymmin)/self.ny
       self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
-      self.dz = (self.zmmax - self.zmmin)/self.nz
-      self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
-      self.zmminlocal = self.zmmin
-      self.zmmaxlocal = self.zmmax
-      self.zmeshlocal = self.zmminlocal + arange(0,self.nz+1)*self.dz
-      self.nx = self.nz
+      self.dz = (self.zmmaxlocal - self.zmminlocal)/self.nzlocal
+      self.zmesh = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
+      self.zmeshlocal = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
+      self.nx = self.nzlocal
       self.dx = self.dz
       self.xmesh = self.zmeshlocal
-      self.xmmin = self.zmmin
-      self.xmmax = self.zmmax
+      self.xmmin = self.zmminlocal
+      self.xmmax = self.zmmaxlocal
+      print w3d.zmminlocal,w3d.zmmaxlocal,w3d.dz
       self.bounds[0] = self.bounds[4]
       self.bounds[1] = self.bounds[5]
 #     self.ndelta_t = top.vbeam*top.dt/w3d.dz
@@ -208,6 +207,8 @@ class EM2D(object):
   def setuplaser_profile(self,f):
     # --- Check if laser_profile has a type, is a function, or a table
     self.laser_profile_func = None
+    # --- disable laser emission on processors id>0 
+    if me>0:return
     if self.laser_profile == 'gaussian':
       assert self.laser_gauss_width is not None,\
              "For a gaussian laser, the width must be specified using laser_gauss_width"
@@ -431,6 +432,9 @@ class EM2D(object):
         if force_deposition or (top.it-1)%(2**i)==0:
           add_current_slice(self.field,i+1)
 
+    # --- exchange slices of Jarray among processors
+    self.mpi_exchange_J()
+
     # --- point J to first slice of Jarray
     self.field.J = self.field.Jarray[:,:,:,0]
     
@@ -443,6 +447,31 @@ class EM2D(object):
        J = sum(self.field.J[:,:,i],1)
        for ii in range(shape(self.field.J[:,:,i])[1]):
          self.field.J[:,ii,i] = J
+
+
+  def mpi_exchange_J(self):
+    # --- exchange slices of Jarray among processors
+    if npes>1:
+      if me>0:
+        mpi.send(self.field.Jarray[0:4,:,0:3,:],me-1)
+      if me<npes-1:
+        recv,status=mpi.recv(me+1)
+        mpi.send(self.field.Jarray[-4:-2,:,0:3,:],me+1)
+        self.field.Jarray[-4:,:,0:3,:]+=recv
+      if me>0:
+        recv,status=mpi.recv(me-1)
+        self.field.Jarray[0:2,:,0:3,:]+=recv
+    return
+    if npes>1:
+      if me>0:
+        mpi.send(self.field.Jarray[0:2,:,2,:],me-1)
+      if me<npes-1:
+        recv,status=mpi.recv(me+1)
+        mpi.send(self.field.Jarray[-4:-2,:,2,:],me+1)
+        self.field.Jarray[-5:-3,:,2,:]+=recv
+      if me>0:
+        recv,status=mpi.recv(me-1)
+        self.field.Jarray[0:2,:,2,:]+=recv
 
   def smoothdensity(self):
     smooth2d_lindman(self.field.J[:,:,0],self.field.nx,self.field.ny)
@@ -580,70 +609,78 @@ class EM2D(object):
     elif self.solvergeom == w3d.XZgeom:
       settitles(title,'Z','X','t = %gs'%(top.time))
     if l_transpose:
+     if npes>0:
+      kw.setdefault('xmin',w3d.zmmin)
+      kw.setdefault('xmax',w3d.zmmax)
+     else:
       kw.setdefault('xmin',self.field.xmin)
       kw.setdefault('xmax',self.field.xmax)
-      kw.setdefault('ymin',self.field.ymin)
-      kw.setdefault('ymax',self.field.ymax)
+     kw.setdefault('ymin',self.field.ymin)
+     kw.setdefault('ymax',self.field.ymax)
     else:
-      kw.setdefault('xmin',self.field.ymin)
-      kw.setdefault('xmax',self.field.ymax)
+     kw.setdefault('xmin',self.field.ymin)
+     kw.setdefault('xmax',self.field.ymax)
+     if npes>0:
+      kw.setdefault('ymin',w3d.zmmin)
+      kw.setdefault('ymax',w3d.zmmax)
+     else:
       kw.setdefault('ymin',self.field.xmin)
       kw.setdefault('ymax',self.field.xmax)
     ppgeneric(grid=data,**kw)
       
   def fpex(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(self.field.Ey,'E_x',**kw)
+      self.genericfp(gatherarray(self.field.Ey[1:w3d.nzp,...]),'E_x',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(self.field.Ex,'E_x',**kw)
+      self.genericfp(gatherarray(self.field.Ex),'E_x',**kw)
 
   def fpey(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(self.field.Ez,'E_y',**kw)
+      self.genericfp(gatherarray(self.field.Ez[1:w3d.nzp,...]),'E_y',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(self.field.Ey,'E_y',**kw)
+      self.genericfp(gatherarray(self.field.Ey),'E_y',**kw)
 
   def fpez(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(self.field.Ex,'E_z',**kw)
+      self.genericfp(gatherarray(self.field.Ex[1:w3d.nzp,...]),'E_z',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(self.field.Ez,'E_z',**kw)
+      self.genericfp(gatherarray(self.field.Ez),'E_z',**kw)
 
   def fpbx(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(self.field.By,'B_x',**kw)
+      self.genericfp(gatherarray(self.field.By[1:w3d.nzp,...]),'B_x',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(self.field.Bx,'B_x',**kw)
+      self.genericfp(gatherarray(self.field.Bx),'B_x',**kw)
 
   def fpby(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(self.field.Bz,'B_y',**kw)
+      self.genericfp(gatherarray(self.field.Bz[1:w3d.nzp,...]),'B_y',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(self.field.By,'B_y',**kw)
+      self.genericfp(gatherarray(self.field.By),'B_y',**kw)
 
   def fpbz(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(self.field.Bx,'B_z',**kw)
+      self.genericfp(gatherarray(self.field.Bx[1:w3d.nzp,...]),'B_z',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(self.field.Bz,'B_z',**kw)
+      self.genericfp(gatherarray(self.field.Bz),'B_z',**kw)
 
   def fpjx(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(self.field.J[:,:,1],'J_x',**kw)
+      self.genericfp(gatherarray(self.field.J[1:w3d.nzp,:,1]),'J_x',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(self.field.J[:,:,0],'J_x',**kw)
+      self.genericfp(gatherarray(self.field.J[:,:,0]),'J_x',**kw)
 
   def fpjy(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(self.field.J[:,:,2],'J_y',**kw)
+      self.genericfp(gatherarray(self.field.J[1:w3d.nzp,:,2]),'J_y',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(self.field.J[:,:,1],'J_y',**kw)
+      self.genericfp(gatherarray(self.field.J[:,:,1]),'J_y',**kw)
 
   def fpjz(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(self.field.J[:,:,0],'J_z',**kw)
+      self.genericfp(gatherarray(self.field.J[1:w3d.nzp,:,0]),'J_z',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(self.field.J[:,:,2],'J_z',**kw)
+      self.genericfp(gatherarray(self.field.J[:,:,2]),'J_z',**kw)
 
   def sezax(self):
     pass
