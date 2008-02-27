@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.72 2008/02/06 19:18:51 jlvay Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.73 2008/02/27 20:20:48 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -70,7 +70,7 @@ the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
   """
   #__metaclass__ = decorators.TimedClass
-  def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,
+  def __init__(self,conductors=None,lsavecondid=0,lsaveintercept=0,
                     lrefineintercept=0,lrefineallintercept=0,nstepsperorbit=8,
                     lcollectlpdata=0,mglevel=0,aura=0.,
                     install=1,lbeforescraper=0,
@@ -162,6 +162,7 @@ conductors are an argument.
 
   def registerconductors(self,newconductors):
 #    self.updategrid()
+    if newconductors is None: return
     if type(newconductors) is not ListType: newconductors = [newconductors]
     for c in newconductors:
       assert c.condid != 0,"The conductor id must be nonzero in order for the particle scraping to work."
