@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.218 $, $Date: 2008/02/13 18:16:09 $
+c@(#) File TOP.F, version $Revision: 3.219 $, $Date: 2008/02/27 13:39:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2351,11 +2351,11 @@ c  Fast gamma advance, version 2, fastest, but least accurate
         vz=uzf(ip)*gaminvf
         const = 1./(1.-(vxp*vx+vyp*vy+vzp*vz)*invclightsq)         
 
-!   --- get vnit vector v
+!   --- get unit vector v
         v = sqrt(vx*vx+vy*vy+vz*vz)
         vx = vx/v; vy = vy/v; vz = vz/v
         
-!   --- get vnit vector v x vp
+!   --- get unit vector v x vp
         vvp_x = vy*vzp-vz*vyp
         vvp_y = vz*vxp-vx*vzp
         vvp_z = vx*vyp-vy*vxp
@@ -2393,6 +2393,33 @@ c  Fast gamma advance, version 2, fastest, but least accurate
         uzp(ip) = (vpr_par*vz+vpr_perp*vvvp_z)*gammapr
         if(uzp(ip)==0.) uzp(ip)=1.e-20
         gaminv(ip) = 1./sqrt(1.+(uxp(ip)*uxp(ip)+uyp(ip)*uyp(ip)+uzp(ip)*uzp(ip))*invclightsq)
+      enddo
+
+      return
+      end
+!=============================================================================
+      subroutine seteb_in_boosted_frame(np,ex,ey,ez,bx,by,bz,uxf,uyf,uzf,gammaf)
+! --- Get E and B in boosted frame
+      use Constant
+      integer(ISZ):: np
+      real(kind=8):: ex(np),ey(np),ez(np),bx(np),by(np),bz(np)
+      real(kind=8):: uxf,uyf,uzf,gammaf
+
+      integer(ISZ):: ip
+      real(kind=8):: const,invclightsq,ex0,ey0,ez0,bx0,by0,bz0
+
+      invclightsq = 1./(clight*clight)
+      do ip=1,np
+        ex0=ex(ip);ey0=ey(ip);ez0=ez(ip)
+        bx0=bx(ip);by0=by(ip);bz0=bz(ip)
+        const = -invclightsq*(uxf*ex0+uyf*ey0+uzf*ez0)/(1.+gammaf)
+        ex(ip) = (gammaf*ex0 + uyf*bz0 - uzf*by0 + const*uxf)
+        ey(ip) = (gammaf*ey0 + uzf*bx0 - uxf*bz0 + const*uyf)
+        ez(ip) = (gammaf*ez0 + uxf*by0 - uyf*bx0 + const*uzf)
+        const = -invclightsq*(uxf*bx0+uyf*by0+uzf*bz0)/(1.+gammaf)
+        bx(ip) = (gammaf*bx0 - invclightsq*( uyf*ez0 - uzf*ey0) + const*uxf)
+        by(ip) = (gammaf*by0 - invclightsq*( uzf*ex0 - uxf*ez0) + const*uyf)
+        bz(ip) = (gammaf*bz0 - invclightsq*( uxf*ey0 - uyf*ex0) + const*uzf)
       enddo
 
       return
