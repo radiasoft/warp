@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.160 2008/02/25 19:24:39 dave Exp $"
+warp_version = "$Id: warp.py,v 1.161 2008/02/29 19:55:50 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -205,8 +205,8 @@ Computes current density from Child-Langmuir formula
  - q: particle charge (defaults to top.sq[0])
  - m: particle mass (defaults to top.sm[0])
   """
-  if q is None: q = top.sq[0]
-  if m is None: m = top.sm[0]
+  if q is None: q = top.pgroup.sq[0]
+  if m is None: m = top.pgroup.sm[0]
   return 4./9.*eps0*sqrt(2.*q/m)*v**1.5/d**2
 
 # --- Create python version of dvnz (divisor not zero)
