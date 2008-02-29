@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.30 2008/02/12 19:34:51 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.31 2008/02/29 18:11:14 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -686,6 +686,9 @@ Class for generating secondaries
            ########################
            elif emitted_species.type.__class__ is not Particle and emitted_species.charge_state==0: 
             my_yield=1.+1.82e-4*exp(0.09*180./pi*arccos(coseta[i]))
+            scale_factor = self.inter[incident_species]['scale_factor'][ics]
+            if not (scale_factor is None or scale_factor==1.):
+              my_yield*=scale_factor
             ns = int(my_yield)
             # --- The ns+1 is only a temporary fix to avoid an array out of
             # --- bounds errors. Once the desorb routine is fixed, this
