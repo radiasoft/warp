@@ -310,6 +310,7 @@ class Quasistatic:
          if self.l_timing:ptime = wtime()
          # --- push electrons 
          self.push_electrons()
+#         print 'push_electrons',iz,ave(getz(pgroup=self.pgelec,gather=0,bcast=0))
          if iz==0:
            self.deposit_electrons(0)
            frz.basegrid=self.gridelecs[0];mk_grids_ptr()
@@ -335,14 +336,26 @@ class Quasistatic:
          self.gather_ions_fields()
          if iz<w3d.nzp-1:
            self.push_ions_velocity_full(iz+1)
+#           np=getn(js=iz+1,bcast=0,gather=0);x=getx(js=iz+1,bcast=0,gather=0);y=gety(js=iz+1,bcast=0,gather=0);z=getz(js=iz+1,bcast=0,gather=0)
+#           print 'izb,x,y,z',iz+1,np,ave(x),std(x),ave(y),std(y),ave(z),std(z)
            self.push_ions_positions(iz+1)
+#           np=getn(js=iz+1,bcast=0,gather=0);x=getx(js=iz+1,bcast=0,gather=0);y=gety(js=iz+1,bcast=0,gather=0);z=getz(js=iz+1,bcast=0,gather=0)
+#           ex=getex(js=iz+1,bcast=0,gather=0);ey=getey(js=iz+1,bcast=0,gather=0);ez=getez(js=iz+1,bcast=0,gather=0)
+#           print 'iza,x,y,z',iz+1,np,ave(x),std(x),ave(y),std(y),ave(z),std(z)
+#           print 'iza,ex,ey,ez',iz+1,ave(ex),std(ex),ave(ey),std(ey),ave(ez),std(ez)
            self.apply_ions_bndconditions(iz+1)
          if iz==0:
            self.push_ions_velocity_full(iz)
+#           np=getn(js=iz,bcast=0,gather=0);x=getx(js=iz,bcast=0,gather=0);y=gety(js=iz,bcast=0,gather=0);z=getz(js=iz,bcast=0,gather=0)
+#           print 'izb,x,y,z',iz,np,ave(x),std(x),ave(y),std(y),ave(z),std(z)
            self.push_ions_positions(iz)
            if self.l_timing:ptime = wtime()
-           self.store_ionstoprev()
            if self.l_timing: self.time_store_ionstoprev += wtime()-ptime
+#           np=getn(js=iz,bcast=0,gather=0);x=getx(js=iz,bcast=0,gather=0);y=gety(js=iz,bcast=0,gather=0);z=getz(js=iz,bcast=0,gather=0)
+#           print 'iza,x,y,z',iz,np,ave(x),std(x),ave(y),std(y),ave(z),std(z)
+#           ex=getex(js=iz,bcast=0,gather=0);ey=getey(js=iz,bcast=0,gather=0);ez=getez(js=iz,bcast=0,gather=0)
+#           print 'iza,ex,ey,ez',iz,ave(ex),std(ex),ave(ey),std(ey),ave(ez),std(ez)
+           self.store_ionstoprev()
            self.apply_ions_bndconditions(iz)
            if self.lattice is not None:
              self.ist = (self.ist+1)%self.nst
@@ -768,12 +781,16 @@ class Quasistatic:
             gammaadv(np,pg.gaminv[il:iu],pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
                      top.gamadv,top.lrelativ)
             if self.l_verbose:print me,top.it,self.iz,'me = ',me,';xpush'
+            xe=getx(bcast=0,gather=0,pgroup=self.pgelec);ye=gety(bcast=0,gather=0,pgroup=self.pgelec)
+#            print 'peb:iz,xe,ye',self.iz,ave(xe),std(xe),ave(ye),std(ye)
             if self.l_freeze_xelec:
               xpush3d(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
                       pg.uxp[il:iu]*0.,pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],self.dt)
             else:
               xpush3d(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
                       pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],self.dt)
+            xe=getx(bcast=0,gather=0,pgroup=self.pgelec);ye=gety(bcast=0,gather=0,pgroup=self.pgelec)
+#            print 'pea:iz,xe,ye',self.iz,ave(xe),std(xe),ave(ye),std(ye)
             pg.zp[il:iu]-=w3d.dz
 #            pli(frz.basegrid.phi);refresh()
 #            ppzx(js=1,color=red,msize=2);refresh()
@@ -823,7 +840,7 @@ class Quasistatic:
       il = pg.ins[js]-1
       iu = il+pg.nps[js]
       zmin = js*w3d.dz+w3d.zmminp
-      iz = int((pg.zp[il:iu]-zmin)/w3d.dz) 
+      iz = floor((pg.zp[il:iu]-zmin)/w3d.dz) 
       if len(iz)>0:
         if min(iz)<-1 or max(iz)>1: print 'error iz',min(iz),max(iz) 
       izleft = il+compress(iz<0,arange(pg.nps[js]))
@@ -868,6 +885,7 @@ class Quasistatic:
           pid = 0.
         else:
           pid = toaddleft[-1]
+#        print 'add ',len(izleft),'from up' 
         addparticles(js=js-1,
                      x = toaddleft[0],
                      y = toaddleft[1],
@@ -891,6 +909,7 @@ class Quasistatic:
           pid = 0.
         else:
           pid = toaddright[-1]
+#        print 'add ',len(izright),'from down' 
         addparticles(js=js+1,
                      x = toaddright[0],
                      y = toaddright[1],
@@ -984,7 +1003,7 @@ class Quasistatic:
       self.wz0[js] = wz0
       if self.l_verbose:print me,top.it,self.iz,'exit set_sw'
         
-  def gather_ions_fields(self):
+  def gather_ions_fields_old(self):
     if self.l_verbose:print me,top.it,self.iz,'enter push_ions'
     pg = self.pgions
     top.pgroup = pg
@@ -1061,6 +1080,77 @@ class Quasistatic:
           self.add_other_fields(js)
     if self.l_verbose:print me,top.it,self.iz,'exit push_ions'
              
+  def gather_ions_fields(self):
+    if self.l_verbose:print me,top.it,self.iz,'enter push_ions'
+    pg = self.pgions
+    top.pgroup = pg
+    if me>=(npes-1-top.it):
+#    if me==(npes-1-top.it):
+      js = self.iz
+      il = pg.ins[js]-1
+      iu = il+pg.nps[js]
+      np = pg.nps[js]
+      if np>0:
+        pg.ex[il:iu]=0.
+        pg.ey[il:iu]=0.
+        pg.ez[il:iu]=0.
+        pg.bx[il:iu]=0.
+        pg.by[il:iu]=0.
+        pg.bz[il:iu]=0.
+        self.ions_fieldweight(js,self.gridelecs[1],self.wz1[js],l_add=0,l_bfield=0)
+        if self.l_selfi:
+          self.ions_fieldweight(js,self.gridions[1],self.wz1[js],l_add=0,l_bfield=0)
+        if self.iz==0:
+          self.ions_fieldweight(js,self.gridelecs[0],self.wz0[js],l_add=1,l_bfield=0)
+          if self.l_selfi:
+            self.ions_fieldweight(js,self.gridions[0],self.wz0[js],l_add=1,l_bfield=0)
+          self.add_other_fields(js)
+      if self.iz<w3d.nzp-1:        
+        js = self.iz+1
+        il = pg.ins[js]-1
+        iu = il+pg.nps[js]
+        np = pg.nps[js]
+        if np>0:
+          self.ions_fieldweight(js,self.gridelecs[1],self.wz0[js],l_add=1,l_bfield=0)
+          if self.l_selfi:
+            self.ions_fieldweight(js,self.gridions[1],self.wz0[js],l_add=1,l_bfield=0)
+          self.add_other_fields(js)
+    if self.l_verbose:print me,top.it,self.iz,'exit push_ions'
+             
+  def ions_fieldweight(self,js,g,w,l_bfield=0,l_add=0):
+    pg = self.pgions
+    top.pgroup = pg
+    il = pg.ins[js]-1
+    iu = il+pg.nps[js]
+    np = pg.nps[js]
+    if np==0:return
+#    print 'fwb: iz,np,ex,ey,w',js,np,mean(pg.ex[il:iu]),std(pg.ex[il:iu]),mean(pg.ey[il:iu]),std(pg.ey[il:iu]),ave(w),std(w)
+    frz.basegrid = g; mk_grids_ptr()
+    if l_add:
+     ex=zeros(np,'d')
+     ey=zeros(np,'d')
+    else:
+     if l_bfield:
+      ex=pg.bx[il:iu]
+      ey=pg.by[il:iu]
+     else:
+      ex=pg.ex[il:iu]
+      ey=pg.ey[il:iu]
+    fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],ex,ey,np,top.zgrid,top.efetch[0])
+    xe=getx(bcast=0,gather=0,pgroup=self.pgelec);ye=gety(bcast=0,gather=0,pgroup=self.pgelec);
+#    print 'fw: iz,phi,rho,xe,ye',js,mean(g.phi),std(g.phi),mean(g.rho),std(g.rho),mean(xe),std(xe),mean(ye),std(ye)
+    if l_add:
+     if l_bfield:
+      pg.bx[il:iu]+=ex*w
+      pg.by[il:iu]+=ey*w
+     else:
+      pg.ex[il:iu]+=ex*w
+      pg.ey[il:iu]+=ey*w
+    else:
+      ex*=w
+      ey*=w
+#    print 'fwa: iz,ex,ey',js,mean(pg.ex[il:iu]),std(pg.ex[il:iu]),mean(pg.ey[il:iu]),std(pg.ey[il:iu])
+
   def add_other_fields(self,js):
     if self.l_verbose:print me,top.it,self.iz,'add_other_fields'
     pg = self.pgions
@@ -1327,7 +1417,7 @@ class Quasistatic:
 #        if iz==0:
 #        self.electrons.ppxex(msize=2);refresh()
         print 'plot_elec',self.iz
-        self.electrons.ppxy(msize=1,color='density',ncolor=100);refresh()
+        self.electrons.ppxy();refresh()#msize=1,color='density',ncolor=100,bcast=0,gather=0);refresh()
 #        else:
 #          self.slist[0].ppxex(msize=2);
 #        limits(w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
@@ -1490,6 +1580,7 @@ class Quasistatic:
       if self.l_verbose:print me,top.it,self.iz,'enter getmmnts'
       pg = self.pgions
       self.pnumtmp += getn(js=js,gather=0,pgroup=pg)
+#      print 'gm:',js,getn(js=js,gather=0,pgroup=pg)
       x = getx(js=js,gather=0,pgroup=pg)
       y = gety(js=js,gather=0,pgroup=pg)
       z = getz(js=js,gather=0,pgroup=pg)
