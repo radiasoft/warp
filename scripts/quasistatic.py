@@ -1099,11 +1099,11 @@ class Quasistatic:
         pg.bz[il:iu]=0.
         self.ions_fieldweight(js,self.gridelecs[1],self.wz1[js],l_add=0,l_bfield=0)
         if self.l_selfi:
-          self.ions_fieldweight(js,self.gridions[1],self.wz1[js],l_add=0,l_bfield=0)
+          self.ions_fieldweight(js,self.gridions[1],self.wz1[js],l_add=0,l_bfield=1)
         if self.iz==0:
           self.ions_fieldweight(js,self.gridelecs[0],self.wz0[js],l_add=1,l_bfield=0)
           if self.l_selfi:
-            self.ions_fieldweight(js,self.gridions[0],self.wz0[js],l_add=1,l_bfield=0)
+            self.ions_fieldweight(js,self.gridions[0],self.wz0[js],l_add=1,l_bfield=1)
           self.add_other_fields(js)
       if self.iz<w3d.nzp-1:        
         js = self.iz+1
@@ -1113,7 +1113,7 @@ class Quasistatic:
         if np>0:
           self.ions_fieldweight(js,self.gridelecs[1],self.wz0[js],l_add=1,l_bfield=0)
           if self.l_selfi:
-            self.ions_fieldweight(js,self.gridions[1],self.wz0[js],l_add=1,l_bfield=0)
+            self.ions_fieldweight(js,self.gridions[1],self.wz0[js],l_add=1,l_bfield=1)
           self.add_other_fields(js)
     if self.l_verbose:print me,top.it,self.iz,'exit push_ions'
              
@@ -1129,15 +1129,21 @@ class Quasistatic:
     if l_add:
      ex=zeros(np,'d')
      ey=zeros(np,'d')
+     if l_bfield:
+       fwxz = fieldweightxzb
+     else:
+       fwxz = fieldweightxz
     else:
      if l_bfield:
       ex=pg.bx[il:iu]
       ey=pg.by[il:iu]
+      fwxz = fieldweightxzb
      else:
       ex=pg.ex[il:iu]
       ey=pg.ey[il:iu]
-    fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],ex,ey,np,top.zgrid,top.efetch[0])
-    xe=getx(bcast=0,gather=0,pgroup=self.pgelec);ye=gety(bcast=0,gather=0,pgroup=self.pgelec);
+      fwxz = fieldweightxz
+    fwxz(pg.xp[il:iu],pg.yp[il:iu],ex,ey,np,top.zgrid,top.efetch[0])
+#    xe=getx(bcast=0,gather=0,pgroup=self.pgelec);ye=gety(bcast=0,gather=0,pgroup=self.pgelec);
 #    print 'fw: iz,phi,rho,xe,ye',js,mean(g.phi),std(g.phi),mean(g.rho),std(g.rho),mean(xe),std(xe),mean(ye),std(ye)
     if l_add:
      if l_bfield:
