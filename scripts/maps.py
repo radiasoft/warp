@@ -220,6 +220,26 @@ class Maps_simple:
     gammaadv(np,pg.gaminv[il:iu],pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
              top.gamadv,top.lrelativ)
  
+class Maps_lattice:
+  def __init__(self, Map, length, s_posn, ecflag = 1):
+     self.Map = Map
+     self.L   = length
+     self.s_posn = s_posn
+     self.ecflag = ecflag
+
+  def apply_transfer_map(self,pg,il,iu):
+      apply_map(iu-il,
+                       pg.xp[il:iu],
+                       pg.yp[il:iu],
+                       pg.zp[il:iu],
+                       pg.uxp[il:iu],
+                       pg.uyp[il:iu],
+                       pg.uzp[il:iu],
+                       pg.gaminv[il:iu],
+                       self.Map,
+                       top.vbeam,
+                       top.gammabar)
+
 class Maps_Parameters:
   def __init__(self,gamma_t = 0,harmn_num = 0,sync_freq = 0,sync_tune = 0,eta = 0,gamma_b = 0,Ergy = 0,alpha = 0, mo = 938280000., circum=0):
    if gamma_b == 0:
