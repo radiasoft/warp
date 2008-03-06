@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.17 $, $Date: 2008/02/16 23:54:48 $
+c@(#) File top_lattice.F, version $Revision: 3.18 $, $Date: 2008/03/06 21:45:43 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -202,6 +202,7 @@ c============================================================================
              quadze(0) = quadze(nquad) - zlatperi
              quaddb(0) = quaddb(nquad)
              quadde(0) = quadde(nquad)
+             quadph(0) = quadph(nquad)
              quadts(0) = quadts(nquad)
              quaddt(0) = quaddt(nquad)
              do l = 0,ntquad
@@ -2521,7 +2522,8 @@ c   ex, ey   quadrupole electric field
 c   bx, by   quadrupole magnetic field
 
       integer(ISZ):: io,ip,iz
-      real(kind=8):: z1,z2,zl,fl,zr,fr,frac,xpmqoff,ypmqoff
+      real(kind=8):: z1,z2,zl,fl,zr,fr,frac,xpmqoff,ypmqoff,xph,yph
+      real(kind=8):: cosph,sinph
       real(kind=8):: dodec
       real(kind=8), allocatable:: vz(:),dzi(:)
       integer(ISZ):: allocerror
@@ -2595,6 +2597,14 @@ c         --- set the field
           if (frac > 0.) then
             xpmqoff = xp(ip) - cqoffx(iz,io)
             ypmqoff = yp(ip) - cqoffy(iz,io)
+            if (quadph(cquadid(iz,io)) .ne. 0.) then
+              cosph = cos(quadph(cquadid(iz,io)))
+              sinph = sin(quadph(cquadid(iz,io)))
+              xph = +xpmqoff*cosph + ypmqoff*sinph
+              yph = -xpmqoff*sinph + ypmqoff*cosph
+              xpmqoff = xph
+              ypmqoff = yph
+            endif
             bx(ip) = bx(ip) + cquaddb(iz,io)*frac*ypmqoff
             by(ip) = by(ip) + cquaddb(iz,io)*frac*xpmqoff
             ex(ip) = ex(ip) + cquadde(iz,io)*frac*xpmqoff
@@ -2607,6 +2617,16 @@ c         --- set the field
               ey(ip) = ey(ip) - dodec*cquadde(iz,io)*frac*
      &                 (6.*ypmqoff**5 - 60.*ypmqoff**3*xpmqoff**2 +
      &                 30.*ypmqoff*xpmqoff**4)
+            endif
+            if (quadph(cquadid(iz,io)) .ne. 0.) then
+              xph = bx(ip)
+              yph = by(ip)
+              bx(ip) = +xph*cosph - yph*sinph
+              by(ip) = +xph*sinph + yph*cosph
+              xph = ex(ip)
+              yph = ey(ip)
+              ex(ip) = +xph*cosph - yph*sinph
+              ey(ip) = +xph*sinph + yph*cosph
             endif
           endif
         enddo

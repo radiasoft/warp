@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.232 $, $Date: 2008/02/25 15:20:29 $
+#@(#) File TOP.V, version $Revision: 3.233 $, $Date: 2008/03/06 21:45:43 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.232 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.233 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -262,6 +262,7 @@ quadzs(0:nquad)   _real [m]   # Z's of quad starts (hard-edge measure)
 quadze(0:nquad)   _real [m]   # Z's of quad ends   (hard-edge measure)
 quaddb(0:nquad)   _real [T/m] # Magnetic quad strengths (field gradients)
 quadde(0:nquad)   _real [V/m**2] # Electric quad strengths (field gradients)
+quadph(0:nquad)   _real [rad] # Transverse rotation angle, in radians
 quadet(0:ntquad,0:nquad) _real [V/m**2] # Electric quad strengths as a
                                         # function of time
 quadbt(0:ntquad,0:nquad) _real [V/m**2] # Magnetic quad strengths as a
