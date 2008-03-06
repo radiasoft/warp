@@ -59,9 +59,10 @@ todo = """ Add comment attribute to elements """
 
 from warp import *
 from generateconductors import *
+import pyOpenDX
 import __main__
 import copy
-lattice_version = "$Id: lattice.py,v 1.58 2008/02/25 19:16:42 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.59 2008/03/06 21:47:46 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -261,7 +262,7 @@ class Elem(pyOpenDX.Visualizable):
 Base class for the lattice classes. Should never be directly called.
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,
-               offset_x=0,offset_y=0,ol=0,error_type=''):
+               offset_x=0,offset_y=0,ph=0,ol=0,error_type=''):
     self.l = l
     self.length = length
     self.zs = zs
@@ -274,6 +275,7 @@ Base class for the lattice classes. Should never be directly called.
     self.ol = ol
     self.offset_x = offset_x
     self.offset_y = offset_y
+    self.ph = ph
     self.error_type = error_type
     Elem.derivedquantities(self)
   def derivedquantities(self):
@@ -501,6 +503,7 @@ Creates an instance of a Quad lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ph=0 transverse rotation angle (radians)
   - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
@@ -517,11 +520,11 @@ Creates an instance of a Quad lattice element.
   - pr=0 plate outer radius of an electric quad
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               ol=0,error_type='',
+               ph=0,ol=0,error_type='',
                de=0,db=0,vx=0,vy=0,rr=0,rl=0,gl=0,gp=0,pw=0,pa=0,pr=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ph=ph,ol=ol,error_type=error_type)
     self.type = 'Quad'
     for xx in ['de','db','vx','vy','rr','rl','gl','gp','pw','pa','pr']:
       self.__dict__[xx] = locals()[xx]
@@ -540,7 +543,7 @@ Creates an instance of a Quad lattice element.
     top.qoffx[top.nquad] = self.xoffset
     top.qoffy[top.nquad] = self.yoffset
     top.quadol[top.nquad] = self.ol
-    for xx in ['ap','ax','ay','de','db','vx','vy','rr','rl','gl','gp',
+    for xx in ['ap','ax','ay','ph','de','db','vx','vy','rr','rl','gl','gp',
                'pw','pa','pr']:
       aa = top.getpyobject('quad'+xx)
       aa[top.nquad] = self.__dict__[xx]
@@ -557,6 +560,7 @@ Creates an instance of a Quad lattice element.
     if self.db == 0.:
       q = Quadrupole(ap=self.ap,rl=self.rl,rr=self.rr,gl=self.gl,gp=self.gp,
                      pa=self.pa,pw=self.pw,pr=self.pr,vx=self.vx,vy=self.vy,
+                     ph=self.ph,
                      xcent=self.xoffset,ycent=self.yoffset,zcent=zc,
                      condid=self.iquad)
     else:
@@ -621,6 +625,7 @@ Creates an instance of a Hele lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ph=0 transverse rotation angle (radians)
   - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
@@ -640,12 +645,12 @@ Creates an instance of a Hele lattice element.
   - pa=0 plate aperture of an electric quad
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               ol=0,error_type='',
+               ph=0,ol=0,error_type='',
                nn=[],vv=[],ae=[],am=[],ep=[],mp=[],pe=[],pm=[],
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ph=ph,ol=ol,error_type=error_type)
     self.type = 'Hele'
     self.nn = nn
     self.vv = vv
@@ -718,6 +723,7 @@ Creates an instance of a Hele lattice element.
     if (len(self.ae) > 0. or self.rr > 0. or self.rl > 0. or self.gl > 0.):
       q = Quadrupole(ap=self.ap,rl=self.rl,rr=self.rr,gl=self.gl,gp=self.gp,
                      pa=self.pa,pw=self.pw,pr=self.pr,vx=self.vx,vy=self.vy,
+                     ph=self.ph,
                      xcent=self.xoffset,ycent=self.yoffset,zcent=zc,
                      condid=self.ihele)
     else:
@@ -847,7 +853,7 @@ Or specify the data set
     assert (e or ep) or (id is not None),"A data set or id must be given"
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ph=ph,ol=ol,error_type=error_type)
     self.type = 'Emlt'
     self.dz = dz
     self.e = e
@@ -855,7 +861,6 @@ Or specify the data set
     self.eph = eph
     self.nn = nn
     self.vv = vv
-    self.ph = ph
     self.sf = sf
     self.sc = sc
     self.rr = rr
@@ -1884,7 +1889,7 @@ dipo arrays with the same suffices:
 def addnewquad(zs,ze,db=0.,de=0.,et=0.,bt=0.,ts=0.,dt=0.,vx=0.,vy=0.,
                ap=0.,ax=0.,ay=0.,
                rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,pr=0.,sl=0.,ox=0.,oy=0.,
-               do=0.,
+               ph=0.,do=0.,
                glx=0.,gly=0.,axp=0.,axm=0.,ayp=0.,aym=0.,rxp=0.,rxm=0.,
                ryp=0.,rym=0.,vxp=0.,vxm=0.,vyp=0.,vym=0.,oxp=0.,oxm=0.,
                oyp=0.,oym=0.,pwl=0.,pwr=0.,pal=0.,par=0.,prl=0.,prr=0.):
@@ -1895,7 +1900,7 @@ Required arguments:
   - zs, ze: specify the start and end of the element
 The following are all optional and have the same meaning and default as the
 quad and qdel arrays with the same suffices:
-  - db,de,et,bt,ts,dt,vx,vy,ap,rr,rl,gl,gp,pw,pa,pr,sl,ox,oy,do
+  - db,de,et,bt,ts,dt,vx,vy,ap,rr,rl,gl,gp,pw,pa,pr,sl,ox,oy,ph,do
   - glx,gly,axp,axm,ayp,aym,rxp,rxm,ryp,rym,vxp,vxm,vyp,vym,oxp,oxm,
     oyp,oym,pwl,pwr,pal,par,prl,prr
   """
@@ -1932,6 +1937,7 @@ quad and qdel arrays with the same suffices:
        'et':top.quadet,'bt':top.quadbt,'ts':top.quadts,'dt':top.quaddt,
        'vx':top.quadvx,'vy':top.quadvy,
        'ap':top.quadap,'ax':top.quadax,'ay':top.quaday,
+       'ph':top.quadph,
        'rr':top.quadrr,
        'rl':top.quadrl,'gl':top.quadgl,'gp':top.quadgp,'pw':top.quadpw,
        'pa':top.quadpa,'pr':top.quadpr,'sl':top.quadsl,'do':top.quaddo,
