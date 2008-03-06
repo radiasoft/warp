@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.37 2007/10/29 22:01:18 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.38 2008/03/06 00:39:25 jlvay Exp $"
 
 class TraceParticle(object):
   """
@@ -645,7 +645,7 @@ initial data.
     "Initializes one of more particles to run independently"
     # --- Set default value of vz and make sure it is not zero
     if vz is None: vz = top.vbeam
-    if vz == 0.: vz = top.smallpos
+    vz = where(vz==0.,top.smallpos,vz)
     # --- Make sure that the coordinates are not of list or tuple type
     if type(x)  in [ListType,TupleType]: x = array(x)
     if type(y)  in [ListType,TupleType]: y = array(y)
