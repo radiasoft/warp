@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.187 $, $Date: 2008/02/13 18:56:26 $
+#@(#) File F3D.V, version $Revision: 3.188 $, $Date: 2008/03/10 16:53:41 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.187 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.188 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -359,6 +359,14 @@ sete3dwithconductor(conductors:ConductorType,phi:real,selfe:real,
                     l2symtry:logical,l4symtry:logical,
                     lcylindrical:logical,delx:integer,dely:integer,delz:integer)
                     subroutine
+sete3dongridwithconductor(conductors:ConductorType,phi:real,
+                          xmmin:real,ymmin:real,zmmin:real,
+                          dx:real,dy:real,dz:real,
+                          nx:integer,ny:integer,nz:integer,
+                          ex:real,ey:real,ez:real,
+                          delx:integer,dely:integer,delz:integer,
+                          bounds(0:5):integer)
+                          subroutine
 
 *********** MultigridBE3d dump:
 multigridbe3df(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,

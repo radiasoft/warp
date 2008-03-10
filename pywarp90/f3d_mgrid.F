@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.165 $, $Date: 2008/02/13 02:22:31 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.166 $, $Date: 2008/03/10 16:53:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -3259,7 +3259,8 @@ c       --- reallocated.
           endif
         endif
         if (doalloc) then
-          allocate(conductors%icgrid(0:nx,0:ny,0:nzlocal),stat=allocerror)
+          allocate(conductors%icgrid(0:nx,0:ny,0:nzlocal),
+     &             stat=allocerror)
           if (allocerror /= 0) then
             print*,"setupconductorfielddata: allocation error ",allocerror,
      &             ": could not allocate icgrid to shape ",1+nx,1+ny,1+nzlocal
@@ -3897,6 +3898,221 @@ c       ---------------------------------------------------------------------
 
         return
         end subroutine GETEEFROME
+
+c       ---------------------------------------------------------------------
+        subroutine GETEENGP(id,px,py,pz,ox,oy,oz,dw,dd)
+        integer(ISZ):: id,px,py,pz,ox,oy,oz
+        real(kind=8):: dw,dd
+        real(kind=8):: vngp,dngp
+        integer(ISZ):: ic
+        if (conductors%icgrid(i+ox,j+oy,k+oz) == 0 .or.
+     &      conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) == 0) then
+          eengp(id,ox,oy,oz) = (phi(i+ox,j+oy,k+oz) - phi(i+ox+px,j+oy+py,k+oz+pz))*dd
+        elseif (conductors%icgrid(i+ox,j+oy,k+oz) < nmax+1) then
+          ic = conductors%icgrid(i+ox,j+oy,k+oz)
+          if (ic < 0) then
+            dels => conductors%oddsubgrid%dels(:,-ic)
+            volt => conductors%oddsubgrid%volt(:,-ic)
+          else
+            dels => conductors%evensubgrid%dels(:,ic)
+            volt => conductors%evensubgrid%volt(:,ic)
+          endif
+          if (dels(2*id+1+1) <= 1.) then
+            vngp = volt(2*id+1+1)
+            dngp = dels(2*id+1+1)
+          else
+            vngp = phi(i+ox+px,j+oy+py,k+oz+pz)
+            dngp = 1
+          endif
+          eengp(id,ox,oy,oz) = (phi(i+ox,j+oy,k+oz) - vngp)*dd/dngp
+        elseif (conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) < nmax+1) then
+          ic = conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz)
+          if (ic < 0) then
+            dels => conductors%oddsubgrid%dels(:,-ic)
+            volt => conductors%oddsubgrid%volt(:,-ic)
+          else
+            dels => conductors%evensubgrid%dels(:,ic)
+            volt => conductors%evensubgrid%volt(:,ic)
+          endif
+          if (dels(2*id+1) <= 1.) then
+            vngp = volt(2*id+1)
+            dngp = dels(2*id+1)
+          else
+            vngp = phi(i+ox,j+oy,k+oz)
+            dngp = 1.
+          endif
+          eengp(id,ox,oy,oz) = (vngp - phi(i+ox+px,j+oy+py,k+oz+pz))*dd/dngp
+        else
+          eengp(id,ox,oy,oz) = 0.
+        endif
+
+        end subroutine GETEENGP
+      end
+c=========================================================================== 
+      subroutine sete3dongridwithconductor(conductors,phi,
+     &                                     xmmin,ymmin,zmmin,
+     &                                     dx,dy,dz,nx,ny,nz,ex,ey,ez,
+     &                                     delx,dely,delz,bounds)
+      use GlobalVars,Only: dirichlet,neumann,periodic
+      use ConductorTypemodule
+      use Subtimers3d
+      type(ConductorType):: conductors
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: delx,dely,delz
+      real(kind=8):: xmmin,ymmin,zmmin,dx,dy,dz
+      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      real(kind=8):: ex(-1:nx,0:ny,0:nz)
+      real(kind=8):: ey(0:nx,-1:ny,0:nz)
+      real(kind=8):: ez(0:nx,0:ny,-1:nz)
+      integer(ISZ):: bounds(0:5)
+
+c Gets self electric field normals for at dual cell grid points.
+c The dual cell extends from i-1/2 to i+1/2 in each plane.
+c For each cell (i,j,k), this gets
+c  Ex(i+1/2,j,k) = (phi(i,j,k) - phi(i+1,j,k))/dx
+c  Ey(i,j+1/2,k) = (phi(i,j,k) - phi(i,j+1,k))/dy
+c  Ez(i,j,k+1/2) = (phi(i,j,k) - phi(i,j,k+1))/dz
+
+      integer(ISZ):: i,j,k,nmax
+      real(kind=8):: dxi,dyi,dzi
+      real(kind=8):: eengp(0:2,0:1,0:1,0:1)
+      real(kind=8),pointer:: dels(:),volt(:)
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+c     --- If the icgrid is not allocated, then the conductor data is to be
+c     --- ignored, so call the base version of sete3d.
+      if (.not. ASSOCIATED(conductors%icgrid)) then
+        call kaboom("sete3dongridwithconductor: icgrid must be initialized")
+        return
+      endif
+
+c     --- Calculate some temporaries.
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+      nmax = max(conductors%evensubgrid%nmax,conductors%oddsubgrid%nmax)
+
+c     --- Do the calculation in the bulk of the grid.
+      do k=0,nz-1
+        do j=0,ny-1
+          do i=0,nx-1
+
+            call GETEENGP(0,1,0,0,0,0,0,1.,dxi)
+            ex(i,j,k) = eengp(0,0,0,0)
+
+            call GETEENGP(1,0,1,0,0,0,0,1.,dyi)
+            ey(i,j,k) = eengp(1,0,0,0)
+              
+            call GETEENGP(2,0,0,1,0,0,0,1.,dzi)
+            ez(i,j,k) = eengp(2,0,0,0)
+
+          enddo
+        enddo
+      enddo
+
+c     --- Handle the values at nx, ny, and nz. These must be done separately.
+c     --- For example, for i=nx, ex cannot be calculated since that would need
+c     --- the info at ix=nx+1. phi is known there but not icgrid.
+      do k=0,nz-1
+        do j=0,ny-1
+          i = nx
+
+            call GETEENGP(1,0,1,0,0,0,0,1.,dyi)
+            ey(i,j,k) = eengp(1,0,0,0)
+              
+            call GETEENGP(2,0,0,1,0,0,0,1.,dzi)
+            ez(i,j,k) = eengp(2,0,0,0)
+
+        enddo
+      enddo
+
+      do k=0,nz-1
+        j = ny
+          do i=0,nx-1
+
+            call GETEENGP(0,1,0,0,0,0,0,1.,dxi)
+            ex(i,j,k) = eengp(0,0,0,0)
+
+            call GETEENGP(2,0,0,1,0,0,0,1.,dzi)
+            ez(i,j,k) = eengp(2,0,0,0)
+
+          enddo
+      enddo
+
+      k = nz
+        do j=0,ny-1
+          do i=0,nx-1
+
+            call GETEENGP(0,1,0,0,0,0,0,1.,dxi)
+            ex(i,j,k) = eengp(0,0,0,0)
+
+            call GETEENGP(1,0,1,0,0,0,0,1.,dyi)
+            ey(i,j,k) = eengp(1,0,0,0)
+              
+          enddo
+        enddo
+
+c     --- Now, set the E fields in the guard cells by appropriate copying
+c     --- or setting.
+      select case (bounds(0))
+        case (0) !(dirichlet)
+          ex(-1,:,:) = 0
+        case (1) !(neumann)
+          ex(-1,:,:) = ex(0,:,:)
+        case (2) !(periodic)
+          ex(-1,:,:) = ex(nx-1,:,:)
+      end select
+      select case (bounds(1))
+        case (0) !(dirichlet)
+          ex(nx,:,:) = 0
+        case (1) !(neumann)
+          ex(nx,:,:) = ex(nx-1,:,:)
+        case (2) !(periodic)
+          ex(nx,:,:) = ex(0,:,:)
+      end select
+
+      select case (bounds(2))
+        case (0) !(dirichlet)
+          ey(:,-1,:) = 0
+        case (1) !(neumann)
+          ey(:,-1,:) = ey(:,0,:)
+        case (2) !(periodic)
+          ey(:,-1,:) = ey(:,ny-1,:)
+      end select
+      select case (bounds(3))
+        case (0) !(dirichlet)
+          ey(:,ny,:) = 0
+        case (1) !(neumann)
+          ey(:,ny,:) = ey(:,ny-1,:)
+        case (2) !(periodic)
+          ey(:,ny,:) = ey(:,0,:)
+      end select
+
+      select case (bounds(4))
+        case (0) !(dirichlet)
+          ez(:,:,-1) = 0
+        case (1) !(neumann)
+          ez(:,:,-1) = ez(:,:,0)
+        case (2) !(periodic)
+          ez(:,:,-1) = ez(:,:,nz-1)
+      end select
+      select case (bounds(5))
+        case (0) !(dirichlet)
+          ez(:,:,nz) = 0
+        case (1) !(neumann)
+          ez(:,:,nz) = ez(:,:,nz-1)
+        case (2) !(periodic)
+          ez(:,:,nz) = ez(:,:,0)
+      end select
+
+!$OMP MASTER
+c     if (lf3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      CONTAINS
 
 c       ---------------------------------------------------------------------
         subroutine GETEENGP(id,px,py,pz,ox,oy,oz,dw,dd)
