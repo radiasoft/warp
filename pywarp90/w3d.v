@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.281 $, $Date: 2008/02/12 21:29:32 $
+#@(#) File W3D.V, version $Revision: 3.282 $, $Date: 2008/03/10 16:52:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.281 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.282 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -860,6 +860,16 @@ inj_transform(np:integer,x(np):real,y(np):real,z(np):real,
               tsign:integer,lshift:logical)
              subroutine # Transforms coordinates into and out of frame
                         # of injection sources
+createparticlesincells(nx:integer,ny:integer,nz:integer,
+                       rnn(0:nx,0:ny,0:nz):real,
+                       exgrid(0:nx+1,0:ny,0:nz):real,
+                       eygrid(0:nx,0:ny+1,0:nz):real,
+                       ezgrid(0:nx,0:ny,0:nz+1):real,
+                       condid(0:nx,0:ny,0:nz):real,
+                       dx:real,dy:real,dz:real,
+                       nn:integer,xx(nn):real,yy(nn):real,zz(nn):real,
+                       ex(nn):real,ey(nn):real,ez(nn):real,pp(nn):real)
+             subroutine # Creates particles at each grid cell
 loadrho3d(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,
           lzero:logical) 
              subroutine # Provides a simple interface to the charge density

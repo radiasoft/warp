@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.104 $, $Date: 2008/02/16 23:49:58 $
+c@(#) File w3d_injection.F, version $Revision: 1.105 $, $Date: 2008/03/10 16:52:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4978,6 +4978,67 @@ c Use several terms of Gauss-Kummer series to get good accuracy.
       h = (a-b)**2/(a+b)**2
       p = pi*(a+b)*(1 + h/4 + h**2/64 + h**3/256 + 25*h**4/16384 + 49*h**5/65536)
       ellipseperimeter = p
+
+      return
+      end
+c=============================================================================
+c=============================================================================
+c=============================================================================
+      subroutine createparticlesincells(nx,ny,nz,rnn,exgrid,eygrid,ezgrid,
+     &                                  condid,
+     &                                  dx,dy,dz,nn,xx,yy,zz,ex,ey,ez,pp)
+      integer(ISZ):: nx,ny,nz,nn
+      real(kind=8):: rnn(0:nx,0:ny,0:nz)
+      real(kind=8):: exgrid(0:nx+1,0:ny,0:nz)
+      real(kind=8):: eygrid(0:nx,0:ny+1,0:nz)
+      real(kind=8):: ezgrid(0:nx,0:ny,0:nz+1)
+      real(kind=8):: condid(0:nx,0:ny,0:nz)
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: xx(nn),yy(nn),zz(nn)
+      real(kind=8):: ex(nn),ey(nn),ez(nn)
+      real(kind=8):: pp(nn)
+
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ii,itot
+      real(kind=8):: xshift,yshift,zshift
+      real(kind=8):: xscale,yscale,zscale
+      real(kind=8):: wranf
+
+      itot = 0
+
+      do iz=0,nz
+        do iy=0,ny
+          do ix=0,nx
+
+c           --- The shift and scale are to keep particles within the grid.
+            xshift = 0.5
+            if (ix == 0) xshift = 0.
+            yshift = 0.5
+            if (iy == 0) yshift = 0.
+            zshift = 0.5
+            if (iz == 0) zshift = 0.
+
+            xscale = 1.0
+            if (ix == 0 .or. ix == nx) xscale = 0.5
+            yscale = 1.0
+            if (iy == 0 .or. iy == ny) yscale = 0.5
+            zscale = 1.0
+            if (iz == 0 .or. iz == nz) zscale = 0.5
+            
+            do ii=1,int(rnn(ix,iy,iz))
+              itot = itot + 1
+              xx(itot) = dx*(ix - xshift + xscale*wranf())
+              yy(itot) = dy*(iy - yshift + yscale*wranf())
+              zz(itot) = dz*(iz - zshift + zscale*wranf())
+              ex(itot) = 0.5*(exgrid(ix,iy,iz) + exgrid(ix+1,iy,iz))
+              ey(itot) = 0.5*(eygrid(ix,iy,iz) + eygrid(ix,iy+1,iz))
+              ez(itot) = 0.5*(ezgrid(ix,iy,iz) + ezgrid(ix,iy,iz+1))
+              pp(itot) = condid(ix,iy,iz)
+            enddo
+
+          enddo
+        enddo
+      enddo
 
       return
       end
