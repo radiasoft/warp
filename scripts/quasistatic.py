@@ -195,7 +195,7 @@ class Quasistatic:
      if self.l_timing: self.time_sort += wtime()-ptime
 
      # --- gather moments
-     if top.it==0 or (me>=(npes-top.it) and ((top.it-(npes-me))%top.nhist)==0):
+     if top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0):
        if self.l_timing:ptime = wtime()
        self.getmmnts_zero()
        if self.l_timing: self.time_getmmnts += wtime()-ptime
@@ -323,7 +323,7 @@ class Quasistatic:
          if l_plotelec and (npes==1 or iz<w3d.nz/max(1,npes)-1):self.plot_electrons()
 
        # --- gather moments
-       if iz<w3d.nzp-1 and (top.it==0 or (me>=(npes-top.it) and ((top.it-(npes-me))%top.nhist)==0)):
+       if iz<w3d.nzp-1 and (top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0)):
          if self.l_timing:ptime = wtime()
          self.getmmnts(iz+1)
          if iz==0:self.getmmnts(iz)
@@ -398,7 +398,7 @@ class Quasistatic:
      if top.it==0:self.sendrecv_mgparams()
 
      # --- store moments data
-     if top.it==0 or (me>=(npes-top.it) and ((top.it-(npes-me))%top.nhist)==0):
+     if top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0):
        if self.l_timing:ptime = wtime()
        self.getmmnts_store()
        if self.l_timing: self.time_getmmnts += wtime()-ptime
@@ -1598,7 +1598,7 @@ class Quasistatic:
       yp = getuy(js=js,gather=0,pgroup=pg)/uz
       beta = sqrt((1.-gaminv)*(1.+gaminv))
       gamma = 1./gaminv
-      if 0:#self.lattice is not None:
+      if self.lattice is not None:
        ist = (self.ist-1)%self.nst
        if self.lattice[ist].dispx is not None:
         dpp = getuz(js=js,gather=0,pgroup=pg)/(top.vbeam*top.gammabar)-1.
@@ -1658,172 +1658,134 @@ class Quasistatic:
     if self.l_verbose:print me,top.it,self.iz,'exit getmmnts_store'
       
   def getpnum(self):
-      if me==0:
-        return self.pnum.data()   
-      else:
-        return self.pnum.data()[:-me]  
+      n = parallelmin(len(self.pnum.data()))
+      return self.pnum.data()[:n]  
 
   def getxrms(self):
     if not lparallel:
       return sqrt(self.x2.data()/self.pnum.data())
     else:
-      if me==0:
-        return sqrt(parallelsum(self.x2.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return sqrt(parallelsum(self.x2.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return sqrt(parallelsum(self.x2.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getyrms(self):
     if not lparallel:
       return sqrt(self.y2.data()/self.pnum.data())
     else:
-      if me==0:
-        return sqrt(parallelsum(self.y2.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return sqrt(parallelsum(self.y2.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return sqrt(parallelsum(self.y2.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getzrms(self):
     if not lparallel:
       return sqrt(self.z2.data()/self.pnum.data())
     else:
-      if me==0:
-        return sqrt(parallelsum(self.z2.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return sqrt(parallelsum(self.z2.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return sqrt(parallelsum(self.z2.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getxbar(self):
     if not lparallel:
       return self.xbar.data()/self.pnum.data()
     else:
-      if me==0:
-        return (parallelsum(self.xbar.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return (parallelsum(self.xbar.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return (parallelsum(self.xbar.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getybar(self):
     if not lparallel:
       return self.ybar.data()/self.pnum.data()
     else:
-      if me==0:
-        return (parallelsum(self.ybar.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return (parallelsum(self.ybar.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return (parallelsum(self.ybar.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getzbar(self):
     if not lparallel:
       return self.zbar.data()/self.pnum.data()
     else:
-      if me==0:
-        return (parallelsum(self.zbar.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return (parallelsum(self.zbar.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return (parallelsum(self.zbar.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getxpbar(self):
     if not lparallel:
       return self.xpbar.data()/self.pnum.data()
     else:
-      if me==0:
-        return (parallelsum(self.xpbar.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return (parallelsum(self.xpbar.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return (parallelsum(self.xpbar.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getypbar(self):
     if not lparallel:
       return self.ypbar.data()/self.pnum.data()
     else:
-      if me==0:
-        return (parallelsum(self.ypbar.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return (parallelsum(self.ypbar.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return (parallelsum(self.ypbar.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getxprms(self):
     if not lparallel:
       return sqrt(self.xp2.data()/self.pnum.data())
     else:
-      if me==0:
-        return sqrt(parallelsum(self.xp2.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return sqrt(parallelsum(self.xp2.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return sqrt(parallelsum(self.xp2.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getyprms(self):
     if not lparallel:
       return sqrt(self.yp2.data()/self.pnum.data())
     else:
-      if me==0:
-        return sqrt(parallelsum(self.yp2.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return sqrt(parallelsum(self.yp2.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return sqrt(parallelsum(self.yp2.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getxxpbar(self):
     if not lparallel:
       return self.xxpbar.data()/self.pnum.data()
     else:
-      if me==0:
-        return (parallelsum(self.xxpbar.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return (parallelsum(self.xxpbar.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return (parallelsum(self.xxpbar.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getyypbar(self):
     if not lparallel:
       return self.yypbar.data()/self.pnum.data()
     else:
-      if me==0:
-        return (parallelsum(self.yypbar.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return (parallelsum(self.yypbar.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return (parallelsum(self.yypbar.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getxpnbar(self):
     if not lparallel:
       return self.xpnbar.data()/self.pnum.data()
     else:
-      if me==0:
-        return (parallelsum(self.xpnbar.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return (parallelsum(self.xpnbar.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return (parallelsum(self.xpnbar.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getypnbar(self):
     if not lparallel:
       return self.ypnbar.data()/self.pnum.data()
     else:
-      if me==0:
-        return (parallelsum(self.ypnbar.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return (parallelsum(self.ypnbar.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return (parallelsum(self.ypnbar.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getxpnrms(self):
     if not lparallel:
       return sqrt(self.xpn2.data()/self.pnum.data())
     else:
-      if me==0:
-        return sqrt(parallelsum(self.xpn2.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return sqrt(parallelsum(self.xpn2.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return sqrt(parallelsum(self.xpn2.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getypnrms(self):
     if not lparallel:
       return sqrt(self.ypn2.data()/self.pnum.data())
     else:
-      if me==0:
-        return sqrt(parallelsum(self.ypn2.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return sqrt(parallelsum(self.ypn2.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return sqrt(parallelsum(self.ypn2.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getxxpnbar(self):
     if not lparallel:
       return self.xxpnbar.data()/self.pnum.data()
     else:
-      if me==0:
-        return (parallelsum(self.xxpnbar.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return (parallelsum(self.xxpnbar.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return (parallelsum(self.xxpnbar.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getyypnbar(self):
     if not lparallel:
       return self.yypnbar.data()/self.pnum.data()
     else:
-      if me==0:
-        return (parallelsum(self.yypnbar.data()[:])/parallelsum(self.pnum.data()[:]))   
-      else:
-        return (parallelsum(self.yypnbar.data()[:-me])/parallelsum(self.pnum.data()[:-me]))   
+      n = parallelmin(len(self.pnum.data()))
+      return (parallelsum(self.yypnbar.data()[:n])/parallelsum(self.pnum.data()[:n]))   
 
   def getemitxrms(self):
     xbar = self.getxbar()
@@ -1834,16 +1796,11 @@ class Quasistatic:
       xp2 = self.xp2.data()/pnum
       xxp = self.xxpbar.data()/pnum
     else:
-      if me==0:
-        pnum = parallelsum(self.pnum.data())
-        x2  = parallelsum(self.x2.data())/pnum
-        xp2 = parallelsum(self.xp2.data())/pnum
-        xxp = parallelsum(self.xxpbar.data())/pnum
-      else:
-        pnum = parallelsum(self.pnum.data()[:-me])
-        x2  = parallelsum(self.x2.data()[:-me])/pnum
-        xp2 = parallelsum(self.xp2.data()[:-me])/pnum
-        xxp = parallelsum(self.xxpbar.data()[:-me])/pnum
+      n = parallelmin(len(self.pnum.data()))
+      pnum = parallelsum(self.pnum.data()[:n])
+      x2  = parallelsum(self.x2.data()[:n])/pnum
+      xp2 = parallelsum(self.xp2.data()[:n])/pnum
+      xxp = parallelsum(self.xxpbar.data()[:n])/pnum
     return sqrt((x2-xbar*xbar)*(xp2-xpbar*xpbar)-(xxp-xbar*xpbar)**2)
         
   def getemityrms(self):
@@ -1855,16 +1812,11 @@ class Quasistatic:
       yp2 = self.yp2.data()/pnum
       yyp = self.yypbar.data()/pnum
     else:
-      if me==0:
-        pnum = parallelsum(self.pnum.data())
-        y2  = parallelsum(self.y2.data())/pnum
-        yp2 = parallelsum(self.yp2.data())/pnum
-        yyp = parallelsum(self.yypbar.data())/pnum
-      else:
-        pnum = parallelsum(self.pnum.data()[:-me])
-        y2  = parallelsum(self.y2.data()[:-me])/pnum
-        yp2 = parallelsum(self.yp2.data()[:-me])/pnum
-        yyp = parallelsum(self.yypbar.data()[:-me])/pnum
+      n = parallelmin(len(self.pnum.data()))
+      pnum = parallelsum(self.pnum.data()[:n])
+      y2  = parallelsum(self.y2.data()[:n])/pnum
+      yp2 = parallelsum(self.yp2.data()[:n])/pnum
+      yyp = parallelsum(self.yypbar.data()[:n])/pnum
     return sqrt((y2-ybar*ybar)*(yp2-ypbar*ypbar)-(yyp-ybar*ypbar)**2)
         
   def getemitxnrms(self):
@@ -1876,16 +1828,11 @@ class Quasistatic:
       xpn2 = self.xpn2.data()/pnum
       xxpn = self.xxpnbar.data()/pnum
     else:
-      if me==0:
-        pnum = parallelsum(self.pnum.data())
-        x2  = parallelsum(self.x2.data())/pnum
-        xpn2 = parallelsum(self.xpn2.data())/pnum
-        xxpn = parallelsum(self.xxpnbar.data())/pnum
-      else:
-        pnum = parallelsum(self.pnum.data()[:-me])
-        x2  = parallelsum(self.x2.data()[:-me])/pnum
-        xpn2 = parallelsum(self.xpn2.data()[:-me])/pnum
-        xxpn = parallelsum(self.xxpnbar.data()[:-me])/pnum
+      n = parallelmin(len(self.pnum.data()))
+      pnum = parallelsum(self.pnum.data()[:n])
+      x2  = parallelsum(self.x2.data()[:n])/pnum
+      xpn2 = parallelsum(self.xpn2.data()[:n])/pnum
+      xxpn = parallelsum(self.xxpnbar.data()[:n])/pnum
     return sqrt((x2-xbar*xbar)*(xpn2-xpnbar*xpnbar)-(xxpn-xbar*xpnbar)**2)
         
   def getemitynrms(self):
@@ -1897,16 +1844,11 @@ class Quasistatic:
       ypn2 = self.ypn2.data()/pnum
       yypn = self.yypnbar.data()/pnum
     else:
-      if me==0:
-        pnum = parallelsum(self.pnum.data())
-        y2  = parallelsum(self.y2.data())/pnum
-        ypn2 = parallelsum(self.ypn2.data())/pnum
-        yypn = parallelsum(self.yypnbar.data())/pnum
-      else:
-        pnum = parallelsum(self.pnum.data()[:-me])
-        y2  = parallelsum(self.y2.data()[:-me])/pnum
-        ypn2 = parallelsum(self.ypn2.data()[:-me])/pnum
-        yypn = parallelsum(self.yypnbar.data()[:-me])/pnum
+      n = parallelmin(len(self.pnum.data()))
+      pnum = parallelsum(self.pnum.data()[:n])
+      y2  = parallelsum(self.y2.data()[:n])/pnum
+      ypn2 = parallelsum(self.ypn2.data()[:n])/pnum
+      yypn = parallelsum(self.yypnbar.data()[:n])/pnum
     return sqrt((y2-ybar*ybar)*(ypn2-ypnbar*ypnbar)-(yypn-ybar*ypnbar)**2)
         
   def plfrac(self,color=black,width=1,type='solid',xscale=1.,yscale=1.):  
