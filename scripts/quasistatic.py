@@ -1589,7 +1589,6 @@ class Quasistatic:
       if self.l_verbose:print me,top.it,self.iz,'enter getmmnts'
       pg = self.pgions
       self.pnumtmp += getn(js=js,gather=0,pgroup=pg)
-#      print 'gm:',js,getn(js=js,gather=0,pgroup=pg)
       x = getx(js=js,gather=0,pgroup=pg)
       y = gety(js=js,gather=0,pgroup=pg)
       z = getz(js=js,gather=0,pgroup=pg)
@@ -1599,18 +1598,14 @@ class Quasistatic:
       yp = getuy(js=js,gather=0,pgroup=pg)/uz
       beta = sqrt((1.-gaminv)*(1.+gaminv))
       gamma = 1./gaminv
-#      if 1:#self.lattice is not None:
-#        dpp = getuz(js=js,gather=0,pgroup=pg)/(top.vbeam*top.gammabar)-1.
-#        x = x-2.628585781*dpp
-#        xp = xp-0.05660608619*dpp
-#      if 0:#self.lattice is not None:
-      if self.lattice is not None:
-       if self.lattice[self.ist].dispx is not None:
+      if 0:#self.lattice is not None:
+       ist = (self.ist-1)%self.nst
+       if self.lattice[ist].dispx is not None:
         dpp = getuz(js=js,gather=0,pgroup=pg)/(top.vbeam*top.gammabar)-1.
-        x = x-self.lattice[self.ist].dispx*dpp
-        y = y-self.lattice[self.ist].dispy*dpp
-        xp = xp-self.lattice[self.ist].disppx*dpp
-        yp = yp-self.lattice[self.ist].disppy*dpp
+        x = x-self.lattice[ist].dispx*dpp
+        y = y-self.lattice[ist].dispy*dpp
+        xp = xp-self.lattice[ist].disppx*dpp
+        yp = yp-self.lattice[ist].disppy*dpp
       xpn = xp*beta*gamma
       ypn = yp*beta*gamma
       self.xbartmp+=sum(x)      
