@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.15 $, $Date: 2007/12/18 19:33:10 $
+#@(#) File EM2D.V, version $Revision: 1.16 $, $Date: 2008/03/10 13:42:10 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -182,6 +182,8 @@ nx integer
 ny integer
 nxi integer
 nyi integer
+nxf integer
+nyf integer
 nxcoeffs integer
 nycoeffs integer
 nxcopy integer 
@@ -213,6 +215,7 @@ l_add_source       logical /.true./
 l_overcycle_ions   logical /.true./
 l_addpatchresidual logical /.false./
 l_usecoeffs        logical /.false./
+l_pushf            logical /.false./
 ntemp integer
 ipulse integer /1/
 npulse integer
@@ -230,6 +233,7 @@ Ez(0:nx+3,0:ny+2) _real
 Bx(0:nx+3,0:ny+2) _real
 By(0:nx+3,0:ny+2) _real
 Bz(0:nx+3,0:ny+2) _real
+F(0:nxf+3,0:nyf+2) _real
 aEx(0:nxcoeffs+3,0:nycoeffs+2) _real
 bEx(0:nxcoeffs+3,0:nycoeffs+2) _real
 cEx(0:nxcoeffs+3,0:nycoeffs+2) _real
@@ -260,6 +264,7 @@ Eycopy(0:nxcopy+3,0:nycopy+2) _real
 Bzcopy(0:nxcopy+3,0:nycopy+2) _real
 J(0:nx+3,0:ny+2,3) _real
 Jarray(0:nx+3,0:ny+2,3,ntimes) _real
+Rho(0:nxf+3,0:nyf+2) _real
 nxfsum integer /0/
 nyfsum integer /0/
 Exfsum(0:nxfsum+3,0:nyfsum+2) _real
