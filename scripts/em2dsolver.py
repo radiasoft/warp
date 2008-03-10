@@ -433,7 +433,7 @@ class EM2D(object):
           add_current_slice(self.field,i+1)
 
     # --- exchange slices of Jarray among processors
-    self.mpi_exchange_J()
+    self.apply_current_bc()
 
     # --- point J to first slice of Jarray
     self.field.J = self.field.Jarray[:,:,:,0]
@@ -449,8 +449,17 @@ class EM2D(object):
          self.field.J[:,ii,i] = J
 
 
-  def mpi_exchange_J(self):
-    # --- exchange slices of Jarray among processors
+  def apply_current_bc(self):
+    # --- apply periodic BC
+    if self.field.xlbound==periodic:
+      if npes<=1:
+        self.field.Jarray[0:4,:,0:3,:]+=self.field.Jarray[-4:,:,0:3,:]
+        self.field.Jarray[-4:,:,0:3,:] =self.field.Jarray[0:4,:,0:3,:]
+    if self.field.ylbound==periodic:
+      if npes<=1:
+        self.field.Jarray[:,0:3,0:3,:]+=self.field.Jarray[:,-3:,0:3,:]
+        self.field.Jarray[:,-3:,0:3,:] =self.field.Jarray[:,0:3,0:3,:]
+    # --- exchange slices of Jarray among processors along z
     if npes>1:
       if me>0:
         mpi.send(self.field.Jarray[0:4,:,0:3,:],me-1)
@@ -609,7 +618,7 @@ class EM2D(object):
     elif self.solvergeom == w3d.XZgeom:
       settitles(title,'Z','X','t = %gs'%(top.time))
     if l_transpose:
-     if npes>0:
+     if npes>1:
       kw.setdefault('xmin',w3d.zmmin)
       kw.setdefault('xmax',w3d.zmmax)
      else:
