@@ -249,6 +249,34 @@ end if
 
 end subroutine champ_b
 
+subroutine champ_f(f,dt)
+implicit none
+
+INTEGER :: j, k
+real(kind=8) :: dt
+real(kind=8) :: dtsdx,dtsdy,dtsepsi
+TYPE(EM2D_FIELDtype) :: f
+
+#ifdef MPIPARALLEL
+include "mpif.h"
+integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
+integer(MPIISZ):: mpirequest
+integer(MPIISZ):: w
+integer(MPIISZ):: messid 
+#endif
+dtsdx = dt/f%dx
+dtsdy = dt/f%dy
+dtsepsi = f%mu0*f%clight**2*dt
+
+do k = 1, f%ny+1
+  do j = 1, f%nx+1
+    f%F(j,k) = f%F(j,k) + dtsdx * (f%Ex(j,k) - f%Ex(j-1,k)) &
+                        + dtsdy * (f%Ey(j,k) - f%Ey(j,k-1)) &
+                        - dtsepsi * f%Rho(j,k)
+  end do
+end do
+
+end subroutine champ_f
 
 subroutine champ_e(f,dt)
 implicit none
@@ -564,8 +592,10 @@ TYPE(EM2D_FIELDtype) :: f
 INTEGER :: jb, kb, jf, kf,jk1,jk
 
 if(f%ylbound==periodic) then
-  f%Ex(0:f%nx+1,0)      = f%Ex(0:f%nx+1,f%ny+1)
-  f%Ex(0:f%nx+1,f%ny+2) = f%Ex(0:f%nx+1,1)
+!  f%Ex(0:f%nx+1,0)      = f%Ex(0:f%nx+1,f%ny+1)
+!  f%Ex(0:f%nx+1,f%ny+2) = f%Ex(0:f%nx+1,1)
+  f%Ex(0:f%nx+1,0)      = f%Ex(0:f%nx+1,f%ny)
+  f%Ex(0:f%nx+1,f%ny+2) = f%Ex(0:f%nx+1,2)
 
 !else if(.not. (l_moving_window .and. l_elaser_out_plane)) then
 else 
@@ -625,8 +655,10 @@ else
 end if
 
 if(f%xlbound==periodic) then
-  f%Ey(0,0:f%ny+1)      = f%Ey(f%nx+1,0:f%ny+1)
-  f%Ey(f%nx+2,0:f%ny+1) = f%Ey(1,0:f%ny+1)
+!  f%Ey(0,0:f%ny+1)      = f%Ey(f%nx+1,0:f%ny+1)
+!  f%Ey(f%nx+2,0:f%ny+1) = f%Ey(1,0:f%ny+1)
+  f%Ey(0,0:f%ny+1)      = f%Ey(f%nx,0:f%ny+1)
+  f%Ey(f%nx+2,0:f%ny+1) = f%Ey(2,0:f%ny+1)
 
 else if(.not. (l_moving_window .and. (.not.l_elaser_out_plane))) then
   jf = 0
@@ -782,8 +814,10 @@ TYPE(EM2D_FIELDtype) :: f
 INTEGER :: jb, kb, jf, kf,jk1,jk
 
 if(f%ylbound==periodic) then
-  f%Bx(0:f%nx+1,0)      = f%Bx(0:f%nx+1,f%ny+1)
-  f%Bx(0:f%nx+1,f%ny+2) = f%Bx(0:f%nx+1,1)
+!  f%Bx(0:f%nx+1,0)      = f%Bx(0:f%nx+1,f%ny+1)
+!  f%Bx(0:f%nx+1,f%ny+2) = f%Bx(0:f%nx+1,1)
+  f%Bx(0:f%nx+1,0)      = f%Bx(0:f%nx+1,f%ny)
+  f%Bx(0:f%nx+1,f%ny+2) = f%Bx(0:f%nx+1,2)
 
 !else if(.not. (l_moving_window .and. l_elaser_out_plane)) then
 else 
@@ -853,8 +887,10 @@ end do
 !end if
 
 if(f%xlbound==periodic) then
-  f%By(0,0:f%ny+1)    = f%By(f%nx+1,0:f%ny+1)
-  f%By(f%nx+2,0:f%ny+1) = f%By(1,0:f%ny+1)
+!  f%By(0,0:f%ny+1)    = f%By(f%nx+1,0:f%ny+1)
+!  f%By(f%nx+2,0:f%ny+1) = f%By(1,0:f%ny+1)
+  f%By(0,0:f%ny+1)    = f%By(f%nx,0:f%ny+1)
+  f%By(f%nx+2,0:f%ny+1) = f%By(2,0:f%ny+1)
 
 else if(.not. (l_moving_window .and. (.not. l_elaser_out_plane))) then
   jf = 0
