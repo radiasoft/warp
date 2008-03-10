@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.64 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.65 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -610,7 +610,7 @@ c Finds place where particle inside intercepted the surface and the
 c normal angle of the surface at that point.
 
       integer(ISZ):: i
-      real(kind=8):: xx,yy,zz,vsq,tt,zp0,zp1
+      real(kind=8):: xx,yy,zz,vsq,tt,zp0,vzp1
       real(kind=8):: ctheta,stheta,cphi,sphi
 
       ctheta = cos(theta)
@@ -630,15 +630,15 @@ c normal angle of the surface at that point.
 
         else
 
-          xx = xcent - x(i)
-          yy = ycent - y(i)
-          zz = zcent - z(i)
-          zp0 = xx*stheta*cphi + yy*sphi + zz*ctheta*cphi
-          zp1 = vx(i)*stheta*cphi + vy(i)*sphi + vz(i)*ctheta*cphi
-          if (zp1 == 0.) then
+          xx = x(i) - xcent
+          yy = y(i) - ycent
+          zz = z(i) - zcent
+          zp0 = xx*stheta*cphi + yy*sphi + zz*ctheta*cphi - z0
+          vzp1 = vx(i)*stheta*cphi + vy(i)*sphi + vz(i)*ctheta*cphi
+          if (vzp1 == 0.) then
             tt = LARGEPOS
           else
-            tt = zp0/zp1
+            tt = -zp0/vzp1
           endif
 
           xi(i) = vx(i)*tt + x(i)
@@ -3934,7 +3934,7 @@ c         --- is within the segment and the intercept time is smallest.
 c               --- Special case of a z plane, where there is only one
 c               --- possible intercept. If vz is zero, then there is no
 c               --- intercept, so skip.
-                if (vz(i) == 0.) continue
+                if (vz(i) == 0.) cycle
                 t1 = ((z(i)-zcent) - z_sr(il))/vz(i)
                 xx = -vx(i)*t1 + x(i) - xcent
                 yy = -vy(i)*t1 + y(i) - ycent
@@ -3969,7 +3969,7 @@ c               --- intercept, so skip.
                 else
 c                 z1 = LARGEPOS
 c                 z2 = LARGEPOS
-                  continue
+                  cycle
                 endif
                 if (z_sr(il) <= z1 .and. z1 <= z_sr(il+1)) then
                   if ((tt(i) > t1 .and. t1 > 0. .and. tt(i) > 0.) .or.
