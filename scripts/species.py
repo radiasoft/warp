@@ -600,7 +600,7 @@ in radius squared.
     
   def add_gaussian_dist(self,np,deltax,deltay,deltaz,vthx=0.,vthy=0.,vthz=0.,
                         xmean=0.,ymean=0.,zmean=0.,vxmean=0.,vymean=0.,vzmean=0.,
-                        zdist='random',nz=1000,fourfold=0,js=None,**kw):
+                        zdist='random',nz=1000,fourfold=0,js=None,lmomentum=0,**kw):
     if fourfold:np=nint(float(np)/4)
     if zdist=='random':
       x=SpRandom(0.,deltax,np)
@@ -623,12 +623,10 @@ in radius squared.
           ya = ysign*y+ymean
           vxa = xsign*vx+vxmean
           vya = ysign*vy+vymean
-          if top.lrelativ:
+          if lmomentum:
             gi=1./sqrt(1.+(vxa*vxa+vya*vya+vza*vza)/clight**2)
-            lmomentum=true
           else:
             gi=1.
-            lmomentum=false
           self.addpart(xa,ya,za,vxa,vya,vza,gi=gi,js=js,lmomentum=lmomentum,**kw)
     if zdist=='regular': 
       dz=16.*deltaz/nz
@@ -661,12 +659,10 @@ in radius squared.
               ya = ysign*y+ymean
               vxa = xsign*vx+vxmean
               vya = ysign*vy+vymean
-              if top.lrelativ:
+              if lmomentum:
                 gi=1./sqrt(1.+(vxa*vxa+vya*vya+vza*vza)/clight**2)
-                lmomentum=true
               else:
                 gi=1.
-                lmomentum=false
               self.addpart(xa,ya,za,vxa,vya,vza,gi=gi,js=js,lmomentum=lmomentum,**kw)
     
   def gather_zmmnts_locs(self):
