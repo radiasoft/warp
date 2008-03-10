@@ -221,11 +221,19 @@ class Maps_simple:
              top.gamadv,top.lrelativ)
  
 class Maps_lattice:
-  def __init__(self, Map, length, s_posn, ecflag = 1):
+  def __init__(self, Map, length, s_posn, ecflag = 1, name = "", alphax=0., alphay=0.,
+                     dispx=0.,dispy=0.,disppx=0.,disppy=0.):
      self.Map = Map
      self.L   = length
      self.s_posn = s_posn
      self.ecflag = ecflag
+     self.name = name
+     self.alphax = alphax
+     self.alphay = alphay
+     self.dispx = dispx
+     self.disppx = disppx
+     self.dispy = dispy
+     self.disppy = disppy
 
   def apply_transfer_map(self,pg,il,iu):
       apply_map(iu-il,
@@ -241,7 +249,9 @@ class Maps_lattice:
                        top.gammabar)
 
 class Maps_Parameters:
-  def __init__(self,gamma_t = 0,harmn_num = 0,sync_freq = 0,sync_tune = 0,eta = 0,gamma_b = 0,Ergy = 0,alpha = 0, mo = 938280000., circum=0):
+  def __init__(self,gamma_t = 0,harmn_num = 0,sync_freq = 0,sync_tune = 0,
+                    eta = 0,gamma_b = 0,Ergy = 0,alpha = 0, mo = 938280000., 
+                    circum=0):
    if gamma_b == 0:
     self.gamma = Ergy/mo 
    else:
@@ -310,7 +320,6 @@ class Maps_Parameters:
 
     return Map
 
-
   def Thick_quad(self,k,L):
     Be   = self.Beta
     ga = self.gamma
@@ -361,6 +370,7 @@ class Maps_Parameters:
     M65 = 0.
     M66 = 1.
 
+    return Map
 
   def Drft(self,L):
     Be   = self.Beta 

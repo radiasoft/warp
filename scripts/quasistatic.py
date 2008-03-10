@@ -17,7 +17,8 @@ class Quasistatic:
                nparpgrp=top.nparpgrp,Ninit=1000,l_mode=1,l_selfe=1,l_selfi=1,maps=None,pboundxy=None,
                conductors=[],l_elecuniform=0,scraper=None,l_weakstrong=0,nelecperiod=1,
                backgroundtype=Electron,l_push_z=true,l_inject_elec_MR=false,l_warpzmmnt=false,
-               npushzperiod=1,lattice=None,l_freeze_xelec=false):
+               npushzperiod=1,lattice=None,l_freeze_xelec=false,
+               dispx=None,dispy=None,disppx=None,disppy=None):
     w3d.solvergeom=w3d.XYgeom
     self.gridelecs=[]
     self.gridions=[]
@@ -154,7 +155,7 @@ class Quasistatic:
       self.nst=len(lattice)
       top.dt=lattice[0].L/top.vbeam
     self.ilcount=zeros(w3d.nzp+1)
-    
+
   def reset_timers(self):
     self.time_loop=0.
     self.time_sort=0.
@@ -179,13 +180,12 @@ class Quasistatic:
      ptimeloop = wtime()
      
      # --- sets flag for pushing electrons
-     if not self.l_weakstrong:
-       l_push_elec=1
+     if self.lattice is not None:
+       l_push_elec = self.lattice[self.ist].ecflag     
+       print 'l_push_elec',l_push_elec
      else:
-       if (top.it-(npes-me))%self.nelecperiod==0:
-         l_push_elec=1
-       else:
-         l_push_elec=0
+       l_push_elec = (not self.l_weakstrong) or ((top.it-(npes-me))%self.nelecperiod==0)
+
      # --- call beforestep functions
      callbeforestepfuncs.callfuncsinlist()
 
@@ -1290,10 +1290,13 @@ class Quasistatic:
         if np>0:
           zp=pg.zp[il:iu].copy()
           self.lattice[self.ist].apply_transfer_map(pg,il,iu)
+        if self.iz==w3d.nzp-2:print 'push beam in ',self.lattice[self.ist].name
         self.ilcount[js]+=1
         istadd=1
         while self.lattice[(self.ist+istadd)%self.nst].L==0.:
-          if np>0:self.lattice[(self.ist+istadd)%self.nst].apply_transfer_map(pg,il,iu)
+          if np>0:
+            self.lattice[(self.ist+istadd)%self.nst].apply_transfer_map(pg,il,iu)
+          if self.iz==w3d.nzp-2:print 'push beam in ',self.lattice[(self.ist+istadd)%self.nst].name
           self.ilcount[js]+=1
           istadd+=1
         if js==0:self.ist=(self.ist+istadd-1)%self.nst
@@ -1590,11 +1593,24 @@ class Quasistatic:
       x = getx(js=js,gather=0,pgroup=pg)
       y = gety(js=js,gather=0,pgroup=pg)
       z = getz(js=js,gather=0,pgroup=pg)
-      xp = getux(js=js,gather=0,pgroup=pg)/getuz(js=js,gather=0,pgroup=pg)
-      yp = getuy(js=js,gather=0,pgroup=pg)/getuz(js=js,gather=0,pgroup=pg)
       gaminv = getgaminv(js=js,gather=0,pgroup=pg)
-      beta = (1.-gaminv)*(1.+gaminv)
+      uz = getuz(js=js,gather=0,pgroup=pg)
+      xp = getux(js=js,gather=0,pgroup=pg)/uz
+      yp = getuy(js=js,gather=0,pgroup=pg)/uz
+      beta = sqrt((1.-gaminv)*(1.+gaminv))
       gamma = 1./gaminv
+#      if 1:#self.lattice is not None:
+#        dpp = getuz(js=js,gather=0,pgroup=pg)/(top.vbeam*top.gammabar)-1.
+#        x = x-2.628585781*dpp
+#        xp = xp-0.05660608619*dpp
+#      if 0:#self.lattice is not None:
+      if self.lattice is not None:
+       if self.lattice[self.ist].dispx is not None:
+        dpp = getuz(js=js,gather=0,pgroup=pg)/(top.vbeam*top.gammabar)-1.
+        x = x-self.lattice[self.ist].dispx*dpp
+        y = y-self.lattice[self.ist].dispy*dpp
+        xp = xp-self.lattice[self.ist].disppx*dpp
+        yp = yp-self.lattice[self.ist].disppy*dpp
       xpn = xp*beta*gamma
       ypn = yp*beta*gamma
       self.xbartmp+=sum(x)      
@@ -1639,10 +1655,11 @@ class Quasistatic:
     self.ypn2.append(self.ypn2tmp)
     self.xxpnbar.append(self.xxpnbartmp)
     self.yypnbar.append(self.yypnbartmp)
-    if top.it==0 or not lparallel:
-      self.timemmnts.append(top.time)
-    else:
-      self.timemmnts.append(top.time+(me-npes+1)*top.dt)
+    self.timemmnts.append(top.time)
+#    if top.it==0 or not lparallel:
+#      self.timemmnts.append(top.time)
+#    else:
+#      self.timemmnts.append(top.time+(me-npes+1)*top.dt)
     if self.l_verbose:print me,top.it,self.iz,'exit getmmnts_store'
       
   def getpnum(self):
