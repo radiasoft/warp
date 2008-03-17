@@ -34,7 +34,7 @@ implicit none
 
 INTEGER :: j, k
 real(kind=8) :: dt
-real(kind=8) :: dtsdx,dtsdy
+real(kind=8) :: dtsdx,dtsdy,a,b
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Exapr, Eyapr
 TYPE(EM2D_FIELDtype) :: f
 
@@ -78,6 +78,45 @@ if (f%l_usecoeffs) then
     end do
   end do
 else
+ if (f%l_uselargestencil) then
+  a = 7./12.
+  b  = 5./24.
+  ! advance Bx
+  do k = 1, f%ny+1
+!    j = 0
+!      f%Bx(j,k) = f%Bx(j,k) - dtsdy * (f%Ez(j,k)   - f%Ez(j,k-1)) 
+!    j = f%nx+1
+!      f%Bx(j,k) = f%Bx(j,k) - dtsdy * (f%Ez(j,k)   - f%Ez(j,k-1)) 
+    do j = 1, f%nx
+      f%Bx(j,k) = f%Bx(j,k) - a * dtsdy * (f%Ez(j,  k)   - f%Ez(j,  k-1)) &
+                            - b * dtsdy * (f%Ez(j+1,k)   - f%Ez(j+1,k-1)) &
+                            - b * dtsdy * (f%Ez(j-1,k)   - f%Ez(j-1,k-1)) 
+    end do
+  end do
+
+  ! advance By
+  do k = 0, f%ny+1
+    if(k==0 .or. k==f%ny+1) then
+!      do j = 1, f%nx+1
+!        f%By(j,k) = f%By(j,k) + dtsdx * (f%Ez(j,k)   - f%Ez(j-1,k)) 
+!      end do
+    else
+      do j = 1, f%nx+1
+        f%By(j,k) = f%By(j,k) + a * dtsdx * (f%Ez(j,k)   - f%Ez(j-1,k  )) &
+                              + b * dtsdx * (f%Ez(j,k+1) - f%Ez(j-1,k+1)) &
+                              + b * dtsdx * (f%Ez(j,k-1) - f%Ez(j-1,k-1))
+      end do
+    end if
+  end do
+  
+  ! advance Bz 
+  do k = 0, f%ny+1
+    do j = 0, f%nx+1
+      f%Bz(j,k) = f%Bz(j,k) - dtsdx * (f%Ey(j+1,k) - f%Ey(j,k)) &
+                            + dtsdy * (f%Ex(j,k+1) - f%Ex(j,k))
+    end do
+  end do
+ else
   ! advance Bx
   do k = 1, f%ny+1
     do j = 0, f%nx+1
@@ -98,6 +137,7 @@ else
                             + dtsdy * (f%Ex(j,k+1) - f%Ex(j,k))
     end do
   end do
+ end if
 end if
 
 ! add source term
@@ -147,20 +187,32 @@ if (f%l_add_source) then
  if (.not.l_moving_window) then
   if(l_elaser_out_plane) then
   ! add contribution from Ez source (Ez_in)
-!    k = f%js
-!    do j = 0, f%nx+1
-!      f%Bx(j,k) = f%Bx(j,k) - dtsdy * (-f%Ez_in(j))
-!    end do
+
+   if (f%l_uselargestencil) then
+    a = 7./12.
+    b  = 5./24.
+    ! advance By
+    j = f%js
+!    do k = 0, f%ny+1
+    do k = 1, f%ny
+      f%By(j,k) = f%By(j,k) + a * dtsdx * (-f%Ez_in(k)) &
+                            + b * dtsdx * (-f%Ez_in(k+1)) &
+                            + b * dtsdx * (-f%Ez_in(k-1)) 
+    end do
 
     ! Evaluate Bx and By source
-!    do j = 1, f%nx+1
-!      f%By_in(j) = f%By_in(j) + dtsdx * (f%Ez_in(j) - f%Ez_in(j-1))
-!    end do
+    do k = 1, f%ny+1
+      f%Bx_in(k) = 0.!f%Bx_in(k) - dtsdy * (f%Ez_in(k) - f%Ez_in(k-1))
+    end do
 
-!    do j = 0, f%nx+1
-!      f%Bx_in(j) = f%cst1 * f%Bx_in(j) + f%cst2 * f%Ez_in(j)
-!    end do
- 
+!    do k = 0, f%ny+1
+    do k = 1, f%ny
+      f%By_in(k) = f%cst1 * f%By_in(k) - a*f%cst2 * f%Ez_in(k) &
+                                       - b*f%cst2 * f%Ez_in(k+1) &
+                                       - b*f%cst2 * f%Ez_in(k-1)
+    end do
+
+   else
     j = f%js
     do k = 0, f%ny+1
       f%By(j,k) = f%By(j,k) + dtsdx * (-f%Ez_in(k))
@@ -168,13 +220,13 @@ if (f%l_add_source) then
 
     ! Evaluate Bx and By source
     do k = 1, f%ny+1
-      f%Bx_in(k) = f%Bx_in(k) - dtsdy * (f%Ez_in(k) - f%Ez_in(k-1))
+      f%Bx_in(k) = 0.!f%Bx_in(k) - dtsdy * (f%Ez_in(k) - f%Ez_in(k-1))
     end do
 
     do k = 0, f%ny+1
       f%By_in(k) = f%cst1 * f%By_in(k) - f%cst2 * f%Ez_in(k)
     end do
-
+   end if
 
   else
     j = f%js-1
@@ -286,7 +338,7 @@ INTEGER :: j, k
 real(kind=8) :: dt,dtsdx,dtsdy,mudt
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Bzapr
 
-real(kind=8) :: alpha = 0.!5
+real(kind=8) :: a,b,c
 
 #ifdef MPIPARALLEL
 include "mpif.h"
@@ -352,6 +404,77 @@ if (f%l_usecoeffs) then
     end do
   end do
 else
+ if (f%l_uselargestencil) then
+  a = 7./12.
+  b  = 5./24.
+  ! advance Ex
+  do k = 1, f%ny+1
+!    j = 0
+!      f%Ex(j,k) = 1.e10!f%Ex(j,k) + dtsdy * (f%Bz(j,k)   - f%Bz(j,k-1)) - mudt  * f%J(j,k,1)
+!    j = f%nx+1
+!      f%Ex(j,k) = 1.e10!f%Ex(j,k) + dtsdy * (f%Bz(j,k)   - f%Bz(j,k-1)) - mudt  * f%J(j,k,1)
+    do j = 1, f%nx
+      f%Exdj(j,k) = - a*mudt  * f%J(j,k,1)  &
+                    - b*mudt  * f%J(j+1,k,1)  &
+                    - b*mudt  * f%J(j-1,k,1)  &
+                    - f%Exdj(j,k)
+      f%Ex(j,k) = f%Ex(j,k) + a * (dtsdy * (f%Bz(j,  k)   - f%Bz(j,  k-1)) - mudt * f%J(j,  k,1)) &
+                            + b * (dtsdy * (f%Bz(j+1,k)   - f%Bz(j+1,k-1)) - mudt * f%J(j+1,k,1)) &
+                            + b * (dtsdy * (f%Bz(j-1,k)   - f%Bz(j-1,k-1)) - mudt * f%J(j-1,k,1)) &
+                            - 0.5*f%Exdj(j,k)
+      f%Exdj(j,k) = - a*mudt  * f%J(j,k,1)  &
+                    - b*mudt  * f%J(j+1,k,1)  &
+                    - b*mudt  * f%J(j-1,k,1)  
+    end do
+  end do
+
+  ! advance Ey
+  do k = 0, f%ny+1
+    if(k==0 .or. k==f%ny+1) then
+!      do j = 1, f%nx+1
+!        f%Ey(j,k) = 0.e10!f%Ey(j,k) - dtsdx * (f%Bz(j,k)   - f%Bz(j-1,k)) - mudt  * f%J(j,k,2)
+!      end do
+    else
+      do j = 1, f%nx+1
+      f%Eydj(j,k) = - a*mudt  * f%J(j,k,2)  &
+                    - b*mudt  * f%J(j,k+1,2)  &
+                    - b*mudt  * f%J(j,k-1,2)  &
+                    - f%Eydj(j,k)
+        f%Ey(j,k) = f%Ey(j,k) - a * (dtsdx * (f%Bz(j,k)   - f%Bz(j-1,k  )) + mudt * f%J(j,k  ,2)) &
+                              - b * (dtsdx * (f%Bz(j,k+1) - f%Bz(j-1,k+1)) + mudt * f%J(j,k+1,2)) &
+                              - b * (dtsdx * (f%Bz(j,k-1) - f%Bz(j-1,k-1)) + mudt * f%J(j,k-1,2)) &
+                            - 0.5*f%Eydj(j,k)                              
+      f%Eydj(j,k) = - a*mudt  * f%J(j,k,2)  &
+                    - b*mudt  * f%J(j,k+1,2)  &
+                    - b*mudt  * f%J(j,k-1,2)  
+      end do
+    end if
+  end do
+
+  a = 7./12.
+  b  = 1./12.
+  c = 1./48.
+  ! advance Ez 
+  do k = 0, f%ny+1
+    do j = 0, f%nx+1
+      f%Ezdj(j,k) = - mudt  * f%J(j,k,3) - f%Ezdj(j,k)
+      if (j==0 .or. j==f%nx+1 .or. k==0 .or. k==f%ny+1) then 
+      f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
+                            - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
+                            - mudt  * f%J(j,k,3) &
+                            - 0.5 * f%Ezdj(j,k)
+      else
+      f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
+                            - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
+                            - mudt  * f%J(j,k,3) &
+                            - 0.5 * f%Ezdj(j,k)
+      end if      
+      f%Ezdj(j,k) = - mudt  * f%J(j,k,3)
+    end do
+  end do
+
+ else
+
   ! advance Ex
   do k = 1, f%ny+1
     do j = 0, f%nx+1
@@ -371,17 +494,12 @@ else
   ! advance Ez 
   do k = 0, f%ny+1
     do j = 0, f%nx+1
-      if (j==0 .or. j==f%nx+1) then 
       f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
                             - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
                             - mudt  * f%J(j,k,3)
-      else
-      f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
-                            - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
-                            - mudt  * ((1.-2.*alpha)*f%J(j,k,3)+alpha*(f%J(j+1,k,3)+f%J(j-1,k,3)))
-      end if      
     end do
   end do
+ end if
 end if
 
 !if (l_elaser_out_plane) then
@@ -596,7 +714,6 @@ if(f%ylbound==periodic) then
 !  f%Ex(0:f%nx+1,f%ny+2) = f%Ex(0:f%nx+1,1)
   f%Ex(0:f%nx+1,0)      = f%Ex(0:f%nx+1,f%ny)
   f%Ex(0:f%nx+1,f%ny+2) = f%Ex(0:f%nx+1,2)
-
 !else if(.not. (l_moving_window .and. l_elaser_out_plane)) then
 else 
   kf = 0
@@ -799,6 +916,17 @@ else if(.not. (l_moving_window .and. (.not.l_elaser_out_plane))) then
   kb = kf+nbndy
   jk=jk1+kb*n1x
   Ey(jk) = f%Ey(jf,kf)
+end if
+
+if(f%l_uselargestencil) then
+ if(f%ylbound==periodic) then
+    f%Ey(0:f%nx+2,0)      = f%Ey(0:f%nx+2,f%ny)
+    f%Ey(0:f%nx+2,f%ny+1) = f%Ey(0:f%nx+2,1)
+ endif
+ if(f%xlbound==periodic) then
+    f%Ex(0,0:f%ny+2)      = f%Ex(f%nx,0:f%ny+2)
+    f%Ex(f%nx+1,0:f%ny+2) = f%Ex(1,0:f%ny+2)
+ endif
 end if
 
 return
@@ -1014,6 +1142,17 @@ else if(.not. (l_moving_window .and. (.not. l_elaser_out_plane))) then
   kb = kf+nbndy
   jk=jk1+kb*n1x
   Ey(jk) = f%By(jf,kf)
+end if
+
+if(f%l_uselargestencil) then
+ if(f%ylbound==periodic) then
+    f%By(0:f%nx+2,0)      = f%By(0:f%nx+2,f%ny)
+    f%By(0:f%nx+2,f%ny+1) = f%By(0:f%nx+2,1)
+ endif
+ if(f%xlbound==periodic) then
+    f%Bx(0,0:f%ny+2)      = f%Bx(f%nx,0:f%ny+2)
+    f%Bx(f%nx+1,0:f%ny+2) = f%Bx(1,0:f%ny+2)
+ endif
 end if
 
 return
