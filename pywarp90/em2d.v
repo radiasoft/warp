@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.16 $, $Date: 2008/03/10 13:42:10 $
+#@(#) File EM2D.V, version $Revision: 1.17 $, $Date: 2008/03/17 19:31:45 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -184,6 +184,8 @@ nxi integer
 nyi integer
 nxf integer
 nyf integer
+nxl integer
+nyl integer
 nxcoeffs integer
 nycoeffs integer
 nxcopy integer 
@@ -215,6 +217,7 @@ l_add_source       logical /.true./
 l_overcycle_ions   logical /.true./
 l_addpatchresidual logical /.false./
 l_usecoeffs        logical /.false./
+l_uselargestencil  logical /.false./
 l_pushf            logical /.false./
 ntemp integer
 ipulse integer /1/
@@ -234,6 +237,9 @@ Bx(0:nx+3,0:ny+2) _real
 By(0:nx+3,0:ny+2) _real
 Bz(0:nx+3,0:ny+2) _real
 F(0:nxf+3,0:nyf+2) _real
+Exdj(0:nxl+3,0:nyl+2) _real
+Eydj(0:nxl+3,0:nyl+2) _real
+Ezdj(0:nxl+3,0:nyl+2) _real
 aEx(0:nxcoeffs+3,0:nycoeffs+2) _real
 bEx(0:nxcoeffs+3,0:nycoeffs+2) _real
 cEx(0:nxcoeffs+3,0:nycoeffs+2) _real
