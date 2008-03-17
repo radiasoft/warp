@@ -155,6 +155,7 @@ class Quasistatic:
       self.nst=len(lattice)
       top.dt=lattice[0].L/top.vbeam
     self.ilcount=zeros(w3d.nzp+1)
+    self.ionstonext = [0]
 
   def reset_timers(self):
     self.time_loop=0.
@@ -244,7 +245,7 @@ class Quasistatic:
          
        if iz==(self.izmax-3):
          if self.l_timing:ptime = wtime()
-         self.sendrecv_storedions()
+         self.sendrecv_storedions_toprev()
          if self.l_timing: self.time_sendrecv_storeions += wtime()-ptime
        if self.l_timing:ptime = wtime()
        # --- push ions velocity (2nd half)
@@ -334,7 +335,7 @@ class Quasistatic:
        # WARNING: under current configuration, velocity push MUST be BEFORE positions push
        if me>=(npes-1-top.it):
          self.gather_ions_fields()
-         if iz<w3d.nzp-1:
+         if iz<self.izmax-1:
            self.push_ions_velocity_full(iz+1)
 #           np=getn(js=iz+1,bcast=0,gather=0);x=getx(js=iz+1,bcast=0,gather=0);y=gety(js=iz+1,bcast=0,gather=0);z=getz(js=iz+1,bcast=0,gather=0)
 #           print 'izb,x,y,z',iz+1,np,ave(x),std(x),ave(y),std(y),ave(z),std(z)
@@ -343,6 +344,7 @@ class Quasistatic:
 #           ex=getex(js=iz+1,bcast=0,gather=0);ey=getey(js=iz+1,bcast=0,gather=0);ez=getez(js=iz+1,bcast=0,gather=0)
 #           print 'iza,x,y,z',iz+1,np,ave(x),std(x),ave(y),std(y),ave(z),std(z)
 #           print 'iza,ex,ey,ez',iz+1,ave(ex),std(ex),ave(ey),std(ey),ave(ez),std(ez)
+           if iz==self.izmax-2:self.store_ionstonext(iz+1)
            self.apply_ions_bndconditions(iz+1)
          if iz==0:
            self.push_ions_velocity_full(iz)
@@ -473,30 +475,65 @@ class Quasistatic:
     if pg.nps[js]==0:
       self.ionstoprev = [0]
       return    
-    ii = il+compress(pg.zp[il:iu]<w3d.zmminp,arange(pg.nps[js]))    
+    ii = il+compress(pg.zp[il:iu]<w3d.zmminp,arange(pg.nps[js]))   
     if len(ii)==0:
       self.ionstoprev = [0]
     else:
+#      print 'me',me,len(ii),(take(pg.zp,ii,0)-w3d.zmminp)/w3d.dz
       self.ionstoprev = [len(ii)]
-      self.ionstoprev.append(take(pg.xp[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.yp[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.zp[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.uxp[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.uyp[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.uzp[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.gaminv[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.ex[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.ey[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.ez[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.bx[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.by[il:iu],ii,0).copy())
-      self.ionstoprev.append(take(pg.bz[il:iu],ii,0).copy())
+      self.ionstoprev.append(take(pg.xp,ii,0).copy())
+      self.ionstoprev.append(take(pg.yp,ii,0).copy())
+      self.ionstoprev.append(take(pg.zp,ii,0).copy())
+      self.ionstoprev.append(take(pg.uxp,ii,0).copy())
+      self.ionstoprev.append(take(pg.uyp,ii,0).copy())
+      self.ionstoprev.append(take(pg.uzp,ii,0).copy())
+      self.ionstoprev.append(take(pg.gaminv,ii,0).copy())
+      self.ionstoprev.append(take(pg.ex,ii,0).copy())
+      self.ionstoprev.append(take(pg.ey,ii,0).copy())
+      self.ionstoprev.append(take(pg.ez,ii,0).copy())
+      self.ionstoprev.append(take(pg.bx,ii,0).copy())
+      self.ionstoprev.append(take(pg.by,ii,0).copy())
+      self.ionstoprev.append(take(pg.bz,ii,0).copy())
       if pg.npid>0:
-        self.ionstoprev.append(take(pg.pid[il:iu,:],ii,0).copy())
+        self.ionstoprev.append(take(pg.pid,ii,0).copy())
     put(pg.gaminv,ii,0.)
     processlostpart(pg,js+1,top.clearlostpart,top.time+top.dt*pg.ndts[js],top.zbeam)
     self.set_sw(js)
     if self.l_verbose:print me,top.it,self.iz,'exit store_ionstoprev'
+    
+  def store_ionstonext(self,js):
+    if self.l_verbose:print me,top.it,js,'enter store_ionstonext'
+    pg = self.pgions
+    il = pg.ins[js]-1
+    iu = il+pg.nps[js]
+    if pg.nps[js]==0:
+      self.ionstonext = [0]
+      return    
+    ii = il+compress(pg.zp[il:iu]>=w3d.zmmaxp,arange(pg.nps[js]))    
+    if len(ii)==0:
+      self.ionstonext = [0]
+    else:
+#      print 'me',me,len(ii),(take(pg.zp,ii,0)-w3d.zmminp)/w3d.dz
+      self.ionstonext = [len(ii)]
+      self.ionstonext.append(take(pg.xp,ii,0).copy())
+      self.ionstonext.append(take(pg.yp,ii,0).copy())
+      self.ionstonext.append(take(pg.zp,ii,0).copy())
+      self.ionstonext.append(take(pg.uxp,ii,0).copy())
+      self.ionstonext.append(take(pg.uyp,ii,0).copy())
+      self.ionstonext.append(take(pg.uzp,ii,0).copy())
+      self.ionstonext.append(take(pg.gaminv,ii,0).copy())
+      self.ionstonext.append(take(pg.ex,ii,0).copy())
+      self.ionstonext.append(take(pg.ey,ii,0).copy())
+      self.ionstonext.append(take(pg.ez,ii,0).copy())
+      self.ionstonext.append(take(pg.bx,ii,0).copy())
+      self.ionstonext.append(take(pg.by,ii,0).copy())
+      self.ionstonext.append(take(pg.bz,ii,0).copy())
+      if pg.npid>0:
+        self.ionstonext.append(take(pg.pid,ii,0).copy())
+    put(pg.gaminv,ii,0.)
+    processlostpart(pg,js+1,top.clearlostpart,top.time+top.dt*pg.ndts[js],top.zbeam)
+    self.set_sw(js)
+    if self.l_verbose:print me,top.it,self.iz,'exit store_ionstonext'
     
   def sendrecv_mgparams(self):
     print me,'enter sendrecv_mgparams'
@@ -531,14 +568,15 @@ class Quasistatic:
             g.mgparam = recved[i];i+=1
     print me,'exit sendrecv_mgparams'
 
-  def sendrecv_storedions(self):
+  def sendrecv_storedions_toprev(self):
     if not lparallel:return
-    if self.l_verbose:print me,top.it,self.iz,'enter sendrecv_storedions'
+    if self.l_verbose:print me,top.it,self.iz,'enter sendrecv_storedions_toprev'
     # --- sends stored ions
     if me>0:
       mpi.send(self.ionstoprev,me-1)
       if self.ionstoprev[0]>0:
         if self.l_parallelverbose:print me, 'sends ',self.ionstoprev[0],' ions to ',me-1
+#        print 'send itn',self.ionstoprev[0],self.ionstoprev[3]
     # --- receives stored ions
     if me<npes-1:
       js = w3d.nzp-1
@@ -547,6 +585,7 @@ class Quasistatic:
       np = recved[0]
       if np>0:
         if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me+1
+#        print 'recved itn',recved[0],recved[3]
         if pg.npid>0:
           pid=self.recved[-1]
         else:
@@ -571,9 +610,53 @@ class Quasistatic:
                      lfields=1,
                      pgroup=self.pgions)
         self.set_sw(js)
-    if self.l_verbose:print me,top.it,self.iz,'exit sendrecv_storedions'
+    if self.l_verbose:print me,top.it,self.iz,'exit sendrecv_storedions_toprev'
              
-  def sendparticlestonext(self,js,ii):
+  def sendrecv_storedions_tonext(self):
+    if not lparallel:return
+    if self.l_verbose:print me,top.it,self.iz,'enter sendrecv_storedions_tonext'
+    # --- sends stored ions
+    if me<npes-1:
+      mpi.send(self.ionstonext,me+1)
+      if self.ionstonext[0]>0:
+        if self.l_parallelverbose:print me, 'sends ',self.ionstonext[0],' ions to ',me+1
+#        print 'send',self.ionstonext[0],self.ionstonext[3]
+    # --- receives stored ions
+    if me>0:
+      js = 0
+      pg = self.pgions
+      recved = mpirecv(me-1)
+      np = recved[0]
+      if np>0:
+        if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me-1
+#        print 'recved',recved[0],recved[3]
+        if pg.npid>0:
+          pid=self.recved[-1]
+        else:
+          pid=0.
+        addparticles(js = js,
+                     x  = recved[1],
+                     y  = recved[2],
+                     z  = recved[3],
+                     vx = recved[4],
+                     vy = recved[5],
+                     vz = recved[6],
+                     gi = recved[7],
+                     ex = recved[8],
+                     ey = recved[9],
+                     ez = recved[10],
+                     bx = recved[11],
+                     by = recved[12],
+                     bz = recved[13],                     
+                     pid=pid,
+                     lmomentum=1,
+                     lallindomain=1,
+                     lfields=1,
+                     pgroup=self.pgions)
+        self.set_sw(js)
+    if self.l_verbose:print me,top.it,self.iz,'exit sendrecv_storedions_tonext'
+             
+  def sendparticlestonextold(self,js,ii):
     if self.l_verbose:print me,top.it,self.iz,'enter sendparticlestonext'
     pg = self.pgions
     top.pgroup = pg
@@ -603,7 +686,7 @@ class Quasistatic:
     self.set_sw(js)
     if self.l_verbose:print me,top.it,self.iz,'exit sendparticlestonext'
     
-  def recvparticlesfromprevious(self):
+  def recvparticlesfrompreviousold(self):
     if self.l_verbose:print me,top.it,self.iz,'enter recvparticlesfromprevious'
     pg = self.pgions
     top.pgroup = pg
@@ -726,7 +809,7 @@ class Quasistatic:
         tosend.append(g1.rho)
       mpi.send(tosend,me+1)
       del tosend
-      self.sendparticlestonext(js,ii)
+#      self.sendparticlestonext(js,ii)
     if lparallel and me>0:
       g0 = self.gridions[0]
       g1 = self.gridions[1]
@@ -738,7 +821,8 @@ class Quasistatic:
         g0.rho += rhorecved[ig*2]
         g1.rho += rhorecved[ig*2+1]
       del rhorecved
-      self.recvparticlesfromprevious()
+#      self.recvparticlesfromprevious()
+    self.sendrecv_storedions_tonext()
     if self.l_verbose:print me,top.it,self.iz,'exit deposit_ions_last_step'
 #    if lparallel:mpi.barrier()
                       
@@ -842,7 +926,9 @@ class Quasistatic:
       zmin = js*w3d.dz+w3d.zmminp
       iz = floor((pg.zp[il:iu]-zmin)/w3d.dz) 
       if len(iz)>0:
-        if min(iz)<-1 or max(iz)>1: print 'error iz',min(iz),max(iz) 
+        if min(iz)<-1 or max(iz)>1: 
+          print 'error in sort_ions_along_z:iz',min(iz),max(iz),pg.zp[il:iu]
+          raise()
       izleft = il+compress(iz<0,arange(pg.nps[js]))
       izright = il+compress(iz>0,arange(pg.nps[js]))
       if js==0 and len(izleft)>0:raise('Error in sort_ions_along_z:js==0 and len(izleft)>0')   
