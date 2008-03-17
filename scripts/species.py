@@ -283,14 +283,30 @@ Creates a new species of particles. All arguments are optional.
       if nx is None:nx=w3d.nx
       if ny is None:ny=w3d.ny
       if nz is None:nz=w3d.nz
-      density = fzeros([nx+1,ny+1,nz+1],'d')
-      densityc = fzeros([nx+1,ny+1,nz+1],'d')
+      if w3d.solvergeom is w3d.XYgeom:
+        density = fzeros([nx+1,ny+1],'d')
+        densityc = fzeros([nx+1,ny+1],'d')
+      else:
+        if w3d.solvergeom is w3d.XZgeom:
+          density = fzeros([nx+1,nz+1],'d')
+          densityc = fzeros([nx+1,nz+1],'d')
+        else:
+          density = fzeros([nx+1,ny+1,nz+1],'d')
+          densityc = fzeros([nx+1,ny+1,nz+1],'d')
     else:
-      nx = shape(dens)[0]-1
-      ny = shape(dens)[1]-1
-      nz = shape(dens)[2]-1
+      if w3d.solvergeom is w3d.XYgeom:
+        nx = shape(dens)[0]-1
+        ny = shape(dens)[1]-1
+      else:
+        if w3d.solvergeom is w3d.XZgeom:
+          nx = shape(dens)[0]-1
+          nz = shape(dens)[1]-1
+        else:
+          nx = shape(dens)[0]-1
+          ny = shape(dens)[1]-1
+          nz = shape(dens)[2]-1
       density = dens
-      densityc = fzeros([nx+1,ny+1,nz+1],'d')
+      densityc = 0.*dens
 
     np=0
     for js in self.jslist:
@@ -311,14 +327,47 @@ Creates a new species of particles. All arguments are optional.
         else:
           w=top.pgroup.sw[js]*getpid(js=js,id=top.wpid-1,gather=0)
         if charge:w*=top.pgroup.sq[js]   
-        deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
-    if l_dividebyvolume:
-      density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
-      if l4symtry:
-        density[0,:,:] *= 2
-        density[:,0,:] *= 2
-      if l2symtry:
-        density[:,0,:] *= 2
+        if w3d.solvergeom is w3d.XYgeom:
+          deposgrid2d(1,np,x,y,w,nx,ny,density,densityc,xmin,xmax,ymin,ymax)
+        else:
+          if w3d.solvergeom is w3d.XZgeom:
+            deposgrid2d(1,np,x,z,w,nx,nz,density,densityc,xmin,xmax,zmin,zmax)
+          else:
+            deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
+    if w3d.solvergeom is w3d.XYgeom:
+       if l_dividebyvolume:
+        density*=nx*ny/((xmax-xmin)*(ymax-ymin))
+        if l4symtry:
+          density[0,:] *= 2
+          density[:,0] *= 2
+        if l2symtry:
+          density[:,0] *= 2
+        if w3d.boundxy is periodic:
+          density[0,:] += density[-1,:]; density[-1,:]=density[0,:]
+          density[:,0] += density[:,-1]; density[:,-1]=density[:,0]
+    else:
+      if w3d.solvergeom is w3d.XZgeom:
+         if l_dividebyvolume:
+          density*=nx*nz/((xmax-xmin)*(zmax-zmin))
+          if l4symtry:
+            density[0,:] *= 2
+          if w3d.boundxy is periodic:
+            density[0,:] += density[-1,:]; density[-1,:,:]=density[0,:]
+          if w3d.bound0 is periodic:
+            density[:,0] += density[:,-1]; density[:,-1]=density[:,0]
+      else:
+         if l_dividebyvolume:
+          density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
+          if l4symtry:
+            density[0,:,:] *= 2
+            density[:,0,:] *= 2
+          if l2symtry:
+            density[:,0,:] *= 2
+          if w3d.boundxy is periodic:
+            density[0,:,:] += density[-1,:,:]; density[-1,:,:]=density[0,:,:]
+            density[:,0,:] += density[:,-1,:]; density[:,-1,:]=density[:,0,:]
+          if w3d.bound0 is periodic:
+            density[:,:,0] += density[:,:,-1]; density[:,:,-1]=density[:,:,0]
     density[...] = parallelsum(density)
     if dens is None:return density
      
