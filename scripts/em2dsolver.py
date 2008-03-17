@@ -125,6 +125,7 @@ class EM2D(object):
       else:
         self.nfield_subcycle=int(top.dt/dt)+1
     self.dtinit = top.dt
+    
     # --- Create field and source arrays and other arrays.
     self.allocatefieldarrays()
 
@@ -590,6 +591,7 @@ class EM2D(object):
 
   def solve(self,iwhich=0):
     if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM2D.')
+    # --- Set nxl and nyl if using large stencil
     if(not self.l_onegrid):
       project_j(self.field,self.fpatchcoarse,self.fpatchfine)
     if self.l_onegrid:
@@ -597,6 +599,10 @@ class EM2D(object):
     else:
       fields = [self.field,self.fpatchcoarse,self.fpatchfine]    
     for field in fields:
+      if field.l_uselargestencil and field.nxl<>field.nx:
+        field.nxl=field.nx
+        field.nyl=field.ny
+        field.gchange()
       self.add_laser(field)
       grimax(field)
       dt = top.dt/self.nfield_subcycle
