@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_collision.F, version $Revision: 1.2 $, $Date: 2007/08/15 18:32:34 $
+c@(#) File w3d_collision.F, version $Revision: 1.3 $, $Date: 2008/03/18 00:42:39 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This has routines handling particle collisions
@@ -8,7 +8,7 @@ c  Alex Friedman, LLNL, (925)422-0827
 c  David P. Grote, LLNL, (925)423-7194
 c  Bruce Cohen, LLNL, (925)422-9823
 c=============================================================================
-      subroutine langevincollisions2d(lself,np,ux1,uy1,uz1,
+      subroutine langevincollisions3d(lself,np,ux1,uy1,uz1,
      &                                vxmi,vymi,vzmi,density2,vthsqi2,
      &                                q1,q2,m1,m2,vthsqinit1,vthsqinit2,
      &                                dt,loglambda,epvth)
@@ -18,7 +18,7 @@ c=============================================================================
       real(kind=8):: ux1(np),uy1(np),uz1(np)
       real(kind=8):: vxmi(np),vymi(np),vzmi(np),density2(np),vthsqi2(np)
       real(kind=8):: q1,q2,m1,m2,vthsqinit1,vthsqinit2
-      real(kind=8):: dt,loglambda,epvth
+      real(kind=8):: dt,loglambda(np),epvth
 
 cc CIC collision operator, 2 space, 3 velocity dimensions
 cc Implements Manheimer, Lampe, Joyce, JCP 138, 563 (1997)
@@ -53,8 +53,7 @@ c can cause a runaway of particle energy.--DON'T NEED TO WORRY THIS.
 c     --- First, calculate the part of the collision frequency that
 c     --- depends on constants or global quantities.
       nudtcoeff = dt*2**1.5/(3.*sqrt(pi))*
-     &            q1**2*q2**2*loglambda/m1**2/(4.*pi*eps0**2)
-
+     &            q1**2*q2**2/m1**2/(4.*pi*eps0**2)
 
 c     --- Weight factor to the thermal velocity incorporated to deal with
 c     --- a cooling instability.
@@ -78,7 +77,7 @@ c     --- Now loop over the test particles.
       do i=1,np
 
         vthsq2 = epvth*vthsqi2(i) + (1. - epvth)*vthsqinit2
-        nudt = nudtcoeff*density2(i)/vthsq2**1.5
+        nudt = nudtcoeff*density2(i)*loglambda(i)/vthsq2**1.5
         nudt = abs(nudt)
 
         if(nudt >= 0.99) then
@@ -182,5 +181,5 @@ c Galilean tranformation to lab velocity coordinates from drift frame
       enddo
 
       return
-      end  !!langevincollisions2d
+      end  !!langevincollisions3d
 c=============================================================================
