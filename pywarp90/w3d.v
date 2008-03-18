@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.282 $, $Date: 2008/03/10 16:52:49 $
+#@(#) File W3D.V, version $Revision: 3.283 $, $Date: 2008/03/18 00:43:34 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.282 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.283 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -711,13 +711,13 @@ alpha(npint)    _real             # interepolation parameter
 alphabar(npint) _real             # complement of interp param
 
 *********** W3Dcollisions:
-langevincollisions2d(lself:logical,np:integer,
+langevincollisions3d(lself:logical,np:integer,
                      ux1(np):real,uy1(np):real,uz1(np):real,
                      vxmi(np):real,vymi(np):real,vzmi(np):real,
                      density2(np):real,vthsqi2(np):real,
                      q1:real,q2:real,m1:real,m2:real,
                      vthsqinit1:real,vthsqinit2:real,
-                     dt:real,loglambda:real,epvth:real)
+                     dt:real,loglambda(np):real,epvth:real)
                          subroutine      # Langevin collision operator for like and
                                          # unlike particle species
 
@@ -1019,6 +1019,19 @@ loadperpdist(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
 check_cc3d(pgroup:ParticleGroup,is:integer,ipmin:integer,np:integer) subroutine
 set_aperture_e() subroutine
 setuppadvncsubcyclingaveraging(it:integer,center:string,pgroup:ParticleGroup) subroutine
+ijcoll2d(i1:integer,i2:integer,np1:integer,np2:integer,
+         nxp:integer,nzp:integer,ux1:real,ux2:real,uy1:real,uy2:real,
+         uz1:real,uz2:real,depvth:real,x1:real,z1:real,x2:real,z2:real,
+         lx:real,lz:real,aion1:real,zion1:real,aion2:real,zion2:real,
+         nion1:real,nion2:real,vthmisq1:real,vthmisq2:real,dnudt:real,
+         dncint:integer,ixbc:integer,izbc:integer)
+         subroutine     # Unlike particle collision routine
+
+pdiag2d(x2:real,y2:real,ux2:real,uy2:real,uz2:real,pdmy2:real,np2:integer,
+        lx:real,ly:real,nxp:integer,nyp:integer,s0:real,
+        svx:real,svy:real,svz:real,se:real,ixbc:integer,izbc:integer)
+         subroutine     # Computes grid deposition of moments
+
      
 *********** W3Dutilities:
 sortparticlesbyindex1(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
