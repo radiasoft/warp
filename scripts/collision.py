@@ -2,7 +2,7 @@
 """
 from warp import *
 import time
-collision_version = "$Id: collision.py,v 1.3 2007/08/15 19:01:27 dave Exp $"
+collision_version = "$Id: collision.py,v 1.4 2008/03/18 00:42:04 dave Exp $"
 
 def collisiondoc():
   import collision
@@ -125,7 +125,7 @@ Also, see Rognlien and Cutler, Nuc Fusion 20, 1003 1980.
       self.pbounds[3] = reflect
 
   # --------------------------------------------------------------------
-  def addpair(self,testspecies,fieldspecies=None,mutual=1):
+  def addpair(self,testspecies,fieldspecies=None,mutual=1,loglambda=None):
     """
 Add pairs of species that will collide against each other. The testspecies
 is the one that is affected by colliding against the fieldspecies. If no
@@ -138,6 +138,7 @@ the fieldspecies is affected by collision against the testspecies.
     """
     if isinstance(testspecies,Species): testspecies = testspecies.jslist[0]
     if isinstance(fieldspecies,Species): fieldspecies = fieldspecies.jslist[0]
+    if loglambda is None: loglambda = self.loglambda
 
     # --- If fieldspecies is not specified, then the species is
     # --- colliding with itself.
@@ -148,14 +149,14 @@ the fieldspecies is affected by collision against the testspecies.
     if fieldspecies == testspecies: mutual = 0
 
     # --- Add the collision pair
-    self.processpair([testspecies,fieldspecies])
+    self.processpair([testspecies,fieldspecies],loglambda=loglambda)
 
     # --- If mutual, then add the pair with the roles reversed.
     if mutual:
-      self.processpair([fieldspecies,testspecies])
+      self.processpair([fieldspecies,testspecies],loglambda=loglambda)
 
   # --------------------------------------------------------------------
-  def processpair(self,pair):
+  def processpair(self,pair,loglambda=None):
     # --- Add the pair to the serial list of pairs.
     self.collisionpairs.append(pair)
 
@@ -164,7 +165,7 @@ the fieldspecies is affected by collision against the testspecies.
     testlist = self.fielddict.setdefault(pair[1],[])
 
     # --- Add the test species if it is not already in the list.
-    if pair[0] not in testlist: testlist.append(pair[0])
+    if pair[0] not in testlist: testlist.append([pair[0],loglambda])
 
   # --------------------------------------------------------------------
   def handlegridboundaries(self,grid):
@@ -203,7 +204,7 @@ the fieldspecies is affected by collision against the testspecies.
                   self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax)
 
   # --------------------------------------------------------------------
-  def getvthsqinit(self,species):
+  def getvthsq(self,species):
 
     # --- Get the particle data of the species.
     np = getn(js=species,gather=0)
@@ -302,7 +303,7 @@ the fieldspecies is affected by collision against the testspecies.
         self.vthsqinit[field] = ave(vthsq)
 
       # --- Now, loop over the test species, colliding each one against the field.
-      for test in testspecies:
+      for test,loglambda in testspecies:
 
         # --- Get the particle data of the test species. Note that the
         # --- collisions can always be done locally.
@@ -331,7 +332,7 @@ the fieldspecies is affected by collision against the testspecies.
         # --- calculated above are from the field species and is not the
         # --- correct thing to subtract.
         if test not in self.vthsqinit:
-          self.vthsqinit[test] = self.getvthsqinit(test)
+          self.vthsqinit[test] = self.getvthsq(test)
 
         # --- Get the vthermal**2 of the field speices at the test particle
         # --- locations.
@@ -339,7 +340,30 @@ the fieldspecies is affected by collision against the testspecies.
         self.getgrid3d(tnp,x,y,z,vthsqfield,self.vthsqgrid)
 
         # --- Calculate log(lambda) if needed.
-        if self.loglambda is None:
+        if loglambda is None:
+          mf = top.pgroup.sm[field]
+          fieldiselectron = (abs((mf-emass)/emass) < .5)
+          mt = top.pgroup.sm[test]
+          testiselectron = (abs((mt-emass)/emass) < .5)
+          if testiselectron and fieldiselectron:
+            # --- Use the equations from the NRL plasma formulary for
+            # --- electron-electron collisions
+            Te = vthsqfield*mf/jperev
+            loglambda = (23.5 - log(sqrt(density*1.e-6)*Te**(-5./4.)) - 
+                         sqrt(1.e-5 + (log(Te)-2.)**2/16.))
+          else:
+            q2 = (abs(top.pgroup.sq[test]*top.pgroup.sq[field])/echarge**2)
+            qto3 = q2**(3./2.)
+            if test == field:
+              Te = vthsqfield*mf/jperev
+            else:
+              Te = self.getvthsq(test)*mt/jperev
+            T3 = Te**(-3./2.)
+            # --- This expression was grabbed from the scatterParticleGroup
+            # --- routine of LSP.
+            loglambda = 23.0 - log(1.0 + sqrt(2.*density*1.e-6)*qto3*T3)
+
+            """
           mu = (top.pgroup.sm[test]*top.pgroup.sm[field]/
                 (top.pgroup.sm[test] + top.pgroup.sm[field]))
           vthsqave = ave(vthsqfield)
@@ -348,19 +372,21 @@ the fieldspecies is affected by collision against the testspecies.
             # --- Is this a good thing to do? Does it matter?
             vthsqtest = ave(((ux - uxbar)**2 + (uy - uybar)**2 + (uz - uzbar)**2)/3.)
             vthsqave = 0.5*(vthsqave + vthsqtest)
-          b0 = top.pgroup.sq[test]*top.pgroup.sq[field]/(4.*pi*eps0*mu*vthsqave)
+          b0 = (abs(top.pgroup.sq[test]*top.pgroup.sq[field])/
+                (4.*pi*eps0*mu*vthsqave))
           # --- Note that that density used here is of the field species.
           # --- A better way may be an average of the field and test species,
           # --- but the density of the test species is not otherwise calculated
           # --- here.
           omegape = sqrt(ave(density)*echarge**2/(emass*eps0))
-          lambdadb = vth/omegape
+          lambdadb = sqrt(vthsqave)/omegape
           loglambda = log(lambdadb/b0)
+            """
         else:
-          loglambda = self.loglambda
+          loglambda = loglambda*ones(tnp,'d')
 
         # --- Now, apply the operator.
-        langevincollisions2d(test==field,
+        langevincollisions3d(test==field,
                              tnp,ux,uy,uz,uxbar,uybar,uzbar,
                              density,vthsqfield,
                              top.pgroup.sq[test],top.pgroup.sq[field],
