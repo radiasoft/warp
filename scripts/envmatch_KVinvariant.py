@@ -64,7 +64,7 @@ from scipy import interpolate
 # Add script name version and script documentation function            #
 ########################################################################
 
-envmatch_KVinvariant_version = "$Id: envmatch_KVinvariant.py,v 1.3 2008/03/12 20:51:52 sven Exp $"
+envmatch_KVinvariant_version = "$Id: envmatch_KVinvariant.py,v 1.4 2008/03/24 20:15:23 sven Exp $"
 def envmatch_KVinvariantdoc():
   import envmatch_KVinvariant
   print  envmatch_KVinvariant.__doc__
@@ -142,6 +142,12 @@ If SolCase = '0', Match() also runs WARP's envelope package with the same axial 
 
 For all parameterization cases other than 0 (SolCase != '0'), Match() prints a message suggesting that the user reset the WARP perveance Q and emittances emitx and emity consistently with those calculated in the matched envelope specification.  The perveance will normally be reset in WARP by varying the beam current. 
   """
+  # --- Consistency Check
+  if top.lrelativ != top.relativity:
+    print 'top.lrelativ =', top.lrelativ 
+    print 'but top.relativity =', top.relativity
+    print 'Must set both consistently to True or False.'
+    raise
   # --- Lattice Parameters
   global lperiod,sigma0x,sigma0y,si
   lperiod = top.zlatperi
