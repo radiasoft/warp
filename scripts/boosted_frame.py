@@ -6,6 +6,8 @@ class Boosted_Frame(object):
     self.betaframe  = direction*sqrt(1.-1./self.gammaframe**2)
     self.betabeam_lab=top.vbeamfrm/clight
     top.vbeamfrm=clight*(self.betabeam_lab-self.betaframe)/(1.-self.betabeam_lab*self.betaframe)
+    top.vbeam=top.vbeamfrm
+    top.gammabar=1./sqrt(1.-(top.vbeam/clight)**2)
     top.fselfb[...]=(top.fselfb[...]-self.betaframe*clight)/(1.-top.fselfb[...]*self.betaframe/clight)
 
   def boost(self,species,zadd=0.,tinit=0.,l_inject_plane=1):
@@ -143,6 +145,7 @@ class Boosted_Frame(object):
         processlostpart(self.pgroup,js+1,top.clearlostpart,top.time+top.dt*self.pgroup.ndts[js],top.zbeam)
 
   def add_boosted_rho(self):
+    if rstrip(top.depos.tostring())=='none': return
     w3d.lbeforelr=0
     if 1:#getn(pgroup=self.pgroup)>0:
       fs=getregisteredsolver()
