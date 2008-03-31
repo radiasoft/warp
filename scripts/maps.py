@@ -323,10 +323,26 @@ class Maps_Parameters:
   def Thick_quad(self,k,L):
     Be   = self.Beta
     ga = self.gamma
-    cx = cos(k*L);
-    sx = sin(k*L)/k;
-    sy = cos(-k*L); 
-    cy = sin(-k*L)/k; 
+    if (k>0. and L>0.) or (k<0. and L<0.):
+      k = abs(k)
+      L = abs(L)
+      # --- focusing quad
+      cx = cos(k*L)
+      sx = sin(k*L)/k
+      cy = cos(k*L) 
+      sy = -sin(k*L)/k 
+#      cy = cosh(k*L) 
+#      sy = -sinh(k*L)/k 
+    if (k>0. and L<0.) or (k<0. and L>0.):
+      k = abs(k)
+      L = abs(L)
+      # --- defocusing quad
+#      cx = cosh(k*L)
+#      sx = -sinh(k*L)/k
+      cx = cos(k*L)
+      sx = -sin(k*L)/k
+      cy = cos(k*L) 
+      sy = sin(k*L)/k 
 
     M11 = cx
     M12 = sx
@@ -369,6 +385,13 @@ class Maps_Parameters:
     M64 = 0.
     M65 = 0.
     M66 = 1.
+
+    Map = array([[M11,M12,M13,M14,M15,M16],\
+               [M21,M22,M23,M24,M25,M26],\
+               [M31,M32,M33,M34,M35,M36],\
+               [M41,M42,M43,M44,M45,M46],\
+               [M51,M52,M53,M54,M55,M56],\
+               [M61,M62,M63,M64,M65,M66]])
 
     return Map
 
