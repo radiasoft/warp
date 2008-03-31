@@ -10,10 +10,10 @@ from getzmom import *
 #from AMR import *
 from appendablearray import *
 import __main__
-#try:
-#  import psyco
-#except ImportError:
-#  print 'Warning:  psyco not found'
+try:
+  import psyco
+except ImportError:
+  print 'Warning:  psyco not found'
 
 class Quasistatic:
   # this class differs from the previous one that it does not use the 3-D solver for the ions, but the 2-D one.
@@ -22,7 +22,7 @@ class Quasistatic:
                conductors=[],l_elecuniform=0,scraper=None,l_weakstrong=0,nelecperiod=1,
                backgroundtype=Electron,l_push_z=true,l_inject_elec_MR=false,l_warpzmmnt=false,
                npushzperiod=1,lattice=None,l_freeze_xelec=false,
-               dispx=None,dispy=None,disppx=None,disppy=None):
+               dispx=None,dispy=None,disppx=None,disppy=None,lcollapsemaps=1):
     w3d.solvergeom=w3d.XYgeom
     self.gridelecs=[]
     self.gridions=[]
@@ -191,6 +191,29 @@ class Quasistatic:
     self.reset_timers()
     self.l_freeze_xelec=l_freeze_xelec
     self.npushzperiod=npushzperiod
+    if lcollapsemaps:
+      collapsedlattice=[]
+      trmap = None
+      lmap=0.
+      nmap=""
+      for elmnt in lattice:
+        if trmap is None:
+          trmap=elmnt.Map.copy()
+          lmap=elmnt.L
+          nmap=elmnt.name
+        else:
+          trmap=dot(elmnt.Map,trmap)
+          lmap+=elmnt.L
+          nmap+='+'+elmnt.name
+        if elmnt.ecflag or elmnt is lattice[-1]:
+          elmnt.Map=trmap.copy()
+          elmnt.L=lmap
+          elmnt.name=nmap
+          collapsedlattice.append(elmnt)
+          trmap=None
+          lmap=0.
+          nmap=''
+      lattice = collapsedlattice
     self.lattice=lattice
     if self.lattice is not None:
       self.ist=0
@@ -403,7 +426,6 @@ class Quasistatic:
            self.apply_ions_bndconditions(iz)
            if self.lattice is not None:
              self.ist = (self.ist+1)%self.nst
-             top.dt=self.lattice[self.ist].L/top.vbeam
 
        if self.l_timing: self.time_push_ions += wtime()-ptime
 
@@ -449,6 +471,8 @@ class Quasistatic:
 
      # --- update time, time counter
      top.time+=top.dt
+     if self.lattice is not None:
+       top.dt=self.lattice[self.ist].L/top.vbeam
      if self.l_verbose: print me,top.it,self.iz,'me = ',me,';compute zmmnt'
      if self.l_warpzmmnt and top.it%top.nhist==0:
        zmmnt()
@@ -2688,9 +2712,9 @@ class Quasistaticold:
             w3d.phi[:,:,-iz-1] = w3d.phi[:,:,-nz-1]
 
 # --- This can only be done after the class is defined.
-#try:
-#  psyco.bind(Quasistatic)
-#except NameError:
-#  print 'Warning:psyco binding of Quasistatic class failed.'
+try:
+  psyco.bind(Quasistatic)
+except NameError:
+  print 'Warning:psyco binding of Quasistatic class failed.'
 
 
