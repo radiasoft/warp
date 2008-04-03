@@ -35,8 +35,7 @@ import re
 import os
 import sys
 import string
-import __main__
-warpplots_version = "$Id: warpplots.py,v 1.213 2008/02/01 00:06:07 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.214 2008/04/03 18:17:08 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -4956,8 +4955,6 @@ def onedpltsalways():
   onedplts(always)
 def onedpltsseldom():
   onedplts(seldom)
-__main__.__dict__['onedpltsalways'] = onedpltsalways
-__main__.__dict__['onedpltsseldom'] = onedpltsseldom
 
 ##########################################################################
 def psplots(freqflag=always,js=0):
@@ -5104,8 +5101,6 @@ def psplotsalways():
   psplots(always)
 def psplotsseldom():
   psplots(seldom)
-__main__.__dict__['psplotsalways'] = psplotsalways
-__main__.__dict__['psplotsseldom'] = psplotsseldom
 
 def gstyle():
     global gist_style
