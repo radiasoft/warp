@@ -1,4 +1,4 @@
-warpscripts_version = "$Id: warpscripts.py,v 1.11 2008/04/03 18:19:32 dave Exp $"
+warpscripts_version = "$Id: warpscripts.py,v 1.12 2008/04/03 18:28:19 dave Exp $"
 
 def warpscriptsdoc():
   print """
@@ -89,7 +89,6 @@ slitscanner.py: emulates slit scanners, both parallel and crosses slits
 sortwxy.py: sorts particles based on z location
 subcycle.py: functions for setting up subcycling of particles
 timedependentvoltage.py: functions for setting up time dependent voltages
-VPythonobjects.py: defines convenience functions for using VPython
 warp.py: fundamental warp script (automatically imported)
 warpfortran.py: documentation of some fortran routines available
 warphelp.py: brief list of some available commands
@@ -211,7 +210,6 @@ Plotting and Diagnostics:
   rami_scripts
   residual
   slitscanner
-  VPythonobjects
   warpplots
 
 Documentation:
