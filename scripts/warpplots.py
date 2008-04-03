@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.215 2008/04/03 18:21:22 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.216 2008/04/03 18:30:45 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1500,17 +1500,12 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Make surface plot
   if surface and me == 0 and nx > 1 and ny > 1:
     try:
-      #import VPythonobjects
-      #import pyOpenDX
       import Opyndx
       if type(color) != ListType: scolor = None
       else:                       scolor = color
       xrange = 1.5*max(abs(xmin),abs(xmax))
       yrange = 1.5*max(abs(ymin),abs(ymax))
       zrange = 1.5*maxnd(abs(grid))
-      #vo = VPythonobjects.VisualMesh(zvalues=grid,display=1,twoSided=0,
-      #                             color=scolor,vrange=(xrange,yrange,zrange))
-      #vo = pyOpenDX.DXMountainPlot(f=grid,xmin=xmin,ymin=ymin,dx=dx,dy=dy)
       vo = Opyndx.DXMountainPlot(f=grid,xmin=xmin,ymin=ymin,dx=dx,dy=dy)
     except ImportError:
       import pl3d
