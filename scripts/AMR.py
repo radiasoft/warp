@@ -3,7 +3,7 @@ from warp import *
 from copy import *
 from MeshRefinement import *
 from generateconductors import installconductors
-from pyOpenDX import Visualizable,DXCollection,viewboundingbox,DXImage
+from Opyndx import Visualizable,DXCollection,viewboundingbox,DXImage
 import time
 import timing as t
 import gc # Garbage collection

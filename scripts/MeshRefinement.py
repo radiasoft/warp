@@ -5,7 +5,7 @@ from warp import *
 from multigrid import MultiGrid
 from multigridRZ import MultiGrid2D
 from find_mgparam import find_mgparam
-from pyOpenDX import Visualizable,DXCollection,viewboundingbox
+from Opyndx import Visualizable,DXCollection,viewboundingbox
 #import threading
 
 try:

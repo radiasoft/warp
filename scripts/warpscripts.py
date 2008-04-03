@@ -1,4 +1,4 @@
-warpscripts_version = "$Id: warpscripts.py,v 1.10 2005/11/10 01:48:43 dave Exp $"
+warpscripts_version = "$Id: warpscripts.py,v 1.11 2008/04/03 18:19:32 dave Exp $"
 
 def warpscriptsdoc():
   print """
@@ -76,7 +76,7 @@ printparametersrz.py: prints basic run parameters (automatically imported)
 PRpyt.py: interface to read hdf files using PyTables
 ptob.py: routine to save multi-dimensional array in a basis readable pdb file
 PWpyt.py: interface to write hdf files using PyTables
-pyOpenDX.py: defines convenience routines for using the OpenDX wrapper
+Opyndx.py: defines convenience routines for using the OpenDX wrapper
 pzplots.py: plots of z moments of particles (automatically imported)
 rami_match.py: Slice code matching routine w/starting point in between quads
 rami_scripts.py: convenience functions and alternate history plotting routines
@@ -206,7 +206,7 @@ Plotting and Diagnostics:
   printparameters
   printparameters3d
   printparametersrz
-  pyOpenDX
+  Opyndx
   pzplots
   rami_scripts
   residual
