@@ -59,10 +59,10 @@ todo = """ Add comment attribute to elements """
 
 from warp import *
 from generateconductors import *
-import pyOpenDX
+import Opyndx
 import __main__
 import copy
-lattice_version = "$Id: lattice.py,v 1.59 2008/03/06 21:47:46 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.60 2008/04/03 18:20:37 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -92,7 +92,7 @@ def errordist(etype):
 
 #############################################################################
 # --- LINE contains a list of lattice elements.
-class LINE(pyOpenDX.Visualizable):
+class LINE(Opyndx.Visualizable):
   """
 Creates an instance of the LINE lattice type which contains a list of
 lattice elements.
@@ -206,7 +206,7 @@ Returns a new instance with the reverse flag switched.
         dxlist.append(elem.getdxobject(kwdict=kw))
       except:
         print 'Warning: element of type '+elem.type+' is not renderable in 3-D at this point.'
-    self.dxobject = pyOpenDX.DXCollection(*dxlist)
+    self.dxobject = Opyndx.DXCollection(*dxlist)
 
 # --- Create an equivalent class to LINE.
 Line = LINE
@@ -257,7 +257,7 @@ Child = child
 
 # --- Base element class. All elements have the following attributes:
 # --- Length, aperture, X offset, Y offset, and error type for the offset.
-class Elem(pyOpenDX.Visualizable):
+class Elem(Opyndx.Visualizable):
   """
 Base class for the lattice classes. Should never be directly called.
   """
