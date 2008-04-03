@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.12 2008/03/28 17:20:38 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.13 2008/04/03 18:13:43 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -214,8 +214,7 @@ Input arguments:
     zmmax = zcenter + length/2. + fringelen*router
     if dz is None: dz = w3d.dz
     nz = nint((zmmax - zmmin)/dz)
-    dz = (zmmax - zmmin)/w3d.nz
-    nz = nint((zmmax - zmmin)/dz)
+    dz = (zmmax - zmmin)/nz
 
   # --- Note that the grid parameters are passed in using a separate dict
   # --- instead of using the generic kw, since kw is expected to contain
