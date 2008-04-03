@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.116 2008/01/08 02:09:46 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.117 2008/04/03 18:29:02 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2959,7 +2959,7 @@ Returns the scene use to draw the image
   if conductors is None: return
   if lparallel: return
   try:
-    import VPythonobjects
+    import Opyndx
   except ImportError:
     return
 
@@ -3037,8 +3037,8 @@ Returns the scene use to draw the image
   icnd = array([icndx,icndy,icndz])
   dels = array([delmx,delpx,delmy,delpy,delmz,delpz])
 
-  model = VPythonobjects.VisualModel(twoSided=true,scene=scene,title=title,
-                                     vrange=vrange)
+  model = Opyndx.VisualModel(twoSided=true,scene=scene,title=title,
+                             vrange=vrange)
 
   gridmin = array([w3d.xmmin,w3d.ymmin,w3d.zmmin])
   griddd = array([w3d.dx*conductors.levellx[mglevel],
