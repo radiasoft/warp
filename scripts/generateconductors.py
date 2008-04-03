@@ -98,12 +98,11 @@ SRFRVLA_rnd_rectangle(name,c,l,h,r)
 
 from warp import *
 import operator
-import pyOpenDX
-import VPythonobjects
+import Opyndx
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.182 2008/02/27 19:58:02 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.183 2008/04/03 18:25:34 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -178,7 +177,7 @@ def uninstallconductors(a):
 ##############################################################################
 ##############################################################################
 listofallconductors = []
-class Assembly(pyOpenDX.Visualizable):
+class Assembly(Opyndx.Visualizable):
   """
 Class to hold assemblies of conductors.  Base class of all conductors.
 Should never be directly created by the user.
@@ -681,7 +680,7 @@ AssemblyAnd class.  Represents 'and' of assemblies.
     kw.update(kwdict)
     l = self.left.getdxobject(kwdict=kw)
     r = self.right.getdxobject(kwdict=kw)
-    self.dxobject = pyOpenDX.DXCollection(l,r)
+    self.dxobject = Opyndx.DXCollection(l,r)
   def draw(self,**kw):
     self.left.draw(**kw)
     self.right.draw(**kw)
@@ -714,7 +713,7 @@ AssemblyPlus class.  Represents 'or' of assemblies.
     kw.update(kwdict)
     l = self.left.getdxobject(kwdict=kw)
     r = self.right.getdxobject(kwdict=kw)
-    self.dxobject = pyOpenDX.DXCollection(l,r)
+    self.dxobject = Opyndx.DXCollection(l,r)
   def draw(self,**kw):
     self.left.draw(**kw)
     self.right.draw(**kw)
@@ -747,7 +746,7 @@ AssemblyMinus class.
     kw.update(kwdict)
     l = self.left.getdxobject(kwdict=kw)
     r = self.right.getdxobject(kwdict=kw)
-    self.dxobject = pyOpenDX.DXCollection(l,r)
+    self.dxobject = Opyndx.DXCollection(l,r)
   def draw(self,**kw):
     self.left.draw(**kw)
     self.right.draw(**kw)
@@ -2172,9 +2171,9 @@ Box class
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
-    v = VPythonobjects.VisualBox(self.xsize,self.ysize,self.zsize,
-                                 self.xcent,self.ycent,self.zcent,
-                                 kwdict=kw)
+    v = Opyndx.VisualBox(self.xsize,self.ysize,self.zsize,
+                         self.xcent,self.ycent,self.zcent,
+                         kwdict=kw)
     self.dxobject = v
 
 #============================================================================
@@ -2232,13 +2231,14 @@ Plots the r versus z
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
-    v = VPythonobjects.VisualRevolution(
+    v = Opyndx.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rendzmin=0.,rendzmax=0.,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        theta=self.theta,phi=self.phi,
                        rofzdata=[self.radius,self.radius],
                        zdata=[-self.length/2.,+self.length/2.],
+                       largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
 
@@ -2333,7 +2333,7 @@ Cylinder aligned with z-axis
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
-    v = VPythonobjects.VisualRevolution(
+    v = Opyndx.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rendzmin=0.,rendzmax=0.,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
@@ -2398,7 +2398,7 @@ Cylinder with rounded corners aligned with z-axis
       rr[1:3] = sqrt(self.radius2**2 - (self.radius2 - self.length/2.)**2)
     Srfrv.checkarcs(Srfrv(),zz,rr,rad,zc,rc)
 
-    v = VPythonobjects.VisualRevolution(
+    v = Opyndx.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rendzmin=0.,rendzmax=0.,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
@@ -2442,7 +2442,7 @@ Outside of a cylinder aligned with z-axis
 
   def createdxobject(self,rend=1.,kwdict={},**kw):
     kw.update(kwdict)
-    v = VPythonobjects.VisualRevolution(
+    v = Opyndx.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rendzmin=rend,rendzmax=rend,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
@@ -2514,7 +2514,7 @@ Outside of a cylinder with rounded corners aligned with z-axis
       rr[2] = rfixed
     Srfrv.checkarcs(Srfrv(),zz,rr,rad,zc,rc)
 
-    v = VPythonobjects.VisualRevolution(
+    v = Opyndx.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rendzmin=rend,rendzmax=rend,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
@@ -2669,7 +2669,7 @@ Elliptical cylinder aligned with z-axis
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
     e = self.ellipticity
-    v = VPythonobjects.VisualRevolutionEllipse(
+    v = Opyndx.VisualRevolutionEllipse(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rxendzmin=0.,rxendzmax=0.,
                        ryendzmin=0.,ryendzmax=0.,
@@ -2710,7 +2710,7 @@ Outside an elliptical cylinder aligned with z-axis
   def createdxobject(self,rend=1.,kwdict={},**kw):
     kw.update(kwdict)
     e = self.ellipticity
-    v = VPythonobjects.VisualRevolutionEllipse(
+    v = Opyndx.VisualRevolutionEllipse(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rxendzmin=rend,rxendzmax=rend,
                        ryendzmin=e*rend,ryendzmax=e*rend,
@@ -2882,7 +2882,7 @@ Sphere
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
-    v = VPythonobjects.VisualRevolution(
+    v = Opyndx.VisualRevolution(
                        zzmin=-self.radius,zzmax=+self.radius,
                        rendzmin=0.,rendzmax=0.,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
@@ -3078,7 +3078,7 @@ Torus
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
-    v = VPythonobjects.VisualRevolution(
+    v = Opyndx.VisualRevolution(
                        zzmin=-self.r2,zzmax=+self.r2,
                        rendzmin=self.r1,rendzmax=self.r1,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
@@ -3195,7 +3195,7 @@ Plate from beamlet pre-accelerator
     d = self.griddistance(ix,iy,iz,x,y,z)
     zl = z[0] + d.dels[5,:]
     zl.shape = (len(xmesh),len(ymesh))
-    ml = VPythonobjects.VisualMesh(xx,yy,zl,twoSided=true)
+    ml = Opyndx.VisualMesh(xx,yy,zl,twoSided=true)
 
     # --- Inner face
     z = self.z0*ones(len(xmesh)*len(ymesh),'d') + 0.5*self.za
@@ -3203,28 +3203,28 @@ Plate from beamlet pre-accelerator
     d = self.griddistance(ix,iy,iz,x,y,z)
     zr = z[0] - d.dels[4,:]
     zr.shape = (len(xmesh),len(ymesh))
-    mr = VPythonobjects.VisualMesh(xx,yy,zr,twoSided=true)
+    mr = Opyndx.VisualMesh(xx,yy,zr,twoSided=true)
 
     # --- Four sides between faces
     xside = xx[:,0]*ones(2)[:,NewAxis]
     yside = yy[:,0]*ones(2)[:,NewAxis]
     zside = array([zl[:,0],zr[:,0]])
-    ms1 = VPythonobjects.VisualMesh(xside,yside,zside,twoSided=true)
+    ms1 = Opyndx.VisualMesh(xside,yside,zside,twoSided=true)
 
     xside = xx[:,-1]*ones(2)[:,NewAxis]
     yside = yy[:,-1]*ones(2)[:,NewAxis]
     zside = array([zl[:,-1],zr[:,-1]])
-    ms1 = VPythonobjects.VisualMesh(xside,yside,zside,twoSided=true)
+    ms1 = Opyndx.VisualMesh(xside,yside,zside,twoSided=true)
 
     xside = xx[0,:]*ones(2)[:,NewAxis]
     yside = yy[0,:]*ones(2)[:,NewAxis]
     zside = array([zl[0,:],zr[0,:]])
-    ms1 = VPythonobjects.VisualMesh(xside,yside,zside,twoSided=true)
+    ms1 = Opyndx.VisualMesh(xside,yside,zside,twoSided=true)
 
     xside = xx[-1,:]*ones(2)[:,NewAxis]
     yside = yy[-1,:]*ones(2)[:,NewAxis]
     zside = array([zl[-1,:],zr[-1,:]])
-    ms1 = VPythonobjects.VisualMesh(xside,yside,zside,twoSided=true)
+    ms1 = Opyndx.VisualMesh(xside,yside,zside,twoSided=true)
 
 #============================================================================
 #============================================================================
@@ -3468,11 +3468,11 @@ Plots the r versus z
 Creates internally the object to be used for visualization.
  - rmax=None: when given, overrides the instance's value of rmax, useful in
               cases when the instance's value of rmax is largepos.
-For other options, see documentation of VPythonobjects.VisualRevolution.
+For other options, see documentation of Opyndx.VisualRevolution.
     """
     kw.update(kwdict)
     if rmax is None: rmax = self.rmax
-    v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
+    v = Opyndx.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
                        rendzmin=rmax,rendzmax=rmax,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rofzdata,zdata=self.zdata,
@@ -3606,10 +3606,10 @@ Plots the r versus z
   def createdxobject(self,kwdict={},**kw):
     """
 Creates internally the object to be used for visualization.
-For options, see documentation of VPythonobjects.VisualRevolution.
+For options, see documentation of Opyndx.VisualRevolution.
     """
     kw.update(kwdict)
-    v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
+    v = Opyndx.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
                        rendzmin=self.rmin,rendzmax=self.rmin,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rofzdata,zdata=self.zdata,
@@ -3798,7 +3798,7 @@ Plots the r versus z
   def createdxobject(self,kwdict={},**kw):
     """
 Creates internally the object to be used for visualization.
-For options, see documentation of VPythonobjects.VisualRevolution.
+For options, see documentation of Opyndx.VisualRevolution.
     """
     kw.update(kwdict)
     if self.lrminofz:
@@ -3835,14 +3835,14 @@ For options, see documentation of VPythonobjects.VisualRevolution.
    #  rad = concatenate((self.radmaxdata,[largepos],array(radmin)[::-1]))
    #  zc = concatenate((self.zcmaxdata,[0.],array(self.zcmindata)[::-1]))
    #  rc = concatenate((self.rcmaxdata,[0.],array(self.rcmindata)[::-1]))
-   #  v = VPythonobjects.VisualRevolution(' ',self.zmin,self.zmax,
+   #  v = Opyndx.VisualRevolution(' ',self.zmin,self.zmax,
    #                   rendzmin=rendzmin,rendzmax=rendzmax,
    #                   xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
    #                   rofzdata=rr,zdata=zz,raddata=rad,zcdata=zc,rcdata=rc,
    #                   kwdict=kw)
    #else:
     if 1:
-      vmin = VPythonobjects.VisualRevolution(self.rminofz,self.zmin,self.zmax,
+      vmin = Opyndx.VisualRevolution(self.rminofz,self.zmin,self.zmax,
                        rendzmin=rendzmin,rendzmax=rendzmax,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rminofzdata,zdata=self.zmindata,
@@ -3851,7 +3851,7 @@ For options, see documentation of VPythonobjects.VisualRevolution.
                        normalsign=-1,
                        largepos=largepos,
                        kwdict=kw)
-      vmax = VPythonobjects.VisualRevolution(self.rmaxofz,self.zmin,self.zmax,
+      vmax = Opyndx.VisualRevolution(self.rmaxofz,self.zmin,self.zmax,
                        rendzmin=rendzmin,rendzmax=rendzmax,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rmaxofzdata,zdata=self.zmaxdata,
@@ -3859,7 +3859,7 @@ For options, see documentation of VPythonobjects.VisualRevolution.
                        rcdata=self.rcmaxdata,
                        largepos=largepos,
                        kwdict=kw)
-      v = pyOpenDX.DXCollection(vmin,vmax)
+      v = Opyndx.DXCollection(vmin,vmax)
 
     self.dxobject = v
 
