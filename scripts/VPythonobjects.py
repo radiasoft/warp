@@ -6,7 +6,7 @@ VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
 from pyOpenDX import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.24 2007/11/26 20:24:40 jlvay Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.25 2008/04/03 00:53:11 dave Exp $"
 import __main__
 __main__.selectbox = 0
 __main__.selectbox_remove = 1
@@ -499,7 +499,7 @@ Visualize surface of revolution
                     twoSided=0,normalsign=1,color=None,
                     scene=None,name=None,vrange=None,
                     rscale=None,zscale=None,
-                    viewer=None,display=0,kwdict={}):
+                    viewer=None,display=0,largepos=top.largepos,kwdict={}):
     for arg in kwdict.keys(): exec(arg+" = kwdict['"+arg+"']")
     VisualModel.__init__(self,twoSided=twoSided,normalsign=1,
                               scene=scene,name=name,
@@ -691,7 +691,7 @@ Visualize surface of revolution
                     twoSided=0,normalsign=1,color=None,
                     scene=None,name=None,vrange=None,
                     rscale=None,zscale=None,
-                    viewer=None,display=0,kwdict={}):
+                    viewer=None,display=0,largepos=top.largepos,kwdict={}):
     for arg in kwdict.keys(): exec(arg+" = kwdict['"+arg+"']")
     VisualModel.__init__(self,twoSided=twoSided,normalsign=1,
                               scene=scene,name=name,
