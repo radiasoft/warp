@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_collision.F, version $Revision: 1.4 $, $Date: 2008/03/28 16:37:50 $
+c@(#) File w3d_collision.F, version $Revision: 1.5 $, $Date: 2008/04/04 21:36:07 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This has routines handling particle collisions
@@ -455,11 +455,11 @@ c for isotropic F(v) and resulting kicks
 c        fdv = abs( eta*nuadt/(1.+1.08*(vv/(sqrt2*sqrt(vthsqi)))**2.76) )
          fdv = abs( eta*nuadt/(1.+1.06483*(vv/(sqrt2*sqrt(vthsqi)))**2.488) )
 
-         d33 = sqrt(abs(2.*vthsqi*(fdv/eta)*abs(-alog(1.-wranf()))))
+         d33 = sqrt(abs(2.*vthsqi*(fdv/eta)*abs(-log(1.-wranf()))))
      &       *cos(twopi*wranf())
 
          d11 = sqrt(nuadt*2.*vthsqi/(1.+0.1856*
-     &       (vv/(sqrt2*sqrt(vthsqi)))**1.848)*abs(-alog(1.-wranf())))
+     &       (vv/(sqrt2*sqrt(vthsqi)))**1.848)*abs(-log(1.-wranf())))
 c need to multiply d11 by cos and sin of ranf*twopi for kicks
 
          fdv = -vv*fdv*(1.+0.5*fdv)      !! Includes energy cons. correction ~dt**2
@@ -578,8 +578,8 @@ c pdiag.m
 c   nxp,nzp here can differ from field arrays nx,nz
 c    need to be able to do only a part of the system?
 
-      subroutine pdiag2d(x,z,ux,uy,uz,gammai,np,lxp,lzp,nxp,nzp, \
-       s0,sx,sy,sz,se,ixbc,izbc)
+      subroutine pdiag2d(x,z,ux,uy,uz,gammai,np,lxp,lzp,nxp,nzp,
+     & s0,sx,sy,sz,se,ixbc,izbc)
       
       Implicit None
 
@@ -587,8 +587,7 @@ c    need to be able to do only a part of the system?
       real x(np), z(np), ux(np), uy(np), uz(np), gammai(np)
 c  only need for nx,nz
 
-      real s0(0:nxp,0:nzp), sx(0:nxp,0:nzp), sy(0:nxp,0:nzp), sz(0:nxp,0:nzp), \
-	se(0:nxp,0:nzp)
+      real s0(0:nxp,0:nzp), sx(0:nxp,0:nzp), sy(0:nxp,0:nzp), sz(0:nxp,0:nzp), se(0:nxp,0:nzp)
       real lxp, lzp
 
       integer i, ix, iz,ixbc,izbc
