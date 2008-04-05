@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.166 $, $Date: 2008/03/10 16:53:41 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.167 $, $Date: 2008/04/05 00:34:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -147,6 +147,13 @@ c     --- Initialize temporaries
 c     --- If doing initialization only, then exit.
       if (iwhich == 1) return
 
+c     --- Setup the boundary conditions for the local domain.
+      localbounds = bounds
+#ifdef MPIPARALLEL
+      if (izfsslave(my_index) > 0) localbounds(4) = -1
+      if (izfsslave(my_index)+nzlocal < nz) localbounds(5) = -1
+#endif
+
 c     --- Determine the points that make up the conductor.  This takes extra
 c     --- time and so should not be done if the grid is not moving in the lab
 c     --- frame.  Set gridmode to 1 to avoid this call. The data is then
@@ -156,10 +163,11 @@ c     --- converted and expanded for the multigrid solver.
         conductors%evensubgrid%n = 0
         conductors%oddsubgrid%n = 0
         if (lbuildquads) then
-          call setcndtr(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,nx,ny,nzlocal,dx,dy,dz,
-     &                  bounds(4),bounds(5),bounds(1),
-     &                  (bounds(0)/=1.and.bounds(2)==1),
-     &                  (bounds(0)==1.and.bounds(2)==1))
+          call setcndtr(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,nx,ny,nzlocal,
+     &                  dx,dy,dz,
+     &                  localbounds(4),localbounds(5),localbounds(1),
+     &                  (localbounds(0)/=1.and.localbounds(2)==1),
+     &                  (localbounds(0)==1.and.localbounds(2)==1))
         endif
         if (laddconductor) call callpythonfunc("calladdconductor","controllers")
       endif
@@ -200,24 +208,13 @@ c       --- in the bent beam loop instead of calculated.
         enddo
 !$OMP END DO
 c       --- Change rstar if using Nuemann boundary conditions
-#ifndef MPIPARALLEL
         if (bounds(4) == 1) rstar(-1) = rstar(1)
         if (bounds(5) == 1) rstar(nzlocal+1) = rstar(nzlocal-1)
-#else
-        if (bounds(4) == 1 .and. my_index == 0) rstar(-1) = rstar(1)
-        if (bounds(5) == 1 .and. my_index == nslaves-1) rstar(nzlocal+1)=rstar(nzlocal-1)
-#endif
       endif
-
-c     --- Make sure guard planes have sensible values before beginning.
-      localbounds = bounds
-      call applyboundaryconditions3d(nx,ny,nzlocal,nz,1,1,1,phi,bounds,.false.)
 
 #ifdef MPIPARALLEL
       lzoffset = 0
       rzoffset = 0
-      if (izfsslave(my_index) > 0) localbounds(4) = -1
-      if (izfsslave(my_index)+nzlocal < nz) localbounds(5) = -1
       call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
      &                      bounds,nz,
      &                      lzoffset,rzoffset,
@@ -232,6 +229,10 @@ c     call mgexchange_phiperiodic(nx,ny,nzlocal,nz,phi,localbounds,1,1,1,1,
 c    &                            my_index,nslaves,izfsslave,
 c    &                            whosendingleft,whosendingright)
 #endif
+
+c     --- Make sure guard planes have sensible values before beginning.
+      call applyboundaryconditions3d(nx,ny,nzlocal,nz,1,1,1,phi,localbounds,
+     &                               .false.)
 
 c     --- If using residual correction form, need to save the original rho.
 c     --- Also setup parallel arrays.
@@ -293,8 +294,10 @@ c       --- correction form since it is operating on the error.
         if (mgform == 2) then
           call cond_potmg(conductors%interior,
      &                    nx,ny,nzlocal,1,1,1,phisave,0,mgform,.true.)
-          call condbndymgint(conductors%evensubgrid,nx,ny,nzlocal,1,1,1,phisave,bounds,0,icndbndy)
-          call condbndymgint(conductors%oddsubgrid ,nx,ny,nzlocal,1,1,1,phisave,bounds,0,icndbndy)
+          call condbndymgint(conductors%evensubgrid,nx,ny,nzlocal,1,1,1,
+     &                       phisave,localbounds,0,icndbndy)
+          call condbndymgint(conductors%oddsubgrid,nx,ny,nzlocal,1,1,1,
+     &                       phisave,localbounds,0,icndbndy)
           call residual(nx,ny,nzlocal,nz,dxsqi,dysqi,dzsqi,phisave,rhosave,res,
      &                  0,localbounds,mgparam,mgform,.true.,
      &                  lcndbndy,icndbndy,conductors,
@@ -328,7 +331,7 @@ c       --- to be set when using other than Dirichlet boundaries since
 c       --- those planes are only set with the error of phi.
         if (mgform == 2) then
           call applyboundaryconditions3d(nx,ny,nzlocal,nz,1,1,1,phi,
-     &                                   bounds,.false.)
+     &                                   localbounds,.false.)
 #ifdef MPIPARALLEL
           call mgexchange_phi(nx,ny,nzlocal,nz,phi,localbounds,0,1,1,1,
      &                        my_index,nslaves,izfsslave,nzfsslave,
@@ -397,7 +400,8 @@ c     unscaled residual
 
 c     --- Set boundary conditions. This is only really needed for the
 c     --- Dirichlet boundaries, but this is convenient to call.
-      call applyboundaryconditions3d(nx,ny,nzlocal,nz,1,1,1,phi,bounds,.true.)
+      call applyboundaryconditions3d(nx,ny,nzlocal,nz,1,1,1,phi,localbounds,
+     &                               .true.)
 
 c     --- Make a print out.
       if (mgverbose>=1 .or. mgerror > mgtol) then
