@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.26 $, $Date: 2008/02/13 02:22:31 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.27 $, $Date: 2008/04/14 23:40:19 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -591,15 +591,23 @@ c Note that chi0 is the (q/m/2*rho/eps0*dt**2) for each implicit species.
 c     --- If doing initialization only, then exit.
       if (iwhich == 1) return
 
+      localbounds = bounds
+#ifdef MPIPARALLEL
+      if (izfsslave(my_index) > 0) localbounds(4) = -1
+      if (izfsslave(my_index)+nzlocal < nz) localbounds(5) = -1
+#endif
+
 c     --- Fill the B field array
 c     --- This will be passed to vcycle and coarsened appropriately.
-      bongrid => getbfieldsongrides2d(nx,nzlocal,nz,dx,dz,xmmin,zmminlocal,bounds)
+      bongrid => getbfieldsongrides2d(nx,nzlocal,nz,dx,dz,xmmin,zmminlocal,
+     &                                localbounds)
 c     --- Parallel B.C.s are set below.
 
 c     --- Create copy of rho with extra guard cells, and fill it in.
       allocate(chi0temp(-1:nx+1,-3:nzlocal+3,0:ns-1))
       chi0temp(0:nx,0:nzlocal,:) = chi0
-      call applyboundaryconditionses2d(chi0temp,nx,0,nzlocal,nz,1,0,3,ns,bounds,.true.)
+      call applyboundaryconditionses2d(chi0temp,nx,0,nzlocal,nz,1,0,3,ns,
+     &                                 localbounds,.true.)
 c     --- Parallel B.C.s are set below.
 
 c     --- Determine the points that make up the conductor.  This takes extra
@@ -612,7 +620,8 @@ c     --- converted and expanded for the multigrid solver.
         conductors%oddsubgrid%n = 0
         if (lbuildquads) then
           call setcndtr(xmmin,0.,zmminlocal,zmmin,zbeam,zgrid,nx,0,nzlocal,dx,dx,dz,
-     &                  bounds(4),bounds(5),bounds(1),.false.,.false.)
+     &                  localbounds(4),localbounds(5),localbounds(1),
+     &                  .false.,.false.)
         endif
         if (laddconductor) call callpythonfunc("calladdconductor","controllers")
       endif
@@ -624,16 +633,12 @@ c     --- converted and expanded for the multigrid solver.
 !$OMP&PRIVATE(i,ix,iz)
 
 c     --- Make sure guard planes have sensible values before beginning.
-      call applyboundaryconditionses2d(phi,nx,0,nzlocal,nz,1,0,1,1,bounds,.false.)
-      localbounds = bounds
-
-      localbounds = bounds
+      call applyboundaryconditionses2d(phi,nx,0,nzlocal,nz,1,0,1,1,
+     &                                 localbounds,.false.)
 
 #ifdef MPIPARALLEL
       lzoffset = 0
       rzoffset = 0
-      if (izfsslave(my_index) > 0) localbounds(4) = -1
-      if (izfsslave(my_index)+nzlocal < nz) localbounds(5) = -1
       call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
      &                      bounds,nz,
      &                      lzoffset,rzoffset,
@@ -648,13 +653,13 @@ c     call mgexchange_phiperiodic(nx,0,nzlocal,nz,phi,localbounds,1,0,0,1,
 c    &                            my_index,nslaves,izfsslave,
 c    &                            whosendingleft,whosendingright)
       call applyparallelboundaryconditionses2d(bongrid,nx,0,nzlocal,nz,
-     &                                         1,0,3,3,1,bounds,
+     &                                         1,0,3,3,1,localbounds,
      &                                         my_index,nslaves,
      &                                         izfsslave,nzfsslave,
      &                                         whosendingleft,izsendingleft,
      &                                         whosendingright,izsendingright)
       call applyparallelboundaryconditionses2d(chi0temp,nx,0,nzlocal,nz,
-     &                                         1,0,3,ns,1,bounds,
+     &                                         1,0,3,ns,1,localbounds,
      &                                         my_index,nslaves,
      &                                         izfsslave,nzfsslave,
      &                                         whosendingleft,izsendingleft,
@@ -680,8 +685,8 @@ c       --- Save current value of phi
         phisave = phi
 
 c       --- Do one vcycle.
-        call vcyclees2d(0,nx,nzlocal,nz,dx,dz,xmmin,phi,rho,ns,qomdt,chi0temp,bongrid,
-     &                  bounds,mgparam,mgmaxlevels,
+        call vcyclees2d(0,nx,nzlocal,nz,dx,dz,xmmin,phi,rho,ns,qomdt,
+     &                  chi0temp,bongrid,bounds,mgparam,mgmaxlevels,
      &                  downpasses,uppasses,lcndbndy,icndbndy,conductors,lrz,
      &                  my_index,nslaves,izfsslave,nzfsslave)
 
@@ -741,8 +746,8 @@ c     --- Make a print out.
       end
 c=============================================================================
       RECURSIVE subroutine vcyclees2d(mglevel,nx,nzlocal,nz,dx,dz,xmmin,
-     &                                phi,rho,ns,qomdt,chi0,bongrid,globalbounds,
-     &                                mgparam,
+     &                                phi,rho,ns,qomdt,chi0,bongrid,
+     &                                globalbounds,mgparam,
      &                                mgmaxlevels,downpasses,uppasses,
      &                                lcndbndy,icndbndy,conductors,lrz,
      &                                my_index,nslaves,izfsslave,nzfsslave)
@@ -788,7 +793,6 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
       integer(ISZ):: allocerror
       real(kind=8):: sss(2)
-      logical(ISZ):: larraysumdiagnostic=.false.
 
       localbounds = globalbounds
 
@@ -818,7 +822,7 @@ c       coeffs1 = coeffs
 c       rhs1 = rhs
 c     endif
 
-      if (larraysumdiagnostic) then
+      if (lprintmgarraysumdiagnostic) then
         sss = mggetarraysum(nx,0,nzlocal,1,0,1,phi,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V1 phi",mglevel,sss
@@ -839,7 +843,7 @@ c     --- Do initial SOR passes.
      &                 whosendingright,izsendingright)
       enddo
 
-      if (larraysumdiagnostic) then
+      if (lprintmgarraysumdiagnostic) then
         sss = mggetarraysum(nx,0,nzlocal,1,0,1,phi,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V2 phi",mglevel,sss
@@ -872,7 +876,7 @@ c       --- Get the residual on the current grid.
      &                                           whosendingright,izsendingright)
 #endif
 
-        if (larraysumdiagnostic) then
+        if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nx,0,nzlocal,1,0,3,res,
      &                        izfsslave,nzfsslave,nslaves,my_index)
           if (my_index == 0) print*,"V3 res",mglevel,sss
@@ -979,7 +983,7 @@ c       --- Restriction
         call restrictes3d(nx,0,nzlocal,nz,res,1,0,3,
      &                    nxcoarse,0,nzlocalcoarse,nzcoarse,rhocoarse,0,0,0,
      &                    localbounds,localboundsc,lzoffset)
-        if (larraysumdiagnostic) then
+        if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nxcoarse,0,nzlocalcoarse,0,0,0,rhocoarse,
      &                        izfsslavec,nzfsslavec,nslaves,my_index)
           if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
@@ -1022,7 +1026,7 @@ c       --- Continue at the next coarsest level.
      &                  lcndbndy,icndbndy,conductors,lrz,
      &                  my_index,nslaves,izfsslavec,nzfsslavec)
 
-        if (larraysumdiagnostic) then
+        if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nxcoarse,0,nzlocalcoarse,1,0,1,phicoarse,
      &                        izfsslavec,nzfsslavec,nslaves,my_index)
           if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
@@ -1039,7 +1043,7 @@ c       --- Add in resulting error.
      &                              whosendingleft,whosendingright)
 #endif
         call averageperiodicphi2d(phi,nx,0,nzlocal,nz,1,0,1,localbounds)
-        if (larraysumdiagnostic) then
+        if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nx,0,nzlocal,1,0,1,phi,
      &                        izfsslave,nzfsslave,nslaves,my_index)
           if (my_index == 0) print*,"V5 phi",mglevel,sss
@@ -1432,14 +1436,14 @@ c     --- Need code to set z guard planes for periodic B.C.'s for parallel
       end
 c=============================================================================
       subroutine applyparallelboundaryconditionses2d(u,nx,ny,nzlocal,nz,
-     &                                               delx,dely,delz,ncomp,zsend,bounds,
-     &                                               my_index,nslaves,
-     &                                               izfsslave,nzfsslave,
-     &                                               whosendingleft,izsendingleft,
-     &                                               whosendingright,izsendingright)
+     &                     delx,dely,delz,ncomp,zsend,localbounds,
+     &                     my_index,nslaves,
+     &                     izfsslave,nzfsslave,
+     &                     whosendingleft,izsendingleft,
+     &                     whosendingright,izsendingright)
       integer(ISZ):: nx,ny,nzlocal,nz,delx,dely,delz,ncomp,zsend
       real(kind=8):: u(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz,ncomp)
-      integer(ISZ):: bounds(0:5)
+      integer(ISZ):: localbounds(0:5)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
@@ -1451,13 +1455,15 @@ c=============================================================================
 
       do ic=1,ncomp
         do iz=1,zsend
-          call mgexchange_phi(nx,ny,nzlocal,nz,u(:,:,:,ic),bounds,-iz,delx,dely,delz,
+          call mgexchange_phi(nx,ny,nzlocal,nz,u(:,:,:,ic),localbounds,-iz,
+     &                        delx,dely,delz,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
         enddo
 
-        call mgexchange_phiperiodic(nx,ny,nzlocal,nz,u(:,:,:,ic),bounds,0,delx,dely,delz,
+        call mgexchange_phiperiodic(nx,ny,nzlocal,nz,u(:,:,:,ic),localbounds,0,
+     &                              delx,dely,delz,
      &                              my_index,nslaves,izfsslave,
      &                              whosendingleft,whosendingright)
 
