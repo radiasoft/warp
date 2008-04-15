@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) Filef3d_ImplicitES.F, version $Revision: 1.4 $, $Date: 2008/02/13 02:22:31 $
+c@(#) Filef3d_ImplicitES.F, version $Revision: 1.5 $, $Date: 2008/04/15 00:09:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid implicit electrostatic field solver.
@@ -564,11 +564,11 @@ c       --- by the subgrid info at cell (i,k).
           endif
           if (iy > 0) then
             rhs(ix,iy-1,iz) = rhs(ix,iy-1,iz) - 0.5*chi(1,2,ix,iy,iz)/(dy*dz2)*pzm
-            coeffs(1,1,-1,ix,iy,iz-1) = 0.
+            coeffs(1,1,-1,ix,iy-1,iz) = 0.
           endif
           if (iy < ny) then
             rhs(ix,iy+1,iz) = rhs(ix,iy+1,iz) + 0.5*chi(1,2,ix,iy,iz)/(dy*dz2)*pzm
-            coeffs(1,0,-1,ix,iy,iz+1) = 0.
+            coeffs(1,0,-1,ix,iy+1,iz) = 0.
           endif
         elseif (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) then
           coeffs(2,0,0,ix,iy,iz) = 0.
@@ -592,11 +592,11 @@ c       --- by the subgrid info at cell (i,k).
           endif
           if (iy > 0) then
             rhs(ix,iy-1,iz) = rhs(ix,iy-1,iz) + 0.5*chi(1,2,ix,iy,iz)/(dy*dz2)*pzp
-            coeffs(1,1,+1,ix,iy,iz-1) = 0.
+            coeffs(1,1,+1,ix,iy-1,iz) = 0.
           endif
           if (iy < ny) then
             rhs(ix,iy+1,iz) = rhs(ix,iy+1,iz) - 0.5*chi(1,2,ix,iy,iz)/(dy*dz2)*pzp
-            coeffs(1,0,+1,ix,iy,iz+1) = 0.
+            coeffs(1,0,+1,ix,iy+1,iz) = 0.
           endif
         elseif (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) then
           coeffs(2,1,0,ix,iy,iz) = 0.
@@ -1127,7 +1127,7 @@ c       --- Alloate new work space
           return
         endif
 
-c       rhocoarse = 0. ! not needed since all elements set in restrict3d
+        rhocoarse = 0. ! not needed since all elements set in restrict3d
         phicoarse = 0.
         chi0coarse = 0.
         bongridcoarse = 0.
