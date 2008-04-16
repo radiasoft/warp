@@ -108,7 +108,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.184 2008/04/16 20:05:46 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.185 2008/04/16 22:08:51 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -649,7 +649,7 @@ AssemblyNot class.  Represents 'not' of assemblies.
   def distance(self,xx,yy,zz):
     return (-(self.left.distance(xx,yy,zz)))
   def isinside(self,xx,yy,zz,aura=0.):
-    return (-(self.left.isinside(xx,yy,zz,aura)))
+    return (-(self.left.isinside(xx,yy,zz,-aura)))
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (-(self.left.intercept(xx,yy,zz,vx,vy,vz)))
   def createdxobject(self,kwdict={},**kw):
@@ -1572,25 +1572,25 @@ The attribute 'isinside' holds the flag specifying whether a point is in or out
   def __neg__(self):
     "IsInside not operator."
     return IsInside(self.xx,self.yy,self.zz,
-                    logical_not(self.isinside),
+                    logical_not(self.isinside).astype('d'),
                     condid=self.condid,aura=self.aura)
 
   def __mul__(self,right):
     "'and' operator, returns logical and of isinsides."
     return IsInside(self.xx,self.yy,self.zz,
-                    logical_and(self.isinside,right.isinside),
+                    logical_and(self.isinside,right.isinside).astype('d'),
                     condid=self.condid,aura=self.aura)
 
   def __add__(self,right):
     "'or' operator, returns logical or of isinsides."
     return IsInside(self.xx,self.yy,self.zz,
-                    logical_or(self.isinside,right.isinside),
+                    logical_or(self.isinside,right.isinside).astype('d'),
                     condid=self.condid,aura=self.aura)
 
   def __sub__(self,right):
     "'or' operator, returns logical or of isinsides."
     return IsInside(self.xx,self.yy,self.zz,
-                    logical_and(self.isinside,logical_not(right.isinside)),
+                    logical_and(self.isinside,logical_not(right.isinside)).astype('d'),
                     condid=self.condid,aura=self.aura)
 
   def __str__(self):
