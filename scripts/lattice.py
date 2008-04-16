@@ -59,10 +59,17 @@ todo = """ Add comment attribute to elements """
 
 from warp import *
 from generateconductors import *
-import Opyndx
 import __main__
 import copy
-lattice_version = "$Id: lattice.py,v 1.60 2008/04/03 18:20:37 dave Exp $"
+try:
+  import Opyndx
+  VisualizableClass = Opyndx.Visualizable
+except ImportError:
+  # --- If Opyndx is not available, then use object as the base class,
+  # --- disabling any visualization.
+  VisualizableClass = object
+
+lattice_version = "$Id: lattice.py,v 1.61 2008/04/16 20:05:46 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -92,7 +99,7 @@ def errordist(etype):
 
 #############################################################################
 # --- LINE contains a list of lattice elements.
-class LINE(Opyndx.Visualizable):
+class LINE(VisualizableClass):
   """
 Creates an instance of the LINE lattice type which contains a list of
 lattice elements.
@@ -257,7 +264,7 @@ Child = child
 
 # --- Base element class. All elements have the following attributes:
 # --- Length, aperture, X offset, Y offset, and error type for the offset.
-class Elem(Opyndx.Visualizable):
+class Elem(VisualizableClass):
   """
 Base class for the lattice classes. Should never be directly called.
   """

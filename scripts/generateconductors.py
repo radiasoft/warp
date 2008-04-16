@@ -98,11 +98,17 @@ SRFRVLA_rnd_rectangle(name,c,l,h,r)
 
 from warp import *
 import operator
-import Opyndx
 from string import *
 from appendablearray import *
+try:
+  import Opyndx
+  VisualizableClass = Opyndx.Visualizable
+except ImportError:
+  # --- If Opyndx is not available, then use object as the base class,
+  # --- disabling any visualization.
+  VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.183 2008/04/03 18:25:34 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.184 2008/04/16 20:05:46 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -177,7 +183,7 @@ def uninstallconductors(a):
 ##############################################################################
 ##############################################################################
 listofallconductors = []
-class Assembly(Opyndx.Visualizable):
+class Assembly(VisualizableClass):
   """
 Class to hold assemblies of conductors.  Base class of all conductors.
 Should never be directly created by the user.

@@ -5,7 +5,14 @@ from warp import *
 from multigrid import MultiGrid
 from multigridRZ import MultiGrid2D
 from find_mgparam import find_mgparam
-from Opyndx import Visualizable,DXCollection,viewboundingbox
+try:
+  import Opyndx
+  VisualizableClass = Opyndx.Visualizable
+except ImportError:
+  # --- If Opyndx is not available, then use object as the base class,
+  # --- disabling any visualization.
+  VisualizableClass = object
+
 #import threading
 
 try:
@@ -15,7 +22,7 @@ except ImportError:
 
 #########################################################################
 # Note that MRBlock is psyco.bind at the end of the file
-class MeshRefinement(Visualizable):
+class MeshRefinement(VisualizableClass):
   """
 Implements adaptive mesh refinement in 3d
  - parent:
@@ -1732,10 +1739,10 @@ Create DX object drawing the object.
       xmin,xmax = xmin+ng[0]*self.dx, xmax-ng[0]*self.dx
       ymin,ymax = ymin+ng[1]*self.dy, ymax-ng[1]*self.dy
       zmin,zmax = zmin+ng[2]*self.dz, zmax-ng[2]*self.dz
-    dxlist = [viewboundingbox(xmin,xmax,ymin,ymax,zmin,zmax)]
+    dxlist = [Opyndx.viewboundingbox(xmin,xmax,ymin,ymax,zmin,zmax)]
     for child in self.children:
       dxlist.append(child.getdxobject(kwdict=kw))
-    self.dxobject = DXCollection(*dxlist)
+    self.dxobject = Opyndx.DXCollection(*dxlist)
 
 
 

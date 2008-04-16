@@ -3,7 +3,13 @@ from warp import *
 from copy import *
 from MeshRefinement import *
 from generateconductors import installconductors
-from Opyndx import Visualizable,DXCollection,viewboundingbox,DXImage
+try:
+  import Opyndx
+  VisualizableClass = Opyndx.Visualizable
+except ImportError:
+  # --- If Opyndx is not available, then use object as the base class,
+  # --- disabling any visualization.
+  VisualizableClass = object
 import time
 import timing as t
 import gc # Garbage collection
@@ -13,7 +19,7 @@ try:
 except ImportError:
   pass
 
-class AMRTree(object,Visualizable):
+class AMRTree(VisualizableClass):
     """
   Adaptive Mesh Refinement class.
     """
@@ -1044,18 +1050,19 @@ class AMRTree(object,Visualizable):
             if( not( (xminp>xmax) or (xmaxp<xmin) or \
                      (yminp>ymax) or (ymaxp<ymin) or \
                      (zminp>zmax) or (zmaxp<zmin))): 
-              dxlist.append(viewboundingbox(max(xmin,xminp),min(xmax,xmaxp),
+              dxlist.append(Opyndx.viewboundingbox(
+                                            max(xmin,xminp),min(xmax,xmaxp),
                                             max(ymin,yminp),min(ymax,ymaxp),
                                             max(zmin,zminp),min(zmax,zmaxp),
                                             self.colors[i]))
-      self.dxobject = DXCollection(*dxlist)
+      self.dxobject = Opyndx.DXCollection(*dxlist)
     def draw(self,level=None,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None):
         if self.solvergeom==w3d.XYZgeomMR:
           self.createdxobject(level=level,
                               xmin=xmin,xmax=xmax,
                               ymin=ymin,ymax=ymax,
                               zmin=zmin,zmax=zmax)
-          DXImage(self)
+          Opyndx.DXImage(self)
         else:
           self.draw_blocks2d(level=level)
             
