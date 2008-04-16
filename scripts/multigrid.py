@@ -659,7 +659,7 @@ class MultiGrid(SubcycledPoissonSolver):
     rho = self.rho*reps0c
     residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
              self.phi,rho,res,0,self.bounds,self.mgparam,self.mgform,false,
-             self.lcndbndy,self.icndbndy,self.conductors)
+             self.lcndbndy,self.icndbndy,self.conductors,1,1,1)
     return res
 
 
