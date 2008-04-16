@@ -6,10 +6,10 @@ from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.1 2008/03/07 21:11:14 dave Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.2 2008/04/16 22:01:04 dave Exp $"
 def particleinjection_doc():
   import particleinjection
-    print particleinjection.__doc__
+  print particleinjection.__doc__
 
 class InjectionGaussLaw(object):
     """Sets up injection using Gauss's law to determine the amount of charge to
