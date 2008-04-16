@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.167 $, $Date: 2008/04/05 00:34:22 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.168 $, $Date: 2008/04/16 21:57:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -2517,6 +2517,59 @@ c       --- Set new value of nzlocal
       return
       end
 c=============================================================================
+      subroutine applyboundaryconditions3d(nx,ny,nzlocal,nz,delx,dely,delz,u,
+     &                                     bounds,lwithdirichlet)
+      integer(ISZ):: nx,ny,nzlocal,nz,delx,dely,delz
+      integer(ISZ):: bounds(0:5)
+      real(kind=8):: u(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
+      logical(ISZ):: lwithdirichlet
+
+      if (delx > 0) then
+        if (lwithdirichlet) then
+          if (bounds(0) == 0)
+     & u(-1,0:ny,0:nzlocal)   = 2.*u(0,0:ny,0:nzlocal) - u(1,0:ny,0:nzlocal)
+          if (bounds(1) == 0)
+     & u(nx+1,0:ny,0:nzlocal) = 2.*u(nx,0:ny,0:nzlocal) - u(nx-1,0:ny,0:nzlocal)
+        endif
+        if (bounds(0) == 1) u(-1,0:ny,0:nzlocal)   = u(1,0:ny,0:nzlocal)
+        if (bounds(1) == 1) u(nx+1,0:ny,0:nzlocal) = u(nx-1,0:ny,0:nzlocal)
+        if (bounds(0) == 2) u(-1,0:ny,0:nzlocal)   = u(nx-1,0:ny,0:nzlocal)
+        if (bounds(1) == 2) u(nx+1,0:ny,0:nzlocal) = u(1,0:ny,0:nzlocal)
+      endif
+
+      if (dely > 0) then
+        if (lwithdirichlet) then
+          if (bounds(2) == 0)
+     &      u(:,-1,0:nzlocal)   = 2.*u(:,0,0:nzlocal) - u(:,1,0:nzlocal)
+          if (bounds(3) == 0)
+     &      u(:,ny+1,0:nzlocal) = 2.*u(:,ny,0:nzlocal) - u(:,ny-1,0:nzlocal)
+        endif
+        if (bounds(2) == 1) u(:,-1,0:nzlocal)   = u(:,1,0:nzlocal)
+        if (bounds(3) == 1) u(:,ny+1,0:nzlocal) = u(:,ny-1,0:nzlocal)
+        if (bounds(2) == 2) u(:,-1,0:nzlocal)   = u(:,ny-1,0:nzlocal)
+        if (bounds(3) == 2) u(:,ny+1,0:nzlocal) = u(:,1,0:nzlocal)
+      endif
+
+      if (delz > 0) then
+        if (lwithdirichlet) then
+          if (bounds(4) == 0) u(:,:,-1)   = 2.*u(:,:,0) - u(:,:,1)
+          if (bounds(5) == 0)
+     &      u(:,:,nzlocal+1) = 2.*u(:,:,nzlocal) - u(:,:,nzlocal-1)
+        endif
+        if (bounds(4) == 1) u(:,:,-1)   = u(:,:,1)
+        if (bounds(5) == 1) u(:,:,nzlocal+1) = u(:,:,nzlocal-1)
+        if (nzlocal == nz) then
+          if (bounds(4) == 2) u(:,:,-1)   = u(:,:,nzlocal-1)
+          if (bounds(5) == 2) u(:,:,nzlocal+1) = u(:,:,1)
+        endif
+      endif
+
+      return
+      end
+c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
 c=============================================================================
 c=============================================================================
 c     --- These were only needed to get around a compiler bug that appears
@@ -4468,6 +4521,12 @@ c     --- Note that nx and nzlocal do not need to be even
 c     --- If doing initialization only, then exit.
       if (iwhich == 1) return
 
+      localbounds = bounds
+#ifdef MPIPARALLEL
+      if (izfsslave(my_index) > 0) localbounds(4) = -1
+      if (izfsslave(my_index)+nzlocal < nz) localbounds(5) = -1
+#endif
+
 c     --- Determine the points that make up the conductor.  This takes extra
 c     --- time and so should not be done if the grid is not moving in the lab
 c     --- frame.  Set gridmode to 1 to avoid this call. The data is then
@@ -4477,8 +4536,10 @@ c     --- converted and expanded for the multigrid solver.
         conductors%evensubgrid%n = 0
         conductors%oddsubgrid%n = 0
         if (lbuildquads) then
-          call setcndtr(xmmin,0.,zmminlocal,zmmin,zbeam,zgrid,nx,0,nzlocal,dx,dx,dz,
-     &                  bounds(4),bounds(5),bounds(1),.false.,.false.)
+          call setcndtr(xmmin,0.,zmminlocal,zmmin,zbeam,zgrid,nx,0,nzlocal,
+     &                  dx,dx,dz,
+     &                  localbounds(4),localbounds(5),localbounds(1),
+     &                  .false.,.false.)
         endif
         if (laddconductor) call callpythonfunc("calladdconductor","controllers")
       endif
@@ -4495,14 +4556,12 @@ c     --- multiplies in the main SOR sweep loop).
 !OMP END DO
 
 c     --- Make sure guard planes have sensible values before beginning.
-      call applyboundaryconditions3d(nx,0,nzlocal,nz,1,0,1,phi,bounds,.false.)
+      call applyboundaryconditions3d(nx,0,nzlocal,nz,1,0,1,phi,localbounds,
+     &                               .false.)
 
-      localbounds = bounds
 #ifdef MPIPARALLEL
       lzoffset = 0
       rzoffset = 0
-      if (izfsslave(my_index) > 0) localbounds(4) = -1
-      if (izfsslave(my_index)+nzlocal < nz) localbounds(5) = -1
       call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
      &                      bounds,nz,
      &                      lzoffset,rzoffset,
@@ -4520,9 +4579,9 @@ c    &                            whosendingleft,whosendingright)
 
       allocate(phisave(-1:nx+1,-1:nzlocal+1),stat=allocerror)
       if (allocerror /= 0) then
-        print*,"multigrid3dsolve: allocation error ",allocerror,
+        print*,"multigrid2dsolve: allocation error ",allocerror,
      &         ": could not allocate phisave to shape ",nx,nzlocal
-        call kaboom("multigrid3dsolve: allocation error")
+        call kaboom("multigrid2dsolve: allocation error")
         return
       endif
 
@@ -4586,7 +4645,7 @@ c     --- Restore rho
 
 !$OMP END PARALLEL
 
-      if (lf3dtimesubs) timemultigrid3dsolve = timemultigrid3dsolve +
+      if (lf3dtimesubs) timemultigrid2dsolve = timemultigrid2dsolve +
      &                                         wtime() - substarttime
 
       return
@@ -5682,52 +5741,767 @@ c     --- Set the loop limits, including edges when appropriate.
       return
       end
 c=============================================================================
-      subroutine applyboundaryconditions3d(nx,ny,nzlocal,nz,delx,dely,delz,u,
-     &                                     bounds,lwithdirichlet)
-      integer(ISZ):: nx,ny,nzlocal,nz,delx,dely,delz
+c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
+      subroutine multigrid2ddielectricsolve(iwhich,nx,nzlocal,nz,dx,dz,
+     &                            phi,rho,epsilon,bounds,
+     &                            xmmin,zmminlocal,zmmin,zbeam,zgrid,
+     &                            mgparam,mgiters,mgmaxiters,
+     &                            mgmaxlevels,mgerror,mgtol,mgverbose,
+     &                            downpasses,uppasses,
+     &                            lcndbndy,laddconductor,lbuildquads,
+     &                            gridmode,conductors,lrz,
+     &                            my_index,nslaves,izfsslave,nzfsslave)
+      use Subtimersf3d
+      use ConductorTypemodule
+      use Constant
+      integer(ISZ):: iwhich
+      integer(ISZ):: nx,nzlocal,nz
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1)
+      real(kind=8):: rho(0:nx,0:nzlocal)
+      real(kind=8):: epsilon(0:nx+1,0:nzlocal+1)
+      real(kind=8):: dx,dz
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: u(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
-      logical(ISZ):: lwithdirichlet
+      real(kind=8):: xmmin,zmminlocal,zmmin,zbeam,zgrid
+      real(kind=8):: mgparam
+      integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels,mgverbose
+      real(kind=8):: mgerror,mgtol
+      integer(ISZ):: downpasses,uppasses
+      logical(ISZ):: lcndbndy,laddconductor,lbuildquads
+      integer(ISZ):: gridmode
+      type(ConductorType):: conductors
+      logical(ISZ):: lrz
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
-      if (delx > 0) then
-        if (lwithdirichlet) then
-          if (bounds(0) == 0)
-     & u(-1,0:ny,0:nzlocal)   = 2.*u(0,0:ny,0:nzlocal) - u(1,0:ny,0:nzlocal)
-          if (bounds(1) == 0)
-     & u(nx+1,0:ny,0:nzlocal) = 2.*u(nx,0:ny,0:nzlocal) - u(nx-1,0:ny,0:nzlocal)
-        endif
-        if (bounds(0) == 1) u(-1,0:ny,0:nzlocal)   = u(1,0:ny,0:nzlocal)
-        if (bounds(1) == 1) u(nx+1,0:ny,0:nzlocal) = u(nx-1,0:ny,0:nzlocal)
-        if (bounds(0) == 2) u(-1,0:ny,0:nzlocal)   = u(nx-1,0:ny,0:nzlocal)
-        if (bounds(1) == 2) u(nx+1,0:ny,0:nzlocal) = u(1,0:ny,0:nzlocal)
+c Use the multigrid method for solving Poisson's equation on a 2D Cartesian
+c mesh. The fieldsolver allows for a variable dielectric constant.
+c
+c When the grid cells are rectangular, semi-coarsening is done until the
+c grid cell dimensions are roughly equal. Roughly equal means that
+c   2/3 dx < dz < 4/3 dx
+c This keeps (max(dz,dx) - min(dz,dx))/dx < 1/3.
+
+      integer(ISZ):: i,k,ix,iz
+      real(kind=8),allocatable:: phisave(:,:)
+
+      integer(ISZ):: localbounds(0:5)
+      integer(ISZ):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
+      integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
+      integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
+
+      character(72):: errline
+      integer(ISZ):: allocerror
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
+c     --- Note that nx and nzlocal do not need to be even
+
+c     --- Only slab geometry is now supported.
+      if (lrz) then
+        call kaboom("multigrid2ddielectricsolve: only slab geometry supported")
+        return
       endif
 
-      if (dely > 0) then
-        if (lwithdirichlet) then
-          if (bounds(2) == 0)
-     &      u(:,-1,0:nzlocal)   = 2.*u(:,0,0:nzlocal) - u(:,1,0:nzlocal)
-          if (bounds(3) == 0)
-     &      u(:,ny+1,0:nzlocal) = 2.*u(:,ny,0:nzlocal) - u(:,ny-1,0:nzlocal)
+c     --- If doing initialization only, then exit.
+      if (iwhich == 1) return
+
+      localbounds = bounds
+#ifdef MPIPARALLEL
+      if (izfsslave(my_index) > 0) localbounds(4) = -1
+      if (izfsslave(my_index)+nzlocal < nz) localbounds(5) = -1
+#endif
+
+c     --- Determine the points that make up the conductor.  This takes extra
+c     --- time and so should not be done if the grid is not moving in the lab
+c     --- frame.  Set gridmode to 1 to avoid this call. The data is then
+c     --- converted and expanded for the multigrid solver.
+      if (gridmode == 0 .or. iwhich == -2) then
+        conductors%interior%n = 0
+        conductors%evensubgrid%n = 0
+        conductors%oddsubgrid%n = 0
+        if (lbuildquads) then
+          call setcndtr(xmmin,0.,zmminlocal,zmmin,zbeam,zgrid,nx,0,nzlocal,
+     &                  dx,dx,dz,
+     &                  localbounds(4),localbounds(5),localbounds(1),
+     &                  .false.,.false.)
         endif
-        if (bounds(2) == 1) u(:,-1,0:nzlocal)   = u(:,1,0:nzlocal)
-        if (bounds(3) == 1) u(:,ny+1,0:nzlocal) = u(:,ny-1,0:nzlocal)
-        if (bounds(2) == 2) u(:,-1,0:nzlocal)   = u(:,ny-1,0:nzlocal)
-        if (bounds(3) == 2) u(:,ny+1,0:nzlocal) = u(:,1,0:nzlocal)
+        if (laddconductor) call callpythonfunc("calladdconductor","controllers")
+      endif
+      call checkconductors(nx,0,nzlocal,nz,dx,dx,dz,conductors,
+     &                     my_index,nslaves,izfsslave,nzfsslave)
+
+!$OMP PARALLEL
+!$OMP&PRIVATE(i,ix,iz)
+
+c     --- Make sure guard planes have sensible values before beginning.
+      call applyboundaryconditions3d(nx,0,nzlocal,nz,1,0,1,phi,localbounds,
+     &                               .false.)
+
+#ifdef MPIPARALLEL
+      lzoffset = 0
+      rzoffset = 0
+      call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
+     &                      bounds,nz,
+     &                      lzoffset,rzoffset,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
+c     --- These calls break the parallel field solver
+c     call mgexchange_phi(nx,0,nzlocal,nz,phi,localbounds,-1,1,0,1,
+c    &                    my_index,nslaves,izfsslave,nzfsslave,
+c    &                    whosendingleft,izsendingleft,
+c    &                    whosendingright,izsendingright)
+c     call mgexchange_phiperiodic(nx,0,nzlocal,nz,phi,localbounds,1,1,0,1,
+c    &                            my_index,nslaves,izfsslave,
+c    &                            whosendingleft,whosendingright)
+#endif
+
+      allocate(phisave(-1:nx+1,-1:nzlocal+1),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"multigrid2ddielectricsolve: allocation error ",allocerror,
+     &         ": could not allocate phisave to shape ",nx,nzlocal
+        call kaboom("multigrid2ddielectricsolve: allocation error")
+        return
       endif
 
-      if (delz > 0) then
-        if (lwithdirichlet) then
-          if (bounds(4) == 0) u(:,:,-1)   = 2.*u(:,:,0) - u(:,:,1)
-          if (bounds(5) == 0)
-     &      u(:,:,nzlocal+1) = 2.*u(:,:,nzlocal) - u(:,:,nzlocal-1)
+c     --- Main multigrid v-cycle loop. Calculate error each iteration since
+c     --- very few iterations are done.
+      mgiters = 0
+      mgerror = 2.*mgtol + 1.
+      do while (mgerror > mgtol .and. mgiters < mgmaxiters)
+        mgiters = mgiters + 1
+
+c       --- Save current value of phi
+        phisave = phi
+
+c       --- Do one vcycle.
+        call vcycle2ddielectric(0,nx,nzlocal,nz,dx,dz,phi,rho,epsilon,
+     &                bounds,mgparam,mgmaxlevels,
+     &                downpasses,uppasses,lcndbndy,conductors,xmmin/dx,lrz,
+     &                my_index,nslaves,izfsslave,nzfsslave)
+
+c       --- Calculate the change in phi.
+        mgerror = 0.
+!$OMP DO REDUCTION(MAX:mgerror)
+        do iz=0,nzlocal
+          do ix=0,nx
+            mgerror = max(mgerror,abs(phisave(ix,iz) - phi(ix,iz)))
+          enddo
+        enddo
+!$OMP END DO
+
+#ifdef MPIPARALLEL
+        if (nslaves > 1) then
+c         --- calculate global sorerror
+          call parallelmaxrealarray(mgerror,1)
         endif
-        if (bounds(4) == 1) u(:,:,-1)   = u(:,:,1)
-        if (bounds(5) == 1) u(:,:,nzlocal+1) = u(:,:,nzlocal-1)
-        if (nzlocal == nz) then
-          if (bounds(4) == 2) u(:,:,-1)   = u(:,:,nzlocal-1)
-          if (bounds(5) == 2) u(:,:,nzlocal+1) = u(:,:,1)
+#endif
+
+      enddo
+
+c     --- For Dirichlet boundary conditions, copy data into guard planes
+c     --- For other boundary conditions, the guard planes are used during
+c     --- the solve are so are already set.
+      if (localbounds(0) == 0) phi(-1,:) = 2.*phi(0,:) - phi(1,:)
+      if (localbounds(1) == 0) phi(nx+1,:) = 2.*phi(nx,:) - phi(nx-1,:)
+      if (localbounds(4) == 0) phi(:,-1) = 2.*phi(:,0) - phi(:,1)
+      if (localbounds(5) == 0) phi(:,nzlocal+1) = 2.*phi(:,nzlocal) - phi(:,nzlocal-1)
+
+      if (mgverbose>=1 .or. mgerror > mgtol) then
+c       --- Make a print out.
+        if (mgerror > mgtol) then
+          call remark("Multigrid2ddielectric: Maximum number of iterations reached")
         endif
+        write(errline,20) mgerror,mgiters
+  20    format("Multigrid2ddielectric: Error converged to ",1pe11.3," in ",i5," v-cycles")
+        call remark(errline)
       endif
+
+      deallocate(phisave)
+
+!$OMP END PARALLEL
+
+      if (lf3dtimesubs) timemultigrid2dsolve = timemultigrid2dsolve +
+     &                                         wtime() - substarttime
+
+      return
+      end
+c=============================================================================
+      RECURSIVE subroutine vcycle2ddielectric(mglevel,nx,nzlocal,nz,dx,dz,
+     &                              phi,rho,epsilon,globalbounds,mgparam,
+     &                              mgmaxlevels,downpasses,uppasses,
+     &                              lcndbndy,conductors,xminodx,lrz,
+     &                              my_index,nslaves,izfsslave,nzfsslave)
+      use ConductorTypemodule
+      use Multigrid3d_diagnostic
+      use formggetarraysuminterface
+      integer(ISZ):: mglevel
+      integer(ISZ):: nx,nzlocal,nz
+      real(kind=8):: dx,dz
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1),rho(0:nx,0:nzlocal)
+      real(kind=8):: epsilon(0:nx+1,0:nzlocal+1)
+      integer(ISZ):: globalbounds(0:5)
+      real(kind=8):: mgparam
+      integer(ISZ):: mgmaxlevels,downpasses,uppasses
+      type(ConductorType):: conductors
+      real(kind=8):: xminodx
+      logical(ISZ):: lcndbndy,lrz
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+
+c Routine that does the v-cycle for multigrid. Note that it is recursive.
+
+      real(kind=8):: mingridsize
+      real(kind=8),allocatable:: phicoarse(:,:),rhocoarse(:,:)
+      real(kind=8),allocatable:: epsiloncoarse(:,:)
+      real(kind=8),allocatable:: res(:,:)
+      integer(ISZ):: i,iszone=1
+      integer(ISZ):: nxcoarse,nzlocalcoarse,nzcoarse
+      real(kind=8):: dxcoarse,dzcoarse
+      real(kind=8):: dxcoarsesqi,dzcoarsesqi
+      integer(ISZ):: localbounds(0:5),localboundsc(0:5)
+      integer(ISZ):: lzoffsetall(0:nslaves-1),rzoffsetall(0:nslaves-1)
+      integer(ISZ):: lzoffset,rzoffset
+      integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
+      integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
+      integer(ISZ):: whosendingleftc(0:nslaves-1), izsendingleftc(0:nslaves-1)
+      integer(ISZ):: whosendingrightc(0:nslaves-1),izsendingrightc(0:nslaves-1)
+      integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
+      integer(ISZ):: allocerror
+      integer(ISZ):: resdelx,resdelz
+      real(kind=8):: sss(2)
+
+      localbounds = globalbounds
+
+#ifdef MPIPARALLEL
+      lzoffsetall = 0
+      rzoffsetall = 0
+      call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
+     &                      globalbounds,nz,
+     &                      lzoffsetall,rzoffsetall,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
+      if (izfsslave(my_index) > 0) localbounds(4) = -1
+      if (izfsslave(my_index)+nzlocal < nz) localbounds(5) = -1
+#endif
+
+      if (lprintmgarraysumdiagnostic) then
+        sss = mggetarraysum(nx,0,nzlocal,1,0,1,phi,
+     &                      izfsslave,nzfsslave,nslaves,my_index)
+        if (my_index == 0) print*,"V1 phi",mglevel,sss
+        sss = mggetarraysum(nx,0,nzlocal,0,0,0,rho,
+     &                      izfsslave,nzfsslave,nslaves,my_index)
+        if (my_index == 0) print*,"V1 rho",mglevel,sss
+      endif
+
+c     --- Do initial SOR passes.
+      do i=1,downpasses
+        call relax2ddielectric(mglevel,nx,nzlocal,nz,phi,rho,epsilon,
+     &                         dx,dz,localbounds,mgparam,conductors,
+     &                         my_index,nslaves,izfsslave,nzfsslave,
+     &                         whosendingleft,izsendingleft,
+     &                         whosendingright,izsendingright)
+      enddo
+
+      if (lprintmgarraysumdiagnostic) then
+        sss = mggetarraysum(nx,0,nzlocal,1,0,1,phi,
+     &                      izfsslave,nzfsslave,nslaves,my_index)
+        if (my_index == 0) print*,"V2 phi",mglevel,sss
+        sss = mggetarraysum(nx,0,nzlocal,0,0,0,rho,
+     &                      izfsslave,nzfsslave,nslaves,my_index)
+        if (my_index == 0) print*,"V2 rho",mglevel,sss
+      endif
+
+c     --- Check if this is the finest level. If so, then don't do any further
+c     --- coarsening. This is the same check that is done in getmglevels.
+      if (nx >= 4 .and. nz >= 4 .and.
+     &    mglevel < mgmaxlevels) then
+
+#ifndef MPIPARALLEL
+        resdelx = 1
+        resdelz = 1
+#else
+        resdelx = 1
+        resdelz = 3
+#endif
+        allocate(res(-resdelx:nx+resdelx,-resdelz:nzlocal+resdelz),
+     &           stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vcycle2ddielectric: allocation error ",allocerror,
+     &           ": could not allocate res to shape ",nx,nzlocal
+          call kaboom("vcycle2ddielectric: allocation error")
+          return
+        endif
+
+c       --- Get the residual on the current grid.
+        call residual2ddielectric(nx,nzlocal,nz,phi,rho,epsilon,res,dx,dz,
+     &                            resdelx,resdelz,
+     &                            mglevel,localbounds,conductors)
+#ifdef MPIPARALLEL
+        call mgexchange_phi(nx,0,nzlocal,nz,res,localbounds,-1,
+     &                      resdelx,0,resdelz,
+     &                      my_index,nslaves,izfsslave,nzfsslave,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
+        call mgexchange_phi(nx,0,nzlocal,nz,res,localbounds,-2,
+     &                      resdelx,0,resdelz,
+     &                      my_index,nslaves,izfsslave,nzfsslave,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
+        call mgexchange_phi(nx,0,nzlocal,nz,res,localbounds,-3,
+     &                      resdelx,0,resdelz,
+     &                      my_index,nslaves,izfsslave,nzfsslave,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
+        call mgexchange_phiperiodic(nx,0,nzlocal,nz,res,localbounds,0,
+     &                              resdelx,0,resdelz,
+     &                              my_index,nslaves,izfsslave,
+     &                              whosendingleft,whosendingright)
+#endif
+        if (lprintmgarraysumdiagnostic) then
+          sss = mggetarraysum(nx,0,nzlocal,resdelx,0,resdelz,res,
+     &                        izfsslave,nzfsslave,nslaves,my_index)
+          if (my_index == 0) print*,"V3 res",mglevel,sss
+        endif
+
+c       --- Calculate the size of the next coarsest grid. If the current
+c       --- size is twice and odd integer, the next coarsest size will be
+c       --- n/2+1, gauranteeing that it is even.
+c       --- Note that nzlocalcoarse is only used if full-coarsening is done.
+        nxcoarse = nx/2
+        if (mod(nxcoarse,2) == 1) nxcoarse = nxcoarse + 1
+        nzlocalcoarse = nzlocal/2
+        if (mod(nzlocalcoarse,2) == 1) nzlocalcoarse = nzlocalcoarse + 1
+        nzcoarse = nz/2
+        if (mod(nzcoarse,2) == 1) nzcoarse = nzcoarse + 1
+
+        mingridsize = min(dx,dz)
+
+        if (dx > 4./3.*mingridsize) then
+          nxcoarse = nx
+        endif
+        if (dz > 4./3.*mingridsize) then
+          nzlocalcoarse = nzlocal
+          nzcoarse = nz
+        endif
+
+        dxcoarse = dx*nx/nxcoarse
+        dzcoarse = dz*nz/nzcoarse
+        dxcoarsesqi = 1./dxcoarse**2
+        dzcoarsesqi = 1./dzcoarse**2
+
+        localboundsc = globalbounds
+
+#ifdef MPIPARALLEL
+c       --- Find domains in coarser grid
+        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
+     &                  nz,nzcoarse,1.)
+c       --- Reset value to corrected one
+        nzlocalcoarse = nzfsslavec(my_index)
+c       --- Difference between starts and ends of coarse and fine grids.
+c       --- Should only be in the range 0-2.
+        lzoffsetall = (nzcoarse*izfsslave-nz*izfsslavec)
+        rzoffsetall = (nz*(izfsslavec + nzfsslavec) -
+     &                 nzcoarse*(izfsslave + nzfsslave))
+c       --- Note that the lzoffsetall and rzoffsetall can only be used in
+c       --- MPIPARALLEL sections since they will be unallocated in the
+c       --- serial code. So, separate scalars are used in code which is
+c       --- used in the serial version.
+        lzoffset = lzoffsetall(my_index)
+        rzoffset = rzoffsetall(my_index)
+c       --- Get processor with which to exchange data on coarse grid
+        call mggetexchangepes(nslaves,izfsslavec,nzfsslavec,my_index,
+     &                        globalbounds,nzcoarse,
+     &                        lzoffsetall,rzoffsetall,
+     &                        whosendingleftc,izsendingleftc,
+     &                        whosendingrightc,izsendingrightc)
+        if (izfsslavec(my_index) > 0) localboundsc(4) = -1
+        if (izfsslavec(my_index) + nzlocalcoarse < nzcoarse) localboundsc(5) = -1
+#else
+        lzoffset = 0
+        rzoffset = 0
+#endif
+
+c       --- Alloate new work space
+        allocate(phicoarse(-1:nxcoarse+1,-1:nzlocalcoarse+1),
+     &           stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vcycle2ddielectric: allocation error ",allocerror,
+     &           ": could not allocate phicoarse to shape ",
+     &           nxcoarse,nzlocalcoarse
+          call kaboom("vcycle2ddielectric: allocation error")
+          return
+        endif
+        allocate(rhocoarse(0:nxcoarse,0:nzlocalcoarse),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vcycle2ddielectric: allocation error ",allocerror,
+     &           ": could not allocate rhocoarse to shape ",
+     &           nxcoarse,nzlocalcoarse
+          call kaboom("vcycle2ddielectric: allocation error")
+          return
+        endif
+        allocate(epsiloncoarse(0:nxcoarse+1,0:nzlocalcoarse+1),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vcycle2ddielectric: allocation error ",allocerror,
+     &           ": could not allocate epsiloncoarse to shape ",
+     &           nxcoarse,nzlocalcoarse
+          call kaboom("vcycle2ddielectric: allocation error")
+          return
+        endif
+
+        rhocoarse = 0.
+        phicoarse = 0.
+
+c       --- Restriction - note that no scaling factor is needed
+        call restrict2d2d(nx,nzlocal,nz,res,resdelx,resdelz,
+     &                    nxcoarse,nzlocalcoarse,nzcoarse,rhocoarse,0,0,
+     &                    localbounds,localboundsc,lzoffset)
+        call restrict2dcellcentered(nx,nzlocal,nz,epsilon,
+     &                    nxcoarse,nzlocalcoarse,nzcoarse,epsiloncoarse,
+     &                    localbounds,localboundsc,lzoffset)
+        call applyboundaryconditions3d(nxcoarse-1,0,nzlocalcoarse-1,nzcoarse-1,
+     &                                 1,0,1,epsiloncoarse,localbounds,
+     &                                 .true.)
+
+        if (lprintmgarraysumdiagnostic) then
+          sss = mggetarraysum(nxcoarse,0,nzlocalcoarse,0,0,0,rhocoarse,
+     &                        izfsslavec,nzfsslavec,nslaves,my_index)
+          if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
+        endif
+
+c       --- Continue at the next coarsest level.
+        call vcycle2ddielectric(mglevel+iszone,nxcoarse,nzlocalcoarse,nzcoarse,
+     &                dxcoarse,dzcoarse,phicoarse,rhocoarse,epsiloncoarse,
+     &                globalbounds,mgparam,
+     &                mgmaxlevels,downpasses,uppasses,
+     &                lcndbndy,conductors,xminodx,lrz,
+     &                my_index,nslaves,izfsslavec,nzfsslavec)
+
+        if (lprintmgarraysumdiagnostic) then
+          sss = mggetarraysum(nxcoarse,0,nzlocalcoarse,1,0,1,phicoarse,
+     &                        izfsslavec,nzfsslavec,nslaves,my_index)
+          if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
+        endif
+
+c       --- Add in resulting error.
+        call expand2d2d(nx,nzlocal,nz,phi,
+     &                  nxcoarse,nzlocalcoarse,nzcoarse,phicoarse,
+     &                  localbounds,lzoffset)
+        call applyboundaryconditions3d(nx,0,nzlocal,nz,1,0,1,phi,localbounds,
+     &                                 .false.)
+#ifdef MPIPARALLEL
+        call mgexchange_phi(nx,0,nzlocal,nz,phi,localbounds,-1,1,0,1,
+     &                      my_index,nslaves,izfsslave,nzfsslave,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
+        call mgexchange_phiperiodic(nx,0,nzlocal,nz,phi,localbounds,1,1,0,1,
+     &                              my_index,nslaves,izfsslave,
+     &                              whosendingleft,whosendingright)
+#endif
+        if (lprintmgarraysumdiagnostic) then
+          sss = mggetarraysum(nx,0,nzlocal,1,0,1,phi,
+     &                        izfsslave,nzfsslave,nslaves,my_index)
+          if (my_index == 0) print*,"V5 phi",mglevel,sss
+        endif
+
+        deallocate(phicoarse,rhocoarse,epsiloncoarse)
+        deallocate(res)
+
+      endif
+
+c     --- Do final SOR passes.
+      do i=1,uppasses
+        call relax2ddielectric(mglevel,nx,nzlocal,nz,phi,rho,epsilon,
+     &                         dx,dz,localbounds,mgparam,conductors,
+     &                         my_index,nslaves,izfsslave,nzfsslave,
+     &                         whosendingleft,izsendingleft,
+     &                         whosendingright,izsendingright)
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine relax2ddielectric(mglevel,nx,nzlocal,nz,phi,rho,epsilon,dx,dz,
+     &                             bounds,mgparam,conductors,
+     &                             my_index,nslaves,izfsslave,nzfsslave,
+     &                             whosendingleft,izsendingleft,
+     &                             whosendingright,izsendingright)
+      use Constant
+      use ConductorTypemodule
+      integer(ISZ):: mglevel,nx,ny,nzlocal,nz
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1),rho(0:nx,0:nzlocal)
+      real(kind=8):: epsilon(0:nx+1,0:nzlocal+1)
+      integer(ISZ):: bounds(0:5)
+      real(kind=8):: dx,dz,mgparam
+      type(ConductorType):: conductors
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
+      integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
+
+c This routine does one pass of point SOR with even-odd (red-black)
+c ordering.
+c phisave is needed because when there are B fields, the even and odd sweeps
+c are no longer independent since the diagonal coefficients become non-zero.
+c The simplest solution is to save the values of phi before a sweep and
+c read those saved values for the update of phi.
+
+      integer(ISZ):: parity,s_parity,e_parity
+      integer(ISZ):: ixmin,ixmax,izmin,izmax,ix,iz,ix1
+
+      call cond_potmg(conductors%interior,
+     &                nx,0,nzlocal,1,0,1,phi,mglevel,1,.false.)
+      call condbndymgint(conductors%evensubgrid,nx,0,nzlocal,1,0,1,phi,
+     &                   bounds,mglevel,2)
+      call condbndymgint(conductors%oddsubgrid,nx,0,nzlocal,1,0,1,phi,
+     &                   bounds,mglevel,2)
+
+c     --- Set starting and ending parity.
+#ifdef MPIPARALLEL
+      s_parity = mod(izfsslave(my_index),2)
+      e_parity = mod(s_parity+1,2)
+#else
+      s_parity = 0
+      e_parity = 1
+#endif
+
+c     --- Set min and max indices for phi array.
+c     --- If using Dirichlet boundary conditions, do not solve for the
+c     --- potential on the grid edge.
+      ixmin = 0
+      ixmax = nx
+      izmin = 0
+      izmax = nzlocal
+      if (bounds(0) < 1) ixmin = 1
+      if (bounds(1) < 1) ixmax = nx - 1
+      if (bounds(4) < 1) izmin = 1
+      if (bounds(5) < 1) izmax = nzlocal - 1
+
+c     --- do loop to cover even and odd points
+      do parity=s_parity,e_parity,e_parity-s_parity
+
+        do iz=izmin,izmax
+          ix1 = ixmin + mod(ixmin + iz + parity,2)
+          do ix=ix1,ixmax,2
+
+            phi(ix,iz) = mgparam*(rho(ix,iz) + 
+     &        0.5*(epsilon(ix  ,iz)+epsilon(ix  ,iz+1))*phi(ix-1,iz  )/dx**2 +
+     &        0.5*(epsilon(ix+1,iz)+epsilon(ix+1,iz+1))*phi(ix+1,iz  )/dx**2 +
+     &        0.5*(epsilon(ix,iz  )+epsilon(ix+1,iz  ))*phi(ix  ,iz-1)/dz**2 +
+     &        0.5*(epsilon(ix,iz+1)+epsilon(ix+1,iz+1))*phi(ix  ,iz+1)/dz**2)/
+     &                    (0.5*(epsilon(ix  ,iz)+epsilon(ix  ,iz+1) +
+     &                          epsilon(ix+1,iz)+epsilon(ix+1,iz+1))*
+     &                     (1./dx**2 + 1./dz**2)) +
+     &                   (1.-mgparam)*phi(ix,iz)
+
+          enddo
+        enddo
+
+        call cond_potmg(conductors%interior,
+     &                  nx,0,nzlocal,1,0,1,phi,mglevel,1,.false.)
+        call condbndymgint(conductors%evensubgrid,nx,0,nzlocal,1,0,1,phi,
+     &                     bounds,mglevel,2)
+        call condbndymgint(conductors%oddsubgrid ,nx,0,nzlocal,1,0,1,phi,
+     &                     bounds,mglevel,2)
+
+        call applyboundaryconditions3d(nx,0,nzlocal,nz,1,0,1,phi,bounds,
+     &                                 .false.)
+
+#ifdef MPIPARALLEL
+        call mgexchange_phi(nx,0,nzlocal,nz,phi,bounds,0,1,0,1,
+     &                      my_index,nslaves,izfsslave,nzfsslave,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
+        call mgexchange_phiperiodic(nx,0,nzlocal,nz,phi,bounds,1,1,0,1,
+     &                              my_index,nslaves,izfsslave,
+     &                              whosendingleft,whosendingright)
+#endif
+
+c     --- end of loop over even and odd points
+      enddo
+
+#ifdef MPIPARALLEL
+c     --- Exchange phi in the z guard planes
+      call mgexchange_phi(nx,0,nzlocal,nz,phi,bounds,-1,1,0,1,
+     &                    my_index,nslaves,izfsslave,nzfsslave,
+     &                    whosendingleft,izsendingleft,
+     &                    whosendingright,izsendingright)
+#endif
+
+      return
+      end
+c=============================================================================
+      subroutine residual2ddielectric(nx,nzlocal,nz,phi,rho,epsilon,res,dx,dz,
+     &                                resdelx,resdelz,
+     &                                mglevel,bounds,conductors)
+      use Constant
+      use ConductorTypemodule
+      integer(ISZ):: nx,ny,nzlocal,nz
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1),rho(0:nx,0:nzlocal)
+      real(kind=8):: epsilon(0:nx+1,0:nzlocal+1)
+      real(kind=8):: res(-resdelx:nx+resdelx,-resdelz:nzlocal+resdelz)
+      real(kind=8):: dx,dz
+      integer(ISZ):: resdelx,resdelz,mglevel,bounds(0:5)
+      type(ConductorType):: conductors
+
+c Calculate the residual on the grid. Residual = r.h.s. - l.h.s.
+
+      integer(ISZ):: ix,iz
+      integer(ISZ):: ixmin,ixmax,izmin,izmax
+
+c     --- Set the loop limits, including edges when appropriate.
+      ixmin = 0
+      ixmax = nx
+      izmin = 0
+      izmax = nzlocal
+      if (bounds(0) == 0) ixmin = 1
+      if (bounds(1) == 0) ixmax = nx - 1
+      if (bounds(4) == 0) izmin = 1
+      if (bounds(5) == 0) izmax = nzlocal - 1
+
+      res = 0.
+c     --- Calculate the residual.
+!$OMP DO
+      do iz=izmin,izmax
+
+        do ix=ixmin,ixmax
+
+          res(ix,iz) = rho(ix,iz)
+     &      + 0.5*(epsilon(ix  ,iz)+epsilon(ix  ,iz+1))*phi(ix-1,iz  )/dx**2
+     &      + 0.5*(epsilon(ix+1,iz)+epsilon(ix+1,iz+1))*phi(ix+1,iz  )/dx**2
+     &      + 0.5*(epsilon(ix,iz  )+epsilon(ix+1,iz  ))*phi(ix  ,iz-1)/dz**2
+     &      + 0.5*(epsilon(ix,iz+1)+epsilon(ix+1,iz+1))*phi(ix  ,iz+1)/dz**2
+     &                  - 0.5*(epsilon(ix  ,iz)+epsilon(ix  ,iz+1) +
+     &                         epsilon(ix+1,iz)+epsilon(ix+1,iz+1))*
+     &                     (1./dx**2 + 1./dz**2)*phi(ix,iz)
+
+        enddo
+      enddo
+!$OMP END DO
+
+c     --- Zero the residual inside conductors.
+      call cond_potmgres(conductors%interior,
+     &                   nx,0,nzlocal,res,mglevel,1,.false.,1,0,3)
+
+c     if (lcndbndy) then
+c       --- Calculate the residual near the conductor.
+c       call condbndymgres2d(conductors%evensubgrid,nx,nzlocal,phi,rho,res,
+c    &                       dxsqi,dzsqi,xminodx,lrz,bounds,mglevel,
+c    &                       resdelx,resdelz)
+c       call condbndymgres2d(conductors%oddsubgrid,nx,nzlocal,phi,rho,res,
+c    &                       dxsqi,dzsqi,xminodx,lrz,bounds,mglevel,
+c    &                       resdelx,resdelz)
+c     endif
+
+c     --- Transverse boundaries
+      if (bounds(0) == 0) res(-1:0,:) = 0.
+      if (bounds(1) == 0) res(nx:nx+1,:) = 0.
+      if (bounds(0) == 1) res(-1,:) = res(1,:)
+      if (bounds(1) == 1) res(nx+1,:) = res(nx-1,:)
+      if (bounds(0) == 2) res(-1,:) = res(nx-1,:)
+      if (bounds(1) == 2) res(nx:nx+1,:) = res(0:1,:)
+
+c     --- Longitudinal boundaries
+      if (bounds(4) == 0) res(:,-1:0) = 0.
+      if (bounds(5) == 0) res(:,nzlocal:nzlocal+1) = 0.
+      if (bounds(4) == 1) res(:,-1) = res(:,1)
+      if (bounds(5) == 1) res(:,nzlocal+1) = res(:,nzlocal-1)
+      if (bounds(4) == 2 .and. nzlocal == nz) res(:,-1) = res(:,nzlocal-1)
+      if (bounds(5) == 2 .and. nzlocal == nz) res(:,nzlocal+1) = res(:,1)
+
+
+      return
+      end
+c=============================================================================
+      subroutine restrict2dcellcentered(nx,nzlocal,nz,u,
+     &                                  nxcoarse,nzlocalcoarse,nzcoarse,ucoarse,
+     &                                  bounds,boundscoarse,lzoffset)
+      integer(ISZ):: nx,nzlocal,nz
+      integer(ISZ):: nxcoarse,nzlocalcoarse,nzcoarse
+      real(kind=8):: u(0:nx+1,0:nzlocal+1)
+      real(kind=8):: ucoarse(0:nxcoarse+1,0:nzlocalcoarse+1)
+      integer(ISZ):: bounds(0:5)
+      integer(ISZ):: boundscoarse(0:5)
+      integer(ISZ):: lzoffset
+      
+c Restrict to a coarser grid.
+
+      integer(ISZ):: ix,iz
+      integer(ISZ):: ixcoarse,izcoarse
+      integer(ISZ):: ixmin,ixmax,izmin,izmax
+      real(kind=8):: r,w,dx,dz,dxi,dzi,wx(0:3),wz(0:3)
+
+      dx = 1.*nx/nxcoarse
+      dz = 1.*nz/nzcoarse
+      dxi = 1.*nxcoarse/nx
+      dzi = 1.*nzcoarse/nz
+
+c     --- Do the loops.
+!$OMP DO
+      do izcoarse=1,nzlocalcoarse
+        izmin = ((izcoarse-1)*nz - lzoffset + 4*nzcoarse)/nzcoarse-3
+        izmax = ((izcoarse+1)*nz - lzoffset - 1)/nzcoarse
+        if (izmin < 0) izmin = 0
+        if (izmax > nzlocal+1) izmax = nzlocal+1
+
+        do iz=izmin,izmax
+          wz(iz-izmin) = 1. - abs(izcoarse - (iz + 1.*lzoffset/nzcoarse)*dzi)
+        enddo
+
+        if (izcoarse == 0 .and. bounds(4) == 0) then
+          izmin = 0
+          izmax = 0
+          wz(0) = 2.
+        else if (izcoarse == nzlocalcoarse .and. bounds(5) == 0) then
+          izmin = nzlocal
+          izmax = nzlocal
+          wz(0) = 2.
+        endif
+
+        do ixcoarse=1,nxcoarse
+          ixmin = int(ceiling((ixcoarse-1)*dx + 1.e-10))
+          ixmax = int(floor((ixcoarse+1)*dx - 1.e-10))
+          if (ixmin < 0) ixmin = 0
+          if (ixmax > nx+1) ixmax = nx+1
+
+          do ix=ixmin,ixmax
+            wx(ix-ixmin) = 1. - abs(ixcoarse - ix*dxi)
+          enddo
+
+          if (ixcoarse == 0 .and. bounds(0) == 0) then
+            ixmin = 0
+            ixmax = 0
+            wx(0) = 2.
+          else if (ixcoarse == nxcoarse .and. bounds(1) == 0) then
+            ixmin = nx
+            ixmax = nx
+            wx(0) = 2.
+          endif
+
+          r = 0.
+          w = 0.
+          do iz=izmin,izmax
+              do ix=ixmin,ixmax
+                r = r + wx(ix-ixmin)*wz(iz-izmin)*u(ix,iz)
+                w = w + wx(ix-ixmin)*wz(iz-izmin)
+              enddo
+          enddo
+          if (w > 0.) then
+            ucoarse(ixcoarse,izcoarse) = r/w
+          else
+            ucoarse(ixcoarse,izcoarse) = 0.
+          endif
+
+        enddo
+      enddo
+!$OMP END DO
 
       return
       end

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.189 $, $Date: 2008/03/10 19:58:29 $
+#@(#) File F3D.V, version $Revision: 3.190 $, $Date: 2008/04/16 21:57:18 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.189 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.190 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -268,6 +268,22 @@ multigrid2dsolve(iwhich:integer,nx:integer,nzlocal:integer,nz:integer,
    subroutine
    # Solves Poisson's equation in 2D using the multigrid method. All input is
    # through the argument list.
+multigrid2ddielectricsolve(iwhich:integer,nx:integer,nzlocal:integer,
+                 nz:integer,dx:real,dz:real,
+                 phi(-1:nx+1,-1:nzlocal+1):real,rho(0:nx,0:nzlocal):real,
+                 epsilon(0:nx+1,0:nzlocal+1):real,
+                 bounds(0:5):integer,
+                 xmmin:real,zmminlocal:real,zmmin:real,zbeam:real,zgrid:real,
+                 mgparam:real,mgiters:integer,mgmaxiters:integer,
+                 mgmaxlevels:integer,mgerror:real,mgtol:real,mgverbose:integer,
+                 downpasses:integer,uppasses:integer,
+                 lcndbndy:logical,laddconductor:logical,lbuildquads:logical,
+                 gridmode:integer,conductors:ConductorType,lrz:logical,
+                 my_index:integer,nslaves:integer,izfsslave:integer,
+                 nzfsslave:integer)
+   subroutine
+   # Solves Poisson's equation in 2D with a variable dielectric using the
+   # multigrid method. All input is through the argument list.
 mgsolveimplicites3d(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,
                     nz:integer,dx:real,dy:real,dz:real,phi:real,rho:real,
                     ns:integer,qomdt:real,chi0:real,rstar:real,linbend:logical,
@@ -299,6 +315,12 @@ residual2d(nx:integer,nzlocal:integer,nz:integer,dxsqi:real,dzsqi:real,
            resdelx:integer,resdelz:integer)
    subroutine
    # Calculates the residual for 2d arrays
+residual2ddielectric(nx:integer,nzlocal:integer,nz:integer,
+           phi:real,rho:real,epsilon:real,res:real,dx:real,dz:real,
+           mglevel:integer,bounds:integer,
+           conductors:ConductorType)
+   subroutine
+   # Calculates the residual for 2d arrays with a variable dielectric
 restrict3d(nx:integer,ny:integer,nzlocal:integer,nz:integer,
            res(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz):real,
            delx:integer,dely:integer,delz:integer,
@@ -1019,6 +1041,7 @@ conductorsmoothshading() subroutine
 ******** Subtimersf3d:
 lf3dtimesubs logical /.false./
 timemultigrid3dsolve real /0./
+timemultigrid2dsolve real /0./
 timemultigridrzsolve real /0./
 timegathersourcefromchild real /0./
 timegatherpotentialfromparents real /0./
