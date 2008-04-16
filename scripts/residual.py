@@ -1,7 +1,7 @@
 # Calculate the residual of Poisson's equation.  The residual has the units
 # of volts, same as phi.
 from warp import *
-residual_version = "$Id: residual.py,v 1.5 2005/10/29 00:10:16 dave Exp $"
+residual_version = "$Id: residual.py,v 1.6 2008/04/16 22:00:13 dave Exp $"
 
 #print "Maximum residual = %e" % max(abs(ravel(residual)))
 
@@ -113,4 +113,51 @@ def getresidualXZ(phi=None,rho=None,dx=None,dz=None,
       cnd = cnd.getpyobject('next')
 
   return eee
+
+def getresidualRZ(phi=None,rho=None,dx=None,dz=None,xminodx=0.,solver=None):
+  if solver is not None:
+    phi = solver.phi[:,0,:]
+    rho = solver.rho[:,0,:]
+    dx = solver.dx
+    dz = solver.dz
+  if phi is None: phi = frz.basegrid.phi
+  if rho is None: rho = frz.basegrid.rho
+  if dx is None: dx = frz.basegrid.dr
+  if dz is None: dz = frz.basegrid.dz
+
+  dxsqi = 1./dx**2
+  dzsqi = 1./dz**2
+  const = 2.*(dxsqi+dzsqi)
+  const0 = 2.*(2.*dxsqi + dzsqi)
+
+  nx = phi.shape[0] - 3
+  nz = phi.shape[-1] - 3
+  rr,zz = getmesh2d(xminodx,1.,nx,0.,1.,nz)
+
+  res = zeros(rho.shape,'d')
+
+  ix1 = 0
+  if xminodx == 0:
+    ix1 = 1
+    res[0,:] = (rho[0,:]/eps0
+                  + (4*phi[2,1:-1])*dxsqi
+                  + (phi[1,:-2] + phi[1,2:])*dzsqi
+                  - phi[1,1:-1]*const0)
+
+  res[ix1:,:] = (rho[ix1:,:]/eps0
+        + ((rr[ix1:,:]-0.5)*phi[ix1:-2,1:-1] +
+           (rr[ix1:,:]+0.5)*phi[ix1+2:,1:-1])*dxsqi/rr[ix1:,:]
+        + (phi[ix1+1:-1,:-2] + phi[ix1+1:-1,2:])*dzsqi
+        - phi[ix1+1:-1,1:-1]*const)
+
+  # --- Clear out the boundaries which are Dirichlet.
+  if w3d.boundxy == top.dirichlet:
+    res[0,:] = 0.
+    res[-1,:] = 0.
+  if w3d.bound0 == top.dirichlet:
+    res[:,0] = 0.
+  if w3d.boundnz == top.dirichlet:
+    res[:,-1] = 0.
+
+  return res
 
