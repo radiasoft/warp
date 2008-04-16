@@ -302,6 +302,75 @@ class MultiGrid2D(MultiGrid):
   def pfzr(self,**kw): self.genericpf(kw,pfzx)
   def pfzrg(self,**kw): self.genericpf(kw,pfzxg)
 
+  def getresidual(self):
+    res = zeros(shape(self.phi),'d')
+    dxsqi  = 1./self.dx**2
+    dzsqi  = 1./self.dz**2
+    reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
+    rho = self.rho*reps0c
+    conductorobject = self.getconductorobject()
+    residual2d(self.nx,self.nzlocal,self.nz,dxsqi,dzsqi,xminodx,lrz,
+               self.phi,rho,res,0,self.bounds,
+               self.lcndbndy,self.icndbndy,conductorobject,1,1)
+    return res
+
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+class MultiGrid2DDielectric(MultiGrid2D):
+  
+  def __init__(self,epsilon=None,lreducedpickle=1,**kw):
+    MultiGrid2D.__init__(self,lreducedpickle,**kw)
+
+    if epsilon is None:
+      self.epsilon = eps0*fones((self.nx+2,self.nz+2),'d')
+    else:
+      self.epsilon = epsilon
+
+  def dosolve(self,iwhich=0,*args):
+    if not self.l_internal_dosolve: return
+    assert self.epsilon is not None,"epsilon must be defined"
+
+    # --- set for longitudinal relativistic contraction
+    iselfb = args[2]
+    beta = top.pgroup.fselfb[iselfb]/clight
+    zfact = 1./sqrt((1.-beta)*(1.+beta))
+
+    # --- This is only done for convenience.
+    self.phi = self.potential
+    self.rho = self.source
+    if isinstance(self.potential,FloatType): return
+
+    if self.izfsslave is None: self.izfsslave = top.izfsslave
+    if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
+    mgiters = zeros(1,'l')
+    mgerror = zeros(1,'d')
+    conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
+    self.lbuildquads = false
+    multigrid2ddielectricsolve(iwhich,self.nx,self.nzlocal,self.nz,
+                     self.dx,self.dz*zfact,
+                     self.phi[:,0,:],self.rho[:,0,:],self.epsilon,self.bounds,
+                     self.xmmin,self.zmminlocal*zfact,self.zmmin*zfact,
+                     self.getzgrid()*zfact,self.getzgrid()*zfact,
+                     self.mgparam,mgiters,self.mgmaxiters,
+                     self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
+                     self.downpasses,self.uppasses,
+                     self.lcndbndy,self.laddconductor,self.lbuildquads,
+                     self.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
+                     self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+
+    self.mgiters = mgiters[0]
+    self.mgerror = mgerror[0]
+
+  def getresidual(self):
+    res = zeros(shape(self.phi),'d')
+    conductorobject = self.getconductorobject()
+    residual2ddielectric(self.nx,self.nzlocal,self.nz,
+               self.phi,rho,self.epsilon,res,self.dx,self.dz,0,self.bounds,
+               conductorobject)
+    return res
+
 ##############################################################################
 ##############################################################################
 ##############################################################################
