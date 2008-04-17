@@ -5,12 +5,12 @@ from warp import *
 from species import *
 import time
 try:
-  import txphysics
+  from txphysics import txionpack
   l_txphysics=1
 except:
   l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.9 2007/06/04 23:02:52 dave Exp $"
+ionization_version = "$Id: ionization.py,v 1.10 2008/04/17 16:09:36 jlvay Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -317,33 +317,17 @@ Class for generating particles from impact ionization.
           # if no cross-section is provided, then attempt to get it from txphysics
           cross_section = self.inter[incident_species]['cross_section'][it] # cross-section
           if cross_section is None:
-            # The number of gases for which 
-            # we will calculate cross sections
-            newnumEls = txphysics.intp()
-            newnumEls.assign(1)
-            newinames = txphysics.intArray(newnumEls.value())
-            print incident_species.name+' on '+target_species.name+':'
-            print self.txphysics_targets[target_species.type]
             try:
-              newinames[0] = self.txphysics_targets[target_species.type]
+              gastype = self.txphysics_targets[target_species.type]
+              if self.l_verbose:print incident_species.name+' on '+target_species.name+':', gastype
             except:                    
               raise('Error in ionization: cross section of '+incident_species.name+' on '+target_species.name+' is not available. Please provide.')
             # This is an integer flag to specify electron (0) or ion (1)
-            newincident = txphysics.intp()
             if incident_species.type in (Electron,Positron):
-              newincident.assign(0)
+              incident = 0
             else:
-              newincident.assign(1)
-            # These are output variables
-            # First, a temporary variable for getting cross-section
-            this_crosssec = txphysics.doublep()
-            this_vel = txphysics.doublep()
-            cross_section = zeros(ni,'d')
-            for iv in range(ni):
-              this_vel.assign(vi[iv])
-              # This is the call to the ionization package
-              txphysics.get_sigma_impact(this_crosssec,this_vel,newinames, newincident)
-              cross_section[iv] = this_crosssec.value()
+              incident = 1
+            cross_section = txionpack.get_sigma_impact_array(vi, gastype, incident)
 
           # probability
           ncol = dp*cross_section*vi*top.dt*top.pgroup.ndts[js]*self.stride
