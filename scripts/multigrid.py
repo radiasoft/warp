@@ -804,7 +804,7 @@ tensor that appears from the direct implicit scheme.
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
       if isinstance(self.source,FloatType): return
       if isinstance(self.sourcep,FloatType): return
-      for iimp in range(top.nsimplicit):
+      for iimp in range(1+top.nsimplicit):
         setrhoforfieldsolve3d(self.nx,self.ny,self.nzlocal,
                               self.source[...,iimp],
                               self.nxp,self.nyp,self.nzp,
