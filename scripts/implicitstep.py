@@ -1,17 +1,29 @@
 
 """Defines ImplicitStep, which handles implicit time stepping"""
-implicitstep_version = "$Id: implicitstep.py,v 1.6 2008/01/09 19:42:59 rcohen Exp $"
+implicitstep_version = "$Id: implicitstep.py,v 1.7 2008/04/24 21:31:40 dave Exp $"
 
 from warp import *
+import controllers
 
 class ImplicitStep(PackageBase):
   """
 Handles implicit time stepping.
+ - name="implicitstep": name to pass to the package command
+ - niters=1: number of iterations of the implicit advance alogrithm
+ - E0method=0: Method to use for getting the E0, the approximation to the
+               future E field applied during the tilde step.
+               0 is use zero E field
+               1 is use E field from most recent field solve
   """
 
-  def __init__(self,name="implicitstep"):
+  def __init__(self,name="implicitstep",niters=1,
+                    E0method=0):
     self.name = name
     registerpackage(self,self.name)
+
+    # --- Save the input quantities
+    self.niters = niters
+    self.E0method = E0method
 
     # --- Initialize the timers
     self.timestep = 0.
@@ -108,24 +120,42 @@ Handles implicit time stepping.
       if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
-        top.pgroup.ex[i1:i2] = f*top.pgroup.pid[i1:i2,self.exoldpid]
-        top.pgroup.ey[i1:i2] = f*top.pgroup.pid[i1:i2,self.eyoldpid]
-        top.pgroup.ez[i1:i2] = f*top.pgroup.pid[i1:i2,self.ezoldpid]
+        top.pgroup.ex[i1:i2] = top.pgroup.pid[i1:i2,self.exoldpid]
+        top.pgroup.ey[i1:i2] = top.pgroup.pid[i1:i2,self.eyoldpid]
+        top.pgroup.ez[i1:i2] = top.pgroup.pid[i1:i2,self.ezoldpid]
 
-  def averageOldAndNewE(self):
+  def averageOldAndNewEintoE(self):
     for js in range(top.pgroup.ns):
       if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
-        top.pgroup.pid[i1:i2,self.exoldpid] = 0.5*(
-                                top.pgroup.pid[i1:i2,self.exoldpid] +
-                                top.pgroup.ex[i1:i2])
-        top.pgroup.pid[i1:i2,self.eyoldpid] =0.5*(
-                                top.pgroup.pid[i1:i2,self.eyoldpid] +
-                                top.pgroup.ey[i1:i2])
-        top.pgroup.pid[i1:i2,self.ezoldpid] =0.5*(
-                                top.pgroup.pid[i1:i2,self.ezoldpid] +
-                                top.pgroup.ez[i1:i2])
+        top.pgroup.ex[i1:i2] += top.pgroup.pid[i1:i2,self.exoldpid]
+        top.pgroup.ey[i1:i2] += top.pgroup.pid[i1:i2,self.eyoldpid]
+        top.pgroup.ez[i1:i2] += top.pgroup.pid[i1:i2,self.ezoldpid]
+        top.pgroup.ex[i1:i2] *= 0.5
+        top.pgroup.ey[i1:i2] *= 0.5
+        top.pgroup.ez[i1:i2] *= 0.5
+
+  def averageOldAndNewEintoOldE(self):
+    for js in range(top.pgroup.ns):
+      if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
+        i1 = top.pgroup.ins[js] - 1
+        i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
+        top.pgroup.pid[i1:i2,self.exoldpid] += top.pgroup.ex[i1:i2]
+        top.pgroup.pid[i1:i2,self.eyoldpid] += top.pgroup.ey[i1:i2]
+        top.pgroup.pid[i1:i2,self.ezoldpid] += top.pgroup.ez[i1:i2]
+        top.pgroup.pid[i1:i2,self.exoldpid] *= 0.5
+        top.pgroup.pid[i1:i2,self.eyoldpid] *= 0.5
+        top.pgroup.pid[i1:i2,self.ezoldpid] *= 0.5
+
+  def zeroE(self):
+    for js in range(top.pgroup.ns):
+      if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
+        i1 = top.pgroup.ins[js] - 1
+        i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
+        top.pgroup.ex[i1:i2] = 0.
+        top.pgroup.ey[i1:i2] = 0.
+        top.pgroup.ez[i1:i2] = 0.
 
   def fetche(self):
     top.lresetparticlee = true
@@ -238,6 +268,7 @@ Handles implicit time stepping.
       self.resetparticleb()
       self.addextfields()
       self.savePredEB()
+
   #==========================================================================
   def printpartextremes(self,leadstring):
     minx = minnd(top.pgroup.xp)
@@ -308,10 +339,10 @@ Handles implicit time stepping.
     # --- This in effect finishes the implicit advance from the
     # --- previous step, advancing the velocity to n+1/2 and the
     # --- position to n+1 using a(n) = 1/2(a(n-1) + a(n+1))
-    # --- Note that the gathering of rho is turned off since rho(n+1)
+    # --- Note that there is no gathering of rho since rho(n+1)
     # --- is not used.
     self.restoreOldE()
-    top.laccumulate_rho = true
+    top.laccumulate_rho = true # --- XXX
 #    execfile("/home/rcohen/warp/scripts/rcdiags.py")
 #    print "BEGIN STEP, z,zold,vdzold", printzzoldvzold()
 #    print "taking step, Ez = ", top.pgroup.ez[0]
@@ -321,9 +352,22 @@ Handles implicit time stepping.
       padvnc3d("halfv",top.pgroup)
     else:
       padvnc3d("fullv",top.pgroup)
+
 #    top.pgroup.yp=0.   # to avoid yp out of bounds in solve.  Need y=0 in range.
-    top.laccumulate_rho = false
+    top.laccumulate_rho = false # --- XXX
 #    print "AFTER HALFV, uzp = ",top.pgroup.uzp[0]
+
+    # --- Inject new particles.
+    # --- Note that these particles may have zero for the old E fields
+    # --- so the tilde advance won't be quite correct. This also means
+    # --- that the average of the old and new E done below will give a
+    # --- value that is half too small. This is not easy to fix since
+    # --- it would require fetching E for only the new particles.
+    inject3d(1,top.pgroup)
+    controllers.userinjection()
+
+    # --- Treat particles at boundaries
+    particleboundaries3d(top.pgroup)
 
     # --- Now the position of the grid can be advanced.
     self.advancezbeam()
@@ -374,81 +418,126 @@ Handles implicit time stepping.
                     top.lmoments or top.lhist or top.llabwn or top.llast or
                     (top.it == 0) or top.allspecl)
 
-#    self.printpartextremes("AFTER CORRECTOR, ")
-#    print "AFTER CORR STEP, z,zold,vdzold", printzzoldvzold()
-#    print "BEFORE SAVEOLDPART, uzp = ",top.pgroup.uzp[0]
+    #self.printpartextremes("AFTER CORRECTOR, ")
+    #print "AFTER CORR STEP, z,zold,vdzold", printzzoldvzold()
+    #print "BEFORE SAVEOLDPART, uzp = ",top.pgroup.uzp[0]
 
     # --- Save the old particle data
     self.saveOldParticleData()
 
-#    print "AFTER SAVEOLD PART, z,zold,vdzold", printzzoldvzold()
-#    print "AFTER SAVEOLDPART, uzp = ",top.pgroup.uzp[0]
+    if self.E0method == 0:
+      # --- Zero out the E field, since the first approximation of the
+      # --- future E is zero.
+      self.zeroE()
+    else:
+      # --- Fetche the E field from the most recent field solve.
+      self.fetche()
 
-    # --- Halve the old E field to get a(n+1) = 1/2(a(n) + a(n+2)) where
-    # --- a(n+2) is zero, use it to initialize the E field.
-    self.restoreOldE(0.5)
+    for iter in range(self.niters):
+      #print "AFTER SAVEOLD PART, z,zold,vdzold", printzzoldvzold()
+      #print "AFTER SAVEOLDPART, uzp = ",top.pgroup.uzp[0]
 
-    # --- Now do a fullv advance to give the guess at the new x. This
-    # --- does include a loadrho to get the rho_tilde. In fact, the only
-    # --- reason to do the step here is to calculate rho_tilde.
-    # --- This does not advance any explicit species.
-    # XXX Note that particle boundary conditions and injection will be tricky
-    # XXX here.
-    self.advancezgrid()
-    # If we are running the interpolated mover, we are now doing a predictor
-    # step.  This should apply the current fields to the corrected x.
-    # We can't do it here or it would muck up the Lorentz advance.  So
-    # it is done in xpush3d_interp.
-    if w3d.impinterp == 1:
-      w3d.ipredcor = 0
-    #
-#    print "BEFORE FULLV, uzp = ",top.pgroup.uzp[0]
-    top.pgroup.ldoadvance[:] = top.pgroup.limplicit
-    padvnc3d("fullv",top.pgroup)
-#    print "AFTER PRED STEP, z,zold,vdzold", printzzoldvzold()
-#    print "AFTER FULLV, uzp = ",top.pgroup.uzp[0]
-#    self.printpartextremes("AFTER PREDICTOR, ")
+      # --- Average the old and new E fields to get
+      # --- a(n+1) = 1/2(a(n) + a(n+2))
+      # --- where a(n+2) is the next estimate of the future fields.
+      # --- Note that on the first iteration, a(n+2) = 0.
+      # --- The result is stored in top.pgroup.ex etc.
+      self.averageOldAndNewEintoE()
 
-    top.pgroup.ldoadvance[:] = true
-    self.advancezbeam()
+      # --- Now do a fullv advance to give the guess at the future x.
+      # --- This does not advance any explicit species.
+      self.advancezgrid()
 
-    # --- Charge density contour plot diagnostics.  Note -- these diagnostics 
-    # --- are done at this phase of the particle advance to allow for the
-    # --- eventual use of a single array for rho and phi.   
-    # --- Note also, that these diagnostics will be made with rho_tilde.
-    # --- The actual rho is never calculated.
-    if top.lalways or top.lseldom: pltfld3d("rho",always)
-    if top.lseldom:                pltfld3d("rho",seldom)
+      # If we are running the interpolated mover, we are now doing a predictor
+      # step.  This should apply the current fields to the corrected x.
+      # We can't do it here or it would muck up the Lorentz advance.  So
+      # it is done in xpush3d_interp.
+      if w3d.impinterp == 1:
+        w3d.ipredcor = 0
 
-    # --- Implicit field-solve for potential.
-    if w3d.lbeforefs: beforefs()
-    fieldsol3d(-1)
-#    bfieldsol3d(-1)
-    if w3d.lafterfs: afterfs()
+      #print "BEFORE FULLV, uzp = ",top.pgroup.uzp[0]
+      top.pgroup.ldoadvance[:] = top.pgroup.limplicit
+      padvnc3d("fullv",top.pgroup)
+      #print "AFTER PRED STEP, z,zold,vdzold", printzzoldvzold()
+      #print "AFTER FULLV, uzp = ",top.pgroup.uzp[0]
+      #self.printpartextremes("AFTER PREDICTOR, ")
+      top.pgroup.ldoadvance[:] = true
+      self.advancezbeam()
 
-    # --- Fetch the newly calculated implicit field and averate it with
+      # --- Treat particles at boundaries
+      # --- Note that any particles that have they tilde position lost
+      # --- will be permenantly lost, even if the position after the advance
+      # --- with the full fields would not be lost.
+      # --- This call is needed since parallel and reflecting boundaries must
+      # --- be applied, as well as parallel inter-processor boundaries.
+      particleboundaries3d(top.pgroup)
+
+      # --- Collect charge density (rho_tilde) and current
+      loadrho()
+      loadj()
+
+      # --- After the first iteration, or if using the E field from the most
+      # --- recent field solve for E0, remove the delsq phi term from
+      # --- the right hand side. For E0=0, on the first iteration,
+      # --- delsq phi = 0.
+      # --- The field solve will calculate del phi.
+      # --- Also, save the current phi so the new phi can be constructed
+      # --- as the sum of the current phi and del phi.
+      if iter > 0 or self.E0method == 1:
+        for solver in registeredsolvers():
+          solver.removedelsqphi()
+          #print "Maximum del rho ",iter,maxnd(abs(solver.rho))
+          solver.savepreviouspotential()
+
+      # --- Implicit field-solve for potential.
+      # --- This assumes that an appropriate implicit field solver has
+      # --- been registered.
+      if w3d.lbeforefs: beforefs()
+      fieldsol3d(-1)
+      bfieldsol3d(-1)
+      if w3d.lafterfs: afterfs()
+
+      solver = getregisteredsolver()
+      #print "Maximum del phi ",iter,maxnd(abs(solver.phi))
+
+      # --- When the solver is calculating del phi, add together the previous
+      # --- phi and del phi to get the new phi
+      if iter > 0 or self.E0method == 1:
+        for solver in registeredsolvers():
+          solver.addinpreviouspotential()
+      #plg(solver.rho[:,0,0])
+
+      # --- Fetch the newly calculated implicit field.
+      self.fetche()
+
+      # --- Restore the old particle data. This can be done now that the new
+      # --- implicit field is fetched at the free streaming positions.
+      self.restoreOldParticleData()
+      #print "AFTER RESTOREOLDP, uzp = ",top.pgroup.uzp[0]
+
+      # --- If in parallel, the boundary conditions must be reapplied since
+      # --- some particles may have crossed processors based on the tilde
+      # --- positions - they need to be returned to the processors based
+      # --- on the old positions.
+      if npes > 0: particleboundaries3d(top.pgroup)
+
+    # --- The newly calculated implicit field is now averaged with
     # --- the old field. This calculates a(n+1) = 1/2(a(n) + a(n+2))
-    # --- The result is copied into the old field arrays.
+    # --- The result is put into the old field arrays.
     # --- If we are running the interpolated mover we must also save the E,B
     # --- at the particle locations as E_pred,B_pred for use in calculating
     # --- v_drift at current time for next step.
-    self.fetche()
-    self.averageOldAndNewE()
+    self.averageOldAndNewEintoOldE()
     if w3d.impinterp == 1:
       self.resetparticleb()
       self.addextfields()
       self.savePredEB()
       # this stores predicted total E, B for use in corrector.
 
-    # --- Restore the old particle data. This can be done now that the new
-    # --- implicit field is fetched at the free streaming positions.
-    self.restoreOldParticleData()
-#    print "AFTER RESTOREOLDP, uzp = ",top.pgroup.uzp[0]
-
     # --- Set the transverse E fields near any defined apertures.
     #set_aperture_e()
 
-    # --- Is this correct here? XXX
+    # --- Is this the correct place?
     # --- Complete constant current and axially directed space-charge limited
     # --- injection with new fields including injected particles.
     inject3d(2,top.pgroup)
@@ -473,7 +562,7 @@ Handles implicit time stepping.
 
       # --- Do a half-advance to bring v to same time level as the particles.
       padvnc3d("synchv",top.pgroup)
-#      print "AFTER SYNCHV, uzp = ",top.pgroup.uzp[0]
+      #print "AFTER SYNCHV, uzp = ",top.pgroup.uzp[0]
 
       # --- Finalize the moments calculation and do other diagnostics.
       getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,3,
@@ -493,6 +582,13 @@ Handles implicit time stepping.
       #getese()
       #sphiax()
       #sezax()
+
+    # --- Charge density contour plot diagnostics.
+    # --- Note also, that these diagnostics will be made with rho_tilde.
+    # --- The actual rho is never calculated, but with multiple iterations,
+    # --- rho_tilde will be close to the actual rho.
+    if top.lalways or top.lseldom: pltfld3d("rho",always)
+    if top.lseldom:                pltfld3d("rho",seldom)
 
     # --- Electrostatic potential contour plot diagnostics 
     if top.lalways or top.lseldom: pltfld3d("phi",always)
