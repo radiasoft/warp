@@ -2,7 +2,7 @@
 """
 from warp import *
 import time
-collision_version = "$Id: collision.py,v 1.4 2008/03/18 00:42:04 dave Exp $"
+collision_version = "$Id: collision.py,v 1.5 2008/04/24 21:33:01 dave Exp $"
 
 def collisiondoc():
   import collision
@@ -362,6 +362,16 @@ the fieldspecies is affected by collision against the testspecies.
             # --- This expression was grabbed from the scatterParticleGroup
             # --- routine of LSP.
             loglambda = 23.0 - log(1.0 + sqrt(2.*density*1.e-6)*qto3*T3)
+
+        #   zpc = q2
+        #   rpc = top.pgroup.sm[test]/top.pgroup.sm[field]
+        #   mpc = (top.pgroup.sm[field]/
+        #          (top.pgroup.sm[test]+top.pgroup.sm[field]))
+
+        #   loglambda = 23.0 -
+        #            log(1. + zpc*sqrt(M*zpc/Tm + N*zpc/Tn)/
+        #                     ((Tm + Tn*rpc)*mpc + sem[m]*mpc*0.3333*vmmn))
+
 
             """
           mu = (top.pgroup.sm[test]*top.pgroup.sm[field]/
