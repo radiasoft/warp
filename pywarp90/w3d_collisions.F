@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_collision.F, version $Revision: 1.5 $, $Date: 2008/04/04 21:36:07 $
+c@(#) File w3d_collision.F, version $Revision: 1.6 $, $Date: 2008/04/25 17:12:03 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This has routines handling particle collisions
@@ -48,6 +48,7 @@ c can cause a runaway of particle energy.--DON'T NEED TO WORRY THIS.
       real(kind=8):: uxf,uyf,uzf,uxf0
       real(kind=8):: vv,vv1,vv2,fdv,d11,d33
       real(kind=8):: xrand1
+      real(kind=8):: aa,norm,const,ww,erf
       real(kind=8):: wranf
 
 c     --- First, calculate the part of the collision frequency that
@@ -72,6 +73,11 @@ c     --- to scale the final velocity for energy conservation for
 c     --- self collisions.
       etotf1 = 0.
       etotf2 = 0.
+
+c     --- Needed for Sherlock form of approximation
+      aa = (8./(3.*pi))* (pi-3.)/(4.-pi)
+      norm = 4./(3.*sqrt(pi))
+      const = 3.*sqrt(pi)/2.
 
 c     --- Now loop over the test particles.
       do i=1,np
@@ -102,19 +108,39 @@ c angles in coordinate frame oriented parallel to local velocity
         vv1 =  sqrt(uxf**2+uyf**2)+ 1.e-06*sqrt(vthsqinit1)
         vv2 =  1./(vv*vv1 +1.e-06*vthsqinit1)
 
-c calculate diffusion and drag coefficients from Pade approximations
-c for isotropic F(v) and resulting kicks
+c-----------------------------------------------------------------------------
+c calculate diffusion and drag coefficients for isotropic F(v) and
+c resulting kicks, using approximation from Sherlock, JCP 227 (2008) 2286-2292.
 
-c       fdv = abs( eta*nudt/(1.+1.08*(vv/(sqrt2*sqrt(vthsqi2(i))))**2.76) )
-        fdv = abs( eta*nudt/(1.+1.06483*(vv/(sqrt2*sqrt(vthsqi2(i))))**2.488) )
+        ww = vv/sqrt(2.*vthsqi2(i))
+
+c       --- Approximation to the error function due to S. Winitzki.
+        erf = sqrt(1.-exp(-ww**2 * ((4./pi)+aa*ww**2)/(1.+aa*ww**2)) )
+
+        fdv = abs( eta*nudt/(1.+(2./const)*ww**3) )
 
         d33 = sqrt(abs(2.*vthsqi2(i)*(fdv/eta)*abs(-log(1.-wranf()))))
-     &      *cos(twopi*wranf())
+     &       *cos(twopi*wranf())
 
-        d11 = sqrt(nudt*2.*vthsqi2(i)/(1.+0.1856*
-     &      (vv/(sqrt2*sqrt(vthsqi2(i))))**1.848)*abs(-log(1.-wranf())))
+        d11 = sqrt(nudt*2.*(vthsqi2(i)/norm)*(erf/ww - (1./const)
+     &      /(1.+(2./const)*ww**3 ) )*abs(-log(1.-wranf())))
+
+c-----------------------------------------------------------------------------
+c calculate diffusion and drag coefficients for isotropic F(v) and
+c resulting kicks, using Pade approximation from B. Cohen.
+c The Sherlock form is better and has correct form at large v.
+
+cc       fdv = abs( eta*nudt/(1.+1.08*(vv/(sqrt2*sqrt(vthsqi2(i))))**2.76) )
+c       fdv = abs( eta*nudt/(1.+1.06483*(vv/(sqrt2*sqrt(vthsqi2(i))))**2.488) )
+
+c       d33 = sqrt(abs(2.*vthsqi2(i)*(fdv/eta)*abs(-log(1.-wranf()))))
+c    &      *cos(twopi*wranf())
+
+c       d11 = sqrt(nudt*2.*vthsqi2(i)/(1.+0.1856*
+c    &      (vv/(sqrt2*sqrt(vthsqi2(i))))**1.848)*abs(-log(1.-wranf())))
 
 c need to multiply d11 by cos and sin of ranf*twopi for kicks
+c-----------------------------------------------------------------------------
 
         fdv = -vv*fdv*(1.+0.5*fdv)      !! Includes energy cons. correction ~dt**2
 
@@ -194,6 +220,7 @@ c=============================================================================
       subroutine ijcoll2d(i1,i2,np1,np2,nxp,nyp,ux1,ux2,uy1,uy2,
      &   uz1,uz2,epvth,x1,y1,x2,y2,lx,ly,aion1,zion1,aion2,zion2,nion1,nion2,
      &   vthmisq1,vthmisq2,nudt,ncint,ixbc,izbc)
+      use Constant
 cc CIC collision operator, 2 space, 3 velocity dimensions
 cc Implements Manheimer, Lampe, Joyce, JCP 138, 563 (1997)
 cc test particle species i1 scatters of field particle species i2
@@ -211,8 +238,6 @@ cc This routine is to be called every ncint timesteps.
 cc ixbc=0,1,2  izbc=0,1,2  bounded,bounded,periodic
 
 cc Add whatever "Use" statements as needed here
-
-      Implicit None
 
       integer i,ip,ix,iy,ix1,iy1,ncint,nx1ny1,ixbc,izbc
       integer i1,i2,np1,np2,nxp,nyp
@@ -234,6 +259,7 @@ cc Add whatever "Use" statements as needed here
       real aion1,zion1,aion2,zion2,nion1,nion2,vthmisq1,vthmisq2
       real nudt,vthsqi
       real sddx2d,wranf
+      real aa,norm,const,ww,erf
 
 
 
@@ -275,6 +301,10 @@ cc arrays for both species needed in the collisions
 cc The test particle is species 1 and the field particle is species 2
 
 
+c     --- Needed for Sherlock for of approximation
+      aa = (8./(3.*pi))* (pi-3.)/(4.-pi)
+      norm = 4./(3.*sqrt(pi))
+      const = 3.*sqrt(pi)/2.
 
       ddxp=sddx2d(lx,nxp)
       ddyp=sddx2d(ly,nyp)
@@ -449,18 +479,38 @@ c angles in coordinate frame oriented parallel to local velocity
          vv1 =  sqrt(uxf**2+uyf**2)+ 1.e-06*sqrt(vthmisqa)
          vv2 =  1./(vv*vv1 +1.e-06*vthmisqa)
 
-c calculate diffusion and drag coefficients from Pade approximations
-c for isotropic F(v) and resulting kicks
+c-----------------------------------------------------------------------------
+c calculate diffusion and drag coefficients for isotropic F(v) and
+c resulting kicks, using approximation from Sherlock, JCP 227 (2008) 2286-2292.
 
-c        fdv = abs( eta*nuadt/(1.+1.08*(vv/(sqrt2*sqrt(vthsqi)))**2.76) )
-         fdv = abs( eta*nuadt/(1.+1.06483*(vv/(sqrt2*sqrt(vthsqi)))**2.488) )
+         ww = vv/sqrt(2.*vthsqi)
+
+c        --- Approximation to the error function due to S. Winitzki.
+         erf = sqrt(1.-exp(-ww**2 * ((4./pi)+aa*ww**2)/(1.+aa*ww**2)) )
+
+         fdv = abs( eta*nuadt/(1.+(2./const)*ww**3) )
 
          d33 = sqrt(abs(2.*vthsqi*(fdv/eta)*abs(-log(1.-wranf()))))
-     &       *cos(twopi*wranf())
+     &        *cos(twopi*wranf())
 
-         d11 = sqrt(nuadt*2.*vthsqi/(1.+0.1856*
-     &       (vv/(sqrt2*sqrt(vthsqi)))**1.848)*abs(-log(1.-wranf())))
+         d11 = sqrt(nuadt*2.*(vthsqi/norm)*(  erf/ww - (1./const)
+     &       /(1.+(2./const)*ww**3 ) )*abs(-log(1.-wranf())))
+
+c-----------------------------------------------------------------------------
+c calculate diffusion and drag coefficients for isotropic F(v) and
+c resulting kicks, using Pade approximation from B. Cohen.
+c The Sherlock form is better and has correct form at large v.
+
+cc        fdv = abs( eta*nuadt/(1.+1.08*(vv/(sqrt2*sqrt(vthsqi)))**2.76) )
+c        fdv = abs( eta*nuadt/(1.+1.06483*(vv/(sqrt2*sqrt(vthsqi)))**2.488) )
+
+c        d33 = sqrt(abs(2.*vthsqi*(fdv/eta)*abs(-log(1.-wranf()))))
+c    &       *cos(twopi*wranf())
+
+c        d11 = sqrt(nuadt*2.*vthsqi/(1.+0.1856*
+c    &       (vv/(sqrt2*sqrt(vthsqi)))**1.848)*abs(-log(1.-wranf())))
 c need to multiply d11 by cos and sin of ranf*twopi for kicks
+c-----------------------------------------------------------------------------
 
          fdv = -vv*fdv*(1.+0.5*fdv)      !! Includes energy cons. correction ~dt**2
 
