@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.168 $, $Date: 2008/04/16 21:57:18 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.169 $, $Date: 2008/04/28 20:01:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -3728,19 +3728,19 @@ c     --- Calculate some temporaries.
             call GETEEFROME(0, 0,1,0, 1,0,0, dxi,u0*v1*w0,u1*v1*w0)
             call GETEEFROME(0, 0,0,1, 1,0,0, dxi,u0*v0*w1,u1*v0*w1)
             call GETEEFROME(0, 0,1,1, 1,0,0, dxi,u0*v1*w1,u1*v1*w1)
-            wwsum(0) = 1./wwsum(0)
+            if (wwsum(0) .ne. 0.) wwsum(0) = 1./wwsum(0)
 
             call GETEEFROME(1, 0,0,0, 0,1,0, dyi,u0*v0*w0,u0*v1*w0)
             call GETEEFROME(1, 1,0,0, 0,1,0, dyi,u1*v0*w0,u1*v1*w0)
             call GETEEFROME(1, 0,0,1, 0,1,0, dyi,u0*v0*w1,u0*v1*w1)
             call GETEEFROME(1, 1,0,1, 0,1,0, dyi,u1*v0*w1,u1*v1*w1)
-            wwsum(1) = 1./wwsum(1)
+            if (wwsum(1) .ne. 0.) wwsum(1) = 1./wwsum(1)
 
             call GETEEFROME(2, 0,0,0, 0,0,1, dzi,u0*v0*w0,u0*v0*w1)
             call GETEEFROME(2, 1,0,0, 0,0,1, dzi,u1*v0*w0,u1*v0*w1)
             call GETEEFROME(2, 0,1,0, 0,0,1, dzi,u0*v1*w0,u0*v1*w1)
             call GETEEFROME(2, 1,1,0, 0,0,1, dzi,u1*v1*w0,u1*v1*w1)
-            wwsum(2) = 1./wwsum(2)
+            if (wwsum(2) .ne. 0.) wwsum(2) = 1./wwsum(2)
 
             ext = ee(0)*wwsum(0)
             eyt = ee(1)*wwsum(1)
@@ -4899,9 +4899,9 @@ c       --- Continue at the next coarsest level.
         endif
 
 c       --- Add in resulting error.
-        call expand2d2d(nx,nzlocal,nz,phi,
-     &                  nxcoarse,nzlocalcoarse,nzcoarse,phicoarse,
-     &                  localbounds,lzoffset)
+        call expand2d(nx,nzlocal,nz,phi,
+     &                nxcoarse,nzlocalcoarse,nzcoarse,phicoarse,
+     &                localbounds,lzoffset)
         call applyboundaryconditions3d(nx,0,nzlocal,nz,1,0,1,phi,localbounds,
      &                                 .false.)
 #ifdef MPIPARALLEL
@@ -5690,9 +5690,9 @@ c     --- Do the loops.
       return
       end
 c=============================================================================
-      subroutine expand2d2d(nx,nzlocal,nz,phi,
-     &                      nxcoarse,nzlocalcoarse,nzcoarse,phicoarse,
-     &                      bounds,lzoffset)
+      subroutine expand2d(nx,nzlocal,nz,phi,
+     &                    nxcoarse,nzlocalcoarse,nzcoarse,phicoarse,
+     &                    bounds,lzoffset)
       integer(ISZ):: nx,nzlocal,nz
       integer(ISZ):: nxcoarse,nzlocalcoarse,nzcoarse
       real(kind=8):: phi(-1:nx+1,-1:nzlocal+1)
@@ -6191,9 +6191,9 @@ c       --- Continue at the next coarsest level.
         endif
 
 c       --- Add in resulting error.
-        call expand2d2d(nx,nzlocal,nz,phi,
-     &                  nxcoarse,nzlocalcoarse,nzcoarse,phicoarse,
-     &                  localbounds,lzoffset)
+        call expand2d(nx,nzlocal,nz,phi,
+     &                nxcoarse,nzlocalcoarse,nzcoarse,phicoarse,
+     &                localbounds,lzoffset)
         call applyboundaryconditions3d(nx,0,nzlocal,nz,1,0,1,phi,localbounds,
      &                                 .false.)
 #ifdef MPIPARALLEL
