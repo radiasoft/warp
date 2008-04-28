@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.27 $, $Date: 2008/04/14 23:40:19 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.28 $, $Date: 2008/04/28 20:01:52 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -1033,8 +1033,8 @@ c       --- Continue at the next coarsest level.
         endif
 
 c       --- Add in resulting error.
-        call expand3d(nx,0,nzlocal,nz,1,0,1,phi,
-     &                nxcoarse,0,nzlocalcoarse,nzcoarse,phicoarse,
+        call expand2d(nx,nzlocal,nz,phi,
+     &                nxcoarse,nzlocalcoarse,nzcoarse,phicoarse,
      &                localbounds,lzoffset)
         call applyboundaryconditionses2d(phi,nx,0,nzlocal,nz,1,0,1,1,localboundsc,.false.)
 #ifdef MPIPARALLEL
