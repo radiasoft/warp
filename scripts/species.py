@@ -144,7 +144,8 @@ del k
 Electron=Particle(charge=-echarge,mass=emass,Symbol='e-',name='Electron')
 Positron=Particle(charge= echarge,mass=emass,Symbol='e+',name='Positron')
 
-Proton = Particle(mass=  amu, Symbol='P',name='Proton')
+Proton = Particle(mass=1.6726231e-27, charge=echarge, Symbol='P',name='Proton')
+Neutron = Particle(mass=1.6749286e-27, charge=0, Symbol='N',name='Neutron')
 
 Dihydrogen = Molecule(composition=[Hydrogen,Hydrogen], Symbol='H2',name='Dihydrogen')
 Dinitrogen = Molecule(composition=[Nitrogen,Nitrogen], Symbol='N2',name='Dinitrogen')
