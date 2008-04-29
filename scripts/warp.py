@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.164 2008/04/29 01:00:52 dave Exp $"
+warp_version = "$Id: warp.py,v 1.165 2008/04/29 01:20:22 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -322,7 +322,7 @@ returns a digit reversed random number.
     if x is None:
       return random.random()
     else:
-      return random.random(x.shape)
+      return random.random(shape(x))
   else:
     if not nbase: nbase = 2
     n = product(array(shape(array(x))))
@@ -348,13 +348,13 @@ def rnormarray(x,i1=None,nbase1=None,nbase2=None):
         return reshape(_normalgenerator.sample(product(array(shape(x)))),shape(x))
     try:
       if with_numpy:
-        return random.standard_normal(x.shape)
+        return random.standard_normal(shape(x))
       else:
         return RandomArray.standard_normal(x)
     except:
       # --- Use pseudo-random number generator
-      s = random.random(x.shape)
-      phi = 2.*pi*random.random(x.shape)
+      s = random.random(shape(x))
+      phi = 2.*pi*random.random(shape(x))
       sq = sqrt(-2.*log(s))
       return sq*cos(phi)
   else:
