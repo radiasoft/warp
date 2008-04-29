@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.163 2008/04/16 22:39:59 dave Exp $"
+warp_version = "$Id: warp.py,v 1.164 2008/04/29 01:00:52 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -78,6 +78,7 @@ if with_numpy:
   RandomArray = random
 else:
   import RandomArray
+  random = RandomArray
 
 # --- The WARP modules must be imported in the order below because of
 # --- linking dependencies.
@@ -307,7 +308,7 @@ derivqty()
 #=============================================================================
 # --- Convenience function for random numbers.
 def setseed(x=0,y=0):
-  RandomArray.seed(x,y)
+  random.seed(x,y)
     
 # --- Uniform distribution
 def ranf(x=None,i1=None,nbase=None):
@@ -319,23 +320,9 @@ returns a digit reversed random number.
   """
   if not i1:
     if x is None:
-      # --- Try various versions of ranf.
-      # --- RandomArray only returns single precision
-      # --- Ranf is left over from original version of Numeric
-      # --- RNG is best and most recent. Returns double precision
-      try: return RNG.ranf()
-      except: pass
-      try: return Ranf.ranf()
-      except: pass
-      try: return RandomArray.random(shape(array([0])))[0]
-      except: raise "No random number modules found"
+      return random.random()
     else:
-      try: return apply(RNG.random_sample,shape(x))
-      except: pass
-      try: return apply(Ranf.random_sample,shape(x))
-      except: pass
-      try: return RandomArray.random(shape(x))
-      except: raise "No random number modules found"
+      return random.random(x.shape)
   else:
     if not nbase: nbase = 2
     n = product(array(shape(array(x))))
@@ -361,13 +348,13 @@ def rnormarray(x,i1=None,nbase1=None,nbase2=None):
         return reshape(_normalgenerator.sample(product(array(shape(x)))),shape(x))
     try:
       if with_numpy:
-        return RandomArray.standard_normal(x.shape)
+        return random.standard_normal(x.shape)
       else:
         return RandomArray.standard_normal(x)
     except:
       # --- Use pseudo-random number generator
-      s = RandomArray.random(shape(x))
-      phi = 2.*pi*RandomArray.random(shape(x))
+      s = random.random(x.shape)
+      phi = 2.*pi*random.random(x.shape)
       sq = sqrt(-2.*log(s))
       return sq*cos(phi)
   else:
