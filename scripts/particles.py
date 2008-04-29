@@ -20,8 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-import random
-particles_version = "$Id: particles.py,v 1.65 2008/02/06 19:17:21 jlvay Exp $"
+particles_version = "$Id: particles.py,v 1.66 2008/04/29 00:59:00 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -64,7 +63,7 @@ def clear_subsets():
 
 #----------------------------------------------------------------------------
 # Modified version of the sample routine from the random module of Python2.3
-def populationsample(population,k,self=random.Random(0)):
+def populationsample(population,k):
     """Chooses k unique random elements from a population sequence.
 
     Returns a new list containing elements from the population while
@@ -96,14 +95,14 @@ def populationsample(population,k,self=random.Random(0)):
     n = len(population)
     if not 0 <= k <= n:
         raise ValueError, "sample larger than population"
-    random = self.random
+    rand = random.random
     _int = int
     # --- Result is an array rather than a list ---
     result = zeros(k,gettypecode(array([population[0]])))
     if n < 6 * k:     # if n len list takes less space than a k len dict
         pool = list(population)
         for i in xrange(k):         # invariant:  non-selected at [0,n-i)
-            j = _int(random() * (n-i))
+            j = _int(rand() * (n-i))
             result[i] = pool[j]
             pool[j] = pool[n-i-1]   # move non-selected item into vacancy
     else:
@@ -113,9 +112,9 @@ def populationsample(population,k,self=random.Random(0)):
             population = tuple(population)
         selected = {}
         for i in xrange(k):
-            j = _int(random() * n)
+            j = _int(rand() * n)
             while j in selected:
-                j = _int(random() * n)
+                j = _int(rand() * n)
             result[i] = selected[j] = population[j]
     return result
 
