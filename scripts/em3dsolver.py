@@ -705,85 +705,81 @@ class EM3D(object):
 
   ##########################################################################
   # Define the basic plot commands
-  def genericfp(self,data,title,l_transpose=true,**kw):
-    f=self.field
-    if self.solvergeom == w3d.XYgeom:
-      settitles(title,'X','Y','t = %gs'%(top.time))
-    elif self.solvergeom == w3d.XZgeom:
+  def genericfp(self,data,title,l_transpose=true,direction=2,slice=w3d.nz/2,**kw):
+    f=self.block.core.yf
+    if direction==0:
+      settitles(title,'Y','Z','t = %gs'%(top.time))
+      if l_transpose:
+        kw.setdefault('xmin',f.zmin)
+        kw.setdefault('xmax',f.zmax)
+        kw.setdefault('ymin',f.ymin)
+        kw.setdefault('ymax',f.ymax)
+      else:
+        kw.setdefault('xmin',f.ymin)
+        kw.setdefault('xmax',f.ymax)
+        kw.setdefault('ymin',f.zmin)
+        kw.setdefault('ymax',f.zmax)
+      data=data[slice+f.nxguard,f.nyguard:-f.nyguard,f.nzguard:-f.nzguard]
+    if direction==1:
       settitles(title,'Z','X','t = %gs'%(top.time))
-    if l_transpose:
-     if npes>1:
-      kw.setdefault('xmin',w3d.zmmin)
-      kw.setdefault('xmax',w3d.zmmax)
-     else:
-      kw.setdefault('xmin',self.field.xmin)
-      kw.setdefault('xmax',self.field.xmax)
-     kw.setdefault('ymin',self.field.ymin)
-     kw.setdefault('ymax',self.field.ymax)
-    else:
-     kw.setdefault('xmin',self.field.ymin)
-     kw.setdefault('xmax',self.field.ymax)
-     if npes>0:
-      kw.setdefault('ymin',w3d.zmmin)
-      kw.setdefault('ymax',w3d.zmmax)
-     else:
-      kw.setdefault('ymin',self.field.xmin)
-      kw.setdefault('ymax',self.field.xmax)
+      if l_transpose:
+        kw.setdefault('xmin',f.zmin)
+        kw.setdefault('xmax',f.zmax)
+        kw.setdefault('ymin',f.xmin)
+        kw.setdefault('ymax',f.xmax)
+      else:
+        kw.setdefault('xmin',f.xmin)
+        kw.setdefault('xmax',f.xmax)
+        kw.setdefault('ymin',f.zmin)
+        kw.setdefault('ymax',f.zmax)
+      data=data[f.nxguard:-f.nxguard,slice+f.nyguard,f.nzguard:-f.nzguard]
+    if direction==2:
+      settitles(title,'X','Y','t = %gs'%(top.time))
+      if l_transpose:
+        kw.setdefault('xmin',f.ymin)
+        kw.setdefault('xmax',f.ymax)
+        kw.setdefault('ymin',f.xmin)
+        kw.setdefault('ymax',f.xmax)
+      else:
+        kw.setdefault('xmin',f.xmin)
+        kw.setdefault('xmax',f.xmax)
+        kw.setdefault('ymin',f.ymin)
+        kw.setdefault('ymax',f.ymax)
+      data=data[f.nxguard:-f.nxguard,f.nyguard:-f.nyguard,slice+f.nzguard]
     ppgeneric(grid=data,**kw)
       
   def fpex(self,**kw):
-    if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Ey[1:w3d.nzp,...]),'E_x',**kw)
-    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.Ex),'E_x',**kw)
 
   def fpey(self,**kw):
-    if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Ez[1:w3d.nzp,...]),'E_y',**kw)
-    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.Ey),'E_y',**kw)
 
   def fpez(self,**kw):
-    if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Ex[1:w3d.nzp,...]),'E_z',**kw)
-    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.Ez),'E_z',**kw)
 
   def fpbx(self,**kw):
-    if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.By[1:w3d.nzp,...]),'B_x',**kw)
-    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.Bx),'B_x',**kw)
 
   def fpby(self,**kw):
-    if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Bz[1:w3d.nzp,...]),'B_y',**kw)
-    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.By),'B_y',**kw)
 
   def fpbz(self,**kw):
-    if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Bx[1:w3d.nzp,...]),'B_z',**kw)
-    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.Bz),'B_z',**kw)
 
   def fpjx(self,**kw):
-    if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.J[1:w3d.nzp,:,1]),'J_x',**kw)
-    elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.J[:,:,0]),'J_x',**kw)
+      self.genericfp(gatherarray(self.field.J[:,:,:,0]),'J_x',**kw)
 
   def fpjy(self,**kw):
-    if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.J[1:w3d.nzp,:,2]),'J_y',**kw)
-    elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.J[:,:,1]),'J_y',**kw)
+      self.genericfp(gatherarray(self.field.J[:,:,:,1]),'J_y',**kw)
 
   def fpjz(self,**kw):
-    if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.J[1:w3d.nzp,:,0]),'J_z',**kw)
-    elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.J[:,:,2]),'J_z',**kw)
+      self.genericfp(gatherarray(self.field.J[:,:,:,2]),'J_z',**kw)
+
+  def fprho(self,**kw):
+      self.genericfp(gatherarray(self.field.Rho),'Rho',**kw)
+
+  def fpf(self,**kw):
+      self.genericfp(gatherarray(self.field.F),'F',**kw)
 
   def sezax(self):
     pass
@@ -803,86 +799,6 @@ class EM3D(object):
   def getese(self):
     pass
 
-  def plbnd(self,h,fin=None):
-    f = self.field
-    if em3d.l_pml_cummer:
-      b = f.bndexeybz_cummer
-    else:
-      b = f.bndexeybz
-    g = fzeros([b.nx+1,b.ny+1],'d')
-
-    for k in range(1, b.nbndy+1):
-      jk1 = b.ntop1 + k * b.n1x
-      for j in range(1, b.nx+1):
-        jk = jk1 + j
-        g[j-1,k-1] = h[jk-1]
-
-    for k in range(  b.ny-b.nbndy+1, b.ny+1):
-      jk1 = b.ntop2 + k * b.n1x
-      for j in range(1, b.nx+1):
-        jk = jk1 + j
-        g[j-1,k-1] = h[jk-1]
-
-    for k in range(b.nbndy+2, b.ny-b.nbndy-2+1):
-      for j in range(1, b.nbndx+1):
-        jk= b.nbot1 + j + k * b.nint
-        g[j-1,k-1] = h[jk-1]
-
-    k=b.nbndy+1
-    for j in range(1, b.nbndx+1):
-      jk=bndijk(f,j,k)
-      g[j-1,k-1] = h[jk-1]
-
-    for k in range(b.ny-b.nbndy-1,b.ny-b.nbndy+1):
-      for j in range(1, b.nbndx+1):
-        jk=bndijk(f,j,k)
-        g[j-1,k-1] = h[jk-1]
-
-    for k in range(b.nbndy+2, b.ny-b.nbndy-2+1):
-      for j in range(b.nx-b.nbndx+1, b.nx+1):
-        jk = b.nbot2+ j + k * b.nint
-        g[j-1,k-1] = h[jk-1]
-
-    k=b.nbndy+1
-    for j in range(b.nx-b.nbndx+1, b.nx+1):
-      jk=bndijk(f,j,k)
-      g[j-1,k-1] = h[jk-1]
-
-    for k in range(b.ny-b.nbndy-1,b.ny-b.nbndy+1):
-      for j in range( b.nx-b.nbndx+1, b.nx+1):
-        jk=bndijk(f,j,k)
-        g[j-1,k-1] = h[jk-1]
-
-    if fin is not None:
-      grimax(f)
-      g[b.nbndx-1:b.nbndx+f.nx+1,b.nbndy-1:b.nbndy+f.ny+1]=fin[:f.nx+2,:f.ny+2]
-      griuni(f)
-      
-    ppgeneric(g)
-    
-  def fpezall(self,**kw):
-    f = self.field
-    if em3d.l_pml_cummer:
-      h = f.bndbxbyez_cummer.Bz
-    else:
-      h = f.bndbxbyez.Bzx+f.bndbxbyez.Bzy
-    self.plbnd(-h*clight,f.Ez)
-    
-  def fpbxall(self,**kw):
-    f = self.field
-    if em3d.l_pml_cummer:
-      h = f.bndbxbyez_cummer.Ex
-    else:
-      h = f.bndbxbyez.Ex
-    self.plbnd(h,f.Bx)
-        
-  def fpbyall(self,**kw):
-    f = self.field
-    if em3d.l_pml_cummer:
-      h = f.bndbxbyez_cummer.Ey
-    else:
-      h = f.bndbxbyez.Ey
-    self.plbnd(h,f.By)
         
 # --- This can only be done after the class is defined.
 #try:
