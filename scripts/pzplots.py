@@ -78,11 +78,21 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.20 2005/08/04 17:58:58 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.21 2008/05/01 23:56:17 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
   print pzplots.__doc__
+
+def setzdiagsflag(flag):
+  "Turns on or off the various z diagnostics"
+  w3d.lsrhoax3d = flag
+  w3d.lgtlchg3d = flag
+  w3d.lgetvzofz = flag
+  w3d.lgetese3d = flag
+  w3d.lsphiax3d = flag
+  w3d.lsezax3d  = flag
+  w3d.lsetcurr  = flag
 
 ###########################################################################
 def _extractvar(name,varsuffix=None,pkg='top',ff=None):
