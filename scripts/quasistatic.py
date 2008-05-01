@@ -22,7 +22,9 @@ class Quasistatic:
                conductors=[],l_elecuniform=0,scraper=None,l_weakstrong=0,nelecperiod=1,
                backgroundtype=Electron,l_push_z=true,l_inject_elec_MR=false,l_warpzmmnt=false,
                npushzperiod=1,lattice=None,l_freeze_xelec=false,
-               dispx=None,dispy=None,disppx=None,disppy=None,lcollapsemaps=1):
+               dispx=None,dispy=None,disppx=None,disppy=None,lcollapsemaps=1,
+               xinitelec=None,yinitelec=None,
+               vxinitelec=None,vyinitelec=None,vzinitelec=None,strideinitelec=1):
     w3d.solvergeom=w3d.XYgeom
     self.gridelecs=[]
     self.gridions=[]
@@ -191,7 +193,7 @@ class Quasistatic:
     self.reset_timers()
     self.l_freeze_xelec=l_freeze_xelec
     self.npushzperiod=npushzperiod
-    if lcollapsemaps:
+    if lattice is not None and lcollapsemaps:
       collapsedlattice=[]
       trmap = None
       lmap=0.
@@ -221,6 +223,14 @@ class Quasistatic:
       top.dt=lattice[0].L/top.vbeam
     self.ilcount=zeros(w3d.nzp+1)
     self.ionstonext = [0]
+    self.xinitelec=xinitelec
+    self.yinitelec=yinitelec
+    self.vxinitelec=vxinitelec
+    self.vyinitelec=vyinitelec
+    self.vzinitelec=vzinitelec
+    self.strideinitelec=strideinitelec
+    self.ielecstride=0
+    self.fbgainy=0.
 
   def reset_timers(self):
     self.time_loop=0.
@@ -470,7 +480,7 @@ class Quasistatic:
        if self.l_timing: self.time_getmmnts += wtime()-ptime
 
      # --- update time, time counter
-     top.time+=top.dt
+     if me>=(npes-1-top.it):top.time+=top.dt
      if self.lattice is not None:
        top.dt=self.lattice[self.ist].L/top.vbeam
      if self.l_verbose: print me,top.it,self.iz,'me = ',me,';compute zmmnt'
@@ -520,7 +530,7 @@ class Quasistatic:
           tosend.append(g.rho)
         mpi.send(tosend,me-1)
       if me<npes-1:
-        recved = mpirecv(me+1)
+        recved,status = mpi.recv(me+1)
         g = self.gridions[1]
         for ig in range(frz.ngrids):
           if ig>0:
@@ -621,7 +631,7 @@ class Quasistatic:
     recved = parallel.broadcast(tosend,npes-1)
     print me,recved
     if me<npes-1:
-#     recved = mpirecv(npes-1)
+#     recved,status = mpi.recv(npes-1)
       i = 0
       for glist in [self.gridions,self.gridelecs]:
         for ig in range(len(glist)):
@@ -647,7 +657,7 @@ class Quasistatic:
     if me<npes-1:
       js = w3d.nzp-1
       pg = self.pgions
-      recved = mpirecv(me+1)
+      recved,status = mpi.recv(me+1)
       np = recved[0]
       if np>0:
         if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me+1
@@ -691,7 +701,7 @@ class Quasistatic:
     if me>0:
       js = 0
       pg = self.pgions
-      recved = mpirecv(me-1)
+      recved,status = mpi.recv(me-1)
       np = recved[0]
       if np>0:
         if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me-1
@@ -756,7 +766,7 @@ class Quasistatic:
     if self.l_verbose:print me,top.it,self.iz,'enter recvparticlesfromprevious'
     pg = self.pgions
     top.pgroup = pg
-    recved = mpirecv(me-1)
+    recved,status = mpi.recv(me-1)
     np = recved[0]
     if np>0:
       if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me-1
@@ -879,7 +889,7 @@ class Quasistatic:
     if lparallel and me>0:
       g0 = self.gridions[0]
       g1 = self.gridions[1]
-      rhorecved = mpirecv(me-1)
+      rhorecved,status = mpi.recv(me-1)
       for ig in range(frz.ngrids):
         if ig>0:
           g0 = g0.down
@@ -1438,6 +1448,9 @@ class Quasistatic:
       np = pg.nps[js]
       il = pg.ins[js]-1
       iu = il+pg.nps[js]
+      if self.fbgainy>0.:
+        ybar=ave(pg.yp[il:iu])
+        pg.yp[il:iu]-=self.fbgainy*ybar
       if self.lattice is not None:
         if np>0:
           zp=pg.zp[il:iu].copy()
@@ -1540,7 +1553,7 @@ class Quasistatic:
       mpi.send(tosend,me-1)
     pg.nps[0]=0      
     if lparallel and me<npes-1:
-      self.recved = mpirecv(me+1)
+      self.recved,status = mpi.recv(me+1)
       np=self.recved[0]
       if np>0:
         if top.npid>0:
@@ -1577,7 +1590,7 @@ class Quasistatic:
 #          if me==0:ppco(x,y,ex,msize=3,ncolor=100);refresh()
 #        if iz==0:
 #        self.electrons.ppxex(msize=2);refresh()
-        print 'plot_elec',self.iz
+        print 'plot_elec',self.iz,'nb electrons = ',self.pgelec.nps[0]
         self.electrons.ppxy();refresh()#msize=1,color='density',ncolor=100,bcast=0,gather=0);refresh()
 #        else:
 #          self.slist[0].ppxex(msize=2);
@@ -1594,43 +1607,53 @@ class Quasistatic:
      # --- generate electrons (on last processor only)
      pg.nps[0]=0
      if self.l_mode==2:
-      zmax = w3d.zmmax/2+top.zgrid
+       zmax = w3d.zmmax/2+top.zgrid
      else:
-      zmax = w3d.zmmax-1.e-10*w3d.dz+top.zgrid
-     if self.l_inject_elec_MR:
-       js = self.electrons.jslist[0]
-       g = frz.basegrid
-       xmin = g.xmin+g.transit_min_r*g.dr
-       xmax = g.xmax-g.transit_max_r*g.dr
-       ymin = g.zmin+g.transit_min_z*g.dz
-       ymax = g.zmax-g.transit_max_z*g.dz
-       for i in range(frz.ngrids):
-         x,y = getmesh2d(xmin+g.dr/2,g.dr,g.nr-g.transit_min_r-g.transit_max_r-1, 
-                         ymin+g.dz/2,g.dz,g.nz-g.transit_min_z-g.transit_max_z-1)
-         np = product(shape(x))
-         x.shape = (np,)
-         y.shape = (np,)
-         if i<frz.ngrids-1:
-           g=g.down
-           xmin = g.xmin+g.transit_min_r*g.dr
-           xmax = g.xmax-g.transit_max_r*g.dr
-           ymin = g.zmin+g.transit_min_z*g.dz
-           ymax = g.zmax-g.transit_max_z*g.dz
-           ii = compress( (x>xmax) | (x<xmin) | (y>ymax) | (y<ymin), arange(np))
-           x = take(x,ii)
-           y = take(y,ii)
-         self.electrons.addpart(x,y,zmax,1.e-10,1.e-10,1.e-10,w=1./(4.**i))
-     else:
-       if top.prwall<sqrt(w3d.xmmax**2+w3d.ymmax**2):
-         self.electrons.add_uniform_cylinder(self.Ninit,min(top.prwall,w3d.xmmax),zmax,zmax,1.e-10,1.e-10,1.e-10,lallindomain=true)
+       zmax = w3d.zmmax-1.e-10*w3d.dz+top.zgrid
+     if self.xinitelec is not None: 
+       self.electrons.addpart(self.xinitelec[self.ielecstride::self.strideinitelec],
+                         self.yinitelec[self.ielecstride::self.strideinitelec],
+                         self.xinitelec[self.ielecstride::self.strideinitelec]*0.+zmax,
+                         self.vxinitelec[self.ielecstride::self.strideinitelec],
+                         self.vyinitelec[self.ielecstride::self.strideinitelec],
+                         self.vzinitelec[self.ielecstride::self.strideinitelec],
+                         lmomentum=false)
+       self.ielecstride = (self.ielecstride+1)%self.strideinitelec
+     else: 
+       if self.l_inject_elec_MR:
+         js = self.electrons.jslist[0]
+         g = frz.basegrid
+         xmin = g.xmin+g.transit_min_r*g.dr
+         xmax = g.xmax-g.transit_max_r*g.dr
+         ymin = g.zmin+g.transit_min_z*g.dz
+         ymax = g.zmax-g.transit_max_z*g.dz
+         for i in range(frz.ngrids):
+           x,y = getmesh2d(xmin+g.dr/2,g.dr,g.nr-g.transit_min_r-g.transit_max_r-1, 
+                           ymin+g.dz/2,g.dz,g.nz-g.transit_min_z-g.transit_max_z-1)
+           np = product(shape(x))
+           x.shape = (np,)
+           y.shape = (np,)
+           if i<frz.ngrids-1:
+             g=g.down
+             xmin = g.xmin+g.transit_min_r*g.dr
+             xmax = g.xmax-g.transit_max_r*g.dr
+             ymin = g.zmin+g.transit_min_z*g.dz
+             ymax = g.zmax-g.transit_max_z*g.dz
+             ii = compress( (x>xmax) | (x<xmin) | (y>ymax) | (y<ymin), arange(np))
+             x = take(x,ii)
+             y = take(y,ii)
+           self.electrons.addpart(x,y,zmax,1.e-10,1.e-10,1.e-10,w=1./(4.**i))
        else:
-         if self.l_elecuniform:
-           spacing='uniform'
+         if top.prwall<sqrt(w3d.xmmax**2+w3d.ymmax**2):
+           self.electrons.add_uniform_cylinder(self.Ninit,min(top.prwall,w3d.xmmax),zmax,zmax,1.e-10,1.e-10,1.e-10,lallindomain=true)
          else:
-           spacing='random'
-         self.electrons.add_uniform_box(self.Ninit,w3d.xmmin,w3d.xmmax,
-                                        w3d.ymmin,w3d.ymmax,zmax,zmax,
-                                        1.e-10,1.e-10,1.e-10,spacing=spacing,lallindomain=true)
+           if self.l_elecuniform:
+             spacing='uniform'
+           else:
+             spacing='random'
+           self.electrons.add_uniform_box(self.Ninit,w3d.xmmin,w3d.xmmax,
+                                          w3d.ymmin,w3d.ymmax,zmax,zmax,
+                                          1.e-10,1.e-10,1.e-10,spacing=spacing,lallindomain=true)
      # --- scrape electrons 
      if self.scraper is not None:self.scraper.scrapeall(local=1,clear=1)
 #     shrinkpart(pg)
