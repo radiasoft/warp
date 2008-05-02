@@ -10,7 +10,7 @@ try:
 except:
   l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.10 2008/04/17 16:09:36 jlvay Exp $"
+ionization_version = "$Id: ionization.py,v 1.11 2008/05/02 18:18:15 jlvay Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -305,10 +305,11 @@ Class for generating particles from impact ionization.
           # NOTE that at this point, the target species is assumed to have a negligible velocity.
           # this needs to be modified if this approximation is not valid.
           vi=sqrt(vxi*vxi+vyi*vyi+vzi*vzi)
-          if ndens is not None:
+          if ndens is None:
+            ndens = self.target_dens[target_species]['ndens']
+          if type(ndens) in [type(0.),type(0)]:
             dp=ndens
           else:
-            ndens = self.target_dens[target_species]['ndens']
             dp=zeros(ni,'d')
             getgrid3d(ni,xi,yi,zi,dp,
                         self.nx,self.ny,self.nz,ndens, \
