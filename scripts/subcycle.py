@@ -2,7 +2,7 @@
 Defines class Subcycle, which does periodic fieldsolves.
 """
 from warp import *
-subcycle_version = "$Id: subcycle.py,v 1.8 2002/07/25 23:02:14 dave Exp $"
+subcycle_version = "$Id: subcycle.py,v 1.9 2008/05/07 23:20:40 dave Exp $"
 
 def subcycledoc():
   import subcycle
@@ -80,14 +80,24 @@ Turns on charge deposition by restoring the values.
     """
 Turns off the field solve (save the field solve type).
     """
-    s.fstypesave = top.fstype
-    top.fstype = -1
+    solver = getregisteredsolver()
+    if solver is None:
+      s.fstypesave = top.fstype
+      top.fstype = -1
+    else:
+      for solver in getregisteredsolvers():
+        solver.ldosolve = 0
   # --------------------------------------------------------------------
   def turnonfieldsolve(s):
     """
 Turns on the field solver by restoring the field solve type.
     """
-    top.fstype = s.fstypesave
+    solver = getregisteredsolver()
+    if solver is None:
+      top.fstype = s.fstypesave
+    else:
+      for solver in getregisteredsolvers():
+        solver.ldosolve = 1
 
   # --------------------------------------------------------------------
   def dobeforestep(s):
