@@ -7,212 +7,6 @@ try:
 except ImportError:
   pass
 
-def allocatesf(f):
-    f.syf = EM3D_SPLITYEEFIELDtype()
-    f.fieldtype = f.syf.fieldtype
-
-def pyinit_3dem_block(nx, ny, nz, nbndx, nbndy, nbndz, nxguard, nyguard, nzguard, dt, dx, dy, dz, clight, mu0, xmin, ymin, zmin, xlb, ylb, zlb, xrb, yrb, zrb):
-  
-  b = EM3D_BLOCKtype()
-  b.core = EM3D_FIELDtype()
-  b.core.yf = EM3D_YEEFIELDtype()
-  b.core.fieldtype = b.core.yf.fieldtype
-
-  b.nx = nx
-  b.ny = ny
-  b.nz = nz
-  b.nbndx = nbndx
-  b.nbndy = nbndy
-  b.nbndz = nbndz
-  b.xmin = xmin
-  b.ymin = ymin
-  b.zmin = zmin
-  b.dx = dx
-  b.dy = dy
-  b.dz = dz
-  b.xmax = xmin+dx*nx
-  b.ymax = ymin+dy*ny
-  b.zmax = zmin+dz*nz
-  b.dxi = 1./dx
-  b.dyi = 1./dy
-  b.dzi = 1./dz
-  b.xlbnd = xlb
-  b.xrbnd = xrb
-  b.ylbnd = ylb
-  b.yrbnd = yrb
-  b.zlbnd = zlb
-  b.zrbnd = zrb
-
-  b.core.yf.nx = nx
-  b.core.yf.ny = ny
-  b.core.yf.nz = nz
-  b.core.yf.nxguard = nxguard
-  b.core.yf.nyguard = nyguard
-  b.core.yf.nzguard = nzguard
-  b.core.yf.xmin = xmin
-  b.core.yf.ymin = ymin
-  b.core.yf.zmin = zmin
-  b.core.yf.dx = dx
-  b.core.yf.dy = dy
-  b.core.yf.dz = dz
-  b.core.yf.xmax = xmin+dx*nx
-  b.core.yf.ymax = ymin+dy*ny
-  b.core.yf.zmax = zmin+dz*nz
-  b.core.yf.dxi = 1./dx
-  b.core.yf.dyi = 1./dy
-  b.core.yf.dzi = 1./dz
-  b.core.yf.clight = clight
-  b.core.yf.mu0    = mu0
-
-  b.core.yf.gchange()
-  
-  nnx=em3d.nn
-  nny=em3d.nn
-  nnz=em3d.nn
-  smaxx=em3d.s_max_init
-  smaxy=em3d.s_max_init
-  smaxz=em3d.s_max_init
-  sdeltax=em3d.s_delta
-  sdeltay=em3d.s_delta
-  sdeltaz=em3d.s_delta
-  
-# *** sides
-# x
-  b.sidexl = EM3D_FIELDtype()
-  if xlb==openbc:
-    allocatesf(b.sidexl)
-    init_splitfield(b.sidexl.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  if xlb==periodic:
-    b.sidexl=b.core
-  b.sidexr = EM3D_FIELDtype()
-  if xrb==openbc:
-    allocatesf(b.sidexr)
-    init_splitfield(b.sidexr.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  if xrb==periodic:
-    b.sidexr=b.core
-# y
-  b.sideyl = EM3D_FIELDtype()
-  if ylb==openbc:
-    allocatesf(b.sideyl)
-    init_splitfield(b.sideyl.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  if ylb==periodic:
-    b.sideyl=b.core
-  b.sideyr = EM3D_FIELDtype()
-  if yrb==openbc:
-    allocatesf(b.sideyr)
-    init_splitfield(b.sideyr.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  if yrb==periodic:
-    b.sideyr=b.core
-# z
-  b.sidezl = EM3D_FIELDtype()
-  if zlb==openbc:
-    allocatesf(b.sidezl)
-    init_splitfield(b.sidezl.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  if zlb==periodic:
-    b.sidezl=b.core
-  b.sidezr = EM3D_FIELDtype()
-  if zrb==openbc:
-    allocatesf(b.sidezr)
-    init_splitfield(b.sidezr.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  if zrb==periodic:
-    b.sidezr=b.core
-    
-# *** edges
-# xy
-  b.edgexlyl = EM3D_FIELDtype()
-  if xlb==openbc and ylb==openbc:
-    allocatesf(b.edgexlyl)
-    init_splitfield(b.edgexlyl.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-# partial periodic bc to be completed 
-#  if xlb==openbc and ylb==periodic:
-#    b.edgexlyl=b.sidexl
-#  if ylb==openbc and xlb==periodic:
-#    b.edgexlyl=b.sideyl
-  b.edgexryl = EM3D_FIELDtype()
-  if xrb==openbc and ylb==openbc:
-    allocatesf(b.edgexryl)
-    init_splitfield(b.edgexryl.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.edgexlyr = EM3D_FIELDtype()
-  if xlb==openbc and yrb==openbc:
-    allocatesf(b.edgexlyr)
-    init_splitfield(b.edgexlyr.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.edgexryr = EM3D_FIELDtype()
-  if xrb==openbc and yrb==openbc:
-    allocatesf(b.edgexryr)
-    init_splitfield(b.edgexryr.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-# xz
-  b.edgexlzl = EM3D_FIELDtype()
-  if xlb==openbc and zlb==openbc:
-    allocatesf(b.edgexlzl)
-    init_splitfield(b.edgexlzl.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.edgexrzl = EM3D_FIELDtype()
-  if xrb==openbc and ylb==openbc:
-    allocatesf(b.edgexrzl)
-    init_splitfield(b.edgexrzl.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.edgexlzr = EM3D_FIELDtype()
-  if xlb==openbc and zrb==openbc:
-    allocatesf(b.edgexlzr)
-    init_splitfield(b.edgexlzr.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.edgexrzr = EM3D_FIELDtype()
-  if xrb==openbc and zrb==openbc:
-    allocatesf(b.edgexrzr)
-    init_splitfield(b.edgexrzr.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-# yz
-  b.edgeylzl = EM3D_FIELDtype()
-  if ylb==openbc and zlb==openbc:
-    allocatesf(b.edgeylzl)
-    init_splitfield(b.edgeylzl.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.edgeyrzl = EM3D_FIELDtype()
-  if yrb==openbc and zlb==openbc:
-    allocatesf(b.edgeyrzl)
-    init_splitfield(b.edgeyrzl.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.edgeylzr = EM3D_FIELDtype()
-  if ylb==openbc and zrb==openbc:
-    allocatesf(b.edgeylzr)
-    init_splitfield(b.edgeylzr.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.edgeyrzr = EM3D_FIELDtype()
-  if yrb==openbc and zrb==openbc:
-    allocatesf(b.edgeyrzr)
-    init_splitfield(b.edgeyrzr.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-
-# *** corners
-  b.cornerxlylzl = EM3D_FIELDtype()
-  if xlb==openbc and ylb==openbc and zlb==openbc:
-    allocatesf(b.cornerxlylzl)
-    init_splitfield(b.cornerxlylzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.cornerxrylzl = EM3D_FIELDtype()
-  if xrb==openbc and ylb==openbc and zlb==openbc:
-    allocatesf(b.cornerxrylzl)
-    init_splitfield(b.cornerxrylzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.cornerxlyrzl = EM3D_FIELDtype()
-  if xlb==openbc and yrb==openbc and zlb==openbc:
-    allocatesf(b.cornerxlyrzl)
-    init_splitfield(b.cornerxlyrzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.cornerxryrzl = EM3D_FIELDtype()
-  if xrb==openbc and yrb==openbc and zlb==openbc:
-    allocatesf(b.cornerxryrzl)
-    init_splitfield(b.cornerxryrzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.cornerxlylzr = EM3D_FIELDtype()
-  if xlb==openbc and ylb==openbc and zrb==openbc:
-    allocatesf(b.cornerxlylzr)
-    init_splitfield(b.cornerxlylzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.cornerxrylzr = EM3D_FIELDtype()
-  if xrb==openbc and ylb==openbc and zrb==openbc:
-    allocatesf(b.cornerxrylzr)
-    init_splitfield(b.cornerxrylzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.cornerxlyrzr = EM3D_FIELDtype()
-  if xlb==openbc and yrb==openbc and zrb==openbc:
-    allocatesf(b.cornerxlyrzr)
-    init_splitfield(b.cornerxlyrzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  b.cornerxryrzr = EM3D_FIELDtype()
-  if xrb==openbc and yrb==openbc and zrb==openbc:
-    allocatesf(b.cornerxryrzr)
-    init_splitfield(b.cornerxryrzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-
-
-  return b
-
-##############################################################################
 class EM3D(object):
   
   __w3dinputs__ = ['solvergeom','nx','ny','nzlocal','nz',
@@ -228,7 +22,7 @@ class EM3D(object):
   __flaginputs__ = {'l_apply_pml':true,'nbndx':10,'nbndy':10,'nbndz':10,
                     'nxguard':1,'nyguard':1,'nzguard':1,
                     'l_particles_weight':false,'l_usecoeffs':false,
-                    'l_pushf':false,
+                    'l_pushf':false,'l_verbose':false,
                     'laser_amplitude':1.,'laser_profile':None,
                     'laser_gauss_width':None,'laser_angle':0.,
                     'laser_wavelength':None,'laser_wavenumber':None,
@@ -320,7 +114,7 @@ class EM3D(object):
   def allocatefieldarrays(self):
     self.block = pyinit_3dem_block(self.nx, 
                                    self.ny, 
-                                   self.nz, 
+                                   self.nzlocal, 
                                    self.nbndx, 
                                    self.nbndy, 
                                    self.nbndz, 
@@ -335,7 +129,7 @@ class EM3D(object):
                                    mu0, 
                                    self.xmmin, 
                                    self.ymmin, 
-                                   self.zmmin, 
+                                   self.zmminlocal, 
                                    self.bounds[0], 
                                    self.bounds[2], 
                                    self.bounds[4], 
@@ -445,8 +239,9 @@ class EM3D(object):
   def fetchphifrompositions(self,x,z,phi):
     pass
 
-  def loadrho(self,lzero=0):
+  def loadrho(self,lzero=true):
     if not self.l_pushf:return
+    if self.l_verbose:print 'loadrho',lzero
     # --- reallocate Jarray if needed
     if self.field.ntimes<>top.nsndts:
       self.field.ntimes=top.nsndts
@@ -472,19 +267,37 @@ class EM3D(object):
         wfact = top.pgroup.pid[i:i+n,top.wpid-1]
         l_particles_weight = true
       # --- point rho array to proper Jarray slice
-      self.field.rho = self.field.Rhoarray[:,:,:,top.ndtstorho[top.pgroup.ndts[js]-1]]
+      self.field.Rho = self.field.Rhoarray[:,:,:,top.ndtstorho[top.pgroup.ndts[js]-1]]
       # --- call routine performing current deposition
-      depose_rho_linear_serial(self.block.core.yf.Rho,n,
+      depose_rho_linear_serial(self.field.Rho,n,
                                top.pgroup.xp[i:i+n],
                                top.pgroup.yp[i:i+n],
                                top.pgroup.zp[i:i+n],
                                wfact,q*w,
-                               self.xmmin,self.ymmin,self.zmmin,
+                               self.block.xmin,self.block.ymin,self.block.zmin,
                                self.block.core.yf.dx,self.block.core.yf.dy,self.block.core.yf.dz,
                                self.block.core.yf.nx,self.block.core.yf.ny,self.block.core.yf.nz,
                                l_particles_weight)
 
+    # --- add slices
+    if top.nsndts>1:
+      for i in range(top.nsndts-2,-1,-1):
+        if force_deposition or (top.it-1)%(2**i)==0:
+          add_rho_slice_3d(self.field,i+1)
+
+    # --- apply boundary condition on current
+    self.apply_rho_bc()
+
+    # --- point Rho to first slice of Rhoarray
+    self.field.Rho = self.field.Rhoarray[:,:,:,0]
+
+  def apply_rho_bc(self):
+    # --- point Rho to first slice of Rhoarray
+    self.field.Rho = self.field.Rhoarray[:,:,:,0]
+    em3d_exchange_rho(self.block)
+
   def loadj(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+    if self.l_verbose:print 'loadj'
     # --- reallocate Jarray if needed
     if self.field.ntimes<>top.nsndts:
       self.field.ntimes=top.nsndts
@@ -520,7 +333,7 @@ class EM3D(object):
                                             top.pgroup.uyp[i:i+n],
                                             top.pgroup.uzp[i:i+n],
                                             top.pgroup.gaminv[i:i+n],wfact,q*w,
-                                            self.xmmin,self.ymmin,self.zmmin,
+                                            self.block.xmin,self.block.ymin,self.block.zmin,
                                             top.dt*top.pgroup.ndts[js],
                                             self.block.core.yf.dx,self.block.core.yf.dy,self.block.core.yf.dz,
                                             self.block.core.yf.nx,self.block.core.yf.ny,self.block.core.yf.nz,
@@ -657,7 +470,7 @@ class EM3D(object):
       field.Bz_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)
 
   def solve2ndhalf(self):
-#    print '2nd half'
+    if self.l_verbose:print 'solve 2nd half'
     if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
     # --- Set nxl and nyl if using large stencil
 #    if(not self.l_onegrid):
@@ -671,8 +484,8 @@ class EM3D(object):
 #      grimax(field)
     node2yee3d(self.block.core.yf)
     dt = top.dt/self.nfield_subcycle
-    for i in range(self.nfield_subcycle):
-      push_em3d_bf(self.block,dt,2,self.l_pushf)
+    push_em3d_bf(self.block,dt,2,self.l_pushf)
+    if self.l_verbose:print 'solve 2nd half done'
 #    yee2node3d(self.block.core.yf)
  #   self.move_window_fields()
  #   for field in fields:
@@ -680,7 +493,7 @@ class EM3D(object):
  #   if not self.l_onegrid:set_substitute_fields(self.field,self.fpatchcoarse,self.fpatchfine)
 
   def solve(self):
-#    print '1st half'
+    if self.l_verbose:print 'solve 1st half'
     if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
     # --- Set nxl and nyl if using large stencil
 #    if(not self.l_onegrid):
@@ -694,7 +507,10 @@ class EM3D(object):
 #      grimax(field)
 #    node2yee3d(self.block.core.yf)
     dt = top.dt/self.nfield_subcycle
-    for i in range(self.nfield_subcycle):
+    push_em3d_eef(self.block,dt,0,self.l_pushf)
+    push_em3d_bf(self.block,dt,1,self.l_pushf)
+    for i in range(self.nfield_subcycle-1):
+      push_em3d_bf(self.block,dt,2,self.l_pushf)
       push_em3d_eef(self.block,dt,0,self.l_pushf)
       push_em3d_bf(self.block,dt,1,self.l_pushf)
     yee2node3d(self.block.core.yf)
@@ -719,7 +535,8 @@ class EM3D(object):
         kw.setdefault('xmax',f.ymax)
         kw.setdefault('ymin',f.zmin)
         kw.setdefault('ymax',f.zmax)
-      data=data[slice+f.nxguard,f.nyguard:-f.nyguard,f.nzguard:-f.nzguard]
+#      data=data[slice+f.nxguard,f.nyguard:-f.nyguard,f.nzguard:-f.nzguard]
+      data=data[slice,:,:]
     if direction==1:
       settitles(title,'Z','X','t = %gs'%(top.time))
       if l_transpose:
@@ -732,7 +549,8 @@ class EM3D(object):
         kw.setdefault('xmax',f.xmax)
         kw.setdefault('ymin',f.zmin)
         kw.setdefault('ymax',f.zmax)
-      data=data[f.nxguard:-f.nxguard,slice+f.nyguard,f.nzguard:-f.nzguard]
+#      data=data[f.nxguard:-f.nxguard,slice+f.nyguard,f.nzguard:-f.nzguard]
+      data=data[:,slice,:]
     if direction==2:
       settitles(title,'X','Y','t = %gs'%(top.time))
       if l_transpose:
@@ -745,41 +563,49 @@ class EM3D(object):
         kw.setdefault('xmax',f.xmax)
         kw.setdefault('ymin',f.ymin)
         kw.setdefault('ymax',f.ymax)
-      data=data[f.nxguard:-f.nxguard,f.nyguard:-f.nyguard,slice+f.nzguard]
+#      data=data[f.nxguard:-f.nxguard,f.nyguard:-f.nyguard,slice+f.nzguard]
+      data=data[:,:,slice]
     ppgeneric(grid=data,**kw)
       
+  def gatherarray(self,g):
+    f=self.field
+    if me<npes-1:
+      return transpose(gatherarray(transpose(g[f.nxguard:-f.nxguard,f.nyguard:-f.nyguard,f.nzguard:-f.nzguard-1],[2,1,0])),[2,1,0])
+    else:
+      return transpose(gatherarray(transpose(g[f.nxguard:-f.nxguard,f.nyguard:-f.nyguard,f.nzguard:-f.nzguard],[2,1,0])),[2,1,0])
+      
   def fpex(self,**kw):
-      self.genericfp(gatherarray(self.field.Ex),'E_x',**kw)
+      self.genericfp(self.gatherarray(self.field.Ex),'E_x',**kw)
 
   def fpey(self,**kw):
-      self.genericfp(gatherarray(self.field.Ey),'E_y',**kw)
+      self.genericfp(self.gatherarray(self.field.Ey),'E_y',**kw)
 
   def fpez(self,**kw):
-      self.genericfp(gatherarray(self.field.Ez),'E_z',**kw)
+      self.genericfp(self.gatherarray(self.field.Ez),'E_z',**kw)
 
   def fpbx(self,**kw):
-      self.genericfp(gatherarray(self.field.Bx),'B_x',**kw)
+      self.genericfp(self.gatherarray(self.field.Bx),'B_x',**kw)
 
   def fpby(self,**kw):
-      self.genericfp(gatherarray(self.field.By),'B_y',**kw)
+      self.genericfp(self.gatherarray(self.field.By),'B_y',**kw)
 
   def fpbz(self,**kw):
-      self.genericfp(gatherarray(self.field.Bz),'B_z',**kw)
+      self.genericfp(self.gatherarray(self.field.Bz),'B_z',**kw)
 
   def fpjx(self,**kw):
-      self.genericfp(gatherarray(self.field.J[:,:,:,0]),'J_x',**kw)
+      self.genericfp(self.gatherarray(self.field.J[:,:,:,0]),'J_x',**kw)
 
   def fpjy(self,**kw):
-      self.genericfp(gatherarray(self.field.J[:,:,:,1]),'J_y',**kw)
+      self.genericfp(self.gatherarray(self.field.J[:,:,:,1]),'J_y',**kw)
 
   def fpjz(self,**kw):
-      self.genericfp(gatherarray(self.field.J[:,:,:,2]),'J_z',**kw)
+      self.genericfp(self.gatherarray(self.field.J[:,:,:,2]),'J_z',**kw)
 
   def fprho(self,**kw):
-      self.genericfp(gatherarray(self.field.Rho),'Rho',**kw)
+      self.genericfp(self.gatherarray(self.field.Rho),'Rho',**kw)
 
   def fpf(self,**kw):
-      self.genericfp(gatherarray(self.field.F),'F',**kw)
+      self.genericfp(self.gatherarray(self.field.F),'F',**kw)
 
   def sezax(self):
     pass
@@ -799,7 +625,338 @@ class EM3D(object):
   def getese(self):
     pass
 
+  def getjx(self):
+      return self.gatherarray(self.field.J[:,:,:,0])
+
+  def getjy(self):
+      return self.gatherarray(self.field.J[:,:,:,1])
+
+  def getjz(self):
+      return self.gatherarray(self.field.J[:,:,:,2])
+
+  def getex(self):
+      return self.gatherarray(self.field.Ex)
+
+  def getey(self):
+      return self.gatherarray(self.field.Ey)
         
+  def getez(self):
+      return self.gatherarray(self.field.Ez)
+        
+  def getbx(self):
+      return self.gatherarray(self.field.Bx)
+
+  def getby(self):
+      return self.gatherarray(self.field.By)
+        
+  def getbz(self):
+      return self.gatherarray(self.field.Bz)
+        
+  def getrho(self):
+      return self.gatherarray(self.field.Rho)
+
+  def getf(self):
+      return self.gatherarray(self.field.F)
+
+def allocatesf(f):
+    f.syf = EM3D_SPLITYEEFIELDtype()
+    f.fieldtype = f.syf.fieldtype
+    f.proc=me
+
+def allocatef(f):
+    f.yf = EM3D_YEEFIELDtype()
+    f.fieldtype = f.yf.fieldtype
+    f.proc=me
+
+def pyinit_3dem_block(nx, ny, nz, nbndx, nbndy, nbndz, nxguard, nyguard, nzguard, dt, dx, dy, dz, clight, mu0, xmin, ymin, zmin, xlb, ylb, zlb, xrb, yrb, zrb):
+  
+  l_1d_decomposition=true
+  
+  b = EM3D_BLOCKtype()
+  b.core = EM3D_FIELDtype()
+  b.core.yf = EM3D_YEEFIELDtype()
+  b.core.fieldtype = b.core.yf.fieldtype
+  b.core.proc = me
+
+  if npes>1:
+    if l_1d_decomposition:
+      if me==0:
+        zrb = em3d.otherproc
+        if zlb==periodic:
+          zlb = em3d.otherproc
+      elif me==npes-1:
+        zlb = em3d.otherproc
+        if zrb==periodic:
+          zrb = em3d.otherproc
+      else:
+        zlb=zrb=em3d.otherproc
+
+  b.nx = nx
+  b.ny = ny
+  b.nz = nz
+  b.nbndx = nbndx
+  b.nbndy = nbndy
+  b.nbndz = nbndz
+  b.xmin = xmin
+  b.ymin = ymin
+  b.zmin = zmin
+  b.dx = dx
+  b.dy = dy
+  b.dz = dz
+  b.xmax = xmin+dx*nx
+  b.ymax = ymin+dy*ny
+  b.zmax = zmin+dz*nz
+  b.dxi = 1./dx
+  b.dyi = 1./dy
+  b.dzi = 1./dz
+  b.xlbnd = xlb
+  b.xrbnd = xrb
+  b.ylbnd = ylb
+  b.yrbnd = yrb
+  b.zlbnd = zlb
+  b.zrbnd = zrb
+
+  b.core.yf.nx = nx
+  b.core.yf.ny = ny
+  b.core.yf.nz = nz
+  b.core.yf.nxguard = nxguard
+  b.core.yf.nyguard = nyguard
+  b.core.yf.nzguard = nzguard
+  b.core.yf.xmin = xmin
+  b.core.yf.ymin = ymin
+  b.core.yf.zmin = zmin
+  b.core.yf.dx = dx
+  b.core.yf.dy = dy
+  b.core.yf.dz = dz
+  b.core.yf.xmax = xmin+dx*nx
+  b.core.yf.ymax = ymin+dy*ny
+  b.core.yf.zmax = zmin+dz*nz
+  b.core.yf.dxi = 1./dx
+  b.core.yf.dyi = 1./dy
+  b.core.yf.dzi = 1./dz
+  b.core.yf.clight = clight
+  b.core.yf.mu0    = mu0
+
+  b.core.yf.gchange()
+  
+  nnx=em3d.nn
+  nny=em3d.nn
+  nnz=em3d.nn
+  smaxx=em3d.s_max_init
+  smaxy=em3d.s_max_init
+  smaxz=em3d.s_max_init
+  sdeltax=em3d.s_delta
+  sdeltay=em3d.s_delta
+  sdeltaz=em3d.s_delta
+  
+# *** sides
+# x
+  b.sidexl = EM3D_FIELDtype()
+  if xlb==openbc:
+    allocatesf(b.sidexl)
+    init_splitfield(b.sidexl.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if xlb==periodic:
+    b.sidexl=b.core
+  b.sidexr = EM3D_FIELDtype()
+  if xrb==openbc:
+    allocatesf(b.sidexr)
+    init_splitfield(b.sidexr.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if xrb==periodic:
+    b.sidexr=b.core
+# y
+  b.sideyl = EM3D_FIELDtype()
+  if ylb==openbc:
+    allocatesf(b.sideyl)
+    init_splitfield(b.sideyl.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if ylb==periodic:
+    b.sideyl=b.core
+  b.sideyr = EM3D_FIELDtype()
+  if yrb==openbc:
+    allocatesf(b.sideyr)
+    init_splitfield(b.sideyr.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if yrb==periodic:
+    b.sideyr=b.core
+# z
+  b.sidezl = EM3D_FIELDtype()
+  if zlb==openbc:
+    allocatesf(b.sidezl)
+    init_splitfield(b.sidezl.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zlb==periodic:
+    b.sidezl=b.core
+  if zlb==em3d.otherproc:
+    allocatef(b.sidezl)
+    if l_1d_decomposition:
+      b.sidezl.proc=(me-1)%npes      
+  b.sidezr = EM3D_FIELDtype()
+  if zrb==openbc:
+    allocatesf(b.sidezr)
+    init_splitfield(b.sidezr.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zrb==periodic:
+    b.sidezr=b.core
+  if zrb==em3d.otherproc:
+    allocatef(b.sidezr)
+    if l_1d_decomposition:
+      b.sidezr.proc=(me+1)%npes      
+    
+# *** edges
+# xy
+  b.edgexlyl = EM3D_FIELDtype()
+  if xlb==openbc and ylb==openbc:
+    allocatesf(b.edgexlyl)
+    init_splitfield(b.edgexlyl.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+# partial periodic bc to be completed 
+#  if xlb==openbc and ylb==periodic:
+#    b.edgexlyl=b.sidexl
+#  if ylb==openbc and xlb==periodic:
+#    b.edgexlyl=b.sideyl
+  b.edgexryl = EM3D_FIELDtype()
+  if xrb==openbc and ylb==openbc:
+    allocatesf(b.edgexryl)
+    init_splitfield(b.edgexryl.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  b.edgexlyr = EM3D_FIELDtype()
+  if xlb==openbc and yrb==openbc:
+    allocatesf(b.edgexlyr)
+    init_splitfield(b.edgexlyr.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  b.edgexryr = EM3D_FIELDtype()
+  if xrb==openbc and yrb==openbc:
+    allocatesf(b.edgexryr)
+    init_splitfield(b.edgexryr.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+# xz
+  b.edgexlzl = EM3D_FIELDtype()
+  if xlb==openbc and zlb==openbc:
+    allocatesf(b.edgexlzl)
+    init_splitfield(b.edgexlzl.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zlb==em3d.otherproc:
+    allocatesf(b.edgexlzl)
+    if l_1d_decomposition:
+      b.edgexlzl.proc=(me-1)%npes      
+  b.edgexrzl = EM3D_FIELDtype()
+  if xrb==openbc and ylb==openbc:
+    allocatesf(b.edgexrzl)
+    init_splitfield(b.edgexrzl.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zlb==em3d.otherproc:
+    allocatesf(b.edgexrzl)
+    if l_1d_decomposition:
+      b.edgexrzl.proc=(me-1)%npes      
+  b.edgexlzr = EM3D_FIELDtype()
+  if xlb==openbc and zrb==openbc:
+    allocatesf(b.edgexlzr)
+    init_splitfield(b.edgexlzr.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zrb==em3d.otherproc:
+    allocatesf(b.edgexlzr)
+    if l_1d_decomposition:
+      b.edgexlzr.proc=(me+1)%npes      
+  b.edgexrzr = EM3D_FIELDtype()
+  if xrb==openbc and zrb==openbc:
+    allocatesf(b.edgexrzr)
+    init_splitfield(b.edgexrzr.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zrb==em3d.otherproc:
+    allocatesf(b.edgexrzr)
+    if l_1d_decomposition:
+      b.edgexrzr.proc=(me+1)%npes      
+# yz
+  b.edgeylzl = EM3D_FIELDtype()
+  if ylb==openbc and zlb==openbc:
+    allocatesf(b.edgeylzl)
+    init_splitfield(b.edgeylzl.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zlb==em3d.otherproc:
+    allocatesf(b.edgeylzl)
+    if l_1d_decomposition:
+      b.edgeylzl.proc=(me-1)%npes      
+  b.edgeyrzl = EM3D_FIELDtype()
+  if yrb==openbc and zlb==openbc:
+    allocatesf(b.edgeyrzl)
+    init_splitfield(b.edgeyrzl.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zlb==em3d.otherproc:
+    allocatesf(b.edgeyrzl)
+    if l_1d_decomposition:
+      b.edgeyrzl.proc=(me-1)%npes      
+  b.edgeylzr = EM3D_FIELDtype()
+  if ylb==openbc and zrb==openbc:
+    allocatesf(b.edgeylzr)
+    init_splitfield(b.edgeylzr.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zrb==em3d.otherproc:
+    allocatesf(b.edgeylzr)
+    if l_1d_decomposition:
+      b.edgeylzr.proc=(me+1)%npes      
+  b.edgeyrzr = EM3D_FIELDtype()
+  if yrb==openbc and zrb==openbc:
+    allocatesf(b.edgeyrzr)
+    init_splitfield(b.edgeyrzr.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zrb==em3d.otherproc:
+    allocatesf(b.edgeyrzr)
+    if l_1d_decomposition:
+      b.edgeyrzr.proc=(me+1)%npes      
+
+# *** corners
+  b.cornerxlylzl = EM3D_FIELDtype()
+  if xlb==openbc and ylb==openbc and zlb==openbc:
+    allocatesf(b.cornerxlylzl)
+    init_splitfield(b.cornerxlylzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zlb==em3d.otherproc:
+    allocatesf(b.cornerxlylzl)
+    if l_1d_decomposition:
+      b.cornerxlylzl.proc=(me-1)%npes      
+  b.cornerxrylzl = EM3D_FIELDtype()
+  if xrb==openbc and ylb==openbc and zlb==openbc:
+    allocatesf(b.cornerxrylzl)
+    init_splitfield(b.cornerxrylzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zlb==em3d.otherproc:
+    allocatesf(b.cornerxrylzl)
+    if l_1d_decomposition:
+      b.cornerxrylzl.proc=(me-1)%npes      
+  b.cornerxlyrzl = EM3D_FIELDtype()
+  if xlb==openbc and yrb==openbc and zlb==openbc:
+    allocatesf(b.cornerxlyrzl)
+    init_splitfield(b.cornerxlyrzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zlb==em3d.otherproc:
+    allocatesf(b.cornerxlyrzl)
+    if l_1d_decomposition:
+      b.cornerxlyrzl.proc=(me-1)%npes      
+  b.cornerxryrzl = EM3D_FIELDtype()
+  if xrb==openbc and yrb==openbc and zlb==openbc:
+    allocatesf(b.cornerxryrzl)
+    init_splitfield(b.cornerxryrzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zlb==em3d.otherproc:
+    allocatesf(b.cornerxryrzl)
+    if l_1d_decomposition:
+      b.cornerxryrzl.proc=(me-1)%npes      
+  b.cornerxlylzr = EM3D_FIELDtype()
+  if xlb==openbc and ylb==openbc and zrb==openbc:
+    allocatesf(b.cornerxlylzr)
+    init_splitfield(b.cornerxlylzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zrb==em3d.otherproc:
+    allocatesf(b.cornerxlylzr)
+    if l_1d_decomposition:
+      b.cornerxlylzr.proc=(me+1)%npes      
+  b.cornerxrylzr = EM3D_FIELDtype()
+  if xrb==openbc and ylb==openbc and zrb==openbc:
+    allocatesf(b.cornerxrylzr)
+    init_splitfield(b.cornerxrylzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zrb==em3d.otherproc:
+    allocatesf(b.cornerxrylzr)
+    if l_1d_decomposition:
+      b.cornerxrylzr.proc=(me+1)%npes      
+  b.cornerxlyrzr = EM3D_FIELDtype()
+  if xlb==openbc and yrb==openbc and zrb==openbc:
+    allocatesf(b.cornerxlyrzr)
+    init_splitfield(b.cornerxlyrzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zrb==em3d.otherproc:
+    allocatesf(b.cornerxlyrzr)
+    if l_1d_decomposition:
+      b.cornerxlyrzr.proc=(me+1)%npes      
+  b.cornerxryrzr = EM3D_FIELDtype()
+  if xrb==openbc and yrb==openbc and zrb==openbc:
+    allocatesf(b.cornerxryrzr)
+    init_splitfield(b.cornerxryrzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  if zrb==em3d.otherproc:
+    allocatesf(b.cornerxryrzr)
+    if l_1d_decomposition:
+      b.cornerxryrzr.proc=(me+1)%npes      
+
+  return b
+
+##############################################################################
 # --- This can only be done after the class is defined.
 #try:
 #  psyco.bind(EM3D)
