@@ -10,7 +10,7 @@ try:
 except:
   l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.11 2008/05/02 18:18:15 jlvay Exp $"
+ionization_version = "$Id: ionization.py,v 1.12 2008/05/08 17:40:16 dave Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -116,8 +116,8 @@ Class for generating particles from impact ionization.
         self.vz[js]=fzeros(self.npmax,'d')
 
   def install(self):
-    if not isinstalledafterfs(self.generate):
-      installafterfs(self.generate)
+    if not isinstalleduserinjection(self.generate):
+      installuserinjection(self.generate)
 
   def addpart(self,nn,x,y,z,vx,vy,vz,js):
     ilf=0
