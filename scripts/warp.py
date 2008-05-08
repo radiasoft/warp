@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.167 2008/05/08 17:14:41 dave Exp $"
+warp_version = "$Id: warp.py,v 1.168 2008/05/08 20:08:09 jlvay Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -106,6 +106,7 @@ try:  # chopy hasn't been installed on all machines yet
 except ImportError:
   pass
 from em2dpy import *
+from em3dpy import *
 import controllers
 from controllers import *
 from ctl import *
@@ -179,12 +180,14 @@ try:
   dirichlet = top.dirichlet
   neumann   = top.neumann
   periodic  = top.periodic
+  openbc    = top.openbc
   absorb    = top.absorb
   reflect   = top.reflect
 except AttrbuteError:
   dirichlet = 0
   neumann   = 1
   periodic  = 2
+  openbc    = 3
   absorb    = 0
   reflect   = 1
 
