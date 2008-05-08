@@ -1,5 +1,5 @@
 /* Created by David P. Grote */
-/* $Id: warpC_Forthon.c,v 1.6 2007/12/14 23:29:14 dave Exp $ */
+/* $Id: warpC_Forthon.c,v 1.7 2008/05/08 20:03:10 jlvay Exp $ */
 /* This is a stub module which calls the init functions of all of            */
 /* the modules that are part of WARP. This is needed since the modules       */
 /* depend on each other and so must be incorporated into one shared          */
@@ -22,6 +22,7 @@ extern PyMODINIT_FUNC initcirpy(void);
 extern PyMODINIT_FUNC initherpy(void);
 extern PyMODINIT_FUNC initchopy(void);
 extern PyMODINIT_FUNC initem2dpy(void);
+extern PyMODINIT_FUNC initem3dpy(void);
 
 /* ######################################################################### */
 /* # Method list                                                             */

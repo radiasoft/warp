@@ -37,7 +37,7 @@ dummybuild = build(dummydist)
 dummybuild.finalize_options()
 builddir = dummybuild.build_temp
 
-warppkgs = ['top','env','w3d','f3d','wxy','fxy','wrz','frz','her','cir','cho','em2d']
+warppkgs = ['top','env','w3d','f3d','wxy','fxy','wrz','frz','her','cir','cho','em2d','em3d']
 
 def makeobjects(pkg):
   return [pkg+'.o',pkg+'_p.o',pkg+'pymodule.o']
@@ -56,7 +56,7 @@ warpobjects = warpobjects + ['top_lattice.o','dtop.o',
                              'dwrz.o',
                              'frz_mgrid.o','frz_mgrid_be.o','frz_ImplicitES.o',
                              'em2d_apml.o','em2d_apml_cummer.o',
-                             'em2d_maxwell.o']
+                             'em2d_maxwell.o','em3d_maxwell.o']
 if parallel:
   warpobjects = warpobjects + ['f3dslave.o','frzslave.o','topslave.o',
                                'w3dslave.o']
