@@ -1,5 +1,5 @@
 /* Created by David P. Grote */
-/* $Id: warpC_Forthon.c,v 1.7 2008/05/08 20:03:10 jlvay Exp $ */
+/* $Id: warpC_Forthon.c,v 1.8 2008/05/08 20:04:31 jlvay Exp $ */
 /* This is a stub module which calls the init functions of all of            */
 /* the modules that are part of WARP. This is needed since the modules       */
 /* depend on each other and so must be incorporated into one shared          */
@@ -59,6 +59,7 @@ void initwarpC(void)
   initherpy();
   initchopy();
   initem2dpy();
+  initem3dpy();
 }
 
 
