@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.216 2008/04/03 18:30:45 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.217 2008/05/08 17:42:07 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -747,6 +747,7 @@ Simple interface to contour plotting, same arguments as plc
     ireg = ones(s,'i')
   else:
     assert shape(ireg) == shape(zz),"Shape of ireg must be the same as zz"
+  if contours == 0: contours = None
   if levs is not None: contours = levs
   if type(contours) == ListType: contours = array(contours)
   if type(contours) == TupleType: contours = array(contours)
@@ -1129,6 +1130,9 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- default value of 8.
   if filled and contours is None: contours = 8
 
+  # --- Make sure that contours is not zero, which breaks some code.
+  if contours == 0: contours = None
+
   # --- If particle data was passed in and no specific plots were requested,
   # --- just plot the particles.
   if y is not None and \
@@ -1429,7 +1433,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       dd = dd/maxdensity
       ipick = ones(shape(x),'l')
       if chopped:
-        ipick[:] = ipick*less(RandomArray.random(shape(x)),chopped/dd)
+        ipick[:] = ipick*less(random.random(shape(x)),chopped/dd)
       if denmin:
         ipick[:] = ipick*less(denmin,dd)
       if denmax:
