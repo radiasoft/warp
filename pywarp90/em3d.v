@@ -42,7 +42,7 @@ ntamp_scatter                integer /2/
 ntamp_gather                 integer /4/
 transition_zone              real /0./ # length of zone for linear transition from coarse to fine force (in coarse cell units)
 tmin_moving_main_window      real /0./
-
+otherproc                    integer /10/
 init_3dem_block(b:EM3D_BLOCKtype,nx:integer,ny:integer,nz:integer,
                 nbndx:integer,nbndy:integer,nbndz:integer,
                 nxguard:integer,nyguard:integer,nzguard:integer,
@@ -90,8 +90,12 @@ getf3d_linear(n:integer,xp(n):real,yp(n):real,zp(n):real,
                            subroutine
 yee2node3d(f:EM3D_YEEFIELDtype) subroutine
 node2yee3d(f:EM3D_YEEFIELDtype) subroutine
+em3d_exchange_e(b:EM3D_BLOCKtype) subroutine
+em3d_exchange_b(b:EM3D_BLOCKtype) subroutine
 em3d_exchange_j(b:EM3D_BLOCKtype) subroutine
+em3d_exchange_rho(b:EM3D_BLOCKtype) subroutine
 add_current_slice_3d(f:EM3D_YEEFIELDtype,i:integer) subroutine
+add_rho_slice_3d(f:EM3D_YEEFIELDtype,i:integer) subroutine
 
 %%%%%%%% EM3D_SPLITYEEFIELDtype:
 fieldtype integer /-2/
@@ -121,30 +125,13 @@ lsz integer
 nnz integer
 smaxz real
 sdeltaz real
-xlbnd integer /0/
-xrbnd integer /0/
-ylbnd integer /0/
-yrbnd integer /0/
-zlbnd integer /0/
-zrbnd integer /0/
-exx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-exy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-exz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-eyx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-eyy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-eyz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-ezx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-ezy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-ezz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-bxy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-bxz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-byx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-byz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-bzx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-bzy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-fx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-fy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-fz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+ex(3,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+ey(3,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+ez(3,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+bx(2,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+by(2,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+bz(2,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+f(3,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 afx(-nxguard:nx+nxguard) _real
 bpfx(-nxguard:nx+nxguard) _real
 bmfx(-nxguard:nx+nxguard) _real
@@ -187,12 +174,6 @@ dyi real
 dzi real
 clight real
 mu0    real
-xlbnd integer /0/
-xrbnd integer /0/
-ylbnd integer /0/
-yrbnd integer /0/
-zlbnd integer /0/
-zrbnd integer /0/
 Ex(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Ey(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Ez(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
@@ -200,6 +181,54 @@ Bx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 By(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Bz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 F(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+Rho(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+Rhoarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,ntimes) _real
+J(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
+Jarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3,ntimes) _real
+
+%%%%%%%% EM3D_KYEEFIELDtype:
+fieldtype integer /-1/
+nx integer
+ny integer
+nz integer
+nxguard integer /1/
+nyguard integer /1/
+nzguard integer /1/
+ntimes integer /1/
+xmin real
+ymin real
+zmin real
+xmax real
+ymax real
+zmax real
+dx real
+dy real
+dz real
+dxi real
+dyi real
+dzi real
+clight real
+mu0    real
+alphax real /0.58333333333333337/  # 7./12.
+betax  real /0.083333333333333329/ # 1./12.
+gammax real /0.020833333333333332/ # 1./48.
+alphay real /0.58333333333333337/  # 7./12.
+betay  real /0.083333333333333329/ # 1./12.
+gammay real /0.020833333333333332/ # 1./48.
+alphaz real /0.58333333333333337/  # 7./12.
+betaz  real /0.083333333333333329/ # 1./12.
+gammaz real /0.020833333333333332/ # 1./48.
+Ex(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+Ey(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+Ez(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+Exdj(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+Eydj(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+Ezdj(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+Bx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+By(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+Bz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+F(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+Fdrho(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Rho(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Rhoarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,ntimes) _real
 J(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
