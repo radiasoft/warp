@@ -180,7 +180,7 @@ subroutine init_bnd(bnd, dt, dx, dy, xbnd, ybnd)
                              dt,dy, &
                              sigmay_next(k), &
                              sigmay(k+1), &
-                             sb_coef)
+                             sb_coef,0)
            bnd%aBzy(ijk(bnd,j,bnd%nbndy+1-k)) =   bnd%aBzy(ijk(bnd,j,k+bnd%ny-bnd%nbndy))
            bnd%bBzy(ijk(bnd,j,bnd%nbndy+1-k)) = - bnd%cBzy(ijk(bnd,j,k+bnd%ny-bnd%nbndy))
            bnd%cBzy(ijk(bnd,j,bnd%nbndy+1-k)) = - bnd%bBzy(ijk(bnd,j,k+bnd%ny-bnd%nbndy))
@@ -200,7 +200,7 @@ subroutine init_bnd(bnd, dt, dx, dy, xbnd, ybnd)
                              dt,dx, &
                              sigmax_next(j), &
                              sigmax(j+1), &
-                             sb_coef)
+                             sb_coef,0)
            bnd%aBzx(ijk(bnd,bnd%nbndx+1-j,k)) =   bnd%aBzx(ijk(bnd,j+bnd%nx-bnd%nbndx,k))
            bnd%bBzx(ijk(bnd,bnd%nbndx+1-j,k)) = - bnd%cBzx(ijk(bnd,j+bnd%nx-bnd%nbndx,k))
            bnd%cBzx(ijk(bnd,bnd%nbndx+1-j,k)) = - bnd%bBzx(ijk(bnd,j+bnd%nx-bnd%nbndx,k))
@@ -219,7 +219,7 @@ subroutine init_bnd(bnd, dt, dx, dy, xbnd, ybnd)
                              dt,dy, &
                              sigmay(k), &
                              sigmay_next(k), &
-                             sb_coef)
+                             sb_coef,0)
            bnd%aEx(ijk(bnd,j,bnd%nbndy+2-k)) =  bnd%aEx(ijk(bnd,j,k+bnd%ny-bnd%nbndy))
            bnd%bEx(ijk(bnd,j,bnd%nbndy+2-k)) = -bnd%cEx(ijk(bnd,j,k+bnd%ny-bnd%nbndy))
            bnd%cEx(ijk(bnd,j,bnd%nbndy+2-k)) = -bnd%bEx(ijk(bnd,j,k+bnd%ny-bnd%nbndy))
@@ -239,7 +239,7 @@ subroutine init_bnd(bnd, dt, dx, dy, xbnd, ybnd)
                              dt,dx, &
                              sigmax(j), &
                              sigmax_next(j), &
-                             sb_coef)
+                             sb_coef,0)
            bnd%aEy(ijk(bnd,bnd%nbndx+2-j,k)) =  bnd%aEy(ijk(bnd,j+bnd%nx-bnd%nbndx,k))
            bnd%bEy(ijk(bnd,bnd%nbndx+2-j,k)) = -bnd%cEy(ijk(bnd,j+bnd%nx-bnd%nbndx,k))
            bnd%cEy(ijk(bnd,bnd%nbndx+2-j,k)) = -bnd%bEy(ijk(bnd,j+bnd%nx-bnd%nbndx,k))
@@ -331,11 +331,11 @@ end subroutine move_window_bnd
 
 !************* SUBROUTINE assign_coefs  ********
 
-subroutine assign_coefs(bnd_cond,a,bp,bm,dt,dx,sigma,sigma_next,coef_sigmab)
+subroutine assign_coefs(bnd_cond,a,bp,bm,dt,dx,sigma,sigma_next,coef_sigmab,which)
 implicit none
 REAL(kind=8), INTENT(OUT) :: a,bp,bm
 REAL(kind=8), INTENT(IN) :: dt,dx,sigma,sigma_next,coef_sigmab
-INTEGER(ISZ),INTENT(IN) :: bnd_cond
+INTEGER(ISZ),INTENT(IN) :: bnd_cond, which
 
 REAL(kind=8) :: sigma_local, sigmab, sigmab_next, tp, tpp, tm, tmm, g, gp, gm
 
@@ -399,7 +399,27 @@ REAL(kind=8) :: sigma_local, sigmab, sigmab_next, tp, tpp, tm, tmm, g, gp, gm
         bm = -2*tp*(1.+tm*tpp)/(1+gm+(gp+gm)*tm*tpp+(gp-1)*tm*tmm*tpp*tp)
       END if
     case default
+      write(0,*) 'Error in assign_coefs: bnd_cond out fo bounds'
   end select
+
+  select case (which)
+    case (0)
+      ! full time step, do nothing
+    case (1)
+      ! first half time step
+      bp = bp*0.5
+      bm = bm*0.5
+      a  = (1.+a)*0.5
+    case (2)
+      ! second half time step
+      bp = bp/(1.+a)
+      bm = bm/(1.+a)
+      a  = 2.*a/(1.+a)
+    case default
+      write(0,*) 'Error in assign_coefs: which out fo bounds'
+      stop
+  end select
+
 END subroutine assign_coefs
 
 !************* SUBROUTINE move_bnd  **************************************************
