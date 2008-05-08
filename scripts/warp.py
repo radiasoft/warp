@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.166 2008/05/01 23:56:17 dave Exp $"
+warp_version = "$Id: warp.py,v 1.167 2008/05/08 17:14:41 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -1109,6 +1109,7 @@ from multigridRZ import MultiGridImplicit2D
 from MeshRefinement import MRBlock
 from MeshRefinement import MRBlock2D
 from MeshRefinement import MRBlockRZ
+from MeshRefinement import MRBlock2DDielectric
 from magnetostaticMG import MagnetostaticMG
 from MeshRefinementB import MRBlockB
 from species import *
