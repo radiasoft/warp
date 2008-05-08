@@ -58,13 +58,9 @@ subroutine depose_jxjyjz_esirkepov_linear_serial(cj,np,xp,yp,zp,uxp,uyp,uzp,gami
         ijxp0=floor(y)
         ikxp0=floor(z)
 
-        iixp=floor(xold)
-        ijxp=floor(yold)
-        ikxp=floor(zold)
-
-        xint=x-iixp
-        yint=y-ijxp
-        zint=z-ikxp
+        xint=x-iixp0
+        yint=y-ijxp0
+        zint=z-ikxp0
 
         sx0(0) = 1.-xint
         sx0(1) = xint
@@ -73,13 +69,23 @@ subroutine depose_jxjyjz_esirkepov_linear_serial(cj,np,xp,yp,zp,uxp,uyp,uzp,gami
         sz0(0) = 1.-zint
         sz0(1) = zint
 
-        xint = xold-iixp0
-        yint = yold-ijxp0
-        zint = zold-ikxp0
+        iixp=floor(xold)
+        ijxp=floor(yold)
+        ikxp=floor(zold)
+        xint = xold-iixp
+        yint = yold-ijxp
+        zint = zold-ikxp
 
-        dix = iixp0-iixp
-        diy = ijxp0-ijxp
-        diz = ikxp0-ikxp
+!        if (iixp/=iixp0 .and. ijxp/=ijxp0) write(0,*) '**************************** WARNING 1:',iixp,iixp0,ijxp,ijxp0
+!        if (iixp/=iixp0 .and. ikxp/=ikxp0) write(0,*) '**************************** WARNING 2:',iixp,iixp0,ikxp,ikxp0
+!        if (ikxp/=ikxp0 .and. ijxp/=ijxp0) write(0,*) '**************************** WARNING 3:',ikxp,ikxp0,ijxp,ijxp0
+!        if (iixp/=iixp0) write(0,*) '****** WARNING x:',ip,iixp,iixp0
+!        if (ijxp/=ijxp0) write(0,*) '****** WARNING y:',ip,ijxp,ijxp0
+!        if (ikxp/=ikxp0) write(0,*) '****** WARNING z:',ip,ikxp,ikxp0
+
+        dix = iixp-iixp0
+        diy = ijxp-ijxp0
+        diz = ikxp-ikxp0
 
         sx=0.;sy=0.;sz=0.
         sx(0+dix) = 1.-xint
@@ -269,7 +275,7 @@ subroutine depose_jxjyjz_esirkepov_linear_serial_old(cj,np,xp,yp,zp,uxp,uyp,uzp,
     end do
 
   return
-end subroutine depose_jxjyjz_esirkepov_linear_serial_old
+end subroutine depose_jxjyjz_esirkepov_linear_serial_old 
 
 subroutine depose_rho_linear_serial(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,l_particles_weight)
    implicit none
