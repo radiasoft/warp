@@ -80,7 +80,8 @@ contains
    implicit none
    INTEGER(ISZ), INTENT(IN) :: isize,tid,tag
    INTEGER(ISZ), DIMENSION(isize) :: mpi_recv_int_array
-     call mpi_recv(mpi_recv_int_array,int(isize,MPIISZ),mpi_integer,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world,mpi_status_ignore,ierr)
+     call mpi_recv(mpi_recv_int_array,int(isize,MPIISZ),mpi_integer,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world, &
+                   mpi_status_ignore,ierr)
    return
  end function mpi_recv_int_array
 
@@ -104,7 +105,8 @@ contains
    implicit none
    INTEGER(ISZ), INTENT(IN) :: tid,tag
    REAL(8) :: mpi_recv_real_scalar
-     call mpi_recv(mpi_recv_real_scalar,1,mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world,mpi_status_ignore,ierr)
+     call mpi_recv(mpi_recv_real_scalar,1,mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world, &
+                   mpi_status_ignore,ierr)
    return
  end function mpi_recv_real_scalar
 
@@ -113,7 +115,8 @@ contains
    INTEGER(ISZ), INTENT(IN) :: isize,tid,tag
    REAL(8), DIMENSION(isize) :: mpi_recv_real_array
      if (l_mpiverbose) WRITE(0,*) my_index,'recv from ',tid,isize
-     call mpi_recv(mpi_recv_real_array,int(isize,MPIISZ),mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world,mpi_status_ignore,ierr)
+     call mpi_recv(mpi_recv_real_array,int(isize,MPIISZ),mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world, &
+                   mpi_status_ignore,ierr)
     if (l_mpiverbose) WRITE(0,*) my_index,'recvd from ',tid
    return
  end function mpi_recv_real_array
@@ -135,7 +138,8 @@ contains
     INTEGER(MPIISZ), INTENT(IN OUT) :: rqu
     REAL(8), DIMENSION(isize) :: mpi_irecv_real_array
 !    WRITE(0,*) 'irecv from ',tid
-      call mpi_irecv(mpi_irecv_real_array,int(isize,MPIISZ),mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world,rqu,ierr)
+      call mpi_irecv(mpi_irecv_real_array,int(isize,MPIISZ),mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ), &
+                     mpi_comm_world,rqu,ierr)
 !    WRITE(0,*) 'irecvd from ',tid
     return
   end function mpi_irecv_real_array
@@ -217,14 +221,16 @@ contains
  subroutine mpi_recv_pack(tid,tag)
    implicit none
    INTEGER(ISZ), INTENT(IN) :: tid,tag
-     call mpi_recv(packbuffer,size_packbuffer,mpi_packed,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world, mpi_status_ignore, ierr)
+     call mpi_recv(packbuffer,size_packbuffer,mpi_packed,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world, &
+                   mpi_status_ignore, ierr)
    return
  end subroutine mpi_recv_pack
 
  subroutine mpi_irecv_pack(tid,tag,rqu)
    implicit none
    INTEGER(ISZ), INTENT(IN) :: tid,tag,rqu
-     call mpi_irecv(packbuffer,size_packbuffer,mpi_packed,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world, mpi_status_ignore, rqu, ierr)
+     call mpi_irecv(packbuffer,size_packbuffer,mpi_packed,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world, &
+                    mpi_status_ignore, rqu, ierr)
    return
  end subroutine mpi_irecv_pack
 
@@ -254,7 +260,8 @@ contains
    implicit none
    INTEGER(ISZ), INTENT(IN) :: isize
    REAL(8), DIMENSION(isize) :: mpi_unpack_real_array
-     call mpi_unpack(packbuffer,size_packbuffer,pack_pos,mpi_unpack_real_array,int(isize,MPIISZ),mpi_double_precision,mpi_comm_world,ierr)
+     call mpi_unpack(packbuffer,size_packbuffer,pack_pos,mpi_unpack_real_array,int(isize,MPIISZ), &
+                     mpi_double_precision,mpi_comm_world,ierr)
    return
  end function mpi_unpack_real_array
 
