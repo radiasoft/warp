@@ -4,7 +4,7 @@ FCOMP =
 SO = so
 PUBLICHOME = $(HOME)/pub
 
-all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) ranffortran.c
+all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) em3dpy.$(SO) ranffortran.c
 	rm -f warpC.so
 	python setup.py $(FCOMP) --parallel build --build-platlib .
 	#mv warpC.so /home/dave/scriptsnew
@@ -44,6 +44,9 @@ chopy.$(SO): toppy.$(SO) cho.F cho.v
 
 em2dpy.$(SO): toppy.$(SO) em2d.F90 em2d_apml.F90 em2d_apml_cummer.F90 em2d_maxwell.F90 em2d.v
 	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) em2d em2d_apml.F90 em2d_apml_cummer.F90 em2d_maxwell.F90
+
+em3dpy.$(SO): toppy.$(SO) em3d.F90 em3d_maxwell.F90 em3d.v
+	Forthon -a $(FCOMP) $(DEBUG) em3d em3d_maxwell.F90
 
 ranffortran.c: ranffortran.m
 	python -c "from Forthon.preprocess import main;main()" --f90 ranffortran.m ranffortran.c
