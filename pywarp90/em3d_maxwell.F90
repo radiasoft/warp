@@ -47,9 +47,12 @@ contains
   subroutine set_bndcoeffsem3d(sf,dt,which)
     use mod_bnd
     TYPE(EM3D_SPLITYEEFIELDtype) :: sf
-    real(kind=8) :: sigmax(-sf%nxguard:sf%nx+sf%nxguard), sigmax_next(-sf%nxguard:sf%nx+sf%nxguard), lsigmax(-sf%nxguard:sf%nx+sf%nxguard), lsigmax_next(-sf%nxguard:sf%nx+sf%nxguard)
-    real(kind=8) :: sigmay(-sf%nyguard:sf%ny+sf%nyguard), sigmay_next(-sf%nyguard:sf%ny+sf%nyguard), lsigmay(-sf%nyguard:sf%ny+sf%nyguard), lsigmay_next(-sf%nyguard:sf%ny+sf%nyguard)
-    real(kind=8) :: sigmaz(-sf%nzguard:sf%nz+sf%nzguard), sigmaz_next(-sf%nzguard:sf%nz+sf%nzguard), lsigmaz(-sf%nzguard:sf%nz+sf%nzguard), lsigmaz_next(-sf%nzguard:sf%nz+sf%nzguard)
+    real(kind=8) :: sigmax(-sf%nxguard:sf%nx+sf%nxguard), sigmax_next(-sf%nxguard:sf%nx+sf%nxguard), &
+                  lsigmax(-sf%nxguard:sf%nx+sf%nxguard), lsigmax_next(-sf%nxguard:sf%nx+sf%nxguard)
+    real(kind=8) :: sigmay(-sf%nyguard:sf%ny+sf%nyguard), sigmay_next(-sf%nyguard:sf%ny+sf%nyguard), &
+                  lsigmay(-sf%nyguard:sf%ny+sf%nyguard), lsigmay_next(-sf%nyguard:sf%ny+sf%nyguard)
+    real(kind=8) :: sigmaz(-sf%nzguard:sf%nz+sf%nzguard), sigmaz_next(-sf%nzguard:sf%nz+sf%nzguard), &
+                  lsigmaz(-sf%nzguard:sf%nz+sf%nzguard), lsigmaz_next(-sf%nzguard:sf%nz+sf%nzguard)
     integer(ISZ) :: j,which
     real(kind=8) :: dt
     
@@ -107,7 +110,8 @@ contains
         case(-1)
           do j = sf%nx, 1, -1
            call assign_coefs(bnd_cond,sf%afx(j),sf%bmfx(j),sf%bpfx(j),sf%clight*dt,sf%dx,lsigmax(j),lsigmax_next(j-1),sb_coef,which)
-           call assign_coefs(bnd_cond,sf%agx(j-1),sf%bmgx(j-1),sf%bpgx(j-1),sf%clight*dt,sf%dx,lsigmax_next(j-1),lsigmax(j-1),sb_coef,which)
+           call assign_coefs(bnd_cond,sf%agx(j-1),sf%bmgx(j-1),sf%bpgx(j-1),sf%clight*dt,sf%dx,lsigmax_next(j-1),lsigmax(j-1), &
+                             sb_coef,which)
           end do
           sf%bmfx=-sf%bmfx
           sf%bpfx=-sf%bpfx
@@ -134,7 +138,8 @@ contains
         case(-1)
           do j = sf%ny, 1, -1
            call assign_coefs(bnd_cond,sf%afy(j),sf%bmfy(j),sf%bpfy(j),sf%clight*dt,sf%dy,lsigmay(j),lsigmay_next(j-1),sb_coef,which)
-           call assign_coefs(bnd_cond,sf%agy(j-1),sf%bmgy(j-1),sf%bpgy(j-1),sf%clight*dt,sf%dy,lsigmay_next(j-1),lsigmay(j-1),sb_coef,which)
+           call assign_coefs(bnd_cond,sf%agy(j-1),sf%bmgy(j-1),sf%bpgy(j-1),sf%clight*dt,sf%dy,lsigmay_next(j-1),lsigmay(j-1), &
+                             sb_coef,which)
           end do
           sf%bmfy=-sf%bmfy
           sf%bpfy=-sf%bpfy
@@ -161,7 +166,8 @@ contains
         case(-1)
           do j = sf%nz, 1, -1
            call assign_coefs(bnd_cond,sf%afz(j),sf%bmfz(j),sf%bpfz(j),sf%clight*dt,sf%dz,lsigmaz(j),lsigmaz_next(j-1),sb_coef,which)
-           call assign_coefs(bnd_cond,sf%agz(j-1),sf%bmgz(j-1),sf%bpgz(j-1),sf%clight*dt,sf%dz,lsigmaz_next(j-1),lsigmaz(j-1),sb_coef,which)
+           call assign_coefs(bnd_cond,sf%agz(j-1),sf%bmgz(j-1),sf%bpgz(j-1),sf%clight*dt,sf%dz,lsigmaz_next(j-1),lsigmaz(j-1), &
+                             sb_coef,which)
           end do
           sf%bmfz=-sf%bmfz
           sf%bpfz=-sf%bpfz
@@ -215,7 +221,8 @@ end module mod_emfield3d
     
 
 !************* SUBROUTINE init_fields  *************************************************
-subroutine init_3dem_block(b, nx, ny, nz, nbndx, nbndy, nbndz, nxguard, nyguard, nzguard, dt, dx, dy, dz, clight, mu0, xmin, ymin, zmin, xlb, ylb, zlb, xrb, yrb, zrb)
+subroutine init_3dem_block(b, nx, ny, nz, nbndx, nbndy, nbndz, nxguard, nyguard, nzguard, dt, dx, dy, dz, clight, &
+                           mu0, xmin, ymin, zmin, xlb, ylb, zlb, xrb, yrb, zrb)
 use mod_emfield3d
 implicit none
 
@@ -302,41 +309,67 @@ real(kind=8) :: dtsdx, dtsdy, dtsdz, mudt, smaxx, sdeltax, smaxy, sdeltay, smaxz
   
 ! *** sides
 ! x
-  call init_splitfield(b%sidexl%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%sidexr%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%sidexl%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0, 0, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%sidexr%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0, 0, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
 ! y
-  call init_splitfield(b%sideyl%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%sideyr%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%sideyl%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1, 0, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%sideyr%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1, 0, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
 ! z
-  call init_splitfield(b%sidezl%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%sidezr%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%sidezl%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0,-1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%sidezr%syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0, 1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
 
 ! *** edges
 ! xy
-  call init_splitfield(b%edgexlyl%syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%edgexryl%syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%edgexlyr%syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%edgexryr%syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgexlyl%syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1, 0, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgexryl%syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1, 0, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgexlyr%syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1, 0, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgexryr%syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1, 0, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
 ! xz
-  call init_splitfield(b%edgexlzl%syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%edgexrzl%syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%edgexlzr%syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%edgexrzr%syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgexlzl%syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0,-1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgexrzl%syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0,-1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgexlzr%syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0, 1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgexrzr%syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0, 1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
 ! yz
-  call init_splitfield(b%edgeylzl%syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%edgeyrzl%syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%edgeylzr%syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%edgeyrzr%syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgeylzl%syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1,-1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgeyrzl%syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1,-1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgeylzr%syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1, 1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%edgeyrzr%syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1, 1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
 
 ! *** corners
-  call init_splitfield(b%cornerxlylzl%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%cornerxrylzl%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%cornerxlyrzl%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%cornerxryrzl%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%cornerxlylzr%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%cornerxrylzr%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%cornerxlyrzr%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
-  call init_splitfield(b%cornerxryrzr%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%cornerxlylzl%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1,-1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%cornerxrylzl%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1,-1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%cornerxlyrzl%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1,-1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%cornerxryrzl%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1,-1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%cornerxlylzr%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1, 1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%cornerxrylzr%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1, 1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%cornerxlyrzr%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1, 1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
+  call init_splitfield(b%cornerxryrzr%syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1, 1, &
+                       nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz)
 
 
 return
@@ -679,8 +712,10 @@ INTEGER :: j, k, l,which
   do l = 0, sf%nz
    do k = 0, sf%ny
     do j = 0, sf%nx-1
-      sf%ex(2,j,k,l) = sf%afy(k)*sf%ex(2,j,k,l) + sf%bpfy(k)*(sf%bz(1,j,k,l)+sf%bz(2,j,k,l))  + sf%bmfy(k)*(sf%bz(1,j,k-1,l)+sf%bz(2,j,k-1,l)) !- 0.5_8*dt*sf%j(j,k,l,1)
-      sf%ex(3,j,k,l) = sf%afz(l)*sf%ex(3,j,k,l) - sf%bpfz(l)*(sf%by(1,j,k,l)+sf%by(2,j,k,l))  - sf%bmfz(l)*(sf%by(1,j,k,l-1)+sf%by(2,j,k,l-1)) !- 0.5_8*dt*sf%j(j,k,l,1)
+      sf%ex(2,j,k,l) = sf%afy(k)*sf%ex(2,j,k,l) + sf%bpfy(k)*(sf%bz(1,j,k,l)+sf%bz(2,j,k,l))  &
+                                                + sf%bmfy(k)*(sf%bz(1,j,k-1,l)+sf%bz(2,j,k-1,l)) !- 0.5_8*dt*sf%j(j,k,l,1)
+      sf%ex(3,j,k,l) = sf%afz(l)*sf%ex(3,j,k,l) - sf%bpfz(l)*(sf%by(1,j,k,l)+sf%by(2,j,k,l))  &
+                                                - sf%bmfz(l)*(sf%by(1,j,k,l-1)+sf%by(2,j,k,l-1)) !- 0.5_8*dt*sf%j(j,k,l,1)
     end do
    end do
   end do
@@ -688,8 +723,10 @@ INTEGER :: j, k, l,which
   do l = 0, sf%nz
    do k = 0, sf%ny-1
     do j = 0, sf%nx
-      sf%ey(1,j,k,l) = sf%afx(j)*sf%ey(1,j,k,l) - sf%bpfx(j)*(sf%bz(1,j,k,l)+sf%bz(2,j,k,l))  - sf%bmfx(j)*(sf%bz(1,j-1,k,l)+sf%bz(2,j-1,k,l)) !- 0.5_8*dt*sf%j(j,k,l,2)
-      sf%ey(3,j,k,l) = sf%afz(l)*sf%ey(3,j,k,l) + sf%bpfz(l)*(sf%bx(1,j,k,l)+sf%bx(2,j,k,l))  + sf%bmfz(l)*(sf%bx(1,j,k,l-1)+sf%bx(2,j,k,l-1)) !- 0.5_8*dt*sf%j(j,k,l,2)
+      sf%ey(1,j,k,l) = sf%afx(j)*sf%ey(1,j,k,l) - sf%bpfx(j)*(sf%bz(1,j,k,l)+sf%bz(2,j,k,l))  &
+                                                - sf%bmfx(j)*(sf%bz(1,j-1,k,l)+sf%bz(2,j-1,k,l)) !- 0.5_8*dt*sf%j(j,k,l,2)
+      sf%ey(3,j,k,l) = sf%afz(l)*sf%ey(3,j,k,l) + sf%bpfz(l)*(sf%bx(1,j,k,l)+sf%bx(2,j,k,l))  &
+                                                + sf%bmfz(l)*(sf%bx(1,j,k,l-1)+sf%bx(2,j,k,l-1)) !- 0.5_8*dt*sf%j(j,k,l,2)
     end do
    end do
   end do
@@ -697,8 +734,10 @@ INTEGER :: j, k, l,which
   do l = 0, sf%nz-1
    do k = 0, sf%ny
     do j = 0, sf%nx
-      sf%ez(1,j,k,l) = sf%afx(j)*sf%ez(1,j,k,l) + sf%bpfx(j)*(sf%by(1,j,k,l)+sf%by(2,j,k,l))  + sf%bmfx(j)*(sf%by(1,j-1,k,l)+sf%by(2,j-1,k,l)) !- 0.5_8*dt*sf%j(j,k,l,3)
-      sf%ez(2,j,k,l) = sf%afy(k)*sf%ez(2,j,k,l) - sf%bpfy(k)*(sf%bx(1,j,k,l)+sf%bx(2,j,k,l))  - sf%bmfy(k)*(sf%bx(1,j,k-1,l)+sf%bx(2,j,k-1,l)) !- 0.5_8*dt*sf%j(j,k,l,3)
+      sf%ez(1,j,k,l) = sf%afx(j)*sf%ez(1,j,k,l) + sf%bpfx(j)*(sf%by(1,j,k,l)+sf%by(2,j,k,l))  &
+                                                + sf%bmfx(j)*(sf%by(1,j-1,k,l)+sf%by(2,j-1,k,l)) !- 0.5_8*dt*sf%j(j,k,l,3)
+      sf%ez(2,j,k,l) = sf%afy(k)*sf%ez(2,j,k,l) - sf%bpfy(k)*(sf%bx(1,j,k,l)+sf%bx(2,j,k,l))  &
+                                                - sf%bmfy(k)*(sf%bx(1,j,k-1,l)+sf%bx(2,j,k-1,l)) !- 0.5_8*dt*sf%j(j,k,l,3)
     end do
    end do
   end do
@@ -1177,10 +1216,12 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            call MPI_ISEND(yfu%ez(-yfu%nxguard,-yfu%nyguard,0),int(size(yfu%ez(:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+            call MPI_ISEND(yfu%ez(-yfu%nxguard,-yfu%nyguard,0),int(size(yfu%ez(:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION, &
+                                  int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            call MPI_ISEND(yfl%ez(-yfl%nxguard,-yfl%nyguard,yfl%nz-1),int(size(yfl%ez(:,:,yfl%nz-1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            call MPI_ISEND(yfl%ez(-yfl%nxguard,-yfl%nyguard,yfl%nz-1),int(size(yfl%ez(:,:,yfl%nz-1)),MPIISZ),&
+                                  MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
           else
 #endif
             yfl%ez(:,:,yfl%nz) = yfu%ez(:,:,0)
@@ -1209,10 +1250,12 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            call MPI_ISEND(syfu%ez(1,-syfu%nxguard,-syfu%nyguard,0),int(size(syfu%ez(:,:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+            call MPI_ISEND(syfu%ez(1,-syfu%nxguard,-syfu%nyguard,0),int(size(syfu%ez(:,:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,&
+                                   int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            call MPI_ISEND(syfl%ez(1,-syfl%nxguard,-syfl%nyguard,syfl%nz-1),int(size(syfl%ez(:,:,:,syfl%nz-1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            call MPI_ISEND(syfl%ez(1,-syfl%nxguard,-syfl%nyguard,syfl%nz-1),int(size(syfl%ez(:,:,:,syfl%nz-1)),MPIISZ),&
+                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
           else
 #endif
           if (fl%proc/=fu%proc) return
@@ -1400,12 +1443,16 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            call MPI_ISEND(yfu%bx(-yfu%nxguard,-yfu%nyguard,0),int(size(yfu%by(:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(yfu%by(-yfu%nxguard,-yfu%nyguard,0),int(size(yfu%by(:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            call MPI_ISEND(yfu%bx(-yfu%nxguard,-yfu%nyguard,0),int(size(yfu%by(:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,&
+                                  int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+            call MPI_ISEND(yfu%by(-yfu%nxguard,-yfu%nyguard,0),int(size(yfu%by(:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,&
+                                  int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            call MPI_ISEND(yfl%bx(-yfl%nxguard,-yfl%nyguard,yfl%nz-1),int(size(yfl%bx(:,:,yfl%nz-1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(yfl%by(-yfl%nxguard,-yfl%nyguard,yfl%nz-1),int(size(yfl%bx(:,:,yfl%nz-1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            call MPI_ISEND(yfl%bx(-yfl%nxguard,-yfl%nyguard,yfl%nz-1),int(size(yfl%bx(:,:,yfl%nz-1)),MPIISZ),&
+                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+            call MPI_ISEND(yfl%by(-yfl%nxguard,-yfl%nyguard,yfl%nz-1),int(size(yfl%bx(:,:,yfl%nz-1)),MPIISZ),&
+                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
           else
 #endif
           yfl%bx(:,:,yfl%nz) = yfu%bx(:,:,0)
@@ -1442,12 +1489,16 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            call MPI_ISEND(syfu%bx(1,-syfu%nxguard,-syfu%nyguard,0),int(size(syfu%bx(:,:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(syfu%by(1,-syfu%nxguard,-syfu%nyguard,0),int(size(syfu%bx(:,:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            call MPI_ISEND(syfu%bx(1,-syfu%nxguard,-syfu%nyguard,0),int(size(syfu%bx(:,:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,&
+                                   int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+            call MPI_ISEND(syfu%by(1,-syfu%nxguard,-syfu%nyguard,0),int(size(syfu%bx(:,:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,&
+                                   int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            call MPI_ISEND(syfl%bx(1,-syfl%nxguard,-syfl%nyguard,syfl%nz-1),int(size(syfl%bx(:,:,:,syfl%nz-1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(syfl%by(1,-syfl%nxguard,-syfl%nyguard,syfl%nz-1),int(size(syfl%bx(:,:,:,syfl%nz-1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            call MPI_ISEND(syfl%bx(1,-syfl%nxguard,-syfl%nyguard,syfl%nz-1),int(size(syfl%bx(:,:,:,syfl%nz-1)),MPIISZ),&
+                                   MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+            call MPI_ISEND(syfl%by(1,-syfl%nxguard,-syfl%nyguard,syfl%nz-1),int(size(syfl%bx(:,:,:,syfl%nz-1)),MPIISZ),&
+                                   MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
           else
 #endif
           if (fl%proc/=fu%proc) return
@@ -1595,20 +1646,30 @@ integer(MPIISZ)::mpirequest(5),mpierror
           if (fl%proc/=my_index) then
 
             ! --- send data down in z
-            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,-1,1),int(size(yfu%J(:,:,-1,1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,-1,2),int(size(yfu%J(:,:,-1,2)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
-            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,-1,3),int(size(yfu%J(:,:,-1,3)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(3),mpierror)
-            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,0,1),int(size(yfu%J(:,:,0,1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(4),mpierror)
-            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,0,2),int(size(yfu%J(:,:,0,2)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(5),mpierror)
+            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,-1,1),int(size(yfu%J(:,:,-1,1)),MPIISZ),MPI_DOUBLE_PRECISION,&
+                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,-1,2),int(size(yfu%J(:,:,-1,2)),MPIISZ),MPI_DOUBLE_PRECISION,&
+                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,-1,3),int(size(yfu%J(:,:,-1,3)),MPIISZ),MPI_DOUBLE_PRECISION,&
+                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(3),mpierror)
+            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,0,1),int(size(yfu%J(:,:,0,1)),MPIISZ),MPI_DOUBLE_PRECISION,&
+                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(4),mpierror)
+            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,0,2),int(size(yfu%J(:,:,0,2)),MPIISZ),MPI_DOUBLE_PRECISION,&
+                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(5),mpierror)
 
           else if (fu%proc/=my_index) then
 
             ! --- send data up in z
-            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz  ,1),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz+1,1),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
-            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz  ,2),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(3),mpierror)
-            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz+1,2),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(4),mpierror)
-            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz,3),int(size(yfl%J(:,:,yfl%nz,3)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(5),mpierror)
+            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz  ,1),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),&
+                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz+1,1),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),&
+                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz  ,2),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),&
+                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(3),mpierror)
+            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz+1,2),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),&
+                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(4),mpierror)
+            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz,3),int(size(yfl%J(:,:,yfl%nz,3)),MPIISZ),&
+                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(5),mpierror)
 
           else
 #endif
@@ -1645,19 +1706,24 @@ TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
           yfu=>fu%yf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            yfu%J(:,:,0,1)    = yfu%J(:,:,0,1)    + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
-            yfu%J(:,:,1,1)    = yfu%J(:,:,1,1)    + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
-            yfu%J(:,:,0,2)    = yfu%J(:,:,0,2)    + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
-            yfu%J(:,:,1,2)    = yfu%J(:,:,1,2)    + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
-            yfu%J(:,:,0,3)        = yfu%J(:,:,0,3)        + reshape(mpi_recv_real( size(yfu%J(:,:,0,3)),fl%proc,0),shape(yfu%J(:,:,0,3)))
+            yfu%J(:,:,0,1) = yfu%J(:,:,0,1) + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
+            yfu%J(:,:,1,1) = yfu%J(:,:,1,1) + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
+            yfu%J(:,:,0,2) = yfu%J(:,:,0,2) + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
+            yfu%J(:,:,1,2) = yfu%J(:,:,1,2) + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
+            yfu%J(:,:,0,3) = yfu%J(:,:,0,3) + reshape(mpi_recv_real( size(yfu%J(:,:,0,3)),fl%proc,0),shape(yfu%J(:,:,0,3)))
 
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            yfl%J(:,:,yfl%nz-1,1) = yfl%J(:,:,yfl%nz-1,1) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz-1,1)),fu%proc,0),shape(yfl%J(:,:,yfl%nz-1,1)))
-            yfl%J(:,:,yfl%nz-1,2) = yfl%J(:,:,yfl%nz-1,2) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz-1,2)),fu%proc,0),shape(yfl%J(:,:,yfl%nz-1,2)))
-            yfl%J(:,:,yfl%nz-1,3) = yfl%J(:,:,yfl%nz-1,3) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz-1,3)),fu%proc,0),shape(yfl%J(:,:,yfl%nz-1,3)))
-            yfl%J(:,:,yfl%nz,1) = yfl%J(:,:,yfl%nz,1) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz,1)),fu%proc,0),shape(yfl%J(:,:,yfl%nz,1)))
-            yfl%J(:,:,yfl%nz,2) = yfl%J(:,:,yfl%nz,2) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz,2)),fu%proc,0),shape(yfl%J(:,:,yfl%nz,2)))
+            yfl%J(:,:,yfl%nz-1,1) = yfl%J(:,:,yfl%nz-1,1) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz-1,1)),fu%proc,0),&
+                                                              shape(yfl%J(:,:,yfl%nz-1,1)))
+            yfl%J(:,:,yfl%nz-1,2) = yfl%J(:,:,yfl%nz-1,2) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz-1,2)),fu%proc,0),&
+                                                              shape(yfl%J(:,:,yfl%nz-1,2)))
+            yfl%J(:,:,yfl%nz-1,3) = yfl%J(:,:,yfl%nz-1,3) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz-1,3)),fu%proc,0),&
+                                                              shape(yfl%J(:,:,yfl%nz-1,3)))
+            yfl%J(:,:,yfl%nz,1) = yfl%J(:,:,yfl%nz,1) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz,1)),fu%proc,0),&
+                                                              shape(yfl%J(:,:,yfl%nz,1)))
+            yfl%J(:,:,yfl%nz,2) = yfl%J(:,:,yfl%nz,2) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz,2)),fu%proc,0),&
+                                                              shape(yfl%J(:,:,yfl%nz,2)))
           end if
       end select
   end select
@@ -1742,10 +1808,12 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            call MPI_ISEND(yfu%Rho(-yfu%nxguard,-yfu%nyguard,-1),int(size(yfu%Rho(:,:,-1:0)),MPIISZ),MPI_DOUBLE_PRECISION,int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+            call MPI_ISEND(yfu%Rho(-yfu%nxguard,-yfu%nyguard,-1),int(size(yfu%Rho(:,:,-1:0)),MPIISZ),MPI_DOUBLE_PRECISION,&
+                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            call MPI_ISEND(yfl%Rho(-yfl%nxguard,-yfl%nyguard,yfl%nz),int(size(yfl%Rho(:,:,yfl%nz:yfl%nz+1)),MPIISZ),MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+            call MPI_ISEND(yfl%Rho(-yfl%nxguard,-yfl%nyguard,yfl%nz),int(size(yfl%Rho(:,:,yfl%nz:yfl%nz+1)),MPIISZ),&
+                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
           else
 #endif
           yfu%Rho(:,:,0:1)      = yfu%Rho(:,:,0:1)      + yfl%Rho(:,:,yfl%nz:yfl%nz+1)
@@ -1782,7 +1850,8 @@ TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
             yfu%Rho(:,:,0:1) = yfu%Rho(:,:,0:1) + reshape(mpi_recv_real( size(yfu%Rho(:,:,0:1)),fl%proc,0),shape(yfu%Rho(:,:,0:1)))
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            yfl%Rho(:,:,yfl%nz-1:yfl%nz) = yfl%Rho(:,:,yfl%nz-1:yfl%nz) + reshape(mpi_recv_real( size(yfl%Rho(:,:,yfl%nz-1:yfl%nz)),fu%proc,0),shape(yfl%Rho(:,:,yfl%nz-1:yfl%nz)))
+            yfl%Rho(:,:,yfl%nz-1:yfl%nz) = yfl%Rho(:,:,yfl%nz-1:yfl%nz) + &
+            reshape(mpi_recv_real( size(yfl%Rho(:,:,yfl%nz-1:yfl%nz)),fu%proc,0),shape(yfl%Rho(:,:,yfl%nz-1:yfl%nz)))
           end if
       end select
   end select
