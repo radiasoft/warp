@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.168 2008/05/08 20:08:09 jlvay Exp $"
+warp_version = "$Id: warp.py,v 1.169 2008/05/09 17:14:57 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -183,7 +183,7 @@ try:
   openbc    = top.openbc
   absorb    = top.absorb
   reflect   = top.reflect
-except AttrbuteError:
+except AttributeError:
   dirichlet = 0
   neumann   = 1
   periodic  = 2
