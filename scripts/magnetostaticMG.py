@@ -23,6 +23,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                    'lcndbndy','icndbndy','laddconductor'] 
 
   def __init__(self,**kw):
+    self.grid_overlap = 2
     SubcycledPoissonSolver.__init__(self,kwdict=kw)
     self.ncomponents = 3
     self.nxguard = 1

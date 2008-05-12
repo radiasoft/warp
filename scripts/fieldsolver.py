@@ -449,8 +449,8 @@ the diagnostic is of interest and is meaningfull.
       self.my_index = me
       self.izfsslave = zeros(self.nslaves,'l')
       self.nzfsslave = zeros(self.nslaves,'l')
-      self.grid_overlap = array([2])
-      top.grid_overlap = 2
+      # --- Note that self.grid_overlap must be set by the inheriting class.
+      top.grid_overlap = self.grid_overlap
       domaindecomposefields(self.nz,self.nslaves,self.lfsautodecomp,
                             self.izfsslave,self.nzfsslave,self.grid_overlap)
 

@@ -24,6 +24,7 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def __init__(self,lreducedpickle=1,**kw):
     kw['lreducedpickle'] = lreducedpickle
+    self.grid_overlap = 2
     SubcycledPoissonSolver.__init__(self,kwdict=kw)
     self.solvergeom = w3d.XYZgeom
     self.ncomponents = 1
