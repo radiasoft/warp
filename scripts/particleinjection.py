@@ -6,7 +6,7 @@ from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.2 2008/04/16 22:01:04 dave Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.3 2008/05/12 16:32:01 dave Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -72,8 +72,10 @@ conductors are an argument.
         # --- is being used. It can also call a routine which includes
         # --- the conductor when calculating the field.
 
+        if solver is w3d: phip = solver.phip
+        else:             phip = solver.potentialp
+
         if self.getlcorrectede():
-            phip = solver.phip
 
             # --- The shape includes a guard cell in the axis parallel
             # --- to the E field. The calculation of s assumes that there
@@ -107,7 +109,6 @@ conductors are an argument.
         else:
 
             # --- Calculate E's directly from grid.
-            phip = solver.phip
             dx = solver.dx
             dy = solver.dy
             dz = solver.dz
@@ -139,7 +140,9 @@ conductors are an argument.
         dx = solver.dx
         dy = solver.dy
         dz = solver.dz
-        Irho = solver.rho*dx*dy*dz
+        if solver is w3d: rhop = solver.rhop
+        else:             rhop = solver.sourcep
+        Irho = rhop*dx*dy*dz
 
         return Irho
 
@@ -149,9 +152,9 @@ conductors are an argument.
         dx = solver.dx
         dy = solver.dy
         dz = solver.dz
-        nx = solver.nx
-        ny = solver.ny
-        nz = solver.nz
+        nxp = solver.nxp
+        nyp = solver.nyp
+        nzp = solver.nzp
 
         Ex,Ey,Ez = self.getEfields(solver)
         Qold = self.getintegratedcharge(solver)
@@ -185,7 +188,7 @@ conductors are an argument.
         # --- addition of the random number, no particles would ever
         # --- be injected.  With the random number, particles will be
         # --- injected and but the average number will be less than 1.
-        rnn += where(rnn > 0.,RandomArray.random(rnn.shape),0.)
+        rnn += where(rnn > 0.,random.random(rnn.shape),0.)
 
         # --- Now create the particles. This is easiest to do in fortran.
         # --- This also gets the E field at the cell center for each
@@ -195,19 +198,19 @@ conductors are an argument.
         xx,yy,zz = zeros((3,nn),'d')
         ex,ey,ez = zeros((3,nn),'d')
         pp = zeros(nn,'d')
-        createparticlesincells(nx,ny,nz,rnn,Ex,Ey,Ez,self.grid.isinside,
+        createparticlesincells(nxp,nyp,nzp,rnn,Ex,Ey,Ez,self.grid.isinside,
                                dx,dy,dz,
                                nn,xx,yy,zz,ex,ey,ez,pp)
-        xx += w3d.xmmin
-        yy += w3d.ymmin
-        zz += w3d.zmmin
+        xx += solver.xmmin
+        yy += solver.ymmin
+        zz += solver.zmminlocal
 
         # --- Give particles a thermal velocity.
         # --- This now ignores the fact the roughly half the particles will be
         # --- headed back into the conductor.
-        vx = RandomArray.normal(0.,self.vthermal,nn)
-        vy = RandomArray.normal(0.,self.vthermal,nn)
-        vz = RandomArray.normal(0.,self.vthermal,nn)
+        vx = random.normal(0.,self.vthermal,nn)
+        vy = random.normal(0.,self.vthermal,nn)
+        vz = random.normal(0.,self.vthermal,nn)
 
         # --- Note on the above - a nicer way to get the E field would be to
         # --- get it at each particles position, so that the projection below
@@ -317,7 +320,7 @@ conductors are an argument.
 
         # --- Give the particles a time step size uniformly distributed
         # --- between 0 and top.dt.
-        dt = top.dt*RandomArray.random(nn)
+        dt = top.dt*random.random(nn)
 
         # --- Do a half split leap-frog advance.
         # --- Note that this does the advance in place, directly changing the
@@ -357,24 +360,32 @@ for example after load balancing.
         """
         if self.grid is None: lforce = 1
         if self.usergrid and not lforce: return
-        if lparallel: nzlocal = top.nzpslave[me]
-        else:         nzlocal = w3d.nzlocal
-        if (not lforce and (self.grid.nx == w3d.nx and
-                            self.grid.ny == w3d.ny and
+        solver = getregisteredsolver()
+        if solver is None:
+          solver = w3d
+          solvertop = top
+        else:
+          solvertop = solver
+        if lparallel: nzlocal = solvertop.nzpslave[me]
+        else:         nzlocal = solver.nzlocal
+        if (not lforce and (self.grid.nx == solver.nx and
+                            self.grid.ny == solver.ny and
                             self.grid.nzlocal == nzlocal and
-                            self.grid.xmmin == w3d.xmmin and
-                            self.grid.xmmax == w3d.xmmax and
-                            self.grid.ymmin == w3d.ymmin and
-                            self.grid.ymmax == w3d.ymmax and
-                            self.grid.zmmin == w3d.zmmin and
-                            self.grid.zmmax == w3d.zmmax and
-                            self.grid.izslave[me] == top.izpslave[me])): return
+                            self.grid.xmmin == solver.xmmin and
+                            self.grid.xmmax == solver.xmmax and
+                            self.grid.ymmin == solver.ymmin and
+                            self.grid.ymmax == solver.ymmax and
+                            self.grid.zmmin == solver.zmmin and
+                            self.grid.zmmax == solver.zmmax and
+                            self.grid.izslave[me] == solvertop.izpslave[me])):
+          return
         # --- Note that copies of the slave arrays are passed in.
         # --- The arrays in top may be changed the next time loadbalancing is
         # --- done, but the arrays in self.grid should not be changed. Instead,
         # --- a whole new grid is created.
-        self.grid = Grid(izslave=top.izpslave.copy(),
-                         nzslave=top.nzpslave.copy())
+        self.grid = Grid(solver=solver,
+                         izslave=solvertop.izpslave.copy(),
+                         nzslave=solvertop.nzpslave.copy())
         self.updateconductors()
 
     def updateconductors(self):
@@ -382,11 +393,3 @@ for example after load balancing.
         for c in self.conductors:
             self.grid.getisinside(c,aura=aura)
 
-    def scrapeall(self,clear=0,local=0):
-        if local:
-            if len(self.conductors)==0 or sum(top.pgroup.nps)==0:
-                return
-        else:
-            if len(self.conductors)==0 or parallelsum(sum(top.pgroup.nps))==0:
-                return
-        self.updategrid()
