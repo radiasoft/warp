@@ -1,18 +1,18 @@
 # --- Returns a value from the requested distribution function.
-from Numeric import *
-import RandomArray
-hibeamdefaults_version = "$Id: hibeamdefaults.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+from numpy import *
+import random
+hibeamdefaults_version = "$Id: hibeamdefaults.py,v 1.2 2008/05/12 16:32:46 dave Exp $"
 def errordist(type):
   if type == 'GAUSSIAN':
-    s = RandomArray.random(2)
-    phi = 2.*pi*RandomArray.random(2)
+    s = random.random(2)
+    phi = 2.*pi*random.random(2)
     sq = sqrt(-2.*log(s))
     return tuple(sq*cos(phi))
     return
   elif type == 'ABSOLUTE':
     return (1.,1.)
   else:
-    return tuple(2.*RandomArray.random(2)-1.)
+    return tuple(2.*random.random(2)-1.)
 
 #..HINITnamelistdefaults:
 hinit={'current0':4.e-3,

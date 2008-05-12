@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.66 2008/04/29 00:59:00 dave Exp $"
+particles_version = "$Id: particles.py,v 1.67 2008/05/12 16:34:17 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -51,7 +51,7 @@ Adds plotting subset to the list
   for i in xrange(0,len(top.npplot)):
     ntopick=min(pgroup.nps[js],int(top.npplot[i]*fracnp+0.5))
     ii = arange(pgroup.nps[0])
-    #rr = pgroup.nps[0]*RandomArray.random(pgroup.nps[0])
+    #rr = pgroup.nps[0]*random.random(pgroup.nps[0])
     rr = pgroup.nps[0]*ranf(zeros(pgroup.nps[0]))
     ii = compress(less(rr,ntopick),ii)
     psubset.append(ii.astype('i'))

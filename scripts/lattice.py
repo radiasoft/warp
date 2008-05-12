@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.61 2008/04/16 20:05:46 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.62 2008/05/12 16:34:17 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -83,8 +83,8 @@ def errordist(etype):
     if _errordist_getnextnumber:
       _errordist_getnextnumber = 0
       return _errordist_next_number
-    s = RandomArray.random(2)
-    phi = 2.*pi*RandomArray.random(2)
+    s = random.random(2)
+    phi = 2.*pi*random.random(2)
     sq = sqrt(-2.*log(s))
     result = tuple(sq*cos(phi))
     _errordist_getnextnumber = 1

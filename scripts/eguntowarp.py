@@ -3,7 +3,7 @@
 from warp import *
 import getzmom
 
-eguntowarp_version = '$Id: eguntowarp.py,v 1.6 2007/08/10 00:15:32 dave Exp $'
+eguntowarp_version = '$Id: eguntowarp.py,v 1.7 2008/05/12 16:32:46 dave Exp $'
 def eguntowarpdoc():
   import eguntowarp
   print eguntowarp.__doc__
@@ -64,7 +64,7 @@ EgunToWarp
     s.ibeam = ibeam
     s.slice = slice
     # --- Initialize random number generator
-    RandomArray.seed(seed1,seed2)
+    random.seed([seed1,seed2])
     # --- Derived quantities
     s.nn = len(s.r)
     s.ninject = s.ibeam/s.vz/top.pgroup.sq[0]*s.vz*top.dt/top.pgroup.sw[0]

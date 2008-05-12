@@ -7,7 +7,7 @@ from warp import *
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale>0.:
-      return RandomArray.normal(loc,scale,size)
+      return random.normal(loc,scale,size)
     else:
       return loc
 
@@ -398,7 +398,7 @@ Creates a new species of particles. All arguments are optional.
     if spacing == 'random':
       # --- Add a random number to the number of particles so that on
       # --- average, the correct number of particles will be generated.
-      np = int(np + RandomArray.random(1)[0])
+      np = int(np + random.random())
       # --- Adjust the number of particles to load to based on the
       # --- width of the cropped zmin and max and the original
       if zmin==zmax:
@@ -410,9 +410,9 @@ Creates a new species of particles. All arguments are optional.
       else:
         np = nint((zmaxp - zminp)/(zmax - zmin)*np)
       if np == 0: return
-      x = RandomArray.random(np)
-      y = RandomArray.random(np)
-      z = RandomArray.random(np)
+      x = random.random(np)
+      y = random.random(np)
+      z = random.random(np)
       z = (zminp + (zmaxp - zminp)*z - zmin)/(zmax - zmin)
 
     elif spacing == 'uniform':
@@ -543,13 +543,13 @@ in radius squared.
     if spacing == 'random':
       # --- Add a random number to the number of particles so that on
       # --- average, the correct number of particles will be generated.
-      np = int(np + RandomArray.random(1)[0])
+      np = int(np + random.random())
       # --- Adjust the number of particles to load to based on the
       # --- width of the cropped zmin and max and the original
       np = nint((zmaxp - zminp)/(zmax - zmin)*np)
       if np == 0: return
-      r = RandomArray.random(np)
-      z = RandomArray.random(np)
+      r = random.random(np)
+      z = random.random(np)
       z = (zminp + (zmaxp - zminp)*z - zmin)/(zmax - zmin)
     else:
       if nr is None: nr = nint(np**(1./2.))
@@ -574,7 +574,7 @@ in radius squared.
       r.shape = (np,)
       z.shape = (np,)
 
-    thetap=(thetamax-thetamin)*RandomArray.random(np) + thetamin
+    thetap=(thetamax-thetamin)*random.random(np) + thetamin
 
     if lvariableweights is None:
       lvariableweights = (top.wpid != 0)
@@ -691,7 +691,7 @@ in radius squared.
         if Nadd>0:
           x=SpRandom(0.,deltax,Nadd)
           y=SpRandom(0.,deltay,Nadd)
-          z=zadd+dz*(RandomArray.random(Nadd)-0.5)
+          z=zadd+dz*(random.random(Nadd)-0.5)
           vx=SpRandom(0.,vthx,Nadd)
           vy=SpRandom(0.,vthy,Nadd)
           vz=SpRandom(0.,vthz,Nadd)
