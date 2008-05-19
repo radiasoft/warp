@@ -5,6 +5,7 @@ from warp import *
 from multigrid import MultiGrid
 from multigridRZ import MultiGrid2D
 from find_mgparam import find_mgparam
+import operator
 try:
   import Opyndx
   VisualizableClass = Opyndx.Visualizable
