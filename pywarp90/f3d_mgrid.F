@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.169 $, $Date: 2008/04/28 20:01:26 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.170 $, $Date: 2008/05/20 19:39:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -5942,6 +5942,7 @@ c=============================================================================
       use ConductorTypemodule
       use Multigrid3d_diagnostic
       use formggetarraysuminterface
+      use Constant,Only: eps0
       integer(ISZ):: mglevel
       integer(ISZ):: nx,nzlocal,nz
       real(kind=8):: dx,dz
@@ -5998,7 +5999,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
         if (my_index == 0) print*,"V1 phi",mglevel,sss
         sss = mggetarraysum(nx,0,nzlocal,0,0,0,rho,
      &                      izfsslave,nzfsslave,nslaves,my_index)
-        if (my_index == 0) print*,"V1 rho",mglevel,sss
+        if (my_index == 0) print*,"V1 rho",mglevel,sss/eps0
       endif
 
 c     --- Do initial SOR passes.
@@ -6016,7 +6017,7 @@ c     --- Do initial SOR passes.
         if (my_index == 0) print*,"V2 phi",mglevel,sss
         sss = mggetarraysum(nx,0,nzlocal,0,0,0,rho,
      &                      izfsslave,nzfsslave,nslaves,my_index)
-        if (my_index == 0) print*,"V2 rho",mglevel,sss
+        if (my_index == 0) print*,"V2 rho",mglevel,sss/eps0
       endif
 
 c     --- Check if this is the finest level. If so, then don't do any further
@@ -6068,7 +6069,7 @@ c       --- Get the residual on the current grid.
         if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nx,0,nzlocal,resdelx,0,resdelz,res,
      &                        izfsslave,nzfsslave,nslaves,my_index)
-          if (my_index == 0) print*,"V3 res",mglevel,sss
+          if (my_index == 0) print*,"V3 res",mglevel,sss/eps0
         endif
 
 c       --- Calculate the size of the next coarsest grid. If the current
@@ -6173,7 +6174,7 @@ c       --- Restriction - note that no scaling factor is needed
         if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nxcoarse,0,nzlocalcoarse,0,0,0,rhocoarse,
      &                        izfsslavec,nzfsslavec,nslaves,my_index)
-          if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
+          if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss/eps0
         endif
 
 c       --- Continue at the next coarsest level.
@@ -6388,7 +6389,7 @@ c     --- Calculate the residual.
 
 c     --- Zero the residual inside conductors.
       call cond_potmgres(conductors%interior,
-     &                   nx,0,nzlocal,res,mglevel,1,.false.,1,0,3)
+     &                   nx,0,nzlocal,res,mglevel,1,.false.,resdelx,0,resdelz)
 
 c     if (lcndbndy) then
 c       --- Calculate the residual near the conductor.
