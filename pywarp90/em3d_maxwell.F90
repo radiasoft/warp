@@ -386,11 +386,15 @@ REAL(kind=8), INTENT(IN) :: dt
 INTEGER :: j, k, l
 real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
 
+if(f%nconds>0) then 
+  call push_em3d_conde(f,dt)
+  return
+end if
+
 dtsdx = f%clight**2*dt/f%dx
 dtsdy = f%clight**2*dt/f%dy
 dtsdz = f%clight**2*dt/f%dz
 mudt  = f%mu0*f%clight**2*dt
-
 
   ! advance Ex
   do l = 0, f%nz
@@ -547,6 +551,61 @@ real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
 return
 end subroutine push_em3d_ef
 
+subroutine push_em3d_conde(f,dt)
+use mod_emfield3d
+implicit none
+
+TYPE(EM3D_YEEFIELDtype) :: f
+REAL(kind=8), INTENT(IN) :: dt
+
+INTEGER :: j, k, l
+real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
+
+dtsdx = f%clight**2*dt/f%dx
+dtsdy = f%clight**2*dt/f%dy
+dtsdz = f%clight**2*dt/f%dz
+mudt  = f%mu0*f%clight**2*dt
+
+
+  ! advance Ex
+  do l = 0, f%nz
+   do k = 0, f%ny
+    do j = 0, f%nx-1
+      if (.not.f%incond(j,k,l) .and. .not.f%incond(j+1,k,l)) &
+      f%Ex(j,k,l) = f%Ex(j,k,l) + dtsdy * (f%Bz(j,k,l)   - f%Bz(j,k-1,l  )) &
+                                - dtsdz * (f%By(j,k,l)   - f%By(j,k  ,l-1)) &
+                                - mudt  * f%J(j,k,l,1)
+    end do
+   end do
+  end do
+
+  ! advance Ey
+  do l = 0, f%nz
+   do k = 0, f%ny-1
+    do j = 0, f%nx
+      if (.not.f%incond(j,k,l) .and. .not.f%incond(j,k+1,l)) &
+      f%Ey(j,k,l) = f%Ey(j,k,l) - dtsdx * (f%Bz(j,k,l)   - f%Bz(j-1,k,l)) &
+                                + dtsdz * (f%Bx(j,k,l)   - f%Bx(j,k,l-1)) &
+                                - mudt  * f%J(j,k,l,2)
+    end do
+   end do
+  end do
+
+  ! advance Ez 
+  do l = 0, f%nz-1
+   do k = 0, f%ny
+    do j = 0, f%nx
+      if (.not.f%incond(j,k,l) .and. .not.f%incond(j,k,l+1)) &
+      f%Ez(j,k,l) = f%Ez(j,k,l) + dtsdx * (f%By(j,k,l) - f%By(j-1,k  ,l)) &
+                                - dtsdy * (f%Bx(j,k,l) - f%Bx(j  ,k-1,l)) &
+                                - mudt  * f%J(j,k,l,3)
+    end do
+   end do
+  end do
+
+return
+end subroutine push_em3d_conde
+
 subroutine push_em3d_kyee_e(f,dt)
 use mod_emfield3d
 implicit none
@@ -555,7 +614,7 @@ TYPE(EM3D_KYEEFIELDtype) :: f
 REAL(kind=8), INTENT(IN) :: dt
 
 INTEGER :: j, k, l
-real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
+real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt, newj
 
 dtsdx = f%clight**2*dt/f%dx
 dtsdy = f%clight**2*dt/f%dy
@@ -567,6 +626,23 @@ mudt  = 0.5*f%mu0*f%clight**2*dt
   do l = 0, f%nz
    do k = 0, f%ny
     do j = 0, f%nx-1
+      newj =  - (f%alphay+f%alphay)*mudt * f%J(j,k,l,1) &
+                                - f%betay *mudt * (f%J(j+1,k,l  ,1) &
+                                                +f%J(j-1,k,l  ,1) &
+                                                +f%J(j  ,k,l+1,1) &
+                                                +f%J(j  ,k,l-1,1)) &
+                                - f%gammay*mudt * (f%J(j+1,k,l+1,1) &
+                                                +f%J(j-1,k,l+1,1) &
+                                                +f%J(j+1,k,l-1,1) &
+                                                +f%J(j-1,k,l-1,1)) &
+                                - f%betaz *mudt * (f%J(j+1,k  ,l,1) &
+                                                +f%J(j-1,k  ,l,1) &
+                                                +f%J(j  ,k+1,l,1) &
+                                                +f%J(j  ,k-1,l,1)) &
+                                - f%gammaz*mudt * (f%J(j+1,k+1,l,1) &
+                                                +f%J(j-1,k+1,l,1) &
+                                                +f%J(j+1,k-1,l,1) &
+                                                +f%J(j-1,k-1,l,1))
       f%Ex(j,k,l) = f%Ex(j,k,l) + f%alphay*dtsdy * (f%Bz(j  ,k,l  ) - f%Bz(j  ,k-1,l  )) &
                                 + f%betay *dtsdy * (f%Bz(j+1,k,l  ) - f%Bz(j+1,k-1,l  ) &
                                                +  f%Bz(j-1,k,l  ) - f%Bz(j-1,k-1,l  ) &
@@ -585,23 +661,8 @@ mudt  = 0.5*f%mu0*f%clight**2*dt
                                                +  f%By(j-1,k+1,l) - f%By(j-1,k+1,l-1)  &
                                                +  f%By(j+1,k-1,l) - f%By(j+1,k-1,l-1)  &
                                                +  f%By(j-1,k-1,l) - f%By(j-1,k-1,l-1)) &
-                                - (f%alphay+f%alphay)*mudt * f%J(j,k,l,1) &
-                                - f%betay *mudt * (f%J(j+1,k,l  ,1) &
-                                                +f%J(j-1,k,l  ,1) &
-                                                +f%J(j  ,k,l+1,1) &
-                                                +f%J(j  ,k,l-1,1)) &
-                                - f%gammay*mudt * (f%J(j+1,k,l+1,1) &
-                                                +f%J(j-1,k,l+1,1) &
-                                                +f%J(j+1,k,l-1,1) &
-                                                +f%J(j-1,k,l-1,1)) &
-                                - f%betaz *mudt * (f%J(j+1,k  ,l,1) &
-                                                +f%J(j-1,k  ,l,1) &
-                                                +f%J(j  ,k+1,l,1) &
-                                                +f%J(j  ,k-1,l,1)) &
-                                - f%gammaz*mudt * (f%J(j+1,k+1,l,1) &
-                                                +f%J(j-1,k+1,l,1) &
-                                                +f%J(j+1,k-1,l,1) &
-                                                +f%J(j-1,k-1,l,1))
+                                + 0.5*(newj+f%Jold(j,k,l,1))
+      f%Jold(j,k,l,1) = newj
     end do
    end do
   end do
@@ -610,6 +671,23 @@ mudt  = 0.5*f%mu0*f%clight**2*dt
   do l = 0, f%nz
    do k = 0, f%ny-1
     do j = 0, f%nx
+      newj = - (f%alphax+f%alphaz)*mudt  * f%J(j,k,l,2) &
+                                - f%betax *mudt * (f%J(j,k+1,l  ,2) &
+                                              +  f%J(j,k-1,l  ,2) &
+                                              +  f%J(j,k  ,l+1,2) &
+                                              +  f%J(j,k  ,l-1,2)) &
+                                - f%gammax*mudt * (f%J(j,k+1,l+1,2) &
+                                              +  f%J(j,k-1,l+1,2) &
+                                              +  f%J(j,k+1,l-1,2) &
+                                              +  f%J(j,k-1,l-1,2)) &
+                                - f%betaz *mudt * (f%J(j  ,k+1,l,2) &
+                                              +  f%J(j  ,k-1,l,2) &
+                                              +  f%J(j+1,k  ,l,2) &
+                                              +  f%J(j-1,k  ,l,2)) &
+                                - f%gammaz*mudt * (f%J(j+1,k+1,l,2) &
+                                              +  f%J(j+1,k-1,l,2) &
+                                              +  f%J(j-1,k+1,l,2) &
+                                              +  f%J(j-1,k-1,l,2))
       f%Ey(j,k,l) = f%Ey(j,k,l) - f%alphax*dtsdx * (f%Bz(j,k  ,l  ) - f%Bz(j-1,k  ,l  )) &
                                 - f%betax *dtsdx * (f%Bz(j,k+1,l  ) - f%Bz(j-1,k+1,l  ) &
                                                +  f%Bz(j,k-1,l  ) - f%Bz(j-1,k-1,l  ) &
@@ -631,23 +709,8 @@ mudt  = 0.5*f%mu0*f%clight**2*dt
                                                +  f%Bx(j-1,k+1,l) - f%Bx(j-1,k+1,l-1) &
                                                +  f%Bx(j+1,k-1,l) - f%Bx(j+1,k-1,l-1) &
                                                +  f%Bx(j-1,k-1,l) - f%Bx(j-1,k-1,l-1)) &
-                                - (f%alphax+f%alphaz)*mudt  * f%J(j,k,l,2) &
-                                - f%betax *mudt * (f%J(j,k+1,l  ,2) &
-                                              +  f%J(j,k-1,l  ,2) &
-                                              +  f%J(j,k  ,l+1,2) &
-                                              +  f%J(j,k  ,l-1,2)) &
-                                - f%gammax*mudt * (f%J(j,k+1,l+1,2) &
-                                              +  f%J(j,k-1,l+1,2) &
-                                              +  f%J(j,k+1,l-1,2) &
-                                              +  f%J(j,k-1,l-1,2)) &
-                                - f%betaz *mudt * (f%J(j  ,k+1,l,2) &
-                                              +  f%J(j  ,k-1,l,2) &
-                                              +  f%J(j+1,k  ,l,2) &
-                                              +  f%J(j-1,k  ,l,2)) &
-                                - f%gammaz*mudt * (f%J(j+1,k+1,l,2) &
-                                              +  f%J(j+1,k-1,l,2) &
-                                              +  f%J(j-1,k+1,l,2) &
-                                              +  f%J(j-1,k-1,l,2)) 
+                                + 0.5*(newj+f%Jold(j,k,l,2))
+      f%Jold(j,k,l,2) = newj
     end do
    end do
   end do
@@ -656,6 +719,23 @@ mudt  = 0.5*f%mu0*f%clight**2*dt
   do l = 0, f%nz-1
    do k = 0, f%ny
     do j = 0, f%nx
+      newj = - (f%alphax+f%alphay)*mudt * f%J(j,k,l,3) &
+                                - f%betax *mudt * (f%J(j,k+1,l  ,3) &
+                                                +  f%J(j,k-1,l  ,3) &
+                                                +  f%J(j,k  ,l+1,3) &
+                                                +  f%J(j,k  ,l-1,3)) &
+                                - f%gammax*mudt * (f%J(j,k+1,l+1,3) &
+                                                +  f%J(j,k-1,l+1,3) &
+                                                +  f%J(j,k+1,l-1,3) &
+                                                +  f%J(j,k-1,l-1,3)) &
+                                - f%betay *mudt * (f%J(j+1,k,l  ,3) &
+                                                +  f%J(j-1,k,l  ,3) &
+                                                +  f%J(j  ,k,l+1,3) &
+                                                +  f%J(j  ,k,l-1,3)) &
+                                - f%gammay*mudt * (f%J(j+1,k,l+1,3) &
+                                                +  f%J(j-1,k,l+1,3) &
+                                                +  f%J(j+1,k,l-1,3) &
+                                                +  f%J(j-1,k,l-1,3))
       f%Ez(j,k,l) = f%Ez(j,k,l) + f%alphax*dtsdx * (f%By(j,k  ,l  ) - f%By(j-1,k  ,l  )) &
                                 + f%betax *dtsdx * (f%By(j,k+1,l  ) - f%By(j-1,k+1,l  ) &
                                                  +  f%By(j,k-1,l  ) - f%By(j-1,k-1,l  ) &
@@ -674,23 +754,8 @@ mudt  = 0.5*f%mu0*f%clight**2*dt
                                                  +  f%Bx(j-1,k,l+1) - f%Bx(j-1,k-1,l+1) &
                                                  +  f%Bx(j+1,k,l-1) - f%Bx(j+1,k-1,l-1) &
                                                  +  f%Bx(j-1,k,l-1) - f%Bx(j-1,k-1,l-1)) &
-                                - (f%alphax+f%alphay)*mudt * f%J(j,k,l,3) &
-                                - f%betax *mudt * (f%J(j,k+1,l  ,3) &
-                                                +  f%J(j,k-1,l  ,3) &
-                                                +  f%J(j,k  ,l+1,3) &
-                                                +  f%J(j,k  ,l-1,3)) &
-                                - f%gammax*mudt * (f%J(j,k+1,l+1,3) &
-                                                +  f%J(j,k-1,l+1,3) &
-                                                +  f%J(j,k+1,l-1,3) &
-                                                +  f%J(j,k-1,l-1,3)) &
-                                - f%betay *mudt * (f%J(j+1,k,l  ,3) &
-                                                +  f%J(j-1,k,l  ,3) &
-                                                +  f%J(j  ,k,l+1,3) &
-                                                +  f%J(j  ,k,l-1,3)) &
-                                - f%gammay*mudt * (f%J(j+1,k,l+1,3) &
-                                                +  f%J(j-1,k,l+1,3) &
-                                                +  f%J(j+1,k,l-1,3) &
-                                                +  f%J(j-1,k,l-1,3))
+                                + 0.5*(newj+f%Jold(j,k,l,3))
+      f%Jold(j,k,l,3) = newj
     end do
    end do
   end do
@@ -2259,4 +2324,15 @@ integer(ISZ) :: i
   f%Rhoarray(:,:,:,i) = f%Rhoarray(:,:,:,i) + f%Rhoarray(:,:,:,i+1)
 
 end subroutine add_rho_slice_3d
+
+subroutine set_incond(f,n,indx)
+use mod_emfield3d
+TYPE(EM3D_YEEFIELDtype) :: f
+integer(ISZ) :: i,n,indx(3,n)
+  do i=1,n
+    f%incond(indx(1,i),indx(2,i),indx(3,i)) = .true.
+  end do  
+
+end subroutine set_incond
+
 
