@@ -7,18 +7,21 @@ try:
 except ImportError:
   pass
 
-class EM3D(object):
+class EM3D(FieldSolver):
   
-  __w3dinputs__ = ['solvergeom','nx','ny','nzlocal','nz',
-                   'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
-                   'zmminlocal','zmmaxlocal',
-                   'bound0','boundnz','boundxy','l2symtry','l4symtry',
-                   'solvergeom']
+#  __w3dinputs__ = ['solvergeom','nx','ny','nzlocal','nz',
+#                   'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
+#                   'zmminlocal','zmmaxlocal',
+#                   'bound0','boundnz','boundxy','l2symtry','l4symtry',
+#                   'solvergeom']
   __em3dinputs__ = []
 #  __em3dinputs__ = ['l_onegrid','l_copyfields','l_moving_window',
 #                    'tmin_moving_main_window','l_smoothdensity',
 #                    'l_elaser_out_plane','ndelta_t',
 #                   'ntamp_scatter','ntamp_gather']
+#  __topinputs__ = ['pbound0','pboundnz','pboundxy',
+#                   'my_index','nslaves','lfsautodecomp','zslave','lautodecomp',
+#                   'debug']
   __flaginputs__ = {'l_apply_pml':true,'nbndx':10,'nbndy':10,'nbndz':10,
                     'nxguard':1,'nyguard':1,'nzguard':1,
                     'l_particles_weight':false,'l_usecoeffs':false,
@@ -28,32 +31,22 @@ class EM3D(object):
                     'laser_wavelength':None,'laser_wavenumber':None,
                     'laser_frequency':None,'laser_source':2,
                     'laser_focus':None,'laser_focus_velocity':0.,
-                    'nfield_subcycle':1,
+                    'nfield_subcycle':1,'density_1d':0,
                     'autoset_timestep':true,'dtcoef':0.99}
 
   def __init__(self,**kw):
-    top.allspecl = true
+    FieldSolver.__init__(self,kwdict=kw)
+#    top.allspecl = true
     top.lcallfetchb = true
     top.lgridqnt = true
     self.zgridprv=top.zgrid
     # --- Make sure the refinement is turned off
 
     # --- Save input parameters
-    for name in EM3D.__w3dinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(w3d,name))
-      if kw.has_key(name): del kw[name]
-    for name in EM3D.__em3dinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(em3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(em3d,name))
-      if kw.has_key(name): del kw[name]
-    for name,defvalue in EM3D.__flaginputs__.iteritems():
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,defvalue)
-      if kw.has_key(name): del kw[name]
+#    self.processdefaultsfrompackage(EM3D.__w3dinputs__,w3d,kw)
+#    self.processdefaultsfrompackage(EM3D.__topinputs__,top,kw)
+    self.processdefaultsfrompackage(EM3D.__em3dinputs__,em3d,kw)
+    self.processdefaultsfromdict(EM3D.__flaginputs__,kw)
 
     # --- bounds is special since it will sometimes be set from the
     # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
@@ -88,9 +81,9 @@ class EM3D(object):
     self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
     self.dy = (self.ymmax - self.ymmin)/self.ny
     self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
-    self.dz = (self.zmmaxlocal - self.zmminlocal)/self.nzlocal
-    self.zmesh = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
-    self.zmeshlocal = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
+    self.dz = (self.zmmax - self.zmmin)/self.nz
+    self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+#    self.zmeshlocal = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
 
     # --- set time step as a fraction of Courant condition
     # --- also set self.nfield_subcycle if top.dt over Courant condition times dtcoef
@@ -104,12 +97,27 @@ class EM3D(object):
     
     # --- Create field and source arrays and other arrays.
     self.allocatefieldarrays()
+    self.initializeconductors()
 
     # --- Handle laser inputs
-#    self.setuplaser()
+    self.setuplaser()
 
     installbeforeloadrho(self.solve2ndhalf)
     registersolver(self)
+
+  def processdefaultsfrompackage(self,defaults,package,kw):
+    for name in defaults:
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,getattr(package,name))
+      if kw.has_key(name): del kw[name]
+
+  def processdefaultsfromdict(self,dict,kw):
+    for name,defvalue in dict.iteritems():
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,defvalue)
+      if kw.has_key(name): del kw[name]
 
   def allocatefieldarrays(self):
     self.block = pyinit_3dem_block(self.nx, 
@@ -209,10 +217,10 @@ class EM3D(object):
              "For a gaussian laser, the width must be specified using laser_gauss_width"
 #      xx = arange(self.nx+4)*f.dx+f.xmin*f.dx - 0.5*f.nx*f.dx
 #      self.laser_profile = exp(-(xx/self.laser_gauss_width)**2/2.)
-      yy = arange(f.ny+4)*f.dy+f.ymin*f.dy - 0.5*f.ny*f.dy
-      f.laser_profile = exp(-(yy/self.laser_gauss_width)**2/2.)
+      yy = arange(f.ny+3)*f.dy+f.ymin*f.dy - 0.5*f.ny*f.dy
+      self.laser_profile = exp(-(yy/self.laser_gauss_width)**2/2.)
     elif operator.isSequenceType(self.laser_profile):
-      assert len(f.laser_profile) == f.ny+4,"The specified profile must be of length ny+4"
+      assert len(self.laser_profile) == f.ny+3,"The specified profile must be of length ny+3"
     elif callable(self.laser_profile):
       self.laser_profile_func = self.laser_profile
     
@@ -325,7 +333,8 @@ class EM3D(object):
       # --- point J array to proper Jarray slice
       self.field.J = self.field.Jarray[:,:,:,:,top.ndtstorho[top.pgroup.ndts[js]-1]]
       # --- call routine performing current deposition
-      depose_jxjyjz_esirkepov_linear_serial(self.field.J,n,
+      if 1:
+        depose_jxjyjz_esirkepov_linear_serial(self.field.J,n,
                                             top.pgroup.xp[i:i+n],
                                             top.pgroup.yp[i:i+n],
                                             top.pgroup.zp[i:i+n],
@@ -338,7 +347,26 @@ class EM3D(object):
                                             self.block.core.yf.dx,self.block.core.yf.dy,self.block.core.yf.dz,
                                             self.block.core.yf.nx,self.block.core.yf.ny,self.block.core.yf.nz,
                                             l_particles_weight)
-
+      else:
+        Jx=self.field.J[1,1,:,0].copy()
+        Jy=self.field.J[1,1,:,1].copy()
+        Jz=self.field.J[1,1,:,2].copy()
+        depose_jxjyjz_esirkepov_linear_serial1d(Jx,Jy,Jz,n,
+                                            top.pgroup.xp[i:i+n],
+                                            top.pgroup.yp[i:i+n],
+                                            top.pgroup.zp[i:i+n],
+                                            top.pgroup.uxp[i:i+n],
+                                            top.pgroup.uyp[i:i+n],
+                                            top.pgroup.uzp[i:i+n],
+                                            top.pgroup.gaminv[i:i+n],wfact,q*w,
+                                            self.block.xmin,self.block.ymin,self.block.zmin,
+                                            top.dt*top.pgroup.ndts[js],
+                                            self.block.core.yf.dx,self.block.core.yf.dy,self.block.core.yf.dz,
+                                            self.block.core.yf.nz,
+                                            l_particles_weight)
+        self.field.J[1,1,:,0]+=Jx
+        self.field.J[1,1,:,1]+=Jy
+        self.field.J[1,1,:,2]+=Jz
     # --- add slices
     if top.nsndts>1:
       for i in range(top.nsndts-2,-1,-1):
@@ -346,13 +374,23 @@ class EM3D(object):
           add_current_slice_3d(self.field,i+1)
 
     # --- apply boundary condition on current
-    self.apply_current_bc()
+    if not self.density_1d:
+      self.apply_current_bc()
 
     # --- point J to first slice of Jarray
     self.field.J = self.field.Jarray[:,:,:,:,0]
     
+    # --- get 1-D density
+    if self.density_1d:
+      for i in range(3):
+       J = sum(sum(self.field.J[:,:,:,i],0),0)
+       for ii in range(shape(self.field.J[:,:,:,i])[1]):
+        for jj in range(shape(self.field.J[:,:,:,i])[0]):
+         self.field.J[ii,jj,:,i] = J
+
     # --- smooth current density 
 #    if self.l_smoothdensity:self.smoothdensity()
+    if self.l_verbose:print 'loadj done'
 
 
   def apply_current_bc(self):
@@ -397,15 +435,161 @@ class EM3D(object):
   def fetcha(self):
     pass
 
+  def initializeconductors(self):
+    # --- Create the attributes for holding information about conductors
+    # --- and conductor objects.
+    # --- Note that a conductor object will be created for each value of
+    # --- fselfb. This is needed since fselfb effects how the coarsening
+    # --- is done, and different conductor data sets are needed for
+    # --- different coarsenings.
+
+    # --- This stores the ConductorType objects. Note that the objects are
+    # --- not actually created until getconductorobject is called.
+    self.conductorobjects = {}
+
+    # --- This stores the conductors that have been installed in each
+    # --- of the conductor objects.
+    self.installedconductorlists = {}
+
+    # --- This is a list of conductors that have been added.
+    # --- New conductors are not actually installed until the data is needed,
+    # --- when getconductorobject is called.
+    # --- Each element of this list contains all of the input to the
+    # --- installconductor method.
+    self.conductordatalist = []
+#    self.mgmaxlevels=0
+#    self.mglevels=0
+
   def installconductor(self,conductor,
                             xmin=None,xmax=None,
                             ymin=None,ymax=None,
                             zmin=None,zmax=None,
                             dfill=top.largepos):
-    pass
+    # --- This only adds the conductor to the list. The data is only actually
+    # --- installed when it is needed, during a call to getconductorobject.
+    self.conductordatalist.append((conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill))
+
+  def _installconductor(self,conductorobject,installedlist,conductordata,fselfb):
+    # --- This does that actual installation of the conductor into the
+    # --- conductor object
+
+    # --- Extract the data from conductordata (the arguments to installconductor)
+    conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill = conductordata
+
+    if conductor in installedlist: return
+    installedlist.append(conductor)
+
+    if fselfb == 'p':
+      zscale = 1.
+      nx,ny,nzlocal,nz = self.nxp,self.nyp,self.nzp,self.nz
+      xmmin,xmmax = self.xmminp,self.xmmaxp
+      ymmin,ymmax = self.ymminp,self.ymmaxp
+      zmmin,zmmax = self.zmminp,self.zmmaxp
+      mgmaxlevels = 1
+    else:
+      # --- Get relativistic longitudinal scaling factor
+      # --- This is quite ready yet.
+      beta = fselfb/clight
+      zscale = 1./sqrt((1.-beta)*(1.+beta))
+      nx,ny,nzlocal,nz = self.nx,self.ny,self.nzlocal,self.nz
+      xmmin,xmmax = self.xmmin,self.xmmax
+      ymmin,ymmax = self.ymmin,self.ymmax
+      zmmin,zmmax = self.zmmin,self.zmmax
+      mgmaxlevels = None
+
+    mgmaxlevels=1
+    installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
+                      self.getzgrid(),
+                      nx,ny,nzlocal,nz,
+                      xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
+                      zscale,self.l2symtry,self.l4symtry,
+                      installrz=0,
+                      solvergeom=self.solvergeom,conductors=conductorobject,
+                      mgmaxlevels=mgmaxlevels,
+                      my_index=self.my_index,nslaves=self.nslaves,
+                      izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
+    self.field.nconds = self.getconductorobject().interior.n
+    self.field.nxcond = self.field.nx
+    self.field.nycond = self.field.ny
+    self.field.nzcond = self.field.nz
+    self.field.gchange()
+    self.field.incond=False
+    if self.field.nconds>0:
+      set_incond(self.field,self.field.nconds,int(self.getconductorobject().interior.indx))
+
+  def hasconductors(self):
+    return len(self.conductordatalist) > 0
 
   def clearconductors(self):
-    pass
+    "Clear out the conductor data"
+    for fselfb in top.fselfb:
+      if fselfb in self.conductorobjects:
+        conductorobject = self.conductorobjects[fselfb]
+        conductorobject.interior.n = 0
+        conductorobject.evensubgrid.n = 0
+        conductorobject.oddsubgrid.n = 0
+        self.installedconductorlists[fselfb] = []
+
+  def getconductorobject(self,fselfb=0.):
+    "Checks for and installs any conductors not yet installed before returning the object"
+    # --- This is the routine that does the creation of the ConductorType
+    # --- objects if needed and ensures that all conductors are installed
+    # --- into it.
+
+    # --- This method is needed during a restore from a pickle, since this
+    # --- object may be restored before the conductors. This delays the
+    # --- installation of the conductors until they are really needed.
+
+    # --- There is a special case, fselfb='p', which refers to the conductor
+    # --- object that has the data generated relative to the particle domain,
+    # --- which can be different from the field domain, especially in parallel.
+    if fselfb == 'p':
+      # --- In serial, just use a reference to the conductor object for the
+      # --- first iselfb group.
+      if not lparallel and 'p' not in self.conductorobjects:
+        self.conductorobjects['p'] = self.conductorobjects[top.fselfb[0]]
+        self.installedconductorlists['p'] = self.installedconductorlists[top.fselfb[0]]
+      # --- In parallel, a whole new instance is created (using the
+      # --- setdefaults below).
+      # --- Check to make sure that the grid the conductor uses is consistent
+      # --- with the particle grid. This is needed so that the conductor
+      # --- data is updated when particle load balancing is done. If the
+      # --- data is not consistent, delete the conductor object so that
+      # --- everything is reinstalled.
+      try:
+        conductorobject = self.conductorobjects['p']
+        if (conductorobject.leveliz[0] != self.izpslave[self.my_index] or
+            conductorobject.levelnz[0] != self.nzpslave[self.my_index]):
+          del self.conductorobjects['p']
+          del self.installedconductorlists['p']
+      except KeyError:
+        # --- 'p' object has not yet been created anyway, so do nothing.
+        pass
+
+    conductorobject = self.conductorobjects.setdefault(fselfb,ConductorType())
+    installedconductorlist = self.installedconductorlists.setdefault(fselfb,[])
+
+    # --- Now, make sure that the conductors are installed into the object.
+    # --- This may be somewhat inefficient, since it loops over all of the
+    # --- conductors everytime. This makes the code more robust, though, since
+    # --- it ensures that all conductors will be properly installed into
+    # --- the conductor object.
+    for conductordata in self.conductordatalist:
+      self._installconductor(conductorobject,installedconductorlist,
+                             conductordata,fselfb)
+ 
+    # --- Return the desired conductor object
+    return conductorobject
+
+  def setconductorvoltage(self,voltage,condid=0,discrete=false,
+                          setvinject=false):
+    'calls setconductorvoltage'
+    # --- Loop over all of the selfb groups to that all conductor objects
+    # --- are handled.
+    for iselfb in range(top.nsselfb):
+      conductorobject = self.getconductorobject(top.fselfb[iselfb])
+      setconductorvoltage(voltage,condid,discrete,setvinject,
+                          conductors=conductorobject)
 
   def optimizeconvergence(self,resetpasses=1):
     pass
@@ -445,7 +629,7 @@ class EM3D(object):
 
     if self.laser_profile_func is not None:
       self.laser_profile = self.laser_profile_func(top.time)
-      assert len(self.laser_profile) == field.ny+4,"The specified profile must be of length ny+4"
+      assert len(self.laser_profile) == field.ny+3,"The specified profile must be of length ny+4"
 
 #    if (self.l_elaser_out_plane):
 #      xx = (arange(self.nx+4) - 0.5)*self.field.dx+self.field.xmin
@@ -464,6 +648,8 @@ class EM3D(object):
     else:
       phase = 0.
 
+    self.block.core.yf.Ey[:,:,1] = self.laser_amplitude*self.laser_profile[0]*cos(phase[0])
+    return
     if (self.l_elaser_out_plane):
       field.Ez_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)
     else:
@@ -508,63 +694,82 @@ class EM3D(object):
 #    node2yee3d(self.block.core.yf)
     dt = top.dt/self.nfield_subcycle
     push_em3d_eef(self.block,dt,0,self.l_pushf)
-    push_em3d_bf(self.block,dt,1,self.l_pushf)
+    self.add_laser(self.field)
     for i in range(self.nfield_subcycle-1):
-      push_em3d_bf(self.block,dt,2,self.l_pushf)
+      push_em3d_bf(self.block,dt,0,self.l_pushf)
       push_em3d_eef(self.block,dt,0,self.l_pushf)
-      push_em3d_bf(self.block,dt,1,self.l_pushf)
+    push_em3d_bf(self.block,dt,1,self.l_pushf)
+#    push_em3d_eef(self.block,dt,0,self.l_pushf)
+#    push_em3d_bf(self.block,dt,1,self.l_pushf)
+#    for i in range(self.nfield_subcycle-1):
+#      push_em3d_bf(self.block,dt,2,self.l_pushf)
+#      push_em3d_eef(self.block,dt,0,self.l_pushf)
+#      push_em3d_bf(self.block,dt,1,self.l_pushf)
     yee2node3d(self.block.core.yf)
  #   self.move_window_fields()
  #   for field in fields:
  #     griuni(field)
  #   if not self.l_onegrid:set_substitute_fields(self.field,self.fpatchcoarse,self.fpatchfine)
+    if self.l_verbose:print 'solve 1st half done'
 
   ##########################################################################
   # Define the basic plot commands
-  def genericfp(self,data,title,l_transpose=true,direction=2,slice=w3d.nz/2,**kw):
+  def genericfp(self,data,title,l_transpose=true,direction=2,slice=None,**kw):
     f=self.block.core.yf
     if direction==0:
-      settitles(title,'Y','Z','t = %gs'%(top.time))
+      if slice is None:slice=w3d.ny/2
       if l_transpose:
-        kw.setdefault('xmin',f.zmin)
-        kw.setdefault('xmax',f.zmax)
-        kw.setdefault('ymin',f.ymin)
-        kw.setdefault('ymax',f.ymax)
+        settitles(title,'Z','Y','t = %gs'%(top.time))
+        kw.setdefault('xmin',w3d.zmmin)
+        kw.setdefault('xmax',w3d.zmmax)
+        kw.setdefault('ymin',w3d.ymmin)
+        kw.setdefault('ymax',w3d.ymmax)
       else:
-        kw.setdefault('xmin',f.ymin)
-        kw.setdefault('xmax',f.ymax)
-        kw.setdefault('ymin',f.zmin)
-        kw.setdefault('ymax',f.zmax)
-#      data=data[slice+f.nxguard,f.nyguard:-f.nyguard,f.nzguard:-f.nzguard]
-      data=data[slice,:,:]
+        settitles(title,'Y','Z','t = %gs'%(top.time))
+        kw.setdefault('xmin',w3d.ymmin)
+        kw.setdefault('xmax',w3d.ymmax)
+        kw.setdefault('ymin',w3d.zmmin)
+        kw.setdefault('ymax',w3d.zmmax)
+      if l_transpose:
+        data=transpose(data[slice,:,:])
+      else:
+        data=data[slice,:,:]
     if direction==1:
-      settitles(title,'Z','X','t = %gs'%(top.time))
+      if slice is None:slice=w3d.nx/2
       if l_transpose:
-        kw.setdefault('xmin',f.zmin)
-        kw.setdefault('xmax',f.zmax)
-        kw.setdefault('ymin',f.xmin)
-        kw.setdefault('ymax',f.xmax)
+        settitles(title,'Z','X','t = %gs'%(top.time))
+        kw.setdefault('ymin',w3d.xmmin)
+        kw.setdefault('ymax',w3d.xmmax)
+        kw.setdefault('xmin',w3d.zmmin)
+        kw.setdefault('xmax',w3d.zmmax)
       else:
-        kw.setdefault('xmin',f.xmin)
-        kw.setdefault('xmax',f.xmax)
-        kw.setdefault('ymin',f.zmin)
-        kw.setdefault('ymax',f.zmax)
-#      data=data[f.nxguard:-f.nxguard,slice+f.nyguard,f.nzguard:-f.nzguard]
-      data=data[:,slice,:]
+        settitles(title,'X','Z','t = %gs'%(top.time))
+        kw.setdefault('xmin',w3d.xmmin)
+        kw.setdefault('xmax',w3d.xmmax)
+        kw.setdefault('ymin',w3d.zmmin)
+        kw.setdefault('ymax',w3d.zmmax)
+      if l_transpose:
+        data=transpose(data[:,slice,:])
+      else:
+        data=data[:,slice,:]
     if direction==2:
-      settitles(title,'X','Y','t = %gs'%(top.time))
+      if slice is None:slice=w3d.nz/2
       if l_transpose:
-        kw.setdefault('xmin',f.ymin)
-        kw.setdefault('xmax',f.ymax)
-        kw.setdefault('ymin',f.xmin)
-        kw.setdefault('ymax',f.xmax)
+        settitles(title,'X','Y','t = %gs'%(top.time))
+        kw.setdefault('xmin',w3d.ymmin)
+        kw.setdefault('xmax',w3d.ymmax)
+        kw.setdefault('ymin',w3d.xmmin)
+        kw.setdefault('ymax',w3d.xmmax)
       else:
-        kw.setdefault('xmin',f.xmin)
-        kw.setdefault('xmax',f.xmax)
-        kw.setdefault('ymin',f.ymin)
-        kw.setdefault('ymax',f.ymax)
-#      data=data[f.nxguard:-f.nxguard,f.nyguard:-f.nyguard,slice+f.nzguard]
-      data=data[:,:,slice]
+        settitles(title,'Y','X','t = %gs'%(top.time))
+        kw.setdefault('xmin',w3d.xmmin)
+        kw.setdefault('xmax',w3d.xmmax)
+        kw.setdefault('ymin',w3d.ymmin)
+        kw.setdefault('ymax',w3d.ymmax)
+      if l_transpose:
+        data=transpose(data[:,:,slice])
+      else:
+        data=data[:,:,slice]
     ppgeneric(grid=data,**kw)
       
   def gatherarray(self,g):
@@ -657,6 +862,21 @@ class EM3D(object):
 
   def getf(self):
       return self.gatherarray(self.field.F)
+
+  ##########################################################################
+  # Define the basic plot commands
+  def genericpf(self,kw,pffunc):
+    fselfb = kw.get('fselfb',top.fselfb[0])
+    if 'fselfb' in kw: del kw['fselfb']
+    kw['conductors'] = self.getconductorobject(fselfb)
+    kw['solver'] = self
+    pffunc(**kw)
+  def pfxy(self,**kw): self.genericpf(kw,pfxy)
+  def pfzx(self,**kw): self.genericpf(kw,pfzx)
+  def pfzy(self,**kw): self.genericpf(kw,pfzy)
+  def pfxyg(self,**kw): self.genericpf(kw,pfxyg)
+  def pfzxg(self,**kw): self.genericpf(kw,pfzxg)
+  def pfzyg(self,**kw): self.genericpf(kw,pfzyg)
 
 def allocatesf(f):
     f.syf = EM3D_SPLITYEEFIELDtype()
