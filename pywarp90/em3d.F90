@@ -16,6 +16,7 @@ subroutine depose_jxjyjz_esirkepov_linear_serial(cj,np,xp,yp,zp,uxp,uyp,uzp,gami
    integer(ISZ) :: iixp0,ijxp0,ikxp0,iixp,ijxp,ikxp,ip,dix,diy,diz,idx,idy,idz,i,j,k
 
       sx0=0.;sy0=0.;sz0=0.
+      sdz=0.
       
       dxi = 1./dx
       dyi = 1./dy
