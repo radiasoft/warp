@@ -49,10 +49,10 @@ init_3dem_block(b:EM3D_BLOCKtype,nx:integer,ny:integer,nz:integer,
                 dt:real,dx:real,dy:real,dz:real,clight:real,mu0:real,
                 xmin:real,ymin:real,zmin:real,xlb:real,ylb:real,zlb:real,
                 xrb:real,yrb:real,zrb:real) subroutine
-push_em3d_e(f:EM3D_FIELDtype,dt:real) subroutine
-push_em3d_b(f:EM3D_FIELDtype,dt:real) subroutine
-push_em3d_ef(f:EM3D_FIELDtype,dt:real) subroutine
-push_em3d_f(f:EM3D_FIELDtype,dt:real) subroutine
+push_em3d_e(f:EM3D_YEEFIELDtype,dt:real) subroutine
+push_em3d_b(f:EM3D_YEEFIELDtype,dt:real) subroutine
+push_em3d_ef(f:EM3D_YEEFIELDtype,dt:real) subroutine
+push_em3d_f(f:EM3D_YEEFIELDtype,dt:real) subroutine
 push_em3d_block(f:EM3D_BLOCKtype,dt:real,which:integer) subroutine
 push_em3d_eef(f:EM3D_BLOCKtype,dt:real,which:integer,l_pushf:logical) subroutine
 push_em3d_bf(f:EM3D_BLOCKtype,dt:real,which:integer,l_pushf:logical) subroutine
@@ -96,6 +96,7 @@ em3d_exchange_j(b:EM3D_BLOCKtype) subroutine
 em3d_exchange_rho(b:EM3D_BLOCKtype) subroutine
 add_current_slice_3d(f:EM3D_YEEFIELDtype,i:integer) subroutine
 add_rho_slice_3d(f:EM3D_YEEFIELDtype,i:integer) subroutine
+set_incond(f:EM3D_YEEFIELDtype,n:integer,indx(3,n):integer) subroutine
 
 %%%%%%%% EM3D_SPLITYEEFIELDtype:
 fieldtype integer /-2/
@@ -160,6 +161,10 @@ nxguard integer /1/
 nyguard integer /1/
 nzguard integer /1/
 ntimes integer /1/
+nconds integer /0/
+nxcond integer /0/
+nycond integer /0/
+nzcond integer /0/
 xmin real
 ymin real
 zmin real
@@ -185,6 +190,7 @@ Rho(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Rhoarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,ntimes) _real
 J(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
 Jarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3,ntimes) _real
+incond(-nxguard:nxcond+nxguard,-nyguard:nycond+nyguard,-nzguard:nzcond+nzguard) _logical
 
 %%%%%%%% EM3D_KYEEFIELDtype:
 fieldtype integer /-1/
@@ -221,9 +227,6 @@ gammaz real /0.020833333333333332/ # 1./48.
 Ex(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Ey(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Ez(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Exdj(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Eydj(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Ezdj(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Bx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 By(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Bz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
@@ -233,6 +236,7 @@ Rho(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Rhoarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,ntimes) _real
 J(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
 Jarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3,ntimes) _real
+Jold(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
 
 %%%%%%%% EM3D_FIELDtype:
 fieldtype integer /0/
