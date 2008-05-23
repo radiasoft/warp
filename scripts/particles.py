@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.68 2008/05/23 18:00:34 dave Exp $"
+particles_version = "$Id: particles.py,v 1.69 2008/05/23 18:01:32 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -236,8 +236,6 @@ Multiple selection criteria are now supported.
   - object=top: Object to get particle data from. Besides top, this can be an
                 open PDB file, or a dictionary.
   - pgroup=top.pgroup: Particle group to get particles from 
-  - usezerovzflag=0: When true, a check is made to skip particles with vz==0.
-                     This is also done when top.clearlostpart==0.
   """
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":0,"jslist":None,"win":None,
@@ -247,7 +245,7 @@ Multiple selection criteria are now supported.
                 "zc":None,"xc":None,"yc":None,
                 "ssn":None,"ii":None,
                 "lost":false,"suffix":'',"object":top,"pgroup":top.pgroup,
-                "w3dobject":None,"usezerovzflag":0,
+                "w3dobject":None,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -433,11 +431,6 @@ Multiple selection criteria are now supported.
     z,islice,indices = _setindices(z,ii,islice,indices,ir1,ir2)
     ii=compress(logical_and(less(win[0],z[islice]),less(z[islice],win[1])),
                 indices)
-
-  if usezerovzflag or top.clearlostpart == 0:
-    if ii is None and indices is None: ii = arange(ir1,ir2)
-    uz = getattrwithsuffix(pgroup,'uzp',suffixparticle)
-    ii = compress(not_equal(take(uz,ii),0.),ii)
 
   return ii
 
