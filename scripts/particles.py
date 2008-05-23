@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.67 2008/05/12 16:34:17 dave Exp $"
+particles_version = "$Id: particles.py,v 1.68 2008/05/23 18:00:34 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -202,7 +202,7 @@ def _setindices(data,ii,islice,indices,ir1,ir2):
 def selectparticles(iw=0,kwdict={},**kw):
   """
 Selects particles based on either subsets or windows. By default it selects
-from window 0, getting all of the live partilces (whose uzp != 0).
+from window 0.
 Multiple selection criteria are now supported.
   - iw=0: Window to chose from
   - js=0: Species to chose from
