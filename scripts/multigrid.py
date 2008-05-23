@@ -269,12 +269,12 @@ class MultiGrid(SubcycledPoissonSolver):
     if n == 0: return
     if isinstance(self.sourcep,FloatType): return
     if top.wpid==0:
-      setrho3d(self.sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
+      setrho3d(self.sourcep,n,x,y,z,zgrid,q,w,top.depos,
                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                self.solvergeom==w3d.RZgeom)
     else:
-      setrho3dw(self.sourcep,n,x,y,z,zgrid,uz,wfact,q,w,top.depos,
+      setrho3dw(self.sourcep,n,x,y,z,zgrid,wfact,q,w,top.depos,
                 self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
@@ -782,13 +782,13 @@ tensor that appears from the direct implicit scheme.
     # --- 3-D array so it is accepted by setrho3d.
     sourcep = fzeros(self.sourcep.shape[:-1],'d')
     if top.wpid == 0:
-      setrho3d(sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
+      setrho3d(sourcep,n,x,y,z,zgrid,q,w,top.depos,
                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                self.solvergeom==w3d.RZgeom)
     else:
       # --- Need top.pid(:,top.wpid)
-      setrho3dw(sourcep,n,x,y,z,zgrid,uz,wght,q,w,top.depos,
+      setrho3dw(sourcep,n,x,y,z,zgrid,wght,q,w,top.depos,
                 self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)

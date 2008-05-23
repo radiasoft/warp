@@ -24,7 +24,7 @@ import __main__
 from rami_scripts import *
 import getzmom
 
-orbitrack_version = "$Id: orbitrack.py,v 1.3 2005/05/13 06:04:12 ramiak Exp $"
+orbitrack_version = "$Id: orbitrack.py,v 1.4 2008/05/23 18:40:20 dave Exp $"
 def orbitrackdoc():
   import orbitrack
   print orbitrack.__doc__
@@ -42,6 +42,8 @@ try: num_part = __main__.__dict__["num_part"]
 except: num_part = 0
 
 ### -- Important Keep lost particles so as not to screw up tracking of particle trajectories
+# --- This made cause problems since the code no longer uses uzp==0 as a flag
+# --- for lost particles.
 top.clearlostpart = 0
 
 # --- Allocate arrays for moments and trajectories

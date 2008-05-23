@@ -17,7 +17,7 @@ apply_grid  ... Rectangular Grid
 """
 from warp import *
 
-PepperGrid_version = "$Id: PepperGrid.py,v 1.4 2007/12/20 00:36:40 dave Exp $"
+PepperGrid_version = "$Id: PepperGrid.py,v 1.5 2008/05/23 18:40:20 dave Exp $"
 def PepperGriddoc():
   import PepperGrid
   print PepperGrid.__doc__
@@ -40,7 +40,7 @@ def apply_pp(h_size=0.0002, h_sep=0.002, peakx=None, peaky=None):
             tag = where( int(((abs(top.pgroup.xp)-xh*h_sep)**2 +
                      (abs(top.pgroup.yp)-yh*h_sep)**2)/(h_size**2)), tag, 1 )
     # kill all particles with tag unset (i.e., outside holes)
-    top.pgroup.uzp = where( tag, top.pgroup.uzp, 0.0 )
+    top.pgroup.gaminv = where( tag, top.pgroup.gaminv, 0.0 )
 
 
 def apply_grid(xwid=0.0001, ywid=0.0001, xsep=0.0005, ysep=0.0005, peakx=None, peaky=None):
@@ -56,9 +56,9 @@ def apply_grid(xwid=0.0001, ywid=0.0001, xsep=0.0005, ysep=0.0005, peakx=None, p
     niy = nint(peaky/ysep)
     # --- Remove particles hidding any gridlines
     for xh in range(0, nix+1):
-        top.pgroup.uzp = where(int(abs(abs(top.pgroup.xp)-xh*xsep)/(0.5*xwid)),
-                               top.pgroup.uzp, 0.0 )
+        top.pgroup.gaminv = where(int(abs(abs(top.pgroup.xp)-xh*xsep)/(0.5*xwid)),
+                               top.pgroup.gaminv, 0.0 )
     for yh in range(0, niy+1):
-        top.pgroup.uzp = where(int(abs(abs(top.pgroup.yp)-yh*ysep)/(0.5*ywid)),
-                               top.pgroup.uzp, 0.0 )
+        top.pgroup.gaminv = where(int(abs(abs(top.pgroup.yp)-yh*ysep)/(0.5*ywid)),
+                               top.pgroup.gaminv, 0.0 )
 

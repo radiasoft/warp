@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.105 $, $Date: 2008/03/10 16:52:49 $
+c@(#) File w3d_injection.F, version $Revision: 1.106 $, $Date: 2008/05/23 18:36:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1211,11 +1211,6 @@ c         --- removal of particles outside the grid.
      &                    pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
      &                    zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
 
-c           --- Zero out uzp for scraped particles. This is done here
-c           --- explicitly instead of calling processlostpart to minimize
-c           --- fiddling with parameters, like lsavelostpart.
-            where (pgroup%gaminv(ii:ii+nn-1)==0.) pgroup%uzp(ii:ii+nn-1) = 0.
-
 c           --- Temporarily set nps so that only recently injected
 c           --- particles are affected. This is done only for optimization.
             nn = pgroup%nps(is) - npinje_s(jsid+1)
@@ -1689,7 +1684,6 @@ c                     --- particles beyond thetamin and thetamax.
      &                    vty*wrandomgauss(vtrandom,injctcnt,dig5,dig6,1,1,.false.)
                     pgroup%uzp(ii) = vznorm + vthz_s(jsid+1)*
      &                    wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.)
-                    if (pgroup%uzp(ii) == 0.) pgroup%uzp(ii) = SMALLPOS
                     if (lrelativ) then
                       pgroup%gaminv(ii) = sqrt(1.-
      &     (pgroup%uxp(ii)**2+pgroup%uyp(ii)**2+pgroup%uzp(ii)**2)*clightsqi)
@@ -1759,11 +1753,6 @@ c         --- removal of particles outside the grid.
      &                    pgroup%zp(ii),zmminlocal,dz,pgroup%uxp(ii),
      &                    pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
      &                    zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
-
-c           --- Zero out uzp for scraped particles. This is done here
-c           --- explicitly instead of calling processlostpart to minimize
-c           --- fiddling with parameters, like lsavelostpart.
-            where (pgroup%gaminv(ii:ii+nn-1)==0.) pgroup%uzp(ii:ii+nn-1) = 0.
 
 c           --- Temporarily set nps so that only recently injected
 c           --- particles are affected. This is done only for optimization.
@@ -3585,7 +3574,6 @@ c       --- Transform the particles into the frame of the injection source
 
         ww = pgroup%sq(is)*pgroup%sw(is)*dxi*dyi*dzi
         do ip=i1,i2
-          if (pgroup%uzp(ip) == 0.) cycle
 
 c         --- Get number of injection source of particle.  The particle id
 c         --- has the number of the injection source the particle was
@@ -3626,7 +3614,7 @@ c           --- When zp(ip)>rinj, a seperate equation is needed.
           dd = dd*dzi
 
 c         --- Only deposit charge of particles close to emitting surface.
-          if (abs(dd) < 1. .and. pgroup%uzp(ip) /= 0.) then
+          if (abs(dd) < 1.) then
 
 c           --- angle of point in transverse plane
             aa = atan2(pgroup%yp(ip),dvnz(pgroup%xp(ip)))
@@ -3737,7 +3725,6 @@ c       --- All that this should do is add zinject to zp.
 
         ww = 2.*pgroup%sq(is)*pgroup%sw(is)*dzi
         do ip=i1,i2
-          if (pgroup%uzp(ip) == 0.) cycle
 
 c         --- Get number of injection source of particle.  The particle id
 c         --- has the number of the injection source the particle was
@@ -4020,7 +4007,6 @@ c         --- Transform the particles into the frame of the injection source
           endif
           wws = pgroup%sq(is)*pgroup%sw(is)*dxi*dyi
           do ip=i1,i2
-            if (pgroup%uzp(ip) == 0.) cycle
             if(wpid>0) then
               ww=wws*pgroup%pid(ip,wpid)
             else
@@ -4144,7 +4130,6 @@ c         --- Transform the particles into the frame of the injection source
           endif
           wws = pgroup%sq(is)*pgroup%sw(is)
           do ip=i1,i2
-            if (pgroup%uzp(ip) == 0.) cycle
             if(wpid>0) then
               ww=wws*pgroup%pid(ip,wpid)
             else

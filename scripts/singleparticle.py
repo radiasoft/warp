@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.38 2008/03/06 00:39:25 jlvay Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.39 2008/05/23 18:40:20 dave Exp $"
 
 class TraceParticle(object):
   """
@@ -176,7 +176,7 @@ Available methods...
                  gi=self.gi,pid=self.pid,js=self.js,lmomentum=true)
     # --- Set flag for whether particles are still live.
     # --- Check in case they were scraped.
-    self.live = where(equal(self.gi,0.),0,1)
+    self.live = ones(shape(self.gi))
     # --- Add routine after step to save data
     installafterstep(self.spsavedata)
 
@@ -200,8 +200,8 @@ Available methods...
       self.uz[i] = getuz(ii=ii)
       self.gi[i] = getgaminv(ii=ii)
       self.pid[i,:] = getpid(ii=ii,id=-1)[0,:]
-      # --- Set uzp to zero, signal of dead particles
-      top.pgroup.uzp[ii] = 0.
+      # --- Set gaminv to zero, signal of dead particles
+      top.pgroup.gaminv[ii] = 0.
     # --- Clear out the tracer particles
     clearpart(top.pgroup,self.js+1,1)
     # --- remove routine from after step
@@ -732,8 +732,8 @@ initial data.
     self.vy = top.pgroup.uyp[self.ip1:self.ip2] + 0.
     self.vz = top.pgroup.uzp[self.ip1:self.ip2] + 0.
     self.gi = top.pgroup.gaminv[self.ip1:self.ip2] + 0.
-    # --- Set uzp to zero, signal of dead particles
-    top.pgroup.uzp[self.ip1:self.ip2] = 0.
+    # --- Set gaminv to zero, signal of dead particles
+    top.pgroup.gaminv[self.ip1:self.ip2] = 0.
     # --- Remove particles from looping if they are at either end of the
     # --- particle data in the arrays
     if self.ip1 == top.pgroup.ins[self.js]-1:
@@ -749,8 +749,7 @@ initial data.
     """Check which particles are still alive. Note that this refers directly
 to the WARP particle database since the particle's data is not saved if it
 is not alive."""
-    self.live = where(equal(top.pgroup.uzp[self.ip1:self.ip2],0.),0,1)
-    #self.live = where(top.pgroup.uzp[self.ip1:self.ip2] == 0.,0,1)
+    self.live = ones(self.ip2-self.ip1+1)
 
   #----------------------------------------------------------------------
   def resettime(self):

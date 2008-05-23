@@ -493,13 +493,13 @@ Initially, conductors are not implemented.
     # --- 3-D array so it is accepted by setrho3d.
     sourcep = fzeros(self.sourcep.shape[:-1],'d')
     if top.wpid == 0:
-      setrho3d(sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
+      setrho3d(sourcep,n,x,y,z,zgrid,q,w,top.depos,
                self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                self.solvergeom==w3d.RZgeom)
     else:
       # --- Need top.pid(:,top.wpid)
-      setrho3dw(sourcep,n,x,y,z,zgrid,uz,wght,q,w,top.depos,
+      setrho3dw(sourcep,n,x,y,z,zgrid,wght,q,w,top.depos,
                 self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)

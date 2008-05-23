@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.90 $, $Date: 2008/02/13 02:22:30 $
+c@(#) File WXY.M, version $Revision: 3.91 $, $Date: 2008/05/23 18:36:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -868,15 +868,6 @@ c     --- handle magnetic fields from 3-D grid
 
 c     --- handle electrostatic potential from 3-D grid
       call applypgrd(np,xp,yp,1,zbeam,.true.,ex,ey,ez)
-
-c     --- Set E to zero for lost particles
-      do ip=1,np
-        if (uzp(ip) == 0) then
-          ex(ip) = 0.
-          ey(ip) = 0.
-          ez(ip) = 0.
-        endif
-      enddo
 
 c     --- Accumulate time for applying fields from the lattice
       latticetime = latticetime + (wtime() - timetemp)
@@ -1780,12 +1771,8 @@ c     --- if any values are zero.
           if (lthick .or. vbeam == 0.) then
             pgroup%pid(i1:i2,dtpid) = dt
           else
-            where (pgroup%uzp(i1:i2) .ne. 0.)
-              pgroup%pid(i1:i2,dtpid) = dt*vbeam/
-     &                               (pgroup%uzp(i1:i2)*pgroup%gaminv(i1:i2))
-            elsewhere
-              pgroup%pid(i1:i2,dtpid) = 0.
-            endwhere
+            pgroup%pid(i1:i2,dtpid) = dt*vbeam/
+     &                             (pgroup%uzp(i1:i2)*pgroup%gaminv(i1:i2))
           endif
         endif
       enddo
@@ -1824,11 +1811,9 @@ c       --- and 1 - this avoids potential problems with roundoff errors.
           dtheta0 = ds/abs(bendradi)
 
           do ip=1,np
-            if (uzp(ip) /= 0.) then
-              rr = sqrt((bendradi+xp(ip))**2 + (zp(ip) - zpo(ip))**2)
-              dtheta = asin((zp(ip) - zpo(ip))/rr)
-              dtp(ip) = dtp(ip)*dtheta0/dtheta
-            endif
+            rr = sqrt((bendradi+xp(ip))**2 + (zp(ip) - zpo(ip))**2)
+            dtheta = asin((zp(ip) - zpo(ip))/rr)
+            dtp(ip) = dtp(ip)*dtheta0/dtheta
           enddo
 
         else
@@ -1846,11 +1831,11 @@ c           --- rather than just move the particle ds.
             dsp = ds
           endif
 
-          do ip=1,np
-            if (uzp(ip) /= 0. .and. ds .ne. 0.) then
+          if (ds .ne. 0.) then
+            do ip=1,np
               dtp(ip) = dtp(ip)*dsp(ip)/(zp(ip) - zpo(ip))
-            endif
-          enddo
+            enddo
+          endif
 
         endif
 
@@ -2071,7 +2056,8 @@ c     --- For both algorithms
 
       if (lthick) then
 c       --- Call 3d version.
-        call setrho3d(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos)
+c       --- THIS IS BROKEN XXX!
+        call setrho3d(rho1d,np,xp,yp,zp,zgrid,q,wght,depos)
       else
 
 ! np was made FIRSTPRIVATE to get around a bug when the expression
@@ -2198,11 +2184,9 @@ c     --- vectorized deposition over the 8 cells touched;
 c     --- there'd be a hazard if we interchanged the loops.
 !$OMP CRITICAL (CRITICAL_SETRHOXY1)
       do ir = 0,nptmp-1
-        if (uzp(ir+ipmin) /= 0) then
-          do m = 0, 3
-            rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
-          enddo
-        endif
+        do m = 0, 3
+          rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+        enddo
       enddo
 !$OMP END CRITICAL (CRITICAL_SETRHOXY1)
 
@@ -2282,12 +2266,10 @@ c       --- normal loop
 c     --- scalar loop does the actual deposition
 !$OMP CRITICAL (CRITICAL_SETRHOXY2)
       do ir = 0, nptmp-1
-         if (uzp(ir+ipmin) /= 0) then
-         rho(ii(ir)  ,jj(ir)  ,0) = rho(ii(ir)  ,jj(ir)  ,0) + s(0,ir)
-         rho(ii(ir)+1,jj(ir)  ,0) = rho(ii(ir)+1,jj(ir)  ,0) + s(1,ir)
-         rho(ii(ir)  ,jj(ir)+1,0) = rho(ii(ir)  ,jj(ir)+1,0) + s(2,ir)
-         rho(ii(ir)+1,jj(ir)+1,0) = rho(ii(ir)+1,jj(ir)+1,0) + s(3,ir)
-        endif
+        rho(ii(ir)  ,jj(ir)  ,0) = rho(ii(ir)  ,jj(ir)  ,0) + s(0,ir)
+        rho(ii(ir)+1,jj(ir)  ,0) = rho(ii(ir)+1,jj(ir)  ,0) + s(1,ir)
+        rho(ii(ir)  ,jj(ir)+1,0) = rho(ii(ir)  ,jj(ir)+1,0) + s(2,ir)
+        rho(ii(ir)+1,jj(ir)+1,0) = rho(ii(ir)+1,jj(ir)+1,0) + s(3,ir)
       enddo
 !$OMP END CRITICAL (CRITICAL_SETRHOXY2)
 
@@ -2301,7 +2283,6 @@ c  Begin main loop over species, groups of nparpgrp particles
 c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
         do ip = ipmin,ipmin+nptmp-1
-          if (uzp(ip) == 0) cycle
           if (vbeamfrm .ne. 0.) then
             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
           else
@@ -2322,7 +2303,6 @@ c     --- vectorized loop to compute indices, weights
         enddo
       elseif (l4symtry) then
         do ip = ipmin,ipmin+nptmp-1
-          if (uzp(ip) == 0) cycle
           if (vbeamfrm .ne. 0.) then
             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
           else
@@ -2346,7 +2326,6 @@ c     --- vectorized loop to compute indices, weights
       else
 c       --- normal loop
         do ip = ipmin,ipmin+nptmp-1
-          if (uzp(ip) == 0) cycle
           if (vbeamfrm .ne. 0.) then
             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
           else

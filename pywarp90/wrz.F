@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.26 $, $Date: 2008/02/13 02:22:30 $
+c@(#) File WRZ.M, version $Revision: 3.27 $, $Date: 2008/05/23 18:36:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -709,12 +709,6 @@ c  Also zeros the electric field if particle is lost (uzp(ip)=0).
 
         if (dedr .ne. 0.) then
           er(ip) = er(ip) + dedr*rp(ip)
-        endif
-
-        if (uzp(ip) == 0) then
-          er(ip) = 0.
-          et(ip) = 0.
-          ez(ip) = 0.
         endif
 
       enddo
@@ -2107,13 +2101,10 @@ c     --- vectorized loop to compute indices, weights
 c  The case of i=0 has been handled by setting rmesh(0) such that it
 c  comes out right.  Otherwise this loop won't vectorize.
 
-c  Set the weight ne to zero if the particle isn't "lost"
-        if (uzp(ip) /= 0.0) then
          s(0,ir) = g * r2 * w2 / (2.*rmesh(i))
          s(2,ir) = g * r2 * w1 / (2.*rmesh(i))
          s(1,ir) = g * r1 * w2 / (2.*rmesh(i+1))
          s(3,ir) = g * r1 * w1 / (2.*rmesh(i+1))
-        endif
       enddo
 c     --- vectorized deposition over the 4 cells touched;
 c     --- there'd be a hazard if we interchanged the loops.
@@ -2154,7 +2145,6 @@ c     --- vectorized loop to compute indices, weights
       enddo
 c     --- scalar loop does the actual deposition
       do ir = 0, np-1
-       if (uzp(ir+1) /= 0) then
          rho(ii(ir)  ,kk(ir)  )
      &  =rho(ii(ir)  ,kk(ir)  ) + s(0,ir)
          rho(ii(ir)+1,kk(ir)  )
@@ -2163,7 +2153,6 @@ c     --- scalar loop does the actual deposition
      &  =rho(ii(ir)  ,kk(ir)+1) + s(2,ir)
          rho(ii(ir)+1,kk(ir)+1)
      &  =rho(ii(ir)+1,kk(ir)+1) + s(3,ir)
-       endif
       enddo
  
 c    --- density at r=0 is only 1/2 of what it should be since particles
@@ -2405,10 +2394,8 @@ c     --- vectorized loop to compute indices, weights
        enddo
 
        do m = 1,npart
-         if (pgroup%uzp(ipgrp(m+ioffset)) /= 0.) then
          curr(index(0,m))  =curr(index(0,m))   + s(0,m)
          curr(index(0,m)+1)=curr(index(0,m)+1) + s(1,m)
-         endif
        enddo
       enddo
  
@@ -2470,12 +2457,10 @@ c     --- vectorized loop to compute indices, weights
        enddo
          
        do m = 1,npart
-         if (pgroup%uzp(ipgrp(m+ioffset)) /= 0.) then
          rho1d(index(0,m))=rho1d(index(0,m)) + s(0,m)
          rho1d(index(1,m))=rho1d(index(1,m)) + s(1,m)
          rho1d(index(2,m))=rho1d(index(2,m)) + s(2,m)
          rho1d(index(3,m))=rho1d(index(3,m)) + s(3,m)
-         endif
        enddo
       enddo
  

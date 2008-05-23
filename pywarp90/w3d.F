@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.397 $, $Date: 2008/03/28 16:37:50 $
+c@(#) File W3D.F, version $Revision: 3.398 $, $Date: 2008/05/23 18:36:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1107,15 +1107,6 @@ c     --- handle magnetic fields from 3-D grid
 
 c     --- handle electrostatic potential from 3-D grid
       call applypgrd(np,xp,yp,np,zp,.false.,ex,ey,ez)
-
-c     --- Set E to zero for lost particles
-      do ip=1,np
-        if (uzp(ip) == 0) then
-          ex(ip) = 0.
-          ey(ip) = 0.
-          ez(ip) = 0.
-        endif
-      enddo
 
 c     --- Accumulate time for applying the fields of the lattice
 !$OMP MASTER
@@ -5553,7 +5544,7 @@ c     --- Apply particle boundary conditions
       return
       end
 c=============================================================================
-      subroutine setrho3d(rho,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
+      subroutine setrho3d(rho,np,xp,yp,zp,zgrid,q,wght,depos,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                    lcylindrical)
       use GlobalVars
@@ -5563,7 +5554,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xp(np), yp(np), zp(np)
       character(8):: depos
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
@@ -5578,7 +5569,7 @@ c  Vectorized deposition loop
 c--------------------------------------
       if (depos == "vector") then
 
-        call setrho3dvector(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+        call setrho3dvector(rho,np,xp,yp,zp,zgrid,q,wght,
      &                      nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                      l2symtry,l4symtry)
 
@@ -5587,7 +5578,7 @@ c  Scalar deposition loop
 c--------------------------------------
       elseif (depos == "scalar") then
 
-        call setrho3dscalar(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+        call setrho3dscalar(rho,np,xp,yp,zp,zgrid,q,wght,
      &                      nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                      l2symtry,l4symtry)
 
@@ -5596,7 +5587,7 @@ c  Direct deposition loop
 c--------------------------------------
       elseif (depos == "direct") then
 
-        call setrho3ddirect(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+        call setrho3ddirect(rho,np,xp,yp,zp,zgrid,q,wght,
      &                      nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                      l2symtry,l4symtry)
 
@@ -5606,11 +5597,11 @@ c--------------------------------------
       elseif (depos == "direct1") then
 
         if (.not. lcylindrical) then
-          call setrho3ddirect1(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+          call setrho3ddirect1(rho,np,xp,yp,zp,zgrid,q,wght,
      &                         nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                         l2symtry,l4symtry)
         else
-          call setrho3ddirect2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+          call setrho3ddirect2(rho,np,xp,yp,zp,zgrid,q,wght,
      &                         nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                         l2symtry,l4symtry,lcylindrical)
         endif
@@ -5620,7 +5611,7 @@ c  Vectorized deposition loop with precalculated integer conversions
 c--------------------------------------
       else if (depos == "vector1") then
 
-        call setrho3dvector1(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+        call setrho3dvector1(rho,np,xp,yp,zp,zgrid,q,wght,
      &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                       l2symtry,l4symtry)
 
@@ -5629,7 +5620,7 @@ c  Direct deposition using a second order spline
 c--------------------------------------
       else if (depos == "dspline2") then
 
-        call setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+        call setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,q,wght,
      &                             nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                             l2symtry,l4symtry)
 
@@ -5641,7 +5632,7 @@ c--------------------------------------
       return
       end
 c=============================================================================
-      subroutine setrho3dvector(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,
+      subroutine setrho3dvector(rho1d,np,xp,yp,zp,zgrid,q,wght,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
@@ -5649,7 +5640,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
 
@@ -5823,11 +5814,9 @@ c       --- vectorized deposition over the 8 cells touched;
 c       --- there'd be a hazard if we interchanged the loops.
 !$OMP CRITICAL (CRITICAL_SETRHO3DVECTOR)
         do ir = 0,nptmp-1
-          if (uzp(ir+ipmin) /= 0.) then
-            do m = 0, 7
-              rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
-            enddo
-          endif
+          do m = 0, 7
+            rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+          enddo
         enddo
 !$OMP END CRITICAL (CRITICAL_SETRHO3DVECTOR)
 
@@ -5840,7 +5829,7 @@ c       --- there'd be a hazard if we interchanged the loops.
       return
       end
 c=============================================================================
-      subroutine setrho3dscalar(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+      subroutine setrho3dscalar(rho,np,xp,yp,zp,zgrid,q,wght,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
@@ -5848,7 +5837,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
 
@@ -5964,16 +5953,14 @@ c         --- normal loop
 c       --- scalar loop does the actual deposition
 !$OMP CRITICAL (CRITICAL_SETRHO3D2)
       do ir = 0, nptmp-1
-        if (uzp(ir+ipmin) /= 0) then
-         rho(ii(ir)  ,jj(ir)  ,kk(ir)  )=rho(ii(ir)  ,jj(ir)  ,kk(ir)  )+s(0,ir)
-         rho(ii(ir)+1,jj(ir)  ,kk(ir)  )=rho(ii(ir)+1,jj(ir)  ,kk(ir)  )+s(1,ir)
-         rho(ii(ir)  ,jj(ir)+1,kk(ir)  )=rho(ii(ir)  ,jj(ir)+1,kk(ir)  )+s(2,ir)
-         rho(ii(ir)+1,jj(ir)+1,kk(ir)  )=rho(ii(ir)+1,jj(ir)+1,kk(ir)  )+s(3,ir)
-         rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)=rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)+s(4,ir)
-         rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)=rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)+s(5,ir)
-         rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)=rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)+s(6,ir)
-         rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)=rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)+s(7,ir)
-        endif
+        rho(ii(ir)  ,jj(ir)  ,kk(ir)  )=rho(ii(ir)  ,jj(ir)  ,kk(ir)  )+s(0,ir)
+        rho(ii(ir)+1,jj(ir)  ,kk(ir)  )=rho(ii(ir)+1,jj(ir)  ,kk(ir)  )+s(1,ir)
+        rho(ii(ir)  ,jj(ir)+1,kk(ir)  )=rho(ii(ir)  ,jj(ir)+1,kk(ir)  )+s(2,ir)
+        rho(ii(ir)+1,jj(ir)+1,kk(ir)  )=rho(ii(ir)+1,jj(ir)+1,kk(ir)  )+s(3,ir)
+        rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)=rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)+s(4,ir)
+        rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)=rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)+s(5,ir)
+        rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)=rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)+s(6,ir)
+        rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)=rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)+s(7,ir)
       enddo
 !$OMP END CRITICAL (CRITICAL_SETRHO3D2)
 
@@ -5987,7 +5974,7 @@ c       --- scalar loop does the actual deposition
       return
       end
 c=============================================================================
-      subroutine setrho3ddirect(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+      subroutine setrho3ddirect(rho,np,xp,yp,zp,zgrid,q,wght,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
@@ -5995,7 +5982,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
 
@@ -6029,7 +6016,6 @@ c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
 !$OMP DO
         do ip = 1,np
-          if (uzp(ip) == 0) cycle
           ii = int((xp(ip) - xmmin)*dxi)
           u1 =     (xp(ip) - xmmin)*dxi - ii
           u0 = 1. - u1
@@ -6054,7 +6040,6 @@ c     --- vectorized loop to compute indices, weights
       elseif (l4symtry) then
 !$OMP DO
         do ip = 1,np
-          if (uzp(ip) == 0) cycle
           ii = int((abs(xp(ip)) - xmmin)*dxi)
           u1 =     (abs(xp(ip)) - xmmin)*dxi - ii
           u0 = 1. - u1
@@ -6082,7 +6067,6 @@ c     --- vectorized loop to compute indices, weights
 c       --- normal loop
 !$OMP DO
         do ip = 1,np
-          if (uzp(ip) == 0) cycle
           ii = int((xp(ip) - xmmin)*dxi)
           u1 = (xp(ip) - xmmin)*dxi - ii
           u0 = 1. - u1
@@ -6109,7 +6093,7 @@ c       --- normal loop
       return
       end
 c=============================================================================
-      subroutine setrho3ddirect1(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+      subroutine setrho3ddirect1(rho,np,xp,yp,zp,zgrid,q,wght,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
@@ -6117,7 +6101,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
 
@@ -6178,7 +6162,6 @@ c       --- vectorized loop to compute indices, weights
               v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
               w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
             endif
-            if (uzp(ip) == 0) cycle
             u0 = 1. - u1
             v0 = 1. - v1
             w0 = 1. - w1
@@ -6217,7 +6200,6 @@ c       --- vectorized loop to compute indices, weights
               v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
               w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
             endif
-            if (uzp(ip) == 0) cycle
             u0 = 1. - u1
             v0 = 1. - v1
             w0 = 1. - w1
@@ -6259,7 +6241,6 @@ c         --- normal loop
               v1next = (yp(ip+1) - ymmin)*dyi - jjnext
               w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
             endif
-            if (uzp(ip) == 0) cycle
             u0 = 1. - u1
             v0 = 1. - v1
             w0 = 1. - w1
@@ -6294,7 +6275,6 @@ c       --- normal loop
             u1next = (xp(ip+1) - xmmin)*dxi - iinext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           w0 = 1. - w1
           rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*w0*g
@@ -6311,7 +6291,7 @@ c       --- normal loop
       return
       end
 c=============================================================================
-      subroutine setrho3ddirect2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+      subroutine setrho3ddirect2(rho,np,xp,yp,zp,zgrid,q,wght,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                    lcylindrical)
       use GlobalVars
@@ -6321,7 +6301,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
@@ -6408,7 +6388,6 @@ c     --- vectorized loop to compute indices, weights
             v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -6447,7 +6426,6 @@ c     --- vectorized loop to compute indices, weights
             v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -6504,7 +6482,6 @@ c       --- normal loop
             v1next = (y - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -6544,7 +6521,6 @@ c     --- vectorized loop to compute indices, weights
             u1next = (xp(ip+1) - xmmin)*dxi - iinext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           w0 = 1. - w1
           rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*w0*g
@@ -6570,7 +6546,6 @@ c     --- vectorized loop to compute indices, weights
             u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           w0 = 1. - w1
           gxfact = 1.
@@ -6610,7 +6585,6 @@ c       --- normal loop
             u1next = (x - xmmin)*dxi - iinext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           w0 = 1. - w1
           u0 = u0*cdens(ii  )
@@ -6631,7 +6605,7 @@ c       --- normal loop
       return
       end
 c=============================================================================
-      subroutine setrho3dvector1(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,
+      subroutine setrho3dvector1(rho1d,np,xp,yp,zp,zgrid,q,wght,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
@@ -6639,7 +6613,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
 
@@ -6831,11 +6805,9 @@ c       --- vectorized deposition over the 8 cells touched;
 c       --- there'd be a hazard if we interchanged the loops.
 !$OMP CRITICAL (CRITICAL_SETRHO3D1)
         do ir = 0,nptmp-1
-          if (uzp(ir+ipmin) /= 0.) then
-            do m = 0, 7
-              rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
-            enddo
-          endif
+          do m = 0, 7
+            rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+          enddo
         enddo
 !$OMP END CRITICAL (CRITICAL_SETRHO3D1)
 
@@ -6849,7 +6821,7 @@ c       --- there'd be a hazard if we interchanged the loops.
       return
       end
 c=============================================================================
-      subroutine setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+      subroutine setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,q,wght,
      &                   nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       use InGen,Only: pbound0,pboundnz,pboundxy
@@ -6858,7 +6830,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
 
@@ -6925,7 +6897,6 @@ c     --- vectorized loop to compute indices, weights
             wynext = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0.) cycle
 
           u0 = 0.5*(0.5 - wx)**2
           u1 = (0.75 - wx**2)
@@ -6992,7 +6963,6 @@ c     --- vectorized loop to compute indices, weights
             wynext = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0.) cycle
 
           u0 = 0.5*(0.5 - wx)**2
           u1 = (0.75 - wx**2)
@@ -7060,7 +7030,6 @@ c       --- normal loop
             wynext = (yp(ip+1) - ymmin)*dyi - jjnext
             wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0.) cycle
 
           u0 = 0.5*(0.5 - wx)**2
           u1 = (0.75 - wx**2)
@@ -7162,7 +7131,7 @@ c       rho(:,:,nz) = rho(:,:,0)
       end
 c=============================================================================
 c=============================================================================
-      subroutine setrho3dselect(rho,rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
+      subroutine setrho3dselect(rho,rho1d,np,xp,yp,zp,zgrid,q,wght,depos,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       use Subtimers3d
@@ -7172,7 +7141,7 @@ c=============================================================================
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xp(np), yp(np), zp(np)
       character(8):: depos
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -7264,7 +7233,6 @@ c       --- special loop for 2-fold symmetry
 c       --- The particle weight is reduced by a factor of 2 except near the
 c       --- transverse boundaries.
         do ip = ipmin,ipmin+nptmp-1
-           if (uzp(ip) == 0.) cycle
            i  = int((xp(ip) - xmmin)*dxi)
            u1 =     (xp(ip) - xmmin)*dxi - i
            u0 = 1. - u1
@@ -7300,7 +7268,6 @@ c       --- special loop for 4-fold symmetry
 c       --- The particle weight is reduced by a factor of 4 except near the
 c       --- transverse boundaries.
         do ip = ipmin,ipmin+nptmp-1
-           if (uzp(ip) == 0.) cycle
            i  = int((abs(xp(ip)) - xmmin)*dxi)
            u1 =     (abs(xp(ip)) - xmmin)*dxi - i
            u0 = 1. - u1
@@ -7336,7 +7303,6 @@ c       --- transverse boundaries.
       else
 c       --- normal loop
         do ip = ipmin,ipmin+nptmp-1
-           if (uzp(ip) == 0.) cycle
            i  = int((xp(ip) - xmmin)*dxi)
            u1 =     (xp(ip) - xmmin)*dxi - i
            u0 = 1. - u1
@@ -7370,11 +7336,9 @@ c     --- vectorized deposition over the 8 cells touched;
 c     --- there'd be a hazard if we interchanged the loops.
 !$OMP CRITICAL (CRITICAL_SETRHO3D1)
       do ir = 0,nptmp-1
-        if (uzp(ir+ipmin) /= 0.) then
-          do m = 0, 7
-             rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
-          enddo
-        endif
+        do m = 0, 7
+           rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+        enddo
       enddo
 !$OMP END CRITICAL (CRITICAL_SETRHO3D1)
 
@@ -7388,7 +7352,6 @@ c  Begin main loop over species
 c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
         do ip = ipmin,ipmin+nptmp-1
-          if (uzp(ip) == 0.) cycle
           ir = ip - ipmin
           ii(ir) = int((xp(ip) - xmmin)*dxi)
           u1     =     (xp(ip) - xmmin)*dxi - ii(ir)
@@ -7412,7 +7375,6 @@ c     --- vectorized loop to compute indices, weights
         enddo
       elseif (l4symtry) then
         do ip = ipmin,ipmin+nptmp-1
-          if (uzp(ip) == 0.) cycle
           ir = ip - ipmin
           ii(ir) = int((abs(xp(ip)) - xmmin)*dxi)
           u1     =     (abs(xp(ip)) - xmmin)*dxi - ii(ir)
@@ -7439,7 +7401,6 @@ c     --- vectorized loop to compute indices, weights
       else
 c       --- normal loop
         do ip = ipmin,ipmin+nptmp-1
-          if (uzp(ip) == 0.) cycle
           ir = ip - ipmin
           ii(ir) = int((xp(ip) - xmmin)*dxi)
           u1     = (xp(ip) - xmmin)*dxi - ii(ir)
@@ -7463,16 +7424,14 @@ c       --- normal loop
 c     --- scalar loop does the actual deposition
 !$OMP CRITICAL (CRITICAL_SETRHO3D2)
       do ir = 0, nptmp-1
-         if (uzp(ir+ipmin) /= 0) then
-         rho(ii(ir)  ,jj(ir)  ,kk(ir)  )=rho(ii(ir)  ,jj(ir)  ,kk(ir)  )+s(0,ir)
-         rho(ii(ir)+1,jj(ir)  ,kk(ir)  )=rho(ii(ir)+1,jj(ir)  ,kk(ir)  )+s(1,ir)
-         rho(ii(ir)  ,jj(ir)+1,kk(ir)  )=rho(ii(ir)  ,jj(ir)+1,kk(ir)  )+s(2,ir)
-         rho(ii(ir)+1,jj(ir)+1,kk(ir)  )=rho(ii(ir)+1,jj(ir)+1,kk(ir)  )+s(3,ir)
-         rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)=rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)+s(4,ir)
-         rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)=rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)+s(5,ir)
-         rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)=rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)+s(6,ir)
-         rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)=rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)+s(7,ir)
-        endif
+        rho(ii(ir)  ,jj(ir)  ,kk(ir)  )=rho(ii(ir)  ,jj(ir)  ,kk(ir)  )+s(0,ir)
+        rho(ii(ir)+1,jj(ir)  ,kk(ir)  )=rho(ii(ir)+1,jj(ir)  ,kk(ir)  )+s(1,ir)
+        rho(ii(ir)  ,jj(ir)+1,kk(ir)  )=rho(ii(ir)  ,jj(ir)+1,kk(ir)  )+s(2,ir)
+        rho(ii(ir)+1,jj(ir)+1,kk(ir)  )=rho(ii(ir)+1,jj(ir)+1,kk(ir)  )+s(3,ir)
+        rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)=rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)+s(4,ir)
+        rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)=rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)+s(5,ir)
+        rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)=rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)+s(6,ir)
+        rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)=rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)+s(7,ir)
       enddo
 !$OMP END CRITICAL (CRITICAL_SETRHO3D2)
 
@@ -7493,7 +7452,7 @@ c     --- scalar loop does the actual deposition
       return
       end
 c=============================================================================
-      subroutine setrho3dw(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,depos,
+      subroutine setrho3dw(rho,np,xp,yp,zp,zgrid,wfact,q,wght,depos,
      &                     nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                     lcylindrical)
       use GlobalVars
@@ -7503,7 +7462,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np), wfact(np)
+      real(kind=8):: xp(np), yp(np), zp(np), wfact(np)
       character(8):: depos
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
@@ -7518,11 +7477,11 @@ c  Direct deposition loop with precalculated integer conversions
 c--------------------------------------
 
         if (.not. lcylindrical) then
-          call setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,
+          call setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,wfact,q,wght,
      &                          nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                          l2symtry,l4symtry)
         else
-          call setrho3ddirect2w(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,
+          call setrho3ddirect2w(rho,np,xp,yp,zp,zgrid,wfact,q,wght,
      &                          nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                          l2symtry,l4symtry,lcylindrical)
         endif
@@ -7534,7 +7493,7 @@ c--------------------------------------
       return
       end
 c=============================================================================
-      subroutine setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,
+      subroutine setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,wfact,q,wght,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
@@ -7542,7 +7501,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np), wfact(np)
+      real(kind=8):: xp(np), yp(np), zp(np), wfact(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
 
@@ -7601,7 +7560,6 @@ c     --- vectorized loop to compute indices, weights
             v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           g = g0*wfact(ip)
           u0 = 1. - u1
           v0 = 1. - v1
@@ -7641,7 +7599,6 @@ c     --- vectorized loop to compute indices, weights
             v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           g = g0*wfact(ip)
           u0 = 1. - u1
           v0 = 1. - v1
@@ -7684,7 +7641,6 @@ c       --- normal loop
             v1next = (yp(ip+1) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           g = g0*wfact(ip)
           u0 = 1. - u1
           v0 = 1. - v1
@@ -7706,7 +7662,7 @@ c       --- normal loop
       return
       end
 c=============================================================================
-      subroutine setrho3ddirect2w(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,
+      subroutine setrho3ddirect2w(rho,np,xp,yp,zp,zgrid,wfact,q,wght,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                    lcylindrical)
       use GlobalVars
@@ -7716,7 +7672,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: xp(np), yp(np), zp(np), uzp(np), wfact(np)
+      real(kind=8):: xp(np), yp(np), zp(np), wfact(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
@@ -7803,7 +7759,6 @@ c     --- vectorized loop to compute indices, weights
             v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -7843,7 +7798,6 @@ c     --- vectorized loop to compute indices, weights
             v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -7900,7 +7854,6 @@ c       --- normal loop
             v1next = (y - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -7939,7 +7892,6 @@ c     --- vectorized loop to compute indices, weights
             u1next = (xp(ip+1) - xmmin)*dxi - iinext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           w0 = 1. - w1
           g = g0*wfact(ip)
@@ -7966,7 +7918,6 @@ c     --- vectorized loop to compute indices, weights
             u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           w0 = 1. - w1
           gxfact = 1.
@@ -8006,7 +7957,6 @@ c       --- normal loop
             u1next = (x - xmmin)*dxi - iinext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
-          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           w0 = 1. - w1
           u0 = u0*cdens(ii  )*wfact(ip)
@@ -8388,13 +8338,13 @@ c              --- Only load the rho if the positions have been advanced.
                if(wpid==0) then
                  call setrho3d(rhopndts(:,:,:,0,indts),nps_u,
      &                         pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                         zgridndts(indts),pgroup%uzp(ipmin),pgroup%sq(is),
+     &                         zgridndts(indts),pgroup%sq(is),
      &                         swtmp,depos,nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
      &                         l2symtry,l4symtry,solvergeom==RZgeom)
                else
                  call setrho3dw(rhopndts(:,:,:,0,indts),nps_u,
      &                          pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                          zgridndts(indts),pgroup%uzp(ipmin),
+     &                          zgridndts(indts),
      &                          pgroup%pid(ipmin,wpid),pgroup%sq(is),
      &                          swtmp,depos,nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
      &                          l2symtry,l4symtry,solvergeom==RZgeom)
@@ -9151,7 +9101,7 @@ c     --- be used.
      &        .or. xp(ip) <= xminz(iz)
      &        .or. yp(ip) <= yminz(iz) ) then
             gaminv(ip) = 0.
-            if (.not. lcountaslost) uzp(ip) = 0.
+            if (.not. lcountaslost) gaminv(ip) = -1.
           endif
         enddo
 !$OMP END PARALLEL DO
@@ -9165,7 +9115,7 @@ c     --- be used.
      &      (xmin > xp(ip) .or. xp(ip) > xmax .or.
      &       ymin > yp(ip) .or. yp(ip) > ymax)) then
           gaminv(ip) = 0.
-          if (.not. lcountaslost) uzp(ip) = 0.
+          if (.not. lcountaslost) gaminv(ip) = -1.
         endif
       enddo
 !$OMP END PARALLEL DO

@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.283 $, $Date: 2008/03/18 00:43:34 $
+#@(#) File W3D.V, version $Revision: 3.284 $, $Date: 2008/05/23 18:36:53 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.283 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.284 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -950,13 +950,13 @@ getselfe3d(phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz):real,
            lzero:logical,delx:integer,dely:integer,delz:integer)
              subroutine # Calculates the self-E via finite difference of phi
 setrho3d(rho(0:nx,0:ny,0:nz):real,
-         np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,uzp(np):real,
+         np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
          q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
          dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
          l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine # Computes charge density
 setrho3dw(rho(0:nx,0:ny,0:nz):real,
-          np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,uzp(np):real,
+          np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
           wfact(np):real,
           q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
           dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
@@ -964,7 +964,7 @@ setrho3dw(rho(0:nx,0:ny,0:nz):real,
              subroutine # Computes charge density
                         # using variable weighted particles
 setrho3dselect(rho(0:nx,0:ny,0:nz):real,rho1d:real,
-               np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,uzp(np):real,
+               np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
                q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
                dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
                l2symtry:logical,l4symtry:logical)

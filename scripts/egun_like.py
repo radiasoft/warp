@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.63 2007/12/20 00:36:40 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.64 2008/05/23 18:40:20 dave Exp $"
 
 
 ##############################################################################
@@ -198,9 +198,6 @@ set when a current is specified"""
   # --- Set logical so that the charge density is accumulated over
   # --- all of the time steps for each iteration.
   top.laccumulate_rho = true
-
-  # --- Set 
-  top.clearlostpart = 1
 
   # --- Turn off rho-diagnostic and calculation of ese
   w3d.lrhodia3d = false

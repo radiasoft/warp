@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.55 $, $Date: 2008/01/11 22:19:23 $
+c TOPSLAVE.M, version $Revision: 1.56 $, $Date: 2008/05/23 18:36:53 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -84,11 +84,6 @@ c     call VTSYMDEF(70, "ZBND", "PLOR", IERR)
 c     call VTBEGIN(10,IERR)
 #endif
 
-
-c     --- make sure that particles marked as lost in this routine will be
-c     --- cleaned by clearpart.
-      if(clearlostpart==0) clearlostpart = 1
-      
 c     --- calculate numbers of the processors to the left and to the right,
 c     --- wrapping around at the ends.
       left_pe = mod(nslaves+my_index-1,nslaves)

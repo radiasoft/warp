@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.18 $, $Date: 2008/03/06 21:45:43 $
+c@(#) File top_lattice.F, version $Revision: 3.19 $, $Date: 2008/05/23 18:36:53 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -4669,7 +4669,7 @@ c         --- For velocity correction, first calculate the velocity at
 c         --- time level n.
           do ip=1,np
             vz = uzp(ip)*gaminv(ip)
-            if (vz == 0.) vz = LARGEPOS
+c           if (vz == 0.) vz = LARGEPOS
 c           --- find z-cell in which particle lies
             iz = int(max(0., (zp(ip) - zlmin - zlframe) * dzli + 0.5))
             gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
@@ -4921,7 +4921,7 @@ c         --- time level n.
             dtr_a = dtr*oneodt*dtp(ip)
             dti_a = dti*dt/dtp(ip)
             vz_a = uzp(ip)*gaminv(ip)
-            if (vz_a == 0.) vz_a = LARGEPOS
+c           if (vz_a == 0.) vz_a = LARGEPOS
             gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
             z1 = zlframe + dtl_a*vz_a - 0.5*gapez*qoverm*dtl_a**2
             z2 = zlframe + dtl_a*vz_a

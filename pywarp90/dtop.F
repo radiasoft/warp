@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.163 $, $Date: 2008/02/29 21:14:02 $
+c@(#) File DTOP.F, version $Revision: 3.164 $, $Date: 2008/05/23 18:36:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.163 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.164 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -2669,11 +2669,8 @@ c correct physical area measure in x-x' phase space for the emittance.
       epsinvsq = 1./(eps*eps) 
 
       do ip = 1,np
-c       --- check that particle is live
-        if (uzp(ip) /= 0.) then 
-          emitp(ip) = eps*( tx(ip)**2 + epsinvsq*(txp(ip)**2) )
-          emitmax   = max(emitmax,emitp(ip))
-        endif       
+        emitp(ip) = eps*( tx(ip)**2 + epsinvsq*(txp(ip)**2) )
+        emitmax   = max(emitmax,emitp(ip))
       enddo
 
 #ifdef MPIPARALLEL
@@ -2698,19 +2695,16 @@ c     --- zero moment arrays
 
 c     --- accumulate moment sums
       do ip = 1,np
-c       --- sample live particles only
-        if (uzp(ip) /= 0.) then 
-c         --- count live particles in set analyzed
-          nplive = nplive + 1
-c         --- find area index
-          aindex = aint(npts*emitp(ip)/dvnz(emitmax)) + 1 
-c         --- accumulate moments
-          if (aindex .le. npts) then  
-            iwork(aindex) =  iwork(aindex) + 1
-            rwork(1,aindex) = rwork(1,aindex) + tx(ip)**2
-            rwork(2,aindex) = rwork(2,aindex) + txp(ip)**2
-            rwork(3,aindex) = rwork(3,aindex) + tx(ip)*txp(ip)
-          endif 
+c       --- count live particles in set analyzed
+        nplive = nplive + 1
+c       --- find area index
+        aindex = aint(npts*emitp(ip)/dvnz(emitmax)) + 1 
+c       --- accumulate moments
+        if (aindex .le. npts) then  
+          iwork(aindex) =  iwork(aindex) + 1
+          rwork(1,aindex) = rwork(1,aindex) + tx(ip)**2
+          rwork(2,aindex) = rwork(2,aindex) + txp(ip)**2
+          rwork(3,aindex) = rwork(3,aindex) + tx(ip)*txp(ip)
         endif 
       enddo
 
@@ -2811,7 +2805,6 @@ c
 c Rotate coordinates of all live particles
 
       do ip = 1,np
-c       --- check that particle is live
         if (uzp(ip) /= 0.) then 
           tx(ip)  =  (xp(ip) - xbar)*cost + (uxp(ip)/uzp(ip) - xpbar)*sint
           txp(ip) = -(xp(ip) - xbar)*sint + (uxp(ip)/uzp(ip) - xpbar)*cost

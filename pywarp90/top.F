@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.219 $, $Date: 2008/02/27 13:39:49 $
+c@(#) File TOP.F, version $Revision: 3.220 $, $Date: 2008/05/23 18:36:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -642,32 +642,28 @@ c       --- Set flag that moments for this species has been calculated.
 c       --- Set maximum and minimum particle coordinate variables
 c       --- set multiplier so lost particles don't contribute
         do ip = 1, np
-          if (uzp(ip) /= 0.) then
-            maxp(1,js) = max(maxp(1,js), xp(ip))
-            minp(1,js) = min(minp(1,js), xp(ip))
-            maxp(2,js) = max(maxp(2,js), yp(ip))
-            minp(2,js) = min(minp(2,js), yp(ip))
-            maxp(3,js) = max(maxp(3,js), zp(ip))
-            minp(3,js) = min(minp(3,js), zp(ip))
-            maxp(4,js) = max(maxp(4,js), gaminv(ip)*uxp(ip))
-            minp(4,js) = min(minp(4,js), gaminv(ip)*uxp(ip))
-            maxp(5,js) = max(maxp(5,js), gaminv(ip)*uyp(ip))
-            minp(5,js) = min(minp(5,js), gaminv(ip)*uyp(ip))
-            maxp(6,js) = max(maxp(6,js), gaminv(ip)*uzp(ip))
-            minp(6,js) = min(minp(6,js), gaminv(ip)*uzp(ip))
+          maxp(1,js) = max(maxp(1,js), xp(ip))
+          minp(1,js) = min(minp(1,js), xp(ip))
+          maxp(2,js) = max(maxp(2,js), yp(ip))
+          minp(2,js) = min(minp(2,js), yp(ip))
+          maxp(3,js) = max(maxp(3,js), zp(ip))
+          minp(3,js) = min(minp(3,js), zp(ip))
+          maxp(4,js) = max(maxp(4,js), gaminv(ip)*uxp(ip))
+          minp(4,js) = min(minp(4,js), gaminv(ip)*uxp(ip))
+          maxp(5,js) = max(maxp(5,js), gaminv(ip)*uyp(ip))
+          minp(5,js) = min(minp(5,js), gaminv(ip)*uyp(ip))
+          maxp(6,js) = max(maxp(6,js), gaminv(ip)*uzp(ip))
+          minp(6,js) = min(minp(6,js), gaminv(ip)*uzp(ip))
 
-            pp(0,ip) = dtscale
-            if (ifzmmnt == 1) then
-              if ((zp(ip) - zbeam) < zmmntmin .or.
-     &            (zp(ip) - zbeam) > zmmntmax) pp(0,ip) = 0.
-            else
-              if ((zp(ip) - zbeam) <  zmmntmin .or.
-     &            (zp(ip) - zbeam) >= zmmntmax) pp(0,ip) = 0.
-            endif
-
+          pp(0,ip) = dtscale
+          if (ifzmmnt == 1) then
+            if ((zp(ip) - zbeam) < zmmntmin .or.
+     &          (zp(ip) - zbeam) > zmmntmax) pp(0,ip) = 0.
           else
-            pp(0,ip) = 0.
+            if ((zp(ip) - zbeam) <  zmmntmin .or.
+     &          (zp(ip) - zbeam) >= zmmntmax) pp(0,ip) = 0.
           endif
+
         enddo
 
 c       --- set multiplier so lost particles don't contribute
@@ -676,15 +672,13 @@ c       ---   weights set to zero for z moments
 c       if (ifzmmnt == 1) then
 c         do ip=1,np
 c           pp(0,ip) = 1.
-c           if (uzp(ip) == 0. .or.
-c    &          (zp(ip) - zbeam) < zmmntmin .or.
+c           if ((zp(ip) - zbeam) < zmmntmin .or.
 c    &          (zp(ip) - zbeam) > zmmntmax) pp(0,ip) = 0.
 c         enddo
 c       else
 c         do ip=1,np
 c           pp(0,ip) = 1.
-c           if (uzp(ip) == 0. .or.
-c    &          (zp(ip) - zbeam) < zmmntmin .or.
+c           if ((zp(ip) - zbeam) < zmmntmin .or.
 c    &          (zp(ip) - zbeam) >= zmmntmax) pp(0,ip) = 0.
 c         enddo
 c       endif
@@ -699,37 +693,35 @@ c-------------------------------------------------------------------------
 c       --- This method is faster for vectorized machines, primarily the J90.
 c       --- put particle moments into pmmnts array for total moments
         do ip=1,np
-          if (pp(0,ip) /= 0.) then
-            vzi = 1./(uzp(ip)+SMALLPOS)
-            pmmnts( 1,ip) = 1.
-            pmmnts( 2,ip) = xp(ip)
-            pmmnts( 3,ip) = yp(ip)
-            pmmnts( 4,ip) = zp(ip)
-            pmmnts( 7,ip) = uxp(ip)*gaminv(ip)
-            pmmnts( 8,ip) = uyp(ip)*gaminv(ip)
-            pmmnts( 9,ip) = uzp(ip)*gaminv(ip)
-            pmmnts(10,ip) = xp(ip)*yp(ip)
-            pmmnts(12,ip) = xp(ip)**2
-            pmmnts(13,ip) = yp(ip)**2
-            pmmnts(14,ip) = zp(ip)**2
-            pmmnts(17,ip) = (gaminv(ip)*uxp(ip))**2
-            pmmnts(18,ip) = (gaminv(ip)*uyp(ip))**2
-            pmmnts(19,ip) = (gaminv(ip)*uzp(ip))**2
-            pmmnts(22,ip) = zp(ip)*gaminv(ip)*uzp(ip)
-            pmmnts(25,ip) = xp(ip)*uzp(ip)*gaminv(ip)
-            pmmnts(26,ip) = yp(ip)*uzp(ip)*gaminv(ip)
-            pmmnts(27,ip) = uxp(ip)*uzp(ip)*gaminv(ip)**2
-            pmmnts(28,ip) = uyp(ip)*uzp(ip)*gaminv(ip)**2
-            pmmnts( 5,ip) = uxp(ip)*vzi
-            pmmnts( 6,ip) = uyp(ip)*vzi
-            pmmnts(11,ip) = uxp(ip)*uyp(ip)*vzi**2
-            pmmnts(15,ip) = (uxp(ip)*vzi)**2
-            pmmnts(16,ip) = (uyp(ip)*vzi)**2
-            pmmnts(20,ip) = xp(ip)*uxp(ip)*vzi
-            pmmnts(21,ip) = yp(ip)*uyp(ip)*vzi
-            pmmnts(23,ip) = xp(ip)*uyp(ip)*vzi
-            pmmnts(24,ip) = yp(ip)*uxp(ip)*vzi
-          endif
+          vzi = 1./(uzp(ip)+SMALLPOS)
+          pmmnts( 1,ip) = 1.
+          pmmnts( 2,ip) = xp(ip)
+          pmmnts( 3,ip) = yp(ip)
+          pmmnts( 4,ip) = zp(ip)
+          pmmnts( 7,ip) = uxp(ip)*gaminv(ip)
+          pmmnts( 8,ip) = uyp(ip)*gaminv(ip)
+          pmmnts( 9,ip) = uzp(ip)*gaminv(ip)
+          pmmnts(10,ip) = xp(ip)*yp(ip)
+          pmmnts(12,ip) = xp(ip)**2
+          pmmnts(13,ip) = yp(ip)**2
+          pmmnts(14,ip) = zp(ip)**2
+          pmmnts(17,ip) = (gaminv(ip)*uxp(ip))**2
+          pmmnts(18,ip) = (gaminv(ip)*uyp(ip))**2
+          pmmnts(19,ip) = (gaminv(ip)*uzp(ip))**2
+          pmmnts(22,ip) = zp(ip)*gaminv(ip)*uzp(ip)
+          pmmnts(25,ip) = xp(ip)*uzp(ip)*gaminv(ip)
+          pmmnts(26,ip) = yp(ip)*uzp(ip)*gaminv(ip)
+          pmmnts(27,ip) = uxp(ip)*uzp(ip)*gaminv(ip)**2
+          pmmnts(28,ip) = uyp(ip)*uzp(ip)*gaminv(ip)**2
+          pmmnts( 5,ip) = uxp(ip)*vzi
+          pmmnts( 6,ip) = uyp(ip)*vzi
+          pmmnts(11,ip) = uxp(ip)*uyp(ip)*vzi**2
+          pmmnts(15,ip) = (uxp(ip)*vzi)**2
+          pmmnts(16,ip) = (uyp(ip)*vzi)**2
+          pmmnts(20,ip) = xp(ip)*uxp(ip)*vzi
+          pmmnts(21,ip) = yp(ip)*uyp(ip)*vzi
+          pmmnts(23,ip) = xp(ip)*uyp(ip)*vzi
+          pmmnts(24,ip) = yp(ip)*uxp(ip)*vzi
         enddo
 
 c       --- sum total moments
@@ -739,39 +731,37 @@ c       --- CRAY C90.  WARNING: if NUMZMMNT changes, this loop needs to be
 c       --- adjusted to reflect that change.  Note that the similar loops
 c       --- below are still faster in their present form.
         do ip=1,np
-          if (pp(0,ip) /= 0.) then
-c           do im=1,NUMZMMNT
-c             zmmnts0(im) = zmmnts0(im) + pmmnts(ip,im)
-c           enddo
-            zmmnts0( 1,js) = zmmnts0( 1,js) + pmmnts( 1,ip)
-            zmmnts0( 2,js) = zmmnts0( 2,js) + pmmnts( 2,ip)
-            zmmnts0( 3,js) = zmmnts0( 3,js) + pmmnts( 3,ip)
-            zmmnts0( 4,js) = zmmnts0( 4,js) + pmmnts( 4,ip)
-            zmmnts0( 5,js) = zmmnts0( 5,js) + pmmnts( 5,ip)
-            zmmnts0( 6,js) = zmmnts0( 6,js) + pmmnts( 6,ip)
-            zmmnts0( 7,js) = zmmnts0( 7,js) + pmmnts( 7,ip)
-            zmmnts0( 8,js) = zmmnts0( 8,js) + pmmnts( 8,ip)
-            zmmnts0( 9,js) = zmmnts0( 9,js) + pmmnts( 9,ip)
-            zmmnts0(10,js) = zmmnts0(10,js) + pmmnts(10,ip)
-            zmmnts0(11,js) = zmmnts0(11,js) + pmmnts(11,ip)
-            zmmnts0(12,js) = zmmnts0(12,js) + pmmnts(12,ip)
-            zmmnts0(13,js) = zmmnts0(13,js) + pmmnts(13,ip)
-            zmmnts0(14,js) = zmmnts0(14,js) + pmmnts(14,ip)
-            zmmnts0(15,js) = zmmnts0(15,js) + pmmnts(15,ip)
-            zmmnts0(16,js) = zmmnts0(16,js) + pmmnts(16,ip)
-            zmmnts0(17,js) = zmmnts0(17,js) + pmmnts(17,ip)
-            zmmnts0(18,js) = zmmnts0(18,js) + pmmnts(18,ip)
-            zmmnts0(19,js) = zmmnts0(19,js) + pmmnts(19,ip)
-            zmmnts0(20,js) = zmmnts0(20,js) + pmmnts(20,ip)
-            zmmnts0(21,js) = zmmnts0(21,js) + pmmnts(21,ip)
-            zmmnts0(22,js) = zmmnts0(22,js) + pmmnts(22,ip)
-            zmmnts0(23,js) = zmmnts0(23,js) + pmmnts(23,ip) 
-            zmmnts0(24,js) = zmmnts0(24,js) + pmmnts(24,ip) 
-            zmmnts0(25,js) = zmmnts0(25,js) + pmmnts(25,ip) 
-            zmmnts0(26,js) = zmmnts0(26,js) + pmmnts(26,ip) 
-            zmmnts0(27,js) = zmmnts0(27,js) + pmmnts(27,ip) 
-            zmmnts0(28,js) = zmmnts0(28,js) + pmmnts(28,ip) 
-          endif
+c         do im=1,NUMZMMNT
+c           zmmnts0(im) = zmmnts0(im) + pmmnts(ip,im)
+c         enddo
+          zmmnts0( 1,js) = zmmnts0( 1,js) + pmmnts( 1,ip)
+          zmmnts0( 2,js) = zmmnts0( 2,js) + pmmnts( 2,ip)
+          zmmnts0( 3,js) = zmmnts0( 3,js) + pmmnts( 3,ip)
+          zmmnts0( 4,js) = zmmnts0( 4,js) + pmmnts( 4,ip)
+          zmmnts0( 5,js) = zmmnts0( 5,js) + pmmnts( 5,ip)
+          zmmnts0( 6,js) = zmmnts0( 6,js) + pmmnts( 6,ip)
+          zmmnts0( 7,js) = zmmnts0( 7,js) + pmmnts( 7,ip)
+          zmmnts0( 8,js) = zmmnts0( 8,js) + pmmnts( 8,ip)
+          zmmnts0( 9,js) = zmmnts0( 9,js) + pmmnts( 9,ip)
+          zmmnts0(10,js) = zmmnts0(10,js) + pmmnts(10,ip)
+          zmmnts0(11,js) = zmmnts0(11,js) + pmmnts(11,ip)
+          zmmnts0(12,js) = zmmnts0(12,js) + pmmnts(12,ip)
+          zmmnts0(13,js) = zmmnts0(13,js) + pmmnts(13,ip)
+          zmmnts0(14,js) = zmmnts0(14,js) + pmmnts(14,ip)
+          zmmnts0(15,js) = zmmnts0(15,js) + pmmnts(15,ip)
+          zmmnts0(16,js) = zmmnts0(16,js) + pmmnts(16,ip)
+          zmmnts0(17,js) = zmmnts0(17,js) + pmmnts(17,ip)
+          zmmnts0(18,js) = zmmnts0(18,js) + pmmnts(18,ip)
+          zmmnts0(19,js) = zmmnts0(19,js) + pmmnts(19,ip)
+          zmmnts0(20,js) = zmmnts0(20,js) + pmmnts(20,ip)
+          zmmnts0(21,js) = zmmnts0(21,js) + pmmnts(21,ip)
+          zmmnts0(22,js) = zmmnts0(22,js) + pmmnts(22,ip)
+          zmmnts0(23,js) = zmmnts0(23,js) + pmmnts(23,ip) 
+          zmmnts0(24,js) = zmmnts0(24,js) + pmmnts(24,ip) 
+          zmmnts0(25,js) = zmmnts0(25,js) + pmmnts(25,ip) 
+          zmmnts0(26,js) = zmmnts0(26,js) + pmmnts(26,ip) 
+          zmmnts0(27,js) = zmmnts0(27,js) + pmmnts(27,ip) 
+          zmmnts0(28,js) = zmmnts0(28,js) + pmmnts(28,ip) 
         enddo
 
 #else
@@ -780,37 +770,35 @@ c-------------------------------------------------------------------------
 c       --- This method is faster for RISC and pentium machines.
 c       --- sum particle moments into total moments
         do ip=1,np
-          if (pp(0,ip) /= 0.) then
-            vzi = 1./(uzp(ip)+SMALLPOS)
-            zmmnts0( 1,js) = zmmnts0( 1,js) + 1.
-            zmmnts0( 2,js) = zmmnts0( 2,js) + xp(ip)
-            zmmnts0( 3,js) = zmmnts0( 3,js) + yp(ip)
-            zmmnts0( 4,js) = zmmnts0( 4,js) + zp(ip)
-            zmmnts0( 7,js) = zmmnts0( 7,js) + uxp(ip)*gaminv(ip)
-            zmmnts0( 8,js) = zmmnts0( 8,js) + uyp(ip)*gaminv(ip)
-            zmmnts0( 9,js) = zmmnts0( 9,js) + uzp(ip)*gaminv(ip)
-            zmmnts0(10,js) = zmmnts0(10,js) + xp(ip)*yp(ip)
-            zmmnts0(12,js) = zmmnts0(12,js) + xp(ip)**2
-            zmmnts0(13,js) = zmmnts0(13,js) + yp(ip)**2
-            zmmnts0(14,js) = zmmnts0(14,js) + zp(ip)**2
-            zmmnts0(17,js) = zmmnts0(17,js) + (gaminv(ip)*uxp(ip))**2
-            zmmnts0(18,js) = zmmnts0(18,js) + (gaminv(ip)*uyp(ip))**2
-            zmmnts0(19,js) = zmmnts0(19,js) + (gaminv(ip)*uzp(ip))**2
-            zmmnts0(22,js) = zmmnts0(22,js) + zp(ip)*gaminv(ip)*uzp(ip)
-            zmmnts0(25,js) = zmmnts0(25,js) + xp(ip)*uzp(ip)*gaminv(ip)
-            zmmnts0(26,js) = zmmnts0(26,js) + yp(ip)*uzp(ip)*gaminv(ip)
-            zmmnts0(27,js) = zmmnts0(27,js) + uxp(ip)*uzp(ip)*gaminv(ip)**2
-            zmmnts0(28,js) = zmmnts0(28,js) + uyp(ip)*uzp(ip)*gaminv(ip)**2
-            zmmnts0( 5,js) = zmmnts0( 5,js) + uxp(ip)*vzi
-            zmmnts0( 6,js) = zmmnts0( 6,js) + uyp(ip)*vzi
-            zmmnts0(11,js) = zmmnts0(11,js) + uxp(ip)*uyp(ip)*vzi**2
-            zmmnts0(15,js) = zmmnts0(15,js) + (uxp(ip)*vzi)**2
-            zmmnts0(16,js) = zmmnts0(16,js) + (uyp(ip)*vzi)**2
-            zmmnts0(20,js) = zmmnts0(20,js) + xp(ip)*uxp(ip)*vzi
-            zmmnts0(21,js) = zmmnts0(21,js) + yp(ip)*uyp(ip)*vzi
-            zmmnts0(23,js) = zmmnts0(23,js) + xp(ip)*uyp(ip)*vzi
-            zmmnts0(24,js) = zmmnts0(24,js) + yp(ip)*uxp(ip)*vzi
-          endif
+          vzi = 1./(uzp(ip)+SMALLPOS)
+          zmmnts0( 1,js) = zmmnts0( 1,js) + 1.
+          zmmnts0( 2,js) = zmmnts0( 2,js) + xp(ip)
+          zmmnts0( 3,js) = zmmnts0( 3,js) + yp(ip)
+          zmmnts0( 4,js) = zmmnts0( 4,js) + zp(ip)
+          zmmnts0( 7,js) = zmmnts0( 7,js) + uxp(ip)*gaminv(ip)
+          zmmnts0( 8,js) = zmmnts0( 8,js) + uyp(ip)*gaminv(ip)
+          zmmnts0( 9,js) = zmmnts0( 9,js) + uzp(ip)*gaminv(ip)
+          zmmnts0(10,js) = zmmnts0(10,js) + xp(ip)*yp(ip)
+          zmmnts0(12,js) = zmmnts0(12,js) + xp(ip)**2
+          zmmnts0(13,js) = zmmnts0(13,js) + yp(ip)**2
+          zmmnts0(14,js) = zmmnts0(14,js) + zp(ip)**2
+          zmmnts0(17,js) = zmmnts0(17,js) + (gaminv(ip)*uxp(ip))**2
+          zmmnts0(18,js) = zmmnts0(18,js) + (gaminv(ip)*uyp(ip))**2
+          zmmnts0(19,js) = zmmnts0(19,js) + (gaminv(ip)*uzp(ip))**2
+          zmmnts0(22,js) = zmmnts0(22,js) + zp(ip)*gaminv(ip)*uzp(ip)
+          zmmnts0(25,js) = zmmnts0(25,js) + xp(ip)*uzp(ip)*gaminv(ip)
+          zmmnts0(26,js) = zmmnts0(26,js) + yp(ip)*uzp(ip)*gaminv(ip)
+          zmmnts0(27,js) = zmmnts0(27,js) + uxp(ip)*uzp(ip)*gaminv(ip)**2
+          zmmnts0(28,js) = zmmnts0(28,js) + uyp(ip)*uzp(ip)*gaminv(ip)**2
+          zmmnts0( 5,js) = zmmnts0( 5,js) + uxp(ip)*vzi
+          zmmnts0( 6,js) = zmmnts0( 6,js) + uyp(ip)*vzi
+          zmmnts0(11,js) = zmmnts0(11,js) + uxp(ip)*uyp(ip)*vzi**2
+          zmmnts0(15,js) = zmmnts0(15,js) + (uxp(ip)*vzi)**2
+          zmmnts0(16,js) = zmmnts0(16,js) + (uyp(ip)*vzi)**2
+          zmmnts0(20,js) = zmmnts0(20,js) + xp(ip)*uxp(ip)*vzi
+          zmmnts0(21,js) = zmmnts0(21,js) + yp(ip)*uyp(ip)*vzi
+          zmmnts0(23,js) = zmmnts0(23,js) + xp(ip)*uyp(ip)*vzi
+          zmmnts0(24,js) = zmmnts0(24,js) + yp(ip)*uxp(ip)*vzi
         enddo
 
 c-------------------------------------------------------------------------
@@ -1517,21 +1505,19 @@ c       --- Set flag that moments for this species has been calculated.
 
 c       --- Set maximum and minimum particle coordinate variables
         do ip = 1, np
-          if (uzp(ip) /= 0.) then
-            maxp(1,js) = max(maxp(1,js), xp(ip))
-            minp(1,js) = min(minp(1,js), xp(ip))
-            maxp(2,js) = max(maxp(2,js), yp(ip))
-            minp(2,js) = min(minp(2,js), yp(ip))
-            maxp(3,js) = max(maxp(3,js), zp(ip))
-            minp(3,js) = min(minp(3,js), zp(ip))
-            maxp(4,js) = max(maxp(4,js), gaminv(ip)*uxp(ip))
-            minp(4,js) = min(minp(4,js), gaminv(ip)*uxp(ip))
-            maxp(5,js) = max(maxp(5,js), gaminv(ip)*uyp(ip))
-            minp(5,js) = min(minp(5,js), gaminv(ip)*uyp(ip))
-            maxp(6,js) = max(maxp(6,js), gaminv(ip)*uzp(ip))
-            minp(6,js) = min(minp(6,js), gaminv(ip)*uzp(ip))
-            nplive = nplive + 1
-          endif
+          maxp(1,js) = max(maxp(1,js), xp(ip))
+          minp(1,js) = min(minp(1,js), xp(ip))
+          maxp(2,js) = max(maxp(2,js), yp(ip))
+          minp(2,js) = min(minp(2,js), yp(ip))
+          maxp(3,js) = max(maxp(3,js), zp(ip))
+          minp(3,js) = min(minp(3,js), zp(ip))
+          maxp(4,js) = max(maxp(4,js), gaminv(ip)*uxp(ip))
+          minp(4,js) = min(minp(4,js), gaminv(ip)*uxp(ip))
+          maxp(5,js) = max(maxp(5,js), gaminv(ip)*uyp(ip))
+          minp(5,js) = min(minp(5,js), gaminv(ip)*uyp(ip))
+          maxp(6,js) = max(maxp(6,js), gaminv(ip)*uzp(ip))
+          minp(6,js) = min(minp(6,js), gaminv(ip)*uzp(ip))
+          nplive = nplive + 1
         enddo
 
 c       --- Accumate global moments first.
@@ -1545,36 +1531,34 @@ c       --- This method is faster for vectorized machines, primarily the J90.
 c       --- put particle moments into pmmnts array for total moments
         do ip=1,np
           vzi = 1./(uzp(ip)+SMALLPOS)
-          if (wp(ip) > 0.) then
-            pmmnts( 1,ip) = wp(ip)
-            pmmnts( 2,ip) = xp(ip)*wp(ip)
-            pmmnts( 3,ip) = yp(ip)*wp(ip)
-            pmmnts( 4,ip) = zp(ip)*wp(ip)
-            pmmnts( 7,ip) = uxp(ip)*gaminv(ip)*wp(ip)
-            pmmnts( 8,ip) = uyp(ip)*gaminv(ip)*wp(ip)
-            pmmnts( 9,ip) = uzp(ip)*gaminv(ip)*wp(ip)
-            pmmnts(10,ip) = xp(ip)*yp(ip)*wp(ip)
-            pmmnts(12,ip) = xp(ip)**2*wp(ip)
-            pmmnts(13,ip) = yp(ip)**2*wp(ip)
-            pmmnts(14,ip) = zp(ip)**2*wp(ip)
-            pmmnts(17,ip) = (gaminv(ip)*uxp(ip))**2*wp(ip)
-            pmmnts(18,ip) = (gaminv(ip)*uyp(ip))**2*wp(ip)
-            pmmnts(19,ip) = (gaminv(ip)*uzp(ip))**2*wp(ip)
-            pmmnts(22,ip) = zp(ip)*gaminv(ip)*uzp(ip)*wp(ip)
-            pmmnts(25,ip) = xp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
-            pmmnts(26,ip) = yp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
-            pmmnts(27,ip) = uxp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
-            pmmnts(28,ip) = uyp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
-            pmmnts( 5,ip) = uxp(ip)*vzi*wp(ip)
-            pmmnts( 6,ip) = uyp(ip)*vzi*wp(ip)
-            pmmnts(11,ip) = uxp(ip)*uyp(ip)*vzi**2*wp(ip)
-            pmmnts(15,ip) = (uxp(ip)*vzi)**2*wp(ip)
-            pmmnts(16,ip) = (uyp(ip)*vzi)**2*wp(ip)
-            pmmnts(20,ip) = xp(ip)*uxp(ip)*vzi*wp(ip)
-            pmmnts(21,ip) = yp(ip)*uyp(ip)*vzi*wp(ip)
-            pmmnts(23,ip) = xp(ip)*uyp(ip)*vzi*wp(ip)
-            pmmnts(24,ip) = yp(ip)*uxp(ip)*vzi*wp(ip)
-          endif
+          pmmnts( 1,ip) = wp(ip)
+          pmmnts( 2,ip) = xp(ip)*wp(ip)
+          pmmnts( 3,ip) = yp(ip)*wp(ip)
+          pmmnts( 4,ip) = zp(ip)*wp(ip)
+          pmmnts( 7,ip) = uxp(ip)*gaminv(ip)*wp(ip)
+          pmmnts( 8,ip) = uyp(ip)*gaminv(ip)*wp(ip)
+          pmmnts( 9,ip) = uzp(ip)*gaminv(ip)*wp(ip)
+          pmmnts(10,ip) = xp(ip)*yp(ip)*wp(ip)
+          pmmnts(12,ip) = xp(ip)**2*wp(ip)
+          pmmnts(13,ip) = yp(ip)**2*wp(ip)
+          pmmnts(14,ip) = zp(ip)**2*wp(ip)
+          pmmnts(17,ip) = (gaminv(ip)*uxp(ip))**2*wp(ip)
+          pmmnts(18,ip) = (gaminv(ip)*uyp(ip))**2*wp(ip)
+          pmmnts(19,ip) = (gaminv(ip)*uzp(ip))**2*wp(ip)
+          pmmnts(22,ip) = zp(ip)*gaminv(ip)*uzp(ip)*wp(ip)
+          pmmnts(25,ip) = xp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
+          pmmnts(26,ip) = yp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
+          pmmnts(27,ip) = uxp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
+          pmmnts(28,ip) = uyp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
+          pmmnts( 5,ip) = uxp(ip)*vzi*wp(ip)
+          pmmnts( 6,ip) = uyp(ip)*vzi*wp(ip)
+          pmmnts(11,ip) = uxp(ip)*uyp(ip)*vzi**2*wp(ip)
+          pmmnts(15,ip) = (uxp(ip)*vzi)**2*wp(ip)
+          pmmnts(16,ip) = (uyp(ip)*vzi)**2*wp(ip)
+          pmmnts(20,ip) = xp(ip)*uxp(ip)*vzi*wp(ip)
+          pmmnts(21,ip) = yp(ip)*uyp(ip)*vzi*wp(ip)
+          pmmnts(23,ip) = xp(ip)*uyp(ip)*vzi*wp(ip)
+          pmmnts(24,ip) = yp(ip)*uxp(ip)*vzi*wp(ip)
         enddo
 
 c       --- sum total moments
@@ -1584,39 +1568,37 @@ c       --- CRAY C90.  WARNING: if NUMZMMNT changes, this loop needs to be
 c       --- adjusted to reflect that change.  Note that the similar loops
 c       --- below are still faster in their present form.
         do ip=1,np
-          if (wp(ip) > 0.) then
-c           do im=1,NUMZMMNT
-c             zmmnts0(im,js) = zmmnts0(im,js) + pmmnts(ip,im)
-c           enddo
-            zmmnts0( 1,js) = zmmnts0( 1,js) + pmmnts( 1,ip)
-            zmmnts0( 2,js) = zmmnts0( 2,js) + pmmnts( 2,ip)
-            zmmnts0( 3,js) = zmmnts0( 3,js) + pmmnts( 3,ip)
-            zmmnts0( 4,js) = zmmnts0( 4,js) + pmmnts( 4,ip)
-            zmmnts0( 5,js) = zmmnts0( 5,js) + pmmnts( 5,ip)
-            zmmnts0( 6,js) = zmmnts0( 6,js) + pmmnts( 6,ip)
-            zmmnts0( 7,js) = zmmnts0( 7,js) + pmmnts( 7,ip)
-            zmmnts0( 8,js) = zmmnts0( 8,js) + pmmnts( 8,ip)
-            zmmnts0( 9,js) = zmmnts0( 9,js) + pmmnts( 9,ip)
-            zmmnts0(10,js) = zmmnts0(10,js) + pmmnts(10,ip)
-            zmmnts0(11,js) = zmmnts0(11,js) + pmmnts(11,ip)
-            zmmnts0(12,js) = zmmnts0(12,js) + pmmnts(12,ip)
-            zmmnts0(13,js) = zmmnts0(13,js) + pmmnts(13,ip)
-            zmmnts0(14,js) = zmmnts0(14,js) + pmmnts(14,ip)
-            zmmnts0(15,js) = zmmnts0(15,js) + pmmnts(15,ip)
-            zmmnts0(16,js) = zmmnts0(16,js) + pmmnts(16,ip)
-            zmmnts0(17,js) = zmmnts0(17,js) + pmmnts(17,ip)
-            zmmnts0(18,js) = zmmnts0(18,js) + pmmnts(18,ip)
-            zmmnts0(19,js) = zmmnts0(19,js) + pmmnts(19,ip)
-            zmmnts0(20,js) = zmmnts0(20,js) + pmmnts(20,ip)
-            zmmnts0(21,js) = zmmnts0(21,js) + pmmnts(21,ip)
-            zmmnts0(22,js) = zmmnts0(22,js) + pmmnts(22,ip)
-            zmmnts0(23,js) = zmmnts0(23,js) + pmmnts(23,ip) 
-            zmmnts0(24,js) = zmmnts0(24,js) + pmmnts(24,ip) 
-            zmmnts0(25,js) = zmmnts0(25,js) + pmmnts(25,ip) 
-            zmmnts0(26,js) = zmmnts0(26,js) + pmmnts(26,ip) 
-            zmmnts0(27,js) = zmmnts0(27,js) + pmmnts(27,ip) 
-            zmmnts0(28,js) = zmmnts0(28,js) + pmmnts(28,ip) 
-          endif
+c         do im=1,NUMZMMNT
+c           zmmnts0(im,js) = zmmnts0(im,js) + pmmnts(ip,im)
+c         enddo
+          zmmnts0( 1,js) = zmmnts0( 1,js) + pmmnts( 1,ip)
+          zmmnts0( 2,js) = zmmnts0( 2,js) + pmmnts( 2,ip)
+          zmmnts0( 3,js) = zmmnts0( 3,js) + pmmnts( 3,ip)
+          zmmnts0( 4,js) = zmmnts0( 4,js) + pmmnts( 4,ip)
+          zmmnts0( 5,js) = zmmnts0( 5,js) + pmmnts( 5,ip)
+          zmmnts0( 6,js) = zmmnts0( 6,js) + pmmnts( 6,ip)
+          zmmnts0( 7,js) = zmmnts0( 7,js) + pmmnts( 7,ip)
+          zmmnts0( 8,js) = zmmnts0( 8,js) + pmmnts( 8,ip)
+          zmmnts0( 9,js) = zmmnts0( 9,js) + pmmnts( 9,ip)
+          zmmnts0(10,js) = zmmnts0(10,js) + pmmnts(10,ip)
+          zmmnts0(11,js) = zmmnts0(11,js) + pmmnts(11,ip)
+          zmmnts0(12,js) = zmmnts0(12,js) + pmmnts(12,ip)
+          zmmnts0(13,js) = zmmnts0(13,js) + pmmnts(13,ip)
+          zmmnts0(14,js) = zmmnts0(14,js) + pmmnts(14,ip)
+          zmmnts0(15,js) = zmmnts0(15,js) + pmmnts(15,ip)
+          zmmnts0(16,js) = zmmnts0(16,js) + pmmnts(16,ip)
+          zmmnts0(17,js) = zmmnts0(17,js) + pmmnts(17,ip)
+          zmmnts0(18,js) = zmmnts0(18,js) + pmmnts(18,ip)
+          zmmnts0(19,js) = zmmnts0(19,js) + pmmnts(19,ip)
+          zmmnts0(20,js) = zmmnts0(20,js) + pmmnts(20,ip)
+          zmmnts0(21,js) = zmmnts0(21,js) + pmmnts(21,ip)
+          zmmnts0(22,js) = zmmnts0(22,js) + pmmnts(22,ip)
+          zmmnts0(23,js) = zmmnts0(23,js) + pmmnts(23,ip) 
+          zmmnts0(24,js) = zmmnts0(24,js) + pmmnts(24,ip) 
+          zmmnts0(25,js) = zmmnts0(25,js) + pmmnts(25,ip) 
+          zmmnts0(26,js) = zmmnts0(26,js) + pmmnts(26,ip) 
+          zmmnts0(27,js) = zmmnts0(27,js) + pmmnts(27,ip) 
+          zmmnts0(28,js) = zmmnts0(28,js) + pmmnts(28,ip) 
         enddo
 
 #else
@@ -1626,36 +1608,34 @@ c       --- This method is faster for RISC and pentium machines.
 c       --- sum particle moments into total moments
         do ip=1,np
           vzi = 1./(uzp(ip)+SMALLPOS)
-          if (wp(ip) > 0.) then
-            zmmnts0( 1,js) = zmmnts0( 1,js) + wp(ip)
-            zmmnts0( 2,js) = zmmnts0( 2,js) + xp(ip)*wp(ip)
-            zmmnts0( 3,js) = zmmnts0( 3,js) + yp(ip)*wp(ip)
-            zmmnts0( 4,js) = zmmnts0( 4,js) + zp(ip)*wp(ip)
-            zmmnts0( 7,js) = zmmnts0( 7,js) + uxp(ip)*gaminv(ip)*wp(ip)
-            zmmnts0( 8,js) = zmmnts0( 8,js) + uyp(ip)*gaminv(ip)*wp(ip)
-            zmmnts0( 9,js) = zmmnts0( 9,js) + uzp(ip)*gaminv(ip)*wp(ip)
-            zmmnts0(10,js) = zmmnts0(10,js) + xp(ip)*yp(ip)*wp(ip)
-            zmmnts0(12,js) = zmmnts0(12,js) + xp(ip)**2*wp(ip)
-            zmmnts0(13,js) = zmmnts0(13,js) + yp(ip)**2*wp(ip)
-            zmmnts0(14,js) = zmmnts0(14,js) + zp(ip)**2*wp(ip)
-            zmmnts0(17,js) = zmmnts0(17,js) + (gaminv(ip)*uxp(ip))**2*wp(ip)
-            zmmnts0(18,js) = zmmnts0(18,js) + (gaminv(ip)*uyp(ip))**2*wp(ip)
-            zmmnts0(19,js) = zmmnts0(19,js) + (gaminv(ip)*uzp(ip))**2*wp(ip)
-            zmmnts0(22,js) = zmmnts0(22,js) + zp(ip)*gaminv(ip)*uzp(ip)*wp(ip)
-            zmmnts0(25,js) = zmmnts0(25,js) + xp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
-            zmmnts0(26,js) = zmmnts0(26,js) + yp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
-            zmmnts0(27,js) = zmmnts0(27,js) + uxp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
-            zmmnts0(28,js) = zmmnts0(28,js) + uyp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
-            zmmnts0( 5,js) = zmmnts0( 5,js) + uxp(ip)*vzi*wp(ip)
-            zmmnts0( 6,js) = zmmnts0( 6,js) + uyp(ip)*vzi*wp(ip)
-            zmmnts0(11,js) = zmmnts0(11,js) + uxp(ip)*uyp(ip)*vzi**2*wp(ip)
-            zmmnts0(15,js) = zmmnts0(15,js) + (uxp(ip)*vzi)**2*wp(ip)
-            zmmnts0(16,js) = zmmnts0(16,js) + (uyp(ip)*vzi)**2*wp(ip)
-            zmmnts0(20,js) = zmmnts0(20,js) + xp(ip)*uxp(ip)*vzi*wp(ip)
-            zmmnts0(21,js) = zmmnts0(21,js) + yp(ip)*uyp(ip)*vzi*wp(ip)
-            zmmnts0(23,js) = zmmnts0(23,js) + xp(ip)*uyp(ip)*vzi*wp(ip)
-            zmmnts0(24,js) = zmmnts0(24,js) + yp(ip)*uxp(ip)*vzi*wp(ip)
-          endif
+          zmmnts0( 1,js) = zmmnts0( 1,js) + wp(ip)
+          zmmnts0( 2,js) = zmmnts0( 2,js) + xp(ip)*wp(ip)
+          zmmnts0( 3,js) = zmmnts0( 3,js) + yp(ip)*wp(ip)
+          zmmnts0( 4,js) = zmmnts0( 4,js) + zp(ip)*wp(ip)
+          zmmnts0( 7,js) = zmmnts0( 7,js) + uxp(ip)*gaminv(ip)*wp(ip)
+          zmmnts0( 8,js) = zmmnts0( 8,js) + uyp(ip)*gaminv(ip)*wp(ip)
+          zmmnts0( 9,js) = zmmnts0( 9,js) + uzp(ip)*gaminv(ip)*wp(ip)
+          zmmnts0(10,js) = zmmnts0(10,js) + xp(ip)*yp(ip)*wp(ip)
+          zmmnts0(12,js) = zmmnts0(12,js) + xp(ip)**2*wp(ip)
+          zmmnts0(13,js) = zmmnts0(13,js) + yp(ip)**2*wp(ip)
+          zmmnts0(14,js) = zmmnts0(14,js) + zp(ip)**2*wp(ip)
+          zmmnts0(17,js) = zmmnts0(17,js) + (gaminv(ip)*uxp(ip))**2*wp(ip)
+          zmmnts0(18,js) = zmmnts0(18,js) + (gaminv(ip)*uyp(ip))**2*wp(ip)
+          zmmnts0(19,js) = zmmnts0(19,js) + (gaminv(ip)*uzp(ip))**2*wp(ip)
+          zmmnts0(22,js) = zmmnts0(22,js) + zp(ip)*gaminv(ip)*uzp(ip)*wp(ip)
+          zmmnts0(25,js) = zmmnts0(25,js) + xp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
+          zmmnts0(26,js) = zmmnts0(26,js) + yp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
+          zmmnts0(27,js) = zmmnts0(27,js) + uxp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
+          zmmnts0(28,js) = zmmnts0(28,js) + uyp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
+          zmmnts0( 5,js) = zmmnts0( 5,js) + uxp(ip)*vzi*wp(ip)
+          zmmnts0( 6,js) = zmmnts0( 6,js) + uyp(ip)*vzi*wp(ip)
+          zmmnts0(11,js) = zmmnts0(11,js) + uxp(ip)*uyp(ip)*vzi**2*wp(ip)
+          zmmnts0(15,js) = zmmnts0(15,js) + (uxp(ip)*vzi)**2*wp(ip)
+          zmmnts0(16,js) = zmmnts0(16,js) + (uyp(ip)*vzi)**2*wp(ip)
+          zmmnts0(20,js) = zmmnts0(20,js) + xp(ip)*uxp(ip)*vzi*wp(ip)
+          zmmnts0(21,js) = zmmnts0(21,js) + yp(ip)*uyp(ip)*vzi*wp(ip)
+          zmmnts0(23,js) = zmmnts0(23,js) + xp(ip)*uyp(ip)*vzi*wp(ip)
+          zmmnts0(24,js) = zmmnts0(24,js) + yp(ip)*uxp(ip)*vzi*wp(ip)
         enddo
 
 c-------------------------------------------------------------------------
@@ -2391,7 +2371,6 @@ c  Fast gamma advance, version 2, fastest, but least accurate
         uxp(ip) = (vpr_par*vx+vpr_perp*vvvp_x)*gammapr
         uyp(ip) = (vpr_par*vy+vpr_perp*vvvp_y)*gammapr
         uzp(ip) = (vpr_par*vz+vpr_perp*vvvp_z)*gammapr
-        if(uzp(ip)==0.) uzp(ip)=1.e-20
         gaminv(ip) = 1./sqrt(1.+(uxp(ip)*uxp(ip)+uyp(ip)*uyp(ip)+uzp(ip)*uzp(ip))*invclightsq)
       enddo
 
@@ -2485,7 +2464,7 @@ c  Sets 1d beam current as a function of z, directly from particle data
 !$OMP DO
         do ip = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
           kk = (pgroup%zp(ip) - zbeam - zzmin)*dzzi
-          if (pgroup%uzp(ip) == 0 .or. kk < 0 .or. kk+1 > nzzarr) cycle
+          if (kk < 0 .or. kk+1 > nzzarr) cycle
           w1 = (pgroup%zp(ip) - zbeam - zzmin)*dzzi - kk
           w0 = 1. - w1
           if (wpid > 0) gw = g*pgroup%pid(ip,wpid)
@@ -2792,7 +2771,6 @@ c of semi-transparent disc location are checked for disc crossing.
      &              , zmind(n_STdiscs),zmaxd(n_STdiscs)
 
       if(n_STdiscs==0) return
-      if(clearlostpart==0) clearlostpart = 1
 
       do idisc = 1, n_STdiscs
         zmind(idisc) = z_STdiscs(idisc)-dz
@@ -2900,10 +2878,8 @@ c Calculate the center of mass of the beam along the z axis from the particles
       totmass = 0.
       do is=1,pgroup%ns
         do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
-          if (pgroup%uzp(ip) /= 0.) then
-            totz = totz + pgroup%zp(ip)*pgroup%sm(is)
-            totmass = totmass + pgroup%sm(is)
-          endif
+          totz = totz + pgroup%zp(ip)*pgroup%sm(is)
+          totmass = totmass + pgroup%sm(is)
         enddo
       enddo
 
@@ -3161,7 +3137,7 @@ c       --- Loop from top of live particles to the bottom.
 c       --- Move this into a seperate loop since some compilers were screwing
 c       --- up. This will also be slightly faster too, maybe.
         do ip=ins(is),ins(is)+ishift-1
-          uzp(ip) = 0.
+          gaminv(ip) = 0.
           if (npid > 0) pid(ip,:) = 0
         enddo
 
@@ -3194,7 +3170,7 @@ c       --- Loop over live particles.
 c       --- Move this into a seperate loop since some compilers were screwing
 c       --- up. This will also be slightly faster too, maybe.
         do ip=ins(is)+nps(is)-1,ins(is)+nps(is)-1+ishift+1,-1
-          uzp(ip) = 0.
+          gaminv(ip) = 0.
           if (npid > 0) pid(ip,:) = 0
         enddo
 
@@ -3454,8 +3430,8 @@ c       --- to fill in the empty spaces.
           ip = pgroup%ins(i)
           pgroup%nps(i) = 0
           do while (ip <= ips)
-            if (pgroup%uzp(ip) == 0.) then
-              do while (pgroup%uzp(ips) == 0. .and. ips > ip)
+            if (pgroup%gaminv(ip) <= 0.) then
+              do while (pgroup%gaminv(ips) == 0. .and. ips > ip)
                 ips = ips - 1
               enddo
               if (ips > ip) then
@@ -3478,7 +3454,7 @@ c       --- to fill in the empty spaces.
                 endif
                 pgroup%uzp(ips) = 0.
                 pgroup%gaminv(ips) = 0.
-                if(wpid>0) pgroup%pid(ips,wpid) = 0.
+c               if(wpid>0) pgroup%pid(ips,wpid) = 0.
                 ips = ips - 1
                 pgroup%nps(i) = pgroup%nps(i) + 1
               endif
@@ -3497,7 +3473,7 @@ c       --- Live particles are shifted downward to fill in the empty spaces
           pgroup%nps(i) = 0
           ip = pgroup%ins(i)
           do ips=ip,ipslimit
-            if (pgroup%uzp(ips) /= 0.) then
+            if (pgroup%gaminv(ips) > 0.) then
               if (ips > ip) then
                 pgroup%xp(ip) = pgroup%xp(ips)
                 pgroup%yp(ip) = pgroup%yp(ips)
@@ -3518,7 +3494,7 @@ c       --- Live particles are shifted downward to fill in the empty spaces
                 endif
                 pgroup%uzp(ips) = 0.
                 pgroup%gaminv(ips) = 0.
-                if(wpid>0) pgroup%pid(ips,wpid) = 0.
+c               if(wpid>0) pgroup%pid(ips,wpid) = 0.
               endif
               ip = ip + 1
               pgroup%nps(i) = pgroup%nps(i) + 1
@@ -3535,7 +3511,7 @@ c       --- Live particles are shifted upward to fill in the empty spaces
           pgroup%nps(i) = 0
           pgroup%ins(i) = ip + 1
           do ips=ip,ipslimit,-1
-            if (pgroup%uzp(ips) /= 0.) then
+            if (pgroup%gaminv(ips) > 0.) then
               if (ips < ip) then
                 pgroup%xp(ip) = pgroup%xp(ips)
                 pgroup%yp(ip) = pgroup%yp(ips)
@@ -3556,7 +3532,7 @@ c       --- Live particles are shifted upward to fill in the empty spaces
                 endif
                 pgroup%uzp(ips) = 0.
                 pgroup%gaminv(ips) = 0.
-                if(wpid>0) pgroup%pid(ips,wpid) = 0.
+c               if(wpid>0) pgroup%pid(ips,wpid) = 0.
               endif
               ip = ip - 1
               pgroup%nps(i) = pgroup%nps(i) + 1
@@ -3656,7 +3632,7 @@ c       --- Get the number of lost particles and make sure there is
 c       --- enough space to save them in the LostParticles arrays.
         i1 = pgroup%ins(is)
         i2 = pgroup%ins(is)+pgroup%nps(is)-1
-        nlost = count((pgroup%gaminv(i1:i2)==0 .and. pgroup%uzp(i1:i2)/=0.))
+        nlost = count(pgroup%gaminv(i1:i2)==0.)
         call chcklostpart(is,0,nlost)
 
       endif
@@ -3676,54 +3652,46 @@ c     --- Check lspeciesmoments, since it affects lostpars
 c     --- Loop over the particles arrays and process the ones with gaminv
 c     --- set to zero, the flag for scraped particles.
       do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+
+c       --- Accumulate the array holding the location where particles
+c       --- are lost.
         if (pgroup%gaminv(ip) == 0.) then
-
-c         --- Accumulate the array holding the location where particles
-c         --- are lost.
-          if (pgroup%uzp(ip) /= 0.) then
-            iz = max(0,min(nzzarr,int((pgroup%zp(ip) - zzmin - zbeam)*dzzi)))
-            lostpars(iz,js) = lostpars(iz,js) + 1
-            if (nszarr > 0) lostpars(iz,nszarr) = lostpars(iz,nszarr) + 1
-          endif
-
-c         --- If requested to save lost particles, do it. Particle data is
-c         --- only save if uzp /= 0, since if uzp is 0, the particle was
-c         --- lost on a previous step but wasn't cleared out of the array.
-          if (lsavelostpart .and. pgroup%uzp(ip) /= 0.) then
-            i1 = inslost(isid) + npslost(isid)
-            xplost(i1) = pgroup%xp(ip)
-            yplost(i1) = pgroup%yp(ip)
-            zplost(i1) = pgroup%zp(ip)
-            uxplost(i1) = pgroup%uxp(ip)
-            uyplost(i1) = pgroup%uyp(ip)
-            uzplost(i1) = pgroup%uzp(ip)
-            exlost(i1) = pgroup%ex(ip)
-            eylost(i1) = pgroup%ey(ip)
-            ezlost(i1) = pgroup%ez(ip)
-            bxlost(i1) = pgroup%bx(ip)
-            bylost(i1) = pgroup%by(ip)
-            bzlost(i1) = pgroup%bz(ip)
-            if (lrelativ) then
-              usq = pgroup%uxp(ip)**2 + pgroup%uyp(ip)**2 + pgroup%uzp(ip)**2
-              gaminvlost(i1) = 1./sqrt(1. + usq/clight**2)
-            else
-              gaminvlost(i1) = 1.
-            endif
-            tplost(i1) = time
-            if (pgroup%npid > 0) then
-              pidlost(i1,1:pgroup%npid) = pgroup%pid(ip,:)
-            endif
-            if (npidlost > pgroup%npid) pidlost(i1,pgroup%npid+1:)=0.
-            npslost(isid) = npslost(isid) + 1
-          endif
-
-c         --- Zero out the velocity, the flag for a lost particle.
-          pgroup%uxp(ip) = 0.0
-          pgroup%uyp(ip) = 0.0
-          pgroup%uzp(ip) = 0.0
-          if(wpid>0) pgroup%pid(ip,wpid) = 0.
-
+          iz = max(0,min(nzzarr,int((pgroup%zp(ip) - zzmin - zbeam)*dzzi)))
+          lostpars(iz,js) = lostpars(iz,js) + 1
+          if (nszarr > 0) lostpars(iz,nszarr) = lostpars(iz,nszarr) + 1
         endif
+
+c       --- If requested to save lost particles, do it. Particle data is
+c       --- only save if gaminv == 0. Particles with gaminv < 0 have been
+c       --- lost but are flagged not to be saved.
+        if (lsavelostpart .and. pgroup%gaminv(ip) == 0.) then
+          i1 = inslost(isid) + npslost(isid)
+          xplost(i1) = pgroup%xp(ip)
+          yplost(i1) = pgroup%yp(ip)
+          zplost(i1) = pgroup%zp(ip)
+          uxplost(i1) = pgroup%uxp(ip)
+          uyplost(i1) = pgroup%uyp(ip)
+          uzplost(i1) = pgroup%uzp(ip)
+          exlost(i1) = pgroup%ex(ip)
+          eylost(i1) = pgroup%ey(ip)
+          ezlost(i1) = pgroup%ez(ip)
+          bxlost(i1) = pgroup%bx(ip)
+          bylost(i1) = pgroup%by(ip)
+          bzlost(i1) = pgroup%bz(ip)
+          if (lrelativ) then
+            usq = pgroup%uxp(ip)**2 + pgroup%uyp(ip)**2 + pgroup%uzp(ip)**2
+            gaminvlost(i1) = 1./sqrt(1. + usq/clight**2)
+          else
+            gaminvlost(i1) = 1.
+          endif
+          tplost(i1) = time
+          if (pgroup%npid > 0) then
+            pidlost(i1,1:pgroup%npid) = pgroup%pid(ip,:)
+          endif
+          if (npidlost > pgroup%npid) pidlost(i1,pgroup%npid+1:)=0.
+          npslost(isid) = npslost(isid) + 1
+        endif
+
       enddo
 
       call clearpart(pgroup,is,clearlostpart)
@@ -4443,7 +4411,7 @@ c       --- Loop only over live particles
             pgroup%pid(ip+ishift,:) = pgroup%pid(ip,:)
 c           pgroup%pid(ip,:) = 0
           endif
-c         pgroup%uzp(ip) = 0.
+c         pgroup%gaminv(ip) = 0.
         enddo
 
 c       --- change lower bound of live particles
@@ -4470,7 +4438,7 @@ c       --- Note that particles will be clobbered if shifted onto species below.
             pgroup%pid(ip+ishift,:) = pgroup%pid(ip,:)
 c           pgroup%pid(ip,:) = 0
           endif
-c         pgroup%uzp(ip) = 0.
+c         pgroup%gaminv(ip) = 0.
         enddo
 
 c       --- change lower bound of live particles
