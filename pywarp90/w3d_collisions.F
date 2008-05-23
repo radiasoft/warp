@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_collision.F, version $Revision: 1.6 $, $Date: 2008/04/25 17:12:03 $
+c@(#) File w3d_collision.F, version $Revision: 1.7 $, $Date: 2008/05/23 16:35:59 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This has routines handling particle collisions
@@ -76,8 +76,8 @@ c     --- self collisions.
 
 c     --- Needed for Sherlock form of approximation
       aa = (8./(3.*pi))* (pi-3.)/(4.-pi)
-      norm = 4./(3.*sqrt(pi))
-      const = 3.*sqrt(pi)/2.
+      norm = 1./(4./(3.*sqrt(pi)))
+      const = 1./(3.*sqrt(pi)/2.)
 
 c     --- Now loop over the test particles.
       do i=1,np
@@ -115,15 +115,16 @@ c resulting kicks, using approximation from Sherlock, JCP 227 (2008) 2286-2292.
         ww = vv/sqrt(2.*vthsqi2(i))
 
 c       --- Approximation to the error function due to S. Winitzki.
-        erf = sqrt(1.-exp(-ww**2 * ((4./pi)+aa*ww**2)/(1.+aa*ww**2)) )
+        erf = sqrt(1. - exp(-ww**2*((4./pi) + aa*ww**2)/(1. + aa*ww**2)))
 
-        fdv = abs( eta*nudt/(1.+(2./const)*ww**3) )
+        fdv = abs(eta*nudt/(1. + (2.*const)*ww**3))
 
-        d33 = sqrt(abs(2.*vthsqi2(i)*(fdv/eta)*abs(-log(1.-wranf()))))
-     &       *cos(twopi*wranf())
+        d33 = sqrt(abs(2.*vthsqi2(i)*(fdv/eta)*abs(-log(1. - wranf()))))
+     &        *cos(twopi*wranf())
 
-        d11 = sqrt(nudt*2.*(vthsqi2(i)/norm)*(erf/ww - (1./const)
-     &      /(1.+(2./const)*ww**3 ) )*abs(-log(1.-wranf())))
+        d11 = sqrt(nudt*2.*(vthsqi2(i)*norm)
+     &             *(erf/ww - (1.*const)/(1. + (2.*const)*ww**3))
+     &             *abs(-log(1. - wranf())))
 
 c-----------------------------------------------------------------------------
 c calculate diffusion and drag coefficients for isotropic F(v) and
@@ -303,8 +304,8 @@ cc The test particle is species 1 and the field particle is species 2
 
 c     --- Needed for Sherlock for of approximation
       aa = (8./(3.*pi))* (pi-3.)/(4.-pi)
-      norm = 4./(3.*sqrt(pi))
-      const = 3.*sqrt(pi)/2.
+      norm = 1./(4./(3.*sqrt(pi)))
+      const = 1./(3.*sqrt(pi)/2.)
 
       ddxp=sddx2d(lx,nxp)
       ddyp=sddx2d(ly,nyp)
@@ -488,13 +489,13 @@ c resulting kicks, using approximation from Sherlock, JCP 227 (2008) 2286-2292.
 c        --- Approximation to the error function due to S. Winitzki.
          erf = sqrt(1.-exp(-ww**2 * ((4./pi)+aa*ww**2)/(1.+aa*ww**2)) )
 
-         fdv = abs( eta*nuadt/(1.+(2./const)*ww**3) )
+         fdv = abs( eta*nuadt/(1.+(2.*const)*ww**3) )
 
          d33 = sqrt(abs(2.*vthsqi*(fdv/eta)*abs(-log(1.-wranf()))))
      &        *cos(twopi*wranf())
 
-         d11 = sqrt(nuadt*2.*(vthsqi/norm)*(  erf/ww - (1./const)
-     &       /(1.+(2./const)*ww**3 ) )*abs(-log(1.-wranf())))
+         d11 = sqrt(nuadt*2.*(vthsqi*norm)*(  erf/ww - (1.*const)
+     &       /(1.+(2.*const)*ww**3 ) )*abs(-log(1.-wranf())))
 
 c-----------------------------------------------------------------------------
 c calculate diffusion and drag coefficients for isotropic F(v) and
