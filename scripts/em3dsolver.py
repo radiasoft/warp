@@ -35,6 +35,7 @@ class EM3D(FieldSolver):
                     'autoset_timestep':true,'dtcoef':0.99}
 
   def __init__(self,**kw):
+    self.grid_overlap = 1
     FieldSolver.__init__(self,kwdict=kw)
 #    top.allspecl = true
     top.lcallfetchb = true
