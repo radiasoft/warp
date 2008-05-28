@@ -10,7 +10,7 @@ try:
 except:
   l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.12 2008/05/08 17:40:16 dave Exp $"
+ionization_version = "$Id: ionization.py,v 1.13 2008/05/28 23:43:00 rcohen Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -351,7 +351,7 @@ Class for generating particles from impact ionization.
           ynew = yi
           znew = zi
           while(nnew>0):
-            print nnew
+            #print nnew
             xnewp = take(xnew,io)
             ynewp = take(ynew,io)
             znewp = take(znew,io)
