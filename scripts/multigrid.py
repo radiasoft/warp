@@ -675,9 +675,7 @@ tensor that appears from the direct implicit scheme.
   """
   
   def __init__(self,lreducedpickle=1,**kw):
-    kw['lreducedpickle'] = lreducedpickle
-
-    SubcycledPoissonSolver.__init__(self,kwdict=kw)
+    MultiGrid.__init__(self,lreducedpickle,kwdict=kw)
     self.solvergeom = w3d.XYZgeom
     self.ncomponents = 1
     self.nxguard = 1
