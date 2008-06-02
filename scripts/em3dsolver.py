@@ -25,7 +25,7 @@ class EM3D(FieldSolver):
   __flaginputs__ = {'l_apply_pml':true,'nbndx':10,'nbndy':10,'nbndz':10,
                     'nxguard':1,'nyguard':1,'nzguard':1,
                     'l_particles_weight':false,'l_usecoeffs':false,
-                    'l_pushf':false,'l_verbose':false,
+                    'l_pushf':false,'l_pushpot':false,'l_verbose':false,
                     'laser_amplitude':1.,'laser_profile':None,
                     'laser_gauss_width':None,'laser_angle':0.,
                     'laser_wavelength':None,'laser_wavenumber':None,
@@ -35,7 +35,7 @@ class EM3D(FieldSolver):
                     'autoset_timestep':true,'dtcoef':0.99}
 
   def __init__(self,**kw):
-    self.grid_overlap = 1
+    self.grid_overlap=1
     FieldSolver.__init__(self,kwdict=kw)
 #    top.allspecl = true
     top.lcallfetchb = true
@@ -229,21 +229,35 @@ class EM3D(FieldSolver):
     n = len(x)
     if n == 0: return
     f = self.block.core.yf
-    getf3d_linear(n,x,y,z,ex,ey,ez,
-                  f.xmin,f.ymin,f.zmin,
-                  f.dx,f.dy,f.dz,
-                  f.nx,f.ny,f.nz,
-                  f.Ex,f.Ey,f.Ez)
+    if top.efetch[w3d.jsfsapi] in [1,3,5]:
+      getf3d_linear(n,x,y,z,ex,ey,ez,
+                    f.xmin,f.ymin,f.zmin,
+                    f.dx,f.dy,f.dz,
+                    f.nx,f.ny,f.nz,
+                    f.Ex,f.Ey,f.Ez)
+    elif top.efetch[w3d.jsfsapi]==4:
+      gete3d_linear_energy_conserving(n,x,y,z,ex,ey,ez,
+                    f.xmin,f.ymin,f.zmin,
+                    f.dx,f.dy,f.dz,
+                    f.nx,f.ny,f.nz,
+                    f.Ex,f.Ey,f.Ez)
 
   def fetchbfrompositions(self,x,y,z,bx,by,bz):
     n = len(x)
     if n == 0: return
     f = self.block.core.yf
-    getf3d_linear(n,x,y,z,bx,by,bz,
-                  f.xmin,f.ymin,f.zmin,
-                  f.dx,f.dy,f.dz,
-                  f.nx,f.ny,f.nz,
-                  f.Bx,f.By,f.Bz)
+    if top.efetch[w3d.jsfsapi] in [1,3,5]:
+      getf3d_linear(n,x,y,z,bx,by,bz,
+                    f.xmin,f.ymin,f.zmin,
+                    f.dx,f.dy,f.dz,
+                    f.nx,f.ny,f.nz,
+                    f.Bx,f.By,f.Bz)
+    elif top.efetch[w3d.jsfsapi]==4:
+      getb3d_linear_energy_conserving(n,x,y,z,bx,by,bz,
+                    f.xmin,f.ymin,f.zmin,
+                    f.dx,f.dy,f.dz,
+                    f.nx,f.ny,f.nz,
+                    f.Bx,f.By,f.Bz)
     
   def fetchphifrompositions(self,x,z,phi):
     pass
@@ -405,6 +419,7 @@ class EM3D(FieldSolver):
     smooth2d_lindman(self.field.J[:,:,2],self.field.nx,self.field.ny)
 
   def fetche(self):
+#    print 'fetche'
     x=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
     y=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
     z=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
@@ -418,6 +433,7 @@ class EM3D(FieldSolver):
 #    print 'e',ex,ey,ez
 
   def fetchb(self):
+#    print 'fetchb'
     x=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
     y=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
     z=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
@@ -428,7 +444,7 @@ class EM3D(FieldSolver):
     by[:] = 0.
     bz[:] = 0.
     self.fetchbfrompositions(x,y,z,bx,by,bz)
-#    print 'b',bx,by,bz
+#    print 'b',bx,by,bz,top.pgroup.bz
 
   def fetchphi(self):
     pass
@@ -509,6 +525,7 @@ class EM3D(FieldSolver):
                       mgmaxlevels=mgmaxlevels,
                       my_index=self.my_index,nslaves=self.nslaves,
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
+
     self.field.nconds = self.getconductorobject().interior.n
     self.field.nxcond = self.field.nx
     self.field.nycond = self.field.ny
@@ -517,7 +534,13 @@ class EM3D(FieldSolver):
     self.field.incond=False
     if self.field.nconds>0:
       set_incond(self.field,self.field.nconds,int(self.getconductorobject().interior.indx))
-
+    if self.block.xlbnd==openbc:self.field.incond[:3,:,:]=False
+    if self.block.xrbnd==openbc:self.field.incond[-3:,:,:]=False
+    if self.block.ylbnd==openbc:self.field.incond[:,:3,:]=False
+    if self.block.yrbnd==openbc:self.field.incond[:,-3:,:]=False
+    if self.block.zlbnd==openbc:self.field.incond[:,:,:3]=False
+    if self.block.zrbnd==openbc:self.field.incond[:,:,-3:]=False
+    
   def hasconductors(self):
     return len(self.conductordatalist) > 0
 
@@ -669,9 +692,9 @@ class EM3D(FieldSolver):
 #        field.gchange()
 #      self.add_laser(field)
 #      grimax(field)
-    node2yee3d(self.block.core.yf)
+    if top.efetch[0]<>4:node2yee3d(self.block.core.yf)
     dt = top.dt/self.nfield_subcycle
-    push_em3d_bf(self.block,dt,2,self.l_pushf)
+    push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
     if self.l_verbose:print 'solve 2nd half done'
 #    yee2node3d(self.block.core.yf)
  #   self.move_window_fields()
@@ -694,19 +717,20 @@ class EM3D(FieldSolver):
 #      grimax(field)
 #    node2yee3d(self.block.core.yf)
     dt = top.dt/self.nfield_subcycle
-    push_em3d_eef(self.block,dt,0,self.l_pushf)
+    push_em3d_eef(self.block,dt,0,self.l_pushf,self.l_pushpot)
     self.add_laser(self.field)
     for i in range(self.nfield_subcycle-1):
-      push_em3d_bf(self.block,dt,0,self.l_pushf)
-      push_em3d_eef(self.block,dt,0,self.l_pushf)
-    push_em3d_bf(self.block,dt,1,self.l_pushf)
+      push_em3d_bf(self.block,dt,0,self.l_pushf,self.l_pushpot)
+      push_em3d_eef(self.block,dt,0,self.l_pushf,self.l_pushpot)
+    push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
 #    push_em3d_eef(self.block,dt,0,self.l_pushf)
 #    push_em3d_bf(self.block,dt,1,self.l_pushf)
 #    for i in range(self.nfield_subcycle-1):
 #      push_em3d_bf(self.block,dt,2,self.l_pushf)
 #      push_em3d_eef(self.block,dt,0,self.l_pushf)
 #      push_em3d_bf(self.block,dt,1,self.l_pushf)
-    yee2node3d(self.block.core.yf)
+    if not all(top.efetch==top.efetch[0]):raise('Error:top.efetch must have same value for every species when using EM solver.')
+    if top.efetch[0]<>4:yee2node3d(self.block.core.yf)
  #   self.move_window_fields()
  #   for field in fields:
  #     griuni(field)
@@ -718,7 +742,7 @@ class EM3D(FieldSolver):
   def genericfp(self,data,title,l_transpose=true,direction=2,slice=None,**kw):
     f=self.block.core.yf
     if direction==0:
-      if slice is None:slice=w3d.ny/2
+      if slice is None:slice=w3d.nx/2
       if l_transpose:
         settitles(title,'Z','Y','t = %gs'%(top.time))
         kw.setdefault('xmin',w3d.zmmin)
@@ -736,7 +760,7 @@ class EM3D(FieldSolver):
       else:
         data=data[slice,:,:]
     if direction==1:
-      if slice is None:slice=w3d.nx/2
+      if slice is None:slice=w3d.ny/2
       if l_transpose:
         settitles(title,'Z','X','t = %gs'%(top.time))
         kw.setdefault('ymin',w3d.xmmin)
