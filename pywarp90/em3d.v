@@ -53,9 +53,11 @@ push_em3d_e(f:EM3D_YEEFIELDtype,dt:real) subroutine
 push_em3d_b(f:EM3D_YEEFIELDtype,dt:real) subroutine
 push_em3d_ef(f:EM3D_YEEFIELDtype,dt:real) subroutine
 push_em3d_f(f:EM3D_YEEFIELDtype,dt:real) subroutine
+push_em3d_phi(f:EM3D_YEEFIELDtype,dt:real) subroutine
+push_em3d_a(f:EM3D_YEEFIELDtype,dt:real) subroutine
 push_em3d_block(f:EM3D_BLOCKtype,dt:real,which:integer) subroutine
-push_em3d_eef(f:EM3D_BLOCKtype,dt:real,which:integer,l_pushf:logical) subroutine
-push_em3d_bf(f:EM3D_BLOCKtype,dt:real,which:integer,l_pushf:logical) subroutine
+push_em3d_eef(f:EM3D_BLOCKtype,dt:real,which:integer,l_pushf:logical,l_pushpot:logical) subroutine
+push_em3d_bf(f:EM3D_BLOCKtype,dt:real,which:integer,l_pushf:logical,l_pushpot:logical) subroutine
 init_splitfield(sf:EM3D_SPLITYEEFIELDtype, 
                 nx:integer,ny:integer,nz:integer, 
                 nxguard:integer,nyguard:integer,nzguard:integer, 
@@ -88,6 +90,20 @@ getf3d_linear(n:integer,xp(n):real,yp(n):real,zp(n):real,
                nx:integer,ny:integer,nz:integer,
                exg:real,eyg:real,ezg:real)
                            subroutine
+gete3d_linear_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
+               ex(n):real,ey(n):real,ez(n):real,
+               xmin:real,ymin:real,zmin:real,
+               dx:real,dy:real,dz:real,
+               nx:integer,ny:integer,nz:integer,
+               exg:real,eyg:real,ezg:real)
+                           subroutine
+getb3d_linear_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
+               bx(n):real,by(n):real,bz(n):real,
+               xmin:real,ymin:real,zmin:real,
+               dx:real,dy:real,dz:real,
+               nx:integer,ny:integer,nz:integer,
+               bxg:real,byg:real,bzg:real)
+                           subroutine
 yee2node3d(f:EM3D_YEEFIELDtype) subroutine
 node2yee3d(f:EM3D_YEEFIELDtype) subroutine
 em3d_exchange_e(b:EM3D_BLOCKtype) subroutine
@@ -106,6 +122,9 @@ nz integer
 nxguard integer /1/
 nyguard integer /1/
 nzguard integer /1/
+nxp integer /0/
+nyp integer /0/
+nzp integer /0/
 dx real
 dy real
 dz real
@@ -133,6 +152,10 @@ bx(2,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 by(2,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 bz(2,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 f(3,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+ax(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+ay(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+az(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+phi(1:3,-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 afx(-nxguard:nx+nxguard) _real
 bpfx(-nxguard:nx+nxguard) _real
 bmfx(-nxguard:nx+nxguard) _real
@@ -160,6 +183,9 @@ nz integer
 nxguard integer /1/
 nyguard integer /1/
 nzguard integer /1/
+nxp integer /0/
+nyp integer /0/
+nzp integer /0/
 ntimes integer /1/
 nconds integer /0/
 nxcond integer /0/
@@ -191,6 +217,10 @@ Rhoarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,ntimes) _re
 J(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
 Jarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3,ntimes) _real
 incond(-nxguard:nxcond+nxguard,-nyguard:nycond+nyguard,-nzguard:nzcond+nzguard) _logical
+Ax(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+Ay(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+Az(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+Phi(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 
 %%%%%%%% EM3D_KYEEFIELDtype:
 fieldtype integer /-1/
