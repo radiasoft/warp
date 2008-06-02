@@ -551,6 +551,76 @@ real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
 return
 end subroutine push_em3d_ef
 
+subroutine push_em3d_phi(f,dt)
+use mod_emfield3d
+implicit none
+
+TYPE(EM3D_YEEFIELDtype) :: f
+REAL(kind=8), INTENT(IN) :: dt
+
+INTEGER :: j, k, l
+real(kind=8) :: dtsdx,dtsdy,dtsdz,dtsepsi
+
+dtsdx = f%clight*dt/f%dx
+dtsdy = f%clight*dt/f%dy
+dtsdz = f%clight*dt/f%dz
+
+  do l = 0, f%nz
+   do k = 0, f%ny
+    do j = 0, f%nx
+      f%Phi(j,k,l) = f%Phi(j,k,l) - dtsdx * (f%Ax(j,k,l) - f%Ax(j-1,k  ,l  )) &
+                                  - dtsdy * (f%Ay(j,k,l) - f%Ay(j  ,k-1,l  )) &
+                                  - dtsdz * (f%Az(j,k,l) - f%Az(j  ,k  ,l-1)) 
+    end do
+   end do
+  end do
+
+end subroutine push_em3d_phi
+
+subroutine push_em3d_a(f,dt)
+use mod_emfield3d
+implicit none
+
+TYPE(EM3D_YEEFIELDtype) :: f
+REAL(kind=8), INTENT(IN) :: dt
+
+INTEGER :: j, k, l
+real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
+
+  dtsdx = f%clight*dt/f%dx
+  dtsdy = f%clight*dt/f%dy
+  dtsdz = f%clight*dt/f%dz
+
+  ! advance Ex
+  do l = 0, f%nz
+   do k = 0, f%ny
+    do j = 0, f%nx-1
+      f%Ax(j,k,l) = f%Ax(j,k,l) - dtsdx * (f%Phi(j+1,k,l) - f%Phi(j,k,l)) - dt*f%Ex(j,k,l)
+    end do
+   end do
+  end do
+
+  ! advance Ey
+  do l = 0, f%nz
+   do k = 0, f%ny-1
+    do j = 0, f%nx
+      f%Ay(j,k,l) = f%Ay(j,k,l) - dtsdy * (f%Phi(j,k+1,l) - f%Phi(j,k,l)) - dt*f%Ey(j,k,l)
+    end do
+   end do
+  end do
+
+  ! advance Ez 
+  do l = 0, f%nz-1
+   do k = 0, f%ny
+    do j = 0, f%nx
+      f%Az(j,k,l) = f%Az(j,k,l) - dtsdz * (f%Phi(j,k,l+1) - f%Phi(j,k,l)) - dt*f%Ez(j,k,l)
+    end do
+   end do
+  end do
+
+return
+end subroutine push_em3d_a
+
 subroutine push_em3d_conde(f,dt)
 use mod_emfield3d
 implicit none
@@ -825,7 +895,7 @@ INTEGER :: j, k, l,which
    do k = 0, sf%ny
     do j = 0, sf%nx-1
       sf%ex(1,j,k,l) = sf%agx(j)*sf%ex(1,j,k,l) + sf%bpgx(j)*( sf%f(1,j+1,k,l) + sf%f(2,j+1,k,l) + sf%f(3,j+1,k,l) ) &
-                                              + sf%bmgx(j)*( sf%f(1,j  ,k,l) + sf%f(2,j  ,k,l) + sf%f(3,j  ,k,l) )
+                                                + sf%bmgx(j)*( sf%f(1,j  ,k,l) + sf%f(2,j  ,k,l) + sf%f(3,j  ,k,l) )
     end do
    end do
   end do
@@ -834,7 +904,7 @@ INTEGER :: j, k, l,which
    do k = 0, sf%ny-1
     do j = 0, sf%nx
       sf%ey(2,j,k,l) = sf%agy(k)*sf%ey(2,j,k,l) + sf%bpgy(k)*( sf%f(1,j,k+1,l) + sf%f(2,j,k+1,l) + sf%f(3,j,k+1,l) ) &
-                                              + sf%bmgy(k)*( sf%f(1,j,k  ,l) + sf%f(2,j,k  ,l) + sf%f(3,j,k  ,l) )
+                                                + sf%bmgy(k)*( sf%f(1,j,k  ,l) + sf%f(2,j,k  ,l) + sf%f(3,j,k  ,l) )
     end do
    end do
   end do
@@ -843,7 +913,7 @@ INTEGER :: j, k, l,which
    do k = 0, sf%ny
     do j = 0, sf%nx
       sf%ez(3,j,k,l) = sf%agz(l)*sf%ez(3,j,k,l) + sf%bpgz(l)*( sf%f(1,j,k,l+1) + sf%f(2,j,k,l+1) + sf%f(3,j,k,l+1) ) &
-                                              + sf%bmgz(l)*( sf%f(1,j,k,l)   + sf%f(2,j,k,l  ) + sf%f(3,j,k,l  ) )
+                                                + sf%bmgz(l)*( sf%f(1,j,k,l)   + sf%f(2,j,k,l  ) + sf%f(3,j,k,l  ) )
     end do
    end do
   end do
@@ -927,6 +997,71 @@ INTEGER :: j, k, l,which
   return
 end subroutine push_em3d_splitf
 
+subroutine push_em3d_splita(sf,dt,which)
+use mod_emfield3d
+implicit none
+
+TYPE(EM3D_SPLITYEEFIELDtype) :: sf
+REAL(kind=8), INTENT(IN) :: dt
+
+INTEGER :: j, k, l,which
+
+  call set_bndcoeffsem3d(sf,dt,which)
+
+  do l = 0, sf%nz
+   do k = 0, sf%ny
+    do j = 0, sf%nx-1
+      sf%ax(j,k,l) = sf%agx(j)*sf%ax(j,k,l) - sf%bpgx(j)*( sf%phi(1,j+1,k,l) + sf%phi(2,j+1,k,l) + sf%phi(3,j+1,k,l) ) &
+                                            - sf%bmgx(j)*( sf%phi(1,j  ,k,l) + sf%phi(2,j  ,k,l) + sf%phi(3,j  ,k,l) )
+    end do
+   end do
+  end do
+
+  do l = 0, sf%nz
+   do k = 0, sf%ny-1
+    do j = 0, sf%nx
+      sf%ay(j,k,l) = sf%agy(k)*sf%ay(j,k,l) - sf%bpgy(k)*( sf%phi(1,j,k+1,l) + sf%phi(2,j,k+1,l) + sf%phi(3,j,k+1,l) ) &
+                                            - sf%bmgy(k)*( sf%phi(1,j,k  ,l) + sf%phi(2,j,k  ,l) + sf%phi(3,j,k  ,l) )
+    end do
+   end do
+  end do
+
+  do l = 0, sf%nz-1
+   do k = 0, sf%ny
+    do j = 0, sf%nx
+      sf%az(j,k,l) = sf%agz(l)*sf%az(j,k,l) - sf%bpgz(l)*( sf%phi(1,j,k,l+1) + sf%phi(2,j,k,l+1) + sf%phi(3,j,k,l+1) ) &
+                                            - sf%bmgz(l)*( sf%phi(1,j,k,l)   + sf%phi(2,j,k,l  ) + sf%phi(3,j,k,l  ) )
+    end do
+   end do
+  end do
+
+  return
+end subroutine push_em3d_splita
+
+subroutine push_em3d_splitphi(sf,dt,which)
+use mod_emfield3d
+implicit none
+
+TYPE(EM3D_SPLITYEEFIELDtype) :: sf
+REAL(kind=8), INTENT(IN) :: dt
+
+INTEGER :: j, k, l,which
+
+  call set_bndcoeffsem3d(sf,dt,which)
+
+  do l = 0, sf%nz
+   do k = 0, sf%ny
+    do j = 0, sf%nx
+     sf%phi(1,j,k,l) = sf%afx(j)*sf%phi(1,j,k,l) - sf%bpfx(j)*sf%ax(j,k,l) - sf%bmfx(j)*sf%ax(j-1,k  ,l  ) 
+     sf%phi(2,j,k,l) = sf%afy(k)*sf%phi(2,j,k,l) - sf%bpfy(k)*sf%ay(j,k,l) - sf%bmfy(k)*sf%ay(j  ,k-1,l  ) 
+     sf%phi(3,j,k,l) = sf%afz(l)*sf%phi(3,j,k,l) - sf%bpfz(l)*sf%az(j,k,l) - sf%bmfz(l)*sf%az(j  ,k  ,l-1) 
+    end do
+   end do
+  end do
+
+  return
+end subroutine push_em3d_splitphi
+
 subroutine push_em3d_block(b,dt)
 use mod_emfield3d
 implicit none
@@ -958,39 +1093,42 @@ INTEGER :: j, k, l
   return
 end subroutine push_em3d_block
 
-subroutine push_em3d_eef(b,dt,which,l_pushf)
+subroutine push_em3d_eef(b,dt,which,l_pushf,l_pushpot)
 use mod_emfield3d
 implicit none
 
 TYPE(EM3D_BLOCKtype) :: b
 REAL(kind=8), INTENT(IN) :: dt
-logical(ISZ) :: l_pushf
+logical(ISZ) :: l_pushf,l_pushpot
 
 INTEGER(ISZ) :: j, k, l,which
   
   if (which==0) then
+    if(l_pushpot) call push_em3d_phi(b%core%yf,dt)
     if(l_pushf) call push_em3d_ef(b%core%yf,dt)
     call push_em3d_e(b%core%yf,dt)
   else
+    if(l_pushpot) call push_em3d_phi(b%core%yf,dt*0.5)
     if(l_pushf) call push_em3d_ef(b%core%yf,dt*0.5)
     call push_em3d_e(b%core%yf,dt*0.5)
   end if
+!  if(l_pushpot) call push_em3d_blockbndphi(b,dt,which)
   if(l_pushf) call push_em3d_blockbndef(b,dt,which)
   call push_em3d_blockbnde(b,dt,which)
   
-  ! --- need to exchange e even if not pushing f, for calculartion of e at nodes
+  ! --- need to exchange e even if not pushing f, for calculation of e at nodes
   call em3d_exchange_e(b)
 
   return
 end subroutine push_em3d_eef
 
-subroutine push_em3d_bf(b,dt,which,l_pushf)
+subroutine push_em3d_bf(b,dt,which,l_pushf,l_pushpot)
 use mod_emfield3d
 implicit none
 
 TYPE(EM3D_BLOCKtype) :: b
 REAL(kind=8), INTENT(IN) :: dt
-logical(ISZ) :: l_pushf
+logical(ISZ) :: l_pushf,l_pushpot
 
 INTEGER(ISZ) :: j, k, l,which
 
@@ -1282,11 +1420,13 @@ integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index) then
             ! --- send data down in z
             call MPI_ISEND(yfu%ez(-yfu%nxguard,-yfu%nyguard,0),int(size(yfu%ez(:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION, &
-                                  int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+                                  int(fl%proc,MPIISZ),1,MPI_COMM_WORLD,mpirequests(mpireqpnt+1),mpierror)
+            mpireqpnt=mpireqpnt+1
           else if (fu%proc/=my_index) then
             ! --- send data up in z
             call MPI_ISEND(yfl%ez(-yfl%nxguard,-yfl%nyguard,yfl%nz-1),int(size(yfl%ez(:,:,yfl%nz-1)),MPIISZ),&
-                                  MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+                                  MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),2,MPI_COMM_WORLD,mpirequests(mpireqpnt+1),mpierror)
+            mpireqpnt=mpireqpnt+1
           else
 #endif
             yfl%ez(:,:,yfl%nz) = yfu%ez(:,:,0)
@@ -1316,11 +1456,13 @@ integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index) then
             ! --- send data down in z
             call MPI_ISEND(syfu%ez(1,-syfu%nxguard,-syfu%nyguard,0),int(size(syfu%ez(:,:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,&
-                                   int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+                                   int(fl%proc,MPIISZ),3,MPI_COMM_WORLD,mpirequests(mpireqpnt+1),mpierror)
+            mpireqpnt=mpireqpnt+1
           else if (fu%proc/=my_index) then
             ! --- send data up in z
             call MPI_ISEND(syfl%ez(1,-syfl%nxguard,-syfl%nyguard,syfl%nz-1),int(size(syfl%ez(:,:,:,syfl%nz-1)),MPIISZ),&
-                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),4,MPI_COMM_WORLD,mpirequests(mpireqpnt+1),mpierror)
+            mpireqpnt=mpireqpnt+1
           else
 #endif
           if (fl%proc/=fu%proc) return
@@ -1354,10 +1496,10 @@ TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
           yfu=>fu%yf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            yfu%ez(:,:,-1) = reshape( mpi_recv_real( size(yfu%ez(:,:,-1)),fl%proc,0) ,shape(yfu%ez(:,:,-1)))
+            yfu%ez(:,:,-1) = reshape( mpi_recv_real( size(yfu%ez(:,:,-1)),fl%proc,2) ,shape(yfu%ez(:,:,-1)))
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            yfl%ez(:,:,yfl%nz) = reshape(mpi_recv_real(size(yfl%ez(:,:,yfl%nz)),fu%proc,0),shape(yfl%ez(:,:,yfl%nz)))
+            yfl%ez(:,:,yfl%nz) = reshape(mpi_recv_real(size(yfl%ez(:,:,yfl%nz)),fu%proc,1),shape(yfl%ez(:,:,yfl%nz)))
           end if
       end select
     case(splityeefield)
@@ -1367,10 +1509,10 @@ TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
           syfu=>fu%syf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            syfu%ez(:,:,:,-1) = reshape( mpi_recv_real(size(syfu%ez(:,:,:,-1)),fl%proc,0) ,shape(syfu%ez(:,:,:,-1)))
+            syfu%ez(:,:,:,-1) = reshape( mpi_recv_real(size(syfu%ez(:,:,:,-1)),fl%proc,4) ,shape(syfu%ez(:,:,:,-1)))
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            syfl%ez(:,:,:,syfl%nz) = reshape(mpi_recv_real(size(syfl%ez(:,:,:,syfl%nz)),fu%proc,0),shape(syfl%ez(:,:,:,syfl%nz)))
+            syfl%ez(:,:,:,syfl%nz) = reshape(mpi_recv_real(size(syfl%ez(:,:,:,syfl%nz)),fu%proc,3),shape(syfl%ez(:,:,:,syfl%nz)))
           end if
       end select
   end select
@@ -1496,6 +1638,7 @@ TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 #ifdef MPIPARALLEL
 integer(MPIISZ)::mpirequest(2),mpierror
+integer(ISZ) :: ibuf
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
@@ -1508,16 +1651,18 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            call MPI_ISEND(yfu%bx(-yfu%nxguard,-yfu%nyguard,0),int(size(yfu%by(:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,&
-                                  int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(yfu%by(-yfu%nxguard,-yfu%nyguard,0),int(size(yfu%by(:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,&
-                                  int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            ibuf = 5
+            call mpi_packbuffer_init(2*size(yfu%by(:,:,0)),ibuf)
+            call mympi_pack(yfu%bx(:,:,0),ibuf)
+            call mympi_pack(yfu%by(:,:,0),ibuf)
+            call mpi_isend_pack(fl%proc,1,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            call MPI_ISEND(yfl%bx(-yfl%nxguard,-yfl%nyguard,yfl%nz-1),int(size(yfl%bx(:,:,yfl%nz-1)),MPIISZ),&
-                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(yfl%by(-yfl%nxguard,-yfl%nyguard,yfl%nz-1),int(size(yfl%bx(:,:,yfl%nz-1)),MPIISZ),&
-                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            ibuf = 6
+            call mpi_packbuffer_init(2*size(yfl%by(:,:,0)),ibuf)
+            call mympi_pack(yfl%bx(:,:,yfl%nz-1),ibuf)
+            call mympi_pack(yfl%by(:,:,yfl%nz-1),ibuf)
+            call mpi_isend_pack(fu%proc,2,ibuf)
           else
 #endif
           yfl%bx(:,:,yfl%nz) = yfu%bx(:,:,0)
@@ -1554,16 +1699,18 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            call MPI_ISEND(syfu%bx(1,-syfu%nxguard,-syfu%nyguard,0),int(size(syfu%bx(:,:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,&
-                                   int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(syfu%by(1,-syfu%nxguard,-syfu%nyguard,0),int(size(syfu%bx(:,:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,&
-                                   int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            ibuf = 7
+            call mpi_packbuffer_init(2*size(syfu%by(:,:,:,0)),ibuf)
+            call mympi_pack(syfu%bx(:,:,:,0),ibuf)
+            call mympi_pack(syfu%by(:,:,:,0),ibuf)
+            call mpi_isend_pack(fl%proc,3,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            call MPI_ISEND(syfl%bx(1,-syfl%nxguard,-syfl%nyguard,syfl%nz-1),int(size(syfl%bx(:,:,:,syfl%nz-1)),MPIISZ),&
-                                   MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(syfl%by(1,-syfl%nxguard,-syfl%nyguard,syfl%nz-1),int(size(syfl%bx(:,:,:,syfl%nz-1)),MPIISZ),&
-                                   MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+            ibuf = 8
+            call mpi_packbuffer_init(2*size(syfl%by(:,:,:,0)),ibuf)
+            call mympi_pack(syfl%bx(:,:,:,syfl%nz-1),ibuf)
+            call mympi_pack(syfl%by(:,:,:,syfl%nz-1),ibuf)
+            call mpi_isend_pack(fu%proc,4,ibuf)
           else
 #endif
           if (fl%proc/=fu%proc) return
@@ -1580,6 +1727,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
   return
 end subroutine em3d_exchange_bndb_z
 
+#ifdef MPIPARALLEL
 subroutine em3d_exchange_bndb_zrecv(fl,fu)
 use mod_emfield3d
 implicit none
@@ -1587,9 +1735,9 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-#ifdef MPIPARALLEL
+integer(ISZ) :: ibuf
+
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
-#endif
 
   select case(fl%fieldtype)
     case(yeefield)
@@ -1597,17 +1745,21 @@ TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
       select case(fu%fieldtype)
         case(yeefield)
           yfu=>fu%yf
-#ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            yfu%bx(:,:,-1) = reshape(mpi_recv_real( size(yfu%bx(:,:,-1)),fl%proc,0),shape(yfu%bx(:,:,-1)))
-            yfu%by(:,:,-1) = reshape(mpi_recv_real( size(yfu%by(:,:,-1)),fl%proc,0),shape(yfu%bx(:,:,-1)))
+            ibuf = 9
+            call mpi_packbuffer_init(2*size(yfu%bx(:,:,0)),ibuf)
+            call mpi_recv_pack(fl%proc,2,ibuf)
+            call submpi_unpack_real_array(yfu%bx(-yfu%nxguard,-yfu%nyguard,-1),size(yfu%bx(:,:,-1)),ibuf)
+            call submpi_unpack_real_array(yfu%by(-yfu%nxguard,-yfu%nyguard,-1),size(yfu%bx(:,:,-1)),ibuf)
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            yfl%bx(:,:,yfl%nz) = reshape(mpi_recv_real( size(yfl%bx(:,:,yfl%nz)),fu%proc,0),shape(yfl%bx(:,:,yfl%nz)))
-            yfl%by(:,:,yfl%nz) = reshape(mpi_recv_real( size(yfl%bx(:,:,yfl%nz)),fu%proc,0),shape(yfl%bx(:,:,yfl%nz)))
+            ibuf = 10
+            call mpi_packbuffer_init(2*size(yfl%bx(:,:,0)),ibuf)
+            call mpi_recv_pack(fu%proc,1,ibuf)
+            call submpi_unpack_real_array(yfl%bx(-yfl%nxguard,-yfl%nyguard,yfl%nz),size(yfl%bx(:,:,-1)),ibuf)
+            call submpi_unpack_real_array(yfl%by(-yfl%nxguard,-yfl%nyguard,yfl%nz),size(yfl%bx(:,:,-1)),ibuf)
           end if
-#endif
       end select
     case(splityeefield)
       syfl=>fl%syf
@@ -1615,22 +1767,27 @@ TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
         case(yeefield)
         case(splityeefield)
           syfu=>fu%syf
-#ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
+            ibuf = 11
+            call mpi_packbuffer_init(2*size(syfu%bx(:,:,:,0)),ibuf)
+            call mpi_recv_pack(fl%proc,4,ibuf)
             ! --- recv data from down in z
-            syfu%bx(:,:,:,-1) = reshape(mpi_recv_real( size(syfu%bx(:,:,:,-1)),fl%proc,0),shape(syfu%bx(:,:,:,-1)))
-            syfu%by(:,:,:,-1) = reshape(mpi_recv_real( size(syfu%bx(:,:,:,-1)),fl%proc,0),shape(syfu%bx(:,:,:,-1)))
+            call submpi_unpack_real_array(syfu%bx(1,-syfu%nxguard,-syfu%nyguard,-1),size(syfu%bx(:,:,:,-1)),ibuf)
+            call submpi_unpack_real_array(syfu%by(1,-syfu%nxguard,-syfu%nyguard,-1),size(syfu%bx(:,:,:,-1)),ibuf)
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            syfl%bx(:,:,:,syfl%nz) = reshape(mpi_recv_real( size(syfl%bx(:,:,:,syfl%nz)),fu%proc,0),shape(syfl%bx(:,:,:,syfl%nz)))
-            syfl%by(:,:,:,syfl%nz) = reshape(mpi_recv_real( size(syfl%bx(:,:,:,syfl%nz)),fu%proc,0),shape(syfl%bx(:,:,:,syfl%nz)))
+            ibuf = 12
+            call mpi_packbuffer_init(2*size(syfl%bx(:,:,:,0)),ibuf)
+            call mpi_recv_pack(fu%proc,3,ibuf)
+            call submpi_unpack_real_array(syfl%bx(1,-syfl%nxguard,-syfl%nyguard,syfl%nz),size(syfl%bx(:,:,:,-1)),ibuf)
+            call submpi_unpack_real_array(syfl%by(1,-syfl%nxguard,-syfl%nyguard,syfl%nz),size(syfl%bx(:,:,:,-1)),ibuf)
           end if
-#endif
       end select
   end select
 
   return
 end subroutine em3d_exchange_bndb_zrecv
+#endif
 
 subroutine em3d_exchange_bndj_x(fl,fu)
 use mod_emfield3d
@@ -1650,10 +1807,13 @@ TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
       select case(fu%fieldtype)
         case(yeefield)
           yfu=>fu%yf
-          yfu%J(0,:,:,1)          = yfu%J(0,:,:,1)          + yfl%J(yfl%nx,:,:,1) 
-          yfu%J(0:1,:,:,2:3)      = yfu%J(0:1,:,:,2:3)      + yfl%J(yfl%nx:yfl%nx+1,:,:,2:3)
-          yfl%J(yfl%nx-1,:,:,:)   = yfl%J(yfl%nx-1,:,:,:)   + yfu%J(-1,:,:,:)
-          yfl%J(yfl%nx,:,:,2:3)   = yfu%J(0,:,:,2:3)
+
+          yfu%J(0:1,:,:,2:3)    = yfu%J(0:1,:,:,2:3)    + yfl%J(yfl%nx:yfl%nx+1,:,:,2:3)
+          yfu%J(0,:,:,1)        = yfu%J(0,:,:,1)        + yfl%J(yfl%nx,:,:,1) 
+
+          yfl%J(yfl%nx-1,:,:,:) = yfl%J(yfl%nx-1,:,:,:) + yfu%J(-1,:,:,:)
+          yfl%J(yfl%nx,:,:,2:3) = yfu%J(0,:,:,2:3)
+
       end select
   end select
 
@@ -1678,10 +1838,11 @@ TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
       select case(fu%fieldtype)
         case(yeefield)
           yfu=>fu%yf
-          yfu%J(:,0,:,2)          = yfu%J(:,0,:,2)          + yfl%J(:,yfl%ny,:,2) 
-          yfu%J(:,0:1,:,1:3:2)      = yfu%J(:,0:1,:,1:3:2)      + yfl%J(:,yfl%ny:yfl%ny+1,:,1:3:2)
-          yfl%J(:,yfl%ny-1,:,:) = yfl%J(:,yfl%ny-1,:,:) + yfu%J(:,-1,:,:)
-          yfl%J(:,yfl%ny,:,1:3:2)   = yfu%J(:,0,:,1:3:2)
+          yfu%J(:,0:1,:,1:3:2)    = yfu%J(:,0:1,:,1:3:2)  + yfl%J(:,yfl%ny:yfl%ny+1,:,1:3:2)
+          yfu%J(:,0,:,2)          = yfu%J(:,0,:,2)        + yfl%J(:,yfl%ny,:,2) 
+
+          yfl%J(:,yfl%ny-1,:,:)   = yfl%J(:,yfl%ny-1,:,:) + yfu%J(:,-1,:,:)
+          yfl%J(:,yfl%ny,:,1:3:2) = yfu%J(:,0,:,1:3:2)
       end select
   end select
 
@@ -1697,7 +1858,7 @@ TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
 #ifdef MPIPARALLEL
-integer(MPIISZ)::mpirequest(5),mpierror
+integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
@@ -1711,30 +1872,24 @@ integer(MPIISZ)::mpirequest(5),mpierror
           if (fl%proc/=my_index) then
 
             ! --- send data down in z
-            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,-1,1),int(size(yfu%J(:,:,-1,1)),MPIISZ),MPI_DOUBLE_PRECISION,&
-                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,-1,2),int(size(yfu%J(:,:,-1,2)),MPIISZ),MPI_DOUBLE_PRECISION,&
-                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
-            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,-1,3),int(size(yfu%J(:,:,-1,3)),MPIISZ),MPI_DOUBLE_PRECISION,&
-                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(3),mpierror)
-            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,0,1),int(size(yfu%J(:,:,0,1)),MPIISZ),MPI_DOUBLE_PRECISION,&
-                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(4),mpierror)
-            call MPI_ISEND(yfu%J(-yfu%nxguard,-yfu%nyguard,0,2),int(size(yfu%J(:,:,0,2)),MPIISZ),MPI_DOUBLE_PRECISION,&
-                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(5),mpierror)
-
+            call mpi_packbuffer_init(5*size(yfu%J(:,:,-1,1)),1)
+            call mympi_pack(yfu%J(:,:,-1,1),1)
+            call mympi_pack(yfu%J(:,:,-1,2),1)
+            call mympi_pack(yfu%J(:,:,-1,3),1)
+            call mympi_pack(yfu%J(:,:, 0,1),1)
+            call mympi_pack(yfu%J(:,:, 0,2),1)
+            call mpi_isend_pack(fl%proc,1,1)
+            
           else if (fu%proc/=my_index) then
 
             ! --- send data up in z
-            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz  ,1),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),&
-                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
-            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz+1,1),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),&
-                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(2),mpierror)
-            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz  ,2),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),&
-                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(3),mpierror)
-            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz+1,2),int(size(yfl%J(:,:,yfl%nz,1)),MPIISZ),&
-                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(4),mpierror)
-            call MPI_ISEND(yfl%J(-yfl%nxguard,-yfl%nyguard,yfl%nz,3),int(size(yfl%J(:,:,yfl%nz,3)),MPIISZ),&
-                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(5),mpierror)
+            call mpi_packbuffer_init(5*size(yfl%J(:,:,0,0)),2)
+            call mympi_pack(yfl%J(:,:,yfl%nz  ,1),2)
+            call mympi_pack(yfl%J(:,:,yfl%nz+1,1),2)
+            call mympi_pack(yfl%J(:,:,yfl%nz  ,2),2)
+            call mympi_pack(yfl%J(:,:,yfl%nz+1,2),2)
+            call mympi_pack(yfl%J(:,:,yfl%nz  ,3),2)
+            call mpi_isend_pack(fu%proc,2,2)
 
           else
 #endif
@@ -1748,7 +1903,6 @@ integer(MPIISZ)::mpirequest(5),mpierror
 #endif
       end select
   end select
-
   return
 end subroutine em3d_exchange_bndj_z
 
@@ -1761,7 +1915,7 @@ TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
     case(yeefield)
@@ -1770,25 +1924,31 @@ TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
         case(yeefield)
           yfu=>fu%yf
           if (fl%proc/=my_index) then
+          
             ! --- recv data from down in z
-            yfu%J(:,:,0,1) = yfu%J(:,:,0,1) + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
-            yfu%J(:,:,1,1) = yfu%J(:,:,1,1) + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
-            yfu%J(:,:,0,2) = yfu%J(:,:,0,2) + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
-            yfu%J(:,:,1,2) = yfu%J(:,:,1,2) + reshape(mpi_recv_real( size(yfu%J(:,:,0,1)),fl%proc,0),shape(yfu%J(:,:,0,1)))
-            yfu%J(:,:,0,3) = yfu%J(:,:,0,3) + reshape(mpi_recv_real( size(yfu%J(:,:,0,3)),fl%proc,0),shape(yfu%J(:,:,0,3)))
+            call mpi_packbuffer_init(5*size(yfu%J(:,:,0,1)),4)
+            call mpi_recv_pack(fl%proc,2,4)
+            yfu%J(:,:,0,1) = yfu%J(:,:,0,1) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),4),shape(yfu%J(:,:,0,1)))
+            yfu%J(:,:,1,1) = yfu%J(:,:,1,1) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),4),shape(yfu%J(:,:,0,1)))
+            yfu%J(:,:,0,2) = yfu%J(:,:,0,2) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),4),shape(yfu%J(:,:,0,1)))
+            yfu%J(:,:,1,2) = yfu%J(:,:,1,2) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),4),shape(yfu%J(:,:,0,1)))
+            yfu%J(:,:,0,3) = yfu%J(:,:,0,3) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),4),shape(yfu%J(:,:,0,1)))
 
           else if (fu%proc/=my_index) then
+
             ! --- recv data from up in z
-            yfl%J(:,:,yfl%nz-1,1) = yfl%J(:,:,yfl%nz-1,1) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz-1,1)),fu%proc,0),&
-                                                              shape(yfl%J(:,:,yfl%nz-1,1)))
-            yfl%J(:,:,yfl%nz-1,2) = yfl%J(:,:,yfl%nz-1,2) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz-1,2)),fu%proc,0),&
-                                                              shape(yfl%J(:,:,yfl%nz-1,2)))
-            yfl%J(:,:,yfl%nz-1,3) = yfl%J(:,:,yfl%nz-1,3) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz-1,3)),fu%proc,0),&
-                                                              shape(yfl%J(:,:,yfl%nz-1,3)))
-            yfl%J(:,:,yfl%nz,1) = yfl%J(:,:,yfl%nz,1) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz,1)),fu%proc,0),&
-                                                              shape(yfl%J(:,:,yfl%nz,1)))
-            yfl%J(:,:,yfl%nz,2) = yfl%J(:,:,yfl%nz,2) + reshape(mpi_recv_real( size(yfl%J(:,:,yfl%nz,2)),fu%proc,0),&
-                                                              shape(yfl%J(:,:,yfl%nz,2)))
+            call mpi_packbuffer_init(5*size(yfl%J(:,:,0,0)),3)
+            call mpi_recv_pack(fu%proc,1,3)
+            yfl%J(:,:,yfl%nz-1,1) = yfl%J(:,:,yfl%nz-1,1) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,1)),3),&
+                                                                                          shape(yfl%J(:,:,yfl%nz-1,1)))
+            yfl%J(:,:,yfl%nz-1,2) = yfl%J(:,:,yfl%nz-1,2) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,2)),3),&
+                                                                                          shape(yfl%J(:,:,yfl%nz-1,2)))
+            yfl%J(:,:,yfl%nz-1,3) = yfl%J(:,:,yfl%nz-1,3) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,3)),3),&
+                                                                                          shape(yfl%J(:,:,yfl%nz-1,3)))
+            yfl%J(:,:,yfl%nz  ,1) = yfl%J(:,:,yfl%nz  ,1) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz  ,1)),3),&
+                                                                                          shape(yfl%J(:,:,yfl%nz  ,1)))
+            yfl%J(:,:,yfl%nz  ,2) = yfl%J(:,:,yfl%nz  ,2) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz  ,2)),3),&
+                                                                                          shape(yfl%J(:,:,yfl%nz  ,2)))
           end if
       end select
   end select
@@ -1860,7 +2020,7 @@ TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
 #ifdef MPIPARALLEL
-integer(MPIISZ)::mpirequest(2),mpierror
+integer(MPIISZ)::mpierror
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
@@ -1874,11 +2034,13 @@ integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index) then
             ! --- send data down in z
             call MPI_ISEND(yfu%Rho(-yfu%nxguard,-yfu%nyguard,-1),int(size(yfu%Rho(:,:,-1:0)),MPIISZ),MPI_DOUBLE_PRECISION,&
-                           int(fl%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+                           int(fl%proc,MPIISZ),1,MPI_COMM_WORLD,mpirequests(mpireqpnt+1),mpierror)
+            mpireqpnt=mpireqpnt+1
           else if (fu%proc/=my_index) then
             ! --- send data up in z
             call MPI_ISEND(yfl%Rho(-yfl%nxguard,-yfl%nyguard,yfl%nz),int(size(yfl%Rho(:,:,yfl%nz:yfl%nz+1)),MPIISZ),&
-                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),2,MPI_COMM_WORLD,mpirequests(mpireqpnt+1),mpierror)
+            mpireqpnt=mpireqpnt+1
           else
 #endif
           yfu%Rho(:,:,0:1)      = yfu%Rho(:,:,0:1)      + yfl%Rho(:,:,yfl%nz:yfl%nz+1)
@@ -1912,11 +2074,11 @@ TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
           yfu=>fu%yf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            yfu%Rho(:,:,0:1) = yfu%Rho(:,:,0:1) + reshape(mpi_recv_real( size(yfu%Rho(:,:,0:1)),fl%proc,0),shape(yfu%Rho(:,:,0:1)))
+            yfu%Rho(:,:,0:1) = yfu%Rho(:,:,0:1) + reshape(mpi_recv_real( size(yfu%Rho(:,:,0:1)),fl%proc,2),shape(yfu%Rho(:,:,0:1)))
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
             yfl%Rho(:,:,yfl%nz-1:yfl%nz) = yfl%Rho(:,:,yfl%nz-1:yfl%nz) + &
-            reshape(mpi_recv_real( size(yfl%Rho(:,:,yfl%nz-1:yfl%nz)),fu%proc,0),shape(yfl%Rho(:,:,yfl%nz-1:yfl%nz)))
+            reshape(mpi_recv_real( size(yfl%Rho(:,:,yfl%nz-1:yfl%nz)),fu%proc,1),shape(yfl%Rho(:,:,yfl%nz-1:yfl%nz)))
           end if
       end select
   end select
@@ -1983,7 +2145,7 @@ TYPE(EM3D_BLOCKtype) :: b
 #ifdef MPIPARALLEL
   call em3d_exchange_bnde_zrecv(b%sidezl, b%core)
   call em3d_exchange_bnde_zrecv(b%core,   b%sidezr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   ! sides<--->edges
   call em3d_exchange_bnde_z(b%sidexl,   b%edgexlzr)
@@ -1991,28 +2153,28 @@ TYPE(EM3D_BLOCKtype) :: b
 #ifdef MPIPARALLEL
   call em3d_exchange_bnde_zrecv(b%edgexlzl, b%sidexl)
   call em3d_exchange_bnde_zrecv(b%sidexl,   b%edgexlzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bnde_z(b%sidexr,   b%edgexrzr)
   call em3d_exchange_bnde_z(b%edgexrzl, b%sidexr)
 #ifdef MPIPARALLEL
   call em3d_exchange_bnde_zrecv(b%edgexrzl, b%sidexr)
   call em3d_exchange_bnde_zrecv(b%sidexr,   b%edgexrzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bnde_z(b%sideyl,   b%edgeylzr)
   call em3d_exchange_bnde_z(b%edgeylzl, b%sideyl)
 #ifdef MPIPARALLEL
   call em3d_exchange_bnde_zrecv(b%edgeylzl, b%sideyl)
   call em3d_exchange_bnde_zrecv(b%sideyl,   b%edgeylzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bnde_z(b%sideyr,   b%edgeyrzr)
   call em3d_exchange_bnde_z(b%edgeyrzl, b%sideyr)
 #ifdef MPIPARALLEL
   call em3d_exchange_bnde_zrecv(b%edgeyrzl, b%sideyr)
   call em3d_exchange_bnde_zrecv(b%sideyr,   b%edgeyrzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   ! edges<--->corners
   call em3d_exchange_bnde_z(b%edgexlyl,     b%cornerxlylzr)
@@ -2020,28 +2182,28 @@ TYPE(EM3D_BLOCKtype) :: b
 #ifdef MPIPARALLEL
   call em3d_exchange_bnde_zrecv(b%cornerxlylzl, b%edgexlyl)
   call em3d_exchange_bnde_zrecv(b%edgexlyl,     b%cornerxlylzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bnde_z(b%edgexryl,     b%cornerxrylzr)
   call em3d_exchange_bnde_z(b%cornerxrylzl, b%edgexryl)
 #ifdef MPIPARALLEL
   call em3d_exchange_bnde_zrecv(b%cornerxrylzl, b%edgexryl)
   call em3d_exchange_bnde_zrecv(b%edgexryl,     b%cornerxrylzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bnde_z(b%edgexlyr,     b%cornerxlyrzr)
   call em3d_exchange_bnde_z(b%cornerxlyrzl, b%edgexlyr)
 #ifdef MPIPARALLEL
   call em3d_exchange_bnde_zrecv(b%cornerxlyrzl, b%edgexlyr)
   call em3d_exchange_bnde_zrecv(b%edgexlyr,     b%cornerxlyrzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bnde_z(b%edgexryr,     b%cornerxryrzr)
   call em3d_exchange_bnde_z(b%cornerxryrzl, b%edgexryr)
 #ifdef MPIPARALLEL
   call em3d_exchange_bnde_zrecv(b%cornerxryrzl, b%edgexryr)
   call em3d_exchange_bnde_zrecv(b%edgexryr,     b%cornerxryrzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
 
   return
@@ -2098,6 +2260,7 @@ TYPE(EM3D_BLOCKtype) :: b
   call em3d_exchange_bndb_y(b%cornerxlylzr, b%edgexlzr)
   call em3d_exchange_bndb_y(b%edgexrzr,     b%cornerxryrzr)
   call em3d_exchange_bndb_y(b%cornerxrylzr, b%edgexrzr)
+
   ! --- Z
   ! core<--->sides
   call em3d_exchange_bndb_z(b%core,   b%sidezr)
@@ -2105,7 +2268,7 @@ TYPE(EM3D_BLOCKtype) :: b
 #ifdef MPIPARALLEL
   call em3d_exchange_bndb_zrecv(b%sidezl, b%core)
   call em3d_exchange_bndb_zrecv(b%core,   b%sidezr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   ! sides<--->edges
   call em3d_exchange_bndb_z(b%sidexl,   b%edgexlzr)
@@ -2113,28 +2276,28 @@ TYPE(EM3D_BLOCKtype) :: b
 #ifdef MPIPARALLEL
   call em3d_exchange_bndb_zrecv(b%edgexlzl, b%sidexl)
   call em3d_exchange_bndb_zrecv(b%sidexl,   b%edgexlzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bndb_z(b%sidexr,   b%edgexrzr)
   call em3d_exchange_bndb_z(b%edgexrzl, b%sidexr)
 #ifdef MPIPARALLEL
   call em3d_exchange_bndb_zrecv(b%edgexrzl, b%sidexr)
   call em3d_exchange_bndb_zrecv(b%sidexr,   b%edgexrzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bndb_z(b%sideyl,   b%edgeylzr)
   call em3d_exchange_bndb_z(b%edgeylzl, b%sideyl)
 #ifdef MPIPARALLEL
   call em3d_exchange_bndb_zrecv(b%edgeylzl, b%sideyl)
   call em3d_exchange_bndb_zrecv(b%sideyl,   b%edgeylzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bndb_z(b%sideyr,   b%edgeyrzr)
   call em3d_exchange_bndb_z(b%edgeyrzl, b%sideyr)
 #ifdef MPIPARALLEL
   call em3d_exchange_bndb_zrecv(b%edgeyrzl, b%sideyr)
   call em3d_exchange_bndb_zrecv(b%sideyr,   b%edgeyrzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   ! edges<--->corners
   call em3d_exchange_bndb_z(b%edgexlyl,     b%cornerxlylzr)
@@ -2142,28 +2305,28 @@ TYPE(EM3D_BLOCKtype) :: b
 #ifdef MPIPARALLEL
   call em3d_exchange_bndb_zrecv(b%cornerxlylzl, b%edgexlyl)
   call em3d_exchange_bndb_zrecv(b%edgexlyl,     b%cornerxlylzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bndb_z(b%edgexryl,     b%cornerxrylzr)
   call em3d_exchange_bndb_z(b%cornerxrylzl, b%edgexryl)
 #ifdef MPIPARALLEL
   call em3d_exchange_bndb_zrecv(b%cornerxrylzl, b%edgexryl)
   call em3d_exchange_bndb_zrecv(b%edgexryl,     b%cornerxrylzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bndb_z(b%edgexlyr,     b%cornerxlyrzr)
   call em3d_exchange_bndb_z(b%cornerxlyrzl, b%edgexlyr)
 #ifdef MPIPARALLEL
   call em3d_exchange_bndb_zrecv(b%cornerxlyrzl, b%edgexlyr)
   call em3d_exchange_bndb_zrecv(b%edgexlyr,     b%cornerxlyrzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   call em3d_exchange_bndb_z(b%edgexryr,     b%cornerxryrzr)
   call em3d_exchange_bndb_z(b%cornerxryrzl, b%edgexryr)
 #ifdef MPIPARALLEL
   call em3d_exchange_bndb_zrecv(b%cornerxryrzl, b%edgexryr)
   call em3d_exchange_bndb_zrecv(b%edgexryr,     b%cornerxryrzr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
 
   return
@@ -2173,7 +2336,9 @@ subroutine em3d_exchange_j(b)
 use mod_emfield3d
 implicit none
 TYPE(EM3D_BLOCKtype) :: b
-
+#ifdef MPIPARALLEL
+integer(MPIISZ)::mpirequest(2)
+#endif
   ! --- X
   ! core<--->sides
   call em3d_exchange_bndj_x(b%core,   b%sidexr)
@@ -2191,7 +2356,7 @@ TYPE(EM3D_BLOCKtype) :: b
 #ifdef MPIPARALLEL
   if(b%zrbnd /= periodic) call em3d_exchange_bndj_zrecv(b%sidezl, b%core)
   call em3d_exchange_bndj_zrecv(b%core,   b%sidezr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
 
   return
@@ -2220,7 +2385,7 @@ TYPE(EM3D_BLOCKtype) :: b
 #ifdef MPIPARALLEL
   if(b%zrbnd /= periodic) call em3d_exchange_bndrho_zrecv(b%sidezl, b%core)
   call em3d_exchange_bndrho_zrecv(b%core,   b%sidezr)
-  call parallelbarrier()
+  call mpi_waitall_requests()
 #endif
   return
 end subroutine em3d_exchange_rho
@@ -2334,5 +2499,3 @@ integer(ISZ) :: i,n,indx(3,n)
   end do  
 
 end subroutine set_incond
-
-
