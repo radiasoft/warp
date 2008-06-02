@@ -396,3 +396,105 @@ end subroutine depose_rho_linear_serial
 
    return
  end subroutine getf3d_linear
+
+ subroutine gete3d_linear_energy_conserving(np,xp,yp,zp,ex,ey,ez,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,exg,eyg,ezg)
+   
+      integer(ISZ) :: np,nx,ny,nz
+      real(kind=8), dimension(np) :: xp,yp,zp,ex,ey,ez
+      real(kind=8), dimension(-1:nx+1,-1:ny+1,-1:nz+1) :: exg,eyg,ezg
+      real(kind=8) :: xmin,ymin,zmin,dx,dy,dz
+      integer(ISZ) :: ip, j, k, l
+      real(kind=8) :: dxi, dyi, dzi, x, y, z, xint, yint, zint, s1x, s2x, s1y, s2y, s1z, s2z
+
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+
+      do ip=1,np
+
+        x = (xp(ip)-xmin)*dxi
+        y = (yp(ip)-ymin)*dyi
+        z = (zp(ip)-zmin)*dzi
+
+        j=floor(x)
+        k=floor(y)
+        l=floor(z)
+
+        xint=x-j
+        yint=y-k
+        zint=z-l
+
+        s1x=xint
+        s2x=1.-xint
+        s1y=yint
+        s2y=1.-yint
+        s1z=zint
+        s2z=1.-zint
+
+        ex(ip) = ex(ip) + s1y*s1z*exg(j,k+1,l+1) &
+                        + s2y*s1z*exg(j,k  ,l+1) &
+                        + s1y*s2z*exg(j,k+1,l  ) &
+                        + s2y*s2z*exg(j,k  ,l  )
+                       
+        ey(ip) = ey(ip) + s1x*s1z*eyg(j+1,k,l+1) &
+                        + s2x*s1z*eyg(j  ,k,l+1) &
+                        + s1x*s2z*eyg(j+1,k,l  ) &
+                        + s2x*s2z*eyg(j  ,k,l  )
+                       
+        ez(ip) = ez(ip) + s1x*s1y*ezg(j+1,k+1,l) &
+                        + s2x*s1y*ezg(j  ,k+1,l) &
+                        + s1x*s2y*ezg(j+1,k  ,l) &
+                        + s2x*s2y*ezg(j  ,k  ,l)
+                       
+     end do
+
+   return
+ end subroutine gete3d_linear_energy_conserving
+
+ subroutine getb3d_linear_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,bxg,byg,bzg)
+   
+      integer(ISZ) :: np,nx,ny,nz
+      real(kind=8), dimension(np) :: xp,yp,zp,bx,by,bz
+      real(kind=8), dimension(-1:nx+1,-1:ny+1,-1:nz+1) :: bxg,byg,bzg
+      real(kind=8) :: xmin,ymin,zmin,dx,dy,dz
+      integer(ISZ) :: ip, j, k, l
+      real(kind=8) :: dxi, dyi, dzi, x, y, z, xint, yint, zint, s1x, s2x, s1y, s2y, s1z, s2z
+
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+
+      do ip=1,np
+
+        x = (xp(ip)-xmin)*dxi
+        y = (yp(ip)-ymin)*dyi
+        z = (zp(ip)-zmin)*dzi
+
+        j=floor(x)
+        k=floor(y)
+        l=floor(z)
+
+        xint=x-j
+        yint=y-k
+        zint=z-l
+
+        s1x=xint
+        s2x=1.-xint
+        s1y=yint
+        s2y=1.-yint
+        s1z=zint
+        s2z=1.-zint
+
+        bx(ip) = bx(ip) + s1x*bxg(j  ,k,l) &
+                        + s2x*bxg(j+1,k,l) 
+                       
+        by(ip) = by(ip) + s1y*byg(j,k  ,l) &
+                        + s2y*byg(j,k+1,l) 
+                       
+        bz(ip) = bz(ip) + s1z*bzg(j,k,l  ) &
+                        + s2z*bzg(j,k,l+1) 
+                       
+     end do
+
+   return
+ end subroutine getb3d_linear_energy_conserving
