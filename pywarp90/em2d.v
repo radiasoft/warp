@@ -1,13 +1,11 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.17 $, $Date: 2008/03/17 19:31:45 $
+#@(#) File EM2D.V, version $Revision: 1.18 $, $Date: 2008/06/03 23:49:34 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
-# This is the parameter and variable database for package TOP of code WARP
-# TOP - all variables and code which are needed by more than one package.
-#       --> These common blocks are available to all packages <--
-# Alex Friedman,  LLNL, (510)422-0827
-# David P. Grote, LLNL, (510)423-7194
+# This is the parameter and variable database for the 3-D EM solver of code WARP
 # Jean-Luc Vay,   LBNL, (510)486-4934
+# David P. Grote, LLNL, (510)423-7194
+# Alex Friedman,  LLNL, (510)422-0827
 
 *********** EM2D_APML:
 pml              integer /1/
@@ -208,6 +206,9 @@ dx real
 dy real
 dxi real
 dyi real
+a real /0./
+b real /0./
+c real /0./
 xlbound                      integer /0/
 xrbound                      integer /0/
 ylbound                      integer /0/
