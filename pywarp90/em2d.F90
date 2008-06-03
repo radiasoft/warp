@@ -196,6 +196,55 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
   return
 end subroutine depose_jxjy_esirkepov_linear_serial
 
+subroutine depose_rho_esirkepov_linear_serial(rho,np,xp,yp,w,q,xmin,ymin,dx,dy,nx,ny,l_particles_weight)
+   implicit none
+   integer(ISZ) :: np,nx,ny
+   real(kind=8), dimension(-1:nx+2,-1:ny+1), intent(in out) :: rho
+   real(kind=8), dimension(np) :: xp,yp,w
+   real(kind=8) :: q,dt,dx,dy,xmin,ymin
+   logical(ISZ) :: l_particles_weight
+
+   real(kind=8) :: dxi,dyi,xint,yint
+   real(kind=8) :: x,y,wq,invsurf,s1x,s2x,s1y,s2y
+   integer(ISZ) :: iixp,ijxp,ip,dix,diy
+
+      dxi = 1./dx
+      dyi = 1./dy
+      invsurf = dxi*dyi
+
+      do ip=1,np
+      
+        x = (xp(ip)-xmin)*dxi
+        y = (yp(ip)-ymin)*dyi
+        
+        if (l_particles_weight) then
+          wq=q*w(ip)*invsurf
+        else
+          wq=q*invsurf
+        end if
+      
+        iixp=floor(x)
+        ijxp=floor(y)
+
+        xint = x-iixp
+        yint = y-ijxp
+
+        s1x = 1.-xint
+        s2x = xint
+
+        s1y = 1.-yint
+        s2y = yint
+
+        rho(iixp  ,ijxp  )=rho(iixp  ,ijxp  )+s1x*s1y*wq
+        rho(iixp+1,ijxp  )=rho(iixp+1,ijxp  )+s2x*s1y*wq
+        rho(iixp  ,ijxp+1)=rho(iixp  ,ijxp+1)+s1x*s2y*wq
+        rho(iixp+1,ijxp+1)=rho(iixp+1,ijxp+1)+s2x*s2y*wq
+      
+    end do
+
+  return
+end subroutine depose_rho_esirkepov_linear_serial
+
  subroutine geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg,bxg,byg,bzg)
    
       integer(ISZ) :: np,nx,ny
@@ -562,6 +611,19 @@ subroutine em2d_depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gamin
 
   return
 end subroutine em2d_depose_jxjy_esirkepov_linear_serial
+
+subroutine em2d_depose_rho_esirkepov_linear_serial(rho,np,xp,yp,w,q,xmin,ymin,dx,dy,nx,ny,l_particles_weight)
+  use em2d_depos,Only: depose_rho_esirkepov_linear_serial
+  integer(ISZ) :: np,nx,ny
+  real(kind=8), dimension(-1:nx+2,-1:ny+1), intent(in out) :: rho
+  real(kind=8), dimension(np) :: xp,yp,w
+  real(kind=8) :: q,dx,dy,xmin,ymin
+  logical(ISZ) :: l_particles_weight
+
+  call depose_rho_esirkepov_linear_serial(rho,np,xp,yp,w,q,xmin,ymin,dx,dy,nx,ny,l_particles_weight)
+
+  return
+end subroutine em2d_depose_rho_esirkepov_linear_serial
 
 subroutine smooth2d_lindman(q,nx,ny)
  implicit none
