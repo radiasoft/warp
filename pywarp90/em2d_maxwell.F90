@@ -11,6 +11,7 @@ USE mod_bnd
 USE mod_bnd_cummer, create_bnd_cummer => create_bnd, &
                     move_bnd_cummer => move_bnd, &
                     move_window_bnd_cummer => move_window_bnd , &
+                    assign_coefs_cummer => assign_coefs, &
                     ijk_cummer => ijk
 USE EM2D_FIELDobjects
 use GlobalVars
@@ -34,7 +35,7 @@ implicit none
 
 INTEGER :: j, k
 real(kind=8) :: dt
-real(kind=8) :: dtsdx,dtsdy,a,b
+real(kind=8) :: dtsdx,dtsdy
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Exapr, Eyapr
 TYPE(EM2D_FIELDtype) :: f
 
@@ -79,8 +80,10 @@ if (f%l_usecoeffs) then
   end do
 else
  if (f%l_uselargestencil) then
-  a = 7./12.
-  b  = 5./24.
+  if (f%a==0.) then
+    f%a = 7./12.
+    f%b  = 5./24.
+  end if
   ! advance Bx
   do k = 1, f%ny+1
 !    j = 0
@@ -88,9 +91,9 @@ else
 !    j = f%nx+1
 !      f%Bx(j,k) = f%Bx(j,k) - dtsdy * (f%Ez(j,k)   - f%Ez(j,k-1)) 
     do j = 1, f%nx
-      f%Bx(j,k) = f%Bx(j,k) - a * dtsdy * (f%Ez(j,  k)   - f%Ez(j,  k-1)) &
-                            - b * dtsdy * (f%Ez(j+1,k)   - f%Ez(j+1,k-1)) &
-                            - b * dtsdy * (f%Ez(j-1,k)   - f%Ez(j-1,k-1)) 
+      f%Bx(j,k) = f%Bx(j,k) - f%a * dtsdy * (f%Ez(j,  k)   - f%Ez(j,  k-1)) &
+                            - f%b * dtsdy * (f%Ez(j+1,k)   - f%Ez(j+1,k-1)) &
+                            - f%b * dtsdy * (f%Ez(j-1,k)   - f%Ez(j-1,k-1)) 
     end do
   end do
 
@@ -102,9 +105,9 @@ else
 !      end do
     else
       do j = 1, f%nx+1
-        f%By(j,k) = f%By(j,k) + a * dtsdx * (f%Ez(j,k)   - f%Ez(j-1,k  )) &
-                              + b * dtsdx * (f%Ez(j,k+1) - f%Ez(j-1,k+1)) &
-                              + b * dtsdx * (f%Ez(j,k-1) - f%Ez(j-1,k-1))
+        f%By(j,k) = f%By(j,k) + f%a * dtsdx * (f%Ez(j,k)   - f%Ez(j-1,k  )) &
+                              + f%b * dtsdx * (f%Ez(j,k+1) - f%Ez(j-1,k+1)) &
+                              + f%b * dtsdx * (f%Ez(j,k-1) - f%Ez(j-1,k-1))
       end do
     end if
   end do
@@ -189,15 +192,17 @@ if (f%l_add_source) then
   ! add contribution from Ez source (Ez_in)
 
    if (f%l_uselargestencil) then
-    a = 7./12.
-    b  = 5./24.
+    if (f%a==0.) then
+      f%a = 7./12.
+      f%b  = 5./24.
+    end if
     ! advance By
     j = f%js
 !    do k = 0, f%ny+1
     do k = 1, f%ny
-      f%By(j,k) = f%By(j,k) + a * dtsdx * (-f%Ez_in(k)) &
-                            + b * dtsdx * (-f%Ez_in(k+1)) &
-                            + b * dtsdx * (-f%Ez_in(k-1)) 
+      f%By(j,k) = f%By(j,k) + f%a * dtsdx * (-f%Ez_in(k)) &
+                            + f%b * dtsdx * (-f%Ez_in(k+1)) &
+                            + f%b * dtsdx * (-f%Ez_in(k-1)) 
     end do
 
     ! Evaluate Bx and By source
@@ -207,9 +212,9 @@ if (f%l_add_source) then
 
 !    do k = 0, f%ny+1
     do k = 1, f%ny
-      f%By_in(k) = f%cst1 * f%By_in(k) - a*f%cst2 * f%Ez_in(k) &
-                                       - b*f%cst2 * f%Ez_in(k+1) &
-                                       - b*f%cst2 * f%Ez_in(k-1)
+      f%By_in(k) = f%cst1 * f%By_in(k) - f%a*f%cst2 * f%Ez_in(k) &
+                                       - f%b*f%cst2 * f%Ez_in(k+1) &
+                                       - f%b*f%cst2 * f%Ez_in(k-1)
     end do
 
    else
@@ -338,8 +343,6 @@ INTEGER :: j, k
 real(kind=8) :: dt,dtsdx,dtsdy,mudt
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Bzapr
 
-real(kind=8) :: a,b,c
-
 #ifdef MPIPARALLEL
 include "mpif.h"
 integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
@@ -405,8 +408,10 @@ if (f%l_usecoeffs) then
   end do
 else
  if (f%l_uselargestencil) then
-  a = 7./12.
-  b  = 5./24.
+  if (f%a==0.) then
+    f%a = 7./12.
+    f%b  = 5./24.
+  end if
   ! advance Ex
   do k = 1, f%ny+1
 !    j = 0
@@ -414,19 +419,20 @@ else
 !    j = f%nx+1
 !      f%Ex(j,k) = 1.e10!f%Ex(j,k) + dtsdy * (f%Bz(j,k)   - f%Bz(j,k-1)) - mudt  * f%J(j,k,1)
     do j = 1, f%nx
-      f%Exdj(j,k) = - a*mudt  * f%J(j,k,1)  &
-                    - b*mudt  * f%J(j+1,k,1)  &
-                    - b*mudt  * f%J(j-1,k,1)  &
+      f%Exdj(j,k) = - f%a*mudt  * f%J(j,k,1)  &
+                    - f%b*mudt  * f%J(j+1,k,1)  &
+                    - f%b*mudt  * f%J(j-1,k,1)  &
                     - f%Exdj(j,k)
-      f%Ex(j,k) = f%Ex(j,k) + a * (dtsdy * (f%Bz(j,  k)   - f%Bz(j,  k-1)) - mudt * f%J(j,  k,1)) &
-                            + b * (dtsdy * (f%Bz(j+1,k)   - f%Bz(j+1,k-1)) - mudt * f%J(j+1,k,1)) &
-                            + b * (dtsdy * (f%Bz(j-1,k)   - f%Bz(j-1,k-1)) - mudt * f%J(j-1,k,1)) &
+      f%Ex(j,k) = f%Ex(j,k) + f%a * (dtsdy * (f%Bz(j,  k)   - f%Bz(j,  k-1)) - mudt * f%J(j,  k,1)) &
+                            + f%b * (dtsdy * (f%Bz(j+1,k)   - f%Bz(j+1,k-1)) - mudt * f%J(j+1,k,1)) &
+                            + f%b * (dtsdy * (f%Bz(j-1,k)   - f%Bz(j-1,k-1)) - mudt * f%J(j-1,k,1)) &
                             - 0.5*f%Exdj(j,k)
-      f%Exdj(j,k) = - a*mudt  * f%J(j,k,1)  &
-                    - b*mudt  * f%J(j+1,k,1)  &
-                    - b*mudt  * f%J(j-1,k,1)  
+      f%Exdj(j,k) = - f%a*mudt  * f%J(j,k,1)  &
+                    - f%b*mudt  * f%J(j+1,k,1)  &
+                    - f%b*mudt  * f%J(j-1,k,1)  
     end do
   end do
+
 
   ! advance Ey
   do k = 0, f%ny+1
@@ -436,24 +442,24 @@ else
 !      end do
     else
       do j = 1, f%nx+1
-      f%Eydj(j,k) = - a*mudt  * f%J(j,k,2)  &
-                    - b*mudt  * f%J(j,k+1,2)  &
-                    - b*mudt  * f%J(j,k-1,2)  &
+      f%Eydj(j,k) = - f%a*mudt  * f%J(j,k,2)  &
+                    - f%b*mudt  * f%J(j,k+1,2)  &
+                    - f%b*mudt  * f%J(j,k-1,2)  &
                     - f%Eydj(j,k)
-        f%Ey(j,k) = f%Ey(j,k) - a * (dtsdx * (f%Bz(j,k)   - f%Bz(j-1,k  )) + mudt * f%J(j,k  ,2)) &
-                              - b * (dtsdx * (f%Bz(j,k+1) - f%Bz(j-1,k+1)) + mudt * f%J(j,k+1,2)) &
-                              - b * (dtsdx * (f%Bz(j,k-1) - f%Bz(j-1,k-1)) + mudt * f%J(j,k-1,2)) &
+        f%Ey(j,k) = f%Ey(j,k) - f%a * (dtsdx * (f%Bz(j,k)   - f%Bz(j-1,k  )) + mudt * f%J(j,k  ,2)) &
+                              - f%b * (dtsdx * (f%Bz(j,k+1) - f%Bz(j-1,k+1)) + mudt * f%J(j,k+1,2)) &
+                              - f%b * (dtsdx * (f%Bz(j,k-1) - f%Bz(j-1,k-1)) + mudt * f%J(j,k-1,2)) &
                             - 0.5*f%Eydj(j,k)                              
-      f%Eydj(j,k) = - a*mudt  * f%J(j,k,2)  &
-                    - b*mudt  * f%J(j,k+1,2)  &
-                    - b*mudt  * f%J(j,k-1,2)  
+      f%Eydj(j,k) = - f%a*mudt  * f%J(j,k,2)  &
+                    - f%b*mudt  * f%J(j,k+1,2)  &
+                    - f%b*mudt  * f%J(j,k-1,2)  
       end do
     end if
   end do
 
-  a = 7./12.
-  b  = 1./12.
-  c = 1./48.
+!  a = 7./12.
+!  b  = 1./12.
+!  c = 1./48.
   ! advance Ez 
   do k = 0, f%ny+1
     do j = 0, f%nx+1
@@ -501,6 +507,7 @@ else
   end do
  end if
 end if
+
 
 !if (l_elaser_out_plane) then
 !  f%cst1 = (1.-dt*f%clight/f%dy)/(1.+dt*f%clight/f%dy)
@@ -1941,6 +1948,8 @@ end if
 f%l_apply_pml=.true.
 f%nx = nx
 f%ny = ny
+f%nxl=0
+f%nyl=0
 f%xmin = xmin
 f%ymin = ymin
 f%rap = rap
