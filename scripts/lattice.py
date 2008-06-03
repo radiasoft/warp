@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.63 2008/06/03 18:12:12 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.64 2008/06/03 20:58:33 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2956,7 +2956,7 @@ pgrd arrays with the same suffices:
   edict = {'zs':top.pgrdzs,'ze':top.pgrdze,'xs':top.pgrdxs,'ys':top.pgrdys,
            'ap':top.pgrdap,'ax':top.pgrdax,'ay':top.pgrday,
            'ox':top.pgrdox,'oy':top.pgrdoy,'ph':top.pgrdph,
-           'sp':top.pgrdsp,'cp':top.pgrdcp,'id':top.pgrdid,'sf':top.pgrdsf,
+           'sp':top.pgrdsp,'cp':top.pgrdcp,'sf':top.pgrdsf,
            'sc':top.pgrdsc,'rr':top.pgrdrr,'rl':top.pgrdrl,'gl':top.pgrdgl,
            'gp':top.pgrdgp,'pw':top.pgrdpw,'pa':top.pgrdpa}
 
