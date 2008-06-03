@@ -12,10 +12,6 @@ use EM3D_YEEFIELDtypemodule
 use EM3D_KYEEFIELDtypemodule
 use EM3D_SPLITYEEFIELDtypemodule
 USE mod_bnd
-USE mod_bnd_cummer, create_bnd_cummer => create_bnd, &
-                    move_bnd_cummer => move_bnd, &
-                    move_window_bnd_cummer => move_window_bnd , &
-                    ijk_cummer => ijk
 USE EM2D_FIELDobjects
 !use GlobalVars
 !use Picglb
