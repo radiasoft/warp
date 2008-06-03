@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.62 2008/05/12 16:34:17 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.63 2008/06/03 18:12:12 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2922,7 +2922,7 @@ pgrd arrays with the same suffices:
   - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,rr,rl,gl,gp,pw,pa
   """
   # --- Make sure either an 'id' or a dataset, 'es', was passed in.
-  assert None not in [id,phi], \
+  assert (id is not None or phi is not None), \
          "either an 'id' or the dataset phi must be passed in"
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
