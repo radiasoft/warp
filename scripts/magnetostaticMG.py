@@ -300,7 +300,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
       else:
         multigrid3dsolve(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
                          self.dx,self.dy,self.dz,
-                         self.potential[id,1:-1,1:-1,:],
+                         self.potential[id,:,:,:],
                          self.source[id,:,:,:],
                          rstar,self.linbend,self.bounds,
                          self.xmmin,self.ymmin,self.zmminlocal,
