@@ -1191,7 +1191,9 @@ class SubcycledPoissonSolver(FieldSolver):
     for indts in range(tmpnsndts-1,-1,-1):
       if (not top.ldts[indts] and
           (top.ndtsaveraging == 0 and not sum(top.ldts))): continue
-      for iselfb in range(top.nsselfb-1,-1,-1):
+      # --- Note that the field solve is done even if there are no species
+      # --- (i.e. when top.nsselfb==0)
+      for iselfb in range(max(1,top.nsselfb)-1,-1,-1):
         self.dosolveonpotential(iwhich,top.nrhopndtscopies-1,indts,iselfb)
 
     # --- Is this still needed? It seems to slow things down alot.
@@ -1231,11 +1233,15 @@ of the arrays used by the field solve"""
     # --- Get base dimension of the arrays for the particles
     pdims = self.getpdims()
 
-    sourcedims = list(pdims[0]) + [top.nrhopndtscopies,top.nsndts,max(1,top.nsselfb)]
+    # --- This ensures that the arrays would be set up for a field solve even
+    # --- if there were no species (and top.nsselfb==0).
+    nsselfb = max(1,top.nsselfb)
+
+    sourcedims = list(pdims[0]) + [top.nrhopndtscopies,top.nsndts,nsselfb]
     if 'sourceparray' not in self.__dict__ or shape(self.sourceparray) != tuple(sourcedims):
       self.sourceparray = fzeros(sourcedims,'d')
 
-    potentialdims = list(pdims[-1]) + [top.nsndtsphi,top.nsselfb]
+    potentialdims = list(pdims[-1]) + [top.nsndtsphi,nsselfb]
     if 'potentialparray' not in self.__dict__ or shape(self.potentialparray) != tuple(potentialdims):
       self.potentialparray = fzeros(potentialdims,'d')
 
@@ -1258,11 +1264,11 @@ of the arrays used by the field solve"""
       # --- Get base dimension of the arrays for the field solver
       dims = self.getdims()
 
-      sourcedims = list(dims[0]) + [top.nsndtsphi,top.nsselfb]
+      sourcedims = list(dims[0]) + [top.nsndtsphi,nsselfb]
       if 'sourcearray' not in self.__dict__ or shape(self.sourcearray) != tuple(sourcedims):
         self.sourcearray = fzeros(sourcedims,'d')
 
-      potentialdims = list(dims[-1]) + [top.nsndtsphi,top.nsselfb]
+      potentialdims = list(dims[-1]) + [top.nsndtsphi,nsselfb]
       if 'potentialarray' not in self.__dict__ or shape(self.potentialarray) != tuple(potentialdims):
         self.potentialarray = fzeros(potentialdims,'d')
 
