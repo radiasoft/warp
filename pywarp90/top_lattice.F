@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.19 $, $Date: 2008/05/23 18:36:53 $
+c@(#) File top_lattice.F, version $Revision: 3.20 $, $Date: 2008/06/05 17:35:54 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -3946,17 +3946,26 @@ c        + u0 * v1 * w0 * bgrdbx(i  ,j+1,k  ,bgrdid)
 c        + ...
 
       integer(ISZ):: io,ip,i,j,k,iz,ii,id,jp1
-      real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
-      real(kind=8):: txp0,typ0
-      real(kind=8):: tbx,tby
+      real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,zcent,zlen
+      real(kind=8):: xt,yt,zt,x1,y1,z1
+      real(kind=8):: xt0,yt0
+      real(kind=8):: bxt,byt,bzt,bx1,by1,bz1
+      real(kind=8),allocatable:: ca(:),sa(:),ct(:),st(:),cp(:),sp(:)
 
 c  Evaluation of B, vectorized over particles
 
       if (.not. bgrds .or. .not. linbgrd(0)) return
 
-c     --- Calculate sines and cosines of bgrdph for efficiency
-      bgrdsp = sin(bgrdph) 
-      bgrdcp = cos(bgrdph) 
+c     --- Precalculate sines and cosines for efficiency
+      allocate(ca(0:nbgrd),sa(0:nbgrd))
+      allocate(ct(0:nbgrd),st(0:nbgrd))
+      allocate(cp(0:nbgrd),sp(0:nbgrd))
+      ca = cos(bgrdph)
+      sa = sin(bgrdph)
+      ct = cos(bgrdot)
+      st = sin(bgrdot)
+      cp = cos(bgrdop)
+      sp = sin(bgrdop)
 
       do io=1,nbgrdol
         if (.not. linbgrd(io)) cycle
@@ -3985,32 +3994,54 @@ c           --- find the location of the particle in the internal lattice arrays
 c         --- Cycle if this element is turned off
           if (id <= 0) cycle
 
-c         --- find transverse particle coordinate in frame of gridded field 
-c         --- transverse offsets
-          txp = xp(ip) - bgrdox(ii)
-          typ = yp(ip) - bgrdoy(ii)
+          zcent = 0.5*(cbgrdzs(iz,io) + cbgrdze(iz,io))
+          zlen = bgrdze(ii) - bgrdzs(ii)
+
+c         --- find particle coordinates in frame of gridded field
+          xt = xp(ip) - bgrdox(ii)
+          yt = yp(ip) - bgrdoy(ii)
+          zt = zz     - zcent
 
 c         --- transverse rotation to take into account an active rotation 
-c         --- of the field element.  Particles are rotated in that oposite 
-c         --- sense of the element. Later the field components accumulated 
-c         --- must be rotated back. 
-          if ( bgrdph(ii) .ne. 0. ) then
-            temp = txp  
-            txp =  temp*bgrdcp(ii) + typ*bgrdsp(ii) 
-            typ = -temp*bgrdsp(ii) + typ*bgrdcp(ii) 
+c         --- of the field element. Rotation is relative to the z center.
+c         --- Particles are rotated to the frame of the element.
+c         --- Later, the field components accumulated are rotated back. 
+c         --- First, rotate by bgrdph about the z axis.
+          if (bgrdop(ii) .ne. 0.) then
+            x1 = xt
+            y1 = yt
+            xt = +x1*cp(ii) + y1*sp(ii)
+            yt = -x1*sp(ii) + y1*cp(ii)
+          endif
+
+c         --- then by bgrdot about the new y axis
+          if (bgrdot(ii) .ne. 0.) then
+            x1 = xt
+            z1 = zt
+            xt = x1*ct(ii) - z1*st(ii)
+            zt = x1*st(ii) + z1*ct(ii)
+          endif
+
+c         --- then by bgrdop about the new z axis
+          if (bgrdph(ii) .ne. 0.) then
+            x1 = xt
+            y1 = yt
+            xt = +x1*ca(ii) + y1*sa(ii)
+            yt = -x1*sa(ii) + y1*ca(ii)
           endif 
 
 c         --- If data is in RZ, then replace x with the radius and y=ys
           if (bgrdrz(id)) then
-            txp0 = txp
-            typ0 = typ
-            txp = sqrt(txp**2 + typ**2)
-            typ = bgrdys(ii)
+            xt0 = xt
+            yt0 = yt
+            xt = sqrt(xt**2 + yt**2)
+            yt = bgrdys(ii)
           endif
 
 c         --- Shift coordinates to measure from the edge of the field grid
-          txp = txp - bgrdxs(ii)
-          typ = typ - bgrdys(ii)
+          xt = xt - bgrdxs(ii)
+          yt = yt - bgrdys(ii)
+          zt = zt + zlen/2.
 
 c         --- Set default sign of B field
           xsign = 1.
@@ -4034,34 +4065,34 @@ c                IV        -B_x( x,-y,z)   B_x( x,-y,z)   -B_z( x,-y,z)
 
           if (bgrdsy(ii) == 2) then
 c           --- Get quadrant that the particle is in.
-            if (txp < 0.) then
+            if (xt < 0.) then
               ysign = -1.
-              txp = -txp
+              xt = -xt
             endif
-            if (typ < 0.) then
+            if (yt < 0.) then
               xsign = -1.
-              typ = -typ
+              yt = -yt
             endif
 c           --- If in even quadrant...
             if (xsign*ysign < 0.) then
 c             --- Switch sign of Bz.
               zsign = -1.
 c             --- Swap x and y
-cc              temp = txp
-cc              txp = typ
-cc              typ = temp
+cc              temp = xt
+cc              xt = yt
+cc              yt = temp
             endif
           endif
 
 c         --- find location of particle in B field grid
-          i =  txp*bgrddxi(id)
-          j =  typ*bgrddyi(id)
-          k = (zz - cbgrdzs(iz,io))*bgrddzi(id)
+          i = xt*bgrddxi(id)
+          j = yt*bgrddyi(id)
+          k = zt*bgrddzi(id)
 
 c         --- Calculate linear weights
-          u1 = txp*bgrddxi(id) - i
-          v1 = typ*bgrddyi(id) - j
-          w1 = (zz - cbgrdzs(iz,io))*bgrddzi(id) - k
+          u1 = xt*bgrddxi(id) - i
+          v1 = yt*bgrddyi(id) - j
+          w1 = zt*bgrddzi(id) - k
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -4080,7 +4111,7 @@ c         --- Only calculate for particles inside the B field grid
               v1 = 0.
             endif
 
-            tbx = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,id) +
+            bxt = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,id) +
      &                        u1*v0*w0*bgrdbx(i+1,j  ,k  ,id) +
      &                        u0*v1*w0*bgrdbx(i  ,jp1,k  ,id) +
      &                        u1*v1*w0*bgrdbx(i+1,jp1,k  ,id) +
@@ -4089,7 +4120,7 @@ c         --- Only calculate for particles inside the B field grid
      &                        u0*v1*w1*bgrdbx(i  ,jp1,k+1,id) +
      &                        u1*v1*w1*bgrdbx(i+1,jp1,k+1,id))
 
-            tby = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,id) +
+            byt = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,id) +
      &                        u1*v0*w0*bgrdby(i+1,j  ,k  ,id) +
      &                        u0*v1*w0*bgrdby(i  ,jp1,k  ,id) +
      &                        u1*v1*w0*bgrdby(i+1,jp1,k  ,id) +
@@ -4098,49 +4129,70 @@ c         --- Only calculate for particles inside the B field grid
      &                        u0*v1*w1*bgrdby(i  ,jp1,k+1,id) +
      &                        u1*v1*w1*bgrdby(i+1,jp1,k+1,id))
 
+            bzt = zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,id) +
+     &                        u1*v0*w0*bgrdbz(i+1,j  ,k  ,id) +
+     &                        u0*v1*w0*bgrdbz(i  ,jp1,k  ,id) +
+     &                        u1*v1*w0*bgrdbz(i+1,jp1,k  ,id) +
+     &                        u0*v0*w1*bgrdbz(i  ,j  ,k+1,id) +
+     &                        u1*v0*w1*bgrdbz(i+1,j  ,k+1,id) +
+     &                        u0*v1*w1*bgrdbz(i  ,jp1,k+1,id) +
+     &                        u1*v1*w1*bgrdbz(i+1,jp1,k+1,id))
+
 c            if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
-c              temp = tbx 
-c              tbx = tby
-c              tby = temp
+c              temp = bxt 
+c              bxt = byt
+c              byt = temp
 c            endif 
 
-c           --- rotate transverse field componets for correct lab frame 
-c               orientation if the element is rotated.  
-            if ( bgrdph(ii) .ne. 0. ) then
-              temp = tbx 
-              tbx = temp*bgrdcp(ii) - tby*bgrdsp(ii) 
-              tby = temp*bgrdsp(ii) + tby*bgrdcp(ii)         
-            endif 
-
             if (bgrdrz(id)) then
-c             --- For the RZ case, tbx now holds Br. Convert it to Bx and By.
-c             --- Note that this ignores Btheta (in tby) for now.
-              if (txp .ne. 0) then
-                tby = tbx*typ0/txp
-                tbx = tbx*txp0/txp
+c             --- For the RZ case, bxt now holds Br. Convert it to Bx and By.
+c             --- Note that this ignores Btheta (in byt) for now.
+              if (xt .ne. 0) then
+                byt = bxt*yt0/xt
+                bxt = bxt*xt0/xt
               else
-                tby = 0.
-                tbx = tbx
+                byt = 0.
+                bxt = bxt
               endif
             endif
 
-c           --- tranverse field 
-            bx(ip) = bx(ip) + tbx
-            by(ip) = by(ip) + tby
+c           --- Rotate field componets back to the lab frame. These are the
+c           --- same rotations as above but in opposite order with the sign
+c           --- of the angle reversed.
+            if (bgrdph(ii) .ne. 0.) then
+              bx1 = bxt
+              by1 = byt
+              bxt = +bx1*ca(ii) - by1*sa(ii)
+              byt = +bx1*sa(ii) + by1*ca(ii)
+            endif 
 
-            bz(ip) = bz(ip) + zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,id) +
-     &                                    u1*v0*w0*bgrdbz(i+1,j  ,k  ,id) +
-     &                                    u0*v1*w0*bgrdbz(i  ,jp1,k  ,id) +
-     &                                    u1*v1*w0*bgrdbz(i+1,jp1,k  ,id) +
-     &                                    u0*v0*w1*bgrdbz(i  ,j  ,k+1,id) +
-     &                                    u1*v0*w1*bgrdbz(i+1,j  ,k+1,id) +
-     &                                    u0*v1*w1*bgrdbz(i  ,jp1,k+1,id) +
-     &                                    u1*v1*w1*bgrdbz(i+1,jp1,k+1,id))
+            if (bgrdot(ii) .ne. 0.) then
+              bx1 = bxt
+              bz1 = bzt
+              bxt = +bx1*ct(ii) + bz1*st(ii)
+              bzt = -bx1*st(ii) + bz1*ct(ii)
+            endif
+
+            if (bgrdop(ii) .ne. 0.) then
+              bx1 = bxt
+              by1 = byt
+              bxt = +bx1*cp(ii) - by1*sp(ii)
+              byt = +bx1*sp(ii) + by1*cp(ii)
+            endif
+
+c           --- add in the resulting field 
+            bx(ip) = bx(ip) + bxt
+            by(ip) = by(ip) + byt
+            bz(ip) = bz(ip) + bzt
 
           endif
 
         enddo
       enddo
+
+      deallocate(ca,sa)
+      deallocate(ct,st)
+      deallocate(cp,sp)
 
       return
       end
@@ -4154,36 +4206,68 @@ c Calculate the full axial length of the elements, including the extra length
 c that may be taken up if the element has a rotation away from the z-axis.
 c The results are put in bgrdfs and bgrdfe.
 
-      real(kind=8):: cmax(4),rmax,zcent,zhalflen
       integer(ISZ):: ib,id
+      real(kind=8):: zcent
+      real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
+      real(kind=8):: ca,sa,ct,st,cp,sp
+      real(kind=8):: xl(8),yl(8),zl(8)
+      real(kind=8):: xr(8),yr(8),zr(8)
+      real(kind=8):: x1(8),y1(8),z1(8)
+      real(kind=8):: x2(8),y2(8),z2(8)
 
       do ib = 0,nbgrd
-        if (bgrdot(ib) == 0.) then
-          bgrdfs(ib) = bgrdzs(ib)
-          bgrdfe(ib) = bgrdze(ib)
-        else
+        id = bgrdid(ib)
 
-          id = bgrdid(ib)
+c       --- The transverse mins and maxs of the grid
+        xmin = bgrdxs(ib)
+        xmax = bgrdxs(ib) + bgrddx(id)*bgrdnx
+        ymin = bgrdys(ib)
+        ymax = bgrdys(ib) + bgrddy(id)*bgrdny
 
-c         --- Find the large transverse dimension. This checks the four corners
-c         --- of the transverse plane and finds the max.
-c         --- For now, this finds the max corner radius and rotates it by
-c         --- the angle bgrdot. This only provides a maximum. A more precise
-c         --- calculation would take bgrdph into account as well.
-          cmax(1) = bgrdxs(ib)**2 + bgrdys(ib)**2
-          cmax(2) = (bgrdxs(ib)+bgrddx(id)*bgrdnx)**2 + bgrdys(ib)**2
-          cmax(3) = bgrdxs(ib)**2 + (bgrdys(ib)+bgrddy(id)*bgrdny)**2
-          cmax(4) = (bgrdxs(ib)+bgrddx(id)*bgrdnx)**2 +
-     &              (bgrdys(ib)+bgrddy(id)*bgrdny)**2
-          rmax = sqrt(maxval(cmax))
-
-          zcent = 0.5*(bgrdzs(ib) + bgrdze(ib))
-          zhalflen = (bgrdze(ib) - bgrdzs(ib))/2.
-
-          bgrdfs(ib) = zcent - zhalflen*cos(bgrdot(ib)) - rmax*sin(bgrdot(ib))
-          bgrdfe(ib) = zcent + zhalflen*cos(bgrdot(ib)) + rmax*sin(bgrdot(ib))
-
+        if (bgrdrz(id)) then
+c         --- For RZ, extend the mins and maxs to cover the full transverse
+c         --- extent as if the grid were 3D. The y extent is the same as x,
+c         --- but with the appropriate y center.
+          xmin = bgrdxs(ib) - bgrddx(id)*bgrdnx
+          ymin = xmin - bgrdxs(ib) + bgrdys(ib)
+          ymax = xmax - bgrdxs(ib) + bgrdys(ib)
         endif
+
+c       --- Get the zmin and zmax relative to the center of the grid.
+        zcent = 0.5*(bgrdzs(ib) + bgrdze(ib))
+        zmin = bgrdzs(ib) - zcent
+        zmax = bgrdze(ib) - zcent
+
+c       --- Generate the locations of the eight corners of the grid in
+c       --- the rotated frame.
+        xr = (/xmin,xmax,xmin,xmax,xmin,xmax,xmin,xmax/)
+        yr = (/ymin,ymin,ymax,ymax,ymin,ymin,ymax,ymax/)
+        zr = (/zmin,zmin,zmin,zmin,zmax,zmax,zmax,zmax/)
+
+c       --- Precalculate the cosines and sines.
+        ca = cos(bgrdph(ib))
+        sa = sin(bgrdph(ib))
+        ct = cos(bgrdot(ib))
+        st = sin(bgrdot(ib))
+        cp = cos(bgrdop(ib))
+        sp = sin(bgrdop(ib))
+
+c       --- Convert the corners into the lab frame by three successive
+c       --- rotations, first by bgrdph about the z axis,
+        x1 = +xr*ca - yr*sa
+        y1 = +xr*sa + yr*ca
+        z1 = zr
+c       --- then by bgrdot about the new y axis,
+        x2 = +x1*ct + z1*st
+        y2 = y1
+        z2 = -x1*st + z1*ct
+c       --- then by bgrdop about the new z axis.
+c       xl = +x2*cp - y2*sp
+c       yl = +x2*sp + y2*cp
+        zl = z2
+
+        bgrdfs(ib) = zcent + minval(zl)
+        bgrdfe(ib) = zcent + maxval(zl)
 
       enddo
 
@@ -4624,12 +4708,12 @@ c         --- Only calculate for particles inside the field grid
       return
       end
 c=============================================================================
-      subroutine applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,qoverm,lslice,ez)
+      subroutine applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,q,m,lslice,ez)
       use Lattice
       use LatticeInternal
       integer(ISZ):: np
       real(kind=8):: xp(np),zp(np),uzp(np),gaminv(np)
-      real(kind=8):: dtl,dtr,dt,qoverm
+      real(kind=8):: dtl,dtr,dt,q,m
       logical(ISZ):: lslice
       real(kind=8):: ez(np)
 
@@ -4647,12 +4731,15 @@ c   qoverm   charge over mass
 c Output:
 c   ez       axial electric field
 
+      real(kind=8):: qoverm
       real(kind=8):: dti,vz,gapez,frac,z1,z2,vn,zl,zr,cacclz,caccll,vni
       real(kind=8):: zs,ze,zz
       real(kind=8):: frac1,frac2
       integer(ISZ):: io,ip,iz
 
-      if (.not. accls .or. .not. linaccl(0)) return
+      if (.not. accls .or. .not. linaccl(0) .or. m == 0.) return
+
+      qoverm = q/m
 
 c     --- XXX This code needs to be fixed for the case of backwards moving
 c     --- XXX particles. A partial fix has been made to prevent some errors.
