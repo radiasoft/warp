@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.170 $, $Date: 2008/05/20 19:39:40 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.171 $, $Date: 2008/06/05 17:57:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -452,7 +452,7 @@ c=============================================================================
      &                       izfsslave,nzfsslave,npes,my_index)
       real(kind=8),dimension(2):: mggetarraysum
       integer(ISZ):: nx,ny,nzlocal,npes,my_index
-      integer:: delx,dely,delz
+      integer(ISZ):: delx,dely,delz
       integer(ISZ):: izfsslave(0:npes-1),nzfsslave(0:npes-1)
       real(kind=8):: a(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
 
