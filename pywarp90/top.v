@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.234 $, $Date: 2008/03/17 19:38:27 $
+#@(#) File TOP.V, version $Revision: 3.235 $, $Date: 2008/06/05 17:34:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.234 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.235 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -452,8 +452,6 @@ bgrdsy(0:nbgrd) _integer /0/   # Level of symmetry in the bgrd data.
                                # Defaul is no symmetry.
 bgrdol(0:nbgrd)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
-bgrdsp(0:nbgrd)   _real [1]   # Sine   of bgrdph (auto-set) 
-bgrdcp(0:nbgrd)   _real [1]   # Cosine of bgrdph (auto-set) 
 bgrdfs(0:nbgrd)   _real [m]   # Full Z starts of 3-D grid of B field data
                               # including rotation off z-axis (autoset)
 bgrdfe(0:nbgrd)   _real [m]   # Full Z ends of 3-D grid of B field data
