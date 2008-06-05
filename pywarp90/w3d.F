@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.398 $, $Date: 2008/05/23 18:36:53 $
+c@(#) File W3D.F, version $Revision: 3.399 $, $Date: 2008/06/05 17:36:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1062,14 +1062,11 @@ c  a single step at present.  Perhaps we will also have to compute
 c  B_self more than once.
 
       integer(ISZ):: ip
-      real(kind=8):: qoverm
       real(kind=8):: timetemp,wtime
       real(kind=8):: substarttime
       if (lw3dtimesubs) substarttime = wtime()
 
       timetemp = wtime()
-
-      qoverm = q/m
 
 c     --- handle uniform fields
       call applyuniformfields(np,ex,ey,ez,bx,by,bz)
@@ -1091,7 +1088,7 @@ c     --- fold in coordinate transformation associated with bends
       call applybend(np,xp,uzp,np,bendres,bendradi,m,q,.false.,by)
 
 c     --- handle acceleration (and calculate position correction)
-      call applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,qoverm,.false.,ez)
+      call applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,q,m,.false.,ez)
 
 c     --- handle electrostatic multipole components
       call applyemlt(np,xp,yp,np,zp,dtl,dtr,dt,.false.,ex,ey,ez)
