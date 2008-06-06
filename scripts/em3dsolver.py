@@ -525,7 +525,6 @@ class EM3D(FieldSolver):
                       mgmaxlevels=mgmaxlevels,
                       my_index=self.my_index,nslaves=self.nslaves,
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
-
     self.field.nconds = self.getconductorobject().interior.n
     self.field.nxcond = self.field.nx
     self.field.nycond = self.field.ny
@@ -695,6 +694,7 @@ class EM3D(FieldSolver):
     if top.efetch[0]<>4:node2yee3d(self.block.core.yf)
     dt = top.dt/self.nfield_subcycle
     push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
+    if top.efetch[0]<>4:yee2node3d(self.block.core.yf)
     if self.l_verbose:print 'solve 2nd half done'
 #    yee2node3d(self.block.core.yf)
  #   self.move_window_fields()
@@ -716,6 +716,7 @@ class EM3D(FieldSolver):
 #      self.add_laser(field)
 #      grimax(field)
 #    node2yee3d(self.block.core.yf)
+    if top.efetch[0]<>4:node2yee3d(self.block.core.yf)
     dt = top.dt/self.nfield_subcycle
     push_em3d_eef(self.block,dt,0,self.l_pushf,self.l_pushpot)
     self.add_laser(self.field)
