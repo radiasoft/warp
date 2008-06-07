@@ -1058,8 +1058,8 @@ gives a better initial guess for the field solver.
       # --- Coordinates of mesh relative to parent's mesh location
       # --- and refinement. The minimum and maximum are needed in case
       # --- this mesh extends beyond the parent's.
-      plower = parent.fulllower*self.refinement - self.extradimslower*self.refinement
-      pupper = parent.fullupper*self.refinement + self.extradimsupper*self.refinement
+      plower = (parent.fulllower - self.extradimslower)*self.refinement
+      pupper = (parent.fullupper + self.extradimsupper)*self.refinement
       l = maximum(plower,self.fulllower)
       u = minimum(pupper,self.fullupper)
       # --- The full potential arrays are passed in to avoid copying the subsets
@@ -1841,7 +1841,9 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     if iy > self.fullupper[1]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.potential[ix-self.fulllower[0],iy-self.fulllower[1],1:-1],self.zmesh,
+      ix1 = ix - self.fulllower[0] + 1
+      iy1 = iy - self.fulllower[1] + 1
+      plg(self.potential[ix1,iy1,1:-1],self.zmesh,
           color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
@@ -1858,7 +1860,9 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.potential[:,iy-self.fulllower[1],iz-self.fulllower[2]+1],self.xmesh,
+      iy1 = iy - self.fulllower[1] + 1
+      iz1 = iz - self.fulllower[2] + 1
+      plg(self.potential[1:-1,iy1,iz1],self.xmesh,
           color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
@@ -1875,7 +1879,9 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.potential[ix-self.fulllower[0],:,iz-self.fulllower[2]+1],self.ymesh,
+      ix1 = ix - self.fulllower[0] + 1
+      iz1 = iz - self.fulllower[2] + 1
+      plg(self.potential[ix1,1:-1,iz1],self.ymesh,
           color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
@@ -1892,7 +1898,9 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     if iy > self.fullupper[1]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.source[ix-self.fulllower[0],iy-self.fulllower[1],:],self.zmesh,
+      ix1 = ix - self.fulllower[0]
+      iy1 = iy - self.fulllower[1]
+      plg(self.source[ix1,iy1,:],self.zmesh,
           color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
@@ -1909,7 +1917,9 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.source[:,iy-self.fulllower[1],iz-self.fulllower[2]],self.xmesh,
+      iy1 = iy - self.fulllower[1]
+      iz1 = iz - self.fulllower[2]
+      plg(self.source[:,iy1,iz1],self.xmesh,
           color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
@@ -1926,7 +1936,9 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.source[ix-self.fulllower[0],:,iz-self.fulllower[2]],self.ymesh,
+      ix1 = ix - self.fulllower[0]
+      iz1 = iz - self.fulllower[2]
+      plg(self.source[ix1,:,iz1],self.ymesh,
           color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
@@ -1950,8 +1962,10 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     if iy > upper[1]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.field[comp,ix-self.fulllower[0],iy-self.fulllower[1],iz],
-          self.zmesh[iz],color=colors[self.blocknumber%len(colors)])
+      ix1 = ix - self.fulllower[0]
+      iy1 = iy - self.fulllower[1]
+      plg(self.field[comp,ix1,iy1],self.zmesh[iz],
+          color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
           child.plselfez(comp,ix*child.refinement[0],iy*child.refinement[1],
@@ -1975,8 +1989,10 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     if iz > upper[2]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.field[comp,ix,iy-self.fulllower[1],iz-self.fulllower[2]],
-                     self.xmesh[ix],color=colors[self.blocknumber%len(colors)])
+      iy1 = iy - self.fulllower[1]
+      iz1 = iz - self.fulllower[2]
+      plg(self.field[comp,ix,iy1,iz1],self.xmesh[ix],
+          color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
           child.plselfex(comp,iy*child.refinement[1],iz*child.refinement[2],
@@ -2000,8 +2016,10 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     if iz > upper[2]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.field[comp,ix-self.fulllower[0],iy,iz-self.fulllower[2]],
-          self.ymesh[iy],color=colors[self.blocknumber%len(colors)])
+      ix1 = ix - self.fulllower[0]
+      iz1 = iz - self.fulllower[2]
+      plg(self.field[comp,ix1,iy,iz1],self.ymesh[iy],
+          color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
           child.plselfey(comp,ix*child.refinement[0],iz*child.refinement[2],
