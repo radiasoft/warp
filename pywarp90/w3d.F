@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.399 $, $Date: 2008/06/05 17:36:20 $
+c@(#) File W3D.F, version $Revision: 3.400 $, $Date: 2008/06/09 23:42:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -439,6 +439,7 @@ c  Load the particles, calculate the charge density
       call setuppgroup(pgroup)
       call stptcl3d(pgroup)
       call setgamma(pgroup,lrelativ)
+      call particleboundaries3d(pgroup)
       call injctint(pgroup)
       call remark(" ---  Setting charge density")
       call loadrho3d(pgroup,-1,-1,-1,.true.)
@@ -5519,21 +5520,6 @@ c     --- if slave, recalculate sw
 c#ifdef MPIPARALLEL
 c      call sw_globalsum(pgroup%ns,pgroup%sw)
 c#endif
-
-c     --- Apply particle boundary conditions
-      call zpartbnd(pgroup,zmmaxlocal,zmminlocal,dz)
-      do js=0,pgroup%ns-1
-        if (pgroup%nps(js+1) > 0) then
-           ip = pgroup%ins(js+1)
-           call stckxy3d(pgroup%nps(js+1),
-     &                   pgroup%xp(ip),xmmax,xmmin,dx,
-     &                   pgroup%yp(ip),ymmax,ymmin,dy,
-     &                   pgroup%zp(ip),zmminlocal,dz,pgroup%uxp(ip),
-     &                   pgroup%uyp(ip),pgroup%uzp(ip),pgroup%gaminv(ip),
-     &                   zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
-        endif
-        call processlostpart(pgroup,js+1,clearlostpart,time,zbeam)
-      enddo
 
 !$OMP MASTER
       if (lw3dtimesubs) timestptcl3d = timestptcl3d + wtime() - substarttime
