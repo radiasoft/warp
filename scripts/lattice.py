@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.65 2008/06/13 16:12:04 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.66 2008/06/13 16:43:03 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2611,8 +2611,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
   edict = {'zs':top.egrdzs,'ze':top.egrdze,'xs':top.egrdxs,'ys':top.egrdys,
            'ap':top.egrdap,'ax':top.egrdax,'ay':top.egrday,
            'ox':top.egrdox,'oy':top.egrdoy,'ph':top.egrdph,
-           'sp':top.egrdsp,'cp':top.egrdcp,'sf':top.egrdsf,'sc':top.egrdsc,
-           'sy':top.egrdsy}
+           'sf':top.egrdsf,'sc':top.egrdsc,'sy':top.egrdsy}
 
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element. The element id must be handled seperately.
@@ -2844,9 +2843,7 @@ bsqgrad arrays with the same suffices:
            'xs':top.bsqgradxs,'ys':top.bsqgradys,
            'ap':top.bsqgradap,'ax':top.bsqgradax,'ay':top.bsqgraday,
            'ox':top.bsqgradox,'oy':top.bsqgradoy,'ph':top.bsqgradph,
-           'sp':top.bsqgradsp,'cp':top.bsqgradcp,
-           'sf':top.bsqgradsf,'sc':top.bsqgradsc,
-           'sy':top.bsqgradsy}
+           'sf':top.bsqgradsf,'sc':top.bsqgradsc,'sy':top.bsqgradsy}
 
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element. The element id must be handled seperately.
@@ -2955,7 +2952,7 @@ pgrd arrays with the same suffices:
   edict = {'zs':top.pgrdzs,'ze':top.pgrdze,'xs':top.pgrdxs,'ys':top.pgrdys,
            'ap':top.pgrdap,'ax':top.pgrdax,'ay':top.pgrday,
            'ox':top.pgrdox,'oy':top.pgrdoy,'ph':top.pgrdph,
-           'sp':top.pgrdsp,'cp':top.pgrdcp,'sf':top.pgrdsf,
+           'sf':top.pgrdsf,
            'sc':top.pgrdsc,'rr':top.pgrdrr,'rl':top.pgrdrl,'gl':top.pgrdgl,
            'gp':top.pgrdgp,'pw':top.pgrdpw,'pa':top.pgrdpa}
 
