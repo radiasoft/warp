@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.66 2008/06/13 16:43:03 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.67 2008/06/13 17:03:46 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2551,8 +2551,7 @@ accl arrays with the same suffices:
 # ----------------------------------------------------------------------------
 # --- EGRD --- XXX
 def addnewegrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
-               ph=0.,sp=0.,cp=0.,
-               sf=0.,sc=1.,sy=0,dx=None,dy=None,ex=None,ey=None,ez=None,
+               ph=0.,sf=0.,sc=1.,sy=0,dx=None,dy=None,ex=None,ey=None,ez=None,
                rz=false,nx=None,ny=None,nz=None,
                time=None,data=None,func=None):
   """
@@ -2569,7 +2568,7 @@ Or, one or more 3-D field arrays may be specified
   - rz=false: set to true if data is RZ only
 The following are all optional and have the same meaning and default as the
 egrd arrays with the same suffices:
-  - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,sy
+  - xs,ys,ap,ox,oy,ph,sf,sc,sy
   """
   # --- Make sure that enough input was given to create the E arrays
   assert (id is not None) or \
@@ -2665,7 +2664,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
 # ----------------------------------------------------------------------------
 # --- BGRD --- XXX
 def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
-               ph=0.,sp=0.,cp=0.,
+               ph=0.,ot=0.,op=0.,
                sf=0.,sc=1.,sy=0,dx=None,dy=None,bx=None,by=None,bz=None,
                rz=false,nx=None,ny=None,nz=None):
   """
@@ -2682,7 +2681,7 @@ Or, one or more 3-D field arrays may be specified
   - rz=false: set to true if data is RZ only
 The following are all optional and have the same meaning and default as the
 bgrd arrays with the same suffices:
-  - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,sy
+  - xs,ys,ap,ox,oy,ph,ot,op,sf,sc,sy
   """
   # --- Make sure that enough input was given to create the B arrays
   assert (id is not None) or \
@@ -2723,7 +2722,8 @@ of dx, dy, nx, ny, nz, must be passed in"""
   # --- refer to the updated memory locations after the gchange.
   edict = {'zs':top.bgrdzs,'ze':top.bgrdze,'xs':top.bgrdxs,'ys':top.bgrdys,
            'ap':top.bgrdap,'ax':top.bgrdax,'ay':top.bgrday,
-           'ox':top.bgrdox,'oy':top.bgrdoy,'ph':top.bgrdph,
+           'ox':top.bgrdox,'oy':top.bgrdoy,
+           'ph':top.bgrdph,'ot':top.bgrdot,'op':top.bgrdop,
            'sf':top.bgrdsf,'sc':top.bgrdsc,'sy':top.bgrdsy}
 
   # --- Shift the existing data in the arrays to open up a space for the
@@ -2775,8 +2775,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
 # ----------------------------------------------------------------------------
 # --- BSQGRAD --- XXX
 def addnewbsqgrad(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
-                  ph=0.,sp=0.,cp=0.,
-                  sf=0.,sc=1.,sy=0,dx=None,dy=None,
+                  ph=0.,sf=0.,sc=1.,sy=0,dx=None,dy=None,
                   bsqgrad=None,getbsqgrad=None,
                   nx=None,ny=None,nz=None,nc=3):
   """
@@ -2794,7 +2793,7 @@ Or, bsqgrad is calculated from all of the applied B fields
   - getbsqgrad=1
 The following are all optional and have the same meaning and default as the
 bsqgrad arrays with the same suffices:
-  - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,sy,nc
+  - xs,ys,ap,ox,oy,ph,sf,sc,sy,nc
   """
   # --- Make sure that enough input was given to create the B arrays
   assert ((bsqgrad is None) or
@@ -2898,8 +2897,7 @@ bsqgrad arrays with the same suffices:
 # ----------------------------------------------------------------------------
 # --- PGRD --- XXX
 def addnewpgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
-               ph=0.,sp=0.,cp=0.,
-               sf=0.,sc=1.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
+               ph=0.,sf=0.,sc=1.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
                dx=None,dy=None,phi=None):
 
   """
@@ -2915,7 +2913,7 @@ Or, 3-D phi array may be specified
   - dx,dy: transverse grid cell size must also be specified
 The following are all optional and have the same meaning and default as the
 pgrd arrays with the same suffices:
-  - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,rr,rl,gl,gp,pw,pa
+  - xs,ys,ap,ox,oy,ph,sf,sc,rr,rl,gl,gp,pw,pa
   """
   # --- Make sure either an 'id' or a dataset, 'es', was passed in.
   assert (id is not None or phi is not None), \
