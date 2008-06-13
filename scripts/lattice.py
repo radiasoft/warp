@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.64 2008/06/03 20:58:33 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.65 2008/06/13 16:12:04 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2725,8 +2725,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
   edict = {'zs':top.bgrdzs,'ze':top.bgrdze,'xs':top.bgrdxs,'ys':top.bgrdys,
            'ap':top.bgrdap,'ax':top.bgrdax,'ay':top.bgrday,
            'ox':top.bgrdox,'oy':top.bgrdoy,'ph':top.bgrdph,
-           'sp':top.bgrdsp,'cp':top.bgrdcp,'sf':top.bgrdsf,'sc':top.bgrdsc,
-           'sy':top.bgrdsy}
+           'sf':top.bgrdsf,'sc':top.bgrdsc,'sy':top.bgrdsy}
 
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element. The element id must be handled seperately.
