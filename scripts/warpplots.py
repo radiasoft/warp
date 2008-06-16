@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.217 2008/05/08 17:42:07 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.218 2008/06/16 22:13:51 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -3507,7 +3507,7 @@ to all three.
   else:             toptmp = solver
   if solver is w3d:
     if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-      rho = frz.basegrid.rho[1:-1,1:-1]
+      rho = frz.basegrid.rho
       iy = None
     else:
       rho = w3d.rho
@@ -3571,7 +3571,7 @@ to all three.
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver is w3d:
     if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-      rho = frz.basegrid.rho[1:-1,1:-1]
+      rho = frz.basegrid.rho
       iy = None
     else:
       rho = w3d.rho
