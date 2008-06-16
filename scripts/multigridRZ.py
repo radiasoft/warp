@@ -15,6 +15,7 @@ class MultiGridRZ(MultiGrid):
   
   def __init__(self,lreducedpickle=1,**kw):
     kw['lreducedpickle'] = lreducedpickle
+    self.grid_overlap = 2
 
     # --- Force ny (which is not used here)
     self.ny = 0
@@ -204,6 +205,7 @@ class MultiGrid2D(MultiGrid):
   
   def __init__(self,lreducedpickle=1,**kw):
     kw['lreducedpickle'] = lreducedpickle
+    self.grid_overlap = 2
 
     # --- Force ny (which is not used here)
     self.ny = 0
@@ -387,6 +389,7 @@ Initially, conductors are not implemented.
   
   def __init__(self,lreducedpickle=1,**kw):
     kw['lreducedpickle'] = lreducedpickle
+    self.grid_overlap = 2
 
     # --- Force ny (which is not used here)
     self.ny = 0
