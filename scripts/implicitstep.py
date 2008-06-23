@@ -1,6 +1,6 @@
 
 """Defines ImplicitStep, which handles implicit time stepping"""
-implicitstep_version = "$Id: implicitstep.py,v 1.7 2008/04/24 21:31:40 dave Exp $"
+implicitstep_version = "$Id: implicitstep.py,v 1.8 2008/06/23 16:22:29 dave Exp $"
 
 from warp import *
 import controllers
@@ -50,7 +50,7 @@ Handles implicit time stepping.
       w3d.oldsetup()
     setuppgroup(top.pgroup)
 
-  def __setstate(self,dict):
+  def __setstate__(self,dict):
     self.__dict__.update(dict)
     registerpackage(self,self.name)
 
