@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.20 $, $Date: 2008/06/05 17:35:54 $
+c@(#) File top_lattice.F, version $Revision: 3.21 $, $Date: 2008/06/23 23:14:36 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -749,7 +749,7 @@ c     --- Calculate 1/bgrddx etc. for efficiency (minimizes divides)
 c     --- Note that this coding is not executed if bgrdns=0.
       do i=1,bgrdns
         if (bgrddxi(i) == 0.) bgrddxi(i) = 1./bgrddx(i)
-        if (bgrddyi(i) == 0.) bgrddyi(i) = 1./bgrddy(i)
+        if (bgrddyi(i) == 0. .and. bgrddy(i) .ne. 0.) bgrddyi(i) = 1./bgrddy(i)
         if (bgrddzi(i) == 0.) bgrddzi(i) = 1./bgrddz(i)
       enddo
 
