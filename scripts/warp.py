@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.169 2008/05/09 17:14:57 dave Exp $"
+warp_version = "$Id: warp.py,v 1.170 2008/06/25 16:44:35 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -515,20 +515,20 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
     top.zlmin = zmin
     top.zlmax = zmin
     top.nzl = 0
+    zbeam = zmin
   else:
     top.zlmin = zmin - zlen/10.
     top.zlmax = zmax + zlen/10.
     top.nzl = 1000
     top.dzl = (top.zlmax - top.zlmin)/top.nzl
     top.dzli = 1./top.dzl
-    top.zlframe = 0.
     top.nzlmax = max(top.nzlmax,top.nzl)
     gchange("LatticeInternal")
-  top.zltime = time
+    zbeam = 0.
     
   # --- Make sure that the lattice is set up. If it is already, this won't
   # --- change anything (maybe).
-  setlatt()
+  setlattzt(zbeam,time)
 
   # --- Create other temporaries
   uzp = ones(n,'d')
