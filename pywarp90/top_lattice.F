@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.21 $, $Date: 2008/06/23 23:14:36 $
+c@(#) File top_lattice.F, version $Revision: 3.22 $, $Date: 2008/06/25 16:41:35 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -1625,7 +1625,7 @@ c  should be loaded at the same time.
       if (ltoptimesubs) substarttime = wtime()
 
       if (lresetlat) call resetlat()
-      call setlattzt(zbeam,time,fstype)
+      call setlattzt(zbeam,time)
 
 !$OMP MASTER
       if (ltoptimesubs) timesetlatt = timesetlatt + wtime() - substarttime
@@ -1634,11 +1634,10 @@ c  should be loaded at the same time.
       return
       end
 c============================================================================ 
-      subroutine setlattzt(zbeam,time,fstype)
+      subroutine setlattzt(zbeam,time)
       use Lattice
       use LatticeInternal
       real(kind=8):: zbeam,time
-      integer(ISZ):: fstype
 
 c  Sets the lattice data at zbeam and time into 1d arrays.
 
