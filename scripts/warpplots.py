@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.218 2008/06/16 22:13:51 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.219 2008/06/28 00:20:47 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -4206,7 +4206,7 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=1,solver=None,local=0,**kw):
   if me > 0 and not local: rrr = zeros((solver.nx+1,solver.nz+1),'d')
   rrr = transpose(rrr)
   ppgeneric(grid=rrr,kwdict=kw,local=1)
-  if fullplane and solver.l4symtry:
+  if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
     ppgeneric(grid=rrr,kwdict=kw,local=1,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
