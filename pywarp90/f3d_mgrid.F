@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.171 $, $Date: 2008/06/05 17:57:13 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.172 $, $Date: 2008/06/30 21:58:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -468,7 +468,7 @@ c=============================================================================
         i2 = nzlocal + delz
       endif
       if (i2 >= i1) then
-        sss(1) = sum(sum(sum(a(0:nx,0:ny,i1:i2),1),1),1)
+        sss(1) = sum(sum(sum(a(:,:,i1:i2),1),1),1)
       else
         sss(1) = 0.
       endif
@@ -481,7 +481,7 @@ c=============================================================================
       endif
       i2 = nzlocal + delz
       if (i2 >= i1) then
-        sss(2) = sum(sum(sum(a(0:nx,0:ny,i1:i2),1),1),1)
+        sss(2) = sum(sum(sum(a(:,:,i1:i2),1),1),1)
       else
         sss(2) = 0.
       endif
@@ -491,7 +491,7 @@ c=============================================================================
 
 #else
 
-      mggetarraysum(1) = sum(sum(sum(a(0:nx,0:ny,:),1),1),1)
+      mggetarraysum(1) = sum(a)
       mggetarraysum(2) = mggetarraysum(1)
 
 #endif
@@ -5598,7 +5598,14 @@ c     --- Longitudinal boundaries
       if (bounds(4) == 1) res(:,-1) = res(:,1)
       if (bounds(5) == 1) res(:,nzlocal+1) = res(:,nzlocal-1)
       if (bounds(4) == 2 .and. nzlocal == nz) res(:,-1) = res(:,nzlocal-1)
-      if (bounds(5) == 2 .and. nzlocal == nz) res(:,nzlocal+1) = res(:,1)
+      if (bounds(5) == 2 .and. nzlocal == nz) res(:,nzlocal:nzlocal+1) = res(:,0:1)
+c     --- There is a problem with conductors and periodic boundaries. If a
+c     --- conductor reaches the upper edge of the mesh, the residual at
+c     --- the corresponding points on the lower boundary will not be
+c     --- zeroed out as it should be. Even worse, since the code above
+c     --- copies phi at 0 to phi at nz, the residual at the upper
+c     --- boundary will be set to incorrect values. This could be fixed
+c     --- with an extra call to cond_potmgres, however.
 
       return
       end
@@ -6415,7 +6422,14 @@ c     --- Longitudinal boundaries
       if (bounds(4) == 1) res(:,-1) = res(:,1)
       if (bounds(5) == 1) res(:,nzlocal+1) = res(:,nzlocal-1)
       if (bounds(4) == 2 .and. nzlocal == nz) res(:,-1) = res(:,nzlocal-1)
-      if (bounds(5) == 2 .and. nzlocal == nz) res(:,nzlocal+1) = res(:,1)
+      if (bounds(5) == 2 .and. nzlocal == nz) res(:,nzlocal:nzlocal+1) = res(:,0:1)
+c     --- There is a problem with conductors and periodic boundaries. If a
+c     --- conductor reaches the upper edge of the mesh, the residual at
+c     --- the corresponding points on the lower boundary will not be
+c     --- zeroed out as it should be. Even worse, since the code above
+c     --- copies phi at 0 to phi at nz, the residual at the upper
+c     --- boundary will be set to incorrect values. This could be fixed
+c     --- with an extra call to cond_potmgres, however.
 
 
       return
