@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.172 $, $Date: 2008/06/30 21:58:44 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.173 $, $Date: 2008/07/01 01:26:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -6012,7 +6012,8 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 c     --- Do initial SOR passes.
       do i=1,downpasses
         call relax2ddielectric(mglevel,nx,nzlocal,nz,phi,rho,epsilon,
-     &                         dx,dz,localbounds,mgparam,conductors,
+     &                         dx,dz,xminodx,localbounds,mgparam,lcndbndy,
+     &                         conductors,lrz,
      &                         my_index,nslaves,izfsslave,nzfsslave,
      &                         whosendingleft,izsendingleft,
      &                         whosendingright,izsendingright)
@@ -6051,7 +6052,8 @@ c     --- coarsening. This is the same check that is done in getmglevels.
 c       --- Get the residual on the current grid.
         call residual2ddielectric(nx,nzlocal,nz,phi,rho,epsilon,res,dx,dz,
      &                            resdelx,resdelz,
-     &                            mglevel,localbounds,conductors)
+     &                            mglevel,localbounds,lcndbndy,conductors,
+     &                            xminodx,lrz)
 #ifdef MPIPARALLEL
         call mgexchange_phi(nx,0,nzlocal,nz,res,localbounds,-1,
      &                      resdelx,0,resdelz,
@@ -6227,7 +6229,8 @@ c       --- Add in resulting error.
 c     --- Do final SOR passes.
       do i=1,uppasses
         call relax2ddielectric(mglevel,nx,nzlocal,nz,phi,rho,epsilon,
-     &                         dx,dz,localbounds,mgparam,conductors,
+     &                         dx,dz,xminodx,localbounds,mgparam,lcndbndy,
+     &                         conductors,lrz,
      &                         my_index,nslaves,izfsslave,nzfsslave,
      &                         whosendingleft,izsendingleft,
      &                         whosendingright,izsendingright)
@@ -6237,7 +6240,8 @@ c     --- Do final SOR passes.
       end
 c=============================================================================
       subroutine relax2ddielectric(mglevel,nx,nzlocal,nz,phi,rho,epsilon,dx,dz,
-     &                             bounds,mgparam,conductors,
+     &                             xminodx,
+     &                             bounds,mgparam,lcndbndy,conductors,lrz,
      &                             my_index,nslaves,izfsslave,nzfsslave,
      &                             whosendingleft,izsendingleft,
      &                             whosendingright,izsendingright)
@@ -6247,7 +6251,8 @@ c=============================================================================
       real(kind=8):: phi(-1:nx+1,-1:nzlocal+1),rho(0:nx,0:nzlocal)
       real(kind=8):: epsilon(0:nx+1,0:nzlocal+1)
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: dx,dz,mgparam
+      real(kind=8):: dx,dz,xminodx,mgparam
+      logical(ISZ):: lcndbndy,lrz
       type(ConductorType):: conductors
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
@@ -6263,6 +6268,11 @@ c read those saved values for the update of phi.
 
       integer(ISZ):: parity,s_parity,e_parity
       integer(ISZ):: ixmin,ixmax,izmin,izmax,ix,iz,ix1
+      integer(ISZ):: i1,i2,ic
+      real(kind=8):: dxsqi,dzsqi
+
+      dxsqi = 1./dx**2
+      dzsqi = 1./dz**2
 
       call cond_potmg(conductors%interior,
      &                nx,0,nzlocal,1,0,1,phi,mglevel,1,.false.)
@@ -6295,22 +6305,62 @@ c     --- potential on the grid edge.
 c     --- do loop to cover even and odd points
       do parity=s_parity,e_parity,e_parity-s_parity
 
+c       --- Save values just outside conductor surfaces. Only save phi at the
+c       --- subgrid points which are to be used at the current level of
+c       --- grid refinement.
+        if (lcndbndy) then
+          if (parity == 0) then
+            i1 = conductors%evensubgrid%istart(mglevel)
+            i2 = conductors%evensubgrid%istart(mglevel+1)-1
+            do ic = i1,i2
+              ix = conductors%evensubgrid%indx(0,ic)
+              iz = conductors%evensubgrid%indx(2,ic)
+              conductors%evensubgrid%prevphi(ic) = phi(ix,iz)
+            enddo
+          else
+            i1 = conductors%oddsubgrid%istart(mglevel)
+            i2 = conductors%oddsubgrid%istart(mglevel+1)-1
+            do ic = i1,i2
+              ix = conductors%oddsubgrid%indx(0,ic)
+              iz = conductors%oddsubgrid%indx(2,ic)
+              conductors%oddsubgrid%prevphi(ic) = phi(ix,iz)
+            enddo
+          endif
+        endif
+
         do iz=izmin,izmax
           ix1 = ixmin + mod(ixmin + iz + parity,2)
           do ix=ix1,ixmax,2
 
             phi(ix,iz) = mgparam*(rho(ix,iz) + 
-     &        0.5*(epsilon(ix  ,iz)+epsilon(ix  ,iz+1))*phi(ix-1,iz  )/dx**2 +
-     &        0.5*(epsilon(ix+1,iz)+epsilon(ix+1,iz+1))*phi(ix+1,iz  )/dx**2 +
-     &        0.5*(epsilon(ix,iz  )+epsilon(ix+1,iz  ))*phi(ix  ,iz-1)/dz**2 +
-     &        0.5*(epsilon(ix,iz+1)+epsilon(ix+1,iz+1))*phi(ix  ,iz+1)/dz**2)/
+     &        0.5*(epsilon(ix  ,iz)+epsilon(ix  ,iz+1))*phi(ix-1,iz  )*dxsqi +
+     &        0.5*(epsilon(ix+1,iz)+epsilon(ix+1,iz+1))*phi(ix+1,iz  )*dxsqi +
+     &        0.5*(epsilon(ix,iz  )+epsilon(ix+1,iz  ))*phi(ix  ,iz-1)*dzsqi +
+     &        0.5*(epsilon(ix,iz+1)+epsilon(ix+1,iz+1))*phi(ix  ,iz+1)*dzsqi)/
      &                    (0.5*(epsilon(ix  ,iz)+epsilon(ix  ,iz+1) +
      &                          epsilon(ix+1,iz)+epsilon(ix+1,iz+1))*
-     &                     (1./dx**2 + 1./dz**2)) +
+     &                     (dxsqi + dzsqi)) +
      &                   (1.-mgparam)*phi(ix,iz)
 
           enddo
         enddo
+
+c       --- Apply altered difference equation to the points near the
+c       --- surface of the conductor boundaries.
+        if (lcndbndy) then
+          if (parity == 0) then
+           call condbndymg2ddielectric(conductors%evensubgrid,nx,nzlocal,
+     &                                 phi,rho,epsilon,
+     &                                 dxsqi,dzsqi,xminodx,lrz,
+     &                                 mgparam,bounds,mglevel)
+          endif
+          if (parity == 1) then
+           call condbndymg2ddielectric(conductors%oddsubgrid,nx,nzlocal,
+     &                                 phi,rho,epsilon,
+     &                                 dxsqi,dzsqi,xminodx,lrz,
+     &                                 mgparam,bounds,mglevel)
+          endif
+        endif
 
         call cond_potmg(conductors%interior,
      &                  nx,0,nzlocal,1,0,1,phi,mglevel,1,.false.)
@@ -6348,7 +6398,8 @@ c     --- Exchange phi in the z guard planes
 c=============================================================================
       subroutine residual2ddielectric(nx,nzlocal,nz,phi,rho,epsilon,res,dx,dz,
      &                                resdelx,resdelz,
-     &                                mglevel,bounds,conductors)
+     &                                mglevel,bounds,lcndbndy,conductors,
+     &                                xminodx,lrz)
       use Constant
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nzlocal,nz
@@ -6357,12 +6408,19 @@ c=============================================================================
       real(kind=8):: res(-resdelx:nx+resdelx,-resdelz:nzlocal+resdelz)
       real(kind=8):: dx,dz
       integer(ISZ):: resdelx,resdelz,mglevel,bounds(0:5)
+      logical(ISZ):: lcndbndy
       type(ConductorType):: conductors
+      real(kind=8):: xminodx
+      logical(ISZ):: lrz
 
 c Calculate the residual on the grid. Residual = r.h.s. - l.h.s.
 
       integer(ISZ):: ix,iz
       integer(ISZ):: ixmin,ixmax,izmin,izmax
+      real(kind=8):: dxsqi,dzsqi
+
+      dxsqi = 1./dx**2
+      dzsqi = 1./dz**2
 
 c     --- Set the loop limits, including edges when appropriate.
       ixmin = 0
@@ -6382,13 +6440,13 @@ c     --- Calculate the residual.
         do ix=ixmin,ixmax
 
           res(ix,iz) = rho(ix,iz)
-     &      + 0.5*(epsilon(ix  ,iz)+epsilon(ix  ,iz+1))*phi(ix-1,iz  )/dx**2
-     &      + 0.5*(epsilon(ix+1,iz)+epsilon(ix+1,iz+1))*phi(ix+1,iz  )/dx**2
-     &      + 0.5*(epsilon(ix,iz  )+epsilon(ix+1,iz  ))*phi(ix  ,iz-1)/dz**2
-     &      + 0.5*(epsilon(ix,iz+1)+epsilon(ix+1,iz+1))*phi(ix  ,iz+1)/dz**2
+     &      + 0.5*(epsilon(ix  ,iz)+epsilon(ix  ,iz+1))*phi(ix-1,iz  )*dxsqi
+     &      + 0.5*(epsilon(ix+1,iz)+epsilon(ix+1,iz+1))*phi(ix+1,iz  )*dxsqi
+     &      + 0.5*(epsilon(ix,iz  )+epsilon(ix+1,iz  ))*phi(ix  ,iz-1)*dzsqi
+     &      + 0.5*(epsilon(ix,iz+1)+epsilon(ix+1,iz+1))*phi(ix  ,iz+1)*dzsqi
      &                  - 0.5*(epsilon(ix  ,iz)+epsilon(ix  ,iz+1) +
      &                         epsilon(ix+1,iz)+epsilon(ix+1,iz+1))*
-     &                     (1./dx**2 + 1./dz**2)*phi(ix,iz)
+     &                     (dxsqi + dzsqi)*phi(ix,iz)
 
         enddo
       enddo
@@ -6398,15 +6456,17 @@ c     --- Zero the residual inside conductors.
       call cond_potmgres(conductors%interior,
      &                   nx,0,nzlocal,res,mglevel,1,.false.,resdelx,0,resdelz)
 
-c     if (lcndbndy) then
+      if (lcndbndy) then
 c       --- Calculate the residual near the conductor.
-c       call condbndymgres2d(conductors%evensubgrid,nx,nzlocal,phi,rho,res,
-c    &                       dxsqi,dzsqi,xminodx,lrz,bounds,mglevel,
-c    &                       resdelx,resdelz)
-c       call condbndymgres2d(conductors%oddsubgrid,nx,nzlocal,phi,rho,res,
-c    &                       dxsqi,dzsqi,xminodx,lrz,bounds,mglevel,
-c    &                       resdelx,resdelz)
-c     endif
+        call condbndymgres2ddielectric(conductors%evensubgrid,nx,nzlocal,
+     &                                 phi,rho,res,epsilon,
+     &                                 dxsqi,dzsqi,xminodx,lrz,bounds,mglevel,
+     &                                 resdelx,resdelz)
+        call condbndymgres2ddielectric(conductors%oddsubgrid,nx,nzlocal,
+     &                                 phi,rho,res,epsilon,
+     &                                 dxsqi,dzsqi,xminodx,lrz,bounds,mglevel,
+     &                                 resdelx,resdelz)
+      endif
 
 c     --- Transverse boundaries
       if (bounds(0) == 0) res(-1:0,:) = 0.
@@ -6515,6 +6575,338 @@ c     --- Do the loops.
           endif
 
         enddo
+      enddo
+!$OMP END DO
+
+      return
+      end
+c=============================================================================
+      subroutine condbndymg2ddielectric(subgrid,nx,nzlocal,phi,rho,epsilon,
+     &                                  dxsqi,dzsqi,xminodx,lrz,
+     &                                  mgparam,bounds,mglevel)
+      use ConductorSubGridTypemodule
+      type(ConductorSubGridType):: subgrid
+      integer(ISZ):: nx,nzlocal,mglevel
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1), rho(0:nx,0:nzlocal)
+      real(kind=8):: epsilon(0:nx+1,0:nzlocal+1)
+      real(kind=8):: dxsqi,dzsqi,mgparam,xminodx
+      logical(ISZ):: lrz
+      integer(ISZ):: bounds(0:5)
+
+c Uses adjusted difference equation to enforce sub-grid level placement of 
+c conductor boundaries for points near conductor surface.
+
+      integer(ISZ):: ic,ix,iz
+      real(kind=8):: pxm,pzm,pxp,pzp
+      real(kind=8):: dxm,dzm,dxp,dzp
+      real(kind=8):: epxm,epzm,epxp,epzp
+      real(kind=8):: cxm,czm,cxp,czp
+      real(kind=8):: voltfac,c0
+      real(kind=8):: rr(0:nx),rri(0:nx)
+      real(kind=8),pointer:: dels(:,:),volt(:,:)
+
+      dels => subgrid%dels
+      volt => subgrid%volt
+
+c     --- Only use actual voltage on finest level. Set to zero for
+c     --- coarser levels since solver for the residuals.
+      if (mglevel == 0) then
+        voltfac = 1.
+      else
+        voltfac = 0.
+      endif
+
+c     --- Note that in the loop below, for the Neumann boundary conditions,
+c     --- the potentials are not set since they will be multiplied by zero
+c     --- anyway. The code here just ensures that the variables have been
+c     --- initialized so that debuggers and valgrind won't complain about
+c     --- using uninitialized variables.
+      pxm = 0.
+      pxp = 0.
+      pzm = 0.
+      pzp = 0.
+
+c     --- Precalculate the radius for efficiency
+      if (lrz) then
+        do ix=0,nx
+          rr(ix) = ix + xminodx
+          if (rr(ix) > 0.) rri(ix) = 1./rr(ix)
+        enddo
+      endif
+
+c     --- loop over points near surface of conductors
+!$OMP DO
+      do ic = subgrid%istart(mglevel),subgrid%istart(mglevel+1)-1
+
+        ix = subgrid%indx(0,ic)
+        iz = subgrid%indx(2,ic)
+
+c       --- Skip the data point if it is on a Dirichlet or parallel boundary
+        if (ix == 0  .and. bounds(0) < 1) cycle
+        if (ix == nx .and. bounds(1) < 1) cycle
+        if (iz == 0  .and. bounds(4) < 1) cycle
+        if (iz == nzlocal .and. bounds(5) < 1) cycle
+
+c       --- First, get the potential and effective grid cell sizes
+c       --- Note that for the Neumann case, the potential is not
+c       --- used and so is not set.
+        if (0. < dels(0,ic) .and. dels(0,ic) < +1.) then
+          pxm = voltfac*volt(0,ic)
+          dxm = dels(0,ic)
+        elseif (-1. < dels(0,ic) .and. dels(0,ic) <= 0.) then
+          dxm = -2.*dels(0,ic)
+        else
+          pxm = phi(ix-1,iz  )
+          dxm = 1.
+        endif
+
+        if (0. < dels(1,ic) .and. dels(1,ic) < +1.) then
+          pxp = voltfac*volt(1,ic)
+          dxp = dels(1,ic)
+        elseif (-1. < dels(1,ic) .and. dels(1,ic) <= 0.) then
+          dxp = -2.*dels(1,ic)
+        else
+          pxp = phi(ix+1,iz  )
+          dxp = 1.
+        endif
+
+        if (0. < dels(4,ic) .and. dels(4,ic) < +1.) then
+          pzm = voltfac*volt(4,ic)
+          dzm = dels(4,ic)
+        elseif (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) then
+          dzm = -2.*dels(4,ic)
+        else
+          pzm = phi(ix  ,iz-1)
+          dzm = 1.
+        endif
+
+        if (0. < dels(5,ic) .and. dels(5,ic) < +1.) then
+          pzp = voltfac*volt(5,ic)
+          dzp = dels(5,ic)
+        elseif (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) then
+          dzp = -2.*dels(5,ic)
+        else
+          pzp = phi(ix  ,iz+1)
+          dzp = 1.
+        endif
+
+c       --- Setup the epsilon coefficients
+        epxm = 0.5*(epsilon(ix  ,iz) + epsilon(ix  ,iz+1))
+        epxp = 0.5*(epsilon(ix+1,iz) + epsilon(ix+1,iz+1))
+        epzm = 0.5*(epsilon(ix,iz  ) + epsilon(ix+1,iz  ))
+        epzp = 0.5*(epsilon(ix,iz+1) + epsilon(ix+1,iz+1))
+
+c       --- Now construct the coefficients
+        cxm = epxm*dxsqi/(dxm*(0.5*dxm + 0.5*dxp))
+        cxp = epxp*dxsqi/(dxp*(0.5*dxm + 0.5*dxp))
+        czm = epzm*dzsqi/(dzm*(0.5*dzm + 0.5*dzp))
+        czp = epzp*dzsqi/(dzp*(0.5*dzm + 0.5*dzp))
+        if (-1. < dels(0,ic) .and. dels(0,ic) <= 0.) cxm = 0.
+        if (-1. < dels(1,ic) .and. dels(1,ic) <= 0.) cxp = 0.
+        if (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) czm = 0.
+        if (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) czp = 0.
+
+c       --- Correct coefficients for axisymmetric case
+        if (lrz) then
+          if (rr(ix) > 0.) then
+            cxm = cxm*(rr(ix) - 0.5*dxm)*rri(ix)
+            cxp = cxp*(rr(ix) + 0.5*dxp)*rri(ix)
+          else
+            cxm = 0.
+            cxp = 4.*cxp
+          endif
+        endif
+
+c       --- Note that it is possible for c0 to be zero, but that is an
+c       --- isolated case which doesn't make sense anyway, so let a NaN
+c       --- happen rather than add an extra check on c0.
+
+        c0 = cxm + cxp + czm + czp
+        phi(ix,iz) = mgparam*(rho(ix,iz)
+     &                        + cxm*pxm + cxp*pxp + czm*pzm + czp*pzp)/c0
+     &               + (1. - mgparam)*subgrid%prevphi(ic)
+c       print*,phi(ix,iz),rho(ix,iz),cxm,pxm,cxp,pxp,czm,pzm,czp,pzp,c0,
+c    &               subgrid%prevphi(ic)
+
+      enddo
+!$OMP END DO
+
+      return
+      end
+c=============================================================================
+      subroutine condbndymgres2ddielectric(subgrid,nx,nzlocal,phi,rho,res,
+     &                                     epsilon,dxsqi,dzsqi,xminodx,lrz,
+     &                                     bounds,mglevel,
+     &                                     resdelx,resdelz)
+      use ConductorSubGridTypemodule
+      type(ConductorSubGridType):: subgrid
+      integer(ISZ):: nx,nzlocal,mglevel
+      integer(ISZ):: resdelx,resdelz
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1), rho(0:nx,0:nzlocal)
+      real(kind=8):: res(-resdelx:nx+resdelx,-resdelz:nzlocal+resdelz)
+      real(kind=8):: epsilon(0:nx+1,0:nzlocal+1)
+      real(kind=8):: dxsqi,dzsqi,xminodx
+      logical(ISZ):: lrz
+      integer(ISZ):: bounds(0:5)
+
+c Uses adjusted difference equation to enforce sub-grid level placement of 
+c conductor boundaries for points near conductor surface.
+
+      integer(ISZ):: ic,ix,iz
+      real(kind=8):: pxm,pzm,pxp,pzp
+      real(kind=8):: dxm,dzm,dxp,dzp
+      real(kind=8):: cxm,czm,cxp,czp
+      real(kind=8):: epxm,epzm,epxp,epzp
+      real(kind=8):: voltfac,ppp,c0
+      real(kind=8):: rr(0:nx),rri(0:nx)
+      real(kind=8),pointer:: dels(:,:),volt(:,:)
+
+      dels => subgrid%dels
+      volt => subgrid%volt
+
+c     --- Only use actual voltage on finest level. Set to zero for
+c     --- coarser levels since solver for the residuals.
+      if (mglevel == 0) then
+        voltfac = 1.
+      else
+        voltfac = 0.
+      endif
+
+c     --- Note that in the loop below, for the Neumann boundary conditions,
+c     --- the potentials are not set since they will be multiplied by zero
+c     --- anyway. The code here just ensures that the variables have been
+c     --- initialized so that debuggers and valgrind won't complain about
+c     --- using uninitialized variables.
+      pxm = 0.
+      pxp = 0.
+      pzm = 0.
+      pzp = 0.
+
+c     --- Precalculate the radius for efficiency
+      if (lrz) then
+        do ix=0,nx
+          rr(ix) = ix + xminodx
+          if (rr(ix) > 0.) rri(ix) = 1./rr(ix)
+        enddo
+      endif
+
+c     --- loop over points near surface of conductors
+!$OMP DO
+      do ic = subgrid%istart(mglevel),subgrid%istart(mglevel+1)-1
+
+        ix = subgrid%indx(0,ic)
+        iz = subgrid%indx(2,ic)
+
+c       --- Skip the data point if it is on a Dirichlet
+        if (ix == 0  .and. bounds(0) == 0) cycle
+        if (ix == nx .and. bounds(1) == 0) cycle
+        if (iz == 0  .and. bounds(4) == 0) cycle
+        if (iz == nzlocal .and. bounds(5) == 0) cycle
+
+c       --- First, get the potential and effective grid cell sizes
+c       --- Note that for the Neumann case, the potential is not
+c       --- used and so is not set.
+        ppp = 1.
+        if (0. < dels(0,ic) .and. dels(0,ic) < +1.) then
+          pxm = voltfac*volt(0,ic)
+          dxm = dels(0,ic)
+          ppp = min(ppp,dels(0,ic))
+        elseif (-1. < dels(0,ic) .and. dels(0,ic) <= 0.) then
+          dxm = -2.*dels(0,ic)
+          if (abs(dels(0,ic)) == 0.) then
+            ppp = min(ppp,1.-1.e-9)
+          else
+            ppp = min(ppp,abs(dels(0,ic)))
+          endif
+        else
+          pxm = phi(ix-1,iz  )
+          dxm = 1.
+        endif
+
+        if (0. < dels(1,ic) .and. dels(1,ic) < +1.) then
+          pxp = voltfac*volt(1,ic)
+          dxp = dels(1,ic)
+          ppp = min(ppp,dels(1,ic))
+        elseif (-1. < dels(1,ic) .and. dels(1,ic) <= 0.) then
+          dxp = -2.*dels(1,ic)
+          if (abs(dels(1,ic)) == 0.) then
+            ppp = min(ppp,1.-1.e-9)
+          else
+            ppp = min(ppp,abs(dels(1,ic)))
+          endif
+        else
+          pxp = phi(ix+1,iz  )
+          dxp = 1.
+        endif
+
+        if (0. < dels(4,ic) .and. dels(4,ic) < +1.) then
+          pzm = voltfac*volt(4,ic)
+          dzm = dels(4,ic)
+          ppp = min(ppp,dels(4,ic))
+        elseif (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) then
+          dzm = -2.*dels(4,ic)
+          if (abs(dels(4,ic)) == 0.) then
+            ppp = min(ppp,1.-1.e-9)
+          else
+            ppp = min(ppp,abs(dels(4,ic)))
+          endif
+        else
+          pzm = phi(ix  ,iz-1)
+          dzm = 1.
+        endif
+
+        if (0. < dels(5,ic) .and. dels(5,ic) < +1.) then
+          pzp = voltfac*volt(5,ic)
+          dzp = dels(5,ic)
+          ppp = min(ppp,dels(5,ic))
+        elseif (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) then
+          dzp = -2.*dels(5,ic)
+          if (abs(dels(5,ic)) == 0.) then
+            ppp = min(ppp,1.-1.e-9)
+          else
+            ppp = min(ppp,abs(dels(5,ic)))
+          endif
+        else
+          pzp = phi(ix  ,iz+1)
+          dzp = 1.
+        endif
+
+c       --- Setup the epsilon coefficients
+        epxm = 0.5*(epsilon(ix  ,iz) + epsilon(ix  ,iz+1))
+        epxp = 0.5*(epsilon(ix+1,iz) + epsilon(ix+1,iz+1))
+        epzm = 0.5*(epsilon(ix,iz  ) + epsilon(ix+1,iz  ))
+        epzp = 0.5*(epsilon(ix,iz+1) + epsilon(ix+1,iz+1))
+
+c       --- Now construct the coefficients
+        cxm = epxm*dxsqi/(dxm*(0.5*dxm + 0.5*dxp))
+        cxp = epxp*dxsqi/(dxp*(0.5*dxm + 0.5*dxp))
+        czm = epzm*dzsqi/(dzm*(0.5*dzm + 0.5*dzp))
+        czp = epzp*dzsqi/(dzp*(0.5*dzm + 0.5*dzp))
+        if (-1. < dels(0,ic) .and. dels(0,ic) <= 0.) cxm = 0.
+        if (-1. < dels(1,ic) .and. dels(1,ic) <= 0.) cxp = 0.
+        if (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) czm = 0.
+        if (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) czp = 0.
+
+c       --- Correct coefficients for axisymmetric case
+        if (lrz) then
+          if (rr(ix) > 0.) then
+            cxm = cxm*(rr(ix) - 0.5*dxm)*rri(ix)
+            cxp = cxp*(rr(ix) + 0.5*dxp)*rri(ix)
+          else
+            cxm = 0.
+            cxp = 4.*cxp
+          endif
+        endif
+
+        c0 = cxm + cxp + czm + czp
+        res(ix,iz) = ppp*(rho(ix,iz) + cxm*pxm + cxp*pxp + czm*pzm + czp*pzp
+     &                    - c0*phi(ix,iz))
+
+        if (0. >= dels(0,ic) .and. dels(0,ic) >= -1.) res(ix-1,iz) = 0.
+        if (0. >= dels(1,ic) .and. dels(1,ic) >= -1.) res(ix+1,iz) = 0.
+        if (0. >= dels(4,ic) .and. dels(4,ic) >= -1.) res(ix,iz-1) = 0.
+        if (0. >= dels(5,ic) .and. dels(5,ic) >= -1.) res(ix,iz+1) = 0.
+
       enddo
 !$OMP END DO
 
