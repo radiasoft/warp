@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.236 $, $Date: 2008/06/25 16:41:35 $
+#@(#) File TOP.V, version $Revision: 3.237 $, $Date: 2008/07/02 20:39:07 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.236 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.237 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -104,6 +104,27 @@ x0            real /0./               [m] # Initial beam centroid in x
 xp0           real /0./               [1] # Initial beam centroid vx/vz
 y0            real /0./               [m] # Initial beam centroid in y
 yp0           real /0./               [1] # Initial beam centroid vy/vz
+xx0           real /0./             [m^2] # Initial average value of xx
+	      	   		    	  # w.r.t. the beam centroid
+xxp0          real /0./               [m] # Initial average value of xx'
+	      	   		    	  # w.r.t. the beam centroid
+xpxp0         real /0./               [1] # Initial average value of x'x'
+	      	   		    	  # w.r.t. the beam centroid
+yy0           real /0./             [m^2] # Initial average value of yy
+	      	   		    	  # w.r.t. the beam centroid
+yyp0          real /0./               [m] # Initial average value of yy'
+	      	   		    	  # w.r.t. the beam centroid
+ypyp0         real /0./               [1] # Initial average value of y'y'
+	      	   		    	  # w.r.t. the beam centroid
+xy0           real /0./             [m^2] # Initial average value of xy
+	      	   		    	  # w.r.t. the beam centroid
+xpy0          real /0./               [m] # Initial average value of x'y
+	      	   		    	  # w.r.t. the beam centroid
+xyp0          real /0./               [m] # Initial average value of xy'
+	      	   		    	  # w.r.t. the beam centroid
+xpyp0         real /0./               [1] # Initial average value of x'y'
+	      	   		    	  # w.r.t. the beam centroid
+bph0          real /0./             [rad] # Initial transverse beam tilt angle
 tunelen       real /0./               [m] # Length for tune calc (lattice per.)
 dedr          real /0./             [E/m] # Uniform focusing 
                                           #   radial Electric field gradient
