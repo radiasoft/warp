@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.22 $, $Date: 2008/06/25 16:41:35 $
+c@(#) File top_lattice.F, version $Revision: 3.23 $, $Date: 2008/07/02 19:51:10 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -2316,6 +2316,82 @@ c       --- z start.
       return
       end
 c=============================================================================
+      subroutine getegrdid(zz,offset,id,io)
+      use Lattice
+      use LatticeInternal
+      real(kind=8):: zz,offset
+      integer(ISZ):: id,io
+
+c Gets the id and offset for the egrd at the z location zz and overlap
+c level io. If the overlap level is 0, finds the element with the lowest
+c z start.
+
+      integer(ISZ):: ii,id_temp
+      real(kind=8):: offset_temp
+
+      if (negrd < 0) return
+
+      if (io > 0) then
+c       --- Just call getelemid.
+        call getelemid(zz,offset,negrd,egrdzs,egrdze,egrdol,
+     &                 oegrdnn(io),oegrdoi(oegrdii(io):),oegrdio,id,io)
+      else
+c       --- Call getelemid for overlap level 1 to get first guess.
+        call getelemid(zz,offset,negrd,egrdzs,egrdze,egrdol,
+     &                 oegrdnn(1),oegrdoi(oegrdii(1):),oegrdio,id,1)
+c       --- Loop over rest of overlap levels looking for a egrd with lower
+c       --- z start.
+        id_temp = id
+        do ii=2,negrdol
+          call getelemid(zz,offset_temp,negrd,egrdzs,egrdze,egrdol,
+     &                   oegrdnn(ii),oegrdoi(oegrdii(ii):),oegrdio,id_temp,ii)
+          if (egrdzs(id_temp)+offset_temp < egrdzs(id)+offset) then
+            id = id_temp
+            offset = offset_temp
+          endif
+        enddo
+      endif
+      return
+      end
+c=============================================================================
+      subroutine getbgrdid(zz,offset,id,io)
+      use Lattice
+      use LatticeInternal
+      real(kind=8):: zz,offset
+      integer(ISZ):: id,io
+
+c Gets the id and offset for the bgrd at the z location zz and overlap
+c level io. If the overlap level is 0, finds the element with the lowest
+c z start.
+
+      integer(ISZ):: ii,id_temp
+      real(kind=8):: offset_temp
+
+      if (nbgrd < 0) return
+
+      if (io > 0) then
+c       --- Just call getelemid.
+        call getelemid(zz,offset,nbgrd,bgrdzs,bgrdze,bgrdol,
+     &                 obgrdnn(io),obgrdoi(obgrdii(io):),obgrdio,id,io)
+      else
+c       --- Call getelemid for overlap level 1 to get first guess.
+        call getelemid(zz,offset,nbgrd,bgrdzs,bgrdze,bgrdol,
+     &                 obgrdnn(1),obgrdoi(obgrdii(1):),obgrdio,id,1)
+c       --- Loop over rest of overlap levels looking for a bgrd with lower
+c       --- z start.
+        id_temp = id
+        do ii=2,nbgrdol
+          call getelemid(zz,offset_temp,nbgrd,bgrdzs,bgrdze,bgrdol,
+     &                   obgrdnn(ii),obgrdoi(obgrdii(ii):),obgrdio,id_temp,ii)
+          if (bgrdzs(id_temp)+offset_temp < bgrdzs(id)+offset) then
+            id = id_temp
+            offset = offset_temp
+          endif
+        enddo
+      endif
+      return
+      end
+c=============================================================================
       subroutine getacclid(zz,offset,id,io)
       use Lattice
       use LatticeInternal
@@ -3730,9 +3806,9 @@ c        + ...
       real(kind=8):: tex,tey
 
 c  Evaluation of E, vectorized over particles
-
+      
       if (.not. egrds .or. .not. linegrd(0)) return
-
+      
       do io=1,negrdol
         if (.not. linegrd(io)) cycle
 

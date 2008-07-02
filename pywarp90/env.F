@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.36 $, $Date: 2007/10/09 23:35:04 $
+c@(#) File ENV.M, version $Revision: 3.37 $, $Date: 2008/07/02 19:50:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -255,67 +255,58 @@ c  Work around compiler bug on Sun that leads to missing VAR_SEG7
       junk = 1
 
       call envelatt (
-     & nenv, lrelativ, gammabar, genprv, dzenv,
+     & lrelativ, gammabar,
      & aion, zion, ekin, vbeam, ibeam, a0, b0, ap0, bp0, x0, y0, xp0, yp0,
-     & emitx, emity, 
-     & dedr, dexdx, deydy, dbdr, zl, zu,
-     & tunezs, tuneze, 
-     & sig0x, sigx, sig0y, sigy, deltaa, deltaap, deltab, deltabp,
-     & aenv(0), apenv(0), benv(0), bpenv(0), vzenv(0), xorb(0), xporb(0), yorb(0), yporb(0),
-     & fqxenv(0), fqyenv(0), fuxenv(0), fuyenv(0), xenv(0), yenv(0), xpenv(0), ypenv(0), zenv(0))
+     & xx0, xxp0, xpxp0, yy0, yyp0, ypyp0, xy0, xpy0, xyp0, xpyp0, bph0, 
+     & emitx, emity, dedr, dexdx, deydy, dbdr)
  
       return
       end
 c=======================================================================
       subroutine envelatt (
-     & nenv, lrelativ, gammabar, genprv, dzenv,
+     & lrelativ, gammabar,
      & aion, zion, ekin, vbeam, ibeam, a0, b0, ap0, bp0, x0, y0, xp0, yp0,
-     & emitx, emity, 
-     & dedr, dexdx, deydy, dbdr, zl, zu,
-     & tunezs, tuneze, 
-     & sig0x, sigx, sig0y, sigy, deltaa, deltaap, deltab, deltabp,
-     & aenv, apenv, benv, bpenv, vzenv, xorb, xporb, yorb, yporb,
-     & fqxenv, fqyenv, fuxenv, fuyenv, xenv, yenv, xpenv, ypenv, zenv)
+     & xx0, xxp0, xpxp0, yy0, yyp0, ypyp0, xy0, xpy0, xyp0, xpyp0, bph0, 
+     & emitx, emity, dedr, dexdx, deydy, dbdr)
+      use ENVvars
       use ENVtune
       use Constant
       use InGen
-      integer(ISZ):: nenv
       logical(ISZ):: lrelativ
       real(kind=8):: ibeam
-      real(kind=8):: mx11,mx22,mx110,mx220
-      real(kind=8):: my11,my22,my110,my220
-      real(kind=8):: gammabar,genprv,dzenv
+      real(kind=8):: gammabar
       real(kind=8):: aion,zion,ekin,vbeam,a0,b0,ap0,bp0,x0,y0,xp0,yp0
+      real(kind=8):: xx0,xxp0,xpxp0,yy0,yyp0,ypyp0,xy0,xpy0,xyp0,xpyp0,bph0
       real(kind=8):: emitx,emity 
-      real(kind=8):: dedr,dexdx,deydy,dbdr,zl,zu
-      real(kind=8):: tunezs, tuneze 
-      real(kind=8):: sig0x,sigx,sig0y,sigy,deltaa,deltaap,deltab,deltabp
-      real(kind=8):: aenv(0:nenv),apenv(0:nenv),benv(0:nenv),bpenv(0:nenv)
-      real(kind=8):: xorb(0:nenv),xporb(0:nenv),yorb(0:nenv),yporb(0:nenv)
-      real(kind=8):: vzenv(0:nenv)
-      real(kind=8):: fqxenv(0:nenv),fqyenv(0:nenv),fuxenv(0:nenv),fuyenv(0:nenv)
-      real(kind=8):: xenv(0:nenv), yenv(0:nenv), xpenv(0:nenv), ypenv(0:nenv)
-      real(kind=8):: zenv(0:nenv)
+      real(kind=8):: dedr,dexdx,deydy,dbdr
 
 c  This routine does the actual envelope calculation for the general lattice. 
 c  The input arguments are described in the variable description files
 c  of packages ENV and TOP.  The package takes linear focusing components 
-c  from various lattice and multipole arrays.  Any linear field componets 
-c  imported as gridded data will be missed.  
+c  from various lattice and multipole arrays.  
 
       integer(ISZ):: istep
+      real(kind=8):: mx11,mx22,mx110,mx220
+      real(kind=8):: my11,my22,my110,my220
       real(kind=8):: p,gamma,emitnx_l, emitny_l
       real(kind=8):: dz,z,vz,ek,time
       real(kind=8):: a,ap,b,bp,fa,fb
-      real(kind=8):: x,xp,fx,y,yp,fy
+      real(kind=8):: x,xp,fx,y,yp,fy,fxtrans,fytrans,flong
       real(kind=8):: x1,xp1,fx1,x2,xp2,fx2
       real(kind=8):: y1,yp1,fy1,y2,yp2,fy2
       real(kind=8):: x01,x0p1,fx01,x02,x0p2,fx02
       real(kind=8):: y01,y0p1,fy01,y02,y0p2,fy02
+      real(kind=8):: xx,xxp,xpxp,yy,yyp,ypyp,xy,xpy,xyp,xpyp
+      real(kind=8):: bph,bphtemp
+      real(kind=8):: xpxpint,ypypint,xpypint
       real(kind=8):: faccl,fqxplot,fqyplot,fuxplot,fuyplot
+      real(kind=8):: kfxx,kfxy,kfyx,kfyy,kxx,kxy,kyx,kyy
       real(kind=8):: cossig0x,cossigx,tansig0x,tansigx
       real(kind=8):: cossig0y,cossigy,tansig0y,tansigy
       real(kind=8):: wz
+      real(kind=8):: t,s,xpm,ypm,xps,xpp,ypp
+      real(kind=8):: somvmat(7,7),somvvec(7),somovec(7),somuvec(7)
+      integer(ISZ):: indx(7)
 
 c  For convenience, this routine accessesd the lattice database and is not
 c  linked to the universe solely by its calling sequence.
@@ -374,6 +365,48 @@ c     --- y-plane orbit: for undepressed tune, doesn't feel s.c.
 c     --- y-plane orbit: for undepressed tune, doesn't feel s.c., starts at x=0
       y02  = 0.
       y0p2 = 1.
+c     --- Second-order beam moments w.r.t. beam centroid
+      xx   = xx0
+      xxp  = xxp0
+      xpxp = xpxp0
+      yy   = yy0
+      yyp  = yyp0
+      ypyp = ypyp0
+      xy   = xy0
+      xpy  = xpy0
+      xyp  = xyp0
+      xpyp = xpyp0
+c     --- These integrals of second-order moments don't really have any 
+c         physical significance.  They're just here to serve as analogues 
+c         to position in the synchronized leapfrog advance.
+      xpxpint = 0.
+      ypypint = 0.
+      xpypint = 0.
+c     --- Transverse beam tilt angle
+      bph  = bph0
+c     --- Make sure that the beam tilt angle bph is consistent with 
+c         xx, yy, and xy, and that the consistent angle bph is as close as 
+c         possible to the initially specified bph0.
+c         When running the program, try to ensure that the difference between 
+c         bph0 and bphtemp is not an odd integer multiple of pi/4. radians, 
+c         as that makes for ambiguous logic
+      if (2.*xy*cos(2.*bph) .ne. (xx-yy)*sin(2.*bph)) then
+        if (xx == yy) then
+          if (xy == 0.) then
+            bphtemp =  0.
+          else if (xy > 0.) then
+            bphtemp =  pi/4.
+          else if (xy < 0.) then
+            bphtemp = -pi/4.
+          endif
+        else 
+          bphtemp = 0.5*atan(2.*xy/(xx-yy))
+        endif
+c       Make sure that the angle bph consistent with xx, yy, and xy is as 
+c       close to the initially specified bph as possible.  The pi/2 terms 
+c       appear because tan(2*x) has a periodicity of pi/2.
+        bph = bphtemp + (pi/2.)*nint((bph-bphtemp)/(pi/2.))
+      endif
 
 c  Initialize facility and update any variables which are functions of z.
 
@@ -384,32 +417,66 @@ c  Obtain initial force
 
        call envflatt (z, time, zion, aion, lrelativ, gamma, vz, ek, dz,
      & dedr,dexdx,deydy,dbdr,p, 
-     & a, b, x, y, x1, x2, x01, x02, y1, y2, y01, y02, emitnx_l, emitny_l,  
-     & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
-     & fqxplot, fqyplot, fuxplot, fuyplot)
+     & a, b, x, y, xp, yp, x1, x2, x01, x02, y1, y2, y01, y02, xx, yy, xy, 
+     & bph, emitnx_l, emitny_l,  
+     & fa, fb, fx, fy, fxtrans, fytrans, flong, 
+     & fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
+     & fqxplot, fqyplot, fuxplot, fuyplot,   
+     & kfxx, kfxy, kfyx, kfyy, kxx, kxy, kyx, kyy )
 
 c  Main loop of envelope code
 
       do istep = 0,nenv
 c        --- store data for this step
-         aenv(istep)   = a
-         apenv(istep)  = ap
-         benv(istep)   = b
-         bpenv(istep)  = bp
-         xenv(istep)   = x
-         xpenv(istep)  = xp
-         yenv(istep)   = y
-         ypenv(istep)  = yp
-         vzenv(istep)  = vz
-         zenv(istep)   = z
-         xorb(istep)   = x1
-         xporb(istep)  = xp1
-         yorb(istep)   = y1
-         yporb(istep)  = yp1
-         fqxenv(istep) = fqxplot
-         fqyenv(istep) = fqyplot
-         fuxenv(istep) = fuxplot
-         fuyenv(istep) = fuyplot 
+         aenv(istep)    = a
+         apenv(istep)   = ap
+         benv(istep)    = b
+         bpenv(istep)   = bp
+         xenv(istep)    = x
+         xpenv(istep)   = xp
+         yenv(istep)    = y
+         ypenv(istep)   = yp
+         vzenv(istep)   = vz
+         zenv(istep)    = z
+         xorb(istep)    = x1
+         xporb(istep)   = xp1
+         yorb(istep)    = y1
+         yporb(istep)   = yp1
+         xxenv(istep)   = xx
+         xxpenv(istep)  = xxp
+         xpxpenv(istep) = xpxp
+         yyenv(istep)   = yy
+         yypenv(istep)  = yyp
+         ypypenv(istep) = ypyp
+         xyenv(istep)   = xy
+         xpyenv(istep)  = xpy
+         xypenv(istep)  = xyp
+         xpypenv(istep) = xpyp
+         fqxenv(istep)  = fqxplot
+         fqyenv(istep)  = fqyplot
+         fuxenv(istep)  = fuxplot
+         fuyenv(istep)  = fuyplot
+         bphenv(istep)  = bph
+c        --- Calculate more complicated stored quantities
+         rxenv(istep)     = 2.*sqrt(   xx*cos(bph)**2 + yy*sin(bph)**2 + 
+     &                              2.*xy*sin(bph)*cos(bph)  )
+         ryenv(istep)     = 2.*sqrt(   xx*sin(bph)**2 + yy*cos(bph)**2 - 
+     &                              2.*xy*sin(bph)*cos(bph)  )
+         emitxenv(istep)  = 4.*sqrt(xx*xpxp - xxp**2)
+         emityenv(istep)  = 4.*sqrt(yy*ypyp - yyp**2)
+         emitnxenv(istep) = 4.*sqrt(xx*xpxp - xxp**2)*gamma*vz/clight
+         emitnyenv(istep) = 4.*sqrt(yy*ypyp - yyp**2)*gamma*vz/clight
+         emitngenv(istep) = 4.*sqrt(0.5*(xx*xpxp - xxp**2 + yy*ypyp - yyp**2) +
+     &                              (xy*xpyp - xyp*xpy))*gamma*vz/clight
+         emitnhenv(istep) = 4.*( (xx*xpxp - xxp**2)*(yy*ypyp - yyp**2) + 
+     &                           (xy*xpyp)**2 + (xyp*xpy)**2 - xx*yy*xpyp**2 - 
+     &                           xx*ypyp*xpy**2 - xpxp*yy*xyp**2 - 
+     &                           xpxp*ypyp*xy**2 - 2.*xy*xyp*xpy*xpyp + 
+     &                           2.*xxp*ypyp*xy*xpy - 2.*xxp*yyp*xy*xpyp - 
+     &                           2.*xxp*yyp*xyp*xpy + 2.*xpxp*yyp*xy*xyp + 
+     &                           2.*xx*yyp*xpy*xpyp + 2.*xxp*yy*xpyp*xyp 
+     &                         )**(1./4.)*gamma*vz/clight
+
 c        --- Check if just before starting point of region over which the tune
 c        --- is to be calculated.
 c        --- NOTE: this calculation is not correct when dzenv < 0.
@@ -541,11 +608,22 @@ c        --- envelope a in x-z plane
 c        --- envelope b in y-z plane
          bp   = bp   + .5*dz*fb   - 0.5*dz*faccl*bp
          b    = b    + bp*dz
-c        --- envelope x centroid
-         xp   = xp   + .5*dz*fx   - 0.5*dz*faccl*xp
+c        --- envelope x and y centroids
+c        Incorporate 1/4 of the transverse and acceleration terms
+         xpm  = xp   + .25*dz*(fxtrans - faccl*xp)
+         ypm  = yp   + .25*dz*(fytrans - faccl*yp)
+c        Rotate angles via Boris method
+         t    =        .25*dz*flong
+         s    = 2.*t/(1. + t**2)
+         xps  = xpm  + ypm*t
+         ypp  = ypm  - xps*s
+         xpp  = xps  + ypp*t
+c        Incorporate 1/4 of the transverse and acceleration terms 
+c        by inverting implicit equations
+         xp   = (xpp + .25*dz*fxtrans)/(1. + 0.25*dz*faccl)
+         yp   = (ypp + .25*dz*fytrans)/(1. + 0.25*dz*faccl)
+c        Advance positions a full step
          x    = x    + xp*dz
-c        --- envelope y centroid
-         yp   = yp   + .5*dz*fy   - 0.5*dz*faccl*yp
          y    = y    + yp*dz
 c        --- x-orbit, 1 
          xp1  = xp1  + .5*dz*fx1  - 0.5*dz*faccl*xp1
@@ -571,6 +649,64 @@ c        --- y-orbit, 3
 c        --- y-orbit, 4 
          y0p2 = y0p2 + .5*dz*fy02 - 0.5*dz*faccl*y0p2
          y02  = y02  + y0p2*dz
+c        --- Second-order moments
+c        See Sven Chilton's MS thesis, "Implementation of an iterative 
+c        matching scheme for the Kapchinskij-Vladimirskij envelope equations 
+c        in the WARP code," for the single particle equations of motion from 
+c        which the second order moment equations are derived.
+c        Set up a matrix for advancing second order moment "velocities", somvmat
+         somvmat(1,:) = (/ 1.-0.5*dz*faccl, 0.5*dz, 0., 0., 0., 0.5*dz*flong,
+     &                     0. /)
+         somvmat(2,:) = (/ dz*kxx, 1.-dz*faccl, 0., 0., dz*kxy, 0., dz*flong /)
+         somvmat(3,:) = (/ 0., 0., 1.-0.5*dz*faccl, 0.5*dz, -0.5*dz*flong, 
+     &                     0., 0. /)
+         somvmat(4,:) = (/ 0., 0., dz*kyy, 1.-dz*faccl, 0., dz*kyx, -dz*flong /)
+         somvmat(5,:) = (/ 0., 0., 0.5*dz*flong, 0., 1.-0.5*dz*faccl, 0., 
+     &                     0.5*dz /)
+         somvmat(6,:) = (/-0.5*dz*flong, 0., 0., 0., 0., 1.-0.5*dz*faccl, 
+     &                     0.5*dz /)
+         somvmat(7,:) = (/ 0.5*dz*kyx, -0.5*dz*flong, 0.5*dz*kxy, 0.5*dz*flong, 
+     &                     0.5*dz*kyy, 0.5*dz*kxx, 1.-dz*faccl/)
+c        Set up a second order moment "velocity" vector at step i, somvvec
+         somvvec = (/ xxp, xpxp, yyp, ypyp, xpy, xyp, xpyp /)
+c        Set up a second order moment "velocity" offset vector at step i, 
+c        somovec
+         somovec = 0.5*dz*(/ kxx*xx + kxy*xy, 0., kyx*xy + kyy*yy, 0., 
+     &                       kxx*xy + kxy*yy, kyy*xy + kyx*xx, 0. /)
+c        Multiply the velocity vector by the acceleration matrix
+         somuvec = 0.
+         call matvecprod(somvmat,somvvec,somuvec,7,7)
+c        Update the velocity vector, i.e. advance it to step i+1/2
+         somvvec = somuvec + somovec
+c        Extract the second order moment velocity analogues from somvvec
+         xxp  = somvvec(1)
+         xpxp = somvvec(2)
+         yyp  = somvvec(3)
+         ypyp = somvvec(4)
+         xpy  = somvvec(5)
+         xyp  = somvvec(6)
+         xpyp = somvvec(7)
+c        Advance the second order position analogues a whole step 
+c        (from step i to i+1)
+         xx      = xx + 2.*xxp*dz
+         xpxpint = xpxpint + xpxp*dz
+         yy      = yy + 2.*yyp*dz
+         ypypint = ypypint + ypyp*dz
+         xy      = xy + (xpy+xyp)*dz
+         xpypint = xpypint + xpyp*dz
+c        --- Recalculate beam tilt angle bph
+         if (xx == yy) then
+           if (xy == 0.) then
+             bphtemp =  0.
+           else if (xy > 0.) then
+             bphtemp =  pi/4.
+           else if (xy < 0.) then
+             bphtemp = -pi/4.
+           endif
+         else 
+           bphtemp = 0.5*atan(2.*xy/(xx-yy))
+         endif
+         bph = bphtemp + (pi/2.)*nint((bph-bphtemp)/(pi/2.))
 c        --- z coordinate
          z = z + dz
          time = time + dz/vz
@@ -579,25 +715,101 @@ c        --- Update any variables which are functions of z.
 c        --- get force at new position
          call envflatt (z, time, zion, aion, lrelativ, gamma, vz, ek, dz,
      &    dedr,dexdx,deydy,dbdr,p,
-     &    a, b, x, y, x1, x2, x01, x02, y1, y2, y01, y02, emitnx_l, emitny_l,
-     &    fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
-     &    fqxplot, fqyplot, fuxplot, fuyplot)
+     &    a, b, x, y, xp, yp, x1, x2, x01, x02, y1, y2, y01, y02, xx, yy, xy, 
+     &    bph, emitnx_l, emitny_l, 
+     &    fa, fb, fx, fy, fxtrans, fytrans, flong, 
+     &    fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
+     &    fqxplot, fqyplot, fuxplot, fuyplot,  
+     &    kfxx, kfxy, kfyx, kfyy, kxx, kxy, kyx, kyy )
 c        --- complete the "velocity" advance steps
-         ap   = ap   + .5*dz*fa   - 0.5*dz*faccl*ap
-         bp   = bp   + .5*dz*fb   - 0.5*dz*faccl*bp
-         xp   = xp   + .5*dz*fx   - 0.5*dz*faccl*xp
-         yp   = yp   + .5*dz*fy   - 0.5*dz*faccl*yp
-
-         xp1  = xp1  + .5*dz*fx1  - 0.5*dz*faccl*xp1
-         xp2  = xp2  + .5*dz*fx2  - 0.5*dz*faccl*xp2
-         x0p1 = x0p1 + .5*dz*fx01 - 0.5*dz*faccl*x0p1
-         x0p2 = x0p2 + .5*dz*fx02 - 0.5*dz*faccl*x0p2
-
-         yp1  = yp1  + .5*dz*fy1  - 0.5*dz*faccl*yp1
-         yp2  = yp2  + .5*dz*fy2  - 0.5*dz*faccl*yp2
-         y0p1 = y0p1 + .5*dz*fy01 - 0.5*dz*faccl*y0p1
-         y0p2 = y0p2 + .5*dz*fy02 - 0.5*dz*faccl*y0p2
+c        --- envelope angles
+         ap   = (ap   + .5*dz*fa )/( 1. + 0.5*dz*faccl*ap)
+         bp   = (bp   + .5*dz*fb )/( 1. + 0.5*dz*faccl*bp)
+c        --- envelope x and y centroid angles
+c        Incorporate 1/4 of the transverse and acceleration terms
+         xpm  = xp   + .25*dz*(fxtrans - faccl*xp)
+         ypm  = yp   + .25*dz*(fytrans - faccl*yp)
+c        Rotate angles via Boris method
+         t    =        .25*dz*flong
+         s    = 2.*t/(1. + t**2)
+         xps  = xpm  + ypm*t
+         ypp  = ypm  - xps*s
+         xpp  = xps  + ypp*t
+c        Incorporate 1/4 of the transverse and acceleration terms 
+c        by inverting implicit equations
+         xp   = (xpp + .25*dz*fxtrans)/(1. + 0.25*dz*faccl)
+         yp   = (ypp + .25*dz*fytrans)/(1. + 0.25*dz*faccl)
+c        --- x-plane orbit angles with and without space-charge
+         xp1  = (xp1  + .5*dz*fx1 )/(1. + 0.5*dz*faccl*xp1 )
+         xp2  = (xp2  + .5*dz*fx2 )/(1. + 0.5*dz*faccl*xp2 )
+         x0p1 = (x0p1 + .5*dz*fx01)/(1. + 0.5*dz*faccl*x0p1)
+         x0p2 = (x0p2 + .5*dz*fx02)/(1. + 0.5*dz*faccl*x0p2)         
+c        --- y-plane orbit angles with and without space-charge
+         yp1  = (yp1  + .5*dz*fy1 )/(1. + 0.5*dz*faccl*yp1 )
+         yp2  = (yp2  + .5*dz*fy2 )/(1. + 0.5*dz*faccl*yp2 )
+         y0p1 = (y0p1 + .5*dz*fy01)/(1. + 0.5*dz*faccl*y0p1)
+         y0p2 = (y0p2 + .5*dz*fy02)/(1. + 0.5*dz*faccl*y0p2)
+c        --- Second-order moments
+c        Set up a matrix, somvmat, to advance second order moment "velocities"
+         somvmat(1,:) = (/ 1.+0.5*dz*faccl, -0.5*dz, 0., 0., 0., -0.5*dz*flong,
+     &                     0. /)
+         somvmat(2,:) = (/-dz*kxx, 1.+dz*faccl, 0., 0., -dz*kxy, 0., 
+     &                    -dz*flong /)
+         somvmat(3,:) = (/ 0., 0., 1.+0.5*dz*faccl, -0.5*dz, 0.5*dz*flong, 
+     &                     0., 0. /)
+         somvmat(4,:) = (/ 0., 0., -dz*kyy, 1.+dz*faccl, 0., -dz*kyx, 
+     &                     dz*flong /)
+         somvmat(5,:) = (/ 0., 0., -0.5*dz*flong, 0., 1.+0.5*dz*faccl, 0., 
+     &                    -0.5*dz/)
+         somvmat(6,:) = (/ 0.5*dz*flong, 0., 0., 0., 0., 1.+0.5*dz*faccl, 
+     &                    -0.5*dz /)
+         somvmat(7,:) = (/-0.5*dz*kyx, 0.5*dz*flong, -0.5*dz*kxy, 
+     &                    -0.5*dz*flong, -0.5*dz*kyy, -0.5*dz*kxx, 1.+dz*faccl/)
+c        Set up a second order moment "velocity" offset vector at step i+1, 
+c        somovec
+         somovec = 0.5*dz*(/ kxx*xx + kxy*xy, 0., kyx*xy + kyy*yy, 0., 
+     &                       kxx*xy + kxy*yy, kyy*xy + kyx*xx, 0. /)
+c        Offset the velocity vector somvvec.  Note that somvvec on the right 
+c        side of the following equation is at step i+1/2, while somovec is at 
+c        step i+1
+         somvvec = somvvec + somovec
+c        Solve for somvvec at step i+1 by performing an LU decomposition on 
+c        somvmat and an LU backsubstitution on somvvec (offset)
+         indx = 0
+         call ludcmp(somvmat,7,7,indx,0.)
+         call lubksb(somvmat,7,7,indx,somvvec)
+c        The vector somvvec has now been advanced to step i+1
+c        Extract the second order moment velocity analogues from somvvec
+         xxp  = somvvec(1)
+         xpxp = somvvec(2)
+         yyp  = somvvec(3)
+         ypyp = somvvec(4)
+         xpy  = somvvec(5)
+         xyp  = somvvec(6)
+         xpyp = somvvec(7)
+         
       enddo 
+
+c     Compute the undepressed and depressed phase advances from 
+c     the relevant transfer matrices, i.e. 
+c     cos(sig) = 0.5*Trace(m) = 0.5*(C+S), 
+c     where sig is the phase advance, m is the transfer matrix 
+c     evaluated at the end of the lattice period, and C and S 
+c     are, respectively, the cosine-like and sine-like principal 
+c     orbit functions evaluated at the end of the lattice period.  
+
+c     Notation: the transfer matrix element names obey the form 
+c     mj##?, with 
+c     m  = transfer matrix 
+c     j  = x or y: denotes the plane
+c     ## = 11 or 22: denotes the element of the transfer matrix
+c     ?  = 0 or (blank): 0 denotes undepressed, (blank) denotes depressed
+c     Phase advances are calculated over the interval [tunezs,tuneze].  
+c     If [tunezs,tuneze] in contained within [zl,zu] AND tunezs == zl, 
+c     mj11? = Cj? and mj22? = Sj?.  Otherwise, the transfer matrix 
+c     elements are not as easily related to the standard cosine-like and 
+c     sine-like principal orbits, but either way, 
+c     cos(sigj?) = 0.5*(mj11? + mj22?) = 0.5*(Cj? + Sj?).
 
 c     --- Only do the following if tunezs and tuneze and within the
 c     --- envelope calculation range zl and zu.
@@ -661,26 +873,38 @@ c       --- compute quantities that serve as measures of "matchedness"
 c=======================================================================
       subroutine envflatt(z,time,zion,aion,lrelativ,gamma,vz,ek,dz,
      & dedr,dexdx,deydy,dbdr,p,
-     & a, b, x, y, x1, x2, x01, x02, y1, y2, y01, y02, emitnx_l, emitny_l,
-     & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
-     & fqxplot, fqyplot, fuxplot, fuyplot)
+     & a, b, x, y, xp, yp, x1, x2, x01, x02, y1, y2, y01, y02, xx, yy, xy, 
+     & bph, emitnx_l, emitny_l, 
+     & fa, fb, fx, fy, fxtrans, fytrans, flong, 
+     & fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
+     & fqxplot, fqyplot, fuxplot, fuyplot, 
+     & kfxx, kfxy, kfyx, kfyy, kxx, kxy, kyx, kyy )
       use Constant
       use InGen
       use Lattice
       use LatticeInternal
       use Mult_data
       use SemiTransparentDisc
+      use EGRDdata
+      use BGRDdata
+      use PGRDdata
+      use ENVvars,Only:llarmorframe
       real(kind=8):: z,time,zion,aion,gamma,vz,ek,dz
       real(kind=8):: dedr,dexdx,deydy,dbdr,p
-      real(kind=8):: a,b,x,y,x1,x2,x01,x02,y1,y2,y01,y02,emitnx_l,emitny_l
-      real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
+      real(kind=8):: a,b,x,y,xp,yp,x1,x2,x01,x02,y1,y2,y01,y02
+      real(kind=8):: xx,xxp,xpxp,yy,yyp,ypyp,xy,xpy,xyp,xpyp,bph
+      real(kind=8):: emitnx_l,emitny_l
+      real(kind=8):: fa,fb,fx,fy,fxtrans,fytrans,flong
+      real(kind=8):: fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
       real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
+      real(kind=8):: kfxx,kfxy,kfyx,kfyy,kxx,kxy,kyx,kyy
       logical(ISZ):: lrelativ
 
 c Computes the forces needed for the general-lattice envelope calculation.
 c Inlcudes both residence corrected hard edged quadrupole elements 
-c and hard-edge multipole elements, and elements defined by their 
-c multipoles.  Only linear forces consistent with a truncated second-order 
+c and hard-edge multipole elements, elements defined by their 
+c multipoles, hard-edged dipoles, and gridded field elements.  Only linear 
+c forces consistent with a truncated second-order 
 c envelope formulation are calculated.  These include a linear applied 
 c forces (electric and magnetic quadrupole fields, and a radial 
 c E-field proportional to the radial coodrinate r), and 
@@ -713,22 +937,28 @@ c   magnetic:
 c    xdbdx =  quaddb*x = d B_y/dx * x     d B_y/dx = d B_x/dy 
 c    ydbdy =  quaddb*y = d B_x/dy * y     
 c
-c   F_x = const*( xdedx - xdbdx*v_z )    const = q/(m*gamma*v_z^2)
-c   F_x = const*( ydedy + ydbdy*v_z ) 
+c   F_x = const*( xdedx - ydbdy*v_z )    const = q/(m*gamma*v_z^2)
+c   F_y = const*( ydedy + xdbdx*v_z ) 
 
 
       real(kind=8):: z1,z2,zl,fracl,zr,fracr
       real(kind=8):: fuzz
       real(kind=8):: frac,ez,bz,ke,de,db
       real(kind=8):: dedrr,dbdrr,dbdxq,dedxq
-      real(kind=8):: xdbdx,xdedx,ydbdy,ydedy,xex,yey,alpha
+      real(kind=8):: xdbdx,xdedx,ydbdy,ydedy,bx,by,ex,ey,alpha
+      real(kind=8):: exd,eyd,bxd,byd
       real(kind=8):: fux,fuy,fq,feself,fexself,feyself,fsol
+      real(kind=8):: fexxself,feyyself
       real(kind=8):: wie,wim
       real(kind=8):: offset
       integer(ISZ):: io
       integer(ISZ):: ii,iie,iim,iem,imm
-      integer(ISZ):: iq,ih,ie,im,ia
+      integer(ISZ):: id,iq,ih,ie,im,ia
       real(kind=8):: pscale,maxpscale,sscale,maxsscale,maxzscale,rscale
+      real(kind=8):: xpg(5),ypg(5),exg(5),eyg(5),ezg(5),bxg(5),byg(5),bzg(5)
+      real(kind=8):: dxegrd,dyegrd,dxbgrd,dybgrd,dxpgrd,dypgrd
+      real(kind=8):: dbdxqc2p,dbdxqs2p,dedxqc2p,dedxqs2p
+      real(kind=8):: rx,ry,ksxx,ksxy,ksyx,ksyy
 
       z1 = z - 0.5 * dz
       z2 = z + 0.5 * dz
@@ -736,19 +966,64 @@ c   F_x = const*( ydedy + ydbdy*v_z )
       zr = max(z1,z2)
 
 c     --- Initialize variables to the values from the uniform fields.
+c     --- xdbdx and ydbdy had erroneous factors of vz
       dedrr = dedr
       dbdrr = dbdr
       dbdxq = 0.
       dedxq = 0.
-      xdbdx = dbdr*vz*x
+      xdbdx = dbdr*x
       xdedx = (dedr + dexdx)*x
-      ydbdy = dbdr*vz*y
+      ydbdy = dbdr*y
       ydedy = (dedr + deydy)*y
-      xex   = 0.
-      yey   = 0.
+      bx = 0.
+      by = 0.
+      ex = 0.
+      ey = 0.
       ez = 0.
       bz = bz0
       faccl = 0.
+c     --- These quantities are related to the standard quadrupole field 
+c         gradients.  The suffix c2p means the gradient is multiplied by the 
+c         cosine of twice the skew coupling phase angle, while the suffix s2p 
+c         means the gradient is multiplied by the sine of twice the skew 
+c         coupling phase angle.
+      dbdxqc2p = 0.
+      dbdxqs2p = 0.
+      dedxqc2p = 0.
+      dedxqs2p = 0.
+
+c     --- Hard edge dipoles
+
+      if (dipos) then
+
+        do io=1,ndipool
+          call getdipoid(z,offset,cdipoid(0,io),io)
+          id = cdipoid(0,io)
+
+c         --- Find dipole at left edge of velocity advance step.
+          fracl = 0.
+          if (dipozs(id)+offset < zl .and. zl < dipoze(id)+offset) fracl = 1.
+
+c         --- Find dipole at right edge of velocity advance step.
+          fracr = 0.
+          if (dipozs(id)+offset < zr .and. zr < dipoze(id)+offset) fracr = 1.
+
+c         --- Calculate residence fraction.
+          frac = fracl
+          if (fracl > fracr) frac = (dipoze(id)+offset - zl) / abs(dz)
+          if (fracr > fracl) frac = (zr - dipozs(id)-offset) / abs(dz)
+
+c         --- dipole fields, including residence fraction
+          if (frac > 0.) then
+            bx = bx + dipobx(id)*frac
+            ex = ex + dipoex(id)*frac
+            by = by + dipoby(id)*frac
+            ey = ey + dipoey(id)*frac
+          endif
+
+        enddo
+
+      endif 
 
 c     --- Hard edge quadrupoles
 
@@ -773,12 +1048,31 @@ c         --- Calculate residence fraction.
 
 c         --- quadrupole fields, including residence fraction
           if (frac > 0.) then
+            dbdxqc2p = dbdxqc2p + quaddb(iq)*frac*cos(2.*quadph(iq))
+            dbdxqs2p = dbdxqs2p + quaddb(iq)*frac*sin(2.*quadph(iq))
+            dedxqc2p = dedxqc2p + quadde(iq)*frac*cos(2.*quadph(iq))
+            dedxqs2p = dedxqs2p + quadde(iq)*frac*sin(2.*quadph(iq))
+            
             dbdxq = dbdxq + quaddb(iq)*frac 
-            dedxq = dedxq + quadde(iq)*frac 
-            xdbdx = xdbdx + quaddb(iq)*frac*(x - qoffx(iq))
-            xdedx = xdedx + quadde(iq)*frac*(x - qoffx(iq))
-            ydbdy = ydbdy + quaddb(iq)*frac*(y - qoffy(iq))
-            ydedy = ydedy - quadde(iq)*frac*(y - qoffy(iq))
+            dedxq = dedxq + quadde(iq)*frac
+c            xdbdx = xdbdx + quaddb(iq)*frac*(x - qoffx(iq))
+c            xdedx = xdedx + quadde(iq)*frac*(x - qoffx(iq))
+c            xdbdx = xdbdx + quaddb(iq)*frac*(y - qoffx(iq))
+c            xdedx = xdedx - quadde(iq)*frac*(y - qoffx(iq))
+c           Electric and magnetic fields in lab frame: skew coupling is 
+c           taken into account
+            xdbdx = xdbdx + 
+     &                quaddb(iq)*frac*( (x - qoffx(iq))*cos(2.*quadph(iq)) + 
+     &                                  (y - qoffy(iq))*sin(2.*quadph(iq)) )
+            xdedx = xdedx + 
+     &                quadde(iq)*frac*( (x - qoffx(iq))*cos(2.*quadph(iq)) + 
+     &                                  (y - qoffy(iq))*sin(2.*quadph(iq)) )
+            ydbdy = ydbdy + 
+     &                quaddb(iq)*frac*( (y - qoffy(iq))*cos(2.*quadph(iq)) - 
+     &                                  (x - qoffx(iq))*sin(2.*quadph(iq)) )
+            ydedy = ydedy - 
+     &                quadde(iq)*frac*( (y - qoffy(iq))*cos(2.*quadph(iq)) - 
+     &                                  (x - qoffx(iq))*sin(2.*quadph(iq)) )
           endif
 
         enddo
@@ -816,15 +1110,41 @@ c             --- quadrupole field
      &         call remark("Warning: magnetic multipole structure incompatible")
               if ( abs(cos(helepe(ii,ih))*sin(helepe(ii,ih))) > fuzz ) 
      &         call remark("Warning: electric multipole structure incompatible")
-              db = heleam(ii,ih)*cos(helepm(ii,ih))*frac
-              de = heleae(ii,ih)*cos(helepe(ii,ih))*frac
+c              db = heleam(ii,ih)*cos(helepm(ii,ih))*frac
+c              de = heleae(ii,ih)*cos(helepe(ii,ih))*frac
+              db = heleam(ii,ih)*frac
+              de = heleae(ii,ih)*frac
+              dbdxqc2p = dbdxqc2p + db*cos(2.*helepm(ii,ih))
+              dbdxqs2p = dbdxqs2p + db*sin(2.*helepm(ii,ih))
+              dedxqc2p = dedxqc2p + de*cos(2.*helepe(ii,ih))
+              dedxqs2p = dedxqs2p + de*sin(2.*helepe(ii,ih))
               dbdxq = dbdxq + db
               dedxq = dedxq + de
-              xdbdx = xdbdx + db*(x - heleox(ih))
-              xdedx = xdedx + de*(x - heleox(ih))
-              ydbdy = ydbdy + db*(y - heleoy(ih))
-              ydedy = ydedy - de*(y - heleoy(ih))
+c              xdbdx = xdbdx + db*(x - heleox(ih))
+c              xdedx = xdedx + de*(x - heleox(ih))
+c              ydbdy = ydbdy + db*(y - heleoy(ih))
+c              ydedy = ydedy - de*(y - heleoy(ih))
+c             Electric and magnetic fields in lab frame: skew coupling is 
+c             taken into account
+              xdbdx = xdbdx + db*( (x - heleox(ih))*cos(2.*helepm(ii,ih)) + 
+     &                             (y - heleoy(ih))*sin(2.*helepm(ii,ih)) )
+              xdedx = xdedx + de*( (x - heleox(ih))*cos(2.*helepe(ii,ih)) + 
+     &                             (y - heleoy(ih))*sin(2.*helepe(ii,ih)) )
+              ydbdy = ydbdy + db*( (y - heleoy(ih))*cos(2.*helepm(ii,ih)) - 
+     &                             (x - heleox(ih))*sin(2.*helepm(ii,ih)) )
+              ydedy = ydedy - de*( (y - heleoy(ih))*cos(2.*helepe(ii,ih)) - 
+     &                             (x - heleox(ih))*sin(2.*helepe(ii,ih)) )
             endif 
+            if ((nint(hele_n(ii,ih)) == 1) .and. 
+     &          (nint(hele_v(ii,ih)) == 0)) then
+c             --- dipole field
+              db  = heleam(ii,ih)*cos(helepm(ii,ih))*frac
+              de  = heleae(ii,ih)*cos(helepe(ii,ih))*frac
+              bx = bx + db
+              ex = ex + de
+              by = by + db
+              ey = ey - de
+            endif
             if ((nint(hele_n(ii,ih)) == 0) .and.
      &          (nint(hele_v(ii,ih)) == 0)) then
 c             --- solenoidal field 
@@ -867,33 +1187,43 @@ c           --- Lookup field strengths with linear interpolation.
             do ii=1,nesmult
               if ((nint(emlt_n(ii)) == 2) .and. 
      &            (nint(emlt_v(ii)) == 0)) then
+c               --- quadrupole field
                 de = (esemlt(iie  ,ii,iem)*(1.-wie)+ esemlt(iie+1,ii,iem)*wie)*
      &               (emltsc(ie) + emltsf(ie))
                 dedxq = dedxq + de
-                xdedx = xdedx + de*(x - emltox(ie))
-                ydedy = ydedy - de*(y - emltoy(ie))
+c                xdedx = xdedx + de*(x - emltox(ie))
+c                ydedy = ydedy - de*(y - emltoy(ie))
+                xdedx = xdedx + de*( (x - emltox(ih))*cos(2.*emltph(ie)) + 
+     &                               (y - emltoy(ih))*sin(2.*emltph(ie)) )
+                ydedy = ydedy - de*( (y - emltoy(ih))*cos(2.*emltph(ie)) - 
+     &                               (x - emltox(ih))*sin(2.*emltph(ie)) )
+                dedxqc2p = dedxqc2p + de*cos(2.*emltph(ie))
+                dedxqs2p = dedxqs2p + de*sin(2.*emltph(ie))
               endif
               if ((nint(emlt_n(ii)) == 0) .and. 
      &            (nint(emlt_v(ii)) == 0)) then
+c               --- uniform transverse field
                 de = 0.5*(esemltp(iie  ,ii,iem)*(1.-wie) +
      &                    esemltp(iie+1,ii,iem)*wie)*
      &                   (emltsc(ie) + emltsf(ie))
                 dedrr = dedrr - de
                 xdedx = xdedx - de*(x - emltox(ie))
                 ydedy = ydedy - de*(y - emltoy(ie))
+c               --- longitudinal field
                 ez = ez + (esemlt(iie  ,ii,iem)*(1.-wie) +
      &                     esemlt(iie+1,ii,iem)*wie)*
      &                    (emltsc(ie) + emltsf(ie))
               endif
               if ((nint(emlt_n(ii)) == 1) .and.
      &            (nint(emlt_v(ii)) == 0)) then
+c               --- dipole field
                 de = (esemlt(iie  ,ii,iem)*(1.-wie)+ esemlt(iie+1,ii,iem)*wie)*
      &               (emltsc(ie) + emltsf(ie))
                 alpha = emltph(ie) +
      &                  esemltph(iie  ,ii,iem)*(1. - wie) +
      &                  esemltph(iie+1,ii,iem)*      wie
-                xex = xex + de*cos(alpha)
-                yey = yey + de*sin(alpha)
+                ex = ex + de*cos(alpha)
+                ey = ey + de*sin(alpha)
               endif
             enddo
 
@@ -924,11 +1254,29 @@ c           --- Lookup field strengths with linear interpolation.
             do ii=1,nmsmult
               if ((nint(mmlt_n(ii)) == 2) .and. 
      &            (nint(mmlt_v(ii)) == 0)) then
+c               --- quadrupole field 
                 db = (msmmlt(iim  ,ii,imm)*(1.-wim)+ msmmlt(iim+1,ii,imm)*wim)*
      &               (mmltsc(im) + mmltsf(im))
                 dbdxq = dbdxq + db
-                xdbdx = xdbdx + db*(x - mmltox(im))
-                ydbdy = ydbdy + db*(y - mmltoy(im))
+c                xdbdx = xdbdx + db*(x - mmltox(im))
+c                ydbdy = ydbdy + db*(y - mmltoy(im))
+                xdbdx = xdbdx + db*( (x - mmltox(im))*cos(2.*mmltph(im)) + 
+     &                               (y - mmltoy(im))*sin(2.*mmltph(im)) )
+                ydbdy = ydbdy + db*( (y - mmltoy(im))*cos(2.*mmltph(im)) - 
+     &                               (x - mmltox(im))*sin(2.*mmltph(im)) )
+                dbdxqc2p = dbdxqc2p + db*cos(2.*mmltph(im))
+                dbdxqs2p = dbdxqs2p + db*sin(2.*mmltph(im))
+              endif
+              if ((nint(mmlt_n(ii)) == 1) .and. 
+     &            (nint(mmlt_v(ii)) == 0)) then
+c               --- dipole field
+                db = (msmmlt(iim  ,ii,imm)*(1.-wim)+ msmmlt(iim+1,ii,imm)*wim)*
+     &               (mmltsc(im) + mmltsf(im))
+                alpha = mmltph(im) +
+     &                  msmmltph(iim  ,ii,imm)*(1. - wim) +
+     &                  msmmltph(iim+1,ii,imm)*      wim
+                bx = bx + db*cos(alpha)
+                by = by + db*sin(alpha)
               endif
               if ((nint(mmlt_n(ii)) == 0) .and. 
      &            (nint(mmlt_v(ii)) == 0)) then
@@ -936,6 +1284,7 @@ c               db = 0.5*(msmmltp(iim  ,ii,imm)*(1.-wim) +
 c    &                    msmmltp(iim+1,ii,imm)*wim)*
 c    &                   (mmltsc(im) + mmltsf(im))
 c               dbdrr = dbdrr + db
+c               --- solenoidal field
                 bz = bz + (msmmlt(iim  ,ii,imm)*(1.-wim) +
      &                     msmmlt(iim+1,ii,imm)*wim)*
      &                    (mmltsc(im) + mmltsf(im))
@@ -948,6 +1297,248 @@ c               dbdrr = dbdrr + db
 
       endif
 
+c     --- Extract any linear focusing field component from the gridded 
+c     --- elements.
+      
+      if (egrds) then
+         
+c       --- find index of nearest egrd element
+c       --- The cegrdid array calculated here is needed for the magnetic
+c       --- elements described by E field data on a 3-D grid.
+        do io=1,negrdol
+          call getelemid(z,offset,negrd,egrdzs,egrdze,egrdol,
+     &                   oegrdnn(io),oegrdoi(oegrdii(io)),oegrdio,
+     &                   cegrdid(0,io),io)
+c         --- load lattice info into comoving 1d array
+          cegrdzs(0,io) = egrdzs(cegrdid(0,io)) + offset
+          cegrdze(0,io) = egrdze(cegrdid(0,io)) + offset
+c         --- Check whether this grid point is in the element.
+c         --- The grid points intentionally overlap to avoid roundoff errors.
+          if (cegrdzs(0,io) <= z .and. z <= cegrdze(0,io))
+     &      linegrd(io) = .true.
+        enddo
+        
+c       --- set linegrd(0) to true if any other elements are true
+        linegrd(0) = any(linegrd)
+        
+c       --- Determine the x- and y-spacing used to calculate the E-field 
+c       --- gradients.  This may not be the best way to find the right 
+c       --- spacing if there are overlapping egrd elements, but it seems 
+c       --- fairly robust.
+        dxegrd = minval(egrddx)
+        dyegrd = minval(egrddy)
+        
+c       --- Calculate electric fields and their gradients at a point (x,y,z)
+c       --- using the interpolated field strengths at 
+c       --- ( x +- dxegrd, y +- dyegrd, z )
+
+c       Index point: 1,          2,      3,     4,          5
+        xpg = (/ x - dxegrd,     x,      x,     x,      x + dxegrd /)
+        ypg = (/     y,      y - dyegrd, y, y + dyegrd,     y      /)
+
+c       --- Index points for finite differencing are arranged as follows:
+c                      y
+c                      ^
+c                      |
+c                  -   |       (4)
+c           dyegrd |   |        
+c                  -   |  (1)  (3)  (5)
+c                      |        
+c                      |       (2)
+c                      |        
+c                       ------------------> x
+c                          |----|
+c                          dxegrd
+
+c       --- Try to figure out why these need to be defined this way
+        exg = 0.
+        eyg = 0.
+        ezg = 0.
+c       --- Calculate electric field strengths at index points
+        call applyegrd(5,xpg,ypg,1,z,.true.,exg,eyg,ezg)
+c       --- Extract total electric field components at central point (x,y)
+        ex = ex + exg(3)
+        ey = ey + eyg(3)
+        ez = ez + ezg(3)
+c       --- Calculate field gradients via centered finite differencing
+c       --- Uniform field gradient
+        dedrr = dedrr + 0.5*( (exg(5) - exg(1))/(2.*dxegrd) + 
+     &                        (eyg(4) - eyg(2))/(2.*dyegrd) )
+c       --- Quadrupole field gradient
+        dedxq = dedxq + 0.5*( (exg(5) - exg(1))/(2.*dxegrd) - 
+     &                        (eyg(4) - eyg(2))/(2.*dyegrd) )
+c       --- Take skew coupling into account
+        dedxqc2p = dedxqc2p + 0.5*( (exg(5) - exg(1))/(2.*dxegrd) - 
+     &                              (eyg(4) - eyg(2))/(2.*dyegrd) )
+        dedxqs2p = dedxqs2p + 0.5*( (eyg(5) - eyg(1))/(2.*dxegrd) + 
+     &                              (exg(4) - exg(2))/(2.*dyegrd) )
+c       --- Calculate electric field components with quadrupole effects removed
+c           These components will often be caused strictly by dipole effects, 
+c           so we'll call the components exd and eyd (d for dipole)
+        exd = exg(3) - (dedrr + dedxqc2p)*x -          dedxqs2p *y
+        eyd = eyg(3) -          dedxqs2p *x - (dedrr - dedxqc2p)*y
+        
+      endif
+
+
+      if (bgrds) then
+         
+c       --- find index of nearest bgrd element
+c       --- The cbgrdid array calculated here is needed for the magnetic
+c       --- elements described by B field data on a 3-D grid.
+        do io=1,nbgrdol
+          call getelemid(z,offset,nbgrd,bgrdzs,bgrdze,bgrdol,
+     &                   obgrdnn(io),obgrdoi(obgrdii(io)),obgrdio,
+     &                   cbgrdid(0,io),io)
+c         --- load lattice info into comoving 1d array
+          cbgrdzs(0,io) = bgrdzs(cbgrdid(0,io)) + offset
+          cbgrdze(0,io) = bgrdze(cbgrdid(0,io)) + offset
+c         --- Check whether this grid point is in the element.
+c         --- The grid points intentionally overlap to avoid roundoff errors.
+          if (cbgrdzs(0,io) <= z .and. z <= cbgrdze(0,io))
+     &      linbgrd(io) = .true.
+        enddo
+        
+c       --- set linbgrd(0) to true if any other elements are true
+        linbgrd(0) = any(linbgrd)
+                 
+c       --- Determine the x- and y-spacing used to calculate the B-field 
+c       --- gradients.  This may not be the best way to find the right 
+c       --- spacing if there are overlapping egrd elements, but it seems 
+c       --- fairly robust.
+        dxbgrd = minval(bgrddx)
+        dybgrd = minval(bgrddy)
+        
+c       --- Calculate electric fields and their gradients at a point (x,y,z)
+c       --- using the interpolated field strengths at 
+c       --- ( x +- dxbgrd, y +- dybgrd, z )
+
+c       Index point: 1,          2,      3,     4,          5
+        xpg = (/ x - dxbgrd,     x,      x,     x,      x + dxbgrd /)
+        ypg = (/     y,      y - dybgrd, y, y + dybgrd,     y      /)
+
+c       --- Index points for finite differencing are arranged as follows:
+c                      y
+c                      ^
+c                      |
+c                  -   |       (4)
+c           dybgrd |   |        
+c                  -   |  (1)  (3)  (5)
+c                      |        
+c                      |       (2)
+c                      |        
+c                       ------------------> x
+c                          |----|
+c                          dxbgrd
+        
+        bxg = 0.
+        byg = 0.
+        bzg = 0.
+c       --- Calculate magnetic field strengths at index points
+        call applybgrd(5,xpg,ypg,1,z,.true.,bxg,byg,bzg)
+c       --- Extract magnetic field componenents at central point (x,y)
+c       --- PROBLEM: How to distinguish quad and dipo fields?
+        bx = bx + bxg(3)
+        by = by + byg(3)
+        bz = bz + bzg(3)
+c       --- Calculate field gradients via centered finite differencing
+        dbdxq = dbdxq + 0.5*( (byg(5) - byg(1))/(2.*dxbgrd) + 
+     &                        (bxg(4) - bxg(2))/(2.*dybgrd) )
+c       --- Take skew coupling into account
+        dbdxqc2p = dbdxqc2p + 0.5*( (byg(5) - byg(1))/(2.*dxbgrd) + 
+     &                              (bxg(4) - bxg(2))/(2.*dybgrd) )
+        dbdxqs2p = dbdxqs2p + 0.5*( (byg(4) - byg(2))/(2.*dybgrd) - 
+     &                              (bxg(5) - bxg(1))/(2.*dxbgrd) )
+c       --- Calculate magnetic field components with quadrupole effects removed
+c           These components will often be caused strictly by dipole effects, 
+c           so we'll call the components bxd and byd (d for dipole)
+        bxd = bxg(3) + dbdxqs2p*x - dbdxqc2p*y
+        byd = byg(3) - dbdxqc2p*x - dbdxqs2p*y
+        
+      endif
+
+
+      if (pgrds) then
+         
+c       --- find index of nearest pgrd element
+c       --- The cpgrdid array calculated here is needed for the electrostatic
+c       --- elements described by potential data on a 3-D grid.
+        do io=1,npgrdol
+          call getelemid(z,offset,npgrd,pgrdzs,pgrdze,pgrdol,
+     &                   opgrdnn(io),opgrdoi(opgrdii(io)),opgrdio,
+     &                   cpgrdid(0,io),io)
+c         --- load lattice info into comoving 1d array
+          cpgrdzs(0,io) = pgrdzs(cpgrdid(0,io)) + offset
+          cpgrdze(0,io) = pgrdze(cpgrdid(0,io)) + offset
+c         --- Check whether this grid point is in the element.
+c         --- The grid points intentionally overlap to avoid roundoff errors.
+          if (cpgrdzs(0,io) <= z .and. z <= cpgrdze(0,io))
+     &      linpgrd(io) = .true.
+        enddo
+        
+c       --- set linpgrd(0) to true if any other elements are true
+        linpgrd(0) = any(linpgrd)
+        
+c       --- Determine the x- and y-spacing used to calculate the E-field 
+c       --- gradients.  This may not be the best way to find the right 
+c       --- spacing if there are overlapping pgrd elements, but it seems 
+c       --- fairly robust.
+        dxpgrd = minval(pgrddx)
+        dypgrd = minval(pgrddy)
+        
+c       --- Calculate electric fields and their gradients at a point (x,y,z)
+c       --- using the interpolated field strengths at 
+c       --- ( x +- dxpgrd, y +- dypgrd, z )
+
+c       Index point: 1,          2,      3,     4,          5
+        xpg = (/ x - dxpgrd,     x,      x,     x,      x + dxpgrd /)
+        ypg = (/     y,      y - dypgrd, y, y + dypgrd,     y      /)
+        
+c       --- Index points for finite differencing are arranged as follows:
+c                      y
+c                      ^
+c                      |
+c                  -   |       (4)
+c           dypgrd |   |        
+c                  -   |  (1)  (3)  (5)
+c                      |        
+c                      |       (2)
+c                      |        
+c                       ------------------> x
+c                          |----|
+c                          dxpgrd
+        
+        exg = 0.
+        eyg = 0.
+        ezg = 0.
+c       --- Calculate electric field strengths at index points
+        call applypgrd(5,xpg,ypg,1,z,.true.,exg,eyg,ezg)
+c       --- Extract electric field components at central point (x,y)
+c       --- PROBLEM: How to distinguish quad and dipo fields?
+        ex = ex + exg(3)
+        ey = ey + eyg(3)
+        ez = ez + ezg(3)
+c       --- Calculate field gradients via centered finite differencing
+c       --- Uniform field gradient
+        dedrr = dedrr + 0.5*( (exg(5) - exg(1))/(2.*dxpgrd) + 
+     &                        (eyg(4) - eyg(2))/(2.*dypgrd) )
+c       --- Quadrupole field gradient
+        dedxq = dedxq + 0.5*( (exg(5) - exg(1))/(2.*dxpgrd) - 
+     &                        (eyg(4) - eyg(2))/(2.*dypgrd) )
+c       --- Take skew coupling into account
+        dedxqc2p = dedxqc2p + 0.5*( (exg(5) - exg(1))/(2.*dxegrd) - 
+     &                              (eyg(4) - eyg(2))/(2.*dyegrd) )
+        dedxqs2p = dedxqs2p + 0.5*( (eyg(5) - eyg(1))/(2.*dxegrd) + 
+     &                              (exg(4) - exg(2))/(2.*dyegrd) )
+c       --- Calculate electric field components with quadrupole effects removed
+c           These components will often be caused strictly by dipole effects, 
+c           so we'll call the components exd and eyd (d for dipole)
+        exd = exg(3) - (dedrr + dedxqc2p)*x -          dedxqs2p *y
+        eyd = eyg(3) -          dedxqs2p *x - (dedrr - dedxqc2p)*y
+        
+      endif
+
+      
 c     --- Get accelerating gradient from accl gaps.
       if (accls) then
 
@@ -1028,37 +1619,83 @@ c         --- at the point, the scale factor converges to one.
         enddo
       endif
 
+c     --- Calculate beam edge radii in the x- and y-planes, respectively
+c         Note: these radii are in the tilted beam coordinates
+      rx = 2.*sqrt(xx*cos(bph)**2 + yy*sin(bph)**2 + 2.*xy*sin(bph)*cos(bph))
+      ry = 2.*sqrt(xx*sin(bph)**2 + yy*cos(bph)**2 - 2.*xy*sin(bph)*cos(bph))
+
 c     --- Compute external uniform focusing (proportional to r and 
 c     --- azimuthally symmetric) and quadrupole focusing strengths
-      fux = zion*echarge*(dedrr + dexdx - dbdrr*vz)/(aion*amu*gamma*vz**2)
-      fuy = zion*echarge*(dedrr + deydy - dbdrr*vz)/(aion*amu*gamma*vz**2)
-      fq  = zion*echarge*(dedxq - dbdxq*vz)/(aion*amu*gamma*vz**2)
+c     --- Changed sign in front of dbdrr in fuy from - to +
+c     --- Changed it back
+      fux  = zion*echarge*(dedrr + dexdx - dbdrr*vz)/(aion*amu*gamma*vz**2)
+      fuy  = zion*echarge*(dedrr + deydy - dbdrr*vz)/(aion*amu*gamma*vz**2)
+      fq   = zion*echarge*(dedxq - dbdxq*vz)/(aion*amu*gamma*vz**2)
       fsol = (zion*echarge*bz/(2.*aion*amu*gamma*vz))**2
-
+     
 c     --- Calculate forces for advancing envelope, centroid, and test particles
+c     --- NOTE: For the moment, forces calculated do not apply to mixed-type 
+c         lattices, e.g. lattices with both quadrupole and solenoid focusing 
+c         elements.  Will fix this later.
       feself = 2.*p*pscale/(a + b)
       fa = ( fq + fux - fsol)*a + feself + (emitnx_l*clight/(vz*gamma))**2/a**3
       fb = (-fq + fuy - fsol)*b + feself + (emitny_l*clight/(vz*gamma))**2/b**3
-      fx = zion*echarge/(aion*amu*gamma*vz**2)*(xdedx - xdbdx*vz + xex)
-      fy = zion*echarge/(aion*amu*gamma*vz**2)*(ydedy + ydbdy*vz + yey)
+      fx = zion*echarge/(aion*amu*gamma*vz**2)*
+     &      (xdedx - xdbdx*vz + yp*bz*vz + ex - by*vz)
+      fy = zion*echarge/(aion*amu*gamma*vz**2)*
+     &      (ydedy + ydbdy*vz - xp*bz*vz + ey + bx*vz)
 
+c     These forces are used to advance the beam centroid coordinates and 
+c     angles.  fxtrans and fytrans are due to transverse electric and magnetic 
+c     field components, while flong stems from a longitudinal magnetic field.
+      fxtrans = zion*echarge/(aion*amu*gamma*vz**2)*(xdedx-xdbdx*vz+ex-by*vz)
+      fytrans = zion*echarge/(aion*amu*gamma*vz**2)*(ydedy+ydbdy*vz+ey+bx*vz)
+      flong   = zion*echarge/(aion*amu*gamma*vz)*bz
+      
       fexself = feself/a
-      fx1  = (fq + fux + fsol + fexself)*x1
-      fx2  = (fq + fux + fsol + fexself)*x2
-      fx01 = (fq + fux + fsol)*x01
-      fx02 = (fq + fux + fsol)*x02
-
+c     Minus signs before the solenoid terms
+      fx1  = (fq + fux - fsol + fexself)*x1 
+      fx2  = (fq + fux - fsol + fexself)*x2
+      fx01 = (fq + fux - fsol)*x01
+      fx02 = (fq + fux - fsol)*x02
+      
       feyself = feself/b
-      fy1  = (-fq + fuy + fsol + feyself)*y1
-      fy2  = (-fq + fuy + fsol + feyself)*y2
-      fy01 = (fq + fuy)*y01
-      fy02 = (fq + fuy)*y02
-
+c     Minus signs before the solenoid and quadrupole terms
+      fy1  = (-fq + fuy - fsol + feyself)*y1 
+      fy2  = (-fq + fuy - fsol + feyself)*y2
+      fy01 = (-fq + fuy - fsol)*y01
+      fy02 = (-fq + fuy - fsol)*y02
+      
       fqxplot =  fq
       fqyplot = -fq
       fuxplot =  fux
       fuyplot =  fuy 
-
+      
+c     These forces are useful in the second-order moment advance
+      fexxself = 2.*p*pscale/((rx+ry)*rx)
+      feyyself = 2.*p*pscale/((rx+ry)*ry)
+      
+c     Define "k-function" force terms used in the second order moment 
+c     advances.  Notation is similar to that used in Sven Chilton's MS thesis, 
+c     "Implementation of an iterative matching scheme for the Kapchinskij-
+c     Vladimirskij envelope equations in the WARP code."
+c     "kf" terms stem from applied focusing effects, while "ks" terms stem 
+c     from self-fields.
+c     Caution: the "kf" terms here have opposite signs from those defined 
+c     in the thesis.
+      ksxx = fexxself*cos(bph)**2 + feyyself*sin(bph)**2
+      ksxy = (fexxself-feyyself)*sin(bph)*cos(bph)
+      ksyx = ksxy
+      ksyy = fexxself*sin(bph)**2 + feyyself*cos(bph)**2
+      kfxx = zion*echarge*(dedrr+dedxqc2p-dbdxqc2p*vz)/(aion*amu*gamma*vz**2)
+      kfxy = zion*echarge*(dedxqs2p - dbdxqs2p*vz)/(aion*amu*gamma*vz**2)
+      kfyx = kfxy
+      kfyy = zion*echarge*(dedrr-dedxqc2p+dbdxqc2p*vz)/(aion*amu*gamma*vz**2)
+      kxx  = ksxx + kfxx
+      kxy  = ksxy + kfxy
+      kyx  = ksyx + kfyx
+      kyy  = ksyy + kfyy
+      
       return
       end
 c=======================================================================
@@ -1367,7 +2004,6 @@ c Press, 1986, pg 292, Ch 10
       go to 1
       end
 c=========================================================================
-c========================================================================
       subroutine RK4HillSolve(karray,si,sf,xi,xpi,numsteps,xxparray)
 c     Solves Hill's Equation x''(s) + k(s) = 0, x(si) = xi, x'(si) = xpi 
 c     on interval [si,sf].
@@ -1380,7 +2016,7 @@ c       xpi: initial x' value
 c       numsteps: number of evenly spaced subintervals on [si,sf]
 c       xxparray: dummy array to be modified
 c     Output:
-c       xxparray: array with dimensions (numsteps+1,2) containing v values
+c       xxparray: array with dimensions (numsteps+1,2) containing x values
 c       in column 1 and xp values in column 2
       integer(ISZ):: numsteps,i
       real(kind=8):: si,sf,xi,xpi,ds
@@ -1414,15 +2050,20 @@ c     x-plane lattice focusing function
       use Picglb
       use Beam_acc
       real(kind=8):: z,dz
-      real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
+      real(kind=8):: fa,fb,fx,fy,fxtrans,fytrans,flong
+      real(kind=8):: fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
       real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
+      real(kind=8):: kfxx,kfxy,kfyx,kfyy,kxx,kxy,kyx,kyy
       real(kind=8):: kappax
       dz = SMALLPOS
       call envflatt(z,time,zion,aion,lrelativ,gammabar,vbeam,ekin,dz,
      & dedr,dexdx,deydy,dbdr,0.,
-     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-     & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
-     & fqxplot, fqyplot, fuxplot, fuyplot)
+     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 1., 0., 
+     & 0., 0., 0.,
+     & fa, fb, fx, fy, fxtrans, fytrans, flong, 
+     & fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
+     & fqxplot, fqyplot, fuxplot, fuyplot, 
+     & kfxx, kfxy, kfyx, kfyy, kxx, kxy, kyx, kyy )
       kappax = -fa
       return
       end
@@ -1432,15 +2073,20 @@ c     y-plane lattice focusing function
       use Picglb
       use Beam_acc
       real(kind=8):: z,dz
-      real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
+      real(kind=8):: fa,fb,fx,fy,fxtrans,fytrans,flong
+      real(kind=8):: fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
       real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
+      real(kind=8):: kfxx,kfxy,kfyx,kfyy,kxx,kxy,kyx,kyy
       real(kind=8):: kappay
       dz = SMALLPOS
       call envflatt(z,time,zion,aion,lrelativ,gammabar,vbeam,ekin,dz,
      & dedr,dexdx,deydy,dbdr,0.,
-     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-     & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
-     & fqxplot, fqyplot, fuxplot, fuyplot)
+     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 1., 0., 
+     & 0., 0., 0., 
+     & fa, fb, fx, fy, fxtrans, fytrans, flong, 
+     & fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
+     & fqxplot, fqyplot, fuxplot, fuyplot, 
+     & kfxx, kfxy, kfyx, kfyy, kxx, kxy, kyx, kyy )
       kappay = -fb
       return
       end
@@ -1451,17 +2097,22 @@ c     karray
       use Picglb
       use Beam_acc
       real(kind=8):: z,dz
-      real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
+      real(kind=8):: fa,fb,fx,fy,fxtrans,fytrans,flong
+      real(kind=8):: fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
       real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
+      real(kind=8):: kfxx,kfxy,kfyx,kfyy,kxx,kxy,kyx,kyy
       integer(ISZ):: i,n
       real(kind=8):: zarray(n),karray(n)
       dz = SMALLPOS
       do i=1,n
         call envflatt(zarray(i),time,zion,aion,lrelativ,gammabar,vbeam,ekin,dz,
      & dedr,dexdx,deydy,dbdr,0.,
-     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-     & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
-     & fqxplot, fqyplot, fuxplot, fuyplot)
+     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 1., 0., 
+     & 0., 0., 0., 
+     & fa, fb, fx, fy, fxtrans, fytrans, flong, 
+     & fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
+     & fqxplot, fqyplot, fuxplot, fuyplot, 
+     & kfxx, kfxy, kfyx, kfyy, kxx, kxy, kyx, kyy )
         karray(i) = -fa 
       end do
       return
@@ -1473,18 +2124,183 @@ c     karray
       use Picglb
       use Beam_acc
       real(kind=8):: z,dz
-      real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
+      real(kind=8):: fa,fb,fx,fy,fxtrans,fytrans,flong
+      real(kind=8):: fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
       real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
+      real(kind=8):: kfxx,kfxy,kfyx,kfyy,kxx,kxy,kyx,kyy
       integer(ISZ):: i,n
       real(kind=8):: zarray(n),karray(n)
       dz = SMALLPOS
       do i=1,n
         call envflatt(zarray(i),time,zion,aion,lrelativ,gammabar,vbeam,ekin,dz,
      & dedr,dexdx,deydy,dbdr,0.,
-     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-     & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
-     & fqxplot, fqyplot, fuxplot, fuyplot)
+     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 1., 0., 
+     & 0., 0., 0., 
+     & fa, fb, fx, fy, fxtrans, fytrans, flong, 
+     & fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
+     & fqxplot, fqyplot, fuxplot, fuyplot, 
+     & kfxx, kfxy, kfyx, kfyy, kxx, kxy, kyx, kyy )
         karray(i) = -fb 
       end do
+      return
+      end
+c========================================================================
+      subroutine ludcmp(a,n,np,indx,d)
+      integer(ISZ):: n,np,indx(n)
+      real(kind=8):: a(np,np),d
+
+c     Perform LU decomposition on the matrix a
+c     This is useful for determining the inverse of a
+
+      integer(ISZ):: i,imax,j,k,nmax
+      real(kind=8):: aamax,dum,sum,tiny
+      parameter (nmax=500,tiny=SMALLPOS)
+      real(kind=8):: vv(nmax)
+      
+      d = 1.
+      do i=1,n
+        aamax = 0.
+        do j=1,n
+          if (abs(a(i,j)) > aamax) aamax = abs(a(i,j))
+        end do
+        if (aamax == 0.) then
+          call kaboom("Singular matrix in ludcmp")
+        end if
+        vv(i) = 1./aamax
+      end do
+      do j=1,n
+        do i=1,j-1
+          sum = a(i,j)
+          do k=1,i-1
+            sum = sum - a(i,k)*a(k,j)
+          end do
+          a(i,j) = sum
+        end do
+        aamax = 0.
+        do i=j,n
+          sum = a(i,j)
+          do k=1,j-1
+            sum = sum - a(i,k)*a(k,j)
+          end do
+          a(i,j) = sum
+          dum = vv(i)*abs(sum)
+          if (dum >= aamax) then
+            imax  = i
+            aamax = dum
+          end if
+        end do
+        if (j .ne. imax) then
+          do k=1,n
+            dum = a(imax,k)
+            a(imax,k) = a(j,k)
+            a(j,k) = dum
+          end do
+          d = -d
+          vv(imax) = vv(j)
+        end if
+        indx(j) = imax
+        if (a(j,j) == 0.) a(j,j) = tiny
+        if (j .ne. n) then
+          dum = 1./a(j,j)
+          do i=j+1,n
+            a(i,j) = a(i,j)*dum
+          end do
+        end if
+      end do
+      return
+      end
+c========================================================================
+      subroutine lubksb(a,n,np,indx,b)
+      integer(ISZ):: n,np,indx(n)
+      real(kind=8):: a(np,np),b(n)
+      
+c     Solves the set of n linear equations a \cdot x = b
+c     Here, a is the LU decomposition of the original matrix a
+c     as determined by the subroutine ludcmp.
+c     Taken from Numerical Recipes
+      
+      integer(ISZ):: i,ii,j,ll
+      real(kind=8):: sum
+      
+      ii = 0
+      do i=1,n
+        ll    = indx(i)
+        sum   = b(ll)
+        b(ll) = b(i)
+        if (ii .ne. 0) then
+          do j=ii,i-1
+            sum = sum-a(i,j)*b(j)
+          end do
+        else if (sum .ne. 0.) then
+          ii = 1
+        end if
+        b(i) = sum
+      end do
+      do i=n,1,-1
+        sum = b(i)
+        do j=i+1,n
+          sum = sum-a(i,j)*b(j)
+        end do
+        b(i) = sum/a(i,i)
+      end do
+      return
+      end
+c========================================================================
+      subroutine matinv(a,n,np,indx,d,y)
+      integer(ISZ):: n,np,indx(n)
+      real(kind=8):: a(np,np),d,y(np,np)
+      
+c     Find the inverse of the matrix a
+c     Adapted from Numerical Recipes
+      
+      integer(ISZ):: i,j
+      
+      do i=1,n
+        do j=1,n
+          y(i,j) = 0.
+        end do
+        y(i,i) = 1.
+      end do
+      call ludcmp(a,n,np,indx,d)
+      do j=1,n
+        call lubksb(a,n,np,indx,y(:,j))
+      end do
+      return
+      end
+c========================================================================
+      subroutine matprod(a,b,c,i,j,k)
+      integer(ISZ):: i,j,k
+      real(kind=8):: a(i,j),b(j,k),c(i,k)
+c     Compute the product of two matrices a and b, 
+c     with respective dimensions i by j and j by k
+      integer(ISZ):: ii,jj,kk
+      real(kind=8):: dum(j)
+      
+      do ii=1,i
+        do kk=1,k
+          do jj=1,j
+            dum(jj) = a(ii,jj)*b(jj,kk)
+          enddo
+          c(ii,kk)  = sum(dum)
+        enddo
+      enddo
+      return
+      end
+c========================================================================
+      subroutine matvecprod(a,b,c,i,j)
+      integer(ISZ):: i,j
+      real(kind=8):: a(i,j),b(j),c(i)
+c     Compute the matrix product of an i by j matrix a and a length j 
+c     vector b
+      integer(ISZ):: ii,jj
+      real(kind=8):: dum(j)
+            
+      do ii=1,i
+        do jj=1,j
+          dum(jj) = a(ii,jj)*b(jj)
+        enddo
+        c(ii) = sum(dum)
+      enddo
+      
       return
       end

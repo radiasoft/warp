@@ -1,5 +1,5 @@
 env
-#@(#) File ENV.V, version $Revision: 3.34 $, $Date: 2007/10/08 17:32:02 $
+#@(#) File ENV.V, version $Revision: 3.35 $, $Date: 2008/07/02 19:50:41 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package ENV of the WARP code.
@@ -13,7 +13,7 @@ env
 
 *********** ENVversion:
 # Version control for env package
-versenv character*19 /"$Revision: 3.34 $"/  # Current code version, set by CVS
+versenv character*19 /"$Revision: 3.35 $"/  # Current code version, set by CVS
 
 *********** ENVvars dump:
 # Variables needed by the package ENV
@@ -33,27 +33,48 @@ deltaap real [1]   # Change in ap over tunezs -> tuneze
 deltab  real [m]   # Change in b  over tunezs -> tuneze 
 deltabp real [1]   # Change in bp over tunezs -> tuneze 
 genprv  real [?]   # Beam generalized perveance
-nenv         integer  [1]     # Number of envelope points - 1
-aenv(0:nenv)   _real  [m]     # Computed beam width in x
-apenv(0:nenv)  _real  [1]     # Computed slope in x
-benv(0:nenv)   _real  [m]     # Computed beam width in y
-bpenv(0:nenv)  _real  [1]     # Computed slope in y
-vzenv(0:nenv)  _real  [m/s]   # Computed axial velocity
-fqxenv(0:nenv) _real  [1/m^2] # Quad    X-focusing force 
-fqyenv(0:nenv) _real  [1/m^2] # Quad    Y-focusing force 
-fuxenv(0:nenv) _real  [1/m^2] # Uniform X-focusing force
-fuyenv(0:nenv) _real  [1/m^2] # Uniform Y-focusing force 
-xenv(0:nenv)   _real  [m]     # X centroid of envelope
-yenv(0:nenv)   _real  [m]     # Y centroid of envelope
-xpenv(0:nenv)  _real  [m]     # X' centroid of envelope
-ypenv(0:nenv)  _real  [m]     # Y' centroid of envelope
-xorb(0:nenv)   _real  [m]     # X of main particle orbit
-xporb(0:nenv)  _real  [m]     # X' of main particle orbit
-yorb(0:nenv)   _real  [m]     # Y of main particle orbit
-yporb(0:nenv)  _real  [m]     # Y' of main particle orbit
-zenv(0:nenv)   _real  [m]     # Z coordinate of envelope point
+nenv            integer  [1]     # Number of envelope points - 1
+aenv(0:nenv)      _real  [m]     # Computed beam width in x
+apenv(0:nenv)     _real  [1]     # Computed slope in x
+benv(0:nenv)      _real  [m]     # Computed beam width in y
+bpenv(0:nenv)     _real  [1]     # Computed slope in y
+vzenv(0:nenv)     _real  [m/s]   # Computed axial velocity
+fqxenv(0:nenv)    _real  [1/m^2] # Quad    X-focusing force 
+fqyenv(0:nenv)    _real  [1/m^2] # Quad    Y-focusing force 
+fuxenv(0:nenv)    _real  [1/m^2] # Uniform X-focusing force
+fuyenv(0:nenv)    _real  [1/m^2] # Uniform Y-focusing force 
+xenv(0:nenv)      _real  [m]     # X centroid of envelope
+yenv(0:nenv)      _real  [m]     # Y centroid of envelope
+xpenv(0:nenv)     _real  [1]     # X' centroid of envelope
+ypenv(0:nenv)     _real  [1]     # Y' centroid of envelope
+xorb(0:nenv)      _real  [m]     # X of main particle orbit
+xporb(0:nenv)     _real  [1]     # X' of main particle orbit
+yorb(0:nenv)      _real  [m]     # Y of main particle orbit
+yporb(0:nenv)     _real  [1]     # Y' of main particle orbit
+xxenv(0:nenv)     _real  [m^2]   # Average value of XX   w.r.t. beam centroid
+xxpenv(0:nenv)    _real  [m]     # Average value of XX'  w.r.t. beam centroid
+xpxpenv(0:nenv)   _real  [1]     # Average value of X'X' w.r.t. beam centroid
+yyenv(0:nenv)     _real  [m^2]   # Average value of YY   w.r.t. beam centroid
+yypenv(0:nenv)    _real  [m]     # Average value of YY'  w.r.t. beam centroid
+ypypenv(0:nenv)   _real  [1]     # Average value of Y'Y' w.r.t. beam centroid
+xyenv(0:nenv)     _real  [m^2]   # Average value of XY   w.r.t. beam centroid
+xpyenv(0:nenv)    _real  [m]     # Average value of X'Y  w.r.t. beam centroid
+xypenv(0:nenv)    _real  [m]     # Average value of XY'  w.r.t. beam centroid
+xpypenv(0:nenv)   _real  [1]     # Average value of X'Y' w.r.t. beam centroid
+bphenv(0:nenv)    _real  [1]     # Skew-coupled beam phase angle
+rxenv(0:nenv)     _real  [m]     # x-plane beam edge radius in rotating frame
+ryenv(0:nenv)     _real  [m]     # y-plane beam edge radius in rotating frame
+emitxenv(0:nenv)  _real  []      # x-plane emittance
+emityenv(0:nenv)  _real  []      # y-plane emittance
+emitnxenv(0:nenv) _real  []      # normalized x-plane emittance
+emitnyenv(0:nenv) _real  []      # normalized y-plane emittance
+emitngenv(0:nenv) _real  []      # normalized emittance-like invariant
+emitnhenv(0:nenv) _real  []      # normalized emittance-like invariant
+zenv(0:nenv)      _real  [m]     # Z coordinate of envelope point
 lenvout logical /.true./ # Sets whether data is printed out after an env step
-envtime        real   [s]     # CPU time for envelope calculation
+envtime           real   [s]     # CPU time for envelope calculation
+llarmorframe   logical  /.false./  # Determines whether envelope radii, angles, 
+			         # and phase advances are in Larmor frame
 iesemltq integer # Obsolete
 iesemltu integer # Obsolete
 imsmmltq integer # Obsolete
@@ -159,3 +180,14 @@ kappaxvec(zarray(n):real,karray(n):real,n:integer) subroutine
 kappayvec(zarray(n):real,karray(n):real,n:integer) subroutine
 	 # Calculates kappay at each point in zarray and stores those values 
 	 # in karray
+ludcmp(a(np,np):real,n:integer,np:integer,indx(n):integer,d:real) subroutine
+	 # Performs LU decomposition on matrix a
+lubksb(a(np,np):real,n:integer,np:integer,indx(n):integer,b(n):real) subroutine
+	 # Performs LU backsubstitution on the LU decomposition of a
+matinv(a(np,np):real,n:integer,np:integer,indx(n):integer,d:real,
+	 y(np,np):real) subroutine
+	 # Computes the inverse of matrix a using ludcmp and lubksb
+matprod(a(i,j):real,b(j,k):real,c(i,k):real,i:integer,j:integer,k:integer) subroutine
+	 # Multiplies matrices a and b to yield matrix c
+matvecprod(a(i,j):real,b(j):real,c(i):real,i:integer,j:integer) subroutine
+	 # Multiplies matrix a and vector b to yield vector c

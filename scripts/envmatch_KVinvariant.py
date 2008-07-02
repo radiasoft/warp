@@ -64,7 +64,7 @@ from scipy import interpolate
 # Add script name version and script documentation function            #
 ########################################################################
 
-envmatch_KVinvariant_version = "$Id: envmatch_KVinvariant.py,v 1.4 2008/03/24 20:15:23 sven Exp $"
+envmatch_KVinvariant_version = "$Id: envmatch_KVinvariant.py,v 1.5 2008/07/02 19:46:09 sven Exp $"
 def envmatch_KVinvariantdoc():
   import envmatch_KVinvariant
   print  envmatch_KVinvariant.__doc__
@@ -150,10 +150,10 @@ For all parameterization cases other than 0 (SolCase != '0'), Match() prints a m
     raise
   # --- Lattice Parameters
   global lperiod,sigma0x,sigma0y,si
-  lperiod = top.zlatperi
+  lperiod = top.tunelen
   if error_stop:
     assert lperiod > 0., 'Lattice period length must be strictly positive.'
-  si = top.zlatstrt
+  si = env.tunezs
   sinitial = si
   sfinal   = si+lperiod
   sigma0x = top.sigma0x*(pi/180.) # [rad], not [deg]
@@ -188,7 +188,7 @@ For all parameterization cases other than 0 (SolCase != '0'), Match() prints a m
     # --- make sure lattice parameters and depressed phase advances are
     #     set consistently with each other
     latfunc(steps,error_stop)
-
+  
   # --- make sure sigmax and sigmay are set properly
   if sigmax == 'auto': sigmax = sigma0x
   if sigmay == 'auto': sigmay = sigma0y
@@ -284,6 +284,21 @@ For all parameterization cases other than 0 (SolCase != '0'), Match() prints a m
     env.dzenv = lperiod/steps  # step  size  in envelope calculation (m)
     top.a0  = rx[0]; top.ap0 = rxp[0]
     top.b0  = ry[0]; top.bp0 = ryp[0]
+    # --- Second order moments:
+    ph = top.bph0
+    top.xx0   = (rx[0]**2*cos(ph)**2 + ry[0]**2*sin(ph)**2)/4.
+    top.xxp0  = (rx[0]*rxp[0]*cos(ph)**2 + ry[0]*ryp[0]*sin(ph)**2)/4.
+    top.xpxp0 = ( (rxp[0]**2 + (emitx/rx[0])**2)*cos(ph)**2 + 
+                  (ryp[0]**2 + (emity/ry[0])**2)*sin(ph)**2 )/4.
+    top.yy0   = (rx[0]**2*sin(ph)**2 + ry[0]**2*cos(ph)**2)/4.
+    top.yyp0  = (rx[0]*rxp[0]*sin(ph)**2 + ry[0]*ryp[0]*cos(ph)**2)/4.
+    top.ypyp0 = ( (rxp[0]**2 + (emitx/rx[0])**2)*sin(ph)**2 + 
+                  (ryp[0]**2 + (emity/ry[0])**2)*cos(ph)**2 )/4.
+    top.xy0   = (rx[0]**2 - ry[0]**2)*sin(2.*ph)/8.
+    top.xpy0  = (rx[0]*rxp[0] - ry[0]*ryp[0])*sin(2.*ph)/8.
+    top.xyp0  = (rx[0]*rxp[0] - ry[0]*ryp[0])*sin(2.*ph)/8.
+    top.xpyp0 = ( (rxp[0]**2 + (emitx/rx[0])**2) - 
+                  (ryp[0]**2 + (emity/ry[0])**2) )*sin(2.*ph)/8.
     package("env"); generate(); step()
     return iterations,tolachieved,Q,emitx,emity,sigmax,sigmay,\
            sigma0x,sigma0y,rx,ry,rxp,ryp,rxi,ryi,rxpi,rypi,\
@@ -584,6 +599,7 @@ Outside of the output list, sigma0_func() also returns top.sigma0x and top.sigma
   #       etc.
   # --- Initialize lists of undepressed principal orbit values for each 
   #     subdomain array
+  #print "Calculating undepressed principal orbits"
   c0x  = []
   c0xp = []
   s0x  = []
@@ -593,6 +609,7 @@ Outside of the output list, sigma0_func() also returns top.sigma0x and top.sigma
   s0y  = []
   s0yp = []
   for n in range(len(sbreak)):
+    #print "n = ", n
     # --- First subdomain: sine-like and cosine-like initial conditions
     if n == 0:
       cxin  = cxi
@@ -615,9 +632,13 @@ Outside of the output list, sigma0_func() also returns top.sigma0x and top.sigma
       syin  = s0y[-1][-1]
       sypin = s0yp[-1][-1]
     # --- Solve for undepressed principal orbits on the given subdomain
+    #print "Solving for c0xn, c0xpn"
     c0xn,c0xpn = HillSolve(kappaxblock2[n],sbreak[n],cxin,cxpin)
+    #print "Solving for s0xn, s0xpn"
     s0xn,s0xpn = HillSolve(kappaxblock2[n],sbreak[n],sxin,sxpin)
+    #print "Solving for c0yn, c0ypn"
     c0yn,c0ypn = HillSolve(kappayblock2[n],sbreak[n],cyin,cypin)
+    #print "Solving for s0yn, s0ypn"
     s0yn,s0ypn = HillSolve(kappayblock2[n],sbreak[n],syin,sypin)
     # --- Append arrays of undepressed principal orbit values on the subdomain 
     #     to the appropriate lists
@@ -1001,6 +1022,7 @@ Outputs:
   #       etc.
   # --- Initialize lists of seed order principal orbit values for each 
   #     subdomain array
+  #print "Solving for 0th order depressed principal orbits"
   cx0  = []
   cxp0 = []
   sx0  = []
@@ -1010,6 +1032,7 @@ Outputs:
   sy0  = []
   syp0 = []
   for n in range(len(sbreak)):
+    #print "n = ", n
     # --- First subdomain: sine-like and cosine-like initial conditions
     if n == 0:
       cxin  = cxi
@@ -1032,9 +1055,13 @@ Outputs:
       syin  = sy0[-1][-1]
       sypin = syp0[-1][-1]
     # --- Solve for principal orbits on the given subdomain
+    #print "Solving for cx0n, cxp0n"
     cx0n,cxp0n = HillSolve(kxblock[n],sbreak[n],cxin,cxpin)
+    #print "Solving for sx0n, sxp0n"
     sx0n,sxp0n = HillSolve(kxblock[n],sbreak[n],sxin,sxpin)
+    #print "Solving for cy0n, cyp0n"
     cy0n,cyp0n = HillSolve(kyblock[n],sbreak[n],cyin,cypin)
+    #print "Solving for sy0n, syp0n"
     sy0n,syp0n = HillSolve(kyblock[n],sbreak[n],syin,sypin)
     # --- Append arrays of principal orbit values on the subdomain 
     #     to the appropriate lists
@@ -1402,6 +1429,7 @@ Outputs:
   #       cxp1 => d c_x^i(s) /ds 
   #       etc.
   # --- Initialize lists of principal orbit values for each subdomain array
+  #print "Solving for ith order depressed principal orbits"
   cx1  = []
   cxp1 = []
   sx1  = []
@@ -1411,6 +1439,7 @@ Outputs:
   sy1  = []
   syp1 = []
   for n in range(len(sbreak)):
+    #print "n = ", n
     # --- First subdomain: sine-like and cosine-like initial conditions
     if n == 0:
       cxin  = cxi
@@ -1433,9 +1462,13 @@ Outputs:
       syin  = sy1[-1][-1]
       sypin = syp1[-1][-1]
     # --- Solve for undepressed principal orbits on the given subdomain
+    #print "Solving for cx1n, cxp1n"
     cx1n,cxp1n = HillSolve(kxblock[n],sbreak[n],cxin,cxpin)
+    #print "Solving for sx1n, sxp1n"
     sx1n,sxp1n = HillSolve(kxblock[n],sbreak[n],sxin,sxpin)
+    #print "Solving for cy1n, cyp1n"
     cy1n,cyp1n = HillSolve(kyblock[n],sbreak[n],cyin,cypin)
+    #print "Solving for sy1n, syp1n"
     sy1n,syp1n = HillSolve(kyblock[n],sbreak[n],syin,sypin)
     # --- Append arrays of principal orbit values on the subdomain 
     #     to the appropriate lists
@@ -1816,6 +1849,7 @@ data structure compatibility issues with other functions.
   ittol = 1 # initialize while loop with a dummy iteration tolerance value
   itnum = 0 # initialize while loop with zeroth order iteration number
   while ittol >= tol:
+    #print "Iteration number = ", itnum+1
     ittol,Qx1,Qy1,emitx1,emity1 = \
       Iterate(SolCase,Q,emitx,emity,sigmax,sigmay)
     itnum = itnum+1
