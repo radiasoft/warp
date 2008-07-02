@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.37 $, $Date: 2008/07/02 19:50:28 $
+c@(#) File ENV.M, version $Revision: 3.38 $, $Date: 2008/07/02 21:44:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -959,6 +959,7 @@ c   F_y = const*( ydedy + xdbdx*v_z )
       real(kind=8):: dxegrd,dyegrd,dxbgrd,dybgrd,dxpgrd,dypgrd
       real(kind=8):: dbdxqc2p,dbdxqs2p,dedxqc2p,dedxqs2p
       real(kind=8):: rx,ry,ksxx,ksxy,ksyx,ksyy
+      real(kind=8):: lph
 
       z1 = z - 0.5 * dz
       z2 = z + 0.5 * dz
@@ -1350,7 +1351,10 @@ c                       ------------------> x
 c                          |----|
 c                          dxegrd
 
-c       --- Try to figure out why these need to be defined this way
+c       --- Initialize the electric fields on the 5-point grid illustrated 
+c           above.  The suffix g stands for grid.  These must be set to 0, 
+c           because applyegrd() adds the gridded electric field components 
+c           to its last three arguments.
         exg = 0.
         eyg = 0.
         ezg = 0.
@@ -1365,6 +1369,9 @@ c       --- Uniform field gradient
         dedrr = dedrr + 0.5*( (exg(5) - exg(1))/(2.*dxegrd) + 
      &                        (eyg(4) - eyg(2))/(2.*dyegrd) )
 c       --- Quadrupole field gradient
+c           WARNING: This should be the quadrupole field gradient in the 
+c           rotated lens frame.  At present, this formula is only correct 
+c           if the lens rotation angle is 0.
         dedxq = dedxq + 0.5*( (exg(5) - exg(1))/(2.*dxegrd) - 
      &                        (eyg(4) - eyg(2))/(2.*dyegrd) )
 c       --- Take skew coupling into account
@@ -1372,11 +1379,6 @@ c       --- Take skew coupling into account
      &                              (eyg(4) - eyg(2))/(2.*dyegrd) )
         dedxqs2p = dedxqs2p + 0.5*( (eyg(5) - eyg(1))/(2.*dxegrd) + 
      &                              (exg(4) - exg(2))/(2.*dyegrd) )
-c       --- Calculate electric field components with quadrupole effects removed
-c           These components will often be caused strictly by dipole effects, 
-c           so we'll call the components exd and eyd (d for dipole)
-        exd = exg(3) - (dedrr + dedxqc2p)*x -          dedxqs2p *y
-        eyd = eyg(3) -          dedxqs2p *x - (dedrr - dedxqc2p)*y
         
       endif
 
@@ -1430,18 +1432,24 @@ c                      |
 c                       ------------------> x
 c                          |----|
 c                          dxbgrd
-        
+
+c       --- Initialize the magnetic fields on the 5-point grid illustrated 
+c           above.  The suffix g stands for grid.  These must be set to 0, 
+c           because applybgrd() adds the gridded electric field components 
+c           to its last three arguments.        
         bxg = 0.
         byg = 0.
         bzg = 0.
 c       --- Calculate magnetic field strengths at index points
         call applybgrd(5,xpg,ypg,1,z,.true.,bxg,byg,bzg)
 c       --- Extract magnetic field componenents at central point (x,y)
-c       --- PROBLEM: How to distinguish quad and dipo fields?
         bx = bx + bxg(3)
         by = by + byg(3)
         bz = bz + bzg(3)
 c       --- Calculate field gradients via centered finite differencing
+c           WARNING: This should be the quadrupole field gradient in the 
+c           rotated lens frame.  At present, this formula is only correct 
+c           if the lens rotation angle is 0.
         dbdxq = dbdxq + 0.5*( (byg(5) - byg(1))/(2.*dxbgrd) + 
      &                        (bxg(4) - bxg(2))/(2.*dybgrd) )
 c       --- Take skew coupling into account
@@ -1449,11 +1457,6 @@ c       --- Take skew coupling into account
      &                              (bxg(4) - bxg(2))/(2.*dybgrd) )
         dbdxqs2p = dbdxqs2p + 0.5*( (byg(4) - byg(2))/(2.*dybgrd) - 
      &                              (bxg(5) - bxg(1))/(2.*dxbgrd) )
-c       --- Calculate magnetic field components with quadrupole effects removed
-c           These components will often be caused strictly by dipole effects, 
-c           so we'll call the components bxd and byd (d for dipole)
-        bxd = bxg(3) + dbdxqs2p*x - dbdxqc2p*y
-        byd = byg(3) - dbdxqc2p*x - dbdxqs2p*y
         
       endif
 
@@ -1507,14 +1510,17 @@ c                      |
 c                       ------------------> x
 c                          |----|
 c                          dxpgrd
-        
+
+c       --- Initialize the electric fields on the 5-point grid illustrated 
+c           above.  The suffix g stands for grid.  These must be set to 0, 
+c           because applypgrd() adds the gridded electric field components 
+c           to its last three arguments.        
         exg = 0.
         eyg = 0.
         ezg = 0.
 c       --- Calculate electric field strengths at index points
         call applypgrd(5,xpg,ypg,1,z,.true.,exg,eyg,ezg)
 c       --- Extract electric field components at central point (x,y)
-c       --- PROBLEM: How to distinguish quad and dipo fields?
         ex = ex + exg(3)
         ey = ey + eyg(3)
         ez = ez + ezg(3)
@@ -1523,6 +1529,9 @@ c       --- Uniform field gradient
         dedrr = dedrr + 0.5*( (exg(5) - exg(1))/(2.*dxpgrd) + 
      &                        (eyg(4) - eyg(2))/(2.*dypgrd) )
 c       --- Quadrupole field gradient
+c           WARNING: This should be the quadrupole field gradient in the 
+c           rotated lens frame.  At present, this formula is only correct 
+c           if the lens rotation angle is 0.
         dedxq = dedxq + 0.5*( (exg(5) - exg(1))/(2.*dxpgrd) - 
      &                        (eyg(4) - eyg(2))/(2.*dypgrd) )
 c       --- Take skew coupling into account
@@ -1530,11 +1539,6 @@ c       --- Take skew coupling into account
      &                              (eyg(4) - eyg(2))/(2.*dyegrd) )
         dedxqs2p = dedxqs2p + 0.5*( (eyg(5) - eyg(1))/(2.*dxegrd) + 
      &                              (exg(4) - exg(2))/(2.*dyegrd) )
-c       --- Calculate electric field components with quadrupole effects removed
-c           These components will often be caused strictly by dipole effects, 
-c           so we'll call the components exd and eyd (d for dipole)
-        exd = exg(3) - (dedrr + dedxqc2p)*x -          dedxqs2p *y
-        eyd = eyg(3) -          dedxqs2p *x - (dedrr - dedxqc2p)*y
         
       endif
 
