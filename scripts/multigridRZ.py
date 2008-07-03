@@ -68,6 +68,9 @@ class MultiGridRZ(MultiGrid):
   def getrho(self):
     return self.source[:,0,:]
 
+  def getrhop(self):
+    return self.sourcep[:,0,:]
+
   def getphi(self):
     'Returns the phi array without the guard cells'
     ix1 = self.nxguard
@@ -81,6 +84,20 @@ class MultiGridRZ(MultiGrid):
     if iz2 == 0: iz2 = None
     iz = slice(iz1,iz2)
     return self.potential[ix,0,iz]
+
+  def getphip(self):
+    'Returns the phip array without the guard cells'
+    ix1 = self.nxguard
+    if ix1 == 0: ix1 = None
+    ix2 = -self.nxguard
+    if ix2 == 0: ix2 = None
+    ix = slice(ix1,ix2)
+    iz1 = self.nzguard
+    if iz1 == 0: iz1 = None
+    iz2 = -self.nzguard
+    if iz2 == 0: iz2 = None
+    iz = slice(iz1,iz2)
+    return self.potentialp[ix,0,iz]
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
@@ -239,6 +256,9 @@ class MultiGrid2D(MultiGrid):
   def getrho(self):
     return self.source[:,0,:]
 
+  def getrhop(self):
+    return self.sourcep[:,0,:]
+
   def getphi(self):
     'Returns the phi array without the guard cells'
     ix1 = self.nxguard
@@ -252,6 +272,20 @@ class MultiGrid2D(MultiGrid):
     if iz2 == 0: iz2 = None
     iz = slice(iz1,iz2)
     return self.potential[ix,0,iz]
+
+  def getphip(self):
+    'Returns the phip array without the guard cells'
+    ix1 = self.nxguard
+    if ix1 == 0: ix1 = None
+    ix2 = -self.nxguard
+    if ix2 == 0: ix2 = None
+    ix = slice(ix1,ix2)
+    iz1 = self.nzguard
+    if iz1 == 0: iz1 = None
+    iz2 = -self.nzguard
+    if iz2 == 0: iz2 = None
+    iz = slice(iz1,iz2)
+    return self.potentialp[ix,0,iz]
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
@@ -451,9 +485,16 @@ Initially, conductors are not implemented.
   def getrho(self):
     return self.source[:,0,:,0]
 
+  def getrhop(self):
+    return self.sourcep[:,0,:,0]
+
   def getphi(self):
     'Returns the phi array without the guard cells'
     return MultiGrid.getphi(self)[:,0,:]
+
+  def getphip(self):
+    'Returns the phip array without the guard cells'
+    return MultiGrid.getphip(self)[:,0,:]
 
   def loadrho(self,lzero=None,**kw):
     # --- top.laccumulate_rho is used as a flag by the implicit stepper.
