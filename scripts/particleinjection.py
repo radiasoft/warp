@@ -6,7 +6,7 @@ from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.3 2008/05/12 16:32:01 dave Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.4 2008/07/03 18:17:52 dave Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -141,12 +141,13 @@ conductors are an argument.
         dy = solver.dy
         dz = solver.dz
         if solver is w3d: rhop = solver.rhop
-        else:             rhop = solver.sourcep
+        else:             rhop = solver.getrhop()
         Irho = rhop*dx*dy*dz
 
         return Irho
 
     def doinjection(self):
+        self.updategrid()
         solver = getregisteredsolver()
         if solver is None: solver = w3d
         dx = solver.dx
@@ -343,16 +344,16 @@ conductors are an argument.
         for c in newconductors:
             assert c.condid != 0,"The conductor id must be nonzero in order for the particle scraping to work."
             self.conductors.append(c)
-        self.updategrid()
 
     def unregisterconductors(self,conductor,nooverlap=0):
         self.conductors.remove(conductor)
-        if not nooverlap:
-            # --- This is horribly inefficient!!!
-            self.grid.resetgrid()
-            self.updateconductors()
-        else:
-            self.grid.removeisinside(conductor)
+        if self.grid is not None:
+            if not nooverlap:
+                # --- This is horribly inefficient!!!
+                self.grid.resetgrid()
+                self.updateconductors()
+            else:
+                self.grid.removeisinside(conductor)
 
     def updategrid(self,lforce=0):
         """Update the grid to match any changes to the underlying grid,
