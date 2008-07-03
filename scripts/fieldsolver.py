@@ -1280,7 +1280,10 @@ of the arrays used by the field solve"""
 
   def resetparticledomains(self):
     self.setparticledomains()
+    # --- Note that this will call allocatedataarrays.
     self.getallpotentialpforparticles(lforce=1)
+    # --- Make sure the sourcep gets set to the updated sourceparray.
+    self.setsourcepforparticles(0,0,0)
 
   def zerosourcep(self):
     if top.ndtsaveraging == 0:
