@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.38 $, $Date: 2008/07/02 21:44:49 $
+c@(#) File ENV.M, version $Revision: 3.39 $, $Date: 2008/07/07 19:59:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -1676,8 +1676,17 @@ c     Minus signs before the solenoid and quadrupole terms
       fuyplot =  fuy 
       
 c     These forces are useful in the second-order moment advance
-      fexxself = 2.*p*pscale/((rx+ry)*rx)
-      feyyself = 2.*p*pscale/((rx+ry)*ry)
+c     --- Make sure that there is no divide by zero.
+      if (rx == 0.) then
+        fexxself = 0.
+      else
+        fexxself = 2.*p*pscale/((rx+ry)*rx)
+      endif
+      if (ry == 0.) then
+        feyyself = 0.
+      else
+        feyyself = 2.*p*pscale/((rx+ry)*ry)
+      endif
       
 c     Define "k-function" force terms used in the second order moment 
 c     advances.  Notation is similar to that used in Sven Chilton's MS thesis, 
