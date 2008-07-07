@@ -168,6 +168,22 @@ Dump data into a pdb file
     if isinstance(vval,numpy.ndarray) and numpy.product(vval.shape) == 0:
       continue
 
+    # --- If the object is a class or an instance of a class that was defined
+    # --- in main, then don't include it since it will not be unpicklable
+    # --- since the class may not defined in the restored session.
+    try:
+      if vval.__class__.__module__ == '__main__':
+        if verbose: print vname+' is being skipped since it is an instance of a class defined in main and therefore could not be unpickled'
+        continue
+    except:
+        pass
+    try:
+      if vval.__module__ == '__main__':
+        if verbose: print vname+' is being skipped since it is a class defined in main and therefore could not be unpickled'
+        continue
+    except:
+      pass
+
     # --- Make sure that the object is picklable. There is no easy way of
     # --- doing this except by trying to pickle the object. This could be
     # --- very inefficient.
@@ -176,11 +192,14 @@ Dump data into a pdb file
     except:
       if verbose: print 'python variable '+vname+' could no be pickled'
       continue
-    try:
-      testunpickle = cPickle.loads(testpickle)
-    except:
-      print 'python variable '+vname+' could no be unpickled'
-      continue
+
+   # --- The unpickling test is not done now since some objects have a special
+   # --- unpickling __setstate__ that interferes with normal operation.
+   #try:
+   #  testunpickle = cPickle.loads(testpickle)
+   #except:
+   #  print 'python variable '+vname+' could no be unpickled'
+   #  continue
 
     if verbose: print 'writing python variable '+vname
     pkgdict[vname] = vval
@@ -194,6 +213,7 @@ Dump data into a pdb file
     pickler.dump(picklelist)
 
   if closefile: ff.close()
+  pickledump.picklelist = picklelist
 
 #############################################################################
 def picklerestore(filename,verbose=0,skip=[],
