@@ -172,7 +172,7 @@ class Maps_simple:
       np = iu-il
       if self.l_verbose:print 'stckxy3d beam'
       zpartbndwithdata(np,pg.zp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                       w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz,top.zgrid)
+                       w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
       stckxy3d(np,pg.xp[il:iu],w3d.xmmax,w3d.xmmin,w3d.dx,
                   pg.yp[il:iu],w3d.ymmax,w3d.ymmin,w3d.dy,
                   pg.zp[il:iu],w3d.zmminlocal,w3d.dz,
