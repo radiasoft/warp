@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.31 2008/02/29 18:11:14 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.32 2008/07/09 11:20:50 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -234,8 +234,10 @@ Class for generating secondaries
                       vx=self.vx[js][:nn],
                       vy=self.vy[js][:nn],
                       vz=self.vz[js][:nn],
+                      gi=1./sqrt(1.+(self.vx[js][:nn]**2+self.vy[js][:nn]**2+self.vz[js][:nn]**2/clight**2)),
                       js=js,
-                      lmomentum=true)
+                      lmomentum=true,
+                      lallindomain=true)
        else: 
          if top.wpid==0:
            weights=1.
@@ -247,10 +249,12 @@ Class for generating secondaries
                       vx=self.vx[js][:nn],
                       vy=self.vy[js][:nn],
                       vz=self.vz[js][:nn],
+                      gi=1./sqrt(1.+(self.vx[js][:nn]**2+self.vy[js][:nn]**2+self.vz[js][:nn]**2/clight**2)),
                       pid=self.pid[js][:nn,:],
                       w=weights,
                       js=js,
-                      lmomentum=true)
+                      lmomentum=true,
+                      lallindomain=true)
        self.nps[js]=0
          
   def printall(self,l_cgm=0):
@@ -745,7 +749,7 @@ Class for generating secondaries
     for js in self.x.keys():
       self.flushpart(js)
     # --- check for particle out of bounds and exchange particles among processors if needed
-    zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
+    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
 
     if self.l_record_timing:t3 = time.clock()
 #    print "tinit,tgen,tadd:",tinit*1.e-6,tgen*1.e-6,tprepadd*1.e-6,tadd*1.e-6
@@ -1326,6 +1330,7 @@ Class for generating photo-electrons
      self.vx={}
      self.vy={}
      self.vz={}
+     self.gi={}
      self.pid={}
      self.Lambda=0.
      if posinst_file is not None:init_posinst_for_warp(posinst_file)
@@ -1349,6 +1354,7 @@ Class for generating photo-electrons
       self.vx[js]=fzeros(self.npmax,'d')
       self.vy[js]=fzeros(self.npmax,'d')
       self.vz[js]=fzeros(self.npmax,'d')
+      self.gi[js]=fzeros(self.npmax,'d')
       if top.wpid>0:
         self.pid[js]=fzeros([self.npmax,top.npid],'d')
 
@@ -1356,7 +1362,7 @@ Class for generating photo-electrons
     if not isinstalledbeforeloadrho(self.generate):
       installbeforeloadrho(self.generate)
 
-  def addpart(self,nn,x,y,z,vx,vy,vz,js,weight=None):
+  def addpart(self,nn,x,y,z,vx,vy,vz,gi,js,weight=None):
     if self.nps[js]+nn>self.npmax:self.flushpart(js)
     il=self.nps[js]
     iu=il+nn
@@ -1366,6 +1372,7 @@ Class for generating photo-electrons
     self.vx[js][il:iu]=vx
     self.vy[js][il:iu]=vy
     self.vz[js][il:iu]=vz
+    self.gi[js][il:iu]=gi
     if weight is not None:self.pid[js][il:iu,top.wpid-1]=weight
     self.nps[js]+=nn
       
@@ -1379,8 +1386,10 @@ Class for generating photo-electrons
                       vx=self.vx[js][:nn],
                       vy=self.vy[js][:nn],
                       vz=self.vz[js][:nn],
+                      gi=self.gi[js][:nn],
                       js=js,
-                      lmomentum=true)
+                      lmomentum=true,
+                      lallindomain=true)
        else: 
          addparticles(x=self.x[js][:nn],
                       y=self.y[js][:nn],
@@ -1388,9 +1397,11 @@ Class for generating photo-electrons
                       vx=self.vx[js][:nn],
                       vy=self.vy[js][:nn],
                       vz=self.vz[js][:nn],
+                      gi=self.gi[js][:nn],
                       pid=self.pid[js][:nn,:],
                       js=js,
-                      lmomentum=true)
+                      lmomentum=true,
+                      lallindomain=true)
        self.nps[js]=0
          
   def generate(self):
@@ -1488,6 +1499,7 @@ Class for generating photo-electrons
                          pos.vgx[:pos.nlast],
                          pos.vgz[:pos.nlast],
                          pos.vgy[:pos.nlast],
+                         gaminv,
                          js_new,
                          weights)
        else:
@@ -1497,6 +1509,7 @@ Class for generating photo-electrons
                          pos.vgx[:pos.nlast],
                          pos.vgy[:pos.nlast],
                          pos.vgz[:pos.nlast],
+                         gaminv,
                          js_new,
                          weights)
        pos.nlast=0
@@ -1504,3 +1517,5 @@ Class for generating photo-electrons
     # --- make sure that all particles are added
     for js in self.x.keys():
       self.flushpart(js)
+    # --- check for particle out of bounds and exchange particles among processors if needed
+    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
