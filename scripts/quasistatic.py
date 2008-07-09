@@ -1524,7 +1524,7 @@ class Quasistatic:
       if js==0:top.pboundnz=-1
       if js==w3d.nzp-1:top.pbound0=-1
       zpartbndwithdata(pg.nps[js],pg.zp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                       w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz,top.zgrid)
+                       w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
       if js==0:top.pboundnz=0
       if js==w3d.nzp-1:top.pbound0=0
     if self.scraper is not None:self.scraper.scrape(js)
@@ -2464,7 +2464,7 @@ class Quasistaticold:
         il=top.pgroup.ins[js]-1
         iu=il+top.pgroup.nps[js]
         top.pgroup.zp[il:iu]=w3d.zmminlocal-1.e-10*w3d.dz
-      zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
+      zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
 
   def plot_electrons(self):
 #        ppgeneric(getvx(js=1),getx(js=1))

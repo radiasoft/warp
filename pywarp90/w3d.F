@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.401 $, $Date: 2008/06/25 17:01:20 $
+c@(#) File W3D.F, version $Revision: 3.402 $, $Date: 2008/07/09 11:17:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1037,6 +1037,7 @@ c  Finally, moment diagnostic printout and history storage
 !$OMP MASTER
       if (lw3dtimesubs) timestep3d = timestep3d + wtime() - substarttime
 !$OMP END MASTER
+
       return
       end
 c=============================================================================
@@ -8934,6 +8935,7 @@ c Does everything needed to apply particle boundary conditions.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
+
 c     --- Reset lost particles counter if requested
       if (lresetlostpart) then
         do is=1,pgroup%ns
@@ -8947,7 +8949,7 @@ c         --- do it only if species was advanced on this time step
       if (lbeforescraper) call callpythonfunc("beforescraper","controllers")
 
 c     --- Apply particle boundary conditions
-      call zpartbnd(pgroup,zmmaxlocal,zmminlocal,dz)
+      call zpartbnd(pgroup,zmmax,zmmin,dz)
 
 c     --- absorb particles passing through semitransparent disc
       call semitransparent_disc(pgroup,dz)
@@ -8974,8 +8976,8 @@ c       --- do it only if species was advanced on this time step
           call processlostpart(pgroup,is,clearlostpart,
      &                         time+dt*pgroup%ndts(is-1),zbeam)
         endif
-      enddo
-      
+      enddo    
+
 !$OMP MASTER
       if (lw3dtimesubs) timeparticleboundaries3d = timeparticleboundaries3d + wtime() - substarttime
 !$OMP END MASTER

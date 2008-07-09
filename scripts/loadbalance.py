@@ -11,7 +11,7 @@ __all__ = ['LoadBalancer']
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.60 2008/01/18 23:42:05 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.61 2008/07/09 11:23:14 jlvay Exp $"
 
 def loadbalancedoc():
     import loadbalance
@@ -290,7 +290,7 @@ that has already been done.
     if reorg:
         reorgparticles(top.pgroup)
     else:
-        zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
+        zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
 
     # --- Set iz and nz. This is done so that zmesh[izpslave] < zpslmin, and
     # --- zmesh[izpslave+nzpslave] > zpslmax.

@@ -79,7 +79,7 @@ class Boosted_Frame(object):
       self.pgroup.fselfb[jspr] = pg.fselfb[js]
     # --- check for particle out of bounds and exchange particles among processors if needed
     top.ns=self.pgroup.ns
-    zpartbnd(self.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
+    zpartbnd(self.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
     top.ns=top.pgroup.ns
     self.depos=top.depos.copy()
     installbeforeloadrho(self.add_boosted_species)

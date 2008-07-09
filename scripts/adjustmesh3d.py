@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.27 2007/06/04 23:02:51 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.28 2008/07/09 11:21:55 jlvay Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -283,7 +283,7 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
   if npes > 0:
     reorgparticles(top.pgroup)
   else:
-    zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
+    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
     for js in xrange(top.ns):
       processlostpart(top.pgroup,js+1,top.clearlostpart,top.time,top.zbeam)
   # --- Reset field solve parameters (kzsq)

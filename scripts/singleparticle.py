@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.39 2008/05/23 18:40:20 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.40 2008/07/09 11:25:40 jlvay Exp $"
 
 class TraceParticle(object):
   """
@@ -709,7 +709,7 @@ initial data.
     top.pgroup.uzp[ip1:ip2] = self.vz
     top.pgroup.gaminv[ip1:ip2] = self.gi
     # --- Enforce the particle boundary conditions
-    zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
+    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
     stckxy3d(self.nn,top.pgroup.xp[ip1:ip2],w3d.xmmax,w3d.xmmin,w3d.dx,
              top.pgroup.yp[ip1:ip2],w3d.ymmax,w3d.ymmin,
              w3d.dy,top.pgroup.zp[ip1:ip2],w3d.zmminlocal,w3d.dz,
