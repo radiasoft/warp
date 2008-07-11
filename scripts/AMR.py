@@ -11,7 +11,6 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 import time
-import timing as t
 import gc # Garbage collection
 
 try:
@@ -31,7 +30,7 @@ class AMRTree(VisualizableClass):
       self.nbcells_user = None
       if getcurrpkg()=='w3d' and w3d.solvergeom==w3d.XYZgeom:
         self.solvergeom = w3d.XYZgeom
-        self.blocks=MRBlock()     
+        self.blocks=MRBlock()
       else:
         self.solvergeom = w3d.solvergeom
         self.blocks={}
@@ -48,14 +47,14 @@ class AMRTree(VisualizableClass):
         registersolver(self)
       else:
         installbeforefs(self.generate)
-        
+
     def __getstate__(self):
       if type(self.blocks) != DictType:
         # --- In this case, there is no trouble with pickle
         return self.__dict__
       else:
         # --- In this case, the complexly nested frz.basegrid structure
-        # --- causes pickle to have fits and it often reachs the 
+        # --- causes pickle to have fits and it often reachs the
         # --- recursion depth limit. So, remove all references to grid here,
         # --- replacing them with the gids so they can be restored later.
         # --- This also removes the problem of having extra instances of
@@ -101,12 +100,12 @@ class AMRTree(VisualizableClass):
       if not ifcond:
         ifcond = top.it%w3d.AMRgenerate_periodicity<>0
       if (ifcond or not lzero): lrootonly = 0
-      else:                                       lrootonly = 1
+      else:                     lrootonly = 1
       if self.solvergeom == w3d.XYZgeom:
         self.blocks.loadrho(lzero=lzero,lrootonly=lrootonly)
       else:
         raise "Only 3d supported as registered solver."
-        
+
     def solve(self):
       if self.solvergeom == w3d.XYZgeom:
         self.generate()
@@ -143,7 +142,7 @@ class AMRTree(VisualizableClass):
                                 xmmin=g.xmin,xmmax=g.xmax,
                                 zmmin=g.zmin,zmmax=g.zmax,dfill=dfill,
                                 gridrz=g)
-            block['installed_conductors'].append(cond) 
+            block['installed_conductors'].append(cond)
         get_cond_rz(1)
 
     def hasconductors(self):
@@ -257,7 +256,7 @@ class AMRTree(VisualizableClass):
       # get edges using vertical lines
       maxfg = fg.max(0)
       g1 = where(fg>threshold*maxfg[NewAxis,...],fg,0.)
-        
+
       # get edges using horizontal lines
       maxfg = fg.max(1)
       if dim==2:
@@ -297,7 +296,7 @@ class AMRTree(VisualizableClass):
       # get dimension (2-D or 3-D)
       dim = rank(f)
       # get number of refinement levels
-      n = nint(log(Rdens)/log(MRfact)) 
+      n = nint(log(Rdens)/log(MRfact))
       # get nb cells proportional to f
 #      fg=MRfact**(dim*(n+1))*f/maxnd(f)
       if 0:
@@ -320,7 +319,7 @@ class AMRTree(VisualizableClass):
       fg2 = self.getnbcell_rho(f,Rdens,MRfact)
       f = int(where(fg1>fg2,fg1,fg2))
       # next loop removes isolated blocks of lmax cells or less
-      # this needs improvements 
+      # this needs improvements
       if lmax>0:
        if rank(f)==3:
         nx=shape(f)[0]
@@ -501,7 +500,7 @@ class AMRTree(VisualizableClass):
                 if(cond and cond2):
                   if(self.get_area_fraction(f0,j,k,l,ix,iy,iz,ixm,iym,izm+1,ib,p)>=r):izm+=1
 
-              if(ix==ix0 and iy==iy0 and iz==iz0 and 
+              if(ix==ix0 and iy==iy0 and iz==iz0 and
                  ixm==ixm0 and iym==iym0 and izm==izm0):tryit=false
 
             if dim==2:
@@ -684,7 +683,7 @@ class AMRTree(VisualizableClass):
               if dim==2:
                 if(ix==ix0 and iy==iy0 and ixm==ixm0 and iym==iym0):tryit=false
               else:
-                if(ix==ix0 and iy==iy0 and iz==iz0 and 
+                if(ix==ix0 and iy==iy0 and iz==iz0 and
                    ixm==ixm0 and iym==iym0 and izm==izm0):tryit=false
             if dim==2:
               f0[j-ixm:j+ix,k-iym:k+iy] = 0
@@ -716,7 +715,7 @@ class AMRTree(VisualizableClass):
           iz = patch[5]
           f[j:j+ix,k:k+iy,l:l+iz] += 1
       return f
-      
+
     def setblocks(self):
       self.nblocks=0
       if self.solvergeom == w3d.XYZgeom:
@@ -784,15 +783,15 @@ class AMRTree(VisualizableClass):
     def add_transit(self, nx, xmin, xmax, dxmother, xmin0, xmax0):
       nt = self.ntransit
       n = self.MRfact
-            
+
       xmin_try = xmin-nt*dxmother
       xmax_try = xmax+nt*dxmother
-      t_xmin   = min(nt, max(0,nt-int((xmin0-xmin_try)/dxmother))) 
-      t_xmax   = min(nt, max(0,nt-int((xmax_try-xmax0)/dxmother))) 
+      t_xmin   = min(nt, max(0,nt-int((xmin0-xmin_try)/dxmother)))
+      t_xmax   = min(nt, max(0,nt-int((xmax_try-xmax0)/dxmother)))
       xmin    -= t_xmin*dxmother
       xmax    += t_xmax*dxmother
       nx      += n*(t_xmin+t_xmax)
-      
+
       return nx, xmin, xmax, t_xmin, t_xmax
 
     def del_blocks2d(self,g=None):
@@ -803,7 +802,7 @@ class AMRTree(VisualizableClass):
         try:
           self.del_blocks2d(g.down)
         except:
-          pass    
+          pass
       if g is not frz.basegrid:
         id = g.gid[0]
         del_subgrid(id)
@@ -828,12 +827,12 @@ class AMRTree(VisualizableClass):
 
     def generate(self,l_timing=0,l_allocate_blocks=1):
       """
-    Generate AMR blocks based on values and gradients of self.f. If self.f is None, its default is 
+    Generate AMR blocks based on values and gradients of self.f. If self.f is None, its default is
     the charge density. If self.f is null, an error message is raised.
       """
       # return if not time to generate a new set of blocks
       # Note that beforefs is still called.
-      
+
       ifcond = w3d.AMRgenerate_periodicity==0
       if not ifcond:
         ifcond = top.it%w3d.AMRgenerate_periodicity<>0
@@ -841,15 +840,15 @@ class AMRTree(VisualizableClass):
         self.beforefs()
         return
       print 'generate grids at it = ',top.it
-      
+
       # check if w3d.AMRlevels set properly and set defaut variables
       if w3d.AMRlevels<=0: raise('Error: AMRTree.generate called with w3d.AMRlevels<=0/')
       self.MRfact   = w3d.AMRrefinement
       self.ntransit = w3d.AMRtransit
-      
+
       # generate nbcells from self.f or use self.nbcells_user if provided
       if self.nbcells_user is None:
-        if l_timing:t.start()
+        if l_timing: starttime = time.clock()
         l_nbcellsnone=1
         # set self.f to the charge density array by default
         if self.f_user is not None:
@@ -862,7 +861,7 @@ class AMRTree(VisualizableClass):
             self.f = self.blocks.rho
           else:
             self.f = frz.basegrid.rho
-          
+
         # set cell dimensions of mother grid according to geometry
         dx = w3d.dx
         dz = w3d.dz
@@ -870,8 +869,8 @@ class AMRTree(VisualizableClass):
           dy = w3d.dy
         if self.solvergeom==w3d.XZgeom or self.solvergeom==w3d.RZgeom:
           dy = w3d.dz
-        
-        # set parameters controlling the automatic generation of blocks        
+
+        # set parameters controlling the automatic generation of blocks
         if w3d.AMRmaxlevel_density ==-1: w3d.AMRmaxlevel_density =w3d.AMRlevels
         if w3d.AMRmaxlevel_gradient==-1: w3d.AMRmaxlevel_gradient=w3d.AMRlevels
         self.Rdens = w3d.AMRrefinement**w3d.AMRmaxlevel_density
@@ -885,8 +884,8 @@ class AMRTree(VisualizableClass):
                                      MRfact=self.MRfact,lmax=self.maxcells_isolated_blocks)
         self.f = None
         if l_timing:
-            t.finish()
-            print 'created nbcells in ',t.seconds(),' seconds.'
+            endtime = time.clock()
+            print 'created nbcells in ',endtime-starttime,' seconds.'
       else:
         if callable(self.nbcells_user):
           self.nbcells = self.nbcells_user()
@@ -895,35 +894,35 @@ class AMRTree(VisualizableClass):
 
       if self.nbcells is not None:
         # generate list of blocks from array nbcells
-        if l_timing:t.start()
+        if l_timing: starttime = time.clock()
         self.setlist(self.nbcells[:-1,:-1],w3d.AMRcoalescing,self.MRfact,true)
         if l_timing:
-            t.finish()
-            print 'generated list in ',t.seconds(),' seconds.'
-        
+            endtime = time.clock()
+            print 'generated list in ',endtime-starttime,' seconds.'
+
         if not l_allocate_blocks:return
-          
+
         # allocate blocks from list self.listblocks
-        if l_timing:t.start()
+        if l_timing: starttime = time.clock()
         self.setblocks()
         if l_timing:
-            t.finish()
-            print 'generated blocks in ',t.seconds(),' seconds.'
-      
+            endtime = time.clock()
+            print 'generated blocks in ',endtime-starttime,' seconds.'
+
         # clear inactive regions in each blocks
         if not w3d.AMRuse_inactive_regions:
-          if l_timing: t.start()
+          if l_timing: starttime = time.clock()
           if self.solvergeom==w3d.XYZgeom:
             self.blocks.clearinactiveregions(self.nbcells)
           else:
             g = frz.basegrid
             adjust_lpfd(self.nbcells,g.nr,g.nz,g.rmin,g.rmax,g.zmin,g.zmax)
           if l_timing:
-            t.finish()
-            print 'Cleared inactive regions in ',t.seconds(),' seconds.'
-      
+            endtime = time.clock()
+            print 'Cleared inactive regions in ',endtime-starttime,' seconds.'
+
       # set conductor data
-      if l_timing:t.start()
+      if l_timing: starttime = time.clock()
       if self.solvergeom==w3d.XYZgeom:
         for cond,dfill in zip(self.conductors,self.conductorsdfill):
           self.blocks.installconductor(cond,dfill=dfill)
@@ -933,7 +932,7 @@ class AMRTree(VisualizableClass):
           g = frz.basegrid
           for idummy in range(frz.ngrids-1):
             rdummy=g.nr
-            try:    
+            try:
                 g=g.next
             except:
                 try:
@@ -950,13 +949,13 @@ class AMRTree(VisualizableClass):
                                 xmmin=g.xmin,xmmax=g.xmax,
                                 zmmin=g.zmin,zmmax=g.zmax,dfill=dfill,
                                 gridrz=g)
-              block['installed_conductors'].append(cond)  
+              block['installed_conductors'].append(cond)
         get_cond_rz(1)
       if l_timing:
-            t.finish()
-            print 'generated conductors in ',t.seconds(),' seconds.'
-      
-      if l_timing:t.start()
+            endtime = time.clock()
+            print 'generated conductors in ',endtime-starttime,' seconds.'
+
+      if l_timing: starttime = time.clock()
       # load charge density on new set of blocks
       if self.solvergeom == w3d.XYZgeom:
         # --- Call the solvers loadrho routine directly since AMR instance
@@ -965,8 +964,8 @@ class AMRTree(VisualizableClass):
       else:
         loadrho()
       if l_timing:
-            t.finish()
-            print 'loaded rho in ',t.seconds(),' seconds.'
+            endtime = time.clock()
+            print 'loaded rho in ',endtime-starttime,' seconds.'
 
       self.beforefs()
       print 'Generated ',self.nblocks,' blocks.'
@@ -1000,7 +999,7 @@ class AMRTree(VisualizableClass):
                 self.draw_mesh(ny,nx,ymin+k*dy,xmin+j*dx,dy/r,dx/r,color=self.colors[i],width=width)
               else:
                 self.draw_box(xmin+j*dx, xmin+j*dx+l*dx, ymin+k*dy, ymin+k*dy+h*dy, color=self.colors[i],width=width)
-               
+
     def draw_mesh(self,nx,ny,xmin,ymin,dx,dy,color='black',width=1):
       x = xmin+arange(nx+1)*dx
       y = ymin+arange(ny+1)*dy
@@ -1020,7 +1019,7 @@ class AMRTree(VisualizableClass):
       """
     Create DX object drawing the object.
     - withguards=1: when true, the guard cells are included in the bounding box
-    
+
       """
       kw.update(kwdict)
       withguards = kw.get('withguards',1)
@@ -1049,7 +1048,7 @@ class AMRTree(VisualizableClass):
             zmaxp =     zminp + patch[5]*w3d.dz
             if( not( (xminp>xmax) or (xmaxp<xmin) or \
                      (yminp>ymax) or (ymaxp<ymin) or \
-                     (zminp>zmax) or (zmaxp<zmin))): 
+                     (zminp>zmax) or (zmaxp<zmin))):
               dxlist.append(Opyndx.viewboundingbox(
                                             max(xmin,xminp),min(xmax,xmaxp),
                                             max(ymin,yminp),min(ymax,ymaxp),
@@ -1065,8 +1064,8 @@ class AMRTree(VisualizableClass):
           Opyndx.DXImage(self)
         else:
           self.draw_blocks2d(level=level)
-            
-            
+
+
 def draw_mesh(nx,ny,xmin,ymin,dx,dy,color='black',width=1):
       x = xmin+arange(nx+1)*dx
       y = ymin+arange(ny+1)*dy
@@ -1074,7 +1073,7 @@ def draw_mesh(nx,ny,xmin,ymin,dx,dy,color='black',width=1):
       yymin = ymin*ones(nx+1)
       pldj(x,yymin,x,yymin+ny*dy,color=color,width=width)
       pldj(xxmin,y,xxmin+nx*dx,y,color=color,width=width)
-   
+
 def plphirz(grid=None,which='phi',cmin=None,cmax=None,
                  border=1,bordercolor='yellow',borderwidth=1,
                  mesh=0,meshcolor='white',meshwidth=1,meshr=1,
@@ -1141,7 +1140,7 @@ def plphirz(grid=None,which='phi',cmin=None,cmax=None,
           pass
     if(firstcall):
       colorbar(cmin,cmax,view=plsys())
-   
+
 def plrhorz(**args):
     plphirz(which='rho',**args)
 
@@ -1196,7 +1195,7 @@ def plcondrz(grid=None,border=1,bordercolor='yellow',mesh=0,meshcolor='white',me
                      siblings,children,firstcall=0,level=level+1,maxlevel=maxlevel,delay=delay)
         except:
           pass
-   
+
 def draw_box(rmin, rmax, zmin, zmax, color='blue',width=1):
        pldj([zmin,zmin,zmin,zmax],
              [rmin,rmax,rmin,rmin],
