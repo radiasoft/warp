@@ -16,10 +16,10 @@ quadrupoles when the beam is round, but the env slopes are different.
 ##############################################################################
 """
 from warp import *
-import LinearAlgebra
+import numpy.linalg as linalg
 import singleparticle
 
-rami_match_version = "$Id: rami_match.py,v 1.5 2006/04/28 16:25:26 dave Exp $"
+rami_match_version = "$Id: rami_match.py,v 1.6 2008/07/11 21:13:43 dave Exp $"
 def rami_matchdoc():
   import rami_match
   print rami_match.__doc__
@@ -162,7 +162,7 @@ def matchx(xf=0.,xpf=0.,yf=0.,ypf=0.,zs=None,ze=None,s=None,
                  ((vy-ypi*top.vbeam)/yps*vary))
 
     # --- Invert the matrix
-    mati = LinearAlgebra.inverse(mat)
+    mati = linalg.inv(mat)
 
     # --- Get next starting point
     dsp[:] = [xf - top.pgroup.xp[0],xpf - top.pgroup.uxp[0]/top.pgroup.uzp[0],

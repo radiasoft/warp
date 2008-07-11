@@ -1,10 +1,7 @@
 from warp import *
-if with_numpy:
-  import numpy.oldnumeric.linear_algebra as LinearAlgebra
-else:
-  import LinearAlgebra
+import numpy.linalg as linalg
 import singleparticle
-wxy_match_version = "$Id: wxy_match.py,v 1.9 2007/06/08 18:17:32 dave Exp $"
+wxy_match_version = "$Id: wxy_match.py,v 1.10 2008/07/11 21:13:43 dave Exp $"
 
 def wxy_matchdoc():
   print """
@@ -171,7 +168,7 @@ def matchx(xf=0.,xpf=0.,yf=0.,ypf=0.,zs=None,ze=None,s=None,
                  ((vy-ypi*top.vbeam)/yps*vary))
 
     # --- Invert the matrix
-    mati = LinearAlgebra.inverse(mat)
+    mati = linalg.inv(mat)
 
     # --- Get next starting point
     dsp[:] = [xf - top.pgroup.xp[0],xpf - top.pgroup.uxp[0]/top.pgroup.uzp[0],
@@ -354,7 +351,7 @@ to do, defaulting to 1."""
       g[i] = sum (fjac[:,i]*s.fvec[:])
     xold[:] = s.scaling[:]
     p[:] = -s.fvec[:]
-    p = LinearAlgebra.solve_linear_equations (fjac, p)
+    p = linalg.solve(fjac, p)
     # --- Starting linesearch
     fold = s.f
     total = sqrt(sum(p[:]*p[:]))

@@ -1,6 +1,6 @@
 from warp import *
-from LinearAlgebra import solve_linear_equations
-matchenv_version = "$Id: matchenv.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+import numpy.linalg as linalg
+matchenv_version = "$Id: matchenv.py,v 1.2 2008/07/11 21:13:43 dave Exp $"
 
 def matchenvdoc():
   print """
@@ -148,7 +148,7 @@ The package env must be generated before calling this routine
        g[i] = sum (fjac[:,i]*fvec[:])
     xold[:] = scaling[:]
     p[:] = -fvec[:]
-    p = solve_linear_equations (fjac, p);
+    p = linalg.solve(fjac, p);
     # Starting linesearch
     fold = f
     total = sqrt(sum(p[:]*p[:]))

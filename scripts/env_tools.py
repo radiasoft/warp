@@ -1,6 +1,6 @@
 from warp import *
-import LinearAlgebra
-env_tools_version = "$Id: env_tools.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+import numpy.linalg as linalg
+env_tools_version = "$Id: env_tools.py,v 1.2 2008/07/11 21:13:43 dave Exp $"
 
 print " "
 print "This scripts finds matched beam parameters for a periodic lattice."
@@ -188,7 +188,7 @@ def matchenv(quads,af,bf,apf,bpf,zz=None,maxiter=100,tol=1.e-10):
       mat[3,iq]=(bpi - bpsave)/(qorig*vvary)
 
     # --- Invert the matrix
-    mati = LinearAlgebra.inverse(mat)
+    mati = linalg.inv(mat)
 
     # --- Get next set of quad voltages.
     for iq in xrange(4):
@@ -303,8 +303,8 @@ def matchxenv(xf=0.,xpf=0.,yf=0.,ypf=0.,zz=None,maxiter=100,tol=1.e-10):
       maty[1,iq]=(ypi - ypsave)/(yorig*yvary)
 
     # --- Invert the matrix
-    matxi = LinearAlgebra.inverse(matx)
-    matyi = LinearAlgebra.inverse(maty)
+    matxi = linalg.inv(matx)
+    matyi = linalg.inv(maty)
 
     # --- Get next set of quad voltages.
     top.x0 = top.x0 + sum(matxi[0,:]*denvx)
