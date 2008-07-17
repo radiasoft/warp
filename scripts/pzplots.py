@@ -78,7 +78,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.21 2008/05/01 23:56:17 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.22 2008/07/17 16:18:26 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -128,15 +128,15 @@ def _gettitler(js):
   else:        return "Species %d"%js
 
 ##########################################################################
-def pzpnum(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzpnum(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots pnumz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -157,22 +157,23 @@ def pzpnum(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   pnumz = _extractvar('pnumz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(pnumz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(pnumz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("No. of simulation particles versus Z",titleb,"(number)",
             _gettitler(js))
 
 ##########################################################################
-def pzppcell(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzppcell(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots number of particles per cell versus z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -208,22 +209,23 @@ def pzppcell(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     beamradius = sqrt(2.)*rrmsz
     beamradius = where(beamradius==0.,1.,beamradius)
     ppcell = pnumz/(beamradius/dx)*scale
-  plg(ppcell,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(ppcell,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("No. of particles per cell versus Z",titleb,"(number)",
             _gettitler(js))
 
 ##########################################################################
-def pzxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -244,22 +246,23 @@ def pzxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xbarz = _extractvar('xbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean X coordinate versus Z",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots ybarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -280,22 +283,23 @@ def pzybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   ybarz = _extractvar('ybarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(ybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(ybarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Y coordinate versus Z",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots zbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -316,22 +320,23 @@ def pzzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   zbarz = _extractvar('zbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(zbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(zbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean axial location versus Z",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxpbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xpbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -352,22 +357,23 @@ def pzxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xpbarz = _extractvar('xpbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xpbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean X' versus Z",titleb,"(rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzypbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots ypbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -388,22 +394,23 @@ def pzypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   ypbarz = _extractvar('ypbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(ypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(ypbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Y' versus Z",titleb,"(rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzvxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvxbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vxbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -424,22 +431,23 @@ def pzvxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vxbarz = _extractvar('vxbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(vxbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vxbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vx versus Z",titleb,"(m/s)",
             _gettitler(js))
 
 ##########################################################################
-def pzvybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vybarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -460,22 +468,23 @@ def pzvybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vybarz = _extractvar('vybarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(vybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vybarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vy versus Z",titleb,"(m/s)",
             _gettitler(js))
 
 ##########################################################################
-def pzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -496,22 +505,23 @@ def pzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vzbarz = _extractvar('vzbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(vzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vzbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vz versus Z",titleb,"(m/s)",
             _gettitler(js))
 
 ##########################################################################
-def pzxybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xybarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -532,22 +542,23 @@ def pzxybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xybarz = _extractvar('xybarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xybarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of X  and Y  versus Z",titleb,"(m^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzxypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxypbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xypbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -568,22 +579,23 @@ def pzxypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xypbarz = _extractvar('xypbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xypbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of X  and Y' versus Z",titleb,"(m-rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzyxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzyxpbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots yxpbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -604,22 +616,23 @@ def pzyxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yxpbarz = _extractvar('yxpbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(yxpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(yxpbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Y  and X' versus Z",titleb,"(m-rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzxpypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxpypbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
               titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xpypbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -640,22 +653,23 @@ def pzxpypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xpypbarz = _extractvar('xpypbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xpypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xpypbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of X' and Y' versus Z",titleb,"(rad^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -676,22 +690,23 @@ def pzxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xsqbarz = _extractvar('xsqbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xsqbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean X-squared versus Z",titleb,"(m^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzysqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots ysqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -712,22 +727,23 @@ def pzysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   ysqbarz = _extractvar('ysqbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(ysqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(ysqbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Y-squared versus Z",titleb,"(m^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzzsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots zsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -748,22 +764,23 @@ def pzzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   zsqbarz = _extractvar('zsqbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(zsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(zsqbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Z-squared versus Z",titleb,"(m^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzxpsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxpsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
               titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xpsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -784,22 +801,23 @@ def pzxpsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xpsqbarz = _extractvar('xpsqbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xpsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xpsqbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean X' squared versus Z",titleb,"(rad^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzypsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzypsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
               titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots ypsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -820,22 +838,23 @@ def pzypsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   ypsqbarz = _extractvar('ypsqbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(ypsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(ypsqbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Y' squared versus Z",titleb,"(rad^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzvxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvxsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
               titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vxsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -856,22 +875,23 @@ def pzvxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vxsqbarz = _extractvar('vxsqbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(vxsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vxsqbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vx squared versus Z",titleb,"((m/s)^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzvysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvysqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
               titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vysqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -892,22 +912,23 @@ def pzvysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vysqbarz = _extractvar('vysqbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(vysqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vysqbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vy squared versus Z",titleb,"((m/s)^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzvzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvzsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
               titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vzsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -928,22 +949,23 @@ def pzvzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vzsqbarz = _extractvar('vzsqbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(vzsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vzsqbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vz squared versus Z",titleb,"((m/s)^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzxxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxxpbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xxpbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -964,22 +986,23 @@ def pzxxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xxpbarz = _extractvar('xxpbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xxpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xxpbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of X and X' versus Z",titleb,"(m-rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzyypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzyypbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots yypbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1000,22 +1023,23 @@ def pzyypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yypbarz = _extractvar('yypbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(yypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(yypbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Y and Y' versus Z",titleb,"(m-rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzzvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots zvzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1036,22 +1060,23 @@ def pzzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   zvzbarz = _extractvar('zvzbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(zvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(zvzbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Z and Vz versus Z",titleb,"(m^2/s)",
             _gettitler(js))
 
 ##########################################################################
-def pzxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xvzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1072,22 +1097,23 @@ def pzxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xvzbarz = _extractvar('xvzbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xvzbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of X and Vz versus Z",titleb,"(m^2/s)",
             _gettitler(js))
 
 ##########################################################################
-def pzyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzyvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots yvzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1108,22 +1134,23 @@ def pzyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yvzbarz = _extractvar('yvzbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(yvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(yvzbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Y and Vz versus Z",titleb,"(m^2/s)",
             _gettitler(js))
 
 ##########################################################################
-def pzvxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvxvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
               titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vxvzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1144,22 +1171,23 @@ def pzvxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vxvzbarz = _extractvar('vxvzbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(vxvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vxvzbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Vx and Vz versus Z",titleb,"((m/s)^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzvyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvyvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
               titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vyvzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1180,22 +1208,23 @@ def pzvyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vyvzbarz = _extractvar('vyvzbarz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(vyvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vyvzbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Vy and Vz versus Z",titleb,"((m/s)^2)",
             _gettitler(js))
 
 ##########################################################################
-def pzxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1216,22 +1245,23 @@ def pzxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xrmsz = _extractvar('xrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xrmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS X versus Z",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzyrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots yrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1252,22 +1282,23 @@ def pzyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yrmsz = _extractvar('yrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(yrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(yrmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS Y versus Z",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzzrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots zrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1288,22 +1319,23 @@ def pzzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   zrmsz = _extractvar('zrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(zrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(zrmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS Z versus Z",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzrrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzrrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots rrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1324,22 +1356,23 @@ def pzrrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rrmsz = _extractvar('rrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(rrmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS R versus Z",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzxprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxprms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xprmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1360,22 +1393,23 @@ def pzxprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xprmsz = _extractvar('xprmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xprmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xprmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS X' versus Z",titleb,"(rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzyprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzyprms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots yprmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1396,22 +1430,23 @@ def pzyprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yprmsz = _extractvar('yprmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(yprmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(yprmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS Y' versus Z",titleb,"(rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzepsx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzepsx(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsxz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1432,22 +1467,23 @@ def pzepsx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsxz = _extractvar('epsxz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(epsxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epsxz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("X-X' emittance versus Z",titleb,"(!p-m-rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzepsy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzepsy(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsyz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1468,22 +1504,23 @@ def pzepsy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsyz = _extractvar('epsyz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(epsyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epsyz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Y-Y' emittance versus Z",titleb,"(!p-m-rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzepsz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzepsz(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epszz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1504,22 +1541,23 @@ def pzepsz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epszz = _extractvar('epszz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(epszz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epszz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Z-Z' emittance versus Z",titleb,"(!p-m-rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzepsnx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzepsnx(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsnxz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1540,22 +1578,23 @@ def pzepsnx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsnxz = _extractvar('epsnxz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(epsnxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epsnxz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("X-X' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
             _gettitler(js))
 
 ##########################################################################
-def pzepsny(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzepsny(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsnyz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1576,22 +1615,23 @@ def pzepsny(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsnyz = _extractvar('epsnyz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(epsnyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epsnyz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Y-Y' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
             _gettitler(js))
 
 ##########################################################################
-def pzepsnz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzepsnz(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsnzz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1612,22 +1652,23 @@ def pzepsnz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsnzz = _extractvar('epsnzz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(epsnzz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epsnzz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Z-Z' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
             _gettitler(js))
 
 ##########################################################################
-def pzepsg(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzepsg(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsgz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1648,22 +1689,23 @@ def pzepsg(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsgz = _extractvar('epsgz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(epsgz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epsgz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Generalized emittance versus Z",titleb,"(!p-m-rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzepsh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzepsh(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epshz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1684,22 +1726,23 @@ def pzepsh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epshz = _extractvar('epshz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(epshz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epshz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Generalized emittance versus Z",titleb,"(!p-m-rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzepsng(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzepsng(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsngz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1720,22 +1763,23 @@ def pzepsng(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsngz = _extractvar('epsngz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(epsngz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epsngz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
      ptitles("Generalized normalized emittance versus Z",titleb,"(!p-mm-mrad)",
              _gettitler(js))
 
 ##########################################################################
-def pzepsnh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzepsnh(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsnhz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1756,22 +1800,23 @@ def pzepsnh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsnhz = _extractvar('epsnhz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(epsnhz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epsnhz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
      ptitles("Generalized normalized emittance versus Z",titleb,"(!p-mm-mrad)",
              _gettitler(js))
 
 ##########################################################################
-def pzvxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvxrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vxrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1792,22 +1837,23 @@ def pzvxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vxrmsz = _extractvar('vxrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(vxrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vxrmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("True RMS Vx versus Z",titleb,"(m/s)",
             _gettitler(js))
 
 ##########################################################################
-def pzvyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvyrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vyrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1828,22 +1874,23 @@ def pzvyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vyrmsz = _extractvar('vyrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(vyrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vyrmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("True RMS Vy versus Z",titleb,"(m/s)",
             _gettitler(js))
 
 ##########################################################################
-def pzvzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvzrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vzrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1864,22 +1911,24 @@ def pzvzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vzrmsz = _extractvar('vzrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(vzrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vzrmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("True RMS Vz versus Z",titleb,"(m/s)",
             _gettitler(js))
 
 ##########################################################################
-def pzxxpslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxxpslope(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",
+               linetype="solid",
                marks=0,marker=None,msize=1.,width=1.,lframe=0,
                titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots slope of x-x' phase space versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1905,22 +1954,24 @@ def pzxxpslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   sxz = (xxpbarz - xbarz*xpbarz)/ \
         where(greater(xrmsz,0.),xrmsz**2,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(sxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(sxz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Slope of x-x' phase space",titleb,"(1)",
             _gettitler(js))
 
 ##########################################################################
-def pzyypslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzyypslope(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",
+               linetype="solid",
                marks=0,marker=None,msize=1.,width=1.,lframe=0,
                titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots slope of y-y' phase space versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1946,20 +1997,21 @@ def pzyypslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   syz = (yypbarz - ybarz*ypbarz)/ \
         where(greater(yrmsz,0.),yrmsz**2,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(syz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(syz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Slope of y-y' phase space",titleb,"(1)",
             _gettitler(js))
 
 ##########################################################################
-def pzrhomid(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzrhomid(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots rhomidz along z-axis
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -1980,18 +2032,19 @@ def pzrhomid(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rhomidz = _extractvar('rhomidz',varsuffix,'top',ff)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(rhomidz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(rhomidz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Charge dens. on axis versus Z",titleb,"(C/m^3)")
 
 ##########################################################################
-def pzrhomax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzrhomax(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots rhomaxz along z-axis
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -2012,18 +2065,19 @@ def pzrhomax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rhomaxz = _extractvar('rhomaxz',varsuffix,'top',ff)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(rhomaxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(rhomaxz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Charge dens. max-over-X,Y versus Z",titleb,"(C/m^3)")
 
 ##########################################################################
-def pzcurr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzcurr(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots current along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zplmesh/zscale
   - scale=1.: factor to scale data by
@@ -2046,6 +2100,7 @@ def pzcurr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   curr = _extractvar('curr',varsuffix,'top',ff)[...,js]*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
   plg(curr,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -2054,11 +2109,11 @@ def pzcurr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ppcurr = pzcurr
 
 ##########################################################################
-def pzegap(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzegap(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots smeared Ez along z-axis
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zplmesh/zscale
   - scale=1.: factor to scale data by
@@ -2081,16 +2136,17 @@ def pzegap(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   egap = _extractvar('egap',varsuffix,'top',ff)*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
   plg(egap,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Gap Electric Field",titleb,"(V/m)")
 
 ##########################################################################
-def pzlchg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzlchg(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots linecharge along the z-axis
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zplmesh/zscale
   - scale=1.: factor to scale data by
@@ -2113,6 +2169,7 @@ def pzlchg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   linechg = _extractvar('linechg',varsuffix,'top',ff)*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
   plg(linechg,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Line Charge",titleb,"(C/m)")
@@ -2120,11 +2177,11 @@ pplchg = pzlchg
 pzlinechg = pzlchg
 
 ##########################################################################
-def pzvzofz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzvzofz(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots Vz along the z-axis
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zplmesh/zscale
   - scale=1.: factor to scale data by
@@ -2147,17 +2204,18 @@ def pzvzofz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vzofz = _extractvar('vzofz',varsuffix,'top',ff)*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
   plg(vzofz,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Axial Velocity",titleb,"(m/s)")
 ppvzofz = pzvzofz
 
 ##########################################################################
-def pzezax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzezax(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots Self Ez along the z-axis
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zplmesh/zscale
   - scale=1.: factor to scale data by
@@ -2180,17 +2238,18 @@ def pzezax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   ezax = _extractvar('ezax',varsuffix,'top',ff)*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
   plg(ezax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Z Electric Field on Axis",titleb,"(V/m)")
 ppezax = pzezax
 
 ##########################################################################
-def pzphiax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzphiax(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots electrostatic potential along the z-axis
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zplmesh/zscale
   - scale=1.: factor to scale data by
@@ -2213,6 +2272,7 @@ def pzphiax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   phiax = _extractvar('phiax',varsuffix,'top',ff)*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
   plg(phiax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Electrostatic Potential on Axis",titleb,"(V)")
@@ -2230,11 +2290,11 @@ def pzphiax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ppphiax = pzphiax
 
 ##########################################################################
-def pzrhoax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzrhoax(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots space-charge density along the z-axis
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zplmesh/zscale
   - scale=1.: factor to scale data by
@@ -2257,21 +2317,22 @@ def pzrhoax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rhoax = _extractvar('rhoax',varsuffix,'top',ff)*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
   plg(rhoax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Charge Density on Axis",titleb,"(C)")
 pprhoax = pzrhoax
 
 ##########################################################################
-def pzenvx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzenvx(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam X envelope (twice X rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -2292,7 +2353,8 @@ def pzenvx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xrmsz = _extractvar('xrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(2.*xrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(2.*xrmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam X envelope (2*rms)",titleb,"(m)",
@@ -2300,15 +2362,15 @@ def pzenvx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 pzxedge = pzenvx
 
 ##########################################################################
-def pzxpedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxpedge(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam X' envelope versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -2334,22 +2396,23 @@ def pzxpedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   xpedgez = (xxpbarz-xbarz*xpbarz)/ \
             where(greater(xrmsz,0.),xrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xpedgez,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xpedgez,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam X' envelope",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzenvy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzenvy(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam Y envelope (twice Y rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -2370,7 +2433,8 @@ def pzenvy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yrmsz = _extractvar('yrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(2.*yrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(2.*yrmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam Y envelope (2*rms)",titleb,"(m)",
@@ -2378,15 +2442,15 @@ def pzenvy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 pzyedge = pzenvy
 
 ##########################################################################
-def pzypedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzypedge(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam Y' envelope versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -2412,22 +2476,23 @@ def pzypedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   ypedgez = (yypbarz-ybarz*ypbarz)/ \
             where(greater(yrmsz,0.),yrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(ypedgez,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(ypedgez,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam Y' envelope",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzenvr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzenvr(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam R envelope (root 2 R rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -2448,7 +2513,8 @@ def pzenvr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rrmsz = _extractvar('rrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(sqrt(2.)*rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(sqrt(2.)*rrmsz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam R envelope (sqrt(2)*rms)",titleb,"(m)",
@@ -2456,15 +2522,15 @@ def pzenvr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 pzredge = pzenvr
 
 ##########################################################################
-def pzxedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzxedges(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam X edges (centroid +- twice X rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -2486,24 +2552,25 @@ def pzxedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   xbarz = _extractvar('xbarz',varsuffix,'top',ff)[...,js]*scale
   xrmsz = _extractvar('xrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(xbarz+2.*xrmsz,zoffset+zmntmesh/zscale,color=color,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xbarz+2.*xrmsz,(zoffset+zmntmesh)/zscale,color=color,
       linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
-  plg(xbarz-2.*xrmsz,zoffset+zmntmesh/zscale,color=color,
+  plg(xbarz-2.*xrmsz,(zoffset+zmntmesh)/zscale,color=color,
       linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam X edges (xbar+-2*rms)",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzyedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzyedges(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam Y edges (centroid +- twice Y rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -2525,24 +2592,25 @@ def pzyedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   ybarz = _extractvar('ybarz',varsuffix,'top',ff)[...,js]*scale
   yrmsz = _extractvar('yrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(ybarz+2.*yrmsz,zoffset+zmntmesh/zscale,color=color,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(ybarz+2.*yrmsz,(zoffset+zmntmesh)/zscale,color=color,
       linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
-  plg(ybarz-2.*yrmsz,zoffset+zmntmesh/zscale,color=color,
+  plg(ybarz-2.*yrmsz,(zoffset+zmntmesh)/zscale,color=color,
       linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam Y edges (ybar+-2*rms)",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzredges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzredges(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam R edges (+- root 2 R rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -2563,24 +2631,25 @@ def pzredges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rrmsz = _extractvar('rrmsz',varsuffix,'top',ff)[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(+2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(+2.*rrmsz,(zoffset+zmntmesh)/zscale,color=color,
       linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
-  plg(-2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
+  plg(-2.*rrmsz,(zoffset+zmntmesh)/zscale,color=color,
       linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam R edges (+-sqrt(2)*rms)",titleb,"(m)",
             _gettitler(js))
 
 ##########################################################################
-def pzenvxp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzenvxp(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam X' envelope (2*xxpbar/xrms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -2606,22 +2675,23 @@ def pzenvxp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   sxz = 2.*(xxpbarz - xbarz*xpbarz)/ \
         where(greater(xrmsz,0.),xrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(sxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(sxz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam X' envelope",titleb,"(rad)",
             _gettitler(js))
 
 ##########################################################################
-def pzenvyp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+def pzenvyp(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam Y' envelope (2*yypbar/yrms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
-  - zoffset=0: offset added to axis
+  - zoffset=zbeam: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + zmntmesh/zscale
+    plots versus (zoffset + zmntmesh)/zscale
   - scale=1.: factor to scale data by
   - color='fg': curve color
   - linetype='solid': line type
@@ -2647,7 +2717,8 @@ def pzenvyp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   syz = 2.*(yypbarz - ybarz*ypbarz)/ \
         where(greater(yrmsz,0.),yrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
-  plg(syz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(syz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam Y' envelope",titleb,"(rad)",
