@@ -264,7 +264,7 @@ Restores all of the variables in the specified pickle file.
 
     # --- Get the package object from the name.
     try:
-      pkg = __main__.__dict__[pname]
+      pkg = Forthon.packageobject(pname)
     except KeyError:
       # --- Import the package if it isn't already present.
       pkg = __import__(pname,globals(),locals())
