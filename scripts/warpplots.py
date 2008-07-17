@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.219 2008/06/28 00:20:47 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.220 2008/07/17 16:24:03 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -4141,11 +4141,11 @@ be from none to all three.
     return a
 
 ##########################################################################
-def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=None,local=0,**kw):
+def pcrhozy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of charge density in the Z-Y plane
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
@@ -4176,11 +4176,11 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=None,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcrhozx(iy=None,fullplane=1,lbeamframe=1,solver=None,local=0,**kw):
+def pcrhozx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of charge density in the Z-X plane
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
@@ -4241,11 +4241,11 @@ def pcrhoxy(iz=None,fullplane=1,solver=None,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcrhoxy.__doc__ = pcrhoxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcphizy(ix=None,fullplane=1,lbeamframe=1,solver=None,local=0,**kw):
+def pcphizy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-Y plane
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
@@ -4276,11 +4276,11 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=1,solver=None,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcphizx(iy=None,fullplane=1,lbeamframe=1,solver=None,local=0,**kw):
+def pcphizx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
@@ -4342,12 +4342,12 @@ if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcselfezy(comp='',ix=None,fullplane=1,solver=None,
-              lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
+              lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of electrostatic field in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
   """
@@ -4386,12 +4386,12 @@ if sys.version[:5] != "1.5.1":
   pcselfezy.__doc__ = pcselfezy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
-              lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
+              lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
   """
@@ -4473,12 +4473,12 @@ if sys.version[:5] != "1.5.1":
   pcselfexy.__doc__ = pcselfexy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcjzy(comp='',ix=None,fullplane=1,solver=None,
-          lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
+          lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of current density in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
   """
@@ -4517,12 +4517,12 @@ if sys.version[:5] != "1.5.1":
   pcjzy.__doc__ = pcjzy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcjzx(comp=None,iy=None,fullplane=1,solver=None,
-              lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
+              lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of current density in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
   """
@@ -4604,12 +4604,12 @@ if sys.version[:5] != "1.5.1":
   pcjxy.__doc__ = pcjxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcbzy(comp='',ix=None,fullplane=1,solver=None,
-          lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
+          lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of the magnetic field in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
   """
@@ -4648,12 +4648,12 @@ if sys.version[:5] != "1.5.1":
   pcbzy.__doc__ = pcbzy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcbzx(comp=None,iy=None,fullplane=1,solver=None,
-          lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
+          lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of the magnetic field in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
   """
@@ -4735,12 +4735,12 @@ if sys.version[:5] != "1.5.1":
   pcbxy.__doc__ = pcbxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcazy(comp='',ix=None,fullplane=1,solver=None,
-          lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
+          lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of the magnetic vector potential in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
   """
@@ -4779,12 +4779,12 @@ if sys.version[:5] != "1.5.1":
   pcazy.__doc__ = pcazy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcazx(comp=None,iy=None,fullplane=1,solver=None,
-          lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
+          lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of the magnetic vector potential in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
   """
