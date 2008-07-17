@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.67 2008/06/13 17:03:46 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.68 2008/07/17 16:05:02 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3129,7 +3129,7 @@ Input arguments:
 
 # ----------------------------------------------------------------------------
 # --- Convenient plotting functions
-def plotemlt(ie,m=0,p=0,color='fg',scale=1.,zoffset=0.):
+def plotemlt(ie,m=0,p=0,color='fg',scale=1.,zoffset=None):
   """
 Plots the field of the emlt element
   - ie: the element to plot
@@ -3137,9 +3137,9 @@ Plots the field of the emlt element
   - p=0: when true, plot z-derivative (emltp)
   - color='fg': color of plot
   - scale=1.: multiplicative factor on the data plotted
-  - zoffset=0.: the shift in the z location of the data plotted
-                Normally it will be top.zlatstrt.
+  - zoffset=top.zlatstrt: the shift in the z location of the data plotted
   """
+  if zoffset is None: zoffset = top.zlatstrt
   id = top.emltid[ie] - 1
   dz = top.dzemlt[id]
   nz = top.nzemlt[id]
@@ -3150,7 +3150,7 @@ Plots the field of the emlt element
     plg(top.esemltp[:nz+1,m,id]*scale,zz,color=color)
 
 def plotmmlt(im,m=0,p=0,r=1.,t=0.,br=0,bt=0,bz=0,color='fg',getfield=0,
-             scale=1.,zoffset=0.):
+             scale=1.,zoffset=None):
   """
 Plots the field of the emlt element
   - im: the element to plot
@@ -3159,9 +3159,9 @@ Plots the field of the emlt element
   - color='fg': color of plot
   - getfield=0: when true, the field and zmesh are returned
   - scale=1.: multiplicative factor on the data plotted
-  - zoffset=0.: the shift in the z location of the data plotted
-                Normally it will be top.zlatstrt.
+  - zoffset=top.zlatstrt: the shift in the z location of the data plotted
   """
+  if zoffset is None: zoffset = top.zlatstrt
   id = top.mmltid[im] - 1
   dz = top.dzmmlt[id]
   nz = top.nzmmlt[id]
