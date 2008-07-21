@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.39 $, $Date: 2008/07/07 19:59:51 $
+c@(#) File ENV.M, version $Revision: 3.40 $, $Date: 2008/07/21 17:33:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -1194,10 +1194,10 @@ c               --- quadrupole field
                 dedxq = dedxq + de
 c                xdedx = xdedx + de*(x - emltox(ie))
 c                ydedy = ydedy - de*(y - emltoy(ie))
-                xdedx = xdedx + de*( (x - emltox(ih))*cos(2.*emltph(ie)) + 
-     &                               (y - emltoy(ih))*sin(2.*emltph(ie)) )
-                ydedy = ydedy - de*( (y - emltoy(ih))*cos(2.*emltph(ie)) - 
-     &                               (x - emltox(ih))*sin(2.*emltph(ie)) )
+                xdedx = xdedx + de*( (x - emltox(ie))*cos(2.*emltph(ie)) + 
+     &                               (y - emltoy(ie))*sin(2.*emltph(ie)) )
+                ydedy = ydedy - de*( (y - emltoy(ie))*cos(2.*emltph(ie)) - 
+     &                               (x - emltox(ie))*sin(2.*emltph(ie)) )
                 dedxqc2p = dedxqc2p + de*cos(2.*emltph(ie))
                 dedxqs2p = dedxqs2p + de*sin(2.*emltph(ie))
               endif
