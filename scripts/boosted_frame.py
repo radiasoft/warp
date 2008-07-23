@@ -69,7 +69,7 @@ class Boosted_Frame(object):
         self.pgroup.gaminv[ilpr:iupr]=1./gammapr
         self.pgroup.xp[ilpr:iupr] = getx(pgroup=pg,js=js,bcast=0,gather=0)#+tpr*vxpr
         self.pgroup.yp[ilpr:iupr] = gety(pgroup=pg,js=js,bcast=0,gather=0)#+tpr*vypr
-        self.pgroup.zp[ilpr:iupr] = self.gammaframe*z    +tpr*vzpr
+        self.pgroup.zp[ilpr:iupr] = self.gammaframe*z    +tpr*vzpr + zmean
         if pg.npid>0:self.pgroup.pid[ilpr:iupr,:] = getpid(pgroup=pg,js=js,bcast=0,gather=0,id=-1)
         if top.uxoldpid>0:self.pgroup.pid[ilpr:iupr,top.uxoldpid-1]=self.pgroup.uxp[ilpr:iupr]
         if top.uyoldpid>0:self.pgroup.pid[ilpr:iupr,top.uyoldpid-1]=self.pgroup.uyp[ilpr:iupr]
@@ -82,7 +82,8 @@ class Boosted_Frame(object):
     zpartbnd(self.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
     top.ns=top.pgroup.ns
     self.depos=top.depos.copy()
-    installbeforeloadrho(self.add_boosted_species)
+    top.depos='none'
+    installuserinjection(self.add_boosted_species)
     installbeforefs(self.add_boosted_rho)
    else:
     pg=top.pgroup
@@ -120,7 +121,8 @@ class Boosted_Frame(object):
       iu=il+self.pgroup.nps[js]
 #      self.pgroup.xp[il:iu]+=top.dt*getvx(pgroup=self.pgroup,js=js,bcast=0,gather=0)
 #      self.pgroup.yp[il:iu]+=top.dt*getvy(pgroup=self.pgroup,js=js,bcast=0,gather=0)
-      self.pgroup.zp[il:iu]+=top.dt*getvz(pgroup=self.pgroup,js=js,bcast=0,gather=0)
+#      self.pgroup.zp[il:iu]+=top.dt*getvz(pgroup=self.pgroup,js=js,bcast=0,gather=0) # WARNING: this can cause particles to get out of bounds
+      self.pgroup.zp[il:iu]+=top.dt*top.vbeam
     for js in range(self.pgroup.ns):
      if self.pgroup.nps[js]>0:
       il=self.pgroup.ins[js]-1
@@ -145,6 +147,16 @@ class Boosted_Frame(object):
         processlostpart(self.pgroup,js+1,top.clearlostpart,top.time+top.dt*self.pgroup.ndts[js],top.zbeam)
 
   def add_boosted_rho(self):
+#    if rstrip(top.depos.tostring())=='none': return
+#    w3d.lbeforelr=0
+    fs=getregisteredsolver()
+    pg=top.pgroup
+    top.depos=self.depos
+    fs.loadrho(pgroups=[self.pgroup,top.pgroup])
+    top.depos='none'
+#    w3d.lbeforelr=1
+
+  def add_boosted_rho_old(self):
     if rstrip(top.depos.tostring())=='none': return
     w3d.lbeforelr=0
     if 1:#getn(pgroup=self.pgroup)>0:
