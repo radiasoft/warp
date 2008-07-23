@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.32 2008/07/09 11:20:50 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.33 2008/07/23 16:40:45 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -206,8 +206,8 @@ Class for generating secondaries
           self.pid[js]=fzeros([self.npmax,top.npid],'d')
 
   def install(self):
-    if not isinstalledbeforeloadrho(self.generate):
-      installbeforeloadrho(self.generate)
+    if not isinstalleduserinjection(self.generate):
+      installuserinjection(self.generate)
 
   def addpart(self,nn,x,y,z,vx,vy,vz,js,weight=None,itype=None):
     if self.nps[js]+nn>self.npmax:self.flushpart(js)
@@ -301,10 +301,11 @@ Class for generating secondaries
     # psi is angle to rotate warp local frame to Posinst local frame around normal
     # eta is angle between incident velocity vector and normal to surface (called theta in Posinst)
 
+    if self.l_verbose>1:print 'start secondaries generation'
+
     if self.l_record_timing:t1 = time.clock()
 
     # reset 'emitted' list to zero
-    if self.l_verbose>1:print 'call secondaries'
     for js in self.inter.keys():
      for i in range(len(self.inter[js]['emitted'])):
       for j in range(len(self.inter[js]['emitted'][i])):  
@@ -768,6 +769,7 @@ Class for generating secondaries
     weighttot = globalsum(weighttot)
     ek0av = globalsum(ek0av)
     costhav = globalsum(costhav)
+    ek0max = globalmax(ek0max)
     if me==0:
      if weighttot<>0.:
       self.htime.append(top.time)
@@ -783,6 +785,7 @@ Class for generating secondaries
 ##    top.npslost=0
     if self.l_record_timing:t4 = time.clock()
 #    print 'time Secondaries = ',time.clock()-t1,'s',t2-t1,t3-t2,t4-t3
+    if self.l_verbose>1:print 'secondaries generation finished'
     
   def call_set_params_user(self,maxsec,mat_num=None):
     # --- Always call the default version of the routine. The user's routine
@@ -1359,8 +1362,8 @@ Class for generating photo-electrons
         self.pid[js]=fzeros([self.npmax,top.npid],'d')
 
   def install(self):
-    if not isinstalledbeforeloadrho(self.generate):
-      installbeforeloadrho(self.generate)
+    if not isinstalleduserinjection(self.generate):
+      installuserinjection(self.generate)
 
   def addpart(self,nn,x,y,z,vx,vy,vz,gi,js,weight=None):
     if self.nps[js]+nn>self.npmax:self.flushpart(js)
