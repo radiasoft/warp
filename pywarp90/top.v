@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.237 $, $Date: 2008/07/02 20:39:07 $
+#@(#) File TOP.V, version $Revision: 3.238 $, $Date: 2008/07/23 21:28:58 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.237 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.238 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1028,22 +1028,30 @@ ibpush                    integer /1/
 ifeears                   integer /0/
    # Specifies type of Eears: 0-none, 1-linear, 2-Ezax
 fstype                    integer /0/
-   # Specifies type of field solve
+   # Specifies type of field solve. Note that this should only be set for some
+   # special cases. For example, set to -1 to turn off all field solvers.
+   # In 3-D, set to 7 to switch to the built in multigrid solver. When setting
+   # w3d.solvergeom to be RZ, XZ, or Zgeom, it is autoset. When using
+   # registersolver it is autoset. When using RealBoundaries, it is autoset. 
    # -1: none
-   #  0:sine-sine-periodic FFT,
+   #  0: sine-sine-periodic FFT (the default),
    #  1: 8-fold symmetric capacity matrix in kz space,
    #  2: capacity matrix for quadrupoles,
-   #  3: SOR (no longer available, use 7, multigrid),
-   #  4: 2d sine-sine FFT + tridiag in z,
-   #  5: general capacity matrix in kz space,
-   #  6: general capacity matrix,
+   #  3: (not used)
+   #  4: 2d sine-sine FFT + tridiag in z, this is somewhat faster than
+   #     the FFT solver but has Dirichlet boundaries in z,
+   #  5: general capacity matrix in kz space, this is a special purpose solver
+   #     and should only be used with good reason,
+   #  6: general capacity matrix, this is a special purpose solver
+   #     and should only be used with good reason,
    #  7: multigrid solver,
    #  8: parallel solver (in development, don't use),
    #  9: parallel solver (in development, don't use),
-   # 10: RZ multigrid solver
-   # 11: Chombo AMR/multigrid solver
-   # 12: Use field solver registered in python
-   # 13: 3d multigrid with Boltzmann electrons
+   # 10: RZ multigrid solver (autoset using solvergeom)
+   # 11: Chombo AMR/multigrid solver (in development, don't use),
+   # 12: Use field solver registered in python (autoset by registersolver)
+   # 13: 3d multigrid with Boltzmann electrons (autoset when
+   #                                            electrontemperature is set)
 bfstype                   integer /-1/
    # Specifies type of field solver to use to calculate the B fields
    # -1: none
