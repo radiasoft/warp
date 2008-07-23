@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.402 $, $Date: 2008/07/09 11:17:57 $
+c@(#) File W3D.F, version $Revision: 3.403 $, $Date: 2008/07/23 22:39:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -11,28 +11,22 @@ c=============================================================================
       module w3d_interfaces
       interface
 
-      subroutine assignrhoandphi(rhopindts,phipindts)
-      use Fields3dParticles
-      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phipindts(-1:nxp+1,-1:nyp+1,-1:nzp+1)
-      end subroutine assignrhoandphi
-
-      subroutine assignrhopandphip(rhopindts,phipindts)
-      use Fields3dParticles
-      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phipindts(-1:nxp+1,-1:nyp+1,-1:nzp+1)
-      end subroutine assignrhopandphip
-
-      subroutine assignrhoandphiforfieldsolve(rhopin,phipin)
+      subroutine assignrhopandphipforparticles(rhopin,phipin)
       use Fields3dParticles
       real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
       real(kind=8),target:: phipin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+      end subroutine assignrhopandphipforparticles
+
+      subroutine assignrhoandphiforfieldsolve(rhoin,phiin)
+      use Fields3dParticles
+      real(kind=8),target:: rhoin(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phiin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
       end subroutine assignrhoandphiforfieldsolve
 
-      subroutine setrhoandphiforfieldsolve(rhopin,phipin)
+      subroutine setrhoandphiforfieldsolve(rhoin,phiin)
       use Fields3dParticles
-      real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phipin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+      real(kind=8),target:: rhoin(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phiin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
       end subroutine setrhoandphiforfieldsolve
 
       subroutine fetche3d(pgroup,ipmin,ip,is)
@@ -8508,34 +8502,12 @@ c     enddo
       return
       end
 c=============================================================================
-      subroutine assignrhoandphi(rhopindts,phipindts)
-      use InGen3d
-      use InMesh3d
-      use Fields3d
-      use Fields3dParticles
-      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phipindts(-1:nxp+1,-1:nyp+1,-1:nzp+1)
-
-c     --- The assignments must be done in a subroutine like this so that
-c     --- the lower and upper bounds of rho and phi are correct.
-
-
-      if (solvergeom==XYZgeom) then
-c        --- Point rho to the block for the currently active ndts group.
-         rho => rhopindts
-         phi => phipindts
-      endif
-
-
-      return
-      end
-c=============================================================================
-      subroutine assignrhopandphip(rhopindts,phipindts)
+      subroutine assignrhopandphipforparticles(rhopin,phipin)
       use InGen3d
       use Fields3d
       use Fields3dParticles
-      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phipindts(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+      real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phipin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
 
 c     --- The assignments must be done in a subroutine like this so that
 c     --- the lower and upper bounds of rho and phi are correct.
@@ -8543,26 +8515,26 @@ c     --- the lower and upper bounds of rho and phi are correct.
 c     --- Point rho to the block for the currently active ndts group.
 c     --- Note that nrhopndtscopies is used in case ndts is only 1
 c     --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
-      rhop => rhopindts
-      phip => phipindts
+      rhop => rhopin
+      phip => phipin
 
       return
       end
 c=============================================================================
-      subroutine assignrhoandphiforfieldsolve(rhopin,phipin)
+      subroutine assignrhoandphiforfieldsolve(rhoin,phiin)
 #ifdef MPIPARALLEL
       use InMesh3d,Only: nx,ny,nzlocal
 #endif
       use Fields3d
       use Fields3dParticles
-      real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phipin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+      real(kind=8),target:: rhoin(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phiin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
 
 #ifndef MPIPARALLEL
 
 c      --- Point rho to the block for the currently active ndts group.
-       rho => rhopin
-       phi => phipin
+       rho => rhoin
+       phi => phiin
 
 #else
 
@@ -8682,8 +8654,8 @@ c Ensures that the phip and rhop arrays are setup properly.
 c     --- rhop and phip have the special values for the species which are
 c     --- incremented every time step.
       if (associated(rhopndts) .and. associated(phipndts)) then
-        call assignrhopandphip(rhopndts(:,:,:,nrhopndtscopies-1,0),
-     &                         phipndts(:,:,:,0))
+        call assignrhopandphipforparticles(rhopndts(:,:,:,nrhopndtscopies-1,0),
+     &                                     phipndts(:,:,:,0))
       endif
 
 c     --- Note that special coding is needed to clean up the rhopndts array
@@ -10242,8 +10214,8 @@ c     --- End loop over ndts groups
 c     --- Points to the values that are used by the most frequently time
 c     --- advanced group. This is not done in for the parallel code since
 c     --- the rho and phi arrays are independently allocated.
-      call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies-1,0),
-     &                     phipndts(:,:,:,0))
+      call assignrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies-1,0),
+     &                                  phipndts(:,:,:,0))
 #endif
 
 !$OMP MASTER

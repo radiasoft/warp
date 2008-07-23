@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.91 $, $Date: 2008/05/23 18:36:53 $
+c@(#) File WXY.M, version $Revision: 3.92 $, $Date: 2008/07/23 22:39:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -219,8 +219,8 @@ c  Create the dynamic arrays for fields
 
 c  This is a kludge for now to get the arrays setup.
 
-      call assignrhoandphi(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
-      call assignrhopandphip(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
+      call assignrhoandphiforfieldsolve(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
+      call assignrhopandphipforparticles(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
 
 c  Setup arrays for option which uses the selfe.
 
