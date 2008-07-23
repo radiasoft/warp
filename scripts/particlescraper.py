@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.73 2008/02/27 20:20:48 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.74 2008/07/23 19:13:34 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -161,13 +161,11 @@ conductors are an argument.
       self.lrefineallintercept = 0
 
   def registerconductors(self,newconductors):
-#    self.updategrid()
     if newconductors is None: return
     if type(newconductors) is not ListType: newconductors = [newconductors]
     for c in newconductors:
       assert c.condid != 0,"The conductor id must be nonzero in order for the particle scraping to work."
       self.conductors.append(c)
-#      self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
       if c.material == 'reflector':
         # --- For reflector materials, the old position is saved so that when
         # --- particles reflect, their current position will be replaced
@@ -180,7 +178,6 @@ conductors are an argument.
         if not self.lbeforescraper: self.disable()
         self.lbeforescraper = 1
         self.installscraper()
-    self.updategrid()
 
   def unregisterconductors(self,conductor,nooverlap=0):
     self.conductors.remove(conductor)
