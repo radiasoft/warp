@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.117 2008/04/03 18:29:02 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.118 2008/07/24 18:55:33 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -67,7 +67,11 @@ def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,yscale,xscale,
     izc = array([])
     cnumb = array([])
     level = array([])
-  ii = compress(logical_and(equal(izc[:nn],izp),level[:nn]),arange(nn))
+  if w3d.solvergeom == w3d.XYgeom and iz == 2:
+    izequal = 1
+  else:
+    izequal = equal(izc[:nn],izp)
+  ii = compress(logical_and(izequal,level[:nn]),arange(nn))
   if numb is not None:
     cnumb = take(cnumb,ii)
     ii = compress(equal(cnumb,numb),ii)
@@ -121,7 +125,11 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     numbmy = array([])
     numbpy = array([])
     level = array([])
-  ii = compress(logical_and(equal(izc[:nn],izp),equal(level[:nn],1)),arange(nn))
+  if w3d.solvergeom == w3d.XYgeom and iz == 2:
+    izequal = 1
+  else:
+    izequal = equal(izc[:nn],izp)
+  ii = compress(logical_and(izequal,equal(level[:nn],1)),arange(nn))
   dx = dx*lx
   dy = dy*ly
   xx = (take(ixc,ii)*dx+xmin)*xscale
@@ -303,8 +311,12 @@ by the conductor number.
 
   # --- Select out the conductor points in the appropriate slice and in
   # --- the appropriate refinement level.
-  iic = compress(logical_and(equal(izc,izp),equal(levelc,1)),arange(nc))
-  iis = compress(logical_and(equal(izs,izp),equal(levels,1)),arange(ns))
+  if w3d.solvergeom == w3d.XYgeom and iz == 2:
+    izequal = 1
+  else:
+    izequal = equal(izc,izp)
+  iic = compress(logical_and(izequal,equal(levelc,1)),arange(nc))
+  iis = compress(logical_and(izequal,equal(levels,1)),arange(ns))
   dx = dx*lx*xscale
   dy = dy*ly*yscale
   ixc = take(ixc,iic)
@@ -546,8 +558,12 @@ by the conductor number.
 
   # --- Select out the conductor points in the appropriate slice and in
   # --- the appropriate refinement level.
-  iic = compress(logical_and(equal(izc,iz),equal(levelc,1)),arange(nc))
-  iis = compress(logical_and(equal(izs,iz),equal(levels,1)),arange(ns))
+  if w3d.solvergeom == w3d.XYgeom and iz == 2:
+    izequal = 1
+  else:
+    izequal = equal(izc,izp)
+  iic = compress(logical_and(izequal,equal(levelc,1)),arange(nc))
+  iis = compress(logical_and(izequal,equal(levels,1)),arange(ns))
   dx = dx*lx*xscale
   dy = dy*ly*yscale
   ixc = take(ixc,iic)
