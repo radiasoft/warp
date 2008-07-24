@@ -1515,7 +1515,7 @@ else
     kp = koldp(knew)
     delz = ddz(knew)
     odelz = oddz(knew)
-    do jnew = 1, nrf
+    do jnew = nri, nrf
       IF(.NOT.bnd%v(jnew,knew)==v_vacuum) cycle
       j = jold(jnew)
       jp = joldp(jnew)
@@ -3449,6 +3449,7 @@ IF(izrbnd==dirichlet .or. izrbnd==patchbnd) then
 else
   nzf=nz
 END if
+
 
 do i = 1, nc
 
@@ -11300,6 +11301,8 @@ subroutine getallfieldsfromphip()
 use multigridrz
 TYPE(GRIDtype), POINTER :: f
 integer(ISZ) :: i
+
+if(solvergeom==Zgeom) return
 
 f => basegrid
 do i=1, ngrids
