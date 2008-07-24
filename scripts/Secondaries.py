@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.33 2008/07/23 16:40:45 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.34 2008/07/24 21:31:07 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -95,7 +95,7 @@ Class for generating secondaries
     self.secelec_delr   = zeros(1,'d')
     self.secelec_delts  = zeros(1,'d')
     # set arrays for emitted particles
-    self.npmax=4096
+    self.npmax={}
     self.nps={}
     self.x={}
     self.y={}
@@ -196,21 +196,28 @@ Class for generating secondaries
       js=e.jslist[0]
       if not self.x.has_key(js):
         self.nps[js]=0
-        self.x[js]=fzeros(self.npmax,'d')
-        self.y[js]=fzeros(self.npmax,'d')
-        self.z[js]=fzeros(self.npmax,'d')
-        self.vx[js]=fzeros(self.npmax,'d')
-        self.vy[js]=fzeros(self.npmax,'d')
-        self.vz[js]=fzeros(self.npmax,'d')
-        if top.wpid>0 or self.piditype>0:
-          self.pid[js]=fzeros([self.npmax,top.npid],'d')
+        self.npmax[js]=4096
+        self.allocate_temps(js)
+  
+  def allocate_temps(self,js):
+      self.x[js]=fzeros(self.npmax[js],'d')
+      self.y[js]=fzeros(self.npmax[js],'d')
+      self.z[js]=fzeros(self.npmax[js],'d')
+      self.vx[js]=fzeros(self.npmax[js],'d')
+      self.vy[js]=fzeros(self.npmax[js],'d')
+      self.vz[js]=fzeros(self.npmax[js],'d')
+      if top.wpid>0:
+        self.pid[js]=fzeros([self.npmax[js],top.npid],'d')
 
   def install(self):
     if not isinstalleduserinjection(self.generate):
       installuserinjection(self.generate)
 
   def addpart(self,nn,x,y,z,vx,vy,vz,js,weight=None,itype=None):
-    if self.nps[js]+nn>self.npmax:self.flushpart(js)
+    if self.nps[js]+nn>self.npmax[js]:self.flushpart(js)
+    if self.nps[js]+nn>self.npmax[js]:
+      self.npmax[js] = nint(nn*1.2)
+      self.allocate_temps(js)
     il=self.nps[js]
     iu=il+nn
     xx=fones(nn,'d')
@@ -1325,7 +1332,7 @@ Class for generating photo-electrons
      self.l_switchyz=l_switchyz
      self.l_verbose=l_verbose
      self.inter={}
-     self.npmax=4096
+     self.npmax={}
      self.nps={}
      self.x={}
      self.y={}
@@ -1351,22 +1358,29 @@ Class for generating photo-electrons
     js=emitted_species.jslist[0]
     if not self.x.has_key(js):
       self.nps[js]=0
-      self.x[js]=fzeros(self.npmax,'d')
-      self.y[js]=fzeros(self.npmax,'d')
-      self.z[js]=fzeros(self.npmax,'d')
-      self.vx[js]=fzeros(self.npmax,'d')
-      self.vy[js]=fzeros(self.npmax,'d')
-      self.vz[js]=fzeros(self.npmax,'d')
-      self.gi[js]=fzeros(self.npmax,'d')
+      self.npmax[js]=4096
+      self.allocate_temps(js)
+  
+  def allocate_temps(self,js):
+      self.x[js]=fzeros(self.npmax[js],'d')
+      self.y[js]=fzeros(self.npmax[js],'d')
+      self.z[js]=fzeros(self.npmax[js],'d')
+      self.vx[js]=fzeros(self.npmax[js],'d')
+      self.vy[js]=fzeros(self.npmax[js],'d')
+      self.vz[js]=fzeros(self.npmax[js],'d')
+      self.gi[js]=fzeros(self.npmax[js],'d')
       if top.wpid>0:
-        self.pid[js]=fzeros([self.npmax,top.npid],'d')
+        self.pid[js]=fzeros([self.npmax[js],top.npid],'d')
 
   def install(self):
     if not isinstalleduserinjection(self.generate):
       installuserinjection(self.generate)
 
   def addpart(self,nn,x,y,z,vx,vy,vz,gi,js,weight=None):
-    if self.nps[js]+nn>self.npmax:self.flushpart(js)
+    if self.nps[js]+nn>self.npmax[js]:self.flushpart(js)
+    if self.nps[js]+nn>self.npmax[js]:
+      self.npmax[js] = nint(nn*1.2)
+      self.allocate_temps(js)
     il=self.nps[js]
     iu=il+nn
     self.x[js][il:iu]=x
@@ -1378,7 +1392,7 @@ Class for generating photo-electrons
     self.gi[js][il:iu]=gi
     if weight is not None:self.pid[js][il:iu,top.wpid-1]=weight
     self.nps[js]+=nn
-      
+
   def flushpart(self,js):
     if self.nps[js]>0:
        nn=self.nps[js]
