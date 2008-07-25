@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.34 2008/07/24 21:31:07 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.35 2008/07/25 22:41:02 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -241,7 +241,7 @@ Class for generating secondaries
                       vx=self.vx[js][:nn],
                       vy=self.vy[js][:nn],
                       vz=self.vz[js][:nn],
-                      gi=1./sqrt(1.+(self.vx[js][:nn]**2+self.vy[js][:nn]**2+self.vz[js][:nn]**2/clight**2)),
+                      gi=1./sqrt(1.+(self.vx[js][:nn]**2+self.vy[js][:nn]**2+self.vz[js][:nn]**2)/clight**2),
                       js=js,
                       lmomentum=true,
                       lallindomain=true)
@@ -256,7 +256,7 @@ Class for generating secondaries
                       vx=self.vx[js][:nn],
                       vy=self.vy[js][:nn],
                       vz=self.vz[js][:nn],
-                      gi=1./sqrt(1.+(self.vx[js][:nn]**2+self.vy[js][:nn]**2+self.vz[js][:nn]**2/clight**2)),
+                      gi=1./sqrt(1.+(self.vx[js][:nn]**2+self.vy[js][:nn]**2+self.vz[js][:nn]**2)/clight**2),
                       pid=self.pid[js][:nn,:],
                       w=weights,
                       js=js,
