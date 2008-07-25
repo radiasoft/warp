@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.118 2008/07/24 18:55:33 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.119 2008/07/25 00:06:36 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -312,11 +312,13 @@ by the conductor number.
   # --- Select out the conductor points in the appropriate slice and in
   # --- the appropriate refinement level.
   if w3d.solvergeom == w3d.XYgeom and iz == 2:
-    izequal = 1
+    izcequal = 1
+    izsequal = 1
   else:
-    izequal = equal(izc,izp)
-  iic = compress(logical_and(izequal,equal(levelc,1)),arange(nc))
-  iis = compress(logical_and(izequal,equal(levels,1)),arange(ns))
+    izcequal = equal(izc,izp)
+    izsequal = equal(izs,izp)
+  iic = compress(logical_and(izcequal,equal(levelc,1)),arange(nc))
+  iis = compress(logical_and(izsequal,equal(levels,1)),arange(ns))
   dx = dx*lx*xscale
   dy = dy*ly*yscale
   ixc = take(ixc,iic)
@@ -559,11 +561,13 @@ by the conductor number.
   # --- Select out the conductor points in the appropriate slice and in
   # --- the appropriate refinement level.
   if w3d.solvergeom == w3d.XYgeom and iz == 2:
-    izequal = 1
+    izcequal = 1
+    izsequal = 1
   else:
-    izequal = equal(izc,izp)
-  iic = compress(logical_and(izequal,equal(levelc,1)),arange(nc))
-  iis = compress(logical_and(izequal,equal(levels,1)),arange(ns))
+    izcequal = equal(izc,izp)
+    izsequal = equal(izs,izp)
+  iic = compress(logical_and(izcequal,equal(levelc,1)),arange(nc))
+  iis = compress(logical_and(izsequal,equal(levels,1)),arange(ns))
   dx = dx*lx*xscale
   dy = dy*ly*yscale
   ixc = take(ixc,iic)
