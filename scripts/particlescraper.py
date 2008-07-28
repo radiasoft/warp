@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.74 2008/07/23 19:13:34 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.75 2008/07/28 18:06:45 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -191,6 +191,7 @@ conductors are an argument.
   def updategrid(self,lforce=0):
     """Update the grid to match any changes to the underlying grid, for example
 after load balancing."""
+    if self.l_print_timing:tstart=wtime()
     if self.grid is None: lforce = 1
     if self.usergrid and not lforce: return
     if lparallel: nzlocal = top.nzpslave[me]
@@ -219,6 +220,9 @@ after load balancing."""
         gchange('Fields3dParticles')
         sum_neighbors3d(nint(self.grid.isinside),w3d.isnearbycond,
                         w3d.nxc,w3d.nyc,w3d.nzc)
+    if self.l_print_timing:
+      tend=wtime()
+      print 'updategrid',tend-tstart
 
   def updateconductors(self):
     for c in self.conductors:
@@ -310,17 +314,17 @@ after load balancing."""
         if self.l_print_timing:tstart=wtime()
         self.scrape(js);
         if self.l_print_timing:tend=wtime()
-        if self.l_print_timing:print js,'scrape',tstart-tend
+        if self.l_print_timing:print js,'scrape',tend-tstart
         if self.l_print_timing:tstart=wtime()
         if clear or self.lsavecondid:
           processlostpart(top.pgroup,js+1,top.clearlostpart,top.time,top.zbeam)
         if self.l_print_timing:tend=wtime()
-        if self.l_print_timing:print js,'processlosspart',tstart-tend
+        if self.l_print_timing:print js,'processlosspart',tend-tstart
         if self.l_print_timing:tstart=wtime()
         if self.lsavecondid:
           self.savecondid(js,local=local)
         if self.l_print_timing:tend=wtime()
-        if self.l_print_timing:print js,'savecondid',tstart-tend
+        if self.l_print_timing:print js,'savecondid',tend-tstart
     self.saveolddata()
   #scrapeall = decorators.timedmethod(scrapeall)
     
