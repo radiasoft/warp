@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.403 $, $Date: 2008/07/23 22:39:48 $
+c@(#) File W3D.F, version $Revision: 3.404 $, $Date: 2008/07/28 19:51:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8939,7 +8939,6 @@ c     --- absorb particles passing through semitransparent disc
         endif
       enddo
 
-      if (lafterscraper) call callpythonfunc("afterscraper","controllers")
       if (lcallscraper) call callpythonfunc("callscraper","controllers")
 
       do is=1,ns
@@ -8949,6 +8948,8 @@ c       --- do it only if species was advanced on this time step
      &                         time+dt*pgroup%ndts(is-1),zbeam)
         endif
       enddo    
+
+      if (lafterscraper) call callpythonfunc("afterscraper","controllers")
 
 !$OMP MASTER
       if (lw3dtimesubs) timeparticleboundaries3d = timeparticleboundaries3d + wtime() - substarttime
