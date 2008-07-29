@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.36 2008/07/28 06:26:57 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.37 2008/07/29 17:31:09 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -210,11 +210,10 @@ Class for generating secondaries
         self.pid[js]=fzeros([self.npmax[js],top.npid],'d')
 
   def install(self):
-# --- using userinjection does not work since it is called before the scraping routines.
-#    if not isinstalleduserinjection(self.generate):
-#      installuserinjection(self.generate)
-    if not isinstalledbeforeloadrho(self.generate):
-      installbeforeloadrho(self.generate)
+    # --- The secondaries should be created immediately after particles
+    # --- are scraped.
+    if not isinstalledafterscraper(self.generate):
+      installafterscraper(self.generate)
 
   def addpart(self,nn,x,y,z,vx,vy,vz,js,weight=None,itype=None):
     if self.nps[js]+nn>self.npmax[js]:self.flushpart(js)
