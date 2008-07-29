@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.28 $, $Date: 2008/04/28 20:01:52 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.29 $, $Date: 2008/07/29 20:26:11 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -436,7 +436,7 @@ c       --- the dx2 and dz2 are for finite differences (i+1) - (i-1)
      &                        - 0.5*(rrp-rrm)*(chi(1,0,ix,iz))/(dz2*dx1)
         endif
 
-c       --- Now the right hand side and be generated and the associated
+c       --- Now the right hand side can be generated and the associated
 c       --- coefficients zeroed out.
 c       --- Note that for the Neumann case, the potential is not
 c       --- used and so there are not contributions to the rhs.
@@ -486,15 +486,26 @@ c       --- by the subgrid info at cell (i,k).
           pzm = voltfac*volt(4,ic)
           rhs(ix,iz) = rhs(ix,iz) + coeffs(1,0,ix,iz)*pzm
           coeffs(1,0,ix,iz) = 0.
-          if (ix > 1 .or. (ix == 1 .and. xmmin > 0.)) then
-            rhs(ix-1,iz) = rhs(ix-1,iz)
-     &         - 0.5*(rr(ix)-0.5*dx)/(rr(ix)-dx)*chi(1,0,ix,iz)/(dx*dz2)*pzm
-            coeffs(2,0,ix-1,iz) = 0.
-          endif
-          if (ix < nx) then
-            rhs(ix+1,iz) = rhs(ix+1,iz)
-     &         + 0.5*(rr(ix)+0.5*dx)/(rr(ix)+dx)*chi(1,0,ix,iz)/(dx*dz2)*pzm
-            coeffs(0,0,ix+1,iz) = 0.
+          if (lrz) then
+            if (ix > 1 .or. (ix == 1 .and. xmmin > 0.)) then
+              rhs(ix-1,iz) = rhs(ix-1,iz)
+     &           - 0.5*(rr(ix)-0.5*dx)/(rr(ix)-dx)*chi(1,0,ix,iz)/(dx*dz2)*pzm
+              coeffs(2,0,ix-1,iz) = 0.
+            endif
+            if (ix < nx) then
+              rhs(ix+1,iz) = rhs(ix+1,iz)
+     &           + 0.5*(rr(ix)+0.5*dx)/(rr(ix)+dx)*chi(1,0,ix,iz)/(dx*dz2)*pzm
+              coeffs(0,0,ix+1,iz) = 0.
+            endif
+          else
+            if (ix > 0) then
+              rhs(ix-1,iz) = rhs(ix-1,iz) - 0.5*chi(1,0,ix,iz)/(dx*dz2)*pzm
+              coeffs(2,0,ix-1,iz) = 0.
+            endif
+            if (ix < nx) then
+              rhs(ix+1,iz) = rhs(ix+1,iz) + 0.5*chi(1,0,ix,iz)/(dx*dz2)*pzm
+              coeffs(0,0,ix+1,iz) = 0.
+            endif
           endif
         elseif (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) then
           coeffs(1,0,ix,iz) = 0.
@@ -506,15 +517,26 @@ c       --- by the subgrid info at cell (i,k).
           pzp = voltfac*volt(5,ic)
           rhs(ix,iz) = rhs(ix,iz) + coeffs(1,2,ix,iz)*pzp
           coeffs(1,2,ix,iz) = 0.
-          if (ix > 1 .or. (ix == 1 .and. xmmin > 0.)) then
-            rhs(ix-1,iz) = rhs(ix-1,iz)
-     &         + 0.5*(rr(ix)-0.5*dx)/(rr(ix)-dx)*chi(1,0,ix,iz)/(dx*dz2)*pzp
-            coeffs(2,2,ix-1,iz) = 0.
-          endif
-          if (ix < nx) then
-            rhs(ix+1,iz) = rhs(ix+1,iz)
-     &         - 0.5*(rr(ix)+0.5*dx)/(rr(ix)+dx)*chi(1,0,ix,iz)/(dx*dz2)*pzp
-            coeffs(0,2,ix+1,iz) = 0.
+          if (lrz) then
+            if (ix > 1 .or. (ix == 1 .and. xmmin > 0.)) then
+              rhs(ix-1,iz) = rhs(ix-1,iz)
+     &           + 0.5*(rr(ix)-0.5*dx)/(rr(ix)-dx)*chi(1,0,ix,iz)/(dx*dz2)*pzp
+              coeffs(2,2,ix-1,iz) = 0.
+            endif
+            if (ix < nx) then
+              rhs(ix+1,iz) = rhs(ix+1,iz)
+     &           - 0.5*(rr(ix)+0.5*dx)/(rr(ix)+dx)*chi(1,0,ix,iz)/(dx*dz2)*pzp
+              coeffs(0,2,ix+1,iz) = 0.
+            endif
+          else
+            if (ix > 0) then
+              rhs(ix-1,iz) = rhs(ix-1,iz) + 0.5*chi(1,0,ix,iz)/(dx*dz2)*pzp
+              coeffs(2,2,ix-1,iz) = 0.
+            endif
+            if (ix < nx) then
+              rhs(ix+1,iz) = rhs(ix+1,iz) - 0.5*chi(1,0,ix,iz)/(dx*dz2)*pzp
+              coeffs(0,2,ix+1,iz) = 0.
+            endif
           endif
         elseif (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) then
           coeffs(1,2,ix,iz) = 0.
