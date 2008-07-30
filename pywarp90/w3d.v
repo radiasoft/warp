@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.284 $, $Date: 2008/05/23 18:36:53 $
+#@(#) File W3D.V, version $Revision: 3.285 $, $Date: 2008/07/30 01:22:05 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.284 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.285 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -249,7 +249,10 @@ emitxofz(0:nemitofz)       _real
 emityofz(0:nemitofz)       _real
    # User specified axially varying transverse y-emittances
    # with same mesh as emitxofz.  
-
+lhalfmaxwellinject   /0/  # If 1, then z velocities are injected to produce
+                          # a half-Maxwellian distribution function;
+                          # if 0, then rate of injection is Maxwellian
+			  # 
 
 *********** InMesh3d dump:
 # Mesh specifications (input qtys)

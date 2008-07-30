@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.106 $, $Date: 2008/05/23 18:36:53 $
+c@(#) File w3d_injection.F, version $Revision: 1.107 $, $Date: 2008/07/30 01:22:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -69,6 +69,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8),pointer:: bendres(:),bendradi(:),mask(:)
       integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
+      real(kind=8):: uztemp,uztempfloor
       if (lw3dtimesubs) substarttime = wtime()
 
       if (inject <= 0 .and. tinject <= 0) return
@@ -280,10 +281,21 @@ c               --- routine wrandomgauss must be called in the correct order.
               endif
 
 c             --- Axial thermal spread
-              do ip = 1,nn
-                uzt(ip) = wrandomgauss(vzrandom,injctcnt+ip-1,dig7,dig8,
+              if (is>1 .and.lhalfmaxwellinject==1) then
+c             inject vz*Maxwellian so f is half-maxwellian
+                uztempfloor = 1.e-14
+                do ip = 1,nn
+                   uztemp = max(uztempfloor,wranf())
+                   uzt(ip) = sqrt(2.*log(1./uztemp))
+                enddo
+              else
+c               default: injection rate is shifted Maxwellian
+                do ip = 1,nn
+                   uzt(ip) = wrandomgauss(vzrandom,injctcnt+ip-1,dig7,dig8,
      &                                   1,1,.true.)
-              enddo
+                enddo
+              endif
+                
 
 c             --- Initialize positions as rectangular or elliptical depending on linj_rectangle
               if(linj_rectangle) then
