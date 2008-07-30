@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.220 $, $Date: 2008/05/23 18:36:54 $
+c@(#) File TOP.F, version $Revision: 3.221 $, $Date: 2008/07/30 17:22:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -629,7 +629,7 @@ c        --- the work arrays to be thread private when called with itask==2.
 
       if (itask == 2) then
 
-        allocate(pp(0:17,np),iz(np))
+        allocate(pp(0:18,np),iz(np))
 
 c       --- Save the mass and weight
         zmmntsq(js) = q
@@ -839,6 +839,13 @@ c         --- extrapolate to two nearest cells
               pp(9,ip) = zp(ip) + uzp(ip)*dti*gaminv(ip)
 c             pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
 
+              if (lrelativ) then
+                pp(18,ip) = 1./
+     &          sqrt(1. + (pp(3,ip)**2 + pp(7,ip)**2 + pp(11,ip)**2)/clight**2)
+              else
+                pp(18,ip) = 1.
+              endif
+
               dtip1=((iz(ip)+1)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
               dtip1 = max(-zmmntdtextmax*dt,min(zmmntdtextmax*dt,dtip1))
               pp(4,ip) = uxp(ip)*(1. + dtip1*oneondt) - uxpo(ip)*dtip1*oneondt
@@ -849,7 +856,13 @@ c             pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
               pp(10,ip) = zp(ip) + uzp(ip)*dtip1*gaminv(ip)
 c             pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
 
-              pp(13,ip) = gaminv(ip)
+              if (lrelativ) then
+                pp(13,ip) = 1./
+     &          sqrt(1. + (pp(4,ip)**2 + pp(8,ip)**2 + pp(12,ip)**2)/clight**2)
+              else
+                pp(13,ip) = 1.
+              endif
+
               pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*pp(0,ip)
               pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*pp(0,ip)
               pp(16,ip) = dti
@@ -916,21 +929,21 @@ c         --- put particle moments into pmmnts array for zmmnts(iz,)
             pmmnts( 2,ip) = pp(1,ip)*wz0
             pmmnts( 3,ip) = pp(5,ip)*wz0
             pmmnts( 4,ip) = pp(9,ip)*wz0
-            pmmnts( 7,ip) = pp(3,ip)*pp(13,ip)*wz0
-            pmmnts( 8,ip) = pp(7,ip)*pp(13,ip)*wz0
-            pmmnts( 9,ip) = pp(11,ip)*pp(13,ip)*wz0
+            pmmnts( 7,ip) = pp(3,ip)*pp(18,ip)*wz0
+            pmmnts( 8,ip) = pp(7,ip)*pp(18,ip)*wz0
+            pmmnts( 9,ip) = pp(11,ip)*pp(18,ip)*wz0
             pmmnts(10,ip) = pp(1,ip)*pp(5,ip)*wz0
             pmmnts(12,ip) = pp(1,ip)**2*wz0
             pmmnts(13,ip) = pp(5,ip)**2*wz0
             pmmnts(14,ip) = pp(9,ip)**2*wz0
-            pmmnts(17,ip) = (pp(13,ip)*pp(3,ip))**2*wz0
-            pmmnts(18,ip) = (pp(13,ip)*pp(7,ip))**2*wz0
-            pmmnts(19,ip) = (pp(13,ip)*pp(11,ip))**2*wz0
-            pmmnts(22,ip) = pp(9,ip)*pp(13,ip)*pp(11,ip)*wz0
-            pmmnts(25,ip) = pp(1,ip)*pp(11,ip)*pp(13,ip)*wz0
-            pmmnts(26,ip) = pp(5,ip)*pp(11,ip)*pp(13,ip)*wz0
-            pmmnts(27,ip) = pp(3,ip)*pp(11,ip)*pp(13,ip)**2*wz0
-            pmmnts(28,ip) = pp(7,ip)*pp(11,ip)*pp(13,ip)**2*wz0
+            pmmnts(17,ip) = (pp(18,ip)*pp(3,ip))**2*wz0
+            pmmnts(18,ip) = (pp(18,ip)*pp(7,ip))**2*wz0
+            pmmnts(19,ip) = (pp(18,ip)*pp(11,ip))**2*wz0
+            pmmnts(22,ip) = pp(9,ip)*pp(11,ip)*pp(18,ip)*wz0
+            pmmnts(25,ip) = pp(1,ip)*pp(11,ip)*pp(18,ip)*wz0
+            pmmnts(26,ip) = pp(5,ip)*pp(11,ip)*pp(18,ip)*wz0
+            pmmnts(27,ip) = pp(3,ip)*pp(11,ip)*pp(18,ip)**2*wz0
+            pmmnts(28,ip) = pp(7,ip)*pp(11,ip)*pp(18,ip)**2*wz0
             pmmnts( 5,ip) = pp(3,ip)*vzi*wz0
             pmmnts( 6,ip) = pp(7,ip)*vzi*wz0
             pmmnts(11,ip) = pp(3,ip)*pp(7,ip)*vzi**2*wz0
@@ -1004,21 +1017,21 @@ c           --- sum particle moments into zmmnts(iz,)
             zmmnts(i, 2,js) = zmmnts(i, 2,js) + pp(1,ip)*wz0
             zmmnts(i, 3,js) = zmmnts(i, 3,js) + pp(5,ip)*wz0
             zmmnts(i, 4,js) = zmmnts(i, 4,js) + pp(9,ip)*wz0
-            zmmnts(i, 7,js) = zmmnts(i, 7,js) + pp(3,ip)*pp(13,ip)*wz0
-            zmmnts(i, 8,js) = zmmnts(i, 8,js) + pp(7,ip)*pp(13,ip)*wz0
-            zmmnts(i, 9,js) = zmmnts(i, 9,js) + pp(11,ip)*pp(13,ip)*wz0
+            zmmnts(i, 7,js) = zmmnts(i, 7,js) + pp(3,ip)*pp(18,ip)*wz0
+            zmmnts(i, 8,js) = zmmnts(i, 8,js) + pp(7,ip)*pp(18,ip)*wz0
+            zmmnts(i, 9,js) = zmmnts(i, 9,js) + pp(11,ip)*pp(18,ip)*wz0
             zmmnts(i,10,js) = zmmnts(i,10,js) + pp(1,ip)*pp(5,ip)*wz0
             zmmnts(i,12,js) = zmmnts(i,12,js) + pp(1,ip)**2*wz0
             zmmnts(i,13,js) = zmmnts(i,13,js) + pp(5,ip)**2*wz0
             zmmnts(i,14,js) = zmmnts(i,14,js) + pp(9,ip)**2*wz0
-            zmmnts(i,17,js) = zmmnts(i,17,js) + (pp(13,ip)*pp(3,ip))**2*wz0
-            zmmnts(i,18,js) = zmmnts(i,18,js) + (pp(13,ip)*pp(7,ip))**2*wz0
-            zmmnts(i,19,js) = zmmnts(i,19,js) + (pp(13,ip)*pp(11,ip))**2*wz0
-            zmmnts(i,22,js) = zmmnts(i,22,js) + pp(9,ip)*pp(13,ip)*pp(11,ip)*wz0
-            zmmnts(i,25,js) = zmmnts(i,25,js) + pp(1,ip)*pp(11,ip)*pp(13,ip)*wz0
-            zmmnts(i,26,js) = zmmnts(i,26,js) + pp(5,ip)*pp(11,ip)*pp(13,ip)*wz0
-            zmmnts(i,27,js) = zmmnts(i,27,js) + pp(3,ip)*pp(11,ip)*pp(13,ip)**2*wz0
-            zmmnts(i,28,js) = zmmnts(i,28,js) + pp(7,ip)*pp(11,ip)*pp(13,ip)**2*wz0
+            zmmnts(i,17,js) = zmmnts(i,17,js) + (pp(18,ip)*pp(3,ip))**2*wz0
+            zmmnts(i,18,js) = zmmnts(i,18,js) + (pp(18,ip)*pp(7,ip))**2*wz0
+            zmmnts(i,19,js) = zmmnts(i,19,js) + (pp(18,ip)*pp(11,ip))**2*wz0
+            zmmnts(i,22,js) = zmmnts(i,22,js) + pp(9,ip)*pp(11,ip)*pp(18,ip)*wz0
+            zmmnts(i,25,js) = zmmnts(i,25,js) + pp(1,ip)*pp(11,ip)*pp(18,ip)*wz0
+            zmmnts(i,26,js) = zmmnts(i,26,js) + pp(5,ip)*pp(11,ip)*pp(18,ip)*wz0
+            zmmnts(i,27,js) = zmmnts(i,27,js) + pp(3,ip)*pp(11,ip)*pp(18,ip)**2*wz0
+            zmmnts(i,28,js) = zmmnts(i,28,js) + pp(7,ip)*pp(11,ip)*pp(18,ip)**2*wz0
             zmmnts(i, 5,js) = zmmnts(i, 5,js) + pp(3,ip)*vzi*wz0
             zmmnts(i, 6,js) = zmmnts(i, 6,js) + pp(7,ip)*vzi*wz0
             zmmnts(i,11,js) = zmmnts(i,11,js) + pp(3,ip)*pp(7,ip)*vzi**2*wz0
@@ -1450,7 +1463,7 @@ c  the fact that particles with larger dtscale would normally contribute more
 c  if nominal dt would be used since they would spend proportionately more
 c  time in any location.
 
-      real(kind=8):: pp(1:17,np)
+      real(kind=8):: pp(1:18,np)
       integer(ISZ):: iz(np)
       integer(ISZ):: im,izm,iw,ip,icell,i,js
       real(kind=8):: dti,dtip1,wz1,wz0,zwin
@@ -1674,6 +1687,13 @@ c         --- extrapolate to two nearest cells
             pp(9,ip) = zp(ip) + uzp(ip)*dti*gaminv(ip)
 c           pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
 
+            if (lrelativ) then
+              pp(18,ip) = 1./
+     &        sqrt(1. + (pp(3,ip)**2 + pp(7,ip)**2 + pp(11,ip)**2)/clight**2)
+            else
+              pp(18,ip) = 1.
+            endif
+
             dtip1=((iz(ip)+1)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
             pp(4,ip) = uxp(ip)*(1. + dtip1*oneondt) - uxpo(ip)*dtip1*oneondt
             pp(8,ip) = uyp(ip)*(1. + dtip1*oneondt) - uypo(ip)*dtip1*oneondt
@@ -1683,7 +1703,13 @@ c           pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
             pp(10,ip) = zp(ip) + uzp(ip)*dtip1*gaminv(ip)
 c           pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
 
-            pp(13,ip) = gaminv(ip)
+            if (lrelativ) then
+              pp(13,ip) = 1./
+     &        sqrt(1. + (pp(4,ip)**2 + pp(8,ip)**2 + pp(12,ip)**2)/clight**2)
+            else
+              pp(13,ip) = 1.
+            endif
+
             pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*wp(ip)*
      &                  dtscale
             pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*wp(ip)*
@@ -1747,21 +1773,21 @@ c         --- put particle moments into pmmnts array for zmmnts(iz,)
             pmmnts( 2,ip) = pp(1,ip)*wz0
             pmmnts( 3,ip) = pp(5,ip)*wz0
             pmmnts( 4,ip) = pp(9,ip)*wz0
-            pmmnts( 7,ip) = pp(3,ip)*pp(13,ip)*wz0
-            pmmnts( 8,ip) = pp(7,ip)*pp(13,ip)*wz0
-            pmmnts( 9,ip) = pp(11,ip)*pp(13,ip)*wz0
+            pmmnts( 7,ip) = pp(3,ip)*pp(18,ip)*wz0
+            pmmnts( 8,ip) = pp(7,ip)*pp(18,ip)*wz0
+            pmmnts( 9,ip) = pp(11,ip)*pp(18,ip)*wz0
             pmmnts(10,ip) = pp(1,ip)*pp(5,ip)*wz0
             pmmnts(12,ip) = pp(1,ip)**2*wz0
             pmmnts(13,ip) = pp(5,ip)**2*wz0
             pmmnts(14,ip) = pp(9,ip)**2*wz0
-            pmmnts(17,ip) = (pp(13,ip)*pp(3,ip))**2*wz0
-            pmmnts(18,ip) = (pp(13,ip)*pp(7,ip))**2*wz0
-            pmmnts(19,ip) = (pp(13,ip)*pp(11,ip))**2*wz0
-            pmmnts(22,ip) = pp(9,ip)*pp(13,ip)*pp(11,ip)*wz0
-            pmmnts(25,ip) = pp(1,ip)*pp(11,ip)*pp(13,ip)*wz0
-            pmmnts(26,ip) = pp(5,ip)*pp(11,ip)*pp(13,ip)*wz0
-            pmmnts(27,ip) = pp(3,ip)*pp(11,ip)*pp(13,ip)**2*wz0
-            pmmnts(28,ip) = pp(7,ip)*pp(11,ip)*pp(13,ip)**2*wz0
+            pmmnts(17,ip) = (pp(18,ip)*pp(3,ip))**2*wz0
+            pmmnts(18,ip) = (pp(18,ip)*pp(7,ip))**2*wz0
+            pmmnts(19,ip) = (pp(18,ip)*pp(11,ip))**2*wz0
+            pmmnts(22,ip) = pp(9,ip)*pp(11,ip)*pp(18,ip)*wz0
+            pmmnts(25,ip) = pp(1,ip)*pp(11,ip)*pp(18,ip)*wz0
+            pmmnts(26,ip) = pp(5,ip)*pp(11,ip)*pp(18,ip)*wz0
+            pmmnts(27,ip) = pp(3,ip)*pp(11,ip)*pp(18,ip)**2*wz0
+            pmmnts(28,ip) = pp(7,ip)*pp(11,ip)*pp(18,ip)**2*wz0
             pmmnts( 5,ip) = pp(3,ip)*vzi*wz0
             pmmnts( 6,ip) = pp(7,ip)*vzi*wz0
             pmmnts(11,ip) = pp(3,ip)*pp(7,ip)*vzi**2*wz0
@@ -1835,21 +1861,21 @@ c           --- sum particle moments into zmmnts(iz,,js)
             zmmnts(i, 2,js) = zmmnts(i, 2,js) + pp(1,ip)*wz0
             zmmnts(i, 3,js) = zmmnts(i, 3,js) + pp(5,ip)*wz0
             zmmnts(i, 4,js) = zmmnts(i, 4,js) + pp(9,ip)*wz0
-            zmmnts(i, 7,js) = zmmnts(i, 7,js) + pp(3,ip)*pp(13,ip)*wz0
-            zmmnts(i, 8,js) = zmmnts(i, 8,js) + pp(7,ip)*pp(13,ip)*wz0
-            zmmnts(i, 9,js) = zmmnts(i, 9,js) + pp(11,ip)*pp(13,ip)*wz0
+            zmmnts(i, 7,js) = zmmnts(i, 7,js) + pp(3,ip)*pp(18,ip)*wz0
+            zmmnts(i, 8,js) = zmmnts(i, 8,js) + pp(7,ip)*pp(18,ip)*wz0
+            zmmnts(i, 9,js) = zmmnts(i, 9,js) + pp(11,ip)*pp(18,ip)*wz0
             zmmnts(i,10,js) = zmmnts(i,10,js) + pp(1,ip)*pp(5,ip)*wz0
             zmmnts(i,12,js) = zmmnts(i,12,js) + pp(1,ip)**2*wz0
             zmmnts(i,13,js) = zmmnts(i,13,js) + pp(5,ip)**2*wz0
             zmmnts(i,14,js) = zmmnts(i,14,js) + pp(9,ip)**2*wz0
-            zmmnts(i,17,js) = zmmnts(i,17,js) + (pp(13,ip)*pp(3,ip))**2*wz0
-            zmmnts(i,18,js) = zmmnts(i,18,js) + (pp(13,ip)*pp(7,ip))**2*wz0
-            zmmnts(i,19,js) = zmmnts(i,19,js) + (pp(13,ip)*pp(11,ip))**2*wz0
-            zmmnts(i,22,js) = zmmnts(i,22,js) + pp(9,ip)*pp(13,ip)*pp(11,ip)*wz0
-            zmmnts(i,25,js) = zmmnts(i,25,js) + pp(1,ip)*pp(11,ip)*pp(13,ip)*wz0
-            zmmnts(i,26,js) = zmmnts(i,26,js) + pp(5,ip)*pp(11,ip)*pp(13,ip)*wz0
-            zmmnts(i,27,js) = zmmnts(i,27,js) + pp(3,ip)*pp(11,ip)*pp(13,ip)**2*wz0
-            zmmnts(i,28,js) = zmmnts(i,28,js) + pp(7,ip)*pp(11,ip)*pp(13,ip)**2*wz0
+            zmmnts(i,17,js) = zmmnts(i,17,js) + (pp(18,ip)*pp(3,ip))**2*wz0
+            zmmnts(i,18,js) = zmmnts(i,18,js) + (pp(18,ip)*pp(7,ip))**2*wz0
+            zmmnts(i,19,js) = zmmnts(i,19,js) + (pp(18,ip)*pp(11,ip))**2*wz0
+            zmmnts(i,22,js) = zmmnts(i,22,js) + pp(9,ip)*pp(11,ip)*pp(18,ip)*wz0
+            zmmnts(i,25,js) = zmmnts(i,25,js) + pp(1,ip)*pp(11,ip)*pp(18,ip)*wz0
+            zmmnts(i,26,js) = zmmnts(i,26,js) + pp(5,ip)*pp(11,ip)*pp(18,ip)*wz0
+            zmmnts(i,27,js) = zmmnts(i,27,js) + pp(3,ip)*pp(11,ip)*pp(18,ip)**2*wz0
+            zmmnts(i,28,js) = zmmnts(i,28,js) + pp(7,ip)*pp(11,ip)*pp(18,ip)**2*wz0
             zmmnts(i, 5,js) = zmmnts(i, 5,js) + pp(3,ip)*vzi*wz0
             zmmnts(i, 6,js) = zmmnts(i, 6,js) + pp(7,ip)*vzi*wz0
             zmmnts(i,11,js) = zmmnts(i,11,js) + pp(3,ip)*pp(7,ip)*vzi**2*wz0
