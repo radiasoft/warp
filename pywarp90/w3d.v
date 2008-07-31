@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.285 $, $Date: 2008/07/30 01:22:05 $
+#@(#) File W3D.V, version $Revision: 3.286 $, $Date: 2008/07/31 00:45:19 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.285 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.286 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -307,7 +307,6 @@ zmesh(0:nz)             _real [m] +dump # Z coordinates of global mesh points
 zmeshlocal(0:nzlocal)   _real [m] +dump +parallel # Z coordinates of local mesh points
 nmxy                    integer /0/ +dump # larger of nx, ny
 nmxyz                   integer /0/ +dump +parallel # largest of nx, ny, nz
-izextra                 integer /1/ +dump # Amount of extra space at end of phi
 scrtch(-1:nmxyz+1,-1:nmxy+1)  _real           # Scratch for fieldsolve, plots
 phi(:,:,:)              _real [V] +parallel # Electrostatic potential
 rho(:,:,:)              _real [C/m**3] +parallel # Charge density

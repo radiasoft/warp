@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.47 $, $Date: 2008/02/01 00:04:00 $
+c W3DSLAVE.M, version $Revision: 1.48 $, $Date: 2008/07/31 00:45:19 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -89,17 +89,6 @@ c     --- Reset local values
       ypmaxlocal = ymmax
       zpminlocal = zpslmin(my_index)
       zpmaxlocal = zpslmax(my_index)
-
-c     --- Set value of izextra, which is the amount of extra space at the
-c     --- end of phi. For the case when (nx+ny) < nslaves, phi needs
-c     --- to be made larger to hold the transposed array. izextra could
-c     --- actualy be one less then the value calculated here, but I don't
-c     --- subtract one so there is some extra slop.
-      if(solvergeom==XYZgeom .and. 0 <= fstype .and. fstype < 7) then
-        if (nx+ny < nslaves) then
-          izextra = max(1,(nz-nz/nslaves*(nx+ny))/(nx*ny))
-        endif
-      endif
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinit_w3d_parallel = timeinit_w3d_parallel + wtime() - substarttime

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.36 $, $Date: 2008/02/01 00:04:00 $
+c F3DSLAVE.M, version $Revision: 1.37 $, $Date: 2008/07/31 00:45:18 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -132,6 +132,10 @@ c=============================================================================
       return
       end
 c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
       subroutine warptranspose(nx,ny,nzlocal,phi,nx_tran,ny_tran)
       use Subtimersf3d
       use Parallel
@@ -139,141 +143,112 @@ c=============================================================================
       integer(ISZ):: nx,ny,nzlocal,nx_tran,ny_tran
       real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
 
-c 3-D transpose. Only the volume (0:nx-1,0:ny-1,0:nzlocal-1) is transposed.
-c Transpose is NOT done in place but uses scratch array.
-c
-c NOTICE: In cases where (nx+ny) < nslaves, the size of the transposed
-c phi is LARGER than the size of phi. Extra padding must be added to the
-c end of phi of size
-c izextra = (nz - nz/nslaves*(nx+ny)/(nx*ny))
-c and with phi dimensions as
-c phi(0:nx,0:ny,0:nzlocal+izextra)
+c 3-D transpose. The volume (0:nx,0:ny,0:nzlocal-1) is transposed.
+c Transpose is NOT done in place but uses a separate work array.
 c
 c Algorithm assumes that all dimensions are powers of two and the number
 c of processors is a power of two.
 
-      integer(MPIISZ):: nn
-      integer(MPIISZ):: is,ix,iy,j,left_pe,right_pe
+      integer(ISZ):: ip
+      integer(MPIISZ):: dims,sizes(0:2),starts(0:2)
+      integer(MPIISZ):: nlocal(0:2),nlocal_trnsps(0:2)
       include "mpif.h"
-      integer(MPIISZ):: mpinewtype,mpierror
-      integer(MPIISZ):: mpinewtype2,mpidoublesize
-      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
-      integer(MPIISZ):: blen(2),bdisp(2),btype(2)
+      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: sendtypes(0:nslaves-1),recvtypes(0:nslaves-1)
       integer(MPIISZ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
       integer(MPIISZ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      phi_trnspsnx = nx
-      phi_trnspsny = ny
-      phi_trnspsnz = nzlocal
-      call gchange("Transpose_work_space",0)
-      call copy_tophitranspose(nx,ny,nzlocal,phi,phi)
-
 c     --- Calculate what the dimensions of the grid will be after the
-c     --- transpose.  The dimensions will be (0:nx_tran,ny_tran).  The
-c     --- full x dimension is used since the z tridiag solver uses the
-c     --- elements ix=nx for scratch space.
+c     --- transpose, (0:nx_tran,0:ny_tran).
 c     --- The work is divided up first along the y direction.  Since
 c     --- all dimensions and number of processors are powers of 2, ny/nslaves
 c     --- will always also be a power of 2 (or zero).
 c     --- If ny >= nslaves, set first dimension of array after transpose to
 c     --- be the same as nx, otherwise work has to also be divided along x.
-      if (ny .ge. nslaves) then
+      if (ny >= nslaves) then
         nx_tran = nx
         ny_tran = ny/nslaves
       else
         nx_tran = nx*ny/nslaves
-        ny_tran = 1
+        ny_tran = 0
       endif
-      nn = (nx_tran+1)*ny_tran
+
+c     --- Create the work space that phi is transposed into.
+      phi_trnspsnx = nx_tran
+      phi_trnspsny = ny_tran
+      phi_trnspsnz = nzlocal*nslaves
+      call gchange("Transpose_work_space",0)
 
 c     --- Create an MPI type to refer to the distributed pieces of data that
 c     --- are sent to each of the processors.
-      call MPI_TYPE_VECTOR(int(nzlocal,MPIISZ),nn,int((nx+1)*(ny+1),MPIISZ),
-     &                     MPI_DOUBLE_PRECISION,
-     &                     mpinewtype,mpierror)
-      call MPI_TYPE_COMMIT(mpinewtype,mpierror)
+      dims = 3
+      nlocal = (/nx+3,ny+3,nzlocal/)
+      nlocal_trnsps = (/nx_tran+3,ny_tran+3,nzlocal*nslaves/)
+      sdispls = 0
+      rdispls = 0
+      sendcounts = 1
+      recvcounts = 1
+
+c     --- For the upper boundaries, include the data on the boundary
+c     --- so that it is preserved. The sizes are adjusted appropriately
+c     --- to add in the boundary layer.
+      do ip = 0,nslaves-1
+
+        sizes = (/nx_tran,ny_tran,nzlocal/)
+        if (ny < nslaves) then
+          starts(0) = 1 + nx_tran*mod(ip,nslaves/ny)
+          starts(1) = 1 + ny_tran*int(ip*ny/nslaves)
+          starts(2) = 0
+          if (mod(ip,nslaves/ny) == nslaves/ny - 1) sizes(0) = nx_tran + 1
+          sizes(1) = 1
+        else
+          starts(0) = 1
+          starts(1) = 1 + ny_tran*ip
+          starts(2) = 0
+          sizes(0) = nx_tran + 1
+          if (ip == nslaves-1) sizes(1) = ny_tran + 1
+        endif
+        call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                MPI_ORDER_FORTRAN,
+     &                                MPI_DOUBLE_PRECISION,
+     &                                sendtypes(ip),mpierror)
+        call MPI_TYPE_COMMIT(sendtypes(ip),mpierror)
+
+        sizes = (/nx_tran,ny_tran,nzlocal/)
+        starts(0) = 1
+        starts(1) = 1
+        starts(2) = ip*nzlocal
+        if (ny < nslaves) then
+          if (mod(my_index,nslaves/ny) == nslaves/ny - 1) sizes(0) = nx_tran + 1
+          sizes(1) = 1
+        else
+          sizes(0) = nx_tran + 1
+          if (my_index == nslaves-1) sizes(1) = ny_tran + 1
+        endif
+        call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal_trnsps,sizes,starts,
+     &                                MPI_ORDER_FORTRAN,
+     &                                MPI_DOUBLE_PRECISION,
+     &                                recvtypes(ip),mpierror)
+        call MPI_TYPE_COMMIT(recvtypes(ip),mpierror)
+
+      enddo
+
+c     --- Do all of the communication at once.
+      call MPI_ALLTOALLW(phi,sendcounts,sdispls,sendtypes,
+     &                   phi_trnsps,recvcounts,rdispls,recvtypes,
+     &                   MPI_COMM_WORLD,mpierror)
 
 
-c     --- The transpose is much less complicated when ny > nslaves.
-      if (ny >= nslaves) then
-
-c       On the T3E, the loop over slaves using SENDRECV is 20 to 50% faster
-c       than the ALLTOALL. Go figure.
-c       On the SP, the SENDRECV is only as fast as the call to ALLTOALL.
-c       That is now used since it has the potential of improving if the
-c       MPI implementation is further optimized.
-
-c       --- Create a second type so that the upper bound (and therefore) the
-c       --- extent of the new type can be set. The extent needs to be modified
-c       --- since the data being sent with the alltoall is interleaved.
-c       --- The extent is set to be equal to the byte length of the contiguous
-c       --- chunks of data, i.e. nn times number of bytes per real.
-        call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
-        blen(1) = 1
-        blen(2) = 1
-        bdisp(1) = 0
-        bdisp(2) = nn*mpidoublesize
-        btype(1) = mpinewtype
-        btype(2) = MPI_UB
-        call MPI_TYPE_STRUCT(int(2,MPIISZ),blen,bdisp,btype,mpinewtype2,mpierror)
-        call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
-
-c       --- Do all of the communication at once.
-        call MPI_ALLTOALL(phi,int(1,MPIISZ),mpinewtype2,
-     &                    phi_trnsps,int(nn*nzlocal,MPIISZ),
-     &                    MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,mpierror)
-
-c       --- Free the data type
-        call MPI_TYPE_FREE(mpinewtype2,mpierror)
-
-      else
-c       --- Things are very different with ny < nslaves
-c       --- Note though that the same ALLTOALL code would actually work just
-c       --- as well for ny >= nslaves.
-
-c       --- Create a copy of the new data type, but defined with an upper
-c       --- bound so that the extent is equal to the size a one double.
-        call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
-        blen(1) = 1
-        blen(2) = 1
-        bdisp(1) = 0
-        bdisp(2) = mpidoublesize
-        btype(1) = mpinewtype
-        btype(2) = MPI_UB
-        call MPI_TYPE_STRUCT(int(2,MPIISZ),blen,bdisp,btype,mpinewtype2,mpierror)
-        call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
-
-c       --- Setup displacement arrays.
-        do is = 0,nslaves-1
-          ix = mod(is*nx_tran,nx)
-          iy = is*ny/nslaves
-          sdispls(is) = ix + iy*(ny+1)
-          sendcounts(is) = 1
-          rdispls(is) = is*nn*nzlocal
-          recvcounts(is) = nn*nzlocal
-        enddo
-
-c       --- Do all of the communication at once.
-        call MPI_ALLTOALLV(phi,sendcounts,sdispls,mpinewtype2,
-     &                     phi_trnsps,recvcounts,rdispls,MPI_DOUBLE_PRECISION,
-     &                     MPI_COMM_WORLD,mpierror)
-
-      endif
-
-c     --- Free the data type
-      call MPI_TYPE_FREE(mpinewtype,mpierror)
+c     --- Free the data types
+      do ip = 0,nslaves-1
+        call MPI_TYPE_FREE(sendtypes(ip),mpierror)
+        call MPI_TYPE_FREE(recvtypes(ip),mpierror)
+      enddo
 
 c     --- Now the array phi_trnsps contains 3-D data with dimensions
-c     --- (0:nx_tran,ny_tran,nzlocal*nslaves).
-
-c     --- Copy phi_trnsps into phi (don't want field solving routine to use
-c     --- the temporary array phi_trnsps).  This is somewhat inefficient, but
-c     --- hopefully the transpose will eventually be done in place, avoiding
-c     --- the temp space.
-      call copy_fromphitranspose(nx_tran,ny_tran-1,nzlocal*nslaves-1,
-     &                           phi,phi_trnsps)
+c     --- (0:nx_tran,0:ny_tran,nzlocal*nslaves).
 
 c DONE!
 !$OMP MASTER
@@ -290,96 +265,89 @@ c=============================================================================
       integer(ISZ):: nx,ny,nzlocal,nx_tran,ny_tran
       real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
 
-c Inverse 3-D transpose of array.  Only the volume (0:nx-1,0:ny-1,0:nzlocal-1)
-c is transposed back.  Now, nx_tran and ny_tran are used as input.
-c Transpose is NOT done in place but uses scratch array.
-c
-c See the NOTICE in transpose above.
+c Inverse 3-D transpose. The volume (0:nx,0:ny,0:nzlocal-1) is transposed.
+c Transpose is NOT done in place but uses a work array.
 c
 c Algorithm assumes that all dimensions are powers of two and the number
 c of processors is a power of two.
 
-      integer(MPIISZ):: nn
-      integer(MPIISZ):: is,ix,iy,j,left_pe,right_pe
+      integer(ISZ):: ip
+      integer(MPIISZ):: dims,sizes(0:2),starts(0:2)
+      integer(MPIISZ):: nlocal(0:2),nlocal_trnsps(0:2)
       include "mpif.h"
-      integer(MPIISZ):: mpinewtype,mpierror
-      integer(MPIISZ):: mpinewtype2,mpidoublesize
-      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
-      integer(MPIISZ):: blen(2),bdisp(2),btype(2)
+      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: sendtypes(0:nslaves-1),recvtypes(0:nslaves-1)
       integer(MPIISZ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
       integer(MPIISZ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      phi_trnspsnx = nx
-      phi_trnspsny = ny
-      phi_trnspsnz = nzlocal
-      call gchange("Transpose_work_space",0)
-      call copy_tophitranspose(nx_tran,ny_tran-1,nzlocal*nslaves-1,
-     &                         phi,phi_trnsps)
+c     --- Create an MPI type to refer to the distributed pieces of data that
+c     --- are sent to each of the processors.
+      dims = 3
+      nlocal = (/nx+3,ny+3,nzlocal/)
+      nlocal_trnsps = (/nx_tran+3,ny_tran+3,nzlocal*nslaves/)
+      sizes = (/nx_tran,ny_tran,nzlocal/)
+      sdispls = 0
+      rdispls = 0
+      sendcounts = 1
+      recvcounts = 1
 
-      nn = (nx_tran+1)*ny_tran
-      call MPI_TYPE_VECTOR(int(nzlocal,MPIISZ),nn,int((nx+1)*(ny+1),MPIISZ),
-     &                     MPI_DOUBLE_PRECISION,
-     &                     mpinewtype,mpierror)
-      call MPI_TYPE_COMMIT(mpinewtype,mpierror)
+c     --- For the upper boundaries, include the data on the boundary
+c     --- so that it is preserved. The sizes are adjusted appropriately
+c     --- to add in the boundary layer.
+      do ip = 0,nslaves-1
 
-      if (ny >= nslaves) then
+        sizes = (/nx_tran,ny_tran,nzlocal/)
+        starts(0) = 1
+        starts(1) = 1
+        starts(2) = ip*nzlocal
+        if (ny < nslaves) then
+          if (mod(my_index,nslaves/ny) == nslaves/ny - 1) sizes(0) = nx_tran + 1
+          sizes(1) = 1
+        else
+          sizes(0) = nx_tran + 1
+          if (my_index == nslaves-1) sizes(1) = ny_tran + 1
+        endif
+        call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal_trnsps,sizes,starts,
+     &                                MPI_ORDER_FORTRAN,
+     &                                MPI_DOUBLE_PRECISION,
+     &                                sendtypes(ip),mpierror)
+        call MPI_TYPE_COMMIT(sendtypes(ip),mpierror)
 
-        call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
-        blen(1) = 1
-        blen(2) = 1
-        bdisp(1) = 0
-        bdisp(2) = nn*mpidoublesize
-        btype(1) = mpinewtype
-        btype(2) = MPI_UB
-        call MPI_TYPE_STRUCT(int(2,MPIISZ),blen,bdisp,btype,mpinewtype2,mpierror)
-        call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
+        sizes = (/nx_tran,ny_tran,nzlocal/)
+        if (ny < nslaves) then
+          starts(0) = 1 + nx_tran*mod(ip,nslaves/ny)
+          starts(1) = 1 + ny_tran*int(ip*ny/nslaves)
+          starts(2) = 0
+          if (mod(ip,nslaves/ny) == nslaves/ny - 1) sizes(0) = nx_tran + 1
+          sizes(1) = 1
+        else
+          starts(0) = 1
+          starts(1) = 1 + ny_tran*ip
+          starts(2) = 0
+          sizes(0) = nx_tran + 1
+          if (ip == nslaves-1) sizes(1) = ny_tran + 1
+        endif
+        call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                MPI_ORDER_FORTRAN,
+     &                                MPI_DOUBLE_PRECISION,
+     &                                recvtypes(ip),mpierror)
+        call MPI_TYPE_COMMIT(recvtypes(ip),mpierror)
 
-c       --- Do all of the communication at once.
-        call MPI_ALLTOALL(phi_trnsps,int(nn*nzlocal,MPIISZ),
-     &                    MPI_DOUBLE_PRECISION,
-     &                    phi,int(1,MPIISZ),mpinewtype2,
-     &                    MPI_COMM_WORLD,mpierror)
+      enddo
 
-c       --- Free the data type
-        call MPI_TYPE_FREE(mpinewtype2,mpierror)
+c     --- Do all of the communication at once.
+      call MPI_ALLTOALLW(phi_trnsps,sendcounts,sdispls,sendtypes,
+     &                   phi,recvcounts,rdispls,recvtypes,
+     &                   MPI_COMM_WORLD,mpierror)
 
-      else
 
-c       --- Create a copy of the new data type, but defined with an upper
-c       --- bound so that the extent is equal to the size a one double.
-        call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
-        blen(1) = 1
-        blen(2) = 1
-        bdisp(1) = 0
-        bdisp(2) = mpidoublesize
-        btype(1) = mpinewtype
-        btype(2) = MPI_UB
-        call MPI_TYPE_STRUCT(int(2,MPIISZ),blen,bdisp,btype,mpinewtype2,mpierror)
-        call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
-
-c       --- Setup displacement arrays.
-        do is = 0,nslaves-1
-          sdispls(is) = is*nn*nzlocal
-          sendcounts(is) = nn*nzlocal
-          ix = mod(is*nx_tran,nx)
-          iy = is*ny/nslaves
-          rdispls(is) = ix + iy*(ny+1)
-          recvcounts(is) = 1
-        enddo
-
-c       --- Do all of the communication at once.
-        call MPI_ALLTOALLV(phi_trnsps,sendcounts,sdispls,MPI_DOUBLE_PRECISION,
-     &                     phi,recvcounts,rdispls,mpinewtype2,
-     &                     MPI_COMM_WORLD,mpierror)
-
-      endif
-
-c     --- Free the data type
-      call MPI_TYPE_FREE(mpinewtype,mpierror)
-
-      call copy_fromphitranspose(nx,ny,nzlocal-1,phi,phi)
+c     --- Free the data types
+      do ip = 0,nslaves-1
+        call MPI_TYPE_FREE(sendtypes(ip),mpierror)
+        call MPI_TYPE_FREE(recvtypes(ip),mpierror)
+      enddo
 
 c     --- Now the array phi is returned to normal.
 
@@ -390,7 +358,6 @@ c DONE!
 
       return
       end
-c=============================================================================
 c=============================================================================
 c=============================================================================
 c=============================================================================

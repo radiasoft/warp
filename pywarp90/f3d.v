@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.190 $, $Date: 2008/04/16 21:57:18 $
+#@(#) File F3D.V, version $Revision: 3.191 $, $Date: 2008/07/31 00:45:18 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.190 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.191 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -40,7 +40,7 @@ zwork(2,0:nx,0:nz)        _real        #  Workspace to optimize vpftz
 phi_trnspsnx /0/ integer
 phi_trnspsny /0/ integer
 phi_trnspsnz /0/ integer
-phi_trnsps(0:phi_trnspsnx,0:phi_trnspsny,0:phi_trnspsnz)  _real
+phi_trnsps(-1:phi_trnspsnx+1,-1:phi_trnspsny+1,0:phi_trnspsnz)  _real
 
 ******** CapMat3d dump:
 nc3dmax         integer /0/ # Maximum number of points in conductors
@@ -1105,4 +1105,3 @@ timeresidualimplicites3d real /0./
 timeaverageperiodicphi3d real /0./
 timeapplyboundaryconditionses3d real /0./
 timeapplyparallelboundaryconditionses3d real /0./
-
