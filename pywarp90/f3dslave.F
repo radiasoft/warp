@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.37 $, $Date: 2008/07/31 00:45:18 $
+c F3DSLAVE.M, version $Revision: 1.38 $, $Date: 2008/07/31 21:01:04 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -143,7 +143,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nzlocal,nx_tran,ny_tran
       real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
 
-c 3-D transpose. The volume (0:nx,0:ny,0:nzlocal-1) is transposed.
+c 3-D transpose. The volume (0:nx-1,0:ny-1,0:nzlocal-1) is transposed.
 c Transpose is NOT done in place but uses a separate work array.
 c
 c Algorithm assumes that all dimensions are powers of two and the number
@@ -162,17 +162,23 @@ c of processors is a power of two.
 
 c     --- Calculate what the dimensions of the grid will be after the
 c     --- transpose, (0:nx_tran,0:ny_tran).
-c     --- The work is divided up first along the y direction.  Since
+c     --- The work is divided up first along the y direction. Since
 c     --- all dimensions and number of processors are powers of 2, ny/nslaves
 c     --- will always also be a power of 2 (or zero).
-c     --- If ny >= nslaves, set first dimension of array after transpose to
-c     --- be the same as nx, otherwise work has to also be divided along x.
-      if (ny >= nslaves) then
+c     --- If ny > nslaves, each processor is given ny/nslaves lines along x.
+c     --- If nx*ny > nslaves, then the x lines are divided up as well.
+c     --- Note that then the transposed data is stored as 2 'y' lines, each
+c     --- nx*ny/nslaves/2 long in x. This makes it easier to use the 2 at a
+c     --- time operation of vpftz.
+      if (ny > nslaves) then
         nx_tran = nx
         ny_tran = ny/nslaves
+      else if (nx*ny > nslaves) then
+        nx_tran = nx*ny/nslaves/2
+        ny_tran = 2
       else
-        nx_tran = nx*ny/nslaves
-        ny_tran = 0
+        call kaboom("warptranspose: the number of processors must be less than nx*ny")
+        return
       endif
 
 c     --- Create the work space that phi is transposed into.
@@ -191,24 +197,18 @@ c     --- are sent to each of the processors.
       sendcounts = 1
       recvcounts = 1
 
-c     --- For the upper boundaries, include the data on the boundary
-c     --- so that it is preserved. The sizes are adjusted appropriately
-c     --- to add in the boundary layer.
       do ip = 0,nslaves-1
 
-        sizes = (/nx_tran,ny_tran,nzlocal/)
         if (ny < nslaves) then
-          starts(0) = 1 + nx_tran*mod(ip,nslaves/ny)
-          starts(1) = 1 + ny_tran*int(ip*ny/nslaves)
+          starts(0) = 1 + (2*nx_tran)*mod(ip,nslaves/ny)
+          starts(1) = 1 + int(ip*ny/nslaves)
           starts(2) = 0
-          if (mod(ip,nslaves/ny) == nslaves/ny - 1) sizes(0) = nx_tran + 1
-          sizes(1) = 1
+          sizes = (/2*nx_tran,1,nzlocal/)
         else
           starts(0) = 1
           starts(1) = 1 + ny_tran*ip
           starts(2) = 0
-          sizes(0) = nx_tran + 1
-          if (ip == nslaves-1) sizes(1) = ny_tran + 1
+          sizes = (/nx_tran,ny_tran,nzlocal/)
         endif
         call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
      &                                MPI_ORDER_FORTRAN,
@@ -216,17 +216,10 @@ c     --- to add in the boundary layer.
      &                                sendtypes(ip),mpierror)
         call MPI_TYPE_COMMIT(sendtypes(ip),mpierror)
 
-        sizes = (/nx_tran,ny_tran,nzlocal/)
         starts(0) = 1
         starts(1) = 1
         starts(2) = ip*nzlocal
-        if (ny < nslaves) then
-          if (mod(my_index,nslaves/ny) == nslaves/ny - 1) sizes(0) = nx_tran + 1
-          sizes(1) = 1
-        else
-          sizes(0) = nx_tran + 1
-          if (my_index == nslaves-1) sizes(1) = ny_tran + 1
-        endif
+        sizes = (/nx_tran,ny_tran,nzlocal/)
         call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal_trnsps,sizes,starts,
      &                                MPI_ORDER_FORTRAN,
      &                                MPI_DOUBLE_PRECISION,
@@ -265,7 +258,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nzlocal,nx_tran,ny_tran
       real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
 
-c Inverse 3-D transpose. The volume (0:nx,0:ny,0:nzlocal-1) is transposed.
+c Inverse 3-D transpose. The volume (0:nx-1,0:ny-1,0:nzlocal-1) is transposed.
 c Transpose is NOT done in place but uses a work array.
 c
 c Algorithm assumes that all dimensions are powers of two and the number
@@ -287,47 +280,33 @@ c     --- are sent to each of the processors.
       dims = 3
       nlocal = (/nx+3,ny+3,nzlocal/)
       nlocal_trnsps = (/nx_tran+3,ny_tran+3,nzlocal*nslaves/)
-      sizes = (/nx_tran,ny_tran,nzlocal/)
       sdispls = 0
       rdispls = 0
       sendcounts = 1
       recvcounts = 1
 
-c     --- For the upper boundaries, include the data on the boundary
-c     --- so that it is preserved. The sizes are adjusted appropriately
-c     --- to add in the boundary layer.
       do ip = 0,nslaves-1
 
-        sizes = (/nx_tran,ny_tran,nzlocal/)
         starts(0) = 1
         starts(1) = 1
         starts(2) = ip*nzlocal
-        if (ny < nslaves) then
-          if (mod(my_index,nslaves/ny) == nslaves/ny - 1) sizes(0) = nx_tran + 1
-          sizes(1) = 1
-        else
-          sizes(0) = nx_tran + 1
-          if (my_index == nslaves-1) sizes(1) = ny_tran + 1
-        endif
+        sizes = (/nx_tran,ny_tran,nzlocal/)
         call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal_trnsps,sizes,starts,
      &                                MPI_ORDER_FORTRAN,
      &                                MPI_DOUBLE_PRECISION,
      &                                sendtypes(ip),mpierror)
         call MPI_TYPE_COMMIT(sendtypes(ip),mpierror)
 
-        sizes = (/nx_tran,ny_tran,nzlocal/)
         if (ny < nslaves) then
-          starts(0) = 1 + nx_tran*mod(ip,nslaves/ny)
-          starts(1) = 1 + ny_tran*int(ip*ny/nslaves)
+          starts(0) = 1 + (2*nx_tran)*mod(ip,nslaves/ny)
+          starts(1) = 1 + int(ip*ny/nslaves)
           starts(2) = 0
-          if (mod(ip,nslaves/ny) == nslaves/ny - 1) sizes(0) = nx_tran + 1
-          sizes(1) = 1
+          sizes = (/2*nx_tran,1,nzlocal/)
         else
           starts(0) = 1
           starts(1) = 1 + ny_tran*ip
           starts(2) = 0
-          sizes(0) = nx_tran + 1
-          if (ip == nslaves-1) sizes(1) = ny_tran + 1
+          sizes = (/nx_tran,ny_tran,nzlocal/)
         endif
         call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
      &                                MPI_ORDER_FORTRAN,

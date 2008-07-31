@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.133 $, $Date: 2008/07/31 00:45:18 $
+c@(#) File F3D.M, version $Revision: 3.134 $, $Date: 2008/07/31 21:01:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -679,8 +679,14 @@ c         --- pass normal arguments
           call vpftz(nx_tran,ny_tran,nz,phi_trnsps,norm,1,0,zwork)
         endif
 
-        if (iwhich == 2 .or. iwhich == 10) then
+        if (iwhich == 2 .or. iwhich == 10 .or. ny <= nslaves) then
 c         --- Transpose back if not doing the full field solve
+c         --- Note that if ny <= nslaves, transform back as well since the
+c         --- ordering of the x and y lines are modified and not compatible
+c         --- with the attenuation and rhotophi calls. This is a lazy fix,
+c         --- a better way would likely be to write appropriate copy loops
+c         --- in vpftz to handle that case, since data is being copied
+c         --- anyway, it wouldn't be much more work to reorganize it.
           call warptransposei(nx,ny,nzlocal,a,nx_tran,ny_tran)
           transposed = .false.
         endif
