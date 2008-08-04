@@ -44,7 +44,7 @@ The default is to zero out rho.
     loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
 
 #=============================================================================
-def fieldsol(iwhich=0,lbeforefs=false,lafterfs=false):
+def fieldsolve(iwhich=0,lbeforefs=false,lafterfs=false):
   """
 This routine provides a simple call from the interpreter to do the fieldsol.
 It calls the appropriate compiled interface routine based on the current
@@ -82,6 +82,9 @@ package. Only w3d and wxy have field solves defined.
                  w3d.dx,w3d.dy,w3d.dz,true,1,1,1)
     # --- Get the phi needed for injection
     if top.inject > 0: getinj_phi()
+
+# --- Define the old name.
+fieldsol = fieldsolve
 
 #=============================================================================
 def fetche(pgroup=None,ipmin=None,ip=None,js=None):
@@ -135,14 +138,15 @@ The default is to zero out rho.
 _registeredfieldsolvers = []
 class RegisteredSolversContainer(object):
   """This class is needed so that the list of registered field solvers
-can be properly restored after a restart. An instance of this object will
-be saved in a restart dump. Upon restoration, it re-registers the solvers.
-This is needed since _registeredfieldsolvers will not be included in __main__
-and therefore would not be otherwise saved. Also, in warp.py, the instance of this
-class is explicitly removed from the list of python variables that are not saved
-in dump files.
+can be properly restored after a restart. An instance of this object will be
+saved in a restart dump. Upon restoration, it re-registers the solvers.  This
+is needed since _registeredfieldsolvers will not be included in __main__ and
+therefore would not be otherwise saved. Also, in warp.py, the instance of
+this class is explicitly removed from the list of python variables that are
+not saved in dump files.
   """
   def __init__(self,slist):
+    # --- Note that self.slist should be a reference to _registeredfieldsolvers
     self.slist = slist
   def __setstate__(self,dict):
     self.__dict__.update(dict)
@@ -810,7 +814,8 @@ class SubcycledPoissonSolver(FieldSolver):
 
   def __setstate__(self,dict):
     FieldSolver.__setstate__(self,dict)
-    if 'sourceparray' in dict: self.sourceparray = makefortranordered(self.sourceparray)
+    if 'sourceparray' in dict:
+      self.sourceparray = makefortranordered(self.sourceparray)
     if self.lreducedpickle and not self.lnorestoreonpickle:
       installafterrestart(self.allocatedataarrays)
 
@@ -1146,18 +1151,18 @@ class SubcycledPoissonSolver(FieldSolver):
       if self.nx > 0:
         assert min(abs(x-self.xmmin)) >= 0.,\
                "Particles have x below the grid when fetching the potential"
-        assert max(x) < self.xmmax,\
-               "Particles have x below the grid when fetching the potential"
+        assert max(x) <= self.xmmax,\
+               "Particles have x above the grid when fetching the potential"
       if self.ny > 0:
         assert min(abs(y-self.ymmin)) >= 0.,\
                "Particles have y below the grid when fetching the potential"
-        assert max(y) < self.ymmax,\
-               "Particles have y below the grid when fetching the potential"
+        assert max(y) <= self.ymmax,\
+               "Particles have y above the grid when fetching the potential"
       if self.nzlocal > 0:
         assert min(z) >= self.zmminlocal,\
                "Particles have z below the grid when fetching the potential"
-        assert max(z) < self.zmmaxlocal,\
-               "Particles have z below the grid when fetching the potential"
+        assert max(z) <= self.zmmaxlocal,\
+               "Particles have z above the grid when fetching the potential"
 
     jsid = w3d.jsfsapi
     if jsid < 0: indts = 0
