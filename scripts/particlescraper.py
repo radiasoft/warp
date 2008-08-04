@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.75 2008/07/28 18:06:45 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.76 2008/08/04 22:59:21 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -491,13 +491,55 @@ after load balancing."""
           by = take(top.pgroup.by,iclose1)
           bz = take(top.pgroup.bz,iclose1)
 
+          # --- This is a possible optmization, which skips particles to
+          # --- far from the conductor to possibly hit it.
+
+          # --- Get the largest distance that the particles could travel
+          # --- in one time step.
+          qom = top.pgroup.sq[js]/top.pgroup.sm[js]
+          xchange = abs(uxo*top.dt) + abs(0.5*qom*ex*top.dt**2)
+          ychange = abs(uyo*top.dt) + abs(0.5*qom*ey*top.dt**2)
+          zchange = abs(uzo*top.dt) + abs(0.5*qom*ez*top.dt**2)
+          maxchange = sqrt(xchange**2 + ychange**2 + zchange**2)
+
+          # --- Compare the largest travel distance to the distance from the
+          # --- conductor, and skip particles that are far enough away that
+          # --- they would not hit the conductor. Do a logical_or with
+          # --- currentisinside just to be sure that scraped particles are not
+          # --- missed.
+          distance = c.distance(xo,yo,zo)
+          closeenough = logical_or((maxchange > distance.distance),
+                                   currentisinside)
+
+          # --- Downselect the particles which are close enough to the
+          # --- coductor that they could be lost.
+          ii = compress(closeenough,ii)
+          if len(ii) == 0: continue
+          iclose1 = take(iclose,ii)
+          xc = compress(closeenough,xc)
+          yc = compress(closeenough,yc)
+          zc = compress(closeenough,zc)
+          xo = compress(closeenough,xo)
+          yo = compress(closeenough,yo)
+          zo = compress(closeenough,zo)
+          uxo = compress(closeenough,uxo)
+          uyo = compress(closeenough,uyo)
+          uzo = compress(closeenough,uzo)
+          ex = compress(closeenough,ex)
+          ey = compress(closeenough,ey)
+          ez = compress(closeenough,ez)
+          bx = compress(closeenough,bx)
+          by = compress(closeenough,by)
+          bz = compress(closeenough,bz)
+          currentisinside = compress(closeenough,currentisinside)
+
           # --- Create some temporaries
           itime = None
           dt = top.dt*top.pgroup.ndts[js]*top.pgroup.dtscale[js]*ones(len(ii))
           q = top.pgroup.sq[js]
           m = top.pgroup.sm[js]
 
-          # --- Do the refinement calculation. The currentisinside argument controls
+          # --- Do the refinement calculation. The currentisinside argument sets
           # --- when the current position is replaced by the refined position.
           # --- If the particle is currently lost but in the refined
           # --- calculation is not lost, then the replace the current position
@@ -505,12 +547,10 @@ after load balancing."""
           # --- particle is currently not lost, but in the refined calculation
           # --- is lost, then replace the current position with the refined
           # --- position.
+          refinedisinside = zeros(len(xc),'l')
           self.refineintercept(c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,
-                               ex,ey,ez,bx,by,bz,itime,dt,q,m,currentisinside)
-
-          # --- Determine whether the refined positions are lost.
-          xcsym,ycsym = self.applysymmetry(xc,yc)
-          refinedisinside = nint(c.isinside(xcsym,ycsym,zc).isinside)
+                               ex,ey,ez,bx,by,bz,itime,dt,q,m,currentisinside,
+                               refinedisinside)
 
           # --- iic lists the particles that are lost in the refined
           # --- calculation. These will be scraped. Particles which were
@@ -731,7 +771,9 @@ after load balancing."""
           dt *= ones(len(ic))
           q = top.pgroup.sq[js]
           m = top.pgroup.sm[js]
-          self.refineintercept(c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m,0)
+          self.refineintercept(c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,
+                               ex,ey,ez,bx,by,bz,itime,dt,q,m,0,
+                               zeros(len(xc),'l'))
         else:
           itime = 0.
 
@@ -825,7 +867,8 @@ after load balancing."""
     # --- Now, return the refined step number
     return isteps
 
-  def refineintercept(self,c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m,luserefinedifnotlost):
+  def refineintercept(self,c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,
+                      itime,dt,q,m,luserefinedifnotlost,isinside):
     """Refine the location of the intercept
 c: the conductor
 xc,yc,zc: input holding the current particle position
@@ -917,7 +960,44 @@ luserefinedifnotlost: when true, if the refined particle orbit is not lost,
 
       # --- Check whether the new positions are inside of the conductor.
       xcsym,ycsym = self.applysymmetry(xc,yc)
-      isinside = c.isinside(xcsym,ycsym,zc).isinside
+      isinside[:] = c.isinside(xcsym,ycsym,zc).isinside
+
+      # --- Kludgy code to handle some boundary conditions
+      # --- This code is OK in serial, but in parallel, it will break with
+      # --- periodic b.c.s and if a particle crosses a parallel domain
+      # --- boundary.
+      if top.pboundxy == periodic:
+        xc[:] = where(xc > w3d.xmmax,xc-(w3d.xmmax-w3d.xmmin),xc)
+        xc[:] = where(xc < w3d.xmmin,xc+(w3d.xmmax-w3d.xmmin),xc)
+        yc[:] = where(yc > w3d.ymmax,yc-(w3d.ymmax-w3d.ymmin),yc)
+        yc[:] = where(yc < w3d.ymmin,yc+(w3d.ymmax-w3d.ymmin),yc)
+      elif top.pboundxy == reflect:
+        uxo[:] = where(xc > w3d.xmmax,-uxo,uxo)
+        uxo[:] = where(xc < w3d.xmmin,-uxo,uxo)
+        uyo[:] = where(yc > w3d.ymmax,-uyo,uyo)
+        uyo[:] = where(yc < w3d.ymmin,-uyo,uyo)
+        xc[:] = where(xc > w3d.xmmax,2.*w3d.xmmax-xc,xc)
+        xc[:] = where(xc < w3d.xmmin,2.*w3d.xmmin-xc,xc)
+        yc[:] = where(yc > w3d.ymmax,2.*w3d.ymmax-yc,yc)
+        yc[:] = where(yc < w3d.ymmin,2.*w3d.ymmin-yc,yc)
+      elif top.pboundxy == absorb:
+        isinside[:] = where(xc > w3d.xmmax,1,isinside)
+        isinside[:] = where(xc < w3d.xmmin,1,isinside)
+        isinside[:] = where(yc > w3d.ymmax,1,isinside)
+        isinside[:] = where(yc < w3d.ymmin,1,isinside)
+      if top.pbound0 == periodic or top.pboundnz == periodic:
+        zc[:] = where(zc > w3d.zmmax,zc-(w3d.zmmax-w3d.zmmin),zc)
+        zc[:] = where(zc < w3d.zmmin,zc+(w3d.zmmax-w3d.zmmin),zc)
+      if top.pboundnz == reflect:
+        uzo[:] = where(zc > w3d.zmmax,-uzo,uzo)
+        zc[:] = where(zc > w3d.zmmax,2.*w3d.zmmax-zc,zc)
+      if top.pbound0 == reflect:
+        uzo[:] = where(zc < w3d.zmmin,-uzo,uzo)
+        zc[:] = where(zc < w3d.zmmin,2.*w3d.zmmin-zc,zc)
+      if top.pboundnz == absorb:
+        isinside[:] = where(zc > w3d.zmmax,1,isinside)
+      if top.pbound0 == absorb:
+        isinside[:] = where(zc < w3d.zmmin,1,isinside)
 
       # --- For the particles that are still outside, set the old positions
       # --- to be the updated positions
