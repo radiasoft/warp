@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.37 2008/07/29 17:31:09 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.38 2008/08/04 20:52:29 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -475,7 +475,10 @@ Class for generating secondaries
 #            deposgrid1d(1,i2-i1,tl, ql,nt,qt,qtmp,tmin,tmax)
           else:
             setgrid1d(shape(coseta)[0],arccos(coseta),180,cond.lostparticles_angles[js],0.,pi)
-            setgrid1d(shape(e0)[0],e0,1000,cond.lostparticles_energies[js],cond.lostparticles_minenergy[js],cond.lostparticles_maxenergy[js])
+            # --- Expand the range of energies by one approximately two cells.
+            # --- This is needed in case there is only one particle, where
+            # --- minenergy == maxenergy.
+            setgrid1d(shape(e0)[0],e0,1000,cond.lostparticles_energies[js],0.999*cond.lostparticles_minenergy[js],1.001*cond.lostparticles_maxenergy[js])
         for i in range(n):  
 #          print 'v',v[0][i],v[1][i],v[2][i],i,iit[i],js
 #          print 'x',[xplost[i],yplost[i],zplost[i]]
