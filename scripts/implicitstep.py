@@ -1,6 +1,6 @@
 
 """Defines ImplicitStep, which handles implicit time stepping"""
-implicitstep_version = "$Id: implicitstep.py,v 1.8 2008/06/23 16:22:29 dave Exp $"
+implicitstep_version = "$Id: implicitstep.py,v 1.9 2008/08/04 23:18:23 dave Exp $"
 
 from warp import *
 import controllers
@@ -84,6 +84,19 @@ Handles implicit time stepping.
       if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
+        if min(top.pgroup.pid[i1:i2,self.gaminvoldpid]) == 0.:
+          # --- If there are some particles that were created at the tilde,
+          # --- free streamed time level, they will not have old position
+          # --- and velocity data. In those cases, copy the new data into
+          # --- the saved data locations.
+          noold = (top.pgroup.pid[i1:i2,self.gaminvoldpid] == 0)
+          top.pgroup.pid[i1:i2,self.xoldpid ] = where(noold,top.pgroup.xp[i1:i2],top.pgroup.pid[i1:i2,self.xoldpid])
+          top.pgroup.pid[i1:i2,self.yoldpid ] = where(noold,top.pgroup.yp[i1:i2],top.pgroup.pid[i1:i2,self.yoldpid])
+          top.pgroup.pid[i1:i2,self.zoldpid ] = where(noold,top.pgroup.zp[i1:i2],top.pgroup.pid[i1:i2,self.zoldpid])
+          top.pgroup.pid[i1:i2,self.uxoldpid ] = where(noold,top.pgroup.uxp[i1:i2],top.pgroup.pid[i1:i2,self.uxoldpid])
+          top.pgroup.pid[i1:i2,self.uyoldpid ] = where(noold,top.pgroup.uyp[i1:i2],top.pgroup.pid[i1:i2,self.uyoldpid])
+          top.pgroup.pid[i1:i2,self.uzoldpid ] = where(noold,top.pgroup.uzp[i1:i2],top.pgroup.pid[i1:i2,self.uzoldpid])
+          top.pgroup.pid[i1:i2,self.gaminvoldpid ] = where(noold,top.pgroup.gaminv[i1:i2],top.pgroup.pid[i1:i2,self.gaminvoldpid])
         top.pgroup.xp [i1:i2] = top.pgroup.pid[i1:i2,self.xoldpid ]
         top.pgroup.yp [i1:i2] = top.pgroup.pid[i1:i2,self.yoldpid ]
         top.pgroup.zp [i1:i2] = top.pgroup.pid[i1:i2,self.zoldpid ]
