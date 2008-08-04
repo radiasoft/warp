@@ -108,7 +108,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.185 2008/04/16 22:08:51 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.186 2008/08/04 23:23:24 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1545,6 +1545,9 @@ class IsInside:
 Class to hold flag whether or not a point is inside a conductor.
 The attribute 'distance' holds the calculated distance.
 The attribute 'isinside' holds the flag specifying whether a point is in or out
+ - aura=0.: Extra space around the conductor that is considered inside. Useful
+            for small, thin conductors that don't overlap any grid points. In
+            units of meters.
   """
 
   def __init__(self,xx=None,yy=None,zz=None,
@@ -2082,6 +2085,9 @@ Given an Assembly, set flag for each grid point whether it is inside the
 assembly.
  - a: the assembly
  - mglevel=0: coarsening level to use
+ - aura=0.: Extra space around the conductor that is considered inside. Useful
+            for small, thin conductors that don't overlap any grid points. In
+            units of meters.
     """
     starttime = wtime()
     tt2 = zeros(4,'d')
