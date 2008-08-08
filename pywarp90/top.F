@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.221 $, $Date: 2008/07/30 17:22:06 $
+c@(#) File TOP.F, version $Revision: 3.222 $, $Date: 2008/08/08 18:44:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -655,7 +655,10 @@ c       --- set multiplier so lost particles don't contribute
           maxp(6,js) = max(maxp(6,js), gaminv(ip)*uzp(ip))
           minp(6,js) = min(minp(6,js), gaminv(ip)*uzp(ip))
 
-          pp(0,ip) = dtscale
+c         --- Set flag so particles out of range don't contribute
+c         ---   not added to total moments
+c         ---   weights set to zero for z moments
+          pp(0,ip) = 1.
           if (ifzmmnt == 1) then
             if ((zp(ip) - zbeam) < zmmntmin .or.
      &          (zp(ip) - zbeam) > zmmntmax) pp(0,ip) = 0.
@@ -665,23 +668,6 @@ c       --- set multiplier so lost particles don't contribute
           endif
 
         enddo
-
-c       --- set multiplier so lost particles don't contribute
-c       ---   not added to total moments
-c       ---   weights set to zero for z moments
-c       if (ifzmmnt == 1) then
-c         do ip=1,np
-c           pp(0,ip) = 1.
-c           if ((zp(ip) - zbeam) < zmmntmin .or.
-c    &          (zp(ip) - zbeam) > zmmntmax) pp(0,ip) = 0.
-c         enddo
-c       else
-c         do ip=1,np
-c           pp(0,ip) = 1.
-c           if ((zp(ip) - zbeam) < zmmntmin .or.
-c    &          (zp(ip) - zbeam) >= zmmntmax) pp(0,ip) = 0.
-c         enddo
-c       endif
 
 c       --- Accumate global moments first.
 
@@ -863,60 +849,15 @@ c             pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
                 pp(13,ip) = 1.
               endif
 
-              pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*pp(0,ip)
-              pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*pp(0,ip)
+              pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*dtscale
+              pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*dtscale
               pp(16,ip) = dti
               pp(17,ip) = dtip1
             else
               iz(ip) = 0
-              pp(14,ip) = 0.
-              pp(15,ip) = 0.
+              pp(:,ip) = 0.
             endif
           enddo
-
-c         --- Add particles to ExtPart arrays (skips if nepwin = 0).
-c         --- This allows access to the particle data when it is extrapolated
-c         --- to the moments grid cell centers.
-c         do iw=1,nepwin
-c           if (izepwin(iw) < 0 .or. izepwin(iw) > nzmmnt) cycle
-
-c            --- Make sure that there is enough room - assuming that all
-c            --- particles could be saved.
-c            if (nep(iw,is)+np > nepmax) then
-c              nepmax = nep(iw,is)+np
-c              call gchange("ExtPart",0)
-c            endif
-c            if (npidepmax .ne. npid) then
-c              call gchange("ExtPart",0)
-c            endif
-
-c           do ip=1,np
-c             if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
-c    &            pp(0,ip) /= 0.) then
-c$OMP ATOMIC
-c               nep(iw,is) = nep(iw,is) + 1
-c               tep(nep(iw,is),iw,is) = pp(16,ip) + time
-c               xep(nep(iw,is),iw,is) = pp(1,ip)
-c               yep(nep(iw,is),iw,is) = pp(5,ip)
-c               uxep(nep(iw,is),iw,is) = pp(3,ip)
-c               uyep(nep(iw,is),iw,is) = pp(7,ip)
-c               uzep(nep(iw,is),iw,is) = pp(11,ip)
-c               if (npid > 0) pidep(nep(iw,is),:,iw,is) = pid(ip,:)
-c             else if (iz(ip)+1 == izepwin(iw) .and.
-c    &                 nep(iw,is) < nepmax .and.
-c    &                 pp(0,ip) /= 0.) then
-c$OMP ATOMIC
-c               nep(iw,is) = nep(iw,is) + 1
-c               tep(nep(iw,is),iw,is) = pp(17,ip) + time
-c               xep(nep(iw,is),iw,is) = pp(2,ip)
-c               yep(nep(iw,is),iw,is) = pp(6,ip)
-c               uxep(nep(iw,is),iw,is) = pp(4,ip)
-c               uyep(nep(iw,is),iw,is) = pp(8,ip)
-c               uzep(nep(iw,is),iw,is) = pp(12,ip)
-c               if (npid > 0) pidep(nep(iw,is),:,iw,is) = pid(ip,:)
-c             endif
-c           enddo
-c         enddo
 
 c-------------------------------------------------------------------------
 #ifdef J90
@@ -1463,8 +1404,8 @@ c  the fact that particles with larger dtscale would normally contribute more
 c  if nominal dt would be used since they would spend proportionately more
 c  time in any location.
 
-      real(kind=8):: pp(1:18,np)
-      integer(ISZ):: iz(np)
+      real(kind=8),allocatable:: pp(:,:)
+      integer(ISZ),allocatable:: iz(:)
       integer(ISZ):: im,izm,iw,ip,icell,i,js
       real(kind=8):: dti,dtip1,wz1,wz0,zwin
       real(kind=8):: oneondt,clighti,vzi
@@ -1506,6 +1447,8 @@ c     --- done afterwards. Otherwise, only calculate the combined moments.
 
       if (itask == 2) then
 
+        allocate(pp(0:18,np),iz(np))
+
 c       --- Save the mass and weight
 c       --- Note that the charge is not needed and should be removed from the
 c       --- arugment list.
@@ -1531,6 +1474,19 @@ c       --- Set maximum and minimum particle coordinate variables
           maxp(6,js) = max(maxp(6,js), gaminv(ip)*uzp(ip))
           minp(6,js) = min(minp(6,js), gaminv(ip)*uzp(ip))
           nplive = nplive + 1
+
+c         --- Set flag so particles out of range don't contribute
+c         ---   not added to total moments
+c         ---   weights set to zero for z moments
+          pp(0,ip) = 1.
+          if (ifzmmnt == 1) then
+            if ((zp(ip) - zbeam) < zmmntmin .or.
+     &          (zp(ip) - zbeam) > zmmntmax) pp(0,ip) = 0.
+          else
+            if ((zp(ip) - zbeam) <  zmmntmin .or.
+     &          (zp(ip) - zbeam) >= zmmntmax) pp(0,ip) = 0.
+          endif
+
         enddo
 
 c       --- Accumate global moments first.
@@ -1676,46 +1632,51 @@ c         ---   grid point, are weighted less, hopefully helping smoothness.
 
 c         --- extrapolate to two nearest cells
           do ip=1,np
-            vzi = 1./(uzp(ip)*gaminv(ip)+SMALLPOS)
-            iz(ip)  = (zp(ip) - zbeam - zmmntmin)*dzmi
-            dti = (iz(ip)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
-            pp(3,ip) = uxp(ip)*(1. + dti*oneondt) - uxpo(ip)*dti*oneondt
-            pp(7,ip) = uyp(ip)*(1. + dti*oneondt) - uypo(ip)*dti*oneondt
-            pp(11,ip) = uzp(ip)*(1. + dti*oneondt) - uzpo(ip)*dti*oneondt
-            pp(1,ip) = xp(ip) + uxp(ip)*dti*gaminv(ip)
-            pp(5,ip) = yp(ip) + uyp(ip)*dti*gaminv(ip)
-            pp(9,ip) = zp(ip) + uzp(ip)*dti*gaminv(ip)
-c           pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
+            if (pp(0,ip) /= 0.) then
+              vzi = 1./(uzp(ip)*gaminv(ip)+SMALLPOS)
+              iz(ip)  = (zp(ip) - zbeam - zmmntmin)*dzmi
+              dti = (iz(ip)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
+              pp(3,ip) = uxp(ip)*(1. + dti*oneondt) - uxpo(ip)*dti*oneondt
+              pp(7,ip) = uyp(ip)*(1. + dti*oneondt) - uypo(ip)*dti*oneondt
+              pp(11,ip) = uzp(ip)*(1. + dti*oneondt) - uzpo(ip)*dti*oneondt
+              pp(1,ip) = xp(ip) + uxp(ip)*dti*gaminv(ip)
+              pp(5,ip) = yp(ip) + uyp(ip)*dti*gaminv(ip)
+              pp(9,ip) = zp(ip) + uzp(ip)*dti*gaminv(ip)
+c             pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
 
-            if (lrelativ) then
-              pp(18,ip) = 1./
-     &        sqrt(1. + (pp(3,ip)**2 + pp(7,ip)**2 + pp(11,ip)**2)/clight**2)
+              if (lrelativ) then
+                pp(18,ip) = 1./
+     &          sqrt(1. + (pp(3,ip)**2 + pp(7,ip)**2 + pp(11,ip)**2)/clight**2)
+              else
+                pp(18,ip) = 1.
+              endif
+
+              dtip1=((iz(ip)+1)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
+              pp(4,ip) = uxp(ip)*(1. + dtip1*oneondt) - uxpo(ip)*dtip1*oneondt
+              pp(8,ip) = uyp(ip)*(1. + dtip1*oneondt) - uypo(ip)*dtip1*oneondt
+              pp(12,ip) = uzp(ip)*(1. + dtip1*oneondt) - uzpo(ip)*dtip1*oneondt
+              pp(2,ip) = xp(ip) + uxp(ip)*dtip1*gaminv(ip)
+              pp(6,ip) = yp(ip) + uyp(ip)*dtip1*gaminv(ip)
+              pp(10,ip) = zp(ip) + uzp(ip)*dtip1*gaminv(ip)
+c             pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
+
+              if (lrelativ) then
+                pp(13,ip) = 1./
+     &          sqrt(1. + (pp(4,ip)**2 + pp(8,ip)**2 + pp(12,ip)**2)/clight**2)
+              else
+                pp(13,ip) = 1.
+              endif
+
+              pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*wp(ip)*
+     &                    dtscale
+              pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*wp(ip)*
+     &                    dtscale
+              pp(16,ip) = dti
+              pp(17,ip) = dtip1
             else
-              pp(18,ip) = 1.
+              iz(ip) = 0
+              pp(:,ip) = 0.
             endif
-
-            dtip1=((iz(ip)+1)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
-            pp(4,ip) = uxp(ip)*(1. + dtip1*oneondt) - uxpo(ip)*dtip1*oneondt
-            pp(8,ip) = uyp(ip)*(1. + dtip1*oneondt) - uypo(ip)*dtip1*oneondt
-            pp(12,ip) = uzp(ip)*(1. + dtip1*oneondt) - uzpo(ip)*dtip1*oneondt
-            pp(2,ip) = xp(ip) + uxp(ip)*dtip1*gaminv(ip)
-            pp(6,ip) = yp(ip) + uyp(ip)*dtip1*gaminv(ip)
-            pp(10,ip) = zp(ip) + uzp(ip)*dtip1*gaminv(ip)
-c           pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
-
-            if (lrelativ) then
-              pp(13,ip) = 1./
-     &        sqrt(1. + (pp(4,ip)**2 + pp(8,ip)**2 + pp(12,ip)**2)/clight**2)
-            else
-              pp(13,ip) = 1.
-            endif
-
-            pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*wp(ip)*
-     &                  dtscale
-            pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*wp(ip)*
-     &                  dtscale
-            pp(16,ip) = dti
-            pp(17,ip) = dtip1
           enddo
 
 c         --- Add particles to ExtPart arrays (skips if nepwin = 0).
@@ -1926,6 +1887,8 @@ c-------------------------------------------------------------------------
 
 c         --- End of Z moments accumulation
         endif
+
+        deallocate(pp,iz)
 
       endif
 
