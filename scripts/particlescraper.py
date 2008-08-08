@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.76 2008/08/04 22:59:21 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.77 2008/08/08 20:53:25 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -258,6 +258,7 @@ after load balancing."""
       self.xoldpid = nextpid() - 1
       self.yoldpid = nextpid() - 1
       self.zoldpid = nextpid() - 1
+      self.oldisOK = nextpid() - 1
       setuppgroup(top.pgroup)
     if self.lsaveoldvelocities and 'uxoldpid' not in self.__dict__:
       self.uxoldpid = nextpid() - 1
@@ -281,6 +282,7 @@ after load balancing."""
           top.pgroup.pid[i1:i2,self.xoldpid] = top.pgroup.xp[i1:i2]
           top.pgroup.pid[i1:i2,self.yoldpid] = top.pgroup.yp[i1:i2]
           top.pgroup.pid[i1:i2,self.zoldpid] = top.pgroup.zp[i1:i2]
+          top.pgroup.pid[i1:i2,self.oldisOK] = 1.
         if self.lsaveoldvelocities:
           #getpid(id=self.uxoldpid,js=js,gather=0)[:] = getux(js=js,gather=0)
           #getpid(id=self.uyoldpid,js=js,gather=0)[:] = getuy(js=js,gather=0)
@@ -482,6 +484,7 @@ after load balancing."""
           uxo = take(top.pgroup.pid[:,self.uxoldpid],iclose1)
           uyo = take(top.pgroup.pid[:,self.uyoldpid],iclose1)
           uzo = take(top.pgroup.pid[:,self.uzoldpid],iclose1)
+          oldisOK = nint(take(top.pgroup.pid[:,self.oldisOK],iclose1))
 
           # --- Get the current fields
           ex = take(top.pgroup.ex,iclose1)
@@ -532,6 +535,7 @@ after load balancing."""
           by = compress(closeenough,by)
           bz = compress(closeenough,bz)
           currentisinside = compress(closeenough,currentisinside)
+          oldisOK = compress(closeenough,oldisOK)
 
           # --- Create some temporaries
           itime = None
@@ -552,6 +556,11 @@ after load balancing."""
                                ex,ey,ez,bx,by,bz,itime,dt,q,m,currentisinside,
                                refinedisinside)
 
+          # --- For some newly created particles, there was no old saved data.
+          # --- In those cases, ignore the result of the refined calculation,
+          # --- and use the result obtained originally in currentisinside.
+          refinedisinside = where(oldisOK,refinedisinside,currentisinside)
+
           # --- iic lists the particles that are lost in the refined
           # --- calculation. These will be scraped. Particles which were
           # --- considered lost but where not lost based on the refined
@@ -568,8 +577,9 @@ after load balancing."""
 
           # --- Do the replacements as described above. Note that for lost
           # --- particles, xc,yc,zc hold the positions of the particles one
-          # --- small time step into the conductor.
-          iio         = currentisinside | refinedisinside
+          # --- small time step into the conductor. Don't do the replacement
+          # --- for new particles since the old data is no good.
+          iio         = (currentisinside | refinedisinside) & oldisOK
           iiu         = compress(iio,arange(shape(xc)[0]))
           iuserefined = compress(iio,iclose1)
           put(top.pgroup.xp, iuserefined,take(xc, iiu))
@@ -593,6 +603,15 @@ after load balancing."""
         if len(iic) == 0: continue
 
         if c.material == 'reflector':
+          # --- For lost new particles, which have no old data, not much can be
+          # --- done, so they are set to be removed.
+          oldisOK = nint(top.pgroup.pid[:,self.oldisOK])
+          icnew = compress(logical_not(oldisOK),ic)
+          if len(icnew) > 0:
+            put(top.pgroup.gaminv,ic,0.)
+            # --- Only old particles will be reflected.
+            ic = compress(oldisOK,ic)
+
           # --- For particles which are inside, replace the position with
           # --- the old position and reverse the velocity.
           put(top.pgroup.xp,ic,take(top.pgroup.pid[:,self.xoldpid],ic))
@@ -609,7 +628,9 @@ after load balancing."""
             put(top.pgroup.uxp,ic,-take(top.pgroup.uxp,ic))
             put(top.pgroup.uyp,ic,-take(top.pgroup.uyp,ic))
             put(top.pgroup.uzp,ic,-take(top.pgroup.uzp,ic))
+
         else:
+
           # --- For particles which are inside, set gaminv to 0, the lost
           # --- particle flag
           put(top.pgroup.gaminv,ic,0.)
@@ -631,6 +652,7 @@ after load balancing."""
           yg = take(yg,itempclose)
         if w3d.solvergeom in [w3d.XYZgeom,w3d.XZgeom,w3d.RZgeom]:
           zg = take(zg,itempclose)
+
 
   def savecondid(self,js,local=0):
     jsid = top.pgroup.sid[js]
@@ -749,6 +771,18 @@ after load balancing."""
       # --- Save location and surface normal where particle intercepted the
       # --- conductor.
       if self.lsaveintercept:
+
+        # --- Don't calculate the intercept for new particles, for which there
+        # --- is no old data saved.
+        oldisOK = nint(take(top.pidlost[:,self.oldisOK],ic))
+        icnew = compress(logical_not(oldisOK),ic)
+        if len(icnew) > 0:
+          # --- Set the conductor ID to zero, so that these particles are
+          # --- ignored.
+          put(top.pidlost[:,-1],icnew,0)
+          # --- Downselect to only include the older particles.
+          ic = compress(oldisOK,ic)
+
         xc = take(xx,ic-i1)
         yc = take(yy,ic-i1)
         zc = take(zz,ic-i1)
