@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.77 2008/08/08 20:53:25 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.78 2008/08/08 21:08:13 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -605,10 +605,10 @@ after load balancing."""
         if c.material == 'reflector':
           # --- For lost new particles, which have no old data, not much can be
           # --- done, so they are set to be removed.
-          oldisOK = nint(top.pgroup.pid[:,self.oldisOK])
+          oldisOK = nint(take(top.pgroup.pid[:,self.oldisOK],ic))
           icnew = compress(logical_not(oldisOK),ic)
           if len(icnew) > 0:
-            put(top.pgroup.gaminv,ic,0.)
+            put(top.pgroup.gaminv,icnew,0.)
             # --- Only old particles will be reflected.
             ic = compress(oldisOK,ic)
 
