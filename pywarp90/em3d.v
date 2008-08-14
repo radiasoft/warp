@@ -69,11 +69,34 @@ init_splitfield(sf:EM3D_SPLITYEEFIELDtype,
 depose_jxjyjz_esirkepov_linear_serial(j:real,
                            n:integer,x(n):real,y(n):real,z(n):real,
                            ux(n):real,uy(n):real,uz(n):real,
-                           gaminv(n):real,w(n):real,q:real,
+                           gaminv(n):real,w:real,q:real,
                            xmin:real,ymin:real,zmin:real,
                            dt:real,dx:real,dy:real,dz:real,
                            nx:integer,ny:integer,nz:integer,
+                           nxguard:integer,nyguard:integer,nzguard:integer,
                            l_particles_weight:logical)
+                           subroutine
+depose_jxjyjz_esirkepov_n(j:real,
+                           n:integer,x(n):real,y(n):real,z(n):real,
+                           ux(n):real,uy(n):real,uz(n):real,
+                           gaminv(n):real,w:real,q:real,
+                           xmin:real,ymin:real,zmin:real,
+                           dt:real,dx:real,dy:real,dz:real,
+                           nx:integer,ny:integer,nz:integer,
+                           nxguard:integer,nyguard:integer,nzguard:integer,
+                           nox:integer,noy:integer,noz:integer,
+                           l_particles_weight:logical)
+                           subroutine
+depose_jxjyjz_pxpypz_esirkepov_linear_serial(cj:real,mp:real,
+                           n:integer,x(n):real,y(n):real,z(n):real,
+                           ux(n):real,uy(n):real,uz(n):real,
+                           gaminv(n):real,w:real,q:real,m:real,
+                           xmin:real,ymin:real,zmin:real,
+                           dt:real,dx:real,dy:real,dz:real,
+                           nx:integer,ny:integer,nz:integer,
+                           nxguard:integer,nyguard:integer,nzguard:integer,
+                           l_particles_weight:logical,
+                           l_relativ:logical)
                            subroutine
 depose_rho_linear_serial(rho:real,
                            n:integer,x(n):real,y(n):real,z(n):real,
@@ -81,6 +104,17 @@ depose_rho_linear_serial(rho:real,
                            xmin:real,ymin:real,zmin:real,
                            dx:real,dy:real,dz:real,
                            nx:integer,ny:integer,nz:integer,
+                           nxguard:integer,nyguard:integer,nzguard:integer,
+                           l_particles_weight:logical)
+                           subroutine
+depose_rho_n(rho:real,
+                           n:integer,x(n):real,y(n):real,z(n):real,
+                           w(n):real,q:real,
+                           xmin:real,ymin:real,zmin:real,
+                           dx:real,dy:real,dz:real,
+                           nx:integer,ny:integer,nz:integer,
+                           nxguard:integer,nyguard:integer,nzguard:integer,
+                           nox:integer,noy:integer,noz:integer,
                            l_particles_weight:logical)
                            subroutine
 getf3d_linear(n:integer,xp(n):real,yp(n):real,zp(n):real,
@@ -88,6 +122,7 @@ getf3d_linear(n:integer,xp(n):real,yp(n):real,zp(n):real,
                xmin:real,ymin:real,zmin:real,
                dx:real,dy:real,dz:real,
                nx:integer,ny:integer,nz:integer,
+               nxguard:integer,nyguard:integer,nzguard:integer,
                exg:real,eyg:real,ezg:real)
                            subroutine
 gete3d_linear_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
@@ -95,6 +130,7 @@ gete3d_linear_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                xmin:real,ymin:real,zmin:real,
                dx:real,dy:real,dz:real,
                nx:integer,ny:integer,nz:integer,
+               nxguard:integer,nyguard:integer,nzguard:integer,
                exg:real,eyg:real,ezg:real)
                            subroutine
 getb3d_linear_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
@@ -102,6 +138,25 @@ getb3d_linear_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                xmin:real,ymin:real,zmin:real,
                dx:real,dy:real,dz:real,
                nx:integer,ny:integer,nz:integer,
+               nxguard:integer,nyguard:integer,nzguard:integer,
+               bxg:real,byg:real,bzg:real)
+                           subroutine
+gete3d_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
+               ex(n):real,ey(n):real,ez(n):real,
+               xmin:real,ymin:real,zmin:real,
+               dx:real,dy:real,dz:real,
+               nx:integer,ny:integer,nz:integer,
+               nxguard:integer,nyguard:integer,nzguard:integer,
+               nox:integer,noy:integer,noz:integer,
+               exg:real,eyg:real,ezg:real)
+                           subroutine
+getb3d_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
+               bx(n):real,by(n):real,bz(n):real,
+               xmin:real,ymin:real,zmin:real,
+               dx:real,dy:real,dz:real,
+               nx:integer,ny:integer,nz:integer,
+               nxguard:integer,nyguard:integer,nzguard:integer,
+               nox:integer,noy:integer,noz:integer,
                bxg:real,byg:real,bzg:real)
                            subroutine
 yee2node3d(f:EM3D_YEEFIELDtype) subroutine
@@ -177,15 +232,42 @@ bmgz(-nzguard:nz+nzguard) _real
 
 %%%%%%%% EM3D_YEEFIELDtype:
 fieldtype integer /-1/
-nx integer
-ny integer
-nz integer
-nxguard integer /1/
-nyguard integer /1/
-nzguard integer /1/
+nx integer /0/ # nb of mesh cells of grid interior in the x direction
+ny integer /0/ # nb of mesh cells of grid interior in the y direction
+nz integer /0/ # nb of mesh cells of grid interior in the z direction
+nxguard integer /1/ # nb of guard cells in the x direction
+nyguard integer /1/ # nb of guard cells in the y direction
+nzguard integer /1/ # nb of guard cells in the z direction
+ixmin integer /0/ # position of first node of grid interior in the x direction (FORTRAN indexing)
+iymin integer /0/ # position of first node of grid interior in the y direction (FORTRAN indexing)
+izmin integer /0/ # position of first node of grid interior in the z direction (FORTRAN indexing)
+ixmax integer /obj__%nx/ # position of last node of grid interior in the x direction (FORTRAN indexing)
+iymax integer /obj__%ny/ # position of last node of grid interior in the y direction (FORTRAN indexing)
+izmax integer /obj__%nz/ # position of last node of grid interior in the z direction (FORTRAN indexing)
+ixming integer /-obj__%nxguard/ # position of first node of entire grid (interior+guard nodes) in the x direction (FORTRAN indexing)
+iyming integer /-obj__%nyguard/ # position of first node of entire grid (interior+guard nodes) in the y direction (FORTRAN indexing)
+izming integer /-obj__%nzguard/ # position of first node of entire grid (interior+guard nodes) in the z direction (FORTRAN indexing)
+ixmaxg integer /obj__%ixmax+obj__%nxguard/ # position of last node of entire grid (interior+guard nodes) in the x direction (FORTRAN indexing)
+iymaxg integer /obj__%iymax+obj__%nyguard/ # position of last node of entire grid (interior+guard nodes) in the y direction (FORTRAN indexing)
+izmaxg integer /obj__%izmax+obj__%nzguard/ # position of last node of entire grid (interior+guard nodes) in the z direction (FORTRAN indexing)
+jxmin integer /0/ # position of first node of grid interior in the x direction (Python indexing)
+jymin integer /0/ # position of first node of grid interior in the y direction (Python indexing)
+jzmin integer /0/ # position of first node of grid interior in the z direction (Python indexing)
+jxmax integer /0/ # position of last node of grid interior in the x direction (Python indexing)
+jymax integer /0/ # position of last node of grid interior in the y direction (Python indexing)
+jzmax integer /0/ # position of last node of grid interior in the z direction (Python indexing)
+jxming integer /0/ # position of first node of entire grid (interior+guard nodes) in the x direction (Python indexing)
+jyming integer /0/ # position of first node of entire grid (interior+guard nodes) in the y direction (Python indexing)
+jzming integer /0/ # position of first node of entire grid (interior+guard nodes) in the z direction (Python indexing)
+jxmaxg integer /0/ # position of last node of entire grid (interior+guard nodes) in the x direction (Python indexing)
+jymaxg integer /0/ # position of last node of entire grid (interior+guard nodes) in the y direction (Python indexing)
+jzmaxg integer /0/ # position of last node of entire grid (interior+guard nodes) in the z direction (Python indexing)
 nxp integer /0/
 nyp integer /0/
 nzp integer /0/
+nxmp integer /0/
+nymp integer /0/
+nzmp integer /0/
 ntimes integer /1/
 nconds integer /0/
 nxcond integer /0/
@@ -221,6 +303,7 @@ Ax(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 Ay(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 Az(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 Phi(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+Mp(-nxguard:nxmp+nxguard,-nyguard:nymp+nyguard,-nzguard:nzmp+nzguard,3) _real
 
 %%%%%%%% EM3D_KYEEFIELDtype:
 fieldtype integer /-1/
