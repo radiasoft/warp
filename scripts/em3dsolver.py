@@ -32,10 +32,11 @@ class EM3D(FieldSolver):
                     'laser_frequency':None,'laser_source':2,
                     'laser_focus':None,'laser_focus_velocity':0.,
                     'nfield_subcycle':1,'density_1d':0,
-                    'autoset_timestep':true,'dtcoef':0.99}
+                    'autoset_timestep':true,'dtcoef':1.,#0.99,
+                    'deposit_energy_density':false}
 
   def __init__(self,**kw):
-    self.grid_overlap=1
+    self.grid_overlap = 1
     FieldSolver.__init__(self,kwdict=kw)
 #    top.allspecl = true
     top.lcallfetchb = true
@@ -93,7 +94,8 @@ class EM3D(FieldSolver):
       if top.dt==0.:
         top.dt=dt
       else:
-        self.nfield_subcycle=int(top.dt/dt)+1
+        if top.dt<>dt:
+          self.nfield_subcycle=int(top.dt/dt)+1
     self.dtinit = top.dt
     
     # --- Create field and source arrays and other arrays.
@@ -144,7 +146,8 @@ class EM3D(FieldSolver):
                                    self.bounds[4], 
                                    self.bounds[1], 
                                    self.bounds[3], 
-                                   self.bounds[5])
+                                   self.bounds[5],
+                                   self.deposit_energy_density)
     self.field = self.block.core.yf
     
   def addpatch(self,ixpatch,iypatch,nxpatch,nypatch,rap):
@@ -225,7 +228,7 @@ class EM3D(FieldSolver):
     elif callable(self.laser_profile):
       self.laser_profile_func = self.laser_profile
     
-  def fetchefrompositions(self,x,y,z,ex,ey,ez):
+  def fetchefrompositions(self,x,y,z,ex,ey,ez,nox,noy,noz):
     n = len(x)
     if n == 0: return
     f = self.block.core.yf
@@ -234,15 +237,18 @@ class EM3D(FieldSolver):
                     f.xmin,f.ymin,f.zmin,
                     f.dx,f.dy,f.dz,
                     f.nx,f.ny,f.nz,
+                    f.nxguard,f.nyguard,f.nzguard,
                     f.Ex,f.Ey,f.Ez)
     elif top.efetch[w3d.jsfsapi]==4:
-      gete3d_linear_energy_conserving(n,x,y,z,ex,ey,ez,
+      gete3d_n_energy_conserving(n,x,y,z,ex,ey,ez,
                     f.xmin,f.ymin,f.zmin,
                     f.dx,f.dy,f.dz,
                     f.nx,f.ny,f.nz,
+                    f.nxguard,f.nyguard,f.nzguard,
+                    nox,noy,noz,
                     f.Ex,f.Ey,f.Ez)
 
-  def fetchbfrompositions(self,x,y,z,bx,by,bz):
+  def fetchbfrompositions(self,x,y,z,bx,by,bz,nox,noy,noz):
     n = len(x)
     if n == 0: return
     f = self.block.core.yf
@@ -251,12 +257,15 @@ class EM3D(FieldSolver):
                     f.xmin,f.ymin,f.zmin,
                     f.dx,f.dy,f.dz,
                     f.nx,f.ny,f.nz,
+                    f.nxguard,f.nyguard,f.nzguard,
                     f.Bx,f.By,f.Bz)
     elif top.efetch[w3d.jsfsapi]==4:
-      getb3d_linear_energy_conserving(n,x,y,z,bx,by,bz,
+      getb3d_n_energy_conserving(n,x,y,z,bx,by,bz,
                     f.xmin,f.ymin,f.zmin,
                     f.dx,f.dy,f.dz,
                     f.nx,f.ny,f.nz,
+                    f.nxguard,f.nyguard,f.nzguard,
+                    nox,noy,noz,
                     f.Bx,f.By,f.Bz)
     
   def fetchphifrompositions(self,x,z,phi):
@@ -292,14 +301,19 @@ class EM3D(FieldSolver):
       # --- point rho array to proper Jarray slice
       self.field.Rho = self.field.Rhoarray[:,:,:,top.ndtstorho[top.pgroup.ndts[js]-1]]
       # --- call routine performing current deposition
-      depose_rho_linear_serial(self.field.Rho,n,
+      f = self.block.core.yf
+      depose_rho_n(self.field.Rho,n,
                                top.pgroup.xp[i:i+n],
                                top.pgroup.yp[i:i+n],
                                top.pgroup.zp[i:i+n],
                                wfact,q*w,
-                               self.block.xmin,self.block.ymin,self.block.zmin,
-                               self.block.core.yf.dx,self.block.core.yf.dy,self.block.core.yf.dz,
-                               self.block.core.yf.nx,self.block.core.yf.ny,self.block.core.yf.nz,
+                               f.xmin,f.ymin,f.zmin,
+                               f.dx,f.dy,f.dz,
+                               f.nx,f.ny,f.nz,
+                               f.nxguard,f.nyguard,f.nzguard,
+                               top.depos_order[0,js],
+                               top.depos_order[1,js],
+                               top.depos_order[2,js],
                                l_particles_weight)
 
     # --- add slices
@@ -334,34 +348,58 @@ class EM3D(FieldSolver):
       for i in range(top.nsndts-1,-1,-1):
         if force_deposition or (top.it-1)%(2**i)==0:
           self.field.Jarray[:,:,:,:,i] = 0.
+          if self.deposit_energy_density:
+            self.field.Mp[...] = 0.
         
     # --- loop over species
-    for js,i,n,q,w in zip(arange(top.pgroup.ns),top.pgroup.ins-1,top.pgroup.nps,
-                       top.pgroup.sq,top.pgroup.sw):
-      if n == 0 or ((top.it-1)%top.pgroup.ndts[js]<>0 and not force_deposition): continue
+    for js,i,n,q,m,w in zip(arange(top.pgroup.ns),top.pgroup.ins-1,top.pgroup.nps,
+                       top.pgroup.sq,top.pgroup.sm,top.pgroup.sw):
+      if n == 0 or ((top.it-1)%top.pgroup.ndts[js]<>0): continue
       if top.wpid==0:
-        wfact = zeros(n,'d')
+        wfact = w
         l_particles_weight = false
       else:
-        wfact = top.pgroup.pid[i:i+n,top.wpid-1]
+        wfact = w*top.pgroup.pid[i:i+n,top.wpid-1]
         l_particles_weight = true
       # --- point J array to proper Jarray slice
       self.field.J = self.field.Jarray[:,:,:,:,top.ndtstorho[top.pgroup.ndts[js]-1]]
       # --- call routine performing current deposition
+      f = self.block.core.yf
       if 1:
-        depose_jxjyjz_esirkepov_linear_serial(self.field.J,n,
+        if not self.deposit_energy_density:
+          depose_jxjyjz_esirkepov_n(self.field.J,n,
                                             top.pgroup.xp[i:i+n],
                                             top.pgroup.yp[i:i+n],
                                             top.pgroup.zp[i:i+n],
                                             top.pgroup.uxp[i:i+n],
                                             top.pgroup.uyp[i:i+n],
                                             top.pgroup.uzp[i:i+n],
-                                            top.pgroup.gaminv[i:i+n],wfact,q*w,
-                                            self.block.xmin,self.block.ymin,self.block.zmin,
+                                            top.pgroup.gaminv[i:i+n],wfact,q,
+                                            f.xmin,f.ymin,f.zmin,
                                             top.dt*top.pgroup.ndts[js],
-                                            self.block.core.yf.dx,self.block.core.yf.dy,self.block.core.yf.dz,
-                                            self.block.core.yf.nx,self.block.core.yf.ny,self.block.core.yf.nz,
+                                            f.dx,f.dy,f.dz,
+                                            f.nx,f.ny,f.nz,
+                                            f.nxguard,f.nyguard,f.nzguard,
+                                            top.depos_order[0,js],
+                                            top.depos_order[1,js],
+                                            top.depos_order[2,js],
                                             l_particles_weight)
+        else:
+          depose_jxjyjz_pxpypz_esirkepov_linear_serial(self.field.J,self.field.Mp,n,
+                                            top.pgroup.xp[i:i+n],
+                                            top.pgroup.yp[i:i+n],
+                                            top.pgroup.zp[i:i+n],
+                                            top.pgroup.uxp[i:i+n],
+                                            top.pgroup.uyp[i:i+n],
+                                            top.pgroup.uzp[i:i+n],
+                                            top.pgroup.gaminv[i:i+n],wfact,q,m,
+                                            f.xmin,f.ymin,f.zmin,
+                                            top.dt*top.pgroup.ndts[js],
+                                            f.dx,f.dy,f.dz,
+                                            f.nx,f.ny,f.nz,
+                                            f.nxguard,f.nyguard,f.nzguard,
+                                            l_particles_weight,
+                                            top.lrelativ)
       else:
         Jx=self.field.J[1,1,:,0].copy()
         Jy=self.field.J[1,1,:,1].copy()
@@ -373,11 +411,12 @@ class EM3D(FieldSolver):
                                             top.pgroup.uxp[i:i+n],
                                             top.pgroup.uyp[i:i+n],
                                             top.pgroup.uzp[i:i+n],
-                                            top.pgroup.gaminv[i:i+n],wfact,q*w,
-                                            self.block.xmin,self.block.ymin,self.block.zmin,
+                                            top.pgroup.gaminv[i:i+n],wfact,q,
+                                            f.xmin,f.ymin,f.zmin,
                                             top.dt*top.pgroup.ndts[js],
-                                            self.block.core.yf.dx,self.block.core.yf.dy,self.block.core.yf.dz,
-                                            self.block.core.yf.nz,
+                                            f.dx,f.dy,f.dz,
+                                            f.nx,f.ny,f.nz,
+                                            f.nxguard,f.nyguard,f.nzguard,
                                             l_particles_weight)
         self.field.J[1,1,:,0]+=Jx
         self.field.J[1,1,:,1]+=Jy
@@ -406,6 +445,12 @@ class EM3D(FieldSolver):
     # --- smooth current density 
 #    if self.l_smoothdensity:self.smoothdensity()
     if self.l_verbose:print 'loadj done'
+#    print 'sum',sum(self.field.Mp[...,-1]*w3d.dz), \
+#          sum(emass*(1./where(top.pgroup.gaminv==0.,1.,top.pgroup.gaminv)-1.)*top.pgroup.sw[0]*clight**2), \
+#          sum(self.field.J[...,-1]**2)*(top.dt/eps0)**2*eps0*w3d.dz/2
+#    print 'max',maxnd(self.field.Mp[...,-1]*w3d.dz), \
+#          maxnd(emass*(1./where(top.pgroup.gaminv==0.,1.,top.pgroup.gaminv)-1.)*top.pgroup.sw[0]*clight**2), \
+#          maxnd(self.field.J[...,-1]**2)*(top.dt/eps0)**2*eps0*w3d.dz/2
 
 
   def apply_current_bc(self):
@@ -419,7 +464,7 @@ class EM3D(FieldSolver):
     smooth2d_lindman(self.field.J[:,:,2],self.field.nx,self.field.ny)
 
   def fetche(self):
-#    print 'fetche'
+    if self.l_verbose:print 'fetche'
     x=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
     y=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
     z=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
@@ -429,11 +474,14 @@ class EM3D(FieldSolver):
     ex[:] = 0.
     ey[:] = 0.
     ez[:] = 0.
-    self.fetchefrompositions(x,y,z,ex,ey,ez)
+    nox = top.depos_order[0,w3d.jsfsapi]
+    noy = top.depos_order[1,w3d.jsfsapi]
+    noz = top.depos_order[2,w3d.jsfsapi]
+    self.fetchefrompositions(x,y,z,ex,ey,ez,nox,noy,noz)
 #    print 'e',ex,ey,ez
 
   def fetchb(self):
-#    print 'fetchb'
+    if self.l_verbose:print 'fetchb'
     x=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
     y=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
     z=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
@@ -443,7 +491,11 @@ class EM3D(FieldSolver):
     bx[:] = 0.
     by[:] = 0.
     bz[:] = 0.
-    self.fetchbfrompositions(x,y,z,bx,by,bz)
+    nox = top.depos_order[0,w3d.jsfsapi]
+    noy = top.depos_order[1,w3d.jsfsapi]
+    noz = top.depos_order[2,w3d.jsfsapi]
+    self.fetchbfrompositions(x,y,z,bx,by,bz,nox,noy,noz)
+    if self.l_verbose:print 'fetchb done.'
 #    print 'b',bx,by,bz,top.pgroup.bz
 
   def fetchphi(self):
@@ -525,6 +577,7 @@ class EM3D(FieldSolver):
                       mgmaxlevels=mgmaxlevels,
                       my_index=self.my_index,nslaves=self.nslaves,
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
+
     self.field.nconds = self.getconductorobject().interior.n
     self.field.nxcond = self.field.nx
     self.field.nycond = self.field.ny
@@ -694,7 +747,6 @@ class EM3D(FieldSolver):
     if top.efetch[0]<>4:node2yee3d(self.block.core.yf)
     dt = top.dt/self.nfield_subcycle
     push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
-    if top.efetch[0]<>4:yee2node3d(self.block.core.yf)
     if self.l_verbose:print 'solve 2nd half done'
 #    yee2node3d(self.block.core.yf)
  #   self.move_window_fields()
@@ -716,7 +768,6 @@ class EM3D(FieldSolver):
 #      self.add_laser(field)
 #      grimax(field)
 #    node2yee3d(self.block.core.yf)
-    if top.efetch[0]<>4:node2yee3d(self.block.core.yf)
     dt = top.dt/self.nfield_subcycle
     push_em3d_eef(self.block,dt,0,self.l_pushf,self.l_pushpot)
     self.add_laser(self.field)
@@ -914,7 +965,7 @@ def allocatef(f):
     f.fieldtype = f.yf.fieldtype
     f.proc=me
 
-def pyinit_3dem_block(nx, ny, nz, nbndx, nbndy, nbndz, nxguard, nyguard, nzguard, dt, dx, dy, dz, clight, mu0, xmin, ymin, zmin, xlb, ylb, zlb, xrb, yrb, zrb):
+def pyinit_3dem_block(nx, ny, nz, nbndx, nbndy, nbndz, nxguard, nyguard, nzguard, dt, dx, dy, dz, clight, mu0, xmin, ymin, zmin, xlb, ylb, zlb, xrb, yrb, zrb,deposit_energy_density):
   
   l_1d_decomposition=true
   
@@ -962,28 +1013,60 @@ def pyinit_3dem_block(nx, ny, nz, nbndx, nbndy, nbndz, nxguard, nyguard, nzguard
   b.zlbnd = zlb
   b.zrbnd = zrb
 
-  b.core.yf.nx = nx
-  b.core.yf.ny = ny
-  b.core.yf.nz = nz
-  b.core.yf.nxguard = nxguard
-  b.core.yf.nyguard = nyguard
-  b.core.yf.nzguard = nzguard
-  b.core.yf.xmin = xmin
-  b.core.yf.ymin = ymin
-  b.core.yf.zmin = zmin
-  b.core.yf.dx = dx
-  b.core.yf.dy = dy
-  b.core.yf.dz = dz
-  b.core.yf.xmax = xmin+dx*nx
-  b.core.yf.ymax = ymin+dy*ny
-  b.core.yf.zmax = zmin+dz*nz
-  b.core.yf.dxi = 1./dx
-  b.core.yf.dyi = 1./dy
-  b.core.yf.dzi = 1./dz
-  b.core.yf.clight = clight
-  b.core.yf.mu0    = mu0
+  f=b.core.yf
+  f.nx = nx
+  f.ny = ny
+  f.nz = nz
+  f.nxguard = nxguard
+  f.nyguard = nyguard
+  f.nzguard = nzguard
+  # set min/max of cells positions with FORTRAN indexing
+  f.ixmin = 0
+  f.iymin = 0
+  f.izmin = 0
+  f.ixmax = f.nx
+  f.iymax = f.ny
+  f.izmax = f.nz
+  f.ixming = -f.nxguard
+  f.iyming = -f.nyguard
+  f.izming = -f.nzguard
+  f.ixmaxg = f.ixmax+f.nxguard
+  f.iymaxg = f.iymax+f.nyguard
+  f.izmaxg = f.izmax+f.nzguard
+  # set min/max of cells positions with Python indexing
+  f.jxmin = f.ixmin-f.ixming
+  f.jymin = f.iymin-f.iyming
+  f.jzmin = f.izmin-f.izming
+  f.jxmax = f.ixmax-f.ixming
+  f.jymax = f.iymax-f.iyming
+  f.jzmax = f.izmax-f.izming
+  f.jxming = 0
+  f.jyming = 0
+  f.jzming = 0
+  f.jxmaxg = f.ixmaxg-f.ixming
+  f.jymaxg = f.iymaxg-f.iyming
+  f.jzmaxg = f.izmaxg-f.izming
+  f.xmin = xmin
+  f.ymin = ymin
+  f.zmin = zmin
+  f.dx = dx
+  f.dy = dy
+  f.dz = dz
+  f.xmax = xmin+dx*nx
+  f.ymax = ymin+dy*ny
+  f.zmax = zmin+dz*nz
+  f.dxi = 1./dx
+  f.dyi = 1./dy
+  f.dzi = 1./dz
+  f.clight = clight
+  f.mu0    = mu0
 
-  b.core.yf.gchange()
+  if deposit_energy_density:
+    f.nxmp=f.nx
+    f.nymp=f.ny
+    f.nzmp=f.nz
+
+  f.gchange()
   
   nnx=em3d.nn
   nny=em3d.nn
