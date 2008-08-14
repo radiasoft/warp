@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.238 $, $Date: 2008/07/23 21:28:58 $
+#@(#) File TOP.V, version $Revision: 3.239 $, $Date: 2008/08/14 18:56:54 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.238 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.239 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -73,6 +73,7 @@ nparpgrp  integer /NPARPGRP/ +dump # Number of particles per group. Effects
 dirichlet integer /0/        # constant for boundary condition (constant potential)
 neumann   integer /1/        # constant for boundary condition (derivative = 0)
 periodic  integer /2/        # constant for boundary condition 
+openbc    integer /3/        # constant for boundary condition
 absorb    integer /0/        # constant for particle absorption at boundaries
 reflect   integer /1/        # constant for particle reflection at boundaries
 
@@ -239,6 +240,7 @@ negrd     integer /NELEMENT/  # No. of elements with E field on a 3-D grid
 nbgrd     integer /NELEMENT/  # No. of elements with B field on a 3-D grid
 npgrd     integer /NELEMENT/  # No. of elements with potential on a 3-D grid
 nbsqgrad  integer /NELEMENT/  # No. of elements with grad B^2 field on a 3-D grid
+nlmap    integer /NELEMENT/  # No. of linear maps elements in lattice
 drftzs(0:ndrft)   _real [m]   # Z's of drift starts
 drftze(0:ndrft)   _real [m]   # Z's of drift ends
 drftap(0:ndrft)   _real [m]   # Aperture in drifts
@@ -524,6 +526,14 @@ bsqgradsy(0:nbsqgrad) _integer /0/   # Level of symmetry in the bsqgrad data.
                                # Defaul is no symmetry.
 bsqgradol(0:nbsqgrad)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
+lmapzs(0:nlmap)        _real [m] # Z's of linear map starts 
+lmapze(0:nlmap)        _real [m] # Z's of linear map ends   
+lmapap(0:nlmap)   _real [m]   # Aperture of map element
+lmapk(0:nlmap) _real []       # quad field strength 
+lmapangle(0:nlmap) _real []   # bend angle
+lmaptype(0:nlmap) _integer    # map element type (0=drift, 1=bend, 2=quad)
+lmapol(0:nlmap)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 drfts     logical             # Flag for existence of drfts (auto set)
 bends     logical             # Flag for existence of bends (auto set)
 dipos     logical             # Flag for existence of dipos (auto set)
@@ -537,6 +547,7 @@ egrds     logical             # Flag for existence of egrds (auto set)
 bgrds     logical             # Flag for existence of bgrds (auto set)
 pgrds     logical             # Flag for existence of pgrds (auto set)
 bsqgrads  logical             # Flag for existence of bsqgrads (auto set)
+lmaps     logical             # Flag for existence of linear maps (auto set)
 diposet   logical  /.true./   # Auto-set dipoles from bend locations and radii 
 ldipocond logical  /.false./  # Auto generate flat dipole plates from the
                               # dipole parameters
@@ -730,6 +741,11 @@ obsqgradoi(0:nbsqgrad)   _integer     # Overlap indices for bsqgrad elements
 obsqgradio(0:nbsqgrad)   _integer     # Overlap indices for bsqgrad elements
 obsqgradii(nbsqgradol)   _integer     # Overlap indices for bsqgrad elements
 obsqgradnn(nbsqgradol)   _integer     # Number of bsqgrad elements in overlap levels
+nlmapol            integer /0/ # Maximum level of overlapping lmap elements
+olmapoi(0:nlmap)   _integer     # Overlap indices for lmap elements
+olmapio(0:nlmap)   _integer     # Overlap indices for lmap elements
+olmapii(nlmapol)   _integer     # Overlap indices for lmap elements
+olmapnn(nlmapol)   _integer     # Number of lmap elements in overlap levels
 cdrftzs(0:nzlmax,ndrftol)    _real [m]     # by z, Z's of drft starts
 cdrftze(0:nzlmax,ndrftol)    _real [m]     # by z, Z's of drft ends
 cdrftid(0:nzlmax,ndrftol) _integer         # by z, Index to drft arrays
@@ -799,6 +815,9 @@ cpgrdid(0:nzlmax,npgrdol) _integer [1]     # by z, Index of pgrd arrays
 cbsqgradzs(0:nzlmax,nbsqgradol)    _real [m]     # by z, Z's of 3-D B field start
 cbsqgradze(0:nzlmax,nbsqgradol)    _real [m]     # by z, Z's of 3-D B field end
 cbsqgradid(0:nzlmax,nbsqgradol) _integer [1]     # by z, Index of bsqgrad arrays
+clmapzs(0:nzlmax,nlmapol)    _real [m]     # by z, Z's of lmap starts
+clmapze(0:nzlmax,nlmapol)    _real [m]     # by z, Z's of lmap ends
+clmapid(0:nzlmax,nlmapol) _integer         # by z, Index to lmap arrays
 lindrft(0:ndrftol)        _logical         # Flag for when drft element in mesh
 linbend                    logical         # Flag for when bend element in mesh
 lindipo(0:ndipool)        _logical         # Flag for when dipo element in mesh
@@ -812,9 +831,7 @@ linegrd(0:negrdol)        _logical         # Flag for when egrd element in mesh
 linbgrd(0:nbgrdol)        _logical         # Flag for when bgrd element in mesh
 linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
 linbsqgrad(0:nbsqgradol)        _logical         # Flag for when bsqgrad element in mesh
-Mtx(2,2)                  _real            # linear map in x
-Mty(2,2)                  _real            # linear map in y
-Map(6,6)                  _real            # linear 6-D map
+linlmap(0:nlmapol)        _logical         # Flag for when drft element in mesh
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
@@ -1199,6 +1216,8 @@ efetch(ns)     _integer /1/
    # Method 3 is generally fastest but requires lots of extra storage space.
    # Next best is 1.
 
+depos_order(3,ns)  _integer /1/
+   # Specifies order of spline used to deposit charge/current and gather fields
 vtilt           real    [1]   /0./
    # Velocity tilt, vz = vbeam*[1+vtilt*(zmid-z)/(zimax-zimin)]
    # thus deltav/vbeam = vtilt
@@ -2150,6 +2169,8 @@ eypredpid   integer /0/  # position of particles predicted Ey field in
                        # array pid (FORTRAN indexed: based 1)
 ezpredpid   integer /0/  # position of particles predicted Ez field in
                        # array pid (FORTRAN indexed: based 1)      
+lmappid   integer    /0/  # position of particle location in lmap lattice in array pid
+                       # (FORTRAN indexed: based 1)
 
 ssn    integer   /1/   # next particles 'social security number' available
 
