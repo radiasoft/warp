@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.405 $, $Date: 2008/07/31 00:45:18 $
+c@(#) File W3D.F, version $Revision: 3.406 $, $Date: 2008/08/14 21:12:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1381,13 +1381,13 @@ c     --- The pgroup%ldts variable should be removed since its not really needed
       end
 c=============================================================================
       subroutine positionadvance3d(pgroup,is,np,ipmin,interpdk,dt,
-     &                             bendres,bendradi)
+     &                             bendres,bendradi,vbeam)
       use ParticleGroupmodule
       use Particles, Only: xoldpid,yoldpid,zoldpid
-      use LatticeInternal, Only: Mtx, Mty
+c      use LatticeInternal, Only: Mtx, Mty
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,np,ipmin,interpdk
-      real(kind=8):: dt
+      real(kind=8):: dt,vbeam
       real(kind=8):: bendres(np),bendradi(np)
 
       real(kind=8),pointer:: zpo(:)
@@ -1409,10 +1409,11 @@ c     predictor-corrector.
       endif
 
       if (pgroup%l_maps(is-1)) then
-        call apply_simple_map(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-     &                           Mtx,Mty)
-        pgroup%zp(ipmin:ipmin+np-1) = pgroup%zp(ipmin:ipmin+np-1) 
-     &                              + pgroup%uzp(ipmin:ipmin+np-1)*pgroup%gaminv(ipmin:ipmin+np-1)*dt
+c        call apply_simple_map(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
+c     &                           Mtx,Mty)
+c        pgroup%zp(ipmin:ipmin+np-1) = pgroup%zp(ipmin:ipmin+np-1) 
+c     &                              + pgroup%uzp(ipmin:ipmin+np-1)*pgroup%gaminv(ipmin:ipmin+np-1)*dt
+        pgroup%zp(ipmin:ipmin+np-1) = pgroup%zp(ipmin:ipmin+np-1) + vbeam*dt
       else
         if (interpdk .ne. 0) then
           call xpush3dintrp(pgroup,np,is,ipmin,dt)
@@ -1854,7 +1855,7 @@ c             end of predictor-only if for vpush
 
 c           --- Position advance
             call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
-     &                             fulldt_s,bendres,bendradi)
+     &                             fulldt_s,bendres,bendradi,vbeam)
 c         --- HALFV
           elseif ((center == "halfv" .and. (interpdk(isid) .ne. 1 .or.
      &             allspecl)) .or. (center == "hbor2" .and.
@@ -1964,7 +1965,7 @@ c           --- Position advance
             if (center .ne. "hbor2") then
 c             --- hbor2 just does a v advance, no x push
               call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
-     &                               fulldt_s,bendres,bendradi)
+     &                               fulldt_s,bendres,bendradi,vbeam)
             endif
 
 c         --- SYNCHV or GEN
@@ -10486,7 +10487,7 @@ c         --- put forward by Lantz
 #endif
       elseif (fstype == 10) then
 c       --- RZ full-multigrid solver
-       if (solvergeom==RZgeom .or. solvergeom==XZgeom) then
+       if (solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
          call multigridrzf(iwhich,phi,rho,nx,nzlocal)
        elseif (solvergeom==XYgeom) then
          call multigridxyf2(iwhich,phi(:,:,0),rho,nx,ny)
