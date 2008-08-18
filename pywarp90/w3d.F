@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.406 $, $Date: 2008/08/14 21:12:14 $
+c@(#) File W3D.F, version $Revision: 3.407 $, $Date: 2008/08/18 02:24:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2268,7 +2268,7 @@ c  sets slice at nzlocal+1 equal to the slice at 1
       end if
 
 #ifdef MPIPARALLEL
-      call perpot3d_slave(phi,1,nx,ny,nzlocal,0,0)
+      call perpot3d_slave(phi,1,nx,ny,nzlocal,1,1)
 #else
       do iy=-1,ny+1
         do ix=-1,nx+1
