@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.191 $, $Date: 2008/07/31 00:45:18 $
+#@(#) File F3D.V, version $Revision: 3.192 $, $Date: 2008/08/26 19:59:19 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.191 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.192 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -956,6 +956,18 @@ conesintercept(ncones:integer,r_zmin:real,r_zmax:real,length:real,
         theta:real,phi:real,xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
+annulusconductorf(rmin:real,rmax:real,length:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
+annulusconductord(rmin:real,rmax:real,length:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
+annulusintercept(rmin:real,rmax:real,length:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 ztorusconductorf(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
         delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
@@ -1105,3 +1117,4 @@ timeresidualimplicites3d real /0./
 timeaverageperiodicphi3d real /0./
 timeapplyboundaryconditionses3d real /0./
 timeapplyparallelboundaryconditionses3d real /0./
+

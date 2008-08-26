@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.65 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.66 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -2286,7 +2286,7 @@ c The notation is that a negative distance means that the point is inside.
       stheta = sin(theta)
       cphi = cos(phi)
       sphi = sin(phi)
-c     --- In the limiting cases with the angles being exactly zero (or p/2)
+c     --- In the limiting cases with the angles being exactly zero (or pi/2)
 c     --- the algorithm breaks down. The sign of expressions dependent on
 c     --- the angles is important, and is lost when the angles are exactly
 c     --- zero (or pi/2). So the limiting cases is used where the angle
@@ -3351,6 +3351,585 @@ c normal angle of the surface at that point.
 
       return
       end
+c=======================================================================
+c=======================================================================
+      subroutine alignedannulus(rmin,rmax,zmin,zmax,xx,yy,zz,
+     &                          delmx,delpx,delmy,delpy,delmz,delpz,fuzz)
+      real(kind=8):: rmin,rmax,zmin,zmax
+      real(kind=8):: xx,yy,zz
+      real(kind=8):: delmx,delpx,delmy,delpy,delmz,delpz,fuzz
+
+      real(kind=8):: rsq
+
+      rsq = xx**2 + yy**2
+
+c     --- If point is not within the z extent of the cylinder
+      if (zz < zmin - fuzz) then
+        if (rmin**2 <= rsq .and. rsq <= rmax**2) delpz = zmin - zz
+        return
+      endif
+      if (zz > zmax + fuzz) then
+        if (rmin**2 <= rsq .and. rsq <= rmax**2) delmz = zz - zmax
+        return
+      endif
+
+c     --- Point inside the inner cylinder
+      if (rsq < rmin**2) then
+        delmx = (sqrt(rmin**2 - yy**2) + xx)
+        delpx = (sqrt(rmin**2 - yy**2) - xx)
+        delmy = (sqrt(rmin**2 - xx**2) + yy)
+        delpy = (sqrt(rmin**2 - xx**2) - yy)
+        return
+      endif
+
+c     --- Point is outside the outer cylinder
+      if (rsq > rmax**2) then
+        if (abs(yy) <= rmax) then
+          if (xx > 0) delmx = ( xx - sqrt(max(0.,rmax**2 - yy**2)))
+          if (xx < 0) delpx = (-xx - sqrt(max(0.,rmax**2 - yy**2)))
+        endif
+        if (abs(xx) <= rmax) then
+          if (yy > 0) delmy = ( yy - sqrt(max(0.,rmax**2 - xx**2)))
+          if (yy < 0) delpy = (-yy - sqrt(max(0.,rmax**2 - xx**2)))
+        endif
+        return
+      endif
+
+c     --- Point is between the two cylinders
+      if (rmin**2 < rsq .and. rsq < rmax**2) then
+        delmz = min(0.,zmin - zz)
+        delpz = min(0.,zz - zmax)
+        delmx = -(sqrt(rmax**2 - yy**2) + xx)
+        delpx = -(sqrt(rmax**2 - yy**2) - xx)
+        delmy = -(sqrt(rmax**2 - xx**2) + yy)
+        delpy = -(sqrt(rmax**2 - xx**2) - yy)
+        if (abs(yy) <= rmin) then
+          if (xx > 0) delmx = -( xx - sqrt(max(0.,rmin**2 - yy**2)))
+          if (xx < 0) delpx = -(-xx - sqrt(max(0.,rmin**2 - yy**2)))
+        endif
+        if (abs(xx) <= rmin) then
+          if (yy > 0) delmy = -( yy - sqrt(max(0.,rmin**2 - xx**2)))
+          if (yy < 0) delpy = -(-yy - sqrt(max(0.,rmin**2 - xx**2)))
+        endif
+        return
+      endif
+
+c     --- The point is on the inner cylinder exactly.
+      if (rsq < rmax**2) then
+        if (xx > 0.) then
+          delmx = -(sqrt(max(0.,rmin**2 - yy**2)) + xx)
+          delpx = 0.
+        else
+          delmx = 0.
+          delpx = -(sqrt(max(0.,rmin**2 - yy**2)) - xx)
+        endif
+        if (yy > 0.) then
+          delmy = -(sqrt(max(0.,rmin**2 - xx**2)) + yy)
+          delpy = 0.
+        else
+          delmy = 0.
+          delpy = -(sqrt(max(0.,rmin**2 - xx**2)) - yy)
+        endif
+        delmz = min(0.,zmin - zz)
+        delpz = min(0.,zz - zmax)
+      else if (rsq > rmin**2) then
+        if (xx > 0.) then
+          delmx = -(sqrt(max(0.,rmax**2 - yy**2)) + xx)
+          delpx = 0.
+        else
+          delmx = 0.
+          delpx = -(sqrt(max(0.,rmax**2 - yy**2)) - xx)
+        endif
+        if (yy > 0.) then
+          delmy = -(sqrt(max(0.,rmax**2 - xx**2)) + yy)
+          delpy = 0.
+        else
+          delmy = 0.
+          delpy = -(sqrt(max(0.,rmax**2 - xx**2)) - yy)
+        endif
+        delmz = min(0.,zmin - zz)
+        delpz = min(0.,zz - zmax)
+      endif
+
+      return
+      end
+c=======================================================================
+      subroutine nonalignedannulus(zlout,zlin,zuin,zuout,zlend,zuend,zz,
+     &                             delmz,delpz)
+      real(kind=8):: zlout,zlin,zuin,zuout,zlend,zuend
+      real(kind=8):: zz
+      real(kind=8):: delmz,delpz
+
+c     --- Only deal with points where the z-line hits at least the outer
+c     --- cylinder
+      if (zlout <= zuout) then
+
+c       --- Deal with points where the z-line intersects the both the outer
+c       --- and inner cylinders.
+        if (zlin <= zuin) then
+          if (zz < zlout) then
+            if (zlend <= zlout .and. zlout <= zuend) then
+              delpz = zlout - zz
+            else if (zlend <= zlin .and. zlin <= zuend) then
+              delpz = zlend - zz
+            else if (zlend <= zuin .and. zuin <= zuend) then
+              delpz = zuin - zz
+            endif
+          else if (zlout <= zz .and. zz <= zlin) then
+            if (zlend <= zz .and. zz <= zuend) then
+              delmz = max(zlend,zlout) - zz
+              delpz = zz - min(zuend,zlin)
+            else if (zz < zlend) then
+              if (zlend <= zlin) then
+                delpz = zlend - zz
+              else if (zlend <= zuin .and. zuin <= zuend) then
+                delpz = zuin - zz
+              else if (zuin <= zlend .and. zlend <= zuout) then
+                delpz = zlend - zz
+              endif
+            else if (zz > zuend) then
+              if (zuend >= zlout) delmz = zz - zuend
+            endif
+          else if (zlin < zz .and. zz < zuin) then
+            if (zlend <= zlin .and. zlin <= zuend) delmz = zz - zlin
+            if (zuend >= zuin .and. zuin >= zlend) delpz = zuin - zz
+          else if (zuin <= zz .and. zz <= zuout) then
+            if (zlend <= zz .and. zz <= zuend) then
+              delmz = max(zlend,zuin) - zz
+              delpz = zz - min(zuend,zuout)
+            else if (zz > zuend) then
+              if (zuin <= zuend) then
+                delmz = zz - zuend
+              else if (zlend <= zlin .and. zlin <= zuend) then
+                delmz = zz - zlin
+              else if (zlout <= zuend .and. zuend <= zlin) then
+                delmz = zz - zuend
+              endif
+            else if (zz < zlend) then
+              if (zlend <= zuout) delpz = zlend - zz
+            endif
+          else if (zz > zuout) then
+            if (zuend >= zuout .and. zuout >= zlend) then
+              delmz = zz - zuout
+            else if (zuend >= zuin .and. zuin >= zlend) then
+              delmz = zz - zuend
+            else if (zuend >= zlin .and. zlin >= zlend) then
+              delmz = zz - zlin
+            endif
+          endif
+
+        else
+c       --- Deal with point where the z-line only intersects the outer
+c       --- cylinder
+          if (zz < zlout) then
+            if (zlend <= zlout .and. zlout <= zuend) delpz = zlout - zz
+          else if (zlout <= zz .and. zz <= zuout) then
+            if (zlend <= zz .and. zz <= zuend) then
+              delmz = max(zlend,zlout) - zz
+              delpz = zz - min(zuend,zuout)
+            else if (zz < zlend) then
+              if (zlend <= zuout) delpz = zlend - zz
+            else if (zz > zuend) then
+              if (zuend >= zlout) delmz = zz - zuend
+            endif
+          else if (zz > zuout) then
+            if (zuend >= zuout .and. zuout >= zlend) delmz = zz - zuout
+          endif
+        endif
+              
+      endif
+
+      return
+      end
+c=======================================================================
+      subroutine AnnulusConductorF(rmin,rmax,length,theta,phi,xcent,ycent,zcent,
+     &                             n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                             fuzz)
+      real(kind=8):: rmin,rmax,length,theta,phi,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: delmx(n),delpx(n)
+      real(kind=8):: delmy(n),delpy(n)
+      real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
+
+c Finds distances along the axis of the points from a annulus at an arbitrary
+c angle.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: ctheta,stheta,cphi,sphi,ss,cci,sci,si,lenhalf
+      real(kind=8):: xx,yy,zz
+      real(kind=8):: a,b,cmin,cmax
+      real(kind=8):: z1,z2,zlin,zuin,zlout,zuout,zlend,zuend,zi1,zi2
+      real(kind=8):: x1,x2,xlin,xuin,xlout,xuout,xlend,xuend,xi1,xi2
+      real(kind=8):: y1,y2,ylin,yuin,ylout,yuout,ylend,yuend,yi1,yi2
+
+      ctheta = cos(theta)
+      stheta = sin(theta)
+      cphi = cos(phi)
+      sphi = sin(phi)
+c     --- In the limiting cases with the angles being exactly zero (or pi/2)
+c     --- the algorithm breaks down. The sign of expressions dependent on
+c     --- the angles is important, and is lost when the angles are exactly
+c     --- zero (or pi/2). So the limiting cases is used where the angle
+c     --- approaches but does not equal to zero (or pi/2).
+c     if (ctheta == 0) ctheta = SMALLPOS
+c     if (stheta == 0) stheta = SMALLPOS
+c     if (cphi == 0) cphi = SMALLPOS
+c     if (sphi == 0) sphi = SMALLPOS
+      if (ctheta*cphi .ne. 0.) cci = 1./(ctheta*cphi)
+      if (stheta*cphi .ne. 0.) sci = 1./(stheta*cphi)
+      if (sphi .ne. 0.) si  = 1./(sphi)
+      lenhalf = length*0.5
+
+      do i=1,n
+
+c       --- Set defaults
+        delmx(i) = LARGEPOS
+        delpx(i) = LARGEPOS
+        delmy(i) = LARGEPOS
+        delpy(i) = LARGEPOS
+        delmz(i) = LARGEPOS
+        delpz(i) = LARGEPOS
+
+c       --- Set temps
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+
+c       --- First, handle the special cases, where the annulus is aligned
+c       --- with one of the grid axes.
+        if (stheta**2 + (ctheta*sphi)**2 == 0.) then
+c         --- Along the z-axis
+          call alignedannulus(rmin,rmax,-lenhalf,+lenhalf,xx,yy,zz,
+     &                        delmx(i),delpx(i),
+     &                        delmy(i),delpy(i),
+     &                        delmz(i),delpz(i),fuzz)
+          cycle
+        endif
+
+        if ((ctheta)**2 + (stheta*sphi)**2 == 0.) then
+c         --- Along the x-axis
+          call alignedannulus(rmin,rmax,-lenhalf,+lenhalf,yy,zz,xx,
+     &                        delmy(i),delpy(i),
+     &                        delmz(i),delpz(i),
+     &                        delmx(i),delpx(i),fuzz)
+          cycle
+        endif
+
+        if ((cphi)**2 == 0.) then
+c         --- Along the y-axis
+          call alignedannulus(rmin,rmax,-lenhalf,+lenhalf,zz,xx,yy,
+     &                        delmz(i),delpz(i),
+     &                        delmx(i),delpx(i),
+     &                        delmy(i),delpy(i),fuzz)
+          cycle
+        endif
+
+c       --- delta z
+c       --- Coefficients of the quadratic
+        a = stheta**2 + (ctheta*sphi)**2
+        b = -2*xx*ctheta*stheta - 2*(yy*cphi - xx*stheta*sphi)*ctheta*sphi
+        cmin = (xx*ctheta)**2 + (yy*cphi - xx*stheta*sphi)**2 - rmin**2
+        cmax = (xx*ctheta)**2 + (yy*cphi - xx*stheta*sphi)**2 - rmax**2
+
+c       --- Get the point where the z-line intersects the end planes
+        if (ctheta*cphi .ne. 0.) then
+          z1 = (-lenhalf - xx*stheta*cphi - yy*sphi)*cci
+          z2 = (+lenhalf - xx*stheta*cphi - yy*sphi)*cci
+          zlend = min(z1,z2)
+          zuend = max(z1,z2)
+        else
+          zlend = -LARGEPOS
+          zuend = +LARGEPOS
+c         --- The x ends need to be calculated to check if the point is
+c         --- between the end planes
+          x1 = (-lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+          x2 = (+lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+          xlend = min(x1,x2)
+          xuend = max(x1,x2)
+        endif
+
+c       --- Check if z-line intersects the inner cylinder
+        if (b**2 - 4*a*cmin >= 0) then
+c         --- Get the two points of intersection
+          ss = sqrt(b**2 - 4*a*cmin)
+          z1 = (-b-ss)/(2*a)
+          z2 = (-b+ss)/(2*a)
+          zlin = min(z1,z2)
+          zuin = max(z1,z2)
+        else
+          zlin = +LARGEPOS
+          zuin = -LARGEPOS
+        endif
+c       --- Check if z-line intersects the outer cylinder
+        if (b**2 - 4*a*cmax >= 0) then
+c         --- Get the two points of intersection
+          ss = sqrt(b**2 - 4*a*cmax)
+          z1 = (-b-ss)/(2*a)
+          z2 = (-b+ss)/(2*a)
+          zlout = min(z1,z2)
+          zuout = max(z1,z2)
+        else
+          zlout = +LARGEPOS
+          zuout = -LARGEPOS
+        endif
+
+        if (ctheta*cphi .ne. 0. .or. (xlend <= xx .and. xx < xuend)) then
+          call nonalignedannulus(zlout,zlin,zuin,zuout,zlend,zuend,zz,
+     &                           delmz(i),delpz(i))
+        endif
+
+c       --- delta x
+        a = (ctheta)**2 + (stheta*sphi)**2
+        b = -2*zz*stheta*ctheta - 2*(yy*cphi - zz*ctheta*sphi)*stheta*sphi
+        cmin = (zz*stheta)**2 + (yy*cphi - zz*ctheta*sphi)**2 - rmin**2
+        cmax = (zz*stheta)**2 + (yy*cphi - zz*ctheta*sphi)**2 - rmax**2
+
+c       --- Get the point where the x-line intersects the end planes
+        if (stheta*cphi .ne. 0.) then
+          x1 = (-lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+          x2 = (+lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+          xlend = min(x1,x2)
+          xuend = max(x1,x2)
+        else
+          xlend = -LARGEPOS
+          xuend = +LARGEPOS
+        endif
+
+c       --- Check if x-line intersects the inner cylinder
+        if (b**2 - 4*a*cmin >= 0) then
+c         --- Get the two points of intersection
+          ss = sqrt(b**2 - 4*a*cmin)
+          x1 = (-b-ss)/(2*a)
+          x2 = (-b+ss)/(2*a)
+          xlin = min(x1,x2)
+          xuin = max(x1,x2)
+        else
+          xlin = +LARGEPOS
+          xuin = -LARGEPOS
+        endif
+c       --- Check if x-line intersects the outer cylinder
+        if (b**2 - 4*a*cmax >= 0) then
+c         --- Get the two points of intersection
+          ss = sqrt(b**2 - 4*a*cmax)
+          x1 = (-b-ss)/(2*a)
+          x2 = (-b+ss)/(2*a)
+          xlout = min(x1,x2)
+          xuout = max(x1,x2)
+        else
+          xlout = +LARGEPOS
+          xuout = -LARGEPOS
+        endif
+
+        if (stheta*cphi .ne. 0. .or. (zlend <= zz .and. zz <= zuend)) then
+          call nonalignedannulus(xlout,xlin,xuin,xuout,xlend,xuend,xx,
+     &                           delmx(i),delpx(i))
+        endif
+
+c       --- delta y
+        a = (cphi)**2
+        b = -2*(zz*ctheta*sphi + xx*stheta*sphi)*cphi
+        cmin = (xx*ctheta - zz*stheta)**2 + (zz*ctheta*sphi + xx*stheta*sphi)**2
+     &      -rmin**2
+        cmax = (xx*ctheta - zz*stheta)**2 + (zz*ctheta*sphi + xx*stheta*sphi)**2
+     &      -rmax**2
+
+c       --- Get the point where the y-line intersects the end planes
+        if (sphi .ne. 0.) then
+          y1 = (-lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+          y2 = (+lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+          ylend = min(y1,y2)
+          yuend = max(y1,y2)
+        else
+          ylend = -LARGEPOS
+          yuend = +LARGEPOS
+        endif
+
+c       --- Check if y-line intersects the inner cylinder
+        if (b**2 - 4*a*cmin >= 0) then
+c         --- Get the two points of intersection
+          ss = sqrt(b**2 - 4*a*cmin)
+          y1 = (-b-ss)/(2*a)
+          y2 = (-b+ss)/(2*a)
+          ylin = min(y1,y2)
+          yuin = max(y1,y2)
+        else
+          ylin = +LARGEPOS
+          yuin = -LARGEPOS
+        endif
+c       --- Check if y-line intersects the outer cylinder
+        if (b**2 - 4*a*cmax >= 0) then
+c         --- Get the two points of intersection
+          ss = sqrt(b**2 - 4*a*cmax)
+          y1 = (-b-ss)/(2*a)
+          y2 = (-b+ss)/(2*a)
+          ylout = min(y1,y2)
+          yuout = max(y1,y2)
+        else
+          ylout = +LARGEPOS
+          yuout = -LARGEPOS
+        endif
+
+        if (sphi .ne. 0. .or. (zlend <= zz .and. zz <= zuend)) then
+          call nonalignedannulus(ylout,ylin,yuin,yuout,ylend,yuend,yy,
+     &                           delmy(i),delpy(i))
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine AnnulusConductorD(rmin,rmax,length,theta,phi,
+     &                             xcent,ycent,zcent,
+     &                             n,x,y,z,distance)
+      real(kind=8):: rmin,rmax,length,theta,phi,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a annulus at an arbitrary angle.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: ctheta,stheta,cphi,sphi
+      real(kind=8):: xx,yy,zz,xp,yp,zp,rrin,rrout,dd
+
+      ctheta = cos(theta)
+      stheta = sin(theta)
+      cphi = cos(phi)
+      sphi = sin(phi)
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+        xp = xx*ctheta - zz*stheta
+        yp = yy*cphi - zz*ctheta*sphi - xx*stheta*sphi
+        zp = zz*ctheta*cphi + xx*stheta*cphi + yy*sphi
+
+        rrin  = rmin - sqrt(xp**2 + yp**2)
+        rrout = sqrt(xp**2 + yp**2) - rmax
+        zz = abs(zp) - length*0.5
+
+        if (rrout > 0.) then
+c         --- Outside the outer cylinder
+          dd = sqrt(rrout**2 + max(0.,zz)**2)
+        else if (rrin > 0.) then
+c         --- Inside the inner cylinder
+          dd = sqrt(rrin**2 + max(0.,zz)**2)
+        else if (zz > 0.) then
+c         --- Within the annular radii, but beyond the z extent
+          dd = zz
+        else
+c         --- Finally, within the annulus
+          dd = max(max(rrin,rrout),zz)
+        endif
+        distance(i) = dd
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine AnnulusIntercept(rmin,rmax,length,theta,phi,xcent,ycent,zcent,
+     &                            n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
+      real(kind=8):: rmin,rmax,length,theta,phi,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
+      real(kind=8):: xi(n),yi(n),zi(n),itheta(n),iphi(n)
+
+c Finds place where particle inside intercepted the surface and the
+c normal angle of the surface at that point.
+
+      integer(ISZ):: i
+      real(kind=8):: ttheta(n),tphi(n)
+      real(kind=8):: tthetaout(n),tphiout(n)
+      real(kind=8):: xx(n),yy(n),zz(n)
+      real(kind=8):: xp(n),yp(n),zp(n),vxp(n),vyp(n),vzp(n)
+      real(kind=8):: xn(n),yn(n),zn(n),rn(n)
+      real(kind=8):: xnout(n),ynout(n),znout(n)
+      real(kind=8):: vsq,tin,tout
+
+c     --- Translate and rotate to the Annulus frame
+      xx = x - xcent
+      yy = y - ycent
+      zz = z - zcent
+      xp = +xx*cos(theta)                        - zz*sin(theta)
+      yp = -xx*sin(theta)*sin(phi) + yy*cos(phi) - zz*cos(theta)*sin(phi)
+      zp = +xx*sin(theta)*cos(phi) + yy*sin(phi) + zz*cos(theta)*cos(phi)
+      vxp = +vx*cos(theta)                        - vz*sin(theta)
+      vyp = -vx*sin(theta)*sin(phi) + vy*cos(phi) - vz*cos(theta)*sin(phi)
+      vzp = +vx*sin(theta)*cos(phi) + vy*sin(phi) + vz*cos(theta)*cos(phi)
+
+c     --- Get data for both inner and out cylinders
+      call ZCylinderIntercept(rmin,length,0.,0.,0.,
+     &                        n,xp,yp,zp,vxp,vyp,vzp,xn,yn,zn,ttheta,tphi)
+      call ZCylinderIntercept(rmax,length,0.,0.,0.,
+     &                        n,xp,yp,zp,vxp,vyp,vzp,xnout,ynout,znout,
+     &                        tthetaout,tphiout)
+
+c     --- Find the most recent intercept time
+      do i=1,n
+        vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+        if (vsq == 0.) cycle
+
+c       --- Find the intercept times to the inner and outer cylinders.
+c       --- It shouldn't matter which direction is used, as long as the
+c       --- velocity is not zero.
+c       --- Note that t is time since the intercept.
+        if (vxp(i) .ne. 0.) then
+          tin = (xp(i) - xn(i))/vxp(i)
+          tout = (xp(i) - xnout(i))/vxp(i)
+        else if (vyp(i) .ne. 0.) then
+          tin = (yp(i) - yn(i))/vyp(i)
+          tout = (yp(i) - ynout(i))/vyp(i)
+        else if (vzp(i) .ne. 0.) then
+          tin = (zp(i) - zn(i))/vzp(i)
+          tout = (zp(i) - znout(i))/vzp(i)
+        endif
+
+c       --- The output is placed in the xn etc arrays. If tout is the
+c       --- smaller positive intercept time, then swap that data into
+c       --- those output arrays.
+        if ((tin > 0. .and. tout > 0. .and. tout < tin) .or.
+     &      (tin < 0. .and. tout > 0.)) then
+          xn(i) = xnout(i)
+          yn(i) = ynout(i)
+          zn(i) = znout(i)
+          ttheta(i) = tthetaout(i)
+          tphi(i) = tphiout(i)
+        endif
+
+      enddo
+
+c     --- Rotate and translate interception points to lab frame
+      xi = +xn*cos(theta) - yn*sin(theta)*sin(phi) + zn*sin(theta)*cos(phi)
+      yi =                + yn*cos(phi)            + zn*sin(phi)
+      zi = -xn*sin(theta) - yn*cos(theta)*sin(phi) + zn*cos(theta)*cos(phi)
+      xi = xi + xcent
+      yi = yi + ycent
+      zi = zi + zcent
+
+c     --- Get points on surface normal at the unit sphere
+      xp = sin(ttheta)*cos(tphi)
+      yp = sin(ttheta)*sin(tphi)
+      zp = cos(ttheta)
+c     --- Rotate to the lab frame
+      xn = +xp*cos(theta) - yp*sin(theta)*sin(phi) + zp*sin(theta)*cos(phi)
+      yn =                + yp*cos(phi)            + zp*sin(phi)
+      zn = -xp*sin(theta) - yp*cos(theta)*sin(phi) + zp*cos(theta)*cos(phi)
+c     --- Calculate angles in lab frame
+      rn = sqrt(xn**2 + yn**2)
+      itheta = atan2(rn,zn)
+      iphi = atan2(yn,xn)
+
+      return
+      end
+c=======================================================================
 c=======================================================================
       subroutine BeamletplateConductorF(za,zb,z0,thickness,xcent,ycent,zcent,
      &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
