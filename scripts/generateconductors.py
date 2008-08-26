@@ -22,6 +22,7 @@ Cylinders:
  YCylinderOut(radius,length,...)
  YCylinderElliptic(ellipticity,radius,length,...)
  YCylinderEllipticOut(ellipticity,radius,length,...)
+ Annulus(rmin,rmax,length,theta=0.,phi=0.,...)
  ZAnnulus(rmin,rmax,length,...)
  ZAnnulusElliptic(ellipticity,rmin,rmax,length,...)
 
@@ -108,7 +109,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.186 2008/08/04 23:23:24 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.187 2008/08/26 20:00:21 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -4217,6 +4218,90 @@ Between surfaces of revolution aligned along the Y axis
                             condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
                             kw=kw)
+
+#============================================================================
+class Annulus(Assembly):
+  """
+Annulus class
+  - rmin,rmax,length: annulus size
+  - theta=0,phi=0: angle of annulus relative to z-axis
+    theta is angle in z-x plane
+    phi is angle in z-y plane
+  - voltage=0: annulus voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of annulus
+  - condid=1: conductor id of annulus, must be integer, or can be 'next' in
+              which case a unique ID is chosen
+  """
+  def __init__(self,rmin,rmax,length,theta=0.,phi=0.,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+    assert (rmin<rmax),"rmin must be less than rmax"
+    kwlist = ['rmin','rmax','length','theta','phi']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                           annulusconductorf,annulusconductord,
+                           annulusintercept,
+                           kw=kw)
+    self.rmin   = rmin
+    self.rmax   = rmax
+    self.length = length
+    self.theta  = theta
+    self.phi    = phi
+
+    # --- This is the easiest thing to do without thinking.
+    ll = sqrt(self.rmax**2 + (self.length/2.)**2)
+    self.createextent([-ll,-ll,-ll],[+ll,+ll,+ll])
+
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+    """
+Plots the r versus z
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 199.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmin=0.: inner range in r to include in plot
+    """
+    # --- This is kind of a hack, but this routine doesn't make much sense
+    # --- for an arbitrarily rotated annulus.
+    r = array([self.rmin,self.rmin,self.rmax,self.rmax,self.rmin])
+    z = self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
+
+    ct = cos(self.theta)
+    st = sin(self.theta)
+    cp = cos(self.phi)
+    sp = sin(self.phi)
+
+    xp = +r*ct - 0*st*sp + z*st*cp
+    yp =       + 0*cp    + z*sp
+    zp = -r*st - 0*ct*sp + z*ct*cp
+    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0)
+
+    xp = -r*ct - 0*st*sp + z*st*cp
+    yp =       + 0*cp    + z*sp
+    zp = +r*st - 0*ct*sp + z*ct*cp
+    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0)
+
+  def createdxobject(self,kwdict={},**kw):
+    kw.update(kwdict)
+    rend = 0.5*(self.rmin + self.rmax)
+    vin = Opyndx.VisualRevolution(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rendzmin=rend,rendzmax=rend,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       theta=self.theta,phi=self.phi,
+                       rofzdata=[self.rmin,self.rmin],
+                       zdata=[-self.length/2.,+self.length/2.],
+                       largepos=largepos,
+                       kwdict=kw)
+    vout = Opyndx.VisualRevolution(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rendzmin=rend,rendzmax=rend,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       theta=self.theta,phi=self.phi,
+                       rofzdata=[self.rmax,self.rmax],
+                       zdata=[-self.length/2.,+self.length/2.],
+                       largepos=largepos,
+                       kwdict=kw)
+    v = Opyndx.DXCollection(vin,vout)
+    self.dxobject = v
 
 #============================================================================
 class ZAnnulus(ZSrfrvIn):
