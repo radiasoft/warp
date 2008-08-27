@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.78 2008/08/08 21:08:13 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.79 2008/08/27 23:46:46 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -62,6 +62,10 @@ Class for creating particle scraper for conductors
                     Note that for this reason, if there are some conductors
                     that are reflectors, this will automatically be set so
                     scraping happens before grid scraping.
+ - lfastscraper=0: A faster, but approximate, version of the scraper. Note
+                   that with this option, which conductor the particle is
+                   scraped on is not calculated (and so cannot be used with
+                   lsavecondid nor lsaveintercept)
  - grid=None: A instance of the Grid class can be supplied, allowing control
               over the region where the scraping is done and the resolution
               of the scraping data.
@@ -73,11 +77,12 @@ conductors are an argument.
   def __init__(self,conductors=None,lsavecondid=0,lsaveintercept=0,
                     lrefineintercept=0,lrefineallintercept=0,nstepsperorbit=8,
                     lcollectlpdata=0,mglevel=0,aura=0.,
-                    install=1,lbeforescraper=0,
+                    install=1,lbeforescraper=0,lfastscraper=0,
                     grid=None): 
     self.mglevel = mglevel
     self.aura = aura
     self.lbeforescraper = lbeforescraper
+    self.lfastscraper = lfastscraper
     # --- First set so install is false. Reset later with input value.
     # --- This is needed since in some cases registerconductors may want
     # --- to do the install. This just skips it in that case.
@@ -103,6 +108,7 @@ conductors are an argument.
     self.lsavecondid = (lsavecondid or lsaveintercept or
                         lrefineintercept or lrefineallintercept or
                         lcollectlpdata)
+    assert not (self.lsavecondid and self.lfastscraper),"With the fast scraper, the conductor information where the particles are lost is not calculated and so lsavecondid will not work"
     self.lcollectlpdata = lcollectlpdata
     if self.lsavecondid:
       top.lsavelostpart = true
@@ -160,6 +166,9 @@ conductors are an argument.
     if 'lrefineallintercept' not in self.__dict__:
       self.lrefineallintercept = 0
 
+    if 'lfastscraper' not in self.__dict__:
+      self.lfastscraper = 0
+
   def registerconductors(self,newconductors):
     if newconductors is None: return
     if type(newconductors) is not ListType: newconductors = [newconductors]
@@ -181,7 +190,7 @@ conductors are an argument.
 
   def unregisterconductors(self,conductor,nooverlap=0):
     self.conductors.remove(conductor)
-    if not nooverlap:
+    if not nooverlap or self.lfastscraper:
       # --- This is horribly inefficient!!!
       self.grid.resetgrid()
       self.updateconductors()
@@ -210,7 +219,8 @@ after load balancing."""
     # --- The arrays in top may be changed the next time loadbalancing is
     # --- done, but the arrays in self.grid should not be changed. Instead,
     # --- a whole new grid is created.
-    self.grid = Grid(izslave=top.izpslave.copy(),nzslave=top.nzpslave.copy())
+    self.grid = Grid(izslave=top.izpslave.copy(),nzslave=top.nzpslave.copy(),
+                     nzlocal=top.nzpslave[me])
     self.updateconductors()
     if top.chdtspid>0:
       if w3d.nxc<>self.grid.nx or w3d.nyc<>self.grid.ny or w3d.nzc<>self.grid.nzlocal:
@@ -225,28 +235,38 @@ after load balancing."""
       print 'updategrid',tend-tstart
 
   def updateconductors(self):
-    for c in self.conductors:
-      self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
-    # --- reducedisinside is a copy of isinside but will be modified to remove
-    # --- redundant information. This provides an optimization of the routines
-    # --- which find intersections with conductors. Normally, a particle is
-    # --- compared against the conductors that the grid point surrounding it
-    # --- are in. If more than one of those grid points are in the same
-    # --- conductor, the particle will be checked against that conductor
-    # --- multiple times. This is a waste of CPU time. The reducing routine
-    # --- checks if a grid point is between two grid points that are in the
-    # --- same conductor as itself. If so, then the fact that the grid point
-    # --- is inside that conductor can be ignored, since particles nearby
-    # --- will get a reference to the conductor from the neighboring grid
-    # --- points. Note that the routine never ignores grid points that have
-    # --- nx,ny,nz all even.
-    #self.reducedisinside = fzeros(self.grid.isinside.shape,'d')
-    #self.reducedisinside[...] = self.grid.isinside
-    #reduceisinsidegrid(self.grid.isinside,self.reducedisinside,
-    #                   self.grid.nx,self.grid.ny,self.grid.nz)
-    # --- There is a problem with the above so don't use for now
-    # --- Just make a reference. Similarly in setstate.
-    self.reducedisinside = self.grid.isinside
+    if not self.lfastscraper:
+      for c in self.conductors:
+        self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
+      # --- reducedisinside is a copy of isinside but will be modified to remove
+      # --- redundant information. This provides an optimization of the routines
+      # --- which find intersections with conductors. Normally, a particle is
+      # --- compared against the conductors that the grid point surrounding it
+      # --- are in. If more than one of those grid points are in the same
+      # --- conductor, the particle will be checked against that conductor
+      # --- multiple times. This is a waste of CPU time. The reducing routine
+      # --- checks if a grid point is between two grid points that are in the
+      # --- same conductor as itself. If so, then the fact that the grid point
+      # --- is inside that conductor can be ignored, since particles nearby
+      # --- will get a reference to the conductor from the neighboring grid
+      # --- points. Note that the routine never ignores grid points that have
+      # --- nx,ny,nz all even.
+      #self.reducedisinside = fzeros(self.grid.isinside.shape,'d')
+      #self.reducedisinside[...] = self.grid.isinside
+      #reduceisinsidegrid(self.grid.isinside,self.reducedisinside,
+      #                   self.grid.nx,self.grid.ny,self.grid.nz)
+      # --- There is a problem with the above so don't use for now
+      # --- Just make a reference. Similarly in setstate.
+      self.reducedisinside = self.grid.isinside
+    else:
+      allcond = self.conductors[0]
+      # --- Note that since conductors are not distinguished, all conductors
+      # --- are considered reflective if any are.
+      self.reflectiveconductors = (self.conductors[0].material == 'reflector')
+      for c in self.conductors[1:]:
+        allcond = allcond + c
+        self.reflectiveconductors |= (c.material == 'reflector')
+      self.grid.getdistances(allcond)
 
   def saveolddata(self):
     # --- If no data is to be saved, then do nothing.
@@ -306,15 +326,22 @@ after load balancing."""
     return xcsym,ycsym
 
   def scrapeall(self,clear=0,local=0):
-    if local:
-      if len(self.conductors)==0 or sum(top.pgroup.nps)==0: return
+    if len(self.conductors)==0: return
+    if local or (lparallel and not self.lcollectlpdata):
+      # --- Only the code for self.lcollectlpdata does any parallel
+      # --- communication, so if it is false, then this can be skipped if
+      # --- there are no particles.
+      if sum(top.pgroup.nps)==0: return
     else:
-      if len(self.conductors)==0 or parallelsum(sum(top.pgroup.nps))==0: return
+      if parallelsum(sum(top.pgroup.nps))==0: return
     self.updategrid()
     for js in xrange(top.pgroup.ns):
       if top.pgroup.ldts[js]:
         if self.l_print_timing:tstart=wtime()
-        self.scrape(js);
+        if self.lfastscraper:
+          self.fastscrape(js);
+        else:
+          self.scrape(js);
         if self.l_print_timing:tend=wtime()
         if self.l_print_timing:print js,'scrape',tend-tstart
         if self.l_print_timing:tstart=wtime()
@@ -1070,4 +1097,87 @@ luserefinedifnotlost: when true, if the refined particle orbit is not lost,
       uzo[:] = where(userefined,uzo,uzosave)
       if itime is not None:
         itime[:] = where(userefined,itime,0.)
+
+  def fastscrape(self,js):
+    # --- If there are no particles in this species, that nothing needs
+    # --- to be done
+    if top.pgroup.nps[js] == 0: return
+
+    # --- Get mesh information into local variables
+    dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
+    xmin = self.grid.xmin
+    xmax = self.grid.xmax
+    ymin = self.grid.ymin
+    ymax = self.grid.ymax
+    zmin = self.grid.zmmin + iz*dz + top.zbeam
+    zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
+    distances = self.grid.distances
+
+    # --- Get handy references to the particles in the species
+    i1 = top.pgroup.ins[js] - 1
+    i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
+    xx = top.pgroup.xp[i1:i2]
+    yy = top.pgroup.yp[i1:i2]
+    zz = top.pgroup.zp[i1:i2]
+    pp = zeros(top.pgroup.nps[js],'d')
+
+    # --- Find the distances of each particle to the conductors.
+    # --- The interpolates from the distances grid. The results are
+    # --- put into the array pp.
+    if w3d.solvergeom in [w3d.XYZgeom]:
+      getgrid3d(top.pgroup.nps[js],xx,yy,zz,pp,
+                nx,ny,nz,distances,xmin,xmax,ymin,ymax,zmin,zmax,
+                w3d.l2symtry,w3d.l4symtry)
+    elif w3d.solvergeom == w3d.RZgeom:
+      # --- Note that for RZ, the radius is calculated for this, but
+      # --- the original particle position is used below.
+      rr = sqrt(xx**2 + yy**2)
+      getgrid2d(top.pgroup.nps[js],rr,zz,pp,nx,nz,distances[:,0,:],
+                xmin,xmax,zmin,zmax)
+    elif w3d.solvergeom == w3d.XZgeom:
+      getgrid2d(top.pgroup.nps[js],xx,zz,pp,nx,nz,distances[:,0,:],
+                xmin,xmax,zmin,zmax)
+    elif w3d.solvergeom == w3d.XYgeom:
+      getgrid2d(top.pgroup.nps[js],xx,yy,pp,nx,ny,distances[:,:,0],
+                xmin,xmax,ymin,ymax)
+    else:
+      raise "The particle scraping only works for XYZ, XY and RZ geometry"
+
+  
+    # --- Any particles which have a negative distance are approximately
+    # --- inside of the conductors. Those are considered lost or reflected.
+    ilost = compress(pp<0.,arange(i1,i2))
+    if len(ilost) == 0: return
+
+    if self.reflectiveconductors:
+      # --- For lost new particles, which have no old data, not much can be
+      # --- done, so they are set to be removed.
+      oldisOK = nint(take(top.pgroup.pid[:,self.oldisOK],ilost))
+      icnew = compress(logical_not(oldisOK),ilost)
+      if len(icnew) > 0:
+        put(top.pgroup.gaminv,icnew,0.)
+        # --- Only old particles will be reflected.
+        ilost = compress(oldisOK,ilost)
+
+      # --- For particles which are inside, replace the position with
+      # --- the old position and reverse the velocity.
+      put(top.pgroup.xp,ilost,take(top.pgroup.pid[:,self.xoldpid],ilost))
+      put(top.pgroup.yp,ilost,take(top.pgroup.pid[:,self.yoldpid],ilost))
+      put(top.pgroup.zp,ilost,take(top.pgroup.pid[:,self.zoldpid],ilost))
+      if self.lsaveoldvelocities:
+        # --- If its available, use the old velocity.
+        # --- Should this be the default?
+        put(top.pgroup.uxp,ilost,-take(top.pgroup.pid[:,self.uxoldpid],ilost))
+        put(top.pgroup.uyp,ilost,-take(top.pgroup.pid[:,self.uyoldpid],ilost))
+        put(top.pgroup.uzp,ilost,-take(top.pgroup.pid[:,self.uzoldpid],ilost))
+      else:
+        # --- Otherwise use the new velocity. Can this lead to errors?
+        put(top.pgroup.uxp,ilost,-take(top.pgroup.uxp,ilost))
+        put(top.pgroup.uyp,ilost,-take(top.pgroup.uyp,ilost))
+        put(top.pgroup.uzp,ilost,-take(top.pgroup.uzp,ilost))
+
+    else:
+      # --- For particles which are inside, set gaminv to 0, the lost
+      # --- particle flag
+      put(top.pgroup.gaminv,ilost,0.)
 
