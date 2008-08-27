@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.174 $, $Date: 2008/07/25 20:49:48 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.175 $, $Date: 2008/08/27 23:49:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -837,7 +837,7 @@ c     message added by petermc, 1 Oct 2002
      &     ' SORPASS3D CALLS ON ', nx, ny, nzlocal, ' Warp'
 #endif
 
-      if (lf3dtimesubs) timevcycle = timevcycle + wtime() - substarttime
+      if (lf3dtimesubs .and. mglevel==0) timevcycle = timevcycle + wtime() - substarttime
 
       return
       end
