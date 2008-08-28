@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.40 $, $Date: 2008/07/21 17:33:41 $
+c@(#) File ENV.M, version $Revision: 3.41 $, $Date: 2008/08/28 22:10:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -306,6 +306,7 @@ c  from various lattice and multipole arrays.
       real(kind=8):: wz
       real(kind=8):: t,s,xpm,ypm,xps,xpp,ypp
       real(kind=8):: somvmat(7,7),somvvec(7),somovec(7),somuvec(7)
+      real(kind=8):: ludcmp_d
       integer(ISZ):: indx(7)
 
 c  For convenience, this routine accessesd the lattice database and is not
@@ -776,7 +777,7 @@ c        step i+1
 c        Solve for somvvec at step i+1 by performing an LU decomposition on 
 c        somvmat and an LU backsubstitution on somvvec (offset)
          indx = 0
-         call ludcmp(somvmat,7,7,indx,0.)
+         call ludcmp(somvmat,7,7,indx,ludcmp_d)
          call lubksb(somvmat,7,7,indx,somvvec)
 c        The vector somvvec has now been advanced to step i+1
 c        Extract the second order moment velocity analogues from somvvec
