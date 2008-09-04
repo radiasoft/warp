@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.22 $, $Date: 2008/02/12 23:48:32 $
+c@(#) File w3d_utilities.F, version $Revision: 1.23 $, $Date: 2008/09/04 21:06:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -647,7 +647,8 @@ c     --- has nearly the same number of z planes. If lautodecomp is false and
 c     --- fstype == 3, then the decomposition is supplied by the user (input
 c     --- through nzfsslave).
       if (lfsautodecomp .or.
-     &    (fstype /= 3 .and. fstype /= 7 .and. fstype /= 13)) then
+     &    (fstype /= 3 .and. fstype /= 7 .and. fstype /= 12 .and.
+     &     fstype /= 13)) then
 
 c       --- Calculate average number of z planes per processor, including the
 c       --- extra space for overlap.  For FFT, the minimum number of planes
