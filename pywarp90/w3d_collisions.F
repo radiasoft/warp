@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_collision.F, version $Revision: 1.7 $, $Date: 2008/05/23 16:35:59 $
+c@(#) File w3d_collision.F, version $Revision: 1.8 $, $Date: 2008/09/05 00:45:14 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This has routines handling particle collisions
@@ -13,6 +13,7 @@ c=============================================================================
      &                                q1,q2,m1,m2,vthsqinit1,vthsqinit2,
      &                                dt,loglambda,epvth)
       use Constant
+      use Beam_acc, Only: lrelativ
       logical(ISZ):: lself
       integer(ISZ):: np
       real(kind=8):: ux1(np),uy1(np),uz1(np)
@@ -42,11 +43,10 @@ c v_thermal near edges of plasma is prone to big errors that
 c can cause a runaway of particle energy.--DON'T NEED TO WORRY THIS.
 
       integer(ISZ):: i
-      real(kind=8):: sqrt2,twopi
-      real(kind=8):: nudtcoeff,nudt,eta,vthsq2
-      real(kind=8):: etotf1,etotf2,escale
+      real(kind=8):: sqrt2,twopi,twoorootpi
+      real(kind=8):: nudtcoeff,nudt,eta,vthsq2,vmx2sq,v2,gamma2,vx,vy,vz,udotv
       real(kind=8):: uxf,uyf,uzf,uxf0
-      real(kind=8):: vv,vv1,vv2,fdv,d11,d33
+      real(kind=8):: uu,uui,uu1,uu2,vv,fdv,d11,d33,gamma,gamsq,G,P0
       real(kind=8):: xrand1
       real(kind=8):: aa,norm,const,ww,erf
       real(kind=8):: wranf
@@ -64,23 +64,20 @@ c     --- See Cohen et al PoP 13, 22705 (2006) after eq.(4).
 c     --- Useful constants
       sqrt2 = sqrt(2.)
       twopi = 2.*pi
+      twoorootpi = 2./sqrt(pi)
 
 c     --- Mass scaling factor. Note that for self collisions, eta=1
       eta = 0.5*(1.+m1/m2)
 
-c     --- Initialize the total energy. Note that these are only used
-c     --- to scale the final velocity for energy conservation for
-c     --- self collisions.
-      etotf1 = 0.
-      etotf2 = 0.
-
 c     --- Needed for Sherlock form of approximation
-      aa = (8./(3.*pi))* (pi-3.)/(4.-pi)
-      norm = 1./(4./(3.*sqrt(pi)))
-      const = 1./(3.*sqrt(pi)/2.)
+      aa = (8./(3.*pi))*(pi-3.)/(4.-pi)
+      norm = (3.*sqrt(pi))/4.
+      const = 2./(3.*sqrt(pi))
 
 c     --- Now loop over the test particles.
       do i=1,np
+
+        if (vthsqi2(i) < 1.e-6) continue
 
         vthsq2 = epvth*vthsqi2(i) + (1. - epvth)*vthsqinit2
         nudt = nudtcoeff*density2(i)*loglambda(i)/vthsq2**1.5
@@ -93,57 +90,102 @@ c         --- This should print some kind of warning perhaps?
 
 c Compute particle velocities in local drift frame
 
-        uxf = ux1(i) - vxmi(i)
-        uyf = uy1(i) - vymi(i)
-        uzf = uz1(i) - vzmi(i)
+        if (lrelativ) then
 
-c compute the temperature before the collision
+c         --- Lorentz
+          vmx2sq = vxmi(i)**2 + vymi(i)**2 + vzmi(i)**2
+          v2 = sqrt(vmx2sq)
+          if (v2 .ne. 0.) then
+            gamma2 = sqrt(1. + vmx2sq/clight**2)
+            vx = vxmi(i)/v2
+            vy = vymi(i)/v2
+            vz = vzmi(i)/v2
+            P0 = sqrt(1. + (ux1(i)**2 + uy1(i)**2 + uz1(i)**2)/clight**2)
+            udotv = ux1(i)*vx + uy1(i)*vy + uz1(i)*vz
+            uxf = ux1(i) + (gamma2 - 1.)*udotv*vx - vxmi(i)*P0
+            uyf = uy1(i) + (gamma2 - 1.)*udotv*vy - vymi(i)*P0
+            uzf = uz1(i) + (gamma2 - 1.)*udotv*vz - vzmi(i)*P0
+          else
+            uxf = ux1(i)
+            uyf = uy1(i)
+            uzf = uz1(i)
+          endif
 
-        etotf1 = (uxf**2 + uyf**2 + uzf**2)/3. + etotf1
+        else
+
+c         --- Gallilean
+          uxf = ux1(i) - vxmi(i)
+          uyf = uy1(i) - vymi(i)
+          uzf = uz1(i) - vzmi(i)
+
+        endif
 
 c Compute 3D speed and some other speed normalizations for relative
 c angles in coordinate frame oriented parallel to local velocity
 
-        vv  =  sqrt(uxf**2+uyf**2+uzf**2) + 1.e-06*sqrt(vthsqinit1)
-        vv1 =  sqrt(uxf**2+uyf**2)+ 1.e-06*sqrt(vthsqinit1)
-        vv2 =  1./(vv*vv1 +1.e-06*vthsqinit1)
+        uu  =  sqrt(uxf**2+uyf**2+uzf**2) + 1.e-06*sqrt(vthsqinit1)
+        if (uu == 0.) continue
+
+        if (lrelativ) then
+          gamsq = 1. + (uxf*uxf + uyf*uyf + uzf*uzf)/clight**2
+          gamma = sqrt(gamsq)
+        else
+          gamsq = 1.
+          gamma = 1.
+        endif
+        vv = uu/gamma
+        ww = uu/sqrt(2.*vthsqi2(i))
 
 c-----------------------------------------------------------------------------
 c calculate diffusion and drag coefficients for isotropic F(v) and
 c resulting kicks, using approximation from Sherlock, JCP 227 (2008) 2286-2292.
 
-        ww = vv/sqrt(2.*vthsqi2(i))
-
 c       --- Approximation to the error function due to S. Winitzki.
         erf = sqrt(1. - exp(-ww**2*((4./pi) + aa*ww**2)/(1. + aa*ww**2)))
 
-        fdv = abs(eta*nudt/(1. + (2.*const)*ww**3))
+c       --- Approximate for from Sherlock
+c       fdv = abs(eta*nudt/(1. + (2.*const)*ww**3))
+
+c       d33 = sqrt(abs(2.*vthsqi2(i)*(fdv/eta)*abs(-log(1. - wranf()))))
+c    &        *cos(twopi*wranf())
+
+c       d11 = sqrt(nudt*2.*(vthsqi2(i)*norm)
+c    &             *(erf/ww - (1.*const)/(1. + (2.*const)*ww**3*gamsq))
+c    &             *abs(-log(1. - wranf())))
+
+
+c       --- Exact form, though maybe more costly, but maybe seems to give
+c       --- better results.
+        G = (erf - twoorootpi*ww*exp(-ww**2))/(2*ww**2)
+
+        fdv = abs(eta*nudt*G/ww/const)
 
         d33 = sqrt(abs(2.*vthsqi2(i)*(fdv/eta)*abs(-log(1. - wranf()))))
      &        *cos(twopi*wranf())
 
-        d11 = sqrt(nudt*2.*(vthsqi2(i)*norm)
-     &             *(erf/ww - (1.*const)/(1. + (2.*const)*ww**3))
-     &             *abs(-log(1. - wranf())))
+c       --- Note that this does not have the dependence on u that the Sherlock
+c       --- expression above has. Its not clear what the dependence is.
+        d11 = sqrt(nudt*2.*vthsqi2(i)*norm*((erf - G)/ww)*abs(-log(1.-wranf())))
 
 c-----------------------------------------------------------------------------
 c calculate diffusion and drag coefficients for isotropic F(v) and
 c resulting kicks, using Pade approximation from B. Cohen.
 c The Sherlock form is better and has correct form at large v.
 
-cc       fdv = abs( eta*nudt/(1.+1.08*(vv/(sqrt2*sqrt(vthsqi2(i))))**2.76) )
-c       fdv = abs( eta*nudt/(1.+1.06483*(vv/(sqrt2*sqrt(vthsqi2(i))))**2.488) )
+cc       fdv = abs( eta*nudt/(1.+1.08*(uu/(sqrt2*sqrt(vthsqi2(i))))**2.76) )
+c       fdv = abs( eta*nudt/(1.+1.06483*(uu/(sqrt2*sqrt(vthsqi2(i))))**2.488) )
 
 c       d33 = sqrt(abs(2.*vthsqi2(i)*(fdv/eta)*abs(-log(1.-wranf()))))
 c    &      *cos(twopi*wranf())
 
 c       d11 = sqrt(nudt*2.*vthsqi2(i)/(1.+0.1856*
-c    &      (vv/(sqrt2*sqrt(vthsqi2(i))))**1.848)*abs(-log(1.-wranf())))
+c    &      (uu/(sqrt2*sqrt(vthsqi2(i))))**1.848)*abs(-log(1.-wranf())))
 
 c need to multiply d11 by cos and sin of ranf*twopi for kicks
 c-----------------------------------------------------------------------------
 
-        fdv = -vv*fdv*(1.+0.5*fdv)      !! Includes energy cons. correction ~dt**2
+c       --- Includes energy cons. correction ~dt**2
+        fdv = -vv*fdv*(1.+0.5*fdv/gamma)
 
 c Do the Monte Carlo collisional kicks in the particle velocity local frame
 c and transform back to x-y-z velocity coordinates in drift frame
@@ -152,61 +194,59 @@ c and transform back to x-y-z velocity coordinates in drift frame
 
 c Later on we need a duplicate copy of uxf (after uxf is
 c overwritten with a new value after the collision) for computing a
-c cosine = uxf/vv1.
+c cosine = uxf/uu1.
 
         uxf0 = uxf
 
-c reduce number of divides by replacing vv with 1./vv
+c reduce number of divides by replacing uu with 1./uu
 
-        vv = 1./vv
+        uui = 1./uu
+        uu1 =  sqrt(uxf**2+uyf**2)+ 1.e-06*sqrt(vthsqinit1)
 
-        uxf = uxf + (fdv+d33)*uxf*vv + d11*cos(twopi*xrand1)*uyf/vv1 
-     &      + d11*sin(twopi*xrand1)*uzf*uxf*vv2
+        if (uu1 .ne. 0.) then
+          uu2 =  1./(uu*uu1 +1.e-06*vthsqinit1)
 
-        uyf = uyf + (fdv+d33)*uyf*vv + d11*cos(twopi*xrand1)*(-uxf0)/vv1 
-     &      + d11*sin(twopi*xrand1)*uzf*uyf*vv2
+          uxf = uxf + (fdv+d33)*uxf*uui + d11*cos(twopi*xrand1)*uyf/uu1 
+     &        + d11*sin(twopi*xrand1)*uzf*uxf*uu2
 
-        uzf = uzf + (fdv+d33)*uzf*vv + d11*sin(twopi*xrand1)*(-vv1**2)*vv2
+          uyf = uyf + (fdv+d33)*uyf*uui + d11*cos(twopi*xrand1)*(-uxf0)/uu1 
+     &        + d11*sin(twopi*xrand1)*uzf*uyf*uu2
 
-c Galilean tranformation to lab velocity coordinates from drift frame
+          uzf = uzf + (fdv+d33)*uzf*uui + d11*sin(twopi*xrand1)*(-uu1**2)*uu2
 
-        ux1(i) = uxf
-        uy1(i) = uyf
-        uz1(i) = uzf
+        else
 
-c compute temperature after the collision
-        etotf2 = (uxf**2+uyf**2+uzf**2)/3. + etotf2
+          uzf = uzf + (fdv+d33)*uzf*uui
 
-      enddo   !!loop over particle blocks
-
-      escale=sqrt(etotf1/etotf2)
-
-      do i = 1,np
-
-        uxf = ux1(i)
-        uyf = uy1(i)
-        uzf = uz1(i)
-
-c Scale the particle velocities to conserve energy after the
-c collisions.  Manheimer et al. suggest doing this.
-c This collision scheme does NOT conserve energy like Jones
-c algorithm does, except statistically for an ideal Maxwellian
-c distribution of test particles, and erf function drag-diff coeffs,
-c none of which we satisfy.
-
-        if(lself) then
-          uxf = uxf*escale
-          uyf = uyf*escale
-          uzf = uzf*escale
         endif
 
 c Galilean tranformation to lab velocity coordinates from drift frame
 
-        ux1(i) = uxf + vxmi(i)
-        uy1(i) = uyf + vymi(i)
-        uz1(i) = uzf + vzmi(i)
+        if (lrelativ) then
 
-      enddo
+c         --- Lorentz
+          if (v2 .ne. 0.) then
+            P0 = sqrt(1. + (uxf**2 + uyf**2 + uzf**2)/clight**2)
+            udotv = uxf*vx + uyf*vy + uzf*vz
+            ux1(i) = uxf + (gamma2 - 1.)*udotv*vx + vxmi(i)*P0
+            uy1(i) = uyf + (gamma2 - 1.)*udotv*vy + vymi(i)*P0
+            uz1(i) = uzf + (gamma2 - 1.)*udotv*vz + vzmi(i)*P0
+          else
+            ux1(i) = uxf
+            uy1(i) = uyf
+            uz1(i) = uzf
+          endif
+
+        else
+
+c         --- Gallilean
+          ux1(i) = uxf + vxmi(i)
+          uy1(i) = uyf + vymi(i)
+          uz1(i) = uzf + vzmi(i)
+
+        endif
+
+      enddo   !!loop over particle blocks
 
       return
       end  !!langevincollisions3d
@@ -293,9 +333,6 @@ cc Declare Allocatable new variables
       allocate(svy(0:nxp,0:nyp), stat=istat6)
       allocate(svz(0:nxp,0:nyp), stat=istat7)
 
-
-
-
 cc The strategy to use here is to pass the velocity and position
 cc arrays for both species needed in the collisions
 
@@ -303,9 +340,9 @@ cc The test particle is species 1 and the field particle is species 2
 
 
 c     --- Needed for Sherlock for of approximation
-      aa = (8./(3.*pi))* (pi-3.)/(4.-pi)
-      norm = 1./(4./(3.*sqrt(pi)))
-      const = 1./(3.*sqrt(pi)/2.)
+      aa = (8./(3.*pi))*(pi-3.)/(4.-pi)
+      norm = (3.*sqrt(pi))/4.
+      const = 2./(3.*sqrt(pi))
 
       ddxp=sddx2d(lx,nxp)
       ddyp=sddx2d(ly,nyp)
