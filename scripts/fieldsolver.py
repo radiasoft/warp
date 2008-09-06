@@ -1011,21 +1011,21 @@ class SubcycledPoissonSolver(FieldSolver):
             if self.nx > 0:
               x = pgroup.xp[i1:i2]
               assert min(abs(x-self.xmmin)) >= 0.,\
-                     "Particles in species %d have x below the grid when depositing the source"%js
+                     "Particles in species %d have x below the grid when depositing the source, min x = %e"%(js,min(x))
               assert max(x) < self.xmmax,\
-                     "Particles in species %d have x above the grid when depositing the source"%js
+                     "Particles in species %d have x above the grid when depositing the source, max x = %e"%(js,max(x))
             if self.ny > 0:
               y = pgroup.yp[i1:i2]
               assert min(abs(y-self.ymmin)) >= 0.,\
-                     "Particles in species %d have y below the grid when depositing the source"%js
+                     "Particles in species %d have y below the grid when depositing the source, min y = %e"%(js,min(y))
               assert max(y) < self.ymmax,\
-                     "Particles in species %d have y above the grid when depositing the source"%js
+                     "Particles in species %d have y above the grid when depositing the source, max y = %e"%(js,max(y))
             if self.nzlocal > 0:
               z = pgroup.zp[i1:i2]
               assert min(z) >= self.zmminp+self.getzgridndts()[indts],\
-                     "Particles in species %d have z below the grid when depositing the source"%js
+                     "Particles in species %d have z below the grid when depositing the source, min z = %e"%(js,min(z))
               assert max(z) < self.zmmaxp+self.getzgridndts()[indts],\
-                     "Particles in species %d have z above the grid when depositing the source"%js
+                     "Particles in species %d have z above the grid when depositing the source, max z = %e"%(js,max(z))
 
           self.setsourcep(js,pgroup,self.getzgridndts()[indts])
 
@@ -1387,4 +1387,34 @@ of the arrays used by the field solve"""
     # --- This is used by the implicit algorithm, to average the potential
     # --- over multiple iterations.
     self.potentialarray += self.potentialprevious
+
+  def debugparticlebounds(self,text=''):
+    pgroups = [top.pgroup]
+    for pgroup in pgroups:
+
+      for js in range(pgroup.ns):
+        n = pgroup.nps[js]
+        if n == 0: continue
+        indts = top.ndtstorho[pgroup.ndts[js]-1]
+
+        i1 = pgroup.ins[js]-1
+        i2 = pgroup.ins[js]+pgroup.nps[js]-1
+        if self.nx > 0:
+          x = pgroup.xp[i1:i2]
+          assert min(abs(x-self.xmmin)) >= 0.,\
+                 text+"Particles in species %d have x below the grid when depositing the source, min x = %e"%(js,min(x))
+          assert max(x) < self.xmmax,\
+                 text+"Particles in species %d have x above the grid when depositing the source, min x = %e"%(js,max(x))
+        if self.ny > 0:
+          y = pgroup.yp[i1:i2]
+          assert min(abs(y-self.ymmin)) >= 0.,\
+                 text+"Particles in species %d have y below the grid when depositing the source, min x = %e"%(js,min(y))
+          assert max(y) < self.ymmax,\
+                 text+"Particles in species %d have y above the grid when depositing the source, min x = %e"%(js,max(y))
+        if self.nzlocal > 0:
+          z = pgroup.zp[i1:i2]
+          assert min(z) >= self.zmminp+self.getzgridndts()[indts],\
+                 text+"Particles in species %d have z below the grid when depositing the source, min x = %e"%(js,min(z))
+          assert max(z) < self.zmmaxp+self.getzgridndts()[indts],\
+                 text+"Particles in species %d have z above the grid when depositing the source, min x = %e"%(js,max(z))
 
