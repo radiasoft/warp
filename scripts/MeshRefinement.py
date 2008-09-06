@@ -1607,15 +1607,47 @@ be plotted.
             pass
       assert type(comp) == IntType,"Unrecognized component was input"
 
-      if cmin is None:
-        cmin = self.arraysliceoperation(ip,idim,getdataname,min,minnd,+largepos,
-                                        comp)
-      if cmax is None:
-        cmax = self.arraysliceoperation(ip,idim,getdataname,max,maxnd,-largepos,
-                                        comp)
-
+      cmin_in = cmin
+      cmax_in = cmax
+      cmin = self.arraysliceoperation(ip,idim,getdataname,min,minnd,+largepos,
+                                      comp)
+      cmax = self.arraysliceoperation(ip,idim,getdataname,max,maxnd,-largepos,
+                                      comp)
       cmin = globalmin(cmin)
       cmax = globalmax(cmax)
+
+      # --- If cmin and/or cmax were not given, but are calculated from the
+      # --- data, then apply the same transform to then that will be done to
+      # --- the data. Do the transforms after the global min and maxes so
+      # --- that possible zero local values don't mess things up.
+      try:
+        gridscale = kw['gridscale']
+      except KeyError:
+        gridscale = 1.
+      try:
+        uselog = kw['uselog']
+        if uselog == 'e' or uselog == 1.: logscale = 1.
+        else:                             logscale = log(uselog)
+      except KeyError:
+        logscale = None
+
+      if gridscale < 0.:
+        cmin,cmax = cmax,cmin
+
+      if cmin_in is None:
+        cmin *= gridscale
+        if logscale is not None:
+          cmin = log(cmin)/logscale
+      else:
+        cmin = cmin_in
+
+      if cmax_in is None:
+        cmax *= gridscale
+        if logscale is not None:
+          cmax = log(cmax)/logscale
+      else:
+        cmax = cmax_in
+
       kw['cmin'] = cmin
       kw['cmax'] = cmax
       kw['local'] = 1
