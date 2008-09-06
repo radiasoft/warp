@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.79 2008/08/27 23:46:46 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.80 2008/09/06 00:29:50 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -53,15 +53,10 @@ Class for creating particle scraper for conductors
  - install=1: flag whether or not to install the scraper so that the scraping
               automatically happens every time step.
  - lbeforescraper=0: when true, the scraper is installed before grid scraping,
-                    otherwise it is installed after. In cases where particles
-                    outside the grid need to be detected, or where the
-                    scraping changes the particle positions (like reflectors),
-                    this should be true, so that the scraping done here
-                    happens before the scraping is done at the grid boundaries
-                    (including particle swapping among processes in parallel).
-                    Note that for this reason, if there are some conductors
-                    that are reflectors, this will automatically be set so
-                    scraping happens before grid scraping.
+                    otherwise it is installed after. This is not recommended
+                    since the scraping algorithms implemented here will not
+                    work for particles out of the grid bounds anyway.
+                    This option is retain only for legacy purposes.
  - lfastscraper=0: A faster, but approximate, version of the scraper. Note
                    that with this option, which conductor the particle is
                    scraped on is not calculated (and so cannot be used with
@@ -96,6 +91,7 @@ conductors are an argument.
     self.lsaveoldvelocities = false
     # --- register any initial conductors
     self.conductors = []
+    self.reflectiveconductors = false
     self.registerconductors(conductors)
     # --- Allocate arrays for lost particles
     gchange("LostParticles")
@@ -168,6 +164,12 @@ conductors are an argument.
 
     if 'lfastscraper' not in self.__dict__:
       self.lfastscraper = 0
+    if 'reflectiveconductors' not in self.__dict__:
+      self.reflectiveconductors = false
+      for c in self.conductors:
+        if c.material == 'reflector':
+          # --- Set the flag signifying the presence of reflective conductors
+          self.reflectiveconductors = true
 
   def registerconductors(self,newconductors):
     if newconductors is None: return
@@ -181,12 +183,8 @@ conductors are an argument.
         # --- with the old.
         self.lsaveoldpositions = true
         #self.lsaveoldvelocities = true
-        # --- Set so the scraping happens before grid scraping since
-        # --- reflectors will change particle positions. Make sure that the
-        # --- installing gets set appropriately.
-        if not self.lbeforescraper: self.disable()
-        self.lbeforescraper = 1
-        self.installscraper()
+        # --- Set the flag signifying the presence of reflective conductors
+        self.reflectiveconductors = true
 
   def unregisterconductors(self,conductor,nooverlap=0):
     self.conductors.remove(conductor)
@@ -260,12 +258,8 @@ after load balancing."""
       self.reducedisinside = self.grid.isinside
     else:
       allcond = self.conductors[0]
-      # --- Note that since conductors are not distinguished, all conductors
-      # --- are considered reflective if any are.
-      self.reflectiveconductors = (self.conductors[0].material == 'reflector')
       for c in self.conductors[1:]:
         allcond = allcond + c
-        self.reflectiveconductors |= (c.material == 'reflector')
       self.grid.getdistances(allcond)
 
   def saveolddata(self):
@@ -354,6 +348,12 @@ after load balancing."""
           self.savecondid(js,local=local)
         if self.l_print_timing:tend=wtime()
         if self.l_print_timing:print js,'savecondid',tend-tstart
+    if self.reflectiveconductors:
+      # --- If there are any reflecting conductors, then redo the parallel
+      # --- boundary conditions, since any reflected particles will have
+      # --- their position replaced by their old position, which may be in
+      # --- a different domain.
+      zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
     self.saveolddata()
   #scrapeall = decorators.timedmethod(scrapeall)
     
@@ -1150,6 +1150,8 @@ luserefinedifnotlost: when true, if the refined particle orbit is not lost,
     if len(ilost) == 0: return
 
     if self.reflectiveconductors:
+      # --- Note that since conductors are not distinguished, all conductors
+      # --- are considered reflective if any are.
       # --- For lost new particles, which have no old data, not much can be
       # --- done, so they are set to be removed.
       oldisOK = nint(take(top.pgroup.pid[:,self.oldisOK],ilost))
