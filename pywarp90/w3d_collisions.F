@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_collision.F, version $Revision: 1.8 $, $Date: 2008/09/05 00:45:14 $
+c@(#) File w3d_collision.F, version $Revision: 1.9 $, $Date: 2008/09/09 21:36:48 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This has routines handling particle collisions
@@ -21,19 +21,19 @@ c=============================================================================
       real(kind=8):: q1,q2,m1,m2,vthsqinit1,vthsqinit2
       real(kind=8):: dt,loglambda(np),epvth
 
-cc CIC collision operator, 2 space, 3 velocity dimensions
-cc Implements Manheimer, Lampe, Joyce, JCP 138, 563 (1997)
-cc test particle species i1 scatters of field particle species i2
+c CIC collision operator, 2 space, 3 velocity dimensions
+c Implements Manheimer, Lampe, Joyce, JCP 138, 563 (1997)
+c test particle species i1 scatters of field particle species i2
 
-cc nudt input to this routine corresponds to:
-cc     nudt = dt * (2^1.5 /3pi^.5) nu_NRL (i1,i1) for species i1
-cc where  nu_NRL = (4pi Z_1^4 e^4 n_1 ln Lambda)/(m_1^2 v_th_1^3)
+c nudt input to this routine corresponds to:
+c     nudt = dt * (2^1.5 /3pi^.5) nu_NRL (i1,i1) for species i1
+c where  nu_NRL = (4pi Z_1^4 e^4 n_1 ln Lambda)/(m_1^2 v_th_1^3)
 
-cc For collisions of i1 on i2, this routine internally converts
-cc nudt to nudt = dt * (2^1.5 /3pi^.5) nu_NRL (i1,i2) for species i1 on i2
-cc where  nu_NRL(1,2) = (4pi Z_1^2 Z_2^2 e^4 n_2 ln Lambda)/(m_1^2 v_th_2^3)
+c For collisions of i1 on i2, this routine internally converts
+c nudt to nudt = dt * (2^1.5 /3pi^.5) nu_NRL (i1,i2) for species i1 on i2
+c where  nu_NRL(1,2) = (4pi Z_1^2 Z_2^2 e^4 n_2 ln Lambda)/(m_1^2 v_th_2^3)
 
-cc This routine is to be called every ncint timesteps.
+c This routine is to be called every ncint timesteps.
 c ncint = (1/nudt)*(1/ncoll) where nudt=nu_i *dt and ncoll=no. of
 c of times we wish to apply collision operator over the period 1/nudt
 c nudt and ncoll are input by user.
@@ -137,25 +137,53 @@ c angles in coordinate frame oriented parallel to local velocity
         ww = uu/sqrt(2.*vthsqi2(i))
 
 c-----------------------------------------------------------------------------
-c calculate diffusion and drag coefficients for isotropic F(v) and
-c resulting kicks, using approximation from Sherlock, JCP 227 (2008) 2286-2292.
+c       --- Calculate diffusion and drag coefficients for isotropic F(v)
+c       --- and resulting kicks.
+
+c       --- Note that the relativistic corrections derived by Braams and
+c       --- Karney are not important assuming that the thermal velocity of the
+c       --- field species is small compared to c. The corrections (ratios
+c       --- of K Bessel functions) are all close to 1.
+
+c       --- The quantity used in the calculation of F and D is the velocity, v,
+c       --- instead of the momentum, u. This matches the use of v for the
+c       --- test particles in the form of F and D from Braams and Karney.
+c       --- Note that this gives the curious result that F and D have finite
+c       --- values as the test particle energy grows large (since v -> c).
+c       --- Also, following the form of Braams and Karney, since they write the
+c       --- distribution function f in terms of u, the corresponding Langevin
+c       --- equations are also written in terms of u, i.e. du/dt = F*dt + Q.
 
 c       --- Approximation to the error function due to S. Winitzki.
+c       --- This expression is very good, given an accuracy of
+c       --- approximately 1 part in 10**4 or better over all ww.
         erf = sqrt(1. - exp(-ww**2*((4./pi) + aa*ww**2)/(1. + aa*ww**2)))
 
-c       --- Approximate for from Sherlock
+c       --- This approximate form is due to Sherlock,
+c       --- JCP 227 (2008) 2286-2292.
+c       --- Note that the exact form below is preferred.
 c       fdv = abs(eta*nudt/(1. + (2.*const)*ww**3))
 
 c       d33 = sqrt(abs(2.*vthsqi2(i)*(fdv/eta)*abs(-log(1. - wranf()))))
 c    &        *cos(twopi*wranf())
 
 c       d11 = sqrt(nudt*2.*(vthsqi2(i)*norm)
-c    &             *(erf/ww - (1.*const)/(1. + (2.*const)*ww**3*gamsq))
+c    &             *(erf/ww - (1.*const)/(1. + (2.*const)*ww**3))
 c    &             *abs(-log(1. - wranf())))
 
+c       --- The erf is calculated anyway for the Sherlock form, so there is
+c       --- no reason not to use it and use the exact expressions.
+c       --- This seems to give a noticably better result for the two species,
+c       --- unequal temperature test case, giving results closer to the analytic
+c       --- expressions for equilibration over long times, nu*t ~ 1. This is
+c       --- unexpected since the difference in the expressions is small, ~5%.
 
-c       --- Exact form, though maybe more costly, but maybe seems to give
-c       --- better results.
+c       --- In Braams and Karney, the expression for d11 contains the term
+c       --- (1/u**2 + 1/(gamma**2*cvac**2)). For small v << c, this gives
+c       --- approximately 1/v**2. For large v ~ c, this is << 1. So, for this
+c       --- term, the difference between using v and u is insignificant, so the
+c       --- expression here only uses v.
+
         G = (erf - twoorootpi*ww*exp(-ww**2))/(2*ww**2)
 
         fdv = abs(eta*nudt*G/ww/const)
@@ -163,21 +191,14 @@ c       --- better results.
         d33 = sqrt(abs(2.*vthsqi2(i)*(fdv/eta)*abs(-log(1. - wranf()))))
      &        *cos(twopi*wranf())
 
-c       --- Note that this does not have the dependence on u that the Sherlock
-c       --- expression above has. Its not clear what the dependence is.
         d11 = sqrt(nudt*2.*vthsqi2(i)*norm*((erf - G)/ww)*abs(-log(1.-wranf())))
 
-c-----------------------------------------------------------------------------
-c calculate diffusion and drag coefficients for isotropic F(v) and
-c resulting kicks, using Pade approximation from B. Cohen.
-c The Sherlock form is better and has correct form at large v.
-
-cc       fdv = abs( eta*nudt/(1.+1.08*(uu/(sqrt2*sqrt(vthsqi2(i))))**2.76) )
+c       --- This is a Pade approximation from B. Cohen.
+c       --- The Sherlock and exact forms are better. This does not have the
+c       --- correct form at large v.
 c       fdv = abs( eta*nudt/(1.+1.06483*(uu/(sqrt2*sqrt(vthsqi2(i))))**2.488) )
-
 c       d33 = sqrt(abs(2.*vthsqi2(i)*(fdv/eta)*abs(-log(1.-wranf()))))
 c    &      *cos(twopi*wranf())
-
 c       d11 = sqrt(nudt*2.*vthsqi2(i)/(1.+0.1856*
 c    &      (uu/(sqrt2*sqrt(vthsqi2(i))))**1.848)*abs(-log(1.-wranf())))
 
@@ -185,21 +206,23 @@ c need to multiply d11 by cos and sin of ranf*twopi for kicks
 c-----------------------------------------------------------------------------
 
 c       --- Includes energy cons. correction ~dt**2
+c       --- Note that the extra gamma factor comes about when the Langevin
+c       --- equation is written in terms of u, and so the correction term
+c       --- becomes dF = -dt/(2*u)*F**2. Also note that the fdv calculated
+c       --- above is actually Fd/v. */
         fdv = -vv*fdv*(1.+0.5*fdv/gamma)
 
-c Do the Monte Carlo collisional kicks in the particle velocity local frame
-c and transform back to x-y-z velocity coordinates in drift frame
-
+c       --- Do the Monte Carlo collisional kicks in the particle velocity
+c       --- local frame and transform back to x-y-z velocity coordinates
+c       --- in drift frame
         xrand1 = wranf()
 
-c Later on we need a duplicate copy of uxf (after uxf is
-c overwritten with a new value after the collision) for computing a
-c cosine = uxf/uu1.
-
+c       --- Later on we need a duplicate copy of uxf (after uxf is
+c       --- overwritten with a new value after the collision) for computing a
+c       --- cosine = uxf/uu1.
         uxf0 = uxf
 
-c reduce number of divides by replacing uu with 1./uu
-
+c       --- reduce number of divides by precalculating 1./uu
         uui = 1./uu
         uu1 =  sqrt(uxf**2+uyf**2)+ 1.e-06*sqrt(vthsqinit1)
 
