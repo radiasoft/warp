@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.69 2008/05/23 18:01:32 dave Exp $"
+particles_version = "$Id: particles.py,v 1.70 2008/09/11 00:14:30 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -919,6 +919,8 @@ def getbz(iw=0,gather=1,bcast=None,**kw):
 def getpid(iw=0,id=0,gather=1,bcast=None,**kw):
   """Returns particle id number.
   -id=0: which pid value to return
+         Note that when top.wpid or other id's from the top package are used,
+         1 must be subtracted when passed in, i.e. id=top.wpid-1.
          if id=-1, returns all pids.
   """
   if bcast is None: bcast = _particlebcastdefault[0]
