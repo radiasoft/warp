@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.80 2008/09/06 00:29:50 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.81 2008/09/11 18:14:29 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -321,13 +321,6 @@ after load balancing."""
 
   def scrapeall(self,clear=0,local=0):
     if len(self.conductors)==0: return
-    if local or (lparallel and not self.lcollectlpdata):
-      # --- Only the code for self.lcollectlpdata does any parallel
-      # --- communication, so if it is false, then this can be skipped if
-      # --- there are no particles.
-      if sum(top.pgroup.nps)==0: return
-    else:
-      if parallelsum(sum(top.pgroup.nps))==0: return
     self.updategrid()
     for js in xrange(top.pgroup.ns):
       if top.pgroup.ldts[js]:
@@ -353,6 +346,8 @@ after load balancing."""
       # --- boundary conditions, since any reflected particles will have
       # --- their position replaced by their old position, which may be in
       # --- a different domain.
+      # --- Note that this is a global operation, so all processors must
+      # --- make this call.
       zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
     self.saveolddata()
   #scrapeall = decorators.timedmethod(scrapeall)
