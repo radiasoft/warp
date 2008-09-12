@@ -247,20 +247,6 @@ def initfieldsolver():
         AMRtree=AMR.AMRTree()
         __main__.__dict__['AMRtree'] = AMRtree
         gchange('AMR')
-__main__.__dict__['loadrhoregistered'] = loadrhoregistered
-__main__.__dict__['loadjregistered'] = loadjregistered
-__main__.__dict__['fieldsolregistered'] = fieldsolregistered
-__main__.__dict__['fetcheregistered'] = fetcheregistered
-__main__.__dict__['fetchbregistered'] = fetchbregistered
-__main__.__dict__['fetchphiregistered'] = fetchphiregistered
-__main__.__dict__['fetcharegistered'] = fetcharegistered
-__main__.__dict__['rhodiaregistered'] = rhodiaregistered
-__main__.__dict__['gtlchgregistered'] = gtlchgregistered
-__main__.__dict__['srhoaxregistered'] = srhoaxregistered
-__main__.__dict__['geteseregistered'] = geteseregistered
-__main__.__dict__['sphiaxregistered'] = sphiaxregistered
-__main__.__dict__['sezaxregistered'] = sezaxregistered
-__main__.__dict__['initfieldsolver'] = initfieldsolver
 
 #=============================================================================
 # --- Setup routines which give access to fortran any B field solver
@@ -291,11 +277,6 @@ def bfetcharegistered():
   _bfieldsolver[0].fetcha()
 def initbfieldsolver():
    pass
-__main__.__dict__['bloadjregistered'] = bloadjregistered
-__main__.__dict__['bfieldsolregistered'] = bfieldsolregistered
-__main__.__dict__['bfetchbregistered'] = bfetchbregistered
-__main__.__dict__['bfetcharegistered'] = bfetcharegistered
-__main__.__dict__['initbfieldsolver'] = initbfieldsolver
 
 #=============================================================================
 #=============================================================================
