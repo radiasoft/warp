@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.164 $, $Date: 2008/05/23 18:36:54 $
+c@(#) File DTOP.F, version $Revision: 3.165 $, $Date: 2008/09/12 16:17:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.164 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.165 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -2047,54 +2047,98 @@ c     --- set grid cell inverse sizes
       wy = 0.
       wz = 0.
 
-c     --- loop over particles
-      do ip=1,np
+      if (ny > 0) then
 
-c       --- find location on grid, taking into account any symmetries.
-        if (l4symtry) then
-          xx = abs(x(ip) - xsymmetryplane) + xsymmetryplane
-          yy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
-        else if (l2symtry) then
-          xx = x(ip)
-          yy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
-        else
-          xx = x(ip)
-          yy = y(ip)
-        endif
-        if (nx > 0) gx = (xx    - xmin)*dxi
-        if (ny > 0) gy = (yy    - ymin)*dyi
-        if (nz > 0) gz = (z(ip) - zmin)*dzi
+c       --- loop over particles
+        do ip=1,np
 
-c       --- if within grid, gather
-        if (0. <= gx .and. gx <= nx .and.
-     &      0. <= gy .and. gy <= ny .and.
-     &      0. <= gz .and. gz <= nz) then
-          if (nx > 0) then
-            ix = int(gx)
-            ixp1 = ix + 1
-            wx = gx - ix
+c         --- find location on grid, taking into account any symmetries.
+          if (l4symtry) then
+            xx = abs(x(ip) - xsymmetryplane) + xsymmetryplane
+            yy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
+          else if (l2symtry) then
+            xx = x(ip)
+            yy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
+          else
+            xx = x(ip)
+            yy = y(ip)
           endif
-          if (ny > 0) then
-            iy = int(gy)
-            iyp1 = iy + 1
-            wy = gy - iy
-          endif
-          if (nz > 0) then
-            iz = int(gz)
-            izp1 = iz + 1
-            wz = gz - iz
-          endif
-          f(ip) = grid(ix  ,iy  ,iz  )*(1. - wx)*(1. - wy)*(1. - wz) +
-     &            grid(ixp1,iy  ,iz  )*      wx *(1. - wy)*(1. - wz) +
-     &            grid(ix  ,iyp1,iz  )*(1. - wx)*      wy *(1. - wz) +
-     &            grid(ixp1,iyp1,iz  )*      wx *      wy *(1. - wz) +
-     &            grid(ix  ,iy  ,izp1)*(1. - wx)*(1. - wy)*      wz  +
-     &            grid(ixp1,iy  ,izp1)*      wx *(1. - wy)*      wz  +
-     &            grid(ix  ,iyp1,izp1)*(1. - wx)*      wy *      wz  +
-     &            grid(ixp1,iyp1,izp1)*      wx *      wy *      wz
-        endif
+          if (nx > 0) gx = (xx    - xmin)*dxi
+          if (ny > 0) gy = (yy    - ymin)*dyi
+          if (nz > 0) gz = (z(ip) - zmin)*dzi
 
-      enddo
+c         --- if within grid, gather
+          if (0. <= gx .and. gx < nx .and.
+     &        0. <= gy .and. gy < ny .and.
+     &        0. <= gz .and. gz < nz) then
+            if (nx > 0) then
+              ix = int(gx)
+              ixp1 = ix + 1
+              wx = gx - ix
+            endif
+            if (ny > 0) then
+              iy = int(gy)
+              iyp1 = iy + 1
+              wy = gy - iy
+            endif
+            if (nz > 0) then
+              iz = int(gz)
+              izp1 = iz + 1
+              wz = gz - iz
+            endif
+            f(ip) = grid(ix  ,iy  ,iz  )*(1. - wx)*(1. - wy)*(1. - wz) +
+     &              grid(ixp1,iy  ,iz  )*      wx *(1. - wy)*(1. - wz) +
+     &              grid(ix  ,iyp1,iz  )*(1. - wx)*      wy *(1. - wz) +
+     &              grid(ixp1,iyp1,iz  )*      wx *      wy *(1. - wz) +
+     &              grid(ix  ,iy  ,izp1)*(1. - wx)*(1. - wy)*      wz  +
+     &              grid(ixp1,iy  ,izp1)*      wx *(1. - wy)*      wz  +
+     &              grid(ix  ,iyp1,izp1)*(1. - wx)*      wy *      wz  +
+     &              grid(ixp1,iyp1,izp1)*      wx *      wy *      wz
+          endif
+
+        enddo
+
+      else
+
+c       --- loop over particles
+        do ip=1,np
+
+c         --- find location on grid, taking into account any symmetries.
+          if (l4symtry) then
+            xx = abs(x(ip) - xsymmetryplane) + xsymmetryplane
+            yy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
+          else if (l2symtry) then
+            xx = x(ip)
+            yy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
+          else
+            xx = x(ip)
+            yy = y(ip)
+          endif
+          if (nx > 0) gx = (xx    - xmin)*dxi
+          if (nz > 0) gz = (z(ip) - zmin)*dzi
+
+c         --- if within grid, gather
+          if (0. <= gx .and. gx < nx .and.
+     &        0. <= gz .and. gz < nz) then
+            if (nx > 0) then
+              ix = int(gx)
+              ixp1 = ix + 1
+              wx = gx - ix
+            endif
+            if (nz > 0) then
+              iz = int(gz)
+              izp1 = iz + 1
+              wz = gz - iz
+            endif
+            f(ip) = grid(ix  ,iy  ,iz  )*(1. - wx)*(1. - wz) +
+     &              grid(ixp1,iy  ,iz  )*      wx *(1. - wz) +
+     &              grid(ix  ,iy  ,izp1)*(1. - wx)*      wz  +
+     &              grid(ixp1,iy  ,izp1)*      wx *      wz
+          endif
+
+        enddo
+
+      endif
 
       return
       end
