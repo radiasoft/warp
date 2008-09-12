@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.81 2008/09/11 18:14:29 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.82 2008/09/12 01:22:42 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -15,7 +15,7 @@ class ParticleScraper(object):
   """
 Class for creating particle scraper for conductors
  - conductors: a conductor or list of conductors which act as particle scrapers
-               Note that each conductor MUST have a unique id.
+               Note that each conductor MUST have a unique id that is > 0.
  - lsavecondid: when true, the id of the conductor where the particle is
                 lost is save. The id is saved in the array top.pidlost[:,-1].
  - lsaveintercept: when true, the location and surface normal where the
@@ -175,7 +175,7 @@ conductors are an argument.
     if newconductors is None: return
     if type(newconductors) is not ListType: newconductors = [newconductors]
     for c in newconductors:
-      assert c.condid != 0,"The conductor id must be nonzero in order for the particle scraping to work."
+      assert c.condid > 0,"The conductor id must be greater than zero in order for the particle scraping to work."
       self.conductors.append(c)
       if c.material == 'reflector':
         # --- For reflector materials, the old position is saved so that when
