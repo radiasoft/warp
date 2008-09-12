@@ -154,7 +154,7 @@ Carbon_Monoxide = Molecule(composition=[Carbon,Oxygen], Symbol='CO',name='Carbon
 Carbon_Dioxide  = Molecule(composition=[Carbon,Oxygen,Oxygen], Symbol='CO2',name='Carbon_Dioxide')
 Water           = Molecule(composition=[Hydrogen,Hydrogen,Oxygen], Symbol='H2O',name='Water')
 
-class Species:
+class Species(object):
   """
 Creates a new species of particles. All arguments are optional.
   - js=None: global species number (usually this should not be set)
@@ -521,6 +521,7 @@ in radius squared.
  - lallindomain=0: If true, the code only loads particles within the domain. This
                    only matters when parallel.
     """
+    if np == 0: return
 
     if theta == 0. and phi == 0.:
       # --- When no angle is specified, then the clipping to the domain
@@ -1457,3 +1458,44 @@ in radius squared.
 
   def ppzbz(self,**kw):
     return ppzbz(jslist=self.jslist,**kw)
+
+  # --- Fancy python to provide convenient methods for getting various
+  # --- species quantities. This allows something like the following, to
+  # --- get and set the species weight.
+  # --- beam = Species(type=Potassium,charge_state=1)
+  # --- beam.sw = npreal/nppart
+  # --- print beam.sw
+  # --- Note that the documentation can only be obtained by referencing the
+  # --- class object. i.e. beam.__class__.sw.__doc__
+  def _getpgroupattribute(name,doc=None):
+    def fget(self):
+      return getattr(self.pgroup,name)[self.jslist]
+    def fset(self,value):
+      getattr(self.pgroup,name)[self.jslist] = value
+    return fget,fset,None,doc
+
+  sw = property(*_getpgroupattribute('sw',
+         'Species particle weight, real particles per simulation particle'))
+  sm = property(*_getpgroupattribute('sm',
+         'Species particle mass (in kilograms)'))
+  sq = property(*_getpgroupattribute('sq',
+         'Species particle charge (in coulombs)'))
+  ins = property(*_getpgroupattribute('ins','Starting index of species'))
+  nps = property(*_getpgroupattribute('nps','Number of particle in species'))
+  sid = property(*_getpgroupattribute(' sid'))
+  ndts = property(*_getpgroupattribute(' ndts'))
+  ldts = property(*_getpgroupattribute(' ldts'))
+  lvdts = property(*_getpgroupattribute(' lvdts'))
+  iselfb = property(*_getpgroupattribute(' iselfb'))
+  fselfb = property(*_getpgroupattribute(' fselfb'))
+  l_maps = property(*_getpgroupattribute(' l_maps'))
+  dtscale = property(*_getpgroupattribute(' dtscale'))
+  limplicit = property(*_getpgroupattribute(' limplicit'))
+  iimplicit = property(*_getpgroupattribute(' iimplicit'))
+  ldoadvance = property(*_getpgroupattribute(' ldoadvance'))
+  lparaxial = property(*_getpgroupattribute(' lparaxial'))
+  zshift = property(*_getpgroupattribute(' zshift'))
+
+  # --- Clean up the name space
+  del _getpgroupattribute
+
