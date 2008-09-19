@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.108 $, $Date: 2008/09/19 20:11:35 $
+c@(#) File w3d_injection.F, version $Revision: 1.109 $, $Date: 2008/09/19 20:15:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2173,6 +2173,16 @@ c     --- Set mins for meshes around each source.
 c     --- Set inject z min and max.
       call updateinj_zmminmax()
 
+c Set up finject array if not set by the user (if sum of finject = 0).
+c Give each injection source the same distribution of species.
+      if (ninject > 0 .and. ns > 0) then
+        if (sum(finject) == 0.) then
+          do is=1,ns
+            finject(:,is) = sp_fract(is)
+          enddo
+        endif
+      endif
+
 c Set value of vzinject for inject==1 if not already set. For other
 c types of injection, vzinject is assumed to be zero, since the starting
 c velocity is calculated from the local fields.
@@ -2221,6 +2231,10 @@ c Also set particle parameters: charge, mass and weight
         sp_fract = sp_fract*total_frac
       endif
       do js=0,pgroup%ns-1
+        if (ninject == 0) cycle
+c       --- If no particles are to be injected from this species, then skip
+c       --- the code below.
+        if (sum(finject(:,js+1)) == 0.) cycle
         jsid = pgroup%sid(js)
         if (maxval(pgroup%nps) /= 0) then
           call chckpart(pgroup,js+1,int(injctspc*sp_fract(jsid+1)/total_frac+1),0)
@@ -2242,22 +2256,6 @@ c           --- (so npinje_s will be zero and the above skipped).
           endif
         endif
       enddo
-
-c Set up finject array if not set by the user (if sum of finject = 0).
-c Give each injection source the same distribution of species.
-      total_frac = 0.
-      do is=1,ns
-        do ij=1,ninject
-          total_frac = total_frac + finject(ij,is)
-        enddo
-      enddo
-      if (total_frac == 0.) then
-        do is=1,ns
-          do ij=1,ninject
-            finject(ij,is) = sp_fract(is)
-          enddo
-        enddo
-      endif
 
 c Set the variable INJCTCNT
 c This is used for loading the injection particles.  It ensures that the
@@ -2310,29 +2308,31 @@ c points if not already set.
       enddo
       call gchange("InjectVars",0)
 
-c In case there is no axial injection, set the particle weight.
-      do is=1,pgroup%ns
-        jsid = pgroup%sid(is-1)
-        if (pgroup%sw(is) == 0. .and. ntinject(jsid+1) > 0) then
-          pgroup%sw(is) = (ibeam_s(jsid+1)*dt*pgroup%ndts(is-1)/
-     &                     pgroup%sq(is))/ntinject(jsid+1)
-        endif
-      enddo
+c Setup some things for transverse injection if there are any sources defined.
+      if (ntinj > 0) then
 
 c Set up ftinject array if not set by the user (if sum of ftinject = 0).
 c Give each injection source the same distribution of species.
-      total_frac = 0.
-      do is=1,ns
-        do ij=1,ntinj
-          total_frac = total_frac + finject(ij,is)
-        enddo
-      enddo
-      if (total_frac == 0.) then
-        do is=1,ns
-          do ij=1,ntinj
-            ftinject(ij,is) = sp_fract(is)
+        if (sum(ftinject) == 0.) then
+          do is=1,ns
+            ftinject(is,:) = sp_fract(is)
           enddo
+        endif
+
+c In case there is no axial injection, set the particle weight.
+        do is=1,pgroup%ns
+c         --- If no particles are to be injected from this species, then skip
+c         --- the code below.
+          if (sum(ftinject(is,:)) == 0.) cycle
+          jsid = pgroup%sid(is-1)
+          if (pgroup%sq(js+1) == 0.) pgroup%sq(js+1) = zion_s(jsid+1)*echarge
+          if (pgroup%sm(js+1) == 0.) pgroup%sm(js+1) = aion_s(jsid+1)*amu
+          if (pgroup%sw(is) == 0. .and. ntinject(jsid+1) > 0) then
+            pgroup%sw(is) = (ibeam_s(jsid+1)*dt*pgroup%ndts(is-1)/
+     &                       pgroup%sq(is))/ntinject(jsid+1)
+          endif
         enddo
+
       endif
 
 c Determine what the value of inj_ns should be. It can either be 1 or
