@@ -956,7 +956,8 @@ class SubcycledPoissonSolver(FieldSolver):
 
   # ---------------------------------------------------------------------
   def loadsource(self,lzero=None,pgroups=None,**kw):
-    'Charge deposition, uses particles from top directly'
+    '''Charge deposition, uses particles from top directly
+      - jslist: option list of species to load'''
     # --- Note that the grid location is advanced even if no field solve
     # --- is being done.
     self.advancezgrid()
@@ -978,7 +979,10 @@ class SubcycledPoissonSolver(FieldSolver):
       if w3d.js2fsapi >= 0: js2 = w3d.js2fsapi+1
       else:                 js2 = pgroup.ns
 
-      for js in range(js1,js2):
+      jslist = kw.get('jslist',None)
+      if jslist is None: jslist = range(js1,js2)
+
+      for js in jslist:
         n = pgroup.nps[js]
         if n == 0: continue
         if pgroup.ldts[js]:
