@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.107 $, $Date: 2008/07/30 01:22:05 $
+c@(#) File w3d_injection.F, version $Revision: 1.108 $, $Date: 2008/09/19 20:11:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -680,6 +680,7 @@ c the scheme to use with time-dependent injection.
 c         --- Zero npinje_s.
           npinje_s = 0
           npinjtmp = 0
+          inj_npactual = 0.
 
 c         --- Copy inj_np to inj_prev
           inj_prev = inj_np
@@ -783,10 +784,7 @@ c               --- rectangular.
                   linj_cell = ((xm*bi)**2 + (ym*ai)**2) <= (ai*bi)**2
                 endif
 
-                if (.not. linj_cell) then
-                  inj_npactual(ix,iy,ij,:) = 0.
-                  cycle
-                endif
+                if (.not. linj_cell) cycle
 
 c               --- Check the z extent of the source at the grid cell.
 c               --- This gets the min and max of grid over the region
@@ -798,10 +796,7 @@ c               --- around the cell.
      &                                     max(0,iy-1):min(inj_ny,iy+1),ij)
      &                                     + zinj)
 c               --- Check if the z extent is within the domain.
-                if(zmin_tmp>=inj_zmmax.or.inj_zmmin>zmax_tmp) then
-                  inj_npactual(ix,iy,ij,:) = 0.
-                  cycle
-                endif
+                if(zmin_tmp>=inj_zmmax.or.inj_zmmin>zmax_tmp) cycle
 
 c               --- Loop over the species
                 do is=1,pgroup%ns
@@ -809,11 +804,10 @@ c               --- Loop over the species
                   inj_is = min(jsid+1,inj_ns)
 
 c                 --- Skip this species if the fraction is zero.
-                  if (.not. pgroup%ldts(is-1) .or.
-     &                finject(ij,jsid+1) == 0.) then
-                    inj_npactual(ix,iy,ij,inj_is) = 0.
-                    cycle
-                  endif
+                  if (finject(ij,jsid+1) == 0.) cycle
+
+c                 --- Skip species not being advanced this time step
+                  if (.not. pgroup%ldts(is-1)) cycle
 
 c                 --- number of particles injected in grid cell
                   if (inject == 2) then
@@ -904,6 +898,7 @@ c           --- Allocate enough space for the particles, summing over the
 c           --- injection grid cells.
             do is=1,pgroup%ns
               jsid = pgroup%sid(is-1)
+              if (finject(ij,jsid+1) == 0.) cycle
               inj_is = min(jsid+1,inj_ns)
               nn = sum(inj_npactual(:,:,ij,inj_is))
               call chckpart(pgroup,is,nn,0)
@@ -920,6 +915,7 @@ c               --- Mesh location relative to source center
 c               --- Loop over the species
                 do is=1,pgroup%ns
                   jsid = pgroup%sid(is-1)
+                  if (finject(ij,jsid+1) == 0.) cycle
                   inj_is = min(jsid+1,inj_ns)
 
 c                 --- Skip this species if no particles are to be injected
@@ -1351,6 +1347,7 @@ c           --- Skip this if no particles of this species were injected.
             if(npinje_s(jsid+1)==0) cycle
             nn = npinje_s(jsid+1)
 #else
+            if (finject(ij,jsid+1) == 0.) cycle
 c           --- Find particles that were freshly injected. These
 c           --- are particles which still have noninteger pid(:,injpid).
             allocate(mask(pgroup%nps(is)),stat=allocerror)
