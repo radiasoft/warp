@@ -148,9 +148,9 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     w  = pgroup.sw[js]*top.pgroup.dtscale[js]
     if top.wpid > 0: wght = top.pgroup.pid[i:i+n,top.wpid-1]
     else:            wght = zeros((0,),'d')
-    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid)
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,zgrid,q,w)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,zgrid,q,w):
     n = len(x)
     if n == 0: return
     if len(wght) > 0:
