@@ -191,8 +191,8 @@ class MultiGridRZ(MultiGrid):
     zfact = 1./sqrt((1.-beta)*(1.+beta))
 
     # --- This is only done for convenience.
-    self.phi = self.potential
-    self.rho = self.source
+    self._phi = self.potential
+    self._rho = self.source
     if isinstance(self.potential,FloatType): return
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
@@ -309,8 +309,8 @@ class MultiGrid2D(MultiGrid):
     zfact = 1./sqrt((1.-beta)*(1.+beta))
 
     # --- This is only done for convenience.
-    self.phi = self.potential
-    self.rho = self.source
+    self._phi = self.potential
+    self._rho = self.source
     if isinstance(self.potential,FloatType): return
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
@@ -320,7 +320,7 @@ class MultiGrid2D(MultiGrid):
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     self.lbuildquads = false
     multigrid2dsolve(iwhich,self.nx,self.nzlocal,self.nz,self.dx,self.dz*zfact,
-                     self.phi[:,0,:],self.rho[:,0,:],self.bounds,
+                     self._phi[:,0,:],self._rho[:,0,:],self.bounds,
                      self.xmmin,self.zmminlocal*zfact,self.zmmin*zfact,
                      self.getzgrid()*zfact,self.getzgrid()*zfact,
                      self.mgparam,mgiters,self.mgmaxiters,
@@ -339,14 +339,14 @@ class MultiGrid2D(MultiGrid):
   def pfzrg(self,**kw): self.genericpf(kw,pfzxg)
 
   def getresidual(self):
-    res = zeros(shape(self.phi),'d')
+    res = zeros(shape(self._phi),'d')
     dxsqi  = 1./self.dx**2
     dzsqi  = 1./self.dz**2
     reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
-    rho = self.rho*reps0c
+    rho = self._rho*reps0c
     conductorobject = self.getconductorobject()
     residual2d(self.nx,self.nzlocal,self.nz,dxsqi,dzsqi,xminodx,lrz,
-               self.phi,rho,res,0,self.bounds,
+               self._phi,rho,res,0,self.bounds,
                self.lcndbndy,self.icndbndy,conductorobject,1,1)
     return res
 
@@ -374,8 +374,8 @@ class MultiGrid2DDielectric(MultiGrid2D):
     zfact = 1./sqrt((1.-beta)*(1.+beta))
 
     # --- This is only done for convenience.
-    self.phi = self.potential
-    self.rho = self.source
+    self._phi = self.potential
+    self._rho = self.source
     if isinstance(self.potential,FloatType): return
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
@@ -386,7 +386,7 @@ class MultiGrid2DDielectric(MultiGrid2D):
     self.lbuildquads = false
     multigrid2ddielectricsolve(iwhich,self.nx,self.nzlocal,self.nz,
                      self.dx,self.dz*zfact,
-                     self.phi[:,0,:],self.rho[:,0,:],self.epsilon,self.bounds,
+                     self._phi[:,0,:],self._rho[:,0,:],self.epsilon,self.bounds,
                      self.xmmin,self.zmminlocal*zfact,self.zmmin*zfact,
                      self.getzgrid()*zfact,self.getzgrid()*zfact,
                      self.mgparam,mgiters,self.mgmaxiters,
@@ -400,10 +400,10 @@ class MultiGrid2DDielectric(MultiGrid2D):
     self.mgerror = mgerror[0]
 
   def getresidual(self):
-    res = zeros(shape(self.phi),'d')
+    res = zeros(shape(self._phi),'d')
     conductorobject = self.getconductorobject()
     residual2ddielectric(self.nx,self.nzlocal,self.nz,
-               self.phi,rho,self.epsilon,res,self.dx,self.dz,0,self.bounds,
+               self._phi,rho,self.epsilon,res,self.dx,self.dz,0,self.bounds,
                conductorobject)
     return res
 
@@ -527,9 +527,9 @@ Initially, conductors are not implemented.
     iimp = pgroup.iimplicit[js]
     if top.wpid == 0: wght = zeros((0,), 'd')
     else:             wght = pgroup.pid[i:i+n,top.wpid-1]
-    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,m,w,iimp,zgrid)
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,zgrid,q,m,w,iimp)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,m,w,iimp,zgrid):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,zgrid,q,m,w,iimp):
     n  = len(x)
     if n == 0: return
     # --- Create a temporary array to pass into setrho3d. This contributes
@@ -614,8 +614,8 @@ Initially, conductors are not implemented.
     zfact = 1./sqrt((1.-beta)*(1.+beta))
 
     # --- This is only done for convenience.
-    self.phi = self.potential
-    self.rho = self.source[...,0]
+    self._phi = self.potential
+    self._rho = self.source[...,0]
     if isinstance(self.potential,FloatType): return
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
