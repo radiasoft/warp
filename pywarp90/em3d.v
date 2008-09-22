@@ -85,7 +85,8 @@ depose_jxjyjz_esirkepov_n(j:real,
                            nx:integer,ny:integer,nz:integer,
                            nxguard:integer,nyguard:integer,nzguard:integer,
                            nox:integer,noy:integer,noz:integer,
-                           l_particles_weight:logical)
+                           l_particles_weight:logical,
+                           l4symtry:logical)
                            subroutine
 depose_jxjyjz_pxpypz_esirkepov_linear_serial(cj:real,mp:real,
                            n:integer,x(n):real,y(n):real,z(n):real,
@@ -109,13 +110,14 @@ depose_rho_linear_serial(rho:real,
                            subroutine
 depose_rho_n(rho:real,
                            n:integer,x(n):real,y(n):real,z(n):real,
-                           w(n):real,q:real,
+                           w:real,q:real,
                            xmin:real,ymin:real,zmin:real,
                            dx:real,dy:real,dz:real,
                            nx:integer,ny:integer,nz:integer,
                            nxguard:integer,nyguard:integer,nzguard:integer,
                            nox:integer,noy:integer,noz:integer,
-                           l_particles_weight:logical)
+                           l_particles_weight:logical,
+                           l4symtry:logical)
                            subroutine
 getf3d_linear(n:integer,xp(n):real,yp(n):real,zp(n):real,
                ex(n):real,ey(n):real,ez(n):real,
@@ -148,7 +150,8 @@ gete3d_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                nx:integer,ny:integer,nz:integer,
                nxguard:integer,nyguard:integer,nzguard:integer,
                nox:integer,noy:integer,noz:integer,
-               exg:real,eyg:real,ezg:real)
+               exg:real,eyg:real,ezg:real,
+                           l4symtry:logical)
                            subroutine
 getb3d_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                bx(n):real,by(n):real,bz(n):real,
@@ -157,7 +160,8 @@ getb3d_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                nx:integer,ny:integer,nz:integer,
                nxguard:integer,nyguard:integer,nzguard:integer,
                nox:integer,noy:integer,noz:integer,
-               bxg:real,byg:real,bzg:real)
+               bxg:real,byg:real,bzg:real,
+                           l4symtry:logical)
                            subroutine
 yee2node3d(f:EM3D_YEEFIELDtype) subroutine
 node2yee3d(f:EM3D_YEEFIELDtype) subroutine
@@ -168,6 +172,28 @@ em3d_exchange_rho(b:EM3D_BLOCKtype) subroutine
 add_current_slice_3d(f:EM3D_YEEFIELDtype,i:integer) subroutine
 add_rho_slice_3d(f:EM3D_YEEFIELDtype,i:integer) subroutine
 set_incond(f:EM3D_YEEFIELDtype,n:integer,indx(3,n):integer) subroutine
+em3d_applybc_rho(f:EM3D_YEEFIELDtype,xlbnd:integer,xrbnd:integer,
+                                     ylbnd:integer,yrbnd:integer,
+                                     zlbnd:integer,zrbnd:integer) subroutine
+em3d_applybc_j(f:EM3D_YEEFIELDtype,xlbnd:integer,xrbnd:integer,
+                                   ylbnd:integer,yrbnd:integer,
+                                   zlbnd:integer,zrbnd:integer) subroutine
+project_jxjyjz(jfine:real,jcoarse:real,jcoarse_mother:real,
+               nxf:integer,nyf:integer,nzf:integer,
+               nxc:integer,nyc,nzc:integer,
+               nxguard:integer,nyguard:integer,nzguard:integer,
+               rapx:integer,rapy:integer,rapz:integer,
+               ixc:integer,iyc:integer,izc:integer) subroutine
+project_rho(rhofine:real,rhocoarse:real,rhocoarse_mother:real,
+               nxf:integer,nyf:integer,nzf:integer,
+               nxc:integer,nyc,nzc:integer,
+               nxguard:integer,nyguard:integer,nzguard:integer,
+               rapx:integer,rapy:integer,rapz:integer,
+               ixc:integer,iyc:integer,izc:integer) subroutine
+addsubstractfields(child:EM3D_BLOCKtype,child_coarse:EM3D_BLOCKtype,
+                   parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer) subroutine
+addsubstractfields_nodal(child:EM3D_BLOCKtype,child_coarse:EM3D_BLOCKtype,
+                   parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer) subroutine
 
 %%%%%%%% EM3D_SPLITYEEFIELDtype:
 fieldtype integer /-2/
@@ -177,6 +203,30 @@ nz integer
 nxguard integer /1/
 nyguard integer /1/
 nzguard integer /1/
+ixmin integer /0/ # position of first node of grid interior in the x direction (FORTRAN indexing)
+iymin integer /0/ # position of first node of grid interior in the y direction (FORTRAN indexing)
+izmin integer /0/ # position of first node of grid interior in the z direction (FORTRAN indexing)
+ixmax integer /obj__%nx/ # position of last node of grid interior in the x direction (FORTRAN indexing)
+iymax integer /obj__%ny/ # position of last node of grid interior in the y direction (FORTRAN indexing)
+izmax integer /obj__%nz/ # position of last node of grid interior in the z direction (FORTRAN indexing)
+ixming integer /-obj__%nxguard/ # position of first node of entire grid (interior+guard nodes) in the x direction (FORTRAN indexing)
+iyming integer /-obj__%nyguard/ # position of first node of entire grid (interior+guard nodes) in the y direction (FORTRAN indexing)
+izming integer /-obj__%nzguard/ # position of first node of entire grid (interior+guard nodes) in the z direction (FORTRAN indexing)
+ixmaxg integer /obj__%ixmax+obj__%nxguard/ # position of last node of entire grid (interior+guard nodes) in the x direction (FORTRAN indexing)
+iymaxg integer /obj__%iymax+obj__%nyguard/ # position of last node of entire grid (interior+guard nodes) in the y direction (FORTRAN indexing)
+izmaxg integer /obj__%izmax+obj__%nzguard/ # position of last node of entire grid (interior+guard nodes) in the z direction (FORTRAN indexing)
+jxmin integer /0/ # position of first node of grid interior in the x direction (Python indexing)
+jymin integer /0/ # position of first node of grid interior in the y direction (Python indexing)
+jzmin integer /0/ # position of first node of grid interior in the z direction (Python indexing)
+jxmax integer /0/ # position of last node of grid interior in the x direction (Python indexing)
+jymax integer /0/ # position of last node of grid interior in the y direction (Python indexing)
+jzmax integer /0/ # position of last node of grid interior in the z direction (Python indexing)
+jxming integer /0/ # position of first node of entire grid (interior+guard nodes) in the x direction (Python indexing)
+jyming integer /0/ # position of first node of entire grid (interior+guard nodes) in the y direction (Python indexing)
+jzming integer /0/ # position of first node of entire grid (interior+guard nodes) in the z direction (Python indexing)
+jxmaxg integer /0/ # position of last node of entire grid (interior+guard nodes) in the x direction (Python indexing)
+jymaxg integer /0/ # position of last node of entire grid (interior+guard nodes) in the y direction (Python indexing)
+jzmaxg integer /0/ # position of last node of entire grid (interior+guard nodes) in the z direction (Python indexing)
 nxp integer /0/
 nyp integer /0/
 nzp integer /0/
@@ -200,13 +250,24 @@ lsz integer
 nnz integer
 smaxz real
 sdeltaz real
-ex(3,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-ey(3,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-ez(3,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-bx(2,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-by(2,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-bz(2,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-f(3,-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+exx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+exy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+exz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+eyx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+eyy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+eyz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+ezx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+ezy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+ezz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+bxy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+bxz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+byx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+byz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+bzx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+bzy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+fx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+fy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+fz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 ax(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 ay(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 az(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
@@ -265,6 +326,12 @@ jzmaxg integer /0/ # position of last node of entire grid (interior+guard nodes)
 nxp integer /0/
 nyp integer /0/
 nzp integer /0/
+nxf integer /0/
+nyf integer /0/
+nzf integer /0/
+nxpo integer /0/
+nypo integer /0/
+nzpo integer /0/
 nxmp integer /0/
 nymp integer /0/
 nzmp integer /0/
@@ -293,16 +360,23 @@ Ez(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Bx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 By(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Bz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-F(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Rho(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Rhoarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,ntimes) _real
+Exp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+Eyp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+Ezp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+Bxp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+Byp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+Bzp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+F(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
+Rho(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
+Rhoold(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
+Rhoarray(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard,ntimes) _real
 J(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
 Jarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3,ntimes) _real
 incond(-nxguard:nxcond+nxguard,-nyguard:nycond+nyguard,-nzguard:nzcond+nzguard) _logical
-Ax(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
-Ay(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
-Az(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
-Phi(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+Ax(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
+Ay(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
+Az(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
+Phi(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Mp(-nxguard:nxmp+nxguard,-nyguard:nymp+nyguard,-nzguard:nzmp+nzguard,3) _real
 
 %%%%%%%% EM3D_KYEEFIELDtype:
@@ -367,6 +441,9 @@ zr _EM3D_FIELDtype
 nx integer
 ny integer
 nz integer
+nxguard integer 
+nyguard integer 
+nzguard integer 
 nbndx integer
 nbndy integer
 nbndz integer
