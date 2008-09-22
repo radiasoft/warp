@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.407 $, $Date: 2008/08/18 02:24:48 $
+c@(#) File W3D.F, version $Revision: 3.408 $, $Date: 2008/09/22 17:37:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5480,14 +5480,16 @@ c     --- calculate values for sm, sq, and sw for each species.
           zlen = zimax_s(isid) - zimin_s(isid)
           pgroup%sw(js+1)=ibeam_s(isid)*zlen*sp_fract(isid)/
      &                   (vbeam_s(isid)*echarge*zion_s(isid)*nptot(js))
-        else if (js > 0 .and. pgroup%sw(js+1) == 0 .and.
+        else if (js > 0) then
+          if (pgroup%sw(js+1) == 0 .and.
      &           pgroup%sq(js+1) == pgroup%sq(js) .and.
      &           pgroup%sm(js+1) == pgroup%sm(js) .and.
      &           pgroup%ndts(js) == 2*pgroup%ndts(js-1)) then
-c         --- Automatically set the sw for species with larger ndts since in
-c         --- general there will be no particles in those groups initially
-c         --- (so nptot will be zero and the above skipped).
-          pgroup%sw(js+1) = pgroup%sw(js)
+c           --- Automatically set the sw for species with larger ndts since in
+c           --- general there will be no particles in those groups initially
+c           --- (so nptot will be zero and the above skipped).
+            pgroup%sw(js+1) = pgroup%sw(js)
+          endif
         endif
 c       --- Don't zero out sw in case the user has set it.
 
@@ -8872,6 +8874,7 @@ c       --- and the data needs to be copied around.
 c=============================================================================
       subroutine fetchb3d(pgroup,ipmin,ip,is)
       use ParticleGroupmodule
+      use FieldSolveAPI
       type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,ip,is
 
@@ -8882,6 +8885,7 @@ c     --- Don't do anything if there are no particles input.
 
       jsid = pgroup%sid(is-1)
       ndts = pgroup%ndts(is-1)
+      ipminfsapi = ipmin
       call fetchb3dfrompositions(jsid,ndts,ip,
      &                           pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                           pgroup%zp(ipmin),
