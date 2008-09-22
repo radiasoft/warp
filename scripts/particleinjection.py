@@ -6,7 +6,7 @@ from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.4 2008/07/03 18:17:52 dave Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.5 2008/09/22 21:19:53 dave Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -26,10 +26,12 @@ the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
     """
     def __init__(self,js=None,conductors=None,vthermal=0.,
-                 lcorrectede=None,l_inj_addtempz_abs=None,grid=None):
+                 lcorrectede=None,l_inj_addtempz_abs=None,lsmooth121=0,
+                 grid=None):
         self.vthermal = vthermal
         self.lcorrectede = lcorrectede
         self.l_inj_addtempz_abs = l_inj_addtempz_abs
+        self.lsmooth121 = lsmooth121
 
         #if js is None: js = range(top.ns)
         ## --- Make sure that js is a list
@@ -171,8 +173,11 @@ conductors are an argument.
 
         Qnew = Enorm - Qold
 
+
         # --- Only inject particle for cells in or near conductors.
         Qnew = where(self.grid.isinside == 0.,0.,Qnew)
+        if self.lsmooth121: self.smooth121(Qnew)
+        #if self.lsmooth121: Qnew = where(self.isdeepinside == 1.,0.,Qnew)
 
         # --- Calculate the number of new particles to add at each grid cell.
         rnn = Qnew/(top.pgroup.sq[self.js]*top.pgroup.sw[self.js])
@@ -391,6 +396,39 @@ for example after load balancing.
 
     def updateconductors(self):
         aura = max(self.grid.dx,self.grid.dy,self.grid.dz)
+       #if self.lsmooth121:
+       #    for c in self.conductors:
+       #        self.grid.getisinside(c,aura=-aura)
+       #    self.isdeepinside = self.grid.isinside.copy()
         for c in self.conductors:
             self.grid.getisinside(c,aura=aura)
+
+    def smooth121(self,Q):
+        Qcopy = Q.copy()
+        smooth121nonzero(Qcopy,Q,Q.shape[0]-1,Q.shape[1]-1,Q.shape[2]-1)
+        return
+        '''
+        if Q.shape[1] == 1:
+          Q[1:-1,0,1:-1] = (0.0625*(Q[:-2,0,:-2] + Q[2:,0,:-2] +
+                                    Q[:-2,0,2:]  + Q[2:,0,2:]) +
+                            0.1250*(Q[:-2,0,1:-1] + Q[2:,0,1:-1] +
+                                    Q[1:-1,0,:-2] + Q[1:-1,0,2:]) +
+                            0.25*Q[1:-1,0,1:-1])
+        else:
+          Q[1:-1,1:-1,1:-1] = (  0.125*(Q[:-2,:-2,:-2] + Q[2:,:-2,:-2] +
+                                        Q[:-2,:-2,2:] + Q[2:,:-2,2:] +
+                                        Q[:-2,2:,:-2] + Q[2:,2:,:-2] +
+                                        Q[:-2,2:,2:] + Q[2:,2:,2:]) +
+                                 0.25*( Q[1:-1,:-2,:-2] + Q[1:-1,2:,:-2] +
+                                        Q[1:-1,:-2,2:] + Q[1:-1,2:,2:] +
+                                        Q[:-2,1:-1,:-2] + Q[2:,1:-1,:-2] +
+                                        Q[:-2,1:-1,2:] + Q[2:,1:-1,2:] +
+                                        Q[:-2,:-2,1:-1] + Q[2:,:-2,1:-1] +
+                                        Q[:-2,2:,1:-1] + Q[2:,2:,1:-1]) +
+                                  0.5*( Q[:-2,1:-1,1:-1] + Q[2:,1:-1,1:-1] +
+                                        Q[1:-1,:-2,1:-1] + Q[1:-1,2:,1:-1] +
+                                        Q[1:-1,1:-1,:-2] + Q[1:-1,1:-1,2:]) +
+                                      ( Q[1:-1,1:-1,1:-1]))*0.125
+        '''
+
 
