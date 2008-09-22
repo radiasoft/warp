@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.222 $, $Date: 2008/08/08 18:44:02 $
+c@(#) File TOP.F, version $Revision: 3.223 $, $Date: 2008/09/22 17:23:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2360,6 +2360,75 @@ c  Fast gamma advance, version 2, fastest, but least accurate
         uxp(ip) = (vpr_par*vx+vpr_perp*vvvp_x)*gammapr
         uyp(ip) = (vpr_par*vy+vpr_perp*vvvp_y)*gammapr
         uzp(ip) = (vpr_par*vz+vpr_perp*vvvp_z)*gammapr
+        gaminv(ip) = 1./sqrt(1.+(uxp(ip)*uxp(ip)+uyp(ip)*uyp(ip)+uzp(ip)*uzp(ip))*invclightsq)
+      enddo
+
+      return
+      end
+!=============================================================================
+      subroutine setu_in_uzboosted_frame3d(np,uxp,uyp,uzp,gaminv,uzf,gammaf)
+! --- Computes u={uxp,uyp,uzp} in boosted frame {0,0,uzf}
+      use Constant
+      integer(ISZ):: np
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
+      real(kind=8):: uzf,gammaf
+      
+      integer(ISZ) :: ip
+      real(kind=8):: gammapr,vz,v,vvp_x,vvp_y,vvp,vvvp_x,vvvp_y,vvvp
+      real(kind=8):: vxp,vyp,vzp,vp_par,vp_perp,vpr_par,vpr_perp,gaminvf,const,invclightsq
+      logical(ISZ):: l_vperp
+      invclightsq = 1./(clight*clight)
+      if(gammaf<1.00000001) return
+      do ip=1,np
+        
+!  --- get velocities
+        vxp = uxp(ip)*gaminv(ip)
+        vyp = uyp(ip)*gaminv(ip)
+        vzp = uzp(ip)*gaminv(ip)
+
+        gaminvf = 1./gammaf
+        vz=uzf*gaminvf
+        const = 1./(1.-(vzp*vz)*invclightsq)         
+
+!   --- get unit vector v
+        v = sqrt(vz*vz)
+        vz = vz/v
+        
+!   --- get unit vector v x vp
+        vvp_x = -vz*vyp
+        vvp_y = vz*vxp
+        vvp = sqrt(vvp_x*vvp_x+vvp_y*vvp_y)
+!        if(vvp<1.e-10*v) then
+        if(vvp==0.) then
+          l_vperp=.false.
+        else
+          l_vperp=.true.
+        end if
+        if(l_vperp) then
+          vvp_x = vvp_x/vvp; vvp_y = vvp_y/vvp
+ 
+!   --- get vnit vector v x (v x vp)
+          vvvp_x = -vz*vvp_y
+          vvvp_y = vz*vvp_x
+          vvvp = sqrt(vvvp_x*vvvp_x+vvvp_y*vvvp_y)
+          vvvp_x = vvvp_x/vvvp; vvvp_y = vvvp_y/vvvp
+        end if
+        
+ ! get particle velocity vp in base {v,v x (v x vp)}, i.e. {v_par,v_perp}
+        vp_par  = vzp*vz 
+        if(l_vperp) vp_perp = vxp*vvvp_x + vyp*vvvp_y 
+        vpr_par = (vp_par-v)*const
+        const = const*gaminvf
+        if(l_vperp) then
+          vpr_perp = vp_perp*const
+        else
+          vpr_perp = 0.
+        endif
+        gammapr = 1./sqrt(1.-(vpr_par**2+vpr_perp**2)*invclightsq)
+        uxp(ip) = (vpr_perp*vvvp_x)*gammapr
+        uyp(ip) = (vpr_perp*vvvp_y)*gammapr
+        uzp(ip) = (vpr_par*vz)*gammapr
+        if(uzp(ip)==0.) uzp(ip)=1.e-20
         gaminv(ip) = 1./sqrt(1.+(uxp(ip)*uxp(ip)+uyp(ip)*uyp(ip)+uzp(ip)*uzp(ip))*invclightsq)
       enddo
 
