@@ -1,5 +1,8 @@
 """Implements adaptive mesh refinement in 3d
 """
+__all__ = ['MeshRefinement',
+           'MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
+           'MRBlockImplicit2D']
 from __future__ import generators
 from warp import *
 from multigrid import MultiGrid
@@ -759,7 +762,7 @@ not be fetched from there (it is set negative).
       if not block.isactive: continue
       self.__class__.__bases__[1].averagewithprevioussource(block,param)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,wght,q,w,zgrid,lrootonly=0):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,*args,**kw):
     """
 Given the list of particles, a charge and a weight, deposits the charge
 density of the mesh structure.
@@ -770,10 +773,11 @@ The sort still takes up about 40% of the time. Note that this depends on
 having ichilddomains filled with the blocknumber rather than the child number
 relative to the parent.
     """
+    lrootonly = kw.get('lrootonly',0)
     if len(self.children) > 0 and not lrootonly:
       ichild = zeros(len(x),'l')
       self.getichild(x,y,z,ichild,zgrid)
-      x,y,z,ux,uy,uz,gaminv,wfact,wght,nperchild = self.sortbyichild(ichild,x,y,z,ux,uy,uz,gaminv,wfact,wght)
+      x,y,z,ux,uy,uz,gaminv,wfact,nperchild = self.sortbyichild(ichild,x,y,z,ux,uy,uz,gaminv,wfact)
 
     else:
       nperchild = [len(x)]
@@ -785,8 +789,8 @@ relative to the parent.
       self.__class__.__bases__[1].setsourcepatposition(block,x[i:i+n],y[i:i+n],
                                                        z[i:i+n],
                                                        ux[i:i+n],uy[i:i+n],
-                                                       uz[i:i+n],gaminv[i:i+n],wfact[i:i+n],
-                                                       wght[i:i+n],q,w,zgrid)
+                                                       uz[i:i+n],gaminv[i:i+n],
+                                                       wfact[i:i+n],zgrid,*args)
       i = i + n
 
   def aftersetsourcep(self):
@@ -881,38 +885,24 @@ been taken care of. This should only ever be called by the root block.
         add(ssourcep,osourcep,ssourcep)
         osourcep[...] = 0.
 
-  def sortbyichild(self,ichild,x,y,z,ux,uy,uz,gaminv,wfact,wght):
-    wfactout = zeros(len(wfact),'d')
+  def sortbyichild(self,ichild,x,y,z,ux,uy,uz,gaminv,wfact):
+    nw = len(wfact)
+    wfactout = zeros(nw,'d')
     if len(ux) == 0:
       xout,yout,zout,uzout = zeros((4,len(x)),'d')
       nperchild = zeros(self.root.totalnumberofblocks,'l')
-      if top.wpid==0:
-        sortparticlesbyindex1(len(x),ichild,x,y,z,uz,self.root.totalnumberofblocks,
-                               xout,yout,zout,uzout,nperchild)
-      else:
-        sortparticlesbyindex1w(len(x),ichild,x,y,z,uz,wfact,self.root.totalnumberofblocks,
-                               xout,yout,zout,uzout,wfactout,nperchild)
-      return xout,yout,zout,ux,uy,uzout,gaminv,wfactout,wght,nperchild
+      sortparticlesbyindex1(len(x),ichild,x,y,z,uz,nw,wfact,
+                            self.root.totalnumberofblocks,
+                            xout,yout,zout,uzout,wfactout,nperchild)
+      return xout,yout,zout,ux,uy,uzout,gaminv,wfactout,nperchild
     else:
       xout,yout,zout,uxout,uyout,uzout,gaminvout = zeros((7,len(x)),'d')
-      if len(wght) > 0:
-        wghtout = zeros(len(x),'d')
-        nw = len(x)
-      else:
-        wghtout = zeros(0,'d')
-        nw = 0
       nperchild = zeros(self.root.totalnumberofblocks,'l')
-      if top.wpid==0:
-        sortparticlesbyindex2(len(x),ichild,x,y,z,ux,uy,uz,gaminv,nw,wght,
-                              self.root.totalnumberofblocks,
-                              xout,yout,zout,
-                              uxout,uyout,uzout,gaminvout,wghtout,nperchild)
-      else:
-        sortparticlesbyindex2w(len(x),ichild,x,y,z,ux,uy,uz,gaminv,wfact,nw,wght,
-                              self.root.totalnumberofblocks,
-                              xout,yout,zout,
-                              uxout,uyout,uzout,gaminvout,wfactout,wghtout,nperchild)
-      return xout,yout,zout,uxout,uyout,uzout,gaminvout,wfactout,wghtout,nperchild
+      sortparticlesbyindex2(len(x),ichild,x,y,z,ux,uy,uz,gaminv,nw,wfact,
+                            self.root.totalnumberofblocks,
+                            xout,yout,zout,
+                            uxout,uyout,uzout,gaminvout,wfactout,nperchild)
+      return xout,yout,zout,uxout,uyout,uzout,gaminvout,wfactout,nperchild
 
   def getichild(self,x,y,z,ichild,zgrid):
     """
@@ -2430,7 +2420,7 @@ Implements adaptive mesh refinement in 2d for the electrostatic field solver
                     nguard=[1,1,1],
                     children=None,**kw):
 
-    # --- Note that this calls the MultiGrid __init__ as well.
+    # --- Note that this calls the MultiGrid2D __init__ as well.
     self.__class__.__bases__[0].__init__(self,
                     parent=parent,refinement=refinement,
                     lower=lower,upper=upper,
@@ -2594,7 +2584,7 @@ Implements adaptive mesh refinement in RZ for the electrostatic field solver
                     nguard=[1,1,1],
                     children=None,**kw):
 
-    # --- Note that this calls the MultiGrid __init__ as well.
+    # --- Note that this calls the MultiGridRZ __init__ as well.
     self.__class__.__bases__[0].__init__(self,
                     parent=parent,refinement=refinement,
                     lower=lower,upper=upper,
@@ -2762,7 +2752,7 @@ with variable dielectric
                     nguard=[1,1,1],
                     children=None,**kw):
 
-    # --- Note that this calls the MultiGrid __init__ as well.
+    # --- Note that this calls the MultiGrid2DDielectric __init__ as well.
     self.__class__.__bases__[0].__init__(self,
                     parent=parent,refinement=refinement,
                     lower=lower,upper=upper,
@@ -2924,6 +2914,171 @@ with variable dielectric
     finally:
       if self is self.root: plotlistofthings(lturnofflist=1)
 
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+class MRBlockImplicit2D(MeshRefinement,MultiGridImplicit2D):
+  """
+Implements adaptive mesh refinement in 2d for the implicit electrostatic
+field solver
+ - parent:
+ - refinement=None: amount of refinement along each axis
+ - lower,upper: extent of domain in relative to parent, in its own grid
+                cell size, and not including any guard cells
+ - dims: dimensions of the grid, only used for root block, the one with
+         no parents
+ - mins,maxs: locations of the grid lower and upper bounds in the beam frame
+ - root: coarsest level grid
+ - children: list of tuples, each containing three elements,
+             (lower,upper,refinement). Children can also be added later
+             using addchild.
+ - lreducedpickle=true: when true, a small pickle is made by removing all of
+                        the big arrays. The information can be regenerated
+                        upon restart.
+  """
+  def __init__(self,parent=None,refinement=None,
+                    lower=None,upper=None,
+                    fulllower=None,fullupper=None,
+                    dims=None,mins=None,maxs=None,
+                    nguard=[1,1,1],
+                    children=None,**kw):
+
+    # --- Note that this calls the MultiGridImplicit2D __init__ as well.
+    self.__class__.__bases__[0].__init__(self,
+                    parent=parent,refinement=refinement,
+                    lower=lower,upper=upper,
+                    fulllower=fulllower,fullupper=fullupper,
+                    dims=dims,mins=mins,maxs=maxs,
+                    nguard=nguard,
+                    children=children,**kw)
+
+  def getgetdataname(self,kw):
+    if kw.get('plotselfe',0):
+      return 'getfieldslice'
+    elif kw.get('plotrho',0):
+      return 'getsourceslice'
+    else:
+      return 'getpotentialslice'
+
+  def pfzx(self,kwdict=None,**kw):
+    if kwdict is None: kwdict = {}
+    kwdict.update(kw)
+    self.genericpf(self.getgetdataname(kw),kwdict,1,pfzx)
+  def pfzxg(self,kwdict=None,**kw):
+    if kwdict is None: kwdict = {}
+    kwdict.update(kw)
+    self.genericpf(self.getgetdataname(kw),kwdict,1,pfzxg)
+
+  def plphiz(self,ix=None,colors=None,selfonly=0):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if ix < self.fulllower[0]: return
+    if ix > self.fullupper[0]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.potential[ix-self.fulllower[0]+1,0,1:-1],self.zmesh,
+          color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plphiz(ix*child.refinement[0],colors=colors)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plphix(self,iz=None,colors=None,selfonly=0):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if iz < self.fulllower[2]: return
+    if iz > self.fullupper[2]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.potential[1:-1,0,iz-self.fulllower[2]+1],self.xmesh,
+          color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plphix(iz*child.refinement[2],colors=colors)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plrhoz(self,ix=None,colors=None,selfonly=0):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if ix < self.fulllower[0]: return
+    if ix > self.fullupper[0]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.source[ix-self.fulllower[0],0,:],self.zmesh,
+          color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plrhoz(ix*child.refinement[0],colors=colors)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plrhox(self,iz=None,colors=None,selfonly=0):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if iz < self.fulllower[2]: return
+    if iz > self.fullupper[2]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.source[:,0,iz-self.fulllower[2]],self.xmesh,
+          color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plrhox(iz*child.refinement[2],colors=colors)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plselfez(self,comp=2,ix=None,colors=None,selfonly=0,withguard=1):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if withguard:
+      lower,upper = self.fulllower,self.fullupper
+      iz = slice(None)
+    else:
+      lower,upper = self.lower,self.upper
+      iz = slice(self.lower[2] - self.fulllower[2],
+                 self.upper[2] - self.fulllower[2] + 1)
+    if ix < lower[0]: return
+    if ix > upper[0]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.field[comp,ix-self.fulllower[0],0,iz],
+          self.zmesh[iz],color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plselfez(comp,ix*child.refinement[0],
+                         colors=colors,withguard=withguard)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plselfex(self,comp=2,iz=None,colors=None,selfonly=0,withguard=1):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if withguard:
+      lower,upper = self.fulllower,self.fullupper
+      ix = slice(None)
+    else:
+      lower,upper = self.lower,self.upper
+      ix = slice(self.lower[0] - self.fulllower[0],
+                 self.upper[0] - self.fulllower[0] + 1)
+    if iz < lower[2]: return
+    if iz > upper[2]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.field[comp,ix,0,iz-self.fulllower[2]],
+                     self.xmesh[ix],color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plselfex(comp,iz*child.refinement[2],
+                         colors=colors,withguard=withguard)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
 class EMMRBlock(MeshRefinement,EM3D):
   """
 Implements adaptive mesh refinement in 3d for the electromagnetic field solver
@@ -3014,8 +3169,6 @@ Implements adaptive mesh refinement in 3d for the electromagnetic field solver
       self.genericpfem3d(self.gatherarray(self.fields.F),'F',**kw)
       for c in self.children:
         c.pff(**kw)
-
-
 
 # --- This can only be done after MRBlock is defined.
 try:
