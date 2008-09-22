@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.70 2008/09/11 00:14:30 dave Exp $"
+particles_version = "$Id: particles.py,v 1.71 2008/09/22 17:52:15 jlvay Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1334,6 +1334,11 @@ Adds particles to the simulation
   if top.wpid>0: pid[:,top.wpid-1]=w
   # --- Note that ssn is set in addpart
 
+  # --- Set xyz old
+  if top.xoldpid>0: pid[:,top.xoldpid-1]=x.copy()
+  if top.yoldpid>0: pid[:,top.yoldpid-1]=y.copy()
+  if top.zoldpid>0: pid[:,top.zoldpid-1]=z.copy()
+
   # --- Set extent of domain
   if not lparallel:
     if zmmin is None: zmmin = w3d.zmmin + top.zbeam
@@ -1378,4 +1383,3 @@ Adds particles to the simulation
       top.jhist = top.jhist - 1
       savehist(top.time)
 
-    
