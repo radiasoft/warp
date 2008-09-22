@@ -4,6 +4,7 @@ from __future__ import generators
 from warp import *
 from multigrid import MultiGrid
 from multigridRZ import MultiGrid2D
+from em3dsolver import EM3D
 from find_mgparam import find_mgparam
 import operator
 try:
@@ -45,11 +46,14 @@ Implements adaptive mesh refinement in 3d
                     lower=None,upper=None,
                     fulllower=None,fullupper=None,
                     dims=None,mins=None,maxs=None,
-                    nguard=[1,1,1],
+                    nguard=[1,1,1],l_EM=0,
                     children=None,**kw):
 
     # --- Save the input dictionary to pass to children
     self.kw = kw
+        
+    # --- By default, use electrostatic solver
+    self.l_EM=l_EM
 
     # --- The value of solvergeom needs to be fetched here (normally, is
     # --- would be set in the call to the __init__ of the field solver.
@@ -243,26 +247,30 @@ Implements adaptive mesh refinement in 3d
       self.pbounds = self.root.pbounds.copy()
 
       # --- Check if the mesh doesn't reach the edge of the root grid.
-      # --- If not, switch to Dirichlet boundary. Also check to make sure
+      # --- If not, switch to Dirichlet,Open boundary for ES/EM solver. Also check to make sure
       # --- that one side isn't periodic when the other is.
-      self.bounds[::2] = where(self.fulllower > 0,0,self.bounds[::2])
+      if self.l_EM:
+        interiorbc = openbc
+      else:
+        interiorbc = dirichlet
+      self.bounds[::2] = where(self.fulllower > 0,interiorbc,self.bounds[::2])
       self.bounds[1::2] = where(self.fullupper < self.root.dimsglobal*self.totalrefinement,
-                                0,self.bounds[1::2])
+                                interiorbc,self.bounds[1::2])
       self.bounds[::2] = where((self.bounds[::2] == 2)&(self.bounds[1::2] != 2),
-                               0,self.bounds[::2])
+                               interiorbc,self.bounds[::2])
       self.bounds[1::2] = where((self.bounds[::2] == 2)&(self.bounds[1::2] != 2),
-                                0,self.bounds[1::2])
+                                interiorbc,self.bounds[1::2])
 
       self.l2symtry = self.root.l2symtry
       self.l4symtry = self.root.l4symtry
 
-      self.pbounds[::2] = where(self.fulllower > 0,0,self.pbounds[::2])
+      self.pbounds[::2] = where(self.fulllower > 0,interiorbc,self.pbounds[::2])
       self.pbounds[1::2] = where(self.fullupper < self.root.dimsglobal*self.totalrefinement,
-                                0,self.pbounds[1::2])
+                                interiorbc,self.pbounds[1::2])
       self.pbounds[::2] = where((self.pbounds[::2] == 2)&(self.pbounds[1::2] != 2),
-                                0,self.pbounds[::2])
+                                interiorbc,self.pbounds[::2])
       self.pbounds[1::2] = where((self.pbounds[::2] == 2)&(self.pbounds[1::2] != 2),
-                                 0,self.pbounds[1::2])
+                                 interiorbc,self.pbounds[1::2])
 
       # --- Create some temporaries for optimization
       self.fullloweroverrefinement = self.fulllower/self.refinement
@@ -763,7 +771,6 @@ having ichilddomains filled with the blocknumber rather than the child number
 relative to the parent.
     """
     if len(self.children) > 0 and not lrootonly:
-
       ichild = zeros(len(x),'l')
       self.getichild(x,y,z,ichild,zgrid)
       x,y,z,ux,uy,uz,gaminv,wfact,wght,nperchild = self.sortbyichild(ichild,x,y,z,ux,uy,uz,gaminv,wfact,wght)
@@ -875,9 +882,9 @@ been taken care of. This should only ever be called by the root block.
         osourcep[...] = 0.
 
   def sortbyichild(self,ichild,x,y,z,ux,uy,uz,gaminv,wfact,wght):
+    wfactout = zeros(len(wfact),'d')
     if len(ux) == 0:
       xout,yout,zout,uzout = zeros((4,len(x)),'d')
-      wfactout = zeros(len(wfact),'d')
       nperchild = zeros(self.root.totalnumberofblocks,'l')
       if top.wpid==0:
         sortparticlesbyindex1(len(x),ichild,x,y,z,uz,self.root.totalnumberofblocks,
@@ -955,7 +962,6 @@ Fortran version
     # --- before it can get its sourcep from here, it must be done on the
     # --- first call.
     if not self.isfirstcall(): return
-
     # --- Loop over the children
     for child in self.children:
 
@@ -977,15 +983,40 @@ Fortran version
                    u[0] == self.rootdims[0] or
                    u[1] == self.rootdims[1] or
                    u[2] == self.rootdims[2]))
-
       w = self.getwarrayforsourcep(child.refinement)
-      gathersourcefromchild(self.sourcep,self.ncomponents,self.dims,
-                            child.sourcep,child.dims,
-                            l,u,self.fulllower,child.fulllower,child.fullupper,
-                            child.refinement,w,
-                            self.xmesh,child.xmesh,self.lcylindrical,
-                            dopbounds,child.pbounds,self.rootdims)
-
+      if not self.l_EM:
+        gathersourcefromchild(self.sourcep,self.ncomponents,self.dims,
+                              child.sourcep,child.dims,
+                              l,u,self.fulllower,child.fulllower,child.fullupper,
+                              child.refinement,w,
+                              self.xmesh,child.xmesh,self.lcylindrical,
+                              dopbounds,child.pbounds,self.rootdims)
+      else:
+         cb = child.block
+         cbc = child.block_coarse
+         lp = l-self.fulllower
+         project_jxjyjz(cb.core.yf.J,
+                        cbc.core.yf.J,
+                        self.block.core.yf.J,
+                        cb.nx,cb.ny,cb.nz,
+                        self.block.nx,self.block.ny,self.block.nz,
+                        cb.nxguard,cb.nyguard,cb.nzguard,
+                        child.refinement[0],
+                        child.refinement[1],
+                        child.refinement[2],
+                        lp[0],lp[1],lp[2])
+         if child.l_pushf:
+           project_rho(cb.core.yf.Rho,
+                        cbc.core.yf.Rho,
+                        self.block.core.yf.Rho,
+                        cb.nx,cb.ny,cb.nz,
+                        self.block.nx,self.block.ny,self.block.nz,
+                        cb.nxguard,cb.nyguard,cb.nzguard,
+                        child.refinement[0],
+                        child.refinement[1],
+                        child.refinement[2],
+                        lp[0],lp[1],lp[2])
+         
     # --- zerosourcepinoverlap is call here so that any contribution from
     # --- the children in the overlap regions will get zeroed as necessary.
     self.zerosourcepinoverlap()
@@ -1011,7 +1042,6 @@ higher numbered blocks. This should only ever be called by the root block.
   #--------------------------------------------------------------------------
 
   def dosolve(self,iwhich=0,*args):
-
     # --- Make sure that the final setup was done.
     self.finalize()
 
@@ -1026,10 +1056,13 @@ higher numbered blocks. This should only ever be called by the root block.
     if self.l_internal_dosolve:self.setpotentialfromparents()
     self.__class__.__bases__[1].dosolve(self,iwhich,*args)
 
+    if self.l_EM:self.addsubstractfieldfromparent()
+
     # --- solve for children, using the routine which does the correct
     # --- referencing for subcycling and self-B correction
     for child in self.children:
       child.dosolveonpotential(iwhich,*args)
+
     """
     if self == self.root:
       self.__class__.__bases__[1].dosolve(self,iwhich)
@@ -1053,6 +1086,7 @@ higher numbered blocks. This should only ever be called by the root block.
 Sets potential, using the values from the parent grid. Setting the full potential array
 gives a better initial guess for the field solver.
     """
+    if self.l_EM:return
     for parentnumber in self.parents:
       parent = self.getblockfromnumber(parentnumber)
       # --- Coordinates of mesh relative to parent's mesh location
@@ -1070,6 +1104,26 @@ gives a better initial guess for the field solver.
                                  self.fulllower,
                                  parent.potential,parent.dims,parent.fulllower,
                                  self.refinement)
+
+  def addsubstractfieldfromparent(self):
+    """
+Add own field and field from parent, substracting field from block_coarse, and 
+putting the result in Exp, Eyp, Ezp, Bxp, Byp and Bzp.
+    """
+    for parentnumber in self.parents:
+      parent = self.getblockfromnumber(parentnumber)
+      # --- Coordinates of mesh relative to parent's mesh location
+      # --- and refinement. The minimum and maximum are needed in case
+      # --- this mesh extends beyond the parent's.
+      plower = (parent.fulllower - self.extradimslower)*self.refinement
+      pupper = (parent.fullupper + self.extradimsupper)*self.refinement
+      l = maximum(plower,self.fulllower)
+      u = minimum(pupper,self.fullupper)
+      lp = (l-plower)/self.refinement
+      if top.efetch[0]<>4:
+        addsubstractfields_nodal(self.block,self.block_coarse,parent.block,lp,self.refinement)
+      else:
+        addsubstractfields(self.block,self.block_coarse,parent.block,lp,self.refinement)
 
   #--------------------------------------------------------------------------
   # --- Methods to fetch fields and potential
@@ -1776,18 +1830,6 @@ Create DX object drawing the object.
     for child in self.children:
       dxlist.append(child.getdxobject(kwdict=kw))
     self.dxobject = Opyndx.DXCollection(*dxlist)
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ##############################################################################
@@ -2881,6 +2923,98 @@ with variable dielectric
           child.plepsilonx(iz*child.refinement[2],colors=colors)
     finally:
       if self is self.root: plotlistofthings(lturnofflist=1)
+
+class EMMRBlock(MeshRefinement,EM3D):
+  """
+Implements adaptive mesh refinement in 3d for the electromagnetic field solver
+ - parent:
+ - refinement=None: amount of refinement along each axis
+ - lower,upper: extent of domain in relative to parent, in its own grid
+                cell size, and not including any guard cells
+ - dims: dimensions of the grid, only used for root block, the one with
+         no parents
+ - mins,maxs: locations of the grid lower and upper bounds in the beam frame
+ - root: coarsest level grid
+ - children: list of tuples, each containing three elements,
+             (lower,upper,refinement). Children can also be added later
+             using addchild.
+ - lreducedpickle=true: when true, a small pickle is made by removing all of
+                        the big arrays. The information can be regenerated
+                        upon restart.
+  """
+  def __init__(self,parent=None,refinement=None,
+                    lower=None,upper=None,
+                    fulllower=None,fullupper=None,
+                    dims=None,mins=None,maxs=None,
+                    nguard=[1,1,1],
+                    children=None,**kw):
+
+    # --- Note that this calls the MultiGrid __init__ as well.
+    self.__class__.__bases__[0].__init__(self,
+                    parent=parent,refinement=refinement,
+                    lower=lower,upper=upper,
+                    fulllower=fulllower,fullupper=fullupper,
+                    dims=dims,mins=mins,maxs=maxs,
+                    nguard=nguard,l_EM=1,
+                    children=children,**kw)
+
+  ##########################################################################
+  # Define the basic plot commands
+  def pfex(self,**kw):
+      self.genericpfem3d(self.gatherarray(self.fields.Ex),'E_x',**kw)
+      for c in self.children:
+        c.pfex(**kw)
+
+  def pfey(self,**kw):
+      self.genericpfem3d(self.gatherarray(self.fields.Ey),'E_y',**kw)
+      for c in self.children:
+        c.pfey(**kw)
+
+  def pfez(self,**kw):
+      self.genericpfem3d(self.gatherarray(self.fields.Ez),'E_z',**kw)
+      for c in self.children:
+        c.pfez(**kw)
+
+  def pfbx(self,**kw):
+      self.genericpfem3d(self.gatherarray(self.fields.Bx),'B_x',**kw)
+      for c in self.children:
+        c.pfbx(**kw)
+
+  def pfby(self,**kw):
+      self.genericpfem3d(self.gatherarray(self.fields.By),'B_y',**kw)
+      for c in self.children:
+        c.pfby(**kw)
+
+  def pfbz(self,**kw):
+      self.genericpfem3d(self.gatherarray(self.fields.Bz),'B_z',**kw)
+      for c in self.children:
+        c.pfbz(**kw)
+
+  def pfjx(self,**kw):
+      self.genericpfem3d(self.gatherarray(self.fields.J[:,:,:,0]),'J_x',**kw)
+      for c in self.children:
+        c.pfjx(**kw)
+
+  def pfjy(self,**kw):
+      self.genericpfem3d(self.gatherarray(self.fields.J[:,:,:,1]),'J_y',**kw)
+      for c in self.children:
+        c.pfjy(**kw)
+
+  def pfjz(self,**kw):
+      self.genericpfem3d(self.gatherarray(self.fields.J[:,:,:,2]),'J_z',**kw)
+      for c in self.children:
+        c.pfjz(**kw)
+
+  def pfrho(self,**kw):
+      self.genericpfem3d(self.gatherarray(self.fields.Rho),'Rho',**kw)
+      for c in self.children:
+        c.pfrho(**kw)
+
+  def pff(self,**kw):
+      self.genericpfem3d(self.gatherarray(self.fields.F),'F',**kw)
+      for c in self.children:
+        c.pff(**kw)
+
 
 
 # --- This can only be done after MRBlock is defined.
