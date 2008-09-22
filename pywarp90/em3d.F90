@@ -141,13 +141,13 @@ end subroutine depose_jxjyjz_esirkepov_linear_serial
 
 subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,zmin, &
                                                  dt,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard, &
-                                                 nox,noy,noz,l_particles_weight)
+                                                 nox,noy,noz,l_particles_weight,l4symtry)
    implicit none
    integer(ISZ) :: np,nx,ny,nz,nox,noy,noz,nxguard,nyguard,nzguard
    real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3), intent(in out) :: cj
    real(kind=8), dimension(np) :: xp,yp,zp,uxp,uyp,uzp,gaminv,w
    real(kind=8) :: q,dt,dx,dy,dz,xmin,ymin,zmin
-   logical(ISZ) :: l_particles_weight
+   logical(ISZ) :: l_particles_weight,l4symtry
 
    real(kind=8) :: dxi,dyi,dzi,dtsdx,dtsdy,dtsdz,xint,yint,zint
    real(kind=8),dimension(-int(nox/2)-1:int((nox+1)/2)+1, &
@@ -161,10 +161,10 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
    real(kind=8), DIMENSION(-int(noy/2)-1:int((noy+1)/2)+1) :: sy, sy0, dsy
    real(kind=8), DIMENSION(-int(noz/2)-1:int((noz+1)/2)+1) :: sz, sz0, dsz
    integer(ISZ) :: iixp0,ijxp0,ikxp0,iixp,ijxp,ikxp,ip,dix,diy,diz,idx,idy,idz,i,j,k, &
-                   ixmin, ixmax, iymin, iymax, izmin, izmax
+                   ixmin, ixmax, iymin, iymax, izmin, izmax, icell, ncells
 
-      sx0=0.;sy0=0.;sz0=0.
-      sdz=0.
+    sx0=0.;sy0=0.;sz0=0.
+    sdz=0.
       
       dxi = 1./dx
       dyi = 1./dy
@@ -193,7 +193,43 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
         xold=x-dtsdx*vx
         yold=y-dtsdy*vy
         zold=z-dtsdz*vz
+ 
+        if (l4symtry) then
+          x=abs(x)
+          y=abs(y)
+          xold=abs(xold)
+          yold=abs(yold)
+          vx = (x-xold)/dtsdx
+          vy = (y-yold)/dtsdy
+        end if
+        
+        ! computes maximum number of cells traversed by particle in a given dimension
+        ncells = 1+max( int(abs(x-xold)), int(abs(y-yold)), int(abs(z-zold)))
+        
+        dtsdx = dtsdx/ncells
+        dtsdy = dtsdy/ncells
+        dtsdz = dtsdz/ncells
+        dts2dx = dts2dx/ncells
+        dts2dy = dts2dy/ncells
+        dts2dz = dts2dz/ncells
+        invdtdx = invdtdx * ncells
+        invdtdy = invdtdy * ncells
+        invdtdz = invdtdz * ncells
+        
+        x=xold
+        y=yold
+        z=zold
+        
+        do icell = 1,ncells
 
+        xold = x
+        yold = y
+        zold = z
+        
+        x = x+dtsdx*vx
+        y = y+dtsdy*vy
+        z = z+dtsdz*vz
+        
         if (l_particles_weight) then
           wq=q*w(ip)
         else
@@ -388,6 +424,8 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           cj(iixp0+ixmin:iixp0+ixmax+1,ijxp0+iymin:ijxp0+iymax+1,ikxp0+k,3) + sdz(ixmin:ixmax+1,iymin:iymax+1,k)
         end do        
 
+      end do
+ 
     end do
 
   return
@@ -811,13 +849,14 @@ subroutine depose_rho_linear_serial(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,
   return
 end subroutine depose_rho_linear_serial
 
-subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard,nox,noy,noz,l_particles_weight)
+subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard,nox,noy,noz, &
+                        l_particles_weight,l4symtry)
    implicit none
    integer(ISZ) :: np,nx,ny,nz,nox,noy,noz,nxguard,nyguard,nzguard
    real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(in out) :: rho
    real(kind=8), dimension(np) :: xp,yp,zp,w
    real(kind=8) :: q,dt,dx,dy,dz,xmin,ymin,zmin
-   logical(ISZ) :: l_particles_weight
+   logical(ISZ) :: l_particles_weight,l4symtry
 
    real(kind=8) :: dxi,dyi,dzi,xint,yint,zint, &
                    oxint,oyint,ozint,xintsq,yintsq,zintsq,oxintsq,oyintsq,ozintsq
@@ -845,6 +884,11 @@ subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxg
         x = (xp(ip)-xmin)*dxi
         y = (yp(ip)-ymin)*dyi
         z = (zp(ip)-zmin)*dzi
+        
+        if (l4symtry) then
+          x=abs(x)
+          y=abs(y)
+        end if
         
         j=floor(x)
         k=floor(y)
@@ -932,6 +976,7 @@ end subroutine depose_rho_n
 
  subroutine getf3d_linear(np,xp,yp,zp,ex,ey,ez,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard,exg,eyg,ezg)
    
+ implicit none
       integer(ISZ) :: np,nx,ny,nz,nxguard,nyguard,nzguard
       real(kind=8), dimension(np) :: xp,yp,zp,ex,ey,ez
       real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: exg,eyg,ezg
@@ -988,6 +1033,7 @@ end subroutine depose_rho_n
  subroutine gete3d_linear_energy_conserving(np,xp,yp,zp,ex,ey,ez,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz, &
                                             nxguard,nyguard,nzguard,exg,eyg,ezg)
    
+ implicit none
       integer(ISZ) :: np,nx,ny,nz,nxguard,nyguard,nzguard
       real(kind=8), dimension(np) :: xp,yp,zp,ex,ey,ez
       real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: exg,eyg,ezg
@@ -1041,16 +1087,18 @@ end subroutine depose_rho_n
  end subroutine gete3d_linear_energy_conserving
 
   subroutine gete3d_n_energy_conserving(np,xp,yp,zp,ex,ey,ez,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard, &
-                                       nox,noy,noz,exg,eyg,ezg)
+                                       nox,noy,noz,exg,eyg,ezg,l4symtry)
    
-      integer(ISZ) :: np,nx,ny,nz,nox,noy,noz,nxguard,nyguard,nzguard
+   implicit none
+     integer(ISZ) :: np,nx,ny,nz,nox,noy,noz,nxguard,nyguard,nzguard
       real(kind=8), dimension(np) :: xp,yp,zp,ex,ey,ez
+      logical(ISZ) :: l4symtry
       real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: exg,eyg,ezg
       real(kind=8) :: xmin,ymin,zmin,dx,dy,dz
       integer(ISZ) :: ip, j, k, l, ixmin, ixmax, iymin, iymax, izmin, izmax, &
                       ixmin0, ixmax0, iymin0, iymax0, izmin0, izmax0, jj, kk, ll
       real(kind=8) :: dxi, dyi, dzi, x, y, z, xint, yint, zint, &
-                      xintsq,oxint,yintsq,oyint,zintsq,ozint,oxintsq,oyintsq,ozintsq
+                      xintsq,oxint,yintsq,oyint,zintsq,ozint,oxintsq,oyintsq,ozintsq,signx,signy
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
@@ -1077,12 +1125,30 @@ end subroutine depose_rho_n
       izmin0 = -int((noz)/2)
       izmax0 =  int((noz-1)/2)
 
+      signx = 1.
+      signy = 1.
+
       do ip=1,np
 
         x = (xp(ip)-xmin)*dxi
         y = (yp(ip)-ymin)*dyi
         z = (zp(ip)-zmin)*dzi
 
+        if (l4symtry) then
+          if (x<0.) then
+            x = -x
+            signx = -1.
+          else
+            signx = 1.
+          end if
+          if (y<0.) then
+            y = -y
+            signy = -1.
+          else
+            signy = 1.
+          end if
+        end if
+        
         j=floor(x)
         k=floor(y)
         l=floor(z)
@@ -1193,7 +1259,7 @@ end subroutine depose_rho_n
         do ll = izmin, izmax+1
           do kk = iymin, iymax+1
             do jj = ixmin0, ixmax0
-              ex(ip) = ex(ip) + sx0(jj)*sy(kk)*sz(ll)*exg(j+jj,k+kk,l+ll)
+              ex(ip) = ex(ip) + sx0(jj)*sy(kk)*sz(ll)*exg(j+jj,k+kk,l+ll)*signx
             end do
           end do
         end do
@@ -1201,7 +1267,7 @@ end subroutine depose_rho_n
         do ll = izmin, izmax+1
           do kk = iymin0, iymax0
             do jj = ixmin, ixmax+1
-              ey(ip) = ey(ip) + sx(jj)*sy0(kk)*sz(ll)*eyg(j+jj,k+kk,l+ll)
+              ey(ip) = ey(ip) + sx(jj)*sy0(kk)*sz(ll)*eyg(j+jj,k+kk,l+ll)*signy
             end do
           end do
         end do
@@ -1221,6 +1287,7 @@ end subroutine depose_rho_n
 
  subroutine gete3d_linear_energy_conserving2(np,xp,yp,zp,ex,ey,ez,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz, &
                                              nxguard,nyguard,nzguard,exg,eyg,ezg)
+ implicit none
    
       integer(ISZ) :: np,nx,ny,nz,nxguard,nyguard,nzguard
       real(kind=8), dimension(np) :: xp,yp,zp,ex,ey,ez
@@ -1281,6 +1348,7 @@ end subroutine depose_rho_n
  subroutine getb3d_linear_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz, &
                                             nxguard,nyguard,nzguard,bxg,byg,bzg)
    
+ implicit none
       integer(ISZ) :: np,nx,ny,nz,nxguard,nyguard,nzguard
       real(kind=8), dimension(np) :: xp,yp,zp,bx,by,bz
       real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: bxg,byg,bzg
@@ -1328,22 +1396,24 @@ end subroutine depose_rho_n
  end subroutine getb3d_linear_energy_conserving
 
 subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard, &
-                                       nox,noy,noz,bxg,byg,bzg)
+                                       nox,noy,noz,bxg,byg,bzg,l4symtry)
    
+      implicit none
       integer(ISZ) :: np,nx,ny,nz,nox,noy,noz,nxguard,nyguard,nzguard
       real(kind=8), dimension(np) :: xp,yp,zp,bx,by,bz
+      logical(ISZ) :: l4symtry
       real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: bxg,byg,bzg
       real(kind=8) :: xmin,ymin,zmin,dx,dy,dz
       integer(ISZ) :: ip, j, k, l, ixmin, ixmax, iymin, iymax, izmin, izmax, &
                       ixmin0, ixmax0, iymin0, iymax0, izmin0, izmax0, jj, kk, ll
       real(kind=8) :: dxi, dyi, dzi, x, y, z, xint, yint, zint, &
-                      xintsq,oxint,yintsq,oyint,zintsq,ozint,oxintsq,oyintsq,ozintsq
+                      xintsq,oxint,yintsq,oyint,zintsq,ozint,oxintsq,oyintsq,ozintsq,signx,signy
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int((nox-1)/2):int(nox/2)) :: sx0
-      real(kind=8), DIMENSION(-int((noy-1)/2):int(noy/2)) :: sy0
-      real(kind=8), DIMENSION(-int((noz-1)/2):int(noz/2)) :: sz0
+      real(kind=8), DIMENSION(-int((nox)/2):int((nox-1)/2)) :: sx0
+      real(kind=8), DIMENSION(-int((noy)/2):int((noy-1)/2)) :: sy0
+      real(kind=8), DIMENSION(-int((noz)/2):int((noz-1)/2)) :: sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
@@ -1364,12 +1434,30 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
       izmin0 = -int((noz)/2)
       izmax0 =  int((noz-1)/2)
 
+      signx = 1.
+      signy = 1.
+
       do ip=1,np
 
         x = (xp(ip)-xmin)*dxi
         y = (yp(ip)-ymin)*dyi
         z = (zp(ip)-zmin)*dzi
 
+        if (l4symtry) then
+          if (x<0.) then
+            x = -x
+            signx = -1.
+          else
+            signx = 1.
+          end if
+          if (y<0.) then
+            y = -y
+            signy = -1.
+          else
+            signy = 1.
+          end if
+        end if
+        
         j=floor(x)
         k=floor(y)
         l=floor(z)
@@ -1480,7 +1568,7 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
         do ll = izmin0, izmax0
           do kk = iymin0, iymax0
             do jj = ixmin, ixmax+1
-              bx(ip) = bx(ip) + sx(jj)*sy0(kk)*sz0(ll)*bxg(j+jj,k+kk,l+ll)
+              bx(ip) = bx(ip) + sx(jj)*sy0(kk)*sz0(ll)*bxg(j+jj,k+kk,l+ll)*signx
             end do
           end do
         end do
@@ -1488,7 +1576,7 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
         do ll = izmin0, izmax0
           do kk = iymin, iymax+1
             do jj = ixmin0, ixmax0
-              by(ip) = by(ip) + sx0(jj)*sy(kk)*sz0(ll)*byg(j+jj,k+kk,l+ll)
+              by(ip) = by(ip) + sx0(jj)*sy(kk)*sz0(ll)*byg(j+jj,k+kk,l+ll)*signy
             end do
           end do
         end do
@@ -1500,9 +1588,477 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
             end do
           end do
         end do
-                     
+                
      end do
 
    return
  end subroutine getb3d_n_energy_conserving
+
+ subroutine project_jxjyjz(jfine,jcoarse,jcoarse_mother,nxf,nyf,nzf,nxc,nyc,nzc,nxguard,nyguard,nzguard,rapx,rapy,rapz,ixc,iyc,izc)
+ ! Projection of J from one fine grid onto a coarse grid
+ implicit none
+ integer(ISZ) :: nxf,nyf,nzf,nxc,nyc,nzc,ixc,iyc,izc,rapx,rapy,rapz,nxguard,nyguard,nzguard
+ real(kind=8), DIMENSION(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard,3) :: jfine
+ real(kind=8), DIMENSION(-nxguard:nxf/rapx+nxguard,-nyguard:nyf/rapy+nyguard,-nzguard:nzf/rapz+nzguard,3) :: jcoarse
+ real(kind=8), DIMENSION(-nxguard:nxc+nxguard,-nyguard:nyc+nyguard,-nzguard:nzc+nzguard,3) :: jcoarse_mother
+
+ INTEGER :: j, k, l, jg, kg, lg
+ real(kind=8) :: wx, wy, wz, owx, owy, owz, invrapvol, irapx, irapy, irapz
+
+   irapx = 1./rapx
+   irapy = 1./rapy
+   irapz = 1./rapz
+   invrapvol = irapx*irapy*irapz
+
+   jcoarse(:,:,:,:) = 0.
+
+   do l = -nzguard, nzf+nzguard
+      lg = floor(l*irapz)  
+      wz = REAL(MOD(l+nzguard*rapz,rapz))*irapz
+      owz= 1.-wz
+      do k = -nyguard, nyf+nyguard
+         kg = floor(k*irapy)
+         wy = REAL(MOD(k+nyguard*rapy,rapy))*irapy
+         owy= 1.-wy
+         do j = -nxguard, nxf+nxguard-1
+            jg = floor(j*irapx)
+            jcoarse(jg,kg  ,lg  ,1) = jcoarse(jg,kg  ,lg  ,1) + owy*owz*jfine(j,k,l,1)*invrapvol
+            jcoarse(jg,kg+1,lg  ,1) = jcoarse(jg,kg+1,lg  ,1) +  wy*owz*jfine(j,k,l,1)*invrapvol
+            jcoarse(jg,kg  ,lg+1,1) = jcoarse(jg,kg  ,lg+1,1) + owy* wz*jfine(j,k,l,1)*invrapvol
+            jcoarse(jg,kg+1,lg+1,1) = jcoarse(jg,kg+1,lg+1,1) +  wy* wz*jfine(j,k,l,1)*invrapvol
+         end do
+      end do
+   end do
+
+   do l = -nzguard, nzf+nzguard
+      lg = floor(l*irapz)  
+      wz = REAL(MOD(l+nzguard*rapz,rapz))*irapz
+      owz= 1.-wz
+      do k = -nyguard, nyf+nyguard-1
+         kg = floor(k*irapy)
+         do j = -nxguard, nxf+nxguard
+            jg = floor(j*irapx)
+            wx = REAL(MOD(j+nxguard*rapx,rapx))*irapx
+            owx= 1.-wx
+            jcoarse(jg  ,kg,lg  ,2) = jcoarse(jg  ,kg,lg  ,2) + owx*owz*jfine(j,k,l,2)*invrapvol
+            jcoarse(jg+1,kg,lg  ,2) = jcoarse(jg+1,kg,lg  ,2) +  wx*owz*jfine(j,k,l,2)*invrapvol
+            jcoarse(jg  ,kg,lg+1,2) = jcoarse(jg  ,kg,lg+1,2) + owx* wz*jfine(j,k,l,2)*invrapvol
+            jcoarse(jg+1,kg,lg+1,2) = jcoarse(jg+1,kg,lg+1,2) +  wx* wz*jfine(j,k,l,2)*invrapvol
+         end do
+      end do
+   end do
+
+   do l = -nzguard, nzf+nzguard-1
+      lg = floor(l*irapz)  
+      do k = -nyguard, nyf+nyguard
+         kg = floor(k*irapy)
+         wy = REAL(MOD(k+nyguard*rapy,rapy))*irapy
+         owy= 1.-wy
+         do j = -nxguard, nxf+nxguard
+            jg = floor(j*irapx)
+            wx = REAL(MOD(j+nxguard*rapx,rapx))*irapx
+            owx= 1.-wx
+            jcoarse(jg  ,kg  ,lg,3) = jcoarse(jg  ,kg  ,lg,3) + owy*owx*jfine(j,k,l,3)*invrapvol
+            jcoarse(jg  ,kg+1,lg,3) = jcoarse(jg  ,kg+1,lg,3) +  wy*owx*jfine(j,k,l,3)*invrapvol
+            jcoarse(jg+1,kg  ,lg,3) = jcoarse(jg+1,kg  ,lg,3) + owy* wx*jfine(j,k,l,3)*invrapvol
+            jcoarse(jg+1,kg+1,lg,3) = jcoarse(jg+1,kg+1,lg,3) +  wy* wx*jfine(j,k,l,3)*invrapvol
+         end do
+      end do
+   end do
+   jcoarse_mother(ixc-nxguard:ixc+nxf/rapx+nxguard,iyc-nyguard:iyc+nyf/rapy+nyguard,izc-nzguard:izc+nzf/rapz+nzguard,:) = &
+   jcoarse_mother(ixc-nxguard:ixc+nxf/rapx+nxguard,iyc-nyguard:iyc+nyf/rapy+nyguard,izc-nzguard:izc+nzf/rapz+nzguard,:) + &
+   jcoarse(:,:,:,:)
+
+   return
+ end subroutine project_jxjyjz
+
+ subroutine project_rho(rhofine,rhocoarse,rhocoarse_mother,nxf,nyf,nzf,nxc,nyc,nzc,nxguard,nyguard,nzguard, &
+                        rapx,rapy,rapz,ixc,iyc,izc)
+ ! Projection of J from one fine grid onto a coarse grid
+ implicit none
+ integer(ISZ) :: nxf,nyf,nzf,nxc,nyc,nzc,ixc,iyc,izc,rapx,rapy,rapz,nxguard,nyguard,nzguard
+ real(kind=8), DIMENSION(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) :: rhofine
+ real(kind=8), DIMENSION(-nxguard:nxf/rapx+nxguard,-nyguard:nyf/rapy+nyguard,-nzguard:nzf/rapz+nzguard) :: rhocoarse
+ real(kind=8), DIMENSION(-nxguard:nxc+nxguard,-nyguard:nyc+nyguard,-nzguard:nzc+nzguard) :: rhocoarse_mother
+
+ INTEGER :: j, k, l, jg, kg, lg
+ real(kind=8) :: wx, wy, wz, owx, owy, owz, invrapvol, irapx, irapy, irapz
+
+   irapx = 1./rapx
+   irapy = 1./rapy
+   irapz = 1./rapz
+   invrapvol = irapx*irapy*irapz
+
+   rhocoarse(:,:,:) = 0.
+
+   do l = -nzguard, nzf+nzguard
+      lg = floor(l*irapz)  
+      wz = REAL(MOD(l+nzguard*rapz,rapz))*irapz
+      owz= 1.-wz
+      do k = -nyguard, nyf+nyguard
+         kg = floor(k*irapy)
+         wy = REAL(MOD(k+nyguard*rapy,rapy))*irapy
+         owy= 1.-wy
+         do j = -nxguard, nxf+nxguard
+            jg = floor(j*irapx)
+            wx = REAL(MOD(j+nxguard*rapx,rapx))*irapx
+            owx= 1.-wx
+            rhocoarse(jg,kg  ,lg  ) = rhocoarse(jg,kg  ,lg  ) + owx*owy*owz*rhofine(j,k,l)*invrapvol
+            rhocoarse(jg,kg+1,lg  ) = rhocoarse(jg,kg+1,lg  ) + owx* wy*owz*rhofine(j,k,l)*invrapvol
+            rhocoarse(jg,kg  ,lg+1) = rhocoarse(jg,kg  ,lg+1) + owx*owy* wz*rhofine(j,k,l)*invrapvol
+            rhocoarse(jg,kg+1,lg+1) = rhocoarse(jg,kg+1,lg+1) + owx* wy* wz*rhofine(j,k,l)*invrapvol
+            rhocoarse(jg+1,kg  ,lg  ) = rhocoarse(jg+1,kg  ,lg  ) + wx*owy*owz*rhofine(j,k,l)*invrapvol
+            rhocoarse(jg+1,kg+1,lg  ) = rhocoarse(jg+1,kg+1,lg  ) + wx* wy*owz*rhofine(j,k,l)*invrapvol
+            rhocoarse(jg+1,kg  ,lg+1) = rhocoarse(jg+1,kg  ,lg+1) + wx*owy* wz*rhofine(j,k,l)*invrapvol
+            rhocoarse(jg+1,kg+1,lg+1) = rhocoarse(jg+1,kg+1,lg+1) + wx* wy* wz*rhofine(j,k,l)*invrapvol
+         end do
+      end do
+   end do
+   rhocoarse_mother(ixc-nxguard:ixc+nxf/rapx+nxguard,iyc-nyguard:iyc+nyf/rapy+nyguard,izc-nzguard:izc+nzf/rapz+nzguard) = &
+   rhocoarse_mother(ixc-nxguard:ixc+nxf/rapx+nxguard,iyc-nyguard:iyc+nyf/rapy+nyguard,izc-nzguard:izc+nzf/rapz+nzguard) + &
+   rhocoarse(:,:,:)
+
+   return
+ end subroutine project_rho
+
+subroutine addsubstractfields(child,child_coarse,parent,lc,ref)
+! Add own field and field from parent, substracting field from core_coarse, and 
+! putting the result in Exp, Eyp, Ezp, Bxp, Byp and Bzp.
+
+ use EM3D_BLOCKtypemodule
+ use EM3D_YEEFIELDtypemodule
+ implicit none
+
+ TYPE(EM3D_BLOCKtype) :: child, child_coarse, parent
+ integer(ISZ) :: lc(3),ref(3) ! lower bounds of child grid in parent grid, refinement
+
+ TYPE(EM3D_YEEFIELDtype), pointer :: cf, cc, p
+ INTEGER :: j, k, l, jg, kg, lg, jgp, kgp, lgp, rapx, rapy, rapz, nxf, nyf, nzf
+ real(kind=8) :: wx, wy, wz, owx, owy, owz, irapx, irapy, irapz
+
+   cf => child%core%yf
+   cc => child_coarse%core%yf
+   p  => parent%core%yf
+
+   cf%exp = cf%ex
+   cf%eyp = cf%ey
+   cf%ezp = cf%ez
+   cf%bxp = cf%bx
+   cf%byp = cf%by
+   cf%bzp = cf%bz
+   
+   rapx = ref(1)
+   rapy = ref(2)
+   rapz = ref(3)
+   irapx = 1./rapx
+   irapy = 1./rapy
+   irapz = 1./rapz
+   
+   nxf = cf%nx
+   nyf = cf%ny
+   nzf = cf%nz
+
+   do l = 0, nzf
+      lg = l*irapz
+      lgp = lg+lc(3)
+      wz = REAL(MOD(l,rapz))*irapz
+      owz= 1.-wz
+      do k = 0, nyf
+         kg = k*irapy
+         kgp = kg+lc(2)
+         wy = REAL(MOD(k,rapy))*irapy
+         owy= 1.-wy
+         do j = 0, nxf-1
+            jg = j*irapx
+            jgp = jg+lc(1)
+            cf%exp(j,k,l) = cf%exp(j,k,l) &
+                          - owy * owz * cc%ex(jg   ,kg   ,lg   ) &
+                          -  wy * owz * cc%ex(jg   ,kg+1 ,lg   ) &
+                          - owy *  wz * cc%ex(jg   ,kg   ,lg+1 ) &
+                          -  wy *  wz * cc%ex(jg   ,kg+1 ,lg+1 ) &
+                          + owy * owz * p%exp(jgp  ,kgp  ,lgp  ) &
+                          +  wy * owz * p%exp(jgp  ,kgp+1,lgp  ) &
+                          + owy *  wz * p%exp(jgp  ,kgp  ,lgp+1) &
+                          +  wy *  wz * p%exp(jgp  ,kgp+1,lgp+1) 
+         end do
+      end do
+   end do
+
+   do l = 0, nzf
+      lg = l*irapz
+      lgp = lg+lc(3)
+      wz = REAL(MOD(l,rapz))*irapz
+      owz= 1.-wz
+      do k = 0, nyf
+         kg = k*irapy
+         kgp = kg+lc(2)
+         do j = 0, nxf-1
+            jg = j*irapx
+            jgp = jg+lc(1)
+            wx = REAL(MOD(j,rapx))*irapx
+            owx= 1.-wx
+            cf%eyp(j,k,l) = cf%eyp(j,k,l) &
+                          - owx * owz * cc%ey(jg   ,kg   ,lg   ) &
+                          -  wx * owz * cc%ey(jg+1 ,kg   ,lg   ) &
+                          - owx *  wz * cc%ey(jg   ,kg   ,lg+1 ) &
+                          -  wx *  wz * cc%ey(jg+1 ,kg   ,lg+1 ) &
+                          + owx * owz * p%eyp(jgp  ,kgp  ,lgp  ) &
+                          +  wx * owz * p%eyp(jgp+1,kgp  ,lgp  ) &
+                          + owx *  wz * p%eyp(jgp  ,kgp  ,lgp+1) &
+                          +  wx *  wz * p%eyp(jgp+1,kgp  ,lgp+1) 
+         end do
+      end do
+   end do
+
+   do l = 0, nzf
+      lg = l*irapz
+      lgp = lg+lc(3)
+      do k = 0, nyf
+         kg = k*irapy
+         kgp = kg+lc(2)
+         wy = REAL(MOD(k,rapy))*irapy
+         owy= 1.-wy
+         do j = 0, nxf-1
+            jg = j*irapx
+            jgp = jg+lc(1)
+            wx = REAL(MOD(j,rapx))*irapx
+            owx= 1.-wx
+            cf%ezp(j,k,l) = cf%ezp(j,k,l) &
+                          - owx * owy * cc%ez(jg   ,kg   ,lg   ) &
+                          -  wx * owy * cc%ez(jg+1 ,kg   ,lg   ) &
+                          - owx *  wy * cc%ez(jg   ,kg+1 ,lg   ) &
+                          -  wx *  wy * cc%ez(jg+1 ,kg+1 ,lg   ) &
+                          + owx * owy * p%ezp(jgp  ,kgp  ,lgp  ) &
+                          +  wx * owy * p%ezp(jgp+1,kgp  ,lgp  ) &
+                          + owx *  wy * p%ezp(jgp  ,kgp+1,lgp  ) &
+                          +  wx *  wy * p%ezp(jgp+1,kgp+1,lgp  ) 
+         end do
+      end do
+   end do
+
+   do l = 0, nzf
+      lg = l*irapz
+      lgp = lg+lc(3)
+      do k = 0, nyf
+         kg = k*irapy
+         kgp = kg+lc(2)
+         do j = 0, nxf-1
+            jg = j*irapx
+            jgp = jg+lc(1)
+            wx = REAL(MOD(j,rapx))*irapx
+            owx= 1.-wx
+            cf%bxp(j,k,l) = cf%bxp(j,k,l) &
+                          - owx * cc%bx(jg   ,kg   ,lg   ) &
+                          -  wx * cc%bx(jg+1 ,kg   ,lg   ) &
+                          + owx * p%bxp(jgp  ,kgp  ,lgp  ) &
+                          +  wx * p%bxp(jgp+1,kgp  ,lgp  ) 
+         end do
+      end do
+   end do
+
+   do l = 0, nzf
+      lg = l*irapz
+      lgp = lg+lc(3)
+      do k = 0, nyf
+         kg = k*irapy
+         kgp = kg+lc(2)
+         wy = REAL(MOD(k,rapy))*irapy
+         owy= 1.-wy
+         do j = 0, nxf-1
+            jg = j*irapx
+            jgp = jg+lc(1)
+            cf%byp(j,k,l) = cf%byp(j,k,l) &
+                          - owy * cc%by(jg   ,kg   ,lg   ) &
+                          -  wy * cc%by(jg   ,kg+1 ,lg   ) &
+                          + owy * p%byp(jgp  ,kgp  ,lgp  ) &
+                          +  wy * p%byp(jgp  ,kgp+1,lgp  ) 
+         end do
+      end do
+   end do
+
+   do l = 0, nzf
+      lg = l*irapz
+      lgp = lg+lc(3)
+      wz = REAL(MOD(l,rapz))*irapz
+      owz= 1.-wz
+      do k = 0, nyf
+         kg = k*irapy
+         kgp = kg+lc(2)
+         do j = 0, nxf-1
+            jg = j*irapx
+            jgp = jg+lc(1)
+            cf%bzp(j,k,l) = cf%bzp(j,k,l) &
+                          - owz * cc%bz(jg   ,kg   ,lg   ) &
+                          -  wz * cc%bz(jg   ,kg   ,lg+1 ) &
+                          + owz * p%bzp(jgp  ,kgp  ,lgp  ) &
+                          +  wz * p%bzp(jgp  ,kgp  ,lgp+1) 
+         end do
+      end do
+   end do
+
+
+   return
+ end subroutine addsubstractfields
+
+
+subroutine addsubstractfields_nodal(child,child_coarse,parent,lc,ref)
+! Add own field and field from parent, substracting field from core_coarse, and 
+! putting the result in Exp, Eyp, Ezp, Bxp, Byp and Bzp.
+
+ use EM3D_BLOCKtypemodule
+ use EM3D_YEEFIELDtypemodule
+ implicit none
+
+ TYPE(EM3D_BLOCKtype) :: child, child_coarse, parent
+ integer(ISZ) :: lc(3),ref(3) ! lower bounds of child grid in parent grid, refinement
+
+ TYPE(EM3D_YEEFIELDtype), pointer :: cf, cc, p
+ INTEGER :: j, k, l, jg, kg, lg, jgp, kgp, lgp, rapx, rapy, rapz, nxf, nyf, nzf
+ real(kind=8) :: wx, wy, wz, owx, owy, owz, irapx, irapy, irapz
+
+   cf => child%core%yf
+   cc => child_coarse%core%yf
+   p  => parent%core%yf
+
+   cf%exp = cf%ex
+   cf%eyp = cf%ey
+   cf%ezp = cf%ez
+   cf%bxp = cf%bx
+   cf%byp = cf%by
+   cf%bzp = cf%bz
+
+   rapx = ref(1)
+   rapy = ref(2)
+   rapz = ref(3)
+   irapx = 1./rapx
+   irapy = 1./rapy
+   irapz = 1./rapz
+   
+   nxf = cf%nx
+   nyf = cf%ny
+   nzf = cf%nz
+
+   do l = 0, nzf
+      lg = l*irapz
+      lgp = lg+lc(3)
+      wz = REAL(MOD(l,rapz))*irapz
+      owz= 1.-wz
+      do k = 0, nyf
+         kg = k*irapy
+         kgp = kg+lc(2)
+         wy = REAL(MOD(k,rapy))*irapy
+         owy= 1.-wy
+         do j = 0, nxf
+            jg = j*irapx
+            jgp = jg+lc(1)
+            wx = REAL(MOD(j,rapx))*irapx
+            owx= 1.-wx
+            cf%exp(j,k,l) = cf%exp(j,k,l) &
+                          - owx * owy * owz * cc%ex(jg   ,kg   ,lg   ) &
+                          - owx *  wy * owz * cc%ex(jg   ,kg+1 ,lg   ) &
+                          - owx * owy *  wz * cc%ex(jg   ,kg   ,lg+1 ) &
+                          - owx *  wy *  wz * cc%ex(jg   ,kg+1 ,lg+1 ) &
+                          -  wx * owy * owz * cc%ex(jg+1 ,kg   ,lg   ) &
+                          -  wx *  wy * owz * cc%ex(jg+1 ,kg+1 ,lg   ) &
+                          -  wx * owy *  wz * cc%ex(jg+1 ,kg   ,lg+1 ) &
+                          -  wx *  wy *  wz * cc%ex(jg+1 ,kg+1 ,lg+1 ) &
+                          + owx * owy * owz * p%exp(jgp  ,kgp  ,lgp  ) &
+                          + owx *  wy * owz * p%exp(jgp  ,kgp+1,lgp  ) &
+                          + owx * owy *  wz * p%exp(jgp  ,kgp  ,lgp+1) &
+                          + owx *  wy *  wz * p%exp(jgp  ,kgp+1,lgp+1) &
+                          +  wx * owy * owz * p%exp(jgp+1,kgp  ,lgp  ) &
+                          +  wx *  wy * owz * p%exp(jgp+1,kgp+1,lgp  ) &
+                          +  wx * owy *  wz * p%exp(jgp+1,kgp  ,lgp+1) &
+                          +  wx *  wy *  wz * p%exp(jgp+1,kgp+1,lgp+1) 
+            cf%eyp(j,k,l) = cf%eyp(j,k,l) &
+                          - owx * owy * owz * cc%ey(jg   ,kg   ,lg   ) &
+                          - owx *  wy * owz * cc%ey(jg   ,kg+1 ,lg   ) &
+                          - owx * owy *  wz * cc%ey(jg   ,kg   ,lg+1 ) &
+                          - owx *  wy *  wz * cc%ey(jg   ,kg+1 ,lg+1 ) &
+                          -  wx * owy * owz * cc%ey(jg+1 ,kg   ,lg   ) &
+                          -  wx *  wy * owz * cc%ey(jg+1 ,kg+1 ,lg   ) &
+                          -  wx * owy *  wz * cc%ey(jg+1 ,kg   ,lg+1 ) &
+                          -  wx *  wy *  wz * cc%ey(jg+1 ,kg+1 ,lg+1 ) &
+                          + owx * owy * owz * p%eyp(jgp  ,kgp  ,lgp  ) &
+                          + owx *  wy * owz * p%eyp(jgp  ,kgp+1,lgp  ) &
+                          + owx * owy *  wz * p%eyp(jgp  ,kgp  ,lgp+1) &
+                          + owx *  wy *  wz * p%eyp(jgp  ,kgp+1,lgp+1) &
+                          +  wx * owy * owz * p%eyp(jgp+1,kgp  ,lgp  ) &
+                          +  wx *  wy * owz * p%eyp(jgp+1,kgp+1,lgp  ) &
+                          +  wx * owy *  wz * p%eyp(jgp+1,kgp  ,lgp+1) &
+                          +  wx *  wy *  wz * p%eyp(jgp+1,kgp+1,lgp+1) 
+            cf%ezp(j,k,l) = cf%ezp(j,k,l) &
+                          - owx * owy * owz * cc%ez(jg   ,kg   ,lg   ) &
+                          - owx *  wy * owz * cc%ez(jg   ,kg+1 ,lg   ) &
+                          - owx * owy *  wz * cc%ez(jg   ,kg   ,lg+1 ) &
+                          - owx *  wy *  wz * cc%ez(jg   ,kg+1 ,lg+1 ) &
+                          -  wx * owy * owz * cc%ez(jg+1 ,kg   ,lg   ) &
+                          -  wx *  wy * owz * cc%ez(jg+1 ,kg+1 ,lg   ) &
+                          -  wx * owy *  wz * cc%ez(jg+1 ,kg   ,lg+1 ) &
+                          -  wx *  wy *  wz * cc%ez(jg+1 ,kg+1 ,lg+1 ) &
+                          + owx * owy * owz * p%ezp(jgp  ,kgp  ,lgp  ) &
+                          + owx *  wy * owz * p%ezp(jgp  ,kgp+1,lgp  ) &
+                          + owx * owy *  wz * p%ezp(jgp  ,kgp  ,lgp+1) &
+                          + owx *  wy *  wz * p%ezp(jgp  ,kgp+1,lgp+1) &
+                          +  wx * owy * owz * p%ezp(jgp+1,kgp  ,lgp  ) &
+                          +  wx *  wy * owz * p%ezp(jgp+1,kgp+1,lgp  ) &
+                          +  wx * owy *  wz * p%ezp(jgp+1,kgp  ,lgp+1) &
+                          +  wx *  wy *  wz * p%ezp(jgp+1,kgp+1,lgp+1) 
+            cf%bxp(j,k,l) = cf%bxp(j,k,l) &
+                          - owx * owy * owz * cc%bx(jg   ,kg   ,lg   ) &
+                          - owx *  wy * owz * cc%bx(jg   ,kg+1 ,lg   ) &
+                          - owx * owy *  wz * cc%bx(jg   ,kg   ,lg+1 ) &
+                          - owx *  wy *  wz * cc%bx(jg   ,kg+1 ,lg+1 ) &
+                          -  wx * owy * owz * cc%bx(jg+1 ,kg   ,lg   ) &
+                          -  wx *  wy * owz * cc%bx(jg+1 ,kg+1 ,lg   ) &
+                          -  wx * owy *  wz * cc%bx(jg+1 ,kg   ,lg+1 ) &
+                          -  wx *  wy *  wz * cc%bx(jg+1 ,kg+1 ,lg+1 ) &
+                          + owx * owy * owz * p%bxp(jgp  ,kgp  ,lgp  ) &
+                          + owx *  wy * owz * p%bxp(jgp  ,kgp+1,lgp  ) &
+                          + owx * owy *  wz * p%bxp(jgp  ,kgp  ,lgp+1) &
+                          + owx *  wy *  wz * p%bxp(jgp  ,kgp+1,lgp+1) &
+                          +  wx * owy * owz * p%bxp(jgp+1,kgp  ,lgp  ) &
+                          +  wx *  wy * owz * p%bxp(jgp+1,kgp+1,lgp  ) &
+                          +  wx * owy *  wz * p%bxp(jgp+1,kgp  ,lgp+1) &
+                          +  wx *  wy *  wz * p%bxp(jgp+1,kgp+1,lgp+1) 
+            cf%byp(j,k,l) = cf%byp(j,k,l) &
+                          - owx * owy * owz * cc%by(jg   ,kg   ,lg   ) &
+                          - owx *  wy * owz * cc%by(jg   ,kg+1 ,lg   ) &
+                          - owx * owy *  wz * cc%by(jg   ,kg   ,lg+1 ) &
+                          - owx *  wy *  wz * cc%by(jg   ,kg+1 ,lg+1 ) &
+                          -  wx * owy * owz * cc%by(jg+1 ,kg   ,lg   ) &
+                          -  wx *  wy * owz * cc%by(jg+1 ,kg+1 ,lg   ) &
+                          -  wx * owy *  wz * cc%by(jg+1 ,kg   ,lg+1 ) &
+                          -  wx *  wy *  wz * cc%by(jg+1 ,kg+1 ,lg+1 ) &
+                          + owx * owy * owz * p%byp(jgp  ,kgp  ,lgp  ) &
+                          + owx *  wy * owz * p%byp(jgp  ,kgp+1,lgp  ) &
+                          + owx * owy *  wz * p%byp(jgp  ,kgp  ,lgp+1) &
+                          + owx *  wy *  wz * p%byp(jgp  ,kgp+1,lgp+1) &
+                          +  wx * owy * owz * p%byp(jgp+1,kgp  ,lgp  ) &
+                          +  wx *  wy * owz * p%byp(jgp+1,kgp+1,lgp  ) &
+                          +  wx * owy *  wz * p%byp(jgp+1,kgp  ,lgp+1) &
+                          +  wx *  wy *  wz * p%byp(jgp+1,kgp+1,lgp+1) 
+            cf%bzp(j,k,l) = cf%bzp(j,k,l) &
+                          - owx * owy * owz * cc%bz(jg   ,kg   ,lg   ) &
+                          - owx *  wy * owz * cc%bz(jg   ,kg+1 ,lg   ) &
+                          - owx * owy *  wz * cc%bz(jg   ,kg   ,lg+1 ) &
+                          - owx *  wy *  wz * cc%bz(jg   ,kg+1 ,lg+1 ) &
+                          -  wx * owy * owz * cc%bz(jg+1 ,kg   ,lg   ) &
+                          -  wx *  wy * owz * cc%bz(jg+1 ,kg+1 ,lg   ) &
+                          -  wx * owy *  wz * cc%bz(jg+1 ,kg   ,lg+1 ) &
+                          -  wx *  wy *  wz * cc%bz(jg+1 ,kg+1 ,lg+1 ) &
+                          + owx * owy * owz * p%bzp(jgp  ,kgp  ,lgp  ) &
+                          + owx *  wy * owz * p%bzp(jgp  ,kgp+1,lgp  ) &
+                          + owx * owy *  wz * p%bzp(jgp  ,kgp  ,lgp+1) &
+                          + owx *  wy *  wz * p%bzp(jgp  ,kgp+1,lgp+1) &
+                          +  wx * owy * owz * p%bzp(jgp+1,kgp  ,lgp  ) &
+                          +  wx *  wy * owz * p%bzp(jgp+1,kgp+1,lgp  ) &
+                          +  wx * owy *  wz * p%bzp(jgp+1,kgp  ,lgp+1) &
+                          +  wx *  wy *  wz * p%bzp(jgp+1,kgp+1,lgp+1) 
+         end do
+      end do
+   end do
+
+   return
+ end subroutine addsubstractfields_nodal
 
