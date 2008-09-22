@@ -333,15 +333,14 @@ class EM3D(SubcycledPoissonSolver):
     gaminv = pgroup.gaminv[i:i+n]
     q  = pgroup.sq[js]
     w  = pgroup.sw[js]*pgroup.dtscale[js]
-    wght = zeros((0,), 'd')
     if top.wpid==0:
       wfact = zeros((0,), 'd')
     else:
       wfact = top.pgroup.pid[i:i+n,top.wpid-1]
     w3d.jsfsapi=js
-    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,wght,q,w,zgrid)
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,wght,q,w,zgrid):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w):
     n = len(x)
     if n == 0: return
     # --- call routine performing current deposition
