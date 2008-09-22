@@ -86,6 +86,8 @@ else:
 if sys.hexversion >= 0x020300f0:
   sys.argv += ['--build-temp','']
 
+if machine == 'darwin': os.environ['ARCHFLAGS'] = '-arch i386'
+
 setup (name = "warpC",
        version = '3.0',
        author = 'David P. Grote',
