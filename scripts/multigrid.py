@@ -89,8 +89,8 @@ class MultiGrid(SubcycledPoissonSolver):
       dict['conductorobjects'] = {}
       dict['installedconductorlists'] = {}
 
-      if 'rho' in dict: del dict['rho']
-      if 'phi' in dict: del dict['phi']
+      if '_rho' in dict: del dict['_rho']
+      if '_phi' in dict: del dict['_phi']
 
     return dict
 
@@ -257,6 +257,26 @@ class MultiGrid(SubcycledPoissonSolver):
   def getfield(self):
     return self.field
 
+  def _setuprhoproperty():
+    doc = "Electrostatic potential array"
+    def fget(self):
+      return self._rho
+    def fset(self,value):
+      self._rho[...] = value
+    return locals()
+  rho = property(**_setuprhoproperty())
+  del _setuprhoproperty
+
+  def _setupphiproperty():
+    doc = "Charge density array"
+    def fget(self):
+      return self._phi
+    def fset(self,value):
+      self._phi[...] = value
+    return locals()
+  phi = property(**_setupphiproperty())
+  del _setupphiproperty
+
   def loadrho(self,lzero=None,pgroups=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,pgroups,**kw)
 
@@ -279,14 +299,13 @@ class MultiGrid(SubcycledPoissonSolver):
     gaminv = zeros((0,), 'd')
     q  = pgroup.sq[js]
     w  = pgroup.sw[js]*pgroup.dtscale[js]
-    wght = zeros((0,), 'd')
     if top.wpid==0:
       wfact = zeros((0,), 'd')
     else:
       wfact = pgroup.pid[i:i+n,top.wpid-1]
-    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,wght,q,w,zgrid)
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,wght,q,w,zgrid):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w):
     n = len(x)
     if n == 0: return
     if isinstance(self.sourcep,FloatType): return
@@ -588,7 +607,7 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def find_mgparam(self,lsavephi=false,resetpasses=1):
     # --- This is a temporary kludge, the same as is done in genericpf
-    self.phi = self.potential
+    self._phi = self.potential
     find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
                  solver=self,pkg3d=self)
 
@@ -600,8 +619,8 @@ class MultiGrid(SubcycledPoissonSolver):
     zfact = 1./sqrt((1.-beta)*(1.+beta))
 
     # --- This is only done for convenience.
-    self.phi = self.potential
-    self.rho = self.source
+    self._phi = self.potential
+    self._rho = self.source
     if isinstance(self.potential,FloatType): return
 
     # --- Setup data for bends.
@@ -640,7 +659,7 @@ class MultiGrid(SubcycledPoissonSolver):
       setupiondensitygrid3d(self.xmmin,self.ymmin,self.zmmin,
                             self.dx,self.dy,self.dz,
                             self.nx,self.ny,self.nzlocal,
-                            self.rho,iondensitygrid3d)
+                            self._rho,iondensitygrid3d)
       self.iondensitygrid3d = iondensitygrid3d
       multigridbe3dsolve(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
                          self.dx,self.dy,self.dz*zfact,self.potential,self.source,
@@ -674,14 +693,14 @@ class MultiGrid(SubcycledPoissonSolver):
   def pfzyg(self,**kw): self.genericpf(kw,pfzyg)
 
   def getresidual(self):
-    res = zeros(shape(self.phi),'d')
+    res = zeros(shape(self._phi),'d')
     dxsqi  = 1./self.dx**2
     dysqi  = 1./self.dy**2
     dzsqi  = 1./self.dz**2
     reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
-    rho = self.rho*reps0c
+    rho = self._rho*reps0c
     residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
-             self.phi,rho,res,0,self.bounds,self.mgparam,self.mgform,false,
+             self._phi,rho,res,0,self.bounds,self.mgparam,self.mgform,false,
              self.lcndbndy,self.icndbndy,self.conductors,1,1,1)
     return res
 
@@ -797,11 +816,11 @@ tensor that appears from the direct implicit scheme.
     m  = pgroup.sm[js]
     w  = pgroup.sw[js]*top.pgroup.dtscale[js]
     iimp = pgroup.iimplicit[js]
-    if top.wpid == 0: wght = zeros((0,), 'd')
-    else:             wght = pgroup.pid[i:i+n,top.wpid-1]
-    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,m,w,iimp,zgrid)
+    if top.wpid == 0: wfact = zeros((0,), 'd')
+    else:             wfact = pgroup.pid[i:i+n,top.wpid-1]
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,m,w,iimp)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,m,w,iimp,zgrid):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,m,w,iimp):
     n  = len(x)
     if n == 0: return
     # --- Create a temporary array to pass into setrho3d. This contributes
@@ -815,7 +834,7 @@ tensor that appears from the direct implicit scheme.
                self.solvergeom==w3d.RZgeom)
     else:
       # --- Need top.pid(:,top.wpid)
-      setrho3dw(sourcep,n,x,y,z,zgrid,wght,q,w,top.depos,
+      setrho3dw(sourcep,n,x,y,z,zgrid,wfact,q,w,top.depos,
                 self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
@@ -865,8 +884,8 @@ tensor that appears from the direct implicit scheme.
     zfact = 1./sqrt((1.-beta)*(1.+beta))
 
     # --- This is only done for convenience.
-    self.phi = self.potential
-    self.rho = self.source[...,0]
+    self._phi = self.potential
+    self._rho = self.source[...,0]
     if isinstance(self.potential,FloatType): return
 
     # --- Setup data for bends.
@@ -912,7 +931,7 @@ tensor that appears from the direct implicit scheme.
 
     mgsolveimplicites3d(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
                         self.dx,self.dy,self.dz*zfact,
-                        self.potential,self.rho,
+                        self.potential,self._rho,
                         top.nsimplicit,qomdt,self.chi0,
                         rstar,self.linbend,
                         self.bounds,self.xmmin,self.ymmin,
