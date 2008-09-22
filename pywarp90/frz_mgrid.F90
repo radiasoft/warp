@@ -3579,6 +3579,11 @@ END subroutine relaxbndxzwguard
 
     real(8), allocatable, dimension(:) :: ftmpd, ftmpu, ftmpds, ftmpus
     
+    ! exchange_fbndz_rb should be more efficient than exchange_fbndz since it is 
+    ! exchanging only half the data but is not correct for all the cases in the 
+    ! present case. It is safer to use exchange_fbndz until exchange_fbndz_rb is fixed.
+    call exchange_fbndz(f, izlbnd, izrbnd)
+    return
 !    write(o_line,*) my_index,':enter exchangefbnd',izf
 !    call remark(trim(o_line))
     ir = 0
