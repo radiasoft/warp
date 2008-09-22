@@ -224,7 +224,7 @@ c       thing for absorbing b.c.'s.
      &                   uyscratch,uzscratch,gaminvscratch,
      &                   zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
         call zpartbndwithdata(npd,zbar,uzscratch,gaminvscratch,
-     &                        zmmaxlocal,zmminlocal,dz,zgrid)
+     &                        zmmax,zmmin,dz,zgrid)
 
         do i=1,npd      
           if (gaminvscratch(i)==0.) then
