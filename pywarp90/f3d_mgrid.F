@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.175 $, $Date: 2008/08/27 23:49:34 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.176 $, $Date: 2008/09/22 17:17:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -1288,10 +1288,10 @@ c=============================================================================
      &                      rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       use Subtimersf3d
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+      integer(ISZ):: parity,nx,ny,nzlocal,ii1
       real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
       real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
       real(kind=8):: rstar(-1:nzlocal+1),bendx(-1:nx+1)
-      integer(ISZ):: parity,nx,ny,nzlocal,ii1
       real(kind=8):: dxsqic,dysqic,dzsqic,spm1,dx,dxsqi,dysqi,dzsqi,rdel,const
       logical(ISZ):: linbends
 
@@ -6403,11 +6403,11 @@ c=============================================================================
       use Constant
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nzlocal,nz
+      integer(ISZ):: resdelx,resdelz,mglevel,bounds(0:5)
       real(kind=8):: phi(-1:nx+1,-1:nzlocal+1),rho(0:nx,0:nzlocal)
       real(kind=8):: epsilon(0:nx+1,0:nzlocal+1)
       real(kind=8):: res(-resdelx:nx+resdelx,-resdelz:nzlocal+resdelz)
       real(kind=8):: dx,dz
-      integer(ISZ):: resdelx,resdelz,mglevel,bounds(0:5)
       logical(ISZ):: lcndbndy
       type(ConductorType):: conductors
       real(kind=8):: xminodx
