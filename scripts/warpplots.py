@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.221 2008/09/19 16:42:14 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.222 2008/09/22 17:57:52 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2569,7 +2569,7 @@ if sys.version[:5] != "1.5.1":
 def ppzbx(iw=0,**kw):
   "Plots Z-Bx"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppzex,(iw,),kw): return
+  if ppmultispecies(ppzbx,(iw,),kw): return
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -2605,7 +2605,7 @@ if sys.version[:5] != "1.5.1":
 def ppzbz(iw=0,**kw):
   "Plots Z-Bz"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppzez,(iw,),kw): return
+  if ppmultispecies(ppzbz,(iw,),kw): return
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
