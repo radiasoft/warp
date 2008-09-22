@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.23 $, $Date: 2008/09/04 21:06:06 $
+c@(#) File w3d_utilities.F, version $Revision: 1.24 $, $Date: 2008/09/22 21:23:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9,64 +9,13 @@ c  Alex Friedman, LLNL, (510)422-0827
 c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
 c=============================================================================
-      subroutine sortparticlesbyindex1(n,indx,x,y,z,uz,nblocks,
-     &                                 xout,yout,zout,uzout,pcounts)
-      use Subtimers3d
-      integer(ISZ):: n,nblocks
-      integer(ISZ):: indx(n)
-      real(kind=8):: x(n),y(n),z(n),uz(n)
-      real(kind=8):: xout(n),yout(n),zout(n),uzout(n)
-      integer(ISZ):: pcounts(0:nblocks-1)
-
-c Given particle data and an index array, the routine sorts the particles
-c based on the index. It returns the sorted particles and a list of the
-c number of particles for each index.
-
-      integer(ISZ):: ip,ii,ib
-      integer(ISZ):: tcounts(0:nblocks-1)
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-c     --- First, count how many in each block there are.
-c     --- Note that the blocks numbers start at zero.
-      pcounts = 0
-      do ip=1,n
-        ib = indx(ip)
-        pcounts(ib) = pcounts(ib) + 1
-      enddo
-
-c     --- Generate partial sum of pcounts
-      tcounts(0) = 1
-      do ib=0,nblocks-2
-        tcounts(ib+1) = tcounts(ib) + pcounts(ib)
-      enddo
-
-c     --- Rearrange the particles
-      do ip=1,n
-        ib = indx(ip)
-        ii = tcounts(ib)
-        xout(ii) = x(ip)
-        yout(ii) = y(ip)
-        zout(ii) = z(ip)
-        uzout(ii) = uz(ip)
-        tcounts(ib) = tcounts(ib) + 1
-      enddo
-
-!$OMP MASTER
-      if (lw3dtimesubs) timesortpart_byindex = timesortpart_byindex +
-     &                                             wtime() - substarttime
-!$OMP END MASTER
-
-      return
-      end
-c=============================================================================
-      subroutine sortparticlesbyindex1w(n,indx,x,y,z,uz,wfact,nblocks,
+      subroutine sortparticlesbyindex1(n,indx,x,y,z,uz,nw,wfact,nblocks,
      &                                 xout,yout,zout,uzout,wfactout,pcounts)
       use Subtimers3d
-      integer(ISZ):: n,nblocks
+      integer(ISZ):: n,nw,nblocks
       integer(ISZ):: indx(n)
-      real(kind=8):: x(n),y(n),z(n),uz(n),wfact(n)
-      real(kind=8):: xout(n),yout(n),zout(n),uzout(n),wfactout(n)
+      real(kind=8):: x(n),y(n),z(n),uz(n),wfact(nw)
+      real(kind=8):: xout(n),yout(n),zout(n),uzout(n),wfactout(nw)
       integer(ISZ):: pcounts(0:nblocks-1)
 
 c Given particle data and an index array, the routine sorts the particles
@@ -100,7 +49,7 @@ c     --- Rearrange the particles
         yout(ii) = y(ip)
         zout(ii) = z(ip)
         uzout(ii) = uz(ip)
-        wfactout(ii) = wfact(ip)
+        if (nw == n) wfactout(ii) = wfact(ip)
         tcounts(ib) = tcounts(ib) + 1
       enddo
 
@@ -164,66 +113,6 @@ c     --- Rearrange the particles
         tcounts(ib) = tcounts(ib) + 1
       enddo
 
-!$OMP MASTER
-      if (lw3dtimesubs) timesortpart_byindex = timesortpart_byindex +
-     &                                             wtime() - substarttime
-!$OMP END MASTER
-
-      return
-      end
-c=============================================================================
-      subroutine sortparticlesbyindex2w(n,indx,x,y,z,ux,uy,uz,gaminv,wfact,nw,wght,
-     &                                 nblocks,
-     &                                 xout,yout,zout,uxout,uyout,uzout,
-     &                                 gaminvout,wfactout,wghtout,pcounts)
-      use Subtimers3d
-      integer(ISZ):: n,nw,nblocks
-      integer(ISZ):: indx(n)
-      real(kind=8):: x(n),y(n),z(n),ux(n),uy(n),uz(n),gaminv(n),wfact(n)
-      real(kind=8):: wght(nw)
-      real(kind=8):: xout(n),yout(n),zout(n),uxout(n),uyout(n),uzout(n)
-      real(kind=8):: gaminvout(n),wfactout(n)
-      real(kind=8):: wghtout(nw)
-      integer(ISZ):: pcounts(0:nblocks-1)
-
-c Given particle data and an index array, the routine sorts the particles
-c based on the index. It returns the sorted particles and a list of the
-c number of particles for each index.
-
-      integer(ISZ):: ip,ii,ib
-      integer(ISZ):: tcounts(0:nblocks-1)
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-     
-c     --- First, count how many in each block there are.
-c     --- Note that the blocks numbers start at zero.
-      pcounts = 0
-      do ip=1,n
-        ib = indx(ip)
-        pcounts(ib) = pcounts(ib) + 1
-      enddo
-
-c     --- Generate partial sum of pcounts
-      tcounts(0) = 1
-      do ib=0,nblocks-2
-        tcounts(ib+1) = tcounts(ib) + pcounts(ib)
-      enddo
-
-c     --- Rearrange the particles
-      do ip=1,n
-        ib = indx(ip)
-        ii = tcounts(ib)
-        xout(ii) = x(ip)
-        yout(ii) = y(ip)
-        zout(ii) = z(ip)
-        uxout(ii) = ux(ip)
-        uyout(ii) = uy(ip)
-        uzout(ii) = uz(ip)
-        gaminvout(ii) = gaminv(ip)
-        wfactout(ii) = wfact(ip)
-        if (nw == n) wghtout(ii) = wght(ip)
-        tcounts(ib) = tcounts(ib) + 1
-      enddo
 !$OMP MASTER
       if (lw3dtimesubs) timesortpart_byindex = timesortpart_byindex +
      &                                             wtime() - substarttime
@@ -513,6 +402,57 @@ c     &                      abs(f(ix  ,iy  ,iz  )-f(ix  ,iy  ,izm1)))*dzi
 !$OMP MASTER
       if (lw3dtimesubs) timegetabsgrad = timegetabsgrad + wtime() - substarttime
 !$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine smooth121nonzero(uin,uout,nx,ny,nz)
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: uin(0:nx,0:ny,0:nz)
+      real(kind=8):: uout(0:nx,0:ny,0:nz)
+
+      integer(ISZ):: ix,iy,iz,jx,jy,jz
+      real(kind=8):: ww(-1:1,-1:1,-1:1)
+      real(kind=8):: wwsum,w1(-1:1)
+
+      w1 = (/0.25,0.5,0.25/)
+      do jz=-1,1
+        do jy=-1,1
+          do jx=-1,1
+            ww(jx,jy,jz) = w1(jx)*w1(jy)*w1(jz)
+          enddo
+        enddo
+      enddo
+
+      do iz=1,nz-1
+        do iy=1,ny-1
+          do ix=1,nx-1
+
+            uout(ix,iy,iz) = 0.
+            if (uin(ix,iy,iz) == 0.) cycle
+
+            wwsum = 0.
+            do jz=-1,1
+              do jy=-1,1
+                do jx=-1,1
+
+                  if (uin(ix+jx,iy+jy,iz+jz) .ne. 0.) then
+                    uout(ix,iy,iz) = uout(ix,iy,iz) +
+     &                               ww(jx,jy,jz)*uin(ix+jx,iy+jy,iz+jz)
+                    wwsum = wwsum + ww(jx,jy,jz)
+                  endif
+
+                enddo
+              enddo
+            enddo
+
+            if (wwsum .ne. 0.) then
+              uout(ix,iy,iz) = uout(ix,iy,iz)/wwsum
+            endif
+
+          enddo
+        enddo
+      enddo
 
       return
       end

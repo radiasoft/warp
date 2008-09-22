@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.286 $, $Date: 2008/07/31 00:45:19 $
+#@(#) File W3D.V, version $Revision: 3.287 $, $Date: 2008/09/22 21:23:08 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.286 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.287 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1037,32 +1037,18 @@ pdiag2d(x2:real,y2:real,ux2:real,uy2:real,uz2:real,pdmy2:real,np2:integer,
      
 *********** W3Dutilities:
 sortparticlesbyindex1(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
-                     uz(n):real,nblocks:integer,
-                     xout(n):real,yout(n):real,zout(n):real,uzout(n):real,
-                     pcounts(0:nblocks-1):integer)
+                      uz(n):real,nw:integer,wfact(nw):real,nblocks:integer,
+                      xout(n):real,yout(n):real,zout(n):real,uzout(n):real,
+                      wfactout(nw):real,pcounts(0:nblocks-1):integer)
       subroutine
 sortparticlesbyindex2(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
-                     ux(n):real,uy(n):real,uz(n):real,gaminv(n):real,
-                     nw:integer,wght:real,
-                     nblocks:integer,
-                     xout(n):real,yout(n):real,zout(n):real,
-                     uxout(n):real,uyout(n):real,uzout(n):real,gaminvout(n):real,
-                     wghtout:real,
-                     pcounts(0:nblocks-1):integer)
-      subroutine
-sortparticlesbyindex1w(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
-                     uz(n):real,wfact(n):real,nblocks:integer,
-                     xout(n):real,yout(n):real,zout(n):real,uzout(n):real,wfactout(n):real,
-                     pcounts(0:nblocks-1):integer)
-      subroutine
-sortparticlesbyindex2w(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
-                     ux(n):real,uy(n):real,uz(n):real,gaminv(n):real,wfact(n):real,
-                     nw:integer,wght:real,
-                     nblocks:integer,
-                     xout(n):real,yout(n):real,zout(n):real,
-                     uxout(n):real,uyout(n):real,uzout(n):real,gaminvout(n):real,wfactout(n):real,
-                     wghtout:real,
-                     pcounts(0:nblocks-1):integer)
+                      ux(n):real,uy(n):real,uz(n):real,gaminv(n):real,
+                      nw:integer,wght(nw):real,
+                      nblocks:integer,
+                      xout(n):real,yout(n):real,zout(n):real,
+                      uxout(n):real,uyout(n):real,uzout(n):real,
+                      gaminvout(n):real,wghtout(nw):real,
+                      pcounts(0:nblocks-1):integer)
       subroutine
 sortparticlesbyindexgetisort(n:integer,indx(n):integer,
                              x(n):real,y(n):real,z(n):real,
@@ -1087,6 +1073,8 @@ getichildpositiveonly(gridnumb:integer,np:integer,
                       zgrid:real,l2symtry:logical,l4symtry:logical)
       subroutine # Gathers data from a 3-D grid using nearest grid point.
                  # Only gathers positive values.
+smooth121nonzero(uin:real,uout:real,nx:integer,ny:integer,nz:integer)
+      subroutine # Perform a 1/4-1/2-1/4 smoothing on only the nonzero data
 getabsgrad3d(nx:integer,ny:integer,nz:integer,
              f(0:nx,0:ny,0:nz):real,gr(0:nx,0:ny,0:nz):real,
              dx:real,dy:real,dz:real)
