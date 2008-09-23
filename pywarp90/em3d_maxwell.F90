@@ -2077,7 +2077,7 @@ TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
 #ifdef MPIPARALLEL
-integer(ISZ)   ::iz
+integer(ISZ)   ::iz,ibuf
 integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
@@ -2091,34 +2091,36 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            call mpi_packbuffer_init((3*yfu%nzguard-2)*size(yfu%ez(:,:,0)),1)
+            ibuf = 1
+            call mpi_packbuffer_init((3*yfu%nzguard-2)*size(yfu%ez(:,:,0)),ibuf)
             do iz = yfu%izmin,yfu%izmin+yfu%nzguard-1
-              call mympi_pack(yfu%ez(:,:,iz),1)
+              call mympi_pack(yfu%ez(:,:,iz),ibuf)
             end do
             if (yfu%nzguard>1) then
               do iz = yfu%izmin+1,yfu%izmin+yfu%nzguard-1
-                call mympi_pack(yfu%ex(:,:,iz),1)
+                call mympi_pack(yfu%ex(:,:,iz),ibuf)
               end do
               do iz = yfu%izmin+1,yfu%izmin+yfu%nzguard-1
-                call mympi_pack(yfu%ey(:,:,iz),1)
+                call mympi_pack(yfu%ey(:,:,iz),ibuf)
               end do
             end if
-            call mpi_isend_pack(fl%proc,1,1)
+            call mpi_isend_pack(fl%proc,1,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            call mpi_packbuffer_init((3*yfl%nzguard-2)*size(yfl%ez(:,:,0)),2)
+            ibuf = 2
+            call mpi_packbuffer_init((3*yfl%nzguard-2)*size(yfl%ez(:,:,0)),ibuf)
             do iz =yfl%izmax-yfl%nzguard,yfl%izmax-1
-              call mympi_pack(yfl%ez(:,:,iz),2)
+              call mympi_pack(yfl%ez(:,:,iz),ibuf)
             end do
             if (yfl%nzguard>1) then
               do iz = yfl%izmax-yfl%nzguard+1,yfl%izmax-1
-                call mympi_pack(yfl%ex(:,:,iz),2)
+                call mympi_pack(yfl%ex(:,:,iz),ibuf)
               end do
               do iz = yfl%izmax-yfl%nzguard+1,yfl%izmax-1
-                call mympi_pack(yfl%ey(:,:,iz),2)
+                call mympi_pack(yfl%ey(:,:,iz),ibuf)
               end do
             end if
-            call mpi_isend_pack(fu%proc,2,2)
+            call mpi_isend_pack(fu%proc,2,ibuf)
           else
 #endif
             yfl%ez(:,:,yfl%izmax:yfl%izmaxg-1) = yfu%ez(:,:,yfu%izmin:yfu%izmin+yfu%nzguard-1)
@@ -2156,21 +2158,23 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            call mpi_packbuffer_init( 3*int(size(syfu%ezx(:,:,0))) ,3)
-            call mympi_pack(syfu%ezx(:,:,0),3)
-            call mympi_pack(syfu%ezy(:,:,0),3)
-            call mympi_pack(syfu%ezz(:,:,0),3)
-            call mpi_isend_pack(fl%proc,3,3)
+            ibuf = 3
+            call mpi_packbuffer_init( 3*int(size(syfu%ezx(:,:,0))) ,ibuf)
+            call mympi_pack(syfu%ezx(:,:,0),ibuf)
+            call mympi_pack(syfu%ezy(:,:,0),ibuf)
+            call mympi_pack(syfu%ezz(:,:,0),ibuf)
+            call mpi_isend_pack(fl%proc,3,ibuf)
 !            call MPI_ISEND(syfu%ez(:,-syfu%nxguard,-syfu%nyguard,0),int(size(syfu%ez(:,:,:,0)),MPIISZ),MPI_DOUBLE_PRECISION,&
 !                                   int(fl%proc,MPIISZ),3,MPI_COMM_WORLD,mpirequests(mpireqpnt+1),mpierror)
             mpireqpnt=mpireqpnt+1
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            call mpi_packbuffer_init(3*int(size(syfl%ezx(:,:,0))),4)
-            call mympi_pack(syfu%ezx(:,:,syfl%nz-1),4)
-            call mympi_pack(syfu%ezy(:,:,syfl%nz-1),4)
-            call mympi_pack(syfu%ezz(:,:,syfl%nz-1),4)
-            call mpi_isend_pack(fu%proc,4,4)
+            ibuf = 4
+            call mpi_packbuffer_init(3*int(size(syfl%ezx(:,:,0))),ibuf)
+            call mympi_pack(syfl%ezx(:,:,syfl%nz-1),ibuf)
+            call mympi_pack(syfl%ezy(:,:,syfl%nz-1),ibuf)
+            call mympi_pack(syfl%ezz(:,:,syfl%nz-1),ibuf)
+            call mpi_isend_pack(fu%proc,4,ibuf)
 !            call MPI_ISEND(syfl%ezx(-syfl%nxguard,-syfl%nyguard,syfl%nz-1),int(size(syfl%ez(:,:,:,syfl%nz-1)),MPIISZ),&
 !                           MPI_DOUBLE_PRECISION,int(fu%proc,MPIISZ),4,MPI_COMM_WORLD,mpirequests(mpireqpnt+1),mpierror)
             mpireqpnt=mpireqpnt+1
@@ -2200,7 +2204,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz
+integer(ISZ) :: iz,ibuf
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
@@ -2212,32 +2216,34 @@ integer(ISZ) :: iz
           yfu=>fu%yf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            call mpi_packbuffer_init((3*yfu%nzguard-2)*size(yfu%Ez(:,:,0)),8)
-            call mpi_recv_pack(fl%proc,2,8)
+            ibuf = 5
+            call mpi_packbuffer_init((3*yfu%nzguard-2)*size(yfu%Ez(:,:,0)),ibuf)
+            call mpi_recv_pack(fl%proc,2,ibuf)
             do iz = yfu%izming,yfu%izmin-1
-              yfu%ez(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,:,0)),8),shape(yfu%Ez(:,:,0)))
+              yfu%ez(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,:,0)),ibuf),shape(yfu%Ez(:,:,0)))
             end do
             if (yfu%nzguard>1) then
               do iz = yfu%izming+1,yfu%izmin-1
-                yfu%ex(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,:,0)),8),shape(yfu%Ez(:,:,0)))
+                yfu%ex(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,:,0)),ibuf),shape(yfu%Ez(:,:,0)))
               end do
               do iz = yfu%izming+1,yfu%izmin-1
-                yfu%ey(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,:,0)),8),shape(yfu%Ez(:,:,0)))
+                yfu%ey(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,:,0)),ibuf),shape(yfu%Ez(:,:,0)))
               end do
             end if
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            call mpi_packbuffer_init((3*yfl%nzguard-2)*size(yfl%ez(:,:,yfl%izmin)),7)
-            call mpi_recv_pack(fu%proc,1,7)
+            ibuf = 6
+            call mpi_packbuffer_init((3*yfl%nzguard-2)*size(yfl%ez(:,:,yfl%izmin)),ibuf)
+            call mpi_recv_pack(fu%proc,1,ibuf)
             do iz = yfl%izmax,yfl%izmaxg-1
-              yfl%ez(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,:,0)),7),shape(yfl%Ez(:,:,0)))
+              yfl%ez(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,:,0)),ibuf),shape(yfl%Ez(:,:,0)))
             end do
             if (yfl%nzguard>1) then
               do iz = yfl%izmax+1,yfl%izmaxg-1
-                yfl%ex(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,:,0)),7),shape(yfl%Ez(:,:,0)))
+                yfl%ex(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,:,0)),ibuf),shape(yfl%Ez(:,:,0)))
               end do
               do iz = yfl%izmax+1,yfl%izmaxg-1
-                yfl%ey(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,:,0)),7),shape(yfl%Ez(:,:,0)))
+                yfl%ey(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,:,0)),ibuf),shape(yfl%Ez(:,:,0)))
               end do
             end if
           end if
@@ -2249,18 +2255,26 @@ integer(ISZ) :: iz
           syfu=>fu%syf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            call mpi_packbuffer_init(3*size(syfu%ezx(:,:,-1)),6)
-            call mpi_recv_pack(fl%proc,4,6)
-            syfu%ezx(:,:,-1) = reshape( mpi_unpack_real_array(size(syfu%ezx(:,:,-1)),4) ,shape(syfu%ezx(:,:,-1)))
-            syfu%ezy(:,:,-1) = reshape( mpi_unpack_real_array(size(syfu%ezx(:,:,-1)),4) ,shape(syfu%ezx(:,:,-1)))
-            syfu%ezz(:,:,-1) = reshape( mpi_unpack_real_array(size(syfu%ezx(:,:,-1)),4) ,shape(syfu%ezx(:,:,-1)))
+            ibuf = 7
+            call mpi_packbuffer_init(3*size(syfu%ezx(:,:,-1)),ibuf)
+            call mpi_recv_pack(fl%proc,4,ibuf)
+            call submpi_unpack_real_array(syfu%ezx(-syfu%nxguard,-syfu%nyguard,-1),size(syfu%ezx(:,:,-1)),ibuf)
+            call submpi_unpack_real_array(syfu%ezy(-syfu%nxguard,-syfu%nyguard,-1),size(syfu%ezx(:,:,-1)),ibuf)
+            call submpi_unpack_real_array(syfu%ezz(-syfu%nxguard,-syfu%nyguard,-1),size(syfu%ezx(:,:,-1)),ibuf)
+!            syfu%ezx(:,:,-1) = reshape( mpi_unpack_real_array(size(syfu%ezx(:,:,-1)),4) ,shape(syfu%ezx(:,:,-1)))
+!            syfu%ezy(:,:,-1) = reshape( mpi_unpack_real_array(size(syfu%ezx(:,:,-1)),4) ,shape(syfu%ezx(:,:,-1)))
+!            syfu%ezz(:,:,-1) = reshape( mpi_unpack_real_array(size(syfu%ezx(:,:,-1)),4) ,shape(syfu%ezx(:,:,-1)))
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            call mpi_packbuffer_init(3*size(syfu%ezx(:,:,-1)),5)
-            call mpi_recv_pack(fu%proc,3,5)
-            syfl%ezx(:,:,syfl%nz) = reshape(mpi_unpack_real_array(size(syfl%ezx(:,:,syfl%nz)),3),shape(syfl%ezx(:,:,syfl%nz)))
-            syfl%ezy(:,:,syfl%nz) = reshape(mpi_unpack_real_array(size(syfl%ezx(:,:,syfl%nz)),3),shape(syfl%ezx(:,:,syfl%nz)))
-            syfl%ezz(:,:,syfl%nz) = reshape(mpi_unpack_real_array(size(syfl%ezx(:,:,syfl%nz)),3),shape(syfl%ezx(:,:,syfl%nz)))
+            ibuf = 8
+            call mpi_packbuffer_init(3*size(syfl%ezx(:,:,-1)),ibuf)
+            call mpi_recv_pack(fu%proc,3,ibuf)
+            call submpi_unpack_real_array(syfl%ezx(-syfl%nxguard,-syfl%nyguard,syfl%nz),size(syfl%ezx(:,:,syfl%nz)),ibuf)
+            call submpi_unpack_real_array(syfl%ezy(-syfl%nxguard,-syfl%nyguard,syfl%nz),size(syfl%ezx(:,:,syfl%nz)),ibuf)
+            call submpi_unpack_real_array(syfl%ezz(-syfl%nxguard,-syfl%nyguard,syfl%nz),size(syfl%ezx(:,:,syfl%nz)),ibuf)
+!            syfl%ezx(:,:,syfl%nz) = reshape(mpi_unpack_real_array(size(syfl%ezx(:,:,syfl%nz)),3),shape(syfl%ezx(:,:,syfl%nz)))
+!            syfl%ezy(:,:,syfl%nz) = reshape(mpi_unpack_real_array(size(syfl%ezx(:,:,syfl%nz)),3),shape(syfl%ezx(:,:,syfl%nz)))
+!            syfl%ezz(:,:,syfl%nz) = reshape(mpi_unpack_real_array(size(syfl%ezx(:,:,syfl%nz)),3),shape(syfl%ezx(:,:,syfl%nz)))
           end if
       end select
   end select
@@ -2411,7 +2425,7 @@ integer(ISZ) :: ibuf
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 5
+            ibuf = 9
             call mpi_packbuffer_init((3*yfu%nzguard-1)*size(yfu%by(:,:,0)),ibuf)
             call mympi_pack(yfu%bx(:,:,yfu%izmin:yfu%izmin+yfu%nzguard-1),ibuf)
             call mympi_pack(yfu%by(:,:,yfu%izmin:yfu%izmin+yfu%nzguard-1),ibuf)
@@ -2420,7 +2434,7 @@ integer(ISZ) :: ibuf
             call mpi_isend_pack(fl%proc,1,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 6
+            ibuf = 10
             call mpi_packbuffer_init((3*yfl%nzguard-1)*size(yfl%by(:,:,0)),ibuf)
             call mympi_pack(yfl%bx(:,:,yfl%izmax-yfl%nzguard:yfl%izmax-1),ibuf)
             call mympi_pack(yfl%by(:,:,yfl%izmax-yfl%nzguard:yfl%izmax-1),ibuf)
@@ -2465,7 +2479,7 @@ integer(ISZ) :: ibuf
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 7
+            ibuf = 11
             call mpi_packbuffer_init(4*size(syfu%byx(:,:,0)),ibuf)
             call mympi_pack(syfu%bxy(:,:,0),ibuf)
             call mympi_pack(syfu%bxz(:,:,0),ibuf)
@@ -2474,7 +2488,7 @@ integer(ISZ) :: ibuf
             call mpi_isend_pack(fl%proc,3,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 8
+            ibuf = 12
             call mpi_packbuffer_init(4*size(syfl%byx(:,:,0)),ibuf)
             call mympi_pack(syfl%bxy(:,:,syfl%nz-1),ibuf)
             call mympi_pack(syfl%bxz(:,:,syfl%nz-1),ibuf)
@@ -2521,7 +2535,7 @@ integer(ISZ) :: ibuf
           yfu=>fu%yf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            ibuf = 9
+            ibuf = 13
             call mpi_packbuffer_init((3*yfu%nzguard-1)*size(yfu%bx(:,:,0)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
             call submpi_unpack_real_array(yfu%bx(-yfu%nxguard,-yfu%nyguard,yfu%izming), &
@@ -2533,7 +2547,7 @@ integer(ISZ) :: ibuf
                                      size(yfu%bz(:,:,yfu%izming+1:yfu%izmin-1)),ibuf)
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 10
+            ibuf = 14
             call mpi_packbuffer_init((3*yfl%nzguard-1)*size(yfl%bx(:,:,0)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
             call submpi_unpack_real_array(yfl%bx(-yfl%nxguard,-yfl%nyguard,yfl%izmax), &
@@ -2552,7 +2566,7 @@ integer(ISZ) :: ibuf
         case(splityeefield)
           syfu=>fu%syf
           if (fl%proc/=my_index) then
-            ibuf = 11
+            ibuf = 15
             call mpi_packbuffer_init(4*size(syfu%bxy(:,:,0)),ibuf)
             call mpi_recv_pack(fl%proc,4,ibuf)
             ! --- recv data from down in z
@@ -2562,7 +2576,7 @@ integer(ISZ) :: ibuf
             call submpi_unpack_real_array(syfu%byz(-syfu%nxguard,-syfu%nyguard,-1),size(syfu%bxy(:,:,-1)),ibuf)
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 12
+            ibuf = 16
             call mpi_packbuffer_init(4*size(syfl%bxy(:,:,0)),ibuf)
             call mpi_recv_pack(fu%proc,3,ibuf)
             call submpi_unpack_real_array(syfl%bxy(-syfl%nxguard,-syfl%nyguard,syfl%nz),size(syfl%bxy(:,:,-1)),ibuf)
@@ -2658,7 +2672,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz
+integer(ISZ) :: iz,ibuf
 
 #ifdef MPIPARALLEL
 integer(MPIISZ)::mpirequest(2),mpierror
@@ -2675,28 +2689,30 @@ integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index) then
 
             ! --- send data down in z
-            call mpi_packbuffer_init((3*yfu%nzguard+2)*size(yfu%J(:,:,-1,1)),1)
+            ibuf = 17
+            call mpi_packbuffer_init((3*yfu%nzguard+2)*size(yfu%J(:,:,-1,1)),ibuf)
             do iz = yfu%izming,yfu%izmin
-              call mympi_pack(yfu%J(:,:,iz,1),1)
-              call mympi_pack(yfu%J(:,:,iz,2),1)
+              call mympi_pack(yfu%J(:,:,iz,1),ibuf)
+              call mympi_pack(yfu%J(:,:,iz,2),ibuf)
             end do
             do iz = yfu%izming,yfu%izmin-1
-              call mympi_pack(yfu%J(:,:,iz,3),1)
+              call mympi_pack(yfu%J(:,:,iz,3),ibuf)
             end do
-            call mpi_isend_pack(fl%proc,1,1)
+            call mpi_isend_pack(fl%proc,1,ibuf)
             
           else if (fu%proc/=my_index) then
 
             ! --- send data up in z
-            call mpi_packbuffer_init((3*yfl%nzguard+2)*size(yfl%J(:,:,0,0)),2)
+            ibuf = 18
+            call mpi_packbuffer_init((3*yfl%nzguard+2)*size(yfl%J(:,:,0,0)),ibuf)
             do iz = yfl%izmax, yfl%izmaxg
-              call mympi_pack(yfl%J(:,:,iz,1),2)
-              call mympi_pack(yfl%J(:,:,iz,2),2)
+              call mympi_pack(yfl%J(:,:,iz,1),ibuf)
+              call mympi_pack(yfl%J(:,:,iz,2),ibuf)
             end do
             do iz = yfl%izmax, yfl%izmaxg-1
-              call mympi_pack(yfl%J(:,:,iz,3),2)
+              call mympi_pack(yfl%J(:,:,iz,3),ibuf)
             end do
-            call mpi_isend_pack(fu%proc,2,2)
+            call mpi_isend_pack(fu%proc,2,ibuf)
 
           else
 #endif
@@ -2727,7 +2743,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz
+integer(ISZ) :: iz,ibuf
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
@@ -2740,29 +2756,34 @@ integer(ISZ) :: iz
           if (fl%proc/=my_index) then
           
             ! --- recv data from down in z
-            call mpi_packbuffer_init((3*yfu%nzguard+2)*size(yfu%J(:,:,0,1)),4)
-            call mpi_recv_pack(fl%proc,2,4)
+            ibuf = 19
+            call mpi_packbuffer_init((3*yfu%nzguard+2)*size(yfu%J(:,:,0,1)),ibuf)
+            call mpi_recv_pack(fl%proc,2,ibuf)
             do iz = 0,yfu%nzguard
-              yfu%J(:,:,iz  ,1) = yfu%J(:,:,iz  ,1) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),4),shape(yfu%J(:,:,0,1)))
-              yfu%J(:,:,iz  ,2) = yfu%J(:,:,iz  ,2) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),4),shape(yfu%J(:,:,0,1)))
+              yfu%J(:,:,iz  ,1) = yfu%J(:,:,iz  ,1) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
+                                                                                     shape(yfu%J(:,:,0,1)))
+              yfu%J(:,:,iz  ,2) = yfu%J(:,:,iz  ,2) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
+                                                                                     shape(yfu%J(:,:,0,1)))
             end do
             do iz = 0,yfu%nzguard-1
-              yfu%J(:,:,iz  ,3) = yfu%J(:,:,iz  ,3) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),4),shape(yfu%J(:,:,0,1)))
+              yfu%J(:,:,iz  ,3) = yfu%J(:,:,iz  ,3) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
+                                                                                     shape(yfu%J(:,:,0,1)))
             end do
 
           else if (fu%proc/=my_index) then
 
             ! --- recv data from up in z
-            call mpi_packbuffer_init((3*yfl%nzguard+2)*size(yfl%J(:,:,0,0)),3)
-            call mpi_recv_pack(fu%proc,1,3)
+            ibuf = 20
+            call mpi_packbuffer_init((3*yfl%nzguard+2)*size(yfl%J(:,:,0,0)),ibuf)
+            call mpi_recv_pack(fu%proc,1,ibuf)
             do iz = -yfl%nzguard,0
-              yfl%J(:,:,yfl%nz+iz,1) = yfl%J(:,:,yfl%nz+iz,1) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,1)),3),&
+              yfl%J(:,:,yfl%nz+iz,1) = yfl%J(:,:,yfl%nz+iz,1) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,1)),ibuf),&
                                                                                             shape(yfl%J(:,:,yfl%nz-1,1)))
-              yfl%J(:,:,yfl%nz+iz,2) = yfl%J(:,:,yfl%nz+iz,2) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,2)),3),&
+              yfl%J(:,:,yfl%nz+iz,2) = yfl%J(:,:,yfl%nz+iz,2) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,2)),ibuf),&
                                                                                             shape(yfl%J(:,:,yfl%nz-1,2)))
             end do
             do iz = -yfl%nzguard,-1
-              yfl%J(:,:,yfl%nz+iz,3) = yfl%J(:,:,yfl%nz+iz,3) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,3)),3),&
+              yfl%J(:,:,yfl%nz+iz,3) = yfl%J(:,:,yfl%nz+iz,3) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,3)),ibuf),&
                                                                                             shape(yfl%J(:,:,yfl%nz-1,3)))
             end do
           end if
@@ -2838,7 +2859,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz
+integer(ISZ) :: iz,ibuf
 
 #ifdef MPIPARALLEL
 integer(MPIISZ)::mpirequest(2),mpierror
@@ -2853,22 +2874,23 @@ integer(MPIISZ)::mpirequest(2),mpierror
           yfu=>fu%yf
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
-
+            ibuf=21
             ! --- send data down in z
-            call mpi_packbuffer_init(size(yfu%rho(:,:,0:yfu%nzguard)),1)
+            call mpi_packbuffer_init(size(yfu%rho(:,:,0:yfu%nzguard)),ibuf)
             do iz = -yfu%nzguard,0
-              call mympi_pack(yfu%rho(:,:,iz  ),1)
+              call mympi_pack(yfu%rho(:,:,iz  ),ibuf)
             end do
-            call mpi_isend_pack(fl%proc,1,1)
+            call mpi_isend_pack(fl%proc,1,ibuf)
             
           else if (fu%proc/=my_index) then
 
             ! --- send data up in z
-            call mpi_packbuffer_init(size(yfl%rho(:,:,0:yfl%nzguard)),2)
+            ibuf = 22
+            call mpi_packbuffer_init(size(yfl%rho(:,:,0:yfl%nzguard)),ibuf)
             do iz = 0,yfl%nzguard
-              call mympi_pack(yfl%rho(:,:,yfl%nz+iz  ),2)
+              call mympi_pack(yfl%rho(:,:,yfl%nz+iz  ),ibuf)
             end do
-            call mpi_isend_pack(fu%proc,2,2)
+            call mpi_isend_pack(fu%proc,2,ibuf)
 
           else
 #endif
@@ -2892,7 +2914,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz
+integer(ISZ) :: iz, ibuf
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
@@ -2905,19 +2927,22 @@ integer(ISZ) :: iz
           if (fl%proc/=my_index) then
           
             ! --- recv data from down in z
-            call mpi_packbuffer_init(size(yfu%rho(:,:,0:yfu%nzguard)),4)
-            call mpi_recv_pack(fl%proc,2,4)
+            ibuf = 23
+            call mpi_packbuffer_init(size(yfu%rho(:,:,0:yfu%nzguard)),ibuf)
+            call mpi_recv_pack(fl%proc,2,ibuf)
             do iz = 0,yfu%nzguard
-              yfu%rho(:,:,iz  ) = yfu%rho(:,:,iz  ) + reshape(mpi_unpack_real_array( size(yfu%rho(:,:,0)),4),shape(yfu%rho(:,:,0)))
+              yfu%rho(:,:,iz  ) = yfu%rho(:,:,iz  ) + reshape(mpi_unpack_real_array( size(yfu%rho(:,:,0)),ibuf), &
+                                                                                    shape(yfu%rho(:,:,0)))
             end do
 
           else if (fu%proc/=my_index) then
 
             ! --- recv data from up in z
-            call mpi_packbuffer_init(size(yfl%rho(:,:,0:yfl%nzguard)),3)
-            call mpi_recv_pack(fu%proc,1,3)
+            ibuf = 24
+            call mpi_packbuffer_init(size(yfl%rho(:,:,0:yfl%nzguard)),ibuf)
+            call mpi_recv_pack(fu%proc,1,ibuf)
             do iz = -yfl%nzguard,0
-              yfl%rho(:,:,yfl%nz+iz  ) = yfl%rho(:,:,yfl%nz+iz  ) + reshape(mpi_unpack_real_array( size(yfl%rho(:,:,yfl%nz  )),3),&
+              yfl%rho(:,:,yfl%nz+iz  ) = yfl%rho(:,:,yfl%nz+iz  ) + reshape(mpi_unpack_real_array(size(yfl%rho(:,:,yfl%nz)),ibuf),&
                                                                                             shape(yfl%rho(:,:,yfl%nz  )))
             end do
           end if
