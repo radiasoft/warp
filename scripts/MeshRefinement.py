@@ -1,9 +1,9 @@
 """Implements adaptive mesh refinement in 3d
 """
+from __future__ import generators
 __all__ = ['MeshRefinement',
            'MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
            'MRBlockImplicit2D']
-from __future__ import generators
 from warp import *
 from multigrid import MultiGrid
 from multigridRZ import MultiGrid2D
