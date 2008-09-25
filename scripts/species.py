@@ -1482,20 +1482,111 @@ in radius squared.
          'Species particle charge (in coulombs)'))
   ins = property(*_getpgroupattribute('ins','Starting index of species'))
   nps = property(*_getpgroupattribute('nps','Number of particle in species'))
-  sid = property(*_getpgroupattribute(' sid'))
-  ndts = property(*_getpgroupattribute(' ndts'))
-  ldts = property(*_getpgroupattribute(' ldts'))
-  lvdts = property(*_getpgroupattribute(' lvdts'))
-  iselfb = property(*_getpgroupattribute(' iselfb'))
-  fselfb = property(*_getpgroupattribute(' fselfb'))
-  l_maps = property(*_getpgroupattribute(' l_maps'))
-  dtscale = property(*_getpgroupattribute(' dtscale'))
-  limplicit = property(*_getpgroupattribute(' limplicit'))
-  iimplicit = property(*_getpgroupattribute(' iimplicit'))
-  ldoadvance = property(*_getpgroupattribute(' ldoadvance'))
-  lparaxial = property(*_getpgroupattribute(' lparaxial'))
-  zshift = property(*_getpgroupattribute(' zshift'))
+  sid = property(*_getpgroupattribute('sid'))
+  ndts = property(*_getpgroupattribute('ndts'))
+  ldts = property(*_getpgroupattribute('ldts'))
+  lvdts = property(*_getpgroupattribute('lvdts'))
+  iselfb = property(*_getpgroupattribute('iselfb'))
+  fselfb = property(*_getpgroupattribute('fselfb'))
+  l_maps = property(*_getpgroupattribute('l_maps'))
+  dtscale = property(*_getpgroupattribute('dtscale'))
+  limplicit = property(*_getpgroupattribute('limplicit'))
+  iimplicit = property(*_getpgroupattribute('iimplicit'))
+  ldoadvance = property(*_getpgroupattribute('ldoadvance'))
+  lparaxial = property(*_getpgroupattribute('lparaxial'))
+  zshift = property(*_getpgroupattribute('zshift'))
 
   # --- Clean up the name space
   del _getpgroupattribute
+
+  def _gettopattribute(name,doc=None):
+    def fget(self):
+      return getattr(top,name)[...,self.jslist]
+    def fset(self,value):
+      getattr(top,name)[...,self.jslist] = value
+    return fget,fset,None,doc
+
+  # InPart
+  np = property(*_gettopattribute('np_s'))
+  a0 = property(*_gettopattribute('a0_s'))
+  ap0 = property(*_gettopattribute('ap0_s'))
+  b0 = property(*_gettopattribute('b0_s'))
+  bp0 = property(*_gettopattribute('bp0_s'))
+  x0 = property(*_gettopattribute('x0_s'))
+  xp0 = property(*_gettopattribute('xp0_s'))
+  y0 = property(*_gettopattribute('y0_s'))
+  yp0 = property(*_gettopattribute('yp0_s'))
+  aion = property(*_gettopattribute('aion_s'))
+  ekin = property(*_gettopattribute('ekin_s'))
+  emit = property(*_gettopattribute('emit_s'))
+  emitx = property(*_gettopattribute('emitx_s'))
+  emity = property(*_gettopattribute('emity_s'))
+  emitn = property(*_gettopattribute('emitn_s'))
+  emitnx = property(*_gettopattribute('emitnx_s'))
+  emitny = property(*_gettopattribute('emitny_s'))
+  ibeam = property(*_gettopattribute('ibeam_s'))
+  zion = property(*_gettopattribute('zion_s'))
+  straight = property(*_gettopattribute('straight_s'))
+  vbeam = property(*_gettopattribute('vbeam_s'))
+  vtilt = property(*_gettopattribute('vtilt_s'))
+  vthperp = property(*_gettopattribute('vthperp_s'))
+  vthz = property(*_gettopattribute('vthz_s'))
+  zimin = property(*_gettopattribute('zimin_s'))
+  zimax = property(*_gettopattribute('zimax_s'))
+  sp_fract = property(*_gettopattribute('sp_fract'))
+  xcent = property(*_gettopattribute('xcent_s'))
+  ycent = property(*_gettopattribute('ycent_s'))
+  xpcent = property(*_gettopattribute('xpcent_s'))
+  ypcent = property(*_gettopattribute('ypcent_s'))
+  efetch = property(*_gettopattribute('efetch'))
+  depos_order = property(*_gettopattribute('depos_order'))
+
+  # InjectVars
+  vzinject = property(*_gettopattribute('vzinject'))
+  finject = property(*_gettopattribute('finject'))
+  winject = property(*_gettopattribute('winject'))
+  npinject = property(*_gettopattribute('npinje_s'))
+  rnpinject = property(*_gettopattribute('rnpinje_s'))
+  npinjtmp = property(*_gettopattribute('npinjtmp'))
+  ftinject = property(*_gettopattribute('ftinject'))
+  wtinject = property(*_gettopattribute('wtinject'))
+  ntinject = property(*_gettopattribute('ntinject'))
+
+  # SelfB
+  iselfb = property(*_gettopattribute('iselfb'))
+
+  # LostParticles
+  inslost = property(*_gettopattribute('inslost'))
+  npslost = property(*_gettopattribute('npslost'))
+
+  # ExtPart
+  nep = property(*_gettopattribute('nep'))
+  tep = property(*_gettopattribute('tep'))
+  xep = property(*_gettopattribute('xep'))
+  yep = property(*_gettopattribute('yep'))
+  uxep = property(*_gettopattribute('uxep'))
+  uyep = property(*_gettopattribute('uyep'))
+  uzep = property(*_gettopattribute('uzep'))
+  pidep = property(*_gettopattribute('pidep'))
+
+  del _gettopattribute
+
+  def _getw3dattribute(name,doc=None):
+    def fget(self):
+      return getattr(w3d,name)[...,self.jslist]
+    def fset(self,value):
+      getattr(w3d,name)[...,self.jslist] = value
+    return fget,fset,None,doc
+
+  # w3d.DKInterp
+  m_over_q = property(*_getw3dattribute('m_over_q'))
+  qovermsq = property(*_getw3dattribute('qovermsq'))
+  alpha0 = property(*_getw3dattribute('alpha0'))
+  acntr = property(*_getw3dattribute('acntr'))
+  usealphacalc = property(*_getw3dattribute('usealphacalc'))
+  parameter = property(*_getw3dattribute('parameter'))
+  notusealphcalc = property(*_getw3dattribute('notusealphcalc'))
+  interpdk = property(*_getw3dattribute('interpdk'))
+
+  del _getw3dattribute
 
