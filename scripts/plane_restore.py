@@ -1,6 +1,5 @@
-"""
-Contains PlaneRestore class that is used to restore particle and field data at a
-specified z plane. The data have been saved by PlaneSave.
+"""Contains PlaneRestore class that is used to restore particle and field
+data at a specified z plane, data saved by PlaneSave.
 The two simulations are linked together.
 
 ###########################################################################
@@ -16,7 +15,7 @@ The two simulations are linked together.
 # Note:                                                                   #
 # The string plane_file must be set to the name of the file holding the   #
 # plane data.                                                             #
-# The variable new_zplane may be redefined.  It defaults to zmmin.  #
+# The variable new_zplane may be redefined.  It defaults to zmmin.        #
 ###########################################################################
 # Assumptions:
 #   new_zplane lies exactly on a grid cell.
@@ -26,7 +25,7 @@ The two simulations are linked together.
 __all__ = ['PlaneRestore','plane_restore_version']
 
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.12 2007/12/13 02:10:26 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.13 2008/09/25 21:36:14 dave Exp $"
 
 class PlaneRestore:
   """
@@ -81,14 +80,11 @@ Input:
     self.it_restore = 0
 
     # --- get time step, tmin, tmax
-    if top.dt != self.f.dt:
-      print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-      print "Warning: timestep size not the same as in saved run, top.dt will"
-      print "         be adjusted to the value from the saved run"
-      print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-      top.dt = self.f.dt
+    self.dt = self.f.dt
     self.tmin = self.f.tmin
+    top.time = self.tmin
     self.tmax = self.f.tmax
+    self.time_restore = self.tmin
 
     if self.lrestoreparticles:
       # --- initializes list of species
@@ -108,8 +104,8 @@ Input:
         top.pgroup.sw[js] = self.f.read('sw_%d'%js)
 
       # --- make sure that pid will be allocated
-      top.npid = self.f.npid
-      setuppgroup(top.pgroup)
+      #top.npid = self.f.npid
+      #setuppgroup(top.pgroup)
 
     if self.l_restore_phi:
       # --- restore solver geometry of the saved data
@@ -170,22 +166,24 @@ Input:
     if (self.zplane < w3d.zmmin+top.zbeam or
         self.zplane+top.zbeam >= w3d.zmmax): return
 
-    # --- increment the timelevel of the plane
-    self.it_restore = self.it_restore + 1
-    it = self.it_restore
-
-    # --- load particles for each species
-    for js in self.jslist:
-      self.restoreplaneparticles(js,it)
-
     # --- calculate grid location of new_plane
     iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
 
-    # --- load saved phi into the phi array
-    try:
+    # --- Loop over restored data, restoring the data up to the current
+    # --- time level of the simulation. This allows the stored data dt
+    # --- to be different than the current simulation dt.
+    while self.time_restore <= top.time:
+      # --- increment the timelevel of the plane
+      self.it_restore += 1
+      self.time_restore += self.dt
+      it = self.it_restore
+
+      # --- load particles for each species
+      for js in self.jslist:
+        self.restoreplaneparticles(js,it)
+
+      # --- load saved phi into the phi array
       self.restore_phi(iz,it)
-    except:
-      return
 
   def restoreplaneparticles(self,js=0,it=0):
     if not self.lrestoreparticles: return
@@ -202,6 +200,15 @@ Input:
       uz = self.f.read('uzp'+suffix)
       gi = self.f.read('gaminv'+suffix)
       id = self.f.read('pid'+suffix)
+      # --- Do some fudging to get the shape of pid correct. This is not
+      # --- perfect, since it will may munge the data in pid if things
+      # --- are arranged differently.
+      if id.shape[1] < top.npid:
+        newid = fzeros((id.shape[0],top.npid),'d')
+        newid[:,:id.shape[1]] = id
+        id = newid
+      elif id.shape[1] > top.npid:
+        id = id[:,:top.npid]
       addparticles(xx,yy,zz,ux,uy,uz,gi,id,
                    js=js,
                    lallindomain=false,
@@ -232,58 +239,74 @@ Input:
     if 'phiplane%d'%it not in self.f.inquire_names(): return
     savedphi = self.f.read('phiplane%d'%it)
 
-    if self.solvergeom == w3d.solvergeom:
-      self.restore_phi_3d_to_3d(iz-top.izfsslave[me],it,savedphi,w3d.phi)
+    solver = getregisteredsolver()
+    if solver is None: solver = w3d
+
+    if self.solvergeom == solver.solvergeom and solver.solvergeom == w3d.XYZgeom:
+      self.restore_phi_3d_to_3d(iz-top.izfsslave[me],it,savedphi,solver.phi,
+                                solver)
       if top.izpslave[me] != top.izfsslave[me]:
-        self.restore_phi_3d_to_3d(iz-top.izpslave[me],it,savedphi,w3d.phip)
-    elif self.solvergeom == w3d.RZgeom and w3d.solvergeom == w3d.XYZgeom:
-      self.restore_phi_rz_to_3d(iz,it,savedphi,w3d.phi)
+        # --- This is not really correct, since phip will have a different
+        # --- shape and phi, so the dimensions should be passed in too.
+        self.restore_phi_3d_to_3d(iz-top.izpslave[me],it,savedphi,solver.phip,
+                                  solver)
+    elif self.solvergeom == solver.solvergeom and solver.solvergeom == w3d.RZgeom:
+      self.restore_phi_rz_to_rz(iz-top.izfsslave[me],it,savedphi,solver.phi,
+                                solver)
+    elif self.solvergeom == w3d.RZgeom and solver.solvergeom == w3d.XYZgeom:
+      self.restore_phi_rz_to_3d(iz,it,savedphi,solver.phi)
       if top.izpslave[me] != top.izfsslave[me]:
-        self.restore_phi_rz_to_3d(iz,it,savedphi,w3d.phip)
+        self.restore_phi_rz_to_3d(iz,it,savedphi,solver.phip)
 
   #######################################################################
   # This routine copies the saved phi plane into the current phi array
   # making use of different numbers of grid cells and differing symmetries.
   # Both saved and restored phi are 3-D.
-  def restore_phi_3d_to_3d(self,iz,it,savedphi,phi):
-    if iz < 0 or iz > w3d.nzlocal: return
+  def restore_phi_3d_to_3d(self,iz,it,savedphi,phi,solver):
+    if iz < 0 or iz > solver.nzlocal: return
     for i in range(2):
       grid2grid(phi[self.nx0_r:self.nxm_r+1,self.ny0_r:self.nym_r+1,iz+i],
-                w3d.nx,w3d.ny,
-                w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-                savedphi[:,:,i],self.f.nx_plane,self.f.ny_plane,
+                solver.nx,solver.ny,
+                solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax,
+                savedphi[...,i],self.f.nx_plane,self.f.ny_plane,
                 self.f.xmmin,self.f.xmmax,self.f.ymmin,self.f.ymmax)
       
-    if ((self.f.sym_plane == 2 and (not w3d.l2symtry and not w3d.l4symtry)) or
-        (self.f.sym_plane == 4 and (not w3d.l2symtry and not w3d.l4symtry))):
+    if ((self.f.sym_plane == 2 and (not solver.l2symtry and not solver.l4symtry)) or
+        (self.f.sym_plane == 4 and (not solver.l2symtry and not solver.l4symtry))):
     #     phi(self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz-1:iz)=
     #      self.f.phi_plane(nx0_s:nxm_s,nym_s2:ny0_s2:-1,)
       for i in range(2):
         grid2grid(phi[self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz+i],
-                  w3d.nx,w3d.ny,
-                  w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-                  savedphi[:,::-1,i],self.f.nx_plane,self.f.ny_plane,
+                  solver.nx,solver.ny,
+                  solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax,
+                  savedphi[...,i],self.f.nx_plane,self.f.ny_plane,
                   self.f.xmmin,self.f.xmmax,self.f.ymmin,self.f.ymmax)
 
-    if ((self.f.sym_plane == 4 and ( w3d.l2symtry and not w3d.l4symtry))):
+    if ((self.f.sym_plane == 4 and ( solver.l2symtry and not solver.l4symtry))):
     #  phi(nx0_r2:nxm_r2,ny0_r:nym_r,iz-1:iz)=
     #    self.f.phi_plane(nx0_s2:nxm_s2:-1,ny0_s:nym_s,)
       for i in range(2):
         grid2grid(phi[self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz+i],
-                  w3d.nx,w3d.ny,
-                  w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-                  savedphi[::-1,:,i],self.f.nx_plane,self.f.ny_plane,
+                  solver.nx,solver.ny,
+                  solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax,
+                  savedphi[...,i],self.f.nx_plane,self.f.ny_plane,
                   self.f.xmmin,self.f.xmmax,self.f.ymmin,self.f.ymmax)
 
-    if ((self.f.sym_plane == 4 and (not w3d.l2symtry and not w3d.l4symtry))):
+    if ((self.f.sym_plane == 4 and (not solver.l2symtry and not solver.l4symtry))):
     #  phi(nx0_r2:nxm_r2,ny0_r2:nym_r,iz-1:iz)=
     #    self.f.phi_plane(nx0_s2:nxm_s2:-1,ny0_s2:nym_s,)
       for i in range(2):
         grid2grid(phi[self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz+i],
-                  w3d.nx,w3d.ny,
-                  w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-                  savedphi[::-1,:,i],self.f.nx_plane,self.f.ny_plane,
+                  solver.nx,solver.ny,
+                  solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax,
+                  savedphi[...,i],self.f.nx_plane,self.f.ny_plane,
                   self.f.xmmin,self.f.xmmax,self.f.ymmin,self.f.ymmax)
+
+  def restore_phi_rz_to_rz(self,iz,it,savedphi,phi,solver):
+    if iz < 0 or iz > solver.nzlocal: return
+    # --- For now, this assumes that the arrays are the same shape.
+    phi[1:-1,0,iz] = savedphi[:,0]
+    phi[1:-1,0,iz+1] = savedphi[:,1]
 
   #######################################################################
   # This routine copies the saved phi plane into the current phi array
@@ -313,6 +336,6 @@ Input:
     j2 = self.nym_r+1
     for i in range(2):
       phi[i1:i2,j1:j2,iz+i] = (
-          take(savephi[:,0,i],self.irmesh  )*(1.-self.wrmesh) + 
-          take(savephi[:,0,i],self.irmesh+1)*self.wrmesh)
+          take(savedphi[:,0,i],self.irmesh  )*(1.-self.wrmesh) + 
+          take(savedphi[:,0,i],self.irmesh+1)*self.wrmesh)
 
