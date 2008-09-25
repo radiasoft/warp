@@ -400,8 +400,10 @@ it knows whether to re-register itself.
       installafterrestart(self.root.solve)
     # --- Set the isactive attribute in case this is restored from an old
     # --- dump file.
-    if 'isactive' not in self.__dict__.keys():
+    if 'isactive' not in self.__dict__:
       self.isactive = 1
+    if 'l_EM' not in self.__dict__:
+      self.l_EM = 0
 
   def addchild(self,lower=None,upper=None,fulllower=None,fullupper=None,
                     mins=None,maxs=None,
