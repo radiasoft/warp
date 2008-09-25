@@ -258,24 +258,44 @@ class MultiGrid(SubcycledPoissonSolver):
     return self.field
 
   def _setuprhoproperty():
-    doc = "Electrostatic potential array"
+    doc = "Charge density array"
     def fget(self):
-      return self._rho
+      return self.returnsource(0,0)
     def fset(self,value):
-      self._rho[...] = value
+      self.returnsource(0,0)[...] = value
     return locals()
   rho = property(**_setuprhoproperty())
   del _setuprhoproperty
 
   def _setupphiproperty():
-    doc = "Charge density array"
+    doc = "Electrostatic potential array"
     def fget(self):
-      return self._phi
+      return self.returnpotential(0,0)
     def fset(self,value):
-      self._phi[...] = value
+      self.returnpotential(0,0)[...] = value
     return locals()
   phi = property(**_setupphiproperty())
   del _setupphiproperty
+
+  def _setuprhopproperty():
+    doc = "Charge density array for particles"
+    def fget(self):
+      return self.returnsourcep(0,0,0)
+    def fset(self,value):
+      self.returnsourcep(0,0,0)[...] = value
+    return locals()
+  rhop = property(**_setuprhopproperty())
+  del _setuprhopproperty
+
+  def _setupphipproperty():
+    doc = "Electrostatic potential array for particles"
+    def fget(self):
+      return self.returnpotentialp(0,0)
+    def fset(self,value):
+      self.returnpotentialp(0,0)[...] = value
+    return locals()
+  phip = property(**_setupphipproperty())
+  del _setupphipproperty
 
   def loadrho(self,lzero=None,pgroups=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,pgroups,**kw)

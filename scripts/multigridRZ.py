@@ -496,6 +496,28 @@ Initially, conductors are not implemented.
     'Returns the phip array without the guard cells'
     return MultiGrid.getphip(self)[:,0,:]
 
+  # --- A special version is needed since only part if source is returned.
+  def _setuprhoproperty():
+    doc = "Charge density array"
+    def fget(self):
+      return self.returnsource(0,0)[...,0]
+    def fset(self,value):
+      self.returnsource(0,0)[...,0] = value
+    return locals()
+  rho = property(**_setuprhoproperty())
+  del _setuprhoproperty
+
+  # --- A special version is needed since only part if sourcep is returned.
+  def _setuprhopproperty():
+    doc = "Charge density array for particles"
+    def fget(self):
+      return self.returnsourcep(0,0,0)[...,0]
+    def fset(self,value):
+      self.returnsourcep(0,0,0)[...,0] = value
+    return locals()
+  rhop = property(**_setuprhopproperty())
+  del _setuprhopproperty
+
   def loadrho(self,lzero=None,**kw):
     # --- top.laccumulate_rho is used as a flag by the implicit stepper.
     # --- When true, the load rho is skipped - it is not needed at some
