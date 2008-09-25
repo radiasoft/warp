@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.110 $, $Date: 2008/09/25 21:39:47 $
+c@(#) File w3d_injection.F, version $Revision: 1.111 $, $Date: 2008/09/25 23:11:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1347,7 +1347,6 @@ c           --- Skip this if no particles of this species were injected.
             if(npinje_s(jsid+1)==0) cycle
             nn = npinje_s(jsid+1)
 #else
-            if (finject(ij,jsid+1) == 0.) cycle
 c           --- Find particles that were freshly injected. These
 c           --- are particles which still have noninteger pid(:,injpid).
             allocate(mask(pgroup%nps(is)),stat=allocerror)
