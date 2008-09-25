@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.239 $, $Date: 2008/08/14 18:56:54 $
+#@(#) File TOP.V, version $Revision: 3.240 $, $Date: 2008/09/25 21:39:47 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.239 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.240 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1306,7 +1306,7 @@ npinje_s(ns) _integer      # Number of particles injected each step
 rnpinje_s(ns) _real        # Number of particles to inject each step
                            # for each species (do not need to be integers).
                            # Only used when inject==1.
-npinjtmp(ns,ninject) _integer # Temporary for saving actual number of
+npinjtmp(ninject,ns) _integer # Temporary for saving actual number of
                            # particles injected for inject=1. Only meaningful
                            # in parallel version.
 injctspc  integer    /0/   # Extra space added to particle arrays
@@ -1363,7 +1363,7 @@ nttinj(ntinj)     _integer # Number of azimuthal points that transverse
                            # injection is broken down into.
                            # Automatically calculated.
 vtinject(ntinj)    _real   # Voltage on transverse emitting surface.
-ftinject(ns,ntinj) _real   # Species fractions for transverse emitting surface
+ftinject(ntinj,ns) _real   # Species fractions for transverse emitting surface
 xtinject(ntinj)    _real   # X location of center of transverse emitting surface
 ytinject(ntinj)    _real   # Y location of center of transverse emitting surface
 vztinject(ntinj) _real /0./ [m/s] # Starting velocity.

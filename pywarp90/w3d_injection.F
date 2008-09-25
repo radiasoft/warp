@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.109 $, $Date: 2008/09/19 20:15:13 $
+c@(#) File w3d_injection.F, version $Revision: 1.110 $, $Date: 2008/09/25 21:39:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -349,7 +349,7 @@ c             --- The absolute values are needed for the cases of symmetry.
      &             inj_grid(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
 c             --- Only save particle if it is within the injection region.
               if (inj_zmmin <= zs+zinj .and. zs+zinj < inj_zmmax) then
-                ii = pgroup%ins(is) - 1 - npinjtmp(is,ij)
+                ii = pgroup%ins(is) - 1 - npinjtmp(ij,is)
 c               --- Clear out any old data from pid
                 pgroup%pid(ii,:) = 0.
 c               --- Save the particle data
@@ -397,7 +397,7 @@ c               --- save radius of creation if rpid > 0
                   pgroup%pid(ii,rpid) = sqrt(pgroup%xp(ii)**2+pgroup%yp(ii)**2)
                 endif
 c               --- increment particle counter
-                npinjtmp(jsid+1,ij) = npinjtmp(jsid+1,ij) + 1
+                npinjtmp(ij,jsid+1) = npinjtmp(ij,jsid+1) + 1
                 inj_prev(ixx        ,iyy        ,ij,inj_is) =
      &          inj_prev(ixx        ,iyy        ,ij,inj_is) + (1.-wxx)*(1.-wyy)
                 inj_prev(ixx+spreadx,iyy        ,ij,inj_is) =
@@ -410,7 +410,7 @@ c               --- increment particle counter
             enddo
 
 c           --- Get actual number of particles injected and ipmin
-            nn = npinjtmp(jsid+1,ij)
+            nn = npinjtmp(ij,jsid+1)
 
 c           --- Sum npinje_s to get the total number of particles injected.
             npinje_s(jsid+1) = npinje_s(jsid+1) + nn
@@ -550,7 +550,7 @@ c         loop over species and injection sources
             do ij=1,ninject
               ipmin = ipmin + nn
 c             --- Get number of particles injected
-              nn = npinjtmp(jsid+1,ij)
+              nn = npinjtmp(ij,jsid+1)
               if(nn==0) cycle
 
 c             --- Make sure there is enough temp space
@@ -1167,7 +1167,7 @@ c                   --- Save SSN
 
 c                   --- increment various particle counters
                     npinje_s(jsid+1) = npinje_s(jsid+1) + 1
-                    npinjtmp(jsid+1,ij) = npinjtmp(jsid+1,ij) + 1
+                    npinjtmp(ij,jsid+1) = npinjtmp(ij,jsid+1) + 1
 
 c                   --- Make injected particle live, though more work will
 c                   --- to be done to it below before its ready. But now, if
@@ -1189,7 +1189,7 @@ c           --- Transform particles to lab frame
             do is=1,pgroup%ns
               jsid = pgroup%sid(is-1)
               ii = pgroup%ins(is)
-              nn = npinjtmp(jsid+1,ij)
+              nn = npinjtmp(ij,jsid+1)
               if (nn > 0) then
 c               --- The check if nn > 0 is needed since if npmax was zero
 c               --- and no particles were injected then npmax stays zero
@@ -1530,7 +1530,7 @@ c           --- loop over species
             do is=1,pgroup%ns
               jsid = pgroup%sid(is-1)
               if (.not. pgroup%ldts(is-1)) cycle
-              if (ftinject(jsid+1,ij) == 0.) cycle
+              if (ftinject(ij,jsid+1) == 0.) cycle
               fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
               nti = 0
               qoverm = pgroup%sq(is)/pgroup%sm(is)
@@ -1611,7 +1611,7 @@ c                 --- This does not take into account any variation in a and bti
 
 c                 --- number of particles injected in grid cell
                   if (tinject == 1) then
-                    rnn = ntinject(jsid+1)*ftinject(jsid+1,ij)/real(nttinj(ij)*nztinj(ij))
+                    rnn = ntinject(jsid+1)*ftinject(ij,jsid+1)/real(nttinj(ij)*nztinj(ij))
                   elseif (tinject == 2) then
 c                   --- Const for tinject = 2.  Denominator includes factor for
 c                   --- emitting on concentric cylinders.  See I. Langmuir,
@@ -1620,7 +1620,7 @@ c                   --- Concentric Spheres", PhysRev, 1924.
                     const = 4./9.*eps0*(2.*abs(qoverm))**.5*dri**2*
      &                      fulldt_s*area/abs(pgroup%sq(is))/pgroup%sw(is)/
      &                      (1. - 0.8*dr*rinji + 0.66*(dr*rinji)**2)
-                    tinjprev(ith,iz,ij) = ftinject(jsid+1,ij)*(
+                    tinjprev(ith,iz,ij) = ftinject(ij,jsid+1)*(
      &                                    inj_param*const*abs(vavez)**1.5 +
      &                                    (1. - inj_param)*tinjprev(ith,iz,ij))
                     rnn = tinjprev(ith,iz,ij)
@@ -1647,12 +1647,12 @@ c                   --- get charge density at injection point
      &                   rhop(i1x+1,i1y  ,i1z+1)*    w1x *(1.-w1y)*    w1z  +
      &                   rhop(i1x+1,i1y+1,i1z+1)*    w1x *    w1y *    w1z
                     rnn=(eps0*vavez*dri - rr*abs(dr))*area/
-     &                   pgroup%sq(is)/pgroup%sw(is)*ftinject(jsid+1,ij)
+     &                   pgroup%sq(is)/pgroup%sw(is)*ftinject(ij,jsid+1)
                   endif
 
                   rnn = min(rnn,
      &                      abs(jmaxtinj(ij)*area*fulldt_s/pgroup%sq(is)/
-     &                      pgroup%sw(is)*ftinject(jsid+1,ij)))
+     &                      pgroup%sw(is)*ftinject(ij,jsid+1)))
                   nn = int(rnn + wranf())
 
 c                 --- Make sure there is room for more particles.  Estimate
@@ -2315,7 +2315,7 @@ c Set up ftinject array if not set by the user (if sum of ftinject = 0).
 c Give each injection source the same distribution of species.
         if (sum(ftinject) == 0.) then
           do is=1,ns
-            ftinject(is,:) = sp_fract(is)
+            ftinject(:,is) = sp_fract(is)
           enddo
         endif
 
@@ -2323,7 +2323,7 @@ c In case there is no axial injection, set the particle weight.
         do is=1,pgroup%ns
 c         --- If no particles are to be injected from this species, then skip
 c         --- the code below.
-          if (sum(ftinject(is,:)) == 0.) cycle
+          if (sum(ftinject(:,is)) == 0.) cycle
           jsid = pgroup%sid(is-1)
           if (pgroup%sq(js+1) == 0.) pgroup%sq(js+1) = zion_s(jsid+1)*echarge
           if (pgroup%sm(js+1) == 0.) pgroup%sm(js+1) = aion_s(jsid+1)*amu
