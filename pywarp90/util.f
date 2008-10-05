@@ -1,6 +1,6 @@
 #include "top.h"
 c************************************************************************** 
-c@(#) File UTIL.M, version $Revision: 1.6 $ $Date: 2007/05/07 20:38:50 $
+c@(#) File UTIL.M, version $Revision: 1.7 $ $Date: 2008/10/05 02:48:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c Contains various utility routines that are part of the TOP package.
@@ -1389,7 +1389,7 @@ c***********************************************************************
       logical(ISZ)::            LSAME
       external::         LSAME
 *     .. External Subroutines ..
-      external::         XERBLA
+      external::         WARP_XERBLA
 *     .. Intrinsic Functions ..
       intrinsic::        MAX
 *     .. Local Scalars ..
@@ -1445,7 +1445,7 @@ c***********************************************************************
          INFO = 13
       END IF
       IF( INFO.NE.0 )THEN
-         CALL XERBLA( 'DGEMMWARP ', INFO )
+         CALL WARP_XERBLA( 'DGEMMWARP ', INFO )
          RETURN
       END IF
 *
@@ -1678,7 +1678,7 @@ c**************************************************************************
       logical(ISZ)::            LSAME
       external::         LSAME
 *     .. External Subroutines ..
-      external::         XERBLA
+      external::         WARP_XERBLA
 *     .. Intrinsic Functions ..
       intrinsic::        MAX
 *     ..
@@ -1703,7 +1703,7 @@ c**************************************************************************
          INFO = 11
       END IF
       IF( INFO.NE.0 )THEN
-         CALL XERBLA( 'DGEMVWARP ', INFO )
+         CALL WARP_XERBLA( 'DGEMVWARP ', INFO )
          RETURN
       END IF
 *
@@ -2568,7 +2568,7 @@ c***********************************************************************
       logical(ISZ)::            LSAME
       external::         LSAME
 *     .. External Subroutines ..
-      external::         XERBLA
+      external::         WARP_XERBLA
 *     .. Intrinsic Functions ..
       intrinsic::        MAX
 *     ..
@@ -2590,7 +2590,7 @@ c***********************************************************************
          INFO = 10
       END IF
       IF( INFO.NE.0 )THEN
-         CALL XERBLA( 'DSYMV ', INFO )
+         CALL WARP_XERBLA( 'DSYMV ', INFO )
          RETURN
       END IF
 *
@@ -2816,7 +2816,7 @@ c**************************************************************************
       logical(ISZ)::            LSAME
       external::         LSAME
 *     .. External Subroutines ..
-      external::         XERBLA
+      external::         WARP_XERBLA
 *     .. Intrinsic Functions ..
       intrinsic::        MAX
 *     ..
@@ -2836,7 +2836,7 @@ c**************************************************************************
          INFO = 7
       END IF
       IF( INFO.NE.0 )THEN
-         CALL XERBLA( 'DSYR  ', INFO )
+         CALL WARP_XERBLA( 'DSYR  ', INFO )
          RETURN
       END IF
 *
@@ -3052,7 +3052,7 @@ c**************************************************************************
       external::         LSAME, IDAMAX
 *     ..
 *     .. External Subroutines ..
-      external::         DSCAL, DSWAP, DSYR, XERBLA
+      external::         DSCAL, DSWAP, DSYR, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        ABS, MAX, SQRT
@@ -3071,7 +3071,7 @@ c**************************************************************************
          INFO = -4
       END IF
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'DSYTF2', -INFO )
+         CALL WARP_XERBLA( 'DSYTF2', -INFO )
          RETURN
       END IF
 *
@@ -3564,7 +3564,7 @@ c**************************************************************************
       external::         LSAME, ILAENV
 *     ..
 *     .. External Subroutines ..
-      external::         DLASYF, DSYTF2, XERBLA
+      external::         DLASYF, DSYTF2, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        MAX
@@ -3596,7 +3596,7 @@ c**************************************************************************
       END IF
 *
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'DSYTRF', -INFO )
+         CALL WARP_XERBLA( 'DSYTRF', -INFO )
          RETURN
       ELSE IF( LQUERY ) THEN
          RETURN
@@ -3795,7 +3795,7 @@ c**************************************************************************
       external::         LSAME, DDOTLOCAL
 *     ..
 *     .. External Subroutines ..
-      external::         DCOPY, DSWAP, DSYMV, XERBLA
+      external::         DCOPY, DSWAP, DSYMV, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        ABS, MAX
@@ -3814,7 +3814,7 @@ c**************************************************************************
          INFO = -4
       END IF
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'DSYTRI', -INFO )
+         CALL WARP_XERBLA( 'DSYTRI', -INFO )
          RETURN
       END IF
 *
@@ -4975,7 +4975,7 @@ c**************************************************************************
       external::         LSAME
 *     ..
 *     .. External Subroutines ..
-      external::         DPBTRF, DPBTRS, XERBLA
+      external::         DPBTRF, DPBTRS, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        MAX
@@ -4999,7 +4999,7 @@ c**************************************************************************
          INFO = -8
       END IF
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'DPBSV ', -INFO )
+         CALL WARP_XERBLA( 'DPBSV ', -INFO )
          RETURN
       END IF
 *
@@ -5124,7 +5124,7 @@ c**************************************************************************
       external::         LSAME, ILAENV
 *     ..
 *     .. External Subroutines ..
-      external::         DGEMMWARP, DPBTF2, DPOTF2, DSYRK, DTRSMWARP, XERBLA
+      external::         DGEMMWARP, DPBTF2, DPOTF2, DSYRK, DTRSMWARP, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        MIN
@@ -5145,7 +5145,7 @@ c**************************************************************************
          INFO = -5
       END IF
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'DPBTRF', -INFO )
+         CALL WARP_XERBLA( 'DPBTRF', -INFO )
          RETURN
       END IF
 *
@@ -5383,7 +5383,7 @@ c**************************************************************************
 *
       END
 c************************************************************************** 
-      SUBROUTINE XERBLA( SRNAME, INFO )
+      SUBROUTINE WARP_XERBLA( SRNAME, INFO )
 *
 *  -- LAPACK auxiliary routine (preliminary version) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
@@ -5500,7 +5500,7 @@ c**************************************************************************
       EXTERNAL::         LSAME
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL::         DTBSV, XERBLA
+      EXTERNAL::         DTBSV, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC::        MAX
@@ -5525,7 +5525,7 @@ c**************************************************************************
          INFO = -8
       END IF
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'DPBTRS', -INFO )
+         CALL WARP_XERBLA( 'DPBTRS', -INFO )
          RETURN
       END IF
 *
@@ -5678,7 +5678,7 @@ c**************************************************************************
       EXTERNAL::         LSAME
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL::         DSCAL, DSYR, XERBLA
+      EXTERNAL::         DSCAL, DSYR, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC::        MAX, MIN, SQRT
@@ -5699,7 +5699,7 @@ c**************************************************************************
          INFO = -5
       END IF
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'DPBTF2', -INFO )
+         CALL WARP_XERBLA( 'DPBTF2', -INFO )
          RETURN
       END IF
 *
@@ -5847,7 +5847,7 @@ c**************************************************************************
       EXTERNAL::         LSAME, DDOT
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL::         DGEMVWARP, DSCAL, XERBLA
+      EXTERNAL::         DGEMVWARP, DSCAL, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC::        MAX, SQRT
@@ -5866,7 +5866,7 @@ c**************************************************************************
          INFO = -4
       END IF
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'DPOTF2', -INFO )
+         CALL WARP_XERBLA( 'DPOTF2', -INFO )
          RETURN
       END IF
 *
@@ -6070,7 +6070,7 @@ c**************************************************************************
       LOGICAL(ISZ)::     LSAME
       EXTERNAL::         LSAME
 *     .. External Subroutines ..
-      EXTERNAL::         XERBLA
+      EXTERNAL::         WARP_XERBLA
 *     .. Intrinsic Functions ..
       INTRINSIC::        MAX
 *     .. Local Scalars ..
@@ -6117,7 +6117,7 @@ c**************************************************************************
          INFO = 11
       END IF
       IF( INFO.NE.0 )THEN
-         CALL XERBLA( 'DTRSMWARP ', INFO )
+         CALL WARP_XERBLA( 'DTRSMWARP ', INFO )
          RETURN
       END IF
 *
@@ -6437,7 +6437,7 @@ c**************************************************************************
       LOGICAL(ISZ)::     LSAME
       EXTERNAL::         LSAME
 *     .. External Subroutines ..
-      EXTERNAL::         XERBLA
+      EXTERNAL::         WARP_XERBLA
 *     .. Intrinsic Functions ..
       INTRINSIC::        MAX
 *     .. Local Scalars ..
@@ -6476,7 +6476,7 @@ c**************************************************************************
          INFO = 10
       END IF
       IF( INFO.NE.0 )THEN
-         CALL XERBLA( 'DSYRK ', INFO )
+         CALL WARP_XERBLA( 'DSYRK ', INFO )
          RETURN
       END IF
 *
@@ -6759,7 +6759,7 @@ c**************************************************************************
       LOGICAL(ISZ)::     LSAME
       EXTERNAL::         LSAME
 *     .. External Subroutines ..
-      EXTERNAL::         XERBLA
+      EXTERNAL::         WARP_XERBLA
 *     .. Intrinsic Functions ..
       INTRINSIC::        MAX, MIN
 *     ..
@@ -6788,7 +6788,7 @@ c**************************************************************************
          INFO = 9
       END IF
       IF( INFO.NE.0 )THEN
-         CALL XERBLA( 'DTBSV ', INFO )
+         CALL WARP_XERBLA( 'DTBSV ', INFO )
          RETURN
       END IF
 *
