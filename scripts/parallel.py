@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.31 2007/07/28 04:18:38 jlvay Exp $"
+parallel_version = "$Id: parallel.py,v 1.32 2008/10/06 22:48:26 dave Exp $"
 
 from warp import with_numpy,gettypecode
 if with_numpy:
@@ -29,6 +29,9 @@ else:
 if npes > npes_serial: lparallel = 1
 else:                  lparallel = 0
 
+"""
+# --- This check is old enough that it is no longer needed.
+
 # --- The interface has changed some in the newest version of pyMPI.
 # --- Check the interface to the mpi.recv command. The newer versions
 # --- return a tuple instead of just the data itself.
@@ -40,6 +43,8 @@ if lparallel:
   else:                     _newpympi = 0
 else:
   _newpympi = 1
+"""
+_newpympi = 1
 
 if _newpympi:
   def mpirecv(pe=0,ms=0):
