@@ -4699,7 +4699,7 @@ has_diverged = .false.
         maxerr = maxval(abs(grid%phi-uold))
       END if
 #ifdef MPIPARALLEL
-      if(grid%l_parallel) maxerr = mpi_global_compute_real(maxerr,MPI_MAX)
+      if(grid%l_parallel) maxerr = mpi_global_compute_real(maxerr,int(MPI_MAX,MPIISZ))
 #endif
       IF(maxerr <= accuracy) then
         do_calc=.false.
@@ -4882,7 +4882,7 @@ has_diverged = .false.
       maxerr_old = maxerr
       maxerr = maxval(abs(grid%phi-uold))
 #ifdef MPIPARALLEL
-      if (grid%l_parallel) maxerr = mpi_global_compute_real(maxerr,MPI_MAX)
+      if (grid%l_parallel) maxerr = mpi_global_compute_real(maxerr,int(MPI_MAX,MPIISZ))
 #endif
       IF(maxerr <= accuracy) then
         do_calc=.false.
@@ -5148,7 +5148,7 @@ REAL(8), EXTERNAL :: wtime
   aftertime = wtime()
   time_field_solve_orig = aftertime - beforetime
 #ifdef MPIPARALLEL
-  if(grid%l_parallel) time_field_solve_orig = mpi_global_compute_real(time_field_solve_orig,MPI_MAX)
+  if(grid%l_parallel) time_field_solve_orig = mpi_global_compute_real(time_field_solve_orig,int(MPI_MAX,MPIISZ))
 #endif
 
   return
@@ -5199,7 +5199,7 @@ REAL(8), EXTERNAL :: wtime
   aftertime = wtime()
   time_field_solve = (time_field_solve+ aftertime - beforetime)/n
 #ifdef MPIPARALLEL
-  if(grid%l_parallel) time_field_solve = mpi_global_compute_real(time_field_solve,MPI_MAX)
+  if(grid%l_parallel) time_field_solve = mpi_global_compute_real(time_field_solve,int(MPI_MAX,MPIISZ))
 #endif
 
   return
