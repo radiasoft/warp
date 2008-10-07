@@ -1,11 +1,11 @@
 #include "top.h"
 c************************************************************************** 
-c@(#) File UTIL.M, version $Revision: 1.7 $ $Date: 2008/10/05 02:48:14 $
+c@(#) File UTIL.M, version $Revision: 1.8 $ $Date: 2008/10/07 00:24:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c Contains various utility routines that are part of the TOP package.
 c This file should rarely be changed, if ever, except to add to it.
-c sdot was replaced by ddotlocal to avoid naming problems.
+c sdot was replaced by warp_ddot to avoid naming problems.
 c
 c Currently contains:
 c        getfortantruefalse                       subroutine
@@ -13,11 +13,11 @@ c     From LINPACK:
 c        dsifa(a,lda,n,kpvt,info)                 subroutine
 c        dsidi(a,lda,n,kpvt,det,inert,work,job)   subroutine
 c        dsisl(a,lda,n,kpvt,b)                    subroutine
-c        dswap (n,sx,incx,sy,incy)                subroutine
-c        daxpy(n,sa,sx,incx,sy,incy)              subroutine
-c        dcopy(n,sx,incx,sy,incy)                 subroutine
-c        idamax(n,sx,incx)                        integer function
-c        ddotlocal(n,sx,incx,sy,incy)             real function
+c        warp_dswap (n,sx,incx,sy,incy)                subroutine
+c        warp_daxpy(n,sa,sx,incx,sy,incy)              subroutine
+c        warp_dcopy(n,sx,incx,sy,incy)                 subroutine
+c        warp_idamax(n,sx,incx)                        integer function
+c        warp_ddot(n,sx,incx,sy,incy)             real function
 c     From "Numerical Recipes"
 c        dvbksb(u,w,v,m,n,mp,np,b,x,tmp)          subroutine 
 c        dvdcmp(a,m,n,mp,np,w,v,tmp)              subroutine
@@ -30,15 +30,15 @@ c                            any in an included external library.
 c        dgemm
 c        dgemv
 c        dlasyf
-c        dscal
-c        dsymv
+c        warp_dscal
+c        warp_dsymv
 c        dsyr
 c        dsytf2
 c        dsytrf
 c        dsytri
-c        ieeeck
-c        ilaenv
-c        lsame
+c        warp_ieeeck
+c        warp_ilaenv
+c        warp_lsame
 c
 c
 c***************************************************************************
@@ -105,14 +105,14 @@ c     james bunch, univ. calif. san diego, argonne nat. lab.
 c
 c     subroutines and functions
 c
-c     blas daxpy,dswap,idamax
+c     blas warp_daxpy,warp_dswap,warp_idamax
 c     fortran abs,max,sqrt
 c
 c     internal variables
 c
       real(kind=8):: ak,akm1,bk,bkm1,denom,mulk,mulkm1,t
       real(kind=8):: absakk,alpha,colmax,rowmax
-      integer(ISZ):: imax,imaxp1,j,jj,jmax,k,km1,km2,kstep,idamax
+      integer(ISZ):: imax,imaxp1,j,jj,jmax,k,km1,km2,kstep,warp_idamax
       logical(ISZ):: swap
 c
 c
@@ -151,7 +151,7 @@ c
 c        determine the largest off-diagonal element in
 c        column k.
 c
-         imax = idamax(k-1,a(1,k),1)
+         imax = warp_idamax(k-1,a(1,k),1)
          colmax = abs(a(imax,k))
          if (absakk .lt. alpha*colmax) go to 30
             kstep = 1
@@ -168,7 +168,7 @@ c
                rowmax = max(rowmax,abs(a(imax,j)))
    40       continue
             if (imax .eq. 1) go to 50
-               jmax = idamax(imax-1,a(1,imax),1)
+               jmax = warp_idamax(imax-1,a(1,imax),1)
                rowmax = max(rowmax,abs(a(jmax,imax)))
    50       continue
             if (abs(a(imax,imax)) .lt. alpha*rowmax) go to 60
@@ -201,7 +201,7 @@ c
 c
 c              perform an interchange.
 c
-               call dswap(imax,a(1,imax),1,a(1,k),1)
+               call warp_dswap(imax,a(1,imax),1,a(1,k),1)
                do 110 jj = imax, k
                   j = k + imax - jj
                   t = a(j,k)
@@ -216,7 +216,7 @@ c
                j = k - jj
                mulk = -a(j,k)/a(k,k)
                t = mulk
-               call daxpy(j,t,a(1,k),1,a(1,j),1)
+               call warp_daxpy(j,t,a(1,k),1,a(1,j),1)
                a(j,k) = mulk
   130       continue
 c
@@ -233,7 +233,7 @@ c
 c
 c              perform an interchange.
 c
-               call dswap(imax,a(1,imax),1,a(1,k-1),1)
+               call warp_dswap(imax,a(1,imax),1,a(1,k-1),1)
                do 150 jj = imax, km1
                   j = km1 + imax - jj
                   t = a(j,k-1)
@@ -259,9 +259,9 @@ c
                   mulk = (akm1*bk - bkm1)/denom
                   mulkm1 = (ak*bkm1 - bk)/denom
                   t = mulk
-                  call daxpy(j,t,a(1,k),1,a(1,j),1)
+                  call warp_daxpy(j,t,a(1,k),1,a(1,j),1)
                   t = mulkm1
-                  call daxpy(j,t,a(1,k-1),1,a(1,j),1)
+                  call warp_daxpy(j,t,a(1,k-1),1,a(1,j),1)
                   a(j,k) = mulk
                   a(j,k-1) = mulkm1
   170          continue
@@ -279,7 +279,7 @@ c
       return
       end
 c***********************************************************************
-      integer(ISZ) function idamax(n,sx,incx)
+      integer(ISZ) function warp_idamax(n,sx,incx)
 c
 c     finds the index of element having max. absolute value.
 c     jack dongarra, linpack, 3/11/78.
@@ -287,9 +287,9 @@ c
       real(kind=8):: sx(1),smax
       integer(ISZ):: i,incx,ix,n
 c
-      idamax = 0
+      warp_idamax = 0
       if( n .lt. 1 ) return
-      idamax = 1
+      warp_idamax = 1
       if(n.eq.1)return
       if(incx.eq.1)go to 20
 c
@@ -300,7 +300,7 @@ c
       ix = ix + incx
       do 10 i = 2,n
          if(abs(sx(ix)).le.smax) go to 5
-         idamax = i
+         warp_idamax = i
          smax = abs(sx(ix))
     5    ix = ix + incx
    10 continue
@@ -311,7 +311,7 @@ c
    20 smax = abs(sx(1))
       do 30 i = 2,n
          if(abs(sx(i)).le.smax) go to 30
-         idamax = i
+         warp_idamax = i
          smax = abs(sx(i))
    30 continue
       return
@@ -383,12 +383,12 @@ c     james bunch, univ. calif. san diego, argonne nat. lab
 c
 c     subroutines and functions
 c
-c     blas daxpy,dcopy,ddotlocal,dswap
+c     blas warp_daxpy,warp_dcopy,warp_ddot,warp_dswap
 c     fortran abs,iabs,mod
 c
 c     internal variables.
 c
-      real(kind=8):: akkp1,ddotlocal,temp
+      real(kind=8):: akkp1,warp_ddot,temp
       real(kind=8):: ten,d,t,ak,akp1
       integer(ISZ):: j,jb,k,km1,ks,kstep
       logical(ISZ):: noinv,nodet,noert
@@ -468,12 +468,12 @@ c              1 by 1
 c
                a(k,k) = 1.0e0/a(k,k)
                if (km1 .lt. 1) go to 170
-                  call dcopy(km1,a(1,k),1,work,1)
+                  call warp_dcopy(km1,a(1,k),1,work,1)
                   do 160 j = 1, km1
-                     a(j,k) = ddotlocal(j,a(1,j),1,work,1)
-                     call daxpy(j-1,work(j),a(1,j),1,a(1,k),1)
+                     a(j,k) = warp_ddot(j,a(1,j),1,work,1)
+                     call warp_daxpy(j-1,work(j),a(1,j),1,a(1,k),1)
   160             continue
-                  a(k,k) = a(k,k) + ddotlocal(km1,work,1,a(1,k),1)
+                  a(k,k) = a(k,k) + warp_ddot(km1,work,1,a(1,k),1)
   170          continue
                kstep = 1
             go to 220
@@ -490,19 +490,19 @@ c
                a(k+1,k+1) = ak/d
                a(k,k+1) = -akkp1/d
                if (km1 .lt. 1) go to 210
-                  call dcopy(km1,a(1,k+1),1,work,1)
+                  call warp_dcopy(km1,a(1,k+1),1,work,1)
                   do 190 j = 1, km1
-                     a(j,k+1) = ddotlocal(j,a(1,j),1,work,1)
-                     call daxpy(j-1,work(j),a(1,j),1,a(1,k+1),1)
+                     a(j,k+1) = warp_ddot(j,a(1,j),1,work,1)
+                     call warp_daxpy(j-1,work(j),a(1,j),1,a(1,k+1),1)
   190             continue
-                  a(k+1,k+1) = a(k+1,k+1) + ddotlocal(km1,work,1,a(1,k+1),1)
-                  a(k,k+1) = a(k,k+1) + ddotlocal(km1,a(1,k),1,a(1,k+1),1)
-                  call dcopy(km1,a(1,k),1,work,1)
+                  a(k+1,k+1) = a(k+1,k+1) + warp_ddot(km1,work,1,a(1,k+1),1)
+                  a(k,k+1) = a(k,k+1) + warp_ddot(km1,a(1,k),1,a(1,k+1),1)
+                  call warp_dcopy(km1,a(1,k),1,work,1)
                   do 200 j = 1, km1
-                     a(j,k) = ddotlocal(j,a(1,j),1,work,1)
-                     call daxpy(j-1,work(j),a(1,j),1,a(1,k),1)
+                     a(j,k) = warp_ddot(j,a(1,j),1,work,1)
+                     call warp_daxpy(j-1,work(j),a(1,j),1,a(1,k),1)
   200             continue
-                  a(k,k) = a(k,k) + ddotlocal(km1,work,1,a(1,k),1)
+                  a(k,k) = a(k,k) + warp_ddot(km1,work,1,a(1,k),1)
   210          continue
                kstep = 2
   220       continue
@@ -511,7 +511,7 @@ c           swap
 c
             ks = iabs(kpvt(k))
             if (ks .eq. k) go to 250
-               call dswap(ks,a(1,ks),1,a(1,k),1)
+               call warp_dswap(ks,a(1,ks),1,a(1,k),1)
                do 230 jb = ks, k
                   j = k + ks - jb
                   temp = a(j,k)
@@ -531,7 +531,7 @@ c
       return
       end
 c***********************************************************************
-      subroutine dswap (n,sx,incx,sy,incy)
+      subroutine warp_dswap (n,sx,incx,sy,incy)
 c
 c     interchanges two vectors.
 c     uses unrolled loops for increments equal to 1.
@@ -587,7 +587,7 @@ c
       return
       end
 c***********************************************************************
-      subroutine daxpy(n,sa,sx,incx,sy,incy)
+      subroutine warp_daxpy(n,sa,sx,incx,sy,incy)
 c
 c     constant times a vector plus a vector.
 c     uses unrolled loop for increments equal to one.
@@ -635,7 +635,7 @@ c
       return
       end
 c***********************************************************************
-      subroutine dcopy(n,sx,incx,sy,incy)
+      subroutine warp_dcopy(n,sx,incx,sy,incy)
 c
 c     copies a vector, x, to a vector, y.
 c     uses unrolled loops for increments equal to 1.
@@ -685,7 +685,7 @@ c
       return
       end
 c***********************************************************************
-      real(kind=8) function ddotlocal(n,sx,incx,sy,incy)
+      real(kind=8) function warp_ddot(n,sx,incx,sy,incy)
 c
 c     forms the dot product of two vectors.
 c     uses unrolled loops for increments equal to one.
@@ -695,7 +695,7 @@ c
       integer(ISZ):: i,incx,incy,ix,iy,m,mp1,n
 c
       stemp = 0.0e0
-      ddotlocal = 0.0e0
+      warp_ddot = 0.0e0
       if(n.le.0)return
       if(incx.eq.1.and.incy.eq.1)go to 20
 c
@@ -711,7 +711,7 @@ c
         ix = ix + incx
         iy = iy + incy
    10 continue
-      ddotlocal = stemp
+      warp_ddot = stemp
       return
 c
 c        code for both increments equal to 1
@@ -730,7 +730,7 @@ c
         stemp = stemp + sx(i)*sy(i) + sx(i + 1)*sy(i + 1) +
      *   sx(i + 2)*sy(i + 2) + sx(i + 3)*sy(i + 3) + sx(i + 4)*sy(i + 4)
    50 continue
-   60 ddotlocal = stemp
+   60 warp_ddot = stemp
       return
       end
 
@@ -783,12 +783,12 @@ c     james bunch, univ. calif. san diego, argonne nat. lab.
 c
 c     subroutines and functions
 c
-c     blas daxpy,ddotlocal
+c     blas warp_daxpy,warp_ddot
 c     fortran iabs
 c
 c     internal variables.
 c
-      real(kind=8):: ak,akm1,bk,bkm1,ddotlocal,denom,temp
+      real(kind=8):: ak,akm1,bk,bkm1,warp_ddot,denom,temp
       integer(ISZ):: k,kp
 c
 c     loop backward applying the transformations and
@@ -813,7 +813,7 @@ c
 c
 c              apply the transformation.
 c
-               call daxpy(k-1,b(k),a(1,k),1,b(1),1)
+               call warp_daxpy(k-1,b(k),a(1,k),1,b(1),1)
    30       continue
 c
 c           apply d inverse.
@@ -838,8 +838,8 @@ c
 c
 c              apply the transformation.
 c
-               call daxpy(k-2,b(k),a(1,k),1,b(1),1)
-               call daxpy(k-2,b(k-1),a(1,k-1),1,b(1),1)
+               call warp_daxpy(k-2,b(k),a(1,k),1,b(1),1)
+               call warp_daxpy(k-2,b(k-1),a(1,k-1),1,b(1),1)
    60       continue
 c
 c           apply d inverse.
@@ -868,7 +868,7 @@ c
 c
 c              apply the transformation.
 c
-               b(k) = b(k) + ddotlocal(k-1,a(1,k),1,b(1),1)
+               b(k) = b(k) + warp_ddot(k-1,a(1,k),1,b(1),1)
                kp = kpvt(k)
                if (kp .eq. k) go to 100
 c
@@ -889,8 +889,8 @@ c
 c
 c              apply the transformation.
 c
-               b(k) = b(k) + ddotlocal(k-1,a(1,k),1,b(1),1)
-               b(k+1) = b(k+1) + ddotlocal(k-1,a(1,k+1),1,b(1),1)
+               b(k) = b(k) + warp_ddot(k-1,a(1,k),1,b(1),1)
+               b(k+1) = b(k+1) + warp_ddot(k-1,a(1,k+1),1,b(1),1)
                kp = iabs(kpvt(k))
                if (kp .eq. k) go to 130
 c
@@ -1386,8 +1386,8 @@ c***********************************************************************
 *
 *
 *     .. External Functions ..
-      logical(ISZ)::            LSAME
-      external::         LSAME
+      logical(ISZ)::            warp_lsame
+      external::         warp_lsame
 *     .. External Subroutines ..
       external::         WARP_XERBLA
 *     .. Intrinsic Functions ..
@@ -1405,8 +1405,8 @@ c***********************************************************************
 *     transposed and set  NROWA, NCOLA and  NROWB  as the number of rows
 *     and  columns of  A  and the  number of  rows  of  B  respectively.
 *
-      NOTA  = LSAME( TRANSA, 'N' )
-      NOTB  = LSAME( TRANSB, 'N' )
+      NOTA  = warp_lsame( TRANSA, 'N' )
+      NOTB  = warp_lsame( TRANSB, 'N' )
       IF( NOTA )THEN
          NROWA = M
          NCOLA = K
@@ -1424,12 +1424,12 @@ c***********************************************************************
 *
       INFO = 0
       IF(      ( .NOT.NOTA                 ).AND.
-     $         ( .NOT.LSAME( TRANSA, 'C' ) ).AND.
-     $         ( .NOT.LSAME( TRANSA, 'T' ) )      )THEN
+     $         ( .NOT.warp_lsame( TRANSA, 'C' ) ).AND.
+     $         ( .NOT.warp_lsame( TRANSA, 'T' ) )      )THEN
          INFO = 1
       ELSE IF( ( .NOT.NOTB                 ).AND.
-     $         ( .NOT.LSAME( TRANSB, 'C' ) ).AND.
-     $         ( .NOT.LSAME( TRANSB, 'T' ) )      )THEN
+     $         ( .NOT.warp_lsame( TRANSB, 'C' ) ).AND.
+     $         ( .NOT.warp_lsame( TRANSB, 'T' ) )      )THEN
          INFO = 2
       ELSE IF( M  .LT.0               )THEN
          INFO = 3
@@ -1675,8 +1675,8 @@ c**************************************************************************
       real(kind=8)::   TEMP
       integer(ISZ)::            I, INFO, IX, IY, J, JX, JY, KX, KY, LENX, LENY
 *     .. External Functions ..
-      logical(ISZ)::            LSAME
-      external::         LSAME
+      logical(ISZ)::            warp_lsame
+      external::         warp_lsame
 *     .. External Subroutines ..
       external::         WARP_XERBLA
 *     .. Intrinsic Functions ..
@@ -1687,9 +1687,9 @@ c**************************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      IF     ( .NOT.LSAME( TRANS, 'N' ).AND.
-     $         .NOT.LSAME( TRANS, 'T' ).AND.
-     $         .NOT.LSAME( TRANS, 'C' )      )THEN
+      IF     ( .NOT.warp_lsame( TRANS, 'N' ).AND.
+     $         .NOT.warp_lsame( TRANS, 'T' ).AND.
+     $         .NOT.warp_lsame( TRANS, 'C' )      )THEN
          INFO = 1
       ELSE IF( M.LT.0 )THEN
          INFO = 2
@@ -1716,7 +1716,7 @@ c**************************************************************************
 *     Set  LENX  and  LENY, the lengths of the vectors x and y, and set
 *     up the start points in  X  and  Y.
 *
-      IF( LSAME( TRANS, 'N' ) )THEN
+      IF( warp_lsame( TRANS, 'N' ) )THEN
          LENX = N
          LENY = M
       ELSE
@@ -1767,7 +1767,7 @@ c**************************************************************************
       END IF
       IF( ALPHA.EQ.ZERO )
      $   RETURN
-      IF( LSAME( TRANS, 'N' ) )THEN
+      IF( warp_lsame( TRANS, 'N' ) )THEN
 *
 *        Form  y := alpha*A*x + y.
 *
@@ -1936,12 +1936,12 @@ c**************************************************************************
      $                   ROWMAX, T
 *     ..
 *     .. External Functions ..
-      logical(ISZ)::            LSAME
-      integer(ISZ)::            IDAMAX
-      external::         LSAME, IDAMAX
+      logical(ISZ)::            warp_lsame
+      integer(ISZ)::            warp_idamax
+      external::         warp_lsame, warp_idamax
 *     ..
 *     .. External Subroutines ..
-      external::         DCOPY, DGEMMWARP, DGEMVWARP, DSCAL, DSWAP
+      external::         warp_dcopy, DGEMMWARP, DGEMVWARP, warp_dscal, warp_dswap
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        ABS, MAX, MIN, SQRT
@@ -1954,7 +1954,7 @@ c**************************************************************************
 *
       ALPHA = ( ONE+SQRT( SEVTEN ) ) / EIGHT
 *
-      IF( LSAME( UPLO, 'U' ) ) THEN
+      IF( warp_lsame( UPLO, 'U' ) ) THEN
 *
 *        Factorize the trailing columns of A using the upper triangle
 *        of A and working backwards, and compute the matrix W = U12*D
@@ -1975,7 +1975,7 @@ c**************************************************************************
 *
 *        Copy column K of A to column KW of W and update it
 *
-         CALL DCOPY( K, A( 1, K ), 1, W( 1, KW ), 1 )
+         CALL warp_dcopy( K, A( 1, K ), 1, W( 1, KW ), 1 )
          IF( K.LT.N )
      $      CALL DGEMVWARP( 'No transpose', K, N-K, -ONE, A( 1, K+1 ), LDA,
      $                  W( K, KW+1 ), LDW, ONE, W( 1, KW ), 1 )
@@ -1991,7 +1991,7 @@ c**************************************************************************
 *        column K, and COLMAX is its absolute value
 *
          IF( K.GT.1 ) THEN
-            IMAX = IDAMAX( K-1, W( 1, KW ), 1 )
+            IMAX = warp_idamax( K-1, W( 1, KW ), 1 )
             COLMAX = ABS( W( IMAX, KW ) )
          ELSE
             COLMAX = ZERO
@@ -2014,8 +2014,8 @@ c**************************************************************************
 *
 *              Copy column IMAX to column KW-1 of W and update it
 *
-               CALL DCOPY( IMAX, A( 1, IMAX ), 1, W( 1, KW-1 ), 1 )
-               CALL DCOPY( K-IMAX, A( IMAX, IMAX+1 ), LDA,
+               CALL warp_dcopy( IMAX, A( 1, IMAX ), 1, W( 1, KW-1 ), 1 )
+               CALL warp_dcopy( K-IMAX, A( IMAX, IMAX+1 ), LDA,
      $                     W( IMAX+1, KW-1 ), 1 )
                IF( K.LT.N )
      $            CALL DGEMVWARP( 'No transpose', K, N-K, -ONE, A( 1, K+1 ),
@@ -2025,10 +2025,10 @@ c**************************************************************************
 *              JMAX is the column-index of the largest off-diagonal
 *              element in row IMAX, and ROWMAX is its absolute value
 *
-               JMAX = IMAX + IDAMAX( K-IMAX, W( IMAX+1, KW-1 ), 1 )
+               JMAX = IMAX + warp_idamax( K-IMAX, W( IMAX+1, KW-1 ), 1 )
                ROWMAX = ABS( W( JMAX, KW-1 ) )
                IF( IMAX.GT.1 ) THEN
-                  JMAX = IDAMAX( IMAX-1, W( 1, KW-1 ), 1 )
+                  JMAX = warp_idamax( IMAX-1, W( 1, KW-1 ), 1 )
                   ROWMAX = MAX( ROWMAX, ABS( W( JMAX, KW-1 ) ) )
                END IF
 *
@@ -2046,7 +2046,7 @@ c**************************************************************************
 *
 *                 copy column KW-1 of W to column KW
 *
-                  CALL DCOPY( K, W( 1, KW-1 ), 1, W( 1, KW ), 1 )
+                  CALL warp_dcopy( K, W( 1, KW-1 ), 1, W( 1, KW ), 1 )
                ELSE
 *
 *                 interchange rows and columns K-1 and IMAX, use 2-by-2
@@ -2067,14 +2067,14 @@ c**************************************************************************
 *              Copy non-updated column KK to column KP
 *
                A( KP, K ) = A( KK, K )
-               CALL DCOPY( K-1-KP, A( KP+1, KK ), 1, A( KP, KP+1 ),
+               CALL warp_dcopy( K-1-KP, A( KP+1, KK ), 1, A( KP, KP+1 ),
      $                     LDA )
-               CALL DCOPY( KP, A( 1, KK ), 1, A( 1, KP ), 1 )
+               CALL warp_dcopy( KP, A( 1, KK ), 1, A( 1, KP ), 1 )
 *
 *              Interchange rows KK and KP in last KK columns of A and W
 *
-               CALL DSWAP( N-KK+1, A( KK, KK ), LDA, A( KP, KK ), LDA )
-               CALL DSWAP( N-KK+1, W( KK, KKW ), LDW, W( KP, KKW ),
+               CALL warp_dswap( N-KK+1, A( KK, KK ), LDA, A( KP, KK ), LDA )
+               CALL warp_dswap( N-KK+1, W( KK, KKW ), LDW, W( KP, KKW ),
      $                     LDW )
             END IF
 *
@@ -2088,9 +2088,9 @@ c**************************************************************************
 *
 *              Store U(k) in column k of A
 *
-               CALL DCOPY( K, W( 1, KW ), 1, A( 1, K ), 1 )
+               CALL warp_dcopy( K, W( 1, KW ), 1, A( 1, K ), 1 )
                R1 = ONE / A( K, K )
-               CALL DSCAL( K-1, R1, A( 1, K ), 1 )
+               CALL warp_dscal( K-1, R1, A( 1, K ), 1 )
             ELSE
 *
 *              2-by-2 pivot block D(k): columns KW and KW-1 of W now
@@ -2177,7 +2177,7 @@ c**************************************************************************
          END IF
          J = J + 1
          IF( JP.NE.JJ .AND. J.LE.N )
-     $      CALL DSWAP( N-J+1, A( JP, J ), LDA, A( JJ, J ), LDA )
+     $      CALL warp_dswap( N-J+1, A( JP, J ), LDA, A( JJ, J ), LDA )
          IF( J.LE.N )
      $      GO TO 60
 *
@@ -2203,7 +2203,7 @@ c**************************************************************************
 *
 *        Copy column K of A to column K of W and update it
 *
-         CALL DCOPY( N-K+1, A( K, K ), 1, W( K, K ), 1 )
+         CALL warp_dcopy( N-K+1, A( K, K ), 1, W( K, K ), 1 )
          CALL DGEMVWARP( 'No transpose', N-K+1, K-1, -ONE, A( K, 1 ), LDA,
      $               W( K, 1 ), LDW, ONE, W( K, K ), 1 )
 *
@@ -2218,7 +2218,7 @@ c**************************************************************************
 *        column K, and COLMAX is its absolute value
 *
          IF( K.LT.N ) THEN
-            IMAX = K + IDAMAX( N-K, W( K+1, K ), 1 )
+            IMAX = K + warp_idamax( N-K, W( K+1, K ), 1 )
             COLMAX = ABS( W( IMAX, K ) )
          ELSE
             COLMAX = ZERO
@@ -2241,8 +2241,8 @@ c**************************************************************************
 *
 *              Copy column IMAX to column K+1 of W and update it
 *
-               CALL DCOPY( IMAX-K, A( IMAX, K ), LDA, W( K, K+1 ), 1 )
-               CALL DCOPY( N-IMAX+1, A( IMAX, IMAX ), 1, W( IMAX, K+1 ),
+               CALL warp_dcopy( IMAX-K, A( IMAX, K ), LDA, W( K, K+1 ), 1 )
+               CALL warp_dcopy( N-IMAX+1, A( IMAX, IMAX ), 1, W( IMAX, K+1 ),
      $                     1 )
                CALL DGEMVWARP( 'No transpose', N-K+1, K-1, -ONE, A( K, 1 ),
      $                     LDA, W( IMAX, 1 ), LDW, ONE, W( K, K+1 ), 1 )
@@ -2250,10 +2250,10 @@ c**************************************************************************
 *              JMAX is the column-index of the largest off-diagonal
 *              element in row IMAX, and ROWMAX is its absolute value
 *
-               JMAX = K - 1 + IDAMAX( IMAX-K, W( K, K+1 ), 1 )
+               JMAX = K - 1 + warp_idamax( IMAX-K, W( K, K+1 ), 1 )
                ROWMAX = ABS( W( JMAX, K+1 ) )
                IF( IMAX.LT.N ) THEN
-                  JMAX = IMAX + IDAMAX( N-IMAX, W( IMAX+1, K+1 ), 1 )
+                  JMAX = IMAX + warp_idamax( N-IMAX, W( IMAX+1, K+1 ), 1 )
                   ROWMAX = MAX( ROWMAX, ABS( W( JMAX, K+1 ) ) )
                END IF
 *
@@ -2271,7 +2271,7 @@ c**************************************************************************
 *
 *                 copy column K+1 of W to column K
 *
-                  CALL DCOPY( N-K+1, W( K, K+1 ), 1, W( K, K ), 1 )
+                  CALL warp_dcopy( N-K+1, W( K, K+1 ), 1, W( K, K ), 1 )
                ELSE
 *
 *                 interchange rows and columns K+1 and IMAX, use 2-by-2
@@ -2291,13 +2291,13 @@ c**************************************************************************
 *              Copy non-updated column KK to column KP
 *
                A( KP, K ) = A( KK, K )
-               CALL DCOPY( KP-K-1, A( K+1, KK ), 1, A( KP, K+1 ), LDA )
-               CALL DCOPY( N-KP+1, A( KP, KK ), 1, A( KP, KP ), 1 )
+               CALL warp_dcopy( KP-K-1, A( K+1, KK ), 1, A( KP, K+1 ), LDA )
+               CALL warp_dcopy( N-KP+1, A( KP, KK ), 1, A( KP, KP ), 1 )
 *
 *              Interchange rows KK and KP in first KK columns of A and W
 *
-               CALL DSWAP( KK, A( KK, 1 ), LDA, A( KP, 1 ), LDA )
-               CALL DSWAP( KK, W( KK, 1 ), LDW, W( KP, 1 ), LDW )
+               CALL warp_dswap( KK, A( KK, 1 ), LDA, A( KP, 1 ), LDA )
+               CALL warp_dswap( KK, W( KK, 1 ), LDW, W( KP, 1 ), LDW )
             END IF
 *
             IF( KSTEP.EQ.1 ) THEN
@@ -2310,10 +2310,10 @@ c**************************************************************************
 *
 *              Store L(k) in column k of A
 *
-               CALL DCOPY( N-K+1, W( K, K ), 1, A( K, K ), 1 )
+               CALL warp_dcopy( N-K+1, W( K, K ), 1, A( K, K ), 1 )
                IF( K.LT.N ) THEN
                   R1 = ONE / A( K, K )
-                  CALL DSCAL( N-K, R1, A( K+1, K ), 1 )
+                  CALL warp_dscal( N-K, R1, A( K+1, K ), 1 )
                END IF
             ELSE
 *
@@ -2401,7 +2401,7 @@ c**************************************************************************
          END IF
          J = J - 1
          IF( JP.NE.JJ .AND. J.GE.1 )
-     $      CALL DSWAP( J, A( JP, 1 ), LDA, A( JJ, 1 ), LDA )
+     $      CALL warp_dswap( J, A( JP, 1 ), LDA, A( JJ, 1 ), LDA )
          IF( J.GE.1 )
      $      GO TO 120
 *
@@ -2416,7 +2416,7 @@ c**************************************************************************
 *
       END
 c***********************************************************************
-      subroutine  dscal(n,da,dx,incx)
+      subroutine  warp_dscal(n,da,dx,incx)
 c
 c     scales a vector by a constant.
 c     uses unrolled loops for increment equal to one.
@@ -2460,7 +2460,7 @@ c
       return
       end
 c***********************************************************************
-      SUBROUTINE DSYMV ( UPLO, N, ALPHA, A, LDA, X, INCX,
+      SUBROUTINE warp_dsymv ( UPLO, N, ALPHA, A, LDA, X, INCX,
      $                   BETA, Y, INCY )
 *     .. Scalar Arguments ..
       real(kind=8)::   ALPHA, BETA
@@ -2473,7 +2473,7 @@ c***********************************************************************
 *  Purpose
 *  =======
 *
-*  DSYMV  performs the matrix-vector  operation
+*  warp_dsymv  performs the matrix-vector  operation
 *
 *     y := alpha*A*x + beta*y,
 *
@@ -2565,8 +2565,8 @@ c***********************************************************************
       real(kind=8)::   TEMP1, TEMP2
       integer(ISZ)::            I, INFO, IX, IY, J, JX, JY, KX, KY
 *     .. External Functions ..
-      logical(ISZ)::            LSAME
-      external::         LSAME
+      logical(ISZ)::            warp_lsame
+      external::         warp_lsame
 *     .. External Subroutines ..
       external::         WARP_XERBLA
 *     .. Intrinsic Functions ..
@@ -2577,8 +2577,8 @@ c***********************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      IF     ( .NOT.LSAME( UPLO, 'U' ).AND.
-     $         .NOT.LSAME( UPLO, 'L' )      )THEN
+      IF     ( .NOT.warp_lsame( UPLO, 'U' ).AND.
+     $         .NOT.warp_lsame( UPLO, 'L' )      )THEN
          INFO = 1
       ELSE IF( N.LT.0 )THEN
          INFO = 2
@@ -2590,7 +2590,7 @@ c***********************************************************************
          INFO = 10
       END IF
       IF( INFO.NE.0 )THEN
-         CALL WARP_XERBLA( 'DSYMV ', INFO )
+         CALL WARP_XERBLA( 'warp_dsymv ', INFO )
          RETURN
       END IF
 *
@@ -2646,7 +2646,7 @@ c***********************************************************************
       END IF
       IF( ALPHA.EQ.ZERO )
      $   RETURN
-      IF( LSAME( UPLO, 'U' ) )THEN
+      IF( warp_lsame( UPLO, 'U' ) )THEN
 *
 *        Form  y  when A is stored in upper triangle.
 *
@@ -2718,7 +2718,7 @@ c***********************************************************************
 *
       RETURN
 *
-*     End of DSYMV .
+*     End of warp_dsymv .
 *
       END
 c************************************************************************** 
@@ -2813,8 +2813,8 @@ c**************************************************************************
       real(kind=8)::   TEMP
       integer(ISZ)::            I, INFO, IX, J, JX, KX
 *     .. External Functions ..
-      logical(ISZ)::            LSAME
-      external::         LSAME
+      logical(ISZ)::            warp_lsame
+      external::         warp_lsame
 *     .. External Subroutines ..
       external::         WARP_XERBLA
 *     .. Intrinsic Functions ..
@@ -2825,8 +2825,8 @@ c**************************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      IF     ( .NOT.LSAME( UPLO, 'U' ).AND.
-     $         .NOT.LSAME( UPLO, 'L' )      )THEN
+      IF     ( .NOT.warp_lsame( UPLO, 'U' ).AND.
+     $         .NOT.warp_lsame( UPLO, 'L' )      )THEN
          INFO = 1
       ELSE IF( N.LT.0 )THEN
          INFO = 2
@@ -2857,7 +2857,7 @@ c**************************************************************************
 *     accessed sequentially with one pass through the triangular part
 *     of A.
 *
-      IF( LSAME( UPLO, 'U' ) )THEN
+      IF( warp_lsame( UPLO, 'U' ) )THEN
 *
 *        Form  A  when A is stored in upper triangle.
 *
@@ -3047,12 +3047,12 @@ c**************************************************************************
      $                   ROWMAX, T, WK, WKM1, WKP1
 *     ..
 *     .. External Functions ..
-      logical(ISZ)::            LSAME
-      integer(ISZ)::            IDAMAX
-      external::         LSAME, IDAMAX
+      logical(ISZ)::            warp_lsame
+      integer(ISZ)::            warp_idamax
+      external::         warp_lsame, warp_idamax
 *     ..
 *     .. External Subroutines ..
-      external::         DSCAL, DSWAP, DSYR, WARP_XERBLA
+      external::         warp_dscal, warp_dswap, DSYR, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        ABS, MAX, SQRT
@@ -3062,8 +3062,8 @@ c**************************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      UPPER = LSAME( UPLO, 'U' )
-      IF( .NOT.UPPER .AND. .NOT.LSAME( UPLO, 'L' ) ) THEN
+      UPPER = warp_lsame( UPLO, 'U' )
+      IF( .NOT.UPPER .AND. .NOT.warp_lsame( UPLO, 'L' ) ) THEN
          INFO = -1
       ELSE IF( N.LT.0 ) THEN
          INFO = -2
@@ -3104,7 +3104,7 @@ c**************************************************************************
 *        column K, and COLMAX is its absolute value
 *
          IF( K.GT.1 ) THEN
-            IMAX = IDAMAX( K-1, A( 1, K ), 1 )
+            IMAX = warp_idamax( K-1, A( 1, K ), 1 )
             COLMAX = ABS( A( IMAX, K ) )
          ELSE
             COLMAX = ZERO
@@ -3128,10 +3128,10 @@ c**************************************************************************
 *              JMAX is the column-index of the largest off-diagonal
 *              element in row IMAX, and ROWMAX is its absolute value
 *
-               JMAX = IMAX + IDAMAX( K-IMAX, A( IMAX, IMAX+1 ), LDA )
+               JMAX = IMAX + warp_idamax( K-IMAX, A( IMAX, IMAX+1 ), LDA )
                ROWMAX = ABS( A( IMAX, JMAX ) )
                IF( IMAX.GT.1 ) THEN
-                  JMAX = IDAMAX( IMAX-1, A( 1, IMAX ), 1 )
+                  JMAX = warp_idamax( IMAX-1, A( 1, IMAX ), 1 )
                   ROWMAX = MAX( ROWMAX, ABS( A( JMAX, IMAX ) ) )
                END IF
 *
@@ -3162,8 +3162,8 @@ c**************************************************************************
 *              Interchange rows and columns KK and KP in the leading
 *              submatrix A(1:k,1:k)
 *
-               CALL DSWAP( KP-1, A( 1, KK ), 1, A( 1, KP ), 1 )
-               CALL DSWAP( KK-KP-1, A( KP+1, KK ), 1, A( KP, KP+1 ),
+               CALL warp_dswap( KP-1, A( 1, KK ), 1, A( 1, KP ), 1 )
+               CALL warp_dswap( KK-KP-1, A( KP+1, KK ), 1, A( KP, KP+1 ),
      $                     LDA )
                T = A( KK, KK )
                A( KK, KK ) = A( KP, KP )
@@ -3194,7 +3194,7 @@ c**************************************************************************
 *
 *              Store U(k) in column k
 *
-               CALL DSCAL( K-1, R1, A( 1, K ), 1 )
+               CALL warp_dscal( K-1, R1, A( 1, K ), 1 )
             ELSE
 *
 *              2-by-2 pivot block D(k): columns k and k-1 now hold
@@ -3272,7 +3272,7 @@ c**************************************************************************
 *        column K, and COLMAX is its absolute value
 *
          IF( K.LT.N ) THEN
-            IMAX = K + IDAMAX( N-K, A( K+1, K ), 1 )
+            IMAX = K + warp_idamax( N-K, A( K+1, K ), 1 )
             COLMAX = ABS( A( IMAX, K ) )
          ELSE
             COLMAX = ZERO
@@ -3296,10 +3296,10 @@ c**************************************************************************
 *              JMAX is the column-index of the largest off-diagonal
 *              element in row IMAX, and ROWMAX is its absolute value
 *
-               JMAX = K - 1 + IDAMAX( IMAX-K, A( IMAX, K ), LDA )
+               JMAX = K - 1 + warp_idamax( IMAX-K, A( IMAX, K ), LDA )
                ROWMAX = ABS( A( IMAX, JMAX ) )
                IF( IMAX.LT.N ) THEN
-                  JMAX = IMAX + IDAMAX( N-IMAX, A( IMAX+1, IMAX ), 1 )
+                  JMAX = IMAX + warp_idamax( N-IMAX, A( IMAX+1, IMAX ), 1 )
                   ROWMAX = MAX( ROWMAX, ABS( A( JMAX, IMAX ) ) )
                END IF
 *
@@ -3331,8 +3331,8 @@ c**************************************************************************
 *              submatrix A(k:n,k:n)
 *
                IF( KP.LT.N )
-     $            CALL DSWAP( N-KP, A( KP+1, KK ), 1, A( KP+1, KP ), 1 )
-               CALL DSWAP( KP-KK-1, A( KK+1, KK ), 1, A( KP, KK+1 ),
+     $            CALL warp_dswap( N-KP, A( KP+1, KK ), 1, A( KP+1, KP ), 1 )
+               CALL warp_dswap( KP-KK-1, A( KK+1, KK ), 1, A( KP, KK+1 ),
      $                     LDA )
                T = A( KK, KK )
                A( KK, KK ) = A( KP, KP )
@@ -3366,7 +3366,7 @@ c**************************************************************************
 *
 *                 Store L(k) in column K
 *
-                  CALL DSCAL( N-K, D11, A( K+1, K ), 1 )
+                  CALL warp_dscal( N-K, D11, A( K+1, K ), 1 )
                END IF
             ELSE
 *
@@ -3500,7 +3500,7 @@ c**************************************************************************
 *
 *  LWORK   (input) INTEGER
 *          The length of WORK.  LWORK >=1.  For best performance
-*          LWORK >= N*NB, where NB is the block size returned by ILAENV.
+*          LWORK >= N*NB, where NB is the block size returned by warp_ilaenv.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
 *          only calculates the optimal size of the WORK array, returns
@@ -3559,9 +3559,9 @@ c**************************************************************************
       integer(ISZ)::            IINFO, IWS, J, K, KB, LDWORK, LWKOPT, NB, NBMIN
 *     ..
 *     .. External Functions ..
-      logical(ISZ)::            LSAME
-      integer(ISZ)::            ILAENV
-      external::         LSAME, ILAENV
+      logical(ISZ)::            warp_lsame
+      integer(ISZ)::            warp_ilaenv
+      external::         warp_lsame, warp_ilaenv
 *     ..
 *     .. External Subroutines ..
       external::         DLASYF, DSYTF2, WARP_XERBLA
@@ -3574,9 +3574,9 @@ c**************************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      UPPER = LSAME( UPLO, 'U' )
+      UPPER = warp_lsame( UPLO, 'U' )
       LQUERY = ( LWORK.EQ.-1 )
-      IF( .NOT.UPPER .AND. .NOT.LSAME( UPLO, 'L' ) ) THEN
+      IF( .NOT.UPPER .AND. .NOT.warp_lsame( UPLO, 'L' ) ) THEN
          INFO = -1
       ELSE IF( N.LT.0 ) THEN
          INFO = -2
@@ -3590,7 +3590,7 @@ c**************************************************************************
 *
 *        Determine the block size
 *
-         NB = ILAENV( 1, 'DSYTRF', UPLO, N, -1, -1, -1 )
+         NB = warp_ilaenv( 1, 'DSYTRF', UPLO, N, -1, -1, -1 )
          LWKOPT = N*NB
          WORK( 1 ) = LWKOPT
       END IF
@@ -3608,7 +3608,7 @@ c**************************************************************************
          IWS = LDWORK*NB
          IF( LWORK.LT.IWS ) THEN
             NB = MAX( LWORK / LDWORK, 1 )
-            NBMIN = MAX( 2, ILAENV( 2, 'DSYTRF', UPLO, N, -1, -1, -1 ) )
+            NBMIN = MAX( 2, warp_ilaenv( 2, 'DSYTRF', UPLO, N, -1, -1, -1 ) )
          END IF
       ELSE
          IWS = 1
@@ -3790,12 +3790,12 @@ c**************************************************************************
       real(kind=8)::   AK, AKKP1, AKP1, D, T, TEMP
 *     ..
 *     .. External Functions ..
-      logical(ISZ)::            LSAME
-      real(kind=8)::   DDOTLOCAL
-      external::         LSAME, DDOTLOCAL
+      logical(ISZ)::            warp_lsame
+      real(kind=8)::   warp_ddot
+      external::         warp_lsame, warp_ddot
 *     ..
 *     .. External Subroutines ..
-      external::         DCOPY, DSWAP, DSYMV, WARP_XERBLA
+      external::         warp_dcopy, warp_dswap, warp_dsymv, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        ABS, MAX
@@ -3805,8 +3805,8 @@ c**************************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      UPPER = LSAME( UPLO, 'U' )
-      IF( .NOT.UPPER .AND. .NOT.LSAME( UPLO, 'L' ) ) THEN
+      UPPER = warp_lsame( UPLO, 'U' )
+      IF( .NOT.UPPER .AND. .NOT.warp_lsame( UPLO, 'L' ) ) THEN
          INFO = -1
       ELSE IF( N.LT.0 ) THEN
          INFO = -2
@@ -3870,10 +3870,10 @@ c**************************************************************************
 *           Compute column K of the inverse.
 *
             IF( K.GT.1 ) THEN
-               CALL DCOPY( K-1, A( 1, K ), 1, WORK, 1 )
-               CALL DSYMV( UPLO, K-1, -ONE, A, LDA, WORK, 1, ZERO,
+               CALL warp_dcopy( K-1, A( 1, K ), 1, WORK, 1 )
+               CALL warp_dsymv( UPLO, K-1, -ONE, A, LDA, WORK, 1, ZERO,
      $                     A( 1, K ), 1 )
-               A( K, K ) = A( K, K ) - DDOTLOCAL( K-1, WORK, 1, A( 1, K ),
+               A( K, K ) = A( K, K ) - warp_ddot( K-1, WORK, 1, A( 1, K ),
      $                     1 )
             END IF
             KSTEP = 1
@@ -3895,18 +3895,18 @@ c**************************************************************************
 *           Compute columns K and K+1 of the inverse.
 *
             IF( K.GT.1 ) THEN
-               CALL DCOPY( K-1, A( 1, K ), 1, WORK, 1 )
-               CALL DSYMV( UPLO, K-1, -ONE, A, LDA, WORK, 1, ZERO,
+               CALL warp_dcopy( K-1, A( 1, K ), 1, WORK, 1 )
+               CALL warp_dsymv( UPLO, K-1, -ONE, A, LDA, WORK, 1, ZERO,
      $                     A( 1, K ), 1 )
-               A( K, K ) = A( K, K ) - DDOTLOCAL( K-1, WORK, 1, A( 1, K ),
+               A( K, K ) = A( K, K ) - warp_ddot( K-1, WORK, 1, A( 1, K ),
      $                     1 )
                A( K, K+1 ) = A( K, K+1 ) -
-     $                       DDOTLOCAL( K-1, A( 1, K ), 1, A( 1, K+1 ), 1 )
-               CALL DCOPY( K-1, A( 1, K+1 ), 1, WORK, 1 )
-               CALL DSYMV( UPLO, K-1, -ONE, A, LDA, WORK, 1, ZERO,
+     $                       warp_ddot( K-1, A( 1, K ), 1, A( 1, K+1 ), 1 )
+               CALL warp_dcopy( K-1, A( 1, K+1 ), 1, WORK, 1 )
+               CALL warp_dsymv( UPLO, K-1, -ONE, A, LDA, WORK, 1, ZERO,
      $                     A( 1, K+1 ), 1 )
                A( K+1, K+1 ) = A( K+1, K+1 ) -
-     $                         DDOTLOCAL( K-1, WORK, 1, A( 1, K+1 ), 1 )
+     $                         warp_ddot( K-1, WORK, 1, A( 1, K+1 ), 1 )
             END IF
             KSTEP = 2
          END IF
@@ -3917,8 +3917,8 @@ c**************************************************************************
 *           Interchange rows and columns K and KP in the leading
 *           submatrix A(1:k+1,1:k+1)
 *
-            CALL DSWAP( KP-1, A( 1, K ), 1, A( 1, KP ), 1 )
-            CALL DSWAP( K-KP-1, A( KP+1, K ), 1, A( KP, KP+1 ), LDA )
+            CALL warp_dswap( KP-1, A( 1, K ), 1, A( 1, KP ), 1 )
+            CALL warp_dswap( K-KP-1, A( KP+1, K ), 1, A( KP, KP+1 ), LDA )
             TEMP = A( K, K )
             A( K, K ) = A( KP, KP )
             A( KP, KP ) = TEMP
@@ -3959,10 +3959,10 @@ c**************************************************************************
 *           Compute column K of the inverse.
 *
             IF( K.LT.N ) THEN
-               CALL DCOPY( N-K, A( K+1, K ), 1, WORK, 1 )
-               CALL DSYMV( UPLO, N-K, -ONE, A( K+1, K+1 ), LDA, WORK, 1,
+               CALL warp_dcopy( N-K, A( K+1, K ), 1, WORK, 1 )
+               CALL warp_dsymv( UPLO, N-K, -ONE, A( K+1, K+1 ), LDA, WORK, 1,
      $                     ZERO, A( K+1, K ), 1 )
-               A( K, K ) = A( K, K ) - DDOTLOCAL( N-K, WORK, 1, A( K+1, K ),
+               A( K, K ) = A( K, K ) - warp_ddot( N-K, WORK, 1, A( K+1, K ),
      $                     1 )
             END IF
             KSTEP = 1
@@ -3984,19 +3984,19 @@ c**************************************************************************
 *           Compute columns K-1 and K of the inverse.
 *
             IF( K.LT.N ) THEN
-               CALL DCOPY( N-K, A( K+1, K ), 1, WORK, 1 )
-               CALL DSYMV( UPLO, N-K, -ONE, A( K+1, K+1 ), LDA, WORK, 1,
+               CALL warp_dcopy( N-K, A( K+1, K ), 1, WORK, 1 )
+               CALL warp_dsymv( UPLO, N-K, -ONE, A( K+1, K+1 ), LDA, WORK, 1,
      $                     ZERO, A( K+1, K ), 1 )
-               A( K, K ) = A( K, K ) - DDOTLOCAL( N-K, WORK, 1, A( K+1, K ),
+               A( K, K ) = A( K, K ) - warp_ddot( N-K, WORK, 1, A( K+1, K ),
      $                     1 )
                A( K, K-1 ) = A( K, K-1 ) -
-     $                       DDOTLOCAL( N-K, A( K+1, K ), 1, A( K+1, K-1 ),
+     $                       warp_ddot( N-K, A( K+1, K ), 1, A( K+1, K-1 ),
      $                       1 )
-               CALL DCOPY( N-K, A( K+1, K-1 ), 1, WORK, 1 )
-               CALL DSYMV( UPLO, N-K, -ONE, A( K+1, K+1 ), LDA, WORK, 1,
+               CALL warp_dcopy( N-K, A( K+1, K-1 ), 1, WORK, 1 )
+               CALL warp_dsymv( UPLO, N-K, -ONE, A( K+1, K+1 ), LDA, WORK, 1,
      $                     ZERO, A( K+1, K-1 ), 1 )
                A( K-1, K-1 ) = A( K-1, K-1 ) -
-     $                         DDOTLOCAL( N-K, WORK, 1, A( K+1, K-1 ), 1 )
+     $                         warp_ddot( N-K, WORK, 1, A( K+1, K-1 ), 1 )
             END IF
             KSTEP = 2
          END IF
@@ -4008,8 +4008,8 @@ c**************************************************************************
 *           submatrix A(k-1:n,k-1:n)
 *
             IF( KP.LT.N )
-     $         CALL DSWAP( N-KP, A( KP+1, K ), 1, A( KP+1, KP ), 1 )
-            CALL DSWAP( KP-K-1, A( K+1, K ), 1, A( KP, K+1 ), LDA )
+     $         CALL warp_dswap( N-KP, A( KP+1, K ), 1, A( KP+1, KP ), 1 )
+            CALL warp_dswap( KP-K-1, A( K+1, K ), 1, A( KP, K+1 ), LDA )
             TEMP = A( K, K )
             A( K, K ) = A( KP, KP )
             A( KP, KP ) = TEMP
@@ -4031,7 +4031,7 @@ c**************************************************************************
 *
       END
 c************************************************************************** 
-      logical(ISZ)          FUNCTION LSAME( CA, CB )
+      logical(ISZ)          FUNCTION warp_lsame( CA, CB )
 *
 *  -- LAPACK auxiliary routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
@@ -4045,7 +4045,7 @@ c**************************************************************************
 *  Purpose
 *  =======
 *
-*  LSAME returns .TRUE. if CA is the same letter as CB regardless of
+*  warp_lsame returns .TRUE. if CA is the same letter as CB regardless of
 *  case.
 *
 *  Arguments
@@ -4067,8 +4067,8 @@ c**************************************************************************
 *
 *     Test if the characters are equal
 *
-      LSAME = CA.EQ.CB
-      IF( LSAME )
+      warp_lsame = CA.EQ.CB
+      IF( warp_lsame )
      $   RETURN
 *
 *     Now test for equivalence if both characters are alphabetic.
@@ -4111,15 +4111,15 @@ c**************************************************************************
          IF( INTA.GE.225 .AND. INTA.LE.250 ) INTA = INTA - 32
          IF( INTB.GE.225 .AND. INTB.LE.250 ) INTB = INTB - 32
       END IF
-      LSAME = INTA.EQ.INTB
+      warp_lsame = INTA.EQ.INTB
 *
 *     RETURN
 *
-*     End of LSAME
+*     End of warp_lsame
 *
       END
 c***********************************************************************
-      integer(ISZ)     FUNCTION IEEECK( ISPEC, ZERO, ONE )
+      integer(ISZ)     FUNCTION warp_ieeeck( ISPEC, ZERO, ONE )
 *
 *  -- LAPACK auxiliary routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
@@ -4134,7 +4134,7 @@ c***********************************************************************
 *  Purpose
 *  =======
 *
-*  IEEECK is called from the ILAENV to verify that Infinity and
+*  warp_ieeeck is called from the warp_ilaenv to verify that Infinity and
 *  possibly NaN arithmetic is safe (i.e. will not trap).
 *
 *  Arguments
@@ -4165,53 +4165,53 @@ c***********************************************************************
      $                   NEGZRO, NEWZRO, POSINF
 *     ..
 *     .. Executable Statements ..
-      IEEECK = 1
+      warp_ieeeck = 1
 *
       POSINF = ONE / ZERO
       IF( POSINF.LE.ONE ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       NEGINF = -ONE / ZERO
       IF( NEGINF.GE.ZERO ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       NEGZRO = ONE / ( NEGINF+ONE )
       IF( NEGZRO.NE.ZERO ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       NEGINF = ONE / NEGZRO
       IF( NEGINF.GE.ZERO ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       NEWZRO = NEGZRO + ZERO
       IF( NEWZRO.NE.ZERO ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       POSINF = ONE / NEWZRO
       IF( POSINF.LE.ONE ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       NEGINF = NEGINF*POSINF
       IF( NEGINF.GE.ZERO ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       POSINF = POSINF*POSINF
       IF( POSINF.LE.ONE ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
@@ -4236,39 +4236,39 @@ c***********************************************************************
       NAN6 = NAN5*0.0
 *
       IF( NAN1.EQ.NAN1 ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       IF( NAN2.EQ.NAN2 ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       IF( NAN3.EQ.NAN3 ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       IF( NAN4.EQ.NAN4 ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       IF( NAN5.EQ.NAN5 ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       IF( NAN6.EQ.NAN6 ) THEN
-         IEEECK = 0
+         warp_ieeeck = 0
          RETURN
       END IF
 *
       RETURN
       END
 c************************************************************************** 
-      integer(ISZ)     FUNCTION ILAENV( ISPEC, NAME, OPTS, N1, N2, N3,
+      integer(ISZ)     FUNCTION warp_ilaenv( ISPEC, NAME, OPTS, N1, N2, N3,
      $                 N4 )
 *
 *  -- LAPACK auxiliary routine (version 3.0) --
@@ -4284,7 +4284,7 @@ c**************************************************************************
 *  Purpose
 *  =======
 *
-*  ILAENV is called from the LAPACK routines to choose problem-dependent
+*  warp_ilaenv is called from the LAPACK routines to choose problem-dependent
 *  parameters for the local environment.  See ISPEC for a description of
 *  the parameters.
 *
@@ -4302,7 +4302,7 @@ c**************************************************************************
 *
 *  ISPEC   (input) INTEGER
 *          Specifies the parameter to be returned as the value of
-*          ILAENV.
+*          warp_ilaenv.
 *          = 1: the optimal blocksize; if this value is 1, an unblocked
 *               algorithm will give the best performance.
 *          = 2: the minimum block size for which the block routine
@@ -4314,7 +4314,7 @@ c**************************************************************************
 *               eigenvalue routines
 *          = 5: the minimum column dimension for blocking to be used;
 *               rectangular blocks must have dimension at least k by m,
-*               where k is given by ILAENV(2,...) and m by ILAENV(5,...)
+*               where k is given by warp_ilaenv(2,...) and m by warp_ilaenv(5,...)
 *          = 6: the crossover point for the SVD (when reducing an m by n
 *               matrix to bidiagonal form, if max(m,n)/min(m,n) exceeds
 *               this value, a QR factorization is used first to reduce
@@ -4345,14 +4345,14 @@ c**************************************************************************
 *          Problem dimensions for the subroutine NAME; these may not all
 *          be required.
 *
-* (ILAENV) (output) INTEGER
+* (warp_ilaenv) (output) INTEGER
 *          >= 0: the value of the parameter specified by ISPEC
-*          < 0:  if ILAENV = -k, the k-th argument had an illegal value.
+*          < 0:  if warp_ilaenv = -k, the k-th argument had an illegal value.
 *
 *  Further Details
 *  ===============
 *
-*  The following conventions have been used when calling ILAENV from the
+*  The following conventions have been used when calling warp_ilaenv from the
 *  LAPACK routines:
 *  1)  OPTS is a concatenation of all of the character options to
 *      subroutine NAME, in the same order that they appear in the
@@ -4362,11 +4362,11 @@ c**************************************************************************
 *      that they appear in the argument list for NAME.  N1 is used
 *      first, N2 second, and so on, and unused problem dimensions are
 *      passed a value of -1.
-*  3)  The parameter value returned by ILAENV is checked for validity in
-*      the calling subroutine.  For example, ILAENV is used to retrieve
+*  3)  The parameter value returned by warp_ilaenv is checked for validity in
+*      the calling subroutine.  For example, warp_ilaenv is used to retrieve
 *      the optimal blocksize for STRTRI as follows:
 *
-*      NB = ILAENV( 1, 'STRTRI', UPLO // DIAG, N, -1, -1, -1 )
+*      NB = warp_ilaenv( 1, 'STRTRI', UPLO // DIAG, N, -1, -1, -1 )
 *      IF( NB.LE.1 ) NB = MAX( 1, N )
 *
 *  =====================================================================
@@ -4383,8 +4383,8 @@ c**************************************************************************
       intrinsic::        CHAR, ICHAR, INT, MIN, REAL
 *     ..
 *     .. External Functions ..
-      integer(ISZ)::            IEEECK
-      external::         IEEECK
+      integer(ISZ)::            warp_ieeeck
+      external::         warp_ieeeck
 *     ..
 *     .. Executable Statements ..
 *
@@ -4393,14 +4393,14 @@ c**************************************************************************
 *
 *     Invalid value for ISPEC
 *
-      ILAENV = -1
+      warp_ilaenv = -1
       RETURN
 *
   100 CONTINUE
 *
 *     Convert NAME to upper case if the first character is lower case.
 *
-      ILAENV = 1
+      warp_ilaenv = 1
       SUBNAM = NAME
       IC = ICHAR( SUBNAM( 1:1 ) )
       IZ = ICHAR( 'Z' )
@@ -4611,7 +4611,7 @@ c**************************************************************************
             NB = 1
          END IF
       END IF
-      ILAENV = NB
+      warp_ilaenv = NB
       RETURN
 *
   200 CONTINUE
@@ -4689,7 +4689,7 @@ c**************************************************************************
             END IF
          END IF
       END IF
-      ILAENV = NBMIN
+      warp_ilaenv = NBMIN
       RETURN
 *
   300 CONTINUE
@@ -4743,42 +4743,42 @@ c**************************************************************************
             END IF
          END IF
       END IF
-      ILAENV = NX
+      warp_ilaenv = NX
       RETURN
 *
   400 CONTINUE
 *
 *     ISPEC = 4:  number of shifts (used by xHSEQR)
 *
-      ILAENV = 6
+      warp_ilaenv = 6
       RETURN
 *
   500 CONTINUE
 *
 *     ISPEC = 5:  minimum column dimension (not used)
 *
-      ILAENV = 2
+      warp_ilaenv = 2
       RETURN
 *
   600 CONTINUE 
 *
 *     ISPEC = 6:  crossover point for SVD (used by xGELSS and xGESVD)
 *
-      ILAENV = INT( REAL( MIN( N1, N2 ) )*1.6E0 )
+      warp_ilaenv = INT( REAL( MIN( N1, N2 ) )*1.6E0 )
       RETURN
 *
   700 CONTINUE
 *
 *     ISPEC = 7:  number of processors (not used)
 *
-      ILAENV = 1
+      warp_ilaenv = 1
       RETURN
 *
   800 CONTINUE
 *
 *     ISPEC = 8:  crossover point for multishift (used by xHSEQR)
 *
-      ILAENV = 50
+      warp_ilaenv = 50
       RETURN
 *
   900 CONTINUE
@@ -4787,17 +4787,17 @@ c**************************************************************************
 *                 computation tree in the divide-and-conquer algorithm
 *                 (used by xGELSD and xGESDD)
 *
-      ILAENV = 25
+      warp_ilaenv = 25
       RETURN
 *
  1000 CONTINUE
 *
 *     ISPEC = 10: ieee NaN arithmetic can be trusted not to trap
 *
-C     ILAENV = 0
-      ILAENV = 1
-      IF( ILAENV.EQ.1 ) THEN
-         ILAENV = IEEECK( 0, 0.0, 1.0 ) 
+C     warp_ilaenv = 0
+      warp_ilaenv = 1
+      IF( warp_ilaenv.EQ.1 ) THEN
+         warp_ilaenv = warp_ieeeck( 0, 0.0, 1.0 ) 
       END IF
       RETURN
 *
@@ -4805,18 +4805,18 @@ C     ILAENV = 0
 *
 *     ISPEC = 11: infinity arithmetic can be trusted not to trap
 *
-C     ILAENV = 0
-      ILAENV = 1
-      IF( ILAENV.EQ.1 ) THEN
-         ILAENV = IEEECK( 1, 0.0, 1.0 ) 
+C     warp_ilaenv = 0
+      warp_ilaenv = 1
+      IF( warp_ilaenv.EQ.1 ) THEN
+         warp_ilaenv = warp_ieeeck( 1, 0.0, 1.0 ) 
       END IF
       RETURN
 *
-*     End of ILAENV
+*     End of warp_ilaenv
 *
       END
 c***********************************************************************
-      real(kind=8) function ddot(n,dx,incx,dy,incy)
+      real(kind=8) function warp_ddot2(n,dx,incx,dy,incy)
 c
 c     forms the dot product of two vectors.
 c     uses unrolled loops for increments equal to one.
@@ -4826,7 +4826,7 @@ c
       real(kind=8):: dx(*),dy(*),dtemp
       integer(ISZ):: i,incx,incy,ix,iy,m,mp1,n
 c
-      ddot = 0.0d0
+      warp_ddot2 = 0.0d0
       dtemp = 0.0d0
       if(n.le.0)return
       if(incx.eq.1.and.incy.eq.1)go to 20
@@ -4843,7 +4843,7 @@ c
         ix = ix + incx
         iy = iy + incy
    10 continue
-      ddot = dtemp
+      warp_ddot2 = dtemp
       return
 c
 c        code for both increments equal to 1
@@ -4862,7 +4862,7 @@ c
         dtemp = dtemp + dx(i)*dy(i) + dx(i + 1)*dy(i + 1) +
      *   dx(i + 2)*dy(i + 2) + dx(i + 3)*dy(i + 3) + dx(i + 4)*dy(i + 4)
    50 continue
-   60 ddot = dtemp
+   60 warp_ddot2 = dtemp
       return
       end
 c************************************************************************** 
@@ -4971,8 +4971,8 @@ c**************************************************************************
 *  =====================================================================
 *
 *     .. External Functions ..
-      logical(ISZ)::     LSAME
-      external::         LSAME
+      logical(ISZ)::     warp_lsame
+      external::         warp_lsame
 *     ..
 *     .. External Subroutines ..
       external::         DPBTRF, DPBTRS, WARP_XERBLA
@@ -4985,7 +4985,7 @@ c**************************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      IF( .NOT.LSAME( UPLO, 'U' ) .AND. .NOT.LSAME( UPLO, 'L' ) ) THEN
+      IF( .NOT.warp_lsame( UPLO, 'U' ) .AND. .NOT.warp_lsame( UPLO, 'L' ) ) THEN
          INFO = -1
       ELSE IF( N.LT.0 ) THEN
          INFO = -2
@@ -5119,12 +5119,12 @@ c**************************************************************************
       real(kind=8)::   WORK( LDWORK, NBMAX )
 *     ..
 *     .. External Functions ..
-      LOGICAL(ISZ)::     LSAME
-      INTEGER(ISZ)::     ILAENV
-      external::         LSAME, ILAENV
+      LOGICAL(ISZ)::     warp_lsame
+      INTEGER(ISZ)::     warp_ilaenv
+      external::         warp_lsame, warp_ilaenv
 *     ..
 *     .. External Subroutines ..
-      external::         DGEMMWARP, DPBTF2, DPOTF2, DSYRK, DTRSMWARP, WARP_XERBLA
+      external::         DGEMMWARP, DPBTF2, warp_dpotf2, warp_dsyrk, DTRSMWARP, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        MIN
@@ -5134,8 +5134,8 @@ c**************************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      IF( ( .NOT.LSAME( UPLO, 'U' ) ) .AND.
-     $    ( .NOT.LSAME( UPLO, 'L' ) ) ) THEN
+      IF( ( .NOT.warp_lsame( UPLO, 'U' ) ) .AND.
+     $    ( .NOT.warp_lsame( UPLO, 'L' ) ) ) THEN
          INFO = -1
       ELSE IF( N.LT.0 ) THEN
          INFO = -2
@@ -5156,7 +5156,7 @@ c**************************************************************************
 *
 *     Determine the block size for this environment
 *
-      NB = ILAENV( 1, 'DPBTRF', UPLO, N, KD, -1, -1 )
+      NB = warp_ilaenv( 1, 'DPBTRF', UPLO, N, KD, -1, -1 )
 *
 *     The block size must not exceed the semi-bandwidth KD, and must not
 *     exceed the limit set by the size of the local array WORK.
@@ -5172,7 +5172,7 @@ c**************************************************************************
 *
 *        Use blocked code
 *
-         IF( LSAME( UPLO, 'U' ) ) THEN
+         IF( warp_lsame( UPLO, 'U' ) ) THEN
 *
 *           Compute the Cholesky factorization of a symmetric band
 *           matrix, given the upper triangle of the matrix in band
@@ -5193,7 +5193,7 @@ c**************************************************************************
 *
 *              Factorize the diagonal block
 *
-               CALL DPOTF2( UPLO, IB, AB( KD+1, I ), LDAB-1, II )
+               CALL warp_dpotf2( UPLO, IB, AB( KD+1, I ), LDAB-1, II )
                IF( II.NE.0 ) THEN
                   INFO = I + II - 1
                   GO TO 150
@@ -5227,7 +5227,7 @@ c**************************************************************************
 *
 *                    Update A22
 *
-                     CALL DSYRK( 'Upper', 'Transpose', I2, IB, -ONE,
+                     CALL warp_dsyrk( 'Upper', 'Transpose', I2, IB, -ONE,
      $                           AB( KD+1-IB, I+IB ), LDAB-1, ONE,
      $                           AB( KD+1, I+IB ), LDAB-1 )
                   END IF
@@ -5258,7 +5258,7 @@ c**************************************************************************
 *
 *                    Update A33
 *
-                     CALL DSYRK( 'Upper', 'Transpose', I3, IB, -ONE,
+                     CALL warp_dsyrk( 'Upper', 'Transpose', I3, IB, -ONE,
      $                           WORK, LDWORK, ONE, AB( KD+1, I+KD ),
      $                           LDAB-1 )
 *
@@ -5293,7 +5293,7 @@ c**************************************************************************
 *
 *              Factorize the diagonal block
 *
-               CALL DPOTF2( UPLO, IB, AB( 1, I ), LDAB-1, II )
+               CALL warp_dpotf2( UPLO, IB, AB( 1, I ), LDAB-1, II )
                IF( II.NE.0 ) THEN
                   INFO = I + II - 1
                   GO TO 150
@@ -5327,7 +5327,7 @@ c**************************************************************************
 *
 *                    Update A22
 *
-                     CALL DSYRK( 'Lower', 'No Transpose', I2, IB, -ONE,
+                     CALL warp_dsyrk( 'Lower', 'No Transpose', I2, IB, -ONE,
      $                           AB( 1+IB, I ), LDAB-1, ONE,
      $                           AB( 1, I+IB ), LDAB-1 )
                   END IF
@@ -5358,7 +5358,7 @@ c**************************************************************************
 *
 *                    Update A33
 *
-                     CALL DSYRK( 'Lower', 'No Transpose', I3, IB, -ONE,
+                     CALL warp_dsyrk( 'Lower', 'No Transpose', I3, IB, -ONE,
      $                           WORK, LDWORK, ONE, AB( 1, I+KD ),
      $                           LDAB-1 )
 *
@@ -5496,8 +5496,8 @@ c**************************************************************************
       INTEGER(ISZ)::     J
 *     ..
 *     .. External Functions ..
-      LOGICAL(ISZ)::     LSAME
-      EXTERNAL::         LSAME
+      LOGICAL(ISZ)::     warp_lsame
+      EXTERNAL::         warp_lsame
 *     ..
 *     .. External Subroutines ..
       EXTERNAL::         DTBSV, WARP_XERBLA
@@ -5510,8 +5510,8 @@ c**************************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      UPPER = LSAME( UPLO, 'U' )
-      IF( .NOT.UPPER .AND. .NOT.LSAME( UPLO, 'L' ) ) THEN
+      UPPER = warp_lsame( UPLO, 'U' )
+      IF( .NOT.UPPER .AND. .NOT.warp_lsame( UPLO, 'L' ) ) THEN
          INFO = -1
       ELSE IF( N.LT.0 ) THEN
          INFO = -2
@@ -5674,11 +5674,11 @@ c**************************************************************************
       real(kind=8)::   AJJ
 *     ..
 *     .. External Functions ..
-      LOGICAL(ISZ)::     LSAME
-      EXTERNAL::         LSAME
+      LOGICAL(ISZ)::     warp_lsame
+      EXTERNAL::         warp_lsame
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL::         DSCAL, DSYR, WARP_XERBLA
+      EXTERNAL::         warp_dscal, DSYR, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC::        MAX, MIN, SQRT
@@ -5688,8 +5688,8 @@ c**************************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      UPPER = LSAME( UPLO, 'U' )
-      IF( .NOT.UPPER .AND. .NOT.LSAME( UPLO, 'L' ) ) THEN
+      UPPER = warp_lsame( UPLO, 'U' )
+      IF( .NOT.UPPER .AND. .NOT.warp_lsame( UPLO, 'L' ) ) THEN
          INFO = -1
       ELSE IF( N.LT.0 ) THEN
          INFO = -2
@@ -5729,7 +5729,7 @@ c**************************************************************************
 *
             KN = MIN( KD, N-J )
             IF( KN.GT.0 ) THEN
-               CALL DSCAL( KN, ONE / AJJ, AB( KD, J+1 ), KLD )
+               CALL warp_dscal( KN, ONE / AJJ, AB( KD, J+1 ), KLD )
                CALL DSYR( 'Upper', KN, -ONE, AB( KD, J+1 ), KLD,
      $                    AB( KD+1, J+1 ), KLD )
             END IF
@@ -5753,7 +5753,7 @@ c**************************************************************************
 *
             KN = MIN( KD, N-J )
             IF( KN.GT.0 ) THEN
-               CALL DSCAL( KN, ONE / AJJ, AB( 2, J ), 1 )
+               CALL warp_dscal( KN, ONE / AJJ, AB( 2, J ), 1 )
                CALL DSYR( 'Lower', KN, -ONE, AB( 2, J ), 1,
      $                    AB( 1, J+1 ), KLD )
             END IF
@@ -5769,7 +5769,7 @@ c**************************************************************************
 *
       END
 c************************************************************************** 
-      SUBROUTINE DPOTF2( UPLO, N, A, LDA, INFO )
+      SUBROUTINE warp_dpotf2( UPLO, N, A, LDA, INFO )
 *
 *  -- LAPACK routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
@@ -5787,7 +5787,7 @@ c**************************************************************************
 *  Purpose
 *  =======
 *
-*  DPOTF2 computes the Cholesky factorization of a real symmetric
+*  warp_dpotf2 computes the Cholesky factorization of a real symmetric
 *  positive definite matrix A.
 *
 *  The factorization has the form
@@ -5842,12 +5842,12 @@ c**************************************************************************
       real(kind=8)::   AJJ
 *     ..
 *     .. External Functions ..
-      LOGICAL(ISZ)::     LSAME
-      real(kind=8)::   DDOT
-      EXTERNAL::         LSAME, DDOT
+      LOGICAL(ISZ)::     warp_lsame
+      real(kind=8)::   warp_ddot2
+      EXTERNAL::         warp_lsame, warp_ddot2
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL::         DGEMVWARP, DSCAL, WARP_XERBLA
+      EXTERNAL::         DGEMVWARP, warp_dscal, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC::        MAX, SQRT
@@ -5857,8 +5857,8 @@ c**************************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      UPPER = LSAME( UPLO, 'U' )
-      IF( .NOT.UPPER .AND. .NOT.LSAME( UPLO, 'L' ) ) THEN
+      UPPER = warp_lsame( UPLO, 'U' )
+      IF( .NOT.UPPER .AND. .NOT.warp_lsame( UPLO, 'L' ) ) THEN
          INFO = -1
       ELSE IF( N.LT.0 ) THEN
          INFO = -2
@@ -5866,7 +5866,7 @@ c**************************************************************************
          INFO = -4
       END IF
       IF( INFO.NE.0 ) THEN
-         CALL WARP_XERBLA( 'DPOTF2', -INFO )
+         CALL WARP_XERBLA( 'warp_dpotf2', -INFO )
          RETURN
       END IF
 *
@@ -5883,7 +5883,7 @@ c**************************************************************************
 *
 *           Compute U(J,J) and test for non-positive-definiteness.
 *
-            AJJ = A( J, J ) - DDOT( J-1, A( 1, J ), 1, A( 1, J ), 1 )
+            AJJ = A( J, J ) - warp_ddot2( J-1, A( 1, J ), 1, A( 1, J ), 1 )
             IF( AJJ.LE.ZERO ) THEN
                A( J, J ) = AJJ
                GO TO 30
@@ -5896,7 +5896,7 @@ c**************************************************************************
             IF( J.LT.N ) THEN
                CALL DGEMVWARP( 'Transpose', J-1, N-J, -ONE, A( 1, J+1 ),
      $                     LDA, A( 1, J ), 1, ONE, A( J, J+1 ), LDA )
-               CALL DSCAL( N-J, ONE / AJJ, A( J, J+1 ), LDA )
+               CALL warp_dscal( N-J, ONE / AJJ, A( J, J+1 ), LDA )
             END IF
    10    CONTINUE
       ELSE
@@ -5907,7 +5907,7 @@ c**************************************************************************
 *
 *           Compute L(J,J) and test for non-positive-definiteness.
 *
-            AJJ = A( J, J ) - DDOT( J-1, A( J, 1 ), LDA, A( J, 1 ),
+            AJJ = A( J, J ) - warp_ddot2( J-1, A( J, 1 ), LDA, A( J, 1 ),
      $            LDA )
             IF( AJJ.LE.ZERO ) THEN
                A( J, J ) = AJJ
@@ -5921,7 +5921,7 @@ c**************************************************************************
             IF( J.LT.N ) THEN
                CALL DGEMVWARP( 'No transpose', N-J, J-1, -ONE, A( J+1, 1 ),
      $                     LDA, A( J, 1 ), LDA, ONE, A( J+1, J ), 1 )
-               CALL DSCAL( N-J, ONE / AJJ, A( J+1, J ), 1 )
+               CALL warp_dscal( N-J, ONE / AJJ, A( J+1, J ), 1 )
             END IF
    20    CONTINUE
       END IF
@@ -5933,7 +5933,7 @@ c**************************************************************************
    40 CONTINUE
       RETURN
 *
-*     End of DPOTF2
+*     End of warp_dpotf2
 *
       END
 c************************************************************************** 
@@ -6067,8 +6067,8 @@ c**************************************************************************
 *
 *
 *     .. External Functions ..
-      LOGICAL(ISZ)::     LSAME
-      EXTERNAL::         LSAME
+      LOGICAL(ISZ)::     warp_lsame
+      EXTERNAL::         warp_lsame
 *     .. External Subroutines ..
       EXTERNAL::         WARP_XERBLA
 *     .. Intrinsic Functions ..
@@ -6084,28 +6084,28 @@ c**************************************************************************
 *
 *     Test the input parameters.
 *
-      LSIDE  = LSAME( SIDE  , 'L' )
+      LSIDE  = warp_lsame( SIDE  , 'L' )
       IF( LSIDE )THEN
          NROWA = M
       ELSE
          NROWA = N
       END IF
-      NOUNIT = LSAME( DIAG  , 'N' )
-      UPPER  = LSAME( UPLO  , 'U' )
+      NOUNIT = warp_lsame( DIAG  , 'N' )
+      UPPER  = warp_lsame( UPLO  , 'U' )
 *
       INFO   = 0
       IF(      ( .NOT.LSIDE                ).AND.
-     $         ( .NOT.LSAME( SIDE  , 'R' ) )      )THEN
+     $         ( .NOT.warp_lsame( SIDE  , 'R' ) )      )THEN
          INFO = 1
       ELSE IF( ( .NOT.UPPER                ).AND.
-     $         ( .NOT.LSAME( UPLO  , 'L' ) )      )THEN
+     $         ( .NOT.warp_lsame( UPLO  , 'L' ) )      )THEN
          INFO = 2
-      ELSE IF( ( .NOT.LSAME( TRANSA, 'N' ) ).AND.
-     $         ( .NOT.LSAME( TRANSA, 'T' ) ).AND.
-     $         ( .NOT.LSAME( TRANSA, 'C' ) )      )THEN
+      ELSE IF( ( .NOT.warp_lsame( TRANSA, 'N' ) ).AND.
+     $         ( .NOT.warp_lsame( TRANSA, 'T' ) ).AND.
+     $         ( .NOT.warp_lsame( TRANSA, 'C' ) )      )THEN
          INFO = 3
-      ELSE IF( ( .NOT.LSAME( DIAG  , 'U' ) ).AND.
-     $         ( .NOT.LSAME( DIAG  , 'N' ) )      )THEN
+      ELSE IF( ( .NOT.warp_lsame( DIAG  , 'U' ) ).AND.
+     $         ( .NOT.warp_lsame( DIAG  , 'N' ) )      )THEN
          INFO = 4
       ELSE IF( M  .LT.0               )THEN
          INFO = 5
@@ -6140,7 +6140,7 @@ c**************************************************************************
 *     Start the operations.
 *
       IF( LSIDE )THEN
-         IF( LSAME( TRANSA, 'N' ) )THEN
+         IF( warp_lsame( TRANSA, 'N' ) )THEN
 *
 *           Form  B := alpha*inv( A )*B.
 *
@@ -6210,7 +6210,7 @@ c**************************************************************************
             END IF
          END IF
       ELSE
-         IF( LSAME( TRANSA, 'N' ) )THEN
+         IF( warp_lsame( TRANSA, 'N' ) )THEN
 *
 *           Form  B := alpha*B*inv( A ).
 *
@@ -6315,7 +6315,7 @@ c**************************************************************************
 *
       END
 c************************************************************************** 
-      SUBROUTINE DSYRK ( UPLO, TRANS, N, K, ALPHA, A, LDA,
+      SUBROUTINE warp_dsyrk ( UPLO, TRANS, N, K, ALPHA, A, LDA,
      $                   BETA, C, LDC )
 *     .. Scalar Arguments ..
       CHARACTER(1)::     UPLO, TRANS
@@ -6328,7 +6328,7 @@ c**************************************************************************
 *  Purpose
 *  =======
 *
-*  DSYRK  performs one of the symmetric rank k operations
+*  warp_dsyrk  performs one of the symmetric rank k operations
 *
 *     C := alpha*A*A' + beta*C,
 *
@@ -6434,8 +6434,8 @@ c**************************************************************************
 *
 *
 *     .. External Functions ..
-      LOGICAL(ISZ)::     LSAME
-      EXTERNAL::         LSAME
+      LOGICAL(ISZ)::     warp_lsame
+      EXTERNAL::         warp_lsame
 *     .. External Subroutines ..
       EXTERNAL::         WARP_XERBLA
 *     .. Intrinsic Functions ..
@@ -6451,20 +6451,20 @@ c**************************************************************************
 *
 *     Test the input parameters.
 *
-      IF( LSAME( TRANS, 'N' ) )THEN
+      IF( warp_lsame( TRANS, 'N' ) )THEN
          NROWA = N
       ELSE
          NROWA = K
       END IF
-      UPPER = LSAME( UPLO, 'U' )
+      UPPER = warp_lsame( UPLO, 'U' )
 *
       INFO = 0
       IF(      ( .NOT.UPPER               ).AND.
-     $         ( .NOT.LSAME( UPLO , 'L' ) )      )THEN
+     $         ( .NOT.warp_lsame( UPLO , 'L' ) )      )THEN
          INFO = 1
-      ELSE IF( ( .NOT.LSAME( TRANS, 'N' ) ).AND.
-     $         ( .NOT.LSAME( TRANS, 'T' ) ).AND.
-     $         ( .NOT.LSAME( TRANS, 'C' ) )      )THEN
+      ELSE IF( ( .NOT.warp_lsame( TRANS, 'N' ) ).AND.
+     $         ( .NOT.warp_lsame( TRANS, 'T' ) ).AND.
+     $         ( .NOT.warp_lsame( TRANS, 'C' ) )      )THEN
          INFO = 2
       ELSE IF( N  .LT.0               )THEN
          INFO = 3
@@ -6476,7 +6476,7 @@ c**************************************************************************
          INFO = 10
       END IF
       IF( INFO.NE.0 )THEN
-         CALL WARP_XERBLA( 'DSYRK ', INFO )
+         CALL WARP_XERBLA( 'warp_dsyrk ', INFO )
          RETURN
       END IF
 *
@@ -6523,7 +6523,7 @@ c**************************************************************************
 *
 *     Start the operations.
 *
-      IF( LSAME( TRANS, 'N' ) )THEN
+      IF( warp_lsame( TRANS, 'N' ) )THEN
 *
 *        Form  C := alpha*A*A' + beta*C.
 *
@@ -6605,7 +6605,7 @@ c**************************************************************************
 *
       RETURN
 *
-*     End of DSYRK .
+*     End of warp_dsyrk .
 *
       END
 c************************************************************************** 
@@ -6756,8 +6756,8 @@ c**************************************************************************
       INTEGER(ISZ)::     I, INFO, IX, J, JX, KPLUS1, KX, L
       LOGICAL(ISZ)::     NOUNIT
 *     .. External Functions ..
-      LOGICAL(ISZ)::     LSAME
-      EXTERNAL::         LSAME
+      LOGICAL(ISZ)::     warp_lsame
+      EXTERNAL::         warp_lsame
 *     .. External Subroutines ..
       EXTERNAL::         WARP_XERBLA
 *     .. Intrinsic Functions ..
@@ -6768,15 +6768,15 @@ c**************************************************************************
 *     Test the input parameters.
 *
       INFO = 0
-      IF     ( .NOT.LSAME( UPLO , 'U' ).AND.
-     $         .NOT.LSAME( UPLO , 'L' )      )THEN
+      IF     ( .NOT.warp_lsame( UPLO , 'U' ).AND.
+     $         .NOT.warp_lsame( UPLO , 'L' )      )THEN
          INFO = 1
-      ELSE IF( .NOT.LSAME( TRANS, 'N' ).AND.
-     $         .NOT.LSAME( TRANS, 'T' ).AND.
-     $         .NOT.LSAME( TRANS, 'C' )      )THEN
+      ELSE IF( .NOT.warp_lsame( TRANS, 'N' ).AND.
+     $         .NOT.warp_lsame( TRANS, 'T' ).AND.
+     $         .NOT.warp_lsame( TRANS, 'C' )      )THEN
          INFO = 2
-      ELSE IF( .NOT.LSAME( DIAG , 'U' ).AND.
-     $         .NOT.LSAME( DIAG , 'N' )      )THEN
+      ELSE IF( .NOT.warp_lsame( DIAG , 'U' ).AND.
+     $         .NOT.warp_lsame( DIAG , 'N' )      )THEN
          INFO = 3
       ELSE IF( N.LT.0 )THEN
          INFO = 4
@@ -6797,7 +6797,7 @@ c**************************************************************************
       IF( N.EQ.0 )
      $   RETURN
 *
-      NOUNIT = LSAME( DIAG, 'N' )
+      NOUNIT = warp_lsame( DIAG, 'N' )
 *
 *     Set up the start point in X if the increment is not unity. This
 *     will be  ( N - 1 )*INCX  too small for descending loops.
@@ -6811,11 +6811,11 @@ c**************************************************************************
 *     Start the operations. In this version the elements of A are
 *     accessed by sequentially with one pass through A.
 *
-      IF( LSAME( TRANS, 'N' ) )THEN
+      IF( warp_lsame( TRANS, 'N' ) )THEN
 *
 *        Form  x := inv( A )*x.
 *
-         IF( LSAME( UPLO, 'U' ) )THEN
+         IF( warp_lsame( UPLO, 'U' ) )THEN
             KPLUS1 = K + 1
             IF( INCX.EQ.1 )THEN
                DO 20, J = N, 1, -1
@@ -6884,7 +6884,7 @@ c**************************************************************************
 *
 *        Form  x := inv( A')*x.
 *
-         IF( LSAME( UPLO, 'U' ) )THEN
+         IF( warp_lsame( UPLO, 'U' ) )THEN
             KPLUS1 = K + 1
             IF( INCX.EQ.1 )THEN
                DO 100, J = 1, N
