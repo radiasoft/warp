@@ -20,7 +20,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                       'lcylindrical','lanalyticbtheta'] 
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
                    'mgmaxiters','mgtol','mgmaxlevels','mgform','mgverbose',
-                   'lcndbndy','icndbndy','laddconductor'] 
+                   'lcndbndy','icndbndy','laddconductor','lprecalccoeffs'] 
 
   def __init__(self,**kw):
     self.grid_overlap = 2
@@ -313,7 +313,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                          self.downpasses[id],self.uppasses[id],
                          self.lcndbndy,self.laddconductor,
                          self.icndbndy,false,
-                         self.gridmode,conductorobject,
+                         self.gridmode,conductorobject,self.lprecalccoeffs,
                          self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
 
     # --- This is slightly inefficient in some cases, since for example, the

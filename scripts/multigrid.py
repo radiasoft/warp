@@ -20,7 +20,7 @@ class MultiGrid(SubcycledPoissonSolver):
                    'electrondensitymaxscale']
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
                    'mgmaxiters','mgtol','mgmaxlevels','mgform','mgverbose',
-                   'lcndbndy','icndbndy','laddconductor'] 
+                   'lcndbndy','icndbndy','laddconductor','lprecalccoeffs'] 
 
   def __init__(self,lreducedpickle=1,**kw):
     kw['lreducedpickle'] = lreducedpickle
@@ -116,6 +116,8 @@ class MultiGrid(SubcycledPoissonSolver):
         del self.conductorlist
       else:
         conductorlist = []
+      if 'lprecalccoeffs' not in self.__dict__:
+        self.lprecalccoeffs = 0
 
       for conductor in conductorlist:
         self.installconductor(conductor)
@@ -673,6 +675,7 @@ class MultiGrid(SubcycledPoissonSolver):
                        self.downpasses,self.uppasses,
                        self.lcndbndy,self.laddconductor,self.icndbndy,
                        self.lbuildquads,self.gridmode,conductorobject,
+                       self.lprecalccoeffs,
                        self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
     else:
       iondensitygrid3d = Grid3dtype()
@@ -721,7 +724,8 @@ class MultiGrid(SubcycledPoissonSolver):
     rho = self._rho*reps0c
     residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
              self._phi,rho,res,0,self.bounds,self.mgparam,self.mgform,false,
-             self.lcndbndy,self.icndbndy,self.conductors,1,1,1)
+             self.lcndbndy,self.icndbndy,self.conductors,self.lprecalccoeffs,
+             1,1,1)
     return res
 
 
