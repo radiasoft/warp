@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.176 $, $Date: 2008/09/22 17:17:30 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.177 $, $Date: 2008/10/15 17:59:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -53,7 +53,7 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
      &                            mgmaxlevels,mgerror,mgtol,mgverbose,
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,lbuildquads,
-     &                            gridmode,conductors,
+     &                            gridmode,conductors,lprecalccoeffs,
      &                            my_index,nslaves,izfsslave,nzfsslave)
 
       return
@@ -66,7 +66,7 @@ c=============================================================================
      &                            mgmaxlevels,mgerror,mgtol,mgverbose,
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,lbuildquads,
-     &                            gridmode,conductors,
+     &                            gridmode,conductors,lprecalccoeffs,
      &                            my_index,nslaves,izfsslave,nzfsslave)
       use Subtimersf3d
       use ConductorTypemodule
@@ -84,7 +84,7 @@ c=============================================================================
       integer(ISZ):: mgform,mgiters,mgmaxiters,mgmaxlevels,mgverbose
       real(kind=8):: mgerror,mgtol
       integer(ISZ):: downpasses,uppasses
-      logical(ISZ):: lcndbndy,laddconductor,lbuildquads
+      logical(ISZ):: lcndbndy,laddconductor,lbuildquads,lprecalccoeffs
       integer(ISZ):: icndbndy,gridmode
       type(ConductorType):: conductors
       integer(ISZ):: my_index,nslaves
@@ -173,6 +173,22 @@ c     --- converted and expanded for the multigrid solver.
       endif
       call checkconductors(nx,ny,nzlocal,nz,dx,dy,dz,conductors,
      &                     my_index,nslaves,izfsslave,nzfsslave)
+
+      if (lprecalccoeffs) then
+        call precalculatecoefficients3d(nx,ny,nzlocal,dx,dy,dz,conductors,
+     &                                  mgparam,localbounds)
+!$OMP DO
+        do iz=0,nzlocal
+          do iy=0,ny
+            do ix=0,nx
+              if (conductors%coeffs%data(7,ix,iy,iz) == 0.) then
+                phi(ix,iy,iz) = conductors%coeffs%data(6,ix,iy,iz)
+              endif
+            enddo
+          enddo
+        enddo
+!$OMP END DO
+      endif
 
 
 !$OMP PARALLEL
@@ -292,15 +308,17 @@ c       --- is true, telling the routines to use the actual value of
 c       --- voltages rather than zero as is done otherwise for residual
 c       --- correction form since it is operating on the error.
         if (mgform == 2) then
-          call cond_potmg(conductors%interior,
-     &                    nx,ny,nzlocal,1,1,1,phisave,0,mgform,.true.)
+          if (.not.lprecalccoeffs) then
+            call cond_potmg(conductors%interior,
+     &                      nx,ny,nzlocal,1,1,1,phisave,0,mgform,.true.)
+          endif
           call condbndymgint(conductors%evensubgrid,nx,ny,nzlocal,1,1,1,
      &                       phisave,localbounds,0,icndbndy)
           call condbndymgint(conductors%oddsubgrid,nx,ny,nzlocal,1,1,1,
      &                       phisave,localbounds,0,icndbndy)
           call residual(nx,ny,nzlocal,nz,dxsqi,dysqi,dzsqi,phisave,rhosave,res,
      &                  0,localbounds,mgparam,mgform,.true.,
-     &                  lcndbndy,icndbndy,conductors,
+     &                  lcndbndy,icndbndy,conductors,lprecalccoeffs,
      &                  resdelx,resdely,resdelz)
 #ifdef MPIPARALLEL
           call mgexchange_phi(nx,ny,nzlocal,nz,res,localbounds,-1,
@@ -320,7 +338,8 @@ c       --- correction form since it is operating on the error.
 c       --- Do one vcycle.
         call vcycle(0,1.,nx,ny,nzlocal,nz,dx,dy,dz,phi,rho,
      &              rstar,linbend,bendx,bounds,mgparam,mgform,mgmaxlevels,
-     &              downpasses,uppasses,lcndbndy,icndbndy,conductors,
+     &              downpasses,uppasses,
+     &              lcndbndy,icndbndy,conductors,lprecalccoeffs,
      &              my_index,nslaves,izfsslave,nzfsslave)
 
 c       --- If using residual correction form, add the resulting error to phi.
@@ -504,7 +523,7 @@ c=============================================================================
      &                            phi,rho,rstar,linbend,bendx,globalbounds,
      &                            mgparam,mgform,
      &                            mgmaxlevels,downpasses,uppasses,
-     &                            lcndbndy,icndbndy,conductors,
+     &                            lcndbndy,icndbndy,conductors,lprecalccoeffs,
      &                            my_index,nslaves,izfsslave,nzfsslave)
       use Subtimersf3d
       use ConductorTypemodule
@@ -524,7 +543,7 @@ c=============================================================================
       integer(ISZ):: mgform
       integer(ISZ):: mgmaxlevels,downpasses,uppasses
       type(ConductorType):: conductors
-      logical(ISZ):: lcndbndy
+      logical(ISZ):: lcndbndy,lprecalccoeffs
       integer(ISZ):: icndbndy
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
@@ -610,7 +629,7 @@ c    &                  "RHO",mglevel)
         call sorpass3d(mglevel,nx,ny,nzlocal,nz,phi,rho,rstar,
      &                 dxsqi,dysqi,dzsqi,linbend,bendx,
      &                 localbounds,mgparam,mgform,
-     &                 lcndbndy,icndbndy,conductors,
+     &                 lcndbndy,icndbndy,conductors,lprecalccoeffs,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
@@ -658,7 +677,7 @@ c     --- coarsening. This is the same check that is done in getmglevels.
 c       --- Get the residual on the current grid.
         call residual(nx,ny,nzlocal,nz,dxsqi,dysqi,dzsqi,phi,rho,res,
      &                mglevel,localbounds,mgparam,mgform,.false.,
-     &                lcndbndy,icndbndy,conductors,
+     &                lcndbndy,icndbndy,conductors,lprecalccoeffs,
      &                resdelx,resdely,resdelz)
 #ifdef MPIPARALLEL
         call mgexchange_phi(nx,ny,nzlocal,nz,res,localbounds,-1,
@@ -773,14 +792,18 @@ c       --- routine.
           if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
         endif
 
+        if (lprecalccoeffs) conductors%coeffs => conductors%coeffs%coarser
+
 c       --- Continue at the next coarsest level.
         call vcycle(mglevel+iszone,mgscalecoarse,
      &              nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,
      &              dxcoarse,dycoarse,dzcoarse,phicoarse,rhocoarse,
      &              rstar,linbend,bendx,globalbounds,mgparam,mgform,
      &              mgmaxlevels,downpasses,uppasses,
-     &              lcndbndy,icndbndy,conductors,
+     &              lcndbndy,icndbndy,conductors,lprecalccoeffs,
      &              my_index,nslaves,izfsslavec,nzfsslavec)
+
+        if (lprecalccoeffs) conductors%coeffs => conductors%coeffs%finer
 
         if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nxcoarse,nycoarse,nzlocalcoarse,1,1,1,phicoarse,
@@ -825,7 +848,7 @@ c     message added by petermc, 1 Oct 2002
         call sorpass3d(mglevel,nx,ny,nzlocal,nz,phi,rho,rstar,
      &                 dxsqi,dysqi,dzsqi,linbend,bendx,
      &                 localbounds,mgparam,mgform,
-     &                 lcndbndy,icndbndy,conductors,
+     &                 lcndbndy,icndbndy,conductors,lprecalccoeffs,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
@@ -1034,7 +1057,8 @@ c     --- Set the loop limits, including edges when appropriate.
 c=============================================================================
       subroutine sorpass3d(mglevel,nx,ny,nzlocal,nz,phi,rho,rstar,
      &                     dxsqi,dysqi,dzsqi,linbend,bendx,localbounds,
-     &                     mgparam,mgform,lcndbndy,icndbndy,conductors,
+     &                     mgparam,mgform,
+     &                     lcndbndy,icndbndy,conductors,lprecalccoeffs,
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
      &                     whosendingright,izsendingright)
@@ -1051,7 +1075,7 @@ c=============================================================================
       integer(ISZ):: localbounds(0:5)
       real(kind=8):: mgparam
       integer(ISZ):: mgform
-      logical(ISZ):: lcndbndy
+      logical(ISZ):: lcndbndy,lprecalccoeffs
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
       integer(ISZ):: my_index,nslaves
@@ -1082,12 +1106,16 @@ c
 c rstar(-1) and rstar(nzlocal+1) are set based on the axial boundary conditions.
 
       integer(ISZ):: parity,s_parity,e_parity
+      integer(ISZ):: ix,iy,iz
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Put desired potential onto conductors in phi array.
-      call cond_potmg(conductors%interior,
-     &                nx,ny,nzlocal,1,1,1,phi,mglevel,mgform,.false.)
+      if (.not. lprecalccoeffs) then
+        call cond_potmg(conductors%interior,
+     &                  nx,ny,nzlocal,1,1,1,phi,mglevel,mgform,.false.)
+      endif
+c     --- Not sure about these when using lprecalccoeffs
       call condbndymgint(conductors%evensubgrid,nx,ny,nzlocal,1,1,1,phi,
      &                   localbounds,mglevel,icndbndy)
       call condbndymgint(conductors%oddsubgrid ,nx,ny,nzlocal,1,1,1,phi,
@@ -1108,7 +1136,7 @@ c     --- do loop to cover even and odd points
         call sorhalfpass3d(parity,mglevel,nx,ny,nzlocal,nz,phi,rho,rstar,
      &                     dxsqi,dysqi,dzsqi,linbend,bendx,
      &                     localbounds,mgparam,mgform,
-     &                     lcndbndy,icndbndy,conductors)
+     &                     lcndbndy,icndbndy,conductors,lprecalccoeffs)
 
         call applyboundaryconditions3d(nx,ny,nzlocal,nz,1,1,1,phi,localbounds,
      &                                 .false.)
@@ -1142,7 +1170,8 @@ c     --- Exchange phi in the z guard planes
 c=============================================================================
       subroutine sorhalfpass3d(parity,mglevel,nx,ny,nzlocal,nz,phi,rho,rstar,
      &                     dxsqi,dysqi,dzsqi,linbend,bendx,localbounds,
-     &                     mgparam,mgform,lcndbndy,icndbndy,conductors)
+     &                     mgparam,mgform,
+     &                     lcndbndy,icndbndy,conductors,lprecalccoeffs)
       use Subtimersf3d
       use Constant
       use ConductorTypemodule
@@ -1156,7 +1185,7 @@ c=============================================================================
       integer(ISZ):: localbounds(0:5)
       real(kind=8):: mgparam
       integer(ISZ):: mgform
-      logical(ISZ):: lcndbndy
+      logical(ISZ):: lcndbndy,lprecalccoeffs
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
 
@@ -1179,7 +1208,7 @@ c rstar(-1) and rstar(nzlocal+1) are set based on the axial boundary conditions.
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       real(kind=8):: rdel,const,dxsqic,dysqic,dzsqic,spm1,dx
       integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz
-      integer(ISZ):: ii,ix,iy,iz,ic,i1,i2
+      integer(ISZ):: ii,ix,iy,iz,ix1,ic,i1,i2
       integer(ISZ):: nphi,nrho,nrstar
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
@@ -1214,7 +1243,7 @@ c     --- Set the loop limits, including edges when appropriate.
 c     --- Save values just outside conductor surfaces. Only save phi at the
 c     --- subgrid points which are to be used at the current level of
 c     --- grid refinement.
-      if (lcndbndy) then
+      if (lcndbndy .and. .not. lprecalccoeffs) then
         if (parity == 0) then
           i1 = conductors%evensubgrid%istart(mglevel)
           i2 = conductors%evensubgrid%istart(mglevel+1)-1
@@ -1238,39 +1267,72 @@ c     --- grid refinement.
 
 c     --- guard planes in z are already set
 
-c     --- Loop over the array. Boundary points are calculated too.
-c     --- The case with and without bends are seperated since
-c     --- the bends case has extra terms.
-      if (.not. linbend) then 
-c       --- no bends 
-        call mgsor_loop(ixmin,ixmax,iymin,iymax,izmin,izmax,parity,
-     &                  phi,rho,nx,ny,nz,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
-      else 
-c       --- bends
-        call mgsor_loop(ixmin,ixmax,iymin,iymax,izmin,izmax,parity,
-     &                  phi,rho,nx,ny,nz,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
-      endif 
+      if (lprecalccoeffs) then
 
-c     --- Apply altered difference equation to the points near the
-c     --- surface of the conductor boundaries.
-      if (lcndbndy) then
-        if (parity == 0) then
-         call condbndymg(conductors%evensubgrid,nx,ny,nzlocal,1,1,1,phi,rho,
-     &                   dxsqic,dysqic,dzsqic,spm1,mgparam,localbounds,
-     &                   mglevel,mgform,icndbndy)
+!$OMP DO
+        do iz=izmin,izmax
+          do iy=iymin,iymax
+            ix1 = ixmin + mod(ixmin + iy + iz + parity,2)
+            do ix=ix1,ixmax,2
+              if (conductors%coeffs%data(7,ix,iy,iz) == 0.) then
+                phi(ix,iy,iz) = conductors%coeffs%data(6,ix,iy,iz)
+              else
+                phi(ix,iy,iz) = (rho(ix,iy,iz)
+     &            + phi(ix-1,iy  ,iz  )*conductors%coeffs%data(0,ix,iy,iz)
+     &            + phi(ix+1,iy  ,iz  )*conductors%coeffs%data(1,ix,iy,iz)
+     &            + phi(ix  ,iy-1,iz  )*conductors%coeffs%data(2,ix,iy,iz)
+     &            + phi(ix  ,iy+1,iz  )*conductors%coeffs%data(3,ix,iy,iz)
+     &            + phi(ix  ,iy  ,iz-1)*conductors%coeffs%data(4,ix,iy,iz)
+     &            + phi(ix  ,iy  ,iz+1)*conductors%coeffs%data(5,ix,iy,iz)
+     &            + conductors%coeffs%data(6,ix,iy,iz))
+     &            *conductors%coeffs%data(7,ix,iy,iz)
+     &            + spm1*phi(ix,iy,iz)
+
+              endif
+            enddo
+          enddo
+        enddo
+!$OMP END DO
+
+      else
+
+c       --- Loop over the array. Boundary points are calculated too.
+c       --- The case with and without bends are seperated since
+c       --- the bends case has extra terms.
+        if (.not. linbend) then 
+c         --- no bends 
+          call mgsor_loop(ixmin,ixmax,iymin,iymax,izmin,izmax,parity,
+     &                    phi,rho,nx,ny,nz,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                    rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+        else 
+c         --- bends
+          call mgsor_loop(ixmin,ixmax,iymin,iymax,izmin,izmax,parity,
+     &                    phi,rho,nx,ny,nz,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                    rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+        endif 
+
+c       --- Apply altered difference equation to the points near the
+c       --- surface of the conductor boundaries.
+        if (lcndbndy) then
+          if (parity == 0) then
+           call condbndymg(conductors%evensubgrid,nx,ny,nzlocal,1,1,1,phi,rho,
+     &                     dxsqic,dysqic,dzsqic,spm1,mgparam,localbounds,
+     &                     mglevel,mgform,icndbndy)
+          endif
+          if (parity == 1) then
+           call condbndymg(conductors%oddsubgrid,nx,ny,nzlocal,1,1,1,phi,rho,
+     &                     dxsqic,dysqic,dzsqic,spm1,mgparam,localbounds,
+     &                     mglevel,mgform,icndbndy)
+          endif
         endif
-        if (parity == 1) then
-         call condbndymg(conductors%oddsubgrid,nx,ny,nzlocal,1,1,1,phi,rho,
-     &                   dxsqic,dysqic,dzsqic,spm1,mgparam,localbounds,
-     &                   mglevel,mgform,icndbndy)
-        endif
+
+c       --- Put desired potential onto conductors in phi array.
+        call cond_potmg(conductors%interior,
+     &                  nx,ny,nzlocal,1,1,1,phi,mglevel,mgform,.false.)
+
       endif
 
-c     --- Put desired potential onto conductors in phi array.
-      call cond_potmg(conductors%interior,
-     &                nx,ny,nzlocal,1,1,1,phi,mglevel,mgform,.false.)
+c     -- These again...
       call condbndymgint(conductors%evensubgrid,nx,ny,nzlocal,1,1,1,phi,
      &                   localbounds,mglevel,icndbndy)
       call condbndymgint(conductors%oddsubgrid ,nx,ny,nzlocal,1,1,1,phi,
@@ -1917,7 +1979,6 @@ c       --- calculate the new phi based on the boundary conditions
           phi(ix,iy,iz) = (rho(ix,iy,iz) +
      &      (pxm+pxp)*dxsqic + (pym+pyp)*dysqic + (pzm+pzp)*dzsqic)/denom +
      &      spm1*subgrid%prevphi(ic)
-
         endif
 
       enddo
@@ -2271,7 +2332,8 @@ c       --- calculate the residual based on the boundary conditions
 c=============================================================================
       subroutine residual(nx,ny,nzlocal,nz,dxsqi,dysqi,dzsqi,phi,rho,res,
      &                    mglevel,localbounds,mgparam,mgform,mgform2init,
-     &                    lcndbndy,icndbndy,conductors,resdelx,resdely,resdelz)
+     &                    lcndbndy,icndbndy,conductors,lprecalccoeffs,
+     &                    resdelx,resdely,resdelz)
       use Subtimersf3d
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nzlocal,nz
@@ -2284,7 +2346,7 @@ c=============================================================================
       real(kind=8):: mgparam
       integer(ISZ):: mgform
       logical(ISZ):: mgform2init
-      logical(ISZ):: lcndbndy
+      logical(ISZ):: lcndbndy,lprecalccoeffs
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
 
@@ -2327,38 +2389,71 @@ c     --- Set the loop limits, including edges when appropriate.
       if (localbounds(5) == 0) izmax = nzlocal - 1
 
       res = 0.
-c     --- Calculate the residual.
+
+      if (lprecalccoeffs) then
+
+c       --- Calculate the residual.
 !$OMP DO
-      do iz=izmin,izmax
-        do iy=iymin,iymax
-          do ix=ixmin,ixmax
+        do iz=izmin,izmax
+          do iy=iymin,iymax
+            do ix=ixmin,ixmax
 
-            res(ix,iy,iz) = rho(ix,iy,iz)
-     &          +  (phi(ix-1,iy  ,iz  )+phi(ix+1,iy  ,iz  ))*dxsqic
-     &          +  (phi(ix  ,iy-1,iz  )+phi(ix  ,iy+1,iz  ))*dysqic
-     &          +  (phi(ix  ,iy  ,iz-1)+phi(ix  ,iy  ,iz+1))*dzsqic
-     &          -  phi(ix,iy,iz)*mgparam
+              if (conductors%coeffs%data(7,ix,iy,iz) == 0.) then
+                res(ix,iy,iz) = 0.
+              else
+                res(ix,iy,iz) = (rho(ix,iy,iz)
+     &              + phi(ix-1,iy  ,iz  )*conductors%coeffs%data(0,ix,iy,iz)
+     &              + phi(ix+1,iy  ,iz  )*conductors%coeffs%data(1,ix,iy,iz)
+     &              + phi(ix  ,iy-1,iz  )*conductors%coeffs%data(2,ix,iy,iz)
+     &              + phi(ix  ,iy+1,iz  )*conductors%coeffs%data(3,ix,iy,iz)
+     &              + phi(ix  ,iy  ,iz-1)*conductors%coeffs%data(4,ix,iy,iz)
+     &              + phi(ix  ,iy  ,iz+1)*conductors%coeffs%data(5,ix,iy,iz)
+     &              + conductors%coeffs%data(6,ix,iy,iz)
+     &              - phi(ix,iy,iz)*mgparam/conductors%coeffs%data(7,ix,iy,iz))
+     &              *conductors%coeffs%data(8,ix,iy,iz)
 
+              endif
+            enddo
           enddo
         enddo
-      enddo
 !$OMP END DO
 
-c     --- Zero the residual inside conductors.
-      call cond_potmgres(conductors%interior,
-     &                   nx,ny,nzlocal,res,mglevel,mgform,.false.,
-     &                   resdelx,resdely,resdelz)
+      else
 
-      if (lcndbndy) then
-c       --- Calculate the residual near the conductor.
-        call condbndyres(conductors%evensubgrid,nx,ny,nzlocal,1,1,1,
-     &                   resdelx,resdely,resdelz,
-     &                   phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,localbounds,
-     &                   mglevel,mgform,mgform2init,icndbndy)
-        call condbndyres(conductors%oddsubgrid,nx,ny,nzlocal,1,1,1,
-     &                   resdelx,resdely,resdelz,
-     &                   phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,localbounds,
-     &                   mglevel,mgform,mgform2init,icndbndy)
+c       --- Calculate the residual.
+!$OMP DO
+        do iz=izmin,izmax
+          do iy=iymin,iymax
+            do ix=ixmin,ixmax
+
+              res(ix,iy,iz) = rho(ix,iy,iz)
+     &            +  (phi(ix-1,iy  ,iz  )+phi(ix+1,iy  ,iz  ))*dxsqic
+     &            +  (phi(ix  ,iy-1,iz  )+phi(ix  ,iy+1,iz  ))*dysqic
+     &            +  (phi(ix  ,iy  ,iz-1)+phi(ix  ,iy  ,iz+1))*dzsqic
+     &            -  phi(ix,iy,iz)*mgparam
+
+            enddo
+          enddo
+        enddo
+!$OMP END DO
+
+c       --- Zero the residual inside conductors.
+        call cond_potmgres(conductors%interior,
+     &                     nx,ny,nzlocal,res,mglevel,mgform,.false.,
+     &                     resdelx,resdely,resdelz)
+
+        if (lcndbndy) then
+c         --- Calculate the residual near the conductor.
+          call condbndyres(conductors%evensubgrid,nx,ny,nzlocal,1,1,1,
+     &                     resdelx,resdely,resdelz,
+     &                     phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,localbounds,
+     &                     mglevel,mgform,mgform2init,icndbndy)
+          call condbndyres(conductors%oddsubgrid,nx,ny,nzlocal,1,1,1,
+     &                     resdelx,resdely,resdelz,
+     &                     phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,localbounds,
+     &                     mglevel,mgform,mgform2init,icndbndy)
+        endif
+
       endif
 
       call applyboundaryconditions3d(nx,ny,nzlocal,nz,resdelx,resdely,resdelz,
@@ -3273,6 +3368,256 @@ c       --- than the other point. If so, reset data for the other point.
       enddo
 
       deallocate(iii)
+      return
+      end
+c=============================================================================
+c=============================================================================
+c=============================================================================
+      subroutine precalculatecoefficients3d(nx,ny,nzlocal,dx,dy,dz,conductors,
+     &                                      mgparam,localbounds)
+      use ConductorTypemodule
+      use MGCoefficientsmodule
+      integer(ISZ):: nx,ny,nzlocal
+      real(kind=8):: dx,dy,dz
+      type(ConductorType):: conductors
+      real(kind=8):: mgparam
+      integer(ISZ):: localbounds(0:5)
+
+c Precalculate the finite difference coefficients. This includes the
+c modified coefficients use with the subgrid scheme.
+
+      integer(ISZ):: il,ic,ix,iy,iz
+      real(kind=8):: dx1,dy1,dz1
+      real(kind=8):: dxsqi,dysqi,dzsqi,const,dxsqic,dysqic,dzsqic
+      real(kind=8):: dxsqicos,dysqicos,dzsqicos
+      real(kind=8):: voltfac,denom,ppp,pxm,pxp,pym,pyp,pzm,pzp
+      integer(ISZ):: nx1,ny1,nzlocal1,nmax
+      type(MGCoefficients),pointer:: coeffs,finercoeffs
+      real(kind=8),pointer:: dels(:,:),volt(:,:)
+
+      do il=0,conductors%levels-1
+
+c       --- Get the grid info for the coarse levels
+        dx1 = dx*conductors%levellx(il)
+        dy1 = dy*conductors%levelly(il)
+        dz1 = dz*conductors%levellz(il)
+        nx1 = nint(nx/conductors%levellx(il))
+        ny1 = nint(ny/conductors%levelly(il))
+        nzlocal1 = conductors%levelnz(il)
+
+c       --- Create the new instance which will hold the data. Setup the
+c       --- appropriate pointers to the instance.
+        coeffs => NewMGCoefficients()
+        if (il == 0) then
+          conductors%coeffs => coeffs
+          NULLIFY(coeffs%finer)
+        else
+          finercoeffs%coarser => coeffs
+          coeffs%finer => finercoeffs
+        endif
+        finercoeffs => coeffs
+
+c       --- Allocate the data array.
+        coeffs%nx = nx1
+        coeffs%ny = ny1
+        coeffs%nz = nzlocal1
+        call MGCoefficientschange(coeffs)
+
+c       --- Calculate the finite difference coefficients
+        dxsqi = 1./dx1**2
+        dysqi = 1./dy1**2
+        dzsqi = 1./dz1**2
+        const = mgparam*0.5/(dxsqi + dysqi + dzsqi)
+        dxsqic = dxsqi*const
+        dysqic = dysqi*const
+        dzsqic = dzsqi*const
+        dxsqicos = dxsqic/mgparam
+        dysqicos = dysqic/mgparam
+        dzsqicos = dzsqic/mgparam
+        coeffs%data(0:1,:,:,:) = dxsqic
+        coeffs%data(2:3,:,:,:) = dysqic
+        coeffs%data(4:5,:,:,:) = dzsqic
+        coeffs%data(6,:,:,:) = 0. ! RHS
+        coeffs%data(7,:,:,:) = 1. ! 1./denom
+        coeffs%data(8,:,:,:) = 1. ! ppp
+
+c       --- Only use actual voltage on finest level. Set to zero for
+c       --- coarser levels since solver for the residuals.
+        if (il == 0) then
+          voltfac = 1.
+        else
+          voltfac = 0.
+        endif
+
+c       --- For points interior to conductors, the coefficents are all zero
+c       --- and the right hand side is the desired voltage or zero.
+        do ic = conductors%interior%istart(il),
+     &          conductors%interior%istart(il+1)-1
+          ix = conductors%interior%indx(0,ic)
+          iy = conductors%interior%indx(1,ic)
+          iz = conductors%interior%indx(2,ic)
+          coeffs%data(:,ix,iy,iz) = 0.
+          if (il == 0) then
+            coeffs%data(6,ix,iy,iz) = conductors%interior%volt(ic)
+          endif
+        enddo
+
+        dels => conductors%evensubgrid%dels
+        volt => conductors%evensubgrid%volt
+        nmax = conductors%evensubgrid%nmax
+        do ic = conductors%evensubgrid%istart(il),
+     &          conductors%evensubgrid%istart(il+1)-1
+
+          ix = conductors%evensubgrid%indx(0,ic)
+          iy = conductors%evensubgrid%indx(1,ic)
+          iz = conductors%evensubgrid%indx(2,ic)
+
+          if (ix == 0  .and. localbounds(0) < 1) cycle
+          if (ix == nx .and. localbounds(1) < 1) cycle
+          if (iy == 0  .and. localbounds(2) < 1) cycle
+          if (iy == ny .and. localbounds(3) < 1) cycle
+          if (iz == 0  .and. localbounds(4) < 1) cycle
+          if (iz == nzlocal .and. localbounds(5) < 1) cycle
+
+          pxm = 0.
+          pxp = 0.
+          pym = 0.
+          pyp = 0.
+          pzm = 0.
+          pzp = 0.
+          denom = 1.
+          ppp = 1.
+
+          call handlesubgrid2(0,1,
+     &                        coeffs%data(0,ix,iy,iz),coeffs%data(1,ix,iy,iz),
+     &                        dxsqicos,ic,nmax,
+     &                        dels,volt,voltfac,denom,ppp)
+          call handlesubgrid2(2,3,
+     &                        coeffs%data(2,ix,iy,iz),coeffs%data(3,ix,iy,iz),
+     &                        dysqicos,ic,nmax,
+     &                        dels,volt,voltfac,denom,ppp)
+          call handlesubgrid2(4,5,
+     &                        coeffs%data(4,ix,iy,iz),coeffs%data(5,ix,iy,iz),
+     &                        dzsqicos,ic,nmax,
+     &                        dels,volt,voltfac,denom,ppp)
+
+          if (ppp < 1.) then
+            coeffs%data(7,ix,iy,iz) = 1./denom
+            coeffs%data(8,ix,iy,iz) = ppp
+            if (-1. < dels(0,ic) .and. dels(0,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(0,ix,iy,iz)*dxsqic
+              coeffs%data(0,ix,iy,iz) = 0.
+            endif
+            if (-1. < dels(1,ic) .and. dels(1,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(1,ix,iy,iz)*dxsqic
+              coeffs%data(1,ix,iy,iz) = 0.
+            endif
+            if (-1. < dels(2,ic) .and. dels(2,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(2,ix,iy,iz)*dysqic
+              coeffs%data(2,ix,iy,iz) = 0.
+            endif
+            if (-1. < dels(3,ic) .and. dels(3,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(3,ix,iy,iz)*dysqic
+              coeffs%data(3,ix,iy,iz) = 0.
+            endif
+            if (-1. < dels(4,ic) .and. dels(4,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(4,ix,iy,iz)*dzsqic
+              coeffs%data(4,ix,iy,iz) = 0.
+            endif
+            if (-1. < dels(5,ic) .and. dels(5,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(5,ix,iy,iz)*dzsqic
+              coeffs%data(5,ix,iy,iz) = 0.
+            endif
+
+          endif
+
+        enddo
+
+        dels => conductors%oddsubgrid%dels
+        volt => conductors%oddsubgrid%volt
+        nmax = conductors%oddsubgrid%nmax
+        do ic = conductors%oddsubgrid%istart(il),
+     &          conductors%oddsubgrid%istart(il+1)-1
+
+          ix = conductors%oddsubgrid%indx(0,ic)
+          iy = conductors%oddsubgrid%indx(1,ic)
+          iz = conductors%oddsubgrid%indx(2,ic)
+
+          if (ix == 0  .and. localbounds(0) < 1) cycle
+          if (ix == nx .and. localbounds(1) < 1) cycle
+          if (iy == 0  .and. localbounds(2) < 1) cycle
+          if (iy == ny .and. localbounds(3) < 1) cycle
+          if (iz == 0  .and. localbounds(4) < 1) cycle
+          if (iz == nzlocal .and. localbounds(5) < 1) cycle
+
+          pxm = 0.
+          pxp = 0.
+          pym = 0.
+          pyp = 0.
+          pzm = 0.
+          pzp = 0.
+          denom = 1.
+          ppp = 1.
+
+          call handlesubgrid2(0,1,
+     &                        coeffs%data(0,ix,iy,iz),coeffs%data(1,ix,iy,iz),
+     &                        dxsqicos,ic,nmax,
+     &                        dels,volt,voltfac,denom,ppp)
+          call handlesubgrid2(2,3,
+     &                        coeffs%data(2,ix,iy,iz),coeffs%data(3,ix,iy,iz),
+     &                        dysqicos,ic,nmax,
+     &                        dels,volt,voltfac,denom,ppp)
+          call handlesubgrid2(4,5,
+     &                        coeffs%data(4,ix,iy,iz),coeffs%data(5,ix,iy,iz),
+     &                        dzsqicos,ic,nmax,
+     &                        dels,volt,voltfac,denom,ppp)
+
+          if (ppp < 1.) then
+            coeffs%data(7,ix,iy,iz) = 1./denom
+            coeffs%data(8,ix,iy,iz) = ppp
+            if (-1. < dels(0,ic) .and. dels(0,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(0,ix,iy,iz)*dxsqic
+              coeffs%data(0,ix,iy,iz) = 0.
+            endif
+            if (-1. < dels(1,ic) .and. dels(1,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(1,ix,iy,iz)*dxsqic
+              coeffs%data(1,ix,iy,iz) = 0.
+            endif
+            if (-1. < dels(2,ic) .and. dels(2,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(2,ix,iy,iz)*dysqic
+              coeffs%data(2,ix,iy,iz) = 0.
+            endif
+            if (-1. < dels(3,ic) .and. dels(3,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(3,ix,iy,iz)*dysqic
+              coeffs%data(3,ix,iy,iz) = 0.
+            endif
+            if (-1. < dels(4,ic) .and. dels(4,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(4,ix,iy,iz)*dzsqic
+              coeffs%data(4,ix,iy,iz) = 0.
+            endif
+            if (-1. < dels(5,ic) .and. dels(5,ic) < 1.) then
+              coeffs%data(6,ix,iy,iz) = coeffs%data(6,ix,iy,iz) +
+     &                                  coeffs%data(5,ix,iy,iz)*dzsqic
+              coeffs%data(5,ix,iy,iz) = 0.
+            endif
+
+          endif
+
+        enddo
+
+      enddo
+
       return
       end
 c=============================================================================

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.192 $, $Date: 2008/08/26 19:59:19 $
+#@(#) File F3D.V, version $Revision: 3.193 $, $Date: 2008/10/15 17:59:14 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.192 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.193 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -144,6 +144,14 @@ efieldd(0:5,nmax) _real        # E-field along each of the six axis directions
 ilevel(nmax)     _integer /-1/ # Coarseness level at which the point is on grid
 istart(0:100)    integer  /1/  # Start of the conductor data for each MG level
 
+%%%%%%%%%% MGCoefficients:
+nx integer /0/
+ny integer /0/
+nz integer /0/
+data(0:8,0:nx,0:ny,0:nz) _real
+coarser _MGCoefficients
+finer   _MGCoefficients
+
 %%%%%%%%%% ConductorType:
 interior ConductorInteriorType   # Interior of the conductors
 evensubgrid ConductorSubGridType # Even subgrid data for conductors
@@ -161,6 +169,8 @@ lcorrectede logical /.false./ # When true, the E field near conductors is
                               # difference.
 icgrid(:,:,:)   _integer # Used to determine which conductor point is at
                          # each grid point when lcorrectede is on.
+coeffs         _MGCoefficients # Precalculated coefficients, used when
+                               # lprecalccoeffs is true.
 
 *********** Conductor3d dump parallel:
 conductors ConductorType # Default data structure for conductor data
@@ -174,6 +184,9 @@ lcorrectede logical /.false./ # When true, the E field near conductors is
 laddconductor logical /.false./ # When true, the python function
                           # calladdconductor is called at the beginning of the 
                           # field solve.
+lprecalccoeffs logical /.false./ # When true, the finite difference coefficients
+                                 # are precalculated and saved on a mesh. This
+                                 # is faster but uses more memory.
 checkconductors(nx:integer,ny:integer,nzlocal:integer,nz:integer,
                 dx:real,dy:real,dz:real,conductors:ConductorType,
                 my_index:integer,nslaves:integer,
@@ -250,6 +263,7 @@ multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer
                  downpasses:integer,uppasses:integer,
                  lcndbndy:logical,laddconductor:logical,icndbndy:integer,
                  lbuildquads:logical,gridmode:integer,conductors:ConductorType,
+                 lprecalccoeffs:logical,
                  my_index:integer,nslaves:integer,
                  izfsslave:integer,nzfsslave:integer)
    subroutine
@@ -305,6 +319,7 @@ residual(nx:integer,ny:integer,nzlocal:integer,nz:integer,
          mglevel:integer,bounds:integer,
          mgparam:real,mgform:integer,mgform2init:logical,
          lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
+         lprecalccoeffs:logical,
          resdelx:integer,resdely:integer,resdelz:integer)
    subroutine
    # Calculates the residual for 3d arrays
@@ -345,7 +360,8 @@ sorhalfpass3d(parity:integer,mglevel:integer,
               rstar(-1:nzlocal+1):real,dxsqi:real,dysqi:real,dzsqi:real,
               linbend:logical,bendx((nx+1)*(ny+1)):real,bounds(0:5):integer,
               mgparam:real,mgform:integer,
-              lcndbndy:logical,icndbndy:integer,conductors:ConductorType)
+              lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
+              lprecalccoeffs:logical)
    subroutine
    # Performs one pass of SOR relaxation, either even or odd.
 cond_potmg(interior:ConductorInteriorType,nx:integer,ny:integer,nzlocal:integer,
