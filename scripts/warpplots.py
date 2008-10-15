@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.222 2008/09/22 17:57:52 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.223 2008/10/15 18:02:44 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -752,8 +752,10 @@ Simple interface to contour plotting, same arguments as plc
   if type(contours) == ListType: contours = array(contours)
   if type(contours) == TupleType: contours = array(contours)
   if type(contours) == type(1):
-    if cmin is None: cmin = minnd(zz)
-    if cmax is None: cmax = maxnd(zz)
+    # --- cmin and cmax are multiplied by 1. to force them to be standard
+    # --- python floats, instead of zero length numpy arrays.
+    if cmin is None: cmin = minnd(zz)*1.
+    if cmax is None: cmax = maxnd(zz)*1.
     contours = 1.*iota(0,contours)*(cmax-cmin)/contours + cmin
   if filled:
     # --- ireg must be of type integer because some legacy code used
@@ -1357,11 +1359,13 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   # --- Get grid min and max and generate contour levels if needed.
   if grid is not None:
-    if cmin is None: cmin = minnd(grid)
-    if cmax is None: cmax = maxnd(grid)
+    # --- cmin and cmax are multiplied by 1. to force them to be standard
+    # --- python floats, instead of zero length numpy arrays.
+    if cmin is None: cmin = minnd(grid)*1.
+    if cmax is None: cmax = maxnd(grid)*1.
   elif zz is not None:
-    if cmin is None and len(zz) > 0: cmin = min(zz)
-    if cmax is None and len(zz) > 0: cmax = max(zz)
+    if cmin is None and len(zz) > 0: cmin = min(zz)*1.
+    if cmax is None and len(zz) > 0: cmax = max(zz)*1.
   ppgeneric.cmin = cmin
   ppgeneric.cmax = cmax
 
