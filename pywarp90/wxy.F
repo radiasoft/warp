@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.92 $, $Date: 2008/07/23 22:39:48 $
+c@(#) File WXY.M, version $Revision: 3.93 $, $Date: 2008/10/16 17:12:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1109,7 +1109,7 @@ c  Zero the bend radius and residence fraction
       bendradi = 0.
       bendres = 0.
 
-      if(solvergeom==XYgeom) ez = 0.
+      if(solvergeom==XYgeom .and. pgroup%npmax > 0) ez = 0.
 
 c  Loop over species
       do is=1,pgroup%ns
