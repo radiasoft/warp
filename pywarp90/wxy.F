@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.93 $, $Date: 2008/10/16 17:12:34 $
+c@(#) File WXY.M, version $Revision: 3.94 $, $Date: 2008/10/16 20:05:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1437,6 +1437,10 @@ c     --- End loop over species
 !$OMP END PARALLEL
 
       if (center == "halfv") then
+
+c       --- Allow user defined injection of particles.
+        call callpythonfunc("userinjection","controllers")
+
         do is=1,ns
 
 c         --- Apply particle boundary conditions
