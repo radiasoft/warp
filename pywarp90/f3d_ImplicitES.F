@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) Filef3d_ImplicitES.F, version $Revision: 1.6 $, $Date: 2008/04/18 20:45:19 $
+c@(#) Filef3d_ImplicitES.F, version $Revision: 1.7 $, $Date: 2008/10/22 01:03:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid implicit electrostatic field solver.
@@ -1254,7 +1254,7 @@ c       --- Continue at the next coarsest level.
 c       --- Add in resulting error.
         call expand3d(nx,ny,nzlocal,nz,1,1,1,phi,
      &                nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,phicoarse,
-     &                localbounds,lzoffset)
+     &                localbounds,lzoffset,conductors,.false.)
         call applyboundaryconditionses3d(nx,ny,nzlocal,nz,1,1,1,phi,1,
      &                                   localbounds,.false.)
 #ifdef MPIPARALLEL
