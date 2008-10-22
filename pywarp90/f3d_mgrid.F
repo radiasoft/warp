@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.178 $, $Date: 2008/10/22 01:02:00 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.179 $, $Date: 2008/10/22 17:10:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -770,7 +770,10 @@ c       --- Alloate new work space
           return
         endif
 
-c       rhocoarse = 0. ! not needed since all elements set in restrict3d
+        if (lprintmgarraysumdiagnostic) then
+          rhocoarse = 0. ! needed since not all elements set in restrict3d
+        endif
+c       rhocoarse = 0. ! not needed since all needed elements set in restrict3d
         phicoarse = 0.
 
 c       --- Restriction - note that scaling factor for residual is always
@@ -3510,12 +3513,12 @@ c       --- and the right hand side is the desired voltage or zero.
           iy = conductors%evensubgrid%indx(1,ic)
           iz = conductors%evensubgrid%indx(2,ic)
 
-          if (ix == 0  .and. localbounds(0) < 1) cycle
-          if (ix == nx .and. localbounds(1) < 1) cycle
-          if (iy == 0  .and. localbounds(2) < 1) cycle
-          if (iy == ny .and. localbounds(3) < 1) cycle
-          if (iz == 0  .and. localbounds(4) < 1) cycle
-          if (iz == nzlocal .and. localbounds(5) < 1) cycle
+          if (ix == 0  .and. localbounds(0) == 0) cycle
+          if (ix == nx .and. localbounds(1) == 0) cycle
+          if (iy == 0  .and. localbounds(2) == 0) cycle
+          if (iy == ny .and. localbounds(3) == 0) cycle
+          if (iz == 0  .and. localbounds(4) == 0) cycle
+          if (iz == nzlocal .and. localbounds(5) == 0) cycle
 
           pxm = 0.
           pxp = 0.
@@ -3587,12 +3590,12 @@ c       --- and the right hand side is the desired voltage or zero.
           iy = conductors%oddsubgrid%indx(1,ic)
           iz = conductors%oddsubgrid%indx(2,ic)
 
-          if (ix == 0  .and. localbounds(0) < 1) cycle
-          if (ix == nx .and. localbounds(1) < 1) cycle
-          if (iy == 0  .and. localbounds(2) < 1) cycle
-          if (iy == ny .and. localbounds(3) < 1) cycle
-          if (iz == 0  .and. localbounds(4) < 1) cycle
-          if (iz == nzlocal .and. localbounds(5) < 1) cycle
+          if (ix == 0  .and. localbounds(0) == 0) cycle
+          if (ix == nx .and. localbounds(1) == 0) cycle
+          if (iy == 0  .and. localbounds(2) == 0) cycle
+          if (iy == ny .and. localbounds(3) == 0) cycle
+          if (iz == 0  .and. localbounds(4) == 0) cycle
+          if (iz == nzlocal .and. localbounds(5) == 0) cycle
 
           pxm = 0.
           pxp = 0.
