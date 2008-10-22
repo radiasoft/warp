@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.177 $, $Date: 2008/10/15 17:59:14 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.178 $, $Date: 2008/10/22 01:02:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -817,7 +817,7 @@ c       --- Continue at the next coarsest level.
 c       --- Add in resulting error.
         call expand3d(nx,ny,nzlocal,nz,1,1,1,phi,
      &                nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,phicoarse,
-     &                localbounds,lzoffset)
+     &                localbounds,lzoffset,conductors,lprecalccoeffs)
         call applyboundaryconditions3d(nx,ny,nzlocal,nz,1,1,1,phi,localbounds,
      &                                 .false.)
 #ifdef MPIPARALLEL
@@ -987,7 +987,8 @@ c     if (boundscoarse(5) == 0) rhocoarse(:,:,nzlocalcoarse) = 0.
 c=============================================================================
       subroutine expand3d(nx,ny,nzlocal,nz,delx,dely,delz,phi,
      &                    nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,phicoarse,
-     &                    bounds,lzoffset)
+     &                    bounds,lzoffset,conductors,lprecalccoeffs)
+      use ConductorTypemodule
       use Subtimersf3d
       integer(ISZ):: nx,ny,nzlocal,nz,delx,dely,delz
       integer(ISZ):: nxcoarse,nycoarse,nzlocalcoarse,nzcoarse
@@ -995,6 +996,8 @@ c=============================================================================
       real(kind=8):: phicoarse(-delx:nxcoarse+delx,-dely:nycoarse+dely,-delz:nzlocalcoarse+delz)
       integer(ISZ):: lzoffset
       integer(ISZ):: bounds(0:5)
+      logical(ISZ):: lprecalccoeffs
+      type(ConductorType):: conductors
 
 c Add the error on the coarser grid to the current value on the finer grid.
 c The expansion is only transverse.
@@ -1025,18 +1028,23 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(4) == 0) izmin = 1
       if (bounds(5) == 0) izmax = nzlocal - 1
 
-!$OMP DO
-      do iz=izmin,izmax
-        jz = int((iz*nzcoarse + lzoffset)/nz)
-        wz =  1.*(iz*nzcoarse + lzoffset)/nz - jz
-        do iy=iymin,iymax
-          jy = int(iy*dy)
-          wy =     iy*dy - jy
-          do ix=ixmin,ixmax
-            jx = int(ix*dx)
-            wx =     ix*dx - jx
+      if (lprecalccoeffs) then
 
-            phi(ix,iy,iz) = phi(ix,iy,iz) +
+!$OMP DO
+        do iz=izmin,izmax
+          jz = int((iz*nzcoarse + lzoffset)/nz)
+          wz =  1.*(iz*nzcoarse + lzoffset)/nz - jz
+          do iy=iymin,iymax
+            jy = int(iy*dy)
+            wy =     iy*dy - jy
+            do ix=ixmin,ixmax
+              jx = int(ix*dx)
+              wx =     ix*dx - jx
+
+c             --- Skip points inside of conductors
+              if (conductors%coeffs%data(7,ix,iy,iz) == 0.) cycle
+
+              phi(ix,iy,iz) = phi(ix,iy,iz) +
      &             (1.-wx)*(1.-wy)*(1.-wz)*phicoarse(jx  ,jy  ,jz  ) +
      &                 wx *(1.-wy)*(1.-wz)*phicoarse(jx+1,jy  ,jz  ) +
      &             (1.-wx)*    wy *(1.-wz)*phicoarse(jx  ,jy+1,jz  ) +
@@ -1045,9 +1053,39 @@ c     --- Set the loop limits, including edges when appropriate.
      &                 wx *(1.-wy)*    wz *phicoarse(jx+1,jy  ,jz+1) +
      &             (1.-wx)*    wy *    wz *phicoarse(jx  ,jy+1,jz+1) +
      &                 wx *    wy *    wz *phicoarse(jx+1,jy+1,jz+1)
+            enddo
           enddo
         enddo
-      enddo
+!$OMP END DO
+
+      else
+
+!$OMP DO
+        do iz=izmin,izmax
+          jz = int((iz*nzcoarse + lzoffset)/nz)
+          wz =  1.*(iz*nzcoarse + lzoffset)/nz - jz
+          do iy=iymin,iymax
+            jy = int(iy*dy)
+            wy =     iy*dy - jy
+            do ix=ixmin,ixmax
+              jx = int(ix*dx)
+              wx =     ix*dx - jx
+
+              phi(ix,iy,iz) = phi(ix,iy,iz) +
+     &             (1.-wx)*(1.-wy)*(1.-wz)*phicoarse(jx  ,jy  ,jz  ) +
+     &                 wx *(1.-wy)*(1.-wz)*phicoarse(jx+1,jy  ,jz  ) +
+     &             (1.-wx)*    wy *(1.-wz)*phicoarse(jx  ,jy+1,jz  ) +
+     &                 wx *    wy *(1.-wz)*phicoarse(jx+1,jy+1,jz  ) +
+     &             (1.-wx)*(1.-wy)*    wz *phicoarse(jx  ,jy  ,jz+1) +
+     &                 wx *(1.-wy)*    wz *phicoarse(jx+1,jy  ,jz+1) +
+     &             (1.-wx)*    wy *    wz *phicoarse(jx  ,jy+1,jz+1) +
+     &                 wx *    wy *    wz *phicoarse(jx+1,jy+1,jz+1)
+            enddo
+          enddo
+        enddo
+!$OMP END DO
+
+      endif
 
       if (lf3dtimesubs) timeexpand3d = timeexpand3d +
      &                                         wtime() - substarttime
