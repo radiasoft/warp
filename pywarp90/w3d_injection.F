@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.111 $, $Date: 2008/09/25 23:11:18 $
+c@(#) File w3d_injection.F, version $Revision: 1.112 $, $Date: 2008/10/27 19:05:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2324,8 +2324,8 @@ c         --- If no particles are to be injected from this species, then skip
 c         --- the code below.
           if (sum(ftinject(:,is)) == 0.) cycle
           jsid = pgroup%sid(is-1)
-          if (pgroup%sq(js+1) == 0.) pgroup%sq(js+1) = zion_s(jsid+1)*echarge
-          if (pgroup%sm(js+1) == 0.) pgroup%sm(js+1) = aion_s(jsid+1)*amu
+          if (pgroup%sq(is) == 0.) pgroup%sq(is) = zion_s(jsid+1)*echarge
+          if (pgroup%sm(is) == 0.) pgroup%sm(is) = aion_s(jsid+1)*amu
           if (pgroup%sw(is) == 0. .and. ntinject(jsid+1) > 0) then
             pgroup%sw(is) = (ibeam_s(jsid+1)*dt*pgroup%ndts(is-1)/
      &                       pgroup%sq(is))/ntinject(jsid+1)
