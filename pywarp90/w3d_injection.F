@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.112 $, $Date: 2008/10/27 19:05:43 $
+c@(#) File w3d_injection.F, version $Revision: 1.113 $, $Date: 2008/10/28 19:49:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1542,12 +1542,12 @@ c             --- only if there is a positive number of injected particles.
 c               --- Skip sections that are out of the grid
                 if (zm+dztinj(ij) < inj_zmmin .or. zm >= inj_zmmax) cycle
 
-                ainj = atinject(iz,ij)
-                binj = btinject(iz,ij)
-                ainjp1 = atinject(iz+1,ij)
-                binjp1 = btinject(iz+1,ij)
-                ainji = 1./atinject(iz,ij)
-                binji = 1./btinject(iz,ij)
+                ainj = atinjectz(iz,ij)
+                binj = btinjectz(iz,ij)
+                ainjp1 = atinjectz(iz+1,ij)
+                binjp1 = btinjectz(iz+1,ij)
+                ainji = 1./atinjectz(iz,ij)
+                binji = 1./btinjectz(iz,ij)
                 if (ltinj_outward(ij)) then
                   rsign = +1.
                 else
@@ -1604,7 +1604,7 @@ c                 --- normal velocity
 
 c                 --- Axial velocity
 c                 --- Calculated using axial E field on virtual surface.
-c                 --- This does not take into account any variation in a and btinject
+c                 --- This does not take into account any variation in a and b
                   vznorm = fulldt_s*qoverm*
      &                     (tinj_phi(ith,iz,ij)-tinj_phi(ith,iz+1,ij))/dztinj(ij)
 
@@ -2287,18 +2287,20 @@ c Set the z cell size and number for transverse injection. The user can set nzti
       enddo
       call gchange("InjectVars",0)
 
-c Set the default values of atinject and btinject and calculate the number of theta
-c points if not already set.
+c Set the default values of atinject and btinject and calculate the number
+c of theta points if not already set.
       do ij=1,ntinj
+        if (atinject(ij) == -1.) atinject(ij) = a0
+        if (btinject(ij) == -1.) btinject(ij) = b0
         circummax = 0.
         do iz=0,nztmax
-          if (atinject(iz,ij) == -1.) atinject(iz,ij) = a0
-          if (btinject(iz,ij) == -1.) btinject(iz,ij) = b0
+          if (atinjectz(iz,ij) == -1.) atinjectz(iz,ij) = atinject(ij)
+          if (btinjectz(iz,ij) == -1.) btinjectz(iz,ij) = btinject(ij)
           if (thetamintinj(iz,ij) == -1. .and. thetamaxtinj(iz,ij) == -1.) then
             thetamintinj(iz,ij) = 0.
             thetamaxtinj(iz,ij) = 2.*pi
           endif
-          circum = ellipseperimeter(atinject(:,ij),btinject(:,ij))*
+          circum = ellipseperimeter(atinjectz(:,ij),btinjectz(:,ij))*
      &             (thetamaxtinj(iz,ij) - thetamintinj(iz,ij))/(2.*pi)
           circummax = max(circummax,circum)
         enddo
@@ -4770,9 +4772,9 @@ c     --- data and i2 is the location of the last data point.
             else
               rsign = -1.
             endif
-            aoverb = atinject(iz,ij)/btinject(iz,ij)
-            xx(i2) = xtinject(ij) + (atinject(iz,ij) + rsign*inj_dx)*cos(aa)
-            yy(i2) = ytinject(ij) + (btinject(iz,ij) + rsign*inj_dx*aoverb)*sin(aa)
+            aoverb = atinjectz(iz,ij)/btinjectz(iz,ij)
+            xx(i2) = xtinject(ij) + (atinjectz(iz,ij) + rsign*inj_dx)*cos(aa)
+            yy(i2) = ytinject(ij) + (btinjectz(iz,ij) + rsign*inj_dx*aoverb)*sin(aa)
             zz(i2) = ztinjmn(ij) + iz*dztinj(ij)
 
 c           --- Save coordinates relative to injection grid.
@@ -4886,10 +4888,10 @@ c       --- duty and has other information stored in the fractional part.
         if (iz < 0. .or. iz >= nztinj(ij)) cycle
         wz = zz/dztinj(ij) - iz
         
-        ainj = atinject(iz,ij)
-        binj = btinject(iz,ij)
-        ainjp1 = atinject(iz+1,ij)
-        binjp1 = btinject(iz+1,ij)
+        ainj = atinjectz(iz,ij)
+        binj = btinjectz(iz,ij)
+        ainjp1 = atinjectz(iz+1,ij)
+        binjp1 = btinjectz(iz+1,ij)
         aoverb = ainj/binj
 
         if(.not.l_inj_rz) then

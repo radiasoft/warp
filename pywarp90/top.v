@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.240 $, $Date: 2008/09/25 21:39:47 $
+#@(#) File TOP.V, version $Revision: 3.241 $, $Date: 2008/10/28 19:49:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.240 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.241 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1342,12 +1342,14 @@ ztinjmn(ntinj)    _real # Minimum z extent of transverse injection.
 ztinjmx(ntinj)    _real # Maximum z extent of transverse injection.
 dztinj(ntinj)     _real    # Step size in z of the transverse injection arrays
 nztinj(ntinj) _integer     # Number of longitudinal points for transverse injection
+atinject(ntinj) _real /-1./ # X Radius of transverse emitting surface.
+btinject(ntinj) _real /-1./ # Y Radius of transverse emitting surface.
 nztmax         integer /0/ # Maximum length (in z grid cells) of
                            # transverse injection surfaces
-atinject(0:nztmax,ntinj) _real /-1./
+atinjectz(0:nztmax,ntinj) _real /-1./
                            # X Radius as a function of z of transverse
                            # emitting surface.
-btinject(0:nztmax,ntinj) _real /-1./
+btinjectz(0:nztmax,ntinj) _real /-1./
                            # Y Radius as a function of z of transverse
                            # emitting surface.
 thetamintinj(0:nztmax,ntinj) _real /-1./
