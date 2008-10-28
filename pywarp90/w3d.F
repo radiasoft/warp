@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.408 $, $Date: 2008/09/22 17:37:50 $
+c@(#) File W3D.F, version $Revision: 3.409 $, $Date: 2008/10/28 00:28:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8968,6 +8968,7 @@ c=============================================================================
       use Subtimers3d
       use GlobalVars
       use Z_arrays
+      use InGen3d,Only: solvergeom,RZgeom,Rgeom
       integer(ISZ):: np,pboundxy
       real(kind=8):: xmmax,xmmin,dx,ymmax,ymmin,dy,zmmin,dz,zgrid,zbeam
       real(kind=8):: xp(np), yp(np), zp(np)
@@ -8993,7 +8994,7 @@ c lost particles.
 
       integer(ISZ):: ip,iz,izz
       real(kind=8):: xmin,xmax,ymin,ymax
-      real(kind=8):: xper,yper
+      real(kind=8):: xper,yper,rsq
       logical(ISZ):: lstckxy
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -9083,6 +9084,18 @@ c     --- be used.
         endif
       enddo
 !$OMP END PARALLEL DO
+
+      if (solvergeom == RZgeom .or. solvergeom == Rgeom) then
+!$OMP PARALLEL DO
+        do ip=1,np
+          rsq = xp(ip)**2 + yp(ip)**2
+          if (rsq > xmax**2) then
+            gaminv(ip) = 0.
+            if (.not. lcountaslost) gaminv(ip) = -1.
+          endif
+        enddo
+!$OMP END PARALLEL DO
+      endif
 
 !$OMP MASTER
       if (lw3dtimesubs) timestckxy3d = timestckxy3d + wtime() - substarttime
