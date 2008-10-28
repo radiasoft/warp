@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.223 2008/10/15 18:02:44 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.224 2008/10/28 20:34:59 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -697,7 +697,7 @@ def plp(y,x=None,linetype='none',marker="\1",msize=1.0,**kw):
   """Plots particles, same as plg but with different defaults so it plots
 markers instead of lines"""
   if len(shape(y)) == 0: y = [y]
-  if len(shape(x)) == 0: x = [x]
+  if x is not None and len(shape(x)) == 0: x = [x]
   #if len(y) == 0: return
   kw.setdefault('type',linetype)
   kw['marker'] = marker
