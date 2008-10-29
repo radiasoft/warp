@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.113 $, $Date: 2008/10/28 19:49:06 $
+c@(#) File w3d_injection.F, version $Revision: 1.114 $, $Date: 2008/10/29 18:19:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2493,6 +2493,9 @@ c       --- Provide some simple error checking
      & be greater than its transverse radius")
           return
         endif
+
+c       --- If the injection radii are zero, then skip
+        if (ainject(ij) == 0. .or. binject(ij) == 0.) cycle
 
 c       --- Calculate the extent of the source plus guard cells.
         ainj    = ainject(ij)
