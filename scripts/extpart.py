@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.55 2008/01/08 02:09:46 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.56 2008/10/29 21:14:45 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -208,6 +208,19 @@ routines (such as ppxxp).
       if id is not None: top.wzepwin[id] = self.wz
       uninstallafterfs(self.setupwz)
 
+  def updatenpidepmax(self):
+    # --- First check if npid has changed since top.npidepmax was last set
+    if top.npidepmax != top.npid:
+      top.npidepmax = top.npid
+      gchange('ExtPart')
+    # --- Now make sure that the data arrays are changed appropriately.
+    # --- This is here in case top.npidepmax had been update elsewhere
+    # --- but self.pidep had not.
+    if self.laccumulate and not self.dumptofile:
+      for js in range(top.ns):
+        if self.pidep[js].unitshape()[0] != top.npidepmax:
+          self.pidep[js].reshape((top.npidepmax,))
+
   def enable(self):
     # --- Add this window to the list
     # --- Only add this location to the list if it is not already there.
@@ -344,13 +357,10 @@ routines (such as ppxxp).
 #       err = gchange("ExtPart")
 #     return
     id = self.getid()
+    self.updatenpidepmax()
     # --- Loop over species, collecting only ones where some particles
     # --- were saved.
     for js in range(top.ns):
-      # --- Check if npidepmax has changed. Update pidep appropriately
-      if self.laccumulate and not self.dumptofile:
-        if self.pidep[js].unitshape()[0] != top.npidepmax:
-          self.pidep[js].reshape((top.npidepmax,))
       # --- Gather the data.
       # --- In parallel, the data is gathered in PE0, return empty arrays
       # --- on other processors. In serial, the arrays are just returned as is.
@@ -495,6 +505,7 @@ feature.
   def getvz(self,js=0,tc=None,wt=None,tp=None,z=None):
     return self.selectparticles(self.uzep,js,tc,wt,tp)
   def getpid(self,js=0,tc=None,wt=None,tp=None,z=None,id=0):
+    self.updatenpidepmax()
     if top.npidepmax > 0:
       return self.selectparticles(self.pidep,js,tc,wt,tp)[:,id]
     else:
