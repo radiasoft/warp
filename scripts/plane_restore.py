@@ -25,7 +25,7 @@ The two simulations are linked together.
 __all__ = ['PlaneRestore','plane_restore_version']
 
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.13 2008/09/25 21:36:14 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.14 2008/10/29 18:31:58 dave Exp $"
 
 class PlaneRestore:
   """
@@ -53,6 +53,7 @@ Input:
     self.lrestoreparticles = lrestoreparticles
 
     # --- Install the routines that do the work.
+    installuserinjection(self.restoreparticles)
     installbeforefs(self.restoreplane_bfs)
     installafterfs(self.restoreplane_afs)
 
@@ -154,10 +155,18 @@ Input:
     uninstallbeforefs(self.restoreplane_bfs)
     uninstallafterfs(self.restoreplane_afs)
 
-  ###########################################################################
-  # --- restore the next plane of data
-  def restoreplane_bfs(self):
+  def jumptotime(self,time):
+    top.time = time
 
+    while self.time_restore <= top.time:
+      # --- increment the timelevel of the plane
+      self.it_restore += 1
+      self.time_restore += self.dt
+
+
+  ###########################################################################
+  def restoreparticles(self):
+    "Restore the particles"
     # --- Do the initialization if it hasn't been done yet.
     if self.f is None:
       self.initrestoreplane()
@@ -165,9 +174,6 @@ Input:
     # --- restore only if between grid bounds
     if (self.zplane < w3d.zmmin+top.zbeam or
         self.zplane+top.zbeam >= w3d.zmmax): return
-
-    # --- calculate grid location of new_plane
-    iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
 
     # --- Loop over restored data, restoring the data up to the current
     # --- time level of the simulation. This allows the stored data dt
@@ -180,12 +186,9 @@ Input:
 
       # --- load particles for each species
       for js in self.jslist:
-        self.restoreplaneparticles(js,it)
+        self.restoreparticlespecies(js,it)
 
-      # --- load saved phi into the phi array
-      self.restore_phi(iz,it)
-
-  def restoreplaneparticles(self,js=0,it=0):
+  def restoreparticlespecies(self,js=0,it=0):
     if not self.lrestoreparticles: return
 
     # --- put restored data into particle arrays, adjusting the z location
@@ -214,6 +217,24 @@ Input:
                    lallindomain=false,
                    lmomentum=true,
                    resetrho=false)
+
+  ###########################################################################
+  # --- restore the next plane of data
+  def restoreplane_bfs(self):
+
+    # --- Do the initialization if it hasn't been done yet.
+    if self.f is None:
+      self.initrestoreplane()
+
+    # --- restore only if between grid bounds
+    if (self.zplane < w3d.zmmin+top.zbeam or
+        self.zplane+top.zbeam >= w3d.zmmax): return
+
+    # --- calculate grid location of new_plane
+    iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
+
+    # --- load saved phi into the phi array
+    self.restore_phi(iz,self.it_restore)
 
   def restoreplane_afs(self):
     # --- this routine resets the potential at the plane iz=-1 after the 
