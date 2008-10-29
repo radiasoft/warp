@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.223 $, $Date: 2008/09/22 17:23:33 $
+c@(#) File TOP.F, version $Revision: 3.224 $, $Date: 2008/10/29 18:18:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2094,7 +2094,7 @@ c         --- then wait until then to save the particle.
             zznp1 = pgroup%zp(ip) + vznp1*dt
             vznp1 = vznp1 + 0.5*az*dt
             delznp1 = (zznp1 - zzep)
-            dtstarnp1 = 2.*delznp1/(sqrt(vznp1**2 - 2.*az*delznp1) + vznp1)
+c           dtstarnp1 = 2.*delznp1/(sqrt(vznp1**2 - 2.*az*delznp1) + vznp1)
             if (az == 0.) then
               dtstarnp1 = -delznp1/vznp1
             else
