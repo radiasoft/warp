@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.241 $, $Date: 2008/10/28 19:49:06 $
+#@(#) File TOP.V, version $Revision: 3.242 $, $Date: 2008/10/30 19:16:21 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.241 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.242 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -158,6 +158,8 @@ gfactor       real /0./               [1] # Geometric factor (is set if 0)
 rwall         real /0./               [m] # Effective wall radius
 gammabar      real /0./               [1] # Relativistic gamma factor
 vbeam         real /0./             [m/s] # Beam speed: use 0 if ekin sets it
+gammabar_lab  real /0./               [1] # Relativistic gamma factor
+vbeam_lab     real /0./             [m/s] # Beam speed: use 0 if ekin sets it
 lrelativ      logical /.false./           # Flag for relativity
 
 *********** Constant:
@@ -531,6 +533,22 @@ lmapze(0:nlmap)        _real [m] # Z's of linear map ends
 lmapap(0:nlmap)   _real [m]   # Aperture of map element
 lmapk(0:nlmap) _real []       # quad field strength 
 lmapangle(0:nlmap) _real []   # bend angle
+lmapax(0:nlmap) _real         # alphax
+lmapbx(0:nlmap) _real         # betax
+lmapdx(0:nlmap) _real         # dispx
+lmapdpx(0:nlmap) _real        # disppx
+lmapqx(0:nlmap) _real         # nux
+lmapxcr(0:nlmap) _real        # xchrom
+lmapnux(0:nlmap) _real        # nux
+lmapay(0:nlmap) _real         # alphay
+lmapby(0:nlmap) _real         # betay
+lmapdy(0:nlmap) _real         # dispy
+lmapdpy(0:nlmap) _real        # disppy
+lmapqy(0:nlmap) _real         # nuy
+lmapycr(0:nlmap) _real        # ychrom
+lmapnuy(0:nlmap) _real        # nuy
+lmapeta(0:nlmap) _real        # eta
+lmapnuz(0:nlmap) _real        # nuz
 lmaptype(0:nlmap) _integer    # map element type (0=drift, 1=bend, 2=quad)
 lmapol(0:nlmap)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
@@ -1011,6 +1029,9 @@ vbeamfrm                  real [M/S]
    # Velocity of the beam frame.  Normally the same as vbeam.
 boost_gamma               real /1./
    # gamma of boosted frame
+boost_z0                  real /0./
+   # z in boosted frame of z=0 in lab frame at time t=0
+   # it is assumed that t=0 in both frames at initialization
 allspecl                  logical  /.false./
    # flag for making all time steps "special" ones
 depos                     character*8 /"direct1"/
@@ -2453,7 +2474,10 @@ gammaadv(np,gaminv(np):real,uxp(np):real,uyp(np):real,uzp(np):real,
             subroutine # Advances gamma
 setu_in_boosted_frame3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
                            uxf(np):real,uyf(np):real,uzf(np):real,gammaf(np):real) 
-                           subroutine # applies relativistic vlocity addition due to boost {uxf,uyf,ufz}
+                           subroutine # applies relativistic velocity addition due to boost {uxf,uyf,ufz}
+setu_in_uzboosted_frame3d(np,uxp(np):real,uyp(np):real,uzp(np):real,
+                             gaminv(np):real,uzf:real,gammaf:real)
+                           subroutine # applies relativistic velocity addition due to boost uzf,gammaf
 resetlat()  subroutine # Resizes lattice arrays to their true lengths
 resetlatdrft() subroutine # Resizes drft lattice arrays to their true lengths
 resetlatbend() subroutine # Resizes bend lattice arrays to their true lengths
