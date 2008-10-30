@@ -16,6 +16,8 @@ cross the cell.
   - nr,rmax: radial extent of radial profile diagnostic. If not given,
              the radial diagnostic is not done.
   - ztarget: Z location with the radial profile is calculated.
+  - dumptofile=None: When given, the data will be written to a file with
+                     the given name as a prefix.
 
 The following quantities are calculated:
 count: count of the number of particles that cross the cell each time
@@ -26,7 +28,7 @@ rprms:
   """
 
   def __init__(self,js,zmmin=None,zmmax=None,dz=None,nz=None,nzscale=1,
-               nhist=None,nr=None,rmax=None,ztarget=None):
+               nhist=None,nr=None,rmax=None,ztarget=None,dumptofile=None):
     self.js = js
     self.zmmin = zmmin
     self.zmmax = zmmax
@@ -37,6 +39,7 @@ rprms:
     self.nr = nr
     self.rmax = rmax
     self.ztarget = ztarget
+    self.dumptofile = dumptofile
 
     self.zoldpid = nextpid()
 
@@ -67,6 +70,7 @@ rprms:
     nr = self.nr
     ldoradialdiag = (nr is not None)
     if ldoradialdiag: dr = rmax/nr
+    self.ldoradialdiag = ldoradialdiag
 
     zbeam = top.zbeam
     zoldpid = self.zoldpid
@@ -114,8 +118,10 @@ rprms:
       # --- Scale the current appropriately.
       cu[...] = co*(top.pgroup.sq[js]*top.pgroup.sw[js]/(top.dt*nhist))
 
+      if self.dumptofile: self.dodumptofile()
+
       # --- Create space for the next set of data.
-      if me == 0:
+      if me == 0 and not self.dumptofile:
         self.time.append(top.time)
         self.count.append(zeros(1+nz,'d'))
         self.current.append(zeros(1+nz,'d'))
@@ -124,7 +130,8 @@ rprms:
         if ldoradialdiag:
           self.rprofile.append(zeros(1+nr,'d'))
       else:
-        # --- On other processors, just zero out the existing arrays.
+        # --- On other processors or if the data is being dumped to a file,
+        # --- just zero out the existing arrays.
         # --- There's no reason to keep the history on all processors.
         self.count[0][:] = 0.
         self.current[0][:] = 0.
@@ -181,4 +188,53 @@ rprms:
     i1 = top.pgroup.ins[js] - 1
     i2 = i1 + top.pgroup.nps[js]
     top.pgroup.pid[i1:i2,zoldpid-1] = top.pgroup.zp[i1:i2]
+
+  def dodumptofile(self):
+    if me != 0: return
+    ff = PW.PW(self.dumptofile+'_gridcrossing.pdb','a',verbose=0)
+    suffix = "_%d"%(top.it)
+    ff.write('time'+suffix,top.time)
+    ff.write('count'+suffix,self.count[0])
+    ff.write('current'+suffix,self.current[0])
+    ff.write('rrms'+suffix,self.rrms[0])
+    ff.write('rprms'+suffix,self.rprms[0])
+    if self.ldoradialdiag:
+      ff.write('rprofile'+suffix,self.rprofile[0])
+    ff.close()
+
+  def restorefromfile(self):
+    if me != 0: return
+    ff = PR.PR(self.dumptofile+'_gridcrossing.pdb')
+
+    self.time = []
+    self.count = []
+    self.current = []
+    self.rrms = []
+    self.rprms = []
+    # --- At this point, getdiagnostics may not have been executed, so
+    # --- self.ldoradialdiag may not be set. So assume that it is and
+    # --- create the rprofile list.
+    self.rprofile = []
+
+    varlist = list(ff.inquire_names())
+    varlist.sort()
+    for var in varlist:
+      if var[0] == 't':
+        name,it = string.split(var,'_')
+        suffix = "_%d"%(it)
+        self.time.append(ff.read('time'+suffix))
+        self.count.append(ff.read('count'+suffix))
+        self.current.append(ff.read('current'+suffix))
+        self.rrms.append(ff.read('rrms'+suffix))
+        self.rprms.append(ff.read('rprms'+suffix))
+        try:
+          self.rprofile.append(ff.read('rprofile'+suffix))
+        except:
+          # --- This just means that there is no rprofile data
+          pass
+
+    ff.close()
+
+    # --- If there is no rprofile data, then delete the attribute
+    if len(self.rprofile) == 0: del self.rprofile
 
