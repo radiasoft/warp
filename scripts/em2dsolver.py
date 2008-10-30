@@ -1,6 +1,7 @@
 """Class for doing 2 1/2 D electromagnetic solver using code adapted from the
 emi code"""
 from warp import *
+from getzmom import * 
 import operator
 
 try:
@@ -21,14 +22,17 @@ class EM2D(object):
                    'ntamp_scatter','ntamp_gather']
   __flaginputs__ = {'l_apply_pml':true,'nbndx':10,'nbndy':10,
                     'l_particles_weight':false,'l_usecoeffs':false,
+                    'l_verbose':1,
                     'laser_amplitude':1.,'laser_profile':None,
                     'laser_gauss_width':None,'laser_angle':0.,
                     'laser_wavelength':None,'laser_wavenumber':None,
                     'laser_frequency':None,'laser_source':2,
+                    'laser_focus':None,'laser_focus_velocity':0.,
                     'density_1d':False,'nfield_subcycle':1,
                     'autoset_timestep':true,'dtcoef':0.99}
 
   def __init__(self,**kw):
+#    top.allspecl = true
     top.lcallfetchb = true
     #top.bfstype = 12
     top.lcallfetchb = true
@@ -109,7 +113,6 @@ class EM2D(object):
       self.xmesh = self.zmeshlocal
       self.xmmin = self.zmminlocal
       self.xmmax = self.zmmaxlocal
-      print w3d.zmminlocal,w3d.zmmaxlocal,w3d.dz
       self.bounds[0] = self.bounds[4]
       self.bounds[1] = self.bounds[5]
 #     self.ndelta_t = top.vbeam*top.dt/w3d.dz
@@ -123,19 +126,30 @@ class EM2D(object):
       if top.dt==0.:
         top.dt=dt
       else:
-        self.nfield_subcycle=int(top.dt/dt)+1
+        if top.dt<>dt:
+          self.nfield_subcycle=int(top.dt/dt)+1
     self.dtinit = top.dt
-    
+
     # --- Create field and source arrays and other arrays.
     self.allocatefieldarrays()
 
     # --- Handle laser inputs
     self.setuplaser()
+    
+    # --- set xyz oldpid, if needed
+    if top.xoldpid==0:top.xoldpid=nextpid()
+    if top.yoldpid==0:top.yoldpid=nextpid()
+    if top.zoldpid==0:top.zoldpid=nextpid()
+
+    # --- register solver
+    registersolver(self)
 
   def allocatefieldarrays(self):
     # --- Code transcribed from init_fields
     self.field = EM2D_FIELDtype()
     self.field.l_usecoeffs = self.l_usecoeffs
+    self.field.nxf = 0
+    self.field.nyf = 0
     init_fields(self.field,self.nx,self.ny,self.nbndx,self.nbndx,top.dt/self.nfield_subcycle,
                 self.dx,self.dy,clight,mu0,
                 self.xmmin,self.ymmin,1,
@@ -216,21 +230,17 @@ class EM2D(object):
 #      xx = arange(self.nx+4)*f.dx+f.xmin*f.dx - 0.5*f.nx*f.dx
 #      self.laser_profile = exp(-(xx/self.laser_gauss_width)**2/2.)
       yy = arange(f.ny+4)*f.dy+f.ymin*f.dy - 0.5*f.ny*f.dy
-      f.laser_profile = exp(-(yy/self.laser_gauss_width)**2/2.)
+      f.laser_profile = exp(-0.5*(yy/self.laser_gauss_width)**2)
     elif operator.isSequenceType(self.laser_profile):
       assert len(f.laser_profile) == f.ny+4,"The specified profile must be of length ny+4"
     elif callable(self.laser_profile):
       self.laser_profile_func = self.laser_profile
 
-  def transformparticles(self,x,y,z,ux=None,uy=None,uz=None):
+  def transformparticles(self,x,y,z,ux=None,uy=None,uz=None,xold=None,yold=None,zold=None):
     if self.solvergeom == w3d.XYgeom:
-      return x,y,ux,uy,uz
+      return x,y,ux,uy,uz,xold,yold
     elif self.solvergeom == w3d.XZgeom:
-      if self.l_moving_window and not self.l_elaser_out_plane:
-        return z,x,uz,ux,uy
-      else:
-#        return x,z,ux,uz,uy
-        return z,x,uz,ux,uy
+      return z,x,uz,ux,uy,zold,xold
 
   def transformfields(self,fx,fy,fz):
     if self.solvergeom == w3d.XYgeom:
@@ -242,7 +252,7 @@ class EM2D(object):
 #        return fx,fz,fy
         return fz,fx,fy
 
-  def setj(self,x,y,ux,uy,uz,gaminv,q,w,wfact,dt):
+  def setj(self,x,y,xold,yold,uz,gaminv,q,w,wfact,dt):
     n = len(x)
     if n == 0: return
     if wfact is None:
@@ -251,9 +261,9 @@ class EM2D(object):
     else:
       l_particles_weight = true
     if self.l_onegrid:
-      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wfact,q*w,dt,l_particles_weight,self.field,self.field)
+      depose_current_em2d(n,x,y,xold,yold,uz,gaminv,wfact,q*w,dt,l_particles_weight,self.field,self.field)
     else:
-      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wfact,q*w,dt,l_particles_weight,self.field,self.fpatchfine)
+      depose_current_em2d(n,x,y,xold,yold,uz,gaminv,wfact,q*w,dt,l_particles_weight,self.field,self.fpatchfine)
     
   def setjpy(self,x,y,ux,uy,uz,gaminv,q,w):
     n = len(x)
@@ -271,8 +281,6 @@ class EM2D(object):
                       (y<self.fpatchfine.ymaxpatch_scatter), 1, 0)
       ii = arange(n)
       iin  = compress(inpatch,ii); iout = compress(1-inpatch,ii)
-      print 'nin,nout',len(iin),len(iout)
-      print min(x),max(x),min(y),max(y)
       nin = len(iin);              nout = len(iout)
       if nin>0:
         xin = take(x,iin)
@@ -394,6 +402,11 @@ class EM2D(object):
     pass
 
   def loadj(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+    if self.l_onegrid:
+      fields = [self.field]
+    else:
+      fields = [self.field,self.fpatchcoarse,self.fpatchfine]    
+
     # --- reallocate Jarray if needed
     if self.field.ntimes<>top.nsndts:
       self.field.ntimes=top.nsndts
@@ -406,41 +419,45 @@ class EM2D(object):
     if lzero: 
       for i in range(top.nsndts-1,-1,-1):
         if force_deposition or (top.it-1)%(2**i)==0:
-          self.field.Jarray[:,:,:,i] = 0.
-          if not self.l_onegrid:
-            self.fpatchcoarse.Jarray[:,:,:,i] = 0.
-            self.fpatchfine.Jarray[:,:,:,i] = 0.
+          for field in fields:
+            field.Jarray[:,:,:,i] = 0.
         
     # --- loop over species
     for js,i,n,q,w in zip(arange(top.pgroup.ns),top.pgroup.ins-1,top.pgroup.nps,
                        top.pgroup.sq,top.pgroup.sw):
       if n == 0 or ((top.it-1)%top.pgroup.ndts[js]<>0 and not force_deposition): continue
-      x,y,ux,uy,uz = self.transformparticles(
+      x,y,ux,uy,uz,xold,yold = self.transformparticles(
             top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],top.pgroup.zp[i:i+n],
-            top.pgroup.uxp[i:i+n],top.pgroup.uyp[i:i+n],top.pgroup.uzp[i:i+n])
+            top.pgroup.uxp[i:i+n],top.pgroup.uyp[i:i+n],top.pgroup.uzp[i:i+n],
+            top.pgroup.pid[i:i+n,top.xoldpid-1],
+            top.pgroup.pid[i:i+n,top.yoldpid-1],
+            top.pgroup.pid[i:i+n,top.zoldpid-1]
+            )
       if top.wpid==0:
         wfact = None
       else:
         wfact = top.pgroup.pid[i:i+n,top.wpid-1]
       # --- point J array to proper Jarray slice
-      self.field.J = self.field.Jarray[:,:,:,top.ndtstorho[top.pgroup.ndts[js]-1]]
+      for field in fields:
+        field.J = field.Jarray[:,:,:,top.ndtstorho[top.pgroup.ndts[js]-1]]
       # --- call routine performing current deposition
-      self.setj(x,y,ux,uy,uz,top.pgroup.gaminv[i:i+n],q,w,wfact,top.dt*top.pgroup.ndts[js])
+      self.setj(x,y,xold,yold,uz,top.pgroup.gaminv[i:i+n],q,w,wfact,top.dt*top.pgroup.ndts[js])
 
     # --- add slices
     if top.nsndts>1:
       for i in range(top.nsndts-2,-1,-1):
         if force_deposition or (top.it-1)%(2**i)==0:
           add_current_slice(self.field,i+1)
+    
+    # --- smooth current density 
+    if self.l_smoothdensity:self.smoothdensity()
 
     # --- exchange slices of Jarray among processors
     self.apply_current_bc()
 
     # --- point J to first slice of Jarray
-    self.field.J = self.field.Jarray[:,:,:,0]
-    
-    # --- smooth current density 
-    if self.l_smoothdensity:self.smoothdensity()
+    for field in fields:
+      field.J = field.Jarray[:,:,:,0]
 
     # --- get 1-D density
     if self.density_1d:
@@ -451,6 +468,39 @@ class EM2D(object):
 
 
   def apply_current_bc(self):
+    # --- apply periodic BC
+    if self.field.xlbound==periodic:
+      if npes<=1:
+        self.field.Jarray[0:4,:,0:3,0]+=self.field.Jarray[-4:,:,0:3,0]
+        self.field.Jarray[-4:,:,0:3,0] =self.field.Jarray[0:4,:,0:3,0]
+    if self.field.ylbound==periodic:
+      if npes<=1:
+        self.field.Jarray[:,0:3,0:3,0]+=self.field.Jarray[:,-3:,0:3,0]
+        self.field.Jarray[:,-3:,0:3,0] =self.field.Jarray[:,0:3,0:3,0]
+    # --- exchange slices of Jarray among processors along z
+    if npes>1:
+      if me>0:
+        mpi.send(self.field.Jarray[0:4,:,0:3,0],me-1)
+      if me<npes-1:
+        recv,status=mpi.recv(me+1)
+        mpi.send(self.field.Jarray[-4:-2,:,0:3,0],me+1)
+        self.field.Jarray[-4:,:,0:3,0]+=recv
+      if me>0:
+        recv,status=mpi.recv(me-1)
+        self.field.Jarray[0:2,:,0:3,0]+=recv
+    return
+    if npes>1:
+      if me>0:
+        mpi.send(self.field.Jarray[0:2,:,2,0],me-1)
+      if me<npes-1:
+        recv,status=mpi.recv(me+1)
+        mpi.send(self.field.Jarray[-4:-2,:,2,0],me+1)
+        self.field.Jarray[-5:-3,:,2,0]+=recv
+      if me>0:
+        recv,status=mpi.recv(me-1)
+        self.field.Jarray[0:2,:,2,0]+=recv
+
+  def apply_current_bc_old(self):
     # --- apply periodic BC
     if self.field.xlbound==periodic:
       if npes<=1:
@@ -484,10 +534,18 @@ class EM2D(object):
         self.field.Jarray[0:2,:,2,:]+=recv
 
   def smoothdensity(self):
-    smooth2d_lindman(self.field.J[:,:,0],self.field.nx,self.field.ny)
-    smooth2d_lindman(self.field.J[:,:,1],self.field.nx,self.field.ny)
-    smooth2d_lindman(self.field.J[:,:,2],self.field.nx,self.field.ny)
-
+    mysmooth = smooth2d_lindman
+#    mysmooth = smooth2d_121
+    if self.l_onegrid:
+      fields=[self.field]
+    else:
+      fields=[self.field,self.fpatchcoarse,self.fpatchfine]
+    for field in fields:
+      mysmooth(field.Jarray[:,:,0,0],field.nx,field.ny)
+      mysmooth(field.Jarray[:,:,1,0],field.nx,field.ny)
+      mysmooth(field.Jarray[:,:,2,0],field.nx,field.ny)
+      
+    
   def fetche(self):
 #    if w3d.api_xlf2:
     w3d.xfsapi=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
@@ -500,7 +558,7 @@ class EM2D(object):
     ex[:] = 0.
     ey[:] = 0.
     ez[:] = 0.
-    x,y,ux,uy,uz = self.transformparticles(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi)
+    x,y,ux,uy,uz,xold,yold = self.transformparticles(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi)
     self.fetchefrompositions(x,y,ex,ey,ez)
 
   def fetchb(self):
@@ -515,7 +573,7 @@ class EM2D(object):
     bx[:] = 0.
     by[:] = 0.
     bz[:] = 0.
-    x,y,ux,uy,uz = self.transformparticles(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi)
+    x,y,ux,uy,uz,xold,yold = self.transformparticles(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi)
     self.fetchbfrompositions(x,y,bx,by,bz)
 
   def fetchphi(self):
@@ -577,10 +635,29 @@ class EM2D(object):
 #    if (self.l_elaser_out_plane):
 #      xx = (arange(self.nx+4) - 0.5)*self.field.dx+self.field.xmin
 #    else:
-    xx = (arange(field.ny+3) - 0.5)*field.dy+field.ymin
+    xx = (arange(field.ny+3) - 0.5)*field.dy + field.ymin
 
     if self.laser_frequency is not None:
-      phase = (xx*sin(self.laser_angle)/clight-top.time)*self.laser_frequency
+      if self.laser_focus is not None:
+
+        Z_R = (self.laser_gauss_width**2)/(clight/self.laser_frequency) #>> angular freq.!!
+        z0 = self.laser_focus + self.laser_focus_velocity*top.time
+        z0 = -z0/Z_R  ## now measured in Rayleigh ranges; negative value means we're upstream
+ 
+        phi0_z=-top.time*self.laser_frequency - 0.5*arctan(z0)
+        omgi_z_sqr=(1. + z0*z0) * (self.laser_gauss_width**2)
+        phifac=0.5*z0/omgi_z_sqr   #>> factor of 0.5 due to slab model
+        phase=phi0_z + phifac*(xx**2)
+
+ ##       print 'Z_R %g ; z0  %g  omgi_z_sqr %g '%(Z_R, z0, omgi_z_sqr)
+        laser_amp_factor2 = 1./sqrt(1. + z0*z0)   
+        self.laser_amplitude=self.laser_amplitude*sqrt(laser_amp_factor2)
+
+        qqww = exp(-0.5*(xx**2)/omgi_z_sqr)
+        field.laser_profile[:-1]=qqww[:]
+
+      else:
+        phase = (xx*sin(self.laser_angle)/clight-top.time)*self.laser_frequency
     else:
       phase = 0.
 
@@ -590,6 +667,7 @@ class EM2D(object):
       field.Bz_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)
 
   def solve(self,iwhich=0):
+    if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
     if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM2D.')
     # --- Set nxl and nyl if using large stencil
     if(not self.l_onegrid):
@@ -645,55 +723,55 @@ class EM2D(object):
       
   def fpex(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Ey[1:w3d.nzp,...]),'E_x',**kw)
+      self.genericfp(gatherarray(self.field.Ey[1:w3d.nzp+1,...]),'E_x',**kw)
     elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.Ex),'E_x',**kw)
 
   def fpey(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Ez[1:w3d.nzp,...]),'E_y',**kw)
+      self.genericfp(gatherarray(self.field.Ez[1:w3d.nzp+1,...]),'E_y',**kw)
     elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.Ey),'E_y',**kw)
 
   def fpez(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Ex[1:w3d.nzp,...]),'E_z',**kw)
+      self.genericfp(gatherarray(self.field.Ex[1:w3d.nzp+1,...]),'E_z',**kw)
     elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.Ez),'E_z',**kw)
 
   def fpbx(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.By[1:w3d.nzp,...]),'B_x',**kw)
+      self.genericfp(gatherarray(self.field.By[1:w3d.nzp+1,...]),'B_x',**kw)
     elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.Bx),'B_x',**kw)
 
   def fpby(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Bz[1:w3d.nzp,...]),'B_y',**kw)
+      self.genericfp(gatherarray(self.field.Bz[1:w3d.nzp+1,...]),'B_y',**kw)
     elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.By),'B_y',**kw)
 
   def fpbz(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Bx[1:w3d.nzp,...]),'B_z',**kw)
+      self.genericfp(gatherarray(self.field.Bx[1:w3d.nzp+1,...]),'B_z',**kw)
     elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.Bz),'B_z',**kw)
 
   def fpjx(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.J[1:w3d.nzp,:,1]),'J_x',**kw)
+      self.genericfp(gatherarray(self.field.J[1:w3d.nzp+1,:,1]),'J_x',**kw)
     elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.J[:,:,0]),'J_x',**kw)
 
   def fpjy(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.J[1:w3d.nzp,:,2]),'J_y',**kw)
+      self.genericfp(gatherarray(self.field.J[1:w3d.nzp+1,:,2]),'J_y',**kw)
     elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.J[:,:,1]),'J_y',**kw)
 
   def fpjz(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.J[1:w3d.nzp,:,0]),'J_z',**kw)
+      self.genericfp(gatherarray(self.field.J[1:w3d.nzp+1,:,0]),'J_z',**kw)
     elif self.solvergeom == w3d.XYgeom:
       self.genericfp(gatherarray(self.field.J[:,:,2]),'J_z',**kw)
 
@@ -796,9 +874,196 @@ class EM2D(object):
       h = f.bndbxbyez.Ey
     self.plbnd(h,f.By)
         
+  def step(self,n=1):
+    for i in range(n):
+       self.onestep()
+       
+  def onestep(self):
+    # --- call beforestep functions
+    callbeforestepfuncs.callfuncsinlist()
+    
+    top.zgrid+=top.vbeamfrm*top.dt
+    top.zbeam=top.zgrid
+
+    for js in range(top.pgroup.ns):
+      self.fetcheb(js)
+    for js in range(top.pgroup.ns):
+      self.push_velocity_second_half(js)
+      self.set_gamma(js)
+      self.push_positions(js)
+
+    particleboundaries3d(top.pgroup)
+
+    # --- call beforeloadrho functions
+    beforelr.callfuncsinlist()
+    self.loadrho()
+    self.loadj()
+      
+ #   self.solve2ndhalf()
+    self.solve()
+    
+    for js in range(top.pgroup.ns):
+      self.fetcheb(js)
+    
+    for js in range(top.pgroup.ns):
+      self.push_velocity_first_half(js)
+      self.set_gamma(js)
+
+    # --- update time, time counter
+    top.time+=top.dt
+    if top.it%top.nhist==0:
+       zmmnt()
+       minidiag(top.it,top.time,top.lspecial)
+    top.it+=1
+
+    # --- call afterstep functions
+    callafterstepfuncs.callfuncsinlist()
+
+  def fetcheb(self,js):
+    if self.l_verbose:print me,'enter fetcheb'
+    pg = top.pgroup
+    np = pg.nps[js]
+    if np==0:return
+    w3d.ipminfsapi=pg.ins[js]
+    w3d.npfsapi=pg.nps[js]
+    self.fetche()
+    self.fetchb()
+
+  def push_velocity_first_half(self,js):
+    if self.l_verbose:print me,'enter push_ions_velocity_first_half'
+    pg = top.pgroup
+    np = pg.nps[js]
+    if np==0:return
+    il = pg.ins[js]-1
+    iu = il+pg.nps[js]
+    if pg.lebcancel_pusher:
+      ebcancelpush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                        pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu],
+                        pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu],
+                        pg.sq[js],pg.sm[js],top.dt,1)
+    else:
+      # --- push velocity from electric field (half step)
+      epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+                 pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu], 
+                 pg.sq[js],pg.sm[js],0.5*top.dt)
+      # --- update gamma
+      self.set_gamma(js)
+      # --- push velocity from magnetic field
+      bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                  pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu], 
+                  pg.sq[js],pg.sm[js],0.5*top.dt, top.ibpush)
+
+    if self.l_verbose:print me,'exit push_ions_velocity_first_half'
+    
+  def push_velocity_second_half(self,js):
+    if self.l_verbose:print me,'enter push_ions_velocity_second_half'
+    pg = top.pgroup
+    np = pg.nps[js]
+    if np==0:return
+    il = pg.ins[js]-1
+    iu = il+pg.nps[js]
+    if pg.lebcancel_pusher:
+      ebcancelpush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                        pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu],
+                        pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu],
+                        pg.sq[js],pg.sm[js],top.dt,2)
+    else:
+      # --- push velocity from magnetic field
+      bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                  pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu], 
+                  pg.sq[js],pg.sm[js],0.5*top.dt, top.ibpush)
+      # --- push velocity from electric field (half step)
+      epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+                 pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu], 
+                 pg.sq[js],pg.sm[js],0.5*top.dt)
+      # --- update gamma
+      self.set_gamma(js)
+
+    if self.l_verbose:print me,'exit push_ions_velocity_second_half'
+    
+  def set_gamma(self,js):
+    if self.l_verbose:print me,'enter set_gamma'
+    pg = top.pgroup
+    np = pg.nps[js]
+    if np==0:return
+    il = pg.ins[js]-1
+    iu = il+pg.nps[js]
+    # --- update gamma
+    gammaadv(np,pg.gaminv[il:iu],pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+             top.gamadv,top.lrelativ)
+
+    if self.l_verbose:print me,'exit push_ions_velocity_second_half'
+    
+  def push_positions(self,js):
+    if self.l_verbose:print me,'enter push_ions_positions'
+    pg = top.pgroup
+    np = pg.nps[js]
+    if np==0:return
+    il = pg.ins[js]-1
+    iu = il+pg.nps[js]
+    xpush3d(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
+                   pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+                   pg.gaminv[il:iu],top.dt)      
+
+    if self.l_verbose:print me,'exit push_ions_positions'
+
+  def apply_bndconditions(self,js):
+    if self.l_verbose:print me,'enter apply_ions_bndconditions'
+    # --- apply boundary conditions
+    pg = top.pgroup
+    if pg.nps[js]==0:return
+    self.apply_bnd_conditions(js)
+    if self.l_verbose:print me,'exit apply_ions_bndconditions'
+    
+  def apply_bnd_conditions(self,js):
+    if self.l_verbose:print me,'enter apply_bnd_conditions'
+    pg = top.pgroup
+    if pg.nps[js]==0:return
+    il = pg.ins[js]-1
+    iu = il+pg.nps[js]
+    stckxy3d(pg.nps[js],pg.xp[il:iu],w3d.xmmax,w3d.xmmin,w3d.dx,
+                  pg.yp[il:iu],w3d.ymmax,w3d.ymmin,w3d.dy,
+                  pg.zp[il:iu],w3d.zmminlocal,w3d.dz,
+                  pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                  top.zgrid,top.zbeam,w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
+    if js==0 or js==w3d.nzp-1:
+      if js==0:top.pboundnz=-1
+      if js==w3d.nzp-1:top.pbound0=-1
+      zpartbndwithdata(pg.nps[js],pg.zp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                       w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz,top.zgrid)
+      if js==0:top.pboundnz=0
+      if js==w3d.nzp-1:top.pbound0=0
+    if self.scraper is not None:self.scraper.scrape(js)
+    processlostpart(pg,js+1,top.clearlostpart,top.time+top.dt*pg.ndts[js],top.zbeam)
+    if self.l_verbose:print me,'enter apply_bnd_conditions'
+
+  def initfrompoisson(self):
+    tmpbound0  = w3d.bound0
+    tmpboundnz = w3d.boundnz
+    tmpboundxy = w3d.boundxy
+    w3d.bound0  = dirichlet
+    w3d.boundnz = dirichlet
+    w3d.boundxy = dirichlet
+    init_base(w3d.nx,w3d.nzlocal,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmminlocal,lparallel)
+    fstypecp = top.fstype
+    top.fstype = 10
+    loadrho()
+    vp3d(0)
+    top.fstype = fstypecp
+    w3d.bound0 = tmpbound0
+    w3d.boundnz = tmpboundnz
+    w3d.boundxy = tmpboundxy
+    grimax(self.field)
+#    self.field.Ex[:w3d.nzlocal,:w3d.nx+1] = -transpose(frz.basegrid.phi[1:-1:,2:-1]-frz.basegrid.phi[1:-1,1:-2])/w3d.dz
+#    self.field.Ey[:w3d.nzlocal+1,:w3d.nx] = -transpose(frz.basegrid.phi[2:-1,1:-1]-frz.basegrid.phi[1:-2,1:-1])/w3d.dx
+    self.field.Ex[:w3d.nzlocal+2,:w3d.nx+3] = -transpose(frz.basegrid.phi[::,1:]-frz.basegrid.phi[:,:-1])/w3d.dz
+    self.field.Ey[:w3d.nzlocal+3,:w3d.nx+2] = -transpose(frz.basegrid.phi[1:,:]-frz.basegrid.phi[:-1,:])/w3d.dx
+    griuni(self.field)
+  
+##############################################################################
 # --- This can only be done after the class is defined.
-try:
-  psyco.bind(EM2D)
-except NameError:
-  pass
+#try:
+#  psyco.bind(EM1D)
+#except NameError:
+#  pass
 
