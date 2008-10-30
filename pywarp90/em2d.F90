@@ -2,16 +2,16 @@
 module em2d_depos
 use EM2D_FIELDtypemodule
 contains
-subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,nx,ny,l_particles_weight)
+subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,xpold,ypold,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,nx,ny,l_particles_weight)
    implicit none
    integer(ISZ) :: np,nx,ny
    real(kind=8), dimension(-1:nx+2,-1:ny+1,3), intent(in out) :: j
-   real(kind=8), dimension(np) :: xp,yp,uxp,uyp,uzp,gaminv,w
+   real(kind=8), dimension(np) :: xp,yp,xpold,ypold,uzp,gaminv,w
    real(kind=8) :: q,dt,dx,dy,xmin,ymin
    logical(ISZ) :: l_particles_weight
 
    real(kind=8) :: dxi,dyi,dtsdx,dtsdy,sd(18),xint,yint,wx(1:4,1:5),wy(1:5,1:4)
-   real(kind=8) :: xold,yold,xmid,ymid,x,y,wq,wqx,wqy,tmp,vx,vy,dts2dx,dts2dy,s1x,s2x,s1y,s2y,invsurf,invdtdx,invdtdy
+   real(kind=8) :: xold,yold,xmid,ymid,x,y,wq,wqx,wqy,tmp,vx,vy,vz,dts2dx,dts2dy,s1x,s2x,s1y,s2y,invsurf,invdtdx,invdtdy
    real(kind=8), DIMENSION(6) :: sx, sy, sx0, sy0, dsx, dsy
    integer(ISZ) :: iixp0,ijxp0,iixp,ijxp,ip,dix,diy,idx,idy
 
@@ -24,14 +24,18 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
       invsurf = 1./(dx*dy)
       invdtdx = 1./(dt*dx)
       invdtdy = 1./(dt*dy)
-
+      
+      dsx = 0.
+      dsy = 0.
+      
       do ip=1,np
       
         x = (xp(ip)-xmin)*dxi
         y = (yp(ip)-ymin)*dyi
         
-        vx = uxp(ip)*gaminv(ip)
-        vy = uyp(ip)*gaminv(ip)
+        vx = (xp(ip)-xpold(ip))/dt
+        vy = (yp(ip)-ypold(ip))/dt
+        vz = gaminv(ip)*uzp(ip)
         
         xold=x-dtsdx*vx
         yold=y-dtsdy*vy
@@ -118,7 +122,7 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
         tmp = (sx0(5+idx)+0.5*dsx(5+idx))*wqy; wy(4,1) = dsy(3+idy)*tmp
                                                wy(4,2) = dsy(4+idy)*tmp
                                                wy(4,4) = dsy(5+idy)*tmp
-
+!        write(0,*) dix,idx,diy,idy,dsx(2+idx),dsy(2+idy)
         sd(1) = wx(2,1)
         sd(2) = wx(3,1)+sd(1)
         sd(3) = wx(4,1)+sd(2)
@@ -171,7 +175,7 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
         x = x-0.5
         y = y-0.5
 
-        wq = wq*uzp(ip)*gaminv(ip)*invsurf
+        wq = wq*vz*invsurf
       
         iixp=floor(x)
         ijxp=floor(y)
@@ -195,6 +199,196 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
 
   return
 end subroutine depose_jxjy_esirkepov_linear_serial
+
+subroutine depose_jxjy_esirkepov_n_serial(cj,np,xp,yp,xpold,ypold,uzp,gaminv,w,q,xmin,ymin, &
+                                                 dt,dx,dy,nx,ny,nox,noy,l_particles_weight)
+   implicit none
+   integer(ISZ) :: np,nx,ny,nox,noy
+   real(kind=8), dimension(-1:nx+1,-1:ny+1,3), intent(in out) :: cj
+   real(kind=8), dimension(np) :: xp,yp,xpold,ypold,uzp,gaminv,w
+   real(kind=8) :: q,dt,dx,dy,xmin,ymin
+   logical(ISZ) :: l_particles_weight
+
+   real(kind=8) :: dxi,dyi,dtsdx,dtsdy,xint,yint
+   real(kind=8),dimension(-nox:nox+1,-noy:noy+1) :: wx,wy,wz,sdx,sdy,sdz
+   real(kind=8) :: xold,yold,zold,xmid,ymid,zmid,x,y,z,wq,wqx,wqy,wqz,tmp,vx,vy,vz,dts2dx,dts2dy,dts2dz, &
+                   s1x,s2x,s1y,s2y,s1z,s2z,invvol,invdtdx,invdtdy,invdtdz, oxint, oyint, onesixth, twothird
+   real(kind=8), DIMENSION(-nox:nox+1) :: sx, sy, sz, sx0, sy0, sz0, dsx, dsy, dsz
+   integer(ISZ) :: iixp0,ijxp0,ikxp0,iixp,ijxp,ikxp,ip,dix,diy,diz,idx,idy,idz,i,j,k
+
+      sx0=0.;sy0=0.;sz0=0.
+      sdz=0.
+      onesixth = 1./6.
+      twothird = 2./3.
+      
+      dxi = 1./dx
+      dyi = 1./dy
+      dtsdx = dt*dxi
+      dtsdy = dt*dyi
+      dts2dx = 0.5*dtsdx
+      dts2dy = 0.5*dtsdy
+      invvol = 1./(dx*dy)
+      invdtdx = 1./(dt*dy)
+      invdtdy = 1./(dt*dx)
+      invdtdz = 1./(dt*dx*dy)
+
+      do ip=1,np
+      
+        x = (xp(ip)-xmin)*dxi
+        y = (yp(ip)-ymin)*dyi
+        
+        xold = (xpold(ip)-xmin)*dxi
+        yold = (ypold(ip)-ymin)*dyi
+        
+        vx = (xp(ip)-xpold(ip))/dt
+        vy = (yp(ip)-ypold(ip))/dt
+        vz = uzp(ip)*gaminv(ip)
+
+        if (l_particles_weight) then
+          wq=q*w(ip)
+        else
+          wq=q*w(1)
+        end if
+        wqx = wq*invdtdx
+        wqy = wq*invdtdy
+        wqz = wq*invdtdz
+
+!       computation of current at x(n+1/2),v(n+1/2)
+
+        iixp0=floor(x)
+        ijxp0=floor(y)
+
+        xint=x-iixp0
+        yint=y-ijxp0
+
+        if (nox==1) then
+          sx0(0) = 1.-xint
+          sx0(1) = xint
+        else if (nox==2) then
+          oxint = 1.-xint
+          sx0(-1) = onesixth*oxint**3
+          sx0(0)  = twothird-xint**2*(1.-0.5*xint)
+          sx0(1)  = twothird-oxint**2*(1.-0.5*oxint)
+          sx0(2)  = onesixth*xint**3
+        end if
+        
+        if (noy==1) then
+          sy0(0) = 1.-yint
+          sy0(1) = yint
+        else if (noy==2) then
+          oyint = 1.-yint
+          sy0(-1) = onesixth*oyint**3
+          sy0(0)  = twothird-yint**2*(1.-0.5*yint)
+          sy0(1)  = twothird-oyint**2*(1.-0.5*oyint)
+          sy0(2)  = onesixth*yint**3
+        end if
+
+        iixp=floor(xold)
+        ijxp=floor(yold)
+        xint = xold-iixp
+        yint = yold-ijxp
+
+        dix = iixp-iixp0
+        diy = ijxp-ijxp0
+
+        sx=0.;sy=0.;sz=0.
+
+        if (nox==1) then
+          sx(0+dix) = 1.-xint
+          sx(1+dix) = xint
+        else if (nox==2) then
+          oxint = 1.-xint
+          sx(-1+dix) = onesixth*oxint**3
+          sx(0+dix)  = twothird-xint**2*(1.-0.5*xint)
+          sx(1+dix)  = twothird-oxint**2*(1.-0.5*oxint)
+          sx(2+dix)  = onesixth*xint**3
+        end if
+        
+        if (noy==1) then
+          sy(0+diy) = 1.-yint
+          sy(1+diy) = yint
+        else if (noy==2) then
+          oyint = 1.-yint
+          sy(-1+diy) = onesixth*oyint**3
+          sy(0+diy)  = twothird-yint**2*(1.-0.5*yint)
+          sy(1+diy)  = twothird-oyint**2*(1.-0.5*oyint)
+          sy(2+diy)  = onesixth*yint**3
+        end if
+
+        dsx = sx - sx0
+        dsy = sy - sy0
+
+        do k=-nox, nox+1
+          do j=-nox, noy+1
+              wx(i,j) = wqx*dsx(i)*(sy0(j)+0.5*dsy(j))
+              wy(i,j) = wqy*dsy(j)*(sx0(i)+0.5*dsx(i))
+          end do
+        end do
+
+        do i = -nox, nox
+          sdx(i,:)  = wx(i,:)
+          if (i>-1) sdx(i,:)=sdx(i,:)+sdx(i-1,:)
+          cj(iixp0+i,ijxp0-1:ijxp0+2,1) = cj(iixp0+i,ijxp0-1:ijxp0+2,1)+sdx(i,:)
+        end do        
+
+        do j = -noy, noy
+          sdy(:,j)  = wy(:,j)
+          if (j>-1) sdy(:,j)=sdy(:,j)+sdy(:,j-1)
+          cj(iixp0-1:iixp0+2,ijxp0+j,2) = cj(iixp0-1:iixp0+2,ijxp0+j,2)+sdy(:,j)
+        end do        
+
+     
+        ! Esirkepov deposition of Jx and Jy is over; now starts linear deposition of Jz
+        xmid=x-dts2dx*vx
+        ymid=y-dts2dy*vy
+
+        ! there is a shift of 0.5 since Ez/Jz are aligned with Bz, at the center of the cell
+        x = x-0.5
+        y = y-0.5
+
+        wq = wq*vz*invvol
+      
+        iixp=floor(x)
+        ijxp=floor(y)
+
+        xint = x-iixp
+        yint = y-ijxp
+
+
+        if (nox==1) then
+          sx0(0) = 1.-xint
+          sx0(1) = xint
+        else if (nox==2) then
+          oxint = 1.-xint
+          sx0(-1) = onesixth*oxint**3
+          sx0(0)  = twothird-xint**2*(1.-0.5*xint)
+          sx0(1)  = twothird-oxint**2*(1.-0.5*oxint)
+          sx0(2)  = onesixth*xint**3
+        end if
+        
+        if (noy==1) then
+          sy0(0) = 1.-yint
+          sy0(1) = yint
+        else if (noy==2) then
+          oyint = 1.-yint
+          sy0(-1) = onesixth*oyint**3
+          sy0(0)  = twothird-yint**2*(1.-0.5*yint)
+          sy0(1)  = twothird-oyint**2*(1.-0.5*oyint)
+          sy0(2)  = onesixth*yint**3
+        end if
+
+        do j = -noy+1,noy
+          do i = -nox+1,nox
+            cj(iixp+i  ,ijxp+j  ,3)=cj(iixp+i  ,ijxp+j  ,3)+sx0(j)*sy0(k)*wq
+          end do
+        end do
+        
+    end do
+
+  return
+end subroutine depose_jxjy_esirkepov_n_serial
+
+
 
 subroutine depose_rho_esirkepov_linear_serial(rho,np,xp,yp,w,q,xmin,ymin,dx,dy,nx,ny,l_particles_weight)
    implicit none
@@ -244,8 +438,7 @@ subroutine depose_rho_esirkepov_linear_serial(rho,np,xp,yp,w,q,xmin,ymin,dx,dy,n
 
   return
 end subroutine depose_rho_esirkepov_linear_serial
-
- subroutine geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg,bxg,byg,bzg)
+subroutine geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg,bxg,byg,bzg)
    
       integer(ISZ) :: np,nx,ny
       real(kind=8), dimension(np) :: xp,yp,ex,ey,ez,bx,by,bz
@@ -696,6 +889,39 @@ subroutine smooth2d_lindman(q,nx,ny)
 
       return
       end subroutine smooth2d_lindman
+
+subroutine smooth2d_121(q,nx,ny)
+ implicit none
+
+ integer(ISZ) :: nx,ny,i,j
+
+ real(kind=8), dimension(0:nx+3,0:ny+2) :: q
+ real(kind=8) :: temp0, temp1
+
+!     x smoothing
+
+      do  j=0,ny+2
+        temp0 = q(0,j)
+        do  i=1,nx+2
+          temp1 = q(i,j)
+          q(i,j) = 0.5*q(i,j)+0.25*(temp0+q(i+1,j))
+          temp0 = temp1
+        end do
+      end do
+
+!     y smoothing
+
+      do  i=0,nx+3
+        temp0 = q(i,0)
+        do  j=1,ny+1
+          temp1 = q(i,j)
+          q(i,j) = 0.5*q(i,j)+0.25*(temp0+q(i,j+1))
+          temp0 = temp1
+        end do
+      end do
+
+      return
+      end subroutine smooth2d_121
 
 !subroutine em2d_smoothdensity()
 !   use EM2D_FIELDobjects
