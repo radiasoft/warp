@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.225 2008/10/30 20:10:15 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.226 2008/10/30 20:20:43 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -255,7 +255,10 @@ Opens up an X window
                  already been called. Warning - this will overwrite a file
                  with the same name.
   - xon=1: When true, an X window will be opened.
-  - style='work.gs': Style file to use
+  - style='work.gs': Gist style sheet. The style sheet determines 
+                     the number and location of coordinate systems, tick 
+                     and label styles, and the like.  Other choices include 
+                     "axes.gs", "boxed.gs", "work2.gs", and "boxed2.gs"
   """
   if suffix is None and prefix is None:
     if with_gist:
