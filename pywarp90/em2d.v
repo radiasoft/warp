@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.18 $, $Date: 2008/06/03 23:49:34 $
+#@(#) File EM2D.V, version $Revision: 1.19 $, $Date: 2008/10/30 18:27:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for the 3-D EM solver of code WARP
@@ -84,7 +84,7 @@ em2d_getf2d_linear_serial(n:integer,x(n):real,y(n):real,
                           fzg(0:nx+3,0:ny+2):real) subroutine
 em2d_depose_jxjy_esirkepov_linear_serial(j:real,
                            n:integer,x(n):real,y(n):real,
-                           ux(n):real,uy(n):real,uz(n):real,
+                           xold(n):real,yold(n):real,uz(n):real,
                            gaminv(n):real,w(n):real,q:real,
                            xmin:real,ymin:real,dt:real,dx:real,dy:real,
                            nx:integer,ny:integer,l_particles_weight:logical)
@@ -97,6 +97,7 @@ em2d_step() subroutine
 griuni(f:EM2D_FIELDtype) subroutine
 grimax(f:EM2D_FIELDtype) subroutine
 smooth2d_lindman(q(0:nx+3,0:ny+2),nx,ny) subroutine
+smooth2d_121(q(0:nx+3,0:ny+2),nx,ny) subroutine
 move_window_field(f:EM2D_FIELDtype) subroutine
 project_j(f:EM2D_FIELDtype,fc:EM2D_FIELDtype,ff:EM2D_FIELDtype) subroutine
 set_substitute_fields(field:EM2D_FIELDtype,fpatchcoarse:EM2D_FIELDtype,fpatchfine:EM2D_FIELDtype) subroutine
@@ -176,18 +177,18 @@ bBzxtild(1:n) _real
 bBzytild(1:n) _real
 
 %%%%%%%% EM2D_FIELDtype:
-nx integer
-ny integer
-nxi integer
-nyi integer
-nxf integer
-nyf integer
-nxl integer
-nyl integer
-nxcoeffs integer
-nycoeffs integer
-nxcopy integer 
-nycopy integer 
+nx integer  /0/
+ny integer  /0/
+nxi integer /0/
+nyi integer /0/
+nxf integer /0/
+nyf integer /0/
+nxl integer /0/
+nyl integer /0/
+nxcoeffs integer /0/
+nycoeffs integer /0/
+nxcopy integer /0/
+nycopy integer /0/
 ntimes integer /1/
 xmin real
 ymin real
