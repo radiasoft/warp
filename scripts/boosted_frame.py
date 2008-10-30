@@ -2,19 +2,146 @@ from warp import *
 
 class Boosted_Frame(object):
   def __init__(self,gammaframe,direction=1.):
+    top.boost_gamma=gammaframe
     self.gammaframe=gammaframe
     self.betaframe  = direction*sqrt(1.-1./self.gammaframe**2)
-    self.betabeam_lab=top.vbeamfrm/clight
-    top.vbeamfrm=clight*(self.betabeam_lab-self.betaframe)/(1.-self.betabeam_lab*self.betaframe)
-    top.vbeam=top.vbeamfrm
+    self.betabeam_lab=top.vbeam/clight
+    self.betabeamfrm_lab=top.vbeamfrm/clight
+    top.vbeam_lab = top.vbeam
+    top.gammabar_lab = top.gammabar
+    top.vbeam=clight*(self.betabeam_lab-self.betaframe)/(1.-self.betabeam_lab*self.betaframe)
+    top.vbeamfrm=clight*(self.betabeamfrm_lab-self.betaframe)/(1.-self.betabeamfrm_lab*self.betaframe)
     top.gammabar=1./sqrt(1.-(top.vbeam/clight)**2)
-    top.fselfb[...]=(top.fselfb[...]-self.betaframe*clight)/(1.-top.fselfb[...]*self.betaframe/clight)
+    top.fselfb[...]=where(top.fselfb==0.,0.,(top.fselfb[...]-self.betaframe*clight)/(1.-top.fselfb[...]*self.betaframe/clight))
 
-  def boost(self,species,zadd=0.,tinit=0.,l_inject_plane=1):
+  def boost(self,species,zinject=0.,tinit=0.,l_inject_plane=1):
+   print 'enter boost',top.pgroup.nps
    if l_inject_plane:
     pg = top.pgroup
     self.species=species
-    self.zadd=zadd
+    self.zinject=zinject
+    self.tinit=tinit
+    self.pgroup = ParticleGroup()
+#    self.pgroup.ns = pg.ns#len(species.jslist)
+    self.pgroup.ns = len(species.jslist)
+    self.pgroup.npmax = species.getn(bcast=0,gather=0)
+    self.pgroup.npid = pg.npid
+    self.pgroup.gchange()
+    iupr=-1
+    for jspr,js in enumerate(species.jslist):
+      ilpr=iupr+1
+      iupr=ilpr+getn(pgroup=pg,js=js,bcast=0,gather=0)
+      self.pgroup.sq[jspr] = pg.sq[js]
+      self.pgroup.sm[jspr] = pg.sm[js]
+      self.pgroup.sw[jspr] = pg.sw[js]
+      self.pgroup.sid[jspr] = pg.sid[js]
+      self.pgroup.ndts[jspr] = pg.ndts[js]
+      self.pgroup.ldts[jspr] = pg.ldts[js]
+      self.pgroup.lvdts[jspr] = pg.lvdts[js]
+      self.pgroup.iselfb[jspr] = pg.iselfb[js]
+      self.pgroup.dtscale[jspr] = pg.dtscale[js]
+      self.pgroup.limplicit[jspr] = pg.limplicit[js]
+      self.pgroup.iimplicit[jspr] = pg.iimplicit[js]
+      self.pgroup.zshift[jspr] = pg.zshift[js]
+      self.pgroup.ins[jspr]=ilpr+1
+      self.pgroup.nps[jspr]=getn(pgroup=pg,js=js,bcast=0,gather=0)
+      if l_inject_plane:
+       if getn(pgroup=pg,js=js,bcast=0,gather=0)>0: 
+        z=getz(pgroup=pg,js=js,bcast=0,gather=0)
+       else:
+        z=0.
+       zmean=globalave(z)
+       if getn(pgroup=pg,js=js,bcast=0,gather=0)>0: 
+        gaminvbeam_lab = getgaminv(pgroup=pg,js=js,bcast=0,gather=0)
+        betabeam_lab  = sqrt(1.-gaminvbeam_lab**2)
+        betabeam_frame = (betabeam_lab-self.betaframe)/(1.-betabeam_lab*self.betaframe)
+        gammabeam_frame  = 1./sqrt(1.-betabeam_frame**2)
+        z=z-zmean
+        # --- get data at z=0
+        vx = getvx(pgroup=pg,js=js,bcast=0,gather=0)
+        vy = getvy(pgroup=pg,js=js,bcast=0,gather=0)
+        vz = getvz(pgroup=pg,js=js,bcast=0,gather=0)
+        t = z/vz
+        x = getx(pgroup=pg,js=js,bcast=0,gather=0)#-t*vx
+        y = gety(pgroup=pg,js=js,bcast=0,gather=0)#-t*vy
+        # --- get data in boosted frame
+        tpr = -self.gammaframe*t
+        zpr = self.gammaframe*self.betaframe*clight*t
+        fact = 1./(1.-self.betaframe*vz/clight)
+        vxpr = vx*fact/self.gammaframe
+        vypr = vy*fact/self.gammaframe
+        vzpr = (vz-self.betaframe*clight)*fact
+        # --- get data at t=0 in boosted frame
+        zpr = zpr - vzpr*tpr
+        # --- make sure that z<=0
+        if top.boost_z0==0.:
+          top.boost_z0 = -max(zpr)
+        zpr += top.boost_z0 
+        # --- sets location of beam center at t=0 in boosted frame
+        print 'vz',min(vz),max(vz)
+        print 'vzpr',min(vzpr),max(vzpr)
+        gammapr = 1./sqrt(1.-(vxpr*vxpr+vypr*vypr+vzpr*vzpr)/clight**2)
+        self.pgroup.uxp[ilpr:iupr]=vxpr*gammapr
+        self.pgroup.uyp[ilpr:iupr]=vypr*gammapr
+        self.pgroup.uzp[ilpr:iupr]=vzpr*gammapr
+        self.pgroup.gaminv[ilpr:iupr]=1./gammapr
+        self.pgroup.xp[ilpr:iupr] = x
+        self.pgroup.yp[ilpr:iupr] = y
+        self.pgroup.zp[ilpr:iupr] = zpr
+        if pg.npid>0:self.pgroup.pid[ilpr:iupr,:] = getpid(pgroup=pg,js=js,bcast=0,gather=0,id=-1)
+        if top.uxoldpid>0:self.pgroup.pid[ilpr:iupr,top.uxoldpid-1]=self.pgroup.uxp[ilpr:iupr]
+        if top.uyoldpid>0:self.pgroup.pid[ilpr:iupr,top.uyoldpid-1]=self.pgroup.uyp[ilpr:iupr]
+        if top.uzoldpid>0:self.pgroup.pid[ilpr:iupr,top.uzoldpid-1]=self.pgroup.uzp[ilpr:iupr]
+      pg.nps[js]=0
+      if pg.fselfb[js]<>0.:
+        pg.fselfb[js]=(pg.fselfb[js]-self.betaframe*clight)/(1.-pg.fselfb[js]*self.betaframe/clight)
+      self.pgroup.fselfb[jspr] = pg.fselfb[js]
+    # --- check for particle out of bounds and exchange particles among processors if needed
+    top.ns=self.pgroup.ns
+    zpartbnd(self.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
+    top.ns=top.pgroup.ns
+    self.depos=top.depos.copy()
+    top.depos='none'
+    installuserinjection(self.add_boosted_species)
+    installbeforefs(self.add_boosted_rho)
+   else:
+    pg=top.pgroup
+    for jspr,js in enumerate(species.jslist):
+      if pg.fselfb[js]<>0.:
+        pg.fselfb[js]=(pg.fselfb[js]-self.betaframe*clight)/(1.-pg.fselfb[js]*self.betaframe/clight)
+      il=top.pgroup.ins[js]-1
+      iu=il+top.pgroup.nps[js]
+      if getn(pgroup=pg,js=js,bcast=0,gather=0)>0: 
+        z=getz(pgroup=pg,js=js,bcast=0,gather=0)
+      else:
+        z=0.
+      zmean=globalave(z)
+      if getn(pgroup=pg,js=js,bcast=0,gather=0)>0: 
+        top.pgroup.zp[il:iu]=zmean+(top.pgroup.zp[il:iu]-zmean)/(self.gammaframe*(1.-self.betaframe*self.betabeam_lab))
+        vx = getvx(pgroup=pg,js=js,bcast=0,gather=0)
+        vy = getvy(pgroup=pg,js=js,bcast=0,gather=0)
+        vz = getvz(pgroup=pg,js=js,bcast=0,gather=0)
+        fact = 1./(1.-self.betaframe*vz/clight)
+        vxpr = vx*fact/self.gammaframe
+        vypr = vy*fact/self.gammaframe
+        vzpr = (vz-self.betaframe*clight)*fact
+        gammapr = 1./sqrt(1.-(vxpr*vxpr+vypr*vypr+vzpr*vzpr)/clight**2)
+        top.pgroup.uxp[il:iu]=vxpr*gammapr
+        top.pgroup.uyp[il:iu]=vypr*gammapr
+        top.pgroup.uzp[il:iu]=vzpr*gammapr
+        top.pgroup.gaminv[il:iu]=1./gammapr
+        if top.uxoldpid>0:top.pgroup.pid[il:iu,top.uxoldpid-1]=top.pgroup.uxp[il:iu]
+        if top.uyoldpid>0:top.pgroup.pid[il:iu,top.uyoldpid-1]=top.pgroup.uyp[il:iu]
+        if top.uzoldpid>0:top.pgroup.pid[il:iu,top.uzoldpid-1]=top.pgroup.uzp[il:iu]
+   particleboundaries3d(top.pgroup)
+   print 'exit boost',top.pgroup.nps
+   
+  def boostold(self,species,zinject=0.,tinit=0.,l_inject_plane=1):
+   print 'enter boost',top.pgroup.nps
+   if l_inject_plane:
+    pg = top.pgroup
+    self.species=species
+    self.zinject=zinject
     self.tinit=tinit
     self.pgroup = ParticleGroup()
 #    self.pgroup.ns = pg.ns#len(species.jslist)
@@ -75,7 +202,8 @@ class Boosted_Frame(object):
         if top.uyoldpid>0:self.pgroup.pid[ilpr:iupr,top.uyoldpid-1]=self.pgroup.uyp[ilpr:iupr]
         if top.uzoldpid>0:self.pgroup.pid[ilpr:iupr,top.uzoldpid-1]=self.pgroup.uzp[ilpr:iupr]
       pg.nps[js]=0
-      pg.fselfb[js]=(pg.fselfb[js]-self.betaframe*clight)/(1.-pg.fselfb[js]*self.betaframe/clight)
+      if pg.fselfb[js]<>0.:
+        pg.fselfb[js]=(pg.fselfb[js]-self.betaframe*clight)/(1.-pg.fselfb[js]*self.betaframe/clight)
       self.pgroup.fselfb[jspr] = pg.fselfb[js]
     # --- check for particle out of bounds and exchange particles among processors if needed
     top.ns=self.pgroup.ns
@@ -88,7 +216,8 @@ class Boosted_Frame(object):
    else:
     pg=top.pgroup
     for jspr,js in enumerate(species.jslist):
-      pg.fselfb[js]=(pg.fselfb[js]-self.betaframe*clight)/(1.-pg.fselfb[js]*self.betaframe/clight)
+      if pg.fselfb[js]<>0.:
+        pg.fselfb[js]=(pg.fselfb[js]-self.betaframe*clight)/(1.-pg.fselfb[js]*self.betaframe/clight)
       il=top.pgroup.ins[js]-1
       iu=il+top.pgroup.nps[js]
       if getn(pgroup=pg,js=js,bcast=0,gather=0)>0: 
@@ -113,6 +242,8 @@ class Boosted_Frame(object):
         if top.uxoldpid>0:top.pgroup.pid[il:iu,top.uxoldpid-1]=top.pgroup.uxp[il:iu]
         if top.uyoldpid>0:top.pgroup.pid[il:iu,top.uyoldpid-1]=top.pgroup.uyp[il:iu]
         if top.uzoldpid>0:top.pgroup.pid[il:iu,top.uzoldpid-1]=top.pgroup.uzp[il:iu]
+   particleboundaries3d(top.pgroup)
+   print 'exit boost',top.pgroup.nps
    
   def add_boosted_species(self):
     for js in range(self.pgroup.ns):
@@ -127,7 +258,7 @@ class Boosted_Frame(object):
      if self.pgroup.nps[js]>0:
       il=self.pgroup.ins[js]-1
       iu=il+self.pgroup.nps[js]
-      ii=compress(self.pgroup.zp[il:iu]>self.zadd-top.time*self.betaframe*clight,il+arange(getn(pgroup=self.pgroup,js=js,bcast=0,gather=0)))
+      ii=compress(self.pgroup.zp[il:iu]>self.zinject-top.time*self.betaframe*clight,il+arange(getn(pgroup=self.pgroup,js=js,bcast=0,gather=0)))
       if len(ii)>0:
         if self.pgroup.npid>0:
           pid=take(self.pgroup.pid,ii,0)
