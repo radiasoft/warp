@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.71 2008/09/22 17:52:15 jlvay Exp $"
+particles_version = "$Id: particles.py,v 1.72 2008/10/30 00:02:22 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -286,13 +286,13 @@ Multiple selection criteria are now supported.
                             # called with one species at a time
   if jslist is not None:
     if jslist == -1:    jslist = range(0,ns)
-    partlist = array([])
+    partlist = array([],'l')
     for js in jslist:
         kwvalues['js'] = js
         newparts = selectparticles(iw, kwvalues)
         if isinstance(newparts,slice):
           newparts = arange(newparts.start,newparts.stop)
-        partlist = array(list(partlist)+list(newparts))
+        partlist = array(list(partlist)+list(newparts),'l')
     return partlist
 
   # --- If the w3dobject was not passed in, use w3d, or if the object was
@@ -305,7 +305,7 @@ Multiple selection criteria are now supported.
   ir1 = ins[js] - 1
   ir2 = ins[js] + nps[js] - 1
 
-  if ir2 <= ir1: return array([])
+  if ir2 <= ir1: return array([],'l')
 
   # --- Note that indices is only calculated if needed. If no down selection
   # --- is done, the islice will be returned.
