@@ -73,6 +73,7 @@ rprms:
 
     # --- Initialize the data lists.
     if self.count is None:
+      self.time = []
       self.count = [zeros(1+nz,'d')]
       self.current = [zeros(1+nz,'d')]
       self.rrms = [zeros(1+nz,'d')]
@@ -115,6 +116,7 @@ rprms:
 
       # --- Create space for the next set of data.
       if me == 0:
+        self.time.append(top.time)
         self.count.append(zeros(1+nz,'d'))
         self.current.append(zeros(1+nz,'d'))
         self.rrms.append(zeros(1+nz,'d'))
