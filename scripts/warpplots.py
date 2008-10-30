@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.224 2008/10/28 20:34:59 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.225 2008/10/30 20:10:15 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -131,7 +131,7 @@ always = top.always
 seldom = top.seldom
 never = top.never
 cgmlogfile = None
-numframes = 0
+numframeslist = zeros(8,'l')
 
 if with_gist:
   pldefault(marks=0) # --- Set plot defaults, no line marks
@@ -180,29 +180,34 @@ Does the work needed to start writing plots to a file automatically
   """
   # --- cgmlogfile is needed elsewhere
   global cgmlogfile
-  # --- Give setup.pname a value. This is only needed for the parallel case
-  # --- and is actually never used.
-  setup.pname = '.000.cgm'
-  setup.pnumb = '000'
-  # --- Only PE0 (or serial processor) should run this routine.
+
+  # --- Setup the plot file name
+  if me == 0:
+    if prefix is None: prefix = arraytostr(top.runid)
+    if makepsfile or with_matplotlib: suffix = 'ps'
+    else:                             suffix = 'cgm'
+    if pnumb is None:
+      # --- Get next available plot file name.
+      pname = getnextfilename(prefix,suffix)
+      pnumb = pname[-len(suffix)-4:-len(suffix)-1]
+    else:
+      pname = "%s.%s.%s"%(prefix,pnumb,suffix)
+  else:
+    # --- This just defines the variables, the values are never used.
+    pname = ''
+    pnumb = ''
+
+  # --- Save the plotfile name and number, since its not retreivable
+  # --- from gist. They are broadcast to the other processors if needed.
+  setup.pname = parallel.broadcast(pname)
+  setup.pnumb = parallel.broadcast(pnumb)
+
+  # --- Only PE0 (or serial processor) should run the rest of this routine.
   if me > 0: return
+
   # --- Set cgmfilesize
   if with_gist:
     gist.pldefault(cgmfilesize=cgmfilesize)
-
-  # --- Setup the plot file name
-  if prefix is None: prefix = arraytostr(top.runid)
-  if makepsfile or with_matplotlib: suffix = 'ps'
-  else:                             suffix = 'cgm'
-  if pnumb is None:
-    # --- Get next available plot file name.
-    pname = getnextfilename(prefix,suffix)
-    pnumb = pname[-len(suffix)-4:-len(suffix)-1]
-  else:
-    pname = "%s.%s.%s"%(prefix,pnumb,suffix)
-  # --- Save the plotfile name and number, since its not retreivable from gist.
-  setup.pname = pname
-  setup.pnumb = pnumb
 
   if with_gist:
     # --- Create window(0), but have it only dump to the file pname for now.
@@ -235,7 +240,7 @@ Does the work needed to start writing plots to a file automatically
 # --- setup has been called, this just creates a window which is attached to
 # --- the already created device. Otherwise, open a window attached to a
 # --- new device.
-def winon(winnum=0,dpi=100,prefix=None,suffix=None,xon=1):
+def winon(winnum=0,dpi=100,prefix=None,suffix=None,xon=1,style='work.gs'):
   """
 Opens up an X window
   - winnum=0 is the window number
@@ -250,16 +255,17 @@ Opens up an X window
                  already been called. Warning - this will overwrite a file
                  with the same name.
   - xon=1: When true, an X window will be opened.
+  - style='work.gs': Style file to use
   """
   if suffix is None and prefix is None:
     if with_gist:
       if xon and winnum==0 and sys.platform not in ['win32','cygwin']:
         # --- If display isn't set, no X plot window will appear since window0
         # --- is already attached to a device (the plot file).
-        gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'])
+        gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'],style=style)
       else:
-        if xon: gist.window(winnum,dpi=dpi)
-        else:   gist.window(winnum,dpi=dpi,display='')
+        if xon: gist.window(winnum,dpi=dpi,style=style)
+        else:   gist.window(winnum,dpi=dpi,display='',style=style)
   else:
     # --- Get the next winnum if it wasn't passed in.
     if winnum == 0:
@@ -281,9 +287,10 @@ Opens up an X window
     if with_gist:
       # --- Open window
       if xon:
-        gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'],dump=1,hcp=pname)
+        gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'],
+                    dump=1,hcp=pname,style=style)
       else:
-        gist.window(winnum,dpi=dpi,display='',dump=1,hcp=pname)
+        gist.window(winnum,dpi=dpi,display='',dump=1,hcp=pname,style=style)
     if with_matplotlib:
       # --- Open a new file for the plots and make it active.
       _matplotwindows.append(open(pname,'w'))
@@ -299,7 +306,6 @@ framel=''
 framer=''
 def plotruninfo():
   "Plot run info to the current plot and plot info to the log file"
-  global numframes
   if with_matplotlib:
     # --- Get the current axis.
     ca = pylab.gca()
@@ -324,19 +330,18 @@ def plotruninfo():
     plt(ss,0.12,0.24,local=1)
   if with_matplotlib:
     aa.text(0.12,0.24,ss)
-  if active_window()==0:
-    # --- Only increment and print frame number and log if the active
-    # --- device is window(0).
-    numframes = numframes + 1
-    if with_gist:
-      plt(repr(numframes),0.68,0.9,justify='RA',local=1)
-    if with_matplotlib:
-      aa.text(0.68,0.9,repr(numframes),
-              horizontalalignment='right',
-              verticalalignment='top')
-    if cgmlogfile:
-      cgmlogfile.write('%d Step %d %s %s %s %s\n' %
-                       (numframes,top.it,framet,frameb,framel,framer))
+  # --- Increment and print frame number and log
+  numframeslist[active_window()] = numframeslist[active_window()] + 1
+  if with_gist:
+    plt(repr(numframeslist[active_window()]),0.68,0.9,justify='RA',local=1)
+  if with_matplotlib:
+    aa.text(0.68,0.9,repr(numframeslist[active_window()]),
+            horizontalalignment='right',
+            verticalalignment='top')
+  if cgmlogfile:
+    cgmlogfile.write('%d %d Step %d %s %s %s %s\n' %
+                     (active_window(),numframeslist[active_window()],
+                     top.it,framet,frameb,framel,framer))
   if with_matplotlib:
     # --- Restore the previous axis
     pylab.axes(ca)
