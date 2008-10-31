@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.224 $, $Date: 2008/10/29 18:18:47 $
+c@(#) File TOP.F, version $Revision: 3.225 $, $Date: 2008/10/31 22:07:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3489,7 +3489,7 @@ c       --- to fill in the empty spaces.
           pgroup%nps(i) = 0
           do while (ip <= ips)
             if (pgroup%gaminv(ip) <= 0.) then
-              do while (pgroup%gaminv(ips) == 0. .and. ips > ip)
+              do while (pgroup%gaminv(ips) <= 0. .and. ips > ip)
                 ips = ips - 1
               enddo
               if (ips > ip) then
