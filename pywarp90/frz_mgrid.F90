@@ -5463,7 +5463,7 @@ USE InjectVars_eq
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, nr0, nz0
-REAL(8), INTENT(IN OUT) :: u0(0:nr0+2,0:nz0+2)
+REAL(8), INTENT(IN OUT) :: u0(0:nr0+2,0:2,0:nz0+2)
 REAL(8), INTENT(IN OUT) :: rho0(nr0+1,nz0+1)
 
   IF(mgridrz_ncmax==0) return
@@ -5477,19 +5477,19 @@ REAL(8), INTENT(IN OUT) :: rho0(nr0+1,nz0+1)
 
 !  call distribute_rho(basegrid)
   IF(solvergeom==XZgeom) then
-    if (basegrid%ixlbnd==dirichlet .or. basegrid%ixlbnd==patchbnd) basegrid%phi(1,:)           = u0(1,:)
+    if (basegrid%ixlbnd==dirichlet .or. basegrid%ixlbnd==patchbnd) basegrid%phi(1,:)           = u0(1,1,:)
   END if
   IF(solvergeom==RZgeom .OR. solvergeom==XZgeom) then
-    if (basegrid%ixrbnd==dirichlet .or. basegrid%ixrbnd==patchbnd) basegrid%phi(nr0+1,:)       = u0(nr0+1,:)
-    if (basegrid%izlbnd==dirichlet .or. basegrid%izlbnd==patchbnd) basegrid%phi(1:nr0+1,1)     = u0(1:nr0+1,1)
-    if (basegrid%izrbnd==dirichlet .or. basegrid%izrbnd==patchbnd) basegrid%phi(1:nr0+1,nz0+1) = u0(1:nr0+1,nz0+1)
+    if (basegrid%ixrbnd==dirichlet .or. basegrid%ixrbnd==patchbnd) basegrid%phi(nr0+1,:)       = u0(nr0+1,1,:)
+    if (basegrid%izlbnd==dirichlet .or. basegrid%izlbnd==patchbnd) basegrid%phi(1:nr0+1,1)     = u0(1:nr0+1,1,1)
+    if (basegrid%izrbnd==dirichlet .or. basegrid%izrbnd==patchbnd) basegrid%phi(1:nr0+1,nz0+1) = u0(1:nr0+1,1,nz0+1)
   END if
   IF(solvergeom==Zgeom) then
-    basegrid%phi(1,1)     = u0(1,1)
-    basegrid%phi(1,nz0+1) = u0(1,nz0+1)
+    basegrid%phi(1,1)     = u0(1,1,1)
+    basegrid%phi(1,nz0+1) = u0(1,1,nz0+1)
   END if
   IF(solvergeom==Rgeom) then
-    basegrid%phi(nr0+1,1) = u0(nr0+1,1)
+    basegrid%phi(nr0+1,1) = u0(nr0+1,1,1)
   END if
 
   call solve_mgridrz(basegrid,mgridrz_accuracy,.true.)
@@ -5497,7 +5497,7 @@ REAL(8), INTENT(IN OUT) :: rho0(nr0+1,nz0+1)
   if (l_get_fields_on_grid) call getallfieldsfromphip()
 #endif
 
-  u0(1:nr0+1,1:nz0+1)=basegrid%phi(1:nr0+1,1:nz0+1)
+  u0(0:nr0+2,1,0:nz0+2)=basegrid%phi(0:nr0+2,0:nz0+2)
 
 return
 end subroutine multigridrzf
@@ -5507,24 +5507,24 @@ USE InjectVars_eq
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, nx0, ny0
-REAL(8), INTENT(IN OUT) :: u0(0:nx0+2,0:ny0+2)
+REAL(8), INTENT(IN OUT) :: u0(0:nx0+2,0:2,0:ny0+2)
 REAL(8), INTENT(IN OUT) :: rho0(nx0+1,ny0+1)
 
   IF(mgridrz_ncmax==0) return
 
   IF(iwhich==1) return
 !  call distribute_rho(basegrid)
-  if (basegrid%ixlbnd==dirichlet .or. basegrid%ixlbnd==patchbnd) basegrid%phi(1,1:ny0+1)     = u0(1,:)
-  if (basegrid%ixrbnd==dirichlet .or. basegrid%ixrbnd==patchbnd) basegrid%phi(nx0+1,1:ny0+1) = u0(nx0+1,:)
-  if (basegrid%izlbnd==dirichlet .or. basegrid%izlbnd==patchbnd) basegrid%phi(1:nx0+1,1)     = u0(:,1)
-  if (basegrid%izrbnd==dirichlet .or. basegrid%izrbnd==patchbnd) basegrid%phi(1:nx0+1,ny0+1) = u0(:,ny0+1)
+  if (basegrid%ixlbnd==dirichlet .or. basegrid%ixlbnd==patchbnd) basegrid%phi(1,1:ny0+1)     = u0(1,1,:)
+  if (basegrid%ixrbnd==dirichlet .or. basegrid%ixrbnd==patchbnd) basegrid%phi(nx0+1,1:ny0+1) = u0(nx0+1,1,:)
+  if (basegrid%izlbnd==dirichlet .or. basegrid%izlbnd==patchbnd) basegrid%phi(1:nx0+1,1)     = u0(:,1,1)
+  if (basegrid%izrbnd==dirichlet .or. basegrid%izrbnd==patchbnd) basegrid%phi(1:nx0+1,ny0+1) = u0(:,1,ny0+1)
 
   call solve_mgridrz(basegrid,mgridrz_accuracy,.true.)
 #ifndef MPIPARALLEL
   if (l_get_fields_on_grid) call getallfieldsfromphip()
 #endif
 
-  u0(1:nx0+1,1:ny0+1)=basegrid%phi(1:nx0+1,1:ny0+1)
+  u0(0:nx0+2,1,0:ny0+2)=basegrid%phi(0:nx0+2,0:ny0+2)
 
 return
 end subroutine multigridxyf2
@@ -5539,7 +5539,7 @@ USE InjectVars_eq, ONLY: inj_phi_eq,v_max,afact,calc_a
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, nr0, nz0
-REAL(8), INTENT(IN OUT) :: u0(0:nr0+2,0:nz0+2)
+REAL(8), INTENT(IN OUT) :: u0(0:nr0+2,0:2,0:nz0+2)
 REAL(8), INTENT(IN) :: rho0(nr0+1,nz0+1)
 REAL(8), INTENT(IN) :: accuracy
 
@@ -5653,7 +5653,7 @@ INTEGER(ISZ), parameter :: center=1,average_source=2,weighted_average_source=3,b
     call remark(trim(o_line))
   END if
 
-  u0(1:nr0+1,:)=basegrid%phi(1:nr0+1,:)
+  u0(0:nr0+2,1,:)=basegrid%phi(0:nr0+2,:)
 
 return
 end subroutine multigridrzf_risetime
@@ -5662,6 +5662,7 @@ subroutine distribute_rho_rz()
 USE multigridrz
 implicit none
 
+if (.not. ASSOCIATED(basegrid)) return
 IF(.not.l_distribute) return
 IF(solvergeom==Zgeom .or. solvergeom==Rgeom) then
   call distribute_rho(basegrid)
@@ -6557,6 +6558,8 @@ integer(ISZ):: j,iz,izg
 real(kind=8):: substarttime
 if (.not. lgtlchg3d) return
 
+if (.not. ASSOCIATED(basegrid)) return
+
 dzi = 1./dz
 
 !conversion factor to go from grid frame to beam frame
@@ -6681,6 +6684,7 @@ REAL(8) :: invdr, invdz, rpos, zpos, ddr, ddz, oddr, oddz, invvol(0:nr), invvolx
 INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
 REAL(8):: substarttime
 
+if (.not. ASSOCIATED(basegrid)) return
 #define RHO basegrid%rhop
 
 IF(np==0) return
@@ -8013,6 +8017,8 @@ INTEGER(ISZ) :: igrid, nr, nz
     IF(grids_ptr(igrid)%grid%izrbnd==neumann) grids_ptr(igrid)%grid%rhop(:,nz+1) = 2._8*grids_ptr(igrid)%grid%rhop(:,nz+1)
   end do
 
+  if (.not. ASSOCIATED(basegrid)) return
+
   if(boundxy==periodic) then
     IF(ngrids>1) then
       write(o_line,*) 'ERROR:periodicity in RZ not yet supported with mesh refinement, aborting.'
@@ -8703,6 +8709,8 @@ LOGICAL(ISZ) :: ingrid
 TYPE(GRIDtype), pointer :: g
 real(8),pointer :: tphi(:,:)
 
+if (.not. ASSOCIATED(basegrid)) return
+
 if (.not. l_get_fields_on_grid) then 
   call fieldweightxzfromphi(xp,zp,ex,ez,np,zgrid,efetch)
   return
@@ -9297,6 +9305,8 @@ use Picglb
 type(ParticleGroup):: pgroup
 integer(ISZ):: ipmin,ip,is
 real(kind=8):: ex(ip),ey(ip),ez(ip)
+
+  if (.not. ASSOCIATED(basegrid)) return
 
   if(.not.mgridrz_deform) then
     call fieldweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin), &
