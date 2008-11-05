@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.56 2008/10/29 21:14:45 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.57 2008/11/05 22:38:15 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -297,6 +297,10 @@ routines (such as ppxxp).
     self.disable()
 
   def dodumptofile(self):
+    #self.dodumptofilePDB()
+    self.dodumptofilePickle()
+
+  def dodumptofilePDB(self):
     if me != 0: return
     ff = None
 #   try:
@@ -319,6 +323,25 @@ routines (such as ppxxp).
         ff.write('uy'+suffix,self.getuy(js=js))
         ff.write('uz'+suffix,self.getuz(js=js))
         ff.write('pid'+suffix,self.getpid(js=js))
+    ff.close()
+
+  def dodumptofilePickle(self):
+    if me != 0: return
+    ff = open(self.name+'_ep.pkl','a')
+    if ff is None:
+       print "ExtPart: %s unable to dump data to file."%self.name
+       return
+    for js in range(top.ns):
+      suffix = "_%d_%d"%(top.it,js)
+      if self.getn(js=js) > 0:
+        cPickle.dump(('n'+suffix,self.getn(js=js)),ff,-1)
+        cPickle.dump(('t'+suffix,self.gett(js=js)),ff,-1)
+        cPickle.dump(('x'+suffix,self.getx(js=js)),ff,-1)
+        cPickle.dump(('y'+suffix,self.gety(js=js)),ff,-1)
+        cPickle.dump(('ux'+suffix,self.getux(js=js)),ff,-1)
+        cPickle.dump(('uy'+suffix,self.getuy(js=js)),ff,-1)
+        cPickle.dump(('uz'+suffix,self.getuz(js=js)),ff,-1)
+        cPickle.dump(('pid'+suffix,self.getpid(js=js)),ff,-1)
     ff.close()
 
   def accumulate(self):
