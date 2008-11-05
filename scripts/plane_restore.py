@@ -25,7 +25,7 @@ The two simulations are linked together.
 __all__ = ['PlaneRestore','plane_restore_version']
 
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.14 2008/10/29 18:31:58 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.15 2008/11/05 22:36:57 dave Exp $"
 
 class PlaneRestore:
   """
@@ -40,10 +40,13 @@ Input:
         integer or a list of integers.
   - l_restore_phi=1: flag for restoring phi or not.
   - lrestoreparticles=1: flag for restoring particles
+  - starttime=None: If specified, the time at which to start the simulation.
+                    This can be used to skip part of the saved data, or to
+                    start at an earlier time before saved data is available.
   """
 
   def __init__(self,filename,zplane=None,js=None,
-               l_restore_phi=1,lrestoreparticles=1):
+               l_restore_phi=1,lrestoreparticles=1,starttime=None):
 
     # --- Save some input values
     self.filename = filename
@@ -51,6 +54,7 @@ Input:
     self.js = js
     self.l_restore_phi = l_restore_phi
     self.lrestoreparticles = lrestoreparticles
+    self.starttime = starttime
 
     # --- Install the routines that do the work.
     installuserinjection(self.restoreparticles)
@@ -149,6 +153,16 @@ Input:
         self.nx0_s2 = self.nxm_r - w3d.ix_axis + self.f.ixa_plane
         self.nxm_s2 = - self.nx0_r + w3d.ix_axis + self.f.ixa_plane
 
+    # --- Reset the time to the start time if specified.
+    if self.starttime is not None:
+      top.time = self.starttime
+      while self.time_restore <= top.time:
+        # --- increment the timelevel of the plane
+        self.it_restore += 1
+        self.time_restore += self.dt
+      # --- Setup phi at the start time
+      self.restoreplane_bfs()
+
   ###########################################################################
   def disable_plane_restore(self):
     # for some reason, does not work!
@@ -156,12 +170,30 @@ Input:
     uninstallafterfs(self.restoreplane_afs)
 
   def jumptotime(self,time):
+    """Jump to the specified time and set the phi boundary condition.
+No particles are loaded."""
+
+    # --- Do the initialization if it hasn't been done yet.
+    if self.f is None:
+      self.initrestoreplane()
+
+    # --- Set the time to the desired time.
     top.time = time
 
     while self.time_restore <= top.time:
       # --- increment the timelevel of the plane
       self.it_restore += 1
       self.time_restore += self.dt
+
+    # --- restore phi only if between grid bounds
+    if (self.zplane < w3d.zmmin+top.zbeam or
+        self.zplane+top.zbeam >= w3d.zmmax): return
+
+    # --- calculate grid location of new_plane
+    iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
+
+    # --- load saved phi into the phi array
+    self.restore_phi(iz,self.it_restore)
 
 
   ###########################################################################
