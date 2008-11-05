@@ -190,6 +190,10 @@ rprms:
     top.pgroup.pid[i1:i2,zoldpid-1] = top.pgroup.zp[i1:i2]
 
   def dodumptofile(self):
+    #self.dodumptofilePDB()
+    self.dodumptofilePickle()
+
+  def dodumptofilePDB(self):
     if me != 0: return
     ff = PW.PW(self.dumptofile+'_gridcrossing.pdb','a',verbose=0)
     suffix = "_%d"%(top.it)
@@ -200,6 +204,20 @@ rprms:
     ff.write('rprms'+suffix,self.rprms[0])
     if self.ldoradialdiag:
       ff.write('rprofile'+suffix,self.rprofile[0])
+    ff.close()
+
+  def dodumptofilePickle(self):
+    if me != 0: return
+    import cPickle
+    ff = open(self.dumptofile+'_gridcrossing.pkl','a')
+    suffix = "_%d"%(top.it)
+    cPickle.dump(('time'+suffix,top.time),ff,-1)
+    cPickle.dump(('count'+suffix,self.count[0]),ff,-1)
+    cPickle.dump(('current'+suffix,self.current[0]),ff,-1)
+    cPickle.dump(('rrms'+suffix,self.rrms[0]),ff,-1)
+    cPickle.dump(('rprms'+suffix,self.rprms[0]),ff,-1)
+    if self.ldoradialdiag:
+      cPickle.dump(('rprofile'+suffix,self.rprofile[0]),ff,-1)
     ff.close()
 
   def restorefromfile(self):
