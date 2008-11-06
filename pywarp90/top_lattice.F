@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.23 $, $Date: 2008/07/02 19:51:10 $
+c@(#) File top_lattice.F, version $Revision: 3.24 $, $Date: 2008/11/06 20:18:53 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -2122,6 +2122,31 @@ c --- statement, zc = 0., is just to insure the zc has value.
         id = oelemoi(ii)
         if (ii < oelemnn) zc = 0.5*(elemze(id) + elemzs(oelemoi(ii+1))) + offset
       end do
+
+c     --- If the lattice is periodic, check if there is an
+c     --- overlap with the next periodic repeat of the first element or
+c     --- the previous periodic repeat of the last element.
+c     --- The check is only needed if id is the last element and
+c     --- if that element end is less than z, or if id is the first
+c     --- element and z is less than that element start.
+      if (zlatperi > 0.) then
+        if (ii == oelemnn .and. z > elemze(id)+offset) then
+          zc = 0.5*(elemze(id) + elemzs(oelemoi(1)) + zlatperi) + offset
+          if (z > zc) then
+            ii = 1
+            id = oelemoi(ii)
+            offset = offset + zlatperi
+          endif
+        endif
+        if (ii == 1 .and. z < elemzs(id)+offset) then
+          zc = 0.5*(elemze(oelemoi(oelemnn)) - zlatperi + elemzs(id)) + offset
+          if (z < zc) then
+            ii = oelemnn
+            id = oelemoi(ii)
+            offset = offset - zlatperi
+          endif
+        endif
+      endif
 
       return
       end
