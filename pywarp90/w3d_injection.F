@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.114 $, $Date: 2008/10/29 18:19:42 $
+c@(#) File w3d_injection.F, version $Revision: 1.115 $, $Date: 2008/11/06 22:47:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -366,7 +366,11 @@ c               --- Save the particle data
                   pgroup%uzp(ii) = vzinj + 0.5*vthz_s(jsid+1)*uzt(ip)
                 endif
 c               --- Save the particle weight
-                if (l_inj_rz) pgroup%pid(ii,wpid) = 2.*rt(ip)*winject(ij,is)
+                if (l_inj_rz) then
+                  pgroup%pid(ii,wpid) = 2.*rt(ip)*winject(ij,is)
+                else if (wpid > 0) then
+                  pgroup%pid(ii,wpid) = winject(ij,is)
+                endif
                 if (linj_includebz0) then
                   rt(ip) = sqrt((pgroup%xp(ii)+xinject(ij))**2 + (pgroup%yp(ii)+yinject(ij))**2)
                   tt(ip) = atan2(pgroup%yp(ii)+yinject(ij),pgroup%xp(ii)+xinject(ij))
@@ -1010,7 +1014,13 @@ c                     --- assign pid
                         pgroup%pid(ii,wpid) = 2.*r_tmp*ainji
                       end if
                     end if
-                    if (wpid > 0) pgroup%pid(ii,wpid) = pgroup%pid(ii,wpid)*winject(ij,is)
+                    if (wpid > 0) then
+                      if (pgroup%pid(ii,wpid) == 0.) then
+                        pgroup%pid(ii,wpid) = winject(ij,is)
+                      else
+                        pgroup%pid(ii,wpid) = pgroup%pid(ii,wpid)*winject(ij,is)
+                      endif
+                    endif
 
 c                   --- Find location of particle relative to source
 c                   --- grid. This is needed for zp and az, as well as
