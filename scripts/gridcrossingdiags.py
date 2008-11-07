@@ -233,6 +233,10 @@ rprms:
     ff.close()
 
   def restorefromfile(self):
+    #self.restorefromfilePDB()
+    self.restorefromfilePickle()
+
+  def restorefromfilePDB(self):
     if me != 0: return
     ff = PR.PR(self.dumptofile+'_gridcrossing.pdb')
 
@@ -264,6 +268,51 @@ rprms:
           pass
 
     ff.close()
+
+    # --- If there is no rprofile data, then delete the attribute
+    if len(self.rprofile) == 0: del self.rprofile
+
+  def restorefromfilePickle(self):
+    if me != 0: return
+
+    # --- Read all of the data in.
+    import cPickle
+    datadict = {}
+    ff = open(self.dumptofile+'_gridcrossing.pkl','r')
+    while 1:
+      try:
+        data = cPickle.load(ff)
+      except:
+        break
+      datadict[data[0]] = data[1]
+    ff.close()
+
+    self.time = []
+    self.count = []
+    self.current = []
+    self.rrms = []
+    self.rprms = []
+    # --- At this point, getdiagnostics may not have been executed, so
+    # --- self.ldoradialdiag may not be set. So assume that it is and
+    # --- create the rprofile list.
+    self.rprofile = []
+
+    varlist = datadict.keys()
+    varlist.sort()
+    for var in varlist:
+      if var[0] == 't':
+        name,it = string.split(var,'_')
+        suffix = "_%d"%(it)
+        self.time.append(datadict['time'+suffix])
+        self.count.append(datadict['count'+suffix])
+        self.current.append(datadict['current'+suffix])
+        self.rrms.append(datadict['rrms'+suffix])
+        self.rprms.append(datadict['rprms'+suffix])
+        try:
+          self.rprofile.append(datadict['rprofile'+suffix])
+        except:
+          # --- This just means that there is no rprofile data
+          pass
 
     # --- If there is no rprofile data, then delete the attribute
     if len(self.rprofile) == 0: del self.rprofile
