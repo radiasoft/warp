@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.38 2008/08/04 20:52:29 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.39 2008/11/07 01:36:37 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -744,7 +744,11 @@ Class for generating secondaries
                            (znew<zmin) or (znew>zmax)
             if condition:
               print 'WARNING from secondaries: new particle outside boundaries, skip creation...',xnew,ynew,znew
-              self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
+              if self.vmode==1:
+                self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
+              vxplost[i],vyplost[i],vzplost[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
+              if self.vmode==2:
+                self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
               xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
             else:
               if top.wpid==0:
