@@ -18,6 +18,8 @@ cross the cell.
   - ztarget: Z location with the radial profile is calculated.
   - dumptofile=None: When given, the data will be written to a file with
                      the given name as a prefix.
+  - starttime,endtime=None: If given, the data will be collected for times
+                            only between the two values.
 
 The following quantities are calculated:
 count: count of the number of particles that cross the cell each time
@@ -28,7 +30,8 @@ rprms:
   """
 
   def __init__(self,js,zmmin=None,zmmax=None,dz=None,nz=None,nzscale=1,
-               nhist=None,nr=None,rmax=None,ztarget=None,dumptofile=None):
+               nhist=None,nr=None,rmax=None,ztarget=None,dumptofile=None,
+               starttime=None,endtime=None):
     self.js = js
     self.zmmin = zmmin
     self.zmmax = zmmax
@@ -40,6 +43,8 @@ rprms:
     self.rmax = rmax
     self.ztarget = ztarget
     self.dumptofile = dumptofile
+    self.starttime = starttime
+    self.endtime = endtime
 
     self.zoldpid = nextpid()
 
@@ -51,6 +56,13 @@ rprms:
     installafterstep(self.getdiagnostics)
 
   def getdiagnostics(self):
+
+    # --- Check the start and end times
+    if self.starttime is not None:
+      if top.time < self.starttime: return
+    if self.endtime is not None:
+      if top.time > self.endtime: return
+
     # --- Initialize grid parameters if needed. This is done here
     # --- in case the grid had not been setup yet when init was called.
     if self.zmmin is None: self.zmmin = w3d.zmmin
