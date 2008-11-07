@@ -109,7 +109,11 @@ TYPE(BNDtype), POINTER :: b
   if(l_bgrid) then
     bg%nrb=bg%nr
     bg%nzpb=bg%nzp
+  else
+    bg%nrb = 0
+    bg%nzpb=0
   end if
+  
 #ifdef MPIPARALLEL
 !  bg%zminp=zpslmin(my_index)
   if(bg%l_parallel) then
