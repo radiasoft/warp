@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.57 2008/11/05 22:38:15 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.58 2008/11/07 18:44:05 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -427,6 +427,10 @@ routines (such as ppxxp).
 
   ############################################################################
   def restoredata(self,lforce=0):
+    #self.restoredataPDB(self,0)
+    self.restoredataPickle(self,0)
+
+  def restoredataPDB(self,lforce=0):
     """
 Restores data dumped to a file. Note that this turns off the dumptofile
 feature.
@@ -466,6 +470,56 @@ feature.
         self.uzep[js].append(ff.read('uz_%d_%d'%(ii,js)))
         self.pidep[js].append(ff.read('pid_%d_%d'%(ii,js)))
     ff.close()
+
+  def restoredataPickle(self,lforce=0):
+    """
+Restores data dumped to a file. Note that this turns off the dumptofile
+feature.
+  - lforce=0: if true, force a restore, despite the value of enabled.
+    """
+    if not self.dumptofile: return
+    if not lforce and (not self.enabled or _extforcenorestore): return
+    self.dumptofile = 0
+    self.laccumulate = 1
+    # --- Read in all of the data into a dictionary.
+    ff = open(self.name+'_ep.pkl','r',verbose=0)
+    datadict = {}
+    while 1:
+      try:
+        data = cPickle.load(ff)
+      except:
+        break
+      datadict[data[0]] = data[1]
+    ff.close()
+
+    # --- Get total number of particles
+    ntot = []
+    jsmax = 0
+    for var,val in datadict.items():
+      if var[0] == 'n':
+        name,ii,js = string.split(var,'_')
+        jsmax = max(jsmax,eval(js))
+        while jsmax >= len(ntot): ntot.append(0)
+        ntot[jsmax] = ntot[jsmax] + val
+
+    self.setuparrays(jsmax+1,bump=max(array(ntot))+1)
+
+    # --- This loop must be ordered because of the append
+    varlist = datadict.keys()
+    varlist.sort()
+    for var in varlist:
+      if var[0] == 'n':
+        name,iis,jss = string.split(var,'_')
+        nn = datadict[var]
+        ii = eval(iis)
+        js = eval(jss)
+        self.tep[js].append(datadict['t_%d_%d'%(ii,js)])
+        self.xep[js].append(datadict['x_%d_%d'%(ii,js)])
+        self.yep[js].append(datadict['y_%d_%d'%(ii,js)])
+        self.uxep[js].append(datadict['ux_%d_%d'%(ii,js)])
+        self.uyep[js].append(datadict['uy_%d_%d'%(ii,js)])
+        self.uzep[js].append(datadict['uz_%d_%d'%(ii,js)])
+        self.pidep[js].append(datadict['pid_%d_%d'%(ii,js)])
 
   ############################################################################
   def selectparticles(self,val,js=0,tc=None,wt=None,tp=None,z=None,v=None):
