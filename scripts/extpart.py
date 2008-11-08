@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.59 2008/11/08 01:50:01 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.60 2008/11/08 04:48:39 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -519,7 +519,10 @@ feature.
         self.uxep[js].append(datadict['ux_%d_%d'%(ii,js)])
         self.uyep[js].append(datadict['uy_%d_%d'%(ii,js)])
         self.uzep[js].append(datadict['uz_%d_%d'%(ii,js)])
-        self.pidep[js].append(datadict['pid_%d_%d'%(ii,js)])
+        pid = datadict['pid_%d_%d'%(ii,js)]
+        if len(pid.shape) == 1:
+          pid.shape = (pid.shape[0],1)
+        self.pidep[js].append(pid)
 
   ############################################################################
   def selectparticles(self,val,js=0,tc=None,wt=None,tp=None,z=None,v=None):
