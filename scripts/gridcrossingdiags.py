@@ -208,7 +208,7 @@ rprms:
   def dodumptofilePDB(self):
     if me != 0: return
     ff = PW.PW(self.dumptofile+'_gridcrossing.pdb','a',verbose=0)
-    suffix = "_%d"%(top.it)
+    suffix = "_%08d"%(top.it)
     ff.write('time'+suffix,top.time)
     ff.write('count'+suffix,self.count[0])
     ff.write('current'+suffix,self.current[0])
@@ -222,7 +222,7 @@ rprms:
     if me != 0: return
     import cPickle
     ff = open(self.dumptofile+'_gridcrossing.pkl','a')
-    suffix = "_%d"%(top.it)
+    suffix = "_%08d"%(top.it)
     cPickle.dump(('time'+suffix,top.time),ff,-1)
     cPickle.dump(('count'+suffix,self.count[0]),ff,-1)
     cPickle.dump(('current'+suffix,self.current[0]),ff,-1)
@@ -286,6 +286,15 @@ rprms:
         break
       datadict[data[0]] = data[1]
     ff.close()
+
+    # --- Fix old bad naming
+    varlist = datadict.keys()
+    for var in varlist:
+      name,it = string.split(var,'_')
+      if len(it) < 8:
+        newname = name + '_' + (8-len(it))*'0' + it
+        datadict[newname] = datadict[var]
+        del datadict[var]
 
     self.time = []
     self.count = []
