@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.58 2008/11/07 18:44:05 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.59 2008/11/08 01:50:01 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -427,8 +427,8 @@ routines (such as ppxxp).
 
   ############################################################################
   def restoredata(self,lforce=0):
-    #self.restoredataPDB(self,0)
-    self.restoredataPickle(self,0)
+    #self.restoredataPDB(0)
+    self.restoredataPickle(0)
 
   def restoredataPDB(self,lforce=0):
     """
@@ -482,7 +482,7 @@ feature.
     self.dumptofile = 0
     self.laccumulate = 1
     # --- Read in all of the data into a dictionary.
-    ff = open(self.name+'_ep.pkl','r',verbose=0)
+    ff = open(self.name+'_ep.pkl','r')
     datadict = {}
     while 1:
       try:
