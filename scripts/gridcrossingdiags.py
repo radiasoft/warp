@@ -302,7 +302,7 @@ rprms:
     for var in varlist:
       if var[0] == 't':
         name,it = string.split(var,'_')
-        suffix = "_%d"%(it)
+        suffix = "_%s"%(it)
         self.time.append(datadict['time'+suffix])
         self.count.append(datadict['count'+suffix])
         self.current.append(datadict['current'+suffix])
