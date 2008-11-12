@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.24 $, $Date: 2008/11/06 20:18:53 $
+c@(#) File top_lattice.F, version $Revision: 3.25 $, $Date: 2008/11/12 18:23:02 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -4006,12 +4006,12 @@ c           --- tranverse field
 
             ez(ip) = ez(ip) + zsign*efac*(u0*v0*w0*egrdez(i  ,j  ,k  ,id) +
      &                                    u1*v0*w0*egrdez(i+1,j  ,k  ,id) +
-     &                                    u0*v1*w0*egrdez(i  ,j+1,k  ,id) +
-     &                                    u1*v1*w0*egrdez(i+1,j+1,k  ,id) +
+     &                                    u0*v1*w0*egrdez(i  ,jp1,k  ,id) +
+     &                                    u1*v1*w0*egrdez(i+1,jp1,k  ,id) +
      &                                    u0*v0*w1*egrdez(i  ,j  ,k+1,id) +
      &                                    u1*v0*w1*egrdez(i+1,j  ,k+1,id) +
-     &                                    u0*v1*w1*egrdez(i  ,j+1,k+1,id) +
-     &                                    u1*v1*w1*egrdez(i+1,j+1,k+1,id))
+     &                                    u0*v1*w1*egrdez(i  ,jp1,k+1,id) +
+     &                                    u1*v1*w1*egrdez(i+1,jp1,k+1,id))
 
           endif
 
@@ -4045,12 +4045,15 @@ c        + u1 * v0 * w0 * bgrdbx(i+1,j  ,k  ,bgrdid)
 c        + u0 * v1 * w0 * bgrdbx(i  ,j+1,k  ,bgrdid)
 c        + ...
 
-      integer(ISZ):: io,ip,i,j,k,iz,ii,id,jp1
-      real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,zcent,zlen
+      integer(ISZ):: io,ip,i,j,k,iz,ii,id
+      integer(ISZ):: iznext,iinext,idnext
+      real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign
+      real(kind=8):: zznext
       real(kind=8):: xt,yt,zt,x1,y1,z1
       real(kind=8):: xt0,yt0
       real(kind=8):: bxt,byt,bzt,bx1,by1,bz1
       real(kind=8),allocatable:: ca(:),sa(:),ct(:),st(:),cp(:),sp(:)
+      real(kind=8),allocatable:: zcent(:,:),zlen(:)
 
 c  Evaluation of B, vectorized over particles
 
@@ -4067,40 +4070,61 @@ c     --- Precalculate sines and cosines for efficiency
       cp = cos(bgrdop)
       sp = sin(bgrdop)
 
+      allocate(zcent(0:nzlmax,nbgrdol))
+      allocate(zlen(0:nbgrd))
+      zcent = 0.5*(cbgrdzs + cbgrdze)
+      zlen = bgrdze - bgrdzs
+
       do io=1,nbgrdol
         if (.not. linbgrd(io)) cycle
 
         if (lslice) then
 c         --- All particles are in the same z-cell
-          zz = zp(1)
-          iz = 0
-          ii = cbgrdid(iz,io)
-          id = bgrdid(ii)
+          zznext = zp(1)
+          iznext = 0
+          iinext = cbgrdid(iznext,io)
+          idnext = bgrdid(iinext)
 c         --- skip field accumulation if particles are outside of axial grid
-          if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
+          if (zznext < cbgrdzs(iznext,io) .or.
+     &                 cbgrdze(iznext,io) < zznext) cycle
+        endif
+
+c       --- Precalculate the indices.
+        if (.not. lslice) then
+          zznext = zp(1)
+c         --- find the location of the particle in the internal lattice arrays
+          iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+          iinext = cbgrdid(iznext,io)
+          idnext = bgrdid(iinext)
         endif
 
         do ip = 1, np
 
-          if (.not. lslice) then
-            zz = zp(ip)
+          zz = zznext
+          iz = iznext
+          ii = iinext
+          id = idnext
+
+          if (ip < np .and. .not. lslice) then
+            zznext = zp(ip+1)
 c           --- find the location of the particle in the internal lattice arrays
-            iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
-            ii = cbgrdid(iz,io)
-            id = bgrdid(ii)
-            if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
+            iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+            iinext = cbgrdid(iznext,io)
+            idnext = bgrdid(iinext)
           endif
+
+          if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
 
 c         --- Cycle if this element is turned off
           if (id <= 0) cycle
 
-          zcent = 0.5*(cbgrdzs(iz,io) + cbgrdze(iz,io))
-          zlen = bgrdze(ii) - bgrdzs(ii)
+c         zcent = 0.5*(cbgrdzs(iz,io) + cbgrdze(iz,io))
+c         zlen = bgrdze(ii) - bgrdzs(ii)
 
 c         --- find particle coordinates in frame of gridded field
           xt = xp(ip) - bgrdox(ii)
           yt = yp(ip) - bgrdoy(ii)
-          zt = zz     - zcent
+          zt = zz     - zcent(iz,io)
 
 c         --- transverse rotation to take into account an active rotation 
 c         --- of the field element. Rotation is relative to the z center.
@@ -4141,7 +4165,7 @@ c         --- If data is in RZ, then replace x with the radius and y=ys
 c         --- Shift coordinates to measure from the edge of the field grid
           xt = xt - bgrdxs(ii)
           yt = yt - bgrdys(ii)
-          zt = zt + zlen/2.
+          zt = zt + zlen(ii)/2.
 
 c         --- Set default sign of B field
           xsign = 1.
@@ -4189,54 +4213,65 @@ c         --- find location of particle in B field grid
           j = yt*bgrddyi(id)
           k = zt*bgrddzi(id)
 
-c         --- Calculate linear weights
-          u1 = xt*bgrddxi(id) - i
-          v1 = yt*bgrddyi(id) - j
-          w1 = zt*bgrddzi(id) - k
-          u0 = 1. - u1
-          v0 = 1. - v1
-          w0 = 1. - w1
-
 c         --- Only calculate for particles inside the B field grid
           if ((0 <= i .and. i < bgrdnx) .and.
      &        (0 <= j .and. j < bgrdny .or. bgrdrz(id)) .and.
      &        (0 <= k .and. k < bgrdnz)) then
 
+c           --- Calculate linear weights
+            u1 = xt*bgrddxi(id) - i
+            v1 = yt*bgrddyi(id) - j
+            w1 = zt*bgrddzi(id) - k
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
+
             bfac = bgrdsc(ii) + bgrdsf(ii)
 
-            jp1 = j + 1
             if (bgrdrz(id)) then
-              jp1 = j
-              v0 = 1.
-              v1 = 0.
+              bxt = xsign*bfac*(u0*w0*bgrdbx(i  ,0  ,k  ,id) +
+     &                          u1*w0*bgrdbx(i+1,0  ,k  ,id) +
+     &                          u0*w1*bgrdbx(i  ,0  ,k+1,id) +
+     &                          u1*w1*bgrdbx(i+1,0  ,k+1,id))
+
+c             byt = ysign*bfac*(u0*w0*bgrdby(i  ,0  ,k  ,id) +
+c    &                          u1*w0*bgrdby(i+1,0  ,k  ,id) +
+c    &                          u0*w1*bgrdby(i  ,0  ,k+1,id) +
+c    &                          u1*w1*bgrdby(i+1,0  ,k+1,id))
+
+              bzt = zsign*bfac*(u0*w0*bgrdbz(i  ,0  ,k  ,id) +
+     &                          u1*w0*bgrdbz(i+1,0  ,k  ,id) +
+     &                          u0*w1*bgrdbz(i  ,0  ,k+1,id) +
+     &                          u1*w1*bgrdbz(i+1,0  ,k+1,id))
+
+            else
+              bxt = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,id) +
+     &                          u1*v0*w0*bgrdbx(i+1,j  ,k  ,id) +
+     &                          u0*v1*w0*bgrdbx(i  ,j+1,k  ,id) +
+     &                          u1*v1*w0*bgrdbx(i+1,j+1,k  ,id) +
+     &                          u0*v0*w1*bgrdbx(i  ,j  ,k+1,id) +
+     &                          u1*v0*w1*bgrdbx(i+1,j  ,k+1,id) +
+     &                          u0*v1*w1*bgrdbx(i  ,j+1,k+1,id) +
+     &                          u1*v1*w1*bgrdbx(i+1,j+1,k+1,id))
+
+              byt = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,id) +
+     &                          u1*v0*w0*bgrdby(i+1,j  ,k  ,id) +
+     &                          u0*v1*w0*bgrdby(i  ,j+1,k  ,id) +
+     &                          u1*v1*w0*bgrdby(i+1,j+1,k  ,id) +
+     &                          u0*v0*w1*bgrdby(i  ,j  ,k+1,id) +
+     &                          u1*v0*w1*bgrdby(i+1,j  ,k+1,id) +
+     &                          u0*v1*w1*bgrdby(i  ,j+1,k+1,id) +
+     &                          u1*v1*w1*bgrdby(i+1,j+1,k+1,id))
+
+              bzt = zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,id) +
+     &                          u1*v0*w0*bgrdbz(i+1,j  ,k  ,id) +
+     &                          u0*v1*w0*bgrdbz(i  ,j+1,k  ,id) +
+     &                          u1*v1*w0*bgrdbz(i+1,j+1,k  ,id) +
+     &                          u0*v0*w1*bgrdbz(i  ,j  ,k+1,id) +
+     &                          u1*v0*w1*bgrdbz(i+1,j  ,k+1,id) +
+     &                          u0*v1*w1*bgrdbz(i  ,j+1,k+1,id) +
+     &                          u1*v1*w1*bgrdbz(i+1,j+1,k+1,id))
             endif
-
-            bxt = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,id) +
-     &                        u1*v0*w0*bgrdbx(i+1,j  ,k  ,id) +
-     &                        u0*v1*w0*bgrdbx(i  ,jp1,k  ,id) +
-     &                        u1*v1*w0*bgrdbx(i+1,jp1,k  ,id) +
-     &                        u0*v0*w1*bgrdbx(i  ,j  ,k+1,id) +
-     &                        u1*v0*w1*bgrdbx(i+1,j  ,k+1,id) +
-     &                        u0*v1*w1*bgrdbx(i  ,jp1,k+1,id) +
-     &                        u1*v1*w1*bgrdbx(i+1,jp1,k+1,id))
-
-            byt = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,id) +
-     &                        u1*v0*w0*bgrdby(i+1,j  ,k  ,id) +
-     &                        u0*v1*w0*bgrdby(i  ,jp1,k  ,id) +
-     &                        u1*v1*w0*bgrdby(i+1,jp1,k  ,id) +
-     &                        u0*v0*w1*bgrdby(i  ,j  ,k+1,id) +
-     &                        u1*v0*w1*bgrdby(i+1,j  ,k+1,id) +
-     &                        u0*v1*w1*bgrdby(i  ,jp1,k+1,id) +
-     &                        u1*v1*w1*bgrdby(i+1,jp1,k+1,id))
-
-            bzt = zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,id) +
-     &                        u1*v0*w0*bgrdbz(i+1,j  ,k  ,id) +
-     &                        u0*v1*w0*bgrdbz(i  ,jp1,k  ,id) +
-     &                        u1*v1*w0*bgrdbz(i+1,jp1,k  ,id) +
-     &                        u0*v0*w1*bgrdbz(i  ,j  ,k+1,id) +
-     &                        u1*v0*w1*bgrdbz(i+1,j  ,k+1,id) +
-     &                        u0*v1*w1*bgrdbz(i  ,jp1,k+1,id) +
-     &                        u1*v1*w1*bgrdbz(i+1,jp1,k+1,id))
 
 c            if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
 c              temp = bxt 
@@ -4293,6 +4328,8 @@ c           --- add in the resulting field
       deallocate(ca,sa)
       deallocate(ct,st)
       deallocate(cp,sp)
+      deallocate(zcent)
+      deallocate(zlen)
 
       return
       end
