@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.242 $, $Date: 2008/10/30 19:16:21 $
+#@(#) File TOP.V, version $Revision: 3.243 $, $Date: 2008/11/13 07:31:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.242 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.243 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -442,8 +442,9 @@ egrday(0:negrd)   _real [m]   # Aperture in egrd elements in y
 egrdox(0:negrd)   _real [m]   # Offset in x of egrd elements
 egrdoy(0:negrd)   _real [m]   # Offset in y of egrd elements
 egrdph(0:negrd)   _real [rad] # Phase angle of egrd elements 
-egrdsp(0:negrd)   _real [1]   # Sine   of egrdph (auto-set) 
-egrdcp(0:negrd)   _real [1]   # Cosine of egrdph (auto-set) 
+egrdot(0:negrd) _real [rad] /0./ # Offset angle theta relative to the z-axis.
+egrdop(0:negrd) _real [rad] /0./ # Offset angle phi, rotation in the
+                                 # transverse plane.
 egrdid(0:negrd)   _integer    # Index of to 3-D E field data sets (EGRDdata)
 egrdsf(0:negrd) _real [1] /0./ # Scale factor to multiply 3-D E field data set
                                # EGRDdata. Field is scaled by (egrdsc+egrdsf)
@@ -454,6 +455,10 @@ egrdsy(0:negrd) _integer /0/   # Level of symmetry in the egrd data.
                                # Defaul is no symmetry.
 egrdol(0:negrd)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
+egrdfs(0:negrd)   _real [m]   # Full Z starts of 3-D grid of E field data
+                              # including rotation off z-axis (autoset)
+egrdfe(0:negrd)   _real [m]   # Full Z ends of 3-D grid of E field data
+                              # including rotation off z-axis (autoset)
 bgrdzs(0:nbgrd)   _real [m]   # Z starts of 3-D grid of B field data (BGRDdata)
 bgrdze(0:nbgrd)   _real [m]   # Z ends of 3-D grid of B field data (BGRDdata)
 bgrdxs(0:nbgrd)   _real [m]   # X starts of 3-D grid of B field data (BGRDdata)

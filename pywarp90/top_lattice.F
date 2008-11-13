@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.25 $, $Date: 2008/11/12 18:23:02 $
+c@(#) File top_lattice.F, version $Revision: 3.26 $, $Date: 2008/11/13 07:31:09 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -658,6 +658,8 @@ c============================================================================
              egrdox(0) = egrdox(negrd)
              egrdoy(0) = egrdoy(negrd)
              egrdph(0) = egrdph(negrd) 
+             egrdot(0) = egrdot(negrd)
+             egrdop(0) = egrdop(negrd)
              egrdap(0) = egrdap(negrd)
           endif
         endif
@@ -678,15 +680,9 @@ c     --- Calculate 1/egrddx etc. for efficiency (minimizes divides)
 c     --- Note that this coding is not executed if egrdns=0.
       do i=1,egrdns
         if (egrddxi(i) == 0.) egrddxi(i) = 1./egrddx(i)
-        if (egrddyi(i) == 0.) egrddyi(i) = 1./egrddy(i)
+        if (egrddyi(i) == 0. .and. egrddy(i) .ne. 0.) egrddyi(i) = 1./egrddy(i)
         if (egrddzi(i) == 0.) egrddzi(i) = 1./egrddz(i)
       enddo
-
-c     --- Calculate sines and cosines of egrdph for efficiency
-      do i=0,negrd
-        egrdsp(i) = sin(egrdph(i)) 
-        egrdcp(i) = cos(egrdph(i)) 
-      enddo 
 
       return
       end
@@ -1293,12 +1289,14 @@ c============================================================================
       call setupegrds
 
       negrdol = 0
-      if (negrd >= 0)
-     &  call getelemoverlaps(negrd,egrdzs,egrdze,egrdol,zlatbuffer,negrdol)
+      
+      if (negrd < 0) return
+
+      call egrdgetfulllength()
+      call getelemoverlaps(negrd,egrdfs,egrdfe,egrdol,zlatbuffer,negrdol)
       call gchange("LatticeInternal",0)
-      if (negrd >= 0)
-     &  call getelemoverlapindices(negrd,egrdol,negrdol,oegrdoi,oegrdio,oegrdii,
-     &                             oegrdnn)
+      call getelemoverlapindices(negrd,egrdol,negrdol,oegrdoi,oegrdio,oegrdii,
+     &                           oegrdnn)
 
       return
       end
@@ -1403,15 +1401,15 @@ c     --- elements) and then using them in the same routine
       call setupaccls
       call setupemlts
       call setupmmlts
-      call setupegrds
       call setuppgrds
       call setupbsqgrads
 
 c     --- Get the overlap level of the lattice elements
       call getoverlaps()
 
-c     --- Note that bgrd elements must be handled specially.
+c     --- Note that bgrd and egrd elements must be handled specially.
       call resetlatbgrd()
+      call resetlategrd()
 
 c     --- resetlat no longer needs to be called, as long as no changes are
 c     --- made to the lattice.
@@ -1429,7 +1427,7 @@ c zlatbuffer is the amount of space (on meters) around each element. It is
 c used so that elements right next to each other but not strictly overlapping
 c are considered to be overlapping.
 
-c     --- Note that bgrd elements must be handled specially.
+c     --- Note that bgrd and egrd elements must be handled specially.
 
       ndrftol = 0
       nbendol = 0
@@ -1440,7 +1438,6 @@ c     --- Note that bgrd elements must be handled specially.
       nacclol = 0
       nemltol = 0
       nmmltol = 0
-      negrdol = 0
       npgrdol = 0
       nbsqgradol = 0
 
@@ -1462,8 +1459,6 @@ c     --- Note that bgrd elements must be handled specially.
      &  call getelemoverlaps(nemlt,emltzs,emltze,emltol,zlatbuffer,nemltol)
       if (nmmlt >= 0)
      &  call getelemoverlaps(nmmlt,mmltzs,mmltze,mmltol,zlatbuffer,nmmltol)
-      if (negrd >= 0)
-     &  call getelemoverlaps(negrd,egrdzs,egrdze,egrdol,zlatbuffer,negrdol)
       if (npgrd >= 0)
      &  call getelemoverlaps(npgrd,pgrdzs,pgrdze,pgrdol,zlatbuffer,npgrdol)
       if (nbsqgrad >= 0)
@@ -1499,9 +1494,6 @@ c Now, setup indicing arrays in LatticeInternal
       if (nmmlt >= 0)
      &  call getelemoverlapindices(nmmlt,mmltol,nmmltol,ommltoi,ommltio,ommltii,
      &                             ommltnn)
-      if (negrd >= 0)
-     &  call getelemoverlapindices(negrd,egrdol,negrdol,oegrdoi,oegrdio,oegrdii,
-     &                             oegrdnn)
       if (npgrd >= 0)
      &  call getelemoverlapindices(npgrd,pgrdol,npgrdol,opgrdoi,opgrdio,opgrdii,
      &                             opgrdnn)
@@ -1940,13 +1932,15 @@ c          --- THIS NEEDS CHECKING
 c        --- find index of nearest egrd element
 c        --- The cegrdid array calculated here is needed for the magnetic
 c        --- elements described by E field data on a 3-D grid.
+c        --- Note that the full lengths are used here, in case there is
+c        --- a rotation off the z-axis.
          do io=1,negrdol
-           call getelemid(zz,offset,negrd,egrdzs,egrdze,egrdol,
+           call getelemid(zz,offset,negrd,egrdfs,egrdfe,egrdol,
      &                    oegrdnn(io),oegrdoi(oegrdii(io)),oegrdio,
      &                    cegrdid(iz,io),io)
 c          --- load lattice info into comoving 1d array
-           cegrdzs(iz,io) = egrdzs(cegrdid(iz,io)) + offset
-           cegrdze(iz,io) = egrdze(cegrdid(iz,io)) + offset
+           cegrdzs(iz,io) = egrdfs(cegrdid(iz,io)) + offset
+           cegrdze(iz,io) = egrdfe(cegrdid(iz,io)) + offset
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
            if (cegrdzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
@@ -2358,19 +2352,19 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,negrd,egrdzs,egrdze,egrdol,
+        call getelemid(zz,offset,negrd,egrdfs,egrdfe,egrdol,
      &                 oegrdnn(io),oegrdoi(oegrdii(io):),oegrdio,id,io)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,negrd,egrdzs,egrdze,egrdol,
+        call getelemid(zz,offset,negrd,egrdfs,egrdfe,egrdol,
      &                 oegrdnn(1),oegrdoi(oegrdii(1):),oegrdio,id,1)
 c       --- Loop over rest of overlap levels looking for a egrd with lower
 c       --- z start.
         id_temp = id
         do ii=2,negrdol
-          call getelemid(zz,offset_temp,negrd,egrdzs,egrdze,egrdol,
+          call getelemid(zz,offset_temp,negrd,egrdfs,egrdfe,egrdol,
      &                   oegrdnn(ii),oegrdoi(oegrdii(ii):),oegrdio,id_temp,ii)
-          if (egrdzs(id_temp)+offset_temp < egrdzs(id)+offset) then
+          if (egrdfs(id_temp)+offset_temp < egrdfs(id)+offset) then
             id = id_temp
             offset = offset_temp
           endif
@@ -2396,19 +2390,19 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,nbgrd,bgrdzs,bgrdze,bgrdol,
+        call getelemid(zz,offset,nbgrd,bgrdfs,bgrdfe,bgrdol,
      &                 obgrdnn(io),obgrdoi(obgrdii(io):),obgrdio,id,io)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,nbgrd,bgrdzs,bgrdze,bgrdol,
+        call getelemid(zz,offset,nbgrd,bgrdfs,bgrdfe,bgrdol,
      &                 obgrdnn(1),obgrdoi(obgrdii(1):),obgrdio,id,1)
 c       --- Loop over rest of overlap levels looking for a bgrd with lower
 c       --- z start.
         id_temp = id
         do ii=2,nbgrdol
-          call getelemid(zz,offset_temp,nbgrd,bgrdzs,bgrdze,bgrdol,
+          call getelemid(zz,offset_temp,nbgrd,bgrdfs,bgrdfe,bgrdol,
      &                   obgrdnn(ii),obgrdoi(obgrdii(ii):),obgrdio,id_temp,ii)
-          if (bgrdzs(id_temp)+offset_temp < bgrdzs(id)+offset) then
+          if (bgrdfs(id_temp)+offset_temp < bgrdfs(id)+offset) then
             id = id_temp
             offset = offset_temp
           endif
@@ -3676,6 +3670,7 @@ c  Assumes that at most one bend will be between particle and the mult center.
             zz = zp(ip)
 c           --- find z-cell in which particle lies
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
+            iz = min(nzl, iz)
           endif
           imm(ip) = cmltim(iz,io)
           if (imm(ip) <= 0) cycle
@@ -3710,6 +3705,7 @@ c         --- an element.
             zz = zp(ip)
 c           --- find z-cell in which particle lies
             iz = max(0., (zz - zlmin - zlframe)*dzli)
+            iz = min(nzl, iz)
           endif
 c         --- set temporaries
           imm(ip) = cmltim(iz,io)
@@ -3748,7 +3744,7 @@ c             --- if particle is in bend
                 xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(iz)
               endif
 c           --- apply coordinate change right of mult, using index of (iz+1)
-            elseif (zz >= cent) then
+            elseif (zz >= cent .and. iz < nzl) then
               bendrci = 1./cbendrc(iz+1)
 c             --- find start of bend: if bend extends beyond center of mult, use
 c             --- that as the start of the bend since moments are in coordinate
@@ -3810,7 +3806,7 @@ c===========================================================================
       logical(ISZ):: lslice
       real(kind=8):: ex(np),ey(np),ez(np)
 
-c  Sets magnetic field for particles from data sets
+c  Sets electric field for particles from data sets
 c  containing Ex, Ey, and Ez on 3-D grids.
 c  Calling arguments:
 c     np          number of particles
@@ -3825,68 +3821,129 @@ c        + u1 * v0 * w0 * egrdex(i+1,j  ,k  ,egrdid)
 c        + u0 * v1 * w0 * egrdex(i  ,j+1,k  ,egrdid)
 c        + ...
 
-      integer(ISZ):: io,ip,i,j,k,iz,ii,id,jp1
-      real(kind=8):: zz,u0,u1,v0,v1,w0,w1,efac,xsign,ysign,zsign,txp,typ,temp
-      real(kind=8):: txp0,typ0
-      real(kind=8):: tex,tey
+      integer(ISZ):: io,ip,i,j,k,iz,ii,id
+      integer(ISZ):: iznext,iinext,idnext
+      real(kind=8):: zz,u0,u1,v0,v1,w0,w1,efac,xsign,ysign,zsign
+      real(kind=8):: zznext
+      real(kind=8):: xt,yt,zt,x1,y1,z1
+      real(kind=8):: xt0,yt0
+      real(kind=8):: ext,eyt,ezt,ex1,ey1,ez1
+      real(kind=8),allocatable:: ca(:),sa(:),ct(:),st(:),cp(:),sp(:)
+      real(kind=8),allocatable:: zcent(:,:),zlen(:)
 
 c  Evaluation of E, vectorized over particles
-      
+
       if (.not. egrds .or. .not. linegrd(0)) return
-      
+
+c     --- Precalculate sines and cosines for efficiency
+      allocate(ca(0:negrd),sa(0:negrd))
+      allocate(ct(0:negrd),st(0:negrd))
+      allocate(cp(0:negrd),sp(0:negrd))
+      ca = cos(egrdph)
+      sa = sin(egrdph)
+      ct = cos(egrdot)
+      st = sin(egrdot)
+      cp = cos(egrdop)
+      sp = sin(egrdop)
+
+      allocate(zcent(0:nzlmax,negrdol))
+      allocate(zlen(0:negrd))
+      zcent = 0.5*(cegrdzs + cegrdze)
+      zlen = egrdze - egrdzs
+
       do io=1,negrdol
         if (.not. linegrd(io)) cycle
 
         if (lslice) then
 c         --- All particles are in the same z-cell
-          zz = zp(1)
-          iz = 0
-          ii = cegrdid(iz,io)
-          id = egrdid(ii)
-          k = (zz - cegrdzs(iz,io))*egrddzi(id)
+          zznext = zp(1)
+          iznext = 0
+          iinext = cegrdid(iznext,io)
+          idnext = egrdid(iinext)
 c         --- skip field accumulation if particles are outside of axial grid
-          if (zz < cegrdzs(iz,io) .or. cegrdze(iz,io) < zz) cycle
+          if (zznext < cegrdzs(iznext,io) .or.
+     &                 cegrdze(iznext,io) < zznext) cycle
+        endif
+
+c       --- Precalculate the indices.
+        if (.not. lslice) then
+          zznext = zp(1)
+c         --- find the location of the particle in the internal lattice arrays
+          iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+          iznext = min(nzl,iznext)
+          iinext = cegrdid(iznext,io)
+          idnext = egrdid(iinext)
         endif
 
         do ip = 1, np
 
-          if (.not. lslice) then
-            zz = zp(ip)
+          zz = zznext
+          iz = iznext
+          ii = iinext
+          id = idnext
+
+          if (ip < np .and. .not. lslice) then
+            zznext = zp(ip+1)
 c           --- find the location of the particle in the internal lattice arrays
-            iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
-            ii = cegrdid(iz,io)
-            id = egrdid(ii)
-            if (zz < cegrdzs(iz,io) .or. cegrdze(iz,io) < zz) cycle
+            iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+            iznext = min(nzl,iznext)
+            iinext = cegrdid(iznext,io)
+            idnext = egrdid(iinext)
           endif
+
+          if (zz < cegrdzs(iz,io) .or. cegrdze(iz,io) < zz) cycle
 
 c         --- Cycle if this element is turned off
           if (id <= 0) cycle
 
-c         --- find transverse particle coordinate in frame of gridded field 
-c         --- transverse offsets
-          txp = xp(ip) - egrdox(ii)
-          typ = yp(ip) - egrdoy(ii)
+c         zcent = 0.5*(cegrdzs(iz,io) + cegrdze(iz,io))
+c         zlen = egrdze(ii) - egrdzs(ii)
+
+c         --- find particle coordinates in frame of gridded field
+          xt = xp(ip) - egrdox(ii)
+          yt = yp(ip) - egrdoy(ii)
+          zt = zz     - zcent(iz,io)
+
 c         --- transverse rotation to take into account an active rotation 
-c         --- of the field element.  Particles are rotated in that oposite 
-c         --- sense of the element. Later the field components accumulated 
-c         --- must be rotated back. 
-          if ( egrdph(ii) .ne. 0. ) then
-            temp = txp  
-            txp =  temp*egrdcp(ii) + typ*egrdsp(ii) 
-            typ = -temp*egrdsp(ii) + typ*egrdcp(ii) 
+c         --- of the field element. Rotation is relative to the z center.
+c         --- Particles are rotated to the frame of the element.
+c         --- Later, the field components accumulated are rotated back. 
+c         --- First, rotate by egrdph about the z axis.
+          if (egrdop(ii) .ne. 0.) then
+            x1 = xt
+            y1 = yt
+            xt = +x1*cp(ii) + y1*sp(ii)
+            yt = -x1*sp(ii) + y1*cp(ii)
+          endif
+
+c         --- then by egrdot about the new y axis
+          if (egrdot(ii) .ne. 0.) then
+            x1 = xt
+            z1 = zt
+            xt = x1*ct(ii) - z1*st(ii)
+            zt = x1*st(ii) + z1*ct(ii)
+          endif
+
+c         --- then by egrdop about the new z axis
+          if (egrdph(ii) .ne. 0.) then
+            x1 = xt
+            y1 = yt
+            xt = +x1*ca(ii) + y1*sa(ii)
+            yt = -x1*sa(ii) + y1*ca(ii)
           endif 
 
 c         --- If data is in RZ, then replace x with the radius and y=ys
           if (egrdrz(id)) then
-            txp0 = txp
-            typ0 = typ
-            txp = sqrt(txp**2 + typ**2)
-            typ = egrdys(ii)
+            xt0 = xt
+            yt0 = yt
+            xt = sqrt(xt**2 + yt**2)
+            yt = egrdys(ii)
           endif
 
 c         --- Shift coordinates to measure from the edge of the field grid
-          txp = txp - egrdxs(ii)
-          typ = typ - egrdys(ii)
+          xt = xt - egrdxs(ii)
+          yt = yt - egrdys(ii)
+          zt = zt + zlen(ii)/2.
 
 c         --- Set default sign of E field
           xsign = 1.
@@ -3895,8 +3952,8 @@ c         --- Set default sign of E field
 
 c         --- If E is quadrupolar symmetric, make transformations.
 c         --- When the particle is in one of the even quadrants (either
-c         --- x<0 or y<0 but not both), the transformation is done ey
-c         --- swapping x and y, and ey swapping Ex and Ey (done at the end
+c         --- x<0 or y<0 but not both), the transformation is done by
+c         --- swapping x and y, and by swapping Ex and Ey (done at the end
 c         --- of the loop). The sign of Ez is also changed. In the third
 c         --- quadrant, the signs of both Ex and Ey are changed.
 c                 Quadrupole symmetries on field grid
@@ -3910,112 +3967,223 @@ c                IV        -E_x( x,-y,z)   E_x( x,-y,z)   -E_z( x,-y,z)
 
           if (egrdsy(ii) == 2) then
 c           --- Get quadrant that the particle is in.
-            if (txp < 0.) then
+            if (xt < 0.) then
               ysign = -1.
-              txp = -txp
+              xt = -xt
             endif
-            if (typ < 0.) then
+            if (yt < 0.) then
               xsign = -1.
-              typ = -typ
+              yt = -yt
             endif
 c           --- If in even quadrant...
             if (xsign*ysign < 0.) then
 c             --- Switch sign of Ez.
               zsign = -1.
 c             --- Swap x and y
-cc              temp = txp
-cc              txp = typ
-cc              typ = temp
+cc              temp = xt
+cc              xt = yt
+cc              yt = temp
             endif
           endif
 
 c         --- find location of particle in E field grid
-          i =  txp*egrddxi(id)
-          j =  typ*egrddyi(id)
-          k = (zz - cegrdzs(iz,io))*egrddzi(id)
-
-c         --- Calculate linear weights
-          u1 = txp*egrddxi(id) - i
-          v1 = typ*egrddyi(id) - j
-          w1 = (zz - cegrdzs(iz,io))*egrddzi(id) - k
-          u0 = 1. - u1
-          v0 = 1. - v1
-          w0 = 1. - w1
+          i = xt*egrddxi(id)
+          j = yt*egrddyi(id)
+          k = zt*egrddzi(id)
 
 c         --- Only calculate for particles inside the E field grid
           if ((0 <= i .and. i < egrdnx) .and.
-     &        (0 <= j .and. j < egrdny .or. egrdrz(id)) .and. 
+     &        (0 <= j .and. j < egrdny .or. egrdrz(id)) .and.
      &        (0 <= k .and. k < egrdnz)) then
+
+c           --- Calculate linear weights
+            u1 = xt*egrddxi(id) - i
+            v1 = yt*egrddyi(id) - j
+            w1 = zt*egrddzi(id) - k
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
 
             efac = egrdsc(ii) + egrdsf(ii)
 
-            jp1 = j + 1
             if (egrdrz(id)) then
-              jp1 = j
-              v0 = 1.
-              v1 = 0.
+              ext = xsign*efac*(u0*w0*egrdex(i  ,0  ,k  ,id) +
+     &                          u1*w0*egrdex(i+1,0  ,k  ,id) +
+     &                          u0*w1*egrdex(i  ,0  ,k+1,id) +
+     &                          u1*w1*egrdex(i+1,0  ,k+1,id))
+
+c             eyt = ysign*efac*(u0*w0*egrdey(i  ,0  ,k  ,id) +
+c    &                          u1*w0*egrdey(i+1,0  ,k  ,id) +
+c    &                          u0*w1*egrdey(i  ,0  ,k+1,id) +
+c    &                          u1*w1*egrdey(i+1,0  ,k+1,id))
+
+              ezt = zsign*efac*(u0*w0*egrdez(i  ,0  ,k  ,id) +
+     &                          u1*w0*egrdez(i+1,0  ,k  ,id) +
+     &                          u0*w1*egrdez(i  ,0  ,k+1,id) +
+     &                          u1*w1*egrdez(i+1,0  ,k+1,id))
+
+            else
+              ext = xsign*efac*(u0*v0*w0*egrdex(i  ,j  ,k  ,id) +
+     &                          u1*v0*w0*egrdex(i+1,j  ,k  ,id) +
+     &                          u0*v1*w0*egrdex(i  ,j+1,k  ,id) +
+     &                          u1*v1*w0*egrdex(i+1,j+1,k  ,id) +
+     &                          u0*v0*w1*egrdex(i  ,j  ,k+1,id) +
+     &                          u1*v0*w1*egrdex(i+1,j  ,k+1,id) +
+     &                          u0*v1*w1*egrdex(i  ,j+1,k+1,id) +
+     &                          u1*v1*w1*egrdex(i+1,j+1,k+1,id))
+
+              eyt = ysign*efac*(u0*v0*w0*egrdey(i  ,j  ,k  ,id) +
+     &                          u1*v0*w0*egrdey(i+1,j  ,k  ,id) +
+     &                          u0*v1*w0*egrdey(i  ,j+1,k  ,id) +
+     &                          u1*v1*w0*egrdey(i+1,j+1,k  ,id) +
+     &                          u0*v0*w1*egrdey(i  ,j  ,k+1,id) +
+     &                          u1*v0*w1*egrdey(i+1,j  ,k+1,id) +
+     &                          u0*v1*w1*egrdey(i  ,j+1,k+1,id) +
+     &                          u1*v1*w1*egrdey(i+1,j+1,k+1,id))
+
+              ezt = zsign*efac*(u0*v0*w0*egrdez(i  ,j  ,k  ,id) +
+     &                          u1*v0*w0*egrdez(i+1,j  ,k  ,id) +
+     &                          u0*v1*w0*egrdez(i  ,j+1,k  ,id) +
+     &                          u1*v1*w0*egrdez(i+1,j+1,k  ,id) +
+     &                          u0*v0*w1*egrdez(i  ,j  ,k+1,id) +
+     &                          u1*v0*w1*egrdez(i+1,j  ,k+1,id) +
+     &                          u0*v1*w1*egrdez(i  ,j+1,k+1,id) +
+     &                          u1*v1*w1*egrdez(i+1,j+1,k+1,id))
             endif
 
-            tex = xsign*efac*(u0*v0*w0*egrdex(i  ,j  ,k  ,id) +
-     &                        u1*v0*w0*egrdex(i+1,j  ,k  ,id) +
-     &                        u0*v1*w0*egrdex(i  ,jp1,k  ,id) +
-     &                        u1*v1*w0*egrdex(i+1,jp1,k  ,id) +
-     &                        u0*v0*w1*egrdex(i  ,j  ,k+1,id) +
-     &                        u1*v0*w1*egrdex(i+1,j  ,k+1,id) +
-     &                        u0*v1*w1*egrdex(i  ,jp1,k+1,id) +
-     &                        u1*v1*w1*egrdex(i+1,jp1,k+1,id))
-
-            tey = ysign*efac*(u0*v0*w0*egrdey(i  ,j  ,k  ,id) +
-     &                        u1*v0*w0*egrdey(i+1,j  ,k  ,id) +
-     &                        u0*v1*w0*egrdey(i  ,jp1,k  ,id) +
-     &                        u1*v1*w0*egrdey(i+1,jp1,k  ,id) +
-     &                        u0*v0*w1*egrdey(i  ,j  ,k+1,id) +
-     &                        u1*v0*w1*egrdey(i+1,j  ,k+1,id) +
-     &                        u0*v1*w1*egrdey(i  ,jp1,k+1,id) +
-     &                        u1*v1*w1*egrdey(i+1,jp1,k+1,id))
-
 c            if (egrdsy(ii) == 2 .and. xsign*ysign < 0.) then
-c              temp = tex 
-c              tex = tey
-c              tey = temp
+c              temp = ext 
+c              ext = eyt
+c              eyt = temp
 c            endif 
 
-c           --- rotate transverse field componets for correct lab frame 
-c               orientation if the element is rotated.  
-            if ( egrdph(ii) .ne. 0. ) then
-              temp = tex 
-              tex = temp*egrdcp(ii) - tey*egrdsp(ii) 
-              tey = temp*egrdsp(ii) + tey*egrdcp(ii)         
-            endif 
-
             if (egrdrz(id)) then
-c             --- For the RZ case, tbx now holds Er. Convert it to Ex and Ey.
-c             --- Note that this ignores Etheta (in tby) for now.
-              if (txp .ne. 0) then
-                tey = tex*typ0/txp
-                tex = tex*txp0/txp
+c             --- For the RZ case, ext now holds Er. Convert it to Ex and Ey.
+c             --- Note that this ignores Etheta (in eyt) for now.
+              if (xt .ne. 0) then
+                eyt = ext*yt0/xt
+                ext = ext*xt0/xt
               else
-                tey = 0.
-                tex = tex
+                eyt = 0.
+                ext = ext
               endif
             endif
 
-c           --- tranverse field 
-            ex(ip) = ex(ip) + tex
-            ey(ip) = ey(ip) + tey
+c           --- Rotate field componets back to the lab frame. These are the
+c           --- same rotations as above but in opposite order with the sign
+c           --- of the angle reversed.
+            if (egrdph(ii) .ne. 0.) then
+              ex1 = ext
+              ey1 = eyt
+              ext = +ex1*ca(ii) - ey1*sa(ii)
+              eyt = +ex1*sa(ii) + ey1*ca(ii)
+            endif 
 
-            ez(ip) = ez(ip) + zsign*efac*(u0*v0*w0*egrdez(i  ,j  ,k  ,id) +
-     &                                    u1*v0*w0*egrdez(i+1,j  ,k  ,id) +
-     &                                    u0*v1*w0*egrdez(i  ,jp1,k  ,id) +
-     &                                    u1*v1*w0*egrdez(i+1,jp1,k  ,id) +
-     &                                    u0*v0*w1*egrdez(i  ,j  ,k+1,id) +
-     &                                    u1*v0*w1*egrdez(i+1,j  ,k+1,id) +
-     &                                    u0*v1*w1*egrdez(i  ,jp1,k+1,id) +
-     &                                    u1*v1*w1*egrdez(i+1,jp1,k+1,id))
+            if (egrdot(ii) .ne. 0.) then
+              ex1 = ext
+              ez1 = ezt
+              ext = +ex1*ct(ii) + ez1*st(ii)
+              ezt = -ex1*st(ii) + ez1*ct(ii)
+            endif
+
+            if (egrdop(ii) .ne. 0.) then
+              ex1 = ext
+              ey1 = eyt
+              ext = +ex1*cp(ii) - ey1*sp(ii)
+              eyt = +ex1*sp(ii) + ey1*cp(ii)
+            endif
+
+c           --- add in the resulting field 
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
 
           endif
 
         enddo
+      enddo
+
+      deallocate(ca,sa)
+      deallocate(ct,st)
+      deallocate(cp,sp)
+      deallocate(zcent)
+      deallocate(zlen)
+
+      return
+      end
+c============================================================================ 
+      subroutine egrdgetfulllength()
+      use Lattice
+      use LatticeInternal
+      use EGRDdata
+
+c Calculate the full axial length of the elements, including the extra length
+c that may be taken up if the element has a rotation away from the z-axis.
+c The results are put in egrdfs and egrdfe.
+
+      integer(ISZ):: ie,id
+      real(kind=8):: zcent
+      real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
+      real(kind=8):: ca,sa,ct,st,cp,sp
+      real(kind=8):: xl(8),yl(8),zl(8)
+      real(kind=8):: xr(8),yr(8),zr(8)
+      real(kind=8):: x1(8),y1(8),z1(8)
+      real(kind=8):: x2(8),y2(8),z2(8)
+
+      do ie = 0,negrd
+        id = egrdid(ie)
+
+c       --- The transverse mins and maxs of the grid
+        xmin = egrdxs(ie)
+        xmax = egrdxs(ie) + egrddx(id)*egrdnx
+        ymin = egrdys(ie)
+        ymax = egrdys(ie) + egrddy(id)*egrdny
+
+        if (egrdrz(id)) then
+c         --- For RZ, extend the mins and maxs to cover the full transverse
+c         --- extent as if the grid were 3D. The y extent is the same as x,
+c         --- but with the appropriate y center.
+          xmin = egrdxs(ie) - egrddx(id)*egrdnx
+          ymin = xmin - egrdxs(ie) + egrdys(ie)
+          ymax = xmax - egrdxs(ie) + egrdys(ie)
+        endif
+
+c       --- Get the zmin and zmax relative to the center of the grid.
+        zcent = 0.5*(egrdzs(ie) + egrdze(ie))
+        zmin = egrdzs(ie) - zcent
+        zmax = egrdze(ie) - zcent
+
+c       --- Generate the locations of the eight corners of the grid in
+c       --- the rotated frame.
+        xr = (/xmin,xmax,xmin,xmax,xmin,xmax,xmin,xmax/)
+        yr = (/ymin,ymin,ymax,ymax,ymin,ymin,ymax,ymax/)
+        zr = (/zmin,zmin,zmin,zmin,zmax,zmax,zmax,zmax/)
+
+c       --- Precalculate the cosines and sines.
+        ca = cos(egrdph(ie))
+        sa = sin(egrdph(ie))
+        ct = cos(egrdot(ie))
+        st = sin(egrdot(ie))
+        cp = cos(egrdop(ie))
+        sp = sin(egrdop(ie))
+
+c       --- Convert the corners into the lab frame by three successive
+c       --- rotations, first by egrdph about the z axis,
+        x1 = +xr*ca - yr*sa
+        y1 = +xr*sa + yr*ca
+        z1 = zr
+c       --- then by egrdot about the new y axis,
+        x2 = +x1*ct + z1*st
+        y2 = y1
+        z2 = -x1*st + z1*ct
+c       --- then by egrdop about the new z axis.
+c       xl = +x2*cp - y2*sp
+c       yl = +x2*sp + y2*cp
+        zl = z2
+
+        egrdfs(ie) = zcent + minval(zl)
+        egrdfe(ie) = zcent + maxval(zl)
+
       enddo
 
       return
@@ -4094,6 +4262,7 @@ c       --- Precalculate the indices.
           zznext = zp(1)
 c         --- find the location of the particle in the internal lattice arrays
           iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+          iznext = min(nzl,iznext)
           iinext = cbgrdid(iznext,io)
           idnext = bgrdid(iinext)
         endif
@@ -4109,6 +4278,7 @@ c         --- find the location of the particle in the internal lattice arrays
             zznext = zp(ip+1)
 c           --- find the location of the particle in the internal lattice arrays
             iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+            iznext = min(nzl,iznext)
             iinext = cbgrdid(iznext,io)
             idnext = bgrdid(iinext)
           endif
