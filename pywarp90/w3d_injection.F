@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.115 $, $Date: 2008/11/06 22:47:59 $
+c@(#) File w3d_injection.F, version $Revision: 1.116 $, $Date: 2008/11/13 21:23:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -931,7 +931,10 @@ c                 --- Skip this species if no particles are to be injected
 c                 --- Double check to make sure that there is room for the
 c                 --- particles, in case there is a problem with the above
 c                 --- calculation.
-                  call chckpart(pgroup,is,nn,0)
+c                 --- This is commented out since it is not really needed
+c                 --- and sometimes seems to cause problems, making the
+c                 --- particles arrays grow too quickly.
+c                 call chckpart(pgroup,is,nn,0)
 
 c                 --- loop to load new particles
                   do ip=1,nn
@@ -1523,6 +1526,8 @@ c the variable 'tinject'.
 
         if (itask == 1) then
 
+          tinj_npactual = 0.
+
 c         --- zero ntinject for tinject = 2 or 3
           if (tinject == 2 .or. tinject == 3) then
             do is=1,pgroup%ns
@@ -1532,7 +1537,9 @@ c         --- zero ntinject for tinject = 2 or 3
             enddo
           endif
 
-c         --- Loop over injection sources
+c         --- Loop over injection sources, and precalculate the number of
+c         --- particles that will be injected. This is so that the particle
+c         --- arrays will be reallocated only once, if needed.
           do ij=1,ntinj
 
 c           --- loop over species
@@ -1541,7 +1548,6 @@ c           --- loop over species
               if (.not. pgroup%ldts(is-1)) cycle
               if (ftinject(ij,jsid+1) == 0.) cycle
               fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
-              nti = 0
               qoverm = pgroup%sq(is)/pgroup%sm(is)
 
 c             --- Load particles one azimuthal section at a time,
@@ -1554,10 +1560,6 @@ c               --- Skip sections that are out of the grid
 
                 ainj = atinjectz(iz,ij)
                 binj = btinjectz(iz,ij)
-                ainjp1 = atinjectz(iz+1,ij)
-                binjp1 = btinjectz(iz+1,ij)
-                ainji = 1./atinjectz(iz,ij)
-                binji = 1./btinjectz(iz,ij)
                 if (ltinj_outward(ij)) then
                   rsign = +1.
                 else
@@ -1570,16 +1572,6 @@ c               --- any reduced angular extent.
                 circum = ellipseperimeter(ainj,binj)*thetaextent/(2.*pi)
                 area = dztinj(ij)*circum/nttinj(ij)
                 dtheta = thetaextent/nttinj(ij)
-
-c               --- Check if the angular extent is 2*pi, in which case particles are
-c               --- loaded over the full circle. The main issue is whether particles
-c               --- at the min and max theta range overlap or not. The dtheta/2 is
-c               --- an ad hoc fuzz to avoid round off problems.
-                if (thetaextent < 2.*pi - dtheta/2.) then
-                  ltinj_full_circle = .false.
-                else
-                  ltinj_full_circle = .true.
-                endif
 
                 do ith=0,nttinj(ij)-1
 
@@ -1609,15 +1601,6 @@ c                 --- Fetch difference between phi at that point and phi on
 c                 --- the emitting surface, averaging over z
                   vavez = 0.5*(tinj_phi(ith,iz,ij)+tinj_phi(ith,iz+1,ij))
 
-c                 --- normal velocity
-                  vnorm = fulldt_s*qoverm*vavez*dri
-
-c                 --- Axial velocity
-c                 --- Calculated using axial E field on virtual surface.
-c                 --- This does not take into account any variation in a and b
-                  vznorm = fulldt_s*qoverm*
-     &                     (tinj_phi(ith,iz,ij)-tinj_phi(ith,iz+1,ij))/dztinj(ij)
-
 c                 --- number of particles injected in grid cell
                   if (tinject == 1) then
                     rnn = ntinject(jsid+1)*ftinject(ij,jsid+1)/real(nttinj(ij)*nztinj(ij))
@@ -1629,11 +1612,11 @@ c                   --- Concentric Spheres", PhysRev, 1924.
                     const = 4./9.*eps0*(2.*abs(qoverm))**.5*dri**2*
      &                      fulldt_s*area/abs(pgroup%sq(is))/pgroup%sw(is)/
      &                      (1. - 0.8*dr*rinji + 0.66*(dr*rinji)**2)
-                    tinjprev(ith,iz,ij) = ftinject(ij,jsid+1)*(
-     &                                    inj_param*const*abs(vavez)**1.5 +
-     &                                    (1. - inj_param)*tinjprev(ith,iz,ij))
-                    rnn = tinjprev(ith,iz,ij)
-                    if (ith == 0) tinjprev(nttinj(ij),iz,ij) = tinjprev(ith,iz,ij)
+                    tinjprev(ith,iz,ij,is) = ftinject(ij,jsid+1)*(
+     &                                inj_param*const*abs(vavez)**1.5 +
+     &                                (1. - inj_param)*tinjprev(ith,iz,ij,is))
+                    rnn = tinjprev(ith,iz,ij,is)
+                    if (ith == 0) tinjprev(nttinj(ij),iz,ij,is) = tinjprev(ith,iz,ij,is)
                   elseif (tinject == 3) then
 c                   --- Find coordinates of the point.
 c                   --- This only works with basic 3d and RZ solvers
@@ -1664,12 +1647,102 @@ c                   --- get charge density at injection point
      &                      pgroup%sw(is)*ftinject(ij,jsid+1)))
                   nn = int(rnn + wranf())
 
-c                 --- Make sure there is room for more particles.  Estimate
-c                 --- total number of particles to be injected from the
-c                 --- source.
-                  call chckpart(pgroup,is,
-     &                          max(nn,ntinject(jsid+1) + nn*nttinj(ij)*nztinj(ij)),0)
+                  if (nn < 0) nn = 0.
+                  tinj_npactual(ith,iz,ij,is) = nn
 
+                enddo
+              enddo
+
+c           --- end loop over species
+            enddo
+
+c         --- end loop over transverse injection sources
+          enddo
+
+          do is=1,pgroup%ns
+c           --- Make sure there is room for more particles. Calculate the
+c           --- total number of particles to be injected from the sources.
+            nn = sum(tinj_npactual(:,:,:,is))
+            call chckpart(pgroup,is,nn,0)
+          enddo
+
+c         --- Loop over injection sources
+          do ij=1,ntinj
+
+c           --- loop over species
+            do is=1,pgroup%ns
+              jsid = pgroup%sid(is-1)
+              if (.not. pgroup%ldts(is-1)) cycle
+              if (ftinject(ij,jsid+1) == 0.) cycle
+              fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
+              nti = 0
+              qoverm = pgroup%sq(is)/pgroup%sm(is)
+
+c             --- Load particles one azimuthal section at a time,
+c             --- only if there is a positive number of injected particles.
+              do iz=0,nztinj(ij)-1
+                zm = ztinjmn(ij) + iz*dztinj(ij)
+
+c               --- Skip sections that are out of the grid
+                if (zm+dztinj(ij) < inj_zmmin .or. zm >= inj_zmmax) cycle
+
+                ainj = atinjectz(iz,ij)
+                binj = btinjectz(iz,ij)
+                ainjp1 = atinjectz(iz+1,ij)
+                binjp1 = btinjectz(iz+1,ij)
+                if (ltinj_outward(ij)) then
+                  rsign = +1.
+                else
+                  rsign = -1.
+                endif
+
+c               --- Area of section of emitting surface. Note that the circum includes
+c               --- any reduced angular extent.
+                thetaextent = thetamaxtinj(iz,ij) - thetamintinj(iz,ij)
+                circum = ellipseperimeter(ainj,binj)*thetaextent/(2.*pi)
+                dtheta = thetaextent/nttinj(ij)
+
+c               --- Check if the angular extent is 2*pi, in which case particles are
+c               --- loaded over the full circle. The main issue is whether particles
+c               --- at the min and max theta range overlap or not. The dtheta/2 is
+c               --- an ad hoc fuzz to avoid round off problems.
+                if (thetaextent < 2.*pi - dtheta/2.) then
+                  ltinj_full_circle = .false.
+                else
+                  ltinj_full_circle = .true.
+                endif
+
+                do ith=0,nttinj(ij)-1
+
+c                 --- angle of point in transverse plane
+                  aa = thetamintinj(iz,ij) + ith*dtheta
+                  p1x = ainj*cos(aa)
+                  p1y = binj*sin(aa)
+
+c                 --- Find coordinates of the point on the virtual surface
+c                 --- along a line perpendicular to the emitting surface.
+c                 --- Also calculate the distance of that point from the surface.
+c                 --- Note that dx, dy, and dz are used since these relate to
+c                 --- the field grid, not the injection grid.
+                  p2x = (ainj + rsign*inj_dx)*cos(aa)
+                  p2y = (binj + rsign*inj_dx*ainj/binj)*sin(aa)
+                  dr = rsign*sqrt((p2x-p1x)**2 + (p2y-p1y)**2)
+                  dri = 1./dr
+
+c                 --- Fetch difference between phi at that point and phi on
+c                 --- the emitting surface, averaging over z
+                  vavez = 0.5*(tinj_phi(ith,iz,ij)+tinj_phi(ith,iz+1,ij))
+
+c                 --- normal velocity
+                  vnorm = fulldt_s*qoverm*vavez*dri
+
+c                 --- Axial velocity
+c                 --- Calculated using axial E field on virtual surface.
+c                 --- This does not take into account any variation in a and b
+                  vznorm = fulldt_s*qoverm*
+     &                     (tinj_phi(ith,iz,ij)-tinj_phi(ith,iz+1,ij))/dztinj(ij)
+
+                  nn = tinj_npactual(ith,iz,ij,is)
                   do ip=1,nn
                     ii = pgroup%ins(is) - 1
 c                   --- calculate position of new particle
