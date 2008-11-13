@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.31 $, $Date: 2008/11/13 02:14:45 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.32 $, $Date: 2008/11/13 17:12:06 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -84,7 +84,7 @@ c=============================================================================
       real(kind=8):: rhs(0:nx,0:nzlocal)
       real(kind=8):: resdelfac(0:nx,0:nzlocal)
 
-      real(kind=8),pointer:: chi(:,:,:,:)
+      real(kind=8),allocatable:: chi(:,:,:,:)
       integer(ISZ):: ix,iz,js,ic,js1
       integer(ISZ):: ixmin,ixmax,izmin,izmax
       real(kind=8):: ox,oy,oz,oo
