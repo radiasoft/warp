@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.43 $, $Date: 2008/02/13 02:22:31 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.44 $, $Date: 2008/11/19 18:29:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -11,48 +11,51 @@ c=============================================================================
       interface
 
       subroutine setj3d(j,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
-     &                  q,wght,nw,wghtp,depos,nx,ny,nzlocal,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                  q,wght,nw,wghtp,depos,nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                  xmminlocal,ymminlocal,zmminlocal,
      &                  l2symtry,l4symtry,lcylindrical)
       integer(ISZ):: np,nw
-      integer(ISZ):: nx,ny,nzlocal
+      integer(ISZ):: nxlocal,nylocal,nzlocal
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: j(0:2,0:nx,0:ny,0:nzlocal)
-      real(kind=8):: j1d(0:3*(1+nx)*(1+ny)*(1+nzlocal)-1)
+      real(kind=8):: j(0:2,0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: j1d(0:3*(1+nxlocal)*(1+nylocal)*(1+nzlocal)-1)
       real(kind=8),target:: xp(np), yp(np), zp(np)
       real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8),target:: wghtp(nw)
       character(8):: depos
       real(kind=8):: dx,dy,dz
-      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmminlocal,ymminlocal,zmminlocal
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
       end subroutine setj3d
 
       subroutine setb3d(b,np,xp,yp,zp,zgrid,bx,by,bz,
-     &                  nx,ny,nzlocal,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                  nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                  xmminlocal,ymminlocal,zmminlocal,
      &                  l2symtry,l4symtry,lcylindrical)
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nzlocal
+      integer(ISZ):: nxlocal,nylocal,nzlocal
       real(kind=8):: zgrid
-      real(kind=8):: b(0:2,0:nx,0:ny,0:nzlocal)
+      real(kind=8):: b(0:2,0:nxlocal,0:nylocal,0:nzlocal)
       real(kind=8),target:: xp(np), yp(np), zp(np)
       real(kind=8):: bx(np), by(np), bz(np)
       real(kind=8):: dx,dy,dz
-      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmminlocal,ymminlocal,zmminlocal
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
       end subroutine setb3d
 
       subroutine fetchafrompositions3d(a,np,xp,yp,zp,zgrid,ap,
-     &                                 nx,ny,nzlocal,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                                 nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                                 xmminlocal,ymminlocal,zmminlocal,
      &                                 l2symtry,l4symtry,lcylindrical)
       use Subtimersf3d
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nzlocal
-      real(kind=8):: a(0:2,-1:nx+1,-1:ny+1,-1:nzlocal+1)
+      integer(ISZ):: nxlocal,nylocal,nzlocal
+      real(kind=8):: a(0:2,-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
       real(kind=8),target:: xp(np), yp(np), zp(np)
       real(kind=8):: ap(0:2,np)
       real(kind=8):: zgrid
       real(kind=8):: dx,dy,dz
-      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmminlocal,ymminlocal,zmminlocal
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
       end subroutine fetchafrompositions3d
 
@@ -78,21 +81,30 @@ c=============================================================================
       if (bfield%xmmax == 0) bfield%xmmax = xmmax
       if (bfield%ymmin == 0) bfield%ymmin = ymmin
       if (bfield%ymmax == 0) bfield%ymmax = ymmax
-      if (bfield%zmminlocal == 0) bfield%zmminlocal = zmminlocal
-      if (bfield%zmmaxlocal == 0) bfield%zmmaxlocal = zmmaxlocal
       if (bfield%zmmin == 0) bfield%zmmin = zmmin
       if (bfield%zmmax == 0) bfield%zmmax = zmmax
+      if (bfield%xmminlocal == 0) bfield%xmminlocal = xmminlocal
+      if (bfield%xmmaxlocal == 0) bfield%xmmaxlocal = xmmaxlocal
+      if (bfield%ymminlocal == 0) bfield%ymminlocal = ymminlocal
+      if (bfield%ymmaxlocal == 0) bfield%ymmaxlocal = ymmaxlocal
+      if (bfield%zmminlocal == 0) bfield%zmminlocal = zmminlocal
+      if (bfield%zmmaxlocal == 0) bfield%zmmaxlocal = zmmaxlocal
       if (bfield%nx == 0) bfield%nx = nx
       if (bfield%ny == 0) bfield%ny = ny
-      if (bfield%nzlocal == 0) bfield%nzlocal = nzlocal
       if (bfield%nz == 0) bfield%nz = nz
-      if (bfield%dx == 0) bfield%dx = (bfield%xmmax-bfield%xmmin)/bfield%nx
-      if (bfield%dy == 0 .and. bfield%ny > 0) bfield%dy = (bfield%ymmax-bfield%ymmin)/bfield%ny
-      if (bfield%dz == 0) bfield%dz = (bfield%zmmax-bfield%zmmin)/bfield%nz
+      if (bfield%nxlocal == 0) bfield%nxlocal = nxlocal
+      if (bfield%nylocal == 0) bfield%nylocal = nylocal
+      if (bfield%nzlocal == 0) bfield%nzlocal = nzlocal
+      if (bfield%dx == 0 .and. bfield%nx > 0)
+     &  bfield%dx = (bfield%xmmax-bfield%xmmin)/bfield%nx
+      if (bfield%dy == 0 .and. bfield%ny > 0)
+     &  bfield%dy = (bfield%ymmax-bfield%ymmin)/bfield%ny
+      if (bfield%dz == 0 .and. bfield%nz > 0)
+     &  bfield%dz = (bfield%zmmax-bfield%zmmin)/bfield%nz
       if (idadt>0) then
-        if (bfield%nxold /= bfield%nx) bfield%nxold = bfield%nx
-        if (bfield%nyold /= bfield%ny) bfield%nyold = bfield%ny
-        if (bfield%nzold /= bfield%nz) bfield%nzold = bfield%nz
+        if (bfield%nxold /= bfield%nxlocal) bfield%nxold = bfield%nxlocal
+        if (bfield%nyold /= bfield%nylocal) bfield%nyold = bfield%nylocal
+        if (bfield%nzold /= bfield%nzlocal) bfield%nzold = bfield%nzlocal
       end if
       call BFieldGridTypechange(bfield)
 
@@ -149,7 +161,7 @@ c=============================================================================
       use Particles,Only: wpid
       use BFieldGrid
       use GridBoundary3d
-      use FieldSolveAPI, Only: lzerorhofsapi
+      use FieldSolveAPI, Only: lzerorhofsapi,js1fsapi,js2fsapi
       use f3d_bfield_interfaces
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
@@ -160,7 +172,7 @@ c --- jp array.  The value '-1' is used as a flag in the input to use
 c --- all of the particles, otherwise the specified particles are loaded.
 
       integer(ISZ):: ins_u,nps_u
-      integer(ISZ):: is1,is2
+      integer(ISZ):: is1,is2,isid
       integer(ISZ):: ip,ipmin,is
       real(kind=8):: swtmp,wptmp(1)
       real(kind=8):: substarttime,wtime
@@ -170,34 +182,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
       if (lf3dtimesubs) substarttime = wtime()
 
-#ifdef MPIPARALLEL
-c     --- Set the flag signalling that j has been changed and that
-c     --- the parallel sums on boundaries will need to be done again.
-      ljsummedonboundaries = .false.
-#endif
-
       if (depos == 'none') return
-
-      if (bfstype == 12) then
-        lzerorhofsapi = lzero
-        call callpythonfunc("bloadjregistered","fieldsolver")
-      elseif (fstype == 12 .and. bfstype < 0) then
-        lzerorhofsapi = lzero
-        call callpythonfunc("loadjregistered","fieldsolver")
-      elseif (bfstype >= 0) then
-
-c       --- Ensure that the jp array is setup properly
-        if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-          call setupbfieldsforparticles3d(pgroup%ns,pgroup%ndts,it,bfield,bfieldp)
-        endif
-
-c       --- zero jp if requested
-        if (lzero) then
-          if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-              call zeroarry(bfieldp%j,
-     &                    3*(bfieldp%nx+1)*(bfieldp%ny+1)*(bfieldp%nzlocal+1))
-          endif
-        end if
 
 c       --- set limits on loop over species
         if (is_i == -1) then
@@ -208,6 +193,30 @@ c       --- set limits on loop over species
           is2 = is_i
         endif
 
+      if (bfstype == 12) then
+        lzerorhofsapi = lzero
+        js1fsapi = is1 - 1
+        js2fsapi = is2 - 1
+        call callpythonfunc("bloadjregistered","fieldsolver")
+        js1fsapi = -1
+        js2fsapi = -1
+      elseif (fstype == 12 .and. bfstype < 0) then
+        lzerorhofsapi = lzero
+        js1fsapi = is1 - 1
+        js2fsapi = is2 - 1
+        call callpythonfunc("loadjregistered","fieldsolver")
+        js1fsapi = -1
+        js2fsapi = -1
+      elseif (bfstype >= 0) then
+
+c       --- Ensure that the jp array is setup properly
+        call setupbfieldsforparticles3d(pgroup%ns,pgroup%ndts,it,bfield,bfieldp)
+
+c       --- zero jp if requested
+        if (lzero) then
+          bfieldp%j = 0.
+        end if
+
 c       --- set initial limits from input
 c       --- (will be changed if necessary in the loop)
         ins_u = ins_i
@@ -215,10 +224,13 @@ c       --- (will be changed if necessary in the loop)
 
 c       --- loop over species
         do is=is1,is2
+          isid = pgroup%sid(is-1) + 1
+          if (isid == 0) cycle
 
 c         --- get loop limits for particles if needed
           if (ins_i == -1) ins_u = pgroup%ins(is)
           if (nps_i == -1) nps_u = pgroup%nps(is)
+          if (nps_u == 0) cycle
 
 c         --- Scale the weight, sw, by the time step scale size. This only
 c         --- makes sense for steady-state and slice modes. In time-dependent
@@ -227,64 +239,62 @@ c         --- mode, it is assumed that dtscale has not been changed from 1.
 
           if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
             ipmin = ins_u
-            if (nps_u > 0) then
-              if (pgroup%ndts(is-1)>1) then
-c               --- This code would be better if it were in setj3d, but since
-c               --- jp is passed into it, this must be done here.
-                if (mod(it+1,pgroup%ndts(is-1))==0) then
-c                  --- If this species is being advanced this step, then
-c                  --- deposit its j into jptmp.
-                   jpcopy => bfieldp%j
-                   bfieldp%j => bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
-                   bfieldp%j = 0.
-                else
-c                  --- If this species is not being advanced this step, then
-c                  --- just add its saved jptmp into jp.
-                   bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
-                   cycle
-                 end if
-              end if
-              if(wpid==0) then
-                call setj3d(bfieldp%j,bfieldp%j,nps_u,
-     &                      pgroup%xp(ipmin:ipmin+nps_u-1),
-     &                      pgroup%yp(ipmin:ipmin+nps_u-1),
-     &                      pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
-     &                      pgroup%uxp(ipmin:ipmin+nps_u-1),
-     &                      pgroup%uyp(ipmin:ipmin+nps_u-1),
-     &                      pgroup%uzp(ipmin:ipmin+nps_u-1),
-     &                      pgroup%gaminv(ipmin:ipmin+nps_u-1),
-     &                      pgroup%sq(is),swtmp,0,wptmp,depos,
-     &                      bfield%nx,bfield%ny,bfield%nzlocal,
-     &                      bfield%dx,bfield%dy,bfield%dz,
-     &                      bfield%xmmin,bfield%ymmin,bfield%zmminlocal,
-     &                      l2symtry,l4symtry,bfield%lcylindrical)
+            if (pgroup%ndts(is-1)>1) then
+c             --- This code would be better if it were in setj3d, but since
+c             --- jp is passed into it, this must be done here.
+              if (mod(it+1,pgroup%ndts(is-1))==0) then
+c                --- If this species is being advanced this step, then
+c                --- deposit its j into jptmp.
+                 jpcopy => bfieldp%j
+                 bfieldp%j => bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
+                 bfieldp%j = 0.
               else
-c               --- Due to compiler bug, the pid array needs to be temporarily
-c               --- pointed to in order to be properly passed into setj3d.
-c               --- When pid is passed directly into setj3d, it is just all
-c               --- zeros.
-                pidtmp => pgroup%pid(ipmin:ipmin+nps_u-1,wpid)
-                call setj3d(bfieldp%j,bfieldp%j,nps_u,
-     &                      pgroup%xp(ipmin:ipmin+nps_u-1),
-     &                      pgroup%yp(ipmin:ipmin+nps_u-1),
-     &                      pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
-     &                      pgroup%uxp(ipmin:ipmin+nps_u-1),
-     &                      pgroup%uyp(ipmin:ipmin+nps_u-1),
-     &                      pgroup%uzp(ipmin:ipmin+nps_u-1),
-     &                      pgroup%gaminv(ipmin:ipmin+nps_u-1),
-     &                      pgroup%sq(is),swtmp,nps_u,pidtmp,depos,
-     &                      bfield%nx,bfield%ny,bfield%nzlocal,
-     &                      bfield%dx,bfield%dy,bfield%dz,
-     &                      bfield%xmmin,bfield%ymmin,bfield%zmminlocal,
-     &                      l2symtry,l4symtry,bfield%lcylindrical)
-              endif
-              if (pgroup%ndts(is-1)>1 .and. mod(it+1,pgroup%ndts(is-1))==0) then
-c               --- If this species is being advanced this step, then restore
-c               --- jp and copy its j into jp.
-                bfieldp%j => jpcopy
-                bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
-              end if
+c                --- If this species is not being advanced this step, then
+c                --- just add its saved jptmp into jp.
+                 bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
+                 cycle
+               end if
+            end if
+            if(wpid==0) then
+              call setj3d(bfieldp%j,bfieldp%j,nps_u,
+     &                    pgroup%xp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%yp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
+     &                    pgroup%uxp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%uyp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%uzp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%gaminv(ipmin:ipmin+nps_u-1),
+     &                    pgroup%sq(is),swtmp,0,wptmp,depos,
+     &                    bfieldp%nxlocal,bfieldp%nylocal,bfieldp%nzlocal,
+     &                    bfieldp%dx,bfieldp%dy,bfieldp%dz,
+     &                    bfieldp%xmminlocal,bfieldp%ymminlocal,bfieldp%zmminlocal,
+     &                    l2symtry,l4symtry,bfieldp%lcylindrical)
+            else
+c             --- Due to compiler bug, the pid array needs to be temporarily
+c             --- pointed to in order to be properly passed into setj3d.
+c             --- When pid is passed directly into setj3d, it is just all
+c             --- zeros.
+              pidtmp => pgroup%pid(ipmin:ipmin+nps_u-1,wpid)
+              call setj3d(bfieldp%j,bfieldp%j,nps_u,
+     &                    pgroup%xp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%yp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
+     &                    pgroup%uxp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%uyp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%uzp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%gaminv(ipmin:ipmin+nps_u-1),
+     &                    pgroup%sq(is),swtmp,nps_u,pidtmp,depos,
+     &                    bfieldp%nxlocal,bfieldp%nylocal,bfieldp%nzlocal,
+     &                    bfieldp%dx,bfieldp%dy,bfieldp%dz,
+     &                    bfieldp%xmminlocal,bfieldp%ymminlocal,bfieldp%zmminlocal,
+     &                    l2symtry,l4symtry,bfieldp%lcylindrical)
             endif
+            if (pgroup%ndts(is-1)>1 .and. mod(it+1,pgroup%ndts(is-1))==0) then
+c             --- If this species is being advanced this step, then restore
+c             --- jp and copy its j into jp.
+              bfieldp%j => jpcopy
+              bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
+            end if
           elseif(solvergeom==XZgeom) then
             print*,"Error: Self magnetic field not support with solvergeom=XZgeom"
           elseif(solvergeom==Zgeom) then
@@ -296,20 +306,14 @@ c               --- jp and copy its j into jp.
           end if
         enddo
 
+c       --- bfieldp.j has been changed, so set the flag that it needs further
+c       --- processing.
+        ljfinalized = .false.
 
-c       --- For parallel version, each processor sends j to neighboring
-c       --- processors whose field solve region overlap its particle region.
-        if (lzero) call getjforfieldsolve()
-
-c       --- enforce periodicity
-c       --- This is done on the j array, rather than jp, since j will
-c       --- be used for the field solve. Also, in some cases, the jp array
-c       --- will not cover the full axial extent of the system, so 
-c       --- periodicity can only be enforced on j which does cover the full
-c       --- system.
-        if (lzero) then
-          call perj3d(bfield,bound0,boundxy)
-        endif
+c       --- If lzero is requested, then it is assumed that loadj should
+c       --- be a complete operation and that any final processing on j
+c       --- should be done.
+        if (lzero) call finalizej()
 
       endif
 
@@ -319,108 +323,122 @@ c       --- system.
       return
       end
 c=============================================================================
-      subroutine setaboundaries3d(a,nx,ny,nzlocal,
-     &                            zmminlocal,zmmaxlocal,zmmin,zmmax,
-     &                            bounds,lcylindrical,llongitudinal)
-      use Subtimersf3d
-      use GlobalVars
-      integer(ISZ):: nx,ny,nzlocal
-      real(kind=8):: a(0:2,-1:nx+1,-1:ny+1,-1:nzlocal+1)
-      real(kind=8):: zmminlocal,zmmaxlocal,zmmin,zmmax
-      integer(ISZ):: bounds(0:5)
-      logical(ISZ):: lcylindrical,llongitudinal
+      subroutine finalizej()
+      use GridBoundary3d
+      use BFieldGrid
+      use InGen3d,Only: l2symtry,l4symtry
 
-c  Sets the slices on the exterior of A, depending on the boundary conditions.
-c  When llongitudinal is true, set the longitudinal boundaries, otherwise
-c  skip that code block.
+      if (ljfinalized) return
+      ljfinalized = .true.
 
-      real(kind=8):: substarttime,wtime
-      if (lf3dtimesubs) substarttime = wtime()
+c     --- For parallel version, each processor sends j to neighboring
+c     --- processors whose field solve region overlap its particle region.
+      call getjforfieldsolve()
 
-c     --- With the cylindrical solver, the guard cells are already set.
-      if (.not. lcylindrical) then
-        if (bounds(0) == periodic .or. bounds(1) == periodic) then
-          a(:,-1,:,:)   = a(:,nx-1,:,:)
-          a(:,nx,:,:)   = a(:,0,:,:)
-          a(:,nx+1,:,:) = a(:,1,:,:)
-        else
-          if (bounds(0) == neumann) then
-            a(:,-1,:,:) = a(:,1,:,:)
-          elseif (bounds(0) == dirichlet) then
-            a(:,-1,:,:) = 2.*a(:,0,:,:) - a(:,1,:,:)
-          endif
-          if (bounds(1) == neumann) then
-            a(:,nx+1,:,:) = a(:,nx-1,:,:)
-          elseif (bounds(1) == dirichlet) then
-            a(:,nx+1,:,:) = 2.*a(:,nx,:,:) - a(:,nx-1,:,:)
-          endif
-        endif
-      endif
+c     --- Make sure the bounds array is up to date with any changes in the
+c     --- flags.
+      call setboundsfromflags(bounds,boundxy,bound0,boundnz,l2symtry,l4symtry)
 
-      if (lcylindrical) then
-c       --- In this case, actually ny == 0. This ensures that d/dtheta is zero.
-        a(:,:,-1,:) = a(:,:,0,:)
-        a(:,:,ny+1,:) = a(:,:,ny,:)
-      else
-        if (bounds(2) == periodic .or. bounds(3) == periodic) then
-          a(:,:,-1,:)   = a(:,:,ny-1,:)
-          a(:,:,ny,:)   = a(:,:,0,:)
-          a(:,:,ny+1,:) = a(:,:,1,:)
-        else
-          if (bounds(2) == neumann) then
-            a(:,:,-1,:) = a(:,:,1,:)
-          elseif (bounds(2) == dirichlet) then
-            a(:,:,-1,:) = 2.*a(:,:,0,:) - a(:,:,1,:)
-          endif
-          if (bounds(3) == neumann) then
-            a(:,:,ny+1,:) = a(:,:,ny-1,:)
-          elseif (bounds(3) == dirichlet) then
-            a(:,:,ny+1,:) = 2.*a(:,:,ny,:) - a(:,:,ny-1,:)
-          endif
-        endif
-      endif
+c     --- Enforce boundary conditions.
+      call applyjboundaryconditions(bfield,bounds)
 
-c     --- With the cylindrical solver, the guard cells are already set.
-      if (llongitudinal .and. .not. lcylindrical) then
-        if (bounds(4) == periodic .or. bounds(5) == periodic) then
-#ifdef MPIPARALLEL
-          call perpot3d_slave(a,3,nx,ny,nzlocal,1,1)
-#else
-          a(:,:,:,-1)   = a(:,:,:,nzlocal-1)
-          a(:,:,:,nzlocal)   = a(:,:,:,0)
-          a(:,:,:,nzlocal+1) = a(:,:,:,1)
-#endif
-        else
-          if (zmminlocal == zmmin) then
-            if (bounds(4) == neumann) then
-              a(:,:,:,-1) = a(:,:,:,1)
-            elseif (bounds(4) == dirichlet) then
-              a(:,:,:,-1) = 2.*a(:,:,:,0) - a(:,:,:,1)
-            endif
-          endif
-          if (zmmaxlocal == zmmax) then
-            if (bounds(5) == neumann) then
-              a(:,:,:,nzlocal+1) = a(:,:,:,nzlocal-1)
-            elseif (bounds(5) == dirichlet) then
-              a(:,:,:,nzlocal+1) = 2.*a(:,:,:,nzlocal) - a(:,:,:,nzlocal-1)
-            endif
-          endif
-        endif
-      endif
-
-!$OMP MASTER
-      if (lf3dtimesubs) timepera3d = timepera3d + wtime() - substarttime
-!$OMP END MASTER
       return
       end
 c=============================================================================
-      subroutine perj3d(bfield,bound0,boundxy)
+c=============================================================================
+      subroutine applyboundaryconditions3dnc(nx,ny,nz,delx,dely,delz,u,nc,ncomp,
+     &                                     bounds,lwithdirichlet,lzerodirichlet)
+      use Subtimersf3d
+      integer(ISZ):: nx,ny,nz,delx,dely,delz,nc,ncomp
+      integer(ISZ):: bounds(0:5)
+      real(kind=8):: u(0:nc-1,-delx:nx+delx,-dely:ny+dely,-delz:nz+delz,ncomp)
+      logical(ISZ):: lwithdirichlet,lzerodirichlet
+
+      integer(ISZ):: ix,iy,iz
+
+      if (delx > 0) then
+        if (lwithdirichlet) then
+          if (bounds(0) == 0) then
+            do ix=-1,-delx,-1
+              u(:,ix,0:ny,0:nz,:)   = 2.*u(:,ix+1,0:ny,0:nz,:) - u(:,ix+2,0:ny,0:nz,:)
+            enddo
+          endif
+          if (bounds(1) == 0) then
+            do ix=nx+1,nx+delx
+              u(:,ix,0:ny,0:nz,:) = 2.*u(:,ix-1,0:ny,0:nz,:) - u(:,ix-2,0:ny,0:nz,:)
+            enddo
+          endif
+        else if (lzerodirichlet) then
+          if (bounds(0) == 0) u(:,-delx:-1,:,:,:)   = 0.
+          if (bounds(1) == 0) u(:,nx+1:nx+delx,:,:,:) = 0.
+        endif
+        if (bounds(0) == 1) u(:,-delx:-1,0:ny,0:nz,:) = u(:,delx:1:-1,0:ny,0:nz,:)
+        if (bounds(1) == 1) u(:,nx+1:nx+delx,0:ny,0:nz,:) = u(:,nx-1:nx-delx:-1,0:ny,0:nz,:)
+        if (bounds(0) == 2 .and. bounds(1) == 2) then
+          u(:,-delx:-1,0:ny,0:nz,:) = u(:,nx-delx:nx-1,0:ny,0:nz,:)
+          u(:,nx+1:nx+delx,0:ny,0:nz,:) = u(:,1:delx,0:ny,0:nz,:)
+        endif
+      endif
+
+      if (dely > 0) then
+        if (lwithdirichlet) then
+          if (bounds(2) == 0) then
+            do iy=-1,-dely,-1
+              u(:,:,iy,0:nz,:)   = 2.*u(:,:,iy+1,0:nz,:) - u(:,:,iy+2,0:nz,:)
+            enddo
+          endif
+          if (bounds(3) == 0) then
+            do iy=ny+1,ny+dely
+              u(:,:,iy,0:nz,:) = 2.*u(:,:,iy-1,0:nz,:) - u(:,:,iy-2,0:nz,:)
+            enddo
+          endif
+        else if (lzerodirichlet) then
+          if (bounds(2) == 0) u(:,:,-dely:-1,:,:)   = 0.
+          if (bounds(3) == 0) u(:,:,ny+1:ny+dely,:,:) = 0.
+        endif
+        if (bounds(2) == 1) u(:,:,-dely:-1,0:nz,:)   = u(:,:,dely:1:-1,0:nz,:)
+        if (bounds(3) == 1) u(:,:,ny+1:ny+dely,0:nz,:) = u(:,:,ny-1:ny-dely:-1,0:nz,:)
+        if (bounds(2) == 2 .and. bounds(3) == 2) then
+          u(:,:,-dely:-1,0:nz,:)   = u(:,:,ny-dely:ny-1,0:nz,:)
+          u(:,:,ny+1:ny+dely,0:nz,:) = u(:,:,1:dely,0:nz,:)
+        endif
+      endif
+
+      if (delz > 0) then
+        if (lwithdirichlet) then
+          if (bounds(4) == 0) then
+            do iz=-1,-delz,-1
+              u(:,:,:,iz,:)   = 2.*u(:,:,:,iz+1,:) - u(:,:,:,iz+2,:)
+            enddo
+          endif
+          if (bounds(5) == 0) then
+            do iz=nz+1,nz+delz
+              u(:,:,:,iz,:) = 2.*u(:,:,:,iz-1,:) - u(:,:,:,iz-2,:)
+            enddo
+          endif
+        else if (lzerodirichlet) then
+          if (bounds(4) == 0) u(:,:,:,-delz:-1,:)   = 0.
+          if (bounds(5) == 0) u(:,:,:,nz+1:nz+delz,:) = 0.
+        endif
+        if (bounds(4) == 1) u(:,:,:,-delz:-1,:)   = u(:,:,:,delz:1:-1,:)
+        if (bounds(5) == 1) u(:,:,:,nz+1:nz+delz,:) = u(:,:,:,nz-1:nz-delz:-1,:)
+        if (bounds(4) == 2 .and. bounds(5) == 2) then
+          u(:,:,:,-delz:-1,:)   = u(:,:,:,nz-delz:nz-1,:)
+          u(:,:,:,nz+1:nz+delz,:) = u(:,:,:,1:delz,:)
+        endif
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine applyjboundaryconditions(bfield,bounds)
       use BFieldGridTypemodule
       use GlobalVars
       use Subtimersf3d
       use InGen3d
+      use Parallel
       type(BFieldGridType):: bfield
-      integer(ISZ):: bound0,boundxy
+      integer(ISZ):: bounds(0:5)
 
 c  Sums the first and last slices of j for periodicity
 c  and puts the result into both slices.
@@ -433,30 +451,8 @@ c  and puts the result into both slices.
 
       j => bfield%j
 
-c  Enforce transverse periodicity if requested.
-      if (solvergeom==XYZgeom) then
-        if (boundxy==periodic) then
-          j(:,:,0,:) = j(:,:,0,:) + j(:,:,bfield%ny,:)
-          j(:,0,:,:) = j(:,0,:,:) + j(:,bfield%nx,:,:)
-          j(:,:,bfield%ny,:) = j(:,:,0,:)
-          j(:,bfield%nx,:,:) = j(:,0,:,:)
-        endif
-        if (boundxy==neumann) then
-          if (.not. (l2symtry .or. l4symtry)) j(:,:,0,:) = 2.*j(:,:,0,:)
-          if (.not. l4symtry) j(:,0,:,:) = 2.*j(:,0,:,:)
-          j(:,:,bfield%ny,:) = 2.*j(:,:,bfield%ny,:)
-          j(:,bfield%nx,:,:) = 2.*j(:,bfield%nx,:,:)
-        endif
-      endif
-
-      if (solvergeom==XYZgeom .and. bound0==periodic) then
-#ifdef MPIPARALLEL
-        call persource3d_slave(j,3,bfield%nx,bfield%ny,bfield%nzlocal)
-#else
-        j(:,:,:,0)  = j(:,:,:,0) + j(:,:,:,bfield%nzlocal)
-        j(:,:,:,bfield%nzlocal) = j(:,:,:,0)
-#endif
-      endif
+      call applyrhoboundaryconditions3d(j,3,bfield%nxlocal,bfield%nylocal,
+     &                                  bfield%nzlocal,bounds,fsdecomp)
 
 !$OMP MASTER
       if (lf3dtimesubs) timeperj3d = timeperj3d + wtime() - substarttime
@@ -465,17 +461,18 @@ c  Enforce transverse periodicity if requested.
       end
 c=============================================================================
       subroutine setb3d(b,np,xp,yp,zp,zgrid,bx,by,bz,
-     &                  nx,ny,nzlocal,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                  nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                  xmminlocal,ymminlocal,zmminlocal,
      &                  l2symtry,l4symtry,lcylindrical)
       use Subtimersf3d
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nzlocal
+      integer(ISZ):: nxlocal,nylocal,nzlocal
       real(kind=8):: zgrid
-      real(kind=8):: b(0:2,0:nx,0:ny,0:nzlocal)
+      real(kind=8):: b(0:2,0:nxlocal,0:nylocal,0:nzlocal)
       real(kind=8),target:: xp(np), yp(np), zp(np)
       real(kind=8):: bx(np), by(np), bz(np)
       real(kind=8):: dx,dy,dz
-      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmminlocal,ymminlocal,zmminlocal
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
 c  Sets magnetic field for particles
@@ -515,13 +512,13 @@ c  Evaluation of B, vectorized over particles
       if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
         do ip = 1, np
 
-          i = (x(ip) - xmmin) * dxi
-          j = (y(ip) - ymmin) * dyi
-          k = (z(ip) - zgrid - zmmin) * dzi
+          i = (x(ip) - xmminlocal) * dxi
+          j = (y(ip) - ymminlocal) * dyi
+          k = (z(ip) - zgrid - zmminlocal) * dzi
 
-          u1 = (x(ip) - xmmin) * dxi - i
-          v1 = (y(ip) - ymmin) * dyi - j
-          w1 = (z(ip) - zgrid - zmmin) * dzi - k
+          u1 = (x(ip) - xmminlocal) * dxi - i
+          v1 = (y(ip) - ymminlocal) * dyi - j
+          w1 = (z(ip) - zgrid - zmminlocal) * dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -570,13 +567,13 @@ c       --- the axis of symmetry.
 c       --- special loop symmetry is used
         do ip = 1, np
 
-          i = (abs(x(ip)) - xmmin)*dxi
-          j = (abs(y(ip)) - ymmin)*dyi
-          k = (z(ip) - zgrid - zmmin)*dzi
+          i = (abs(x(ip)) - xmminlocal)*dxi
+          j = (abs(y(ip)) - ymminlocal)*dyi
+          k = (z(ip) - zgrid - zmminlocal)*dzi
 
-          u1 = (abs(x(ip)) - xmmin)*dxi - i
-          v1 = (abs(y(ip)) - ymmin)*dyi - j
-          w1 = (z(ip) - zgrid - zmmin)*dzi - k
+          u1 = (abs(x(ip)) - xmminlocal)*dxi - i
+          v1 = (abs(y(ip)) - ymminlocal)*dyi - j
+          w1 = (z(ip) - zgrid - zmminlocal)*dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -638,17 +635,18 @@ c       --- Transform Br and Btheta into Bx and By
       end
 c=============================================================================
       subroutine fetchafrompositions3d(a,np,xp,yp,zp,zgrid,ap,
-     &                                 nx,ny,nzlocal,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                                 nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                                 xmminlocal,ymminlocal,zmminlocal,
      &                                 l2symtry,l4symtry,lcylindrical)
       use Subtimersf3d
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nzlocal
-      real(kind=8):: a(0:2,-1:nx+1,-1:ny+1,-1:nzlocal+1)
+      integer(ISZ):: nxlocal,nylocal,nzlocal
+      real(kind=8):: a(0:2,-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
       real(kind=8),target:: xp(np), yp(np), zp(np)
       real(kind=8):: ap(0:2,np)
       real(kind=8):: zgrid
       real(kind=8):: dx,dy,dz
-      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmminlocal,ymminlocal,zmminlocal
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
 c  Gets the magnetic vector potential
@@ -688,13 +686,13 @@ c  Evaluation of A, vectorized over particles
       if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
         do ip = 1, np
 
-          i = (x(ip) - xmmin) * dxi
-          j = (y(ip) - ymmin) * dyi
-          k = (z(ip) - zgrid - zmmin) * dzi
+          i = (x(ip) - xmminlocal) * dxi
+          j = (y(ip) - ymminlocal) * dyi
+          k = (z(ip) - zgrid - zmminlocal) * dzi
 
-          u1 = (x(ip) - xmmin) * dxi - i
-          v1 = (y(ip) - ymmin) * dyi - j
-          w1 = (z(ip) - zgrid - zmmin) * dzi - k
+          u1 = (x(ip) - xmminlocal) * dxi - i
+          v1 = (y(ip) - ymminlocal) * dyi - j
+          w1 = (z(ip) - zgrid - zmminlocal) * dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -740,13 +738,13 @@ c       --- the axis of symmetry.
 c       --- special loop symmetry is used
         do ip = 1, np
 
-          i = (abs(x(ip)) - xmmin)*dxi
-          j = (abs(y(ip)) - ymmin)*dyi
-          k = (z(ip) - zgrid - zmmin)*dzi
+          i = (abs(x(ip)) - xmminlocal)*dxi
+          j = (abs(y(ip)) - ymminlocal)*dyi
+          k = (z(ip) - zgrid - zmminlocal)*dzi
 
-          u1 = (abs(x(ip)) - xmmin)*dxi - i
-          v1 = (abs(y(ip)) - ymmin)*dyi - j
-          w1 = (z(ip) - zgrid - zmmin)*dzi - k
+          u1 = (abs(x(ip)) - xmminlocal)*dxi - i
+          v1 = (abs(y(ip)) - ymminlocal)*dyi - j
+          w1 = (z(ip) - zgrid - zmminlocal)*dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -804,15 +802,15 @@ c       --- Transform Br and Btheta into Bx and By
       return
       end
 c=========================================================================== 
-      subroutine getbfroma3d(a,b,nx,ny,nzlocal,dx,dy,dz,xmmin,
+      subroutine getbfroma3d(a,b,nxlocal,nylocal,nzlocal,dx,dy,dz,xmminlocal,
      &                       lcylindrical,lusevectorpotential)
       use GlobalVars
       use Subtimersf3d
-      integer(ISZ):: nx,ny,nzlocal
-      real(kind=8):: a(0:2,-1:nx+1,-1:ny+1,-1:nzlocal+1)
-      real(kind=8):: b(0:2,0:nx,0:ny,0:nzlocal)
+      integer(ISZ):: nxlocal,nylocal,nzlocal
+      real(kind=8):: a(0:2,-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
+      real(kind=8):: b(0:2,0:nxlocal,0:nylocal,0:nzlocal)
       real(kind=8):: dx,dy,dz
-      real(kind=8):: xmmin
+      real(kind=8):: xmminlocal
       logical(ISZ):: lcylindrical,lusevectorpotential
 
       real(kind=8):: substarttime,wtime
@@ -821,15 +819,15 @@ c===========================================================================
       if (lusevectorpotential) then
 
 c       --- Calculate B via finite differences of A.
-        call curl3d(a,b,nx,ny,nzlocal,
+        call curl3d(a,b,nxlocal,nylocal,nzlocal,
      &              dx,dy,dz,
-     &              xmmin,lcylindrical,
+     &              xmminlocal,lcylindrical,
      &              1,1,0,0)
 
       else
 
 c       --- The solver calculated B directly, so just do a copy.
-        b = a(:,0:nx,0:ny,0:nzlocal)
+        b = a(:,0:nxlocal,0:nylocal,0:nzlocal)
 
       endif
 
@@ -839,12 +837,12 @@ c       --- The solver calculated B directly, so just do a copy.
       return
       end
 c=========================================================================== 
-      subroutine curl3d(a,b,nx,ny,nzlocal,dx,dy,dz,xmmin,lcylindrical,
+      subroutine curl3d(a,b,nxlocal,nylocal,nzlocal,dx,dy,dz,xmminlocal,lcylindrical,
      &                  adelx,adelz,bdelx,bdelz)
-      integer(ISZ):: nx,ny,nzlocal,adelx,adelz,bdelx,bdelz
-      real(kind=8):: a(0:2,-adelx:nx+adelx,-adelx:ny+adelx,-adelz:nzlocal+adelz)
-      real(kind=8):: b(0:2,-bdelx:nx+bdelx,-bdelx:ny+bdelx,-bdelz:nzlocal+bdelz)
-      real(kind=8):: dx,dy,dz,xmmin
+      integer(ISZ):: nxlocal,nylocal,nzlocal,adelx,adelz,bdelx,bdelz
+      real(kind=8):: a(0:2,-adelx:nxlocal+adelx,-adelx:nylocal+adelx,-adelz:nzlocal+adelz)
+      real(kind=8):: b(0:2,-bdelx:nxlocal+bdelx,-bdelx:nylocal+bdelx,-bdelz:nzlocal+bdelz)
+      real(kind=8):: dx,dy,dz,xmminlocal
       logical(ISZ):: lcylindrical
 
 c Calculate the curl of A using finite differences.
@@ -859,10 +857,10 @@ c Calculate the curl of A using finite differences.
 c     --- Do the calculation. In this case, guard cells have been added to
 c     --- A since having special cases for each B component on each
 c     --- boundary for each boundary condition begins to get very complicated.
-      if (ny > 0) then
+      if (nylocal > 0) then
         do iz=-adelz+1,nzlocal+adelz-1
-          do iy=-adelx+1,ny+adelx-1
-            do ix=-adelx+1,nx+adelx-1
+          do iy=-adelx+1,nylocal+adelx-1
+            do ix=-adelx+1,nxlocal+adelx-1
               b(0,ix,iy,iz) = + tdyi*(a(2,ix  ,iy+1,iz  ) - a(2,ix  ,iy-1,iz  ))
      &                        - tdzi*(a(1,ix  ,iy  ,iz+1) - a(1,ix  ,iy  ,iz-1))
               b(1,ix,iy,iz) = + tdzi*(a(0,ix  ,iy  ,iz+1) - a(0,ix  ,iy  ,iz-1))
@@ -875,7 +873,7 @@ c     --- boundary for each boundary condition begins to get very complicated.
       else
         iy = 0
         do iz=-adelz+1,nzlocal+adelz-1
-          do ix=-adelx+1,nx+adelx-1
+          do ix=-adelx+1,nxlocal+adelx-1
             b(0,ix,iy,iz) = + 0.
      &                      - tdzi*(a(1,ix  ,iy  ,iz+1) - a(1,ix  ,iy  ,iz-1))
             b(1,ix,iy,iz) = + tdzi*(a(0,ix  ,iy  ,iz+1) - a(0,ix  ,iy  ,iz-1))
@@ -895,11 +893,11 @@ c     --- which appear in Br and Bz are still ignored, assuming axisymmetry.
 c     --- Because of the way the guard cells are set for the y plane,
 c     --- the derivatives there calculated above are zero.
       if (lcylindrical) then
-        do ix=-adelx+1,nx+adelx-1
-          r = (xmmin + dx*ix)
+        do ix=-adelx+1,nxlocal+adelx-1
+          r = (xmminlocal + dx*ix)
           if (r > 0.) then
             ri = 1./r
-            b(2,ix,:,:)=b(2,ix,:,:)+a(1,ix,-bdelx:ny+bdelx,-bdelz:nzlocal+bdelz)*ri
+            b(2,ix,:,:)=b(2,ix,:,:)+a(1,ix,-bdelx:nylocal+bdelx,-bdelz:nzlocal+bdelz)*ri
           else
 c           --- This can be justified by writing out the del cross A in
 c           --- Cartesian coordinates, and using
@@ -912,13 +910,13 @@ c           --- a(1,1,0,iz) = a(0,0,-1,iz) = -a(1,-1,0,iz) = -a(0,0,+1,iz)
       return
       end
 c=========================================================================== 
-      subroutine getefroma3d(e,nx,ny,nzlocal,dt,dz,vframe,idadt,zgrid,zgridaprv)
+      subroutine getefroma3d(e,nxlocal,nylocal,nzlocal,dt,dz,vframe,idadt,zgrid,zgridaprv)
       use GlobalVars
       use BFieldGrid
       use Subtimersf3d
       use Picglb, only:it
-      integer(ISZ):: nx,ny,nzlocal,idadt
-      real(kind=8):: e(0:2,0:nx,0:ny,0:nzlocal)
+      integer(ISZ):: nxlocal,nylocal,nzlocal,idadt
+      real(kind=8):: e(0:2,0:nxlocal,0:nylocal,0:nzlocal)
       real(kind=8):: dt,dz,vframe,zgrid,zgridaprv
 
       integer(ISZ):: ix,iy,iz
@@ -936,8 +934,8 @@ c       --- dA/dt=(A-Aold)/dt
         oddz = 1.-ddz
         if(it<5) return
         do iz=0,nzlocal
-          do iy=0,ny
-            do ix=0,nx
+          do iy=0,nylocal
+            do ix=0,nxlocal
               e(:,ix,iy,iz)=e(:,ix,iy,iz)+tdzi*((bfield%aold(:,ix,iy,iz)*oddz+bfield%aold(:,ix,iy,iz+1)*ddz)-bfield%a(:,ix,iy,iz))
             enddo
           enddo
@@ -946,8 +944,8 @@ c       --- dA/dt=(A-Aold)/dt
 c       --- dA/dt=vframe*dA/dz 
         tdzi = 0.5*vframe/dz
         do iz=0,nzlocal
-          do iy=0,ny
-            do ix=0,nx
+          do iy=0,nylocal
+            do ix=0,nxlocal
               e(0,ix,iy,iz) = e(0,ix,iy,iz)+tdzi*(bfield%a(0,ix ,iy ,iz+1) - bfield%a(0,ix ,iy ,iz-1))
               e(1,ix,iy,iz) = e(1,ix,iy,iz)+tdzi*(bfield%a(1,ix ,iy ,iz+1) - bfield%a(1,ix ,iy ,iz-1))
               e(2,ix,iy,iz) = e(2,ix,iy,iz)+tdzi*(bfield%a(2,ix ,iy ,iz+1) - bfield%a(2,ix ,iy ,iz-1))
@@ -960,30 +958,30 @@ c       --- dA/dt=vframe*dA/dz
       return
       end
 c=============================================================================
-      subroutine getanalyticbtheta(b,j,nx,ny,nzlocal,dx,xmmin)
+      subroutine getanalyticbtheta(b,j,nxlocal,nylocal,nzlocal,dx,xmminlocal)
       use Constant
       use BFieldGridTypemodule
-      integer(ISZ):: nx,ny,nzlocal
-      real(kind=8):: b(0:2,0:nx,0:ny,0:nzlocal)
-      real(kind=8):: j(0:2,0:nx,0:ny,0:nzlocal)
-      real(kind=8):: dx,xmmin
+      integer(ISZ):: nxlocal,nylocal,nzlocal
+      real(kind=8):: b(0:2,0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: j(0:2,0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: dx,xmminlocal
 
       integer(ISZ):: ir
       real(kind=8):: r
       real(kind=8):: izi(0:nzlocal)
 
-c     --- If xmmin > 0, this assumes that there is no current below xmmin.
-c     --- Note that a future version could extract a current below xmmin
-c     --- by inspecting a nonzero Btheta at xmmin.
+c     --- If xmminlocal > 0, this assumes that there is no current below xmminlocal.
+c     --- Note that a future version could extract a current below xmminlocal
+c     --- by inspecting a nonzero Btheta at xmminlocal.
       izi = 0.
       b(1,0,0,:) = 0.
 
-      do ir=0,nx-1
+      do ir=0,nxlocal-1
 c       --- The total current is calculated assuming linear interpolation
 c       --- between grid points, i.e. the trapezoidal rule.
         izi = izi + dx**2*(j(2,ir  ,0,:)*(ir/2.+1./6.) +
      &                            j(2,ir+1,0,:)*(ir/2.+1./3.))
-        r = xmmin + (ir+1)*dx
+        r = xmminlocal + (ir+1)*dx
         b(1,ir+1,0,:) = mu0*izi/r
       enddo
 
@@ -991,27 +989,28 @@ c       --- between grid points, i.e. the trapezoidal rule.
       end
 c=============================================================================
       subroutine setj3d(j,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
-     &                  q,w,nw,wghtp,depos,nx,ny,nzlocal,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                  q,w,nw,wghtp,depos,nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                  xmminlocal,ymminlocal,zmminlocal,
      &                  l2symtry,l4symtry,lcylindrical)
       use GlobalVars
       use Constant
       use Subtimersf3d
       integer(ISZ):: np,nw
-      integer(ISZ):: nx,ny,nzlocal
+      integer(ISZ):: nxlocal,nylocal,nzlocal
       real(kind=8):: zgrid,q,w
-      real(kind=8):: j(0:2,0:nx,0:ny,0:nzlocal)
-      real(kind=8):: j1d(0:3*(1+nx)*(1+ny)*(1+nzlocal)-1)
+      real(kind=8):: j(0:2,0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: j1d(0:3*(1+nxlocal)*(1+nylocal)*(1+nzlocal)-1)
       real(kind=8),target:: xp(np), yp(np), zp(np)
       real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8),target:: wghtp(nw)
       character(8):: depos
       real(kind=8):: dx,dy,dz
-      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmminlocal,ymminlocal,zmminlocal
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
 c  Sets current density
 
-c  Algorithm notes: j array is dimensioned (3,0:nx,0:ny,0:nzlocal) outside,
+c  Algorithm notes: j array is dimensioned (3,0:nxlocal,0:nylocal,0:nzlocal) outside,
 c  but is made one dimensional in this routine
 c  so cell index into 1d j array for vectorized deposition is:
 c     3*(i + j*(nx+1) + k*(nx+1)*(ny+1))
@@ -1035,10 +1034,10 @@ c     --- For both algorithms
 c     --- Work array holding q/cell volume, the charge density per
 c     --- real particle. This is primarily needed for the RZ version
 c     --- since the cell volume there has radial dependence.
-      real(kind=8):: cdens(0:nx)
+      real(kind=8):: cdens(0:nxlocal)
 c     --- Work array holding q*w/cell volume, the charge density per
 c     --- simulation particle.
-      real(kind=8):: cdensw(0:nx)
+      real(kind=8):: cdensw(0:nxlocal)
 c     --- Temp arrays to hold particle data
 c     --- These are needed when lcylindrical is true, in which case x=r, y=0,
 c     --- and vx = vr, and vy = vtheta.
@@ -1055,33 +1054,36 @@ c  Set up offset array for vectorized deposition:
 
       moff(0) = 0
       moff(1) = 1
-      moff(2) = nx+1
-      moff(3) = nx+2
-      moff(4) = (nx+1)*(ny+1)
-      moff(5) = (nx+1)*(ny+1)+1
-      moff(6) = (nx+1)*(ny+1)+nx+1
-      moff(7) = (nx+1)*(ny+1)+nx+2
+      moff(2) = nxlocal+1
+      moff(3) = nxlocal+2
+      moff(4) = (nxlocal+1)*(nylocal+1)
+      moff(5) = (nxlocal+1)*(nylocal+1)+1
+      moff(6) = (nxlocal+1)*(nylocal+1)+nxlocal+1
+      moff(7) = (nxlocal+1)*(nylocal+1)+nxlocal+2
 
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
+      if (dx .ne. 0.) dxi = 1./dx
+      if (dy .ne. 0.) dyi = 1./dy
+      if (dz .ne. 0.) dzi = 1./dz
 
       if (lcylindrical) then
-        if (xmmin == 0.) then
+        if (xmminlocal == 0.) then
 c         --- The factor 0.75 corrects for overdeposition due to linear
 c         --- weighting (for uniform distribution)
 c         --- see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
 c         --- and Verboncoeur, J. of Comp. Phys.,
           cdens(0) = 0.75/(pi*(0.5*0.5*dx*dx*dz))
         else
-          cdens(0) = 1./(2.*pi*(xmmin)*dx*dz)
+          cdens(0) = 1./(2.*pi*(xmminlocal)*dx*dz)
         endif
-        do ix = 1,nx
-          cdens(ix) = 1./(2.*pi*(ix*dx+xmmin)*dx*dz)
+        do ix = 1,nxlocal
+          cdens(ix) = 1./(2.*pi*(ix*dx+xmminlocal)*dx*dz)
         enddo
         cdens = cdens*q*w
       else
-        g = w*q/(dx*dy*dz)
+        g = w*q
+        if (nxlocal > 0) g = g/dx
+        if (nylocal > 0) g = g/dy
+        if (nzlocal > 0) g = g/dz
         if (l2symtry) then
 c         --- The particle weight is reduced by a factor of 2 except near the
 c         --- transverse boundaries.
@@ -1156,16 +1158,16 @@ c       --- special loop for 2-fold symmetry
 c       --- The particle weight is reduced by a factor of 2 except near the
 c       --- transverse boundaries.
         do ir = 1,nptmp
-           ix  = int((x(ir) - xmmin) * dxi)
-           u1 =      (x(ir) - xmmin) * dxi - ix
+           ix  = int((x(ir) - xmminlocal) * dxi)
+           u1 =      (x(ir) - xmminlocal) * dxi - ix
            u0 = 1. - u1
-           iy  = int((abs(y(ir)) - ymmin)*dyi)
-           v1 =      (abs(y(ir)) - ymmin)*dyi - iy
+           iy  = int((abs(y(ir)) - ymminlocal)*dyi)
+           v1 =      (abs(y(ir)) - ymminlocal)*dyi - iy
            v0 = 1. - v1
-           iz  = int((z(ir) - zgrid - zmmin) * dzi)
-           w1 =      (z(ir) - zgrid - zmmin) * dzi - iz
+           iz  = int((z(ir) - zgrid - zmminlocal) * dzi)
+           w1 =      (z(ir) - zgrid - zmminlocal) * dzi - iz
            w0 = 1. - w1
-           ind0 = ix + iy*(nx+1) + iz*(nx+1)*(ny+1)
+           ind0 = ix + iy*(nxlocal+1) + iz*(nxlocal+1)*(nylocal+1)
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
            indx(2,ir) = ind0 + moff(2)
@@ -1174,15 +1176,13 @@ c       --- transverse boundaries.
            indx(5,ir) = ind0 + moff(5)
            indx(6,ir) = ind0 + moff(6)
            indx(7,ir) = ind0 + moff(7)
-           gyf = 1.
-           if (iy == 0 .and. ymmin == 0.) gyf = 2.
            if (nw == np) gw = g*wght(ir)
-           s(0,ir) = u0 * v0 * w0 * gw*gyf
-           s(1,ir) = u1 * v0 * w0 * gw*gyf
+           s(0,ir) = u0 * v0 * w0 * gw
+           s(1,ir) = u1 * v0 * w0 * gw
            s(2,ir) = u0 * v1 * w0 * gw
            s(3,ir) = u1 * v1 * w0 * gw
-           s(4,ir) = u0 * v0 * w1 * gw*gyf
-           s(5,ir) = u1 * v0 * w1 * gw*gyf
+           s(4,ir) = u0 * v0 * w1 * gw
+           s(5,ir) = u1 * v0 * w1 * gw
            s(6,ir) = u0 * v1 * w1 * gw
            s(7,ir) = u1 * v1 * w1 * gw
            ysign = 1.
@@ -1196,16 +1196,16 @@ c       --- special loop for 4-fold symmetry
 c       --- The particle weight is reduced by a factor of 4 except near the
 c       --- transverse boundaries.
         do ir = 1,nptmp
-           ix  = int((abs(x(ir)) - xmmin)*dxi)
-           u1 =      (abs(x(ir)) - xmmin)*dxi - ix
+           ix  = int((abs(x(ir)) - xmminlocal)*dxi)
+           u1 =      (abs(x(ir)) - xmminlocal)*dxi - ix
            u0 = 1. - u1
-           iy  = int((abs(y(ir)) - ymmin)*dyi)
-           v1 =      (abs(y(ir)) - ymmin)*dyi - iy
+           iy  = int((abs(y(ir)) - ymminlocal)*dyi)
+           v1 =      (abs(y(ir)) - ymminlocal)*dyi - iy
            v0 = 1. - v1
-           iz  = int((z(ir) - zgrid - zmmin) * dzi)
-           w1 =      (z(ir) - zgrid - zmmin) * dzi - iz
+           iz  = int((z(ir) - zgrid - zmminlocal) * dzi)
+           w1 =      (z(ir) - zgrid - zmminlocal) * dzi - iz
            w0 = 1. - w1
-           ind0 = ix + iy*(nx+1) + iz*(nx+1)*(ny+1)
+           ind0 = ix + iy*(nxlocal+1) + iz*(nxlocal+1)*(nylocal+1)
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
            indx(2,ir) = ind0 + moff(2)
@@ -1214,18 +1214,14 @@ c       --- transverse boundaries.
            indx(5,ir) = ind0 + moff(5)
            indx(6,ir) = ind0 + moff(6)
            indx(7,ir) = ind0 + moff(7)
-           gxf = 1.
-           gyf = 1.
-           if (ix == 0 .and. xmmin == 0.) gxf = 2.
-           if (iy == 0 .and. ymmin == 0.) gyf = 2.
            if (nw == np) gw = g*wght(ir)
-           s(0,ir) = u0 * v0 * w0 * gw*gxf*gyf
-           s(1,ir) = u1 * v0 * w0 * gw*gyf
-           s(2,ir) = u0 * v1 * w0 * gw*gxf
+           s(0,ir) = u0 * v0 * w0 * gw
+           s(1,ir) = u1 * v0 * w0 * gw
+           s(2,ir) = u0 * v1 * w0 * gw
            s(3,ir) = u1 * v1 * w0 * gw
-           s(4,ir) = u0 * v0 * w1 * gw*gxf*gyf
-           s(5,ir) = u1 * v0 * w1 * gw*gyf
-           s(6,ir) = u0 * v1 * w1 * gw*gxf
+           s(4,ir) = u0 * v0 * w1 * gw
+           s(5,ir) = u1 * v0 * w1 * gw
+           s(6,ir) = u0 * v1 * w1 * gw
            s(7,ir) = u1 * v1 * w1 * gw
            xsign = 1.
            ysign = 1.
@@ -1238,16 +1234,16 @@ c       --- transverse boundaries.
       else
 c       --- normal loop
         do ir = 1,nptmp
-           ix  = int((x(ir) - xmmin) * dxi)
-           u1 =      (x(ir) - xmmin) * dxi - ix
+           ix  = int((x(ir) - xmminlocal) * dxi)
+           u1 =      (x(ir) - xmminlocal) * dxi - ix
            u0 = 1. - u1
-           iy  = int((y(ir) - ymmin) * dyi)
-           v1 =      (y(ir) - ymmin) * dyi - iy
+           iy  = int((y(ir) - ymminlocal) * dyi)
+           v1 =      (y(ir) - ymminlocal) * dyi - iy
            v0 = 1. - v1
-           iz  = int((z(ir) - zgrid - zmmin) * dzi)
-           w1 =      (z(ir) - zgrid - zmmin) * dzi - iz
+           iz  = int((z(ir) - zgrid - zmminlocal) * dzi)
+           w1 =      (z(ir) - zgrid - zmminlocal) * dzi - iz
            w0 = 1. - w1
-           ind0 = ix + iy*(nx+1) + iz*(nx+1)*(ny+1)
+           ind0 = ix + iy*(nxlocal+1) + iz*(nxlocal+1)*(nylocal+1)
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
            indx(2,ir) = ind0 + moff(2)
@@ -1300,24 +1296,22 @@ c  Begin main loop over species
 c     --- vectorized loop to compute indices, weights
       if (l2symtry .and. .not. lcylindrical) then
         do ir = 1,nptmp
-          ii(ir) = int((x(ir) - xmmin) * dxi)
-          u1     =     (x(ir) - xmmin) * dxi - ii(ir)
+          ii(ir) = int((x(ir) - xmminlocal) * dxi)
+          u1     =     (x(ir) - xmminlocal) * dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int((abs(y(ir)) - ymmin)*dyi)
-          v1     =     (abs(y(ir)) - ymmin)*dyi - jj(ir)
+          jj(ir) = int((abs(y(ir)) - ymminlocal)*dyi)
+          v1     =     (abs(y(ir)) - ymminlocal)*dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((z(ir) - zgrid - zmmin) * dzi)
-          w1     =     (z(ir) - zgrid - zmmin) * dzi - kk(ir)
+          kk(ir) = int((z(ir) - zgrid - zmminlocal) * dzi)
+          w1     =     (z(ir) - zgrid - zmminlocal) * dzi - kk(ir)
           w0     = 1. - w1
-          gyf = 1.
-          if (jj(ir) == 0 .and. ymmin == 0.) gyf = 2.
           if (nw == np) gw = g*wght(ir)
-          s(0,ir) = u0 * v0 * w0 * gw*gyf
-          s(1,ir) = u1 * v0 * w0 * gw*gyf
+          s(0,ir) = u0 * v0 * w0 * gw
+          s(1,ir) = u1 * v0 * w0 * gw
           s(2,ir) = u0 * v1 * w0 * gw
           s(3,ir) = u1 * v1 * w0 * gw
-          s(4,ir) = u0 * v0 * w1 * gw*gyf
-          s(5,ir) = u1 * v0 * w1 * gw*gyf
+          s(4,ir) = u0 * v0 * w1 * gw
+          s(5,ir) = u1 * v0 * w1 * gw
           s(6,ir) = u0 * v1 * w1 * gw
           s(7,ir) = u1 * v1 * w1 * gw
           ysign = 1.
@@ -1328,27 +1322,23 @@ c     --- vectorized loop to compute indices, weights
         enddo
       elseif (l4symtry .and. .not. lcylindrical) then
         do ir = 1,nptmp
-          ii(ir) = int((abs(x(ir)) - xmmin)*dxi)
-          u1     =     (abs(x(ir)) - xmmin)*dxi - ii(ir)
+          ii(ir) = int((abs(x(ir)) - xmminlocal)*dxi)
+          u1     =     (abs(x(ir)) - xmminlocal)*dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int((abs(y(ir)) - ymmin)*dyi)
-          v1     =     (abs(y(ir)) - ymmin)*dyi - jj(ir)
+          jj(ir) = int((abs(y(ir)) - ymminlocal)*dyi)
+          v1     =     (abs(y(ir)) - ymminlocal)*dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((z(ir) - zgrid - zmmin) * dzi)
-          w1     =     (z(ir) - zgrid - zmmin) * dzi - kk(ir)
+          kk(ir) = int((z(ir) - zgrid - zmminlocal) * dzi)
+          w1     =     (z(ir) - zgrid - zmminlocal) * dzi - kk(ir)
           w0     = 1. - w1
-          gxf = 1.
-          gyf = 1.
-          if (ii(ir) == 0 .and. xmmin == 0.) gxf = 2.
-          if (jj(ir) == 0 .and. ymmin == 0.) gyf = 2.
           if (nw == np) gw = g*wght(ir)
-          s(0,ir) = u0 * v0 * w0 * gw*gxf*gyf
-          s(1,ir) = u1 * v0 * w0 * gw*gyf
-          s(2,ir) = u0 * v1 * w0 * gw*gxf
+          s(0,ir) = u0 * v0 * w0 * gw
+          s(1,ir) = u1 * v0 * w0 * gw
+          s(2,ir) = u0 * v1 * w0 * gw
           s(3,ir) = u1 * v1 * w0 * gw
-          s(4,ir) = u0 * v0 * w1 * gw*gxf*gyf
-          s(5,ir) = u1 * v0 * w1 * gw*gyf
-          s(6,ir) = u0 * v1 * w1 * gw*gxf
+          s(4,ir) = u0 * v0 * w1 * gw
+          s(5,ir) = u1 * v0 * w1 * gw
+          s(6,ir) = u0 * v1 * w1 * gw
           s(7,ir) = u1 * v1 * w1 * gw
           xsign = 1.
           ysign = 1.
@@ -1361,14 +1351,14 @@ c     --- vectorized loop to compute indices, weights
       else
 c       --- normal loop
         do ir = 1,nptmp
-          ii(ir) = int((x(ir) - xmmin) * dxi)
-          u1     =     (x(ir) - xmmin) * dxi - ii(ir)
+          ii(ir) = int((x(ir) - xmminlocal) * dxi)
+          u1     =     (x(ir) - xmminlocal) * dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int((y(ir) - ymmin) * dyi)
-          v1     =     (y(ir) - ymmin) * dyi - jj(ir)
+          jj(ir) = int((y(ir) - ymminlocal) * dyi)
+          v1     =     (y(ir) - ymminlocal) * dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((z(ir) - zgrid - zmmin) * dzi)
-          w1     =     (z(ir) - zgrid - zmmin) * dzi - kk(ir)
+          kk(ir) = int((z(ir) - zgrid - zmminlocal) * dzi)
+          w1     =     (z(ir) - zgrid - zmminlocal) * dzi - kk(ir)
           w0     = 1. - w1
           if (nw == np) cdensw(ii(ir):ii(ir)+1)=cdens(ii(ir):ii(ir)+1)*wght(ir)
           s(0,ir) = u0 * v0 * w0 * cdensw(ii(ir)  )
@@ -1432,63 +1422,57 @@ c  Begin main loop over species
 c     --- vectorized loop to compute indices, weights
       if (l2symtry .and. .not. lcylindrical) then
         do ir = 1,nptmp
-          ix = int((x(ir) - xmmin) * dxi)
-          iy = int((abs(y(ir)) - ymmin)*dyi)
-          iz = int((z(ir) - zgrid - zmmin) * dzi)
-          u1 =     (x(ir) - xmmin) * dxi - ix
+          ix = int((x(ir) - xmminlocal) * dxi)
+          iy = int((abs(y(ir)) - ymminlocal)*dyi)
+          iz = int((z(ir) - zgrid - zmminlocal) * dzi)
+          u1 =     (x(ir) - xmminlocal) * dxi - ix
           u0 = 1. - u1
-          v1 =     (abs(y(ir)) - ymmin)*dyi - iy
+          v1 =     (abs(y(ir)) - ymminlocal)*dyi - iy
           v0 = 1. - v1
-          w1 =     (z(ir) - zgrid - zmmin) * dzi - iz
+          w1 =     (z(ir) - zgrid - zmminlocal) * dzi - iz
           w0 = 1. - w1
-          gyf = 1.
-          if (iy == 0 .and. ymmin == 0.) gyf = 2.
           if (nw == np) gw = g*wght(ir)
           ysign = 1.
           if (y(ir) < 0.) ysign = -1.
           vv(0) = ux(ir)*gi(ir)*ysign
           vv(1) = uy(ir)*gi(ir)
           vv(2) = uz(ir)*gi(ir)
-          j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(0)*gyf
-          j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(0)*gyf
+          j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(0)
+          j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(0)
           j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(0)
           j(0,ix+1,iy+1,iz  ) = j(0,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(0)
-          j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(0)*gyf
-          j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(0)*gyf
+          j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(0)
+          j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(0)
           j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(0)
           j(0,ix+1,iy+1,iz+1) = j(0,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(0)
-          j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(1)*gyf
-          j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(1)*gyf
+          j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(1)
+          j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(1)
           j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(1)
           j(1,ix+1,iy+1,iz  ) = j(1,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(1)
-          j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(1)*gyf
-          j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(1)*gyf
+          j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(1)
+          j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(1)
           j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(1)
           j(1,ix+1,iy+1,iz+1) = j(1,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(1)
-          j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(2)*gyf
-          j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(2)*gyf
+          j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(2)
+          j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(2)
           j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(2)
           j(2,ix+1,iy+1,iz  ) = j(2,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(2)
-          j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(2)*gyf
-          j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(2)*gyf
+          j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(2)
+          j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(2)
           j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(2)
           j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(2)
         enddo
       elseif (l4symtry .and. .not. lcylindrical) then
         do ir = 1,nptmp
-          ix = int((abs(x(ir)) - xmmin)*dxi)
-          iy = int((abs(y(ir)) - ymmin)*dyi)
-          iz = int((z(ir) - zgrid - zmmin) * dzi)
-          u1 =     (abs(x(ir)) - xmmin)*dxi - ix
+          ix = int((abs(x(ir)) - xmminlocal)*dxi)
+          iy = int((abs(y(ir)) - ymminlocal)*dyi)
+          iz = int((z(ir) - zgrid - zmminlocal) * dzi)
+          u1 =     (abs(x(ir)) - xmminlocal)*dxi - ix
           u0 = 1. - u1
-          v1 =     (abs(y(ir)) - ymmin)*dyi - iy
+          v1 =     (abs(y(ir)) - ymminlocal)*dyi - iy
           v0 = 1. - v1
-          w1     =     (z(ir) - zgrid - zmmin) * dzi - iz
+          w1     =     (z(ir) - zgrid - zmminlocal) * dzi - iz
           w0     = 1. - w1
-          gxf = 1.
-          gyf = 1.
-          if (ix == 0 .and. xmmin == 0.) gxf = 2.
-          if (iy == 0 .and. ymmin == 0.) gyf = 2.
           if (nw == np) gw = g*wght(ir)
           xsign = 1.
           ysign = 1.
@@ -1497,42 +1481,42 @@ c     --- vectorized loop to compute indices, weights
           vv(0) = ux(ir)*gi(ir)*ysign
           vv(1) = uy(ir)*gi(ir)*xsign
           vv(2) = uz(ir)*gi(ir)
-          j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(0)*gxf*gyf
-          j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(0)*gyf
-          j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(0)*gxf
+          j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(0)
+          j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(0)
+          j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(0)
           j(0,ix+1,iy+1,iz  ) = j(0,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(0)
-          j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(0)*gxf*gyf
-          j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(0)*gyf
-          j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(0)*gxf
+          j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(0)
+          j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(0)
+          j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(0)
           j(0,ix+1,iy+1,iz+1) = j(0,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(0)
-          j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(1)*gxf*gyf
-          j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(1)*gyf
-          j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(1)*gxf
+          j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(1)
+          j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(1)
+          j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(1)
           j(1,ix+1,iy+1,iz  ) = j(1,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(1)
-          j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(1)*gxf*gyf
-          j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(1)*gyf
-          j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(1)*gxf
+          j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(1)
+          j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(1)
+          j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(1)
           j(1,ix+1,iy+1,iz+1) = j(1,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(1)
-          j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(2)*gxf*gyf
-          j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(2)*gyf
-          j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(2)*gxf
+          j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(2)
+          j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(2)
+          j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(2)
           j(2,ix+1,iy+1,iz  ) = j(2,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(2)
-          j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(2)*gxf*gyf
-          j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(2)*gyf
-          j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(2)*gxf
+          j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(2)
+          j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(2)
+          j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(2)
           j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(2)
         enddo
       else
 c       --- normal loop
         do ir = 1,nptmp
-          ix = int((x(ir) - xmmin) * dxi)
-          iy = int((y(ir) - ymmin) * dyi)
-          iz = int((z(ir) - zgrid - zmmin) * dzi)
-          u1 =     (x(ir) - xmmin) * dxi - ix
+          ix = int((x(ir) - xmminlocal) * dxi)
+          iy = int((y(ir) - ymminlocal) * dyi)
+          iz = int((z(ir) - zgrid - zmminlocal) * dzi)
+          u1 =     (x(ir) - xmminlocal) * dxi - ix
           u0 = 1. - u1
-          v1 =     (y(ir) - ymmin) * dyi - iy
+          v1 =     (y(ir) - ymminlocal) * dyi - iy
           v0 = 1. - v1
-          w1 =     (z(ir) - zgrid - zmmin) * dzi - iz
+          w1 =     (z(ir) - zgrid - zmminlocal) * dzi - iz
           w0 = 1. - w1
           if (nw == np) cdensw(ix:ix+1)=cdens(ix:ix+1)*wght(ir)
           u0 = u0*cdensw(ix  )
@@ -1595,7 +1579,7 @@ c       --- If jp is not associated with j, then copy the data.
         if (.not. associated(bfield%j,bfieldp%j)) then
           if (bfieldp%nx == bfield%nx .and.
      &        bfieldp%ny == bfield%ny .and.
-     &        bfieldp%nzlocal == bfield%nzlocal) then
+     &        bfieldp%nz == bfield%nz) then
             bfield%j = bfieldp%j
           else
             call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
@@ -1609,22 +1593,22 @@ c       --- If jp is not associated with j, then copy the data.
 #else
 
       use Parallel
-      use Fields3dParticles,Only: nzpguard
+      use Fields3dParticles,Only: nxpguard,nypguard,nzpguard
 
 c  For parallel version, each processor sends j to neighboring processors
 c  whose field solve region overlap its particle region.
       if(solvergeom==XZgeom) then
 c       print*,"Error: Self magnetic field not supported with solvergeom=XZgeom"
-c       call getjforfieldsolverz(nx,nzlocal,j)
+c       call getjforfieldsolverz(nxlocal,nzlocal,j)
 c     else if(solvergeom==Zgeom) then
 c       print*,"Error: Self magnetic field not supported with solvergeom=Zgeom"
 c       call getjforfieldsolvez(nzlocal,j)
       elseif (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-        call setjforfieldsolve3d(bfield%nx,bfield%ny,bfield%nzlocal,bfield%j,
-     &                           bfieldp%nx,bfieldp%ny,bfieldp%nzlocal,bfieldp%j,
-     &                           nzpguard,
-     &                           my_index,nslaves,izpslave,nzpslave,
-     &                           izfsslave,nzfsslave)
+        call setjforfieldsolve3d(bfield%nxlocal,bfield%nylocal,bfield%nzlocal,
+     &                           bfield%j,
+     &                           bfieldp%nxlocal,bfieldp%nylocal,
+     &                           bfieldp%nzlocal,bfieldp%j,
+     &                           nxpguard,nypguard,nzpguard,fsdecomp,ppdecomp)
       end if
 
 #endif
@@ -1632,29 +1616,22 @@ c       call getjforfieldsolvez(nzlocal,j)
       return
       end
 c=============================================================================
-      subroutine setjforfieldsolve3d(nx,ny,nzlocal,j,nxp,nyp,nzp,jp,nzpguard,
-     &                               my_index,nslaves,izpslave,nzpslave,
-     &                               izfsslave,nzfsslave)
-
-#ifdef MPIPARALLEL
-      use BFieldGrid,Only: ljsummedonboundaries
-#endif
-      integer(ISZ):: nx,ny,nzlocal,nxp,nyp,nzp,nzpguard
-      real(kind=8):: j(0:2,0:nx,0:ny,0:nzlocal)
+      subroutine setjforfieldsolve3d(nxlocal,nylocal,nzlocal,j,nxp,nyp,nzp,jp,
+     &                               nxpguard,nypguard,nzpguard,
+     &                               fsdecomp,ppdecomp)
+      use Decompositionmodule
+      integer(ISZ):: nxlocal,nylocal,nzlocal,nxp,nyp,nzp
+      integer(ISZ):: nxpguard,nypguard,nzpguard
+      real(kind=8):: j(0:2,0:nxlocal,0:nylocal,0:nzlocal)
       real(kind=8):: jp(0:2,0:nxp,0:nyp,0:nzp)
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      type(Decomposition):: fsdecomp,ppdecomp
 
 #ifdef MPIPARALLEL
 
-      if (.not. ljsummedonboundaries) then
-        call sumsourcepondomainboundaries(jp,3,nxp,nyp,nzp,nzpguard,
-     &                                    my_index,nslaves,izpslave,nzpslave)
-      endif
-      call setsourceforfieldsolve3d_parallel(3,nx,ny,nzlocal,j,nxp,nyp,nzp,jp,
-     &                                       my_index,nslaves,izpslave,nzpslave,
-     &                                       izfsslave,nzfsslave)
+      call sumsourcepondomainboundaries(3,nxp,nyp,nzp,jp,ppdecomp)
+      call setsourceforfieldsolve3d_parallel(3,nxlocal,nylocal,nzlocal,j,
+     &                                       nxp,nyp,nzp,jp,
+     &                                       fsdecomp,ppdecomp)
 
 #endif
 
@@ -1682,9 +1659,25 @@ c The setup of jptmp is skipped is ns == -1.
       bfieldp%ny = bfield%ny
       bfieldp%nz = bfield%nz
 #ifndef MPIPARALLEL
+      bfieldp%nxlocal = bfield%nxlocal
+      bfieldp%nylocal = bfield%nylocal
       bfieldp%nzlocal = bfield%nzlocal
+      bfieldp%xmminlocal = bfield%xmminlocal
+      bfieldp%xmmaxlocal = bfield%xmmaxlocal
+      bfieldp%ymminlocal = bfield%ymminlocal
+      bfieldp%ymmaxlocal = bfield%ymmaxlocal
+      bfieldp%zmminlocal = bfield%zmminlocal
+      bfieldp%zmmaxlocal = bfield%zmmaxlocal
 #else
-      bfieldp%nzlocal = nzpslave(my_index)
+      bfieldp%nxlocal = ppdecomp%nx(ppdecomp%ixproc)
+      bfieldp%nylocal = ppdecomp%ny(ppdecomp%iyproc)
+      bfieldp%nzlocal = ppdecomp%nz(ppdecomp%izproc)
+      bfieldp%xmminlocal = ppdecomp%xmin(ppdecomp%ixproc)
+      bfieldp%xmmaxlocal = ppdecomp%xmax(ppdecomp%ixproc)
+      bfieldp%ymminlocal = ppdecomp%ymin(ppdecomp%iyproc)
+      bfieldp%ymmaxlocal = ppdecomp%ymax(ppdecomp%iyproc)
+      bfieldp%zmminlocal = ppdecomp%zmin(ppdecomp%izproc)
+      bfieldp%zmmaxlocal = ppdecomp%zmax(ppdecomp%izproc)
 #endif
       bfieldp%dx = bfield%dx
       bfieldp%dy = bfield%dy
@@ -1693,8 +1686,6 @@ c The setup of jptmp is skipped is ns == -1.
       bfieldp%xmmax = bfield%xmmax
       bfieldp%ymmin = bfield%ymmin
       bfieldp%ymmax = bfield%ymmax
-      bfieldp%zmminlocal = bfield%zmminlocal
-      bfieldp%zmmaxlocal = bfield%zmmaxlocal
       bfieldp%zmmin = bfield%zmmin
       bfieldp%zmmax = bfield%zmmax
       bfieldp%bounds = bfield%bounds
@@ -1704,13 +1695,13 @@ c     --- If either jp of bp are not associated or either does not have
 c     --- the correct dimensions as given by nxj, etc, something 
 c     --- needs to be done for fix them.
       if (.not. associated(bfieldp%j) .or. .not. associated(bfieldp%b) .or.
-     &  ANY(ubound(bfieldp%b).ne.(/2,bfieldp%nx,bfieldp%ny,bfieldp%nzlocal/)) .or.
-     &  ANY(ubound(bfieldp%j).ne.(/2,bfieldp%nx,bfieldp%ny,bfieldp%nzlocal/))) then
+     &  ANY(ubound(bfieldp%b).ne.(/2,bfieldp%nxlocal,bfieldp%nylocal,bfieldp%nzlocal/)) .or.
+     &  ANY(ubound(bfieldp%j).ne.(/2,bfieldp%nxlocal,bfieldp%nylocal,bfieldp%nzlocal/))) then
 
 c       --- Free whatever the jp and bp arrays are now refering to.
         call BFieldGridTypefree(bfieldp)
 
-        if (ALL( (/ bfieldp%nx,bfieldp%ny,bfieldp%nzlocal /) ==
+        if (ALL( (/ bfieldp%nxlocal,bfieldp%nylocal,bfieldp%nzlocal /) ==
      &           (/ bfield%nx, bfield%ny, bfield%nz /) )) then
 c         --- If the sizes of jp and j, and bp and b,
 c         --- are the same,
@@ -1868,9 +1859,9 @@ c     --- Zero out the particle's B field if requested (the default)
       elseif (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
         if (bfstype >= 0) then
           call setb3d(bfieldp%b,n,x,y,z,zgridprv,bx,by,bz,
-     &                bfield%nx,bfield%ny,bfield%nzlocal,
+     &                bfield%nxlocal,bfield%nylocal,bfield%nzlocal,
      &                bfield%dx,bfield%dy,bfield%dz,
-     &                bfield%xmmin,bfield%ymmin,bfield%zmminlocal,
+     &                bfield%xmminlocal,bfield%ymminlocal,bfield%zmminlocal,
      &                l2symtry,l4symtry,bfield%lcylindrical)
         endif
       else
@@ -1918,9 +1909,9 @@ c     --- Call the appropriate routine to get the A
         nullify(afsapi)
       else if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
         call fetchafrompositions3d(bfield%a,n,x,y,z,zgrid,a,
-     &                             bfield%nx,bfield%ny,bfield%nzlocal,
+     &                             bfield%nxlocal,bfield%nylocal,bfield%nzlocal,
      &                             bfield%dx,bfield%dy,bfield%dz,
-     &                             bfield%xmmin,bfield%ymmin,bfield%zmminlocal,
+     &                             bfield%xmminlocal,bfield%ymminlocal,bfield%zmminlocal,
      &                             l2symtry,l4symtry,bfield%lcylindrical)
 c     elseif(solvergeom==XZgeom) then
 c       call setarz(n,x,y,z,p,zgrid)
@@ -1951,8 +1942,8 @@ c       --- setting up of jptmp.
      &   solvergeom==RZgeom) then
 c       --- If Bp is not associated with B, then copy the data.
         if (.not. associated(bfield%b,bfieldp%b)) then
-          if (bfieldp%nx == bfield%nx .and.
-     &        bfieldp%ny == bfield%ny .and.
+          if (bfieldp%nxlocal == bfield%nxlocal .and.
+     &        bfieldp%nylocal == bfield%nylocal .and.
      &        bfieldp%nzlocal == bfield%nzlocal) then
             bfieldp%b = bfield%b
           else
@@ -2010,10 +2001,14 @@ c         The loop is in bendfieldsol3d
 c     --- If no field solve, return 
       if ( bfstype <= -1) return 
 
+c     --- Make sure that rho has been finalized and is ready for the solve
+      if (.not. ljfinalized) call finalizej()
+
 c     --- Calculate rstar here since it is only used by the field solver and
 c     --- to ensure that it is set when the field solver is called.
       if (linbend) then
-        call setrstar(bfield%rstar(-1),bfield%nzlocal,bfield%dz,bfield%zmminlocal,zgrid)
+        call setrstar(bfield%rstar(-1),bfield%nzlocal,bfield%dz,
+     &                bfield%zmminlocal,zgrid)
       endif
 
       if (bfstype == 7 .or. bfstype == 12) then
@@ -2031,24 +2026,17 @@ c       --- Call perturbative bent beam field solver
 
       endif
 
-#ifdef MPIPARALLEL
-c     --- Set the flag signalling that j has been parallel summed
-c     --- on the boundaries. This is done here only after j has been
-c     --- setup for all subcycling and selfb groups.
-      ljsummedonboundaries = .true.
-#endif
-
 c     --- Get B from A, either taking the finite difference curl of A to get B,
 c     --- or just copy it when B is solved for directly.
-      call getbfroma3d(bfield%a,bfield%b,bfield%nx,bfield%ny,bfield%nzlocal,
-     &                 bfield%dx,bfield%dy,bfield%dz,bfield%xmmin,
+      call getbfroma3d(bfield%a,bfield%b,bfield%nxlocal,bfield%nylocal,bfield%nzlocal,
+     &                 bfield%dx,bfield%dy,bfield%dz,bfield%xmminlocal,
      &                 bfield%lcylindrical,bfield%lusevectorpotential)
 
 c     --- If using the analytic form of Btheta, calculate it here.
       if (bfield%lanalyticbtheta) then
         call getanalyticbtheta(bfield%b,bfield%j,
-     &                         bfield%nx,bfield%ny,bfield%nzlocal,
-     &                         bfield%dx,bfield%xmmin)
+     &                         bfield%nxlocal,bfield%nylocal,bfield%nzlocal,
+     &                         bfield%dx,bfield%xmminlocal)
       endif
 
 c     --- Distribute B among the processes so each has B in its
@@ -2087,19 +2075,19 @@ c=============================================================================
 
       if (solvergeom == RZgeom) then
         bfstype = 10
-        call init_bworkgrid(bfield%nx,bfield%nzlocal,bfield%dx,bfield%dz,
-     &                      bfield%xmmin,bfield%zmminlocal,bfield%bounds,
+        call init_bworkgrid(bfield%nxlocal,bfield%nzlocal,bfield%dx,bfield%dz,
+     &                      bfield%xmminlocal,bfield%zmminlocal,bfield%bounds,
      &                      bfield%a,bfield%j)
       endif
 
       if (bfield%lusevectorpotential) then
         j => bfield%j
       else
-        allocate(curlj(0:2,0:bfield%nx,0:bfield%ny,0:bfield%nzlocal))
+        allocate(curlj(0:2,0:bfield%nxlocal,0:bfield%nylocal,0:bfield%nzlocal))
         curlj = 0.
-        call curl3d(bfield%j,curlj,bfield%nx,bfield%ny,bfield%nzlocal,
+        call curl3d(bfield%j,curlj,bfield%nxlocal,bfield%nylocal,bfield%nzlocal,
      &              bfield%dx,bfield%dy,bfield%dz,
-     &              bfield%xmmin,bfield%lcylindrical,
+     &              bfield%xmminlocal,bfield%lcylindrical,
      &              0,0,0,0)
         j => curlj
       endif
@@ -2112,10 +2100,12 @@ c     --- If only initialization is being done (iwhich==1) then the bvp3d_work
 c     --- routine only needs to be called once. Proper arrays are still passed
 c     --- though they should never be needed during initialization.
       if (idadt==1) then
-        if (bfield%nxold/=bfield%nx .or.bfield%nyold/=bfield%ny .or.bfield%nzold/=bfield%nz) then
-          bfield%nxold=bfield%nx
-          bfield%nyold=bfield%ny
-          bfield%nzold=bfield%nz
+        if (bfield%nxold/=bfield%nxlocal .or.
+     &      bfield%nyold/=bfield%nylocal .or.
+     &      bfield%nzold/=bfield%nzlocal) then
+          bfield%nxold=bfield%nxlocal
+          bfield%nyold=bfield%nylocal
+          bfield%nzold=bfield%nzlocal
           call BFieldGridTypechange(bfield)          
         end if
         bfield%aold=bfield%a
@@ -2127,27 +2117,22 @@ c     --- though they should never be needed during initialization.
      &      ((bfield%lusevectorpotential .and. (id == 0 .or. id == 2)) .or.
      &      (.not. bfield%lusevectorpotential .and. id == 1))) cycle
         if (bfstype <= 4) then
-          bfield%a(id,0:bfield%nx,0:bfield%ny,0:bfield%nzlocal) = j(id,:,:,:)
+          bfield%a(id,0:bfield%nxlocal,0:bfield%nylocal,0:bfield%nzlocal) = j(id,:,:,:)
         endif
         call bvp3d_work(iwhich,bfstype,id,bfield)
       enddo
 
-c     --- Rescale, replacing 1/eps0 with mu0
-c     bfield%a = bfield%a*mu0*eps0
-
-#ifdef MPIPARALLEL
+c     --- This is needed only for the FFT based solvers since those do not
+c     --- set the guard cells.
       if (bfstype <= 4) then
-        call getaforfields3d(bfield%a,bfield%nx,bfield%ny,bfield%nzlocal)
-      endif
+        call applyboundaryconditions3dnc(bfield%nxlocal,bfield%nylocal,
+     &                                   bfield%nzlocal,1,1,1,bfield%a,3,1,
+     &                                   bfield%bounds,.true.,.false.)
+#ifdef MPIPARALLEL
+c       --- This fills in the guard cells from neighboring processors.
+        call getaforfields3d(bfield)
 #endif
-
-c     --- The last argument, llongitudinal, is only true for the FFT based
-c     --- solvers since those do not set the z guard cells.
-      call setaboundaries3d(bfield%a,bfield%nx,bfield%ny,bfield%nzlocal,
-     &                      bfield%zmminlocal,bfield%zmmaxlocal,
-     &                      bfield%zmmin,bfield%zmmax,
-     &                      bfield%bounds,bfield%lcylindrical,
-     &                      bfstype <= 4)
+      endif
 
       if (bfield%lusevectorpotential) then
 c       --- Unscale the current density
@@ -2168,7 +2153,7 @@ c=============================================================================
       use InGen3d, only: filt,l2symtry,l4symtry
       use GridBoundary3d, only: bound0,boundnz,boundxy
       use PSOR3d, only: gridmode
-      use Parallel, only: my_index,nslaves,izfsslave,nzfsslave
+      use Parallel, only: fsdecomp
       integer(ISZ):: iwhich,bfstype,iaxis
       type(BFieldGridType):: bfield
 
@@ -2176,7 +2161,7 @@ c Interface to field solver for magnetic vector potential
 c Note that bfield is passed in to have access to the data and work arrays
 c kxsq, attx, scrtch etc.
 
-      integer(ISZ):: nx,ny,nzlocal,nz
+      integer(ISZ):: nxlocal,nylocal,nzlocal,nx,ny,nz
       real(kind=8):: dx,dy,dz
       real(kind=8):: xlen,ylen,zlen
       real(kind=8):: substarttime,wtime
@@ -2185,9 +2170,11 @@ c kxsq, attx, scrtch etc.
 c Note that the select case statement was giving the f90 compiler on HPUX
 c fits and so was replaced with if statements.
 
+      nxlocal = bfield%nxlocal
+      nylocal = bfield%nylocal
+      nzlocal = bfield%nzlocal
       nx = bfield%nx
       ny = bfield%ny
-      nzlocal = bfield%nzlocal
       nz = bfield%nz
       dx = bfield%dx
       dy = bfield%dy
@@ -2200,7 +2187,7 @@ c fits and so was replaced with if statements.
         call vpois3d(iwhich,bfield%a(iaxis,:,:,:),bfield%a(iaxis,:,:,:),
      &               bfield%kxsq,bfield%kysq,bfield%kzsq,
      &               bfield%attx,bfield%atty,bfield%attz,
-     &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
+     &               filt,xlen,ylen,zlen,nxlocal,nylocal,nzlocal,nz,
      &               bfield%scrtch,bfield%xywork,bfield%zwork,
      &               0,l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (bfstype == 4) then
@@ -2208,7 +2195,7 @@ c fits and so was replaced with if statements.
           call vpois3d(1,bfield%a(iaxis,:,:,:),bfield%a(iaxis,:,:,:),
      &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
      &                 bfield%attx,bfield%atty,bfield%attz,
-     &                 filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
+     &                 filt,xlen,ylen,zlen,nxlocal,nylocal,nzlocal,nz,
      &                 bfield%scrtch,bfield%xywork,bfield%zwork,
      &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
         endif
@@ -2216,44 +2203,43 @@ c fits and so was replaced with if statements.
           call vpois3d(12,bfield%a(iaxis,:,:,:),bfield%a(iaxis,:,:,:),
      &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
      &                 bfield%attx,bfield%atty,bfield%attz,
-     &                 filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
+     &                 filt,xlen,ylen,zlen,nxlocal,nylocal,nzlocal,nz,
      &                 bfield%scrtch,bfield%xywork,bfield%zwork,
      &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
           call vpois3d(14,bfield%a(iaxis,:,:,:),bfield%a(iaxis,:,:,:),
      &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
      &                 bfield%attx,bfield%atty,bfield%attz,
-     &                 filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
+     &                 filt,xlen,ylen,zlen,nxlocal,nylocal,nzlocal,nz,
      &                 bfield%scrtch,bfield%xywork,bfield%zwork,
      &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
           call vpois3d(13,bfield%a(iaxis,:,:,:),bfield%a(iaxis,:,:,:),
      &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
      &                 bfield%attx,bfield%atty,bfield%attz,
-     &                 filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
+     &                 filt,xlen,ylen,zlen,nxlocal,nylocal,nzlocal,nz,
      &                 bfield%scrtch,bfield%xywork,bfield%zwork,
      &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
         endif
 
       elseif (bfstype == 7) then
 
-        call multigrid3dsolve(iwhich,nx,ny,nzlocal,nz,dx,dy,dz,
+        call multigrid3dsolve(iwhich,nx,ny,nz,nxlocal,nylocal,nzlocal,dx,dy,dz,
      &                        bfield%a(iaxis,:,:,:),bfield%j(iaxis,:,:,:),
      &                        bfield%rstar,linbend,bfield%bounds,
-     &                        bfield%xmmin,bfield%ymmin,bfield%zmminlocal,
-     &                        bfield%zmmin,zbeam,zgrid,
+     &                        bfield%xmmin,bfield%ymmin,bfield%zmmin,
+     &                        zbeam,zgrid,
      &                        bfield%mgparam(iaxis),bfield%mgform(iaxis),
      &                        bfield%mgiters(iaxis),bfield%mgmaxiters(iaxis),
      &                        bfield%mgmaxlevels(iaxis),bfield%mgerror(iaxis),
      &                        bfield%mgtol(iaxis),bfield%mgverbose(iaxis),
      &                        bfield%downpasses(iaxis),bfield%uppasses(iaxis),
      &                        bfield%lcndbndy,bfield%laddconductor,
-     &                        bfield%icndbndy,.false.,
-     &                        gridmode,bfield%conductors,
-     &                        my_index,nslaves,izfsslave,nzfsslave)
+     &                        bfield%icndbndy,
+     &                        gridmode,bfield%conductors,fsdecomp)
 
       elseif (bfstype == 10) then
         call multigridrzb(iwhich,iaxis,
      &                    bfield%a(iaxis,:,0,:),bfield%j(iaxis,:,0,:),
-     &                    bfield%nx,bfield%nzlocal,bfield%mgtol(iaxis))
+     &                    bfield%nxlocal,bfield%nzlocal,bfield%mgtol(iaxis))
 
       endif
 

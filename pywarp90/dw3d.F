@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.159 $, $Date: 2008/02/13 02:22:31 $
+c@(#) File DW3D.F, version $Revision: 3.160 $, $Date: 2008/11/19 18:29:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -254,38 +254,55 @@ c  Sets rho window diagnostics (they need data from the 3d mesh)
 
       if (.not. lrhodia3d .or. .not. associated(rho)) return
 
+      rhomid = 0.
+      rhomax = 0.
+      if (0 <= ix_axis .and. ix_axis <= nxlocal .and.
+     &    0 <= iy_axis .and. iy_axis <= nylocal) then
+
 !$OMP PARALLEL DO PRIVATE(zwin,iz,z1,z0)
-      do iwin = 0,NWINDOWS
-        zwin = 0.5 * (zwindows(1,iwin) + zwindows(2,iwin))
-        iz = (zwin + zbeam - zgrid - zmminlocal)/dz
-        if (zwindows(1,iwin).ne.zwindows(2,iwin) .and.
-     &      0 <= iz .and. iz < nzlocal) then
-          z1 = (zwin + zbeam - zgrid - zmminlocal)/dz - iz
-          z0 = 1. - z1
-          rhomid(iwin) = z0*rho(ix_axis,iy_axis,iz) +
-     &                   z1*rho(ix_axis,iy_axis,iz+1)
-          rhomax(iwin) = 0.
-          do iy = 0,ny
-            do ix = 0,nx
-               rhomax(iwin) = max(rhomax(iwin),
-     &                              z0*rho(ix,iy,iz) + z1*rho(ix,iy,iz+1))
+        do iwin = 0,NWINDOWS
+          zwin = 0.5 * (zwindows(1,iwin) + zwindows(2,iwin))
+          iz = (zwin + zbeam - zgrid - zmminlocal)/dz
+          if (zwindows(1,iwin).ne.zwindows(2,iwin) .and.
+     &        0 <= iz .and. iz < nzlocal) then
+            z1 = (zwin + zbeam - zgrid - zmminlocal)/dz - iz
+            z0 = 1. - z1
+            rhomid(iwin) = z0*rho(ix_axis,iy_axis,iz) +
+     &                     z1*rho(ix_axis,iy_axis,iz+1)
+            do iy = 0,nylocal
+              do ix = 0,nxlocal
+                 rhomax(iwin) = max(rhomax(iwin),
+     &                                z0*rho(ix,iy,iz) + z1*rho(ix,iy,iz+1))
+              enddo
             enddo
-          enddo
-        endif
-      enddo
+          endif
+        enddo
 !$OMP END PARALLEL DO
+
+      endif
+
+#ifdef MPIPARALLEL
+      call parallelnonzerorealarray(rhomid,nzwind+1)
+      call parallelmaxrealarray(rhomax,nzwind+1)
+#endif
 
 c  Sets rho grid diagnostics (they need data from the 3d mesh)
       if (ifzmmnt > 0) then
 
-c       --- rho on axis
-        do iz = 0,nzmmnt
-           ii = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz
-           ww = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz - ii
-           if (ii >= 0 .and. ii < nzlocal)
-     &       rhomidz(iz) = rho(ix_axis,iy_axis,ii)*(1. - ww) +
-     &                     rho(ix_axis,iy_axis,ii+1)*ww
-        enddo
+        rhomidz = 0.
+        if (0 <= ix_axis .and. ix_axis <= nxlocal .and.
+     &      0 <= iy_axis .and. iy_axis <= nylocal) then
+
+c         --- rho on axis
+          do iz = 0,nzmmnt
+             ii = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz
+             ww = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz - ii
+             if (ii >= 0 .and. ii < nzlocal)
+     &         rhomidz(iz) = rho(ix_axis,iy_axis,ii)*(1. - ww) +
+     &                       rho(ix_axis,iy_axis,ii+1)*ww
+          enddo
+
+        endif
 
 c       --- max rho at each z (vectorized)
         do iz = 0,nzmmnt
@@ -296,15 +313,15 @@ c       --- max rho at each z (vectorized)
           ii = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz
           ww = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz - ii
           if (ii >= 0 .and. ii < nzlocal) then
-            do iy = 0,ny
-              do ix = 0,nx
+            do iy = 0,nylocal
+              do ix = 0,nxlocal
                 rhomaxz(iz) = max(rhomaxz(iz),rho(ix,iy,ii)*(1. - ww) +
      &                                        rho(ix,iy,ii+1)*ww)
               enddo
             enddo
           elseif (ii == nzlocal) then
-            do iy = 0,ny
-              do ix = 0,nx
+            do iy = 0,nylocal
+              do ix = 0,nxlocal
                 rhomaxz(iz) = max(rhomaxz(iz),rho(ix,iy,nzlocal))
               enddo
             enddo
@@ -312,6 +329,11 @@ c       --- max rho at each z (vectorized)
         enddo
 !$OMP END PARALLEL DO
       endif
+
+#ifdef MPIPARALLEL
+      call parallelnonzerorealarray(rhomidz,nzmmnt+1)
+      call parallelmaxrealarray(rhomaxz,nzmmnt+1)
+#endif
 
       return
       end
@@ -334,35 +356,40 @@ c  Sets 1d array for the charge density on the axis
 
       if(.not. lsrhoax3d .or. .not. associated(rho)) return
 
-      dzi = 1./dz
-
-      ix = ix_axis
-      iy = iy_axis
-
       rhoax = 0.
 
+      if (0 <= ix_axis .and. ix_axis <= nxlocal .and.
+     &    0 <= iy_axis .and. iy_axis <= nylocal) then
+
+        dzi = 1./dz
+
+        ix = ix_axis
+        iy = iy_axis
+
 #ifdef MPIPARALLEL
-      iz0 = izfsslave(my_index)
+        iz0 = fsdecomp%iz(fsdecomp%izproc)
 #else
-      iz0 = 0
+        iz0 = 0
 #endif
 
-      zz = zzmin + zbeam - zgrid - zmmin
+        zz = zzmin + zbeam - zgrid - zmmin
 
-      if (nzlocal == nzzarr .and. abs(zz) <= dz*1.e-5) then
-        do iz=0,nzlocal
-          rhoax(iz+iz0) = rho(ix,iy,iz)
-        enddo
-      else
-        do iz=0,nzzarr
-          izg = int((iz*dzz + zz)*dzi) - iz0
-          if (0 <= izg .and. izg < nzlocal) then
-            wzg = (iz*dzz + zz)*dzi - iz0 - izg
-            rhoax(iz) = rho(ix,iy,izg)*(1. - wzg) + rho(ix,iy,izg+1)*wzg
-          else if (izg == nzlocal) then
-            rhoax(iz) = rho(ix,iy,izg)
-          endif
-        enddo
+        if (nzlocal == nzzarr .and. abs(zz) <= dz*1.e-5) then
+          do iz=0,nzlocal
+            rhoax(iz+iz0) = rho(ix,iy,iz)
+          enddo
+        else
+          do iz=0,nzzarr
+            izg = int((iz*dzz + zz)*dzi) - iz0
+            if (0 <= izg .and. izg < nzlocal) then
+              wzg = (iz*dzz + zz)*dzi - iz0 - izg
+              rhoax(iz) = rho(ix,iy,izg)*(1. - wzg) + rho(ix,iy,izg+1)*wzg
+            else if (izg == nzlocal) then
+              rhoax(iz) = rho(ix,iy,izg)
+            endif
+          enddo
+        endif
+
       endif
 
 #ifdef MPIPARALLEL
@@ -409,8 +436,8 @@ c This does it in a partially vectorized manner.
 c     conversion factor to go from grid frame to beam frame
       zz = zmminlocal + zgrid - zbeam
 
-      do iy=0,ny
-        do ix=0,nx
+      do iy=0,nylocal
+        do ix=0,nxlocal
           scrtch(ix,iy) = 0.0
         enddo
       enddo
@@ -421,7 +448,7 @@ c     --- into a critical section.
 !$OMP PARALLEL
 !$OMP DO PRIVATE(phiextun,izb,wzb,ix,iy,iz)
 #ifdef _OPENMP
-      do iy=0,ny
+      do iy=0,nylocal
 #endif
       do iz=izfsmin,izfsmax-1
         phiextun = 0.
@@ -439,9 +466,9 @@ c         --- the field solver.
      &      phiextun = eearsofz(izb)*(1. - wzb) + eearsofz(izb+1)*wzb
         endif
 #ifndef _OPENMP
-        do iy=0,ny
+        do iy=0,nylocal
 #endif
-          do ix=0,nx
+          do ix=0,nxlocal
             scrtch(ix,iy) = scrtch(ix,iy) + rho(ix,iy,iz)*(phi(ix,iy,iz)
      &                       - dedr*.5*((ix*dx+xmmin)**2 + (iy*dy+ymmin)**2)
      &                       - dexdx*.5*(ix*dx+xmmin)**2 
@@ -458,22 +485,22 @@ c     --- Apply appropriate multiplication factors for symmetries
 c       --- Center point is unchanged
 c       --- Edges are doubled
 c       --- Bulk is quadrupoled
-        scrtch(0,1:ny) = 2.*scrtch(0,1:ny)
-        scrtch(1:nx,0) = 2.*scrtch(1:nx,0)
-        scrtch(1:nx,1:ny) = 4.*scrtch(1:nx,1:ny)
+        scrtch(0,1:nylocal) = 2.*scrtch(0,1:nylocal)
+        scrtch(1:nxlocal,0) = 2.*scrtch(1:nxlocal,0)
+        scrtch(1:nxlocal,1:nylocal) = 4.*scrtch(1:nxlocal,1:nylocal)
       else if (l2symtry) then
 c       --- Edge is unchanged
 c       --- Bulk is doubled
-        scrtch(1:nx,0:ny) = 2.*scrtch(1:nx,0:ny)
+        scrtch(1:nxlocal,0:nylocal) = 2.*scrtch(1:nxlocal,0:nylocal)
       endif
 
-      do iy=1,ny
-        do ix=0,nx
+      do iy=1,nylocal
+        do ix=0,nxlocal
           scrtch(ix,0) = scrtch(ix,0) + scrtch(ix,iy)
         enddo
       enddo
 
-      do ix=0,nx
+      do ix=0,nxlocal
         ese = ese + scrtch(ix,0)
       enddo
 
@@ -503,33 +530,38 @@ c  Sets 1d array for the potential on the axis
 
       if(.not. lsphiax3d .or. .not. associated(phi)) return
 
-      dzi = 1./dz
-
-      ix = ix_axis
-      iy = iy_axis
-      
       phiax = 0.
 
+      if (0 <= ix_axis .and. ix_axis <= nxlocal .and.
+     &    0 <= iy_axis .and. iy_axis <= nylocal) then
+
+        dzi = 1./dz
+
+        ix = ix_axis
+        iy = iy_axis
+      
 #ifdef MPIPARALLEL
-      iz0 = izfsslave(my_index)
+        iz0 = fsdecomp%iz(fsdecomp%izproc)
 #else
-      iz0 = 0
+        iz0 = 0
 #endif
 
-      zz = zzmin + zbeam - zgrid - zmmin
+        zz = zzmin + zbeam - zgrid - zmmin
 
-      if (nz == nzzarr .and. abs(zz) <= dz*1.e-5) then
-        do iz=0,nzlocal
-          phiax(iz+iz0) = phi(ix,iy,iz)
-        enddo
-      else
-        do iz=0,nzzarr
-          izg = int((iz*dzz + zz)*dzi) - iz0
-          if (0 <= izg .and. izg <= nzlocal) then
-            wzg = (iz*dzz + zz)*dzi - iz0  - izg
-            phiax(iz) = phi(ix,iy,izg)*(1. - wzg) + phi(ix,iy,izg+1)*wzg
-          endif
-        enddo
+        if (nz == nzzarr .and. abs(zz) <= dz*1.e-5) then
+          do iz=0,nzlocal
+            phiax(iz+iz0) = phi(ix,iy,iz)
+          enddo
+        else
+          do iz=0,nzzarr
+            izg = int((iz*dzz + zz)*dzi) - iz0
+            if (0 <= izg .and. izg <= nzlocal) then
+              wzg = (iz*dzz + zz)*dzi - iz0  - izg
+              phiax(iz) = phi(ix,iy,izg)*(1. - wzg) + phi(ix,iy,izg+1)*wzg
+            endif
+          enddo
+        endif
+
       endif
 
 #ifdef MPIPARALLEL
@@ -557,59 +589,65 @@ c  Sets 1d array for the space charge E field on the axis
 
       if(.not. lsezax3d .or. .not. associated(phi)) return
 
-      dzi = 1./dz
-
-      ix = int(-xmmin/dx)
-      wx = int(-xmmin/dx) - ix
-      wx1 = 1. - wx
-      iy = int(-ymmin/dy)
-      wy = int(-ymmin/dy) - iy
-      wy1 = 1. - wy
-
       ezax = 0.
 
+      if (0 <= ix_axis .and. ix_axis <= nxlocal .and.
+     &    0 <= iy_axis .and. iy_axis <= nylocal) then
+
+        dzi = 1./dz
+
+        ix = ix_axis
+        wx = ix_axis - ix
+        wx1 = 1. - wx
+        iy = iy_axis
+        wy = iy_axis - iy
+        wy1 = 1. - wy
+
 #ifdef MPIPARALLEL
-      iz0 = izfsslave(my_index)
+        iz0 = fsdecomp%iz(fsdecomp%izproc)
 #else
-      iz0 = 0
+        iz0 = 0
 #endif
 
-      zz = zzmin + zbeam - zgrid - zmmin
+        zz = zzmin + zbeam - zgrid - zmmin
 
-      if ((xmmax == -xmmin .and.  ymmax == -ymmin) .or.
-     &    (wx == 0. .and. wy == 0.)) then
-        do iz=0,nzzarr
-          izg = int((iz*dzz + zz)*dzi) - iz0
-          if (0 <= izg .and. izg <= nzlocal-1) then
-            wzg = (iz*dzz + zz)*dzi - iz0 - izg
-            ezax(iz) = ((phi(ix,iy,izg-1) - phi(ix,iy,izg+1))*(1.-wzg) +
-     &                  (phi(ix,iy,izg  ) - phi(ix,iy,izg+2))*    wzg )*0.5*dzi
-          else if (izg == nzlocal) then
-            ezax(iz) = (phi(ix,iy,izg-1) - phi(ix,iy,izg+1))*0.5*dzi
-          endif
-        enddo
-      else
-        do iz=0,nzzarr
-          izg = int((iz*dzz + zz)*dzi) - iz0
-          if (0 <= izg .and. izg <= nzlocal) then
-            wzg = (iz*dzz + zz)*dzi - iz0 - izg
-        ezax(iz)=((phi(ix  ,iy  ,izg-1)-phi(ix  ,iy  ,izg+1))*wx1*wy1*(1.-wzg)+
-     &            (phi(ix+1,iy  ,izg-1)-phi(ix+1,iy  ,izg+1))*wx *wy1*(1.-wzg)+
-     &            (phi(ix  ,iy+1,izg-1)-phi(ix  ,iy+1,izg+1))*wx1*wy *(1.-wzg)+
-     &            (phi(ix+1,iy+1,izg-1)-phi(ix+1,iy+1,izg+1))*wx *wy *(1.-wzg)+
-     &            (phi(ix  ,iy  ,izg  )-phi(ix  ,iy  ,izg+2))*wx1*wy1*    wzg +
-     &            (phi(ix+1,iy  ,izg  )-phi(ix+1,iy  ,izg+2))*wx *wy1*    wzg +
-     &            (phi(ix  ,iy+1,izg  )-phi(ix  ,iy+1,izg+2))*wx1*wy *    wzg +
-     &            (phi(ix+1,iy+1,izg  )-phi(ix+1,iy+1,izg+2))*wx *wy *    wzg )
-     &            *0.5*dzi
-          else if (izg == nzlocal) then
-            ezax(iz)=((phi(ix  ,iy  ,izg-1)-phi(ix  ,iy  ,izg+1))*wx1*wy1 +
-     &                (phi(ix+1,iy  ,izg-1)-phi(ix+1,iy  ,izg+1))*wx *wy1 +
-     &                (phi(ix  ,iy+1,izg-1)-phi(ix  ,iy+1,izg+1))*wx1*wy  +
-     &                (phi(ix+1,iy+1,izg-1)-phi(ix+1,iy+1,izg+1))*wx *wy)
-     &                *0.5*dzi
-          endif
-        enddo
+        if ((xmmax == -xmmin .and.  ymmax == -ymmin) .or.
+     &      (wx == 0. .and. wy == 0.)) then
+          do iz=0,nzzarr
+            izg = int((iz*dzz + zz)*dzi) - iz0
+            if (0 <= izg .and. izg <= nzlocal-1) then
+              wzg = (iz*dzz + zz)*dzi - iz0 - izg
+              ezax(iz) = ((phi(ix,iy,izg-1)-phi(ix,iy,izg+1))*(1.-wzg) +
+     &                    (phi(ix,iy,izg  )-phi(ix,iy,izg+2))*    wzg )*0.5*dzi
+            else if (izg == nzlocal) then
+              ezax(iz) = (phi(ix,iy,izg-1) - phi(ix,iy,izg+1))*0.5*dzi
+            endif
+          enddo
+        else
+          do iz=0,nzzarr
+            izg = int((iz*dzz + zz)*dzi) - iz0
+            if (0 <= izg .and. izg <= nzlocal) then
+              wzg = (iz*dzz + zz)*dzi - iz0 - izg
+          ezax(iz)=
+     &          ((phi(ix  ,iy  ,izg-1)-phi(ix  ,iy  ,izg+1))*wx1*wy1*(1.-wzg)+
+     &           (phi(ix+1,iy  ,izg-1)-phi(ix+1,iy  ,izg+1))*wx *wy1*(1.-wzg)+
+     &           (phi(ix  ,iy+1,izg-1)-phi(ix  ,iy+1,izg+1))*wx1*wy *(1.-wzg)+
+     &           (phi(ix+1,iy+1,izg-1)-phi(ix+1,iy+1,izg+1))*wx *wy *(1.-wzg)+
+     &           (phi(ix  ,iy  ,izg  )-phi(ix  ,iy  ,izg+2))*wx1*wy1*    wzg +
+     &           (phi(ix+1,iy  ,izg  )-phi(ix+1,iy  ,izg+2))*wx *wy1*    wzg +
+     &           (phi(ix  ,iy+1,izg  )-phi(ix  ,iy+1,izg+2))*wx1*wy *    wzg +
+     &           (phi(ix+1,iy+1,izg  )-phi(ix+1,iy+1,izg+2))*wx *wy *    wzg )
+     &           *0.5*dzi
+            else if (izg == nzlocal) then
+              ezax(iz)=((phi(ix  ,iy  ,izg-1)-phi(ix  ,iy  ,izg+1))*wx1*wy1 +
+     &                  (phi(ix+1,iy  ,izg-1)-phi(ix+1,iy  ,izg+1))*wx *wy1 +
+     &                  (phi(ix  ,iy+1,izg-1)-phi(ix  ,iy+1,izg+1))*wx1*wy  +
+     &                  (phi(ix+1,iy+1,izg-1)-phi(ix+1,iy+1,izg+1))*wx *wy)
+     &                  *0.5*dzi
+            endif
+          enddo
+        endif
+
       endif
 
 #ifdef MPIPARALLEL

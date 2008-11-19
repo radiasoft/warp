@@ -25,7 +25,7 @@ The two simulations are linked together.
 __all__ = ['PlaneRestore','plane_restore_version']
 
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.15 2008/11/05 22:36:57 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.16 2008/11/19 18:30:00 dave Exp $"
 
 class PlaneRestore:
   """
@@ -166,6 +166,7 @@ Input:
   ###########################################################################
   def disable_plane_restore(self):
     # for some reason, does not work!
+    uninstalluserinjection(self.restoreparticles)
     uninstallbeforefs(self.restoreplane_bfs)
     uninstallafterfs(self.restoreplane_afs)
 

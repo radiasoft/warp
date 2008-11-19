@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.244 $, $Date: 2008/11/13 21:23:44 $
+#@(#) File TOP.V, version $Revision: 3.245 $, $Date: 2008/11/19 18:29:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.244 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.245 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1361,6 +1361,9 @@ linj_rectangle logical /.false./ # Flags whether injection is over a
 linj_includebz0 logical /.false./ # Include the solenoidal field bz0, giving
                                   # the particles a vtheta corresponding to the
                                   # Larmor frequency
+l_inj_along_B logical /.false./ # When true, the initial velocity of the
+                                # injected particles is rotated to be
+                                # parallel to the local B field.
 
 tinject        integer /0/
 ntinj          integer /0/ # Number of transverse emitting surfaces.
@@ -2790,13 +2793,20 @@ wtremain() real function # returns the time remaining for the running job
 getbeamcom(pgroup:ParticleGroup) real function
        # Returns the center of mass in z of the beam calculated from the
        # particles.
-zpartbnd(pgroup:ParticleGroup,zmmax:real,zmmin:real,dz:real)
-       subroutine
-       # Enforces axial particle boundary conditions
+xparticleboundaries(pgroup:ParticleGroup,js1:integer,js2:integer,
+                    xmmax:real,xmmin:real,lcountaslost:logical) subroutine
+       # Apply x, grid based boundary conditions
+yparticleboundaries(pgroup:ParticleGroup,js1:integer,js2:integer,
+                    ymmax:real,ymmin:real,lcountaslost:logical) subroutine
+       # Apply y, grid based boundary conditions
+zparticleboundaries(pgroup:ParticleGroup,js1:integer,js2:integer,
+                    zmmax:real,zmmin:real,lcountaslost:logical) subroutine
+       # Apply z, grid based boundary conditions
 zpartbndwithdata(n:integer,z(n):real,uz(n):real,gaminv(n):real,
                  zmmax:real,zmmin:real,dz:real,zgrid:real) subroutine
        # Enforces axial particle boundary conditions
-reorgparticles(pgroup:ParticleGroup) subroutine
+reorgparticles(pgroup:ParticleGroup,
+               l4symtry:logical,l2symtry:logical,lrz:logical) subroutine
        # Reorganizes particles for the parallel version
 apply_simple_map(n,x(n):real,y(n):real,ux(n):real,uy(n):real,uz(n):real,
                  Mtx(2,2):real,Mty(2,2):real) subroutine
@@ -2817,30 +2827,80 @@ seteb_in_boosted_frame(n,ex(n):real,ey(n):real,ez(n):real,
                          uxf:real,uyf:real,uzf:real,gammaf:real) subroutine
        # computes E and B fields in Lorentz boosted frame
 
-******* Parallel:
-nslaves       integer /0/         # Number of slaves
-my_index      integer   +parallel # Processor index to array of task ids
-grid_overlap  integer       +dump # Overlap of field grid in processors
-maxslaves     integer /512/ +dump # Max numer of slaves
+%%%%%%% Decomposition:
+my_index integer # Processor number
+nxglobal integer # Global number of grid cells along x
+nyglobal integer # Global number of grid cells along y
+nzglobal integer # Global number of grid cells along z
+iprocgrid(0:2) integer # Processor grid indices for (x,y,z) decomposition
+nprocgrid(0:2) integer # Number of processors for (x,y,z) decomposition
+ixproc   integer # Processor indices for x decomposition
+iyproc   integer # Processor indices for y decomposition
+izproc   integer # Processor indices for z decomposition
+nxprocs  integer  # Numbers of processors for x decomposition
+nyprocs  integer  # Numbers of processors for y decomposition
+nzprocs  integer  # Numbers of processors for z decomposition
+ix(0:nxprocs-1) _integer # Starting x indices for the decomposition
+nx(0:nxprocs-1) _integer # Number of x cells for the decomposition
+xmin(0:nxprocs-1) _real # Minimum x location for the decomposition
+xmax(0:nxprocs-1) _real # Maximum x location for the decomposition
+iy(0:nyprocs-1) _integer # Starting y indices for the decomposition
+ny(0:nyprocs-1) _integer # Number of y cells for the decomposition
+ymin(0:nyprocs-1) _real # Minimum y location for the decomposition
+ymax(0:nyprocs-1) _real # Maximum y location for the decomposition
+iz(0:nzprocs-1) _integer # Starting z indices for the decomposition
+nz(0:nzprocs-1) _integer # Number of z cells for the decomposition
+zmin(0:nzprocs-1) _real # Minimum z location for the decomposition
+zmax(0:nzprocs-1) _real # Maximum z location for the decomposition
+mpi_comm_x integer # MPI communicators grouping processors along the x axis.
+mpi_comm_y integer # MPI communicators grouping processors along the y axis.
+mpi_comm_z integer # MPI communicators grouping processors along the z axis.
+
+******* Parallel dump:
+nprocs        integer /1/ -dump   # Number of parallel processors
+nslaves       integer /1/         # Obsolete
+my_index      integer /0/ +parallel -dump # Processor index to array of task ids
+grid_overlap  integer /0/         # Overlap of field grid in processors
 lautodecomp   logical /.true./    # When false, the domain decompostion for the
                                   # particles is supplied by the user.
 lfsautodecomp logical /.true./    # When false, the domain decompostion for the
                                   # field solver is supplied by the user. Can
                                   # only be done for fstype == 3.
+lfsautodecompx logical /.true./   # Turns on user supplied decomp in x
+lfsautodecompy logical /.true./   # Turns on user supplied decomp in y
+lfsautodecompz logical /.true./   # Turns on user supplied decomp in z
+lloadbalanced logical /.false./   # Set to true if the load has been rebalanced
 xynppgroup    integer /16/        # For slice field solver, number of process
                                   # in each group which cooperatively does
                                   # a field solve.
-zslave(0:maxslaves-1)    _real +dump    # User supplied weighting for the domain
-                                        # decomposition of the particles.
-izfsslave(0:maxslaves-1) _integer +dump # starting iz for which each slave does
-                                        # a field solve calculation
-nzfsslave(0:maxslaves-1) _integer +dump # number of z grid cells for which each
-                                        # slave does a field solve calculation
-izpslave(0:maxslaves-1)  _integer +dump # Starting iz of particle extent
-nzpslave(0:maxslaves-1)  _integer +dump # Number of Z cells of particle extent
-zpslmin(0:maxslaves-1)   _real    +dump # Particle Z minimum for each slave
-zpslmax(0:maxslaves-1)   _real    +dump # Particle Z maximum for each slave
-lloadbalanced logical /.false./ # Set to true if the load has been rebalanced
+nxprocs  integer /1/  # Numbers of processors for x decomposition
+nyprocs  integer /1/  # Numbers of processors for y decomposition
+nzprocs  integer /1/  # Numbers of processors for z decomposition
+ixproc   integer /0/  # Processor indices for x decomposition
+iyproc   integer /0/  # Processor indices for y decomposition
+izproc   integer /0/  # Processor indices for z decomposition
+iprocgrid(0:2) integer /3*0/ # Processor grid indices for (x,y,z) decomposition
+nprocgrid(0:2) integer /3*1/ # Number of processors for (x,y,z) decomposition
+procneighbors(0:1,0:2) integer # Processor neighbors
+userdecompx(0:nxprocs-1) _real # User supplied weighting for the x domain
+                               # decomposition of the particles.
+userdecompy(0:nyprocs-1) _real # User supplied weighting for the y domain
+                               # decomposition of the particles.
+userdecompz(0:nzprocs-1) _real # User supplied weighting for the z domain
+                               # decomposition of the particles.
+fsdecomp Decomposition
+ppdecomp Decomposition
+
+zslave(0:nzprocs-1)    _real    # User supplied weighting for the domain
+                                # decomposition of the particles.
+izfsslave(0:nzprocs-1) _integer # starting iz for which each slave does
+                                # a field solve calculation
+nzfsslave(0:nzprocs-1) _integer # number of z grid cells for which each
+                                # slave does a field solve calculation
+izpslave(0:nzprocs-1)  _integer # Starting iz of particle extent
+nzpslave(0:nzprocs-1)  _integer # Number of Z cells of particle extent
+zpslmin(0:nzprocs-1)   _real    # Particle Z minimum for each slave
+zpslmax(0:nzprocs-1)   _real    # Particle Z maximum for each slave
 
 ******* Databuffers:
 # Primarily used as data buffers for message passing

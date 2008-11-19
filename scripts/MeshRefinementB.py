@@ -113,174 +113,47 @@ Implements adaptive mesh refinement in 3d for the B field solver
     kwdict['fullplane'] = 0
     self.genericpf('getsource',kwdict,0,pcjzy)
 
+  def plaz(self,comp=2,ix=None,iy=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialz(comp=comp,ix=ix,iy=iy,colors=colors,selfonly=selfonly,
+                      scale=scale)
 
-  def plaz(self,ix=None,iy=None,comp=2,color='fg',selfonly=0):
-    if ix < self.fulllower[0]: return
-    if iy < self.fulllower[1]: return
-    if ix > self.fullupper[0]: return
-    if iy > self.fullupper[1]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.potential[comp,ix-self.fulllower[0]+1,iy-self.fulllower[1]+1,1:-1],self.zmesh,
-          color=color)
-      if not selfonly:
-        for child in self.children:
-          child.plaz(ix*child.refinement[0],iy*child.refinement[1],comp=comp,
-                     color=color)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plax(self,comp=2,iy=None,iz=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialx(comp=comp,iy=iy,iz=iz,colors=colors,selfonly=selfonly,
+                      scale=scale)
 
-  def plax(self,iy=None,iz=None,comp=2,color='fg',selfonly=0):
-    if iy < self.fulllower[1]: return
-    if iz < self.fulllower[2]: return
-    if iy > self.fullupper[1]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.potential[comp,1:-1,iy-self.fulllower[1]+1,iz-self.fulllower[2]+1],self.xmesh,
-          color=color)
-      if not selfonly:
-        for child in self.children:
-          child.plax(iy*child.refinement[1],iz*child.refinement[2],comp=comp,
-                     color=color)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def play(self,comp=2,ix=None,iz=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialy(comp=comp,ix=ix,iz=iz,colors=colors,selfonly=selfonly,
+                      scale=scale)
 
-  def play(self,ix=None,iz=None,comp=2,color='fg',selfonly=0):
-    if ix < self.fulllower[0]: return
-    if iz < self.fulllower[2]: return
-    if ix > self.fullupper[0]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.potential[comp,ix-self.fulllower[0]+1,1:-1,iz-self.fulllower[2]+1],self.ymesh,
-          color=color)
-      if not selfonly:
-        for child in self.children:
-          child.play(ix*child.refinement[0],iz*child.refinement[2],comp=comp,
-                     color=color)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def pljz(self,comp=2,ix=None,iy=None,colors=None,selfonly=0,scale=1,
+           withboundary=0):
+    self.plsourcez(comp=comp,ix=ix,iy=iy,colors=colors,selfonly=selfonly,
+                   scale=scale,withboundary=withboundary)
 
-  def pljz(self,ix=None,iy=None,comp=2,color='fg',selfonly=0):
-    if ix < self.fulllower[0]: return
-    if iy < self.fulllower[1]: return
-    if ix > self.fullupper[0]: return
-    if iy > self.fullupper[1]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.source[comp,ix-self.fulllower[0],iy-self.fulllower[1],:],self.zmesh,
-          color=color)
-      if not selfonly:
-        for child in self.children:
-          child.pljz(ix*child.refinement[0],iy*child.refinement[1],comp=comp,
-                     color=color)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def pljx(self,comp=2,iy=None,iz=None,colors=None,selfonly=0,scale=1,
+           withboundary=0):
+    self.plsourcex(comp=comp,iy=iy,iz=iz,colors=colors,selfonly=selfonly,
+                   scale=scale,withboundary=withboundary)
 
-  def pljx(self,iy=None,iz=None,comp=2,color='fg',selfonly=0):
-    if iy < self.fulllower[1]: return
-    if iz < self.fulllower[2]: return
-    if iy > self.fullupper[1]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.source[comp,:,iy-self.fulllower[1],iz-self.fulllower[2]],self.xmesh,
-          color=color)
-      if not selfonly:
-        for child in self.children:
-          child.pljx(iy*child.refinement[1],iz*child.refinement[2],comp=comp,
-                     color=color)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def pljy(self,comp=2,ix=None,iz=None,colors=None,selfonly=0,scale=1,
+           withboundary=0):
+    self.plsourcey(comp=comp,ix=ix,iz=iz,colors=colors,selfonly=selfonly,
+                   scale=scale,withboundary=withboundary)
 
-  def pljy(self,ix=None,iz=None,comp=2,color='fg',selfonly=0):
-    if ix < self.fulllower[0]: return
-    if iz < self.fulllower[2]: return
-    if ix > self.fullupper[0]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.source[comp,ix-self.fulllower[0],:,iz-self.fulllower[2]],self.ymesh,
-          color=color)
-      if not selfonly:
-        for child in self.children:
-          child.pljy(ix*child.refinement[0],iz*child.refinement[2],comp=comp,
-                     color=color)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plbz(self,comp=2,ix=None,iy=None,colors=None,selfonly=0,scale=1,
+           withguard=1):
+    self.plfieldz(comp=comp,ix=ix,iy=iy,colors=colors,selfonly=selfonly,
+                  scale=scale,withguard=withguard)
 
-  def plbz(self,ix=None,iy=None,comp=2,color='fg',selfonly=0,withguard=1):
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      iz = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      iz = slice(self.lower[2] - self.fulllower[2],
-                 self.upper[2] - self.fulllower[2] + 1)
-    if ix < lower[0]: return
-    if iy < lower[1]: return
-    if ix > upper[0]: return
-    if iy > upper[1]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.field[comp,ix-self.fulllower[0],iy-self.fulllower[1],iz],
-          self.zmesh[iz],color=color)
-      if not selfonly:
-        for child in self.children:
-          child.plbz(comp,ix*child.refinement[0],iy*child.refinement[1],
-                         color=color,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plbx(self,comp=2,iy=None,iz=None,colors=None,selfonly=0,scale=1,
+           withguard=1):
+    self.plfieldx(comp=comp,iy=iy,iz=iz,colors=colors,selfonly=selfonly,
+                  scale=scale,withguard=withguard)
 
-  def plbx(self,iy=None,iz=None,comp=2,color='fg',selfonly=0,withguard=1):
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      ix = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      ix = slice(self.lower[0] - self.fulllower[0],
-                 self.upper[0] - self.fulllower[0] + 1)
-    if iy < lower[1]: return
-    if iz < lower[2]: return
-    if iy > upper[1]: return
-    if iz > upper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.field[comp,ix,iy-self.fulllower[1],iz-self.fulllower[2]],
-                     self.xmesh[ix],color=color)
-      if not selfonly:
-        for child in self.children:
-          child.plbx(comp,iy*child.refinement[1],iz*child.refinement[2],
-                         color=color,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
-
-  def plby(self,ix=None,iz=None,comp=2,color='fg',selfonly=0,withguard=1):
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      iy = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      iy = slice(self.lower[1] - self.fulllower[1],
-                 self.upper[1] - self.fulllower[1] + 1)
-    if ix < lower[0]: return
-    if iz < lower[2]: return
-    if ix > upper[0]: return
-    if iz > upper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.field[comp,ix-self.fulllower[0],iy,iz-self.fulllower[2]],
-          self.ymesh[iy],color=color)
-      if not selfonly:
-        for child in self.children:
-          child.plby(comp,ix*child.refinement[0],iz*child.refinement[2],
-                         color=color,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
-
-
-
+  def plby(self,comp=2,ix=None,iz=None,colors=None,selfonly=0,scale=1,
+           withguard=1):
+    self.plfieldy(comp=comp,ix=ix,iz=iz,colors=colors,selfonly=selfonly,
+                  scale=scale,withguard=withguard)
 
 
 

@@ -1,17 +1,11 @@
-"""
-Various routines for doing loading balancing for the parallel version
-LoadBalancer: class wrapping particle load balancing. Sets up automatic
-              periodic load balancing of particles.
-setparticledomains: Applies decomposition given a list of domain sizes
-loadbalanceparticles: Load balances the particles based on pnumz
-loadbalancesor: Load balances the SOR solver, balancing the total work in
-                the solver including the work specifying the conductors.
+"""LoadBalancer: class wrapping particle load balancing. Sets up automatic
+                 periodic load balancing of particles.
 """
 __all__ = ['LoadBalancer']
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.61 2008/07/09 11:23:14 jlvay Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.62 2008/11/19 18:29:59 dave Exp $"
 
 def loadbalancedoc():
     import loadbalance
@@ -26,41 +20,77 @@ Creation arguments:
  - when: dictionary of when to do the load balancing. Keys are time step
          numbers, values are frequency of loadbalancing when top.it is less
          than key. Default is {10:1,100:10,1000000:20}
- - padright: Amount of space added to right end of grid. When not specified,
-             it is product of max(vz)*top.dt*2 and the number of steps between
-             load balances.
- - padleft=0: Amount of space added to left end of grid.
+ - padright,padupperx,paduppery,padupperz=0: 
+             Amount of space added to upper end of grid. When not specified,
+             it is product of max(v)*top.dt*2 and the number of steps between
+             load balances. If not given, the x,y,z values default to padright.
+ - padleft,padlowerx,padlowery,padlowerz=0: 
+              Amount of space added to lower end of grid. If not given, the
+              x,y,z values default to padleft.
  - doloadrho=0: Specifies whether the charge density is recalculated
  - dofs=0: Specifies whether the fields are recalculated
  - verbose=0: Prints output
- - nzguard=0: Number of extra guard cells to include in the field arrays for
-              the particles. Only needed in special cases, possibly when
-              the interpolated mover is used since intermediate positions
-              in the algorithm may be out of bounds otherwise.
-Note, if particles on cover a few grid cells, then distribution is
+ - nxguard,nyguard,nzguard=0: Number of extra guard cells to include in the
+              field arrays for the particles. Only needed in special cases,
+              possibly when the interpolated mover is used since intermediate
+              positions in the algorithm may be out of bounds otherwise.
+ - spreadx,spready,spreadz=1.: The fraction of processors to spread the work
+                               over. Do not use this unless you really know
+                               what it means!
+
+Note, if particles only cover a few grid cells, then the distribution is
 recalculated on a finer mesh to give better balancing.
     """
-    def __init__(self,padright=None,padleft=None,when=None,doitnow=0,
-                 doloadrho=0,dofs=0,verbose=0,nzguard=0):
-      if when is None:
-          self.when = {10:1,100:10,1000000:20}
-      else:
-          self.when = when
-      self.padright = padright
-      self.padleft = padleft
-      self.doloadrho = doloadrho
-      self.dofs = dofs
-      self.verbose = verbose
-      self.nzguard = nzguard
-      self.runtime = 0.
-      if not lparallel: return
-      if doitnow: self.doloadbalance()
-      installafterstep(self.doloadbalance)
+    def __init__(self,when=None,padright=None,padleft=None,
+                 padupperx=None,paduppery=None,padupperz=None,
+                 padlowerx=None,padlowery=None,padlowerz=None,
+                 doitnow=0,doloadrho=0,dofs=0,verbose=0,
+                 nxguard=0,nyguard=0,nzguard=0,
+                 spreadx=1.,spready=1.,spreadz=1.):
+        if when is None:
+            self.when = {10:1,100:10,1000000:20}
+        else:
+            self.when = when
+
+        self.padright = padright
+        self.padleft = padleft
+        if padupperx is None: padupperx = padright
+        if paduppery is None: paduppery = padright
+        if padupperz is None: padupperz = padright
+        self.padupperx = padupperx
+        self.paduppery = paduppery
+        self.padupperz = padupperz
+        if padlowerx is None: padlowerx = padleft
+        if padlowery is None: padlowery = padleft
+        if padlowerz is None: padlowerz = padleft
+        self.padlowerx = padlowerx
+        self.padlowery = padlowery
+        self.padlowerz = padlowerz
+
+        self.doloadrho = doloadrho
+        self.dofs = dofs
+        self.verbose = verbose
+
+        self.nxguard = nxguard
+        self.nyguard = nyguard
+        self.nzguard = nzguard
+
+        self.spreadx = spreadx
+        self.spready = spready
+        self.spreadz = spreadz
+
+        self.runtime = 0.
+
+        if not lparallel: return
+
+        if doitnow: self.doloadbalance()
+
+        installafterstep(self.doloadbalance)
 
     def __setstate__(self,dict):
-      self.__dict__.update(dict)
-      if not isinstalledafterstep(self.doloadbalance):
-          installafterstep(self.doloadbalance)
+        self.__dict__.update(dict)
+        if not isinstalledafterstep(self.doloadbalance):
+            installafterstep(self.doloadbalance)
 
     def doloadbalance(self,lforce=0,doloadrho=None,dofs=None,reorg=None):
         starttime = time.time()
@@ -76,35 +106,69 @@ recalculated on a finer mesh to give better balancing.
             self.runtime += (endtime - starttime)
             return
 
-        if not top.lmoments or top.laccumulate_zmoments:
-            # --- If the moments were not calculated, then top.zminp and top.zmaxp
-            # --- are not reliable and so need to be calculated.
-            zminp = +largepos
-            zmaxp = -largepos
-            for js in range(top.pgroup.ns):
-                if top.pgroup.nps[js] == 0: continue
-                i1 = top.pgroup.ins[js] - 1
-                i2 = i1 + top.pgroup.nps[js]
-                zz = top.pgroup.zp[i1:i2]
-                zminp = min(zminp,min(zz))
-                zmaxp = max(zmaxp,max(zz))
-            zminp = globalmin(zminp)
-            zmaxp = globalmax(zmaxp)
+        # --- Get the current number of live particles.
+        if not top.lmoments or top.ifzmmnt == 0 or top.laccumulate_zmoments:
+            # --- Sum up the total number of particles calculated.
             nplive = globalsum(top.pgroup.nps)
         else:
-            # --- Otherwise, use the values already calculated.
-            zz = None
-            zminp = top.zminp[-1]
-            zmaxp = top.zmaxp[-1]
+            # --- Use the value already calculated.
             nplive = top.pnum[0,-1]
 
-        # --- Check if there are any particles anywhere
+        # --- Check if there are any particles anywhere, and return if not.
         if nplive == 0:
             if self.verbose:
                 print "Skipping loadbalance since there are no particles"
             endtime = time.time()
             self.runtime += (endtime - starttime)
             return
+
+        # --- Get the range of particles in each dimension.
+        if not top.lmoments or top.ifzmmnt == 0 or top.laccumulate_zmoments:
+            # --- If the moments were not calculated, then top.zminp and
+            # --- top.zmaxp are not reliable and so need to be calculated.
+            # --- In the dimensions where there is no decomposition, skip
+            # --- the calculation to not waste time.
+            xminp = +largepos
+            xmaxp = -largepos
+            yminp = +largepos
+            ymaxp = -largepos
+            zminp = +largepos
+            zmaxp = -largepos
+            for js in range(top.pgroup.ns):
+                if top.pgroup.nps[js] == 0: continue
+                i1 = top.pgroup.ins[js] - 1
+                i2 = i1 + top.pgroup.nps[js]
+                if top.nxprocs > 1:
+                    xx = top.pgroup.xp[i1:i2]
+                    xminp = min(xminp,min(xx))
+                    xmaxp = max(xmaxp,max(xx))
+                else:
+                    xminp = w3d.xmmin
+                    xmaxp = w3d.xmmax
+                if top.nyprocs > 1:
+                    yy = top.pgroup.yp[i1:i2]
+                    yminp = min(yminp,min(yy))
+                    ymaxp = max(ymaxp,max(yy))
+                else:
+                    yminp = w3d.ymmin
+                    ymaxp = w3d.ymmax
+                if top.nzprocs > 1:
+                    zz = top.pgroup.zp[i1:i2]
+                    zminp = min(zminp,min(zz))
+                    zmaxp = max(zmaxp,max(zz))
+                else:
+                    zminp = w3d.zmmin
+                    zmaxp = w3d.zmmax
+            xminp,yminp,zminp = parallelmin([xminp,yminp,zminp])
+            xmaxp,ymaxp,zmaxp = parallelmax([xmaxp,ymaxp,zmaxp])
+        else:
+            # --- Otherwise, use the values already calculated.
+            xminp = top.xminp[-1]
+            xmaxp = top.xmaxp[-1]
+            yminp = top.yminp[-1]
+            ymaxp = top.ymaxp[-1]
+            zminp = top.zminp[-1]
+            zmaxp = top.zmaxp[-1]
 
         # --- Special check when injection is turned on
         if top.inject:
@@ -115,7 +179,7 @@ recalculated on a finer mesh to give better balancing.
             rpinj = sqrt(top.xpinject**2 + top.ypinject**2)
             zinjectmin = max(w3d.zmmin,min(top.zinject - rinj*rpinj))
             zinjectmax = min(w3d.zmmax,max(top.zinject + rinj*rpinj))
-            # --- Add in term accounting for the curvature of the source
+            # --- Add in the term accounting for the curvature of the source
             rmax = maximum(top.ainject,top.binject)
             injdepth = max(rmax**2/(top.rinject+sqrt(top.rinject**2-rmax**2)))
             injdepth = max(injdepth,maxnd(w3d.inj_grid))
@@ -126,26 +190,105 @@ recalculated on a finer mesh to give better balancing.
             zinjectmax = zinjectmax + max(0.,max(top.inj_d)*w3d.dz)
             zminp = minimum(zinjectmin,zminp)
             zmaxp = maximum(zinjectmax,zmaxp)
+            # --- Transverse dimensions
+            xminp = minimum(xminp,max(w3d.xmmin,min(top.xinject-rmax)))
+            xmaxp = maximum(xmaxp,min(w3d.xmmax,min(top.xinject+rmax)))
+            yminp = minimum(yminp,max(w3d.ymmin,min(top.yinject-rmax)))
+            ymaxp = maximum(ymaxp,min(w3d.ymmax,min(top.yinject+rmax)))
 
-        # --- Shift zminp and zmaxp into the grid frame
-        zminp = zminp - top.zbeam - w3d.zmmin
-        zmaxp = zmaxp - top.zbeam - w3d.zmmin
+        if top.tinject:
+            zinjectmin = min(top.ztinjmn) - w3d.dz
+            zinjectmax = max(top.ztinjmx) + w3d.dz
+            if w3d.solvergeom in [w3d.XYZgeom,w3d.XZgeom]:
+              maxa = maximum.reduce(top.atinjectz,axis=0)
+              maxb = maximum.reduce(top.btinjectz,axis=0)
+              xinjectmin = minnd(-maxa+top.xtinject) - 2*w3d.inj_dx
+              xinjectmax = maxnd(+maxa+top.xtinject) + 2*w3d.inj_dx
+              yinjectmin = minnd(-maxb+top.ytinject) - 2*w3d.inj_dy
+              yinjectmax = maxnd(+maxb+top.ytinject) + 2*w3d.inj_dy
+            elif w3d.solvergeom == w3d.RZgeom:
+              maxa = maximum.reduce(top.atinjectz,axis=0)
+              mina = minimum.reduce(top.atinjectz,axis=0)
+              xinjectmin = minnd(mina) - 2*w3d.inj_dx
+              xinjectmax = maxnd(maxa) + 2*w3d.inj_dx
+              yinjectmin = 0.
+              yinjectmax = 0.
+            xminp = minimum(xminp,max(w3d.xmmin,xinjectmin))
+            xmaxp = maximum(xmaxp,min(w3d.xmmax,xinjectmax))
+            yminp = minimum(yminp,max(w3d.ymmin,yinjectmin))
+            ymaxp = maximum(ymaxp,min(w3d.ymmax,yinjectmax))
+            zminp = minimum(zminp,max(w3d.zmmin,zinjectmin))
+            zmaxp = maximum(zmaxp,min(w3d.zmmax,zinjectmax))
 
-        # --- Check if rightmost particle is close to edge of last processor
+        # --- Shift into the grid frame
+        xminp = xminp - w3d.xmmin
+        xmaxp = xmaxp - w3d.xmmin
+        yminp = yminp - w3d.ymmin
+        ymaxp = ymaxp - w3d.ymmin
+        zminp = zminp - w3d.zmmin - top.zbeam
+        zmaxp = zmaxp - w3d.zmmin - top.zbeam
+
+        ppdecomp = top.ppdecomp
+
+        # --- Check if uppermost particle is close to edge of last processor
         # --- If so, then force a reloadbalance.
-        if top.zpslmax[-1] < w3d.zmmax-0.5*w3d.dz:
-            if zmaxp > top.zpslmax[-1]-2*w3d.dz + top.zbeam:
+        if ppdecomp.nxprocs > 1 and ppdecomp.xmax[-1] < w3d.xmmax-0.5*w3d.dx:
+            if xmaxp > ppdecomp.xmax[-1]-2*w3d.dx:
                 lforce = true
                 if self.verbose:
-                    print "Load balancing since particles near right end of mesh ",top.zpslmax[-1],w3d.zmmax,zmaxp,top.zpslmax[-1]-2*w3d.dz
+                    print "Load balancing since particles near upper end ",
+                    print "of mesh in x ",ppdecomp.xmax[-1],w3d.xmmax,xmaxp,
+                    print ppdecomp.xmax[-1]-2*w3d.dx
 
-        # --- Check if leftmost particle is close to edge of last processor
+        # --- Check if lowermost particle is close to edge of last processor
         # --- If so, then force a reloadbalance.
-        if top.zpslmin[0] > w3d.zmmin+0.5*w3d.dz:
-            if zminp < top.zpslmin[0]+2*w3d.dz + top.zbeam:
+        if ppdecomp.nxprocs > 1 and ppdecomp.xmin[0] > w3d.xmmin+0.5*w3d.dx:
+            if xminp < ppdecomp.xmin[0]+2*w3d.dx:
                 lforce = true
                 if self.verbose:
-                    print "Load balancing since particles near left end of mesh ",top.zpslmin[0],w3d.zmmin,zminp,top.zpslmin[0]+2*w3d.dz
+                    print "Load balancing since particles near lower end ",
+                    print "of mesh in x ",ppdecomp.xmin[0],w3d.xmmin,xminp,
+                    print ppdecomp.xmin[0]+2*w3d.dx
+
+        # --- Check if uppermost particle is close to edge of last processor
+        # --- If so, then force a reloadbalance.
+        if ppdecomp.nyprocs > 1 and ppdecomp.ymax[-1] < w3d.ymmax-0.5*w3d.dy:
+            if ymaxp > ppdecomp.ymax[-1]-2*w3d.dy:
+                lforce = true
+                if self.verbose:
+                    print "Load balancing since particles near upper end ",
+                    print "of mesh in y ",ppdecomp.ymax[-1],w3d.ymmax,ymaxp,
+                    print ppdecomp.ymax[-1]-2*w3d.dy
+
+        # --- Check if lowermost particle is close to edge of last processor
+        # --- If so, then force a reloadbalance.
+        if ppdecomp.nyprocs > 1 and ppdecomp.ymin[0] > w3d.ymmin+0.5*w3d.dy:
+            if yminp < ppdecomp.ymin[0]+2*w3d.dy:
+                lforce = true
+                if self.verbose:
+                    print "Load balancing since particles near lower end ",
+                    print "of mesh in y ",ppdecomp.ymin[0],w3d.ymmin,yminp,
+                    print ppdecomp.ymin[0]+2*w3d.dy
+
+        # --- Check if uppermost particle is close to edge of last processor
+        # --- If so, then force a reloadbalance.
+        if ppdecomp.nzprocs > 1 and ppdecomp.zmax[-1] < w3d.zmmax-0.5*w3d.dz:
+            if zmaxp > ppdecomp.zmax[-1]-2*w3d.dz + top.zbeam:
+                lforce = true
+                if self.verbose:
+                    print "Load balancing since particles near upper end ",
+                    print "of mesh in z ",ppdecomp.zmax[-1],w3d.zmmax,zmaxp,
+                    print ppdecomp.zmax[-1]-2*w3d.dz
+
+        # --- Check if lowermost particle is close to edge of last processor
+        # --- If so, then force a reloadbalance.
+        if ppdecomp.nzprocs > 1 and ppdecomp.zmin[0] > w3d.zmmin+0.5*w3d.dz:
+            if zminp < ppdecomp.zmin[0]+2*w3d.dz + top.zbeam:
+                lforce = true
+                if self.verbose:
+                    print "Load balancing since particles near lower end ",
+                    print "of mesh in z ",ppdecomp.zmin[0],w3d.zmmin,zminp,
+                    print ppdecomp.zmin[0]+2*w3d.dz
 
         # --- Find frequency of load balancing
         ii = max(self.when.values())
@@ -163,95 +306,209 @@ recalculated on a finer mesh to give better balancing.
         if (top.it%ii) == 0 and self.verbose:
             print "Load balancing based on frequency"
 
+        if top.nxprocs > 1:
+            self.dodecomposition(0,ii,xminp,xmaxp,self.spreadx,
+                                 self.padlowerx,self.padupperx,
+                                 w3d.xmmin,w3d.xmmax,w3d.dx,0.,top.nxprocs,
+                                 top.pgroup.getpyobject('xp'),
+                                 top.pgroup.getpyobject('uxp'),
+                                 ppdecomp.nxglobal,self.nxguard,
+                                 ppdecomp.xmin,ppdecomp.xmax,
+                                 ppdecomp.ix,ppdecomp.nx)
+            top.xpminlocal = ppdecomp.xmin[top.ixproc]
+            top.xpmaxlocal = ppdecomp.xmax[top.ixproc]
+            w3d.xmminp = w3d.xmmin + ppdecomp.ix[top.ixproc]*w3d.dx
+            w3d.xmmaxp = w3d.xmmin + (ppdecomp.ix[top.ixproc] +
+                                      ppdecomp.nx[top.ixproc])*w3d.dx
+
+        if top.nyprocs > 1:
+            self.dodecomposition(1,ii,yminp,ymaxp,self.spready,
+                                 self.padlowery,self.paduppery,
+                                 w3d.ymmin,w3d.ymmax,w3d.dy,0.,top.nyprocs,
+                                 top.pgroup.getpyobject('yp'),
+                                 top.pgroup.getpyobject('uyp'),
+                                 ppdecomp.nyglobal,self.nyguard,
+                                 ppdecomp.ymin,ppdecomp.ymax,
+                                 ppdecomp.iy,ppdecomp.ny)
+            top.ypminlocal = ppdecomp.ymin[top.iyproc]
+            top.ypmaxlocal = ppdecomp.ymax[top.iyproc]
+            w3d.ymminp = w3d.ymmin + ppdecomp.iy[top.iyproc]*w3d.dy
+            w3d.ymmaxp = w3d.ymmin + (ppdecomp.iy[top.iyproc] +
+                                      ppdecomp.ny[top.iyproc])*w3d.dy
+
+        if top.nzprocs > 1:
+            self.dodecomposition(2,ii,zminp,zmaxp,self.spreadz,
+                                 self.padlowerz,self.padupperz,
+                                 w3d.zmmin,w3d.zmmax,w3d.dz,0.,top.nzprocs,
+                                 top.pgroup.getpyobject('zp'),
+                                 top.pgroup.getpyobject('uzp'),
+                                 ppdecomp.nzglobal,self.nzguard,
+                                 ppdecomp.zmin,ppdecomp.zmax,
+                                 ppdecomp.iz,ppdecomp.nz)
+            top.zpminlocal = ppdecomp.zmin[top.izproc]
+            top.zpmaxlocal = ppdecomp.zmax[top.izproc]
+            w3d.zmminp = w3d.zmmin + ppdecomp.iz[top.izproc]*w3d.dz
+            w3d.zmmaxp = w3d.zmmin + (ppdecomp.iz[top.izproc] +
+                                      ppdecomp.nz[top.izproc])*w3d.dz
+
+            top.izpslave[:] = ppdecomp.iz
+            top.nzpslave[:] = ppdecomp.nz
+            top.zpslmin[:] =  ppdecomp.zmin
+            top.zpslmax[:] =  ppdecomp.zmax
+
+        # --- Reorganize the particles
         # --- On step zero, a complete reorganization is done so the reorg flag
         # --- is set to true to use the particle sorter which is more efficient
         # --- in that case.
-        if reorg is None: reorg = (top.it==1)
-
-        if doloadrho is None: doloadrho = self.doloadrho
-        if dofs is None: dofs = self.dofs
-
-        if ((zmaxp - zminp)/w3d.dz < 10 or not top.lmoments or
-            top.laccumulate_zmoments):
-            # --- If the particles only extend over a few grid cells, recalculate
-            # --- the distribution on a finer grid to get better loadbalancing.
-            # --- Also, calculate the distribution if the moments were not
-            # --- calculated on the most recent step.
-            pnumz = zeros(1001,'d')
-            zmin = max(0.,                             zminp-w3d.dz)
-            zmax = min(w3d.zmmax-w3d.zmmin,zmaxp+w3d.dz)
-            for js in range(top.pgroup.ns):
-                if top.pgroup.nps[js] == 0: continue
-                i1 = top.pgroup.ins[js] - 1
-                i2 = i1 + top.pgroup.nps[js]
-                zz = top.pgroup.zp[i1:i2]
-                setgrid1d(len(zz),zz,1000,pnumz,
-                          zmin+top.zbeam+w3d.zmmin,zmax+top.zbeam+w3d.zmmin)
-            pnumz = parallelsum(pnumz)
-            dz = (zmax - zmin)/1000.
+        if reorg is None:
+          reorg = (top.it==1)
+        if reorg:
+          reorgparticles(top.pgroup,w3d.l4symtry,w3d.l2symtry,
+                         w3d.solvergeom==w3d.RZgeom)
         else:
-            # --- Otherwise use the already calculated z-moment
-            pnumz = top.pnumz[:,-1]
-            zmin = 0.
-            dz = w3d.dz
+          particlegridboundaries3d(top.pgroup,-1)
 
-        # --- Calculate the right hand side padding.
-        vz = None
-        if self.padright is None:
-            if not top.lmoments:
-                vzmaxp = -largepos
-                for js in range(top.pgroup.ns):
-                    if top.pgroup.nps[js] == 0: continue
-                    i1 = top.pgroup.ins[js] - 1
-                    i2 = i1 + top.pgroup.nps[js]
-                    vz = top.pgroup.uzp[i1:i2]*top.pgroup.gaminv[i1:i2]
-                    vzmaxp = max(vzmaxp,max(vz))
-                vzmaxp = globalmax(vzmaxp)
+        # --- Update sizes of grids for particles
+        w3d.nxp = ppdecomp.nx[top.ixproc]
+        w3d.nyp = ppdecomp.ny[top.iyproc]
+        w3d.nzp = ppdecomp.nz[top.izproc]
+        if dofs is None: dofs = self.dofs
+        solver = getregisteredsolver()
+        if solver is not None:
+            try:
+                solver.resetparticledomains()
+            except AttributeError:
+                print "Field solver does not have a setparticledomains method"
+            # --- Zero out the source that is used for the fieldsolver. This is
+            # --- done in case some region of source is no longer covered by
+            # --- sourcep.
+            try:
+                solver.zerosource()
+            except AttributeError:
+                print "Field solver does not have a zerosource method"
+        else:
+            if(w3d.solvergeom == w3d.XYZgeom):
+                # --- Allocate space with updated nxp, nyp and nzp
+                gchange("Fields3dParticles")
             else:
-                vzmaxp = max(top.vzmaxp)
-            if vzmaxp > 0.: padright = vzmaxp*top.dt*ii*2
-            else:           padright = ii*w3d.dz
-        else:             padright = self.padright
-        if self.verbose:
-            print "Load balancing padright = ",padright
+                gchange_rhop_phip_rz()
+            # --- Redistribute phi to the particle arrays if a field solve is
+            # --- not done.
+            if not dofs:
+                if getregisteredsolver() is None:
+                    for i in range(getnsndtsforsubcycling()):
+                        getphipforparticles(i)
 
-        # --- Calculate the left hand side padding.
-        if self.padleft is None:
-            if not top.lmoments:
-                vzminp = +largepos
-                for js in range(top.pgroup.ns):
-                    if top.pgroup.nps[js] == 0: continue
-                    i1 = top.pgroup.ins[js] - 1
-                    i2 = i1 + top.pgroup.nps[js]
-                    vz = top.pgroup.uzp[i1:i2]*top.pgroup.gaminv[i1:i2]
-                    vzminp = min(vzminp,min(vz))
-                vzminp = globalmin(vzminp)
-            else:
-                vzminp = min(top.vzminp)
-            if vzminp < 0.: padleft = -vzminp*top.dt*ii*2
-            else:           padleft = ii*w3d.dz
-        else:             padleft = self.padleft
-        if self.verbose:
-            print "Load balancing padleft = ",padleft
-
-        loadbalanceparticles(doloadrho=doloadrho,dofs=dofs,
-                             padright=padright,padleft=padleft,
-                             reorg=reorg,pnumz=pnumz,zmin=zmin,dz=dz,
-                             zminp=zminp,zmaxp=zmaxp,verbose=self.verbose,
-                             nzguard=self.nzguard)
-        if getregisteredsolver() is None:
-            for i in range(getnsndtsforsubcycling()):
-                getphipforparticles(i)
+        # --- Do some additional work if requested
+        if doloadrho is None: doloadrho = self.doloadrho
+        if doloadrho: loadrho()
+        if dofs: fieldsol(0)
 
         top.lloadbalanced = true
 
         endtime = time.time()
         self.runtime += (endtime - starttime)
 
+    def dodecomposition(self,axis,ii,minp,maxp,spread,padlower,padupper,
+                   mmin,mmax,dd,beam,nprocs,pp,uu,
+                   nnglobal,nguard,ppdecompmin,ppdecompmax,
+                   ppdecompii,ppdecompnn):
+        if (axis < 2 or (maxp - minp)/dd < 10 or
+            not top.lmoments or top.ifzmmnt == 0 or top.laccumulate_zmoments):
+            # --- If the particles only extend over a few grid cells,
+            # --- recalculate the distribution on a finer grid to get better
+            # --- loadbalancing.
+            # --- Also, calculate the distribution if the moments were not
+            # --- calculated on the most recent step.
+            pnum = zeros(1001,'d')
+            pmin = max(0.,minp-dd)
+            pmax = min(mmax-mmin,maxp+dd)
+            for js in range(top.pgroup.ns):
+                if top.pgroup.nps[js] == 0: continue
+                i1 = top.pgroup.ins[js] - 1
+                i2 = i1 + top.pgroup.nps[js]
+                setgrid1d(top.pgroup.nps[js],pp[i1:i2],1000,pnum,
+                          pmin+beam+mmin,pmax+beam+mmin)
+            pnum = parallelsum(pnum)
+            pdd = (pmax - pmin)/1000.
+        else:
+            # --- Otherwise use the already calculated z-moment
+            pnum = top.pnumz[:,-1]
+            pmin = 0.
+            pdd = w3d.dz
+
+        assert max(pnum) > 0.,"No particles found during decomposition"
+
+        # --- Add fictitious data so that actual work is spread only to the
+        # --- requested fraction of the processors.
+        assert (0. < spread <= 1.),"spread must be between 0 and 1 or 1."
+        avepnum = ave(pnum)
+        pnum = pnum + avepnum*(1./spread - 1.)
+
+        # --- Convert the number of particles to a decomposition
+        domain = decompose(pnum,nprocs,lfullcoverage=0)
+        domain = domain*pdd + pmin
+        domain[0] = min(domain[0],minp)
+        domain[-1] = max(domain[-1],maxp)
+
+        # --- Set domain of each processor.
+        ppdecompmin[:] = mmin + domain[:-1]
+        ppdecompmax[:] = mmin + domain[1:]
+
+        padlower = self.calcpadlower(axis,ii,padlower,uu,dd)
+        padupper = self.calcpadupper(axis,ii,padupper,uu,dd)
+
+        ppdecompmin[0] = max(mmin,ppdecompmin[0] - padlower)
+        ppdecompmax[-1] = min(mmax,ppdecompmax[-1] + padupper)
+
+        domaindecomposeparticles(nnglobal,nprocs,nguard,mmin,mmax,dd,
+                                 zeros(nprocs,'d'),true,
+                                 ppdecompii,ppdecompnn,ppdecompmin,ppdecompmax)
+
+    def calcpadupper(self,axis,ii,padupper,vv,dd):
+        # --- Calculate the padding on the upper edge.
+        if padupper is None:
+            if axis < 2 or not top.lmoments or top.ifzmmnt == 0:
+                vmaxp = -largepos
+                for js in range(top.pgroup.ns):
+                    if top.pgroup.nps[js] == 0: continue
+                    i1 = top.pgroup.ins[js] - 1
+                    i2 = i1 + top.pgroup.nps[js]
+                    vv = vv[i1:i2]*top.pgroup.gaminv[i1:i2]
+                    vmaxp = max(vmaxp,max(vv))
+                vmaxp = globalmax(vmaxp)
+            else:
+                vmaxp = max(top.vzmaxp)
+            if vmaxp > 0.: padupper = vmaxp*top.dt*ii*2
+            else:          padupper = ii*dd
+        if self.verbose:
+            print "Load balancing padupper%s = "%(['x','y','z'][axis]),padupper
+        return padupper
+
+    def calcpadlower(self,axis,ii,padlower,vv,dd):
+        # --- Calculate the padding on the lower edge.
+        if padlower is None:
+            if axis < 2 or not top.lmoments or top.ifzmmnt == 0:
+                vminp = +largepos
+                for js in range(top.pgroup.ns):
+                    if top.pgroup.nps[js] == 0: continue
+                    i1 = top.pgroup.ins[js] - 1
+                    i2 = i1 + top.pgroup.nps[js]
+                    vv = vv[i1:i2]*top.pgroup.gaminv[i1:i2]
+                    vminp = min(vminp,min(vv))
+                vminp = globalmin(vminp)
+            else:
+                vminp = min(top.vzminp)
+            if vminp < 0.: padlower = -vminp*top.dt*ii*2
+            else:          padlower = ii*dd
+        if self.verbose:
+            print "Load balancing padlower%s = "%(['x','y','z'][axis]),padlower
+        return padlower
+
 #########################################################################
 #########################################################################
 def setparticledomains(zslave,doloadrho=1,dofs=1,padleft=0.,padright=0.,
-                       reorg=0,nzguard=0):
+                       reorg=0,nxguard=0,nyguard=0,nzguard=0):
     """
 Sets the particles domains from the input, zslave, in the same way as done
 with top.zslave during the generate. This is only meant to be used after
@@ -275,48 +532,69 @@ that has already been done.
     # --- All values of zslave must be > 0.
     assert min(zslave[1:]-zslave[:-1]) > 0.,"The length of all particle domains must be > 0."
 
+    ppdecomp = top.ppdecomp
+
     # --- Set domain of each processor.
     for i in range(npes):
-        top.zpslmin[i] = w3d.zmmin + zslave[i]*w3d.dz
-        top.zpslmax[i] = w3d.zmmin + zslave[i+1]*w3d.dz
+        ppdecomp.zmin[i] = w3d.zmmin + zslave[i]*w3d.dz
+        ppdecomp.zmax[i] = w3d.zmmin + zslave[i+1]*w3d.dz
 
-    top.zpslmin[0] = max(w3d.zmmin,top.zpslmin[0] - padleft)
-    top.zpslmax[-1] = min(w3d.zmmax,top.zpslmax[-1] + padright)
+    ppdecomp.zmin[0] = max(w3d.zmmin,ppdecomp.zmin[0] - padleft)
+    ppdecomp.zmax[-1] = min(w3d.zmmax,ppdecomp.zmax[-1] + padright)
 
-    top.zpminlocal = top.zpslmin[me]
-    top.zpmaxlocal = top.zpslmax[me]
+    """
+    domaindecomposeparticles(ppdecomp.nxglobal,ppdecomp.nxprocs,nxguard,
+                             w3d.xmmin,w3d.xmmax,w3d.dx,
+                             zeros(ppdecomp.nxprocs,'d'),true,
+                             ppdecomp.ix,ppdecomp.nx,
+                             ppdecomp.xmin,ppdecomp.xmax)
+
+    domaindecomposeparticles(ppdecomp.nyglobal,ppdecomp.nyprocs,nyguard,
+                             w3d.ymmin,w3d.ymmax,w3d.dy,
+                             zeros(ppdecomp.nyprocs,'d'),true,
+                             ppdecomp.iy,ppdecomp.ny,
+                             ppdecomp.ymin,ppdecomp.ymax)
+    """
+
+    domaindecomposeparticles(ppdecomp.nzglobal,ppdecomp.nzprocs,nzguard,
+                             w3d.zmmin,w3d.zmmax,w3d.dz,
+                             zeros(ppdecomp.nzprocs,'d'),true,
+                             ppdecomp.iz,ppdecomp.nz,
+                             ppdecomp.zmin,ppdecomp.zmax)
+
+    top.zpminlocal = ppdecomp.zmin[me]
+    top.zpmaxlocal = ppdecomp.zmax[me]
+
+    top.izpslave[:] = ppdecomp.iz
+    top.nzpslave[:] = ppdecomp.nz
+    top.zpslmin[:] =  ppdecomp.zmin
+    top.zpslmax[:] =  ppdecomp.zmax
 
     # --- Reorganize the particles
     if reorg:
-        reorgparticles(top.pgroup)
+        reorgparticles(top.pgroup,w3d.l4symtry,w3d.l2symtry,
+                       w3d.solvergeom==w3d.RZgeom)
     else:
-        zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
+        particlegridboundaries3d(top.pgroup,-1)
 
-    # --- Set iz and nz. This is done so that zmesh[izpslave] < zpslmin, and
-    # --- zmesh[izpslave+nzpslave] > zpslmax.
-    top.izpslave[:] = int((top.zpslmin - w3d.zmmin)/w3d.dz) - nzguard
-    top.nzpslave[:] = (int((top.zpslmax - w3d.zmmin)/w3d.dz) -
-                       top.izpslave + 1 + 2*nzguard)
-
-    # --- Make sure that the processors don't have grid cells
-    # --- sticking out the end.
-    top.nzpslave[:] = where(top.izpslave<0,top.nzpslave+top.izpslave,top.nzpslave)
-    top.izpslave[:] = where(top.izpslave<0,0,top.izpslave)
-    top.nzpslave[:] = where(top.izpslave+top.nzpslave > w3d.nz,
-                            w3d.nz - top.izpslave,
-                            top.nzpslave)
-
-    # --- Update sizes of arrays for particles
+    # --- Update sizes of grids for particles
     solver = getregisteredsolver()
     if solver is not None:
         try:
             solver.resetparticledomains()
         except AttributeError:
             print "Field solver does not have a setparticledomains method"
+        # --- Zero out the source that is used for the fieldsolver. This is
+        # --- done in case some region of source is no longer covered by
+        # --- sourcep.
+        try:
+            solver.zerosource()
+        except AttributeError:
+            print "Field solver does not have a zerosource method"
     else:
         if(w3d.solvergeom == w3d.XYZgeom):
-            w3d.nzp = top.nzpslave[me]
-            w3d.zmminp = w3d.zmmin + top.izpslave[me]*w3d.dz
+            w3d.nzp = ppdecomp.nz[me]
+            w3d.zmminp = w3d.zmmin + ppdecomp.iz[me]*w3d.dz
             w3d.zmmaxp = w3d.zmminp + w3d.nzp*w3d.dz
             gchange("Fields3dParticles")
         else:
@@ -330,7 +608,8 @@ that has already been done.
 #########################################################################
 def loadbalanceparticles(doloadrho=1,dofs=1,spread=1.,padleft=0.,padright=0.,
                          reorg=0,pnumz=None,zmin=None,dz=None,
-                         zminp=None,zmaxp=None,verbose=0,nzguard=0):
+                         zminp=None,zmaxp=None,verbose=0,
+                         nxguard=0,nyguard=0,nzguard=0):
     """
 Load balances the particles as evenly as possible. The load balancing is
 based off of the data in top.pnumz which of course must already have
@@ -354,19 +633,6 @@ grid points.
  - nzguard=0: Number of extra guard cells to include in the field arrays for
               the particles.
     """
-    if not lparallel: return
-    starttime = wtime()
-
-    if pnumz is None:
-        # --- Gather pnumz. Return if there is no data.
-        pnumz = top.pnumz[:,-1]
-        if max(pnumz) == 0.: return
-
-    # --- Add fictitious data so that actual work is spread only to the
-    # --- requested fraction of the processors.
-    assert (0. < spread <= 1.),"spread must be between 0 and 1 or 1."
-    avepnumz = ave(pnumz)
-    pnumz[:] = pnumz + avepnumz*(1./spread - 1.)
 
     # --- Convert the number of particles to a decomposition
     zslave = decompose(pnumz,npes,lfullcoverage=0)
@@ -381,7 +647,7 @@ grid points.
     # --- Apply the new domain decomposition.
     setparticledomains(zslave,doloadrho=doloadrho,dofs=dofs,
                        padleft=padleft,padright=padright,reorg=reorg,
-                       nzguard=nzguard)
+                       nxguard=nxguard,nyguard=nyguard,nzguard=nzguard)
     endtime = wtime()
     if verbose: print "Load balance time = ",endtime - starttime
 
@@ -487,62 +753,61 @@ Converts a weight into the size of the domains.
 Returns an array of the same length which is the relative length of each
 of the domains.
     """
+    assert max(weight) > 0.,"weight must have some positive elements"
     # --- Integrate weight, assuming linear variation between grid points
-    nz = len(weight) - 1
+    nn = len(weight) - 1
     np = 0.5*weight[0] + sum(weight[1:-1]) + 0.5*weight[-1]
     npperpe = 1.*np/npes
 
-    zslave = zeros(npes+1,'d')
-    iz = 0
+    domain = zeros(npes+1,'d')
+    ii = 0
     if not lfullcoverage:
         # --- First first non-zero weight, making sure to check first cell too.
-        while weight[iz] == 0. and weight[iz+1] == 0.: iz = iz + 1
+        while weight[ii] == 0. and weight[ii+1] == 0.: ii = ii + 1
     delta = 0.
-    zslave[0] = iz
+    domain[0] = ii
     for ip in xrange(1,npes):
         fract = 0.
         npint = 0.
-        npnext = (weight[iz  ]*((1.-delta)+0.5*(delta**2-1.)) +
-                  weight[iz+1]*0.5*(1. - delta**2))
+        npnext = (weight[ii  ]*((1.-delta)+0.5*(delta**2-1.)) +
+                  weight[ii+1]*0.5*(1. - delta**2))
         # --- Get the remaining bit from the previous cell if it is not too much.
         if npnext < npperpe:
             fract = 1. - delta
-            iz = iz + 1
+            ii = ii + 1
             delta = 0.
             npint = npnext
         # --- Keep adding cells until the number per processor is reached.
-        while npint + 0.5*(weight[iz]+weight[iz+1]) < npperpe:
+        while npint + 0.5*(weight[ii]+weight[ii+1]) < npperpe:
             fract = fract + 1.
             delta = 0.
-            npint = npint + 0.5*(weight[iz]+weight[iz+1])
-            iz = iz + 1
-            if iz == nz+1: break
-        if iz == nz+1: break
+            npint = npint + 0.5*(weight[ii]+weight[ii+1])
+            ii = ii + 1
+            if ii == nn+1: break
+        if ii == nn+1: break
         # --- Add the last little bit to get to exactly npperpe.
         delta1 = delta
-        a = 0.5*weight[iz] - 0.5*weight[iz+1]
-        b = weight[iz]
-        c = (weight[iz]*(delta1 - 0.5*delta1**2) + 0.5*weight[iz+1]*delta1**2 +
+        a = 0.5*weight[ii] - 0.5*weight[ii+1]
+        b = weight[ii]
+        c = (weight[ii]*(delta1 - 0.5*delta1**2) + 0.5*weight[ii+1]*delta1**2 +
              npperpe - npint)
         if b != 0.:
             delta = 2.*c/(sqrt(b**2 - 4.*a*c) + b)
         else:
             delta = sqrt(-c/a)
-        #npint = (npint + weight[iz]*((delta-delta1) + 0.5*(delta1**2-delta**2)) +
-        #                 weight[iz+1]*0.5*(delta**2 - delta1**2))
         fract = fract + delta - delta1
-        zslave[ip] = zslave[ip-1] + fract
+        domain[ip] = domain[ip-1] + fract
 
     # --- Set the end of the last domain
     if not lfullcoverage:
         # --- Find the last place with non-zero weight, and give the last processor
         # --- everything up to that point.
-        for ii in xrange(iz,nz):
-          if weight[ii] > 0.: zslave[-1] = ii+1
+        for ii in xrange(ii,nn):
+          if weight[ii] > 0.: domain[-1] = ii+1
     else:
-        zslave[-1] = nz
+        domain[-1] = nn
       
-    return zslave
+    return domain
 
 #########################################################################
 def _adjustz():
@@ -550,8 +815,8 @@ def _adjustz():
     #---------------------------------------------------------------------------
     # --- Reset local values
     w3d.nzlocal = top.nzfsslave[me]
-    zpmin = w3d.zmmin + top.izpslave[me]*w3d.dz
-    zpmax = (top.izpslave[me]+top.nzpslave[me])*w3d.dz + w3d.zmmin
+    zpmin = w3d.zmmin + top.ppdecomp.iz[me]*w3d.dz
+    zpmax = (top.ppdecomp.iz[me]+top.ppdecomp.nz[me])*w3d.dz + w3d.zmmin
     w3d.izfsmin = 0.
     w3d.izfsmax = top.nzfsslave[me]
     w3d.zmminlocal = top.izfsslave[me]*w3d.dz + w3d.zmmin

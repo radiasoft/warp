@@ -121,7 +121,13 @@ Implements adaptive mesh refinement in 3d
       self.root = parent.root
       self.my_index = 0
       self.my_indexbase = me
-      self.nslaves = 1
+      self.nprocs = 1
+      self.nxprocs = 1
+      self.nyprocs = 1
+      self.nzprocs = 1
+      self.ixproc = 0
+      self.iyproc = 0
+      self.izproc = 0
 
       # --- Make sure that refinement is an array of length three. If a scalar
       # --- is input, it is broadcast to all three axis.
@@ -189,8 +195,13 @@ Implements adaptive mesh refinement in 3d
       # --- information in the z guard planes of potential is correct.
       self.extradimslower = zeros(3,'l')
       self.extradimsupper = zeros(3,'l')
-      if npes > 1 and me > 0:      self.extradimslower[-1] = 1
-      if npes > 1 and me < npes-1: self.extradimsupper[-1] = 1
+      if npes > 1:
+        if self.root.ixproc > 0:                   self.extradimslower[0] = 1
+        if self.root.ixproc < self.root.nxprocs-1: self.extradimsupper[0] = 1
+        if self.root.iyproc > 0:                   self.extradimslower[1] = 1
+        if self.root.iyproc < self.root.nyprocs-1: self.extradimsupper[1] = 1
+        if self.root.izproc > 0:                   self.extradimslower[2] = 1
+        if self.root.izproc < self.root.nzprocs-1: self.extradimsupper[2] = 1
 
       rootfulllower = self.root.fulllower*self.totalrefinement - self.extradimslower*self.totalrefinement
       rootfullupper = self.root.fullupper*self.totalrefinement + self.extradimsupper*self.totalrefinement
@@ -239,7 +250,7 @@ Implements adaptive mesh refinement in 3d
       # --- the root block on some processors.
 
       # --- Check if the block is active, i.e. has a finite extent.
-      # --- This should only happen in parallel, where blocks will not
+      # --- This should only be false in parallel, where blocks will not
       # --- necessarily intersect to domain of some processors.
       # --- This flag can also provide a way for a user to turn off blocks
       # --- for testing purposes or otherwise.
@@ -306,11 +317,11 @@ Implements adaptive mesh refinement in 3d
     if parent is None:
       # --- This is only needed by the root grid in cases when the grid
       # --- parameters are obtained from w3d instead of the argument list.
-      self.dims = array([self.nx,self.ny,self.nzlocal])
+      self.dims = array([self.nxlocal,self.nylocal,self.nzlocal])
       self.dimsglobal = array([self.nx,self.ny,self.nz])
       self.deltas = array([self.dx,self.dy,self.dz])
-      self.mins = array([self.xmmin,self.ymmin,self.zmminlocal])
-      self.maxs = array([self.xmmax,self.ymmax,self.zmmaxlocal])
+      self.mins = array([self.xmminlocal,self.ymminlocal,self.zmminlocal])
+      self.maxs = array([self.xmmaxlocal,self.ymmaxlocal,self.zmmaxlocal])
       self.minsglobal = array([self.xmmin,self.ymmin,self.zmmin])
       self.maxsglobal = array([self.xmmax,self.ymmax,self.zmmax])
       self.lower = nint(((self.mins - self.minsglobal)/self.deltas))
@@ -488,12 +499,17 @@ Add a mesh refined block to this block.
     if self != self.root or self.finalized: return
     blocklists = self.generateblocklevellists()
     self.blocklists = blocklists
-    blocklistsleft,blocklistsright = self.swapblocklistswithprocessneighbors(blocklists)
+    neighborblocklists = self.swapblocklistswithprocessneighbors(blocklists)
     self.clearparentsandchildren()
     self.findallchildren(blocklists)
     self.initializechilddomains()
     self.findoverlappingsiblings(blocklists[1:],
-                                 blocklistsleft[1:],blocklistsright[1:])
+                                 neighborblocklists[0][1:],
+                                 neighborblocklists[1][1:],
+                                 neighborblocklists[2][1:],
+                                 neighborblocklists[3][1:],
+                                 neighborblocklists[4][1:],
+                                 neighborblocklists[5][1:])
     self.finalized = 1
 
   def generateblocklevellists(self,blocklists=None):
@@ -513,25 +529,71 @@ Add a mesh refined block to this block.
     return blocklists
 
   def swapblocklistswithprocessneighbors(self,blocklists):
+    # --- Note that this will only be called when self = self.root
     if not lparallel:
-      blocklistsleft = [[] for i in range(100)]
-      blocklistsright = [[] for i in range(100)]
+      # --- Return a bunch of empty lists
+      return [[[] for i in range(100)] for i in range(6)]
     else:
       # --- First, set so amount data sent to neighbors will be small
-      lreducedpicklesave = self.root.lreducedpickle
-      lnorestoreonpicklesave = self.root.lnorestoreonpickle
-      self.root.lreducedpickle = 1
-      self.root.lnorestoreonpickle = 1
-      if (me > 0     ): mpi.send(blocklists,me-1)
-      if (me < npes-1): blocklistsright = mpi.recv(me+1)[0]
-      else:             blocklistsright = [[] for i in range(100)]
-      if (me < npes-1): mpi.send(blocklists,me+1)
-      if (me > 0     ): blocklistsleft = mpi.recv(me-1)[0]
-      else:             blocklistsleft = [[] for i in range(100)]
+      lreducedpicklesave = self.lreducedpickle
+      lnorestoreonpicklesave = self.lnorestoreonpickle
+      self.lreducedpickle = 1
+      self.lnorestoreonpickle = 1
+
+      neighborpes = self.neighborpes
+
+      # --- Exchange lists with processes neighboring along X
+      if self.ixproc > 0 and neighborpes[0] >= 0:
+        mpi.send(blocklists,neighborpes[0])
+      if self.ixproc < self.nxprocs-1 and neighborpes[1] >= 0:
+        blocklistsxp = mpi.recv(neighborpes[1])[0]
+      else:
+        blocklistsxp = [[] for i in range(100)]
+
+      if self.ixproc < self.nxprocs-1 and neighborpes[1] >= 0:
+        mpi.send(blocklists,neighborpes[1])
+      if self.ixproc > 0 and neighborpes[0] >= 0:
+        blocklistsxm = mpi.recv(neighborpes[0])[0]
+      else:
+        blocklistsxm = [[] for i in range(100)]
+
+      # --- Exchange lists with processes neighboring along Y
+      if self.iyproc > 0 and neighborpes[2] >= 0:
+        mpi.send(blocklists,neighborpes[2])
+      if self.iyproc < self.nyprocs-1 and neighborpes[3] >= 0:
+        blocklistsyp = mpi.recv(neighborpes[3])[0]
+      else:
+        blocklistsyp = [[] for i in range(100)]
+
+      if self.iyproc < self.nyprocs-1 and neighborpes[3] >= 0:
+        mpi.send(blocklists,neighborpes[3])
+      if self.iyproc > 0 and neighborpes[2] >= 0:
+        blocklistsym = mpi.recv(neighborpes[2])[0]
+      else:
+        blocklistsym = [[] for i in range(100)]
+
+      # --- Exchange lists with processes neighboring along Z
+      if self.izproc > 0 and neighborpes[4] >= 0:
+        mpi.send(blocklists,neighborpes[4])
+      if self.izproc < self.nzprocs-1 and neighborpes[5] >= 0:
+        blocklistszp = mpi.recv(neighborpes[5])[0]
+      else:
+        blocklistszp = [[] for i in range(100)]
+
+      if self.izproc < self.nzprocs-1 and neighborpes[5] >= 0:
+        mpi.send(blocklists,neighborpes[5])
+      if self.izproc > 0 and neighborpes[4] >= 0:
+        blocklistszm = mpi.recv(neighborpes[4])[0]
+      else:
+        blocklistszm = [[] for i in range(100)]
+
       # --- Restore the flags
-      self.root.lreducedpickle = lreducedpicklesave
-      self.root.lnorestoreonpickle = lnorestoreonpicklesave
-    return blocklistsleft,blocklistsright
+      self.lreducedpickle = lreducedpicklesave
+      self.lnorestoreonpickle = lnorestoreonpicklesave
+
+      return (blocklistsxm,blocklistsxp,
+              blocklistsym,blocklistsyp,
+              blocklistszm,blocklistszp)
       
   def clearparentsandchildren(self):
     self.parents = []
@@ -589,7 +651,9 @@ Sets the regions that are covered by the children.
       ii = self.getchilddomains(l,u)
       ii[...] = +child.blocknumber
 
-  def findoverlappingsiblings(self,blocklists,blocklistsleft,blocklistsright):
+  def findoverlappingsiblings(self,blocklists,blocklistsxm,blocklistsxp,
+                                              blocklistsym,blocklistsyp,
+                                              blocklistszm,blocklistszp):
     """
 Recursive routine to find, at each level of refinement, all overlapping
 siblings.
@@ -598,12 +662,15 @@ only once, rather than twice for each parent as in the original.
     """
     # --- When the list is empty, there are no blocks, so just return.
     if (len(blocklists[0]) == 0 and
-        len(blocklistsleft[0]) == 0 and
-        len(blocklistsright[0]) == 0): return
+        len(blocklistsxm[0]) == 0 and len(blocklistsxp[0]) == 0 and
+        len(blocklistsym[0]) == 0 and len(blocklistsyp[0]) == 0 and
+        len(blocklistszm[0]) == 0 and len(blocklistszp[0]) == 0): return
 
     # --- Make the call for the next level.
     self.findoverlappingsiblings(blocklists[1:],
-                                 blocklistsleft[1:],blocklistsright[1:])
+                                 blocklistsxm[1:],blocklistsxp[1:],
+                                 blocklistsym[1:],blocklistsyp[1:],
+                                 blocklistszm[1:],blocklistszp[1:])
 
     # --- Get a copy of the list (which will be mangled below).
     blocklistscopy = copy.copy(blocklists[0])
@@ -637,22 +704,25 @@ only once, rather than twice for each parent as in the original.
     # --- For the precedence, even numbered processors get precdence
     # --- over odd numbered processors. Otherwise, the logic is the same
     # --- as above.
+    neighborblocklists = [blocklistsxm[0],blocklistsxp[0],
+                          blocklistsym[0],blocklistsyp[0],
+                          blocklistszm[0],blocklistszp[0]]
     for block in blocklists[0]:
       if not block.isactive: continue
-      for neighborlists,pe in zip([blocklistsleft[0],blocklistsright[0]],[me-1,me+1]):
-        if pe < 0 or pe == npes: continue
+      for neighborlists,pe in zip(neighborblocklists,self.neighborpes):
+        if pe < 0 or pe == npes or pe == me: continue
         for neighborblock in neighborlists:
           if not neighborblock.isactive: continue
           sl = maximum(neighborblock.fulllower,block.fulllower)
           su = minimum(neighborblock.fullupper,block.fullupper)
           # --- It probably doesn't hurt anything in 3D but will be a small
-          # --- waste of time include blocks that only overlap on an edge,
+          # --- waste of time to include blocks that only overlap on an edge,
           # --- but those overlaps must be included in 1D and 2D.
           if sl[0] > su[0] or sl[1] > su[1] or sl[2] > su[2]: continue
           if pe < me:
-            block.overlapsparallelleft[neighborblock.blocknumber] = [sl,su,pe]
+            block.overlapsparallelleft[pe,neighborblock.blocknumber] = [sl,su]
           else:
-            block.overlapsparallelright[neighborblock.blocknumber] = [sl,su,pe]
+            block.overlapsparallelright[pe,neighborblock.blocknumber] = [sl,su]
 
   def clearinactiveregions(self,nbcells,parent=None,level=1):
     """
@@ -744,10 +814,20 @@ not be fetched from there (it is set negative).
       if not block.isactive: continue
       self.__class__.__bases__[1].allocatedataarrays(block)
 
+  def zerosource(self):
+    for block in self.listofblocks:
+      if not block.isactive: continue
+      self.__class__.__bases__[1].zerosource(block)
+
   def zerosourcep(self):
     for block in self.listofblocks:
       if not block.isactive: continue
       self.__class__.__bases__[1].zerosourcep(block)
+
+  def applysourceboundaryconditions(self):
+    for block in self.listofblocks:
+      if not block.isactive: continue
+      self.__class__.__bases__[1].applysourceboundaryconditions(block)
 
   def averagesourcepwithsubcycling(self):
     for block in self.listofblocks:
@@ -807,75 +887,94 @@ relative to the parent.
 Exchange sourcep in blocks overlapping blocks on neighboring processors.
     """
     assert self is self.root,"This should only be called by the root block"
-    if npes == 0: return
-
-    # --- This now uses blocking sends. There appears to be a memory leak in
-    # --- the asynchronuous, non-blocking, isend. Using isend would be more
-    # --- efficient, since with a blocking send, the processors are stopped,
-    # --- waiting for the neighbor to get the data. In the send to the left
-    # --- for example, processor 0 first receives the data from 1, unblocking
-    # --- it, which then receives it data from processor 2, unblocking it, etc.
-    # --- This process scales very poorly with a large number of processors.
+    if npes <= 1: return
 
     # --- All blocks first send the overlapping sourcep to the neighbors.
     # --- Note that the precedences for sourcep is handled locally so
     # --- here, all exchanges are made. Note that all data to be
     # --- sent is gathered into a dictionary and sent together.
-    # --- Send to the left first
-    if me > 0:
-      senddict = {}
-      for block in self.listofblocks:
-        for othernumber,data in block.overlapsparallelleft.items():
-          l,u,pe = data
-          sourcep = block.getsourcepslice(l,u)
-          senddict.setdefault(othernumber,[]).append((l,u,sourcep))
-      mpi.send(senddict,me-1)
-    if me < npes-1:
-      recvdictfromright = mpi.recv(me+1)[0]
 
-    # --- Then to the right
-    if me < npes-1:
-      senddict = {}
-      for block in self.listofblocks:
-        for othernumber,data in block.overlapsparallelright.items():
-          l,u,pe = data
-          sourcep = block.getsourcepslice(l,u)
-          senddict.setdefault(othernumber,[]).append((l,u,sourcep))
-      mpi.send(senddict,me+1)
-    if me > 0:
-      recvdictfromleft = mpi.recv(me-1)[0]
+    # --- Gather all of the data to be sent from all of the refinement blocks
+    # --- The separation of the left and right dicts is needed for the end
+    # --- case of nxprocs==2 and periodic boundaries, where the processor to
+    # --- the left and right is the same.
+    senddictsleft = {}
+    senddictsright = {}
+    for pe in self.neighborpeslist: senddictsleft[pe] = {}
+    for pe in self.neighborpeslist: senddictsright[pe] = {}
+    for block in self.listofblocks:
+      for (pe,othernumber),data in block.overlapsparallelleft.items():
+        l,u = data
+        sourcep = block.getsourcepslice(l,u)
+        senddictsleft[pe].setdefault(othernumber,[]).append((l,u,sourcep))
+      for (pe,othernumber),data in block.overlapsparallelright.items():
+        l,u = data
+        sourcep = block.getsourcepslice(l,u)
+        senddictsright[pe].setdefault(othernumber,[]).append((l,u,sourcep))
 
-    # --- The parallel receives are done afterward since they are blocking. At
-    # --- this point, all of the sends have been made so there should be little
-    # --- waiting and no contention.
-    # --- First receive the data from the right
-    if me < npes-1:
-      for blocknumber,data in recvdictfromright.items():
+    # --- Loop over the three axis, in the order x, y, z. Transferring the data
+    # --- this way will implicitly handle diagonal neighbors.
+    for nel,ner in [[0,1],[2,3],[4,5]]:
+      pel = self.neighborpes[nel]
+      per = self.neighborpes[ner]
+
+      # --- Loop over the parity - evens send to odds first, then vice versa
+      # --- The send/recv pattern is done to avoid lock up since the
+      # --- operations are blocking.
+      for parity in [0,1]:
+        if (self.ixproc+self.iyproc+self.izproc)%2 == parity:
+          if pel in senddictsleft:  mpi.send(senddictsleft[pel],pel)
+          if per in senddictsright: mpi.send(senddictsright[per],per)
+        else:
+          if per in senddictsright: dictfromright = mpi.recv(per)[0]
+          else:                     dictfromright = {}
+          if pel in senddictsleft:  dictfromleft = mpi.recv(pel)[0]
+          else:                     dictfromleft = {}
+
+      # --- Create a list of the blocks that receive data.
+      blocksreceivingdata = []
+
+      # --- Add in the data from the right
+      for blocknumber,data in dictfromright.items():
         block = self.getblockfromnumber(blocknumber)
         for l,u,osourcep in data:
           ssourcep = block.getsourcepslice(l,u)
           add(ssourcep,osourcep,ssourcep)
-    # --- The from the left
-    if me > 0:
-      for blocknumber,data in recvdictfromleft.items():
+        blocksreceivingdata.append(block)
+
+      # --- The from the left
+      for blocknumber,data in dictfromleft.items():
         block = self.getblockfromnumber(blocknumber)
         for l,u,osourcep in data:
           ssourcep = block.getsourcepslice(l,u)
           add(ssourcep,osourcep,ssourcep)
+        blocksreceivingdata.append(block)
+
+      # --- For the blocks that have received data, go back and zero out
+      # --- the regions which overlap blocks with lower number, since those
+      # --- lower blocks "own" that data. This is needed to avoid the
+      # --- duplication of data that would occur if multiple blocks would
+      # --- send the same data onto the next processors. This is only needed
+      # --- after the data transfers in x and y, and so is skipped when
+      # --- nel == 4.
+      if nel < 4:
+        for block in blocksreceivingdata:
+          block.zerosourcepinoverlap()
 
   def getsourcepfromoverlaps(self):
     """
-Add in the sourcep from overlaping areas. The sourcep is gathered into the block with
-the lowerest number. Later on, the sourcep will be copied back to the higher
-numbered blocks. Note that overlaps from neighboring processors has already
-been taken care of. This should only ever be called by the root block.
+Add in the sourcep from overlaping areas. The sourcep is gathered into the
+block with the lowerest number. Later on, the sourcep will be copied back to
+the higher numbered blocks. Note that overlaps from neighboring processors
+has already been taken care of. This should only ever be called by the root
+block.
     """
     assert self is self.root,"This should only be called by the root block"
 
     # --- This loops over the blocks in ascending order to ensure that in any
     # --- area with overlap, the block with the lowest number is the one that
-    # --- gets the sourcep. This avoids problems of double counting sourcep. This
-    # --- could also be done be zeroing out osourcep, but that is extra
+    # --- gets the sourcep. This avoids problems of double counting sourcep.
+    # --- This could also be done be zeroing out osourcep, but that is extra
     # --- (unecessary) computational work, since it already will be done
     # --- at the end of gathersourcepfromchildren.
     for block in self.listofblocks:
@@ -922,8 +1021,9 @@ Gathers the ichild for the setsourcep.
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       getichild(self.blocknumber,len(x),x,y,z,ichild,
-                self.nx,self.ny,self.nzlocal,self.childdomains,
-                self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                self.nxlocal,self.nylocal,self.nzlocal,self.childdomains,
+                self.xmminlocal,self.xmmaxlocal,
+                self.ymminlocal,self.ymmaxlocal,
                 self.zmminlocal,self.zmmaxlocal,zgrid,
                 self.l2symtry,self.l4symtry)
       for child in self.children:
@@ -931,14 +1031,14 @@ Gathers the ichild for the setsourcep.
 
   def zerosourcepinoverlap(self):
     """
-This zeros out sourcep in overlapping regions for higher numbered blocks.  When
-sourcep is passed from child to parent, in any overlapping regions only one child
-needs to pass the data to the parent.  The choice as to which does the
-passing is determined by the blocknumber - the lower gets to do the passing.
-For the others, the sourcep in the overlapping region is cleared out. That sourcep
-will be restored later by a call to restoresourcepinoverlaps.
-Note that this is not recursive, since it is called separately by each block
-from gathersourcepfromchildren.
+This zeros out sourcep in overlapping regions for higher numbered blocks. 
+When sourcep is passed from child to parent, in any overlapping regions only
+one child needs to pass the data to the parent.  The choice as to which does
+the passing is determined by the blocknumber - the lower gets to do the
+passing.  For the others, the sourcep in the overlapping region is cleared
+out. That sourcep will be restored later by a call to
+restoresourcepinoverlaps.  Note that this is not recursive, since it is
+called separately by each block from gathersourcepfromchildren.
     """
     for othernumber,overlapdomain in self.overlapslower.items():
       l,u = overlapdomain
@@ -975,13 +1075,15 @@ Fortran version
                    u[0] == self.rootdims[0] or
                    u[1] == self.rootdims[1] or
                    u[2] == self.rootdims[2]))
+      dopbounds = 0
+
       w = self.getwarrayforsourcep(child.refinement)
       if not self.l_EM:
         gathersourcefromchild(self.sourcep,self.ncomponents,self.dims,
                               child.sourcep,child.dims,
                               l,u,self.fulllower,child.fulllower,child.fullupper,
                               child.refinement,w,
-                              self.xmesh,child.xmesh,self.lcylindrical,
+                              self.xmeshlocal,child.xmeshlocal,self.lcylindrical,
                               dopbounds,child.pbounds,self.rootdims)
       else:
          cb = child.block
@@ -1015,8 +1117,9 @@ Fortran version
 
   def restoresourcepinoverlaps(self):
     """
-Restore sourcep in overlapping areas for blocks which had the sourcep zeroed out, the
-higher numbered blocks. This should only ever be called by the root block.
+Restore sourcep in overlapping areas for blocks which had the sourcep zeroed
+out, the higher numbered blocks. This should only ever be called by the root
+block.
     """
     assert self is self.root,"This should only be called by the root block"
     # --- The loop does not need to be in ascending order, but this just
@@ -1075,8 +1178,8 @@ higher numbered blocks. This should only ever be called by the root block.
 
   def setpotentialfromparents(self):
     """
-Sets potential, using the values from the parent grid. Setting the full potential array
-gives a better initial guess for the field solver.
+Sets potential, using the values from the parent grid. Setting the full
+potential array gives a better initial guess for the field solver.
     """
     if self.l_EM:return
     for parentnumber in self.parents:
@@ -1144,7 +1247,8 @@ putting the result in Exp, Eyp, Ezp, Bxp, Byp and Bzp.
     self.fetchfieldfrompositionswithoutsort(x,y,z,ex,ey,ez,bx,by,bz,js,pgroup)
     #self.fetchfieldfrompositionswithpsort(x,y,z,ex,ey,ez,bx,by,bz,js,pgroup)
 
-  def fetchfieldfrompositionswithsort(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
+  def fetchfieldfrompositionswithsort(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,
+                                      pgroup=None):
     """
 Given the list of particles, fetch the E fields.
 This first gets the blocknumber of the block where each of the particles are
@@ -1179,7 +1283,8 @@ Also, this ends up with the input data remaining sorted.
       self.__class__.__bases__[1].fetchfieldfrompositions(block,
                                          x[i:i+n],y[i:i+n],z[i:i+n],
                                          ex[i:i+n],ey[i:i+n],ez[i:i+n],
-                                         bx[i:i+n],by[i:i+n],bz[i:i+n],js,pgroup)
+                                         bx[i:i+n],by[i:i+n],bz[i:i+n],js,
+                                         pgroup)
       if pgroup is not None and top.chdtspid > 0:
         ipmin = w3d.ipminfsapi - 1 + i
         pgroup.pid[ipmin:ipmin+n,top.dxpid-1] = block.dx
@@ -1187,7 +1292,8 @@ Also, this ends up with the input data remaining sorted.
         pgroup.pid[ipmin:ipmin+n,top.dzpid-1] = block.dz
       i = i + n
 
-  def fetchfieldfrompositionswithoutsort(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
+  def fetchfieldfrompositionswithoutsort(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,
+                                         pgroup=None):
     """
 This is the old version of fetchfieldfrompositions that doesn't rely on having
 access to the particle group and does not sort the input data.
@@ -1229,7 +1335,8 @@ access to the particle group and does not sort the input data.
       self.__class__.__bases__[1].fetchfieldfrompositions(block,
                                       x[i:i+n],y[i:i+n],z[i:i+n],
                                       tex[i:i+n],tey[i:i+n],tez[i:i+n],
-                                      tbx[i:i+n],tby[i:i+n],tbz[i:i+n],js,pgroup)
+                                      tbx[i:i+n],tby[i:i+n],tbz[i:i+n],js,
+                                      pgroup)
       if pgroup is not None and top.chdtspid > 0:
         tdx[i:i+n] = block.dx
         tdy[i:i+n] = block.dy
@@ -1264,9 +1371,12 @@ Fetches the potential, given a list of positions
       ichild = zeros(len(x),'l')
       add(ichild,self.blocknumber,ichild)
       getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
-                            self.nx,self.ny,self.nzlocal,self.childdomains,
-                            self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                            self.zmminlocal,self.zmmaxlocal,self.root.getzgridprv(),
+                            self.nxlocal,self.nylocal,self.nzlocal,
+                            self.childdomains,
+                            self.xmminlocal,self.xmmaxlocal,
+                            self.ymminlocal,self.ymmaxlocal,
+                            self.zmminlocal,self.zmmaxlocal,
+                            self.root.getzgridprv(),
                             self.l2symtry,self.l4symtry)
 
       for block in [self]+self.children:
@@ -1321,9 +1431,12 @@ Gathers the ichild for the fetchfield_allsort.
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
-                            self.nx,self.ny,self.nzlocal,self.childdomains,
-                            self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                            self.zmminlocal,self.zmmaxlocal,self.root.getzgridprv(),
+                            self.nxlocal,self.nylocal,self.nzlocal,
+                            self.childdomains,
+                            self.xmminlocal,self.xmmaxlocal,
+                            self.ymminlocal,self.ymmaxlocal,
+                            self.zmminlocal,self.zmmaxlocal,
+                            self.root.getzgridprv(),
                             self.l2symtry,self.l4symtry)
       for child in self.children:
         child.getichild_positiveonly(x,y,z,ichild)
@@ -1368,6 +1481,10 @@ to zero."""
       self.zmmaxlocal += zzadvect
       self.zmminp += zzadvect
       self.zmmaxp += zzadvect
+      self.fsdecomp.zmin += zzadvect
+      self.fsdecomp.zmax += zzadvect
+      self.ppdecomp.zmin += zzadvect
+      self.ppdecomp.zmax += zzadvect
       self.mins[-1] += zzadvect
       self.maxs[-1] += zzadvect
       self.zmesh[:] += zzadvect
@@ -1734,27 +1851,27 @@ be plotted.
   def drawbox(self,ip=None,idim=2,withguards=1,color=[],selfonly=0):
     if len(color)==0: color=['red', 'green', 'blue', 'cyan', 'magenta','yellow']
     if ip is None: ip = nint(-self.mins[idim]/self.deltas[idim])
-    if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return
-    ii = [0,1,2]
-    del ii[idim]
-    if withguards:
-      i01 = self.mins[ii[0]]
-      i02 = self.maxs[ii[0]]
-      i11 = self.mins[ii[1]]
-      i12 = self.maxs[ii[1]]
-    else:
-      i01 = self.root.mins[ii[0]] + self.lower[ii[0]]*self.deltas[ii[0]]
-      i02 = self.root.mins[ii[0]] + self.upper[ii[0]]*self.deltas[ii[0]]
-      i11 = self.root.mins[ii[1]] + self.lower[ii[1]]*self.deltas[ii[1]]
-      i12 = self.root.mins[ii[1]] + self.upper[ii[1]]*self.deltas[ii[1]]
-    yy = [i01,i01,i02,i02,i01]
-    xx = [i11,i12,i12,i11,i11]
-    if idim==2:
-      yy,xx = xx,yy
-    else:
-      xx = array(xx) + self.root.getzgrid()
     if self is self.root: accumulateplotlists()
     try:
+      if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return
+      ii = [0,1,2]
+      del ii[idim]
+      if withguards:
+        i01 = self.mins[ii[0]]
+        i02 = self.maxs[ii[0]]
+        i11 = self.mins[ii[1]]
+        i12 = self.maxs[ii[1]]
+      else:
+        i01 = self.root.mins[ii[0]] + self.lower[ii[0]]*self.deltas[ii[0]]
+        i02 = self.root.mins[ii[0]] + self.upper[ii[0]]*self.deltas[ii[0]]
+        i11 = self.root.mins[ii[1]] + self.lower[ii[1]]*self.deltas[ii[1]]
+        i12 = self.root.mins[ii[1]] + self.upper[ii[1]]*self.deltas[ii[1]]
+      yy = [i01,i01,i02,i02,i01]
+      xx = [i11,i12,i12,i11,i11]
+      if idim==2:
+        yy,xx = xx,yy
+      else:
+        xx = array(xx) + self.root.getzgrid()
       plg(yy,xx,color=color[0])
       if not selfonly:
         for child in self.children:
@@ -1810,8 +1927,8 @@ Create DX object drawing the object.
     """
     kw.update(kwdict)
     withguards = kw.get('withguards',1)
-    xmin,xmax = self.xmmin,self.xmmax
-    ymin,ymax = self.ymmin,self.ymmax
+    xmin,xmax = self.xmminlocal,self.xmmaxlocal
+    ymin,ymax = self.ymminlocal,self.ymmaxlocal
     zmin,zmax = self.zmminlocal,self.zmmaxlocal
     if not withguards:
       ng = self.nguard*self.refinement
@@ -1822,6 +1939,327 @@ Create DX object drawing the object.
     for child in self.children:
       dxlist.append(child.getdxobject(kwdict=kw))
     self.dxobject = Opyndx.DXCollection(*dxlist)
+
+  def plpotentialz(self,comp=None,ix=None,iy=None,colors=None,selfonly=0,
+                   scale=1):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if self is self.root: accumulateplotlists()
+    try:
+      if ix < self.fulllower[0]: return
+      if iy < self.fulllower[1]: return
+      if ix > self.fullupper[0]: return
+      if iy > self.fullupper[1]: return
+      ix1 = ix - self.fulllower[0] + self.nxguard
+      iy1 = iy - self.fulllower[1] + self.nyguard
+      if scale:
+        mesh = self.zmeshlocal
+      else:
+        iz1 = self.fulllower[2]
+        iz2 = self.fullupper[2]
+        mesh = arange(iz1,iz2+1)/self.totalrefinement[2]
+      if comp is None: ppp = self.potential
+      else:            ppp = self.potential[comp,...]
+      plg(ppp[ix1,iy1,1:-1],mesh,color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plpotentialz(comp,ix*child.refinement[0],iy*child.refinement[1],
+                             colors=colors,scale=scale)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plpotentialx(self,comp=None,iy=None,iz=None,colors=None,selfonly=0,
+                   scale=1):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if self is self.root: accumulateplotlists()
+    try:
+      if iy < self.fulllower[1]: return
+      if iz < self.fulllower[2]: return
+      if iy > self.fullupper[1]: return
+      if iz > self.fullupper[2]: return
+      iy1 = iy - self.fulllower[1] + self.nyguard
+      iz1 = iz - self.fulllower[2] + self.nzguard
+      if scale:
+        mesh = self.xmeshlocal
+      else:
+        ix1 = self.fulllower[0]
+        ix2 = self.fullupper[0]
+        mesh = arange(ix1,ix2+1)/self.totalrefinement[0]
+      if comp is None: ppp = self.potential
+      else:            ppp = self.potential[comp,...]
+      plg(ppp[1:-1,iy1,iz1],mesh,color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plpotentialx(comp,iy*child.refinement[1],iz*child.refinement[2],
+                             colors=colors,scale=scale)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plpotentialy(self,comp=None,ix=None,iz=None,colors=None,selfonly=0,
+                   scale=1):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if self is self.root: accumulateplotlists()
+    try:
+      if ix < self.fulllower[0]: return
+      if iz < self.fulllower[2]: return
+      if ix > self.fullupper[0]: return
+      if iz > self.fullupper[2]: return
+      ix1 = ix - self.fulllower[0] + self.nxguard
+      iz1 = iz - self.fulllower[2] + self.nzguard
+      if scale:
+        mesh = self.ymeshlocal
+      else:
+        iy1 = self.fulllower[1]
+        iy2 = self.fullupper[1]
+        mesh = arange(iy1,iy2+1)/self.totalrefinement[1]
+      if comp is None: ppp = self.potential
+      else:            ppp = self.potential[comp,...]
+      plg(ppp[ix1,1:-1,iz1],mesh,color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plpotentialy(comp,ix*child.refinement[0],iz*child.refinement[2],
+                             colors=colors,scale=scale)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plsourcez(self,comp=None,ix=None,iy=None,colors=None,selfonly=0,scale=1,
+                withboundary=0):
+    # --- Note that rho at the child boundaries is incorrect and not used, so
+    # --- don't plot it.
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if self is self.root: accumulateplotlists()
+    try:
+      if ix < self.fulllower[0]: return
+      if iy < self.fulllower[1]: return
+      if ix > self.fullupper[0]: return
+      if iy > self.fullupper[1]: return
+      if self != self.root and not withboundary:
+        if ix == self.fulllower[0] and self.nx > 0: return
+        if iy == self.fulllower[1] and self.ny > 0: return
+        if ix == self.fullupper[0] and self.nx > 0: return
+        if iy == self.fullupper[1] and self.ny > 0: return
+        zslice = slice(1,-1)
+      else:
+        zslice = slice(None)
+      ix1 = ix - self.fulllower[0]
+      iy1 = iy - self.fulllower[1]
+      if scale:
+        mesh = self.zmeshlocal[zslice]
+      else:
+        iz1 = self.fulllower[2]
+        iz2 = self.fullupper[2]
+        if self != self.root and not withboundary:
+          iz1 += 1
+          iz2 -= 1
+        mesh = arange(iz1,iz2+1)/self.totalrefinement[2]
+      if comp is None: rrr = self.source
+      else:            rrr = self.source[comp,...]
+      plg(rrr[ix1,iy1,zslice],mesh,color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plsourcez(comp,ix*child.refinement[0],iy*child.refinement[1],
+                          colors=colors,scale=scale,withboundary=withboundary)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plsourcex(self,comp=None,iy=None,iz=None,colors=None,selfonly=0,scale=1,
+                withboundary=0):
+    # --- Note that source at the child boundaries is incorrect and not used, so
+    # --- don't plot it.
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if self is self.root: accumulateplotlists()
+    try:
+      if iy < self.fulllower[1]: return
+      if iz < self.fulllower[2]: return
+      if iy > self.fullupper[1]: return
+      if iz > self.fullupper[2]: return
+      if self != self.root and not withboundary:
+        if iy == self.fulllower[1] and self.ny > 0: return
+        if iz == self.fulllower[2] and self.nz > 0: return
+        if iy == self.fullupper[1] and self.ny > 0: return
+        if iz == self.fullupper[2] and self.nz > 0: return
+        xslice = slice(1,-1)
+      else:
+        xslice = slice(None)
+      iy1 = iy - self.fulllower[1]
+      iz1 = iz - self.fulllower[2]
+      if scale:
+        mesh = self.xmeshlocal[xslice]
+      else:
+        ix1 = self.fulllower[0]
+        ix2 = self.fullupper[0]
+        if self != self.root and not withboundary:
+          ix1 += 1
+          ix2 -= 1
+        mesh = arange(ix1,ix2+1)/self.totalrefinement[0]
+      if comp is None: rrr = self.source
+      else:            rrr = self.source[comp,...]
+      plg(rrr[xslice,iy1,iz1],mesh,color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plsourcex(comp,iy*child.refinement[1],iz*child.refinement[2],
+                          colors=colors,scale=scale,withboundary=withboundary)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plsourcey(self,comp=None,ix=None,iz=None,colors=None,selfonly=0,scale=1,
+                withboundary=0):
+    # --- Note that source at the child boundaries is incorrect and not used, so
+    # --- don't plot it.
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if self is self.root: accumulateplotlists()
+    try:
+      if ix < self.fulllower[0]: return
+      if iz < self.fulllower[2]: return
+      if ix > self.fullupper[0]: return
+      if iz > self.fullupper[2]: return
+      if self != self.root and not withboundary:
+        if ix == self.fulllower[0] and self.nx > 0: return
+        if iz == self.fulllower[2] and self.nz > 0: return
+        if ix == self.fullupper[0] and self.nx > 0: return
+        if iz == self.fullupper[2] and self.nz > 0: return
+        yslice = slice(1,-1)
+      else:
+        yslice = slice(None)
+      ix1 = ix - self.fulllower[0]
+      iz1 = iz - self.fulllower[2]
+      if scale:
+        mesh = self.ymeshlocal[yslice]
+      else:
+        iy1 = self.fulllower[1]
+        iy2 = self.fullupper[1]
+        if self != self.root and not withboundary:
+          iy1 += 1
+          iy2 -= 1
+        mesh = arange(iy1,iy2+1)/self.totalrefinement[1]
+      if comp is None: rrr = self.source
+      else:            rrr = self.source[comp,...]
+      plg(rrr[ix1,yslice,iz1],mesh,color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plsourcey(comp,ix*child.refinement[0],iz*child.refinement[2],
+                          colors=colors,scale=scale,withboundary=withboundary)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plfieldz(self,comp=2,ix=None,iy=None,colors=None,selfonly=0,scale=1,
+               withguard=1):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if withguard:
+      lower,upper = self.fulllower,self.fullupper
+      iz = slice(None)
+    else:
+      lower,upper = self.lower,self.upper
+      iz = slice(self.lower[2] - self.fulllower[2],
+                 self.upper[2] - self.fulllower[2] + 1)
+    if self is self.root: accumulateplotlists()
+    try:
+      if ix < lower[0]: return
+      if iy < lower[1]: return
+      if ix > upper[0]: return
+      if iy > upper[1]: return
+      ix1 = ix - self.fulllower[0]
+      iy1 = iy - self.fulllower[1]
+      if scale:
+        mesh = self.zmeshlocal
+      else:
+        iz1 = self.fulllower[2]
+        iz2 = self.fullupper[2]
+        mesh = arange(iz1,iz2+1)/self.totalrefinement[2]
+      plg(self.field[comp,ix1,iy1,iz],mesh,
+          color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plfieldz(comp,ix*child.refinement[0],iy*child.refinement[1],
+                         colors=colors,scale=scale,withguard=withguard)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plfieldx(self,comp=2,iy=None,iz=None,colors=None,selfonly=0,scale=1,
+               withguard=1):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if withguard:
+      lower,upper = self.fulllower,self.fullupper
+      ix = slice(None)
+    else:
+      lower,upper = self.lower,self.upper
+      ix = slice(self.lower[0] - self.fulllower[0],
+                 self.upper[0] - self.fulllower[0] + 1)
+    if self is self.root: accumulateplotlists()
+    try:
+      if iy < lower[1]: return
+      if iz < lower[2]: return
+      if iy > upper[1]: return
+      if iz > upper[2]: return
+      iy1 = iy - self.fulllower[1]
+      iz1 = iz - self.fulllower[2]
+      if scale:
+        mesh = self.xmeshlocal
+      else:
+        ix1 = self.fulllower[0]
+        ix2 = self.fullupper[0]
+        mesh = arange(ix1,ix2+1)/self.totalrefinement[0]
+      plg(self.field[comp,ix,iy1,iz1],mesh,
+          color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plfieldx(comp,iy*child.refinement[1],iz*child.refinement[2],
+                         colors=colors,scale=scale,withguard=withguard)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plfieldy(self,comp=2,ix=None,iz=None,colors=None,selfonly=0,scale=1,
+               withguard=1):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if withguard:
+      lower,upper = self.fulllower,self.fullupper
+      iy = slice(None)
+    else:
+      lower,upper = self.lower,self.upper
+      iy = slice(self.lower[1] - self.fulllower[1],
+                 self.upper[1] - self.fulllower[1] + 1)
+    if self is self.root: accumulateplotlists()
+    try:
+      if ix < lower[0]: return
+      if iz < lower[2]: return
+      if ix > upper[0]: return
+      if iz > upper[2]: return
+      ix1 = ix - self.fulllower[0]
+      iz1 = iz - self.fulllower[2]
+      if scale:
+        mesh = self.ymeshlocal
+      else:
+        iy1 = self.fulllower[1]
+        iy2 = self.fullupper[1]
+        mesh = arange(iy1,iy2+1)/self.totalrefinement[1]
+      plg(self.field[comp,ix1,iy,iz1],mesh,
+          color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plfieldy(comp,ix*child.refinement[0],iz*child.refinement[2],
+                         colors=colors,scale=scale,withguard=withguard)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ##############################################################################
@@ -1898,496 +2336,45 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     kwdict.update(kw)
     self.genericpf(self.getgetdataname(kw),kwdict,0,pfzyg)
 
-  def plphiz(self,ix=None,iy=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if ix < self.fulllower[0]: return
-    if iy < self.fulllower[1]: return
-    if ix > self.fullupper[0]: return
-    if iy > self.fullupper[1]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      ix1 = ix - self.fulllower[0] + 1
-      iy1 = iy - self.fulllower[1] + 1
-      plg(self.potential[ix1,iy1,1:-1],self.zmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plphiz(ix*child.refinement[0],iy*child.refinement[1],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plphiz(self,ix=None,iy=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialz(ix=ix,iy=iy,colors=colors,selfonly=selfonly,scale=scale)
 
-  def plphix(self,iy=None,iz=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if iy < self.fulllower[1]: return
-    if iz < self.fulllower[2]: return
-    if iy > self.fullupper[1]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      iy1 = iy - self.fulllower[1] + 1
-      iz1 = iz - self.fulllower[2] + 1
-      plg(self.potential[1:-1,iy1,iz1],self.xmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plphix(iy*child.refinement[1],iz*child.refinement[2],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plphix(self,iy=None,iz=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialx(iy=iy,iz=iz,colors=colors,selfonly=selfonly,scale=scale)
 
-  def plphiy(self,ix=None,iz=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if ix < self.fulllower[0]: return
-    if iz < self.fulllower[2]: return
-    if ix > self.fullupper[0]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      ix1 = ix - self.fulllower[0] + 1
-      iz1 = iz - self.fulllower[2] + 1
-      plg(self.potential[ix1,1:-1,iz1],self.ymesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plphiy(ix*child.refinement[0],iz*child.refinement[2],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plphiy(self,ix=None,iz=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialy(ix=ix,iz=iz,colors=colors,selfonly=selfonly,scale=scale)
 
-  def plrhoz(self,ix=None,iy=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if ix < self.fulllower[0]: return
-    if iy < self.fulllower[1]: return
-    if ix > self.fullupper[0]: return
-    if iy > self.fullupper[1]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      ix1 = ix - self.fulllower[0]
-      iy1 = iy - self.fulllower[1]
-      plg(self.source[ix1,iy1,:],self.zmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plrhoz(ix*child.refinement[0],iy*child.refinement[1],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plrhoz(self,ix=None,iy=None,colors=None,selfonly=0,scale=1,
+             withboundary=0):
+    self.plsourcez(ix=ix,iy=iy,colors=colors,selfonly=selfonly,scale=scale,
+                   withboundary=withboundary)
 
-  def plrhox(self,iy=None,iz=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if iy < self.fulllower[1]: return
-    if iz < self.fulllower[2]: return
-    if iy > self.fullupper[1]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      iy1 = iy - self.fulllower[1]
-      iz1 = iz - self.fulllower[2]
-      plg(self.source[:,iy1,iz1],self.xmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plrhox(iy*child.refinement[1],iz*child.refinement[2],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plrhox(self,iy=None,iz=None,colors=None,selfonly=0,scale=1,
+             withboundary=0):
+    self.plsourcex(iy=iy,iz=iz,colors=colors,selfonly=selfonly,scale=scale,
+                   withboundary=withboundary)
 
-  def plrhoy(self,ix=None,iz=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if ix < self.fulllower[0]: return
-    if iz < self.fulllower[2]: return
-    if ix > self.fullupper[0]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      ix1 = ix - self.fulllower[0]
-      iz1 = iz - self.fulllower[2]
-      plg(self.source[ix1,:,iz1],self.ymesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plrhoy(ix*child.refinement[0],iz*child.refinement[2],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plrhoy(self,ix=None,iz=None,colors=None,selfonly=0,scale=1,
+             withboundary=0):
+    self.plsourcey(ix=ix,iz=iz,colors=colors,selfonly=selfonly,scale=scale,
+                   withboundary=withboundary)
 
-  def plselfez(self,comp=2,ix=None,iy=None,colors=None,selfonly=0,withguard=1):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      iz = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      iz = slice(self.lower[2] - self.fulllower[2],
-                 self.upper[2] - self.fulllower[2] + 1)
-    if ix < lower[0]: return
-    if iy < lower[1]: return
-    if ix > upper[0]: return
-    if iy > upper[1]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      ix1 = ix - self.fulllower[0]
-      iy1 = iy - self.fulllower[1]
-      plg(self.field[comp,ix1,iy1],self.zmesh[iz],
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plselfez(comp,ix*child.refinement[0],iy*child.refinement[1],
-                         colors=colors,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plselfez(self,comp=2,ix=None,iy=None,colors=None,selfonly=0,scale=1,
+               withguard=1):
+    self.plfieldz(ix=ix,iy=iy,colors=colors,selfonly=selfonly,scale=scale,
+                  withguard=withguard)
 
-  def plselfex(self,comp=2,iy=None,iz=None,colors=None,selfonly=0,withguard=1):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      ix = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      ix = slice(self.lower[0] - self.fulllower[0],
-                 self.upper[0] - self.fulllower[0] + 1)
-    if iy < lower[1]: return
-    if iz < lower[2]: return
-    if iy > upper[1]: return
-    if iz > upper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      iy1 = iy - self.fulllower[1]
-      iz1 = iz - self.fulllower[2]
-      plg(self.field[comp,ix,iy1,iz1],self.xmesh[ix],
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plselfex(comp,iy*child.refinement[1],iz*child.refinement[2],
-                         colors=colors,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plselfex(self,comp=2,iy=None,iz=None,colors=None,selfonly=0,scale=1,
+               withguard=1):
+    self.plfieldx(iy=iy,iz=iz,colors=colors,selfonly=selfonly,scale=scale,
+                  withguard=withguard)
 
-  def plselfey(self,comp=2,ix=None,iz=None,colors=None,selfonly=0,withguard=1):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      iy = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      iy = slice(self.lower[1] - self.fulllower[1],
-                 self.upper[1] - self.fulllower[1] + 1)
-    if ix < lower[0]: return
-    if iz < lower[2]: return
-    if ix > upper[0]: return
-    if iz > upper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      ix1 = ix - self.fulllower[0]
-      iz1 = iz - self.fulllower[2]
-      plg(self.field[comp,ix1,iy,iz1],self.ymesh[iy],
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plselfey(comp,ix*child.refinement[0],iz*child.refinement[2],
-                         colors=colors,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plselfey(self,comp=2,ix=None,iz=None,colors=None,selfonly=0,scale=1,
+               withguard=1):
+    self.plfieldy(ix=ix,iz=iz,colors=colors,selfonly=selfonly,scale=scale,
+                  withguard=withguard)
 
-
-
-
-
-
-
-
-
-
-
-
-  #===========================================================================
-  def solve2down(self):
-    dxsqi  = 1./self.dx**2
-    dysqi  = 1./self.dy**2
-    dzsqi  = 1./self.dz**2
-    self.phisave[:,:,:] = self.phi
-    conductorobject = self.getconductorobject()
-    cond_potmg(conductorobject.interior,
-               self.nx,self.ny,self.nzlocal,self.phisave,0,false,
-               2,true)
-    residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
-             self.phisave,self.rhosave,self.res,
-             0,self.bound0,self.boundnz,self.boundxy,
-             self.l2symtry,self.l4symtry,
-             self.mgparam,2,true,self.lcndbndy,self.icndbndy,conductorobject)
-    self.rho[:,:,:] = self.res[:,:,1:-1]
-    self.phi[:,:,:] = 0.
-    print 1,self.res[10,10,10]
-
-    for child in self.children:
-      child.solve2down()
-
-    for parentnumber in self.parents:
-      parent = self.getblockfromnumber(parentnumber)
-      s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
-      s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
-      sx1,sy1,sz1 = s1 - self.fulllower
-      sx2,sy2,sz2 = s2 - self.fulllower
-      px1,py1,pz1 = s1/self.refinement - parent.fulllower
-      px2,py2,pz2 = s2/self.refinement - parent.fulllower
-      restrict3d(sx2-sx1,sy2-sy1,sz2-sz1,pz2-pz1,sz2-sz1,
-                 self.res[sx1:sx2+1,sy1:sy2+1,sz1:sz2+3],
-                 parent.res[px1:px2+1,py1:py2+1,pz1:pz2+3],
-                 self.boundxy,
-                 self.bound0,self.boundnz,self.bound0,self.boundnz,
-                 0,0,self.l2symtry,self.l4symtry)
-
-  def solve2up(self):
-    dxsqi  = 1./self.dx**2
-    dysqi  = 1./self.dy**2
-    dzsqi  = 1./self.dz**2
-    for parentnumber in self.parents:
-      parent = self.getblockfromnumber(parentnumber)
-      s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
-      s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
-      sx1,sy1,sz1 = s1 - self.fulllower
-      sx2,sy2,sz2 = s2 - self.fulllower
-      px1,py1,pz1 = s1/self.refinement - parent.fulllower
-      px2,py2,pz2 = s2/self.refinement - parent.fulllower
-      expand3d(px2-px1,py2-py1,pz2-pz1,sz1-sz2,pz2-pz1,
-               parent.phi[px1:px2+1,py1:py2+1,pz1:pz2+3],
-               self.phi[sx1:sx2+1,sy1:sy2+1,sz1:sz2+3],
-               self.boundxy,self.bound0,self.boundnz,0,0)
-
-    #   for i in range(self.uppasses):
-    #     self.sorpass3d(0,self.nx,self.ny,self.nzlocal,self.nz,
-    #                    self.phi,self.rho,self.rstar,
-    #                    dxsqi,dysqi,dzsqi,self.linbend,
-    #                    self.l2symtry,self.l4symtry,self.bendx,
-    #                    self.bound0,self.boundnz,self.boundxy,self.mgparam,2,
-    #                    self.lcndbndy,self.icndbndy,self.conductors)
-
-    childrenserror = 0.
-    for child in self.children:
-      childerror = child.solve2up()
-      childrenserror = max(childrenserror,childerror)
-
-    add(self.phi,self.phisave,self.phi)
-    print 2,self.phi[10,10,10]
-
-    # --- When using residual correction form, the other planes do need
-    # --- to be set when using other than Dirichlet boundaries since
-    # --- those planes are only set with the error of phi.
-    if self.bound0  == 1: self.phi[:,:,0] = self.phi[:,:,2]
-    if self.boundnz == 1: self.phi[:,:,-1] = self.phi[:,:,-3]
-    if self.bound0  == 2: self.phi[:,:,0] = self.phi[:,:,-3]
-    if self.boundnz == 2: self.phi[:,:,-1] = self.phi[:,:,2]
-
-    # --- Calculate the change in phi.
-    subtract(self.phisave,self.phi,self.phisave)
-    absolute(self.phisave,self.phisave)
-    self.mgerror = self.phisave.max()
-    print self.mgerror,childrenserror
-    print 'err = ',self.mgerror
-    return max(childrenserror,self.mgerror)
-
-  #===========================================================================
-  def solve2init(self):
-    # --- Create temp arrays
-    self.phisave = fzeros(shape(self.phi),'d')
-    self.bendx = fzeros(((self.nx+1)*(self.ny+1)),'d')
-
-    # --- Initialize temporaries
-    dxsqi  = 1./self.dx**2
-    dysqi  = 1./self.dy**2
-    dzsqi  = 1./self.dz**2
-    reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
-    rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
-
-    conductorobject = self.getconductorobject()
-    checkconductors(self.nx,self.ny,self.nzlocal,self.nz,
-                    self.dx,self.dy,self.dz,conductorobject,
-                    top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
-
-    # --- Preset rho to increase performance (reducing the number of
-    # --- multiplies in the main SOR sweep loop).
-    if not self.linbend:
-      # --- Do the operation in place (to avoid temp arrays)
-      multiply(self.rho,reps0c,self.rho)
-    else:
-      raise "Bends not yet supported"
-
-    # --- Since using residual correction form, need to save the original rho.
-    self.rhosave = self.rho + 0.
-    self.res = fzeros(shape(self.phi),'d')
-
-    for child in self.children:
-      child.solve2init()
-
-  #===========================================================================
-  def solve2(self,iwhich=0):
-    # --- No initialization needed
-    if iwhich == 1: return
-
-    self.solve2init()
-
-    # --- Initialize temporaries
-    dxsqi  = 1./self.dx**2
-    dysqi  = 1./self.dy**2
-    dzsqi  = 1./self.dz**2
-    reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
-    rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
-
-    # --- Main multigrid v-cycle loop. Calculate error each iteration since
-    # --- very few iterations are done.
-    self.mgiters = 0
-    self.mgerror = 2.*self.mgtol + 1.
-    conductorobject = self.getconductorobject()
-    while (self.mgerror > self.mgtol and self.mgiters < self.mgmaxiters):
-      self.mgiters = self.mgiters + 1
- 
-      self.solve2down()
-
-      # --- Do one vcycle.
-      self.vcycle(0,self.nx,self.ny,self.nzlocal,self.nz,
-                  self.dx,self.dy,self.dz,self.phi,self.rho,
-                  self.rstar,self.linbend,self.l2symtry,self.l4symtry,
-                  self.bendx,
-                  self.boundxy,self.bound0,self.boundnz,
-                  self.mgparam,self.mgform,self.mgmaxlevels,
-                  self.downpasses,self.uppasses,self.lcndbndy,
-                  self.icndbndy,conductorobject)
-
-      self.mgerror = self.solve2up()
-
-      #else
-      # mgexchange_phi(nx,ny,nzlocal,nz,phi,localb0,localbnz,0,
-      #                my_index,nslaves,izfsslave,nzfsslave,
-      #                whosendingleft,izsendingleft,
-      #                whosendingright,izsendingright)
-      # mgexchange_phi(nx,ny,nzlocal,nz,phi,localb0,localbnz,-1,
-      #                my_index,nslaves,izfsslave,nzfsslave,
-      #                whosendingleft,izsendingleft,
-      #                whosendingright,izsendingright)
-      #endif
-
-    # --- For Dirichlet boundary conditions, copy data into guard planes
-    # --- For other boundary conditions, the guard planes are used during
-    # --- the solve are so are already set.
-    if (self.bound0 == 0): self.phi[:,:,0] = self.phi[:,:,1]
-    if (self.boundnz == 0): self.phi[:,:,-1] = self.phi[:,:,-2]
-
-    # --- Make a print out.
-    if (self.mgerror > self.mgtol):
-      print "MultiGrid: Maximum number of iterations reached"
-    print ("MultiGrid: Error converged to %11.3e in %4d v-cycles"%
-           (self.mgerror,self.mgiters))
-
-    # --- If using residual correction form, restore saved rho
-    self.rho[:,:,:] = self.rhosave
-
-    # --- Restore rho
-    if (not self.linbend):
-      multiply(self.rho,1./reps0c,self.rho)
-
-
-  #===========================================================================
-  def solve2down1(self):
-    dxsqi  = 1./self.dx**2
-    dysqi  = 1./self.dy**2
-    dzsqi  = 1./self.dz**2
-    self.phisave[:,:,:] = self.phi
-    conductorobject = self.getconductorobject()
-    cond_potmg(conductorobject.interior,
-               self.nx,self.ny,self.nzlocal,self.phisave,0,false,
-               2,true)
-    residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
-             self.phisave,self.rhosave,self.res,
-             0,self.bound0,self.boundnz,self.boundxy,
-             self.l2symtry,self.l4symtry,
-             self.mgparam,2,true,self.lcndbndy,self.icndbndy,conductorobject)
-    self.rho[:,:,:] = self.res[:,:,1:-1]
-    self.phi[:,:,:] = 0.
-
-    for i in range(self.downpasses):
-      self.sorpass3d(0,self.nx,self.ny,self.nzlocal,self.nz,
-                     self.phi,self.rho,self.rstar,
-                     dxsqi,dysqi,dzsqi,self.linbend,
-                     self.l2symtry,self.l4symtry,self.bendx,
-                     self.bound0,self.boundnz,self.boundxy,self.mgparam,2,
-                     self.lcndbndy,self.icndbndy,conductorobject)
-
-    residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
-             self.phi,self.rho,self.res,
-             0,self.bound0,self.boundnz,self.boundxy,
-             self.l2symtry,self.l4symtry,
-             self.mgparam,2,false,
-             self.lcndbndy,self.icndbndy,conductorobject)
-
-    for child in self.children:
-      child.solve2down()
-
-    for parentnumber in self.parents:
-      parent = self.getblockfromnumber(parentnumber)
-      s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
-      s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
-      sx1,sy1,sz1 = s1 - self.fulllower
-      sx2,sy2,sz2 = s2 - self.fulllower
-      px1,py1,pz1 = s1/self.refinement - parent.fulllower
-      px2,py2,pz2 = s2/self.refinement - parent.fulllower
-      restrict3d(sx2-sx1,sy2-sy1,sz2-sz1,pz2-pz1,sz2-sz1,
-                 self.res[sx1:sx2+1,sy1:sy2+1,sz1:sz2+1],
-                 parent.rho[px1:px2+1,py1:py2+1,pz1:pz2+1],
-                 self.boundxy,
-                 self.bound0,self.boundnz,self.bound0,self.boundnz,
-                 0,0,self.l2symtry,self.l4symtry)
-
-  def solve2up1(self):
-    dxsqi  = 1./self.dx**2
-    dysqi  = 1./self.dy**2
-    dzsqi  = 1./self.dz**2
-    conductorobject = self.getconductorobject()
-    for parentnumber in self.parents:
-      parent = self.getblockfromnumber(parentnumber)
-      s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
-      s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
-      sx1,sy1,sz1 = s1 - self.fulllower
-      sx2,sy2,sz2 = s2 - self.fulllower
-      px1,py1,pz1 = s1/self.refinement - parent.fulllower
-      px2,py2,pz2 = s2/self.refinement - parent.fulllower
-      expand3d(px2-px1,py2-py1,pz2-pz1,sz2-sz2,pz2-pz1,
-               parent.phi[px1:px2+1,py1:py2+1,pz1:pz2+1],
-               self.phi[sx1:sx2+1,sy1:sy2+1,sz1:sz2+1],
-               self.boundxy,self.bound0,self.boundnz,0,0)
-
-    for i in range(self.uppasses):
-      self.sorpass3d(0,self.nx,self.ny,self.nzlocal,self.nz,
-                     self.phi,self.rho,self.rstar,
-                     dxsqi,dysqi,dzsqi,self.linbend,
-                     self.l2symtry,self.l4symtry,self.bendx,
-                     self.bound0,self.boundnz,self.boundxy,self.mgparam,2,
-                     self.lcndbndy,self.icndbndy,conductorobject)
-
-    childrenserror = 0.
-    for child in self.children:
-      childerror = child.solve2up()
-      childrenserror = max(childrenserror,childerror)
-
-    add(self.phi,self.phisave,self.phi)
-
-    # --- When using residual correction form, the other planes do need
-    # --- to be set when using other than Dirichlet boundaries since
-    # --- those planes are only set with the error of phi.
-    if self.bound0  == 1: self.phi[:,:,0] = self.phi[:,:,2]
-    if self.boundnz == 1: self.phi[:,:,-1] = self.phi[:,:,-3]
-    if self.bound0  == 2: self.phi[:,:,0] = self.phi[:,:,-3]
-    if self.boundnz == 2: self.phi[:,:,-1] = self.phi[:,:,2]
-
-    # --- Calculate the change in phi.
-    subtract(self.phisave,self.phi,self.phisave)
-    absolute(self.phisave,self.phisave)
-    self.mgerror = self.phisave.max()
-    print 'err= ',self.mgerror
-    return max(childrenserror,self.mgerror)
 
 
 ##############################################################################
@@ -2448,111 +2435,29 @@ Implements adaptive mesh refinement in 2d for the electrostatic field solver
     kwdict.update(kw)
     self.genericpf(self.getgetdataname(kw),kwdict,1,pfzxg)
 
-  def plphiz(self,ix=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if ix < self.fulllower[0]: return
-    if ix > self.fullupper[0]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.potential[ix-self.fulllower[0]+1,0,1:-1],self.zmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plphiz(ix*child.refinement[0],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plphiz(self,ix=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialz(ix=ix,iy=0,colors=colors,selfonly=selfonly,scale=scale)
 
-  def plphix(self,iz=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if iz < self.fulllower[2]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.potential[1:-1,0,iz-self.fulllower[2]+1],self.xmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plphix(iz*child.refinement[2],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plphix(self,iz=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialx(iz=iz,iy=0,colors=colors,selfonly=selfonly,scale=scale)
 
-  def plrhoz(self,ix=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if ix < self.fulllower[0]: return
-    if ix > self.fullupper[0]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.source[ix-self.fulllower[0],0,:],self.zmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plrhoz(ix*child.refinement[0],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plrhoz(self,ix=None,colors=None,selfonly=0,scale=1,
+             withboundary=0):
+    self.plsourcez(ix=ix,iy=0,colors=colors,selfonly=selfonly,scale=scale,
+                   withboundary=withboundary)
 
-  def plrhox(self,iz=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if iz < self.fulllower[2]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.source[:,0,iz-self.fulllower[2]],self.xmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plrhox(iz*child.refinement[2],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plrhox(self,iz=None,colors=None,selfonly=0,scale=1,
+             withboundary=0):
+    self.plsourcex(iz=iz,iy=0,colors=colors,selfonly=selfonly,scale=scale,
+                   withboundary=withboundary)
 
-  def plselfez(self,comp=2,ix=None,colors=None,selfonly=0,withguard=1):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      iz = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      iz = slice(self.lower[2] - self.fulllower[2],
-                 self.upper[2] - self.fulllower[2] + 1)
-    if ix < lower[0]: return
-    if ix > upper[0]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.field[comp,ix-self.fulllower[0],0,iz],
-          self.zmesh[iz],color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plselfez(comp,ix*child.refinement[0],
-                         colors=colors,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plselfez(self,comp=2,ix=None,colors=None,selfonly=0,scale=1,withguard=1):
+    self.plfieldz(ix=ix,iy=0,colors=colors,selfonly=selfonly,scale=scale,
+                  withguard=withguard)
 
-  def plselfex(self,comp=2,iz=None,colors=None,selfonly=0,withguard=1):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      ix = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      ix = slice(self.lower[0] - self.fulllower[0],
-                 self.upper[0] - self.fulllower[0] + 1)
-    if iz < lower[2]: return
-    if iz > upper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.field[comp,ix,0,iz-self.fulllower[2]],
-                     self.xmesh[ix],color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plselfex(comp,iz*child.refinement[2],
-                         colors=colors,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plselfex(self,comp=2,iz=None,colors=None,selfonly=0,scale=1,withguard=1):
+    self.plfieldx(iz=iz,iy=0,colors=colors,selfonly=selfonly,scale=scale,
+                  withguard=withguard)
 
 ##############################################################################
 ##############################################################################
@@ -2612,111 +2517,29 @@ Implements adaptive mesh refinement in RZ for the electrostatic field solver
     kwdict.update(kw)
     self.genericpf(self.getgetdataname(kw),kwdict,1,pfzxg)
 
-  def plphiz(self,ix=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if ix < self.fulllower[0]: return
-    if ix > self.fullupper[0]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.potential[ix-self.fulllower[0]+1,0,1:-1],self.zmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plphiz(ix*child.refinement[0],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plphiz(self,ix=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialz(ix=ix,iy=0,colors=colors,selfonly=selfonly,scale=scale)
 
-  def plphix(self,iz=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if iz < self.fulllower[2]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.potential[1:-1,0,iz-self.fulllower[2]+1],self.xmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plphix(iz*child.refinement[2],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plphix(self,iz=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialx(iz=iz,iy=0,colors=colors,selfonly=selfonly,scale=scale)
 
-  def plrhoz(self,ix=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if ix < self.fulllower[0]: return
-    if ix > self.fullupper[0]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.source[ix-self.fulllower[0],0,:],self.zmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plrhoz(ix*child.refinement[0],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plrhoz(self,ix=None,colors=None,selfonly=0,scale=1,
+             withboundary=0):
+    self.plsourcez(ix=ix,iy=0,colors=colors,selfonly=selfonly,scale=scale,
+                   withboundary=withboundary)
 
-  def plrhox(self,iz=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if iz < self.fulllower[2]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.source[:,0,iz-self.fulllower[2]],self.xmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plrhox(iz*child.refinement[2],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plrhox(self,iz=None,colors=None,selfonly=0,scale=1,
+             withboundary=0):
+    self.plsourcex(iz=iz,iy=0,colors=colors,selfonly=selfonly,scale=scale,
+                   withboundary=withboundary)
 
-  def plselfez(self,comp=2,ix=None,colors=None,selfonly=0,withguard=1):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      iz = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      iz = slice(self.lower[2] - self.fulllower[2],
-                 self.upper[2] - self.fulllower[2] + 1)
-    if ix < lower[0]: return
-    if ix > upper[0]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.field[comp,ix-self.fulllower[0],0,iz],
-          self.zmesh[iz],color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plselfez(comp,ix*child.refinement[0],
-                         colors=colors,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plselfez(self,comp=2,ix=None,colors=None,selfonly=0,scale=1,withguard=1):
+    self.plfieldz(ix=ix,iy=0,colors=colors,selfonly=selfonly,scale=scale,
+                  withguard=withguard)
 
-  def plselfex(self,comp=2,iz=None,colors=None,selfonly=0,withguard=1):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      ix = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      ix = slice(self.lower[0] - self.fulllower[0],
-                 self.upper[0] - self.fulllower[0] + 1)
-    if iz < lower[2]: return
-    if iz > upper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.field[comp,ix,0,iz-self.fulllower[2]],
-                     self.xmesh[ix],color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plselfex(comp,iz*child.refinement[2],
-                         colors=colors,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plselfex(self,comp=2,iz=None,colors=None,selfonly=0,scale=1,withguard=1):
+    self.plfieldx(iz=iz,iy=0,colors=colors,selfonly=selfonly,scale=scale,
+                  withguard=withguard)
 
 
 
@@ -2780,139 +2603,67 @@ with variable dielectric
     kwdict.update(kw)
     self.genericpf(self.getgetdataname(kw),kwdict,1,pfzxg)
 
-  def plphiz(self,ix=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if ix < self.fulllower[0]: return
-    if ix > self.fullupper[0]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.potential[ix-self.fulllower[0]+1,0,1:-1],self.zmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plphiz(ix*child.refinement[0],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plphiz(self,ix=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialz(ix=ix,iy=0,colors=colors,selfonly=selfonly,scale=scale)
 
-  def plphix(self,iz=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if iz < self.fulllower[2]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.potential[1:-1,0,iz-self.fulllower[2]+1],self.xmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plphix(iz*child.refinement[2],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plphix(self,iz=None,colors=None,selfonly=0,scale=1):
+    self.plpotentialx(iz=iz,iy=0,colors=colors,selfonly=selfonly,scale=scale)
 
-  def plrhoz(self,ix=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if ix < self.fulllower[0]: return
-    if ix > self.fullupper[0]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.source[ix-self.fulllower[0],0,:],self.zmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plrhoz(ix*child.refinement[0],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plrhoz(self,ix=None,colors=None,selfonly=0,scale=1,
+             withboundary=0):
+    self.plsourcez(ix=ix,iy=0,colors=colors,selfonly=selfonly,scale=scale,
+                   withboundary=withboundary)
 
-  def plrhox(self,iz=None,colors=None,selfonly=0):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if iz < self.fulllower[2]: return
-    if iz > self.fullupper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.source[:,0,iz-self.fulllower[2]],self.xmesh,
-          color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plrhox(iz*child.refinement[2],colors=colors)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plrhox(self,iz=None,colors=None,selfonly=0,scale=1,
+             withboundary=0):
+    self.plsourcex(iz=iz,iy=0,colors=colors,selfonly=selfonly,scale=scale,
+                   withboundary=withboundary)
 
-  def plselfez(self,comp=2,ix=None,colors=None,selfonly=0,withguard=1):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      iz = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      iz = slice(self.lower[2] - self.fulllower[2],
-                 self.upper[2] - self.fulllower[2] + 1)
-    if ix < lower[0]: return
-    if ix > upper[0]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.field[comp,ix-self.fulllower[0],0,iz],
-          self.zmesh[iz],color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plselfez(comp,ix*child.refinement[0],
-                         colors=colors,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plselfez(self,comp=2,ix=None,colors=None,selfonly=0,scale=1,withguard=1):
+    self.plfieldz(ix=ix,iy=0,colors=colors,selfonly=selfonly,scale=scale)
 
-  def plselfex(self,comp=2,iz=None,colors=None,selfonly=0,withguard=1):
-    if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
-    if withguard:
-      lower,upper = self.fulllower,self.fullupper
-      ix = slice(None)
-    else:
-      lower,upper = self.lower,self.upper
-      ix = slice(self.lower[0] - self.fulllower[0],
-                 self.upper[0] - self.fulllower[0] + 1)
-    if iz < lower[2]: return
-    if iz > upper[2]: return
-    if self is self.root: accumulateplotlists()
-    try:
-      plg(self.field[comp,ix,0,iz-self.fulllower[2]],
-                     self.xmesh[ix],color=colors[self.blocknumber%len(colors)])
-      if not selfonly:
-        for child in self.children:
-          child.plselfex(comp,iz*child.refinement[2],
-                         colors=colors,withguard=withguard)
-    finally:
-      if self is self.root: plotlistofthings(lturnofflist=1)
+  def plselfex(self,comp=2,iz=None,colors=None,selfonly=0,scale=1,withguard=1):
+    self.plfieldx(iz=iz,iy=0,colors=colors,selfonly=selfonly,scale=scale)
 
   def plepsilonz(self,ix=None,colors=None,selfonly=0):
     if colors is None: colors = color
     elif not operator.isSequenceType(colors): colors = list([colors])
-    if ix < self.fulllower[0]: return
-    if ix > self.fullupper[0]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.epsilon[ix-self.fulllower[0]+1,1:-1],self.zmesh[:-1]+self.dz/2.,
-          color=colors[self.blocknumber%len(colors)])
+      if ix < self.fulllower[0]: return
+      if ix > self.fullupper[0]: return
+      ix1 = ix - self.fulllower[0]
+      if scale:
+        mesh = self.zmeshlocal
+      else:
+        iz1 = self.fulllower[2]
+        iz2 = self.fullupper[2]
+        mesh = arange(iz1,iz2+1)/self.totalrefinement[2]
+      plg(self.epsilon[ix1,:],mesh,color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
-          child.plepsilonz(ix*child.refinement[0],colors=colors)
+          child.plepsilonz(ix*child.refinement[0],colors=colors,scale=scale)
     finally:
       if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plepsilonx(self,iz=None,colors=None,selfonly=0):
     if colors is None: colors = color
     elif not operator.isSequenceType(colors): colors = list([colors])
-    if iz < self.fulllower[2]: return
-    if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.epsilon[1:-1,iz-self.fulllower[2]+1],self.xmesh[:-1]+self.dx/2.,
-          color=colors[self.blocknumber%len(colors)])
+      if iz < self.fulllower[2]: return
+      if iz > self.fullupper[2]: return
+      iz1 = iz - self.fulllower[2]
+      if scale:
+        mesh = self.xmeshlocal
+      else:
+        ix1 = self.fulllower[0]
+        ix2 = self.fullupper[0]
+        mesh = arange(ix1,ix2+1)/self.totalrefinement[0]
+      plg(self.source[:,iz1],mesh,color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
-          child.plepsilonx(iz*child.refinement[2],colors=colors)
+          child.plepsilonx(iz*child.refinement[2],colors=colors,scale=scale)
     finally:
       if self is self.root: plotlistofthings(lturnofflist=1)
 

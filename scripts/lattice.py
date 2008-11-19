@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.68 2008/07/17 16:05:02 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.69 2008/11/19 18:29:59 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3068,7 +3068,7 @@ Input arguments:
   if ymmax is not None: solverdict['ymmax'] = ymmax
   if zmmin is not None: solverdict['zmmin'] = zmmin
   if zmmax is not None: solverdict['zmmax'] = zmmax
-  solverdict['nslaves'] = 0
+  solverdict['nprocs'] = 1
   solverdict['boundxy'] = neumann
   solverdict['bound0'] = neumann
   solverdict['boundnz'] = neumann

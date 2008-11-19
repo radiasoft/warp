@@ -5,14 +5,15 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.77 2007/08/10 00:15:31 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.78 2008/11/19 18:30:00 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
   print warpparallel.__doc__
 
 top.my_index = me
-top.nslaves = npes
+top.nprocs = npes
+top.nslaves = top.nprocs
 
 # ---------------------------------------------------------------------------
 def gatherallzarray(a,zaxis=0):
@@ -149,13 +150,13 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
 
   # --- Gather nps from all processors
   nps_p = gatherarray(top.pgroup.nps,bcast=1)
-  nps_p.shape = (top.nslaves,top.ns)
+  nps_p.shape = (top.nzprocs,top.ns)
   top.npmax = top.pgroup.npmax
 
   # --- Same for npslost
   npslost_p = gatherarray(top.npslost,bcast=1)
-  npslost_p.shape = (top.nslaves,top.ns)
-  npslost_p0 = zeros((top.nslaves+1,top.ns+1),'l')
+  npslost_p.shape = (top.nzprocs,top.ns)
+  npslost_p0 = zeros((top.nzprocs+1,top.ns+1),'l')
   npslost_p0[1:,1:] = npslost_p
 
   # --- Need boundnz from the right most processor.
@@ -252,7 +253,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             ff.write(pdbname,v)
           # --- For all parallel scalars, create entry to write data too
           if not serial:
-            ff.defent(vname+'@'+p+'@parallel',array([v]),(top.nslaves,))
+            ff.defent(vname+'@'+p+'@parallel',array([v]),(top.nzprocs,))
 
         elif not serial:
           # --- Now arrays...
@@ -268,11 +269,11 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             if top.ns > 1:
               iii = array([1]+list(cumsum(sum(npslost_p[:,:-1]))+array([1])))
             ff.write(pdbname,iii)
-            ff.defent(vname+'@'+p+'@parallel',v,(top.nslaves,top.ns))
+            ff.defent(vname+'@'+p+'@parallel',v,(top.nzprocs,top.ns))
           elif vname == 'npslost' and p == 'top':
             # --- This is set to be correct globally
             ff.write(pdbname,sum(npslost_p))
-            ff.defent(vname+'@'+p+'@parallel',v,(top.nslaves,top.ns))
+            ff.defent(vname+'@'+p+'@parallel',v,(top.nzprocs,top.ns))
           elif p == 'top' and vname in ['xplost','yplost','zplost',
                                         'uxplost','uyplost','uzplost',
                                         'gaminvlost','tplost']:
@@ -489,7 +490,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0,lreturnff=0)
 
   if 'npslost_p' in vlistparallel:
     npslost_p = ff.read('npslost_p@parallel')
-    npslost_p0 = zeros((top.nslaves+1,top.ns+1),'l')
+    npslost_p0 = zeros((top.nzprocs+1,top.ns+1),'l')
     npslost_p0[1:,1:] = npslost_p
   itriple = array([me,me,1,0,top.ns-1,1])
   if 'inslost@top' in vlistparallel:

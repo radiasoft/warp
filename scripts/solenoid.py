@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.14 2008/06/04 20:58:40 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.15 2008/11/19 18:30:00 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -235,7 +235,7 @@ Input arguments:
   if ymmax is not None: solverdict['ymmax'] = ymmax
   if zmmin is not None: solverdict['zmmin'] = zmmin
   if zmmax is not None: solverdict['zmmax'] = zmmax
-  solverdict['nslaves'] = 0
+  solverdict['nprocs'] = 1
   if lcylindrical:
     solverdict['ny'] = 0
     Bsolver = MagnetostaticMG(lcylindrical=1,**solverdict)
@@ -405,9 +405,12 @@ Input arguments:
   if scalebz:
     ix_axis = nint(-Bsolver.xmmin/Bsolver.dx)
     iy_axis = nint(-Bsolver.ymmin/Bsolver.dy)
-    bzmax_actual = max(Bsolver.field[2,ix_axis,iy_axis,:])
-    Bsolver.source[...] = bzmax/bzmax_actual*Bsolver.source
-    Bsolver.field[...] = bzmax/bzmax_actual*Bsolver.field
+    bzmax_actual = max(abs(Bsolver.field[2,ix_axis,iy_axis,:]))
+    if bzmax_actual > 0.:
+      Bsolver.source[...] = bzmax/bzmax_actual*Bsolver.source
+      Bsolver.field[...] = bzmax/bzmax_actual*Bsolver.field
+    else:
+      print "\n\n\n\nWarning: addgriddedsolenoid: calculated Bz is zero\n\n\n"
 
   # --- If ap is not passed in, then use the inner radius of the
   # --- solenoid windinds (which isn't necessarily a good value).

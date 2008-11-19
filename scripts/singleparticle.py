@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.40 2008/07/09 11:25:40 jlvay Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.41 2008/11/19 18:30:00 dave Exp $"
 
 class TraceParticle(object):
   """
@@ -163,20 +163,13 @@ Available methods...
     if self.enabled: return
     self.enabled = 1
     self.startit = top.it
-    # --- Enforce the transverse particle boundary conditions
-    if self.enforceinitboundaries:
-      stckxy3d(self.nn,
-               self.x,w3d.xmmax,w3d.xmmin,w3d.dx,
-               self.y,w3d.ymmax,w3d.ymmin,w3d.dy,
-               self.z,w3d.zmminlocal,w3d.dz,self.ux,self.uy,self.uz,
-               self.gi,top.zgrid,top.zbeam,
-               w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
     # --- load the data
     addparticles(x=self.x,y=self.y,z=self.z,vx=self.ux,vy=self.uy,vz=self.uz,
                  gi=self.gi,pid=self.pid,js=self.js,lmomentum=true)
-    # --- Set flag for whether particles are still live.
-    # --- Check in case they were scraped.
-    self.live = ones(shape(self.gi))
+    # --- Enforce the transverse particle boundary conditions
+    if self.enforceinitboundaries:
+      particleboundaries3d(top.pgroup,self.js,true)
+    self.checklive()
     # --- Add routine after step to save data
     installafterstep(self.spsavedata)
 
@@ -709,13 +702,7 @@ initial data.
     top.pgroup.uzp[ip1:ip2] = self.vz
     top.pgroup.gaminv[ip1:ip2] = self.gi
     # --- Enforce the particle boundary conditions
-    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
-    stckxy3d(self.nn,top.pgroup.xp[ip1:ip2],w3d.xmmax,w3d.xmmin,w3d.dx,
-             top.pgroup.yp[ip1:ip2],w3d.ymmax,w3d.ymmin,
-             w3d.dy,top.pgroup.zp[ip1:ip2],w3d.zmminlocal,w3d.dz,
-             top.pgroup.uxp[ip1:ip2],top.pgroup.uyp[ip1:ip2],top.pgroup.uzp[ip1:ip2],
-             top.pgroup.gaminv[ip1:ip2],top.zgrid,top.zbeam,
-             w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
+    particleboundaries3d(top.pgroup,self.js,true)
     # --- Add routine after step to save data
     installafterstep(self.spsavedata)
 

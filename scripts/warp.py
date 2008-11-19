@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.171 2008/09/22 21:21:41 dave Exp $"
+warp_version = "$Id: warp.py,v 1.172 2008/11/19 18:30:00 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -147,6 +147,14 @@ try:
     resource.setrlimit(resource.RLIMIT_STACK,(-1,-1))
 except:
   pass
+
+# --- Setup the parallel decompoosition if running in parallel
+if lparallel:
+  import warpoptions
+  if warpoptions.options.decomp is not None:
+    top.nxprocs = warpoptions.options.decomp[0]
+    top.nyprocs = warpoptions.options.decomp[1]
+    top.nzprocs = warpoptions.options.decomp[2]
 
 #try:
 #  from psyco.classes import psyobj

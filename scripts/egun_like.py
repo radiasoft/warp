@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.64 2008/05/23 18:40:20 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.65 2008/11/19 18:29:59 dave Exp $"
 
 
 ##############################################################################
@@ -511,7 +511,7 @@ set when a current is specified"""
     # --- The call to perrho3d is primarily needed for the parallel version.
     if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None):
       frz.l_distribute = false
-    perrho3d()
+    applyrhoboundaryconditions()
     if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None):
       frz.l_distribute = true
 

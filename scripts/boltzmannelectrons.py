@@ -248,7 +248,7 @@ This is not complete - do not use!!!!!!!!!!
 
     checkconductors(self.nx,self.ny,self.nz,self.nzfull,
                     self.dx,self.dy,self.dz,self.conductors,
-                    top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
+                    top.my_index,top.nzprocs,top.izfsslave,top.nzfsslave)
 
     # --- Preset rho to increase performance (reducing the number of
     # --- multiplies in the main SOR sweep loop).

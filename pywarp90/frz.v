@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.66 $, $Date: 2008/02/13 00:24:51 $
+#@(#) File FRZ.V, version $Revision: 3.67 $, $Date: 2008/11/19 18:29:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.66 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.67 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -298,11 +298,6 @@ lphiberz(nx:integer,nzlocal:integer,nz:integer,dxsqi:real,dzsqi:real,
          iondensity:real,electrontemperature:real,plasmapotential:real,
          electrondensitymaxscale:real,epsilon:real,epszfacdzsqi:real,
          inormtoavboltzfac:logical) subroutine
-restrictberz(nx:integer,nzlocal:integer,nz:integer,u:real,delx:integer,delz:integer,
-             nxcoarse:integer,nzlocalcoarse:integer,nzcoarse:integer,ucoarse:real,
-             delcx:integer,delcz:integer,
-             bounds:integer,boundscoarse:integer,lzoffset:integer,
-             withoutzeros:logical) subroutine
 getanalyticbtheta(bfield:BFieldGridType) subroutine
          # Performs and optional ananlytic calculation of Btheta
 updateguardcells2d() subroutine
@@ -481,18 +476,18 @@ $             subroutine
 ******** ImplicitMG2D:
 coeffs1(:,:,:,:) _real
 chi01(:,:,:) _real
-mgsolveimplicites2d(iwhich:integer,nx:integer,nzlocal:integer,nz:integer,
-                    dx:real,dz:real,phi:real,rho:real,ns:integer,qomdt:real,chi0:real,bounds:integer,
-                    xmmin:real,zmminlocal:real,zmmin:real,zbeam:real,zgrid:real,
+mgsolveimplicites2d(iwhich:integer,nx:integer,nz:integer,
+                    nxlocal:integer,nzlocal:integer,
+                    dx:real,dz:real,phi:real,rho:real,ns:integer,
+                    qomdt:real,chi0:real,bounds:integer,
+                    xmminlocal:real,zmminlocal:real,zgrid:real,
                     mgparam:real,mgiters:integer,mgmaxiters:integer,
-                    mgmaxlevels:integer,mgerror:real,mgtol:real,mgverbose:integer,
+                    mgmaxlevels:integer,mgerror:real,mgtol:real,
+                    mgverbose:integer,
                     downpasses:integer,uppasses:integer,
-                    lcndbndy:logical,laddconductor:logical,icndbndy:integer,lbuildquads:logical,
+                    lcndbndy:logical,laddconductor:logical,icndbndy:integer,
                     gridmode:integer,conductors:ConductorType,lrz:logical,
-                    my_index:integer,nslaves:integer,izfsslave:integer,nzfsslave:integer)
-            subroutine
-residuales2d(nx:integer,nzlocal:integer,nz:integer,phi:real,rho:real,coeffs:real,res:real,
-             mglevel:integer,bounds(0:5):integer,mgparam:real)
+                    fsdecomp:Decomposition)
             subroutine
 
 ******** Subtimersfrz:

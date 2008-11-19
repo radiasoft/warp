@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.32 2008/10/06 22:48:26 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.33 2008/11/19 18:30:00 dave Exp $"
 
 from warp import with_numpy,gettypecode
 if with_numpy:
@@ -279,9 +279,11 @@ def parallelop(a,mpiop):
 # ---------------------------------------------------------------------------
 # Specific parallel element-by-element operations on a distributed array.
 def parallelmax(a):
-  return parallelop(a,"MAX")
+  #return parallelop(a,"MAX")
+  return mpi.allreduce(a,maximum)
 def parallelmin(a):
-  return parallelop(a,"MIN")
+  #return parallelop(a,"MIN")
+  return mpi.allreduce(a,minimum)
 def parallelsum(a):
   if not lparallel: return a
   return mpi.allreduce(a,mpi.SUM)

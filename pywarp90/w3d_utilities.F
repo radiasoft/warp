@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.24 $, $Date: 2008/09/22 21:23:08 $
+c@(#) File w3d_utilities.F, version $Revision: 1.25 $, $Date: 2008/11/19 18:29:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -228,9 +228,9 @@ c       --- find location on grid, taking into account any symmetries.
         gz = z(ip) - zgrid
 
 c       --- if not within grid, skip it
-        if (gx < xmin .or. gx > xmax .or.
-     &      gy < ymin .or. gy > ymax .or.
-     &      gz < zmin .or. gz > zmax) cycle
+        if (((gx < xmin .or. gx > xmax) .and. nx > 0) .or.
+     &      ((gy < ymin .or. gy > ymax) .and. ny > 0) .or.
+     &      ((gz < zmin .or. gz > zmax) .and. nz > 0)) cycle
 
         gx = (gx - xmin)*dxi
         gy = (gy - ymin)*dyi
@@ -239,6 +239,10 @@ c       --- if not within grid, skip it
         ix = int(gx)
         iy = int(gy)
         iz = int(gz)
+        if (nx == 0) ix = 0
+        if (ny == 0) iy = 0
+        if (nz == 0) iz = 0
+
         ichild(ip) = abs(grid(ix,iy,iz))
 
       enddo
@@ -303,9 +307,9 @@ c       --- find location on grid, taking into account any symmetries.
         gz = z(ip) - zgrid
 
 c       --- if not within grid, skip it
-        if (gx < xmin .or. gx > xmax .or.
-     &      gy < ymin .or. gy > ymax .or.
-     &      gz < zmin .or. gz > zmax) cycle
+        if (((gx < xmin .or. gx > xmax) .and. nx > 0) .or.
+     &      ((gy < ymin .or. gy > ymax) .and. ny > 0) .or.
+     &      ((gz < zmin .or. gz > zmax) .and. nz > 0)) cycle
 
         gx = (gx - xmin)*dxi
         gy = (gy - ymin)*dyi
@@ -314,6 +318,9 @@ c       --- if not within grid, skip it
         ix = int(gx)
         iy = int(gy)
         iz = int(gz)
+        if (nx == 0) ix = 0
+        if (ny == 0) iy = 0
+        if (nz == 0) iz = 0
         if (grid(ix,iy,iz) >= 0) ichild(ip) = grid(ix,iy,iz)
 
       enddo
@@ -581,6 +588,14 @@ c     ---                               |_________|
       endif
 
 c---------------------------------------------------------------------------
+c     --- The special case of nz == 0.
+      if (nz == 0) then
+        izfsslave = 0
+        nzfsslave = 0
+        return
+      endif
+
+c---------------------------------------------------------------------------
 c     --- Do the domain decomposition for the field solver.
 c     --- The domain decomposition by default is done so that each processor
 c     --- has nearly the same number of z planes. If lautodecomp is false and
@@ -652,12 +667,21 @@ c       --- not include the overlap.
 
 c       --- First check to make sure that all values are > 0.
         do i=0,nslaves-1
-          if (nzfsslave(i) == 0) then
+          if (nzfsslave(i) <= 0) then
+            print*,"domaindecomposefields: BAD VALUE ",nz,i,nzfsslave(i)
             call kaboom("domaindecomposefields: ERROR: nz for the field solver
      & for each processor must be greater than zero")
             return
           endif
         enddo
+
+c       --- Make sure that the sum of nzfsslave is consistent with nz
+        if (sum(nzfsslave) .ne. nz) then
+          print*,"domaindecomposefields: BAD VALUE ",nz," != (",nzfsslave,")"
+          call kaboom("domaindecomposefields: ERROR: sum of the domain
+     &sizes must be equal to the total number of grid cells")
+          return
+        endif
 
 c       --- Fill in the array izfsslave, based on the inputted nzfsslave and
 c       --- add the overlap to nzfsslave.
@@ -677,72 +701,34 @@ c       --- Get the new value of nz.
       return
       end
 c=============================================================================
-      subroutine domaindecomposeparticles(nz,nslaves,izfsslave,nzfsslave,
-     &                                    overlap,nzpguard,zmmin,zmmax,dz,zslave,
-     &                                    lautodecomp,izpslave,nzpslave,
+      subroutine domaindecomposeparticles(nz,nslaves,nzpguard,zmmin,zmmax,dz,
+     &                                    userdecomp,lautodecomp,
+     &                                    izpslave,nzpslave,
      &                                    zpslmin,zpslmax)
       use InGen3d,Only: solvergeom,AMRgeom
-      integer(ISZ):: nz,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: overlap,nzpguard
+      integer(ISZ):: nz,nslaves,nzpguard
       real(kind=8):: zmmin,zmmax,dz
-      real(kind=8):: zslave(0:nslaves-1)
+      real(kind=8):: userdecomp(0:nslaves-1)
       logical(ISZ):: lautodecomp
       integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
       real(kind=8):: zpslmin(0:nslaves-1),zpslmax(0:nslaves-1)
 
       integer(ISZ):: i
-      real(kind=8):: sumzslave,zlast
+      real(kind=8):: zlast
 
+      if (.not. lautodecomp) then
 
-c     --- Now, set the domain decomposition for the particles. This can
-c     --- either be input from the user or set the same as the decompostion
-c     --- for the field solver.
-      if (lautodecomp) then
+c       --- Set the decomposition based on the user set userdecomp. This
+c       --- is the fractional ranges of the particles for each processor.
+c       --- It is assumed that userdecomp has been properly normalized so
+c       --- that if the sum of the ranges covers the whole grid, then the
+c       --- sum is one.
 
-c       --- Set from field solver decompostion
+c       --- All values of userdecomp must be > 0.
         do i=0,nslaves-1
-          izpslave(i) = izfsslave(i)
-          nzpslave(i) = nzfsslave(i) - (overlap - 1)
-          if (i == nslaves-1) nzpslave(i) = nzfsslave(i)
-c         --- These shouldn't include the guard cells
-          zpslmin(i) = izpslave(i)*dz + zmmin
-          zpslmax(i) = (izpslave(i)+nzpslave(i))*dz + zmmin
-c         --- Now include the guard cells
-          izpslave(i) = izpslave(i) - nzpguard
-          nzpslave(i) = nzpslave(i) + 2*nzpguard
-c         --- Make sure that the processors doesn't have grid cells
-c         --- sticking out the ends.
-          if (izpslave(i) < 0) then
-            nzpslave(i) = nzpslave(i) + izpslave(i)
-            izpslave(i) = 0
-          endif
-          if (izpslave(i) + nzpslave(i) > nz) nzpslave(i) = nz - izpslave(i)
-        enddo
-c       --- Set zpslmax for the last process so that it is exactly equal to
-c       --- zmmax (avoiding problems with roundoff errors).
-        zpslmax(nslaves-1) = zmmax
-
-      else
-c       --- It is assumed that the user supplied decomposition is specified
-c       --- in the array zslave, which is the fractional z-ranges
-c       --- of the particles for each processor. It is assumed that zslave
-c       --- has been properly normalized so that if the sum of the z-ranges
-c       --- covers the whole grid, then the sum is one.
-
-c       --- Get sum of zslave to allow proper scaling.
-        sumzslave = 1.
-c       sumzslave = zslave(0)
-c       do i=1,nslaves-1
-c         sumzslave = sumzslave + zslave(i)
-c       enddo
-
-c       --- All values of zslave must be > 0.
-        do i=0,nslaves-1
-c         if (zslave(i)/sumzslave*(zmmax-zmmin) <= 0.) then
-          if (zslave(i) <= 0.) then
+          if (userdecomp(i) <= 0.) then
             call kaboom("domaindecomposeparticles: ERROR: The length of all
-     & particle domains must be positive. Fix zslave appropriately.")
+     & particle domains must be positive. Fix userdecomp appropriately.")
             return
           endif
         enddo
@@ -751,7 +737,7 @@ c       --- Set minimum z of each processor.
         zlast = zmmin
         do i=0,nslaves-1
           zpslmin(i) = zlast
-          zpslmax(i) = zlast + zslave(i)/sumzslave*(zmmax - zmmin)
+          zpslmax(i) = zlast + userdecomp(i)*(zmmax - zmmin)
           zlast = zpslmax(i)
         enddo
 
@@ -764,29 +750,297 @@ c       --- be aligned with the grid.
          enddo
         endif
 
-c       --- This is only needed to avoid problems from round off in the
-c       --- accumulation. From the loop above, zpslmax(nslaves-1) will
-c       --- not be exactly the same as zmmax due to roundoff.
-        if (zpslmax(nslaves-1) > zmmax) zpslmax(nslaves-1) = zmmax
-
-c       --- Set iz and nz. This is done so that zmesh(izpslave) < zpslmin, and
-c       --- zmesh(izpslave+nzpslave) > zpslmax.
-        do i=0,nslaves-1
-          izpslave(i) = int((zpslmin(i) - zmmin)/dz) - nzpguard
-          nzpslave(i) = int((zpslmax(i) - zmmin)/dz) - izpslave(i) + 1 +
-     &                  2*nzpguard
-c         --- Make sure that the processors doesn't have grid cells
-c         --- sticking out the end.
-          if (izpslave(i) < 0) then
-            nzpslave(i) = nzpslave(i) + izpslave(i)
-            izpslave(i) = 0
-          endif
-          if (izpslave(i) + nzpslave(i) > nz) nzpslave(i) = nz - izpslave(i)
-        enddo
-
       endif
+
+c     --- Now set iz and nz based off of zpslmin and zpslmax.
+c     --- This is done so that zmesh[iz] <= zpmin, and zmesh[iz+nz] >= zpmax.
+      do i=0,nslaves-1
+
+        izpslave(i) = int((zpslmin(i) - zmmin)/dz)
+
+c       --- Check for the case which has a round-off problem, which
+c       --- happens when zpmin lies on a grid point. This ensures that if
+c       --- zpmin does lie on a grid point, then iz is set to that point.
+        if (zpslmin(i) == zmmin + (izpslave(i) + 1)*dz) then
+          izpslave(i) = izpslave(i) + 1
+        endif
+
+        nzpslave(i) = int((zpslmax(i) - zmmin)/dz) - izpslave(i)
+
+c       --- Check to ensure that zmesh[iz+nz] >= zpmax. This is needed since
+c       --- the int rounds down.
+        if (zpslmax(i) > zmmin + (izpslave(i) + nzpslave(i))*dz) then
+          nzpslave(i) = nzpslave(i) + 1
+        endif
+
+c       --- Now add in the user specifed guard cells.
+        izpslave(i) = izpslave(i) - nzpguard
+        nzpslave(i) = nzpslave(i) + 2*nzpguard
+
+c       --- Make sure that the processors don't have grid cells
+c       --- sticking out the end beyond the edge of the mesh.
+        if (izpslave(i) < 0) then
+          nzpslave(i) = nzpslave(i) + izpslave(i)
+          izpslave(i) = 0
+        endif
+        if (izpslave(i) + nzpslave(i) > nz) then
+          nzpslave(i) = nz - izpslave(i)
+        endif
+
+      enddo
 
       return
       end
 c=============================================================================
+      subroutine initializedecomp(decomp)
+      use Decompositionmodule
+      type(Decomposition):: decomp
+
+#ifdef MPIPARALLEL
+      call initializedecomp_work(decomp)
+#else
+      decomp%mpi_comm_x = 0
+      decomp%mpi_comm_y = 0
+      decomp%mpi_comm_z = 0
+#endif
+
+      return
+      end
 c=============================================================================
+      integer(ISZ) function convertindextoproc(ix,iy,iz,nx,ny,nz)
+      integer(ISZ):: ix,iy,iz,nx,ny,nz
+
+      integer(ISZ):: ixt,iyt,izt
+
+      ixt = ix
+      iyt = iy
+      izt = iz
+
+      if (ixt < 0   ) ixt = nx - 1
+      if (ixt > nx-1) ixt = 0
+      if (iyt < 0   ) iyt = ny - 1
+      if (iyt > ny-1) iyt = 0
+      if (izt < 0   ) izt = nz - 1
+      if (izt > nz-1) izt = 0
+
+      convertindextoproc = ixt + iyt*nx + izt*nx*ny
+
+      return
+      end
+c===========================================================================
+      subroutine setupdecompositionw3d()
+      use Subtimers3d
+      use Parallel
+      use InGen
+      use InGen3d
+      use InDiag
+      use InPart
+      use InMesh3d
+      use Picglb
+      use Picglb3d
+      use Fields3d
+      use Fields3dParticles
+      use Io
+      use Z_arrays
+      use LatticeInternal
+      use Z_Moments
+      use InjectVars
+      use InjectVars3d
+
+c This is the routine which divies up the work among the slaves.
+
+      integer(ISZ):: convertindextoproc
+
+c     --- nslaves is obsolete but still set it since it is used in places.
+      nslaves = nprocs
+
+c     --- This does the decomposition in z by default, but includes
+c     --- any user specified transverse decomposition.
+      nzprocs = nprocs/(nxprocs*nyprocs)
+      if (nxprocs*nyprocs*nzprocs .ne. nprocs) then
+        call kaboom("setupdecompositionw3d: nxprocs*nyprocs*nzprocs must be equal to nprocs")
+        return
+      endif
+      call gchange("Parallel",0)
+
+      if (my_index > 0) then
+        verbosity = 0
+        lprntpara = .false.
+      endif
+
+c     --- Divide up the processors using fortran ordering, with
+c     --- x being the most rapidly varying index.
+      izproc = int(my_index/(nxprocs*nyprocs))
+      iyproc = int((my_index - izproc*(nxprocs*nyprocs))/nxprocs)
+      ixproc = my_index - izproc*(nxprocs*nyprocs) - iyproc*nxprocs
+      iprocgrid(0) = ixproc
+      iprocgrid(1) = iyproc
+      iprocgrid(2) = izproc
+      nprocgrid(0) = nxprocs
+      nprocgrid(1) = nyprocs
+      nprocgrid(2) = nzprocs
+
+c     --- Find the six neighboring processors
+       procneighbors(0,0) = convertindextoproc(ixproc-1,iyproc  ,izproc  ,
+     &                                         nxprocs,nyprocs,nzprocs)
+       procneighbors(1,0) = convertindextoproc(ixproc+1,iyproc  ,izproc  ,
+     &                                         nxprocs,nyprocs,nzprocs)
+       procneighbors(0,1) = convertindextoproc(ixproc  ,iyproc-1,izproc  ,
+     &                                         nxprocs,nyprocs,nzprocs)
+       procneighbors(1,1) = convertindextoproc(ixproc  ,iyproc+1,izproc  ,
+     &                                         nxprocs,nyprocs,nzprocs)
+       procneighbors(0,2) = convertindextoproc(ixproc  ,iyproc  ,izproc-1,
+     &                                         nxprocs,nyprocs,nzprocs)
+       procneighbors(1,2) = convertindextoproc(ixproc  ,iyproc  ,izproc+1,
+     &                                         nxprocs,nyprocs,nzprocs)
+
+c---------------------------------------------------------------------------
+c     --- Setup the decomposition data
+      fsdecomp%my_index = my_index
+      fsdecomp%nxglobal = nx
+      fsdecomp%nyglobal = ny
+      fsdecomp%nzglobal = nz
+      fsdecomp%ixproc = ixproc
+      fsdecomp%iyproc = iyproc
+      fsdecomp%izproc = izproc
+      fsdecomp%nxprocs = nxprocs
+      fsdecomp%nyprocs = nyprocs
+      fsdecomp%nzprocs = nzprocs
+      call Decompositionchange(fsdecomp)
+      fsdecomp%iprocgrid = iprocgrid
+      fsdecomp%nprocgrid = nprocgrid
+
+      ppdecomp%my_index = my_index
+      ppdecomp%nxglobal = nx
+      ppdecomp%nyglobal = ny
+      ppdecomp%nzglobal = nz
+      ppdecomp%ixproc = ixproc
+      ppdecomp%iyproc = iyproc
+      ppdecomp%izproc = izproc
+      ppdecomp%nxprocs = nxprocs
+      ppdecomp%nyprocs = nyprocs
+      ppdecomp%nzprocs = nzprocs
+      call Decompositionchange(ppdecomp)
+      ppdecomp%iprocgrid = iprocgrid
+      ppdecomp%nprocgrid = nprocgrid
+
+c     --- Create communicator groups for processors along each axis.
+      call initializedecomp(fsdecomp)
+      ppdecomp%mpi_comm_x = fsdecomp%mpi_comm_x
+      ppdecomp%mpi_comm_y = fsdecomp%mpi_comm_y
+      ppdecomp%mpi_comm_z = fsdecomp%mpi_comm_z
+
+c     --- Calculate how the work is to be arranged among the processors.
+
+      call domaindecomposefields(nx,nxprocs,lfsautodecomp.and.lfsautodecompx,
+     &                           fsdecomp%ix,fsdecomp%nx,grid_overlap)
+      call domaindecomposefields(ny,nyprocs,lfsautodecomp.and.lfsautodecompy,
+     &                           fsdecomp%iy,fsdecomp%ny,grid_overlap)
+      call domaindecomposefields(nz,nzprocs,lfsautodecomp.and.lfsautodecompz,
+     &                           fsdecomp%iz,fsdecomp%nz,grid_overlap)
+
+c     --- Set the grid cell size, which is needed below. It must be set here
+c     --- after the field solve domain decomposition since nzlocal may be
+c     --- determined from the user supplied decomposition.
+      dx = (xmmax - xmmin)/nx
+      if (ny == 0) then
+        dy = dx
+      else
+        dy = (ymmax - ymmin)/ny
+      endif
+      dz = (zmmax - zmmin)/nz
+
+      fsdecomp%xmin = xmmin + fsdecomp%ix*dx
+      fsdecomp%ymin = ymmin + fsdecomp%iy*dy
+      fsdecomp%zmin = zmmin + fsdecomp%iz*dz
+      fsdecomp%xmax = xmmin + (fsdecomp%ix + fsdecomp%nx)*dx
+      fsdecomp%ymax = ymmin + (fsdecomp%iy + fsdecomp%ny)*dy
+      fsdecomp%zmax = zmmin + (fsdecomp%iz + fsdecomp%nz)*dz
+
+c     --- Now setup the decomposition of the particles. Note that the
+c     --- xmin, xmax etc in ppdecomp will be the boundaries for the particles
+c     --- and are not necessarily tied to any grid.
+c     --- Set default values for the ppdecomp.xmin etc. from the values in
+c     --- fsdecomp. The grid_overlap is removed so that the ppdecomp
+c     --- domains do not overlap. Note that if lautodecomp is false, these
+c     --- values will be ignored.
+      ppdecomp%xmin = fsdecomp%xmin
+      ppdecomp%ymin = fsdecomp%ymin
+      ppdecomp%zmin = fsdecomp%zmin
+      ppdecomp%xmax = fsdecomp%xmax - (grid_overlap-1)*dx
+      ppdecomp%ymax = fsdecomp%ymax - (grid_overlap-1)*dy
+      ppdecomp%zmax = fsdecomp%zmax - (grid_overlap-1)*dz
+c     --- The domain of the last processor extends to the edge of the grid.
+      ppdecomp%xmax(nxprocs-1) = fsdecomp%xmax(nxprocs-1)
+      ppdecomp%ymax(nyprocs-1) = fsdecomp%ymax(nyprocs-1)
+      ppdecomp%zmax(nzprocs-1) = fsdecomp%zmax(nzprocs-1)
+
+      call domaindecomposeparticles(nx,nxprocs,nxpguard,xmmin,xmmax,dx,
+     &                              userdecompx,lautodecomp,
+     &                              ppdecomp%ix,ppdecomp%nx,
+     &                              ppdecomp%xmin,ppdecomp%xmax)
+      call domaindecomposeparticles(ny,nyprocs,nypguard,ymmin,ymmax,dy,
+     &                              userdecompy,lautodecomp,
+     &                              ppdecomp%iy,ppdecomp%ny,
+     &                              ppdecomp%ymin,ppdecomp%ymax)
+      call domaindecomposeparticles(nz,nzprocs,nzpguard,zmmin,zmmax,dz,
+     &                              userdecompz,lautodecomp,
+     &                              ppdecomp%iz,ppdecomp%nz,
+     &                              ppdecomp%zmin,ppdecomp%zmax)
+
+c---------------------------------------------------------------------------
+c     --- Reset local values
+      if (injctspc > 0) then
+        injctspc = max(1,int(injctspc/nprocs*1.1))
+      endif
+
+      nxlocal = fsdecomp%nx(ixproc)
+      nylocal = fsdecomp%ny(iyproc)
+      nzlocal = fsdecomp%nz(izproc)
+      ixfsmin = 0
+      iyfsmin = 0
+      izfsmin = 0
+      ixfsmax = fsdecomp%nx(ixproc)
+      iyfsmax = fsdecomp%ny(iyproc)
+      izfsmax = fsdecomp%nz(izproc)
+      xmminlocal = fsdecomp%xmin(ixproc)
+      ymminlocal = fsdecomp%ymin(iyproc)
+      zmminlocal = fsdecomp%zmin(izproc)
+      xmmaxlocal = fsdecomp%xmax(ixproc)
+      ymmaxlocal = fsdecomp%ymax(iyproc)
+      zmmaxlocal = fsdecomp%zmax(izproc)
+      nxp = ppdecomp%nx(ixproc)
+      nyp = ppdecomp%ny(iyproc)
+      nzp = ppdecomp%nz(izproc)
+
+c     --- The xmminp etc are tied to the field solver grid, with xmminp being
+c     --- the location of the grid cell just below the particle boundary and
+c     --- xmmaxp being just above.
+      xmminp = xmmin + ppdecomp%ix(ixproc)*dx
+      ymminp = ymmin + ppdecomp%iy(iyproc)*dy
+      zmminp = zmmin + ppdecomp%iz(izproc)*dz
+      xmmaxp = xmmin + (ppdecomp%ix(ixproc) + ppdecomp%nx(ixproc))*dx
+      ymmaxp = ymmin + (ppdecomp%iy(iyproc) + ppdecomp%ny(iyproc))*dy
+      zmmaxp = zmmin + (ppdecomp%iz(izproc) + ppdecomp%nz(izproc))*dz
+
+c     --- The xpminlocal etc are set to the particle boundaries and are not
+c     --- tied to any grid.
+      xpminlocal = ppdecomp%xmin(ixproc)
+      ypminlocal = ppdecomp%ymin(iyproc)
+      zpminlocal = ppdecomp%zmin(izproc)
+      xpmaxlocal = ppdecomp%xmax(ixproc)
+      ypmaxlocal = ppdecomp%ymax(iyproc)
+      zpmaxlocal = ppdecomp%zmax(izproc)
+
+c     --- Copy the data over to the old arrays, until the rest of the code
+c     --- has caught up (and then they can be deleted).
+      izfsslave = fsdecomp%iz
+      nzfsslave = fsdecomp%nz
+      izpslave = ppdecomp%iz
+      nzpslave = ppdecomp%nz
+      zpslmin =  ppdecomp%zmin
+      zpslmax =  ppdecomp%zmax
+
+      return
+      end
+c===========================================================================

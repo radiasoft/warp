@@ -1,7 +1,7 @@
 from warp import *
 import time
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.25 2007/06/04 23:02:52 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.26 2008/11/19 18:29:59 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -148,11 +148,11 @@ def field_solve(phisave,solver,pkg3d):
     aftertime = time.time()
 
   try:
-    nslaves = solver.nslaves
+    nprocs = solver.nprocs
   except AttributeError:
-    nslaves = top.nslaves
+    nprocs = top.nprocs
 
-  if nslaves <= 1:
+  if nprocs <= 1:
     return aftertime - beforetime
   else:
     return globalsum(aftertime - beforetime)

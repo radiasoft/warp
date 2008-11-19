@@ -24,6 +24,15 @@ class MagnetostaticMG(SubcycledPoissonSolver):
 
   def __init__(self,**kw):
     self.grid_overlap = 2
+
+    # --- Save input parameters
+    self.processdefaultsfrompackage(MagnetostaticMG.__f3dinputs__,f3d,kw)
+    self.processdefaultsfrompackage(MagnetostaticMG.__bfieldinputs__,
+                                    f3d.bfield,kw)
+
+    # --- Check for cylindrical geometry
+    if self.lcylindrical: self.solvergeom = w3d.RZgeom
+
     SubcycledPoissonSolver.__init__(self,kwdict=kw)
     self.ncomponents = 3
     self.nxguard = 1
@@ -35,36 +44,8 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     # --- any conductors.
     f3d.gridmode = 1
 
-    # --- Save input parameters
-    for name in MagnetostaticMG.__f3dinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(f3d,name))
-      if kw.has_key(name): del kw[name]
-    for name in MagnetostaticMG.__bfieldinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(f3d.bfield,name))#Python2.3
-        self.__dict__[name] = kw.get(name,getattr(f3d.bfield,name))
-      if kw.has_key(name): del kw[name]
-
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
-
-    # --- Check for cylindrical geometry
-    self.lcylindrical = (self.solvergeom == w3d.RZgeom) or self.lcylindrical
-
-    # --- Fix the values of xmmin and ymmin as necessary
-    if self.lcylindrical:
-      self.ny = 0
-      if self.xmmin  < 0.: self.xmmin  = 0.
-      if self.ymmin  < 0.: self.ymmin  = 0.
-      if self.xmminp < 0.: self.xmminp = 0.
-      if self.ymminp < 0.: self.ymminp = 0.
-      self.l2symtry = false
-      self.l4symtry = false
-      self.bounds[0] = neumann
-      self.bounds[2] = dirichlet
-      self.bounds[3] = dirichlet
 
     # --- Create a conductor object, which by default is empty.
     self.conductors = ConductorType()
@@ -88,9 +69,6 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     # --- At the start, assume that there are no bends. This is corrected
     # --- in the solve method when there are bends.
     self.linbend = false
-
-    # --- Turn of build quads option
-    self.lbuildquads = false
 
   def __getstate__(self):
     dict = SubcycledPoissonSolver.__getstate__(self)
@@ -123,9 +101,9 @@ class MagnetostaticMG(SubcycledPoissonSolver):
 
   def getdims(self):
     # --- Returns the dimensions of the j, b, and a arrays
-    return ((3,1+self.nx,1+self.ny,1+self.nzlocal),
-            (3,1+self.nx,1+self.ny,1+self.nzlocal),
-            (3,3+self.nx,3+self.ny,3+self.nzlocal))
+    return ((3,1+self.nxlocal,1+self.nylocal,1+self.nzlocal),
+            (3,1+self.nxlocal,1+self.nylocal,1+self.nzlocal),
+            (3,3+self.nxlocal,3+self.nylocal,3+self.nzlocal))
 
   def loadj(self,lzero=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,**kw)
@@ -184,10 +162,10 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
     if self.lparallel:
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
-      setjforfieldsolve3d(self.nx,self.ny,self.nzlocal,self.source,
-                          self.nxp,self.nyp,self.nzp,self.sourcep,self.nzpguard,
-                          self.my_index,self.nslaves,self.izpslave,self.nzpslave,
-                          self.izfsslave,self.nzfsslave)
+      setjforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,self.source,
+                          self.nxp,self.nyp,self.nzp,self.sourcep,
+                          self.nxpguard,self.nypguard,self.nzpguard,
+                          self.fsdecomp,self.ppdecomp)
 
   def getpotentialpforparticles(self,*args):
     """Despite the name, this actually gets the field instead, since that is
@@ -196,44 +174,90 @@ class MagnetostaticMG(SubcycledPoissonSolver):
       SubcycledPoissonSolver.getfieldpforparticles(self,*args)
     else:
       self.setfieldpforparticles(*args)
-      getphipforparticles3d(3,self.nx,self.ny,self.nzlocal,self.field,
+      getphipforparticles3d(3,self.nxlocal,self.nylocal,self.nzlocal,self.field,
                             self.nxp,self.nyp,self.nzp,self.fieldp,0,0,0,
-                            self.my_index,self.nslaves,self.izpslave,self.nzpslave,
-                            self.izfsslave,self.nzfsslave)
+                            self.fsdecomp,self.ppdecomp)
 
-  def makesourceperiodic(self):
+
+  def applysourceboundaryconditions(self):
+    if ((self.pbounds[0] == 1 or self.l4symtry) and self.nx > 0 and
+        self.solvergeom != w3d.RZgeom and
+        self.fsdecomp.ix[self.fsdecomp.ixproc] == 0):
+      self.source[:,0,:,:] = 2.*self.source[:,0,:,:]
+
+    if (self.pbounds[1] == 1 and self.nx > 0 and
+        self.fsdecomp.ix[self.fsdecomp.ixproc]+self.nxlocal == self.nx):
+      self.source[:,-1,:,:] = 2.*self.source[:,-1,:,:]
+
+    if ((self.pbounds[2] == 1 or self.l2symtry or self.l4symtry) and
+        self.ny > 0 and self.fsdecomp.iy[self.fsdecomp.iyproc] == 0):
+      self.source[:,:,0,:] = 2.*self.source[:,:,0,:]
+
+    if (self.pbounds[3] == 1 and self.ny > 0 and
+        self.fsdecomp.iy[self.fsdecomp.iyproc]+self.nylocal == self.ny):
+      self.source[:,:,-1,:] = 2.*self.source[:,:,-1,:]
+
+    if (self.pbounds[4] == 1 and self.nz > 0 and
+        self.fsdecomp.iz[self.fsdecomp.izproc] == 0):
+      self.source[:,:,:,0] = 2.*self.source[:,:,:,0]
+
+    if (self.pbounds[5] == 1 and self.nz > 0 and
+        self.fsdecomp.iz[self.fsdecomp.izproc]+self.nzlocal == self.nz):
+      self.source[:,:,:,-1] = 2.*self.source[:,:,:,-1]
+
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
-      self.source[:,0,:,:] = self.source[:,0,:,:] + self.source[:,-1,:,:]
-      self.source[:,-1,:,:] = self.source[:,0,:,:]
-    if self.pbounds[2] == 2 or self.pbounds[3] == 2:
-      self.source[:,:,0,:] = self.source[:,:,0,:] + self.source[:,:,-1,:]
-      self.source[:,:,-1,:] = self.source[:,:,0,:]
-    if self.pbounds[0] == 1 and not self.l4symtry:
-       self.source[:,0,:,:] = 2.*self.source[:,0,:,:]
-    if self.pbounds[1] == 1: self.source[:,-1,:,:] = 2.*self.source[:,-1,:,:]
-    if self.pbounds[2] == 1 and not (self.l2symtry or self.l4symtry):
-       self.source[:,:,0,:] = 2.*self.source[:,:,0,:]
-    if self.pbounds[3] == 1: self.source[:,:,-1,:] = 2.*self.source[:,:,-1,:]
-    if self.pbounds[4] == 2 or self.pbounds[5] == 2:
-      if self.lparallel:
-        self.makesourceperiodic_parallel()
+      if self.nxprocs == 1:
+        self.source[:,0,:,:] = self.source[:,0,:,:] + self.source[:,-1,:,:]
+        self.source[:,-1,:,:] = self.source[:,0,:,:]
       else:
+        tag = 70
+        if self.fsdecomp.ixproc == self.fsdecomp.nxprocs-1:
+          ip = self.convertindextoproc(ix=self.fsdecomp.ixproc+1,
+                                       bounds=self.pbounds)
+          mpi.send(self.source[:,self.nxlocal,:,:],ip,tag)
+          self.source[:,self.nxlocal,:,:],status = mpi.recv(ip,tag)
+        elif self.fsdecomp.ixproc == 0:
+          ip = self.convertindextoproc(ix=self.fsdecomp.ixproc-1,
+                                       bounds=self.pbounds)
+          sourcetemp,status = mpi.recv(ip,tag)
+          self.source[:,0,:,:] = self.source[:,0,:,:] + sourcetemp
+          mpi.send(self.source[:,0,:,:],ip,tag)
+
+    if self.pbounds[2] == 2 or self.pbounds[3] == 2:
+      if self.nyprocs == 1:
+        self.source[:,:,0,:] = self.source[:,:,0,:] + self.source[:,:,-1,:]
+        self.source[:,:,-1,:] = self.source[:,:,0,:]
+      else:
+        tag = 71
+        if self.fsdecomp.iyproc == self.fsdecomp.nyprocs-1:
+          ip = self.convertindextoproc(iy=self.fsdecomp.iyproc+1,
+                                       bounds=self.pbounds)
+          mpi.send(self.source[:,:,self.nylocal,:],ip,tag)
+          self.source[:,:,self.nylocal,:],status = mpi.recv(ip,tag)
+        elif self.fsdecomp.iyproc == 0:
+          ip = self.convertindextoproc(iy=self.fsdecomp.iyproc-1,
+                                       bounds=self.pbounds)
+          sourcetemp,status = mpi.recv(ip,tag)
+          self.source[:,:,0,:] = self.source[:,:,0,:] + sourcetemp
+          mpi.send(self.source[:,:,0,:],ip,tag)
+
+    if self.pbounds[4] == 2 or self.pbounds[5] == 2:
+      if self.nzprocs == 1:
         self.source[:,:,:,0] = self.source[:,:,:,0] + self.source[:,:,:,-1]
         self.source[:,:,:,-1] = self.source[:,:,:,0]
-    if self.pbounds[4] == 1: self.source[:,:,:,0] = 2.*self.source[:,:,:,0]
-    if self.pbounds[5] == 1: self.source[:,:,:,-1] = 2.*self.source[:,:,:,-1]
-
-  def makesourceperiodic_parallel(self):
-    tag = 70
-    if me == self.nslaves-1:
-      request = mpi.isend(self.source[:,:,:,self.nzlocal],0,tag)
-      self.source[:,:,:,self.nzlocal],status = mpi.recv(0,tag)
-    elif me == 0:
-      sourcetemp,status = mpi.recv(self.nslaves-1,tag)
-      self.source[:,:,:,0] = self.source[:,:,:,0] + sourcetemp
-      request = mpi.isend(self.source[:,:,:,0],self.nslaves-1,tag)
-    if me == 0 or me == self.nslaves-1:
-      status = request.wait()
+      else:
+        tag = 72
+        if self.fsdecomp.izproc == self.fsdecomp.nzprocs-1:
+          ip = self.convertindextoproc(iz=self.fsdecomp.izproc+1,
+                                       bounds=self.pbounds)
+          mpi.send(self.source[:,:,:,self.nzlocal],ip,tag)
+          self.source[:,:,:,self.nzlocal],status = mpi.recv(ip,tag)
+        elif self.fsdecomp.izproc == 0:
+          ip = self.convertindextoproc(iz=self.fsdecomp.izproc-1,
+                                       bounds=self.pbounds)
+          sourcetemp,status = mpi.recv(ip,tag)
+          self.source[:,:,:,0] = self.source[:,:,:,0] + sourcetemp
+          mpi.send(self.source[:,:,:,0],ip,tag)
 
   def installconductor(self,conductor,
                             xmin=None,xmax=None,
@@ -244,11 +268,12 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     self.conductorlist.append(conductor)
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
-                      self.nx,self.ny,self.nzlocal,self.nz,
+                      self.nx,self.ny,self.nz,
+                      self.nxlocal,self.nylocal,self.nzlocal,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                       self.zmmin,self.zmmax,1.,self.l2symtry,self.l4symtry,
                       solvergeom=self.solvergeom,
-                      conductors=self.conductors)
+                      conductors=self.conductors,decomp=self.fsdecomp)
 
   def hasconductors(self):
     conductorobject = self.getconductorobject()
@@ -276,8 +301,8 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     conductorobject = self.getconductorobject()
 
     if self.lcylindrical:
-      init_bworkgrid(self.nx,self.nzlocal,self.dx,self.dz,
-                     self.xmmin,self.zmminlocal,self.bounds,
+      init_bworkgrid(self.nxlocal,self.nzlocal,self.dx,self.dz,
+                     self.xmminlocal,self.zmminlocal,self.bounds,
                      self.potential[0,:,0,:],self.source[0,:,0,:],
                      self.lparallel)
 
@@ -296,40 +321,42 @@ class MagnetostaticMG(SubcycledPoissonSolver):
       if self.lcylindrical:
         multigridrzb(iwhich,id,self.potential[id,:,1,:],
                      self.source[id,:,0,:],
-                     self.nx,self.nzlocal,self.mgtol[id])
+                     self.nxlocal,self.nzlocal,self.mgtol[id])
       else:
-        multigrid3dsolve(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
+        multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,
+                         self.nxlocal,self.nylocal,self.nzlocal,
                          self.dx,self.dy,self.dz,
                          self.potential[id,:,:,:],
                          self.source[id,:,:,:],
                          rstar,self.linbend,self.bounds,
-                         self.xmmin,self.ymmin,self.zmminlocal,
-                         self.zmmin,
+                         self.xmmin,self.ymmin,self.zmmin,
                          self.getzgrid(),self.getzgrid(),
                          self.mgparam[id],self.mgform[id],
                          self.mgiters[id],self.mgmaxiters[id],
                          self.mgmaxlevels[id],self.mgerror[id],
                          self.mgtol[id],self.mgverbose[id],
                          self.downpasses[id],self.uppasses[id],
-                         self.lcndbndy,self.laddconductor,
-                         self.icndbndy,false,
+                         self.lcndbndy,self.laddconductor,self.icndbndy,
                          self.gridmode,conductorobject,self.lprecalccoeffs,
-                         self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+                         self.fsdecomp)
 
-    # --- This is slightly inefficient in some cases, since for example, the
-    # --- MG solver already takes care of the longitudinal BC's.
-    setaboundaries3d(self.potential,self.nx,self.ny,self.nzlocal,
-                     self.zmminlocal,self.zmmaxlocal,self.zmmin,self.zmmax,
-                     self.bounds,self.lcylindrical,false)
+  # # --- This is slightly inefficient in some cases, since for example, the
+  # # --- MG solver already takes care of the longitudinal BC's.
+  # setaboundaries3d(self.potential,self.nx,self.ny,self.nzlocal,
+  #                  self.zmminlocal,self.zmmaxlocal,self.zmmin,self.zmmax,
+  #                  self.bounds,self.lcylindrical,false)
 
     # --- Now take the curl of A to get B.
-    getbfroma3d(self.potential,self.field,self.nx,self.ny,self.nzlocal,self.dx,self.dy,self.dz,self.xmmin,
+    getbfroma3d(self.potential,self.field,
+                self.nxlocal,self.nylocal,self.nzlocal,
+                self.dx,self.dy,self.dz,self.xmminlocal,
                 self.lcylindrical,self.lusevectorpotential)
 
     # --- If using the analytic form of Btheta, calculate it here.
     if self.lanalyticbtheta:
       getanalyticbtheta(self.field,self.source,
-                        self.nx,self.ny,self.nzlocal,self.dx,self.xmmin)
+                        self.nxlocal,self.nylocal,self.nzlocal,
+                        self.dx,self.xmminlocal)
 
     # --- Unscale the current density
     self.source[...] = self.source/(mu0*eps0)

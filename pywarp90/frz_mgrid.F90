@@ -5793,199 +5793,6 @@ TYPE(GRIDtype)::grid
 return
 END subroutine find_mgparam_rz_1g
 
-subroutine srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill,  &
-                      xmin,xmax,lshell,                      &
-                      zmmin,zmmax,zbeam,dx,dz,nx,nz,             &
-                      ix_axis,xmesh,l2symtry_in,l4symtry_in,condid)
-! call subroutine srfrvout_rz (which determines grid nodes near conductors and give
-! directions and distances to conductors), initialize and assign coefficients
-! for multigrid Poisson solver.
-use Conductor3d
-USE multigridrz
-implicit none
-character(*) rofzfunc
-real(kind=8):: volt,zmin,zmax,xcent,rmax
-LOGICAL(ISZ):: lfill,lshell,l2symtry_in,l4symtry_in
-real(kind=8):: xmin,xmax,ymax
-real(kind=8):: zmmin,zmmax,zbeam,dx,dz
-INTEGER(ISZ):: nx,nz,ix_axis
-real(kind=8):: xmesh(0:nx)
-integer(ISZ):: condid
-
-INTEGER(ISZ) :: i,nrc,nzc,igrid,jmin,jmax
-REAL(8) :: drc,dzc,zmin_in,zmax_in
-LOGICAL(ISZ) :: doloop
-
-TYPE(CONDtype), POINTER :: c
-TYPE(BNDtype), POINTER :: b
-IF(solvergeom==Zgeom .or. solvergeom==Rgeom) return
-
-do igrid=1,ngrids
- IF(zmin>grids_ptr(igrid)%grid%zmax .OR. zmax<grids_ptr(igrid)%grid%zmin .OR. &
-    rmax<grids_ptr(igrid)%grid%rmin) cycle
- nlevels=grids_ptr(igrid)%grid%nlevels
- ixlbnd = grids_ptr(igrid)%grid%ixlbnd
- ixrbnd = grids_ptr(igrid)%grid%ixrbnd
- do i = 1, nlevels
-  IF(i == 1) then
-    b => grids_ptr(igrid)%grid%bndfirst
-  else
-    b => b%next
-  END if
-  nrc = b%nr
-  nzc = b%nz
-  drc = b%dr
-  dzc = b%dz
-  izlbnd = b%izlbnd
-  izrbnd = b%izrbnd
-  zmin_in = b%zmin!-b%dz
-  zmax_in = b%zmax!+b%dz
-
-  conductors%interior%n = 0
-  conductors%evensubgrid%n = 0
-  conductors%oddsubgrid%n = 0
-
-  call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill,  &
-                   grids_ptr(igrid)%grid%rmin,grids_ptr(igrid)%grid%rmax,lshell,                      &
-                   zmin_in,zmax_in,zbeam,drc,dzc,nrc,nzc,             &
-                   -NINT(grids_ptr(igrid)%grid%rmin/b%dr), &
-                   xmesh,l2symtry_in,l4symtry_in,condid)
-
-  call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin, &
-                        ixlbnd,ixrbnd,izlbnd,izrbnd,conductors)
-  
- end do
-end do
-conductors%interior%n = 0
-conductors%evensubgrid%n = 0
-conductors%oddsubgrid%n = 0
-
-return
-end subroutine srfrvoutrz
-
-subroutine srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,   &
-                           lzend,xmin,xmax,lshell,          &
-                           zmmin,zmmax,zbeam,dx,dz,nx,nz,       &
-                           ix_axis,xmesh,l2symtry_in,l4symtry_in,condid)
-! call subroutine srfrvinout_rz (which determines grid nodes near conductors and give
-! directions and distances to conductors), initialize and assign coefficients
-! for multigrid Poisson solver.
-use Conductor3d
-USE multigridrz
-implicit none
-character(*) rminofz,rmaxofz
-real(kind=8):: volt,zmin,zmax,xcent
-LOGICAL(ISZ):: lzend,lshell,l2symtry_in,l4symtry_in
-real(kind=8):: xmin,xmax
-real(kind=8):: zmmin,zmmax,zbeam,dx,dz
-INTEGER(ISZ):: nx,ny,nz,ix_axis,jmin,jmax
-real(kind=8):: xmesh(0:nx)
-integer(ISZ):: condid
-LOGICAL(ISZ) :: doloop
-
-INTEGER(ISZ) :: i,nrc,nzc,igrid
-REAL(8) :: drc,dzc,zmin_in,zmax_in
-
-TYPE(CONDtype), POINTER :: c
-TYPE(BNDtype), POINTER :: b
-
-IF(solvergeom==Zgeom .or. solvergeom==Rgeom) return
-
-do igrid=1,ngrids
- IF(zmin>grids_ptr(igrid)%grid%zmax .OR. zmax<grids_ptr(igrid)%grid%zmin .OR. &
-    xmin>grids_ptr(igrid)%grid%rmax .OR. xmax<grids_ptr(igrid)%grid%rmin) cycle
- nlevels=grids_ptr(igrid)%grid%nlevels
- ixlbnd = grids_ptr(igrid)%grid%ixlbnd
- ixrbnd = grids_ptr(igrid)%grid%ixrbnd
- do i = 1, nlevels
-  IF(i == 1) then
-    b => grids_ptr(igrid)%grid%bndfirst
-  else
-    b => b%next
-  END if
-  nrc = b%nr
-  nzc = b%nz
-  drc = b%dr
-  dzc = b%dz
-  izlbnd = b%izlbnd
-  izrbnd = b%izrbnd
-  zmin_in = b%zmin!-b%dz
-  zmax_in = b%zmax!+b%dz
-
-  conductors%interior%n = 0
-  conductors%evensubgrid%n = 0
-  conductors%oddsubgrid%n = 0
-
-  call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,  &
-                     lzend,grids_ptr(igrid)%grid%rmin,grids_ptr(igrid)%grid%rmax,lshell,                &
-                     zmin_in,zmax_in,zbeam,drc,dzc,nrc,nzc,             &
-                     -NINT(grids_ptr(igrid)%grid%rmin/b%dr), &
-                     xmesh,l2symtry_in,l4symtry_in,condid)
-
-  call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin, &
-                        ixlbnd,ixrbnd,izlbnd,izrbnd,conductors)
-  
- end do
-end do
-conductors%interior%n = 0
-conductors%evensubgrid%n = 0
-conductors%oddsubgrid%n = 0
-return
-end subroutine srfrvinoutrz
-
-subroutine setcndtrrz(xmmin,zmminlocal,zmmin,zbeam,zgrid,nx,nz,dx,dz, &
-                      bound0_in,boundnz_in,boundxy_in,l2symtry_in,l4symtry_in)
-USE multigridrz
-use Conductor3d
-integer(ISZ):: nx,nz
-real(kind=8):: xmmin,zmminlocal,zmmin,zbeam,zgrid,dx,dz
-integer(ISZ):: bound0_in,boundnz_in,boundxy_in
-logical(ISZ):: l2symtry_in,l4symtry_in
-
-INTEGER(ISZ) :: i,nrc,nzc,igrid,jmin,jmax
-REAL(8) :: drc,dzc,rmin_in,zmin_in
-LOGICAL(ISZ) :: doloop
-TYPE(BNDtype), POINTER :: b
-
-IF(solvergeom==Zgeom .or. solvergeom==Rgeom) return
-
-do igrid=1,ngrids
- nlevels=grids_ptr(igrid)%grid%nlevels
- ixlbnd = grids_ptr(igrid)%grid%ixlbnd
- ixrbnd = grids_ptr(igrid)%grid%ixrbnd
- rmin_in = grids_ptr(igrid)%grid%rmin
- do i = 1, nlevels
-  IF(i == 1) then
-    b => grids_ptr(igrid)%grid%bndfirst
-  else
-    b => b%next
-  END if
-  nrc = b%nr
-  nzc = b%nz
-  drc = b%dr
-  dzc = b%dz
-  izlbnd = b%izlbnd
-  izrbnd = b%izrbnd
-  zmin_in = b%zmin!-b%dz
-
-  conductors%interior%n = 0
-  conductors%evensubgrid%n = 0
-  conductors%oddsubgrid%n = 0
-
-  call setcndtr_rz(rmin_in,zmin_in,zmmin,zbeam,zgrid,nrc,nzc,drc,dzc, &
-                   bound0_in,boundnz_in,boundxy_in,l2symtry_in,l4symtry_in)
-
-  call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin, &
-                        ixlbnd,ixrbnd,izlbnd,izrbnd,conductors)
-  
- end do
-end do
-conductors%interior%n = 0
-conductors%evensubgrid%n = 0
-conductors%oddsubgrid%n = 0
-
-END subroutine setcndtrrz
-
 subroutine install_conductors_rz(conductors,grid)
 USE Multigrid3d
 USE multigridrz
@@ -8073,7 +7880,8 @@ implicit none
 
 #ifdef MPIPARALLEL
    if(.not.basegrid%l_parallel) return
-   call persource3d_slave(basegrid%rho(0,0),1,basegrid%nr,0,basegrid%nz)
+!       XXX commented until replaced by applyrhoboundaryconditions_slave
+!  call persource3d_slave(basegrid%rho(0,0),1,basegrid%nr,0,basegrid%nz)
 #endif
 
 end subroutine perrhorz
@@ -10360,10 +10168,11 @@ TYPE(BNDtype), pointer :: b
     mglevel = i-1
     mglevelsnx(mglevel) = b%nr
     mglevelslx(mglevel) = b%dr/grid%bndfirst%dr
+    mglevelsix(mglevel) = 0
+    mglevelsiy(mglevel) = 0
     if (solvergeom==XYgeom) then
       mglevelsny(mglevel) = b%nz
       mglevelsnz(mglevel) = 0
-      mglevelsnzlocal(mglevel) = 0
       mglevelsly(mglevel) = b%dz/grid%bndfirst%dz
       mglevelslz(mglevel) = 1.
     else
@@ -10380,8 +10189,7 @@ TYPE(BNDtype), pointer :: b
       mglevelsnz(mglevel) = b%nz
       mglevelsiz(mglevel) = 0
 #endif
-!      mglevelsnzlocal(mglevel) = b%nz
-      mglevelsnz(mglevel) = b%nz ! mglevelsnzlocal does not seem to be used
+      mglevelsnz(mglevel) = b%nz
       mglevelsly(mglevel) = 1.
       mglevelslz(mglevel) = b%dz/grid%bndfirst%dz
     end if
@@ -11137,7 +10945,7 @@ integer(ISZ):: ixlbnd
 
 end subroutine multigridrzb
 
-subroutine init_bworkgrid(nr,nz,dr,dz,rmin,zmin,bounds,u,rho,l_parallel)
+subroutine init_bworkgrid(nr,nz,dr,dz,rmin,zmin,Bbounds,u,rho,l_parallel)
 use Constant
 use BWorkRZ
 use multigridrz
@@ -11145,7 +10953,7 @@ use multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nr, nz
 REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
-INTEGER(ISZ):: bounds(0:5)
+INTEGER(ISZ):: Bbounds(0:5)
 REAL(8), INTENT(IN),TARGET :: u(0:nr+2,0:nz+2)
 REAL(8), INTENT(IN),TARGET :: rho(nr+1,nz+1)
 LOGICAL(ISZ), INTENT(IN) :: l_parallel
@@ -11258,10 +11066,10 @@ TYPE(BNDtype), POINTER :: b
     bg%invvol(:) = 1._8 / (dr * dz)
   END if
 
-  bg%ixlbnd = bounds(0)
-  bg%ixrbnd = bounds(1)
-  bg%izlbnd = bounds(4)
-  bg%izrbnd = bounds(5)
+  bg%ixlbnd = Bbounds(0)
+  bg%ixrbnd = Bbounds(1)
+  bg%izlbnd = Bbounds(4)
+  bg%izrbnd = Bbounds(5)
 
   IF(solvergeom==Zgeom .or. solvergeom==Rgeom) then
     bg%nlevels=1 ! nlevels XXX

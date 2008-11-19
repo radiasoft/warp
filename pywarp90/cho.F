@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CHO.F, version $Revision: 1.17 $, $Date: 2007/06/04 22:45:16 $
+c@(#) File CHO.F, version $Revision: 1.18 $, $Date: 2008/11/19 18:29:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the interface to the Chombo/AMR fieldsolver.
@@ -65,7 +65,7 @@ c Interface to the Chombo/AMR fieldsolver.
 
       real(kind=8):: x0(3)
       integer(ISZ):: domain(3,2)
-      integer(ISZ):: subdomains(3,2,0:maxslaves-1)
+      integer(ISZ):: subdomains(3,2,0:nprocs-1)
       integer(ISZ):: refratios(cho_nlevels)
 
 #ifdef WITHCHOMBO

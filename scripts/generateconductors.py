@@ -109,7 +109,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.187 2008/08/26 20:00:21 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.188 2008/11/19 18:29:59 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -119,12 +119,13 @@ installedconductors = []
 def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         zmin=None,zmax=None,dfill=2.,
                         zbeam=None,
-                        nx=None,ny=None,nzlocal=None,nz=None,
+                        nx=None,ny=None,nz=None,
+                        nxlocal=None,nylocal=None,nzlocal=None,
                         xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                         zmmin=None,zmmax=None,zscale=1.,l2symtry=None,l4symtry=None,
                         installrz=None,gridmode=1,solvergeom=None,
                         conductors=None,gridrz=None,mgmaxlevels=None,
-                        my_index=None,nslaves=None,izfsslave=None,nzfsslave=None):
+                        decomp=None):
   """
 Installs the given conductors.
   - a: the assembly of conductors
@@ -136,12 +137,15 @@ Installs the given conductors.
               are skipped.
   - zbeam=top.zbeam: location of the beam frame
   - nx,ny,nz: Number of grid cells in the mesh. Defaults to values from w3d
+  - nxlocal,nylocal,nzlocal: Number of grid cells in the mesh for the local
+                             processor. Defaults to values from w3d
   - xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: extent of mesh. Defaults to values
                                          from w3d
   - zscale=1.: scale factor on dz. This is used when the relativistic scaling
               is done for the longitudinal dimension
   - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
                        from w3d
+  - decomp: Decomposition instance holding data for parallelization
   """
   if conductors is None and gridrz is None:
     # --- If conductors was not specified, first check if mesh-refinement
@@ -164,12 +168,11 @@ Installs the given conductors.
     installrz = (frz.getpyobject('basegrid') is not None)
 
   # First, create a grid object
-  g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nzlocal,nz,
+  g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nz,nxlocal,nylocal,nzlocal,
            xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zscale,l2symtry,l4symtry,
            installrz,gridrz,
            mgmaxlevels=mgmaxlevels,
-           my_index=my_index,nslaves=nslaves,
-           izslave=izfsslave,nzslave=nzfsslave)
+           decomp=decomp)
   # Generate the conductor data
   g.getdata(a,dfill)
   # Then install it
@@ -434,8 +437,14 @@ Should never be directly created by the user.
       nx = frz.basegrid.nr
       ny = 0
       nz = frz.basegrid.nz
-      if lparallel: nzlocal = frz.basegrid.nzpar
-      else:         nzlocal = nz
+      if lparallel:
+        nxlocal = frz.basegrid.nrpar
+        nylocal = ny
+        nzlocal = frz.basegrid.nzpar
+      else:
+        nxlocal = nx
+        nylocal = ny
+        nzlocal = nz
       dx = frz.basegrid.dr
       dy = 1.
       dz = frz.basegrid.dz
@@ -445,7 +454,12 @@ Should never be directly created by the user.
       ymmax = mins[1]
       zmmin = frz.basegrid.zmin
       zmmax = frz.basegrid.zmax
-      izfsslave = top.izfsslave
+      ixproc = top.ixproc
+      iyproc = top.iyproc
+      izproc = top.izproc
+      ixlocal = top.fsdecomp.ix[top.ixproc]
+      iylocal = top.fsdecomp.iy[top.iyproc]
+      izlocal = top.fsdecomp.iz[top.izproc]
       # --- This needs to be fixed to handle mesh refinement properly
       l2symtry = w3d.l2symtry
       l4symtry = w3d.l4symtry
@@ -458,11 +472,19 @@ Should never be directly created by the user.
           interior = g.getconductorobject().interior
         except AttributeError:
           interior = g.conductors.interior
-      phi = g.phi[1:-1,1:-1,1:-1]
-      rho = g.rho
       nx = g.nx
       ny = g.ny
       nz = g.nz
+      xslice = slice(1,-1)
+      yslice = slice(1,-1)
+      zslice = slice(1,-1)
+      if nx == 0: xslice = Ellipsis
+      if ny == 0: yslice = Ellipsis
+      if nz == 0: zslice = Ellipsis
+      phi = g.phi[xslice,yslice,zslice]
+      rho = g.rho
+      nxlocal = g.nxlocal
+      nylocal = g.nylocal
       nzlocal = g.nzlocal
       dx = g.dx
       dy = g.dy
@@ -473,7 +495,12 @@ Should never be directly created by the user.
       ymmax = g.ymmax
       zmmin = g.zmmin
       zmmax = g.zmmax
-      izfsslave = g.izfsslave
+      ixproc = g.ixproc
+      iyproc = g.iyproc
+      izproc = g.izproc
+      ixlocal = g.fsdecomp.ix[g.ixproc]
+      iylocal = g.fsdecomp.iy[g.iyproc]
+      izlocal = g.fsdecomp.iz[g.izproc]
       l2symtry = g.l2symtry
       l4symtry = g.l4symtry
 
@@ -489,20 +516,22 @@ Should never be directly created by the user.
     ixmin = max(0,  int((xmin-xmmin)/dx))
     iymin = max(0,  int((ymin-ymmin)/dy))
     izmin = max(0,  int((zmin-zmmin)/dz))
-    izminlocal = max(0,  int((zmin-zmmin)/dz) - izfsslave[me])
+    ixminlocal = max(0,  int((xmin-xmmin)/dx) - ixlocal)
+    iyminlocal = max(0,  int((ymin-ymmin)/dy) - iylocal)
+    izminlocal = max(0,  int((zmin-zmmin)/dz) - izlocal)
     ixmax = min(nx, int((xmax-xmmin)/dx)+1)
     iymax = min(ny, int((ymax-ymmin)/dy)+1)
     izmax = min(nz, int((zmax-zmmin)/dz)+1)
-    izmaxlocal = min(nzlocal, int((zmax-zmmin)/dz)+1 - izfsslave[me])
+    ixmaxlocal = min(nxlocal, int((xmax-xmmin)/dx)+1 - ixlocal)
+    iymaxlocal = min(nylocal, int((ymax-ymmin)/dy)+1 - iylocal)
+    izmaxlocal = min(nzlocal, int((zmax-zmmin)/dz)+1 - izlocal)
 
     # --- When in parallel, there is some overlap of the rho and phi arrays.
     # --- This statement increases izminlocal so that the overlap region
     # --- does not get multiply counted.
-    if me>0:izminlocal=max(izminlocal,2)
-
-    # --- The "+1" is needed because of the guard cells in z for phi.
-    izminp = izminlocal+1
-    izmaxp = izmaxlocal+1
+    if ixproc>0:ixminlocal=max(ixminlocal,2)
+    if iyproc>0:iyminlocal=max(iyminlocal,2)
+    if izproc>0:izminlocal=max(izminlocal,2)
 
     if w3d.solvergeom in [w3d.RZgeom]:
       # --- The rfac is to take into account the r dtheta term in the integrals.
@@ -518,10 +547,12 @@ Should never be directly created by the user.
     # accumulate charge due to integral form of Gauss Law
     q = 0.
     qc = 0.
-    if ixmax >= ixmin and iymax >= iymin and izmaxp >= izminp:
+    if ixmaxlocal >= ixminlocal and iymaxlocal >= iyminlocal and izmaxlocal >= izminlocal:
 
       # compute total charge inside volume
-      qc = sum(sum(sum(rho[ixmin:ixmax+1,iymin:iymax+1,izminlocal:izmaxlocal+1]*
+      qc = sum(sum(sum(rho[ixminlocal:ixmaxlocal+1,
+                           iyminlocal:iymaxlocal+1,
+                           izminlocal:izmaxlocal+1]*
                        rfac[:,:,NewAxis])))*dx*dy*dz
 
 # --- This block of code is needed if the rho in conductor interiors is
@@ -534,60 +565,92 @@ Should never be directly created by the user.
       qinterior=zeros(1,'d')
       if (w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom,w3d.XZgeom] and
           getregisteredsolver() is None):
-        cond_sumrhointerior2d(qinterior,g,nx,nzlocal,rho[:,0,:],
-                              ixmin,ixmax,izminlocal,izmaxlocal,dx,xmmin)
+        cond_sumrhointerior2d(qinterior,g,nxlocal,nzlocal,rho[:,0,:],
+                              ixminlocal,ixmaxlocal,izminlocal,izmaxlocal,
+                              dx,xmmin)
       else:
-        subcond_sumrhointerior(qinterior,interior,nx,ny,nzlocal,rho,
-                               ixmin,ixmax,iymin,iymax,izminlocal,izmaxlocal)
+        subcond_sumrhointerior(qinterior,interior,nxlocal,nylocal,nzlocal,rho,
+                               ixminlocal,ixmaxlocal,iyminlocal,iymaxlocal,
+                               izminlocal,izmaxlocal)
       qc = qc - qinterior[0]*dx*dy*dz
 
       # --- Sum the normal E field on the surface of the volume
-      # --- When in parallel, z planes are skipped if they are not at the edge of
+      # --- When in parallel, planes are skipped if they are not at the edge of
       # --- the region of interest.
-      if 0<=izmaxlocal<nzlocal and izmax == izmaxlocal+izfsslave[me]:
-        q += sum(sum(( phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp+1       ]
-                      -phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp         ])*rfac))*dx*dy/dz
-      if 0<izminlocal<=nzlocal and izmin == izminlocal+izfsslave[me]:
-        q += sum(sum(( phi[ixmin:ixmax+1, iymin:iymax+1, izminp-1       ]
-                      -phi[ixmin:ixmax+1, iymin:iymax+1, izminp         ])*rfac))*dx*dy/dz
-      if 0<=ixmax<nx:
-        q += sum(sum(( phi[ixmax+1,       iymin:iymax+1, izminp:izmaxp+1]
-                      -phi[ixmax,         iymin:iymax+1, izminp:izmaxp+1])*rmax))*dz*dy/dx
-      if 0<ixmin<=nx:
-        q += sum(sum(( phi[ixmin-1,       iymin:iymax+1, izminp:izmaxp+1]
-                      -phi[ixmin,         iymin:iymax+1, izminp:izmaxp+1])*rmin))*dz*dy/dx
-      if 0<=iymax<ny:
-        q += sum(sum(( phi[ixmin:ixmax+1, iymax+1,       izminp:izmaxp+1]
-                      -phi[ixmin:ixmax+1, iymax,         izminp:izmaxp+1])))*dx*dz/dy
-      if 0<iymin<=ny:
-        q += sum(sum(( phi[ixmin:ixmax+1, iymin-1,       izminp:izmaxp+1]
-                      -phi[ixmin:ixmax+1, iymin,         izminp:izmaxp+1])))*dx*dz/dy
+      xslice = slice(ixminlocal,ixmaxlocal+1)
+      yslice = slice(iyminlocal,iymaxlocal+1)
+      zslice = slice(izminlocal,izmaxlocal+1)
+      if nx == 0: xslice = Ellipsis
+      if ny == 0: yslice = Ellipsis
+      if nz == 0: zslice = Ellipsis
+      if 0 <= izmaxlocal < nzlocal and izmax == izmaxlocal+izlocal:
+        q += sum(sum(( phi[xslice, yslice, izmaxlocal+1]
+                      -phi[xslice, yslice, izmaxlocal  ])*rfac))*dx*dy/dz
+      if 0 < izminlocal <= nzlocal and izmin == izminlocal+izlocal:
+        q += sum(sum(( phi[xslice, yslice, izminlocal-1]
+                      -phi[xslice, yslice, izminlocal  ])*rfac))*dx*dy/dz
+      if 0 <= ixmaxlocal < nxlocal and ixmax == ixmaxlocal+ixlocal:
+        q += sum(sum(( phi[ixmaxlocal+1, yslice, zslice]
+                      -phi[ixmaxlocal,   yslice, zslice])*rmax))*dz*dy/dx
+      if 0 < ixminlocal <= nxlocal and ixmin == ixminlocal+ixlocal:
+        q += sum(sum(( phi[ixminlocal-1, yslice, zslice]
+                      -phi[ixminlocal,   yslice, zslice])*rmin))*dz*dy/dx
+      if 0 <= iymaxlocal < nylocal and iymax == iymaxlocal+iylocal:
+        q += sum(sum(( phi[xslice, iymaxlocal+1,zslice]
+                      -phi[xslice, iymaxlocal,  zslice])))*dx*dz/dy
+      if 0 < iyminlocal <= nylocal and iymin == iyminlocal+iylocal:
+        q += sum(sum(( phi[xslice, iyminlocal-1,zslice]
+                      -phi[xslice, iyminlocal,  zslice])))*dx*dz/dy
 
       # correct for symmetries (this will never be done for RZ so rfac is not needed)
       if l4symtry:
-       q=q*4.
-       qc=qc*4.
+        q=q*4.
+        qc=qc*4.
       elif l2symtry:
-       q=q*2.
-       qc=qc*2.
+        q=q*2.
+        qc=qc*2.
       if l2symtry or l4symtry:
-       if iymin==0:
-         if 0<=izmaxlocal< nzlocal and izmax == izmaxlocal+izfsslave[me]: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izmaxp+1] -phi[ixmin:ixmax+1,iymin,izmaxp] )*dx*dy/dz
-         if 0< izminlocal<=nzlocal and izmin == izminlocal+izfsslave[me]: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izminp-1] -phi[ixmin:ixmax+1,iymin,izminp] )*dx*dy/dz
-         if 0<=ixmax< nx: q -= 2.*sum(phi[ixmax+1,iymin,izminp:izmaxp+1]-phi[ixmax,iymin,izminp:izmaxp+1])*dz*dy/dx
-         if 0< ixmin<=nx: q -= 2.*sum(phi[ixmin-1,iymin,izminp:izmaxp+1]-phi[ixmin,iymin,izminp:izmaxp+1])*dz*dy/dx
-         qc -= 2.*sum(sum(rho[ixmin:ixmax+1,iymin,izminlocal:izmaxlocal+1]))*dx*dy*dz
+        if iyminlocal==0:
+          if 0 <= izmaxlocal < nzlocal and izmax == izmaxlocal+izlocal:
+            q -= 2.*sum( phi[xslice,iyminlocal,izmaxlocal+1]
+                        -phi[xslice,iyminlocal,izmaxlocal] )*dx*dy/dz
+          if 0 < izminlocal <= nzlocal and izmin == izminlocal+izlocal:
+            q -= 2.*sum( phi[xslice,iyminlocal,izminlocal-1]
+                        -phi[xslice,iyminlocal,izminlocal] )*dx*dy/dz
+          if 0 <= ixmaxlocal < nxlocal and ixmax == ixmaxlocal+ixlocal:
+            q -= 2.*sum( phi[ixmaxlocal+1,iyminlocal,zslice]
+                        -phi[ixmaxlocal,iyminlocal,zslice])*dz*dy/dx
+          if 0 < ixminlocal <= nxlocal and ixmin == ixminlocal+ixlocal:
+            q -= 2.*sum( phi[ixminlocal-1,iyminlocal,zslice]
+                        -phi[ixminlocal,iyminlocal,zslice])*dz*dy/dx
+          qc -= 2.*sum(sum(rho[ixminlocal:ixmaxlocal+1,
+                               iyminlocal,
+                               izminlocal:izmaxlocal+1]))*dx*dy*dz
       if l4symtry:
-       if ixmin==0:
-         if 0<=izmaxlocal< nzlocal and izmax == izmaxlocal+izfsslave[me]: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izmaxp+1] -phi[ixmin,iymin:iymax+1,izmaxp] )*dx*dy/dz
-         if 0< izminlocal<=nzlocal and izmin == izminlocal+izfsslave[me]: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izminp-1] -phi[ixmin,iymin:iymax+1,izminp] )*dx*dy/dz
-         if 0<=iymax< ny: q -= 2.*sum(phi[ixmin,iymax+1,izminp:izmaxp+1]-phi[ixmin,iymax,izminp:izmaxp+1])*dx*dz/dy
-         if 0< iymin<=ny: q -= 2.*sum(phi[ixmin,iymin-1,izminp:izmaxp+1]-phi[ixmin,iymin,izminp:izmaxp+1])*dx*dz/dy
-         qc -= 2.*sum(sum(rho[ixmin,iymin:iymax+1,izminlocal:izmaxlocal+1]))*dx*dy*dz
-       if ixmin==0 and iymin==0:
-         if 0<=izmaxlocal< nzlocal: q += (phi[ixmin,iymin,izmaxp+1]-phi[ixmin,iymin,izmaxp])*dx*dy/dz
-         if 0< izminlocal<=nzlocal: q += (phi[ixmin,iymin,izminp-1]-phi[ixmin,iymin,izminp])*dx*dy/dz
-         qc += sum(rho[ixmin,iymin,izminlocal:izmaxlocal+1])*dx*dy*dz
+        if ixminlocal==0:
+          if 0 <= izmaxlocal < nzlocal and izmax == izmaxlocal+izlocal:
+            q -= 2.*sum( phi[ixminlocal,yslice,izmaxlocal+1]
+                        -phi[ixminlocal,yslice,izmaxlocal] )*dx*dy/dz
+          if 0 < izminlocal <= nzlocal and izmin == izminlocal+izlocal:
+            q -= 2.*sum( phi[ixminlocal,yslice,izminlocal-1]
+                        -phi[ixminlocal,yslice,izminlocal] )*dx*dy/dz
+          if 0 <= iymaxlocal < nylocal and iymax == iymaxlocal+iylocal:
+            q -= 2.*sum( phi[ixminlocal,iymaxlocal+1,zslice]
+                        -phi[ixminlocal,iymaxlocal,zslice])*dx*dz/dy
+          if 0 < iyminlocal <= nylocal and iymin == iyminlocal+iylocal:
+            q -= 2.*sum( phi[ixminlocal,iyminlocal-1,zslice]
+                        -phi[ixminlocal,iyminlocal,zslice])*dx*dz/dy
+          qc -= 2.*sum(sum(rho[ixminlocal,
+                               iyminlocal:iymaxlocal+1,
+                               izminlocal:izmaxlocal+1]))*dx*dy*dz
+        if ixminlocal == 0 and iyminlocal == 0:
+          if 0 <= izmaxlocal < nzlocal:
+            q += ( phi[ixminlocal,iyminlocal,izmaxlocal+1]
+                  -phi[ixminlocal,iyminlocal,izmaxlocal])*dx*dy/dz
+          if 0 < izminlocal <= nzlocal:
+            q += ( phi[ixminlocal,iyminlocal,izminlocal-1]
+                  -phi[ixminlocal,iyminlocal,izminlocal])*dx*dy/dz
+          qc += sum(rho[ixminlocal,iyminlocal,izminlocal:izmaxlocal+1])*dx*dy*dz
 
     # --- Gather up the charges from all of the parallel processors.
     q  = parallelsum(q)
@@ -597,19 +660,23 @@ Should never be directly created by the user.
     if l_verbose:print self.name,q*eps0,qc
     if doplot:
       window(0)
-      pldj([zmin,zmin,zmin,zmax],[xmin,xmin,xmax,xmin],[zmax,zmin,zmax,zmax],[xmin,xmax,xmax,xmax],color=red,width=3)
+      pldj([zmin,zmin,zmin,zmax],[xmin,xmin,xmax,xmin],
+           [zmax,zmin,zmax,zmax],[xmin,xmax,xmax,xmax],color=red,width=3)
       window(1)
-      pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],[zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=red,width=3)
+      pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],
+           [zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=red,width=3)
       window(0)
+      xmin=xmmin+ixminlocal*dx
+      xmax=xmmin+ixmaxlocal*dx
+      ymin=ymmin+iyminlocal*dy
+      ymax=ymmin+iymaxlocal*dy
       zmin=zmmin+izminlocal*dz
       zmax=zmmin+izmaxlocal*dz
-      xmin=xmmin+ixmin*dx
-      xmax=xmmin+ixmax*dx
-      ymin=ymmin+iymin*dy
-      ymax=ymmin+iymax*dy
-      pldj([zmin,zmin,zmin,zmax],[xmin,xmin,xmax,xmin],[zmax,zmin,zmax,zmax],[xmin,xmax,xmax,xmax],color=blue,width=3)
+      pldj([zmin,zmin,zmin,zmax],[xmin,xmin,xmax,xmin],
+           [zmax,zmin,zmax,zmax],[xmin,xmax,xmax,xmax],color=blue,width=3)
       window(1)
-      pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],[zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=blue,width=3)
+      pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],
+           [zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=blue,width=3)
       window(0)
 
    # Operations which return an Assembly expression.
@@ -1232,7 +1299,8 @@ dx,dy,dz: the grid cell sizes
       # --- code still has problems converging when there are points with dels=0.
       delsmin = minimum.reduce(abs(self.dels))
       for i in range(6):
-        ccc = where((-1+fuzz<self.dels[i,:])&(self.dels[i,:]<0.),-2.,self.dels[i,:])
+        ccc = where((-1+fuzz<self.dels[i,:])&(self.dels[i,:]<0.),
+                    -2.,self.dels[i,:])
         self.dels[i,:] = where(delsmin==0.,ccc,self.dels[i,:])
 
   def fixneumannzeros(self,i0,i1,fuzz):
@@ -1736,7 +1804,7 @@ Constructor arguments:
   - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
                        from w3d
   - gridrz: RZ grid block to consider
-  - my_index,nslaves,izslave,nzslave: information for parallelization
+  - decomp: Decomposition instance holding data for parallelization
   - solver=w3d: object from which to get the grid size information
 Call getdata(a,dfill) to generate the conductor data. 'a' is a geometry object.
 Call installdata(installrz,gridmode) to install the data into the WARP database.
@@ -1744,12 +1812,14 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
 
   def __init__(self,xmin=None,xmax=None,ymin=None,ymax=None,
                     zmin=None,zmax=None,zbeam=None,
-                    nx=None,ny=None,nzlocal=None,nz=None,
+                    nx=None,ny=None,nz=None,
+                    nxlocal=None,nylocal=None,nzlocal=None,
                     xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                     zmmin=None,zmmax=None,zscale=1.,
                     l2symtry=None,l4symtry=None,
                     installrz=None,gridrz=None,
-                    my_index=None,nslaves=None,izslave=None,nzslave=None,
+                    decomp=None,
+                    nxscale=None,nyscale=None,nzscale=None,
                     solver=None,mgmaxlevels=None):
     """
 Creates a grid object which can generate conductor data.
@@ -1765,11 +1835,28 @@ Creates a grid object which can generate conductor data.
     else:
       solvertop = solver
 
+    # --- If a decomp was passed in, get some of the values from it.
+    if decomp is not None:
+      nx = decomp.nxglobal
+      ny = decomp.nyglobal
+      nz = decomp.nzglobal
+      nxlocal = decomp.nx[decomp.ixproc]
+      nylocal = decomp.ny[decomp.iyproc]
+      nzlocal = decomp.nz[decomp.izproc]
+
     self.nx = _default(nx,solver.nx)
     self.ny = _default(ny,solver.ny)
     self.nz = _default(nz,solver.nz)
+    self.nxlocal = _default(nxlocal,solver.nxlocal)
+    self.nylocal = _default(nylocal,solver.nylocal)
     self.nzlocal = _default(nzlocal,solver.nzlocal)
+    if self.nxlocal == 0: self.nxlocal = self.nx
+    if self.nylocal == 0: self.nylocal = self.ny
     if self.nzlocal == 0: self.nzlocal = self.nz
+    if nx is not None and nxlocal is None and not lparallel:
+      self.nxlocal = self.nx
+    if ny is not None and nylocal is None and not lparallel:
+      self.nylocal = self.ny
     if nz is not None and nzlocal is None and not lparallel:
       self.nzlocal = self.nz
     self.xmmin = _default(xmmin,solver.xmmin)
@@ -1780,10 +1867,7 @@ Creates a grid object which can generate conductor data.
     self.zmmax = _default(zmmax,solver.zmmax)
     self.l2symtry = _default(l2symtry,solver.l2symtry)
     self.l4symtry = _default(l4symtry,solver.l4symtry)
-    self.my_index = _default(my_index,solvertop.my_index)
-    self.nslaves = _default(nslaves,solvertop.nslaves)
-    self.izslave = _default(izslave,solvertop.izfsslave)
-    self.nzslave = _default(nzslave,solvertop.nzfsslave)
+    self.decomp = _default(decomp,solvertop.fsdecomp)
 
     self.xmin = _default(xmin,self.xmmin)
     self.xmax = _default(xmax,self.xmmax)
@@ -1804,6 +1888,32 @@ Creates a grid object which can generate conductor data.
       if self.ymin  < 0.: self.ymin  = 0.
       if self.ymmin < 0.: self.ymmin = 0.
 
+    self.nxscale = nxscale
+    self.nyscale = nyscale
+    self.nzscale = nzscale
+    if nxscale is not None or nyscale is not None or nzscale is not None:
+      self.decomp = copy.deepcopy(self.decomp)
+      if nxscale is not None:
+        self.nx *= nxscale
+        self.nxlocal *= nxscale
+        self.decomp.nxglobal *= nxscale
+        self.decomp.ix *= nxscale
+        self.decomp.nx *= nxscale
+
+      if nyscale is not None:
+        self.ny *= nyscale
+        self.nylocal *= nyscale
+        self.decomp.nyglobal *= nyscale
+        self.decomp.iy *= nyscale
+        self.decomp.ny *= nyscale
+
+      if nzscale is not None:
+        self.nz *= nzscale
+        self.nzlocal *= nzscale
+        self.decomp.nzglobal *= nzscale
+        self.decomp.iz *= nzscale
+        self.decomp.nz *= nzscale
+
     # --- Note that for the parallel version, the values of zmmin and zmmax
     # --- will be wrong if this is done before the generate, during which time
     # --- the decomposition is done.
@@ -1811,10 +1921,10 @@ Creates a grid object which can generate conductor data.
     # --- Calculate dx, dy, and dz in case this is called before
     # --- the generate.
     self.dx = (self.xmmax - self.xmmin)/self.nx
+    if self.nx > 0: self.dx = (self.xmmax - self.xmmin)/self.nx
+    else:           self.dx = (self.xmmax - self.xmmin)
     if self.ny > 0: self.dy = (self.ymmax - self.ymmin)/self.ny
     else:           self.dy = self.dx
-    # --- z is different since it is not affected by transverse symmetries
-    # --- but is affected by parallel decomposition.
     if self.nz > 0: self.dz = (self.zmmax - self.zmmin)/self.nz
     else:           self.dz = (self.zmmax - self.zmmin)
     #if w3d.solvergeom==w3d.XYgeom:self.dz=1.
@@ -1824,14 +1934,19 @@ Creates a grid object which can generate conductor data.
     if installrz is None:
       installrz = (frz.getpyobject('basegrid') is not None)
 
-    if w3d.solvergeom not in [w3d.RZgeom,w3d.XZgeom,w3d.XYgeom] or not installrz:
+    if (w3d.solvergeom not in [w3d.RZgeom,w3d.XZgeom,w3d.XYgeom]
+        or not installrz):
       conductors = ConductorType()
-      if self.ny > 0: ny = self.ny
-      else:           ny = self.nx
-      getmglevels(self.nx,ny,self.nzlocal,self.nz,self.dx,self.dy,self.dz*zscale,
-                  conductors,
-                  self.my_index,self.nslaves,self.izslave,self.nzslave)
+      nx,ny,nz = self.nx,self.ny,self.nz
+      nxlocal,nylocal,nzlocal = self.nxlocal,self.nylocal,self.nzlocal
+      if self.ny == 0: ny = nx
+      getmglevels(nx,ny,nz,nxlocal,nylocal,nzlocal,
+                  self.dx,self.dy,self.dz*zscale,conductors,self.decomp)
       self.mglevels = conductors.levels
+      self.mglevelix = conductors.levelix[:self.mglevels].copy()
+      self.mglevelnx = conductors.levelnx[:self.mglevels].copy()
+      self.mgleveliy = conductors.leveliy[:self.mglevels].copy()
+      self.mglevelny = conductors.levelny[:self.mglevels].copy()
       self.mgleveliz = conductors.leveliz[:self.mglevels].copy()
       self.mglevelnz = conductors.levelnz[:self.mglevels].copy()
       self.mglevellx = conductors.levellx[:self.mglevels].copy()
@@ -1841,6 +1956,10 @@ Creates a grid object which can generate conductor data.
       if gridrz is None:gridrz=frz.basegrid
       setmglevels_rz(gridrz)
       self.mglevels = f3d.mglevels
+      self.mglevelix = f3d.mglevelsix[:f3d.mglevels].copy()
+      self.mglevelnx = f3d.mglevelsnx[:f3d.mglevels].copy()
+      self.mgleveliy = f3d.mglevelsiy[:f3d.mglevels].copy()
+      self.mglevelny = f3d.mglevelsny[:f3d.mglevels].copy()
       self.mgleveliz = f3d.mglevelsiz[:f3d.mglevels].copy()
       self.mglevelnz = f3d.mglevelsnz[:f3d.mglevels].copy()
       self.mglevellx = f3d.mglevelslx[:f3d.mglevels].copy()
@@ -1858,21 +1977,25 @@ Creates a grid object which can generate conductor data.
     dx = self.dx*self.mglevellx[mglevel]
     dy = self.dy*self.mglevelly[mglevel]
     dz = self.dz*self.mglevellz[mglevel]
-    nx = nint(self.nx/self.mglevellx[mglevel])
-    ny = nint(self.ny/self.mglevelly[mglevel])
-    iz = self.mgleveliz[mglevel]
+    nxlocal = self.mglevelnx[mglevel]
+    nylocal = self.mglevelny[mglevel]
     nzlocal = self.mglevelnz[mglevel]
-    return dx,dy,dz,nx,ny,nzlocal,iz
+    ix = self.mglevelix[mglevel]
+    iy = self.mgleveliy[mglevel]
+    iz = self.mgleveliz[mglevel]
+    return dx,dy,dz,nxlocal,nylocal,nzlocal,ix,iy,iz
 
   def getmesh(self,mglevel=0,extent=None):
-    dx,dy,dz,nx,ny,nzlocal,iz = self.getmeshsize(mglevel)
+    dx,dy,dz,nxlocal,nylocal,nzlocal,ix,iy,iz = self.getmeshsize(mglevel)
     _griddzkludge[0] = dz
 
     if self.zbeam is None: zbeam = top.zbeam
     else:                  zbeam = self.zbeam
 
-    xmin,ymin = self.xmin,self.ymin
-    xmax,ymax = self.xmax,self.ymax
+    xmin = max(self.xmin,self.xmmin+ix*dx)
+    xmax = min(self.xmax,self.xmmin+(ix+nxlocal)*dx)
+    ymin = max(self.ymin,self.ymmin+iy*dy)
+    ymax = min(self.ymax,self.ymmin+(iy+nylocal)*dy)
     zmin = max(self.zmin,self.zmmin+iz*dz+zbeam)
     zmax = min(self.zmax,self.zmmin+(iz+nzlocal)*dz+zbeam)
     if extent is not None:
@@ -1883,35 +2006,43 @@ Creates a grid object which can generate conductor data.
     if xmin-dx > xmax or ymin-dy > ymax or zmin-dz > zmax:
       return [],[],[],[],[],[],0.,0.,0.,0.,0,0,0,[],0
 
+    xmmin = self.xmmin + ix*dx
+    ymmin = self.ymmin + iy*dy
     zmmin = self.zmmin + iz*dz
 
-    xmesh = self.xmmin + dx*arange(nx+1)
-    ymesh = self.ymmin + dy*arange(ny+1)
-    zmesh =      zmmin + dz*arange(nzlocal+1) + zbeam
+    xmesh = xmmin + dx*arange(nxlocal+1)
+    ymesh = ymmin + dy*arange(nylocal+1)
+    zmesh = zmmin + dz*arange(nzlocal+1) + zbeam
     xmesh = compress(logical_and(xmin-dx <= xmesh,xmesh <= xmax+dx),xmesh)
     ymesh = compress(logical_and(ymin-dy <= ymesh,ymesh <= ymax+dy),ymesh)
     zmesh = compress(logical_and(zmin-dz <= zmesh,zmesh <= zmax+dz),zmesh)
     x = ravel(xmesh[:,NewAxis]*ones(len(ymesh)))
     y = ravel(ymesh*ones(len(xmesh))[:,NewAxis])
     z = zeros(len(xmesh)*len(ymesh),'d')
-    ix = nint((x - self.xmmin)/dx)
-    iy = nint((y - self.ymmin)/dy)
+    ix = nint((x - xmmin)/dx)
+    iy = nint((y - ymmin)/dy)
     iz = zeros(len(xmesh)*len(ymesh),'l')
-    return ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nzlocal,zmesh,zbeam
+    return ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nxlocal,nylocal,nzlocal,zmesh,zbeam
 
   def checkoverlap(self,mglevel,extent):
     if extent is None: return 1
 
-    dx,dy,dz,nx,ny,nzlocal,iz = self.getmeshsize(mglevel)
+    dx,dy,dz,nxlocal,nylocal,nzlocal,ix,iy,iz = self.getmeshsize(mglevel)
 
-    xmin,ymin = self.xmin,self.ymin
-    xmax,ymax = self.xmax,self.ymax
     if lparallel:
       if self.zbeam is None: zbeam = top.zbeam
       else:                  zbeam = self.zbeam
+      xmin = max(self.xmin,self.xmmin+ix*dx)
+      xmax = min(self.xmax,self.xmmin+(ix+nxlocal)*dx)
+      ymin = max(self.ymin,self.ymmin+iy*dy)
+      ymax = min(self.ymax,self.ymmin+(iy+nylocal)*dy)
       zmin = max(self.zmin,self.zmmin+iz*dz+zbeam)
       zmax = min(self.zmax,self.zmmin+(iz+nzlocal)*dz+zbeam)
     else:
+      xmin = self.xmin
+      xmax = self.xmax
+      ymin = self.ymin
+      ymax = self.ymax
       zmin = self.zmin
       zmax = self.zmax
 
@@ -1970,7 +2101,7 @@ Assembly on this grid.
     if timeit: tt2[8] = tt2[8] + wtime() - tt1
     for i in range(self.mglevels):
       if timeit: tt1 = wtime()
-      ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nzlocal,zmesh,zbeam=self.getmesh(i,aextent)
+      ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nxlocal,nylocal,nzlocal,zmesh,zbeam=self.getmesh(i,aextent)
       if timeit: tt2[0] = tt2[0] + wtime() - tt1
       if len(x) == 0: continue
       for zz in zmesh:
@@ -2011,6 +2142,10 @@ Assembly on this grid.
 Installs the conductor data into the fortran database
     """
     conductors.levels = self.mglevels
+    conductors.levelix[:self.mglevels] = self.mglevelix[:self.mglevels]
+    conductors.levelnx[:self.mglevels] = self.mglevelnx[:self.mglevels]
+    conductors.leveliy[:self.mglevels] = self.mgleveliy[:self.mglevels]
+    conductors.levelny[:self.mglevels] = self.mglevelny[:self.mglevels]
     conductors.leveliz[:self.mglevels] = self.mgleveliz[:self.mglevels]
     conductors.levelnz[:self.mglevels] = self.mglevelnz[:self.mglevels]
     conductors.levellx[:self.mglevels] = self.mglevellx[:self.mglevels]
@@ -2033,11 +2168,11 @@ grid points.
     starttime = wtime()
     tt2 = zeros(4,'d')
     tt1 = wtime()
-    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nzlocal,zmesh,zbeam = self.getmesh(mglevel)
+    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nxlocal,nylocal,nzlocal,zmesh,zbeam = self.getmesh(mglevel)
     try:
       self.distances[0,0,0]
     except AttributeError:
-      self.distances = fzeros((1+nx,1+ny,1+nzlocal),'d')
+      self.distances = fzeros((1+nxlocal,1+nylocal,1+nzlocal),'d')
     ix1 = min(ix)
     ix2 = max(ix)
     iy1 = min(iy)
@@ -2065,8 +2200,8 @@ grid points.
     """
 Clears out any data in isinside by recreating the array.
     """
-    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nzlocal,zmesh,zbeam = self.getmesh(mglevel)
-    self.isinside = fzeros((1+nx,1+ny,1+nzlocal),'d')
+    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nxlocal,nylocal,nzlocal,zmesh,zbeam = self.getmesh(mglevel)
+    self.isinside = fzeros((1+nxlocal,1+nylocal,1+nzlocal),'d')
 
   def removeisinside(self,a,nooverlap=0):
     """
@@ -2093,7 +2228,7 @@ assembly.
     starttime = wtime()
     tt2 = zeros(4,'d')
     tt1 = wtime()
-    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nzlocal,zmesh,zbeam = self.getmesh(mglevel)
+    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nxlocal,nylocal,nzlocal,zmesh,zbeam = self.getmesh(mglevel)
     try:
       self.isinside[0,0,0]
     except AttributeError:
@@ -3147,9 +3282,9 @@ Plate from beamlet pre-accelerator
                       [+largepos,+largepos,zmax])
 
   def createdxobject(self,xmin=None,xmax=None,ymin=None,ymax=None,
-                nx=None,ny=None,nz=None,
-                xmmin=None,xmmax=None,ymmin=None,ymmax=None,
-                zmmin=None,zmmax=None,l2symtry=None,l4symtry=None):
+                     nx=None,ny=None,nz=None,
+                     xmmin=None,xmmax=None,ymmin=None,ymmax=None,
+                     zmmin=None,zmmax=None,l2symtry=None,l4symtry=None):
     _default = lambda x,d: (x,d)[x is None]
     xmmin = _default(xmmin,w3d.xmmin)
     xmmax = _default(xmmax,w3d.xmmax)
@@ -4932,7 +5067,8 @@ containing a list of primitives.
         for part in self.parts:
             installconductors(part.installed,xmin=part.rmin,xmax=part.rmax,
                         zmin=part.zmin,zmax=part.zmax,
-                         nx=grid.nr,nzlocal=grid.nzlocal,nz=grid.nz,
+                         nx=grid.nr,nz=grid.nz,
+                         nxlocal=grid.nxlocal,nzlocal=grid.nzlocal,
                          xmmin=grid.xmin,xmmax=grid.xmax,
                          zmmin=grid.zmin,zmmax=grid.zmax,
                         gridrz=grid)

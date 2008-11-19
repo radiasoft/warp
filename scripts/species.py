@@ -523,6 +523,40 @@ in radius squared.
     """
     if np == 0: return
 
+    # --- Precalculate the trigonometrics if needed.
+    if theta != 0. or phi != 0.:
+      ct = cos(theta)
+      st = sin(theta)
+      cp = cos(phi)
+      sp = sin(phi)
+
+    # --- Check if the loading volume is within the grid. If there is no
+    # --- overlap, the just exit. This is primarily for parallel optimization.
+    # --- Get the coordinates of the corners of the box that encloses
+    # --- the cylinder
+    xx = array([-rmax,+rmax,-rmax,+rmax,-rmax,+rmax,-rmax,+rmax])
+    yy = array([-rmax,-rmax,+rmax,+rmax,-rmax,-rmax,+rmax,+rmax])
+    zz = array([zmin,zmin,zmin,zmin,zmax,zmax,zmax,zmax])
+
+    if theta != 0. or phi != 0.:
+      # --- Transform the corners from the rotated frame to the lab frame.
+      xx1 = +xx*ct - yy*st*sp + zz*st*cp
+      yy1 =        + yy*cp    + zz*sp
+      zz1 = -xx*st - yy*ct*sp + zz*ct*cp
+      xx,yy,zz = xx1,yy1,zz1
+
+    # --- Shift by the mean and handle symmetries.
+    xx += xmean
+    yy += ymean
+    zz += zmean
+    if w3d.l4symtry: xx = abs(xx)
+    if w3d.l2symtry or w3d.l4symtry: yy = abs(yy)
+
+    # --- If outside the domain, just return.
+    if min(xx) > top.xpmaxlocal or max(xx) < top.xpminlocal: return
+    if min(yy) > top.ypmaxlocal or max(yy) < top.ypminlocal: return
+    if min(zz) > top.zpmaxlocal or max(zz) < top.zpminlocal: return
+
     if theta == 0. and phi == 0.:
       # --- When no angle is specified, then the clipping to the domain
       # --- can be done directly on the zmin and zmax
@@ -593,10 +627,6 @@ in radius squared.
 
     if theta != 0. or phi != 0.:
       # --- Transform positions from rotated frame into the lab frame.
-      ct = cos(theta)
-      st = sin(theta)
-      cp = cos(phi)
-      sp = sin(phi)
       x1 = +x*ct - y*st*sp + z*st*cp
       y1 =       + y*cp    + z*sp
       z1 = -x*st - y*ct*sp + z*ct*cp
@@ -607,9 +637,31 @@ in radius squared.
     y += ymean
     z += zmean
 
+    # --- Clip transversely if needed.
+    if top.nxprocs > 1 or top.nyprocs > 1:
+      xx = x
+      yy = y
+      if w3d.l4symtry: xx = abs(xx)
+      if w3d.l2symtry or w3d.l4symtry: yy = abs(yy)
+      if lallindomain:
+        # --- Crop to be within the local particle domain
+        indomain = logical_and(
+                     logical_and(top.xpminlocal<=xx,xx<top.xpmaxlocal),
+                     logical_and(top.ypminlocal<=yy,yy<top.ypmaxlocal))
+      else:
+        # --- Crop to be within the global grid domain
+        indomain = logical_and(
+                     logical_and(top.xpmin<=xx,xx<top.xpmax),
+                     logical_and(top.ypmin<=yy,yy<top.ypmax))
+      x = compress(indomain,x)
+      y = compress(indomain,y)
+      z = compress(indomain,z)
+      np = len(z)
+      if np == 0: return
+
     if theta != 0. or phi != 0.:
-      # --- When angles are specified, the clipping must be done on a particle
-      # --- by particle basis.
+      # --- When angles are specified, the clipping in z must be done on a
+      # --- particle by particle basis.
       if lallindomain:
         # --- Crop the z's to be within the local particle domain
         indomain = logical_and(top.zpminlocal<=z,z<top.zpmaxlocal)

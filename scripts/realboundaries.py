@@ -4,7 +4,7 @@ from generateconductors import *
 from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.71 2007/12/20 00:36:41 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.72 2008/11/19 18:30:00 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -661,9 +661,6 @@ Constructor arguments:
       if top.fstype not in [3,7,13]: top.fstype = 7
       # --- Make sure the gridmode is set properly
       f3d.gridmode = 1
-    # # --- Turn off the call to setconductor in the fortran
-      try:    f3d.lbuildquads = false
-      except: pass
     elif currpkg == 'wxy':
       if w3d.solvergeom==w3d.XYgeom:
         top.fstype = 10

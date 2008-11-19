@@ -280,6 +280,84 @@ def initbfieldsolver():
 
 #=============================================================================
 #=============================================================================
+class W3DFieldsolver(object):
+  """
+This is a wrapper class around the built in field solver in the w3d package
+(with some references to top as well). This class stores no information
+itself, but always gets data from the Fortran packages.
+  """
+  def __getattr__(self,name):
+    "Get any names from w3d or top"
+    # --- Maybe this should be limited to those related to the field solver?
+    # --- First check w3d
+    try:
+      return getattr(w3d,name)
+    except AttributeError:
+      pass
+    # --- Then check top, raising AttributeError is not found.
+    return getattr(top,name)
+
+  def __setattr__(self,name,val):
+    "Set any names from w3d or top"
+    # --- Maybe this should be limited to those related to the field solver?
+    # --- First check w3d
+    try:
+      return setattr(w3d,name,val)
+    except AttributeError:
+      pass
+    # --- Then check top, raising AttributeError is not found.
+    return getattr(top,name,val)
+
+  def __getstate__(self):
+    # --- Nothing needs to be included in the pickle
+    return {}
+
+  def getrho(self):
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      return frz.basegrid.rho
+    else:
+      return w3d.rho
+
+  def getphi(self):
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      return frz.basegrid.phi[1:-1,1:-1]
+    else:
+      return w3d.phi[1:-1,1:-1,1:-1]
+
+  def getrhop(self):
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      return frz.basegrid.rhop
+    else:
+      return w3d.rhop
+
+  def getphip(self):
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      return frz.basegrid.phi[1:-1,1:-1]
+    else:
+      return w3d.phip[1:-1,1:-1,1:-1]
+
+  def resetparticledomains(self):
+    if(w3d.solvergeom == w3d.XYZgeom):
+      w3d.nxp = ppdecomp.nx[top.ixproc]
+      w3d.nyp = ppdecomp.ny[top.iyproc]
+      w3d.nzp = ppdecomp.nz[top.izproc]
+      gchange("Fields3dParticles")
+    else:
+      gchange_rhop_phip_rz()
+    # --- Redistribute phi to the particle arrays if a field solve is
+    # --- not done.
+    if not dofs:
+      if getregisteredsolver() is None:
+        for i in range(getnsndtsforsubcycling()):
+          getphipforparticles(i)
+
+  def zerosource(self):
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      frz.basegrid.rho = 0.
+    else:
+      w3d.rho = 0.
+
+#=============================================================================
 #=============================================================================
 class FieldSolver(object):
   """
@@ -296,14 +374,18 @@ conductors are used. The diagnostic routines only need to be defined if
 the diagnostic is of interest and is meaningfull.
   """
 
-  __w3dinputs__ = ['nx','ny','nz','dx','dy','dz','nzlocal','nzpguard',
-                   'xmmin','xmmax','ymmin','ymmax','zmminlocal','zmmaxlocal',
-                   'zmmin','zmmax',
+  __w3dinputs__ = ['nx','ny','nz','dx','dy','dz','nxlocal','nylocal','nzlocal',
+                   'nxpguard','nypguard','nzpguard',
+                   'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
+                   'xmminlocal','xmmaxlocal',
+                   'ymminlocal','ymmaxlocal',
+                   'zmminlocal','zmmaxlocal',
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom']
   __topinputs__ = ['pbound0','pboundnz','pboundxy',
-                   'my_index','nslaves','lfsautodecomp','zslave','lautodecomp',
-                   'debug']
+                   'nprocs','nxprocs','nyprocs','nzprocs',
+                   'userdecompx','userdecompy','userdecompz','lautodecomp',
+                   'lfsautodecomp','zslave','debug']
   __flaginputs__ = {'forcesymmetries':1,
                     'lreducedpickle':1,'lnorestoreonpickle':0,
                     'ldosolve':1,'l_internal_dosolve':1,
@@ -410,17 +492,44 @@ the diagnostic is of interest and is meaningfull.
     elif self.zmmin == self.zmmax:
       self.nz = 0
 
+    if self.dx == 0.: self.dx = (self.xmmax - self.xmmin)/self.nx
+    if self.dy == 0.:
+      if self.ny > 0: self.dy = (self.ymmax - self.ymmin)/self.ny
+      else:           self.dy = self.dx
+    if self.dz == 0.: self.dz = (self.zmmax - self.zmmin)/self.nz
+
     # --- Set parallel related parameters and calculate mesh sizes
-    self.lparallel = (self.nslaves > 1)
+    self.lparallel = (self.nprocs>1)
     if not self.lparallel:
       self.my_index = 0
+      self.nprocs = 1
+      self.nxprocs = 1
+      self.nyprocs = 1
+      self.nzprocs = 1
+      self.ixproc = self.ixproc = self.ixproc = 0
+      self.nxlocal = self.nx
+      self.nylocal = self.ny
       self.nzlocal = self.nz
+      self.xmminlocal = self.xmmin
+      self.xmmaxlocal = self.xmmax
+      self.ymminlocal = self.ymmin
+      self.ymmaxlocal = self.ymmax
       self.zmminlocal = self.zmmin
       self.zmmaxlocal = self.zmmax
-      self.izfsslave = zeros(1,'l')
-      self.nzfsslave = zeros(1,'l') + self.nz
-      self.izpslave = self.izfsslave
-      self.nzpslave = self.nzfsslave
+      self.fsdecomp = Decomposition()
+      self.initializeDecomposition(self.fsdecomp)
+      self.fsdecomp.ix = 0
+      self.fsdecomp.nx = self.nx
+      self.fsdecomp.xmin = self.xmmin
+      self.fsdecomp.xmax = self.xmmax
+      self.fsdecomp.iy = 0
+      self.fsdecomp.ny = self.ny
+      self.fsdecomp.ymin = self.ymmin
+      self.fsdecomp.ymax = self.ymmax
+      self.fsdecomp.iz = 0
+      self.fsdecomp.nz = self.nz
+      self.fsdecomp.zmin = self.zmmin
+      self.fsdecomp.zmax = self.zmmax
       self.nxp = self.nx
       self.nyp = self.ny
       self.nzp = self.nz
@@ -428,38 +537,68 @@ the diagnostic is of interest and is meaningfull.
       self.xmmaxp = self.xmmax
       self.ymminp = self.ymmin
       self.ymmaxp = self.ymmax
-      self.zmminp = self.zmminlocal
-      self.zmmaxp = self.zmmaxlocal
+      self.zmminp = self.zmmin
+      self.zmmaxp = self.zmmax
+      self.ppdecomp = Decomposition()
+      self.initializeDecomposition(self.ppdecomp)
+      self.ppdecomp.ix = 0
+      self.ppdecomp.nx = self.nx
+      self.ppdecomp.xmin = self.xmmin
+      self.ppdecomp.xmax = self.xmmax
+      self.ppdecomp.iy = 0
+      self.ppdecomp.ny = self.ny
+      self.ppdecomp.ymin = self.ymmin
+      self.ppdecomp.ymax = self.ymmax
+      self.ppdecomp.iz = 0
+      self.ppdecomp.nz = self.nz
+      self.ppdecomp.zmin = self.zmmin
+      self.ppdecomp.zmax = self.zmmax
     else:
       self.my_index = me
-      self.izfsslave = zeros(self.nslaves,'l')
-      self.nzfsslave = zeros(self.nslaves,'l')
+      self.nprocs = npes
+      self.fsdecomp = Decomposition()
+      fsdecomp = self.fsdecomp
+      self.initializeDecomposition(fsdecomp)
       # --- Note that self.grid_overlap must be set by the inheriting class.
       top.grid_overlap = self.grid_overlap
-      domaindecomposefields(self.nz,self.nslaves,self.lfsautodecomp,
-                            self.izfsslave,self.nzfsslave,self.grid_overlap)
 
-      self.nzlocal = self.nzfsslave[self.my_index]
-      if self.dz == 0.: self.dz = (self.zmmax - self.zmmin)/self.nz
-      self.zmminlocal = self.zmmin + self.izfsslave[self.my_index]*self.dz
-      self.zmmaxlocal = self.zmmin + (self.izfsslave[self.my_index] + self.nzfsslave[self.my_index])*self.dz
+      domaindecomposefields(self.nx,self.nxprocs,self.lfsautodecomp,
+                            fsdecomp.ix,fsdecomp.nx,self.grid_overlap)
+      domaindecomposefields(self.ny,self.nyprocs,self.lfsautodecomp,
+                            fsdecomp.iy,fsdecomp.ny,self.grid_overlap)
+      domaindecomposefields(self.nz,self.nzprocs,self.lfsautodecomp,
+                            fsdecomp.iz,fsdecomp.nz,self.grid_overlap)
 
-      self.izpslave = zeros(self.nslaves,'l')
-      self.nzpslave = zeros(self.nslaves,'l')
+      fsdecomp.xmin[:] = self.xmmin + fsdecomp.ix*self.dx
+      fsdecomp.ymin[:] = self.ymmin + fsdecomp.iy*self.dy
+      fsdecomp.zmin[:] = self.zmmin + fsdecomp.iz*self.dz
+      fsdecomp.xmax[:] = self.xmmin + (fsdecomp.ix + fsdecomp.nx)*self.dx
+      fsdecomp.ymax[:] = self.ymmin + (fsdecomp.iy + fsdecomp.ny)*self.dy
+      fsdecomp.zmax[:] = self.zmmin + (fsdecomp.iz + fsdecomp.nz)*self.dz
+
+      self.nxlocal = fsdecomp.nx[self.ixproc]
+      self.nylocal = fsdecomp.ny[self.iyproc]
+      self.nzlocal = fsdecomp.nz[self.izproc]
+
+      self.xmminlocal = fsdecomp.xmin[self.ixproc]
+      self.xmmaxlocal = fsdecomp.xmax[self.ixproc]
+      self.ymminlocal = fsdecomp.ymin[self.iyproc]
+      self.ymmaxlocal = fsdecomp.ymax[self.iyproc]
+      self.zmminlocal = fsdecomp.zmin[self.izproc]
+      self.zmmaxlocal = fsdecomp.zmax[self.izproc]
+
+      self.ppdecomp = Decomposition()
+      self.initializeDecomposition(self.ppdecomp)
       # --- This should only be called after the particle decomposition
       # --- has been done.
       #self.setparticledomains()
-
-    if self.dx == 0.: self.dx = (self.xmmax - self.xmmin)/self.nx
-    if self.dy == 0.:
-      if self.ny > 0: self.dy = (self.ymmax - self.ymmin)/self.ny
-      else:           self.dy = self.dx
-    if self.dz == 0.: self.dz = (self.zmmax - self.zmmin)/self.nz
 
     # --- Check the mesh consistency
     self.checkmeshconsistency(self.xmmin,self.xmmax,self.nx,self.dx,'x')
     self.checkmeshconsistency(self.ymmin,self.ymmax,self.ny,self.dy,'y')
     self.checkmeshconsistency(self.zmmin,self.zmmax,self.nz,self.dz,'z')
+    self.checkmeshconsistency(self.xmminlocal,self.xmmaxlocal,self.nxlocal,self.dx,'x')
+    self.checkmeshconsistency(self.ymminlocal,self.ymmaxlocal,self.nylocal,self.dy,'y')
     self.checkmeshconsistency(self.zmminlocal,self.zmmaxlocal,self.nzlocal,self.dz,'z')
 
     self.xsymmetryplane = 0.
@@ -467,11 +606,27 @@ the diagnostic is of interest and is meaningfull.
     self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
     self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
     self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+    self.xmeshlocal = self.xmminlocal + arange(0,self.nxlocal+1)*self.dx
+    self.ymeshlocal = self.ymminlocal + arange(0,self.nylocal+1)*self.dy
     self.zmeshlocal = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
 
     self.ix_axis = nint(-self.xmmin/self.dx)
     self.iy_axis = nint(-self.ymmin/self.dy)
     self.iz_axis = nint(-self.zmmin/self.dz)
+
+    # --- Generate a list of the neighboring processors.
+    self.neighborpes = [self.convertindextoproc(ix=self.ixproc-1),
+                        self.convertindextoproc(ix=self.ixproc+1),
+                        self.convertindextoproc(iy=self.iyproc-1),
+                        self.convertindextoproc(iy=self.iyproc+1),
+                        self.convertindextoproc(iz=self.izproc-1),
+                        self.convertindextoproc(iz=self.izproc+1)]
+
+    # --- Generate a list of unique neighbors, removing -1 and duplicates.
+    self.neighborpeslist = []
+    for pe in self.neighborpes:
+      if pe >= 0 and pe not in self.neighborpeslist:
+        self.neighborpeslist.append(pe)
 
     # --- Some flags
     self.sourcepfinalized = 1
@@ -489,6 +644,34 @@ the diagnostic is of interest and is meaningfull.
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
       if kw.has_key(name): del kw[name]
+
+  def initializeDecomposition(self,decomp):
+
+    # --- First, get the number of processors along each decomposition
+    # --- direction.
+    self.nzprocs = self.nprocs/(self.nxprocs*self.nyprocs)
+    assert (self.nxprocs*self.nyprocs*self.nzprocs == self.nprocs),\
+           'nxprocs*nyprocs*nzprocs must be equal to nprocs'
+
+    # --- Find the location of each processor along each direction
+    self.izproc = int(self.my_index/(self.nxprocs*self.nyprocs))
+    self.iyproc = int((self.my_index - self.izproc*(self.nxprocs*self.nyprocs))/self.nxprocs)
+    self.ixproc = self.my_index - self.izproc*(self.nxprocs*self.nyprocs) - self.iyproc*self.nxprocs
+
+    decomp.my_index = self.my_index
+    decomp.nxglobal = self.nx
+    decomp.nyglobal = self.ny
+    decomp.nzglobal = self.nz
+    decomp.iprocgrid[:] = [self.ixproc,self.iyproc,self.izproc]
+    decomp.nprocgrid[:] = [self.nxprocs,self.nyprocs,self.nzprocs]
+    decomp.ixproc = self.ixproc
+    decomp.iyproc = self.iyproc
+    decomp.izproc = self.izproc
+    decomp.nxprocs = self.nxprocs
+    decomp.nyprocs = self.nyprocs
+    decomp.nzprocs = self.nzprocs
+    decomp.gchange()
+    initializedecomp(decomp)
 
   def checkmeshconsistency(self,min,max,nn,dd,axis):
     'Checks if the mesh quantities are consistent'
@@ -514,17 +697,19 @@ the diagnostic is of interest and is meaningfull.
   def __setstate__(self,dict):
     self.__dict__.update(dict)
 
-    # --- Set now z quantities is reading in an old dump file
-    if 'nzlocal' not in self.__dict__:
-      self.nzlocal = self.nz
-      self.zmminlocal = self.zmmin
-      self.zmmaxlocal = self.zmmax
-      self.nz = self.nzfull
-      self.zmmin = self.zmminglobal
-      self.zmmax = self.zmmaxglobal
-      del self.nzfull
-      del self.zmminglobal
-      del self.zmmaxglobal
+   # --- Need to add conversion for reading in old dump files - yuck!
+
+   ## --- Set new z quantities if reading in an old dump file
+   #if 'nzlocal' not in self.__dict__:
+   #  self.nzlocal = self.nz
+   #  self.zmminlocal = self.zmmin
+   #  self.zmmaxlocal = self.zmmax
+   #  self.nz = self.nzfull
+   #  self.zmmin = self.zmminglobal
+   #  self.zmmax = self.zmmaxglobal
+   #  del self.nzfull
+   #  del self.zmminglobal
+   #  del self.zmmaxglobal
 
     # --- Make sure that the new attribute l_internal_dosolve is defined.
     if 'l_internal_dosolve' not in self.__dict__:
@@ -670,35 +855,80 @@ the diagnostic is of interest and is meaningfull.
     find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
                  solver=self,pkg3d=self)
 
+  def convertindextoproc(self,ix=None,iy=None,iz=None,
+                         bounds=None,isperiodic=None):
+    if ix is None: ix = self.ixproc
+    if iy is None: iy = self.iyproc
+    if iz is None: iz = self.izproc
+    nx = self.nxprocs
+    ny = self.nyprocs
+    nz = self.nzprocs
+
+    if bounds is None: bounds = self.bounds
+    if isperiodic is None:
+      isperiodic = [periodic in bounds[0:2] and nx > 1,
+                    periodic in bounds[2:4] and ny > 1,
+                    periodic in bounds[4:]  and nz > 1]
+
+    if not isperiodic[0] and (ix < 0 or ix > nx-1): return -1
+    if not isperiodic[1] and (iy < 0 or iy > ny-1): return -1
+    if not isperiodic[2] and (iz < 0 or iz > nz-1): return -1
+
+    if ix < 0:    ix = nx - 1
+    if ix > nx-1: ix = 0
+    if iy < 0:    iy = ny - 1
+    if iy > ny-1: iy = 0
+    if iz < 0:    iz = nz - 1
+    if iz > nz-1: iz = 0
+
+    return ix + iy*nx + iz*nx*ny
+
   def setparticledomains(self):
     if not self.lparallel: return
 
-    # --- Set iz and nz. This is done so that zmesh[izpslave] < zpslmin, and
-    # --- zmesh[izpslave+nzpslave] > zpslmax.
-    # --- NOTE: There may be an issue in some cases with round-off since
-    # --- sometimes (top.zpslmin - self.zmmin)/self.dz will be an integer.
-    self.izpslave[:] = int((top.zpslmin - self.zmmin)/self.dz) - self.nzpguard
-    self.nzpslave[:] = (int((top.zpslmax - self.zmmin)/self.dz) -
-                       self.izpslave + 1 + 2*self.nzpguard)
+    ppdecomp = self.ppdecomp
 
-    # --- Make sure that the processors don't have grid cells
-    # --- sticking out the end.
-    self.nzpslave[:] = where(self.izpslave<0,self.nzpslave+self.izpslave,
-                                             self.nzpslave)
-    self.izpslave[:] = where(self.izpslave<0,0,self.izpslave)
-    self.nzpslave[:] = where(self.izpslave+self.nzpslave > self.nz,
-                             self.nz - self.izpslave,
-                             self.nzpslave)
+    ppdecomp.xmin[:] = top.ppdecomp.xmin
+    ppdecomp.xmax[:] = top.ppdecomp.xmax
+    ppdecomp.ymin[:] = top.ppdecomp.ymin
+    ppdecomp.ymax[:] = top.ppdecomp.ymax
+    ppdecomp.zmin[:] = top.ppdecomp.zmin
+    ppdecomp.zmax[:] = top.ppdecomp.zmax
 
-    self.nxp = self.nx
-    self.nyp = self.ny
-    self.nzp = self.nzpslave[self.my_index]
-    self.xmminp = self.xmmin
-    self.xmmaxp = self.xmmax
-    self.ymminp = self.ymmin
-    self.ymmaxp = self.ymmax
-    self.zmminp = self.zmmin + self.izpslave[self.my_index]*self.dz
-    self.zmmaxp = self.zmminp + self.nzp*self.dz
+    domaindecomposeparticles(self.nx,self.nxprocs,self.nxpguard,
+                             self.xmmin,self.xmmax,self.dx,
+                             zeros(self.nxprocs,'d'),true,
+                             ppdecomp.ix,ppdecomp.nx,
+                             ppdecomp.xmin,ppdecomp.xmax)
+
+    domaindecomposeparticles(self.ny,self.nyprocs,self.nypguard,
+                             self.ymmin,self.ymmax,self.dy,
+                             zeros(self.nyprocs,'d'),true,
+                             ppdecomp.iy,ppdecomp.ny,
+                             ppdecomp.ymin,ppdecomp.ymax)
+
+    domaindecomposeparticles(self.nz,self.nzprocs,self.nzpguard,
+                             self.zmmin,self.zmmax,self.dz,
+                             zeros(self.nzprocs,'d'),true,
+                             ppdecomp.iz,ppdecomp.nz,
+                             ppdecomp.zmin,ppdecomp.zmax)
+
+    self.nxp = ppdecomp.nx[self.ixproc]
+    self.nyp = ppdecomp.ny[self.iyproc]
+    self.nzp = ppdecomp.nz[self.izproc]
+    self.xmminp = self.xmmin + ppdecomp.ix[self.ixproc]*self.dx
+    self.xmmaxp = self.xmmin + (ppdecomp.ix[self.ixproc]+self.nxp)*self.dx
+    self.ymminp = self.ymmin + ppdecomp.iy[self.iyproc]*self.dy
+    self.ymmaxp = self.ymmin + (ppdecomp.iy[self.iyproc]+self.nyp)*self.dy
+    self.zmminp = self.zmmin + ppdecomp.iz[self.izproc]*self.dz
+    self.zmmaxp = self.zmmin + (ppdecomp.iz[self.izproc]+self.nzp)*self.dz
+
+    self.xpminlocal = top.xpminlocal
+    self.ypminlocal = top.ypminlocal
+    self.zpminlocal = top.zpminlocal
+    self.xpmaxlocal = top.xpmaxlocal
+    self.ypmaxlocal = top.ypmaxlocal
+    self.zpmaxlocal = top.zpmaxlocal
 
     self.checkmeshconsistency(self.xmminp,self.xmmaxp,self.nxp,self.dx,'x')
     self.checkmeshconsistency(self.ymminp,self.ymmaxp,self.nyp,self.dy,'y')
@@ -993,17 +1223,19 @@ class SubcycledPoissonSolver(FieldSolver):
           if self.debug:
             i1 = pgroup.ins[js]-1
             i2 = pgroup.ins[js]+pgroup.nps[js]-1
-            if self.nx > 0:
+            if self.nxlocal > 0:
               x = pgroup.xp[i1:i2]
-              assert min(abs(x-self.xmmin)) >= 0.,\
+              if self.l4symtry: x = abs(x)
+              assert min(x) >= self.xmminp,\
                      "Particles in species %d have x below the grid when depositing the source, min x = %e"%(js,min(x))
-              assert max(x) < self.xmmax,\
+              assert max(x) < self.xmmaxp,\
                      "Particles in species %d have x above the grid when depositing the source, max x = %e"%(js,max(x))
-            if self.ny > 0:
+            if self.nylocal > 0:
               y = pgroup.yp[i1:i2]
-              assert min(abs(y-self.ymmin)) >= 0.,\
+              if self.l4symtry or self.l2symtry: y = abs(y)
+              assert min(y) >= self.ymminp,\
                      "Particles in species %d have y below the grid when depositing the source, min y = %e"%(js,min(y))
-              assert max(y) < self.ymmax,\
+              assert max(y) < self.ymmaxp,\
                      "Particles in species %d have y above the grid when depositing the source, max y = %e"%(js,max(y))
             if self.nzlocal > 0:
               z = pgroup.zp[i1:i2]
@@ -1034,11 +1266,11 @@ class SubcycledPoissonSolver(FieldSolver):
     for indts in range(tmpnsndts-1,-1,-1):
       if (not top.ldts[indts] and
           ((top.ndtsaveraging == 0 or top.ndtsaveraging == 1)
-           and not sum(top.ldts))): cycle
+           and not sum(top.ldts))): continue
       for iselfb in range(top.nsselfb):
         isndts = min(indts,top.nsndtsphi)
         self.setsourceforfieldsolve(top.nrhopndtscopies-1,isndts,iselfb)
-        self.makesourceperiodic()
+        self.applysourceboundaryconditions()
 
   def aftersetsourcep(self):
     "Anything that needs to be done to sourcep after the deposition"
@@ -1094,15 +1326,19 @@ class SubcycledPoissonSolver(FieldSolver):
     else:        js = jsid
 
     if self.debug and top.efetch[js] != 5:
-      if self.nx > 0:
-        assert min(abs(x-self.xmmin)) >= 0.,\
+      if self.nxlocal > 0:
+        xdebug = x
+        if self.l4symtry: xdebug = abs(x)
+        assert min(xdebug) >= self.xmminp,\
                "Particles in species %d have x below the grid when fetching the field"%jsid
-        assert max(x) < self.xmmax,\
+        assert max(xdebug) < self.xmmaxp,\
                "Particles in species %d have x above the grid when fetching the field"%jsid
-      if self.ny > 0:
-        assert min(abs(y-self.ymmin)) >= 0.,\
+      if self.nylocal > 0:
+        ydebug = y
+        if self.l4symtry or self.l2symtry: ydebug = abs(y)
+        assert min(ydebug) >= self.ymminp,\
                "Particles in species %d have y below the grid when fetching the field"%jsid
-        assert max(y) < self.ymmax,\
+        assert max(ydebug) < self.ymmaxp,\
                "Particles in species %d have y above the grid when fetching the field"%jsid
       if self.nzlocal > 0:
         assert min(z) >= self.zmminp+self.getzgridprv(),\
@@ -1133,15 +1369,19 @@ class SubcycledPoissonSolver(FieldSolver):
     except: potential = w3d.afsapi
 
     if self.debug:
-      if self.nx > 0:
-        assert min(abs(x-self.xmmin)) >= 0.,\
+      if self.nxlocal > 0:
+        xdebug = x
+        if self.l4symtry: xdebug = abs(x)
+        assert min(xdebug) >= self.xmminlocal,\
                "Particles have x below the grid when fetching the potential"
-        assert max(x) <= self.xmmax,\
+        assert max(xdebug) < self.xmmaxlocal,\
                "Particles have x above the grid when fetching the potential"
-      if self.ny > 0:
-        assert min(abs(y-self.ymmin)) >= 0.,\
+      if self.nylocal > 0:
+        ydebug = y
+        if self.l4symtry or self.l2symtry: ydebug = abs(y)
+        assert min(ydebug) >= self.ymminlocal,\
                "Particles have y below the grid when fetching the potential"
-        assert max(y) <= self.ymmax,\
+        assert max(ydebug) < self.ymmaxlocal,\
                "Particles have y above the grid when fetching the potential"
       if self.nzlocal > 0:
         assert min(z) >= self.zmminlocal,\
@@ -1227,19 +1467,22 @@ of the arrays used by the field solve"""
     # --- if there were no species (and top.nsselfb==0).
     nsselfb = max(1,top.nsselfb)
 
-    sourcedims = list(pdims[0]) + [top.nrhopndtscopies,top.nsndts,nsselfb]
-    if 'sourceparray' not in self.__dict__ or shape(self.sourceparray) != tuple(sourcedims):
-      self.sourceparray = fzeros(sourcedims,'d')
+    sourcepdims = list(pdims[0]) + [top.nrhopndtscopies,top.nsndts,nsselfb]
+    if ('sourceparray' not in self.__dict__ or
+        shape(self.sourceparray) != tuple(sourcepdims)):
+      self.sourceparray = fzeros(sourcepdims,'d')
 
-    potentialdims = list(pdims[-1]) + [top.nsndtsphi,nsselfb]
-    if 'potentialparray' not in self.__dict__ or shape(self.potentialparray) != tuple(potentialdims):
-      self.potentialparray = fzeros(potentialdims,'d')
+    potentialpdims = list(pdims[-1]) + [top.nsndtsphi,nsselfb]
+    if ('potentialparray' not in self.__dict__ or
+        shape(self.potentialparray) != tuple(potentialpdims)):
+      self.potentialparray = fzeros(potentialpdims,'d')
 
     if len(pdims) == 3:
       # --- Also, create fieldparray
-      fielddims = list(pdims[1]) + [top.nsndtsphi]
-      if 'fieldparray' not in self.__dict__ or shape(self.fieldparray) != tuple(fielddims):
-        self.fieldparray = fzeros(fielddims,'d')
+      fieldpdims = list(pdims[1]) + [top.nsndtsphi]
+      if ('fieldparray' not in self.__dict__ or
+          shape(self.fieldparray) != tuple(fieldpdims)):
+        self.fieldparray = fzeros(fieldpdims,'d')
 
     if not self.lparallel:
       # --- For the serial case, the array for the field solve is the same as
@@ -1255,17 +1498,20 @@ of the arrays used by the field solve"""
       dims = self.getdims()
 
       sourcedims = list(dims[0]) + [top.nsndtsphi,nsselfb]
-      if 'sourcearray' not in self.__dict__ or shape(self.sourcearray) != tuple(sourcedims):
+      if ('sourcearray' not in self.__dict__ or
+          shape(self.sourcearray) != tuple(sourcedims)):
         self.sourcearray = fzeros(sourcedims,'d')
 
       potentialdims = list(dims[-1]) + [top.nsndtsphi,nsselfb]
-      if 'potentialarray' not in self.__dict__ or shape(self.potentialarray) != tuple(potentialdims):
+      if ('potentialarray' not in self.__dict__ or
+          shape(self.potentialarray) != tuple(potentialdims)):
         self.potentialarray = fzeros(potentialdims,'d')
 
       if len(dims) == 3:
         # --- Also, create fieldarray
         fielddims = list(dims[1]) + [top.nsndtsphi]
-        if 'fieldarray' not in self.__dict__ or shape(self.fieldarray) != tuple(fielddims):
+        if ('fieldarray' not in self.__dict__ or
+            shape(self.fieldarray) != tuple(fielddims)):
           self.fieldarray = fzeros(fielddims,'d')
 
   def resetparticledomains(self):
@@ -1274,6 +1520,12 @@ of the arrays used by the field solve"""
     self.getallpotentialpforparticles(lforce=1)
     # --- Make sure the sourcep gets set to the updated sourceparray.
     self.setsourcepforparticles(0,0,0)
+
+  def zerosource(self):
+    try:
+      self.sourcearray[...] = 0.
+    except AttributeError:
+      pass
 
   def zerosourcep(self):
     if top.ndtsaveraging == 0:

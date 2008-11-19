@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.226 2008/10/30 20:20:43 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.227 2008/11/19 18:30:00 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -223,7 +223,8 @@ Does the work needed to start writing plots to a file automatically
 
   if cgmlog:
     # --- Create plot log file and write heading to it.
-    plogname = getnextfilename(prefix,'cgmlog')
+    #plogname = getnextfilename(prefix,'cgmlog')
+    plogname = prefix + '.' + pnumb + '.' + suffix + 'log'
     cgmlogfile = open(plogname,"w")
     cgmlogfile.write("CGMLOG file for "+pname+"\n\n")
 
@@ -3499,9 +3500,274 @@ Plots b envelope +/- x centroid
   if titles: ptitles("Y Envelope edges","Z")
 ##########################################################################
 ##########################################################################
-# --- These functions returns or sets slices of phi and rho.
+# --- These functions returns or sets slices of any decomposed array whose
+# --- shape is the same as rho.
 ##########################################################################
-def getrho(ix=None,iy=None,iz=None,bcast=0,local=0,solver=None):
+def getdecomposedarray(arr,ix=None,iy=None,iz=None,bcast=0,local=0,
+                       fullplane=0,solver=None):
+  """Returns slices of a decomposed array, The shape of
+the object returned depends on the number of arguments specified, which can
+be from none to all three.
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None: Value is relative to the fortran indexing.
+  - bcast=0: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of array - no communication is done. Has no effect for
+             serial version.
+  """
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver == w3d: toptmp = top
+  else:             toptmp = solver
+  if len(arr.shape) == 2: iy = None
+
+  if (toptmp.nxprocs <= 1 and toptmp.nyprocs <=1 and toptmp.nzprocs <= 1):
+    local = 1
+
+  if local or not lparallel:
+    if ix is None     and iy is None     and iz is None    :
+      result = arr[...]
+    if ix is not None and iy is None     and iz is None    :
+      result = arr[ix,...]
+    if ix is None     and iy is not None and iz is None    :
+      result = arr[:,iy,:]
+    if ix is None     and iy is None     and iz is not None:
+      result = arr[...,iz]
+    if ix is not None and iy is not None and iz is None    :
+      result = arr[ix,iy,:]
+    if ix is not None and iy is None     and iz is not None:
+      result = arr[ix,...,iz]
+    if ix is None     and iy is not None and iz is not None:
+      result = arr[:,iy,iz]
+    if ix is not None and iy is not None and iz is not None:
+      result = arr[ix,iy,iz]
+  else:
+
+    # --- Get the local extent of each processor.
+    fsdecomp = toptmp.fsdecomp
+    my_ixpp = fsdecomp.ix[fsdecomp.ixproc]
+    my_nxpp = fsdecomp.nx[fsdecomp.ixproc]
+    my_iypp = fsdecomp.iy[fsdecomp.iyproc]
+    my_nypp = fsdecomp.ny[fsdecomp.iyproc]
+    my_izpp = fsdecomp.iz[fsdecomp.izproc]
+    my_nzpp = fsdecomp.nz[fsdecomp.izproc]
+
+    # --- If ix,iy or iz was given, check if it is within the local domain.
+    if ((ix is None or my_ixpp <= ix and ix <= my_ixpp+my_nxpp) and
+        (iy is None or my_iypp <= iy and iy <= my_iypp+my_nypp) and
+        (iz is None or my_izpp <= iz and iz <= my_izpp+my_nzpp)):
+      # --- If so, grab the appropriate slice of array.
+      sss = [slice(1+solver.nxlocal),
+             slice(1+solver.nylocal),
+             slice(1+solver.nzlocal)]
+      if ix is not None: sss[0] = slice(ix-my_ixpp,ix-my_ixpp+1)
+      if iy is not None: sss[1] = slice(iy-my_iypp,iy-my_iypp+1)
+      if iz is not None: sss[2] = slice(iz-my_izpp,iz-my_izpp+1)
+      if solver.nx == 0: sss[0] = Ellipsis
+      if solver.ny == 0: sss[1] = Ellipsis
+      if solver.nz == 0: sss[2] = Ellipsis
+      result = arr[sss[0],sss[1],sss[2]]
+    else:
+      # --- Otherwise, use None
+      result = None
+
+    # --- Get the data (or None) from all of the processors.
+    resultlist = gather(result)
+
+    if me == 0:
+      # --- Setup the size of the array to be returned and create it.
+      sss = [1+solver.nx,1+solver.ny,1+solver.nz]
+      if ix is not None: sss[0] = 1
+      if iy is not None: sss[1] = 1
+      if iz is not None: sss[2] = 1
+      if solver.nz == 0: del sss[2]
+      if solver.ny == 0: del sss[1]
+      if solver.nx == 0: del sss[0]
+      resultglobal = fzeros(sss,'d')
+
+      # --- Loop over all processors and grab the data sent, putting it into
+      # --- the appropriate place in the array.
+      iproc = 0
+      ix1,ix2 = 0,1
+      iy1,iy2 = 0,1
+      iz1,iz2 = 0,1
+      sss = [1,1,1]
+      for izproc in range(fsdecomp.nzprocs):
+        for iyproc in range(fsdecomp.nyprocs):
+          for ixproc in range(fsdecomp.nxprocs):
+            if resultlist[iproc] is not None:
+              if ix is None:
+                ix1 = fsdecomp.ix[ixproc]
+                ix2 = fsdecomp.ix[ixproc] + fsdecomp.nx[ixproc] + 1
+              if iy is None:
+                iy1 = fsdecomp.iy[iyproc]
+                iy2 = fsdecomp.iy[iyproc] + fsdecomp.ny[iyproc] + 1
+              if iz is None:
+                iz1 = fsdecomp.iz[izproc]
+                iz2 = fsdecomp.iz[izproc] + fsdecomp.nz[izproc] + 1
+              sss[0] = slice(ix1,ix2)
+              sss[1] = slice(iy1,iy2)
+              sss[2] = slice(iz1,iz2)
+              if solver.nx == 0: sss[0] = Ellipsis
+              if solver.ny == 0: sss[1] = Ellipsis
+              if solver.nz == 0: sss[2] = Ellipsis
+              resultglobal[sss[0],sss[1],sss[2]] = resultlist[iproc]
+            iproc += 1
+
+      # --- Now remove any of the reduced dimensions.
+      if ix is None: ix = slice(None)
+      else:          ix = 0
+      if iy is None: iy = slice(None)
+      else:          iy = 0
+      if iz is None: iz = slice(None)
+      else:          iz = 0
+      if solver.nx == 0: ix = Ellipsis
+      if solver.ny == 0: iy = Ellipsis
+      if solver.nz == 0: iz = Ellipsis
+      result = resultglobal[ix,iy,iz]
+
+    if bcast:
+      result = parallel.broadcast(result)
+    else:
+      if me > 0: return None
+
+  if not fullplane:
+    return result
+  else:
+    ii = 0
+    if ix is None and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+      ss = array(shape(result))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      result1 = zeros(tuple(ss),'d')
+      if comp == 'x': fsign = -1
+      else:           fsign = +1
+      result1[nn:,...] = result
+      result1[nn::-1,...] = fsign*result
+      result = result1
+    if ix is None: ii = ii + 1
+    if iy is None and (solver.l2symtry or solver.l4symtry):
+      ss = array(shape(result))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      result1 = zeros(tuple(ss),'d')
+      if comp == 'y': fsign = -1
+      else:           fsign = +1
+      if ii == 0:
+        result1[nn:,...] = result
+        result1[nn::-1,...] = fsign*result
+      else:
+        result1[:,nn:,...] = result
+        result1[:,nn::-1,...] = fsign*result
+      result = result1
+    return result
+
+# --------------------------------------------------------------------------
+def setdecomposedarray(arr,val,ix=None,iy=None,iz=None,local=0,solver=None):
+  """Sets slices of a decomposed array. The shape of
+the input object depends on the number of arguments specified, which can
+be from none to all three.
+  - val input array (must be supplied)
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None: Value is relative to the fortran indexing.
+  """
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver == w3d: toptmp = top
+  else:             toptmp = solver
+  if len(arr.shape) == 2: iy = None
+
+  if (toptmp.nxprocs <= 1 and toptmp.nyprocs <=1 and toptmp.nzprocs <= 1):
+    local = 1
+
+  if local or not lparallel:
+    if ix is None     and iy is None     and iz is None    :
+      arr[...] = val
+    if ix is not None and iy is None     and iz is None    :
+      arr[ix,...] = val
+    if ix is None     and iy is not None and iz is None    :
+      arr[:,iy,:] = val
+    if ix is None     and iy is None     and iz is not None:
+      arr[...,iz] = val
+    if ix is not None and iy is not None and iz is None    :
+      arr[ix,iy,:] = val
+    if ix is not None and iy is None     and iz is not None:
+      arr[ix,:,iz] = val
+    if ix is None     and iy is not None and iz is not None:
+      arr[:,iy,iz] = val
+    if ix is not None and iy is not None and iz is not None:
+      arr[ix,iy,iz] = val
+  else:
+
+    ppplist = []
+    fsdecomp = toptmp.fsdecomp
+    if me == 0:
+
+      # --- Add extra dimensions so that the input has the same number of
+      # --- dimensions as array.
+      ppp = array(val)
+      sss = list(ppp.shape)
+      if ix is not None and solver.nx > 0: sss[0:0] = [1]
+      if iy is not None and solver.ny > 0: sss[1:1] = [1]
+      if iz is not None and solver.nz > 0: sss[2:2] = [1]
+      ppp.shape = sss
+
+      # --- Loop over all processors and grab the chunk of the input that
+      # --- overlaps each of the domains.
+      ix1,ix2 = 0,1
+      iy1,iy2 = 0,1
+      iz1,iz2 = 0,1
+      sss = [1,1,1]
+      for izproc in range(fsdecomp.nzprocs):
+        for iyproc in range(fsdecomp.nyprocs):
+          for ixproc in range(fsdecomp.nxprocs):
+            if ix is None:
+              ix1 = fsdecomp.ix[ixproc]
+              ix2 = fsdecomp.ix[ixproc] + fsdecomp.nx[ixproc] + 1
+            if iy is None:
+              iy1 = fsdecomp.iy[iyproc]
+              iy2 = fsdecomp.iy[iyproc] + fsdecomp.ny[iyproc] + 1
+            if iz is None:
+              iz1 = fsdecomp.iz[izproc]
+              iz2 = fsdecomp.iz[izproc] + fsdecomp.nz[izproc] + 1
+            sss[0] = slice(ix1,ix2)
+            sss[1] = slice(iy1,iy2)
+            sss[2] = slice(iz1,iz2)
+            if solver.nx == 0: sss[0] = Ellipsis
+            if solver.ny == 0: sss[1] = Ellipsis
+            if solver.nz == 0: sss[2] = Ellipsis
+            ppplist.append(ppp[sss[0],sss[1],sss[2]])
+
+    # --- Send the data to each of the processors
+    ppp = mpi.scatter(ppplist)[0]
+
+    # --- Get the local extent of each processor.
+    my_ixpp = fsdecomp.ix[fsdecomp.ixproc]
+    my_nxpp = fsdecomp.nx[fsdecomp.ixproc]
+    my_iypp = fsdecomp.iy[fsdecomp.iyproc]
+    my_nypp = fsdecomp.ny[fsdecomp.iyproc]
+    my_izpp = fsdecomp.iz[fsdecomp.izproc]
+    my_nzpp = fsdecomp.nz[fsdecomp.izproc]
+
+    # --- If ix,iy or iz was given, check if it is within the local domain.
+    if ((ix is None or my_ixpp <= ix and ix <= my_ixpp+my_nxpp) and
+        (iy is None or my_iypp <= iy and iy <= my_iypp+my_nypp) and
+        (iz is None or my_izpp <= iz and iz <= my_izpp+my_nzpp)):
+      # --- If so, set the appropriate slice of array.
+      sss = [slice(1+solver.nxlocal),
+             slice(1+solver.nylocal),
+             slice(1+solver.nzlocal)]
+      if ix is not None: sss[0] = slice(ix-my_ixpp,ix-my_ixpp+1)
+      if iy is not None: sss[1] = slice(iy-my_iypp,iy-my_iypp+1)
+      if iz is not None: sss[2] = slice(iz-my_izpp,iz-my_izpp+1)
+      if solver.nx == 0: sss[0] = Ellipsis
+      if solver.ny == 0: sss[1] = Ellipsis
+      if solver.nz == 0: sss[2] = Ellipsis
+      arr[sss[0],sss[1],sss[2]] = ppp
+
+# --------------------------------------------------------------------------
+def getrho(ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,solver=None):
   """Returns slices of rho, the charge density array. The shape of the object
 returned depends on the number of arguments specified, which can be from none
 to all three.
@@ -3511,65 +3777,21 @@ to all three.
   - bcast=0: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
-             value of phi - no communication is done. Has no effect for serial
+             value of rho - no communication is done. Has no effect for serial
              version.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: toptmp = top
-  else:             toptmp = solver
   if solver is w3d:
     if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
       rho = frz.basegrid.rho
-      iy = None
     else:
       rho = w3d.rho
   else:
     rho = solver.getrho()
-    if len(rho.shape) == 2: iy = None
-  try:
-    if toptmp.nslaves <= 1: local = 1
-  except:
-    pass
-  if local or not lparallel:
-    if ix is None     and iy is None     and iz is None    :
-      return rho
-    if ix is not None and iy is None     and iz is None    :
-      return rho[ix,...]
-    if ix is None     and iy is not None and iz is None    :
-      return rho[:,iy,:]
-    if ix is None     and iy is None     and iz is not None:
-      return rho[...,iz]
-    if ix is not None and iy is not None and iz is None    :
-      return rho[ix,iy,:]
-    if ix is not None and iy is None     and iz is not None:
-      return rho[ix,...,iz]
-    if ix is None     and iy is not None and iz is not None:
-      return rho[:,iy,iz]
-    if ix is not None and iy is not None and iz is not None:
-      return rho[ix,iy,iz]
-  else:
-    iz1 = 0
-    if me < npes-1:
-      iz2 = toptmp.izfsslave[me+1] - toptmp.izfsslave[me]
-    else:
-      iz2 = iz1 + toptmp.nzfsslave[me] + 1
-    ppp = rho[...,iz1:iz2]
-    if ix is not None and iy is None:
-      ppp = ppp[ix,...]
-    elif ix is None and iy is not None:
-      ppp = ppp[:,iy,:]
-    elif ix is not None and iy is not None:
-      ppp = ppp[ix,iy,:]
-    if iz is None:
-      ppp = transpose(gatherarray(transpose(ppp)))
-    else:
-      pe = convertizfstope(iz)
-      if pe is None: return None
-      if me == pe: ppp = ppp[...,iz-toptmp.izfsslave[me]]
-#     else:        ppp = zeros(shape(ppp[...,0]),'d')
-      if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-    if bcast: ppp = parallel.broadcast(ppp)
-    return ppp
+
+  return getdecomposedarray(rho,ix=ix,iy=iy,iz=iz,bcast=bcast,local=local,
+                            fullplane=fullplane,solver=solver)
+
 # --------------------------------------------------------------------------
 def setrho(val,ix=None,iy=None,iz=None,local=0,solver=None):
   """Sets slices of rho, the charge density array. The shape of the input
@@ -3584,52 +3806,15 @@ to all three.
   if solver is w3d:
     if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
       rho = frz.basegrid.rho
-      iy = None
     else:
       rho = w3d.rho
   else:
     rho = solver.getrho()
-    if len(rho.shape) == 2: iy = None
-  if local or not lparallel:
-    if ix is None     and iy is None     and iz is None    :
-      rho[...] = val
-    if ix is not None and iy is None     and iz is None    :
-      rho[ix,...] = val
-    if ix is None     and iy is not None and iz is None    :
-      rho[:,iy,:] = val
-    if ix is None     and iy is None     and iz is not None:
-      rho[...,iz] = val
-    if ix is not None and iy is not None and iz is None    :
-      rho[ix,iy,:] = val
-    if ix is not None and iy is None     and iz is not None:
-      rho[ix,...,iz] = val
-    if ix is None     and iy is not None and iz is not None:
-      rho[:,iy,iz] = val
-    if ix is not None and iy is not None and iz is not None:
-      rho[ix,iy,iz] = val
-  else:
-    print "Warning, setrho this is not yet implemented in parallel"
-   #if me < npes-1:
-   #  ppp = rho[:,:,:-top.grid_overlap]
-   #else:
-   #  ppp = rho[:,:,:]
-   #if ix is not None and iy is None    :
-   #  ppp = ppp[ix,:,:]
-   #elif ix is None and iy is not None:
-   #  ppp = ppp[:,iy,:]
-   #elif ix is not None and iy is not None:
-   #  ppp = ppp[ix,iy,:]
-   #if iz is None:
-   #  ppp = transpose(gatherarray(transpose(ppp)))
-   #else:
-   #  pe = convertiztope(iz)
-   #  if pe is None: return None
-   #  if me == pe: ppp = ppp[...,iz-top.izfsslave[me+1]+1]
-   #  if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-   #if bcast: ppp = parallel.broadcast(ppp)
-   #return ppp
+
+  setdecomposedarray(rho,val,ix=ix,iy=iy,iz=iz,local=local,solver=solver)
+
 # --------------------------------------------------------------------------
-def getphi(ix=None,iy=None,iz=None,bcast=0,local=0,solver=None):
+def getphi(ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,solver=None):
   """Returns slices of phi, the electrostatic potential array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -3644,8 +3829,6 @@ be from none to all three.
              version.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: toptmp = top
-  else:             toptmp = solver
   if solver is w3d:
     if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
       phi = frz.basegrid.phi[1:-1,1:-1]
@@ -3654,51 +3837,10 @@ be from none to all three.
       phi = w3d.phi[1:-1,1:-1,1:-1]
   else:
     phi = solver.getphi()
-    if len(phi.shape) == 2: iy = None
-  try:
-    if toptmp.nslaves <= 1: local = 1
-  except:
-    pass
-  if local or not lparallel:
-    if ix is None     and iy is None     and iz is None    :
-      return phi[...]
-    if ix is not None and iy is None     and iz is None    :
-      return phi[ix,...]
-    if ix is None     and iy is not None and iz is None    :
-      return phi[:,iy,:]
-    if ix is None     and iy is None     and iz is not None:
-      return phi[...,iz]
-    if ix is not None and iy is not None and iz is None    :
-      return phi[ix,iy,:]
-    if ix is not None and iy is None     and iz is not None:
-      return phi[ix,...,iz]
-    if ix is None     and iy is not None and iz is not None:
-      return phi[:,iy,iz]
-    if ix is not None and iy is not None and iz is not None:
-      return phi[ix,iy,iz]
-  else:
-    iz1 = 0
-    if me < npes-1:
-      iz2 = toptmp.izfsslave[me+1] - toptmp.izfsslave[me]
-    else:
-      iz2 = iz1 + toptmp.nzfsslave[me] + 1
-    ppp = phi[...,iz1:iz2]
-    if ix is not None and iy is None:
-      ppp = ppp[ix,...]
-    elif ix is None and iy is not None:
-      ppp = ppp[:,iy,:]
-    elif ix is not None and iy is not None:
-      ppp = ppp[ix,iy,:]
-    if iz is None:
-      ppp = transpose(gatherarray(transpose(ppp)))
-    else:
-      pe = convertizfstope(iz)
-      if pe is None: return None
-      if me == pe: ppp = ppp[...,iz-toptmp.izfsslave[me]]
-#     else:        ppp = zeros(shape(ppp[...,0]),'d')
-      if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-    if bcast: ppp = parallel.broadcast(ppp)
-    return ppp
+
+  return getdecomposedarray(phi,ix=ix,iy=iy,iz=iz,bcast=bcast,local=local,
+                            fullplane=fullplane,solver=solver)
+
 # --------------------------------------------------------------------------
 def setphi(val,ix=None,iy=None,iz=None,local=0,solver=None):
   """Sets slices of phi, the electrostatic potential array. The shape of
@@ -3719,45 +3861,9 @@ be from none to all three.
       phi = w3d.phi[1:-1,1:-1,1:-1]
   else:
     phi = solver.getphi()
-    if len(phi.shape) == 2: iy = None
-  if local or not lparallel:
-    if ix is None     and iy is None     and iz is None    :
-      phi[...] = val
-    if ix is not None and iy is None     and iz is None    :
-      phi[ix,...] = val
-    if ix is None     and iy is not None and iz is None    :
-      phi[:,iy,:] = val
-    if ix is None     and iy is None     and iz is not None:
-      phi[...,iz] = val
-    if ix is not None and iy is not None and iz is None    :
-      phi[ix,iy,:] = val
-    if ix is not None and iy is None     and iz is not None:
-      phi[ix,:,iz] = val
-    if ix is None     and iy is not None and iz is not None:
-      phi[:,iy,iz] = val
-    if ix is not None and iy is not None and iz is not None:
-      phi[ix,iy,iz] = val
-  else:
-    print "Warning, setphi this is not yet implemented in parallel"
-   #if me < npes-1:
-   #  ppp = phi[:,:,1:nz-top.grid_overlap+2]
-   #else:
-   #  ppp = phi[:,:,1:-1]
-   #if ix is not None and iy is None:
-   #  ppp = ppp[ix,:,:]
-   #elif ix is None and iy is not None:
-   #  ppp = ppp[:,iy,:]
-   #elif ix is not None and iy is not None:
-   #  ppp = ppp[ix,iy,:]
-   #if iz is None:
-   #  ppp = transpose(gatherarray(transpose(ppp)))
-   #else:
-   #  pe = convertiztope(iz)
-   #  if pe is None: return None
-   #  if me == pe: ppp = ppp[...,iz-top.izfsslave[me+1]+1]
-   #  if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-   #if bcast: ppp = parallel.broadcast(ppp)
-   #return ppp
+
+  setdecomposedarray(phi,val,ix=ix,iy=iy,iz=iz,local=local,solver=solver)
+
 # --------------------------------------------------------------------------
 def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
              solver=None):
@@ -3794,80 +3900,11 @@ be from none to all three.
       solver.getselfe()
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
-  try:
-    if solver.nslaves <= 1: local = 1
-  except:
-    pass
-  if local or not lparallel:
-    if ix is None     and iy is None     and iz is None    :
-      eee = solver.selfe[ic,:,:,:]
-    elif ix is not None and iy is None     and iz is None    :
-      eee = solver.selfe[ic,ix,:,:]
-    elif ix is None     and iy is not None and iz is None    :
-      eee = solver.selfe[ic,:,iy,:]
-    elif ix is None     and iy is None     and iz is not None:
-      eee = solver.selfe[ic,:,:,iz]
-    elif ix is not None and iy is not None and iz is None    :
-      eee = solver.selfe[ic,ix,iy,:]
-    elif ix is not None and iy is None     and iz is not None:
-      eee = solver.selfe[ic,ix,:,iz]
-    elif ix is None     and iy is not None and iz is not None:
-      eee = solver.selfe[ic,:,iy,iz]
-    elif ix is not None and iy is not None and iz is not None:
-      eee = solver.selfe[ic,ix,iy,iz]
-  else:
-    iz1 = 0
-    if me < npes-1:
-      iz2 = top.izpslave[me+1] - top.izfsslave[me]
-    else:
-      iz2 = iz1 + top.nzpslave[me] + 1
-    eee = solver.selfe[ic,:,:,iz1:iz2]
-    if ix is not None and iy is None:
-      eee = eee[ix,:,:]
-    elif ix is None and iy is not None:
-      eee = eee[:,iy,:]
-    elif ix is not None and iy is not None:
-      eee = eee[ix,iy,:]
-    if iz is None:
-      eee = transpose(gatherarray(transpose(eee)))
-    else:
-      pe = convertizptope(iz)
-      if pe is None: return None
-      if me == pe: eee = eee[...,iz-top.izpslave[me]]
-      else:        eee = zeros(shape(eee[...,0]),'d')
-      if (me == pe or me == 0) and (pe != 0): eee = getarray(pe,eee,0)
-    if bcast: eee = parallel.broadcast(eee)
 
-  if not fullplane:
-    return eee
-  else:
-    ii = 0
-    if ix is None and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-      ss = array(shape(eee))
-      nn = ss[ii] - 1
-      ss[ii] = 2*nn + 1
-      ee1 = zeros(tuple(ss),'d')
-      if comp == 'x': fsign = -1
-      else:           fsign = +1
-      ee1[nn:,...] = eee
-      ee1[nn::-1,...] = fsign*eee
-      eee = ee1
-    if ix is None: ii = ii + 1
-    if iy is None and (solver.l2symtry or solver.l4symtry):
-      ss = array(shape(eee))
-      nn = ss[ii] - 1
-      ss[ii] = 2*nn + 1
-      ee1 = zeros(tuple(ss),'d')
-      if comp == 'y': fsign = -1
-      else:           fsign = +1
-      if ii == 0:
-        ee1[nn:,...] = eee
-        ee1[nn::-1,...] = fsign*eee
-      else:
-        ee1[:,nn:,...] = eee
-        ee1[:,nn::-1,...] = fsign*eee
-      eee = ee1
-    return eee
+  return getdecomposedarray(solver.selfe[ic,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            solver=solver)
+
 # --------------------------------------------------------------------------
 def getj(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
          solver=None):
@@ -3876,92 +3913,25 @@ the object returned depends on the number of arguments specified, which can
 be from none to all three.
   - comp: field component to get, either 'x', 'y', or 'z'
   - ix = None
-  - iy = None
-  - iz = None
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None: Value is relative to the fortran indexing, so iz ranges
+               from -1 to nz+1
   - bcast=0: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of j - no communication is done. Has no effect for serial
+             version.
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver
-  try:
-    if solver.nslaves <= 1: local = 1
-  except:
-    pass
-  if local or not lparallel:
-    if ix is None     and iy is None     and iz is None    :
-      j = bfield.j[ic,:,:,:]
-    elif ix is not None and iy is None     and iz is None    :
-      j = bfield.j[ic,ix,:,:]
-    elif ix is None     and iy is not None and iz is None    :
-      j = bfield.j[ic,:,iy,:]
-    elif ix is None     and iy is None     and iz is not None:
-      j = bfield.j[ic,:,:,iz]
-    elif ix is not None and iy is not None and iz is None    :
-      j = bfield.j[ic,ix,iy,:]
-    elif ix is not None and iy is None     and iz is not None:
-      j = bfield.j[ic,ix,:,iz]
-    elif ix is None     and iy is not None and iz is not None:
-      j = bfield.j[ic,:,iy,iz]
-    elif ix is not None and iy is not None and iz is not None:
-      j = bfield.j[ic,ix,iy,iz]
-  else:
-    iz1 = 0
-    if me < npes-1:
-      iz2 = top.izpslave[me+1] - top.izfsslave[me]
-    else:
-      iz2 = iz1 + top.nzpslave[me] + 1
-    j = bfield.j[ic,:,:,iz1:iz2]
-    if ix is not None and iy is None:
-      j = j[ix,:,:]
-    elif ix is None and iy is not None:
-      j = j[:,iy,:]
-    elif ix is not None and iy is not None:
-      j = j[ix,iy,:]
-    if iz is None:
-      j = transpose(gatherarray(transpose(j)))
-    else:
-      pe = convertizptope(iz)
-      if pe is None: return None
-      if me == pe: j = j[...,iz-top.izpslave[me]]
-      else:        j = zeros(shape(j[...,0]),'d')
-      if (me == pe or me == 0) and (pe != 0): j = getarray(pe,j,0)
-    if bcast: j = parallel.broadcast(j)
 
-  if not fullplane:
-    return j
-  else:
-    ii = 0
-    if ix is None and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-      ss = array(shape(j))
-      nn = ss[ii] - 1
-      ss[ii] = 2*nn + 1
-      j1 = zeros(tuple(ss),'d')
-      if comp == 'x': fsign = -1
-      else:           fsign = +1
-      j1[nn:,...] = j
-      j1[nn::-1,...] = fsign*j
-      j = j1
-    if ix is None: ii = ii + 1
-    if iy is None and (solver.l2symtry or solver.l4symtry):
-      ss = array(shape(j))
-      nn = ss[ii] - 1
-      ss[ii] = 2*nn + 1
-      j1 = zeros(tuple(ss),'d')
-      if comp == 'y': fsign = -1
-      else:           fsign = +1
-      if ii == 0:
-        j1[nn:,...] = j
-        j1[nn::-1,...] = fsign*j
-      else:
-        j1[:,nn:,...] = j
-        j1[:,nn::-1,...] = fsign*j
-      j = j1
-    return j
+  return getdecomposedarray(bfield.j[ic,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            solver=solver)
 
 # --------------------------------------------------------------------------
 def getb(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
@@ -3975,88 +3945,21 @@ be from none to all three.
   - iz = None
   - bcast=0: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of j - no communication is done. Has no effect for serial
+             version.
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver
-  try:
-    if solver.nslaves <= 1: local = 1
-  except:
-    pass
-  if local or not lparallel:
-    if ix is None     and iy is None     and iz is None    :
-      b = bfield.b[ic,:,:,:]
-    elif ix is not None and iy is None     and iz is None    :
-      b = bfield.b[ic,ix,:,:]
-    elif ix is None     and iy is not None and iz is None    :
-      b = bfield.b[ic,:,iy,:]
-    elif ix is None     and iy is None     and iz is not None:
-      b = bfield.b[ic,:,:,iz]
-    elif ix is not None and iy is not None and iz is None    :
-      b = bfield.b[ic,ix,iy,:]
-    elif ix is not None and iy is None     and iz is not None:
-      b = bfield.b[ic,ix,:,iz]
-    elif ix is None     and iy is not None and iz is not None:
-      b = bfield.b[ic,:,iy,iz]
-    elif ix is not None and iy is not None and iz is not None:
-      b = bfield.b[ic,ix,iy,iz]
-  else:
-    iz1 = 0
-    if me < npes-1:
-      iz2 = top.izpslave[me+1] - top.izfsslave[me]
-    else:
-      iz2 = iz1 + top.nzpslave[me] + 1
-    b = bfield.b[ic,:,:,iz1:iz2]
-    if ix is not None and iy is None:
-      b = b[ix,:,:]
-    elif ix is None and iy is not None:
-      b = b[:,iy,:]
-    elif ix is not None and iy is not None:
-      b = b[ix,iy,:]
-    if iz is None:
-      b = transpose(gatherarray(transpose(b)))
-    else:
-      pe = convertizptope(iz)
-      if pe is None: return None
-      if me == pe: b = b[...,iz-top.izpslave[me]]
-      else:        b = zeros(shape(b[...,0]),'d')
-      if (me == pe or me == 0) and (pe != 0): b = getarray(pe,b,0)
-    if bcast: b = parallel.broadcast(b)
 
-  if not fullplane:
-    return b
-  else:
-    ii = 0
-    if ix is None and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-      ss = array(shape(b))
-      nn = ss[ii] - 1
-      ss[ii] = 2*nn + 1
-      b1 = zeros(tuple(ss),'d')
-      if comp == 'x': fsign = -1
-      else:           fsign = +1
-      b1[nn:,...] = b
-      b1[nn::-1,...] = fsign*b
-      b = b1
-    if ix is None: ii = ii + 1
-    if iy is None and (solver.l2symtry or solver.l4symtry):
-      ss = array(shape(b))
-      nn = ss[ii] - 1
-      ss[ii] = 2*nn + 1
-      b1 = zeros(tuple(ss),'d')
-      if comp == 'y': fsign = -1
-      else:           fsign = +1
-      if ii == 0:
-        b1[nn:,...] = b
-        b1[nn::-1,...] = fsign*b
-      else:
-        b1[:,nn:,...] = b
-        b1[:,nn::-1,...] = fsign*b
-      b = b1
-    return b
+  return getdecomposedarray(bfield.b[ic,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            solver=solver)
+
 # --------------------------------------------------------------------------
 def geta(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
          solver=None):
@@ -4065,92 +3968,46 @@ the object returned depends on the number of arguments specified, which can
 be from none to all three.
   - comp: field component to get, either 'x', 'y', or 'z'
   - ix = None
-  - iy = None
-  - iz = None
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None: Value is relative to the fortran indexing, so iz ranges
   - bcast=0: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of a - no communication is done. Has no effect for serial
+             version.
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver
-  try:
-    if solver.nslaves <= 1: local = 1
-  except:
-    pass
-  if local or not lparallel:
-    if ix is None     and iy is None     and iz is None    :
-      a = bfield.a[ic,1:-1,1:-1,1:-1]
-    elif ix is not None and iy is None     and iz is None    :
-      a = bfield.a[ic,ix+1,1:-1,1:-1]
-    elif ix is None     and iy is not None and iz is None    :
-      a = bfield.a[ic,1:-1,iy+1,1:-1]
-    elif ix is None     and iy is None     and iz is not None:
-      a = bfield.a[ic,1:-1,1:-1,iz+1]
-    elif ix is not None and iy is not None and iz is None    :
-      a = bfield.a[ic,ix+1,iy+1,1:-1]
-    elif ix is not None and iy is None     and iz is not None:
-      a = bfield.a[ic,ix+1,1:-1,iz+1]
-    elif ix is None     and iy is not None and iz is not None:
-      a = bfield.a[ic,1:-1,iy+1,iz+1]
-    elif ix is not None and iy is not None and iz is not None:
-      a = bfield.a[ic,ix+1,iy+1,iz+1]
-  else:
-    iz1 = 0
-    if me < npes-1:
-      iz2 = top.izpslave[me+1] - top.izfsslave[me]
-    else:
-      iz2 = iz1 + top.nzpslave[me] + 1
-    a = bfield.a[ic,1:-1,1:-1,iz1+1:iz2+1]
-    if ix is not None and iy is None:
-      a = a[ix,:,:]
-    elif ix is None and iy is not None:
-      a = a[:,iy,:]
-    elif ix is not None and iy is not None:
-      a = a[ix,iy,:]
-    if iz is None:
-      a = transpose(gatherarray(transpose(a)))
-    else:
-      pe = convertizptope(iz)
-      if pe is None: return None
-      if me == pe: a = a[...,iz-top.izpslave[me]]
-      else:        a = zeros(shape(a[...,0]),'d')
-      if (me == pe or me == 0) and (pe != 0): a = getarray(pe,a,0)
-    if bcast: a = parallel.broadcast(a)
 
-  if not fullplane:
-    return a
-  else:
-    ii = 0
-    if ix is None and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-      ss = array(shape(a))
-      nn = ss[ii] - 1
-      ss[ii] = 2*nn + 1
-      a1 = zeros(tuple(ss),'d')
-      if comp == 'x': fsign = -1
-      else:           fsign = +1
-      a1[nn:,...] = a
-      a1[nn::-1,...] = fsign*a
-      a = a1
-    if ix is None: ii = ii + 1
-    if iy is None and (solver.l2symtry or solver.l4symtry):
-      ss = array(shape(a))
-      nn = ss[ii] - 1
-      ss[ii] = 2*nn + 1
-      a1 = zeros(tuple(ss),'d')
-      if comp == 'y': fsign = -1
-      else:           fsign = +1
-      if ii == 0:
-        a1[nn:,...] = a
-        a1[nn::-1,...] = fsign*a
-      else:
-        a1[:,nn:,...] = a
-        a1[:,nn::-1,...] = fsign*a
-      a = a1
-    return a
+  return getdecomposedarray(bfield.a[ic,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            solver=solver)
+
+# --------------------------------------------------------------------------
+def seta(val,comp=None,ix=None,iy=None,iz=None,local=0,solver=None):
+  """Sets slices of a, the electrostatic potential array. The shape of
+the input object depends on the number of arguments specified, which can
+be from none to all three.
+  - val input array (must be supplied)
+  - comp: field component to get, either 'x', 'y', or 'z'
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None: Value is relative to the fortran indexing, so iz ranges
+               from -1 to nz+1
+  """
+  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z'].index(comp)
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver == w3d: bfield = f3d.bfield
+  else:             bfield = solver
+
+  setdecomposedarray(bfield.a[ic,1:-1,1:-1,1:-1],val,ix=ix,iy=iy,iz=iz,
+                     local=local,solver=solver)
 
 ##########################################################################
 def pcrhozy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
@@ -4166,11 +4023,13 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
@@ -4181,10 +4040,9 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   rrr = getrho(ix=ix,solver=solver,local=local)
   if me > 0 and not local: rrr = zeros((solver.ny+1,solver.nz+1),'d')
-  rrr = transpose(rrr)
-  ppgeneric(grid=rrr,kwdict=kw,local=1)
+  ppgeneric(gridt=rrr,kwdict=kw,local=1)
   if fullplane and (solver.l2symtry or solver.l4symtry):
-    ppgeneric(grid=rrr,kwdict=kw,local=1,flipyaxis=1)
+    ppgeneric(gridt=rrr,kwdict=kw,local=1,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
@@ -4201,11 +4059,13 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.xmminlocal)
+    kw.setdefault('ymax',solver.xmmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.xmmin)
-  kw.setdefault('ymax',solver.xmmax)
+    kw.setdefault('ymin',solver.xmmin)
+    kw.setdefault('ymax',solver.xmmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
@@ -4216,10 +4076,9 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   rrr = getrho(iy=iy,solver=solver,local=local)
   if me > 0 and not local: rrr = zeros((solver.nx+1,solver.nz+1),'d')
-  rrr = transpose(rrr)
-  ppgeneric(grid=rrr,kwdict=kw,local=1)
+  ppgeneric(gridt=rrr,kwdict=kw,local=1)
   if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-    ppgeneric(grid=rrr,kwdict=kw,local=1,flipyaxis=1)
+    ppgeneric(gridt=rrr,kwdict=kw,local=1,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
@@ -4230,10 +4089,16 @@ def pcrhoxy(iz=None,fullplane=1,solver=None,local=0,**kw):
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
-  kw.setdefault('xmin',solver.xmmin)
-  kw.setdefault('xmax',solver.xmmax)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+  if local:
+    kw.setdefault('xmin',solver.xmminlocal)
+    kw.setdefault('xmax',solver.xmmaxlocal)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
+  else:
+    kw.setdefault('xmin',solver.xmmin)
+    kw.setdefault('xmax',solver.xmmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
@@ -4266,11 +4131,13 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
@@ -4281,10 +4148,9 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   settitles("Electrostatic potential in z-y plane","Z","Y","ix = "+repr(ix))
   ppp = getphi(ix=ix,solver=solver,local=local)
   if me > 0 and not local: ppp = zeros((solver.ny+1,solver.nz+1),'d')
-  ppp = transpose(ppp)
-  ppgeneric(grid=ppp,kwdict=kw,local=1)
+  ppgeneric(gridt=ppp,kwdict=kw,local=1)
   if fullplane and (solver.l2symtry or solver.l4symtry):
-    ppgeneric(grid=ppp,kwdict=kw,local=1,flipyaxis=1)
+    ppgeneric(gridt=ppp,kwdict=kw,local=1,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
@@ -4301,11 +4167,13 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.xmminlocal)
+    kw.setdefault('ymax',solver.xmmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.xmmin)
-  kw.setdefault('ymax',solver.xmmax)
+    kw.setdefault('ymin',solver.xmmin)
+    kw.setdefault('ymax',solver.xmmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
@@ -4316,10 +4184,9 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   settitles("Electrostatic potential in z-x plane","Z","X","iy = "+repr(iy))
   ppp = getphi(iy=iy,solver=solver,local=local)
   if me > 0 and not local: ppp = zeros((solver.nx+1,solver.nz+1),'d')
-  ppp = transpose(ppp)
-  ppgeneric(grid=ppp,kwdict=kw,local=1)
+  ppgeneric(gridt=ppp,kwdict=kw,local=1)
   if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-    ppgeneric(grid=ppp,kwdict=kw,local=1,flipyaxis=1)
+    ppgeneric(gridt=ppp,kwdict=kw,local=1,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcphizx.__doc__ = pcphizx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
@@ -4330,10 +4197,16 @@ def pcphixy(iz=None,fullplane=1,solver=None,local=0,**kw):
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
-  kw.setdefault('xmin',solver.xmmin)
-  kw.setdefault('xmax',solver.xmmax)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+  if local:
+    kw.setdefault('xmin',solver.xmminlocal)
+    kw.setdefault('xmax',solver.xmmaxlocal)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
+  else:
+    kw.setdefault('xmin',solver.xmmin)
+    kw.setdefault('xmax',solver.xmmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
@@ -4370,11 +4243,13 @@ def pcselfezy(comp='',ix=None,fullplane=1,solver=None,
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4385,9 +4260,10 @@ def pcselfezy(comp='',ix=None,fullplane=1,solver=None,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     eee = getselfe(comp=comp,ix=ix,solver=solver,local=local)
-    ppgeneric(grid=transpose(eee),kwdict=kw,local=1)
+    if me > 0 and not local: eee = zeros((solver.ny+1,solver.nz+1),'d')
+    ppgeneric(gridt=eee,kwdict=kw,local=1)
     if fullplane and (solver.l2symtry or solver.l4symtry):
-      ppgeneric(grid=transpose(eee),kwdict=kw,local=1,flipyaxis=1)
+      ppgeneric(gridt=eee,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l2symtry or solver.l4symtry):
       kw['ymin'] = - kw['ymax']
@@ -4414,11 +4290,13 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.xmminlocal)
+    kw.setdefault('ymax',solver.xmmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.xmmin)
-  kw.setdefault('ymax',solver.xmmax)
+    kw.setdefault('ymin',solver.xmmin)
+    kw.setdefault('ymax',solver.xmmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4429,9 +4307,10 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     eee = getselfe(comp=comp,iy=iy,solver=solver,local=local)
-    ppgeneric(grid=transpose(eee),kwdict=kw,local=1)
+    if me > 0 and not local: eee = zeros((solver.nx+1,solver.nz+1),'d')
+    ppgeneric(gridt=eee,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
-      ppgeneric(grid=transpose(eee),kwdict=kw,local=1,flipyaxis=1)
+      ppgeneric(gridt=eee,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       kw['ymin'] = - kw['ymax']
@@ -4452,10 +4331,16 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
-  kw.setdefault('xmin',solver.xmmin)
-  kw.setdefault('xmax',solver.xmmax)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+  if local:
+    kw.setdefault('xmin',solver.xmminlocal)
+    kw.setdefault('xmax',solver.xmmaxlocal)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
+  else:
+    kw.setdefault('xmin',solver.xmmin)
+    kw.setdefault('xmax',solver.xmmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4465,6 +4350,7 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     eee = getselfe(comp=comp,iz=iz,solver=solver,local=local)
+    if me > 0 and not local: eee = zeros((solver.nx+1,solver.ny+1),'d')
     ppgeneric(grid=eee,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(grid=eee,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
@@ -4501,11 +4387,13 @@ def pcjzy(comp='',ix=None,fullplane=1,solver=None,
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4516,9 +4404,10 @@ def pcjzy(comp='',ix=None,fullplane=1,solver=None,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     j = getj(comp=comp,ix=ix,solver=solver,local=local)
-    ppgeneric(grid=transpose(j),kwdict=kw,local=1)
+    if me > 0 and not local: j = zeros((solver.ny+1,solver.nz+1),'d')
+    ppgeneric(gridt=j,kwdict=kw,local=1)
     if fullplane and (solver.l2symtry or solver.l4symtry):
-      ppgeneric(grid=transpose(j),kwdict=kw,local=1,flipyaxis=1)
+      ppgeneric(gridt=j,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l2symtry or solver.l4symtry):
       kw['ymin'] = - kw['ymax']
@@ -4545,11 +4434,13 @@ def pcjzx(comp=None,iy=None,fullplane=1,solver=None,
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.xmminlocal)
+    kw.setdefault('ymax',solver.xmmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.xmmin)
-  kw.setdefault('ymax',solver.xmmax)
+    kw.setdefault('ymin',solver.xmmin)
+    kw.setdefault('ymax',solver.xmmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4560,9 +4451,10 @@ def pcjzx(comp=None,iy=None,fullplane=1,solver=None,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     j = getj(comp=comp,iy=iy,solver=solver,local=local)
-    ppgeneric(grid=transpose(j),kwdict=kw,local=1)
+    if me > 0 and not local: j = zeros((solver.nx+1,solver.nz+1),'d')
+    ppgeneric(gridt=j,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
-      ppgeneric(grid=transpose(j),kwdict=kw,local=1,flipyaxis=1)
+      ppgeneric(gridt=j,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       kw['ymin'] = - kw['ymax']
@@ -4583,10 +4475,16 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
-  kw.setdefault('xmin',solver.xmmin)
-  kw.setdefault('xmax',solver.xmmax)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+  if local:
+    kw.setdefault('xmin',solver.xmminlocal)
+    kw.setdefault('xmax',solver.xmmaxlocal)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
+  else:
+    kw.setdefault('xmin',solver.xmmin)
+    kw.setdefault('xmax',solver.xmmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4596,6 +4494,7 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     j = getj(comp=comp,iz=iz,solver=solver,local=local)
+    if me > 0 and not local: j = zeros((solver.nx+1,solver.ny+1),'d')
     ppgeneric(grid=j,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(grid=j,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
@@ -4632,11 +4531,13 @@ def pcbzy(comp='',ix=None,fullplane=1,solver=None,
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4647,9 +4548,10 @@ def pcbzy(comp='',ix=None,fullplane=1,solver=None,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     b = getb(comp=comp,ix=ix,solver=solver,local=local)
-    ppgeneric(grid=transpose(b),kwdict=kw,local=1)
+    if me > 0 and not local: b = zeros((solver.ny+1,solver.nz+1),'d')
+    ppgeneric(gridt=b,kwdict=kw,local=1)
     if fullplane and (solver.l2symtry or solver.l4symtry):
-      ppgeneric(grid=transpose(b),kwdict=kw,local=1,flipyaxis=1)
+      ppgeneric(gridt=b,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l2symtry or solver.l4symtry):
       kw['ymin'] = - kw['ymax']
@@ -4676,11 +4578,13 @@ def pcbzx(comp=None,iy=None,fullplane=1,solver=None,
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.xmminlocal)
+    kw.setdefault('ymax',solver.xmmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.xmmin)
-  kw.setdefault('ymax',solver.xmmax)
+    kw.setdefault('ymin',solver.xmmin)
+    kw.setdefault('ymax',solver.xmmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4691,9 +4595,10 @@ def pcbzx(comp=None,iy=None,fullplane=1,solver=None,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     b = getb(comp=comp,iy=iy,solver=solver,local=local)
-    ppgeneric(grid=transpose(b),kwdict=kw,local=1)
+    if me > 0 and not local: b = zeros((solver.nx+1,solver.nz+1),'d')
+    ppgeneric(gridt=b,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
-      ppgeneric(grid=transpose(b),kwdict=kw,local=1,flipyaxis=1)
+      ppgeneric(gridt=b,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       kw['ymin'] = - kw['ymax']
@@ -4714,10 +4619,16 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
-  kw.setdefault('xmin',solver.xmmin)
-  kw.setdefault('xmax',solver.xmmax)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+  if local:
+    kw.setdefault('xmin',solver.xmminlocal)
+    kw.setdefault('xmax',solver.xmmaxlocal)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
+  else:
+    kw.setdefault('xmin',solver.xmmin)
+    kw.setdefault('xmax',solver.xmmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4727,6 +4638,7 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     b = getb(comp=comp,iz=iz,solver=solver,local=local)
+    if me > 0 and not local: b = zeros((solver.nx+1,solver.ny+1),'d')
     ppgeneric(grid=b,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(grid=b,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
@@ -4763,11 +4675,13 @@ def pcazy(comp='',ix=None,fullplane=1,solver=None,
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4778,9 +4692,10 @@ def pcazy(comp='',ix=None,fullplane=1,solver=None,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     a = geta(comp=comp,ix=ix,solver=solver,local=local)
-    ppgeneric(grid=transpose(a),kwdict=kw,local=1)
+    if me > 0 and not local: a = zeros((solver.ny+1,solver.nz+1),'d')
+    ppgeneric(gridt=a,kwdict=kw,local=1)
     if fullplane and (solver.l2symtry or solver.l4symtry):
-      ppgeneric(grid=transpose(a),kwdict=kw,local=1,flipyaxis=1)
+      ppgeneric(gridt=a,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l2symtry or solver.l4symtry):
       kw['ymin'] = - kw['ymax']
@@ -4807,11 +4722,13 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=None,
   if local:
     kw.setdefault('xmin',solver.zmminlocal + zbeam)
     kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+    kw.setdefault('ymin',solver.xmminlocal)
+    kw.setdefault('ymax',solver.xmmaxlocal)
   else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  kw.setdefault('ymin',solver.xmmin)
-  kw.setdefault('ymax',solver.xmmax)
+    kw.setdefault('ymin',solver.xmmin)
+    kw.setdefault('ymax',solver.xmmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4822,9 +4739,10 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=None,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     a = geta(comp=comp,iy=iy,solver=solver,local=local)
-    ppgeneric(grid=transpose(a),kwdict=kw,local=1)
+    if me > 0 and not local: a = zeros((solver.nx+1,solver.nz+1),'d')
+    ppgeneric(gridt=a,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
-      ppgeneric(grid=transpose(a),kwdict=kw,local=1,flipyaxis=1)
+      ppgeneric(gridt=a,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       kw['ymin'] = - kw['ymax']
@@ -4845,10 +4763,16 @@ def pcaxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
-  kw.setdefault('xmin',solver.xmmin)
-  kw.setdefault('xmax',solver.xmmax)
-  kw.setdefault('ymin',solver.ymmin)
-  kw.setdefault('ymax',solver.ymmax)
+  if local:
+    kw.setdefault('xmin',solver.xmminlocal)
+    kw.setdefault('xmax',solver.xmmaxlocal)
+    kw.setdefault('ymin',solver.ymminlocal)
+    kw.setdefault('ymax',solver.ymmaxlocal)
+  else:
+    kw.setdefault('xmin',solver.xmmin)
+    kw.setdefault('xmax',solver.xmmax)
+    kw.setdefault('ymin',solver.ymmin)
+    kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -4858,6 +4782,7 @@ def pcaxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     a = geta(comp=comp,iz=iz,solver=solver,local=local)
+    if me > 0 and not local: a = zeros((solver.nx+1,solver.ny+1),'d')
     ppgeneric(grid=a,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(grid=a,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
@@ -4878,7 +4803,7 @@ if sys.version[:5] != "1.5.1":
   pcaxy.__doc__ = pcaxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 ##########################################################################
-def ppdecomposition(scale=1.,minscale=0.,gap=0.2):
+def ppdecompositionz(scale=1.,minscale=0.,gap=0.2):
   """Shows the domain decomposition in a graphical way. For each
 processor, the total mesh extent is plotted as a filled rectangle
 covering the z-length and with height determined by 'scale' and the
@@ -4892,30 +4817,78 @@ field domain.
   z = []
   x = []
   y = []
-  dd = 1.*scale/top.maxslaves
+  dd = 1.*scale/top.nprocs
   mm = 1. - gap
-  for i in xrange(top.maxslaves):
+  for i in xrange(top.nprocs):
     z = z + [1.]
     zmin = top.izfsslave[i]*w3d.dz + w3d.zmmin
     zmax = (top.izfsslave[i] + top.nzfsslave[i])*w3d.dz + w3d.zmmin
     x = x + [zmin,zmax,zmax,zmin,zmin]
     y = y + list(i*dd + 0.5*dd*array([-mm,-mm,mm,mm,-mm]))
-  for i in xrange(top.maxslaves):
+  for i in xrange(top.nprocs):
     z = z + [2.]
     zmin = top.zpslmin[i]
     zmax = top.zpslmax[i]
     x = x + [zmin,zmax,zmax,zmin,zmin]
     y = y + list(i*dd + 0.5*dd*array([0,0,mm,mm,0]))
-  for i in xrange(top.maxslaves):
+  for i in xrange(top.nprocs):
     z = z + [3.]
     zmin = top.izfsslave[i]*w3d.dz
     zmax = top.izfsslave[i]*w3d.dz + top.nzfsslave[i]*w3d.dz
     x = x + [zmin,zmax,zmax,zmin,zmin]
     y = y + list(i*dd + 0.5*dd*array([-mm,-mm,0,0,-mm]))
-  plfp(array(z),y,x,5*ones(len(z)),cmin=0,cmax=4,local=1)
+  plfp(array(z),y,x,5*ones(len(z),'l'),cmin=0,cmax=4,local=1)
   for i in xrange(len(z)):
     pldj(x[i*5:i*5+4],y[i*5:i*5+4],x[i*5+1:i*5+5],y[i*5+1:i*5+5],local=1)
       
+def _ppdecomposition_work(ix,nx,iz,nz):
+  for izproc in xrange(len(iz)):
+    for ixproc in xrange(len(ix)):
+      ix1 = ix[ixproc]
+      ix2 = ix[ixproc]+nx[ixproc]
+      iz1 = iz[izproc]
+      iz2 = iz[izproc]+nz[izproc]
+      plg([ix1,ix1,ix2,ix2,ix1],[iz1,iz2,iz2,iz1,iz1],
+          color=color[(ixproc+izproc*len(ix))%len(color)])
+
+def ppdecompzx(decomp=None,scale=1):
+  if decomp is None: decomp=top.fsdecomp
+  ix = decomp.ix
+  nx = decomp.nx
+  iz = decomp.iz
+  nz = decomp.nz
+  if scale:
+    ix = w3d.xmmin + ix*w3d.dx
+    nx = nx*w3d.dx
+    iz = w3d.zmmin + iz*w3d.dz
+    nz = nz*w3d.dz
+  _ppdecomposition_work(ix,nx,iz,nz)
+
+def ppdecompzy(decomp=None,scale=1):
+  if decomp is None: decomp=top.fsdecomp
+  iy = decomp.iy
+  ny = decomp.ny
+  iz = decomp.iz
+  nz = decomp.nz
+  if scale:
+    iy = w3d.ymmin + iy*w3d.dy
+    ny = ny*w3d.dy
+    iz = w3d.zmmin + iz*w3d.dz
+    nz = nz*w3d.dz
+  _ppdecomposition_work(iy,ny,iz,nz)
+
+def ppdecompxy(decomp=None,scale=1):
+  if decomp is None: decomp=top.fsdecomp
+  ix = decomp.ix
+  nx = decomp.nx
+  iy = decomp.iy
+  ny = decomp.ny
+  if scale:
+    ix = w3d.xmmin + ix*w3d.dx
+    nx = nx*w3d.dx
+    iy = w3d.ymmin + iy*w3d.dy
+    ny = ny*w3d.dy
+  _ppdecomposition_work(iy,ny,ix,nx)
 
 ##########################################################################
 ##########################################################################

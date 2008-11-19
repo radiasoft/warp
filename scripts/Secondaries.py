@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.39 2008/11/07 01:36:37 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.40 2008/11/19 18:29:59 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -45,10 +45,20 @@ Class for generating secondaries
  - vmode: 1 (default) -> uses instantaneous velocity to compute angle to normal of conductor
           2           -> uses difference between current and old positions to compute angle to normal of conductor
  - l_verbose: sets verbosity (default=0). 
+ - lcallscrapercontrollers=false: After new particles are added, the
+           particleboundaries3d routine is called. Normally, this would
+           scrape particles on conductors, but since this can be slow and
+           should not be necessary (since new particles are explicitly
+           created outside of conductors), this call is skipped by telling
+           particleboundaries3d not to call the controllers. If there are
+           other conductors that the new particles could be lost in, then
+           this option needs to be set to true for that scraping to happen.
   """
   def __init__(self,isinc=None,conductors=None,issec=None,set_params_user=None,material=None,
                     xoldpid=None,yoldpid=None,zoldpid=None,min_age=None,vmode=1,l_verbose=0,
-                    l_set_params_user_only=0):
+                    l_set_params_user_only=0,lcallscrapercontrollers=0):
+    self.totalcount = 0
+    self.totallost = 0
     top.lresetlostpart=true
     self.inter={}
     self.outparts=[]
@@ -59,6 +69,7 @@ Class for generating secondaries
     self.vmode=vmode
     self.l_verbose=l_verbose
     self.l_record_timing=0
+    self.lcallscrapercontrollers = lcallscrapercontrollers
 #    self.condids={}
 #    self.emitted={}
     self.set_params_user=set_params_user
@@ -117,13 +128,15 @@ Class for generating secondaries
     else:
       self.piditype=nextpid()-1
     
+    self.lrecursivegenerate = 0
+    
     if isinc is None:return
     for iis,js in enumerate(isinc):
       for ics,cond in enumerate(conductors[iis]):
         if material is None: m = None
         else:                m = material[iis][ics]
         self.add(js,cond,issec[iis][ics],m)
-    
+
   def __getstate__(self):
     dict = self.__dict__.copy()
 
@@ -236,6 +249,7 @@ Class for generating secondaries
   def flushpart(self,js):
     if self.nps[js]>0:
        nn=self.nps[js]
+       self.totalcount += nn
        if top.wpid==0 and self.piditype==0:
          addparticles(x=self.x[js][:nn],
                       y=self.y[js][:nn],
@@ -310,6 +324,8 @@ Class for generating secondaries
     # psi is angle to rotate warp local frame to Posinst local frame around normal
     # eta is angle between incident velocity vector and normal to surface (called theta in Posinst)
 
+    if self.lrecursivegenerate: return
+
     if self.l_verbose>1:print 'start secondaries generation'
 
     if self.l_record_timing:t1 = time.clock()
@@ -380,6 +396,7 @@ Class for generating secondaries
         n = len(iit2)
         if self.l_verbose:print 'nlost=',n
         if n==0:continue
+        self.totallost += n
         xplost = take(xplost,iit2)
         yplost = take(yplost,iit2)
         zplost = take(zplost,iit2)
@@ -766,7 +783,12 @@ Class for generating secondaries
     for js in self.x.keys():
       self.flushpart(js)
     # --- check for particle out of bounds and exchange particles among processors if needed
-    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
+    # --- Set the flag so that this generate routine is not called again
+    # --- recursively (since generate is normally called at the end of
+    # --- the scraping). This is needed in case lcallscrapercontrollers is true
+    self.lrecursivegenerate = 1
+    particleboundaries3d(top.pgroup,-1,self.lcallscrapercontrollers)
+    self.lrecursivegenerate = 0
 
     if self.l_record_timing:t3 = time.clock()
 #    print "tinit,tgen,tadd:",tinit*1.e-6,tgen*1.e-6,tprepadd*1.e-6,tadd*1.e-6
@@ -796,7 +818,7 @@ Class for generating secondaries
       self.power_emit.append(ek0emitav/top.dt)
       self.power_diff.append((ek0av*echarge-ek0emitav)/top.dt)
 #    w3d.lcallscraper=0
-#    particleboundaries3d()
+#    particleboundaries3d(top.pgroup,-1,false)
 #    w3d.lcallscraper=1
 ##    top.npslost=0
     if self.l_record_timing:t4 = time.clock()
@@ -1332,6 +1354,7 @@ Class for generating photo-electrons
   """
   def __init__(self,posinst_file=None,xfloor=None,xceiling=None,yfloor=None,yceiling=None,
                nz=100,l_xmirror=0,l_switchyz=0,l_verbose=0):
+     self.totalcount = 0
      self.xfloor=xfloor
      self.xceiling=xceiling
      self.yfloor=yfloor
@@ -1405,6 +1428,7 @@ Class for generating photo-electrons
   def flushpart(self,js):
     if self.nps[js]>0:
        nn=self.nps[js]
+       self.totalcount += nn
        if top.wpid==0:
          addparticles(x=self.x[js][:nn],
                       y=self.y[js][:nn],
@@ -1544,4 +1568,7 @@ Class for generating photo-electrons
     for js in self.x.keys():
       self.flushpart(js)
     # --- check for particle out of bounds and exchange particles among processors if needed
-    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
+    #zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
+    # --- This is not needed here since particleboundaries3d is called
+    # --- immediately after userinjection anyway.
+    #particleboundaries3d(top.pgroup,-1,false)

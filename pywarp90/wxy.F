@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.94 $, $Date: 2008/10/16 20:05:05 $
+c@(#) File WXY.M, version $Revision: 3.95 $, $Date: 2008/11/19 18:29:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -117,17 +117,15 @@ c  Zmmin and zmmax are chosen so that dz = 1.
 
 #ifdef MPIPARALLEL
 c     --- Use routine from w3d to initialize the MPI and divide up
-c     --- the problem. nz is set to nslaves so that the grid is divided
+c     --- the problem. nz is set to nzprocs so that the grid is divided
 c     --- up properly among the processors. Note that then init_w3d_parallel
-c     --- then divides nz by nslaves again for the decomposition.
+c     --- then divides nz by nzprocs again for the decomposition.
       if (.not. lthick) then
-        nz = nslaves
+        nz = nzprocs
       endif
-      nzfull = nz
       call init_w3d_parallel()
 #else
       nzlocal = nz
-      nzfull = nz
 #endif
 
 c  Call the species routine again so that the values of zimin_s and

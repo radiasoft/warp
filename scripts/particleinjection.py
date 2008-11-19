@@ -6,7 +6,7 @@ from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.5 2008/09/22 21:19:53 dave Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.6 2008/11/19 18:30:00 dave Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -96,13 +96,11 @@ conductors are an argument.
                 solvertop = solver
                 solverf3d = solver
 
-            setupconductorfielddata(solver.nxp,solver.nyp,solver.nzp,solver.nz,
+            setupconductorfielddata(solver.nx,solver.ny,solver.nz,
+                                    solver.nxp,solver.nyp,solver.nzp,
                                     solver.dx,solver.dy,solver.dz,
-                                    conductorobject,
-                                    solvertop.my_index,solvertop.nslaves,
-                                    solvertop.izpslave,solvertop.nzpslave)
+                                    conductorobject,solvertop.ppdecomp)
             sete3dongridwithconductor(conductorobject,phip,
-                                      solver.xmmin,solver.ymmin,solver.zmmin,
                                       solver.dx,solver.dy,solver.dz,
                                       solver.nxp,solver.nyp,solver.nzp,
                                       Ex,Ey,Ez,
@@ -194,7 +192,8 @@ conductors are an argument.
         # --- addition of the random number, no particles would ever
         # --- be injected.  With the random number, particles will be
         # --- injected and but the average number will be less than 1.
-        rnn += where(rnn > 0.,random.random(rnn.shape),0.)
+        #rnn += where(rnn > 0.,random.random(rnn.shape),0.)
+        rnn += random.random(rnn.shape)
 
         # --- Now create the particles. This is easiest to do in fortran.
         # --- This also gets the E field at the cell center for each
@@ -205,11 +204,10 @@ conductors are an argument.
         ex,ey,ez = zeros((3,nn),'d')
         pp = zeros(nn,'d')
         createparticlesincells(nxp,nyp,nzp,rnn,Ex,Ey,Ez,self.grid.isinside,
-                               dx,dy,dz,
-                               nn,xx,yy,zz,ex,ey,ez,pp)
-        xx += solver.xmmin
-        yy += solver.ymmin
-        zz += solver.zmminlocal
+                               dx,dy,dz,nn,xx,yy,zz,ex,ey,ez,pp)
+        xx += solver.xmminp
+        yy += solver.ymminp
+        zz += solver.zmminp
 
         # --- Give particles a thermal velocity.
         # --- This now ignores the fact the roughly half the particles will be
@@ -270,11 +268,14 @@ conductors are an argument.
             # --- For now, as a kludge, in case there are particles that could
             # --- not be projected to the surface, replace the position with the
             # --- original.
-            itheta = where(xi == largepos,0.,itheta)
-            iphi = where(xi == largepos,0.,iphi)
-            xi = where(xi == largepos,xc,xi)
-            yi = where(yi == largepos,yc,yi)
-            zi = where(zi == largepos,zc,zi)
+            lbadparticle = ((xi-xc)**2+(yi-yc)**2+(zi-zc)**2 > 
+                            dx**2+dy**2+dz**2)
+            itheta = where(lbadparticle,0.,itheta)
+            iphi = where(lbadparticle,0.,iphi)
+            xi = where(lbadparticle,xc,xi)
+            yi = where(lbadparticle,yc,yi)
+            zi = where(lbadparticle,zc,zi)
+            #print "BAD ",top.my_index,sum(lbadparticle),len(lbadparticle)
 
             # --- Now replace the positions with the projected positions
             put(xx,ii,xi)
@@ -368,30 +369,43 @@ for example after load balancing.
         if self.usergrid and not lforce: return
         solver = getregisteredsolver()
         if solver is None:
-          solver = w3d
-          solvertop = top
+            solver = w3d
+            solvertop = top
         else:
-          solvertop = solver
-        if lparallel: nzlocal = solvertop.nzpslave[me]
-        else:         nzlocal = solver.nzlocal
-        if (not lforce and (self.grid.nx == solver.nx and
-                            self.grid.ny == solver.ny and
-                            self.grid.nzlocal == nzlocal and
-                            self.grid.xmmin == solver.xmmin and
-                            self.grid.xmmax == solver.xmmax and
-                            self.grid.ymmin == solver.ymmin and
-                            self.grid.ymmax == solver.ymmax and
-                            self.grid.zmmin == solver.zmmin and
-                            self.grid.zmmax == solver.zmmax and
-                            self.grid.izslave[me] == solvertop.izpslave[me])):
-          return
-        # --- Note that copies of the slave arrays are passed in.
-        # --- The arrays in top may be changed the next time loadbalancing is
-        # --- done, but the arrays in self.grid should not be changed. Instead,
-        # --- a whole new grid is created.
-        self.grid = Grid(solver=solver,
-                         izslave=solvertop.izpslave.copy(),
-                         nzslave=solvertop.nzpslave.copy())
+            solvertop = solver
+        # --- Check if self.grid.decomp is defined. If not, then force
+        # --- an update.
+        try:
+            self.grid.decomp
+        except AttributeError:
+            lforce = 1
+        if not lforce:
+            # --- Check if the solver's grid has changed. If not, then
+            # --- return since nothing needs to be done.
+            gdc = self.grid.decomp
+            tdc = solvertop.ppdecomp
+            if (self.grid.nxlocal == solver.nxp and
+                self.grid.nylocal == solver.nyp and
+                self.grid.nzlocal == solver.nzp and
+                self.grid.xmmin == solver.xmmin and
+                self.grid.xmmax == solver.xmmax and
+                self.grid.ymmin == solver.ymmin and
+                self.grid.ymmax == solver.ymmax and
+                self.grid.zmmin == solver.zmmin and
+                self.grid.zmmax == solver.zmmax and
+                gdc.ix[gdc.ixproc] == tdc.ix[tdc.ixproc] and
+                gdc.iy[gdc.iyproc] == tdc.iy[tdc.iyproc] and
+                gdc.iz[gdc.izproc] == tdc.iz[tdc.izproc] and
+                gdc.nx[gdc.ixproc] == tdc.nx[tdc.ixproc] and
+                gdc.ny[gdc.iyproc] == tdc.ny[tdc.iyproc] and
+                gdc.nz[gdc.izproc] == tdc.nz[tdc.izproc]):
+                return
+
+        # --- Note that a copy of the decomposition is passed in.
+        # --- The decomposition in top may be changed the next time
+        # --- loadbalancing is done, but the decomposition in self.grid
+        # --- should not be changed. Instead, a whole new grid is created.
+        self.grid = Grid(decomp=copy.deepcopy(solvertop.ppdecomp))
         self.updateconductors()
 
     def updateconductors(self):

@@ -163,21 +163,12 @@ class Maps_simple:
 
   def apply_bnd_conditions(self,sp):
     js=sp.jslist[0]
-    pg=top.pgroup
-    ng = 1+pg.nps[js]/self.nparpgrp
     if pg.nps[js]==0:return
-    for ig in range(ng):
-      il = pg.ins[js]-1+self.nparpgrp*ig
-      iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
-      np = iu-il
-      if self.l_verbose:print 'stckxy3d beam'
-      zpartbndwithdata(np,pg.zp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                       w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
-      stckxy3d(np,pg.xp[il:iu],w3d.xmmax,w3d.xmmin,w3d.dx,
-                  pg.yp[il:iu],w3d.ymmax,w3d.ymmin,w3d.dy,
-                  pg.zp[il:iu],w3d.zmminlocal,w3d.dz,
-                  pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                  top.zgrid,top.zbeam,w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
+    if self.l_verbose:print 'stckxy3d beam'
+    xparticleboundaries(top.pgroup,js,js,w3d.xmmax,w3d.xmmin,true)
+    yparticleboundaries(top.pgroup,js,js,w3d.ymmax,w3d.ymmin,true)
+    zparticleboundaries(top.pgroup,js,js,w3d.zmmaxlocal,w3d.zmminlocal,true)
+    stckxy3d(top.pgroup,js,top.zbeam,true)
     processlostpart(top.pgroup,js+1,top.clearlostpart,top.time+top.dt*top.pgroup.ndts[js],top.zbeam)
 
   def apply_synchrotron_motion(self,pg,il,iu,dt):
@@ -734,19 +725,11 @@ class Maps_twiss:
   
   def apply_bnd_conditions(self,sp):
     js=sp.jslist[0]
-    pg=top.pgroup
-    ng = 1+pg.nps[js]/self.nparpgrp
-    for ig in range(ng):
-      il = pg.ins[js]-1+self.nparpgrp*ig
-      iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
-      np = iu-il
-      if self.l_verbose:print 'stckxy3d beam'
-      zpartbndwithdata(np,pg.zp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                       w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
-      stckxy3d(np,pg.xp[il:iu],w3d.xmmax,w3d.xmmin,w3d.dx,
-                  pg.yp[il:iu],w3d.ymmax,w3d.ymmin,w3d.dy,
-                  pg.zp[il:iu],w3d.zmmin,w3d.dz,
-                  pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                  top.zgrid,top.zbeam,w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
+    if pg.nps[js]==0:return
+    if self.l_verbose:print 'stckxy3d beam'
+    xparticleboundaries(top.pgroup,js,js,w3d.xmmax,w3d.xmmin,true)
+    yparticleboundaries(top.pgroup,js,js,w3d.ymmax,w3d.ymmin,true)
+    zparticleboundaries(top.pgroup,js,js,w3d.zmmaxlocal,w3d.zmminlocal,true)
+    stckxy3d(top.pgroup,js,top.zbeam,true)
     processlostpart(top.pgroup,js+1,top.clearlostpart,top.time+top.dt*top.pgroup.ndts[js],top.zbeam)
 

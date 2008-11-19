@@ -1,6 +1,6 @@
 
 """Defines ImplicitStep, which handles implicit time stepping"""
-implicitstep_version = "$Id: implicitstep.py,v 1.9 2008/08/04 23:18:23 dave Exp $"
+implicitstep_version = "$Id: implicitstep.py,v 1.10 2008/11/19 18:29:59 dave Exp $"
 
 from warp import *
 import controllers
@@ -380,7 +380,7 @@ Handles implicit time stepping.
     controllers.userinjection()
 
     # --- Treat particles at boundaries
-    particleboundaries3d(top.pgroup)
+    particleboundaries3d(top.pgroup,-1,true)
 
     # --- Now the position of the grid can be advanced.
     self.advancezbeam()
@@ -483,7 +483,7 @@ Handles implicit time stepping.
       # --- with the full fields would not be lost.
       # --- This call is needed since parallel and reflecting boundaries must
       # --- be applied, as well as parallel inter-processor boundaries.
-      particleboundaries3d(top.pgroup)
+      particleboundaries3d(top.pgroup,-1,true)
 
       # --- Collect charge density (rho_tilde) and current
       loadrho()
@@ -532,7 +532,7 @@ Handles implicit time stepping.
       # --- some particles may have crossed processors based on the tilde
       # --- positions - they need to be returned to the processors based
       # --- on the old positions.
-      if npes > 0: particleboundaries3d(top.pgroup)
+      if npes > 0: particleboundaries3d(top.pgroup,-1,false)
 
     # --- The newly calculated implicit field is now averaged with
     # --- the old field. This calculates a(n+1) = 1/2(a(n) + a(n+2))

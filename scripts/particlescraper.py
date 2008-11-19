@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.82 2008/09/12 01:22:42 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.83 2008/11/19 18:30:00 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -73,7 +73,7 @@ conductors are an argument.
                     lrefineintercept=0,lrefineallintercept=0,nstepsperorbit=8,
                     lcollectlpdata=0,mglevel=0,aura=0.,
                     install=1,lbeforescraper=0,lfastscraper=0,
-                    grid=None): 
+                    grid=None,nxscale=1,nyscale=1,nzscale=1): 
     self.mglevel = mglevel
     self.aura = aura
     self.lbeforescraper = lbeforescraper
@@ -86,6 +86,9 @@ conductors are an argument.
     self.usergrid = (grid is not None)
     # --- Don't create the grid until it is needed.
     self.grid = grid
+    self.nxscale = nxscale
+    self.nyscale = nyscale
+    self.nzscale = nzscale
     # --- By default, don't save the old positions or velocities.
     self.lsaveoldpositions = false
     self.lsaveoldvelocities = false
@@ -114,7 +117,17 @@ conductors are an argument.
         self.lsaveoldvelocities = true
     self.l_print_timing=0
     # --- If the user specified the grid, then add the conductors
-    if self.usergrid: self.updateconductors()
+    if self.usergrid:
+      # --- Make sure that the grid has some finite extent. If not, then just
+      # --- return so that the scraper will not be operational. This can
+      # --- in parallel since the user supplied grid may not extend over the
+      # --- full system and so some processors will not overlap the grid.
+      if ((grid.nxlocal == 0 and grid.nylocal == 0 and grid.nzlocal == 0) or
+          (grid.nxlocal < 0 or grid.nylocal < 0 or grid.nzlocal < 0)):
+        if not lparallel:
+          print "Grid: warning: the user supplied grid has zero extent."
+        return
+      self.updateconductors()
     # --- Install the call to scrape particles if requested
     self.install = install
     self.installscraper()
@@ -156,7 +169,10 @@ conductors are an argument.
 
     if 'reducedisinside' not in self.__dict__:
       #self.reducedisinside = self.grid.isinside.copy()
-      self.reducedisinside = self.grid.isinside
+      try:
+        self.reducedisinside = self.grid.isinside
+      except AttributeError:
+        pass
     if 'lrefineintercept' not in self.__dict__:
       self.lrefineintercept = 0
     if 'lrefineallintercept' not in self.__dict__:
@@ -201,29 +217,50 @@ after load balancing."""
     if self.l_print_timing:tstart=wtime()
     if self.grid is None: lforce = 1
     if self.usergrid and not lforce: return
-    if lparallel: nzlocal = top.nzpslave[me]
-    else:         nzlocal = w3d.nzlocal
-    if (not lforce and (self.grid.nx == w3d.nx and
-                        self.grid.ny == w3d.ny and
-                        self.grid.nzlocal == nzlocal and
-                        self.grid.xmmin == w3d.xmmin and
-                        self.grid.xmmax == w3d.xmmax and
-                        self.grid.ymmin == w3d.ymmin and
-                        self.grid.ymmax == w3d.ymmax and
-                        self.grid.zmmin == w3d.zmmin and
-                        self.grid.zmmax == w3d.zmmax and
-                        self.grid.izslave[me] == top.izpslave[me])): return
-    # --- Note that copies of the slave arrays are passed in.
-    # --- The arrays in top may be changed the next time loadbalancing is
-    # --- done, but the arrays in self.grid should not be changed. Instead,
-    # --- a whole new grid is created.
-    self.grid = Grid(izslave=top.izpslave.copy(),nzslave=top.nzpslave.copy(),
-                     nzlocal=top.nzpslave[me])
+
+    # --- Check if self.grid.decomp is defined. If not, then force
+    # --- an update.
+    try:
+      self.grid.decomp
+    except AttributeError:
+      lforce = 1
+
+    if not lforce:
+      # --- Check if the solver's grid has changed. If not, then
+      # --- return since nothing needs to be done.
+      gdc = self.grid.decomp
+      tdc = top.ppdecomp
+      if (self.grid.nxlocal == w3d.nxp*self.nxscale and
+          self.grid.nylocal == w3d.nyp*self.nyscale and
+          self.grid.nzlocal == w3d.nzp*self.nzscale and
+          self.grid.xmmin == w3d.xmmin and
+          self.grid.xmmax == w3d.xmmax and
+          self.grid.ymmin == w3d.ymmin and
+          self.grid.ymmax == w3d.ymmax and
+          self.grid.zmmin == w3d.zmmin and
+          self.grid.zmmax == w3d.zmmax and
+          gdc.ix[gdc.ixproc] == tdc.ix[tdc.ixproc]*self.nxscale and
+          gdc.iy[gdc.iyproc] == tdc.iy[tdc.iyproc]*self.nyscale and
+          gdc.iz[gdc.izproc] == tdc.iz[tdc.izproc]*self.nzscale and
+          gdc.nx[gdc.ixproc] == tdc.nx[tdc.ixproc]*self.nxscale and
+          gdc.ny[gdc.iyproc] == tdc.ny[tdc.iyproc]*self.nyscale and
+          gdc.nz[gdc.izproc] == tdc.nz[tdc.izproc]*self.nzscale): return
+
+    # --- Note that a copy of the decomposition is passed in.
+    # --- The decomposition in top may be changed the next time loadbalancing
+    # --- is done, but the decomposition in self.grid should not be changed.
+    # --- Instead, a whole new grid is created.
+    self.grid = Grid(decomp=copy.deepcopy(top.ppdecomp),
+                     nxscale=self.nxscale,nyscale=self.nyscale,
+                     nzscale=self.nzscale)
     self.updateconductors()
+
     if top.chdtspid>0:
-      if w3d.nxc<>self.grid.nx or w3d.nyc<>self.grid.ny or w3d.nzc<>self.grid.nzlocal:
-        w3d.nxc=self.grid.nx
-        w3d.nyc=self.grid.ny
+      if (w3d.nxc<>self.grid.nxlocal or
+          w3d.nyc<>self.grid.nylocal or
+          w3d.nzc<>self.grid.nzlocal):
+        w3d.nxc=self.grid.nxlocal
+        w3d.nyc=self.grid.nylocal
         w3d.nzc=self.grid.nzlocal
         gchange('Fields3dParticles')
         sum_neighbors3d(nint(self.grid.isinside),w3d.isnearbycond,
@@ -348,7 +385,7 @@ after load balancing."""
       # --- a different domain.
       # --- Note that this is a global operation, so all processors must
       # --- make this call.
-      zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
+      particlegridboundaries3d(top.pgroup,-1)
     self.saveolddata()
   #scrapeall = decorators.timedmethod(scrapeall)
     
@@ -357,11 +394,11 @@ after load balancing."""
     if top.pgroup.nps[js] == 0: return
 
     # --- Get mesh information into local variables
-    dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
-    xmin = self.grid.xmin
-    xmax = self.grid.xmax
-    ymin = self.grid.ymin
-    ymax = self.grid.ymax
+    dx,dy,dz,nx,ny,nz,ix,iy,iz = self.grid.getmeshsize(self.mglevel)
+    xmin = self.grid.xmmin + ix*dx
+    xmax = self.grid.xmmin + (ix+nx)*dx
+    ymin = self.grid.ymmin + iy*dy
+    ymax = self.grid.ymmin + (iy+ny)*dy
     zmin = self.grid.zmmin + iz*dz + top.zbeam
     zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
     isinside = self.grid.isinside
@@ -703,11 +740,11 @@ after load balancing."""
 
     # --- Much of this code is duplicated from scrape above so if it changes,
     # --- this should change as well.
-    dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
-    xmin = self.grid.xmin
-    xmax = self.grid.xmax
-    ymin = self.grid.ymin
-    ymax = self.grid.ymax
+    dx,dy,dz,nx,ny,nz,ix,iy,iz = self.grid.getmeshsize(self.mglevel)
+    xmin = self.grid.xmmin + ix*dx
+    xmax = self.grid.xmmin + (ix+nx)*dx
+    ymin = self.grid.ymmin + iy*dy
+    ymax = self.grid.ymmin + (iy+ny)*dy
     zmin = self.grid.zmmin + iz*dz + top.zbeam
     zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
     isinside = self.grid.isinside
@@ -1099,11 +1136,11 @@ luserefinedifnotlost: when true, if the refined particle orbit is not lost,
     if top.pgroup.nps[js] == 0: return
 
     # --- Get mesh information into local variables
-    dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
-    xmin = self.grid.xmin
-    xmax = self.grid.xmax
-    ymin = self.grid.ymin
-    ymax = self.grid.ymax
+    dx,dy,dz,nx,ny,nz,ix,iy,iz = self.grid.getmeshsize(self.mglevel)
+    xmin = self.grid.xmmin + ix*dx
+    xmax = self.grid.xmmin + (ix+nx)*dx
+    ymin = self.grid.ymmin + iy*dy
+    ymax = self.grid.ymmin + (iy+ny)*dy
     zmin = self.grid.zmmin + iz*dz + top.zbeam
     zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
     distances = self.grid.distances
@@ -1138,7 +1175,6 @@ luserefinedifnotlost: when true, if the refined particle orbit is not lost,
     else:
       raise "The particle scraping only works for XYZ, XY and RZ geometry"
 
-  
     # --- Any particles which have a negative distance are approximately
     # --- inside of the conductors. Those are considered lost or reflected.
     ilost = compress(pp<0.,arange(i1,i2))

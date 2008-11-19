@@ -99,19 +99,20 @@ class MultiGridRZ(MultiGrid):
     iz = slice(iz1,iz2)
     return self.potentialp[ix,0,iz]
 
-  def fetchpotentialfrompositions(self,x,y,z,potential):
+  def fetchpotentialfrompositions(self,x,y,z,phi):
     n = len(x)
     if n == 0: return
+    if isinstance(self.potentialp,FloatType): return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
-    nx = self.nx + 2*self.nxguard
-    nzlocal = self.nzlocal + 2*self.nzguard
-    xmmin = self.xmmin - self.nxguard*self.dx
-    xmmax = self.xmmax + self.nxguard*self.dx
-    zmminlocal = self.zmminlocal - self.nzguard*self.dz
-    zmmaxlocal = self.zmmaxlocal + self.nzguard*self.dz
-    getgrid2d(n,r,z,potential,nx,nzlocal,self.potential[:,0,:],
-              xmmin,xmmax,zmminlocal,zmmaxlocal)
+    nxp = self.nxp + 2*self.nxguard
+    nzp = self.nzp + 2*self.nzguard
+    xmminp = self.xmminp - self.dx*self.nxguard
+    xmmaxp = self.xmmaxp + self.dx*self.nxguard
+    zmminp = self.zmminp - self.dz*self.nzguard
+    zmmaxp = self.zmmaxp + self.dz*self.nzguard
+    getgrid2d(n,r,z,phi,nxp,nzp,self.potentialp[:,0,:],
+              xmminp,xmmaxp,zmminp,zmmaxp)
 
   def _installconductor(self,conductorobject,installedlist,conductordata,
                         fselfb):
@@ -120,33 +121,33 @@ class MultiGridRZ(MultiGrid):
     # --- conductor object
 
     # --- Extract the data from conductordata (the arguments to
-    # installconductor)
+    # --- installconductor)
     conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill = conductordata
 
     if conductor in installedlist: return
     installedlist.append(conductor)
 
+    nx,ny,nz = self.nx,self.ny,self.nz
     if fselfb == 'p':
       zscale = 1.
-      nx,ny,nzlocal,nz = self.nxp,self.nyp,self.nzp,self.nz
-      xmmin,xmmax = self.xmminp,self.xmmaxp
-      ymmin,ymmax = self.ymminp,self.ymmaxp
-      zmmin,zmmax = self.zmminp,self.zmmaxp
+      nxlocal,nylocal,nzlocal = self.nxp,self.nyp,self.nzp
       mgmaxlevels = 1
+      decomp = self.ppdecomp
     else:
       # --- Get relativistic longitudinal scaling factor
       # --- This is quite ready yet.
       beta = fselfb/clight
       zscale = 1./sqrt((1.-beta)*(1.+beta))
-      nx,ny,nzlocal,nz = self.nx,self.ny,self.nzlocal,self.nz
-      xmmin,xmmax = self.xmmin,self.xmmax
-      ymmin,ymmax = self.ymmin,self.ymmax
-      zmmin,zmmax = self.zmmin,self.zmmax
+      nxlocal,nylocal,nzlocal = self.nxlocal,self.nylocal,self.nzlocal
       mgmaxlevels = None
+      decomp = self.fsdecomp
 
+    xmmin,xmmax = self.xmmin,self.xmmax
+    ymmin,ymmax = self.ymmin,self.ymmax
+    zmmin,zmmax = self.zmmin,self.zmmax
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
-                      nx,ny,nzlocal,nz,
+                      nx,ny,nz,nxlocal,nylocal,nzlocal,
                       xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
                       zscale,self.l2symtry,self.l4symtry,
                       installrz=1,
@@ -195,8 +196,8 @@ class MultiGridRZ(MultiGrid):
     self._rho = self.source
     if isinstance(self.potential,FloatType): return
 
-    if self.izfsslave is None: self.izfsslave = top.izfsslave
-    if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
+#   if self.izfsslave is None: self.izfsslave = top.izfsslave
+#   if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
 
@@ -287,19 +288,35 @@ class MultiGrid2D(MultiGrid):
     iz = slice(iz1,iz2)
     return self.potentialp[ix,0,iz]
 
-  def fetchpotentialfrompositions(self,x,y,z,potential):
+  def fetchpotentialfrompositions(self,x,y,z,phi):
+    n = len(x)
+    if n == 0: return
+    if isinstance(self.potentialp,FloatType): return
+    if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
+    else:                           r = x
+    nxp = self.nxp + 2*self.nxguard
+    nzp = self.nzp + 2*self.nzguard
+    xmminp = self.xmminp - self.dx*self.nxguard
+    xmmaxp = self.xmmaxp + self.dx*self.nxguard
+    zmminp = self.zmminp - self.dz*self.nzguard
+    zmmaxp = self.zmmaxp + self.dz*self.nzguard
+    getgrid2d(n,r,z,phi,nxp,nzp,self.potentialp[:,0,:],
+              xmminp,xmmaxp,zmminp,zmmaxp)
+
+  def fetchpotentialfsfrompositions(self,x,y,z,potential):
+    'Fetches potential from the field solver grid'
     n = len(x)
     if n == 0: return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
-    nx = self.nx + 2*self.nxguard
+    nxlocal = self.nxlocal + 2*self.nxguard
     nzlocal = self.nzlocal + 2*self.nzguard
-    xmmin = self.xmmin - self.nxguard*self.dx
-    xmmax = self.xmmax + self.nxguard*self.dx
+    xmminlocal = self.xmminlocal - self.nxguard*self.dx
+    xmmaxlocal = self.xmmaxlocal + self.nxguard*self.dx
     zmminlocal = self.zmminlocal - self.nzguard*self.dz
     zmmaxlocal = self.zmmaxlocal + self.nzguard*self.dz
-    getgrid2d(n,r,z,potential,nx,nzlocal,self.potential[:,0,:],
-              xmmin,xmmax,zmminlocal,zmmaxlocal)
+    getgrid2d(n,r,z,potential,nxlocal,nzlocal,self.potential[:,0,:],
+              xmminlocal,xmmaxlocal,zmminlocal,zmmaxlocal)
 
   def dosolve(self,iwhich=0,*args):
     if not self.l_internal_dosolve: return
@@ -313,22 +330,21 @@ class MultiGrid2D(MultiGrid):
     self._rho = self.source
     if isinstance(self.potential,FloatType): return
 
-    if self.izfsslave is None: self.izfsslave = top.izfsslave
-    if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     self.lbuildquads = false
-    multigrid2dsolve(iwhich,self.nx,self.nzlocal,self.nz,self.dx,self.dz*zfact,
+    multigrid2dsolve(iwhich,self.nx,self.nz,self.nxlocal,self.nzlocal,
+                     self.dx,self.dz*zfact,
                      self._phi[:,0,:],self._rho[:,0,:],self.bounds,
-                     self.xmmin,self.zmminlocal*zfact,self.zmmin*zfact,
+                     self.xmminlocal,
                      self.getzgrid()*zfact,self.getzgrid()*zfact,
                      self.mgparam,mgiters,self.mgmaxiters,
                      self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                      self.downpasses,self.uppasses,
-                     self.lcndbndy,self.laddconductor,self.icndbndy,self.lbuildquads,
+                     self.lcndbndy,self.laddconductor,self.icndbndy,
                      self.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
-                     self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+                     self.fsdecomp)
 
     self.mgiters = mgiters[0]
     self.mgerror = mgerror[0]
@@ -345,7 +361,7 @@ class MultiGrid2D(MultiGrid):
     reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
     rho = self._rho*reps0c
     conductorobject = self.getconductorobject()
-    residual2d(self.nx,self.nzlocal,self.nz,dxsqi,dzsqi,xminodx,lrz,
+    residual2d(self.nxlocal,self.nzlocal,dxsqi,dzsqi,xminodx,lrz,
                self._phi,rho,res,0,self.bounds,
                self.lcndbndy,self.icndbndy,conductorobject,1,1)
     return res
@@ -360,7 +376,7 @@ class MultiGrid2DDielectric(MultiGrid2D):
     MultiGrid2D.__init__(self,lreducedpickle,**kw)
 
     if epsilon is None:
-      self.epsilon = eps0*fones((self.nx+2,self.nz+2),'d')
+      self.epsilon = eps0*fones((self.nxlocal+2,self.nzlocal+2),'d')
     else:
       self.epsilon = epsilon
 
@@ -378,23 +394,19 @@ class MultiGrid2DDielectric(MultiGrid2D):
     self._rho = self.source
     if isinstance(self.potential,FloatType): return
 
-    if self.izfsslave is None: self.izfsslave = top.izfsslave
-    if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
-    self.lbuildquads = false
-    multigrid2ddielectricsolve(iwhich,self.nx,self.nzlocal,self.nz,
+    multigrid2ddielectricsolve(iwhich,self.nx,self.nz,self.nxlocal,self.nzlocal,
                      self.dx,self.dz*zfact,
                      self._phi[:,0,:],self._rho[:,0,:],self.epsilon,self.bounds,
-                     self.xmmin,self.zmminlocal*zfact,self.zmmin*zfact,
-                     self.getzgrid()*zfact,self.getzgrid()*zfact,
+                     self.xmminlocal*zfact,
                      self.mgparam,mgiters,self.mgmaxiters,
                      self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                      self.downpasses,self.uppasses,
-                     self.lcndbndy,self.laddconductor,self.lbuildquads,
+                     self.lcndbndy,self.laddconductor,
                      self.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
-                     self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+                     self.fsdecomp)
 
     self.mgiters = mgiters[0]
     self.mgerror = mgerror[0]
@@ -402,7 +414,7 @@ class MultiGrid2DDielectric(MultiGrid2D):
   def getresidual(self):
     res = zeros(shape(self._phi),'d')
     conductorobject = self.getconductorobject()
-    residual2ddielectric(self.nx,self.nzlocal,self.nz,
+    residual2ddielectric(self.nxlocal,self.nzlocal,
                self._phi,rho,self.epsilon,res,self.dx,self.dz,0,self.bounds,
                conductorobject)
     return res
@@ -582,12 +594,12 @@ Initially, conductors are not implemented.
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
       if isinstance(self.source,FloatType): return
       if isinstance(self.sourcep,FloatType): return
-      for iimp in range(top.nsimplicit):
-        setrhoforfieldsolve3d(self.nx,self.ny,self.nzlocal,self.source[...,iimp],
+      for iimp in range(1+top.nsimplicit):
+        setrhoforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,
+                              self.source[...,iimp],
                               self.nxp,self.nyp,self.nzp,self.sourcep[...,iimp],
-                              self.nzpguard,
-                              self.my_index,self.nslaves,self.izpslave,self.nzpslave,
-                              self.izfsslave,self.nzfsslave)
+                              self.nxpguard,self.nypguard,self.nzpguard,
+                              self.fsdecomp,self.ppdecomp)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     MultiGrid.fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js,pgroup)
@@ -599,20 +611,20 @@ Initially, conductors are not implemented.
     if n == 0: return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
-    nx = self.nx + 2*self.nxguard
-    nzlocal = self.nzlocal + 2*self.nzguard
-    xmmin = self.xmmin - self.nxguard*self.dx
-    xmmax = self.xmmax + self.nxguard*self.dx
-    zmminlocal = self.zmminlocal - self.nzguard*self.dz
-    zmmaxlocal = self.zmmaxlocal + self.nzguard*self.dz
-    getgrid2d(n,r,z,potential,nx,nzlocal,self.potential[:,0,:],
-              xmmin,xmmax,zmminlocal,zmmaxlocal)
+    nxp = self.nxp + 2*self.nxguard
+    nzp = self.nzp + 2*self.nzguard
+    xmminp = self.xmminp - self.nxguard*self.dx
+    xmmaxp = self.xmmaxp + self.nxguard*self.dx
+    zmminp = self.zmminp - self.nzguard*self.dz
+    zmmaxp = self.zmmaxp + self.nzguard*self.dz
+    getgrid2d(n,r,z,potential,nxp,nzp,self.potentialp[:,0,:],
+              xmminp,xmmaxp,zmminp,zmmaxp)
 
   def removedelsqphi(self):
     phi = self.potential[:,0,:]
     rho = self.source[:,0,:,0]
     if self.solvergeom==w3d.RZgeom:
-      rr = self.xmmin + arange(self.nx+1)*self.dx
+      rr = self.xmminlocal + arange(self.nxlocal+1)*self.dx
       rho += eps0*(
         +(+phi[:-2,1:-1]*((rr-0.5*self.dx)/rr)[:,NewAxis]
           -2.*phi[1:-1,1:-1]
@@ -640,12 +652,9 @@ Initially, conductors are not implemented.
     self._rho = self.source[...,0]
     if isinstance(self.potential,FloatType): return
 
-    if self.izfsslave is None: self.izfsslave = top.izfsslave
-    if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
-    self.lbuildquads = false
 
     # --- Setup implicit chi
     qomdt = top.implicitfactor*top.dt # implicitfactor = q/m
@@ -667,17 +676,18 @@ Initially, conductors are not implemented.
       self.source[...,iz] = -(2.*alpha + 2.*c1*alpha + 4.*c2*alpha*w3d.zmesh[iz])*eps0
     """
 
-    mgsolveimplicites2d(iwhich,self.nx,self.nzlocal,self.nz,self.dx,self.dz*zfact,
+    mgsolveimplicites2d(iwhich,self.nx,self.nz,self.nxlocal,self.nzlocal,
+                        self.dx,self.dz*zfact,
                         self.potential,self.source,
                         top.nsimplicit,qomdt,self.chi0,
-                        self.bounds,self.xmmin,self.zmminlocal*zfact,self.zmmin*zfact,
-                        self.getzgrid()*zfact,self.getzgrid()*zfact,
+                        self.bounds,self.xmminlocal,self.zmminlocal*zfact,
+                        self.getzgrid()*zfact,
                         self.mgparam,mgiters,self.mgmaxiters,
                         self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                         self.downpasses,self.uppasses,
-                        self.lcndbndy,self.laddconductor,self.icndbndy,self.lbuildquads,
-                        self.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
-                        self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+                        self.lcndbndy,self.laddconductor,self.icndbndy,
+                        self.gridmode,conductorobject,
+                        self.solvergeom==w3d.RZgeom,self.fsdecomp)
 
     self.mgiters = mgiters[0]
     self.mgerror = mgerror[0]
@@ -693,7 +703,7 @@ Initially, conductors are not implemented.
 
     # --- Use direct matrix solver
     t0 = wtime()
-    n = self.nx*self.nzlocal
+    n = self.nxlocal*self.nzlocal
     nrhs = 1
     b = -self.source[:-1,:-1]/eps0
     phi = self.potential[1:-1,1:-1]
@@ -703,12 +713,12 @@ Initially, conductors are not implemented.
     rowind = fzeros((5,n),'l')
     colptr = arange(n+1)*5 + 1
     rowcnt = zeros(n,'l')
-    rmmin = self.xmmin
+    rmmin = self.xmminlocal
     dr = self.dx
     dz = self.dz
     drsqi = 1./dr**2
     dzsqi = 1./dz**2
-    nr = self.nx
+    nr = self.nxlocal
     nzlocal = self.nzlocal
     coeffikm1 = dzsqi
     coeffikp1 = dzsqi

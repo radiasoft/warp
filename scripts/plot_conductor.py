@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.119 2008/07/25 00:06:36 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.120 2008/11/19 18:30:00 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -56,6 +56,12 @@ def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,yscale,xscale,
     ixc = interior.indx[ix,:]*lx
     iyc = interior.indx[iy,:]*ly
     izc = interior.indx[iz,:]*lz
+    if ix == 0: ixc = ixc + conductors.levelix[mglevel]*lx
+    if iy == 0: iyc = iyc + conductors.levelix[mglevel]*ly
+    if iz == 0: izc = izc + conductors.levelix[mglevel]*lz
+    if ix == 1: ixc = ixc + conductors.leveliy[mglevel]*lx
+    if iy == 1: iyc = iyc + conductors.leveliy[mglevel]*ly
+    if iz == 1: izc = izc + conductors.leveliy[mglevel]*lz
     if ix == 2: ixc = ixc + conductors.leveliz[mglevel]*lx
     if iy == 2: iyc = iyc + conductors.leveliz[mglevel]*ly
     if iz == 2: izc = izc + conductors.leveliz[mglevel]*lz
@@ -97,6 +103,12 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     ixc = subgrid.indx[ix,:]
     iyc = subgrid.indx[iy,:]
     izc = subgrid.indx[iz,:]*lz
+    if ix == 0: ixc = ixc + conductors.levelix[mglevel]
+    if iy == 0: iyc = iyc + conductors.levelix[mglevel]
+    if iz == 0: izc = izc + conductors.levelix[mglevel]
+    if ix == 1: ixc = ixc + conductors.leveliy[mglevel]
+    if iy == 1: iyc = iyc + conductors.leveliy[mglevel]
+    if iz == 1: izc = izc + conductors.leveliy[mglevel]
     if ix == 2: ixc = ixc + conductors.leveliz[mglevel]
     if iy == 2: iyc = iyc + conductors.leveliz[mglevel]
     if iz == 2: izc = izc + conductors.leveliz[mglevel]
@@ -221,6 +233,12 @@ by the conductor number.
     izc = interior.indx[iz,:nc]
     numb = interior.numb[:nc]
     # --- Add z offset of data. This only applies for the parallel version
+    if ix == 0: ixc = ixc + conductors.levelix[mglevel]
+    if iy == 0: iyc = iyc + conductors.levelix[mglevel]
+    if iz == 0: izc = izc + conductors.levelix[mglevel]
+    if ix == 1: ixc = ixc + conductors.leveliy[mglevel]
+    if iy == 1: iyc = iyc + conductors.leveliy[mglevel]
+    if iz == 1: izc = izc + conductors.leveliy[mglevel]
     if ix == 2: ixc = ixc + conductors.leveliz[mglevel]
     if iy == 2: iyc = iyc + conductors.leveliz[mglevel]
     if iz == 2: izc = izc + conductors.leveliz[mglevel]
@@ -295,6 +313,12 @@ by the conductor number.
   iys = arrayjoin(ieys,ioys)
   izs = arrayjoin(iezs,iozs)*lz
   # --- Add z offset of data. This only applies for the parallel version
+  if ix == 0: ixs = ixs + conductors.levelix[mglevel]
+  if iy == 0: iys = iys + conductors.levelix[mglevel]
+  if iz == 0: izs = izs + conductors.levelix[mglevel]
+  if ix == 1: ixs = ixs + conductors.leveliy[mglevel]
+  if iy == 1: iys = iys + conductors.leveliy[mglevel]
+  if iz == 1: izs = izs + conductors.leveliy[mglevel]
   if ix == 2: ixs = ixs + conductors.leveliz[mglevel]
   if iy == 2: iys = iys + conductors.leveliz[mglevel]
   if iz == 2: izs = izs + conductors.leveliz[mglevel]
@@ -464,6 +488,12 @@ by the conductor number.
     izc = getattr(f3dcond,'i'+zz+'cond')[:nc]
     numb = f3dcond.condnumb[:nc]
     # --- Add z offset of data. This only applies for the parallel version
+    if xx == 0: ixc = ixc + f3dmg.mglevelsix[mglevel]
+    if yy == 0: iyc = iyc + f3dmg.mglevelsix[mglevel]
+    if zz == 0: izc = izc + f3dmg.mglevelsix[mglevel]
+    if xx == 1: ixc = ixc + f3dmg.mglevelsiy[mglevel]
+    if yy == 1: iyc = iyc + f3dmg.mglevelsiy[mglevel]
+    if zz == 1: izc = izc + f3dmg.mglevelsiy[mglevel]
     if xx == 2: ixc = ixc + f3dmg.mglevelsiz[mglevel]
     if yy == 2: iyc = iyc + f3dmg.mglevelsiz[mglevel]
     if zz == 2: izc = izc + f3dmg.mglevelsiz[mglevel]
@@ -544,6 +574,12 @@ by the conductor number.
   iys = array(list(ieys) + list(ioys))
   izs = array(list(iezs) + list(iozs))*lz
   # --- Add z offset of data. This only applies for the parallel version
+  if xx == 0: ixs = ixs + f3dmg.mglevelsix[mglevel]
+  if yy == 0: iys = iys + f3dmg.mglevelsix[mglevel]
+  if zz == 0: izs = izs + f3dmg.mglevelsix[mglevel]
+  if xx == 1: ixs = ixs + f3dmg.mglevelsiy[mglevel]
+  if yy == 1: iys = iys + f3dmg.mglevelsiy[mglevel]
+  if zz == 1: izs = izs + f3dmg.mglevelsiy[mglevel]
   if xx == 2: ixs = ixs + f3dmg.mglevelsiz[mglevel]
   if yy == 2: iys = iys + f3dmg.mglevelsiz[mglevel]
   if zz == 2: izs = izs + f3dmg.mglevelsiz[mglevel]
@@ -774,7 +810,7 @@ by the conductor number.
 ######################################################################
 ######################################################################
 # x-y plane
-def pfxy(iz=None,izf=None,fullplane=1,cond=1,plotsg=1,fill=0,scale=1,
+def pfxy(iz=None,fullplane=1,cond=1,plotsg=1,fill=0,scale=1,
          plotphi=1,plotrho=0,plotselfe=0,comp='z',
          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
          condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
@@ -837,8 +873,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   # --- This logic is needed since in the parallel version, zmminlocal is local.
   # --- If the user passes in a value, it must be checked for consistency,
   # --- otherwise coding below could lead to a deadlock in the parallel version
-  if izf is not None: iz = izf
-  if iz is None: iz = nint(-solver.zmminlocal/solver.dz) + top.izfsslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz)
   if w3d.solvergeom<>w3d.XYgeom:
     if iz < 0 or solver.nz < iz: return
   if scale:
@@ -913,7 +948,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
                   subgridlen,mglevel,-yscale,-xscale,inverted,conductors,local)
 
 # z-x plane
-def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=0,
+def pfzx(iy=None,fullplane=1,lbeamframe=0,
          cond=1,plotsg=1,fill=0,scale=1,
          plotphi=1,plotrho=0,plotselfe=0,comp='z',
          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
@@ -975,7 +1010,6 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  if iyf is not None: iy = iyf
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if iy < 0 or solver.ny < iy: return
   if lbeamframe: zbeam = 0.
@@ -1034,7 +1068,7 @@ def pfzr(**kw):
   pfzx(**kw)
 
 # z-y plane
-def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=0,
+def pfzy(ix=None,fullplane=1,lbeamframe=0,
          cond=1,plotsg=1,fill=0,scale=1,
          plotphi=1,plotrho=0,plotselfe=0,comp='z',
          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
@@ -1096,7 +1130,6 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  if ixf is not None: ix = ixf
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if ix < 0 or solver.nx < ix: return
   if lbeamframe: zbeam = 0.
@@ -1155,7 +1188,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
 ######################################################################
 
 # x-y plane
-def pfxyg(iz=None,izf=None,fullplane=1,
+def pfxyg(iz=None,fullplane=1,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
           phicolor=blue,rhocolor=red,selfecolor=green,
           subgridlen=1.,condcolor='fg',oddcolor=red,evencolor=green,
@@ -1165,7 +1198,6 @@ Plots conductors and contours of electrostatic potential in X-Y plane in grid
 frame
 Same arguments as pfxy
   """
-  if izf is not None: iz = izf
   pfxy(iz=iz,fullplane=fullplane,scale=0,cond=cond,plotsg=plotsg,fill=fill,
        plotphi=plotphi,plotrho=plotrho,plotselfe=plotselfe,comp=comp,
        subgridlen=subgridlen,
@@ -1175,7 +1207,7 @@ Same arguments as pfxy
        solver=solver,kwdict=kw)
 
 # z-x plane
-def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=0,
+def pfzxg(iy=None,fullplane=1,lbeamframe=0,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
           subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
           condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
@@ -1185,7 +1217,6 @@ Plots conductors and contours of electrostatic potential in Z-X plane in grid
 frame
 Same arguments as pfzx
   """
-  if iyf is not None: iy = iyf
   pfzx(iy=iy,fullplane=fullplane,lbeamframe=lbeamframe,scale=0,
        cond=cond,plotsg=plotsg,fill=fill,
        plotphi=plotphi,plotrho=plotrho,plotselfe=plotselfe,comp=comp,
@@ -1199,7 +1230,7 @@ Same arguments as pfzx
 pfzrg = pfzxg
 
 # z-y plane
-def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=0,
+def pfzyg(ix=None,fullplane=1,lbeamframe=0,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
           subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
           condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
@@ -1209,7 +1240,6 @@ Plots conductors and contours of electrostatic potential in Z-Y plane in grid
 frame
 Same arguments as pfzy
   """
-  if ixf is not None: ix = ixf
   pfzy(ix=ix,fullplane=fullplane,lbeamframe=lbeamframe,scale=0,
        cond=cond,plotsg=plotsg,fill=fill,
        plotphi=plotphi,plotrho=plotrho,plotselfe=plotselfe,comp=comp,
@@ -1226,7 +1256,7 @@ Same arguments as pfzy
 ############################################################################
 
 # x-y plane
-def pfxybox(iz=None,izf=None,contours=8,plotsg=1,scale=1,signx=1,signy=1,
+def pfxybox(iz=None,contours=8,plotsg=1,scale=1,signx=1,signy=1,
             plotphi=1,plotrho=0,plotselfe=0,comp='z',filled=0,
             phicolor=blue,rhocolor=red,selfecolor=green,
             condcolor='fg',conductors=None,solver=None,
@@ -1257,8 +1287,7 @@ in X-Y plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  if izf is not None: iz = izf
-  if not iz: iz = nint(-solver.zmminlocal/solver.dz)
+  if not iz: iz = nint(-solver.zmmin/solver.dz)
   if iz < 0 or solver.nz < iz: return
   if scale:
     dy = solver.dy*signy
@@ -1300,7 +1329,7 @@ in X-Y plane
         color=condcolor,local=local)
 
 # z-x plane
-def pfzxbox(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
+def pfzxbox(iy=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
             plotphi=1,plotrho=0,plotselfe=0,comp='z',filled=0,
             phicolor=blue,rhocolor=red,selfecolor=green,
             condcolor='fg',conductors=f3d.conductors,solver=w3d,
@@ -1330,7 +1359,6 @@ in Z-X plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  if iyf is not None: iy = iyf
   if not iy: iy = nint(-solver.ymmin/solver.dy)
   if iy < 0 or solver.ny < iy: return
   if scale:
@@ -1372,7 +1400,7 @@ in Z-X plane
         color=condcolor,local=local)
 
 # z-y plane
-def pfzybox(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=1,
+def pfzybox(ix=None,contours=8,plotsg=1,scale=1,signz=1,signy=1,
             plotphi=1,plotrho=0,plotselfe=0,comp='z',filled=0,
             phicolor=blue,rhocolor=red,selfecolor=green,
             condcolor='fg',conductors=f3d.conductors,solver=w3d,
@@ -1402,7 +1430,6 @@ in Z-Y plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  if ixf is not None: ix = ixf
   if not ix: ix = nint(-solver.xmmin/solver.dx)
   if ix < 0 or solver.nx < ix: return
   if scale:
@@ -1444,7 +1471,7 @@ in Z-Y plane
         color=condcolor,local=local)
 
 # z-x plane
-def pfzxboxi(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,
+def pfzxboxi(iy=None,contours=8,plotsg=1,scale=1,signz=1,
              plotphi=1,plotrho=0,plotselfe=0,comp='z',
              filled=0,phicolor=blue,rhocolor=red,selfecolor=green,
              condcolor='fg',conductors=f3d.conductors,solver=w3d,**kw):
@@ -1466,7 +1493,6 @@ in Z-(-X) plane
   - selfecolor=green: color of selfe contours or vectors
   - condcolor='fg' color of conductor points inside conductors
   """
-  if iyf is not None: iy = iyf
   pfzxbox(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
           signx=-1,
           plotphi=plotphi,plotrho=plotrho,plotselfe=plotselfe,comp=comp,
@@ -1475,7 +1501,7 @@ in Z-(-X) plane
           condcolor=condcolor,conductors=conductors,solver=w3d,kwdict=kw)
 
 # z-y plane
-def pfzyboxi(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=-1,
+def pfzyboxi(ix=None,contours=8,plotsg=1,scale=1,signz=1,signy=-1,
              plotphi=1,plotrho=0,plotselfe=0,comp='z',
              filled=0,phicolor=blue,rhocolor=red,selfecolor=green,
              condcolor='fg',conductors=f3d.conductors,solver=w3d,**kw):
@@ -1497,7 +1523,6 @@ in Z-(-Y) plane
   - selfecolor=green: color of selfe contours or vectors
   - condcolor='fg' color of conductor points inside conductors
   """
-  if ixf is not None: ix = ixf
   pfzybox(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
           signy=-1,
           plotphi=plotphi,plotrho=plotrho,plotselfe=plotselfe,comp=comp,
@@ -1641,8 +1666,8 @@ def pfzxlab(zz=None,iy=None,condcolor='fg',conductors=f3d.conductors,
       lx = conductors.levellx[0]
       ly = conductors.levelly[0]
       lz = conductors.levellz[0]
-      ixc = interior.indx[0,:]
-      iyc = interior.indx[1,:]
+      ixc = interior.indx[0,:] + conductors.levelix[0]
+      iyc = interior.indx[1,:] + conductors.leveliy[0]
       izc = interior.indx[2,:] + conductors.leveliz[0]
       level = equal(mglevel,interior.ilevel)
     ii = compress(logical_and(equal(iyc[:nn],iy),level[:nn]),arange(nn))
@@ -2438,12 +2463,20 @@ Input:
   condid=0: Id number to identify this conductor
 Output is put directly into the conductor arrays of Conductor3d.
   """
+  print """
+Warning: srfrvout is obsolete and should no longer be used.
+use ZSrfrvOut instead.
+  """
+  if xmin is None: xmin = w3d.xmminlocal
+  if xmax is None: xmax = w3d.xmmaxlocal
+  if ymin is None: ymin = w3d.ymminlocal
+  if ymax is None: ymax = w3d.ymmaxlocal
   if zmin is None: zmin = w3d.zmminlocal
   if zmax is None: zmax = w3d.zmmaxlocal
-  if xmin is None: xmin = w3d.xmmin
-  if xmax is None: xmax = w3d.xmmax
-  if ymin is None: ymin = w3d.ymmin
-  if ymax is None: ymax = w3d.ymmax
+  if xmminlocal is None: xmminlocal = w3d.xmminlocal
+  if xmmaxlocal is None: xmmaxlocal = w3d.xmmaxlocal
+  if ymminlocal is None: ymminlocal = w3d.ymminlocal
+  if ymmaxlocal is None: ymmaxlocal = w3d.ymmaxlocal
   if zmminlocal is None: zmminlocal = w3d.zmminlocal
   if zmmaxlocal is None: zmmaxlocal = w3d.zmmaxlocal
   if zmmin is None: zmmin = w3d.zmmin
@@ -2530,12 +2563,20 @@ Input:
   condid=0: Id number to identify this conductor
 Output is put directly into the conductor arrays of Conductor3d.
   """
+  print """
+Warning: srfrvin is obsolete and should no longer be used.
+use ZSrfrvIn instead.
+  """
+  if xmin is None: xmin = w3d.xmminlocal
+  if xmax is None: xmax = w3d.xmmaxlocal
+  if ymin is None: ymin = w3d.ymminlocal
+  if ymax is None: ymax = w3d.ymmaxlocal
   if zmin is None: zmin = w3d.zmminlocal
   if zmax is None: zmax = w3d.zmmaxlocal
-  if xmin is None: xmin = w3d.xmmin
-  if xmax is None: xmax = w3d.xmmax
-  if ymin is None: ymin = w3d.ymmin
-  if ymax is None: ymax = w3d.ymmax
+  if xmminlocal is None: xmminlocal = w3d.xmminlocal
+  if xmmaxlocal is None: xmmaxlocal = w3d.xmmaxlocal
+  if ymminlocal is None: ymminlocal = w3d.ymminlocal
+  if ymmaxlocal is None: ymmaxlocal = w3d.ymmaxlocal
   if zmminlocal is None: zmminlocal = w3d.zmminlocal
   if zmmaxlocal is None: zmmaxlocal = w3d.zmmaxlocal
   if zmmin is None: zmmin = w3d.zmmin
@@ -2620,12 +2661,20 @@ Input:
   condid=0: Id number to identify this conductor
 Output is put directly into the conductor arrays of Conductor3d.
   """
+  print """
+Warning: srfrvinout is obsolete and should no longer be used.
+use ZSrfrvInOut instead.
+  """
+  if xmin is None: xmin = w3d.xmminlocal
+  if xmax is None: xmax = w3d.xmmaxlocal
+  if ymin is None: ymin = w3d.ymminlocal
+  if ymax is None: ymax = w3d.ymmaxlocal
   if zmin is None: zmin = w3d.zmminlocal
   if zmax is None: zmax = w3d.zmmaxlocal
-  if xmin is None: xmin = w3d.xmmin
-  if xmax is None: xmax = w3d.xmmax
-  if ymin is None: ymin = w3d.ymmin
-  if ymax is None: ymax = w3d.ymmax
+  if xmminlocal is None: xmminlocal = w3d.xmminlocal
+  if xmmaxlocal is None: xmmaxlocal = w3d.xmmaxlocal
+  if ymminlocal is None: ymminlocal = w3d.ymminlocal
+  if ymmaxlocal is None: ymmaxlocal = w3d.ymmaxlocal
   if zmminlocal is None: zmminlocal = w3d.zmminlocal
   if zmmaxlocal is None: zmmaxlocal = w3d.zmmaxlocal
   if zmmin is None: zmmin = w3d.zmmin
@@ -2866,34 +2915,39 @@ Sets the voltage on a conductor, given an id.
   elif type(voltage) == FunctionType:
     # --- Assumes that voltage is a function which takes 3 arguments, the
     # --- coordinates x, y, z, in meters relative to the beam frame.
+    solver = getregisteredsolver()
+    if solver is None: solver = w3d
 
     if interior.n > 0:
-      zmmin = w3d.zmmin
-      icx = interior.indx[0,:]*take(nint(conductors.levellx),interior.ilevel)
-      icy = interior.indx[1,:]*take(nint(conductors.levelly),interior.ilevel)
-      icz = interior.indx[2,:]*take(nint(conductors.levellz),interior.ilevel)+\
-                       take(conductors.leveliz,interior.ilevel)
-      cx = w3d.xmmin + icx*w3d.dx
-      cy = w3d.ymmin + icy*w3d.dy
-      cz =     zmmin + icz*w3d.dz
+      icx = (interior.indx[0,:]*take(nint(conductors.levellx),interior.ilevel)+
+                       take(conductors.levelix,interior.ilevel))
+      icy = (interior.indx[1,:]*take(nint(conductors.levelly),interior.ilevel)+
+                       take(conductors.leveliy,interior.ilevel))
+      icz = (interior.indx[2,:]*take(nint(conductors.levellz),interior.ilevel)+
+                       take(conductors.leveliz,interior.ilevel))
+      cx = solver.xmmin + icx*solver.dx
+      cy = solver.ymmin + icy*solver.dy
+      cz = solver.zmmin + icz*solver.dz
       cv = voltage(cx,cy,cz)
 
     if evensubgrid.n > 0:
       ieclx = take(nint(conductors.levellx),evensubgrid.ilevel)
       iecly = take(nint(conductors.levelly),evensubgrid.ilevel)
       ieclz = take(nint(conductors.levellz),evensubgrid.ilevel)
-      ecx = w3d.xmmin + w3d.dx*evensubgrid.indx[0,:]*ieclx
-      ecy = w3d.ymmin + w3d.dy*evensubgrid.indx[1,:]*iecly
-      ecz =     zmmin + w3d.dz*(evensubgrid.indx[2,:]*ieclz + \
+      ecx = solver.xmmin + solver.dx*(evensubgrid.indx[0,:]*ieclx +
+                                take(conductors.levelix,evensubgrid.ilevel))
+      ecy = solver.ymmin + solver.dy*(evensubgrid.indx[1,:]*iecly +
+                                take(conductors.leveliy,evensubgrid.ilevel))
+      ecz = solver.zmmin + solver.dz*(evensubgrid.indx[2,:]*ieclz +
                                 take(conductors.leveliz,evensubgrid.ilevel))
 
       edels = evensubgrid.dels
-      ecxmx = ecx - where(0 < edels[0,:] < 1.,edels[0,:],0)*ieclx*w3d.dx
-      ecxpx = ecx + where(0 < edels[1,:] < 1.,edels[1,:],0)*ieclx*w3d.dx
-      ecymy = ecy - where(0 < edels[2,:] < 1.,edels[2,:],0)*iecly*w3d.dy
-      ecypy = ecy + where(0 < edels[3,:] < 1.,edels[3,:],0)*iecly*w3d.dy
-      eczmz = ecz - where(0 < edels[4,:] < 1.,edels[4,:],0)*ieclz*w3d.dz
-      eczpz = ecz + where(0 < edels[5,:] < 1.,edels[5,:],0)*ieclz*w3d.dz
+      ecxmx = ecx - where(0 < edels[0,:] < 1.,edels[0,:],0)*ieclx*solver.dx
+      ecxpx = ecx + where(0 < edels[1,:] < 1.,edels[1,:],0)*ieclx*solver.dx
+      ecymy = ecy - where(0 < edels[2,:] < 1.,edels[2,:],0)*iecly*solver.dy
+      ecypy = ecy + where(0 < edels[3,:] < 1.,edels[3,:],0)*iecly*solver.dy
+      eczmz = ecz - where(0 < edels[4,:] < 1.,edels[4,:],0)*ieclz*solver.dz
+      eczpz = ecz + where(0 < edels[5,:] < 1.,edels[5,:],0)*ieclz*solver.dz
       ecvmx = voltage(ecxmx,ecy  ,ecz  )
       ecvpx = voltage(ecxpx,ecy  ,ecz  )
       ecvmy = voltage(ecx  ,ecymy,ecz  )
@@ -2905,18 +2959,20 @@ Sets the voltage on a conductor, given an id.
       ioclx = take(nint(conductors.levellx),oddsubgrid.ilevel)
       iocly = take(nint(conductors.levelly),oddsubgrid.ilevel)
       ioclz = take(nint(conductors.levellz),oddsubgrid.ilevel)
-      ocx = w3d.xmmin + w3d.dx*oddsubgrid.indx[0,:]*ioclx
-      ocy = w3d.ymmin + w3d.dy*oddsubgrid.indx[1,:]*iocly
-      ocz =     zmmin + w3d.dz*(oddsubgrid.indx[2,:]*ioclz + \
+      ocx = solver.xmmin + solver.dx*(oddsubgrid.indx[0,:]*ioclx +
+                                take(conductors.levelix,oddsubgrid.ilevel))
+      ocy = solver.ymmin + solver.dy*(oddsubgrid.indx[1,:]*iocly +
+                                take(conductors.leveliy,oddsubgrid.ilevel))
+      ocz = solver.zmmin + solver.dz*(oddsubgrid.indx[2,:]*ioclz +
                                 take(conductors.leveliz,oddsubgrid.ilevel))
 
       odels = oddsubgrid.dels
-      ocxmx = ocx - where(0 < odels[0,:] < 1.,odels[0,:],0)*ioclx*w3d.dx
-      ocxpx = ocx + where(0 < odels[1,:] < 1.,odels[1,:],0)*ioclx*w3d.dx
-      ocymy = ocy - where(0 < odels[2,:] < 1.,odels[2,:],0)*iocly*w3d.dy
-      ocypy = ocy + where(0 < odels[3,:] < 1.,odels[3,:],0)*iocly*w3d.dy
-      oczmz = ocz - where(0 < odels[4,:] < 1.,odels[4,:],0)*ioclz*w3d.dz
-      oczpz = ocz + where(0 < odels[5,:] < 1.,odels[5,:],0)*ioclz*w3d.dz
+      ocxmx = ocx - where(0 < odels[0,:] < 1.,odels[0,:],0)*ioclx*solver.dx
+      ocxpx = ocx + where(0 < odels[1,:] < 1.,odels[1,:],0)*ioclx*solver.dx
+      ocymy = ocy - where(0 < odels[2,:] < 1.,odels[2,:],0)*iocly*solver.dy
+      ocypy = ocy + where(0 < odels[3,:] < 1.,odels[3,:],0)*iocly*solver.dy
+      oczmz = ocz - where(0 < odels[4,:] < 1.,odels[4,:],0)*ioclz*solver.dz
+      oczpz = ocz + where(0 < odels[5,:] < 1.,odels[5,:],0)*ioclz*solver.dz
       ocvmx = voltage(ocxmx,ocy  ,ocz  )
       ocvpx = voltage(ocxpx,ocy  ,ocz  )
       ocvmy = voltage(ocx  ,ocymy,ocz  )
@@ -2983,15 +3039,21 @@ Returns the scene use to draw the image
   except ImportError:
     return
 
+  solver = getregisteredsolver()
+  if solver is None:
+    solver = w3d
+    solvertop = top
+  else:
+    solvertop = solver
   # --- Make sure that the conductor data is properly installed.
-  checkconductors(w3d.nx,w3d.ny,w3d.nzlocal,w3d.nz,w3d.dx,w3d.dy,w3d.dz,
-                  conductors,
-                  top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
+  checkconductors(solver.nx,solver.ny,solver.nz,
+                  solver.nxlocal,solver.nylocal,solver.nzlocal,
+                  solver.dx,solver.dy,solver.dz,conductors,solvertop.fsdecomp)
 
   # --- Save grid size
-  nx = w3d.nx
-  ny = w3d.ny
-  nz = w3d.nzlocal
+  nx = solver.nxlocal
+  ny = solver.nylocal
+  nz = solver.nzlocal
 
   # --- Get conductors
   ie = conductors.evensubgrid.istart[mglevel  ] - 1
@@ -3060,13 +3122,13 @@ Returns the scene use to draw the image
   model = Opyndx.VisualModel(twoSided=true,scene=scene,title=title,
                              vrange=vrange)
 
-  gridmin = array([w3d.xmmin,w3d.ymmin,w3d.zmmin])
-  griddd = array([w3d.dx*conductors.levellx[mglevel],
-                  w3d.dy*conductors.levelly[mglevel],
-                  w3d.dz*conductors.levellz[mglevel]])
-  gridnn = array([nint(w3d.nx/conductors.levellx[mglevel]),
-                  nint(w3d.ny/conductors.levelly[mglevel]),
-                  nint(w3d.nz/conductors.levellz[mglevel])])
+  gridmin = array([solver.xmmin,solver.ymmin,solver.zmmin])
+  griddd = array([solver.dx*conductors.levellx[mglevel],
+                  solver.dy*conductors.levelly[mglevel],
+                  solver.dz*conductors.levellz[mglevel]])
+  gridnn = array([nint(solver.nx/conductors.levellx[mglevel]),
+                  nint(solver.ny/conductors.levelly[mglevel]),
+                  nint(solver.nz/conductors.levellz[mglevel])])
     
   # --- This fortran routine generates the triangulated surface. It was
   # --- converted to fortran for speed.

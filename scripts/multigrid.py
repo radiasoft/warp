@@ -53,9 +53,6 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- in the solve method when there are bends.
     self.linbend = false
 
-    # --- Turn of build quads option
-    self.lbuildquads = false
-
   def initializeconductors(self):
     # --- Create the attributes for holding information about conductors
     # --- and conductor objects.
@@ -150,8 +147,15 @@ class MultiGrid(SubcycledPoissonSolver):
       # --- everything is reinstalled.
       try:
         conductorobject = self.conductorobjects['p']
-        if (conductorobject.leveliz[0] != self.izpslave[self.my_index] or
-            conductorobject.levelnz[0] != self.nzpslave[self.my_index]):
+        ixproc = self.ppdecomp.ixproc
+        iyproc = self.ppdecomp.iyproc
+        izproc = self.ppdecomp.izproc
+        if (conductorobject.levelix[0] != self.ppdecomp.ix[ixproc] or
+            conductorobject.levelnx[0] != self.ppdecomp.nx[ixproc] or
+            conductorobject.leveliy[0] != self.ppdecomp.iy[iyproc] or
+            conductorobject.levelny[0] != self.ppdecomp.ny[iyproc] or
+            conductorobject.leveliz[0] != self.ppdecomp.iz[izproc] or
+            conductorobject.levelnz[0] != self.ppdecomp.nz[izproc]):
           del self.conductorobjects['p']
           del self.installedconductorlists['p']
       except KeyError:
@@ -209,8 +213,10 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def getdims(self):
     # --- Returns the dimensions of the arrays used by the field solver
-    return ((1+self.nx,1+self.ny,1+self.nzlocal),
-            (1+self.nx+2*self.nxguard,1+self.ny+2*self.nyguard,1+self.nzlocal+2*self.nzguard))
+    return ((1+self.nxlocal,1+self.nylocal,1+self.nzlocal),
+            (1+self.nxlocal+2*self.nxguard,
+             1+self.nylocal+2*self.nyguard,
+             1+self.nzlocal+2*self.nzguard))
 
   def getrho(self):
     return self.source
@@ -349,8 +355,7 @@ class MultiGrid(SubcycledPoissonSolver):
     if n == 0: return
     if top.efetch[js] == 3 and isinstance(self.fieldp,FloatType): return
     if top.efetch[js] != 3 and isinstance(self.potentialp,FloatType): return
-    iselfb = top.iselfb[js]
-    if (not (self.getconductorobject(top.fselfb[iselfb]).lcorrectede or
+    if (not (self.getconductorobject('p').lcorrectede or
              f3d.lcorrectede)):
       sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
              self.xmminp,self.ymminp,self.zmminp,
@@ -398,10 +403,10 @@ class MultiGrid(SubcycledPoissonSolver):
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
       if isinstance(self.source,FloatType): return
       if isinstance(self.sourcep,FloatType): return
-      setrhoforfieldsolve3d(self.nx,self.ny,self.nzlocal,self.source,
-                            self.nxp,self.nyp,self.nzp,self.sourcep,self.nzpguard,
-                            self.my_index,self.nslaves,self.izpslave,self.nzpslave,
-                            self.izfsslave,self.nzfsslave)
+      setrhoforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,self.source,
+                            self.nxp,self.nyp,self.nzp,self.sourcep,
+                            self.nxpguard,self.nypguard,self.nzpguard,
+                            self.fsdecomp,self.ppdecomp)
 
   def getpotentialpforparticles(self,*args):
     self.setpotentialpforparticles(*args)
@@ -410,11 +415,11 @@ class MultiGrid(SubcycledPoissonSolver):
     else:
       if isinstance(self.potential,FloatType): return
       if isinstance(self.potentialp,FloatType): return
-      getphipforparticles3d(1,self.nx,self.ny,self.nzlocal,self.potential,
+      getphipforparticles3d(1,self.nxlocal,self.nylocal,self.nzlocal,
+                            self.potential,
                             self.nxp,self.nyp,self.nzp,self.potentialp,
                             self.nxguard,self.nyguard,self.nzguard,
-                            self.my_index,self.nslaves,self.izpslave,self.nzpslave,
-                            self.izfsslave,self.nzfsslave)
+                            self.fsdecomp,self.ppdecomp)
 
     iselfb = args[2]
     if (iselfb == 0 and
@@ -424,9 +429,10 @@ class MultiGrid(SubcycledPoissonSolver):
       # --- when iselfb == 0.
       conductorobject = self.getconductorobject('p')
       # --- This sets up the icgrid
-      setupconductorfielddata(self.nxp,self.nyp,self.nzp,self.nz,
+      setupconductorfielddata(self.nx,self.ny,self.nz,
+                              self.nxp,self.nyp,self.nzp,
                               self.dx,self.dy,self.dz,conductorobject,
-                              self.my_index,self.nslaves,self.izpslave,self.nzpslave)
+                              self.ppdecomp)
       # --- This calculates the field
       getefieldatconductorsubgrid(conductorobject,
                                   self.potentialp,self.dx,self.dy,self.dz,
@@ -462,44 +468,92 @@ class MultiGrid(SubcycledPoissonSolver):
         # --- species - this routine modifies fieldp in place.
         fixefieldatconductorpoints(conductorobject,self.fieldp,
                                    self.dx,self.dy,self.dz,
-                                   self.nx,self.ny,self.nz)
+                                   self.nxp,self.nyp,self.nzp)
 
-  def makesourceperiodic(self):
-    if self.pbounds[0] == 2 or self.pbounds[1] == 2:
-      self.source[0,:,:] = self.source[0,:,:] + self.source[-1,:,:]
-      self.source[-1,:,:] = self.source[0,:,:]
-    if self.pbounds[2] == 2 or self.pbounds[3] == 2:
-      self.source[:,0,:] = self.source[:,0,:] + self.source[:,-1,:]
-      self.source[:,-1,:] = self.source[:,0,:]
-    if self.pbounds[0] == 1 and not self.l4symtry and self.nx > 0 and self.solvergeom != w3d.RZgeom:
+  def applysourceboundaryconditions(self):
+    applyrhoboundaryconditions3d(self.source,self.ncomponents,
+                                 self.nxlocal,self.nylocal,self.nzlocal,
+                                 self.bounds,self.fsdecomp)
+    '''
+    if ((self.pbounds[0] == 1 or self.l4symtry) and self.nx > 0 and
+        self.solvergeom != w3d.RZgeom and
+        self.fsdecomp.ix[self.fsdecomp.ixproc] == 0):
       self.source[0,:,:] = 2.*self.source[0,:,:]
-    if self.pbounds[1] == 1 and self.nx > 0:
+
+    if (self.pbounds[1] == 1 and self.nx > 0 and
+        self.fsdecomp.ix[self.fsdecomp.ixproc]+self.nxlocal == self.nx):
       self.source[-1,:,:] = 2.*self.source[-1,:,:]
-    if self.pbounds[2] == 1 and not (self.l2symtry or self.l4symtry) and self.ny > 0:
+
+    if ((self.pbounds[2] == 1 or self.l2symtry or self.l4symtry) and
+        self.ny > 0 and self.fsdecomp.iy[self.fsdecomp.iyproc] == 0):
       self.source[:,0,:] = 2.*self.source[:,0,:]
-    if self.pbounds[3] == 1 and self.ny > 0:
+
+    if (self.pbounds[3] == 1 and self.ny > 0 and
+        self.fsdecomp.iy[self.fsdecomp.iyproc]+self.nylocal == self.ny):
       self.source[:,-1,:] = 2.*self.source[:,-1,:]
-    if self.pbounds[4] == 2 or self.pbounds[5] == 2:
-      if self.lparallel:
-        self.makesourceperiodic_parallel()
-      else:
-        self.source[:,:,0] = self.source[:,:,0] + self.source[:,:,-1]
-        self.source[:,:,-1] = self.source[:,:,0]
-    if self.pbounds[4] == 1 and self.izfsslave[self.my_index] == 0:
+
+    if (self.pbounds[4] == 1 and self.nz > 0 and
+        self.fsdecomp.iz[self.fsdecomp.izproc] == 0):
       self.source[:,:,0] = 2.*self.source[:,:,0]
-    if (self.pbounds[5] == 1 and
-        self.izfsslave[self.my_index]+self.nzlocal == self.nz):
+
+    if (self.pbounds[5] == 1 and self.nz > 0 and
+        self.fsdecomp.iz[self.fsdecomp.izproc]+self.nzlocal == self.nz):
       self.source[:,:,-1] = 2.*self.source[:,:,-1]
 
-  def makesourceperiodic_parallel(self):
-    tag = 70
-    if self.my_index == self.nslaves-1:
-      mpi.send(self.source[:,:,self.nzlocal],0,tag)
-      self.source[:,:,self.nzlocal],status = mpi.recv(0,tag)
-    elif self.my_index == 0:
-      sourcetemp,status = mpi.recv(self.nslaves-1,tag)
-      self.source[:,:,0] = self.source[:,:,0] + sourcetemp
-      mpi.send(self.source[:,:,0],self.nslaves-1,tag)
+    if self.pbounds[0] == 2 or self.pbounds[1] == 2:
+      if self.nxprocs == 1:
+        self.source[0,:,:] = self.source[0,:,:] + self.source[-1,:,:]
+        self.source[-1,:,:] = self.source[0,:,:]
+      else:
+        tag = 70
+        if self.fsdecomp.ixproc == self.fsdecomp.nxprocs-1:
+          ip = self.convertindextoproc(ix=self.fsdecomp.ixproc+1,
+                                       bounds=self.pbounds)
+          mpi.send(self.source[self.nxlocal,:,:],ip,tag)
+          self.source[self.nxlocal,:,:],status = mpi.recv(ip,tag)
+        elif self.fsdecomp.ixproc == 0:
+          ip = self.convertindextoproc(ix=self.fsdecomp.ixproc-1,
+                                       bounds=self.pbounds)
+          sourcetemp,status = mpi.recv(ip,tag)
+          self.source[0,:,:] = self.source[0,:,:] + sourcetemp
+          mpi.send(self.source[0,:,:],ip,tag)
+
+    if self.pbounds[2] == 2 or self.pbounds[3] == 2:
+      if self.nyprocs == 1:
+        self.source[:,0,:] = self.source[:,0,:] + self.source[:,-1,:]
+        self.source[:,-1,:] = self.source[:,0,:]
+      else:
+        tag = 71
+        if self.fsdecomp.iyproc == self.fsdecomp.nyprocs-1:
+          ip = self.convertindextoproc(iy=self.fsdecomp.iyproc+1,
+                                       bounds=self.pbounds)
+          mpi.send(self.source[:,self.nylocal,:],ip,tag)
+          self.source[:,self.nylocal,:],status = mpi.recv(ip,tag)
+        elif self.fsdecomp.iyproc == 0:
+          ip = self.convertindextoproc(iy=self.fsdecomp.iyproc-1,
+                                       bounds=self.pbounds)
+          sourcetemp,status = mpi.recv(ip,tag)
+          self.source[:,0,:] = self.source[:,0,:] + sourcetemp
+          mpi.send(self.source[:,0,:],ip,tag)
+
+    if self.pbounds[4] == 2 or self.pbounds[5] == 2:
+      if self.nzprocs == 1:
+        self.source[:,:,0] = self.source[:,:,0] + self.source[:,:,-1]
+        self.source[:,:,-1] = self.source[:,:,0]
+      else:
+        tag = 72
+        if self.fsdecomp.izproc == self.fsdecomp.nzprocs-1:
+          ip = self.convertindextoproc(iz=self.fsdecomp.izproc+1,
+                                       bounds=self.pbounds)
+          mpi.send(self.source[:,:,self.nzlocal],ip,tag)
+          self.source[:,:,self.nzlocal],status = mpi.recv(ip,tag)
+        elif self.fsdecomp.izproc == 0:
+          ip = self.convertindextoproc(iz=self.fsdecomp.izproc-1,
+                                       bounds=self.pbounds)
+          sourcetemp,status = mpi.recv(ip,tag)
+          self.source[:,:,0] = self.source[:,:,0] + sourcetemp
+          mpi.send(self.source[:,:,0],ip,tag)
+    '''
 
   def getselfe(self,recalculate=0,lzero=true):
     # --- Make sure that fieldp is at least defined.
@@ -575,44 +629,44 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- installed when it is needed, during a call to getconductorobject.
     self.conductordatalist.append((conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill))
 
-  def _installconductor(self,conductorobject,installedlist,conductordata,fselfb):
+  def _installconductor(self,conductorobject,installedlist,conductordata,
+                        fselfb):
     # --- This does that actual installation of the conductor into the
     # --- conductor object
 
-    # --- Extract the data from conductordata (the arguments to installconductor)
+    # --- Extract the data from conductordata (the arguments to
+    # --- installconductor)
     conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill = conductordata
 
     if conductor in installedlist: return
     installedlist.append(conductor)
 
+    nx,ny,nz = self.nx,self.ny,self.nz
     if fselfb == 'p':
       zscale = 1.
-      nx,ny,nzlocal,nz = self.nxp,self.nyp,self.nzp,self.nz
-      xmmin,xmmax = self.xmminp,self.xmmaxp
-      ymmin,ymmax = self.ymminp,self.ymmaxp
-      zmmin,zmmax = self.zmminp,self.zmmaxp
+      nxlocal,nylocal,nzlocal = self.nxp,self.nyp,self.nzp
       mgmaxlevels = 1
+      decomp = self.ppdecomp
     else:
       # --- Get relativistic longitudinal scaling factor
       # --- This is quite ready yet.
       beta = fselfb/clight
       zscale = 1./sqrt((1.-beta)*(1.+beta))
-      nx,ny,nzlocal,nz = self.nx,self.ny,self.nzlocal,self.nz
-      xmmin,xmmax = self.xmmin,self.xmmax
-      ymmin,ymmax = self.ymmin,self.ymmax
-      zmmin,zmmax = self.zmmin,self.zmmax
+      nxlocal,nylocal,nzlocal = self.nxlocal,self.nylocal,self.nzlocal
       mgmaxlevels = None
+      decomp = self.fsdecomp
 
+    xmmin,xmmax = self.xmmin,self.xmmax
+    ymmin,ymmax = self.ymmin,self.ymmax
+    zmmin,zmmax = self.zmmin,self.zmmax
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
-                      nx,ny,nzlocal,nz,
+                      nx,ny,nz,nxlocal,nylocal,nzlocal,
                       xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
                       zscale,self.l2symtry,self.l4symtry,
                       installrz=0,
                       solvergeom=self.solvergeom,conductors=conductorobject,
-                      mgmaxlevels=mgmaxlevels,
-                      my_index=self.my_index,nslaves=self.nslaves,
-                      izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
+                      mgmaxlevels=mgmaxlevels,decomp=decomp)
 
   def hasconductors(self):
     return len(self.conductordatalist) > 0
@@ -646,7 +700,7 @@ class MultiGrid(SubcycledPoissonSolver):
     if isinstance(self.potential,FloatType): return
 
     # --- Setup data for bends.
-    rstar = fzeros(3+self.nzlocal,'d')
+    rstar = zeros(3+self.nzlocal,'d')
     if top.bends:
 
       # --- This commented out code does the same thing as the line below
@@ -659,44 +713,43 @@ class MultiGrid(SubcycledPoissonSolver):
       setrstar(rstar,self.nzlocal,self.dz,self.zmminlocal,self.getzgrid())
       self.linbend = min(rstar) < largepos
 
-    if self.izfsslave is None: self.izfsslave = top.izfsslave
-    if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     if self.electrontemperature == 0:
-      multigrid3dsolve(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
+      multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,
+                       self.nxlocal,self.nylocal,self.nzlocal,
                        self.dx,self.dy,self.dz*zfact,self.potential,self.source,
                        rstar,self.linbend,self.bounds,
-                       self.xmmin,self.ymmin,self.zmminlocal*zfact,
-                       self.zmmin*zfact,self.getzgrid()*zfact,self.getzgrid()*zfact,
+                       self.xmmin,self.ymmin,self.zmmin*zfact,
+                       self.getzgrid()*zfact,self.getzgrid()*zfact,
                        self.mgparam,self.mgform,mgiters,self.mgmaxiters,
                        self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                        self.downpasses,self.uppasses,
                        self.lcndbndy,self.laddconductor,self.icndbndy,
-                       self.lbuildquads,self.gridmode,conductorobject,
-                       self.lprecalccoeffs,
-                       self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+                       self.gridmode,conductorobject,self.lprecalccoeffs,
+                       self.fsdecomp)
     else:
       iondensitygrid3d = Grid3dtype()
       setupiondensitygrid3d(self.xmmin,self.ymmin,self.zmmin,
                             self.dx,self.dy,self.dz,
-                            self.nx,self.ny,self.nzlocal,
+                            self.nxlocal,self.nylocal,self.nzlocal,
                             self._rho,iondensitygrid3d)
       self.iondensitygrid3d = iondensitygrid3d
-      multigridbe3dsolve(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
-                         self.dx,self.dy,self.dz*zfact,self.potential,self.source,
+      multigridbe3dsolve(iwhich,self.nx,self.ny,self.nz,
+                         self.nxlocal,self.nylocal,self.nzlocal,
+                         self.dx,self.dy,self.dz*zfact,
+                         self.potential,self.source,
                          rstar,self.linbend,self.bounds,
-                         self.xmmin,self.ymmin,self.zmminlocal*zfact,
-                         self.zmmin*zfact,self.getzgrid()*zfact,self.getzgrid()*zfact,
+                         self.xmmin,self.ymmin,self.zmmin*zfact,
+                         self.getzgrid()*zfact,self.getzgrid()*zfact,
                          self.mgparam,mgiters,self.mgmaxiters,
                          self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                          self.downpasses,self.uppasses,
                          self.lcndbndy,self.laddconductor,self.icndbndy,
-                         self.lbuildquads,self.gridmode,conductorobject,
+                         self.gridmode,conductorobject,
                          iondensitygrid3d,
-                         self.my_index,self.nslaves,self.izfsslave,
-                         self.nzfsslave)
+                         self.fsdecomp)
     self.mgiters = mgiters[0]
     self.mgerror = mgerror[0]
 
@@ -722,7 +775,7 @@ class MultiGrid(SubcycledPoissonSolver):
     dzsqi  = 1./self.dz**2
     reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
     rho = self._rho*reps0c
-    residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
+    residual(self.nxlocal,self.nylocal,self.nzlocal,dxsqi,dysqi,dzsqi,
              self._phi,rho,res,0,self.bounds,self.mgparam,self.mgform,false,
              self.lcndbndy,self.icndbndy,self.conductors,self.lprecalccoeffs,
              1,1,1)
@@ -847,10 +900,13 @@ tensor that appears from the direct implicit scheme.
   def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,m,w,iimp):
     n  = len(x)
     if n == 0: return
-    # --- Create a temporary array to pass into setrho3d. This contributes
-    # --- differently to the charge density and to chi. Also, make it a
-    # --- 3-D array so it is accepted by setrho3d.
-    sourcep = fzeros(self.sourcep.shape[:-1],'d')
+    if iimp >= 0:
+      # --- Create a temporary array to pass into setrho3d. This contributes
+      # --- differently to the charge density and to chi. Also, make it a
+      # --- 3-D array so it is accepted by setrho3d.
+      sourcep = fzeros(self.sourcep.shape[:-1],'d')
+    else:
+      sourcep = self.sourcep[...,-1]
     if top.wpid == 0:
       setrho3d(sourcep,n,x,y,z,zgrid,q,w,top.depos,
                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
@@ -862,8 +918,8 @@ tensor that appears from the direct implicit scheme.
                 self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
-    self.sourcep[...,0] += sourcep
     if iimp >= 0:
+      self.sourcep[...,0] += sourcep
       # --- The extra terms convert rho to chi
       self.sourcep[...,iimp+1] += 0.5*sourcep*q/m*top.dt**2/eps0
 
@@ -876,29 +932,12 @@ tensor that appears from the direct implicit scheme.
       if isinstance(self.source,FloatType): return
       if isinstance(self.sourcep,FloatType): return
       for iimp in range(1+top.nsimplicit):
-        setrhoforfieldsolve3d(self.nx,self.ny,self.nzlocal,
+        setrhoforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,
                               self.source[...,iimp],
                               self.nxp,self.nyp,self.nzp,
                               self.sourcep[...,iimp],
-                              self.nzpguard,
-                              self.my_index,self.nslaves,
-                              self.izpslave,self.nzpslave,
-                              self.izfsslave,self.nzfsslave)
-
-  def fetchpotentialfrompositions(self,x,y,z,potential):
-    n = len(x)
-    if n == 0: return
-    nx = self.nx + 2*self.nxguard
-    ny = self.ny + 2*self.nyguard
-    nzlocal = self.nzlocal + 2*self.nzguard
-    xmmin = self.xmmin - self.nxguard*self.dx
-    xmmax = self.xmmax + self.nxguard*self.dx
-    ymmin = self.ymmin - self.nyguard*self.dy
-    ymmax = self.ymmax + self.nyguard*self.dy
-    zmminlocal = self.zmminlocal - self.nzguard*self.dz
-    zmmaxlocal = self.zmmaxlocal + self.nzguard*self.dz
-    getgrid3d(n,x,y,z,potential,nx,ny,nzlocal,self.potential,
-              xmmin,xmmax,ymmin,ymmax,zmminlocal,zmmaxlocal)
+                              self.nxpguard,self.nypguard,self.nzpguard,
+                              self.fsdecomp,self.ppdecomp)
 
   def dosolve(self,iwhich=0,*args):
     if not self.l_internal_dosolve: return
@@ -926,12 +965,9 @@ tensor that appears from the direct implicit scheme.
       setrstar(rstar,self.nzlocal,self.dz,self.zmminlocal,self.getzgrid())
       self.linbend = min(rstar) < largepos
 
-    if self.izfsslave is None: self.izfsslave = top.izfsslave
-    if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
-    self.lbuildquads = false
 
     # --- Setup implicit chi
     qomdt = top.implicitfactor*top.dt # implicitfactor = q/m
@@ -953,22 +989,21 @@ tensor that appears from the direct implicit scheme.
       self.source[...,iz] = -(2.*alpha + 2.*c1*alpha + 4.*c2*alpha*w3d.zmesh[iz])*eps0
     """
 
-    mgsolveimplicites3d(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
+    mgsolveimplicites3d(iwhich,self.nx,self.ny,self.nz,
+                        self.nxlocal,self.nylocal,self.nzlocal,
                         self.dx,self.dy,self.dz*zfact,
                         self.potential,self._rho,
                         top.nsimplicit,qomdt,self.chi0,
                         rstar,self.linbend,
-                        self.bounds,self.xmmin,self.ymmin,
-                        self.zmminlocal*zfact,self.zmmin*zfact,
-                        self.getzgrid()*zfact,self.getzgrid()*zfact,
+                        self.bounds,self.xmminlocal,self.ymminlocal,
+                        self.zmminlocal*zfact,
+                        self.getzgrid()*zfact,
                         self.mgparam,mgiters,self.mgmaxiters,
                         self.mgmaxlevels,mgerror,self.mgtol,
                         self.mgverbose,
                         self.downpasses,self.uppasses,
                         self.lcndbndy,self.laddconductor,self.icndbndy,
-                        self.lbuildquads,self.gridmode,conductorobject,
-                        self.my_index,self.nslaves,
-                        self.izfsslave,self.nzfsslave)
+                        self.gridmode,conductorobject,self.fsdecomp)
 
     self.mgiters = mgiters[0]
     self.mgerror = mgerror[0]

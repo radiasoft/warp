@@ -14,7 +14,7 @@ class FieldSolver3dBase(object):
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom']
   __f3dinputs__ = []
-  __topinputs__ = ['pbound0','pboundnz','pboundxy','nslaves']
+  __topinputs__ = ['pbound0','pboundnz','pboundxy','nzprocs']
   __flaginputs__ = {'forcesymmetries':1}
 
   def __init__(self,useselfb=0,**kw):
@@ -94,13 +94,13 @@ class FieldSolver3dBase(object):
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
 
     # --- Set set parallel related parameters and calculate mesh sizes
-    if self.nslaves <= 1:
+    if self.nzprocs <= 1:
       self.nzlocal = self.nz
       self.zmminlocal = self.zmmin
       self.zmmaxlocal = self.zmmax
     else:
       if self.nzlocal == 0:
-        self.nzlocal = self.nz/self.nslaves
+        self.nzlocal = self.nz/self.nzprocs
         self.zmminlocal = self.zmmin + me*self.nzlocal*w3d.dz
         self.zmmaxlocal = self.zmmin + (me+1)*self.nzlocal*w3d.dz
 
@@ -221,7 +221,7 @@ class FieldSolver3dBase(object):
        trho[:,0,:] = 2.*trho[:,0,:]
     if self.pbounds[3] == 1: trho[:,-1,:] = 2.*trho[:,-1,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
-      if self.nslaves > 1:
+      if self.nzprocs > 1:
         self.makerhoperiodic_parallel()
       else:
         trho[0,:,:] = trho[0,:,:] + trho[-1,:,:]
@@ -232,22 +232,22 @@ class FieldSolver3dBase(object):
       trho[-1,:,:] = 2.*trho[-1,:,:]
 
   def getrhoforfieldsolve(self):
-    if self.nslaves > 1:
+    if self.nzprocs > 1:
       getrhoforfieldsolve3d(self.nx,self.ny,self.nzlocal,self.rho,
                         self.nx,self.ny,self.nzlocal,self.rhop,
-                        me,self.nslaves,
+                        me,self.nzprocs,
                         top.izfsslave,top.nzfsslave,top.izpslave,top.nzpslave)
 
   def makerhoperiodic_parallel(self):
     tag = 70
-    if me == self.nslaves-1:
+    if me == self.nzprocs-1:
       request = mpi.isend(self.rho[:,:,nzlocal],0,tag)
       self.rho[:,:,nzlocal],status = mpi.recv(0,tag)
     elif me == 0:
-      rhotemp,status = mpi.recv(self.nslaves-1,tag)
+      rhotemp,status = mpi.recv(self.nzprocs-1,tag)
       self.rho[:,:,0] = self.rho[:,:,0] + rhotemp
-      request = mpi.isend(self.rho[:,:,0],self.nslaves-1,tag)
-    if me == 0 or me == self.nslaves-1:
+      request = mpi.isend(self.rho[:,:,0],self.nzprocs-1,tag)
+    if me == 0 or me == self.nzprocs-1:
       status = request.wait()
 
   def fetche(self):

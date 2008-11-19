@@ -55,6 +55,9 @@ rprms:
 
         installafterstep(self.getdiagnostics)
 
+    def disable(self):
+        uninstallafterstep(self.getdiagnostics)
+
     def getdiagnostics(self):
 
         # --- Check if particle was advanced
@@ -71,7 +74,9 @@ rprms:
         if self.zmmin is None: self.zmmin = w3d.zmmin
         if self.zmmax is None: self.zmmax = w3d.zmmax
         if self.dz is None: self.dz = w3d.dz/self.nzscale
-        if self.nz is None: self.nz = w3d.nz*self.nzscale
+        if self.nz is None:
+          self.nz = int((self.zmmax - self.zmmin)/self.dz)
+          self.dz = (self.zmmax - self.zmmin)/self.nz
 
         # --- Create handy locals.
         js = self.js
@@ -80,7 +85,6 @@ rprms:
         dz = self.dz
         nz = self.nz
 
-        zz = self.ztarget
         rmax = self.rmax
         nr = self.nr
         ldoradialdiag = (nr is not None)
@@ -99,9 +103,9 @@ rprms:
             self.rprms = [zeros(1+nz,'d')]
             self.dummy = zeros(1+nz,'d')
             if ldoradialdiag:
-                self.rprofile = [zeros(1+nr,'d')]
-                self.rprofilecount = zeros(1+nr,'d')
-                self.rprofilemesh = iota(0,nr)*dr
+                self.rprofile = [zeros((1+nr,1+nz),'d')]
+                self.rprofilecount = zeros((1+nr,1+nz),'d')
+                #self.rprofilemesh = iota(0,nr)*dr
 
         if self.nhist is None: nhist = top.nhist
         else:                  nhist = self.nhist
@@ -115,7 +119,6 @@ rprms:
             rp = self.rprms[-1]
             if ldoradialdiag:
                 rprof = self.rprofile[-1]
-                rprofco = self.rprofilecount[-1]
 
             # --- Finish the calculation, gathering data from all processors and
             # --- dividing out the count.
@@ -127,8 +130,6 @@ rprms:
 
             if ldoradialdiag:
                 rprof[...] = parallelsum(rprof)
-                #rprof[0] = rprof[0]*0.75/(pi*0.5*0.5*dr**2)
-                #rprof[1:] = rprof[1:]/(2.*pi*self.rprofilemesh[1:]*dr)
 
             # --- Scale the current appropriately.
             cu[...] = co*(top.pgroup.sq[js]*top.pgroup.sw[js]/(top.dt*nhist))
@@ -143,7 +144,7 @@ rprms:
                 self.rrms.append(zeros(1+nz,'d'))
                 self.rprms.append(zeros(1+nz,'d'))
                 if ldoradialdiag:
-                    self.rprofile.append(zeros(1+nr,'d'))
+                    self.rprofile.append(zeros((1+nr,1+nz),'d'))
             else:
                 # --- On other processors or if the data is being dumped to a
                 # --- file, just zero out the existing arrays.
@@ -153,7 +154,7 @@ rprms:
                 self.rrms[0][:] = 0.
                 self.rprms[0][:] = 0.
                 if ldoradialdiag:
-                    self.rprofile[0][:] = 0.
+                    self.rprofile[0][...] = 0.
 
         # --- The code below is all local and can be skipped if there are no
         # --- particles locally.
@@ -186,18 +187,15 @@ rprms:
         deposgrid1d(1,np,zc,ww*rpc**2,nz,self.rprms[-1],self.dummy,0.,nz)
 
         if ldoradialdiag:
-            izc = logical_and(zold<=zz,znew>=zz)
-            rc = compress(izc,rnew)
-            if len(rc) > 0:
-                vz = compress(izc,getvz(js=js,gather=0))
-                ee = 0.5*top.pgroup.sm[js]*vz**2
-                if top.wpid > 0:
-                    weight = getpid(js=js,id=top.wpid-1,gather=0)
-                    ww = compress(izc,weight)*top.pgroup.sw[js]
-                else:
-                    ww = top.pgroup.sw[js]
-                deposgrid1d(1,len(rc),rc,ee*ww,nr,self.rprofile[-1],
-                            self.rprofilecount,0.,rmax)
+            vz = compress(icrossed,getvz(gather=0))
+            ke = 0.5*top.pgroup.sm[js]*vz**2
+            if top.wpid > 0:
+                weight = getpid(js=js,id=top.wpid-1,gather=0)
+                ww = compress(icrossed,weight)*top.pgroup.sw[js]
+            else:
+                ww = top.pgroup.sw[js]
+            deposgrid2d(1,np,zc,rc,ke*ww,nz,nr,transpose(self.rprofile[-1]),
+                        transpose(self.rprofilecount),0.,nz,0.,rmax)
 
         # --- Save particle z positions.
         i1 = top.pgroup.ins[js] - 1
@@ -276,7 +274,8 @@ rprms:
         if len(self.rprofile) == 0:
             del self.rprofile
 
-    def restorefromfilePickle(self,files=[]):
+    def restorefromfilePickle(self,files=[],
+                              starttime=-largepos,endtime=+largepos):
         if me != 0: return
 
         if not isinstance(files,ListType):
@@ -284,8 +283,10 @@ rprms:
         if len(files) == 0:
             files = [self.dumptofile+'_gridcrossing.pkl']
 
-        # --- Read all of the data in.
+        # --- Read all of the data in. Only save the data if the time is
+        # --- between start and endtime.
         import cPickle
+        savedata = 0
         datadict = {}
         for file in files:
             ff = open(file,'r')
@@ -294,7 +295,11 @@ rprms:
                     data = cPickle.load(ff)
                 except:
                     break
-                datadict[data[0]] = data[1]
+                if data[0][:4] == 'time':
+                    if starttime <= data[1] <= endtime:
+                        savedata = 1
+                if savedata:
+                    datadict[data[0]] = data[1]
             ff.close()
 
         # --- Fix old bad naming

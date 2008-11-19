@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.287 $, $Date: 2008/09/22 21:23:08 $
+#@(#) File W3D.V, version $Revision: 3.288 $, $Date: 2008/11/19 18:29:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.287 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.288 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -53,8 +53,12 @@ lbeforescraper   logical /.false./ # Turns on call to python function "beforescr
 lafterscraper   logical /.false./ # Turns on call to python function "afterscraper"
 lcallscraper   logical /.false./ # Turns on call to python function "callscraper"
 lcallparticleloader logical /.false./ # Turns on call to python function "callparticleloader"
-izfsmin    integer    /0/ +parallel # Left boundary for partial field solve.
-izfsmax    integer    /0/ +parallel # Right boundary for partial field solve.
+ixfsmin    integer    /0/ +parallel # Lower x boundary for partial field solve.
+ixfsmax    integer    /0/ +parallel # Upper x boundary for partial field solve.
+iyfsmin    integer    /0/ +parallel # Lower y boundary for partial field solve.
+iyfsmax    integer    /0/ +parallel # Upper y boundary for partial field solve.
+izfsmin    integer    /0/ +parallel # Lower z boundary for partial field solve.
+izfsmax    integer    /0/ +parallel # Upper z boundary for partial field solve.
 solvergeom integer    /0/  # Geometry of field solver
 XYZgeom    integer    /0/  # 3D-XYZ geometry will be used if solvergeom=XYZgeom
 RZgeom     integer    /1/  # axisymmetric RZ geometry will be used if solvergeom=RZgeom
@@ -265,10 +269,19 @@ zmmax   real  [m]  /0./ +parallel  # Upper limit of mesh
 nx      integer    /2/             # Mesh points are 0,...,nx
 ny      integer    /2/             # Mesh points are 0,...,ny
 nz      integer    /2/  +parallel  # Full size of nz
+nxlocal integer    /2/  +parallel  # Mesh points are 0,...,nxlocal
+nylocal integer    /2/  +parallel  # Mesh points are 0,...,nylocal
 nzlocal integer    /2/  +parallel  # Mesh points are 0,...,nzlocal
-nzfull  integer    /2/             # Obsolete global value of nz
+xmminlocal  real [m] /0./          # Local value of xmmin
+xmmaxlocal  real [m] /0./          # Local value of xmmax
+ymminlocal  real [m] /0./          # Local value of ymmin
+ymmaxlocal  real [m] /0./          # Local value of ymmax
 zmminlocal  real [m] /0./          # Local value of zmmin
 zmmaxlocal  real [m] /0./          # Local value of zmmax
+xmminglobal real [m]               # Global value of xmmin
+xmmaxglobal real [m]               # Global value of xmmax
+ymminglobal real [m]               # Global value of ymmin
+ymmaxglobal real [m]               # Global value of ymmax
 zmminglobal real [m]               # Global value of zmmin
 zmmaxglobal real [m]               # Global value of zmmax
 
@@ -282,6 +295,8 @@ boundnz   integer /0/  # Type of boundary condition at plane z=nz
 boundxy   integer /0/  # Type of boundary condition at sides
                        # 0 is constant potential, 1 is zero normal derivative,
                        # and 2 is periodic
+bounds(0:5) integer /6*0/ # Type of boundaries at edge of mesh, in order of
+                          # lower, upper for x, y, z.
 lzerophiedge logical /.true./ # When true and when gridmode == 0, the edge of
                        # the phi array is zeroed out. This clears phi at any
                        # conductor points on the edge of the mesh.
@@ -304,6 +319,8 @@ bndfit                  integer [1]     # Iters used, bent-self-field solve
 xmesh(0:nx)             _real [m] +dump # X coordinates of mesh points
 ymesh(0:ny)             _real [m] +dump # Y coordinates of mesh points
 zmesh(0:nz)             _real [m] +dump # Z coordinates of global mesh points
+xmeshlocal(0:nxlocal)   _real [m] +dump +parallel # x coordinates of local mesh points
+ymeshlocal(0:nylocal)   _real [m] +dump +parallel # y coordinates of local mesh points
 zmeshlocal(0:nzlocal)   _real [m] +dump +parallel # Z coordinates of local mesh points
 nmxy                    integer /0/ +dump # larger of nx, ny
 nmxyz                   integer /0/ +dump +parallel # largest of nx, ny, nz
@@ -326,9 +343,19 @@ zwork(2,0:nx,0:nz)      _real           # Work space used to optimize vsftz
 nxp  integer /0/ # Number of grid cells in x axis for phip and rhop
 nyp  integer /0/ # Number of grid cells in y axis for phip and rhop
 nzp  integer /0/ # Number of grid cells in z axis for phip and rhop
-nzpguard integer /0/ # Number of guard cells to add extending the grids beyond
-                     # the particle domains. Only applies for the parallel
-                     # version.
+nxpguard integer /0/ # Number of guard cells in x to add extending the grids
+                     # beyond the particle domains. Only applies for the
+                     # parallel version.
+nypguard integer /0/ # Number of guard cells in y to add extending the grids
+                     # beyond the particle domains. Only applies for the
+                     # parallel version.
+nzpguard integer /0/ # Number of guard cells in z to add extending the grids
+                     # beyond the particle domains. Only applies for the
+                     # parallel version.
+xmminp real      # Lower limit of x for grid for particles
+xmmaxp real      # Upper limit of x for grid for particles
+ymminp real      # Lower limit of y for grid for particles
+ymmaxp real      # Upper limit of y for grid for particles
 zmminp real      # Lower limit of z for grid for particles
 zmmaxp real      # Upper limit of z for grid for particles
 nrhopndtscopies3d integer # Copy of nrhopndtscopies from top
@@ -353,6 +380,12 @@ phipndts(-1:nxp+1,-1:nyp+1,-1:nzp+1,0:nsndtsphi3d-1) _real +fassign
                  # from faster particles and the old rho from the slower
                  # particles. With only sampling, the same phip is used
                  # for all groups, i.e. nsndtsphi==1.
+lrhofinalized logical /.true./
+                 # Flags whether the boundary conditions and other processing
+                 # of rho has been done, so that its ready to be used in a
+                 # field solve. Anytime rhop is changed, this flag is set
+                 # to false. Just before a field solve, the flag is checked,
+                 # and if needed, the appropriate operations done.
 
 nsselfb3d integer # Copy of nsselfb from top
 rhopselfb(0:nxp,0:nyp,0:nzp,0:nsselfb3d-1) _real +fassign
@@ -543,8 +576,6 @@ l_inj_user_particles logical /.false./ # When true, user specified particles
                                        # inject=1.
 inj_xmmin(inj_ninj)  _real [m] /0./ # Min x extent of injection mesh
 inj_ymmin(inj_ninj)  _real [m] /0./ # Min y extent of injection mesh
-inj_zmmin             real [m] /0./ # Min z extent of injection region
-inj_zmmax             real [m] /0./ # Max z extent of injection region
 inj_grid(0:inj_nx,0:inj_ny,inj_ninj) _real [m]
    # Grid giving axial field grid location of injection sources in the lab frame
 inj_angl(0:inj_nx,0:inj_ny,inj_ninj) _real
@@ -884,29 +915,31 @@ setupFields3dParticles()
              subroutine # Sets up the Fields3dParticles group
 setrhoandphiforfieldsolve(rhop:real,phip:real)
              subroutine # Copies data from rhop to rho - mainly for parallel
-setrhoforfieldsolve3d(nx:integer,ny:integer,nz:integer,
-                      rho(0:nx,0:ny,0:nz):real,
+setrhoforfieldsolve3d(nxlocal:integer,nylocal:integer,nzlocal:integer,
+                      rho(0:nxlocal,0:nylocal,0:nzlocal):real,
                       nxp:integer,nyp:integer,nzp:integer,
                       rhop(0:nxp,0:nyp,0:nzp):real,
-                      nzpguard:integer,my_index:integer,nslaves:integer,
-                      izpslave(0:nslaves-1):integer,nzpslave(0:nslaves-1):integer,
-                      izfsslave(0:nslaves-1):integer,nzfsslave(0:nslaves-1):integer)
+                      nxpguard:integer,nypguard:integer,nzpguard:integer,
+                      fsdecomp:Decomposition,ppdecomp:Decomposition)
              subroutine # Copies data from rhop to rho - for parallel
 getphipforparticles(indts:integer)
              subroutine # Copies data from phi to phip - mainly for parallel
-getphipforparticles3d(nc:integer,nx:integer,ny:integer,nz:integer,phi:real,
+getphipforparticles3d(nc:integer,nxlocal:integer,nylocal:integer,
+                      nzlocal:integer,phi:real,
                       nxp:integer,nyp:integer,nzp:integer,phip:real,
                       delx:integer,dely:integer,delz:integer,
-                      my_index:integer,nslaves:integer,
-                      izpslave(0:nslaves-1):integer,nzpslave(0:nslaves-1):integer,
-                      izfsslave(0:nslaves-1):integer,nzfsslave(0:nslaves-1):integer)
+                      fsdecomp:Decomposition,ppdecomp:Decomposition)
              subroutine # Calls the parallel routine for copying phi into phip
 padvnc3d(center:string,pgroup:ParticleGroup)
              subroutine # Advances particles and rho
 perphi3d()
              subroutine # Equates end slices of phi for periodicity
-perrho3d()
-             subroutine # Sums end slices of rho for periodicity
+applyrhoboundaryconditions()
+             subroutine # Applies boundary conditions to rho
+applyrhoboundaryconditions3d(rho:real,nc:integer,
+                             nxlocal:integer,nylocal:integer,nzlocal:integer,
+                             bounds(0:5):integer,fsdecomp:Decomposition)
+             subroutine # Applies boundary conditions to 3-D rho
 prntpa3d(lprntpara:logical)
              subroutine # Prints out 3d specific stuff (like prntpara())
 bendez3d(np,xp(np):real,zp(np):real,ez(np):real,
@@ -979,13 +1012,8 @@ srhoax3d()   subroutine # Sets RHOAX, charge density on axis
 srhoax()     subroutine # Sets RHOAX, charge density on axis
 rhodia3d()   subroutine # Sets rhomid and rhomax diagnostics
 rhodia()     subroutine # Sets rhomid and rhomax diagnostics
-stckxy3d(np,xp(np):real,xmmax:real,xmmin:real,dx:real,
-            yp(np):real,ymmax:real,ymmin:real,dy:real,
-         zp(np):real,zmmin:real,dz:real,
-         uxp(np):real,uyp(np):real,uzp(np):real,
-         gaminv(np):real,zgrid:real,zbeam:real,
-         l2symtry:logical,l4symtry:logical,pboundxy:integer,lcountaslost:logical)
-             subroutine # Enforces sticky x and y walls
+stckxy3d(pgroup:ParticleGroup,js:integer,zbeam:real,lcountaslost:logical)
+             subroutine # Enforces transverse absorbing boundaries
 stptcl3d(pgroup:ParticleGroup)   subroutine # Particle initializer
 setrstar(rstar(-1:nz+1):real,nz:integer,dz:real,zmmin:real,zgrid:real)
              subroutine # Loads radius of reference orbit into rstar array 
@@ -1011,7 +1039,8 @@ fetchb3d(pgroup:ParticleGroup,ipmin:integer,ip:integer,is:integer) subroutine
 fetche3dfrompositions(is:integer,indts:integer,n:integer,
                       x(n):real,y(n):real,z(n):real,
                       ex(n):real,ey(n):real,ez(n):real) subroutine
-particleboundaries3d(pgroup:ParticleGroup) subroutine
+particlegridboundaries3d(pgroup:ParticleGroup,js:integer) subroutine
+particleboundaries3d(pgroup:ParticleGroup,js:integer,lcallcontrollers:logical) subroutine
 loadperpdist0(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
               rx(np):real,ry(np):real,rxp(np):real,ryp(np):real,
               epsx(np):real,epsy(np):real) subroutine
@@ -1095,12 +1124,13 @@ domaindecomposefields(nz:integer,nslaves:integer,lfsautodecomp:logical,
         overlap:integer) subroutine
       # Do the domain decomposition for the field solver
 domaindecomposeparticles(nz:integer,nslaves:integer,
-                izfsslave(0:nslaves-1):integer,nzfsslave(0:nslaves-1):integer,
-                overlap:integer,nzpguard:integer,zmmin:real,zmmax:real,
+                nzpguard:integer,zmmin:real,zmmax:real,
                 dz:real,zslave(0:nslaves-1):real,lautodecomp:logical,
                 izpslave(0:nslaves-1):integer,nzpslave(0:nslaves-1):integer,
                 zpslmin(0:nslaves-1):real,zpslmax(0:nslaves-1):real) subroutine
       # Do the domain decomposition for the particles
+initializedecomp(decomp:Decomposition) subroutine
+      # Does some setup for a decompostion object
 
 
 *********** W3Dload:
@@ -1243,9 +1273,12 @@ timeaddsortedefield real /0./
 timeinit_w3d_parallel real /0./
 timesw_globalsum real /0./
 timesumsourcepondomainboundaries real /0./
-timesetsourceforfieldsolve3d real /0./
-timepersource3d_slave real /0./
+timeapplyrhoboundaryconditions3d real /0./
+timesetsourceforfieldsolve3d_parallel real /0./
+timemakesourceperiodic_slave_work real /0./
 timeperpot3d_slave real /0./
+timegetphipforparticles3d_parallel real /0./
 timegetphiforparticles3d real /0./
 timegetphiforfields3d real /0./
 
+timerdata(10) real /10*0./

@@ -1,62 +1,45 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.56 $, $Date: 2008/05/23 18:36:53 $
+c TOPSLAVE.M, version $Revision: 1.57 $, $Date: 2008/11/19 18:29:50 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
-      subroutine MY_MPI_ALLREDUCE(ztemp,zmmnts,nn,
-     &                      XMPI_DOUBLE_PRECISION,XMPI_SUM,XMPI_COMM_WORLD,mpierror)
-      use Parallel
-      integer(MPIISZ):: nn
-      real(kind=8):: ztemp(nn),zmmnts(nn)
-      integer(MPIISZ):: XMPI_DOUBLE_PRECISION,XMPI_SUM,XMPI_COMM_WORLD,mpierror
-      include "mpif.h"
-      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
-
-      if (nslaves == 1) return
-
-      if (my_index == 0) then
-        call MPI_SEND(zmmnts,nn,MPI_DOUBLE_PRECISION,1_4,1010_4,
-     &                MPI_COMM_WORLD,mpierror)
-      endif
-
-      if (my_index > 0) then
-        call MPI_RECV(ztemp,nn,MPI_DOUBLE_PRECISION,
-     &                int(my_index-1,MPIISZ),1010_4,MPI_COMM_WORLD,mpistatus,mpierror)
-        zmmnts = zmmnts + ztemp
-        call MPI_SEND(zmmnts,nn,MPI_DOUBLE_PRECISION,int(mod(my_index+1,nslaves),MPIISZ),1010_4,
-     &                MPI_COMM_WORLD,mpierror)
-      endif
-
-      if (my_index == 0) then
-        call MPI_RECV(zmmnts,nn,MPI_DOUBLE_PRECISION,
-     &                int(nslaves-1,MPIISZ),1010_4,MPI_COMM_WORLD,mpistatus,mpierror)
-      endif
-      call MPI_BCAST(zmmnts,nn,MPI_DOUBLE_PRECISION,int(0,MPIISZ),MPI_COMM_WORLD,mpierror)
-
-      return
-      end
 c===========================================================================
-      subroutine zpartbnd_slave(pgroup,zmmax,zmmin,dz)
+c===========================================================================
+      subroutine particleboundaries_parallel(axis,pgroup,js1,js2,
+     &                                       zmmax,zmmin,
+     &                                       zpmaxlocal,zpminlocal,
+     &                                       pboundleft,pboundright,
+     &                                       lcountaslost,labs,lrz)
       use ParticleGroupmodule
       use Subtimerstop
       use GlobalVars
-      use InGen
-      use InPart
-      use Picglb,Only: zpminlocal,zpmaxlocal
+      use InGen,Only: clearlostpart
+c     use InPart
       use Parallel
       use Databuffers
       use Subcycling, Only: ndtstorho,zgridndts
+      integer(ISZ):: axis
       type(ParticleGroup):: pgroup
-      real(kind=8):: zmmax,zmmin,dz
+      integer(ISZ):: js1,js2
+      real(kind=8):: zmmax,zmmin
+      real(kind=8):: zpmaxlocal,zpminlocal
+      integer(ISZ):: pboundleft,pboundright
+      logical(ISZ):: lcountaslost,labs,lrz
 
-c  Impose boundary conditions on zp.  Puts particles that exit to the left
-c  lower in the arrays and particles that exit to the right higher.  Keeps
-c  track of how many left and sends to the appropriate processor.
+c Impose boundary conditions baesd on zz. zz can be any coordinate.
+c Note that zz must be on of the arrays in pgroup so that the rearranging
+c below will affect it.
+c axis is the axis of zz. 0 is x, 1 is y, 2 is z.
+c Puts particles that exit to the left lower in the arrays and particles
+c that exit to the right higher.  Keeps track of how many left and sends
+c to the appropriate processor.
 
       logical(ISZ):: ldoagain
-      real(kind=8):: temp,pidtemp(pgroup%npid),syslen,zgrid
-      integer(MPIISZ):: is,ip,idest,ipid,ii,il,ir,nn,indts
+      logical(ISZ):: isleftmostproc,isrightmostproc
+      real(kind=8),pointer:: zz(:),uz(:)
+      real(kind=8):: ztemp,temp,pidtemp(pgroup%npid),syslen,zgrid,rr
+      integer(MPIISZ):: is1,is2,is,ip,idest,ipid,ii,il,ir,nn,indts,i1,i2
       integer(MPIISZ):: ins_init(pgroup%ns),nps_init(pgroup%ns)
       integer(MPIISZ):: nsendleft(pgroup%ns),nsendright(pgroup%ns)
       integer(MPIISZ):: nrecvleft(pgroup%ns),nrecvright(pgroup%ns)
@@ -73,6 +56,11 @@ c     integer(MPIISZ):: mpinewtype,mpirequest
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
+c     --- If this dimension has zero length, then skip the boundary
+c     --- conditions since this will be an ignorable dimension.
+      if (zmmin == zmmax) return
+      if (zpminlocal == zpmaxlocal) return
+
 #ifdef VAMPIR
 c     call VTSYMDEF(10, "ZBND", "SORT", IERR)
 c     call VTSYMDEF(20, "ZBND", "CPY1", IERR)
@@ -84,10 +72,26 @@ c     call VTSYMDEF(70, "ZBND", "PLOR", IERR)
 c     call VTBEGIN(10,IERR)
 #endif
 
-c     --- calculate numbers of the processors to the left and to the right,
-c     --- wrapping around at the ends.
-      left_pe = mod(nslaves+my_index-1,nslaves)
-      right_pe = mod(my_index+1,nslaves)
+      is1 = js1 + 1
+      is2 = js2 + 1
+
+c     --- Get the neighboring processors
+      left_pe = procneighbors(0,axis)
+      right_pe = procneighbors(1,axis)
+      isleftmostproc = (iprocgrid(axis) == 0)
+      isrightmostproc = (iprocgrid(axis) == nprocgrid(axis) - 1)
+
+c     --- Setup pointer to correct data coordinates
+      if (axis == 0) then
+        zz => pgroup%xp
+        uz => pgroup%uxp
+      else if (axis == 1) then
+        zz => pgroup%yp
+        uz => pgroup%uyp
+      else if (axis == 2) then
+        zz => pgroup%zp
+        uz => pgroup%uzp
+      endif
 
       ldoagain = .true.
       do while (ldoagain)
@@ -97,9 +101,13 @@ c       --- to true.
         ldoagain = .false.
 
 c       --- Loop over species
-        do is=1,pgroup%ns
-          indts = ndtstorho(pgroup%ndts(is-1))
-          zgrid = zgridndts(indts)
+        do is=is1,is2
+          if (axis == 2) then
+            indts = ndtstorho(pgroup%ndts(is-1))
+            zgrid = zgridndts(indts)
+          else
+            zgrid = 0.
+          endif
 
 c         --- initialize counter and save particle's start and number
           ip = pgroup%ins(is)
@@ -110,9 +118,17 @@ c         --- Loop over particles and pick out the ones which have ventured
 c         --- into the regions of neighboring processors.
           do while (ip < pgroup%ins(is) + pgroup%nps(is))
 
+            if (lrz) then
+              ztemp = sqrt(pgroup%xp(ip)**2 + pgroup%yp(ip)**2)
+            else if (labs) then
+              ztemp = abs(zz(ip)-zgrid)
+            else
+              ztemp = zz(ip)-zgrid
+            endif
+
 c           --- If particle exited to the left, switch with lowest particle
 c           --- in the arrays.
-            if (pgroup%zp(ip)-zgrid < zpminlocal) then
+            if (ztemp < zpminlocal) then
               idest = pgroup%ins(is)
               pgroup%ins(is) = pgroup%ins(is) + 1
               pgroup%nps(is) = pgroup%nps(is) - 1
@@ -140,11 +156,10 @@ c           --- in the arrays.
                 pgroup%pid(ip,:) = pgroup%pid(idest,:)
                 pgroup%pid(idest,:) = pidtemp
               endif
-c           endif
 
 c           --- If particle exited to the right, switch with highest particle
 c           --- in the arrays.
-            elseif (pgroup%zp(ip)-zgrid >= zpmaxlocal) then
+            elseif (ztemp >= zpmaxlocal) then
               idest = pgroup%ins(is) + pgroup%nps(is) - 1
               pgroup%nps(is) = pgroup%nps(is) - 1
 
@@ -183,49 +198,64 @@ c         --- ends of the full mesh.
 
 c         --- Periodic boundary conditions: all particles picked out have
 c         --- their z adjusted.
-          if (my_index == 0 .and. pbound0==periodic) then
+          if (isleftmostproc .and. pboundleft==periodic) then
             syslen = zmmax - zmmin
 !$OMP PARALLEL DO
             do ip=ins_init(is),pgroup%ins(is)-1
-              pgroup%zp(ip) = pgroup%zp(ip) + syslen
+              zz(ip) = zz(ip) + syslen
             enddo
 !$OMP END PARALLEL DO
-          elseif (my_index == nslaves-1 .and. pboundnz==periodic) then
+          elseif (isrightmostproc .and. pboundright==periodic) then
             syslen = zmmax - zmmin
 !$OMP PARALLEL DO
             do ip=pgroup%ins(is)+pgroup%nps(is),ins_init(is)+nps_init(is)-1
-              pgroup%zp(ip) = pgroup%zp(ip) - syslen
+              zz(ip) = zz(ip) - syslen
             enddo
 !$OMP END PARALLEL DO
 c         --- Sticky boundary condition: particles picked out are not passed.
 c         --- Instead, they are marked as lost particles and ins and nps are
 c         --- reset to include them.
-          elseif (my_index == 0 .and. pbound0==absorb) then
+          elseif (isleftmostproc .and. pboundleft==absorb) then
             if (pgroup%ins(is) > ins_init(is)) then
               pgroup%gaminv(ins_init(is):pgroup%ins(is)-1) = 0.
+              if (.not. lcountaslost)
+     &          pgroup%gaminv(ins_init(is):pgroup%ins(is)-1) = -1.
               pgroup%nps(is) = pgroup%nps(is) + (pgroup%ins(is) - ins_init(is))
               pgroup%ins(is) = ins_init(is)
             endif
-          elseif (my_index == nslaves-1 .and. pboundnz==absorb) then
+          elseif (isrightmostproc .and. pboundright==absorb) then
             if (ins_init(is)+nps_init(is) > pgroup%ins(is)+pgroup%nps(is)) then
-              pgroup%gaminv(pgroup%ins(is)+pgroup%nps(is):ins_init(is)+nps_init(is)-1)=0.
+              i1 = pgroup%ins(is) + pgroup%nps(is)
+              i2 = ins_init(is) + nps_init(is) - 1
+              pgroup%gaminv(i1:i2) = 0.
+              if (.not. lcountaslost) pgroup%gaminv(i1:i2) = -1.
               pgroup%nps(is) = ins_init(is) + nps_init(is) - pgroup%ins(is)
             endif
 c         --- Reflecting boundary condition: particles picked out are not
 c         --- passed. Instead, they are put back in the system and ins and nps
 c         --- are reset to include them.
-          elseif (my_index == 0 .and. pbound0==reflect) then
+          elseif (isleftmostproc .and. pboundleft==reflect) then
             do ip=ins_init(is),pgroup%ins(is)-1
-              pgroup%zp(ip) = zmmin + (zmmin - pgroup%zp(ip))
-              pgroup%uzp(ip) = -pgroup%uzp(ip)
+              zz(ip) = zmmin + (zmmin - zz(ip))
+              uz(ip) = -uz(ip)
             enddo
             pgroup%nps(is) = pgroup%nps(is) + (pgroup%ins(is) - ins_init(is))
             pgroup%ins(is) = ins_init(is)
-          elseif (my_index == nslaves-1 .and. pboundnz==reflect) then
-            do ip=pgroup%ins(is)+pgroup%nps(is),ins_init(is)+nps_init(is)-1
-              pgroup%zp(ip) = zmmax - (pgroup%zp(ip) - zmmax)
-              pgroup%uzp(ip) = -pgroup%uzp(ip)
-            enddo
+          elseif (isrightmostproc .and. pboundright==reflect) then
+            if (lrz) then
+              do ip=pgroup%ins(is)+pgroup%nps(is),ins_init(is)+nps_init(is)-1
+                rr = sqrt(pgroup%xp(ip)**2 + pgroup%yp(ip)**2)
+                pgroup%xp(ip) = (2.*zmmax - rr)*(pgroup%xp(ip)/rr)
+                pgroup%yp(ip) = (2.*zmmax - rr)*(pgroup%yp(ip)/rr)
+                pgroup%uxp(ip) = -pgroup%uxp(ip)
+                pgroup%uyp(ip) = -pgroup%uyp(ip)
+              enddo
+            else
+              do ip=pgroup%ins(is)+pgroup%nps(is),ins_init(is)+nps_init(is)-1
+                zz(ip) = zmmax - (zz(ip) - zmmax)
+                uz(ip) = -uz(ip)
+              enddo
+            endif
             pgroup%nps(is) = ins_init(is) + nps_init(is) - pgroup%ins(is)
           endif
 c       --- End of loop over species
@@ -259,16 +289,16 @@ c       --- but when pgroup%npid>0, then it is more since pid is also exchanged.
         if (pgroup%npid > 0) nquant = nquant + pgroup%npid
 
 c       --- Copy particles being sent to the left to buffer1.
-        if (pbound0==periodic .or. my_index > 0) then
-          nsendleft = pgroup%ins - ins_init
-          nsendleftsum = sum(nsendleft)
+        if (pboundleft==periodic .or. .not. isleftmostproc) then
+          nsendleft(is1:is2) = pgroup%ins(is1:is2) - ins_init(is1:is2)
+          nsendleftsum = sum(nsendleft(is1:is2))
           if (nquant*nsendleftsum > b1size) then
             b1size = nquant*nsendleftsum
             call gchange("Databuffers",0)
           endif
           if (nsendleftsum > 0) then
             ii = 1
-            do is=1,pgroup%ns
+            do is=is1,is2
               ip = ins_init(is)
               nn = nsendleft(is)
               if (nn > 0) then
@@ -295,16 +325,17 @@ c       --- Copy particles being sent to the left to buffer1.
         endif
 
 c       --- Copy particles being sent to the right to buffer2.
-        if (pboundnz==periodic .or. my_index < nslaves-1) then
-          nsendright = ins_init + nps_init - pgroup%ins - pgroup%nps
-          nsendrightsum = sum(nsendright)
+        if (pboundright==periodic .or. .not. isrightmostproc) then
+          nsendright(is1:is2) = ins_init(is1:is2) + nps_init(is1:is2)
+     &                          - pgroup%ins(is1:is2) - pgroup%nps(is1:is2)
+          nsendrightsum = sum(nsendright(is1:is2))
           if (nquant*nsendrightsum > b2size) then
             b2size = nquant*nsendrightsum
             call gchange("Databuffers",0)
           endif
           if (nsendrightsum > 0) then
             ii = 1
-            do is=1,pgroup%ns
+            do is=is1,is2
               ip = pgroup%ins(is) + pgroup%nps(is)
               nn = nsendright(is)
               if (nn > 0) then
@@ -337,11 +368,15 @@ c     call VTBEGIN(30,IERR)
 c       --- Now send the data.
 
 c       --- First send the number of particles to be sent
-        call MPI_SENDRECV(nsendleft,int(pgroup%ns,MPIISZ),MPI_INTEGER,left_pe,messid,
-     &                    nrecvright,int(pgroup%ns,MPIISZ),MPI_INTEGER,right_pe,messid,
+        call MPI_SENDRECV(nsendleft(is1:is2),int(is2-is1+1,MPIISZ),
+     &                    MPI_INTEGER,left_pe,messid,
+     &                    nrecvright(is1:is2),int(is2-is1+1,MPIISZ),
+     &                    MPI_INTEGER,right_pe,messid,
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
-        call MPI_SENDRECV(nsendright,int(pgroup%ns,MPIISZ),MPI_INTEGER,right_pe,messid,
-     &                    nrecvleft,int(pgroup%ns,MPIISZ),MPI_INTEGER,left_pe,messid,
+        call MPI_SENDRECV(nsendright(is1:is2),int(is2-is1+1,MPIISZ),
+     &                    MPI_INTEGER,right_pe,messid,
+     &                    nrecvleft(is1:is2),int(is2-is1+1,MPIISZ),
+     &                    MPI_INTEGER,left_pe,messid,
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
 
 #ifdef VAMPIR
@@ -353,8 +388,8 @@ c     call VTEND(40,IERR)
 c     call VTBEGIN(50,IERR)
 #endif
 
-        nrecvleftsum = sum(nrecvleft)
-        nrecvrightsum = sum(nrecvright)
+        nrecvleftsum = sum(nrecvleft(is1:is2))
+        nrecvrightsum = sum(nrecvright(is1:is2))
         if (nquant*nrecvleftsum > b3size) then
           b3size = nquant*nrecvleftsum
           call gchange("Databuffers",0)
@@ -382,7 +417,7 @@ c     call VTBEGIN(60,IERR)
 
         il = 1
         ir = 1
-        do is=1,ns
+        do is=is1,is2
 
 c         --- Make sure that there is space for the incoming data.
 c         --- Note that chckpart must be called in this loop - if it is
@@ -394,6 +429,16 @@ c         --- would be enough for the 8 for each species, not knowing that
 c         --- 16 spaces is really needed.
           call chckpart(pgroup,int(is,ISZ),
      &                  int(nrecvleft(is),ISZ),int(nrecvright(is),ISZ))
+
+c         --- Reset pointer to correct data coordinates.
+c         --- This is needed in case the arrays are reallocated in chckpart.
+          if (axis == 0) then
+            zz => pgroup%xp
+          else if (axis == 1) then
+            zz => pgroup%yp
+          else if (axis == 2) then
+            zz => pgroup%zp
+          endif
 
           if (nrecvleft(is) > 0) then
             nn = nrecvleft(is)
@@ -418,7 +463,15 @@ c         --- 16 spaces is really needed.
               il = il + nquant*nn
               pgroup%ins(is) = pgroup%ins(is) - nn
               pgroup%nps(is) = pgroup%nps(is) + nn
-              if (maxval(pgroup%zp(ip:ip+nn-1))-zgrid > zpmaxlocal) then
+              if (lrz) then
+                ztemp = maxval(sqrt(pgroup%xp(ip:ip+nn-1)**2 +
+     &                              pgroup%yp(ip:ip+nn-1)**2))
+              elseif (labs) then
+                ztemp = maxval(abs(zz(ip:ip+nn-1)))-zgrid
+              else
+                ztemp = maxval(zz(ip:ip+nn-1))-zgrid
+              endif
+              if (ztemp > zpmaxlocal) then
                 ldoagain = .true.
               endif
             endif
@@ -446,7 +499,15 @@ c         --- 16 spaces is really needed.
               enddo
               ir = ir + nquant*nn
               pgroup%nps(is) = pgroup%nps(is) + nn
-              if (minval(pgroup%zp(ip:ip+nn-1))-zgrid < zpminlocal) then
+              if (lrz) then
+                ztemp = maxval(sqrt(pgroup%xp(ip:ip+nn-1)**2 +
+     &                              pgroup%yp(ip:ip+nn-1)**2))
+              elseif (labs) then
+                ztemp = minval(abs(zz(ip:ip+nn-1)))-zgrid
+              else
+                ztemp = minval(zz(ip:ip+nn-1))-zgrid
+              endif
+              if (ztemp < zpminlocal) then
                 ldoagain = .true.
               endif
             endif
@@ -542,65 +603,108 @@ c       deallocate(blocklengths,displacements)
       end
 c=============================================================================
 c=============================================================================
-      subroutine reorgparticles_parallel(pgroup)
+      subroutine reorgparticles_parallel(pgroup,l4symtry,l2symtry,lrz)
       use ParticleGroupmodule
       use Subtimerstop
       use InPart
       use Picglb
       use Parallel
       type(ParticleGroup):: pgroup
+      logical(ISZ):: l4symtry,l2symtry,lrz
 
 c Do all to all communication to pass particles to where they belong. This
 c sorts through all of the particles first, then does all of the communication
 c at once.
 
-      integer(MPIISZ),allocatable:: zprocs(:)
-      integer(MPIISZ):: nzp,izp,ip,iz,izp1,izp2
-      real(kind=8):: wzp,dzp
+      integer(MPIISZ),allocatable:: xprocs(:),yprocs(:),zprocs(:)
+      integer(MPIISZ):: nxp,nyp,nzp
+      real(kind=8):: dxp,dyp,dzp
+      integer(MPIISZ):: ix,iy,iz,ip
+      real(kind=8):: xx,yy,zz
+      integer(MPIISZ):: ipx1,ipx2,ipy1,ipy2,ipz1,ipz2,ipx,ipy,ipz
       real(kind=8),allocatable:: ptemp(:,:),precv(:,:)
       integer(MPIISZ),allocatable:: pprocs(:)
-      integer(MPIISZ):: pins(0:pgroup%ns-1,0:nslaves-1)
-      integer(MPIISZ):: pnps(0:pgroup%ns-1,0:nslaves-1)
-      integer(MPIISZ):: piii(0:pgroup%ns-1,0:nslaves-1)
-      integer(MPIISZ):: inrecv(0:pgroup%ns-1,0:nslaves-1)
-      integer(MPIISZ):: nprecv(0:pgroup%ns-1,0:nslaves-1)
-      integer(MPIISZ):: pnp,pnpmax,ncoords,ii,is,pip,ip1,ip2,iitemp,ii1,ii2
-      real(kind=8):: zz
+      integer(MPIISZ):: pins(0:pgroup%ns-1,0:nprocs-1)
+      integer(MPIISZ):: pnps(0:pgroup%ns-1,0:nprocs-1)
+      integer(MPIISZ):: piii(0:pgroup%ns-1,0:nprocs-1)
+      integer(MPIISZ):: inrecv(0:pgroup%ns-1,0:nprocs-1)
+      integer(MPIISZ):: nprecv(0:pgroup%ns-1,0:nprocs-1)
+      integer(MPIISZ):: pnp,pnpmax,ncoords,ii,js,pip,ip1,ip2,iitemp,ii1,ii2
       integer(MPIISZ):: mpierror
-      integer(MPIISZ):: sendcounts(0:nslaves-1),sdispls(0:nslaves-1)
-      integer(MPIISZ):: recvcounts(0:nslaves-1),rdispls(0:nslaves-1)
+      integer(MPIISZ):: sendcounts(0:nprocs-1),sdispls(0:nprocs-1)
+      integer(MPIISZ):: recvcounts(0:nprocs-1),rdispls(0:nprocs-1)
       integer(MPIISZ):: allocerror
+      logical(ISZ):: skipx,skipy,skipz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-c     --- First, create z-array that specifies which processors owns which
+c     --- First, create arrays that specify which processors owns which
 c     --- location. This is used to make the sorting of particles to
 c     --- processors efficient. Using this array avoids having to loop
 c     --- over every processor to find which one the particle is in.
-      dzp = minval(zpslmax-zpslmin)/10.
-      nzp = min(100000,int((zpmax-zpmin)/dzp))
-      dzp = (zpmax - zpmin)/nzp
-      allocate(zprocs(0:nzp),stat=allocerror)
+      if (fsdecomp%nxglobal > 0) then
+        dxp = minval(ppdecomp%xmax-ppdecomp%xmin)/10.
+        nxp = min(100000,int((xpmax-xpmin)/dxp))
+        dxp = (xpmax - xpmin)/nxp
+        skipx = .false.
+      else
+        nxp = 1
+        dxp = 1.
+        skipx = .true.
+      endif
+      if (fsdecomp%nyglobal > 0) then
+        dyp = minval(ppdecomp%ymax-ppdecomp%ymin)/10.
+        nyp = min(100000,int((ypmax-ypmin)/dyp))
+        dyp = (ypmax - ypmin)/nyp
+        skipy = .false.
+      else
+c       --- Set nyp to 1, so that ipy2 is OK.
+        nyp = 1
+        dyp = 1.
+        skipy = .true.
+      endif
+      if (fsdecomp%nzglobal > 0) then
+        dzp = minval(ppdecomp%zmax-ppdecomp%zmin)/10.
+        nzp = min(100000,int((zpmax-zpmin)/dzp))
+        dzp = (zpmax - zpmin)/nzp
+        skipz = .false.
+      else
+        nzp = 1
+        dzp = 1.
+        skipz = .true.
+      endif
+
+      allocate(xprocs(0:nxp),yprocs(0:nyp),zprocs(0:nzp),stat=allocerror)
       if (allocerror /= 0) then
         print*,"reorgparticles_parallel: allocation error ",allocerror,
-     &         ": could not allocate zprocs to shape ",nzp
+     &         ": could not allocate x,y,zprocs to shape ",nxp,nyp,nzp
         call kaboom("reorgparticles_parallel: allocation error")
         return
       endif
-c     do ip=0,nslaves-1
-c       izp1 = nzp - int((zpmax - zpslmin(ip))/dzp)
-c       izp2 = int((zpslmax(ip) - zpmin)/dzp)
-c       zprocs(izp1:izp2) = ip
-c     enddo
-c     zprocs(0) = 0
-c     zprocs(nzp) = nslaves-1
-c     --- This method is more robust since it gaurantees that every element
-c     --- of zprocs is set properly.
+
+      ip = 0
+      do ix=0,nxp
+        xx = xpmin + ix*dxp
+        do while (xx > ppdecomp%xmax(ip) .and. ip < nxprocs-1)
+          ip = ip + 1
+        enddo
+        xprocs(ix) = ip
+      enddo
+
+      ip = 0
+      do iy=0,nyp
+        yy = ypmin + iy*dyp
+        do while (yy > ppdecomp%ymax(ip) .and. ip < nyprocs-1)
+          ip = ip + 1
+        enddo
+        yprocs(iy) = ip
+      enddo
+
       ip = 0
       do iz=0,nzp
         zz = zpmin + iz*dzp
-        do while (zz > zpslmax(ip) .and. ip < nslaves-1)
+        do while (zz > ppdecomp%zmax(ip) .and. ip < nzprocs-1)
           ip = ip + 1
         enddo
         zprocs(iz) = ip
@@ -622,36 +726,73 @@ c     --- Loop through the particles, finding to which processor each particle
 c     --- belongs.
       pip = 0
       pnps = 0
-      do is=0,pgroup%ns-1
-        do ii=pgroup%ins(is+1),pgroup%ins(is+1)+pgroup%nps(is+1)-1
+      pprocs = 1000000
+      do js=0,pgroup%ns-1
+        PLOOP: do ii=pgroup%ins(js+1),pgroup%ins(js+1)+pgroup%nps(js+1)-1
+          xx = pgroup%xp(ii)
+          yy = pgroup%yp(ii)
           zz = pgroup%zp(ii) - zbeam
-          izp = int((zz - zpmin)/dzp)
-          ip1 = zprocs(izp)
-          ip2 = zprocs(izp+1)
+          if (l4symtry) xx = abs(xx)
+          if (l4symtry .or. l2symtry) yy = abs(yy)
+          if (lrz) then
+            xx = sqrt(xx**2 + yy**2)
+            yy = ypmin
+          else if (skipy) then
+            yy = ypmin
+          endif
+          ix = int((xx - xpmin)/dxp)
+          iy = int((yy - ypmin)/dyp)
+          iz = int((zz - zpmin)/dzp)
+          ipx1 = xprocs(ix)
+          ipx2 = xprocs(ix+1)
+          ipy1 = yprocs(iy)
+          ipy2 = yprocs(iy+1)
+          ipz1 = zprocs(iz)
+          ipz2 = zprocs(iz+1)
           pip = pip + 1
-          do ip=ip1,ip2
-            if (zpslmin(ip) <= zz .and. zz < zpslmax(ip)) then
-              pprocs(pip) = ip
-              pnps(is,ip) = pnps(is,ip) + 1
-              exit
-            endif
+          do ipz=ipz1,ipz2
+            do ipy=ipy1,ipy2
+              do ipx=ipx1,ipx2
+                if ((ppdecomp%xmin(ipx) <= xx .and. xx < ppdecomp%xmax(ipx)
+     &               .or. skipx) .and.
+     &              (ppdecomp%ymin(ipy) <= yy .and. yy < ppdecomp%ymax(ipy)
+     &               .or. skipy) .and.
+     &              (ppdecomp%zmin(ipz) <= zz .and. zz < ppdecomp%zmax(ipz)
+     &               .or. skipz)) then
+c                 ip = convertindextoproc(ipx,ipy,ipz,
+c    &                                    ppdecomp%nxprocs,
+c    &                                    ppdecomp%nyprocs,
+c    &                                    ppdecomp%nzprocs)
+c                 --- This is the same expression in convertindextoproc, but
+c                 --- is written out here for optimization.
+                  ip = ipx + ipy*ppdecomp%nxprocs +
+     &                       ipz*ppdecomp%nxprocs*ppdecomp%nyprocs
+                  pprocs(pip) = ip
+                  pnps(js,ip) = pnps(js,ip) + 1
+                  cycle PLOOP
+                endif
+              enddo
+            enddo
           enddo
-        enddo
+c         print*,"BADx ",js,ii,xx,ppdecomp%xmin(ipx1),ppdecomp%xmax(ipx2),ipx1,ipx2
+c         print*,"BADy ",js,ii,yy,ppdecomp%ymin(ipy1),ppdecomp%ymax(ipy2),ipy1,ipy2
+c         print*,"BADz ",js,ii,zz,ppdecomp%zmin(ipz1),ppdecomp%zmax(ipz2),ipz1,ipz2
+        enddo PLOOP
       enddo
 
 c     --- Calculate starting index of particle groups for each species and
 c     --- processor
       pins(0,0) = 1
-      do ip=0,nslaves-1
-        do is=0,pgroup%ns-1
-          if (is == 0) then
+      do ip=0,nprocs-1
+        do js=0,pgroup%ns-1
+          if (js == 0) then
             if (ip == 0) then
-              pins(is,ip) = 1
+              pins(js,ip) = 1
             else
-              pins(is,ip) = pins(ns-1,ip-1) + pnps(ns-1,ip-1)
+              pins(js,ip) = pins(ns-1,ip-1) + pnps(ns-1,ip-1)
             endif
           else
-            pins(is,ip) = pins(is-1,ip) + pnps(is-1,ip)
+            pins(js,ip) = pins(js-1,ip) + pnps(js-1,ip)
           endif
         enddo
       enddo
@@ -659,12 +800,13 @@ c     --- processor
 c     --- Copy sorted particle data into the temporary array
       pip = 0
       piii = pins
-      do is=0,pgroup%ns-1
-        do ii=pgroup%ins(is+1),pgroup%ins(is+1)+pgroup%nps(is+1)-1
+      do js=0,pgroup%ns-1
+        do ii=pgroup%ins(js+1),pgroup%ins(js+1)+pgroup%nps(js+1)-1
           pip = pip + 1
           ip = pprocs(pip)
-          iitemp = piii(is,ip)
-          piii(is,ip) = piii(is,ip) + 1
+c         if (ip == 1000000) print*,"PIP ",js,ii,pgroup%xp(ii),pgroup%yp(ii),pgroup%zp(ii)
+          iitemp = piii(js,ip)
+          piii(js,ip) = piii(js,ip) + 1
           ptemp( 0,iitemp) = pgroup%xp(ii)
           ptemp( 1,iitemp) = pgroup%yp(ii)
           ptemp( 2,iitemp) = pgroup%zp(ii)
@@ -685,15 +827,17 @@ c     --- Copy sorted particle data into the temporary array
       enddo
 
 c     --- Calculate pins for data set sent to each processor relative to 0
-      do ip=0,nslaves-1
-        pins(:,ip) = pins(:,ip) - pins(0,ip)
-      enddo
+c     do ip=0,nprocs-1
+c       pins(:,ip) = pins(:,ip) - pins(0,ip)
+c     enddo
 
 c     --- Exchange the number of particles which are to be sent to each
 c     --- processor
-      call MPI_ALLTOALL(pins,int(pgroup%ns,MPIISZ),MPI_INTEGER,inrecv,int(pgroup%ns,MPIISZ),MPI_INTEGER,
-     &                  MPI_COMM_WORLD,mpierror)
-      call MPI_ALLTOALL(pnps,int(pgroup%ns,MPIISZ),MPI_INTEGER,nprecv,int(pgroup%ns,MPIISZ),MPI_INTEGER,
+c     call MPI_ALLTOALL(pins,int(pgroup%ns,MPIISZ),MPI_INTEGER,
+c    &                  inrecv,int(pgroup%ns,MPIISZ),MPI_INTEGER,
+c    &                  MPI_COMM_WORLD,mpierror)
+      call MPI_ALLTOALL(pnps,int(pgroup%ns,MPIISZ),MPI_INTEGER,
+     &                  nprecv,int(pgroup%ns,MPIISZ),MPI_INTEGER,
      &                  MPI_COMM_WORLD,mpierror)
 
 c     --- Resize particle arrays if neccesary. If there is more room available
@@ -729,7 +873,7 @@ c     --- Do the communication
       recvcounts = sum(nprecv,1)*ncoords
       sdispls(0) = 0
       rdispls(0) = 0
-      do ip=1,nslaves-1
+      do ip=1,nprocs-1
         sdispls(ip) = sdispls(ip-1) + sendcounts(ip-1)
         rdispls(ip) = rdispls(ip-1) + recvcounts(ip-1)
       enddo
@@ -739,20 +883,37 @@ c     --- Do the communication
 
 c     --- Calculate inrecv for data set sent to each processor relative
 c     --- to rdispls
-      do ip=0,nslaves-1
-        inrecv(:,ip) = inrecv(:,ip) + rdispls(ip)/ncoords + 1
+c     do ip=0,nprocs-1
+c       inrecv(:,ip) = inrecv(:,ip) + rdispls(ip)/ncoords + 1
+c     enddo
+
+c     --- Calculate starting index of particle groups for each species and
+c     --- processor
+      inrecv(0,0) = 1
+      do ip=0,nprocs-1
+        do js=0,pgroup%ns-1
+          if (js == 0) then
+            if (ip == 0) then
+              inrecv(js,ip) = 1
+            else
+              inrecv(js,ip) = inrecv(ns-1,ip-1) + nprecv(ns-1,ip-1)
+            endif
+          else
+            inrecv(js,ip) = inrecv(js-1,ip) + nprecv(js-1,ip)
+          endif
+        enddo
       enddo
 
 c     --- Now copy the data into the particle arrays
       pgroup%nps = 0
-      do is=0,pgroup%ns-1
-        do ip=0,nslaves-1
-          if (nprecv(is,ip) > 0) then
-            ip1 = inrecv(is,ip)
-            ip2 = ip1 + nprecv(is,ip) - 1
-            ii1 = pgroup%ins(is+1) + pgroup%nps(is+1)
-            ii2 = ii1 + nprecv(is,ip) - 1
-            pgroup%nps(is+1) = pgroup%nps(is+1) + nprecv(is,ip)
+      do js=0,pgroup%ns-1
+        do ip=0,nprocs-1
+          if (nprecv(js,ip) > 0) then
+            ip1 = inrecv(js,ip)
+            ip2 = ip1 + nprecv(js,ip) - 1
+            ii1 = pgroup%ins(js+1) + pgroup%nps(js+1)
+            ii2 = ii1 + nprecv(js,ip) - 1
+            pgroup%nps(js+1) = pgroup%nps(js+1) + nprecv(js,ip)
             pgroup%xp(ii1:ii2)     = precv( 0,ip1:ip2)
             pgroup%yp(ii1:ii2)     = precv( 1,ip1:ip2)
             pgroup%zp(ii1:ii2)     = precv( 2,ip1:ip2)
@@ -774,7 +935,7 @@ c     --- Now copy the data into the particle arrays
       enddo
 
 c     --- Free work space
-      deallocate(zprocs,ptemp,precv,pprocs)
+      deallocate(xprocs,yprocs,zprocs,ptemp,precv,pprocs)
 
 c     --- Done!
 

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.194 $, $Date: 2008/10/22 01:04:50 $
+#@(#) File F3D.V, version $Revision: 3.195 $, $Date: 2008/11/19 18:29:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.194 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.195 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -157,7 +157,11 @@ interior ConductorInteriorType   # Interior of the conductors
 evensubgrid ConductorSubGridType # Even subgrid data for conductors
 oddsubgrid ConductorSubGridType  # Odd subgrid data for conductors
 levels          integer  # Number of coarsening levels
+levelix(0:100)  integer  # List of ix for the levels of coarsening
+leveliy(0:100)  integer  # List of iy for the levels of coarsening
 leveliz(0:100)  integer  # List of iz for the levels of coarsening
+levelnx(0:100)  integer  # List of nx for the levels of coarsening
+levelny(0:100)  integer  # List of ny for the levels of coarsening
 levelnz(0:100)  integer  # List of nz for the levels of coarsening
 levellx(0:100)  real /1/ # List of coarsening factors in x
 levelly(0:100)  real /1/ # List of coarsening factors in y
@@ -187,18 +191,19 @@ laddconductor logical /.false./ # When true, the python function
 lprecalccoeffs logical /.false./ # When true, the finite difference coefficients
                                  # are precalculated and saved on a mesh. This
                                  # is faster but uses more memory.
-checkconductors(nx:integer,ny:integer,nzlocal:integer,nz:integer,
-                dx:real,dy:real,dz:real,conductors:ConductorType,
-                my_index:integer,nslaves:integer,
-                izfsslave:integer,nzfsslave:integer) subroutine
+checkconductors(nx:integer,ny:integer,nz:integer,
+                nxlocal:integer,nylocal:integer,nzlocal:integer,
+                dx:real,dy:real,dz:real,
+                conductors:ConductorType,fsdecomp:Decomposition) subroutine
 
 *********** MGLevels3d:
 mglevels              integer /0/  # Number of coarsening levels
 mglevelsnx(0:100)     integer      # List of nx for the levels of coarsening
 mglevelsny(0:100)     integer      # List of ny for the levels of coarsening
 mglevelsnz(0:100) integer          # List of nz for the levels of coarsening
+mglevelsix(0:100)     integer      # List of ix for the levels of coarsening
+mglevelsiy(0:100)     integer      # List of iy for the levels of coarsening
 mglevelsiz(0:100)     integer      # List of iz for the levels of coarsening
-mglevelsnzlocal(0:100)     integer # List of nzlocal for the levels of coarsening
 mglevelslx(0:100)     real /101*1/ # List of coarsening factors in x
 mglevelsly(0:100)     real /101*1/ # List of coarsening factors in y
 mglevelslz(0:100)     real /101*1/ # List of coarsening factors in z
@@ -232,161 +237,175 @@ mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
                          # A list of good numbers to use for the grid
                          # dimension. This is an ordered list of powers of two
                          # times 1, 3, 5, and 7.
-lbuildquads logical /.true./ # When true, quad elements are constructed
-                             # automatically if defined.
 mgscaleserial real /1.e39/
-getmglevels(nx:integer,ny:integer,nzlocal:integer,nz:integer,
-            dx:real,dy:real,dz:real,conductors:ConductorType,
-            my_index:integer,nslaves:integer,
-            izfsslave:integer,nzfsslave:integer)
+getmglevels(nx:integer,ny:integer,nz:integer,
+            nxlocal:integer,nylocal:integer,nzlocal:integer,
+            dx:real,dy:real,dz:real,
+            conductors:ConductorType,fsdecomp:Decomposition)
    subroutine
    # Calculates levels of coarsening. Note that mglevels
    # must be zero when calling this routine.
-multigrid3df(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,
+multigrid3df(iwhich:integer,nx:integer,ny:integer,nz:integer,
+             nxlocal:integer,nylocal:integer,nzlocal:integer,
              dx:real,dy:real,dz:real,
-             phi(-1:nx+1,-1:ny+1,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
+             phi(-1:nx+1,-1:ny+1,-1:nzlocal+1):real,
+             rho(0:nx,0:ny,0:nzlocal):real,
              rstar(-1:nzlocal+1):real,linbend:logical,
              bound0:integer,boundnz:integer,boundxy:integer,
              l2symtry:logical,l4symtry:logical,
-             xmmin:real,ymmin:real,zmminlocal:real,zmmin:real,zbeam:real,zgrid:real)
+             xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real)
    subroutine
    # Solves Poisson's equation using the multigrid method. This uses variables
    # from the f3d package to control the iterations and conductors.
-multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,
+multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,
+                 nxlocal:integer,nylocal:integer,nzlocal:integer,
                  dx:real,dy:real,dz:real,
-                 phi(-1:nx+1,-1:ny+1,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
-                 rstar(-1:nzlocal+1):real,linbend:logical,bounds:integer,
-                 xmmin:real,ymmin:real,zmminlocal:real,zmmin:real,zbeam:real,zgrid:real,
+                 phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1):real,
+                 rho(0:nxlocal,0:nylocal,0:nzlocal):real,
+                 rstar(-1:nzlocal+1):real,linbend:logical,bounds(0:5):integer,
+                 xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,
                  mgparam:real,mgform:integer,mgiters:integer,
                  mgmaxiters:integer,mgmaxlevels:integer,mgerror:real,mgtol:real,
                  mgverbose:integer,
                  downpasses:integer,uppasses:integer,
                  lcndbndy:logical,laddconductor:logical,icndbndy:integer,
-                 lbuildquads:logical,gridmode:integer,conductors:ConductorType,
-                 lprecalccoeffs:logical,
-                 my_index:integer,nslaves:integer,
-                 izfsslave:integer,nzfsslave:integer)
+                 gridmode:integer,conductors:ConductorType,
+                 lprecalccoeffs:logical,fsdecomp:Decomposition)
    subroutine
    # Solves Poisson's equation using the multigrid method. All input is
    # through the argument list.
-multigrid2dsolve(iwhich:integer,nx:integer,nzlocal:integer,nz:integer,
-                 dx:real,dz:real,phi(-1:nx+1,-1:nzlocal+1):real,rho(0:nx,0:nzlocal):real,
+multigrid2dsolve(iwhich:integer,nx:integer,nz:integer,
+                 nxlocal:integer,nzlocal:integer,
+                 dx:real,dz:real,phi(-1:nxlocal+1,-1:nzlocal+1):real,
+                 rho(0:nxlocal,0:nzlocal):real,
                  bounds(0:5):integer,
-                 xmmin:real,zmminlocal:real,zmmin:real,zbeam:real,zgrid:real,
+                 xmminlocal:real,zbeam:real,zgrid:real,
                  mgparam:real,mgiters:integer,mgmaxiters:integer,
                  mgmaxlevels:integer,mgerror:real,mgtol:real,mgverbose:integer,
                  downpasses:integer,uppasses:integer,
-                 lcndbndy:logical,laddconductor:logical,icndbndy:integer,lbuildquads:logical,
+                 lcndbndy:logical,laddconductor:logical,icndbndy:integer,
                  gridmode:integer,conductors:ConductorType,lrz:logical,
-                 my_index:integer,nslaves:integer,izfsslave:integer,nzfsslave:integer)
+                 fsdecomp:Decomposition)
    subroutine
    # Solves Poisson's equation in 2D using the multigrid method. All input is
    # through the argument list.
-multigrid2ddielectricsolve(iwhich:integer,nx:integer,nzlocal:integer,
-                 nz:integer,dx:real,dz:real,
-                 phi(-1:nx+1,-1:nzlocal+1):real,rho(0:nx,0:nzlocal):real,
-                 epsilon(0:nx+1,0:nzlocal+1):real,
-                 bounds(0:5):integer,
-                 xmmin:real,zmminlocal:real,zmmin:real,zbeam:real,zgrid:real,
+multigrid2ddielectricsolve(iwhich:integer,nx:integer,nz:integer,
+                 nxlocal:integer,nzlocal:integer,dx:real,dz:real,
+                 phi(-1:nxlocal+1,-1:nzlocal+1):real,
+                 rho(0:nxlocal,0:nzlocal):real,
+                 epsilon(0:nxlocal+1,0:nzlocal+1):real,
+                 bounds(0:5):integer,xmminlocal:real,
                  mgparam:real,mgiters:integer,mgmaxiters:integer,
                  mgmaxlevels:integer,mgerror:real,mgtol:real,mgverbose:integer,
                  downpasses:integer,uppasses:integer,
-                 lcndbndy:logical,laddconductor:logical,lbuildquads:logical,
+                 lcndbndy:logical,laddconductor:logical,
                  gridmode:integer,conductors:ConductorType,lrz:logical,
-                 my_index:integer,nslaves:integer,izfsslave:integer,
-                 nzfsslave:integer)
+                 fsdecomp:Decomposition)
    subroutine
    # Solves Poisson's equation in 2D with a variable dielectric using the
    # multigrid method. All input is through the argument list.
-mgsolveimplicites3d(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,
-                    nz:integer,dx:real,dy:real,dz:real,phi:real,rho:real,
+mgsolveimplicites3d(iwhich:integer,nx:integer,ny:integer,nz:integer,
+                    nxlocal:integer,nylocal:integer,nzlocal:integer,
+                    dx:real,dy:real,dz:real,phi:real,rho:real,
                     ns:integer,qomdt:real,chi0:real,rstar:real,linbend:logical,
-                    bounds(0:5):integer,xmmin:real,ymmin:real,zmminlocal:real,
-                    zmmin:real,zbeam:real,zgrid:real,mgparam:real,
+                    bounds(0:5):integer,
+                    xmminlocal:real,ymminlocal:real,zmminlocal:real,
+                    zgrid:real,mgparam:real,
                     mgiters:integer,mgmaxiters:integer,mgmaxlevels:integer,
                     mgerror:real,mgtol:real,mgverbose:integer,
                     downpasses:integer,uppasses:integer,lcndbndy:logical,
-                    laddconductor:logical,icndbndy:integer,lbuildquads:logical,
-                    gridmode:integer,conductors:ConductorType,my_index:integer,
-                    nslaves:integer,izfsslave:integer,nzfsslave:integer) 
+                    laddconductor:logical,icndbndy:integer,
+                    gridmode:integer,conductors:ConductorType,
+                    fsdecomp:Decomposition)
    subroutine
    # Solves Poisson's equation in 3D using the multigrid method including
    # the implicit susceptability. All input is through the argument list.
-residual(nx:integer,ny:integer,nzlocal:integer,nz:integer,
+residual3d(nxlocal:integer,nylocal:integer,nzlocal:integer,
+         delx:integer,dely:integer,delz:integer,
          dxsqi:real,dysqi:real,dzsqi:real,
-         phi(-1:nx+1,-1:ny+1,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
-         res(-1:nx+1,-1:ny+1,-3:nzlocal+3):real,
-         mglevel:integer,bounds:integer,
+         phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1):real,
+         rho(0:nxlocal,0:nylocal,0:nzlocal):real,
+         res(-delx:nxlocal+delx,-dely:nylocal+dely,-delz:nzlocal+delz):real,
+         mglevel:integer,bounds(0:5):integer,
          mgparam:real,mgform:integer,mgform2init:logical,
          lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
-         lprecalccoeffs:logical,
-         resdelx:integer,resdely:integer,resdelz:integer)
+         lprecalccoeffs:logical)
    subroutine
    # Calculates the residual for 3d arrays
-residual2d(nx:integer,nzlocal:integer,nz:integer,dxsqi:real,dzsqi:real,
+residual2d(nxlocal:integer,nzlocal:integer,dxsqi:real,dzsqi:real,
            xminodx:real,lrz:logical,phi:real,rho:real,res:real,
-           mglevel:integer,bounds:integer,
+           mglevel:integer,bounds(0:5):integer,
            lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
-           resdelx:integer,resdelz:integer)
+           delx:integer,delz:integer)
    subroutine
    # Calculates the residual for 2d arrays
-residual2ddielectric(nx:integer,nzlocal:integer,nz:integer,
+residual2ddielectric(nxlocal:integer,nzlocal:integer,
            phi:real,rho:real,epsilon:real,res:real,dx:real,dz:real,
-           mglevel:integer,bounds:integer,
-           conductors:ConductorType)
+           mglevel:integer,localbounds(0:5):integer,lcndbndy:logical,
+           conductors:ConductorType,xminodx:real,lrz:logical)
    subroutine
    # Calculates the residual for 2d arrays with a variable dielectric
-restrict3d(nx:integer,ny:integer,nzlocal:integer,nz:integer,
-           res(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz):real,
+restrict3d(nx:integer,ny:integer,nz:integer,
+           nxlocal:integer,nylocal:integer,nzlocal:integer,
+           res(-delx:nxlocal+delx,-dely:nylocal+dely,-delz:nzlocal+delz):real,
            delx:integer,dely:integer,delz:integer,
-           nxcoarse:integer,nycoarse:integer,nzlocalcoarse:integer,
-           nzcoarse:integer,
-           rhocoarse(0:nxcoarse,0:nycoarse,0:nzlocalcoarse):real,
+           nxcoarse:integer,nycoarse:integer,nzcoarse:integer,
+           nxlocalcoarse:integer,nylocalcoarse:integer,nzlocalcoarse:integer,
+           rhocoarse(0:nxlocalcoarse,0:nylocalcoarse,0:nzlocalcoarse):real,
            ff:real,bounds(0:5):integer,boundscoarse(0:5):integer,
-           lzoffset:integer)
+           lxoffset:integer,lyoffset:integer,lzoffset:integer)
    subroutine
    # Restricts phi in 3 dimensions
-expand3d(nx:integer,ny:integer,nzlocal:integer,nz:integer,
-         delx:integer,dely:integer,delz:integer,phi(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz):real,
-         nxcoarse:integer,nycoarse:integer,nzlocalcoarse:integer,
-         nzcoarse:integer,
-         phicoarse(0:nxcoarse,0:nycoarse,-1:nzlocalcoarse+1):real,
-         bounds(0:5):integer,lzoffset:integer,
+expand3d(nx:integer,ny:integer,nz:integer,
+         nxlocal:integer,nylocal:integer,nzlocal:integer,
+         delx:integer,dely:integer,delz:integer,
+         phi(-delx:nxlocal+delx,-dely:nylocal+dely,-delz:nzlocal+delz):real,
+         nxcoarse:integer,nycoarse:integer,nzcoarse:integer,
+         nxlocalcoarse:integer,nylocalcoarse:integer,nzlocalcoarse:integer,
+         phicoarse(0:nxlocalcoarse,0:nylocalcoarse,-1:nzlocalcoarse+1):real,
+         bounds(0:5):integer,lxoffset:integer,lyoffset:integer,lzoffset:integer,
          conductors:ConductorType,lprecalccoeffs:logical)
    subroutine
    # Expands phi in 3 dimensiosn
 sorhalfpass3d(parity:integer,mglevel:integer,
-              nx:integer,ny:integer,nzlocal:integer,nz:integer,
-              phi(-1:nx+1,-1:ny+1,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
+              nxlocal:integer,nylocal:integer,nzlocal:integer,
+              phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1):real,
+              rho(0:nxlocal,0:nylocal,0:nzlocal):real,
               rstar(-1:nzlocal+1):real,dxsqi:real,dysqi:real,dzsqi:real,
-              linbend:logical,bendx((nx+1)*(ny+1)):real,bounds(0:5):integer,
+              linbend:logical,bendx(-1:nxlocal):real,bounds(0:5):integer,
               mgparam:real,mgform:integer,
               lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
               lprecalccoeffs:logical)
    subroutine
    # Performs one pass of SOR relaxation, either even or odd.
-cond_potmg(interior:ConductorInteriorType,nx:integer,ny:integer,nzlocal:integer,
-           delx:integer,dely:integer,delz:integer,phi(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz):real,
+cond_potmg(interior:ConductorInteriorType,
+           nxlocal:integer,nylocal:integer,nzlocal:integer,
+           delx:integer,dely:integer,delz:integer,
+           phi(-delx:nxlocal+delx,-dely:nylocal+dely,-delz:nzlocal+delz):real,
            mglevel:integer,mgform:integer,mgform2init:logical)
     subroutine
     # Sets voltage on interior of conductors
-cond_zerorhointerior(interior:ConductorInteriorType,nx:integer,ny:integer,nzlocal:integer,
-                     rho(0:nx,0:ny,0:nzlocal):real)
+cond_zerorhointerior(interior:ConductorInteriorType,
+                     nxlocal:integer,nylocal:integer,nzlocal:integer,
+                     rho(0:nxlocal,0:nylocal,0:nzlocal):real)
     subroutine
     # Sets rho to zero inside conductor points.
 cond_sumrhointerior(interior:ConductorInteriorType,
-                    nx:integer,ny:integer,nzlocal:integer,rho(0:nx,0:ny,0:nzlocal):real,
+                    nxlocal:integer,nylocal:integer,nzlocal:integer,
+                    rho(0:nxlocal,0:nylocal,0:nzlocal):real,
                     ixmin:integer,ixmax:integer,iymin:integer,iymax:integer,
                     izmin:integer,izmax:integer) real function
 subcond_sumrhointerior(rhosum:real,interior:ConductorInteriorType,
-                    nx:integer,ny:integer,nzlocal:integer,rho(0:nx,0:ny,0:nzlocal):real,
-                    ixmin:integer,ixmax:integer,iymin:integer,iymax:integer,
-                    izmin:integer,izmax:integer) subroutine
+                       nxlocal:integer,nylocal:integer,nzlocal:integer,
+                       rho(0:nxlocal,0:nylocal,0:nzlocal):real,
+                       ixmin:integer,ixmax:integer,iymin:integer,iymax:integer,
+                       izmin:integer,izmax:integer) subroutine
 
-setupconductorfielddata(nx:integer,ny:integer,nzlocal:integer,nz:integer,
-                        dx:real,dy:real,dz:real,conductors:ConductorType,
-                        my_index:integer,nslaves:integer,
-                        izfsslave:integer,nzfsslave:integer) subroutine
+setupconductorfielddata(nx:integer,ny:integer,nz:integer,
+                        nxlocal:integer,nylocal:integer,nzlocal:integer,
+                        dx:real,dy:real,dz:real,
+                        conductors:ConductorType,fsdecomp:Decomposition)
+                    subroutine
 getefieldatconductorsubgrid(conductors:ConductorType,phi:real,
                             dx:real,dy:real,dz:real,
                             nx:integer,ny:integer,nz:integer,
@@ -407,7 +426,6 @@ sete3dwithconductor(conductors:ConductorType,phi:real,selfe:real,
                     lcylindrical:logical,delx:integer,dely:integer,delz:integer)
                     subroutine
 sete3dongridwithconductor(conductors:ConductorType,phi:real,
-                          xmmin:real,ymmin:real,zmmin:real,
                           dx:real,dy:real,dz:real,
                           nx:integer,ny:integer,nz:integer,
                           ex:real,ey:real,ez:real,
@@ -431,67 +449,18 @@ multigridbe3df(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,
 multigridbe3dsolve(iwhich:integer,
              nx:integer,ny:integer,nzlocal:integer,nz:integer,
              dx:real,dy:real,dz:real,phi:real,rho:real,
-             rstar:real,linbend:logical,bounds:integer,
+             rstar:real,linbend:logical,bounds(0:5):integer,
              xmmin:real,ymmin:real,zmminlocal:real,zmmin:real,
              zbeam:real,zgrid:real,
              mgparam:real,mgiters:integer,mgmaxiters:integer,
              mgmaxlevels:integer,mgerror:real,mgtol:real,mgverbose:integer,
              downpasses:integer,uppasses:integer,
              lcndbndy:logical,laddconductor:logical,icndbndy:integer,
-             lbuildquads:logical,gridmode:integer,conductors:ConductorType,
-             iondensitygrid3d:Grid3dtype,
-             my_index:integer,nslaves:integer,
-             izfsslave:integer,nzfsslave:integer)
+             gridmode:integer,conductors:ConductorType,
+             iondensitygrid3d:Grid3dtype,fsdecomp:Decomposition)
    subroutine
    # Solves Poisson's equation using the multigrid method, including the
    # Boltzmann electron term. All input is through the argument list.
-setupiondensitygrid3d(xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,
-                      nx:integer,ny:integer,nzlocal:integer,
-                      rho:real,iondensitygrid3d:Grid3dtype)
-   subroutine # Sets up the iondensity grid for the 3d Boltzman electron
-              # field solver.
-lphibe(nx:integer,ny:integer,nzlocal:integer,nz:integer,dxsqi:real,dysqi:real,dzsqi:real,phi:real,res:real,
-       mglevel:integer,bounds:integer,mgparam:real,
-       lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
-       iondensity:real,electrontemperature:real,plasmapotential:real,
-       electrondensitymaxscale:real) subroutine
-restrictbe3d(nx:integer,ny:integer,nzlocal:integer,nz:integer,u:real,delz:integer,
-             nxcoarse:integer,nycoarse:integer,nzlocalcoarse:integer,nzcoarse:integer,ucoarse:real,
-             bounds:integer,boundscoarse:integer,lzoffset:integer,
-             my_index:integer,nslaves:integer,izfsslavec:integer,nzfsslavec:integer,
-             whosendingleftc:integer,izsendingleftc:integer,
-             whosendingrightc:integer,izsendingrightc:integer) subroutine
-expandbe3d(nx:integer,ny:integer,nzlocal:integer,nz:integer,phi:real,
-           nxcoarse:integer,nycoarse:integer,nzlocalcoarse:integer,nzcoarse:integer,phicoarse:real,
-           bounds:integer,lzoffset:integer) subroutine
-relaxbe3d(mglevel:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,phi:real,rho:real,rstar:real,
-          dxsqi:real,dysqi:real,dzsqi:real,linbend:logical,bendx:real,bounds:integer,
-          mgparam:real,lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
-          my_index:integer,nslaves:integer,izfsslave:integer,nzfsslave:integer,
-          whosendingleft:integer,izsendingleft:integer,
-          whosendingright:integer,izsendingright:integer,
-          iondensity:real,electrontemperature:real,plasmapotential:real,
-          electrondensitymaxscale:real) subroutine
-cond_potmgbe(interior:ConductorInteriorType,nx:integer,ny:integer,nzlocal:integer,phi:real,mglevel:integer)
-          subroutine
-cond_potmgbezero(interior:ConductorInteriorType,nx:integer,ny:integer,nzlocal:integer,u:real,mglevel:integer,
-                 delt:integer,delz:integer) subroutine
-condbndymgbe(subgrid:ConductorSubGridType,nx:integer,ny:integer,nzlocal:integer,phi:real,rho:real,dxsqi:real,dysqi:real,dzsqi:real,
-             mgparam:real,bounds:integer,mglevel:integer,icndbndy:integer,
-             iondensity:real,electrontemperature:real,plasmapotential:real,
-             electrondensitymaxscale:real) subroutine
-copyphiwithguardcells(nx:integer,ny:integer,nzlocal:integer,nz:integer,phiin:real,phiout:real,bounds:integer)
-subroutine
-copyrhowithguardcells(nx:integer,ny:integer,nzlocal:integer,nz:integer,rhoin:real,rhoout:real,bounds:integer)
-subroutine
-vcyclebe(mglevel:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,dx:real,dy:real,dz:real,
-         phi:real,rho:real,rstar:real,linbend:logical,bendx:real,bounds:integer,
-         mgparam:real,
-         mgmaxlevels:integer,downpasses:integer,uppasses:integer,
-         lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
-         my_index:integer,nslaves:integer,izfsslave:integer,nzfsslave:integer,
-         iondensity:real,electrontemperature:real,plasmapotential:real,
-         electrondensitymaxscale:real) subroutine
 
 *********** Multigrid3d_work:
 # Temporary variables and array used by subgrid_sor_to_mg
@@ -505,6 +474,8 @@ iii(0:wnx,0:wny,0:wnz) _integer
 nx      integer  /0/  # Number of grid cells in x in B grid
 ny      integer  /0/  # Number of grid cells in y in B grid
 nz      integer  /0/  # Number of grid cells in z in B grid
+nxlocal integer  /0/  # Number of grid cells in x in B grid
+nylocal integer  /0/  # Number of grid cells in y in B grid
 nzlocal integer  /0/  # Number of grid cells in z in B grid
 dx      real [m] /0./ # x grid cell size in B grid
 dy      real [m] /0./ # y grid cell size in B grid
@@ -515,6 +486,10 @@ ymmin   real [m] /0./ # Y lower limit of mesh
 ymmax   real [m] /0./ # Y upper limit of mesh
 zmmin   real [m] /0./ # Z lower limit of mesh
 zmmax   real [m] /0./ # Z upper limit of mesh
+xmminlocal real [m]  # Local value of xmmin
+xmmaxlocal real [m]  # Local value of xmmax
+ymminlocal real [m]  # Local value of ymmin
+ymmaxlocal real [m]  # Local value of ymmax
 zmminlocal real [m]  # Local value of zmmin
 zmmaxlocal real [m]  # Local value of zmmax
 
@@ -553,31 +528,31 @@ lanalyticbtheta logical /.false./ # When true, Btheta is calculated from Jz
                                   # Warning: this option seems to give
                                   # unstable results.
 
-j(0:2,0:nx,0:ny,0:nzlocal) _real # Current density
-b(0:2,0:nx,0:ny,0:nzlocal) _real # B field, calculated from B = del cross A
-a(0:2,-1:nx+1,-1:ny+1,-1:nzlocal+1) _real
+j(0:2,0:nxlocal,0:nylocal,0:nzlocal) _real # Current density
+b(0:2,0:nxlocal,0:nylocal,0:nzlocal) _real # B field, calculated from B = del cross A
+a(0:2,-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1) _real
 nxold     integer  /0/  # Number of grid cells in x in B grid
 nyold     integer  /0/  # Number of grid cells in y in B grid
 nzold     integer  /0/  # Number of grid cells in z in B grid
 aold(0:2,-1:nxold+1,-1:nyold+1,-1:nzold+1) _real
   # Vector magnetic potential, calculated from del sq A = J
 
-attx(0:nx-1)     _real           # Attenuation factor as fcn. of kx
-atty(0:ny-1)     _real           # Attenuation factor as fcn. of ky
+attx(0:nxlocal-1)     _real           # Attenuation factor as fcn. of kx
+atty(0:nylocal-1)     _real           # Attenuation factor as fcn. of ky
 attz(0:nz)   _real           # Attenuation factor as fcn. of kz
-kxsq(0:nx-1)     _real [1/m**2]  # Discrete analog to kx^2/4Pi
-kysq(0:ny-1)     _real [1/m**2]  # Discrete analog to ky^2/4Pi
+kxsq(0:nxlocal-1)     _real [1/m**2]  # Discrete analog to kx^2/4Pi
+kysq(0:nylocal-1)     _real [1/m**2]  # Discrete analog to ky^2/4Pi
 kzsq(0:nz)   _real [1/m**2]  # Discrete analog to kz^2/4Pi
 
 rstar(-1:nzlocal+1)         _real [m] # Radius of curv of reference orbit
-scrtch(2*nx+2*ny)      _real     # Scratch for fieldsolve
-xywork(2,0:nx,0:ny)    _real     # Work space for transverse FFTs
-zwork(2,0:nx,0:nz) _real     # Work space used to optimize vsftz
+scrtch(2*nxlocal+2*nylocal)      _real     # Scratch for fieldsolve
+xywork(2,0:nxlocal,0:nylocal)    _real     # Work space for transverse FFTs
+zwork(2,0:nxlocal,0:nz) _real     # Work space used to optimize vsftz
 
 nsjtmp integer /0/
 jsjtmp(0:nsjtmp-1) _integer /-1/ #
 nsndtsj integer /0/
-jtmp(3,0:nx,0:ny,0:nzlocal,0:nsndtsj-1)  _real
+jtmp(3,0:nxlocal,0:nylocal,0:nzlocal,0:nsndtsj-1)  _real
              # Temporary copy of the current density from the particles.
 
 conductors ConductorType # Default data structure for conductor data
@@ -585,23 +560,20 @@ conductors ConductorType # Default data structure for conductor data
 *********** BFieldGrid dump:
 bfield BFieldGridType
 bfieldp BFieldGridType
-ljsummedonboundaries  logical /.false./
-                  # Auto set flag which determines whether j has been
-                  # set up for the field solve yet. This is set to true
-                  # by setjforfieldsolve and false by loadj.
-                  # This avoids double counting j in parallel
-                  # when multiple field solves are done.
+ljfinalized logical /.true./
+                 # Flags whether the boundary conditions and other processing
+                 # of bfield.j has been done, so that its ready to be used in a
+                 # field solve. Anytime bfieldp.j is changed, this flag is set
+                 # to false. Just before a field solve, the flag is checked,
+                 # and if needed, the appropriate operations done.
+
 init_bfieldsolver(bfstype:integer) subroutine # Initializes the B-field solver
 bfieldsol3d(iwhich) subroutine # Self B-field solver
 loadj3d(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,lzero:logical)
              subroutine # Provides a simple interface to the current density
                         # loading routine setj3d
-setaboundaries3d(a(0:2,-1:nx+1,-1:ny+1,-1:nzlocal+1):real,
-                 nx:integer,ny:integer,nzlocal:integer,zmminlocal:real,zmmaxlocal:real,
-                 zmmin:real,zmmax:real,
-                 bounds(0:5):integer,lcylindrical:logical,llongitudinal:logical)
-             subroutine #
-perj3d(j:real,nx:integer,ny:integer,nzlocal:integer,bound0:integer,boundxy:integer)
+applyjboundaryconditions(bfield:BFieldGridType,
+                         boundxy:integer,bound0:integer,boundnz:integer)
              subroutine #
 setb3d(b(0:2,0:nx,0:ny,0:nzlocal):real,np:integer,xp:real,yp:real,zp:real,zgrid:real,
        bx:real,by:real,bz:real,nx:integer,ny:integer,nzlocal:integer,
@@ -631,11 +603,12 @@ setj3d(j(0:2,0:nx,0:ny,0:nzlocal):real,j1d:real,np:integer,xp:real,yp:real,zp:re
              subroutine # Computes current density
 getjforfieldsolve()
              subroutine #
-setjforfieldsolve3d(nx:integer,ny:integer,nzlocal:integer,j(0:2,0:nx,0:ny,0:nzlocal):real,
-                    nxp:integer,nyp:integer,nzp:integer,jp(0:2,0:nxp,0:nyp,0:nzp):real,
-                    nzpguard:integer,
-                    my_index:integer,nslaves:integer,izfsslave:integer,
-                    nzfsslave:integer,izpslave:integer,nzpslave:integer)
+setjforfieldsolve3d(nxlocal:integer,nylocal:integer,nzlocal:integer,
+                    j(0:2,0:nxlocal,0:nylocal,0:nzlocal):real,
+                    nxp:integer,nyp:integer,nzp:integer,
+                    jp(0:2,0:nxp,0:nyp,0:nzp):real,
+                    nxpguard:integer,nypguard:integer,nzpguard:integer,
+                    fsdecomp:Decomposition,ppdecomp:Decomposition)
              subroutine #
 setupbfieldsforparticles3d(ns:integer,ndts:integer,it:integer,
                            bfield:BFieldGridType,bfieldp:BFieldGridType)
@@ -659,7 +632,7 @@ gathersourcefromchild(rho:real,nc:integer,nn:integer,childrho:real,cnn:integer,
                    childlower:integer,childupper:integer,
                    r:integer,weights:real,
                    radius:real,cradius:real,lcylinderical:logical,
-                   dobounds:integer,bounds:integer,rootdims:integer)
+                   dobounds:integer,bounds(0:5):integer,rootdims:integer)
       subroutine
 gatherpotentialfromparents(potential:real,nc:integer,ng:integer,nn:integer,
                            l:integer,u:integer,fulllower:integer,
@@ -711,40 +684,6 @@ atranlan(0:nxtranlan,0:nytranlan-1,0:nzlan) _real
 btranlan(0:nxtranlan,0:nytranlan-1,0:nzlan) _real
 ctranlan(0:nxtranlan,0:nytranlan-1,0:nzlan) _real
 dtranlan(0:nxlan,0:nylan,0:2) _real
-
-*********** PSOR3d_subs:
-setcndtr(xmmin:real,ymmin:real,zmminlocal:real,zmmin:real,
-         zbeam:real,zgrid:real,nx,ny,nzlocal,
-         dx:real,dy:real,dz:real,bound0:integer,boundnz:integer,boundxy:integer,
-         l2symtry:logical,l4symtry:logical)
-     subroutine # Calculates conductor locations
-srfrvoutf(rofzfunc:string,volt:real,zmin:real,zmax:real,
-         xcent:real,ycent:real,rmax:real,lfill:logical,
-         xmin:real,xmax:real,ymin:real,ymax:real,lshell:logical,
-         zmminlocal:real,zmmaxlocal:real,zmmin:real,zbeam:real,
-         dx:real,dy:real,dz:real,nx:integer,ny:integer,nzlocal:integer,
-         ix_axis:integer,iy_axis:integer,xmesh:real,ymesh:real,
-         l2symtry:logical,l4symtry:logical,condid:integer)
-     subroutine # Set conductor points for a conductor that is the
-                # outside of a surface of revolution.
-srfrvinf(rofzfunc:string,volt:real,zmin:real,zmax:real,
-         xcent:real,ycent:real,rmin:real,lfill:logical,
-         xmin:real,xmax:real,ymin:real,ymax:real,lshell:logical,
-         zmminlocal:real,zmmaxlocal:real,zmmin:real,zbeam:real,
-         dx:real,dy:real,dz:real,nx:integer,ny:integer,nzlocal:integer,
-         ix_axis:integer,iy_axis:integer,xmesh:real,ymesh:real,
-         l2symtry:logical,l4symtry:logical,condid:integer)
-     subroutine # Set conductor points for a conductor that is the
-                # inside of a surface of revolution.
-srfrvinoutf(rminofz:string,rmaxofz:string,volt:real,zmin:real,zmax:real,
-         xcent:real,ycent:real,lzend:logical,
-         xmin:real,xmax:real,ymin:real,ymax:real,lshell:logical,
-         zmminlocal:real,zmmaxlocal:real,zmmin:real,zbeam:real,
-         dx:real,dy:real,dz:real,nx:integer,ny:integer,nzlocal:integer,
-         ix_axis:integer,iy_axis:integer,xmesh:real,ymesh:real,
-         l2symtry:logical,l4symtry:logical,condid:integer)
-     subroutine # Set conductor points for a conductor that is between two
-                # surfaces of revolution.
 
 *********** F3Dsubs:
 #  Callable subroutines in the F3D package
@@ -1096,20 +1035,18 @@ timecondbndymgint real /0./
 timecondbndyres real /0./
 timeresidual real /0./
 
-timeexchange_phi           real /0./
-timetranspose              real /0./
-timetransposei             real /0./
-timelantzsolver            real /0./
-timegeneraltridiag         real /0./
-timeparalleltridiag        real /0./
-timeparallelgatherall      real /0./
-timemgdividenz             real /0./
-timemggetexchangepes       real /0./
-timemgexchange_phi         real /0./
-timemgexchange_phiperiodic real /0./
-timemgexchange_rho         real /0./
-timemgexchangeallrhocoarse real /0./
-timeprintarray3d           real /0./
+timeexchange_phi            real /0./
+timetranspose               real /0./
+timetransposei              real /0./
+timelantzsolver             real /0./
+timegeneraltridiag          real /0./
+timeparalleltridiag         real /0./
+timeparallelgatherall       real /0./
+timemgdividenz              real /0./
+timemggetexchangepes        real /0./
+timemgexchange_phi          real /0./
+timemgexchange_phi_periodic real /0./
+timeprintarray3d            real /0./
 
 timepera3d                     real /0./
 timeperj3d                     real /0./
@@ -1132,6 +1069,10 @@ timevcycleimplicites3d real /0./
 timerelaximplicites3d real /0./
 timeresidualimplicites3d real /0./
 timeaverageperiodicphi3d real /0./
-timeapplyboundaryconditionses3d real /0./
-timeapplyparallelboundaryconditionses3d real /0./
+timeapplyboundaryconditions3d real /0./
+timeapplyparallelboundaryconditions3d real /0./
 
+
+****** RRRRRR:
+rrr(:,:) _real
+ppp(:,:) _real

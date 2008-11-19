@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) Filef3d_ImplicitES.F, version $Revision: 1.7 $, $Date: 2008/10/22 01:03:44 $
+c@(#) Filef3d_ImplicitES.F, version $Revision: 1.8 $, $Date: 2008/11/19 18:29:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid implicit electrostatic field solver.
@@ -10,14 +10,15 @@ c=============================================================================
 c=============================================================================
       module coefficientsmodulees3d
       contains
-      function getbfieldsongrid3d(nx,ny,nzlocal,nz,dx,dy,dz,
-     &                            xmmin,ymmin,zmminlocal,localbounds,
-     &                            delx,dely,delz)
+      function getbfieldsongrid3d(nxlocal,nylocal,nzlocal,delx,dely,delz,
+     &                            dx,dy,dz,
+     &                            xmminlocal,ymminlocal,zmminlocal,zgrid,
+     &                            localbounds)
      &  result(bongrid)
       use Subtimersf3d
       real(kind=8),pointer:: bongrid(:,:,:,:)
-      integer(ISZ):: nx,ny,nzlocal,nz
-      real(kind=8):: dx,dy,dz,xmmin,ymmin,zmminlocal
+      integer(ISZ):: nxlocal,nylocal,nzlocal
+      real(kind=8):: dx,dy,dz,xmminlocal,ymminlocal,zmminlocal,zgrid
       integer(ISZ):: localbounds(0:5)
       integer(ISZ):: delx,dely,delz
 
@@ -28,17 +29,20 @@ c=============================================================================
       if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Allocate space for B field
-      allocate(bongrid(-1:nx+1,-1:ny+1,-delz:nzlocal+delz,0:2))
+      allocate(bongrid(-delx:nxlocal+delx,
+     &                 -dely:nylocal+dely,
+     &                 -delz:nzlocal+delz,0:2))
 
 c     --- Create temporary space to hold the coordinates of the grid
 c     --- needed to look up the B fields.
-      allocate(xx(0:nx),yy(0:nx),zz(0:nx),uz(0:nx),gaminv(0:nx))
-      allocate(ex(0:nx),ey(0:nx),ez(0:nx))
-      allocate(bendres(0:nx),bendradi(0:nx))
+      allocate(xx(0:nxlocal),yy(0:nxlocal),zz(0:nxlocal))
+      allocate(uz(0:nxlocal),gaminv(0:nxlocal))
+      allocate(ex(0:nxlocal),ey(0:nxlocal),ez(0:nxlocal))
+      allocate(bendres(0:nxlocal),bendradi(0:nxlocal))
 
 c     --- Fill the transverse position arrays.
-      do ix=0,nx
-        xx(ix) = xmmin + ix*dx
+      do ix=0,nxlocal
+        xx(ix) = xmminlocal + ix*dx
       enddo
       uz = -1.
       gaminv = 1.
@@ -52,20 +56,20 @@ c     --- Fill the transverse position arrays.
 c     --- Get the B field, one x line at a time. One x line is done at a
 c     --- time to save memory.
       do iz=0,nzlocal
-        zz = zmminlocal + iz*dz
-        do iy=0,ny
-          yy = ymmin + iy*dy
-          call exteb3d(1+nx,xx,yy,zz,uz,gaminv,0.,0.,
-     &                 bongrid(0:nx,iy,iz,0),
-     &                 bongrid(0:nx,iy,iz,1),
-     &                 bongrid(0:nx,iy,iz,2),
+        zz = zmminlocal + iz*dz + zgrid
+        do iy=0,nylocal
+          yy = ymminlocal + iy*dy
+          call exteb3d(1+nxlocal,xx,yy,zz,uz,gaminv,0.,0.,
+     &                 bongrid(0:nxlocal,iy,iz,0),
+     &                 bongrid(0:nxlocal,iy,iz,1),
+     &                 bongrid(0:nxlocal,iy,iz,2),
      &                 ex,ey,ez,1.,1.,bendres,bendradi,1.,1.)
         enddo
       enddo
 
 c     --- Apply the boundary conditions, setting the values in the guard cells.
-      call applyboundaryconditionses3d(nx,ny,nzlocal,nz,delx,dely,delz,
-     &                                 bongrid,3,localbounds,.true.)
+      call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,delx,dely,delz,
+     &                               bongrid,3,localbounds,.false.,.true.)
 
       deallocate(xx,yy,zz,uz,gaminv)
       deallocate(ex,ey,ez)
@@ -77,29 +81,35 @@ c     --- Apply the boundary conditions, setting the values in the guard cells.
       return
       end function getbfieldsongrid3d
 c=============================================================================
-      subroutine getcoefficientsimplicites3d(nx,ny,nzlocal,dx,dy,dz,ns,qomdt,
-     &                               chi0,bongrid,mglevel,lcndbndy,icndbndy,
-     &                               conductors,localbounds,
-     &                               coeffs0,coeffs,rhs,resscale,
-     &                               delx,dely,delz)
+      subroutine getcoefficientsimplicites3d(nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                                       ns,qomdt,chi0,bongrid,
+     &                                       mglevel,lcndbndy,icndbndy,
+     &                                       conductors,localbounds,
+     &                                       coeffs0,coeffs,rhs,resscale,
+     &                                       delx,dely,delz)
       use Subtimersf3d
       use Constant
       use ConductorTypemodule
-      integer(ISZ):: nx,ny,nzlocal,ns
+      use formggetarraysuminterface
+      integer(ISZ):: nxlocal,nylocal,nzlocal,ns
       real(kind=8):: dx,dy,dz
       integer(ISZ):: delx,dely,delz
       real(kind=8):: qomdt(0:ns-1)
-      real(kind=8):: chi0(-1:nx+1,-1:ny+1,-delz:nzlocal+delz,0:ns-1)
-      real(kind=8):: bongrid(-1:nx+1,-1:ny+1,-delz:nzlocal+delz,0:2)
+      real(kind=8):: chi0(-delx:nxlocal+delx,
+     &                    -dely:nylocal+dely,
+     &                    -delz:nzlocal+delz,0:ns-1)
+      real(kind=8):: bongrid(-delx:nxlocal+delx,
+     &                       -dely:nylocal+dely,
+     &                       -delz:nzlocal+delz,0:2)
       integer(ISZ):: mglevel
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
       logical(ISZ):: lcndbndy,lrz
       integer(ISZ):: localbounds(0:5)
-      real(kind=8):: coeffs0(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: coeffs(0:2,0:1,-1:1,0:nx,0:ny,0:nzlocal)
-      real(kind=8):: rhs(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: resscale(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: coeffs0(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: coeffs(0:2,0:1,-1:1,0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: rhs(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: resscale(0:nxlocal,0:nylocal,0:nzlocal)
 
 c Layout of coeffs0 and coeffs:
 c  - coeffs0 is the coefficient of the central term in the template, phiijk
@@ -119,14 +129,14 @@ c                 coeffs(2,0,0,...) is for phi(i+0,j,k-1)
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      allocate(chi(0:2,0:2,-1:nx+1,-1:ny+1,-1:nzlocal+1))
+      allocate(chi(0:2,0:2,-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1))
       chi = 0.
 
 c     --- First, generate the chi tensor from chi0 and the B field.
       do js=0,ns-1
         do iz=-1,nzlocal+1
-          do iy=-1,ny+1
-            do ix=-1,nx+1
+          do iy=-1,nylocal+1
+            do ix=-1,nxlocal+1
 
               ox = 0.5*qomdt(js)*bongrid(ix,iy,iz,0)
               oy = 0.5*qomdt(js)*bongrid(ix,iy,iz,1)
@@ -163,8 +173,8 @@ c       --- This is probably not needed.
       enddo
 
       do iz=0,nzlocal
-        do iy=0,ny
-          do ix=0,nx
+        do iy=0,nylocal
+          do ix=0,nxlocal
 
             coeffs(0,1,0,ix,iy,iz) = (1.+0.5*(chi(0,0,ix  ,iy  ,iz  ) +
      &                                        chi(0,0,ix+1,iy  ,iz  )))/dx**2
@@ -223,11 +233,11 @@ c       --- This is probably not needed.
       rhs = 0.
       resscale = 1.
       call getcoefficientssubgridimplicites3d(conductors%evensubgrid,
-     &                                nx,ny,nzlocal,
+     &                                nxlocal,nylocal,nzlocal,
      &                                dx,dy,dz,mglevel,lcndbndy,icndbndy,chi,
      &                                localbounds,coeffs0,coeffs,rhs,resscale)
       call getcoefficientssubgridimplicites3d(conductors%oddsubgrid,
-     &                                nx,ny,nzlocal,
+     &                                nxlocal,nylocal,nzlocal,
      &                                dx,dy,dz,mglevel,lcndbndy,icndbndy,chi,
      &                                localbounds,coeffs0,coeffs,rhs,resscale)
 
@@ -241,24 +251,24 @@ c       --- This is probably not needed.
       end subroutine getcoefficientsimplicites3d
 c=============================================================================
       subroutine getcoefficientssubgridimplicites3d(subgrid,
-     &                                nx,ny,nzlocal,dx,dy,dz,
+     &                                nxlocal,nylocal,nzlocal,dx,dy,dz,
      &                                mglevel,lcndbndy,icndbndy,chi,
      &                                localbounds,coeffs0,coeffs,rhs,resscale)
       use Subtimersf3d
       use Constant
       use ConductorSubgridTypemodule
       type(ConductorSubgridType):: subgrid
-      integer(ISZ):: nx,ny,nzlocal
+      integer(ISZ):: nxlocal,nylocal,nzlocal
       real(kind=8):: dx,dy,dz
       integer(ISZ):: mglevel
       integer(ISZ):: icndbndy
       logical(ISZ):: lcndbndy,lrz
-      real(kind=8):: chi(0:2,0:2,-1:nx+1,-1:ny+1,-1:nzlocal+1)
+      real(kind=8):: chi(0:2,0:2,-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
       integer(ISZ):: localbounds(0:5)
-      real(kind=8):: coeffs0(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: coeffs(0:2,0:1,-1:1,0:nx,0:ny,0:nzlocal)
-      real(kind=8):: rhs(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: resscale(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: coeffs0(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: coeffs(0:2,0:1,-1:1,0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: rhs(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: resscale(0:nxlocal,0:nylocal,0:nzlocal)
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -306,9 +316,9 @@ c       --- Note that data in parallel boundaries (where localbounds==-1)
 c       --- is handled since those coefficients are needed in the calculation
 c       --- of the residual.
         if (ix == 0  .and. localbounds(0) == 0) cycle
-        if (ix == nx .and. localbounds(1) == 0) cycle
+        if (ix == nxlocal .and. localbounds(1) == 0) cycle
         if (iy == 0  .and. localbounds(2) == 0) cycle
-        if (iy == ny .and. localbounds(3) == 0) cycle
+        if (iy == nylocal .and. localbounds(3) == 0) cycle
         if (iz == 0  .and. localbounds(4) == 0) cycle
         if (iz == nzlocal .and. localbounds(5) == 0) cycle
 
@@ -449,7 +459,7 @@ c       --- by the subgrid info at cell (i,k).
             rhs(ix,iy-1,iz)=rhs(ix,iy-1,iz) - 0.5*chi(1,0,ix,iy,iz)/(dy*dx2)*pxm
             coeffs(0,0,+1,ix,iy-1,iz) = 0.
           endif
-          if (iy < ny) then
+          if (iy < nylocal) then
             rhs(ix,iy+1,iz)=rhs(ix,iy+1,iz) + 0.5*chi(1,0,ix,iy,iz)/(dy*dx2)*pxm
             coeffs(0,0,-1,ix,iy+1,iz) = 0.
           endif
@@ -464,7 +474,7 @@ c       --- by the subgrid info at cell (i,k).
         elseif (-1. < dels(0,ic) .and. dels(0,ic) <= 0.) then
           coeffs(0,0,0,ix,iy,iz) = 0.
           if (iy > 0) coeffs(0,0,+1,ix,iy-1,iz) = 0.
-          if (iy < ny) coeffs(0,0,-1,ix,iy+1,iz) = 0.
+          if (iy < nylocal) coeffs(0,0,-1,ix,iy+1,iz) = 0.
           if (iz > 0) coeffs(2,1,-1,ix,iy,iz-1) = 0.
           if (iz < nzlocal) coeffs(2,0,-1,ix,iy,iz+1) = 0.
         endif
@@ -477,7 +487,7 @@ c       --- by the subgrid info at cell (i,k).
             rhs(ix,iy-1,iz)=rhs(ix,iy-1,iz) + 0.5*chi(1,0,ix,iy,iz)/(dy*dx2)*pxp
             coeffs(0,1,+1,ix,iy-1,iz) = 0.
           endif
-          if (iy < ny) then
+          if (iy < nylocal) then
             rhs(ix,iy+1,iz)=rhs(ix,iy+1,iz) - 0.5*chi(1,0,ix,iy,iz)/(dy*dx2)*pxp
             coeffs(0,1,-1,ix,iy+1,iz) = 0.
           endif
@@ -492,7 +502,7 @@ c       --- by the subgrid info at cell (i,k).
         elseif (-1. < dels(1,ic) .and. dels(1,ic) <= 0.) then
           coeffs(0,1,0,ix,iy,iz) = 0.
           if (iy > 0) coeffs(0,1,+1,ix,iy-1,iz) = 0.
-          if (iy < ny) coeffs(0,1,-1,ix,iy+1,iz) = 0.
+          if (iy < nylocal) coeffs(0,1,-1,ix,iy+1,iz) = 0.
           if (iz > 0) coeffs(2,1,+1,ix,iy,iz-1) = 0.
           if (iz < nzlocal) coeffs(2,0,+1,ix,iy,iz+1) = 0.
         endif
@@ -513,7 +523,7 @@ c       --- by the subgrid info at cell (i,k).
             rhs(ix-1,iy,iz)=rhs(ix-1,iy,iz) - 0.5*chi(0,1,ix,iy,iz)/(dx*dy2)*pym
             coeffs(0,1,-1,ix-1,iy,iz) = 0.
           endif
-          if (ix < nx) then
+          if (ix < nxlocal) then
             rhs(ix+1,iy,iz)=rhs(ix+1,iy,iz) + 0.5*chi(0,1,ix,iy,iz)/(dx*dy2)*pym
             coeffs(0,0,-1,ix+1,iy,iz) = 0.
           endif
@@ -522,7 +532,7 @@ c       --- by the subgrid info at cell (i,k).
           if (iz > 0) coeffs(1,0,+1,ix,iy,iz-1) = 0.
           if (iz < nzlocal) coeffs(1,0,-1,ix,iy,iz+1) = 0.
           if (ix > 0) coeffs(0,1,-1,ix-1,iy,iz) = 0.
-          if (ix < nx) coeffs(0,0,-1,ix+1,iy,iz) = 0.
+          if (ix < nxlocal) coeffs(0,0,-1,ix+1,iy,iz) = 0.
         endif
 
         if (0. < dels(3,ic) .and. dels(3,ic) < +1.) then
@@ -541,7 +551,7 @@ c       --- by the subgrid info at cell (i,k).
             rhs(ix-1,iy,iz) = rhs(ix-1,iy,iz) + 0.5*chi(0,1,ix,iy,iz)/(dx*dy2)*pyp
             coeffs(0,1,+1,ix-1,iy,iz) = 0.
           endif
-          if (ix < nx) then
+          if (ix < nxlocal) then
             rhs(ix+1,iy,iz) = rhs(ix+1,iy,iz) - 0.5*chi(0,1,ix,iy,iz)/(dx*dy2)*pyp
             coeffs(0,0,+1,ix+1,iy,iz) = 0.
           endif
@@ -550,7 +560,7 @@ c       --- by the subgrid info at cell (i,k).
           if (iz > 0) coeffs(1,1,+1,ix,iy,iz-1) = 0.
           if (iz < nzlocal) coeffs(1,1,-1,ix,iy,iz+1) = 0.
           if (ix > 0) coeffs(0,1,+1,ix-1,iy,iz) = 0.
-          if (ix < nx) coeffs(0,0,+1,ix+1,iy,iz) = 0.
+          if (ix < nxlocal) coeffs(0,0,+1,ix+1,iy,iz) = 0.
         endif
 
         if (0. < dels(4,ic) .and. dels(4,ic) < +1.) then
@@ -561,7 +571,7 @@ c       --- by the subgrid info at cell (i,k).
             rhs(ix-1,iy,iz) = rhs(ix-1,iy,iz) - 0.5*chi(0,2,ix,iy,iz)/(dx*dz2)*pzm
             coeffs(2,0,+1,ix-1,iy,iz) = 0.
           endif
-          if (ix < nx) then
+          if (ix < nxlocal) then
             rhs(ix+1,iy,iz) = rhs(ix+1,iy,iz) + 0.5*chi(0,2,ix,iy,iz)/(dx*dz2)*pzm
             coeffs(2,0,-1,ix+1,iy,iz) = 0.
           endif
@@ -569,16 +579,16 @@ c       --- by the subgrid info at cell (i,k).
             rhs(ix,iy-1,iz) = rhs(ix,iy-1,iz) - 0.5*chi(1,2,ix,iy,iz)/(dy*dz2)*pzm
             coeffs(1,1,-1,ix,iy-1,iz) = 0.
           endif
-          if (iy < ny) then
+          if (iy < nylocal) then
             rhs(ix,iy+1,iz) = rhs(ix,iy+1,iz) + 0.5*chi(1,2,ix,iy,iz)/(dy*dz2)*pzm
             coeffs(1,0,-1,ix,iy+1,iz) = 0.
           endif
         elseif (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) then
           coeffs(2,0,0,ix,iy,iz) = 0.
           if (ix > 0) coeffs(2,0,+1,ix-1,iy,iz) = 0.
-          if (ix < nx) coeffs(2,0,-1,ix+1,iy,iz) = 0.
+          if (ix < nxlocal) coeffs(2,0,-1,ix+1,iy,iz) = 0.
           if (iy > 0) coeffs(1,1,-1,ix,iy-1,iz) = 0.
-          if (iy < ny) coeffs(1,0,-1,ix,iy+1,iz) = 0.
+          if (iy < nylocal) coeffs(1,0,-1,ix,iy+1,iz) = 0.
         endif
 
         if (0. < dels(5,ic) .and. dels(5,ic) < +1.) then
@@ -589,7 +599,7 @@ c       --- by the subgrid info at cell (i,k).
             rhs(ix-1,iy,iz) = rhs(ix-1,iy,iz) + 0.5*chi(0,2,ix,iy,iz)/(dx*dz2)*pzp
             coeffs(2,1,+1,ix-1,iy,iz) = 0.
           endif
-          if (ix < nx) then
+          if (ix < nxlocal) then
             rhs(ix+1,iy,iz) = rhs(ix+1,iy,iz) - 0.5*chi(0,2,ix,iy,iz)/(dx*dz2)*pzp
             coeffs(2,1,-1,ix+1,iy,iz) = 0.
           endif
@@ -597,16 +607,16 @@ c       --- by the subgrid info at cell (i,k).
             rhs(ix,iy-1,iz) = rhs(ix,iy-1,iz) + 0.5*chi(1,2,ix,iy,iz)/(dy*dz2)*pzp
             coeffs(1,1,+1,ix,iy-1,iz) = 0.
           endif
-          if (iy < ny) then
+          if (iy < nylocal) then
             rhs(ix,iy+1,iz) = rhs(ix,iy+1,iz) - 0.5*chi(1,2,ix,iy,iz)/(dy*dz2)*pzp
             coeffs(1,0,+1,ix,iy+1,iz) = 0.
           endif
         elseif (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) then
           coeffs(2,1,0,ix,iy,iz) = 0.
           if (ix > 0) coeffs(2,1,+1,ix-1,iy,iz) = 0.
-          if (ix < nx) coeffs(2,1,-1,ix+1,iy,iz) = 0.
+          if (ix < nxlocal) coeffs(2,1,-1,ix+1,iy,iz) = 0.
           if (iy > 0) coeffs(1,1,+1,ix,iy-1,iz) = 0.
-          if (iy < ny) coeffs(1,0,+1,ix,iy+1,iz) = 0.
+          if (iy < nylocal) coeffs(1,0,+1,ix,iy+1,iz) = 0.
         endif
 
       enddo
@@ -623,41 +633,40 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
 c=============================================================================
-      subroutine mgsolveimplicites3d(iwhich,nx,ny,nzlocal,nz,dx,dy,dz,phi,rho,
+      subroutine mgsolveimplicites3d(iwhich,nx,ny,nz,nxlocal,nylocal,nzlocal,
+     &                               dx,dy,dz,phi,rho,
      &                               ns,qomdt,chi0,
      &                               rstar,linbend,bounds,
-     &                               xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,
+     &                               xmminlocal,ymminlocal,zmminlocal,zgrid,
      &                               mgparam,mgiters,mgmaxiters,
      &                               mgmaxlevels,mgerror,mgtol,mgverbose,
      &                               downpasses,uppasses,
      &                               lcndbndy,laddconductor,icndbndy,
-     &                               lbuildquads,
-     &                               gridmode,conductors,
-     &                               my_index,nslaves,izfsslave,nzfsslave)
+     &                               gridmode,conductors,fsdecomp)
       use Subtimersf3d
       use ConductorTypemodule
       use Constant
       use coefficientsmodulees3d
+      use Decompositionmodule
       integer(ISZ):: iwhich
-      integer(ISZ):: nx,ny,nzlocal,nz,ns
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
-      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
+      integer(ISZ):: nx,ny,nz,nxlocal,nylocal,nzlocal,ns
+      real(kind=8):: phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
+      real(kind=8):: rho(0:nxlocal,0:nylocal,0:nzlocal)
       real(kind=8):: qomdt(0:ns-1)
-      real(kind=8):: chi0(0:nx,0:ny,0:nzlocal,0:ns-1)
+      real(kind=8):: chi0(0:nxlocal,0:nylocal,0:nzlocal,0:ns-1)
       real(kind=8):: dx,dy,dz
       real(kind=8):: rstar(-1:nzlocal+1)
       logical(ISZ):: linbend
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid
+      real(kind=8):: xmminlocal,ymminlocal,zmminlocal,zgrid
       real(kind=8):: mgparam
       integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels,mgverbose
       real(kind=8):: mgerror,mgtol
       integer(ISZ):: downpasses,uppasses
-      logical(ISZ):: lcndbndy,laddconductor,lbuildquads
+      logical(ISZ):: lcndbndy,laddconductor
       integer(ISZ):: icndbndy,gridmode
       type(ConductorType):: conductors
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      type(Decomposition):: fsdecomp
 
 c Use the multigrid method for solving Poisson's equation on a 3-D Cartesian
 c mesh. The fieldsolver allows internal conductors with subgrid scale
@@ -670,11 +679,8 @@ c resolution.
       real(kind=8),pointer:: bongrid(:,:,:,:)
       real(kind=8),pointer:: chi0temp(:,:,:,:)
       real(kind=8),allocatable:: phisave(:,:,:)
-      real(kind=8):: bendx(-1:nx+1)
+      real(kind=8):: bendx(-1:nxlocal+1)
       integer(ISZ):: localbounds(0:5)
-      integer(ISZ):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
-      integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
-      integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
       character(72):: errline
       integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
@@ -683,32 +689,37 @@ c resolution.
 c     --- If doing initialization only, then exit.
       if (iwhich == 1) return
 
-#ifndef MPIPARALLEL
       delx = 1
       dely = 1
       delz = 1
-#else
-      delx = 1
-      dely = 1
-      delz = 3
-#endif
+      if (nx > nxlocal) delx = 3
+      if (ny > nylocal) dely = 3
+      if (nz > nzlocal) delz = 3
 
+c     --- Setup the boundary conditions for the local domain.
       localbounds = bounds
 #ifdef MPIPARALLEL
-      if (izfsslave(my_index) > 0) localbounds(4) = -1
-      if (izfsslave(my_index)+nzlocal < nz) localbounds(5) = -1
+      if (fsdecomp%ix(fsdecomp%ixproc) > 0)          localbounds(0) = -1
+      if (fsdecomp%ix(fsdecomp%ixproc)+nxlocal < nx) localbounds(1) = -1
+      if (fsdecomp%iy(fsdecomp%iyproc) > 0)          localbounds(2) = -1
+      if (fsdecomp%iy(fsdecomp%iyproc)+nylocal < ny) localbounds(3) = -1
+      if (fsdecomp%iz(fsdecomp%izproc) > 0)          localbounds(4) = -1
+      if (fsdecomp%iz(fsdecomp%izproc)+nzlocal < nz) localbounds(5) = -1
 #endif
 
-      bongrid => getbfieldsongrid3d(nx,ny,nzlocal,nz,dx,dy,dz,
-     &                              xmmin,ymmin,zmminlocal,localbounds,
-     &                              delx,dely,delz)
+      bongrid => getbfieldsongrid3d(nxlocal,nylocal,nzlocal,delx,dely,delz,
+     &                              dx,dy,dz,
+     &                              xmminlocal,ymminlocal,zmminlocal,zgrid,
+     &                              localbounds)
 c     --- Parallel B.C.s are set below.
 
 c     --- Create copy of chi0 with extra guard cells, and fill it in.
-      allocate(chi0temp(-1:nx+1,-1:ny+1,-delz:nzlocal+delz,0:ns-1))
-      chi0temp(0:nx,0:ny,0:nzlocal,:) = chi0
-      call applyboundaryconditionses3d(nx,ny,nzlocal,nz,1,1,delz,chi0temp,ns,
-     &                                 localbounds,.true.)
+      allocate(chi0temp(-delx:nxlocal+delx,
+     &                  -dely:nylocal+dely,
+     &                  -delz:nzlocal+delz,0:ns-1))
+      chi0temp(0:nxlocal,0:nylocal,0:nzlocal,:) = chi0
+      call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,delx,dely,delz,
+     &                               chi0temp,ns,localbounds,.false.,.true.)
 c     --- Parallel B.C.s are set below.
 
 c     --- Determine the points that make up the conductor.  This takes extra
@@ -719,18 +730,10 @@ c     --- converted and expanded for the multigrid solver.
         conductors%interior%n = 0
         conductors%evensubgrid%n = 0
         conductors%oddsubgrid%n = 0
-        if (lbuildquads) then
-          call setcndtr(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,nx,ny,nzlocal,
-     &                  dx,dy,dz,
-     &                  localbounds(4),localbounds(5),localbounds(1),
-     &                  (localbounds(0)/=1.and.localbounds(2)==1),
-     &                  (localbounds(0)==1.and.localbounds(2)==1))
-        endif
         if (laddconductor) call callpythonfunc("calladdconductor","controllers")
       endif
-      call checkconductors(nx,ny,nzlocal,nz,dx,dy,dz,conductors,
-     &                     my_index,nslaves,izfsslave,nzfsslave)
-
+      call checkconductors(nx,ny,nz,nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                     conductors,fsdecomp)
 
 !$OMP PARALLEL
 !$OMP&PRIVATE(ii,i,k,rs,x,r,ix,iy,iz)
@@ -745,8 +748,8 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
 !$OMP DO
         do iz=0,nzlocal
           rs = rstar(iz)
-          do ix=0,nx
-            x  = xmmin + ix*dx
+          do ix=0,nxlocal
+            x  = xmminlocal + ix*dx
             r  = rs + x
 c           --- rearranged to reduce divides
 c           --- rho(ix,:,iz) = rho(ix,:,iz)*(rs/r)/
@@ -758,58 +761,38 @@ c           ---             ( 1. + (x/r)*((x/r)-2.)*rdel )
 c       --- Fill scratch array with x values so it can be looked up
 c       --- in the bent beam loop instead of calculated.
 !$OMP DO
-        do ix = -1,nx+1
-          bendx(ix) = xmmin + ix*dx
+        do ix = -1,nxlocal+1
+          bendx(ix) = xmminlocal + ix*dx
         enddo
 !$OMP END DO
 c       --- Change rstar if using Nuemann boundary conditions
-#ifndef MPIPARALLEL
         if (localbounds(4) == 1) rstar(-1) = rstar(1)
         if (localbounds(5) == 1) rstar(nzlocal+1) = rstar(nzlocal-1)
-#else
-        if (localbounds(4) == 1 .and. my_index == 0) rstar(-1) = rstar(1)
-        if (localbounds(5) == 1 .and. my_index == nslaves-1) rstar(nzlocal+1)=rstar(nzlocal-1)
-#endif
       endif
 
+#ifdef MPIPARALLEL
+c     --- These calls break the parallel field solver
+c     call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
+c    &                             1,1,1,-1,0,localbounds,fsdecomp)
+c     call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,-1,fsdecomp)
+#endif
 c     --- Make sure guard planes have sensible values before beginning.
-      call applyboundaryconditionses3d(nx,ny,nzlocal,nz,1,1,1,phi,1,
-     &                                 localbounds,.false.)
+      call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,1,1,1,phi,1,
+     &                               localbounds,.false.,.false.)
 
 #ifdef MPIPARALLEL
-      lzoffset = 0
-      rzoffset = 0
-      call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
-     &                      bounds,nz,
-     &                      lzoffset,rzoffset,
-     &                      whosendingleft,izsendingleft,
-     &                      whosendingright,izsendingright)
-c     --- These calls break the parallel field solver
-c     call mgexchange_phi(nx,ny,nzlocal,nz,phi,localbounds,-1,1,1,1,
-c    &                    my_index,nslaves,izfsslave,nzfsslave,
-c    &                    whosendingleft,izsendingleft,
-c    &                    whosendingright,izsendingright)
-c     call mgexchange_phiperiodic(nx,ny,nzlocal,nz,phi,localbounds,1,1,1,1,
-c    &                            my_index,nslaves,izfsslave,
-c    &                            whosendingleft,whosendingright)
-      call applyparallelboundaryconditionses3d(chi0temp,
-     &               nx,ny,nzlocal,nz,
-     &               delx,dely,delz,ns,delz,localbounds,
-     &               my_index,nslaves,izfsslave,nzfsslave,
-     &               whosendingleft,izsendingleft,
-     &               whosendingright,izsendingright)
-      call applyparallelboundaryconditionses3d(bongrid,
-     &               nx,ny,nzlocal,nz,
-     &               delx,dely,delz,3,delz,localbounds,
-     &               my_index,nslaves,izfsslave,nzfsslave,
-     &               whosendingleft,izsendingleft,
-     &               whosendingright,izsendingright)
+      call applyparallelboundaryconditions3d(chi0temp,
+     &               nxlocal,nylocal,nzlocal,
+     &               delx,dely,delz,ns,3,localbounds,fsdecomp)
+      call applyparallelboundaryconditions3d(bongrid,
+     &               nxlocal,nylocal,nzlocal,
+     &               delx,dely,delz,3,3,localbounds,fsdecomp)
 #endif
 
-      allocate(phisave(-1:nx+1,-1:ny+1,-1:nzlocal+1),stat=allocerror)
+      allocate(phisave(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1),stat=allocerror)
       if (allocerror /= 0) then
         print*,"multigrid3dsolve: allocation error ",allocerror,
-     &         ": could not allocate phisave to shape ",nx,ny,nzlocal
+     &         ": could not allocate phisave to shape ",nxlocal,nylocal,nzlocal
         call kaboom("multigrid3dsolve: allocation error")
         return
       endif
@@ -825,19 +808,20 @@ c       --- Save current value of phi
         phisave = phi
 
 c       --- Do one vcycle.
-        call vcycleimplicites3d(0,1.,nx,ny,nzlocal,nz,dx,dy,dz,phi,rho,
-     &                        ns,qomdt,chi0temp,bongrid,
-     &                        rstar,linbend,bendx,bounds,mgparam,mgmaxlevels,
-     &                        downpasses,uppasses,lcndbndy,icndbndy,conductors,
-     &                        delx,dely,delz,
-     &                        my_index,nslaves,izfsslave,nzfsslave)
+        call vcycleimplicites3d(0,1.,nx,ny,nz,nxlocal,nylocal,nzlocal,
+     &                          dx,dy,dz,phi,rho,
+     &                          ns,qomdt,chi0temp,bongrid,
+     &                          rstar,linbend,bendx,bounds,mgparam,mgmaxlevels,
+     &                          downpasses,uppasses,
+     &                          lcndbndy,icndbndy,conductors,
+     &                          delx,dely,delz,fsdecomp)
 
 c       --- Calculate the change in phi.
         mgerror = 0.
 !$OMP DO REDUCTION(MAX:mgerror)
         do iz=0,nzlocal
-          do iy=0,ny
-            do ix=0,nx
+          do iy=0,nylocal
+            do ix=0,nxlocal
               mgerror = max(mgerror,abs(phisave(ix,iy,iz) - phi(ix,iy,iz)))
             enddo
           enddo
@@ -845,7 +829,7 @@ c       --- Calculate the change in phi.
 !$OMP END DO
 
 #ifdef MPIPARALLEL
-        if (nslaves > 1) then
+        if (fsdecomp%nxprocs*fsdecomp%nyprocs*fsdecomp%nzprocs > 1) then
 c         --- calculate global sorerror
           call parallelmaxrealarray(mgerror,1)
 c     added by petermc, 26 Sep 2002
@@ -856,8 +840,8 @@ c     added by petermc, 26 Sep 2002
 
 c     --- Set boundary conditions. This is only really needed for the
 c     --- Dirichlet boundaries, but this is convenient to call.
-      call applyboundaryconditionses3d(nx,ny,nzlocal,nz,1,1,1,phi,1,
-     &                                 localbounds,.true.)
+      call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,1,1,1,phi,1,
+     &                               localbounds,.true.,.false.)
 
 c     --- Make a print out.
       if (mgverbose>=1 .or. mgerror > mgtol) then
@@ -879,8 +863,8 @@ c       --- For bends, also include curvature corrections. Comment: Timing tests
 c       --- show that the use of 1d array is slightly faster than a 3d array.
         do iz=0,nzlocal
           rs = rstar(iz)
-          do ix=0,nx
-            x  = xmmin + ix*dx
+          do ix=0,nxlocal
+            x  = xmminlocal + ix*dx
             r  = rs + x
             rho(ix,:,iz) = rho(ix,:,iz)/rs*( r + x*((x/r)-2.)*rdel )
           enddo
@@ -895,33 +879,38 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
       return
       end
 c=============================================================================
-      RECURSIVE subroutine vcycleimplicites3d(mglevel,mgscale,nx,ny,nzlocal,nz,
+      RECURSIVE subroutine vcycleimplicites3d(mglevel,mgscale,nx,ny,nz,
+     &                                   nxlocal,nylocal,nzlocal,
      &                                   dx,dy,dz,
      &                                   phi,rho,ns,qomdt,chi0,bongrid,
      &                                   rstar,linbend,bendx,globalbounds,
      &                                   mgparam,
      &                                   mgmaxlevels,downpasses,uppasses,
      &                                   lcndbndy,icndbndy,conductors,
-     &                                   delx,dely,delz,
-     &                                   my_index,nslaves,izfsslave,nzfsslave)
+     &                                   delx,dely,delz,fsdecomp)
       use Subtimersf3d
       use Constant
       use ConductorTypemodule
       use Multigrid3d_diagnostic
       use coefficientsmodulees3d
       use formggetarraysuminterface
+      use Decompositionmodule
       integer(ISZ):: mglevel
       real(kind=8):: mgscale
-      integer(ISZ):: nx,ny,nzlocal,nz,ns
+      integer(ISZ):: nx,ny,nz,nxlocal,nylocal,nzlocal,ns
       integer(ISZ):: delx,dely,delz
       real(kind=8):: dx,dy,dz
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
-      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: chi0(-1:nx+1,-1:ny+1,-delz:nzlocal+delz,0:ns-1)
-      real(kind=8):: bongrid(-1:nx+1,-1:ny+1,-delz:nzlocal+delz,0:2)
+      real(kind=8):: phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
+      real(kind=8):: rho(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: chi0(-delx:nxlocal+delx,
+     &                    -dely:nylocal+dely,
+     &                    -delz:nzlocal+delz,0:ns-1)
+      real(kind=8):: bongrid(-delx:nxlocal+delx,
+     &                       -dely:nylocal+dely,
+     &                       -delz:nzlocal+delz,0:2)
       real(kind=8):: qomdt(0:ns-1)
       real(kind=8):: rstar(-1:nzlocal+1)
-      real(kind=8):: bendx(-1:nx+1)
+      real(kind=8):: bendx(-1:nxlocal+1)
       logical(ISZ):: linbend
       integer(ISZ):: globalbounds(0:5)
       real(kind=8):: mgparam
@@ -929,8 +918,7 @@ c=============================================================================
       type(ConductorType):: conductors
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      type(Decomposition):: fsdecomp
 
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
@@ -940,22 +928,27 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       real(kind=8),allocatable:: chi0coarse(:,:,:,:),bongridcoarse(:,:,:,:)
       real(kind=8),allocatable:: res(:,:,:)
       integer(ISZ):: i,ic,iszone=1
-c     integer(ISZ):: i1,i2,i3
-      integer(ISZ):: nxcoarse,nycoarse,nzlocalcoarse,nzcoarse
+      integer(ISZ):: i1,i2,i3
+      integer(ISZ):: nxcoarse,nycoarse,nzcoarse
+      integer(ISZ):: nxlocalcoarse,nylocalcoarse,nzlocalcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse
       real(kind=8):: dxcoarsesqi,dycoarsesqi,dzcoarsesqi
       real(kind=8):: mgscalecoarse
+      integer(ISZ):: ixproc,iyproc,izproc
       integer(ISZ):: localbounds(0:5),localboundsc(0:5)
-      integer(ISZ):: lzoffsetall(0:nslaves-1),rzoffsetall(0:nslaves-1)
+      integer(ISZ):: lxoffsetall(0:fsdecomp%nxprocs-1)
+      integer(ISZ):: rxoffsetall(0:fsdecomp%nxprocs-1)
+      integer(ISZ):: lyoffsetall(0:fsdecomp%nyprocs-1)
+      integer(ISZ):: ryoffsetall(0:fsdecomp%nyprocs-1)
+      integer(ISZ):: lzoffsetall(0:fsdecomp%nzprocs-1)
+      integer(ISZ):: rzoffsetall(0:fsdecomp%nzprocs-1)
+      integer(ISZ):: lxoffset,rxoffset
+      integer(ISZ):: lyoffset,ryoffset
       integer(ISZ):: lzoffset,rzoffset
-      integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
-      integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
-      integer(ISZ):: whosendingleftc(0:nslaves-1), izsendingleftc(0:nslaves-1)
-      integer(ISZ):: whosendingrightc(0:nslaves-1),izsendingrightc(0:nslaves-1)
-      integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
+      type(Decomposition):: coarsedecomp
       integer(ISZ):: allocerror
       real(kind=8):: sss(2),reps0c
-      logical(ISZ):: lgoserial
+      logical(ISZ):: lpe0
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -969,82 +962,77 @@ c     --- only it can be checked.
       endif
 
       localbounds = globalbounds
+
 #ifdef MPIPARALLEL
-      if (izfsslave(my_index) > 0) localbounds(4) = -1
-      if (izfsslave(my_index)+nzlocal < nz) localbounds(5) = -1
+      ixproc = fsdecomp%ixproc
+      iyproc = fsdecomp%iyproc
+      izproc = fsdecomp%izproc
+      if (fsdecomp%ix(ixproc) > 0)          localbounds(0) = -1
+      if (fsdecomp%ix(ixproc)+nxlocal < nx) localbounds(1) = -1
+      if (fsdecomp%iy(iyproc) > 0)          localbounds(2) = -1
+      if (fsdecomp%iy(iyproc)+nylocal < ny) localbounds(3) = -1
+      if (fsdecomp%iz(izproc) > 0)          localbounds(4) = -1
+      if (fsdecomp%iz(izproc)+nzlocal < nz) localbounds(5) = -1
 #endif
 
 c     --- Get the finite difference coefficients for the Poisson operator at
 c     --- the current level of refinement.
-      allocate(coeffs0(0:nx,0:ny,0:nzlocal))
-      allocate(coeffs(0:2,0:1,-1:1,0:nx,0:ny,0:nzlocal))
-      allocate(rhs(0:nx,0:ny,0:nzlocal))
-      allocate(resscale(0:nx,0:ny,0:nzlocal))
-      call getcoefficientsimplicites3d(nx,ny,nzlocal,dx,dy,dz,ns,qomdt,chi0,
-     &                         bongrid,mglevel,lcndbndy,icndbndy,conductors,
-     &                         localbounds,coeffs0,coeffs,rhs,resscale,
-     &                         delx,dely,delz)
+      allocate(coeffs0(0:nxlocal,0:nylocal,0:nzlocal))
+      allocate(coeffs(0:2,0:1,-1:1,0:nxlocal,0:nylocal,0:nzlocal))
+      allocate(rhs(0:nxlocal,0:nylocal,0:nzlocal))
+      allocate(resscale(0:nxlocal,0:nylocal,0:nzlocal))
+      call getcoefficientsimplicites3d(nxlocal,nylocal,nzlocal,dx,dy,dz,ns,
+     &                                 qomdt,chi0,bongrid,
+     &                                 mglevel,lcndbndy,icndbndy,conductors,
+     &                                 localbounds,coeffs0,coeffs,rhs,resscale,
+     &                                 delx,dely,delz)
 
       if (lprintmgarraysumdiagnostic) then
-        sss = mggetarraysum(nx,ny,nzlocal,1,1,1,phi,
-     &                      izfsslave,nzfsslave,nslaves,my_index)
-        if (my_index == 0) print*,"V1 phi",mglevel,sss
+#ifdef MPIPARALLEL
+        lpe0=(fsdecomp%ixproc==0.and.fsdecomp%iyproc==0.and.fsdecomp%izproc==0)
+#else
+        lpe0 = .true.
+#endif
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp)
+        if (lpe0) print*,"V1 phi",mglevel,sss
         reps0c = mgparam/(eps0*2.*(1./dx**2+1./dy**2+1./dz**2))
-        sss = mggetarraysum(nx,ny,nzlocal,0,0,0,rho,
-     &                      izfsslave,nzfsslave,nslaves,my_index)
-        if (my_index == 0) print*,"V1 rho",mglevel,sss*reps0c
-c       sss = mggetarraysum(nx,ny,nzlocal,0,0,0,coeffs0,
-c    &                      izfsslave,nzfsslave,nslaves,my_index)
-c       if (my_index == 0) print*,"V1 coeffs0",mglevel,sss
-c       sss = mggetarraysum(nx,ny,nzlocal,0,0,0,rhs,
-c    &                      izfsslave,nzfsslave,nslaves,my_index)
-c       if (my_index == 0) print*,"V1 rhs",mglevel,sss
-c       do i3=-1,1
-c         do i2=0,1
-c           do i1=0,2
-c       sss = mggetarraysum(nx,ny,nzlocal,0,0,0,coeffs(i1,i2,i3,:,:,:),
-c    &                      izfsslave,nzfsslave,nslaves,my_index)
-c       if (my_index == 0) print*,"V1 coeffs",i1,i2,i3,mglevel,sss
-c           enddo
-c         enddo
-c       enddo
-c       sss = mggetarraysum(nx,ny,nzlocal,1,1,1,bongrid(:,:,:,0),
-c    &                      izfsslave,nzfsslave,nslaves,my_index)
-c       if (my_index == 0) print*,"V1 bongrid 0",mglevel,sss
-c       sss = mggetarraysum(nx,ny,nzlocal,1,1,1,bongrid(:,:,:,1),
-c    &                      izfsslave,nzfsslave,nslaves,my_index)
-c       if (my_index == 0) print*,"V1 bongrid 1",mglevel,sss
-c       sss = mggetarraysum(nx,ny,nzlocal,1,1,1,bongrid(:,:,:,2),
-c    &                      izfsslave,nzfsslave,nslaves,my_index)
-c       if (my_index == 0) print*,"V1 bongrid 2",mglevel,sss
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,rho,fsdecomp)
+        if (lpe0) print*,"V1 rho",mglevel,sss*reps0c
+        do i=0,ns-1
+          sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,chi0(:,:,:,i),fsdecomp)
+          if (lpe0) print*,"V1 chi0",i,mglevel,sss
+        enddo
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,coeffs0,fsdecomp)
+        if (lpe0) print*,"V1 coeffs0",mglevel,sss
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,rhs,fsdecomp)
+        if (lpe0) print*,"V1 rhs",mglevel,sss
+        do i3=-1,1
+          do i2=0,1
+            do i1=0,2
+              sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,coeffs(i1,i2,i3,:,:,:),fsdecomp)
+              if (lpe0) print*,"V1 coeffs",i1,i2,i3,mglevel,sss
+            enddo
+          enddo
+        enddo
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,bongrid(:,:,:,0),fsdecomp)
+        if (lpe0) print*,"V1 bongrid 0",mglevel,sss
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,bongrid(:,:,:,1),fsdecomp)
+        if (lpe0) print*,"V1 bongrid 1",mglevel,sss
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,bongrid(:,:,:,2),fsdecomp)
+        if (lpe0) print*,"V1 bongrid 2",mglevel,sss
       endif
 
-#ifdef MPIPARALLEL
-      lzoffsetall = 0
-      rzoffsetall = 0
-      call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
-     &                      globalbounds,nz,
-     &                      lzoffsetall,rzoffsetall,
-     &                      whosendingleft,izsendingleft,
-     &                      whosendingright,izsendingright)
-#endif
-
       do i=1,downpasses
-        call relaximplicites3d(mglevel,nx,ny,nzlocal,nz,phi,rho,
+        call relaximplicites3d(mglevel,nx,ny,nz,nxlocal,nylocal,nzlocal,phi,rho,
      &                         coeffs0,coeffs,rhs,
-     &                         localbounds,mgparam,conductors,
-     &                         my_index,nslaves,izfsslave,nzfsslave,
-     &                         whosendingleft,izsendingleft,
-     &                         whosendingright,izsendingright)
+     &                         localbounds,mgparam,conductors,fsdecomp)
       enddo
 
       if (lprintmgarraysumdiagnostic) then
-        sss = mggetarraysum(nx,ny,nzlocal,1,1,1,phi,
-     &                      izfsslave,nzfsslave,nslaves,my_index)
-        if (my_index == 0) print*,"V2 phi",mglevel,sss
-        sss = mggetarraysum(nx,ny,nzlocal,0,0,0,rho,
-     &                      izfsslave,nzfsslave,nslaves,my_index)
-        if (my_index == 0) print*,"V2 rho",mglevel,sss*reps0c
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp)
+        if (lpe0) print*,"V2 phi",mglevel,sss
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,rho,fsdecomp)
+        if (lpe0) print*,"V2 rho",mglevel,sss*reps0c
       endif
 
 c     --- Check if this is the finest level. If so, then don't do any further
@@ -1052,46 +1040,34 @@ c     --- coarsening. This is the same check that is done in getmglevels.
       if (nx >= 4 .and. ny >= 4 .and. nz >= 4 .and.
      &    mglevel < mgmaxlevels) then
 
-        allocate(res(-delx:nx+delx,
-     &               -dely:ny+dely,
+        allocate(res(-delx:nxlocal+delx,
+     &               -dely:nylocal+dely,
      &               -delz:nzlocal+delz),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleimplicites3d: allocation error ",allocerror,
-     &           ": could not allocate res to shape ",nx,ny,nzlocal
+     &           ": could not allocate res to shape ",nxlocal,nylocal,nzlocal
           call kaboom("vcycleimplicites3d: allocation error")
           return
         endif
 
 c       --- Get the residual on the current grid.
-        call residualimplicites3d(nx,ny,nzlocal,nz,phi,rho,
+        call residualimplicites3d(nxlocal,nylocal,nzlocal,phi,rho,
      &                            coeffs0,coeffs,rhs,resscale,res,
      &                            mglevel,localbounds,mgparam,conductors,
      &                            delx,dely,delz)
 #ifdef MPIPARALLEL
-        call mgexchange_phi(nx,ny,nzlocal,nz,res,localbounds,-1,
-     &                      delx,dely,delz,
-     &                      my_index,nslaves,izfsslave,nzfsslave,
-     &                      whosendingleft,izsendingleft,
-     &                      whosendingright,izsendingright)
-        call mgexchange_phi(nx,ny,nzlocal,nz,res,localbounds,-2,
-     &                      delx,dely,delz,
-     &                      my_index,nslaves,izfsslave,nzfsslave,
-     &                      whosendingleft,izsendingleft,
-     &                      whosendingright,izsendingright)
-        call mgexchange_phi(nx,ny,nzlocal,nz,res,localbounds,-3,
-     &                      delx,dely,delz,
-     &                      my_index,nslaves,izfsslave,nzfsslave,
-     &                      whosendingleft,izsendingleft,
-     &                      whosendingright,izsendingright)
+        call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,res,
+     &                               delx,dely,delz,-1,0,localbounds,fsdecomp)
+        call mgexchange_phi(1,nxlocal,nylocal,nzlocal,res,
+     &                      delx,dely,delz,-3,-1,fsdecomp)
 #endif
         if (lprintmgarraysumdiagnostic) then
-          sss = mggetarraysum(nx,ny,nzlocal,delx,dely,delz,res,
-     &                        izfsslave,nzfsslave,nslaves,my_index)
-          if (my_index == 0) print*,"V3 res",mglevel,sss*reps0c
+          sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,res,fsdecomp)
+          if (lpe0) print*,"V3 res",mglevel,sss*reps0c
         endif
 
-        call getnextcoarselevel3d(nx,ny,nzlocal,nz,dx,dy,dz,
-     &                            nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,
+        call getnextcoarselevel3d(nx,ny,nz,nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                            nxcoarse,nycoarse,nzcoarse,
      &                            dxcoarse,dycoarse,dzcoarse)
 
         dxcoarsesqi = 1./dxcoarse**2
@@ -1102,76 +1078,106 @@ c       --- Get the residual on the current grid.
         localboundsc = globalbounds
 
 #ifdef MPIPARALLEL
+        coarsedecomp%nxglobal = nxcoarse
+        coarsedecomp%nyglobal = nycoarse
+        coarsedecomp%nzglobal = nzcoarse
+        coarsedecomp%mpi_comm_x = fsdecomp%mpi_comm_x
+        coarsedecomp%mpi_comm_y = fsdecomp%mpi_comm_y
+        coarsedecomp%mpi_comm_z = fsdecomp%mpi_comm_z
+        coarsedecomp%ixproc = fsdecomp%ixproc
+        coarsedecomp%iyproc = fsdecomp%iyproc
+        coarsedecomp%izproc = fsdecomp%izproc
+        coarsedecomp%nxprocs = fsdecomp%nxprocs
+        coarsedecomp%nyprocs = fsdecomp%nyprocs
+        coarsedecomp%nzprocs = fsdecomp%nzprocs
+        allocate(coarsedecomp%ix(0:fsdecomp%nxprocs-1))
+        allocate(coarsedecomp%nx(0:fsdecomp%nxprocs-1))
+        allocate(coarsedecomp%iy(0:fsdecomp%nyprocs-1))
+        allocate(coarsedecomp%ny(0:fsdecomp%nyprocs-1))
+        allocate(coarsedecomp%iz(0:fsdecomp%nzprocs-1))
+        allocate(coarsedecomp%nz(0:fsdecomp%nzprocs-1))
 c       --- Find domains in coarser grid
-        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
-     &                  nz,nzcoarse,mgscalecoarse)
+        call mgdividenz(fsdecomp,coarsedecomp,nx,ny,nz,
+     &                  nxcoarse,nycoarse,nzcoarse,mgscale)
 c       --- Reset value to corrected one
-        nzlocalcoarse = nzfsslavec(my_index)
+        nxlocalcoarse = coarsedecomp%nx(ixproc)
+        nylocalcoarse = coarsedecomp%ny(iyproc)
+        nzlocalcoarse = coarsedecomp%nz(izproc)
 c       --- Difference between starts and ends of coarse and fine grids.
 c       --- Should only be in the range 0-2.
-        lzoffsetall = (nzcoarse*izfsslave-nz*izfsslavec)
-        rzoffsetall = (nz*(izfsslavec + nzfsslavec) -
-     &                 nzcoarse*(izfsslave + nzfsslave))
+        lxoffsetall = (nxcoarse*fsdecomp%ix-nx*coarsedecomp%ix)
+        rxoffsetall = (nx*(coarsedecomp%ix + coarsedecomp%nx) -
+     &                 nxcoarse*(fsdecomp%ix + fsdecomp%nx))
+        lyoffsetall = (nycoarse*fsdecomp%iy-ny*coarsedecomp%iy)
+        ryoffsetall = (ny*(coarsedecomp%iy + coarsedecomp%ny) -
+     &                 nycoarse*(fsdecomp%iy + fsdecomp%ny))
+        lzoffsetall = (nzcoarse*fsdecomp%iz-nz*coarsedecomp%iz)
+        rzoffsetall = (nz*(coarsedecomp%iz + coarsedecomp%nz) -
+     &                 nzcoarse*(fsdecomp%iz + fsdecomp%nz))
 c       --- Note that the lzoffsetall and rzoffsetall can only be used in
 c       --- MPIPARALLEL sections since they will be unallocated in the
 c       --- serial code. So, separate scalars are used in code which is
 c       --- used in the serial version.
-        lzoffset = lzoffsetall(my_index)
-        rzoffset = rzoffsetall(my_index)
-        lgoserial = (maxval(lzoffsetall) > 2*nzcoarse .or.
-     &               maxval(rzoffsetall) > 2*nzcoarse)
-        if (lgoserial) then
-          whosendingleftc = -1
-          whosendingrightc = -1
-        else
-c         --- Get processor with which to exchange data on coarse grid
-          call mggetexchangepes(nslaves,izfsslavec,nzfsslavec,my_index,
-     &                          globalbounds,nzcoarse,
-     &                          lzoffsetall,rzoffsetall,
-     &                          whosendingleftc,izsendingleftc,
-     &                          whosendingrightc,izsendingrightc)
-          if (izfsslavec(my_index) > 0) localboundsc(4) = -1
-          if (izfsslavec(my_index) + nzlocalcoarse < nzcoarse) localboundsc(5) = -1
-        endif
+        lxoffset = lxoffsetall(ixproc)
+        rxoffset = rxoffsetall(ixproc)
+        lyoffset = lyoffsetall(iyproc)
+        ryoffset = ryoffsetall(iyproc)
+        lzoffset = lzoffsetall(izproc)
+        rzoffset = rzoffsetall(izproc)
+        if (coarsedecomp%ix(ixproc) > 0) localboundsc(0) = -1
+        if (coarsedecomp%ix(ixproc)+nxlocalcoarse < nxcoarse) localboundsc(1) = -1
+        if (coarsedecomp%iy(iyproc) > 0) localboundsc(2) = -1
+        if (coarsedecomp%iy(iyproc)+nylocalcoarse < nycoarse) localboundsc(3) = -1
+        if (coarsedecomp%iz(izproc) > 0) localboundsc(4) = -1
+        if (coarsedecomp%iz(izproc)+nzlocalcoarse < nzcoarse) localboundsc(5) = -1
 #else
+        nxlocalcoarse = nxcoarse
+        nylocalcoarse = nycoarse
+        nzlocalcoarse = nzcoarse
+        lxoffset = 0
+        rxoffset = 0
+        lyoffset = 0
+        ryoffset = 0
         lzoffset = 0
         rzoffset = 0
 #endif
 
 c       --- Alloate new work space
-        allocate(phicoarse(-1:nxcoarse+1,-1:nycoarse+1,-1:nzlocalcoarse+1),
+        allocate(phicoarse(-1:nxlocalcoarse+1,-1:nylocalcoarse+1,-1:nzlocalcoarse+1),
      &           stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleimplicites3d: allocation error ",allocerror,
      &           ": could not allocate phicoarse to shape ",
-     &           nxcoarse,nycoarse,nzlocalcoarse
+     &           nxlocalcoarse,nylocalcoarse,nzlocalcoarse
           call kaboom("vcycleimplicites3d: allocation error")
           return
         endif
-        allocate(rhocoarse(0:nxcoarse,0:nycoarse,0:nzlocalcoarse),
+        allocate(rhocoarse(0:nxlocalcoarse,0:nylocalcoarse,0:nzlocalcoarse),
      &           stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleimplicites3d: allocation error ",allocerror,
      &           ": could not allocate rhocoarse to shape ",
-     &           nxcoarse,nycoarse,nzlocalcoarse
+     &           nxlocalcoarse,nylocalcoarse,nzlocalcoarse
           call kaboom("vcycleimplicites3d: allocation error")
           return
         endif
-        allocate(chi0coarse(-1:nxcoarse+1,-1:nycoarse+1,
+        allocate(chi0coarse(-delx:nxlocalcoarse+delx,
+     &                      -dely:nylocalcoarse+dely,
      &                      -delz:nzlocalcoarse+delz,0:ns-1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleimplicites3d: allocation error ",allocerror,
      &           ": could not allocate chi0coarse to shape ",
-     &           nxcoarse,nycoarse,nzlocalcoarse
+     &           nxlocalcoarse,nylocalcoarse,nzlocalcoarse
           call kaboom("vcycleimplicites3d: allocation error")
           return
         endif
-        allocate(bongridcoarse(-1:nxcoarse+1,-1:nycoarse+1,
+        allocate(bongridcoarse(-delx:nxlocalcoarse+delx,
+     &                         -dely:nylocalcoarse+dely,
      &                         -delz:nzlocalcoarse+delz,0:2),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleimplicites3d: allocation error ",allocerror,
      &           ": could not allocate bongridcoarse to shape ",
-     &           nxcoarse,nycoarse,nzlocalcoarse,delz
+     &           nxlocalcoarse,nylocalcoarse,nzlocalcoarse,delz
           call kaboom("vcycleimplicites3d: allocation error")
           return
         endif
@@ -1182,117 +1188,111 @@ c       --- Alloate new work space
         bongridcoarse = 0.
 
 c       --- Restriction
-        call restrictes3d(nx,ny,nzlocal,nz,res,1,1,delz,
-     &                    nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,rhocoarse,
-     &                    0,0,0,localbounds,localboundsc,lzoffset)
-cifdef MPIPARALLEL
-c       if (lgoserial) then
-c         call mgexchangeallrhocoarse(1,nxcoarse,nycoarse,nzcoarse,rhocoarse,
-c    &                                nz,my_index,nslaves,izfsslave,nzfsslave)
-c       endif
-cendif
+        call restrict3d(nx,ny,nz,nxlocal,nylocal,nzlocal,res,delx,dely,delz,
+     &                  nxcoarse,nycoarse,nzcoarse,
+     &                  nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
+     &                  rhocoarse,0,0,0,1.,localbounds,localboundsc,
+     &                  lxoffset,lyoffset,lzoffset)
         if (lprintmgarraysumdiagnostic) then
-          sss = mggetarraysum(nxcoarse,nycoarse,nzlocalcoarse,0,0,0,rhocoarse,
-     &                        izfsslavec,nzfsslavec,nslaves,my_index)
+          sss = mggetarraysum(nxlocalcoarse,nylocalcoarse,nzlocalcoarse,0,0,0,rhocoarse,coarsedecomp)
           reps0c = mgparam/(eps0*2.*(1./dxcoarse**2+1./dycoarse**2+1./dzcoarse**2))
-          if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss*reps0c
+          if (lpe0) print*,"V3 rhocoarse",mglevel,sss*reps0c
         endif
 
         do ic=0,ns-1
-          call restrictes3d(nx,ny,nzlocal,nz,chi0(:,:,:,ic),1,1,delz,
-     &                      nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,
-     &                      chi0coarse(:,:,:,ic),1,1,delz,
-     &                      localbounds,localboundsc,lzoffset)
+          call restrict3d(nx,ny,nz,nxlocal,nylocal,nzlocal,chi0(:,:,:,ic),
+     &                    delx,dely,delz,
+     &                    nxcoarse,nycoarse,nzcoarse,
+     &                    nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
+     &                    chi0coarse(:,:,:,ic),delx,dely,delz,
+     &                    1.,localbounds,localboundsc,
+     &                    lxoffset,lyoffset,lzoffset)
         enddo
         do ic=0,2
-          call restrictes3d(nx,ny,nzlocal,nz,bongrid(:,:,:,ic),1,1,delz,
-     &                      nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,
-     &                      bongridcoarse(:,:,:,ic),1,1,delz,
-     &                      localbounds,localboundsc,lzoffset)
+          call restrict3d(nx,ny,nz,nxlocal,nylocal,nzlocal,bongrid(:,:,:,ic),
+     &                    delx,dely,delz,
+     &                    nxcoarse,nycoarse,nzcoarse,
+     &                    nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
+     &                    bongridcoarse(:,:,:,ic),delx,1,delz,
+     &                    1.,localbounds,localboundsc,
+     &                    lxoffset,lyoffset,lzoffset)
         enddo
-        call applyboundaryconditionses3d(nxcoarse,nycoarse,nzlocalcoarse,
-     &                                   nzcoarse,1,1,delz,chi0coarse,ns,
-     &                                   localboundsc,.true.)
-        call applyboundaryconditionses3d(nxcoarse,nycoarse,nzlocalcoarse,
-     &                                   nzcoarse,1,1,delz,bongridcoarse,3,
-     &                                   localboundsc,.true.)
+        call applyboundaryconditions3d(nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
+     &                                 delx,dely,delz,chi0coarse,ns,
+     &                                 localboundsc,.false.,.true.)
+        call applyboundaryconditions3d(nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
+     &                                 delx,dely,delz,bongridcoarse,3,
+     &                                 localboundsc,.false.,.true.)
 #ifdef MPIPARALLEL
-        call applyparallelboundaryconditionses3d(chi0coarse,
-     &               nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,
-     &               delx,dely,delz,ns,delz,localboundsc,
-     &               my_index,nslaves,izfsslavec,nzfsslavec,
-     &               whosendingleftc,izsendingleftc,
-     &               whosendingrightc,izsendingrightc)
-        call applyparallelboundaryconditionses3d(bongridcoarse,
-     &               nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,
-     &               delx,dely,delz,3,delz,localboundsc,
-     &               my_index,nslaves,izfsslavec,nzfsslavec,
-     &               whosendingleftc,izsendingleftc,
-     &               whosendingrightc,izsendingrightc)
+        call applyparallelboundaryconditions3d(chi0coarse,
+     &               nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
+     &               delx,dely,delz,ns,3,localboundsc,coarsedecomp)
+        call applyparallelboundaryconditions3d(bongridcoarse,
+     &               nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
+     &               delx,dely,delz,3,3,localboundsc,coarsedecomp)
 #endif
 
 c       --- Continue at the next coarsest level.
         call vcycleimplicites3d(mglevel+iszone,mgscalecoarse,
-     &              nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,
+     &              nxcoarse,nycoarse,nzcoarse,
+     &              nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
      &              dxcoarse,dycoarse,dzcoarse,phicoarse,rhocoarse,
      &              ns,qomdt,chi0coarse,bongridcoarse,
      &              rstar,linbend,bendx,globalbounds,mgparam,
      &              mgmaxlevels,downpasses,uppasses,
      &              lcndbndy,icndbndy,conductors,
-     &              delx,dely,delz,
-     &              my_index,nslaves,izfsslavec,nzfsslavec)
+     &              delx,dely,delz,coarsedecomp)
 
         if (lprintmgarraysumdiagnostic) then
-          sss = mggetarraysum(nxcoarse,nycoarse,nzlocalcoarse,1,1,1,phicoarse,
-     &                        izfsslavec,nzfsslavec,nslaves,my_index)
-          if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
-          sss = mggetarraysum(nx,ny,nzlocal,1,1,1,phi,
-     &                        izfsslave,nzfsslave,nslaves,my_index)
-          if (my_index == 0) print*,"V4 phi",mglevel,sss
+          sss = mggetarraysum(nxlocalcoarse,nylocalcoarse,nzlocalcoarse,1,1,1,phicoarse,coarsedecomp)
+          if (lpe0) print*,"V4 phicoarse",mglevel,sss
+          sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp)
+          if (lpe0) print*,"V4 phi",mglevel,sss
         endif
 
 c       --- Add in resulting error.
-        call expand3d(nx,ny,nzlocal,nz,1,1,1,phi,
-     &                nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,phicoarse,
-     &                localbounds,lzoffset,conductors,.false.)
-        call applyboundaryconditionses3d(nx,ny,nzlocal,nz,1,1,1,phi,1,
-     &                                   localbounds,.false.)
+        call expand3d(nx,ny,nz,nxlocal,nylocal,nzlocal,1,1,1,phi,
+     &                nxcoarse,nycoarse,nzcoarse,
+     &                nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
+     &                phicoarse,localbounds,lxoffset,lyoffset,lzoffset,
+     &                conductors,.false.)
+        call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,1,1,1,phi,1,
+     &                                 localbounds,.false.,.false.)
 #ifdef MPIPARALLEL
-c       --- This is only needed to the get lprintmgarraysumdiagnostic
-c       --- to be the same for V5 as it is in serial. The guard cells do
-c       --- not need to be filled for proper operation of the field solver,
-c       --- since those values are never used.
-c       call applyparallelboundaryconditionses3d(phi,
-c    &               nx,ny,nzlocal,nz,
-c    &               1,1,1,1,1,localbounds,
-c    &               my_index,nslaves,izfsslave,nzfsslave,
-c    &               whosendingleft,izsendingleft,
-c    &               whosendingright,izsendingright)
-        call mgexchange_phiperiodic(nx,ny,nzlocal,nz,phi,localbounds,1,1,1,1,
-     &                              my_index,nslaves,izfsslave,
-     &                              whosendingleft,whosendingright)
+        call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
+     &                               1,1,1,-1,-1,localbounds,fsdecomp)
 #endif
 
         deallocate(res)
         deallocate(phicoarse,rhocoarse)
         deallocate(chi0coarse,bongridcoarse)
 
+#ifdef MPIPARALLEL
+        deallocate(coarsedecomp%ix)
+        deallocate(coarsedecomp%nx)
+        deallocate(coarsedecomp%iy)
+        deallocate(coarsedecomp%ny)
+        deallocate(coarsedecomp%iz)
+        deallocate(coarsedecomp%nz)
+#endif
+
       endif
 
       if (lprintmgarraysumdiagnostic) then
-        sss = mggetarraysum(nx,ny,nzlocal,1,1,1,phi,
-     &                      izfsslave,nzfsslave,nslaves,my_index)
-        if (my_index == 0) print*,"V5 phi",mglevel,sss
+#ifdef MPIPARALLEL
+        call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
+     &                               1,1,1,0,0,localbounds,fsdecomp)
+        call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,-1,fsdecomp)
+#endif
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp)
+        if (lpe0) print*,"V5 phi",mglevel,sss
       endif
 
 c     --- Do final SOR passes.
       do i=1,uppasses
-        call relaximplicites3d(mglevel,nx,ny,nzlocal,nz,phi,rho,
+        call relaximplicites3d(mglevel,nx,ny,nz,nxlocal,nylocal,nzlocal,phi,rho,
      &                         coeffs0,coeffs,rhs,
-     &                         localbounds,mgparam,conductors,
-     &                         my_index,nslaves,izfsslave,nzfsslave,
-     &                         whosendingleft,izsendingleft,
-     &                         whosendingright,izsendingright)
+     &                         localbounds,mgparam,conductors,fsdecomp)
       enddo
 
       deallocate(coeffs0,coeffs)
@@ -1304,28 +1304,24 @@ c     --- Do final SOR passes.
       return
       end
 c=============================================================================
-      subroutine relaximplicites3d(mglevel,nx,ny,nzlocal,nz,phi,rho,
+      subroutine relaximplicites3d(mglevel,nx,ny,nz,nxlocal,nylocal,nzlocal,
+     &                             phi,rho,
      &                             coeffs0,coeffs,rhs,
-     &                             bounds,mgparam,conductors,
-     &                             my_index,nslaves,izfsslave,nzfsslave,
-     &                             whosendingleft,izsendingleft,
-     &                             whosendingright,izsendingright)
+     &                             localbounds,mgparam,conductors,fsdecomp)
       use Subtimersf3d
       use Constant
       use ConductorTypemodule
-      integer(ISZ):: mglevel,nx,ny,nzlocal,nz
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
-      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: coeffs0(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: coeffs(0:2,0:1,-1:1,0:nx,0:ny,0:nzlocal)
-      real(kind=8):: rhs(0:nx,0:ny,0:nzlocal)
-      integer(ISZ):: bounds(0:5)
+      use Decompositionmodule
+      integer(ISZ):: mglevel,nx,ny,nz,nxlocal,nylocal,nzlocal
+      real(kind=8):: phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
+      real(kind=8):: rho(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: coeffs0(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: coeffs(0:2,0:1,-1:1,0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: rhs(0:nxlocal,0:nylocal,0:nzlocal)
+      integer(ISZ):: localbounds(0:5)
       real(kind=8):: mgparam
       type(ConductorType):: conductors
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
-      integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
+      type(Decomposition):: fsdecomp
 
 c This routine does one pass of point SOR with even-odd (red-black)
 c ordering.
@@ -1340,18 +1336,21 @@ c read those saved values for the update of phi.
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      allocate(phisave(-1:nx+1,-1:ny+1,-1:nzlocal+1))
+      allocate(phisave(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1))
 
       call cond_potmg(conductors%interior,
-     &                nx,ny,nzlocal,1,1,1,phi,mglevel,1,.false.)
-      call condbndymgint(conductors%evensubgrid,nx,ny,nzlocal,1,1,1,phi,
-     &                   bounds,mglevel,2)
-      call condbndymgint(conductors%oddsubgrid,nx,ny,nzlocal,1,1,1,phi,
-     &                   bounds,mglevel,2)
+     &                nxlocal,nylocal,nzlocal,1,1,1,phi,mglevel,1,.false.)
+      call condbndymgint(conductors%evensubgrid,nxlocal,nylocal,nzlocal,
+     &                   1,1,1,phi,localbounds,mglevel,2)
+      call condbndymgint(conductors%oddsubgrid,nxlocal,nylocal,nzlocal,
+     &                   1,1,1,phi,localbounds,mglevel,2)
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
-      s_parity = mod(izfsslave(my_index),2)
+      parity = + fsdecomp%ix(fsdecomp%ixproc)
+     &         + fsdecomp%iy(fsdecomp%iyproc)
+     &         + fsdecomp%iz(fsdecomp%izproc)
+      s_parity = mod(parity,2)
       e_parity = mod(s_parity+1,2)
 #else
       s_parity = 0
@@ -1362,17 +1361,17 @@ c     --- Set min and max indices for phi array.
 c     --- If using Dirichlet boundary conditions, do not solve for the
 c     --- potential on the grid edge.
       ixmin = 0
-      ixmax = nx
+      ixmax = nxlocal
       iymin = 0
-      iymax = ny
+      iymax = nylocal
       izmin = 0
       izmax = nzlocal
-      if (bounds(0) < 1) ixmin = 1
-      if (bounds(1) < 1) ixmax = nx - 1
-      if (bounds(2) < 1) iymin = 1
-      if (bounds(3) < 1) iymax = ny - 1
-      if (bounds(4) < 1) izmin = 1
-      if (bounds(5) < 1) izmax = nzlocal - 1
+      if (localbounds(0) < 1) ixmin = 1
+      if (localbounds(1) < 1) ixmax = nxlocal - 1
+      if (localbounds(2) < 1) iymin = 1
+      if (localbounds(3) < 1) iymax = nylocal - 1
+      if (localbounds(4) < 1) izmin = 1
+      if (localbounds(5) < 1) izmax = nzlocal - 1
 
 c     --- do loop to cover even and odd points
       do parity=s_parity,e_parity,e_parity-s_parity
@@ -1414,19 +1413,15 @@ c     --- do loop to cover even and odd points
         enddo
 
         call cond_potmg(conductors%interior,
-     &                  nx,ny,nzlocal,1,1,1,phi,mglevel,1,.false.)
+     &                  nxlocal,nylocal,nzlocal,1,1,1,phi,mglevel,1,.false.)
 
 c       --- set phi in the z guard planes
-        call applyboundaryconditionses3d(nx,ny,nzlocal,nz,1,1,1,phi,1,bounds,
-     &                                   .false.)
+        call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,1,1,1,phi,1,
+     &                                 localbounds,.false.,.false.)
 #ifdef MPIPARALLEL
-        call mgexchange_phi(nx,ny,nzlocal,nz,phi,bounds,0,1,1,1,
-     &                      my_index,nslaves,izfsslave,nzfsslave,
-     &                      whosendingleft,izsendingleft,
-     &                      whosendingright,izsendingright)
-        call mgexchange_phiperiodic(nx,ny,nzlocal,nz,phi,bounds,1,1,1,1,
-     &                              my_index,nslaves,izfsslave,
-     &                              whosendingleft,whosendingright)
+        call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
+     &                               1,1,1,-1,0,localbounds,fsdecomp)
+        call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,0,fsdecomp)
 #endif
 
 c     --- end of loop over even and odd points
@@ -1434,13 +1429,11 @@ c     --- end of loop over even and odd points
 
 #ifdef MPIPARALLEL
 c     --- Exchange phi in the z guard planes
-      call mgexchange_phi(nx,ny,nzlocal,nz,phi,bounds,-1,1,1,1,
-     &                    my_index,nslaves,izfsslave,nzfsslave,
-     &                    whosendingleft,izsendingleft,
-     &                    whosendingright,izsendingright)
+      call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,-1,fsdecomp)
 #endif
 
-      call averageperiodicphi3d(phi,nx,ny,nzlocal,nz,1,1,1,bounds)
+      call averageperiodicphi3d(phi,nx,ny,nz,nxlocal,nylocal,nzlocal,1,1,1,
+     &                          localbounds)
 
       deallocate(phisave)
 
@@ -1450,45 +1443,46 @@ c     --- Exchange phi in the z guard planes
       return
       end
 c=============================================================================
-      subroutine residualimplicites3d(nx,ny,nzlocal,nz,phi,rho,
+      subroutine residualimplicites3d(nxlocal,nylocal,nzlocal,phi,rho,
      &                                coeffs0,coeffs,rhs,resscale,res,
-     &                                mglevel,bounds,mgparam,conductors,
+     &                                mglevel,localbounds,mgparam,conductors,
      &                                delx,dely,delz)
       use Subtimersf3d
       use Constant
       use ConductorTypemodule
-      integer(ISZ):: nx,ny,nzlocal,nz,delx,dely,delz
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
-      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: coeffs0(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: coeffs(0:2,0:1,-1:1,0:nx,0:ny,0:nzlocal)
-      real(kind=8):: rhs(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: resscale(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: res(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
-      integer(ISZ):: mglevel,bounds(0:5)
+      integer(ISZ):: nxlocal,nylocal,nzlocal,delx,dely,delz
+      real(kind=8):: phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
+      real(kind=8):: rho(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: coeffs0(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: coeffs(0:2,0:1,-1:1,0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: rhs(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: resscale(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: res(-delx:nxlocal+delx,
+     &                   -dely:nylocal+dely,
+     &                   -delz:nzlocal+delz)
+      integer(ISZ):: mglevel,localbounds(0:5)
       real(kind=8):: mgparam
       type(ConductorType):: conductors
 
 c Calculate the residual on the grid. Residual = r.h.s. - l.h.s.
 
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax,ix,iy,iz,ix1
-      integer(ISZ):: ic
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Set the loop limits, including edges when appropriate.
       ixmin = 0
-      ixmax = nx
+      ixmax = nxlocal
       iymin = 0
-      iymax = ny
+      iymax = nylocal
       izmin = 0
       izmax = nzlocal
-      if (bounds(0) == 0) ixmin = 1
-      if (bounds(1) == 0) ixmax = nx - 1
-      if (bounds(2) == 0) iymin = 1
-      if (bounds(3) == 0) iymax = ny - 1
-      if (bounds(4) == 0) izmin = 1
-      if (bounds(5) == 0) izmax = nzlocal - 1
+      if (localbounds(0) == 0) ixmin = 1
+      if (localbounds(1) == 0) ixmax = nxlocal - 1
+      if (localbounds(2) == 0) iymin = 1
+      if (localbounds(3) == 0) iymax = nylocal - 1
+      if (localbounds(4) == 0) izmin = 1
+      if (localbounds(5) == 0) izmax = nzlocal - 1
 
       res = 0.
 c     --- Calculate the residual.
@@ -1527,18 +1521,11 @@ c     --- Calculate the residual.
       enddo
 !$OMP END DO
 
-c     --- Use loop until cond_potmgres is updated.
-c     call cond_potmgres(conductors%interior,
-c    &                   nx,ny,nzlocal,res,mglevel,1,.false.,1,1)
-      do ic = conductors%interior%istart(mglevel),
-     &        conductors%interior%istart(mglevel+1)-1
-        ix = conductors%interior%indx(0,ic)
-        iy = conductors%interior%indx(1,ic)
-        iz = conductors%interior%indx(2,ic)
-        res(ix,iy,iz) = 0.
-      enddo
-      call applyboundaryconditionses3d(nx,ny,nzlocal,nz,
-     &                                 delx,dely,delz,res,1,bounds,.true.)
+      call cond_potmgres(conductors%interior,
+     &                   nxlocal,nylocal,nzlocal,delx,dely,delz,
+     &                   res,mglevel,1,.false.)
+      call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,delx,dely,delz,
+     &                               res,1,localbounds,.true.,.false.)
 
       if (lf3dtimesubs) timeresidualimplicites3d = timeresidualimplicites3d +
      &                                           wtime() - substarttime
@@ -1547,25 +1534,35 @@ c    &                   nx,ny,nzlocal,res,mglevel,1,.false.,1,1)
       end
 c=============================================================================
 c=============================================================================
-      subroutine averageperiodicphi3d(phi,nx,ny,nzlocal,nz,
-     &                                delx,dely,delz,bounds)
+      subroutine averageperiodicphi3d(phi,nx,ny,nz,nxlocal,nylocal,nzlocal,
+     &                                delx,dely,delz,localbounds)
       use Subtimersf3d
-      integer(ISZ):: nx,ny,nzlocal,nz,delx,dely,delz
-      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
-      integer(ISZ):: bounds(0:5)
+      integer(ISZ):: nx,ny,nz,nxlocal,nylocal,nzlocal,delx,dely,delz
+      real(kind=8):: phi(-delx:nxlocal+delx,
+     &                   -dely:nylocal+dely,
+     &                   -delz:nzlocal+delz)
+      integer(ISZ):: localbounds(0:5)
 
 c Subtracts out the average phi.
 c Warning - does not work in parallel.
 
       real(kind=8):: phiave
+      integer(ISZ):: ncells
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      if (bounds(0) == 2 .and. bounds(1) == 2 .and.
-     &    bounds(2) == 2 .and. bounds(3) == 2 .and.
-     &    bounds(4) == 2 .and. bounds(5) == 2) then
+      if (localbounds(0) == 2 .and. localbounds(1) == 2 .and.
+     &    localbounds(2) == 2 .and. localbounds(3) == 2 .and.
+     &    localbounds(4) == 2 .and. localbounds(5) == 2) then
 
-        phiave = sum(phi(0:nx-1,0:ny-1,0:nzlocal-1))/(nx*ny*nz)
+        ncells = 1
+        if (nx > 0) ncells = ncells*nx
+        if (ny > 0) ncells = ncells*ny
+        if (nz > 0) ncells = ncells*nz
+
+        phiave = sum(phi(0:nxlocal-1,0:nylocal-1,0:nzlocal-1))/ncells
+c       --- This needs a parallel sum (handling overlapping boundaries
+c       --- appropriately)
         phi = phi - phiave
 
       endif
@@ -1577,82 +1574,16 @@ c Warning - does not work in parallel.
       end
 c=============================================================================
 c=============================================================================
-      subroutine applyboundaryconditionses3d(nx,ny,nzlocal,nz,delx,dely,delz,u,
-     &                                       ncomp,bounds,lwithdirichlet)
+      subroutine applyparallelboundaryconditions3d(u,nxlocal,nylocal,nzlocal,
+     &                 delx,dely,delz,ncomp,zsend,localbounds,fsdecomp)
       use Subtimersf3d
-      integer(ISZ):: nx,ny,nzlocal,nz,delx,dely,delz,ncomp
-      integer(ISZ):: bounds(0:5)
-      real(kind=8):: u(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz,ncomp)
-      logical(ISZ):: lwithdirichlet
-      real(kind=8):: substarttime,wtime
-      if (lf3dtimesubs) substarttime = wtime()
-
-      if (delx > 0) then
-        if (lwithdirichlet) then
-          if (bounds(0) == 0) then
-           u(-1,0:ny,0:nzlocal,:)   = 2.*u(0,0:ny,0:nzlocal,:)
-     &                                 - u(1,0:ny,0:nzlocal,:)
-          endif
-          if (bounds(1) == 0) then
-           u(nx+1,0:ny,0:nzlocal,:) = 2.*u(nx,0:ny,0:nzlocal,:)
-     &                                 - u(nx-1,0:ny,0:nzlocal,:)
-          endif
-        endif
-        if (bounds(0) == 1) u(-1,0:ny,0:nzlocal,:)   = u(1,0:ny,0:nzlocal,:)
-        if (bounds(1) == 1) u(nx+1,0:ny,0:nzlocal,:) = u(nx-1,0:ny,0:nzlocal,:)
-        if (bounds(0) == 2) u(-1,0:ny,0:nzlocal,:)   = u(nx-1,0:ny,0:nzlocal,:)
-        if (bounds(1) == 2) u(nx+1,0:ny,0:nzlocal,:) = u(1,0:ny,0:nzlocal,:)
-      endif
-
-      if (dely > 0) then
-        if (lwithdirichlet) then
-          if (bounds(2) == 0)
-     &      u(:,-1,0:nzlocal,:)   = 2.*u(:,0,0:nzlocal,:)
-     &                               - u(:,1,0:nzlocal,:)
-          if (bounds(3) == 0)
-     &      u(:,ny+1,0:nzlocal,:) = 2.*u(:,ny,0:nzlocal,:)
-     &                               - u(:,ny-1,0:nzlocal,:)
-        endif
-        if (bounds(2) == 1) u(:,-1,0:nzlocal,:)   = u(:,1,0:nzlocal,:)
-        if (bounds(3) == 1) u(:,ny+1,0:nzlocal,:) = u(:,ny-1,0:nzlocal,:)
-        if (bounds(2) == 2) u(:,-1,0:nzlocal,:)   = u(:,ny-1,0:nzlocal,:)
-        if (bounds(3) == 2) u(:,ny+1,0:nzlocal,:) = u(:,1,0:nzlocal,:)
-      endif
-
-      if (delz > 0) then
-        if (lwithdirichlet) then
-          if (bounds(4) == 0) u(:,:,-1,:)   = 2.*u(:,:,0,:) - u(:,:,1,:)
-          if (bounds(5) == 0)
-     &      u(:,:,nzlocal+1,:) = 2.*u(:,:,nzlocal,:) - u(:,:,nzlocal-1,:)
-        endif
-        if (bounds(4) == 1) u(:,:,-1,:)   = u(:,:,1,:)
-        if (bounds(5) == 1) u(:,:,nzlocal+1,:) = u(:,:,nzlocal-1,:)
-        if (nzlocal == nz) then
-          if (bounds(4) == 2) u(:,:,-1,:)   = u(:,:,nzlocal-1,:)
-          if (bounds(5) == 2) u(:,:,nzlocal+1,:) = u(:,:,1,:)
-        endif
-      endif
-
-      if (lf3dtimesubs) timeapplyboundaryconditionses3d =
-     &                  timeapplyboundaryconditionses3d + wtime() - substarttime
-
-      return
-      end
-c=============================================================================
-      subroutine applyparallelboundaryconditionses3d(u,
-     &                 nx,ny,nzlocal,nz,
-     &                 delx,dely,delz,ncomp,zsend,bounds,
-     &                 my_index,nslaves,izfsslave,nzfsslave,
-     &                 whosendingleft,izsendingleft,
-     &                 whosendingright,izsendingright)
-      use Subtimersf3d
-      integer(ISZ):: nx,ny,nzlocal,nz,delx,dely,delz,ncomp,zsend
-      real(kind=8):: u(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz,ncomp)
-      integer(ISZ):: bounds(0:5)
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
-      integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
+      use Decompositionmodule
+      integer(ISZ):: nxlocal,nylocal,nzlocal,delx,dely,delz,ncomp,zsend
+      real(kind=8):: u(-delx:nxlocal+delx,
+     &                 -dely:nylocal+dely,
+     &                 -delz:nzlocal+delz,ncomp)
+      integer(ISZ):: localbounds(0:5)
+      type(Decomposition):: fsdecomp
 
       integer(ISZ):: iz,ic
       real(kind=8):: substarttime,wtime
@@ -1661,45 +1592,18 @@ c=============================================================================
 #ifdef MPIPARALLEL
 
       do ic=1,ncomp
-        do iz=1,zsend
-          call mgexchange_phi(nx,ny,nzlocal,nz,u(:,:,:,ic),bounds,-iz,delx,dely,delz,
-     &                        my_index,nslaves,izfsslave,nzfsslave,
-     &                        whosendingleft,izsendingleft,
-     &                        whosendingright,izsendingright)
-        enddo
-
-        call mgexchange_phiperiodic(nx,ny,nzlocal,nz,u(:,:,:,ic),bounds,0,delx,dely,delz,
-     &                              my_index,nslaves,izfsslave,
-     &                              whosendingleft,whosendingright)
-
+        call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,u(:,:,:,ic),
+     &                               delx,dely,delz,-1,0,localbounds,fsdecomp)
+        call mgexchange_phi(1,nxlocal,nylocal,nzlocal,u(:,:,:,ic),
+     &                      delx,dely,delz,-zsend,-1,fsdecomp)
       enddo
 
 #endif
 
-      if (lf3dtimesubs) timeapplyparallelboundaryconditionses3d =
-     &                  timeapplyparallelboundaryconditionses3d +
+      if (lf3dtimesubs) timeapplyparallelboundaryconditions3d =
+     &                  timeapplyparallelboundaryconditions3d +
      &                                         wtime() - substarttime
 
       return
       end
 c=============================================================================
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
