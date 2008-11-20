@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.410 $, $Date: 2008/11/19 18:29:50 $
+c@(#) File W3D.F, version $Revision: 3.411 $, $Date: 2008/11/20 23:26:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5346,11 +5346,16 @@ c            --- Check if particles are within the domain and skip them if not.
 c            --- Only transverse is checked since each processor creates
 c            --- particles at different z's.
              xx = pgroup%xp(ipi+1)
-             if (l4symtry .or. lrz) xx = abs(xx)
              yy = pgroup%yp(ipi+1)
-             if (l2symtry .or. l4symtry .or. lrz) yy = abs(yy)
-             if (xx < xpminlocal .or. xx >= xpmaxlocal .or.
-     &           yy < ypminlocal .or. yy >= ypmaxlocal) cycle
+             if (lrz) then
+               rr = xx**2 + yy**2
+               if (rr < xpminlocal**2 .or. rr >= xpmaxlocal**2) cycle
+             else
+               if (l4symtry) xx = abs(xx)
+               if (l2symtry .or. l4symtry) yy = abs(yy)
+               if (xx < xpminlocal .or. xx >= xpmaxlocal .or.
+     &             yy < ypminlocal .or. yy >= ypmaxlocal) cycle
+             endif
 #endif
 
              ipi = ipi + 1
@@ -5426,11 +5431,16 @@ c            --- Check if particles are within the domain and skip them if not.
 c            --- Only transverse is checked since each processor creates
 c            --- particles at different z's.
              xx = pgroup%xp(ipi+1)
-             if (l4symtry .or. lrz) xx = abs(xx)
              yy = pgroup%yp(ipi+1)
-             if (l2symtry .or. l4symtry .or. lrz) yy = abs(yy)
-             if (xx < xpminlocal .or. xx >= xpmaxlocal .or.
-     &           yy < ypminlocal .or. yy >= ypmaxlocal) cycle
+             if (lrz) then
+               rr = xx**2 + yy**2
+               if (rr < xpminlocal**2 .or. rr >= xpmaxlocal**2) cycle
+             else
+               if (l4symtry) xx = abs(xx)
+               if (l2symtry .or. l4symtry) yy = abs(yy)
+               if (xx < xpminlocal .or. xx >= xpmaxlocal .or.
+     &             yy < ypminlocal .or. yy >= ypmaxlocal) cycle
+             endif
 #endif
 
              ipi = ipi + 1
@@ -5530,11 +5540,16 @@ c            --- Check if particles are within the domain and skip them if not.
 c            --- Only transverse is checked since each processor creates
 c            --- particles at different z's.
              xx = pgroup%xp(ipi+1)
-             if (l4symtry .or. lrz) xx = abs(xx)
              yy = pgroup%yp(ipi+1)
-             if (l2symtry .or. l4symtry .or. lrz) yy = abs(yy)
-             if (xx < xpminlocal .or. xx >= xpmaxlocal .or.
-     &           yy < ypminlocal .or. yy >= ypmaxlocal) cycle
+             if (lrz) then
+               rr = xx**2 + yy**2
+               if (rr < xpminlocal**2 .or. rr >= xpmaxlocal**2) cycle
+             else
+               if (l4symtry) xx = abs(xx)
+               if (l2symtry .or. l4symtry) yy = abs(yy)
+               if (xx < xpminlocal .or. xx >= xpmaxlocal .or.
+     &             yy < ypminlocal .or. yy >= ypmaxlocal) cycle
+             endif
 #endif
 
              ipi = ipi + 1
