@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.180 $, $Date: 2008/11/19 18:29:49 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.181 $, $Date: 2008/11/21 19:20:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -1325,15 +1325,20 @@ c     --- do loop to cover even and odd points
 #ifdef MPIPARALLEL
         call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
      &                               1,1,1,-1,0,localbounds,fsdecomp)
-        call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,0,fsdecomp)
+        if (parity == s_parity) then
+          call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,0,0,fsdecomp)
+        else
+          call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,0,fsdecomp)
+        endif
 #endif
 
 c     --- end of loop over even and odd points
       enddo
 
 #ifdef MPIPARALLEL
+c     --- This doesn't seem to be needed.
 c     --- Exchange phi in the z guard planes
-      call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,-1,fsdecomp)
+c     call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,-1,fsdecomp)
 #endif
 
       if (lf3dtimesubs) timesorpass3d = timesorpass3d +
@@ -5403,15 +5408,20 @@ c     --- do loop to cover even and odd points
 #ifdef MPIPARALLEL
         call mgexchange_phi_periodic(1,nxlocal,0,nzlocal,phi,
      &                               1,0,1,-1,0,localbounds,fsdecomp)
-        call mgexchange_phi(1,nxlocal,0,nzlocal,phi,1,0,1,-1,0,fsdecomp)
+        if (parity == s_parity) then
+          call mgexchange_phi(1,nxlocal,0,nzlocal,phi,1,0,1,0,0,fsdecomp)
+        else
+          call mgexchange_phi(1,nxlocal,0,nzlocal,phi,1,0,1,-1,0,fsdecomp)
+        endif
 #endif
 
 c     --- end of loop over even and odd points
       enddo
 
 #ifdef MPIPARALLEL
+c     --- This doesn't seem to be needed.
 c     --- Exchange phi in the z guard planes
-      call mgexchange_phi(1,nxlocal,0,nzlocal,phi,1,0,1,-1,-1,fsdecomp)
+c     call mgexchange_phi(1,nxlocal,0,nzlocal,phi,1,0,1,-1,-1,fsdecomp)
 #endif
 
       return
