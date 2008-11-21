@@ -2,7 +2,7 @@
 """
 from warp import *
 import time
-collision_version = "$Id: collision.py,v 1.5 2008/04/24 21:33:01 dave Exp $"
+collision_version = "$Id: collision.py,v 1.6 2008/11/21 20:49:47 dave Exp $"
 
 def collisiondoc():
   import collision
@@ -226,7 +226,7 @@ the fieldspecies is affected by collision against the testspecies.
     self.handlegridboundaries(densitygrid)
     self.handlegridboundaries(velocitygrid)
     gridcount = where(densitygrid > 0.,densitygrid,1.)
-    velocitygrid /= gridcount[...,NewAxis]
+    velocitygrid /= gridcount[...,newaxis]
     densitygrid *= (top.pgroup.sw[species]/(self.dx*self.dy*self.dz))
 
     # --- Fetch the average velocity for the field particles, which is used
@@ -277,7 +277,7 @@ the fieldspecies is affected by collision against the testspecies.
       self.handlegridboundaries(self.densitygrid)
       self.handlegridboundaries(self.velocitygrid)
       gridcount = where(self.densitygrid > 0.,self.densitygrid,1.)
-      self.velocitygrid /= gridcount[...,NewAxis]
+      self.velocitygrid /= gridcount[...,newaxis]
       self.densitygrid *= (top.pgroup.sw[field]/(self.dx*self.dy*self.dz))
 
       # --- Fetch the average velocity for the field particles, which is used

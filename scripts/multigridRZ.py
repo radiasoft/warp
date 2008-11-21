@@ -626,9 +626,9 @@ Initially, conductors are not implemented.
     if self.solvergeom==w3d.RZgeom:
       rr = self.xmminlocal + arange(self.nxlocal+1)*self.dx
       rho += eps0*(
-        +(+phi[:-2,1:-1]*((rr-0.5*self.dx)/rr)[:,NewAxis]
+        +(+phi[:-2,1:-1]*((rr-0.5*self.dx)/rr)[:,newaxis]
           -2.*phi[1:-1,1:-1]
-          +phi[2:,1:-1]*((rr+0.5*self.dx)/rr)[:,NewAxis])/self.dx**2
+          +phi[2:,1:-1]*((rr+0.5*self.dx)/rr)[:,newaxis])/self.dx**2
         +(phi[1:-1,:-2] - 2.*phi[1:-1,1:-1] + phi[1:-1,2:])/self.dz**2)
     else:
       rho += eps0*(

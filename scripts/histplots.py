@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.34 2008/02/05 20:42:48 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.35 2008/11/21 20:49:47 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -179,10 +179,10 @@ only required argument of course is the data to be plotted.
   if logplot:
     logxy(1,0)
     oord = log10(maximum(10e-12,
-                 oord[...,istart:iend+1:istep]*yscale[...,NewAxis]+yoffset))
+                 oord[...,istart:iend+1:istep]*yscale[...,newaxis]+yoffset))
     titler = titler + " logarithmic scale"
   else:
-    oord = oord[...,istart:iend+1:istep]*yscale[...,NewAxis]+yoffset
+    oord = oord[...,istart:iend+1:istep]*yscale[...,newaxis]+yoffset
 
   if js == -1: titler = titler + " All species"
   else:        titler = titler + " Species %d"%js
@@ -1394,7 +1394,7 @@ def hptotale(kwdict={},**kw):
   hefld = _extractvarkw('hefld',kw)
   hekzbeam = _extractvarkw('hekzbeam',kw)
   hekperp = _extractvarkw('hekperp',kw)
-  hpbasic(hefld[:,NewAxis]+hekzbeam+hekperp,kw)
+  hpbasic(hefld[:,newaxis]+hekzbeam+hekperp,kw)
 
 
 def hpthermale(iw=0,kwdict={},**kw):

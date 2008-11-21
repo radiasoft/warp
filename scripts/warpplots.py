@@ -35,7 +35,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.227 2008/11/19 18:30:00 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.228 2008/11/21 20:49:48 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -489,7 +489,7 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
     xx = x
   else:
     # --- Extend xx into a 2-D array, with a second dimension of length 1.
-    xx = x[:,NewAxis]
+    xx = x[:,newaxis]
   if len(shape(y)) > 2:
     # --- Reshape the array, putting all but the 1st dimension into the
     # --- 2nd dimension.
@@ -499,7 +499,7 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
     yy = y
   else:
     # --- Extend yy into a 2-D array, with a second dimension of length 1.
-    yy = y[:,NewAxis]
+    yy = y[:,newaxis]
   if not local and lparallel:
     # --- This way is preferred over a gatherarray since, for large data sets,
     # --- it reduces the risk of running out of memory since only part of the
@@ -745,13 +745,13 @@ Simple interface to contour plotting, same arguments as plc
     print 'First argument must be a 2-Dimensional array'
     return
   if xx is None:
-    xx = arange(s[0])[:,NewAxis]*ones(s[1],'d')
+    xx = arange(s[0])[:,newaxis]*ones(s[1],'d')
   elif len(shape(xx))==1:
-    xx = xx[:,NewAxis]*ones(s[1],'d')
+    xx = xx[:,newaxis]*ones(s[1],'d')
   if yy is None:
-    yy = arange(s[1])*ones(s[0],'d')[:,NewAxis]
+    yy = arange(s[1])*ones(s[0],'d')[:,newaxis]
   elif len(shape(yy))==1:
-    yy = yy*ones(s[0],'d')[:,NewAxis]
+    yy = yy*ones(s[0],'d')[:,newaxis]
   if ireg is None:
     ireg = ones(s,'i')
   else:
@@ -1385,16 +1385,16 @@ Note that either the x and y coordinates or the grid must be passed in.
     # --- The offsets are added in the way they are incase they are arrays.
     # --- Though of course they must be the correct length.
     if xmesh is None:
-      xmesh = xmin + dx*arange(nx+1)[:,NewAxis]*ones(ny+1,'d') + xcoffset
+      xmesh = xmin + dx*arange(nx+1)[:,newaxis]*ones(ny+1,'d') + xcoffset
     else:
       if rank(xmesh) == 1:
-        xmesh = xmesh[:,NewAxis]*ones(ny+1,'d')
+        xmesh = xmesh[:,newaxis]*ones(ny+1,'d')
     if ymesh is None:
-      ymesh = (ymin + dy*arange(ny+1)*ones(nx+1,'d')[:,NewAxis] +
+      ymesh = (ymin + dy*arange(ny+1)*ones(nx+1,'d')[:,newaxis] +
                transpose([ycoffset]))
     else:
       if rank(ymesh) == 1:
-        ymesh = ymesh*ones(nx+1,'d')[:,NewAxis]
+        ymesh = ymesh*ones(nx+1,'d')[:,newaxis]
 
   # --- Make filled contour plot of grid first since it covers everything
   # --- plotted before it.
@@ -1674,9 +1674,9 @@ values from zmin to zmax.
     # --- plotted is uniformly spaced between zmin and zmax. The contour
     # --- levels are those specified. The result is that the colorbar
     # --- shows the contours levels by their values relative to zmin and zmax.
-    plotval = span(zmin,zmax,255)[:,NewAxis]*ones(2)
-    xx = array([xmin,xmax])*ones(255)[:,NewAxis]
-    yy = span(ymin,ymax,255)[:,NewAxis]*ones(2)
+    plotval = span(zmin,zmax,255)[:,newaxis]*ones(2)
+    xx = array([xmin,xmax])*ones(255)[:,newaxis]
+    yy = span(ymin,ymax,255)[:,newaxis]*ones(2)
     # --- ireg must be of type integer because some legacy code used
     # --- expects it.
     ireg = ones((255,2),'i')
@@ -1689,9 +1689,9 @@ values from zmin to zmax.
     # --- the range of the level relative to other levels.
     if type(zmin) == type(zmax) == type(1) and \
        zmin >= 0 and zmax <=199:
-       plotval = arange(zmin,zmax+1,typecode=ubyte)[:,NewAxis]*ones(2)
+       plotval = arange(zmin,zmax+1,typecode=ubyte)[:,newaxis]*ones(2)
     else:
-       plotval = (arange(ncolor)/(ncolor-1.))[:,NewAxis]*ones(2)
+       plotval = (arange(ncolor)/(ncolor-1.))[:,newaxis]*ones(2)
     pli(plotval,xmin,ymin,xmax,ymax,top=ctop,local=1)
   # --- Draw a black box around it
   pldj([xmin,xmin,xmin,xmax],[ymin,ymax,ymin,ymin],

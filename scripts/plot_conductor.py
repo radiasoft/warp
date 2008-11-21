@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.120 2008/11/19 18:30:00 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.121 2008/11/21 20:49:48 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -3137,7 +3137,7 @@ Returns the scene use to draw the image
   if smooth:
     f3d.maxtriangles = f3d.ntrianges
     gchange("ConductorGeometryVisualization")
-    tt = f3d.triangles - gridmin[:,NewAxis,NewAxis]
+    tt = f3d.triangles - gridmin[:,newaxis,newaxis]
     tt = tt[0,:,:]**2 + tt[1,:,:]**2 + tt[2,:,:]**2
     tt = (tt/max(tt)*100000000).astype(Int)
     tt.shape = (3*f3d.ntriangles,)

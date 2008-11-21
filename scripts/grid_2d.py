@@ -1,5 +1,5 @@
 from warp import *
-grid_2d_version = "$Id: grid_2d.py,v 1.2 2001/01/25 18:05:37 dave Exp $"
+grid_2d_version = "$Id: grid_2d.py,v 1.3 2008/11/21 20:49:47 dave Exp $"
 # This routine lays a 2-D set of data onto a grid.
 # Input:
 #   gxmin       Minimum x value of data range.
@@ -52,8 +52,8 @@ ouput
   if not gxmax: gxmax = max(locx)
   if not gymin: gymin = min(locy)
   if not gymax: gymax = max(locy)
-  grid_2dx = (gxmin + arange(0,ngx+1)*(gxmax-gxmin)/ngx)*ones(ngy+1)[:,NewAxis]
-  grid_2dy = (gymin + arange(0,ngy+1)*(gymax-gymin)/ngy)[:,NewAxis]*ones(ngx+1)
+  grid_2dx = (gxmin + arange(0,ngx+1)*(gxmax-gxmin)/ngx)*ones(ngy+1)[:,newaxis]
+  grid_2dy = (gymin + arange(0,ngy+1)*(gymax-gymin)/ngy)[:,newaxis]*ones(ngx+1)
   grid_2d = zeros((ngx+1,ngy+1),'d')
   if not data:
     data = 1.

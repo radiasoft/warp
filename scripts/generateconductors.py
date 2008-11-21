@@ -109,7 +109,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.188 2008/11/19 18:29:59 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.189 2008/11/21 20:49:47 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -553,7 +553,7 @@ Should never be directly created by the user.
       qc = sum(sum(sum(rho[ixminlocal:ixmaxlocal+1,
                            iyminlocal:iymaxlocal+1,
                            izminlocal:izmaxlocal+1]*
-                       rfac[:,:,NewAxis])))*dx*dy*dz
+                       rfac[:,:,newaxis])))*dx*dy*dz
 
 # --- This block of code is needed if the rho in conductor interiors is
 # --- not zeroed out. Note that the setting of interior above is also needed.
@@ -1259,7 +1259,7 @@ distances to outside the surface are positive, inside negative.
 Normalizes the data with respect to the grid cell sizes.
 dx,dy,dz: the grid cell sizes
     """
-    self.dels[:,:] = self.dels/array([dx,dx,dy,dy,dz,dz])[:,NewAxis]
+    self.dels[:,:] = self.dels/array([dx,dx,dy,dy,dz,dz])[:,newaxis]
     if self.neumann:
       # --- For points that are within fuzz of 0 or 1, force them to be 0 or 1.
       # --- For Neumann boundaries, dels=0 is a valid value and this deals
@@ -2016,8 +2016,8 @@ Creates a grid object which can generate conductor data.
     xmesh = compress(logical_and(xmin-dx <= xmesh,xmesh <= xmax+dx),xmesh)
     ymesh = compress(logical_and(ymin-dy <= ymesh,ymesh <= ymax+dy),ymesh)
     zmesh = compress(logical_and(zmin-dz <= zmesh,zmesh <= zmax+dz),zmesh)
-    x = ravel(xmesh[:,NewAxis]*ones(len(ymesh)))
-    y = ravel(ymesh*ones(len(xmesh))[:,NewAxis])
+    x = ravel(xmesh[:,newaxis]*ones(len(ymesh)))
+    y = ravel(ymesh*ones(len(xmesh))[:,newaxis])
     z = zeros(len(xmesh)*len(ymesh),'d')
     ix = nint((x - xmmin)/dx)
     iy = nint((y - ymmin)/dy)
@@ -3326,8 +3326,8 @@ Plate from beamlet pre-accelerator
     ymesh = ymmin + dy*arange(ny+1)
     xmesh = compress(logical_and(xmin-dx <= xmesh,xmesh <= xmax+dx),xmesh)
     ymesh = compress(logical_and(ymin-dy <= ymesh,ymesh <= ymax+dy),ymesh)
-    x = ravel(xmesh[:,NewAxis]*ones(len(ymesh)))
-    y = ravel(ymesh*ones(len(xmesh))[:,NewAxis])
+    x = ravel(xmesh[:,newaxis]*ones(len(ymesh)))
+    y = ravel(ymesh*ones(len(xmesh))[:,newaxis])
     ix = nint((x - xmmin)/dx)
     iy = nint((y - ymmin)/dy)
     if len(x) == 0: return
@@ -3354,23 +3354,23 @@ Plate from beamlet pre-accelerator
     mr = Opyndx.VisualMesh(xx,yy,zr,twoSided=true)
 
     # --- Four sides between faces
-    xside = xx[:,0]*ones(2)[:,NewAxis]
-    yside = yy[:,0]*ones(2)[:,NewAxis]
+    xside = xx[:,0]*ones(2)[:,newaxis]
+    yside = yy[:,0]*ones(2)[:,newaxis]
     zside = array([zl[:,0],zr[:,0]])
     ms1 = Opyndx.VisualMesh(xside,yside,zside,twoSided=true)
 
-    xside = xx[:,-1]*ones(2)[:,NewAxis]
-    yside = yy[:,-1]*ones(2)[:,NewAxis]
+    xside = xx[:,-1]*ones(2)[:,newaxis]
+    yside = yy[:,-1]*ones(2)[:,newaxis]
     zside = array([zl[:,-1],zr[:,-1]])
     ms1 = Opyndx.VisualMesh(xside,yside,zside,twoSided=true)
 
-    xside = xx[0,:]*ones(2)[:,NewAxis]
-    yside = yy[0,:]*ones(2)[:,NewAxis]
+    xside = xx[0,:]*ones(2)[:,newaxis]
+    yside = yy[0,:]*ones(2)[:,newaxis]
     zside = array([zl[0,:],zr[0,:]])
     ms1 = Opyndx.VisualMesh(xside,yside,zside,twoSided=true)
 
-    xside = xx[-1,:]*ones(2)[:,NewAxis]
-    yside = yy[-1,:]*ones(2)[:,NewAxis]
+    xside = xx[-1,:]*ones(2)[:,newaxis]
+    yside = yy[-1,:]*ones(2)[:,newaxis]
     zside = array([zl[-1,:],zr[-1,:]])
     ms1 = Opyndx.VisualMesh(xside,yside,zside,twoSided=true)
 

@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.69 2008/11/19 18:29:59 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.70 2008/11/21 20:49:48 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -911,9 +911,9 @@ Or specify the data set
     self.e  = array(self.e)
     self.ep = array(self.ep)
     self.eph = array(self.eph)
-    if len(shape(self.e)) == 1: self.e = self.e[:,NewAxis]
-    if len(shape(self.ep)) == 1: self.ep = self.ep[:,NewAxis]
-    if len(shape(self.eph)) == 1: self.eph = self.eph[:,NewAxis]
+    if len(shape(self.e)) == 1: self.e = self.e[:,newaxis]
+    if len(shape(self.ep)) == 1: self.ep = self.ep[:,newaxis]
+    if len(shape(self.eph)) == 1: self.eph = self.eph[:,newaxis]
     self.nn = array(self.nn)
     self.vv = array(self.vv)
   def install(self,zz):
@@ -1030,9 +1030,9 @@ Or specify the data set
     self.m  = array(self.m)
     self.mp = array(self.mp)
     self.mph = array(self.mph)
-    if len(shape(self.m)) == 1: self.m = self.m[:,NewAxis]
-    if len(shape(self.mp)) == 1: self.mp = self.mp[:,NewAxis]
-    if len(shape(self.mph)) == 1: self.mph = self.mph[:,NewAxis]
+    if len(shape(self.m)) == 1: self.m = self.m[:,newaxis]
+    if len(shape(self.mp)) == 1: self.mp = self.mp[:,newaxis]
+    if len(shape(self.mph)) == 1: self.mph = self.mph[:,newaxis]
     self.nn = array(self.nn)
     self.vv = array(self.vv)
   def install(self,zz):

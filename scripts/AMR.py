@@ -255,21 +255,21 @@ class AMRTree(VisualizableClass):
 
       # get edges using vertical lines
       maxfg = fg.max(0)
-      g1 = where(fg>threshold*maxfg[NewAxis,...],fg,0.)
+      g1 = where(fg>threshold*maxfg[newaxis,...],fg,0.)
 
       # get edges using horizontal lines
       maxfg = fg.max(1)
       if dim==2:
-        g2 = where(fg>threshold*maxfg[:,NewAxis],fg,0.)
+        g2 = where(fg>threshold*maxfg[:,newaxis],fg,0.)
       elif dim==3:
-        g2 = where(fg>threshold*maxfg[:,NewAxis,:],fg,0.)
+        g2 = where(fg>threshold*maxfg[:,newaxis,:],fg,0.)
 
       # take max of g1 and g2
       g = where(g1>g2,g1,g2)
 
       if dim==3:
         maxfg = fg.max(2)
-        g3 = where(fg>threshold*maxfg[...,NewAxis],fg,0.)
+        g3 = where(fg>threshold*maxfg[...,newaxis],fg,0.)
         # returns max of g and g3
         g = where(g>g3,g,g3)
 
