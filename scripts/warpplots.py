@@ -25,17 +25,16 @@ else:
     if me == 0 and sys.platform != 'mac':
       import gist
     else:
-      import gistdummy
-      gist = gistdummy
+      import gistdummy as gist
   except ImportError:
-    pass
+    import gistdummy as gist
 
 import controllers
 import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.228 2008/11/21 20:49:48 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.229 2008/11/21 20:52:48 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -134,7 +133,7 @@ cgmlogfile = None
 numframeslist = zeros(8,'l')
 
 if with_gist:
-  pldefault(marks=0) # --- Set plot defaults, no line marks
+  gist.pldefault(marks=0) # --- Set plot defaults, no line marks
 
   # --- Set GISTPATH environment variable appropriately if it is not already
   # --- set.
