@@ -7,7 +7,7 @@ simulation. The two simulations are linked together.
 __all__ = ['PlaneSave','plane_save_version']
 
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.19 2008/01/08 02:09:46 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.20 2008/11/24 02:13:37 dave Exp $"
 
 class PlaneSave:
   """
@@ -220,28 +220,25 @@ Input:
     j1 = top.pgroup.ins[js] - 1
     j2 = j1 + top.pgroup.nps[js]
 
-    if j2 > j1:
-      z = top.pgroup.zp[j1:j2]
-      zold = top.pgroup.pid[j1:j2,self.zoldpid]
+    z = top.pgroup.zp[j1:j2]
+    zold = top.pgroup.pid[j1:j2,self.zoldpid]
 
-      # --- Find all of the particles which just crossed zplane.
-      ii = compress(logical_and(zold < self.zplane,self.zplane <= z),
-                    iota(j1,j2))
+    # --- Find all of the particles which just crossed zplane.
+    ii = compress(logical_and(zold < self.zplane,self.zplane <= z),
+                  iota(j1,j2))
 
-      # --- Get the data for those particles that crossed.
-      xx = gatherarray(take(top.pgroup.xp,ii))
-      yy = gatherarray(take(top.pgroup.yp,ii))
-      zz = gatherarray(take(top.pgroup.zp,ii))
-      ux = gatherarray(take(top.pgroup.uxp,ii))
-      uy = gatherarray(take(top.pgroup.uyp,ii))
-      uz = gatherarray(take(top.pgroup.uzp,ii))
-      gi = gatherarray(take(top.pgroup.gaminv,ii))
-      id = gatherarray(take(top.pgroup.pid,ii,axis=0))
+    # --- Get the data for those particles that crossed.
+    xx = gatherarray(take(top.pgroup.xp,ii))
+    yy = gatherarray(take(top.pgroup.yp,ii))
+    zz = gatherarray(take(top.pgroup.zp,ii))
+    ux = gatherarray(take(top.pgroup.uxp,ii))
+    uy = gatherarray(take(top.pgroup.uyp,ii))
+    uz = gatherarray(take(top.pgroup.uzp,ii))
+    gi = gatherarray(take(top.pgroup.gaminv,ii))
+    id = gatherarray(take(top.pgroup.pid,ii,axis=0))
 
-      np_save = len(xx)
-      if np_save > 0: self.save_this_step = true
-    else:
-      np_save = 0
+    np_save = len(xx)
+    if np_save > 0: self.save_this_step = true
 
     self.save_this_step = parallel.broadcast(self.save_this_step)
 
