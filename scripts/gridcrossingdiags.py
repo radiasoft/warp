@@ -58,6 +58,19 @@ rprms:
     def disable(self):
         uninstallafterstep(self.getdiagnostics)
 
+    def initializegrid(self):
+        # --- Initialize grid parameters if needed. This is done here
+        # --- in case the grid had not been setup yet when init was called.
+        if self.zmmin is None: self.zmmin = w3d.zmmin
+        if self.zmmax is None: self.zmmax = w3d.zmmax
+        if self.dz is None: self.dz = w3d.dz/self.nzscale
+        if self.nz is None:
+            self.nz = int((self.zmmax - self.zmmin)/self.dz)
+            self.dz = (self.zmmax - self.zmmin)/self.nz
+
+        ldoradialdiag = (self.nr is not None)
+        self.ldoradialdiag = ldoradialdiag
+
     def getdiagnostics(self):
 
         # --- Check if particle was advanced
@@ -69,14 +82,7 @@ rprms:
         if self.endtime is not None:
             if top.time > self.endtime: return
 
-        # --- Initialize grid parameters if needed. This is done here
-        # --- in case the grid had not been setup yet when init was called.
-        if self.zmmin is None: self.zmmin = w3d.zmmin
-        if self.zmmax is None: self.zmmax = w3d.zmmax
-        if self.dz is None: self.dz = w3d.dz/self.nzscale
-        if self.nz is None:
-          self.nz = int((self.zmmax - self.zmmin)/self.dz)
-          self.dz = (self.zmmax - self.zmmin)/self.nz
+        self.initializegrid()
 
         # --- Create handy locals.
         js = self.js
@@ -87,9 +93,8 @@ rprms:
 
         rmax = self.rmax
         nr = self.nr
-        ldoradialdiag = (nr is not None)
-        if ldoradialdiag: dr = rmax/nr
-        self.ldoradialdiag = ldoradialdiag
+        if self.ldoradialdiag:
+            dr = rmax/nr
 
         zbeam = top.zbeam
         zoldpid = self.zoldpid
