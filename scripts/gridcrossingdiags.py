@@ -68,8 +68,7 @@ rprms:
             self.nz = int((self.zmmax - self.zmmin)/self.dz)
             self.dz = (self.zmmax - self.zmmin)/self.nz
 
-        ldoradialdiag = (self.nr is not None)
-        self.ldoradialdiag = ldoradialdiag
+        self.ldoradialdiag = (self.nr is not None)
 
     def getdiagnostics(self):
 
@@ -93,7 +92,8 @@ rprms:
 
         rmax = self.rmax
         nr = self.nr
-        if self.ldoradialdiag:
+        ldoradialdiag = self.ldoradialdiag
+        if ldoradialdiag:
             dr = rmax/nr
 
         zbeam = top.zbeam
