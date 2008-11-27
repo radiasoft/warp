@@ -25,7 +25,7 @@ The two simulations are linked together.
 __all__ = ['PlaneRestore','plane_restore_version']
 
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.16 2008/11/19 18:30:00 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.17 2008/11/27 01:13:54 dave Exp $"
 
 class PlaneRestore:
   """
@@ -375,7 +375,7 @@ No particles are loaded."""
       xmmin = w3d.xmmin + w3d.dx*self.nx0_r
       nx = self.nxm_r - self.nx0_r
       ymmin = w3d.ymmin + w3d.dy*self.ny0_r
-      nx = self.nym_r - self.ny0_r
+      ny = self.nym_r - self.ny0_r
       xmesh,ymesh = getmesh2d(xmmin,w3d.dx,nx,ymmin,w3d.dy,ny)
       rmesh = sqrt(xmesh**2 + ymesh**2)
       dr = (self.f.xmmax - self.f.xmmin)/self.f.nx
