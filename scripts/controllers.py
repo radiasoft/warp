@@ -68,7 +68,7 @@ installuserinjection, uninstalluserinjection, installeduserinjection
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.23 2008/07/28 19:51:59 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.24 2008/11/27 01:31:42 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -546,10 +546,13 @@ def installuserparticlesinjection(f):
 Adds a user defined function that is to be called during injection which
 allows the user to specify the distribution of particles on the emitting
 surface. For expert use only."""
+  warp.w3d.l_inj_user_particles = warp.true
   generateuserparticlesforinjection.installfuncinlist(f)
 def uninstalluserparticlesinjection(f):
   "Removes the function installed by installuserparticlesinjection"
   generateuserparticlesforinjection.uninstallfuncinlist(f)
+  if not generateuserparticlesforinjection.hasfuncsinstalled():
+    warp.w3d.l_inj_user_particles = warp.false
 def isinstalleduserparticlesinjection(f):
   return generateuserparticlesforinjection.isinstalledfuncinlist(f)
 
