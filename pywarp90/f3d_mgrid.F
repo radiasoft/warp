@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.181 $, $Date: 2008/11/21 19:20:27 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.182 $, $Date: 2008/11/27 01:12:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -2805,7 +2805,7 @@ c     --- Note that nzlocalcoarse is only used if full-coarsening is done.
 
       dxcoarse = dx*nx/nxcoarse
       if (nycoarse == 0) then
-        dycoarse = dy
+        dycoarse = dxcoarse
       else
         dycoarse = dy*ny/nycoarse
       endif
@@ -2911,7 +2911,10 @@ c     --- Allocate temp space
         conductors%levellz(mglevel) = lz
         conductors%levels = mglevel + 1
 
-        if (nxfine < 4 .or. nyfine < 4 .or. nzfine < 4 .or. mglevel == 100)
+        if (nxfine < 4 .or.
+     &      (nyfine < 4 .and. nyfine > 0) .or.
+     &      nzfine < 4 .or.
+     &      mglevel == 100)
      &    exit
 
         call getnextcoarselevel3d(nxfine,nyfine,nzfine,
