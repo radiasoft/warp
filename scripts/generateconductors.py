@@ -109,7 +109,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.189 2008/11/21 20:49:47 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.190 2008/11/27 01:16:40 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1939,7 +1939,6 @@ Creates a grid object which can generate conductor data.
       conductors = ConductorType()
       nx,ny,nz = self.nx,self.ny,self.nz
       nxlocal,nylocal,nzlocal = self.nxlocal,self.nylocal,self.nzlocal
-      if self.ny == 0: ny = nx
       getmglevels(nx,ny,nz,nxlocal,nylocal,nzlocal,
                   self.dx,self.dy,self.dz*zscale,conductors,self.decomp)
       self.mglevels = conductors.levels
