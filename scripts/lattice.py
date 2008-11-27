@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.70 2008/11/21 20:49:48 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.71 2008/11/27 01:14:50 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3074,7 +3074,7 @@ Input arguments:
   solverdict['boundnz'] = neumann
   if lcylindrical:
     solverdict['ny'] = 0
-    Esolver = MultiGridRZ(**solverdict)
+    Esolver = MultiGrid2D(**solverdict)
     xx,zz = getmesh2d(0.,Esolver.dx,Esolver.nx,
                       Esolver.zmmin,Esolver.dz,Esolver.nz)
     yy = zeros(xx.shape,'d')
