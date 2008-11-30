@@ -1061,8 +1061,23 @@ Fortran version
       child.gathersourcepfromchildren()
 
       # --- Get coordinates of child relative to this domain
-      l = maximum(child.fullloweroverrefinement,self.fulllower)
-      u = minimum(child.fullupperoverrefinement,self.fullupper)
+      if self.lparallel and self is self.root:
+        # --- On the root processor, the extent of the sourcep array can be
+        # --- different from the extent of the source array, which is what
+        # --- the fulllower and fullupper describe. This difference must be
+        # --- taken into account.
+        ppdecomp = self.ppdecomp
+        fulllower = [ppdecomp.ix[self.ixproc],
+                     ppdecomp.iy[self.iyproc],
+                     ppdecomp.iz[self.izproc]]
+        fullupper = [ppdecomp.ix[self.ixproc]+ppdecomp.nx[self.ixproc],
+                     ppdecomp.iy[self.iyproc]+ppdecomp.ny[self.iyproc],
+                     ppdecomp.iz[self.izproc]+ppdecomp.nz[self.izproc]]
+      else:
+        fulllower = self.fulllower
+        fullupper = self.fullupper
+      l = maximum(child.fullloweroverrefinement,fulllower)
+      u = minimum(child.fullupperoverrefinement,fullupper)
 
       # --- Check for any Nuemann boundaries
      #dopbounds = (sometrue(child.pbounds == 1) and
@@ -1079,16 +1094,18 @@ Fortran version
 
       w = self.getwarrayforsourcep(child.refinement)
       if not self.l_EM:
-        gathersourcefromchild(self.sourcep,self.ncomponents,self.dims,
-                              child.sourcep,child.dims,
-                              l,u,self.fulllower,child.fulllower,child.fullupper,
+        pdims = array([self.nxp,self.nyp,self.nzp])
+        childpdims = array([child.nxp,child.nyp,child.nzp])
+        gathersourcefromchild(self.sourcep,self.ncomponents,pdims,
+                              child.sourcep,childpdims,
+                              l,u,fulllower,child.fulllower,child.fullupper,
                               child.refinement,w,
                               self.xmeshlocal,child.xmeshlocal,self.lcylindrical,
                               dopbounds,child.pbounds,self.rootdims)
       else:
          cb = child.block
          cbc = child.block_coarse
-         lp = l-self.fulllower
+         lp = l-fulllower
          project_jxjyjz(cb.core.yf.J,
                         cbc.core.yf.J,
                         self.block.core.yf.J,
@@ -1568,7 +1585,7 @@ to zero."""
       else:
         wi[i] = ones(2*r[i]-1,'d')
     # --- Expand into 3 dimensions
-    w = outerproduct(wi[0],outerproduct(wi[1],wi[2]))
+    w = outer(wi[0],outer(wi[1],wi[2]))
     w.shape = (2*r[0]-1,2*r[1]-1,2*r[2]-1)
     result = fzeros(2*r-1,'d')
     result[...] = w
