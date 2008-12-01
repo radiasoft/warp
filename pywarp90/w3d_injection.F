@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.117 $, $Date: 2008/11/19 18:29:50 $
+c@(#) File w3d_injection.F, version $Revision: 1.118 $, $Date: 2008/12/01 03:32:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1642,7 +1642,7 @@ c           pgroup%zp(i1:i2) = UNPACK(zz,mask>0.,pgroup%zp(i1:i2))
             pgroup%bx(i1:i2) = UNPACK(bx,mask>0.,pgroup%bx(i1:i2))
             pgroup%by(i1:i2) = UNPACK(by,mask>0.,pgroup%by(i1:i2))
             pgroup%bz(i1:i2) = UNPACK(bz,mask>0.,pgroup%bz(i1:i2))
-c           pgroup%pid(i1:i2,injpid) = int(pgroup%pid(i1:i2,injpid))
+            pgroup%pid(i1:i2,injpid) = int(pgroup%pid(i1:i2,injpid))
             deallocate(mask)
 #endif
 
@@ -2342,7 +2342,7 @@ c           pgroup%zp(i1:i2) = UNPACK(zz,mask>0.,pgroup%zp(i1:i2))
             pgroup%bx(i1:i2) = UNPACK(bx,mask>0.,pgroup%bx(i1:i2))
             pgroup%by(i1:i2) = UNPACK(by,mask>0.,pgroup%by(i1:i2))
             pgroup%bz(i1:i2) = UNPACK(bz,mask>0.,pgroup%bz(i1:i2))
-c           pgroup%pid(i1:i2,injpid) = int(pgroup%pid(i1:i2,injpid))
+            pgroup%pid(i1:i2,injpid) = int(pgroup%pid(i1:i2,injpid))
             deallocate(mask)
 #endif
 
