@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.40 2008/11/19 18:29:59 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.41 2008/12/02 19:31:40 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -782,12 +782,19 @@ Class for generating secondaries
     # --- make sure that all particles are added
     for js in self.x.keys():
       self.flushpart(js)
-    # --- check for particle out of bounds and exchange particles among processors if needed
+    # --- Check for particle out of bounds and exchange particles among
+    # --- processors if needed. A call to particleboundaries3d is made
+    # --- so that particles are scraped on any user defined conductors
+    # --- as well as the grid boundaries.
     # --- Set the flag so that this generate routine is not called again
     # --- recursively (since generate is normally called at the end of
-    # --- the scraping). This is needed in case lcallscrapercontrollers is true
+    # --- the scraping).
+    # --- This is all needed in case lcallscrapercontrollers is true.
+    # --- Also set the flag so that the lost particles are not reset.
     self.lrecursivegenerate = 1
+    top.lresetlostpart = false
     particleboundaries3d(top.pgroup,-1,self.lcallscrapercontrollers)
+    top.lresetlostpart = true
     self.lrecursivegenerate = 0
 
     if self.l_record_timing:t3 = time.clock()
