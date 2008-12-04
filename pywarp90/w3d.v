@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.288 $, $Date: 2008/11/19 18:29:50 $
+#@(#) File W3D.V, version $Revision: 3.289 $, $Date: 2008/12/04 23:32:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.288 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.289 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1220,32 +1220,41 @@ timeothere3d real /0./
 timegetese3d real /0./
 timegtlchg3d real /0./
 timeseteears real /0./
+timepositionadvance3d real /0./
 timepadvnc3d real /0./
+timegetextpart real /0./
 timeperphi3d real /0./
 timeperb3d real /0./
-timeperrho3d real /0./
+timeapplyrhoboundaryconditions real /0./
 timeepush3d real /0./
 timeepusht3d real /0./
 timebpush3d real /0./
 timebpusht3d real /0./
 timexpush3d real /0./
 timexpusht3d real /0./
+timeebcancelpush3d real /0./
 timecheck_cc3d real /0./
 timesete3d_relativity real /0./
 timeedamp real /0./
 timegetbend real /0./
 timebendez3d real /0./
 timesete3d real /0./
+timesete2d real /0./
 timegetselfe3d real /0./
 timestptcl3d real /0./
 timesetrho3d real /0./
 timeloadrho3d real /0./
+timefinalizerho real /0./
+timesetrhoandphiforfieldsolve real /0./
 timesetrhoforfieldsolve3d real /0./
 timefetche3d real /0./
+timefetche3dfrompositions real /0./
 timefetchb3d real /0./
+timeparticlegridboundaries3d real /0./
 timeparticleboundaries3d real /0./
 timestckxy3d real /0./
 timesetrstar real /0./
+timefetchphi real /0./
 timeinject3d real /0./
 timeinjctint real /0./
 timefill_inj real /0./
@@ -1259,6 +1268,8 @@ timeinj_setrho3d real /0./
 timeinj_setrhomr real /0./
 timesete3d_aperture real /0./
 timeset_aperture_e real /0./
+timegetphipforparticles real /0./
+timegetphiforfields real /0./
 timefieldsol3d real /0./
 timevp3d real /0./
 timesortpart_byindex real /0./

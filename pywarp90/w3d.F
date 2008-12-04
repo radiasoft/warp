@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.411 $, $Date: 2008/11/20 23:26:56 $
+c@(#) File W3D.F, version $Revision: 3.412 $, $Date: 2008/12/04 23:32:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -120,6 +120,8 @@ c     fff = for_set_fpe(14_4)
 c  Announce that we're starting up
 
       call remark(" ***  particle simulation package W3D generating")
+
+c     call seedranf(24598274059827)
 
 c  Put ny to zero for RZ geometry and setup a few flags
 
@@ -1389,6 +1391,8 @@ c      use LatticeInternal, Only: Mtx, Mty
       real(kind=8):: bendres(np),bendradi(np)
 
       real(kind=8),pointer:: zpo(:)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c     Store old positions if not interpolating; if we are interpolating this 
 c     is done in xpush3dinterp in a more complicated way to allow for
@@ -1439,6 +1443,9 @@ c     --- Correct position advance for slanted dipole entry/exit
       
       if(pgroup%zshift(is)/=0.) pgroup%zp(ipmin:ipmin+np-1)=pgroup%zp(ipmin:ipmin+np-1)+pgroup%zshift(is)
 
+!$OMP MASTER
+      if (lw3dtimesubs) timepositionadvance3d = timepositionadvance3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -2222,8 +2229,11 @@ c=============================================================================
       use InPart
       use Picglb
       type(ParticleGroup):: pgroup
+
       integer(ISZ):: is,ip,ipmin
       real(kind=8):: fulldt_s,halfdt_s
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       do is=1,pgroup%ns
 
@@ -2243,6 +2253,9 @@ c       --- Include time step size scaling for steady-state and slice modes.
          endif
        enddo
 
+!$OMP MASTER
+      if (lw3dtimesubs) timegetextpart = timegetextpart + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -2376,7 +2389,7 @@ c       --- flags.
       endif
 
 !$OMP MASTER
-      if (lw3dtimesubs) timeperrho3d = timeperrho3d + wtime() - substarttime
+      if (lw3dtimesubs) timeapplyrhoboundaryconditions = timeapplyrhoboundaryconditions + wtime() - substarttime
 !$OMP END MASTER
       return
       end
@@ -2938,7 +2951,7 @@ c to create mismatched values of u and gamma?
       endif
       
 !$OMP MASTER
-      if (lw3dtimesubs) timeepush3d = timeepush3d + wtime() - substarttime
+      if (lw3dtimesubs) timeebcancelpush3d = timeebcancelpush3d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
@@ -4603,7 +4616,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
       endif
 
 !$OMP MASTER
-      if (lw3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
+      if (lw3dtimesubs) timesete2d = timesete2d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
@@ -8342,10 +8355,9 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: is1,is2,isid
       integer(ISZ):: ip,ipmin,is,indts
       real(kind=8):: swtmp
-      real(kind=8):: substarttime,wtime
       integer(ISZ):: allocerror
       logical(ISZ):: lzeroeven
-
+      real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
       if (lbeforelr) call callpythonfunc("beforelr","controllers")
@@ -8539,6 +8551,8 @@ c averaging for subcycling.
 
       integer(ISZ):: tmpnsndts,indts,isndts
       integer(ISZ):: getnsndtsforsubcycling
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c     --- If rho has already been finalized, then do nothing.
       if (lrhofinalized) return
@@ -8587,6 +8601,9 @@ c       --- will not cover the full axial extent of the system anyway.
 
       enddo
 
+!$OMP MASTER
+      if (lw3dtimesubs) timefinalizerho = timefinalizerho + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -8702,6 +8719,8 @@ c=============================================================================
 #endif
       real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
       real(kind=8),target:: phipin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 #ifdef MPIPARALLEL
 
@@ -8722,6 +8741,9 @@ c  whose field solve region overlap its particle region.
 
 #endif
 
+!$OMP MASTER
+      if (lw3dtimesubs) timesetrhoandphiforfieldsolve = timesetrhoandphiforfieldsolve + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -9018,7 +9040,7 @@ c       --- and the data needs to be copied around.
       endif
 
 !$OMP MASTER
-      if (lw3dtimesubs) timefetche3d = timefetche3d + wtime() - substarttime
+      if (lw3dtimesubs) timefetche3dfrompositions = timefetche3dfrompositions + wtime() - substarttime
 !$OMP END MASTER
       return
       end
@@ -9030,6 +9052,8 @@ c=============================================================================
       integer(ISZ):: ipmin,ip,is
 
       integer(ISZ):: jsid,ndts
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Don't do anything if there are no particles input.
       if (ip == 0) return
@@ -9042,6 +9066,10 @@ c     --- Don't do anything if there are no particles input.
      &                           pgroup%zp(ipmin),
      &                           pgroup%bx(ipmin),pgroup%by(ipmin),
      &                           pgroup%bz(ipmin))
+
+!$OMP MASTER
+      if (lw3dtimesubs) timefetchb3d = timefetchb3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -9059,6 +9087,8 @@ c     --- exchanging particles among processors.
       integer(ISZ):: js1,js2
       real(kind=8):: xmin,xmax,ymin,ymax
       logical(ISZ):: lrz
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       if (js == -1) then
 c       --- Include all species
@@ -9079,6 +9109,9 @@ c       --- Include all species
      &                         l2symtry .or. l4symtry,lrz)
       call zparticleboundaries(pgroup,js1,js2,zmmax,zmmin,.true.)
 
+!$OMP MASTER
+      if (lw3dtimesubs) timeparticlegridboundaries3d = timeparticlegridboundaries3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -9363,6 +9396,8 @@ c=============================================================================
       use FieldSolveAPI
       integer(ISZ):: n
       real(kind=8),target:: x(n),y(n),z(n),p(n)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Don't do anything if there are no particles input.
       if (n == 0) return
@@ -9400,6 +9435,9 @@ c     --- Call the appropriate routine to get the phi
 
       call fetchphi_from_pgrd(n,x,y,z,p)
 
+!$OMP MASTER
+      if (lw3dtimesubs) timefetchphi = timefetchphi + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -10090,6 +10128,8 @@ c===========================================================================
       use Parallel
 #endif
       integer(ISZ):: indts
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 #ifdef MPIPARALLEL
 c     --- Distribute phi among the processes so each has phi in its
@@ -10107,6 +10147,9 @@ c        call getphipforparticlesz()
       end if
 #endif
 
+!$OMP MASTER
+      if (lw3dtimesubs) timegetphipforparticles = timegetphipforparticles + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c===========================================================================
@@ -10138,6 +10181,9 @@ c===========================================================================
 c This gets the phi at iz=nzlocal and in the guard cells. It is only needed for
 c the 3d FFT and tridiagonal based solvers for the parallel version.
 
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
 #ifdef MPIPARALLEL
 
 c     --- Distribute phi among the processes so each has phi in its
@@ -10151,6 +10197,9 @@ c        call getphiforparticlesz()
       end if
 #endif
 
+!$OMP MASTER
+      if (lw3dtimesubs) timegetphiforfields = timegetphiforfields + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c===========================================================================
