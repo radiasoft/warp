@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.172 2008/11/19 18:30:00 dave Exp $"
+warp_version = "$Id: warp.py,v 1.173 2008/12/04 17:27:08 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -65,7 +65,7 @@ try:
   else:
     from gistdummy import *
 except ImportError:
-  pass
+  from gistdummy import *
 
 # Import the warpC shared object which contains all of WARP
 from warpC import *
