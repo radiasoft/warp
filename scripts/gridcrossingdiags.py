@@ -90,6 +90,9 @@ rprms:
         dz = self.dz
         nz = self.nz
 
+        # --- Do some error checking
+        if zmmax < zmmin: return
+
         rmax = self.rmax
         nr = self.nr
         ldoradialdiag = self.ldoradialdiag
