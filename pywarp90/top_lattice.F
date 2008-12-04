@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.26 $, $Date: 2008/11/13 07:31:09 $
+c@(#) File top_lattice.F, version $Revision: 3.27 $, $Date: 2008/12/04 23:31:46 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -1363,7 +1363,11 @@ c============================================================================
 c============================================================================ 
 c============================================================================ 
       subroutine resetlat()
+      use Subtimerstop
       use Lattice
+
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c  Resizes the lattice arrays to the final lengths needed by the actual data.
 c  Sets dipole field, lattice element 0, flags for bends, etc.
@@ -1415,6 +1419,9 @@ c     --- resetlat no longer needs to be called, as long as no changes are
 c     --- made to the lattice.
       lresetlat = .false.
 
+!$OMP MASTER
+      if (ltoptimesubs) timeresetlat = timeresetlat + wtime() - substarttime
+!$OMP END MASTER
       return 
       end 
 c============================================================================ 
@@ -2450,11 +2457,15 @@ c       --- z start.
       end
 c=============================================================================
       subroutine applyuniformfields(np,ex,ey,ez,bx,by,bz)
+      use Subtimerstop
       use InGen
       integer(ISZ):: np
       real(kind=8):: ex(np),ey(np),ez(np),bx(np),by(np),bz(np)
 
 c Apply uniform fields.
+
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (ex0/=0.) ex = ex + ex0
       if (ey0/=0.) ey = ey + ey0
@@ -2463,10 +2474,14 @@ c Apply uniform fields.
       if (by0/=0.) by = by + by0
       if (bz0/=0.) bz = bz + bz0
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplyuniformfields = timeapplyuniformfields + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c============================================================================ 
       subroutine getbend(np,npz,zp,uzp,gaminv,bendres,bendradi,dtl,dtr,lslice)
+      use Subtimerstop
       use InGen
       use Lattice
       use LatticeInternal
@@ -2482,6 +2497,8 @@ c  For periodic runs, assumes mesh period length = lattice period length
       integer(ISZ):: ip,iz
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac
       real(kind=8),allocatable:: vz(:),dzi(:)
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. bends .or. .not. linbend) then
         bendres = 0.
@@ -2551,10 +2568,14 @@ c       --- residence fraction
 
       deallocate(vz,dzi)
 
+!$OMP MASTER
+      if (ltoptimesubs) timegetbend = timegetbend + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine applybend(np,xp,uzp,npz,bendres,bendradi,m,q,lslice,by)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
@@ -2567,6 +2588,8 @@ c Apply transformation for bending field.
 
       integer(ISZ):: ip
       real(kind=8):: qi,bres,brad
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. bends .or. .not. linbend) return
 
@@ -2586,11 +2609,15 @@ c Apply transformation for bending field.
         endif
       enddo
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplybend = timeapplybend + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine applyquad(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
      &                     ex,ey,bx,by)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
@@ -2621,6 +2648,8 @@ c   bx, by   quadrupole magnetic field
       real(kind=8):: dodec
       real(kind=8), allocatable:: vz(:),dzi(:)
       integer(ISZ):: allocerror
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. quads .or. .not. linquad(0)) return
       allocate(vz(npz),dzi(npz),stat=allocerror)
@@ -2727,11 +2756,15 @@ c         --- set the field
       enddo
       deallocate(vz,dzi)
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplyquad = timeapplyquad + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine applydipo(np,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
      &                     ex,ey,bx,by)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
@@ -2758,6 +2791,8 @@ c   bx, by   dipole magnetic field
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac
       real(kind=8), allocatable:: vz(:),dzi(:)
       integer(ISZ):: allocerror
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. dipos .or. .not. lindipo(0)) return
       allocate(vz(npz),dzi(npz),stat=allocerror)
@@ -2835,10 +2870,14 @@ c         --- set the field
       enddo
       deallocate(vz,dzi)
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplydipo = timeapplydipo + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=========================================================================== 
       subroutine zbendcor(pgroup,np,ipmin,ddt,bendres,bendradi)
+      use Subtimerstop
       use ParticleGroupmodule
       use Lattice,Only:bends
       use LatticeInternal,Only:linbend
@@ -2857,9 +2896,6 @@ c  "along the centerline."
       if (ltoptimesubs) substarttime = wtime()
 
       if (.not. bends .or. .not. linbend) then
-!$OMP MASTER
-        if (ltoptimesubs) timezbendcor = timezbendcor + wtime() - substarttime
-!$OMP END MASTER
         return
       endif
 
@@ -2879,6 +2915,7 @@ c  "along the centerline."
 c=========================================================================== 
 c=========================================================================== 
       subroutine sledgcor(pgroup,np,ipmin,zpo,zbeam,zbeamo,vbeam,m,q,lslice)
+      use Subtimerstop
       use ParticleGroupmodule
       use Lattice
       use LatticeInternal
@@ -2898,6 +2935,8 @@ c less than the entire andvance step on entry/exit of the dipole.
       integer(ISZ):: io,ip,iz
       real(kind=8),allocatable:: vzi(:)
       real(kind=8):: qoverm,factor
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. dipos .or. .not. lindipo(0)) return
 
@@ -2953,11 +2992,15 @@ c           --- exited dipole
 
       deallocate(vzi)
 
+!$OMP MASTER
+      if (ltoptimesubs) timesledgcor = timesledgcor + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine applysext(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
      &                     ex,ey,bx,by)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
@@ -2987,6 +3030,8 @@ c   bx, by   sextupole magnetic field
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac
       real(kind=8), allocatable:: vz(:),dzi(:)
       integer(ISZ):: allocerror
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. sexts .or. .not. linsext(0)) return
       allocate(vz(npz),dzi(npz),stat=allocerror)
@@ -3066,11 +3111,15 @@ c         --- set the field
       enddo
       deallocate(vz,dzi)
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplysext = timeapplysext + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine applyhele(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
      &                     ex,ey,ez,bx,by,bz)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
@@ -3103,6 +3152,8 @@ c   bx, by, bz   magnetic field
       real(kind=8), allocatable, dimension(:):: vz,dzi,tfrac,txpmqoff,typmqoff,
      &                                          trpmqoff,ttpmqoff
       integer(ISZ):: allocerror
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. heles .or. .not. linhele(0)) return
 
@@ -3269,10 +3320,14 @@ c               --- rest of components
       enddo
       deallocate(tiele,vz,dzi,tfrac,txpmqoff,typmqoff,trpmqoff,ttpmqoff)
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplyhele = timeapplyhele + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine applyemlt(np,xp,yp,npz,zp,dtl,dtr,dt,lslice,ex,ey,ez)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       use Mult_data
@@ -3325,6 +3380,8 @@ c  and not once per particle per multipole component.
       real(kind=8), allocatable, dimension(:):: xxx, yyy, zzz, ttt, wzm, rr, tt,
      &                                          mltph, mltsf, tex, tey, tez
       integer(ISZ):: allocerror
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. emlts .or. .not. linemlt(0)) return
 
@@ -3448,10 +3505,14 @@ c       --- do coordinate transform on fields back to warped coordinates
       deallocate(izm, imm, xxx, yyy, zzz, ttt, wzm, 
      &           rr, tt, mltph, mltsf, tex, tey, tez)
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplyemlt = timeapplyemlt + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine applymmlt(np,xp,yp,npz,zp,dtl,dtr,dt,lslice,bx,by,bz)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       use Mult_data
@@ -3503,6 +3564,8 @@ c  and not once per particle per multipole component.
       real(kind=8), allocatable, dimension(:):: xxx, yyy, zzz, ttt, wzm, rr, tt,
      &                                          mltph, mltsf, tbx, tby, tbz
       integer(ISZ):: allocerror
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. mmlts .or. .not. linmmlt(0)) return
 
@@ -3625,6 +3688,9 @@ c       --- do coordinate transform on fields back to warped coordinates
       deallocate(izm, imm, xxx, yyy, zzz, ttt, wzm, 
      &           rr, tt, mltph, mltsf, tbx, tby, tbz)
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplymmlt = timeapplymmlt + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -3798,6 +3864,7 @@ c         --- Add offset
       end
 c=========================================================================== 
       subroutine applyegrd(np,xp,yp,npz,zp,lslice,ex,ey,ez)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       use EGRDdata
@@ -3830,6 +3897,8 @@ c        + ...
       real(kind=8):: ext,eyt,ezt,ex1,ey1,ez1
       real(kind=8),allocatable:: ca(:),sa(:),ct(:),st(:),cp(:),sp(:)
       real(kind=8),allocatable:: zcent(:,:),zlen(:)
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c  Evaluation of E, vectorized over particles
 
@@ -4109,6 +4178,9 @@ c           --- add in the resulting field
       deallocate(zcent)
       deallocate(zlen)
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplyegrd = timeapplyegrd + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c============================================================================ 
@@ -4190,6 +4262,7 @@ c       yl = +x2*sp + y2*cp
       end
 c=========================================================================== 
       subroutine applybgrd(np,xp,yp,npz,zp,lslice,bx,by,bz)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       use BGRDdata
@@ -4222,6 +4295,8 @@ c        + ...
       real(kind=8):: bxt,byt,bzt,bx1,by1,bz1
       real(kind=8),allocatable:: ca(:),sa(:),ct(:),st(:),cp(:),sp(:)
       real(kind=8),allocatable:: zcent(:,:),zlen(:)
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c  Evaluation of B, vectorized over particles
 
@@ -4501,6 +4576,9 @@ c           --- add in the resulting field
       deallocate(zcent)
       deallocate(zlen)
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplybgrd = timeapplybgrd + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c============================================================================ 
@@ -4582,6 +4660,7 @@ c       yl = +x2*sp + y2*cp
       end
 c=========================================================================== 
       subroutine applybsqgrad(np,xp,yp,npz,zp,lslice,b)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       use BSQGRADdata
@@ -4610,6 +4689,8 @@ c             + ...
       integer(ISZ):: io,ip,i,j,k,iz,ii,id,ic
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
       real(kind=8):: tb(bsqgradnc)
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c  Evaluation of B, vectorized over particles
 
@@ -4784,10 +4865,14 @@ c           --- Accumulate the interpolated field.
         enddo
       enddo
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplybsqgrad = timeapplybsqgrad + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=========================================================================== 
       subroutine applypgrd(np,xp,yp,npz,zp,lslice,ex,ey,ez)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       use PGRDdata
@@ -4819,6 +4904,8 @@ c  to have a seperate routine for pgrd.
 
       integer(ISZ):: io,ip,i,j,k,iz,ii,id,im1,jm1
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,xfac,yfac,zfac,txp,typ,temp
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c  Evaluation of E, vectorized over particles
 
@@ -4933,10 +5020,14 @@ c           --- adjust sign of E field for approiate quadrant
         enddo
       enddo
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplypgrd = timeapplypgrd + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine fetchphi_from_pgrd(np,xp,yp,zp,p)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       use PGRDdata
@@ -4947,6 +5038,8 @@ c Fetch phi from pgrd at points.
 
       integer(ISZ):: io,ip,i,j,k,iz,ii,id
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,txp,typ,temp
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. pgrds .or. .not. linpgrd(0)) return
 
@@ -5012,10 +5105,14 @@ c         --- Only calculate for particles inside the field grid
         enddo
       enddo
 
+!$OMP MASTER
+      if (ltoptimesubs) timefetchphi_from_pgrd = timefetchphi_from_pgrd + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,q,m,lslice,ez)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       integer(ISZ):: np
@@ -5043,6 +5140,8 @@ c   ez       axial electric field
       real(kind=8):: zs,ze,zz
       real(kind=8):: frac1,frac2
       integer(ISZ):: io,ip,iz
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. accls .or. .not. linaccl(0) .or. m == 0.) return
 
@@ -5160,10 +5259,14 @@ c           --- and Ez - the expression reduces to q*V/m for small V.
 
       endif
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplyaccl = timeapplyaccl + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=========================================================================== 
       subroutine zgapcorr(np,zp,xp,uzp,gaminv,dtl,dtr,dt,m,q,time)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       integer(ISZ):: np
@@ -5174,6 +5277,8 @@ c===========================================================================
       real(kind=8):: gapez,zp2,delta,qoverm,cacclz,caccll,deltav,zr
       real(kind=8):: zz,zs,ze
       real(kind=8):: vz(np),vzi(np)
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       qoverm = q/m
 
@@ -5264,10 +5369,14 @@ c           --- calculate correction on position
 
       endif
 
+!$OMP MASTER
+      if (ltoptimesubs) timezgapcorr = timezgapcorr + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine applyacclxy(np,xp,zp,uzp,gaminv,dtp,dtl,dtr,m,q,dt,lslice,ez)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       integer(ISZ):: np
@@ -5288,6 +5397,8 @@ c the accl elements was seperated out.
       real(kind=8):: cacclz,caccll,zl,zr
       real(kind=8):: dtl_a,dtr_a,dti_a,vz_a
       integer(ISZ):: io,iz,ip
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c  --- Note that the accl elements in the slice code are slightly different
 c  --- than other hard edged elements since the residence correction is
@@ -5386,10 +5497,14 @@ c  ------------------------------------------------------------
 c  End of acceleration
 c  ------------------------------------------------------------
 
+!$OMP MASTER
+      if (ltoptimesubs) timeapplyacclxy = timeapplyacclxy + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=========================================================================== 
       subroutine zgapcorrxy(np,zp,xp,uzp,gaminv,dtp,dtl,dtr,dt,m,q,time)
+      use Subtimerstop
       use Lattice
       use LatticeInternal
       integer(ISZ):: np
@@ -5402,6 +5517,8 @@ c Add residence correction to particle position when acceleration is done
       real(kind=8):: gapez,zp2,delta,qoverm,vz(np),vzi(np)
       real(kind=8):: dtl_a,dtr_a
       real(kind=8):: cacclz,caccll,zr,deltav
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. accls .or. .not. linaccl(0)) return
 
@@ -5477,10 +5594,14 @@ c           --- calculate correction on position
 
       endif
 
+!$OMP MASTER
+      if (ltoptimesubs) timezgapcorrxy = timezgapcorrxy + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine acclbfrm(zcorrection)
+      use Subtimerstop
       use Constant
       use Beam_acc
       use InGen
@@ -5504,6 +5625,8 @@ c by the calling routine.
       real(kind=8):: gapez,z1,z2,vn,frac,qoverm
       real(kind=8):: zz,zl,zr,vbeamfrmo,deltav
       real(kind=8):: zznew
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c     --- This must be set to zero even if there are no elements since
 c     --- it may be used in the calling code.
@@ -5613,6 +5736,9 @@ c         --- Set the correction to the beam frame position
         endif
       enddo
 
+!$OMP MASTER
+      if (ltoptimesubs) timeacclbfrm = timeacclbfrm + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================

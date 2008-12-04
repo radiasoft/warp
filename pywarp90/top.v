@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.245 $, $Date: 2008/11/19 18:29:50 $
+#@(#) File TOP.V, version $Revision: 3.246 $, $Date: 2008/12/04 23:31:46 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.245 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.246 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -3020,8 +3020,6 @@ chgparticlesdts(pgroup:ParticleGroup) subroutine
 
 ******** Subtimerstop:
 ltoptimesubs logical /.false./
-timezbendcor                   real /0./
-timecalculatebsqgrad           real /0./
 timealotpart                   real /0./
 timechckpart                   real /0./
 timeshftpartwork               real /0./
@@ -3040,7 +3038,6 @@ timecopygrouptopart            real /0./
 timezpartbnd_slave             real /0./
 timereorgparticles_parallel    real /0./
 timecheckzpartbnd              real /0./
-timesetlatt                    real /0./
 timeparallel_sum_mmnts         real /0./
 timeparallel_sum_temperature   real /0./
 timeparallelsumrealarray       real /0./
@@ -3052,3 +3049,27 @@ timeparallelbroadcastrealarray real /0./
 timeparallelbarrier            real /0./
 timeparallelnonzerorealarray   real /0./
 
+timecalculatebsqgrad   real /0./
+timeresetlat           real /0./
+timesetlatt            real /0./
+timeapplyuniformfields real /0./
+timegetbend            real /0./
+timeapplybend          real /0./
+timeapplyquad          real /0./
+timeapplydipo          real /0./
+timezbendcor           real /0./
+timesledgcor           real /0./
+timeapplysext          real /0./
+timeapplyhele          real /0./
+timeapplyemlt          real /0./
+timeapplymmlt          real /0./
+timeapplyegrd          real /0./
+timeapplybgrd          real /0./
+timeapplybsqgrad       real /0./
+timeapplypgrd          real /0./
+timefetchphi_from_pgrd real /0./
+timeapplyaccl          real /0./
+timezgapcorr           real /0./
+timeapplyacclxy        real /0./
+timezgapcorrxy         real /0./
+timeacclbfrm           real /0./
