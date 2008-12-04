@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.72 2008/10/30 00:02:22 dave Exp $"
+particles_version = "$Id: particles.py,v 1.73 2008/12/04 17:26:04 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1326,12 +1326,13 @@ Adds particles to the simulation
   bz = array(bz)*ones(maxlen,'d')
   gi = array(gi)*ones(maxlen,'d')
   pid = array(pid)*ones([maxlen,top.npid],'d')
-  w = array(w)*ones(maxlen,'d')
+  if w is not None:
+    w = array(w)*ones(maxlen,'d')
 
   # --- Set time of creation
   if top.tpid>0: pid[:,top.tpid-1]=top.time
   # --- Set weights
-  if top.wpid>0: pid[:,top.wpid-1]=w
+  if w is not None and top.wpid>0: pid[:,top.wpid-1]=w
   # --- Note that ssn is set in addpart
 
   # --- Set xyz old
