@@ -1439,6 +1439,9 @@ in radius squared.
   def ppzvr(self,**kw):
     return ppzvr(jslist=self.jslist,**kw)
 
+  def ppzvtheta(self,**kw):
+    return ppzvtheta(jslist=self.jslist,**kw)
+
   def ppzvperp(self,**kw):
     return ppzvperp(jslist=self.jslist,**kw)
 
