@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.412 $, $Date: 2008/12/04 23:32:09 $
+c@(#) File W3D.F, version $Revision: 3.413 $, $Date: 2008/12/05 19:27:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1382,6 +1382,7 @@ c     --- The pgroup%ldts variable should be removed since its not really needed
 c=============================================================================
       subroutine positionadvance3d(pgroup,is,np,ipmin,interpdk,dt,
      &                             bendres,bendradi,vbeam)
+      use Subtimers3d
       use ParticleGroupmodule
       use Particles, Only: xoldpid,yoldpid,zoldpid
 c      use LatticeInternal, Only: Mtx, Mty
@@ -2223,6 +2224,7 @@ c----------------------------------------------------------------------------
       end
 c=============================================================================
       subroutine getextpart(pgroup)
+      use Subtimers3d
       use ParticleGroupmodule
       use GlobalVars
       use InGen
@@ -8539,6 +8541,7 @@ c     --- Do any loading that is needed for injection
       end
 c=============================================================================
       subroutine finalizerho()
+      use Subtimers3d
       use InGen3d
       use Fields3dParticles
       use Subcycling
@@ -8708,6 +8711,7 @@ c     --- been.
       end
 c=============================================================================
       subroutine setrhoandphiforfieldsolve(rhopin,phipin)
+      use Subtimers3d
       use InGen
       use InGen3d
       use InMesh3d
@@ -8844,6 +8848,7 @@ c     --- rhop is expensive.
       end
 c=============================================================================
       subroutine fetche3d(pgroup,ipmin,ip,is)
+      use Subtimers3d
       use ParticleGroupmodule
       use Particles, toppgroup => pgroup
       use GlobalVars
@@ -9046,6 +9051,7 @@ c       --- and the data needs to be copied around.
       end
 c=============================================================================
       subroutine fetchb3d(pgroup,ipmin,ip,is)
+      use Subtimers3d
       use ParticleGroupmodule
       use FieldSolveAPI
       type(ParticleGroup):: pgroup
@@ -9074,6 +9080,7 @@ c     --- Don't do anything if there are no particles input.
       end
 c=============================================================================
       subroutine particlegridboundaries3d(pgroup,js)
+      use Subtimers3d
       use ParticleGroupmodule
       use InMesh3d,Only: xmmin,xmmax,ymmin,ymmax,zmmax,zmmin
       use InGen3d,Only: l4symtry,l2symtry,solvergeom,RZgeom,Rgeom
@@ -9390,6 +9397,7 @@ c     --- Also, make sure the rstar is non-zero.
       end
 c=============================================================================
       subroutine fetchphi(n,x,y,z,p)
+      use Subtimers3d
       use InGen
       use InGen3d
       use Picglb
@@ -10120,6 +10128,7 @@ c     --- End of loop over apertures
       end
 c===========================================================================
       subroutine getphipforparticles(indts)
+      use Subtimers3d
 #ifdef MPIPARALLEL
       use InGen3d
       use InMesh3d
@@ -10173,6 +10182,7 @@ c===========================================================================
       end
 c===========================================================================
       subroutine getphiforfields()
+      use Subtimers3d
       use InGen3d
       use InMesh3d
       use Fields3d
