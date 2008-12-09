@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.57 $, $Date: 2008/11/19 18:29:50 $
+c TOPSLAVE.M, version $Revision: 1.58 $, $Date: 2008/12/09 19:13:42 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -47,9 +47,9 @@ c to the appropriate processor.
       integer(MPIISZ):: left_pe,right_pe
       integer(MPIISZ):: nquant,ierr
 
-c     integer(MPIISZ),allocatable:: blocklengths(:),displacements(:)
       include "mpif.h"
       integer(MPIISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
+c     integer(MPIISZ),allocatable:: blocklengths(:),displacements(:)
 c     integer(MPIISZ):: mpinewtype,mpirequest
       integer(MPIISZ):: messid = 20
 
@@ -196,70 +196,94 @@ c           --- advance ip
 c         --- Apply appropriate boundary conditions on particles at the axial
 c         --- ends of the full mesh.
 
-c         --- Periodic boundary conditions: all particles picked out have
-c         --- their z adjusted.
-          if (isleftmostproc .and. pboundleft==periodic) then
-            syslen = zmmax - zmmin
-!$OMP PARALLEL DO
-            do ip=ins_init(is),pgroup%ins(is)-1
-              zz(ip) = zz(ip) + syslen
-            enddo
-!$OMP END PARALLEL DO
-          elseif (isrightmostproc .and. pboundright==periodic) then
-            syslen = zmmax - zmmin
-!$OMP PARALLEL DO
-            do ip=pgroup%ins(is)+pgroup%nps(is),ins_init(is)+nps_init(is)-1
-              zz(ip) = zz(ip) - syslen
-            enddo
-!$OMP END PARALLEL DO
-c         --- Sticky boundary condition: particles picked out are not passed.
-c         --- Instead, they are marked as lost particles and ins and nps are
-c         --- reset to include them.
-          elseif (isleftmostproc .and. pboundleft==absorb) then
-            if (pgroup%ins(is) > ins_init(is)) then
-              pgroup%gaminv(ins_init(is):pgroup%ins(is)-1) = 0.
-              if (.not. lcountaslost)
-     &          pgroup%gaminv(ins_init(is):pgroup%ins(is)-1) = -1.
+          i1 = ins_init(is)
+          i2 = pgroup%ins(is) - 1
+          if (isleftmostproc .and. i2 >= i1) then
+
+            if (pboundleft==periodic) then
+c             --- The position is adjusted, and the data will still be passed
+c             --- to the appropriate neighbor.
+              syslen = zmmax - zmmin
+              do ip=i1,i2
+                zz(ip) = zz(ip) + syslen
+              enddo
+
+            elseif (pboundleft==absorb) then
+c             --- The gaminv is flagged as a lost particle. The ins and nps
+c             --- counts are reset to include the lost particles so that they
+c             --- will be handled properly.
+              if (lcountaslost) then
+                pgroup%gaminv(i1:i2) = 0.
+              else
+                pgroup%gaminv(i1:i2) = -1.
+              endif
+              pgroup%nps(is) = pgroup%nps(is) + (pgroup%ins(is)-ins_init(is))
+              pgroup%ins(is) = ins_init(is)
+
+            elseif (pboundleft==reflect) then
+c             --- The position is adjusted, but the data is not sent.
+c             --- The ins and nps are reset to include them.
+c             --- Note that the lrz case is not needed, since r will never
+c             --- be less than zero.
+              do ip=i1,i2
+                zz(ip) = zmmin + (zmmin - zz(ip))
+                uz(ip) = -uz(ip)
+              enddo
               pgroup%nps(is) = pgroup%nps(is) + (pgroup%ins(is) - ins_init(is))
               pgroup%ins(is) = ins_init(is)
             endif
-          elseif (isrightmostproc .and. pboundright==absorb) then
-            if (ins_init(is)+nps_init(is) > pgroup%ins(is)+pgroup%nps(is)) then
-              i1 = pgroup%ins(is) + pgroup%nps(is)
-              i2 = ins_init(is) + nps_init(is) - 1
-              pgroup%gaminv(i1:i2) = 0.
-              if (.not. lcountaslost) pgroup%gaminv(i1:i2) = -1.
-              pgroup%nps(is) = ins_init(is) + nps_init(is) - pgroup%ins(is)
-            endif
-c         --- Reflecting boundary condition: particles picked out are not
-c         --- passed. Instead, they are put back in the system and ins and nps
-c         --- are reset to include them.
-          elseif (isleftmostproc .and. pboundleft==reflect) then
-            do ip=ins_init(is),pgroup%ins(is)-1
-              zz(ip) = zmmin + (zmmin - zz(ip))
-              uz(ip) = -uz(ip)
-            enddo
-            pgroup%nps(is) = pgroup%nps(is) + (pgroup%ins(is) - ins_init(is))
-            pgroup%ins(is) = ins_init(is)
-          elseif (isrightmostproc .and. pboundright==reflect) then
-            if (lrz) then
-              do ip=pgroup%ins(is)+pgroup%nps(is),ins_init(is)+nps_init(is)-1
-                rr = sqrt(pgroup%xp(ip)**2 + pgroup%yp(ip)**2)
-                pgroup%xp(ip) = (2.*zmmax - rr)*(pgroup%xp(ip)/rr)
-                pgroup%yp(ip) = (2.*zmmax - rr)*(pgroup%yp(ip)/rr)
-                pgroup%uxp(ip) = -pgroup%uxp(ip)
-                pgroup%uyp(ip) = -pgroup%uyp(ip)
-              enddo
-            else
-              do ip=pgroup%ins(is)+pgroup%nps(is),ins_init(is)+nps_init(is)-1
-                zz(ip) = zmmax - (zz(ip) - zmmax)
-                uz(ip) = -uz(ip)
-              enddo
-            endif
-            pgroup%nps(is) = ins_init(is) + nps_init(is) - pgroup%ins(is)
+
           endif
+
+          i1 = pgroup%ins(is) + pgroup%nps(is)
+          i2 = ins_init(is) + nps_init(is) - 1
+          if (isrightmostproc .and. i2 >= i1) then
+
+            if (pboundright==periodic) then
+c             --- The position is adjusted, and the data will still be passed
+c             --- to the appropriate neighbor.
+              syslen = zmmax - zmmin
+              do ip=i1,i2
+                zz(ip) = zz(ip) - syslen
+              enddo
+
+            elseif (pboundright==absorb) then
+c             --- The gaminv is flagged as a lost particle. The ins and nps
+c             --- counts are reset to include the lost particles so that they
+c             --- will be handled properly. Check if there are any flagged
+c             --- particles.
+              if (lcountaslost) then
+                pgroup%gaminv(i1:i2) = 0.
+              else
+                pgroup%gaminv(i1:i2) = -1.
+              endif
+              pgroup%nps(is) = ins_init(is) + nps_init(is) - pgroup%ins(is)
+
+            elseif (pboundright==reflect) then
+c             --- The position is adjusted, but the data is not sent.
+c             --- The ins and nps are reset to include them.
+              if (lrz) then
+                do ip=i1,i2
+                  rr = sqrt(pgroup%xp(ip)**2 + pgroup%yp(ip)**2)
+                  pgroup%xp(ip) = (2.*zmmax - rr)*(pgroup%xp(ip)/rr)
+                  pgroup%yp(ip) = (2.*zmmax - rr)*(pgroup%yp(ip)/rr)
+                  pgroup%uxp(ip) = -pgroup%uxp(ip)
+                  pgroup%uyp(ip) = -pgroup%uyp(ip)
+                enddo
+              else
+                do ip=i1,i2
+                  zz(ip) = zmmax - (zz(ip) - zmmax)
+                  uz(ip) = -uz(ip)
+                enddo
+              endif
+              pgroup%nps(is) = ins_init(is) + nps_init(is) - pgroup%ins(is)
+
+            endif
+          endif
+
 c       --- End of loop over species
         enddo
+
 #ifdef VAMPIR
 c     call VTEND(10,IERR)
 c     call VTBEGIN(20,IERR)
