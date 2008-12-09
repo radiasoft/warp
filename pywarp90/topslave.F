@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.58 $, $Date: 2008/12/09 19:13:42 $
+c TOPSLAVE.M, version $Revision: 1.59 $, $Date: 2008/12/09 20:02:37 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -38,7 +38,7 @@ c to the appropriate processor.
       logical(ISZ):: ldoagain
       logical(ISZ):: isleftmostproc,isrightmostproc
       real(kind=8),pointer:: zz(:),uz(:)
-      real(kind=8):: ztemp,temp,pidtemp(pgroup%npid),syslen,zgrid,rr
+      real(kind=8):: ztemp,temp,pidtemp(pgroup%npid),syslen,zgrid,rr,rrin
       integer(MPIISZ):: is1,is2,is,ip,idest,ipid,ii,il,ir,nn,indts,i1,i2
       integer(MPIISZ):: ins_init(pgroup%ns),nps_init(pgroup%ns)
       integer(MPIISZ):: nsendleft(pgroup%ns),nsendright(pgroup%ns)
@@ -128,7 +128,8 @@ c         --- into the regions of neighboring processors.
 
 c           --- If particle exited to the left, switch with lowest particle
 c           --- in the arrays.
-            if (ztemp < zpminlocal) then
+            if ((ztemp <= zpminlocal .and. pboundleft == absorb) .or.
+     &           ztemp < zpminlocal) then
               idest = pgroup%ins(is)
               pgroup%ins(is) = pgroup%ins(is) + 1
               pgroup%nps(is) = pgroup%nps(is) - 1
@@ -265,14 +266,28 @@ c             --- The ins and nps are reset to include them.
               if (lrz) then
                 do ip=i1,i2
                   rr = sqrt(pgroup%xp(ip)**2 + pgroup%yp(ip)**2)
-                  pgroup%xp(ip) = (2.*zmmax - rr)*(pgroup%xp(ip)/rr)
-                  pgroup%yp(ip) = (2.*zmmax - rr)*(pgroup%yp(ip)/rr)
+                  if (rr > zmmax) then
+                    pgroup%xp(ip) = (2.*zmmax - rr)*(pgroup%xp(ip)/rr)
+                    pgroup%yp(ip) = (2.*zmmax - rr)*(pgroup%yp(ip)/rr)
+                  else ! rr == zmmax
+c                   --- Shift the particle in bounds by a number that is small
+c                   --- compared to the dimensions of the grid.
+                    rrin = zmmax - (zmmax - zmmin)*1.e-12
+                    pgroup%xp(ip) = rrin*(pgroup%xp(ip)/rr)
+                    pgroup%yp(ip) = rrin*(pgroup%yp(ip)/rr)
+                  endif
                   pgroup%uxp(ip) = -pgroup%uxp(ip)
                   pgroup%uyp(ip) = -pgroup%uyp(ip)
                 enddo
               else
                 do ip=i1,i2
-                  zz(ip) = zmmax - (zz(ip) - zmmax)
+                  if (zz(ip) > zmmax) then
+                    zz(ip) = zmmax - (zz(ip) - zmmax)
+                  else ! zz == zmmax
+c                   --- Shift the particle in bounds by a number that is small
+c                   --- compared to the dimensions of the grid.
+                    zz(ip) = zmmax - (zmmax - zmmin)*1.e-12
+                  endif
                   uz(ip) = -uz(ip)
                 enddo
               endif

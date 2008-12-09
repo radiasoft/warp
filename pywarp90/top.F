@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.226 $, $Date: 2008/11/19 18:29:50 $
+c@(#) File TOP.F, version $Revision: 3.227 $, $Date: 2008/12/09 20:02:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2688,7 +2688,7 @@ c=============================================================================
 c  Impose boundary conditions on xp
 
       real(kind=8):: syslen
-      real(kind=8):: rrsq,rr
+      real(kind=8):: rrsq,rr,rrin
       integer(ISZ):: is,ip,indts
 
 c Parallel version makes call to special routine particleboundaries_parallel
@@ -2710,7 +2710,7 @@ c       --- periodic boundary condition
               pgroup%xp(ip) = pgroup%xp(ip) +
      &                      syslen*int((xmmax - pgroup%xp(ip))/syslen)
             endif
-            if (pgroup%xp(ip) > xmmax) then
+            if (pgroup%xp(ip) >= xmmax) then
               pgroup%xp(ip) = pgroup%xp(ip) -
      &                      syslen*int((pgroup%xp(ip) - xmmin)/syslen)
             endif
@@ -2726,7 +2726,7 @@ c       --- particles absorbed (Dirichlet)
             if (.not. pgroup%ldts(is-1)) cycle
             do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
               rrsq = pgroup%xp(ip)**2 + pgroup%yp(ip)**2
-              if (rrsq >= xmmax**2) then
+              if (rrsq > xmmax**2) then
                 pgroup%gaminv(ip) = 0.
                 if (.not. lcountaslost) pgroup%gaminv(ip) = -1.
               endif
@@ -2757,8 +2757,16 @@ c       --- particles absorbed (Dirichlet)
               rrsq = pgroup%xp(ip)**2 + pgroup%yp(ip)**2
               if (rrsq >= xmmax**2) then
                 rr = sqrt(rr)
-                pgroup%xp(ip) = (2.*xmmax - rr)*(pgroup%xp(ip)/rr)
-                pgroup%yp(ip) = (2.*xmmax - rr)*(pgroup%yp(ip)/rr)
+                if (rrsq > xmmax**2) then
+                  pgroup%xp(ip) = (2.*xmmax - rr)*(pgroup%xp(ip)/rr)
+                  pgroup%yp(ip) = (2.*xmmax - rr)*(pgroup%yp(ip)/rr)
+                else ! rrsq == xmmax**2
+c                 --- Shift the particle in bounds by a number that is small
+c                 --- compared to the dimensions of the grid.
+                  rrin = xmmax - (xmmax - xmmin)*1.e-12
+                  pgroup%xp(ip) = rrin*(pgroup%xp(ip)/rr)
+                  pgroup%yp(ip) = rrin*(pgroup%yp(ip)/rr)
+                endif
                 pgroup%uxp(ip) = -pgroup%uxp(ip)
                 pgroup%uyp(ip) = -pgroup%uyp(ip)
               endif
@@ -2771,9 +2779,15 @@ c       --- particles absorbed (Dirichlet)
             if (.not. pgroup%ldts(is-1)) cycle
             do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
               if (pgroup%xp(ip) >= xmmax) then
-                pgroup%xp(ip) = 2.*xmmax - pgroup%xp(ip)
+                if (pgroup%xp(ip) > xmmax) then
+                  pgroup%xp(ip) = 2.*xmmax - pgroup%xp(ip)
+                else ! xp == xmmax
+c                 --- Shift the particle in bounds by a number that is small
+c                 --- compared to the dimensions of the grid.
+                  pgroup%xp(ip) = xmmax - (xmmax - xmmin)*1.e-12
+                endif
                 pgroup%uxp(ip) = -pgroup%uxp(ip)
-              elseif (pgroup%xp(ip) <= xmmin) then
+              elseif (pgroup%xp(ip) < xmmin) then
                 pgroup%xp(ip) = 2.*xmmin - pgroup%xp(ip)
                 pgroup%uxp(ip) = -pgroup%uxp(ip)
               endif
@@ -2829,7 +2843,7 @@ c     --- periodic boundary condition
               pgroup%yp(ip) = pgroup%yp(ip) +
      &                      syslen*int((ymmax - pgroup%yp(ip))/syslen)
             endif
-            if (pgroup%yp(ip) > ymmax) then
+            if (pgroup%yp(ip) >= ymmax) then
               pgroup%yp(ip) = pgroup%yp(ip) -
      &                      syslen*int((pgroup%yp(ip) - ymmin)/syslen)
             endif
@@ -2855,9 +2869,15 @@ c       --- particles absorbed (Dirichlet)
           if (.not. pgroup%ldts(is-1)) cycle
           do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
             if (pgroup%yp(ip) >= ymmax) then
-              pgroup%yp(ip) = 2.*ymmax - pgroup%yp(ip)
+              if (pgroup%yp(ip) > ymmax) then
+                pgroup%yp(ip) = 2.*ymmax - pgroup%yp(ip)
+              else ! yp == ymmax
+c               --- Shift the particle in bounds by a number that is small
+c               --- compared to the dimensions of the grid.
+                pgroup%yp(ip) = ymmax - (ymmax - ymmin)*1.e-12
+              endif
               pgroup%uyp(ip) = -pgroup%uyp(ip)
-            elseif (pgroup%yp(ip) <= ymmin) then
+            elseif (pgroup%yp(ip) < ymmin) then
               pgroup%yp(ip) = 2.*ymmin - pgroup%yp(ip)
               pgroup%uyp(ip) = -pgroup%uyp(ip)
             endif
@@ -2918,12 +2938,13 @@ c     --- periodic boundary condition
               pgroup%zp(ip) = pgroup%zp(ip) +
      &                      syslen*int((zg + zmmax - pgroup%zp(ip))/syslen)
             endif
-            if (pgroup%zp(ip) > zg + zmmax) then
+            if (pgroup%zp(ip) >= zg + zmmax) then
               pgroup%zp(ip) = pgroup%zp(ip) -
      &                      syslen*int((pgroup%zp(ip) - zg - zmmin)/syslen)
             endif
           enddo
         enddo
+
       else
 c     --- other boundary condition (particles absorbed or reflected)
         do is=js1+1,js2+1
@@ -2940,7 +2961,13 @@ c     --- other boundary condition (particles absorbed or reflected)
                 pgroup%gaminv(ip) = 0.
                 if (.not. lcountaslost) pgroup%gaminv(ip) = -1.
               elseif(pboundnz==reflect) then
-                pgroup%zp(ip) = 2.*zg + 2.*zmmax - pgroup%zp(ip)
+                if ((pgroup%zp(ip)-zg) > zmmax) then
+                  pgroup%zp(ip) = 2.*zg + 2.*zmmax - pgroup%zp(ip)
+                else ! zp-zg == zmmax
+c               --- Shift the particle in bounds by a number that is small
+c               --- compared to the dimensions of the grid.
+                  pgroup%zp(ip) = zg + zmmax - (zmmax - zmmin)*1.e-12
+                endif
                 pgroup%uzp(ip) = -pgroup%uzp(ip)
               end if
             elseif ((pgroup%zp(ip)-zg) <= zmmin) then
