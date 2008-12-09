@@ -305,6 +305,18 @@ class MultiGrid(SubcycledPoissonSolver):
   phip = property(**_setupphipproperty())
   del _setupphipproperty
 
+  def _setupselfeproperty():
+    doc = "Electric field array for particles"
+    def fget(self):
+      self.getselfe(recalculate=1)
+      return self.returnfieldp(0,0)
+    def fset(self,value):
+      self.returnfieldp(0,0)[...] = value
+    return locals()
+  # --- This really should be selfep!
+  selfe = property(**_setupselfeproperty())
+  del _setupselfeproperty
+
   def loadrho(self,lzero=None,pgroups=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,pgroups,**kw)
 
