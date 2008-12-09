@@ -65,7 +65,7 @@ rprms:
         if self.zmmax is None: self.zmmax = w3d.zmmax
         if self.dz is None: self.dz = w3d.dz/self.nzscale
         if self.nz is None:
-            self.nz = int((self.zmmax - self.zmmin)/self.dz)
+            self.nz = nint((self.zmmax - self.zmmin)/self.dz)
             self.dz = (self.zmmax - self.zmmin)/self.nz
 
         self.ldoradialdiag = (self.nr is not None)
