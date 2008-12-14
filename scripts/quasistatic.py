@@ -1512,11 +1512,18 @@ class Quasistatic:
     il = pg.ins[js]-1
     iu = il+pg.nps[js]
     stckxy3d(top.pgroup,js,top.zbeam,true)
+    partbndwithdata(pg.nps[js],pg.xp[il:iu],pg.uxp[il:iu],pg.gaminv[il:iu],
+                    w3d.xmmax,w3d.xmmin,w3d.dx,0.,
+                    top.pboundxy,top.pboundxy)
+    partbndwithdata(pg.nps[js],pg.yp[il:iu],pg.uyp[il:iu],pg.gaminv[il:iu],
+                    w3d.ymmax,w3d.ymmin,w3d.dy,0.,
+                    top.pboundxy,top.pboundxy)
     if js==0 or js==w3d.nzp-1:
       if js==0:top.pboundnz=-1
       if js==w3d.nzp-1:top.pbound0=-1
-      zpartbndwithdata(pg.nps[js],pg.zp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                       w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
+      partbndwithdata(pg.nps[js],pg.zp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                      w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid,
+                      top.pbound0,top.pboundnz)
       if js==0:top.pboundnz=0
       if js==w3d.nzp-1:top.pbound0=0
     if self.scraper is not None:self.scraper.scrape(js)
@@ -2654,6 +2661,8 @@ class Quasistaticold:
 #            window(3);ppzvx(js=1,msize=2);window(0)
           if self.l_verbose:print me,top.it,self.iz,'me = ',me,';stckxy3d'
           stckxy3d(top.pgroup,js,top.zbeam,true)
+          # --- This may need to call partbndwithdata since stckxy3d does not
+          # --- check against the grid anymore!
           if self.scraper is not None:
             self.scraper.scrapeall(local=1,clear=1)
           else:

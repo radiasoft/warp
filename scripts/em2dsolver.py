@@ -1021,16 +1021,24 @@ class EM2D(object):
     if pg.nps[js]==0:return
     il = pg.ins[js]-1
     iu = il+pg.nps[js]
-    stckxy3d(pg.nps[js],pg.xp[il:iu],w3d.xmmax,w3d.xmmin,w3d.dx,
-                  pg.yp[il:iu],w3d.ymmax,w3d.ymmin,w3d.dy,
-                  pg.zp[il:iu],w3d.zmminlocal,w3d.dz,
-                  pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                  top.zgrid,top.zbeam,w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
+    #stckxy3d(pg.nps[js],pg.xp[il:iu],w3d.xmmax,w3d.xmmin,w3d.dx,
+    #              pg.yp[il:iu],w3d.ymmax,w3d.ymmin,w3d.dy,
+    #              pg.zp[il:iu],w3d.zmminlocal,w3d.dz,
+    #              pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+    #              top.zgrid,top.zbeam,w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
+    stckxy3d(pg,js,top.zbeam,true)
+    partbndwithdata(pg.nps[js],pg.xp[il:iu],pg.uxp[il:iu],pg.gaminv[il:iu],
+                    w3d.xmmaxlocal,w3d.xmminlocal,w3d.dx,0.,
+                    top.pboundxy,top.pboundxy)
+    partbndwithdata(pg.nps[js],pg.yp[il:iu],pg.uyp[il:iu],pg.gaminv[il:iu],
+                    w3d.ymmaxlocal,w3d.ymminlocal,w3d.dy,0.,
+                    top.pboundxy,top.pboundxy)
     if js==0 or js==w3d.nzp-1:
       if js==0:top.pboundnz=-1
       if js==w3d.nzp-1:top.pbound0=-1
-      zpartbndwithdata(pg.nps[js],pg.zp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                       w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz,top.zgrid)
+      partbndwithdata(pg.nps[js],pg.zp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                      w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz,top.zgrid,
+                      top.pbound0,top.pboundnz)
       if js==0:top.pboundnz=0
       if js==w3d.nzp-1:top.pbound0=0
     if self.scraper is not None:self.scraper.scrape(js)
