@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.227 $, $Date: 2008/12/09 20:02:37 $
+c@(#) File TOP.F, version $Revision: 3.228 $, $Date: 2008/12/14 20:39:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2989,46 +2989,96 @@ c --- end of ifelse above for parallel version.
       return
       end
 c=============================================================================
-      subroutine zpartbndwithdata(n,z,uz,gaminv,zmmax,zmmin,dz,zgrid)
+      subroutine particleboundarieswithdata(n,x,y,z,ux,uy,uz,gaminv,
+     &                                      xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
+     &                                      zgrid,
+     &                                      pboundxy,pbound0,pboundnz,lrz)
       use GlobalVars
-      use InGen
-      use InPart
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n),ux(n),uy(n),uz(n),gaminv(n)
+      real(kind=8):: xmmin,xmmax,ymmin,ymmax,zmmax,zmmin,zgrid
+      integer(ISZ):: pboundxy,pbound0,pboundnz
+      logical(ISZ):: lrz
+
+c Impose particles boundary conditions
+
+      real(kind=8),allocatable:: r(:),ri(:),ur(:),ut(:)
+
+      if (lrz) then
+        allocate(r(n),ri(n),ur(n),ut(n))
+        r = sqrt(x**2 + y**2)
+        ri = 1./r
+        ur = ux*x*ri + uy*y*ri
+        ut = ux*y*ri - uy*x*ri
+        call partbndwithdata(n,r,ur,gaminv,xmmax,xmmin,0.,pboundxy,pboundxy)
+        ux = ur*x*ri - ut*y*ri
+        uy = ur*y*ri + ut*x*ri
+        x = r*x*ri
+        y = r*y*ri
+        deallocate(r,ri,ur,ut)
+      else
+        call partbndwithdata(n,x,ux,gaminv,xmmax,xmmin,0.,pboundxy,pboundxy)
+        call partbndwithdata(n,y,uy,gaminv,ymmax,ymmin,0.,pboundxy,pboundxy)
+      endif
+      
+      call partbndwithdata(n,z,uz,gaminv,zmmax,zmmin,zgrid,pbound0,pboundnz)
+
+      return
+      end
+c=============================================================================
+      subroutine partbndwithdata(n,z,uz,gaminv,zmmax,zmmin,zgrid,
+     &                           pbound0,pboundnz)
+      use GlobalVars
       integer(ISZ):: n
       real(kind=8):: z(n),uz(n),gaminv(n)
-      real(kind=8):: zmmax,zmmin,dz,zgrid
+      real(kind=8):: zmmax,zmmin,zgrid
+      integer(ISZ):: pbound0,pboundnz
 
-c  Impose boundary conditions on z
+c Impose particles boundary conditions along one axis
 
       real(kind=8):: syslen
       integer(ISZ):: is,ip
 
       if (pbound0==periodic) then
+
 c     --- periodic boundary condition
         syslen = zmmax - zmmin
         do ip=1,n
           if (z(ip) < zgrid + zmmin)
      &      z(ip) = z(ip) + syslen*int((zgrid + zmmax - z(ip))/syslen)
-          if (z(ip) > zgrid + zmmax)
+          if (z(ip) >= zgrid + zmmax)
      &      z(ip) = z(ip) - syslen*int((z(ip) - zgrid - zmmin)/syslen)
         enddo
+
       else
+
 c     --- other boundary condition (particles absorbed or reflected)
         do ip=1,n
+
           if ((z(ip)-zgrid) >= zmmax) then
+
             if(pboundnz==absorb) then
               gaminv(ip) = 0.
             elseif(pboundnz==reflect) then
-              z(ip) = 2.*zgrid + 2.*zmmax - z(ip)
+              if ((z(ip)-zgrid) > zmmax) then
+                z(ip) = 2.*zgrid + 2.*zmmax - z(ip)
+              else ! if (z(ip)-zgrid) == zmmax
+                z(ip) = zgrid + zmmax - (zmmax - zmmin)*1.e-12
+              endif
               uz(ip) = -uz(ip)
             end if
+
           elseif ((z(ip)-zgrid) <= zmmin) then
+
             if(pbound0==absorb) then
               gaminv(ip) = 0.
             elseif(pbound0==reflect) then
               z(ip) = 2.*zgrid + 2.*zmmin - z(ip)
               uz(ip) = -uz(ip)
             end if
+
           endif
+
         enddo
       endif
 

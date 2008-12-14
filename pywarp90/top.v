@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.246 $, $Date: 2008/12/04 23:31:46 $
+#@(#) File TOP.V, version $Revision: 3.247 $, $Date: 2008/12/14 20:39:12 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.246 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.247 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2802,9 +2802,17 @@ yparticleboundaries(pgroup:ParticleGroup,js1:integer,js2:integer,
 zparticleboundaries(pgroup:ParticleGroup,js1:integer,js2:integer,
                     zmmax:real,zmmin:real,lcountaslost:logical) subroutine
        # Apply z, grid based boundary conditions
-zpartbndwithdata(n:integer,z(n):real,uz(n):real,gaminv(n):real,
-                 zmmax:real,zmmin:real,dz:real,zgrid:real) subroutine
-       # Enforces axial particle boundary conditions
+particleboundarieswithdata(n:integer,x:real,y:real,z:real,
+                           ux:real,uy:real,uz:real,gaminv:real,
+                           xmmin:real,xmmax:real,ymmin:real,ymmax:real,
+                           zmmin:real,zmmax:real,zgrid:real,
+                           pboundxy:integer,pbound0:integer,pboundnz:integer,
+                           lrz:logical) subroutine
+       # Impose particle boundary conditions
+partbndwithdata(n:integer,z(n):real,uz(n):real,gaminv(n):real,
+                zmmax:real,zmmin:real,dz:real,zgrid:real,
+                pbound0:integer,pboundnz:integer) subroutine
+       # Impose particle boundary conditions along one axis
 reorgparticles(pgroup:ParticleGroup,
                l4symtry:logical,l2symtry:logical,lrz:logical) subroutine
        # Reorganizes particles for the parallel version
