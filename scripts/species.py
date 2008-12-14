@@ -1524,9 +1524,15 @@ in radius squared.
   # --- class object. i.e. beam.__class__.sw.__doc__
   def _getpgroupattribute(name,doc=None):
     def fget(self):
-      return getattr(self.pgroup,name)[self.jslist]
+      if len(self.jslist) == 1:
+        return getattr(self.pgroup,name)[self.jslist[0]]
+      else:
+        return getattr(self.pgroup,name)[self.jslist]
     def fset(self,value):
-      getattr(self.pgroup,name)[self.jslist] = value
+      if len(self.jslist) == 1:
+        getattr(self.pgroup,name)[self.jslist[0]] = value
+      else:
+        getattr(self.pgroup,name)[self.jslist] = value
     return fget,fset,None,doc
 
   sw = property(*_getpgroupattribute('sw',
@@ -1556,9 +1562,15 @@ in radius squared.
 
   def _gettopattribute(name,doc=None):
     def fget(self):
-      return getattr(top,name)[...,self.jslist]
+      if len(self.jslist) == 1:
+        return getattr(top,name)[self.jslist[0]]
+      else:
+        return getattr(top,name)[self.jslist]
     def fset(self,value):
-      getattr(top,name)[...,self.jslist] = value
+      if len(self.jslist) == 1:
+        getattr(top,name)[self.jslist[0]] = value
+      else:
+        getattr(top,name)[self.jslist] = value
     return fget,fset,None,doc
 
   # InPart
@@ -1594,17 +1606,10 @@ in radius squared.
   xpcent = property(*_gettopattribute('xpcent_s'))
   ypcent = property(*_gettopattribute('ypcent_s'))
   efetch = property(*_gettopattribute('efetch'))
-  depos_order = property(*_gettopattribute('depos_order'))
 
   # InjectVars
-  vzinject = property(*_gettopattribute('vzinject'))
-  finject = property(*_gettopattribute('finject'))
-  winject = property(*_gettopattribute('winject'))
   npinject = property(*_gettopattribute('npinje_s'))
   rnpinject = property(*_gettopattribute('rnpinje_s'))
-  npinjtmp = property(*_gettopattribute('npinjtmp'))
-  ftinject = property(*_gettopattribute('ftinject'))
-  wtinject = property(*_gettopattribute('wtinject'))
   ntinject = property(*_gettopattribute('ntinject'))
 
   # SelfB
@@ -1613,6 +1618,33 @@ in radius squared.
   # LostParticles
   inslost = property(*_gettopattribute('inslost'))
   npslost = property(*_gettopattribute('npslost'))
+
+  # --- For variables that are 2, 3, or 4-D
+  def _gettopattribute(name,doc=None):
+    def fget(self):
+      if len(self.jslist) == 1:
+        return getattr(top,name)[...,self.jslist[0]]
+      else:
+        return getattr(top,name)[...,self.jslist]
+    def fset(self,value):
+      if len(self.jslist) == 1:
+        getattr(top,name)[...,self.jslist[0]] = value
+      else:
+        getattr(top,name)[...,self.jslist] = value
+    return fget,fset,None,doc
+
+  # InPart
+  depos_order = property(*_gettopattribute('depos_order'))
+
+  # InjectVars
+  vzinject = property(*_gettopattribute('vzinject'))
+  finject = property(*_gettopattribute('finject'))
+  winject = property(*_gettopattribute('winject'))
+  npinjtmp = property(*_gettopattribute('npinjtmp'))
+  ftinject = property(*_gettopattribute('ftinject'))
+  wtinject = property(*_gettopattribute('wtinject'))
+  tinj_npactual = property(*_gettopattribute('tinj_npactual'))
+  tinjprev = property(*_gettopattribute('tinjprev'))
 
   # ExtPart
   nep = property(*_gettopattribute('nep'))
@@ -1628,9 +1660,15 @@ in radius squared.
 
   def _getw3dattribute(name,doc=None):
     def fget(self):
-      return getattr(w3d,name)[...,self.jslist]
+      if len(self.jslist) == 1:
+        return getattr(w3d,name)[self.jslist[0]]
+      else:
+        return getattr(w3d,name)[self.jslist]
     def fset(self,value):
-      getattr(w3d,name)[...,self.jslist] = value
+      if len(self.jslist) == 1:
+        getattr(w3d,name)[self.jslist[0]] = value
+      else:
+        getattr(w3d,name)[self.jslist[0]] = value
     return fget,fset,None,doc
 
   # w3d.DKInterp
@@ -1639,7 +1677,6 @@ in radius squared.
   alpha0 = property(*_getw3dattribute('alpha0'))
   acntr = property(*_getw3dattribute('acntr'))
   usealphacalc = property(*_getw3dattribute('usealphacalc'))
-  parameter = property(*_getw3dattribute('parameter'))
   notusealphcalc = property(*_getw3dattribute('notusealphcalc'))
   interpdk = property(*_getw3dattribute('interpdk'))
 
