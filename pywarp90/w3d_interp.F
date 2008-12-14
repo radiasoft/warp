@@ -88,7 +88,7 @@ c     3D xpush with interpolation between drift kinetic and full PIC
       use ParticleGroupmodule
       use DKInterp
       use DKInterptmp
-      use InGen, only: pboundxy
+      use InGen, only: pboundxy,pbound0,pboundnz
       use FieldSolveAPI, only: ipminfsapi,npfsapi,jsfsapi
       use InGen3d
       use Picglb
@@ -218,13 +218,15 @@ c       particle out of bounds of the field array.  IF it does,
 c       apply particle b.c.s.  Don't change the v's so use
 c       scratch arrays.  Also this won't do the right
 c       thing for absorbing b.c.'s.
+c       --- Note that for the parallel version, this requires extra guard
+c       --- cells in the field arrays since this routine does not exchange
+c       --- particles with neighboring processors.
         gaminvscratch = 1.
-        call stckxy3d(npd,xbar,xmmax,xmmin,dx,ybar,ymmax,
-     &                   ymmin,dy,zbar,zmminlocal,dz,uxscratch,
-     &                   uyscratch,uzscratch,gaminvscratch,
-     &                   zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
-        call zpartbndwithdata(npd,zbar,uzscratch,gaminvscratch,
-     &                        zmmax,zmmin,dz,zgrid)
+        call particleboundarieswithdata(npd,xbar,ybar,zbar,
+     &                             uxscratch,uyscratch,uzscratch,gaminvscratch,
+     &                             xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zgrid,
+     &                             pboundxy,pbound0,pboundnz,
+     &                             solvergeom==RZgeom)
 
         do i=1,npd      
           if (gaminvscratch(i)==0.) then
