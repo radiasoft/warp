@@ -53,6 +53,9 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- in the solve method when there are bends.
     self.linbend = false
 
+    # --- By default, the E field is not directly calculated.
+    self.lwithselfe = 0
+
   def initializeconductors(self):
     # --- Create the attributes for holding information about conductors
     # --- and conductor objects.
@@ -203,7 +206,13 @@ class MultiGrid(SubcycledPoissonSolver):
       # --- Number of fields (E only)
       nfields = 1
 
-    if sometrue(top.efetch == 3):
+    try:
+      self.lwithselfe
+    except AttributeError:
+      self.lwithselfe = 0
+    self.lwithselfe = self.lwithselfe or sometrue(top.efetch == 3)
+
+    if self.lwithselfe:
       return ((1+self.nxp,1+self.nyp,1+self.nzp),
               (3,1+self.nxp,1+self.nyp,1+self.nzp,nfields),
               (1+self.nxp+2*self.nxguard,1+self.nyp+2*self.nyguard,1+self.nzp+2*self.nzguard))
@@ -309,9 +318,9 @@ class MultiGrid(SubcycledPoissonSolver):
     doc = "Electric field array for particles"
     def fget(self):
       self.getselfe(recalculate=1)
-      return self.returnfieldp(0,0)
+      return self.returnfieldp(0,0)[...,0]
     def fset(self,value):
-      self.returnfieldp(0,0)[...] = value
+      self.returnfieldp(0,0)[...,0] = value
     return locals()
   # --- This really should be selfep!
   selfe = property(**_setupselfeproperty())
@@ -485,7 +494,8 @@ class MultiGrid(SubcycledPoissonSolver):
   def applysourceboundaryconditions(self):
     applyrhoboundaryconditions3d(self.source,self.ncomponents,
                                  self.nxlocal,self.nylocal,self.nzlocal,
-                                 self.bounds,self.fsdecomp)
+                                 self.bounds,self.fsdecomp,
+                                 self.solvergeom==w3d.RZgeom)
     '''
     if ((self.pbounds[0] == 1 or self.l4symtry) and self.nx > 0 and
         self.solvergeom != w3d.RZgeom and
@@ -572,10 +582,9 @@ class MultiGrid(SubcycledPoissonSolver):
     try: self.fieldp
     except AttributeError: self.setfieldpforparticles(0,0,0)
 
-    if type(self.fieldp) != ArrayType:
-      # --- This should only ever be done by an external routine, such as
-      # --- a plotting function.
-      self.fieldp = fzeros((3,1+self.nxp,1+self.nyp,1+self.nzp,1),'d')
+    self.lwithselfe = 1
+    self.allocatedataarrays()
+    self.fieldp = self.returnfieldp(0,0)
     if recalculate:
       if isinstance(self.potentialp,FloatType): return
       if isinstance(self.fieldp,FloatType): return
