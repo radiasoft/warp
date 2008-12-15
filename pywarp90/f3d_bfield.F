@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.44 $, $Date: 2008/11/19 18:29:49 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.45 $, $Date: 2008/12/15 22:29:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -452,7 +452,8 @@ c  and puts the result into both slices.
       j => bfield%j
 
       call applyrhoboundaryconditions3d(j,3,bfield%nxlocal,bfield%nylocal,
-     &                                  bfield%nzlocal,bounds,fsdecomp)
+     &                                  bfield%nzlocal,bounds,fsdecomp,
+     &                                  solvergeom==RZgeom)
 
 !$OMP MASTER
       if (lf3dtimesubs) timeperj3d = timeperj3d + wtime() - substarttime
