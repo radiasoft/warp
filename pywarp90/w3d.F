@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.413 $, $Date: 2008/12/05 19:27:18 $
+c@(#) File W3D.F, version $Revision: 3.414 $, $Date: 2008/12/15 22:28:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2367,7 +2367,7 @@ c       --- flags.
 
 #ifdef MPIPARALLEL
         call applyrhoboundaryconditions3d(rho,1,nxlocal,nylocal,nzlocal,
-     &                                    bounds,fsdecomp)
+     &                                    bounds,fsdecomp,solvergeom==RZgeom)
 #else
         if (bounds(0) == periodic .or. bounds(1) == periodic) then
           rho(0,:,:) = rho(0,:,:) + rho(nx,:,:)
@@ -2397,7 +2397,7 @@ c       --- flags.
       end
 c=============================================================================
       subroutine applyrhoboundaryconditions3d(rho,nc,nxlocal,nylocal,nzlocal,
-     &                                        bounds,fsdecomp)
+     &                                        bounds,fsdecomp,lrz)
       use GlobalVars
       use Subtimers3d
       use Decompositionmodule
@@ -2405,12 +2405,14 @@ c=============================================================================
       real(kind=8):: rho(0:nc-1,0:nxlocal,0:nylocal,0:nzlocal)
       integer(ISZ):: bounds(0:5)
       type(Decomposition):: fsdecomp
+      logical(ISZ):: lrz
 
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
       if (nxlocal > 0) then
-        if ((bounds(0) == neumann) .and. fsdecomp%ixproc == 0) then
+        if ((bounds(0) == neumann) .and. fsdecomp%ixproc == 0
+     &      .and. .not. lrz) then
           rho(:,0,:,:) = 2.*rho(:,0,:,:)
         endif
         if (bounds(1) == neumann .and.

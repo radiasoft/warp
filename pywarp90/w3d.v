@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.289 $, $Date: 2008/12/04 23:32:09 $
+#@(#) File W3D.V, version $Revision: 3.290 $, $Date: 2008/12/15 22:28:33 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.289 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.290 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -938,7 +938,8 @@ applyrhoboundaryconditions()
              subroutine # Applies boundary conditions to rho
 applyrhoboundaryconditions3d(rho:real,nc:integer,
                              nxlocal:integer,nylocal:integer,nzlocal:integer,
-                             bounds(0:5):integer,fsdecomp:Decomposition)
+                             bounds(0:5):integer,fsdecomp:Decomposition,
+                             lrz:logical)
              subroutine # Applies boundary conditions to 3-D rho
 prntpa3d(lprntpara:logical)
              subroutine # Prints out 3d specific stuff (like prntpara())
