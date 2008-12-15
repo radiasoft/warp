@@ -487,7 +487,7 @@ Creates a new species of particles. All arguments are optional.
                            lmomentum=0,spacing='random',nr=None,nz=None,
                            thetamin=0.,thetamax=2.*pi,
                            lvariableweights=None,lallindomain=0,
-                           ellipticity=1.,
+                           ellipticity=1.,wscale=1.,
                            **kw):
     """Creates particles, uniformly filling a cylinder.
 If top.wpid is nonzero, then the particles are uniformly spaced in radius and the
@@ -518,6 +518,8 @@ in radius squared.
                      weighted according to their radius, otherwise all will
                      have the same weight. Use this option to override the
                      default.
+ - wscale=1.: Scale factor applied to the particle weights. Only used if
+              variable weights are being used.
  - lallindomain=0: If true, the code only loads particles within the domain. This
                    only matters when parallel.
     """
@@ -677,9 +679,9 @@ in radius squared.
     # --- The weights can be set now if needed (after clipping the positions).
     # --- Note that rmax must be scaled out.
     if not lvariableweights:
-      if top.wpid != 0: kw['w'] = 1.
+      if top.wpid != 0: kw['w'] = 1.*wscale
     else:
-      kw['w'] = 2*sqrt(x**2 + y**2)/rmax
+      kw['w'] = 2*sqrt(x**2 + y**2)/rmax*wscale
 
     # --- Now the velocities are generated (after clipping the positions).
     vx = SpRandom(vxmean,vthx,np)
