@@ -1226,6 +1226,9 @@ class SubcycledPoissonSolver(FieldSolver):
             if self.nxlocal > 0:
               x = pgroup.xp[i1:i2]
               if self.l4symtry: x = abs(x)
+              if self.solvergeom == w3d.RZgeom:
+                y = pgroup.yp[i1:i2]
+                x = sqrt(x**2 + y**2)
               assert min(x) >= self.xmminp,\
                      "Particles in species %d have x below the grid when depositing the source, min x = %e"%(js,min(x))
               assert max(x) < self.xmmaxp,\
@@ -1329,6 +1332,9 @@ class SubcycledPoissonSolver(FieldSolver):
       if self.nxlocal > 0:
         xdebug = x
         if self.l4symtry: xdebug = abs(x)
+        if self.solvergeom == w3d.RZgeom:
+          ydebug = y
+          xdebug = sqrt(xdebug**2 + ydebug**2)
         assert min(xdebug) >= self.xmminp,\
                "Particles in species %d have x below the grid when fetching the field"%jsid
         assert max(xdebug) < self.xmmaxp,\
@@ -1372,6 +1378,9 @@ class SubcycledPoissonSolver(FieldSolver):
       if self.nxlocal > 0:
         xdebug = x
         if self.l4symtry: xdebug = abs(x)
+        if self.solvergeom == w3d.RZgeom:
+          ydebug = y
+          xdebug = sqrt(xdebug**2 + ydebug**2)
         assert min(xdebug) >= self.xmminlocal,\
                "Particles have x below the grid when fetching the potential"
         assert max(xdebug) < self.xmmaxlocal,\
@@ -1638,6 +1647,9 @@ of the arrays used by the field solve"""
         i2 = pgroup.ins[js]+pgroup.nps[js]-1
         if self.nx > 0:
           x = pgroup.xp[i1:i2]
+          if self.solvergeom == w3d.RZgeom:
+            y = pgroup.yp[i1:i2]
+            x = sqrt(x**2 + y**2)
           assert min(abs(x-self.xmmin)) >= 0.,\
                  text+"Particles in species %d have x below the grid when depositing the source, min x = %e"%(js,min(x))
           assert max(x) < self.xmmax,\
