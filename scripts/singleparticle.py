@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.41 2008/11/19 18:30:00 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.42 2008/12/18 00:18:22 dave Exp $"
 
 class TraceParticle(object):
   """
@@ -155,7 +155,7 @@ Available methods...
 
     # --- Initialize particle coordinates
     self.enable()
-    self.checklive()
+    #self.checklive()
 
   #----------------------------------------------------------------------
   def enable(self):
@@ -169,7 +169,7 @@ Available methods...
     # --- Enforce the transverse particle boundary conditions
     if self.enforceinitboundaries:
       particleboundaries3d(top.pgroup,self.js,true)
-    self.checklive()
+    #self.checklive()
     # --- Add routine after step to save data
     installafterstep(self.spsavedata)
 
@@ -180,19 +180,19 @@ Available methods...
     self.enabled = 0
     # --- Save the last value in case the particles are re-enabled
     for i in range(self.nn):
-      ii = selectparticles(ssn=self.ssn[i])
+      ii = selectparticles(js=self.js,ssn=self.ssn[i])
       if len(ii) == 0:
         self.live[i] = 0
         self.uz[i] = 0.
         continue
-      self.x[i] = getx(ii=ii)
-      self.y[i] = gety(ii=ii)
-      self.z[i] = getz(ii=ii)
-      self.ux[i] = getux(ii=ii)
-      self.uy[i] = getuy(ii=ii)
-      self.uz[i] = getuz(ii=ii)
-      self.gi[i] = getgaminv(ii=ii)
-      self.pid[i,:] = getpid(ii=ii,id=-1)[0,:]
+      self.x[i] = getx(js=self.js,ii=ii)
+      self.y[i] = gety(js=self.js,ii=ii)
+      self.z[i] = getz(js=self.js,ii=ii)
+      self.ux[i] = getux(js=self.js,ii=ii)
+      self.uy[i] = getuy(js=self.js,ii=ii)
+      self.uz[i] = getuz(js=self.js,ii=ii)
+      self.gi[i] = getgaminv(js=self.js,ii=ii)
+      self.pid[i,:] = getpid(js=self.js,ii=ii,id=-1)[0,:]
       # --- Set gaminv to zero, signal of dead particles
       top.pgroup.gaminv[ii] = 0.
     # --- Clear out the tracer particles
@@ -205,11 +205,12 @@ Available methods...
     """Check which particles are still alive. Note that this refers directly
 to the WARP particle database since the particle's data is not saved if it
 is not alive."""
+    self.live = zeros(self.nn,'l')
     for i in xrange(self.nn):
-      ii = selectparticles(ssn=self.ssn[i])
+      ii = selectparticles(js=self.js,ssn=self.ssn[i])
       # --- If the particle is not live, then there is no particle with
       # --- that ssn.
-      if len(ii) == 0: self.live[i] = 0
+      if len(ii) > 0: self.live[i] = 1
 
   #----------------------------------------------------------------------
   def reset(self,clearhistory=0):
@@ -267,17 +268,17 @@ is not alive."""
     if not self.savedata: return
     if (top.it - self.startit) % self.savedata != 0: return
     for i in xrange(self.nn):
-      ii = selectparticles(ssn=self.ssn[i])
+      ii = selectparticles(js=self.js,ssn=self.ssn[i])
       self.spt[i].append(top.time)
-      self.spx[i].append(getx(ii=ii))
-      self.spy[i].append(gety(ii=ii))
-      self.spz[i].append(getz(ii=ii))
-      self.spvx[i].append(getux(ii=ii))
-      self.spvy[i].append(getuy(ii=ii))
-      self.spvz[i].append(getuz(ii=ii))
-      self.spgi[i].append(getgaminv(ii=ii))
+      self.spx[i].append(getx(js=self.js,ii=ii))
+      self.spy[i].append(gety(js=self.js,ii=ii))
+      self.spz[i].append(getz(js=self.js,ii=ii))
+      self.spvx[i].append(getux(js=self.js,ii=ii))
+      self.spvy[i].append(getuy(js=self.js,ii=ii))
+      self.spvz[i].append(getuz(js=self.js,ii=ii))
+      self.spgi[i].append(getgaminv(js=self.js,ii=ii))
       if package()[0] == 'wxy':
-        self.spdt[i].append(getpid(ii=ii,id=wxy.dtpid-1))
+        self.spdt[i].append(getpid(js=self.js,ii=ii,id=wxy.dtpid-1))
 
   #----------------------------------------------------------------------
   def getsavedata(self):
