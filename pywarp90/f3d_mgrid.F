@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.182 $, $Date: 2008/11/27 01:12:17 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.183 $, $Date: 2008/12/19 00:50:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -3018,7 +3018,7 @@ c=============================================================================
         if (bounds(1) == 1) u(nx+1:nx+delx,0:ny,0:nz,:) = u(nx-1:nx-delx:-1,0:ny,0:nz,:)
         if (bounds(0) == 2 .and. bounds(1) == 2) then
           u(-delx:-1,0:ny,0:nz,:) = u(nx-delx:nx-1,0:ny,0:nz,:)
-          u(nx+1:nx+delx,0:ny,0:nz,:) = u(1:delx,0:ny,0:nz,:)
+          u(nx:nx+delx,0:ny,0:nz,:) = u(0:delx,0:ny,0:nz,:)
         endif
       endif
 
@@ -3042,7 +3042,7 @@ c=============================================================================
         if (bounds(3) == 1) u(:,ny+1:ny+dely,0:nz,:) = u(:,ny-1:ny-dely:-1,0:nz,:)
         if (bounds(2) == 2 .and. bounds(3) == 2) then
           u(:,-dely:-1,0:nz,:)   = u(:,ny-dely:ny-1,0:nz,:)
-          u(:,ny+1:ny+dely,0:nz,:) = u(:,1:dely,0:nz,:)
+          u(:,ny:ny+dely,0:nz,:) = u(:,0:dely,0:nz,:)
         endif
       endif
 
@@ -3066,7 +3066,7 @@ c=============================================================================
         if (bounds(5) == 1) u(:,:,nz+1:nz+delz,:) = u(:,:,nz-1:nz-delz:-1,:)
         if (bounds(4) == 2 .and. bounds(5) == 2) then
           u(:,:,-delz:-1,:)   = u(:,:,nz-delz:nz-1,:)
-          u(:,:,nz+1:nz+delz,:) = u(:,:,1:delz,:)
+          u(:,:,nz:nz+delz,:) = u(:,:,0:delz,:)
         endif
       endif
 
