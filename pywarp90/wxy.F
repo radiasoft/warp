@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.95 $, $Date: 2008/11/19 18:29:50 $
+c@(#) File WXY.M, version $Revision: 3.96 $, $Date: 2008/12/22 21:43:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1451,13 +1451,12 @@ c         --- Apply particle boundary conditions
      &                     uyp(ins(is)),uzp(ins(is)),zgrid)
           endif
 
-          if (stickyxy)
-     &       call stckxy3d(nps(is),xp(ins(is)),xmmax,xmmin,dx,
-     &                     yp(ins(is)),ymmax,ymmin,dy,
-     &                     zp(ins(is)),zmminlocal,dz,uxp(ins(is)),
-     &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
-     &                     zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
+c         if (stickyxy)
+c    &       call stckxy3d(pgroup,is-1,zgrid,.true.)
         enddo
+
+c       --- This may not be quite right since is checks z boundaries.
+        call particleboundaries3d(pgroup,-1,.true.)
 
         if (lcallscraper) call callpythonfunc("callscraper","controllers")
 
