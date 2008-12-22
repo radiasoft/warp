@@ -307,7 +307,7 @@ class AMRTree(VisualizableClass):
 #        return b**int(log(fg)/log(b**dim))
       else:
         nbpcell=4
-        fg = int(f*w3d.dx*w3d.dy*w3d.dz/(top.sw[0]*echarge))
+        fg = int(f*w3d.dx*w3d.dy*w3d.dz/(top.pgroup.sw[0]*echarge))
         fg = where(fg>1,fg,1)
         fg = MRfact**int(log(fg)/log(nbpcell*MRfact**dim))
         return where(fg>n,n,fg)
