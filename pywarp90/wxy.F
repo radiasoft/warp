@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.96 $, $Date: 2008/12/22 21:43:09 $
+c@(#) File WXY.M, version $Revision: 3.97 $, $Date: 2008/12/22 22:16:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -124,9 +124,8 @@ c     --- then divides nz by nzprocs again for the decomposition.
         nz = nzprocs
       endif
       call init_w3d_parallel()
-#else
-      nzlocal = nz
 #endif
+      call setupdecompositionw3d()
 
 c  Call the species routine again so that the values of zimin_s and
 c  zimax_s are set appropriately.  This resolves a circle where zimin is set
@@ -987,6 +986,7 @@ c=============================================================================
       use Efields3d
       use Picglb
       use Picglb3d
+      use GridBoundary3d
       use Beam_acc
       use Z_arrays
       use Z_Moments, only: nzmmnt,nszmmnt,tempmaxp,tempminp,tempzmmnts0,tempzmmnts
@@ -1439,22 +1439,6 @@ c     --- End loop over species
 c       --- Allow user defined injection of particles.
         call callpythonfunc("userinjection","controllers")
 
-        do is=1,ns
-
-c         --- Apply particle boundary conditions
-
-          if (lthick) then
-            if (periinz)
-     &         call periz(nps(is),zp(ins(is)),zgrid,zmmaxlocal,zmminlocal)
-            if (stickyz)
-     &         call stckyz(nps(is),zp(ins(is)),zmmaxlocal,zmminlocal,dz,uxp(ins(is)),
-     &                     uyp(ins(is)),uzp(ins(is)),zgrid)
-          endif
-
-c         if (stickyxy)
-c    &       call stckxy3d(pgroup,is-1,zgrid,.true.)
-        enddo
-
 c       --- This may not be quite right since is checks z boundaries.
         call particleboundaries3d(pgroup,-1,.true.)
 
@@ -1474,7 +1458,7 @@ c       --- Collect charge density (xy) and current (1d)
      &                     gaminv(ipmin),sq(is),sw(is),is,zbeam,dzz,zzmin,
      &                     ns,lspeciesmoments,dz,lthick)
           enddo
-          call fixcurrxy(curr,nzzarr,nszarr,periinz,lthick)
+          call fixcurrxy(curr,nzzarr,nszarr,bound0,boundnz,lthick)
         endif
 
 c       --- Advance beam frame location using the nominal beam frame velocity.
@@ -1504,7 +1488,7 @@ c         --- load rho diagnostic qtys
         endif
 
 c       --- Fix the current
-        call fixcurrxy(curr,nzzarr,nszarr,periinz,lthick)
+        call fixcurrxy(curr,nzzarr,nszarr,bound0,boundnz,lthick)
 
       endif
 
@@ -1512,11 +1496,13 @@ c       --- Fix the current
       return
       end
 c=============================================================================
-      subroutine fixrhoxy(rho,nx,ny,nzlocal,periinz,lthick)
+      subroutine fixrhoxy(rho,nx,ny,nzlocal,bound0,boundnz,lthick)
       use Subtimersxy
+      use GlobalVars,Only:periodic
       integer(ISZ):: nx,ny,nzlocal
       real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
-      logical(ISZ):: periinz,lthick
+      integer(ISZ):: bound0,boundnz
+      logical(ISZ):: lthick
 
 c  Sums the first and last slices of rho for periodicity
 c  and puts the result into both slices.
@@ -1529,7 +1515,7 @@ c  For thin slice model, average out rho along the axis.
 
       if(nzlocal==0) return
 
-      if (periinz) then
+      if (bound0 == periodic .or. boundnz == periodic) then
 
 !$OMP DO
         do ix=0,nx
@@ -1580,11 +1566,13 @@ c       --- Distribute rho to all z planes.
       return
       end
 c=============================================================================
-      subroutine fixcurrxy(curr,nzzarr,nszarr,periinz,lthick)
+      subroutine fixcurrxy(curr,nzzarr,nszarr,bound0,boundnz,lthick)
       use Subtimersxy
+      use GlobalVars,Only:periodic
       integer(ISZ):: nzzarr,nszarr
       real(kind=8):: curr(0:nzzarr,0:nszarr)
-      logical(ISZ):: periinz,lthick
+      integer(ISZ):: bound0,boundnz
+      logical(ISZ):: lthick
 
 c  Sums the first and last slices of curr for periodicity
 c  and puts the result into both slices.
@@ -1599,7 +1587,7 @@ c       --- Sum up the current from all of the speices.
         curr(:,nszarr) = sum(curr(:,0:nszarr-1),2)
       endif
 
-      if (periinz) then
+      if (bound0 == periodic .or. boundnz == periodic) then
 
         curr(0,:)  = curr(0,:) + curr(nzzarr,:)
         curr(nzzarr,:) = curr(0,:)
@@ -2369,6 +2357,7 @@ c=============================================================================
       use Particlesxy
       use InMesh3d
       use Fields3d
+      use GridBoundary3d
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
@@ -2441,7 +2430,7 @@ c        --- loop over particle blocks
       enddo
 
 c     --- enforce axial periodicity if rho was zeroed
-      if (lzero) call fixrhoxy(rho(0,0,0),nx,ny,nzlocal,periinz,lthick)
+      if (lzero) call fixrhoxy(rho,nx,ny,nzlocal,bound0,boundnz,lthick)
 
       if(solvergeom==XYgeom) then
 c  Distribute rho for AMR solver
@@ -2449,7 +2438,7 @@ c  Distribute rho for AMR solver
 c  Enforce boundary conditions
         call rhobndrz()
 c  Copy charge density from frz.basegrid to w3d.rho
-        call get_rho_rz(rho(0,0,0),nx,ny,1,0)
+        call get_rho_rz(rho,nx,ny,1,0)
       end if
 
       if (lwxytimesubs) timeloadrhoxy = timeloadrhoxy + wtime() - substarttime
