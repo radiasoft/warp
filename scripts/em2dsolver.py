@@ -695,8 +695,7 @@ class EM2D(object):
 
   ##########################################################################
   # Define the basic plot commands
-  def genericfp(self,data,title,l_transpose=true,**kw):
-    f=self.field
+  def genericfp(self,data,f,title='',l_transpose=true,**kw):
     if self.solvergeom == w3d.XYgeom:
       settitles(title,'X','Y','t = %gs'%(top.time))
     elif self.solvergeom == w3d.XZgeom:
@@ -706,74 +705,89 @@ class EM2D(object):
       kw.setdefault('xmin',w3d.zmmin)
       kw.setdefault('xmax',w3d.zmmax)
      else:
-      kw.setdefault('xmin',self.field.xmin)
-      kw.setdefault('xmax',self.field.xmax)
-     kw.setdefault('ymin',self.field.ymin)
-     kw.setdefault('ymax',self.field.ymax)
+      kw.setdefault('xmin',f.xmin)
+      kw.setdefault('xmax',f.xmax)
+     kw.setdefault('ymin',f.ymin)
+     kw.setdefault('ymax',f.ymax)
     else:
-     kw.setdefault('xmin',self.field.ymin)
-     kw.setdefault('xmax',self.field.ymax)
+     kw.setdefault('xmin',f.ymin)
+     kw.setdefault('xmax',f.ymax)
      if npes>0:
       kw.setdefault('ymin',w3d.zmmin)
       kw.setdefault('ymax',w3d.zmmax)
      else:
-      kw.setdefault('ymin',self.field.xmin)
-      kw.setdefault('ymax',self.field.xmax)
+      kw.setdefault('ymin',f.xmin)
+      kw.setdefault('ymax',f.xmax)
     ppgeneric(grid=data,**kw)
       
-  def fpex(self,**kw):
+  def pfex(self,l_children=True,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Ey[1:w3d.nzp+1,...]),'E_x',**kw)
+      self.genericfp(gatherarray(self.field.Ey[1:w3d.nzp+1,...]),self.field,'E_x',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.Ex),'E_x',**kw)
+      self.genericfp(gatherarray(self.field.Ex),self.field,'E_x',**kw)
+    if l_children and not self.l_onegrid:
+      if self.solvergeom == w3d.XZgeom:
+        self.genericfp(gatherarray(self.fpatchfine.Ey),self.fpatchfine,'E_x',**kw)
+      elif self.solvergeom == w3d.XYgeom:
+        self.genericfp(gatherarray(self.fpatchfine.Ex),self.fpatchfine,'E_x',**kw)
 
-  def fpey(self,**kw):
+  def pfey(self,l_children=True,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Ez[1:w3d.nzp+1,...]),'E_y',**kw)
+      self.genericfp(gatherarray(self.field.Ez[1:w3d.nzp+1,...]),self.field,'E_y',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.Ey),'E_y',**kw)
+      self.genericfp(gatherarray(self.field.Ey),self.field,'E_y',**kw)
+    if l_children and not self.l_onegrid:
+      if self.solvergeom == w3d.XZgeom:
+        self.genericfp(gatherarray(self.fpatchfine.Ez),self.fpatchfine,'E_y',**kw)
+      elif self.solvergeom == w3d.XYgeom:
+        self.genericfp(gatherarray(self.fpatchfine.Ey),self.fpatchfine,'E_y',**kw)
 
-  def fpez(self,**kw):
+  def pfez(self,l_children=True,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Ex[1:w3d.nzp+1,...]),'E_z',**kw)
+      self.genericfp(gatherarray(self.field.Ex[1:w3d.nzp+1,...]),self.field,'E_z',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.Ez),'E_z',**kw)
+      self.genericfp(gatherarray(self.field.Ez),self.field,'E_z',**kw)
+    if l_children and not self.l_onegrid:
+      if self.solvergeom == w3d.XZgeom:
+        self.genericfp(gatherarray(self.fpatchfine.Ex),self.fpatchfine,'E_z',**kw)
+      elif self.solvergeom == w3d.XYgeom:
+        self.genericfp(gatherarray(self.fpatchfine.Ez),self.fpatchfine,'E_z',**kw)
 
-  def fpbx(self,**kw):
+  def pfbx(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.By[1:w3d.nzp+1,...]),'B_x',**kw)
+      self.genericfp(gatherarray(self.field.By[1:w3d.nzp+1,...]),self.field,'B_x',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.Bx),'B_x',**kw)
+      self.genericfp(gatherarray(self.field.Bx),self.field,'B_x',**kw)
 
-  def fpby(self,**kw):
+  def pfby(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Bz[1:w3d.nzp+1,...]),'B_y',**kw)
+      self.genericfp(gatherarray(self.field.Bz[1:w3d.nzp+1,...]),self.field,'B_y',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.By),'B_y',**kw)
+      self.genericfp(gatherarray(self.field.By),self.field,'B_y',**kw)
 
-  def fpbz(self,**kw):
+  def pfbz(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.Bx[1:w3d.nzp+1,...]),'B_z',**kw)
+      self.genericfp(gatherarray(self.field.Bx[1:w3d.nzp+1,...]),self.field,'B_z',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.Bz),'B_z',**kw)
+      self.genericfp(gatherarray(self.field.Bz),self.field,'B_z',**kw)
 
-  def fpjx(self,**kw):
+  def pfjx(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.J[1:w3d.nzp+1,:,1]),'J_x',**kw)
+      self.genericfp(gatherarray(self.field.J[1:w3d.nzp+1,:,1]),self.field,'J_x',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.J[:,:,0]),'J_x',**kw)
+      self.genericfp(gatherarray(self.field.J[:,:,0]),self.field,'J_x',**kw)
 
-  def fpjy(self,**kw):
+  def pfjy(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.J[1:w3d.nzp+1,:,2]),'J_y',**kw)
+      self.genericfp(gatherarray(self.field.J[1:w3d.nzp+1,:,2]),self.field,'J_y',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.J[:,:,1]),'J_y',**kw)
+      self.genericfp(gatherarray(self.field.J[:,:,1]),self.field,'J_y',**kw)
 
-  def fpjz(self,**kw):
+  def pfjz(self,**kw):
     if self.solvergeom == w3d.XZgeom:
-      self.genericfp(gatherarray(self.field.J[1:w3d.nzp+1,:,0]),'J_z',**kw)
+      self.genericfp(gatherarray(self.field.J[1:w3d.nzp+1,:,0]),self.field,'J_z',**kw)
     elif self.solvergeom == w3d.XYgeom:
-      self.genericfp(gatherarray(self.field.J[:,:,2]),'J_z',**kw)
+      self.genericfp(gatherarray(self.field.J[:,:,2]),self.field,'J_z',**kw)
 
   def sezax(self):
     pass
