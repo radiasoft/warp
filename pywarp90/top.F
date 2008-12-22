@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.228 $, $Date: 2008/12/14 20:39:12 $
+c@(#) File TOP.F, version $Revision: 3.229 $, $Date: 2008/12/22 16:07:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2412,6 +2412,9 @@ c  Fast gamma advance, version 2, fastest, but least accurate
           vvvp_y = vz*vvp_x
           vvvp = sqrt(vvvp_x*vvvp_x+vvvp_y*vvvp_y)
           vvvp_x = vvvp_x/vvvp; vvvp_y = vvvp_y/vvvp
+        else
+          vvvp_x = 0.
+          vvvp_y = 0.
         end if
         
  ! get particle velocity vp in base {v,v x (v x vp)}, i.e. {v_par,v_perp}
@@ -2428,7 +2431,6 @@ c  Fast gamma advance, version 2, fastest, but least accurate
         uxp(ip) = (vpr_perp*vvvp_x)*gammapr
         uyp(ip) = (vpr_perp*vvvp_y)*gammapr
         uzp(ip) = (vpr_par*vz)*gammapr
-        if(uzp(ip)==0.) uzp(ip)=1.e-20
         gaminv(ip) = 1./sqrt(1.+(uxp(ip)*uxp(ip)+uyp(ip)*uyp(ip)+uzp(ip)*uzp(ip))*invclightsq)
       enddo
 
