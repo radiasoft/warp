@@ -1330,6 +1330,9 @@ in radius squared.
   def getr(self,**kw):
     return getr(jslist=self.jslist,**kw)
 
+  def gettheta(self,**kw):
+    return gettheta(jslist=self.jslist,**kw)
+
   def getvx(self,**kw):
     return getvx(jslist=self.jslist,**kw)
     
@@ -1338,6 +1341,9 @@ in radius squared.
     
   def getvz(self,**kw):
     return getvz(jslist=self.jslist,**kw)
+    
+  def getvtheta(self,**kw):
+    return getvtheta(jslist=self.jslist,**kw)
     
   def getux(self,**kw):
     return getux(jslist=self.jslist,**kw)
