@@ -31,8 +31,8 @@ Class for generating photo-electrons
       top.prwall    = 2.*max(pos.ach,pos.bch,0.5)
       if l_3d:self.nz=nz
       if pos.ispch==3:
-        if nx is None:nx=pos.imax-1#+2
-        if ny is None:ny=pos.jmax-1#+2
+        if nx is None:nx=pos.imax-1+2
+        if ny is None:ny=pos.jmax-1+2
 #        if nx is None:nx=pos.imax-1
 #        if ny is None:ny=pos.jmax-1
       if l_switchyz:
@@ -74,10 +74,10 @@ Class for generating photo-electrons
     self.l_switchyz=l_switchyz
     dx = 2.*pos.ach/(pos.imax-1)
     dy = 2.*pos.bch/(pos.jmax-1)
-    if xmin is None:xmin=-pos.ach#-dx
-    if xmax is None:xmax= pos.ach#+dx
-    if ymin is None:ymin=-pos.bch#-dy
-    if ymax is None:ymax= pos.bch#+dy
+    if xmin is None:xmin=-pos.ach-dx
+    if xmax is None:xmax= pos.ach+dx
+    if ymin is None:ymin=-pos.bch-dy
+    if ymax is None:ymax= pos.bch+dy
 #    if xmin is None:xmin=-pos.ach*1.05
 #    if xmax is None:xmax= pos.ach*1.05
 #    if ymin is None:ymin=-pos.bch*1.05
