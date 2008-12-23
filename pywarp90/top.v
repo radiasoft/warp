@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.247 $, $Date: 2008/12/14 20:39:12 $
+#@(#) File TOP.V, version $Revision: 3.248 $, $Date: 2008/12/23 17:38:11 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.247 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.248 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -533,28 +533,28 @@ bsqgradsy(0:nbsqgrad) _integer /0/   # Level of symmetry in the bsqgrad data.
                                # Defaul is no symmetry.
 bsqgradol(0:nbsqgrad)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
-lmapzs(0:nlmap)        _real [m] # Z's of linear map starts 
-lmapze(0:nlmap)        _real [m] # Z's of linear map ends   
-lmapap(0:nlmap)   _real [m]   # Aperture of map element
-lmapk(0:nlmap) _real []       # quad field strength 
-lmapangle(0:nlmap) _real []   # bend angle
-lmapax(0:nlmap) _real         # alphax
-lmapbx(0:nlmap) _real         # betax
-lmapdx(0:nlmap) _real         # dispx
-lmapdpx(0:nlmap) _real        # disppx
-lmapqx(0:nlmap) _real         # nux
-lmapxcr(0:nlmap) _real        # xchrom
-lmapnux(0:nlmap) _real        # nux
-lmapay(0:nlmap) _real         # alphay
-lmapby(0:nlmap) _real         # betay
-lmapdy(0:nlmap) _real         # dispy
-lmapdpy(0:nlmap) _real        # disppy
-lmapqy(0:nlmap) _real         # nuy
-lmapycr(0:nlmap) _real        # ychrom
-lmapnuy(0:nlmap) _real        # nuy
-lmapeta(0:nlmap) _real        # eta
-lmapnuz(0:nlmap) _real        # nuz
-lmaptype(0:nlmap) _integer    # map element type (0=drift, 1=bend, 2=quad)
+lmapzs(0:nlmap)    _real [m]  # Z's of linear map starts 
+lmapze(0:nlmap)    _real [m]  # Z's of linear map ends   
+lmapap(0:nlmap)    _real [m]  # Aperture of map element
+lmapk(0:nlmap)     _real      # quad field strength 
+lmapangle(0:nlmap) _real      # bend angle
+lmapax(0:nlmap)    _real      # alphax
+lmapbx(0:nlmap)    _real      # betax
+lmapdx(0:nlmap)    _real      # dispx
+lmapdpx(0:nlmap)   _real      # disppx
+lmapqx(0:nlmap)    _real      # nux
+lmapxcr(0:nlmap)   _real      # xchrom
+lmapnux(0:nlmap)   _real      # nux
+lmapay(0:nlmap)    _real      # alphay
+lmapby(0:nlmap)    _real      # betay
+lmapdy(0:nlmap)    _real      # dispy
+lmapdpy(0:nlmap)   _real      # disppy
+lmapqy(0:nlmap)    _real      # nuy
+lmapycr(0:nlmap)   _real      # ychrom
+lmapnuy(0:nlmap)   _real      # nuy
+lmapeta(0:nlmap)   _real      # eta
+lmapnuz(0:nlmap)   _real      # nuz
+lmaptype(0:nlmap) _integer    # map element type (0=drift, 1=bend, 2=quad, 3=RFkick)
 lmapol(0:nlmap)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
 drfts     logical             # Flag for existence of drfts (auto set)
