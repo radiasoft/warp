@@ -34,7 +34,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.230 2008/12/23 18:43:37 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.231 2008/12/23 19:09:48 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -4230,7 +4230,7 @@ def pcphixy(iz=None,fullplane=1,solver=None,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcselfezy(comp='',ix=None,fullplane=1,solver=None,
+def pcselfezy(comp=None,ix=None,fullplane=1,solver=None,
               lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of electrostatic field in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4374,7 +4374,7 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
 if sys.version[:5] != "1.5.1":
   pcselfexy.__doc__ = pcselfexy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcjzy(comp='',ix=None,fullplane=1,solver=None,
+def pcjzy(comp=None,ix=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of current density in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4518,7 +4518,7 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
 if sys.version[:5] != "1.5.1":
   pcjxy.__doc__ = pcjxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcbzy(comp='',ix=None,fullplane=1,solver=None,
+def pcbzy(comp=None,ix=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of the magnetic field in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4662,7 +4662,7 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
 if sys.version[:5] != "1.5.1":
   pcbxy.__doc__ = pcbxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcazy(comp='',ix=None,fullplane=1,solver=None,
+def pcazy(comp=None,ix=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of the magnetic vector potential in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4856,6 +4856,11 @@ def _ppdecomposition_work(ix,nx,iz,nz):
           color=color[(ixproc+izproc*len(ix))%len(color)])
 
 def ppdecompzx(decomp=None,scale=1):
+  """Plots the decomposition in the z-x plane.
+  - decomp=top.fsdecomp: a Decomposition object. Another example is
+    top.ppdecomp, the particle decomposition
+  - scale=true: When true, plot in in meters, otherwise grid cells
+  """
   if decomp is None: decomp=top.fsdecomp
   ix = decomp.ix
   nx = decomp.nx
@@ -4869,6 +4874,11 @@ def ppdecompzx(decomp=None,scale=1):
   _ppdecomposition_work(ix,nx,iz,nz)
 
 def ppdecompzy(decomp=None,scale=1):
+  """Plots the decomposition in the z-y plane.
+  - decomp=top.fsdecomp: a Decomposition object. Another example is
+    top.ppdecomp, the particle decomposition
+  - scale=true: When true, plot in in meters, otherwise grid cells
+  """
   if decomp is None: decomp=top.fsdecomp
   iy = decomp.iy
   ny = decomp.ny
@@ -4882,6 +4892,11 @@ def ppdecompzy(decomp=None,scale=1):
   _ppdecomposition_work(iy,ny,iz,nz)
 
 def ppdecompxy(decomp=None,scale=1):
+  """Plots the decomposition in the x-y plane.
+  - decomp=top.fsdecomp: a Decomposition object. Another example is
+    top.ppdecomp, the particle decomposition
+  - scale=true: When true, plot in in meters, otherwise grid cells
+  """
   if decomp is None: decomp=top.fsdecomp
   ix = decomp.ix
   nx = decomp.nx
@@ -4898,8 +4913,8 @@ def ppdecompxy(decomp=None,scale=1):
 ##########################################################################
 def pltfld3d(fld='phi',freqflag=always):
   """Makes fields plots which have been turned on
-     - fld='phi' quantity to plot, either 'phi' or 'rho'
-     - freqflag=always frequency flag, either always, seldom, or never"""
+  - fld='phi' quantity to plot, either 'phi' or 'rho'
+  - freqflag=always frequency flag, either always, seldom, or never"""
   currentwindow = active_window()
   active_window(0)
   nwindows = 9
@@ -4922,7 +4937,7 @@ def pltfld3d(fld='phi',freqflag=always):
 ##########################################################################
 def onedplts(freqflag=always):
   """Makes 1-D plots which have been turned on
-     - freqflag=always frequency flag, either always, seldom, or never"""
+  - freqflag=always frequency flag, either always, seldom, or never"""
   currentwindow = active_window()
   active_window(0)
   if freqflag == top.ipcurr: pzcurr()
@@ -4947,8 +4962,8 @@ def onedpltsseldom():
 ##########################################################################
 def psplots(freqflag=always,js=0):
   """Makes particle phase space plots which have been turned on
-     - freqflag=always frequency flag, either always, seldom, or never
-     - js=0 specifies the species of particles to plot"""
+  - freqflag=always frequency flag, either always, seldom, or never
+  - js=0 specifies the species of particles to plot"""
   # --- Phase space plots, both "frequent" ones and others
   # --- Do z-x,y 2-to-a-page subset and all-particle plots
   bb = wtime()
@@ -5098,13 +5113,13 @@ def gstyle():
 
 def set_label(height=None,font=None,bold=0,italic=0,axis='all',system=None):
     """change plots label attributes
-       - height=None,
-       - scale=1.,
-       - font=None ('Courier'=0,'Times'=1,'Helvetica'=2,'Symbol'=3,'New Century'=4),
-       - bold=0
-       - italic=0
-       - axis='all'
-       - system='all'"""
+    - height=None,
+    - scale=1.,
+    - font=None ('Courier'=0,'Times'=1,'Helvetica'=2,'Symbol'=3,'New Century'=4),
+    - bold=0
+    - italic=0
+    - axis='all'
+    - system='all'"""
     global gist_style
     try:
       a=gist_style
