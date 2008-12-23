@@ -1602,7 +1602,7 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
  real(kind=8), DIMENSION(-nxguard:nxf/rapx+nxguard,-nyguard:nyf/rapy+nyguard,-nzguard:nzf/rapz+nzguard,3) :: jcoarse
  real(kind=8), DIMENSION(-nxguard:nxc+nxguard,-nyguard:nyc+nyguard,-nzguard:nzc+nzguard,3) :: jcoarse_mother
 
- INTEGER :: j, k, l, jg, kg, lg
+ INTEGER :: j, k, l, jg, kg, lg, ixmin, ixmax, iymin, iymax, izmin, izmax
  real(kind=8) :: wx, wy, wz, owx, owy, owz, invrapvol, irapx, irapy, irapz
 
    irapx = 1./rapx
@@ -1611,56 +1611,72 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
    invrapvol = irapx*irapy*irapz
 
    jcoarse(:,:,:,:) = 0.
+   
+   ixmin = -nxguard
+   ixmax = nxf+nxguard
+   iymin = -nyguard
+   iymax = nyf+nyguard
+   izmin = -nzguard
+   izmax = nzf+nzguard
 
-   do l = -nzguard, nzf+nzguard
+   do l = izmin, izmax
       lg = floor(l*irapz)  
       wz = REAL(MOD(l+nzguard*rapz,rapz))*irapz
       owz= 1.-wz
-      do k = -nyguard, nyf+nyguard
+      do k = iymin, iymax
          kg = floor(k*irapy)
          wy = REAL(MOD(k+nyguard*rapy,rapy))*irapy
          owy= 1.-wy
-         do j = -nxguard, nxf+nxguard-1
+         do j = ixmin, ixmax-1
             jg = floor(j*irapx)
             jcoarse(jg,kg  ,lg  ,1) = jcoarse(jg,kg  ,lg  ,1) + owy*owz*jfine(j,k,l,1)*invrapvol
+            if (kg<iymax) &
             jcoarse(jg,kg+1,lg  ,1) = jcoarse(jg,kg+1,lg  ,1) +  wy*owz*jfine(j,k,l,1)*invrapvol
+            if (lg<izmax) &
             jcoarse(jg,kg  ,lg+1,1) = jcoarse(jg,kg  ,lg+1,1) + owy* wz*jfine(j,k,l,1)*invrapvol
+            if (kg<iymax .and. lg<izmax) &
             jcoarse(jg,kg+1,lg+1,1) = jcoarse(jg,kg+1,lg+1,1) +  wy* wz*jfine(j,k,l,1)*invrapvol
          end do
       end do
    end do
 
-   do l = -nzguard, nzf+nzguard
+   do l = izmin, izmax
       lg = floor(l*irapz)  
       wz = REAL(MOD(l+nzguard*rapz,rapz))*irapz
       owz= 1.-wz
-      do k = -nyguard, nyf+nyguard-1
+      do k = iymin, iymax-1
          kg = floor(k*irapy)
-         do j = -nxguard, nxf+nxguard
+         do j = ixmin, ixmax
             jg = floor(j*irapx)
             wx = REAL(MOD(j+nxguard*rapx,rapx))*irapx
             owx= 1.-wx
             jcoarse(jg  ,kg,lg  ,2) = jcoarse(jg  ,kg,lg  ,2) + owx*owz*jfine(j,k,l,2)*invrapvol
+            if (jg<ixmax) &
             jcoarse(jg+1,kg,lg  ,2) = jcoarse(jg+1,kg,lg  ,2) +  wx*owz*jfine(j,k,l,2)*invrapvol
+            if (lg<izmax) &
             jcoarse(jg  ,kg,lg+1,2) = jcoarse(jg  ,kg,lg+1,2) + owx* wz*jfine(j,k,l,2)*invrapvol
+            if (jg<ixmax .and. lg<izmax) &
             jcoarse(jg+1,kg,lg+1,2) = jcoarse(jg+1,kg,lg+1,2) +  wx* wz*jfine(j,k,l,2)*invrapvol
          end do
       end do
    end do
 
-   do l = -nzguard, nzf+nzguard-1
+   do l = izmin, izmax-1
       lg = floor(l*irapz)  
-      do k = -nyguard, nyf+nyguard
+      do k = iymin, iymax
          kg = floor(k*irapy)
          wy = REAL(MOD(k+nyguard*rapy,rapy))*irapy
          owy= 1.-wy
-         do j = -nxguard, nxf+nxguard
+         do j = ixmin, ixmax
             jg = floor(j*irapx)
             wx = REAL(MOD(j+nxguard*rapx,rapx))*irapx
             owx= 1.-wx
             jcoarse(jg  ,kg  ,lg,3) = jcoarse(jg  ,kg  ,lg,3) + owy*owx*jfine(j,k,l,3)*invrapvol
+            if (kg<iymax) &
             jcoarse(jg  ,kg+1,lg,3) = jcoarse(jg  ,kg+1,lg,3) +  wy*owx*jfine(j,k,l,3)*invrapvol
+            if (jg<ixmax) &
             jcoarse(jg+1,kg  ,lg,3) = jcoarse(jg+1,kg  ,lg,3) + owy* wx*jfine(j,k,l,3)*invrapvol
+            if (jg<ixmax .and. kg<iymax) &
             jcoarse(jg+1,kg+1,lg,3) = jcoarse(jg+1,kg+1,lg,3) +  wy* wx*jfine(j,k,l,3)*invrapvol
          end do
       end do
@@ -1681,13 +1697,20 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
  real(kind=8), DIMENSION(-nxguard:nxf/rapx+nxguard,-nyguard:nyf/rapy+nyguard,-nzguard:nzf/rapz+nzguard) :: rhocoarse
  real(kind=8), DIMENSION(-nxguard:nxc+nxguard,-nyguard:nyc+nyguard,-nzguard:nzc+nzguard) :: rhocoarse_mother
 
- INTEGER :: j, k, l, jg, kg, lg
+ INTEGER :: j, k, l, jg, kg, lg, ixmin, ixmax, iymin, iymax, izmin, izmax
  real(kind=8) :: wx, wy, wz, owx, owy, owz, invrapvol, irapx, irapy, irapz
 
    irapx = 1./rapx
    irapy = 1./rapy
    irapz = 1./rapz
    invrapvol = irapx*irapy*irapz
+   
+   ixmin = -nxguard
+   ixmax = nxf+nxguard
+   iymin = -nyguard
+   iymax = nyf+nyguard
+   izmin = -nzguard
+   izmax = nzf+nzguard
 
    rhocoarse(:,:,:) = 0.
 
@@ -1704,12 +1727,19 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
             wx = REAL(MOD(j+nxguard*rapx,rapx))*irapx
             owx= 1.-wx
             rhocoarse(jg,kg  ,lg  ) = rhocoarse(jg,kg  ,lg  ) + owx*owy*owz*rhofine(j,k,l)*invrapvol
+            if (kg<iymax) &
             rhocoarse(jg,kg+1,lg  ) = rhocoarse(jg,kg+1,lg  ) + owx* wy*owz*rhofine(j,k,l)*invrapvol
+            if (lg<izmax) &
             rhocoarse(jg,kg  ,lg+1) = rhocoarse(jg,kg  ,lg+1) + owx*owy* wz*rhofine(j,k,l)*invrapvol
+            if (lg<izmax .and. kg<iymax) &
             rhocoarse(jg,kg+1,lg+1) = rhocoarse(jg,kg+1,lg+1) + owx* wy* wz*rhofine(j,k,l)*invrapvol
+            if (jg<ixmax) &
             rhocoarse(jg+1,kg  ,lg  ) = rhocoarse(jg+1,kg  ,lg  ) + wx*owy*owz*rhofine(j,k,l)*invrapvol
+            if (jg<ixmax .and. kg<iymax) &
             rhocoarse(jg+1,kg+1,lg  ) = rhocoarse(jg+1,kg+1,lg  ) + wx* wy*owz*rhofine(j,k,l)*invrapvol
+            if (jg<ixmax .and. lg<izmax) &
             rhocoarse(jg+1,kg  ,lg+1) = rhocoarse(jg+1,kg  ,lg+1) + wx*owy* wz*rhofine(j,k,l)*invrapvol
+            if (jg<ixmax .and. kg<iymax .and. lg<izmax) &
             rhocoarse(jg+1,kg+1,lg+1) = rhocoarse(jg+1,kg+1,lg+1) + wx* wy* wz*rhofine(j,k,l)*invrapvol
          end do
       end do
@@ -2061,4 +2091,57 @@ subroutine addsubstractfields_nodal(child,child_coarse,parent,lc,ref)
 
    return
  end subroutine addsubstractfields_nodal
+
+subroutine smooth3d_121(q,nx,ny,nz,npass)
+ implicit none
+
+ integer(ISZ) :: nx,ny,nz,i,j,k,l,npass(3)
+
+ real(kind=8), dimension(0:nx,0:ny,0:nz) :: q
+ real(kind=8) :: temp0, temp1
+
+!     x smoothing
+  do i=1,npass(1)
+    do  l=0,nz
+      do  k=0,ny
+        temp0 = q(0,k,l)
+        do  j=1,nx-1
+          temp1 = q(j,k,l)
+          q(j,k,l) = 0.5*q(j,k,l)+0.25*(temp0+q(j+1,k,l))
+          temp0 = temp1
+        end do
+      end do
+    end do
+  end do
+
+!     y smoothing
+  do i=1,npass(2)
+    do  l=0,nz
+      do  j=0,nx
+        temp0 = q(j,0,l)
+        do  k=1,ny-1
+          temp1 = q(j,k,l)
+          q(j,k,l) = 0.5*q(j,k,l)+0.25*(temp0+q(j,k+1,l))
+          temp0 = temp1
+        end do
+      end do
+    end do
+  end do
+
+!     z smoothing
+  do i=1,npass(3)
+    do  k=0,ny
+      do  j=0,nx
+        temp0 = q(j,k,0)
+        do  l=1,nz-1
+          temp1 = q(j,k,l)
+          q(j,k,l) = 0.5*q(j,k,l)+0.25*(temp0+q(j,k,l+1))
+          temp0 = temp1
+        end do
+      end do
+    end do
+  end do
+
+  return
+end subroutine smooth3d_121
 
