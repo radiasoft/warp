@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.414 $, $Date: 2008/12/15 22:28:34 $
+c@(#) File W3D.F, version $Revision: 3.415 $, $Date: 2008/12/23 18:17:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1385,13 +1385,18 @@ c=============================================================================
       use Subtimers3d
       use ParticleGroupmodule
       use Particles, Only: xoldpid,yoldpid,zoldpid
-c      use LatticeInternal, Only: Mtx, Mty
+      use InGen, Only: boost_gamma
+      use Constant, Only: clight
+      use Picglb, Only: time
+      use LatticeInternal, Only: linbend
+      use Lattice, Only: bends
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,np,ipmin,interpdk
-      real(kind=8):: dt,vbeam
+      real(kind=8):: dt,vbeam,uzboost,invclightsq,vzboost
       real(kind=8):: bendres(np),bendradi(np)
 
       real(kind=8),pointer:: zpo(:)
+      real(kind=8),allocatable::dtlab(:),tlab(:)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -1404,20 +1409,16 @@ c     predictor-corrector.
          if (zoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,zoldpid) = pgroup%zp(ipmin:ipmin+np-1)
       endif
 
-      if (zoldpid > 0) then
-        zpo => pgroup%pid(ipmin:ipmin+np-1,zoldpid)
-      else
-        allocate(zpo(np))
-        zpo = pgroup%zp(ipmin:ipmin+np-1)
+      if (bends .and. linbend) then
+        if (zoldpid > 0 .and. boost_gamma==1.) then
+          zpo => pgroup%pid(ipmin:ipmin+np-1,zoldpid)
+        else
+          allocate(zpo(np))
+          zpo = pgroup%zp(ipmin:ipmin+np-1)
+        endif
       endif
 
-      if (pgroup%l_maps(is-1)) then
-c        call apply_simple_map(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-c     &                           Mtx,Mty)
-c        pgroup%zp(ipmin:ipmin+np-1) = pgroup%zp(ipmin:ipmin+np-1) 
-c     &                              + pgroup%uzp(ipmin:ipmin+np-1)*pgroup%gaminv(ipmin:ipmin+np-1)*dt
-        pgroup%zp(ipmin:ipmin+np-1) = pgroup%zp(ipmin:ipmin+np-1) + vbeam*dt
-      else
+      if (.not. pgroup%l_maps(is-1)) then
         if (interpdk .ne. 0) then
           call xpush3dintrp(pgroup,np,is,ipmin,dt)
         else
@@ -1426,20 +1427,73 @@ c     &                              + pgroup%uzp(ipmin:ipmin+np-1)*pgroup%gamin
         endif
       endif
       
-c     --- Bend residence factor over POSITION advance step
-      call getbend(np,np,pgroup%zp(ipmin),pgroup%uzp(ipmin),
-     &             pgroup%gaminv(ipmin),
-     &             bendres,bendradi,-dt,0.,.false.)
+      if (.not. bends .or. .not. linbend) then
+        bendres = 0.
+      else
+        ! the particles are in a bend
+        if (boost_gamma>1.) then
+          ! if the calculation is done in a boosted frame, then one must 
+          ! transform the particle quantities into the lab frame for  
+          ! the application of bending elements. 
+          allocate(dtlab(np),tlab(np))
+          invclightsq=1./clight**2
+          uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
+          vzboost = uzboost/boost_gamma
+c         --- get time in lab frame
+          tlab(1:np) = boost_gamma*(time+dt)+uzboost*pgroup%zp(ipmin:ipmin+np-1)*invclightsq
+c         --- transform position to lab frame
+          pgroup%zp(ipmin:ipmin+np-1) = boost_gamma*pgroup%zp(ipmin:ipmin+np-1)+uzboost*(time+dt)
+          zpo = boost_gamma*zpo+uzboost*time
+c         --- get time step in lab frame
+          dtlab(1:np) = boost_gamma*dt*(1.+vbeam*vzboost*invclightsq)
+c         --- transform velocity to lab frame
+          call setu_in_uzboosted_frame3d(np,pgroup%uxp(ipmin),
+     &                                      pgroup%uyp(ipmin),
+     &                                      pgroup%uzp(ipmin),
+     &                                      pgroup%gaminv(ipmin),
+     &                                      -uzboost,boost_gamma)
+          ! this is an attempt to fool getbend and zbendcor. 
+          ! Normally, each particle should have its 
+          ! own dt, but this would require to modify the two routines, 
+          ! with associated numerical cost.
+          ! This works since gaminv is always multiplied by dt in its 
+          ! usage in the two routines. If this is not the case, then the 
+          ! kludge will fail.
+          pgroup%gaminv(ipmin:ipmin+np-1) = pgroup%gaminv(ipmin:ipmin+np-1)*dtlab(1:np)/dt
+        end if
 
-c     --- Correct position advance for warped mesh effect
-      call zbendcor(pgroup,np,ipmin,dt,bendres,bendradi)
+c       --- Bend residence factor over POSITION advance step
+        call getbend(np,np,pgroup%zp(ipmin),pgroup%uzp(ipmin),
+     &               pgroup%gaminv(ipmin),
+     &               bendres,bendradi,-dt,0.,.false.)
 
-c     --- Correct position advance for slanted dipole entry/exit
-      call sledgcor(pgroup,np,ipmin,zpo,0.,0.,0.,
-     &              pgroup%sm(is),pgroup%sq(is),.false.)
+c       --- Correct position advance for warped mesh effect
+        call zbendcor(pgroup,np,ipmin,dt,bendres,bendradi)
 
-      if (zoldpid == 0) then
-        deallocate(zpo)
+        if (boost_gamma>1.) then
+          ! Need to undo kludge for getbend and zbendcor. 
+          pgroup%gaminv(ipmin:ipmin+np-1) = pgroup%gaminv(ipmin:ipmin+np-1)*dt/dtlab(1:np)
+        end if
+
+c       --- Correct position advance for slanted dipole entry/exit
+        call sledgcor(pgroup,np,ipmin,zpo,0.,0.,0.,
+     &                pgroup%sm(is),pgroup%sq(is),.false.)
+
+        if (boost_gamma>1.) then
+c         --- transform position back to boosted frame
+          pgroup%zp(ipmin:ipmin+np-1) = boost_gamma*pgroup%zp(ipmin:ipmin+np-1)-uzboost*tlab(1:np) 
+c         --- transform velocity back to boosted frame
+          call setu_in_uzboosted_frame3d(np,pgroup%uxp(ipmin),
+     &                                      pgroup%uyp(ipmin),
+     &                                      pgroup%uzp(ipmin),
+     &                                      pgroup%gaminv(ipmin),
+     &                                      uzboost,boost_gamma)
+          deallocate(dtlab,tlab)
+        end if
+
+        if (zoldpid == 0 .or. boost_gamma>1.) then
+          deallocate(zpo)
+        endif
       endif
       
       if(pgroup%zshift(is)/=0.) pgroup%zp(ipmin:ipmin+np-1)=pgroup%zp(ipmin:ipmin+np-1)+pgroup%zshift(is)
@@ -1505,7 +1559,7 @@ c=============================================================================
       use InDiag3d
       use Lattice
       use LatticeInternal
-      use Particles,Only: nplive,wpid,chdtspid,uxoldpid,uyoldpid,uzoldpid
+      use Particles,Only: nplive,wpid,chdtspid,uxoldpid,uyoldpid,uzoldpid,lmappid
       use Fields3d
       use Subcycling
       use Fields3dParticles
@@ -1536,7 +1590,7 @@ c     --- Create local pointers to the arrays in pgroup.
       integer(ISZ),pointer:: ins(:),nps(:)
 
       integer(ISZ):: isid,is,ismax,ip,ipmin,i,indts
-      real(kind=8):: uxpadv,uypadv,uzpadv,halfdt,invclightsq,uzboost
+      real(kind=8):: uxpadv,uypadv,uzpadv,halfdt,invclightsq,uzboost,vzboost
       real(kind=8):: fulldt_s,halfdt_s
       real(kind=8):: zgridprv_save
       real(kind=8),allocatable:: uxpo(:), uypo(:), uzpo(:)
@@ -1545,7 +1599,9 @@ c     --- Create local pointers to the arrays in pgroup.
       real(kind=8),allocatable:: bendres(:), bendradi(:)
       real(kind=8),allocatable:: exlab(:),eylab(:),ezlab(:),
      &                           bxlab(:),bylab(:),bzlab(:),
-     &                           zlab(:),uzlab(:),ginvlab(:)
+     &                           zlab(:),uxlab(:),uylab(:),
+     &                           uzlab(:),ginvlab(:),tlab(:),dtmaps(:),zend(:),
+     &                           tstart(:),tend(:),zbeam_maps(:),zbeamend_maps(:)
 #ifdef _OPENMP
       real(kind=8),allocatable:: threadmaxp(:,:,:),threadminp(:,:,:)
       real(kind=8),allocatable:: threadzmmnts0(:,:,:),threadzmmnts(:,:,:,:)
@@ -1603,9 +1659,15 @@ c     --- Create local pointers to the arrays in pgroup.
       if (boost_gamma>1.) then
         allocate(exlab(nparpgrp),eylab(nparpgrp),ezlab(nparpgrp))
         allocate(bxlab(nparpgrp),bylab(nparpgrp),bzlab(nparpgrp))
-        allocate(zlab(nparpgrp),uzlab(nparpgrp),ginvlab(nparpgrp))
+        allocate(zlab(nparpgrp),uxlab(nparpgrp),uylab(nparpgrp),
+     &           uzlab(nparpgrp),ginvlab(nparpgrp),tlab(nparpgrp))
+        allocate(tstart(nparpgrp),tend(nparpgrp))
         invclightsq = 1./(clight*clight)
       endif
+      if (any(pgroup%l_maps)) then
+        allocate(dtmaps(nparpgrp),zbeam_maps(nparpgrp),zbeamend_maps(nparpgrp),zend(nparpgrp))
+        allspecl = .true.
+      end if
 
 #ifdef _OPENMP
       allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
@@ -1767,16 +1829,16 @@ c         In this case fullv and halfv do the same thing and
 c         synchv does nothing
           if (center == "fullv" .or. (center == "halfv" .and.
      &        interpdk(isid) == 1 .and. .not. allspecl)) then
-c           --- Obtain bend radii and residence factors
-            call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
-     &                   pgroup%gaminv(ipmin),
-     &                   bendres,bendradi,-halfdt_s,halfdt_s,.false.)
-c           --- Correct Ez_self for warped mesh effect
-            call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez(ipmin),
-     &                    bendres,bendradi,bends,bnezflag,linbend)
-c           --- Add in Ez from axially-smoothed gaps 
-            call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
             if (boost_gamma==1.) then
+c             --- Obtain bend radii and residence factors
+              call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
+     &                     pgroup%gaminv(ipmin),
+     &                     bendres,bendradi,-halfdt_s,halfdt_s,.false.)
+c             --- Correct Ez_self for warped mesh effect
+              call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez(ipmin),
+     &                      bendres,bendradi,bends,bnezflag,linbend)
+c             --- Add in Ez from axially-smoothed gaps 
+              call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
 c             --- Add in ears and uniform focusing E field pieces
               call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                      zbeam,zimax,zimin,straight,ifeears,eears,
@@ -1794,9 +1856,32 @@ c             --- Set quad, dipole E and B; All: Bz
               exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
               bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
               zlab(1:ip) = boost_gamma*zp(ipmin:ipmin+ip-1)+uzboost*time  
-              uzlab(1:ip) = boost_gamma*uzp(ipmin:ipmin+ip-1)+uzboost/gaminv(ipmin:ipmin+ip-1)
-              ginvlab(1:ip) = 1./(boost_gamma/gaminv(ipmin:ipmin+ip-1)
-     &                      +     uzboost*uzp(ipmin:ipmin+ip-1)*invclightsq)
+!              uzlab(1:ip) = boost_gamma*uzp(ipmin:ipmin+ip-1)+uzboost/gaminv(ipmin:ipmin+ip-1)
+!              ginvlab(1:ip) = 1./(boost_gamma/gaminv(ipmin:ipmin+ip-1)
+!     &                      +     uzboost*uzp(ipmin:ipmin+ip-1)*invclightsq)
+              uxlab(1:ip) = uxp(ipmin:ipmin+ip-1)
+              uylab(1:ip) = uyp(ipmin:ipmin+ip-1)
+              uzlab(1:ip) = uzp(ipmin:ipmin+ip-1)
+              ginvlab(1:ip) = gaminv(ipmin:ipmin+ip-1)
+              call setu_in_uzboosted_frame3d(ip,uxlab(1),uylab(1),uzlab(1),ginvlab(1),-uzboost,boost_gamma)
+              tstart(1:ip) = boost_gamma*time+uzboost*zp(ipmin:ipmin+ip-1)*invclightsq
+              tend  (1:ip) = boost_gamma*(time+fulldt_s)+uzboost*(zp(ipmin:ipmin+ip-1) 
+     &                     + uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1)*fulldt_s)*invclightsq
+              ! this is an attempt to fool exteb3d. Normally, each particle should have its 
+              ! own dt, but this would require to modify all the routines called by exteb3d.
+              ! We are assuming that ginvlab will always be multiplied by dt in its 
+              ! usage in the routines called by exteb3d. If this is not the case, then the 
+              ! kludge will fail.
+              ginvlab(1:ip) = ginvlab(1:ip)*(tend(1:ip)-tstart(1:ip))/fulldt_s
+c             --- Obtain bend radii and residence factors
+              call getbend(ip,ip,zlab(1),uzlab(1),
+     &                     ginvlab(1),
+     &                     bendres,bendradi,-halfdt_s,halfdt_s,.false.)
+c             --- Correct Ez_self for warped mesh effect
+              call bendez3d(ip,pgroup%xp(ipmin),zlab(1),ezlab(1),
+     &                      bendres,bendradi,bends,bnezflag,linbend)
+c             --- Add in Ez from axially-smoothed gaps 
+              call gapfield(ip,zlab(1),ezlab(1),zbeam,zzmin,egap(0),dzz)
 c             --- Add in ears and uniform focusing E field pieces
               call othere3d(ip,xp(ipmin),yp(ipmin),zlab(1),
      &                      zbeam*boost_gamma+uzboost*time,
@@ -1806,10 +1891,10 @@ c             --- Add in ears and uniform focusing E field pieces
      &                      bxlab(1),bylab(1),bzlab(1))
 c             --- Set quad, dipole E and B; All: Bz
               call exteb3d(ip,xp(ipmin),yp(ipmin),zlab(1),uzlab(1),
-     &                     ginvlab(1),-halfdt_s/boost_gamma,halfdt_s/boost_gamma,
+     &                     ginvlab(1),-halfdt_s,halfdt_s,
      &                     bxlab(1),bylab(1),bzlab(1),
      &                     exlab(1),eylab(1),ezlab(1),sm(is),sq(is),
-     &                     bendres,bendradi,gammabar,fulldt_s/boost_gamma)
+     &                     bendres,bendradi,gammabar,fulldt_s)
               call seteb_in_boosted_frame(ip,exlab(1),eylab(1),ezlab(1),
      &                                       bxlab(1),bylab(1),bzlab(1),
      &                                       0.,0.,uzboost,boost_gamma)
@@ -1879,16 +1964,16 @@ c           --- with full-v steps except when initalizing, which is
 c           --- optionally taken care of by "hbor2" option
 c           --- The hbor1 option does 1st half of a Boris step,
 c           --- hbor2 does 2nd half.
-c           --- Obtain bend radii and residence factors
-            call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
-     &                   pgroup%gaminv(ipmin),
-     &                   bendres,bendradi,0.,halfdt_s,.false.)
-c           --- Correct Ez_self for warped mesh effect
-            call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez(ipmin),
-     &                    bendres,bendradi,bends,bnezflag,linbend)
-c           --- Add in Ez from axially-smoothed gaps 
-            call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
             if (boost_gamma==1.) then
+c             --- Obtain bend radii and residence factors
+              call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
+     &                     pgroup%gaminv(ipmin),
+     &                     bendres,bendradi,0.,halfdt_s,.false.)
+c             --- Correct Ez_self for warped mesh effect
+              call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez(ipmin),
+     &                      bendres,bendradi,bends,bnezflag,linbend)
+c             --- Add in Ez from axially-smoothed gaps 
+              call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
 c             --- Add in ears and uniform focusing E field pieces
               call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                      zbeam,zimax,zimin,straight,ifeears,eears,
@@ -1906,9 +1991,29 @@ c             --- Set quad, dipole E and B; All: Bz
               exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
               bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
               zlab(1:ip) = boost_gamma*zp(ipmin:ipmin+ip-1)+uzboost*time  
-              uzlab(1:ip) = boost_gamma*uzp(ipmin:ipmin+ip-1)+uzboost/gaminv(ipmin:ipmin+ip-1)
-              ginvlab(1:ip) = 1./(boost_gamma/gaminv(ipmin:ipmin+ip-1)
-     &                      +     uzboost*uzp(ipmin:ipmin+ip-1)*invclightsq)
+              uxlab(1:ip) = uxp(ipmin:ipmin+ip-1)
+              uylab(1:ip) = uyp(ipmin:ipmin+ip-1)
+              uzlab(1:ip) = uzp(ipmin:ipmin+ip-1)
+              ginvlab(1:ip) = gaminv(ipmin:ipmin+ip-1)
+              call setu_in_uzboosted_frame3d(ip,uxlab(1),uylab(1),uzlab(1),ginvlab(1),-uzboost,boost_gamma)
+              tstart(1:ip) = boost_gamma*time+uzboost*zp(ipmin:ipmin+ip-1)*invclightsq
+              tend  (1:ip) = boost_gamma*(time+halfdt_s)+uzboost*(zp(ipmin:ipmin+ip-1) 
+     &                     + uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1)*halfdt_s)*invclightsq
+              ! this is an attempt to fool exteb3d. Normally, each particle should have its 
+              ! own dt, but this would require to modify all the routines called by exteb3d.
+              ! We are assuming that ginvlab will always be multiplied by dt in its 
+              ! usage in the routines called by exteb3d. If this is not the case, then the 
+              ! kludge will fail.
+              ginvlab(1:ip) = ginvlab(1:ip)*(tend(1:ip)-tstart(1:ip))/halfdt_s
+c             --- Obtain bend radii and residence factors
+              call getbend(ip,ip,zlab(1),uzlab(1),
+     &                     ginvlab(1),
+     &                     bendres,bendradi,0.,halfdt_s,.false.)
+c             --- Correct Ez_self for warped mesh effect
+              call bendez3d(ip,pgroup%xp(ipmin),zlab(1),ezlab(1),
+     &                      bendres,bendradi,bends,bnezflag,linbend)
+c             --- Add in Ez from axially-smoothed gaps 
+              call gapfield(ip,zlab(1),ezlab(1),zbeam,zzmin,egap(0),dzz)
 c             --- Add in ears and uniform focusing E field pieces
               call othere3d(ip,xp(ipmin),yp(ipmin),zlab(1),
      &                      zbeam*boost_gamma+uzboost*time,
@@ -1918,10 +2023,10 @@ c             --- Add in ears and uniform focusing E field pieces
      &                      bxlab(1),bylab(1),bzlab(1))
 c             --- Set quad, dipole E and B; All: Bz
               call exteb3d(ip,xp(ipmin),yp(ipmin),zlab(1),uzlab(1),
-     &                     ginvlab(1),0.,halfdt_s/boost_gamma,
+     &                     ginvlab(1),0.,halfdt_s,
      &                     bxlab(1),bylab(1),bzlab(1),
      &                     exlab(1),eylab(1),ezlab(1),sm(is),sq(is),
-     &                     bendres,bendradi,gammabar,fulldt_s/boost_gamma)
+     &                     bendres,bendradi,gammabar,fulldt_s)
               call seteb_in_boosted_frame(ip,exlab(1),eylab(1),ezlab(1),
      &                                       bxlab(1),bylab(1),bzlab(1),
      &                                       0.,0.,uzboost,boost_gamma)
@@ -1967,6 +2072,48 @@ c             end of predictor-only loop
               endif
             endif
 
+c           --- apply linear maps
+            if (pgroup%l_maps(is-1)) then
+              if (boost_gamma==1.) then
+                zbeamend_maps(1:ip) = zbeam+vbeam*fulldt_s
+                zbeam_maps(1:ip) = zbeam
+                dtmaps(1:ip) = fulldt_s
+                zend(1:ip) = zp(ipmin:ipmin+ip-1)+uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1)*dtmaps(1:ip)
+                call applylmap(ip,xp(ipmin),yp(ipmin),uxp(ipmin),uyp(ipmin),
+     &                         ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                         vbeam,gammabar,zbeam_maps(1),zbeamend_maps(1),zend(1),lmappid)
+                dtmaps(1:ip) = (zend(1:ip)-zp(ipmin:ipmin+ip-1))/(uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1))
+                call xpusht3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),dtmaps(1))
+               else
+                uzboost = clight*sqrt(boost_gamma*boost_gamma-1.)
+                vzboost = uzboost/boost_gamma
+c               --- get time step in lab frame
+                dtmaps(1:ip) = boost_gamma*fulldt_s*(1.+vbeam*vzboost*invclightsq)
+c               --- get time for each particle in lab frame
+                tlab(1:ip) = boost_gamma*time+uzboost*zp(ipmin:ipmin+ip-1)*invclightsq
+c               --- get zbeam for each particle in lab frame
+                zbeam_maps(1:ip) = (boost_z0/boost_gamma+(vbeam+vzboost)*tlab(1:ip))/(1.+vbeam*vzboost*invclightsq)
+                zbeamend_maps(1:ip) = zbeam_maps(1:ip) + dtmaps(1:ip)*vbeam_lab
+c               --- get particles position in lab frame
+                zp(ipmin:ipmin+ip-1) = boost_gamma*zp(ipmin:ipmin+ip-1)+uzboost*time  
+c               --- get particles momenta in lab frame
+                call setu_in_uzboosted_frame3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),-uzboost,boost_gamma)
+c               --- apply maps in lab frame
+                zend(1:ip) = zp(ipmin:ipmin+ip-1)+uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1)*dtmaps(1:ip)
+                call applylmap(ip,xp(ipmin),yp(ipmin),uxp(ipmin),uyp(ipmin),
+     &                         ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                         vbeam_lab,gammabar_lab,zbeam_maps(1),zbeamend_maps(1),
+     &                         zend(1),lmappid)
+                tlab(1:ip) = tlab(1:ip)+dtmaps(1:ip)
+                dtmaps(1:ip) = (zend(1:ip)-zp(ipmin:ipmin+ip-1))/(uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1))
+                call xpusht3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),dtmaps(1))
+c               --- get particles momenta in boosted frame
+                call setu_in_uzboosted_frame3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),uzboost,boost_gamma)
+c               --- get particles position in boosted frame
+                zp(ipmin:ipmin+ip-1) = boost_gamma*zp(ipmin:ipmin+ip-1)-uzboost*(tlab(1:ip))
+              end if
+            end if
+
 c           --- Position advance
             if (center .ne. "hbor2") then
 c             --- hbor2 just does a v advance, no x push
@@ -2006,59 +2153,79 @@ c             --- step, using half Boris if interpdk = 1.
 c             --- More generally hbor1 provides 1st half of a Boris
 c             --- step, hbor2 provides 2nd half.
 
-c             --- Obtain bend radii and residence factors
-              call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
-     &                     pgroup%gaminv(ipmin),bendres,
-     &                     bendradi,-halfdt_s,0.,.false.)
-c             --- Correct Ez_self for warped mesh effect
-              call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez(ipmin),
-     &                     bendres,bendradi,bends,bnezflag,linbend)
-c             --- Add in Ez from axially-smoothed gaps 
-              call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
-            if (boost_gamma==1.) then
-c             --- Add in ears and uniform focusing E field pieces
-              call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                      zbeam,zimax,zimin,straight,ifeears,eears,
-     &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
-     &                      ex(ipmin),ey(ipmin),ez(ipmin),
-     &                      bx(ipmin),by(ipmin),bz(ipmin))
-c             --- Set quad, dipole E and B; All: Bz
-              call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                     gaminv(ipmin),-halfdt_s,0.,
-     &                     bx(ipmin),by(ipmin),bz(ipmin),
-     &                     ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
-     &                     bendres,bendradi,gammabar,fulldt_s)
-            else
-              uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
-              exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
-              bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
-              zlab(1:ip) = boost_gamma*zp(ipmin:ipmin+ip-1)+uzboost*time  
-              uzlab(1:ip) = boost_gamma*uzp(ipmin:ipmin+ip-1)+uzboost/gaminv(ipmin:ipmin+ip-1)
-              ginvlab(1:ip) = 1./(boost_gamma/gaminv(ipmin:ipmin+ip-1)
-     &                      +     uzboost*uzp(ipmin:ipmin+ip-1)*invclightsq)
-c             --- Add in ears and uniform focusing E field pieces
-              call othere3d(ip,xp(ipmin),yp(ipmin),zlab(1),
-     &                      zbeam*boost_gamma+uzboost*time,
-     &                      zimax,zimin,straight,ifeears,eears,
-     &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
-     &                      exlab(1),eylab(1),ezlab(1),
-     &                      bxlab(1),bylab(1),bzlab(1))
-c             --- Set quad, dipole E and B; All: Bz
-              call exteb3d(ip,xp(ipmin),yp(ipmin),zlab(1),uzlab(1),
-     &                     ginvlab(1),-halfdt_s/boost_gamma,0.,
-     &                     bxlab(1),bylab(1),bzlab(1),
-     &                     exlab(1),eylab(1),ezlab(1),sm(is),sq(is),
-     &                     bendres,bendradi,gammabar,fulldt_s/boost_gamma)
-              call seteb_in_boosted_frame(ip,exlab(1),eylab(1),ezlab(1),
-     &                                       bxlab(1),bylab(1),bzlab(1),
-     &                                       0.,0.,uzboost,boost_gamma)
-              ex(ipmin:ipmin+ip-1)=ex(ipmin:ipmin+ip-1)+exlab(1:ip)
-              ey(ipmin:ipmin+ip-1)=ey(ipmin:ipmin+ip-1)+eylab(1:ip)
-              ez(ipmin:ipmin+ip-1)=ez(ipmin:ipmin+ip-1)+ezlab(1:ip)
-              bx(ipmin:ipmin+ip-1)=bx(ipmin:ipmin+ip-1)+bxlab(1:ip)
-              by(ipmin:ipmin+ip-1)=by(ipmin:ipmin+ip-1)+bylab(1:ip)
-              bz(ipmin:ipmin+ip-1)=bz(ipmin:ipmin+ip-1)+bzlab(1:ip)
-            endif
+              if (boost_gamma==1.) then
+c               --- Obtain bend radii and residence factors
+                call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
+     &                       pgroup%gaminv(ipmin),bendres,
+     &                       bendradi,-halfdt_s,0.,.false.)
+c               --- Correct Ez_self for warped mesh effect
+                call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez(ipmin),
+     &                       bendres,bendradi,bends,bnezflag,linbend)
+c               --- Add in Ez from axially-smoothed gaps 
+                call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
+c               --- Add in ears and uniform focusing E field pieces
+                call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                        zbeam,zimax,zimin,straight,ifeears,eears,
+     &                        eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
+     &                        ex(ipmin),ey(ipmin),ez(ipmin),
+     &                        bx(ipmin),by(ipmin),bz(ipmin))
+c               --- Set quad, dipole E and B; All: Bz
+                call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
+     &                       gaminv(ipmin),-halfdt_s,0.,
+     &                       bx(ipmin),by(ipmin),bz(ipmin),
+     &                       ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
+     &                       bendres,bendradi,gammabar,fulldt_s)
+              else
+                uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
+                exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
+                bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
+                zlab(1:ip) = boost_gamma*zp(ipmin:ipmin+ip-1)+uzboost*time  
+                uxlab(1:ip) = uxp(ipmin:ipmin+ip-1)
+                uylab(1:ip) = uyp(ipmin:ipmin+ip-1)
+                uzlab(1:ip) = uzp(ipmin:ipmin+ip-1)
+                ginvlab(1:ip) = gaminv(ipmin:ipmin+ip-1)
+                call setu_in_uzboosted_frame3d(ip,uxlab(1),uylab(1),uzlab(1),ginvlab(1),-uzboost,boost_gamma)
+                tstart(1:ip) = boost_gamma*time+uzboost*zp(ipmin:ipmin+ip-1)*invclightsq
+                tend  (1:ip) = boost_gamma*(time+halfdt_s)+uzboost*(zp(ipmin:ipmin+ip-1) 
+     &                       + uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1)*halfdt_s)*invclightsq
+                ! this is an attempt to fool exteb3d. Normally, each particle should have its 
+                ! own dt, but this would require to modify all the routines called by exteb3d.
+                ! We are assuming that ginvlab will always be multiplied by dt in its 
+                ! usage in the routines called by exteb3d. If this is not the case, then the 
+                ! kludge will fail.
+                ginvlab(1:ip) = ginvlab(1:ip)*(tend(1:ip)-tstart(1:ip))/halfdt_s
+c               --- Obtain bend radii and residence factors
+                call getbend(ip,ip,zlab(1),uzlab(1),
+     &                       ginvlab(1),bendres,
+     &                       bendradi,-halfdt_s,0.,.false.)
+c               --- Correct Ez_self for warped mesh effect
+                call bendez3d(ip,pgroup%xp(ipmin),zlab(1),ezlab(1),
+     &                       bendres,bendradi,bends,bnezflag,linbend)
+c               --- Add in Ez from axially-smoothed gaps 
+                call gapfield(ip,zlab(1),ezlab(1),zbeam,zzmin,egap(0),dzz)
+c               --- Add in ears and uniform focusing E field pieces
+                call othere3d(ip,xp(ipmin),yp(ipmin),zlab(1),
+     &                        zbeam*boost_gamma+uzboost*time,
+     &                        zimax,zimin,straight,ifeears,eears,
+     &                        eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
+     &                        exlab(1),eylab(1),ezlab(1),
+     &                        bxlab(1),bylab(1),bzlab(1))
+c               --- Set quad, dipole E and B; All: Bz
+                call exteb3d(ip,xp(ipmin),yp(ipmin),zlab(1),uzlab(1),
+     &                       ginvlab(1),-halfdt_s,0.,
+     &                       bxlab(1),bylab(1),bzlab(1),
+     &                       exlab(1),eylab(1),ezlab(1),sm(is),sq(is),
+     &                       bendres,bendradi,gammabar,fulldt_s)
+                call seteb_in_boosted_frame(ip,exlab(1),eylab(1),ezlab(1),
+     &                                      bxlab(1),bylab(1),bzlab(1),
+     &                                      0.,0.,uzboost,boost_gamma)
+                ex(ipmin:ipmin+ip-1)=ex(ipmin:ipmin+ip-1)+exlab(1:ip)
+                ey(ipmin:ipmin+ip-1)=ey(ipmin:ipmin+ip-1)+eylab(1:ip)
+                ez(ipmin:ipmin+ip-1)=ez(ipmin:ipmin+ip-1)+ezlab(1:ip)
+                bx(ipmin:ipmin+ip-1)=bx(ipmin:ipmin+ip-1)+bxlab(1:ip)
+                by(ipmin:ipmin+ip-1)=by(ipmin:ipmin+ip-1)+bylab(1:ip)
+                bz(ipmin:ipmin+ip-1)=bz(ipmin:ipmin+ip-1)+bzlab(1:ip)
+              endif
               if (pgroup%lebcancel_pusher) then
                 call ebcancelpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                                 ex(ipmin),ey(ipmin),ez(ipmin),
@@ -2133,7 +2300,7 @@ c       --- End of loop over particle blocks for cache
         enddo
 !$OMP END DO
 
-c     --- End of loop over speices.
+c     --- End of loop over species.
       enddo
 
 #ifdef _OPENMP
@@ -2161,10 +2328,11 @@ c     --- End of loop over speices.
       endif
 #endif
 
+      if (any(pgroup%l_maps)) deallocate(zbeam_maps,zbeamend_maps,dtmaps,zend)
       if (boost_gamma>1.) then
         deallocate(exlab,eylab,ezlab)
         deallocate(bxlab,bylab,bzlab)
-        deallocate(zlab,uzlab,ginvlab)
+        deallocate(zlab,uxlab,uylab,uzlab,ginvlab,tlab,tstart,tend)
       endif
       if (center == "synchv" .and. chdtspid>0) then
         deallocate(exo,eyo,ezo)
@@ -2209,7 +2377,7 @@ c         --- fullv or halfv step.
           call setuppadvncsubcyclingaveraging(it,'halfv',pgroup)
           it = it - 1
           call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
-c         call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
+          call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
           call setuppadvncsubcyclingaveraging(it,center,pgroup)
 
         endif
@@ -10319,24 +10487,43 @@ c         The loop is in bendfieldsol3d
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: indts,tmpnsndts,getnsndtsforsubcycling
       integer(ISZ):: isndts
+      logical(ISZ):: linbendturnedoff
       if (lw3dtimesubs) substarttime = wtime()
       timetemp = wtime()
 
 c     --- If no field solve, return 
       if ( fstype == -1) return 
 
+c     --- turn off the bends for the fieldsolve when computing in a boosted frame
+      if ( boost_gamma>1. .and. linbend) then
+        linbend=.false.
+        linbendturnedoff=.true.
+      else
+        linbendturnedoff=.false.
+      endif
+
 c     --- If a field solver is registered, call it and return.
       if (fstype == 12) then
 c       --- The registered field solvers shouldn't be called unless a full
 c       --- field solve is being called for.
-        if (iwhich > 0) return
-
+        if (iwhich > 0) then
+c          --- turn back on the bends after the fieldsolve when computing in a boosted frame
+           if (linbendturnedoff) then
+             linbend=.true.
+           end if
+           return
+        endif
         call callpythonfunc("fieldsolregistered","fieldsolver")
 
 !$OMP MASTER
         if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
         fstime = fstime + (wtime() - timetemp)
 !$OMP END MASTER
+
+c       --- turn back on the bends after the fieldsolve when computing in a boosted frame
+        if (linbendturnedoff) then
+          linbend=.true.
+        end if
         return
       endif
 
@@ -10455,6 +10642,11 @@ c     --- the rho and phi arrays are independently allocated.
      &                                  phipndts(:,:,:,0))
 #endif
 
+c     --- turn back on the bends after the fieldsolve when computing in a boosted frame
+      if (linbendturnedoff) then
+        linbend=.true.
+      end if
+      
 !$OMP MASTER
       if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
       fstime = fstime + (wtime() - timetemp)
