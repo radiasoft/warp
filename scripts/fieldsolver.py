@@ -1097,9 +1097,10 @@ class SubcycledPoissonSolver(FieldSolver):
     # --- In the serial case, potentialp and self.potential point to the
     # --- same memory.
     if lparallel:
-      potentialp = self.returnpotentialp(indts,iselfb)
-      potentialp[...] = self.potential
-
+      if type(self.potential)<>type(0.):
+        potentialp = self.returnpotentialp(indts,iselfb)
+        potentialp[...] = self.potential
+        
   def getfieldpforparticles(self,isourcepndtscopies,indts,iselfb):
     "Copies from field to fieldp"
     # --- In the serial case, fieldp and self.field point to the
