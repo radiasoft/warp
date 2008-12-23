@@ -2,7 +2,7 @@
 """
 __all__ = ['drawlatticedoc','drawlattice']
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.10 2008/01/04 00:10:48 dave Exp $"
+drawlattice_version = "$Id: drawlattice.py,v 1.11 2008/12/23 18:28:34 jlvay Exp $"
 def drawlatticedoc():
   import drawlattice
   print drawlattice.__doc__
@@ -21,14 +21,17 @@ def _getelem(elem,zlatmin,zlatmax):
     ii = []
   return ii,nn
 
-def _plotele(x,z,c,n1,n2):
+def _plotele(x,z,c,n1,n2,l_inboostedframe=0):
   if c is None: return
   if n1 > 0:
     cc = (c*ones(n1)).astype(ubyte)
     nn = n2*ones(n1,'l')
+    z=z+top.zlatstrt
+    if l_inboostedframe:
+      uzboost=clight*sqrt(top.boost_gamma*top.boost_gamma-1.)
+      vzboost = uzboost/top.boost_gamma
+      z = z/top.boost_gamma-vzboost*top.time
     plfp(cc,x,z,nn)
-    z = array(z)
-    x = array(x)
     z.shape = (n1,n2)
     x.shape = (n1,n2)
     pla(transpose(x),transpose(z))
@@ -57,7 +60,8 @@ def _makearcs(x,z,narc):
 
 #############################################################################
 def drawlattice(zlatmin=0,zlatmax=None,ilinflg=0,ilabflg=1,ratio=None,narc=10,
-                height=None,
+                height=None,offsetlat=0.,offsetlabels=0.,offsetaxis=0.,
+                l_inboostedframe=0,titles=1,
                 zquad=None,xquad=None,quadlab=None,quadcolor=10,
                 zhele=None,xhele=None,helelab=None,helecolor=35,
                 zemlt=None,xemlt=None,emltlab=None,emltcolor=60,
@@ -67,7 +71,8 @@ def drawlattice(zlatmin=0,zlatmax=None,ilinflg=0,ilabflg=1,ratio=None,narc=10,
                 zpgrd=None,xpgrd=None,pgrdlab=None,pgrdcolor=135,
                 zaccl=None,xaccl=None,accllab=None,acclcolor=160,
                 zdipo=None,xdipo=None,dipolab=None,dipocolor=185,
-                zbend=None,xbend=None,bendlab=None,bendcolor=20):
+                zbend=None,xbend=None,bendlab=None,bendcolor=20,
+                zlmap=None,xlmap=None,lmaplab=None,lmapcolor=100):
   """
 Draws the lattice.  All lattice elements starting in the interval 
  - zlatmin=0,zlatmax: lattice elements within the range are plotted.
@@ -79,7 +84,11 @@ Draws the lattice.  All lattice elements starting in the interval
  - ratio=1.5: ratio of height to length of elements
  - narc=10: number of points in bend arcs, any curved line in a bend
  - height=(zlatmax-zlatmin)/10.: height of elements blocks, in meters
-
+ - l_inboostedframe=0: if 1, draw lattice in boosted frame
+ - titles=1: flag to turn on/off the plotting of titles
+ - offsetlat=0.: amount to offset the lattice elements in the vertical direction
+ - offsetlabels=0.: amount to offset the labels in the vertical direction
+ - offsetaxis=0.: amount to offset the axis in the vertical direction
 For each element type, the following inputs can be optionally given to affect
 how the element is displayed. Here 'elem' refers is replaced by one of the
 element names, such as 'quad' or 'bgrd'.:
@@ -138,6 +147,7 @@ type, and should draw any general lattice.
       if top.dipos: zlatmax = max(max(top.dipoze),zlatmax)
       if top.bends: zlatmax = max(max(top.bendze),zlatmax)
       if top.accls: zlatmax = max(max(top.acclze),zlatmax)
+      if top.lmaps: zlatmax = max(max(top.lmapze),zlatmax)
 
   # --- Shapes for the elements
   # --- Note that 0 <= z <= 1 and -0.5 <= x <= +0.5
@@ -181,6 +191,10 @@ type, and should draw any general lattice.
     zbend = array([0.] + list(1.*iota(0,narc)/narc) +
                          list(1.*iota(narc,0,-1)/narc) + [0.])
     xbend = array([0.] + (narc+1)*[0.5] + (narc+1)*[-0.5] + [0.])
+  if zlmap is None:
+    zlmap = array([0., 0. , 1. ,  1. ,  0. , 0.])
+    xlmap = array([0., 0.5, 0.5, -0.5, -0.5, 0.])
+    if ilinflg == 0: xlmap,zlmap = _makearcs(xlmap,zlmap,narc)
 
   # --- Labels for elements
   if quadlab is None:
@@ -256,6 +270,13 @@ type, and should draw any general lattice.
     def bendlab(np,bendlab=bendlab):
       return bendlab
 
+  if lmaplab is None:
+    def lmaplab(nh):
+        return "m%d"%nM
+  elif type(lmaplab) is not FunctionType:
+    def lmaplab(nh,lmaplab=lmaplab):
+      return lmaplab
+
   # --- Create work arrays
   zaxis = []
   xaxis = []
@@ -280,6 +301,8 @@ type, and should draw any general lattice.
   zl = []
   xl = []
   cl = []
+  zM = []
+  xM = []
 
   # --- find element indices in plot region
   iq,nq = _getelem('quad',zlatmin,zlatmax)
@@ -292,6 +315,7 @@ type, and should draw any general lattice.
   id,nd = _getelem('dipo',zlatmin,zlatmax)
   ia,na = _getelem('accl',zlatmin,zlatmax)
   ic,nc = _getelem('bend',zlatmin,zlatmax)
+  iM,nM = _getelem('lmap',zlatmin,zlatmax)
 
   # --- Get maximum element length, and set height proportional to that
   # --- so all elements are the same height.
@@ -307,6 +331,7 @@ type, and should draw any general lattice.
     if len(id) > 0: hmax = max(hmax,max(take(top.dipoze-top.dipozs,id)))
     if len(ia) > 0: hmax = max(hmax,max(take(top.acclze-top.acclzs,ia)))
     if len(ic) > 0: hmax = max(hmax,max(take(top.bendze-top.bendzs,ic)))
+    if len(iM) > 0: hmax = max(hmax,max(take(top.lmapze-top.lmapzs,iM)))
     dh = ratio*hmax
   elif height is not None:
     dh = height
@@ -321,10 +346,10 @@ type, and should draw any general lattice.
   zend = zlatmin
 
   # --- loop over all elements in range
-  for n in xrange(len(iq)+len(ih)+len(id)+len(ic)+len(ia)+len(ie)+len(im)+len(ib)+len(ip)):
+  for n in xrange(len(iq)+len(ih)+len(id)+len(ic)+len(ia)+len(ie)+len(im)+len(ib)+len(ip)+len(iM)):
 
     # --- find element with minimum z and flag with ilatspc  
-    zqmin=zhmin=zemin=zmmin=zbmin=zpmin=zdmin=zamin=zcmin=zlatmax
+    zqmin=zhmin=zemin=zmmin=zbmin=zpmin=zdmin=zamin=zcmin=zMmin=zlatmax
     if len(iq) > 0 and nq in iq: zqmin = top.quadzs[nq]
     if len(ih) > 0 and nh in ih: zhmin = top.helezs[nh]
     if len(ie) > 0 and ne in ie: zemin = top.emltzs[ne]
@@ -335,8 +360,9 @@ type, and should draw any general lattice.
     if len(id) > 0 and nd in id: zdmin = top.dipozs[nd]
     if len(ia) > 0 and na in ia: zamin = top.acclzs[na]
     if len(ic) > 0 and nc in ic: zcmin = top.bendzs[nc]
-    ii = argmin([zqmin,zhmin,zemin,zmmin,zbmin,zpmin,zamin,zcmin,zdmin])
-    ilatspc =   ['q'  ,'h'  ,'e'  ,'m'  ,'b'  ,'p'  ,'a'  ,'c'  ,'d'][ii]
+    if len(iM) > 0 and nM in iM: zMmin = top.lmapzs[nc]
+    ii = argmin([zqmin,zhmin,zemin,zmmin,zbmin,zpmin,zamin,zcmin,zdmin,zMmin])
+    ilatspc =   ['q'  ,'h'  ,'e'  ,'m'  ,'b'  ,'p'  ,'a'  ,'c'  ,'d' ,'M' ][ii]
 
     if ilatspc == 'q':
       # --- load quadrapole element (focussing or defocussing)
@@ -438,24 +464,33 @@ type, and should draw any general lattice.
         xl = xl + [0.5*(x0+x1)]
         cl = cl + [bendlab(nc)]
       nc = nc + 1
+    if ilatspc == 'M':
+      # --- load map element 
+      zaxis,xaxis,zM,xM,zl,xl = _addelement(top.lmapzs[nM],top.lmapze[nM],
+                                            zend,dh,zlmap,xlmap,
+                                            zaxis,xaxis,zM,xM,zl,xl)
+      cl.append(lmaplab(nM))
+      zend = top.lmapze[nM]
+      nM = nM + 1
     
   # --- Add the last point
   zaxis.append(zaxis[-1] + (zlatmax - zend))
   xaxis.append(xaxis[-1])
 
-  if ilinflg == 0:
-    xq,zq = array(xq),array(zq)
-    xh,zh = array(xh),array(zh)
-    xe,ze = array(xe),array(ze)
-    xm,zm = array(xm),array(zm)
-    xb,zb = array(xb),array(zb)
-    xp,zp = array(xp),array(zp)
-    xa,za = array(xa),array(za)
-    xc,zc = array(xc),array(zc)
-    xd,zd = array(xd),array(zd)
-    xaxis,zaxis = _makearcs(xaxis,zaxis,narc)
-    xl,zl = array(xl),array(zl)
+  xq,zq = array(xq),array(zq)
+  xh,zh = array(xh),array(zh)
+  xe,ze = array(xe),array(ze)
+  xm,zm = array(xm),array(zm)
+  xb,zb = array(xb),array(zb)
+  xp,zp = array(xp),array(zp)
+  xa,za = array(xa),array(za)
+  xc,zc = array(xc),array(zc)
+  xd,zd = array(xd),array(zd)
+  xl,zl = array(xl),array(zl)
+  xM,zM = array(xM),array(zM)
+  xaxis,zaxis = _makearcs(xaxis,zaxis,narc)
 
+  if ilinflg == 0:
     if len(xq)>0:tolabfrm(zlatmin,len(xq),xq,zq)
     if len(xh)>0:tolabfrm(zlatmin,len(xh),xh,zh)
     if len(xe)>0:tolabfrm(zlatmin,len(xe),xe,ze)
@@ -469,22 +504,33 @@ type, and should draw any general lattice.
     if len(xl)>0:tolabfrm(zlatmin,len(xl),xl,zl)
 
   # --- plot the lattice
-  _plotele(xc,zc,bendcolor,len(ic),len(zbend))
-  _plotele(xq,zq,quadcolor,len(iq),len(zquad))
-  _plotele(xh,zh,helecolor,len(ih),len(zhele))
-  _plotele(xe,ze,emltcolor,len(ie),len(zemlt))
-  _plotele(xm,zm,mmltcolor,len(im),len(zmmlt))
-  _plotele(xe,ze,egrdcolor,len(ie),len(zegrd))
-  _plotele(xb,zb,bgrdcolor,len(ib),len(zbgrd))
-  _plotele(xp,zp,pgrdcolor,len(ip),len(zpgrd))
-  _plotele(xa,za,acclcolor,len(ia),len(zaccl))
-  _plotele(xd,zd,dipocolor,len(id),len(zdipo))
+  _plotele(xc+offsetlat,zc,bendcolor,len(ic),len(zbend),l_inboostedframe=l_inboostedframe)
+  _plotele(xq+offsetlat,zq,quadcolor,len(iq),len(zquad),l_inboostedframe=l_inboostedframe)
+  _plotele(xh+offsetlat,zh,helecolor,len(ih),len(zhele),l_inboostedframe=l_inboostedframe)
+  _plotele(xe+offsetlat,ze,emltcolor,len(ie),len(zemlt),l_inboostedframe=l_inboostedframe)
+  _plotele(xm+offsetlat,zm,mmltcolor,len(im),len(zmmlt),l_inboostedframe=l_inboostedframe)
+  _plotele(xe+offsetlat,ze,egrdcolor,len(ie),len(zegrd),l_inboostedframe=l_inboostedframe)
+  _plotele(xb+offsetlat,zb,bgrdcolor,len(ib),len(zbgrd),l_inboostedframe=l_inboostedframe)
+  _plotele(xp+offsetlat,zp,pgrdcolor,len(ip),len(zpgrd),l_inboostedframe=l_inboostedframe)
+  _plotele(xa+offsetlat,za,acclcolor,len(ia),len(zaccl),l_inboostedframe=l_inboostedframe)
+  _plotele(xd+offsetlat,zd,dipocolor,len(id),len(zdipo),l_inboostedframe=l_inboostedframe)
+  _plotele(xM+offsetlat,zM,lmapcolor,len(iM),len(zlmap),l_inboostedframe=l_inboostedframe)
+
+  if l_inboostedframe:
+    uzboost=clight*sqrt(top.boost_gamma*top.boost_gamma-1.)
+    vzboost = uzboost/top.boost_gamma
 
   # --- Plot the axis
-  plg(xaxis,zaxis)
+  zaxis=zaxis+top.zlatstrt
+  if l_inboostedframe:
+    zaxis = zaxis/top.boost_gamma-vzboost*top.time
+  plg(xaxis+offsetaxis,zaxis)
   # --- Plot the labels
   if ilabflg:
     for z,x,c in map(None,zl,xl,cl):
-      plt(c,z,x,tosys=1,justify="CA")
-  ptitles(titleb="meters",titlel="meters")
+      z+=top.zlatstrt
+      if l_inboostedframe:
+        z = z/top.boost_gamma-vzboost*top.time
+      plt(c,z,x+offsetlabels,tosys=1,justify="CA")
+  if titles:ptitles(titleb="meters",titlel="meters")
 
