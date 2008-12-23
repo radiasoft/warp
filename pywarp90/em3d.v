@@ -22,7 +22,7 @@ s_max_y          real
 s_delta          real    /5./
 sb_coef          real    /0./
 nn               real    /2./
-bnd_cond         integer /6/
+bnd_cond         integer /3/
 
 *********** EM3D_FIELDobjects dump:
 l_onegrid                    logical /.true./
@@ -194,6 +194,7 @@ addsubstractfields(child:EM3D_BLOCKtype,child_coarse:EM3D_BLOCKtype,
                    parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer) subroutine
 addsubstractfields_nodal(child:EM3D_BLOCKtype,child_coarse:EM3D_BLOCKtype,
                    parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer) subroutine
+smooth3d_121(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,npass(3):integer) subroutine
 
 %%%%%%%% EM3D_SPLITYEEFIELDtype:
 fieldtype integer /-2/
@@ -378,6 +379,8 @@ Ay(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Az(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Phi(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Mp(-nxguard:nxmp+nxguard,-nyguard:nymp+nyguard,-nzguard:nzmp+nzguard,3) _real
+Ey_in_pos integer /-1/
+Ey_in(-nxguard:nx+nxguard,-nyguard:ny+nyguard) _real
 
 %%%%%%%% EM3D_KYEEFIELDtype:
 fieldtype integer /-1/
