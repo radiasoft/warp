@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.27 $, $Date: 2008/12/04 23:31:46 $
+c@(#) File top_lattice.F, version $Revision: 3.28 $, $Date: 2008/12/23 17:41:56 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -111,6 +111,7 @@ c============================================================================
       use Constant
       use Lattice
       use Beam_acc
+      use InGen, only: boost_gamma
 
 c     --- if autoset dipoles are specified, then derive dipole locations 
 c     --- consistently from bend locations and radii 
@@ -123,8 +124,13 @@ c     --- consistently from bend locations and radii
               if (bendrc(id) .ne. 0.) then
 c                --- auto-set dipole field to match bend radius of curvature
                  if (dipoby(id) == 0. .and. dipoex(id) == 0.) then 
+                   if (boost_gamma==1.) then
                     dipoby(id) = aion * amu / (zion * echarge)
      &                            * gammabar * vbeam / dvnz(bendrc(id))
+                   else
+                    dipoby(id) = aion * amu / (zion * echarge)
+     &                            * gammabar_lab * vbeam_lab / dvnz(bendrc(id))
+                   end if
                  endif
 c                --- auto-set dipole starts and ends to match those of bends
                  if (dipozs(id) == dipoze(id)) then
@@ -1106,6 +1112,49 @@ c           --- quadrupole symmetry
       return
       end
 c============================================================================ 
+      subroutine countlmaps()
+      use Lattice
+
+c     --- count lmaps 
+
+      integer(ISZ):: ilmap,nnlmap
+
+      nnlmap = -1
+      do ilmap = 0, nlmap
+         if (lmapzs(ilmap) .ne. lmapze(ilmap)) nnlmap = ilmap
+      enddo
+      nlmap = nnlmap
+
+      return 
+      end 
+c============================================================================ 
+      subroutine setuplmaps()
+      use Lattice
+
+      integer(ISZ):: ilmap
+
+      if (zlatperi > 0.) then
+        if (nlmap >= 0) then
+          if (lmapzs(0) == lmapze(0)) then
+             lmapzs(0) = lmapzs(nlmap) - zlatperi
+             lmapze(0) = lmapze(nlmap) - zlatperi
+             lmaptype(0) = lmaptype(nlmap)
+             lmapangle(0) = lmapangle(nlmap)
+             lmapk(0) = lmapk(nlmap)
+          endif
+        endif
+      endif
+
+c     --- Set flags for existence of the elements - checking if the fields
+c     --- are specified.
+      lmaps = .false.
+      do ilmap = 0, nlmap
+         if (lmapzs(ilmap) .ne. lmapze(ilmap)) lmaps = .true.
+      enddo
+
+      return
+      end
+c============================================================================ 
 c============================================================================ 
 c============================================================================ 
       subroutine resetlatdrft()
@@ -1361,6 +1410,26 @@ c============================================================================
       return
       end
 c============================================================================ 
+      subroutine resetlatlmap()
+      use Lattice
+      use LatticeInternal
+
+      call countlmaps
+      call gchange("Lattice", 0)
+      call setuplmaps
+
+      nlmapol = 0
+      if (nlmap >= 0)
+     &  call getelemoverlaps(nlmap,lmapzs,lmapze,lmapol,zlatbuffer,nlmapol)
+      call gchange("LatticeInternal",0)
+
+      if (nlmap >= 0)
+     &  call getelemoverlapindices(nlmap,lmapol,nlmapol,olmapoi,olmapio,olmapii,
+     &                             olmapnn)
+
+      return
+      end
+c============================================================================ 
 c============================================================================ 
       subroutine resetlat()
       use Subtimerstop
@@ -1386,7 +1455,8 @@ c  called after all of the element have been updated.
       call countegrds
       call countpgrds
       call countbsqgrads
-
+      call countlmaps
+     
 c     --- resize lattice arrays (use corrected ndipo size if autoset dipoles, 
 c     --- bends imply dipoles for autoset dipoles, see following code)
       if (diposet) ndipo = max(ndipo, nbend)    
@@ -1407,6 +1477,7 @@ c     --- elements) and then using them in the same routine
       call setupmmlts
       call setuppgrds
       call setupbsqgrads
+      call setuplmaps
 
 c     --- Get the overlap level of the lattice elements
       call getoverlaps()
@@ -1470,6 +1541,8 @@ c     --- Note that bgrd and egrd elements must be handled specially.
      &  call getelemoverlaps(npgrd,pgrdzs,pgrdze,pgrdol,zlatbuffer,npgrdol)
       if (nbsqgrad >= 0)
      &  call getelemoverlaps(nbsqgrad,bsqgradzs,bsqgradze,bsqgradol,zlatbuffer,nbsqgradol)
+      if (nlmap >= 0)
+     &  call getelemoverlaps(nlmap,lmapzs,lmapze,lmapol,zlatbuffer,nlmapol)
 
 c Now, setup indicing arrays in LatticeInternal
       call gchange("LatticeInternal",0)
@@ -1507,6 +1580,9 @@ c Now, setup indicing arrays in LatticeInternal
       if (nbsqgrad >= 0)
      &  call getelemoverlapindices(nbsqgrad,bsqgradol,nbsqgradol,obsqgradoi,obsqgradio,obsqgradii,
      &                             obsqgradnn)
+      if (nlmap >= 0)
+     &  call getelemoverlapindices(nlmap,lmapol,nlmapol,olmapoi,olmapio,olmapii,
+     &                             olmapnn)
 
       return
       end
@@ -1636,6 +1712,8 @@ c============================================================================
       subroutine setlattzt(zbeam,time)
       use Lattice
       use LatticeInternal
+      use InGen, only: boost_gamma,vbeamfrm
+      use Constant, only: clight
       real(kind=8):: zbeam,time
 
 c  Sets the lattice data at zbeam and time into 1d arrays.
@@ -1662,12 +1740,18 @@ c                                  cdipozs(j+1)        cdipoze(j+1)
       integer(ISZ):: io,iz
       integer(ISZ):: iquadert,iquaderu,iquaderr,ii,imultert,imulteru,imulterr
       integer(ISZ):: id
-      real(kind=8):: zz,offset,wi
+      real(kind=8):: zz,offset,wi,uzboost
 
 c     --- Save the z location and time at which the internal lattice frame
 c     --- is set.
-      zlframe = zbeam
-      zltime = time
+      if (boost_gamma>1. .and. vbeamfrm/=0.) then
+        uzboost = clight*sqrt(boost_gamma*boost_gamma-1.)
+        zlframe = boost_gamma*zbeam + uzboost*time 
+        zltime  = boost_gamma*time  + uzboost*zbeam/(clight**2)
+      else
+        zlframe = zbeam
+        zltime = time
+      end if
 
 c     --- Assume at the start that there are not any elements in the mesh.
       lindrft = .false.
@@ -1683,15 +1767,16 @@ c     --- Assume at the start that there are not any elements in the mesh.
       linbgrd = .false.
       linpgrd = .false.
       linbsqgrad = .false.
+      linlmap = .false.
 
       do iz = 0, nzl
 c        --- compute z of center of cell (may be off lattice)
-c        --- If nzl is zero, then find the elements at zbeam. Otherwise,
+c        --- If nzl is zero, then find the elements at zlframe. Otherwise,
 c        --- find the elements at each of the grid points.
          if (nzl > 0) then
-           zz = iz*dzl + zlmin + zbeam + 0.5*dzl
+           zz = iz*dzl + zlmin + zlframe + 0.5*dzl
          else
-           zz = zbeam
+           zz = zlframe
          endif
 
 c        --- find index of nearest drft element
@@ -1702,8 +1787,8 @@ c        --- find index of nearest drft element
 c          --- load lattice info into comoving 1d array
            cdrftzs(iz,io) = drftzs(cdrftid(iz,io)) + offset
            cdrftze(iz,io) = drftze(cdrftid(iz,io)) + offset
-           if (cdrftzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                           zlmin+zbeam-zlatbuffer <= cdrftze(iz,io))
+           if (cdrftzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= cdrftze(iz,io))
      &         lindrft(io) = .true.
          enddo
 
@@ -1722,8 +1807,8 @@ c          --- load lattice info into comoving 1d array
            cbendrc(iz) = bendrc(cbendid(iz))
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cbendzs(iz) <= zlmax+zbeam+zlatbuffer .and.
-     &                        zlmin+zbeam-zlatbuffer <= cbendze(iz))
+           if (cbendzs(iz) <= zlmax+zlframe+zlatbuffer .and.
+     &                        zlmin+zlframe-zlatbuffer <= cbendze(iz))
      &       linbend = .true.
          endif
 
@@ -1743,8 +1828,8 @@ c          --- load lattice info into comoving 1d array
            cdipotb(iz,io) = dipotb(cdipoid(iz,io))
            cdipoex(iz,io) = dipoex(cdipoid(iz,io))
            cdipoey(iz,io) = dipoey(cdipoid(iz,io))
-           if (cdipozs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                           zlmin+zbeam-zlatbuffer <= cdipoze(iz,io))
+           if (cdipozs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= cdipoze(iz,io))
      &       lindipo(io) = .true.
          enddo
 
@@ -1790,8 +1875,8 @@ c          --- THIS NEEDS CHECKING, especially when iqerr is nonzero.
            endif
            cqoffx(iz,io) = qoffx(iquaderr)
            cqoffy(iz,io) = qoffy(iquaderr)
-           if (cquadzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                           zlmin+zbeam-zlatbuffer <= cquadze(iz,io))
+           if (cquadzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= cquadze(iz,io))
      &       linquad(io) = .true.
          enddo
 
@@ -1807,8 +1892,8 @@ c          --- load lattice info into comoving 1d array
            csextze(iz,io) = sextze(csextid(iz,io)) + offset
            csextdb(iz,io) = sextdb(csextid(iz,io))
            csextde(iz,io) = sextde(csextid(iz,io))
-           if (csextzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                           zlmin+zbeam-zlatbuffer <= csextze(iz,io))
+           if (csextzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= csextze(iz,io))
      &       linsext(io) = .true.
          enddo
 
@@ -1820,8 +1905,8 @@ c        --- find index of nearest hard-edge multipole element
 c          --- load lattice info into comoving 1d array
            chelezs(iz,io) = helezs(cheleid(iz,io)) + offset
            cheleze(iz,io) = heleze(cheleid(iz,io)) + offset
-           if (chelezs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                           zlmin+zbeam-zlatbuffer <= cheleze(iz,io))
+           if (chelezs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= cheleze(iz,io))
      &       linhele(io) = .true.
          enddo
 
@@ -1844,8 +1929,8 @@ c        --- find index of nearest acceleration element
                cacclez(iz,io) = acclez(id) + acclet(ii  ,id)*(1. - wi) +
      &                                       acclet(ii+1,id)*      wi 
              endif
-             if (cacclzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                             zlmin+zbeam-zlatbuffer <= cacclze(iz,io))
+             if (cacclzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                             zlmin+zlframe-zlatbuffer <= cacclze(iz,io))
      &         linaccl(io) = .true.
            else
              cacclzs(iz,io) = 0.
@@ -1873,8 +1958,8 @@ c          --- load lattice info into comoving 1d array
            cemltim(iz,io) = emltid(id)
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cemltzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                           zlmin+zbeam-zlatbuffer <= cemltze(iz,io))
+           if (cemltzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= cemltze(iz,io))
      &       linemlt(io) = .true.
 c          --- set index for offset emlts.  NOTE that this uses "neerr"
 c          --- and not "nemlt".  This gives us a choice of either:
@@ -1913,8 +1998,8 @@ c          --- load lattice info into comoving 1d array
            cmmltim(iz,io) = mmltid(id)
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cmmltzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                           zlmin+zbeam-zlatbuffer <= cmmltze(iz,io))
+           if (cmmltzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= cmmltze(iz,io))
      &       linmmlt(io) = .true.
 c          --- set index for offset mmlts.  NOTE that this uses "nmerr"
 c          --- and not "nmmlt".  This gives us a choice of either:
@@ -1950,8 +2035,8 @@ c          --- load lattice info into comoving 1d array
            cegrdze(iz,io) = egrdfe(cegrdid(iz,io)) + offset
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cegrdzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                           zlmin+zbeam-zlatbuffer <= cegrdze(iz,io))
+           if (cegrdzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= cegrdze(iz,io))
      &       linegrd(io) = .true.
          enddo
 
@@ -1969,8 +2054,8 @@ c          --- load lattice info into comoving 1d array
            cbgrdze(iz,io) = bgrdfe(cbgrdid(iz,io)) + offset
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cbgrdzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                           zlmin+zbeam-zlatbuffer <= cbgrdze(iz,io))
+           if (cbgrdzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= cbgrdze(iz,io))
      &       linbgrd(io) = .true.
          enddo
 
@@ -1986,8 +2071,8 @@ c          --- load lattice info into comoving 1d array
            cpgrdze(iz,io) = pgrdze(cpgrdid(iz,io)) + offset
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cpgrdzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                           zlmin+zbeam-zlatbuffer <= cpgrdze(iz,io))
+           if (cpgrdzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= cpgrdze(iz,io))
      &       linpgrd(io) = .true.
          enddo
 
@@ -2003,9 +2088,22 @@ c          --- load lattice info into comoving 1d array
            cbsqgradze(iz,io) = bsqgradze(cbsqgradid(iz,io)) + offset
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cbsqgradzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
-     &                           zlmin+zbeam-zlatbuffer <= cbsqgradze(iz,io))
+           if (cbsqgradzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= cbsqgradze(iz,io))
      &       linbsqgrad(io) = .true.
+         enddo
+
+c        --- find index of nearest lmap element
+         do io=1,nlmapol
+           call getelemid(zz,offset,nlmap,lmapzs,lmapze,lmapol,
+     &                    olmapnn(io),olmapoi(olmapii(io)),olmapio,
+     &                    clmapid(iz,io),io)
+c          --- load lattice info into comoving 1d array
+           clmapzs(iz,io) = lmapzs(clmapid(iz,io)) + offset
+           clmapze(iz,io) = lmapze(clmapid(iz,io)) + offset
+           if (clmapzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                           zlmin+zlframe-zlatbuffer <= clmapze(iz,io))
+     &         linlmap(io) = .true.
          enddo
 
       enddo
@@ -2023,6 +2121,7 @@ c     --- For each element type, check to see if any elements are in the mesh.
       linbgrd(0)    = any(linbgrd)
       linpgrd(0)    = any(linpgrd)
       linbsqgrad(0) = any(linbsqgrad)
+      linlmap(0)    = any(linlmap)
 
 c     --- All parallel slave processors must know if any processors
 c     --- are in a bend.  There is probably a better way of doing this.
@@ -5110,6 +5209,765 @@ c         --- Only calculate for particles inside the field grid
 !$OMP END MASTER
       return
       end
+c=============================================================================
+      subroutine applylmap(np,xp,yp,uxp,uyp,npz,zp,uzp,gaminv,vbeam,gammabar,zbeam,zbeamend,zend,lmappid)
+      use Constant
+      use Lattice
+      use LatticeInternal
+      integer(ISZ):: np,npz
+      real(kind=8):: xp(np),yp(np),zp(npz),uxp(np),uyp(np),uzp(npz),gaminv(npz),lmappid(np)
+      real(kind=8):: xtmp,ytmp,ztmp,xpr,ypr,dpp,vbeam,gammabar,zbeam(npz),zend(npz)
+
+c Apply the transverse focusing element lmap.
+c   np       number of particles
+c   npz      number of z position data values (must be either 1 or == np)
+c   xp       x position of the particles
+c   yp       y position of the particles
+c   zp       z position of the particles
+c   uxp      massless momentum of the particles in x
+c   uyp      massless momentum of the particles in y
+c   uzp      massless momentum of the particles in z
+c   gaminv   one over gamma of the particles
+c   dtl      size of left half of time step
+c   dtr      size of right half of time step
+c   dt       full step size
+
+      integer(ISZ):: io,ip,iz,mapid
+      real(kind=8):: z1,z2,zl,fl,zr,fr,frac,xph,yph,scf,uzb,map(0:5,0:5)
+      real(kind=8):: xpnew,ypnew,zpnew,uxpnew,uypnew,uzpnew,clghtisq,dzi
+      real(kind=8):: L,Be,ga,k,cx,sx,cy,sy,j1,dx,kx,h,zbeamend(npz),nuz,eta,C
+      real(kind=8):: phx,phy,cosphx,cosphy,sinphx,sinphy,rx,mx,ax1,ax2,ry,my,ay1,ay2
+      real(kind=8):: dx1,dpx1,dx2,dpx2,dy1,dpy1,dy2,dpy2,cosphz,sinphz,phasex,phasey,phasez,coefz
+      real(kind=8), allocatable:: vz(:)
+      integer(ISZ):: allocerror
+
+      if (.not. lmaps .or. .not. linlmap(0)) return
+      allocate(vz(np),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"applylmap: allocation error ",allocerror,
+     &         ": could not allocate temp arrays to shape ",np
+        call kaboom("applylmap: allocation error")
+        return
+      endif
+
+      ga = gammabar
+      Be = vbeam/clight
+      vz  = uzp*gaminv
+      uzb = vbeam*gammabar
+      clghtisq = 1./clight**2
+      
+      do io=1,nlmapol
+        if (.not. linlmap(io)) cycle
+
+        do ip = 1, np
+                      
+c           --- find z-cell in which particle lies
+            iz = max(0., (zbeam(ip) - zlmin - zlframe)*dzli + 0.5)
+            mapid = clmapid(iz,io)
+c           --- Precalculate these quantities. zl is the min of the two and
+c           --- zr is the max. This generalizes the routine, allowing left
+c           --- moving particles, vz < 0.
+            z1 = zp(ip)
+            z2 = zend(ip)
+            dzi = abs(1./dvnz(clmapze(iz,io)-clmapzs(iz,io)))
+c           --- "left" end of velocity advance step
+            zl = min(z1,z2)
+c           --- "right" end of velocity advance step
+            zr = max(z1,z2)
+c           --- residence fraction
+            if (zl<clmapzs(iz,io)) then
+              if (zr<clmapzs(iz,io)) then
+                frac = 0.
+              else
+                frac = min(1.,(zr-clmapzs(iz,io))*dzi)
+              end if
+            else
+              if (zl>clmapze(iz,io)) then
+                frac=0.
+              else
+                if (zr>clmapze(iz,io)) then
+                  frac = min(1.,(clmapze(iz,io)-zl)*dzi)
+                else
+                  frac = (zr-zl)*dzi
+                end if
+              end if
+            end if
+            L = frac*(clmapze(iz,io)-clmapzs(iz,io))
+c         --- set the field
+          if (frac > 0.) then
+            map = 0.
+            xtmp = xp(ip)
+            ytmp = yp(ip)
+            ztmp = zp(ip)-zbeam(ip)
+            scf = gaminv(ip)/vbeam
+            xpr = uxp(ip)*scf
+            ypr = uyp(ip)*scf
+            dpp = (uzp(ip)-uzb)/uzb
+            select case(lmaptype(mapid))
+              case(-1) ! continuous focusing
+                phasex = frac*2.*pi*lmapnux(mapid)
+                phasey = frac*2.*pi*lmapnuy(mapid)
+                phasez = frac*2.*pi*lmapnuz(mapid)
+                phx = phasex*(1.+lmapxcr(mapid)*dpp/lmapqx(mapid))          !phase change based on value of chromaticity and dp 
+                phy = phasey*(1.+lmapycr(mapid)*dpp/lmapqy(mapid))          !phase change based on value of chromaticity and dp 
+                cosphx = cos(phx)
+                sinphx = sin(phx)
+                cosphy = cos(phy)
+                sinphy = sin(phy)
+                cosphz = cos(phasez)
+                sinphz = sin(phasez)
+                rx = 1. ! rx=sqrt(bx2/bx1)
+                mx = lmapbx(mapid) ! mx = sqrt(bx1*bx2)
+                ax1 = lmapax(mapid)
+                ax2 = lmapax(mapid)
+                ry = 1. ! ry=sqrt(by2/by1)
+                my = lmapby(mapid) ! my = sqrt(by1*by2)
+                ay1 = lmapay(mapid)
+                ay2 = lmapay(mapid)
+                dx1 = lmapdx(mapid)
+                dpx1 = lmapdpx(mapid)
+                dy1 = lmapdy(mapid)
+                dpy1 = lmapdpy(mapid)
+                dx2 = lmapdx(mapid)
+                dpx2 = lmapdpx(mapid)
+                dy2 = lmapdy(mapid)
+                dpy2 = lmapdpy(mapid)
+                map(0,0) = rx*(cosphx+ax1*sinphx) 
+                map(0,1) = mx*sinphx 
+!                map(1,0) = -(1/mx*((ax2-ax1)*cosphx + (1+ax1*ax2)*sinphx))
+                map(1,0) = -(1./mx*(1.+ax1*ax2)*sinphx)
+                map(1,1) = (cosphx - ax2*sinphx) ! irx*(cosphx - ax2*sinphx)
+                map(2,2) = ry*(cosphy+ay1*sinphy)
+                map(2,3) = my*sinphy
+!                map(3,2) = -(1/my*((ay2-ay1)*cosphy + (1+ay1*ay2)*sinphy))
+                map(3,2) = -(1./my*(1.+ay1*ay2)*sinphy)
+                map(3,3) = (cosphy - ay2*sinphy) ! iry*(cosphy - ay2*sinphy)
+                map(0,5) = dx2  - Map(0,0)*dx1 - Map(0,1)*dpx1
+                map(1,5) = dpx2 - Map(1,0)*dx1 - Map(1,1)*dpx1
+                map(2,5) = dy2  - Map(2,2)*dy1 - Map(2,3)*dpy1
+                map(3,5) = dpy2 - Map(3,2)*dy1 - Map(3,3)*dpy1
+                map(4,4) = cosphz
+                map(5,5) = cosphz
+                coefz = lmapeta(mapid)*(lmapze(mapid)-lmapzs(mapid))/(2.*pi*lmapnuz(mapid))
+                map(4,5) = -coefz*sinphz
+                map(5,4) = (1./coefz)*sinphz
+              case(0) ! drift
+                map(0,0) = 1.
+                map(0,1) = L 
+                map(1,1) = 1.
+                map(2,2) = 1.
+                map(2,3) = L 
+                map(3,3) = 1.
+                map(4,4) = 1.
+                map(4,5) = L/(ga*ga*Be*Be) 
+                map(5,5) = 1.
+              case(1) ! bend
+                h = lmapangle(mapid)/(clmapze(iz,io)-clmapzs(iz,io))
+                !    K = 0.0;
+                kx = sqrt(h**2)!+K);
+                cx = cos(kx*L)
+                sx = sin(kx*L)/kx
+                dx = (1.-cx)/kx**2
+                J1 = (L - sx)/kx**2
+                map(0,0) = cx 
+                map(0,1) = sx 
+                map(0,5) = (h/Be)*dx
+                map(1,0) = -kx**2*sx 
+                map(1,1) = cx 
+                map(1,5) = (h/Be)*sx
+                map(2,2) = 1. 
+                map(2,3) = L 
+                map(3,3) = 1. 
+                map(4,0) = -(h/Be)*sx 
+                map(4,1) = -(h/Be)*dx
+                map(4,4) =  1.
+                map(4,5) =  -(h/Be)**2*J1+L/(Be**2*ga**2)
+                map(5,5) = 1.
+              case(2) ! quad
+                k = lmapk(mapid)
+                if ((k>0. .and. L>0.) .or. (k<0. .and. L<0.)) then
+                  k = abs(k)
+                  L = abs(L)
+                  ! --- focusing quad
+                  cx = cos(k*L)
+                  sx = sin(k*L)/k
+                  cy = cos(k*L) 
+                  sy = -sin(k*L)/k 
+                  !cy = cosh(k*L) 
+                  !sy = -sinh(k*L)/k 
+                else ! (k>0. and L<0.) or (k<0. and L>0.)
+                  k = abs(k)
+                  L = abs(L)
+                  ! --- defocusing quad
+                  !cx = cosh(k*L)
+                  !sx = -sinh(k*L)/k
+                  cx = cos(k*L)
+                  sx = -sin(k*L)/k
+                  cy = cos(k*L) 
+                  sy = sin(k*L)/k 
+                end if
+                map(0,0) = cx
+                map(0,1) = sx
+                map(1,0) = -k**2*sx
+                map(1,1) = cx
+                map(2,2) = cy
+                map(2,3) = sy
+                map(3,2) = -k**2*sy
+                map(3,3) = cy
+                map(4,4) = 1.
+                map(4,5) = L/(ga*ga*Be*Be)
+                map(5,5) = 1.
+              case(3) ! RFkick
+                nuz = lmapnuz(mapid)
+                eta = lmapeta(mapid)
+                C = zlatperi ! assumes that ring circumference=zlatperi
+                map(0,0) = 1.
+                map(1,1) = 1.
+                map(2,2) = 1.
+                map(3,3) = 1.
+                map(4,4) = 1.
+                map(5,4) = frac*(2*pi*nuz)**2/(eta*C)
+                map(5,5) = 1.
+              case default ! undefined
+                write(0,*) 'Error in definition of maps: defined types are -1=continuous focusing, 0=drift, 1=bend, 2=quad, 3=RFkick.'
+                call abort()
+            end select
+            xp(ip)  = map(0,0)*xtmp   + map(0,1)*xpr  
+     &              + map(0,2)*ytmp   + map(0,3)*ypr
+     &              + map(0,4)*ztmp   + map(0,5)*dpp
+                          
+            uxp(ip) = (map(1,0)*xtmp  + map(1,1)*xpr
+     &              +  map(1,2)*ytmp  + map(1,3)*ypr
+     &              +  map(1,4)*ztmp  + map(1,5)*dpp)/scf 
+                      
+            yp(ip)  = map(2,0)*xtmp   + map(2,1)*xpr
+     &              + map(2,2)*ytmp   + map(2,3)*ypr
+     &              + map(2,4)*ztmp   + map(2,5)*dpp     
+                       
+            uyp(ip) = (map(3,0)*xtmp  + map(3,1)*xpr
+     &              +  map(3,2)*ytmp  + map(3,3)*ypr
+     &              +  map(3,4)*ztmp  + map(3,5)*dpp)/scf    
+                    
+            zbeam(ip) = zbeam(ip) + L
+            zp(ip)  = map(4,0)*xtmp   + map(4,1)*xpr
+     &              + map(4,2)*ytmp   + map(4,3)*ypr
+     &              + map(4,4)*ztmp   + map(4,5)*dpp + zbeam(ip)
+                    
+            uzp(ip) = (map(5,0)*xtmp  + map(5,1)*xpr
+     &              +  map(5,2)*ytmp  + map(5,3)*ypr
+     &              +  map(5,4)*ztmp  + map(5,5)*dpp)*uzb + uzb     
+            gaminv(ip) = 1./sqrt(1. + (uxp(ip)**2 + uyp(ip)**2 + uzp(ip)**2)*clghtisq)
+          endif 
+        enddo
+      enddo
+      deallocate(vz)
+
+      return
+      end
+
+c=============================================================================
+      subroutine applylmapzbeam(np,xp,yp,uxp,uyp,npz,zp,uzp,gaminv,vbeam,gammabar,zbeam,zbeamend,lmappid)
+      use Constant
+      use Lattice
+      use LatticeInternal
+      integer(ISZ):: np,npz,itot
+      real(kind=8):: xp(np),yp(np),zp(npz),uxp(np),uyp(np),uzp(npz),gaminv(npz),lmappid(np)
+      real(kind=8):: xtmp,ytmp,ztmp,xpr,ypr,dpp,vbeam,gammabar,zbeam(npz)
+
+c Apply the transverse focusing element lmap.
+c   np       number of particles
+c   npz      number of z position data values (must be either 1 or == np)
+c   xp       x position of the particles
+c   yp       y position of the particles
+c   zp       z position of the particles
+c   uxp      massless momentum of the particles in x
+c   uyp      massless momentum of the particles in y
+c   uzp      massless momentum of the particles in z
+c   gaminv   one over gamma of the particles
+c   dtl      size of left half of time step
+c   dtr      size of right half of time step
+c   dt       full step size
+
+      integer(ISZ):: io,ip,iz,mapid
+      real(kind=8):: z1,z2,zl,fl,zr,fr,frac,xph,yph,scf,uzb,map(0:5,0:5)
+      real(kind=8):: xpnew,ypnew,zpnew,uxpnew,uypnew,uzpnew,clghtisq,fractot,dzi
+      real(kind=8):: L,Be,ga,k,cx,sx,cy,sy,j1,dx,kx,h,zbeamend(npz)
+      real(kind=8):: phx,phy,cosphx,cosphy,sinphx,sinphy,rx,mx,ax1,ax2,ry,my,ay1,ay2
+      real(kind=8):: dx1,dpx1,dx2,dpx2,dy1,dpy1,dy2,dpy2,cosphz,sinphz,phasex,phasey,phasez,coefz
+      real(kind=8), allocatable:: vz(:)
+      integer(ISZ):: allocerror
+
+      if (.not. lmaps .or. .not. linlmap(0)) return
+      allocate(vz(np),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"applylmap: allocation error ",allocerror,
+     &         ": could not allocate temp arrays to shape ",np
+        call kaboom("applylmap: allocation error")
+        return
+      endif
+
+      ga = gammabar
+      Be = vbeam/clight
+      vz  = uzp*gaminv
+      uzb = vbeam*gammabar
+      clghtisq = 1./clight**2
+      
+      do io=1,nlmapol
+        if (.not. linlmap(io)) cycle
+
+        do ip = 1, np
+c           --- find z-cell in which particle lies
+            iz = max(0., (zbeam(ip) - zlmin - zlframe)*dzli + 0.5)
+            mapid = clmapid(iz,io)
+c           --- Precalculate these quantities. zl is the min of the two and
+c           --- zr is the max. This generalizes the routine, allowing left
+c           --- moving particles, vz < 0.
+            z1 = zbeam(ip)
+            z2 = zbeamend(ip)
+            dzi = abs(1./dvnz(clmapze(iz,io)-clmapzs(iz,io)))
+c           --- "left" end of velocity advance step
+            zl = min(z1,z2)
+c           --- "right" end of velocity advance step
+            zr = max(z1,z2)
+c           --- residence fraction
+            if (zl<clmapzs(iz,io)) then
+              if (zr<clmapzs(iz,io)) then
+                frac = 0.
+              else
+                frac = min(1.,(zr-clmapzs(iz,io))*dzi)
+              end if
+            else
+              if (zl>clmapze(iz,io)) then
+                frac=0.
+              else
+                if (zr>clmapze(iz,io)) then
+                  frac = min(1.,(clmapze(iz,io)-zl)*dzi)
+                else
+                  frac = (zr-zl)*dzi
+                end if
+              end if
+            end if
+            L = frac*(clmapze(iz,io)-clmapzs(iz,io))
+            fractot = fractot-frac
+            itot=itot+1
+c         --- set the field
+          if (frac > 0.) then
+            map = 0.
+            xtmp = xp(ip)
+            ytmp = yp(ip)
+            ztmp = zp(ip)-zbeam(ip)
+            scf = gaminv(ip)/vbeam
+            xpr = uxp(ip)*scf
+            ypr = uyp(ip)*scf
+            dpp = (uzp(ip)-uzb)/uzb
+            select case(lmaptype(mapid))
+              case(-1) ! continuous focusing
+                phasex = frac*2.*pi*lmapnux(mapid)
+                phasey = frac*2.*pi*lmapnuy(mapid)
+                phasez = frac*2.*pi*lmapnuz(mapid)
+                phx = phasex*(1.+lmapxcr(mapid)*dpp/lmapqx(mapid))          !phase change based on value of chromaticity and dp 
+                phy = phasey*(1.+lmapycr(mapid)*dpp/lmapqy(mapid))          !phase change based on value of chromaticity and dp 
+                cosphx = cos(phx)
+                sinphx = sin(phx)
+                cosphy = cos(phy)
+                sinphy = sin(phy)
+                cosphz = cos(phasez)
+                sinphz = sin(phasez)
+                rx = 1. ! rx=sqrt(bx2/bx1)
+                mx = lmapbx(mapid) ! mx = sqrt(bx1*bx2)
+                ax1 = lmapax(mapid)
+                ax2 = lmapax(mapid)
+                ry = 1. ! ry=sqrt(by2/by1)
+                my = lmapby(mapid) ! my = sqrt(by1*by2)
+                ay1 = lmapay(mapid)
+                ay2 = lmapay(mapid)
+                dx1 = lmapdx(mapid)
+                dpx1 = lmapdpx(mapid)
+                dy1 = lmapdy(mapid)
+                dpy1 = lmapdpy(mapid)
+                dx2 = lmapdx(mapid)
+                dpx2 = lmapdpx(mapid)
+                dy2 = lmapdy(mapid)
+                dpy2 = lmapdpy(mapid)
+                map(0,0) = rx*(cosphx+ax1*sinphx) 
+                map(0,1) = mx*sinphx 
+!                map(1,0) = -(1/mx*((ax2-ax1)*cosphx + (1+ax1*ax2)*sinphx))
+                map(1,0) = -(1./mx*(1.+ax1*ax2)*sinphx)
+                map(1,1) = (cosphx - ax2*sinphx) ! irx*(cosphx - ax2*sinphx)
+                map(2,2) = ry*(cosphy+ay1*sinphy)
+                map(2,3) = my*sinphy
+!                map(3,2) = -(1/my*((ay2-ay1)*cosphy + (1+ay1*ay2)*sinphy))
+                map(3,2) = -(1./my*(1.+ay1*ay2)*sinphy)
+                map(3,3) = (cosphy - ay2*sinphy) ! iry*(cosphy - ay2*sinphy)
+                map(0,5) = dx2  - Map(0,0)*dx1 - Map(0,1)*dpx1
+                map(1,5) = dpx2 - Map(1,0)*dx1 - Map(1,1)*dpx1
+                map(2,5) = dy2  - Map(2,2)*dy1 - Map(2,3)*dpy1
+                map(3,5) = dpy2 - Map(3,2)*dy1 - Map(3,3)*dpy1
+                map(4,4) = cosphz
+                map(5,5) = cosphz
+                coefz = lmapeta(mapid)*(lmapze(mapid)-lmapzs(mapid))/(2.*pi*lmapnuz(mapid))
+                map(4,5) = -coefz*sinphz
+                map(5,4) = (1./coefz)*sinphz
+              case(0) ! drift
+                map(0,0) = 1.
+                map(0,1) = L 
+                map(1,1) = 1.
+                map(2,2) = 1.
+                map(2,3) = L 
+                map(3,3) = 1.
+                map(4,4) = 1.
+                map(4,5) = L/(ga*ga*Be*Be) 
+                map(5,5) = 1.
+              case(1) ! bend
+                h = lmapangle(mapid)/(clmapze(iz,io)-clmapzs(iz,io))
+                !    K = 0.0;
+                kx = sqrt(h**2)!+K);
+                cx = cos(kx*L)
+                sx = sin(kx*L)/kx
+                dx = (1.-cx)/kx**2
+                J1 = (L - sx)/kx**2
+                map(0,0) = cx 
+                map(0,1) = sx 
+                map(0,5) = (h/Be)*dx
+                map(1,0) = -kx**2*sx 
+                map(1,1) = cx 
+                map(1,5) = (h/Be)*sx
+                map(2,2) = 1. 
+                map(2,3) = L 
+                map(3,3) = 1. 
+                map(4,0) = -(h/Be)*sx 
+                map(4,1) = -(h/Be)*dx
+                map(4,4) =  1.
+                map(4,5) =  -(h/Be)**2*J1+L/(Be**2*ga**2)
+                map(5,5) = 1.
+              case(2) ! quad
+                k = lmapk(mapid)
+                if ((k>0. .and. L>0.) .or. (k<0. .and. L<0.)) then
+                  k = abs(k)
+                  L = abs(L)
+                  ! --- focusing quad
+                  cx = cos(k*L)
+                  sx = sin(k*L)/k
+                  cy = cos(k*L) 
+                  sy = -sin(k*L)/k 
+                  !cy = cosh(k*L) 
+                  !sy = -sinh(k*L)/k 
+                else ! (k>0. and L<0.) or (k<0. and L>0.)
+                  k = abs(k)
+                  L = abs(L)
+                  ! --- defocusing quad
+                  !cx = cosh(k*L)
+                  !sx = -sinh(k*L)/k
+                  cx = cos(k*L)
+                  sx = -sin(k*L)/k
+                  cy = cos(k*L) 
+                  sy = sin(k*L)/k 
+                end if
+                map(0,0) = cx
+                map(0,1) = sx
+                map(1,0) = -k**2*sx
+                map(1,1) = cx
+                map(2,2) = cy
+                map(2,3) = sy
+                map(3,2) = -k**2*sy
+                map(3,3) = cy
+                map(4,4) = 1.
+                map(4,5) = L/(ga*ga*Be*Be)
+                map(5,5) = 1.
+              case default ! undefined
+                write(0,*) 'Error in definition of maps: defined types are -1=continuous focusing, 0=drift, 1=bend, 2=quad.'
+                call abort()
+            end select
+            xp(ip)  = map(0,0)*xtmp   + map(0,1)*xpr  
+     &              + map(0,2)*ytmp   + map(0,3)*ypr
+     &              + map(0,4)*ztmp   + map(0,5)*dpp
+                          
+            uxp(ip) = (map(1,0)*xtmp  + map(1,1)*xpr
+     &              +  map(1,2)*ytmp  + map(1,3)*ypr
+     &              +  map(1,4)*ztmp  + map(1,5)*dpp)/scf 
+                      
+            yp(ip)  = map(2,0)*xtmp   + map(2,1)*xpr
+     &              + map(2,2)*ytmp   + map(2,3)*ypr
+     &              + map(2,4)*ztmp   + map(2,5)*dpp     
+                       
+            uyp(ip) = (map(3,0)*xtmp  + map(3,1)*xpr
+     &              +  map(3,2)*ytmp  + map(3,3)*ypr
+     &              +  map(3,4)*ztmp  + map(3,5)*dpp)/scf    
+                    
+            zbeam(ip) = zbeam(ip) + L
+            zp(ip)  = map(4,0)*xtmp   + map(4,1)*xpr
+     &              + map(4,2)*ytmp   + map(4,3)*ypr
+     &              + map(4,4)*ztmp   + map(4,5)*dpp + zbeam(ip)
+                    
+            uzp(ip) = (map(5,0)*xtmp  + map(5,1)*xpr
+     &              +  map(5,2)*ytmp  + map(5,3)*ypr
+     &              +  map(5,4)*ztmp  + map(5,5)*dpp)*uzb + uzb     
+            gaminv(ip) = 1./sqrt(1. + (uxp(ip)**2 + uyp(ip)**2 + uzp(ip)**2)*clghtisq)
+          endif 
+        enddo
+      enddo
+      deallocate(vz)
+
+      return
+      end
+
+c=============================================================================
+      subroutine apply_simple_map(n,x,y,ux,uy,uz,Mtx,Mty)
+c applies simple linear map
+      integer(ISZ):: n,i
+      real(kind=8):: x(n),y(n),ux(n),uy(n),uz(n),Mtx(2,2),Mty(2,2),xtmp,ytmp
+
+        do i = 1,n
+          xtmp = x(i)
+          ytmp = y(i)
+          x (i) = Mtx(1,1)*xtmp       + Mtx(1,2)*ux(i)/uz(i)
+          ux(i) = Mtx(2,1)*xtmp*uz(i) + Mtx(2,2)*ux(i)
+          y (i) = Mty(1,1)*ytmp       + Mty(1,2)*uy(i)/uz(i)
+          uy(i) = Mty(2,1)*ytmp*uz(i) + Mty(2,2)*uy(i)
+        end do
+        
+        return
+      end subroutine apply_simple_map
+c=============================================================================
+      subroutine apply_map(n,x,y,z,ux,uy,uz,gaminv,Map,vbeam,gammabar)
+c applies simple linear map
+      integer(ISZ):: n,i
+      real(kind=8):: x(n),y(n),z(n),ux(n),uy(n),uz(n),gaminv(n),Map(0:5,0:5),vbeam,gammabar
+      real(kind=8):: xtmp,ytmp,ztmp,scf,uxp,uyp,uzp,uzb
+
+        uzb =  gammabar*vbeam
+        do i = 1,n
+          xtmp = x(i)
+          ytmp = y(i)
+          ztmp = z(i)
+          scf = gaminv(i)/vbeam
+          uxp = ux(i)*scf
+          uyp = uy(i)*scf
+          uzp = (uz(i)-uzb)/uzb
+          x(i)  = Map(0,0)*xtmp   + Map(0,1)*uxp  
+     &          + Map(0,2)*ytmp   + Map(0,3)*uyp  
+     &          + Map(0,4)*ztmp   + Map(0,5)*uzp  
+                          
+          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*uxp  
+     &          +  Map(1,2)*ytmp  + Map(1,3)*uyp  
+     &          +  Map(1,4)*ztmp  + Map(1,5)*uzp)/scf 
+                      
+          y(i)  = Map(2,0)*xtmp   + Map(2,1)*uxp  
+     &          + Map(2,2)*ytmp   + Map(2,3)*uyp  
+     &          + Map(2,4)*ztmp   + Map(2,5)*uzp        
+                       
+          uy(i) = (Map(3,0)*xtmp  + Map(3,1)*uxp  
+     &          +  Map(3,2)*ytmp  + Map(3,3)*uyp  
+     &          +  Map(3,4)*ztmp  + Map(3,5)*uzp)/scf    
+                      
+          z(i)  = Map(4,0)*xtmp   + Map(4,1)*uxp  
+     &          + Map(4,2)*ytmp   + Map(4,3)*uyp  
+     &          + Map(4,4)*ztmp   + Map(4,5)*uzp     
+                      
+          uz(i) = (Map(5,0)*xtmp  + Map(5,1)*uxp  
+     &          +  Map(5,2)*ytmp  + Map(5,3)*uyp  
+     &          +  Map(5,4)*ztmp  + Map(5,5)*uzp)*uzb + uzb     
+        end do
+        
+        return
+      end subroutine apply_map
+c=============================================================================
+      subroutine apply_linear_map(n,x,y,z,ux,uy,uz,gaminv,vbeam,gammabar,
+     &                            ax1,ax2,bx1,bx2,dx1,dx2,dpx1,dpx2,Qx,xchrom,phasex,
+     &                            ay1,ay2,by1,by2,dy1,dy2,dpy1,dpy2,Qy,ychrom,phasey,eta,omegaz,phz)
+c applies linear map
+      use Constant
+      integer(ISZ):: n,i
+      real(kind=8):: x(n),y(n),z(n),ux(n),uy(n),uz(n),gaminv(n),Map(0:5,0:5),vbeam,gammabar,
+     &               ax1,ax2,bx1,bx2,dx1,dx2,dpx1,dpx2,phasex,Qx,xchrom,
+     &               ay1,ay2,by1,by2,dy1,dy2,dpy1,dpy2,phasey,Qy,ychrom,eta,omegaz,phx,phy,phz
+      real(kind=8):: xtmp,ytmp,ztmp,scf,xpr,ypr,dpp,uzb,rx,ry,mx,my,irx,iry,clghtisq
+
+        clghtisq = 1./clight**2
+ 
+        Map = 0.
+        Map(4,4) = cos(phz)
+        Map(5,5) = cos(phz)
+        Map(4,5) = -eta*vbeam/omegaz*sin(phz)
+        Map(5,4) = omegaz/(eta*vbeam)*sin(phz)
+c       Mx11 = sqrt(self.bx2/self.bx1)*(cos(phx)+self.ax1*sin(phx))
+c       Mx12 = sqrt(self.bx2*self.bx1)*sin(phx)
+c       Mx21 = -(1/sqrt(self.bx1*self.bx2)*((self.ax2-self.ax1)*cos(phx) + \c
+c               (1+self.ax1*self.ax2)*sin(phx)))
+c       Mx22 = sqrt(self.bx1/self.bx2)*(cos(phx) - self.ax2*sin(phx))
+c       My11 = sqrt(self.by2/self.by1)*(cos(phy)+self.ay1*sin(phy))
+c       My12 = sqrt(self.by2*self.by1)*sin(phy)
+c       My21 = -(1/sqrt(self.by1*self.by2)*((self.ay2-self.ay1)*cos(phy) + \
+c                (1+self.ay1*self.ay2)*sin(phy)))
+c       My22 = sqrt(self.by1/self.by2)*(cos(phy) - self.ay2*sin(phy))
+c       Mz11 = 1.
+c       if self.sync_flag:
+c        Mz12 = -self.eta*self.L
+c       else:
+c        Mz12 = 0   
+c       Mz21 = 0.
+c       Mz22 = 1.
+c       Tx13 = self.dx2 - Mx11*self.dx1 - Mx12*self.dpx1
+c       Tx23 = self.dpx2 - Mx21*self.dx1 - Mx22*self.dpx1
+c       Ty13 = self.dy2 - My11*self.dy1 - My12*self.dpy1
+c       Ty23 = self.dpy2 - My21*self.dy1 - My22*self.dpy1
+c       Be   = top.vbeam/top.clight
+c        if self.sync_flag:  
+c         Mz21    = (2*pi*self.mus)**2/(self.eta*Be*self.C)
+
+        uzb =  gammabar*vbeam
+        rx = sqrt(bx2/bx1)
+        ry = sqrt(by2/by1)
+        irx = 1./rx
+        iry = 1./ry
+        mx = sqrt(bx1*bx2)
+        my = sqrt(by1*by2)
+
+        if(xchrom==0. .and. ychrom==0.  .and. omegaz==0.) then
+         phx = phasex       
+         phy = phasey       
+
+         Map(0,0) = rx*(cos(phx)+ax1*sin(phx))
+         Map(0,1) = mx*sin(phx)
+         Map(1,0) = -(1/mx*((ax2-ax1)*cos(phx) + (1+ax1*ax2)*sin(phx)))
+         Map(1,1) = irx*(cos(phx) - ax2*sin(phx))
+         Map(2,2) = ry*(cos(phy)+ay1*sin(phy))
+         Map(2,3) = my*sin(phy)
+         Map(3,2) = -(1/my*((ay2-ay1)*cos(phy) + (1+ay1*ay2)*sin(phy)))
+         Map(3,3) = iry*(cos(phy) - ay2*sin(phy))
+
+         do i = 1,n
+          xtmp = x(i)
+          ytmp = y(i)
+          ztmp = z(i)
+          scf = gaminv(i)/vbeam
+          xpr = ux(i)*scf
+          ypr = uy(i)*scf
+          dpp = (uz(i)-uzb)/uzb
+
+          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr
+                          
+          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr)/scf 
+                      
+          y(i)  = Map(2,2)*ytmp   + Map(2,3)*ypr         
+                       
+          uy(i) = (Map(3,2)*ytmp  + Map(3,3)*ypr)/scf 
+
+          gaminv(i) = 1./sqrt(1. + (ux(i)**2 + uy(i)**2 + uz(i)**2)*clghtisq)
+
+         end do
+
+        elseif(xchrom==0. .and. ychrom==0.) then
+         phx = phasex         
+         phy = phasey          
+
+         Map(0,0) = rx*(cos(phx)+ax1*sin(phx))
+         Map(0,1) = mx*sin(phx)
+         Map(1,0) = -(1/mx*((ax2-ax1)*cos(phx) + (1+ax1*ax2)*sin(phx)))
+         Map(1,1) = irx*(cos(phx) - ax2*sin(phx))
+         Map(2,2) = ry*(cos(phy)+ay1*sin(phy))
+         Map(2,3) = my*sin(phy)
+         Map(3,2) = -(1/my*((ay2-ay1)*cos(phy) + (1+ay1*ay2)*sin(phy)))
+         Map(3,3) = iry*(cos(phy) - ay2*sin(phy))
+         Map(0,5) = dx2  - Map(0,0)*dx1 - Map(0,1)*dpx1
+         Map(1,5) = dpx2 - Map(1,0)*dx1 - Map(1,1)*dpx1
+         Map(2,5) = dy2  - Map(2,2)*dy1 - Map(2,3)*dpy1
+         Map(3,5) = dpy2 - Map(3,2)*dy1 - Map(3,3)*dpy1
+
+         do i = 1,n
+          xtmp = x(i)
+          ytmp = y(i)
+          ztmp = z(i)
+          scf = gaminv(i)/vbeam
+          xpr = ux(i)*scf
+          ypr = uy(i)*scf
+          dpp = (uz(i)-uzb)/uzb
+
+          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr + Map(0,5)*dpp  
+                          
+          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr + Map(1,5)*dpp)/scf 
+                      
+          y(i)  = Map(2,2)*ytmp   + Map(2,3)*ypr + Map(2,5)*dpp        
+                       
+          uy(i) = (Map(3,2)*ytmp  + Map(3,3)*ypr + Map(3,5)*dpp)/scf    
+                      
+          z(i)  = Map(4,4)*ztmp   + Map(4,5)*dpp     
+                      
+          uz(i) = (Map(5,4)*ztmp  + Map(5,5)*dpp)*uzb + uzb     
+
+          gaminv(i) = 1./sqrt(1. + (ux(i)**2 + uy(i)**2 + uz(i)**2)*clghtisq)
+
+         end do
+        else
+         do i = 1,n
+          xtmp = x(i)
+          ytmp = y(i)
+          ztmp = z(i)
+          scf = gaminv(i)/vbeam
+          xpr = ux(i)*scf
+          ypr = uy(i)*scf
+          dpp = (uz(i)-uzb)/uzb
+
+          phx = phasex*(1. + xchrom*dpp/Qx)          !phase change based on value of chromaticity and dp 
+          phy = phasey*(1. + ychrom*dpp/Qy)          !phase change based on value of chromaticity and dp 
+          Map(0,0) = rx*(cos(phx)+ax1*sin(phx))
+          Map(0,1) = mx*sin(phx)
+          Map(1,0) = -(1/mx*((ax2-ax1)*cos(phx) + (1+ax1*ax2)*sin(phx)))
+          Map(1,1) = irx*(cos(phx) - ax2*sin(phx))
+          Map(2,2) = ry*(cos(phy)+ay1*sin(phy))
+          Map(2,3) = my*sin(phy)
+          Map(3,2) = -(1/my*((ay2-ay1)*cos(phy) + (1+ay1*ay2)*sin(phy)))
+          Map(3,3) = iry*(cos(phy) - ay2*sin(phy))
+          Map(0,5) = dx2  - Map(0,0)*dx1 - Map(0,1)*dpx1
+          Map(1,5) = dpx2 - Map(1,0)*dx1 - Map(1,1)*dpx1
+          Map(2,5) = dy2  - Map(2,2)*dy1 - Map(2,3)*dpy1
+          Map(3,5) = dpy2 - Map(3,2)*dy1 - Map(3,3)*dpy1
+
+          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr + Map(0,5)*dpp  
+                          
+          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr + Map(1,5)*dpp)/scf 
+                      
+          y(i)  = Map(2,2)*ytmp   + Map(2,3)*ypr + Map(2,5)*dpp        
+                       
+          uy(i) = (Map(3,2)*ytmp  + Map(3,3)*ypr + Map(3,5)*dpp)/scf    
+                      
+          z(i)  = Map(4,4)*ztmp   + Map(4,5)*dpp     
+                      
+          uz(i) = (Map(5,4)*ztmp  + Map(5,5)*dpp)*uzb + uzb     
+
+          gaminv(i) = 1./sqrt(1. + (ux(i)**2 + uy(i)**2 + uz(i)**2)*clghtisq)
+
+         end do
+        end if
+
+c --- complete set for reference
+c
+c          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr  
+c     &          + Map(0,2)*ytmp   + Map(0,3)*ypr  
+c     &          + Map(0,4)*ztmp   + Map(0,5)*dpp  
+                          
+c          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr  
+c     &          +  Map(1,2)*ytmp  + Map(1,3)*ypr  
+c     &          +  Map(1,4)*ztmp  + Map(1,5)*dpp)/scf 
+                      
+c          y(i)  = Map(2,0)*xtmp   + Map(2,1)*xpr  
+c     &          + Map(2,2)*ytmp   + Map(2,3)*ypr  
+c     &          + Map(2,4)*ztmp   + Map(2,5)*dpp        
+                       
+c          uy(i) = (Map(3,0)*xtmp  + Map(3,1)*xpr  
+c     &          +  Map(3,2)*ytmp  + Map(3,3)*ypr  
+c     &          +  Map(3,4)*ztmp  + Map(3,5)*dpp)/scf    
+                      
+c          z(i)  = Map(4,0)*xtmp   + Map(4,1)*xpr  
+c     &          + Map(4,2)*ytmp   + Map(4,3)*ypr  
+c     &          + Map(4,4)*ztmp   + Map(4,5)*dpp     
+                      
+c          uz(i) = (Map(5,0)*xtmp  + Map(5,1)*xpr  
+c     &          +  Map(5,2)*ytmp  + Map(5,3)*ypr  
+c     &          +  Map(5,4)*ztmp  + Map(5,5)*dpp)*uzb + uzb     
+        
+        return
+      end subroutine apply_linear_map
 c=============================================================================
       subroutine applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,q,m,lslice,ez)
       use Subtimerstop
