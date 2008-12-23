@@ -34,7 +34,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.229 2008/11/21 20:52:48 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.230 2008/12/23 18:43:37 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -265,7 +265,12 @@ Opens up an X window
       if xon and winnum==0 and sys.platform not in ['win32','cygwin']:
         # --- If display isn't set, no X plot window will appear since window0
         # --- is already attached to a device (the plot file).
-        gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'],style=style)
+        # --- The try/except construct takes care of the case where
+        # --- the gist package was not compiled with X11.
+        try:
+          gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'],style=style)
+        except:
+          gist.window(winnum,dpi=dpi,style=style)
       else:
         if xon: gist.window(winnum,dpi=dpi,style=style)
         else:   gist.window(winnum,dpi=dpi,display='',style=style)
@@ -5201,4 +5206,19 @@ def aplq():
         list=list+[d]
         i=i+1
     return list
+
+def plellipse(l,h,np=100,thetamin=0.,thetamax=2.*pi,**kw):
+  """Plot ellipse
+       - l,               : length
+       - h,               : height
+       - np=100,          : nb points
+       - thetamin = 0.,   : min theta
+       - thetamax = 2.*pi : max theta
+  """
+  dtheta = (thetamax-thetamin)/(np-1)
+  theta = arange(thetamin,thetamax+dtheta/2,dtheta)
+  x = 0.5*l*cos(theta)
+  y = 0.5*h*sin(theta)
+  pla(y,x,**kw)
+  
          
