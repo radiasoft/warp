@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.118 $, $Date: 2008/12/01 03:32:34 $
+c@(#) File w3d_injection.F, version $Revision: 1.119 $, $Date: 2008/12/23 00:59:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -170,6 +170,7 @@ c         --- Zero out temp array.
 
 c         --- loop over injection sources
           do ij=1,ninject
+            inj_ij = ij
             ainj = ainject(ij)
             binj = binject(ij)
             ainji = 1./ainject(ij)
@@ -184,13 +185,15 @@ c         --- Loop over species.
           do is=1,pgroup%ns
             if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is -1 
             jsid = pgroup%sid(is-1)
+            inj_js = is - 1
             inj_is = min(jsid+1,inj_ns)
             vzinj = vzinject(ij,jsid+1)
             if (.not. pgroup%ldts(is-1)) cycle
-            fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
+            fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
             if (l_inj_user_particles) then
 
+c             --- Note that inj_is is accessible from python.
               call callpythonfunc("generateuserparticlesforinjection",
      &                            "controllers")
               rnn = npgrp

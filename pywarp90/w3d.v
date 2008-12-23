@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.290 $, $Date: 2008/12/15 22:28:33 $
+#@(#) File W3D.V, version $Revision: 3.291 $, $Date: 2008/12/23 00:59:15 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.290 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.291 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -547,6 +547,10 @@ inj_ninj             integer  # Auto set to either 1 or ninject. Set to 1
 inj_ns               integer  # Auto set to either 1 or ns. Set to 1
                               # when only one species is being injected from
                               # each source.
+inj_ij               integer  # Currently active injection source Useful for
+                              # generateuserparticlesforinjection.
+inj_js               integer  # Current speices being injected. Useful for
+                              # generateuserparticlesforinjection.
 inj_nx               integer  /0/  # size injection arrays in x
 inj_ny               integer  /0/  # size injection arrays in y
 inj_nz               integer  /0/  # size injection arrays in z 
