@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.71 2008/11/27 01:14:50 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.72 2008/12/23 18:38:49 jlvay Exp $"
 
 def latticedoc():
   import lattice
@@ -1367,6 +1367,78 @@ Or specify the data set
     top.pgrdid[top.npgrd] = self.id
     return top.pgrdze[top.npgrd]
 
+class lmap(Elem):
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,type=0,
+               k=0.,angle=0.,
+               nux=0.,nuy=0.,nuz=0.,eta=0.,xchrom=0.,ychrom=0.,
+               alphax=0.,alphay=0.,dispx=0.,dispy=0.,disppx=0.,disppy=0.,
+               betax=None,betay=None,
+               offset_x=0,offset_y=0,ol=0,error_type='',
+               i_cap_pointer=0,n_cap_nodes=0):
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=aperture,
+                  offset_x=offset_x,offset_y=offset_y,ol=ol,error_type=error_type)
+    self.type = 'lmap'
+    self.maptype = type
+    self.angle = angle
+    self.k = k
+    self.nux = nux
+    self.nuy = nuy
+    self.nuz = nuz
+    self.eta = eta
+    self.xchrom = xchrom
+    self.ychrom = ychrom
+    self.alphax = alphax
+    self.alphay = alphay
+    self.dispx = dispx
+    self.dispy = dispy
+    self.disppx = disppx
+    self.disppy = disppy
+    if betax is None and nux<>0.:
+      self.betax = self.length/(2.*pi*nux)
+    else:
+      self.betax = betax
+    if betay is None and nuy<>0.:
+      self.betay = self.length/(2.*pi*nuy)
+    else:
+      self.betay = betay
+
+  def install(self,zz):
+    top.nlmap += 1
+    self.ilmap = top.nlmap
+    if top.nlmap > len(top.lmapzs)-1:
+      ilmap = top.nlmap
+      top.nlmap = top.nlmap + 100
+      top.nqerr = top.nlmap
+      gchange("Lattice")
+      top.nlmap = ilmap
+    top.lmapzs[top.nlmap] = zz + self.zshift
+    top.lmapze[top.nlmap] = top.lmapzs[top.nlmap] + self.length
+    top.lmaptype[top.nlmap] = self.maptype
+    top.lmapangle[top.nlmap] = self.angle
+    top.lmapk[top.nlmap] = self.k
+    top.lmapap[top.nlmap] = self.ap
+    top.lmapax[top.nlmap] = self.alphax
+    top.lmapbx[top.nlmap] = self.betax
+    top.lmapdx[top.nlmap] = self.dispx
+    top.lmapdpx[top.nlmap]= self.disppx
+    top.lmapqx[top.nlmap] = self.nux
+    top.lmapxcr[top.nlmap]= self.xchrom
+    top.lmapnux[top.nlmap]= self.nux
+    top.lmapay[top.nlmap] = self.alphay
+    top.lmapby[top.nlmap] = self.betay
+    top.lmapdy[top.nlmap] = self.dispy
+    top.lmapdpy[top.nlmap]= self.disppy
+    top.lmapqy[top.nlmap] = self.nuy
+    top.lmapycr[top.nlmap]= self.ychrom
+    top.lmapnuy[top.nlmap]= self.nuy
+    top.lmapeta[top.nlmap]= self.eta
+    top.lmapnuz[top.nlmap]= self.nuz
+    top.qoffx[top.nlmap] = self.offset_x*errordist(self.error_type)
+    top.qoffy[top.nlmap] = self.offset_y*errordist(self.error_type)
+    top.lmapol[top.nlmap] = self.ol
+    return top.lmapze[top.nlmap]
+
 #----------------------------------------------------------------------------
 # HIBEAM elements
 #----------------------------------------------------------------------------
@@ -1543,6 +1615,7 @@ information if the WARP lattice arrays is deleted.
   top.nbgrd = 100
   top.npgrd = 100
   top.nsext = 100
+  top.nlmap = 100
   gchange("Lattice")
 
   # --- Clear counts of all lattice elements and data array sizes.
@@ -1558,6 +1631,7 @@ information if the WARP lattice arrays is deleted.
   top.nbgrd = -1
   top.npgrd = -1
   top.nsext = -1
+  top.nlmap = -1
 
   # --- Install the line into fortran.
   # --- For elements with seperate data sets, only the number
@@ -1580,6 +1654,8 @@ information if the WARP lattice arrays is deleted.
       top.tunelen=0.5*(top.bgrdzs[2]+top.bgrdze[2]-top.bgrdzs[0]-top.bgrdze[0])
     elif top.npgrd >= 2:
       top.tunelen=0.5*(top.pgrdzs[2]+top.pgrdze[2]-top.pgrdzs[0]-top.pgrdze[0])
+    elif top.nlmap >= 2:
+      top.tunelen=0.5*(top.lmapzs[2]+top.lmapze[2]-top.lmapzs[0]-top.lmapze[0])
 
   # --- resetlat must be called before the data can be used
   top.lresetlat = true
