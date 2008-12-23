@@ -11,47 +11,36 @@ use EM3D_BLOCKtypemodule
 use EM3D_YEEFIELDtypemodule
 use EM3D_KYEEFIELDtypemodule
 use EM3D_SPLITYEEFIELDtypemodule
-USE mod_bnd
 USE EM2D_FIELDobjects
+use EM3D_bnd
 !use GlobalVars
 !use Picglb
 
 implicit none
 
 integer, parameter :: dirichlet=0, neumann=1, periodic=2, openbc=3, yeefield=-1 , splityeefield=-2
+
+INTEGER(ISZ), parameter :: pml = 1, &
+                      pml_sadjusted = 2, &
+                      apml_exponential = 3, &
+                      apml_hybrid = 4, &
+                      apml_ssa = 5, &
+                      apml_lwa = 6
+
 #ifndef MPIPARALLEL
 integer, parameter :: my_index=0
 #endif
 
-!#ifdef MPIPARALLEL
-!include "mpif.h"
-!integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
-!integer(MPIISZ):: mpirequest
-!integer(MPIISZ):: w
-!integer(MPIISZ):: messid 
-!#endif
-
-TYPE bnd_pointer
-  type(type_bnd), POINTER :: b
-end type bnd_pointer
-TYPE bnd_cummer_pointer
-  type(type_bnd_cummer), POINTER :: b
-end type bnd_cummer_pointer
-!type(bnd_pointer), dimension(3,2) :: bnds ! first dimension is for [main grid, coarse patch, fine patch]
-!                                          ! second dimension is for [(Ex,Ey,Bz),(Bx,By,Ez)]
-!INTEGER, parameter :: base=1, patchcoarse=2, patchfine=3
-
 contains
 
   subroutine set_bndcoeffsem3d(sf,dt,which)
-    use mod_bnd
     TYPE(EM3D_SPLITYEEFIELDtype) :: sf
-    real(kind=8) :: sigmax(-sf%nxguard:sf%nx+sf%nxguard), sigmax_next(-sf%nxguard:sf%nx+sf%nxguard), &
-                  lsigmax(-sf%nxguard:sf%nx+sf%nxguard), lsigmax_next(-sf%nxguard:sf%nx+sf%nxguard)
-    real(kind=8) :: sigmay(-sf%nyguard:sf%ny+sf%nyguard), sigmay_next(-sf%nyguard:sf%ny+sf%nyguard), &
-                  lsigmay(-sf%nyguard:sf%ny+sf%nyguard), lsigmay_next(-sf%nyguard:sf%ny+sf%nyguard)
-    real(kind=8) :: sigmaz(-sf%nzguard:sf%nz+sf%nzguard), sigmaz_next(-sf%nzguard:sf%nz+sf%nzguard), &
-                  lsigmaz(-sf%nzguard:sf%nz+sf%nzguard), lsigmaz_next(-sf%nzguard:sf%nz+sf%nzguard)
+    real(kind=8) :: sigmax(-sf%nxguard:sf%nx+sf%nxguard),  sigmax_next(-sf%nxguard:sf%nx+sf%nxguard), &
+                   lsigmax(-sf%nxguard:sf%nx+sf%nxguard), lsigmax_next(-sf%nxguard:sf%nx+sf%nxguard)
+    real(kind=8) :: sigmay(-sf%nyguard:sf%ny+sf%nyguard),  sigmay_next(-sf%nyguard:sf%ny+sf%nyguard), &
+                   lsigmay(-sf%nyguard:sf%ny+sf%nyguard), lsigmay_next(-sf%nyguard:sf%ny+sf%nyguard)
+    real(kind=8) :: sigmaz(-sf%nzguard:sf%nz+sf%nzguard),  sigmaz_next(-sf%nzguard:sf%nz+sf%nzguard), &
+                   lsigmaz(-sf%nzguard:sf%nz+sf%nzguard), lsigmaz_next(-sf%nzguard:sf%nz+sf%nzguard)
     integer(ISZ) :: j,which
     real(kind=8) :: dt
     
@@ -90,7 +79,6 @@ contains
       sf%bmgz = -0.5*sf%clight*dt/sf%dz
       sf%dt = 0.5*dt
     end if
-!    return 
     if (sf%lsx/=0) then
       sigmax=0.
       sigmax_next=0.
@@ -103,6 +91,7 @@ contains
       select case(sf%lsx)
         case(1)
           do j = 0, sf%nx-1
+!            write(0,*) 'sigma,sigma_next',sigmax(j),sigmax_next(j),sigmax(j+1)
             call assign_coefs(bnd_cond,sf%afx(j),sf%bpfx(j),sf%bmfx(j),sf%clight*dt,sf%dx,sigmax(j),sigmax_next(j),sb_coef,which)
             call assign_coefs(bnd_cond,sf%agx(j),sf%bpgx(j),sf%bmgx(j),sf%clight*dt,sf%dx,sigmax_next(j),sigmax(j+1),sb_coef,which)
           end do
@@ -112,10 +101,10 @@ contains
            call assign_coefs(bnd_cond,sf%agx(j-1),sf%bmgx(j-1),sf%bpgx(j-1),sf%clight*dt,sf%dx,lsigmax_next(j-1),lsigmax(j-1), &
                              sb_coef,which)
           end do
-          sf%bmfx=-sf%bmfx
-          sf%bpfx=-sf%bpfx
-          sf%bmgx=-sf%bmgx
-          sf%bpgx=-sf%bpgx
+          sf%bmfx(1:sf%nx)=-sf%bmfx(1:sf%nx)
+          sf%bpfx(1:sf%nx)=-sf%bpfx(1:sf%nx)
+          sf%bmgx(0:sf%nx-1)=-sf%bmgx(0:sf%nx-1)
+          sf%bpgx(0:sf%nx-1)=-sf%bpgx(0:sf%nx-1)
        end select
     end if
 
@@ -140,10 +129,10 @@ contains
            call assign_coefs(bnd_cond,sf%agy(j-1),sf%bmgy(j-1),sf%bpgy(j-1),sf%clight*dt,sf%dy,lsigmay_next(j-1),lsigmay(j-1), &
                              sb_coef,which)
           end do
-          sf%bmfy=-sf%bmfy
-          sf%bpfy=-sf%bpfy
-          sf%bmgy=-sf%bmgy
-          sf%bpgy=-sf%bpgy
+          sf%bmfy(1:sf%ny)=-sf%bmfy(1:sf%ny)
+          sf%bpfy(1:sf%ny)=-sf%bpfy(1:sf%ny)
+          sf%bmgy(0:sf%ny-1)=-sf%bmgy(0:sf%ny-1)
+          sf%bpgy(0:sf%ny-1)=-sf%bpgy(0:sf%ny-1)
        end select
     end if
 
@@ -168,16 +157,110 @@ contains
            call assign_coefs(bnd_cond,sf%agz(j-1),sf%bmgz(j-1),sf%bpgz(j-1),sf%clight*dt,sf%dz,lsigmaz_next(j-1),lsigmaz(j-1), &
                              sb_coef,which)
           end do
-          sf%bmfz=-sf%bmfz
-          sf%bpfz=-sf%bpfz
-          sf%bmgz=-sf%bmgz
-          sf%bpgz=-sf%bpgz
+          sf%bmfz(1:sf%nz)=-sf%bmfz(1:sf%nz)
+          sf%bpfz(1:sf%nz)=-sf%bpfz(1:sf%nz)
+          sf%bmgz(0:sf%nz-1)=-sf%bmgz(0:sf%nz-1)
+          sf%bpgz(0:sf%nz-1)=-sf%bpgz(0:sf%nz-1)
        end select
     end if
 
     return 
   end subroutine set_bndcoeffsem3d
     
+
+!************* SUBROUTINE assign_coefs  ********
+
+subroutine assign_coefs(bnd_cond,a,bp,bm,dt,dx,sigma,sigma_next,coef_sigmab,which)
+implicit none
+REAL(kind=8), INTENT(OUT) :: a,bp,bm
+REAL(kind=8), INTENT(IN) :: dt,dx,sigma,sigma_next,coef_sigmab
+INTEGER(ISZ),INTENT(IN) :: bnd_cond, which
+
+REAL(kind=8) :: sigma_local, sigmab, sigmab_next, tp, tpp, tm, tmm, g, gp, gm
+
+  tp  = EXP(-sigma*0.5*dx)
+  tpp  = EXP(-sigma_next*0.5*dx)
+  select case (bnd_cond)
+    case (pml,pml_sadjusted)
+       IF(bnd_cond==pml) then
+        sigma_local = sigma
+      else
+        sigma_local = MIN(1.e15,abs(tpp-1./tp)/dx)
+      END if
+      IF(sigma_local == 0.) then
+      ! --- end of mesh
+        a  =  1.
+        bp =  dt / dx
+      else
+        a  =  EXP(-sigma_local*dt)
+        bp =  (1.-a)/(sigma_local*dx)
+      END if
+      bm =  -bp
+    case (apml_exponential)
+      sigmab = coef_sigmab*sigma
+      IF(sigma == 0.) then
+      ! --- end of mesh
+        a  =  1.
+        bp =  dt / dx
+        bm =  -bp
+      else
+        a  =  EXP(-sigma*dt)
+        IF(sigmab==0.) then
+          bp =  (1.-a)/(sigma*dx)
+          bm =  -bp
+        else
+          bp =  (sigmab/sigma)*(1.-a)/(1.-EXP(-sigmab*dx))
+          bm =  -EXP(-sigmab*dx)*bp
+        END if
+      END if
+    case (apml_hybrid)
+      bp = dt/dx
+      bm = -dt/dx*(1.+((dx-dt)/(dx+dt))*(1.-tpp))
+      a  = 1.+bp*tpp+bm
+      bm = tp*bm
+    case (apml_ssa,apml_lwa)
+      sigmab      = coef_sigmab*sigma
+      sigmab_next = coef_sigmab*sigma_next
+      tp  = EXP(-(sigma+sigmab)*0.5*dx)
+      tmm = EXP(-(sigma-sigmab)*0.5*dx)
+      tpp = EXP(-(sigma_next+sigmab_next)*0.5*dx)
+      tm  = EXP(-(sigma_next-sigmab_next)*0.5*dx)
+      IF(bnd_cond==apml_ssa) then
+        g = dx/dt
+        a  = -(1-g*(tm+tp)-g*tm*tp*(tmm+tpp)-tm*tp*tmm*tpp)/(1+g*(tm+tp)+g*tm*tp*(tmm+tpp)-tm*tp*tmm*tpp)
+        bp = 2*tm*(1.+tp*tmm)/(1.+g*(tm+tp)+g*tm*tp*(tmm+tpp)-tm*tp*tmm*tpp)
+        bm = -2*tp*(1.+tm*tpp)/(1.+g*(tm+tp)+g*tm*tp*(tmm+tpp)-tm*tp*tmm*tpp)
+      else
+        gp = dx/dt
+        gm = gp
+        a = -(1-gm-(gp+gm)*tm*tpp-(gp+1)*tm*tmm*tpp*tp)/(1+gm+(gp+gm)*tm*tpp+(gp-1)*tm*tmm*tpp*tp)
+        bp = 2*tm*(1.+tp*tmm)/(1+gm+(gp+gm)*tm*tpp+(gp-1)*tm*tmm*tpp*tp)
+        bm = -2*tp*(1.+tm*tpp)/(1+gm+(gp+gm)*tm*tpp+(gp-1)*tm*tmm*tpp*tp)
+      END if
+    case default
+      write(0,*) 'Error in assign_coefs: bnd_cond out fo bounds'
+  end select
+
+  select case (which)
+    case (0)
+      ! full time step, do nothing
+    case (1)
+      ! first half time step
+      bp = bp*0.5
+      bm = bm*0.5
+      a  = (1.+a)*0.5
+    case (2)
+      ! second half time step
+      bp = bp/(1.+a)
+      bm = bm/(1.+a)
+      a  = 2.*a/(1.+a)
+    case default
+      write(0,*) 'Error in assign_coefs: which out fo bounds'
+      stop
+  end select
+
+END subroutine assign_coefs
+
 end module mod_emfield3d
 
   subroutine init_splitfield(sf, nx, ny, nz, nxguard, nyguard, nzguard, dt, dx, dy, dz, clight, lsx, lsy, lsz, &
@@ -421,18 +504,19 @@ dtsdy = f%clight**2*dt/f%dy
 dtsdz = f%clight**2*dt/f%dz
 mudt  = f%mu0*f%clight**2*dt
 
-  call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
+  call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J,f%Ey_in, &
                       mudt,dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
-                      f%nxguard,f%nyguard,f%nzguard)
+                      f%nxguard,f%nyguard,f%nzguard,f%Ey_in_pos)
 
 return
 end subroutine push_em3d_e
 
-subroutine push_em3d_evec(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard)
-integer :: nx,ny,nz,nxguard,nyguard,nzguard
+subroutine push_em3d_evec(ex,ey,ez,bx,by,bz,CJ,ey_in,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,ey_in_pos)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard,Ey_in_pos
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ey_in
 real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz
 integer(ISZ) :: j,k,l
 
@@ -468,6 +552,15 @@ integer(ISZ) :: j,k,l
     end do
    end do
   end do
+
+  if (Ey_in_pos>-1) then
+    l=Ey_in_pos
+    do k = 0, ny-1
+      do j = 0, nx
+        Ey(j,k,l) = Ey(j,k,l) + Ey_in(j,k)
+      end do
+    end do
+  end if
 
 return
 end subroutine push_em3d_evec
