@@ -2,7 +2,7 @@
 """
 __all__ = ['drawlatticedoc','drawlattice']
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.11 2008/12/23 18:28:34 jlvay Exp $"
+drawlattice_version = "$Id: drawlattice.py,v 1.12 2008/12/23 19:20:38 jlvay Exp $"
 def drawlatticedoc():
   import drawlattice
   print drawlattice.__doc__
@@ -361,7 +361,7 @@ type, and should draw any general lattice.
     if len(ia) > 0 and na in ia: zamin = top.acclzs[na]
     if len(ic) > 0 and nc in ic: zcmin = top.bendzs[nc]
     if len(iM) > 0 and nM in iM: zMmin = top.lmapzs[nc]
-    ii = argmin([zqmin,zhmin,zemin,zmmin,zbmin,zpmin,zamin,zcmin,zdmin,zMmin])
+    ii = int(argmin([zqmin,zhmin,zemin,zmmin,zbmin,zpmin,zamin,zcmin,zdmin,zMmin]))
     ilatspc =   ['q'  ,'h'  ,'e'  ,'m'  ,'b'  ,'p'  ,'a'  ,'c'  ,'d' ,'M' ][ii]
 
     if ilatspc == 'q':
