@@ -1,7 +1,7 @@
 from warp import *
 
 class Maps:
-  def __init__(self,nux,nuy,nuz,C,nstations=1,z_rms=0.,eta=0.,xchrom=0.,ychrom=0.,
+  def __init__(self,nux,nuy,nuz,C,nstations=1,eta=0.,xchrom=0.,ychrom=0.,
                     alphax=0.,alphay=0.,dispx=0.,dispy=0.,disppx=0.,disppy=0.,
                     nparpgrp=top.nparpgrp,l_mode=1,l_verbose=0,betax=None,betay=None):
      self.nux = nux
@@ -10,7 +10,6 @@ class Maps:
      self.xchrom=xchrom
      self.ychrom=ychrom
      self.C   = C
-     self.z_rms = z_rms
      self.nstations = nstations
      self.sigmax = 2.*pi*self.nux/self.nstations
      self.sigmay = 2.*pi*self.nuy/self.nstations
@@ -47,7 +46,6 @@ class Maps:
     Qx=self.nux
     xchrom=self.xchrom
     phasex=self.omegax*dt
-    eta=self.eta
     ay1=ay2=self.alphay
     by1=by2=self.betay
     dy1=dy2=self.dispy
