@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.28 $, $Date: 2008/12/23 17:41:56 $
+c@(#) File top_lattice.F, version $Revision: 3.29 $, $Date: 2008/12/23 17:54:51 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -5429,7 +5429,12 @@ c         --- set the field
                 map(5,4) = frac*(2*pi*nuz)**2/(eta*C)
                 map(5,5) = 1.
               case default ! undefined
-                write(0,*) 'Error in definition of maps: defined types are -1=continuous focusing, 0=drift, 1=bend, 2=quad, 3=RFkick.'
+                write(0,*) 'Error in definition of maps. Defined types are:'
+                write(0,*) '   -1=continuous focusing,'
+                write(0,*) '   0=drift,' 
+                write(0,*) '   1=bend,'
+                write(0,*) '   2=quad,' 
+                write(0,*) '   3=RFkick.'
                 call abort()
             end select
             xp(ip)  = map(0,0)*xtmp   + map(0,1)*xpr  
