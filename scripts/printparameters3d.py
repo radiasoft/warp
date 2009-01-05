@@ -51,6 +51,7 @@ def printparameters3d():
       xbbend = top.dipoby[0]
       textblock = textblock + f20%('First dipole field = ',xbbend,' T')
 
+  if with_matplotlib: universeaxes()
   plt(textblock,0.12,0.88,justify='LT')
   fma()
 
