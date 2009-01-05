@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.39 $, $Date: 2008/11/19 18:29:49 $
+c F3DSLAVE.M, version $Revision: 1.40 $, $Date: 2009/01/05 23:29:38 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -190,8 +190,8 @@ c     --- Create the work space that phi is transposed into.
 c     --- Create an MPI type to refer to the distributed pieces of data that
 c     --- are sent to each of the processors.
       dims = 3
-      nlocal = (/nx+3,ny+3,nzlocal/)
-      nlocal_trnsps = (/nx_tran+3,ny_tran+3,nzlocal*nzprocs/)
+      nlocal = (/nx+3,ny+3,nzlocal+1/)
+      nlocal_trnsps = (/nx_tran+3,ny_tran+3,nzlocal*nzprocs+1/)
       sdispls = 0
       rdispls = 0
       sendcounts = 1
@@ -210,6 +210,7 @@ c     --- are sent to each of the processors.
           starts(2) = 0
           sizes = (/nx_tran,ny_tran,nzlocal/)
         endif
+        if (izproc == nzprocs-1) sizes(2) = nzlocal + 1
         call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
      &                                MPI_ORDER_FORTRAN,
      &                                MPI_DOUBLE_PRECISION,
@@ -220,6 +221,7 @@ c     --- are sent to each of the processors.
         starts(1) = 1
         starts(2) = ip*nzlocal
         sizes = (/nx_tran,ny_tran,nzlocal/)
+        if (ip == nzprocs-1) sizes(2) = nzlocal + 1
         call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal_trnsps,sizes,starts,
      &                                MPI_ORDER_FORTRAN,
      &                                MPI_DOUBLE_PRECISION,
@@ -232,7 +234,6 @@ c     --- Do all of the communication at once.
       call MPI_ALLTOALLW(phi,sendcounts,sdispls,sendtypes,
      &                   phi_trnsps,recvcounts,rdispls,recvtypes,
      &                   MPI_COMM_WORLD,mpierror)
-
 
 c     --- Free the data types
       do ip = 0,nzprocs-1
@@ -1366,11 +1367,11 @@ c       --- of the cache will then allow 50 levels, which should be sufficient.
         type(messagedatatype):: messagedatacache(200)
       contains
         subroutine getmessagedata(nc,nxlocal,nylocal,nzlocal,
-     &                            delx,dely,delz,i1,i2,fsdecomp,
+     &                            delx,dely,delz,ils,ile,ius,iue,fsdecomp,
      &                            messagedata)
         use Subtimersf3d
         use Decompositionmodule
-        integer(ISZ):: nc,nxlocal,nylocal,nzlocal,i1,i2
+        integer(ISZ):: nc,nxlocal,nylocal,nzlocal,ils,ile,ius,iue
         integer(ISZ):: delx,dely,delz
         type(Decomposition):: fsdecomp
         type(messagedatatype):: messagedata
@@ -1379,6 +1380,13 @@ c Calculate the data needed to do the exchange of potential on the boundary
 c and/or in the gaurd cells. The data is cached, and if already calculated,
 c the cached data is returned, giving a substantial time savings.
 
+c ils, ile are the start and end of the range of slices at the lower edges
+c          of the grid that need to be obtained from neighbors. The values are
+c          relative to 0.
+c ius, iue are the start and end of the range of slices at the upper edges
+c          of the grid that need to be obtained from neighbors. The values are
+c          relative to the upper index, nx, ny or nz.
+
         integer(ISZ):: ic,id
         integer(ISZ):: npx,npy,npz
         integer(ISZ):: px,py,pz
@@ -1386,7 +1394,8 @@ c the cached data is returned, giving a substantial time savings.
         integer(ISZ):: me_nx,me_ny,me_nz
         integer(ISZ):: pe_ix,pe_iy,pe_iz
         integer(ISZ):: pe_nx,pe_ny,pe_nz
-        integer(ISZ):: ix1,iy1,iz1,ix2,iy2,iz2
+        integer(ISZ):: ixls,iyls,izls,ixle,iyle,izle
+        integer(ISZ):: ixus,iyus,izus,ixue,iyue,izue
         integer(ISZ):: me_ixlgood,me_ixugood
         integer(ISZ):: me_iylgood,me_iyugood
         integer(ISZ):: me_izlgood,me_izugood
@@ -1408,8 +1417,10 @@ c       --- of uniqueness.
         id = + (delx + 3)
      &       + (dely + 3)*10
      &       + (delz + 3)*100
-     &       + (i1 + 5)*1000
-     &       + (i2 + 5)*10000
+     &       + (ils + 5)*1000
+     &       + (ile + 5)*10000
+     &       + (ius + 5)*100000
+     &       + (iue + 5)*1000000
      &       + sum(fsdecomp%ix**1)
      &       + sum(fsdecomp%iy**2)
      &       + sum(fsdecomp%iz**3)
@@ -1517,25 +1528,32 @@ c     --- Data to be sent
         me_iz = fsdecomp%iz(fsdecomp%izproc)
         me_nz = fsdecomp%nz(fsdecomp%izproc)
 
-        ix1 = -max(-delx,i1)
-        ix2 = -i2
-        iy1 = -max(-dely,i1)
-        iy2 = -i2
-        iz1 = -max(-delz,i1)
-        iz2 = -i2
+        ixls = -max(-delx,ils)
+        ixle = -ile
+        iyls = -max(-dely,ils)
+        iyle = -ile
+        izls = -max(-delz,ils)
+        izle = -ile
+
+        ixus = min(delx,ius)
+        ixue = iue
+        iyus = min(dely,ius)
+        iyue = iue
+        izus = min(delz,ius)
+        izue = iue
 
 c     --- Get the lower and upper range of the good data. Good data means
 c     --- data that was calculated on the processor and is available to send
 c     --- to other processors that need it. The default value is the range of
-c     --- data out to the data that is needed, set by the ix2 etc input
+c     --- data out to the data that is needed, set by the ixle etc input
 c     --- arguments. If the processor sits on the edge of the grid, then
 c     --- include all of the data in the guard cells as well.
-        me_ixlgood = me_ix + 1 - ix2
-        me_ixugood = me_ix + me_nx - 1 + ix2
-        me_iylgood = me_iy + 1 - iy2
-        me_iyugood = me_iy + me_ny - 1 + iy2
-        me_izlgood = me_iz + 1 - iz2
-        me_izugood = me_iz + me_nz - 1 + iz2
+        me_ixlgood = me_ix + 1 - ixle
+        me_ixugood = me_ix + me_nx - 1 + ixus
+        me_iylgood = me_iy + 1 - iyle
+        me_iyugood = me_iy + me_ny - 1 + iyus
+        me_izlgood = me_iz + 1 - izle
+        me_izugood = me_iz + me_nz - 1 + izus
         if (me_ix == 0) me_ixlgood = -delx
         if (me_ix + me_nx == fsdecomp%nxglobal) me_ixugood = me_ix + me_nx + delx
         if (me_iy == 0) me_iylgood = -dely
@@ -1555,18 +1573,18 @@ c     --- include all of the data in the guard cells as well.
 
           if (px > fsdecomp%ixproc) then
 c         --- Sending to the lower guard cells on the right
-            i1global = max(pe_ix - ix1,me_ixlgood)
-            i2global = min(pe_ix - ix2,me_ixugood)
+            i1global = max(pe_ix - ixls,me_ixlgood)
+            i2global = min(pe_ix - ixle,me_ixugood)
             if (px > fsdecomp%ixproc+1) then
-              i2global = fsdecomp%ix(fsdecomp%ixproc+1) - ix2
+              i2global = fsdecomp%ix(fsdecomp%ixproc+1) - ixle
             endif
           else if (px < fsdecomp%ixproc) then
 c         --- Sending to the upper guard cells on the left
-            i1global = max(pe_ix + pe_nx + ix2,me_ixlgood)
-            i2global = min(pe_ix + pe_nx + ix1,me_ixugood)
+            i1global = max(pe_ix + pe_nx + ixus,me_ixlgood)
+            i2global = min(pe_ix + pe_nx + ixue,me_ixugood)
             if (px < fsdecomp%ixproc-1) then
               i1global = fsdecomp%ix(fsdecomp%ixproc-1) +
-     &                 fsdecomp%nx(fsdecomp%ixproc-1) + ix2
+     &                   fsdecomp%nx(fsdecomp%ixproc-1) + ixus
             endif
           else
 c         --- Send nothing to self
@@ -1589,24 +1607,24 @@ c       --- Create the data types for data that is to be sent
             messagedata%xsendcounts(px) = 0
           endif
 
-          pe_ixlgood = pe_ix + 1 - ix2
-          pe_ixugood = pe_ix + pe_nx - 1 + ix2
+          pe_ixlgood = pe_ix + 1 - ixle
+          pe_ixugood = pe_ix + pe_nx - 1 + ixus
           if (pe_ix == 0) pe_ixlgood = -delx
           if (pe_ix+pe_nx == fsdecomp%nxglobal) pe_ixugood = pe_ix + pe_nx + delx
 
           if (px < fsdecomp%ixproc) then
 c         --- Receiving to the lower guard cells from the left
-            i1global = max(me_ix - ix1,pe_ixlgood)
-            i2global = min(me_ix - ix2,pe_ixugood)
+            i1global = max(me_ix - ixls,pe_ixlgood)
+            i2global = min(me_ix - ixle,pe_ixugood)
             if (px < fsdecomp%ixproc-1) then
-              i2global = fsdecomp%ix(px+1) - ix2
+              i2global = fsdecomp%ix(px+1) - ixle
             endif
           else if (px > fsdecomp%ixproc) then
 c         --- Receiving to the upper guard cells from the right
-            i1global = max(me_ix + me_nx + ix2,pe_ixlgood)
-            i2global = min(me_ix + me_nx + ix1,pe_ixugood)
+            i1global = max(me_ix + me_nx + ixus,pe_ixlgood)
+            i2global = min(me_ix + me_nx + ixue,pe_ixugood)
             if (px > fsdecomp%ixproc+1) then
-              i1global = fsdecomp%ix(px-1) + fsdecomp%nx(px-1) + ix2
+              i1global = fsdecomp%ix(px-1) + fsdecomp%nx(px-1) + ixus
             endif
           else
 c         --- Receive nothing from self
@@ -1643,18 +1661,18 @@ c       --- Create the data types for data that is to be received
 
           if (py > fsdecomp%iyproc) then
 c         --- Sending to the lower guard cells on the right
-            i1global = max(pe_iy - iy1,me_iylgood)
-            i2global = min(pe_iy - iy2,me_iyugood)
+            i1global = max(pe_iy - iyls,me_iylgood)
+            i2global = min(pe_iy - iyle,me_iyugood)
             if (py > fsdecomp%iyproc+1) then
-              i2global = fsdecomp%iy(fsdecomp%iyproc+1) - iy2
+              i2global = fsdecomp%iy(fsdecomp%iyproc+1) - iyle
             endif
           else if (py < fsdecomp%iyproc) then
 c         --- Sending to the upper guard cells on the left
-            i1global = max(pe_iy + pe_ny + iy2,me_iylgood)
-            i2global = min(pe_iy + pe_ny + iy1,me_iyugood)
+            i1global = max(pe_iy + pe_ny + iyus,me_iylgood)
+            i2global = min(pe_iy + pe_ny + iyue,me_iyugood)
             if (py < fsdecomp%iyproc-1) then
               i1global = fsdecomp%iy(fsdecomp%iyproc-1) +
-     &                   fsdecomp%ny(fsdecomp%iyproc-1) + iy2
+     &                   fsdecomp%ny(fsdecomp%iyproc-1) + iyus
             endif
           else
 c           --- Send nothing to self
@@ -1677,24 +1695,24 @@ c         --- Create the data types for data that is to be sent
             messagedata%ysendcounts(py) = 0
           endif
 
-          pe_iylgood = pe_iy + 1 - iy2
-          pe_iyugood = pe_iy + pe_ny - 1 + iy2
+          pe_iylgood = pe_iy + 1 - iyle
+          pe_iyugood = pe_iy + pe_ny - 1 + iyus
           if (pe_iy == 0) pe_iylgood = -dely
           if (pe_iy+pe_ny == fsdecomp%nyglobal) pe_iyugood = pe_iy + pe_ny + dely
 
           if (py < fsdecomp%iyproc) then
 c           --- Receiving to the lower guard cells from the left
-            i1global = max(me_iy - iy1,pe_iylgood)
-            i2global = min(me_iy - iy2,pe_iyugood)
+            i1global = max(me_iy - iyls,pe_iylgood)
+            i2global = min(me_iy - iyle,pe_iyugood)
             if (py < fsdecomp%iyproc-1) then
-              i2global = fsdecomp%iy(py+1) - iy2
+              i2global = fsdecomp%iy(py+1) - iyle
             endif
           else if (py > fsdecomp%iyproc) then
 c           --- Receiving to the upper guard cells from the right
-            i1global = max(me_iy + me_ny + iy2,pe_iylgood)
-            i2global = min(me_iy + me_ny + iy1,pe_iyugood)
+            i1global = max(me_iy + me_ny + iyus,pe_iylgood)
+            i2global = min(me_iy + me_ny + iyue,pe_iyugood)
             if (py > fsdecomp%iyproc+1) then
-              i1global = fsdecomp%iy(py-1) + fsdecomp%ny(py-1) + iy2
+              i1global = fsdecomp%iy(py-1) + fsdecomp%ny(py-1) + iyus
             endif
           else
 c           --- Receive nothing from self
@@ -1731,18 +1749,18 @@ c         --- Create the data types for data that is to be received
 
           if (pz > fsdecomp%izproc) then
 c           --- Sending to the lower guard cells on the right
-            i1global = max(pe_iz - iz1,me_izlgood)
-            i2global = min(pe_iz - iz2,me_izugood)
+            i1global = max(pe_iz - izls,me_izlgood)
+            i2global = min(pe_iz - izle,me_izugood)
             if (pz > fsdecomp%izproc+1) then
-              i2global = fsdecomp%iz(fsdecomp%izproc+1) - iz2
+              i2global = fsdecomp%iz(fsdecomp%izproc+1) - izle
             endif
           else if (pz < fsdecomp%izproc) then
 c           --- Sending to the upper guard cells on the left
-            i1global = max(pe_iz + pe_nz + iz2,me_izlgood)
-            i2global = min(pe_iz + pe_nz + iz1,me_izugood)
+            i1global = max(pe_iz + pe_nz + izus,me_izlgood)
+            i2global = min(pe_iz + pe_nz + izue,me_izugood)
             if (pz < fsdecomp%izproc-1) then
               i1global = fsdecomp%iz(fsdecomp%izproc-1) +
-     &                   fsdecomp%nz(fsdecomp%izproc-1) + iz2
+     &                   fsdecomp%nz(fsdecomp%izproc-1) + izus
             endif
           else
 c           --- Send nothing to self
@@ -1765,24 +1783,24 @@ c         --- Create the data types for data that is to be sent
             messagedata%zsendcounts(pz) = 0
           endif
 
-          pe_izlgood = pe_iz + 1 - iz2
-          pe_izugood = pe_iz + pe_nz - 1 + iz2
+          pe_izlgood = pe_iz + 1 - izle
+          pe_izugood = pe_iz + pe_nz - 1 + izus
           if (pe_iz == 0) pe_izlgood = -delz
           if (pe_iz+pe_nz == fsdecomp%nzglobal) pe_izugood = pe_iz + pe_nz + delz
 
           if (pz < fsdecomp%izproc) then
 c           --- Receiving to the lower guard cells from the left
-            i1global = max(me_iz - iz1,pe_izlgood)
-            i2global = min(me_iz - iz2,pe_izugood)
+            i1global = max(me_iz - izls,pe_izlgood)
+            i2global = min(me_iz - izle,pe_izugood)
             if (pz < fsdecomp%izproc-1) then
-              i2global = fsdecomp%iz(pz+1) - iz2
+              i2global = fsdecomp%iz(pz+1) - izle
             endif
           else if (pz > fsdecomp%izproc) then
 c           --- Receiving to the upper guard cells from the right
-            i1global = max(me_iz + me_nz + iz2,pe_izlgood)
-            i2global = min(me_iz + me_nz + iz1,pe_izugood)
+            i1global = max(me_iz + me_nz + izus,pe_izlgood)
+            i2global = min(me_iz + me_nz + izue,pe_izugood)
             if (pz > fsdecomp%izproc+1) then
-              i1global = fsdecomp%iz(pz-1) + fsdecomp%nz(pz-1) + iz2
+              i1global = fsdecomp%iz(pz-1) + fsdecomp%nz(pz-1) + izus
             endif
           else
 c           --- Receive nothing from self
@@ -1868,6 +1886,70 @@ c       --- Free all of the types
 c=============================================================================
 c=============================================================================
 c=============================================================================
+      subroutine mgexchange_phi2(nc,nxlocal,nylocal,nzlocal,phi,
+     &                           delx,dely,delz,ils,ile,ius,iue,fsdecomp)
+      use Subtimersf3d
+      use Decompositionmodule
+      use messagedatatypemodule
+      integer(ISZ):: nc,nxlocal,nylocal,nzlocal,ils,ile,ius,iue
+      integer(ISZ):: delx,dely,delz
+      real(kind=8):: phi(0:nc-1,-delx:nxlocal+delx,
+     &                          -dely:nylocal+dely,
+     &                          -delz:nzlocal+delz)
+      type(Decomposition):: fsdecomp
+
+c Exchange the potential on the boundary and/or in the gaurd cells.
+
+      type(messagedatatype):: messagedata
+      save messagedata
+
+      include "mpif.h"
+      integer(MPIISZ):: mpierror
+      real(kind=8):: substarttime,wtime,s1,s2
+      if (lf3dtimesubs) substarttime = wtime()
+      s1 = wtime()
+
+c     --- Generate the MPI data types needed for the communication.
+      call getmessagedata(nc,nxlocal,nylocal,nzlocal,
+     &                    delx,dely,delz,ils,ile,ius,iue,fsdecomp,
+     &                    messagedata)
+
+c     --- Now, do all of the message passing at once.
+c     --- Note that there should be no problem with having phi being both
+c     --- the send and receive buffer since there is no overlap between
+c     --- out going and in coming data.
+      if (fsdecomp%nxprocs > 1) then
+        call MPI_ALLTOALLW(phi,messagedata%xsendcounts,messagedata%xdispls,
+     &                     messagedata%xsendtypes,
+     &                     phi,messagedata%xrecvcounts,messagedata%xdispls,
+     &                     messagedata%xrecvtypes,
+     &                     fsdecomp%mpi_comm_x,mpierror)
+      endif
+      if (fsdecomp%nyprocs > 1) then
+        call MPI_ALLTOALLW(phi,messagedata%ysendcounts,messagedata%ydispls,
+     &                     messagedata%ysendtypes,
+     &                     phi,messagedata%yrecvcounts,messagedata%ydispls,
+     &                     messagedata%yrecvtypes,
+     &                     fsdecomp%mpi_comm_y,mpierror)
+      endif
+      if (fsdecomp%nzprocs > 1) then
+        call MPI_ALLTOALLW(phi,messagedata%zsendcounts,messagedata%zdispls,
+     &                     messagedata%zsendtypes,
+     &                     phi,messagedata%zrecvcounts,messagedata%zdispls,
+     &                     messagedata%zrecvtypes,
+     &                     fsdecomp%mpi_comm_z,mpierror)
+      endif
+
+c     --- Note that the MPI types generated are cached and do not need to be
+c     --- released.
+
+!$OMP MASTER
+      if (lf3dtimesubs) timemgexchange_phi = timemgexchange_phi + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
       subroutine mgexchange_phi(nc,nxlocal,nylocal,nzlocal,phi,
      &                          delx,dely,delz,i1,i2,fsdecomp)
       use Subtimersf3d
@@ -1893,7 +1975,7 @@ c Exchange the potential on the boundary and/or in the gaurd cells.
 
 c     --- Generate the MPI data types needed for the communication.
       call getmessagedata(nc,nxlocal,nylocal,nzlocal,
-     &                    delx,dely,delz,i1,i2,fsdecomp,
+     &                    delx,dely,delz,i1,i2,-i2,-i1,fsdecomp,
      &                    messagedata)
 
 c     --- Now, do all of the message passing at once.
