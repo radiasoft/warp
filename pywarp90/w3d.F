@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.415 $, $Date: 2008/12/23 18:17:56 $
+c@(#) File W3D.F, version $Revision: 3.416 $, $Date: 2009/01/05 18:32:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -309,6 +309,10 @@ c  Calculate mesh dimensioning quantities
       do k = 0, nzlocal
          zmeshlocal(k) = k*dz + zmminlocal
       enddo
+
+      if (dx == 0.) call kaboom("w3dgen: dx is zero!")
+      if (dy == 0.) call kaboom("w3dgen: dy is zero!")
+      if (dz == 0.) call kaboom("w3dgen: dz is zero!")
 
 c  Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzp
       ix_axis = nint(-xmminlocal/dx)
@@ -1153,7 +1157,7 @@ c  axial confining ears for finite beam as a function of z
       if (ifeears == 2) then
         do ip=1,np
           iz = (zp(ip) - zbeam - zzmin)*dzzi
-          if (0 <= iz .and. iz <= nzzarr) then
+          if (0 <= iz .and. iz < nzzarr) then
             wz = (zp(ip) - zbeam - zzmin)*dzzi - iz
             ez(ip) = ez(ip) + eearsofz(iz)*(1.-wz) + eearsofz(iz+1)*wz
           endif
@@ -1223,12 +1227,12 @@ c Calculated for first species.
       if (lw3dtimesubs) substarttime = wtime()
 
       zm = (zimax - zimin)*(1. - straight)*0.5
-      emitlong = zm*2.*vthz/dvnz(vbeam)
+      emitlong = zm*2.*vthz
 
 c     set to be linear in z (eears is actually slope of Eears)
       if (ifeears == 1) then
         eears = eears*(- 2*ibeam/(vbeam*zm**2)*gfactor/(2.*Pi*eps0)
-     &              - (aion*amu)*vbeam**2*emitlong**2/((zion*echarge)*zm**4))
+     &              - (aion*amu)*emitlong**2/((zion*echarge)*zm**4))
 
       elseif (ifeears == 2) then
 
@@ -1255,7 +1259,7 @@ c     The ends (beyond the beam) are set with the E at the end of the beam
         enddo
 c       --- Add on linear pressure term
         if (emitlong /= 0.) then
-          eearsprs = - (aion*amu)*vbeam**2*emitlong**2/((zion*echarge)*zm**4)
+          eearsprs = - (aion*amu)*emitlong**2/((zion*echarge)*zm**4)
           do iz=0,nzma
             eearsofz(iz) = eearsofz(iz) + eearsprs*(zplmesh(iz) + zs)
           enddo
@@ -1367,6 +1371,7 @@ c=============================================================================
           call setuppadvncsubcyclingfullvaveraging(it,indts,center)
         elseif (ndtsaveraging == 3) then
           call setuppadvncsubcyclinghalfvaveraging(it,indts,center)
+          call kaboom("ndtsaveraging == 3 not supported")
         endif
       enddo
 
@@ -10439,15 +10444,18 @@ c will be treated the same way as rho and be divided by eps0.
      &                           phi(ixmin:ixmax,nylocal,izmin:izmax)/dy**2*eps0
       endif
 
-      if (bound0 == dirichlet) then
-        phi(ixmin:ixmax,iymin:iymax,1) = phi(ixmin:ixmax,iymin:iymax,1) +
-     &                         phi(ixmin:ixmax,iymin:iymax,0)/dz**2*eps0
-      endif
+c     --- Note that these lines are not needed since the Dirichlet boundary
+c     --- in z is already handled using the tridiagonal solver, which directly
+c     --- includes the boundary value of phi.
+c     if (bound0 == dirichlet) then
+c       phi(ixmin:ixmax,iymin:iymax,1) = phi(ixmin:ixmax,iymin:iymax,1) +
+c    &                         phi(ixmin:ixmax,iymin:iymax,0)/dz**2*eps0
+c     endif
 
-      if (boundnz == dirichlet) then
-        phi(ixmin:ixmax,iymin:iymax,nzlocal-1) = phi(ixmin:ixmax,iymin:iymax,nzlocal-1) +
-     &                         phi(ixmin:ixmax,iymin:iymax,nzlocal)/dz**2*eps0
-      endif
+c     if (boundnz == dirichlet) then
+c       phi(ixmin:ixmax,iymin:iymax,nzlocal-1) = phi(ixmin:ixmax,iymin:iymax,nzlocal-1) +
+c    &                         phi(ixmin:ixmax,iymin:iymax,nzlocal)/dz**2*eps0
+c     endif
 
       return
       end
@@ -10816,17 +10824,17 @@ c fits and so was replaced with if statements.
       zlen = zmmax - zmmin
 
       if (fstype == 0) then
-          call vpois3d(iwhich,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq(0),kysq(0),kzsq(0),
-     &                 attx(0),atty(0),attz(0),filt(1,1),xlen,ylen,zlen,
+          call vpois3d(iwhich,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
+     &                 attx,atty,attz,filt,xlen,ylen,zlen,
      &                 nx,ny,izfsmax-izfsmin,nz,
      &                 scrtch,xywork,zwork,0,l2symtry,l4symtry,
      &                 bound0,boundnz,boundxy)
       elseif (fstype == 1) then
           call pipe3df(iwhich,pipeshpe,rho(0,0,izfsmin),phi(-1,-1,izfsmin),
-     &                kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                xlen,ylen,zlen,
-     &                nx,ny,izfsmax-izfsmin,nz,scrtch,xywork,
-     &                zwork(1,0,0),l2symtry,l4symtry,bound0,boundnz,boundxy)
+     &                 kxsq,kysq,kzsq,attx,atty,attz,filt,
+     &                 xlen,ylen,zlen,
+     &                 nx,ny,izfsmax-izfsmin,nz,scrtch,xywork,
+     &                 zwork,l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 2) then
           call vcap3d(iwhich,rho(0,0,izfsmin),phi(-1,-1,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
@@ -10868,7 +10876,7 @@ c         --- General capacity matrix solver in kz space
      &                    filt,xlen,ylen,zlen,
      &                    nx,ny,izfsmax-izfsmin,nz,dx,dy,dz,
      &                    xmmin,ymmin,zmminlocal+izfsmin*dz,scrtch,
-     &                    xywork,zwork(1,0,0),l2symtry,l4symtry,
+     &                    xywork,zwork,l2symtry,l4symtry,
      &                    bound0,boundnz,boundxy)
       elseif (fstype == 6) then
 c         --- General capacity matrix solver
@@ -10876,7 +10884,7 @@ c         --- General capacity matrix solver
      &                  filt,xlen,ylen,zlen,
      &                  nx,ny,izfsmax-izfsmin,nz,dx,dy,dz,
      &                  xmmin,ymmin,zmminlocal+izfsmin*dz,scrtch,
-     &                  xywork,zwork(1,0,0),l2symtry,l4symtry,
+     &                  xywork,zwork,l2symtry,l4symtry,
      &                  bound0,boundnz,boundxy)
 
       elseif (fstype == 7) then
