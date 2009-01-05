@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.35 2008/11/21 20:49:47 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.36 2009/01/05 19:05:38 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -534,6 +534,16 @@ if sys.version[:5] != "1.5.1":
   hpepsnz.__doc__ =  hpepsnz.__doc__ + hpbasicwintext
 
 
+def hpepsr(iw=0,kwdict={},**kw):
+  "Generalized axisymmetric emittance."
+  kw.update(kwdict)
+  kw['titlet']="Generalized axisymmetric emittance"
+  kw['titlel']="(!p-m-rad)"
+  hpbasicwin('hepsr',iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsr.__doc__ = hpepsr.__doc__ + hpbasicwintext
+
+
 def hpepsg(iw=0,kwdict={},**kw):
   "Generalized emittance."
   kw.update(kwdict)
@@ -552,6 +562,16 @@ def hpepsh(iw=0,kwdict={},**kw):
   hpbasicwin('hepsh',iw,kw)
 if sys.version[:5] != "1.5.1":
   hpepsh.__doc__ = hpepsh.__doc__ + hpbasicwintext
+
+
+def hpepsnr(iw=0,kwdict={},**kw):
+  "Generalized axisymmetric normalized emittance."
+  kw.update(kwdict)
+  kw['titlet']="Generalized axisymmetric normalized emittance"
+  kw['titlel']="(!p-mm-mrad)"
+  hpbasicwin('hepsnr',iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsnr.__doc__ = hpepsnr.__doc__ + hpbasicwintext
 
 
 def hpepsng(iw=0,kwdict={},**kw):
@@ -1013,6 +1033,17 @@ if sys.version[:5] != "1.5.1":
   hpepsnyz.__doc__ = hpepsnyz.__doc__ + hpzarraytext
 
 
+def hpepsrz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Generalized axisymmetric emittance."
+  lhepsrz = _extractvarkw('lhepsrz',kw)
+  if not lhepsrz: return
+  kw.update(kwdict)
+  kw['titlet']="Generalized axisymmetric emittance"
+  hpzarray('hepsrz',contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsrz.__doc__ = hpepsrz.__doc__ + hpzarraytext
+
+
 def hpepsgz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   "Generalized emittance."
   lhepsgz = _extractvarkw('lhepsgz',kw)
@@ -1035,23 +1066,34 @@ if sys.version[:5] != "1.5.1":
   hpepshz.__doc__ = hpepshz.__doc__ + hpzarraytext
 
 
+def hpepsnrz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Generalized axisymmetric normalized emittance."
+  lhepsnrz = _extractvarkw('lhepsnrz',kw)
+  if not lhepsnrz: return
+  kw.update(kwdict)
+  kw['titlet']="Generalized axisymmetric normalized emittance"
+  hpzarray('hepsnrz',contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsnrz.__doc__ = hpepsnrz.__doc__ + hpzarraytext
+
+
 def hpepsngz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Generalized nrmlzd emittance."
+  "Generalized normalized emittance."
   lhepsngz = _extractvarkw('lhepsngz',kw)
   if not lhepsngz: return
   kw.update(kwdict)
-  kw['titlet']="Generalized nrmlzd emittance"
+  kw['titlet']="Generalized normalized emittance"
   hpzarray('hepsngz',contour,overlay,iz,kw)
 if sys.version[:5] != "1.5.1":
   hpepsngz.__doc__ = hpepsngz.__doc__ + hpzarraytext
 
 
 def hpepsnhz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Generalized nrmlzd emittance."
+  "Generalized normalized emittance."
   lhepsnhz = _extractvarkw('lhepsnhz',kw)
   if not lhepsnhz: return
   kw.update(kwdict)
-  kw['titlet']="Generalized nrmlzd emittance"
+  kw['titlet']="Generalized normalized emittance"
   hpzarray('hepsnhz',contour,overlay,iz,kw)
 if sys.version[:5] != "1.5.1":
   hpepsnhz.__doc__ = hpepsnhz.__doc__ + hpzarraytext
@@ -1676,6 +1718,11 @@ def hzepsnz(iw=0,kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpepsnz(iw=iw,kwdict=kw)
+def hzepsr(iw=0,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpepsr(iw=iw,kwdict=kw)
 def hzepsg(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
@@ -1686,6 +1733,11 @@ def hzepsh(iw=0,kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpepsh(iw=iw,kwdict=kw)
+def hzepsnr(iw=0,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpepsnr(iw=iw,kwdict=kw)
 def hzepsng(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
@@ -1886,6 +1938,11 @@ def hzepsnyz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpepsnyz(contour=contour,overlay=overlay,iz=iz,kwdict=kw)
+def hzepsrz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpepsrz(contour=contour,overlay=overlay,iz=iz,kwdict=kw)
 def hzepsgz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
@@ -1896,6 +1953,11 @@ def hzepshz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpepshz(contour=contour,overlay=overlay,iz=iz,kwdict=kw)
+def hzepsnrz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpepsnrz(contour=contour,overlay=overlay,iz=iz,kwdict=kw)
 def hzepsngz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
@@ -2186,8 +2248,10 @@ hpepsz(): Z emittance
 hpepsnx(): X normalized emittance
 hpepsny(): Y normalized emittance
 hpepsnz(): Z normalized emittance
+hpepsr(): Generalized axisymmetric emittance
 hpepsg(): Generalized emittance
 hpepsh(): Generalized emittance
+hpepsnr(): Generalized axisymmetric normalized emittance
 hpepsng(): Generalized normalized emittance
 hpepsnh(): Generalized normalized emittance
 hppnum(): Number of particles
@@ -2228,10 +2292,12 @@ hpepsxz(): X emittance
 hpepsyz(): Y emittance
 hpepsnxz(): X normalized emittance
 hpepsnyz(): Y normalized emittance
+hpepsrz(): Generalized axisymmetric emittance
 hpepsgz(): Generalized emittance
 hpepshz(): Generalized emittance
-hpepsngz(): Generalized nrmlzd emittance
-hpepsnhz(): Generalized nrmlzd emittance
+hpepsnrz(): Generalized axisymmetric normalized emittance
+hpepsngz(): Generalized normalized emittance
+hpepsnhz(): Generalized normalized emittance
 hpxbarz(): X bar
 hpybarz(): Y bar
 hpxybarz(): XY bar
@@ -2302,8 +2368,10 @@ Test all histplots
   apply(hpepsnx,(),kw);fma()
   apply(hpepsny,(),kw);fma()
   apply(hpepsnz,(),kw);fma()
+  apply(hpepsr,(),kw);fma()
   apply(hpepsg,(),kw);fma()
   apply(hpepsh,(),kw);fma()
+  apply(hpepsnr,(),kw);fma()
   apply(hpepsng,(),kw);fma()
   apply(hpepsnh,(),kw);fma()
   apply(hppnum,(),kw);fma()
@@ -2344,8 +2412,10 @@ Test all histplots
   apply(hpepsyz,(),kw);fma()
   apply(hpepsnxz,(),kw);fma()
   apply(hpepsnyz,(),kw);fma()
+  apply(hpepsrz,(),kw);fma()
   apply(hpepsgz,(),kw);fma()
   apply(hpepshz,(),kw);fma()
+  apply(hpepsnrz,(),kw);fma()
   apply(hpepsngz,(),kw);fma()
   apply(hpepsnhz,(),kw);fma()
   apply(hpxbarz,(),kw);fma()
