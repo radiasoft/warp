@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.416 $, $Date: 2009/01/05 18:32:19 $
+c@(#) File W3D.F, version $Revision: 3.417 $, $Date: 2009/01/05 23:32:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8544,7 +8544,10 @@ c     --- made changes.
       call setupSubcycling(pgroup)
       call setupSelfB(pgroup)
 
-      if(depos == 'none') return
+      if(depos == 'none') then
+        if (lafterloadrho) call callpythonfunc("afterloadrho","controllers")
+        return
+      endif
 
 c     --- set limits on loop over species
       if (is_i == -1) then
@@ -8708,6 +8711,8 @@ c       --- should be done.
 
 c     --- Do any loading that is needed for injection
       call loadrho_inject(pgroup)
+
+      if (lafterloadrho) call callpythonfunc("afterloadrho","controllers")
 
 !$OMP MASTER
       if (lw3dtimesubs) timeloadrho3d = timeloadrho3d + wtime() - substarttime
@@ -10476,7 +10481,7 @@ c===========================================================================
       use LatticeInternal
       use InjectVars
       use GridBoundary3d
-      use Parallel,Only:my_index,nzprocs,fsdecomp
+      use Parallel,Only:izproc,nzprocs,fsdecomp
       use w3d_interfaces
       use Decompositionmodule
       integer(ISZ):: iwhich
@@ -10589,8 +10594,8 @@ c         --- If not in bend, call VP3D
               if (.not. l2symtry .and. .not. l4symtry) iymin = 1
               iymax = nylocal - 1
             endif
-            if (bound0  == dirichlet .and. my_index == 0) izmin = 1
-            if (boundnz == dirichlet .and. my_index >= nzprocs-1) izmax = nzlocal-1
+            if (bound0  == dirichlet .and. izproc == 0) izmin = 1
+            if (boundnz == dirichlet .and. izproc >= nzprocs-1) izmax = nzlocal-1
 c           --- When copying rho into phi, be careful not to overwrite any
 c           --- boundary conditions in phi.
 #ifndef MPIPARALLEL
@@ -10612,8 +10617,8 @@ c           --- Apply inhomogeneous Dirichlet boundary conditions
 #ifdef MPIPARALLEL
           call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
      &                                 -1,0,bounds,fsdecomp)
-          call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
-     &                        -1,-1,fsdecomp)
+          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+     &                         -1,-1,0,1,fsdecomp)
 #endif
 c         --- Note that perphi3d is only called for the RZ solver.
           if (bound0==periodic) call perphi3d()

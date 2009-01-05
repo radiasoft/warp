@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.292 $, $Date: 2008/12/23 17:43:10 $
+#@(#) File W3D.V, version $Revision: 3.293 $, $Date: 2009/01/05 23:32:03 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.292 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.293 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -48,6 +48,7 @@ l4symtry             logical    /.false./  # Turns on 4-fold symmetry
 lbeforefs  logical    /.false./  # Turns on call to python function "beforefs"
 lafterfs   logical    /.false./  # Turns on call to python function "afterfs"
 lbeforelr logical /.false./ # Turns on call to python function "beforelr"
+lafterloadrho logical /.false./ # Turns on call to python function "afterloadrho"
 lothereuser logical /.false./ # Turns on call to python function "othereuser"
 lbeforescraper   logical /.false./ # Turns on call to python function "beforescraper"
 lafterscraper   logical /.false./ # Turns on call to python function "afterscraper"
