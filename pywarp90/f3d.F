@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.135 $, $Date: 2008/11/19 18:29:49 $
+c@(#) File F3D.M, version $Revision: 3.136 $, $Date: 2009/01/05 18:27:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -3000,6 +3000,8 @@ c     real(kind=8):: tt1,tt2
 
 c find capacity matrix
 
+      if (nc3d == 0) return
+
 c     --- find inverse capacity matrix
       do i=1,nc3d
 
@@ -3273,6 +3275,8 @@ c     real(kind=8):: tt1,tt2
       integer(ISZ):: ix,iy,iz,i,j,info
 
 c find capacity matrix
+
+      if (nc3d == 0) return
 
 c     --- Make sure capacity matrix is fully allocated.
       nc3dz = nzlocal
