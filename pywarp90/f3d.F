@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.136 $, $Date: 2009/01/05 18:27:25 $
+c@(#) File F3D.M, version $Revision: 3.137 $, $Date: 2009/01/05 23:55:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4294,7 +4294,13 @@ c  (Same with user inputed points if loadquad is false)
 
       real(kind=8):: theta0,theta,rad
       real(kind=8):: piperadi,yymax,qcmge
-      integer(ISZ):: i,j,iend,iquad,ixmin,ixmax,iymin,iymax,iystep,iq,ncndptst,ix,iy
+      integer(ISZ):: i,j,iend,iquad,ixmin,ixmax,iymin,iymax
+      integer(ISZ):: iystep,iq,ncndptst,ix,iy
+
+      if (quadradi == 0.) then
+        ncndpts = 0
+        return
+      endif
 
       if (loadquad) then
 

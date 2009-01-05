@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.195 $, $Date: 2008/11/19 18:29:49 $
+#@(#) File F3D.V, version $Revision: 3.196 $, $Date: 2009/01/05 23:55:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.195 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.196 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -77,9 +77,9 @@ cap3d(pipen,pipe8th,0:pipenz2)  _real # Capacity matrix for kz slices
 kpvt(pipen)                  _integer # Pivot points for matrix solve
 
 ******** Capvars dump:
-qdslclen              real  # length of quad z slice
-quadcent              real  # distance of quad centers from pipe center
-quadradi              real  # radius of quad conductors
+qdslclen              real  /0./ # length of quad z slice
+quadcent              real  /0./ # distance of quad centers from pipe center
+quadradi              real  /0./ # radius of quad conductors
 loadquad              logical /.true./ # should quad points be loaded?
 nzquad                integer /0/  # number of z slices in conductor
 nzpts                 integer /0/  # number of points per z slice in conductor
