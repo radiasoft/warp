@@ -520,13 +520,14 @@ Add a mesh refined block to this block.
     self.finalized = 1
 
   def generateblocklevellists(self,blocklists=None):
+    NMAXLEVELS = 32
     if blocklists is None:
       # --- This will only happen at the top level.
       # --- Create a list of empty lists. Each empty list will get the blocks
-      # --- at the appropriate levels appended to it. Note that 100 is
+      # --- at the appropriate levels appended to it. Note that 32 is
       # --- assumed to be a large enough number - there almost certainly
-      # --- will never be 100 levels of refinement.
-      blocklists = [[] for i in range(100)]
+      # --- will never be 32 levels of refinement.
+      blocklists = [[] for i in range(NMAXLEVELS)]
     # --- Add this instance to the top level of the list and pass the rest
     # --- of it to the children
     if self not in blocklists[0]:
@@ -536,10 +537,11 @@ Add a mesh refined block to this block.
     return blocklists
 
   def swapblocklistswithprocessneighbors(self,blocklists):
+    NMAXLEVELS = 32
     # --- Note that this will only be called when self = self.root
     if not lparallel:
       # --- Return a bunch of empty lists
-      return [[[] for i in range(100)] for i in range(6)]
+      return [[[] for i in range(NMAXLEVELS)] for i in range(6)]
     else:
       # --- First, set so amount data sent to neighbors will be small
       lreducedpicklesave = self.lreducedpickle
@@ -555,14 +557,14 @@ Add a mesh refined block to this block.
       if self.ixproc < self.nxprocs-1 and neighborpes[1] >= 0:
         blocklistsxp = mpi.recv(neighborpes[1])[0]
       else:
-        blocklistsxp = [[] for i in range(100)]
+        blocklistsxp = [[] for i in range(NMAXLEVELS)]
 
       if self.ixproc < self.nxprocs-1 and neighborpes[1] >= 0:
         mpi.send(blocklists,neighborpes[1])
       if self.ixproc > 0 and neighborpes[0] >= 0:
         blocklistsxm = mpi.recv(neighborpes[0])[0]
       else:
-        blocklistsxm = [[] for i in range(100)]
+        blocklistsxm = [[] for i in range(NMAXLEVELS)]
 
       # --- Exchange lists with processes neighboring along Y
       if self.iyproc > 0 and neighborpes[2] >= 0:
@@ -570,14 +572,14 @@ Add a mesh refined block to this block.
       if self.iyproc < self.nyprocs-1 and neighborpes[3] >= 0:
         blocklistsyp = mpi.recv(neighborpes[3])[0]
       else:
-        blocklistsyp = [[] for i in range(100)]
+        blocklistsyp = [[] for i in range(NMAXLEVELS)]
 
       if self.iyproc < self.nyprocs-1 and neighborpes[3] >= 0:
         mpi.send(blocklists,neighborpes[3])
       if self.iyproc > 0 and neighborpes[2] >= 0:
         blocklistsym = mpi.recv(neighborpes[2])[0]
       else:
-        blocklistsym = [[] for i in range(100)]
+        blocklistsym = [[] for i in range(NMAXLEVELS)]
 
       # --- Exchange lists with processes neighboring along Z
       if self.izproc > 0 and neighborpes[4] >= 0:
@@ -585,14 +587,14 @@ Add a mesh refined block to this block.
       if self.izproc < self.nzprocs-1 and neighborpes[5] >= 0:
         blocklistszp = mpi.recv(neighborpes[5])[0]
       else:
-        blocklistszp = [[] for i in range(100)]
+        blocklistszp = [[] for i in range(NMAXLEVELS)]
 
       if self.izproc < self.nzprocs-1 and neighborpes[5] >= 0:
         mpi.send(blocklists,neighborpes[5])
       if self.izproc > 0 and neighborpes[4] >= 0:
         blocklistszm = mpi.recv(neighborpes[4])[0]
       else:
-        blocklistszm = [[] for i in range(100)]
+        blocklistszm = [[] for i in range(NMAXLEVELS)]
 
       # --- Restore the flags
       self.lreducedpickle = lreducedpicklesave
@@ -651,7 +653,8 @@ Sets the regions that are covered by the children.
         u = u + where(u == self.fullupper,1,0)
       # --- The child claims all unclaimed areas.
       ii = self.getchilddomains(l,u)
-      ii[...] = where(ii==self.blocknumber,-child.blocknumber,ii)
+      iit = transpose(ii)
+      iit[...] = where(iit==self.blocknumber,-child.blocknumber,iit)
 
       # --- Set interior to positive child number.
       l = maximum(self.fulllower,child.lower/child.refinement)
@@ -664,7 +667,8 @@ Sets the regions that are covered by the children.
       u = u + where(u == self.fullupper,1,0)
       # --- The child claims its full interior area
       ii = self.getchilddomains(l,u)
-      ii[...] = +child.blocknumber
+      iit = transpose(ii)
+      iit[...] = +child.blocknumber
 
   def findoverlappingsiblings(self,blocklists,blocklistsxm,blocklistsxp,
                                               blocklistsym,blocklistsyp,
@@ -1005,7 +1009,7 @@ block.
     nw = len(wfact)
     wfactout = zeros(nw,'d')
     if len(ux) == 0:
-      xout,yout,zout,uzout = zeros((4,len(x)),'d')
+      xout,yout,zout,uzout = empty((4,len(x)),'d')
       nperchild = zeros(self.root.totalnumberofblocks,'l')
       sortparticlesbyindex1(len(x),ichild,x,y,z,uz,nw,wfact,
                             self.root.totalnumberofblocks,
@@ -1107,7 +1111,7 @@ Fortran version
                    u[2] == self.rootdims[2]))
       dopbounds = 0
 
-      w = self.getwarrayforsourcep(child.refinement)
+      w = child.getwarrayforsourcep()
       if not self.l_EM:
         pdims = array([self.nxp,self.nyp,self.nzp])
         childpdims = array([child.nxp,child.nyp,child.nzp])
@@ -1439,9 +1443,9 @@ Fetches the potential, given a list of positions
       self.__class__.__bases__[1].fetchpotentialfrompositions(self,x,y,z,potential)
 
   def sortbyichildgetisort(self,ichild,x,y,z):
-    xout,yout,zout = zeros((3,len(x)),'d')
-    isort = zeros(len(x),'l')
-    nperchild = zeros(self.root.totalnumberofblocks,'l')
+    xout,yout,zout = empty((3,len(x)),'d')
+    isort = empty(len(x),'l')
+    nperchild = empty(self.root.totalnumberofblocks,'l')
     sortparticlesbyindexgetisort(len(x),ichild,x,y,z,
                                  self.root.totalnumberofblocks,
                                  xout,yout,zout,isort,nperchild)
@@ -1591,9 +1595,16 @@ to zero."""
       memtot = memtot + child.getmem()
     return memtot
       
-  def getwarrayforsourcep(self,r):
+  def getwarrayforsourcep(self):
+    try:
+      # --- Return the array if it has already been calculated
+      return self.warrayforsourcep
+    except AttributeError:
+      pass
+
     # --- Create weight array needed for sourcep deposition.
     # --- Is linear falloff in the weights correct for r > 2?
+    r = self.refinement
     wi = [0,0,0]
     for i in range(3):
       if self.dims[i] > 0:
@@ -1606,6 +1617,7 @@ to zero."""
     w.shape = (2*r[0]-1,2*r[1]-1,2*r[2]-1)
     result = fzeros(2*r-1,'d')
     result[...] = w
+    self.warrayforsourcep = result
     return result
 
   def setzgrid(self,zgrid):
