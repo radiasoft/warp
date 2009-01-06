@@ -5,7 +5,7 @@ __all__ = ['LoadBalancer']
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.62 2008/11/19 18:29:59 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.63 2009/01/06 00:41:42 dave Exp $"
 
 def loadbalancedoc():
     import loadbalance
@@ -220,14 +220,6 @@ recalculated on a finer mesh to give better balancing.
             zminp = minimum(zminp,max(w3d.zmmin,zinjectmin))
             zmaxp = maximum(zmaxp,min(w3d.zmmax,zinjectmax))
 
-        # --- Shift into the grid frame
-        xminp = xminp - w3d.xmmin
-        xmaxp = xmaxp - w3d.xmmin
-        yminp = yminp - w3d.ymmin
-        ymaxp = ymaxp - w3d.ymmin
-        zminp = zminp - w3d.zmmin - top.zbeam
-        zmaxp = zmaxp - w3d.zmmin - top.zbeam
-
         ppdecomp = top.ppdecomp
 
         # --- Check if uppermost particle is close to edge of last processor
@@ -289,6 +281,14 @@ recalculated on a finer mesh to give better balancing.
                     print "Load balancing since particles near lower end ",
                     print "of mesh in z ",ppdecomp.zmin[0],w3d.zmmin,zminp,
                     print ppdecomp.zmin[0]+2*w3d.dz
+
+        # --- Shift into the grid frame
+        xminp = xminp - w3d.xmmin
+        xmaxp = xmaxp - w3d.xmmin
+        yminp = yminp - w3d.ymmin
+        ymaxp = ymaxp - w3d.ymmin
+        zminp = zminp - w3d.zmmin - top.zbeam
+        zmaxp = zmaxp - w3d.zmmin - top.zbeam
 
         # --- Find frequency of load balancing
         ii = max(self.when.values())
@@ -465,7 +465,7 @@ recalculated on a finer mesh to give better balancing.
                                  zeros(nprocs,'d'),true,
                                  ppdecompii,ppdecompnn,ppdecompmin,ppdecompmax)
 
-    def calcpadupper(self,axis,ii,padupper,vv,dd):
+    def calcpadupper(self,axis,ii,padupper,uu,dd):
         # --- Calculate the padding on the upper edge.
         if padupper is None:
             if axis < 2 or not top.lmoments or top.ifzmmnt == 0:
@@ -474,7 +474,7 @@ recalculated on a finer mesh to give better balancing.
                     if top.pgroup.nps[js] == 0: continue
                     i1 = top.pgroup.ins[js] - 1
                     i2 = i1 + top.pgroup.nps[js]
-                    vv = vv[i1:i2]*top.pgroup.gaminv[i1:i2]
+                    vv = uu[i1:i2]*top.pgroup.gaminv[i1:i2]
                     vmaxp = max(vmaxp,max(vv))
                 vmaxp = globalmax(vmaxp)
             else:
@@ -485,7 +485,7 @@ recalculated on a finer mesh to give better balancing.
             print "Load balancing padupper%s = "%(['x','y','z'][axis]),padupper
         return padupper
 
-    def calcpadlower(self,axis,ii,padlower,vv,dd):
+    def calcpadlower(self,axis,ii,padlower,uu,dd):
         # --- Calculate the padding on the lower edge.
         if padlower is None:
             if axis < 2 or not top.lmoments or top.ifzmmnt == 0:
@@ -494,7 +494,7 @@ recalculated on a finer mesh to give better balancing.
                     if top.pgroup.nps[js] == 0: continue
                     i1 = top.pgroup.ins[js] - 1
                     i2 = i1 + top.pgroup.nps[js]
-                    vv = vv[i1:i2]*top.pgroup.gaminv[i1:i2]
+                    vv = uu[i1:i2]*top.pgroup.gaminv[i1:i2]
                     vminp = min(vminp,min(vv))
                 vminp = globalmin(vminp)
             else:
