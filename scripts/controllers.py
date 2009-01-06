@@ -13,6 +13,7 @@ aftergenerate: immediately after the generate is complete
 beforefs: before the field solve
 afterfs: after the field solve
 beforelr: before the rho is deposited, at the beginning of loadrho
+afterloadrho: after the rho is deposited, at the end of loadrho
 othereuser: during execution of electric fields gathering
 beforestep: before the time step
 afterstep: after the time step
@@ -68,7 +69,7 @@ installuserinjection, uninstalluserinjection, installeduserinjection
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.24 2008/11/27 01:31:42 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.25 2009/01/06 00:39:52 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -251,6 +252,7 @@ aftergenerate = ControllerFunction('aftergenerate')
 beforefs = ControllerFunction('beforefs')
 afterfs = ControllerFunction('afterfs')
 beforelr = ControllerFunction('beforelr')
+afterloadrho = ControllerFunction('afterloadrho')
 othereuser = ControllerFunction('othereuser')
 beforescraper = ControllerFunction('beforescraper')
 afterscraper = ControllerFunction('afterscraper')
@@ -320,7 +322,7 @@ Anything that may have already been installed will therefore be unaffected.
 # --- from the list of python objects which are not written out.
 controllerfunctioncontainer = ControllerFunctionContainer(
                                [aftergenerate,beforefs,afterfs,
-                                beforelr,othereuser,
+                                beforelr,afterloadrho,othereuser,
                                 beforescraper,afterscraper,callscraper,
                                 callparticleloader,calladdconductor,
                                 callbeforestepfuncs,callafterstepfuncs,
@@ -382,6 +384,18 @@ def isinstalledbeforeloadrho(f):
 installbeforelr = installbeforeloadrho
 uninstallbeforelr = uninstallbeforeloadrho
 isinstalledbeforelr = isinstalledbeforeloadrho
+
+# ----------------------------------------------------------------------------
+def installafterloadrho(f):
+  "Adds a function to the list of functions called after a load rho"
+  afterloadrho.installfuncinlist(f)
+  warp.w3d.lafterloadrho = warp.true
+def uninstallafterloadrho(f):
+  "Removes the function from the list of functions called after a load rho"
+  afterloadrho.uninstallfuncinlist(f)
+  if not afterloadrho.hasfuncsinstalled(): warp.w3d.lafterloadrho = warp.false
+def isinstalledafterloadrho(f):
+  return afterloadrho.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def installothereuser(f):
