@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.417 $, $Date: 2009/01/05 23:32:03 $
+c@(#) File W3D.F, version $Revision: 3.418 $, $Date: 2009/01/06 00:30:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -753,6 +753,10 @@ c     Assumes ioldsetup is initialized to zero by compiler; the following
 c     saves it between calls to this subroutine
       save ioldsetup
       if (lw3dtimesubs) substarttime = wtime()
+
+      if (l4symtry .and. l2symtry) then
+        call kaboom("step3d: both l4symtry and l2symtry are set to true")
+      endif
 
 c --- Set the internal lattice variables. This is not generally necessary at
 c --- this point (it is redundant most of the time, the next call to
@@ -10506,6 +10510,10 @@ c         The loop is in bendfieldsol3d
 
 c     --- If no field solve, return 
       if ( fstype == -1) return 
+
+      if (l4symtry .and. l2symtry) then
+        call kaboom("fieldsol3d: both l4symtry and l2symtry are set to true")
+      endif
 
 c     --- turn off the bends for the fieldsolve when computing in a boosted frame
       if ( boost_gamma>1. .and. linbend) then
