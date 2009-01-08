@@ -1,37 +1,20 @@
-warp_version = "$Id: warp.py,v 1.173 2008/12/04 17:27:08 dave Exp $"
+warp_version = "$Id: warp.py,v 1.174 2009/01/08 19:21:43 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
 
-__main__.__dict__['with_numpy'] = 1
-try:
-  with_numpy = __main__.__dict__['with_numpy']
-except KeyError:
-  with_numpy = ('--with-numpy' in sys.argv)
-  __main__.__dict__['with_numpy'] = with_numpy
+#from line_profiler import LineProfiler
+#lineprofile = LineProfiler()
 
-if with_numpy:
-  from numpy import *
-  ArrayType = ndarray
-  def gettypecode(x):
-    return x.dtype.char
-  def oldnonzero(a):
-    return a.nonzero()[0]
-else:
-  from Numeric import *
-  import MA
-  def gettypecode(x):
-    return x.typecode()
-  oldnonzero = nonzero
-  ubyte = 'b'
+# --- Only numpy is now supported.
+from numpy import *
+ArrayType = ndarray
+def gettypecode(x):
+  return x.dtype.char
+def oldnonzero(a):
+  return a.nonzero()[0]
 import os.path
 import time
-
-if not with_numpy:
-  # --- Set this to a more reasonable value
-  MA.set_print_limit(10000)
-  def set_printoptions(precision=None):
-    MA.limitedArrayRepr.func_defaults = (None,precision,None)
 
 # --- Import the RNG module. Older versions have ranf in a seperate module
 # --- called Ranf. In newer versions, ranf is part of RNG.
@@ -40,10 +23,7 @@ try:
 except ImportError:
   pass
 try:
-  if with_numpy:
-    import numpy.oldnumeric.rng as RNG
-  else:
-    import RNG
+  import numpy.oldnumeric.rng as RNG
 except ImportError:
   pass
 
@@ -73,12 +53,8 @@ from warpC import *
 from Forthon import *
 from warputils import *
 import pickledump
-if with_numpy:
-  from numpy import random
-  RandomArray = random
-else:
-  import RandomArray
-  random = RandomArray
+from numpy import random
+RandomArray = random
 
 # --- The WARP modules must be imported in the order below because of
 # --- linking dependencies.
@@ -264,7 +240,7 @@ print 'For more help, type warphelp()'
 def warpdoc():
   print """
 Imports the basic modules needed to run WARP, including
-Numeric, gist, warpplots
+numpy, gist, warpplots
 
 as well as additional modules
 histplots, pzplots, plot_conductors, drawlattice
@@ -345,23 +321,10 @@ returns a digit reversed random number.
 # --- Gaussian distribution
 # --- This had to be moved here in order to use rnormdig.
 # --- First, try and define a normal generator from the RNG module.
-if not with_numpy:
-  # --- Using the RNG causes a seg fault with numpy when exiting python.
-  try:
-    _normaldistribution = RNG.NormalDistribution(0.,1.)
-    _normalgenerator = RNG.CreateGenerator(-1,_normaldistribution)
-  except:
-    _normalgenerator = None
 def rnormarray(x,i1=None,nbase1=None,nbase2=None):
   if not i1:
-    if not with_numpy:
-      if _normalgenerator is not None:
-        return reshape(_normalgenerator.sample(product(array(shape(x)))),shape(x))
     try:
-      if with_numpy:
-        return random.standard_normal(shape(x))
-      else:
-        return RandomArray.standard_normal(x)
+      return random.standard_normal(shape(x))
     except:
       # --- Use pseudo-random number generator
       s = random.random(shape(x))

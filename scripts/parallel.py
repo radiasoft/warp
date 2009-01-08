@@ -1,14 +1,11 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.33 2008/11/19 18:30:00 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.34 2009/01/08 19:21:43 dave Exp $"
 
-from warp import with_numpy,gettypecode
-if with_numpy:
-  from numpy import *
-  ArrayType = ndarray
-else:
-  from Numeric import *
+from warp import gettypecode
+from numpy import *
+ArrayType = ndarray
 from types import *
 # --- Try import mpi - if not found, then run in serial mode
 try:
