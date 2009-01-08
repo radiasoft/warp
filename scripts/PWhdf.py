@@ -1,12 +1,11 @@
-"""
-HDF self-describing file format writer class PW
+"""HDF self-describing file format writer class PW
 by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWhdf.py,v 1.5 2007/07/11 18:30:43 dave Exp $
+$Id: PWhdf.py,v 1.6 2009/01/08 19:27:35 dave Exp $
 """
 import _pyhl
-from Numeric import *
+from numpy import *
 from types import *
 
 class PW:

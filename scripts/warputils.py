@@ -25,7 +25,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.23 2008/02/25 19:22:01 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.24 2009/01/08 19:27:35 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -49,11 +49,11 @@ def remark(s):
   print s
 
 # --- Replicate the sign function with two arguments. If only one is
-# --- given, return the value from the Numeric sign function.
+# --- given, return the value from the numpy sign function.
 # --- This should realy be removed.
-numericsign = sign
+numpysign = sign
 def sign(x,y=None):
-  if y is None: return numericsign(x)
+  if y is None: return numpysign(x)
   if isinstance(x,ArrayType):
     result = where(greater(y,0.),abs(x),-abs(x))
     result = where(equal(y,0.),0.,result)

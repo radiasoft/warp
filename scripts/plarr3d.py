@@ -1,12 +1,9 @@
-plarr3d_version = "$Id: plarr3d.py,v 1.2 2002/01/05 00:48:49 rcohen Exp $"
+"""This module contains a class Plarr3d with methods to plot a 3-D array of points connected or not by lines.  Also included is a method to make a color-separated stereoscopic plot. For more info, import Plarr3d and type doc(Plarr3d)."""
+plarr3d_version = "$Id: plarr3d.py,v 1.3 2009/01/08 19:27:35 dave Exp $"
 def plarr3ddoc():
-   print """
-This module contains a class Plarr3d with methods to plot a 3-D array
-of points conneted or not by lines.  Also included is a method to
-make a color-separated stereoscopic plot. For more info, import
-Plarr3d and type doc(Plarr3d).
-   """
-from Numeric import *
+   import plarr3d
+   print plarr3d.__doc__
+from numpy import *
 from gist import *
 true=1; false=0
 defaultxoffset=0.
