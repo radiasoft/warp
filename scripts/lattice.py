@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.72 2008/12/23 18:38:49 jlvay Exp $"
+lattice_version = "$Id: lattice.py,v 1.73 2009/01/08 22:41:10 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -954,8 +954,8 @@ Creates an instance of a Mmlt lattice element.
   - ap=0 aperture (can affect location of transverse boundaries)
   - ax=0 aperture in x (can affect location of transverse boundaries)
   - ay=0 aperture in y (can affect location of transverse boundaries)
-  - as=0 z start of aperture (can affect location of transverse boundaries)
-  - ae=0 z end of aperture (can affect location of transverse boundaries)
+  - aps=0 z start of aperture (can affect location of transverse boundaries)
+  - ape=0 z end of aperture (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - ol=0 when set to -1, overlaps of the element with others is ignored
@@ -976,7 +976,7 @@ Or specify the data set
   - nn=[] n indices
   - vv=[] v indices
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,as=0.,ae=0.,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,aps=0.,ape=0.,
                ox=0,oy=0,ol=0,error_type='',
                id=None,dz=0,m=[],mp=[],mph=[],nn=[],vv=[],ph=0,sf=0,sc=1):
     assert (m or mp) or (id is not None),"A data set or id must be given"
@@ -984,8 +984,8 @@ Or specify the data set
                   ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Mmlt'
-    self.as = as
-    self.ae = ae
+    self.aps = aps
+    self.ape = ape
     self.dz = dz
     self.m = m
     self.mp = mp
@@ -1049,8 +1049,8 @@ Or specify the data set
     top.mmltap[top.nmmlt] = self.ap
     top.mmltax[top.nmmlt] = self.ax
     top.mmltay[top.nmmlt] = self.ay
-    top.mmltas[top.nmmlt] = self.as
-    top.mmltae[top.nmmlt] = self.ae
+    top.mmltas[top.nmmlt] = self.aps
+    top.mmltae[top.nmmlt] = self.ape
     top.mmltox[top.nmmlt] = self.offset_x*errordist(self.error_type)
     top.mmltoy[top.nmmlt] = self.offset_y*errordist(self.error_type)
     top.mmltol[top.nmmlt] = self.ol
@@ -2390,7 +2390,7 @@ emlt arrays with the same suffices:
 # ----------------------------------------------------------------------------
 # --- MMLT --- XXX
 def addnewmmlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,ox=0.,oy=0.,
-               as=0.,ae=0.,ol=0,
+               aps=0.,ape=0.,ol=0,
                ms=None,msp=None,phz=None,phpz=None,nn=None,vv=None):
   """
 Adds a new mmlt element to the lattice. The element will be placed at the
@@ -2413,6 +2413,7 @@ If 'ms' is supplied, the following may also be supplied.
 The following are all optional and have the same meaning and default as the
 mmlt arrays with the same suffices:
   - ap,ph,sf,sc,ox,oy
+  - aps,ape refer to mmltas and mmltae
   """
   # --- Make sure either an 'id' or a dataset, 'ms', was passed in.
   assert (id is not None or ms is not None), \
@@ -2458,7 +2459,7 @@ mmlt arrays with the same suffices:
            'ap':top.mmltap,'ax':top.mmltax,'ay':top.mmltay,
            'ph':top.mmltph,
            'sf':top.mmltsf,'sc':top.mmltsc,'ox':top.mmltox,'oy':top.mmltoy,
-           'as':top.mmltas,'ae':top.mmltae,'ol':top.mmltol}
+           'aps':top.mmltas,'ape':top.mmltae,'ol':top.mmltol}
 
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element.
