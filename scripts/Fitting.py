@@ -9,8 +9,8 @@ This module contains the following fitting functions of general use:
 
 lsqfit ... Least Squares fit of a straight line to approximate a set of pts.
 """
-Fitting_version = "$Id: Fitting.py,v 1.4 2005/05/13 06:02:04 ramiak Exp $"
-import Numeric
+Fitting_version = "$Id: Fitting.py,v 1.5 2009/01/08 19:30:23 dave Exp $"
+import numpy
 
 def Fittingdoc():
   import Fitting
@@ -24,10 +24,10 @@ def lsqfit(x, y):
 
         Note that x and y are converted to arrays of float before operation.
     """
-    N = len(x); x=Numeric.array(x, 'd'); y=Numeric.array(y, 'd')
-    xm = Numeric.sum(x)/N; ym = Numeric.sum(y)/N
-    a = ((Numeric.sum(x*y)/N)-xm*ym)/((Numeric.sum(x*x)/N) - xm**2)
+    N = len(x); x=numpy.array(x, 'd'); y=numpy.array(y, 'd')
+    xm = numpy.sum(x)/N; ym = numpy.sum(y)/N
+    a = ((numpy.sum(x*y)/N)-xm*ym)/((numpy.sum(x*x)/N) - xm**2)
     b = ym - a*xm
-    L = Numeric.sum((y - a*x - b)**2)/N
+    L = numpy.sum((y - a*x - b)**2)/N
     return (a, b, L)
 

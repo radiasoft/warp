@@ -27,10 +27,10 @@
 
 yes = 1; no = 0
 from warp import *
-import Numeric, os, string
+import numpy, os, string
 from tifrw import *
 
-mphoto_version = "$Id: mphoto.py,v 1.5 2008/01/04 00:10:48 dave Exp $"
+mphoto_version = "$Id: mphoto.py,v 1.6 2009/01/08 19:30:23 dave Exp $"
 def mphotodoc():
   import mphoto
   print mphoto.__doc__
@@ -40,7 +40,7 @@ def mphotodoc():
 def V_median(vector):
     """V_median(vector)
     """
-    V = Numeric.sort(vector)
+    V = numpy.sort(vector)
     if len(V) == 1:
         return V[len(V)/2]
     else:
@@ -55,10 +55,10 @@ def median_filter(matrix,D_x = 1, D_y = 1):
 The pixel in the center of a moving window of size (2*D_x+1, 2*D_y+1)
 is replaced with the median value of all the pixels in the window.
     """
-    M, N = Numeric.shape(matrix)
-    outmatrix = Numeric.zeros([M,N],'d')
-    D_x = int(Numeric.absolute(D_x))
-    D_y = int(Numeric.absolute(D_y))
+    M, N = numpy.shape(matrix)
+    outmatrix = numpy.zeros([M,N],'d')
+    D_x = int(numpy.absolute(D_x))
+    D_y = int(numpy.absolute(D_y))
 
     if D_y > M/2:
         D_y = M/2
@@ -87,7 +87,7 @@ is replaced with the median value of all the pixels in the window.
 
             Lx = max_k - min_k
             Axy = Lx * Ly
-            V = Numeric.zeros([Axy,],'d')
+            V = numpy.zeros([Axy,],'d')
 				
             for h in range(min_h, max_h):
                 for k in range (min_k, max_k):
@@ -104,29 +104,29 @@ def unfold(matrix, symmetry=0):
 and 4 for 4-fold -> unfold over x and y)
 	"""
 	if symmetry == 4:
-		M, N = Numeric.shape(matrix)
-		F_1 = Numeric.zeros([M,N-1],'d')
-		F_2 = Numeric.zeros([M-1,2*N-1],'d')
+		M, N = numpy.shape(matrix)
+		F_1 = numpy.zeros([M,N-1],'d')
+		F_2 = numpy.zeros([M-1,2*N-1],'d')
 		n = range(N-1)
 		for i in n:
 			F_1[:,i] = matrix[:,(N-1) - i]
-		F_3 = Numeric.concatenate((F_1,matrix),1)
+		F_3 = numpy.concatenate((F_1,matrix),1)
 		del(F_1)
 		del(n)
 
-		F_2 = Numeric.zeros([M-1,2*N-1],'d')
+		F_2 = numpy.zeros([M-1,2*N-1],'d')
 		m = range(M-1)
 		for i in m:
 			F_2[i,:] = F_3[(M-1) - i,:]
-		photo_array = Numeric.concatenate((F_2,F_3),0)
+		photo_array = numpy.concatenate((F_2,F_3),0)
 
 		del(F_2)
 		del(F_3)
 		del(m)
 
 	elif symmetry == 2:
-		M, N = Numeric.shape(matrix)
-		F_2 = Numeric.zeros([M, 2*N-1],'d')
+		M, N = numpy.shape(matrix)
+		F_2 = numpy.zeros([M, 2*N-1],'d')
        	
 		for i in range(2*N-1):
 			if i < N:
@@ -150,20 +150,20 @@ and 4 for 4-fold -> unfold over x and y)
 #     """ save_tif(matrix, filename = "temp.tif")
 #     Saves a 2-D array "matrix" into a tif picture file.
 #     """
-#     S = Numeric.ravel(matrix)
-#     M,N = Numeric.shape(matrix)
+#     S = numpy.ravel(matrix)
+#     M,N = numpy.shape(matrix)
 # 
-#     min_val = float(Numeric.minimum.reduce(S))
-#     max_val = float(Numeric.maximum.reduce(S))
+#     min_val = float(numpy.minimum.reduce(S))
+#     max_val = float(numpy.maximum.reduce(S))
 #     if max_val <> min_val:
 #         matrix = (matrix - min_val) / (max_val - min_val) *255		#Preprocessor
 #     matrix = matrix.astype(ubyte)					#Convert to binary
-#     matrix = Numeric.transpose(matrix)			#Preprocess for tif-ization
+#     matrix = numpy.transpose(matrix)			#Preprocess for tif-ization
 # 
 #     if filename is None:    filename = "temp.tif"
 # 
 #     tif = "P5\n#TIF version of array\n%d %d\n255\n%s" % (M, N,
-#                                 Numeric.ravel(matrix).tostring())
+#                                 numpy.ravel(matrix).tostring())
 #     f_tif = open(filename,'wb')
 #     f_tif.write(tif)
 #     f_tif.close()
@@ -181,11 +181,11 @@ and 4 for 4-fold -> unfold over x and y)
 #     header, matrix = tif.split('\n255\n')
 #     dims = tuple([int(s) for s in header.split('\n')[-1].split()])
 #     #
-#     matrix = Numeric.array(list(matrix))
-#     matrix = Numeric.reshape(matrix, dims)
+#     matrix = numpy.array(list(matrix))
+#     matrix = numpy.reshape(matrix, dims)
 #     dummy  = matrix.astype('l')
-#     matrix = Numeric.where(dummy<0, dummy+255, dummy)
-#     return Numeric.transpose(matrix), dims
+#     matrix = numpy.where(dummy<0, dummy+255, dummy)
+#     return numpy.transpose(matrix), dims
 
 
 ########################### Info File ################################################
@@ -289,16 +289,16 @@ tif file, including options for unfolding and filtering.
 
 	if w3d.l2symtry:        # --- Take care of symmetry
 		if   iz<>None: F=unfold(slice[xb:xt, 0:nyh], 2)
-		elif iy<>None: F=unfold(Numeric.transpose(slice[xb:xt, zb:zt]), 0)
-		elif ix<>None: F=unfold(Numeric.transpose(slice[0:nyh, zb:zt]), 2)
+		elif iy<>None: F=unfold(numpy.transpose(slice[xb:xt, zb:zt]), 0)
+		elif ix<>None: F=unfold(numpy.transpose(slice[0:nyh, zb:zt]), 2)
 	elif w3d.l4symtry:
 		if   iz<>None: F=unfold(slice[0:nxh, 0:nyh], 4)
-		elif iy<>None: F=unfold(Numeric.transpose(slice[0:nxh, zb:zt]), 2)
-		elif ix<>None: F=unfold(Numeric.transpose(slice[0:nyh, zb:zt]), 2)
+		elif iy<>None: F=unfold(numpy.transpose(slice[0:nxh, zb:zt]), 2)
+		elif ix<>None: F=unfold(numpy.transpose(slice[0:nyh, zb:zt]), 2)
 	else:
 		if   iz<>None: F=unfold(slice[xb:xt, yb:yt], 0)
-		elif iy<>None: F=unfold(Numeric.transpose(slice[xb:xt, zb:zt]), 0)
-		elif ix<>None: F=unfold(Numeric.transpose(slice[yb:yt, zb:zt]), 0)
+		elif iy<>None: F=unfold(numpy.transpose(slice[xb:xt, zb:zt]), 0)
+		elif ix<>None: F=unfold(numpy.transpose(slice[yb:yt, zb:zt]), 0)
 
 	if Filt1:               # --- Filtering
 		if not Filt2: Filt2 = Filt1

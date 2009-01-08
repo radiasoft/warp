@@ -1,6 +1,6 @@
-from Numeric import *
+from numpy import *
 import re
-namelist_version = "$Id: namelist.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+namelist_version = "$Id: namelist.py,v 1.2 2009/01/08 19:30:23 dave Exp $"
 
 class NameList:
 

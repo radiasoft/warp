@@ -21,11 +21,11 @@ from warp import *
 import Image
 import os
 import string
-import Numeric
+import numpy
 import mphoto
 import gifmaker
 
-photo_processing_version = "$Id: photo_processing.py,v 1.3 2007/12/20 00:36:41 dave Exp $"
+photo_processing_version = "$Id: photo_processing.py,v 1.4 2009/01/08 19:30:23 dave Exp $"
 def photo_processingdoc():
   import photo_processing
   print photo_processing.__doc__
@@ -61,7 +61,7 @@ same name but with "montage" appended.
 
     if Rows is None:
         if Columns is None:
-            Rows = int(Numeric.sqrt(N_photo))
+            Rows = int(numpy.sqrt(N_photo))
             Columns = (N_photo + (N_photo % Rows)) / Rows
         else:
             if Columns <= N_photo:    Rows =  (N_photo + (N_photo % Columns)) / Columns
@@ -79,7 +79,7 @@ same name but with "montage" appended.
     print "Rows =", Rows
     print "Columns =", Columns
 
-    mphoto.save_tif(Numeric.zeros([Columns*D1,Rows*D0],'l'),"background.tif")
+    mphoto.save_tif(numpy.zeros([Columns*D1,Rows*D0],'l'),"background.tif")
     B = Image.open("background.tif")
 
     print "Background size =", B.size
