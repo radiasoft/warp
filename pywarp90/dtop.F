@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.166 $, $Date: 2008/12/23 17:26:36 $
+c@(#) File DTOP.F, version $Revision: 3.167 $, $Date: 2009/01/13 00:51:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.166 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.167 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1220,7 +1220,14 @@ c=============================================================================
       real(kind=8):: grid(0:nx)
       real(kind=8):: xmin,xmax
 
-c Lays particles down onto 1-D mesh.
+c Lays particles down onto a node centered 1-D mesh using linear interpolation,
+c calculating the number of particles as a function of position.
+c   np: number of particles
+c   x: array of particle positions
+c   nx: number of grid cells
+c   grid: array where particle number will be accumulated. Note that with
+c         normal operation, grid needs to be set to zero before being passed in.
+c   xmin,xmax: extent of the grid, i.e. grid(0) is at xmin, grid(nx) is at xmax
 
       integer(ISZ):: ip,ix
       real(kind=8):: gx,dxi,wx
@@ -1253,11 +1260,20 @@ c=============================================================================
       real(kind=8):: grid(0:nx), gridcount(0:nx)
       real(kind=8):: xmin,xmax
 
-c Deposits particle data onto 1-D mesh.
-c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
-c Also, if itask is zero, then the data is divided by the number density
-c of particles.
-c This allows data to be accumulated to obtain better statistics.
+c Deposits particle data onto a node centered 1-D mesh using linear
+c interpolation, the average over z as a function of position.
+c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
+c          is not reset. If itask is zero, then grid is divided by
+c          gridcount, the number of particles, to give the average.
+c          Setting itask=1 allows data to be accumulated over multiple
+c          calls to deposgrid1d to obtain better statistics.
+c   np: number of particles
+c   x: array of particle positions
+c   z: array of data to be accumulated
+c   nx: number of grid cells
+c   grid: array where the z data is accumulated
+c   gridcount: array where particle number will be accumulated
+c   xmin,xmax: extent of the grid, i.e. grid(0) is at xmin, grid(nx) is at xmax
 
       integer(ISZ):: ip,ix
       real(kind=8):: gx,dxi,wx
@@ -1308,7 +1324,14 @@ c=============================================================================
       real(kind=8):: grid(0:nx)
       real(kind=8):: xmin,xmax
 
-c Gathers data from a 1-D mesh onto particle positions.
+c Gathers data from a node centered 1-D mesh onto particle positions using
+c linear interpolation.
+c   np: number of particles
+c   x: array of particle positions
+c   z: array where the data will be put
+c   nx: number of grid cells
+c   grid: input array of data to be gathered
+c   xmin,xmax: extent of the grid, i.e. grid(0) is at xmin, grid(nx) is at xmax
 
       integer(ISZ):: ip,ix
       real(kind=8):: gx,dxi,wx
@@ -1341,7 +1364,15 @@ c=============================================================================
       real(kind=8):: grid(0:nx,0:ny)
       real(kind=8):: xmin,xmax,ymin,ymax
 
-c Lays particles down onto 2-D mesh.
+c Lays particles down onto a node centered 2-D mesh using linear interpolation,
+c calculating the number of particles as a function of position.
+c   np: number of particles
+c   x,y: arrays of particle positions
+c   nx,ny: number of grid cells
+c   grid: array where particle number will be accumulated. Note that with
+c         normal operation, grid needs to be set to zero before being passed in.
+c   xmin,xmax,ymin,ymax: extent of the grid, i.e. grid(0,0) is at (xmin,ymin),
+c                        grid(nx,ny) is at (xmax,ymax)
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
@@ -1381,7 +1412,16 @@ c=============================================================================
       real(kind=8):: grid(0:nx,0:ny)
       real(kind=8):: xmin,xmax,ymin,ymax
 
-c Lays particles with variable weights down onto 2-D mesh.
+c Lays weighted particles down onto a node centered 2-D mesh using linear
+c interpolation, calculating the number of particles as a function of position.
+c   np: number of particles
+c   x,y: arrays of particle positions
+c   w: array of particle weights
+c   nx,ny: number of grid cells
+c   grid: array where particle number will be accumulated. Note that with
+c         normal operation, grid needs to be set to zero before being passed in.
+c   xmin,xmax,ymin,ymax: extent of the grid, i.e. grid(0,0) is at (xmin,ymin),
+c                        grid(nx,ny) is at (xmax,ymax)
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
@@ -1422,11 +1462,21 @@ c=============================================================================
       real(kind=8):: grid(0:nx,0:ny), gridcount(0:nx,0:ny)
       real(kind=8):: xmin,xmax,ymin,ymax
 
-c Deposits particle data onto 2-D mesh.
-c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
-c Also, if itask is zero, then the data is divided by the number density
-c of particles.
-c This allows data to be accumulated to obtain better statistics.
+c Deposits particle data onto a node centered 2-D mesh using linear
+c interpolation, the average over z as a function of position.
+c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
+c          is not reset. If itask is zero, then grid is divided by
+c          gridcount, the number of particles, to give the average.
+c          Setting itask=1 allows data to be accumulated over multiple
+c          calls to deposgrid1d to obtain better statistics.
+c   np: number of particles
+c   x,y: arrays of particle positions
+c   z: array of data to be accumulated
+c   nx,ny: number of grid cells
+c   grid: array where the z data is accumulated
+c   gridcount: array where particle number will be accumulated
+c   xmin,xmax,ymin,ymax: extent of the grid, i.e. grid(0,0) is at (xmin,ymin),
+c                        grid(nx,ny) is at (xmax,ymax)
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
@@ -1489,11 +1539,22 @@ c=============================================================================
       real(kind=8):: grid(0:nx,0:ny), gridcount(0:nx,0:ny)
       real(kind=8):: xmin,xmax,ymin,ymax
 
-c Deposits particle data onto 2-D mesh.
-c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
-c Also, if itask is zero, then the data is divided by the number density
-c of particles.
-c This allows data to be accumulated to obtain better statistics.
+c Deposits weighted particle data onto a node centered 2-D mesh using linear
+c interpolation, the average over z as a function of position.
+c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
+c          is not reset. If itask is zero, then grid is divided by
+c          gridcount, the number of particles, to give the average.
+c          Setting itask=1 allows data to be accumulated over multiple
+c          calls to deposgrid1d to obtain better statistics.
+c   np: number of particles
+c   x,y: arrays of particle positions
+c   z: array of data to be accumulated
+c   w: array of particle weights
+c   nx,ny: number of grid cells
+c   grid: array where the z data is accumulated
+c   gridcount: array where particle number will be accumulated
+c   xmin,xmax,ymin,ymax: extent of the grid, i.e. grid(0,0) is at (xmin,ymin),
+c                        grid(nx,ny) is at (xmax,ymax)
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
@@ -1556,11 +1617,26 @@ c=============================================================================
       real(kind=8):: grid(0:nx,0:ny,3), gridcount(0:nx,0:ny)
       real(kind=8):: xmin,xmax,ymin,ymax,r,vr,vt
 
-c Deposits particle data onto 2-D mesh.
-c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
-c Also, if itask is zero, then the data is divided by the number density
-c of particles.
-c This allows data to be accumulated to obtain better statistics.
+c Deposits weighted particle vector data onto an axisymmetric, node centered
+c 2-D mesh using linear interpolation, the average over the vector as a
+c function of position.
+c If velocities are passed, this will calculate fluid velocities, for example.
+c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
+c          is not reset. If itask is zero, then grid is divided by
+c          gridcount, the number of particles, to give the average.
+c          Setting itask=1 allows data to be accumulated over multiple
+c          calls to deposgrid1d to obtain better statistics.
+c   np: number of particles
+c   x,y: arrays of transverse particle positions (converted to r)
+c   z: array of axial particle positions
+c   vx,vy: arrays of transverse vector data (converted to vr)
+c   vz: array os axial vector data
+c   w: array of particle weights
+c   nx,ny: number of grid cells
+c   grid: array where the z data is accumulated
+c   gridcount: array where particle number will be accumulated
+c   xmin,xmax,ymin,ymax: extent of the grid, i.e. grid(0,0,:) is at (xmin,ymin),
+c                        grid(nx,ny,:) is at (xmax,ymax)
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
@@ -1638,7 +1714,15 @@ c=============================================================================
       real(kind=8):: grid(0:nx,0:ny)
       real(kind=8):: xmin,xmax,ymin,ymax
 
-c Gathers data from a 2-D mesh onto particle positions.
+c Gathers data from a node centered 2-D mesh onto particle positions using
+c linear interpolation.
+c   np: number of particles
+c   x,y: arrays of particle positions
+c   z: array where the data will be put
+c   nx,ny: number of grid cells
+c   grid: input array of data to be gathered
+c   xmin,xmax,ymin,ymax: extent of the grid, i.e. grid(0,0) is at (xmin,ymin),
+c                        grid(nx,ny) is at (xmax,ymax)
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
@@ -1678,7 +1762,15 @@ c=============================================================================
       real(kind=8):: grid(0:nx,0:ny)
       real(kind=8):: xmin,xmax,ymin,ymax
 
-c Gathers data from a 2-D mesh onto particle positions.
+c Gathers data from a node centered 2-D mesh onto particle positions using
+c nearest grid point interpolation.
+c   np: number of particles
+c   x,y: arrays of particle positions
+c   z: array where the data will be put
+c   nx,ny: number of grid cells
+c   grid: input array of data to be gathered
+c   xmin,xmax,ymin,ymax: extent of the grid, i.e. grid(0,0) is at (xmin,ymin),
+c                        grid(nx,ny) is at (xmax,ymax)
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi
@@ -1714,7 +1806,16 @@ c=============================================================================
       real(kind=8):: grid(0:nx,0:ny,0:nz)
       real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
 
-c Lays particles down onto 3-D mesh.
+c Lays particles down onto a node centered 3-D mesh using linear interpolation,
+c calculating the number of particles as a function of position.
+c   np: number of particles
+c   x,y,z: arrays of particle positions
+c   nx,ny,nz: number of grid cells
+c   grid: array where particle number will be accumulated. Note that with
+c         normal operation, grid needs to be set to zero before being passed in.
+c   xmin,xmax,ymin,ymax,zmin,zmax: extent of the grid,
+c                                  i.e. grid(0,0,0) is at (xmin,ymin,zmin),
+c                                  grid(nx,ny,nz) is at (xmax,ymax,zmax)
 
       integer(ISZ):: ip,ix,iy,iz
       real(kind=8):: gx,gy,gz,dxi,dyi,dzi,wx,wy,wz
@@ -1764,11 +1865,22 @@ c=============================================================================
       real(kind=8):: grid(0:nx,0:ny,0:nz), gridcount(0:nx,0:ny,0:nz)
       real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
 
-c Deposits particle data onto 3-D mesh.
-c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
-c Also, if itask is zero, then the data is divided by the number density
-c of particles.
-c This allows data to be accumulated to obtain better statistics.
+c Deposits particle data onto a node centered 3-D mesh using linear
+c interpolation, the average over z as a function of position.
+c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
+c          is not reset. If itask is zero, then grid is divided by
+c          gridcount, the number of particles, to give the average.
+c          Setting itask=1 allows data to be accumulated over multiple
+c          calls to deposgrid1d to obtain better statistics.
+c   np: number of particles
+c   x,y,z: arrays of particle positions
+c   q: array of data to be accumulated
+c   nx,ny,nz: number of grid cells
+c   grid: array where the z data is accumulated
+c   gridcount: array where particle number will be accumulated
+c   xmin,xmax,ymin,ymax,zmin,zmax: extent of the grid,
+c                                  i.e. grid(0,0,0) is at (xmin,ymin,zmin),
+c                                  grid(nx,ny,nz) is at (xmax,ymax,zmax)
 
       integer(ISZ):: ip,ix,iy,iz,ixp1,iyp1,izp1
       integer(ISZ):: nxtemp,nytemp,nztemp
@@ -1886,6 +1998,25 @@ c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
 c Also, if itask is zero, then the data is divided by the number density
 c of particles.
 c This allows data to be accumulated to obtain better statistics.
+
+c Deposits weighted particle vector data onto a node centered 3-D mesh using
+c linear interpolation, the average over the vector as a function of position.
+c If velocities are passed, this will calculate fluid velocities, for example.
+c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
+c          is not reset. If itask is zero, then grid is divided by
+c          gridcount, the number of particles, to give the average.
+c          Setting itask=1 allows data to be accumulated over multiple
+c          calls to deposgrid1d to obtain better statistics.
+c   np: number of particles
+c   x,y,z: arrays of particle positions
+c   vx,vy,vz: arrays of vector data
+c   w: array of particle weights
+c   nx,ny,nz: number of grid cells
+c   grid: array where the z data is accumulated
+c   gridcount: array where particle number will be accumulated
+c   xmin,xmax,ymin,ymax,zmin,zmax: extent of the grid,
+c                                  i.e. grid(0,0,0,:) is at (xmin,ymin,zmin),
+c                                  grid(nx,ny,nz,:) is at (xmax,ymax,zmax)
 
       integer(ISZ):: ip,ix,iy,iz,ixp1,iyp1,izp1
       integer(ISZ):: nxtemp,nytemp,nztemp
@@ -2014,7 +2145,16 @@ c=============================================================================
       real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
       logical(ISZ):: l2symtry,l4symtry
 
-c Gathers data from a 3-D mesh onto particle positions.
+c Gathers data from a node centered 3-D mesh onto particle positions using
+c linear interpolation.
+c   np: number of particles
+c   x,y,z: arrays of particle positions
+c   f: array where the data will be put
+c   nx,ny,nz: number of grid cells
+c   grid: input array of data to be gathered
+c   xmin,xmax,ymin,ymax,zmin,zmax: extent of the grid,
+c                                  i.e. grid(0,0,0,:) is at (xmin,ymin,zmin),
+c                                  grid(nx,ny,nz,:) is at (xmax,ymax,zmax)
 
       integer(ISZ):: ip,ix,iy,iz,ixp1,iyp1,izp1
       real(kind=8):: xx,yy,gx,gy,gz
@@ -2152,7 +2292,16 @@ c=============================================================================
       real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax,zgrid
       logical(ISZ):: l2symtry,l4symtry
 
-c Gathers data from a 3-D mesh onto particle positions.
+c Gathers data from a node centered 3-D mesh onto particle positions using
+c nearest grid point interpolation.
+c   np: number of particles
+c   x,y,z: arrays of particle positions
+c   f: array where the data will be put
+c   nx,ny,nz: number of grid cells
+c   grid: input array of data to be gathered
+c   xmin,xmax,ymin,ymax,zmin,zmax: extent of the grid,
+c                                  i.e. grid(0,0,0,:) is at (xmin,ymin,zmin),
+c                                  grid(nx,ny,nz,:) is at (xmax,ymax,zmax)
 
       integer(ISZ):: ip,ix,iy,iz
       real(kind=8):: gx,gy,gz
@@ -2210,7 +2359,16 @@ c=============================================================================
       real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax,zgrid
       logical(ISZ):: l2symtry,l4symtry
 
-c Gathers data from a 3-D mesh onto particle positions.
+c Gathers integer data from a node centered 3-D mesh onto particle positions
+c using nearest grid point interpolation.
+c   np: number of particles
+c   x,y,z: arrays of particle positions
+c   f: array where the data will be put
+c   nx,ny,nz: number of grid cells
+c   grid: input array of data to be gathered
+c   xmin,xmax,ymin,ymax,zmin,zmax: extent of the grid,
+c                                  i.e. grid(0,0,0,:) is at (xmin,ymin,zmin),
+c                                  grid(nx,ny,nz,:) is at (xmax,ymax,zmax)
 
       integer(ISZ):: ip,ix,iy,iz
       real(kind=8):: gx,gy,gz
