@@ -5511,24 +5511,24 @@ USE InjectVars_eq
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, nx0, ny0
-REAL(8), INTENT(IN OUT) :: u0(0:nx0+2,0:2,0:ny0+2)
+REAL(8), INTENT(IN OUT) :: u0(0:nx0+2,0:ny0+2)
 REAL(8), INTENT(IN OUT) :: rho0(nx0+1,ny0+1)
 
   IF(mgridrz_ncmax==0) return
 
   IF(iwhich==1) return
 !  call distribute_rho(basegrid)
-  if (basegrid%ixlbnd==dirichlet .or. basegrid%ixlbnd==patchbnd) basegrid%phi(1,1:ny0+1)     = u0(1,1,:)
-  if (basegrid%ixrbnd==dirichlet .or. basegrid%ixrbnd==patchbnd) basegrid%phi(nx0+1,1:ny0+1) = u0(nx0+1,1,:)
-  if (basegrid%izlbnd==dirichlet .or. basegrid%izlbnd==patchbnd) basegrid%phi(1:nx0+1,1)     = u0(:,1,1)
-  if (basegrid%izrbnd==dirichlet .or. basegrid%izrbnd==patchbnd) basegrid%phi(1:nx0+1,ny0+1) = u0(:,1,ny0+1)
+  if (basegrid%ixlbnd==dirichlet .or. basegrid%ixlbnd==patchbnd) basegrid%phi(1,1:ny0+1)     = u0(1,:)
+  if (basegrid%ixrbnd==dirichlet .or. basegrid%ixrbnd==patchbnd) basegrid%phi(nx0+1,1:ny0+1) = u0(nx0+1,:)
+  if (basegrid%izlbnd==dirichlet .or. basegrid%izlbnd==patchbnd) basegrid%phi(1:nx0+1,1)     = u0(:,1)
+  if (basegrid%izrbnd==dirichlet .or. basegrid%izrbnd==patchbnd) basegrid%phi(1:nx0+1,ny0+1) = u0(:,ny0+1)
 
   call solve_mgridrz(basegrid,mgridrz_accuracy,.true.)
 #ifndef MPIPARALLEL
   if (l_get_fields_on_grid) call getallfieldsfromphip()
 #endif
 
-  u0(0:nx0+2,1,0:ny0+2)=basegrid%phi(0:nx0+2,0:ny0+2)
+  u0(0:nx0+2,0:ny0+2)=basegrid%phi(0:nx0+2,0:ny0+2)
 
 return
 end subroutine multigridxyf2
