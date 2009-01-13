@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.97 $, $Date: 2008/12/22 22:16:34 $
+c@(#) File WXY.M, version $Revision: 3.98 $, $Date: 2009/01/13 01:30:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -343,8 +343,10 @@ c  thick slice model, though, should still calculate the zmoments.
       call gallot("Z_Moments", 0)
       if (zmmntmax == 0.) zmmntmax = zmmaxlocal
       if (zmmntmin == 0.) zmmntmin = zmminlocal
-      dzm = (zmmntmax - zmmntmin)/nzmmnt
-      dzmi = 1./dzm
+      if (nzmmnt > 0) then
+        dzm = (zmmntmax - zmmntmin)/nzmmnt
+        dzmi = 1./dzm
+      endif
       do k = 0, nzmmnt
          zmntmesh(k) = zmmntmin + k*dzm
       enddo
