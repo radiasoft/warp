@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.418 $, $Date: 2009/01/06 00:30:57 $
+c@(#) File W3D.F, version $Revision: 3.419 $, $Date: 2009/01/15 19:35:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -10536,20 +10536,27 @@ c          --- turn back on the bends after the fieldsolve when computing in a b
         endif
         call callpythonfunc("fieldsolregistered","fieldsolver")
 
+c       --- turn back on the bends after the fieldsolve when computing in a boosted frame
+        if (linbendturnedoff) then
+          linbend=.true.
+        end if
+
 !$OMP MASTER
         if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
         fstime = fstime + (wtime() - timetemp)
 !$OMP END MASTER
 
-c       --- turn back on the bends after the fieldsolve when computing in a boosted frame
-        if (linbendturnedoff) then
-          linbend=.true.
-        end if
         return
       endif
 
 c     --- Make sure that rho has been finalized and is ready for the solve
       if (.not. lrhofinalized) call finalizerho()
+
+c     --- Do some error checking.
+      if (.not. ASSOCIATED(rhopndts) .or. .not. ASSOCIATED(phipndts)) then
+        call kaboom("fieldsol: the rho and phi arrays have not been allocated")
+        return
+      endif
 
 c     --- Calculate rstar here since it is only used by the field solver and
 c     --- to ensure that it is set when the field solver is called.
@@ -10567,9 +10574,12 @@ c     --- for the speices with the smallest timestep.
       do indts=tmpnsndts-1,0,-1
         isndts = min(indts,nsndtsphi3d-1)
 
-        if (.not. ldts(indts) .and.
-     &      ((ndtsaveraging == 0 .or. ndtsaveraging == 1)
-     &       .and. .not. any(ldts))) cycle
+c       --- If ldts is not associated, then ignore it.
+        if (ASSOCIATED(ldts)) then
+          if (.not. ldts(indts) .and.
+     &        ((ndtsaveraging == 0 .or. ndtsaveraging == 1)
+     &         .and. .not. any(ldts))) cycle
+        endif
 
 c       --- For serial version, the arrays rho and phi are pointed to the
 c       --- appropriate arrays for the current ndts group.
