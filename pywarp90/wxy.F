@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.98 $, $Date: 2009/01/13 01:30:42 $
+c@(#) File WXY.M, version $Revision: 3.99 $, $Date: 2009/01/15 19:34:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -2374,6 +2374,18 @@ c --- all of the particles, otherwise the specified particles are loaded.
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
+      if (lbeforelr) call callpythonfunc("beforelr","controllers")
+
+c     --- Ensure that subcycling is setup correctly (in case the user had
+c     --- made changes.
+      call setupSubcycling(pgroup)
+      call setupSelfB(pgroup)
+
+      if(depos == 'none') then
+        if (lafterloadrho) call callpythonfunc("afterloadrho","controllers")
+        return
+      endif
+
 c     --- zero rho if requested
 c     if (lzero) call zeroarry(rho,(nx+1)*(ny+1)*(nzlocal+1))
       if(lzero) then
@@ -2442,6 +2454,8 @@ c  Enforce boundary conditions
 c  Copy charge density from frz.basegrid to w3d.rho
         call get_rho_rz(rho,nx,ny,1,0)
       end if
+
+      if (lafterloadrho) call callpythonfunc("afterloadrho","controllers")
 
       if (lwxytimesubs) timeloadrhoxy = timeloadrhoxy + wtime() - substarttime
       return
