@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.248 $, $Date: 2008/12/23 17:38:11 $
+#@(#) File TOP.V, version $Revision: 3.249 $, $Date: 2009/01/15 22:18:38 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.248 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.249 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1584,7 +1584,7 @@ nszmmnt          integer /0/   # Number of species z moments data is
                                # lspeciesmoments is true, then it defaults
                                # to top.ns.
 dzm              real [m] /0./ # Moments grid cell size
-dzmi             real [1/m]    # Moments grid cell size inverse
+dzmi             real [1/m] /0./ # Moments grid cell size inverse
 numzmmnt         integer /NUMZMMNT/ # Number of moments calculated
 zmmntdtextmax    real /LARGEPOS/ # Cutoff of time step for extrapolation of
                                  # particles, in units of top.dt.
