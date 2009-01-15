@@ -496,91 +496,19 @@ class MultiGrid(SubcycledPoissonSolver):
                                  self.nxlocal,self.nylocal,self.nzlocal,
                                  self.bounds,self.fsdecomp,
                                  self.solvergeom==w3d.RZgeom)
-    '''
-    if ((self.pbounds[0] == 1 or self.l4symtry) and self.nx > 0 and
-        self.solvergeom != w3d.RZgeom and
-        self.fsdecomp.ix[self.fsdecomp.ixproc] == 0):
-      self.source[0,:,:] = 2.*self.source[0,:,:]
 
-    if (self.pbounds[1] == 1 and self.nx > 0 and
-        self.fsdecomp.ix[self.fsdecomp.ixproc]+self.nxlocal == self.nx):
-      self.source[-1,:,:] = 2.*self.source[-1,:,:]
-
-    if ((self.pbounds[2] == 1 or self.l2symtry or self.l4symtry) and
-        self.ny > 0 and self.fsdecomp.iy[self.fsdecomp.iyproc] == 0):
-      self.source[:,0,:] = 2.*self.source[:,0,:]
-
-    if (self.pbounds[3] == 1 and self.ny > 0 and
-        self.fsdecomp.iy[self.fsdecomp.iyproc]+self.nylocal == self.ny):
-      self.source[:,-1,:] = 2.*self.source[:,-1,:]
-
-    if (self.pbounds[4] == 1 and self.nz > 0 and
-        self.fsdecomp.iz[self.fsdecomp.izproc] == 0):
-      self.source[:,:,0] = 2.*self.source[:,:,0]
-
-    if (self.pbounds[5] == 1 and self.nz > 0 and
-        self.fsdecomp.iz[self.fsdecomp.izproc]+self.nzlocal == self.nz):
-      self.source[:,:,-1] = 2.*self.source[:,:,-1]
-
-    if self.pbounds[0] == 2 or self.pbounds[1] == 2:
-      if self.nxprocs == 1:
-        self.source[0,:,:] = self.source[0,:,:] + self.source[-1,:,:]
-        self.source[-1,:,:] = self.source[0,:,:]
-      else:
-        tag = 70
-        if self.fsdecomp.ixproc == self.fsdecomp.nxprocs-1:
-          ip = self.convertindextoproc(ix=self.fsdecomp.ixproc+1,
-                                       bounds=self.pbounds)
-          mpi.send(self.source[self.nxlocal,:,:],ip,tag)
-          self.source[self.nxlocal,:,:],status = mpi.recv(ip,tag)
-        elif self.fsdecomp.ixproc == 0:
-          ip = self.convertindextoproc(ix=self.fsdecomp.ixproc-1,
-                                       bounds=self.pbounds)
-          sourcetemp,status = mpi.recv(ip,tag)
-          self.source[0,:,:] = self.source[0,:,:] + sourcetemp
-          mpi.send(self.source[0,:,:],ip,tag)
-
-    if self.pbounds[2] == 2 or self.pbounds[3] == 2:
-      if self.nyprocs == 1:
-        self.source[:,0,:] = self.source[:,0,:] + self.source[:,-1,:]
-        self.source[:,-1,:] = self.source[:,0,:]
-      else:
-        tag = 71
-        if self.fsdecomp.iyproc == self.fsdecomp.nyprocs-1:
-          ip = self.convertindextoproc(iy=self.fsdecomp.iyproc+1,
-                                       bounds=self.pbounds)
-          mpi.send(self.source[:,self.nylocal,:],ip,tag)
-          self.source[:,self.nylocal,:],status = mpi.recv(ip,tag)
-        elif self.fsdecomp.iyproc == 0:
-          ip = self.convertindextoproc(iy=self.fsdecomp.iyproc-1,
-                                       bounds=self.pbounds)
-          sourcetemp,status = mpi.recv(ip,tag)
-          self.source[:,0,:] = self.source[:,0,:] + sourcetemp
-          mpi.send(self.source[:,0,:],ip,tag)
-
-    if self.pbounds[4] == 2 or self.pbounds[5] == 2:
-      if self.nzprocs == 1:
-        self.source[:,:,0] = self.source[:,:,0] + self.source[:,:,-1]
-        self.source[:,:,-1] = self.source[:,:,0]
-      else:
-        tag = 72
-        if self.fsdecomp.izproc == self.fsdecomp.nzprocs-1:
-          ip = self.convertindextoproc(iz=self.fsdecomp.izproc+1,
-                                       bounds=self.pbounds)
-          mpi.send(self.source[:,:,self.nzlocal],ip,tag)
-          self.source[:,:,self.nzlocal],status = mpi.recv(ip,tag)
-        elif self.fsdecomp.izproc == 0:
-          ip = self.convertindextoproc(iz=self.fsdecomp.izproc-1,
-                                       bounds=self.pbounds)
-          sourcetemp,status = mpi.recv(ip,tag)
-          self.source[:,:,0] = self.source[:,:,0] + sourcetemp
-          mpi.send(self.source[:,:,0],ip,tag)
-    '''
-
-  def getselfe(self,recalculate=0,lzero=true):
+  def getselfe(self,recalculate=None,lzero=true):
     # --- Make sure that fieldp is at least defined.
     try: self.fieldp
     except AttributeError: self.setfieldpforparticles(0,0,0)
+
+    # --- Check if the E field should be recalculated.
+    # --- If it had not yet been calculated at all, then definitely
+    # --- calculate it now.
+    if not self.lwithselfe: recalculate = 1
+    # --- If the E field is not actively being used, then recalculate it,
+    # --- unless recalculate is passed in by the user.
+    if alltrue(top.efetch != 3) and recalculate is None: recalculate = 1
 
     self.lwithselfe = 1
     self.allocatedataarrays()
