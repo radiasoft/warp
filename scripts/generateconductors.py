@@ -109,7 +109,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.191 2009/01/08 19:21:42 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.192 2009/01/15 23:03:57 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3595,7 +3595,7 @@ Plots the r versus z
                            self.rcdata,self.zcdata,narcpoints)
     if rmax is None: rmax = self.rmax
     r = [rmax] + r + [rmax]
-    z = [self.zmin] + z + [self.zmax]
+    z = [self.zmin-self.zcent] + z + [self.zmax-self.zcent]
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
   def createdxobject(self,rmax=None,kwdict={},**kw):
@@ -3735,7 +3735,7 @@ Plots the r versus z
                            self.rcdata,self.zcdata,narcpoints)
     if rmin is None: rmin = self.rmin
     r = [rmin] + r + [rmin]
-    z = [self.zmin] + z + [self.zmax]
+    z = [self.zmin-self.zcent] + z + [self.zmax-self.zcent]
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
   def createdxobject(self,kwdict={},**kw):
