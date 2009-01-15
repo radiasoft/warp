@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.160 $, $Date: 2008/11/19 18:29:49 $
+c@(#) File DW3D.F, version $Revision: 3.161 $, $Date: 2009/01/15 19:00:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -215,12 +215,12 @@ c Then, linearly interpolate the data into the beam frame array, linechg.
         izg = int(zg + nzlocal) - nzlocal
         wzg = zg - izg
 
-        if (0 <= izg .and. izg <= nzlocal) then
+        if (0 <= izg .and. izg < nzlocal) then
           linechg(iz) = scrtch(izg,0)*dx*dy*(1. - wzg)
         else
           linechg(iz) = 0.
         endif
-        if (0 <= izg+1 .and. izg+1 <= nzlocal) then
+        if (0 < izg+1 .and. izg+1 <= nzlocal) then
           linechg(iz) = linechg(iz) + scrtch(izg+1,0)*dx*dy*wzg
         endif
 
