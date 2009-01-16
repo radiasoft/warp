@@ -34,7 +34,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.232 2009/01/15 18:28:21 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.233 2009/01/16 14:06:16 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -483,7 +483,7 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
       'The first dimensions of the two input arrays must be of the same length'
   else:
     # --- If x is not supplied, it is just the integers starting at 0.
-    x = arange(y.shape[0],'d')
+    x = arange(y.shape[0],dtype='d')
   if len(shape(x)) > 2:
     # --- Reshape the array, putting all but the 1st dimension into the
     # --- 2nd dimension.
