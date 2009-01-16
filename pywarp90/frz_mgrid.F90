@@ -159,6 +159,7 @@ TYPE(BNDtype), POINTER :: b
   bg%transit_min_z = 0
   bg%transit_max_z = 0
   ngrids=1
+  mgridrz_ngrids = ngrids
   level_del_grid=0
   n_avail_ids=0
   avail_ids=-1
