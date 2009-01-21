@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.41 2008/12/02 19:31:40 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.42 2009/01/21 21:09:33 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -701,7 +701,9 @@ Class for generating secondaries
                            (ynew<ymin) or (ynew>ymax) or \
                            (znew<zmin) or (znew>zmax)
              if condition:
-              print 'WARNING from secondaries: new particle outside boundaries, skip creation...',xnew,ynew,znew
+              print 'WARNING from secondaries: new particle outside boundaries, skip creation',
+              print '\nLost particle position: ',xplost[i],yplost[i],zplost[i],
+              print '\nNew particle position: ',xnew,ynew,znew
 #              self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
 #              xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
               self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
@@ -760,7 +762,9 @@ Class for generating secondaries
                            (ynew<ymin) or (ynew>ymax) or \
                            (znew<zmin) or (znew>zmax)
             if condition:
-              print 'WARNING from secondaries: new particle outside boundaries, skip creation...',xnew,ynew,znew
+              print 'WARNING from secondaries: new neutral particle outside boundaries, skip creation',
+              print '\nLost particle position: ',xplost[i],yplost[i],zplost[i],
+              print '\nNew particle position: ',xnew,ynew,znew
               if self.vmode==1:
                 self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
               vxplost[i],vyplost[i],vzplost[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
