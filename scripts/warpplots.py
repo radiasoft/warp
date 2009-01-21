@@ -34,7 +34,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.233 2009/01/16 14:06:16 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.234 2009/01/21 22:13:21 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -5222,7 +5222,7 @@ def aplq():
         i=i+1
     return list
 
-def plellipse(l,h,np=100,thetamin=0.,thetamax=2.*pi,**kw):
+def plellipse(l,h,np=100,thetamin=0.,thetamax=2.*pi,xcent=0.,ycent=0.,**kw):
   """Plot ellipse
        - l,               : length
        - h,               : height
@@ -5232,8 +5232,8 @@ def plellipse(l,h,np=100,thetamin=0.,thetamax=2.*pi,**kw):
   """
   dtheta = (thetamax-thetamin)/(np-1)
   theta = arange(thetamin,thetamax+dtheta/2,dtheta)
-  x = 0.5*l*cos(theta)
-  y = 0.5*h*sin(theta)
+  x = 0.5*l*cos(theta) + xcent
+  y = 0.5*h*sin(theta) + ycent
   pla(y,x,**kw)
   
          
