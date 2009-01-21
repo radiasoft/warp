@@ -230,7 +230,25 @@ rprms:
     def dodumptofilePickle(self):
         if me != 0: return
         import cPickle
-        ff = open(self.dumptofile+'_gridcrossing.pkl','a')
+        if not os.path.exists(self.dumptofile+'_gridcrossing.pkl'):
+            ff = open(self.dumptofile+'_gridcrossing.pkl','w')
+            # --- Save the input parameters to the file.
+            cPickle.dump(('js',self.js),ff,-1)
+            cPickle.dump(('zmmin',self.zmmin),ff,-1)
+            cPickle.dump(('zmmax',self.zmmax),ff,-1)
+            cPickle.dump(('dz',self.dz),ff,-1)
+            cPickle.dump(('nz',self.nz),ff,-1)
+            cPickle.dump(('nzscale',self.nzscale),ff,-1)
+            cPickle.dump(('nhist',self.nhist),ff,-1)
+            cPickle.dump(('nr',self.nr),ff,-1)
+            cPickle.dump(('rmax',self.rmax),ff,-1)
+            cPickle.dump(('ztarget',self.ztarget),ff,-1)
+            cPickle.dump(('dumptofile',self.dumptofile),ff,-1)
+            cPickle.dump(('starttime',self.starttime),ff,-1)
+            cPickle.dump(('endtime',self.endtime),ff,-1)
+            cPickle.dump(('ldoradialdiag',self.ldoradialdiag),ff,-1)
+        else:
+            ff = open(self.dumptofile+'_gridcrossing.pkl','a')
         suffix = "_%08d"%(top.it)
         cPickle.dump(('time'+suffix,top.time),ff,-1)
         cPickle.dump(('count'+suffix,self.count[0]),ff,-1)
@@ -291,6 +309,17 @@ rprms:
         if len(files) == 0:
             files = [self.dumptofile+'_gridcrossing.pkl']
 
+        # --- First, read in the input parameters, if they were saved.
+        # --- This reads in everything at the beginning of the file until
+        # --- the time data is found, which starts the data section of the
+        # --- file.
+        ff = open(files[0],'r')
+        data = cPickle.load(ff)
+        while data[0][0:4] != 'time':
+            setattr(self,data[0],data[1])
+            data = cPickle.load(ff)
+        ff.close()
+
         # --- Read all of the data in. Only save the data if the time is
         # --- between start and endtime.
         import cPickle
@@ -332,7 +361,7 @@ rprms:
         varlist = datadict.keys()
         varlist.sort()
         for var in varlist:
-            if var[0] == 't':
+            if var[0:4] == 'time':
                 name,it = string.split(var,'_')
                 suffix = "_%s"%(it)
                 self.time.append(datadict['time'+suffix])
