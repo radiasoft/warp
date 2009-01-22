@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.73 2008/12/04 17:26:04 dave Exp $"
+particles_version = "$Id: particles.py,v 1.74 2009/01/22 15:05:22 jlvay Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1016,6 +1016,51 @@ def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=None,edrift=1,bdrift=1,**kw)
   else:
     return vx,vy,vz
 #-------------------------------------------------------------------------
+def getw(iw=0,gather=1,bcast=None,**kw):
+  "Returns particle weights."
+  return getpid(id=top.wpid-1,gather=gather,bcast=bcast,**kw)
+#-------------------------------------------------------------------------
+def getke(iw=0,js=0,jslist=None,gather=1,bcast=None,**kw):
+  "Returns the particles kinetic energy"
+  if bcast is None: bcast = _particlebcastdefault[0]
+  if jslist is None:
+    jslist=[js]
+  nptot=0
+  kel=[]
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  lost = kw.get('lost',0)
+  masses = getattrwithsuffix(pgroup,'sm',suffix)
+  for js in jslist:
+    ii = selectparticles(iw=iw,js=js,jslist=None,kwdict=kw)
+    if isinstance(ii,slice) and ii.stop <= ii.start: continue
+    if not isinstance(ii,slice) and len(ii) == 0: continue
+    if isinstance(ii,slice): ii = arange(ii.start,ii.stop)
+    np=len(ii)
+    nptot+=np
+    mass = masses[js]
+    if top.lrelativ:
+      gamma = 1./take(getattrwithsuffix(pgroup,'gaminv',suffix),ii)
+      kes = (gamma-1.)*mass*clight**2/echarge
+    else:
+      vx = take(getattrwithsuffix(pgroup,'uxp',suffix),ii)
+      vy = take(getattrwithsuffix(pgroup,'uyp',suffix),ii)
+      vz = take(getattrwithsuffix(pgroup,'uzp',suffix),ii)
+      kes = 0.5*mass*(vx**2+vy**2+vz**2)/echarge
+    kel.append(kes[:np])
+  if nptot == 0:
+    ke = array([],'d')
+  else:
+    ke = zeros(nptot,'d')
+    ip=0
+    for il in range(len(kel)):
+      np=shape(kel[il])[0]
+      ke[ip:ip+np]=kel[il]
+      ip+=np
+  if lparallel and gather: 
+    return gatherarray(ke,bcast=bcast)
+  else:
+    return ke
+#-------------------------------------------------------------------------
 # Add the selectparticles documentation to each of the routines.
 if lparallel:
   _gatherdoc = (
@@ -1054,6 +1099,7 @@ getbx.__doc__ = getbx.__doc__ + selectparticles.__doc__ + _gatherdoc
 getby.__doc__ = getby.__doc__ + selectparticles.__doc__ + _gatherdoc
 getbz.__doc__ = getbz.__doc__ + selectparticles.__doc__ + _gatherdoc
 getpid.__doc__ = getpid.__doc__ + selectparticles.__doc__ + _gatherdoc
+getw.__doc__ = getw.__doc__ + selectparticles.__doc__ + _gatherdoc
 #-------------------------------------------------------------------------
 
 ##########################################################################
@@ -1225,8 +1271,11 @@ def getvzrange(kwdict={}):
 #-------------------------------------------------------------------------
 #-------------------------------------------------------------------------
 def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,
-                 pid=0.,w=1.,js=0,sid=None,
-                 lallindomain=None,zmmin=None,zmmax=None,lmomentum=false,
+                 pid=0.,w=1.,js=0,sid=None,lallindomain=None,
+                 xmmin=None,xmmax=None,
+                 ymmin=None,ymmax=None,
+                 zmmin=None,zmmax=None,
+                 lmomentum=false,
                  resetrho=false,dofieldsol=false,resetmoments=false,
                  pgroup=None,
                  ex=0.,ey=0.,ez=0.,bx=0.,by=0.,bz=0.,lfields=false):
@@ -1342,9 +1391,17 @@ Adds particles to the simulation
 
   # --- Set extent of domain
   if not lparallel:
+    if xmmin is None: xmmin = w3d.xmmin 
+    if xmmax is None: xmmax = w3d.xmmax 
+    if ymmin is None: ymmin = w3d.ymmin 
+    if ymmax is None: ymmax = w3d.ymmax 
     if zmmin is None: zmmin = w3d.zmmin + top.zbeam
     if zmmax is None: zmmax = w3d.zmmax + top.zbeam
   else:
+    if xmmin is None: xmmin = w3d.xmminlocal
+    if xmmax is None: xmmax = w3d.xmmaxlocal 
+    if ymmin is None: ymmin = w3d.ymminlocal 
+    if ymmax is None: ymmax = w3d.ymmaxlocal 
     if zmmin is None: zmmin = top.zpminlocal + top.zbeam
     if zmmax is None: zmmax = top.zpmaxlocal + top.zbeam
 
@@ -1367,7 +1424,7 @@ Adds particles to the simulation
   if pgroup is None: pgroup = top.pgroup
   # --- Now data can be passed into the fortran addparticles routine.
   addpart(pgroup,maxlen,top.npid,x,y,z,vx,vy,vz,gi,ex,ey,ez,bx,by,bz,pid,js+1,
-          lallindomain,zmmin,zmmax,lmomentum,lfields)
+          lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,lmomentum,lfields)
  
   # --- If the slice code is active, then call initdtp
   if package()[0] == 'wxy': initdtp(top.pgroup)
