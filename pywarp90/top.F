@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.229 $, $Date: 2008/12/22 16:07:15 $
+c@(#) File TOP.F, version $Revision: 3.230 $, $Date: 2009/01/22 15:03:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3600,7 +3600,8 @@ c starting at 'istart' to locations starting at 'it'.
 c=============================================================================
       subroutine addpart(pgroup,nn,nnpid,x,y,z,vx,vy,vz,gi,
      &                   ex,ey,ez,bx,by,bz,ppid,is,
-     &                   lallindomain,zmmin,zmmax,lmomentum,lfields)
+     &                   lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
+     &                   lmomentum,lfields)
       use ParticleGroupmodule
       use Subtimerstop
       use Constant
@@ -3612,7 +3613,7 @@ c=============================================================================
       real(kind=8):: ex(nn),ey(nn),ez(nn),bx(nn),by(nn),bz(nn)
       real(kind=8):: ppid(nn,nnpid)
       logical(ISZ):: lallindomain,lmomentum,lfields
-      real(kind=8):: zmmin,zmmax
+      real(kind=8):: xmmin,xmmax,ymmin,ymmax,zmmin,zmmax
 
 c Adds new particles to the simulation
 c   nn: number of particles to add
@@ -3646,7 +3647,9 @@ c     --- transversely.
       if (.not. lallindomain) then
         n1 = 0
         do ip=1,nn
-          if (zmmin <= z(ip) .and. z(ip) < zmmax) then
+          if (xmmin <= x(ip) .and. x(ip) < xmmax .and.
+     &        ymmin <= y(ip) .and. y(ip) < ymmax .and.
+     &        zmmin <= z(ip) .and. z(ip) < zmmax) then
             n1 = n1 + 1
             if (n1 < ip) then
               x(n1) = x(ip)

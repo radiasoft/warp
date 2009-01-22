@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.249 $, $Date: 2009/01/15 22:18:38 $
+#@(#) File TOP.V, version $Revision: 3.250 $, $Date: 2009/01/22 15:02:59 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.249 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.250 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2707,7 +2707,10 @@ addpart(pgroup:ParticleGroup,nn:integer,npid:integer,
         x(nn):real,y(nn):real,z(nn):real,vx(nn):real,vy(nn):real,vz(nn):real,
         gi(nn):real,ex(nn):real,ey(nn):real,ez(nn):real,
         bx(nn):real,by(nn):real,bz(nn):real,pid(nn,npid):real,
-        is:integer,lallindomain:logical,zmmin:real,zmmax:real,
+        is:integer,lallindomain:logical,
+        xmmin:real,xmmax:real,
+        ymmin:real,ymmax:real,
+        zmmin:real,zmmax:real,
         lmomentum:logical,lfields:logical)
              subroutine # Adds new particles to the simulation
 clearpart(pgroup:ParticleGroup,js:integer,fillmethod:integer)
@@ -2794,10 +2797,10 @@ getbeamcom(pgroup:ParticleGroup) real function
        # Returns the center of mass in z of the beam calculated from the
        # particles.
 xparticleboundaries(pgroup:ParticleGroup,js1:integer,js2:integer,
-                    xmmax:real,xmmin:real,lcountaslost:logical) subroutine
+                    xmmax:real,xmmin:real,lcountaslost:logical,labs:logical,lrz:logical) subroutine
        # Apply x, grid based boundary conditions
 yparticleboundaries(pgroup:ParticleGroup,js1:integer,js2:integer,
-                    ymmax:real,ymmin:real,lcountaslost:logical) subroutine
+                    ymmax:real,ymmin:real,lcountaslost:logical,labs:logical,lrz:logical) subroutine
        # Apply y, grid based boundary conditions
 zparticleboundaries(pgroup:ParticleGroup,js1:integer,js2:integer,
                     zmmax:real,zmmin:real,lcountaslost:logical) subroutine
@@ -2810,7 +2813,7 @@ particleboundarieswithdata(n:integer,x:real,y:real,z:real,
                            lrz:logical) subroutine
        # Impose particle boundary conditions
 partbndwithdata(n:integer,z(n):real,uz(n):real,gaminv(n):real,
-                zmmax:real,zmmin:real,dz:real,zgrid:real,
+                zmmax:real,zmmin:real,zgrid:real,
                 pbound0:integer,pboundnz:integer) subroutine
        # Impose particle boundary conditions along one axis
 reorgparticles(pgroup:ParticleGroup,
