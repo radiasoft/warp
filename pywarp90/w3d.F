@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.419 $, $Date: 2009/01/15 19:35:58 $
+c@(#) File W3D.F, version $Revision: 3.420 $, $Date: 2009/01/22 01:14:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2498,6 +2498,7 @@ c=============================================================================
       use InMesh3d
       use Fields3d,Only: rho
       use GridBoundary3d
+      use DebugFlags,Only: debug
 #ifdef MPIPARALLEL
       use Parallel,Only: fsdecomp
 #endif
@@ -2510,6 +2511,20 @@ c  and puts the result into both slices.
 
       if (fstype == 12) return
       if (solvergeom==AMRgeom) return
+
+c     --- Do some error checking
+      if (.not. associated(rho)) then
+        call kaboom("applyrhoboundaryconditions: rho not allocated")
+        return
+      endif
+      if (debug) then
+        if (LBOUND(rho,1) .ne. 0 .or. UBOUND(rho,1) .ne. nxlocal .or.
+     &      LBOUND(rho,2) .ne. 0 .or. UBOUND(rho,2) .ne. nylocal .or.
+     &      LBOUND(rho,3) .ne. 0 .or. UBOUND(rho,3) .ne. nzlocal) then
+          print*,"rho shape = ",LBOUND(rho),UBOUND(rho)
+          call kaboom("applyrhoboundaryconditions: rho has wrong shape")
+        endif
+      endif
 
 c  Distribute rho for 2d solver
       if(solvergeom==RZgeom .or. solvergeom==XZgeom .or.
