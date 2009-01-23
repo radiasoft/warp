@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.73 2009/01/08 22:41:10 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.74 2009/01/23 19:11:31 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3216,6 +3216,7 @@ Plots the field of the emlt element
   - scale=1.: multiplicative factor on the data plotted
   - zoffset=top.zlatstrt: the shift in the z location of the data plotted
   """
+  if top.lresetlat: resetlat()
   if zoffset is None: zoffset = top.zlatstrt
   id = top.emltid[ie] - 1
   dz = top.dzemlt[id]
@@ -3238,6 +3239,7 @@ Plots the field of the emlt element
   - scale=1.: multiplicative factor on the data plotted
   - zoffset=top.zlatstrt: the shift in the z location of the data plotted
   """
+  if top.lresetlat: resetlat()
   if zoffset is None: zoffset = top.zlatstrt
   id = top.mmltid[im] - 1
   dz = top.dzmmlt[id]
@@ -3287,6 +3289,7 @@ Plots the time dependent field of the accl element
   - ascale=1.: scale for abscissa
   - tcentered=0: when true, time is plotted relative to acclts.
   """
+  if top.lresetlat: resetlat()
   if ia is None:
     i1 = 0
     i2 = top.naccl
@@ -3318,6 +3321,7 @@ such as contours, and cellarray.
          "component to plot must be one of 'x', 'y', or 'z'"
   assert (ix is not None) or (iy is not None) or (iz is not None),\
          "One of ix, iy, iz must be specified"
+  if top.lresetlat: resetlat()
   if zlatstrt is None: zlatstrt = top.zlatstrt
   id = top.egrdid[ie] - 1
   ee = getattr(top,'egrde'+component)
@@ -3408,6 +3412,7 @@ such as contours, and cellarray.
          "component to plot must be one of 'x', 'y', or 'z'"
   assert (ix is not None) or (iy is not None) or (iz is not None),\
          "One of ix, iy, iz must be specified"
+  if top.lresetlat: resetlat()
   if zlatstrt is None: zlatstrt = top.zlatstrt
   id = top.bgrdid[ib] - 1
   bb = getattr(top,'bgrdb'+component)
@@ -3497,6 +3502,7 @@ such as contours, and cellarray.
          "component to plot must be None or one of 'x', 'y', or 'z'"
   assert (ix is not None) or (iy is not None) or (iz is not None),\
          "One of ix, iy, iz must be specified"
+  if top.lresetlat: resetlat()
   if zlatstrt is None: zlatstrt = top.zlatstrt
   id = top.pgrdid[ip] - 1
   pp = top.pgrd
