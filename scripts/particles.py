@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.74 2009/01/22 15:05:22 jlvay Exp $"
+particles_version = "$Id: particles.py,v 1.75 2009/01/23 17:34:50 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1276,6 +1276,7 @@ def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,
                  ymmin=None,ymmax=None,
                  zmmin=None,zmmax=None,
                  lmomentum=false,
+                 l2symtry=None,l4symtry=None,
                  resetrho=false,dofieldsol=false,resetmoments=false,
                  pgroup=None,
                  ex=0.,ey=0.,ez=0.,bx=0.,by=0.,bz=0.,lfields=false):
@@ -1405,6 +1406,9 @@ Adds particles to the simulation
     if zmmin is None: zmmin = top.zpminlocal + top.zbeam
     if zmmax is None: zmmax = top.zpmaxlocal + top.zbeam
 
+  if l2symtry is None: l2symtry = w3d.l2symtry
+  if l4symtry is None: l4symtry = w3d.l4symtry
+
   # --- When running in slice mode, automatically set lallindomain to true.
   # --- It is assumed that all particles will be within the specified domain,
   # --- since in the slice mode, the z of the particles is ignored.
@@ -1424,7 +1428,8 @@ Adds particles to the simulation
   if pgroup is None: pgroup = top.pgroup
   # --- Now data can be passed into the fortran addparticles routine.
   addpart(pgroup,maxlen,top.npid,x,y,z,vx,vy,vz,gi,ex,ey,ez,bx,by,bz,pid,js+1,
-          lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,lmomentum,lfields)
+          lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,lmomentum,lfields,
+          l2symtry,l4symtry)
  
   # --- If the slice code is active, then call initdtp
   if package()[0] == 'wxy': initdtp(top.pgroup)
