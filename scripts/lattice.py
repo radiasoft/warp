@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.74 2009/01/23 19:11:31 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.75 2009/01/23 19:15:44 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3357,7 +3357,7 @@ such as contours, and cellarray.
   # --- Get mesh quantities along first axis
   xs = getattr(top,'egrd'+ax[0]+'s')[ie]
   if ax[0] == 'z': xs = xs + zlatstrt
-  else:            xs = xs + getattr(top,'egrdo'+ax[0])
+  else:            xs = xs + getattr(top,'egrdo'+ax[0])[ie]
   nx = getattr(top,'egrdn'+ax[0])
   dx = getattr(top,'egrdd'+ax[0])[id]
 
@@ -3365,7 +3365,7 @@ such as contours, and cellarray.
     # --- Get mesh quantities along second axis
     ys = getattr(top,'egrd'+ax[1]+'s')[ie]
     if ax[1] == 'z': ys = ys + zlatstrt
-    else:            ys = ys + getattr(top,'egrdo'+ax[1])
+    else:            ys = ys + getattr(top,'egrdo'+ax[1])[ie]
     ny = getattr(top,'egrdn'+ax[1])
     dy = getattr(top,'egrdd'+ax[1])[id]
 
@@ -3448,7 +3448,7 @@ such as contours, and cellarray.
   # --- Get mesh quantities along first axis
   xs = getattr(top,'bgrd'+ax[0]+'s')[ib]
   if ax[0] == 'z': xs = xs + zlatstrt
-  else:            xs = xs + getattr(top,'bgrdo'+ax[0])
+  else:            xs = xs + getattr(top,'bgrdo'+ax[0])[ib]
   nx = getattr(top,'bgrdn'+ax[0])
   dx = getattr(top,'bgrdd'+ax[0])[id]
 
@@ -3456,7 +3456,7 @@ such as contours, and cellarray.
     # --- Get mesh quantities along second axis
     ys = getattr(top,'bgrd'+ax[1]+'s')[ib]
     if ax[1] == 'z': ys = ys + zlatstrt
-    else:            ys = ys + getattr(top,'bgrdo'+ax[1])
+    else:            ys = ys + getattr(top,'bgrdo'+ax[1])[ib]
     ny = getattr(top,'bgrdn'+ax[1])
     dy = getattr(top,'bgrdd'+ax[1])[id]
 
@@ -3533,7 +3533,7 @@ such as contours, and cellarray.
   # --- Get mesh quantities along first axis
   xs = getattr(top,'pgrd'+ax[0]+'s')[ip]
   if ax[0] == 'z': xs = xs + zlatstrt
-  else:            xs = xs + getattr(top,'pgrdo'+ax[0])
+  else:            xs = xs + getattr(top,'pgrdo'+ax[0])[ip]
   nx = getattr(top,'pgrdn'+ax[0])
   dx = getattr(top,'pgrdd'+ax[0])[id]
 
@@ -3541,7 +3541,7 @@ such as contours, and cellarray.
     # --- Get mesh quantities along second axis
     ys = getattr(top,'pgrd'+ax[1]+'s')[ip]
     if ax[1] == 'z': ys = ys + zlatstrt
-    else:            ys = ys + getattr(top,'pgrdo'+ax[1])
+    else:            ys = ys + getattr(top,'pgrdo'+ax[1])[ip]
     ny = getattr(top,'pgrdn'+ax[1])
     dy = getattr(top,'pgrdd'+ax[1])[id]
 
