@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.75 2009/01/23 19:15:44 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.76 2009/01/23 21:16:23 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3206,7 +3206,8 @@ Input arguments:
 
 # ----------------------------------------------------------------------------
 # --- Convenient plotting functions
-def plotemlt(ie,m=0,p=0,color='fg',scale=1.,zoffset=None):
+def plotemlt(ie,m=0,p=0,color='fg',scale=1.,zoffset=None,withscaling=1,
+             titles=1):
   """
 Plots the field of the emlt element
   - ie: the element to plot
@@ -3215,20 +3216,30 @@ Plots the field of the emlt element
   - color='fg': color of plot
   - scale=1.: multiplicative factor on the data plotted
   - zoffset=top.zlatstrt: the shift in the z location of the data plotted
+  - withscaling=1: when true, apply the sc and sf scaling factors
   """
+  assert 0 <= ie <= top.nemlt,\
+         "No such emlt element, %d, defined"%ie
   if top.lresetlat: resetlat()
   if zoffset is None: zoffset = top.zlatstrt
   id = top.emltid[ie] - 1
   dz = top.dzemlt[id]
   nz = top.nzemlt[id]
   zz = top.emltzs[ie] + iota(0,nz)*dz + zoffset
-  if p == 0:
-    plg(top.esemlt[:nz+1,m,id]*scale,zz,color=color)
+  if withscaling:
+    ss = top.emltsc[ie] + top.emltsf[ie]
   else:
-    plg(top.esemltp[:nz+1,m,id]*scale,zz,color=color)
+    ss = 1.
+  if p == 0:
+    plg(ss*top.esemlt[:nz+1,m,id]*scale,zz,color=color)
+  else:
+    plg(ss*top.esemltp[:nz+1,m,id]*scale,zz,color=color)
+  if titles:
+    ptitles('EMLT element #%d'%ie,'Z (m)',
+            'multipole n=%d v=%d'%(top.emlt_n[id],top.emlt_v[id]))
 
 def plotmmlt(im,m=0,p=0,r=1.,t=0.,br=0,bt=0,bz=0,color='fg',getfield=0,
-             scale=1.,zoffset=None):
+             scale=1.,zoffset=None,withscaling=1,titles=1):
   """
 Plots the field of the emlt element
   - im: the element to plot
@@ -3238,14 +3249,20 @@ Plots the field of the emlt element
   - getfield=0: when true, the field and zmesh are returned
   - scale=1.: multiplicative factor on the data plotted
   - zoffset=top.zlatstrt: the shift in the z location of the data plotted
+  - withscaling=1: when true, apply the sc and sf scaling factors
   """
+  assert 0 <= im <= top.nmmlt,\
+         "No such mmlt element, %d, defined"%im
   if top.lresetlat: resetlat()
   if zoffset is None: zoffset = top.zlatstrt
   id = top.mmltid[im] - 1
   dz = top.dzmmlt[id]
   nz = top.nzmmlt[id]
   zz = top.mmltzs[im] + iota(0,nz)*dz + zoffset
-  ss = top.mmltsc[im] + top.mmltsf[im]
+  if withscaling:
+    ss = top.mmltsc[im] + top.mmltsf[im]
+  else:
+    ss = 1.
   nn = top.mmlt_n[m]
   vv = top.mmlt_v[m]
   tt = top.mmltph[im] + top.msmmltph[:,m,id]
@@ -3278,6 +3295,9 @@ Plots the field of the emlt element
     mm = top.msmmltp[:nz+1,m,id]
   mm = mm*cc*scale
   plg(mm,zz,color=color)
+  if titles:
+    ptitles('MMLT element #%d'%im,'Z (m)',
+            'multipole n=%d v=%d'%(top.mmlt_n[id],top.mmlt_v[id]))
   if getfield: return mm,zz
 
 def plotacclet(ia=None,oscale=1.,ascale=1.,tcentered=0,color='fg'):
@@ -3289,6 +3309,8 @@ Plots the time dependent field of the accl element
   - ascale=1.: scale for abscissa
   - tcentered=0: when true, time is plotted relative to acclts.
   """
+  assert 0 <= ia <= top.naccl,\
+         "No such accl element, %d, defined"%ia
   if top.lresetlat: resetlat()
   if ia is None:
     i1 = 0
@@ -3317,6 +3339,8 @@ Plots the one of the field components in one of the planes
 Accepts any keywords from ppgeneric for controller how the grid is plotted,
 such as contours, and cellarray.
   """
+  assert 0 <= ie <= top.negrd,\
+         "No such egrd element, %d, defined"%ie
   assert component in ['x','y','z'],\
          "component to plot must be one of 'x', 'y', or 'z'"
   assert (ix is not None) or (iy is not None) or (iz is not None),\
@@ -3349,8 +3373,12 @@ such as contours, and cellarray.
   ee = ee[sx,sy,sz,id]
 
   # --- Get the scaling factors
-  ss = top.egrdsc[ie] + top.egrdsf[ie]
-  ee = ee*ss
+  if withscaling:
+    ss = top.egrdsc[ie] + top.egrdsf[ie]
+    ee = ee*ss
+    units = ' (V/m)'
+  else:
+    units = ''
 
   if len(ax) == 0: return ee
 
@@ -3375,6 +3403,9 @@ such as contours, and cellarray.
     xm = xs + iota(0,nx)*dx
     color = kw.get('color','fg')
     plg(ee,xm,color=color)
+    if kw.get('titles',1):
+      ptitles('EGRD element #%d'%ie,'%s (m)'%ax[0].upper(),
+              'E%s%s'%(component,units))
 
   elif len(ax) == 2:
     # --- Make 2-d plot
@@ -3386,6 +3417,10 @@ such as contours, and cellarray.
 
     kw['xmesh'] = xm
     kw['ymesh'] = ym
+    kw.setdefault('titlet','EGRD element #%d E%s%s'%(ie,component,units))
+    kw.setdefault('titleb','%s (m)'%ax[0].upper())
+    kw.setdefault('titlel','%s (m)'%ax[1].upper())
+
     ppgeneric(gridt=ee,kwdict=kw)
 
   elif len(ax) == 3:
@@ -3408,6 +3443,8 @@ Plots the one of the field components in one of the planes
 Accepts any keywords from ppgeneric for controller how the grid is plotted,
 such as contours, and cellarray.
   """
+  assert 0 <= ib <= top.nbgrd,\
+         "No such bgrd element, %d, defined"%ib
   assert component in ['x','y','z'],\
          "component to plot must be one of 'x', 'y', or 'z'"
   assert (ix is not None) or (iy is not None) or (iz is not None),\
@@ -3440,8 +3477,12 @@ such as contours, and cellarray.
   bb = bb[sx,sy,sz,id]
 
   # --- Get the scaling factors
-  ss = top.bgrdsc[ib] + top.bgrdsf[ib]
-  bb = bb*ss
+  if withscaling:
+    ss = top.bgrdsc[ib] + top.bgrdsf[ib]
+    bb = bb*ss
+    units = ' (Tesla)'
+  else:
+    units = ''
 
   if len(ax) == 0: return bb
 
@@ -3467,6 +3508,10 @@ such as contours, and cellarray.
     color = kw.get('color','fg')
     plg(bb,xm,color=color)
 
+    if kw.get('titles',1):
+      ptitles('BGRD element #%d'%ib,'%s (m)'%ax[0].upper(),
+              'B%s%s'%(component,units))
+
   elif len(ax) == 2:
     # --- Make 2-d plot
     xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
@@ -3477,6 +3522,10 @@ such as contours, and cellarray.
 
     kw['xmesh'] = xm
     kw['ymesh'] = ym
+    kw.setdefault('titlet','BGRD element #%d B%s%s'%(ib,component,units))
+    kw.setdefault('titleb','%s (m)'%ax[0].upper())
+    kw.setdefault('titlel','%s (m)'%ax[1].upper())
+
     ppgeneric(gridt=bb,kwdict=kw)
 
   elif len(ax) == 3:
@@ -3484,7 +3533,7 @@ such as contours, and cellarray.
     raise '3-d plot Not yet implemented'
 
 def plotpgrd(ip=0,component=None,ix=None,iy=None,iz=None,withbends=1,
-             zlatstrt=None,**kw):
+             zlatstrt=None,withscaling=1,**kw):
   """
 Plots the one of the field components in one of the planes
  - component: Component to plot, one of 'x', 'y', or 'z'.
@@ -3495,9 +3544,12 @@ Plots the one of the field components in one of the planes
  - withbends=1: When true, account for bends and convert to the lab frame.
                 Only applies with iy specified.
  - zlatstrt=top.zlatstrt: location of z=0 of the lattice in the lab frame
+ - withscaling=1: when true, apply the sc and sf scaling factors
 Accepts any keywords from ppgeneric for controller how the grid is plotted,
 such as contours, and cellarray.
   """
+  assert 0 <= ip <= top.npgrd,\
+         "No such pgrd element, %d, defined"%ip
   assert component in [None,'x','y','z'],\
          "component to plot must be None or one of 'x', 'y', or 'z'"
   assert (ix is not None) or (iy is not None) or (iz is not None),\
@@ -3528,6 +3580,15 @@ such as contours, and cellarray.
   # --- Get the B field. If all three axis specified, just return the value
   # --- at that location.
   pp = pp[sx,sy,sz,id]
+
+  # --- Get the scaling factors
+  if withscaling:
+    ss = top.pgrdsc[ip] + top.pgrdsf[ip]
+    pp = pp*ss
+    units = ' (V)'
+  else:
+    units = ''
+
   if len(ax) == 0: return pp
 
   # --- Get mesh quantities along first axis
@@ -3552,6 +3613,9 @@ such as contours, and cellarray.
     color = kw.get('color','fg')
     plg(pp,xm,color=color)
 
+    if kw.get('titles',1):
+      ptitles('PGRD element #%d'%ip,'%s (m)'%ax[0].upper(),'phi%s'%units)
+
   elif len(ax) == 2:
     # --- Make 2-d plot
     xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
@@ -3562,6 +3626,10 @@ such as contours, and cellarray.
 
     kw['xmesh'] = xm
     kw['ymesh'] = ym
+    kw.setdefault('titlet','PGRD element #%d phi%s'%(ip,units))
+    kw.setdefault('titleb','%s (m)'%ax[0].upper())
+    kw.setdefault('titlel','%s (m)'%ax[1].upper())
+
     ppgeneric(gridt=pp,kwdict=kw)
 
   elif len(ax) == 3:
