@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.230 $, $Date: 2009/01/22 15:03:25 $
+c@(#) File TOP.F, version $Revision: 3.231 $, $Date: 2009/01/23 17:33:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3601,7 +3601,7 @@ c=============================================================================
       subroutine addpart(pgroup,nn,nnpid,x,y,z,vx,vy,vz,gi,
      &                   ex,ey,ez,bx,by,bz,ppid,is,
      &                   lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
-     &                   lmomentum,lfields)
+     &                   lmomentum,lfields,l2symtry,l4symtry)
       use ParticleGroupmodule
       use Subtimerstop
       use Constant
@@ -3612,7 +3612,7 @@ c=============================================================================
       real(kind=8):: x(nn),y(nn),z(nn),vx(nn),vy(nn),vz(nn),gi(nn)
       real(kind=8):: ex(nn),ey(nn),ez(nn),bx(nn),by(nn),bz(nn)
       real(kind=8):: ppid(nn,nnpid)
-      logical(ISZ):: lallindomain,lmomentum,lfields
+      logical(ISZ):: lallindomain,lmomentum,lfields,l2symtry,l4symtry
       real(kind=8):: xmmin,xmmax,ymmin,ymmax,zmmin,zmmax
 
 c Adds new particles to the simulation
@@ -3627,7 +3627,7 @@ c              when input as massless momentum. Only used when lrelativ is
 c              true.
 
       integer(ISZ):: ip,n1,i1,i2,i
-      real(kind=8):: substarttime,wtime
+      real(kind=8):: substarttime,wtime,xt,yt
       if (ltoptimesubs) substarttime = wtime()
 
       call setuppgroup(pgroup)
@@ -3642,13 +3642,16 @@ c     --- Make sure that 'is' is within the correct range
       if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is-1
 
 c     --- Make sure that the particles are within the z extent of the domain,
-c     --- unless the input declares this to be so. Note that no check is made
-c     --- transversely.
+c     --- unless the input declares this to be so, i.e. lallindomain is true.
       if (.not. lallindomain) then
         n1 = 0
         do ip=1,nn
-          if (xmmin <= x(ip) .and. x(ip) < xmmax .and.
-     &        ymmin <= y(ip) .and. y(ip) < ymmax .and.
+          xt = x(ip)
+          if (l4symtry) xt = abs(xt)
+          yt = y(ip)
+          if (l2symtry .or. l4symtry) yt = abs(yt)
+          if (xmmin <= xt .and. xt < xmmax .and.
+     &        ymmin <= yt .and. yt < ymmax .and.
      &        zmmin <= z(ip) .and. z(ip) < zmmax) then
             n1 = n1 + 1
             if (n1 < ip) then
