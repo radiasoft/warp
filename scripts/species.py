@@ -1664,6 +1664,9 @@ in radius squared.
   uzep = property(*_gettopattribute('uzep'))
   pidep = property(*_gettopattribute('pidep'))
 
+  # SemiTransparentDisc
+  s_STdiscs = property(*_gettopattribute('s_STdiscs'))
+
   del _gettopattribute
 
   def _getw3dattribute(name,doc=None):
