@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.231 $, $Date: 2009/01/23 17:33:52 $
+c@(#) File TOP.F, version $Revision: 3.232 $, $Date: 2009/01/24 01:50:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3130,6 +3130,8 @@ c       --- loop on particles
         do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
 c         --- loop on number of discs
           do idisc = 1, n_STdiscs
+c           --- Skip species not being absorbed by this disc
+            if (.not. s_STdiscs(idisc,is)) cycle
 c           --- do only the work for particles close to disc location
             if(pgroup%zp(ip)>=zmind(idisc) .and.
      &         pgroup%zp(ip)<=zmaxd(idisc)) then

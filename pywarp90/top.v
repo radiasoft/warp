@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.251 $, $Date: 2009/01/23 17:33:53 $
+#@(#) File TOP.V, version $Revision: 3.252 $, $Date: 2009/01/24 01:50:33 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.251 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.252 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2941,6 +2941,8 @@ n_STdiscs             integer /0/  # Number of semitransparent discs
 z_STdiscs(n_STdiscs)  _real        # Positions of semitransparent discs
 r_STdiscs(n_STdiscs)  _real        # Radii of semitransparent discs
 t_STdiscs(n_STdiscs)  _real        # Transparency of semitransparent discs
+s_STdiscs(n_STdiscs,ns) _logical /1/ # Flag setting which species are absorbed
+                                     # by which disc
 semitransparent_disc(dz:real) subroutine
     # Randomly absorb particles passing through disc based on data in group
     # SemiTransparentDisc. dz is the maximum distance traveled by particles
