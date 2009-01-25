@@ -109,7 +109,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.192 2009/01/15 23:03:57 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.193 2009/01/25 04:35:23 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -876,10 +876,12 @@ Elliptic assembly
     arglist = list(argtuple)
     if self.ellipticity != 1.:
       y = arglist[-10]
+      vy = arglist[-7]
       xi = arglist[-5]
       yi = arglist[-4]
       iphi = arglist[-1]
       arglist[-10] = y/self.ellipticity
+      arglist[-7] = vy/self.ellipticity
 
     apply(self.circlegeneratori,arglist)
 
