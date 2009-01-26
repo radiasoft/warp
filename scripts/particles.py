@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.75 2009/01/23 17:34:50 dave Exp $"
+particles_version = "$Id: particles.py,v 1.76 2009/01/26 22:33:37 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1276,7 +1276,7 @@ def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,
                  ymmin=None,ymmax=None,
                  zmmin=None,zmmax=None,
                  lmomentum=false,
-                 l2symtry=None,l4symtry=None,
+                 l2symtry=None,l4symtry=None,lrz=None,
                  resetrho=false,dofieldsol=false,resetmoments=false,
                  pgroup=None,
                  ex=0.,ey=0.,ez=0.,bx=0.,by=0.,bz=0.,lfields=false):
@@ -1296,6 +1296,7 @@ Adds particles to the simulation
                       slice mode, i.e. after package('wxy'). Except if the
                       option is explicitly set.
   zmmin=w3d.zmmin,zmmax=w3d.zmmax: z extent of the domain
+  l2symtry,l4symtry,lrz: System symmetries, default to w3d values
   lmomentum=false: Set to false when velocities are input as velocities, true
                    when input as massless momentum (as WARP stores them).
                    Only used when top.lrelativ is true.
@@ -1391,23 +1392,16 @@ Adds particles to the simulation
   if top.zoldpid>0: pid[:,top.zoldpid-1]=z.copy()
 
   # --- Set extent of domain
-  if not lparallel:
-    if xmmin is None: xmmin = w3d.xmmin 
-    if xmmax is None: xmmax = w3d.xmmax 
-    if ymmin is None: ymmin = w3d.ymmin 
-    if ymmax is None: ymmax = w3d.ymmax 
-    if zmmin is None: zmmin = w3d.zmmin + top.zbeam
-    if zmmax is None: zmmax = w3d.zmmax + top.zbeam
-  else:
-    if xmmin is None: xmmin = w3d.xmminlocal
-    if xmmax is None: xmmax = w3d.xmmaxlocal 
-    if ymmin is None: ymmin = w3d.ymminlocal 
-    if ymmax is None: ymmax = w3d.ymmaxlocal 
-    if zmmin is None: zmmin = top.zpminlocal + top.zbeam
-    if zmmax is None: zmmax = top.zpmaxlocal + top.zbeam
+  if xmmin is None: xmmin = top.xpminlocal
+  if xmmax is None: xmmax = top.xpmaxlocal 
+  if ymmin is None: ymmin = top.ypminlocal 
+  if ymmax is None: ymmax = top.ypmaxlocal 
+  if zmmin is None: zmmin = top.zpminlocal + top.zbeam
+  if zmmax is None: zmmax = top.zpmaxlocal + top.zbeam
 
   if l2symtry is None: l2symtry = w3d.l2symtry
   if l4symtry is None: l4symtry = w3d.l4symtry
+  if lrz is None: lrz = (w3d.solvergeom in [w3d.RZgeom,w3d.Rgeom])
 
   # --- When running in slice mode, automatically set lallindomain to true.
   # --- It is assumed that all particles will be within the specified domain,
@@ -1429,7 +1423,7 @@ Adds particles to the simulation
   # --- Now data can be passed into the fortran addparticles routine.
   addpart(pgroup,maxlen,top.npid,x,y,z,vx,vy,vz,gi,ex,ey,ez,bx,by,bz,pid,js+1,
           lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,lmomentum,lfields,
-          l2symtry,l4symtry)
+          l2symtry,l4symtry,lrz)
  
   # --- If the slice code is active, then call initdtp
   if package()[0] == 'wxy': initdtp(top.pgroup)
