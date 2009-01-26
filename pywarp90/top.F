@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.232 $, $Date: 2009/01/24 01:50:33 $
+c@(#) File TOP.F, version $Revision: 3.233 $, $Date: 2009/01/26 22:32:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3603,7 +3603,7 @@ c=============================================================================
       subroutine addpart(pgroup,nn,nnpid,x,y,z,vx,vy,vz,gi,
      &                   ex,ey,ez,bx,by,bz,ppid,is,
      &                   lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
-     &                   lmomentum,lfields,l2symtry,l4symtry)
+     &                   lmomentum,lfields,l2symtry,l4symtry,lrz)
       use ParticleGroupmodule
       use Subtimerstop
       use Constant
@@ -3614,7 +3614,7 @@ c=============================================================================
       real(kind=8):: x(nn),y(nn),z(nn),vx(nn),vy(nn),vz(nn),gi(nn)
       real(kind=8):: ex(nn),ey(nn),ez(nn),bx(nn),by(nn),bz(nn)
       real(kind=8):: ppid(nn,nnpid)
-      logical(ISZ):: lallindomain,lmomentum,lfields,l2symtry,l4symtry
+      logical(ISZ):: lallindomain,lmomentum,lfields,l2symtry,l4symtry,lrz
       real(kind=8):: xmmin,xmmax,ymmin,ymmax,zmmin,zmmax
 
 c Adds new particles to the simulation
@@ -3643,37 +3643,41 @@ c     --- Make sure that 'is' is within the correct range
 
       if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is-1
 
-c     --- Make sure that the particles are within the z extent of the domain,
+c     --- Make sure that the particles are within the extent of the domain,
 c     --- unless the input declares this to be so, i.e. lallindomain is true.
       if (.not. lallindomain) then
         n1 = 0
         do ip=1,nn
-          xt = x(ip)
-          if (l4symtry) xt = abs(xt)
-          yt = y(ip)
-          if (l2symtry .or. l4symtry) yt = abs(yt)
-          if (xmmin <= xt .and. xt < xmmax .and.
-     &        ymmin <= yt .and. yt < ymmax .and.
-     &        zmmin <= z(ip) .and. z(ip) < zmmax) then
-            n1 = n1 + 1
-            if (n1 < ip) then
-              x(n1) = x(ip)
-              y(n1) = y(ip)
-              z(n1) = z(ip)
-              vx(n1) = vx(ip)
-              vy(n1) = vy(ip)
-              vz(n1) = vz(ip)
-              gi(n1) = gi(ip)
-              if (lfields) then
-                ex(n1) = ex(ip)
-                ey(n1) = ey(ip)
-                ez(n1) = ez(ip)
-                bx(n1) = bx(ip)
-                by(n1) = by(ip)
-                bz(n1) = bz(ip)
-              end if
-              if (nnpid > 0) ppid(n1,:) = ppid(ip,:)
-            endif
+          if (z(ip) < zmmin  .or. z(ip) >= zmmax) cycle
+          if (lrz) then
+            xt = sqrt(x(ip)**2 + y(ip)**2)
+            if (xt < xmmin .or. xt >= xmmax) cycle
+          else
+            xt = x(ip)
+            if (l4symtry) xt = abs(xt)
+            yt = y(ip)
+            if (l2symtry .or. l4symtry) yt = abs(yt)
+            if (xt < xmmin .or. xt >= xmmax .or.
+     &          yt < ymmin .or. yt >= ymmax) cycle
+          endif
+          n1 = n1 + 1
+          if (n1 < ip) then
+            x(n1) = x(ip)
+            y(n1) = y(ip)
+            z(n1) = z(ip)
+            vx(n1) = vx(ip)
+            vy(n1) = vy(ip)
+            vz(n1) = vz(ip)
+            gi(n1) = gi(ip)
+            if (lfields) then
+              ex(n1) = ex(ip)
+              ey(n1) = ey(ip)
+              ez(n1) = ez(ip)
+              bx(n1) = bx(ip)
+              by(n1) = by(ip)
+              bz(n1) = bz(ip)
+            end if
+            if (nnpid > 0) ppid(n1,:) = ppid(ip,:)
           endif
         enddo
       else
