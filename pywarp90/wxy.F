@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.99 $, $Date: 2009/01/15 19:34:57 $
+c@(#) File WXY.M, version $Revision: 3.100 $, $Date: 2009/01/26 18:32:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -406,6 +406,7 @@ c=============================================================================
       use Ctl_to_pic
       use Particles,Only: pgroup
       use Particlesxy
+      use Subcycling,Only: zgridndts
 
 c  Takes a time step
 c  This routine advances the mesh in the lab frame, sets the logicals
@@ -481,6 +482,7 @@ c       --- zgrid is the same as the beam frame
         zgridprv = zbeam
         zgrid = zbeam + dt*vbeamfrm + zcorrection
       endif
+      zgridndts = zgrid
       call stepid (it, time, zgrid)
 
 c  set logicals
@@ -529,6 +531,7 @@ c         --- zgrid is integer number of dz's
 c         --- zgrid is the same as the beam frame
           zgrid = zbeam + dt*vbeamfrm + zcorrection
         endif
+        zgridndts = zgrid
         call stepid (it, time, zgrid)
       endif
 
