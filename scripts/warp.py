@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.174 2009/01/08 19:21:43 dave Exp $"
+warp_version = "$Id: warp.py,v 1.175 2009/01/27 21:13:36 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -87,11 +87,16 @@ import controllers
 from controllers import *
 from ctl import *
 
+# --- Now make sure that a proper version of warpC has been imported.
+if lparallel:
+  assert isdefmpiparallel(),"Error: a serial version of warpC was imported into a parallel run"
+else:
+  assert not isdefmpiparallel(),"Error: a parallel version of warpC was imported into a serial run"
+
 # --- Rearrange the list of packages to a more sensible order
 package('wxy')
 package('w3d')
 package('top')
-
 
 # --- Override the value of the true and false variables setup in Forthon.
 # --- This ensures that the correct values of true and false are obtained
