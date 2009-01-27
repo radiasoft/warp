@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.233 $, $Date: 2009/01/26 22:32:47 $
+c@(#) File TOP.F, version $Revision: 3.234 $, $Date: 2009/01/27 21:12:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5046,6 +5046,17 @@ c Returns the time remaining in the job. Only works on the T3E. Otherwise
 c returns a large number.
       real(kind=8):: py_tremain
       wtremain = py_tremain()
+      return
+      end
+c=======================================================================
+      logical function isdefmpiparallel()
+
+#ifdef MPIPARALLEL
+      isdefmpiparallel = .true.
+#else
+      isdefmpiparallel = .false.
+#endif
+
       return
       end
 c=============================================================================

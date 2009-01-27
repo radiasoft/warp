@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.253 $, $Date: 2009/01/26 22:32:47 $
+#@(#) File TOP.V, version $Revision: 3.254 $, $Date: 2009/01/27 21:12:36 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.253 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.254 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2794,6 +2794,8 @@ wtimeon()  subroutine # turns timer on
 wtimeoff() real function # returns time since last call to wtimeon or wtimeoff
 wtremain() real function # returns the time remaining for the running job
                          # (T3E only, otherwise returns large number)
+isdefmpiparallel() logical function # checks if MPIPARALLEL was defined during
+                                    # compilation.
 getbeamcom(pgroup:ParticleGroup) real function
        # Returns the center of mass in z of the beam calculated from the
        # particles.
