@@ -87,6 +87,7 @@ if sys.hexversion >= 0x020300f0:
   sys.argv += ['--build-temp','']
 
 if machine == 'darwin': os.environ['ARCHFLAGS'] = '-arch i386'
+if machine == 'ppc': os.environ['ARCHFLAGS'] = '-arch ppc'
 
 setup (name = "warpC",
        version = '3.0',
