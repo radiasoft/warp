@@ -2,6 +2,7 @@
 """
 __all__ = ['GridCrossingDiags']
 from warp import *
+import cPickle
 
 class GridCrossingDiags(object):
     """
@@ -229,7 +230,6 @@ rprms:
 
     def dodumptofilePickle(self):
         if me != 0: return
-        import cPickle
         if not os.path.exists(self.dumptofile+'_gridcrossing.pkl'):
             ff = open(self.dumptofile+'_gridcrossing.pkl','w')
             # --- Save the input parameters to the file.
@@ -322,7 +322,6 @@ rprms:
 
         # --- Read all of the data in. Only save the data if the time is
         # --- between start and endtime.
-        import cPickle
         savedata = 0
         datadict = {}
         for file in files:
