@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.83 2008/11/19 18:30:00 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.84 2009/01/30 18:11:15 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -64,6 +64,9 @@ Class for creating particle scraper for conductors
  - grid=None: A instance of the Grid class can be supplied, allowing control
               over the region where the scraping is done and the resolution
               of the scraping data.
+ - nxscale=1,nyscale=1,nzscale=1: Scale factor on the number of grid cells
+                                  on the workig mesh. These should be integer
+                                  values.
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
@@ -145,6 +148,8 @@ conductors are an argument.
     self.saveolddata() 
 
   def installscraper(self):
+    """Install the scraper so that it is called during at the appropriate place
+in a time step"""
     if not self.install: return
     # --- Install the call to scrape particles
     if self.lbeforescraper:
@@ -155,6 +160,8 @@ conductors are an argument.
         installparticlescraper(self.scrapeall)
 
   def disable(self):
+    """Uninstall the scraper so that it will not be called.
+    """
     if self.lbeforescraper:
       if isinstalledbeforescraper(self.scrapeall):
         uninstallbeforescraper(self.scrapeall)
@@ -163,10 +170,12 @@ conductors are an argument.
         uninstallparticlescraper(self.scrapeall)
 
   def __setstate__(self,dict):
-    # --- This is called when the instance is unpickled.
+    """This is called when the instance is unpickled."""
     self.__dict__.update(dict)
     self.installscraper()
 
+    # --- This is needed so that new variables get values when restoring
+    # --- from an older version.
     if 'reducedisinside' not in self.__dict__:
       #self.reducedisinside = self.grid.isinside.copy()
       try:
@@ -188,6 +197,8 @@ conductors are an argument.
           self.reflectiveconductors = true
 
   def registerconductors(self,newconductors):
+    """Adds conductors to the list of conductors that particles are scraped on.
+    """
     if newconductors is None: return
     if type(newconductors) is not ListType: newconductors = [newconductors]
     for c in newconductors:
@@ -203,6 +214,9 @@ conductors are an argument.
         self.reflectiveconductors = true
 
   def unregisterconductors(self,conductor,nooverlap=0):
+    """Remove the conductor from the list of conductors that particles are
+scraped on.
+    """
     self.conductors.remove(conductor)
     if not nooverlap or self.lfastscraper:
       # --- This is horribly inefficient!!!
@@ -213,7 +227,10 @@ conductors are an argument.
       
   def updategrid(self,lforce=0):
     """Update the grid to match any changes to the underlying grid, for example
-after load balancing."""
+after load balancing. This also does the initialization of the grid.
+The code is structured this way so that the grid is only created when needed.
+This allows the particles scraper instance to be created before all of the
+data needed by the grid is set up."""
     if self.l_print_timing:tstart=wtime()
     if self.grid is None: lforce = 1
     if self.usergrid and not lforce: return
@@ -270,6 +287,7 @@ after load balancing."""
       print 'updategrid',tend-tstart
 
   def updateconductors(self):
+    """Generate the data on the grid from the scraping conductors."""
     if not self.lfastscraper:
       for c in self.conductors:
         self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
@@ -300,6 +318,8 @@ after load balancing."""
       self.grid.getdistances(allcond)
 
   def saveolddata(self):
+    """Saves old particle data. In some cases, the location of the particle
+before it was lost is needed."""
     # --- If no data is to be saved, then do nothing.
     if not (self.lsaveoldpositions or self.lsaveoldvelocities): return
 
@@ -343,8 +363,9 @@ after load balancing."""
           top.pgroup.pid[i1:i2,self.uzoldpid] = top.pgroup.uzp[i1:i2]
 
   def applysymmetry(self,xc,yc):
-    # --- Apply symmetry conditions to the positions so that the data passed
-    # --- into isinside is consistent with that obtained from the grid.
+    """Apply symmetry conditions to the positions so that the data passed
+into isinside is consistent with that obtained from the grid.
+    """
     if self.grid.l4symtry:
       xcsym = abs(xc)
       ycsym = abs(yc)
@@ -357,6 +378,14 @@ after load balancing."""
     return xcsym,ycsym
 
   def scrapeall(self,clear=0,local=0):
+    """Apply scraping to all of the species.
+  - clear=0: when true, lost particles are removed from the particle arrays.
+             Note that this routine is normally called during the course of
+             a time step, where the removal of lost particles is handled
+             elsewhere.
+  - local=0: This only affects the lcollectlpdata option. When true, this
+             collection of data is turned off (avoiding a parallel operation).
+    """
     if len(self.conductors)==0: return
     self.updategrid()
     for js in xrange(top.pgroup.ns):
@@ -390,6 +419,7 @@ after load balancing."""
   #scrapeall = decorators.timedmethod(scrapeall)
     
   def scrape(self,js):
+    """Apply scraping to species js. It is better to call scrapeall."""
     # --- If there are no particles in this species, that nothing needs to be done
     if top.pgroup.nps[js] == 0: return
 
@@ -714,6 +744,11 @@ after load balancing."""
 
 
   def savecondid(self,js,local=0):
+    """Saves information about lost particles, including the conductor id
+where the particles are lost, the intercept point and angle of incidence where
+the particle struck the conductor, and integrated data for the conductors,
+counting the current lost on the conductor.
+    """
     jsid = top.pgroup.sid[js]
 
     # --- Just return if there are no lost particles.
@@ -943,6 +978,10 @@ after load balancing."""
 
 
   def getrefinedtimestepnumber(self,dt,bx,by,bz,q,m):
+    """Calculates a refined time step size for each particle that is a
+fraction of the cyclotron period (calculated from the B field of each
+particle).
+    """
     # --- The cyclotron frequency for each particle
     magB = sqrt(bx**2 + by**2 + bz**2)
     omegac = q/m*magB
@@ -962,7 +1001,9 @@ after load balancing."""
 
   def refineintercept(self,c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,
                       itime,dt,q,m,luserefinedifnotlost,isinside):
-    """Refine the location of the intercept
+    """Refine the location of the intercept, advancing the particle using a
+time step that is small compared to the cyclotron period of each particle,
+starting from the old position before the particle was lost.
 c: the conductor
 xc,yc,zc: input holding the current particle position
           output holding the point just inside the conductor
@@ -1131,6 +1172,14 @@ luserefinedifnotlost: when true, if the refined particle orbit is not lost,
         itime[:] = where(userefined,itime,0.)
 
   def fastscrape(self,js):
+    """A fast but not precise method of scraping particles. In this method,
+the grid is setup so that each grid point stores the distance of that grid
+point to the nearest conductor surface, with negative values indicating
+that the grid point is inside of the conductor. This data is interpolated to
+the particles and particles that get a negative value are considered to be
+inside the conductor and are scraped. It is only approximate due to
+interpolating errors from the grid.
+    """
     # --- If there are no particles in this species, that nothing needs
     # --- to be done
     if top.pgroup.nps[js] == 0: return
