@@ -7,7 +7,7 @@ hcp(): send current plot to hard-copy file without clearing the display
 redraw(): redraw the plot display
 
 All plot commands take the color option. These are possible values:
-fg, bg, white, black, red, green, blue, cyan, magenta, yellow 
+fg, bg, white, black, red, green, blue, cyan, magenta, yellow
 
 Many commands take the marker option. These are possible values:
 point, plus, star, circle
@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.235 2009/01/31 00:42:44 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.236 2009/01/31 01:25:13 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -237,9 +237,9 @@ Opens up an X window
                  already been called. Warning - this will overwrite a file
                  with the same name.
   - xon=1: When true, an X window will be opened.
-  - style='work.gs': Gist style sheet. The style sheet determines 
-                     the number and location of coordinate systems, tick 
-                     and label styles, and the like.  Other choices include 
+  - style='work.gs': Gist style sheet. The style sheet determines
+                     the number and location of coordinate systems, tick
+                     and label styles, and the like.  Other choices include
                      "axes.gs", "boxed.gs", "work2.gs", and "boxed2.gs"
   """
   if suffix is None and prefix is None:
@@ -418,7 +418,7 @@ for before and after plot commands.
       pass
     pylab.clf()
   controllers.callbeforeplotfuncs()
-    
+
 def hcp(legend=1):
   """
 Hardcopy - plots run info on the bottom of the frame and sends image to hard
@@ -958,78 +958,89 @@ def ppmoments(text):
 #############################################################################
 def ppgeneric_doc(x,y):
   doc = selectparticles.__doc__ + """
-  - zz: optional third particle data quantity - when supplied, it is deposited
-        on a grid and that is used for contour levels, except 
-        if color='density' is specified, then zz is used directly to color the
-        particles rather than depositing to a grid.
-  - grid: optional grid to plot (instead of deriving grid from particle data)
-  - gridt: optional grid to plot (instead of deriving grid from particle data)
-           The transpose is the grid is plotted.
-  - nx, ny: grid size, defaults to 20x20
-  - slope=0.: slope to subtract from %(y)s coordinate (%(y)s-slope*%(x)s)
-  - xoffset=0.: average %(x)s of particles
-  - yoffset=0.: average %(y)s of particles
-  - xscale=1.: scaling factor applied to x data
-  - yscale=1.: scaling factor applied to y data
-  - titles=1: when true, plot the titles
-  - titlet,titleb,titlel,titler='': If specified, added to plot, overriding
-                                      other title settings.
-  - lframe=0: when true, the plot limits are set to the plmin and plmax input
-              arguments, which default to the plmin and plmax variables from
-              the group InDiag
-  - pplimits=None: a tuple of (xplmin, xplmax, yplmin, yplmax), limits of plot
-                   range (used when lframe=1)
-  - xmin, xmax, ymin, ymax: extrema of density grid, defaults to particle
-                            extrema (x for %(x)s and y for %(y)s)
-  - cmin=min(grid), cmax=max(grid): min and max of data for coloration
-  - xbound=dirichlet: sets boundary condition on gridded data for x
-  - ybound=dirichlet: sets boundary condition on gridded data for y
-  - particles=0: when true, plot particles
-  - uselog=None: when given, logarithmic levels of the number density are used.
-                 The value gives the log base, 1 is same as 'e'.
-  - logmin=None: when given, and with uselog, values less than logmin are
-                 truncated.
-  - color='fg': color of particles, when=='density', color by number density
-  - ncolor=None: when plotting particle color by number density, number of
-                 colors to use, defaults to top.ncolor
-  - denmin, denmax: thresholds for removing particles, only particles located
-                    where density is between denmin and denmax are plotted
-  - chopped=None: only particles where r < chopped*maxdensity/density
-                  are plotted, where r is a random number between 0 and 1
-                  and density is the density at the particle location
-  - marker=dot: particle marker to plot
-  - msize=1.: scaled size of marker
-  - hash=0: flag to turn on or off the hash plot
-  - line_scale=.9: scaling factor on line length
-  - hcolor='fg': color of hash marks
-  - width=1.0: width of hash marks
-  - contours=None: number of countours to plot
-  - filled=0: when true, plot filled contours
   - ccolor='fg': contour color (when not filled)
-  - cellarray=0: when true, plot grid as cell array
-  - centering='node': centering of cells with cellarray, other option are 'cell'                      and 'old' (for old incorrect scaling)
-  - ctop=199: max color index for cellarray plot
-  - ldensityscale=0: when true, scale the density by its max.
-  - gridscale=None: scale factor applied to gridded data.
-  - flipxaxis=0: when true, flips gridded data about the x-axis
-  - flipyaxis=0: when true, flips gridded data about the y-axis
-  - xcoffset,ycoffset=0: offsets of coordinates in grid plots
-  - view=1: view window to use (experts only)
-  - lcolorbar=1: when plotting colorized data, include a colorbar
-  - colbarunitless=0: when true, color-bar scale is unitless
+  - cellarray=0: when true, plot grid as cell array, filling each grid cell
+                 with a color determined by the value at that cell
+  - centering='node': centering of cells with cellarray, other option are
+                      'cell' and 'old' (for old incorrect scaling)
+  - chopped=None: only particles where r < chopped*maxdensity/density are
+                  plotted, where r is a random number between 0 and 1 and
+                  density is the density at the particle location
+  - cmin=min(grid), cmax=max(grid): min and max of data for coloration for
+                                    contours and cellarray. Can be used to
+                                    crop the data range for coloration.
   - colbarlinear=1: when true, the color-bar is laid out linearly in density,
                     otherwise each contour level gets an equal sized area.
                     Only in effect when a list of colorbars is specified.
-  - surface=0: when true, a 3-d surface plot is made of the gridded data
-               Note: to remove window, use the hidesurfaces() command
-                     rather than closing the window.
+  - colbarunitless=0: when true, color-bar scale is unitless
+  - color='fg': color of particles, when color='density', the color of
+                particles is determined by the number density. If zz is given
+                and color='density', color will be determined by zz.
+                Values include red, green, blue, cyan, magenta, yellow.
+  - contours=None: number of countour levels to plot
+  - ctop=199: max color table index for cellarray plot
+  - denmin, denmax: thresholds for removing particles, only particles located
+                    where density is between denmin and denmax are plotted
+  - filled=0: when true, plot filled contours
+  - flipxaxis=0: when true, flips gridded data about the x-axis
+  - flipyaxis=0: when true, flips gridded data about the y-axis
+  - grid: optional grid to plot (instead of deriving grid from particle data)
+  - gridscale=None: scale factor applied to gridded data.
+  - gridt: optional grid to plot (instead of deriving grid from particle data)
+           The transpose is the grid is plotted.
+  - hash=0: flag to turn on or off the hash plot
+  - hcolor='fg': color of hash marks for hash plots
+  - lcolorbar=1: when plotting colorized data, include a colorbar
+  - ldensityscale=0: when true, scale the density by its max.
+  - lframe=0: when true, the plot limits are set to the plmin and plmax input
+              arguments, which default to the plmin and plmax variables from
+              the group InDiag
+  - line_scale=.9: scaling factor on line length for hash plots
+  - local=None: Forces the plotting to be local or non-local (parallel).
+                Otherwise, particle plots are non-local and grid plots are
+                local. (experts only)
+  - logmin=None: when given, and with uselog, values less than logmin are
+                 truncated.
+  - marker=dot: marker to plot for particles, other options include circle,
+                plus, star, or any quoted character, i.e. 'a'.
+  - msize=1.: scaled size of marker
+  - ncolor=None: when plotting particle color by number density, number of
+                 colors to use, defaults to top.ncolor
+  - nx=20, ny=20: grid size when the density is calculated,
+  - particles=0: when true, forces plot particles. If a gridded plot (such as
+                 contour of cellarray) plot is requested, the particles will
+                 also be plotted if this is true.
+  - pplimits=None: a tuple of (xplmin, xplmax, yplmin, yplmax), limits of
+                   plot range (used when lframe=1)
   - returngrid=0: when true, and when particle data is passed in and a plot
                   which requires a grid is requested (such as a contour
-                  plot), no plotting is done and the grid and extrema
-                  are returned in a tuple
-  - local=None: Forces the plotting to be local or non-local (parallel).
-                Otherwise, particle plots are non-local and grid plots
-                are local.
+                  plot), no plotting is done and the grid and extrema are
+                  returned in a tuple
+  - slope=0.: slope to subtract from %(y)s coordinate (%(y)s-slope*%(x)s),
+              for example to skew the particles in a phase-space plot.
+  - surface=0: when true, a 3-d surface plot is made of the gridded data
+               Note: to remove window, use the hidesurfaces() command rather
+               than closing the window.
+  - titles=1: when true, plot the titles
+  - titlet,titleb,titlel,titler='': If specified, added to plot, overriding
+                                    other title settings.
+  - uselog=None: when given, logarithmic levels of the number density are
+                 used.  The value gives the log base, 1 is same as 'e'.
+  - view=1: view window to use (experts only)
+  - width=1.0: width of hash marks for hash plots
+  - xbound=dirichlet: sets boundary condition on gridded data for x
+  - xcoffset,ycoffset=0: offsets of coordinates in grid plots
+  - xmin, xmax, ymin, ymax: extrema of density grid, defaults to particle
+                            extrema (x for %(x)s and y for %(y)s)
+  - xoffset=0.: average %(x)s of particles
+  - xscale=1.: scaling factor applied to x data
+  - ybound=dirichlet: sets boundary condition on gridded data for y
+  - yoffset=0.: average %(y)s of particles
+  - yscale=1.: scaling factor applied to y data
+  - zz: optional third particle data quantity - when supplied, it is
+        deposited on a grid and that is used for contour levels, except if
+        color='density' is specified, then zz is used directly to color the
+        particles
   """
   return doc%vars()
 #-------------------------------------------------------------------------
@@ -1521,7 +1532,7 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   # --- Finish off the plot, adding titles and setting the frame limits.
   if titles: ptitles(titlet,titleb,titlel,titler,v=view)
-  settitles() 
+  settitles()
   if (lframe):
     ppp = list(pplimits)
     if ppp[0] != 'e': ppp[0] = ppp[0]*xscale
@@ -1669,7 +1680,7 @@ values from zmin to zmax.
     plfc(plotval,yy,xx,ireg,contours=array(levs),local=1)
   else:
     # --- Use cell array plotting for this case. All of the colors get a block
-    # --- of the same size. If levs is not specified, the uniform spacing 
+    # --- of the same size. If levs is not specified, the uniform spacing
     # --- matches the uniform spacing of the contours. If levs is specified,
     # --- each equal sized block represents one contour level, independent of
     # --- the range of the level relative to other levels.
@@ -3155,17 +3166,17 @@ that plot.
   kw['pplimits'] = pplimits[0]
   settitles("Y vs X","X","Y")
   gxy = ppgeneric(y,x,returngrid=rg,kwdict=kw)
- 
+
   kw['view'] = 4
   kw['pplimits'] = pplimits[1]
   settitles("Y' vs Y","Y","Y'")
   gyyp = ppgeneric(yp,y,returngrid=rg,kwdict=kw)
- 
+
   kw['view'] = 5
   kw['pplimits'] = pplimits[2]
   settitles("X' vs X","X","X'")
   gxxp = ppgeneric(xp,x,returngrid=rg,kwdict=kw)
- 
+
   kw['view'] = 6
   kw['pplimits'] = pplimits[3]
   settitles("X' vs Y'","Y'","X'")
@@ -3175,7 +3186,7 @@ that plot.
   # --- made.
   if gxy is None: return
 
-  # --- If the return value is not None, then call ppgeneric again to 
+  # --- If the return value is not None, then call ppgeneric again to
   # --- actually make the plots with the appropriate cmin and cmax
   cmin = kw.get('cmin',None)
   cmax = kw.get('cmax',None)
@@ -3188,17 +3199,17 @@ that plot.
   kw['pplimits'] = pplimits[0]
   settitles("Y vs X","X","Y")
   ppgeneric(y,x,kwdict=kw)
- 
+
   kw['view'] = 4
   kw['pplimits'] = pplimits[1]
   settitles("Y' vs Y","Y","Y'")
   ppgeneric(yp,y,kwdict=kw)
- 
+
   kw['view'] = 5
   kw['pplimits'] = pplimits[2]
   settitles("X' vs X","X","X'")
   ppgeneric(xp,x,kwdict=kw)
- 
+
   kw['view'] = 6
   kw['pplimits'] = pplimits[3]
   settitles("X' vs Y'","Y'","X'")
@@ -4826,7 +4837,7 @@ field domain.
   plfp(array(z),y,x,5*ones(len(z),'l'),cmin=0,cmax=4,local=1)
   for i in xrange(len(z)):
     pldj(x[i*5:i*5+4],y[i*5:i*5+4],x[i*5+1:i*5+5],y[i*5+1:i*5+5],local=1)
-      
+
 def _ppdecomposition_work(ix,nx,iz,nz):
   for izproc in xrange(len(iz)):
     for ixproc in xrange(len(ix)):
@@ -5107,7 +5118,7 @@ def set_label(height=None,font=None,bold=0,italic=0,axis='all',system=None):
       a=gist_style
     except:
       gstyle()
-      
+
     if font is not None:
       if(type(font)==type('string')):
         if font == 'Courier':     font = 0
@@ -5152,7 +5163,7 @@ class getstdout:
     def clear(self):
         self.out = []
     def flush(self):
-        pass         
+        pass
 
 def wplq(i):
     """return dictionary of plot options"""
@@ -5184,7 +5195,7 @@ def wplq(i):
           else:
             k = k+1
     return l
-             
+
 def aplq():
     """return list of dictionaries for all elements in active window"""
     list = []
@@ -5217,5 +5228,4 @@ def plellipse(l,h,np=100,thetamin=0.,thetamax=2.*pi,xcent=0.,ycent=0.,**kw):
   x = 0.5*l*cos(theta) + xcent
   y = 0.5*h*sin(theta) + ycent
   pla(y,x,**kw)
-  
-         
+
