@@ -1,3 +1,69 @@
+"""Basic graphics commands
+setup(): does the work needed to start writing plots to a file automatically
+winon(): creates X graphic windows and optionally associated cgm or ps files
+fma(): frame advance, sends plots to the plot file and sets window to be
+       cleared for the next plot
+hcp(): send current plot to hard-copy file without clearing the display
+redraw(): redraw the plot display
+
+All plot commands take the color option. These are possible values:
+fg, bg, white, black, red, green, blue, cyan, magenta, yellow 
+
+Many commands take the marker option. These are possible values:
+point, plus, star, circle
+
+plg(): basic plotting routine, can plot multi-dimensional arrays
+plp(): plots markers (dots) instead of lines
+limits(): sets plot limits in order left, right, bottom, top
+ptitles(): draw plot titles on the current frame
+zoombox(): when called, use the mouse left button (press and hold) to draw a
+           box around the area to be zoomed to.
+mouse commmands: left button zoom in, middle shifts, right zoom out
+
+These return or set a slice out of the rho or phi array.
+getrho(), getphi(), setrho(), setphi()
+
+The following plot various particles projections.
+ppzxy(), ppzx(), ppzy(), ppzr()
+ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppzrp(), ppzvr(), ppzvperp()
+ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
+ppvxvy(), ppvxvz(), ppvyvz(), ppvzvperp()
+pptrace()
+pprrp(), pprtp(), pprvr(), pprvz()
+
+The following plot various particles projections using color.
+ppzxco(), ppzyco(), ppzxyco(), ppzvzco()
+
+Plots arbitrary particle projections using color
+ppco()
+
+Plots various quantities versus z in beam frame are defined in pzplots.py.
+(see pzplotsdoc())
+
+Run histplotsdoc() for a list of history plots.
+
+Plots solution from envelope code.
+penv()
+
+Plots contours of charge density (rho) or electrostatic potential (phi) in
+various planes.
+pcrhozy(), pcrhozx(), pcrhoxy()
+pcphizy(), pcphizx(), pcphixy()
+pcselfezy(), pcselfezx(), pcselfexy()
+pcjzy(), pcjzx(), pcjxy()
+pcbzy(), pcbzx(), pcbxy()
+pcazy(), pcazx(), pcaxy()
+
+Dynamically manipulate the color palette using the colorbar
+changepalette
+
+Dynamically view any gist 3-D surface plot
+viewsurface
+
+pltfld3d(): makes fields plots which have been turned on
+onedplts(): makes 1-D plots which have been turned on
+psplots(): makes particle phase space plots which have been turned on
+"""
 from warp import *
 
 import __main__
@@ -34,95 +100,11 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.234 2009/01/21 22:13:21 dave Exp $"
-
-##########################################################################
-# This setups the plot handling for warp.
-##########################################################################
-
-##########################################################################
-warpplotsdocbasic = """
-Basic graphics commands
-winon(): creates X graphic windows
-hcp(): send current plot to hard-copy file
-fma(): do a frame advance
-plg(): basic plotting routine, can plot multi-dimensional arrays
-plp(): plots markers (dots) instead of lines
-pla(): plots multi-dimensional array as a series of lines
-plotc(): contour plots 2-D data
-plotfc(): contour plots 2-D data with colored contour levels
-limits(): sets plot limits in order left, right, bottom, top
-zoombox(): when called, use the mouse left button (press and hold) to draw a
-           box around the area to be zoomed to.
-mouse commmands: left button zoom in, middle shifts, right zoom out
-
-These return or set a slice out of the rho or phi array.
-getrho(), getphi(), setrho(), setphi()
-
-The following plot various particles projections.
-ppzxy(), ppzx(), ppzy(), ppzr()
-ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppzrp(), ppzvr(), ppzvperp()
-ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
-ppvxvy(), ppvxvz(), ppvyvz(), ppvzvperp()
-pptrace()
-pprrp(), pprtp(), pprvr(), pprvz()
-
-The following plot various particles projections using color.
-ppzxco(), ppzyco(), ppzxyco(), ppzvzco()
-
-Plots arbitrary particle projections using color
-ppco()
-
-Plots various quantities versus z in beam frame (see pzplotsdoc())
-
-Run histplotsdoc() for a list of history plots.
-
-Plots solution from envelope code.
-penv()
-
-Plots contours of charge density (rho) or electrostatic potential (phi) in
-various planes.
-pcrhozy(), pcrhozx(), pcrhoxy()
-pcphizy(), pcphizx(), pcphixy()
-pcselfezy(), pcselfezx(), pcselfexy()
-pcjzy(), pcjzx(), pcjxy()
-pcbzy(), pcbzx(), pcbxy()
-pcazy(), pcazx(), pcaxy()
-
-Dynamically view any gist 3-D surface plot
-viewsurface
-
-Remove extra surface plots
-hidesurfaces()
-"""
-##########################################################################
-warpplotsdocmore = """
-setup(): does the work needed to start writing plots to a file automatically
-plotruninfo(): plots run info at bottom of plots (called by fma and hcp)
-nf() = fma() Emulation of Basis command
-sf() = redraw() Emulation of Basis command
-plothist(): convenience routine for plotting generic history data
-
-Define variable names for various colors
-fg, bg, white, black, red, green, blue, cyan, magenta, yellow 
-
-Define variable names for plot markers
-point, plus, star, circle
-
-settitles(): set plot titles
-ptitles(): draw plot titles on the current frame
-
-pltfld3d(): makes fields plots which have been turned on
-onedplts(): makes 1-D plots which have been turned on
-psplots(): makes particle phase space plots which have been turned on
-"""
-##########################################################################
+warpplots_version = "$Id: warpplots.py,v 1.235 2009/01/31 00:42:44 dave Exp $"
 
 def warpplotsdoc():
-  print warpplotsdocbasic
-  print warpplotsdocmore
-
-##########################################################################
+  import warpplots
+  print warpplots.__doc__
 
 ##########################################################################
 top.lpsplots = true
