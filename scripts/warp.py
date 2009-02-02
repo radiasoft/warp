@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.175 2009/01/27 21:13:36 dave Exp $"
+warp_version = "$Id: warp.py,v 1.176 2009/02/02 22:04:18 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -48,6 +48,7 @@ except ImportError:
   from gistdummy import *
 
 # Import the warpC shared object which contains all of WARP
+import warpC
 from warpC import *
 
 from Forthon import *
@@ -89,9 +90,9 @@ from ctl import *
 
 # --- Now make sure that a proper version of warpC has been imported.
 if lparallel:
-  assert isdefmpiparallel(),"Error: a serial version of warpC was imported into a parallel run"
+  assert isdefmpiparallel(),"A serial version of warpC, %s, was imported into a parallel run. Is PYTHONPATH correct?"%warpC.__file__
 else:
-  assert not isdefmpiparallel(),"Error: a parallel version of warpC was imported into a serial run"
+  assert not isdefmpiparallel(),"A parallel version of warpC, %s, was imported into a serial run. Is PYTHONPATH correct?"%warpC.__file__
 
 # --- Rearrange the list of packages to a more sensible order
 package('wxy')
