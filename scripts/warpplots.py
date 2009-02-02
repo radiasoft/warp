@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.236 2009/01/31 01:25:13 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.237 2009/02/02 18:54:48 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -4079,13 +4079,21 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
+def pcrhozr(lbeamframe=0,solver=None,local=0,**kw):
+  """Plots contours of charge density in the Z-R plane
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  """
+  pcrhozx(iy=0,fullplane=0,lbeamframe=lbeamframe,solver=solver,local=local,**kw)
+if sys.version[:5] != "1.5.1":
+  pcrhozr.__doc__ = pcrhozr.__doc__ + ppgeneric_doc("z","r")
+##########################################################################
 def pcrhoxy(iz=None,fullplane=1,solver=None,local=0,**kw):
   """Plots contours of charge density in the X-Y plane
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if iz is None: iz = nint(-solver.zmmin/solver.dz)
+  if iz is None: iz = solver.iz_axis
   if local:
     kw.setdefault('xmin',solver.xmminlocal)
     kw.setdefault('xmax',solver.xmmaxlocal)
@@ -4187,13 +4195,21 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcphizx.__doc__ = pcphizx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
+def pcphizr(lbeamframe=0,solver=None,local=0,**kw):
+  """Plots contours of electrostatic potential in the Z-R plane
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  """
+  pcphizx(iy=0,fullplane=0,lbeamframe=lbeamframe,solver=solver,local=local,**kw)
+if sys.version[:5] != "1.5.1":
+  pcphizr.__doc__ = pcphizr.__doc__ + ppgeneric_doc("z","r")
+##########################################################################
 def pcphixy(iz=None,fullplane=1,solver=None,local=0,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if iz is None: iz = nint(-solver.zmmin/solver.dz)
+  if iz is None: iz = solver.iz_axis
   if local:
     kw.setdefault('xmin',solver.xmminlocal)
     kw.setdefault('xmax',solver.xmmaxlocal)
@@ -4317,6 +4333,21 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
 if sys.version[:5] != "1.5.1":
   pcselfezx.__doc__ = pcselfezx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
+def pcselfezr(comp=None,solver=None,
+              lbeamframe=0,vec=0,sz=1,sr=1,local=0,**kw):
+  """Plots contours of electrostatic potential in the Z-R plane
+  - comp: field component to plot, either 'r', 'x', 'y', or 'z'
+          'r' and 'x' are the same thing.
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - vec=0: when true, plots E field vectors
+  - sz,sr=1: step size in grid for plotting fewer points
+  """
+  if comp == 'r': comp = 'x'
+  pcselfezx(comp=comp,iy=0,fullplane=0,solver=solver,
+            lbeamframe=lbeamframe,vec=vec,sz=sz,sx=sr,local=local,**kw)
+if sys.version[:5] != "1.5.1":
+  pcselfezr.__doc__ = pcselfezr.__doc__ + ppgeneric_doc("z","r")
+##########################################################################
 def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
               local=0,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
@@ -4327,7 +4358,7 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   - sx,sy=1: step size in grid for plotting fewer points
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if iz is None: iz = nint(-solver.zmmin/solver.dz)
+  if iz is None: iz = solver.iz_axis
   if local:
     kw.setdefault('xmin',solver.xmminlocal)
     kw.setdefault('xmax',solver.xmmaxlocal)
@@ -4471,7 +4502,7 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   - sx,sy=1: step size in grid for plotting fewer points
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if iz is None: iz = nint(-solver.zmmin/solver.dz)
+  if iz is None: iz = solver.iz_axis
   if local:
     kw.setdefault('xmin',solver.xmminlocal)
     kw.setdefault('xmax',solver.xmmaxlocal)
@@ -4615,7 +4646,7 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   - sx,sy=1: step size in grid for plotting fewer points
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if iz is None: iz = nint(-solver.zmmin/solver.dz)
+  if iz is None: iz = solver.iz_axis
   if local:
     kw.setdefault('xmin',solver.xmminlocal)
     kw.setdefault('xmax',solver.xmmaxlocal)
@@ -4759,7 +4790,7 @@ def pcaxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   - sx,sy=1: step size in grid for plotting fewer points
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if iz is None: iz = nint(-solver.zmmin/solver.dz)
+  if iz is None: iz = solver.iz_axis
   if local:
     kw.setdefault('xmin',solver.xmminlocal)
     kw.setdefault('xmax',solver.xmmaxlocal)
