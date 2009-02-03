@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.183 $, $Date: 2008/12/19 00:50:24 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.184 $, $Date: 2009/02/03 21:10:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -4611,14 +4611,12 @@ c=============================================================================
 c=============================================================================
       subroutine gathersourcefromchild(source,nc,nn,childsource,cnn,
      &                                 l,u,fulllower,childlower,childupper,
-     &                                 r,weights,radius,cradius,lcylindrical,
-     &                                 dopbounds,pbounds,rootdims)
+     &                                 r,weights,radius,cradius,lcylindrical)
       use Subtimersf3d
       integer(ISZ):: nc,nn(0:2),nextra,cnn(0:2)
       integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
       integer(ISZ):: childlower(0:2),childupper(0:2)
       integer(ISZ):: r(0:2)
-      integer(ISZ):: dopbounds,pbounds(0:5),rootdims(0:2)
       real(kind=8):: source(0:nc-1,0:nn(0),0:nn(1),0:nn(2))
       real(kind=8):: childsource(0:nc-1,0:cnn(0),0:cnn(1),0:cnn(2))
       real(kind=8):: weights(-r(0)+1:r(0)-1,-r(1)+1:r(1)-1,-r(2)+1:r(2)-1)
@@ -4687,22 +4685,6 @@ c                     --- division.
                       wsource = wsource*rr*crr
                     endif
 
-c                   --- Adjust for symmetries
-c                   if (dopbounds == 1) then
-c                     if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0 .and. .not. lcylindrical)
-c    &                  wsource = 2*wsource
-c                     if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
-c    &                  wsource = 2*wsource
-c                     if (pbounds(2) == 1 .and. iy == 0 .and. iwy > 0)
-c    &                  wsource = 2*wsource
-c                     if (pbounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
-c    &                  wsource = 2*wsource
-c                     if (pbounds(4) == 1 .and. iz == 0 .and. iwz > 0)
-c    &                  wsource = 2*wsource
-c                     if (pbounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
-c    &                  wsource = 2*wsource
-c                   endif
-
                     source(0,ix0,iy0,iz0) = source(0,ix0,iy0,iz0) + wsource
 
                   enddo
@@ -4717,8 +4699,8 @@ c                   endif
                     do ic=0,nc-1
                       wsource=weights(iwx,iwy,iwz)*childsource(ic,icx+iwx,icy+iwy,icz+iwz)
                       if (lcylindrical) then
-c                       --- Calculate volumes. Note that the factors of pi and dz
-c                       --- cancel out and so are left out. Also one
+c                       --- Calculate volumes. Note that the factors of pi and
+c                       --- dz cancel out and so are left out. Also one
 c                       --- factor of dr has beed factored out. Finally, note
 c                       --- that crr is calculated as the volume to avoid a
 c                       --- division.
@@ -4729,22 +4711,6 @@ c                       --- division.
                         endif
                         wsource = wsource*r(2)*rr*crr
                       endif
-
-c                     --- Adjust for symmetries
-c                     if (dopbounds == 1) then
-c                       if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0 .and. .not. lcylindrical)
-c    &                    wsource = 2*wsource
-c                       if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
-c    &                    wsource = 2*wsource
-c                       if (pbounds(2) == 1 .and. iy == 0 .and. iwy > 0)
-c    &                    wsource = 2*wsource
-c                       if (pbounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
-c    &                    wsource = 2*wsource
-c                       if (pbounds(4) == 1 .and. iz == 0 .and. iwz > 0)
-c    &                    wsource = 2*wsource
-c                       if (pbounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
-c    &                    wsource = 2*wsource
-c                     endif
 
                       source(ic,ix0,iy0,iz0) = source(ic,ix0,iy0,iz0) + wsource
                     enddo
