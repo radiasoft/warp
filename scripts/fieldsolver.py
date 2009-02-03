@@ -616,7 +616,7 @@ the diagnostic is of interest and is meaningfull.
 
     self.ix_axis = nint(-self.xmmin/self.dx)
     self.iy_axis = nint(-self.ymmin/self.dy)
-    if solver.nz == 0:
+    if self.nz == 0:
       self.iz_axis = 0
     else:
       self.iz_axis = nint(-self.zmmin/self.dz)
