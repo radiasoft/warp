@@ -93,7 +93,11 @@ def fetche(pgroup=None,ipmin=None,ip=None,js=None):
   if js is None: js = 0
   if ipmin is None: ipmin = pgroup.ins[js]
   if ip is None: ip = pgroup.nps[js]
-  fetche3d(pgroup,ipmin,ip,js+1)
+  currpkg = package()[0]
+  if (currpkg == "wxy"):
+    fetchexy(pgroup,ipmin,ip,js+1,top.pgroup.ex,top.pgroup.ey,top.pgroup.ez)
+  else:
+    fetche3d(pgroup,ipmin,ip,js+1)
 
 #=============================================================================
 def loadj(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -612,7 +616,10 @@ the diagnostic is of interest and is meaningfull.
 
     self.ix_axis = nint(-self.xmmin/self.dx)
     self.iy_axis = nint(-self.ymmin/self.dy)
-    self.iz_axis = nint(-self.zmmin/self.dz)
+    if solver.nz == 0:
+      self.iz_axis = 0
+    else:
+      self.iz_axis = nint(-self.zmmin/self.dz)
 
     # --- Generate a list of the neighboring processors.
     self.neighborpes = [self.convertindextoproc(ix=self.ixproc-1),
