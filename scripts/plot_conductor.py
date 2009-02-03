@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.121 2008/11/21 20:49:48 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.122 2009/02/03 18:59:35 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -873,7 +873,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   # --- This logic is needed since in the parallel version, zmminlocal is local.
   # --- If the user passes in a value, it must be checked for consistency,
   # --- otherwise coding below could lead to a deadlock in the parallel version
-  if iz is None: iz = nint(-solver.zmmin/solver.dz)
+  if iz is None: iz = solver.iz_axis
   if w3d.solvergeom<>w3d.XYgeom:
     if iz < 0 or solver.nz < iz: return
   if scale:
@@ -1287,7 +1287,7 @@ in X-Y plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  if not iz: iz = nint(-solver.zmmin/solver.dz)
+  if iz is None: iz = solver.iz_axis
   if iz < 0 or solver.nz < iz: return
   if scale:
     dy = solver.dy*signy
