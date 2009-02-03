@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.421 $, $Date: 2009/02/03 19:35:49 $
+c@(#) File W3D.F, version $Revision: 3.422 $, $Date: 2009/02/03 20:22:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5655,7 +5655,7 @@ c       --- seeds for the generators.
 c       --- first, calculate z extent of beam within this processor
         zmin = max(zimin_s(isid),zpminlocal)
         zmax = min(zimax_s(isid),zpmaxlocal)
-        if (zlen = 0.) then
+        if (zlen == 0.) then
 c         --- Divide the particles evenly up among the processors. The
 c         --- form of npm is such that is the numbers of particles is not
 c         --- evenly divisible by the number of processors, some processors
