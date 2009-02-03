@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.161 $, $Date: 2009/01/15 19:00:04 $
+c@(#) File DW3D.F, version $Revision: 3.162 $, $Date: 2009/02/03 19:35:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -179,7 +179,11 @@ c  Calculates the line charge density from rho.
       if (lw3dtimesubs) substarttime = wtime()
       if (.not. lgtlchg3d .or. .not. associated(rho)) return
 
-      dzi = 1./dz
+      if (nz == 0) then
+        dzi = 0.
+      else
+        dzi = 1./dz
+      endif
 
 c     conversion factor to go from grid frame to beam frame
       zz = zgrid + zmminlocal - zzmin - zbeam
@@ -248,11 +252,17 @@ c=============================================================================
       use Z_Moments
 
       integer(ISZ):: iwin,ix,iy,iz,ii
-      real(kind=8):: zwin,z0,z1,ww
+      real(kind=8):: zwin,z0,z1,ww,dzi
 
 c  Sets rho window diagnostics (they need data from the 3d mesh)
 
       if (.not. lrhodia3d .or. .not. associated(rho)) return
+
+      if (nz == 0) then
+        dzi = 0.
+      else
+        dzi = 1./dz
+      endif
 
       rhomid = 0.
       rhomax = 0.
@@ -262,10 +272,10 @@ c  Sets rho window diagnostics (they need data from the 3d mesh)
 !$OMP PARALLEL DO PRIVATE(zwin,iz,z1,z0)
         do iwin = 0,NWINDOWS
           zwin = 0.5 * (zwindows(1,iwin) + zwindows(2,iwin))
-          iz = (zwin + zbeam - zgrid - zmminlocal)/dz
+          iz = (zwin + zbeam - zgrid - zmminlocal)*dzi
           if (zwindows(1,iwin).ne.zwindows(2,iwin) .and.
      &        0 <= iz .and. iz < nzlocal) then
-            z1 = (zwin + zbeam - zgrid - zmminlocal)/dz - iz
+            z1 = (zwin + zbeam - zgrid - zmminlocal)*dzi - iz
             z0 = 1. - z1
             rhomid(iwin) = z0*rho(ix_axis,iy_axis,iz) +
      &                     z1*rho(ix_axis,iy_axis,iz+1)
@@ -295,8 +305,8 @@ c  Sets rho grid diagnostics (they need data from the 3d mesh)
 
 c         --- rho on axis
           do iz = 0,nzmmnt
-             ii = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz
-             ww = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz - ii
+             ii = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)*dzi
+             ww = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)*dzi - ii
              if (ii >= 0 .and. ii < nzlocal)
      &         rhomidz(iz) = rho(ix_axis,iy_axis,ii)*(1. - ww) +
      &                       rho(ix_axis,iy_axis,ii+1)*ww
@@ -310,8 +320,8 @@ c       --- max rho at each z (vectorized)
         enddo
 !$OMP PARALLEL DO PRIVATE(ii,ww)
         do iz = 0,nzmmnt
-          ii = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz
-          ww = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz - ii
+          ii = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)*dzi
+          ww = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)*dzi - ii
           if (ii >= 0 .and. ii < nzlocal) then
             do iy = 0,nylocal
               do ix = 0,nxlocal
@@ -361,7 +371,11 @@ c  Sets 1d array for the charge density on the axis
       if (0 <= ix_axis .and. ix_axis <= nxlocal .and.
      &    0 <= iy_axis .and. iy_axis <= nylocal) then
 
-        dzi = 1./dz
+        if (nz == 0) then
+          dzi = 0.
+        else
+          dzi = 1./dz
+        endif
 
         ix = ix_axis
         iy = iy_axis
@@ -535,7 +549,11 @@ c  Sets 1d array for the potential on the axis
       if (0 <= ix_axis .and. ix_axis <= nxlocal .and.
      &    0 <= iy_axis .and. iy_axis <= nylocal) then
 
-        dzi = 1./dz
+        if (nz == 0) then
+          dzi = 0.
+        else
+          dzi = 1./dz
+        endif
 
         ix = ix_axis
         iy = iy_axis
@@ -594,7 +612,11 @@ c  Sets 1d array for the space charge E field on the axis
       if (0 <= ix_axis .and. ix_axis <= nxlocal .and.
      &    0 <= iy_axis .and. iy_axis <= nylocal) then
 
-        dzi = 1./dz
+        if (nz == 0) then
+          dzi = 0.
+        else
+          dzi = 1./dz
+        endif
 
         ix = ix_axis
         wx = ix_axis - ix

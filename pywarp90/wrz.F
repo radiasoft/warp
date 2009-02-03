@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.27 $, $Date: 2008/05/23 18:36:53 $
+c@(#) File WRZ.M, version $Revision: 3.28 $, $Date: 2009/02/03 19:35:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -313,8 +313,8 @@ c  Call the field solver so  we can plot phi on axis at t=0
       call vprz (-1)
       if (periinz) call perphirz(phi(0,-1),nr,nz)
 
-c  Call seterz to fill E_z and E_r arrays
-         call seterz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
+c  Call seterzrz to fill E_z and E_r arrays
+         call seterzrz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                efetch(1),er,et,ez,frext,erfld,ezfld,eoffrz)
          call setexte(it,dt,dz,vbeam,nr,nz)
@@ -612,8 +612,8 @@ c  Field-solve for potential (copy rho into phi first, compute e.s.e. after)
          call getforce
       endif
       if ((caller .eq. "wrzgen").and.(ifeears .eq. 3)) then
-c  Call seterz to fill E_z and E_r arrays
-         call seterz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
+c  Call seterzrz to fill E_z and E_r arrays
+         call seterzrz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                efetch(1),er,et,ez,frext,erfld,ezfld,eoffrz)
          call getforce
@@ -1065,13 +1065,13 @@ c       call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%
 c  Loop over species
       do is=1,ns
          isid = pgroup%sid(is-1) + 1
-c  Call seterz to fill E_z and E_r arrays
+c  Call seterzrz to fill E_z and E_r arrays
          if (it .le. 1) then
-         call seterz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
+         call seterzrz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                efetch(is),er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
          else
-         call seterz (0,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
+         call seterzrz (0,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                efetch(is),er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
          endif
@@ -1080,7 +1080,7 @@ c  Call seterz to fill E_z and E_r arrays
 c  Loop over particle block, and move each block seperately
          do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
             ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
-            call seterz (1,phi,force,ip,pgroup%xp(ipmin),pgroup%zp(ipmin),zbeam,
+            call seterzrz (1,phi,force,ip,pgroup%xp(ipmin),pgroup%zp(ipmin),zbeam,
      &                   rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                   efetch(is),er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
             call othererz(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
@@ -1362,7 +1362,7 @@ c            tp(ip) = tp(ip) + asin(y2p/rp(ip))
       return
       end
 c=============================================================================
-      subroutine seterz (itask,phi,force,np,rp,zp,zbeam,rmmin,zmmin,zmmax,
+      subroutine seterzrz (itask,phi,force,np,rp,zp,zbeam,rmmin,zmmin,zmmax,
      &                   dr,dz,nr,nz,efetch,er,et,ez,frext,
      &                   erfld,ezfld,eoffrz)
       use Constant

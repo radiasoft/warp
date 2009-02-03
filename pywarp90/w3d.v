@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.293 $, $Date: 2009/01/05 23:32:03 $
+#@(#) File W3D.V, version $Revision: 3.294 $, $Date: 2009/02/03 19:35:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.293 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.294 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -267,12 +267,12 @@ ymmin   real  [m]  /0./            # Lower limit of mesh
 ymmax   real  [m]  /0./            # Upper limit of mesh
 zmmin   real  [m]  /0./ +parallel  # Lower limit of mesh
 zmmax   real  [m]  /0./ +parallel  # Upper limit of mesh
-nx      integer    /2/             # Mesh points are 0,...,nx
-ny      integer    /2/             # Mesh points are 0,...,ny
-nz      integer    /2/  +parallel  # Full size of nz
-nxlocal integer    /2/  +parallel  # Mesh points are 0,...,nxlocal
-nylocal integer    /2/  +parallel  # Mesh points are 0,...,nylocal
-nzlocal integer    /2/  +parallel  # Mesh points are 0,...,nzlocal
+nx      integer    /0/             # Mesh points are 0,...,nx
+ny      integer    /0/             # Mesh points are 0,...,ny
+nz      integer    /0/  +parallel  # Full size of nz
+nxlocal integer    /0/  +parallel  # Mesh points are 0,...,nxlocal
+nylocal integer    /0/  +parallel  # Mesh points are 0,...,nylocal
+nzlocal integer    /0/  +parallel  # Mesh points are 0,...,nzlocal
 xmminlocal  real [m] /0./          # Local value of xmmin
 xmmaxlocal  real [m] /0./          # Local value of xmmax
 ymminlocal  real [m] /0./          # Local value of ymmin
@@ -337,7 +337,7 @@ kzsq(0:nz)              _real [1/m**2]  # Discrete analog to kz^2/4Pi
 rstar(-1:nzlocal+1)     _real [m]       # Radius of curv of refrnce orbit
 phiprv(0:nx,0:nzlocal)  _real [V]       # Prev phi at y_mid, for error test
 phisav(0:nx,-1:nzlocal) _real [V]       # Phi at current y slice (scratch) 
-xywork(2,0:nx,0:ny)     _real           # Work space for transverse FFTs
+xywork3d(2,0:nx,0:ny)   _real           # Work space for transverse FFTs
 zwork(2,0:nx,0:nz)      _real           # Work space used to optimize vsftz
 
 *********** Fields3dParticles parallel:

@@ -1,5 +1,5 @@
 wrz
-#@(#) File WRZ.V, version $Revision: 3.11 $, $Date: 2004/09/25 00:37:55 $ 
+#@(#) File WRZ.V, version $Revision: 3.12 $, $Date: 2009/02/03 19:35:49 $ 
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WRZ of code WARP
@@ -10,7 +10,7 @@ wrz
  
 *********** WRZversion dump:
 # Quantities associated with version control 
-verswrz character*19 /"$Revision: 3.11 $"/ # Current code version, set by CVS
+verswrz character*19 /"$Revision: 3.12 $"/ # Current code version, set by CVS
  
 *********** InPltCtlrz dump:
 # Controls for when the various plots are made
@@ -237,7 +237,7 @@ pushrz (center:string,np,rp:real,tp:real,zp:real,urp:real,utp:real,
         uzp:real,gaminv:real,er:real,et:real,ez:real,br:real,bt:real,
         bz:real,frext:real,q:real,m:real,dt:real,gamadv:real)
              subroutine # Particle advance
-seterz (itask,phi:real,force:real,np,rp:real,zp:real,zbeam:real,
+seterzrz (itask,phi:real,force:real,np,rp:real,zp:real,zbeam:real,
         rmmin:real,zmmin:real,zmmax:real,dr:real,dz:real,nr,nz,
         efetch:integer,
         er:real,et:real,ez:real,frext:real,erfld:real,

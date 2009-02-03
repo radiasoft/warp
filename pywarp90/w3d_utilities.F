@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.26 $, $Date: 2008/12/14 18:47:46 $
+c@(#) File w3d_utilities.F, version $Revision: 1.27 $, $Date: 2009/02/03 19:35:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -716,6 +716,13 @@ c=============================================================================
       integer(ISZ):: i
       real(kind=8):: zlast
 
+c     --- nz == 0 is a special case
+      if (nz == 0) then
+        izpslave = 0
+        nzpslave = 0
+        return
+      endif
+
       if (.not. lautodecomp) then
 
 c       --- Set the decomposition based on the user set userdecomp. This
@@ -948,7 +955,11 @@ c     --- determined from the user supplied decomposition.
       else
         dy = (ymmax - ymmin)/ny
       endif
-      dz = (zmmax - zmmin)/nz
+      if (nz == 0) then
+        dz = 0.
+      else
+        dz = (zmmax - zmmin)/nz
+      endif
 
       fsdecomp%xmin = xmmin + fsdecomp%ix*dx
       fsdecomp%ymin = ymmin + fsdecomp%iy*dy

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.100 $, $Date: 2009/01/26 18:32:33 $
+c@(#) File WXY.M, version $Revision: 3.101 $, $Date: 2009/02/03 19:35:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -98,31 +98,23 @@ c  Calculate step size if not set by the user.
       if (dt == 0. .and. vbeam .ne. 0.) dt = ds/vbeam
 
 c  Set default values for the axial grid if using thin slice model.
-c  Zmmin and zmmax are chosen so that dz = 1.
+c  zmmin and zmmax are forced to 0.
+c  nz is forced to 0
       if (.not. lthick) then
-        if (zmminlocal == 0.0 .and. zmmaxlocal == 0.0) then
-          zmminlocal = -0.5
-          zmmaxlocal = -zmminlocal
-        endif
-        if (zimin == 0.0 .and. zimax == 0.0) then
-          zimin = -0.5
-          zimax = -zimin
-        endif
-        zmmin = zmminlocal
-        zmmax = zmmaxlocal
-        zmminglobal = zmmin
-        zmmaxglobal = zmmax
-        if (nz == 2) nz = 1
+        zmminlocal = 0.
+        zmmaxlocal = 0.
+        zmmin = 0.
+        zmmax = 0.
+        zmminglobal = 0.
+        zmmaxglobal = 0.
+        zimin = 0.
+        zimax = 0.
+        nz = 0
       endif
 
 #ifdef MPIPARALLEL
 c     --- Use routine from w3d to initialize the MPI and divide up
-c     --- the problem. nz is set to nzprocs so that the grid is divided
-c     --- up properly among the processors. Note that then init_w3d_parallel
-c     --- then divides nz by nzprocs again for the decomposition.
-      if (.not. lthick) then
-        nz = nzprocs
-      endif
+c     --- the problem.
       call init_w3d_parallel()
 #endif
       call setupdecompositionw3d()
@@ -167,8 +159,13 @@ c  Create the dynamic arrays in Z_arrays; set the z mesh
       call gchange("Z_arrays", 0)
       if (zzmax == 0.) zzmax = zmmax
       if (zzmin == 0.) zzmin = zmmin
-      dzz = (zzmax - zzmin)/nzzarr
-      dzzi = 1./dzz
+      if (nzzarr == 0) then
+        dzz = 0.
+        dzzi = 0.
+      else
+        dzz = (zzmax - zzmin)/nzzarr
+        dzzi = 1./dzz
+      endif
       do k = 0, nzzarr
          zplmesh(k) = zzmin + k*dzz
       enddo
@@ -240,7 +237,11 @@ c  Calculate mesh dimensioning quantities
 
       dx = (xmmax - xmmin) / nx
       dy = (ymmax - ymmin) / ny
-      dz = (zmmax - zmmin) / nz
+      if (nz == 0) then
+        dz = 0.
+      else
+        dz = (zmmax - zmmin) / nz
+      endif
       do i = 0, nx
          xmesh(i) = i * dx + xmmin
       enddo
@@ -270,13 +271,15 @@ c  Calculate mesh dimensioning quantities
 c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
       ix_axis = nint(-xmmin/dx)
       iy_axis = nint(-ymmin/dy)
-      iz_axis = nint(-zmminlocal/dz)
+      if (nz == 0) then
+        iz_axis = 0
+      else
+        iz_axis = nint(-zmminlocal/dz)
+      endif
 
 c Initialize grid when solvergeom=XYgeom
       if(AMRlevels>0) solvergeom=XYgeom
       if(solvergeom==XYgeom) then
-        nzlocal = 0
-        nz = nzlocal
         fstype = 10
         call init_base(nx,ny,dx,dy,xmmin,ymmin,.false.)
       end if
@@ -343,7 +346,10 @@ c  thick slice model, though, should still calculate the zmoments.
       call gallot("Z_Moments", 0)
       if (zmmntmax == 0.) zmmntmax = zmmaxlocal
       if (zmmntmin == 0.) zmmntmin = zmminlocal
-      if (nzmmnt > 0) then
+      if (nzmmnt == 0) then
+        dzm = 0.
+        dzmi = 0.
+      else
         dzm = (zmmntmax - zmmntmin)/nzmmnt
         dzmi = 1./dzm
       endif
@@ -473,15 +479,9 @@ c  are then set from that.
 
       it = it + 1
       time = time + dt
-      if (lgridqnt) then
-c       --- zgrid is integer number of dz's
-        zgridprv = zbeam
-        zgrid = int((zbeam + dt*vbeamfrm + zcorrection)/dz + .5)*dz
-      else
-c       --- zgrid is the same as the beam frame
-        zgridprv = zbeam
-        zgrid = zbeam + dt*vbeamfrm + zcorrection
-      endif
+c     --- zgrid is the same as the beam frame
+      zgridprv = zbeam
+      zgrid = zbeam + dt*vbeamfrm + zcorrection
       zgridndts = zgrid
       call stepid (it, time, zgrid)
 
@@ -524,13 +524,8 @@ c       --- Note that dt is only changed if the grid frame velocity was changed.
 
 c       --- set timestep counter, time, and advance grid frame
         time = time + dt
-        if (lgridqnt) then
-c         --- zgrid is integer number of dz's
-          zgrid = int((zbeam + dt*vbeamfrm + zcorrection)/dz + .5)*dz
-        else
-c         --- zgrid is the same as the beam frame
-          zgrid = zbeam + dt*vbeamfrm + zcorrection
-        endif
+c       --- zgrid is the same as the beam frame
+        zgrid = zbeam + dt*vbeamfrm + zcorrection
         zgridndts = zgrid
         call stepid (it, time, zgrid)
       endif
@@ -960,10 +955,12 @@ c         --- The zp is preserved so that the small correction done
 c         --- in setdtp is still used.
           pgroup%zp(ipmin:ipmin+ip-1) = zpo
         else
-          call sete3d(phi,selfe,ip,
-     &                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                zgridprv,xmmin,ymmin,zmminlocal,dx,dy,dz,nx,ny,nzlocal,
-     &                efetch(is),ex,ey,ez,l2symtry,l4symtry,.false.,1,1,1)
+c         --- Note that zp is passed in as a dummy, it is never used
+c         --- since lcylindrical is false.
+          call setexy(phi,selfe,ip,
+     &                pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                xmmin,ymmin,dx,dy,nx,ny,
+     &                efetch(is),ex,ey,ez,l2symtry,l4symtry,1,1)
         endif
       elseif(solvergeom==XYgeom) then
         call fieldweightxz(pgroup%xp(ipmin),pgroup%yp(ipmin),ex,ey,ip,zgridprv,
@@ -1518,9 +1515,7 @@ c  For thin slice model, average out rho along the axis.
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
-      if(nzlocal==0) return
-
-      if (bound0 == periodic .or. boundnz == periodic) then
+      if (lthick .and. bound0 == periodic .or. boundnz == periodic) then
 
 !$OMP DO
         do ix=0,nx
@@ -1536,36 +1531,9 @@ c  For thin slice model, average out rho along the axis.
 #ifdef MPIPARALLEL
 c     --- Sum up rho over the processors.
       if (.not. lthick) then
-        call parallelsumrealarray(rho(0,0,0),(1+nx)*(1+ny))
+        call parallelsumrealarray(rho,(1+nx)*(1+ny))
       endif
 #endif
-
-      if (.not. lthick) then
-c       --- In the setrhoxy routine, all of the charge was put at iz=0.
-
-        if (nzlocal > 1) then
-          nzi = 1./real(nzlocal)
-!$OMP DO
-          do iy=0,ny
-            do ix=0,nx
-              rho(ix,iy,0) = rho(ix,iy,0)*nzi
-            enddo
-          enddo
-!$OMP END DO
-        endif
-
-c       --- Distribute rho to all z planes.
-!$OMP DO
-        do iz=1,nzlocal
-          do iy=0,ny
-            do ix=0,nx
-              rho(ix,iy,iz) = rho(ix,iy,0)
-            enddo
-          enddo
-        enddo
-!$OMP END DO
-
-      endif
 
       if (lwxytimesubs) timefixrhoxy = timefixrhoxy + wtime() - substarttime
       return
@@ -1592,20 +1560,10 @@ c       --- Sum up the current from all of the speices.
         curr(:,nszarr) = sum(curr(:,0:nszarr-1),2)
       endif
 
-      if (bound0 == periodic .or. boundnz == periodic) then
+      if (lthick .and. bound0 == periodic .or. boundnz == periodic) then
 
         curr(0,:)  = curr(0,:) + curr(nzzarr,:)
         curr(nzzarr,:) = curr(0,:)
-
-      endif
-
-      if (.not. lthick .and. nzzarr > 1) then
-c       --- In the setcurrxy routine, all of the current was put at iz=0.
-
-c       --- Distribute the current.
-        do iz=1,nzzarr
-          curr(iz,:) = curr(0,:)
-        enddo
 
       endif
 
@@ -2020,7 +1978,6 @@ c  When using slice version, puts all charge at iz=0.  The call to
 c  the fixrhoxy routine is then used to distribute the charge density
 c  throughout the rho array after all of the particles have been deposited.
 
-
 c  Algorithm notes: rho array is dimensioned (0:nx,0:ny,0:nzlocal) outside,
 c  but is made one dimensional in this routine
 c  so cell index into 1d rho array for vectorized deposition is:
@@ -2051,6 +2008,7 @@ c     --- For both algorithms
       if (lthick) then
 c       --- Call 3d version.
 c       --- THIS IS BROKEN XXX!
+        call kaboom("setrhoxy: lthick is not supported")
         call setrho3d(rho1d,np,xp,yp,zp,zgrid,q,wght,depos)
       else
 
@@ -2446,9 +2404,6 @@ c        --- loop over particle blocks
          end if
       enddo
 
-c     --- enforce axial periodicity if rho was zeroed
-      if (lzero) call fixrhoxy(rho,nx,ny,nzlocal,bound0,boundnz,lthick)
-
       if(solvergeom==XYgeom) then
 c  Distribute rho for AMR solver
         call distribute_rho_rz()
@@ -2456,6 +2411,12 @@ c  Enforce boundary conditions
         call rhobndrz()
 c  Copy charge density from frz.basegrid to w3d.rho
         call get_rho_rz(rho,nx,ny,1,0)
+      else
+
+c       --- For FFT solver
+c       --- enforce axial periodicity if rho was zeroed
+        if (lzero) call fixrhoxy(rho,nx,ny,nzlocal,bound0,boundnz,lthick)
+
       end if
 
       if (lafterloadrho) call callpythonfunc("afterloadrho","controllers")
@@ -2516,7 +2477,7 @@ c         --- If only one species, then don't have separate species data.
         endif
 
 c       --- Sum the charge times velocity over all particles.
-        g = wght*q/dz
+        g = wght*q
         csum = 0.
 !$OMP PARALLEL DO REDUCTION(+:csum)
         do ip = 1,np
@@ -2624,6 +2585,7 @@ c=============================================================================
       use Fields3d
       use Efields3d
       use LatticeInternal
+      use GridBoundary3d
       integer(ISZ):: iwhich
 
 c If using the 3D field solver, calls the fieldsol routine in package w3d,
@@ -2668,6 +2630,13 @@ c         --- otherwise, include bend correction terms
 
         endif
 
+c       --- Make sure the bounds array is up to date with any changes in the
+c       --- flags.
+        call setboundsfromflags(bounds,boundxy,bound0,boundnz,l2symtry,l4symtry)
+
+        call applyboundaryconditions3d(nx,ny,nz,1,1,1,phi,1,
+     &                                 bounds,.true.,.false.)
+
 c       --- fill rest of phi array
         if (lwithez .and. it > 0) then
 
@@ -2702,8 +2671,10 @@ c=============================================================================
       use Picglb3d
       use Picglb
       use Fields3d
+      use Fieldsxy
 
       integer(ISZ):: iwhich
+      logical(ISZ):: allocxywork
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
@@ -2720,20 +2691,44 @@ c       --- Otherwise, use 2d field solver
           call callpythonfunc("initfieldsolver","fieldsolver")
         endif
 
+        if (fstype == 0 .or. fstype == 1 .or. fstype == 2) then
+          allocxywork = .true.
+          if (ASSOCIATED(xywork)) then
+            if (ALL((/nx+1,ny+1/) == shape(xywork))) then
+              allocxywork = .false.
+            else
+              deallocate(xywork)
+            endif
+          endif
+          if (allocxywork) ALLOCATE(xywork(0:nx,0:ny))
+        endif
+
+        if (fstype == 1 .or. fstype == 2) then
+          allocxywork = .true.
+          if (ASSOCIATED(xyphisave)) then
+            if (ALL((/nx+3,ny+3/) == shape(xyphisave))) then
+              allocxywork = .false.
+            else
+              deallocate(xyphisave)
+            endif
+          endif
+          if (allocxywork) ALLOCATE(xyphisave(-1:nx+1,-1:ny+1))
+        endif
+
         if (fstype == 0) then
-          call vpois2d (iwhich, phi(-1,-1,0), phi(-1,-1,0), kxsq, kysq,
+c         --- FFT solver
+          call vpois2d (iwhich, phi(:,:,0), phi(:,:,0), kxsq, kysq,
      &       attx, atty, filt, xmmax-xmmin, ymmax-ymmin,
-     &       nx, ny, scrtch, phi(-1,-1,1), 0, l2symtry,l4symtry)
+     &       nx, ny, scrtch, xywork, 0, l2symtry,l4symtry)
 
         elseif (fstype == 1 .or. fstype == 2) then
-c         --- Note that phi(,,-1) and phi(,,1) are passed in as
-c         --- scratch space.
-          call capmatxyf(iwhich,phi(-1,-1,0),kxsq,kysq,attx,atty,
+c         --- Capacity matrix, FFT solver
+          call capmatxyf(iwhich,phi(:,:,0),kxsq,kysq,attx,atty,
      &             filt,xmmax-xmmin,ymmax-ymmin,nx,ny,dx,dy,xmmin,ymmin,
-     &             scrtch,phi(-1,-1,2),phi(-1,-1,1),l2symtry,l4symtry)
+     &             scrtch,xyphisave,xywork,l2symtry,l4symtry)
         elseif (fstype == 7) then
 c         --- Multigrid solver
-          call multigridxyf(iwhich,nx,ny,dx,dy,phi(-1,-1,0),rho(0,0,0),
+          call multigridxyf(iwhich,nx,ny,dx,dy,phi(:,:,0),rho(:,:,0),
      &                      l2symtry,l4symtry,xmmin,ymmin)
 c         --- AMR multigrid solver
         elseif (fstype == 10) then

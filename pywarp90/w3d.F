@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.420 $, $Date: 2009/01/22 01:14:01 $
+c@(#) File W3D.F, version $Revision: 3.421 $, $Date: 2009/02/03 19:35:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3472,14 +3472,14 @@ c===========================================================================
       integer(ISZ):: delx,dely,delz
 
 c Gets self electric field for particles
-c Note that the phi1d passed in is assumed to start at phi(0,0,-1).
+c Note that the phi1d passed in is assumed to start at phi(-1,-1,-1).
 c This is a change is behavior from what is was earlier. This change
 c was made to avoid problems with bounds checking. phi needs to be accessed
 c at the plane iz=-1, so when phi was passed in starting at phi(0,0,0), with
 c bounds checking turned on, this would be caught (even though the code was
 c technically correct).
 
-c Algorithm notes: phi array is dimensioned (0:nx,0:ny,-1:nz+1) outside,
+c Algorithm notes: phi array is dimensioned (-1:nx+1,-1:ny+1,-1:nz+1) outside,
 c but is made one dimensional in this routine
 c so cell index into 1d phi array for vectorized deposition is:
 c    i + j*(nx+1) + k*(nx+1)*(ny+1)
@@ -3508,7 +3508,7 @@ c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
       if (lw3dtimesubs) substarttime = wtime()
 
       if (ny == 0) then
-        call sete2d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
+        call seterz(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
      &              dx,dz,nx,nz,efetch,ex,ey,ez,l2symtry,l4symtry,
      &              lcylindrical,delx,delz)
         return
@@ -4264,7 +4264,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
       return
       end
 c=========================================================================== 
-      subroutine sete2d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
+      subroutine seterz(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
      &                  dx,dz,nx,nz,efetch,ex,ey,ez,l2symtry,l4symtry,
      &                  lcylindrical,delx,delz)
       use Subtimers3d
@@ -4277,14 +4277,14 @@ c===========================================================================
       integer(ISZ):: delx,delz
 
 c Gets self electric field for particles
-c Note that the phi1d passed in is assumed to start at phi(0,0,-1).
+c Note that the phi1d passed in is assumed to start at phi(-1,-1,-1).
 c This is a change is behavior from what is was earlier. This change
 c was made to avoid problems with bounds checking. phi needs to be accessed
 c at the plane iz=-1, so when phi was passed in starting at phi(0,0,0), with
 c bounds checking turned on, this would be caught (even though the code was
 c technically correct).
 
-c Algorithm notes: phi array is dimensioned (0:nx,0:ny,-1:nz+1) outside,
+c Algorithm notes: phi array is dimensioned (-1:nx+1,-1:ny+1,-1:nz+1) outside,
 c but is made one dimensional in this routine
 c so cell index into 1d phi array for vectorized deposition is:
 c    i + j*(nx+1) + k*(nx+1)*(ny+1)
@@ -4327,12 +4327,12 @@ c     if (noff(1) /= -nnx) then
          noff(8)  =                  + 0
          noff(9)  =                  + 1
          noff(10) =                  + 2
-         noff(19) = + nnx           - 1
+         noff(19) = + nnx            - 1
          noff(20) = + nnx
-         noff(21) = + nnx           + 1
-         noff(22) = + nnx           + 2
+         noff(21) = + nnx            + 1
+         noff(22) = + nnx            + 2
          noff(29) = + 2*nnx
-         noff(30) = + 2*nnx         + 1
+         noff(30) = + 2*nnx          + 1
 
          noff = noff + delx + nnx*delz
 
@@ -4817,6 +4817,509 @@ c           --- Adjust sign of E field for appropriate quadrant.
       return
       end
 c=========================================================================== 
+      subroutine setexy(phi1d,selfe,np,xp,yp,xmmin,ymmin,
+     &                  dx,dy,nx,ny,efetch,ex,ey,ez,l2symtry,l4symtry,
+     &                  delx,dely)
+      use Subtimers3d
+      integer(ISZ):: np,nx,ny
+      real(kind=8):: zgrid,xmmin,ymmin,dx,dy
+      real(kind=8):: phi1d(0:*),selfe(3,0:nx,0:ny),xp(np),yp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      integer(ISZ):: efetch
+      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: delx,dely
+
+c Gets self electric field for particles
+c Note that the phi1d passed in is assumed to start at phi(-1,-1).
+
+c Algorithm notes: phi array is dimensioned (-1:nx+1,-1:ny+1) outside,
+c but is made one dimensional in this routine
+c so cell index into 1d phi array for vectorized deposition is:
+c    i + j*(nx+1)
+c The field is:
+c    Ex = u0*v0*ex(i  ,j  )
+c       + u1*v0*ex(i+1,j  )
+c       + u0*v1*ex(i  ,j+1)
+c       + ...
+
+      integer(ISZ):: nnx,nnxy,ip,i,j,ind0,m,inext,jnext
+      real(kind=8):: dxi,dyi,tdxi,tdyi,u0,u1,v0,v1,ysign,xsign
+      integer(ISZ):: ox,oy,sox,soy
+      real(kind=8):: sx,sy,ext,eyt
+      real(kind=8):: xi,yj,xinext,yjnext
+      real(kind=8):: x,y,xnext,ynext
+      integer(ISZ):: noff(32)
+      save noff
+
+c     --- For second version
+c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
+      integer(ISZ),allocatable:: indx(:,:)
+      real(kind=8),allocatable:: p(:,:), u1p(:), v1p(:), w1p(:)
+      integer(ISZ):: allocerror
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      nnx  = nx + 1 + 2*delx
+
+c  Evaluation of offsets occurs on the first call only provided
+c  local arrays are SAVE'd. nnxy is added to all offsets to account for
+c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
+c  of phi(0,0,0) is equivalent to phi1d(nnxy).
+
+      noff(5)  = - nnx
+      noff(6)  = - nnx   + 1
+      noff(7)  =         - 1
+      noff(8)  =         + 0
+      noff(9)  =         + 1
+      noff(10) =         + 2
+      noff(11) = + nnx   - 1
+      noff(12) = + nnx
+      noff(13) = + nnx   + 1
+      noff(14) = + nnx   + 2
+      noff(15) = + 2*nnx
+      noff(16) = + 2*nnx + 1
+
+      noff = noff + delx + nnx*dely
+
+c  Evaluation of E, vectorized over particles
+      tdxi = 1. / (2.*dx)
+      tdyi = 1. / (2.*dy)
+      dxi = 1./dx
+      dyi = 1./dy
+
+c     --- Ez for all particles is zero
+      ez = 0.
+
+      if (efetch == 1 .or. efetch == 6) then
+
+        if (.not. (l2symtry .or. l4symtry)) then
+          xnext = xp(1)
+          ynext = yp(1)
+          inext = (xnext - xmmin)*dxi
+          jnext = (ynext - ymmin)*dyi
+
+          do ip = 1, np
+
+            i = inext
+            j = jnext
+            x = xnext
+            y = ynext
+            if (ip < np) then
+              xnext = xp(ip+1)
+              ynext = yp(ip+1)
+              inext = (xnext - xmmin)*dxi
+              jnext = (ynext - ymmin)*dyi
+            endif
+
+            ind0 = i + j*nnx
+
+            u1 = (x - xmmin)*dxi - i
+            v1 = (y - ymmin)*dyi - j
+
+            u0 = 1. - u1
+            v0 = 1. - v1
+
+            ext=tdxi*(u0*v0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
+     &              + u1*v0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
+     &              + u0*v1*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
+     &              + u1*v1*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0)))
+
+            eyt=tdyi*(u0*v0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
+     &              + u1*v0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
+     &              + u0*v1*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
+     &              + u1*v1*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0)))
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+
+          enddo
+
+        else
+
+c         --- Set offsets for indices on axis of symmetry.  The offsets change
+c         --- the sign of the grid cells which are on the negative side
+c         --- of the axis of symmetry.
+          soy = 2*nnx
+          sox = 0
+          if (l4symtry) sox = 2
+
+c         --- Set the signs of the E field for particles on negative side of
+c         --- the axis of symmetry.
+          sy = -1.
+          sx = 1.
+          if (l4symtry) sx = -1.
+
+c         --- special loop symmetry is used
+          inext = (abs(xp(1)) - xmmin)*dxi
+          jnext = (abs(yp(1)) - ymmin)*dyi
+          do ip = 1, np
+
+            i = inext
+            j = jnext
+            if (ip < np) then
+              inext = (abs(xp(ip+1)) - xmmin)*dxi
+              jnext = (abs(yp(ip+1)) - ymmin)*dyi
+            endif
+
+            ind0 = i + j*nnx
+
+            u1 = (abs(xp(ip)) - xmmin)*dxi - i
+            v1 = (abs(yp(ip)) - ymmin)*dyi - j
+
+            u0 = 1. - u1
+            v0 = 1. - v1
+
+c           --- Set offsets for points on symmetry axis of grid.  The offset
+c           --- for points off the axis is zero.
+            ox = 0
+            oy = 0
+            if (i == 0 .and. xmmin == 0.) ox = sox
+            if (j == 0 .and. ymmin == 0.) oy = soy
+
+c           --- Adjust sign of E field for appropriate quadrant.
+            xsign = tdxi
+            ysign = tdyi
+            if (xp(ip) < 0.) xsign = sx*tdxi
+            if (yp(ip) < 0.) ysign = sy*tdyi
+            ext=xsign*(u0*v0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
+     &               + u1*v0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
+     &               + u0*v1*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
+     &               + u1*v1*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0)))
+
+            eyt=ysign*(u0*v0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
+     &               + u1*v0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
+     &               + u0*v1*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
+     &               + u1*v1*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0)))
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+
+          enddo
+
+        endif
+
+
+      elseif (efetch == 2) then
+
+        call kaboom("sete3d: ERROR: efetch=2 is no longer supported")
+
+      elseif (efetch == 3) then
+c       --- This uses the precalculated selfe instead of doing
+c       --- the finite differences here..
+
+        if (.not. (l2symtry .or. l4symtry)) then
+          xnext = xp(1)
+          ynext = yp(1)
+          xinext = (xnext - xmmin)*dxi
+          yjnext = (ynext - ymmin)*dyi
+          inext = xinext
+          jnext = yjnext
+
+          do ip = 1, np
+
+            x = xnext
+            y = ynext
+            xi = xinext
+            yj = yjnext
+            i = inext
+            j = jnext
+            if (ip < np) then
+              xnext = xp(ip+1)
+              ynext = yp(ip+1)
+              xinext = (xnext - xmmin)*dxi
+              yjnext = (ynext - ymmin)*dyi
+              inext = xinext
+              jnext = yjnext
+            endif
+
+            if (xi < 0. .or. xi > nx .or.
+     &          yj < 0. .or. yj > ny) cycle
+
+            u1 = xi - i
+            v1 = yj - j
+
+            u0 = 1. - u1
+            v0 = 1. - v1
+
+            ext = u0*v0*selfe(1,i  ,j  )
+     &          + u1*v0*selfe(1,i+1,j  )
+     &          + u0*v1*selfe(1,i  ,j+1)
+     &          + u1*v1*selfe(1,i+1,j+1)
+
+            eyt = u0*v0*selfe(2,i  ,j  )
+     &          + u1*v0*selfe(2,i+1,j  )
+     &          + u0*v1*selfe(2,i  ,j+1)
+     &          + u1*v1*selfe(2,i+1,j+1)
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+
+          enddo
+
+        else
+
+c         --- Set the signs of the E field for particles on negative side of
+c         --- the axis of symmetry.
+          sy = -1.
+          sx = 1.
+          if (l4symtry) sx = -1.
+
+c         --- special loop symmetry is used
+          xinext = (abs(xp(1)) - xmmin)*dxi
+          yjnext = (abs(yp(1)) - ymmin)*dyi
+          inext = xinext
+          jnext = yjnext
+
+          do ip = 1, np
+
+            xi = xinext
+            yj = yjnext
+            i = inext
+            j = jnext
+
+            if (ip < np) then
+              xinext = (abs(xp(ip+1)) - xmmin)*dxi
+              yjnext = (abs(yp(ip+1)) - ymmin)*dyi
+              inext = xinext
+              jnext = yjnext
+            endif
+
+            if (xi < 0. .or. xi > nx .or.
+     &          yj < 0. .or. yj > ny) cycle
+
+            u1 = xi - i
+            v1 = yj - j
+
+            u0 = 1. - u1
+            v0 = 1. - v1
+
+c           --- Adjust sign of E field for appropriate quadrant.
+            xsign = +1.
+            ysign = +1.
+            if (xp(ip) < 0.) xsign = sx
+            if (yp(ip) < 0.) ysign = sy
+
+            ext = xsign*(u0*v0*selfe(1,i  ,j  )
+     &                 + u1*v0*selfe(1,i+1,j  )
+     &                 + u0*v1*selfe(1,i  ,j+1)
+     &                 + u1*v1*selfe(1,i+1,j+1))
+
+            eyt = ysign*(u0*v0*selfe(2,i  ,j  )
+     &                 + u1*v0*selfe(2,i+1,j  )
+     &                 + u0*v1*selfe(2,i  ,j+1)
+     &                 + u1*v1*selfe(2,i+1,j+1))
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+
+          enddo
+
+        endif
+
+      elseif (efetch == 4) then
+c       --- Energy conserving
+
+        if (.not. (l2symtry .or. l4symtry)) then
+          xnext = xp(1)
+          ynext = yp(1)
+          inext = (xnext - xmmin)*dxi
+          jnext = (ynext - ymmin)*dyi
+          do ip = 1, np
+
+            i = inext
+            j = jnext
+            x = xnext
+            y = ynext
+            if (ip < np) then
+              xnext = xp(ip+1)
+              ynext = yp(ip+1)
+              inext = (xnext    - xmmin)*dxi
+              jnext = (ynext    - ymmin)*dyi
+            endif
+
+            ind0 = i + j*nnx
+
+            u1 = (x      - xmmin)*dxi - i
+            v1 = (y      - ymmin)*dyi - j
+
+            u0 = 1. - u1
+            v0 = 1. - v1
+
+            ext=dxi*(+v0*phi1d(noff( 8)+ind0)
+     &               -v0*phi1d(noff( 9)+ind0)
+     &               +v1*phi1d(noff(12)+ind0)
+     &               -v1*phi1d(noff(13)+ind0))
+
+            eyt=dyi*(+u0*phi1d(noff( 8)+ind0)
+     &               +u1*phi1d(noff( 9)+ind0)
+     &               -u0*phi1d(noff(12)+ind0)
+     &               -u1*phi1d(noff(13)+ind0))
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+
+          enddo
+
+        else
+
+c         --- Set the signs of the E field for particles on negative side of
+c         --- the axis of symmetry.
+          sy = -1.
+          sx = 1.
+          if (l4symtry) sx = -1.
+
+c         --- special loop symmetry is used
+          inext = (abs(xp(1)) - xmmin)*dxi
+          jnext = (abs(yp(1)) - ymmin)*dyi
+          do ip = 1, np
+
+            i = inext
+            j = jnext
+            if (ip < np) then
+              inext = (abs(xp(ip+1)) - xmmin)*dxi
+              jnext = (abs(yp(ip+1)) - ymmin)*dyi
+            endif
+  
+            ind0 = i + j*nnx
+
+            u1 = (abs(xp(ip)) - xmmin)*dxi - i
+            v1 = (abs(yp(ip)) - ymmin)*dyi - j
+
+            u0 = 1. - u1
+            v0 = 1. - v1
+
+c           --- Adjust sign of E field for appropriate quadrant.
+            xsign = dxi
+            ysign = dyi
+            if (xp(ip) < 0.) xsign = sx*dxi
+            if (yp(ip) < 0.) ysign = sy*dyi
+
+            ext=xsign*(+v0*phi1d(noff( 8)+ind0)
+     &                 -v0*phi1d(noff( 9)+ind0)
+     &                 +v1*phi1d(noff(12)+ind0)
+     &                 -v1*phi1d(noff(13)+ind0))
+
+            eyt=ysign*(+u0*phi1d(noff( 8)+ind0)
+     &                 +u1*phi1d(noff( 9)+ind0)
+     &                 -u0*phi1d(noff(12)+ind0)
+     &                 -u1*phi1d(noff(13)+ind0))
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+
+          enddo
+
+        endif
+
+      else if (efetch == 5) then
+c       --- This is the same as efetch==1, but has checks to skip particles that
+c       --- are out of bounds.
+
+        if (.not. (l2symtry .or. l4symtry)) then
+          do ip = 1, np
+
+            x = xp(ip)
+            y = yp(ip)
+
+            xi = (x      - xmmin)*dxi
+            yj = (y      - ymmin)*dyi
+            if (xi < 0. .or. xi > nx .or.
+     &          yj < 0. .or. yj > ny) cycle
+            i = int(xi)
+            j = int(yj)
+            ind0 = i + j*nnx
+
+            u1 = xi - i
+            v1 = yj - j
+
+            u0 = 1. - u1
+            v0 = 1. - v1
+
+            ext=tdxi*(u0*v0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
+     &              + u1*v0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
+     &              + u0*v1*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
+     &              + u1*v1*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0)))
+
+            eyt=tdyi*(u0*v0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
+     &              + u1*v0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
+     &              + u0*v1*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
+     &              + u1*v1*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0)))
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+
+          enddo
+
+        else
+
+c         --- Set offsets for indices on axis of symmetry.  The offsets change
+c         --- the sign of the grid cells which are on the negative side
+c         --- of the axis of symmetry.
+          soy = 2*nnx
+          sox = 0
+          if (l4symtry) sox = 2
+
+c         --- Set the signs of the E field for particles on negative side of
+c         --- the axis of symmetry.
+          sy = -1.
+          sx = 1.
+          if (l4symtry) sx = -1.
+
+c         --- special loop symmetry is used
+          do ip = 1, np
+
+            xi =  (abs(xp(ip)) - xmmin)*dxi
+            yj =  (abs(yp(ip)) - ymmin)*dyi
+            if (xi < 0. .or. xi > nx .or.
+     &          yj < 0. .or. yj > ny) cycle
+            i = int(xi)
+            j = int(yj)
+            ind0 = i + j*nnx
+
+            u1 = xi - i
+            v1 = yj - j
+
+            u0 = 1. - u1
+            v0 = 1. - v1
+
+c           --- Set offsets for points on symmetry axis of grid.  The offset
+c           --- for points off the axis is zero.
+            ox = 0
+            oy = 0
+            if (i == 0 .and. xmmin == 0.) ox = sox
+            if (j == 0 .and. ymmin == 0.) oy = soy
+
+c           --- Adjust sign of E field for appropriate quadrant.
+            xsign = tdxi
+            ysign = tdyi
+            if (xp(ip) < 0.) xsign = sx*tdxi
+            if (yp(ip) < 0.) ysign = sy*tdyi
+            ext=xsign*(u0*v0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
+     &               + u1*v0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
+     &               + u0*v1*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
+     &               + u1*v1*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0)))
+
+            eyt=ysign*(u0*v0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
+     &               + u1*v0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
+     &               + u0*v1*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
+     &               + u1*v1*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0)))
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+
+          enddo
+
+        endif
+
+      endif
+
+!$OMP MASTER
+      if (lw3dtimesubs) timesete2d = timesete2d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=========================================================================== 
       subroutine getselfe3d(phi,nx,ny,nz,selfe,nx_selfe,ny_selfe,nz_selfe,
      &                      dx,dy,dz,lzero,delx,dely,delz)
       use GlobalVars
@@ -4919,7 +5422,7 @@ c  Picglb is included only to use zbeam
       real(kind=8):: zoff
       real(kind=8):: sumzdist,zdistmax
       real(kind=8):: sumrdist
-      integer(ISZ):: iz,ipp,izz
+      integer(ISZ):: iz,izz
       integer(ISZ):: ir,irr
       integer(ISZ):: envxport
       character(72):: errline
@@ -5078,7 +5581,7 @@ c  Begin main loop over species
 c----------------------------------
 
 !$OMP PARALLEL
-!$OMP+PRIVATE(k,i,j,ipp,i1,izz,nzstri_s,izstripe,vtz,iz,wz,irr,ii,rp,rpp,r0)
+!$OMP+PRIVATE(k,i,j,i1,izz,nzstri_s,izstripe,vtz,iz,wz,irr,ii,rp,rpp,r0)
 !$OMP+PRIVATE(firstk)
 !$OMP+PRIVATE(ir,wr,vthr,vrbar,vtx,vty,ip,rr,phi1,phi2)
 !$OMP+PRIVATE(indx,xt,yt,zt,rt,tt,uxt,uyt,uzt,perpscal,at,apt,bt,bpt)
@@ -5120,8 +5623,11 @@ c         --- Only set np_s is it had not been set be the user
 
         zmid = .5 * (zimax_s(isid) + zimin_s(isid)) + zbeam
         zlen = zimax_s(isid) - zimin_s(isid)
-        zleni = 1./zlen
-        if (zlen == 0) zleni = 0.
+        if (zlen == 0) then
+          zleni = 0.
+        else
+          zleni = 1./zlen
+        endif
 
 c       --- Inverse of the number of particles. When multiplied by the particle
 c       --- index and added to the normalized value of zmin, the normalized 
@@ -5149,17 +5655,26 @@ c       --- seeds for the generators.
 c       --- first, calculate z extent of beam within this processor
         zmin = max(zimin_s(isid),zpminlocal)
         zmax = min(zimax_s(isid),zpmaxlocal)
-c       --- calculate number of particles that are loaded by processors
-c       --- to the left
-        ioff = int(npm*(zmin - zimin_s(isid))*zleni + 1.e-5)
-c       --- calculate axial offset so the first particle for this processor
-c       --- is the correct distance from the last particle of the processor
-c       --- to the left.
-        zoff = ioff*rnpmi
-c       --- number of particles to be loaded in this processor: the number
-c       --- of particles between zmax and zimin minus the number between
-c       --- zmin and zimin.
-        npm = int(npm*(zmax - zimin_s(isid))*zleni + 1.e-5) - ioff
+        if (zlen = 0.) then
+c         --- Divide the particles evenly up among the processors. The
+c         --- form of npm is such that is the numbers of particles is not
+c         --- evenly divisible by the number of processors, some processors
+c         --- will get an extra particles so that the total number is correct.
+          ioff = int(izproc*npm/nzprocs)
+          npm = int((izproc + 1)*npm/nzprocs) - int(izproc*npm/nzprocs)
+        else
+c         --- calculate number of particles that are loaded by processors
+c         --- to the left
+          ioff = int(npm*(zmin - zimin_s(isid))*zleni + 1.e-5)
+c         --- calculate axial offset so the first particle for this processor
+c         --- is the correct distance from the last particle of the processor
+c         --- to the left.
+          zoff = ioff*rnpmi
+c         --- number of particles to be loaded in this processor: the number
+c         --- of particles between zmax and zimin minus the number between
+c         --- zmin and zimin.
+          npm = int(npm*(zmax - zimin_s(isid))*zleni + 1.e-5) - ioff
+        endif
 c       --- Make sure that there is enough room to load the particles.
 c       --- This is only needed here in the parallel version since it is
 c       --- difficult to gaurantee that there is room when an arbitrary
@@ -5206,10 +5721,10 @@ c        --- load normalized z (0 < z < 1)
 c          --- Transform the longitudinal positions to match the specified
 c          --- longitudinal distribution.
            if (nzdist > 0) then
-             do ipp=k,i1
+             do i=k,i1
 c              --- Find what grid cell the particle is in.
 c              --- Note that the previous value of izz is used (see note above)
-               do while (zt(ipp-k+1) > intzdist(izz+1))
+               do while (zt(i-k+1) > intzdist(izz+1))
                  izz = izz + 1
                enddo
 c              --- Do the transformation.  The transformation assumes a
@@ -5219,11 +5734,11 @@ c              --- over the uniform distribution to an integral over the
 c              --- specified distribution.  The particle remains within
 c              --- the range [0,1].
                if (nrmzdist(izz+1) == nrmzdist(izz)) then
-                 zt(ipp-k+1) = (zt(ipp-k+1) - intzdist(izz))/nrmzdist(izz)
+                 zt(i-k+1) = (zt(i-k+1) - intzdist(izz))/nrmzdist(izz)
                else
-                 zt(ipp-k+1) = ((sqrt(nrmzdist(izz)**2 -
+                 zt(i-k+1) = ((sqrt(nrmzdist(izz)**2 -
      &                     2.*(nrmzdist(izz+1)-nrmzdist(izz))*(intzdist(izz) -
-     &                     zt(ipp-k+1)))-nrmzdist(izz))/
+     &                     zt(i-k+1)))-nrmzdist(izz))/
      &                     (nrmzdist(izz+1)-nrmzdist(izz)) + izz)/nzdist
                endif
              enddo
@@ -5287,7 +5802,8 @@ c          --- set perpscal to one first time through
          endif
 
 c        --- unormalize z to fetch envelope
-         zt = zbeam + zimin_s(isid) + zlen*zt
+         i = i1 - k + 1
+         zt(1:i) = zbeam + zimin_s(isid) + zlen*zt(1:i)
 
 c        --- fetch envelope, centroid, and emittance.  Reset values 
 c        --- after initial set if axial varying emittance, axial velocity, 
@@ -5854,6 +6370,7 @@ c     --- calculate values for sm, sq, and sw for each species.
         if (vbeam_s(isid) /= 0. .and. nptot(js) /= 0 .and.
      &      zion_s(isid) /= 0.  .and. pgroup%sw(js+1) == 0) then
           zlen = zimax_s(isid) - zimin_s(isid)
+          if (zlen == 0.) zlen = 1.
           pgroup%sw(js+1)=ibeam_s(isid)*zlen*sp_fract(isid)/
      &                   (vbeam_s(isid)*echarge*zion_s(isid)*nptot(js))
         else if (js > 0) then
@@ -10865,19 +11382,19 @@ c fits and so was replaced with if statements.
           call vpois3d(iwhich,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
      &                 attx,atty,attz,filt,xlen,ylen,zlen,
      &                 nx,ny,izfsmax-izfsmin,nz,
-     &                 scrtch,xywork,zwork,0,l2symtry,l4symtry,
+     &                 scrtch,xywork3d,zwork,0,l2symtry,l4symtry,
      &                 bound0,boundnz,boundxy)
       elseif (fstype == 1) then
           call pipe3df(iwhich,pipeshpe,rho(0,0,izfsmin),phi(-1,-1,izfsmin),
      &                 kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                 xlen,ylen,zlen,
-     &                 nx,ny,izfsmax-izfsmin,nz,scrtch,xywork,
+     &                 nx,ny,izfsmax-izfsmin,nz,scrtch,xywork3d,
      &                 zwork,l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 2) then
           call vcap3d(iwhich,rho(0,0,izfsmin),phi(-1,-1,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xlen,ylen,zlen,nx,ny,izfsmax-izfsmin,nz,
-     &                scrtch,xywork,zwork,
+     &                scrtch,xywork3d,zwork,
      &                xmmax,zmminlocal+izfsmin*dz,zgrid,pipeshpe,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 3) then
@@ -10887,24 +11404,24 @@ c fits and so was replaced with if statements.
             call vpois3d(1,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nz,scrtch,
-     &                   xywork,zwork,0,l2symtry,l4symtry,
+     &                   xywork3d,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
           endif
           if (iwhich == -1 .or. iwhich == 0) then
             call vpois3d(12,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nz,
-     &                   scrtch,xywork,zwork,0,l2symtry,l4symtry,
+     &                   scrtch,xywork3d,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
             call vpois3d(14,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nz,
-     &                   scrtch,xywork,zwork,0,l2symtry,l4symtry,
+     &                   scrtch,xywork3d,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
             call vpois3d(13,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nz,
-     &                   scrtch,xywork,zwork,0,l2symtry,l4symtry,
+     &                   scrtch,xywork3d,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
           endif
 
@@ -10914,7 +11431,7 @@ c         --- General capacity matrix solver in kz space
      &                    filt,xlen,ylen,zlen,
      &                    nx,ny,izfsmax-izfsmin,nz,dx,dy,dz,
      &                    xmmin,ymmin,zmminlocal+izfsmin*dz,scrtch,
-     &                    xywork,zwork,l2symtry,l4symtry,
+     &                    xywork3d,zwork,l2symtry,l4symtry,
      &                    bound0,boundnz,boundxy)
       elseif (fstype == 6) then
 c         --- General capacity matrix solver
@@ -10922,7 +11439,7 @@ c         --- General capacity matrix solver
      &                  filt,xlen,ylen,zlen,
      &                  nx,ny,izfsmax-izfsmin,nz,dx,dy,dz,
      &                  xmmin,ymmin,zmminlocal+izfsmin*dz,scrtch,
-     &                  xywork,zwork,l2symtry,l4symtry,
+     &                  xywork3d,zwork,l2symtry,l4symtry,
      &                  bound0,boundnz,boundxy)
 
       elseif (fstype == 7) then
@@ -10947,7 +11464,7 @@ c         --- boundary data.
           call paralleltridiag(phi(-1,-1,izfsmin-1),kxsq,kysq,kzsq,
      &                         attx,atty,attz,filt,xlen,ylen,zlen,
      &                         nx,ny,izfsmax-izfsmin,
-     &                         scrtch,xywork,zwork,l2symtry,l4symtry,
+     &                         scrtch,xywork3d,zwork,l2symtry,l4symtry,
      &                         bound0,boundnz,boundxy)
       elseif (fstype == 9) then
 c         --- Experimental parallel solver based on the method
@@ -10955,7 +11472,7 @@ c         --- put forward by Lantz
           call lantzsolver(iwhich,phi(-1,-1,izfsmin-1),kxsq,kysq,kzsq,
      &                     attx,atty,attz,filt,xlen,ylen,zlen,
      &                     nx,ny,izfsmax-izfsmin,
-     &                     scrtch,xywork,zwork,l2symtry,l4symtry,
+     &                     scrtch,xywork3d,zwork,l2symtry,l4symtry,
      &                     bound0,boundnz,boundxy)
 
 #endif
