@@ -30,20 +30,26 @@ except ImportError:
 class MeshRefinement(VisualizableClass):
   """
 Implements adaptive mesh refinement in 3d
- - parent:
  - refinement=None: amount of refinement along each axis
  - lower,upper: extent of domain in relative to parent, in its own grid
-                cell size, and not including any guard cells
+                cell size, and not including any guard cells.
+                Only applies to refinement block.
  - dims: dimensions of the grid, only used for root block, the one with
-         no parents
+         no parents.
  - mins,maxs: locations of the grid lower and upper bounds in the beam frame
- - root: coarsest level grid
  - children: list of tuples, each containing three elements,
-             (lower,upper,refinement). Children can also be added later
-             using addchild.
+             (lower,upper,refinement). It is recommended that refinement
+             blocks be added later using addchild.
  - lreducedpickle=true: when true, a small pickle is made by removing all of
                         the big arrays. The information can be regenerated
-                        upon restart.
+                        upon restart. (Expert use only.)
+ - nguard=[1,1,1]: number of coarse guard cells where rho is deposited but
+                   the fields not gather. This is needed to reduce the
+                   self-field effect of particles near refinement boundaries.
+                   The default value should be sufficient.
+ - nguarddepos=[0,0,0]: number of coarse guard cells where rho (or current)
+                        is not deposited. This is needed for the refinement
+                        of the EM solver.
   """
   def __init__(self,parent=None,refinement=None,
                     lower=None,upper=None,
@@ -425,8 +431,21 @@ it knows whether to re-register itself.
                     refinement=[2,2,2],nguard=None,nguarddepos=None):
     """
 Add a mesh refined block to this block.
-  -lower,upper,mins,maxs,refinement: All have same meanings as for the
-                                     constructor.
+It is recommended to use mins and maxs to specify the extent of the block.
+ - mins,maxs: locations of the grid lower and upper bounds in the beam frame
+Alternatively, lower and upper can be used, but are less flexible and more
+error prone.
+ - lower,upper: extent of domain in relative to parent, in its own grid
+                cell size, and not including any guard cells
+
+ - refinement=[2,2,2]: amount of refinement along each axis
+ - nguard=[1,1,1] (or value set in base block): number of coarse guard cells
+          where rho is deposited but the fields not gather. This is needed to
+          reduce the self-field effect of particles near refinement
+          boundaries. The default value should be sufficient.
+ - nguarddepos=[0,0,0] (or value set in base block): number of coarse guard
+          cells where rho (or current) is not deposited. This is needed
+          for the refinement of the EM solver.
     """
     if nguard is None: nguard = self.nguard
     if nguarddepos is None: nguarddepos = self.nguarddepos
@@ -1098,19 +1117,6 @@ Fortran version
       l = maximum(child.fullloweroverrefinement,fulllower)
       u = minimum(child.fullupperoverrefinement,fullupper)
 
-      # --- Check for any Nuemann boundaries
-     #dopbounds = (sometrue(child.pbounds == 1) and
-     #            (sometrue(l == 0) or
-     #             sometrue(u == self.rootdims)))
-      dopbounds = ((child.pbounds[0] == 1 or
-                    child.pbounds[1] == 1 or
-                    child.pbounds[2] == 1) and
-                  (l[0] == 0 or l[1] == 0 or l[2] == 0 or
-                   u[0] == self.rootdims[0] or
-                   u[1] == self.rootdims[1] or
-                   u[2] == self.rootdims[2]))
-      dopbounds = 0
-
       w = child.getwarrayforsourcep()
       if not self.l_EM:
         pdims = array([self.nxp,self.nyp,self.nzp])
@@ -1119,8 +1125,8 @@ Fortran version
                               child.sourcep,childpdims,
                               l,u,fulllower,child.fulllower,child.fullupper,
                               child.refinement,w,
-                              self.xmeshlocal,child.xmeshlocal,self.lcylindrical,
-                              dopbounds,child.pbounds,self.rootdims)
+                              self.xmeshlocal,child.xmeshlocal,
+                              self.lcylindrical)
       else:
          cb = child.block
          cbc = child.block_coarse
