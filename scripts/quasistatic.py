@@ -19,7 +19,7 @@ try:
 except ImportError:
   print 'Warning:  psyco not found'
 
-class Quasistatic:
+class Quasistatic(SubcycledPoissonSolver):
   # this class differs from the previous one that it does not use the 3-D solver for the ions, but the 2-D one.
   def __init__(self,ions,MRroot=None,l_verbose=0,l_findmgparam=0,
                nparpgrp=top.nparpgrp,Ninit=1000,l_mode=1,l_selfe=1,l_selfi=1,maps=None,pboundxy=None,
@@ -30,7 +30,10 @@ class Quasistatic:
                xinitelec=None,yinitelec=None,winitelec=None,
                vxinitelec=None,vyinitelec=None,vzinitelec=None,strideinitelec=1,
                l_beam_1d=False,sigmax=0.,sigmay=0.,
-               l_elec_greensum=False,elec_aellipse=0.,elec_bellipse=0.):
+               l_elec_greensum=False,elec_aellipse=0.,elec_bellipse=0.,**kw):
+    assert top.grid_overlap<>2,"The quasistatic class needs top.grid_overlap==1!"
+    self.grid_overlap = 1
+    FieldSolver.__init__(self,kwdict=kw)
     w3d.solvergeom=w3d.XYgeom
     self.gridelecs=[]
     self.gridions=[]
@@ -311,8 +314,8 @@ class Quasistatic:
 
      if l_push_elec:
         # --- generate electrons (on last processor only)
-#       if me==max(0,npes-1) and (top.it==0  or not l_plotelec):self.create_electrons()
-       if me==max(0,npes-1):self.create_electrons()
+       if me==max(0,npes-1) and not(l_plotelec and top.it>0):self.create_electrons()
+#       if me==max(0,npes-1):self.create_electrons()
 
        # --- (diagnostic) stacking of electron distribution
        if l_return_dist:
@@ -415,6 +418,7 @@ class Quasistatic:
          # --- plot electrons
 #         if l_plotelec :self.plot_electrons()
          if l_plotelec and (npes==1 or iz<w3d.nz/max(1,npes)-1):self.plot_electrons()
+#         if l_plotelec and iz<w3d.nz/max(1,npes):self.plot_electrons()
 
        # --- gather moments
        if iz<w3d.nzp-1 and (top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0)):
@@ -829,6 +833,7 @@ class Quasistatic:
       xp = pg.xp[il:iu]
       yp = pg.yp[il:iu]
       q = pg.sq[js]*pg.sw[js]/w3d.dz
+#      print 'dep x,y,q',xp,yp,q
       # --- deposit ion charge in first grid
       rhoweightrz_weights(xp,yp,yp,self.wz0[js],iu-il,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
     if self.iz<self.izmax-1:
@@ -938,6 +943,7 @@ class Quasistatic:
         # --- loop over species index
         for js in sp.jslist:
           ng = 1+pg.nps[js]/self.nparpgrp
+          if pg.nps[js]==0:continue
           for ig in range(ng):
             il = pg.ins[js]-1+self.nparpgrp*ig
             iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
@@ -986,6 +992,14 @@ class Quasistatic:
 #            window(3);ppzvx(js=1,msize=2);window(0)
           if self.l_verbose:print me,top.it,self.iz,'me = ',me,';stckxy3d'
           stckxy3d(top.pgroup,js,top.zbeam,true)
+          il = pg.ins[js]-1
+          iu = pg.ins[js]-1+pg.nps[js]
+          partbndwithdata(pg.nps[js],pg.xp[il:iu],pg.uxp[il:iu],pg.gaminv[il:iu],
+                          w3d.xmmax,w3d.xmmin,0.,
+                          top.pboundxy,top.pboundxy)
+          partbndwithdata(pg.nps[js],pg.yp[il:iu],pg.uyp[il:iu],pg.gaminv[il:iu],
+                          w3d.ymmax,w3d.ymmin,0.,
+                          top.pboundxy,top.pboundxy)
           if self.scraper is not None:
             self.scraper.scrapeall(local=1,clear=1)
           else:
@@ -1583,16 +1597,16 @@ class Quasistatic:
     iu = il+pg.nps[js]
     stckxy3d(top.pgroup,js,top.zbeam,true)
     partbndwithdata(pg.nps[js],pg.xp[il:iu],pg.uxp[il:iu],pg.gaminv[il:iu],
-                    w3d.xmmax,w3d.xmmin,w3d.dx,0.,
+                    w3d.xmmax,w3d.xmmin,0.,
                     top.pboundxy,top.pboundxy)
     partbndwithdata(pg.nps[js],pg.yp[il:iu],pg.uyp[il:iu],pg.gaminv[il:iu],
-                    w3d.ymmax,w3d.ymmin,w3d.dy,0.,
+                    w3d.ymmax,w3d.ymmin,0.,
                     top.pboundxy,top.pboundxy)
     if js==0 or js==w3d.nzp-1:
       if js==0:top.pboundnz=-1
       if js==w3d.nzp-1:top.pbound0=-1
       partbndwithdata(pg.nps[js],pg.zp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                      w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid,
+                      w3d.zmmax,w3d.zmmin,top.zgrid,
                       top.pbound0,top.pboundnz)
       if js==0:top.pboundnz=0
       if js==w3d.nzp-1:top.pbound0=0
@@ -1658,12 +1672,12 @@ class Quasistatic:
 #          ex = self.slist[0].getex()
 #          if me==0:ppco(x,y,ex,msize=3,ncolor=100);refresh()
 #        if iz==0:
-#        self.electrons.ppxex(msize=2);refresh()
+        self.electrons.ppxex(msize=2);refresh()
         print 'plot_elec',self.iz,'nb electrons = ',self.pgelec.nps[0]
-        self.electrons.ppxy(msize=5);refresh()#msize=1,color='density',ncolor=100,bcast=0,gather=0);refresh()
+#        self.electrons.ppxy(msize=5);refresh()#msize=1,color='density',ncolor=100,bcast=0,gather=0);refresh()
 #        else:
 #          self.slist[0].ppxex(msize=2);
-        limits(w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
+#        limits(w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
 #        ppxex(js=1)
 #        pfxy(iz=iz);
 #        fma()
