@@ -163,8 +163,8 @@ class Maps_simple:
     js=sp.jslist[0]
     if pg.nps[js]==0:return
     if self.l_verbose:print 'stckxy3d beam'
-    xparticleboundaries(top.pgroup,js,js,w3d.xmmax,w3d.xmmin,true)
-    yparticleboundaries(top.pgroup,js,js,w3d.ymmax,w3d.ymmin,true)
+    xparticleboundaries(top.pgroup,js,js,w3d.xmmax,w3d.xmmin,true,false,false)
+    yparticleboundaries(top.pgroup,js,js,w3d.ymmax,w3d.ymmin,true,false,false)
     zparticleboundaries(top.pgroup,js,js,w3d.zmmaxlocal,w3d.zmminlocal,true)
     stckxy3d(top.pgroup,js,top.zbeam,true)
     processlostpart(top.pgroup,js+1,top.clearlostpart,top.time+top.dt*top.pgroup.ndts[js],top.zbeam)
@@ -725,8 +725,8 @@ class Maps_twiss:
     js=sp.jslist[0]
     if pg.nps[js]==0:return
     if self.l_verbose:print 'stckxy3d beam'
-    xparticleboundaries(top.pgroup,js,js,w3d.xmmax,w3d.xmmin,true)
-    yparticleboundaries(top.pgroup,js,js,w3d.ymmax,w3d.ymmin,true)
+    xparticleboundaries(top.pgroup,js,js,w3d.xmmax,w3d.xmmin,true,false,false)
+    yparticleboundaries(top.pgroup,js,js,w3d.ymmax,w3d.ymmin,true,false,false)
     zparticleboundaries(top.pgroup,js,js,w3d.zmmaxlocal,w3d.zmminlocal,true)
     stckxy3d(top.pgroup,js,top.zbeam,true)
     processlostpart(top.pgroup,js+1,top.clearlostpart,top.time+top.dt*top.pgroup.ndts[js],top.zbeam)
