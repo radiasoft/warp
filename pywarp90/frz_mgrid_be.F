@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.34 $, $Date: 2008/11/19 18:29:50 $
+c version $Revision: 1.35 $, $Date: 2009/02/04 00:58:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -13,7 +13,6 @@ c=============================================================================
       subroutine multigridberzf(grid,accuracy)
       use GRIDtypemodule
       use BoltzmannElectrons
-      use PSOR3d
       use Conductor3d
       use Multigrid3d
       use InGen3d, only:solvergeom,RZgeom
