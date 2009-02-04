@@ -1390,6 +1390,9 @@ in radius squared.
   def getpid(self,**kw):
     return getpid(jslist=self.jslist,**kw)
 
+  def getke(self,**kw):
+    return getke(jslist=self.jslist,**kw)
+
   def ppxy(self,**kw):
     return ppxy(jslist=self.jslist,**kw)
 
@@ -1440,6 +1443,21 @@ in radius squared.
 
   def ppzvz(self,**kw):
     return ppzvz(jslist=self.jslist,**kw)
+
+  def ppxux(self,**kw):
+    return ppxux(jslist=self.jslist,**kw)
+
+  def ppyuy(self,**kw):
+    return ppyuy(jslist=self.jslist,**kw)
+
+  def ppzux(self,**kw):
+    return ppzux(jslist=self.jslist,**kw)
+
+  def ppzuy(self,**kw):
+    return ppzuy(jslist=self.jslist,**kw)
+
+  def ppzuz(self,**kw):
+    return ppzuz(jslist=self.jslist,**kw)
 
   def ppzrp(self,**kw):
     return ppzrp(jslist=self.jslist,**kw)
