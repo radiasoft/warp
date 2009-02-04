@@ -33,7 +33,6 @@ class EM2D(object):
 
   def __init__(self,**kw):
 #    top.allspecl = true
-    top.lcallfetchb = true
     #top.bfstype = 12
     top.lcallfetchb = true
     top.lgridqnt = true
@@ -57,6 +56,7 @@ class EM2D(object):
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
       if kw.has_key(name): del kw[name]
+    em2d.l_elaser_out_plane = self.l_elaser_out_plane
 
     # --- bounds is special since it will sometimes be set from the
     # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
@@ -126,7 +126,7 @@ class EM2D(object):
       if top.dt==0.:
         top.dt=dt
       else:
-        if top.dt<>dt:
+        if top.dt>dt:
           self.nfield_subcycle=int(top.dt/dt)+1
     self.dtinit = top.dt
 
@@ -660,11 +660,10 @@ class EM2D(object):
         phase = (xx*sin(self.laser_angle)/clight-top.time)*self.laser_frequency
     else:
       phase = 0.
-
     if (self.l_elaser_out_plane):
-      field.Ez_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)
+      field.Ez_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)#/clight
     else:
-      field.Bz_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)
+      field.Bz_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)/clight
 
   def solve(self,iwhich=0):
     if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
@@ -695,7 +694,7 @@ class EM2D(object):
 
   ##########################################################################
   # Define the basic plot commands
-  def genericfp(self,data,f,title='',l_transpose=true,**kw):
+  def genericfp(self,data,f,title='',l_transpose=true,direction=None,**kw):
     if self.solvergeom == w3d.XYgeom:
       settitles(title,'X','Y','t = %gs'%(top.time))
     elif self.solvergeom == w3d.XZgeom:
