@@ -211,7 +211,7 @@ contains
    implicit none
    integer(ISZ)::ibuf
    REAL(8), DIMENSION(:,:), INTENT(IN) :: a
-     call mpi_pack(a(1,1), SIZE(a), mpi_double_precision, mpibuffers(ibuf)%buffer, int(size(mpibuffers(ibuf)%buffer),MPIISZ), &
+     call mpi_pack(a, SIZE(a), mpi_double_precision, mpibuffers(ibuf)%buffer, int(size(mpibuffers(ibuf)%buffer),MPIISZ), &
           mpibuffers(ibuf)%pack_pos, mpi_comm_world, ierr)
    return
  end subroutine mpi_pack_real_2darray
@@ -220,7 +220,7 @@ contains
    implicit none
    integer(ISZ)::ibuf
    REAL(8), DIMENSION(:,:,:), INTENT(IN) :: a
-     call mpi_pack(a(1,1,1), SIZE(a), mpi_double_precision, mpibuffers(ibuf)%buffer, int(size(mpibuffers(ibuf)%buffer),MPIISZ), &
+     call mpi_pack(a, SIZE(a), mpi_double_precision, mpibuffers(ibuf)%buffer, int(size(mpibuffers(ibuf)%buffer),MPIISZ), &
           mpibuffers(ibuf)%pack_pos, mpi_comm_world, ierr)
    return
  end subroutine mpi_pack_real_3darray
