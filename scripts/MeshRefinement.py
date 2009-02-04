@@ -910,7 +910,8 @@ relative to the parent.
                                                        z[i:i+n],
                                                        ux[i:i+n],uy[i:i+n],
                                                        uz[i:i+n],gaminv[i:i+n],
-                                                       wfact[i:i+n],zgrid,*args)
+                                                       wfact[i:i+n],zgrid,
+                                                       *args)
       i = i + n
 
   def aftersetsourcep(self):
@@ -2929,110 +2930,110 @@ Implements adaptive mesh refinement in 3d for the electromagnetic field solver
 
   ##########################################################################
   # Define the basic plot commands
-  def pfex(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Ex),'E_x',**kw)
+  def pfex(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Ex,guards),'E_x',**kw)
       if l_children:
        for c in self.children:
          c.pfex(**kw)
 
-  def pfey(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Ey),'E_y',**kw)
+  def pfey(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Ey,guards),'E_y',**kw)
       if l_children:
        for c in self.children:
         c.pfey(**kw)
 
-  def pfez(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Ez),'E_z',**kw)
+  def pfez(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Ez,guards),'E_z',**kw)
       if l_children:
        for c in self.children:
         c.pfez(**kw)
 
-  def pfbx(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Bx),'B_x',**kw)
+  def pfbx(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Bx,guards),'B_x',**kw)
       if l_children:
        for c in self.children:
         c.pfbx(**kw)
 
-  def pfby(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.By),'B_y',**kw)
+  def pfby(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.By,guards),'B_y',**kw)
       if l_children:
        for c in self.children:
         c.pfby(**kw)
 
-  def pfbz(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Bz),'B_z',**kw)
+  def pfbz(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Bz,guards),'B_z',**kw)
       if l_children:
        for c in self.children:
         c.pfbz(**kw)
 
-  def pfexp(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Exp),'Ep_x',**kw)
+  def pfexp(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Exp,guards),'Ep_x',**kw)
       if l_children:
        for c in self.children:
         c.pfexp(**kw)
 
-  def pfeyp(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Eyp),'Ep_y',**kw)
+  def pfeyp(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Eyp,guards),'Ep_y',**kw)
       if l_children:
        for c in self.children:
         c.pfeyp(**kw)
 
-  def pfezp(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Ezp),'Ep_z',**kw)
+  def pfezp(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Ezp,guards),'Ep_z',**kw)
       if l_children:
        for c in self.children:
         c.pfezp(**kw)
 
-  def pfbxp(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Bxp),'Bp_x',**kw)
+  def pfbxp(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Bxp,guards),'Bp_x',**kw)
       if l_children:
        for c in self.children:
         c.pfbxp(**kw)
 
-  def pfbyp(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Byp),'Bp_y',**kw)
+  def pfbyp(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Byp,guards),'Bp_y',**kw)
       if l_children:
        for c in self.children:
         c.pfbyp(**kw)
 
-  def pfbzp(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Bzp),'Bp_z',**kw)
+  def pfbzp(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Bzp,guards),'Bp_z',**kw)
       if l_children:
        for c in self.children:
         c.pfbzp(**kw)
 
-  def pfjx(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.J[:,:,:,0]),'J_x',**kw)
+  def pfjx(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,0],guards),'J_x',**kw)
       if l_children:
        for c in self.children:
         c.pfjx(**kw)
 
-  def pfjy(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.J[:,:,:,1]),'J_y',**kw)
+  def pfjy(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,1],guards),'J_y',**kw)
       if l_children:
        for c in self.children:
         c.pfjy(**kw)
 
-  def pfjz(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.J[:,:,:,2]),'J_z',**kw)
+  def pfjz(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,2],guards),'J_z',**kw)
       if l_children:
        for c in self.children:
         c.pfjz(**kw)
 
-  def pfrho(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.Rho),'Rho',**kw)
+  def pfrho(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Rho,guards),'Rho',**kw)
       if l_children:
        for c in self.children:
         c.pfrho(**kw)
 
-  def pff(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.fields.F),'F',**kw)
+  def pff(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.fields.F,guards),'F',**kw)
       if l_children:
        for c in self.children:
         c.pff(**kw)
 
-  def pfdive(self,l_children=1,**kw):
-      self.genericpfem3d(self.gatherarray(self.getdive()),'div(E)',**kw)
+  def pfdive(self,l_children=1,guards=0,**kw):
+      self.genericpfem3d(self.getarray(self.getdive(),guards),'div(E)',**kw)
       if l_children:
        for c in self.children:
         c.pfdive(**kw)
