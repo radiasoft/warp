@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.76 2009/01/26 22:33:37 dave Exp $"
+particles_version = "$Id: particles.py,v 1.77 2009/02/04 17:50:20 jlvay Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1379,7 +1379,7 @@ Adds particles to the simulation
   pid = array(pid)*ones([maxlen,top.npid],'d')
   if w is not None:
     w = array(w)*ones(maxlen,'d')
-
+  
   # --- Set time of creation
   if top.tpid>0: pid[:,top.tpid-1]=top.time
   # --- Set weights
@@ -1394,8 +1394,12 @@ Adds particles to the simulation
   # --- Set extent of domain
   if xmmin is None: xmmin = top.xpminlocal
   if xmmax is None: xmmax = top.xpmaxlocal 
-  if ymmin is None: ymmin = top.ypminlocal 
-  if ymmax is None: ymmax = top.ypmaxlocal 
+  if w3d.solvergeom == w3d.XZgeom:
+    if ymmin is None: ymmin = -1. 
+    if ymmax is None: ymmax =  1.
+  else:
+    if ymmin is None: ymmin = top.ypminlocal 
+    if ymmax is None: ymmax = top.ypmaxlocal 
   if zmmin is None: zmmin = top.zpminlocal + top.zbeam
   if zmmax is None: zmmax = top.zpmaxlocal + top.zbeam
 
@@ -1424,7 +1428,7 @@ Adds particles to the simulation
   addpart(pgroup,maxlen,top.npid,x,y,z,vx,vy,vz,gi,ex,ey,ez,bx,by,bz,pid,js+1,
           lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,lmomentum,lfields,
           l2symtry,l4symtry,lrz)
- 
+
   # --- If the slice code is active, then call initdtp
   if package()[0] == 'wxy': initdtp(top.pgroup)
 
