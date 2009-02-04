@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.35 2009/01/12 18:12:42 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.36 2009/02/04 21:57:58 jlvay Exp $"
 
 from warp import gettypecode
 from numpy import *
@@ -15,7 +15,7 @@ try:
   npes = mpi.procs
 except ImportError:
   me = 0
-  npes = 0
+  npes = 1
 
 import sys
 # --- for some reason, npes=1 when MPI=FALSE on OSX
