@@ -1,4 +1,4 @@
-warpscripts_version = "$Id: warpscripts.py,v 1.12 2008/04/03 18:28:19 dave Exp $"
+warpscripts_version = "$Id: warpscripts.py,v 1.13 2009/02/04 00:28:49 dave Exp $"
 
 def warpscriptsdoc():
   print """
@@ -29,7 +29,6 @@ envtuner.py: experimental script for mouse driven tuning of the beam envelope
 errorcheck.py: makes numerous consistency and error checks
 extpart.py: sets up extrapolated particle windows
 find_mgparam.py: routine for finding optimal multigrid relaxation parameter
-find_sorparam.py: routine for finding optimal sor relaxation parameter
 Fitting.py: a general function to do a least squares fit
 fixwxy.py: routine to shift particles to satisfy average quantities (wxy only)
 fringedquads.py: routine which takes a hard-edged elements and generates
@@ -159,7 +158,6 @@ Envelope and matching:
 Conductors and Field solver:
   adjustmesh3d
   find_mgparam
-  find_sorparam
   generateconductors
   plot_conductor
   realboundaries
