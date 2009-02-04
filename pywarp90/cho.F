@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CHO.F, version $Revision: 1.18 $, $Date: 2008/11/19 18:29:49 $
+c@(#) File CHO.F, version $Revision: 1.19 $, $Date: 2009/02/04 00:42:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the interface to the Chombo/AMR fieldsolver.
@@ -356,7 +356,6 @@ c=============================================================================
 c=============================================================================
       subroutine ReachableNodes(dx, mask, xlo, ylo, zlo, xhi, yhi, zhi, ncomp)
       use CHOInput
-      use PSOR3d
       use Conductor3d
       integer(ISZ):: xlo, ylo, zlo, xhi, yhi, zhi, ncomp
       integer(ISZ):: mask(xlo:xhi, ylo:yhi, zlo:zhi, 0:6)
@@ -376,7 +375,7 @@ c               6    1 if (i  , j  , k-1) is reachable from (i, j, k); else 0
       integer(ISZ):: ic,ix,iy,iz,il
 
 c     --- Get level of coarseness
-      level = nint(dx/dxfine)
+      level = nint(dx/cho_dxfine)
       il = int(log(1.*level)/log(2.) + 0.5)
 
 c     --- By default, all points are within the domain and are reachable.
@@ -475,7 +474,7 @@ c         --- the point higher in z is inside the conductor
 c=============================================================================
 c=============================================================================
       subroutine CoveredNodes(dx, mask, xlo, ylo, zlo, xhi, yhi, zhi)
-      use PSOR3d
+      use CHOInput,Only: cho_dxfine
       use Conductor3d
       integer(ISZ):: xlo, ylo, zlo, xhi, yhi, zhi
       integer(ISZ):: mask(xlo:xhi, ylo:yhi, zlo:zhi)
@@ -487,7 +486,7 @@ c conductor. The input argument dx is used to determine the refinement level.
       integer(ISZ):: level,ic,il,ix,iy,iz
  
 c     --- Get the level of coarseness above the finest level.
-      level = nint(dx/dxfine)
+      level = nint(dx/cho_dxfine)
       il = int(log(1.*level)/log(2.) + 0.5)
 
 c     --- Zero out the mask
@@ -510,7 +509,7 @@ c         --- If so, set mask to 1.
       end
 c=============================================================================
       subroutine NodalCoefficients(dx,coeffs,xlo,ylo,zlo,xhi,yhi,zhi,ncomp)
-      use PSOR3d
+      use CHOInput,Only: cho_dxfine
       use Conductor3d
       integer(ISZ):: xlo,ylo,zlo,xhi,yhi,zhi,ncomp
       real(kind=8):: dx,coeffs(xlo:xhi,ylo:yhi,zlo:zhi,0:7)
@@ -531,7 +530,7 @@ c     --- First put in the default values
       coeffs(:,:,:,7) = 0.
       
 c     --- Get level of coarseness
-      level = nint(dx/dxfine)
+      level = nint(dx/cho_dxfine)
       il = int(log(1.*level)/log(2.) + 0.5)
 
 c     --- Check for point in conductors.

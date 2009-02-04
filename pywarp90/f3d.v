@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.197 $, $Date: 2009/02/03 21:10:50 $
+#@(#) File F3D.V, version $Revision: 3.198 $, $Date: 2009/02/04 00:42:10 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.197 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.198 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -98,28 +98,6 @@ quadend(nendmax)       _real limited (numends)   # locations of quad starts
 quadvlt(nendmax)       _real limited (numends)   # voltage of quad
 vshift(nendmax)        _real limited (numends)   # shift in focusing voltage
 kkkk(4*ncndpts)          _integer # Pivot points for matrix solve
-
-*********** PSOR3d dump:
-sorparam  real    /1.88/ # Overrelaxation parameter, default value is a
-                         # reasonable choice, but it should be optimized for
-                         # the particular configuration.
-soriter   integer /0/    # Number of iterations needed to reach tolerance.
-sormaxit  integer /2000/ # Maximum number of iterations allowed.
-sortol    real   /1.e-6/ # Tolerance for convergence
-sorerror  real           # Maximum error after convergence
-isorerr   integer /5/    # Frequency of error calculation
-lchebshv  logical /.false./ # Turns on Chebyshev acceleration
-pjacobi   real    /.99/  # spectral radius of Jacobi iteration, used only for
-                         # Chebyshev acceleration
-gridmode    integer /0/ # Mode of grid motion, if 0, then normal, if 1, then
-                        # grid is assumed not to move.  slice arrays only set
-                        # when iwhich is set to -2.
-zparity   integer /0/ +parallel # iz parity, used in the parallel version so that the
-                       # parity of the subgrid conductor points can be
-                       # relative to the full grid.
-dxfine    real         # Size of transverse grid cells are finest level
-lplates  logical /.true./ # Sets whether or not quadruple endplates are included
-rodfract        real /1./ # Fraction of quadrupole rod which is used
 
 %%%%%%%%%% ConductorInteriorType:
 nmax           integer  /0/  # Maximum number of points in conductor
@@ -215,6 +193,9 @@ lprintmgphimaxchange logical /.false./ # When true, prints the maximum change in
 lprintmgarraysumdiagnostic logical /.false./
 
 *********** Multigrid3d dump:
+gridmode    integer /0/ # Mode of grid motion, if 0, then normal, if 1, then
+                        # grid is assumed not to move.  slice arrays only set
+                        # when iwhich is set to -2.
 mgparam     real    /1.2/ # Acceleration parameter for multigrid fieldsolver
 mgmaxiters  integer /100/ # Maximum number of iterations
 mgmaxlevels integer /101/ # Minimum grid size in x-y to coarsen to

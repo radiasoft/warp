@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.45 $, $Date: 2008/12/15 22:29:33 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.46 $, $Date: 2009/02/04 00:42:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -2153,7 +2153,7 @@ c=============================================================================
       use Picglb, only: zbeam,zgrid
       use InGen3d, only: filt,l2symtry,l4symtry
       use GridBoundary3d, only: bound0,boundnz,boundxy
-      use PSOR3d, only: gridmode
+      use Multigrid3d, only: gridmode
       use Parallel, only: fsdecomp
       integer(ISZ):: iwhich,bfstype,iaxis
       type(BFieldGridType):: bfield

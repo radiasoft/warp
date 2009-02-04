@@ -1,5 +1,5 @@
 cho
-#@(#) File CHO.V, version $Revision: 1.15 $, $Date: 2007/06/04 22:45:27 $
+#@(#) File CHO.V, version $Revision: 1.16 $, $Date: 2009/02/04 00:42:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package cho of code WARP6
@@ -9,7 +9,7 @@ cho
 }
 
 *********** CHOversion:
-verscho character*19 /"$Revision: 1.15 $"/#  Code version version is set by CVS
+verscho character*19 /"$Revision: 1.16 $"/#  Code version version is set by CVS
 
 *********** CHOHandle:
 cho_handle integer /0/ # Handle to the ChomboPIC package
@@ -17,6 +17,7 @@ cho_status integer /0/ # Status from most recent call to ChomboPIC
 cho_bunchid integer # Particle bunch id
 
 *********** CHOInput dump:
+cho_dxfine   real # Size of transverse grid cells at finest level
 cho_nlevels  integer /1/ # Number of levels in Chombo hierarchy
 cho_refratio integer /2/ # Refinement ratio
 cho_maxparticlespercell integer /100000/ # Maximum particles per cell

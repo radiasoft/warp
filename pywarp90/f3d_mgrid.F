@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.184 $, $Date: 2009/02/03 21:10:49 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.185 $, $Date: 2009/02/04 00:42:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -14,7 +14,6 @@ c=============================================================================
      &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                        xmmin,ymmin,zmmin,zbeam,zgrid)
       use GlobalVars
-      use PSOR3d
       use Conductor3d
       use Multigrid3d
       use Parallel
