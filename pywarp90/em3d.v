@@ -24,6 +24,17 @@ sb_coef          real    /0./
 nn               real    /2./
 bnd_cond         integer /3/
 
+*********** EM3D_kyee dump:
+alphax real /0.58333333333333337/  # 7./12.
+betax  real /0.083333333333333329/ # 1./12.
+gammax real /0.020833333333333332/ # 1./48.
+alphay real /0.58333333333333337/  # 7./12.
+betay  real /0.083333333333333329/ # 1./12.
+gammay real /0.020833333333333332/ # 1./48.
+alphaz real /0.58333333333333337/  # 7./12.
+betaz  real /0.083333333333333329/ # 1./12.
+gammaz real /0.020833333333333332/ # 1./48.
+
 *********** EM3D_FIELDobjects dump:
 l_onegrid                    logical /.true./
 l_elaser_out_plane           logical /.false./
@@ -43,12 +54,6 @@ ntamp_gather                 integer /4/
 transition_zone              real /0./ # length of zone for linear transition from coarse to fine force (in coarse cell units)
 tmin_moving_main_window      real /0./
 otherproc                    integer /10/
-init_3dem_block(b:EM3D_BLOCKtype,nx:integer,ny:integer,nz:integer,
-                nbndx:integer,nbndy:integer,nbndz:integer,
-                nxguard:integer,nyguard:integer,nzguard:integer,
-                dt:real,dx:real,dy:real,dz:real,clight:real,mu0:real,
-                xmin:real,ymin:real,zmin:real,xlb:real,ylb:real,zlb:real,
-                xrb:real,yrb:real,zrb:real) subroutine
 push_em3d_e(f:EM3D_YEEFIELDtype,dt:real) subroutine
 push_em3d_b(f:EM3D_YEEFIELDtype,dt:real) subroutine
 push_em3d_ef(f:EM3D_YEEFIELDtype,dt:real) subroutine
@@ -65,7 +70,7 @@ init_splitfield(sf:EM3D_SPLITYEEFIELDtype,
                 lsx:integer,lsy:integer,lsz:integer, 
                 nnx:integer, smaxx:real, sdeltax:real, 
                 nny:integer, smaxy:real, sdeltay:real, 
-                nnz:integer, smaxz:real, sdeltaz:real) subroutine
+                nnz:integer, smaxz:real, sdeltaz:real, l_2dxz:logical) subroutine
 depose_jxjyjz_esirkepov_linear_serial(j:real,
                            n:integer,x(n):real,y(n):real,z(n):real,
                            ux(n):real,uy(n):real,uz(n):real,
@@ -77,6 +82,18 @@ depose_jxjyjz_esirkepov_linear_serial(j:real,
                            l_particles_weight:logical)
                            subroutine
 depose_jxjyjz_esirkepov_n(j:real,
+                           n:integer,x(n):real,y(n):real,z(n):real,
+                           vx(n):real,vy(n):real,vz(n):real,gaminv(n):real,
+                           w:real,q:real,
+                           xmin:real,ymin:real,zmin:real,
+                           dt:real,dx:real,dy:real,dz:real,
+                           nx:integer,ny:integer,nz:integer,
+                           nxguard:integer,nyguard:integer,nzguard:integer,
+                           nox:integer,noy:integer,noz:integer,
+                           l_particles_weight:logical,
+                           l4symtry:logical)
+                           subroutine
+depose_jxjyjz_esirkepov_nold(j:real,
                            n:integer,x(n):real,y(n):real,z(n):real,
                            ux(n):real,uy(n):real,uz(n):real,
                            gaminv(n):real,w:real,q:real,
@@ -126,6 +143,24 @@ getf3d_linear(n:integer,xp(n):real,yp(n):real,zp(n):real,
                nx:integer,ny:integer,nz:integer,
                nxguard:integer,nyguard:integer,nzguard:integer,
                exg:real,eyg:real,ezg:real)
+                           subroutine
+getf3d_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
+         ex(n):real,ey(n):real,ez(n):real,
+         xmin:real,ymin:real,zmin:real,
+         dx:real,dy:real,dz:real,
+         nx:integer,ny:integer,nz:integer,
+         nxguard:integer,nyguard:integer,nzguard:integer,
+         nox:integer,noy:integer,noz:integer,
+         exg:real,eyg:real,ezg:real,l4symtry:logical)
+                           subroutine
+getf2dxz_n(n:integer,xp(n):real,zp(n):real,
+         ex(n):real,ey(n):real,ez(n):real,
+         xmin:real,zmin:real,
+         dx:real,dz:real,
+         nx:integer,ny:integer,nz:integer,
+         nxguard:integer,nyguard:integer,nzguard:integer,
+         nox:integer,noz:integer,
+         exg:real,eyg:real,ezg:real,l4symtry:logical)
                            subroutine
 gete3d_linear_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                ex(n):real,ey(n):real,ez(n):real,
@@ -194,10 +229,30 @@ addsubstractfields(child:EM3D_BLOCKtype,child_coarse:EM3D_BLOCKtype,
                    parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer) subroutine
 addsubstractfields_nodal(child:EM3D_BLOCKtype,child_coarse:EM3D_BLOCKtype,
                    parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer) subroutine
-smooth3d_121(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,npass(3):integer) subroutine
+smooth3d_121(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,npass(3):integer,alpha(3):real) subroutine
+shift_em3dblock_ncells_z(b:EM3D_BLOCKtype,n:integer) subroutine
+depose_jxjy_esirkepov_linear_serial_2d(j:real,
+                           n:integer,x(n):real,y(n):real,
+                           xold(n):real,yold(n):real,uz(n):real,
+                           gaminv(n):real,w(n):real,q:real,
+                           xmin:real,ymin:real,dt:real,dx:real,dy:real,
+                           nx:integer,ny:integer,l_particles_weight:logical)
+                           subroutine
+depose_jxjyjz_esirkepov_n_2d(j:real,
+                           n:integer,x(n):real,y(n):real,
+                           ux(n):real,uy(n):real,uz(n):real,
+                           gaminv(n):real,w(n):real,q:real,
+                           xmin:real,zmin:real,dt:real,dx:real,dz:real,
+                           nx:integer,nz:integer,
+                           nxguard:integer,nzguard:integer,
+                           nox:integer,noz:integer,
+                           l_particles_weight:logical,
+                           l4symtry:logical)
+                           subroutine
 
 %%%%%%%% EM3D_SPLITYEEFIELDtype:
 fieldtype integer /-2/
+stencil integer /0/ # 0 = Yee; 1 = Yee-enlarged (Karkkainen) on EF,B; 2 = Yee-enlarged (Karkkainen) on E,F
 nx integer
 ny integer
 nz integer
@@ -228,9 +283,9 @@ jzming integer /0/ # position of first node of entire grid (interior+guard nodes
 jxmaxg integer /0/ # position of last node of entire grid (interior+guard nodes) in the x direction (Python indexing)
 jymaxg integer /0/ # position of last node of entire grid (interior+guard nodes) in the y direction (Python indexing)
 jzmaxg integer /0/ # position of last node of entire grid (interior+guard nodes) in the z direction (Python indexing)
-nxp integer /0/
-nyp integer /0/
-nzp integer /0/
+nxpo integer /0/
+nypo integer /0/
+nzpo integer /0/
 dx real
 dy real
 dz real
@@ -251,6 +306,7 @@ lsz integer
 nnz integer
 smaxz real
 sdeltaz real
+l_2dxz logical /.False./
 exx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 exy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 exz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
@@ -269,10 +325,10 @@ bzy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 fx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 fy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 fz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-ax(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
-ay(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
-az(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
-phi(1:3,-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+ax(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
+ay(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
+az(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
+phi(1:3,-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 afx(-nxguard:nx+nxguard) _real
 bpfx(-nxguard:nx+nxguard) _real
 bmfx(-nxguard:nx+nxguard) _real
@@ -294,6 +350,7 @@ bmgz(-nzguard:nz+nzguard) _real
 
 %%%%%%%% EM3D_YEEFIELDtype:
 fieldtype integer /-1/
+stencil integer /0/ # 0 = Yee; 1 = Yee-enlarged (Karkkainen) on EF,B; 2 = Yee-enlarged (Karkkainen) on E,F
 nx integer /0/ # nb of mesh cells of grid interior in the x direction
 ny integer /0/ # nb of mesh cells of grid interior in the y direction
 nz integer /0/ # nb of mesh cells of grid interior in the z direction
@@ -355,6 +412,7 @@ dyi real
 dzi real
 clight real
 mu0    real
+l_2dxz logical /.False./
 Ex(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Ey(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Ez(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
@@ -379,54 +437,16 @@ Ay(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Az(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Phi(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Mp(-nxguard:nxmp+nxguard,-nyguard:nymp+nyguard,-nzguard:nzmp+nzguard,3) _real
-Ey_in_pos integer /-1/
-Ey_in(-nxguard:nx+nxguard,-nyguard:ny+nyguard) _real
-
-%%%%%%%% EM3D_KYEEFIELDtype:
-fieldtype integer /-1/
-nx integer
-ny integer
-nz integer
-nxguard integer /1/
-nyguard integer /1/
-nzguard integer /1/
-ntimes integer /1/
-xmin real
-ymin real
-zmin real
-xmax real
-ymax real
-zmax real
-dx real
-dy real
-dz real
-dxi real
-dyi real
-dzi real
-clight real
-mu0    real
-alphax real /0.58333333333333337/  # 7./12.
-betax  real /0.083333333333333329/ # 1./12.
-gammax real /0.020833333333333332/ # 1./48.
-alphay real /0.58333333333333337/  # 7./12.
-betay  real /0.083333333333333329/ # 1./12.
-gammay real /0.020833333333333332/ # 1./48.
-alphaz real /0.58333333333333337/  # 7./12.
-betaz  real /0.083333333333333329/ # 1./12.
-gammaz real /0.020833333333333332/ # 1./48.
-Ex(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Ey(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Ez(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Bx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-By(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Bz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-F(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Fdrho(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Rho(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Rhoarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,ntimes) _real
-J(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
-Jarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3,ntimes) _real
-Jold(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
+E_inx_pos integer /-1/
+E_inx_angle real  /0./
+E_inx(-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+E_iny_pos integer /-1/
+E_iny_angle real  /0./
+E_iny(-nxguard:nx+nxguard,-nzguard:nz+nzguard) _real
+E_inz_pos integer /-1/
+E_inz_angle real  /0./
+Ex_inz(-nxguard:nx+nxguard,-nyguard:ny+nyguard) _real
+Ey_inz(-nxguard:nx+nxguard,-nyguard:ny+nyguard) _real
 
 %%%%%%%% EM3D_FIELDtype:
 fieldtype integer /0/
