@@ -1,5 +1,5 @@
 from warp import *
-fixlogicals_version = "$Id: fixlogicals.py,v 1.2 2006/02/17 23:52:36 dave Exp $"
+fixlogicals_version = "$Id: fixlogicals.py,v 1.3 2009/02/04 00:27:26 dave Exp $"
 
 def fixlogicals():
   if cir.lcirout: cir.lcirout = true
@@ -17,9 +17,6 @@ def fixlogicals():
   if env.libeame_z: env.libeame_z = true
   if env.lemitne_z: env.lemitne_z = true
   if f3d.loadquad: f3d.loadquad = true
-  if f3d.lchebshv: f3d.lchebshv = true
-  if f3d.lzerophiedge: f3d.lzerophiedge = true
-  if f3d.lplates: f3d.lplates = true
   if f3d.lcndbndy: f3d.lcndbndy = true
   if f3d.lsrlinr: f3d.lsrlinr = true
   if f3d.lsrminlinr: f3d.lsrminlinr = true
