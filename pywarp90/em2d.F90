@@ -569,7 +569,8 @@ subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_we
                                                 pack(uyp,.not. l_inpatch), &
                                                 pack(uzp,.not. l_inpatch), &
                                                 pack(gaminv,.not. l_inpatch), &
-                                                w,q,f%xmin,f%ymin,dt, &
+                                                pack(w,.not. l_inpatch), &
+                                                q,f%xmin,f%ymin,dt, &
                                                 f%dx,f%dy,f%nx,f%ny,l_particles_weight)
      end if
      if (np_inpatch>0) then
@@ -580,7 +581,8 @@ subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_we
                                                 pack(uyp,l_inpatch), &
                                                 pack(uzp,l_inpatch), &
                                                 pack(gaminv,l_inpatch), &
-                                                w,q,ff%xmin,ff%ymin,dt, &
+                                                pack(w,l_inpatch), &
+                                                q,ff%xmin,ff%ymin,dt, &
                                                 ff%dx,ff%dy,ff%nx,ff%ny,l_particles_weight)
      end if     
    endif
