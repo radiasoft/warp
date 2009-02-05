@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.122 2009/02/03 18:59:35 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.123 2009/02/05 18:18:40 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2873,7 +2873,7 @@ Sets the voltage on a conductor, given an id.
       # --- is set, then round down to the nearest grid point.
       ecmz = iecz + where(0 < evensubgrid.dels[4,:] < 1.,
                           -evensubgrid.dels[4,:],0)*iecl
-      iecmz = ecmz.astype(Int)
+      iecmz = ecmz.astype(long)
       if discrete: wecmz = 0.
       else:        wecmz = ecmz - iecmz
       ecvmz = take(voltage,iecmz)*(1.-wecmz) + take(voltage,iecmz+1)*wecmz
@@ -2881,7 +2881,7 @@ Sets the voltage on a conductor, given an id.
       # --- Same for conductors to the right. If discrete is set, round up.
       ecpz = iecz + where(0 < evensubgrid.dels[5,:] < 1.,
                           -evensubgrid.dels[5,:],0)*iecl
-      iecpz = ecpz.astype(Int)
+      iecpz = ecpz.astype(long)
       if discrete: wecpz = 1.
       else:        wecpz = ecpz - iecpz
       ecvpz = take(voltage,iecpz)*(1.-wecpz) + take(voltage,iecpz+1)*wecpz
@@ -2900,14 +2900,14 @@ Sets the voltage on a conductor, given an id.
 
       ocmz = iocz + where(0 < oddsubgrid.dels[4,:] < 1.,
                           -oddsubgrid.dels[4,:],0)*iocl
-      iocmz = ocmz.astype(Int)
+      iocmz = ocmz.astype(long)
       if discrete: wocmz = 0.
       else:        wocmz = ocmz - iocmz
       ocvmz = take(voltage,iocmz)*(1.-wocmz) + take(voltage,iocmz+1)*wocmz
 
       ocpz = iocz + where(0 < oddsubgrid.dels[5,:] < 1.,
                           -oddsubgrid.dels[5,:],0)*iocl
-      iocpz = ocpz.astype(Int)
+      iocpz = ocpz.astype(long)
       if discrete: wocpz = 1.
       else:        wocpz = ocpz - iocpz
       ocvpz = take(voltage,iocpz)*(1.-wocpz) + take(voltage,iocpz+1)*wocpz
@@ -3139,7 +3139,7 @@ Returns the scene use to draw the image
     gchange("ConductorGeometryVisualization")
     tt = f3d.triangles - gridmin[:,newaxis,newaxis]
     tt = tt[0,:,:]**2 + tt[1,:,:]**2 + tt[2,:,:]**2
-    tt = (tt/max(tt)*100000000).astype(Int)
+    tt = (tt/max(tt)*100000000).astype(long)
     tt.shape = (3*f3d.ntriangles,)
     ii = argsort(tt)
     conductorsmoothshading(tt,ii)

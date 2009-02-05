@@ -1,5 +1,5 @@
 from warp import *
-fringedquads_version = "$Id: fringedquads.py,v 1.11 2008/11/21 20:49:47 dave Exp $"
+fringedquads_version = "$Id: fringedquads.py,v 1.12 2009/02/05 18:18:40 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -172,32 +172,32 @@ not, then the derivatives will be done with a finite difference of fringe.
     # --- use the default form
     def fringe(n):
       zz = pi*iota(1,n-1)/n
-      ff = zeros(n+1,Float)
+      ff = zeros(n+1,float64)
       ff[n] = 1.
       ff[1:n] = 0.5*(1. - tanh(cot(zz)))
       return ff
     def fringep(n):
       zz = pi*iota(1,n-1)/n
-      ffp = zeros(n+1,Float)
+      ffp = zeros(n+1,float64)
       ffp[1:n] = pi/n*0.5*(1.-tanh(cot(zz))**2)*(1.+cot(zz)**2)
       return ffp
     def fringepp(n):
       zz = pi*iota(1,n-1)/n
-      ffpp = zeros(n+1,Float)
+      ffpp = zeros(n+1,float64)
       ffpp[1:n]=(pi/n)**2*0.5*(2.*tanh(cot(zz))*(1.-tanh(cot(zz))**2)*
         (1.+cot(zz)**2)**2-(1.-tanh(cot(zz))**2)*2.*cot(zz)*(1.+cot(zz)**2))
       return ffpp
   if not fringep:
     # --- Use finite difference of fringe
     def fringep(n,fringe=fringe):
-      ffp = zeros(n+1,Float)
+      ffp = zeros(n+1,float64)
       ff = fringe(n)
       ffp[1:n] = (ff[2:] - ff[:-2])/2.
       return ffp
     if not fringepp:
       # --- If fringepp is also not defined, use finite difference of fringe
       def fringepp(n,fringe=fringe):
-        ffpp = zeros(n+1,Float)
+        ffpp = zeros(n+1,float64)
         ff = fringe(n)
         ffpp[1:n] = (ff[2:] + ff[:-2] - 2.*ff[1:-1])/2.
         return ffpp
@@ -205,7 +205,7 @@ not, then the derivatives will be done with a finite difference of fringe.
     # --- If fringep was defined but not fringepp, then use finite difference
     # --- on fringep directly.
     def fringepp(n,fringep=fringep):
-      ffpp = zeros(n+1,Float)
+      ffpp = zeros(n+1,float64)
       ffp = fringep(n)
       ffpp[1:n] = (ffp[2:] - ffp[:-2])/2.
       return ffpp

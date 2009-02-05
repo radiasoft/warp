@@ -1,5 +1,5 @@
 from warp import *
-sortwxy_version = "$Id: sortwxy.py,v 1.4 2006/04/28 16:23:19 dave Exp $"
+sortwxy_version = "$Id: sortwxy.py,v 1.5 2009/02/05 18:18:40 dave Exp $"
 # Sorts the particles for better cache use for the gather/scatter.
 
 def sortwxy(pgroup=None):
@@ -12,8 +12,8 @@ def sortwxy(pgroup=None):
     uy = getuy(js=j,gather=0)
     uz = getuz(js=j,gather=0)
     gi = getgaminv(js=j,gather=0)
-    ix = (abs(xx - w3d.xmmin)/w3d.dx).astype(Int)
-    iy = (abs(yy - w3d.ymmin)/w3d.dy).astype(Int)
+    ix = (abs(xx - w3d.xmmin)/w3d.dx).astype(long)
+    iy = (abs(yy - w3d.ymmin)/w3d.dy).astype(long)
     ixy = ix + iy*(w3d.nx+1)
     ii = argsort(ixy)
     pgroup.nps[j] = len(ix)
@@ -37,9 +37,9 @@ def sort3d(pgroup=None):
     uy = getuy(js=j,gather=0)
     uz = getuz(js=j,gather=0)
     gi = getgaminv(js=j,gather=0)
-    ix = (abs(xx - w3d.xmmin)/w3d.dx).astype(Int)
-    iy = (abs(yy - w3d.ymmin)/w3d.dy).astype(Int)
-    iz = (abs(zz - w3d.zmmin)/w3d.dz).astype(Int)
+    ix = (abs(xx - w3d.xmmin)/w3d.dx).astype(long)
+    iy = (abs(yy - w3d.ymmin)/w3d.dy).astype(long)
+    iz = (abs(zz - w3d.zmmin)/w3d.dz).astype(long)
     ixy = ix + iy*(w3d.nx+1) + iz*(w3d.nx+1)*(w3d.ny+1)
     ii = argsort(ixy)
     pgroup.nps[j] = len(ix)

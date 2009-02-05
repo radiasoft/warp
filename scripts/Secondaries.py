@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.42 2009/01/21 21:09:33 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.43 2009/02/05 18:18:40 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -243,7 +243,7 @@ Class for generating secondaries
     self.vy[js][il:iu]=vy
     self.vz[js][il:iu]=vz
     if weight is not None:self.pid[js][il:iu,top.wpid-1]=weight
-    if itype is not None:self.pid[js][il:iu,self.piditype]=itype.astype(Float)
+    if itype is not None:self.pid[js][il:iu,self.piditype]=itype.astype(float64)
     self.nps[js]+=nn
       
   def flushpart(self,js):
@@ -1264,8 +1264,8 @@ components of the secondaries (dimensionless).
       pos.gchange("bincoeff")
       init_pascal_triangle(pos.nbc,pos.maxsec)
   
-#    pos.enpar = zeros(maxsec,Float)
-#    pos.pnpar = zeros(maxsec,Float)
+#    pos.enpar = zeros(maxsec,float64)
+#    pos.pnpar = zeros(maxsec,float64)
 
  # Initialize all parameters  #
   # 1 = Cu (default)
@@ -1290,8 +1290,8 @@ components of the secondaries (dimensionless).
     dele   = zeros(1,'d')
     delr   = zeros(1,'d')
     delts  = zeros(1,'d')
-    prob = zeros(maxsec+1,Float)
-    probts = zeros(maxsec+1,Float)
+    prob = zeros(maxsec+1,float64)
+    probts = zeros(maxsec+1,float64)
   
     pos.gen_prob(Ek0,costheta,dele,delr,delts, #in
             maxsec,pos.iprob,prob,probts,
@@ -1312,12 +1312,12 @@ components of the secondaries (dimensionless).
       pos.gchange("bincoeff")
       init_pascal_triangle(pos.nbc,pos.maxsec)
   
-#    pos.enpar = zeros(maxsec,Float)
-#    pos.pnpar = zeros(maxsec,Float)
+#    pos.enpar = zeros(maxsec,float64)
+#    pos.pnpar = zeros(maxsec,float64)
     n=shape(energy)[0]
-    s1=zeros(n,Float)
-    s2=zeros(n,Float)
-    s3=zeros(n,Float)
+    s1=zeros(n,float64)
+    s2=zeros(n,float64)
+    s3=zeros(n,float64)
     for i in range(n):
       s1[i]=getdeltats(E0=energy[i],costheta=1.,material=2,maxsec=10)
       s2[i]=getP1rediff(E0=energy[i],costheta=1.,material=2,maxsec=10)

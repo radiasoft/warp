@@ -192,7 +192,7 @@ class AMRTree(VisualizableClass):
         s=shape(f)
         nx = s[0]
         ny = s[1]
-        g = fzeros([nx+2,ny+2],Float)
+        g = fzeros([nx+2,ny+2],float64)
         # fill interior
         g[1:-1,1:-1] = f
         # set boundaries
@@ -207,7 +207,7 @@ class AMRTree(VisualizableClass):
            + 0.5*abs((g[1:-1,2:  ]-g[1:-1,1:-1])/dx)
       else:
        #s=shape(f)
-       #g = fzeros(array(s)+2,Float)
+       #g = fzeros(array(s)+2,float64)
        ## fill interior
        #g[1:-1,1:-1,1:-1] = f
        ## set boundaries

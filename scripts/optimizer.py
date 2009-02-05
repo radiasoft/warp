@@ -1,5 +1,5 @@
 from warp import *
-optimizer_version = "$Id: optimizer.py,v 1.10 2008/05/12 16:34:17 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.11 2009/02/05 18:18:40 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
@@ -91,7 +91,7 @@ Creates an instance of the Spsa class.
     return params
   def gradloss(self):
   # --- Calculated the approximated gradient of the loss function.
-    deltak = (2*random.random(self.nparams)).astype(Int) - .5
+    deltak = (2*random.random(self.nparams)).astype(long) - .5
     nextparams = self.constrainparams(self.params + self.ck()*deltak)
     nextparams = self.unscaledparams(nextparams)
     self.func(nextparams)

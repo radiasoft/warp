@@ -1,7 +1,7 @@
 from warp import *
 from lattice import *
 import cPickle
-latticegenerator_version = "$Id: latticegenerator.py,v 1.8 2003/08/19 16:37:51 dave Exp $"
+latticegenerator_version = "$Id: latticegenerator.py,v 1.9 2009/02/05 18:18:40 dave Exp $"
 ######################################################################
 # Lattice builder
 # 
@@ -193,7 +193,7 @@ class LatticeGenerator:
     if gapez:
       accldt = (s.beamtime[-1] - s.beamtime[0])/s.ngappoints
       acclts = s.beamtime[0] - s.nendpoints*accldt
-      ia = ((s.beamtime - acclts)/accldt).astype(Int)
+      ia = ((s.beamtime - acclts)/accldt).astype(long)
       wi =  (s.beamtime - acclts)/accldt - ia
       vv = take(gapez,ia)*(1. - wi) + take(gapez,ia+1)*wi
       s.ekin = s.ekin + vv*s.gap_len
@@ -497,7 +497,7 @@ class LatticeGenerator:
     accldt = (s.beamtime[-1] - s.beamtime[0])/s.ngappoints
     acclts = s.beamtime[0] - s.nendpoints*accldt
     actime = acclts + iota(0,s.ntaccl)*accldt
-    ii = ((actime - s.firetime)/s.gapdt).astype(Int)
+    ii = ((actime - s.firetime)/s.gapdt).astype(long)
     ww = ((actime - s.firetime)/s.gapdt)- ii
     ww = where(less(ii,0),0.,ww)
     ii = where(less(ii,0),0,ii)
@@ -691,7 +691,7 @@ class LatticeGenerator:
     # --- Interpolate ezbeam into eears. This can be done easily since
     # --- the beamtime used here is linearly varying.
     tears = accl_ts + iota(0,s.ntaccl)*accl_dt
-    itears = ((tears - s.beamtime[0])/beamdt).astype(Int)
+    itears = ((tears - s.beamtime[0])/beamdt).astype(long)
     wtears = ((tears - s.beamtime[0])/beamdt) - itears
     wtears[:] = where(less(itears,0),0.,wtears)
     wtears[:] = where(less(s.nn-1,itears),1.,wtears)

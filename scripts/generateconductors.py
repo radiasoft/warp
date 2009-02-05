@@ -109,7 +109,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.193 2009/01/25 04:35:23 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.194 2009/02/05 18:18:40 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -375,8 +375,8 @@ Should never be directly created by the user.
     # setup time min/max and arrays
     if tmin is None:tmin=min(tminl,tmine,tmini)
     if tmax is None:tmax=max(tmaxl,tmaxe,tmaxi)
-    qt = zeros(nt+1,Float)
-    qtmp = zeros(nt+1,Float)
+    qt = zeros(nt+1,float64)
+    qtmp = zeros(nt+1,float64)
     dt = (tmax-tmin)/nt
     # accumulate data
     if nl>0:deposgrid1d(1,nl,tl,ql,nt,qt,qtmp,tmin,tmax)
@@ -4935,16 +4935,16 @@ containing a list of primitives.
             nsrmin += 1
       if(nsrmax<>0):
         l_t = 1
-        r_srmax = zeros(nsrmax+1,Float)
-        z_srmax = zeros(nsrmax+1,Float)
-        rc_srmax = zeros(nsrmax,Float)
-        zc_srmax = zeros(nsrmax,Float)
+        r_srmax = zeros(nsrmax+1,float64)
+        z_srmax = zeros(nsrmax+1,float64)
+        rc_srmax = zeros(nsrmax,float64)
+        zc_srmax = zeros(nsrmax,float64)
       if(nsrmin<>0):
         l_b = 1
-        r_srmin = zeros(nsrmin+1,Float)
-        z_srmin = zeros(nsrmin+1,Float)
-        rc_srmin = zeros(nsrmin,Float)
-        zc_srmin = zeros(nsrmin,Float)
+        r_srmin = zeros(nsrmin+1,float64)
+        z_srmin = zeros(nsrmin+1,float64)
+        rc_srmin = zeros(nsrmin,float64)
+        zc_srmin = zeros(nsrmin,float64)
 
       # Fill arrays with datas from parts.
       do = data[0]
