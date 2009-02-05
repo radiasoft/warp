@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.36 2009/02/04 21:57:58 jlvay Exp $"
+parallel_version = "$Id: parallel.py,v 1.37 2009/02/05 18:56:13 dave Exp $"
 
 from warp import gettypecode
 from numpy import *
@@ -17,14 +17,7 @@ except ImportError:
   me = 0
   npes = 1
 
-import sys
-# --- for some reason, npes=1 when MPI=FALSE on OSX
-if sys.platform=='darwin':
-  npes_serial=1
-else:
-  npes_serial=0
-if npes > npes_serial: lparallel = 1
-else:                  lparallel = 0
+lparallel = (npes > 1)
 
 """
 # --- This check is old enough that it is no longer needed.
