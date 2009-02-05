@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.167 $, $Date: 2009/01/13 00:51:43 $
+c@(#) File DTOP.F, version $Revision: 3.168 $, $Date: 2009/02/05 21:03:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -330,7 +330,7 @@ c  frame and an output file or tty
 c  Calculate various quantities first
 
 c  Current density at the center of the beam
-      currdens = ibeam/dvnz(Pi*a0*b0)
+      currdens = abs(ibeam/dvnz(Pi*a0*b0))
 c  Charge density at the center of the beam
       chrgdens = currdens/dvnz(vbeam)
 c  Number density
@@ -365,12 +365,12 @@ c  Totals
       totmass = npmax*pgroup%sw(1)*(aion*amu)
       totchrg = npmax*pgroup%sw(1)*(zion*echarge)
 c  Generalized perveance
-      genperv = ibeam*(zion*echarge)/
-     &          dvnz(2.*Pi*eps0*(aion*amu)*(vbeam*gammabar)**3)
+      genperv = abs(ibeam*(zion*echarge)/
+     &              dvnz(2.*Pi*eps0*(aion*amu)*(vbeam*gammabar)**3))
 c  Characteristic current
       charcurr = 4.*Pi*eps0*(aion*amu)*clight**3/dvnz((zion*echarge))
 c  Budker parameter
-      budker = ibeam/dvnz(charcurr*vbeam/clight)
+      budker = abs(ibeam/dvnz(charcurr*vbeam/clight))
 c  Particle Betatron frequencies, both undepressed and depressed in the 
 c  X- and Y- planes and in various units
       lambdab0x = tunelen*360./dvnz(sigma0x)
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.167 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.168 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
