@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.254 $, $Date: 2009/01/27 21:12:36 $
+#@(#) File TOP.V, version $Revision: 3.255 $, $Date: 2009/02/05 19:49:05 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.254 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.255 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -96,7 +96,7 @@ temperaturestime real /0./ # Time to calculate the temperatures (in seconds)
 
 *********** Beam_acc dump:
 # Beam and Accelerator variables needed by more than one package
-aion          real /0./               [1] # A of ion (Carbon)
+aion          real /0./               [1] # A, atomic mass, of ion
 a0            real /0./               [m] # Initial beam width in x
 ap0           real /0./               [1] # Initial beam envelope vx/vz
 b0            real /0./               [m] # Initial beam width in y
@@ -139,19 +139,21 @@ dbxdy         real /0./             [T/m] # Uniform focusing X-Magnetic field
 dbydx         real /0./             [T/m] # Unifrom focusing Y-Magnetic field 
                                           #   gradient (dB_y/dx) 
 ekin          real /0./              [eV] # Input beam kinetic energy
+                                          # (in volts)
 emit          real /0./           [m-rad] # Perp Emittance of beam (rms-edge)
-emitx         real /0./           [m-rad] #    X-Emittance of beam (rms-edge)
-                                          #    auto-set to emit, if zero 
-emity         real /0./           [m-rad] #    Y-Emittance of beam (rms-edge)
-                                          #    auto-set to emit, if zero 
-emitn         real /0./           [m-rad] # Normalized   emittance of beam 
+emitx         real /0./           [m-rad] # X-Emittance of beam (rms-edge)
+                                          # auto-set to emit, if zero 
+emity         real /0./           [m-rad] # Y-Emittance of beam (rms-edge)
+                                          # auto-set to emit, if zero 
+emitn         real /0./           [m-rad] # Normalized perp emittance of beam 
 emitnx        real /0./           [m-rad] # Normalized X-emittance of beam 
-                                          #    auto-set to emitn, if zero 
+                                          # auto-set to emitn, if zero 
 emitny        real /0./           [m-rad] # Normalized Y-emittance of beam
-                                          #    auto-set to emitn, if zero  
-ibeam         real /0./               [A] # Input beam current
-zion          real /0./               [1] # Z of ion 
-straight      real /0./               [1] # Percent of beam that isn't cigar
+                                          # auto-set to emitn, if zero  
+ibeam         real /0./               [A] # Input beam current magnitude
+                                          # (the sign is ignored)
+zion          real /0./               [1] # Z, charge state, of ion 
+straight      real /0./               [1] # Fraction of beam that isn't cigar
 emitlong      real /0./           [m-rad] # Longitudinal emittance
 eears         real /1./             [E/m] # Cigar Eears multiplier / switch
 gfactor       real /0./               [1] # Geometric factor (is set if 0)
@@ -1195,7 +1197,7 @@ emitny_s(ns)   _real    [m-rad] /LARGEPOS/
    # Normalized Y-emittance by species: if LARGEPOS, set to emitny
    # ; if emitny is zero, it is set to emitny_s(1)
 ibeam_s(ns)    _real    [A]     /LARGEPOS/
-   # Beam current by species: if LARGEPOS, set to ibeam
+   # Beam current magnitude by species: if LARGEPOS, set to ibeam
    # ;if ibeam is zero, it is set to ibeam_s(1)
 zion_s(ns)     _real    [1]     /LARGEPOS/
    # Charge state by species: if LARGEPOS, set to zion
