@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.422 $, $Date: 2009/02/03 20:22:33 $
+c@(#) File W3D.F, version $Revision: 3.423 $, $Date: 2009/02/05 19:43:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1235,8 +1235,8 @@ c Calculated for first species.
 
 c     set to be linear in z (eears is actually slope of Eears)
       if (ifeears == 1) then
-        eears = eears*(- 2*ibeam/(vbeam*zm**2)*gfactor/(2.*Pi*eps0)
-     &              - (aion*amu)*emitlong**2/((zion*echarge)*zm**4))
+        eears = eears*(- 2*abs(ibeam/vbeam)/(zm**2)*gfactor/(2.*Pi*eps0)
+     &                 - (aion*amu)*emitlong**2/((zion*echarge)*zm**4))
 
       elseif (ifeears == 2) then
 
@@ -6371,8 +6371,12 @@ c     --- calculate values for sm, sq, and sw for each species.
      &      zion_s(isid) /= 0.  .and. pgroup%sw(js+1) == 0) then
           zlen = zimax_s(isid) - zimin_s(isid)
           if (zlen == 0.) zlen = 1.
-          pgroup%sw(js+1)=ibeam_s(isid)*zlen*sp_fract(isid)/
-     &                   (vbeam_s(isid)*echarge*zion_s(isid)*nptot(js))
+c         --- sw must be >= 0. The cancellation of signs in this expression
+c         --- is tricky, so it is simplest to just use abs. For example,
+c         --- the code allows zimin > zimax, which leaves zlen < 0.
+c         --- Also, ibeam, vbeam and zion would have to be consistent.
+          pgroup%sw(js+1)=abs(ibeam_s(isid)*zlen*sp_fract(isid)/
+     &                        (vbeam_s(isid)*echarge*zion_s(isid)*nptot(js)))
         else if (js > 0) then
           if (pgroup%sw(js+1) == 0 .and.
      &           pgroup%sq(js+1) == pgroup%sq(js) .and.

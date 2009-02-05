@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.41 $, $Date: 2008/08/28 22:10:17 $
+c@(#) File ENV.M, version $Revision: 3.42 $, $Date: 2009/02/05 19:43:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -321,7 +321,7 @@ c     --- beam axial velocity and energy
 c     --- gammabar is a database qty passed in thru calling sequence
       gamma = gammabar
 c     --- generalized perveance; load database variable, too
-      p = ibeam * zion*echarge / (2.*pi*eps0 * aion*amu * (vz*gamma)**3)
+      p = abs(ibeam * zion*echarge / (2.*pi*eps0 * aion*amu * (vz*gamma)**3))
       genprv = p
 c     --- get value of normalized emittance and store in local variable
 c     --- which can be changed
@@ -1822,7 +1822,7 @@ c     --- Update the normalized emittance
       endif
 
 c     --- Recalculate the perveance using update quantities
-      p = ibeam_z*zion*echarge/(2.*pi*eps0*aion*amu*(vz*gamma)**3)
+      p = abs(ibeam_z*zion*echarge/(2.*pi*eps0*aion*amu*(vz*gamma)**3))
 
       return
       end

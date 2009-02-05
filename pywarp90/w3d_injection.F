@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.120 $, $Date: 2008/12/23 18:20:39 $
+c@(#) File w3d_injection.F, version $Revision: 1.121 $, $Date: 2009/02/05 19:43:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2736,8 +2736,8 @@ c       --- the code below.
         if (pgroup%sm(js+1) == 0.) pgroup%sm(js+1) = aion_s(jsid+1)*amu
         if (pgroup%sw(js+1) == 0.) then
           if (npinje_s(jsid+1) > 0 .and. pgroup%sq(js+1) /= 0.) then
-            pgroup%sw(js+1) = (ibeam_s(jsid+1)*dt*pgroup%ndts(js)/
-     &                      pgroup%sq(js+1))/npinje_s(jsid+1)
+            pgroup%sw(js+1) = abs((ibeam_s(jsid+1)*dt*pgroup%ndts(js)/
+     &                            pgroup%sq(js+1))/npinje_s(jsid+1))
           else if (js > 0 .and.
      &             pgroup%sq(js+1) == pgroup%sq(js) .and.
      &             pgroup%sm(js+1) == pgroup%sm(js) .and.
@@ -2823,8 +2823,8 @@ c         --- the code below.
           if (pgroup%sq(is) == 0.) pgroup%sq(is) = zion_s(jsid+1)*echarge
           if (pgroup%sm(is) == 0.) pgroup%sm(is) = aion_s(jsid+1)*amu
           if (pgroup%sw(is) == 0. .and. ntinject(jsid+1) > 0) then
-            pgroup%sw(is) = (ibeam_s(jsid+1)*dt*pgroup%ndts(is-1)/
-     &                       pgroup%sq(is))/ntinject(jsid+1)
+            pgroup%sw(is) = abs((ibeam_s(jsid+1)*dt*pgroup%ndts(is-1)/
+     &                          pgroup%sq(is))/ntinject(jsid+1))
           endif
         enddo
 

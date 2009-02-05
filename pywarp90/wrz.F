@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.28 $, $Date: 2009/02/03 19:35:49 $
+c@(#) File WRZ.M, version $Revision: 3.29 $, $Date: 2009/02/05 19:43:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -331,8 +331,8 @@ c  Set up Eears of z
       emitlong = zm*2.*vthz/vbeam
       if (ifeears .eq. 1) then
 c       --- set to be linear in z (eears is actually slope of Eears)
-        eears = eears*(- 2*ibeam/(vbeam*zm**2)*gfactor/(2.*Pi*eps0)
-     &                  - pgroup%sm(1)*vbeam**2*emitlong**2/(pgroup%sq(1)*zm**4))
+        eears = eears*(- 2*abs(ibeam/vbeam)/(zm**2)*gfactor/(2.*Pi*eps0)
+     &                 - pgroup%sm(1)*vbeam**2*emitlong**2/(pgroup%sq(1)*zm**4))
       elseif (ifeears .eq. 2) then
 c       --- set to initial field on axis (with the center part zero)
 c       --- the '5' is just a guestimate, it should be nz dependent
@@ -1937,7 +1937,7 @@ c  Set particle number, indices, etc.
          pgroup%sq(is) = zion * echarge
          pgroup%sm(is) = aion * amu
          if (vbeam .ne. 0.)
-     &    pgroup%sw(is) = ibeam * (zimax-zimin) / (vbeam * echarge * zion * np)
+     &    pgroup%sw(is) = abs(ibeam*(zimax-zimin)/(vbeam*echarge*zion*np))
       endif
  
 c     Adjust weighting of particles since cigar() makes beam more dense,
@@ -1962,7 +1962,7 @@ c        pgroup%yp(ipart) = atan(pgroup%yp(ipart)/pgroup%xp(ipart))
 c   Add perturbation in velocity 
       if (vzpert .gt. 0.) then
          gfact = log(rmmax/a0)/(2.*pi*eps0)
-         vphase = sqrt(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1)))
+         vphase = sqrt(abs(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1))))
          do ipmin = 1,np,nparpgrp
             ipt = min(nparpgrp,np - ipmin + 1)
             do ipart=0,ipt-1
@@ -1981,7 +1981,7 @@ c   Add perturbation in velocity
       if (vzpert .lt. 0.) then
 
          gfact = log(rmmax/a0)/(2.*pi*eps0)
-         vphase = sqrt(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1)))
+         vphase = sqrt(abs(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1))))
          z0 = 1./kzpert
          
          do ipart = 1,np
@@ -2490,10 +2490,10 @@ c=============================================================================
           pgroup%sq(is) = zion * echarge
           pgroup%sm(is) = aion * amu
           if (vbeam .ne. 0.)
-     &     pgroup%sw(is) = ibeam*zlen/(vbeam*echarge*zion*pgroup%npmax)
+     &     pgroup%sw(is) = abs(ibeam*zlen/(vbeam*echarge*zion*pgroup%npmax))
        enddo
        gfact = log(rmmax/(a0+dr))/(2.*pi*eps0)
-       vphase = sqrt(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1)))
+       vphase = sqrt(abs(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1))))
 
 c  Load particles in a shell, one particle per cell
        
@@ -2564,7 +2564,7 @@ c  Load particles
        ipart = 0
        gfact = log(rmmax/((ia+1)*dr))/(2.*pi*eps0)
        if (vbeam .ne. 0.) then
-       vphase = sqrt(zion*echarge*gfact*ibeam/(vbeam*aion*amu))
+       vphase = sqrt(abs(zion*echarge*gfact*ibeam/(vbeam*aion*amu)))
        endif
        if (kzpert .ne. 0.) then
        z0 = 1./kzpert
@@ -2735,7 +2735,7 @@ c       pgroup%uxp(ip) = 0.
          pgroup%sq(is) = zion * echarge
          pgroup%sm(is) = aion * amu
          if (vbeam .ne. 0.)
-     &     pgroup%sw(is) = ibeam*zlen/(vbeam*echarge*zion*pgroup%npmax)
+     &     pgroup%sw(is) = abs(ibeam*zlen/(vbeam*echarge*zion*pgroup%npmax))
       enddo
       return
       end
