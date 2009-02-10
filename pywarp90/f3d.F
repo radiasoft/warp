@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.137 $, $Date: 2009/01/05 23:55:49 $
+c@(#) File F3D.M, version $Revision: 3.138 $, $Date: 2009/02/10 18:57:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -424,6 +424,13 @@ c     --- These are used to select which type of longitudinal solver to do.
 c     --- Periodic uses FFT's, Dirichlet used tridiagonal
       periodicsolve = doperiodic .and. (iwhich <= 0)
       dirichletsolve = dodirichlet .and. (iwhich <= 0)
+
+#ifdef MPIPARALLEL
+c     --- Make sure that the number of processors is a power of two.
+      if (nprocs .ne. 2**int(.5 + log(1.*nprocs)/log(2.))) then
+        call kaboom("vpois3d: the number of processors must be a power of 2")
+      endif
+#endif
 
       izmin = 0
       if (dodirichlet) then
