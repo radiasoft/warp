@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.76 2009/01/23 21:16:23 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.77 2009/02/12 16:03:30 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3236,7 +3236,7 @@ Plots the field of the emlt element
     plg(ss*top.esemltp[:nz+1,m,id]*scale,zz,color=color)
   if titles:
     ptitles('EMLT element #%d'%ie,'Z (m)',
-            'multipole n=%d v=%d'%(top.emlt_n[id],top.emlt_v[id]))
+            'multipole n=%d v=%d'%(top.emlt_n[m],top.emlt_v[m]))
 
 def plotmmlt(im,m=0,p=0,r=1.,t=0.,br=0,bt=0,bz=0,color='fg',getfield=0,
              scale=1.,zoffset=None,withscaling=1,titles=1):
@@ -3297,7 +3297,7 @@ Plots the field of the emlt element
   plg(mm,zz,color=color)
   if titles:
     ptitles('MMLT element #%d'%im,'Z (m)',
-            'multipole n=%d v=%d'%(top.mmlt_n[id],top.mmlt_v[id]))
+            'multipole n=%d v=%d'%(top.mmlt_n[m],top.mmlt_v[m]))
   if getfield: return mm,zz
 
 def plotacclet(ia=None,oscale=1.,ascale=1.,tcentered=0,color='fg'):
