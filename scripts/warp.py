@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.176 2009/02/02 22:04:18 dave Exp $"
+warp_version = "$Id: warp.py,v 1.177 2009/02/12 17:05:58 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -180,6 +180,19 @@ except AttributeError:
   openbc    = 3
   absorb    = 0
   reflect   = 1
+
+# --- Set handy units conversion factors, converting from named unit to MKS.
+inch = 0.0254  # inches to meter
+nm = 1.e-9     # nm to meter
+um = 1.e-6     # um to meter
+mm = 1.e-3     # mm to meter
+cm = 0.01      # cm to meter
+ns = 1.0e-9    # nanosecond to second
+us = 1.0e-6    # microsecond to second
+ms = 1.0e-3    # millesecond to second
+kV = 1.0e3     # kV to V
+MV = 1.0e3     # MV to V
+deg = pi/180.0 # degrees to radians
 
 # --- Set pgroup
 top.pgroup = top.pgroupstatic
