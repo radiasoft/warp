@@ -89,7 +89,7 @@ periodic_table['Technetium']={'A': 98.0, 'Symbol': 'Tc', 'Z': 43, 'Group': 7, 'P
 periodic_table['Ruthenium']={'A': 101.06999999999999, 'Symbol': 'Ru', 'Z': 44, 'Group': 8, 'Period': 5}
 periodic_table['Rhodium']={'A': 102.9055, 'Symbol': 'Rh', 'Z': 45, 'Group': 9, 'Period': 5}
 periodic_table['Palladium']={'A': 106.42, 'Symbol': 'Pd', 'Z': 46, 'Group': 10, 'Period': 5}
-periodic_table['Silver']={'A': 28.0855, 'Symbol': 'Ag', 'Z': 47, 'Group': 11, 'Period': 5}
+periodic_table['Silver']={'A': 107.8682, 'Symbol': 'Ag', 'Z': 47, 'Group': 11, 'Period': 5}
 periodic_table['Cadmium']={'A': 112.411, 'Symbol': 'Cd', 'Z': 48, 'Group': 12, 'Period': 5}
 periodic_table['Indium']={'A': 114.818, 'Symbol': 'In', 'Z': 49, 'Group': 13, 'Period': 5}
 periodic_table['Tin']={'A': 118.70999999999999, 'Symbol': 'Sn', 'Z': 50, 'Group': 14, 'Period': 5}
@@ -249,9 +249,9 @@ Creates a new species of particles. All arguments are optional.
     except:
       try: 
         top.pgroup.sm[js]=type.A*amu
-        top.aion_s[js]=type.A
       except:
         top.pgroup.sm[js]=mass
+    top.aion_s[js] = top.pgroup.sm[js]/amu
     if weight is not None:
       top.pgroup.sw[js]=weight
     # set atomic number, if any
