@@ -105,8 +105,11 @@ class EM3D(SubcycledPoissonSolver):
 
     # --- removes bounds from self.kw to prevent conflict with bounds created 
     # --- by the MR class, when adding MR children.
-    if self.kw.has_key('bounds'):self.kw.pop('bounds')
-    
+    try:
+      if self.kw.has_key('bounds'):self.kw.pop('bounds')
+    except:
+      pass
+      
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
 
@@ -1097,55 +1100,55 @@ class EM3D(SubcycledPoissonSolver):
   def pfex(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Ex,guards),'E_x',**kw)
 
-  def pfey(self,**kw):
+  def pfey(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Ey,guards),'E_y',**kw)
 
-  def pfez(self,**kw):
+  def pfez(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Ez,guards),'E_z',**kw)
 
-  def pfbx(self,**kw):
+  def pfbx(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Bx,guards),'B_x',**kw)
 
-  def pfby(self,**kw):
+  def pfby(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.By,guards),'B_y',**kw)
 
-  def pfbz(self,**kw):
+  def pfbz(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Bz,guards),'B_z',**kw)
 
-  def pfexp(self,**kw):
+  def pfexp(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Exp,guards),'Ep_x',**kw)
 
-  def pfeyp(self,**kw):
+  def pfeyp(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Eyp,guards),'Ep_y',**kw)
 
-  def pfezp(self,**kw):
+  def pfezp(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Ezp,guards),'Ep_z',**kw)
 
-  def pfbxp(self,**kw):
+  def pfbxp(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Bxp,guards),'Bp_x',**kw)
 
-  def pfbyp(self,**kw):
+  def pfbyp(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Byp,guards),'Bp_y',**kw)
 
-  def pfbzp(self,**kw):
+  def pfbzp(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Bzp,guards),'Bp_z',**kw)
 
-  def pfjx(self,**kw):
+  def pfjx(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.J[:,:,:,0],guards),'J_x',**kw)
 
-  def pfjy(self,**kw):
+  def pfjy(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.J[:,:,:,1],guards),'J_y',**kw)
 
-  def pfjz(self,**kw):
+  def pfjz(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.J[:,:,:,2],guards),'J_z',**kw)
 
-  def pfrho(self,**kw):
+  def pfrho(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.Rho,guards),'Rho',**kw)
 
-  def pff(self,**kw):
+  def pff(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.fields.F,guards),'F',**kw)
 
-  def pfdive(self,**kw):
+  def pfdive(self,guards=0,**kw):
       self.genericpfem3d(self.getarray(self.getdive(),guards),'div(E)',**kw)
 
   def sezax(self):
