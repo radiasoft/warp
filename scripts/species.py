@@ -175,11 +175,14 @@ Creates a new species of particles. All arguments are optional.
                No corrections are done if it is zero.
   - limplicit=false: Flag to turn on the implicit particle advance for this
                      species.
+  - color='fg',marker='\1',msize=1.0: Default values used when making particle
+                                      plots of the species.
   """
   def __init__(self,js=None,pgroup=top.pgroup,
                     type=None,charge=echarge,mass=emass,charge_state=0,
                     weight=None,name='',nautodt=1,
-                    efetch=None,fselfb=None,limplicit=None):
+                    efetch=None,fselfb=None,limplicit=None,
+                    color='fg',marker='\1',msize=1.0):
     # --- Note that some default arguments are None in case the user had
     # --- set the values in pgroup already, in which case they should not
     # --- be overwritten here unless the inputs are explicitly set.
@@ -205,6 +208,11 @@ Creates a new species of particles. All arguments are optional.
       if limplicit is not None: top.pgroup.limplicit[self.jslist[-1]] = limplicit
       # --- zero out sp_fract for the extra species added with larger ndts
       top.sp_fract[self.jslist[-1]] = 0.
+
+    # --- Save the default values for plotting
+    self.color = color
+    self.marker = marker
+    self.msize = msize
         
   def __setstate__(self,dict):
     self.__dict__.update(dict)
@@ -1393,152 +1401,161 @@ in radius squared.
   def getke(self,**kw):
     return getke(jslist=self.jslist,**kw)
 
+  def _callppfunc(self,ppfunc,**kw):
+    """This is an intermediary for all of the pp particle plot methods. This
+makes it easier to make changes to all of them at once, without adding alot
+of code."""
+    kw.setdefault('color',self.color)
+    kw.setdefault('marker',self.marker)
+    kw.setdefault('msize',self.msize)
+    return ppfunc(jslist=self.jslist,**kw)
+
   def ppxy(self,**kw):
-    return ppxy(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxy,**kw)
 
   def ppxxp(self,**kw):
-    return ppxxp(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxxp,**kw)
 
   def ppyyp(self,**kw):
-    return ppyyp(jslist=self.jslist,**kw)
+    return self._callppfunc(ppyyp,**kw)
 
   def ppxpyp(self,**kw):
-    return ppxpyp(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxpyp,**kw)
 
   def ppxvx(self,**kw):
-    return ppxvx(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxvx,**kw)
 
   def ppyvy(self,**kw):
-    return ppyvy(jslist=self.jslist,**kw)
+    return self._callppfunc(ppyvy,**kw)
 
   def ppxvz(self,**kw):
-    return ppxvz(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxvz,**kw)
 
   def ppyvz(self,**kw):
-    return ppyvz(jslist=self.jslist,**kw)
+    return self._callppfunc(ppyvz,**kw)
 
   def ppzxy(self,**kw):
-    return ppzxy(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzxy,**kw)
 
   def ppzx(self,**kw):
-    return ppzx(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzx,**kw)
 
   def ppzy(self,**kw):
-    return ppzy(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzy,**kw)
 
   def ppzr(self,**kw):
-    return ppzr(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzr,**kw)
 
   def ppzxp(self,**kw):
-    return ppzxp(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzxp,**kw)
 
   def ppzvx(self,**kw):
-    return ppzvx(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzvx,**kw)
 
   def ppzyp(self,**kw):
-    return ppzyp(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzyp,**kw)
 
   def ppzvy(self,**kw):
-    return ppzvy(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzvy,**kw)
 
   def ppzvz(self,**kw):
-    return ppzvz(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzvz,**kw)
 
   def ppxux(self,**kw):
-    return ppxux(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxux,**kw)
 
   def ppyuy(self,**kw):
-    return ppyuy(jslist=self.jslist,**kw)
+    return self._callppfunc(ppyuy,**kw)
 
   def ppzux(self,**kw):
-    return ppzux(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzux,**kw)
 
   def ppzuy(self,**kw):
-    return ppzuy(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzuy,**kw)
 
   def ppzuz(self,**kw):
-    return ppzuz(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzuz,**kw)
 
   def ppzrp(self,**kw):
-    return ppzrp(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzrp,**kw)
 
   def ppzvr(self,**kw):
-    return ppzvr(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzvr,**kw)
 
   def ppzvtheta(self,**kw):
-    return ppzvtheta(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzvtheta,**kw)
 
   def ppzvperp(self,**kw):
-    return ppzvperp(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzvperp,**kw)
 
   def ppvzvperp(self,**kw):
-    return ppvzvperp(jslist=self.jslist,**kw)
+    return self._callppfunc(ppvzvperp,**kw)
 
   def pptrace(self,**kw):
-    return pptrace(jslist=self.jslist,**kw)
+    return self._callppfunc(pptrace,**kw)
 
   def pprrp(self,**kw):
-    return pprrp(jslist=self.jslist,**kw)
+    return self._callppfunc(pprrp,**kw)
 
   def pprtp(self,**kw):
-    return pprtp(jslist=self.jslist,**kw)
+    return self._callppfunc(pprtp,**kw)
 
   def pprvz(self,**kw):
-    return pprvz(jslist=self.jslist,**kw)
+    return self._callppfunc(pprvz,**kw)
 
   def ppxex(self,**kw):
-    return ppxex(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxex,**kw)
 
   def ppxey(self,**kw):
-    return ppxey(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxey,**kw)
 
   def ppxez(self,**kw):
-    return ppxez(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxez,**kw)
 
   def ppyex(self,**kw):
-    return ppyex(jslist=self.jslist,**kw)
+    return self._callppfunc(ppyex,**kw)
 
   def ppyey(self,**kw):
-    return ppyey(jslist=self.jslist,**kw)
+    return self._callppfunc(ppyey,**kw)
 
   def ppyez(self,**kw):
-    return ppyez(jslist=self.jslist,**kw)
+    return self._callppfunc(ppyez,**kw)
 
   def ppzex(self,**kw):
-    return ppzex(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzex,**kw)
 
   def ppzey(self,**kw):
-    return ppzey(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzey,**kw)
 
   def ppzez(self,**kw):
-    return ppzez(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzez,**kw)
 
   def ppxbx(self,**kw):
-    return ppxbx(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxbx,**kw)
 
   def ppxby(self,**kw):
-    return ppxby(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxby,**kw)
 
   def ppxbz(self,**kw):
-    return ppxbz(jslist=self.jslist,**kw)
+    return self._callppfunc(ppxbz,**kw)
 
   def ppybx(self,**kw):
-    return ppybx(jslist=self.jslist,**kw)
+    return self._callppfunc(ppybx,**kw)
 
   def ppyby(self,**kw):
-    return ppyby(jslist=self.jslist,**kw)
+    return self._callppfunc(ppyby,**kw)
 
   def ppybz(self,**kw):
-    return ppybz(jslist=self.jslist,**kw)
+    return self._callppfunc(ppybz,**kw)
 
   def ppzbx(self,**kw):
-    return ppzbx(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzbx,**kw)
 
   def ppzby(self,**kw):
-    return ppzby(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzby,**kw)
 
   def ppzbz(self,**kw):
-    return ppzbz(jslist=self.jslist,**kw)
+    return self._callppfunc(ppzbz,**kw)
 
   # --- Fancy python to provide convenient methods for getting various
   # --- species quantities. This allows something like the following, to
