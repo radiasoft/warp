@@ -109,7 +109,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.194 2009/02/05 18:18:40 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.195 2009/02/20 23:38:58 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -200,7 +200,7 @@ Should never be directly created by the user.
                     and the conductors along the axis.
  - generatord=None: function which generates the smallest distance between the
                     points and the conductor surface.
- - name=None: conductor name (string)
+ - name='': conductor name (string)
  - material='SS': conductor material
  - laccuimagecharge=0: Flags accumulation of image charges
   """
@@ -211,7 +211,7 @@ Should never be directly created by the user.
   zcent = 0.
   nextcondid = 1
 
-  __inputs__ = {'name':None,'material':'SS','laccuimagecharge':0,'neumann':0}
+  __inputs__ = {'name':'','material':'SS','laccuimagecharge':0,'neumann':0}
 
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
                     generatorf=None,generatord=None,generatori=None,kw={}):
