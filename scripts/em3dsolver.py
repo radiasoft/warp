@@ -53,7 +53,7 @@ class EM3D(SubcycledPoissonSolver):
     self.processdefaultsfrompackage(EM3D.__em3dinputs__,em3d,kw)
     self.processdefaultsfromdict(EM3D.__flaginputs__,kw)
     
-    if self.inactive:self.isactive=False
+    self.isactive= not self.inactive
         
     # --- When initializing self.field_coarse, there is some inconsistency 
     # --- with the way that FieldSolver.__init__ resize nzlocal in parallel. 
