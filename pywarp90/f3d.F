@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.138 $, $Date: 2009/02/10 18:57:04 $
+c@(#) File F3D.M, version $Revision: 3.139 $, $Date: 2009/02/24 18:00:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -426,9 +426,16 @@ c     --- Periodic uses FFT's, Dirichlet used tridiagonal
       dirichletsolve = dodirichlet .and. (iwhich <= 0)
 
 #ifdef MPIPARALLEL
+c     --- Make sure that there is only 1-D decomposition
+      if (nxprocs > 1 .or. nyprocs > 1) then
+        call kaboom("vpois3d: only 1-D decomposition along z is supported")
+        return
+      endif
+
 c     --- Make sure that the number of processors is a power of two.
       if (nprocs .ne. 2**int(.5 + log(1.*nprocs)/log(2.))) then
         call kaboom("vpois3d: the number of processors must be a power of 2")
+        return
       endif
 #endif
 
