@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.49 $, $Date: 2008/11/19 18:29:50 $
+c W3DSLAVE.M, version $Revision: 1.50 $, $Date: 2009/02/24 17:59:18 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -109,7 +109,6 @@ c===========================================================================
       subroutine sumsourcepondomainboundaries(nc,nxp,nyp,nzp,sourcep,ppdecomp)
       use Subtimers3d
       use Decompositionmodule
-      use Parallel,only:my_index
       integer(ISZ):: nc,nxp,nyp,nzp
       real(kind=8):: sourcep(0:nc-1,0:nxp,0:nyp,0:nzp)
       type(Decomposition):: ppdecomp
@@ -623,23 +622,23 @@ c  Only first and last processors do anything.
       nn2 = 2*nc*(nx+1+2*delx)*(ny+1+2*dely)
       pe0 = 0
       pens = nzprocs-1
-      if (my_index == 0) then
+      if (izproc == 0) then
         call MPI_ISEND(pot(:,:,:,0:1),nn2,MPI_DOUBLE_PRECISION,
      &                 pens,messid,MPI_COMM_WORLD,mpirequest,mpierror)
-      else if (my_index == nzprocs-1) then
+      else if (izproc == nzprocs-1) then
         call MPI_ISEND(pot(:,:,:,nzlocal-1),nn1,MPI_DOUBLE_PRECISION,
      &                 pe0,messid,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
  
-      if (my_index == 0) then
+      if (izproc == 0) then
         call MPI_RECV(pot(:,:,:,-1),nn1,MPI_DOUBLE_PRECISION,
      &                pens,messid,MPI_COMM_WORLD,mpistatus,mpierror)
-      else if (my_index == nzprocs-1) then
+      else if (izproc == nzprocs-1) then
         call MPI_RECV(pot(:,:,:,nzlocal:nzlocal+1),nn2,MPI_DOUBLE_PRECISION,
      &                pe0,messid,MPI_COMM_WORLD,mpistatus,mpierror)
       endif
 
-      if (my_index == 0 .or. my_index == nzprocs-1) then
+      if (izproc == 0 .or. izproc == nzprocs-1) then
         call MPI_WAIT(mpirequest,mpistatus,mpierror)
       endif
  
@@ -839,7 +838,7 @@ c Get the phi for the full extent where the fields are. This gets phi from
 c neighboring processors, and at the very least gets phi in the guard planes,
 c iz=-1 and +1.
 
-      integer(MPIISZ):: i,nn
+      integer(MPIISZ):: i,nn,iproc
       integer(MPIISZ):: izglobal,izmax,izmaxfs
       integer(MPIISZ):: izsend(0:nzprocs-1),nzsend(0:nzprocs-1)
       integer(MPIISZ):: izrecv(0:nzprocs-1),nzrecv(0:nzprocs-1)
@@ -847,6 +846,7 @@ c iz=-1 and +1.
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nzprocs),mpirequest(nzprocs)
       integer(MPIISZ):: mpierror,w
       integer(MPIISZ):: messid = 81
+      integer(ISZ):: convertindextoproc
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -855,37 +855,37 @@ c     --- Note that special cases are needed for the first and last processors
 c     --- so that the guard cells are filled properly.
 c     --- Data to be sent
       do i=0,nzprocs-1
-        if (my_index == 0) then
-          izglobal = max(izfsslave(my_index)-1,izfsslave(i)-1)
+        if (izproc == 0) then
+          izglobal = max(izfsslave(izproc)-1,izfsslave(i)-1)
         else
-          izglobal = max(izfsslave(my_index),izfsslave(i)-1)
+          izglobal = max(izfsslave(izproc),izfsslave(i)-1)
         endif
-        izmax   = izfsslave(i)+nzfsslave(i)+1
-        if (my_index == nzprocs-1) then
-          izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)+1
+        izmax = izfsslave(i) + nzfsslave(i) + 1
+        if (izproc == nzprocs-1) then
+          izmaxfs  = izfsslave(izproc)+nzfsslave(izproc)+1
         else
-          izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)-1
+          izmaxfs  = izfsslave(izproc)+nzfsslave(izproc)-1
         endif
 
-        izsend(i) = izglobal - izfsslave(my_index)
+        izsend(i) = izglobal - izfsslave(izproc)
         nzsend(i) = min(izmax,izmaxfs) - izglobal + 1
       enddo
 
 c     --- Then, gather up the data sent to this processor.
       do i=0,nzprocs-1
         if (i == 0) then
-          izglobal = max(izfsslave(my_index)-1,izfsslave(i)-1)
+          izglobal = max(izfsslave(izproc)-1,izfsslave(i)-1)
         else
-          izglobal = max(izfsslave(my_index)-1,izfsslave(i))
+          izglobal = max(izfsslave(izproc)-1,izfsslave(i))
         endif
-        izmax   = izfsslave(my_index)+nzfsslave(my_index)+1
+        izmax   = izfsslave(izproc)+nzfsslave(izproc)+1
         if (i == nzprocs-1) then
           izmaxfs  = izfsslave(i)+nzfsslave(i)+1
         else
           izmaxfs  = izfsslave(i)+nzfsslave(i)-1
         endif
 
-        izrecv(i) = izglobal - izfsslave(my_index)
+        izrecv(i) = izglobal - izfsslave(izproc)
         nzrecv(i) = min(izmax,izmaxfs) - izglobal + 1
       enddo
  
@@ -893,24 +893,28 @@ c     --- Send the data out to processors that need it.
       w = 0
       do i=0,nzprocs-1
         if (nzsend(i) > 0) then
-          if ( i /= my_index) then
+          if ( i /= izproc) then
             w = w + 1
             nn = nzsend(i)*(nx+3)*(ny+3)
+            iproc = convertindextoproc(ixproc,iyproc,izproc,
+     &                                 nxprocs,nyprocs,nzprocs)
             call MPI_ISEND(phi(-1,-1,izsend(i)),nn,
      &                     MPI_DOUBLE_PRECISION,
-     &                     i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
+     &                     iproc,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
         endif
       enddo
 
 c     --- Then, gather up the data sent to this processor.
       do i=0,nzprocs-1
-        if ( i /= my_index) then
+        if ( i /= izproc) then
           if (nzrecv(i) > 0) then
             nn = nzrecv(i)*(nx+3)*(ny+3)
+            iproc = convertindextoproc(ixproc,iyproc,izproc,
+     &                                 nxprocs,nyprocs,nzprocs)
             call MPI_RECV(phi(-1,-1,izrecv(i)),nn,
      &                    MPI_DOUBLE_PRECISION,
-     &                    i,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                    iproc,messid,MPI_COMM_WORLD,mpistatus,mpierror)
           endif
         endif
       enddo
