@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.185 $, $Date: 2009/02/04 00:42:10 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.186 $, $Date: 2009/02/26 21:37:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -1412,12 +1412,12 @@ c     --- Set the loop limits, including edges when appropriate.
       iymax = nylocal
       izmin = 0
       izmax = nzlocal
-      if (localbounds(0) == 0) ixmin = 1
-      if (localbounds(1) == 0) ixmax = nxlocal - 1
-      if (localbounds(2) == 0) iymin = 1
-      if (localbounds(3) == 0) iymax = nylocal - 1
-      if (localbounds(4) == 0) izmin = 1
-      if (localbounds(5) == 0) izmax = nzlocal - 1
+      if (localbounds(0) <= 0) ixmin = 1
+      if (localbounds(1) <= 0) ixmax = nxlocal - 1
+      if (localbounds(2) <= 0) iymin = 1
+      if (localbounds(3) <= 0) iymax = nylocal - 1
+      if (localbounds(4) <= 0) izmin = 1
+      if (localbounds(5) <= 0) izmax = nzlocal - 1
 
 c     --- Save values just outside conductor surfaces. Only save phi at the
 c     --- subgrid points which are to be used at the current level of
