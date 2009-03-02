@@ -25,7 +25,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.24 2009/01/08 19:27:35 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.25 2009/03/02 19:08:59 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -238,7 +238,10 @@ def getnextfilename(root,suffix):
   dir = string.join(os.listdir('.'))
   i = 0
   name = root+('.%03d.'%i)+suffix
-  while re.search(name,dir):
+  # --- escape adds a backslash to all non-alphanumeric characters. This is
+  # --- needed in case special re search characters are used as part of the
+  # --- file name, for example '+' or '.'.
+  while re.search(re.escape(name),dir):
     i = i + 1
     name = root+('.%03d.'%i)+suffix
   return name
