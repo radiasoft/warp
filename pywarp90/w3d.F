@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.423 $, $Date: 2009/02/05 19:43:03 $
+c@(#) File W3D.F, version $Revision: 3.424 $, $Date: 2009/03/02 22:31:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9060,6 +9060,7 @@ c=============================================================================
       use Fields3dParticles
       use GridBoundary3d
       use FieldSolveAPI, Only: lzerorhofsapi,js1fsapi,js2fsapi
+      use Timers, Only: lrtime
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
@@ -9074,8 +9075,9 @@ c --- all of the particles, otherwise the specified particles are loaded.
       real(kind=8):: swtmp
       integer(ISZ):: allocerror
       logical(ISZ):: lzeroeven
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
+      real(kind=8):: substarttime,subendtime,wtime
+c     --- This routine is always timed (data saved in lrtime)
+      substarttime = wtime()
 
       if (lbeforelr) call callpythonfunc("beforelr","controllers")
 
@@ -9255,7 +9257,9 @@ c     --- Do any loading that is needed for injection
       if (lafterloadrho) call callpythonfunc("afterloadrho","controllers")
 
 !$OMP MASTER
-      if (lw3dtimesubs) timeloadrho3d = timeloadrho3d + wtime() - substarttime
+      subendtime = wtime()
+      lrtime = lrtime + subendtime - substarttime
+      if (lw3dtimesubs) timeloadrho3d = timeloadrho3d + subendtime - substarttime
 !$OMP END MASTER
       return
       end

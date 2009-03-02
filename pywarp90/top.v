@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.255 $, $Date: 2009/02/05 19:49:05 $
+#@(#) File TOP.V, version $Revision: 3.256 $, $Date: 2009/03/02 22:31:53 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.255 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.256 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -89,6 +89,8 @@ plottime        real /0./ # Time making automatic plots (in seconds)
 momentstime     real /0./ # Time to calculate the moments (in seconds)
 fstime          real /0./ # Time to do the field solve, including beforefs and
                           # afterfs (in seconds)
+lrtime          real /0./ # Time to load rho, including the before and after
+                          # load rho controllers (in seconds)
 latticetime     real /0./ # Time to apply the fields from the lattice
 dumptime        real /0./ # Time to do the data dumps, using the dump command
                           # (in seconds)
