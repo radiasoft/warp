@@ -7,7 +7,7 @@ simulation. The two simulations are linked together.
 __all__ = ['PlaneSave','plane_save_version']
 
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.21 2009/02/21 00:37:19 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.22 2009/03/02 20:54:16 dave Exp $"
 
 class PlaneSave:
   """
@@ -217,10 +217,11 @@ Input:
   def saveplanespecies(self,js):
     if not self.lsaveparticles: return
 
-    j1 = top.pgroup.ins[js] - 1
-    j2 = j1 + top.pgroup.nps[js]
-
     if top.pgroup.nps[js] > 0:
+
+      j1 = top.pgroup.ins[js] - 1
+      j2 = j1 + top.pgroup.nps[js]
+
       z = top.pgroup.zp[j1:j2]
       zold = top.pgroup.pid[j1:j2,self.zoldpid]
 
@@ -228,20 +229,41 @@ Input:
       ii = compress(logical_and(zold < self.zplane,self.zplane <= z),
                     iota(j1,j2))
 
-      # --- Get the data for those particles that crossed.
-      xx = gatherarray(take(top.pgroup.xp,ii))
-      yy = gatherarray(take(top.pgroup.yp,ii))
-      zz = gatherarray(take(top.pgroup.zp,ii))
-      ux = gatherarray(take(top.pgroup.uxp,ii))
-      uy = gatherarray(take(top.pgroup.uyp,ii))
-      uz = gatherarray(take(top.pgroup.uzp,ii))
-      gi = gatherarray(take(top.pgroup.gaminv,ii))
-      id = gatherarray(take(top.pgroup.pid,ii,axis=0))
-
-      np_save = len(xx)
+      # --- Get the data for those particles that crossed the zplane.
+      xx = top.pgroup.xp[ii]
+      yy = top.pgroup.yp[ii]
+      zz = top.pgroup.zp[ii]
+      ux = top.pgroup.uxp[ii]
+      uy = top.pgroup.uyp[ii]
+      uz = top.pgroup.uzp[ii]
+      gi = top.pgroup.gaminv[ii]
+      id = top.pgroup.pid[ii,0]
 
     else:
-      np_save = 0
+
+      # --- If there are no particles, the particle arrays may be
+      # --- unallocated, so just use zeros.
+      xx = zeros(0,'d')
+      yy = zeros(0,'d')
+      zz = zeros(0,'d')
+      ux = zeros(0,'d')
+      uy = zeros(0,'d')
+      uz = zeros(0,'d')
+      gi = zeros(0,'d')
+      id = zeros(0,'d')
+
+    # --- Gather the data from all of the processors (really only the one
+    # --- or two where the saving plane is).
+    xx = gatherarray(xx)
+    yy = gatherarray(yy)
+    zz = gatherarray(zz)
+    ux = gatherarray(ux)
+    uy = gatherarray(uy)
+    uz = gatherarray(uz)
+    gi = gatherarray(gi)
+    id = gatherarray(id)
+
+    np_save = len(xx)
 
     if np_save > 0: self.save_this_step = true
 
