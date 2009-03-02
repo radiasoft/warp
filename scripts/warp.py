@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.177 2009/02/12 17:05:58 dave Exp $"
+warp_version = "$Id: warp.py,v 1.178 2009/03/02 22:53:48 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -995,6 +995,10 @@ def printtimers(file=None):
     ff = file
     closeit = 0
   if not lparallel:
+    def _doprint(name,value,gen):
+      ff.write('%-19s%10.4f'%(name,value))
+      if top.it > 0: ff.write('           %10.4f'%(value/(top.it+gen)))
+      ff.write('\n')
     ff.write('                 Total time')
     if top.it > 0: ff.write('          Time per step')
     ff.write('\n')
@@ -1003,30 +1007,20 @@ def printtimers(file=None):
     ff.write('\n')
     ff.write('Generate time      %10.4f'%top.gentime)
     ff.write('\n')
-    ff.write('Step time          %10.4f'%top.steptime)
-    if top.it > 0: ff.write('           %10.4f'%(top.steptime/top.it))
-    ff.write('\n')
-    ff.write('Plot time          %10.4f'%top.plottime)
-    if top.it > 0: ff.write('           %10.4f'%(top.plottime/(top.it+1)))
-    ff.write('\n')
-    ff.write('Moments time       %10.4f'%top.momentstime)
-    if top.it > 0: ff.write('           %10.4f'%(top.momentstime/(top.it+1)))
-    ff.write('\n')
-    ff.write('Field Solve time   %10.4f'%top.fstime)
-    if top.it > 0: ff.write('           %10.4f'%(top.fstime/(top.it+1)))
-    ff.write('\n')
-    ff.write('Applied field time %10.4f'%top.latticetime)
-    if top.it > 0: ff.write('           %10.4f'%(top.latticetime/(top.it+1)))
-    ff.write('\n')
-    ff.write('Dump time          %10.4f'%top.dumptime)
-    if top.it > 0: ff.write('           %10.4f'%(top.dumptime/top.it))
-    ff.write('\n')
+    _doprint('Step time',top.steptime,0)
+    _doprint('Plot time',top.plottime,1)
+    _doprint('Moments time',top.momentstime,1)
+    _doprint('Field Solve time',top.fstime,1)
+    _doprint('Deposition time',top.lrtime,1)
+    _doprint('Applied field time',top.latticetime,1)
+    _doprint('Dump time',top.dumptime,0)
   else:
     timers = [['Generate time',      top.gentime              ],
               ['Step time',          top.steptime,    top.it  ],
               ['Plot time',          top.plottime,    top.it+1],
               ['Moments time',       top.momentstime, top.it+1],
               ['Field Solve time',   top.fstime,      top.it+1],
+              ['Deposition time',    top.lrtime,      top.it+1],
               ['Applied field time', top.latticetime, top.it+1],
               ['Dump time',          top.dumptime             ]]
     timelists = []
