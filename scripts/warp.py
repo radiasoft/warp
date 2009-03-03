@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.179 2009/03/03 01:38:45 dave Exp $"
+warp_version = "$Id: warp.py,v 1.180 2009/03/03 01:56:35 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -978,12 +978,14 @@ Reads in data from file, redeposits charge density and does field solve
 ##############################################################################
 
 ##############################################################################
-def printtimers(file=None):
+def printtimers(file=None,lminmax=0):
   """Print timers in a nice annotated format
-  - file Optional input file. If it is not include, stdout is used. It can
+  - file=None: Optional input file. If it is not include, stdout is used. It can
          either be a file name, or a file object. If a file name, a file
          with that name is created. If a file object, the data is written
          to that file (the file remains open).
+  - lminmax=false: When true, include the min and max over the processors
+                   when parallel.
   """
   if file is None:
     ff = sys.stdout
@@ -1020,14 +1022,21 @@ def printtimers(file=None):
 
   else: # --- parallel
 
-    if top.it == 0:
-      ff.write('                          Total time         Deviation      Min         Max\n')
-      ff.write('                    (all CPUs)   (per CPU)            \n')
-      ff.write('                        (s)         (s)         (s)         (s)         (s)\n')
-    else:
-      ff.write('                          Total time         Deviation      Min         Max     Time per step\n')
-      ff.write('                    (all CPUs)   (per CPU)                                        (per CPU)\n')
-      ff.write('                        (s)         (s)         (s)         (s)         (s)          (s)\n')
+    if me == 0:
+      ff.write('                          Total time         Deviation')
+      if lminmax: ff.write('      Min         Max')
+      if top.it > 0: ff.write('     Time per step')
+      ff.write('\n')
+
+      ff.write('                    (all CPUs)   (per CPU)            ')
+      if lminmax: ff.write('                     ')
+      if top.it > 0: ff.write('       (per CPU)')
+      ff.write('\n')
+
+      ff.write('                        (s)         (s)         (s)   ')
+      if lminmax: ff.write('      (s)         (s)')
+      if top.it > 0: ff.write('          (s)')
+      ff.write('\n')
 
     def _doprint(name,value,gen):
       # --- gen is None when printing the generate time.
@@ -1036,10 +1045,11 @@ def printtimers(file=None):
       if me > 0: return
       vsum = sum(vlist)
       vrms = sqrt(max(0.,ave(vlist**2) - ave(vlist)**2))
-      vmin = min(vlist)
-      vmax = max(vlist)
-      ff.write('%18s  %10.4f  %10.4f  %10.4f  %10.4f  %10.4f'%
-               (name,vsum,vsum/npes,vrms,vmin,vmax))
+      ff.write('%18s  %10.4f  %10.4f  %10.4f'%(name,vsum,vsum/npes,vrms))
+      if lminmax:
+        vmin = min(vlist)
+        vmax = max(vlist)
+        ff.write('  %10.4f  %10.4f'%(vmin,vmax))
       if top.it > 0 and gen is not None:
         ff.write('   %10.4f'%(vsum/npes/(top.it+gen)))
       ff.write('\n')
@@ -1065,10 +1075,11 @@ def printtimers(file=None):
       vsum = sum(vlist)
       if vsum == 0.: continue
       vrms = sqrt(max(0.,ave(vlist**2) - ave(vlist)**2))
-      vmin = min(vlist)
-      vmax = max(vlist)
-      ff.write('%18s  %10.4f  %10.4f  %10.4f  %10.4f  %10.4f'%
-               (name[4:],vsum,vsum/npes,vrms,vmin,vmax))
+      ff.write('%18s  %10.4f  %10.4f  %10.4f'%(name[4:],vsum,vsum/npes,vrms))
+      if lminmax:
+        vmin = min(vlist)
+        vmax = max(vlist)
+        ff.write('  %10.4f  %10.4f'%(vmin,vmax))
       if top.it > 0:
         ff.write('   %10.4f'%(vsum/npes/(top.it)))
       ff.write('\n')
