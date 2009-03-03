@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.178 2009/03/02 22:53:48 dave Exp $"
+warp_version = "$Id: warp.py,v 1.179 2009/03/03 01:38:45 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -995,18 +995,21 @@ def printtimers(file=None):
     ff = file
     closeit = 0
   if not lparallel:
+
+    if top.it == 0:
+      ff.write('                    Total time\n')
+      ff.write('                          (s)\n')
+    else:
+      ff.write('                    Total time          Time per step\n')
+      ff.write('                          (s)                  (s)\n')
+
     def _doprint(name,value,gen):
       ff.write('%-19s%10.4f'%(name,value))
-      if top.it > 0: ff.write('           %10.4f'%(value/(top.it+gen)))
+      if top.it > 0 and gen is not None:
+        ff.write('           %10.4f'%(value/(top.it+gen)))
       ff.write('\n')
-    ff.write('                 Total time')
-    if top.it > 0: ff.write('          Time per step')
-    ff.write('\n')
-    ff.write('                          (s)')
-    if top.it > 0: ff.write('                  (s)')
-    ff.write('\n')
-    ff.write('Generate time      %10.4f'%top.gentime)
-    ff.write('\n')
+
+    _doprint('Generate time',top.gentime,None)
     _doprint('Step time',top.steptime,0)
     _doprint('Plot time',top.plottime,1)
     _doprint('Moments time',top.momentstime,1)
@@ -1014,66 +1017,68 @@ def printtimers(file=None):
     _doprint('Deposition time',top.lrtime,1)
     _doprint('Applied field time',top.latticetime,1)
     _doprint('Dump time',top.dumptime,0)
-  else:
-    timers = [['Generate time',      top.gentime              ],
-              ['Step time',          top.steptime,    top.it  ],
-              ['Plot time',          top.plottime,    top.it+1],
-              ['Moments time',       top.momentstime, top.it+1],
-              ['Field Solve time',   top.fstime,      top.it+1],
-              ['Deposition time',    top.lrtime,      top.it+1],
-              ['Applied field time', top.latticetime, top.it+1],
-              ['Dump time',          top.dumptime             ]]
-    timelists = []
-    totaltimes = []
-    timedevs = []
-    for t in timers: timelists.append(array(gather(t[1]))) 
-    if me > 0: return
-    for t in timelists: totaltimes.append(sum(t))
-    for t in timelists: timedevs.append(sqrt(max(0.,ave(t**2) - ave(t)**2)))
-    h1a = '                          Total time         Deviation'
-    h2a = '                    (all CPUs)   (per CPU)            '
-    h3a = '                        (s)         (s)         (s)   '
-    h1b = '  Time per step'
-    h2b = '    (per CPU)'
-    h3b = '       (s)'
-    f1a = '%18s  %10.4f  %10.4f  %10.4f'
-    f1b = '   %10.4f'
-    if top.it > 0:
-       h1 = h1a + h1b + '\n'
-       h2 = h2a + h2b + '\n'
-       h3 = h3a + h3b + '\n'
-       f1 = f1a + '\n'
-       f2 = f1a + f1b + '\n'
-       tt = []
-       format = []
-       for i in range(len(timelists)):
-         if len(timers[i]) == 3:
-           tt.append((timers[i][0],totaltimes[i],totaltimes[i]/npes,
-                      timedevs[i],totaltimes[i]/npes/timers[i][2]))
-           format.append(f2)
-         else:
-           tt.append((timers[i][0],totaltimes[i],totaltimes[i]/npes,
-                      timedevs[i]))
-           format.append(f1)
+
+  else: # --- parallel
+
+    if top.it == 0:
+      ff.write('                          Total time         Deviation      Min         Max\n')
+      ff.write('                    (all CPUs)   (per CPU)            \n')
+      ff.write('                        (s)         (s)         (s)         (s)         (s)\n')
     else:
-       h1 = h1a + '\n'
-       h2 = h2a + '\n'
-       h3 = h3a + '\n'
-       f1 = f1a + '\n'
-       f2 = f1a + '\n'
-       tt = []
-       format = []
-       for i in range(len(timelists)):
-         tt.append((timers[i][0],totaltimes[i],totaltimes[i]/npes,timedevs[i]))
-         format.append(f1)
-    ff.write(h1)
-    ff.write(h2)
-    ff.write(h3)
-    for i in range(len(timelists)):
-      ff.write(format[i]%tt[i])
+      ff.write('                          Total time         Deviation      Min         Max     Time per step\n')
+      ff.write('                    (all CPUs)   (per CPU)                                        (per CPU)\n')
+      ff.write('                        (s)         (s)         (s)         (s)         (s)          (s)\n')
+
+    def _doprint(name,value,gen):
+      # --- gen is None when printing the generate time.
+      # --- gen is either 0 or 1, 1 if the action happened during the generate
+      vlist = array(gather(value))
+      if me > 0: return
+      vsum = sum(vlist)
+      vrms = sqrt(max(0.,ave(vlist**2) - ave(vlist)**2))
+      vmin = min(vlist)
+      vmax = max(vlist)
+      ff.write('%18s  %10.4f  %10.4f  %10.4f  %10.4f  %10.4f'%
+               (name,vsum,vsum/npes,vrms,vmin,vmax))
+      if top.it > 0 and gen is not None:
+        ff.write('   %10.4f'%(vsum/npes/(top.it+gen)))
+      ff.write('\n')
+
+    _doprint('Generate time',      top.gentime,     None)
+    _doprint('Step time',          top.steptime,    0)
+    _doprint('Plot time',          top.plottime,    1)
+    _doprint('Moments time',       top.momentstime, 1)
+    _doprint('Field Solve time',   top.fstime,      1)
+    _doprint('Deposition time',    top.lrtime,      1)
+    _doprint('Applied field time', top.latticetime, 1)
+    _doprint('Dump time',          top.dumptime,    0)
+
+  # --- Print the subroutine timers
+  def _doprint(pkg,timergroup):
+    if me == 0: ff.write('\n')
+    # --- Loop over the list of timer variables (skipping the first which is
+    # --- the flag)
+    for name in pkg.varlist(timergroup)[1:]:
+      value = getattr(pkg,name)
+      vlist = array(gather(value))
+      if me > 0: continue
+      vsum = sum(vlist)
+      if vsum == 0.: continue
+      vrms = sqrt(max(0.,ave(vlist**2) - ave(vlist)**2))
+      vmin = min(vlist)
+      vmax = max(vlist)
+      ff.write('%18s  %10.4f  %10.4f  %10.4f  %10.4f  %10.4f'%
+               (name[4:],vsum,vsum/npes,vrms,vmin,vmax))
+      if top.it > 0:
+        ff.write('   %10.4f'%(vsum/npes/(top.it)))
+      ff.write('\n')
+
+  if top.ltoptimesubs: _doprint(top,'Subtimerstop')
+  if w3d.lw3dtimesubs: _doprint(w3d,'Subtimers3d')
+  if f3d.lf3dtimesubs: _doprint(f3d,'Subtimersf3d')
+
   if closeit:
     ff.close()
-
 
 #=============================================================================
 # --- Import the convenience routines for plotting various slices and
