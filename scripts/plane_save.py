@@ -7,7 +7,7 @@ simulation. The two simulations are linked together.
 __all__ = ['PlaneSave','plane_save_version']
 
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.22 2009/03/02 20:54:16 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.23 2009/03/03 01:32:59 dave Exp $"
 
 class PlaneSave:
   """
@@ -237,7 +237,7 @@ Input:
       uy = top.pgroup.uyp[ii]
       uz = top.pgroup.uzp[ii]
       gi = top.pgroup.gaminv[ii]
-      id = top.pgroup.pid[ii,0]
+      id = top.pgroup.pid[ii,:]
 
     else:
 
@@ -250,7 +250,7 @@ Input:
       uy = zeros(0,'d')
       uz = zeros(0,'d')
       gi = zeros(0,'d')
-      id = zeros(0,'d')
+      id = zeros((0,top.npid),'d')
 
     # --- Gather the data from all of the processors (really only the one
     # --- or two where the saving plane is).
