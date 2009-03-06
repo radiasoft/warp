@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.84 2009/01/30 18:11:15 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.85 2009/03/06 18:21:39 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -28,17 +28,29 @@ Class for creating particle scraper for conductors
                    pidlost[:,-4].
                    Note that the condid where the particle is lost is also
                    saved in pidlost[:,-1].
- - lrefineintercept: when true, with lsaveintercept, lost particles are advanced
-                     from the old positions using a time step small compared to
-                     the cyclotron gyroperiod to calculated a better value for
-                     the intercept.
- - lrefineallintercept: same as lrefineintercept, but the trajectory of all
-                        particles near the conductors are refined rather then 
-                        only particles which have already been lost
+ - lrefineallintercept: when true, with lsaveintercept, when determining if
+                        particles are lost, particles near conductors are
+                        advanced, starting from the old positions, using a
+                        refined time step small compared to the cyclotron
+                        gyroperiod.
+                        This option is useful when using the Drift-Lorentz
+                        mover, i.e. when interpdk is turned on, and when the
+                        time step is larger than the gyroperiod. In that case,
+                        the calculation of the intercept can be inaccurate
+                        since the gyromotion is not resolved. The time-step
+                        refinement resolves the gyromotion so the incident
+                        angle of the particle onto the conductor can be
+                        correctly obtained.
+ - lrefineintercept: when true, with lsaveintercept, only lost particles are
+                     advanced from the old positions using a time step small
+                     compared to the cyclotron gyroperiod to calculate a
+                     better value for the intercept. This option is not
+                     recommended, being superceded by lrefineallintercept.
  - nstepsperorbit=8: number of refined time steps to take when using
-                     lrefineintercept.
- - lcollectlpdata: When true, the lost particles statistics will be collected for 
-                   each conductor in the list lostparticles_data (Assembly class).
+                     lrefineallintercept or lrefineintercept.
+ - lcollectlpdata: When true, the lost particles statistics will be collected
+                   for each conductor in the list lostparticles_data (Assembly
+                   class).
  - mglevel=0: Coarsening level for index grid which is used to determine
               which conductors particles are near. This grid is a full size,
               3d (or 2d) array and can require a not insignificant amount of
