@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.424 $, $Date: 2009/03/02 22:31:53 $
+c@(#) File W3D.F, version $Revision: 3.425 $, $Date: 2009/03/09 19:49:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9861,6 +9861,8 @@ c=============================================================================
       logical(ISZ):: lcallcontrollers
 
 c Does everything needed to apply particle boundary conditions.
+c Note that particleboundariesxy should mirror this routine. Any changes here
+c should also be made there.
 
       integer(ISZ):: js1,js2,js
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -9925,6 +9927,92 @@ c       --- do it only if species was advanced on this time step
 
 !$OMP MASTER
       if (lw3dtimesubs) timeparticleboundaries3d = timeparticleboundaries3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine particleboundariesxy(pgroup,js_in,lcallcontrollers)
+      use ParticleGroupmodule
+      use Subtimers3d
+      use InGen
+      use InGen3d
+      use InPart
+      use InMesh3d
+      use Picglb
+      use Picglb3d
+      use LostParticles,Only: lresetlostpart,npslost
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: js_in
+      logical(ISZ):: lcallcontrollers
+
+c Does everything needed to apply transverse particle boundary conditions.
+c Note that this routine is almost identical to particleboundaries3d, but
+c with the call to zparticleboundaries commented out.
+
+      integer(ISZ):: js1,js2,js
+      real(kind=8):: xmin,xmax,ymin,ymax
+      logical(ISZ):: lrz
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      if (js_in == -1) then
+c       --- Include all species
+        js1 = 0
+        js2 = pgroup%ns - 1
+      else
+        js1 = js_in
+        js2 = js_in
+      endif
+
+c     --- Reset lost particles counter if requested
+      if (lresetlostpart) then
+        do js=js1,js2
+c         --- do it only if species was advanced on this time step
+          if (pgroup%ldts(js)) then
+            npslost(js+1)=0
+          end if
+        end do
+      end if
+
+      if (lcallcontrollers .and. lbeforescraper)
+     &  call callpythonfunc("beforescraper","controllers")
+
+c     --- Apply particle boundary conditions
+      call getparticleextant(1,xmin,xmax,ymin,ymax,
+     &                         xmmin,xmmax,ymmin,ymmax)
+      lrz = (solvergeom == RZgeom) .or. (solvergeom == Rgeom)
+      call xparticleboundaries(pgroup,js1,js2,xmax,xmin,.true.,
+     &                         l4symtry,lrz)
+      call yparticleboundaries(pgroup,js1,js2,ymax,ymin,.true.,
+     &                         l2symtry .or. l4symtry,lrz)
+c     ---  This is skipped in the xy version.
+c     call zparticleboundaries(pgroup,js1,js2,zmmax,zmmin,.true.)
+
+c     --- absorb particles passing through semitransparent disc
+      call semitransparent_disc(pgroup,dz)
+
+      do js=js1,js2
+        if (pgroup%ldts(js) .and. pgroup%nps(js+1) > 0) then
+           call stckxy3d(pgroup,js,zbeam,.true.)
+        endif
+      enddo
+
+      if (lcallcontrollers .and. lcallscraper)
+     &  call callpythonfunc("callscraper","controllers")
+
+      do js=js1,js2
+c       --- do it only if species was advanced on this time step
+        if (pgroup%ldts(js)) then
+          call processlostpart(pgroup,js+1,clearlostpart,
+     &                         time+dt*pgroup%ndts(js),zbeam)
+        endif
+      enddo    
+
+      if (lcallcontrollers .and. lafterscraper)
+     &  call callpythonfunc("afterscraper","controllers")
+
+!$OMP MASTER
+      if (lw3dtimesubs) timeparticleboundariesxy = timeparticleboundariesxy + wtime() - substarttime
 !$OMP END MASTER
       return
       end
