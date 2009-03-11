@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.16 2009/03/11 17:51:11 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.17 2009/03/11 18:23:21 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -407,8 +407,8 @@ Input arguments:
     iy_axis = nint(-Bsolver.ymmin/Bsolver.dy)
     bzmax_actual = max(abs(Bsolver.field[2,ix_axis,iy_axis,:]))
     if bzmax_actual > 0.:
-      Bsolver.source[...] = bzmax/bzmax_actual*Bsolver.source
-      Bsolver.field[...] = bzmax/bzmax_actual*Bsolver.field
+      Bsolver.source[...] = abs(bzmax/bzmax_actual)*Bsolver.source
+      Bsolver.field[...] = abs(bzmax/bzmax_actual)*Bsolver.field
     else:
       print "\n\n\n\nWarning: addgriddedsolenoid: calculated Bz is zero\n\n\n"
 
