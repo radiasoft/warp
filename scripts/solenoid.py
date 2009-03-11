@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.15 2008/11/19 18:30:00 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.16 2009/03/11 17:51:11 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -371,7 +371,7 @@ Input arguments:
     Bsolver.sourcep[1,:,:,:] = +ww*current*cos(theta)
 
   # --- Set convergence tolerence (in Tesla)
-  Bsolver.mgtol = bzmax*tol*ones(3)
+  Bsolver.mgtol = abs(bzmax)*tol*ones(3)
 
   # --- Force some parameters for the RZ field solver, but save their
   # --- value so they can be restored after the solve.
