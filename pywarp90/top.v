@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.256 $, $Date: 2009/03/02 22:31:53 $
+#@(#) File TOP.V, version $Revision: 3.257 $, $Date: 2009/03/12 22:36:17 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.256 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.257 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2744,7 +2744,9 @@ checkparticlegroup(pgroup:ParticleGroup,is:integer,
 copygrouptogroup(pgroupin:ParticleGroup,nn:integer,ii:integer,istart:integer,
                 pgroupout:ParticleGroup,it:integer)
              subroutine # Copies particle data between groups
-load2d(np,x(np):real,y(np):real,nx,ny,n(0:nx,0:ny):real,dx:real,dy:real)
+load1d(np:integer,x(np):real,nx:integer,n(0:nx):real,dx:real)
+             subroutine # Loads particles approximately into a 1-D distribution
+load2d(np:integer,x(np):real,y(np):real,nx:integer,ny:integer,n(0:nx,0:ny):real,dx:real,dy:real)
              subroutine # Loads particles approximately into a 2-D distribution
 shftpart(pgroup:ParticleGroup,is:integer,ishft:integer) subroutine
                         # Moves particle data to end of species group.

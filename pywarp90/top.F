@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.234 $, $Date: 2009/01/27 21:12:36 $
+c@(#) File TOP.F, version $Revision: 3.235 $, $Date: 2009/03/12 22:36:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5366,6 +5366,80 @@ c   From interpreter, rma(&a,n) returns n Gaussian random numbers.
       end
 c=============================================================================
 c=============================================================================
+      subroutine load1d(np,x,nx,n,dx)
+      integer(ISZ):: np,nx
+      real(kind=8):: x(np),n(0:nx)
+      real(kind=8):: dx
+
+c Load particles onto a one dimensional distribution.  This load is only
+c approximate in that when the resulting particles are loaded back onto
+c the same 1-D grid from which the distribution is taken, the distribution
+c is not exactly reproduced. (The exact version is still under development.)
+
+      real(kind=8):: rnrev
+      integer     :: i,ip,ix,di
+      real(kind=8):: nnorm(0:nx),n1x(0:nx),sumn
+      real(kind=8):: nintx(0:nx)
+
+      if (minval(n) < 0.) then
+        call kaboom("load1d: all values of n must be >= 0")
+        return
+      endif
+
+      sumn = sum(n) - 0.5*n(0) - 0.5*n(nx)
+      nnorm = n/sumn
+
+c     --- nintx is the partial sum of n
+c     --- nintx(0:nx) = psum(n) - 0.5*n(0) - 0.5*n
+      nintx(0) = 0.
+      do ix=1,nx
+        nintx(ix) = nintx(ix-1) + 0.5*(nnorm(ix-1) + nnorm(ix))
+      enddo
+
+c     --- Now distribute the particles
+c     --- The algorithm assumes that n is piece-wise linear between grid
+c     --- points and uses the analytic integration of that form between
+c     --- the grid points.
+c     --- When the distribution has a nearly uniform section, a modified
+c     --- expression is required.
+      do ip=1,np
+
+c       --- Initialize xp with a uniform load
+c       x(ip) = .5/np + wranf()*(np-1.)/np
+        x(ip) = rnrev(ip,2)
+
+c       --- Linear search
+c       i=0
+c       do while (x(ip) > nintx(i+1))
+c         i=i+1
+c       end do
+
+c       --- Binary search - is some error checking needed?
+        i = nx/2
+        di = nx/4
+        do while (x(ip) < nintx(i) .or. x(ip) > nintx(i+1))
+          if (x(ip) < nintx(i)) then
+            i = i - di
+          else if (x(ip) > nintx(i+1)) then
+            i = i + di
+          endif
+          di = di/2
+          if (di == 0) di = 1
+        enddo
+
+        if (abs(nnorm(i+1)-nnorm(i))/(nnorm(i+1)+nnorm(i)) > 1.e-4) then
+          x(ip)=((sqrt(nnorm(i)**2
+     &           - 2.*(nnorm(i+1)-nnorm(i))*(nintx(i) - x(ip))) -
+     &           nnorm(i))/(nnorm(i+1)-nnorm(i)) + i)*dx
+        else
+          x(ip) = ((x(ip) - nintx(i))/nnorm(i)  + i)*dx
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
       subroutine load2d(np,x,y,nx,ny,n,dx,dy)
       integer(ISZ):: np,nx,ny
       real(kind=8):: x(np),y(np),n(0:nx,0:ny)
@@ -5381,6 +5455,11 @@ c is not exactly reproduced. (The exact version is still under development.)
       integer     :: i,ip,ix,iy
       real(kind=8):: n1x(0:nx),n1y(0:ny)
       real(kind=8):: nintx(0:nx),ninty(0:ny)
+
+      if (minval(n) < 0.) then
+        call kaboom("load2d: all values of n must be >= 0")
+        return
+      endif
 
       dyi = 1./dy
 
