@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.425 $, $Date: 2009/03/09 19:49:26 $
+c@(#) File W3D.F, version $Revision: 3.426 $, $Date: 2009/03/12 22:20:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -81,7 +81,6 @@ c=============================================================================
       use InMesh3d
       use Fields3d
       use Fields3dParticles
-      use Efields3d
       use GridBoundary3d
       use Multipole
       use Io
@@ -395,26 +394,8 @@ c  Also allocate the dynamic internal lattice arrays.
          zlmesh(k) = zlmin + k*dzl
       enddo
 
-c Allocate space for the selfe array, which contains the finite differenced
-c phi (Ex, Ey, Ez) on the mesh.
-      if (idadt>0) efetch=3
-      if (ANY(efetch == 3) .and. fstype < 12 .and.
-     &    (solvergeom == XYZgeom .or.
-     &     solvergeom == RZgeom .or.
-     &     solvergeom == XZgeom .or.
-     &     solvergeom == XYgeom .or.
-     &     solvergeom == Rgeom  .or.
-     &     solvergeom == Zgeom)) then
-        nx_selfe = nxp
-        ny_selfe = nyp
-        nz_selfe = nzp
-        if(solvergeom==RZgeom .or.
-     &     solvergeom==XZgeom .or.
-     &     solvergeom==Rgeom  .or.
-     &     solvergeom==Zgeom) ny_selfe = 0
-        if(solvergeom==Zgeom) nx_selfe = 0
-        call gchange("Efields3d",0)
-      endif
+c If using the idadt option, then force the use of selfe.
+      if (idadt>0) efetch = 3
 
 c  Create dynamic arrays for 3D multipole moments of the electrostatic
 c  potential
@@ -724,7 +705,6 @@ c=============================================================================
       use InMesh3d
       use Fields3d
       use Fields3dParticles
-      use Efields3d
       use Io
       use Particles, Only: pgroup,nplive
       use Picglb
@@ -947,9 +927,9 @@ c           --- in which cases all species use the same field.
                call kaboom("step3d: efetch option 3 cannot be used with subcycling option")
                return
             endif
-            call getselfe3d(phip,nxp,nyp,nzp,selfe,
-     &                      nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,.true.,1,1,1)
-            if(idadt>0) call getefroma3d(selfe(1,0,0,0),nxp,nyp,nzp,dt,dz,vbeamfrm,idadt,zgrid,zgridaprv)
+            call allocateselfepforparticles(.true.)
+            call getselfe3d(phip,nxp,nyp,nzp,selfep,dx,dy,dz,.true.,1,1,1)
+            if(idadt>0) call getefroma3d(selfep(1,0,0,0),nxp,nyp,nzp,dt,dz,vbeamfrm,idadt,zgrid,zgridaprv)
          endif
 
 c  Set the potential near the emitting surface.
@@ -1572,7 +1552,6 @@ c=============================================================================
       use Fields3d
       use Subcycling
       use Fields3dParticles
-      use Efields3d
       use Picglb
       use Picglb3d
       use Beam_acc
@@ -5320,12 +5299,9 @@ c           --- Adjust sign of E field for appropriate quadrant.
       return
       end
 c=========================================================================== 
-      subroutine getselfe3d(phi,nx,ny,nz,selfe,nx_selfe,ny_selfe,nz_selfe,
-     &                      dx,dy,dz,lzero,delx,dely,delz)
-      use GlobalVars
+      subroutine getselfe3d(phi,nx,ny,nz,selfe,dx,dy,dz,lzero,delx,dely,delz)
       use Subtimers3d
       integer(ISZ):: nx,ny,nz,delx,dely,delz
-      integer(ISZ):: nx_selfe,ny_selfe,nz_selfe
       real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
       real(kind=8):: selfe(0:2,0:nx,0:ny,0:nz)
       real(kind=8):: dx,dy,dz
@@ -5342,9 +5318,6 @@ c will be zeroed out if lzero is true.
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Do some checking first.
-      if (nx /= nx_selfe .or. ny /= ny_selfe .or. nz /= nz_selfe) then
-        call kaboom("getselfe3d: ERROR: the dimensions of phi and selfe must be the same")
-      endif
       if ((nx > 0 .and. delx == 0) .or.
      &    (ny > 0 .and. dely == 0) .or.
      &    (nz > 0 .and. delz == 0)) then
@@ -9407,6 +9380,38 @@ c     --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
       return
       end
 c=============================================================================
+      subroutine allocateselfepforparticles(lforce)
+      use InPart,Only: efetch
+      use InGen,Only: fstype
+      use InGen3d
+      use InMesh3d,Only: nxlocal,nylocal,nzlocal
+      use Fields3dParticles,Only: selfep,nxp,nyp,nzp
+      logical(ISZ):: lforce
+
+c Only do the allocation if needed, when lforce is true or when the array
+c is needed for the field gather (efetch == 3).
+
+      if (ANY(efetch == 3) .and. fstype < 12 .and.
+     &    (solvergeom == XYZgeom .or.
+     &     solvergeom == RZgeom .or.
+     &     solvergeom == XZgeom .or.
+     &     solvergeom == XYgeom .or.
+     &     solvergeom == Rgeom  .or.
+     &     solvergeom == Zgeom)) lforce = .true.
+
+      if (lforce) then
+c       --- selfep is allocated only if it hasn't already been or if it
+c       --- has the wrong shape.
+        if (.not. associated(selfep) .or.
+     &      ANY(shape(selfep) .ne. (/3,1+nxp,1+nyp,1+nzp/))) then
+          if (associated(selfep)) deallocate(selfep)
+          allocate(selfep(3,0:nxp,0:nyp,0:nzp))
+        endif
+      endif
+
+      return
+      end
+c=============================================================================
       subroutine assignrhoandphiforfieldsolve(rhoin,phiin)
 #ifdef MPIPARALLEL
       use InMesh3d,Only: nxlocal,nylocal,nzlocal
@@ -9428,6 +9433,35 @@ c     --- The rho and phi arrays need to be allocated if they havn't already
 c     --- been.
       if (.not. associated(rho)) allocate(rho(0:nxlocal,0:nylocal,0:nzlocal))
       if (.not. associated(phi)) allocate(phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1))
+
+#endif
+
+      return
+      end
+c=============================================================================
+      subroutine allocateselfeforfieldsolve()
+#ifdef MPIPARALLEL
+      use InMesh3d,Only: nxlocal,nylocal,nzlocal
+#endif
+      use Fields3d
+      use Fields3dParticles
+      real(kind=8),target:: rhoin(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phiin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+
+#ifndef MPIPARALLEL
+
+c      --- Point selfe to selfep, making sure that selfep is allocated.
+       call allocateselfeforparticles(.true.)
+       selfe => selfep
+
+#else
+
+c     --- selfe needs to be allocated if it hasn't already been.
+      if (.not. associated(selfe) .or.
+     &    ANY(shape(selfe) .ne. (/3,1+nxlocal,1+nylocal,1+nzlocal/))) then
+        if (associated(selfe)) deallocate(selfe)
+        allocate(selfe(3,0:nxlocal,0:nylocal,0:nzlocal))
+      endif
 
 #endif
 
@@ -9586,7 +9620,6 @@ c=============================================================================
       use Fields3d
       use Subcycling
       use Fields3dParticles
-      use Efields3d
       use FieldSolveAPI
       type(ParticleGroup),target:: pgroup
       integer(ISZ):: ipmin,ip,is
@@ -9626,7 +9659,8 @@ c     --- Zero out the particle's E field if requested (the default)
       elseif(solvergeom==XYZgeom) then
         tmpnsndts = getnsndtsforsubcycling()
         indts = min(tmpnsndts-1,ndtstorho(pgroup%ndts(is-1)))
-        call sete3d(phipndts(:,:,:,indts),selfe,ip,
+        call allocateselfepforparticles(.false.)
+        call sete3d(phipndts(:,:,:,indts),selfep,ip,
      &              pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &              zgridprv,xmminp,ymminp,zmminp,dx,dy,dz,
      &              nxp,nyp,nzp,efetch(is),
@@ -9666,7 +9700,6 @@ c=============================================================================
       use Fields3d
       use Subcycling,Only: nsndts,ndtstorho
       use Fields3dParticles
-      use Efields3d
       use FieldSolveAPI
       integer(ISZ):: jsid,ndts,n
       real(kind=8),target:: x(n),y(n),z(n),ex(n),ey(n),ez(n)
@@ -9746,7 +9779,8 @@ c       --- and the data needs to be copied around.
           print*,"Error: fetche3dfrompositions: An improper value on indts has been passed in"
           return
         endif
-        call sete3d(phipndts(:,:,:,indts),selfe,n,x,y,z,
+        call allocateselfepforparticles(.false.)
+        call sete3d(phipndts(:,:,:,indts),selfep,n,x,y,z,
      &              zgridprv,xmminp,ymminp,zmminp,dx,dy,dz,nxp,nyp,nzp,
      &              efetch(is),ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom,
      &              1,1,1)
@@ -11109,7 +11143,6 @@ c===========================================================================
       use Fields3d
       use Subcycling
       use Fields3dParticles
-      use Efields3d
       use LatticeInternal
       use InjectVars
       use GridBoundary3d

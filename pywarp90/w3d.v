@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.295 $, $Date: 2009/03/09 19:49:27 $
+#@(#) File W3D.V, version $Revision: 3.296 $, $Date: 2009/03/12 22:20:59 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.295 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.296 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -328,6 +328,9 @@ nmxyz                   integer /0/ +dump +parallel # largest of nx, ny, nz
 scrtch(-1:nmxyz+1,-1:nmxy+1)  _real           # Scratch for fieldsolve, plots
 phi(:,:,:)              _real [V] +parallel # Electrostatic potential
 rho(:,:,:)              _real [C/m**3] +parallel # Charge density
+selfe(:,:,:,:)          _real [V/m] +parallel # Self E field
+                            # calculated from phi via finite difference.
+                            # Only used when top.efetch = 3
 attx(0:nx-1)            _real           # Attenuation factor as fcn. of kx
 atty(0:ny-1)            _real           # Attenuation factor as fcn. of ky
 attz(0:nz)              _real           # Attenuation factor as fcn. of kz
@@ -369,6 +372,9 @@ phip(:,:,:) _real # Potential used by the particles to calculate
 rhop(:,:,:) _real # Charge density from the particles.
                   # This will be pointed to each of the different ndts
                   # groups as needed.
+selfep(:,:,:,:) _real [V/m] # Self E field for the particles,
+                            # calculated from phi via finite difference.
+                            # Only used when top.efetch = 3
 rhopndts(0:nxp,0:nyp,0:nzp,0:nrhopndtscopies3d-1,0:nsndts3d-1) _real +fassign
                  # Charge density from the particles
                  # for groups with different time step sizes.
@@ -405,13 +411,6 @@ nxc  integer /0/ # Number of grid cells in x axis for isnearbycond
 nyc  integer /0/ # Number of grid cells in y axis for isnearbycond
 nzc  integer /0/ # Number of grid cells in z axis for isnearbycond
 isnearbycond(0:nxc,0:nyc,0:nzc) _integer
-
-*********** Efields3d:
-nx_selfe integer /0/ +dump           # Same as nx
-ny_selfe integer /0/ +dump           # Same as ny
-nz_selfe integer /0/ +dump +parallel # Same as nz
-selfe(3,0:nx_selfe,0:ny_selfe,0:nz_selfe) _real [V/m] # Self E field,
- # calculated from phi via finite difference. Only used when top.efetch = 3
 
 *********** FieldSolveAPI:
 jmin   integer    /0/  # index start of current particle chunk in top.pgroup 
@@ -943,6 +942,9 @@ getphipforparticles3d(nc:integer,nxlocal:integer,nylocal:integer,
                       delx:integer,dely:integer,delz:integer,
                       fsdecomp:Decomposition,ppdecomp:Decomposition)
              subroutine # Calls the parallel routine for copying phi into phip
+allocateselfepforparticles(lforce:logical)
+             subroutine # Allocates selfep if needed
+allocateselfeforfieldsolve() subroutine # Allocates selfe if needed
 padvnc3d(center:string,pgroup:ParticleGroup)
              subroutine # Advances particles and rho
 perphi3d()
@@ -994,7 +996,6 @@ sete3d(phi1d:real,selfe:real,np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
 getselfe3d(phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz):real,
            nx:integer,ny:integer,nz:integer,
            selfe(3,0:nx,0:ny,0:nz):real,
-           nx_selfe:integer,ny_selfe:integer,nz_selfe:integer,
            dx:real,dy:real,dz:real,
            lzero:logical,delx:integer,dely:integer,delz:integer)
              subroutine # Calculates the self-E via finite difference of phi

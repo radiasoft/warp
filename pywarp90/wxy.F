@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.102 $, $Date: 2009/03/09 19:49:27 $
+c@(#) File WXY.M, version $Revision: 3.103 $, $Date: 2009/03/12 22:20:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -47,7 +47,6 @@ c=============================================================================
       use InMesh3d
       use Fields3d
       use Fields3dParticles
-      use Efields3d
       use Io
       use Lattice
       use LatticeInternal
@@ -215,15 +214,6 @@ c  This is a kludge for now to get the arrays setup.
 
       call assignrhoandphiforfieldsolve(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
       call assignrhopandphipforparticles(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
-
-c  Setup arrays for option which uses the selfe.
-
-      if (ANY(efetch == 3) .and. fstype < 12) then
-        nx_selfe = nxp
-        ny_selfe = nyp
-        nz_selfe = nzp
-        call gallot("Efields3d",0)
-      endif
 
 c  Set the value of prwall, radius at which particles are lost
       do k=0,nzzarr
@@ -630,7 +620,7 @@ c=============================================================================
       use InPart
       use InMesh3d
       use Fields3d
-      use Efields3d
+      use Fields3dparticles,Only: selfep
       use Io
       use Particles,Only: pgroup,nplive
       use Picglb
@@ -739,9 +729,10 @@ c  Field-solve for potential
 
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
-      if (ANY(efetch == 3))
-     &  call getselfe3d(phi,nx,ny,nzlocal,selfe,
-     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,.true.,1,1,1)
+      if (ANY(efetch == 3)) then
+        call allocateselfepforparticles(.true.)
+        call getselfe3d(phi,nx,ny,nzlocal,selfep,dx,dy,dz,.true.,1,1,1)
+      endif
 
 c  Initialize the moments arrays which are calculated during the synchv and
 c  gen phases.
@@ -927,7 +918,7 @@ c=============================================================================
       use InGen3d
       use InMesh3d
       use Fields3d
-      use Efields3d
+      use Fields3dparticles,Only: selfep
       use FieldSolveAPI
       type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,ip,is
@@ -947,7 +938,8 @@ c         --- to avoid any possible funny business with rounding.
 c         --- ds is passed in for dz since that is the distance between
 c         --- the locations where phi is known.
           zpo = 0.
-          call sete3d(phi,selfe,ip,
+          call allocateselfepforparticles(.false.)
+          call sete3d(phi,selfep,ip,
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),zpo,
      &                0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nzlocal,
      &                efetch(is),ex,ey,ez,l2symtry,l4symtry,.false.,1,1,1)
@@ -957,7 +949,8 @@ c         --- in setdtp is still used.
         else
 c         --- Note that zp is passed in as a dummy, it is never used
 c         --- since lcylindrical is false.
-          call setexy(phi,selfe,ip,
+          call allocateselfepforparticles(.false.)
+          call setexy(phi,selfep,ip,
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                xmmin,ymmin,dx,dy,nx,ny,
      &                efetch(is),ex,ey,ez,l2symtry,l4symtry,1,1)
@@ -985,7 +978,6 @@ c=============================================================================
       use Particles,Only: nplive,wpid
       use Particlesxy
       use Fields3d
-      use Efields3d
       use Picglb
       use Picglb3d
       use GridBoundary3d
@@ -2581,7 +2573,6 @@ c=============================================================================
       use Picglb
       use Picglb3d
       use Fields3d
-      use Efields3d
       use LatticeInternal
       use GridBoundary3d
       integer(ISZ):: iwhich

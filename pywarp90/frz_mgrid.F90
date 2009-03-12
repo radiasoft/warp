@@ -9112,7 +9112,7 @@ use ParticleGroupmodule
 use InPart,Only: efetch
 use multigridrz
 use FRZmgrid
-use Efields3d
+use Fields3d,Only: selfe
 use Picglb
 
 type(ParticleGroup):: pgroup

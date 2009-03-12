@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.121 $, $Date: 2009/02/05 19:43:03 $
+c@(#) File w3d_injection.F, version $Revision: 1.122 $, $Date: 2009/03/12 22:20:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4754,7 +4754,6 @@ c=============================================================================
       use Constant
       use Fields3d
       use Fields3dParticles
-      use Efields3d
       use Picglb
       use Picglb3d
       integer(ISZ), intent(in) :: nn
