@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.427 $, $Date: 2009/03/12 22:34:08 $
+c@(#) File W3D.F, version $Revision: 3.428 $, $Date: 2009/03/12 22:48:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9387,6 +9387,7 @@ c=============================================================================
       use InMesh3d,Only: nxlocal,nylocal,nzlocal
       use Fields3dParticles,Only: selfep,nxp,nyp,nzp
       logical(ISZ):: lforce
+      logical(ISZ):: doallocate
 
 c Only do the allocation if needed, when lforce is true or when the array
 c is needed for the field gather (efetch == 3).
@@ -9400,13 +9401,21 @@ c is needed for the field gather (efetch == 3).
      &     solvergeom == Zgeom)) lforce = .true.
 
       if (lforce) then
+
 c       --- selfep is allocated only if it hasn't already been or if it
 c       --- has the wrong shape.
-        if (.not. associated(selfep) .or.
-     &      ANY(shape(selfep) .ne. (/3,1+nxp,1+nyp,1+nzp/))) then
-          if (associated(selfep)) deallocate(selfep)
+        doallocate = .false.
+        if (.not. associated(selfep)) then
+          doallocate = .true.
+        else if (ANY(shape(selfep) .ne. (/3,1+nxp,1+nyp,1+nzp/))) then
+          deallocate(selfep)
+          doallocate = .true.
+        endif
+
+        if (doallocate) then
           allocate(selfep(3,0:nxp,0:nyp,0:nzp))
         endif
+
       endif
 
       return
@@ -9456,10 +9465,17 @@ c      --- Point selfe to selfep, making sure that selfep is allocated.
 
 #else
 
+      logical(ISZ):: doallocate
+
 c     --- selfe needs to be allocated if it hasn't already been.
-      if (.not. associated(selfe) .or.
-     &    ANY(shape(selfe) .ne. (/3,1+nxlocal,1+nylocal,1+nzlocal/))) then
-        if (associated(selfe)) deallocate(selfe)
+      doallocate = .false.
+      if (.not. associated(selfe)) then
+        doallocate = .true.
+      else if (ANY(shape(selfe) .ne. (/3,1+nxlocal,1+nylocal,1+nzlocal/))) then
+        deallocate(selfe)
+        doallocate = .true.
+      endif
+      if (doallocate) then
         allocate(selfe(3,0:nxlocal,0:nylocal,0:nzlocal))
       endif
 
