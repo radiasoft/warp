@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.29 2008/11/19 18:29:59 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.30 2009/03/12 22:24:02 dave Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -200,12 +200,7 @@ Resizes the transverse size of the mesh
     w3d.iy_axis = nint(-w3d.ymmin/w3d.dy)
 
   # --- Fix selfe if needed
-  if sometrue(top.efetch == 3):
-    w3d.nx_selfe = w3d.nxp
-    w3d.ny_selfe = w3d.nyp
-    gchange('Efields3d')
-    # --- Note that this is not all that is needed - the selfe array should be
-    # --- updated after the call to field sol (it should be part of fieldsol).
+  allocateselfepforparticles(false)
 
   # --- Re-initialize any field solve parameters
   fieldsol(1)

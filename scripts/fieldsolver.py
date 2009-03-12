@@ -77,8 +77,8 @@ package. Only w3d and wxy have field solves defined.
          w3d.solvergeom == w3d.XZgeom or
          w3d.solvergeom == w3d.Rgeom  or
          w3d.solvergeom == w3d.Zgeom)):
-      getselfe3d(w3d.phip,w3d.nxp,w3d.nyp,w3d.nzp,w3d.selfe,
-                 w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
+      allocateselfepforparticles(true)
+      getselfe3d(w3d.phip,w3d.nxp,w3d.nyp,w3d.nzp,w3d.selfep,
                  w3d.dx,w3d.dy,w3d.dz,true,1,1,1)
     # --- Get the phi needed for injection
     if top.inject > 0: getinj_phi()
@@ -1038,6 +1038,8 @@ class SubcycledPoissonSolver(FieldSolver):
       installafterrestart(self.allocatedataarrays)
 
   def returnfieldp(self,indts,iselfb):
+    """Returns the slice of fieldparray determined by the inputs. If
+    fieldparray was not created, returns 0."""
     indts = min(indts,top.nsndtsphi-1)
     try:
       return self.fieldparray[...,indts]
@@ -1045,6 +1047,8 @@ class SubcycledPoissonSolver(FieldSolver):
       return 0.
 
   def returnpotentialp(self,indts,iselfb):
+    """Returns the slice of potentialparray determined by the inputs. If
+    potentialparray was not created, returns 0."""
     indts = min(indts,top.nsndtsphi-1)
     try:
       return self.potentialparray[...,indts,iselfb]
@@ -1052,12 +1056,16 @@ class SubcycledPoissonSolver(FieldSolver):
       return 0.
 
   def returnsourcep(self,isourcepndtscopies,indts,iselfb):
+    """Returns the slice of sourceparray determined by the inputs. If
+    sourceparray was not created, returns 0."""
     try:
       return self.sourceparray[...,isourcepndtscopies,indts,iselfb]
     except AttributeError:
       return 0.
 
   def returnfield(self,indts,iselfb):
+    """Returns the slice of fieldarray determined by the inputs. If
+    fieldarray was not created, returns 0."""
     indts = min(indts,top.nsndtsphi-1)
     try:
       return self.fieldarray[...,indts]
@@ -1065,6 +1073,8 @@ class SubcycledPoissonSolver(FieldSolver):
       return 0.
 
   def returnpotential(self,indts,iselfb):
+    """Returns the slice of potentialarray determined by the inputs. If
+    potentialarray was not created, returns 0."""
     indts = min(indts,top.nsndtsphi-1)
     try:
       return self.potentialarray[...,indts,iselfb]
@@ -1072,6 +1082,8 @@ class SubcycledPoissonSolver(FieldSolver):
       return 0.
 
   def returnsource(self,indts,iselfb):
+    """Returns the slice of sourcearray determined by the inputs. If
+    sourcearray was not created, returns 0."""
     indts = min(indts,top.nsndtsphi-1)
     try:
       return self.sourcearray[...,indts,iselfb]
@@ -1079,21 +1091,32 @@ class SubcycledPoissonSolver(FieldSolver):
       return 0.
 
   def setsourcepforparticles(self,isourcepndtscopies,indts,iselfb):
+    "Sets sourcep attribute to the currently active source slice"
     self.sourcep = self.returnsourcep(isourcepndtscopies,indts,iselfb)
 
   def setpotentialpforparticles(self,isourcepndtscopies,indts,iselfb):
-    "Sets potential reference to the currently active potential"
+    "Sets potentialp attribute to the currently active potential slice"
     self.potentialp = self.returnpotentialp(indts,iselfb)
 
   def setfieldpforparticles(self,isourcepndtscopies,indts,iselfb):
-    "Sets field reference to the currently active field"
+    "Sets fieldp attribute to the currently active field slice"
     self.fieldp = self.returnfieldp(indts,iselfb)
 
   def setsourceforfieldsolve(self,isourcepndtscopies,indts,iselfb):
+    "Sets source attribute to the currently active source slice"
     # --- This is called at the end of loadrho just before the b.c.'s are set
     self.source = self.returnsource(indts,iselfb)
 
+  def setpotentialforfieldsolve(self,isourcepndtscopies,indts,iselfb):
+    "Sets potential attribute to the currently active potential slice"
+    self.potential = self.returnpotential(indts,iselfb)
+
+  def setfieldforfieldsolve(self,isourcepndtscopies,indts,iselfb):
+    "Sets field attribute to the currently active field slice"
+    self.field = self.returnfield(indts,iselfb)
+
   def setarraysforfieldsolve(self,isourcepndtscopies,indts,iselfb):
+    "Sets source, field and potential attribute to the currently active slices"
     # --- This is called at the beginning of the field solve
     self.source    = self.returnsource(indts,iselfb)
     self.field     = self.returnfield(indts,iselfb)
@@ -1102,8 +1125,11 @@ class SubcycledPoissonSolver(FieldSolver):
   def getpotentialpforparticles(self,isourcepndtscopies,indts,iselfb):
     "Copies from potential to potentialp"
     # --- In the serial case, potentialp and self.potential point to the
-    # --- same memory.
+    # --- same memory so no copy is needed.
     if lparallel:
+      # --- This is dummy code and it never executed! This should probably
+      # --- be deleted to avoid confusion. getpotentialpforparticles is
+      # --- redefined in the inheriting classes.
       if type(self.potential)<>type(0.):
         potentialp = self.returnpotentialp(indts,iselfb)
         potentialp[...] = self.potential
@@ -1111,8 +1137,11 @@ class SubcycledPoissonSolver(FieldSolver):
   def getfieldpforparticles(self,isourcepndtscopies,indts,iselfb):
     "Copies from field to fieldp"
     # --- In the serial case, fieldp and self.field point to the
-    # --- same memory.
+    # --- same memory so no copy is needed.
+    # --- Note that, so far, this method is never used.
     if lparallel:
+      # --- This is dummy code and it never executed! This should probably
+      # --- be deleted to avoid confusion.
       fieldp = self.returnfieldp(indts,iselfb)
       fieldp[...] = self.field
 

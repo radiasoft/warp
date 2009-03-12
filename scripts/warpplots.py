@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.238 2009/03/12 00:14:01 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.239 2009/03/12 22:24:02 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -3877,22 +3877,15 @@ be from none to all three.
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  if alltrue(top.efetch != 3) or solver.nx_selfe == 0:
+  if alltrue(top.efetch != 3) or not w3d.allocated('selfe'):
     # --- If not already using selfe, then allocate it and set it.
     # --- Note that this could be an unexpected expense for a user.
-    solver.nx_selfe = solver.nxp
-    solver.ny_selfe = solver.nyp
-    solver.nz_selfe = solver.nzp
-    if solver.solvergeom==w3d.RZgeom or solver.solvergeom==w3d.XZgeom:
-      solver.ny_selfe = 0
-    if solver.solvergeom==w3d.Zgeom: solver.nx_selfe = 0
     if solver is w3d:
-      gchange("Efields3d")
-      nx,ny,nz = array(solver.phip.shape) - 1
-      getselfe3d(solver.phip,solver.nxp,solver.nyp,solver.nzp,solver.selfe,
-                 solver.nx_selfe,solver.ny_selfe,solver.nz_selfe,
-                 solver.dx,solver.dy,solver.dz,
-                 true,(nx-solver.nxp)/2,(ny-solver.nyp)/2,(nz-solver.nzp)/2,)
+      allocateselfeforfieldsolve()
+      nx,ny,nz = array(w3d.phi.shape) - 1
+      getselfe3d(w3d.phi,w3d.nxlocal,w3d.nylocal,w3d.nzlocal,
+                 w3d.selfe,w3d.dx,w3d.dy,w3d.dz,
+                 true,(nx-w3d.nxlocal)/2,(ny-w3d.nylocal)/2,(nz-w3d.nzlocal)/2)
     else:
       solver.getselfe()
   if type(comp) == IntType: ic = comp

@@ -55,6 +55,7 @@ class MultiGrid(SubcycledPoissonSolver):
 
     # --- By default, the E field is not directly calculated.
     self.lwithselfe = 0
+    self.lwithselfep = 0
 
   def initializeconductors(self):
     # --- Create the attributes for holding information about conductors
@@ -207,12 +208,12 @@ class MultiGrid(SubcycledPoissonSolver):
       nfields = 1
 
     try:
-      self.lwithselfe
+      self.lwithselfep
     except AttributeError:
-      self.lwithselfe = 0
-    self.lwithselfe = self.lwithselfe or sometrue(top.efetch == 3)
+      self.lwithselfep = 0
+    self.lwithselfep = self.lwithselfep or sometrue(top.efetch == 3)
 
-    if self.lwithselfe:
+    if self.lwithselfep:
       return ((1+self.nxp,1+self.nyp,1+self.nzp),
               (3,1+self.nxp,1+self.nyp,1+self.nzp,nfields),
               (1+self.nxp+2*self.nxguard,1+self.nyp+2*self.nyguard,1+self.nzp+2*self.nzguard))
@@ -222,10 +223,13 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def getdims(self):
     # --- Returns the dimensions of the arrays used by the field solver
-    return ((1+self.nxlocal,1+self.nylocal,1+self.nzlocal),
+    dims = [(1+self.nxlocal,1+self.nylocal,1+self.nzlocal),
             (1+self.nxlocal+2*self.nxguard,
              1+self.nylocal+2*self.nyguard,
-             1+self.nzlocal+2*self.nzguard))
+             1+self.nzlocal+2*self.nzguard)]
+    if self.lwithselfe:
+      dims[1:1] = [(3,1+self.nxlocal,1+self.nylocal,1+self.nzlocal,1)]
+    return tuple(dims)
 
   def getrho(self):
     return self.source
@@ -294,6 +298,16 @@ class MultiGrid(SubcycledPoissonSolver):
   phi = property(**_setupphiproperty())
   del _setupphiproperty
 
+  def _setupselfeproperty():
+    doc = "Electric field array for particles"
+    def fget(self):
+      return self.getselfe(recalculate=1)
+    def fset(self,value):
+      self.returnfieldp(0,0)[...,0] = value
+    return locals()
+  selfe = property(**_setupselfeproperty())
+  del _setupselfeproperty
+
   def _setuprhopproperty():
     doc = "Charge density array for particles"
     def fget(self):
@@ -314,17 +328,15 @@ class MultiGrid(SubcycledPoissonSolver):
   phip = property(**_setupphipproperty())
   del _setupphipproperty
 
-  def _setupselfeproperty():
+  def _setupselfepproperty():
     doc = "Electric field array for particles"
     def fget(self):
-      self.getselfe(recalculate=1)
-      return self.returnfieldp(0,0)[...,0]
+      return self.getselfep(recalculate=1)
     def fset(self,value):
       self.returnfieldp(0,0)[...,0] = value
     return locals()
-  # --- This really should be selfep!
-  selfe = property(**_setupselfeproperty())
-  del _setupselfeproperty
+  selfep = property(**_setupselfepproperty())
+  del _setupselfepproperty
 
   def loadrho(self,lzero=None,pgroups=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,pgroups,**kw)
@@ -472,7 +484,7 @@ class MultiGrid(SubcycledPoissonSolver):
       if lzero:
         tfieldp = transpose(self.fieldp)
         tfieldp[...] = 0.
-      self.getselfe(recalculate=1,lzero=lzero)
+      self.getselfep(recalculate=1,lzero=lzero)
       if abs(top.fselfb[iselfb]) > 0:
         # --- If the self-B correction is nonzero, then calculate and include
         # --- the approximate correction terms A and dA/dt.
@@ -498,6 +510,29 @@ class MultiGrid(SubcycledPoissonSolver):
                                  self.solvergeom==w3d.RZgeom)
 
   def getselfe(self,recalculate=None,lzero=true):
+    if not self.lparallel:
+      # --- If serial, then defer to getselfep since field and fieldp would
+      # --- be the same array.
+      return self.getselfep(recalculate=recalculate,lzero=lzero)
+    # --- The rest is the same as self.getselfep, but using the non-p
+    # --- attributes.
+
+    # --- Since the selfe is never directly used, except for diagnostics,
+    # --- it should always be recalculated by default.
+    if recalculate is None: recalculate = 1
+
+    self.lwithselfe = 1
+    self.allocatedataarrays()
+    self.field = self.returnfield(0,0)
+    if recalculate:
+      if isinstance(self.potential,FloatType): return
+      if isinstance(self.field,FloatType): return
+      getselfe3d(self.potential,self.nxlocal,self.nylocal,self.nzlocal,
+                 self.field[:,:,:,:,0],self.dx,self.dy,self.dz,
+                 lzero,self.nxguard,self.nyguard,self.nzguard)
+    return self.field[...,0]
+
+  def getselfep(self,recalculate=None,lzero=true):
     # --- Make sure that fieldp is at least defined.
     try: self.fieldp
     except AttributeError: self.setfieldpforparticles(0,0,0)
@@ -505,22 +540,21 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- Check if the E field should be recalculated.
     # --- If it had not yet been calculated at all, then definitely
     # --- calculate it now.
-    if not self.lwithselfe: recalculate = 1
+    if not self.lwithselfep: recalculate = 1
     # --- If the E field is not actively being used, then recalculate it,
     # --- unless recalculate is passed in by the user.
     if alltrue(top.efetch != 3) and recalculate is None: recalculate = 1
 
-    self.lwithselfe = 1
+    self.lwithselfep = 1
     self.allocatedataarrays()
     self.fieldp = self.returnfieldp(0,0)
     if recalculate:
       if isinstance(self.potentialp,FloatType): return
       if isinstance(self.fieldp,FloatType): return
       getselfe3d(self.potentialp,self.nxp,self.nyp,self.nzp,
-                 self.fieldp[:,:,:,:,0],self.nxp,self.nyp,self.nzp,
-                 self.dx,self.dy,self.dz,
+                 self.fieldp[:,:,:,:,0],self.dx,self.dy,self.dz,
                  lzero,self.nxguard,self.nyguard,self.nzguard)
-    return self.fieldp
+    return self.fieldp[...,0]
 
   def getslicewithguard(self,i1,i2,guard):
     if i1 is not None: i1 = i1 + guard

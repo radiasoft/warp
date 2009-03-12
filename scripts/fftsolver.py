@@ -128,14 +128,8 @@ class FieldSolver3dBase(object):
     self.rstar = fzeros(3+self.nzlocal,'d')
     if sometrue(top.efetch == 3):
       self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nzlocal),'d')
-      self.nx_selfe = self.nx
-      self.ny_selfe = self.ny
-      self.nz_selfe = self.nzlocal
     else:
       self.selfe = 0.
-      self.nx_selfe = 0
-      self.ny_selfe = 0
-      self.nz_selfe = 0
     self.rhop = self.rho
     self.phip = self.phi
     if self.useselfb:

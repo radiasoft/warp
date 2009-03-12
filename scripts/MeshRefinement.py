@@ -1690,7 +1690,7 @@ to zero."""
       comp = ['x','y','z'].index(comp)
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
-    try: field = self.__class__.__bases__[1].getfield(self,recalculate=0)
+    try: field = self.getselfe(recalculate=0)
     except AttributeError: field = self.field
     return field[comp,ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
   def getchilddomains(self,lower,upper,upperedge=0):
