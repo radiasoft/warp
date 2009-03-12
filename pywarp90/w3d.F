@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.426 $, $Date: 2009/03/12 22:20:59 $
+c@(#) File W3D.F, version $Revision: 3.427 $, $Date: 2009/03/12 22:34:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9451,7 +9451,7 @@ c=============================================================================
 #ifndef MPIPARALLEL
 
 c      --- Point selfe to selfep, making sure that selfep is allocated.
-       call allocateselfeforparticles(.true.)
+       call allocateselfepforparticles(.true.)
        selfe => selfep
 
 #else
