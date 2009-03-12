@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.237 2009/02/02 18:54:48 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.238 2009/03/12 00:14:01 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -742,7 +742,7 @@ Simple interface to contour plotting, same arguments as plc
     ireg = ones(s,'i')
   else:
     assert shape(ireg) == shape(zz),"Shape of ireg must be the same as zz"
-  if contours == 0: contours = None
+  if contours is 0: contours = None
   if levs is not None: contours = levs
   if type(contours) == ListType: contours = array(contours)
   if type(contours) == TupleType: contours = array(contours)
@@ -1139,7 +1139,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   if filled and contours is None: contours = 8
 
   # --- Make sure that contours is not zero, which breaks some code.
-  if contours == 0: contours = None
+  if contours is 0: contours = None
 
   # --- If particle data was passed in and no specific plots were requested,
   # --- just plot the particles.
