@@ -227,6 +227,10 @@ class MultiGrid(SubcycledPoissonSolver):
             (1+self.nxlocal+2*self.nxguard,
              1+self.nylocal+2*self.nyguard,
              1+self.nzlocal+2*self.nzguard)]
+    try:
+      self.lwithselfe
+    except AttributeError:
+      self.lwithselfe = 0
     if self.lwithselfe:
       dims[1:1] = [(3,1+self.nxlocal,1+self.nylocal,1+self.nzlocal,1)]
     return tuple(dims)
