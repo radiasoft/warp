@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.239 2009/03/12 22:24:02 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.240 2009/03/16 23:01:30 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -112,7 +112,7 @@ always = top.always
 seldom = top.seldom
 never = top.never
 cgmlogfile = None
-numframeslist = zeros(8,'l')
+numframeslist = ones(8,'l')
 
 if with_gist:
   gist.pldefault(marks=0) # --- Set plot defaults, no line marks
@@ -148,7 +148,7 @@ if with_matplotlib:
 # The setup routine does the work needed to start writing plots to a file
 # automatically.
 def setup(makepsfile=0,prefix=None,cgmlog=1,runcomments='',
-          cgmfilesize=100000,pnumb=None):
+          cgmfilesize=100000,pnumb=None,writetodatafile=0):
   """
 Does the work needed to start writing plots to a file automatically
   - makepsfile=0: allows the specification of a ps file instead of cgm
@@ -158,6 +158,8 @@ Does the work needed to start writing plots to a file automatically
   - cgmfilesize=100000: Max cgmfilesize in units of MBytes.
   - pnumb=None: Optional file name number to be used in place of the
                 next available number. It must be a string.
+  - writetodatafile=0: When true, all plot data is written to a data
+                       file instead of a gist cgm file.
   """
   # --- cgmlogfile is needed elsewhere
   global cgmlogfile
@@ -165,8 +167,13 @@ Does the work needed to start writing plots to a file automatically
   # --- Setup the plot file name
   if me == 0:
     if prefix is None: prefix = arraytostr(top.runid)
-    if makepsfile or with_matplotlib: suffix = 'ps'
-    else:                             suffix = 'cgm'
+    if writetodatafile:
+      suffix = 'pdb'
+    else:
+      if makepsfile or with_matplotlib:
+        suffix = 'ps'
+      else:
+        suffix = 'cgm'
     if pnumb is None:
       # --- Get next available plot file name.
       pname = getnextfilename(prefix,suffix)
@@ -199,6 +206,10 @@ Does the work needed to start writing plots to a file automatically
   else:
     # --- Open the file where the plots will be saved.
     _matplotwindows.append(open(setup.pname,'w'))
+
+  if writetodatafile:
+    # --- Setup the data file name where plot data is written
+    setplotdatafilename(pname)
 
   print "Plot file name",pname
 
@@ -321,7 +332,8 @@ def plotruninfo():
   if with_matplotlib:
     aa.text(0.12,0.24,ss)
   # --- Increment and print frame number and log
-  numframeslist[active_window()] = numframeslist[active_window()] + 1
+  # --- numframeslist is now incremented in fma
+  #numframeslist[active_window()] = numframeslist[active_window()] + 1
   if with_gist:
     plt(repr(numframeslist[active_window()]),0.68,0.9,justify='RA',local=1)
   if with_matplotlib:
@@ -363,6 +375,13 @@ def makeplotsdirectly():
   assert (_accumulateplotlists>0),"makeplotsdirectly should only ever be called after a call to accumulateplotlists"
   _accumulateplotlists -= 1
 
+# --- This allows writing out all plot data into a data file instead of
+# --- creating the plot with gist.
+_plotdatafilename = None
+def setplotdatafilename(filename=None):
+  global _plotdatafilename
+  _plotdatafilename = filename
+
 # --- This is the global list of the things to be plotted and the function
 # --- which actually does the plotting.
 _listofthingstoplot = []
@@ -371,14 +390,6 @@ def addthingtoplot(pfunc,args,kw):
      args: list of args
      kw: dict of keyword args"""
   _listofthingstoplot.append([pfunc,args,kw])
-def callplotfunction(pfunc,args=[],kw={}):
-  # --- Note that any None's need to be cleared out since some functions
-  # --- don't like them.
-  while len(args) > 0 and args[-1] is None: del args[-1]
-  if _accumulateplotlists:
-    addthingtoplot(pfunc,args,kw)
-  else:
-    getattr(_plotpackage,pfunc)(*args,**kw)
 def plotlistofthings(lturnofflist=0):
   global _listofthingstoplot
   if not _accumulateplotlists: return
@@ -386,8 +397,166 @@ def plotlistofthings(lturnofflist=0):
   _listofthingstoplot = []
   for things in listsofthings:
     for thing in things:
-      getattr(_plotpackage,thing[0])(*thing[1],**thing[2])
+      handleplotfunctioncall(thing[0],thing[1],thing[2])
   if lturnofflist: makeplotsdirectly()
+
+def callplotfunction(pfunc,args=[],kw={}):
+  # --- Note that any None's need to be cleared out since some functions
+  # --- don't like them.
+  while len(args) > 0 and args[-1] is None: del args[-1]
+  if _accumulateplotlists:
+    addthingtoplot(pfunc,args,kw)
+  else:
+    handleplotfunctioncall(pfunc,args,kw)
+def handleplotfunctioncall(pfunc,args=[],kw={}):
+  if _plotdatafilename is None:
+    # --- Make direct call to gist or matplotlib routine
+    getattr(_plotpackage,pfunc)(*args,**kw)
+  else:
+    # --- Write data to the file (for later processing)
+    # --- plotcounts holds a running count of the number of plot commands
+    # --- in the current frame of the currently active window.
+    try: handleplotfunctioncall.plotcounts
+    except: handleplotfunctioncall.plotcounts = zeros(8,'l')
+    plotcount = handleplotfunctioncall.plotcounts[active_window()]
+    if pfunc == 'fma':
+      # --- On a frame advance, reset the count.
+      handleplotfunctioncall.plotcounts[active_window()] = 0
+    else:
+      # --- Increment the plot command count.
+      handleplotfunctioncall.plotcounts[active_window()] += 1
+    # --- Create the file or open it for appending.
+    ff = PW.PW(_plotdatafilename,mode='a',verbose=0)
+    # --- Variable name suffix
+    pp = '%02d_%07d_%06d'%(active_window(),numframeslist[active_window()],plotcount)
+    # --- Write out the plot function name
+    vv = 'f%s'%pp
+    ff.write(vv,pfunc)
+    # --- Write out the arguments
+    for i,arg in enumerate(args):
+      vv = 'a%s_%02d'%(pp,i)
+      ff.write(vv,arg)
+    # --- Write out the keyword arguments
+    i = 0
+    for k,v in kw.items():
+      vv = 'k%s_%02d'%(pp,i)
+      ff.write(vv,k)
+      vv = 'v%s_%02d'%(pp,i)
+      ff.write(vv,v)
+      i += 1
+    ff.close()
+
+class PlotsFromDataFile(object):
+  """This class reads in a plot data file and can be used to make plots
+from that data. The available methods are
+ - window(winnum=None): set or return the active window number
+ - plotframe(winnum=None,framenum=None): plot the frame. winnum defaults to
+                                         the active window number, framenum
+                                         to the next frame
+ - plotallframes(winnum=None): plot all frames. winnum defaults to the active
+                               window number.
+  """
+  def __init__(self,filename):
+    self.filename = filename
+    self.ff = PR.PR(filename)
+    self.frames = self._parsenames()
+    # --- Currently active window number
+    self.winnum = 0
+    # --- Current frame for each window
+    self.numframeslist = ones(8,'l')
+  def _parsenames(self):
+    "Build list of names for each plot frame"
+    # --- For each window number, built a dictionary with the frame number
+    # --- as the keys. The value for each key is a list of names that
+    # --- are part of that frame.
+    frames = [{},{},{},{},{},{},{},{}]
+    for name in self.ff.inquire_names():
+      winnum = int(name[1:3])
+      framenum = int(name[4:11])
+      frames[winnum].setdefault(framenum,[]).append(name)
+    return frames
+  def _getplotdatafromfile(self,winnum,framenum,plotcount):
+    # --- This reads in the data from the file for the command specified
+    # --- by the input arguments.
+    # --- Get the list of names part of the frame.
+    names = self.frames[winnum][framenum]
+    # --- Create the variable name suffix.
+    pp = '%02d_%07d_%06d'%(winnum,framenum,plotcount)
+    # --- Read in the plot function name
+    vv = 'f%s'%pp
+    if vv not in names:
+      return (None,None,None)
+    pfunc = self.ff.read(vv)
+    # --- Read in the plot arguments
+    args = []
+    i = 0
+    while 1:
+      vv = 'a%s_%02d'%(pp,i)
+      if vv not in names: break
+      args.append(self.ff.read(vv))
+      i += 1
+    # --- Read in the plot keyword arguments
+    kw = {}
+    i = 0
+    while 1:
+      kk = 'k%s_%02d'%(pp,i)
+      vv = 'v%s_%02d'%(pp,i)
+      if kk not in names: break
+      kw[self.ff.read(kk)] = self.ff.read(vv)
+      i += 1
+    # --- Return the stuff as a tuple
+    return pfunc,args,kw
+  def window(self,winnum=None):
+    "Set or print the active window number"
+    if winnum is None:
+      return self.winnum
+    else:
+      assert 0 <= winnum < 8,"Window number must be in the range 0 through 7"
+      self.winnum = winnum
+  def plotframe(self,winnum=None,framenum=None):
+    """plotframe(winnum=None,framenum=None):
+plot the frame.
+ - winnum=None: window number, defaults to the active window number
+ - framenum=None: frame number, defaults to the next frame
+    """
+    if winnum is None: winnum = self.winnum
+    if framenum is None: framenum = self.numframeslist[winnum]
+    # --- plotcount iterates over the commands that are part of this frame
+    plotcount = 0
+    while 1:
+      try:
+        pfunc,args,kw = self._getplotdatafromfile(winnum,framenum,plotcount)
+      except KeyError:
+        # --- The framenum was not found
+        raise RuntimeError,"Frame number %d was not found"%framenum
+      # --- If the fma command is found, that signals the end of this frame.
+      # --- Note that this routine does not call fma, allowing further
+      # --- changes to the frame.
+      if pfunc == 'fma': break
+      # --- if pfunc is None, this probably means that for the last plot,
+      # --- fma was not called (i.e. there are no more plot commands but
+      # --- no fma was found).
+      if pfunc is None: break
+      # --- Make the plot, calling the appropriate gist or plotlib function
+      handleplotfunctioncall(pfunc,args,kw)
+      # --- Increment to the next plot call
+      plotcount += 1
+    # --- Increment the frame number of the active window
+    self.numframeslist[winnum] = framenum + 1
+  def plotallframes(self,winnum=None):
+    """plotallframes(winnum=None):
+plot all frames.
+ - winnum=None: defaults to the active window number.
+    """
+    if winnum is None: winnum = self.winnum
+    numframes = max(self.frames[winnum].keys())
+    # --- Reset the plot frame number for the window
+    self.numframeslist[winnum] = 1
+    # --- All that is needed is to call plotframe the appropriate number
+    # --- of times and adding the fma calls.
+    for i in range(numframes):
+      self.plotframe(winnum)
+      fma()
 
 if with_matplotlib:
   # --- The limits command is a simple wrapper around pylab.axis
@@ -406,6 +575,7 @@ for before and after plot commands.
   - legend=1: when set to 0, the text at the frame bottom is omitted
   """
   plotlistofthings()
+  # --- Write the run log info
   if legend: plotruninfo()
   controllers.callafterplotfuncs()
   if with_gist:
@@ -417,6 +587,8 @@ for before and after plot commands.
     except IndexError:
       pass
     pylab.clf()
+  # --- Increment frame number
+  numframeslist[active_window()] = numframeslist[active_window()] + 1
   controllers.callbeforeplotfuncs()
 
 def hcp(legend=1):
@@ -426,6 +598,7 @@ copy file.
   - legend=1: when set to 0, the text at the frame bottom is omitted
   """
   controllers.callafterplotfuncs()
+  # --- Write the run log info
   if legend: plotruninfo()
   controllers.callbeforeplotfuncs()
   if with_gist:
@@ -1553,12 +1726,15 @@ Note that both the x and y grids must be passed in.
   - gridy, gridx: x and y vector comnponents
   """
   # --- Complete dictionary of possible keywords and their default values
+  # --- ccolor is included since this routine is called by higher level
+  # --- routines that pass in ccolor. It is not used here.
   kwdefaults = {'titles':1,'lframe':0,
                 'xmin':None,'xmax':None,'ymin':None,'ymax':None,
                 'pplimits':('e','e','e','e'),'scale':1.,
                 'color':'fg',
                 'xbound':dirichlet,'ybound':dirichlet,
                 'xmesh':None,'ymesh':None,'local':1,
+                'ccolor':None,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -3501,7 +3677,7 @@ Plots b envelope +/- x centroid
 # --- shape is the same as rho.
 ##########################################################################
 def getdecomposedarray(arr,ix=None,iy=None,iz=None,bcast=0,local=0,
-                       fullplane=0,solver=None):
+                       fullplane=0,xyantisymmetric=0,solver=None):
   """Returns slices of a decomposed array, The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -3513,6 +3689,11 @@ be from none to all three.
   - local=0: When 1, in the parallel version, each process will get its local
              value of array - no communication is done. Has no effect for
              serial version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
+  - xyantisymmetric=0: When 1 and with fullplane=1, the data is treated as
+                       anti-symmetric in the transverse plane, resulting
+                       in a sign change during the replication.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: toptmp = top
@@ -3638,8 +3819,8 @@ be from none to all three.
       nn = ss[ii] - 1
       ss[ii] = 2*nn + 1
       result1 = zeros(tuple(ss),'d')
-      if comp == 'x': fsign = -1
-      else:           fsign = +1
+      if xyantisymmetric: fsign = -1
+      else:               fsign = +1
       result1[nn:,...] = result
       result1[nn::-1,...] = fsign*result
       result = result1
@@ -3649,8 +3830,8 @@ be from none to all three.
       nn = ss[ii] - 1
       ss[ii] = 2*nn + 1
       result1 = zeros(tuple(ss),'d')
-      if comp == 'y': fsign = -1
-      else:           fsign = +1
+      if xyantisymmetric: fsign = -1
+      else:               fsign = +1
       if ii == 0:
         result1[nn:,...] = result
         result1[nn::-1,...] = fsign*result
@@ -3893,6 +4074,7 @@ be from none to all three.
 
   return getdecomposedarray(solver.selfe[ic,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
                             solver=solver)
 
 # --------------------------------------------------------------------------
@@ -3921,6 +4103,7 @@ be from none to all three.
 
   return getdecomposedarray(bfield.j[ic,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
                             solver=solver)
 
 # --------------------------------------------------------------------------
@@ -3948,6 +4131,7 @@ be from none to all three.
 
   return getdecomposedarray(bfield.b[ic,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
                             solver=solver)
 
 # --------------------------------------------------------------------------
@@ -3975,6 +4159,7 @@ be from none to all three.
 
   return getdecomposedarray(bfield.a[ic,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
                             solver=solver)
 
 # --------------------------------------------------------------------------
