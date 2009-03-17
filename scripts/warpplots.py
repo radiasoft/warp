@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.240 2009/03/16 23:01:30 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.241 2009/03/17 00:25:41 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -148,7 +148,8 @@ if with_matplotlib:
 # The setup routine does the work needed to start writing plots to a file
 # automatically.
 def setup(makepsfile=0,prefix=None,cgmlog=1,runcomments='',
-          cgmfilesize=100000,pnumb=None,writetodatafile=0):
+          cgmfilesize=100000,pnumb=None,writetodatafile=0,
+          lversiontext=1):
   """
 Does the work needed to start writing plots to a file automatically
   - makepsfile=0: allows the specification of a ps file instead of cgm
@@ -160,6 +161,8 @@ Does the work needed to start writing plots to a file automatically
                 next available number. It must be a string.
   - writetodatafile=0: When true, all plot data is written to a data
                        file instead of a gist cgm file.
+  - lversiontext=1: When true, write out the version information to the
+                    first frame.
   """
   # --- cgmlogfile is needed elsewhere
   global cgmlogfile
@@ -223,10 +226,10 @@ Does the work needed to start writing plots to a file automatically
   # --- Print the versions to the plot file.
   if with_matplotlib: universeaxes()
 
-  plt(time.ctime(top.starttime)+'\n'+versionstext()+'\n'+runcomments,
-      0.15,0.88,justify="LT",local=1)
-
-  fma()
+  if lversiontext:
+    plt(time.ctime(top.starttime)+'\n'+versionstext()+'\n'+runcomments,
+        0.15,0.88,justify="LT",local=1)
+    fma()
 
 # --- Convenience function to open a window with default value specilized to
 # --- WARP. By default, this opens up a window on the current display. If
@@ -556,7 +559,9 @@ plot all frames.
     # --- of times and adding the fma calls.
     for i in range(numframes):
       self.plotframe(winnum)
-      fma()
+      # --- The legend is turned off since it was plotted in the
+      # --- original run.
+      fma(legend=0)
 
 if with_matplotlib:
   # --- The limits command is a simple wrapper around pylab.axis
