@@ -490,7 +490,7 @@ Creates a new species of particles. All arguments are optional.
     
   def add_uniform_cylinder(self,np,rmax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,
                            xmean=0.,ymean=0,zmean=0,vxmean=0.,vymean=0.,vzmean=0.,
-                           theta=0.,phi=0.,
+                           theta=0.,phi=0.,vrmax=0.,vtheta=0.,
                            js=None,
                            lmomentum=0,spacing='random',nr=None,nz=None,
                            thetamin=0.,thetamax=2.*pi,
@@ -514,6 +514,9 @@ in radius squared.
               Note that the position mins and maxs and the velocity averages and means
               are relative to the rotated frame and are automatically transformed
               into the lab frame. The position means are relative to the lab frame.
+ - vrmax: diverging (or converging) velocity. A velocity of vr = r*vrmax/rmax
+          is added to each particle.
+ - vtheta: rotational velocity about the cylinder center.
  - js: particle species number, don't set it unless you mean it
  - lmomentum=false: Set to false when velocities are input as velocities, true
                     when input as massless momentum (as WARP stores them).
@@ -666,6 +669,8 @@ in radius squared.
       x = compress(indomain,x)
       y = compress(indomain,y)
       z = compress(indomain,z)
+      if vtheta != 0.:
+        r = compress(indomain,r)
       np = len(z)
       if np == 0: return
 
@@ -681,6 +686,8 @@ in radius squared.
       x = compress(indomain,x)
       y = compress(indomain,y)
       z = compress(indomain,z)
+      if vtheta != 0.:
+        r = compress(indomain,r)
       np = len(z)
       if np == 0: return
 
@@ -695,6 +702,13 @@ in radius squared.
     vx = SpRandom(vxmean,vthx,np)
     vy = SpRandom(vymean,vthy,np)
     vz = SpRandom(vzmean,vthz,np)
+
+    if vrmax != 0.:
+      vx += vrmax*x/rmax
+      vy += vrmax*y/rmax
+    if vtheta != 0.:
+      vx -= vtheta*y/r
+      vy += vtheta*x/r
 
     if theta != 0. or phi != 0.:
       # --- Transform velocities from rotated frame into the lab frame.
