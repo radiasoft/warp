@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.241 2009/03/17 00:25:41 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.242 2009/03/23 18:28:07 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -796,16 +796,17 @@ def pli(z,x0=None,y0=None,x1=None,y1=None,local=1,**kw):
       del kw['top']
     except KeyError:
       pass
-    nx,ny = z.shape
+    ny,nx = z.shape
     x0 = x0 or 0.
     x1 = x1 or (nx - 1)
     y0 = y0 or 0.
     y1 = y1 or (ny - 1)
     dx = (x1 - x0)/(nx-1)
     dy = (y1 - y0)/(ny-1)
-    xx = arange(x0-dx/2.,x1+dx/2.,nx)
-    yy = arange(y0-dy/2.,y1+dy/2.,ny)
-    callplotfunction("pcolor",[xx,yy,transpose(z)],kw)
+    xx = arange(x0-dx/2.,x1+dx/2.,dx)
+    yy = arange(y0-dy/2.,y1+dy/2.,dy)
+    xg,yg = meshgrid(xx,yy)
+    callplotfunction("pcolor",[xg,yg,z],kw)
 pli.__doc__ = gist.pli.__doc__
 def plf(z,y=None,x=None,ireg=None,local=1,**kw):
   if not _accumulateplotlists and not local:
