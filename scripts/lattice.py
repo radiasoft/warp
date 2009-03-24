@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.77 2009/02/12 16:03:30 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.78 2009/03/24 16:23:56 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -1753,7 +1753,7 @@ class TimeDependentLatticeElement(object):
   def getdata(self,time=None):
     if time is None: time = top.time
     if self.data is not None: return self.fromdata(time)
-    elif self.voltfunc is not None: return self.func(time)
+    elif self.func is not None: return self.func(time)
 
   def fromdata(self,time):
     if time <= self.time[0]: return self.data[0]
