@@ -109,7 +109,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.195 2009/02/20 23:38:58 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.196 2009/03/25 22:49:04 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1261,7 +1261,7 @@ distances to outside the surface are positive, inside negative.
 Normalizes the data with respect to the grid cell sizes.
 dx,dy,dz: the grid cell sizes
     """
-    self.dels[:,:] = self.dels/array([dx,dx,dy,dy,dz,dz])[:,newaxis]
+    self.dels[:,:] /= array([dx,dx,dy,dy,dz,dz])[:,newaxis]
     if self.neumann:
       # --- For points that are within fuzz of 0 or 1, force them to be 0 or 1.
       # --- For Neumann boundaries, dels=0 is a valid value and this deals
@@ -1342,16 +1342,16 @@ Removes the data which is far from any conductors. Assumes that setparity
 has already been called.
     """
     ii = nonzero(self.parity < 2)[0]
-    self.ix    = take(self.ix,ii)
-    self.iy    = take(self.iy,ii)
-    self.iz    = take(self.iz,ii)
-    self.xx    = take(self.xx,ii)
-    self.yy    = take(self.yy,ii)
-    self.zz    = take(self.zz,ii)
+    self.ix    = self.ix[ii]
+    self.iy    = self.iy[ii]
+    self.iz    = self.iz[ii]
+    self.xx    = self.xx[ii]
+    self.yy    = self.yy[ii]
+    self.zz    = self.zz[ii]
     self.dels  = take(self.dels,ii,1)
     self.vs    = take(self.vs,ii,1)
     self.ns    = take(self.ns,ii,1)
-    self.parity= take(self.parity,ii)
+    self.parity= self.parity[ii]
     self.ndata = len(self.ix)
 
   def append(self,d):
@@ -1393,9 +1393,12 @@ Installs the data into the WARP database
     nonew = 0
     for data in self.datalist:
       if data.parity is None: continue
-      ncnew += sum(where(data.parity == -1,1,0))
-      nenew += sum(where(data.parity == 0,1,0))
-      nonew += sum(where(data.parity == 1,1,0))
+      data.ncnew = len(data.parity[data.parity==-1])
+      data.nenew = len(data.parity[data.parity==0])
+      data.nonew = len(data.parity[data.parity==1])
+      ncnew += data.ncnew
+      nenew += data.nenew
+      nonew += data.nonew
 
     ntot = ncnew + nenew + nonew
 
@@ -1410,50 +1413,52 @@ Installs the data into the WARP database
     if nonew + no > conductors.oddsubgrid.nmax:
       conductors.oddsubgrid.nmax = nonew + no
 
-    conductors.gchange("*")
+    conductors.gchange()
 
     conductors.interior.n = nc + ncnew
     conductors.evensubgrid.n = ne + nenew
     conductors.oddsubgrid.n = no + nonew
 
     # --- Install all of the conductor data into the database.
+    # --- Timings indicate that for the 1-D arrays, [ii] is faster, but
+    # --- for 2-D arrays, take is faster.
     for data in self.datalist:
       if data.parity is None: continue
 
-      ncnew = sum(where(data.parity == -1,1,0))
+      ncnew = data.ncnew
       if ncnew > 0:
         ii = nonzero(data.parity == -1)[0]
-        conductors.interior.indx[0,nc:nc+ncnew] = take(data.ix,ii)
-        conductors.interior.indx[1,nc:nc+ncnew] = take(data.iy,ii)
-        conductors.interior.indx[2,nc:nc+ncnew] = take(data.iz,ii)
+        conductors.interior.indx[0,nc:nc+ncnew] = data.ix[ii]
+        conductors.interior.indx[1,nc:nc+ncnew] = data.iy[ii]
+        conductors.interior.indx[2,nc:nc+ncnew] = data.iz[ii]
         conductors.interior.volt[nc:nc+ncnew] = take(data.vs[0,:],ii)
         conductors.interior.numb[nc:nc+ncnew] = take(data.ns[0,:],ii)
-        conductors.interior.ilevel[nc:nc+ncnew] = take(data.mglevel,ii)
+        conductors.interior.ilevel[nc:nc+ncnew] = data.mglevel[ii]
         nc = nc + ncnew
 
-      nenew = sum(where(data.parity == 0,1,0))
+      nenew = data.nenew
       if nenew > 0:
         ii = nonzero(data.parity == 0)[0]
-        conductors.evensubgrid.indx[0,ne:ne+nenew] = take(data.ix,ii)
-        conductors.evensubgrid.indx[1,ne:ne+nenew] = take(data.iy,ii)
-        conductors.evensubgrid.indx[2,ne:ne+nenew] = take(data.iz,ii)
+        conductors.evensubgrid.indx[0,ne:ne+nenew] = data.ix[ii]
+        conductors.evensubgrid.indx[1,ne:ne+nenew] = data.iy[ii]
+        conductors.evensubgrid.indx[2,ne:ne+nenew] = data.iz[ii]
         conductors.evensubgrid.dels[:,ne:ne+nenew] = take(data.dels,ii,1)*delssign
         conductors.evensubgrid.volt[:,ne:ne+nenew] = take(data.vs,ii,1)
         conductors.evensubgrid.numb[:,ne:ne+nenew] = take(data.ns,ii,1)
-        conductors.evensubgrid.ilevel[ne:ne+nenew] = take(data.mglevel,ii)
+        conductors.evensubgrid.ilevel[ne:ne+nenew] = data.mglevel[ii]
         ne = ne + nenew
 
 
-      nonew = sum(where(data.parity == 1,1,0))
+      nonew = data.nonew
       if nonew > 0:
         ii = nonzero(data.parity == 1)[0]
-        conductors.oddsubgrid.indx[0,no:no+nonew] = take(data.ix,ii)
-        conductors.oddsubgrid.indx[1,no:no+nonew] = take(data.iy,ii)
-        conductors.oddsubgrid.indx[2,no:no+nonew] = take(data.iz,ii)
+        conductors.oddsubgrid.indx[0,no:no+nonew] = data.ix[ii]
+        conductors.oddsubgrid.indx[1,no:no+nonew] = data.iy[ii]
+        conductors.oddsubgrid.indx[2,no:no+nonew] = data.iz[ii]
         conductors.oddsubgrid.dels[:,no:no+nonew] = take(data.dels,ii,1)*delssign
         conductors.oddsubgrid.volt[:,no:no+nonew] = take(data.vs,ii,1)
         conductors.oddsubgrid.numb[:,no:no+nonew] = take(data.ns,ii,1)
-        conductors.oddsubgrid.ilevel[no:no+nonew] = take(data.mglevel,ii)
+        conductors.oddsubgrid.ilevel[no:no+nonew] = data.mglevel[ii]
         no = no + nonew
 
     # --- If the RZ solver is being used, then copy the data into that
@@ -2505,10 +2510,21 @@ Cylinder with rounded corners aligned with z-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - zlower,zupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and zcent. If both are
+                   given, then length and zcent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,radius,length,radius2,voltage=0.,
+  def __init__(self,radius,length=None,radius2=None,voltage=0.,
                     xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+                    condid=1,zlower=None,zupper=None,**kw):
+    if zlower is not None and zupper is not None:
+      length = zupper - zlower
+      zcent = 0.5*(zlower + zupper)
+      self.zlower = zlower
+      self.zupper = zupper
+    assert length is not None,\
+      "ZRoundedCylinder: either length or both zlower and zupper must be specified"
     kwlist = ['radius','length','radius2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zroundedcylinderconductorf,zroundedcylinderconductord,
@@ -2616,10 +2632,21 @@ Outside of a cylinder with rounded corners aligned with z-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - zlower,zupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and zcent. If both are
+                   given, then length and zcent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,radius,length,radius2,voltage=0.,
+  def __init__(self,radius,length=None,radius2=None,voltage=0.,
                     xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+                    condid=1,zlower=None,zupper=None,**kw):
+    if zlower is not None and zupper is not None:
+      length = zupper - zlower
+      zcent = 0.5*(zlower + zupper)
+      self.zlower = zlower
+      self.zupper = zupper
+    assert length is not None,\
+      "ZRoundedCylinderOut: either length or both zlower and zupper must be specified"
     kwlist = ['radius','length','radius2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zroundedcylinderoutconductorf,
@@ -2660,6 +2687,28 @@ Outside of a cylinder with rounded corners aligned with z-axis
                        largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
+
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+    """
+Plots the r versus z
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 199.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmax=w3d.xmmax: outer range in r to include in plot
+    """
+    rmax = kw.get('rmax',None)
+    if rmax is None: rmax = w3d.xmmax
+    zc = self.length/2. - self.radius2
+    rc = self.radius + self.radius2
+    rleft = +rc - self.radius2*sin(arange(101)/100.*pi/2.)
+    zleft = -zc - self.radius2*cos(arange(101)/100.*pi/2.)
+    rrght = +rc - self.radius2*cos(arange(101)/100.*pi/2.)
+    zrght = +zc + self.radius2*sin(arange(101)/100.*pi/2.)
+    r = [rmax] + list(rleft) + list(rrght) + [rmax,rmax]
+    z = [-self.length/2.] + list(zleft) + list(zrght) + [self.length/2.,-self.length/2.]
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+
 
 #============================================================================
 class XCylinder(ZCylinder,XAssembly):
