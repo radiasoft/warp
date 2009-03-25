@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.17 2009/03/11 18:23:21 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.18 2009/03/25 21:54:33 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -147,17 +147,17 @@ included, up B0'''.
     ms[:,0]  += B0(z,zcent,current,R,l)
     msp[:,0] += B0p(z,zcent,current,R,l)
     if v >= 1:
-      ms[:,1]  += B0pp(z,zcent,current,R,l)
-      msp[:,1] += B0ppp(z,zcent,current,R,l)
+      ms[:,1]  += -1./4.*B0pp(z,zcent,current,R,l)
+      msp[:,1] += -1./4.*B0ppp(z,zcent,current,R,l)
     # --- This is a slowly converging series for radius approaching R
     # --- so having extra terms doesn't help, and can be worse since the
     # --- terms get larger at first.
     if v >= 2:
-      ms[:,2]  += B0p4(z,zcent,current,R,l)
-      msp[:,2] += B0p5(z,zcent,current,R,l)
+      ms[:,2]  += 1./64.*B0p4(z,zcent,current,R,l)
+      msp[:,2] += 1./64.*B0p5(z,zcent,current,R,l)
     if v >= 3:
-      ms[:,3]  += B0p6(z,zcent,current,R,l)
-      msp[:,3] += B0p7(z,zcent,current,R,l)
+      ms[:,3]  += -1./2304.*B0p6(z,zcent,current,R,l)
+      msp[:,3] += -1./2304.*B0p7(z,zcent,current,R,l)
 
   nn = zeros(v+1,'l')
   vv = arange(v+1,dtype='l')
@@ -251,6 +251,8 @@ Input arguments:
                          Bsolver.zmmin,Bsolver.dz,Bsolver.nz)
 
   if saveBsolver: addgriddedsolenoid.Bsolver = Bsolver
+
+  assert Bsolver.xmmax > router,"Warning: xmmax must be > router"
 
   # --- Get the min and max in Quadrant I
   xmin = sqrt(maximum(rinner**2 - yy**2,0.))
