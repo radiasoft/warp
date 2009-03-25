@@ -332,6 +332,10 @@ class MultiGrid2D(MultiGrid):
 
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
+    # --- This takes care of clear out the conductor information if needed.
+    # --- Note that f3d.gridmode is passed in below - this still allows the
+    # --- user to use the addconductor method if needed.
+    if self.gridmode == 0: self.clearconductors([top.pgroup.fselfb[iselfb]])
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     self.lbuildquads = false
     multigrid2dsolve(iwhich,self.nx,self.nz,self.nxlocal,self.nzlocal,
@@ -343,7 +347,7 @@ class MultiGrid2D(MultiGrid):
                      self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                      self.downpasses,self.uppasses,
                      self.lcndbndy,self.laddconductor,self.icndbndy,
-                     self.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
+                     f3d.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
                      self.fsdecomp)
 
     self.mgiters = mgiters[0]
@@ -396,6 +400,10 @@ class MultiGrid2DDielectric(MultiGrid2D):
 
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
+    # --- This takes care of clear out the conductor information if needed.
+    # --- Note that f3d.gridmode is passed in below - this still allows the
+    # --- user to use the addconductor method if needed.
+    if self.gridmode == 0: self.clearconductors([top.pgroup.fselfb[iselfb]])
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     multigrid2ddielectricsolve(iwhich,self.nx,self.nz,self.nxlocal,self.nzlocal,
                      self.dx,self.dz*zfact,
@@ -405,7 +413,7 @@ class MultiGrid2DDielectric(MultiGrid2D):
                      self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                      self.downpasses,self.uppasses,
                      self.lcndbndy,self.laddconductor,
-                     self.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
+                     f3d.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
                      self.fsdecomp)
 
     self.mgiters = mgiters[0]
@@ -654,6 +662,10 @@ Initially, conductors are not implemented.
 
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
+    # --- This takes care of clear out the conductor information if needed.
+    # --- Note that f3d.gridmode is passed in below - this still allows the
+    # --- user to use the addconductor method if needed.
+    if self.gridmode == 0: self.clearconductors([top.pgroup.fselfb[iselfb]])
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
 
     # --- Setup implicit chi
@@ -686,7 +698,7 @@ Initially, conductors are not implemented.
                         self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                         self.downpasses,self.uppasses,
                         self.lcndbndy,self.laddconductor,self.icndbndy,
-                        self.gridmode,conductorobject,
+                        f3d.gridmode,conductorobject,
                         self.solvergeom==w3d.RZgeom,self.fsdecomp)
 
     self.mgiters = mgiters[0]

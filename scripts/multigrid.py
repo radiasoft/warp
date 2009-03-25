@@ -658,9 +658,10 @@ class MultiGrid(SubcycledPoissonSolver):
   def hasconductors(self):
     return len(self.conductordatalist) > 0
 
-  def clearconductors(self):
+  def clearconductors(self,fselfblist=None):
     "Clear out the conductor data"
-    for fselfb in top.fselfb:
+    if fselfblist is None: fselfblist = top.fselfb
+    for fselfb in fselfblist:
       if fselfb in self.conductorobjects:
         conductorobject = self.conductorobjects[fselfb]
         conductorobject.interior.n = 0
@@ -702,6 +703,10 @@ class MultiGrid(SubcycledPoissonSolver):
 
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
+    # --- This takes care of clear out the conductor information if needed.
+    # --- Note that f3d.gridmode is passed in below - this still allows the
+    # --- user to use the addconductor method if needed.
+    if self.gridmode == 0: self.clearconductors([top.pgroup.fselfb[iselfb]])
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     if self.electrontemperature == 0:
       multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,
@@ -714,7 +719,7 @@ class MultiGrid(SubcycledPoissonSolver):
                        self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                        self.downpasses,self.uppasses,
                        self.lcndbndy,self.laddconductor,self.icndbndy,
-                       self.gridmode,conductorobject,self.lprecalccoeffs,
+                       f3d.gridmode,conductorobject,self.lprecalccoeffs,
                        self.fsdecomp)
     else:
       iondensitygrid3d = Grid3dtype()
@@ -734,7 +739,7 @@ class MultiGrid(SubcycledPoissonSolver):
                          self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                          self.downpasses,self.uppasses,
                          self.lcndbndy,self.laddconductor,self.icndbndy,
-                         self.gridmode,conductorobject,
+                         f3d.gridmode,conductorobject,
                          iondensitygrid3d,
                          self.fsdecomp)
     self.mgiters = mgiters[0]
@@ -954,6 +959,10 @@ tensor that appears from the direct implicit scheme.
 
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
+    # --- This takes care of clear out the conductor information if needed.
+    # --- Note that f3d.gridmode is passed in below - this still allows the
+    # --- user to use the addconductor method if needed.
+    if self.gridmode == 0: self.clearconductors([top.pgroup.fselfb[iselfb]])
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
 
     # --- Setup implicit chi
@@ -990,7 +999,7 @@ tensor that appears from the direct implicit scheme.
                         self.mgverbose,
                         self.downpasses,self.uppasses,
                         self.lcndbndy,self.laddconductor,self.icndbndy,
-                        self.gridmode,conductorobject,self.fsdecomp)
+                        f3d.gridmode,conductorobject,self.fsdecomp)
 
     self.mgiters = mgiters[0]
     self.mgerror = mgerror[0]
