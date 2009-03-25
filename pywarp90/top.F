@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.236 $, $Date: 2009/03/25 22:41:08 $
+c@(#) File TOP.F, version $Revision: 3.237 $, $Date: 2009/03/25 22:52:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3220,6 +3220,9 @@ c Calculate the center of mass of the beam along the z axis from the particles
 
       integer(ISZ):: is,ip
       real(kind=8):: totz,totmass
+#ifdef MPIPARALLEL
+      real(kind=8):: data(2)
+#endif
 
       totz = 0.
       totmass = 0.
@@ -3229,6 +3232,12 @@ c Calculate the center of mass of the beam along the z axis from the particles
           totmass = totmass + pgroup%sm(is)
         enddo
       enddo
+
+#ifdef MPIPARALLEL
+      data(1) = totz
+      data(2) = totmass
+      call parallelsumrealarray(data,2)
+#endif
 
       getbeamcom = totz/dvnz(totmass)
 
@@ -5005,37 +5014,46 @@ c=============================================================================
 c=======================================================================
       real(kind=8) function wtime()
       real(kind=8):: cpu,io,sys,mem
+      integer:: c,cr,cm
 c     real(kind=8):: walltime
 
 c     --- Get current time
-      call ostime(cpu, io, sys, mem)
-      wtime = cpu
+      call system_clock(c,cr,cm)
+      if (cm > 0.) then
+        wtime = 1.*c/cr
+      else
+c       --- If system_clock didn't work, setting cm==0, then try the
+c       --- system clock through C.
+        call ostime(cpu, io, sys, mem)
+        wtime = cpu
+      endif
 c     wtime = walltime()
 
-c     integer:: c,cr,cm
-c     call system_clock(c,cr,cm)
-c     wtime = 1.*c/cr
 
       return
       end
 c=======================================================================
       subroutine wtimeon()
+      real(kind=8):: wtime
       real(kind=8):: cpu,io,sys,mem
       common /wtimer/cpu,io,sys,mem
 
 c     --- turns timer on
-      call ostime(cpu, io, sys, mem)
+c     call ostime(cpu, io, sys, mem)
+      cpu = wtime()
 
       return
       end
 c=======================================================================
       real(kind=8) function wtimeoff()
+      real(kind=8):: wtime
       real(kind=8):: cpu,io,sys,mem
       real(kind=8):: fcpu,fio,fsys,fmem
       common /wtimer/cpu,io,sys,mem
 
 c     --- returns elapsed time in milliseconds since last wtimeon call
-      call ostime(fcpu, fio, fsys, fmem)
+c     call ostime(fcpu, fio, fsys, fmem)
+      fcpu = wtime()
       wtimeoff = (fcpu - cpu)*1.e3
 
       return
