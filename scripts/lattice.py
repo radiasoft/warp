@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.78 2009/03/24 16:23:56 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.79 2009/03/25 22:46:31 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3077,6 +3077,7 @@ pgrd arrays with the same suffices:
 # ----------------------------------------------------------------------------
 # --- accelerating gap --- XXX
 def addgriddedgap(zcenter=None,gaplength=None,ap=None,apleft=None,apright=None,
+                  round=None,roundleft=None,roundright=None,
                   voltage=1.,
                   lcylindrical=true,
                   saveEsolver=false,tol=1.e-5,
@@ -3096,7 +3097,10 @@ Input arguments:
  - zcenter: z center of the solenoid windings
  - gaplength: gap length
  - ap: aperture of the pipe
- - apleft,apright: aperture of the left and right pipes
+ - apleft,apright: aperture of the left and right pipes, defaults to ap
+ - round: radius of rounded corners
+ - roundleft,roundright: radius and left and right rounded corners, defaults
+                         to round
  - voltage=1.: voltage to put across the gap
  - lcylindrical=true:
  - nx,ny,nz,dx,dy,dz,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: all default from w3d
@@ -3168,14 +3172,31 @@ Input arguments:
   # --- Add the pipe conductors
   if apleft is None: apleft = ap
   if apright is None: apright = ap
-  pipeleft = ZCylinderOut(radius=apleft,
-                          zlower=Esolver.zmmin,
-                          zupper=zcenter - gaplength/2.,
-                          voltage=+voltage/2)
-  piperght = ZCylinderOut(radius=apright,
-                          zlower=zcenter + gaplength/2.,
-                          zupper=Esolver.zmmax,
-                          voltage=-voltage/2)
+  if roundleft is None: roundleft = round
+  if roundright is None: roundright = round
+
+  if roundleft is None:
+    pipeleft = ZCylinderOut(radius=apleft,
+                            zlower=Esolver.zmmin,
+                            zupper=zcenter - gaplength/2.,
+                            voltage=+voltage/2)
+  else:
+    pipeleft = ZRoundedCylinderOut(apleft,
+                                   radius2=roundleft,
+                                   zlower=Esolver.zmmin,
+                                   zupper=zcenter - gaplength/2.,
+                                   voltage=+voltage/2)
+  if roundright is None:
+    piperght = ZCylinderOut(radius=apright,
+                            zlower=zcenter + gaplength/2.,
+                            zupper=Esolver.zmmax,
+                            voltage=-voltage/2)
+  else:
+    piperght = ZRoundedCylinderOut(apright,
+                                   radius2=roundright,
+                                   zlower=zcenter + gaplength/2.,
+                                   zupper=Esolver.zmmax,
+                                   voltage=-voltage/2)
   Esolver.installconductor(pipeleft)
   Esolver.installconductor(piperght)
 
