@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.242 2009/03/23 18:28:07 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.243 2009/03/25 22:43:21 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1537,10 +1537,12 @@ Note that either the x and y coordinates or the grid must be passed in.
     xmin = -xmin
     xmax = -xmax
     dx = -dx
+    if xmesh is not None: xmesh = -xmesh
   if flipyaxis:
     ymin = -ymin
     ymax = -ymax
     dy = -dy
+    if ymesh is not None: ymesh = -ymesh
 
   # --- Get grid min and max and generate contour levels if needed.
   if grid is not None:
