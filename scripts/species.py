@@ -1614,6 +1614,65 @@ of code."""
   lparaxial = property(*_getpgroupattribute('lparaxial'))
   zshift = property(*_getpgroupattribute('zshift'))
 
+  # --- This handles the particles from the species.
+  # --- Note that this is on for the local domain, no parallel communication
+  # --- is done. If particles are needed across parallel domains, use the
+  # --- get methods.
+  def _getpgroupattribute(name,doc=None):
+    def fget(self):
+      if len(self.jslist) == 1:
+        js = self.jslist[0]
+        i1 = self.pgroup.ins[js] - 1
+        i2 = i1 + self.pgroup.nps[js]
+        return getattr(self.pgroup,name)[i1:i2]
+      else:
+        raise NotImplementedError('The species attributes only works with one species')
+    def fset(self,value):
+      if len(self.jslist) == 1:
+        js = self.jslist[0]
+        i1 = self.pgroup.ins[js] - 1
+        i2 = i1 + self.pgroup.nps[js]
+        getattr(self.pgroup,name)[i1:i2] = value
+      else:
+        raise NotImplementedError('The species attributes only works with one species')
+    return fget,fset,None,doc
+
+  gaminv = property(*_getpgroupattribute('gaminv','gamma inverse, in local domain'))
+  xp = property(*_getpgroupattribute('xp','x position, in local domain'))
+  yp = property(*_getpgroupattribute('yp','y position, in local domain'))
+  zp = property(*_getpgroupattribute('zp','z position, in local domain'))
+  uxp = property(*_getpgroupattribute('uxp','x velocity, in local domain'))
+  uyp = property(*_getpgroupattribute('uyp','y velocity, in local domain'))
+  uzp = property(*_getpgroupattribute('uzp','z velocity, in local domain'))
+  ex = property(*_getpgroupattribute('ex','x E-field, in local domain'))
+  ey = property(*_getpgroupattribute('ey','y E-field, in local domain'))
+  ez = property(*_getpgroupattribute('ez','z E-field, in local domain'))
+  bx = property(*_getpgroupattribute('bx','x B-field, in local domain'))
+  by = property(*_getpgroupattribute('by','y B-field, in local domain'))
+  bz = property(*_getpgroupattribute('bz','z B-field, in local domain'))
+
+  # --- This handles the particles from the species.
+  def _getpgroupattribute(name,doc=None):
+    def fget(self):
+      if len(self.jslist) == 1:
+        js = self.jslist[0]
+        i1 = self.pgroup.ins[js] - 1
+        i2 = i1 + self.pgroup.nps[js]
+        return getattr(self.pgroup,name)[i1:i2,:]
+      else:
+        raise NotImplementedError('The species attributes only works with one species')
+    def fset(self,value):
+      if len(self.jslist) == 1:
+        js = self.jslist[0]
+        i1 = self.pgroup.ins[js] - 1
+        i2 = i1 + self.pgroup.nps[js]
+        getattr(self.pgroup,name)[i1:i2,:] = value
+      else:
+        raise NotImplementedError('The species attributes only works with one species')
+    return fget,fset,None,doc
+
+  pid = property(*_getpgroupattribute('pid','particle ID information, in local domain'))
+
   # --- Clean up the name space
   del _getpgroupattribute
 
