@@ -5,7 +5,7 @@ __all__ = ['LoadBalancer']
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.63 2009/01/06 00:41:42 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.64 2009/03/26 23:28:32 dave Exp $"
 
 def loadbalancedoc():
     import loadbalance
@@ -339,7 +339,8 @@ recalculated on a finer mesh to give better balancing.
         if top.nzprocs > 1:
             self.dodecomposition(2,ii,zminp,zmaxp,self.spreadz,
                                  self.padlowerz,self.padupperz,
-                                 w3d.zmmin,w3d.zmmax,w3d.dz,0.,top.nzprocs,
+                                 w3d.zmmin,w3d.zmmax,w3d.dz,top.zbeam,
+                                 top.nzprocs,
                                  top.pgroup.getpyobject('zp'),
                                  top.pgroup.getpyobject('uzp'),
                                  ppdecomp.nzglobal,self.nzguard,
