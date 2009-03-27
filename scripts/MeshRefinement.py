@@ -493,11 +493,11 @@ error prone.
     for child in self.children:
       child.installconductor(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill)
 
-  def clearconductors(self):
+  def clearconductors(self,fselfblist=None):
     if not self.isfirstcall(): return
-    self.__class__.__bases__[1].clearconductors(self)
+    self.__class__.__bases__[1].clearconductors(self,fselfblist)
     for child in self.children:
-      child.clearconductors()
+      child.clearconductors(fselfblist)
 
   def getconductors(self,alllevels=1,result=None):
     if result is None: result = []
@@ -560,7 +560,8 @@ error prone.
     # --- Note that this will only be called when self = self.root
     if not lparallel:
       # --- Return a bunch of empty lists
-      return [[[] for i in range(NMAXLEVELS)] for i in range(6)]
+      #return [[[] for i in range(NMAXLEVELS)] for i in range(6)]
+      return 6*[NMAXLEVELS*[[]]]
     else:
       # --- First, set so amount data sent to neighbors will be small
       lreducedpicklesave = self.lreducedpickle
@@ -576,14 +577,14 @@ error prone.
       if self.ixproc < self.nxprocs-1 and neighborpes[1] >= 0:
         blocklistsxp = mpi.recv(neighborpes[1])[0]
       else:
-        blocklistsxp = [[] for i in range(NMAXLEVELS)]
+        blocklistsxp = NMAXLEVELS*[[]]
 
       if self.ixproc < self.nxprocs-1 and neighborpes[1] >= 0:
         mpi.send(blocklists,neighborpes[1])
       if self.ixproc > 0 and neighborpes[0] >= 0:
         blocklistsxm = mpi.recv(neighborpes[0])[0]
       else:
-        blocklistsxm = [[] for i in range(NMAXLEVELS)]
+        blocklistsxm = NMAXLEVELS*[[]]
 
       # --- Exchange lists with processes neighboring along Y
       if self.iyproc > 0 and neighborpes[2] >= 0:
@@ -591,14 +592,14 @@ error prone.
       if self.iyproc < self.nyprocs-1 and neighborpes[3] >= 0:
         blocklistsyp = mpi.recv(neighborpes[3])[0]
       else:
-        blocklistsyp = [[] for i in range(NMAXLEVELS)]
+        blocklistsyp = NMAXLEVELS*[[]]
 
       if self.iyproc < self.nyprocs-1 and neighborpes[3] >= 0:
         mpi.send(blocklists,neighborpes[3])
       if self.iyproc > 0 and neighborpes[2] >= 0:
         blocklistsym = mpi.recv(neighborpes[2])[0]
       else:
-        blocklistsym = [[] for i in range(NMAXLEVELS)]
+        blocklistsym = NMAXLEVELS*[[]]
 
       # --- Exchange lists with processes neighboring along Z
       if self.izproc > 0 and neighborpes[4] >= 0:
@@ -606,14 +607,14 @@ error prone.
       if self.izproc < self.nzprocs-1 and neighborpes[5] >= 0:
         blocklistszp = mpi.recv(neighborpes[5])[0]
       else:
-        blocklistszp = [[] for i in range(NMAXLEVELS)]
+        blocklistszp = NMAXLEVELS*[[]]
 
       if self.izproc < self.nzprocs-1 and neighborpes[5] >= 0:
         mpi.send(blocklists,neighborpes[5])
       if self.izproc > 0 and neighborpes[4] >= 0:
         blocklistszm = mpi.recv(neighborpes[4])[0]
       else:
-        blocklistszm = [[] for i in range(NMAXLEVELS)]
+        blocklistszm = NMAXLEVELS*[[]]
 
       # --- Restore the flags
       self.lreducedpickle = lreducedpicklesave
@@ -662,14 +663,15 @@ Sets the regions that are covered by the children.
         u = child.fullupperoverrefinement-self.nguarddepos
         # --- If the child extends to the edge of the parent mesh, it claims the
         # --- grid points on the upper edges.
-        u = u + where(child.fullupperoverrefinement == self.fullupper,1+array(self.nguarddepos),0)
-        l = l - where(child.fullloweroverrefinement == self.fulllower,array(self.nguarddepos),0)
+        u += where(child.fullupperoverrefinement == self.fullupper,1+array(self.nguarddepos),0)
+        l -= where(child.fullloweroverrefinement == self.fulllower,array(self.nguarddepos),0)
       else:
         l = maximum(self.fulllower,child.fullloweroverrefinement)
         u = child.fullupperoverrefinement
         # --- If the child extends to the edge of the parent mesh, it claims the
         # --- grid points on the upper edges.
-        u = u + where(u == self.fullupper,1,0)
+        #u = u + where(u == self.fullupper,1,0)
+        u[u == self.fullupper] += 1
       # --- The child claims all unclaimed areas.
       ii = self.getchilddomains(l,u)
       iit = transpose(ii)
@@ -683,7 +685,8 @@ Sets the regions that are covered by the children.
       if (u[0] < l[0] or u[1] < l[1] or u[2] < l[2]): continue
       # --- If the child extends to the edge of the parent mesh, it claims the
       # --- grid points on the upper edges.
-      u = u + where(u == self.fullupper,1,0)
+      #u = u + where(u == self.fullupper,1,0)
+      u[u == self.fullupper] += 1
       # --- The child claims its full interior area
       ii = self.getchilddomains(l,u)
       iit = transpose(ii)
@@ -1056,7 +1059,8 @@ Gathers the ichild for the setsourcep.
       # --- Convert particles to axisymmetry if needed
       if self is self.root and self.solvergeom == w3d.RZgeom:
         x = sqrt(x**2 + y**2)
-        y = 0.*y
+        #y = 0.*y
+        y = zeros(y.shape,'d')
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       getichild(self.blocknumber,len(x),x,y,z,ichild,
@@ -1084,6 +1088,7 @@ called separately by each block from gathersourcepfromchildren.
       ssourcep = self.getsourcepslice(l,u)
       ssourcep[...] = 0.
 
+  @lineprofile
   def gathersourcepfromchildren(self):
     """
 Fortran version
