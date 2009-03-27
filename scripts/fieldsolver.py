@@ -1266,23 +1266,23 @@ class SubcycledPoissonSolver(FieldSolver):
               if self.solvergeom == w3d.RZgeom:
                 y = pgroup.yp[i1:i2]
                 x = sqrt(x**2 + y**2)
-              assert min(x) >= self.xmminp,\
-                     "Particles in species %d have x below the grid when depositing the source, min x = %e"%(js,min(x))
-              assert max(x) < self.xmmaxp,\
-                     "Particles in species %d have x above the grid when depositing the source, max x = %e"%(js,max(x))
+              assert x.min() >= self.xmminp,\
+                     "Particles in species %d have x below the grid when depositing the source, min x = %e"%(js,x.min())
+              assert x.max() < self.xmmaxp,\
+                     "Particles in species %d have x above the grid when depositing the source, max x = %e"%(js,x.max())
             if self.nylocal > 0:
               y = pgroup.yp[i1:i2]
               if self.l4symtry or self.l2symtry: y = abs(y)
-              assert min(y) >= self.ymminp,\
-                     "Particles in species %d have y below the grid when depositing the source, min y = %e"%(js,min(y))
-              assert max(y) < self.ymmaxp,\
-                     "Particles in species %d have y above the grid when depositing the source, max y = %e"%(js,max(y))
+              assert y.min() >= self.ymminp,\
+                     "Particles in species %d have y below the grid when depositing the source, min y = %e"%(js,y.min())
+              assert y.max() < self.ymmaxp,\
+                     "Particles in species %d have y above the grid when depositing the source, max y = %e"%(js,y.max())
             if self.nzlocal > 0:
               z = pgroup.zp[i1:i2]
-              assert min(z) >= self.zmminp+self.getzgridndts()[indts],\
-                     "Particles in species %d have z below the grid when depositing the source, min z = %e"%(js,min(z))
-              assert max(z) < self.zmmaxp+self.getzgridndts()[indts],\
-                     "Particles in species %d have z above the grid when depositing the source, max z = %e"%(js,max(z))
+              assert z.min() >= self.zmminp+self.getzgridndts()[indts],\
+                     "Particles in species %d have z below the grid when depositing the source, min z = %e"%(js,z.min())
+              assert z.max() < self.zmmaxp+self.getzgridndts()[indts],\
+                     "Particles in species %d have z above the grid when depositing the source, max z = %e"%(js,z.max())
 
           self.setsourcep(js,pgroup,self.getzgridndts()[indts])
 
@@ -1372,21 +1372,21 @@ class SubcycledPoissonSolver(FieldSolver):
         if self.solvergeom == w3d.RZgeom:
           ydebug = y
           xdebug = sqrt(xdebug**2 + ydebug**2)
-        assert min(xdebug) >= self.xmminp,\
+        assert xdebug.min() >= self.xmminp,\
                "Particles in species %d have x below the grid when fetching the field"%jsid
-        assert max(xdebug) < self.xmmaxp,\
+        assert xdebug.max() < self.xmmaxp,\
                "Particles in species %d have x above the grid when fetching the field"%jsid
       if self.nylocal > 0:
         ydebug = y
         if self.l4symtry or self.l2symtry: ydebug = abs(y)
-        assert min(ydebug) >= self.ymminp,\
+        assert ydebug.min() >= self.ymminp,\
                "Particles in species %d have y below the grid when fetching the field"%jsid
-        assert max(ydebug) < self.ymmaxp,\
+        assert ydebug.max() < self.ymmaxp,\
                "Particles in species %d have y above the grid when fetching the field"%jsid
       if self.nzlocal > 0:
-        assert min(z) >= self.zmminp+self.getzgridprv(),\
+        assert z.min() >= self.zmminp+self.getzgridprv(),\
                "Particles in species %d have z below the grid when fetching the field"%jsid
-        assert max(z) < self.zmmaxp+self.getzgridprv(),\
+        assert z.max() < self.zmmaxp+self.getzgridprv(),\
                "Particles in species %d have z above the grid when fetching the field"%jsid
 
     args = [x,y,z,ex,ey,ez,bx,by,bz,jsid,pgroup]
@@ -1418,21 +1418,21 @@ class SubcycledPoissonSolver(FieldSolver):
         if self.solvergeom == w3d.RZgeom:
           ydebug = y
           xdebug = sqrt(xdebug**2 + ydebug**2)
-        assert min(xdebug) >= self.xmminlocal,\
+        assert xdebug.min() >= self.xmminlocal,\
                "Particles have x below the grid when fetching the potential"
-        assert max(xdebug) < self.xmmaxlocal,\
+        assert xdebug.max() < self.xmmaxlocal,\
                "Particles have x above the grid when fetching the potential"
       if self.nylocal > 0:
         ydebug = y
         if self.l4symtry or self.l2symtry: ydebug = abs(y)
-        assert min(ydebug) >= self.ymminlocal,\
+        assert ydebug.min() >= self.ymminlocal,\
                "Particles have y below the grid when fetching the potential"
-        assert max(ydebug) < self.ymmaxlocal,\
+        assert ydebug.max() < self.ymmaxlocal,\
                "Particles have y above the grid when fetching the potential"
       if self.nzlocal > 0:
-        assert min(z) >= self.zmminlocal,\
+        assert z.min() >= self.zmminlocal,\
                "Particles have z below the grid when fetching the potential"
-        assert max(z) <= self.zmmaxlocal,\
+        assert z.max() <= self.zmmaxlocal,\
                "Particles have z above the grid when fetching the potential"
 
     jsid = w3d.jsfsapi
@@ -1687,20 +1687,20 @@ of the arrays used by the field solve"""
           if self.solvergeom == w3d.RZgeom:
             y = pgroup.yp[i1:i2]
             x = sqrt(x**2 + y**2)
-          assert min(abs(x-self.xmmin)) >= 0.,\
-                 text+"Particles in species %d have x below the grid when depositing the source, min x = %e"%(js,min(x))
-          assert max(x) < self.xmmax,\
-                 text+"Particles in species %d have x above the grid when depositing the source, min x = %e"%(js,max(x))
+          assert abs(x-self.xmmin).min() >= 0.,\
+                 text+"Particles in species %d have x below the grid when depositing the source, min x = %e"%(js,x.min())
+          assert x.max() < self.xmmax,\
+                 text+"Particles in species %d have x above the grid when depositing the source, min x = %e"%(js,x.max())
         if self.ny > 0:
           y = pgroup.yp[i1:i2]
-          assert min(abs(y-self.ymmin)) >= 0.,\
-                 text+"Particles in species %d have y below the grid when depositing the source, min x = %e"%(js,min(y))
-          assert max(y) < self.ymmax,\
-                 text+"Particles in species %d have y above the grid when depositing the source, min x = %e"%(js,max(y))
+          assert abs(y-self.ymmin).min() >= 0.,\
+                 text+"Particles in species %d have y below the grid when depositing the source, min x = %e"%(js,y.min())
+          assert y.max() < self.ymmax,\
+                 text+"Particles in species %d have y above the grid when depositing the source, min x = %e"%(js,y.max())
         if self.nzlocal > 0:
           z = pgroup.zp[i1:i2]
-          assert min(z) >= self.zmminp+self.getzgridndts()[indts],\
-                 text+"Particles in species %d have z below the grid when depositing the source, min x = %e"%(js,min(z))
-          assert max(z) < self.zmmaxp+self.getzgridndts()[indts],\
-                 text+"Particles in species %d have z above the grid when depositing the source, min x = %e"%(js,max(z))
+          assert z.min() >= self.zmminp+self.getzgridndts()[indts],\
+                 text+"Particles in species %d have z below the grid when depositing the source, min x = %e"%(js,z.min())
+          assert z.max() < self.zmmaxp+self.getzgridndts()[indts],\
+                 text+"Particles in species %d have z above the grid when depositing the source, min x = %e"%(js,z.max())
 
