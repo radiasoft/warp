@@ -32,7 +32,7 @@ rprms:
 
     def __init__(self,js,zmmin=None,zmmax=None,dz=None,nz=None,nzscale=1,
                  nhist=None,nr=None,rmax=None,ztarget=None,dumptofile=None,
-                 starttime=None,endtime=None):
+                 starttime=None,endtime=None,lmoving_frame=0):
         self.js = js
         self.zmmin = zmmin
         self.zmmax = zmmax
@@ -46,6 +46,7 @@ rprms:
         self.dumptofile = dumptofile
         self.starttime = starttime
         self.endtime = endtime
+        self.lmoving_frame = lmoving_frame
 
         self.zoldpid = nextpid()
 
@@ -100,7 +101,10 @@ rprms:
         if ldoradialdiag:
             dr = rmax/nr
 
-        zbeam = top.zbeam
+        if self.lmoving_frame:
+            zbeam = top.zbeam
+        else:
+            zbeam = 0.
         zoldpid = self.zoldpid
 
         # --- Initialize the data lists.
