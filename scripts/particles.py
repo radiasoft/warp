@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.78 2009/03/09 21:11:58 dave Exp $"
+particles_version = "$Id: particles.py,v 1.79 2009/03/27 22:44:18 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -48,13 +48,12 @@ Adds plotting subset to the list
     fracnp = float(pgroup.nps[js])/float(totalnp)
   else:
     fracnp = 1.
-  for i in xrange(0,len(top.npplot)):
-    ntopick=min(pgroup.nps[js],int(top.npplot[i]*fracnp+0.5))
+  for i in xrange(0,top.npplot.size):
+    ntopick = min(1.,(top.npplot[i]*fracnp)/pgroup.nps[0])
     ii = arange(pgroup.nps[0])
-    #rr = pgroup.nps[0]*random.random(pgroup.nps[0])
-    rr = pgroup.nps[0]*ranf(zeros(pgroup.nps[0]))
-    ii = compress(less(rr,ntopick),ii)
-    psubset.append(ii.astype('i'))
+    rr = random.random(pgroup.nps[0])
+    #rr = ranf(zeros(pgroup.nps[0]))
+    psubset.append(ii[rr<ntopick].astype('i'))
 #----------------------------------------------------------------------------
 def clear_subsets():
   "Clears the particle subsets so that they can be updated."
@@ -92,7 +91,7 @@ def populationsample(population,k):
     # less space than the dictionary and it doesn't suffer from frequent
     # reselections.
 
-    n = len(population)
+    n = population.size
     if not 0 <= k <= n:
         raise ValueError, "sample larger than population"
     rand = random.random
@@ -191,14 +190,23 @@ def _getobjectpgroup(kw):
 def _setindices(data,ii,islice,indices,ir1,ir2):
   if ii is not None:
     if isinstance(ii,slice): ii = arange(ii.start,ii.stop)
-    data = take(data,ii)
-    islice = slice(len(ii))
+    data = data[ii]
+    islice = slice(ii.size)
     indices = ii
   if indices is None: indices = arange(ir1,ir2)
   return data,islice,indices
 
 #-------------------------------------------------------------------------
-# This returns the indices of the particles selected.
+# --- Complete dictionary of possible keywords and their default values
+_selectparticles_kwdefaults = {"js":0,"jslist":None,"win":None,
+                "x":None,"y":None,"z":None,
+                "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
+                "xl":None,"xu":None,"yl":None,"yu":None,"zl":None,"zu":None,
+                "zc":None,"xc":None,"yc":None,
+                "ssn":None,"ii":None,
+                "lost":false,"suffix":'',"object":top,"pgroup":top.pgroup,
+                "w3dobject":None,
+                'checkargs':0,'allowbadargs':0}
 def selectparticles(iw=0,kwdict={},**kw):
   """
 Selects particles based on either subsets or windows. By default it selects
@@ -237,34 +245,54 @@ Multiple selection criteria are now supported.
                 open PDB file, or a dictionary.
   - pgroup=top.pgroup: Particle group to get particles from 
   """
-  # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {"js":0,"jslist":None,"win":None,
-                "x":None,"y":None,"z":None,
-                "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
-                "xl":None,"xu":None,"yl":None,"yu":None,"zl":None,"zu":None,
-                "zc":None,"xc":None,"yc":None,
-                "ssn":None,"ii":None,
-                "lost":false,"suffix":'',"object":top,"pgroup":top.pgroup,
-                "w3dobject":None,
-                'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
-  # --- ignoring keywords not listed in kwdefaults.
-  kwvalues = kwdefaults.copy()
+  # --- ignoring keywords not listed in _selectparticles_kwdefaults.
+  kwvalues = _selectparticles_kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
-  for arg in kwdefaults.keys(): exec arg+" = kwvalues['"+arg+"']"
+  #for arg in _selectparticles_kwdefaults.keys(): exec arg+" = kwvalues['"+arg+"']"
+  # --- This is MUCH faster than the loop, about 100x, but not as nice looking.
+  js = kwvalues['js']
+  jslist = kwvalues['jslist']
+  win = kwvalues['win']
+  x = kwvalues['x']
+  y = kwvalues['y']
+  z = kwvalues['z']
+  ix = kwvalues['ix']
+  wx = kwvalues['wx']
+  iy = kwvalues['iy']
+  wy = kwvalues['wy']
+  iz = kwvalues['iz']
+  wz = kwvalues['wz']
+  xl = kwvalues['xl']
+  xu = kwvalues['xu']
+  yl = kwvalues['yl']
+  yu = kwvalues['yu']
+  zl = kwvalues['zl']
+  zu = kwvalues['zu']
+  zc = kwvalues['zc']
+  xc = kwvalues['xc']
+  yc = kwvalues['yc']
+  ssn = kwvalues['ssn']
+  ii = kwvalues['ii']
+  lost = kwvalues['lost']
+  suffix = kwvalues['suffix']
+  object = kwvalues['object']
+  pgroup = kwvalues['pgroup']
+  w3dobject = kwvalues['w3dobject']
+  checkargs = kwvalues['checkargs']
+  allowbadargs = kwvalues['allowbadargs']
 
   # --- Check the argument list for bad arguments.
   # --- 'checkargs' allows this routine to be called only to check the
   # --- input for bad arguments.
   # --- 'allowbadargs' allows this routine to be called with bad arguments.
   # --- These are intentionally undocumented features.
-
-  kwvaluescopy = kwvalues.copy()
-  for i in kwvaluescopy.keys():
-    if i in kwdefaults.keys(): del kwvaluescopy[i]
-  badargs = kwvaluescopy
+  badargs = {}
+  for k,v in kwvalues.iteritems():
+    if k not in _selectparticles_kwdefaults:
+      badargs[k] = v
   if checkargs: return badargs
   if badargs and not allowbadargs:
     raise "bad argument ",string.join(badargs.keys())
@@ -278,7 +306,7 @@ Multiple selection criteria are now supported.
 
   ins = getattrwithsuffix(pgroup,'ins',suffixparticle)
   nps = getattrwithsuffix(pgroup,'nps',suffixparticle)
-  ns = len(ins)
+  ns = ins.size
 
   # --- If jslist defined, call selectparticles repeatedly for each species
   # --- on the list
@@ -396,16 +424,16 @@ Multiple selection criteria are now supported.
     # --- use the population sampling.
     try: selectparticles.npsprev
     except: selectparticles.npsprev = nps + 0
-    if len(selectparticles.npsprev) != ns:
+    if selectparticles.npsprev.size != ns:
       selectparticles.npsprev = zeros(ns,'l')
     if selectparticles.npsprev[js] >= nps[js]:
       if psubset==[]: setup_subsets()
       if -iw > len(psubset): raise "Bad window number"
       if ii is None: nn = nps[js]
-      else:          nn = len(ii)
+      else:          nn = ii.size
       subset = compress(less(psubset[-iw-1],nn),psubset[-iw-1])
       if ii is None: ii = ir1 + subset
-      else:          ii = take(ii,subset)
+      else:          ii = ii[subset]
     else:
       # --- Once this method is used, always use it.
       selectparticles.npsprev = zeros(ns,'l')
@@ -426,11 +454,11 @@ Multiple selection criteria are now supported.
     zbeam = getattrwithsuffix(object,'zbeam',suffix)
     zwindows = getattrwithsuffix(object,'zwindows',suffix)
     if win is None: win = zwindows[:,iw] + zbeam
-    if len(shape(win)) == 2: win = win[:,iw]
+    if win.ndim == 2: win = win[:,iw]
     if z is None: z = getattrwithsuffix(pgroup,'zp',suffixparticle)
     z,islice,indices = _setindices(z,ii,islice,indices,ir1,ir2)
-    ii=compress(logical_and(less(win[0],z[islice]),less(z[islice],win[1])),
-                indices)
+    zslice = z[islice]
+    ii = indices[logical_and(less(win[0],zslice),less(zslice,win[1]))]
 
   return ii
 
@@ -448,7 +476,7 @@ def getn(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   if isinstance(ii,slice): l = ii.stop - ii.start
-  else:                    l = len(ii)
+  else:                    l = ii.size
   if lparallel and gather: return globalsum(l)
   else:                    return l
 #-------------------------------------------------------------------------
@@ -457,12 +485,12 @@ def getx(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     x = getattrwithsuffix(pgroup,'xp',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = x[ii]
-  elif len(ii) > 0:
-    result = take(x,ii)
+  elif ii.size > 0:
+    result = x[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -473,12 +501,12 @@ def gety(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     y = getattrwithsuffix(pgroup,'yp',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = y[ii]
-  elif len(ii) > 0:
-    result = take(y,ii)
+  elif ii.size > 0:
+    result = y[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -489,12 +517,12 @@ def getz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     z = getattrwithsuffix(pgroup,'zp',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = z[ii]
-  elif len(ii) > 0:
-    result = take(z,ii)
+  elif ii.size > 0:
+    result = z[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -505,13 +533,13 @@ def getr(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     x = getattrwithsuffix(pgroup,'xp',suffix)
     y = getattrwithsuffix(pgroup,'yp',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = sqrt(x[ii]**2 + y[ii]**2)
-  elif len(ii) > 0:
-    result = sqrt(take(x,ii)**2 + take(y,ii)**2)
+  elif ii.size > 0:
+    result = sqrt(x[ii]**2 + y[ii]**2)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -522,13 +550,13 @@ def gettheta(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     x = getattrwithsuffix(pgroup,'xp',suffix)
     y = getattrwithsuffix(pgroup,'yp',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = arctan2(y[ii],x[ii])
-  elif len(ii) > 0:
-    result = arctan2(take(y,ii),take(x,ii))
+  elif ii.size > 0:
+    result = arctan2(y[ii],x[ii])
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -539,14 +567,14 @@ def getvx(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     ux = getattrwithsuffix(pgroup,'uxp',suffix)
     gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     if top.lrelativ: result = ux[ii]*gaminv[ii]
     else:            result = ux[ii]
-  elif len(ii) > 0:
-    result = take(ux,ii)*take(gaminv,ii)
+  elif ii.size > 0:
+    result = ux[ii]*gaminv[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -557,14 +585,14 @@ def getvy(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     uy = getattrwithsuffix(pgroup,'uyp',suffix)
     gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     if top.lrelativ: result = uy[ii]*gaminv[ii]
     else:            result = uy[ii]
-  elif len(ii) > 0:
-    result = take(uy,ii)*take(gaminv,ii)
+  elif ii.size > 0:
+    result = uy[ii]*gaminv[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -575,14 +603,14 @@ def getvz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     uz = getattrwithsuffix(pgroup,'uzp',suffix)
     gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     if top.lrelativ: result = uz[ii]*gaminv[ii]
     else:            result = uz[ii]
-  elif len(ii) > 0:
-    result = take(uz,ii)*take(gaminv,ii)
+  elif ii.size > 0:
+    result = uz[ii]*gaminv[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -593,7 +621,7 @@ def getvr(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     x = getattrwithsuffix(pgroup,'xp',suffix)
     y = getattrwithsuffix(pgroup,'yp',suffix)
     ux = getattrwithsuffix(pgroup,'uxp',suffix)
@@ -602,9 +630,9 @@ def getvr(iw=0,gather=1,bcast=None,**kw):
   if isinstance(ii,slice) and ii.stop > ii.start:
     tt = arctan2(y[ii],x[ii])
     result = (ux[ii]*cos(tt) + uy[ii]*sin(tt))*gaminv[ii]
-  elif len(ii) > 0:
-    tt = arctan2(take(y,ii),take(x,ii))
-    result = (take(ux,ii)*cos(tt) + take(uy,ii)*sin(tt))*take(gaminv,ii)
+  elif ii.size > 0:
+    tt = arctan2(y[ii],x[ii])
+    result = (ux[ii]*cos(tt) + uy[ii]*sin(tt))*gaminv[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -615,7 +643,7 @@ def getvtheta(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     x = getattrwithsuffix(pgroup,'xp',suffix)
     y = getattrwithsuffix(pgroup,'yp',suffix)
     ux = getattrwithsuffix(pgroup,'uxp',suffix)
@@ -624,9 +652,9 @@ def getvtheta(iw=0,gather=1,bcast=None,**kw):
   if isinstance(ii,slice) and ii.stop > ii.start:
     tt = arctan2(y[ii],x[ii])
     result = (-ux[ii]*sin(tt) + uy[ii]*cos(tt))*gaminv[ii]
-  elif len(ii) > 0:
-    tt = arctan2(take(y,ii),take(x,ii))
-    result = (-take(ux,ii)*sin(tt) + take(uy,ii)*cos(tt))*take(gaminv,ii)
+  elif ii.size > 0:
+    tt = arctan2(y[ii],x[ii])
+    result = (-ux[ii]*sin(tt) + uy[ii]*cos(tt))*gaminv[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -637,12 +665,12 @@ def getux(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     ux = getattrwithsuffix(pgroup,'uxp',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = ux[ii]
-  elif len(ii) > 0:
-    result = take(ux,ii)
+  elif ii.size > 0:
+    result = ux[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -653,12 +681,12 @@ def getuy(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     uy = getattrwithsuffix(pgroup,'uyp',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = uy[ii]
-  elif len(ii) > 0:
-    result = take(uy,ii)
+  elif ii.size > 0:
+    result = uy[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -669,12 +697,12 @@ def getuz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     uz = getattrwithsuffix(pgroup,'uzp',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = uz[ii]
-  elif len(ii) > 0:
-    result = take(uz,ii)
+  elif ii.size > 0:
+    result = uz[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -685,13 +713,13 @@ def getxp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     ux = getattrwithsuffix(pgroup,'uxp',suffix)
     uz = getattrwithsuffix(pgroup,'uzp',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = ux[ii]/uz[ii]
-  elif len(ii) > 0:
-    result = take(ux,ii)/take(uz,ii)
+  elif ii.size > 0:
+    result = ux[ii]/uz[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -702,13 +730,13 @@ def getyp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     uy = getattrwithsuffix(pgroup,'uyp',suffix)
     uz = getattrwithsuffix(pgroup,'uzp',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = uy[ii]/uz[ii]
-  elif len(ii) > 0:
-    result = take(uy,ii)/take(uz,ii)
+  elif ii.size > 0:
+    result = uy[ii]/uz[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -719,7 +747,7 @@ def getrp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     x = getattrwithsuffix(pgroup,'xp',suffix)
     y = getattrwithsuffix(pgroup,'yp',suffix)
     ux = getattrwithsuffix(pgroup,'uxp',suffix)
@@ -727,12 +755,10 @@ def getrp(iw=0,gather=1,bcast=None,**kw):
     uz = getattrwithsuffix(pgroup,'uzp',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     tt = arctan2(y[ii],x[ii])
-    result = ((ux[ii]*cos(tt)+uy[ii]*sin(tt))/
-              uz[ii])
-  elif len(ii) > 0:
-    tt = arctan2(take(y,ii),take(x,ii))
-    result = ((take(ux,ii)*cos(tt)+take(uy,ii)*sin(tt))/
-              take(uz,ii))
+    result = ((ux[ii]*cos(tt)+uy[ii]*sin(tt))/uz[ii])
+  elif ii.size > 0:
+    tt = arctan2(y[ii],x[ii])
+    result = ((ux[ii]*cos(tt)+uy[ii]*sin(tt))/uz[ii])
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -743,7 +769,7 @@ def gettp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     x = getattrwithsuffix(pgroup,'xp',suffix)
     y = getattrwithsuffix(pgroup,'yp',suffix)
     ux = getattrwithsuffix(pgroup,'uxp',suffix)
@@ -753,10 +779,9 @@ def gettp(iw=0,gather=1,bcast=None,**kw):
     tt = arctan2(y[ii],x[ii])
     result = ((-ux[ii]*sin(tt)+uy[ii]*cos(tt))/
               uz[ii])
-  elif len(ii) > 0:
-    tt = arctan2(take(y,ii),take(x,ii))
-    result = ((-take(ux,ii)*sin(tt)+take(uy,ii)*cos(tt))/
-              take(uz,ii))
+  elif ii.size > 0:
+    tt = arctan2(y[ii],x[ii])
+    result = ((-ux[ii]*sin(tt)+uy[ii]*cos(tt))/uz[ii])
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -767,12 +792,12 @@ def getgaminv(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = gaminv[ii]
-  elif len(ii) > 0:
-    result = take(gaminv,ii)
+  elif ii.size > 0:
+    result = gaminv[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -783,12 +808,12 @@ def getex(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     ex = getattrwithsuffix(pgroup,'ex',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = ex[ii]
-  elif len(ii) > 0:
-    result = take(ex,ii)
+  elif ii.size > 0:
+    result = ex[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -799,12 +824,12 @@ def getey(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     ey = getattrwithsuffix(pgroup,'ey',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = ey[ii]
-  elif len(ii) > 0:
-    result = take(ey,ii)
+  elif ii.size > 0:
+    result = ey[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -815,12 +840,12 @@ def getez(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     ez = getattrwithsuffix(pgroup,'ez',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = ez[ii]
-  elif len(ii) > 0:
-    result = take(ez,ii)
+  elif ii.size > 0:
+    result = ez[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -831,7 +856,7 @@ def geter(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     x = getattrwithsuffix(pgroup,'xp',suffix)
     y = getattrwithsuffix(pgroup,'yp',suffix)
     ex = getattrwithsuffix(pgroup,'ex',suffix)
@@ -839,9 +864,9 @@ def geter(iw=0,gather=1,bcast=None,**kw):
   if isinstance(ii,slice) and ii.stop > ii.start:
     theta = arctan2(y[ii],x[ii])
     result = ex[ii]*cos(theta) + ey[ii]*sin(theta)
-  elif len(ii) > 0:
-    theta = arctan2(take(y,ii),take(x,ii))
-    result = take(ex,ii)*cos(theta) + take(ey,ii)*sin(theta)
+  elif ii.size > 0:
+    theta = arctan2(y[ii],x[ii])
+    result = ex[ii]*cos(theta) + ey[ii]*sin(theta)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -852,7 +877,7 @@ def getetheta(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     x = getattrwithsuffix(pgroup,'xp',suffix)
     y = getattrwithsuffix(pgroup,'yp',suffix)
     ex = getattrwithsuffix(pgroup,'ex',suffix)
@@ -860,9 +885,9 @@ def getetheta(iw=0,gather=1,bcast=None,**kw):
   if isinstance(ii,slice) and ii.stop > ii.start:
     theta = arctan2(y[ii],x[ii])
     result = -ex[ii]*sin(theta) + ey[ii]*cos(theta)
-  elif len(ii) > 0:
-    theta = arctan2(take(y,ii),take(x,ii))
-    result = -take(ex,ii)*sin(theta) + take(ey,ii)*cos(theta)
+  elif ii.size > 0:
+    theta = arctan2(y[ii],x[ii])
+    result = -ex[ii]*sin(theta) + ey[ii]*cos(theta)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -873,12 +898,12 @@ def getbx(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     bx = getattrwithsuffix(pgroup,'bx',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = bx[ii]
-  elif len(ii) > 0:
-    result = take(bx,ii)
+  elif ii.size > 0:
+    result = bx[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -889,12 +914,12 @@ def getby(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     by = getattrwithsuffix(pgroup,'by',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = by[ii]
-  elif len(ii) > 0:
-    result = take(by,ii)
+  elif ii.size > 0:
+    result = by[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -905,12 +930,12 @@ def getbz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
     bz = getattrwithsuffix(pgroup,'bz',suffix)
   if isinstance(ii,slice) and ii.stop > ii.start:
     result = bz[ii]
-  elif len(ii) > 0:
-    result = take(bz,ii)
+  elif ii.size > 0:
+    result = bz[ii]
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -934,12 +959,12 @@ def getpid(iw=0,id=0,gather=1,bcast=None,**kw):
     dopid = (npid > 0)
   if dopid:
     ii = selectparticles(iw=iw,kwdict=kw)
-    if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
       pid = getattrwithsuffix(pgroup,'pid',suffix)
     if isinstance(ii,slice) and ii.stop > ii.start:
       if id >= 0: result = pid[ii,id]
       else:       result = pid[ii,:]
-    elif len(ii) > 0:
+    elif ii.size > 0:
       if id >= 0: result = take(pid[:,id],ii)
       else:       result = take(pid[:,:],ii,0)
     else:
@@ -965,9 +990,9 @@ def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=None,edrift=1,bdrift=1,**kw)
   for js in jslist:
     ii = selectparticles(iw=iw,js=js,jslist=None,kwdict=kw)
     if isinstance(ii,slice) and ii.stop <= ii.start: continue
-    if not isinstance(ii,slice) and len(ii) == 0: continue
+    if not isinstance(ii,slice) and ii.size == 0: continue
     if isinstance(ii,slice): ii = arange(ii.start,ii.stop)
-    np=len(ii)
+    np=ii.size
     nptot+=np
     x  = take(getattrwithsuffix(object,'xp', suffix),ii)
     y  = take(getattrwithsuffix(object,'yp', suffix),ii)
@@ -1035,9 +1060,9 @@ def getke(iw=0,js=0,jslist=None,gather=1,bcast=None,**kw):
   for js in jslist:
     ii = selectparticles(iw=iw,js=js,jslist=None,kwdict=kw)
     if isinstance(ii,slice) and ii.stop <= ii.start: continue
-    if not isinstance(ii,slice) and len(ii) == 0: continue
+    if not isinstance(ii,slice) and ii.size == 0: continue
     if isinstance(ii,slice): ii = arange(ii.start,ii.stop)
-    np=len(ii)
+    np=ii.size
     nptot+=np
     mass = masses[js]
     if top.lrelativ:

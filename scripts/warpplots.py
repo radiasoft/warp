@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.243 2009/03/25 22:43:21 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.244 2009/03/27 22:44:18 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1058,33 +1058,55 @@ def ptitlebottom(text=""):
 ##########################################################################
 def checkarguments(input,arglist):
   "Compare inputs against and argument list and return list of bad arguments"
-  inputcopy = input.copy()
-  for i in inputcopy.keys():
-    if i in arglist.keys(): del inputcopy[i]
-  return inputcopy
+  #inputcopy = input.copy()
+  #for i in inputcopy.keys():
+  #  if i in arglist: del inputcopy[i]
+  #return inputcopy
+  result = {}
+  for k,v in input.iteritems():
+    if k not in arglist:
+      result[k] = v
+  return result
+      
 
 ##########################################################################
-def pptitleright(iw=0,kwdict={},**kw):
-  "Returns right plot title. Takes same arguments as selectparticles"
-  # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {"js":0,"win":None,"z":None,
+# --- Complete dictionary of possible keywords and their default values
+_pptitleright_kwdefaults = {"js":0,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
                 "zl":None,"zu":None,"zc":None,"slope":0,
                 'checkargs':0,'allowbadargs':0}
+def pptitleright(iw=0,kwdict={},**kw):
+  "Returns right plot title. Takes same arguments as selectparticles"
 
   # --- Create dictionary of local values and copy it into local dictionary,
-  # --- ignoring keywords not listed in kwdefaults.
-  kwvalues = kwdefaults.copy()
+  # --- ignoring keywords not listed in _pptitleright_kwdefaults.
+  kwvalues = _pptitleright_kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
-  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  #for arg in _pptitleright_kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  # --- This is MUCH faster than the loop, about 100x, but not as nice looking.
+  js = kwvalues['js']
+  win = kwvalues['win']
+  z = kwvalues['z']
+  ix = kwvalues['ix']
+  wx = kwvalues['wx']
+  iy = kwvalues['iy']
+  wy = kwvalues['wy']
+  iz = kwvalues['iz']
+  wz = kwvalues['wz']
+  zl = kwvalues['zl']
+  zu = kwvalues['zu']
+  zc = kwvalues['zc']
+  slope = kwvalues['slope']
+  checkargs = kwvalues['checkargs']
+  allowbadargs = kwvalues['allowbadargs']
 
   # --- Check the argument list for bad arguments.
   # --- 'checkargs' allows this routine to be called only to check the
   # --- input for bad arguments.
   # --- 'allowbadargs' allows this routine to be called with bad arguments.
   # --- These are intentionally undocumented features.
-  badargs = checkarguments(kwvalues,kwdefaults)
+  badargs = checkarguments(kwvalues,_pptitleright_kwdefaults)
   if checkargs: return badargs
   if badargs and not allowbadargs:
     raise "bad argument",string.join(badargs.keys())
@@ -1223,15 +1245,8 @@ def ppgeneric_doc(x,y):
   """
   return doc%vars()
 #-------------------------------------------------------------------------
-def ppgeneric(y=None,x=None,kwdict={},**kw):
-  """
-Generic particle plotting routine. Allows plotting of particle points, density
-contours, and/or density hash marks.
-Note that either the x and y coordinates or the grid must be passed in.
-  - y, x: optional particle data (instead of using inputted grid)
-  """
-  # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
+# --- Complete dictionary of possible keywords and their default values
+_ppgeneric_kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
                 'nx':20,'ny':20,'slope':0.,
                 'xoffset':0.,'yoffset':0.,'offset':0.,
                 'xscale':1.,'yscale':1.,'titles':1,
@@ -1239,7 +1254,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'lframe':0,'xmin':None,'xmax':None,'ymin':None,'ymax':None,
                 'pplimits':('e','e','e','e'),
                 'particles':0,'uselog':None,'logmin':None,
-                'color':'fg','ncolor':top.ncolor,
+                'color':'fg','ncolor':None,
                 'usepalette':1,'marker':'\1','msize':1.0,
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':.9,'hcolor':'fg','width':1.0,
@@ -1256,19 +1271,94 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'returngrid':0,'local':1,
                 'checkargs':0,'allowbadargs':0}
 
+def ppgeneric(y=None,x=None,kwdict={},**kw):
+  """
+Generic particle plotting routine. Allows plotting of particle points, density
+contours, and/or density hash marks.
+Note that either the x and y coordinates or the grid must be passed in.
+  - y, x: optional particle data (instead of using inputted grid)
+  """
   # --- Create dictionary of local values and copy it into local dictionary,
-  # --- ignoring keywords not listed in kwdefaults.
-  kwvalues = kwdefaults.copy()
+  # --- ignoring keywords not listed in _ppgeneric_kwdefaults.
+  kwvalues = _ppgeneric_kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
-  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+
+  #for arg in _ppgeneric_kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  # --- This is MUCH faster than the loop, about 100x, but not as nice looking.
+  zz = kwvalues['zz']
+  weights = kwvalues['weights']
+  grid = kwvalues['grid']
+  gridt = kwvalues['gridt']
+  nx = kwvalues['nx']
+  ny = kwvalues['ny']
+  slope = kwvalues['slope']
+  xoffset = kwvalues['xoffset']
+  yoffset = kwvalues['yoffset']
+  offset = kwvalues['offset']
+  xscale = kwvalues['xscale']
+  yscale = kwvalues['yscale']
+  titles = kwvalues['titles']
+  titlet = kwvalues['titlet']
+  titleb = kwvalues['titleb']
+  titlel = kwvalues['titlel']
+  titler = kwvalues['titler']
+  lframe = kwvalues['lframe']
+  xmin = kwvalues['xmin']
+  xmax = kwvalues['xmax']
+  ymin = kwvalues['ymin']
+  ymax = kwvalues['ymax']
+  pplimits = kwvalues['pplimits']
+  particles = kwvalues['particles']
+  uselog = kwvalues['uselog']
+  logmin = kwvalues['logmin']
+  color = kwvalues['color']
+  ncolor = kwvalues['ncolor']
+  usepalette = kwvalues['usepalette']
+  marker = kwvalues['marker']
+  msize = kwvalues['msize']
+  denmin = kwvalues['denmin']
+  denmax = kwvalues['denmax']
+  chopped = kwvalues['chopped']
+  hash = kwvalues['hash']
+  line_scale = kwvalues['line_scale']
+  hcolor = kwvalues['hcolor']
+  width = kwvalues['width']
+  contours = kwvalues['contours']
+  filled = kwvalues['filled']
+  ccolor = kwvalues['ccolor']
+  cellarray = kwvalues['cellarray']
+  centering = kwvalues['centering']
+  ctop = kwvalues['ctop']
+  cmin = kwvalues['cmin']
+  cmax = kwvalues['cmax']
+  ireg = kwvalues['ireg']
+  xbound = kwvalues['xbound']
+  ybound = kwvalues['ybound']
+  ldensityscale = kwvalues['ldensityscale']
+  gridscale = kwvalues['gridscale']
+  flipxaxis = kwvalues['flipxaxis']
+  flipyaxis = kwvalues['flipyaxis']
+  xcoffset = kwvalues['xcoffset']
+  ycoffset = kwvalues['ycoffset']
+  view = kwvalues['view']
+  lcolorbar = kwvalues['lcolorbar']
+  colbarunitless = kwvalues['colbarunitless']
+  colbarlinear = kwvalues['colbarlinear']
+  surface = kwvalues['surface']
+  xmesh = kwvalues['xmesh']
+  ymesh = kwvalues['ymesh']
+  returngrid = kwvalues['returngrid']
+  local = kwvalues['local']
+  checkargs = kwvalues['checkargs']
+  allowbadargs = kwvalues['allowbadargs']
 
   # --- Check the argument list for bad arguments.
   # --- 'checkargs' allows this routine to be called only to check the
   # --- input for bad arguments.
   # --- 'allowbadargs' allows this routine to be called with bad arguments.
   # --- These are intentionally undocumented features.
-  badargs = checkarguments(kwvalues,kwdefaults)
+  badargs = checkarguments(kwvalues,_ppgeneric_kwdefaults)
   if checkargs: return badargs
   assert (not badargs or allowbadargs), \
          "bad argument: %s"%string.join(badargs.keys())
@@ -1286,7 +1376,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- If y is a 2-d array and x is not input, then assume that the user
   # --- intends to plot gridded data.
   # --- Not sure yet if this is a good idea.
-  if len(shape(y)) == 2 and x is None:
+  if y is not None and y.ndim == 2 and x is None:
     grid = y
     y = None
 
@@ -1296,20 +1386,20 @@ Note that either the x and y coordinates or the grid must be passed in.
          "either the grid and/or both x and y must be specified"
   assert (not particles or (type(x) == ArrayType and type(y) == ArrayType)), \
          "both x and y must be specified if particles are to be plotted"
-  assert ((type(x) != ArrayType and type(y) != ArrayType) or len(x) == len(y)),\
+  assert ((type(x) != ArrayType and type(y) != ArrayType) or x.size == y.size),\
          "both x and y must be of the same length"
-  assert (zz is None) or (type(zz) == ArrayType and len(zz) == len(x)),\
+  assert (zz is None) or (type(zz) == ArrayType and zz.size == x.size),\
          "zz must be the same length as x"
   assert (type(slope) != StringType),"slope must be a number"
   assert (zz is None) or (grid is None),\
          "only one of zz and grid can be specified"
   assert (centering == 'node' or centering == 'cell' or centering == 'old'),\
          "centering must take one of the values 'node', 'cell', or 'old'"
-  assert (grid is None or len(shape(grid))==2), \
+  assert (grid is None or grid.ndim == 2), \
          "the grid specified must be two dimensional"
 
   # --- If there are no particles and no grid to plot, just return
-  if type(x) == ArrayType and type(y) == ArrayType: np = globalsum(len(x))
+  if type(x) == ArrayType and type(y) == ArrayType: np = globalsum(x.size)
   else: np = 0
   if np == 0 and grid is None: return
 
@@ -1362,7 +1452,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Calculate extrema of the particles
   if type(x) == ArrayType and type(y) == ArrayType:
     # --- Get slope subtracted value of y
-    yms = y - (x-xoffset)*slope - yoffset - offset
+    yms = y - x*slope + (xoffset*slope - yoffset - offset)
     # --- Get mins and maxs of particles that were not supplied by the user.
     if lparallel and not local:
       if xmin is None: xmintemp = globalmin(x)
@@ -1374,10 +1464,10 @@ Note that either the x and y coordinates or the grid must be passed in.
       xmaxtemp = 0.
       ymintemp = 0.
       ymaxtemp = 0.
-      if xmin is None and len(x) > 0: xmintemp = min(x)
-      if xmax is None and len(x) > 0: xmaxtemp = max(x)
-      if ymin is None and len(yms) > 0: ymintemp = min(yms)
-      if ymax is None and len(yms) > 0: ymaxtemp = max(yms)
+      if xmin is None and x.size > 0: xmintemp = x.min()
+      if xmax is None and x.size > 0: xmaxtemp = x.max()
+      if ymin is None and yms.size > 0: ymintemp = yms.min()
+      if ymax is None and yms.size > 0: ymaxtemp = yms.max()
     # --- When neither the min or max are supplied by the user, extend
     # --- extrema by one grid cell so that all particles are within the
     # --- limits of the grid. This is the most common case.
@@ -1430,9 +1520,9 @@ Note that either the x and y coordinates or the grid must be passed in.
 
     # --- Deposit the density onto the grid.
     if(weights is None):
-      setgrid2d(len(x),x,yms,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
+      setgrid2d(x.size,x,yms,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
     else:
-      setgrid2dw(len(x),x,yms,weights,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
+      setgrid2dw(x.size,x,yms,weights,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
     # --- If parallel, do a reduction on the grid
     if lparallel and not local:
       try:
@@ -1460,9 +1550,9 @@ Note that either the x and y coordinates or the grid must be passed in.
     # --- Deposit the data onto the grid. itask is 1 so that the parallel
     # --- version can be done properly.
     if(weights is None):
-      deposgrid2d(1,len(x),x,yms,zz,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
+      deposgrid2d(1,x.size,x,yms,zz,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
     else:
-      deposgrid2dw(1,len(x),x,yms,zz,weights,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
+      deposgrid2dw(1,x.size,x,yms,zz,weights,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
 
     # --- If parallel, do a reduction on the grid
     if lparallel and not local:
@@ -1551,8 +1641,8 @@ Note that either the x and y coordinates or the grid must be passed in.
     if cmin is None: cmin = minnd(grid)*1.
     if cmax is None: cmax = maxnd(grid)*1.
   elif zz is not None:
-    if cmin is None and len(zz) > 0: cmin = min(zz)*1.
-    if cmax is None and len(zz) > 0: cmax = max(zz)*1.
+    if cmin is None and zz.size > 0: cmin = zz.min()*1.
+    if cmax is None and zz.size > 0: cmax = zz.max()*1.
   ppgeneric.cmin = cmin
   ppgeneric.cmax = cmax
 
@@ -1613,13 +1703,13 @@ Note that either the x and y coordinates or the grid must be passed in.
   if particles:
     if color == 'density':
       if zz is None:
-        z1 = zeros(len(x),'d')
-        getgrid2d(len(x),x,yms,z1,nx,ny,grid,xmin,xmax,ymin,ymax)
+        z1 = zeros(x.size,'d')
+        getgrid2d(x.size,x,yms,z1,nx,ny,grid,xmin,xmax,ymin,ymax)
       else:
         z1 = zz
     if chopped or denmin or denmax:
-      dd = zeros(len(x),'d')
-      getgrid2d(len(x),x,yms,dd,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
+      dd = zeros(x.size,'d')
+      getgrid2d(x.size,x,yms,dd,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
       maxdensity = maxnd(densitygrid)
       dd = dd/maxdensity
       ipick = ones(shape(x),'l')
@@ -1634,6 +1724,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       if color == 'density':
         z1 = compress(ipick,z1)
     if color == 'density':
+      if ncolor is None: ncolor = top.ncolor
       # --- Plot particles with color based on the density from the grid.
       ppco(yms,x,z1,uz=1.,marker=marker,msize=msize,zmin=cmin,zmax=cmax,
            ncolor=ncolor,usepalette=usepalette,local=local)
@@ -1665,16 +1756,17 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Add colorbar if needed
   if (lcolorbar and
      ((contours is not None and filled==1) or
-      (color == 'density' and len(x) > 0) or
+      (color == 'density' and x.size > 0) or
       (cellarray))):
     if (contours is not None and filled==1):
       try:
-        nc = len(contours) + 1
+        nc = contours.size + 1
         levs = contours
       except TypeError:
         nc = contours
         levs = None
-    elif (color == 'density' and len(x) > 0):
+    elif (color == 'density' and x.size > 0):
+      if ncolor is None: ncolor = top.ncolor
       nc = ncolor
       levs = None
     elif (cellarray):
@@ -1727,37 +1819,56 @@ if sys.version[:5] != "1.5.1":
 
 #############################################################################
 #############################################################################
+# --- Complete dictionary of possible keywords and their default values
+# --- ccolor is included since this routine is called by higher level
+# --- routines that pass in ccolor. It is not used here.
+_ppvector_kwdefaults = {'titles':1,'lframe':0,
+                        'xmin':None,'xmax':None,'ymin':None,'ymax':None,
+                        'pplimits':('e','e','e','e'),'scale':1.,
+                        'color':'fg',
+                        'xbound':dirichlet,'ybound':dirichlet,
+                        'xmesh':None,'ymesh':None,'local':1,
+                        'ccolor':None,
+                        'checkargs':0,'allowbadargs':0}
 def ppvector(gridy=None,gridx=None,kwdict={},**kw):
   """
 Generic vector plotting routine.
 Note that both the x and y grids must be passed in.
   - gridy, gridx: x and y vector comnponents
   """
-  # --- Complete dictionary of possible keywords and their default values
-  # --- ccolor is included since this routine is called by higher level
-  # --- routines that pass in ccolor. It is not used here.
-  kwdefaults = {'titles':1,'lframe':0,
-                'xmin':None,'xmax':None,'ymin':None,'ymax':None,
-                'pplimits':('e','e','e','e'),'scale':1.,
-                'color':'fg',
-                'xbound':dirichlet,'ybound':dirichlet,
-                'xmesh':None,'ymesh':None,'local':1,
-                'ccolor':None,
-                'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
-  # --- ignoring keywords not listed in kwdefaults.
-  kwvalues = kwdefaults.copy()
+  # --- ignoring keywords not listed in _ppvector_kwdefaults.
+  kwvalues = _ppvector_kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
-  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  #for arg in _ppvector_kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  # --- This is MUCH faster than the loop, about 100x, but not as nice looking.
+  titles = kwvalues['titles']
+  lframe = kwvalues['lframe']
+  xmin = kwvalues['xmin']
+  xmax = kwvalues['xmax']
+  ymin = kwvalues['ymin']
+  ymax = kwvalues['ymax']
+  pplimits = kwvalues['pplimits']
+  scale = kwvalues['scale']
+  color = kwvalues['color']
+  fg = kwvalues['fg']
+  xbound = kwvalues['xbound']
+  ybound = kwvalues['ybound']
+  xmesh = kwvalues['xmesh']
+  ymesh = kwvalues['ymesh']
+  local = kwvalues['local']
+  ccolor = kwvalues['ccolor']
+  checkargs = kwvalues['checkargs']
+  allowbadargs = kwvalues['allowbadargs']
 
   # --- Check the argument list for bad arguments.
   # --- 'checkargs' allows this routine to be called only to check the
   # --- input for bad arguments.
   # --- 'allowbadargs' allows this routine to be called with bad arguments.
   # --- These are intentionally undocumented features.
-  badargs = checkarguments(kwvalues,kwdefaults)
+  badargs = checkarguments(kwvalues,_ppvector_kwdefaults)
   if checkargs: return badargs
   assert (not badargs or allowbadargs), \
          "bad argument: %s"%string.join(badargs.keys())
@@ -1794,8 +1905,8 @@ def nicelevels(z,n=8) :
   """nicelevels(z,n=8) finds approximately n "nice values"
 between min(z) and max(z) for axis labels. n defaults to eight.
   """
-  zmax = max(ravel(z))
-  zmin = min(ravel(z))
+  zmin = z.min()
+  zmax = z.max()
   if zmin == zmax: return array([zmin,zmax])
   finest = abs(zmax - zmin)/float (n)
   # blows up on zmin=zmax
@@ -3580,8 +3691,8 @@ def ppco(y,x,z,uz=1.,marker='\1',msize=1.0,zmin=None,zmax=None,
     if zmin is None: zmin = globalmin(rz)
     if zmax is None: zmax = globalmax(rz)
   else:
-    if zmin is None: zmin = min(rz)
-    if zmax is None: zmax = max(rz)
+    if zmin is None: zmin = rz.min()
+    if zmax is None: zmax = rz.max()
 
   if ncolor is None: ncolor = top.ncolor
   dd = (zmax - zmin)/ncolor
@@ -3826,7 +3937,7 @@ be from none to all three.
       ss = array(shape(result))
       nn = ss[ii] - 1
       ss[ii] = 2*nn + 1
-      result1 = zeros(tuple(ss),'d')
+      result1 = empty(tuple(ss),'d')
       if xyantisymmetric: fsign = -1
       else:               fsign = +1
       result1[nn:,...] = result
@@ -3837,7 +3948,7 @@ be from none to all three.
       ss = array(shape(result))
       nn = ss[ii] - 1
       ss[ii] = 2*nn + 1
-      result1 = zeros(tuple(ss),'d')
+      result1 = empty(tuple(ss),'d')
       if xyantisymmetric: fsign = -1
       else:               fsign = +1
       if ii == 0:
