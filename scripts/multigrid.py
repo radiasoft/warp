@@ -196,7 +196,7 @@ class MultiGrid(SubcycledPoissonSolver):
 
     # --- If there are any relativistic groups, then turn on the code
     # --- which uses the selfe array.
-    if max(abs(top.fselfb)) > 0.:
+    if abs(top.fselfb).max() > 0.:
       # --- This is probably redundant, but it shouldn't hurt.
       # --- This forces all species to use the precalculated E field
       # --- if any have the B correction.
@@ -406,7 +406,7 @@ class MultiGrid(SubcycledPoissonSolver):
              self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
              ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
              self.nxguard,self.nyguard,self.nzguard)
-    if max(abs(top.fselfb)) > 0.:
+    if abs(top.fselfb).max() > 0.:
       #assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
       # --- For now, just skip the gather of the self B field if this was
       # --- called directly from fetche3dfrompositions (in which case
@@ -699,7 +699,7 @@ class MultiGrid(SubcycledPoissonSolver):
       #self.linbend = sometrue(ii)
 
       setrstar(rstar,self.nzlocal,self.dz,self.zmminlocal,self.getzgrid())
-      self.linbend = min(rstar) < largepos
+      self.linbend = rstar.min() < largepos
 
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
@@ -955,7 +955,7 @@ tensor that appears from the direct implicit scheme.
       #self.linbend = sometrue(ii)
 
       setrstar(rstar,self.nzlocal,self.dz,self.zmminlocal,self.getzgrid())
-      self.linbend = min(rstar) < largepos
+      self.linbend = rstar.min() < largepos
 
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
