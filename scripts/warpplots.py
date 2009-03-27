@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.244 2009/03/27 22:44:18 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.245 2009/03/27 23:22:36 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1762,7 +1762,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       try:
         nc = contours.size + 1
         levs = contours
-      except TypeError:
+      except AttributeError:
         nc = contours
         levs = None
     elif (color == 'density' and x.size > 0):
