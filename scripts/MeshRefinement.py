@@ -1088,7 +1088,6 @@ called separately by each block from gathersourcepfromchildren.
       ssourcep = self.getsourcepslice(l,u)
       ssourcep[...] = 0.
 
-  @lineprofile
   def gathersourcepfromchildren(self):
     """
 Fortran version
