@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.28 $, $Date: 2009/02/10 19:19:09 $
+c@(#) File w3d_utilities.F, version $Revision: 1.29 $, $Date: 2009/03/27 16:59:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -209,6 +209,10 @@ c     --- set grid cell inverse sizes
       endif
       dzi = nz/(zmax - zmin)
 
+      ix = 0
+      iy = 0
+      iz = 0
+
 c     --- loop over particles
       do ip=1,np
         if (ichild(ip) .ne. gridnumb) cycle
@@ -232,16 +236,9 @@ c       --- if not within grid, skip it
      &      ((gy < ymin .or. gy > ymax) .and. ny > 0) .or.
      &      ((gz < zmin .or. gz > zmax) .and. nz > 0)) cycle
 
-        gx = (gx - xmin)*dxi
-        gy = (gy - ymin)*dyi
-        gz = (gz - zmin)*dzi
-
-        ix = int(gx)
-        iy = int(gy)
-        iz = int(gz)
-        if (nx == 0) ix = 0
-        if (ny == 0) iy = 0
-        if (nz == 0) iz = 0
+        if (nx > 0) ix = int((gx - xmin)*dxi)
+        if (ny > 0) iy = int((gy - ymin)*dyi)
+        if (nz > 0) iz = int((gz - zmin)*dzi)
 
         ichild(ip) = abs(grid(ix,iy,iz))
 
@@ -288,6 +285,10 @@ c     --- set grid cell inverse sizes
       endif
       dzi = nz/(zmax - zmin)
 
+      ix = 0
+      iy = 0
+      iz = 0
+
 c     --- loop over particles
       do ip=1,np
         if (ichild(ip) .ne. gridnumb) cycle
@@ -311,16 +312,10 @@ c       --- if not within grid, skip it
      &      ((gy < ymin .or. gy > ymax) .and. ny > 0) .or.
      &      ((gz < zmin .or. gz > zmax) .and. nz > 0)) cycle
 
-        gx = (gx - xmin)*dxi
-        gy = (gy - ymin)*dyi
-        gz = (gz - zmin)*dzi
+        if (nx > 0) ix = int((gx - xmin)*dxi)
+        if (ny > 0) iy = int((gy - ymin)*dyi)
+        if (nz > 0) iz = int((gz - zmin)*dzi)
 
-        ix = int(gx)
-        iy = int(gy)
-        iz = int(gz)
-        if (nx == 0) ix = 0
-        if (ny == 0) iy = 0
-        if (nz == 0) iz = 0
         if (grid(ix,iy,iz) >= 0) ichild(ip) = grid(ix,iy,iz)
 
       enddo
