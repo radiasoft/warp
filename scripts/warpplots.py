@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.245 2009/03/27 23:22:36 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.246 2009/03/28 00:37:32 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -116,6 +116,7 @@ numframeslist = ones(8,'l')
 
 if with_gist:
   gist.pldefault(marks=0) # --- Set plot defaults, no line marks
+  gist.pldefault(legends=0) # --- Turn off the legends in hardcopy output
 
   # --- Set GISTPATH environment variable appropriately if it is not already
   # --- set.
