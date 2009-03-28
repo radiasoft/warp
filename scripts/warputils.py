@@ -25,7 +25,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.25 2009/03/02 19:08:59 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.26 2009/03/28 00:06:09 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -54,7 +54,7 @@ def remark(s):
 numpysign = sign
 def sign(x,y=None):
   if y is None: return numpysign(x)
-  if isinstance(x,ArrayType):
+  if isinstance(x,ndarray):
     result = where(greater(y,0.),abs(x),-abs(x))
     result = where(equal(y,0.),0.,result)
     return result
@@ -98,7 +98,7 @@ Returns 3 3-d arrays holding the coordinates of the mesh points
 # --- It is not very efficient since it creates a whole new array each time.
 def arrayappend(x,a):
   xshape = list(shape(x))
-  if isinstance(a,ArrayType):
+  if isinstance(a,ndarray):
     pass
   elif isinstance(a,ListType):
     a = array(a)
@@ -180,24 +180,28 @@ dimension.
 # --- Returns the max of the multiarray
 def maxnd(x,defaultval=-1.e36):
   """Return the max element of an array of any dimension"""
+  if isinstance(x,ndarray) and x.size > 0: return x.max()
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
   if len(xtemp) == 0: return defaultval
   return max(xtemp)
 # --- Returns the min of the multiarray
 def minnd(x,defaultval=+1.e36):
   """Return the min element of an array of any dimension"""
+  if isinstance(x,ndarray) and x.size > 0: return x.min()
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
   if len(xtemp) == 0: return defaultval
   return min(xtemp)
 # --- Returns the sum of the multiarray
 def sumnd(x,defaultval=0.):
   """Return the total sum of an array of any dimension"""
+  if isinstance(x,ndarray) and x.size > 0: return x.sum()
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
   if len(xtemp) == 0: return defaultval
   return sum(xtemp)
 # --- Returns the sum of the multiarray
 def avend(x,defaultval=0.):
   """Return the average of an array of any dimension"""
+  if isinstance(x,ndarray) and x.size > 0: return x.sum()/x.size
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
   if len(xtemp) == 0: return defaultval
   return sum(xtemp)/len(xtemp)
@@ -212,7 +216,7 @@ def makefortranordered(x):
   """Given an array, returns the same data but with fortran ordering. 
 If the array already has the correct ordering, the array is just
 returned as is. Otherwise, a new array is created and the data copied."""
-  assert isinstance(x,ArrayType),"Input value must be an array."
+  assert isinstance(x,ndarray),"Input value must be an array."
   # --- Pick any package, since all have the getstrides method
   pkg = packageobject(getcurrpkg())
   # --- An array is fortran ordered if the strides are increasing,
