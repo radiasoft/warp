@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.237 $, $Date: 2009/03/25 22:52:11 $
+c@(#) File TOP.F, version $Revision: 3.238 $, $Date: 2009/03/31 22:19:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3237,6 +3237,8 @@ c Calculate the center of mass of the beam along the z axis from the particles
       data(1) = totz
       data(2) = totmass
       call parallelsumrealarray(data,2)
+      totz = data(1)
+      totmass = data(2)
 #endif
 
       getbeamcom = totz/dvnz(totmass)
