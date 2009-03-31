@@ -1418,21 +1418,21 @@ class SubcycledPoissonSolver(FieldSolver):
         if self.solvergeom == w3d.RZgeom:
           ydebug = y
           xdebug = sqrt(xdebug**2 + ydebug**2)
-        assert xdebug.min() >= self.xmminlocal,\
+        assert xdebug.min() >= self.xpminlocal,\
                "Particles have x below the grid when fetching the potential"
-        assert xdebug.max() < self.xmmaxlocal,\
+        assert xdebug.max() < self.xpmaxlocal,\
                "Particles have x above the grid when fetching the potential"
       if self.nylocal > 0:
         ydebug = y
         if self.l4symtry or self.l2symtry: ydebug = abs(y)
-        assert ydebug.min() >= self.ymminlocal,\
+        assert ydebug.min() >= self.ypminlocal,\
                "Particles have y below the grid when fetching the potential"
-        assert ydebug.max() < self.ymmaxlocal,\
+        assert ydebug.max() < self.ypmaxlocal,\
                "Particles have y above the grid when fetching the potential"
       if self.nzlocal > 0:
-        assert z.min() >= self.zmminlocal,\
+        assert z.min() >= self.zpminlocal,\
                "Particles have z below the grid when fetching the potential"
-        assert z.max() <= self.zmmaxlocal,\
+        assert z.max() <= self.zpmaxlocal,\
                "Particles have z above the grid when fetching the potential"
 
     jsid = w3d.jsfsapi
