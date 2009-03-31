@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.79 2009/03/25 22:46:31 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.80 2009/03/31 22:07:57 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3168,6 +3168,8 @@ Input arguments:
                          Esolver.zmmin,Esolver.dz,Esolver.nz)
 
   if saveEsolver: addgriddedgap.Esolver = Esolver
+
+  assert Esolver.xmmax > ap,"Warning: xmmax must be > ap"
 
   # --- Add the pipe conductors
   if apleft is None: apleft = ap
