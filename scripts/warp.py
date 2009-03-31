@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.180 2009/03/03 01:56:35 dave Exp $"
+warp_version = "$Id: warp.py,v 1.181 2009/03/31 22:13:02 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -1104,6 +1104,7 @@ from histplots import *
 from pzplots import *
 from plot_conductor import *
 from multigrid import MultiGrid
+from multigrid import MultiGrid3D
 from multigrid import MultiGridImplicit3D
 from multigridRZ import MultiGridRZ
 from multigridRZ import MultiGrid2D

@@ -96,7 +96,7 @@ Class for generating photo-electrons
       w3d.zmmax=nsz*self.sigz
       w3d.boundnz=w3d.bound0=periodic
       top.pboundnz=top.pbound0=periodic
-      self.MRroot=MultiGrid()
+      self.MRroot=MultiGrid3D()
       registersolver(self.MRroot)
     else:
       if pos.ispch==0:

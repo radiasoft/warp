@@ -5,7 +5,7 @@ __all__ = ['MeshRefinement',
            'MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
            'MRBlockImplicit2D','EMMRBlock']
 from warp import *
-from multigrid import MultiGrid
+from multigrid import MultiGrid3D
 from multigridRZ import MultiGrid2D
 from em3dsolver import EM3D
 from find_mgparam import find_mgparam
@@ -2326,7 +2326,7 @@ Create DX object drawing the object.
 ##############################################################################
 ##############################################################################
 ##############################################################################
-class MRBlock(MeshRefinement,MultiGrid):
+class MRBlock(MeshRefinement,MultiGrid3D):
   """
 Implements adaptive mesh refinement in 3d for the electrostatic field solver
  - parent:
@@ -2351,7 +2351,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
                     nguard=[1,1,1],
                     children=None,**kw):
 
-    # --- Note that this calls the MultiGrid __init__ as well.
+    # --- Note that this calls the MultiGrid3D __init__ as well.
     self.__class__.__bases__[0].__init__(self,
                     parent=parent,refinement=refinement,
                     lower=lower,upper=upper,

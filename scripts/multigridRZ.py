@@ -11,7 +11,7 @@ except ImportError:
 
 ##############################################################################
 ##############################################################################
-class MultiGridRZ(MultiGrid):
+class MultiGridRZ(MultiGrid3D):
   
   def __init__(self,lreducedpickle=1,**kw):
     kw['lreducedpickle'] = lreducedpickle
@@ -55,13 +55,13 @@ class MultiGridRZ(MultiGrid):
                 self.lparallel,self.bounds[1],self.bounds[4],self.bounds[5])
 
   def __getstate__(self):
-    dict = MultiGrid.__getstate__(self)
+    dict = MultiGrid3D.__getstate__(self)
     if self.lreducedpickle:
       if 'grid' in dict: del dict['grid']
     return dict
 
   def __setstate__(self,dict):
-    MultiGrid.__setstate__(self,dict)
+    MultiGrid3D.__setstate__(self,dict)
     if self.lreducedpickle and not self.lnorestoreonpickle:
       self.initializegrid()
 
@@ -116,7 +116,7 @@ class MultiGridRZ(MultiGrid):
 
   def _installconductor(self,conductorobject,installedlist,conductordata,
                         fselfb):
-    # --- Copied from MultiGrid, but turns on installrz.
+    # --- Copied from MultiGrid3D, but turns on installrz.
     # --- This does that actual installation of the conductor into the
     # --- conductor object
 
@@ -219,7 +219,7 @@ class MultiGridRZ(MultiGrid):
 ##############################################################################
 ##############################################################################
 ##############################################################################
-class MultiGrid2D(MultiGrid):
+class MultiGrid2D(MultiGrid3D):
   
   def __init__(self,lreducedpickle=1,**kw):
     kw['lreducedpickle'] = lreducedpickle
@@ -246,6 +246,11 @@ class MultiGrid2D(MultiGrid):
 
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
+
+    # --- Check for consistency
+    if self.solvergeom == w3d.RZgeom:
+      assert self.xmmin >= 0.,"With RZgeom, xmmin must be >= 0."
+      #self.xmmin = 0.
 
     # --- Create conductor objects
     self.initializeconductors()
@@ -431,7 +436,7 @@ class MultiGrid2DDielectric(MultiGrid2D):
 ##############################################################################
 ##############################################################################
 ##############################################################################
-class MultiGridImplicit2D(MultiGrid):
+class MultiGridImplicit2D(MultiGrid3D):
   """
 This solves the modified Poisson equation which includes the suseptibility
 tensor that appears from the direct implicit scheme.
@@ -479,7 +484,7 @@ Initially, conductors are not implemented.
     self.chikludge = 1
 
   def __getstate__(self):
-    dict = MultiGrid.__getstate__(self)
+    dict = MultiGrid3D.__getstate__(self)
     if self.lreducedpickle:
       if 'chi0' in dict: del dict['chi0']
     return dict
@@ -487,7 +492,7 @@ Initially, conductors are not implemented.
   def getpdims(self):
     # --- This is needed to set the top.nsimplicit variable.
     setupImplicit(top.pgroup)
-    dims = MultiGrid.getpdims(self)
+    dims = MultiGrid3D.getpdims(self)
     # --- The extra dimension is to hold the charge density and the chi's
     # --- for the implicit groups.
     dims = (tuple(list(dims[0])+[1+top.nsimplicit]),)+dims[1:]
@@ -496,7 +501,7 @@ Initially, conductors are not implemented.
   def getdims(self):
     # --- This is needed to set the top.nsimplicit variable.
     setupImplicit(top.pgroup)
-    dims = MultiGrid.getdims(self)
+    dims = MultiGrid3D.getdims(self)
     # --- The extra dimension is to hold the charge density and the chi's
     # --- for the implicit groups.
     dims = (tuple(list(dims[0])+[1+top.nsimplicit]),)+dims[1:]
@@ -510,11 +515,11 @@ Initially, conductors are not implemented.
 
   def getphi(self):
     'Returns the phi array without the guard cells'
-    return MultiGrid.getphi(self)[:,0,:]
+    return MultiGrid3D.getphi(self)[:,0,:]
 
   def getphip(self):
     'Returns the phip array without the guard cells'
-    return MultiGrid.getphip(self)[:,0,:]
+    return MultiGrid3D.getphip(self)[:,0,:]
 
   # --- A special version is needed since only part if source is returned.
   def _setuprhoproperty():
@@ -543,14 +548,14 @@ Initially, conductors are not implemented.
     # --- When true, the load rho is skipped - it is not needed at some
     # --- points during a step.
     if top.laccumulate_rho: return
-    MultiGrid.loadsource(self,lzero,**kw)
+    MultiGrid3D.loadsource(self,lzero,**kw)
 
   def fetche(self,*args,**kw):
     # --- lresetparticlee is used as a flag in the implicit stepper.
     # --- When false, skip the fetche since the field is calculated
     # --- from existing data.
     if not top.lresetparticlee: return
-    MultiGrid.fetchfield(self,*args,**kw)
+    MultiGrid3D.fetchfield(self,*args,**kw)
 
   def setsourcep(self,js,pgroup,zgrid):
     n  = pgroup.nps[js]
@@ -610,7 +615,7 @@ Initially, conductors are not implemented.
                               self.fsdecomp,self.ppdecomp)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
-    MultiGrid.fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js,pgroup)
+    MultiGrid3D.fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js,pgroup)
     # --- Force ey to zero (is this really needed?)
     #ey[...] = 0.
 

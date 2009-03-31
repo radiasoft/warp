@@ -14,7 +14,7 @@ except ImportError:
   pass
 
 ##############################################################################
-class MultiGrid(SubcycledPoissonSolver):
+class MultiGrid3D(SubcycledPoissonSolver):
   
   __w3dinputs__ = ['iondensity','electrontemperature','plasmapotential',
                    'electrondensitymaxscale']
@@ -37,8 +37,8 @@ class MultiGrid(SubcycledPoissonSolver):
     f3d.gridmode = 1
 
     # --- Save input parameters
-    self.processdefaultsfrompackage(MultiGrid.__w3dinputs__,w3d,kw)
-    self.processdefaultsfrompackage(MultiGrid.__f3dinputs__,f3d,kw)
+    self.processdefaultsfrompackage(MultiGrid3D.__w3dinputs__,w3d,kw)
+    self.processdefaultsfrompackage(MultiGrid3D.__f3dinputs__,f3d,kw)
 
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
@@ -773,19 +773,20 @@ class MultiGrid(SubcycledPoissonSolver):
              1,1,1)
     return res
 
+MultiGrid = MultiGrid3D
 
 ##############################################################################
 ##############################################################################
 ##############################################################################
 ##############################################################################
-class MultiGridImplicit3D(MultiGrid):
+class MultiGridImplicit3D(MultiGrid3D):
   """
 This solves the modified Poisson equation which includes the suseptibility
 tensor that appears from the direct implicit scheme.
   """
   
   def __init__(self,lreducedpickle=1,**kw):
-    MultiGrid.__init__(self,lreducedpickle,kwdict=kw)
+    MultiGrid3D.__init__(self,lreducedpickle,kwdict=kw)
     self.solvergeom = w3d.XYZgeom
     self.ncomponents = 1
     self.nxguard = 1
@@ -797,8 +798,8 @@ tensor that appears from the direct implicit scheme.
     f3d.gridmode = 1
 
     # --- Save input parameters
-    self.processdefaultsfrompackage(MultiGrid.__w3dinputs__,w3d,kw)
-    self.processdefaultsfrompackage(MultiGrid.__f3dinputs__,f3d,kw)
+    self.processdefaultsfrompackage(MultiGrid3D.__w3dinputs__,w3d,kw)
+    self.processdefaultsfrompackage(MultiGrid3D.__f3dinputs__,f3d,kw)
 
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
@@ -819,7 +820,7 @@ tensor that appears from the direct implicit scheme.
     self.chikludge = 1
 
   def __getstate__(self):
-    dict = MultiGrid.__getstate__(self)
+    dict = MultiGrid3D.__getstate__(self)
     if self.lreducedpickle:
       if 'chi0' in dict: del dict['chi0']
     return dict
@@ -827,7 +828,7 @@ tensor that appears from the direct implicit scheme.
   def getpdims(self):
     # --- This is needed to set the top.nsimplicit variable.
     setupImplicit(top.pgroup)
-    dims = MultiGrid.getpdims(self)
+    dims = MultiGrid3D.getpdims(self)
     # --- The extra dimension is to hold the charge density and the chi's
     # --- for the implicit groups.
     dims = (tuple(list(dims[0])+[1+top.nsimplicit]),)+dims[1:]
@@ -836,7 +837,7 @@ tensor that appears from the direct implicit scheme.
   def getdims(self):
     # --- This is needed to set the top.nsimplicit variable.
     setupImplicit(top.pgroup)
-    dims = MultiGrid.getdims(self)
+    dims = MultiGrid3D.getdims(self)
     # --- The extra dimension is to hold the charge density and the chi's
     # --- for the implicit groups.
     dims = (tuple(list(dims[0])+[1+top.nsimplicit]),)+dims[1:]
@@ -850,25 +851,25 @@ tensor that appears from the direct implicit scheme.
 
   def getphi(self):
     'Returns the phi array without the guard cells'
-    return MultiGrid.getphi(self)[:,:,:]
+    return MultiGrid3D.getphi(self)[:,:,:]
 
   def getphip(self):
     'Returns the phip array without the guard cells'
-    return MultiGrid.getphip(self)[:,:,:]
+    return MultiGrid3D.getphip(self)[:,:,:]
 
   def loadrho(self,lzero=None,**kw):
     # --- top.laccumulate_rho is used as a flag by the implicit stepper.
     # --- When true, the load rho is skipped - it is not needed at some
     # --- points during a step.
     if top.laccumulate_rho: return
-    MultiGrid.loadsource(self,lzero,**kw)
+    MultiGrid3D.loadsource(self,lzero,**kw)
 
   def fetche(self,*args,**kw):
     # --- lresetparticlee is used as a flag in the implicit stepper.
     # --- When false, skip the fetche since the field is calculated
     # --- from existing data.
     if not top.lresetparticlee: return
-    MultiGrid.fetchfield(self,*args,**kw)
+    MultiGrid3D.fetchfield(self,*args,**kw)
 
   def setsourcep(self,js,pgroup,zgrid):
     n  = pgroup.nps[js]
@@ -1004,9 +1005,9 @@ tensor that appears from the direct implicit scheme.
     self.mgiters = mgiters[0]
     self.mgerror = mgerror[0]
 
-# --- This can only be done after MultiGrid is defined.
+# --- This can only be done after MultiGrid3D is defined.
 try:
-  psyco.bind(MultiGrid)
+  psyco.bind(MultiGrid3D)
   psyco.bind(MultiGridImplicit3D)
 except NameError:
   pass

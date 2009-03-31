@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.80 2009/03/31 22:07:57 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.81 2009/03/31 22:13:02 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3162,7 +3162,7 @@ Input arguments:
   else:
     if l4symtry is not None: solverdict['l4symtry'] = l4symtry
     if l2symtry is not None: solverdict['l2symtry'] = l2symtry
-    Esolver = MultiGrid(**solverdict)
+    Esolver = MultiGrid3D(**solverdict)
     xx,yy,zz = getmesh3d(Esolver.xmmin,Esolver.dx,Esolver.nx,
                          Esolver.ymmin,Esolver.dy,Esolver.ny,
                          Esolver.zmmin,Esolver.dz,Esolver.nz)
