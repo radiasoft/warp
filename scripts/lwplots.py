@@ -1,9 +1,29 @@
 """Functions to plot lab window moments data
+
+ppnumlw: Plots pnumlw as a function of time
+pxbarlw: Plots xbarlw as a function of time
+pybarlw: Plots ybarlw as a function of time
+pvzbarlw: Plots vzbarlw as a function of time
+pepsxlw: Plots epsxlw as a function of time
+pepsylw: Plots epsylw as a function of time
+pepzslw: Plots epzslw as a function of time
+pvxrmslw: Plots vxrmslw as a function of time
+pvyrmslw: Plots vyrmslw as a function of time
+pvzrmslw: Plots vzrmslw as a function of time
+pxrmslw: Plots xrmslw as a function of time
+pyrmslw: Plots yrmslw as a function of time
+prrmslw: Plots rrmslw as a function of time
+pxxpbarlw: Plots xxpbarlw as a function of time
+pyypbarlw: Plots yypbarlw as a function of time
+pcurrlw: Plots currlw as a function of time
+plostparslw: Plots lostparslw as a function of time
+plinechglw: Plots linechglw as a function of time
+
 """
 
 from warp import *
 import __main__
-lwplots_version = "$Id: lwplots.py,v 1.1 2009/04/03 21:45:59 dave Exp $"
+lwplots_version = "$Id: lwplots.py,v 1.2 2009/04/03 21:58:17 dave Exp $"
 
 def lwplotsdoc():
     import lwplots
