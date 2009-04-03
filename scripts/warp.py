@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.181 2009/03/31 22:13:02 dave Exp $"
+warp_version = "$Id: warp.py,v 1.182 2009/04/03 21:46:52 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -262,7 +262,7 @@ Imports the basic modules needed to run WARP, including
 numpy, gist, warpplots
 
 as well as additional modules
-histplots, pzplots, plot_conductors, drawlattice
+histplots, pzplots, lwplots, plot_conductors, drawlattice
 
 Create python versions of the constants
 amu, clight, echarge, emass, eps0, euler, jperev, mu0
@@ -1102,6 +1102,7 @@ if lparallel: from warpparallel import *
 from warpplots import *
 from histplots import *
 from pzplots import *
+from lwplots import *
 from plot_conductor import *
 from multigrid import MultiGrid
 from multigrid import MultiGrid3D
