@@ -504,3 +504,76 @@ rprms:
         ff.close()
         return data[1]
 
+    def setupanalysis(self):
+        self.arraytime = array(self.time)
+        self.arraycurrent = array(self.current)
+        self.arrayradius = array(self.rrms)
+        self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+
+        self.currentmax = zeros(self.nz+1,float64)
+        self.ratcurrentmax = zeros(self.nz+1,float64)
+        for iz in range(self.nz+1):
+            # --- Find the max current over time at the location iz
+            ii = argmax(self.arraycurrent[:,iz])
+            # --- Save the current and beam radius at that time
+            self.currentmax[iz] = self.arraycurrent[ii,iz]
+            self.ratcurrentmax[iz] = self.arrayradius[ii,iz]*100.
+
+        if self.ldoradialdiag:
+            self.arrayrprofile = array(self.rprofile)
+            dr = self.rmax/self.nr
+            self.rprofilemesh = iota(0,self.nr)*dr
+            aa = pi*2.*self.rprofilemesh*dr # --- Is this correct???
+            aa[0] = pi*0.25*dr**2
+            aa *= 10000.
+            self.aa = aa
+
+    def saveresults(self,filename):
+        ff = PW.PW(filename)
+        ff.zmesh = self.zmesh
+        ff.currentmax = self.currentmax
+        ff.ratcurrentmax = self.ratcurrentmax
+        if self.ldoradialdiag:
+            ff.aa = self.aa
+            ff.Esum = self.Esum
+            ff.Etot = self.Etot
+            ff.rprofilemesh = self.rprofilemesh
+        ff.close()
+
+    def ppcurrmax(self):
+        plp(self.currentmax,self.zmesh,msize=3)
+        plp(self.ratcurrentmax,self.zmesh,color=blue,msize=3)
+        ptitles('spot size','Z (m)','Current (Amps)',
+                'Black is peak current, Blue is corresponding radius')
+
+    def ppfluence(self,Esum):
+        """Plots the fluence as a function of radius"""
+        Etot = sum(Esum)
+        self.Esum = Esum
+        self.Etot = Etot
+        # --- Plot the energy density versus radius,
+        # --- summed over the time window.
+        plg(Esum/self.aa,self.rprofilemesh*100)
+        ptitles('%d KeV'%ee,'R (cm)','joules/sq-cm','Energy deposition on target, summed over 5 ns')
+        plt("Etot = %7.2f mJ"%(Etot*1000.),.45,.82)
+
+    def ppfluenceattarget(self,ztarget,deltat):
+        """Plot the fluence on the target, integrating over the time +/- deltat
+around the peak current."""
+        iztarget = int((ztarget - self.zmmin)/self.dz)
+        ii = argmax(self.arraycurrent[:,iztarget])
+        di = int(deltat/top.dt/self.nhist)
+        Esum = sum(self.arrayrprofile[ii-di:ii+di,:,iztarget],0)
+        self.ppfluence(Esum)
+
+    def ppfluenceatspot(self,deltat=None,currmin=None,tslice=slice(None)):
+        iztarget = argmin(ratcurrentmax[tslice])
+        if deltat is not None:
+            ii = argmax(self.arraycurrent[:,iztarget])
+            di = int(deltat/top.dt/self.nhist)
+            Esum = sum(self.arrayrprofile[ii,:,iztarget],0)
+        elif currmin is not None:
+            ii = (gridcurrent[:,iztarget] > currmin)
+            Esum = sum(self.arrayrprofile[ii-di:ii+di,:,iztarget],0)
+        self.ppfluence(Esum)
+
