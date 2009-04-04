@@ -1350,16 +1350,16 @@ class SubcycledPoissonSolver(FieldSolver):
     else:
       # --- Otherwise, use data from w3d.pgroupfsapi.
       ipmin = w3d.ipminfsapi
-      x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
-      y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
-      z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
-      ex = w3d.pgroupfsapi.ex[ipmin-1:ipmin-1+w3d.npfsapi]
-      ey = w3d.pgroupfsapi.ey[ipmin-1:ipmin-1+w3d.npfsapi]
-      ez = w3d.pgroupfsapi.ez[ipmin-1:ipmin-1+w3d.npfsapi]
-      bx = w3d.pgroupfsapi.bx[ipmin-1:ipmin-1+w3d.npfsapi]
-      by = w3d.pgroupfsapi.by[ipmin-1:ipmin-1+w3d.npfsapi]
-      bz = w3d.pgroupfsapi.bz[ipmin-1:ipmin-1+w3d.npfsapi]
       pgroup = w3d.pgroupfsapi
+      x = pgroup.xp[ipmin-1:ipmin-1+w3d.npfsapi]
+      y = pgroup.yp[ipmin-1:ipmin-1+w3d.npfsapi]
+      z = pgroup.zp[ipmin-1:ipmin-1+w3d.npfsapi]
+      ex = pgroup.ex[ipmin-1:ipmin-1+w3d.npfsapi]
+      ey = pgroup.ey[ipmin-1:ipmin-1+w3d.npfsapi]
+      ez = pgroup.ez[ipmin-1:ipmin-1+w3d.npfsapi]
+      bx = pgroup.bx[ipmin-1:ipmin-1+w3d.npfsapi]
+      by = pgroup.by[ipmin-1:ipmin-1+w3d.npfsapi]
+      bz = pgroup.bz[ipmin-1:ipmin-1+w3d.npfsapi]
 
     jsid = w3d.jsfsapi
     if jsid < 0: js = 0
