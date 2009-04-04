@@ -17,6 +17,12 @@ cross the cell.
   - nr,rmax: radial extent of radial profile diagnostic. If not given,
              the radial diagnostic is not done.
   - ztarget: Z location with the radial profile is calculated.
+  - scintxmin,scintxmax,scintymin,scintymax,scintzmin,scintzmax,scintnx,scintny:
+      specifies a volume where scintillator planes will be. All parameters
+      must be specified. Notice that this will save the time history of a
+      three-dimensional array and so can get very large. The size of the
+      volume should be of minimal size. The resulting data will be stored
+      in the scintillator attribute.
   - dumptofile=None: When given, the data will be written to a file with
                      the given name as a prefix.
   - starttime,endtime=None: If given, the data will be collected for times
@@ -31,7 +37,13 @@ rprms:
     """
 
     def __init__(self,js,zmmin=None,zmmax=None,dz=None,nz=None,nzscale=1,
-                 nhist=None,nr=None,rmax=None,ztarget=None,dumptofile=None,
+                 nhist=None,nr=None,rmax=None,ztarget=None,
+                 scintxmin=None,scintxmax=None,
+                 scintymin=None,scintymax=None,
+                 scintzmin=None,scintzmax=None,
+                 scintnx=None,
+                 scintny=None,
+                 dumptofile=None,
                  starttime=None,endtime=None,lmoving_frame=0):
         self.js = js
         self.zmmin = zmmin
@@ -43,6 +55,16 @@ rprms:
         self.nr = nr
         self.rmax = rmax
         self.ztarget = ztarget
+
+        self.scintxmin = scintxmin
+        self.scintxmax = scintxmax
+        self.scintymin = scintymin
+        self.scintymax = scintymax
+        self.scintzmin = scintzmin
+        self.scintzmax = scintzmax
+        self.scintnx = scintnx
+        self.scintny = scintny
+
         self.dumptofile = dumptofile
         self.starttime = starttime
         self.endtime = endtime
@@ -54,6 +76,7 @@ rprms:
         self.current = None
         self.rrms = None
         self.rprms = None
+        self.dummy = None
 
         installafterstep(self.getdiagnostics)
 
@@ -71,6 +94,16 @@ rprms:
             self.dz = (self.zmmax - self.zmmin)/self.nz
 
         self.ldoradialdiag = (self.nr is not None)
+
+        self.ldoscintillator = (self.scintzmin is not None)
+        if self.ldoscintillator:
+            self.scintzmin = nint((self.scintzmin-self.zmmin)/self.dz)*self.dz + self.zmmin
+            self.scintzmax = nint((self.scintzmax-self.zmmin)/self.dz)*self.dz + self.zmmin
+            self.scintnz = nint((self.scintzmax-self.scintzmin)/self.dz)
+            if self.scintxmin is None: self.scintxmin = -self.scintxmax
+            if self.scintymin is None: self.scintymin = -self.scintymax
+            self.scintdx = (self.scintxmax - self.scintxmin)/self.scintnx
+            self.scintdy = (self.scintymax - self.scintymin)/self.scintny
 
     def getdiagnostics(self):
 
@@ -101,6 +134,11 @@ rprms:
         if ldoradialdiag:
             dr = rmax/nr
 
+        if self.ldoscintillator:
+          scintnx = self.scintnx
+          scintny = self.scintny
+          scintnz = self.scintnz
+
         if self.lmoving_frame:
             zbeam = top.zbeam
         else:
@@ -108,7 +146,7 @@ rprms:
         zoldpid = self.zoldpid
 
         # --- Initialize the data lists.
-        if self.count is None:
+        if self.dummy is None:
             self.time = []
             self.count = [zeros(1+nz,'d')]
             self.current = [zeros(1+nz,'d')]
@@ -119,6 +157,10 @@ rprms:
                 self.rprofile = [zeros((1+nr,1+nz),'d')]
                 self.rprofilecount = zeros((1+nr,1+nz),'d')
                 #self.rprofilemesh = iota(0,nr)*dr
+            if self.ldoscintillator:
+              self.scinttime = []
+              self.scintillator = [zeros((1+scintnx,1+scintny,1+scintnz))]
+              self.scintillatorcount = zeros((1+scintnx,1+scintny,1+scintnz))
 
         if self.nhist is None: nhist = top.nhist
         else:                  nhist = self.nhist
@@ -132,6 +174,8 @@ rprms:
             rp = self.rprms[-1]
             if ldoradialdiag:
                 rprof = self.rprofile[-1]
+            if self.ldoscintillator:
+                scint = self.scintillator[-1]
 
             # --- Finish the calculation, gathering data from all processors and
             # --- dividing out the count.
@@ -143,6 +187,9 @@ rprms:
 
             if ldoradialdiag:
                 rprof[...] = parallelsum(rprof)
+
+            if self.ldoscintillator:
+                scint[...] = parallelsum(scint)
 
             # --- Scale the current appropriately.
             cu[...] = co*(top.pgroup.sq[js]*top.pgroup.sw[js]/(top.dt*nhist))
@@ -158,16 +205,23 @@ rprms:
                 self.rprms.append(zeros(1+nz,'d'))
                 if ldoradialdiag:
                     self.rprofile.append(zeros((1+nr,1+nz),'d'))
+                if self.ldoscintillator:
+                    if maxnd(self.scintillator[-1]) > 0.:
+                        # --- Note that the data is only saved if it is nonzero
+                        self.scinttime.append(top.time)
+                        self.scintillator.append(zeros((1+scintnx,1+scintny,1+scintnz)))
             else:
                 # --- On other processors or if the data is being dumped to a
                 # --- file, just zero out the existing arrays.
                 # --- There's no reason to keep the history on all processors.
-                self.count[0][:] = 0.
-                self.current[0][:] = 0.
-                self.rrms[0][:] = 0.
-                self.rprms[0][:] = 0.
+                self.count[0].fill(0.)
+                self.current[0].fill(0.)
+                self.rrms[0].fill(0.)
+                self.rprms[0].fill(0.)
                 if ldoradialdiag:
-                    self.rprofile[0][...] = 0.
+                    self.rprofile[0].fill(0.)
+                if self.ldoscintillator:
+                    self.scintillator[0].fill(0.)
 
         # --- The code below is all local and can be skipped if there are no
         # --- particles locally.
@@ -199,7 +253,7 @@ rprms:
         deposgrid1d(1,np,zc,ww*rc**2,nz,self.rrms[-1],self.dummy,0.,nz)
         deposgrid1d(1,np,zc,ww*rpc**2,nz,self.rprms[-1],self.dummy,0.,nz)
 
-        if ldoradialdiag:
+        if ldoradialdiag or self.ldoscintillator:
             vz = compress(icrossed,getvz(gather=0))
             ke = 0.5*top.pgroup.sm[js]*vz**2
             if top.wpid > 0:
@@ -207,8 +261,22 @@ rprms:
                 ww = compress(icrossed,weight)*top.pgroup.sw[js]
             else:
                 ww = top.pgroup.sw[js]
+
+        if ldoradialdiag:
             deposgrid2d(1,np,zc,rc,ke*ww,nz,nr,transpose(self.rprofile[-1]),
                         transpose(self.rprofilecount),0.,nz,0.,rmax)
+
+        if self.ldoscintillator:
+            x = getx(gather=0)[icrossed]
+            y = gety(gather=0)[icrossed]
+            izmin = (self.scintzmin - (zbeam + zmmin))/dz
+            izmax = (self.scintzmax - (zbeam + zmmin))/dz
+            deposgrid3d(1,np,zc,y,x,ke*ww,scintnz,scintny,scintnx,
+                        transpose(self.scintillator[-1]),
+                        transpose(self.scintillatorcount),
+                        izmin,izmax,
+                        self.scintymin,self.scintymax,
+                        self.scintxmin,self.scintxmax)
 
         # --- Save particle z positions.
         i1 = top.pgroup.ins[js] - 1
@@ -230,6 +298,11 @@ rprms:
         ff.write('rprms'+suffix,self.rprms[0])
         if self.ldoradialdiag:
             ff.write('rprofile'+suffix,self.rprofile[0])
+        if self.ldoscintillator:
+            if maxnd(self.scintillator[0]) > 0.:
+                # --- Note that the data is only saved if it is nonzero
+                ff.write('scinttime'+suffix,top.time)
+                ff.write('scintillator'+suffix,self.scintillator[0])
         ff.close()
 
     def dodumptofilePickle(self):
@@ -251,6 +324,18 @@ rprms:
             cPickle.dump(('starttime',self.starttime),ff,-1)
             cPickle.dump(('endtime',self.endtime),ff,-1)
             cPickle.dump(('ldoradialdiag',self.ldoradialdiag),ff,-1)
+            cPickle.dump(('ldoscintillator',self.ldoscintillator),ff,-1)
+            cPickle.dump(('scintxmin',self.scintxmin),ff,-1)
+            cPickle.dump(('scintxmax',self.scintxmax),ff,-1)
+            cPickle.dump(('scintymin',self.scintymin),ff,-1)
+            cPickle.dump(('scintymax',self.scintymax),ff,-1)
+            cPickle.dump(('scintzmin',self.scintzmin),ff,-1)
+            cPickle.dump(('scintzmax',self.scintzmax),ff,-1)
+            cPickle.dump(('scintnx',self.scintnx),ff,-1)
+            cPickle.dump(('scintny',self.scintny),ff,-1)
+            cPickle.dump(('scintnz',self.scintnz),ff,-1)
+            cPickle.dump(('scintdx',self.scintdx),ff,-1)
+            cPickle.dump(('scintdy',self.scintdy),ff,-1)
         else:
             ff = open(self.dumptofile+'_gridcrossing.pkl','a')
         suffix = "_%08d"%(top.it)
@@ -261,13 +346,18 @@ rprms:
         cPickle.dump(('rprms'+suffix,self.rprms[0]),ff,-1)
         if self.ldoradialdiag:
             cPickle.dump(('rprofile'+suffix,self.rprofile[0]),ff,-1)
+        if self.ldoscintillator:
+            if maxnd(self.scintillator[0]) > 0.:
+                # --- Note that the data is only saved if it is nonzero
+                cPickle.dump(('scinttime'+suffix,top.time),ff,-1)
+                cPickle.dump(('scintillator'+suffix,self.scintillator[0]),ff,-1)
         ff.close()
 
-    def restorefromfile(self,files=[]):
-        #self.restorefromfilePDB(files)
-        self.restorefromfilePickle(files)
+    def restorefromfile(self,files=[],readscintillator=1):
+        #self.restorefromfilePDB(files,readscintillator)
+        self.restorefromfilePickle(files,readscintillator=readscintillator)
 
-    def restorefromfilePDB(self,files=[]):
+    def restorefromfilePDB(self,files=[],readscintillator=1):
         if me != 0: return
         ff = PR.PR(self.dumptofile+'_gridcrossing.pdb')
 
@@ -280,6 +370,7 @@ rprms:
         # --- self.ldoradialdiag may not be set. So assume that it is and
         # --- create the rprofile list.
         self.rprofile = []
+        self.scintillator = []
 
         varlist = list(ff.inquire_names())
         varlist.sort()
@@ -297,15 +388,24 @@ rprms:
                 except:
                     # --- This just means that there is no rprofile data
                     pass
+                try:
+                    self.scinttime.append(ff.read('scinttime'+suffix))
+                    self.scintillator.append(ff.read('scintillator'+suffix))
+                except:
+                    # --- This just means that there is no scintillator data
+                    pass
 
         ff.close()
 
         # --- If there is no rprofile data, then delete the attribute
         if len(self.rprofile) == 0:
             del self.rprofile
+        if len(self.scintillator) == 0:
+            del self.scintillator
 
     def restorefromfilePickle(self,files=[],
-                              starttime=-largepos,endtime=+largepos):
+                              starttime=-largepos,endtime=+largepos,
+                              readscintillator=1):
         if me != 0: return
 
         if not isinstance(files,ListType):
@@ -332,12 +432,15 @@ rprms:
             ff = open(file,'r')
             while 1:
                 try:
+                    tell = ff.tell()
                     data = cPickle.load(ff)
                 except:
                     break
                 if data[0][:4] == 'time':
                     if starttime <= data[1] <= endtime:
                         savedata = 1
+                if not readscintillator and data[0][:12] == 'scintillator':
+                    data = (data[0],tell)
                 if savedata:
                     datadict[data[0]] = data[1]
             ff.close()
@@ -360,6 +463,7 @@ rprms:
         # --- self.ldoradialdiag may not be set. So assume that it is and
         # --- create the rprofile list.
         self.rprofile = []
+        self.scintillator = []
 
         varlist = datadict.keys()
         varlist.sort()
@@ -377,8 +481,26 @@ rprms:
                 except:
                     # --- This just means that there is no rprofile data
                     pass
+                try:
+                    self.scinttime.append(datadict['scinttime'+suffix])
+                    self.scintillator.append(datadict['scintillator'+suffix])
+                except:
+                    # --- This just means that there is no scintillator data
+                    pass
 
         # --- If there is no rprofile data, then delete the attribute
         if len(self.rprofile) == 0:
             del self.rprofile
+        if len(self.scintillator) == 0:
+            del self.scintillator
+
+    def readscintillator(self,i,file=None):
+        if file is None:
+            file = self.dumptofile+'_gridcrossing.pkl'
+
+        ff = open(file,'r')
+        ff.seek(self.scintillator[i])
+        data = cPickle.load(ff)
+        ff.close()
+        return data[1]
 
