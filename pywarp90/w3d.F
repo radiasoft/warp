@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.428 $, $Date: 2009/03/12 22:48:20 $
+c@(#) File W3D.F, version $Revision: 3.429 $, $Date: 2009/04/09 00:05:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9387,10 +9387,14 @@ c=============================================================================
       use InMesh3d,Only: nxlocal,nylocal,nzlocal
       use Fields3dParticles,Only: selfep,nxp,nyp,nzp
       logical(ISZ):: lforce
-      logical(ISZ):: doallocate
 
 c Only do the allocation if needed, when lforce is true or when the array
 c is needed for the field gather (efetch == 3).
+
+      logical(ISZ):: checkalloc
+      logical(ISZ):: doallocate
+
+      checkalloc = lforce
 
       if (ANY(efetch == 3) .and. fstype < 12 .and.
      &    (solvergeom == XYZgeom .or.
@@ -9398,9 +9402,9 @@ c is needed for the field gather (efetch == 3).
      &     solvergeom == XZgeom .or.
      &     solvergeom == XYgeom .or.
      &     solvergeom == Rgeom  .or.
-     &     solvergeom == Zgeom)) lforce = .true.
+     &     solvergeom == Zgeom)) checkalloc = .true.
 
-      if (lforce) then
+      if (checkalloc) then
 
 c       --- selfep is allocated only if it hasn't already been or if it
 c       --- has the wrong shape.
