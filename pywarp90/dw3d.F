@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.162 $, $Date: 2009/02/03 19:35:49 $
+c@(#) File DW3D.F, version $Revision: 3.163 $, $Date: 2009/04/14 00:10:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -170,6 +170,7 @@ c=============================================================================
       use Fields3d
       use Z_arrays
       use InDiag3d
+      use Parallel
 
 c  Calculates the line charge density from rho.
 
@@ -219,7 +220,15 @@ c Then, linearly interpolate the data into the beam frame array, linechg.
         izg = int(zg + nzlocal) - nzlocal
         wzg = zg - izg
 
-        if (0 <= izg .and. izg < nzlocal) then
+c       --- This is a bit tricky for the parallel version. Each processor
+c       --- must set linechg only in the range of 0 through nzlocal-1, except
+c       --- the last processor, which needs to set nzlocal as well. This is
+c       --- needed because of the overalap between nzlocal on one processor
+c       --- and 0 on the next processor. The last processor has no overlap
+c       --- at nzlocal.
+        if (0 <= izg .and.
+     &      (izg < nzlocal .or.
+     &       (izg == nzlocal .and. izproc == nzprocs-1))) then
           linechg(iz) = scrtch(izg,0)*dx*dy*(1. - wzg)
         else
           linechg(iz) = 0.
