@@ -706,7 +706,8 @@ class Maps_twiss:
        if self.l_verbose:print 'fetche3d'
        fetche3dfrompositions(js+1,pg.ndts,np,
                             pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
-                            self.ex[:np],self.ey[:np],self.ez[:np])
+                            self.ex[:np],self.ey[:np],self.ez[:np],
+                            self.bx[:np],self.by[:np],self.bz[:np])
        if self.l_mode==2:
          lzeros = where( (pg.zp[il:iu]<0.5*w3d.zmmin) | (pg.zp[il:iu]>0.5*w3d.zmmax) ,1,0)
          self.ex[:np] = where(lzeros,0.,self.ex[:np])

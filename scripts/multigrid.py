@@ -407,10 +407,9 @@ class MultiGrid3D(SubcycledPoissonSolver):
              ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
              self.nxguard,self.nyguard,self.nzguard)
     if abs(top.fselfb).max() > 0.:
-      #assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
-      # --- For now, just skip the gather of the self B field if this was
-      # --- called directly from fetche3dfrompositions (in which case
-      # --- len(bx)==0).
+      # --- Note that now fetche3dfrompositions takes B field arguments so
+      # --- this code should work OK now. The if statement is left just case
+      # --- there is an odd situation.
       if len(bx) != n: return
       setb3d(self.fieldp[:,:,:,:,1],n,x,y,z,self.getzgridprv(),bx,by,bz,
              self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
