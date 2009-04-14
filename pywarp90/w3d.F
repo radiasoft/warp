@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.429 $, $Date: 2009/04/09 00:05:32 $
+c@(#) File W3D.F, version $Revision: 3.430 $, $Date: 2009/04/14 20:32:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9708,7 +9708,7 @@ c     --- Zero out the particle's E field if requested (the default)
       return
       end
 c=============================================================================
-      subroutine fetche3dfrompositions(jsid,ndts,n,x,y,z,ex,ey,ez)
+      subroutine fetche3dfrompositions(jsid,ndts,n,x,y,z,ex,ey,ez,bx,by,bz)
       use GlobalVars
       use Subtimers3d
       use Picglb
@@ -9722,12 +9722,16 @@ c=============================================================================
       use Fields3dParticles
       use FieldSolveAPI
       integer(ISZ):: jsid,ndts,n
-      real(kind=8),target:: x(n),y(n),z(n),ex(n),ey(n),ez(n)
+      real(kind=8),target:: x(n),y(n),z(n)
+      real(kind=8),target:: ex(n),ey(n),ez(n)
+      real(kind=8),target:: bx(n),by(n),bz(n)
 
 c     --- Obtain the self-field from the electrostatic potential
 c     --- This is nearly the same as fetche except that the positions
 c     --- are passed in via the argument list rather than through the
 c     --- particles group.
+
+c     --- Note that the B fields are passed in and are only used by fstype==12.
 
       integer(ISZ):: indts,tmpnsndts,getnsndtsforsubcycling,is
       real(kind=8):: substarttime,wtime
@@ -9736,11 +9740,16 @@ c     --- particles group.
 c     --- Don't do anything if there are no particles input.
       if (n == 0) return
 
-c     --- Zero out the particle's E field if requested (the default)
+c     --- Zero out the particle's field if requested (the default)
       if (lresetparticlee) then
         ex = 0.
         ey = 0.
         ez = 0.
+      endif
+      if (lresetparticleb) then
+        bx = 0.
+        by = 0.
+        bz = 0.
       endif
 
 c     --- Get the species number for efetch
@@ -9758,12 +9767,16 @@ c       --- This is less efficient since there is overhead in the allocation
 c       --- and the data needs to be copied around.
         allocate(xfsapi(n),yfsapi(n),zfsapi(n))
         allocate(exfsapi(n),eyfsapi(n),ezfsapi(n))
+        allocate(bxfsapi(n),byfsapi(n),bzfsapi(n))
         xfsapi = x
         yfsapi = y
         zfsapi = z
         exfsapi = ex
         eyfsapi = ey
         ezfsapi = ez
+        bxfsapi = bx
+        byfsapi = by
+        bzfsapi = bz
 #else
         xfsapi => x
         yfsapi => y
@@ -9771,6 +9784,9 @@ c       --- and the data needs to be copied around.
         exfsapi => ex
         eyfsapi => ey
         ezfsapi => ez
+        bxfsapi => bx
+        byfsapi => by
+        bzfsapi => bz
 #endif
         npfsapi = n
         jsfsapi = jsid
@@ -9783,8 +9799,12 @@ c       --- and the data needs to be copied around.
         ex = exfsapi
         ey = eyfsapi
         ez = ezfsapi
+        bx = bxfsapi
+        by = byfsapi
+        bz = bzfsapi
         deallocate(xfsapi,yfsapi,zfsapi)
         deallocate(exfsapi,eyfsapi,ezfsapi)
+        deallocate(bxfsapi,byfsapi,bzfsapi)
 #endif
         NULLIFY(xfsapi)
         NULLIFY(yfsapi)
@@ -9792,6 +9812,9 @@ c       --- and the data needs to be copied around.
         NULLIFY(exfsapi)
         NULLIFY(eyfsapi)
         NULLIFY(ezfsapi)
+        NULLIFY(bxfsapi)
+        NULLIFY(byfsapi)
+        NULLIFY(bzfsapi)
       elseif(solvergeom==XYZgeom) then
         tmpnsndts = getnsndtsforsubcycling()
         indts = min(tmpnsndts-1,ndtstorho(ndts))

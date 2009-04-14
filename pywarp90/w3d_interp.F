@@ -802,7 +802,16 @@ c      print*,"pre-fetche3d1,x,ey,ez = ",x(1),ey(1),ez(1)
       ex(:) = 0.
       ey(:) = 0.
       ez(:) = 0.
-      call fetche3dfrompositions(jsid,pgroup%ndts(is-1),npd,x,y,z,ex,ey,ez)
+c     --- Is this correct? Is there a reason that the B fields were being
+c     --- zeroed below, after the call to othere3d?
+c     --- The call to fetche3dfrompositions changed so that now the B fields
+c     --- are passed in. This mainly will have an effect when the EM solver
+c     --- is being used, which will fetch both the E and B.
+      bx(:) = 0.
+      by(:) = 0.
+      bz(:) = 0.
+      call fetche3dfrompositions(jsid,pgroup%ndts(is-1),npd,x,y,z,
+     &                           ex,ey,ez,bx,by,bz)
 c      call fetche3d1(pgroup,npd,x,y,z)
 c      print*,"after fetche3d,x,ey,ez = ",x(1),ey(1),ez(1)
 c      call fetche3d(pgroup,ipmin,npd,is)
@@ -812,9 +821,9 @@ c     add in ears and uniform focusing E field pieces
      &                     ex,ey,ez,bx,by,bz)
 c      call geteb(pgroup,npd,is,ipmin,x,y,z,ex,ey,ez,bx,by,bz)
       dtr=.5*dt
-      bx(:) = 0.
-      by(:) = 0.
-      bz(:) = 0.
+c     bx(:) = 0.
+c     by(:) = 0.
+c     bz(:) = 0.
       call exteb3d(npd,x,y,z,pgroup%uzp(ipmin),pgroup%gaminv(ipmin),-dtr,dtr,
      &             bx,by,bz,ex,ey,ez,pgroup%sm(is),
      &             pgroup%sq(is),bendres,bendradi,gammabar,dt)

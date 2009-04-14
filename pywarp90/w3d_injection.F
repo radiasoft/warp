@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.122 $, $Date: 2009/03/12 22:20:59 $
+c@(#) File w3d_injection.F, version $Revision: 1.123 $, $Date: 2009/04/14 20:32:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -496,7 +496,7 @@ c           --- get E self-field at initial positions
             if (linj_efromgrid) then
               call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,
      &                                   pgroup%xp(i1:i2),pgroup%yp(i1:i2),
-     &                                   pgroup%zp(i1:i2),at,bt,apt)
+     &                                   pgroup%zp(i1:i2),at,bt,apt,xt,yt,zt)
               call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,
      &                                   pgroup%xp(i1:i2),pgroup%yp(i1:i2),
      &                                   pgroup%zp(i1:i2),xt,yt,zt)
@@ -735,7 +735,7 @@ c             --- calculate new E self-fields
               if (linj_efromgrid) then
                 call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,
      &                                     pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &                                     pgroup%zp(ipmin),at,bt,apt)
+     &                                     pgroup%zp(ipmin),at,bt,apt,xt,yt,zt)
                 call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,
      &                                     pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                                     pgroup%zp(ipmin),xt,yt,zt)
@@ -1571,7 +1571,7 @@ c           --- and to make the following code look cleaner.
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
               call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
-     &                                   ex,ey,ez)
+     &                                   ex,ey,ez,bx,by,bz)
               call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   bx,by,bz)
             endif
@@ -1778,7 +1778,7 @@ c           --- only particles that have been injected this time step.
 c           --- calculate new E self-fields
             if (linj_efromgrid) then
               call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
-     &                                   ex,ey,ez)
+     &                                   ex,ey,ez,bx,by,bz)
               call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   bx,by,bz)
             endif
@@ -2292,7 +2292,7 @@ c           --- and to make the following code look cleaner.
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
               call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
-     &                                   ex,ey,ez)
+     &                                   ex,ey,ez,bx,by,bz)
               call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   bx,by,bz)
             endif
@@ -2478,7 +2478,7 @@ c           --- only particles that have been injected this time step.
 c           --- calculate new E self-fields
             if (linj_efromgrid) then
               call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
-     &                                   ex,ey,ez)
+     &                                   ex,ey,ez,bx,by,bz)
               call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   bx,by,bz)
             endif
@@ -4769,12 +4769,14 @@ c of Poisson's equation along lines normal to the emitting surface.
       real(kind=8):: dxi,dyi,dzmin,ainjsqi,binjsqi,rrsq,onethird,ext,eyt,ezt,atx,aty
       real(kind=8), allocatable, dimension(:,:) :: rhs, ab
       real(kind=8), allocatable, dimension(:) :: ex_tmp, ey_tmp, ez_tmp
+      real(kind=8), allocatable, dimension(:) :: bx_tmp, by_tmp, bz_tmp
       real(kind=8), allocatable, dimension(:) :: dz_local
       integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
       allocate(ex_tmp(nn),ey_tmp(nn),ez_tmp(nn))
+      allocate(bx_tmp(nn),by_tmp(nn),bz_tmp(nn))
       allocate(dz_local(0:inj_nz))
 
       onethird = 1./3.
@@ -4931,7 +4933,8 @@ c           --- transform field vector from source coordinates to lab coordinate
         call inj_transform(nrhs,inj_ex_3d,inj_ey_3d,inj_ez_3d,1,ij,1,0)
 c        inj_phi_3d = inj_phi_tmp
 c           --- Obtain the self-field from the electrostatic potential
-        call fetche3dfrompositions(0,1,nn,xxp,yyp,zzp,ex_tmp,ey_tmp,ez_tmp)
+        call fetche3dfrompositions(0,1,nn,xxp,yyp,zzp,ex_tmp,ey_tmp,ez_tmp,
+     &                                                bx_tmp,by_tmp,bz_tmp)
 
         dd = inj_d(ij)*dzmin
         if(dd>dzmin) then
@@ -4956,6 +4959,7 @@ c          wz1 = dd*2.**(inj_nz-iz)-1.
 
       deallocate(rhs,ab)
       deallocate(ex_tmp,ey_tmp,ez_tmp)
+      deallocate(bx_tmp,by_tmp,bz_tmp)
       deallocate(dz_local)
 
 !$OMP MASTER

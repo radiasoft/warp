@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.296 $, $Date: 2009/03/12 22:20:59 $
+#@(#) File W3D.V, version $Revision: 3.297 $, $Date: 2009/04/14 20:32:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.296 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.297 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1053,7 +1053,8 @@ fetche3d(pgroup:ParticleGroup,ipmin:integer,ip:integer,is:integer) subroutine
 fetchb3d(pgroup:ParticleGroup,ipmin:integer,ip:integer,is:integer) subroutine
 fetche3dfrompositions(is:integer,indts:integer,n:integer,
                       x(n):real,y(n):real,z(n):real,
-                      ex(n):real,ey(n):real,ez(n):real) subroutine
+                      ex(n):real,ey(n):real,ez(n):real,
+                      bx(n):real,by(n):real,bz(n):real) subroutine
 particlegridboundaries3d(pgroup:ParticleGroup,js:integer) subroutine
 particleboundaries3d(pgroup:ParticleGroup,js:integer,lcallcontrollers:logical) subroutine
 particleboundariesxy(pgroup:ParticleGroup,js:integer,lcallcontrollers:logical) subroutine
