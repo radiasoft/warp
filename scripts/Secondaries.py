@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.43 2009/02/05 18:18:40 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.44 2009/04/15 13:54:03 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -173,7 +173,7 @@ Class for generating secondaries
     self.__dict__.update(dict)
 
   def add(self,incident_species=None,conductor=None,emitted_species=None,material=None,interaction_type=None,
-               scale_factor=None,scale_factor_velocity=1.,forced_yield=None):
+               scale_factor=None,scale_factor_velocity=1.,forced_yield=None,init_position_offset=0.):
     if material is None: material = conductor.material
     if interaction_type is None and incident_species.type is Electron:
       if material=='Cu' and incident_species.type is Electron: interaction_type=1
@@ -190,21 +190,23 @@ Class for generating secondaries
     if not self.inter.has_key(isinc):
         self.inter[isinc]={}
         for key in ['emitted','condids','issec','conductors','type','isneut','incident_species', \
-                    'emitted_species','material','scale_factor','scale_factor_velocity','forced_yield']:
+                    'emitted_species','material','scale_factor','scale_factor_velocity','forced_yield', \
+                    'init_position_offset']:
           self.inter[isinc][key]=[]
         self.inter[isinc]['incident_species']=incident_species
-    self.inter[isinc]['condids']         += [conductor.condid]
-    self.inter[isinc]['conductors']      += [conductor]
-    self.inter[isinc]['emitted']         += [[]]
+    self.inter[isinc]['condids']               += [conductor.condid]
+    self.inter[isinc]['conductors']            += [conductor]
+    self.inter[isinc]['emitted']               += [[]]
     for i in range(len(emitted_species)):
-      self.inter[isinc]['emitted'][-1]   += [0.]
-    self.inter[isinc]['issec']           += [issec]
-    self.inter[isinc]['emitted_species'] += [emitted_species]
-    self.inter[isinc]['material']        += [material]
-    self.inter[isinc]['type']            += [interaction_type]
-    self.inter[isinc]['scale_factor']    += [scale_factor]
+      self.inter[isinc]['emitted'][-1]         += [0.]
+    self.inter[isinc]['issec']                 += [issec]
+    self.inter[isinc]['emitted_species']       += [emitted_species]
+    self.inter[isinc]['material']              += [material]
+    self.inter[isinc]['type']                  += [interaction_type]
+    self.inter[isinc]['scale_factor']          += [scale_factor]
     self.inter[isinc]['scale_factor_velocity'] += [scale_factor_velocity]
-    self.inter[isinc]['forced_yield']    += [forced_yield]
+    self.inter[isinc]['forced_yield']          += [forced_yield]
+    self.inter[isinc]['init_position_offset']  += [init_position_offset]
     for e in emitted_species:
       js=e.jslist[0]
       if not self.x.has_key(js):
@@ -219,7 +221,7 @@ Class for generating secondaries
       self.vx[js]=fzeros(self.npmax[js],'d')
       self.vy[js]=fzeros(self.npmax[js],'d')
       self.vz[js]=fzeros(self.npmax[js],'d')
-      if top.wpid>0:
+      if top.npid>0 :
         self.pid[js]=fzeros([self.npmax[js],top.npid],'d')
 
   def install(self):
@@ -544,9 +546,15 @@ Class for generating secondaries
                if ranf()<(forced_yield-ns):ns+=1
              else:
                ns = forced_yield
-             xnew = xplost[i]+n_unit0[0][i]*1.e-10*w3d.dx
-             ynew = yplost[i]+n_unit0[1][i]*1.e-10*w3d.dy 
-             znew = zplost[i]+n_unit0[2][i]*1.e-10*w3d.dz
+             init_position_offset = self.inter[incident_species]['init_position_offset'][ics]
+             if init_position_offset>0.:
+               xnew = xplost[i]+n_unit0[0][i]*init_position_offset
+               ynew = yplost[i]+n_unit0[1][i]*init_position_offset 
+               znew = zplost[i]+n_unit0[2][i]*init_position_offset
+             else:
+               xnew = xplost[i]
+               ynew = yplost[i] 
+               znew = zplost[i]
              tmp = ones(ns,'d')
              self.inter[incident_species]['emitted'][ics][ie] += ns*top.pgroup.sq[js_new]*top.pgroup.sw[js_new]
              if top.wpid==0:
@@ -687,9 +695,15 @@ Class for generating secondaries
              if self.l_record_timing:
                tprepadd+=wtime()-tstart
                tstart=wtime()
-             xnew = xplost[i]+n_unit0[0][i]*1.e-10*w3d.dx
-             ynew = yplost[i]+n_unit0[1][i]*1.e-10*w3d.dy 
-             znew = zplost[i]+n_unit0[2][i]*1.e-10*w3d.dz
+             init_position_offset = self.inter[incident_species]['init_position_offset'][ics]
+             if init_position_offset>0.:
+               xnew = xplost[i]+n_unit0[0][i]*init_position_offset
+               ynew = yplost[i]+n_unit0[1][i]*init_position_offset 
+               znew = zplost[i]+n_unit0[2][i]*init_position_offset
+             else:
+               xnew = xplost[i]
+               ynew = yplost[i] 
+               znew = zplost[i]
 #            pid[:,self.xoldpid]=xnew-vx*top.dt
 #            pid[:,self.yoldpid]=ynew-vy*top.dt
 #            pid[:,self.zoldpid]=znew-vz*top.dt
@@ -745,12 +759,15 @@ Class for generating secondaries
               vxnew[ivnew]=vx[ivnew]*scale_factor_velocity
               vynew[ivnew]=vy[ivnew]*scale_factor_velocity
               vznew[ivnew]=vz[ivnew]*scale_factor_velocity
-#            xnew = xplost[i]+n_unit0[0][i]*1.e-10*w3d.dx
-#            ynew = yplost[i]+n_unit0[1][i]*1.e-10*w3d.dy
-#            znew = zplost[i]+n_unit0[2][i]*1.e-10*w3d.dz
-            xnew = xplost[i]+n_unit0[0][i]*1.*w3d.dx
-            ynew = yplost[i]+n_unit0[1][i]*1.*w3d.dy
-            znew = zplost[i]+n_unit0[2][i]*1.*w3d.dz
+            init_position_offset = self.inter[incident_species]['init_position_offset'][ics]
+            if init_position_offset>0.:
+              xnew = xplost[i]+n_unit0[0][i]*init_position_offset
+              ynew = yplost[i]+n_unit0[1][i]*init_position_offset 
+              znew = zplost[i]+n_unit0[2][i]*init_position_offset
+            else:
+              xnew = xplost[i]
+              ynew = yplost[i] 
+              znew = zplost[i]
 #            pid[:,self.xoldpid]=xnew-vxnew*top.dt
 #            pid[:,self.yoldpid]=ynew-vynew*top.dt
 #            pid[:,self.zoldpid]=znew-vznew*top.dt
@@ -1469,7 +1486,7 @@ Class for generating photo-electrons
     for ints in self.inter.keys():
      incident_species=self.inter[ints]['incident_species']
      emitted_species=self.inter[incident_species]['emitted_species']
-     if type(self.Lambda) is type(0.):
+     if type(self.Lambda) is not type(array([0.])):
        self.nz=0
        if self.l_switchyz:
          self.ymin=w3d.ymmin
