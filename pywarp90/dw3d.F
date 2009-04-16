@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.163 $, $Date: 2009/04/14 00:10:38 $
+c@(#) File DW3D.F, version $Revision: 3.164 $, $Date: 2009/04/16 21:30:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -174,13 +174,44 @@ c=============================================================================
 
 c  Calculates the line charge density from rho.
 
-      real(kind=8):: zz,zg,wzg,dzi
-      integer(ISZ):: ix,iy,iz,izg
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
       if (.not. lgtlchg3d .or. .not. associated(rho)) return
 
-      if (nz == 0) then
+      call gtlchg3dfromrho(nxlocal,nylocal,nzlocal,rho,dx,dy,dz,
+     &                     zgrid,zmminlocal,l2symtry,l4symtry,
+     &                     izproc==nzprocs-1)
+
+!$OMP MASTER
+      if (lw3dtimesubs) timegtlchg3d = timegtlchg3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine gtlchg3dfromrho(nxlocal,nylocal,nzlocal,rho,dx,dy,dz,
+     &                           zgrid,zmminlocal,l2symtry,l4symtry,islastproc)
+      use Subtimers3d
+      use Picglb,Only: zbeam
+      use Z_arrays,Only: linechg,zzmin,dzz,nzzarr
+      use InDiag3d,Only: lgtlchg3d
+
+      integer(ISZ):: nxlocal,nylocal,nzlocal
+      real(kind=8):: rho(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: dx,dy,dz,zgrid,zmminlocal
+      logical(ISZ):: l2symtry,l4symtry,islastproc
+
+c  Calculates the line charge density from the rho argument.
+
+      real(kind=8),pointer:: scrtch(:)
+      real(kind=8):: zz,zg,wzg,dzi
+      integer(ISZ):: iz,izg
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+      if (.not. lgtlchg3d) return
+
+      allocate(scrtch(0:nzlocal))
+
+      if (nzlocal == 0) then
         dzi = 0.
       else
         dzi = 1./dz
@@ -196,16 +227,16 @@ c First, sum up the charge density in each axial plane.
 
         if (l2symtry) then
 c         --- 2-fold: account for only one side of rho being stored
-          scrtch(iz,0) = sum(rho(:,0,iz)) + 2.*sum(rho(:,1:,iz))
+          scrtch(iz) = sum(rho(:,0,iz)) + 2.*sum(rho(:,1:,iz))
 
         elseif (l4symtry) then
 c         --- 4-fold: account for only one quadrant of rho being stored
-          scrtch(iz,0) = rho(0,0,iz) + 4.*sum(rho(1:,1:,iz)) +
+          scrtch(iz) = rho(0,0,iz) + 4.*sum(rho(1:,1:,iz)) +
      &                   2.*sum(rho(1:,0,iz)) + 2.*sum(rho(0,1:,iz))
 
         else
 c         --- no symmetries...
-          scrtch(iz,0) = sum(rho(:,:,iz))
+          scrtch(iz) = sum(rho(:,:,iz))
 
         endif
 
@@ -228,13 +259,13 @@ c       --- and 0 on the next processor. The last processor has no overlap
 c       --- at nzlocal.
         if (0 <= izg .and.
      &      (izg < nzlocal .or.
-     &       (izg == nzlocal .and. izproc == nzprocs-1))) then
-          linechg(iz) = scrtch(izg,0)*dx*dy*(1. - wzg)
+     &       (izg == nzlocal .and. islastproc))) then
+          linechg(iz) = scrtch(izg)*dx*dy*(1. - wzg)
         else
           linechg(iz) = 0.
         endif
         if (0 < izg+1 .and. izg+1 <= nzlocal) then
-          linechg(iz) = linechg(iz) + scrtch(izg+1,0)*dx*dy*wzg
+          linechg(iz) = linechg(iz) + scrtch(izg+1)*dx*dy*wzg
         endif
 
       enddo
@@ -243,8 +274,10 @@ c       --- at nzlocal.
       call parallelnonzerorealarray(linechg,nzzarr+1)
 #endif
 
+      deallocate(scrtch)
+
 !$OMP MASTER
-      if (lw3dtimesubs) timegtlchg3d = timegtlchg3d + wtime() - substarttime
+      if (lw3dtimesubs) timegtlchg3dfromrho = timegtlchg3dfromrho + wtime() - substarttime
 !$OMP END MASTER
       return
       end
