@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.44 2009/04/15 13:54:03 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.45 2009/04/17 20:29:44 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -56,7 +56,7 @@ Class for generating secondaries
   """
   def __init__(self,isinc=None,conductors=None,issec=None,set_params_user=None,material=None,
                     xoldpid=None,yoldpid=None,zoldpid=None,min_age=None,vmode=1,l_verbose=0,
-                    l_set_params_user_only=0,lcallscrapercontrollers=0):
+                    l_set_params_user_only=0,lcallscrapercontrollers=0,l_trackssnparents=0):
     self.totalcount = 0
     self.totallost = 0
     top.lresetlostpart=true
@@ -70,6 +70,7 @@ Class for generating secondaries
     self.l_verbose=l_verbose
     self.l_record_timing=0
     self.lcallscrapercontrollers = lcallscrapercontrollers
+    self.l_trackssnparents=l_trackssnparents
 #    self.condids={}
 #    self.emitted={}
     self.set_params_user=set_params_user
@@ -95,6 +96,13 @@ Class for generating secondaries
       self.zoldpid=top.npid-1
     else:
       self.zoldpid=zoldpid
+    if self.l_trackssnparents:
+      if top.spid==0:
+        top.spid=nextpid()
+        setuppgroup(top.pgroup)
+      if top.sppid==0:
+        top.sppid=nextpid()
+        setuppgroup(top.pgroup)
     # set variables for secondary electrons routines
     self.secelec_ns = zeros(1,'l')
     self.secelec_un = zeros(pos.maxsec,'d')
@@ -230,7 +238,7 @@ Class for generating secondaries
     if not isinstalledafterscraper(self.generate):
       installafterscraper(self.generate)
 
-  def addpart(self,nn,x,y,z,vx,vy,vz,js,weight=None,itype=None):
+  def addpart(self,nn,x,y,z,vx,vy,vz,js,weight=None,itype=None,ssnparent=None):
     if self.nps[js]+nn>self.npmax[js]:self.flushpart(js)
     if self.nps[js]+nn>self.npmax[js]:
       self.npmax[js] = nint(nn*1.2)
@@ -246,6 +254,7 @@ Class for generating secondaries
     self.vz[js][il:iu]=vz
     if weight is not None:self.pid[js][il:iu,top.wpid-1]=weight
     if itype is not None:self.pid[js][il:iu,self.piditype]=itype.astype(float64)
+    if ssnparent is not None:self.pid[js][il:iu,top.sppid-1]=ssnparent
     self.nps[js]+=nn
       
   def flushpart(self,js):
@@ -408,6 +417,7 @@ Class for generating secondaries
         uyplost = take(top.uyplost[i1:i2],iit)
         uzplost = take(top.uzplost[i1:i2],iit)
         gaminvlost = take(top.gaminvlost[i1:i2],iit)
+        if self.l_trackssnparents: ssnplost = take(top.pidlost[i1:i2,top.spid-1],iit)
         if self.vmode==1:
           vxplost=uxplost*gaminvlost
           vyplost=uyplost*gaminvlost
@@ -445,10 +455,6 @@ Class for generating secondaries
         # theta is relative to the z axis, phi to the x axis in the x-y plane 
         n_unit0 = array([sintheta*cosphi,sintheta*sinphi,costheta])
         coseta = -sum(v*n_unit0,axis=0)/sqrt(sum(v*v,axis=0))
-#        print 'coseta = ',coseta
-#        return
-#        coseta=0.5*ones(shape(e0)[0])
-#        e0=30.*ones(shape(e0)[0])
         if top.wpid==0:
           ek0av+=sum(e0)*top.pgroup.sw[js]
           costhav+=sum(abs(coseta))*top.pgroup.sw[js]
@@ -458,7 +464,6 @@ Class for generating secondaries
           costhav+=sum(weight*abs(coseta))*top.pgroup.sw[js]
           weighttot+=sum(weight)*top.pgroup.sw[js]
         ek0max=max(max(e0),ek0max)
-#        coseta = 0.*cosphi
         if 1:#cond.lcollectlpdata:
           if not cond.lostparticles_angles.has_key(js):
             cond.lostparticles_angles[js]=zeros(181,'d')
@@ -556,11 +561,15 @@ Class for generating secondaries
                ynew = yplost[i] 
                znew = zplost[i]
              tmp = ones(ns,'d')
+             if self.l_trackssnparents:
+               ssnparent = tmp*ssnplost[i]
+             else:
+               ssnparent = None
              self.inter[incident_species]['emitted'][ics][ie] += ns*top.pgroup.sq[js_new]*top.pgroup.sw[js_new]
              if top.wpid==0:
-                self.addpart(ns,xnew,ynew,znew,1.e-10*tmp,1.e-10*tmp,1.e-10*tmp,js_new,itype=None)
+                self.addpart(ns,xnew,ynew,znew,1.e-10*tmp,1.e-10*tmp,1.e-10*tmp,js_new,itype=None,ssnparent=ssnparent)
              else:
-                self.addpart(ns,xnew,ynew,znew,1.e-10*tmp,1.e-10*tmp,1.e-10*tmp,js_new,ones(ns)*weight[i],None)
+                self.addpart(ns,xnew,ynew,znew,1.e-10*tmp,1.e-10*tmp,1.e-10*tmp,js_new,ones(ns)*weight[i],None,ssnparent=ssnparent)
              
            elif emitted_species.type is Electron:
             if incident_species.type is Electron:
@@ -723,12 +732,16 @@ Class for generating secondaries
               self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
               n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
              else:
+               if self.l_trackssnparents:
+                 ssnparent = ones(ns)*ssnplost[i]
+               else:
+                 ssnparent = None
                if top.wpid==0:
                 e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*(uxsec*uxsec+uysec*uysec+uzsec*uzsec)
-                self.addpart(ns,xnew,ynew,znew,uxsec,uysec,uzsec,js_new,itype=itype)
+                self.addpart(ns,xnew,ynew,znew,uxsec,uysec,uzsec,js_new,itype=itype,ssnparent=ssnparent)
                else:
                 e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*weight[i]*(uxsec*uxsec+uysec*uysec+uzsec*uzsec)
-                self.addpart(ns,xnew,ynew,znew,uxsec,uysec,uzsec,js_new,ones(ns)*weight[i],itype)
+                self.addpart(ns,xnew,ynew,znew,uxsec,uysec,uzsec,js_new,ones(ns)*weight[i],itype,ssnparent=ssnparent)
                ek0emitav += sum(e0emit)
               
            ########################
@@ -789,12 +802,16 @@ Class for generating secondaries
                 self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
               xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
             else:
+              if self.l_trackssnparents:
+                ssnparent = ones(ns)*ssnplost[i]
+              else:
+                ssnparent = None
               if top.wpid==0:
                 e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*(vxnew*vxnew+vynew*vynew+vznew*vznew)
-                self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,itype=None)
+                self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,itype=None,ssnparent=ssnparent)
               else:
                 e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*weight*(vxnew*vxnew+vynew*vynew+vznew*vznew)
-                self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,ones(ns)*weight[i],None)
+                self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,ones(ns)*weight[i],None,ssnparent=ssnparent)
               ek0emitav += sum(e0emit)
             
           if self.l_record_timing:
