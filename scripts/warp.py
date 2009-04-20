@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.182 2009/04/03 21:46:52 dave Exp $"
+warp_version = "$Id: warp.py,v 1.183 2009/04/20 19:39:56 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -202,6 +202,10 @@ top.pgroup = top.pgroupstatic
 # --- Get start time
 top.starttime = time.time()
 top.starttimedump = top.starttime
+
+# --- Set the starting social security number. It is set so that the
+# --- starting values on each processor are widely separated.
+top.ssn = sys.maxint/npes*me + 1
 
 # --- Simple function to calculate Child-Langmuir current density
 def childlangmuir(v,d,q=None,m=None):
