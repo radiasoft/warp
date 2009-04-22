@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.50 $, $Date: 2009/02/24 17:59:18 $
+c W3DSLAVE.M, version $Revision: 1.51 $, $Date: 2009/04/22 22:09:35 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -838,8 +838,9 @@ c Get the phi for the full extent where the fields are. This gets phi from
 c neighboring processors, and at the very least gets phi in the guard planes,
 c iz=-1 and +1.
 
-      integer(MPIISZ):: i,nn,iproc
-      integer(MPIISZ):: izglobal,izmax,izmaxfs
+      integer(ISZ):: i
+      integer(ISZ):: izglobal,izmax,izmaxfs
+      integer(MPIISZ):: nn,iproc
       integer(MPIISZ):: izsend(0:nzprocs-1),nzsend(0:nzprocs-1)
       integer(MPIISZ):: izrecv(0:nzprocs-1),nzrecv(0:nzprocs-1)
       include "mpif.h"
@@ -890,27 +891,30 @@ c     --- Then, gather up the data sent to this processor.
       enddo
  
 c     --- Send the data out to processors that need it.
-      w = 0
-      do i=0,nzprocs-1
-        if (nzsend(i) > 0) then
-          if ( i /= izproc) then
-            w = w + 1
-            nn = nzsend(i)*(nx+3)*(ny+3)
-            iproc = convertindextoproc(ixproc,iyproc,izproc,
-     &                                 nxprocs,nyprocs,nzprocs)
-            call MPI_ISEND(phi(-1,-1,izsend(i)),nn,
-     &                     MPI_DOUBLE_PRECISION,
-     &                     iproc,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
+c     --- Only even processors first to avoid a lock-up.
+      if (mod(izproc,2) == 0) then
+        w = 0
+        do i=0,nzprocs-1
+          if (nzsend(i) > 0) then
+            if ( i /= izproc) then
+              w = w + 1
+              nn = nzsend(i)*(nx+3)*(ny+3)
+              iproc = convertindextoproc(ixproc,iyproc,i,
+     &                                   nxprocs,nyprocs,nzprocs)
+              call MPI_ISEND(phi(-1,-1,izsend(i)),nn,
+     &                       MPI_DOUBLE_PRECISION,
+     &                       iproc,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
+            endif
           endif
-        endif
-      enddo
+        enddo
+      endif
 
 c     --- Then, gather up the data sent to this processor.
       do i=0,nzprocs-1
         if ( i /= izproc) then
           if (nzrecv(i) > 0) then
             nn = nzrecv(i)*(nx+3)*(ny+3)
-            iproc = convertindextoproc(ixproc,iyproc,izproc,
+            iproc = convertindextoproc(ixproc,iyproc,i,
      &                                 nxprocs,nyprocs,nzprocs)
             call MPI_RECV(phi(-1,-1,izrecv(i)),nn,
      &                    MPI_DOUBLE_PRECISION,
@@ -919,6 +923,24 @@ c     --- Then, gather up the data sent to this processor.
         endif
       enddo
  
+c     --- Now the odd processors
+      if (mod(izproc,2) == 1) then
+        w = 0
+        do i=0,nzprocs-1
+          if (nzsend(i) > 0) then
+            if ( i /= izproc) then
+              w = w + 1
+              nn = nzsend(i)*(nx+3)*(ny+3)
+              iproc = convertindextoproc(ixproc,iyproc,i,
+     &                                   nxprocs,nyprocs,nzprocs)
+              call MPI_ISEND(phi(-1,-1,izsend(i)),nn,
+     &                       MPI_DOUBLE_PRECISION,
+     &                       iproc,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
+            endif
+          endif
+        enddo
+      endif
+
 c     --- This is needed since the sends are done without buffering.
 c     --- No problems have been seem without it, but this just for robustness.
 c     if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
