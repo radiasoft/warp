@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.430 $, $Date: 2009/04/14 20:32:09 $
+c@(#) File W3D.F, version $Revision: 3.431 $, $Date: 2009/04/22 22:12:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -11339,8 +11339,19 @@ c           --- Apply inhomogeneous Dirichlet boundary conditions
 #ifdef MPIPARALLEL
           call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
      &                                 -1,0,bounds,fsdecomp)
+c         --- This is what should be here, but this is causing a problem
+c         --- under certain conditions, giving a seg fault deep inside of
+c         --- the MPI call. I am hoping that there is a bug in MPI that
+c         --- will be fixed. The routine that this calls have been heavily
+c         --- tested and otherwise work OK.
+c         call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+c    &                         -1,-1,0,1,fsdecomp)
+c         --- This does the same thing, but less efficiently, but doesn't
+c         --- exihibit the seg fault.
           call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
-     &                         -1,-1,0,1,fsdecomp)
+     &                         -1,-1,1,1,fsdecomp)
+          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+     &                         -1,-1,0,0,fsdecomp)
 #endif
 c         --- Note that perphi3d is only called for the RZ solver.
           if (bound0==periodic) call perphi3d()
