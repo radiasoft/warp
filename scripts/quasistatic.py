@@ -274,7 +274,7 @@ class Quasistatic(SubcycledPoissonSolver):
      # --- sets flag for pushing electrons
      if self.lattice is not None:
        l_push_elec = self.lattice[self.ist].ecflag     
-       print 'l_push_elec',l_push_elec
+       if self.l_verbose:print 'l_push_elec',l_push_elec
      else:
        l_push_elec = (not self.l_weakstrong) or ((top.it-(npes-me))%self.nelecperiod==0)
 
@@ -513,7 +513,7 @@ class Quasistatic(SubcycledPoissonSolver):
 
      # --- call afterstep functions
      callafterstepfuncs.callfuncsinlist()
-     print me,top.it,self.iz,'it = %i, time = %gs.'%(top.it,top.time)
+     if self.l_verbose:print me,top.it,self.iz,'it = %i, time = %gs.'%(top.it,top.time)
 
      self.time_loop = wtime()-ptimeloop
 
@@ -1535,7 +1535,7 @@ class Quasistatic(SubcycledPoissonSolver):
         if np>0:
           zp=pg.zp[il:iu].copy()
           self.lattice[self.ist].apply_transfer_map(pg,il,iu)
-        if self.iz==w3d.nzp-2:print 'push beam in ',self.lattice[self.ist].name
+        if self.iz==w3d.nzp-2 and self.l_verbose:print 'push beam in ',self.lattice[self.ist].name
         self.ilcount[js]+=1
         istadd=1
         while self.lattice[(self.ist+istadd)%self.nst].L==0.:
