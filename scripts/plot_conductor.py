@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.123 2009/02/05 18:18:40 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.124 2009/04/24 18:22:40 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -432,8 +432,8 @@ by the conductor number.
         elif i4[1] is not None: z.append(i4[1])
 
   # --- Now that the data is gathered, make the plot.
-  z = array(z)
-  z = z.astype(ubyte)
+  z = array(z).astype(ubyte)
+  n = array(n).astype(long)
   plfp(z,y,x,n,local=local)
 
 def _corner1(ix,iy,sx,sy,delsx,delsy,nm,nmsx,nmsy,iparity,
@@ -801,8 +801,8 @@ by the conductor number.
   # --- Note that this may not work in parallel!!
   print n
   # --- Now that the data is gathered, make the plot.
-  z = array(z)
-  z = z.astype(ubyte)
+  z = array(z).astype(ubyte)
+  n = array(n).astype(long)
   plfp(z,y,x,n,local=local)
   plp([y[0]],[x[0]],marker=circle,color=green,local=local)
   plg(y,x,color=red,local=local)
