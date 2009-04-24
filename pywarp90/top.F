@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.238 $, $Date: 2009/03/31 22:19:46 $
+c@(#) File TOP.F, version $Revision: 3.239 $, $Date: 2009/04/24 18:30:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2009,6 +2009,7 @@ c --- X extrapolated using constant V and estimated A
       real(kind=8):: oneondt,dtstar,delz,vx,vy,vz,ax,ay,az,dp,dm
       real(kind=8):: vznp1,zznp1,delznp1,dtstarnp1
       integer(ISZ):: iw,ip,nn
+      integer(ISZ):: nextpid
 
       real(kind=8):: timetemp,wtime
 
@@ -2016,6 +2017,15 @@ c     --- Check if the pgroup had been initialized.
       if (isid == 0) return
 
       oneondt = 1./dt
+
+      if (lepsaveonce) then
+c       --- Make sure that epflagpid is setup. This might not be setup if
+c       --- the lepsaveonce was set after the generate.
+        if (epflagpid == 0) then
+          epflagpid = nextpid()
+          call setuppgroup(pgroup)
+        endif
+      endif
 
       if (npidepmax .ne. npid) then
         npidepmax = npid
