@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.246 2009/03/28 00:37:32 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.247 2009/04/27 18:10:08 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -113,6 +113,7 @@ seldom = top.seldom
 never = top.never
 cgmlogfile = None
 numframeslist = ones(8,'l')
+_hcp_frame_number = zeros(8,'l')
 
 if with_gist:
   gist.pldefault(marks=0) # --- Set plot defaults, no line marks
@@ -332,13 +333,22 @@ def plotruninfo():
   runid = arraytostr(top.runid)
   ss = '%-28s  %-8s  %-8s  %-9s  %-8s'%(runmaker,codeid,rundate,runtime,runid)
   if with_gist:
-    plt(ss,0.12,0.24,local=1)
+    # --- Replace _ with !_ so that it prints an underscore instead of making
+    # --- a subscript. This is most important for the runid.
+    plt(ss.replace('_','!_'),0.12,0.24,local=1)
   if with_matplotlib:
     aa.text(0.12,0.24,ss)
   # --- Increment and print frame number and log
   # --- numframeslist is now incremented in fma
   #numframeslist[active_window()] = numframeslist[active_window()] + 1
   if with_gist:
+    if _hcp_frame_number[active_window()] > 0:
+      # --- If an hcp has been done, overwrite the frame number using the
+      # --- background color. It would better better to delete it but I
+      # --- don't think there is a way currently.
+      plt(repr(_hcp_frame_number[active_window()]),0.68,0.9,
+          justify='RA',local=1,color='bg')
+      _hcp_frame_number[active_window()] = 0
     plt(repr(numframeslist[active_window()]),0.68,0.9,justify='RA',local=1)
   if with_matplotlib:
     aa.text(0.68,0.9,repr(numframeslist[active_window()]),
@@ -606,11 +616,16 @@ copy file.
   controllers.callafterplotfuncs()
   # --- Write the run log info
   if legend: plotruninfo()
-  controllers.callbeforeplotfuncs()
   if with_gist:
     callplotfunction("hcp")
   if with_matplotlib:
     pylab.savefig(_matplotwindows[_matplotactivewindow[0]],format='ps')
+  # --- Save the current frame number so that it can be removed from the
+  # --- next frame which will have the incremented frame number.
+  _hcp_frame_number[active_window()] = numframeslist[active_window()]
+  # --- Increment frame number
+  numframeslist[active_window()] = numframeslist[active_window()] + 1
+  controllers.callbeforeplotfuncs()
 
 def refresh():
   """
