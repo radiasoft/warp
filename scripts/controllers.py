@@ -69,7 +69,7 @@ installuserinjection, uninstalluserinjection, installeduserinjection
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.25 2009/01/06 00:39:52 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.26 2009/04/27 16:45:51 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -559,7 +559,15 @@ def installuserparticlesinjection(f):
   """
 Adds a user defined function that is to be called during injection which
 allows the user to specify the distribution of particles on the emitting
-surface. For expert use only."""
+surface. For expert use only.
+To use, the installed function should set w3d.npgrp to the number of
+particles to inject, call gchange("Setpwork3d") to allocate the arrays, and
+fill the arrays w3d.xt, yt, uxt, uyt, and uzt with the particle data. The
+particles start on the emitting surface and the code will advance them away
+from the surface. The function will be called once for each species each time
+step, with the variable w3d.inj_js set to the species being injected. Note
+that if no particles are to be injected, set w3d.npgrp=0 to avoid injection
+of bad particles."""
   warp.w3d.l_inj_user_particles = warp.true
   generateuserparticlesforinjection.installfuncinlist(f)
 def uninstalluserparticlesinjection(f):
