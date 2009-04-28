@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.247 2009/04/27 18:10:08 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.248 2009/04/28 18:05:57 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -5498,6 +5498,25 @@ def set_label(height=None,font=None,bold=0,italic=0,axis='all',system=None):
           gist_style ['systems'][i]['ticks']['vertical']['textStyle']['font']=font
     set_style(gist_style)
 
+def setlinewidth(width=1.):
+  """Set the line width for the axis and the data.
+Note that this does not affect contour lines.
+ - width=1.: desired line width
+  """
+  if with_matplotlib:
+    print "Not yet implemented for matplotlib"
+  else:
+    gist.pldefault(width=width)
+    style = gist.get_style()
+    for s in style['systems']:
+      s['ticks']['horizontal']['tickStyle']['width'] = width
+      s['ticks']['horizontal']['gridStyle']['width'] = width
+      s['ticks']['vertical']['tickStyle']['width'] = width
+      s['ticks']['vertical']['gridStyle']['width'] = width
+      s['ticks']['frameStyle']['width'] = width
+      # --- This is needed to get around a bug.
+      s['legend']=''
+    gist.set_style(style)
 
 class getstdout:
     def __init__(self):
