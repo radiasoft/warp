@@ -18,14 +18,15 @@ averagezdata(): Does local averaging over the first dimension of the input
                 array. Can also do down select on the data.
 getdatafromtextfile(): Reads in table data from a text file, returning an array
                        that holds that data.
-
+RandomStream: Class the allows creating independent streams of random
+              numbers.
 """
 from __future__ import generators # needed for yield statement for P2.2
 from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.26 2009/03/28 00:06:09 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.27 2009/05/05 00:55:30 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -451,4 +452,34 @@ automatically.
     return data,header
   else:
     return data
+
+class RandomStream(object):
+  """Create an independent stream of random numbers.
+>>> r1 = RandomStream()
+>>> r2 = RandomStream()
+>>> r1.seed([1,2,3])
+>>> r2.seed([1,2,3])
+>>> print r1.random()
+0.609861272287
+>>> print r2.random()
+0.609861272287
+  """
+  def __init__(self):
+    # --- Save the initial random number state
+    self._state = random.get_state()
+  def __getattr__(self,name):
+    # --- For all attribute access, save the attribute name and return the
+    # --- _wrapper method.
+    self._savedname = name
+    return self._wrapper
+  def _wrapper(self,*args,**kw):
+    # --- This method calls the function from the random module with the saved
+    # --- name, though first it switches to the stream's state, and then
+    # --- switches back afterward.
+    savedstate = random.get_state()
+    random.set_state(self._state)
+    result = getattr(random,self._savedname)(*args,**kw)
+    self._state = random.get_state()
+    random.set_state(savedstate)
+    return result
 
