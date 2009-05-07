@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.431 $, $Date: 2009/04/22 22:12:09 $
+c@(#) File W3D.F, version $Revision: 3.432 $, $Date: 2009/05/07 23:56:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5707,7 +5707,8 @@ c              --- over the uniform distribution to an integral over the
 c              --- specified distribution.  The particle remains within
 c              --- the range [0,1].
                if (nrmzdist(izz+1) == nrmzdist(izz)) then
-                 zt(i-k+1) = (zt(i-k+1) - intzdist(izz))/nrmzdist(izz)
+                 zt(i-k+1) = ((zt(i-k+1) - intzdist(izz))/nrmzdist(izz)+izz)/
+     &                       nzdist
                else
                  zt(i-k+1) = ((sqrt(nrmzdist(izz)**2 -
      &                     2.*(nrmzdist(izz+1)-nrmzdist(izz))*(intzdist(izz) -
