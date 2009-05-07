@@ -38,6 +38,7 @@ Other:
  Sphere(radius,...)
  ZElliptoid(ellipticity,radius,...)
  ZTorus(r1,r2,...)
+ ZGrid(xcellsize,ycellsize,length,thickness,...)
  Beamletplate(za,zb,z0,thickness,...)
 
 Surfaces of revolution:
@@ -109,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.196 2009/03/25 22:49:04 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.197 2009/05/07 17:14:27 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3282,6 +3283,36 @@ Torus
     r = self.r2*cos(theta) + self.r1
     z = self.r2*sin(theta)
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+
+#============================================================================
+class ZGrid(Assembly):
+  """
+Rectangular grid
+  - xcellsize,ycellsize: cell size
+  - length: z length
+  - thickness: metal thickness
+  - voltage=0: beamlet plate voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of beamlet plate
+  - condid=1: conductor id of beamlet plate, must be integer, or can be 'next'
+              in which case a unique ID is chosen
+  """
+  def __init__(self,xcellsize,ycellsize,length,thickness,
+               voltage=0.,
+               xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+    kwlist = ['xcellsize','ycellsize','length','thickness']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                      zgridconductorf,zgridconductord,zgridintercept,
+                      kw=kw)
+    self.xcellsize = xcellsize
+    self.ycellsize = ycellsize
+    self.length = length
+    self.thickness = thickness
+
+    zmin = -length/2.
+    zmax = +length/2.
+
+    self.createextent([-largepos,-largepos,zmin],
+                      [+largepos,+largepos,zmax])
 
 #============================================================================
 class Beamletplate(Assembly):
