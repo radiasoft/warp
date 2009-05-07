@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.198 $, $Date: 2009/02/04 00:42:10 $
+#@(#) File F3D.V, version $Revision: 3.199 $, $Date: 2009/05/07 17:13:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.198 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.199 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -911,6 +911,18 @@ ztorusconductorf(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
 ztorusconductord(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 ztorusintercept(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
+zgridconductorf(xcellsize:real,ycellsize:real,length:real,thickness:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
+zgridconductord(xcellsize:real,ycellsize:real,length:real,thickness:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
+zgridintercept(xcellsize:real,ycellsize:real,length:real,thickness:real,
+        xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 beamletplateconductorf(za:real,zb:real,z0:real,thickness:real,

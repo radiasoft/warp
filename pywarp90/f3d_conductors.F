@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.66 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.67 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -3929,6 +3929,296 @@ c     --- Calculate angles in lab frame
 
       return
       end
+c=======================================================================
+c=======================================================================
+      subroutine ZGridConductorF(xcellsize,ycellsize,length,thickness,
+     &                           xcent,ycent,zcent,
+     &                           n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                           fuzz)
+      real(kind=8):: xcellsize,ycellsize,length,thickness
+      real(kind=8):: xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: delmx(n),delpx(n)
+      real(kind=8):: delmy(n),delpy(n)
+      real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
+
+c Finds distances along the axis of the points from a grid
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: zmin,zmax
+
+      zmin = zcent - length/2.
+      zmax = zcent + length/2.
+
+c     --- This cheats for now, putting in a solid conductor within the
+c     --- z extent.
+      do i=1,n
+
+        delmx(i) = LARGEPOS
+        delpx(i) = LARGEPOS
+        delmy(i) = LARGEPOS
+        delpy(i) = LARGEPOS
+        delmz(i) = LARGEPOS
+        delpz(i) = LARGEPOS
+
+        if (z(i) <= zmin) then
+          delpz(i) = zmin - z(i)
+        else if (z(i) <= zmax) then
+          delpz(i) = z(i) - zmax
+        endif
+        if (z(i) >= zmax) then
+          delmz(i) = z(i) - zmax
+        else if (z(i) >= zmin) then
+          delmz(i) = zmin - z(i)
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZGridConductorD(xcellsize,ycellsize,length,thickness,
+     &                           xcent,ycent,zcent,
+     &                           n,x,y,z,distance)
+      real(kind=8):: xcellsize,ycellsize,length,thickness
+      real(kind=8):: xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances to the grid
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i,ix,iy
+      real(kind=8):: zmin,zmax
+      real(kind=8):: dx,dy,dxl,dxu,dyl,dyu
+      real(kind=8):: dxmin,dymin
+
+      zmin = zcent - length/2.
+      zmax = zcent + length/2.
+
+      do i=1,n
+
+        if (z(i) < zmin) then
+          distance(i) = zmin - z(i)
+        else if (z(i) > zmax) then
+          distance(i) = z(i) - zmax
+        else
+          ix = int(abs(x(i) - xcent)/xcellsize)
+          dx = abs(x(i) - xcent) - ix*xcellsize
+          iy = int(abs(y(i) - ycent)/ycellsize)
+          dy = abs(y(i) - ycent) - iy*ycellsize
+
+          if (dx <= thickness/2.) then
+            dxl = dx - thickness/2.
+            dxu = LARGEPOS
+          else if (dx >= xcellsize - thickness/2.) then
+            dxl = LARGEPOS
+            dxu = xcellsize - thickness/2. - dx
+          else
+            dxl = dx - thickness/2.
+            dxu = xcellsize - thickness/2. - dx
+          endif
+
+          if (dy <= thickness/2.) then
+            dyl = dy - thickness/2.
+            dyu = LARGEPOS
+          else if (dy >= ycellsize - thickness/2.) then
+            dyl = LARGEPOS
+            dyu = ycellsize - thickness/2. - dy
+          else
+            dyl = dy - thickness/2.
+            dyu = ycellsize - thickness/2. - dy
+          endif
+
+          dxmin = min(dxl,dxu)
+          dymin = min(dyl,dyu)
+
+          if (dxmin < 0. .and. dymin < 0.) then
+            distance(i) = -sqrt(dxmin**2 + dymin**2)
+          else
+            distance(i) = min(dxmin,dymin)
+          endif
+
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZGridIntercept(xcellsize,ycellsize,length,thickness,
+     &                          xcent,ycent,zcent,
+     &                          n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
+      use Constant
+      real(kind=8):: xcellsize,ycellsize,length,thickness
+      real(kind=8):: xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
+      real(kind=8):: xi(n),yi(n),zi(n),itheta(n),iphi(n)
+
+c Finds place where particle inside intercepted the surface and the
+c normal angle of the surface at that point.
+
+      integer(ISZ):: i,ix,iy,signx,signy
+      real(kind=8):: zmin,zmax
+      real(kind=8):: dx,dy,dt
+      real(kind=8):: dtx,dty,dtz
+      real(kind=8):: ithetax,iphix
+      real(kind=8):: ithetay,iphiy
+      real(kind=8):: xiz,yiz,ziz,ithetaz,iphiz
+      real(kind=8):: dd
+      logical(ISZ):: linside
+
+      zmin = zcent - length/2.
+      zmax = zcent + length/2.
+
+      do i=1,n
+
+        if (x(i) < xcent) then
+          signx = -1
+        else
+          signx = +1
+        endif
+
+        if (y(i) < ycent) then
+          signy = -1
+        else
+          signy = +1
+        endif
+
+        ix = int(signx*(x(i) - xcent)/xcellsize)
+        dx = signx*(x(i) - xcent) - ix*xcellsize
+        iy = int(signy*(y(i) - ycent)/ycellsize)
+        dy = signy*(y(i) - ycent) - iy*ycellsize
+
+        if (signx*vx(i) < 0.) then
+          if (dx < thickness/2.) then
+            dtx = (thickness/2. - dx)/(signx*vx(i))
+          else
+            dtx = (xcellsize + thickness/2. - dx)/(signx*vx(i))
+          endif
+          ithetax = pi*0.5
+          iphix = 0.
+        else if (signx*vx(i) > 0.) then
+          if (dx < xcellsize - thickness/2.) then
+            dtx = (-thickness/2. - dx)/(signx*vx(i))
+          else
+            dtx = (xcellsize - thickness/2. - dx)/(signx*vx(i))
+          endif
+          ithetax = pi*0.5
+          iphix = pi
+        else
+          dtx = -LARGEPOS
+          ithetax = 0.
+          iphix = 0.
+        endif
+
+        if (signy*vy(i) < 0.) then
+          if (dy < thickness/2.) then
+            dty = (thickness/2. - dy)/(signy*vy(i))
+          else
+            dty = (ycellsize + thickness/2. - dy)/(signy*vy(i))
+          endif
+          ithetay = pi*0.5
+          iphiy = 0.
+        else if (signy*vy(i) > 0.) then
+          if (dy < ycellsize - thickness/2.) then
+            dty = (-thickness/2. - dy)/(signy*vy(i))
+          else
+            dty = (ycellsize - thickness/2. - dy)/(signy*vy(i))
+          endif
+          ithetay = pi*0.5
+          iphiy = pi
+        else
+          dty = -LARGEPOS
+          ithetay = 0.
+          iphiy = 0.
+        endif
+
+        if (vz(i) < 0.) then
+          dtz = (zmax - z(i))/vz(i)
+          xiz = vx(i)*dtz + x(i)
+          yiz = vy(i)*dtz + y(i)
+          ziz = zmax
+          ithetaz = 0.
+          iphiz = 0.
+        else if (vz(i) > 0.) then
+          dtz = (zmin - z(i))/vz(i)
+          xiz = vx(i)*dtz + x(i)
+          yiz = vy(i)*dtz + y(i)
+          ziz = zmin
+          ithetaz = pi
+          iphiz = 0.
+        else
+          dtz = -LARGEPOS
+          xiz = LARGEPOS
+          yiz = LARGEPOS
+          ziz = zcent
+          ithetaz = 0.
+          iphiz = 0.
+        endif
+
+        if (dtx == -LARGEPOS .or. dty == -LARGEPOS) then
+          xi(i) = xiz
+          yi(i) = yiz
+          zi(i) = ziz
+          itheta(i) = ithetaz
+          iphi(i) = iphiz
+          cycle
+        endif
+
+        linside = .true.
+        do while (linside)
+
+          if (-dtz < min(-dtx,-dty)) then
+            xi(i) = xiz
+            yi(i) = yiz
+            zi(i) = ziz
+            itheta(i) = ithetaz
+            iphi(i) = iphiz
+            exit
+          endif
+
+          if (-dtx < -dty) then
+            xi(i) = vx(i)*dtx + x(i)
+            yi(i) = vy(i)*dtx + y(i)
+            zi(i) = vz(i)*dtx + z(i)
+            itheta(i) = ithetax
+            iphi(i) = iphix
+          else
+            xi(i) = vx(i)*dty + x(i)
+            yi(i) = vy(i)*dty + y(i)
+            zi(i) = vz(i)*dty + z(i)
+            itheta(i) = ithetay
+            iphi(i) = iphiy
+          endif
+
+          call ZGridConductorD(xcellsize,ycellsize,length,thickness,
+     &                         xcent,ycent,zcent,
+     &                         1,xi(i),yi(i),zi(i),dd)
+
+c         linside = (dd < 0.)
+          linside = (dd < -thickness/1000.)
+
+          if (linside) then
+            if (-dtx < -dty) then
+              dtx = dtx - xcellsize/abs(vx(i))
+            else
+              dty = dty - ycellsize/abs(vy(i))
+            endif
+          endif
+
+        enddo
+
+      enddo
+
+      return
+      end
+
 c=======================================================================
 c=======================================================================
       subroutine BeamletplateConductorF(za,zb,z0,thickness,xcent,ycent,zcent,
