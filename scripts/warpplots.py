@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.248 2009/04/28 18:05:57 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.249 2009/05/08 18:15:37 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -118,6 +118,7 @@ _hcp_frame_number = zeros(8,'l')
 if with_gist:
   gist.pldefault(marks=0) # --- Set plot defaults, no line marks
   gist.pldefault(legends=0) # --- Turn off the legends in hardcopy output
+  #gist.pldefault(width=4.) # --- Set plot defaults, width linewidth
 
   # --- Set GISTPATH environment variable appropriately if it is not already
   # --- set.
@@ -173,7 +174,7 @@ Does the work needed to start writing plots to a file automatically
   if me == 0:
     if prefix is None: prefix = arraytostr(top.runid)
     if writetodatafile:
-      suffix = 'pdb'
+      suffix = 'pkl'
     else:
       if makepsfile or with_matplotlib:
         suffix = 'ps'
@@ -284,7 +285,7 @@ Opens up an X window
     assert winnum > 0,'winnum must not be 0'
     # --- Check file type from window 0
     if setup.pname[-2:] == 'ps': numb = setup.pname[-7:]
-    elif setup.pname[-3:] == 'cgm': numb = setup.pname[-8:]
+    elif setup.pname[-3:] in ['cgm','pkl']: numb = setup.pname[-8:]
     # --- Create file name
     pname = arraytostr(top.runid)
     if prefix is not None: pname = prefix + pname
@@ -301,6 +302,11 @@ Opens up an X window
       # --- Open a new file for the plots and make it active.
       _matplotwindows.append(open(pname,'w'))
       _matplotactivewindow[0] = len(_matplotwindows) - 1
+
+    if _plotdatafilenames[0] is not None:
+      # --- If plots for window 0 are bein written to a data file,
+      # --- then do the same for this new window.
+      setplotdatafilename(pname)
 
     return winnum
 
@@ -390,11 +396,23 @@ def makeplotsdirectly():
   _accumulateplotlists -= 1
 
 # --- This allows writing out all plot data into a data file instead of
-# --- creating the plot with gist.
-_plotdatafilename = None
-def setplotdatafilename(filename=None):
-  global _plotdatafilename
-  _plotdatafilename = filename
+# --- creating the plot with gist. Each window has its own filename and object.
+_plotdatafilenames = 8*[None]
+_plotdatafileobjects = 8*[None]
+def setplotdatafilename(filename=None,winnum=None):
+  if winnum is None: winnum = active_window()
+  _plotdatafilenames[winnum] = filename
+  if _plotdatafileobjects[winnum] is not None:
+    # --- Some other file was already opened. Make sure it is closed.
+    try:
+      _plotdatafileobjects[winnum].close()
+    except:
+      # --- This is probably not a good idea to catch all errors, but this
+      # --- if block should never be executed anyway and is only here for
+      # --- odd end cases.
+      pass
+  # --- The file is only opened when something is being written to it.
+  _plotdatafileobjects[winnum] = None
 
 # --- This is the global list of the things to be plotted and the function
 # --- which actually does the plotting.
@@ -421,163 +439,108 @@ def callplotfunction(pfunc,args=[],kw={}):
   if _accumulateplotlists:
     addthingtoplot(pfunc,args,kw)
   else:
-    handleplotfunctioncall(pfunc,args,kw)
+    return handleplotfunctioncall(pfunc,args,kw)
 def handleplotfunctioncall(pfunc,args=[],kw={}):
-  if _plotdatafilename is None:
+  winnum = active_window()
+  if _plotdatafilenames[winnum] is None:
     # --- Make direct call to gist or matplotlib routine
-    getattr(_plotpackage,pfunc)(*args,**kw)
+    return getattr(_plotpackage,pfunc)(*args,**kw)
   else:
     # --- Write data to the file (for later processing)
-    # --- plotcounts holds a running count of the number of plot commands
-    # --- in the current frame of the currently active window.
-    try: handleplotfunctioncall.plotcounts
-    except: handleplotfunctioncall.plotcounts = zeros(8,'l')
-    plotcount = handleplotfunctioncall.plotcounts[active_window()]
-    if pfunc == 'fma':
-      # --- On a frame advance, reset the count.
-      handleplotfunctioncall.plotcounts[active_window()] = 0
-    else:
-      # --- Increment the plot command count.
-      handleplotfunctioncall.plotcounts[active_window()] += 1
-    # --- Create the file or open it for appending.
-    ff = PW.PW(_plotdatafilename,mode='a',verbose=0)
-    # --- Variable name suffix
-    pp = '%02d_%07d_%06d'%(active_window(),numframeslist[active_window()],plotcount)
-    # --- Write out the plot function name
-    vv = 'f%s'%pp
-    ff.write(vv,pfunc)
-    # --- Write out the arguments
-    for i,arg in enumerate(args):
-      vv = 'a%s_%02d'%(pp,i)
-      ff.write(vv,arg)
-    # --- Write out the keyword arguments
-    i = 0
-    for k,v in kw.items():
-      vv = 'k%s_%02d'%(pp,i)
-      ff.write(vv,k)
-      vv = 'v%s_%02d'%(pp,i)
-      ff.write(vv,v)
-      i += 1
-    ff.close()
+    # --- Note that for now pickle is used for its simplicity.
+    # --- PyPDB is not really usable. It is not robust enough, since the file
+    # --- must be closed in order for it to be readable, so a run crash
+    # --- would cause all plot data to be lost. But, writing pickled objects
+    # --- to the file is not supported in append mode (everything
+    # --- written would need to be read in and rewritten out).
+    # --- However, pickle is not perfect, since there seems to be an issue
+    # --- of moving pickled integers between 32 and 64 bit machines.
+    if _plotdatafileobjects[winnum] is None:
+      # --- The file is opened here when something is being written to it.
+      # --- It is opened in append mode to avoid accidentally deleting data.
+      _plotdatafileobjects[winnum] = open(_plotdatafilenames[winnum],'ab')
+    cPickle.dump((numframeslist[active_window()],
+                  pfunc,args,kw),_plotdatafileobjects[winnum],protocol=-1)
+    _plotdatafileobjects[winnum].flush()
 
 class PlotsFromDataFile(object):
   """This class reads in a plot data file and can be used to make plots
 from that data. The available methods are
- - window(winnum=None): set or return the active window number
- - plotframe(winnum=None,framenum=None): plot the frame. winnum defaults to
-                                         the active window number, framenum
-                                         to the next frame
- - plotallframes(winnum=None): plot all frames. winnum defaults to the active
-                               window number.
+ - plotframe(framenum=None): plot the frame. framenum defaults to the next frame
+ - plotallframes(): plot all frames in the file.
   """
   def __init__(self,filename):
     self.filename = filename
-    self.ff = PR.PR(filename)
-    self.frames = self._parsenames()
-    # --- Currently active window number
-    self.winnum = 0
-    # --- Current frame for each window
-    self.numframeslist = ones(8,'l')
-  def _parsenames(self):
-    "Build list of names for each plot frame"
-    # --- For each window number, built a dictionary with the frame number
-    # --- as the keys. The value for each key is a list of names that
-    # --- are part of that frame.
-    frames = [{},{},{},{},{},{},{},{}]
-    for name in self.ff.inquire_names():
-      winnum = int(name[1:3])
-      framenum = int(name[4:11])
-      frames[winnum].setdefault(framenum,[]).append(name)
+    self.ff = open(filename,'rb')
+    self.frames = self._catalogframes()
+    # --- Current default frame number that plotframe will plot
+    self.currentframe = 1
+  def _catalogframes(self):
+    "Build a catalog of plot frames"
+    # --- Build a dictionary with the frame numbers as the keys.
+    # --- The value for each key is a list of locations in the file where
+    # --- the plot commands that are part of that frame are stored.
+    frames = {}
+    while 1:
+      tell = self.ff.tell()
+      try:
+        framenum,pfunc,args,kw = cPickle.load(self.ff)
+      except EOFError:
+        break
+      frames.setdefault(framenum,[]).append(tell)
     return frames
-  def _getplotdatafromfile(self,winnum,framenum,plotcount):
+  def _getplotdatafromfile(self,framenum,plotcount):
     # --- This reads in the data from the file for the command specified
     # --- by the input arguments.
-    # --- Get the list of names part of the frame.
-    names = self.frames[winnum][framenum]
-    # --- Create the variable name suffix.
-    pp = '%02d_%07d_%06d'%(winnum,framenum,plotcount)
-    # --- Read in the plot function name
-    vv = 'f%s'%pp
-    if vv not in names:
-      return (None,None,None)
-    pfunc = self.ff.read(vv)
-    # --- Read in the plot arguments
-    args = []
-    i = 0
-    while 1:
-      vv = 'a%s_%02d'%(pp,i)
-      if vv not in names: break
-      args.append(self.ff.read(vv))
-      i += 1
-    # --- Read in the plot keyword arguments
-    kw = {}
-    i = 0
-    while 1:
-      kk = 'k%s_%02d'%(pp,i)
-      vv = 'v%s_%02d'%(pp,i)
-      if kk not in names: break
-      kw[self.ff.read(kk)] = self.ff.read(vv)
-      i += 1
-    # --- Return the stuff as a tuple
+    # --- For now, no error checking is done. This is expert use only!
+    self.ff.seek(self.frames[framenum][plotcount])
+    framenum,pfunc,args,kw = cPickle.load(self.ff)
     return pfunc,args,kw
-  def window(self,winnum=None):
-    "Set or print the active window number"
-    if winnum is None:
-      return self.winnum
-    else:
-      assert 0 <= winnum < 8,"Window number must be in the range 0 through 7"
-      self.winnum = winnum
-  def plotframe(self,winnum=None,framenum=None):
-    """plotframe(winnum=None,framenum=None):
+  def plotframe(self,framenum=None):
+    """plotframe(framenum=None):
 plot the frame.
- - winnum=None: window number, defaults to the active window number
  - framenum=None: frame number, defaults to the next frame
     """
-    if winnum is None: winnum = self.winnum
-    if framenum is None: framenum = self.numframeslist[winnum]
-    # --- plotcount iterates over the commands that are part of this frame
-    plotcount = 0
-    while 1:
-      try:
-        pfunc,args,kw = self._getplotdatafromfile(winnum,framenum,plotcount)
-      except KeyError:
-        # --- The framenum was not found
-        raise RuntimeError,"Frame number %d was not found"%framenum
+    if framenum is None: framenum = self.currentframe
+    try:
+      locs = self.frames[framenum]
+    except KeyError:
+      # --- The framenum was not found
+      raise RuntimeError,"Frame number %d was not found"%framenum
+    # --- Set the location in the file to the start of the frame.
+    # --- Only this is needed since the plot commands will be contiguous
+    # --- in the file.
+    self.ff.seek(locs[0])
+    for loc in locs:
+      framenum,pfunc,args,kw = cPickle.load(self.ff)
       # --- If the fma command is found, that signals the end of this frame.
       # --- Note that this routine does not call fma, allowing further
       # --- changes to the frame.
+      # --- Another option would be to skip the last locs element which would
+      # --- normally be the 'fma' command. But this wouldn't work in the case
+      # --- when the fma command was not given for the last frame at the end
+      # --- of a run.
       if pfunc == 'fma': break
-      # --- if pfunc is None, this probably means that for the last plot,
-      # --- fma was not called (i.e. there are no more plot commands but
-      # --- no fma was found).
-      if pfunc is None: break
-      # --- Make the plot, calling the appropriate gist or plotlib function
+      # --- Skip the hcp commands. This is not handled quite right.
+      if pfunc == 'hcp': continue
+      # --- Make the plot, calling the appropriate gist or matplotlib function
       handleplotfunctioncall(pfunc,args,kw)
-      # --- Increment to the next plot call
-      plotcount += 1
     # --- Increment the frame number of the active window
-    self.numframeslist[winnum] = framenum + 1
-  def plotallframes(self,winnum=None):
-    """plotallframes(winnum=None):
-plot all frames.
- - winnum=None: defaults to the active window number.
+    self.currentframe = framenum + 1
+  def plotallframes(self):
+    """plotallframes():
+plot all frames stored in the file.
     """
-    if winnum is None: winnum = self.winnum
-    numframes = max(self.frames[winnum].keys())
+    numframes = max(self.frames.keys())
     # --- Reset the plot frame number for the window
-    self.numframeslist[winnum] = 1
+    self.currentframe = 1
     # --- All that is needed is to call plotframe the appropriate number
     # --- of times and adding the fma calls.
     for i in range(numframes):
-      self.plotframe(winnum)
+      self.plotframe()
       # --- The legend is turned off since it was plotted in the
       # --- original run.
       fma(legend=0)
-
-if with_matplotlib:
-  # --- The limits command is a simple wrapper around pylab.axis
-  def limits(*v,**kw):
-    pylab.axis(v,**kw)
 
 # Frame advance and redraw routines. The fma routine from gist is replaced
 # with one that prints informative text at the bottom of each frame just
@@ -733,6 +696,12 @@ pla.__doc__ = gist.plg.__doc__
 plg = pla
 
 # --- This replaces functions from gist, filtering through callplotfunction
+def limits(xmin=None,xmax=None,ymin=None,ymax=None,**kw):
+  if with_gist:
+    return callplotfunction("limits",[xmin,xmax,ymin,ymax],kw)
+  if with_matplotlib:
+    callplotfunction("pylab.axis",[(xmin,xmax,ymin,ymax)],kw)
+limits.__doc__ = gist.limits.__doc__
 def pldj(x0,y0,x1,y1,local=1,**kw):
   if not _accumulateplotlists and not local:
     x0 = gatherarray(x0)
