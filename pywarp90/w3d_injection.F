@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.123 $, $Date: 2009/04/14 20:32:09 $
+c@(#) File w3d_injection.F, version $Revision: 1.124 $, $Date: 2009/05/11 22:50:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -45,7 +45,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: rr,vavez,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rsign,dr,dri
       real(kind=8):: qoverm,const,dxi,dyi,dzi,vznorm,rp,ai,bi
       real(kind=8):: clightsqi
-      real(kind=8):: zinj,ainj,ainji,ainjmini,binj,binji,binjmini
+      real(kind=8):: zinj,ainj,ainji,binj,binji
       real(kind=8):: apinj,bpinj,rinj,rinji,xpinj,ypinj,vzinj,ainjp1,binjp1
       real(kind=8):: sphericalcorrection
       real(kind=8):: inte,qold,qadd
@@ -101,6 +101,11 @@ c Print warning if vbeamfrm is not zero
       if (debug .and. abs(vbeamfrm) > 0.) then
        call remark("WARNING: vbeamfrm is not zero and injection is being used.")
        call remark("A core dump will result if the emitting surface moves off of the field grid.")
+      endif
+
+      if (minval(ainject) <= 0. .or. minval(binject) <= 0.) then
+        call kaboom("inject3d: ainject and binject must be both greater than zero.")
+        return
       endif
 
 c Clear out the lost particles.
@@ -934,8 +939,6 @@ c           --- Set some temporaries.
             binj = binject(ij)
             ainji = 1./ainject(ij)
             binji = 1./binject(ij)
-            ainjmini = 1./dvnz(ainjmin(ij))
-            binjmini = 1./dvnz(binjmin(ij))
             zinj = zinject(ij)
             apinj = apinject(ij)
             bpinj = bpinject(ij)
