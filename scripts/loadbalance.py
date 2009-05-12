@@ -5,7 +5,7 @@ __all__ = ['LoadBalancer']
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.64 2009/03/26 23:28:32 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.65 2009/05/12 23:10:47 dave Exp $"
 
 def loadbalancedoc():
     import loadbalance
@@ -584,7 +584,7 @@ that has already been done.
         try:
             solver.resetparticledomains()
         except AttributeError:
-            print "Field solver does not have a setparticledomains method"
+            print "Field solver does not have a resetparticledomains method"
         # --- Zero out the source that is used for the fieldsolver. This is
         # --- done in case some region of source is no longer covered by
         # --- sourcep.
@@ -793,7 +793,7 @@ of the domains.
         c = (weight[ii]*(delta1 - 0.5*delta1**2) + 0.5*weight[ii+1]*delta1**2 +
              npperpe - npint)
         if b != 0.:
-            delta = 2.*c/(sqrt(b**2 - 4.*a*c) + b)
+            delta = 2.*c/(sqrt(max(0.,b**2 - 4.*a*c)) + b)
         else:
             delta = sqrt(-c/a)
         fract = fract + delta - delta1
