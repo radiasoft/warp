@@ -682,9 +682,9 @@ the diagnostic is of interest and is meaningfull.
 
   def checkmeshconsistency(self,min,max,nn,dd,axis):
     'Checks if the mesh quantities are consistent'
-    # --- Note that the factor of 1.e-5 is somewhat arbitrary
+    # --- Note that the factor of 1.e-5 is a somewhat arbitrary fudge factor
     assert abs((max-min) - nn*dd) < dd*1.e-5,\
-      'The grid quantities along the '+axis+' axis are inconsistent'
+      'The grid quantities along the '+axis+' axis are inconsistent:\nmin = %e\nmax = %e\nnn = %d\ndd = %e\n'%(min,max,nn,dd)
 
   def __getstate__(self):
     dict = self.__dict__.copy()
