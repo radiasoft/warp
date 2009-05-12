@@ -10944,9 +10944,16 @@ integer(ISZ):: ixlbnd
 
   bworkgrid%ixlbnd = ixlbnd
 
+! --- The phi and rho arrays are nullified since they only serve as proxies
+! --- so that the data is available in solve_mgridrz. When this is called
+! --- from python, these two array may only be temporary arrays which may
+! --- be deallocated upon return. So its dangerous to keep references.
+  NULLIFY(bworkgrid%phi)
+  NULLIFY(bworkgrid%rho)
+
 end subroutine multigridrzb
 
-subroutine init_bworkgrid(nr,nz,dr,dz,rmin,zmin,Bbounds,u,rho,l_parallel)
+subroutine init_bworkgrid(nr,nz,dr,dz,rmin,zmin,Bbounds,l_parallel)
 use Constant
 use BWorkRZ
 use multigridrz
@@ -10955,13 +10962,15 @@ implicit none
 INTEGER(ISZ), INTENT(IN) :: nr, nz
 REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
 INTEGER(ISZ):: Bbounds(0:5)
-REAL(8), INTENT(IN),TARGET :: u(0:nr+2,0:nz+2)
-REAL(8), INTENT(IN),TARGET :: rho(nr+1,nz+1)
 LOGICAL(ISZ), INTENT(IN) :: l_parallel
 
 INTEGER(ISZ) :: i,j, nzp
 TYPE(GRIDtype), POINTER :: bg
 TYPE(BNDtype), POINTER :: b
+
+! --- Note that u and rho are no longer passed in. They will be passed in
+! --- in the call to the field solver. Temporary arrays might be being used
+! --- and it is dangerous to keep references to them.
 
 ! if (lverbose>=1) then
 !   write(o_line,'("Init bworkgrid")')
@@ -11018,12 +11027,6 @@ TYPE(BNDtype), POINTER :: b
   bg%nguardx = 1
   bg%nguardz = 1
 
-  bg%phi => u
-  bg%rho => rho
-  if(.not.bg%l_parallel) then
-    bg%phip => u
-    bg%rhop => rho
-  endif
   call GRIDtypechange(bg)
   bg%gid=1
   bg%loc_part=1
@@ -11034,12 +11037,6 @@ TYPE(BNDtype), POINTER :: b
   bg%ncycles = mgridrz_ncycles
   bg%ncmax = mgridrz_ncmax
   bg%npmin = mgridrz_levels_min
-! bg%phi=0.
-! bg%rho=0.
-#ifdef MPIPARALLEL
-! bg%phip=0.
-! bg%rhop=0.
-#endif
   bg%transit_min_r = 0
   bg%transit_max_r = 0
   bg%transit_min_z = 0
