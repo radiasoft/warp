@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.62 2009/05/11 22:52:40 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.63 2009/05/12 23:27:48 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -260,6 +260,68 @@ routines (such as ppxxp).
         if not isinstalledafterstep(self.accumulate):
             installafterstep(self.accumulate)
 
+    def setaccumulate(self,v=1):
+        self.laccumulate = v
+        if self.laccumulate: self.setuparrays(top.ns)
+
+    def accumulate(self):
+        # --- If top.nepwin is 0 then something is really wrong - this routine
+        # --- should never be called if top.nepwin is zero.
+        if top.nepwin == 0: return
+        # --- Check if the number of species has changed. This is done to ensure
+        # --- crashes don't happen.
+        if top.ns > self.getns():
+            self.addspecies()
+        # --- If this windows is outside of the grid, then just return.
+        if (self.iz == -1 and
+            (self.zz+self.wz < w3d.zmmin+top.zbeam or
+             self.zz-self.wz > w3d.zmmax+top.zbeam)):
+            self.autodump()
+            return
+        id = self.getid()
+        self.updatenpidepmax()
+        # --- Loop over species, collecting only ones where some particles
+        # --- were saved.
+        for js in range(top.ns):
+            # --- Gather the data.
+            # --- In parallel, the data is gathered in PE0, return empty arrays
+            # --- on other processors. In serial, the arrays are just returned
+            # --- as is.
+            nn = top.nep[id,js]
+            ntot = globalsum(nn)
+            if ntot == 0: continue
+            t = gatherarray(top.tep[:nn,id,js],othersempty=1)
+            x = gatherarray(top.xep[:nn,id,js],othersempty=1)
+            y = gatherarray(top.yep[:nn,id,js],othersempty=1)
+            ux = gatherarray(top.uxep[:nn,id,js],othersempty=1)
+            uy = gatherarray(top.uyep[:nn,id,js],othersempty=1)
+            uz = gatherarray(top.uzep[:nn,id,js],othersempty=1)
+            if top.npidepmax > 0:
+                pid = gatherarray(top.pidep[:nn,:,id,js],othersempty=1)
+            else:
+                pid = zeros((nn,0),'d')
+            if me != 0: continue
+            if self.laccumulate and not self.dumptofile:
+                self.tep[js].append(t+0.)
+                self.xep[js].append(x+0.)
+                self.yep[js].append(y+0.)
+                self.uxep[js].append(ux+0.)
+                self.uyep[js].append(uy+0.)
+                self.uzep[js].append(uz+0.)
+                self.pidep[js].append(pid+0.)
+            else:
+                self.tep[js] = t
+                self.xep[js] = x
+                self.yep[js] = y
+                self.uxep[js] = ux
+                self.uyep[js] = uy
+                self.uzep[js] = uz
+                self.pidep[js] = pid
+        if self.dumptofile: self.dodumptofile()
+        # --- Force nep to zero to ensure that particles are not saved twice.
+        top.nep[id,:] = 0
+
+    ############################################################################
     def autodump(self):
         if not self.lautodump or self.name is None: return
         if not self.laccumulate and not self.dumptofile: return
@@ -344,112 +406,9 @@ routines (such as ppxxp).
                 cPickle.dump(('pid'+suffix,self.getpid(js=js)),ff,-1)
         ff.close()
 
-    def accumulate(self):
-        # --- If top.nepwin is 0 then something is really wrong - this routine
-        # --- should never be called if top.nepwin is zero.
-        if top.nepwin == 0: return
-        # --- Check if the number of species has changed. This is done to ensure
-        # --- crashes don't happen.
-        if top.ns > self.getns():
-            self.addspecies()
-        # --- If this windows is outside of the grid, then just return.
-        if (self.iz == -1 and
-            (self.zz+self.wz < w3d.zmmin+top.zbeam or
-             self.zz-self.wz > w3d.zmmax+top.zbeam)):
-            self.autodump()
-            return
-        id = self.getid()
-        self.updatenpidepmax()
-        # --- Loop over species, collecting only ones where some particles
-        # --- were saved.
-        for js in range(top.ns):
-            # --- Gather the data.
-            # --- In parallel, the data is gathered in PE0, return empty arrays
-            # --- on other processors. In serial, the arrays are just returned
-            # --- as is.
-            nn = top.nep[id,js]
-            ntot = globalsum(nn)
-            if ntot == 0: continue
-            t = gatherarray(top.tep[:nn,id,js],othersempty=1)
-            x = gatherarray(top.xep[:nn,id,js],othersempty=1)
-            y = gatherarray(top.yep[:nn,id,js],othersempty=1)
-            ux = gatherarray(top.uxep[:nn,id,js],othersempty=1)
-            uy = gatherarray(top.uyep[:nn,id,js],othersempty=1)
-            uz = gatherarray(top.uzep[:nn,id,js],othersempty=1)
-            if top.npidepmax > 0:
-                pid = gatherarray(top.pidep[:nn,:,id,js],othersempty=1)
-            else:
-                pid = zeros((nn,0),'d')
-            if me != 0: continue
-            if self.laccumulate and not self.dumptofile:
-                self.tep[js].append(t+0.)
-                self.xep[js].append(x+0.)
-                self.yep[js].append(y+0.)
-                self.uxep[js].append(ux+0.)
-                self.uyep[js].append(uy+0.)
-                self.uzep[js].append(uz+0.)
-                self.pidep[js].append(pid+0.)
-            else:
-                self.tep[js] = t
-                self.xep[js] = x
-                self.yep[js] = y
-                self.uxep[js] = ux
-                self.uyep[js] = uy
-                self.uzep[js] = uz
-                self.pidep[js] = pid
-        if self.dumptofile: self.dodumptofile()
-        # --- Force nep to zero to ensure that particles are not saved twice.
-        top.nep[id,:] = 0
-
-    def setaccumulate(self,v=1):
-        self.laccumulate = v
-        if self.laccumulate: self.setuparrays(top.ns)
-
-    ############################################################################
     def restoredata(self,lforce=0,files=[]):
         #self.restoredataPDB(0,files)
         self.restoredataPickle(0,files)
-
-    def restoredataPDB(self,lforce=0,files=[]):
-        """
-Restores data dumped to a file. Note that this turns off the dumptofile
-feature.
-  - lforce=0: if true, force a restore, despite the value of enabled.
-        """
-        if not self.dumptofile: return
-        if not lforce and (not self.enabled or _extforcenorestore): return
-        self.dumptofile = 0
-        self.laccumulate = 1
-        try:
-            ff = PRpyt.PR(self.name+'_ep.pyt','a',verbose=0)
-        except:
-            ff = PR.PR(self.name+'_ep.pdb','a',verbose=0)
-        # --- Get total number of particles
-        ntot = []
-        jsmax = 0
-        varlist = list(ff.inquire_names())
-        varlist.sort()
-        for var in varlist:
-            if var[0] == 'n':
-                name,ii,js = string.split(var,'_')
-                jsmax = max(jsmax,eval(js))
-                while jsmax >= len(ntot): ntot.append(0)
-                ntot[jsmax] = ntot[jsmax] + ff.read(var)
-        self.setuparrays(jsmax+1,bump=max(array(ntot))+1)
-        for var in varlist:
-            if var[0] == 'n':
-                name,iis,jss = string.split(var,'_')
-                nn = ff.read(var)
-                ii = eval(iis)
-                js = eval(jss)
-                self.tep[js].append(ff.read('t_%d_%d'%(ii,js)))
-                self.xep[js].append(ff.read('x_%d_%d'%(ii,js)))
-                self.yep[js].append(ff.read('y_%d_%d'%(ii,js)))
-                self.uxep[js].append(ff.read('ux_%d_%d'%(ii,js)))
-                self.uyep[js].append(ff.read('uy_%d_%d'%(ii,js)))
-                self.uzep[js].append(ff.read('uz_%d_%d'%(ii,js)))
-                self.pidep[js].append(ff.read('pid_%d_%d'%(ii,js)))
-        ff.close()
 
     def restoredataPickle(self,lforce=0,files=[]):
         """
@@ -511,6 +470,47 @@ feature.
                 if len(pid.shape) == 1:
                     pid.shape = (pid.shape[0],1)
                 self.pidep[js].append(pid)
+
+    def restoredataPDB(self,lforce=0,files=[]):
+        """
+Restores data dumped to a file. Note that this turns off the dumptofile
+feature.
+  - lforce=0: if true, force a restore, despite the value of enabled.
+        """
+        if not self.dumptofile: return
+        if not lforce and (not self.enabled or _extforcenorestore): return
+        self.dumptofile = 0
+        self.laccumulate = 1
+        try:
+            ff = PRpyt.PR(self.name+'_ep.pyt','a',verbose=0)
+        except:
+            ff = PR.PR(self.name+'_ep.pdb','a',verbose=0)
+        # --- Get total number of particles
+        ntot = []
+        jsmax = 0
+        varlist = list(ff.inquire_names())
+        varlist.sort()
+        for var in varlist:
+            if var[0] == 'n':
+                name,ii,js = string.split(var,'_')
+                jsmax = max(jsmax,eval(js))
+                while jsmax >= len(ntot): ntot.append(0)
+                ntot[jsmax] = ntot[jsmax] + ff.read(var)
+        self.setuparrays(jsmax+1,bump=max(array(ntot))+1)
+        for var in varlist:
+            if var[0] == 'n':
+                name,iis,jss = string.split(var,'_')
+                nn = ff.read(var)
+                ii = eval(iis)
+                js = eval(jss)
+                self.tep[js].append(ff.read('t_%d_%d'%(ii,js)))
+                self.xep[js].append(ff.read('x_%d_%d'%(ii,js)))
+                self.yep[js].append(ff.read('y_%d_%d'%(ii,js)))
+                self.uxep[js].append(ff.read('ux_%d_%d'%(ii,js)))
+                self.uyep[js].append(ff.read('uy_%d_%d'%(ii,js)))
+                self.uzep[js].append(ff.read('uz_%d_%d'%(ii,js)))
+                self.pidep[js].append(ff.read('pid_%d_%d'%(ii,js)))
+        ff.close()
 
     ############################################################################
     def selectparticles(self,val,js=0,tc=None,wt=None,tp=None,z=None,v=None):
