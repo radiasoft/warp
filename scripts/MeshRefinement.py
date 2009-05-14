@@ -1846,8 +1846,11 @@ be plotted.
         gridscale = 1.
       try:
         uselog = kw['uselog']
-        if uselog == 'e' or uselog == 1.: logscale = 1.
-        else:                             logscale = log(uselog)
+        if uselog == 'e' or uselog == 1.:
+          logscale = 1.
+        else:
+          assert uselog>0,'uselog must be greater than zero'
+          logscale = log(uselog)
       except KeyError:
         logscale = None
 
@@ -1857,14 +1860,20 @@ be plotted.
       if cmin_in is None:
         cmin *= gridscale
         if logscale is not None:
-          cmin = log(cmin)/logscale
+          if cmin > 0.:
+            cmin = log(cmin)/logscale
+          else:
+            cmin = 0.
       else:
         cmin = cmin_in
 
       if cmax_in is None:
         cmax *= gridscale
         if logscale is not None:
-          cmax = log(cmax)/logscale
+          if cmax > 0.:
+            cmax = log(cmax)/logscale
+          else:
+            cmax = 0.
       else:
         cmax = cmax_in
 
