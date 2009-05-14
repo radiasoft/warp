@@ -36,35 +36,35 @@ def setbsqgrad(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
 #        zmin=top.bsqgradzs[1];xmin=top.bsqgradxs[1];ymin=top.bsqgradys[1]
 #    except:
     if 1:
-       print "no allocated gridded B data; defining a grid now"
-       # Note in this case, griddedBOnly shouldn't have been set true
-       if griddedBOnly == true:
-           print "resetting griddedBOnly to false"
-           griddedBOnly == false
-       # calculate dx,dy,dz
-       if nx == 0 or ny == 0 or nz == 0:
-           raise "Error setting grad Bsq: nx, ny, or nz = 0"
-       if xmax-xmin == 0 or ymax-ymin == 0 or zmax-zmin == 0:
-           raise "Error setting grad Bsq: xmin=xmax or ymin=ymax"
-       dx=(xmax-xmin)/nx
-       dy=(ymax-ymin)/ny
-       dz=(zmax-zmin)/nz
-       top.bsqgradnx=nx;top.bsqgradny=ny;top.bsqgradnz=nz
-       top.bsqgradns+=1
-       top.bsqgradnc=3
-       top.nbsqgrad+=1
-       gchange("Lattice")
-       gchange("BSQGRADdata")
-       top.bsqgrads=1
-       top.bsqgraddx[0]=dx
-       top.bsqgraddy[0]=dy
-       top.bsqgraddz[0]=dz
-       top.bsqgradxs[0]=xmin
-       top.bsqgradys[0]=ymin
-       top.bsqgradzs[0]=zmin
-       top.bsqgradze[0]=zmax
-       top.bsqgradid[0]=1
-       top.bsqgradsy[0]=2
+        print "no allocated gridded B data; defining a grid now"
+        # Note in this case, griddedBOnly shouldn't have been set true
+        if griddedBOnly == true:
+            print "resetting griddedBOnly to false"
+            griddedBOnly == false
+        # calculate dx,dy,dz
+        if nx == 0 or ny == 0 or nz == 0:
+            raise "Error setting grad Bsq: nx, ny, or nz = 0"
+        if xmax-xmin == 0 or ymax-ymin == 0 or zmax-zmin == 0:
+            raise "Error setting grad Bsq: xmin=xmax or ymin=ymax"
+        dx=(xmax-xmin)/nx
+        dy=(ymax-ymin)/ny
+        dz=(zmax-zmin)/nz
+        top.bsqgradnx=nx;top.bsqgradny=ny;top.bsqgradnz=nz
+        top.bsqgradns+=1
+        top.bsqgradnc=3
+        top.nbsqgrad+=1
+        gchange("Lattice")
+        gchange("BSQGRADdata")
+        top.bsqgrads=1
+        top.bsqgraddx[0]=dx
+        top.bsqgraddy[0]=dy
+        top.bsqgraddz[0]=dz
+        top.bsqgradxs[0]=xmin
+        top.bsqgradys[0]=ymin
+        top.bsqgradzs[0]=zmin
+        top.bsqgradze[0]=zmax
+        top.bsqgradid[0]=1
+        top.bsqgradsy[0]=2
     if griddedBOnly == true:
         # set bx,by,bz to top.bsqgradbx, etc.
         bx=top.bsqgradbx[:,:,:,0]
