@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.63 2009/05/12 23:27:48 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.64 2009/05/15 17:44:14 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -284,32 +284,55 @@ routines (such as ppxxp).
         # --- were saved.
         for js in range(top.ns):
             # --- Gather the data.
-            # --- In parallel, the data is gathered in PE0, return empty arrays
-            # --- on other processors. In serial, the arrays are just returned
-            # --- as is.
+            # --- In serial, the arrays are just returned as is.
+            # --- In parallel, if dumptofile is not being done, then the data
+            # --- is gathered onto PE0 and empty arrays are returned on other
+            # --- processors. If dumptofile is on, then the data is kept local
+            # --- and each processor writes out its own file.
+
+            # --- First, get the local data.
             nn = top.nep[id,js]
-            ntot = globalsum(nn)
-            if ntot == 0: continue
-            t = gatherarray(top.tep[:nn,id,js],othersempty=1)
-            x = gatherarray(top.xep[:nn,id,js],othersempty=1)
-            y = gatherarray(top.yep[:nn,id,js],othersempty=1)
-            ux = gatherarray(top.uxep[:nn,id,js],othersempty=1)
-            uy = gatherarray(top.uyep[:nn,id,js],othersempty=1)
-            uz = gatherarray(top.uzep[:nn,id,js],othersempty=1)
+            t = top.tep[:nn,id,js]
+            x = top.xep[:nn,id,js]
+            y = top.yep[:nn,id,js]
+            ux = top.uxep[:nn,id,js]
+            uy = top.uyep[:nn,id,js]
+            uz = top.uzep[:nn,id,js]
             if top.npidepmax > 0:
-                pid = gatherarray(top.pidep[:nn,:,id,js],othersempty=1)
+                pid = top.pidep[:nn,:,id,js]
             else:
                 pid = zeros((nn,0),'d')
-            if me != 0: continue
+
+            if not self.dumptofile:
+                # --- Gather the data onto PE0.
+                ntot = globalsum(nn)
+                if ntot == 0: continue
+
+                t = gatherarray(t,othersempty=1)
+                x = gatherarray(x,othersempty=1)
+                y = gatherarray(y,othersempty=1)
+                ux = gatherarray(ux,othersempty=1)
+                uy = gatherarray(uy,othersempty=1)
+                uz = gatherarray(uz,othersempty=1)
+                if top.npidepmax > 0:
+                    pid = gatherarray(top.pidep[:nn,:,id,js],othersempty=1)
+                else:
+                    pid = zeros((nn,0),'d')
+
             if self.laccumulate and not self.dumptofile:
-                self.tep[js].append(t+0.)
-                self.xep[js].append(x+0.)
-                self.yep[js].append(y+0.)
-                self.uxep[js].append(ux+0.)
-                self.uyep[js].append(uy+0.)
-                self.uzep[js].append(uz+0.)
-                self.pidep[js].append(pid+0.)
+
+                # --- Only PE0 accumulates the data.
+                if me == 0:
+                    self.tep[js].append(t+0.)
+                    self.xep[js].append(x+0.)
+                    self.yep[js].append(y+0.)
+                    self.uxep[js].append(ux+0.)
+                    self.uyep[js].append(uy+0.)
+                    self.uzep[js].append(uz+0.)
+                    self.pidep[js].append(pid+0.)
+
             else:
+
                 self.tep[js] = t
                 self.xep[js] = x
                 self.yep[js] = y
@@ -317,6 +340,7 @@ routines (such as ppxxp).
                 self.uyep[js] = uy
                 self.uzep[js] = uz
                 self.pidep[js] = pid
+
         if self.dumptofile: self.dodumptofile()
         # --- Force nep to zero to ensure that particles are not saved twice.
         top.nep[id,:] = 0
@@ -332,13 +356,13 @@ routines (such as ppxxp).
         ntot = 0
         for js in range(self.getns()):
             ntot = ntot + self.getn(js=js)
-        if ntot > 0 and me == 0:
+        if ntot > 0:
             ff = None
             #try:
             #    ff = PWpyt.PW(self.name+'_epdump.pyt')
             #    dumpsmode = 1
             #except:
-            ff = PW.PW(self.name+'_epdump.pdb')
+            ff = PW.PW(self.name+'_%05d_%05d_epdump.pdb'%(me,npes))
             dumpsmode = 0
             if ff is None:
                  print "ExtPart: %s unable to dump data to file."%self.name
@@ -358,25 +382,23 @@ routines (such as ppxxp).
         # --- extforcenorestore function turns any restores off.
         self.disable()
 
+    ############################################################################
     def dodumptofile(self):
         #self.dodumptofilePDB()
         self.dodumptofilePickle()
 
     def dodumptofilePDB(self):
-        if me != 0: return
+        #if me != 0: return
         ff = None
-        #try:
-        #    --- For now, pytables doesn't work since it has a limit of the
-        #    --- number of arrays that can be written out.
-        #    ff = PWpyt.PW(self.name+'_ep.pyt','a',verbose=0)
-        #except:
-        ff = PW.PW(self.name+'_ep.pdb','a',verbose=0)
-        if ff is None:
-             print "ExtPart: %s unable to dump data to file."%self.name
-             return
         for js in range(top.ns):
-            suffix = "_%d_%d"%(top.it,js)
             if self.getn(js=js) > 0:
+                if ff is None:
+                    # --- Only create the file if there is data to write out.
+                    ff = PW.PW(self.name+'_ep_%05d_%05d.pdb'%(me,npes),'a',verbose=0)
+                if ff is None:
+                    print "ExtPart: %s unable to dump data to file."%self.name
+                    return
+                suffix = "_%d_%d"%(top.it,js)
                 ff.write('n'+suffix,self.getn(js=js))
                 ff.write('t'+suffix,self.gett(js=js))
                 ff.write('x'+suffix,self.getx(js=js))
@@ -385,17 +407,21 @@ routines (such as ppxxp).
                 ff.write('uy'+suffix,self.getuy(js=js))
                 ff.write('uz'+suffix,self.getuz(js=js))
                 ff.write('pid'+suffix,self.getpid(js=js))
-        ff.close()
+        if ff is not None:
+            ff.close()
 
     def dodumptofilePickle(self):
-        if me != 0: return
-        ff = open(self.name+'_ep.pkl','a')
-        if ff is None:
-             print "ExtPart: %s unable to dump data to file."%self.name
-             return
+        #if me != 0: return
+        ff = None
         for js in range(top.ns):
-            suffix = "_%d_%d"%(top.it,js)
             if self.getn(js=js) > 0:
+                if ff is None:
+                    # --- Only create the file if there is data to write out.
+                    ff = open(self.name+'_ep_%05d_%05d.pkl'%(me,npes),'a')
+                if ff is None:
+                    print "ExtPart: %s unable to dump data to file."%self.name
+                    return
+                suffix = "_%d_%d"%(top.it,js)
                 cPickle.dump(('n'+suffix,self.getn(js=js)),ff,-1)
                 cPickle.dump(('t'+suffix,self.gett(js=js)),ff,-1)
                 cPickle.dump(('x'+suffix,self.getx(js=js)),ff,-1)
@@ -404,13 +430,15 @@ routines (such as ppxxp).
                 cPickle.dump(('uy'+suffix,self.getuy(js=js)),ff,-1)
                 cPickle.dump(('uz'+suffix,self.getuz(js=js)),ff,-1)
                 cPickle.dump(('pid'+suffix,self.getpid(js=js)),ff,-1)
-        ff.close()
+        if ff is not None:
+            ff.close()
 
+    ############################################################################
     def restoredata(self,lforce=0,files=[]):
         #self.restoredataPDB(0,files)
         self.restoredataPickle(0,files)
 
-    def restoredataPickle(self,lforce=0,files=[]):
+    def restoredataPickle(self,lforce=0,files=[],names=[],nprocs=None):
         """
 Restores data dumped to a file. Note that this turns off the dumptofile
 feature.
@@ -421,23 +449,33 @@ feature.
         self.dumptofile = 0
         self.laccumulate = 1
 
-        # --- Check if files was given. If not, use the default name.
+        # --- Check some input, converting to lists if needed.
         if not isinstance(files,ListType):
-            files = list([files])
-        if len(files) == 0:
-            files = [self.name+'_ep.pkl']
+            files = [files]
+        if not isinstance(names,ListType):
+            names = [names]
 
-        # --- Read in all of the data into a dictionary.
-        datadict = {}
-        for file in files:
-            ff = open(file,'r')
-            while 1:
-                try:
-                    data = cPickle.load(ff)
-                except:
-                    break
-                datadict[data[0]] = data[1]
-            ff.close()
+        # --- If no guidance was given, use the default name. If files was
+        # --- given, then use it directly. If names and or nprocs was given,
+        # --- then use them to generate a list of files.
+        if len(files) == 0 and len(names) == 0 and nprocs is None:
+            # --- The default name.
+            files = [self.name+'_ep_%05d_%05d.pkl'%(me,npes)]
+
+        elif len(names) > 0 or nprocs is not None:
+            if nprocs is None: nprocs = npes
+            if len(names) == 0: names = [self.name]
+            files = []
+            for name in names:
+                for iproc in range(nprocs):
+                    fname = name+'_ep_%05d_%05d.pkl'%(iproc,nprocs)
+                    if os.path.exists(fname):
+                        files.append(fname)
+            if len(files) == 0:
+                print "ExtPart restoredata: warning, no files were found, nothing will be restored"
+
+        #datadict = self.getPDBdatadict(files)
+        datadict = self.getPickledatadict(files)
 
         # --- Get total number of particles
         ntot = []
@@ -471,8 +509,34 @@ feature.
                     pid.shape = (pid.shape[0],1)
                 self.pidep[js].append(pid)
 
-    def restoredataPDB(self,lforce=0,files=[]):
+    def getPickledatadict(self,files):
+        # --- Read in all of the data into a dictionary.
+        datadict = {}
+        for file in files:
+            ff = open(file,'r')
+            while 1:
+                try:
+                    data = cPickle.load(ff)
+                except:
+                    break
+                datadict[data[0]] = data[1]
+            ff.close()
+
+    def getPDBdatadict(self,files):
+        # --- Read in all of the data into a dictionary.
+        datadict = {}
+        for file in files:
+            try:
+                ff = PRpyt.PR(file,verbose=0)
+            except:
+                ff = PR.PR(file,verbose=0)
+            for var in ff.inquire_names():
+                datadict[var] = ff.read(var)
+            ff.close()
+
+    def restoredataPDBold(self,lforce=0,files=[]):
         """
+This is kept around for compatibility with old data files.
 Restores data dumped to a file. Note that this turns off the dumptofile
 feature.
   - lforce=0: if true, force a restore, despite the value of enabled.
