@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.258 $, $Date: 2009/04/17 20:15:04 $
+#@(#) File TOP.V, version $Revision: 3.259 $, $Date: 2009/05/16 01:47:11 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.258 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.259 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -627,6 +627,7 @@ egrdny integer /0/ # Number of Y cells
 egrdnz integer /0/ # Number of Z cells
 egrdns integer /0/ # Number of data sets
 egrdnc integer /0/ # Number of components stored in egrd
+egrdnp integer /0/ # Number of extra data components stored in egrd
 egrddx(egrdns)   _real [m]   # X cell size
 egrddy(egrdns)   _real [m]   # Y cell size
 egrddz(egrdns)   _real [m]   # Z cell size
@@ -637,6 +638,8 @@ egrdrz(egrdns)   _logical /0/ # When true, data is RZ only
 egrdex(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ex
 egrdey(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ey
 egrdez(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ez
+egrdpp(0:egrdnx,0:egrdny,0:egrdnz,egrdns,egrdnp) _real [T]
+    # Extra data components, the potential for example
 
 ******** BGRDdata dump:
 # Data for the 3-D B field lattice element
