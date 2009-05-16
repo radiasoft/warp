@@ -69,7 +69,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.81 2009/03/31 22:13:02 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.82 2009/05/16 01:49:17 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2629,7 +2629,7 @@ accl arrays with the same suffices:
 # --- EGRD --- XXX
 def addnewegrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,sf=0.,sc=1.,sy=0,dx=None,dy=None,ex=None,ey=None,ez=None,
-               rz=false,nx=None,ny=None,nz=None,
+               rz=false,nx=None,ny=None,nz=None,pp=None,
                time=None,data=None,func=None):
   """
 Adds a new egrd element to the lattice. The element will be placed at the
@@ -2646,6 +2646,8 @@ Or, one or more 3-D field arrays may be specified
 The following are all optional and have the same meaning and default as the
 egrd arrays with the same suffices:
   - xs,ys,ap,ox,oy,ph,sf,sc,sy
+Some extra data may be saved,
+  - pp: the electrostatic potential associated with the E field data
   """
   # --- Make sure that enough input was given to create the E arrays
   assert (id is not None) or \
@@ -2727,6 +2729,16 @@ of dx, dy, nx, ny, nz, must be passed in"""
     if ey is not None: top.egrdey[:nx+1,:ny+1,:nz+1,-1] = ey
     if ez is not None: top.egrdez[:nx+1,:ny+1,:nz+1,-1] = ez
     top.egrdrz[-1] = rz
+
+    # --- If pp was given, make space for it and copy the data.
+    # --- This assumes that pp has the proper shape.
+    if pp is not None:
+      top.egrdnp = 1
+      gchange("EGRDdata")
+      if rz:
+        top.egrdpp[:nx+1,0,:nz+1,-1,0] = pp
+      else:
+        top.egrdpp[:nx+1,:ny+1,:nz+1,-1,0] = pp
 
   if (time is not None and data is not None) or func is not None:
     TimeDependentLatticeElement('egrdsc',ie,time,data,func)
@@ -3088,6 +3100,7 @@ def addgriddedgap(zcenter=None,gaplength=None,ap=None,apleft=None,apright=None,
                   zmmin=None,zmmax=None,
                   l4symtry=None,l2symtry=None,
                   fringelen=None,
+                  savephi=0,
                   **kw):
   """
 Adds a gap using gridded data, via a egrd element.
@@ -3110,6 +3123,8 @@ Input arguments:
  - fringelen=None: length of region before and after the gap to
                    include the field fringe, in units of the pipe aperture.
                    If given, this sets the z extent of the grid.
+ - savephi=0: When true, the potential that was calculated is saved in the
+              egrdpp array.
   """
 
   assert zcenter is not None,ValueError('zcenter must be given')
@@ -3218,6 +3233,9 @@ Input arguments:
   # --- Do a little clean up.
   uninstallconductors(pipeleft)
   uninstallconductors(piperght)
+
+  if savephi:
+    kw['pp'] = Esolver.getphi()
 
   # --- Now add in the gap
   return addnewegrd(Esolver.zmmin,Esolver.zmmax,
@@ -3351,7 +3369,9 @@ def plotegrd(ie=0,component=None,ix=None,iy=None,iz=None,withbends=1,
   """
 Plots the one of the field components in one of the planes
  - ie: the index of the lattice element to plot
- - component: Component to plot, one of 'x', 'y', or 'z'.
+ - component: Component to plot, one of 'x', 'y', 'z', or 'phi'.
+              Note that if 'phi' is specified, the egrdpp data must have been
+              setup.
  - ix, iy, iz: When one is set, plots the in the plane a that value.
                When two are set, plots along the remaining axis.
                Each is an integer between 0 and egrdnx, egrdny, or egrdnz.
@@ -3364,14 +3384,18 @@ such as contours, and cellarray.
   """
   assert 0 <= ie <= top.negrd,\
          "No such egrd element, %d, defined"%ie
-  assert component in ['x','y','z'],\
-         "component to plot must be one of 'x', 'y', or 'z'"
+  assert component in ['x','y','z','phi'],\
+         "component to plot must be one of 'x', 'y', 'z' or 'phi'"
   assert (ix is not None) or (iy is not None) or (iz is not None),\
          "One of ix, iy, iz must be specified"
   if top.lresetlat: resetlat()
   if zlatstrt is None: zlatstrt = top.zlatstrt
   id = top.egrdid[ie] - 1
-  ee = getattr(top,'egrde'+component)
+  if component == 'phi':
+    assert top.egrdnp > 0,'If phi component is specified, the egrdpp data must have been setup.'
+    ee = getattr(top,'egrdpp')[...,0]
+  else:
+    ee = getattr(top,'egrde'+component)
 
   # --- Determine which axis are specified and which are to be plotted.
   ax = ['z','x','y']
@@ -3399,7 +3423,10 @@ such as contours, and cellarray.
   if withscaling:
     ss = top.egrdsc[ie] + top.egrdsf[ie]
     ee = ee*ss
-    units = ' (V/m)'
+    if component == 'phi':
+      units = ' (V)'
+    else:
+      units = ' (V/m)'
   else:
     units = ''
 
@@ -3420,6 +3447,10 @@ such as contours, and cellarray.
     ny = getattr(top,'egrdn'+ax[1])
     dy = getattr(top,'egrdd'+ax[1])[id]
 
+  if component == 'phi':
+    unitstitle = 'Potential %s'%units
+  else:
+    unitstitle = 'E%s%s'%(component,units)
 
   if len(ax) == 1:
     # --- Make 1-d line plot
@@ -3427,8 +3458,11 @@ such as contours, and cellarray.
     color = kw.get('color','fg')
     plg(ee,xm,color=color)
     if kw.get('titles',1):
-      ptitles('EGRD element #%d'%ie,'%s (m)'%ax[0].upper(),
-              'E%s%s'%(component,units))
+      if component == 'phi':
+        unitstitle = 'Potential %s'%units
+      else:
+        unitstitle = 'E%s%s'%(component,units)
+      ptitles('EGRD element #%d'%ie,'%s (m)'%ax[0].upper(),unitstitle)
 
   elif len(ax) == 2:
     # --- Make 2-d plot
@@ -3440,7 +3474,7 @@ such as contours, and cellarray.
 
     kw['xmesh'] = xm
     kw['ymesh'] = ym
-    kw.setdefault('titlet','EGRD element #%d E%s%s'%(ie,component,units))
+    kw.setdefault('titlet','EGRD element #%d %s'%(ie,unitstitle))
     kw.setdefault('titleb','%s (m)'%ax[0].upper())
     kw.setdefault('titlel','%s (m)'%ax[1].upper())
 
