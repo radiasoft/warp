@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.64 2009/05/15 17:44:14 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.65 2009/05/26 23:37:27 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -521,6 +521,7 @@ feature.
                     break
                 datadict[data[0]] = data[1]
             ff.close()
+        return datadict
 
     def getPDBdatadict(self,files):
         # --- Read in all of the data into a dictionary.
@@ -533,6 +534,7 @@ feature.
             for var in ff.inquire_names():
                 datadict[var] = ff.read(var)
             ff.close()
+        return datadict
 
     def restoredataPDBold(self,lforce=0,files=[]):
         """
