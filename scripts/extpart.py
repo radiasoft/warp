@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.65 2009/05/26 23:37:27 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.66 2009/05/27 23:15:36 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -391,7 +391,7 @@ routines (such as ppxxp).
         #if me != 0: return
         ff = None
         for js in range(top.ns):
-            if self.getn(js=js) > 0:
+            if len(self.tep[js][:]) > 0:
                 if ff is None:
                     # --- Only create the file if there is data to write out.
                     ff = PW.PW(self.name+'_ep_%05d_%05d.pdb'%(me,npes),'a',verbose=0)
@@ -399,14 +399,14 @@ routines (such as ppxxp).
                     print "ExtPart: %s unable to dump data to file."%self.name
                     return
                 suffix = "_%d_%d"%(top.it,js)
-                ff.write('n'+suffix,self.getn(js=js))
-                ff.write('t'+suffix,self.gett(js=js))
-                ff.write('x'+suffix,self.getx(js=js))
-                ff.write('y'+suffix,self.gety(js=js))
-                ff.write('ux'+suffix,self.getux(js=js))
-                ff.write('uy'+suffix,self.getuy(js=js))
-                ff.write('uz'+suffix,self.getuz(js=js))
-                ff.write('pid'+suffix,self.getpid(js=js))
+                ff.write('n'+suffix,len(self.tep[js][:]))
+                ff.write('t'+suffix,self.tep[js][:])
+                ff.write('x'+suffix,self.xep[js][:])
+                ff.write('y'+suffix,self.yep[js][:])
+                ff.write('ux'+suffix,self.uxep[js][:])
+                ff.write('uy'+suffix,self.uyep[js][:])
+                ff.write('uz'+suffix,self.uzep[js][:])
+                ff.write('pid'+suffix,self.pidep[js][...])
         if ff is not None:
             ff.close()
 
@@ -414,36 +414,41 @@ routines (such as ppxxp).
         #if me != 0: return
         ff = None
         for js in range(top.ns):
-            if self.getn(js=js) > 0:
+            if len(self.tep[js][:]) > 0:
                 if ff is None:
                     # --- Only create the file if there is data to write out.
-                    ff = open(self.name+'_ep_%05d_%05d.pkl'%(me,npes),'a')
+                    if npes > 1:
+                        ff = open(self.name+'_ep_%05d_%05d.pkl'%(me,npes),'a')
+                    else:
+                        ff = open(self.name+'_ep.pkl','a')
                 if ff is None:
                     print "ExtPart: %s unable to dump data to file."%self.name
                     return
                 suffix = "_%d_%d"%(top.it,js)
-                cPickle.dump(('n'+suffix,self.getn(js=js)),ff,-1)
-                cPickle.dump(('t'+suffix,self.gett(js=js)),ff,-1)
-                cPickle.dump(('x'+suffix,self.getx(js=js)),ff,-1)
-                cPickle.dump(('y'+suffix,self.gety(js=js)),ff,-1)
-                cPickle.dump(('ux'+suffix,self.getux(js=js)),ff,-1)
-                cPickle.dump(('uy'+suffix,self.getuy(js=js)),ff,-1)
-                cPickle.dump(('uz'+suffix,self.getuz(js=js)),ff,-1)
-                cPickle.dump(('pid'+suffix,self.getpid(js=js)),ff,-1)
+                cPickle.dump(('n'+suffix,len(self.tep[js][:])),ff,-1)
+                cPickle.dump(('t'+suffix,self.tep[js][:]),ff,-1)
+                cPickle.dump(('x'+suffix,self.xep[js][:]),ff,-1)
+                cPickle.dump(('y'+suffix,self.yep[js][:]),ff,-1)
+                cPickle.dump(('ux'+suffix,self.uxep[js][:]),ff,-1)
+                cPickle.dump(('uy'+suffix,self.uyep[js][:]),ff,-1)
+                cPickle.dump(('uz'+suffix,self.uzep[js][:]),ff,-1)
+                cPickle.dump(('pid'+suffix,self.pidep[js][...]),ff,-1)
         if ff is not None:
             ff.close()
 
     ############################################################################
-    def restoredata(self,lforce=0,files=[]):
+    def restoredata(self,lforce=0,files=None):
         #self.restoredataPDB(0,files)
         self.restoredataPickle(0,files)
 
-    def restoredataPickle(self,lforce=0,files=[],names=[],nprocs=None):
+    def restoredataPickle(self,lforce=0,files=None,names=None,nprocs=None):
         """
 Restores data dumped to a file. Note that this turns off the dumptofile
 feature.
   - lforce=0: if true, force a restore, despite the value of enabled.
         """
+        if files is None: files = []
+        if names is None: names = []
         if not self.dumptofile: return
         if not lforce and (not self.enabled or _extforcenorestore): return
         self.dumptofile = 0
@@ -455,24 +460,32 @@ feature.
         if not isinstance(names,ListType):
             names = [names]
 
-        # --- If no guidance was given, use the default name. If files was
-        # --- given, then use it directly. If names and or nprocs was given,
-        # --- then use them to generate a list of files.
-        if len(files) == 0 and len(names) == 0 and nprocs is None:
-            # --- The default name.
-            files = [self.name+'_ep_%05d_%05d.pkl'%(me,npes)]
-
-        elif len(names) > 0 or nprocs is not None:
-            if nprocs is None: nprocs = npes
-            if len(names) == 0: names = [self.name]
-            files = []
+        # --- If the list of files was not given, then it needs to be
+        # --- generated.
+        if len(files) == 0:
+            # --- If a name was not given, use the instance's name
+            if len(names) == 0:
+                names = [self.name]
             for name in names:
-                for iproc in range(nprocs):
-                    fname = name+'_ep_%05d_%05d.pkl'%(iproc,nprocs)
-                    if os.path.exists(fname):
-                        files.append(fname)
-            if len(files) == 0:
-                print "ExtPart restoredata: warning, no files were found, nothing will be restored"
+                if nprocs is None and npes <= 1:
+                    # --- Use the serial naming
+                    files = [self.name+'_ep.pkl']
+                else:
+                    if npes > 1:
+                        # --- If currently running in parallel, only read in
+                        # --- the date for this processor.
+                        nplist = [me]
+                        nprocs = npes
+                    else:
+                        # --- Read the data in from all processors.
+                        nplist = range(nprocs)
+                    for iproc in nplist:
+                        fname = self.name+'_ep_%05d_%05d.pkl'%(iproc,nprocs)
+                        if os.path.exists(fname):
+                            files.append(fname)
+
+        if len(files) == 0:
+            print "ExtPart restoredata: warning, no files were found, nothing will be restored"
 
         #datadict = self.getPDBdatadict(files)
         datadict = self.getPickledatadict(files)
@@ -579,7 +592,8 @@ feature.
         ff.close()
 
     ############################################################################
-    def selectparticles(self,val,js=0,tc=None,wt=None,tp=None,z=None,v=None):
+    def selectparticles(self,val,js=0,tc=None,wt=None,tp=None,z=None,v=None,
+                        gather=1,bcast=1):
         """
  - js=0: Species number to gather from.
          If js=='all', then the quantity is gathered from all species into
@@ -589,6 +603,10 @@ feature.
  - wt=top.dt: Width of region around tc from which to select particles.
  - tp=gett(js=js): Time value to use for the particle selection
  - z=None: when specified, projects the data to the given z location
+ - gather=1: in parallel, when true, the particles are all gathered onto
+             one processor
+ - bcast=1: in paralle, when true, the gathered particles are broadcast
+            to all processors
         """
         if js == 'all':
             nn = sum(map(len,val))
@@ -617,47 +635,66 @@ feature.
             delt = (z - zep)/vzep
             result = result + v*delt
 
+        if lparallel and gather: result = gatherarray(result,bcast=bcast)
         return result
 
-    def getns(self): return len(self.tep)
-    def gett(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return self.selectparticles(self.tep,js,tc,wt,tp,z,1.)
-    def getx(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return self.selectparticles(self.xep,js,tc,wt,tp,z,self.getux)
-    def gety(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return self.selectparticles(self.yep,js,tc,wt,tp,z,self.getuy)
-    def getux(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return self.selectparticles(self.uxep,js,tc,wt,tp)
-    def getuy(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return self.selectparticles(self.uyep,js,tc,wt,tp)
-    def getuz(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return self.selectparticles(self.uzep,js,tc,wt,tp)
-    def getvx(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return self.selectparticles(self.uxep,js,tc,wt,tp)
-    def getvy(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return self.selectparticles(self.uyep,js,tc,wt,tp)
-    def getvz(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return self.selectparticles(self.uzep,js,tc,wt,tp)
-    def getpid(self,js=0,tc=None,wt=None,tp=None,z=None,id=0):
+    def getns(self):
+        return len(self.tep)
+    def gett(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return self.selectparticles(self.tep,js,tc,wt,tp,z,1.,
+                                    gather=gather,bcast=bcast)
+    def getx(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return self.selectparticles(self.xep,js,tc,wt,tp,z,self.getux,
+                                    gather=gather,bcast=bcast)
+    def gety(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return self.selectparticles(self.yep,js,tc,wt,tp,z,self.getuy,
+                                    gather=gather,bcast=bcast)
+    def getux(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return self.selectparticles(self.uxep,js,tc,wt,tp,
+                                    gather=gather,bcast=bcast)
+    def getuy(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return self.selectparticles(self.uyep,js,tc,wt,tp,
+                                    gather=gather,bcast=bcast)
+    def getuz(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return self.selectparticles(self.uzep,js,tc,wt,tp,
+                                    gather=gather,bcast=bcast)
+    def getvx(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return self.selectparticles(self.uxep,js,tc,wt,tp,
+                                    gather=gather,bcast=bcast)
+    def getvy(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return self.selectparticles(self.uyep,js,tc,wt,tp,
+                                    gather=gather,bcast=bcast)
+    def getvz(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return self.selectparticles(self.uzep,js,tc,wt,tp,
+                                    gather=gather,bcast=bcast)
+    def getpid(self,js=0,tc=None,wt=None,tp=None,z=None,id=0,gather=1,bcast=1):
         self.updatenpidepmax()
         if top.npidepmax > 0:
-            return self.selectparticles(self.pidep,js,tc,wt,tp)[:,id]
+            return self.selectparticles(self.pidep,js,tc,wt,tp,
+                                        gather=gather,bcast=bcast)[:,id]
         else:
-            return zeros((self.getn(js,tc,wt,tp),0),'d')
+            return zeros((self.getn(js,tc,wt,tp,
+                                    gather=gather,bcast=bcast),0),'d')
 
-    def getxp(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return self.getux(js,tc,wt,tp)/self.getuz(js,tc,wt,tp)
-    def getyp(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return self.getuy(js,tc,wt,tp)/self.getuz(js,tc,wt,tp)
-    def getr(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return sqrt(self.getx(js,tc,wt,tp,z)**2 + self.gety(js,tc,wt,tp,z)**2)
-    def gettheta(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return arctan2(self.gety(js,tc,wt,tp,z),self.getx(js,tc,wt,tp,z))
-    def getrp(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return (self.getxp(js,tc,wt,tp)*cos(self.gettheta(js,tc,wt,tp)) +
-                self.getyp(js,tc,wt,tp)*sin(self.gettheta(js,tc,wt,tp)))
-    def getn(self,js=0,tc=None,wt=None,tp=None,z=None):
-        return len(self.gett(js,tc,wt,tp))
+    def getxp(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return (self.getux(js,tc,wt,tp,gather=gather,bcast=bcast)/
+                self.getuz(js,tc,wt,tp,gather=gather,bcast=bcast))
+    def getyp(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return (self.getuy(js,tc,wt,tp,gather=gather,bcast=bcast)/
+                self.getuz(js,tc,wt,tp,gather=gather,bcast=bcast))
+    def getr(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return sqrt(self.getx(js,tc,wt,tp,z,gather=gather,bcast=bcast)**2 +
+                    self.gety(js,tc,wt,tp,z,gather=gather,bcast=bcast)**2)
+    def gettheta(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return arctan2(self.gety(js,tc,wt,tp,z,gather=gather,bcast=bcast),
+                       self.getx(js,tc,wt,tp,z,gather=gather,bcast=bcast))
+    def getrp(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return (self.getxp(js,tc,wt,tp,gather=gather,bcast=bcast)*
+                    cos(self.gettheta(js,tc,wt,tp,gather=gather,bcast=bcast)) +
+                self.getyp(js,tc,wt,tp,gather=gather,bcast=bcast)*
+                    sin(self.gettheta(js,tc,wt,tp,gather=gather,bcast=bcast)))
+    def getn(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        return len(self.gett(js,tc,wt,tp,gather=gather,bcast=bcast))
 
     def xxpslope(self,js=0,tc=None,wt=None,tp=None,z=None):
         if self.getn(js,tc,wt,tp) == 0:
