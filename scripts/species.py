@@ -1580,6 +1580,8 @@ of code."""
   # --- Note that the documentation can only be obtained by referencing the
   # --- class object. i.e. beam.__class__.sw.__doc__
   def _getpgroupattribute(name,doc=None):
+    if doc is None:
+      doc = top.pgroup.getvardoc(name)
     def fget(self):
       if len(self.jslist) == 1:
         return getattr(self.pgroup,name)[self.jslist[0]]
@@ -1677,6 +1679,8 @@ of code."""
   del _getpgroupattribute
 
   def _gettopattribute(name,doc=None):
+    if doc is None:
+      doc = top.getvardoc(name)
     def fget(self):
       if len(self.jslist) == 1:
         return getattr(top,name)[self.jslist[0]]
@@ -1737,6 +1741,8 @@ of code."""
 
   # --- For variables that are 2, 3, or 4-D
   def _gettopattribute(name,doc=None):
+    if doc is None:
+      doc = top.getvardoc(name)
     def fget(self):
       if len(self.jslist) == 1:
         return getattr(top,name)[...,self.jslist[0]]
@@ -1778,6 +1784,8 @@ of code."""
   del _gettopattribute
 
   def _getw3dattribute(name,doc=None):
+    if doc is None:
+      doc = w3d.getvardoc(name)
     def fget(self):
       if len(self.jslist) == 1:
         return getattr(w3d,name)[self.jslist[0]]
