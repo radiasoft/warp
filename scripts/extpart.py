@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.67 2009/05/28 20:29:03 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.68 2009/05/28 20:34:13 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -508,11 +508,18 @@ feature.
         # --- wrong.
         for var,val in datadict.items():
             if var[0:3] == 'pid':
+                try:
+                    npid = val.shape[1]
+                except IndexError:
+                    # --- This is needed so that old datasets can be read in.
+                    # --- Old datasets were not written properly, leaving
+                    # --- pid a 1-D array.
+                    npid = 1
                 if top.npidepmax == 0:
-                    top.npidepmax = val.shape[1]
-                    top.npid = top.npidepmax
+                    top.npidepmax = npid
+                    top.npid = npid
                 else:
-                    assert top.npidepmax == val.shape[1],\
+                    assert top.npidepmax == npid,\
                            'npid is different than in the run where the ExtPart data was saved'
                 break
 
