@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.66 2009/05/27 23:15:36 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.67 2009/05/28 20:29:03 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -315,21 +315,21 @@ routines (such as ppxxp).
                 uy = gatherarray(uy,othersempty=1)
                 uz = gatherarray(uz,othersempty=1)
                 if top.npidepmax > 0:
-                    pid = gatherarray(top.pidep[:nn,:,id,js],othersempty=1)
+                    pid = gatherarray(pid,othersempty=1)
                 else:
-                    pid = zeros((nn,0),'d')
+                    pid = zeros((ntot,0),'d')
 
             if self.laccumulate and not self.dumptofile:
 
                 # --- Only PE0 accumulates the data.
                 if me == 0:
-                    self.tep[js].append(t+0.)
-                    self.xep[js].append(x+0.)
-                    self.yep[js].append(y+0.)
-                    self.uxep[js].append(ux+0.)
-                    self.uyep[js].append(uy+0.)
-                    self.uzep[js].append(uz+0.)
-                    self.pidep[js].append(pid+0.)
+                    self.tep[js].append(t.copy())
+                    self.xep[js].append(x.copy())
+                    self.yep[js].append(y.copy())
+                    self.uxep[js].append(ux.copy())
+                    self.uyep[js].append(uy.copy())
+                    self.uzep[js].append(uz.copy())
+                    self.pidep[js].append(pid.copy())
 
             else:
 
@@ -500,6 +500,23 @@ feature.
                 while jsmax >= len(ntot): ntot.append(0)
                 ntot[jsmax] = ntot[jsmax] + val
 
+        # --- Get the size of the pid array. If top.npidepmax is zero, that
+        # --- probably means that this data is being read in for
+        # --- postprocessing, since the pid arrays was not setup.
+        # --- If top.npidepmax is nonzero and different than the size
+        # --- of pid, raise an exception since there is likely something
+        # --- wrong.
+        for var,val in datadict.items():
+            if var[0:3] == 'pid':
+                if top.npidepmax == 0:
+                    top.npidepmax = val.shape[1]
+                    top.npid = top.npidepmax
+                else:
+                    assert top.npidepmax == val.shape[1],\
+                           'npid is different than in the run where the ExtPart data was saved'
+                break
+
+
         self.setuparrays(jsmax+1,bump=max(array(ntot))+1)
 
         # --- This loop must be ordered because of the append
@@ -605,7 +622,7 @@ feature.
  - z=None: when specified, projects the data to the given z location
  - gather=1: in parallel, when true, the particles are all gathered onto
              one processor
- - bcast=1: in paralle, when true, the gathered particles are broadcast
+ - bcast=1: in parallel, when true, the gathered particles are broadcast
             to all processors
         """
         if js == 'all':
@@ -615,12 +632,12 @@ feature.
                 rr.append(self.selectparticles(val,js,tc,wt,tp))
             result = rr[...]
         elif tc is None:
-            result = val[js][:]
+            result = val[js][...]
         else:
             if wt is None: wt = self.dt
             if tp is None: tp = self.tep[js][:]
             ii = compress((tc-wt<tp)&(tp<tc+wt),arange(len(tp)))
-            result = take(val[js][:],ii)
+            result = take(val[js][...],ii)
 
         if z is not None and v is not None:
             # --- Project to the new z value given the current velocity
