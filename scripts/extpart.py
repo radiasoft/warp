@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.68 2009/05/28 20:34:13 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.69 2009/05/29 16:43:40 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -524,7 +524,17 @@ feature.
                 break
 
 
-        self.setuparrays(jsmax+1,bump=max(array(ntot))+1)
+        if len(ntot) == 0:
+            # --- No data was read in, so this value won't be used.
+            # --- This can happen in a parallel run since not all processors
+            # --- will necessarily write out data.
+            # --- This case is needed since max(ntot) would give an error.
+            bump = 1
+        else:
+            # --- Set the bump size so that the arrays will be made just
+            # --- large enough to hold the data.
+            bump = max(ntot) + 1
+        self.setuparrays(jsmax+1,bump=bump)
 
         # --- This loop must be ordered because of the append
         varlist = datadict.keys()
