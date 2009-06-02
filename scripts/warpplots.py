@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.249 2009/05/08 18:15:37 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.250 2009/06/02 22:55:47 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1175,6 +1175,7 @@ def ppgeneric_doc(x,y):
   - gridt: optional grid to plot (instead of deriving grid from particle data)
            The transpose is the grid is plotted.
   - hash=0: flag to turn on or off the hash plot
+  - height=20: font size of the axes titles
   - hcolor='fg': color of hash marks for hash plots
   - lcolorbar=1: when plotting colorized data, include a colorbar
   - ldensityscale=0: when true, scale the density by its max.
@@ -1236,6 +1237,7 @@ _ppgeneric_kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
                 'xoffset':0.,'yoffset':0.,'offset':0.,
                 'xscale':1.,'yscale':1.,'titles':1,
                 'titlet':'','titleb':'','titlel':'','titler':'',
+                'height':20,
                 'lframe':0,'xmin':None,'xmax':None,'ymin':None,'ymax':None,
                 'pplimits':('e','e','e','e'),
                 'particles':0,'uselog':None,'logmin':None,
@@ -1288,6 +1290,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   titleb = kwvalues['titleb']
   titlel = kwvalues['titlel']
   titler = kwvalues['titler']
+  height = kwvalues['height']
   lframe = kwvalues['lframe']
   xmin = kwvalues['xmin']
   xmax = kwvalues['xmax']
@@ -1789,7 +1792,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       #limits(xmin3,xmax3,ymin3,ymax3)
 
   # --- Finish off the plot, adding titles and setting the frame limits.
-  if titles: ptitles(titlet,titleb,titlel,titler,v=view)
+  if titles: ptitles(titlet,titleb,titlel,titler,v=view,height=height)
   settitles()
   if (lframe):
     ppp = list(pplimits)
