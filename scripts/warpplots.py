@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.250 2009/06/02 22:55:47 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.251 2009/06/03 01:26:56 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -525,22 +525,79 @@ plot the frame.
       if pfunc == 'hcp': continue
       # --- Make the plot, calling the appropriate gist or matplotlib function
       handleplotfunctioncall(pfunc,args,kw)
-    # --- Increment the frame number of the active window
-    self.currentframe = framenum + 1
   def plotallframes(self):
     """plotallframes():
 plot all frames stored in the file.
     """
     numframes = max(self.frames.keys())
-    # --- Reset the plot frame number for the window
-    self.currentframe = 1
     # --- All that is needed is to call plotframe the appropriate number
     # --- of times and adding the fma calls.
     for i in range(numframes):
-      self.plotframe()
+      self.plotframe(i+1)
       # --- The legend is turned off since it was plotted in the
       # --- original run.
       fma(legend=0)
+  def gist(self):
+    """This offers a rudimentary gist like interface, allowing easy scanning
+through the plot file."""
+    import fcntl
+    import tty
+    import termios
+    import curses.ascii
+    numframes = max(self.frames.keys())
+    # --- Get the settings for stdin, so it can be restored later.
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    # --- This gives a carriage return without a linefeed.
+    CR = curses.ascii.ctrl('m')
+    try:
+      # --- Set stdin to be nonblocking.
+      rv = fcntl.fcntl(sys.stdin, fcntl.F_SETFL, os.O_NDELAY)
+      # --- Set so stdin does not echo the input.
+      tty.setraw(sys.stdin.fileno())
+      stepstring = ''
+      while 1:
+        # --- Handle any gist events, such as mouse zooming.
+        refresh()
+        # --- Check if a character has been entered.
+        try:
+          c = sys.stdin.read(1)
+        except IOError:
+          continue
+        if c == 'f':
+          # --- Advance forward
+          self.currentframe += int(stepstring or 1)
+          if self.currentframe >= numframes:
+            self.currentframe = numframes
+            print "At last frame",CR,
+          gist.fma()
+          oldlimits = limits()
+          self.plotframe()
+          stepstring = ''
+        elif c == 'b':
+          # --- Advance backward
+          self.currentframe -= int(stepstring or 1)
+          if self.currentframe <= 1:
+            self.currentframe = 1
+            print "At first frame",CR,
+          gist.fma()
+          oldlimits = limits()
+          self.plotframe()
+          stepstring = ''
+        elif c in ['0','1','2','3','4','5','6','7','8','9']:
+          stepstring += c
+        elif c == 'r':
+          # --- reset
+          unzoom()
+        elif c == 's':
+          # --- Send to cgm file
+          hcp()
+        elif c == 'q':
+          # --- quit
+          break
+    finally:
+      termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
 
 # Frame advance and redraw routines. The fma routine from gist is replaced
 # with one that prints informative text at the bottom of each frame just
