@@ -9,12 +9,14 @@ RMS:
   pzvxrms: Plots true RMS Vx versus Z
   pzvyrms: Plots true RMS Vy versus Z
   pzvzrms: Plots true RMS Vz versus Z
-  pzepsx: Plots x-X' emittance versus Z
-  pzepsy: Plots y-Y' emittance versus Z
-  pzepsz: Plots z-Z' emittance versus Z
-  pzepsnx: Plots x-X' normalized emittance versus Z
-  pzepsny: Plots y-Y' normalized emittance versus Z
-  pzepsnz: Plots z-Z' normalized emittance versus Z
+  pzepsx: Plots X-X' emittance versus Z
+  pzepsy: Plots Y-Y' emittance versus Z
+  pzepsz: Plots Z-Z' emittance versus Z
+  pzepsr: Plots R-R' emittance versus Z
+  pzepsnx: Plots X-X' normalized emittance versus Z
+  pzepsny: Plots Y-Y' normalized emittance versus Z
+  pzepsnz: Plots Z-Z' normalized emittance versus Z
+  pzepsnr: Plots R-R' normalized emittance versus Z
   pzepsg: Plots generalized emittance versus Z
   pzepsh: Plots generalized emittance versus Z
   pzepsng: Plots generalized normalized emittance versus Z
@@ -78,7 +80,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.22 2008/07/17 16:18:26 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.23 2009/06/07 00:25:16 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -1549,6 +1551,43 @@ def pzepsz(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             _gettitler(js))
 
 ##########################################################################
+def pzepsr(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None,ff=None):
+  """Plots epsrz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
+  - zoffset=zbeam: offset added to axis
+  - zscale=1: scale of axis
+    plots versus (zoffset + zmntmesh)/zscale
+  - scale=1.: factor to scale data by
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles
+  - varsuffix=None: When specified, variables with that suffix are used
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  epsrz = _extractvar('epsrz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epsrz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
+  if titles:
+    ptitles("R-R' emittance versus Z",titleb,"(!p-m-rad)",
+            _gettitler(js))
+
+##########################################################################
 def pzepsnx(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
             titleb=None,titles=1,varsuffix=None,ff=None):
@@ -1657,6 +1696,43 @@ def pzepsnz(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Z-Z' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
+            _gettitler(js))
+
+##########################################################################
+def pzepsnr(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None,ff=None):
+  """Plots epsnrz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
+  - zoffset=zbeam: offset added to axis
+  - zscale=1: scale of axis
+    plots versus (zoffset + zmntmesh)/zscale
+  - scale=1.: factor to scale data by
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles
+  - varsuffix=None: When specified, variables with that suffix are used
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  epsnrz = _extractvar('epsnrz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(epsnrz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
+  if titles:
+    ptitles("R-R' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
             _gettitler(js))
 
 ##########################################################################
