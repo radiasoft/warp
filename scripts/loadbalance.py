@@ -5,7 +5,7 @@ __all__ = ['LoadBalancer']
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.65 2009/05/12 23:10:47 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.66 2009/06/07 00:33:32 dave Exp $"
 
 def loadbalancedoc():
     import loadbalance
@@ -85,14 +85,23 @@ recalculated on a finer mesh to give better balancing.
 
         if doitnow: self.doloadbalance()
 
-        installafterstep(self.doloadbalance)
+        # --- Just before scraping is probably the best place to do load
+        # --- balancing. The scraping will do the shuffling of the particles
+        # --- among the processors, so a special call to do that is not
+        # --- needed. Right after the scraping, the charge is deposited, so
+        # --- reshuffling of the charge density (and potential) is not needed.
+        # --- Also, if loadbalancing were done every step, this would
+        # --- gaurantee that particles would never be accidently lost
+        # --- since the particles would not move in between load balances.
+        installbeforescraper(self.doloadbalance)
 
     def __setstate__(self,dict):
         self.__dict__.update(dict)
-        if not isinstalledafterstep(self.doloadbalance):
-            installafterstep(self.doloadbalance)
+        if not isinstalledbeforescraper(self.doloadbalance):
+            installbeforescraper(self.doloadbalance)
 
-    def doloadbalance(self,lforce=0,doloadrho=None,dofs=None,reorg=None):
+    def doloadbalance(self,lforce=0,doloadrho=None,dofs=None,
+                      doparticleboundaries=0,reorg=None):
         starttime = time.time()
 
         # --- Set lloadbalanced flag to false. It will be set to true below
@@ -106,8 +115,17 @@ recalculated on a finer mesh to give better balancing.
             self.runtime += (endtime - starttime)
             return
 
+        # --- Older version sometimes used the precalculated moments to
+        # --- avoid recalculating the quantities.
+        #usemoments = not (not top.lmoments or top.ifzmmnt == 0
+        #                  or top.laccumulate_zmoments)
+        # --- The new version, with this called before scraping, always
+        # --- recalculates the quantities needed since the zmoments will
+        # --- not be up to date.
+        usemoments = false
+
         # --- Get the current number of live particles.
-        if not top.lmoments or top.ifzmmnt == 0 or top.laccumulate_zmoments:
+        if not usemoments:
             # --- Sum up the total number of particles calculated.
             nplive = globalsum(top.pgroup.nps)
         else:
@@ -123,7 +141,7 @@ recalculated on a finer mesh to give better balancing.
             return
 
         # --- Get the range of particles in each dimension.
-        if not top.lmoments or top.ifzmmnt == 0 or top.laccumulate_zmoments:
+        if not usemoments:
             # --- If the moments were not calculated, then top.zminp and
             # --- top.zmaxp are not reliable and so need to be calculated.
             # --- In the dimensions where there is no decomposition, skip
@@ -157,10 +175,20 @@ recalculated on a finer mesh to give better balancing.
                     zminp = min(zminp,min(zz))
                     zmaxp = max(zmaxp,max(zz))
                 else:
-                    zminp = w3d.zmmin
-                    zmaxp = w3d.zmmax
+                    zminp = w3d.zmmin + top.zbeam
+                    zmaxp = w3d.zmmax + top.zbeam
             xminp,yminp,zminp = parallelmin([xminp,yminp,zminp])
             xmaxp,ymaxp,zmaxp = parallelmax([xmaxp,ymaxp,zmaxp])
+            # --- Make sure that the mins and maxes are within the bounds
+            # --- of the grid. This is needed since there may be some
+            # --- particles that are out of bounds (since this happens just
+            # --- before the particle scraping).
+            xminp = max(xminp,w3d.xmmin)
+            xmaxp = min(xmaxp,w3d.xmmax)
+            yminp = max(yminp,w3d.ymmin)
+            ymaxp = min(ymaxp,w3d.ymmax)
+            zminp = max(zminp,w3d.zmmin + top.zbeam)
+            zmaxp = min(zmaxp,w3d.zmmax + top.zbeam)
         else:
             # --- Otherwise, use the values already calculated.
             xminp = top.xminp[-1]
@@ -314,7 +342,7 @@ recalculated on a finer mesh to give better balancing.
                                  top.pgroup.getpyobject('uxp'),
                                  ppdecomp.nxglobal,self.nxguard,
                                  ppdecomp.xmin,ppdecomp.xmax,
-                                 ppdecomp.ix,ppdecomp.nx)
+                                 ppdecomp.ix,ppdecomp.nx,usemoments)
             top.xpminlocal = ppdecomp.xmin[top.ixproc]
             top.xpmaxlocal = ppdecomp.xmax[top.ixproc]
             w3d.xmminp = w3d.xmmin + ppdecomp.ix[top.ixproc]*w3d.dx
@@ -329,7 +357,7 @@ recalculated on a finer mesh to give better balancing.
                                  top.pgroup.getpyobject('uyp'),
                                  ppdecomp.nyglobal,self.nyguard,
                                  ppdecomp.ymin,ppdecomp.ymax,
-                                 ppdecomp.iy,ppdecomp.ny)
+                                 ppdecomp.iy,ppdecomp.ny,usemoments)
             top.ypminlocal = ppdecomp.ymin[top.iyproc]
             top.ypmaxlocal = ppdecomp.ymax[top.iyproc]
             w3d.ymminp = w3d.ymmin + ppdecomp.iy[top.iyproc]*w3d.dy
@@ -345,7 +373,7 @@ recalculated on a finer mesh to give better balancing.
                                  top.pgroup.getpyobject('uzp'),
                                  ppdecomp.nzglobal,self.nzguard,
                                  ppdecomp.zmin,ppdecomp.zmax,
-                                 ppdecomp.iz,ppdecomp.nz)
+                                 ppdecomp.iz,ppdecomp.nz,usemoments)
             top.zpminlocal = ppdecomp.zmin[top.izproc]
             top.zpmaxlocal = ppdecomp.zmax[top.izproc]
             w3d.zmminp = w3d.zmmin + ppdecomp.iz[top.izproc]*w3d.dz
@@ -357,17 +385,17 @@ recalculated on a finer mesh to give better balancing.
             top.zpslmin[:] =  ppdecomp.zmin
             top.zpslmax[:] =  ppdecomp.zmax
 
-        # --- Reorganize the particles
+        # --- Reorganize the particles only if requested to do so.
+        # --- This is otherwise taken care of by the normal particle boundary
+        # --- condition calls during the time step.
         # --- On step zero, a complete reorganization is done so the reorg flag
         # --- is set to true to use the particle sorter which is more efficient
         # --- in that case.
-        if reorg is None:
-          reorg = (top.it==1)
-        if reorg:
-          reorgparticles(top.pgroup,w3d.l4symtry,w3d.l2symtry,
-                         w3d.solvergeom==w3d.RZgeom)
-        else:
-          particlegridboundaries3d(top.pgroup,-1)
+        if reorg or (top.it==1 and doparticleboundaries):
+            reorgparticles(top.pgroup,w3d.l4symtry,w3d.l2symtry,
+                           w3d.solvergeom==w3d.RZgeom)
+        elif doparticleboundaries:
+            particlegridboundaries3d(top.pgroup,-1)
 
         # --- Update sizes of grids for particles
         w3d.nxp = ppdecomp.nx[top.ixproc]
@@ -393,12 +421,11 @@ recalculated on a finer mesh to give better balancing.
                 gchange("Fields3dParticles")
             else:
                 gchange_rhop_phip_rz()
-            # --- Redistribute phi to the particle arrays if a field solve is
-            # --- not done.
-            if not dofs:
-                if getregisteredsolver() is None:
-                    for i in range(getnsndtsforsubcycling()):
-                        getphipforparticles(i)
+            ## --- Redistribute phi to the particle arrays if a field solve is
+            ## --- not done.
+            #if not dofs:
+            #    for i in range(getnsndtsforsubcycling()):
+            #        getphipforparticles(i)
 
         # --- Do some additional work if requested
         if doloadrho is None: doloadrho = self.doloadrho
@@ -413,9 +440,8 @@ recalculated on a finer mesh to give better balancing.
     def dodecomposition(self,axis,ii,minp,maxp,spread,padlower,padupper,
                    mmin,mmax,dd,beam,nprocs,pp,uu,
                    nnglobal,nguard,ppdecompmin,ppdecompmax,
-                   ppdecompii,ppdecompnn):
-        if (axis < 2 or (maxp - minp)/dd < 10 or
-            not top.lmoments or top.ifzmmnt == 0 or top.laccumulate_zmoments):
+                   ppdecompii,ppdecompnn,usemoments):
+        if (axis < 2 or (maxp - minp)/dd < 10 or not usemoments):
             # --- If the particles only extend over a few grid cells,
             # --- recalculate the distribution on a finer grid to get better
             # --- loadbalancing.
@@ -456,8 +482,8 @@ recalculated on a finer mesh to give better balancing.
         ppdecompmin[:] = mmin + domain[:-1]
         ppdecompmax[:] = mmin + domain[1:]
 
-        padlower = self.calcpadlower(axis,ii,padlower,uu,dd)
-        padupper = self.calcpadupper(axis,ii,padupper,uu,dd)
+        padlower = self.calcpadlower(axis,ii,padlower,uu,dd,usemoments)
+        padupper = self.calcpadupper(axis,ii,padupper,uu,dd,usemoments)
 
         ppdecompmin[0] = max(mmin,ppdecompmin[0] - padlower)
         ppdecompmax[-1] = min(mmax,ppdecompmax[-1] + padupper)
@@ -466,10 +492,10 @@ recalculated on a finer mesh to give better balancing.
                                  zeros(nprocs,'d'),true,
                                  ppdecompii,ppdecompnn,ppdecompmin,ppdecompmax)
 
-    def calcpadupper(self,axis,ii,padupper,uu,dd):
+    def calcpadupper(self,axis,ii,padupper,uu,dd,usemoments):
         # --- Calculate the padding on the upper edge.
         if padupper is None:
-            if axis < 2 or not top.lmoments or top.ifzmmnt == 0:
+            if axis < 2 or not usemoments:
                 vmaxp = -largepos
                 for js in range(top.pgroup.ns):
                     if top.pgroup.nps[js] == 0: continue
@@ -486,10 +512,10 @@ recalculated on a finer mesh to give better balancing.
             print "Load balancing padupper%s = "%(['x','y','z'][axis]),padupper
         return padupper
 
-    def calcpadlower(self,axis,ii,padlower,uu,dd):
+    def calcpadlower(self,axis,ii,padlower,uu,dd,usemoments):
         # --- Calculate the padding on the lower edge.
         if padlower is None:
-            if axis < 2 or not top.lmoments or top.ifzmmnt == 0:
+            if axis < 2 or not usemoments:
                 vminp = +largepos
                 for js in range(top.pgroup.ns):
                     if top.pgroup.nps[js] == 0: continue

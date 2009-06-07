@@ -348,12 +348,12 @@ itself, but always gets data from the Fortran packages.
       gchange("Fields3dParticles")
     else:
       gchange_rhop_phip_rz()
-    # --- Redistribute phi to the particle arrays if a field solve is
-    # --- not done.
-    if not dofs:
-      if getregisteredsolver() is None:
-        for i in range(getnsndtsforsubcycling()):
-          getphipforparticles(i)
+   ## --- Redistribute phi to the particle arrays if a field solve is
+   ## --- not done.
+   #if not dofs:
+   #  if getregisteredsolver() is None:
+   #    for i in range(getnsndtsforsubcycling()):
+   #      getphipforparticles(i)
 
   def zerosource(self):
     if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
@@ -1563,7 +1563,8 @@ of the arrays used by the field solve"""
   def resetparticledomains(self):
     self.setparticledomains()
     # --- Note that this will call allocatedataarrays.
-    self.getallpotentialpforparticles(lforce=1)
+    #self.getallpotentialpforparticles(lforce=1)
+    self.allocatedataarrays()
     # --- Make sure the sourcep gets set to the updated sourceparray.
     self.setsourcepforparticles(0,0,0)
 
