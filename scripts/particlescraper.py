@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.85 2009/03/06 18:21:39 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.86 2009/06/07 00:27:42 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -1274,4 +1274,53 @@ interpolating errors from the grid.
       # --- For particles which are inside, set gaminv to 0, the lost
       # --- particle flag
       put(top.pgroup.gaminv,ilost,0.)
+
+  def pdxy(self,iz=0,fullplane=0,xyantisymmetric=0,**kw):
+    if self.lfastscraper:
+      data = self.grid.distances
+    else:
+      data = self.grid.isinside
+    self.grid.fsdecomp = self.grid.decomp
+    self.grid.solvergeom = w3d.solvergeom
+    data = getdecomposedarray(data,iz=iz,bcast=0,local=0,
+                              fullplane=fullplane,
+                              xyantisymmetric=xyantisymmetric,
+                              solver=self.grid)
+    del self.grid.fsdecomp
+    del self.grid.solvergeom
+    ppgeneric(grid=data,
+              xmin=self.grid.xmmin,xmax=self.grid.xmmax,
+              ymin=self.grid.ymmin,ymax=self.grid.ymmax,**kw)
+
+  def pdzx(self,iy=0,**kw):
+    if self.lfastscraper:
+      data = self.grid.distances
+    else:
+      data = self.grid.isinside
+    self.grid.fsdecomp = self.grid.decomp
+    self.grid.solvergeom = w3d.solvergeom
+    data = getdecomposedarray(data,iy=iy,bcast=0,local=0,
+                              fullplane=fullplane,
+                              solver=self.grid)
+    del self.grid.fsdecomp
+    del self.grid.solvergeom
+    ppgeneric(gridt=data,
+              xmin=self.grid.zmminlocal,xmax=self.grid.zmmaxlocal,
+              ymin=self.grid.xmminlocal,ymax=self.grid.xmmaxlocal,**kw)
+
+  def pdzy(self,ix=0,**kw):
+    if self.lfastscraper:
+      data = self.grid.distances
+    else:
+      data = self.grid.isinside
+    self.grid.fsdecomp = self.grid.decomp
+    self.grid.solvergeom = w3d.solvergeom
+    data = getdecomposedarray(data,ix=ix,bcast=0,local=0,
+                              fullplane=fullplane,
+                              solver=self.grid)
+    del self.grid.fsdecomp
+    del self.grid.solvergeom
+    ppgeneric(gridt=data,
+              xmin=self.grid.zmminlocal,xmax=self.grid.zmmaxlocal,
+              ymin=self.grid.ymminlocal,ymax=self.grid.ymmaxlocal,**kw)
 
