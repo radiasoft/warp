@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.197 2009/05/07 17:14:27 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.198 2009/06/07 00:34:57 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1909,6 +1909,14 @@ Creates a grid object which can generate conductor data.
         self.decomp.nzglobal *= nzscale
         self.decomp.iz *= nzscale
         self.decomp.nz *= nzscale
+
+    # --- These are convenient to have for diagnostics.
+    self.xmminlocal = self.decomp.xmin[self.decomp.ixproc]
+    self.xmmaxlocal = self.decomp.xmax[self.decomp.ixproc]
+    self.ymminlocal = self.decomp.ymin[self.decomp.iyproc]
+    self.ymmaxlocal = self.decomp.ymax[self.decomp.iyproc]
+    self.zmminlocal = self.decomp.zmin[self.decomp.izproc]
+    self.zmmaxlocal = self.decomp.zmax[self.decomp.izproc]
 
     # --- Note that for the parallel version, the values of zmmin and zmmax
     # --- will be wrong if this is done before the generate, during which time
