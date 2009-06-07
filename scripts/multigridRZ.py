@@ -324,6 +324,10 @@ class MultiGrid2D(MultiGrid3D):
               xmminlocal,xmmaxlocal,zmminlocal,zmmaxlocal)
 
   def dosolve(self,iwhich=0,*args):
+    self.dosolvemultigrid(iwhich,*args)
+    #self.dosolvesuperlu(iwhich,*args)
+
+  def dosolvemultigrid(self,iwhich=0,*args):
     if not self.l_internal_dosolve: return
     # --- set for longitudinal relativistic contraction
     iselfb = args[2]
@@ -343,6 +347,7 @@ class MultiGrid2D(MultiGrid3D):
     if self.gridmode == 0: self.clearconductors([top.pgroup.fselfb[iselfb]])
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     self.lbuildquads = false
+    t0 = wtime()
     multigrid2dsolve(iwhich,self.nx,self.nz,self.nxlocal,self.nzlocal,
                      self.dx,self.dz*zfact,
                      self._phi[:,0,:],self._rho[:,0,:],self.bounds,
@@ -354,9 +359,124 @@ class MultiGrid2D(MultiGrid3D):
                      self.lcndbndy,self.laddconductor,self.icndbndy,
                      f3d.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
                      self.fsdecomp)
+    t1 = wtime()
+    print "Multigrid time = ",t1-t0
 
     self.mgiters = mgiters[0]
     self.mgerror = mgerror[0]
+
+  def dosolvesuperlu(self,iwhich=0,*args):
+    "Solver using the SuperLU matrix solver instead of multigrid"
+    if not self.l_internal_dosolve: return
+    # --- set for longitudinal relativistic contraction
+    iselfb = args[2]
+    beta = top.pgroup.fselfb[iselfb]/clight
+    zfact = 1./sqrt((1.-beta)*(1.+beta))
+
+    # --- This is only done for convenience.
+    self._phi = self.potential
+    self._rho = self.source
+    if isinstance(self.potential,FloatType): return
+
+    mgiters = zeros(1,'l')
+    mgerror = zeros(1,'d')
+    # --- This takes care of clear out the conductor information if needed.
+    # --- Note that f3d.gridmode is passed in below - this still allows the
+    # --- user to use the addconductor method if needed.
+    if self.gridmode == 0: self.clearconductors([top.pgroup.fselfb[iselfb]])
+    conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
+    self.lbuildquads = false
+
+    # --- Use direct matrix solver
+    t0 = wtime()
+    n = self.nxlocal*self.nzlocal
+    nrhs = 1
+    b = -self.source[:-1,0,:-1]/eps0
+    phi = self.potential[1:-1,0,1:-1]
+    info = zeros(1,'l')
+
+    values = fzeros((5,n),'d')
+    rowind = fzeros((5,n),'l')
+    colptr = arange(n+1)*5 + 1
+    rowcnt = zeros(n,'l')
+    rmmin = self.xmminlocal
+    dr = self.dx
+    dz = self.dz
+    drsqi = 1./dr**2
+    dzsqi = 1./dz**2
+    nxlocal = self.nxlocal
+    nzlocal = self.nzlocal
+    coeffikm1 = dzsqi
+    coeffikp1 = dzsqi
+    for iz in range(0,nzlocal):
+      for ix in range(0,nxlocal):
+        icol = iz*nxlocal + ix
+        r = rmmin + ix*dr
+        if r == 0.:
+          coeffik = - 4.*drsqi - 2.*dzsqi
+          coeffim1k = 0
+          coeffip1k = 4.*drsqi
+        else:
+          coeffik = - 2.*drsqi - 2.*dzsqi
+          coeffim1k = (r-0.5*dr)/r*drsqi
+          coeffip1k = (r+0.5*dr)/r*drsqi
+          if ix == nxlocal-1:
+            b[ix,iz] += -coeffip1k*phi[ix+1,iz]
+            coeffip1k = 0.
+
+        vtemp = [coeffikm1,coeffim1k,coeffik,coeffip1k,coeffikp1]
+        rtemp = [-nxlocal+icol,-1+icol,0+icol,+1+icol,+nxlocal+icol]
+        if rtemp[0] < 0:
+          # --- Periodic Z boundary condition
+          rtemp = rtemp[1:] + [rtemp[0] + nzlocal*nxlocal]
+          vtemp = vtemp[1:] + [vtemp[0]]
+        if rtemp[0] < 0:
+          # --- Throw away point "below" r=0 axis at iz=0.
+          del rtemp[0]
+          del vtemp[0]
+        if rtemp[-1] >= n:
+          # --- Periodic Z boundary condition
+          rtemp = [rtemp[-1] - nzlocal*nxlocal] + rtemp[:-1]
+          vtemp = [vtemp[-1]]         + vtemp[:-1]
+        if rtemp[-1] >= n:
+          # --- Throw away point beyond r=nxlocal, iz=nzlocal
+          del rtemp[-1]
+          del vtemp[-1]
+  
+        for i in range(len(rtemp)):
+          irow = rowcnt[rtemp[i]]
+          values[irow,rtemp[i]] = vtemp[i]
+          rowind[irow,rtemp[i]] = icol + 1
+          rowcnt[rtemp[i]] += 1
+
+    # --- There are two values of rowind that are unset, the (i-1) term
+    # --- for (ix,iz)=(0,0) and the (i+1) term for (ix,iz)=(nx,nzlocal).
+    # --- Give the first one a fake value (since the coefficient is zero
+    # --- anway.
+    rowind[-1,0] = rowind[-2,0] + 1
+    # --- The other is ignored by decrementing the last value of colptr.
+    colptr[-1] -= 1
+
+    self.values = values
+    self.rowind = rowind
+    self.colptr = colptr
+    nnz = colptr[-1] - 1
+
+    t1 = wtime()
+    superlu_dgssv(n,nnz,nrhs,values,rowind,colptr,b,info)
+    t2 = wtime()
+
+    self.potential[1:-2,0,1:-2] = b
+    self.potential[0,0,1:-2] = self.potential[2,0,1:-2]
+    self.potential[-1,0,1:-2] = 2*self.potential[-2,0,1:-2]-self.potential[-3,0,1:-2]
+    self.potential[:,0,-2:] = self.potential[:,0,1:3]
+    self.potential[:,0,0] = self.potential[:,0,-3]
+    t3 = wtime()
+
+    print "Solve time = ",t2 - t1
+    print "Total time = ",t3 - t0
+    self.fstime = t2 - t1
+    self.tottime = t3 - t0
 
   ##########################################################################
   # Define the basic plot commands
