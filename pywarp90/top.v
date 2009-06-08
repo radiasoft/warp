@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.259 $, $Date: 2009/05/16 01:47:11 $
+#@(#) File TOP.V, version $Revision: 3.260 $, $Date: 2009/06/08 16:38:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.259 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.260 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2758,6 +2758,10 @@ shftpart(pgroup:ParticleGroup,is:integer,ishft:integer) subroutine
 copypart(pgroup:ParticleGroup,it:integer,nn:integer,ii:integer;istart:integer)
              subroutine
                         # Copies particle data from one location to another
+wranf() real function   # Returns a random number using the same routines used
+                        # when generating particles.
+seedranf(x:real) subroutine # Set the random number seed used to generate
+                            # particles.
 wrandom(method:string,ii:integer,idig:integer,ifib1:integer,ifib2:integer)
           real function # Returns random number using the given method
 wrandomgauss(method:string,ii:integer,idig1:integer,idig2:integer,
