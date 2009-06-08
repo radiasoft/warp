@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.29 $, $Date: 2008/12/23 17:54:51 $
+c@(#) File top_lattice.F, version $Revision: 3.30 $, $Date: 2009/06/08 22:19:45 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -4474,7 +4474,7 @@ c         --- transverse rotation to take into account an active rotation
 c         --- of the field element. Rotation is relative to the z center.
 c         --- Particles are rotated to the frame of the element.
 c         --- Later, the field components accumulated are rotated back. 
-c         --- First, rotate by bgrdph about the z axis.
+c         --- First, rotate by bgrdop about the z axis.
           if (bgrdop(ii) .ne. 0.) then
             x1 = xt
             y1 = yt
@@ -4490,7 +4490,7 @@ c         --- then by bgrdot about the new y axis
             zt = x1*st(ii) + z1*ct(ii)
           endif
 
-c         --- then by bgrdop about the new z axis
+c         --- then by bgrdph about the new z axis
           if (bgrdph(ii) .ne. 0.) then
             x1 = xt
             y1 = yt
@@ -4733,8 +4733,8 @@ c       --- Precalculate the cosines and sines.
         sa = sin(bgrdph(ib))
         ct = cos(bgrdot(ib))
         st = sin(bgrdot(ib))
-        cp = cos(bgrdop(ib))
-        sp = sin(bgrdop(ib))
+c       cp = cos(bgrdop(ib))
+c       sp = sin(bgrdop(ib))
 
 c       --- Convert the corners into the lab frame by three successive
 c       --- rotations, first by bgrdph about the z axis,
@@ -4746,6 +4746,8 @@ c       --- then by bgrdot about the new y axis,
         y2 = y1
         z2 = -x1*st + z1*ct
 c       --- then by bgrdop about the new z axis.
+c       --- Note that this rotation is not needed since it does not affect
+c       --- the z values.
 c       xl = +x2*cp - y2*sp
 c       yl = +x2*sp + y2*cp
         zl = z2
