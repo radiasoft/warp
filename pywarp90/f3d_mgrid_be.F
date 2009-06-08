@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.44 $, $Date: 2009/02/04 00:42:10 $
+c version $Revision: 1.45 $, $Date: 2009/06/08 22:30:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -13,7 +13,7 @@ c=============================================================================
       subroutine multigridbe3df(iwhich,nx,ny,nz,dx,dy,dz,phi,rho,
      &                          rstar,linbend,
      &                          bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                          xmmin,ymmin,zmmin,zbeam,zgrid)
+     &                          xmmin,ymmin,zmmin)
       use GlobalVars
       use Conductor3d
       use Multigrid3d
@@ -30,7 +30,7 @@ c     integer:: fsf
       logical(ISZ):: linbend
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
+      real(kind=8):: xmmin,ymmin,zmmin
 
 c     fsf = for_set_fpe(FPE_M_TRAP_INV+FPE_M_TRAP_DIV0+FPE_M_TRAP_OVF)
 
@@ -56,7 +56,7 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
 
       call multigridbe3dsolve(iwhich,nx,ny,nz,dx,dy,dz,phi,rho,
      &                        rstar,linbend,bounds,
-     &                        xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                        xmmin,ymmin,zmmin,
      &                        mgparam,mgiters,mgmaxiters,
      &                        mgmaxlevels,mgerror,mgtol,mgverbose,
      &                        downpasses,uppasses,
@@ -150,7 +150,7 @@ c       iondensitygrid3d%grid = iondensitygrid3d%grid/eps0
 c=============================================================================
       subroutine multigridbe3dsolve(iwhich,nx,ny,nz,dx,dy,dz,phi,rho,
      &                              rstar,linbend,bounds,
-     &                              xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                              xmmin,ymmin,zmmin,
      &                              mgparam,mgiters,mgmaxiters,
      &                              mgmaxlevels,mgerror,mgtol,mgverbose,
      &                              downpasses,uppasses,
@@ -170,7 +170,7 @@ c=============================================================================
       real(kind=8):: rstar(-1:nz+1)
       logical(ISZ):: linbend
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
+      real(kind=8):: xmmin,ymmin,zmmin
       real(kind=8):: mgparam
       integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels,mgverbose
       real(kind=8):: mgerror,mgtol

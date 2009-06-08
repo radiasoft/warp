@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.186 $, $Date: 2009/02/26 21:37:01 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.187 $, $Date: 2009/06/08 22:30:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -12,7 +12,7 @@ c=============================================================================
       subroutine multigrid3df(iwhich,nx,ny,nz,nxlocal,nylocal,nzlocal,
      &                        dx,dy,dz,phi,rho,rstar,linbend,
      &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                        xmmin,ymmin,zmmin,zbeam,zgrid)
+     &                        xmmin,ymmin,zmmin)
       use GlobalVars
       use Conductor3d
       use Multigrid3d
@@ -26,7 +26,7 @@ c=============================================================================
       logical(ISZ):: linbend
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
+      real(kind=8):: xmmin,ymmin,zmmin
 
 c     --- copy boundary positions from bound0, boundnz, and boundxy
       bounds(0) = boundxy
@@ -47,7 +47,7 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
 
       call multigrid3dsolve(iwhich,nx,ny,nz,nxlocal,nylocal,nzlocal,dx,dy,dz,
      &                      phi,rho,rstar,linbend,bounds,
-     &                      xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                      xmmin,ymmin,zmmin,
      &                      mgparam,mgform,mgiters,mgmaxiters,
      &                      mgmaxlevels,mgerror,mgtol,mgverbose,
      &                      downpasses,uppasses,
@@ -60,7 +60,7 @@ c=============================================================================
       subroutine multigrid3dsolve(iwhich,nx,ny,nz,nxlocal,nylocal,nzlocal,
      &                            dx,dy,dz,phi,rho,
      &                            rstar,linbend,bounds,
-     &                            xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                            xmmin,ymmin,zmmin,
      &                            mgparam,mgform,mgiters,mgmaxiters,
      &                            mgmaxlevels,mgerror,mgtol,mgverbose,
      &                            downpasses,uppasses,
@@ -78,7 +78,7 @@ c=============================================================================
       real(kind=8):: rstar(-1:nzlocal+1)
       logical(ISZ):: linbend
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
+      real(kind=8):: xmmin,ymmin,zmmin
       real(kind=8):: mgparam
       integer(ISZ):: mgform,mgiters,mgmaxiters,mgmaxlevels,mgverbose
       real(kind=8):: mgerror,mgtol
@@ -530,6 +530,7 @@ c=============================================================================
      &                            fsdecomp)
       use Subtimersf3d
       use ConductorTypemodule
+      use Multigrid3d,Only: mggrid_overlap
       use Multigrid3d_diagnostic
       use Decompositionmodule
       use formggetarraysuminterface
@@ -576,12 +577,15 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: lyoffset,ryoffset
       integer(ISZ):: lzoffset,rzoffset
       type(Decomposition):: coarsedecomp
+      type(Decomposition):: tempdecomp
       integer(ISZ):: allocerror
       integer(ISZ):: delx,dely,delz
       real(kind=8):: sss(2)
       logical(ISZ):: lpe0
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
+
+c     ncalculate = ncalculate + (nxlocal+1)*(nylocal+1)*(nzlocal+1)
 
 c     --- Check that the same coarsening was done for the conductors as is
 c     --- being done now. Note that only nzlocal is saved for the conductors so
@@ -635,6 +639,43 @@ c     --- Do initial SOR passes.
      &                 nx,ny,nz,globalbounds,localbounds,mgparam,mgform,
      &                 lcndbndy,icndbndy,conductors,lprecalccoeffs,fsdecomp)
       enddo
+
+#ifdef MPIPARALLEL
+      if (mggrid_overlap > 0) then
+        tempdecomp%nxglobal = nxcoarse
+        tempdecomp%nyglobal = nycoarse
+        tempdecomp%nzglobal = nzcoarse
+        tempdecomp%mpi_comm_x = fsdecomp%mpi_comm_x
+        tempdecomp%mpi_comm_y = fsdecomp%mpi_comm_y
+        tempdecomp%mpi_comm_z = fsdecomp%mpi_comm_z
+        tempdecomp%ixproc = fsdecomp%ixproc
+        tempdecomp%iyproc = fsdecomp%iyproc
+        tempdecomp%izproc = fsdecomp%izproc
+        tempdecomp%nxprocs = fsdecomp%nxprocs
+        tempdecomp%nyprocs = fsdecomp%nyprocs
+        tempdecomp%nzprocs = fsdecomp%nzprocs
+        allocate(tempdecomp%ix(0:fsdecomp%nxprocs-1))
+        allocate(tempdecomp%nx(0:fsdecomp%nxprocs-1))
+        allocate(tempdecomp%iy(0:fsdecomp%nyprocs-1))
+        allocate(tempdecomp%ny(0:fsdecomp%nyprocs-1))
+        allocate(tempdecomp%iz(0:fsdecomp%nzprocs-1))
+        allocate(tempdecomp%nz(0:fsdecomp%nzprocs-1))
+        tempdecomp%ix = fsdecomp%ix + mggrid_overlap
+        tempdecomp%nx = fsdecomp%nx - mggrid_overlap*2
+        tempdecomp%iy = fsdecomp%iy + mggrid_overlap
+        tempdecomp%ny = fsdecomp%ny - mggrid_overlap*2
+        tempdecomp%iz = fsdecomp%iz + mggrid_overlap
+        tempdecomp%nz = fsdecomp%nz - mggrid_overlap*2
+        call mgexchange_phi(1,tempdecomp%nx(tempdecomp%ixproc),
+     &                        tempdecomp%ny(tempdecomp%iyproc),
+     &                        tempdecomp%nz(tempdecomp%izproc),
+     &                        phi,
+     &                        1+mggrid_overlap,
+     &                        1+mggrid_overlap,
+     &                        1+mggrid_overlap,
+     &                        -1-mggrid_overlap,0,tempdecomp)
+      endif
+#endif
 
 #ifdef WITHCHOMBO
 c     message added by petermc, 1 Oct 2002
@@ -879,6 +920,25 @@ c     message added by petermc, 1 Oct 2002
      &                 nx,ny,nz,globalbounds,localbounds,mgparam,mgform,
      &                 lcndbndy,icndbndy,conductors,lprecalccoeffs,fsdecomp)
       enddo
+
+#ifdef MPIPARALLEL
+      if (mggrid_overlap > 0) then
+        call mgexchange_phi(1,tempdecomp%nx(tempdecomp%ixproc),
+     &                        tempdecomp%ny(tempdecomp%iyproc),
+     &                        tempdecomp%nz(tempdecomp%izproc),
+     &                        phi,
+     &                        1+mggrid_overlap,
+     &                        1+mggrid_overlap,
+     &                        1+mggrid_overlap,
+     &                        -1-mggrid_overlap,0,tempdecomp)
+        deallocate(tempdecomp%ix)
+        deallocate(tempdecomp%nx)
+        deallocate(tempdecomp%iy)
+        deallocate(tempdecomp%ny)
+        deallocate(tempdecomp%iz)
+        deallocate(tempdecomp%nz)
+      endif
+#endif
 
 #ifdef WITHCHOMBO
 c     message added by petermc, 1 Oct 2002
@@ -1244,7 +1304,7 @@ c=============================================================================
       use Constant
       use ConductorTypemodule
       use Decompositionmodule
-      use Parallel,Only:my_index
+      use Multigrid3d,Only: mggrid_overlap
       integer(ISZ):: mglevel
       integer(ISZ):: nxlocal,nylocal,nzlocal
       real(kind=8):: phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
@@ -1322,12 +1382,16 @@ c     --- do loop to cover even and odd points
      &                                 localbounds,.false.,.false.)
 
 #ifdef MPIPARALLEL
-        call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
-     &                               1,1,1,-1,0,localbounds,fsdecomp)
-        if (parity == s_parity) then
-          call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,0,0,fsdecomp)
-        else
-          call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,0,fsdecomp)
+        if (mggrid_overlap == 0) then
+          call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
+     &                                 1,1,1,-1,0,localbounds,fsdecomp)
+          if (parity == s_parity) then
+            call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,0,0,
+     &                          fsdecomp)
+          else
+            call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,0,
+     &                          fsdecomp)
+          endif
         endif
 #endif
 
@@ -4852,7 +4916,7 @@ c=============================================================================
 c=============================================================================
       subroutine multigrid2dsolve(iwhich,nx,nz,nxlocal,nzlocal,dx,dz,
      &                            phi,rho,bounds,
-     &                            xmminlocal,zbeam,zgrid,
+     &                            xmminlocal,
      &                            mgparam,mgiters,mgmaxiters,
      &                            mgmaxlevels,mgerror,mgtol,mgverbose,
      &                            downpasses,uppasses,
@@ -4869,7 +4933,7 @@ c=============================================================================
       real(kind=8):: rho(0:nxlocal,0:nzlocal)
       real(kind=8):: dx,dz
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: xmminlocal,zbeam,zgrid
+      real(kind=8):: xmminlocal
       real(kind=8):: mgparam
       integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels,mgverbose
       real(kind=8):: mgerror,mgtol

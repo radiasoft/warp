@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.199 $, $Date: 2009/05/07 17:13:39 $
+#@(#) File F3D.V, version $Revision: 3.200 $, $Date: 2009/06/08 22:30:43 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.199 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.200 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -219,6 +219,7 @@ mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
                          # dimension. This is an ordered list of powers of two
                          # times 1, 3, 5, and 7.
 mgscaleserial real /1.e39/
+mggrid_overlap integer /0/
 getmglevels(nx:integer,ny:integer,nz:integer,
             nxlocal:integer,nylocal:integer,nzlocal:integer,
             dx:real,dy:real,dz:real,
@@ -234,7 +235,7 @@ multigrid3df(iwhich:integer,nx:integer,ny:integer,nz:integer,
              rstar(-1:nzlocal+1):real,linbend:logical,
              bound0:integer,boundnz:integer,boundxy:integer,
              l2symtry:logical,l4symtry:logical,
-             xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real)
+             xmmin:real,ymmin:real,zmmin:real)
    subroutine
    # Solves Poisson's equation using the multigrid method. This uses variables
    # from the f3d package to control the iterations and conductors.
@@ -244,7 +245,7 @@ multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,
                  phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1):real,
                  rho(0:nxlocal,0:nylocal,0:nzlocal):real,
                  rstar(-1:nzlocal+1):real,linbend:logical,bounds(0:5):integer,
-                 xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,
+                 xmmin:real,ymmin:real,zmmin:real,
                  mgparam:real,mgform:integer,mgiters:integer,
                  mgmaxiters:integer,mgmaxlevels:integer,mgerror:real,mgtol:real,
                  mgverbose:integer,
@@ -260,7 +261,7 @@ multigrid2dsolve(iwhich:integer,nx:integer,nz:integer,
                  dx:real,dz:real,phi(-1:nxlocal+1,-1:nzlocal+1):real,
                  rho(0:nxlocal,0:nzlocal):real,
                  bounds(0:5):integer,
-                 xmminlocal:real,zbeam:real,zgrid:real,
+                 xmminlocal:real,
                  mgparam:real,mgiters:integer,mgmaxiters:integer,
                  mgmaxlevels:integer,mgerror:real,mgtol:real,mgverbose:integer,
                  downpasses:integer,uppasses:integer,
@@ -420,7 +421,7 @@ multigridbe3df(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,
              rstar:real,linbend:logical,
              bound0:integer,boundnz:integer,boundxy:integer,
              l2symtry:logical,l4symtry:logical,
-             xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,
+             xmmin:real,ymmin:real,zmmin:real,
              iondensity:real,electrontemperature:real,plasmapotential:real,
              electrondensitymaxscale:real)
    subroutine
@@ -432,7 +433,6 @@ multigridbe3dsolve(iwhich:integer,
              dx:real,dy:real,dz:real,phi:real,rho:real,
              rstar:real,linbend:logical,bounds(0:5):integer,
              xmmin:real,ymmin:real,zmminlocal:real,zmmin:real,
-             zbeam:real,zgrid:real,
              mgparam:real,mgiters:integer,mgmaxiters:integer,
              mgmaxlevels:integer,mgerror:real,mgtol:real,mgverbose:integer,
              downpasses:integer,uppasses:integer,
@@ -1068,3 +1068,4 @@ timeapplyparallelboundaryconditions3d real /0./
 ****** RRRRRR:
 rrr(:,:) _real
 ppp(:,:) _real
+ncalculate integer /0/
