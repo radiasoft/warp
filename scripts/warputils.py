@@ -26,7 +26,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.27 2009/05/05 00:55:30 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.28 2009/06/11 22:13:32 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -482,4 +482,14 @@ class RandomStream(object):
     self._state = random.get_state()
     random.set_state(savedstate)
     return result
+  def __getnewargs__(self):
+    # --- This method needs to be given explicitly, otherwise it will go
+    # --- through getattr and _wrapper, causing problems.
+    return tuple()
+  def __getstate__(self):
+    # --- create the thing to be pickled
+    return {'_state':self._state}
+  def __setstate__(self,dict):
+    # --- set the state when being unpickled
+    self._state = dict['_state']
 
