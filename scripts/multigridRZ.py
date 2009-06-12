@@ -352,7 +352,6 @@ class MultiGrid2D(MultiGrid3D):
                      self.dx,self.dz*zfact,
                      self._phi[:,0,:],self._rho[:,0,:],self.bounds,
                      self.xmminlocal,
-                     self.getzgrid()*zfact,self.getzgrid()*zfact,
                      self.mgparam,mgiters,self.mgmaxiters,
                      self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                      self.downpasses,self.uppasses,

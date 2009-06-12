@@ -356,7 +356,6 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                          self.source[id,:,:,:],
                          rstar,self.linbend,self.bounds,
                          self.xmmin,self.ymmin,self.zmmin,
-                         self.getzgrid(),self.getzgrid(),
                          self.mgparam[id],self.mgform[id],
                          self.mgiters[id],self.mgmaxiters[id],
                          self.mgmaxlevels[id],self.mgerror[id],
