@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.183 2009/04/20 19:39:56 dave Exp $"
+warp_version = "$Id: warp.py,v 1.184 2009/06/12 19:06:21 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -15,6 +15,8 @@ def oldnonzero(a):
   return a.nonzero()[0]
 import os.path
 import time
+import warpoptions
+warpoptions.parse_args()
 
 # --- Import the RNG module. Older versions have ranf in a seperate module
 # --- called Ranf. In newer versions, ranf is part of RNG.
@@ -132,7 +134,6 @@ except:
 
 # --- Setup the parallel decompoosition if running in parallel
 if lparallel:
-  import warpoptions
   if warpoptions.options.decomp is not None:
     top.nxprocs = warpoptions.options.decomp[0]
     top.nyprocs = warpoptions.options.decomp[1]
