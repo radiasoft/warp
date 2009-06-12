@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.44 2009/04/23 19:56:35 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.45 2009/06/12 22:31:13 dave Exp $"
 
 class TraceParticle(object):
   """
@@ -164,7 +164,8 @@ Available methods...
     self.startit = top.it
     # --- load the data
     addparticles(x=self.x,y=self.y,z=self.z,vx=self.ux,vy=self.uy,vz=self.uz,
-                 gi=self.gi,pid=self.pid,js=self.js,lmomentum=true)
+                 gi=self.gi,pid=self.pid,js=self.js,lmomentum=true,
+                 laddindomain=not self.enforceinitboundaries)
     # --- Enforce the transverse particle boundary conditions
     if self.enforceinitboundaries:
       particleboundaries3d(top.pgroup,self.js,true)
