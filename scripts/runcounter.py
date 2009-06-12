@@ -4,7 +4,7 @@ from warp import *
 import time
 import string
 import sys, copy
-runcounter_version = "$Id: runcounter.py,v 1.12 2004/05/24 21:38:26 dave Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.13 2009/06/12 18:37:10 dave Exp $"
 
 def runcounter(init=0,delta=1,ensambles=[],prefix=None,suffix="_runcounter",
                sleep=0):
@@ -90,7 +90,7 @@ third ever increasing. Each run, the first number will be incremented, every
     counter = init
 
   # --- Make sure that every processor has read in counter already
-  if npes>0: mpi.barrier()
+  if npes>1: mpi.barrier()
 
   # --- PE0 (or serial job) can now write out the next value
   if me == 0:
