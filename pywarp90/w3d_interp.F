@@ -224,7 +224,8 @@ c       --- particles with neighboring processors.
         gaminvscratch = 1.
         call particleboundarieswithdata(npd,xbar,ybar,zbar,
      &                             uxscratch,uyscratch,uzscratch,gaminvscratch,
-     &                             xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zgrid,
+     &                             xpminlocal,xpmaxlocal,ypminlocal,ypmaxlocal,
+     &                             zpminlocal,zpmaxlocal,zgrid,
      &                             pboundxy,pbound0,pboundnz,
      &                             solvergeom==RZgeom)
 
