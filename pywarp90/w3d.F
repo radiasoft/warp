@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.432 $, $Date: 2009/05/07 23:56:19 $
+c@(#) File W3D.F, version $Revision: 3.433 $, $Date: 2009/06/19 20:49:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -568,16 +568,18 @@ c --- user has changed zbeam.
 
       it = it + 1
 c     time = time + dt ! Moved to end of padvnc3d
-      if (lbeamcom) then
-c       --- In this case, it is still up to the user to set zgrid if zbeam is
-c       --- set. Here, zbeam is not necessarily equal to zgrid.
-        zgridprv = zgrid
-      else
-c       --- Set zgridprv to zbeam so that the user only has to set zbeam.
-c       --- Otherwise, zbeam is the same as zgrid, as set at the
-c       --- end of padvnc3d.
-        zgridprv = zbeam
+
+      if (lbeamcom .and. nsndts > 1) then
+        call kaboom("w3dexe: subcycling is not supported with lbeamcom")
+        return
       endif
+
+c     --- Set zgridprv to zbeam so that the user only has to set zbeam.
+c     --- Otherwise, zbeam is the same as zgrid, as set at the
+c     --- end of padvnc3d.
+      zgridprv = zbeam
+c     --- Note that with lbeamcom, zgrid will be reset after the positions
+c     --- are advanced.
       zgrid = zbeam + dt*vbeamfrm + zcorrection
       do indts=0,nsndts-1
         if (mod(it-1,ndts(indts)) == 0) then
@@ -713,7 +715,7 @@ c=============================================================================
       use LatticeInternal
       use GridBoundary3d
       use Z_Moments,Only: tempmaxp,tempminp,tempzmmnts0,tempzmmnts
-      use Subcycling,Only: ndtsaveraging
+      use Subcycling,Only: ndtsaveraging,zgridndts
       use Timers
       character(*):: caller
 
@@ -809,6 +811,18 @@ c           --- and nps.
             call inject3d(1,pgroup)
             call callpythonfunc("userinjection","controllers")
 
+c           --- This is done here in case padvnc3d is called for multiple
+c           --- pgroups
+            if (lbeamcom) then
+c             --- Reset zgrid to be the center of mass of the beam. This should
+c             --- be safe since zgrid should not have been used since it was
+c             --- updated in w3dexe. Ony zgridndts(0) needs to be set since
+c             --- lbeamcom does not work with subcycling.
+              zgrid = getbeamcom(pgroup) - zbeamcomoffset
+              zgridndts(0) = zgrid
+              call stepid (it, time+dt, zgrid)
+            endif
+
 c           --- Treat particles at boundaries
             call particleboundaries3d(pgroup,-1,.true.)
 
@@ -818,18 +832,13 @@ c           --- Collect charge density and current
 
 c           --- This is done here in case padvnc3d is called for multiple
 c           --- pgroups
-            if (lbeamcom) then
-c           --- Set zbeam so that it follows the center of mass of the beam.
-               zbeam = getbeamcom(pgroup) - zbeamcomoffset
-
-
+            if (lgridqnt) then
+c             --- Advance beam frame location using the nominal beam frame
+c             --- velocity. Note that this may need similar treatment to
+c             --- lbeamcom.
+              zbeam = zbeam+vbeamfrm*dt
             else
-c            --- Advance beam frame location using the nominal beam frame velocity.
-             if (lgridqnt) then
-               zbeam = zbeam+vbeamfrm*dt
-             else
-               zbeam = zgrid
-             endif
+              zbeam = zgrid
             endif
 
 c       --- zgridprv needs to be updated for the "synchv" step
