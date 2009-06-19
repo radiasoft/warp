@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.251 2009/06/03 01:26:56 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.252 2009/06/19 00:38:49 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -444,7 +444,10 @@ def handleplotfunctioncall(pfunc,args=[],kw={}):
   winnum = active_window()
   if _plotdatafilenames[winnum] is None:
     # --- Make direct call to gist or matplotlib routine
-    return getattr(_plotpackage,pfunc)(*args,**kw)
+    if kw is None:
+      return getattr(_plotpackage,pfunc)(*args)
+    else:
+      return getattr(_plotpackage,pfunc)(*args,**kw)
   else:
     # --- Write data to the file (for later processing)
     # --- Note that for now pickle is used for its simplicity.
@@ -755,7 +758,13 @@ plg = pla
 # --- This replaces functions from gist, filtering through callplotfunction
 def limits(xmin=None,xmax=None,ymin=None,ymax=None,**kw):
   if with_gist:
-    return callplotfunction("limits",[xmin,xmax,ymin,ymax],kw)
+    if isinstance(xmin,TupleType):
+      # --- In this form, gist complains if a keyword dictionary is passed in,
+      # --- so pass in None for kw.
+      rr = callplotfunction("limits",[xmin],None)
+    else:
+      rr = callplotfunction("limits",[xmin,xmax,ymin,ymax],kw)
+    return rr
   if with_matplotlib:
     callplotfunction("pylab.axis",[(xmin,xmax,ymin,ymax)],kw)
 limits.__doc__ = gist.limits.__doc__
