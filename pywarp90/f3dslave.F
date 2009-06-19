@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.40 $, $Date: 2009/01/05 23:29:38 $
+c F3DSLAVE.M, version $Revision: 1.41 $, $Date: 2009/06/19 21:46:57 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -1212,6 +1212,7 @@ c to getting it correct.
       integer(MPIISZ):: ix,iy,iz,lastz,firstz
       include "mpif.h"
       integer(MPIISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
+      integer(MPIISZ):: nn
       integer(MPIISZ):: messid = 999
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
@@ -1254,7 +1255,8 @@ c the processors deal with files.
       close(22)
 
       if (my_index < nzprocs - 1) then
-        call MPI_SEND(izs+lastz+1,int(1,MPIISZ),MPI_INTEGER,int(my_index+1,MPIISZ),messid,
+        nn = izs+lastz+1
+        call MPI_SEND(nn,int(1,MPIISZ),MPI_INTEGER,int(my_index+1,MPIISZ),messid,
      &                MPI_COMM_WORLD,mpierror)
       endif
 
@@ -1904,7 +1906,7 @@ c Exchange the potential on the boundary and/or in the gaurd cells.
       save messagedata
 
       include "mpif.h"
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_temp
       real(kind=8):: substarttime,wtime,s1,s2
       if (lf3dtimesubs) substarttime = wtime()
       s1 = wtime()
@@ -1919,25 +1921,28 @@ c     --- Note that there should be no problem with having phi being both
 c     --- the send and receive buffer since there is no overlap between
 c     --- out going and in coming data.
       if (fsdecomp%nxprocs > 1) then
+        comm_temp = fsdecomp%mpi_comm_x
         call MPI_ALLTOALLW(phi,messagedata%xsendcounts,messagedata%xdispls,
      &                     messagedata%xsendtypes,
      &                     phi,messagedata%xrecvcounts,messagedata%xdispls,
      &                     messagedata%xrecvtypes,
-     &                     fsdecomp%mpi_comm_x,mpierror)
+     &                     comm_temp,mpierror)
       endif
       if (fsdecomp%nyprocs > 1) then
+        comm_temp = fsdecomp%mpi_comm_y
         call MPI_ALLTOALLW(phi,messagedata%ysendcounts,messagedata%ydispls,
      &                     messagedata%ysendtypes,
      &                     phi,messagedata%yrecvcounts,messagedata%ydispls,
      &                     messagedata%yrecvtypes,
-     &                     fsdecomp%mpi_comm_y,mpierror)
+     &                     comm_temp,mpierror)
       endif
       if (fsdecomp%nzprocs > 1) then
+        comm_temp = fsdecomp%mpi_comm_z
         call MPI_ALLTOALLW(phi,messagedata%zsendcounts,messagedata%zdispls,
      &                     messagedata%zsendtypes,
      &                     phi,messagedata%zrecvcounts,messagedata%zdispls,
      &                     messagedata%zrecvtypes,
-     &                     fsdecomp%mpi_comm_z,mpierror)
+     &                     comm_temp,mpierror)
       endif
 
 c     --- Note that the MPI types generated are cached and do not need to be
@@ -1968,7 +1973,7 @@ c Exchange the potential on the boundary and/or in the gaurd cells.
       save messagedata
 
       include "mpif.h"
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_temp
       real(kind=8):: substarttime,wtime,s1,s2
       if (lf3dtimesubs) substarttime = wtime()
       s1 = wtime()
@@ -1983,25 +1988,28 @@ c     --- Note that there should be no problem with having phi being both
 c     --- the send and receive buffer since there is no overlap between
 c     --- out going and in coming data.
       if (fsdecomp%nxprocs > 1) then
+        comm_temp = fsdecomp%mpi_comm_x
         call MPI_ALLTOALLW(phi,messagedata%xsendcounts,messagedata%xdispls,
      &                     messagedata%xsendtypes,
      &                     phi,messagedata%xrecvcounts,messagedata%xdispls,
      &                     messagedata%xrecvtypes,
-     &                     fsdecomp%mpi_comm_x,mpierror)
+     &                     comm_temp,mpierror)
       endif
       if (fsdecomp%nyprocs > 1) then
+        comm_temp = fsdecomp%mpi_comm_y
         call MPI_ALLTOALLW(phi,messagedata%ysendcounts,messagedata%ydispls,
      &                     messagedata%ysendtypes,
      &                     phi,messagedata%yrecvcounts,messagedata%ydispls,
      &                     messagedata%yrecvtypes,
-     &                     fsdecomp%mpi_comm_y,mpierror)
+     &                     comm_temp,mpierror)
       endif
       if (fsdecomp%nzprocs > 1) then
+        comm_temp = fsdecomp%mpi_comm_z
         call MPI_ALLTOALLW(phi,messagedata%zsendcounts,messagedata%zdispls,
      &                     messagedata%zsendtypes,
      &                     phi,messagedata%zrecvcounts,messagedata%zdispls,
      &                     messagedata%zrecvtypes,
-     &                     fsdecomp%mpi_comm_z,mpierror)
+     &                     comm_temp,mpierror)
       endif
 
 c     --- Note that the MPI types generated are cached and do not need to be
@@ -2085,7 +2093,7 @@ c there are cases when the same two processors exchange data on the left
 c and right, and this cannot be done (easily) with the alltoall.
 
       real(kind=8),pointer:: buffer(:,:,:,:)
-      integer(MPIISZ):: ip
+      integer(MPIISZ):: ip,comm_temp
       integer(MPIISZ):: ix1,ix2,iy1,iy2,iz1,iz2
 
       include "mpif.h"
@@ -2093,6 +2101,8 @@ c and right, and this cannot be done (easily) with the alltoall.
       integer(MPIISZ):: mpierror
       integer(MPIISZ):: messid = 10
       integer(MPIISZ):: nn
+
+      comm_temp = mpi_comm
 
 c     --- By default, select for full dimension of each axis. The down
 c     --- select is done below.
@@ -2128,7 +2138,7 @@ c       --- on the waitall since that message would never be received.
             nn = nc*(ix2-ix1+1)*(iy2-iy1+1)*(iz2-iz1+1)
             call MPI_SEND(buffer,nn,
      &                    MPI_DOUBLE_PRECISION,ip,messid,
-     &                    mpi_comm,mpierror)
+     &                    comm_temp,mpierror)
             deallocate(buffer)
           endif
         enddo
@@ -2147,9 +2157,10 @@ c       --- on the waitall since that message would never be received.
         endif
         allocate(buffer(0:nc-1,ix1:ix2,iy1:iy2,iz1:iz2))
         nn = nc*(ix2-ix1+1)*(iy2-iy1+1)*(iz2-iz1+1)
+        ip = 0
         call MPI_RECV(buffer,nn,
-     &                MPI_DOUBLE_PRECISION,0,messid,
-     &                mpi_comm,mpistatus,mpierror)
+     &                MPI_DOUBLE_PRECISION,ip,messid,
+     &                comm_temp,mpistatus,mpierror)
         phi(:,ix1:ix2,iy1:iy2,iz1:iz2) = buffer
         deallocate(buffer)
       endif
@@ -2173,7 +2184,7 @@ c       --- See comments on loop above.
             nn = nc*(ix2-ix1+1)*(iy2-iy1+1)*(iz2-iz1+1)
             call MPI_SEND(buffer,nn,
      &                    MPI_DOUBLE_PRECISION,ip,messid,
-     &                    mpi_comm,mpierror)
+     &                    comm_temp,mpierror)
             deallocate(buffer)
           endif
         enddo
@@ -2192,9 +2203,10 @@ c       --- See comments on loop above.
         endif
         nn = nc*(ix2-ix1+1)*(iy2-iy1+1)*(iz2-iz1+1)
         allocate(buffer(0:nc-1,ix1:ix2,iy1:iy2,iz1:iz2))
+        ip = nprocs - 1
         call MPI_RECV(buffer,nn,
-     &                MPI_DOUBLE_PRECISION,nprocs-1,messid,
-     &                mpi_comm,mpistatus,mpierror)
+     &                MPI_DOUBLE_PRECISION,ip,messid,
+     &                comm_temp,mpistatus,mpierror)
         phi(:,ix1:ix2,iy1:iy2,iz1:iz2) = buffer
         deallocate(buffer)
       endif
@@ -2208,10 +2220,11 @@ c=============================================================================
       real(kind=8):: ph1(*),ph2(*)
       integer(4),dimension(:):: sendcounts(0:*),senddispls(0:*),sendtypes(0:*)
       integer(4),dimension(:):: recvcounts(0:*),recvdispls(0:*),recvtypes(0:*)
-      integer(4):: mpi_comm,mpierror
+      integer(MPIISZ):: mpi_comm,mpierror
 
       include "mpif.h"
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
+      integer(MPIISZ):: messid
 
       integer(4):: nprocs,iproc,ip
 
@@ -2221,30 +2234,31 @@ c (or that the processor sends nothing to itself).
 
       call MPI_COMM_SIZE(mpi_comm,nprocs,mpierror)
       call MPI_COMM_RANK(mpi_comm,iproc,mpierror)
+      messid = 7777
 
       do ip=0,nprocs-1
         if (iproc < ip) then
           if (sendcounts(ip) > 0) then
-            call MPI_SEND(ph1,sendcounts(ip),sendtypes(ip),ip,7777,
+            call MPI_SEND(ph1,sendcounts(ip),sendtypes(ip),ip,messid,
      &                    mpi_comm,mpierror)
           endif
           if (recvcounts(ip) > 0) then
-            call MPI_RECV(ph2,recvcounts(ip),recvtypes(ip),ip,7777,
+            call MPI_RECV(ph2,recvcounts(ip),recvtypes(ip),ip,messid,
      &                    mpi_comm,mpistatus,mpierror)
           endif
         else if (iproc > ip) then
           if (recvcounts(ip) > 0) then
-            call MPI_RECV(ph2,recvcounts(ip),recvtypes(ip),ip,7777,
+            call MPI_RECV(ph2,recvcounts(ip),recvtypes(ip),ip,messid,
      &                    mpi_comm,mpistatus,mpierror)
           endif
           if (sendcounts(ip) > 0) then
-            call MPI_SEND(ph1,sendcounts(ip),sendtypes(ip),ip,7777,
+            call MPI_SEND(ph1,sendcounts(ip),sendtypes(ip),ip,messid,
      &                    mpi_comm,mpierror)
           endif
         else
           if (sendcounts(ip) > 0) then
-            call MPI_SENDRECV(ph1,sendcounts(ip),sendtypes(ip),ip,7777,
-     &                        ph2,recvcounts(ip),recvtypes(ip),ip,7777,
+            call MPI_SENDRECV(ph1,sendcounts(ip),sendtypes(ip),ip,messid,
+     &                        ph2,recvcounts(ip),recvtypes(ip),ip,messid,
      &                        mpi_comm,mpistatus,mpierror)
           endif
         endif
