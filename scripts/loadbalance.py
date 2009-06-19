@@ -5,7 +5,7 @@ __all__ = ['LoadBalancer']
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.66 2009/06/07 00:33:32 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.67 2009/06/19 18:29:01 dave Exp $"
 
 def loadbalancedoc():
     import loadbalance
@@ -464,7 +464,8 @@ recalculated on a finer mesh to give better balancing.
             pmin = 0.
             pdd = w3d.dz
 
-        assert max(pnum) > 0.,"No particles found during decomposition"
+        #assert max(pnum) > 0.,"No particles found during decomposition"
+        if pnum.max() == 0.: return
 
         # --- Add fictitious data so that actual work is spread only to the
         # --- requested fraction of the processors.
