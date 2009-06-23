@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.198 2009/06/07 00:34:57 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.199 2009/06/23 00:03:38 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -118,18 +118,25 @@ def generateconductors_doc():
 ##############################################################################
 installedconductors = []
 def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
-                        zmin=None,zmax=None,dfill=2.,
-                        zbeam=None,
-                        nx=None,ny=None,nz=None,
-                        nxlocal=None,nylocal=None,nzlocal=None,
-                        xmmin=None,xmmax=None,ymmin=None,ymmax=None,
-                        zmmin=None,zmmax=None,zscale=1.,l2symtry=None,l4symtry=None,
-                        installrz=None,gridmode=1,solvergeom=None,
-                        conductors=None,gridrz=None,mgmaxlevels=None,
-                        decomp=None):
+                      zmin=None,zmax=None,dfill=2.,
+                      zbeam=None,
+                      nx=None,ny=None,nz=None,
+                      nxlocal=None,nylocal=None,nzlocal=None,
+                      xmmin=None,xmmax=None,ymmin=None,ymmax=None,
+                      zmmin=None,zmmax=None,zscale=1.,
+                      l2symtry=None,l4symtry=None,
+                      installrz=None,gridmode=1,solvergeom=None,
+                      conductors=None,gridrz=None,mgmaxlevels=None,
+                      decomp=None):
   """
-Installs the given conductors.
-  - a: the assembly of conductors
+Installs the given conductors into the field solver. When using the built in
+solver, this should only be called after the generate. When using a python
+level solver, for example MultiGrid3d or MultiGrid2d, this should be called
+only after the solver is registered (with registersolver). In that case, it
+is OK to call this before the generate (and is in fact preferred so that the
+conductors will be setup during the field solve that happens during the
+generate).
+  - a: the assembly of conductors, or list of conductors
   - xmin,xmax,ymin,ymax,zmin,zmax: extent of conductors. Defaults to the
     mesh size. These can be set for optimization, to avoid looking
     for conductors where there are none. Also, they can be used crop a
