@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.200 $, $Date: 2009/06/08 22:30:43 $
+#@(#) File F3D.V, version $Revision: 3.201 $, $Date: 2009/06/25 15:47:28 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.200 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.201 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -207,6 +207,7 @@ mgform      integer /1/   # When 1, MG operates on phi (and rho),
 downpasses  integer /1/   # Number of downpasses
 uppasses    integer /1/   # Number of uppasses
 mgverbose   integer /1/   # Level of verbosity of multigrid solver
+mgntverbose integer /1/   # Time step period when output is printed
 bounds(0:5) integer /6*0/ # Type of boundaries at edge of mesh, in order of
                           # lower, upper for x, y, z.
 mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
