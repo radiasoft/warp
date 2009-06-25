@@ -1,5 +1,5 @@
 """This module contains a class Plarr3d with methods to plot a 3-D array of points connected or not by lines.  Also included is a method to make a color-separated stereoscopic plot. For more info, import Plarr3d and type doc(Plarr3d)."""
-plarr3d_version = "$Id: plarr3d.py,v 1.3 2009/01/08 19:27:35 dave Exp $"
+plarr3d_version = "$Id: plarr3d.py,v 1.4 2009/06/25 23:58:53 rcohen Exp $"
 def plarr3ddoc():
    import plarr3d
    print plarr3d.__doc__
@@ -73,6 +73,10 @@ by lines.
      should be reversed, or stereooffset set negative, for
      black background.  lcolor4blk and rcolor4blk are provided
      in class definitions to provide some defaults in this case.
+
+     Note these plotting routines turn off the default plotting frame.  To turn it back on
+     (to make conventional plots) you can invoke the convenience method
+     restoreframe() after fma() and before your next plot.
 
     """
 
@@ -309,3 +313,7 @@ def makepalette(lcolor,rcolor):
       bluearr.append(rcolor[2])
    palette(redarr,greenarr,bluearr)
    return (lcoloruse,rcoloruse)
+
+def restoreframe():
+   # restore the default WARP boxed plotting frame
+   gridxy(0x62b)
