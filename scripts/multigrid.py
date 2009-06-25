@@ -19,7 +19,8 @@ class MultiGrid3D(SubcycledPoissonSolver):
   __w3dinputs__ = ['iondensity','electrontemperature','plasmapotential',
                    'electrondensitymaxscale']
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
-                   'mgmaxiters','mgtol','mgmaxlevels','mgform','mgverbose',
+                   'mgmaxiters','mgtol','mgmaxlevels','mgform',
+                   'mgverbose','mgntverbose',
                    'lcndbndy','icndbndy','laddconductor','lprecalccoeffs'] 
 
   def __init__(self,lreducedpickle=1,**kw):
@@ -682,6 +683,19 @@ class MultiGrid3D(SubcycledPoissonSolver):
     find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
                  solver=self,pkg3d=self)
 
+  def getmgverbose(self):
+    # --- Check if the convergence diagnostic should be printed.
+    if self.mgntverbose < 0:
+      mgverbose = 0
+    elif self.mgntverbose > 1:
+      if (top.it%self.mgntverbose) == 0:
+        mgverbose = 1
+      else:
+        mgverbose = 0
+    else:
+      mgverbose = self.mgverbose
+    return mgverbose
+
   def dosolve(self,iwhich=0,*args):
     if not self.l_internal_dosolve: return
     # --- set for longitudinal relativistic contraction 
@@ -708,6 +722,7 @@ class MultiGrid3D(SubcycledPoissonSolver):
       setrstar(rstar,self.nzlocal,self.dz,self.zmminlocal,self.getzgrid())
       self.linbend = rstar.min() < largepos
 
+    mgverbose = self.getmgverbose()
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     # --- This takes care of clear out the conductor information if needed.
@@ -722,7 +737,7 @@ class MultiGrid3D(SubcycledPoissonSolver):
                        rstar,self.linbend,self.bounds,
                        self.xmmin,self.ymmin,self.zmmin*zfact,
                        self.mgparam,self.mgform,mgiters,self.mgmaxiters,
-                       self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
+                       self.mgmaxlevels,mgerror,self.mgtol,mgverbose,
                        self.downpasses,self.uppasses,
                        self.lcndbndy,self.laddconductor,self.icndbndy,
                        f3d.gridmode,conductorobject,self.lprecalccoeffs,
@@ -741,7 +756,7 @@ class MultiGrid3D(SubcycledPoissonSolver):
                          rstar,self.linbend,self.bounds,
                          self.xmmin,self.ymmin,self.zmmin*zfact,
                          self.mgparam,mgiters,self.mgmaxiters,
-                         self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
+                         self.mgmaxlevels,mgerror,self.mgtol,mgverbose,
                          self.downpasses,self.uppasses,
                          self.lcndbndy,self.laddconductor,self.icndbndy,
                          f3d.gridmode,conductorobject,
@@ -991,6 +1006,7 @@ tensor that appears from the direct implicit scheme.
       self.source[...,iz] = -(2.*alpha + 2.*c1*alpha + 4.*c2*alpha*w3d.zmesh[iz])*eps0
     """
 
+    mgverbose = self.getmgverbose()
     mgsolveimplicites3d(iwhich,self.nx,self.ny,self.nz,
                         self.nxlocal,self.nylocal,self.nzlocal,
                         self.dx,self.dy,self.dz*zfact,
@@ -1001,8 +1017,7 @@ tensor that appears from the direct implicit scheme.
                         self.zmminlocal*zfact,
                         self.getzgrid()*zfact,
                         self.mgparam,mgiters,self.mgmaxiters,
-                        self.mgmaxlevels,mgerror,self.mgtol,
-                        self.mgverbose,
+                        self.mgmaxlevels,mgerror,self.mgtol,mgverbose,
                         self.downpasses,self.uppasses,
                         self.lcndbndy,self.laddconductor,self.icndbndy,
                         f3d.gridmode,conductorobject,self.fsdecomp)

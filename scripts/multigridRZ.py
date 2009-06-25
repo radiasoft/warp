@@ -339,6 +339,7 @@ class MultiGrid2D(MultiGrid3D):
     self._rho = self.source
     if isinstance(self.potential,FloatType): return
 
+    mgverbose = self.getmgverbose()
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     # --- This takes care of clear out the conductor information if needed.
@@ -347,19 +348,19 @@ class MultiGrid2D(MultiGrid3D):
     if self.gridmode == 0: self.clearconductors([top.pgroup.fselfb[iselfb]])
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     self.lbuildquads = false
-    t0 = wtime()
+    #t0 = wtime()
     multigrid2dsolve(iwhich,self.nx,self.nz,self.nxlocal,self.nzlocal,
                      self.dx,self.dz*zfact,
                      self._phi[:,0,:],self._rho[:,0,:],self.bounds,
                      self.xmminlocal,
                      self.mgparam,mgiters,self.mgmaxiters,
-                     self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
+                     self.mgmaxlevels,mgerror,self.mgtol,mgverbose,
                      self.downpasses,self.uppasses,
                      self.lcndbndy,self.laddconductor,self.icndbndy,
                      f3d.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
                      self.fsdecomp)
-    t1 = wtime()
-    print "Multigrid time = ",t1-t0
+    #t1 = wtime()
+    #print "Multigrid time = ",t1-t0
 
     self.mgiters = mgiters[0]
     self.mgerror = mgerror[0]
@@ -522,6 +523,7 @@ class MultiGrid2DDielectric(MultiGrid2D):
     self._rho = self.source
     if isinstance(self.potential,FloatType): return
 
+    mgverbose = self.getmgverbose()
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     # --- This takes care of clear out the conductor information if needed.
@@ -534,7 +536,7 @@ class MultiGrid2DDielectric(MultiGrid2D):
                      self._phi[:,0,:],self._rho[:,0,:],self.epsilon,self.bounds,
                      self.xmminlocal*zfact,
                      self.mgparam,mgiters,self.mgmaxiters,
-                     self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
+                     self.mgmaxlevels,mgerror,self.mgtol,mgverbose,
                      self.downpasses,self.uppasses,
                      self.lcndbndy,self.laddconductor,
                      f3d.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
@@ -812,6 +814,7 @@ Initially, conductors are not implemented.
       self.source[...,iz] = -(2.*alpha + 2.*c1*alpha + 4.*c2*alpha*w3d.zmesh[iz])*eps0
     """
 
+    mgverbose = self.getmgverbose()
     mgsolveimplicites2d(iwhich,self.nx,self.nz,self.nxlocal,self.nzlocal,
                         self.dx,self.dz*zfact,
                         self.potential,self.source,
@@ -819,7 +822,7 @@ Initially, conductors are not implemented.
                         self.bounds,self.xmminlocal,self.zmminlocal*zfact,
                         self.getzgrid()*zfact,
                         self.mgparam,mgiters,self.mgmaxiters,
-                        self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
+                        self.mgmaxlevels,mgerror,self.mgtol,mgverbose,
                         self.downpasses,self.uppasses,
                         self.lcndbndy,self.laddconductor,self.icndbndy,
                         f3d.gridmode,conductorobject,

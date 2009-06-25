@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.187 $, $Date: 2009/06/08 22:30:42 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.188 $, $Date: 2009/06/25 15:48:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -16,6 +16,7 @@ c=============================================================================
       use GlobalVars
       use Conductor3d
       use Multigrid3d
+      use Picglb, Only: it
       use Parallel
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz,nxlocal,nylocal,nzlocal
@@ -45,6 +46,17 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
         if (boundxy == 2) bounds(3) = neumann
       endif
 
+c     --- Check if the convergence diagnostic should be printed.
+      if (mgntverbose < 0) then
+        mgverbose = 0
+      elseif (mgntverbose > 1) then
+        if (mod(it,mgntverbose) == 0) then
+          mgverbose = 1
+        else
+          mgverbose = 0
+        endif
+      endif
+        
       call multigrid3dsolve(iwhich,nx,ny,nz,nxlocal,nylocal,nzlocal,dx,dy,dz,
      &                      phi,rho,rstar,linbend,bounds,
      &                      xmmin,ymmin,zmmin,
