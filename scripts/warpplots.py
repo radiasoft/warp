@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.252 2009/06/19 00:38:49 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.253 2009/06/26 23:31:59 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1528,9 +1528,19 @@ Note that either the x and y coordinates or the grid must be passed in.
     if xmin is None and xmax is None:
       xmintemp = xmintemp - (xmaxtemp-xmintemp)/(nx-2)
       xmaxtemp = xmaxtemp + (xmaxtemp-xmintemp)/(nx-2)
+      if xmintemp == xmaxtemp:
+        # --- If there is probably only one particle, leaving
+        # --- xmintemp==xmaxtemp, which can cause problems.
+        xmintemp -= 1.
+        xmaxtemp += 1.
     if ymin is None and ymax is None:
       ymintemp = ymintemp - (ymaxtemp-ymintemp)/(ny-2)
       ymaxtemp = ymaxtemp + (ymaxtemp-ymintemp)/(ny-2)
+      if ymintemp == ymaxtemp:
+        # --- If there is probably only one particle, leaving
+        # --- ymintemp==ymaxtemp, which can cause problems.
+        ymintemp -= 1.
+        ymaxtemp += 1.
     # --- Now set main versions of min and max
     if xmin is None: xmin = xmintemp
     if xmax is None: xmax = xmaxtemp
@@ -3751,8 +3761,8 @@ def ppco(y,x,z,uz=1.,marker='\1',msize=1.0,zmin=None,zmax=None,
   if ncolor is None: ncolor = top.ncolor
   dd = (zmax - zmin)/ncolor
   for ic in xrange(ncolor):
-    ii = compress(logical_and(logical_and(not_equal(uz,0.),
-           less(zmin+ic*dd,rz)),less(rz,zmin+(ic+1)*dd)), iota(0,len(rx)))
+    ii = compress(logical_and(less(zmin+ic*dd,rz),
+                              less(rz,zmin+(ic+1)*dd)), iota(0,len(rx)))
     if usepalette:
       c = nint(199*ic/(ncolor-1.))
     else:
@@ -3849,7 +3859,7 @@ Plots b envelope +/- x centroid
 # --- These functions returns or sets slices of any decomposed array whose
 # --- shape is the same as rho.
 ##########################################################################
-def getdecomposedarray(arr,ix=None,iy=None,iz=None,bcast=0,local=0,
+def getdecomposedarray(arr,ix=None,iy=None,iz=None,bcast=1,local=0,
                        fullplane=0,xyantisymmetric=0,solver=None):
   """Returns slices of a decomposed array, The shape of
 the object returned depends on the number of arguments specified, which can
@@ -3857,7 +3867,7 @@ be from none to all three.
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None: Value is relative to the fortran indexing.
-  - bcast=0: When 1, the result is broadcast to all of the processors
+  - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
              value of array - no communication is done. Has no effect for
@@ -3869,11 +3879,18 @@ be from none to all three.
                        in a sign change during the replication.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: toptmp = top
-  else:             toptmp = solver
+  if solver == w3d: decomp = top.fsdecomp
+  else:             decomp = solver.fsdecomp
   if len(arr.shape) == 2: iy = None
 
-  if (toptmp.nxprocs <= 1 and toptmp.nyprocs <=1 and toptmp.nzprocs <= 1):
+  nx = decomp.nxglobal
+  ny = decomp.nyglobal
+  nz = decomp.nzglobal
+  nxlocal = decomp.nx[decomp.ixproc]
+  nylocal = decomp.ny[decomp.iyproc]
+  nzlocal = decomp.nz[decomp.izproc]
+
+  if (decomp.nxprocs <= 1 and decomp.nyprocs <=1 and decomp.nzprocs <= 1):
     local = 1
 
   if local or not lparallel:
@@ -3896,28 +3913,27 @@ be from none to all three.
   else:
 
     # --- Get the local extent of each processor.
-    fsdecomp = toptmp.fsdecomp
-    my_ixpp = fsdecomp.ix[fsdecomp.ixproc]
-    my_nxpp = fsdecomp.nx[fsdecomp.ixproc]
-    my_iypp = fsdecomp.iy[fsdecomp.iyproc]
-    my_nypp = fsdecomp.ny[fsdecomp.iyproc]
-    my_izpp = fsdecomp.iz[fsdecomp.izproc]
-    my_nzpp = fsdecomp.nz[fsdecomp.izproc]
+    my_ixpp = decomp.ix[decomp.ixproc]
+    my_nxpp = decomp.nx[decomp.ixproc]
+    my_iypp = decomp.iy[decomp.iyproc]
+    my_nypp = decomp.ny[decomp.iyproc]
+    my_izpp = decomp.iz[decomp.izproc]
+    my_nzpp = decomp.nz[decomp.izproc]
 
     # --- If ix,iy or iz was given, check if it is within the local domain.
     if ((ix is None or my_ixpp <= ix and ix <= my_ixpp+my_nxpp) and
         (iy is None or my_iypp <= iy and iy <= my_iypp+my_nypp) and
         (iz is None or my_izpp <= iz and iz <= my_izpp+my_nzpp)):
       # --- If so, grab the appropriate slice of array.
-      sss = [slice(1+solver.nxlocal),
-             slice(1+solver.nylocal),
-             slice(1+solver.nzlocal)]
+      sss = [slice(1+nxlocal),
+             slice(1+nylocal),
+             slice(1+nzlocal)]
       if ix is not None: sss[0] = slice(ix-my_ixpp,ix-my_ixpp+1)
       if iy is not None: sss[1] = slice(iy-my_iypp,iy-my_iypp+1)
       if iz is not None: sss[2] = slice(iz-my_izpp,iz-my_izpp+1)
-      if solver.nx == 0: sss[0] = Ellipsis
-      if solver.ny == 0: sss[1] = Ellipsis
-      if solver.nz == 0: sss[2] = Ellipsis
+      if nx == 0: sss[0] = Ellipsis
+      if ny == 0: sss[1] = Ellipsis
+      if nz == 0: sss[2] = Ellipsis
       result = arr[sss[0],sss[1],sss[2]]
     else:
       # --- Otherwise, use None
@@ -3928,13 +3944,13 @@ be from none to all three.
 
     if me == 0:
       # --- Setup the size of the array to be returned and create it.
-      sss = [1+solver.nx,1+solver.ny,1+solver.nz]
+      sss = [1+nx,1+ny,1+nz]
       if ix is not None: sss[0] = 1
       if iy is not None: sss[1] = 1
       if iz is not None: sss[2] = 1
-      if solver.nz == 0: del sss[2]
-      if solver.ny == 0: del sss[1]
-      if solver.nx == 0: del sss[0]
+      if nz == 0: del sss[2]
+      if ny == 0: del sss[1]
+      if nx == 0: del sss[0]
       resultglobal = fzeros(sss,'d')
 
       # --- Loop over all processors and grab the data sent, putting it into
@@ -3944,25 +3960,25 @@ be from none to all three.
       iy1,iy2 = 0,1
       iz1,iz2 = 0,1
       sss = [1,1,1]
-      for izproc in range(fsdecomp.nzprocs):
-        for iyproc in range(fsdecomp.nyprocs):
-          for ixproc in range(fsdecomp.nxprocs):
+      for izproc in range(decomp.nzprocs):
+        for iyproc in range(decomp.nyprocs):
+          for ixproc in range(decomp.nxprocs):
             if resultlist[iproc] is not None:
               if ix is None:
-                ix1 = fsdecomp.ix[ixproc]
-                ix2 = fsdecomp.ix[ixproc] + fsdecomp.nx[ixproc] + 1
+                ix1 = decomp.ix[ixproc]
+                ix2 = decomp.ix[ixproc] + decomp.nx[ixproc] + 1
               if iy is None:
-                iy1 = fsdecomp.iy[iyproc]
-                iy2 = fsdecomp.iy[iyproc] + fsdecomp.ny[iyproc] + 1
+                iy1 = decomp.iy[iyproc]
+                iy2 = decomp.iy[iyproc] + decomp.ny[iyproc] + 1
               if iz is None:
-                iz1 = fsdecomp.iz[izproc]
-                iz2 = fsdecomp.iz[izproc] + fsdecomp.nz[izproc] + 1
+                iz1 = decomp.iz[izproc]
+                iz2 = decomp.iz[izproc] + decomp.nz[izproc] + 1
               sss[0] = slice(ix1,ix2)
               sss[1] = slice(iy1,iy2)
               sss[2] = slice(iz1,iz2)
-              if solver.nx == 0: sss[0] = Ellipsis
-              if solver.ny == 0: sss[1] = Ellipsis
-              if solver.nz == 0: sss[2] = Ellipsis
+              if nx == 0: sss[0] = Ellipsis
+              if ny == 0: sss[1] = Ellipsis
+              if nz == 0: sss[2] = Ellipsis
               resultglobal[sss[0],sss[1],sss[2]] = resultlist[iproc]
             iproc += 1
 
@@ -3973,9 +3989,9 @@ be from none to all three.
       else:          iy = 0
       if iz is None: iz = slice(None)
       else:          iz = 0
-      if solver.nx == 0: ix = Ellipsis
-      if solver.ny == 0: iy = Ellipsis
-      if solver.nz == 0: iz = Ellipsis
+      if nx == 0: ix = Ellipsis
+      if ny == 0: iy = Ellipsis
+      if nz == 0: iz = Ellipsis
       result = resultglobal[ix,iy,iz]
 
     if bcast:
@@ -4025,11 +4041,18 @@ be from none to all three.
   - iz = None: Value is relative to the fortran indexing.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: toptmp = top
-  else:             toptmp = solver
+  if solver == w3d: decomp = top.fsdecomp
+  else:             decomp = solver.fsdecomp
   if len(arr.shape) == 2: iy = None
 
-  if (toptmp.nxprocs <= 1 and toptmp.nyprocs <=1 and toptmp.nzprocs <= 1):
+  nx = decomp.nxglobal
+  ny = decomp.nyglobal
+  nz = decomp.nzglobal
+  nxlocal = decomp.nx[decomp.ixproc]
+  nylocal = decomp.ny[decomp.iyproc]
+  nzlocal = decomp.nz[decomp.izproc]
+
+  if (decomp.nxprocs <= 1 and decomp.nyprocs <=1 and decomp.nzprocs <= 1):
     local = 1
 
   if local or not lparallel:
@@ -4052,16 +4075,15 @@ be from none to all three.
   else:
 
     ppplist = []
-    fsdecomp = toptmp.fsdecomp
     if me == 0:
 
       # --- Add extra dimensions so that the input has the same number of
       # --- dimensions as array.
       ppp = array(val)
       sss = list(ppp.shape)
-      if ix is not None and solver.nx > 0: sss[0:0] = [1]
-      if iy is not None and solver.ny > 0: sss[1:1] = [1]
-      if iz is not None and solver.nz > 0: sss[2:2] = [1]
+      if ix is not None and nx > 0: sss[0:0] = [1]
+      if iy is not None and ny > 0: sss[1:1] = [1]
+      if iz is not None and nz > 0: sss[2:2] = [1]
       ppp.shape = sss
 
       # --- Loop over all processors and grab the chunk of the input that
@@ -4070,62 +4092,62 @@ be from none to all three.
       iy1,iy2 = 0,1
       iz1,iz2 = 0,1
       sss = [1,1,1]
-      for izproc in range(fsdecomp.nzprocs):
-        for iyproc in range(fsdecomp.nyprocs):
-          for ixproc in range(fsdecomp.nxprocs):
+      for izproc in range(decomp.nzprocs):
+        for iyproc in range(decomp.nyprocs):
+          for ixproc in range(decomp.nxprocs):
             if ix is None:
-              ix1 = fsdecomp.ix[ixproc]
-              ix2 = fsdecomp.ix[ixproc] + fsdecomp.nx[ixproc] + 1
+              ix1 = decomp.ix[ixproc]
+              ix2 = decomp.ix[ixproc] + decomp.nx[ixproc] + 1
             if iy is None:
-              iy1 = fsdecomp.iy[iyproc]
-              iy2 = fsdecomp.iy[iyproc] + fsdecomp.ny[iyproc] + 1
+              iy1 = decomp.iy[iyproc]
+              iy2 = decomp.iy[iyproc] + decomp.ny[iyproc] + 1
             if iz is None:
-              iz1 = fsdecomp.iz[izproc]
-              iz2 = fsdecomp.iz[izproc] + fsdecomp.nz[izproc] + 1
+              iz1 = decomp.iz[izproc]
+              iz2 = decomp.iz[izproc] + decomp.nz[izproc] + 1
             sss[0] = slice(ix1,ix2)
             sss[1] = slice(iy1,iy2)
             sss[2] = slice(iz1,iz2)
-            if solver.nx == 0: sss[0] = Ellipsis
-            if solver.ny == 0: sss[1] = Ellipsis
-            if solver.nz == 0: sss[2] = Ellipsis
+            if nx == 0: sss[0] = Ellipsis
+            if ny == 0: sss[1] = Ellipsis
+            if nz == 0: sss[2] = Ellipsis
             ppplist.append(ppp[sss[0],sss[1],sss[2]])
 
     # --- Send the data to each of the processors
     ppp = mpi.scatter(ppplist)[0]
 
     # --- Get the local extent of each processor.
-    my_ixpp = fsdecomp.ix[fsdecomp.ixproc]
-    my_nxpp = fsdecomp.nx[fsdecomp.ixproc]
-    my_iypp = fsdecomp.iy[fsdecomp.iyproc]
-    my_nypp = fsdecomp.ny[fsdecomp.iyproc]
-    my_izpp = fsdecomp.iz[fsdecomp.izproc]
-    my_nzpp = fsdecomp.nz[fsdecomp.izproc]
+    my_ixpp = decomp.ix[decomp.ixproc]
+    my_nxpp = decomp.nx[decomp.ixproc]
+    my_iypp = decomp.iy[decomp.iyproc]
+    my_nypp = decomp.ny[decomp.iyproc]
+    my_izpp = decomp.iz[decomp.izproc]
+    my_nzpp = decomp.nz[decomp.izproc]
 
     # --- If ix,iy or iz was given, check if it is within the local domain.
     if ((ix is None or my_ixpp <= ix and ix <= my_ixpp+my_nxpp) and
         (iy is None or my_iypp <= iy and iy <= my_iypp+my_nypp) and
         (iz is None or my_izpp <= iz and iz <= my_izpp+my_nzpp)):
       # --- If so, set the appropriate slice of array.
-      sss = [slice(1+solver.nxlocal),
-             slice(1+solver.nylocal),
-             slice(1+solver.nzlocal)]
+      sss = [slice(1+nxlocal),
+             slice(1+nylocal),
+             slice(1+nzlocal)]
       if ix is not None: sss[0] = slice(ix-my_ixpp,ix-my_ixpp+1)
       if iy is not None: sss[1] = slice(iy-my_iypp,iy-my_iypp+1)
       if iz is not None: sss[2] = slice(iz-my_izpp,iz-my_izpp+1)
-      if solver.nx == 0: sss[0] = Ellipsis
-      if solver.ny == 0: sss[1] = Ellipsis
-      if solver.nz == 0: sss[2] = Ellipsis
+      if nx == 0: sss[0] = Ellipsis
+      if ny == 0: sss[1] = Ellipsis
+      if nz == 0: sss[2] = Ellipsis
       arr[sss[0],sss[1],sss[2]] = ppp
 
 # --------------------------------------------------------------------------
-def getrho(ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,solver=None):
+def getrho(ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,solver=None):
   """Returns slices of rho, the charge density array. The shape of the object
 returned depends on the number of arguments specified, which can be from none
 to all three.
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None:
-  - bcast=0: When 1, the result is broadcast to all of the processors
+  - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
              value of rho - no communication is done. Has no effect for serial
@@ -4165,7 +4187,7 @@ to all three.
   setdecomposedarray(rho,val,ix=ix,iy=iy,iz=iz,local=local,solver=solver)
 
 # --------------------------------------------------------------------------
-def getphi(ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,solver=None):
+def getphi(ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,solver=None):
   """Returns slices of phi, the electrostatic potential array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -4173,7 +4195,7 @@ be from none to all three.
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None: Value is relative to the fortran indexing, so iz ranges
                from -1 to nz+1
-  - bcast=0: When 1, the result is broadcast to all of the processors
+  - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
              value of phi - no communication is done. Has no effect for serial
@@ -4216,7 +4238,7 @@ be from none to all three.
   setdecomposedarray(phi,val,ix=ix,iy=iy,iz=iz,local=local,solver=solver)
 
 # --------------------------------------------------------------------------
-def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
+def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
              solver=None):
   """Returns slices of selfe, the electrostatic field array. The shape of
 the object returned depends on the number of arguments specified, which can
@@ -4225,7 +4247,7 @@ be from none to all three.
   - ix = None
   - iy = None
   - iz = None
-  - bcast=0: When 1, the result is broadcast to all of the processors
+  - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
@@ -4251,7 +4273,7 @@ be from none to all three.
                             solver=solver)
 
 # --------------------------------------------------------------------------
-def getj(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
+def getj(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
          solver=None):
   """Returns slices of J, the current density array. The shape of
 the object returned depends on the number of arguments specified, which can
@@ -4261,7 +4283,7 @@ be from none to all three.
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None: Value is relative to the fortran indexing, so iz ranges
                from -1 to nz+1
-  - bcast=0: When 1, the result is broadcast to all of the processors
+  - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
              value of j - no communication is done. Has no effect for serial
@@ -4280,7 +4302,7 @@ be from none to all three.
                             solver=solver)
 
 # --------------------------------------------------------------------------
-def getb(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
+def getb(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
          solver=None):
   """Returns slices of B, the magnetic field array. The shape of
 the object returned depends on the number of arguments specified, which can
@@ -4289,7 +4311,7 @@ be from none to all three.
   - ix = None
   - iy = None
   - iz = None
-  - bcast=0: When 1, the result is broadcast to all of the processors
+  - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
              value of j - no communication is done. Has no effect for serial
@@ -4308,7 +4330,7 @@ be from none to all three.
                             solver=solver)
 
 # --------------------------------------------------------------------------
-def geta(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
+def geta(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
          solver=None):
   """Returns slices of B, the magnetic vector potential array. The shape of
 the object returned depends on the number of arguments specified, which can
@@ -4317,7 +4339,7 @@ be from none to all three.
   - ix = None
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None: Value is relative to the fortran indexing, so iz ranges
-  - bcast=0: When 1, the result is broadcast to all of the processors
+  - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
              value of a - no communication is done. Has no effect for serial
