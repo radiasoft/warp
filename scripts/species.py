@@ -1837,6 +1837,10 @@ of code."""
       getattr(top,name)[...,jsid] = value
     return fget,fset,None,doc
 
+  # Z_arrays
+  curr = property(*_gettopjsidattribute('curr'))
+  lostpars = property(*_gettopjsidattribute('lostpars'))
+
   # Win_Moments
   pnum = property(*_gettopjsidattribute('pnum'))
   xbar = property(*_gettopjsidattribute('xbar'))
