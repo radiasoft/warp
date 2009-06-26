@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.184 2009/06/12 19:06:21 dave Exp $"
+warp_version = "$Id: warp.py,v 1.185 2009/06/26 23:27:31 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -192,7 +192,12 @@ ns = 1.0e-9    # nanosecond to second
 us = 1.0e-6    # microsecond to second
 ms = 1.0e-3    # millesecond to second
 kV = 1.0e3     # kV to V
+keV = 1.0e3    # keV to eV
 MV = 1.0e3     # MV to V
+MeV = 1.0e6    # MeV to eV
+mA = 1.0e-3    # mA to A
+uC = 1.0e-6    # micro-Coulombs to Coulombs
+nC = 1.0e-9    # nano-Coulombs to Coulombs
 deg = pi/180.0 # degrees to radians
 
 # --- Set pgroup
