@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.253 2009/06/26 23:31:59 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.254 2009/06/26 23:51:26 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -4152,6 +4152,8 @@ to all three.
   - local=0: When 1, in the parallel version, each process will get its local
              value of rho - no communication is done. Has no effect for serial
              version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver is w3d:
@@ -4200,6 +4202,8 @@ be from none to all three.
   - local=0: When 1, in the parallel version, each process will get its local
              value of phi - no communication is done. Has no effect for serial
              version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver is w3d:
@@ -4249,6 +4253,11 @@ be from none to all three.
   - iz = None
   - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of E - no communication is done. Has no effect for serial
+             version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
   if solver is None: solver = (getregisteredsolver() or w3d)
@@ -4288,6 +4297,8 @@ be from none to all three.
   - local=0: When 1, in the parallel version, each process will get its local
              value of j - no communication is done. Has no effect for serial
              version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
   if type(comp) == IntType: ic = comp
@@ -4316,6 +4327,8 @@ be from none to all three.
   - local=0: When 1, in the parallel version, each process will get its local
              value of j - no communication is done. Has no effect for serial
              version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
   if type(comp) == IntType: ic = comp
@@ -4344,6 +4357,8 @@ be from none to all three.
   - local=0: When 1, in the parallel version, each process will get its local
              value of a - no communication is done. Has no effect for serial
              version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
   if type(comp) == IntType: ic = comp
