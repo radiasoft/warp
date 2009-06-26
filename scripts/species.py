@@ -1809,3 +1809,321 @@ of code."""
 
   del _getw3dattribute
 
+  # --- For variables that are 1-D, and use sid
+  # --- Note that this won't handle multiple js values well. It assumes
+  # --- that all of the jslist have the same jsid.
+  def _gettopjsid1dattribute(name,doc=None):
+    if doc is None:
+      doc = top.getvardoc(name)
+    def fget(self):
+      jsid = top.pgroup.sid[self.jslist[0]]
+      return getattr(top,name)[jsid]
+    def fset(self,value):
+      jsid = top.pgroup.sid[self.jslist[0]]
+      getattr(top,name)[jsid] = value
+    return fget,fset,None,doc
+
+  # --- For variables that are 2, 3, or 4-D, and use sid
+  # --- Note that this won't handle multiple js values well. It assumes
+  # --- that all of the jslist have the same jsid.
+  def _gettopjsidattribute(name,doc=None):
+    if doc is None:
+      doc = top.getvardoc(name)
+    def fget(self):
+      jsid = top.pgroup.sid[self.jslist[0]]
+      return getattr(top,name)[...,jsid]
+    def fset(self,value):
+      jsid = top.pgroup.sid[self.jslist[0]]
+      getattr(top,name)[...,jsid] = value
+    return fget,fset,None,doc
+
+  # Win_Moments
+  pnum = property(*_gettopjsidattribute('pnum'))
+  xbar = property(*_gettopjsidattribute('xbar'))
+  ybar = property(*_gettopjsidattribute('ybar'))
+  zbar = property(*_gettopjsidattribute('zbar'))
+  xpbar = property(*_gettopjsidattribute('xpbar'))
+  ypbar = property(*_gettopjsidattribute('ypbar'))
+  vxbar = property(*_gettopjsidattribute('vxbar'))
+  vybar = property(*_gettopjsidattribute('vybar'))
+  vzbar = property(*_gettopjsidattribute('vzbar'))
+  xybar = property(*_gettopjsidattribute('xybar'))
+  xypbar = property(*_gettopjsidattribute('xypbar'))
+  yxpbar = property(*_gettopjsidattribute('yxpbar'))
+  xpypbar = property(*_gettopjsidattribute('xpypbar'))
+  xsqbar = property(*_gettopjsidattribute('xsqbar'))
+  ysqbar = property(*_gettopjsidattribute('ysqbar'))
+  zsqbar = property(*_gettopjsidattribute('zsqbar'))
+  xpsqbar = property(*_gettopjsidattribute('xpsqbar'))
+  ypsqbar = property(*_gettopjsidattribute('ypsqbar'))
+  vxsqbar = property(*_gettopjsidattribute('vxsqbar'))
+  vysqbar = property(*_gettopjsidattribute('vysqbar'))
+  vzsqbar = property(*_gettopjsidattribute('vzsqbar'))
+  xxpbar = property(*_gettopjsidattribute('xxpbar'))
+  yypbar = property(*_gettopjsidattribute('yypbar'))
+  zvzbar = property(*_gettopjsidattribute('zvzbar'))
+  xvzbar = property(*_gettopjsidattribute('xvzbar'))
+  yvzbar = property(*_gettopjsidattribute('yvzbar'))
+  vxvzbar = property(*_gettopjsidattribute('vxvzbar'))
+  vyvzbar = property(*_gettopjsidattribute('vyvzbar'))
+  xrms = property(*_gettopjsidattribute('xrms'))
+  yrms = property(*_gettopjsidattribute('yrms'))
+  zrms = property(*_gettopjsidattribute('zrms'))
+  rrms = property(*_gettopjsidattribute('rrms'))
+  xprms = property(*_gettopjsidattribute('xprms'))
+  yprms = property(*_gettopjsidattribute('yprms'))
+  epsx = property(*_gettopjsidattribute('epsx'))
+  epsy = property(*_gettopjsidattribute('epsy'))
+  epsz = property(*_gettopjsidattribute('epsz'))
+  epsnx = property(*_gettopjsidattribute('epsnx'))
+  epsny = property(*_gettopjsidattribute('epsny'))
+  epsnz = property(*_gettopjsidattribute('epsnz'))
+  epsr = property(*_gettopjsidattribute('epsr'))
+  epsg = property(*_gettopjsidattribute('epsg'))
+  epsh = property(*_gettopjsidattribute('epsh'))
+  epsnr = property(*_gettopjsidattribute('epsnr'))
+  epsng = property(*_gettopjsidattribute('epsng'))
+  epsnh = property(*_gettopjsidattribute('epsnh'))
+  vxrms = property(*_gettopjsidattribute('vxrms'))
+  vyrms = property(*_gettopjsidattribute('vyrms'))
+  vzrms = property(*_gettopjsidattribute('vzrms'))
+
+  # Z_Moments
+  zmmntsq = property(*_gettopjsid1dattribute('zmmntsq'))
+  zmmntsm = property(*_gettopjsid1dattribute('zmmntsm'))
+  zmmntsw = property(*_gettopjsid1dattribute('zmmntsw'))
+  zmomentscalculated = property(*_gettopjsid1dattribute('zmomentscalculated'))
+  pnumz = property(*_gettopjsidattribute('pnumz'))
+  xbarz = property(*_gettopjsidattribute('xbarz'))
+  ybarz = property(*_gettopjsidattribute('ybarz'))
+  zbarz = property(*_gettopjsidattribute('zbarz'))
+  xpbarz = property(*_gettopjsidattribute('xpbarz'))
+  ypbarz = property(*_gettopjsidattribute('ypbarz'))
+  vxbarz = property(*_gettopjsidattribute('vxbarz'))
+  vybarz = property(*_gettopjsidattribute('vybarz'))
+  vzbarz = property(*_gettopjsidattribute('vzbarz'))
+  xybarz = property(*_gettopjsidattribute('xybarz'))
+  xypbarz = property(*_gettopjsidattribute('xypbarz'))
+  yxpbarz = property(*_gettopjsidattribute('yxpbarz'))
+  xpypbarz = property(*_gettopjsidattribute('xpypbarz'))
+  xsqbarz = property(*_gettopjsidattribute('xsqbarz'))
+  ysqbarz = property(*_gettopjsidattribute('ysqbarz'))
+  zsqbarz = property(*_gettopjsidattribute('zsqbarz'))
+  xpsqbarz = property(*_gettopjsidattribute('xpsqbarz'))
+  ypsqbarz = property(*_gettopjsidattribute('ypsqbarz'))
+  vxsqbarz = property(*_gettopjsidattribute('vxsqbarz'))
+  vysqbarz = property(*_gettopjsidattribute('vysqbarz'))
+  vzsqbarz = property(*_gettopjsidattribute('vzsqbarz'))
+  xxpbarz = property(*_gettopjsidattribute('xxpbarz'))
+  yypbarz = property(*_gettopjsidattribute('yypbarz'))
+  zvzbarz = property(*_gettopjsidattribute('zvzbarz'))
+  xvzbarz = property(*_gettopjsidattribute('xvzbarz'))
+  yvzbarz = property(*_gettopjsidattribute('yvzbarz'))
+  vxvzbarz = property(*_gettopjsidattribute('vxvzbarz'))
+  vyvzbarz = property(*_gettopjsidattribute('vyvzbarz'))
+  xrmsz = property(*_gettopjsidattribute('xrmsz'))
+  yrmsz = property(*_gettopjsidattribute('yrmsz'))
+  zrmsz = property(*_gettopjsidattribute('zrmsz'))
+  rrmsz = property(*_gettopjsidattribute('rrmsz'))
+  xprmsz = property(*_gettopjsidattribute('xprmsz'))
+  yprmsz = property(*_gettopjsidattribute('yprmsz'))
+  epsxz = property(*_gettopjsidattribute('epsxz'))
+  epsyz = property(*_gettopjsidattribute('epsyz'))
+  epszz = property(*_gettopjsidattribute('epszz'))
+  epsnxz = property(*_gettopjsidattribute('epsnxz'))
+  epsnyz = property(*_gettopjsidattribute('epsnyz'))
+  epsnzz = property(*_gettopjsidattribute('epsnzz'))
+  epsrz = property(*_gettopjsidattribute('epsrz'))
+  epsgz = property(*_gettopjsidattribute('epsgz'))
+  epshz = property(*_gettopjsidattribute('epshz'))
+  epsnrz = property(*_gettopjsidattribute('epsnrz'))
+  epsngz = property(*_gettopjsidattribute('epsngz'))
+  epsnhz = property(*_gettopjsidattribute('epsnhz'))
+  vxrmsz = property(*_gettopjsidattribute('vxrmsz'))
+  vyrmsz = property(*_gettopjsidattribute('vyrmsz'))
+  vzrmsz = property(*_gettopjsidattribute('vzrmsz'))
+  tempmaxp = property(*_gettopjsidattribute('tempmaxp'))
+  tempminp = property(*_gettopjsidattribute('tempminp'))
+  tempzmmnts0 = property(*_gettopjsidattribute('tempzmmnts0'))
+  tempzmmnts = property(*_gettopjsidattribute('tempzmmnts'))
+
+  # --- For lab-window moments.
+  # --- Note that this won't handle multiple js values well. It assumes
+  # --- that all of the jslist have the same jsid.
+  def _gettoplabmomattribute(name,doc=None):
+    if doc is None:
+      doc = top.getvardoc(name)
+    def fget(self):
+      # --- A function is needed that takes ilw as an argument
+      def _getlabwindowmomentdata(ilw):
+        jsid = top.pgroup.sid[self.jslist[0]]
+        return getattr(top,name)[:top.ilabwn[ilw,jsid],ilw,jsid]
+      return _getlabwindowmomentdata
+    def fset(self,value):
+      jsid = top.pgroup.sid[self.jslist[0]]
+      getattr(top,name)[...,jsid] = value
+    return fget,fset,None,doc
+
+  # Lab_Moments
+  ilabwn = property(*_gettopjsidattribute('ilabwn'))
+  timelw = property(*_gettoplabmomattribute('timelw'))
+  pnumlw = property(*_gettoplabmomattribute('pnumlw'))
+  xbarlw = property(*_gettoplabmomattribute('xbarlw'))
+  ybarlw = property(*_gettoplabmomattribute('ybarlw'))
+  vzbarlw = property(*_gettoplabmomattribute('vzbarlw'))
+  epsxlw = property(*_gettoplabmomattribute('epsxlw'))
+  epsylw = property(*_gettoplabmomattribute('epsylw'))
+  epszlw = property(*_gettoplabmomattribute('epszlw'))
+  vxrmslw = property(*_gettoplabmomattribute('vxrmslw'))
+  vyrmslw = property(*_gettoplabmomattribute('vyrmslw'))
+  vzrmslw = property(*_gettoplabmomattribute('vzrmslw'))
+  xrmslw = property(*_gettoplabmomattribute('xrmslw'))
+  yrmslw = property(*_gettoplabmomattribute('yrmslw'))
+  rrmslw = property(*_gettoplabmomattribute('rrmslw'))
+  xxpbarlw = property(*_gettoplabmomattribute('xxpbarlw'))
+  yypbarlw = property(*_gettoplabmomattribute('yypbarlw'))
+  currlw = property(*_gettoplabmomattribute('currlw'))
+  lostparslw = property(*_gettoplabmomattribute('lostparslw'))
+  linechglw = property(*_gettoplabmomattribute('linechglw'))
+
+  # Moments
+  ek = property(*_gettopjsid1dattribute('ek'))
+  ekzmbe = property(*_gettopjsid1dattribute('ekzmbe'))
+  ekzbeam = property(*_gettopjsid1dattribute('ekzbeam'))
+  ekperp = property(*_gettopjsid1dattribute('ekperp'))
+  pz = property(*_gettopjsid1dattribute('pz'))
+  xmaxp = property(*_gettopjsid1dattribute('xmaxp'))
+  xminp = property(*_gettopjsid1dattribute('xminp'))
+  ymaxp = property(*_gettopjsid1dattribute('ymaxp'))
+  yminp = property(*_gettopjsid1dattribute('yminp'))
+  zmaxp = property(*_gettopjsid1dattribute('zmaxp'))
+  zminp = property(*_gettopjsid1dattribute('zminp'))
+  vxmaxp = property(*_gettopjsid1dattribute('vxmaxp'))
+  vxminp = property(*_gettopjsid1dattribute('vxminp'))
+  vymaxp = property(*_gettopjsid1dattribute('vymaxp'))
+  vyminp = property(*_gettopjsid1dattribute('vyminp'))
+  vzmaxp = property(*_gettopjsid1dattribute('vzmaxp'))
+  vzminp = property(*_gettopjsid1dattribute('vzminp'))
+
+  # --- For variables that are 2, 3, or 4-D, and use sid
+  # --- Note that this won't handle multiple js values well. It assumes
+  # --- that all of the jslist have the same jsid.
+  def _gettopjsidhistattribute(name,doc=None):
+    if doc is None:
+      doc = top.getvardoc(name)
+    def fget(self):
+      jsid = top.pgroup.sid[self.jslist[0]]
+      return getattr(top,name)[...,:top.jhist+1,jsid]
+    def fset(self,value):
+      jsid = top.pgroup.sid[self.jslist[0]]
+      getattr(top,name)[...,:top.jhist+1,jsid] = value
+    return fget,fset,None,doc
+
+  # Hist
+  hbmlen = property(*_gettopjsidhistattribute('hbmlen'))
+  hekzmbe = property(*_gettopjsidhistattribute('hekzmbe'))
+  hekzbeam = property(*_gettopjsidhistattribute('hekzbeam'))
+  hekperp = property(*_gettopjsidhistattribute('hekperp'))
+  hxmaxp = property(*_gettopjsidhistattribute('hxmaxp'))
+  hxminp = property(*_gettopjsidhistattribute('hxminp'))
+  hymaxp = property(*_gettopjsidhistattribute('hymaxp'))
+  hyminp = property(*_gettopjsidhistattribute('hyminp'))
+  hzmaxp = property(*_gettopjsidhistattribute('hzmaxp'))
+  hzminp = property(*_gettopjsidhistattribute('hzminp'))
+  hvxmaxp = property(*_gettopjsidhistattribute('hvxmaxp'))
+  hvxminp = property(*_gettopjsidhistattribute('hvxminp'))
+  hvymaxp = property(*_gettopjsidhistattribute('hvymaxp'))
+  hvyminp = property(*_gettopjsidhistattribute('hvyminp'))
+  hvzmaxp = property(*_gettopjsidhistattribute('hvzmaxp'))
+  hvzminp = property(*_gettopjsidhistattribute('hvzminp'))
+  hepsx = property(*_gettopjsidhistattribute('hepsx'))
+  hepsy = property(*_gettopjsidhistattribute('hepsy'))
+  hepsz = property(*_gettopjsidhistattribute('hepsz'))
+  hepsnx = property(*_gettopjsidhistattribute('hepsnx'))
+  hepsny = property(*_gettopjsidhistattribute('hepsny'))
+  hepsnz = property(*_gettopjsidhistattribute('hepsnz'))
+  hepsr = property(*_gettopjsidhistattribute('hepsr'))
+  hepsg = property(*_gettopjsidhistattribute('hepsg'))
+  hepsh = property(*_gettopjsidhistattribute('hepsh'))
+  hepsnr = property(*_gettopjsidhistattribute('hepsnr'))
+  hepsng = property(*_gettopjsidhistattribute('hepsng'))
+  hepsnh = property(*_gettopjsidhistattribute('hepsnh'))
+  hpnum = property(*_gettopjsidhistattribute('hpnum'))
+  hxbar = property(*_gettopjsidhistattribute('hxbar'))
+  hybar = property(*_gettopjsidhistattribute('hybar'))
+  hzbar = property(*_gettopjsidhistattribute('hzbar'))
+  hxybar = property(*_gettopjsidhistattribute('hxybar'))
+  hxrms = property(*_gettopjsidhistattribute('hxrms'))
+  hyrms = property(*_gettopjsidhistattribute('hyrms'))
+  hrrms = property(*_gettopjsidhistattribute('hrrms'))
+  hzrms = property(*_gettopjsidhistattribute('hzrms'))
+  hxprms = property(*_gettopjsidhistattribute('hxprms'))
+  hyprms = property(*_gettopjsidhistattribute('hyprms'))
+  hxsqbar = property(*_gettopjsidhistattribute('hxsqbar'))
+  hysqbar = property(*_gettopjsidhistattribute('hysqbar'))
+  hvxbar = property(*_gettopjsidhistattribute('hvxbar'))
+  hvybar = property(*_gettopjsidhistattribute('hvybar'))
+  hvzbar = property(*_gettopjsidhistattribute('hvzbar'))
+  hxpbar = property(*_gettopjsidhistattribute('hxpbar'))
+  hypbar = property(*_gettopjsidhistattribute('hypbar'))
+  hvxrms = property(*_gettopjsidhistattribute('hvxrms'))
+  hvyrms = property(*_gettopjsidhistattribute('hvyrms'))
+  hvzrms = property(*_gettopjsidhistattribute('hvzrms'))
+  hxpsqbar = property(*_gettopjsidhistattribute('hxpsqbar'))
+  hypsqbar = property(*_gettopjsidhistattribute('hypsqbar'))
+  hxxpbar = property(*_gettopjsidhistattribute('hxxpbar'))
+  hyypbar = property(*_gettopjsidhistattribute('hyypbar'))
+  hxypbar = property(*_gettopjsidhistattribute('hxypbar'))
+  hyxpbar = property(*_gettopjsidhistattribute('hyxpbar'))
+  hxpypbar = property(*_gettopjsidhistattribute('hxpypbar'))
+  hxvzbar = property(*_gettopjsidhistattribute('hxvzbar'))
+  hyvzbar = property(*_gettopjsidhistattribute('hyvzbar'))
+  hvxvzbar = property(*_gettopjsidhistattribute('hvxvzbar'))
+  hvyvzbar = property(*_gettopjsidhistattribute('hvyvzbar'))
+  hcurrz = property(*_gettopjsidhistattribute('hcurrz'))
+  hpnumz = property(*_gettopjsidhistattribute('hpnumz'))
+  hepsxz = property(*_gettopjsidhistattribute('hepsxz'))
+  hepsyz = property(*_gettopjsidhistattribute('hepsyz'))
+  hepsnxz = property(*_gettopjsidhistattribute('hepsnxz'))
+  hepsnyz = property(*_gettopjsidhistattribute('hepsnyz'))
+  hepsrz = property(*_gettopjsidhistattribute('hepsrz'))
+  hepsgz = property(*_gettopjsidhistattribute('hepsgz'))
+  hepshz = property(*_gettopjsidhistattribute('hepshz'))
+  hepsnrz = property(*_gettopjsidhistattribute('hepsnrz'))
+  hepsngz = property(*_gettopjsidhistattribute('hepsngz'))
+  hepsnhz = property(*_gettopjsidhistattribute('hepsnhz'))
+  hxbarz = property(*_gettopjsidhistattribute('hxbarz'))
+  hybarz = property(*_gettopjsidhistattribute('hybarz'))
+  hxybarz = property(*_gettopjsidhistattribute('hxybarz'))
+  hxrmsz = property(*_gettopjsidhistattribute('hxrmsz'))
+  hyrmsz = property(*_gettopjsidhistattribute('hyrmsz'))
+  hrrmsz = property(*_gettopjsidhistattribute('hrrmsz'))
+  hxprmsz = property(*_gettopjsidhistattribute('hxprmsz'))
+  hyprmsz = property(*_gettopjsidhistattribute('hyprmsz'))
+  hxsqbarz = property(*_gettopjsidhistattribute('hxsqbarz'))
+  hysqbarz = property(*_gettopjsidhistattribute('hysqbarz'))
+  hvxbarz = property(*_gettopjsidhistattribute('hvxbarz'))
+  hvybarz = property(*_gettopjsidhistattribute('hvybarz'))
+  hvzbarz = property(*_gettopjsidhistattribute('hvzbarz'))
+  hxpbarz = property(*_gettopjsidhistattribute('hxpbarz'))
+  hypbarz = property(*_gettopjsidhistattribute('hypbarz'))
+  hvxrmsz = property(*_gettopjsidhistattribute('hvxrmsz'))
+  hvyrmsz = property(*_gettopjsidhistattribute('hvyrmsz'))
+  hvzrmsz = property(*_gettopjsidhistattribute('hvzrmsz'))
+  hxpsqbarz = property(*_gettopjsidhistattribute('hxpsqbarz'))
+  hypsqbarz = property(*_gettopjsidhistattribute('hypsqbarz'))
+  hxxpbarz = property(*_gettopjsidhistattribute('hxxpbarz'))
+  hyypbarz = property(*_gettopjsidhistattribute('hyypbarz'))
+  hxypbarz = property(*_gettopjsidhistattribute('hxypbarz'))
+  hyxpbarz = property(*_gettopjsidhistattribute('hyxpbarz'))
+  hxpypbarz = property(*_gettopjsidhistattribute('hxpypbarz'))
+  hxvzbarz = property(*_gettopjsidhistattribute('hxvzbarz'))
+  hyvzbarz = property(*_gettopjsidhistattribute('hyvzbarz'))
+  hvxvzbarz = property(*_gettopjsidhistattribute('hvxvzbarz'))
+  hvyvzbarz = property(*_gettopjsidhistattribute('hvyvzbarz'))
+
+  del _gettopjsid1dattribute
+  del _gettopjsidattribute
+  del _gettoplabmomattribute
+  del _gettopjsidhistattribute
+
