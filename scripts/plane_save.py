@@ -7,7 +7,7 @@ simulation. The two simulations are linked together.
 __all__ = ['PlaneSave','plane_save_version']
 
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.23 2009/03/03 01:32:59 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.24 2009/06/29 18:24:38 dave Exp $"
 
 class PlaneSave:
   """
@@ -206,7 +206,7 @@ Input:
                                        transpose(getphi(iz=iz))]))
       if me == 0:
         try:
-          self.f.write('phiplane%d'%self.it,self.phi_save)
+          self.f.write('phiplane%09d'%self.it,self.phi_save)
         except:
           print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
           print "ERROR: There was an error writing out the particle data"
@@ -273,7 +273,7 @@ Input:
       self.it = self.it + 1
 
     if (np_save > 0 and self.save_this_step and me == 0):
-      suffix = '%d_%d'%(self.it,js)
+      suffix = '%09d_%d'%(self.it,js)
       try:
         self.f.write('xp'+suffix,    xx)
         self.f.write('yp'+suffix,    yy)

@@ -25,7 +25,7 @@ The two simulations are linked together.
 __all__ = ['PlaneRestore','plane_restore_version']
 
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.17 2008/11/27 01:13:54 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.18 2009/06/29 18:24:38 dave Exp $"
 
 class PlaneRestore:
   """
@@ -226,9 +226,15 @@ No particles are loaded."""
 
     # --- put restored data into particle arrays, adjusting the z location
     # --- Check if data was written for this step.
-    suffix = '%d_%d'%(it,js)
-    if 'xp'+suffix in self.f.inquire_names():
-      xx = self.f.read('xp'+suffix)
+    suffix = '%09d_%d'%(it,js)
+    oldsuffix = '%d_%d'%(it,js)
+    if ('xp'+suffix in self.f.inquire_names()
+         or 'xp'+oldsuffix in self.f.inquire_names()):
+      try:
+        xx = self.f.read('xp'+suffix)
+      except:
+        suffix = oldsuffix
+        xx = self.f.read('xp'+suffix)
       yy = self.f.read('yp'+suffix)
       zz = self.f.read('zp'+suffix)+self.zshift
       ux = self.f.read('uxp'+suffix)
@@ -289,9 +295,14 @@ No particles are loaded."""
     # --- return if flag indicates phi not to be restored
     if self.l_restore_phi is 0: return
     
-    # --- Read in the phi data if it is available
-    if 'phiplane%d'%it not in self.f.inquire_names(): return
-    savedphi = self.f.read('phiplane%d'%it)
+    # --- Read in the phi data if it is available. The second read is looking
+    # --- for the old suffix format.
+    savedphi = None
+    if 'phiplane%09d'%it in self.f.inquire_names():
+      savedphi = self.f.read('phiplane%09d'%it)
+    elif 'phiplane%d'%it in self.f.inquire_names():
+      savedphi = self.f.read('phiplane%d'%it)
+    if savedphi is None: return
 
     solver = getregisteredsolver()
     if solver is None: solver = w3d
