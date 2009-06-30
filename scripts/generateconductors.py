@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.200 2009/06/30 01:07:31 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.201 2009/06/30 17:48:25 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -4533,7 +4533,7 @@ class ZAnnulus(ZSrfrvIn):
   """
 Creates an Annulus as a surface of revolution.
   - rmin,rmax: Inner and outer radii
-  - zmin,zmax: z-extent of the surface
+  - length: length of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
   - condid=1: conductor id of conductor, must be integer, or can be 'next' in
@@ -4547,8 +4547,13 @@ Creates an Annulus as a surface of revolution.
     self.length = length
 
     # --- Setup data for surface of revolution
-    zmin = -length/2.
-    zmax = +length/2.
+    # --- This is the only setup for the z data that works consistently,
+    # --- having the zmin, zmax and zdata in the lab frame and setting
+    # --- zcent=0. Though this is not great since it changes the user
+    # --- input, zcent. ZSrfrvIn doesn't seem to work with zcent nonzero.
+    zmin = -length/2. + zcent
+    zmax = +length/2. + zcent
+    zcent = 0.
 
     zdata = [zmin,zmax]
     rofzdata = [rmax,rmax]
@@ -4566,7 +4571,7 @@ class ZAnnulusElliptic(ZSrfrvEllipticIn,EllipticAssembly):
 Creates an Annulus as a surface of revolution.
   - ellipticity: ratio of y radius to x radius
   - rmin,rmax: Inner and outer radii
-  - zmin,zmax: z-extent of the surface
+  - length: length of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
   - condid=1: conductor id of conductor, must be integer, or can be 'next' in
@@ -4580,8 +4585,9 @@ Creates an Annulus as a surface of revolution.
     self.length = length
 
     # --- Setup dat for surface of revolution
-    zmin = -length/2.
-    zmax = +length/2.
+    zmin = -length/2. + zcent
+    zmax = +length/2. + zcent
+    zcent = 0.
 
     zdata = [zmin,zmax]
     rofzdata = [rmax,rmax]
