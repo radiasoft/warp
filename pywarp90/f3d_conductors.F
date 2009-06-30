@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.67 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.68 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1321,16 +1321,62 @@ c Finds place where particle inside intercepted the surface and the
 c normal angle of the surface at that point.
 
       integer(ISZ):: i
+      real(kind=8):: ri2,rr,zz,dr
 
-      print*,"The intercept calculation is not yet implemented for ZRoundedCylinder"
+c     --- first calculate for non-rounded cylinder and then readjust
+c     --- the ones that are affected by rounded corners
+      call ZCylinderIntercept(rad,length,xcent,ycent,zcent,
+     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
+
       do i=1,n
-        xi(i) = LARGEPOS
-        yi(i) = LARGEPOS
-        zi(i) = LARGEPOS
-        itheta(i) = 0.
-        iphi(i) = 0.
-      enddo
+c       --- figure out which one are in the corners
 
+c       --- between the rounded corners in Z => not affected
+        if( zi(i)-zcent < 0.5*length-rad2 ) cycle
+
+c       --- between the rounded corners in R => not affected
+        ri2 =  (xi(i)-xcent)**2 + (yi(i)-ycent)**2
+        if( ri2 < (rad-rad2)**2 ) cycle
+
+c       --- these are the ones we need to change
+
+c          R-Z diagram of top left corner:
+
+c               particle
+c           +------+------------------------------+
+c           |      |-\        -----/.....|........|
+c           |      |  \    --/...........|........|
+c           |   dr |   \+-/..............|........|
+c           |      |  -/+\...............|........|
+c           |      |-/..|.\..............|........|
+c           |      |....|..\.............|........|   ..   inside of a
+c        rr |    -/|....|...-\...........|........|   ..   rounded cylinder
+c           |   /..|....|.....\.rad2.....|........|
+c           |  /...|....|......\.........|........|
+c           | /....|....|.......-\.......|........|
+c           | |....|....|.........\......|........|
+c           |/.....|....|..........\...------.....|
+c           ||.....|....|...........-\/..|...\....|
+c           |......|....|.............\.itheta\...|
+c           |......|.dz.|..............\.|.....\..|
+c           |......|....|...............\|......|.|
+c           +------+----+-------------------------\
+c                   <-------- zz (<0) --->
+
+        rr = sqrt(ri2) - (rad-rad2)
+        zz = zi(i)-zcent - (0.5*length-rad2)
+
+c       --- calculate angles
+        iphi(i)   = atan2(yi(i)-ycent,xi(i)-xcent)
+        itheta(i) = atan2(rr,zz)
+
+c       --- adjust position
+        dr    = rr - sin(itheta(i))*rad2
+        xi(i) = xi(i) - dr*cos(iphi(i))
+        yi(i) = yi(i) - dr*sin(iphi(i))
+        zi(i) = zi(i) - (zz - cos(itheta(i))*rad2)
+      enddo
+ 
       return
       end
 c=======================================================================
