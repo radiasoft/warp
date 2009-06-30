@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.199 2009/06/23 00:03:38 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.200 2009/06/30 01:07:31 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3328,6 +3328,12 @@ Rectangular grid
 
     self.createextent([-largepos,-largepos,zmin],
                       [+largepos,+largepos,zmax])
+
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+    r = [-1.,1.,1.,-1.,-1.]
+    w = self.length/2.
+    z = [-w,-w,w,w,-w]
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
 #============================================================================
 class Beamletplate(Assembly):
