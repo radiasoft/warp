@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.433 $, $Date: 2009/06/19 20:49:32 $
+c@(#) File W3D.F, version $Revision: 3.434 $, $Date: 2009/06/30 20:26:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -418,8 +418,8 @@ c  Load the particles, calculate the charge density
       call setuppgroup(pgroup)
       call stptcl3d(pgroup)
       call setgamma(pgroup,lrelativ)
-      call particleboundaries3d(pgroup,-1,.true.)
       call injctint(pgroup)
+      call particleboundaries3d(pgroup,-1,.true.)
       call remark(" ---  Setting charge density")
       call loadrho3d(pgroup,-1,-1,-1,.true.)
       call loadj3d(pgroup,-1,-1,-1,.true.)
