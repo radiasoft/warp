@@ -394,6 +394,12 @@ Creates a new species of particles. All arguments are optional.
                    only matters when parallel.
     """
 
+    if np == 0:
+      if top.debug:
+        print ("add_uniform_box: Warning: no particles loaded since the "+
+               "input np is zero")
+      return
+
     if lallindomain:
       # --- Crop the zmin and zmax to be within the local domain
       zminp = max(zmin,min(zmax,top.zpminlocal+top.zgrid))
@@ -417,7 +423,12 @@ Creates a new species of particles. All arguments are optional.
           if zmin>w3d.zmmax+top.zgrid or zmax<w3d.zmmin+top.zgrid:return
       else:
         np = nint((zmaxp - zminp)/(zmax - zmin)*np)
-      if np == 0: return
+      if np == 0:
+        if top.debug:
+          print ("add_uniform_box: Warning: no particles loaded for random "+
+                 "spacing since all are outside of the z range of the domain "+
+                 "of processor %d"%me)
+        return
       x = random.random(np)
       y = random.random(np)
       z = random.random(np)
@@ -448,7 +459,12 @@ Creates a new species of particles. All arguments are optional.
         izmaxp = int((zmaxp - zmin)/dz + 0.5)
         nzp = max(0,izmaxp - izminp)
         np = nx*ny*nzp
-      if np == 0: return
+      if np == 0:
+        if top.debug:
+          print ("add_uniform_box: Warning: no particles loaded for uniform "+
+                 "spacing since all are outside of the z range of the domain "+
+                 "of processor %d"%me)
+        return
 
       if dims == 3:
         x,y,z = getmesh3d(0.5/nx,1./nx,nx-1,
@@ -503,8 +519,8 @@ weights are set appropriately (weight=r/rmax). Otherwise, the particles are spac
 in radius squared.
  - np: total number of particles to load
  - rmax: radius of cylinder
- - ellipticity: factor multiplying size in y, i.e. y-size is given by rmax*ellipticity
- - zmin,zmax: z extent of the cylinder
+ - zmin,zmax: z extent of the cylinder. Note that if one has zmin==zmax,
+              then lallindomain must be set to true to get any particles.
  - vthx, vthy, vthz: thermal velocity, defaults to 0.
  - xmean,ymean,zmean: center of the cylinder, defaults to 0.
  - vxmean,vymean,vzmean: directed velocity, defaults to 0.
@@ -531,10 +547,15 @@ in radius squared.
                      default.
  - wscale=1.: Scale factor applied to the particle weights. Only used if
               variable weights are being used.
- - lallindomain=0: If true, the code only loads particles within the domain. This
-                   only matters when parallel.
+ - lallindomain=0: If true, the code only loads particles within the domain.
+                   This only matters when parallel.
+ - ellipticity: factor multiplying size in y, i.e. y-size is given by rmax*ellipticity
     """
-    if np == 0: return
+    if np == 0:
+      if top.debug:
+        print ("add_uniform_cylinder: Warning: no particles loaded since "+
+               "the input np is zero")
+      return
 
     # --- Precalculate the trigonometrics if needed.
     if theta != 0. or phi != 0.:
@@ -566,9 +587,21 @@ in radius squared.
     if w3d.l2symtry or w3d.l4symtry: yy = abs(yy)
 
     # --- If outside the domain, just return.
-    if min(xx) > top.xpmaxlocal or max(xx) < top.xpminlocal: return
-    if min(yy) > top.ypmaxlocal or max(yy) < top.ypminlocal: return
-    if min(zz) > top.zpmaxlocal or max(zz) < top.zpminlocal: return
+    if min(xx) > top.xpmaxlocal or max(xx) < top.xpminlocal:
+      if top.debug:
+        print ("add_uniform_cylinder: Warning: no particles loaded since all "+
+               "are outside of the x range of the domain of processor %d"%me)
+      return
+    if min(yy) > top.ypmaxlocal or max(yy) < top.ypminlocal:
+      if top.debug:
+        print ("add_uniform_cylinder: Warning: no particles loaded since all "+
+               "are outside of the y range of the domain of processor %d"%me)
+      return
+    if min(zz) > top.zpmaxlocal or max(zz) < top.zpminlocal:
+      if top.debug:
+        print ("add_uniform_cylinder: Warning: no particles loaded since all "+
+               "are outside of the z range of the domain of processor %d"%me)
+      return
 
     if theta == 0. and phi == 0.:
       # --- When no angle is specified, then the clipping to the domain
@@ -592,28 +625,49 @@ in radius squared.
       # --- Add a random number to the number of particles so that on
       # --- average, the correct number of particles will be generated.
       np = int(np + random.random())
-      # --- Adjust the number of particles to load to based on the
-      # --- width of the cropped zmin and max and the original
-      np = nint((zmaxp - zminp)/(zmax - zmin)*np)
-      if np == 0: return
+      if zmax != zmin:
+        # --- Adjust the number of particles to load to based on the
+        # --- width of the cropped zmin and max and the original
+        np = nint((zmaxp - zminp)/(zmax - zmin)*np)
+        # --- If the region is zero length, zmin==zmax, then don't change np.
+      if np == 0:
+        if top.debug:
+          print ("add_uniform_cylinder: Warning: no particles loaded for "+
+                 "random spacing since all are outside of the z range of the "+
+                 "domain of processor %d"%me)
+        return
       r = random.random(np)
-      z = random.random(np)
-      z = (zminp + (zmaxp - zminp)*z - zmin)/(zmax - zmin)
+      if zmax != zmin:
+        z = random.random(np)
+        z = (zminp + (zmaxp - zminp)*z - zmin)/(zmax - zmin)
+      else:
+        z = ones(np)
     else:
-      if nr is None: nr = nint(np**(1./2.))
-      if nz is None: nz = nint(np**(1./2.))
+      if zmax != zmin:
+        if nr is None: nr = nint(np**(1./2.))
+        if nz is None: nz = nint(np**(1./2.))
 
-      # --- Find the range of particle z locations within the cropped
-      # --- zmin and max.
-      dz = (zmax - zmin)/nz
-      izminp = int((zminp - zmin)/dz + 0.5)
-      izmaxp = int((zmaxp - zmin)/dz + 0.5)
-      nzp = max(0,izmaxp - izminp)
-      np = nr*nzp
-      if np == 0: return
+        # --- Find the range of particle z locations within the cropped
+        # --- zmin and max.
+        dz = (zmax - zmin)/nz
+        izminp = int((zminp - zmin)/dz + 0.5)
+        izmaxp = int((zmaxp - zmin)/dz + 0.5)
+        nzp = max(0,izmaxp - izminp)
+        np = nr*nzp
+        if np == 0:
+          if top.debug:
+            print ("add_uniform_cylinder: Warning: no particles loaded for"+
+                   "uniform spacing since all are outside of the z range of "+
+                   "the domain of processor %d"%me)
+          return
 
-      r,z = getmesh2d(0.5/nr,1./nr,nr-1,
-                      (izminp + 0.5)/nz,1./nz,nzp-1)
+        r,z = getmesh2d(0.5/nr,1./nr,nr-1,
+                        (izminp + 0.5)/nz,1./nz,nzp-1)
+      else: # zmax == zmin
+        if nr is None: nr = np
+        np = nr
+        r = getmesh1d(0.5/nr,1./nr,nr-1)
+        z = ones(np)
 
       # --- Perform a transpose so that the data is ordered with increasing z.
       # --- The copy is needed since transposed arrays cannot be reshaped.
@@ -622,7 +676,7 @@ in radius squared.
       r.shape = (np,)
       z.shape = (np,)
 
-    thetap=(thetamax-thetamin)*random.random(np) + thetamin
+    thetap = (thetamax - thetamin)*random.random(np) + thetamin
 
     if lvariableweights is None:
       lvariableweights = (top.wpid != 0)
@@ -636,7 +690,10 @@ in radius squared.
 
     x = rmax*r*cos(thetap)
     y = rmax*r*sin(thetap)*ellipticity
-    z = zmin+(zmax-zmin)*z
+    if zmin != zmax:
+      z = zmin + (zmax - zmin)*z
+    else:
+      z = zmin*z
 
     if theta != 0. or phi != 0.:
       # --- Transform positions from rotated frame into the lab frame.
@@ -672,7 +729,12 @@ in radius squared.
       if vtheta != 0.:
         r = compress(indomain,r)
       np = len(z)
-      if np == 0: return
+      if np == 0:
+        if top.debug:
+          print ("add_uniform_cylinder: Warning: no particles loaded since "+
+                 "all are outside of the transverse range of the domain of "+
+                 "processor %d"%me)
+        return
 
     if theta != 0. or phi != 0.:
       # --- When angles are specified, the clipping in z must be done on a
@@ -689,7 +751,12 @@ in radius squared.
       if vtheta != 0.:
         r = compress(indomain,r)
       np = len(z)
-      if np == 0: return
+      if np == 0:
+        if top.debug:
+          print ("add_uniform_cylinder: Warning: no particles loaded after "+
+                 "rotation since all are outside of the z range of the "+
+                 "domain of processor %d"%me)
+        return
 
     # --- The weights can be set now if needed (after clipping the positions).
     # --- Note that rmax must be scaled out.
