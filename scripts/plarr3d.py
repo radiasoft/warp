@@ -1,5 +1,5 @@
 """This module contains a class Plarr3d with methods to plot a 3-D array of points connected or not by lines.  Also included is a method to make a color-separated stereoscopic plot. For more info, import Plarr3d and type doc(Plarr3d)."""
-plarr3d_version = "$Id: plarr3d.py,v 1.5 2009/07/07 17:51:26 rcohen Exp $"
+plarr3d_version = "$Id: plarr3d.py,v 1.6 2009/07/07 17:55:02 rcohen Exp $"
 def plarr3ddoc():
    import plarr3d
    print plarr3d.__doc__
@@ -65,7 +65,7 @@ by lines.
     to "true".
 
  p.plotstereo(x,y,z,lcolor,rcolor,autoframe,linetype,marker,
-     stereooffset):
+     stereooffset,framelabels,labelprecision):
     Makes a color-separated stereo plot.
     lcolor is color for left eye (default "cyan")
     rcolor is color for right eye (default "red")
