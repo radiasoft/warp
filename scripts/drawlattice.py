@@ -2,7 +2,7 @@
 """
 __all__ = ['drawlatticedoc','drawlattice']
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.12 2008/12/23 19:20:38 jlvay Exp $"
+drawlattice_version = "$Id: drawlattice.py,v 1.13 2009/07/08 21:18:23 dave Exp $"
 def drawlatticedoc():
   import drawlattice
   print drawlattice.__doc__
@@ -246,17 +246,17 @@ type, and should draw any general lattice.
       return mmltlab
 
   if egrdlab is None:
-    def egrdlab(ne):
-        return "E%d"%ne
+    def egrdlab(nE):
+        return "E%d"%nE
   elif type(egrdlab) is not FunctionType:
-    def egrdlab(ne,egrdlab=egrdlab):
+    def egrdlab(nE,egrdlab=egrdlab):
       return egrdlab
 
   if bgrdlab is None:
-    def bgrdlab(nb):
-        return "B%d"%nb
+    def bgrdlab(nB):
+        return "B%d"%nB
   elif type(bgrdlab) is not FunctionType:
-    def bgrdlab(nb,bgrdlab=bgrdlab):
+    def bgrdlab(nB,bgrdlab=bgrdlab):
       return bgrdlab
 
   if pgrdlab is None:
@@ -309,8 +309,8 @@ type, and should draw any general lattice.
   ih,nh = _getelem('hele',zlatmin,zlatmax)
   ie,ne = _getelem('emlt',zlatmin,zlatmax)
   im,nm = _getelem('mmlt',zlatmin,zlatmax)
-  ie,ne = _getelem('egrd',zlatmin,zlatmax)
-  ib,nb = _getelem('bgrd',zlatmin,zlatmax)
+  iE,nE = _getelem('egrd',zlatmin,zlatmax)
+  iB,nB = _getelem('bgrd',zlatmin,zlatmax)
   ip,np = _getelem('pgrd',zlatmin,zlatmax)
   id,nd = _getelem('dipo',zlatmin,zlatmax)
   ia,na = _getelem('accl',zlatmin,zlatmax)
@@ -325,8 +325,8 @@ type, and should draw any general lattice.
     if len(ih) > 0: hmax = max(hmax,max(take(top.heleze-top.helezs,ih)))
     if len(ie) > 0: hmax = max(hmax,max(take(top.emltze-top.emltzs,ie)))
     if len(im) > 0: hmax = max(hmax,max(take(top.mmltze-top.mmltzs,im)))
-    if len(ie) > 0: hmax = max(hmax,max(take(top.egrdze-top.egrdzs,ie)))
-    if len(ib) > 0: hmax = max(hmax,max(take(top.bgrdze-top.bgrdzs,ib)))
+    if len(iE) > 0: hmax = max(hmax,max(take(top.egrdze-top.egrdzs,iE)))
+    if len(iB) > 0: hmax = max(hmax,max(take(top.bgrdze-top.bgrdzs,iB)))
     if len(ip) > 0: hmax = max(hmax,max(take(top.pgrdze-top.pgrdzs,ip)))
     if len(id) > 0: hmax = max(hmax,max(take(top.dipoze-top.dipozs,id)))
     if len(ia) > 0: hmax = max(hmax,max(take(top.acclze-top.acclzs,ia)))
@@ -346,23 +346,23 @@ type, and should draw any general lattice.
   zend = zlatmin
 
   # --- loop over all elements in range
-  for n in xrange(len(iq)+len(ih)+len(id)+len(ic)+len(ia)+len(ie)+len(im)+len(ib)+len(ip)+len(iM)):
+  for n in xrange(len(iq)+len(ih)+len(id)+len(ic)+len(ia)+len(ie)+len(im)+len(iE)+len(iB)+len(ip)+len(iM)):
 
     # --- find element with minimum z and flag with ilatspc  
-    zqmin=zhmin=zemin=zmmin=zbmin=zpmin=zdmin=zamin=zcmin=zMmin=zlatmax
+    zqmin=zhmin=zemin=zmmin=zEmin=zBmin=zpmin=zdmin=zamin=zcmin=zMmin=zlatmax
     if len(iq) > 0 and nq in iq: zqmin = top.quadzs[nq]
     if len(ih) > 0 and nh in ih: zhmin = top.helezs[nh]
     if len(ie) > 0 and ne in ie: zemin = top.emltzs[ne]
     if len(im) > 0 and nm in im: zmmin = top.mmltzs[nm]
-    if len(ie) > 0 and ne in ie: zbmin = top.egrdzs[ne]
-    if len(ib) > 0 and nb in ib: zbmin = top.bgrdzs[nb]
+    if len(iE) > 0 and nE in iE: zEmin = top.egrdzs[nE]
+    if len(iB) > 0 and nB in iB: zBmin = top.bgrdzs[nB]
     if len(ip) > 0 and np in ip: zpmin = top.pgrdzs[np]
-    if len(id) > 0 and nd in id: zdmin = top.dipozs[nd]
     if len(ia) > 0 and na in ia: zamin = top.acclzs[na]
     if len(ic) > 0 and nc in ic: zcmin = top.bendzs[nc]
+    if len(id) > 0 and nd in id: zdmin = top.dipozs[nd]
     if len(iM) > 0 and nM in iM: zMmin = top.lmapzs[nc]
-    ii = int(argmin([zqmin,zhmin,zemin,zmmin,zbmin,zpmin,zamin,zcmin,zdmin,zMmin]))
-    ilatspc =   ['q'  ,'h'  ,'e'  ,'m'  ,'b'  ,'p'  ,'a'  ,'c'  ,'d' ,'M' ][ii]
+    ii = int(argmin([zqmin,zhmin,zemin,zmmin,zEmin,zBmin,zpmin,zamin,zcmin,zdmin,zMmin]))
+    ilatspc =   ['q','h','e','m','E','B','p','a','c','d','M'][ii]
 
     if ilatspc == 'q':
       # --- load quadrapole element (focussing or defocussing)
@@ -396,22 +396,22 @@ type, and should draw any general lattice.
       zend = top.mmltze[nm]
       cl.append(mmltlab(nm))
       nm = nm + 1
-    elif ilatspc == 'e':
+    elif ilatspc == 'E':
       # --- load egrd element 
-      zaxis,xaxis,ze,xe,zl,xl = _addelement(top.egrdzs[ne],top.egrdze[ne],
+      zaxis,xaxis,ze,xe,zl,xl = _addelement(top.egrdzs[nE],top.egrdze[nE],
                                             zend,dh,zegrd,xegrd,
                                             zaxis,xaxis,ze,xe,zl,xl)
-      zend = top.egrdze[ne]
-      cl.append(egrdlab(ne))
-      ne = ne + 1
-    elif ilatspc == 'b':
+      zend = top.egrdze[nE]
+      cl.append(egrdlab(nE))
+      nE = nE + 1
+    elif ilatspc == 'B':
       # --- load bgrd element 
-      zaxis,xaxis,zb,xb,zl,xl = _addelement(top.bgrdzs[nb],top.bgrdze[nb],
+      zaxis,xaxis,zb,xb,zl,xl = _addelement(top.bgrdzs[nB],top.bgrdze[nB],
                                             zend,dh,zbgrd,xbgrd,
                                             zaxis,xaxis,zb,xb,zl,xl)
-      zend = top.bgrdze[nb]
-      cl.append(bgrdlab(nb))
-      nb = nb + 1
+      zend = top.bgrdze[nB]
+      cl.append(bgrdlab(nB))
+      nB = nB + 1
     elif ilatspc == 'p':
       # --- load pgrd element 
       zaxis,xaxis,zp,xp,zl,xl = _addelement(top.pgrdzs[np],top.pgrdze[np],
@@ -509,8 +509,8 @@ type, and should draw any general lattice.
   _plotele(xh+offsetlat,zh,helecolor,len(ih),len(zhele),l_inboostedframe=l_inboostedframe)
   _plotele(xe+offsetlat,ze,emltcolor,len(ie),len(zemlt),l_inboostedframe=l_inboostedframe)
   _plotele(xm+offsetlat,zm,mmltcolor,len(im),len(zmmlt),l_inboostedframe=l_inboostedframe)
-  _plotele(xe+offsetlat,ze,egrdcolor,len(ie),len(zegrd),l_inboostedframe=l_inboostedframe)
-  _plotele(xb+offsetlat,zb,bgrdcolor,len(ib),len(zbgrd),l_inboostedframe=l_inboostedframe)
+  _plotele(xe+offsetlat,ze,egrdcolor,len(iE),len(zegrd),l_inboostedframe=l_inboostedframe)
+  _plotele(xb+offsetlat,zb,bgrdcolor,len(iB),len(zbgrd),l_inboostedframe=l_inboostedframe)
   _plotele(xp+offsetlat,zp,pgrdcolor,len(ip),len(zpgrd),l_inboostedframe=l_inboostedframe)
   _plotele(xa+offsetlat,za,acclcolor,len(ia),len(zaccl),l_inboostedframe=l_inboostedframe)
   _plotele(xd+offsetlat,zd,dipocolor,len(id),len(zdipo),l_inboostedframe=l_inboostedframe)
