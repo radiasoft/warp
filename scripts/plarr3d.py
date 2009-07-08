@@ -1,5 +1,5 @@
 """This module contains a class Plarr3d with methods to plot a 3-D array of points connected or not by lines.  Also included is a method to make a color-separated stereoscopic plot. For more info, import Plarr3d and type doc(Plarr3d)."""
-plarr3d_version = "$Id: plarr3d.py,v 1.6 2009/07/07 17:55:02 rcohen Exp $"
+plarr3d_version = "$Id: plarr3d.py,v 1.7 2009/07/08 00:02:05 rcohen Exp $"
 def plarr3ddoc():
    import plarr3d
    print plarr3d.__doc__
@@ -262,21 +262,29 @@ phi is rotation of local coord. about local y axis, relative
               self.ylabelside = 6
 
         if self.zincr_tord_obs:
-           # Test to see if upper end of side 5 appears to right of lower end
-           x5u = self.frame[5,1,0];y5u =self.frame[5,1,1];z5u = self.frame[5,1,2]
-           x5l = self.frame[5,0,0];y5l =self.frame[5,0,1];z5l = self.frame[5,0,2]
-           if (self.project(x5u,y5u,z5u)[0] > self.project(x5l,y5l,z5l)[0]):
-              self.zlabelside = 5
-           else:
-              self.zlabelside = 9
-        else:
-           # Test to see if upper end of side 10 appears to left of lower end
+           # Test to see if upper end of side 10 appears above and to right, or below and
+           # to left, of lower end.
            x10u = self.frame[10,1,0];y10u =self.frame[10,1,1];z10u = self.frame[10,1,2]
            x10l = self.frame[10,0,0];y10l =self.frame[10,0,1];z10l = self.frame[10,0,2]
-           if (self.project(x10u,y10u,z10u)[0] < self.project(x10l,y10l,z10l)[0]):
-              self.zlabelside = 10
+           if ((self.project(x10u,y10u,z10u)[0] < self.project(x10l,y10l,z10l)[0]) and \
+               (self.project(x10u,y10u,z10u)[1] < self.project(x10l,y10l,z10l)[1])) or \
+               ((self.project(x10u,y10u,z10u)[0] > self.project(x10l,y10l,z10l)[0]) and \
+                (self.project(x10u,y10u,z10u)[1] > self.project(x10l,y10l,z10l)[1])):
+                  self.zlabelside = 10
            else:
               self.zlabelside = 2
+        else:
+           # Test to see if upper end of side 5 appears above and to right, or below and
+           # to left, of lower end
+           x5u = self.frame[5,1,0];y5u =self.frame[5,1,1];z5u = self.frame[5,1,2]
+           x5l = self.frame[5,0,0];y5l =self.frame[5,0,1];z5l = self.frame[5,0,2]
+           if ((self.project(x5u,y5u,z5u)[0] < self.project(x5l,y5l,z5l)[0]) and \
+               (self.project(x5u,y5u,z5u)[1] < self.project(x5l,y5l,z5l)[1])) or \
+               ((self.project(x5u,y5u,z5u)[0] > self.project(x5l,y5l,z5l)[0]) and \
+                (self.project(x5u,y5u,z5u)[1] > self.project(x5l,y5l,z5l)[1])):
+                  self.zlabelside = 5
+           else:
+              self.zlabelside = 9
            
         
     def printframelabel(self,labelside):
@@ -312,26 +320,27 @@ phi is rotation of local coord. about local y axis, relative
           endjustify = "RT"
        if (labelside == 5) or (labelside == 9) or (labelside == 2) or (labelside == 10):
           axislabel = "z"
-          offsets = array([-yzlabeloffset,0])
+          offsets = array([yzlabeloffset,0])
+          # print "z labelside, offsets = ", labelside,offsets
           # if labelside = 5 need a bit of extra space to left of begpostxt and label
           # if labelside = 10 need a bit of extra space to left of endpostxt and label
+          if (labelside == 9):
+             extraspacelabel = -.01
+             extraspacebeg = -.01
           if (labelside == 5):
-             extraspacelabel = .02
-             extraspacebeg = .02
-          if (labelside == 10):
-             extraspacelabel = .02
-             extraspaceend = .02
+             extraspacelabel = -.01
+             extraspacebeg = -.01
           # create text for label of starting and ending z positions
           begpostxt = "%.*g" %(labelprecision,self.frame[labelside,0,2])
           endpostxt = "%.*g" %(labelprecision,self.frame[labelside,1,2])
           # Note z axis has labels offset horizontally
-          labeljustify = "LH"
-          if self.zincr_tord_obs:
-             begjustify = "LT"
-             endjustify = "LA"
+          labeljustify = "RH"
+          if (self.theta < 0 and self.zincr_tord_obs) or (self.theta > 0 and not self.zincr_tord_obs):
+             begjustify = "RT"
+             endjustify = "RA"
           else:
-             endjustify = "LT"
-             begjustify = "LA"
+             endjustify = "RT"
+             begjustify = "RA"
        # calculate absolute values of offsets by multiplying by x and y ranges of plotted frame
        offsets=offsets*self.winrange
 
@@ -349,6 +358,12 @@ phi is rotation of local coord. about local y axis, relative
        yfp = yfp + offsets[1]
        plt(begpostxt,xfp[0]+extraspacebeg,yfp[0],justify=begjustify,tosys=1,color=self.framecolor)
        plt(endpostxt,xfp[1]+extraspaceend,yfp[1],justify=endjustify,tosys=1,color=self.framecolor)
+       #
+       # make sure the plot has room for the labels
+       winrangebar = sum(self.winrange)/2.
+       winsafety =0.03*winrangebar
+       rawlimits = limits(square=1)
+       limits(rawlimits[0]-winsafety,rawlimits[1],rawlimits[2]-winsafety,rawlimits[3])
 
     def printframelabels(self,labelprecision=2):
        """
