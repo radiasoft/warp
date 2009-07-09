@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.168 $, $Date: 2009/02/05 21:03:05 $
+c@(#) File DTOP.F, version $Revision: 3.169 $, $Date: 2009/07/09 22:15:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.168 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.169 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1254,6 +1254,46 @@ c       --- if within grid, accumulate
       return
       end
 c=============================================================================
+      subroutine setgrid1dw(np,x,w,nx,grid,xmin,xmax)
+      integer(ISZ):: nx,np
+      real(kind=8):: x(np),w(np)
+      real(kind=8):: grid(0:nx)
+      real(kind=8):: xmin,xmax
+
+c Lays particles down onto a node centered 1-D mesh using linear interpolation,
+c calculating the number of particles as a function of position.
+c   np: number of particles
+c   x: array of particle positions
+c   nx: number of grid cells
+c   grid: array where particle number will be accumulated. Note that with
+c         normal operation, grid needs to be set to zero before being passed in.
+c   xmin,xmax: extent of the grid, i.e. grid(0) is at xmin, grid(nx) is at xmax
+
+      integer(ISZ):: ip,ix
+      real(kind=8):: gx,dxi,wx
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gx = (x(ip) - xmin)*dxi
+
+c       --- if within grid, accumulate
+        if (0. <= gx .and. gx < nx) then
+          ix = int(gx)
+          wx = gx - ix
+          grid(ix  ) = grid(ix  ) + (1. - wx)*w(ip)
+          grid(ix+1) = grid(ix+1) +       wx *w(ip)
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
       subroutine deposgrid1d(itask,np,x,z,nx,grid,gridcount,xmin,xmax)
       integer(ISZ):: itask,nx,np
       real(kind=8):: x(np), z(np)
@@ -1346,7 +1386,8 @@ c       --- find location on grid
         gx = (x(ip) - xmin)*dxi
 
 c       --- if within grid, gather
-        if (0. <= gx .and. gx <= nx) then
+c        if (0. <= gx .and. gx <= nx) then
+        if (0. <= gx .and. gx < nx) then
           ix = int(gx)
           wx = gx - ix
           z(ip) = grid(ix  )*(1. - wx) + grid(ix+1)*wx
