@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.201 2009/06/30 17:48:25 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.202 2009/07/09 15:11:59 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -328,6 +328,52 @@ Should never be directly created by the user.
       if fullplane:
         plfp(c,self.xcent-array(r),z,[len(r)])
 
+  def get_energy_histogram(self,js=0,n=1000):
+    try:
+      emin = self.lostparticles_minenergy[js]
+      emax = self.lostparticles_maxenergy[js]
+      ne = shape(self.lostparticles_energies[js])[0]
+    except:
+      emin = largepos
+      emax = smallpos
+      ne = 0
+    emintot=parallelmin(emin)
+    emaxtot=parallelmax(emax)
+    netot=0
+    if me>0:
+      mpi.send((ne,emin,emax),0,1)
+      if ne>0:
+        mpi.send(self.lostparticles_energies[js],0,1)
+    else:
+      henergies = zeros(n+1,'d')
+      if ne>0:
+        netot+=ne
+        de = (emax-emin)/(ne-1)
+        energies = emin+arange(ne)*de
+        setgrid1dw(ne,energies,self.lostparticles_energies[js],n,henergies,emintot,emaxtot)
+      for i in range(1,npes):
+          ne,emin,emax = mpirecv(i,1)
+          if ne>0:
+            netot+=ne
+            he = mpirecv(i,1)
+            de = (emax-emin)/(ne-1)
+            energies = emin+arange(ne)*de
+            setgrid1dw(ne,energies,he,n,henergies,emintot,emaxtot)
+            
+    if netot>0:
+      de = (emaxtot-emintot)/n
+      energies = emintot+arange(n+1)*de
+      return henergies,energies
+    else:
+      return None,None
+
+  def plot_energy_histogram(self,js=0,color=black,width=1):
+     histo,energies = self.plot_energy_histogram(js=js)
+     if histo is None:
+       print "Nothing to plot"
+     else:
+       pla(histo,energies,color=color,width=width)
+     
   def get_current_history(self,js=None,l_lost=1,l_emit=1,l_image=1,tmin=None,tmax=None,nt=100):
     """
   Returns conductor current history:
