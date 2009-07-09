@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.45 2009/04/17 20:29:44 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.46 2009/07/09 15:13:22 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -471,38 +471,68 @@ Class for generating secondaries
             cond.lostparticles_energies[js]=zeros(1001,'d')
           e0min = min(e0)
           e0max = max(e0)
+#          e0min=0.
+#          e0max=1.e6
           if not cond.lostparticles_minenergy.has_key(js):
             cond.lostparticles_minenergy[js]=e0min
           if not cond.lostparticles_maxenergy.has_key(js):
             cond.lostparticles_maxenergy[js]=e0max
           l_rescale_energy_array=0
-          e0minnew=e0min
-          e0maxnew=e0max
           if e0min<cond.lostparticles_minenergy[js]:
             e0minnew=0.9*e0min
             l_rescale_energy_array=1
+          else:
+            e0minnew=cond.lostparticles_minenergy[js]
           if e0max>cond.lostparticles_maxenergy[js]:
             e0maxnew=1.1*e0max
             l_rescale_energy_array=1
+          else:
+            e0maxnew=cond.lostparticles_maxenergy[js]
           if l_rescale_energy_array:
             newlostparticles_energies=zeros(1001,'d')
             tmpcount=zeros(1001,'d')
             e0minold = cond.lostparticles_minenergy[js]
-            e0maxold = cond.lostparticles_minenergy[js]
+            e0maxold = cond.lostparticles_maxenergy[js]
             e0old = e0minold+arange(1001)*(e0maxold-e0minold)/1000
             deposgrid1d(1,1001,e0old,cond.lostparticles_energies[js],1000,newlostparticles_energies,tmpcount,e0minnew,e0maxnew)
+            try:
+              cond.itrescale.append(top.it)
+            except:
+              cond.itrescale=[top.it]
             cond.lostparticles_minenergy[js]=e0minnew
             cond.lostparticles_maxenergy[js]=e0maxnew
             cond.lostparticles_energies[js]=newlostparticles_energies
           if top.wpid >0:
-            pass
-#            deposgrid1d(1,i2-i1,tl, ql,nt,qt,qtmp,tmin,tmax)
+            eweights = weight*top.pgroup.sw[js]
           else:
-            setgrid1d(shape(coseta)[0],arccos(coseta),180,cond.lostparticles_angles[js],0.,pi)
-            # --- Expand the range of energies by one approximately two cells.
-            # --- This is needed in case there is only one particle, where
-            # --- minenergy == maxenergy.
-            setgrid1d(shape(e0)[0],e0,1000,cond.lostparticles_energies[js],0.999*cond.lostparticles_minenergy[js],1.001*cond.lostparticles_maxenergy[js])
+            eweights = ones(n)*top.pgroup.sw[js]
+          setgrid1dw(shape(coseta)[0],arccos(coseta),eweights,180,cond.lostparticles_angles[js],0.,pi)
+          # --- Expand the range of energies by one approximately two cells.
+          # --- This is needed in case there is only one particle, where
+          # --- minenergy == maxenergy.
+          setgrid1dw(shape(e0)[0],e0,eweights,1000,cond.lostparticles_energies[js],0.999*cond.lostparticles_minenergy[js],1.001*cond.lostparticles_maxenergy[js])
+          if js==1:
+           try:
+            cond.sumlostw.append(sum(cond.lostparticles_energies[1]))
+           except:
+            cond.sumlostw = AppendableArray(typecode='d')
+            cond.sumlostw.append(sum(cond.lostparticles_energies[1]))            
+           try:
+            cond.minlostw.append(sum(cond.lostparticles_minenergy[1]))
+           except:
+            cond.minlostw = AppendableArray(typecode='d')
+            cond.minlostw.append(sum(cond.lostparticles_minenergy[1]))            
+           try:
+            cond.maxlostw.append(sum(cond.lostparticles_maxenergy[1]))
+           except:
+            cond.maxlostw = AppendableArray(typecode='d')
+            cond.maxlostw.append(sum(cond.lostparticles_maxenergy[1]))            
+#          else:
+#            setgrid1d(shape(coseta)[0],arccos(coseta),180,cond.lostparticles_angles[js],0.,pi)
+#            # --- Expand the range of energies by one approximately two cells.
+#            # --- This is needed in case there is only one particle, where
+#            # --- minenergy == maxenergy.
+#            setgrid1d(shape(e0)[0],e0,1000,cond.lostparticles_energies[js],0.999*cond.lostparticles_minenergy[js],1.001*cond.lostparticles_maxenergy[js])
         for i in range(n):  
 #          print 'v',v[0][i],v[1][i],v[2][i],i,iit[i],js
 #          print 'x',[xplost[i],yplost[i],zplost[i]]
@@ -587,6 +617,14 @@ Class for generating secondaries
                ut=self.secelec_ut[:ns]
                un=self.secelec_un[:ns]
                uz=self.secelec_uz[:ns]
+               # --- In case that the mass of electrons was artificially changed for 
+               # --- numerical convenience, the velocity of emitted electrons is scaled 
+               # --- so that energy is conserved.
+               if top.pgroup.sm[js_new] <> Electron.mass:
+                 mfact = sqrt(Electron.mass/top.pgroup.sm[js_new])
+                 ut*=mfact
+                 un*=mfact
+                 uz*=mfact
                if self.piditype==0:
                  itype=None
                else:
