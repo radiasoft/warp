@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.239 $, $Date: 2009/04/24 18:30:23 $
+c@(#) File TOP.F, version $Revision: 3.240 $, $Date: 2009/07/09 16:23:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2236,6 +2236,7 @@ c     --- number of species as the z moments.
               epsxlw(ilw,i,js)   = w1*epsxz(iz,js)   + w0*epsxz(iz+1,js)
               epsylw(ilw,i,js)   = w1*epsyz(iz,js)   + w0*epsyz(iz+1,js)
               epszlw(ilw,i,js)   = w1*epszz(iz,js)   + w0*epszz(iz+1,js)
+              epsrlw(ilw,i,js)   = w1*epsrz(iz,js)   + w0*epsrz(iz+1,js)
               vxrmslw(ilw,i,js)  = w1*vxrmsz(iz,js)  + w0*vxrmsz(iz+1,js)
               vyrmslw(ilw,i,js)  = w1*vyrmsz(iz,js)  + w0*vyrmsz(iz+1,js)
               vzrmslw(ilw,i,js)  = w1*vzrmsz(iz,js)  + w0*vzrmsz(iz+1,js)
@@ -3236,7 +3237,7 @@ c Calculate the center of mass of the beam along the z axis from the particles
 
       totz = 0.
       totmass = 0.
-      do is=1,pgroup%ns
+      do is=1,1!pgroup%ns ! Temporary fix for multi-species runs
         do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
           totz = totz + pgroup%zp(ip)*pgroup%sm(is)
           totmass = totmass + pgroup%sm(is)
