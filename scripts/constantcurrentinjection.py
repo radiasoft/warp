@@ -4,11 +4,12 @@ procedure, but using the full simulation instead of 1-D approximation.
 from warp import *
 from timedependentvoltage import TimeVoltage
 
-constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.1 2005/02/16 19:51:22 dave Exp $"
+constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.2 2009/07/09 15:10:02 jlvay Exp $"
 def constantcurrentinjectiondoc():
   import constantcurrentinjection
   print constantcurrentinjection.__doc__
 
+###########################################################################################
 ###########################################################################################
 class ConstantCurrentRiseTime:
   """
@@ -45,17 +46,19 @@ frz.v_max = ekininit
 frz.calc_a = 3
   """
 
-  def __init__(self,sourceid,currentdensity,sourcevolt,otherids,othervolts,
-                    endplatevolt=0.):
-    self.sourceid = sourceid
-    self.otherids = otherids
+  def __init__(self,sourceid,currentdensity,sourcevolt,otherids=[],othervolts=[],
+                    othercontrolledids=[],othercontrolledvolts=[],endplatevolt=0.):
     self.currentdensity = currentdensity
+    self.sourceid = sourceid
     self.sourcevolt = sourcevolt
+    self.otherids = otherids
     self.othervolts = othervolts
+    self.othercontrolledids = othercontrolledids
+    self.othercontrolledvolts = othercontrolledvolts
     self.endplatevolt = endplatevolt
 
     # --- Initialize parameters
-    chi = 4*eps0/9*sqrt(2*top.sq[0]/top.sm[0])
+    chi = 4*eps0/9*sqrt(2*top.pgroup.sq[0]/top.pgroup.sm[0])
     self.phiref = (currentdensity/chi)**(2./3.)*(top.inj_d[0]*w3d.inj_dz)**(4./3.)
     self.ww = 2.*pi*iota(0,w3d.inj_nx)*w3d.inj_dx**2*w3d.inj_area[:,0,0]
     self.ww[0] = 0.25*pi*w3d.inj_dx**2
@@ -63,27 +66,35 @@ frz.calc_a = 3
 
     # --- First set all but source to ground
     setconductorvoltage(sourcevolt-self.endplatevolt,condid=self.sourceid)
+    for i,id in enumerate(othercontrolledids):
+      setconductorvoltage(self.othercontrolledvolts[i],condid=id)
     for id in otherids:
       setconductorvoltage(0.,condid=id)
 
     # --- Calculate and save a copy of the fields
     fieldsol(-1)
-    self.phisave = frz.basegrid.phi + 0.
+    solver = getregisteredsolver()
+    if solver is None:
+      solver = frz.basegrid
+    self.phisave = solver.phi.copy()
 
     # --- Calculate phiv
     top.vinject = sourcevolt-self.endplatevolt
     getinj_phi()
     self.phiv = sum(self.ww*w3d.inj_phi[:,0,0])/self.wwsum
 
-    # --- Now reset voltages on plates and set source to ground
+    # --- Now reset voltages on plates and set source to voltage of endplatevolt
     setconductorvoltage(self.endplatevolt,condid=self.sourceid)
     for id,v in map(None,otherids,othervolts):
       setconductorvoltage(v,condid=id)
+    for id in othercontrolledids:
+      setconductorvoltage(self.endplatevolt,condid=id)
 
     # --- Setup histories
     self.hsourcevolt = []
     self.hafact = []
     self.hphirho = []
+    self.hnp = []
 
     # --- Make initial call
     fieldsol(-1)
@@ -100,10 +111,17 @@ frz.calc_a = 3
     phirho = -sum(self.ww*w3d.inj_phi[:,0,0])/self.wwsum
 
     self.afact = (self.phiref + phirho)/self.phiv
-    frz.basegrid.phi[:,:] = frz.basegrid.phi + self.afact*self.phisave
+    solver = getregisteredsolver()
+    if solver is None:
+      solver = frz.basegrid
+    solver.phi += self.afact*self.phisave
     top.vinject = (self.endplatevolt +
                    self.afact*(self.sourcevolt-self.endplatevolt))
     setconductorvoltage(top.vinject[0],condid=self.sourceid)
+    for id,v in map(None,self.othercontrolledids,self.othercontrolledvolts):
+      voltage = (self.endplatevolt +
+                     self.afact*(v-self.endplatevolt))
+      setconductorvoltage(voltage,condid=id)
     fieldsol(-1)
     getinj_phi()
 
@@ -111,11 +129,36 @@ frz.calc_a = 3
     # --- the automatic field solve will not include the diode voltage which
     # --- is added in in this routine.
     setconductorvoltage(self.endplatevolt,condid=self.sourceid)
+    for id in self.othercontrolledids:
+      setconductorvoltage(self.endplatevolt,condid=id)
 
     self.hsourcevolt.append(top.vinject[0])
     self.hafact.append(self.afact)
     self.hphirho.append(phirho)
+    self.hnp.append(getn())
 
   def disable(self):
     uninstallafterfs(self.setsourcevolt)
     setconductorvoltage(self.sourcevolt,condid=self.sourceid)
+    for id,v in map(None,self.othercontrolledids,self.othercontrolledvolts):
+      setconductorvoltage(v,condid=id)
+
+
+class SpecifiedCurrentRiseTime(ConstantCurrentRiseTime):
+  """
+Same as constantcurrentinjection but allows to specify time dependent current profile.
+  """
+  def __init__(self,sourceid,currentdensityfunc,sourcevolt,otherids=[],othervolts=[],
+                    othercontrolledids=[],othercontrolledvolts=[],endplatevolt=0.):
+    ConstantCurrentRiseTime.__init__(self,sourceid,currentdensityfunc(top.time),sourcevolt,
+                                          otherids,othervolts,
+                                          othercontrolledids,othercontrolledvolts,endplatevolt)
+    self.currentdensityfunc = currentdensityfunc
+    installbeforefs(self.setphiref)
+    
+  def setphiref(self):
+    self.currentdensity = self.currentdensityfunc(top.time)
+    chi = 4*eps0/9*sqrt(2*top.pgroup.sq[0]/top.pgroup.sm[0])
+    self.phiref = (self.currentdensity/chi)**(2./3.)*(top.inj_d[0]*w3d.inj_dz)**(4./3.)
+    
+
