@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.260 $, $Date: 2009/06/08 16:38:30 $
+#@(#) File TOP.V, version $Revision: 3.261 $, $Date: 2009/07/09 16:21:55 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.260 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.261 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -561,6 +561,7 @@ lmapnuz(0:nlmap)   _real      # nuz
 lmaptype(0:nlmap) _integer    # map element type (0=drift, 1=bend, 2=quad, 3=RFkick)
 lmapol(0:nlmap)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
+lmapfillz logical /.true./    # Flag for completing z-push after application of linear map
 drfts     logical             # Flag for existence of drfts (auto set)
 bends     logical             # Flag for existence of bends (auto set)
 dipos     logical             # Flag for existence of dipos (auto set)
@@ -1682,6 +1683,7 @@ vzbarlw(ntlabwn,nlabwn,0:nslabwn)    _real # Vz bar in lab frame
 epsxlw(ntlabwn,nlabwn,0:nslabwn)     _real # X emittance in lab frame
 epsylw(ntlabwn,nlabwn,0:nslabwn)     _real # Y emittance in lab frame
 epszlw(ntlabwn,nlabwn,0:nslabwn)     _real # Z emittance in lab frame
+epsrlw(ntlabwn,nlabwn,0:nslabwn)     _real # R emittance in lab frame
 vxrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # Vx RMS in lab frame
 vyrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # Vy RMS in lab frame
 vzrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # Vz RMS in lab frame
@@ -2526,6 +2528,9 @@ acclbfrm(zcorrection)
 *********** TopDiag:
 # Subroutines in package TOP
 setgrid1d(np:integer,x(np):real,nx:integer,grid(0:nx):real,xmin:real,xmax:real)
+        subroutine
+        # Deposits data onto a 1-D grid.
+setgrid1dw(np:integer,x(np):real,w(np):real,nx:integer,grid(0:nx):real,xmin:real,xmax:real)
         subroutine
         # Deposits data onto a 1-D grid.
 deposgrid1d(itask:integer,np:integer,x(np):real,z(np):real,nx:integer,
