@@ -1,30 +1,30 @@
 #Boa:FramePanel:ConsoleClass
 
-from wxPython.wx import *
-from wxPython.lib.anchors import LayoutAnchors
+from wx import *
+from wx.lib.anchors import LayoutAnchors
 from warp import *
 
 [wxID_CONSOLECLASS, wxID_CONSOLECLASSCONSOLE, 
-] = map(lambda _init_ctrls: wxNewId(), range(2))
+] = map(lambda _init_ctrls: wx.NewId(), range(2))
 
-class ConsoleClass(wxPanel):
+class ConsoleClass(wx.Panel):
     def _init_utils(self):
         # generated method, don't edit
         pass
 
     def _init_ctrls(self, prnt):
         # generated method, don't edit
-        wxPanel.__init__(self, id=wxID_CONSOLECLASS, name='', parent=prnt,
-              pos=wxPoint(355, 226), size=wxSize(604, 339),
-              style=wxMAXIMIZE_BOX | wxTAB_TRAVERSAL)
+        wx.Panel.__init__(self, id=wxID_CONSOLECLASS, name='', parent=prnt,
+              pos=wx.Point(355, 226), size=wx.Size(604, 339),
+              style=wx.MAXIMIZE_BOX | wx.TAB_TRAVERSAL)
         self._init_utils()
-        self.SetClientSize(wxSize(596, 315))
+        self.SetClientSize(wx.Size(596, 315))
         self.SetAutoLayout(True)
 
-        self.Console = wxTextCtrl(id=wxID_CONSOLECLASSCONSOLE, name='Console',
-              parent=self, pos=wxPoint(0, 0), size=wxSize(596, 315),
-              style=wxTE_MULTILINE, value='')
-        self.Console.SetFont(wxFont(12, wxMODERN, wxNORMAL, wxNORMAL, false,''))
+        self.Console = wx.TextCtrl(id=wxID_CONSOLECLASSCONSOLE, name='Console',
+              parent=self, pos=wx.Point(0, 0), size=wx.Size(596, 315),
+              style=wx.TE_MULTILINE, value='')
+        self.Console.SetFont(wx.Font(12, wx.MODERN, wx.NORMAL, wx.NORMAL, false,''))
         self.Console.SetConstraints(LayoutAnchors(self.Console, True, True,
               True, True))
         EVT_CHAR(self.Console, self.OnconsoleChar)

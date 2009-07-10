@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 #Boa:App:BoaApp
 
-from wxPython.wx import *
+#from wxPython.wx import *
+from wx import *
 from warp import *
 import WarpRun
 import __main__
@@ -16,7 +17,7 @@ modules ={'ConsoleClass':     [0, '', 'ConsoleClass.py'],
           'MatchingGUI':      [0, '', 'MatchingGUI.py'],
           'WarpRun':          [1, 'Main frame of Application', 'WarpRun.py']}
 
-class BoaApp(wxApp):
+class BoaApp(wx.App):
     def OnInit(self):
         self.main = WarpRun.create(None)
         return true

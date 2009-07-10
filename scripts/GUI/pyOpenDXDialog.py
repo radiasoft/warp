@@ -1,8 +1,8 @@
 #Boa:FramePanel:panel
 
-from wxPython.wx import *
-from wxPython.lib.anchors import LayoutAnchors
-from wxPython.grid import *
+from wx import *
+from wx.lib.anchors import LayoutAnchors
+from wx.grid import *
 from warp import *
 from pyOpenDX import *
 import __main__
@@ -18,182 +18,182 @@ import __main__
  wxID_PANELXSCALE_VALUE, wxID_PANELYSCALE, wxID_PANELYSCALE_MAX, 
  wxID_PANELYSCALE_MIN, wxID_PANELYSCALE_VALUE, wxID_PANELZSCALE, 
  wxID_PANELZSCALE_MAX, wxID_PANELZSCALE_MIN, wxID_PANELZSCALE_VALUE, 
-] = map(lambda _init_ctrls: wxNewId(), range(34))
+] = map(lambda _init_ctrls: wx.NewId(), range(34))
 
-class panel(wxPanel):
+class panel(wx.Panel):
     def _init_utils(self):
         # generated method, don't edit
         pass
 
     def _init_ctrls(self, prnt):
         # generated method, don't edit
-        wxPanel.__init__(self, id=wxID_PANEL, name='OpenDX', parent=prnt,
-              pos=wxPoint(433, 233), size=wxSize(365, 246),
-              style=wxTAB_TRAVERSAL)
+        wx.Panel.__init__(self, id=wxID_PANEL, name='OpenDX', parent=prnt,
+              pos=wx.Point(433, 233), size=wx.Size(365, 246),
+              style=wx.TAB_TRAVERSAL)
         self._init_utils()
-        self.SetClientSize(wxSize(357, 222))
+        self.SetClientSize(wx.Size(357, 222))
         EVT_ENTER_WINDOW(self, self.OnPanelEnterWindow)
 
-        self.staticText1 = wxStaticText(id=wxID_PANELSTATICTEXT1, label='Mode',
-              name='staticText1', parent=self, pos=wxPoint(16, 44),
-              size=wxSize(44, 16), style=0)
+        self.staticText1 = wx.StaticText(id=wxID_PANELSTATICTEXT1, label='Mode',
+              name='staticText1', parent=self, pos=wx.Point(16, 44),
+              size=wx.Size(44, 16), style=0)
 
-        self.Mode = wxChoice(choices=['rotate', 'translate', 'zoom'],
-              id=wxID_PANELMODE, name='Mode', parent=self, pos=wxPoint(76, 40),
-              size=wxSize(90, 21), style=0, validator=wxDefaultValidator)
+        self.Mode = wx.Choice(choices=['rotate', 'translate', 'zoom'],
+              id=wxID_PANELMODE, name='Mode', parent=self, pos=wx.Point(76, 40),
+              size=wx.Size(90, 21), style=0, validator=wx.DefaultValidator)
         self.Mode.SetLabel('')
         self.Mode.Show(True)
         EVT_CHOICE(self.Mode, wxID_PANELMODE, self.OnModeChoice)
 
-        self.staticText2 = wxStaticText(id=wxID_PANELSTATICTEXT2,
+        self.staticText2 = wx.StaticText(id=wxID_PANELSTATICTEXT2,
               label='Filename', name='staticText2', parent=self,
-              pos=wxPoint(192, 20), size=wxSize(50, 13), style=0)
+              pos=wx.Point(192, 20), size=wx.Size(50, 13), style=0)
 
-        self.Format = wxChoice(choices=['eps', 'eps grey', 'miff', 'ps',
+        self.Format = wx.Choice(choices=['eps', 'eps grey', 'miff', 'ps',
               'ps grey', 'rgb', 'r+g+b', 'tiff', 'yuv', 'dx', 'vrml'],
-              id=wxID_PANELFORMAT, name='Format', parent=self, pos=wxPoint(244,
-              40), size=wxSize(90, 21), style=0, validator=wxDefaultValidator)
+              id=wxID_PANELFORMAT, name='Format', parent=self, pos=wx.Point(244,
+              40), size=wx.Size(90, 21), style=0, validator=wx.DefaultValidator)
 
-        self.Filename = wxTextCtrl(id=wxID_PANELFILENAME, name='Filename',
-              parent=self, pos=wxPoint(244, 16), size=wxSize(90, 21), style=0,
+        self.Filename = wx.TextCtrl(id=wxID_PANELFILENAME, name='Filename',
+              parent=self, pos=wx.Point(244, 16), size=wx.Size(90, 21), style=0,
               value='Image')
 
-        self.staticText3 = wxStaticText(id=wxID_PANELSTATICTEXT3,
-              label='Format', name='staticText3', parent=self, pos=wxPoint(192,
-              44), size=wxSize(40, 13), style=0)
+        self.staticText3 = wx.StaticText(id=wxID_PANELSTATICTEXT3,
+              label='Format', name='staticText3', parent=self, pos=wx.Point(192,
+              44), size=wx.Size(40, 13), style=0)
 
-        self.Save = wxButton(id=wxID_PANELSAVE, label='Save', name='Save',
-              parent=self, pos=wxPoint(244, 64), size=wxSize(90, 21), style=0)
+        self.Save = wx.Button(id=wxID_PANELSAVE, label='Save', name='Save',
+              parent=self, pos=wx.Point(244, 64), size=wx.Size(90, 21), style=0)
         EVT_BUTTON(self.Save, wxID_PANELSAVE, self.OnSaveButton)
 
-        self.staticBox1 = wxStaticBox(id=wxID_PANELSTATICBOX1, label='Display',
-              name='staticBox1', parent=self, pos=wxPoint(8, 0),
-              size=wxSize(168, 96), style=0)
+        self.staticBox1 = wx.StaticBox(id=wxID_PANELSTATICBOX1, label='Display',
+              name='staticBox1', parent=self, pos=wx.Point(8, 0),
+              size=wx.Size(168, 96), style=0)
 
-        self.staticText4 = wxStaticText(id=wxID_PANELSTATICTEXT4,
+        self.staticText4 = wx.StaticText(id=wxID_PANELSTATICTEXT4,
               label='Rendering', name='staticText4', parent=self,
-              pos=wxPoint(16, 68), size=wxSize(55, 13), style=0)
+              pos=wx.Point(16, 68), size=wx.Size(55, 13), style=0)
 
-        self.Rendering = wxChoice(choices=['software', 'hardware'],
+        self.Rendering = wx.Choice(choices=['software', 'hardware'],
               id=wxID_PANELRENDERING, name='Rendering', parent=self,
-              pos=wxPoint(76, 64), size=wxSize(90, 21), style=0,
-              validator=wxDefaultValidator)
+              pos=wx.Point(76, 64), size=wx.Size(90, 21), style=0,
+              validator=wx.DefaultValidator)
         EVT_CHOICE(self.Rendering, wxID_PANELRENDERING, self.OnRenderingChoice)
 
-        self.staticBox2 = wxStaticBox(id=wxID_PANELSTATICBOX2, label='Output',
-              name='staticBox2', parent=self, pos=wxPoint(184, 0),
-              size=wxSize(164, 96), style=0)
+        self.staticBox2 = wx.StaticBox(id=wxID_PANELSTATICBOX2, label='Output',
+              name='staticBox2', parent=self, pos=wx.Point(184, 0),
+              size=wx.Size(164, 96), style=0)
 
-        self.staticBox3 = wxStaticBox(id=wxID_PANELSTATICBOX3, label='Scale',
-              name='staticBox3', parent=self, pos=wxPoint(8, 96),
-              size=wxSize(340, 96), style=0)
+        self.staticBox3 = wx.StaticBox(id=wxID_PANELSTATICBOX3, label='Scale',
+              name='staticBox3', parent=self, pos=wx.Point(8, 96),
+              size=wx.Size(340, 96), style=0)
 
-        self.staticText5 = wxStaticText(id=wxID_PANELSTATICTEXT5, label='X',
-              name='staticText5', parent=self, pos=wxPoint(16, 126),
-              size=wxSize(16, 13), style=0)
+        self.staticText5 = wx.StaticText(id=wxID_PANELSTATICTEXT5, label='X',
+              name='staticText5', parent=self, pos=wx.Point(16, 126),
+              size=wx.Size(16, 13), style=0)
 
-        self.staticText6 = wxStaticText(id=wxID_PANELSTATICTEXT6, label='Y',
-              name='staticText6', parent=self, pos=wxPoint(16, 148),
-              size=wxSize(16, 13), style=0)
+        self.staticText6 = wx.StaticText(id=wxID_PANELSTATICTEXT6, label='Y',
+              name='staticText6', parent=self, pos=wx.Point(16, 148),
+              size=wx.Size(16, 13), style=0)
 
-        self.staticText7 = wxStaticText(id=wxID_PANELSTATICTEXT7, label='Z',
-              name='staticText7', parent=self, pos=wxPoint(16, 170),
-              size=wxSize(16, 13), style=0)
+        self.staticText7 = wx.StaticText(id=wxID_PANELSTATICTEXT7, label='Z',
+              name='staticText7', parent=self, pos=wx.Point(16, 170),
+              size=wx.Size(16, 13), style=0)
 
-        self.staticText8 = wxStaticText(id=wxID_PANELSTATICTEXT8, label='value',
-              name='staticText8', parent=self, pos=wxPoint(40, 108),
-              size=wxSize(28, 13), style=0)
+        self.staticText8 = wx.StaticText(id=wxID_PANELSTATICTEXT8, label='value',
+              name='staticText8', parent=self, pos=wx.Point(40, 108),
+              size=wx.Size(28, 13), style=0)
 
-        self.staticText9 = wxStaticText(id=wxID_PANELSTATICTEXT9, label='min',
-              name='staticText9', parent=self, pos=wxPoint(116, 108),
-              size=wxSize(18, 13), style=0)
+        self.staticText9 = wx.StaticText(id=wxID_PANELSTATICTEXT9, label='min',
+              name='staticText9', parent=self, pos=wx.Point(116, 108),
+              size=wx.Size(18, 13), style=0)
 
-        self.staticText10 = wxStaticText(id=wxID_PANELSTATICTEXT10, label='max',
-              name='staticText10', parent=self, pos=wxPoint(308, 108),
-              size=wxSize(21, 13), style=0)
+        self.staticText10 = wx.StaticText(id=wxID_PANELSTATICTEXT10, label='max',
+              name='staticText10', parent=self, pos=wx.Point(308, 108),
+              size=wx.Size(21, 13), style=0)
 
-        self.Xscale = wxSlider(id=wxID_PANELXSCALE, maxValue=1000, minValue=0,
-              name='Xscale', parent=self, point=wxPoint(150, 122),
-              size=wxSize(139, 20), style=wxSL_HORIZONTAL,
-              validator=wxDefaultValidator, value=1)
+        self.Xscale = wx.Slider(id=wxID_PANELXSCALE, maxValue=1000, minValue=0,
+              name='Xscale', parent=self, point=wx.Point(150, 122),
+              size=wx.Size(139, 20), style=wx.SL_HORIZONTAL,
+              validator=wx.DefaultValidator, value=1)
         self.Xscale.SetLabel('')
         EVT_SCROLL(self.Xscale, self.OnXscaleScroll)
 
-        self.Xscale_min = wxTextCtrl(id=wxID_PANELXSCALE_MIN, name='Xscale_min',
-              parent=self, pos=wxPoint(104, 122), size=wxSize(40, 21), style=0,
+        self.Xscale_min = wx.TextCtrl(id=wxID_PANELXSCALE_MIN, name='Xscale_min',
+              parent=self, pos=wx.Point(104, 122), size=wx.Size(40, 21), style=0,
               value='0')
 
-        self.Xscale_Value = wxTextCtrl(id=wxID_PANELXSCALE_VALUE,
-              name='XScale_Value', parent=self, pos=wxPoint(32, 122),
-              size=wxSize(48, 21), style=0, value='1.')
+        self.Xscale_Value = wx.TextCtrl(id=wxID_PANELXSCALE_VALUE,
+              name='XScale_Value', parent=self, pos=wx.Point(32, 122),
+              size=wx.Size(48, 21), style=0, value='1.')
         EVT_TEXT_ENTER(self.Xscale_Value, wxID_PANELXSCALE_VALUE,
               self.OnXscale_valueTextEnter)
 
-        self.Xscale_max = wxTextCtrl(id=wxID_PANELXSCALE_MAX, name='XScale_max',
-              parent=self, pos=wxPoint(296, 122), size=wxSize(40, 21), style=0,
+        self.Xscale_max = wx.TextCtrl(id=wxID_PANELXSCALE_MAX, name='XScale_max',
+              parent=self, pos=wx.Point(296, 122), size=wx.Size(40, 21), style=0,
               value='10.')
 
-        self.Yscale = wxSlider(id=wxID_PANELYSCALE, maxValue=1000, minValue=0,
-              name='Yscale', parent=self, point=wxPoint(150, 144),
-              size=wxSize(139, 20), style=wxSL_HORIZONTAL,
-              validator=wxDefaultValidator, value=1)
+        self.Yscale = wx.Slider(id=wxID_PANELYSCALE, maxValue=1000, minValue=0,
+              name='Yscale', parent=self, point=wx.Point(150, 144),
+              size=wx.Size(139, 20), style=wx.SL_HORIZONTAL,
+              validator=wx.DefaultValidator, value=1)
         self.Yscale.SetLabel('')
         EVT_SCROLL(self.Yscale, self.OnYscaleScroll)
 
-        self.Yscale_min = wxTextCtrl(id=wxID_PANELYSCALE_MIN, name='Yscale_min',
-              parent=self, pos=wxPoint(104, 144), size=wxSize(40, 21), style=0,
+        self.Yscale_min = wx.TextCtrl(id=wxID_PANELYSCALE_MIN, name='Yscale_min',
+              parent=self, pos=wx.Point(104, 144), size=wx.Size(40, 21), style=0,
               value='0')
 
-        self.Yscale_Value = wxTextCtrl(id=wxID_PANELYSCALE_VALUE,
-              name='YScale_Value', parent=self, pos=wxPoint(32, 144),
-              size=wxSize(48, 21), style=0, value='1.')
+        self.Yscale_Value = wx.TextCtrl(id=wxID_PANELYSCALE_VALUE,
+              name='YScale_Value', parent=self, pos=wx.Point(32, 144),
+              size=wx.Size(48, 21), style=0, value='1.')
         EVT_TEXT_ENTER(self.Yscale_Value, wxID_PANELYSCALE_VALUE,
               self.OnYscale_valueTextEnter)
 
-        self.Yscale_max = wxTextCtrl(id=wxID_PANELYSCALE_MAX, name='YScale_max',
-              parent=self, pos=wxPoint(296, 144), size=wxSize(40, 21), style=0,
+        self.Yscale_max = wx.TextCtrl(id=wxID_PANELYSCALE_MAX, name='YScale_max',
+              parent=self, pos=wx.Point(296, 144), size=wx.Size(40, 21), style=0,
               value='10.')
 
-        self.Zscale = wxSlider(id=wxID_PANELZSCALE, maxValue=1000, minValue=0,
-              name='Zscale', parent=self, point=wxPoint(150, 166),
-              size=wxSize(139, 20), style=wxSL_HORIZONTAL,
-              validator=wxDefaultValidator, value=1)
+        self.Zscale = wx.Slider(id=wxID_PANELZSCALE, maxValue=1000, minValue=0,
+              name='Zscale', parent=self, point=wx.Point(150, 166),
+              size=wx.Size(139, 20), style=wx.SL_HORIZONTAL,
+              validator=wx.DefaultValidator, value=1)
         self.Zscale.SetLabel('')
         EVT_SCROLL(self.Zscale, self.OnZscaleScroll)
 
-        self.Zscale_min = wxTextCtrl(id=wxID_PANELZSCALE_MIN, name='Zscale_min',
-              parent=self, pos=wxPoint(104, 166), size=wxSize(40, 21), style=0,
+        self.Zscale_min = wx.TextCtrl(id=wxID_PANELZSCALE_MIN, name='Zscale_min',
+              parent=self, pos=wx.Point(104, 166), size=wx.Size(40, 21), style=0,
               value='0')
 
-        self.Zscale_Value = wxTextCtrl(id=wxID_PANELZSCALE_VALUE,
-              name='ZScale_Value', parent=self, pos=wxPoint(32, 166),
-              size=wxSize(48, 21), style=0, value='1.')
+        self.Zscale_Value = wx.TextCtrl(id=wxID_PANELZSCALE_VALUE,
+              name='ZScale_Value', parent=self, pos=wx.Point(32, 166),
+              size=wx.Size(48, 21), style=0, value='1.')
         EVT_TEXT_ENTER(self.Zscale_Value, wxID_PANELZSCALE_VALUE,
               self.OnZscale_valueTextEnter)
 
-        self.Zscale_max = wxTextCtrl(id=wxID_PANELZSCALE_MAX, name='ZScale_max',
-              parent=self, pos=wxPoint(296, 166), size=wxSize(40, 21), style=0,
+        self.Zscale_max = wx.TextCtrl(id=wxID_PANELZSCALE_MAX, name='ZScale_max',
+              parent=self, pos=wx.Point(296, 166), size=wx.Size(40, 21), style=0,
               value='10.')
 
-        self.staticText11 = wxStaticText(id=wxID_PANELSTATICTEXT11,
-              label='Window', name='staticText11', parent=self, pos=wxPoint(16,
-              20), size=wxSize(42, 13), style=0)
+        self.staticText11 = wx.StaticText(id=wxID_PANELSTATICTEXT11,
+              label='Window', name='staticText11', parent=self, pos=wx.Point(16,
+              20), size=wx.Size(42, 13), style=0)
 
-        self.Window = wxChoice(choices=['All'], id=wxID_PANELWINDOW,
-              name='Window', parent=self, pos=wxPoint(76, 16), size=wxSize(90,
-              21), style=0, validator=wxDefaultValidator)
+        self.Window = wx.Choice(choices=['All'], id=wxID_PANELWINDOW,
+              name='Window', parent=self, pos=wx.Point(76, 16), size=wx.Size(90,
+              21), style=0, validator=wx.DefaultValidator)
         EVT_CHOICE(self.Window, wxID_PANELWINDOW, self.OnWindowChoice)
 
-        self.NewWindow = wxCheckBox(id=wxID_PANELNEWWINDOW,
+        self.NewWindow = wx.CheckBox(id=wxID_PANELNEWWINDOW,
               label='Next plot in new window', name='NewWindow', parent=self,
-              pos=wxPoint(16, 200), size=wxSize(160, 16), style=0)
+              pos=wx.Point(16, 200), size=wx.Size(160, 16), style=0)
         self.NewWindow.SetValue(False)
         EVT_CHECKBOX(self.NewWindow, wxID_PANELNEWWINDOW,
               self.OnNewwindowCheckbox)
 
     def __init__(self, parent):
         self._init_ctrls(parent)
-        self.Move(wxPoint(0,0))
+        self.Move(wx.Point(0,0))
 
     def OnPanelEnterWindow(self, event):
       try:

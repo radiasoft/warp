@@ -1,7 +1,7 @@
 #Boa:Dialog:LatticeGUI
 
-from wxPython.wx import *
-from wxPython.lib.anchors import LayoutAnchors
+from wx import *
+from wx.lib.anchors import LayoutAnchors
 from warp import *
 import sortlattice
 import lattice
@@ -26,209 +26,209 @@ def create(parent):
  wxID_LATTICEGUIQUADZSLABEL, wxID_LATTICEGUIQUADZSUNITS, 
  wxID_LATTICEGUISETELEMENTNUM, wxID_LATTICEGUISETMADLATTICE, 
  wxID_LATTICEGUISETMADLATTICELABEL, 
-] = map(lambda _init_ctrls: wxNewId(), range(35))
+] = map(lambda _init_ctrls: wx.NewId(), range(35))
 
-class LatticeGUI(wxDialog):
+class LatticeGUI(wx.Dialog):
     def _init_utils(self):
         # generated method, don't edit
         pass
 
     def _init_ctrls(self, prnt):
         # generated method, don't edit
-        wxDialog.__init__(self, id=wxID_LATTICEGUI, name='LatticeGUI',
-              parent=prnt, pos=wxPoint(493, 320), size=wxSize(389, 277),
-              style=wxDEFAULT_DIALOG_STYLE, title='Lattice Editor')
+        wx.Dialog.__init__(self, id=wxID_LATTICEGUI, name='LatticeGUI',
+              parent=prnt, pos=wx.Point(493, 320), size=wx.Size(389, 277),
+              style=wx.DEFAULT_DIALOG_STYLE, title='Lattice Editor')
         self._init_utils()
-        self.SetClientSize(wxSize(389, 277))
+        self.SetClientSize(wx.Size(389, 277))
         self.SetToolTipString('Lattice editor')
 
-        self.ElementNum = wxPanel(id=wxID_LATTICEGUIELEMENTNUM,
-              name='ElementNum', parent=self, pos=wxPoint(8, 8),
-              size=wxSize(136, 264), style=wxRAISED_BORDER | wxTAB_TRAVERSAL)
+        self.ElementNum = wx.Panel(id=wxID_LATTICEGUIELEMENTNUM,
+              name='ElementNum', parent=self, pos=wx.Point(8, 8),
+              size=wx.Size(136, 264), style=wx.RAISED_BORDER | wx.TAB_TRAVERSAL)
 
-        self.SetElementNum = wxTextCtrl(id=wxID_LATTICEGUISETELEMENTNUM,
-              name='SetElementNum', parent=self.ElementNum, pos=wxPoint(8, 48),
-              size=wxSize(40, 22),
-              style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
+        self.SetElementNum = wx.TextCtrl(id=wxID_LATTICEGUISETELEMENTNUM,
+              name='SetElementNum', parent=self.ElementNum, pos=wx.Point(8, 48),
+              size=wx.Size(40, 22),
+              style=wx.TAB_TRAVERSAL | wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER,
               value='0')
         self.SetElementNum.SetToolTipString('Sets element number')
         EVT_TEXT_ENTER(self.SetElementNum, wxID_LATTICEGUISETELEMENTNUM,
               self.OnSetelementnumTextEnter)
 
-        self.ElemNumLabel1 = wxStaticText(id=wxID_LATTICEGUIELEMNUMLABEL1,
+        self.ElemNumLabel1 = wx.StaticText(id=wxID_LATTICEGUIELEMNUMLABEL1,
               label='Element', name='ElemNumLabel1', parent=self.ElementNum,
-              pos=wxPoint(8, 8), size=wxSize(44, 16), style=0)
+              pos=wx.Point(8, 8), size=wx.Size(44, 16), style=0)
 
-        self.ElemNumLabel2 = wxStaticText(id=wxID_LATTICEGUIELEMNUMLABEL2,
+        self.ElemNumLabel2 = wx.StaticText(id=wxID_LATTICEGUIELEMNUMLABEL2,
               label='Number', name='ElemNumLabel2', parent=self.ElementNum,
-              pos=wxPoint(8, 24), size=wxSize(43, 16), style=0)
+              pos=wx.Point(8, 24), size=wx.Size(43, 16), style=0)
 
-        self.ElementSpin = wxSpinButton(id=wxID_LATTICEGUIELEMENTSPIN,
-              name='ElementSpin', parent=self.ElementNum, pos=wxPoint(56, 40),
-              size=wxSize(15, 34),
-              style=wxDOUBLE_BORDER | wxSP_HORIZONTAL | wxSIMPLE_BORDER)
+        self.ElementSpin = wx.SpinButton(id=wxID_LATTICEGUIELEMENTSPIN,
+              name='ElementSpin', parent=self.ElementNum, pos=wx.Point(56, 40),
+              size=wx.Size(15, 34),
+              style=wx.DOUBLE_BORDER | wx.SP_HORIZONTAL | wx.SIMPLE_BORDER)
         self.ElementSpin.SetToolTipString('Change element number')
         EVT_SPIN_DOWN(self.ElementSpin, wxID_LATTICEGUIELEMENTSPIN,
               self.OnElementspinSpinDown)
         EVT_SPIN_UP(self.ElementSpin, wxID_LATTICEGUIELEMENTSPIN,
               self.OnElementspinSpinUp)
 
-        self.Quad = wxPanel(id=wxID_LATTICEGUIQUAD, name='Quad', parent=self,
-              pos=wxPoint(144, 8), size=wxSize(240, 264),
-              style=wxSUNKEN_BORDER | wxTAB_TRAVERSAL)
+        self.Quad = wx.Panel(id=wxID_LATTICEGUIQUAD, name='Quad', parent=self,
+              pos=wx.Point(144, 8), size=wx.Size(240, 264),
+              style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         self.Quad.Show(false)
 
-        self.QuadLabel = wxStaticText(id=wxID_LATTICEGUIQUADLABEL,
+        self.QuadLabel = wx.StaticText(id=wxID_LATTICEGUIQUADLABEL,
               label='Hard edged quadrupole', name='QuadLabel', parent=self.Quad,
-              pos=wxPoint(42, 0), size=wxSize(151, 18),
-              style=wxSIMPLE_BORDER | wxALIGN_CENTRE)
-        self.QuadLabel.Center(wxHORIZONTAL)
-        self.QuadLabel.SetFont(wxFont(14, wxSWISS, wxNORMAL, wxNORMAL, false,
+              pos=wx.Point(42, 0), size=wx.Size(151, 18),
+              style=wx.SIMPLE_BORDER | wx.ALIGN_CENTRE)
+        self.QuadLabel.Center(wx.HORIZONTAL)
+        self.QuadLabel.SetFont(wx.Font(14, wx.SWISS, wx.NORMAL, wx.NORMAL, false,
               ''))
 
-        self.QuadzsLabel = wxStaticText(id=wxID_LATTICEGUIQUADZSLABEL,
+        self.QuadzsLabel = wx.StaticText(id=wxID_LATTICEGUIQUADZSLABEL,
               label='Z start', name='QuadzsLabel', parent=self.Quad,
-              pos=wxPoint(8, 27), size=wxSize(60, 16), style=wxALIGN_RIGHT)
+              pos=wx.Point(8, 27), size=wx.Size(60, 16), style=wx.ALIGN_RIGHT)
 
-        self.QuadzeLabel = wxStaticText(id=wxID_LATTICEGUIQUADZELABEL,
+        self.QuadzeLabel = wx.StaticText(id=wxID_LATTICEGUIQUADZELABEL,
               label='Z end', name='QuadzeLabel', parent=self.Quad,
-              pos=wxPoint(8, 51), size=wxSize(60, 16), style=wxALIGN_RIGHT)
+              pos=wx.Point(8, 51), size=wx.Size(60, 16), style=wx.ALIGN_RIGHT)
 
-        self.QuaddeLabel = wxStaticText(id=wxID_LATTICEGUIQUADDELABEL,
+        self.QuaddeLabel = wx.StaticText(id=wxID_LATTICEGUIQUADDELABEL,
               label='E gradient', name='QuaddeLabel', parent=self.Quad,
-              pos=wxPoint(8, 75), size=wxSize(60, 16), style=wxALIGN_RIGHT)
+              pos=wx.Point(8, 75), size=wx.Size(60, 16), style=wx.ALIGN_RIGHT)
 
-        self.QuaddbLabel = wxStaticText(id=wxID_LATTICEGUIQUADDBLABEL,
+        self.QuaddbLabel = wx.StaticText(id=wxID_LATTICEGUIQUADDBLABEL,
               label='B gradient', name='QuaddbLabel', parent=self.Quad,
-              pos=wxPoint(8, 99), size=wxSize(60, 16), style=wxALIGN_RIGHT)
+              pos=wx.Point(8, 99), size=wx.Size(60, 16), style=wx.ALIGN_RIGHT)
 
-        self.QuadzsUnits = wxStaticText(id=wxID_LATTICEGUIQUADZSUNITS,
+        self.QuadzsUnits = wx.StaticText(id=wxID_LATTICEGUIQUADZSUNITS,
               label='meters', name='QuadzsUnits', parent=self.Quad,
-              pos=wxPoint(152, 27), size=wxSize(36, 16), style=0)
+              pos=wx.Point(152, 27), size=wx.Size(36, 16), style=0)
 
-        self.QuadzeUnits = wxStaticText(id=wxID_LATTICEGUIQUADZEUNITS,
+        self.QuadzeUnits = wx.StaticText(id=wxID_LATTICEGUIQUADZEUNITS,
               label='meters', name='QuadzeUnits', parent=self.Quad,
-              pos=wxPoint(152, 51), size=wxSize(36, 16), style=0)
+              pos=wx.Point(152, 51), size=wx.Size(36, 16), style=0)
 
-        self.QuaddeUnits = wxStaticText(id=wxID_LATTICEGUIQUADDEUNITS,
+        self.QuaddeUnits = wx.StaticText(id=wxID_LATTICEGUIQUADDEUNITS,
               label='V/m^2', name='QuaddeUnits', parent=self.Quad,
-              pos=wxPoint(152, 75), size=wxSize(35, 16), style=0)
+              pos=wx.Point(152, 75), size=wx.Size(35, 16), style=0)
 
-        self.QuaddbUnits = wxStaticText(id=wxID_LATTICEGUIQUADDBUNITS,
+        self.QuaddbUnits = wx.StaticText(id=wxID_LATTICEGUIQUADDBUNITS,
               label='B/m^2', name='QuaddbUnits', parent=self.Quad,
-              pos=wxPoint(152, 99), size=wxSize(34, 16), style=0)
+              pos=wx.Point(152, 99), size=wx.Size(34, 16), style=0)
 
-        self.GetQuadzs = wxTextCtrl(id=wxID_LATTICEGUIGETQUADZS,
-              name='GetQuadzs', parent=self.Quad, pos=wxPoint(72, 24),
-              size=wxSize(80, 22), style=wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
+        self.GetQuadzs = wx.TextCtrl(id=wxID_LATTICEGUIGETQUADZS,
+              name='GetQuadzs', parent=self.Quad, pos=wx.Point(72, 24),
+              size=wx.Size(80, 22), style=wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER,
               value='')
         EVT_TEXT_ENTER(self.GetQuadzs, wxID_LATTICEGUIGETQUADZS,
               self.OnGetelemzsTextEnter)
 
-        self.GetQuadze = wxTextCtrl(id=wxID_LATTICEGUIGETQUADZE,
-              name='GetQuadze', parent=self.Quad, pos=wxPoint(72, 48),
-              size=wxSize(80, 22), style=wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
+        self.GetQuadze = wx.TextCtrl(id=wxID_LATTICEGUIGETQUADZE,
+              name='GetQuadze', parent=self.Quad, pos=wx.Point(72, 48),
+              size=wx.Size(80, 22), style=wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER,
               value='')
         EVT_TEXT_ENTER(self.GetQuadze, wxID_LATTICEGUIGETQUADZE,
               self.OnGetelemzeTextEnter)
 
-        self.GetQuadde = wxTextCtrl(id=wxID_LATTICEGUIGETQUADDE,
-              name='GetQuadde', parent=self.Quad, pos=wxPoint(72, 72),
-              size=wxSize(80, 22), style=wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
+        self.GetQuadde = wx.TextCtrl(id=wxID_LATTICEGUIGETQUADDE,
+              name='GetQuadde', parent=self.Quad, pos=wx.Point(72, 72),
+              size=wx.Size(80, 22), style=wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER,
               value='')
         EVT_TEXT_ENTER(self.GetQuadde, wxID_LATTICEGUIGETQUADDE,
               self.OnGetQuaddeTextEnter)
 
-        self.GetQuaddb = wxTextCtrl(id=wxID_LATTICEGUIGETQUADDB,
-              name='GetQuaddb', parent=self.Quad, pos=wxPoint(72, 96),
-              size=wxSize(80, 22), style=wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
+        self.GetQuaddb = wx.TextCtrl(id=wxID_LATTICEGUIGETQUADDB,
+              name='GetQuaddb', parent=self.Quad, pos=wx.Point(72, 96),
+              size=wx.Size(80, 22), style=wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER,
               value='')
         EVT_TEXT_ENTER(self.GetQuaddb, wxID_LATTICEGUIGETQUADDB,
               self.OnGetQuaddbTextEnter)
 
-        self.Drft = wxPanel(id=wxID_LATTICEGUIDRFT, name='Drft', parent=self,
-              pos=wxPoint(144, 8), size=wxSize(240, 264),
-              style=wxSUNKEN_BORDER | wxTAB_TRAVERSAL)
+        self.Drft = wx.Panel(id=wxID_LATTICEGUIDRFT, name='Drft', parent=self,
+              pos=wx.Point(144, 8), size=wx.Size(240, 264),
+              style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         self.Drft.SetToolTipString('Drift elements')
         self.Drft.Show(False)
 
-        self.DrftLabel = wxStaticText(id=wxID_LATTICEGUIDRFTLABEL,
+        self.DrftLabel = wx.StaticText(id=wxID_LATTICEGUIDRFTLABEL,
               label='Drift', name='DrftLabel', parent=self.Drft,
-              pos=wxPoint(105, 0), size=wxSize(25, 18), style=wxALIGN_CENTRE)
-        self.DrftLabel.Center(wxHORIZONTAL)
-        self.DrftLabel.SetFont(wxFont(14, wxSWISS, wxNORMAL, wxNORMAL, false,
+              pos=wx.Point(105, 0), size=wx.Size(25, 18), style=wx.ALIGN_CENTRE)
+        self.DrftLabel.Center(wx.HORIZONTAL)
+        self.DrftLabel.SetFont(wx.Font(14, wx.SWISS, wx.NORMAL, wx.NORMAL, false,
               ''))
 
-        self.DrftzsLabel = wxStaticText(id=wxID_LATTICEGUIDRFTZSLABEL,
+        self.DrftzsLabel = wx.StaticText(id=wxID_LATTICEGUIDRFTZSLABEL,
               label='Z start', name='DrftzsLabel', parent=self.Drft,
-              pos=wxPoint(8, 27), size=wxSize(60, 16), style=wxALIGN_RIGHT)
+              pos=wx.Point(8, 27), size=wx.Size(60, 16), style=wx.ALIGN_RIGHT)
 
-        self.DrftzeLabel = wxStaticText(id=wxID_LATTICEGUIDRFTZELABEL,
+        self.DrftzeLabel = wx.StaticText(id=wxID_LATTICEGUIDRFTZELABEL,
               label='Z end', name='DrftzeLabel', parent=self.Drft,
-              pos=wxPoint(8, 51), size=wxSize(60, 16), style=wxALIGN_RIGHT)
+              pos=wx.Point(8, 51), size=wx.Size(60, 16), style=wx.ALIGN_RIGHT)
 
-        self.DrftapLabel = wxStaticText(id=wxID_LATTICEGUIDRFTAPLABEL,
+        self.DrftapLabel = wx.StaticText(id=wxID_LATTICEGUIDRFTAPLABEL,
               label='Aperture', name='DrftapLabel', parent=self.Drft,
-              pos=wxPoint(8, 75), size=wxSize(60, 16), style=wxALIGN_RIGHT)
+              pos=wx.Point(8, 75), size=wx.Size(60, 16), style=wx.ALIGN_RIGHT)
 
-        self.DrftzsUnits = wxStaticText(id=wxID_LATTICEGUIDRFTZSUNITS,
+        self.DrftzsUnits = wx.StaticText(id=wxID_LATTICEGUIDRFTZSUNITS,
               label='meters', name='DrftzsUnits', parent=self.Drft,
-              pos=wxPoint(152, 27), size=wxSize(36, 16), style=0)
+              pos=wx.Point(152, 27), size=wx.Size(36, 16), style=0)
 
-        self.DrftzeUnits = wxStaticText(id=wxID_LATTICEGUIDRFTZEUNITS,
+        self.DrftzeUnits = wx.StaticText(id=wxID_LATTICEGUIDRFTZEUNITS,
               label='meters', name='DrftzeUnits', parent=self.Drft,
-              pos=wxPoint(152, 51), size=wxSize(36, 16), style=0)
+              pos=wx.Point(152, 51), size=wx.Size(36, 16), style=0)
 
-        self.DrftapUnits = wxStaticText(id=wxID_LATTICEGUIDRFTAPUNITS,
+        self.DrftapUnits = wx.StaticText(id=wxID_LATTICEGUIDRFTAPUNITS,
               label='meters', name='DrftapUnits', parent=self.Drft,
-              pos=wxPoint(152, 75), size=wxSize(36, 16), style=0)
+              pos=wx.Point(152, 75), size=wx.Size(36, 16), style=0)
 
-        self.GetDrftzs = wxTextCtrl(id=wxID_LATTICEGUIGETDRFTZS,
-              name='GetDrftzs', parent=self.Drft, pos=wxPoint(72, 24),
-              size=wxSize(80, 22), style=wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
+        self.GetDrftzs = wx.TextCtrl(id=wxID_LATTICEGUIGETDRFTZS,
+              name='GetDrftzs', parent=self.Drft, pos=wx.Point(72, 24),
+              size=wx.Size(80, 22), style=wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER,
               value='')
         EVT_TEXT_ENTER(self.GetDrftzs, wxID_LATTICEGUIGETDRFTZS,
               self.OnGetelemzsTextEnter)
 
-        self.GetDrftze = wxTextCtrl(id=wxID_LATTICEGUIGETDRFTZE,
-              name='GetDrftze', parent=self.Drft, pos=wxPoint(72, 48),
-              size=wxSize(80, 22), style=wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
+        self.GetDrftze = wx.TextCtrl(id=wxID_LATTICEGUIGETDRFTZE,
+              name='GetDrftze', parent=self.Drft, pos=wx.Point(72, 48),
+              size=wx.Size(80, 22), style=wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER,
               value='')
         EVT_TEXT_ENTER(self.GetDrftze, wxID_LATTICEGUIGETDRFTZE,
               self.OnGetelemzeTextEnter)
 
-        self.GetDrftap = wxTextCtrl(id=wxID_LATTICEGUIGETDRFTAP,
-              name='GetDrftap', parent=self.Drft, pos=wxPoint(72, 72),
-              size=wxSize(80, 22), style=wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
+        self.GetDrftap = wx.TextCtrl(id=wxID_LATTICEGUIGETDRFTAP,
+              name='GetDrftap', parent=self.Drft, pos=wx.Point(72, 72),
+              size=wx.Size(80, 22), style=wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER,
               value='')
         EVT_TEXT_ENTER(self.GetDrftap, wxID_LATTICEGUIGETDRFTAP,
               self.OnGetelemapTextEnter)
 
-        self.DoStep = wxCheckBox(id=wxID_LATTICEGUIDOSTEP,
+        self.DoStep = wx.CheckBox(id=wxID_LATTICEGUIDOSTEP,
               label='Step on change', name='DoStep', parent=self.ElementNum,
-              pos=wxPoint(8, 96), size=wxSize(120, 24), style=wxTAB_TRAVERSAL)
+              pos=wx.Point(8, 96), size=wx.Size(120, 24), style=wx.TAB_TRAVERSAL)
         self.DoStep.SetValue(false)
         self.DoStep.SetHelpText('When checked, execute step command on a change.')
         self.DoStep.SetToolTipString('Turns on code calculation on change')
         EVT_CHECKBOX(self.DoStep, wxID_LATTICEGUIDOSTEP, self.OnDostepCheckbox)
 
-        self.SetMADLattice = wxTextCtrl(id=wxID_LATTICEGUISETMADLATTICE,
-              name='SetMADLattice', parent=self.ElementNum, pos=wxPoint(4, 168),
-              size=wxSize(104, 22), style=wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
+        self.SetMADLattice = wx.TextCtrl(id=wxID_LATTICEGUISETMADLATTICE,
+              name='SetMADLattice', parent=self.ElementNum, pos=wx.Point(4, 168),
+              size=wx.Size(104, 22), style=wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER,
               value='')
         self.SetMADLattice.SetToolTipString('Specify MAD lattice to use')
         EVT_TEXT_ENTER(self.SetMADLattice, wxID_LATTICEGUISETMADLATTICE,
               self.OnSetmadlatticeTextEnter)
 
-        self.SetMADLatticeLabel = wxStaticText(id=wxID_LATTICEGUISETMADLATTICELABEL,
+        self.SetMADLatticeLabel = wx.StaticText(id=wxID_LATTICEGUISETMADLATTICELABEL,
               label='Set MAD lattice', name='SetMADLatticeLabel',
-              parent=self.ElementNum, pos=wxPoint(8, 150), size=wxSize(88, 16),
+              parent=self.ElementNum, pos=wx.Point(8, 150), size=wx.Size(88, 16),
               style=0)
 
-        self.MakeUnique = wxCheckBox(id=wxID_LATTICEGUIMAKEUNIQUE,
+        self.MakeUnique = wx.CheckBox(id=wxID_LATTICEGUIMAKEUNIQUE,
               label='Unique elements', name='MakeUnique',
-              parent=self.ElementNum, pos=wxPoint(4, 192), size=wxSize(116, 24),
-              style=wxTAB_TRAVERSAL)
+              parent=self.ElementNum, pos=wx.Point(4, 192), size=wx.Size(116, 24),
+              style=wx.TAB_TRAVERSAL)
         self.MakeUnique.SetValue(False)
         self.MakeUnique.SetToolTipString('Make all elements of the lattice unique')
         EVT_CHECKBOX(self.MakeUnique, wxID_LATTICEGUIMAKEUNIQUE,

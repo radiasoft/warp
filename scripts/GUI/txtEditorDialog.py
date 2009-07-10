@@ -1,29 +1,29 @@
 #Boa:Dialog:txtEditorDialog
 
-from wxPython.wx import *
+from wx import *
 
 def create(parent):
     return txtEditorDialog(parent)
 
 [wxID_TXTEDITORDIALOG, wxID_TXTEDITORDIALOGTXTEDITOR, 
-] = map(lambda _init_ctrls: wxNewId(), range(2))
+] = map(lambda _init_ctrls: wx.NewId(), range(2))
 
-class txtEditorDialog(wxDialog):
+class txtEditorDialog(wx.Dialog):
     def _init_utils(self):
         # generated method, don't edit
         pass
 
     def _init_ctrls(self, prnt):
         # generated method, don't edit
-        wxDialog.__init__(self, id=wxID_TXTEDITORDIALOG, name='txtEditorDialog',
-              parent=prnt, pos=wxPoint(318, 222), size=wxSize(529, 336),
-              style=wxDEFAULT_DIALOG_STYLE, title='wxDialog1')
+        wx.Dialog.__init__(self, id=wxID_TXTEDITORDIALOG, name='txtEditorDialog',
+              parent=prnt, pos=wx.Point(318, 222), size=wx.Size(529, 336),
+              style=wx.DEFAULT_DIALOG_STYLE, title='wx.Dialog1')
         self._init_utils()
-        self.SetClientSize(wxSize(529, 336))
+        self.SetClientSize(wx.Size(529, 336))
 
-        self.txtEditor = wxTextCtrl(id=wxID_TXTEDITORDIALOGTXTEDITOR,
-              name='txtEditor', parent=self, pos=wxPoint(0, 0), size=wxSize(529,
-              336), style=wxTE_MULTILINE, value='')
+        self.txtEditor = wx.TextCtrl(id=wxID_TXTEDITORDIALOGTXTEDITOR,
+              name='txtEditor', parent=self, pos=wx.Point(0, 0), size=wx.Size(529,
+              336), style=wx.TE_MULTILINE, value='')
 
     def __init__(self, parent):
         self._init_ctrls(parent)

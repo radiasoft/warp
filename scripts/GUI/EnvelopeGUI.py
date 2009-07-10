@@ -1,141 +1,143 @@
 #Boa:Frame:EnvelopeGUI
 
-from wxPython.wx import *
-from wxPython.lib.anchors import LayoutAnchors
+from wx import *
+from wx.lib.anchors import LayoutAnchors
+#from wxPython.wx import *
+#from wxPython.lib.anchors import LayoutAnchors
 from warp import *
 
 def create(parent):
     return EnvelopeGUI(parent)
 
-[wxID_ENVELOPEGUI, wxID_ENVELOPEGUIAIONLABEL, wxID_ENVELOPEGUIANGLELABEL, wxID_ENVELOPEGUIANGLEUNITS, wxID_ENVELOPEGUIBUTTON1, wxID_ENVELOPEGUIBUTTON2, wxID_ENVELOPEGUIBUTTON3, wxID_ENVELOPEGUIBUTTON4, wxID_ENVELOPEGUIBUTTON5, wxID_ENVELOPEGUICURRENTLABEL, wxID_ENVELOPEGUICURRENTUNITS, wxID_ENVELOPEGUIEMITNLABEL, wxID_ENVELOPEGUIEMITNUNITS, wxID_ENVELOPEGUIENERGYLABEL, wxID_ENVELOPEGUIENERGYUNITS, wxID_ENVELOPEGUIFMA, wxID_ENVELOPEGUIHCP, wxID_ENVELOPEGUIINITIALIZE, wxID_ENVELOPEGUIINPUTPANEL, wxID_ENVELOPEGUIPLOTSPANEL, wxID_ENVELOPEGUIPRINTENVOUTPUT, wxID_ENVELOPEGUIREDRAW, wxID_ENVELOPEGUIRUNONCHANGE, wxID_ENVELOPEGUISETAION, wxID_ENVELOPEGUISETCURRENT, wxID_ENVELOPEGUISETENERGY, wxID_ENVELOPEGUISETFMA, wxID_ENVELOPEGUISETXEMITN, wxID_ENVELOPEGUISETXPSTART, wxID_ENVELOPEGUISETXSTART, wxID_ENVELOPEGUISETYEMITN, wxID_ENVELOPEGUISETYPSTART, wxID_ENVELOPEGUISETYSTART, wxID_ENVELOPEGUISETZION, wxID_ENVELOPEGUISIZELABEL, wxID_ENVELOPEGUISTATICTEXT1, wxID_ENVELOPEGUIXLABEL, wxID_ENVELOPEGUIXPANDYP, wxID_ENVELOPEGUIXSTARTUNITS, wxID_ENVELOPEGUIYLABEL, wxID_ENVELOPEGUIYP, wxID_ENVELOPEGUIZIONLABEL] = map(lambda _init_ctrls: wxNewId(), range(42))
+[wxID_ENVELOPEGUI, wxID_ENVELOPEGUIAIONLABEL, wxID_ENVELOPEGUIANGLELABEL, wxID_ENVELOPEGUIANGLEUNITS, wxID_ENVELOPEGUIBUTTON1, wxID_ENVELOPEGUIBUTTON2, wxID_ENVELOPEGUIBUTTON3, wxID_ENVELOPEGUIBUTTON4, wxID_ENVELOPEGUIBUTTON5, wxID_ENVELOPEGUICURRENTLABEL, wxID_ENVELOPEGUICURRENTUNITS, wxID_ENVELOPEGUIEMITNLABEL, wxID_ENVELOPEGUIEMITNUNITS, wxID_ENVELOPEGUIENERGYLABEL, wxID_ENVELOPEGUIENERGYUNITS, wxID_ENVELOPEGUIFMA, wxID_ENVELOPEGUIHCP, wxID_ENVELOPEGUIINITIALIZE, wxID_ENVELOPEGUIINPUTPANEL, wxID_ENVELOPEGUIPLOTSPANEL, wxID_ENVELOPEGUIPRINTENVOUTPUT, wxID_ENVELOPEGUIREDRAW, wxID_ENVELOPEGUIRUNONCHANGE, wxID_ENVELOPEGUISETAION, wxID_ENVELOPEGUISETCURRENT, wxID_ENVELOPEGUISETENERGY, wxID_ENVELOPEGUISETFMA, wxID_ENVELOPEGUISETXEMITN, wxID_ENVELOPEGUISETXPSTART, wxID_ENVELOPEGUISETXSTART, wxID_ENVELOPEGUISETYEMITN, wxID_ENVELOPEGUISETYPSTART, wxID_ENVELOPEGUISETYSTART, wxID_ENVELOPEGUISETZION, wxID_ENVELOPEGUISIZELABEL, wxID_ENVELOPEGUISTATICTEXT1, wxID_ENVELOPEGUIXLABEL, wxID_ENVELOPEGUIXPANDYP, wxID_ENVELOPEGUIXSTARTUNITS, wxID_ENVELOPEGUIYLABEL, wxID_ENVELOPEGUIYP, wxID_ENVELOPEGUIZIONLABEL] = map(lambda _init_ctrls: wx.NewId(), range(42))
 
-class EnvelopeGUI(wxFrame):
+class EnvelopeGUI(wx.Frame):
     def _init_utils(self):
         pass
 
     def _init_ctrls(self, prnt):
-        wxFrame.__init__(self, id = wxID_ENVELOPEGUI, name = 'EnvelopeGUI', parent = prnt, pos = wxPoint(435, 313), size = wxSize(597, 340), style = wxDEFAULT_FRAME_STYLE, title = 'wxFrame1')
+        wx.Frame.__init__(self, id = wxID_ENVELOPEGUI, name = 'EnvelopeGUI', parent = prnt, pos = wx.Point(435, 313), size = wx.Size(597, 340), style = wx.DEFAULT_FRAME_STYLE, title = 'wx.Frame1')
         self._init_utils()
-        self.SetClientSize(wxSize(597, 340))
+        self.SetClientSize(wx.Size(597, 340))
         EVT_CLOSE(self, self.OnEnvelopeguiClose)
 
-        self.PlotsPanel = wxPanel(id = wxID_ENVELOPEGUIPLOTSPANEL, name = 'PlotsPanel', parent = self, pos = wxPoint(64, 0), size = wxSize(104, 216), style = wxRAISED_BORDER | wxTAB_TRAVERSAL)
+        self.PlotsPanel = wx.Panel(id = wxID_ENVELOPEGUIPLOTSPANEL, name = 'PlotsPanel', parent = self, pos = wx.Point(64, 0), size = wx.Size(104, 216), style = wx.RAISED_BORDER | wx.TAB_TRAVERSAL)
 
-        self.button1 = wxButton(id = wxID_ENVELOPEGUIBUTTON1, label = 'Run', name = 'button1', parent = self, pos = wxPoint(8, 8), size = wxSize(48, 56), style = 0)
+        self.button1 = wx.Button(id = wxID_ENVELOPEGUIBUTTON1, label = 'Run', name = 'button1', parent = self, pos = wx.Point(8, 8), size = wx.Size(48, 56), style = 0)
         EVT_BUTTON(self.button1, wxID_ENVELOPEGUIBUTTON1, self.OnStepButton)
 
-        self.Initialize = wxButton(id = wxID_ENVELOPEGUIINITIALIZE, label = 'Init', name = 'Initialize', parent = self, pos = wxPoint(8, 64), size = wxSize(48, 56), style = 0)
+        self.Initialize = wx.Button(id = wxID_ENVELOPEGUIINITIALIZE, label = 'Init', name = 'Initialize', parent = self, pos = wx.Point(8, 64), size = wx.Size(48, 56), style = 0)
         EVT_BUTTON(self.Initialize, wxID_ENVELOPEGUIINITIALIZE, self.OnInitializeButton)
 
-        self.button2 = wxButton(id = wxID_ENVELOPEGUIBUTTON2, label = 'x and y', name = 'button2', parent = self.PlotsPanel, pos = wxPoint(8, 56), size = wxSize(80, 22), style = 0)
+        self.button2 = wx.Button(id = wxID_ENVELOPEGUIBUTTON2, label = 'x and y', name = 'button2', parent = self.PlotsPanel, pos = wx.Point(8, 56), size = wx.Size(80, 22), style = 0)
         EVT_BUTTON(self.button2, wxID_ENVELOPEGUIBUTTON2, self.OnPlotXYButton)
 
-        self.staticText1 = wxStaticText(id = wxID_ENVELOPEGUISTATICTEXT1, label = 'Plots', name = 'staticText1', parent = self.PlotsPanel, pos = wxPoint(22, 0), size = wxSize(56, 16), style = wxALIGN_CENTRE)
-        self.staticText1.Center(wxHORIZONTAL)
+        self.staticText1 = wx.StaticText(id = wxID_ENVELOPEGUISTATICTEXT1, label = 'Plots', name = 'staticText1', parent = self.PlotsPanel, pos = wx.Point(22, 0), size = wx.Size(56, 16), style = wx.ALIGN_CENTRE)
+        self.staticText1.Center(wx.HORIZONTAL)
 
-        self.button3 = wxButton(id = wxID_ENVELOPEGUIBUTTON3, label = 'x', name = 'button3', parent = self.PlotsPanel, pos = wxPoint(8, 32), size = wxSize(40, 22), style = 0)
+        self.button3 = wx.Button(id = wxID_ENVELOPEGUIBUTTON3, label = 'x', name = 'button3', parent = self.PlotsPanel, pos = wx.Point(8, 32), size = wx.Size(40, 22), style = 0)
         EVT_BUTTON(self.button3, wxID_ENVELOPEGUIBUTTON3, self.OnPlotXButton)
 
-        self.button4 = wxButton(id = wxID_ENVELOPEGUIBUTTON4, label = 'y', name = 'button4', parent = self.PlotsPanel, pos = wxPoint(48, 32), size = wxSize(40, 22), style = 0)
+        self.button4 = wx.Button(id = wxID_ENVELOPEGUIBUTTON4, label = 'y', name = 'button4', parent = self.PlotsPanel, pos = wx.Point(48, 32), size = wx.Size(40, 22), style = 0)
         EVT_BUTTON(self.button4, wxID_ENVELOPEGUIBUTTON4, self.OnPlotYButton)
 
-        self.button5 = wxButton(id = wxID_ENVELOPEGUIBUTTON5, label = "x'", name = 'button5', parent = self.PlotsPanel, pos = wxPoint(8, 88), size = wxSize(40, 22), style = 0)
+        self.button5 = wx.Button(id = wxID_ENVELOPEGUIBUTTON5, label = "x'", name = 'button5', parent = self.PlotsPanel, pos = wx.Point(8, 88), size = wx.Size(40, 22), style = 0)
         EVT_BUTTON(self.button5, wxID_ENVELOPEGUIBUTTON5, self.OnPlotXPButton)
 
-        self.yp = wxButton(id = wxID_ENVELOPEGUIYP, label = "y'", name = 'yp', parent = self.PlotsPanel, pos = wxPoint(48, 88), size = wxSize(40, 22), style = 0)
+        self.yp = wx.Button(id = wxID_ENVELOPEGUIYP, label = "y'", name = 'yp', parent = self.PlotsPanel, pos = wx.Point(48, 88), size = wx.Size(40, 22), style = 0)
         EVT_BUTTON(self.yp, wxID_ENVELOPEGUIYP, self.OnPlotYPButton)
 
-        self.xpandyp = wxButton(id = wxID_ENVELOPEGUIXPANDYP, label = "x' and y'", name = 'xpandyp', parent = self.PlotsPanel, pos = wxPoint(8, 112), size = wxSize(80, 22), style = 0)
+        self.xpandyp = wx.Button(id = wxID_ENVELOPEGUIXPANDYP, label = "x' and y'", name = 'xpandyp', parent = self.PlotsPanel, pos = wx.Point(8, 112), size = wx.Size(80, 22), style = 0)
         EVT_BUTTON(self.xpandyp, wxID_ENVELOPEGUIXPANDYP, self.OnPlotXPYPButton)
 
-        self.fma = wxButton(id = wxID_ENVELOPEGUIFMA, label = 'fma', name = 'fma', parent = self, pos = wxPoint(8, 160), size = wxSize(48, 32), style = 0)
+        self.fma = wx.Button(id = wxID_ENVELOPEGUIFMA, label = 'fma', name = 'fma', parent = self, pos = wx.Point(8, 160), size = wx.Size(48, 32), style = 0)
         EVT_BUTTON(self.fma, wxID_ENVELOPEGUIFMA, self.OnFmaButton)
 
-        self.hcp = wxButton(id = wxID_ENVELOPEGUIHCP, label = 'hcp', name = 'hcp', parent = self, pos = wxPoint(8, 192), size = wxSize(48, 32), style = 0)
+        self.hcp = wx.Button(id = wxID_ENVELOPEGUIHCP, label = 'hcp', name = 'hcp', parent = self, pos = wx.Point(8, 192), size = wx.Size(48, 32), style = 0)
         EVT_BUTTON(self.hcp, wxID_ENVELOPEGUIHCP, self.OnHcpButton)
 
-        self.RunOnChange = wxCheckBox(id = wxID_ENVELOPEGUIRUNONCHANGE, label = 'Run on change', name = 'RunOnChange', parent = self, pos = wxPoint(216, 256), size = wxSize(112, 24), style = 0)
+        self.RunOnChange = wx.CheckBox(id = wxID_ENVELOPEGUIRUNONCHANGE, label = 'Run on change', name = 'RunOnChange', parent = self, pos = wx.Point(216, 256), size = wx.Size(112, 24), style = 0)
         self.RunOnChange.SetValue(true)
         self.RunOnChange.SetHelpText('Sets whether to run envelope calculation on any change of parameters.')
         self.RunOnChange.SetToolTipString('')
         EVT_CHECKBOX(self.RunOnChange, wxID_ENVELOPEGUIRUNONCHANGE, self.OnRunonchangeCheckbox)
 
-        self.SetFma = wxCheckBox(id = wxID_ENVELOPEGUISETFMA, label = 'Frame advance before each plot', name = 'SetFma', parent = self, pos = wxPoint(216, 272), size = wxSize(208, 24), style = 0)
+        self.SetFma = wx.CheckBox(id = wxID_ENVELOPEGUISETFMA, label = 'Frame advance before each plot', name = 'SetFma', parent = self, pos = wx.Point(216, 272), size = wx.Size(208, 24), style = 0)
         self.SetFma.SetValue(true)
         EVT_CHECKBOX(self.SetFma, wxID_ENVELOPEGUISETFMA, self.OnSetfmaCheckbox)
 
-        self.InputPanel = wxPanel(id = wxID_ENVELOPEGUIINPUTPANEL, name = 'InputPanel', parent = self, pos = wxPoint(168, 0), size = wxSize(312, 216), style = wxRAISED_BORDER | wxTAB_TRAVERSAL)
+        self.InputPanel = wx.Panel(id = wxID_ENVELOPEGUIINPUTPANEL, name = 'InputPanel', parent = self, pos = wx.Point(168, 0), size = wx.Size(312, 216), style = wx.RAISED_BORDER | wx.TAB_TRAVERSAL)
 
-        self.SetXstart = wxTextCtrl(id = wxID_ENVELOPEGUISETXSTART, name = 'SetXstart', parent = self.InputPanel, pos = wxPoint(56, 80), size = wxSize(80, 22), style = wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER, value = '')
+        self.SetXstart = wx.TextCtrl(id = wxID_ENVELOPEGUISETXSTART, name = 'SetXstart', parent = self.InputPanel, pos = wx.Point(56, 80), size = wx.Size(80, 22), style = wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER, value = '')
         self.SetXstart.SetToolTipString('Set X')
         EVT_TEXT_ENTER(self.SetXstart, wxID_ENVELOPEGUISETXSTART, self.OnSetXstartTextEnter)
 
-        self.CurrentLabel = wxStaticText(id = wxID_ENVELOPEGUICURRENTLABEL, label = 'Current', name = 'CurrentLabel', parent = self.InputPanel, pos = wxPoint(8, 11), size = wxSize(41, 16), style = wxALIGN_RIGHT)
+        self.CurrentLabel = wx.StaticText(id = wxID_ENVELOPEGUICURRENTLABEL, label = 'Current', name = 'CurrentLabel', parent = self.InputPanel, pos = wx.Point(8, 11), size = wx.Size(41, 16), style = wx.ALIGN_RIGHT)
 
-        self.SetCurrent = wxTextCtrl(id = wxID_ENVELOPEGUISETCURRENT, name = 'SetCurrent', parent = self.InputPanel, pos = wxPoint(56, 8), size = wxSize(80, 22), style = wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER, value = '')
+        self.SetCurrent = wx.TextCtrl(id = wxID_ENVELOPEGUISETCURRENT, name = 'SetCurrent', parent = self.InputPanel, pos = wx.Point(56, 8), size = wx.Size(80, 22), style = wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER, value = '')
         EVT_TEXT_ENTER(self.SetCurrent, wxID_ENVELOPEGUISETCURRENT, self.OnSetcurrentTextEnter)
 
-        self.CurrentUnits = wxStaticText(id = wxID_ENVELOPEGUICURRENTUNITS, label = 'Amps', name = 'CurrentUnits', parent = self.InputPanel, pos = wxPoint(136, 11), size = wxSize(31, 16), style = 0)
+        self.CurrentUnits = wx.StaticText(id = wxID_ENVELOPEGUICURRENTUNITS, label = 'Amps', name = 'CurrentUnits', parent = self.InputPanel, pos = wx.Point(136, 11), size = wx.Size(31, 16), style = 0)
 
-        self.XstartUnits = wxStaticText(id = wxID_ENVELOPEGUIXSTARTUNITS, label = 'mm', name = 'XstartUnits', parent = self.InputPanel, pos = wxPoint(216, 83), size = wxSize(18, 16), style = 0)
+        self.XstartUnits = wx.StaticText(id = wxID_ENVELOPEGUIXSTARTUNITS, label = 'mm', name = 'XstartUnits', parent = self.InputPanel, pos = wx.Point(216, 83), size = wx.Size(18, 16), style = 0)
 
-        self.SizeLabel = wxStaticText(id = wxID_ENVELOPEGUISIZELABEL, label = 'Size', name = 'SizeLabel', parent = self.InputPanel, pos = wxPoint(24, 83), size = wxSize(24, 16), style = wxALIGN_RIGHT)
+        self.SizeLabel = wx.StaticText(id = wxID_ENVELOPEGUISIZELABEL, label = 'Size', name = 'SizeLabel', parent = self.InputPanel, pos = wx.Point(24, 83), size = wx.Size(24, 16), style = wx.ALIGN_RIGHT)
 
-        self.SetYstart = wxTextCtrl(id = wxID_ENVELOPEGUISETYSTART, name = 'SetYstart', parent = self.InputPanel, pos = wxPoint(136, 80), size = wxSize(80, 22), style = wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER, value = '')
+        self.SetYstart = wx.TextCtrl(id = wxID_ENVELOPEGUISETYSTART, name = 'SetYstart', parent = self.InputPanel, pos = wx.Point(136, 80), size = wx.Size(80, 22), style = wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER, value = '')
         self.SetYstart.SetToolTipString('Set Y')
         EVT_TEXT_ENTER(self.SetYstart, wxID_ENVELOPEGUISETYSTART, self.OnSetystartTextEnter)
 
-        self.EmitnLabel = wxStaticText(id = wxID_ENVELOPEGUIEMITNLABEL, label = 'Emitn', name = 'EmitnLabel', parent = self.InputPanel, pos = wxPoint(16, 131), size = wxSize(30, 16), style = 0)
+        self.EmitnLabel = wx.StaticText(id = wxID_ENVELOPEGUIEMITNLABEL, label = 'Emitn', name = 'EmitnLabel', parent = self.InputPanel, pos = wx.Point(16, 131), size = wx.Size(30, 16), style = 0)
 
-        self.SetXEmitn = wxTextCtrl(id = wxID_ENVELOPEGUISETXEMITN, name = 'SetXEmitn', parent = self.InputPanel, pos = wxPoint(56, 128), size = wxSize(80, 22), style = wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER, value = '')
+        self.SetXEmitn = wx.TextCtrl(id = wxID_ENVELOPEGUISETXEMITN, name = 'SetXEmitn', parent = self.InputPanel, pos = wx.Point(56, 128), size = wx.Size(80, 22), style = wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER, value = '')
         self.SetXEmitn.SetToolTipString('Set X normalized emittance')
         EVT_TEXT_ENTER(self.SetXEmitn, wxID_ENVELOPEGUISETXEMITN, self.OnSetxemitnTextEnter)
 
-        self.SetYEmitn = wxTextCtrl(id = wxID_ENVELOPEGUISETYEMITN, name = 'SetYEmitn', parent = self.InputPanel, pos = wxPoint(136, 128), size = wxSize(80, 22), style = wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER, value = '')
+        self.SetYEmitn = wx.TextCtrl(id = wxID_ENVELOPEGUISETYEMITN, name = 'SetYEmitn', parent = self.InputPanel, pos = wx.Point(136, 128), size = wx.Size(80, 22), style = wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER, value = '')
         self.SetYEmitn.SetToolTipString('Set Y normalized emittance')
         EVT_TEXT_ENTER(self.SetYEmitn, wxID_ENVELOPEGUISETYEMITN, self.OnSetyemitnTextEnter)
 
-        self.XLabel = wxStaticText(id = wxID_ENVELOPEGUIXLABEL, label = 'X', name = 'XLabel', parent = self.InputPanel, pos = wxPoint(64, 64), size = wxSize(16, 16), style = 0)
+        self.XLabel = wx.StaticText(id = wxID_ENVELOPEGUIXLABEL, label = 'X', name = 'XLabel', parent = self.InputPanel, pos = wx.Point(64, 64), size = wx.Size(16, 16), style = 0)
 
-        self.YLabel = wxStaticText(id = wxID_ENVELOPEGUIYLABEL, label = 'Y', name = 'YLabel', parent = self.InputPanel, pos = wxPoint(144, 64), size = wxSize(24, 16), style = 0)
+        self.YLabel = wx.StaticText(id = wxID_ENVELOPEGUIYLABEL, label = 'Y', name = 'YLabel', parent = self.InputPanel, pos = wx.Point(144, 64), size = wx.Size(24, 16), style = 0)
 
-        self.EmitnUnits = wxStaticText(id = wxID_ENVELOPEGUIEMITNUNITS, label = 'pi-mm-mrad', name = 'EmitnUnits', parent = self.InputPanel, pos = wxPoint(216, 131), size = wxSize(65, 16), style = 0)
+        self.EmitnUnits = wx.StaticText(id = wxID_ENVELOPEGUIEMITNUNITS, label = 'pi-mm-mrad', name = 'EmitnUnits', parent = self.InputPanel, pos = wx.Point(216, 131), size = wx.Size(65, 16), style = 0)
 
-        self.AngleLabel = wxStaticText(id = wxID_ENVELOPEGUIANGLELABEL, label = 'Angle', name = 'AngleLabel', parent = self.InputPanel, pos = wxPoint(16, 107), size = wxSize(33, 16), style = 0)
+        self.AngleLabel = wx.StaticText(id = wxID_ENVELOPEGUIANGLELABEL, label = 'Angle', name = 'AngleLabel', parent = self.InputPanel, pos = wx.Point(16, 107), size = wx.Size(33, 16), style = 0)
 
-        self.SetXpstart = wxTextCtrl(id = wxID_ENVELOPEGUISETXPSTART, name = 'SetXpstart', parent = self.InputPanel, pos = wxPoint(56, 104), size = wxSize(80, 22), style = wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER, value = '')
+        self.SetXpstart = wx.TextCtrl(id = wxID_ENVELOPEGUISETXPSTART, name = 'SetXpstart', parent = self.InputPanel, pos = wx.Point(56, 104), size = wx.Size(80, 22), style = wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER, value = '')
         self.SetXpstart.SetToolTipString('Set X angle')
         EVT_TEXT_ENTER(self.SetXpstart, wxID_ENVELOPEGUISETXPSTART, self.OnSetxpstartTextEnter)
 
-        self.SetYpstart = wxTextCtrl(id = wxID_ENVELOPEGUISETYPSTART, name = 'SetYpstart', parent = self.InputPanel, pos = wxPoint(136, 104), size = wxSize(80, 22), style = wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER, value = '')
+        self.SetYpstart = wx.TextCtrl(id = wxID_ENVELOPEGUISETYPSTART, name = 'SetYpstart', parent = self.InputPanel, pos = wx.Point(136, 104), size = wx.Size(80, 22), style = wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER, value = '')
         self.SetYpstart.SetToolTipString('Set Y angle')
         EVT_TEXT_ENTER(self.SetYpstart, wxID_ENVELOPEGUISETYPSTART, self.OnSetypstartTextEnter)
 
-        self.AngleUnits = wxStaticText(id = wxID_ENVELOPEGUIANGLEUNITS, label = 'mrad', name = 'AngleUnits', parent = self.InputPanel, pos = wxPoint(216, 107), size = wxSize(27, 16), style = 0)
+        self.AngleUnits = wx.StaticText(id = wxID_ENVELOPEGUIANGLEUNITS, label = 'mrad', name = 'AngleUnits', parent = self.InputPanel, pos = wx.Point(216, 107), size = wx.Size(27, 16), style = 0)
 
-        self.Redraw = wxButton(id = wxID_ENVELOPEGUIREDRAW, label = 'Redraw', name = 'Redraw', parent = self, pos = wxPoint(8, 128), size = wxSize(48, 32), style = 0)
+        self.Redraw = wx.Button(id = wxID_ENVELOPEGUIREDRAW, label = 'Redraw', name = 'Redraw', parent = self, pos = wx.Point(8, 128), size = wx.Size(48, 32), style = 0)
         EVT_BUTTON(self.Redraw, wxID_ENVELOPEGUIREDRAW, self.OnRedrawButton)
 
-        self.EnergyLabel = wxStaticText(id = wxID_ENVELOPEGUIENERGYLABEL, label = 'Energy', name = 'EnergyLabel', parent = self.InputPanel, pos = wxPoint(8, 35), size = wxSize(40, 16), style = 0)
+        self.EnergyLabel = wx.StaticText(id = wxID_ENVELOPEGUIENERGYLABEL, label = 'Energy', name = 'EnergyLabel', parent = self.InputPanel, pos = wx.Point(8, 35), size = wx.Size(40, 16), style = 0)
 
-        self.EnergyUnits = wxStaticText(id = wxID_ENVELOPEGUIENERGYUNITS, label = 'MV', name = 'EnergyUnits', parent = self.InputPanel, pos = wxPoint(136, 35), size = wxSize(20, 16), style = 0)
+        self.EnergyUnits = wx.StaticText(id = wxID_ENVELOPEGUIENERGYUNITS, label = 'MV', name = 'EnergyUnits', parent = self.InputPanel, pos = wx.Point(136, 35), size = wx.Size(20, 16), style = 0)
 
-        self.SetEnergy = wxTextCtrl(id = wxID_ENVELOPEGUISETENERGY, name = 'SetEnergy', parent = self.InputPanel, pos = wxPoint(56, 32), size = wxSize(80, 22), style = wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER, value = '')
+        self.SetEnergy = wx.TextCtrl(id = wxID_ENVELOPEGUISETENERGY, name = 'SetEnergy', parent = self.InputPanel, pos = wx.Point(56, 32), size = wx.Size(80, 22), style = wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER, value = '')
         self.SetEnergy.SetToolTipString('Kinetic energy')
         EVT_TEXT_ENTER(self.SetEnergy, wxID_ENVELOPEGUISETENERGY, self.OnSetenergyTextEnter)
 
-        self.AionLabel = wxStaticText(id = wxID_ENVELOPEGUIAIONLABEL, label = 'Aion', name = 'AionLabel', parent = self.InputPanel, pos = wxPoint(184, 11), size = wxSize(26, 16), style = 0)
+        self.AionLabel = wx.StaticText(id = wxID_ENVELOPEGUIAIONLABEL, label = 'Aion', name = 'AionLabel', parent = self.InputPanel, pos = wx.Point(184, 11), size = wx.Size(26, 16), style = 0)
 
-        self.ZionLabel = wxStaticText(id = wxID_ENVELOPEGUIZIONLABEL, label = 'Zion', name = 'ZionLabel', parent = self.InputPanel, pos = wxPoint(184, 35), size = wxSize(26, 16), style = 0)
+        self.ZionLabel = wx.StaticText(id = wxID_ENVELOPEGUIZIONLABEL, label = 'Zion', name = 'ZionLabel', parent = self.InputPanel, pos = wx.Point(184, 35), size = wx.Size(26, 16), style = 0)
 
-        self.SetAion = wxTextCtrl(id = wxID_ENVELOPEGUISETAION, name = 'SetAion', parent = self.InputPanel, pos = wxPoint(216, 8), size = wxSize(80, 22), style = wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER, value = '')
+        self.SetAion = wx.TextCtrl(id = wxID_ENVELOPEGUISETAION, name = 'SetAion', parent = self.InputPanel, pos = wx.Point(216, 8), size = wx.Size(80, 22), style = wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER, value = '')
         EVT_TEXT_ENTER(self.SetAion, wxID_ENVELOPEGUISETAION, self.OnSetaionTextEnter)
 
-        self.SetZion = wxTextCtrl(id = wxID_ENVELOPEGUISETZION, name = 'SetZion', parent = self.InputPanel, pos = wxPoint(216, 32), size = wxSize(80, 22), style = wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER, value = '')
+        self.SetZion = wx.TextCtrl(id = wxID_ENVELOPEGUISETZION, name = 'SetZion', parent = self.InputPanel, pos = wx.Point(216, 32), size = wx.Size(80, 22), style = wx.TE_PROCESS_TAB | wx.TE_PROCESS_ENTER, value = '')
         self.SetZion.SetToolTipString('Set charge')
         EVT_TEXT_ENTER(self.SetZion, wxID_ENVELOPEGUISETZION, self.OnSetzionTextEnter)
 
-        self.PrintEnvOutput = wxCheckBox(id = wxID_ENVELOPEGUIPRINTENVOUTPUT, label = 'Print envelope output', name = 'PrintEnvOutput', parent = self, pos = wxPoint(216, 288), size = wxSize(200, 24), style = 0)
+        self.PrintEnvOutput = wx.CheckBox(id = wxID_ENVELOPEGUIPRINTENVOUTPUT, label = 'Print envelope output', name = 'PrintEnvOutput', parent = self, pos = wx.Point(216, 288), size = wx.Size(200, 24), style = 0)
         self.PrintEnvOutput.SetValue(false)
         EVT_CHECKBOX(self.PrintEnvOutput, wxID_ENVELOPEGUIPRINTENVOUTPUT, self.OnPrintenvoutputCheckbox)
 
