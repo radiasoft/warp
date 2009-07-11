@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.185 2009/06/26 23:27:31 dave Exp $"
+warp_version = "$Id: warp.py,v 1.186 2009/07/11 00:10:05 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -864,7 +864,7 @@ Creates a dump file
   else:
     if not onefile and lparallel:
       # --- Append the processor number to the user inputted filename
-      filename = filename + '_%05d_%05d'%(me,npes)
+      filename = filename + '_%05d_%05d%s.dump'%(me,npes,suffix)
   print filename
   # --- Make list of all of the new python variables.
   interpreter_variables = []
