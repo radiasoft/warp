@@ -1,5 +1,5 @@
 from warp import *
-optimizer_version = "$Id: optimizer.py,v 1.11 2009/02/05 18:18:40 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.12 2009/07/11 00:12:37 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
@@ -46,12 +46,14 @@ Constructor arguments:
   - saveparamhist=false: When true, saves the history of the parameters in the
                          attribute hparam. Note that the history of the loss is
                          always saved in hloss.
+  - picklehistfile=None: When given, save the history of the loss and the
+                         parameters in the given pickle file.
   """
 
   def __init__(self,nparams,params,func,lossfunc,c1,a1,a2=100.,
                paramsmin=None,paramsmax=None,paramsave=None,paramsrms=None,
                verbose=0,errmax=top.largepos,
-               saveparamhist=false):
+               saveparamhist=false,picklehistfile=None):
     """
 Creates an instance of the Spsa class.
     """
@@ -75,6 +77,7 @@ Creates an instance of the Spsa class.
     self.paramsrms = paramsrms
     self.params = self.scaledparams(self.params)
     if self.saveparamhist: self.hparam = []
+    self.picklehistfile = picklehistfile
   def ak(self):
     return self.a1/(self.k+self.a2)**0.602
   def ck(self):
@@ -157,7 +160,8 @@ Function to do iterations.
         if verbose: print "Skipping"
         continue
       # --- Save the latest value of the loss function.
-      self.hloss.append(self.loss())
+      latestloss = self.loss()
+      self.hloss.append(latestloss)
       # --- Increment the counter
       self.k = self.k + 1
       # --- Print out loss value
@@ -166,6 +170,10 @@ Function to do iterations.
       if ((self.k%(kprint**klog)) == 0):
         self.printerror(err)
         if klog == kprintlogmax: self.printparams()
+      if self.picklehistfile is not None:
+        ff = open(self.picklehistfile,'a')
+        cPickle.dump([self.k,self.unscaledparams(),latestloss],ff,-1)
+        ff.close()
     # --- Print out the resulting params
     self.printerror(err)
     self.printparams()
