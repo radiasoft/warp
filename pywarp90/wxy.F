@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.103 $, $Date: 2009/03/12 22:20:59 $
+c@(#) File WXY.M, version $Revision: 3.104 $, $Date: 2009/07/15 00:35:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -174,6 +174,7 @@ c  Also allocate internal lattice arrays.  Note that size is set to zero
 c  since all particles will be at the same element.
 
       call remark(" ---  Resetting lattice array sizes")
+      zlatbuffer = ds
       call resetlat
       nzl = 0
       zlmin = 0.
