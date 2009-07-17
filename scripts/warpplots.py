@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.254 2009/06/26 23:51:26 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.255 2009/07/17 20:14:43 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -147,6 +147,19 @@ if with_matplotlib:
     aa.axis([0.,1.,0.,1.])
     aa.set_axis_off()
     return aa
+
+  def palette(cmap):
+    '''
+Set the default colormap apply to current image if any.
+See help(colormaps) for more information and cm.cmapnames() for
+a list of colormap names.
+    '''
+    rc('image', cmap=cmap)
+    im = gci()
+
+    if im is not None:
+        im.set_cmap(getattr(cm,cmap))
+    draw_if_interactive()
 
 # The setup routine does the work needed to start writing plots to a file
 # automatically.
@@ -766,7 +779,7 @@ def limits(xmin=None,xmax=None,ymin=None,ymax=None,**kw):
       rr = callplotfunction("limits",[xmin,xmax,ymin,ymax],kw)
     return rr
   if with_matplotlib:
-    callplotfunction("pylab.axis",[(xmin,xmax,ymin,ymax)],kw)
+    callplotfunction("axis",[(xmin,xmax,ymin,ymax)],kw)
 limits.__doc__ = gist.limits.__doc__
 def pldj(x0,y0,x1,y1,local=1,**kw):
   if not _accumulateplotlists and not local:
@@ -3764,7 +3777,22 @@ def ppco(y,x,z,uz=1.,marker='\1',msize=1.0,zmin=None,zmax=None,
     ii = compress(logical_and(less(zmin+ic*dd,rz),
                               less(rz,zmin+(ic+1)*dd)), iota(0,len(rx)))
     if usepalette:
-      c = nint(199*ic/(ncolor-1.))
+      if with_matplotlib:
+        # --- lut is the number of colors in the current colormap
+        lut = pylab.rcParams['image.lut']
+        c = nint(lut*ic/(ncolor-1.))
+        # --- cm is used to get the current colormap.
+        # --- Calling the colormap with an integer, returns an RGB tuple
+        # --- for that index.
+        from matplotlib import cm
+        c = getattr(cm,pylab.rcParams['image.cmap'])(c)
+        # --- Note that when plotted this way, the colors of the particle
+        # --- is not changed if the colormap is changed. A better way
+        # --- would be to use the scatter function, which allows the color
+        # --- of each particle to be specified directly, but that is
+        # --- really slow.
+      else:
+        c = nint(199*ic/(ncolor-1.))
     else:
       c = color[ic%len(color)]
     plp(take(y,ii),take(x,ii),color=c,marker=marker,msize=msize,local=local)
