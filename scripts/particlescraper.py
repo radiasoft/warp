@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.86 2009/06/07 00:27:42 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.87 2009/07/17 20:16:02 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -1292,7 +1292,7 @@ interpolating errors from the grid.
               xmin=self.grid.xmmin,xmax=self.grid.xmmax,
               ymin=self.grid.ymmin,ymax=self.grid.ymmax,**kw)
 
-  def pdzx(self,iy=0,**kw):
+  def pdzx(self,iy=0,fullplane=0,**kw):
     if self.lfastscraper:
       data = self.grid.distances
     else:
@@ -1308,7 +1308,7 @@ interpolating errors from the grid.
               xmin=self.grid.zmminlocal,xmax=self.grid.zmmaxlocal,
               ymin=self.grid.xmminlocal,ymax=self.grid.xmmaxlocal,**kw)
 
-  def pdzy(self,ix=0,**kw):
+  def pdzy(self,ix=0,fullplane=0,**kw):
     if self.lfastscraper:
       data = self.grid.distances
     else:
