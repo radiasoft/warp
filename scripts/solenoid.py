@@ -8,46 +8,66 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.18 2009/03/25 21:54:33 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.19 2009/07/21 00:34:49 dave Exp $"
 
 def solenoiddoc():
   import solenoid
   print solenoid.__doc__
 
 # --- Functions for the multipole representation
-def B0(z,zcent,k,R,l):
+def B0(z,zcent,bzmax,R,l,normalizek=1):
   "Bz on axis"
   z = z - zcent
+  if normalizek:
+    k = bzmax/(mu0*l)*sqrt(4*R**2 + l**2)
+  else:
+    k = bzmax/mu0
   c3 = 4*R**2 + (l - 2*z)**2
   c4 = 4*R**2 + (l + 2*z)**2
   return (k*mu0*((l - 2*z)/sqrt(c3) + (l + 2*z)/sqrt(c4)))/2.
 
-def B0p(z,zcent,k,R,l):
+def B0p(z,zcent,bzmax,R,l,normalizek=1):
   "First z derivative of Bz on axis"
   z = z - zcent
+  if normalizek:
+    k = bzmax/(mu0*l)*sqrt(4*R**2 + l**2)
+  else:
+    k = bzmax/mu0
   c3 = 4*R**2 + (l - 2*z)**2
   c4 = 4*R**2 + (l + 2*z)**2
   return 4*k*mu0*R**2*(-(c3)**-1.5 + (c4)**-1.5)
 
-def B0pp(z,zcent,k,R,l):
+def B0pp(z,zcent,bzmax,R,l,normalizek=1):
   "Second z derivative of Bz on axis"
   z = z - zcent
+  if normalizek:
+    k = bzmax/(mu0*l)*sqrt(4*R**2 + l**2)
+  else:
+    k = bzmax/mu0
   c3 = 4*R**2 + (l - 2*z)**2
   c4 = 4*R**2 + (l + 2*z)**2
   return (24*k*mu0*R**2*(-l/(c3)**2.5 + (2*z)/(c3)**2.5 -
                           l/(c4)**2.5 - (2*z)/(c4)**2.5))
 
-def B0ppp(z,zcent,k,R,l):
+def B0ppp(z,zcent,bzmax,R,l,normalizek=1):
   "Third z derivative of Bz on axis"
   z = z - zcent
+  if normalizek:
+    k = bzmax/(mu0*l)*sqrt(4*R**2 + l**2)
+  else:
+    k = bzmax/mu0
   c3 = 4*R**2 + (l - 2*z)**2
   c4 = 4*R**2 + (l + 2*z)**2
   return (192*k*mu0*R**2*(-(c3)**-2.5 + (c4)**-2.5 +
                    R**2*(5/(c3)**3.5 - 5/(c4)**3.5)))
 
-def B0p4(z,zcent,k,R,l):
+def B0p4(z,zcent,bzmax,R,l,normalizek=1):
   "Fourth z derivative of Bz on axis"
   z = z - zcent
+  if normalizek:
+    k = bzmax/(mu0*l)*sqrt(4*R**2 + l**2)
+  else:
+    k = bzmax/mu0
   c3 = 4*R**2 + (l - 2*z)**2
   c4 = 4*R**2 + (l + 2*z)**2
   return 1920*k*mu0*R**2*(l*(-c3**-3.5 - c4**-3.5 +
@@ -55,18 +75,26 @@ def B0p4(z,zcent,k,R,l):
                           2*(c3**-3.5 - c4**-3.5 +
                              (-7/c3**4.5 + 7/c4**4.5)*R**2)*z)
 
-def B0p5(z,zcent,k,R,l):
+def B0p5(z,zcent,bzmax,R,l,normalizek=1):
   "Fifth z derivative of Bz on axis"
   z = z - zcent
+  if normalizek:
+    k = bzmax/(mu0*l)*sqrt(4*R**2 + l**2)
+  else:
+    k = bzmax/mu0
   c3 = 4*R**2 + (l - 2*z)**2
   c4 = 4*R**2 + (l + 2*z)**2
   return 23040*k*mu0*R**2*(-c3**-3.5 + c4**-3.5 +
                            14*(c3**-4.5 - c4**-4.5)*R**2 +
                            42*(-c3**-5.5 + c4**-5.5)*R**4)
 
-def B0p6(z,zcent,k,R,l):
+def B0p6(z,zcent,bzmax,R,l,normalizek=1):
   "Sixth z derivative of Bz on axis"
   z = z - zcent
+  if normalizek:
+    k = bzmax/(mu0*l)*sqrt(4*R**2 + l**2)
+  else:
+    k = bzmax/mu0
   c3 = 4*R**2 + (l - 2*z)**2
   c4 = 4*R**2 + (l + 2*z)**2
   return 322560*k*mu0*R**2*(l*(-c3**-4.5 - c4**-4.5 +
@@ -76,9 +104,13 @@ def B0p6(z,zcent,k,R,l):
                                18*(-c3**-5.5 + c4**-5.5)*R**2 +
                                66*(c3**-6.5 - c4**-6.5)*R**4)*z)
 
-def B0p7(z,zcent,k,R,l):
+def B0p7(z,zcent,bzmax,R,l,normalizek=1):
   "Seventh z derivative of Bz on axis"
   z = z - zcent
+  if normalizek:
+    k = bzmax/(mu0*l)*sqrt(4*R**2 + l**2)
+  else:
+    k = bzmax/mu0
   c3 = 4*R**2 + (l - 2*z)**2
   c4 = 4*R**2 + (l + 2*z)**2
   return 5160960*k*mu0*R**2*(-c3**-4.5 + c4**-4.5 +
@@ -86,9 +118,17 @@ def B0p7(z,zcent,k,R,l):
                              198*(-c3**-6.5 + c4**-6.5)*R**4 +
                              429*(c3**-7.5 - c4**-7.5)*R**6)
 
-def addsolenoid(zi,zf,ri,ro=None,maxbz=None,current=0.,
+def addsolenoid(zi,zf,ri,ro=None,maxbz=None,current=None,
                 nzpoints=10000,fringelen=10.,
                 nsheets=1,v=1,
+                B0=B0,
+                B0p=B0p,
+                B0pp=B0pp,
+                B0ppp=B0ppp,
+                B0p4=B0p4,
+                B0p5=B0p5,
+                B0p6=B0p6,
+                B0p7=B0p7,
                 **kw):
   """
 Adds a solenoid element represented as a multipole expansion of the field on
@@ -97,19 +137,27 @@ axis. This creates a mmlt lattice element.
  - zf: z end of the current sheet
  - ri: inner radius of the sheet
  - ro=ri: outer radius of the sheet (note that only (ri+ro)/2 is actually used)
- - nsheets=1: number of current sheets
+ - nsheets=1: number of current sheets; nsheets>1 assumes that the default
+              B0 is being used.
  - maxbz: maximum Bz field in T; used to calculate current if specified
- - current: current in the sheet, in units of Ampere-turns/meter; ignored for nonzero maxbz
+ - current: current in the sheet, in units of Ampere-turns/meter;
+            ignored if maxbz is specified. Specifying the current assumes
+            that the default B0 etc functions are being used.
  - nzpoints=10000: number of points in the table generated
  - fringelen=10.: length of region before and after the current sheet to
                   include the field fringe, in units of the sheet radius
  - v=1: number of non-linear terms to include. max value is 3, though
         it is not recommended to use v>1.
+ - B0,B0p,B0pp,B0ppp,B0p4,B0p5,B0p6,B0p7: Optional function arguments to
+      calculate B and its derivatives on axis. They all take the arguments
+      (z,zcent,bzmax,R,l), where z will be an array. Note that it is up to
+      the user to gaurantee that the correct number of derivative functions
+      are supplied depending on the value of the v.
 Note that the actual sheet radius is given be (ri+ro)/2. The aperture is given
 by ri. The fringelen uses the actual sheet radius.
 
-The solenoid field is obtained from the analytic field profile of a cylindrical
-current sheet. The field on axis is given by
+By default, the solenoid field is obtained from the analytic field profile of
+a cylindrical current sheet. The field on axis is given by
   B0(z) = (k*mu0*((l - 2*z)/sqrt(4*R**2 + (l - 2*z)**2) +
                   (l + 2*z)/sqrt(4*R**2 + (l + 2*z)**2)))/2.
 where k is the current in units Ampere-turns/meter, mu0 has the standard
@@ -119,45 +167,52 @@ expression, the field off axis is given by the multipole expansion.
 Bz(r,z) = B0 - B0''*r**2/4 + ...
 Br(r,z) = -B0'*r/2 + B0'''*r**3/16 - ...
 
-As currently written, the series is truncated and only the terms shown are
-included, up B0'''.
   """
+  assert maxbz is not None or current is not None,\
+    'One of maxbz or current must be specified'
   if ro is None: ro = ri
   if nsheets == 1:
     rsheets = array([(ri + ro)/2.])
+    maxbz = [maxbz]
   else:
-    rsheets = ri + arange(nsheets)*(ro-ri)/(nsheets-1)
+    rsheets = linspace(ri,ro,nsheets)
+    maxbz = nsheets*[maxbz]
 
   zcent = (zi + zf)/2.
   l = (zf - zi)
 
-  if maxbz is not None:
-    current = maxbz/(mu0*sum(1./sqrt(4.0*(rsheets/l)**2 + 1.0)))
-  if current == 0.0:
-    print 'warning: solenoid with zero current at zcent = %-6.3f' % zcent
+  # --- This assume that the default B0 is being used.
+  if maxbz[0] is not None and nsheets > 1:
+    bzsum = 0.
+    for i in range(nsheets):
+      bzsum += (mu0*l)/sqrt(4*rsheets[i]**2 + l**2)
+      current = maxbz[0]/bzsum
+  if current is not None:
+    for i in range(nsheets):
+      maxbz[i] = current*(mu0*l)/sqrt(4*rsheets[i]**2 + l**2)
 
   zs = zi - fringelen*max(rsheets)
   ze = zf + fringelen*max(rsheets)
   ap = kw.get('ap',ri)
-  z = zs + (ze - zs)*arange(nzpoints+1)/nzpoints
+  z = linspace(zs,ze,nzpoints+1)
   ms  = zeros((nzpoints+1,v+1),'d')
   msp = zeros((nzpoints+1,v+1),'d')
 
-  for R in rsheets:
-    ms[:,0]  += B0(z,zcent,current,R,l)
-    msp[:,0] += B0p(z,zcent,current,R,l)
+  for i in range(nsheets):
+    ms[:,0]  += B0(z,zcent,maxbz[i],rsheets[i],l)
+    msp[:,0] += B0p(z,zcent,maxbz[i],rsheets[i],l)
     if v >= 1:
-      ms[:,1]  += -1./4.*B0pp(z,zcent,current,R,l)
-      msp[:,1] += -1./4.*B0ppp(z,zcent,current,R,l)
+      ms[:,1]  += -1./4.*B0pp(z,zcent,maxbz[i],rsheets[i],l)
+      msp[:,1] += -1./4.*B0ppp(z,zcent,maxbz[i],rsheets[i],l)
     # --- This is a slowly converging series for radius approaching R
     # --- so having extra terms doesn't help, and can be worse since the
     # --- terms get larger at first.
     if v >= 2:
-      ms[:,2]  += 1./64.*B0p4(z,zcent,current,R,l)
-      msp[:,2] += 1./64.*B0p5(z,zcent,current,R,l)
+      ms[:,2]  += 1./64.*B0p4(z,zcent,maxbz[i],rsheets[i],l)
+      msp[:,2] += 1./64.*B0p5(z,zcent,maxbz[i],rsheets[i],l)
     if v >= 3:
-      ms[:,3]  += -1./2304.*B0p6(z,zcent,current,R,l)
-      msp[:,3] += -1./2304.*B0p7(z,zcent,current,R,l)
+      ms[:,3]  += -1./2304.*B0p6(z,zcent,maxbz[i],rsheets[i],l)
+      msp[:,3] += -1./2304.*B0p7(z,zcent,maxbz[i],rsheets[i],l)
 
   nn = zeros(v+1,'l')
   vv = arange(v+1,dtype='l')
