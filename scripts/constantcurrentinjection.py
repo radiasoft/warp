@@ -4,7 +4,7 @@ procedure, but using the full simulation instead of 1-D approximation.
 from warp import *
 from timedependentvoltage import TimeVoltage
 
-constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.3 2009/07/31 19:22:25 jlvay Exp $"
+constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.4 2009/07/31 19:36:57 jlvay Exp $"
 def constantcurrentinjectiondoc():
   import constantcurrentinjection
   print constantcurrentinjection.__doc__
@@ -60,8 +60,11 @@ frz.calc_a = 3
     # --- Initialize parameters
     chi = 4*eps0/9*sqrt(2*top.pgroup.sq[0]/top.pgroup.sm[0])
     self.phiref = (currentdensity/chi)**(2./3.)*(top.inj_d[0]*w3d.inj_dz)**(4./3.)
-    self.ww = 2.*pi*iota(0,w3d.inj_nx)*w3d.inj_dx**2*w3d.inj_area[:,0,0]
-    self.ww[0] = 0.25*pi*w3d.inj_dx**2
+    if w3d.l_inj_rz:
+      self.ww = 2.*pi*iota(0,w3d.inj_nx)*w3d.inj_dx**2*w3d.inj_area[:,0,0]
+      self.ww[0] = 0.25*pi*w3d.inj_dx**2
+    else:
+      self.ww = w3d.inj_dx*w3d.inj_dy*w3d.inj_area[:,:,0]
     self.wwsum = sum(self.ww)
 
     # --- First set all but source to ground
@@ -89,7 +92,10 @@ frz.calc_a = 3
     # --- Calculate phiv
     top.vinject = sourcevolt-self.endplatevolt
     getinj_phi()
-    self.phiv = sum(self.ww*w3d.inj_phi[:,0,0])/self.wwsum
+    if w3d.l_inj_rz:
+      self.phiv = sum(self.ww*w3d.inj_phi[:,0,0])/self.wwsum
+    else:
+      self.phiv = sum(self.ww*w3d.inj_phi[:,:,0])/self.wwsum
 
     # --- Now reset voltages on plates and set source to voltage of endplatevolt
     setconductorvoltage(self.endplatevolt,condid=self.sourceid)
@@ -116,7 +122,10 @@ frz.calc_a = 3
     #fieldsol(-1) # done afterfs
     top.vinject = self.endplatevolt
     getinj_phi()
-    phirho = -sum(self.ww*w3d.inj_phi[:,0,0])/self.wwsum
+    if w3d.l_inj_rz:
+      phirho = -sum(self.ww*w3d.inj_phi[:,0,0])/self.wwsum
+    else:
+      phirho = -sum(self.ww*w3d.inj_phi[:,:,0])/self.wwsum
 
     self.afact = (self.phiref + phirho)/self.phiv
     solver = getregisteredsolver()
