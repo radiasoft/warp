@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.186 2009/07/11 00:10:05 dave Exp $"
+warp_version = "$Id: warp.py,v 1.187 2009/07/31 21:38:28 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -7,6 +7,7 @@ import sys
 #lineprofile = LineProfiler()
 
 # --- Only numpy is now supported.
+import numpy
 from numpy import *
 ArrayType = ndarray
 def gettypecode(x):
@@ -211,7 +212,15 @@ top.starttimedump = top.starttime
 
 # --- Set the starting social security number. It is set so that the
 # --- starting values on each processor are widely separated.
-top.ssn = sys.maxint/npes*me + 1
+# --- Note that top.ssn is an integer but pgroup.pid is a real, so top.ssn
+# --- needs to be small enough so that it fits in an integer and so that
+# --- increments of 1 are not truncated. Using maxint gaurantees that it
+# --- fits in an integer. But on 64 bit machines, maxint is ~9.e18, so
+# --- increments of one would be lost since precision of float is
+# --- only ~1.e15. 1./numpy.finfo('d').eps is the largest floating point
+# --- number such that the number minus 0.5 is correct (the 0.5 is needed
+# --- since it is used in nint).
+top.ssn = int(min(sys.maxint,1./numpy.finfo('d').eps)/npes*me + 1)
 
 # --- Simple function to calculate Child-Langmuir current density
 def childlangmuir(v,d,q=None,m=None):
