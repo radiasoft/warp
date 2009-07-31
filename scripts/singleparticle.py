@@ -1,10 +1,12 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.46 2009/06/19 21:49:25 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.47 2009/07/31 23:53:03 dave Exp $"
 
 class TraceParticle(object):
   """
 Class for adding a trace particle
+This must be called by all processes when running in parallel and the inputs
+(including the coordinates) must be the same across all processors.
 Creator arguments...
  - x,y,z,vx,vy,vz: 6 coordinates. They can either be
      scalars (for one particle) or sequences (for multiple particles). The
@@ -19,7 +21,8 @@ Creator arguments...
                                enforced for the initial particle positions.
                                It is a good idea to turn this off if the
                                trace particles are setup before a generate
-                               is done.
+                               is done. However, care is needed when running
+                               in parallel.
 
 Available methods...
  - gett(i=0):  returns history of time for i'th particle
@@ -137,10 +140,15 @@ Available methods...
     self.uxinit = self.vxinit/self.giinit
     self.uyinit = self.vyinit/self.giinit
     self.uzinit = self.vzinit/self.giinit
-    # --- Create new ssn's
-    self.ssn = top.ssn+iota(self.nn)
-    top.ssn = top.ssn + self.nn
     self.pidinit = zeros((self.nn,top.npid),'d')
+    # --- Create new ssn's, making sure that the values are the same across
+    # --- all processors.
+    if me == 0:
+      self.ssn = top.ssn + iota(self.nn)
+      top.ssn = top.ssn + self.nn
+    else:
+      self.ssn = None
+    self.ssn = parallel.broadcast(self.ssn)
     self.pidinit[:,top.spid-1] = self.ssn
     # --- Set current values
     self.x = self.xinit*ones(self.nn)
