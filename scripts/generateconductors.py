@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.202 2009/07/09 15:11:59 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.203 2009/08/03 22:35:50 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -557,6 +557,11 @@ Should never be directly created by the user.
       izlocal = g.fsdecomp.iz[g.izproc]
       l2symtry = g.l2symtry
       l4symtry = g.l4symtry
+
+    # --- Make sure that dz is not zero, which is what it would be when
+    # --- running in slice mode. Setting it to 1 means that things are scaled
+    # --- per meter.
+    if dz == 0.: dz = 1.
 
     # compute mins and maxs
     xmin = max(xmmin,mins[0])
@@ -2033,6 +2038,7 @@ Creates a grid object which can generate conductor data.
     dx = self.dx*self.mglevellx[mglevel]
     dy = self.dy*self.mglevelly[mglevel]
     dz = self.dz*self.mglevellz[mglevel]
+    if dz == 0.: dz = 1.
     nxlocal = self.mglevelnx[mglevel]
     nylocal = self.mglevelny[mglevel]
     nzlocal = self.mglevelnz[mglevel]
