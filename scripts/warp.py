@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.187 2009/07/31 21:38:28 dave Exp $"
+warp_version = "$Id: warp.py,v 1.188 2009/08/04 23:45:03 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -18,17 +18,6 @@ import os.path
 import time
 import warpoptions
 warpoptions.parse_args()
-
-# --- Import the RNG module. Older versions have ranf in a seperate module
-# --- called Ranf. In newer versions, ranf is part of RNG.
-try:
-  import Ranf
-except ImportError:
-  pass
-try:
-  import numpy.oldnumeric.rng as RNG
-except ImportError:
-  pass
 
 # --- Since gist is only loaded on PE0 in the parallel
 # --- environment, the parallel module must also be loaded in to check
@@ -1122,6 +1111,7 @@ from warpplots import *
 from histplots import *
 from pzplots import *
 from lwplots import *
+from generateconductors import *
 from plot_conductor import *
 from multigrid import MultiGrid
 from multigrid import MultiGrid3D
@@ -1130,6 +1120,7 @@ from multigridRZ import MultiGridRZ
 from multigridRZ import MultiGrid2D
 from multigridRZ import MultiGrid2DDielectric
 from multigridRZ import MultiGridImplicit2D
+from em3dsolver import EM3D
 from MeshRefinement import *
 from magnetostaticMG import MagnetostaticMG
 from MeshRefinementB import MRBlockB
