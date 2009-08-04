@@ -1,7 +1,6 @@
 from __future__ import generators
 from warp import *
 from MeshRefinement import *
-from generateconductors import installconductors
 try:
   import Opyndx
   VisualizableClass = Opyndx.Visualizable

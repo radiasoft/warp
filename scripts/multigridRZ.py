@@ -1,7 +1,5 @@
 """Class for doing complete multigrid field solve"""
 from warp import *
-from fieldsolver import SubcycledPoissonSolver
-from generateconductors import installconductors
 from find_mgparam import find_mgparam
 
 try:

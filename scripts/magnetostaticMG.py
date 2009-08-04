@@ -2,8 +2,6 @@
 # ToDo:
 #  - modify setj to check if particles are within grid
 from warp import *
-from fieldsolver import SubcycledPoissonSolver
-from generateconductors import installconductors
 from find_mgparam import find_mgparam
 
 try:

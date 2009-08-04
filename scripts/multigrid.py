@@ -4,8 +4,6 @@
 #  - incorporate instances into the particle mover, so charge is deposited and
 #    the E fields gather appropriately.
 from warp import *
-from fieldsolver import SubcycledPoissonSolver
-from generateconductors import installconductors
 from find_mgparam import find_mgparam
 
 try:

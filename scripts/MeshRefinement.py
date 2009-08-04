@@ -5,9 +5,6 @@ __all__ = ['MeshRefinement',
            'MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
            'MRBlockImplicit2D','EMMRBlock']
 from warp import *
-from multigrid import MultiGrid3D
-from multigridRZ import MultiGrid2D
-from em3dsolver import EM3D
 from find_mgparam import find_mgparam
 import operator
 try:

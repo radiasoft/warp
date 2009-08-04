@@ -58,7 +58,6 @@ plotbgrd: plots components of the B field
 todo = """ Add comment attribute to elements """
 
 from warp import *
-from generateconductors import *
 import __main__
 import copy
 try:
@@ -69,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.82 2009/05/16 01:49:17 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.83 2009/08/04 23:47:56 dave Exp $"
 
 def latticedoc():
   import lattice

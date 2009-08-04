@@ -1,10 +1,8 @@
 from __future__ import generators
 from warp import *
-from generateconductors import *
-from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.72 2008/11/19 18:30:00 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.73 2009/08/04 23:47:56 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
