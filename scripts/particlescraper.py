@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.89 2009/08/05 21:47:22 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.90 2009/08/06 01:39:40 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -467,8 +467,8 @@ into isinside is consistent with that obtained from the grid.
       getgrid2d(top.pgroup.nps[js],rr,zz,pp,nx,nz,isinside[:,0,:],
                 xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XZgeom:
-      xsym,ysym = self.applysymmetry(xx,yy)
-      getgrid2d(top.pgroup.nps[js],xsym,zsym,pp,nx,nz,isinside[:,0,:],
+      xsym,ysym = self.applysymmetry(xx,0)
+      getgrid2d(top.pgroup.nps[js],xsym,zz,pp,nx,nz,isinside[:,0,:],
                 xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XYgeom:
       xsym,ysym = self.applysymmetry(xx,yy)
@@ -539,8 +539,8 @@ into isinside is consistent with that obtained from the grid.
                      xmin-gdx[i],xmax-gdx[i],ymin-gdy[i],ymax-gdy[i],
                      zmin-gdz[i],zmax-gdz[i],0.,w3d.l2symtry,w3d.l4symtry)
       elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
-        xgsym,ygsym = self.applysymmetry(xg,yg)
-        getgridngp2d(nn,xgsym,zgsym,pp,nx,nz,self.reducedisinside[:,0,:],
+        xgsym,ygsym = self.applysymmetry(xg,0)
+        getgridngp2d(nn,xgsym,zg,pp,nx,nz,self.reducedisinside[:,0,:],
                      xmin-gdx[i],xmax-gdx[i],zmin-gdz[i],zmax-gdz[i])
       elif w3d.solvergeom == w3d.XYgeom:
         xgsym,ygsym = self.applysymmetry(xg,yg)
@@ -832,8 +832,8 @@ counting the current lost on the conductor.
                    nx,ny,nz,self.reducedisinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                    w3d.l2symtry,w3d.l4symtry)
     elif w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom:
-      xgsym,ygsym = self.applysymmetry(xg,yg)
-      getgridngp2d(nn,xgsym,zgsym,pp,nx,nz,self.reducedisinside[:,0,:],xmin,xmax,zmin,zmax)
+      xgsym,ygsym = self.applysymmetry(xg,0)
+      getgridngp2d(nn,xgsym,zg,pp,nx,nz,self.reducedisinside[:,0,:],xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XYgeom:
       xgsym,ygsym = self.applysymmetry(xg,yg)
       getgridngp2d(nn,xgsym,ygsym,pp,nx,ny,self.reducedisinside[:,:,0],xmin,xmax,ymin,ymax)
@@ -1233,8 +1233,8 @@ interpolating errors from the grid.
       getgrid2d(top.pgroup.nps[js],rr,zz,pp,nx,nz,distances[:,0,:],
                 xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XZgeom:
-      xsym,ysym = self.applysymmetry(xx,yy)
-      getgrid2d(top.pgroup.nps[js],xsym,zsym,pp,nx,nz,distances[:,0,:],
+      xsym,ysym = self.applysymmetry(xx,0)
+      getgrid2d(top.pgroup.nps[js],xsym,zz,pp,nx,nz,distances[:,0,:],
                 xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XYgeom:
       xsym,ysym = self.applysymmetry(xx,yy)
