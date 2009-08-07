@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.188 2009/08/04 23:45:03 dave Exp $"
+warp_version = "$Id: warp.py,v 1.189 2009/08/07 19:02:20 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -18,6 +18,16 @@ import os.path
 import time
 import warpoptions
 warpoptions.parse_args()
+
+# --- Check to make sure that the scripts directory is actually in sys.path.
+# --- If warp is being loaded as a module (e.g. via an egg file), then
+# --- the scripts directory may not be in sys.path. But it needs to be in
+# --- sys.path so that input files can import any scripts that are
+# --- not imported here in warp.py.
+scriptspath = os.path.dirname(__file__)
+if scriptspath not in sys.path:
+  sys.path.append(scriptspath)
+del scriptspath
 
 # --- Since gist is only loaded on PE0 in the parallel
 # --- environment, the parallel module must also be loaded in to check
@@ -1141,13 +1151,13 @@ from printparameters import *
 from printparameters3d import *
 from printparametersrz import *
 
+# --- warp imports itself as a matter of convenience, so that the
+# --- name is defined.
+import warp
+
 # --- Try to import the GUI
 try:
-  import os
-  import warp
-  warp_path = os.path.dirname(warp.__file__)
-  if warp_path <> '':warp_path+='/'
-  sys.path=sys.path+[warp_path+'GUI']
+  sys.path.append(os.path.join(os.path.dirname(__file__),'GUI'))
   from WarpGUI import *
 except:
   pass
