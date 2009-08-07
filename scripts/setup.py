@@ -18,6 +18,7 @@ setup (name = 'warp',
        long_description = """
 Warp scripts""",
        platforms = 'Linux, Unix, Windows (cygwin), Mac OSX',
-       packages = ['warp'], #,'warp.GUI'],
-       package_dir = {'warp': '.'}
+       packages = ['warp','warp.GUI'], # Note that the GUI info is incomplete
+       package_dir = {'warp': '.'},
+       package_data = {'warp':['*.gs','*.gp']}
        )
