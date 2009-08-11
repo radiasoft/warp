@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.19 2009/07/21 00:34:49 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.20 2009/08/11 00:21:05 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -247,6 +247,14 @@ Input arguments:
  - bzmax: Bz field on axis at the z center
  - lcylindrical=true:
  - nx,ny,nz,dx,dy,dz,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: all default from w3d
+          The parameters must be consistent, or an exception will be raised.
+          Note that if dx, dy or dz are zero, they will be calculated.
+          Note however that the z parameters are treated differently if
+          fringelen is given. The zmmin and zmmax will be calculated from
+          fringelen. In that case, dz defaults to w3d.dz, and nz will be
+          automatically calculated to be consistent with dz. Note that dz may
+          end up slightly different from w3d.dz or the input dz since
+          (zmmax-zmmin) may not be evenly divisible it.
  - saveBsolver=false: when true, the field solver used to calculated
                       the fields is save as an attribute of the function.
  - scalebz=true: when true, B is scale to exactly match bzmax
