@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.20 2009/08/11 00:21:05 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.21 2009/08/13 17:58:30 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -244,9 +244,14 @@ Input arguments:
  - zcenter: z center of the solenoid windings
  - length: z length of the solenoid windings
  - rinner,router: inner and outer radius of the windings
+                  router must be greater than rinner.
  - bzmax: Bz field on axis at the z center
  - lcylindrical=true:
+ - fringelen=None: length of region before and after the solenoid to
+                   include the field fringe, in units of the sheet radius.
+                   If given, this sets the z extent of the grid.
  - nx,ny,nz,dx,dy,dz,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: all default from w3d
+          except as noted.
           The parameters must be consistent, or an exception will be raised.
           Note that if dx, dy or dz are zero, they will be calculated.
           Note however that the z parameters are treated differently if
@@ -254,20 +259,19 @@ Input arguments:
           fringelen. In that case, dz defaults to w3d.dz, and nz will be
           automatically calculated to be consistent with dz. Note that dz may
           end up slightly different from w3d.dz or the input dz since
-          (zmmax-zmmin) may not be evenly divisible it.
- - saveBsolver=false: when true, the field solver used to calculated
-                      the fields is save as an attribute of the function.
+          it will be adjusted so that (zmmax-zmmin) is evenly divisible by it.
  - scalebz=true: when true, B is scale to exactly match bzmax
  - tol=1.e-5: convergence tolerence for the field solve relative to bzmax
- - fringelen=None: length of region before and after the solenoid to
-                   include the field fringe, in units of the sheet radius.
-                   If given, this sets the z extent of the grid.
+ - saveBsolver=false: when true, the field solver used to calculated
+                      the fields is save as an attribute of the function.
+                      This is only needed sometimes for debugging.
   """
 
   assert zcenter is not None,ValueError('zcenter must be given')
   assert length is not None,ValueError('length must be given')
   assert rinner is not None,ValueError('rinner must be given')
   assert router is not None,ValueError('router must be given')
+  assert router > rinner,ValueError('It is required that router > rinner, i.e. the current sheet must have a finite thickness')
   assert bzmax is not None,ValueError('bzmax must be given')
 
   # --- If fringelen is given, calculate the z extent of the grid.
@@ -421,7 +425,7 @@ Input arguments:
   # --- Find the current given the bzmax and the area of the windings.
   # --- This assumes a large number of windings all with the same current.
   # --- The current in each winding is calculated, multiplied by the number
-  # --- of windings to get the total current per meter, and divied by the
+  # --- of windings to get the total current per meter, and divided by the
   # --- radial extent of the windings to get a current density.
   rwinds = rinner + arange(1001)/1000.*(router-rinner)
   current = (bzmax/(mu0*sum(1./sqrt(4.*(rwinds/length)**2+1.)))*
