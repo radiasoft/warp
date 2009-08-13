@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.69 2009/05/29 16:43:40 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.70 2009/08/13 18:41:29 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -33,6 +33,12 @@ The creator options are:
  - nepmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
            otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
+ - lepsaveonce=0: when true, particles are saved only once, when they are
+                  closest to the z location. Otherwise, extrapolated
+                  information from a particle will be saved multiple times
+                  if the particle is near the plane over multiple time steps.
+                  Note that this is a global option - the value must be the
+                  same in all instances; it sets flag top.lepsaveonce.
  - name=None: descriptive name for location
  - lautodump=0: when true, after the grid moves beyond the z location,
                 automatically dump the data to a file, clear the arrays and
@@ -65,7 +71,7 @@ routines (such as ppxxp).
     """
 
     def __init__(self,iz=-1,zz=0.,wz=None,nepmax=None,laccumulate=0,
-                 name=None,lautodump=0,dumptofile=0):
+                 lepsaveonce=None,name=None,lautodump=0,dumptofile=0):
         # --- Save input values, getting default values when needed
         assert type(iz) is IntType,"iz must be an integer"
         assert iz >= 0 or zz is not None,"Either iz or zz must be specified"
@@ -74,6 +80,7 @@ routines (such as ppxxp).
         if wz is None and w3d.dz != 0.: self.wz = w3d.dz
         else:                           self.wz = wz
         self.laccumulate = laccumulate
+        if lepsaveonce is not None: top.lepsaveonce = lepsaveonce
         self.lautodump = lautodump
         self.name = name
         self.dumptofile = dumptofile
