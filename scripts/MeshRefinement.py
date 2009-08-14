@@ -2,7 +2,7 @@
 """
 from __future__ import generators
 __all__ = ['MeshRefinement',
-           'MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
+           'MRBlock3D','MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
            'MRBlockImplicit2D','EMMRBlock']
 from warp import *
 from find_mgparam import find_mgparam
@@ -23,7 +23,7 @@ except ImportError:
   pass
 
 #########################################################################
-# Note that MRBlock is psyco.bind at the end of the file
+# Note that MRBlock3D is psyco.bind at the end of the file
 class MeshRefinement(VisualizableClass):
   """
 Implements adaptive mesh refinement in 3d
@@ -2332,7 +2332,7 @@ Create DX object drawing the object.
 ##############################################################################
 ##############################################################################
 ##############################################################################
-class MRBlock(MeshRefinement,MultiGrid3D):
+class MRBlock3D(MeshRefinement,MultiGrid3D):
   """
 Implements adaptive mesh refinement in 3d for the electrostatic field solver
  - parent:
@@ -2438,6 +2438,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     self.plfieldy(ix=ix,iz=iz,colors=colors,selfonly=selfonly,scale=scale,
                   withguard=withguard)
 
+MRBlock = MRBlock3D
 
 
 ##############################################################################
@@ -3048,9 +3049,9 @@ Implements adaptive mesh refinement in 3d for the electromagnetic field solver
        for c in self.children:
         c.pfdive(**kw)
 
-# --- This can only be done after MRBlock is defined.
+# --- This can only be done after MRBlock3D is defined.
 try:
-  psyco.bind(MRBlock)
+  psyco.bind(MRBlock3D)
 except NameError:
   pass
 
