@@ -8605,6 +8605,9 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
       ext=ext/tot
       ezt=ezt/tot
     endif  
+    IF(l4symtry) then
+      IF(xp(i)<0.) ext = -ext
+    END if
     IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
       IF(zp(i)<0.) ezt = -ezt
     END if
