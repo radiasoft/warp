@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.203 2009/08/03 22:35:50 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.204 2009/08/19 22:29:10 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3850,8 +3850,13 @@ Methods:
     self.zmin = zmin
     self.zmax = zmax
 
-    if self.lrofzfunc: rmax = largepos
-    else:              rmax = max(self.rofzdata)
+    if self.lrofzfunc:
+      rmax = largepos
+    else:
+      rmax = max(self.rofzdata)
+      for rc,rr in zip(self.rcdata,self.raddata):
+        if rr is not None:
+          rmax = max(rmax,rc+rr)
     self.createextent([-rmax,-rmax,self.zmin],
                       [+rmax,+rmax,self.zmax])
 
@@ -4027,8 +4032,13 @@ Methods:
     self.zmin = zmin
     self.zmax = zmax
 
-    if self.lrmaxofz: rmax = largepos
-    else:             rmax = max(self.rmaxofzdata)
+    if self.lrmaxofz:
+      rmax = largepos
+    else:
+      rmax = max(self.rmaxofzdata)
+      for rc,rr in zip(self.rcmaxdata,self.radmaxdata):
+        if rr is not None:
+          rmax = max(rmax,rc+rr)
     self.createextent([-rmax,-rmax,self.zmin],
                       [+rmax,+rmax,self.zmax])
 
