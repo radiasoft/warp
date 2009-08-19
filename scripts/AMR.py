@@ -1054,7 +1054,7 @@ class AMRTree(VisualizableClass):
                                             self.colors[i]))
       self.dxobject = Opyndx.DXCollection(*dxlist)
     def draw(self,level=None,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None):
-        if self.solvergeom==w3d.XYZgeomMR:
+        if self.solvergeom==w3d.XYZgeom:#MR:
           self.createdxobject(level=level,
                               xmin=xmin,xmax=xmax,
                               ymin=ymin,ymax=ymax,
