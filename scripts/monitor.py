@@ -23,8 +23,11 @@ from warp import *
 import socket
 import time
 import re
-import md5
-monitor_version = "$Id: monitor.py,v 1.10 2007/01/29 19:05:26 dave Exp $"
+try:
+  import hashlib
+except ImportError:
+  import md5 as hashlib
+monitor_version = "$Id: monitor.py,v 1.11 2009/08/19 19:33:15 dave Exp $"
 
 def socketsend(sock,s):
   """
@@ -57,7 +60,7 @@ Creates a monitor for a running job.
   def __init__(self,port=50007,passwd='fj39jfgks'):
     global _ismonitored
     _ismonitored = true
-    self.md5passwd = md5.new(passwd)
+    self.md5passwd = hashlib.md5.new(passwd)
     self.hexdigestpasswd = self.md5passwd.hexdigest()
     self.port = port
     self.initializesocket()
@@ -285,7 +288,7 @@ Make a connection to a running job with a monitor.
   except socket.error:
     _sock.close()
     raise
-  md5passwd = md5.new(passwd)
+  md5passwd = hashlib.md5.new(passwd)
   hexdigestpasswd = md5passwd.hexdigest()
   r = socketrecv(_sock)
   r = socketrecv(_sock)
