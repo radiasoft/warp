@@ -1,5 +1,4 @@
-"""
-The module supplies functions for dealing with particles.
+"""The module supplies functions for dealing with particles.
 
 These commands returns particle info based on selection criteria.
 selectparticles(): return list of indices of particles selected
@@ -20,12 +19,11 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.80 2009/05/11 22:53:47 dave Exp $"
+particles_version = "$Id: particles.py,v 1.81 2009/08/20 18:30:19 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
-  import particles
-  print particles.__doc__
+  print __doc__
 
 ##########################################################################
 # Setup the random subsets. This is only called when the first plot
@@ -36,7 +34,8 @@ def particlesdoc():
 psubset=[]
 def setup_subsets(js=0,pgroup=None):
   """
-Adds plotting subset to the list
+Adds plotting subset to the list. The size of the subsets is controlled by
+top.npplot.
   - js=0 is the species to create a subset for
   - pgroup=top.pgroup: particle group to base subsets on
   """
@@ -48,11 +47,11 @@ Adds plotting subset to the list
     fracnp = float(pgroup.nps[js])/float(totalnp)
   else:
     fracnp = 1.
-  for i in xrange(0,top.npplot.size):
+  for np in top.npplot:
     if pgroup.nps[js] == 0:
       psubset.append(zeros(0,'i'))
       continue
-    ntopick = min(1.,(top.npplot[i]*fracnp)/pgroup.nps[js])
+    ntopick = min(1.,(np*fracnp)/pgroup.nps[js])
     ii = arange(pgroup.nps[js])
     rr = random.random(pgroup.nps[js])
     #rr = ranf(zeros(pgroup.nps[js]))
@@ -212,16 +211,20 @@ _selectparticles_kwdefaults = {"js":0,"jslist":None,"win":None,
                 'checkargs':0,'allowbadargs':0}
 def selectparticles(iw=0,kwdict={},**kw):
   """
-Selects particles based on either subsets or windows. By default it selects
-from window 0.
-Multiple selection criteria are now supported.
+Selects particles based on either subsets or windows. By default all particles
+are selected.
+Multiple selection criteria are supported.
   - iw=0: Window to chose from
-  - js=0: Species to chose from
-  - jslist=None: List of Species to choose from, e.g. [0,3,4]; -1 for all specs
+          For positive values, the z range is determined from the win argument.
+          For negative values, a random subset is chosen, with the number
+          of particles set by top.npplot[-iw-1].
+  - js=0: Species to select particles from
+  - jslist=None: List of Species to choose from, e.g. [0,3,4].
+                 Alternatively, -1 will include all species.
   - win=top.zwindows+top.zbeam: Windows to use (in lab frame)
-  - x=top.xp: Coordinate for x range selection
-  - y=top.yp: Coordinate for y range selection
-  - z=top.zp: Coordinate for z range selection
+  - x=xp: Coordinate to use for x range selection
+  - y=yp: Coordinate to use for y range selection
+  - z=zp: Coordinate to use for z range selection
   - ix=-1: When 0 <= ix <= nx, picks particles within xmesh[ix]+-wx*dx
   - wx=1.: Width of window around xmesh[ix]
   - iy=-1: When 0 <= iy <= ny, picks particles within ymesh[iy]+-wy*dy
@@ -237,13 +240,15 @@ Multiple selection criteria are now supported.
   - zc=None: When specified, picks particles within zc+-wz*dz
   - xc=None: When specified, picks particles within xc+-wx*dx
   - yc=None: When specified, picks particles within yc+-wy*dy
-  - ssn=None: When specified, returns the particle with the given ssn
-              Raises and error if ssn's are not saved.
+  - ssn=None: When specified, returns the particle or particles with the given
+              ssn. Raises and error if ssn's are not saved - top.spid must be
+              setup.
   - ii=None: If ii is supplied, it is just returned.
   - lost=false: When true, returns indices to the lost particles rather than
-                the live particles
-  - suffix=None: When specified, variables with the specified suffix will be
-                 used rather than the arrays from top.
+                the live particles. Note that the lost particle data will
+                be saved in different arrays than the live particles.
+  - suffix=None: When specified, python variables with the specified suffix
+                 will be used rather than the arrays from top.pgroup.
   - object=top: Object to get particle data from. Besides top, this can be an
                 open PDB file, or a dictionary.
   - pgroup=top.pgroup: Particle group to get particles from 
@@ -473,7 +478,12 @@ Multiple selection criteria are now supported.
 #-------------------------------------------------------------------------
 _particlebcastdefault = [1]
 def setgetparticlebcastdefault(defval=1):
+  """Change the default value of the bcast argument in the particle selection
+routines.
+ - defval=1: The default value.
+  """
   _particlebcastdefault[0] = defval
+#-------------------------------------------------------------------------
 def getn(iw=0,gather=1,bcast=None,**kw):
   "Returns number of particles in selection."
   if bcast is None: bcast = _particlebcastdefault[0]
@@ -945,11 +955,11 @@ def getbz(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getpid(iw=0,id=0,gather=1,bcast=None,**kw):
-  """Returns particle id number.
+  """Returns particle id information.
   -id=0: which pid value to return
          Note that when top.wpid or other id's from the top package are used,
          1 must be subtracted when passed in, i.e. id=top.wpid-1.
-         if id=-1, returns all pids.
+         If id=-1, returns all pids.
   """
   if bcast is None: bcast = _particlebcastdefault[0]
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -980,7 +990,7 @@ def getpid(iw=0,id=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=None,edrift=1,bdrift=1,**kw):
-  "Returns the velocity drifts."
+  "Returns the velocity drifts used in the drift-Lorentz mover."
   if bcast is None: bcast = _particlebcastdefault[0]
   if jslist is None:
     jslist=[js]
@@ -989,7 +999,6 @@ def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=None,edrift=1,bdrift=1,**kw)
   vyl=[]
   vzl=[]
   suffix,object,pgroup = _getobjectpgroup(kw)
-  lost = kw.get('lost',0)
   for js in jslist:
     ii = selectparticles(iw=iw,js=js,jslist=None,kwdict=kw)
     if isinstance(ii,slice) and ii.stop <= ii.start: continue
@@ -1047,7 +1056,9 @@ def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=None,edrift=1,bdrift=1,**kw)
     return vx,vy,vz
 #-------------------------------------------------------------------------
 def getw(iw=0,gather=1,bcast=None,**kw):
-  "Returns particle weights."
+  """Returns particle weights.
+This is equivalent to getpid(id=top.wpid-1).
+  """
   return getpid(id=top.wpid-1,gather=gather,bcast=bcast,**kw)
 #-------------------------------------------------------------------------
 def getke(iw=0,js=0,jslist=None,gather=1,bcast=None,**kw):
@@ -1058,7 +1069,6 @@ def getke(iw=0,js=0,jslist=None,gather=1,bcast=None,**kw):
   nptot=0
   kel=[]
   suffix,object,pgroup = _getobjectpgroup(kw)
-  lost = kw.get('lost',0)
   masses = getattrwithsuffix(pgroup,'sm',suffix)
   for js in jslist:
     ii = selectparticles(iw=iw,js=js,jslist=None,kwdict=kw)
@@ -1092,44 +1102,51 @@ def getke(iw=0,js=0,jslist=None,gather=1,bcast=None,**kw):
     return ke
 #-------------------------------------------------------------------------
 # Add the selectparticles documentation to each of the routines.
-if lparallel:
-  _gatherdoc = (
-"""  gather=1 When 1, all data is gathered to PE0
-  bcast=1: when true, result is broadcast to all processors
-           Note that the setgetparticlebcastdefault can be
-           used to set the default value to 0, which is
-           more efficient if the bcast is not needed.
-""")
-else:
-  _gatherdoc = ''
-_gatherdoc = _gatherdoc + ' lost=0: when true, gets lost particles'
-getn.__doc__ = getn.__doc__ + selectparticles.__doc__ + _gatherdoc
-getx.__doc__ = getx.__doc__ + selectparticles.__doc__ + _gatherdoc
-gety.__doc__ = gety.__doc__ + selectparticles.__doc__ + _gatherdoc
-getz.__doc__ = getz.__doc__ + selectparticles.__doc__ + _gatherdoc
-getr.__doc__ = getr.__doc__ + selectparticles.__doc__ + _gatherdoc
-gettheta.__doc__ = gettheta.__doc__ + selectparticles.__doc__ + _gatherdoc
-getvx.__doc__ = getvx.__doc__ + selectparticles.__doc__ + _gatherdoc
-getvy.__doc__ = getvy.__doc__ + selectparticles.__doc__ + _gatherdoc
-getvz.__doc__ = getvz.__doc__ + selectparticles.__doc__ + _gatherdoc
-getux.__doc__ = getux.__doc__ + selectparticles.__doc__ + _gatherdoc
-getuy.__doc__ = getuy.__doc__ + selectparticles.__doc__ + _gatherdoc
-getuz.__doc__ = getuz.__doc__ + selectparticles.__doc__ + _gatherdoc
-getxp.__doc__ = getxp.__doc__ + selectparticles.__doc__ + _gatherdoc
-getyp.__doc__ = getyp.__doc__ + selectparticles.__doc__ + _gatherdoc
-getrp.__doc__ = getrp.__doc__ + selectparticles.__doc__ + _gatherdoc
-gettp.__doc__ = gettp.__doc__ + selectparticles.__doc__ + _gatherdoc
-getgaminv.__doc__ = getgaminv.__doc__ + selectparticles.__doc__ + _gatherdoc
-getex.__doc__ = getex.__doc__ + selectparticles.__doc__ + _gatherdoc
-getey.__doc__ = getey.__doc__ + selectparticles.__doc__ + _gatherdoc
-getez.__doc__ = getez.__doc__ + selectparticles.__doc__ + _gatherdoc
-geter.__doc__ = geter.__doc__ + selectparticles.__doc__ + _gatherdoc
-getetheta.__doc__ = getetheta.__doc__ + selectparticles.__doc__ + _gatherdoc
-getbx.__doc__ = getbx.__doc__ + selectparticles.__doc__ + _gatherdoc
-getby.__doc__ = getby.__doc__ + selectparticles.__doc__ + _gatherdoc
-getbz.__doc__ = getbz.__doc__ + selectparticles.__doc__ + _gatherdoc
-getpid.__doc__ = getpid.__doc__ + selectparticles.__doc__ + _gatherdoc
-getw.__doc__ = getw.__doc__ + selectparticles.__doc__ + _gatherdoc
+_extradoc = """  gather=true: When true, the results from all of the processors are
+            gathered to processor 0. All processors must make the call.
+            What is returned by the other processors is determined by the
+            bcast argument.
+            When false, each processor does the calculation locally, only
+            considers particles within its domain, and returns the local value.
+            The argument is ignored in serial.
+  bcast=1: Only used when gather is true. When true, the result is broadcast
+           from processor 0 to all other processors. The return value is the
+           same on all processors. Otherwise, only processor 0 will have the
+           correct result - the return values on other processors should not
+           be used.
+           Note that the setgetparticlebcastdefault can be used to change
+           the default value to 0, which is more efficient if the bcast is
+           not needed.
+           The argument is ignored in serial.
+"""
+getn.__doc__ = getn.__doc__ + selectparticles.__doc__ + _extradoc
+getx.__doc__ = getx.__doc__ + selectparticles.__doc__ + _extradoc
+gety.__doc__ = gety.__doc__ + selectparticles.__doc__ + _extradoc
+getz.__doc__ = getz.__doc__ + selectparticles.__doc__ + _extradoc
+getr.__doc__ = getr.__doc__ + selectparticles.__doc__ + _extradoc
+gettheta.__doc__ = gettheta.__doc__ + selectparticles.__doc__ + _extradoc
+getvx.__doc__ = getvx.__doc__ + selectparticles.__doc__ + _extradoc
+getvy.__doc__ = getvy.__doc__ + selectparticles.__doc__ + _extradoc
+getvz.__doc__ = getvz.__doc__ + selectparticles.__doc__ + _extradoc
+getux.__doc__ = getux.__doc__ + selectparticles.__doc__ + _extradoc
+getuy.__doc__ = getuy.__doc__ + selectparticles.__doc__ + _extradoc
+getuz.__doc__ = getuz.__doc__ + selectparticles.__doc__ + _extradoc
+getxp.__doc__ = getxp.__doc__ + selectparticles.__doc__ + _extradoc
+getyp.__doc__ = getyp.__doc__ + selectparticles.__doc__ + _extradoc
+getrp.__doc__ = getrp.__doc__ + selectparticles.__doc__ + _extradoc
+gettp.__doc__ = gettp.__doc__ + selectparticles.__doc__ + _extradoc
+getgaminv.__doc__ = getgaminv.__doc__ + selectparticles.__doc__ + _extradoc
+getex.__doc__ = getex.__doc__ + selectparticles.__doc__ + _extradoc
+getey.__doc__ = getey.__doc__ + selectparticles.__doc__ + _extradoc
+getez.__doc__ = getez.__doc__ + selectparticles.__doc__ + _extradoc
+geter.__doc__ = geter.__doc__ + selectparticles.__doc__ + _extradoc
+getetheta.__doc__ = getetheta.__doc__ + selectparticles.__doc__ + _extradoc
+getbx.__doc__ = getbx.__doc__ + selectparticles.__doc__ + _extradoc
+getby.__doc__ = getby.__doc__ + selectparticles.__doc__ + _extradoc
+getbz.__doc__ = getbz.__doc__ + selectparticles.__doc__ + _extradoc
+getpid.__doc__ = getpid.__doc__ + selectparticles.__doc__ + _extradoc
+getw.__doc__ = getw.__doc__ + selectparticles.__doc__ + _extradoc
+del _extradoc
 #-------------------------------------------------------------------------
 
 ##########################################################################
@@ -1312,16 +1329,15 @@ def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,
                  ex=0.,ey=0.,ez=0.,bx=0.,by=0.,bz=0.,lfields=false):
   """
 Adds particles to the simulation
-  x,y,z,vx,vy,vz,gi: particle coordinates and velocities. Can be a arrays or
+  x,y,z,vx,vy,vz,gi: particle coordinates and velocities. Can be arrays or
                      scalars. Scalars are broadcast to all particles. Any
                      that are unsupplied default to zero, except gi,
                      which defaults to 1. (gi is 1/gamma, the relatistic
                      paramter)
   pid: additional particle information, such as an ID number or weight.
-  js=0: species to which new particles belong
+  js=0: species to which new particles will be added
   lallindomain=false: When true, all particles are assumed to be with in the
-                      z extent of the domain so particle scraping is not done.
-                      Note that no check is done transversely.
+                      extent of the domain so particle scraping is not done.
                       This is automatically set to true when the code is in
                       slice mode, i.e. after package('wxy'). Except if the
                       option is explicitly set.
