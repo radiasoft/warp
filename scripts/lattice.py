@@ -68,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.83 2009/08/04 23:47:56 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.84 2009/08/21 20:19:41 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3469,7 +3469,7 @@ such as contours, and cellarray.
 
     if withbends and iy is not None and top.bends:
       # --- Apply coordinate transformations in any bends
-      tolabfrm(0.,(1+nx)*(1+ny),ym,xm)
+      tolabfrm(0.,(1+nx)*(1+ny),ravel(ym),ravel(xm))
 
     kw['xmesh'] = xm
     kw['ymesh'] = ym
@@ -3574,7 +3574,7 @@ such as contours, and cellarray.
 
     if withbends and iy is not None and top.bends:
       # --- Apply coordinate transformations in any bends
-      tolabfrm(0.,(1+nx)*(1+ny),ym,xm)
+      tolabfrm(0.,(1+nx)*(1+ny),ravel(ym),ravel(xm))
 
     kw['xmesh'] = xm
     kw['ymesh'] = ym
@@ -3678,7 +3678,7 @@ such as contours, and cellarray.
 
     if withbends and iy is not None and top.bends:
       # --- Apply coordinate transformations in any bends
-      tolabfrm(0.,(1+nx)*(1+ny),ym,xm)
+      tolabfrm(0.,(1+nx)*(1+ny),ravel(ym),ravel(xm))
 
     kw['xmesh'] = xm
     kw['ymesh'] = ym
