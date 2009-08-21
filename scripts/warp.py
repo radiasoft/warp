@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.189 2009/08/07 19:02:20 dave Exp $"
+warp_version = "$Id: warp.py,v 1.190 2009/08/21 16:11:27 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -47,6 +47,8 @@ try:
   else:
     from gistdummy import *
 except ImportError:
+  import warnings
+  warnings.warn("there was an error importing gist; if this is a problem, restart python and type 'import gist' for details, otherwise Warp will run OK but with no graphics")
   from gistdummy import *
 
 # Import the warpC shared object which contains all of WARP
