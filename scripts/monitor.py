@@ -23,11 +23,11 @@ from warp import *
 import socket
 import time
 import re
-try:
+if sys.hexversion >= 0x20501f0:
   import hashlib
-except ImportError:
+else:
   import md5 as hashlib
-monitor_version = "$Id: monitor.py,v 1.11 2009/08/19 19:33:15 dave Exp $"
+monitor_version = "$Id: monitor.py,v 1.12 2009/08/21 16:22:52 dave Exp $"
 
 def socketsend(sock,s):
   """
