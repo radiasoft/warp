@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.68 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.69 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1773,23 +1773,49 @@ c=======================================================================
       subroutine ZRoundedCylinderOutIntercept(rad,length,rad2,xcent,ycent,zcent,
      &                                        n,x,y,z,vx,vy,vz,xi,yi,zi,
      &                                        itheta,iphi)
+      use Constant
       real(kind=8):: rad,length,rad2,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
       real(kind=8):: xi(n),yi(n),zi(n),itheta(n),iphi(n)
+      real(kind=8):: ri2,rr,zz,dr,theta
 
 c Finds place where particle inside intercepted the surface and the
 c normal angle of the surface at that point.
 
       integer(ISZ):: i
 
-      print*,"The intercept calculation is not yet implemented for ZRoundedCylinderOut"
+c     --- first calculate for non-rounded cylinder and then readjust
+c     --- the ones that are affected by rounded corners
+      call ZCylinderOutIntercept(rad,length,xcent,ycent,zcent,
+     &                           n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
+
+
       do i=1,n
-        xi(i) = LARGEPOS
-        yi(i) = LARGEPOS
-        zi(i) = LARGEPOS
-        itheta(i) = 0.
-        iphi(i) = 0.
+c        --- figure out which one are in the corners
+
+c        --- between the rounded corners in Z => not affected
+         if( zi(i)-zcent < 0.5*length-rad2 ) cycle
+
+c        --- outside the rounded corners in R => not affected
+         ri2 =  (xi(i)-xcent)**2 + (yi(i)-ycent)**2
+         if( ri2 > (rad+rad2)**2 ) cycle
+
+
+         rr = (rad+rad2) - sqrt(ri2)
+         zz = zi(i)-zcent - (0.5*length-rad2)
+
+c        --- calculate angles
+         iphi(i)   = atan2(yi(i)-ycent,xi(i)-xcent)
+         theta     = atan2(rr,zz)
+         itheta(i) = atan2(rr,zz) + pi
+
+c        --- adjust position
+         dr    = rr - sin(theta)*rad2
+         xi(i) = xi(i) - dr*cos(iphi(i))
+         yi(i) = yi(i) - dr*sin(iphi(i))
+         zi(i) = zi(i) - (zz - cos(theta)*rad2)
+
       enddo
 
       return
