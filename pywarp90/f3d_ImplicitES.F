@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) Filef3d_ImplicitES.F, version $Revision: 1.8 $, $Date: 2008/11/19 18:29:49 $
+c@(#) Filef3d_ImplicitES.F, version $Revision: 1.9 $, $Date: 2009/08/27 22:28:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid implicit electrostatic field solver.
@@ -846,10 +846,10 @@ c     --- Dirichlet boundaries, but this is convenient to call.
 c     --- Make a print out.
       if (mgverbose>=1 .or. mgerror > mgtol) then
         if (mgerror > mgtol) then
-          call remark("Multigrid: Maximum number of iterations reached")
+          call remark("ImplicitMultigrid3d: Maximum number of iterations reached")
         endif
         write(errline,20) mgerror,mgiters
-  20    format("Multigrid: Error converged to ",1pe11.3," in ",i5," v-cycles")
+  20    format("ImplicitMultigrid3d: Error converged to ",1pe11.3," in ",i5," v-cycles")
         call remark(errline)
       endif
       
