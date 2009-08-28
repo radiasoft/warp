@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.139 $, $Date: 2009/02/24 18:00:27 $
+c@(#) File F3D.M, version $Revision: 3.140 $, $Date: 2009/08/28 22:04:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -368,11 +368,11 @@ c  Because of the way vpftz works, ny must be even (this is easily fixable).
 c  Because of the way the cosqx and cosqy routines work, nx and ny must
 c  be even (i.e. when symmetry is turned on).
       if (mod(ny,2) == 1) then
-        call remark("NY must be even")
+        call remark("vpois3d: for the FFT solver, NY must be even")
         return
       endif
       if (l4symtry .and. (mod(nx,2) == 1 .or. mod(ny,2) == 1)) then
-        call remark("NX and NY must be even")
+        call remark("vpois3d: for the FFT solver, NX and NY must be even")
         return
       endif
 
@@ -387,7 +387,7 @@ c  This allows a non-power-of-2 for the tridiag in z field solver.
      & .or.(( nz .ne. 2**int( .5 + log(1.*nz) / log(2.) ) ) .and.
      &      ( iwhich .ne. 1 .and. iwhich .ne. 12 .and. iwhich .ne. 13 .and.
      &        iwhich .ne. 14 ) ) ) then
-         call kaboom("NX and NY must be powers of 2, NZ also unless using tridiag solver")
+         call kaboom("vpois3d: for the FFT solver, NX and NY must be powers of 2, NZ also unless using tridiag solver")
          return
       endif
 #endif
@@ -416,7 +416,7 @@ c     --- Setup convenient logicals
       doneumann = (bound0 == neumann) .or. (boundnz == neumann)
 
       if (doneumann) then
-        call kaboom("FFT solver does not support Neumann boundary conditions yet")
+        call kaboom("vpois3d: FFT solver does not support Neumann boundary conditions yet")
         return
       endif
 
@@ -428,13 +428,13 @@ c     --- Periodic uses FFT's, Dirichlet used tridiagonal
 #ifdef MPIPARALLEL
 c     --- Make sure that there is only 1-D decomposition
       if (nxprocs > 1 .or. nyprocs > 1) then
-        call kaboom("vpois3d: only 1-D decomposition along z is supported")
+        call kaboom("vpois3d: FFT solver only supports 1-D decomposition along z")
         return
       endif
 
 c     --- Make sure that the number of processors is a power of two.
       if (nprocs .ne. 2**int(.5 + log(1.*nprocs)/log(2.))) then
-        call kaboom("vpois3d: the number of processors must be a power of 2")
+        call kaboom("vpois3d: for the FFT solver, the number of processors must be a power of 2")
         return
       endif
 #endif
