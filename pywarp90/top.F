@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.240 $, $Date: 2009/07/09 16:23:44 $
+c@(#) File TOP.F, version $Revision: 3.241 $, $Date: 2009/08/28 22:07:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1909,7 +1909,7 @@ c=============================================================================
       use ParticleGroupmodule
       use Particles, only: xoldpid, yoldpid, zoldpid, uxoldpid, uyoldpid, uzoldpid, wpid
       use InGen, only: dt
-      use PicGlb, only: time
+      use Picglb, only: time
       
 c     --- arguments
       integer(ISZ) :: ns, nstations, jslist(ns)

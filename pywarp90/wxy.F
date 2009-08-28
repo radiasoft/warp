@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.104 $, $Date: 2009/07/15 00:35:40 $
+c@(#) File WXY.M, version $Revision: 3.105 $, $Date: 2009/08/28 22:07:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -621,7 +621,7 @@ c=============================================================================
       use InPart
       use InMesh3d
       use Fields3d
-      use Fields3dparticles,Only: selfep
+      use Fields3dParticles,Only: selfep
       use Io
       use Particles,Only: pgroup,nplive
       use Picglb
@@ -919,7 +919,7 @@ c=============================================================================
       use InGen3d
       use InMesh3d
       use Fields3d
-      use Fields3dparticles,Only: selfep
+      use Fields3dParticles,Only: selfep
       use FieldSolveAPI
       type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,ip,is

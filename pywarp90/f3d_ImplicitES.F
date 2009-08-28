@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) Filef3d_ImplicitES.F, version $Revision: 1.9 $, $Date: 2009/08/27 22:28:31 $
+c@(#) Filef3d_ImplicitES.F, version $Revision: 1.10 $, $Date: 2009/08/28 22:07:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid implicit electrostatic field solver.
@@ -256,7 +256,7 @@ c=============================================================================
      &                                localbounds,coeffs0,coeffs,rhs,resscale)
       use Subtimersf3d
       use Constant
-      use ConductorSubgridTypemodule
+      use ConductorSubGridTypemodule
       type(ConductorSubgridType):: subgrid
       integer(ISZ):: nxlocal,nylocal,nzlocal
       real(kind=8):: dx,dy,dz

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.124 $, $Date: 2009/05/11 22:50:26 $
+c@(#) File w3d_injection.F, version $Revision: 1.125 $, $Date: 2009/08/28 22:07:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3353,10 +3353,9 @@ c=============================================================================
       use Subtimers3d
       use InjectVars
       use InjectVars3d
-      use Ingen3d,Only: solvergeom,RZgeom
+      use InGen3d,Only: solvergeom,RZgeom,l2symtry,l4symtry
       use Picglb,Only: xpminlocal,xpmaxlocal,ypminlocal,ypmaxlocal,
      &                 zpminlocal,zpmaxlocal
-      use InGen3d,Only: l2symtry,l4symtry
 
 c Calculate potential drop from emitting surface at distance
 c of dz from the surface.  This is only done for grid cells

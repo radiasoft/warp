@@ -8,7 +8,7 @@ module mod_bnd_cummer
 !use mod_system
 use EM2D_bnd
 #ifdef MPIPARALLEL
-use parallel
+use Parallel
 #endif
 implicit none
 

@@ -1257,9 +1257,9 @@ c===================================================================
       subroutine setTotalE(pgroup,npd,is,ipmin,dtloc)
 c     sets total E at particle positions
       use ParticleGroupmodule
-      use picglb,Only: zbeam,lresetparticlee
+      use Picglb,Only: zbeam,lresetparticlee
       use Z_arrays
-      use Inpart
+      use InPart
       use InGen
       use Beam_acc
       type(ParticleGroup):: pgroup

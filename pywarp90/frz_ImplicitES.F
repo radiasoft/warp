@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.33 $, $Date: 2008/11/19 18:29:49 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.34 $, $Date: 2009/08/28 22:07:12 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -307,7 +307,7 @@ c=============================================================================
      &                                      mglevel,lcndbndy,icndbndy,lrz,chi,
      &                                      localbounds,coeffs,rhs,resdelfac)
       use Constant
-      use ConductorSubgridTypemodule
+      use ConductorSubGridTypemodule
       type(ConductorSubgridType):: subgrid
       integer(ISZ):: nxlocal,nzlocal
       real(kind=8):: dx,dz,xmminlocal
