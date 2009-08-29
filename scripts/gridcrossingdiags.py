@@ -10,13 +10,19 @@ class GridCrossingDiags(object):
 Sets up diagnostics at z grid cells that are gathered from particles that
 cross the cell.
   - js: species of particles to include. Currently can handle only a single
-        species.
-  - zmmin,zmmax,dz,nz: grid parameters, all taken from w3d if not supplied.
+        species. Can be either the species index number, or an instance of the
+        Species class.
+  - zmmin,zmmax,dz,nz: grid parameters
+        zmmin and zmmax default to w3d.zmmin and w3d.zmmax.
+        dz defaults to w3d.dz/nzscale.
+        nz defaults to nint((zmmax-zmmin)/dz) and dz will then be adjusted so
+        that dz = (zmmax-zmmin)/nz.
+        Note that the defaults are only calculated the first time that the
+        diagnostic is done.
   - nzscale=1: multiplier on nz - makes it easy to use the w3d grid parameters
                but with a differing number of grid points.
-  - nr,rmax: radial extent of radial profile diagnostic. If not given,
-             the radial diagnostic is not done.
-  - ztarget: Z location with the radial profile is calculated.
+  - nr,rmax: radial extent of radial profile diagnostic. Both must be given
+             for the radial diagnostic to be done.
   - scintxmin,scintxmax,scintymin,scintymax,scintzmin,scintzmax,scintnx,scintny:
       specifies a volume where scintillator planes will be. All parameters
       must be specified. Notice that this will save the time history of a
@@ -27,12 +33,20 @@ cross the cell.
                      the given name as a prefix.
   - starttime,endtime=None: If given, the data will be collected for times
                             only between the two values.
+  - lmoving_frame=false: When true, the diagnostic moves with the beam frame.
 
 The following quantities are calculated:
 count: count of the number of particles that cross the cell each time
 current: current, same as count but scaled by particle charge and 1/top.dt.
+xbar, ybar:
+xsqbar, ysqbar:
+xrms, yrms:
 rrms:
 rprms:
+
+Note that on the first time step, there is no old z data so the determination
+if particles have crossed a grid cell can not be done so the results will
+be unreliable.
 
     """
 
@@ -45,7 +59,10 @@ rprms:
                  scintny=None,
                  dumptofile=None,
                  starttime=None,endtime=None,lmoving_frame=0):
-        self.js = js
+        if isinstance(js,Species):
+            self.js = js.jslist[0]
+        else:
+            self.js = js
         self.zmmin = zmmin
         self.zmmax = zmmax
         self.dz = dz
@@ -72,11 +89,22 @@ rprms:
 
         self.zoldpid = nextpid()
 
-        self.count = None
-        self.current = None
-        self.rrms = None
-        self.rprms = None
-        self.dummy = None
+        # --- Note to users: when retrieving results, the following attributes
+        # --- should be accessed through their associated properties,
+        # --- for example self.current, without the underscore.
+        self._time = []
+        self._zbeam = []
+        self._count = []
+        self._current = []
+        self._xbar = []
+        self._ybar = []
+        self._xsqbar = []
+        self._ysqbar = []
+        self._xrms = []
+        self._yrms = []
+        self._rrms = []
+        self._rprms = []
+        self._dummy = None
 
         installafterstep(self.getdiagnostics)
 
@@ -92,8 +120,11 @@ rprms:
         if self.nz is None:
             self.nz = nint((self.zmmax - self.zmmin)/self.dz)
             self.dz = (self.zmmax - self.zmmin)/self.nz
+        assert abs((self.zmmax-self.zmmin)-self.nz*self.dz) < 1.e-5*self.dz,\
+            "zmmin, zmmax, dz, and nz are not consistent with each other"
 
-        self.ldoradialdiag = (self.nr is not None)
+        self.ldoradialdiag = ((self.nr is not None) and
+                              (self.rmax is not None))
 
         self.ldoscintillator = (self.scintzmin is not None)
         if self.ldoscintillator:
@@ -104,6 +135,33 @@ rprms:
             if self.scintymin is None: self.scintymin = -self.scintymax
             self.scintdx = (self.scintxmax - self.scintxmin)/self.scintnx
             self.scintdy = (self.scintymax - self.scintymin)/self.scintny
+
+    def appendnextarrays(self,zbeam):
+        nz = self.nz
+        self._time.append(top.time)
+        self._zbeam.append(zbeam)
+        self._count.append(zeros(1+nz,'d'))
+        self._current.append(zeros(1+nz,'d'))
+        self._xbar.append(zeros(1+nz,'d'))
+        self._ybar.append(zeros(1+nz,'d'))
+        self._xsqbar.append(zeros(1+nz,'d'))
+        self._ysqbar.append(zeros(1+nz,'d'))
+        self._xrms.append(None)
+        self._yrms.append(None)
+        self._rrms.append(None)
+        self._rprms.append(zeros(1+nz,'d'))
+        if self.ldoradialdiag:
+            nr = self.nr
+            self._rprofile.append(zeros((1+nr,1+nz),'d'))
+        if self.ldoscintillator:
+            if (len(self._scintillator) == 0 or
+                maxnd(self._scintillator[-1]) > 0.):
+                # --- Note that the data is only saved if it is nonzero
+                scintnx = self.scintnx
+                scintny = self.scintny
+                scintnz = self.scintnz
+                self._scintillator.append(zeros((1+scintnx,1+scintny,1+scintnz)))
+                self._scinttime.append(top.time)
 
     def getdiagnostics(self):
 
@@ -135,9 +193,9 @@ rprms:
             dr = rmax/nr
 
         if self.ldoscintillator:
-          scintnx = self.scintnx
-          scintny = self.scintny
-          scintnz = self.scintnz
+            scintnx = self.scintnx
+            scintny = self.scintny
+            scintnz = self.scintnz
 
         if self.lmoving_frame:
             zbeam = top.zbeam
@@ -145,167 +203,184 @@ rprms:
             zbeam = 0.
         zoldpid = self.zoldpid
 
-        # --- Initialize the data lists.
-        if self.dummy is None:
-            self.time = []
-            self.count = [zeros(1+nz,'d')]
-            self.current = [zeros(1+nz,'d')]
-            self.rrms = [zeros(1+nz,'d')]
-            self.rprms = [zeros(1+nz,'d')]
-            self.dummy = zeros(1+nz,'d')
+        # --- Initialize the data lists and work arrays.
+        if self._dummy is None:
+            self._dummy = zeros(1+nz,'d')
             if ldoradialdiag:
-                self.rprofile = [zeros((1+nr,1+nz),'d')]
-                self.rprofilecount = zeros((1+nr,1+nz),'d')
+                self._rprofile = []
+                self._rprofilecount = zeros((1+nr,1+nz),'d')
                 #self.rprofilemesh = iota(0,nr)*dr
             if self.ldoscintillator:
-              self.scinttime = []
-              self.scintillator = [zeros((1+scintnx,1+scintny,1+scintnz))]
-              self.scintillatorcount = zeros((1+scintnx,1+scintny,1+scintnz))
+                self._scinttime = []
+                self._scintillator = []
+                self._scintillatorcount = zeros((1+scintnx,1+scintny,1+scintnz))
 
         if self.nhist is None: nhist = top.nhist
         else:                  nhist = self.nhist
 
         # --- The data is gathered from top.it-nhist/2 to top.it+nhist/2-1.
-        # --- This resets things at the half way point.
-        if top.it%nhist == int(nhist/2):
-            co = self.count[-1]
-            cu = self.current[-1]
-            rr = self.rrms[-1]
-            rp = self.rprms[-1]
-            if ldoradialdiag:
-                rprof = self.rprofile[-1]
-            if self.ldoscintillator:
-                scint = self.scintillator[-1]
+        # --- At the half way point, create space for the next set of data.
+        if len(self._time) == 0 or (top.it-1)%nhist == int(nhist/2):
 
-            # --- Finish the calculation, gathering data from all processors and
-            # --- dividing out the count.
-            co[...] = parallelsum(co)
-            rr[...] = parallelsum(rr)
-            rr[...] = sqrt(rr/where(co==0.,1.,co))
-            rp[...] = parallelsum(rp)
-            rp[...] = sqrt(rp/where(co==0.,1.,co))
-
-            if ldoradialdiag:
-                rprof[...] = parallelsum(rprof)
-
-            if self.ldoscintillator:
-                scint[...] = parallelsum(scint)
-
-            # --- Scale the current appropriately.
-            cu[...] = co*(top.pgroup.sq[js]*top.pgroup.sw[js]/(top.dt*nhist))
-
-            if self.dumptofile: self.dodumptofile()
-
-            # --- Create space for the next set of data.
             if me == 0 and not self.dumptofile:
-                self.time.append(top.time)
-                self.count.append(zeros(1+nz,'d'))
-                self.current.append(zeros(1+nz,'d'))
-                self.rrms.append(zeros(1+nz,'d'))
-                self.rprms.append(zeros(1+nz,'d'))
-                if ldoradialdiag:
-                    self.rprofile.append(zeros((1+nr,1+nz),'d'))
-                if self.ldoscintillator:
-                    if maxnd(self.scintillator[-1]) > 0.:
-                        # --- Note that the data is only saved if it is nonzero
-                        self.scinttime.append(top.time)
-                        self.scintillator.append(zeros((1+scintnx,1+scintny,1+scintnz)))
+                self.appendnextarrays(zbeam)
             else:
                 # --- On other processors or if the data is being dumped to a
                 # --- file, just zero out the existing arrays.
                 # --- There's no reason to keep the history on all processors.
-                self.count[0].fill(0.)
-                self.current[0].fill(0.)
-                self.rrms[0].fill(0.)
-                self.rprms[0].fill(0.)
-                if ldoradialdiag:
-                    self.rprofile[0].fill(0.)
-                if self.ldoscintillator:
-                    self.scintillator[0].fill(0.)
+                # --- The arrays are created the first time the diagnostic
+                # --- is done.
+                if len(self._time) == 0:
+                    self.appendnextarrays(zbeam)
+                else:
+                    self._count[0].fill(0.)
+                    self._current[0].fill(0.)
+                    self._xbar[0].fill(0.)
+                    self._ybar[0].fill(0.)
+                    self._xsqbar[0].fill(0.)
+                    self._ysqbar[0].fill(0.)
+                    self._rprms[0].fill(0.)
+                    if ldoradialdiag:
+                        self._rprofile[0].fill(0.)
+                    if self.ldoscintillator:
+                        self._scintillator[0].fill(0.)
 
         # --- The code below is all local and can be skipped if there are no
         # --- particles locally.
-        if top.pgroup.nps[js] == 0: return
+        if top.pgroup.nps[js] > 0:
 
-        rnew = getr(js=js,gather=0)
-        rpnew = getrp(js=js,gather=0)
-        znew = getz(js=js,gather=0)
-        zold = getpid(js=js,id=zoldpid-1,gather=0)
+            xnew = getx(js=js,gather=0)
+            ynew = gety(js=js,gather=0)
+            rpnew = getrp(js=js,gather=0)
+            znew = getz(js=js,gather=0)
+            zold = getpid(js=js,id=zoldpid-1,gather=0)
 
-        iznew = int((znew - (zbeam + zmmin))/dz)
-        izold = int((zold - (zbeam + zmmin))/dz)
+            iznew = int((znew - (zbeam + zmmin))/dz)
+            izold = int((zold - (zbeam + zmmin))/dz)
 
-        icrossed = (iznew > izold)
+            icrossed = (iznew > izold)
 
-        izc = compress(icrossed,iznew)
-        rc = compress(icrossed,rnew)
-        rpc = compress(icrossed,rpnew)
-        np = len(izc)
+            izc = iznew[icrossed]
+            xc = xnew[icrossed]
+            yc = ynew[icrossed]
+            rpc = rpnew[icrossed]
+            np = len(izc)
 
-        if top.wpid > 0:
-            weight = getpid(js=js,id=top.wpid-1,gather=0)
-            ww = compress(icrossed,weight)
-        else:
-            ww = ones(np,'d')
-
-        zc = izc.astype('d')
-        deposgrid1d(1,np,zc,ww,nz,self.count[-1],self.dummy,0.,nz)
-        deposgrid1d(1,np,zc,ww*rc**2,nz,self.rrms[-1],self.dummy,0.,nz)
-        deposgrid1d(1,np,zc,ww*rpc**2,nz,self.rprms[-1],self.dummy,0.,nz)
-
-        if ldoradialdiag or self.ldoscintillator:
-            vz = compress(icrossed,getvz(gather=0))
-            ke = 0.5*top.pgroup.sm[js]*vz**2
             if top.wpid > 0:
                 weight = getpid(js=js,id=top.wpid-1,gather=0)
-                ww = compress(icrossed,weight)*top.pgroup.sw[js]
+                ww = weight[icrossed]
             else:
-                ww = top.pgroup.sw[js]
+                ww = ones(np,'d')
 
-        if ldoradialdiag:
-            deposgrid2d(1,np,zc,rc,ke*ww,nz,nr,transpose(self.rprofile[-1]),
-                        transpose(self.rprofilecount),0.,nz,0.,rmax)
+            zc = izc.astype('d')
+            deposgrid1d(1,np,zc,ww,nz,self._count[-1],self._dummy,0.,nz)
+            deposgrid1d(1,np,zc,ww*xc,nz,self._xbar[-1],self._dummy,0.,nz)
+            deposgrid1d(1,np,zc,ww*yc,nz,self._ybar[-1],self._dummy,0.,nz)
+            deposgrid1d(1,np,zc,ww*xc**2,nz,self._xsqbar[-1],self._dummy,0.,nz)
+            deposgrid1d(1,np,zc,ww*yc**2,nz,self._ysqbar[-1],self._dummy,0.,nz)
+            deposgrid1d(1,np,zc,ww*rpc**2,nz,self._rprms[-1],self._dummy,0.,nz)
 
-        if self.ldoscintillator:
-            x = getx(gather=0)[icrossed]
-            y = gety(gather=0)[icrossed]
-            izmin = (self.scintzmin - (zbeam + zmmin))/dz
-            izmax = (self.scintzmax - (zbeam + zmmin))/dz
-            deposgrid3d(1,np,zc,y,x,ke*ww,scintnz,scintny,scintnx,
-                        transpose(self.scintillator[-1]),
-                        transpose(self.scintillatorcount),
-                        izmin,izmax,
-                        self.scintymin,self.scintymax,
-                        self.scintxmin,self.scintxmax)
+            if ldoradialdiag or self.ldoscintillator:
+                vz = getvz(js=js,gather=0)[icrossed]
+                ke = 0.5*top.pgroup.sm[js]*vz**2
+                ww *= top.pgroup.sw[js]
 
-        # --- Save particle z positions.
-        i1 = top.pgroup.ins[js] - 1
-        i2 = i1 + top.pgroup.nps[js]
-        top.pgroup.pid[i1:i2,zoldpid-1] = top.pgroup.zp[i1:i2]
+            if ldoradialdiag:
+                rc = sqrt(xc**2 + yc**2)
+                deposgrid2d(1,np,zc,rc,ke*ww,nz,nr,transpose(self._rprofile[-1]),
+                            transpose(self._rprofilecount),0.,nz,0.,rmax)
 
-    def dodumptofile(self):
-        #self.dodumptofilePDB()
-        self.dodumptofilePickle()
+            if self.ldoscintillator:
+                izmin = (self.scintzmin - (zbeam + zmmin))/dz
+                izmax = (self.scintzmax - (zbeam + zmmin))/dz
+                deposgrid3d(1,np,zc,yc,xc,ke*ww,scintnz,scintny,scintnx,
+                            transpose(self._scintillator[-1]),
+                            transpose(self._scintillatorcount),
+                            izmin,izmax,
+                            self.scintymin,self.scintymax,
+                            self.scintxmin,self.scintxmax)
 
-    def dodumptofilePDB(self):
+            # --- Save particle z positions.
+            i1 = top.pgroup.ins[js] - 1
+            i2 = i1 + top.pgroup.nps[js]
+            top.pgroup.pid[i1:i2,zoldpid-1] = top.pgroup.zp[i1:i2]
+
+        # --- The data is gathered from top.it-nhist/2 to top.it+nhist/2-1.
+        # --- At the half way point, finish the calculation by summing over
+        # --- processors, dividing by the counts to get the averages, and
+        # --- calculating the rms quantities.
+        if top.it%nhist == int(nhist/2):
+            co = self._count[-1]
+            cu = self._current[-1]
+            xbar = self._xbar[-1]
+            ybar = self._ybar[-1]
+            xsqbar = self._xsqbar[-1]
+            ysqbar = self._ysqbar[-1]
+            rp = self._rprms[-1]
+
+            # --- Finish the calculation, gathering data from all processors and
+            # --- dividing out the count.
+            co[...] = parallelsum(co)
+            xbar[...] = parallelsum(xbar)
+            ybar[...] = parallelsum(ybar)
+            xsqbar[...] = parallelsum(xsqbar)
+            ysqbar[...] = parallelsum(ysqbar)
+            rp[...] = parallelsum(rp)
+
+            cotemp = where(co==0.,1.,co)
+            xbar[...] = xbar/cotemp
+            ybar[...] = ybar/cotemp
+            xsqbar[...] = xsqbar/cotemp
+            ysqbar[...] = ysqbar/cotemp
+            rp[...] = sqrt(rp/cotemp)
+
+            self._xrms[-1] = sqrt(abs(xsqbar - xbar**2))
+            self._yrms[-1] = sqrt(abs(ysqbar - ybar**2))
+            self._rrms[-1] = sqrt(abs(xsqbar + ysqbar - xbar**2 - ybar**2))
+
+            # --- Scale the current appropriately.
+            cu[...] = co*(top.pgroup.sq[js]*top.pgroup.sw[js]/(top.dt*nhist))
+
+            if ldoradialdiag:
+                rprof = self._rprofile[-1]
+                rprof[...] = parallelsum(rprof)
+
+            if self.ldoscintillator:
+                scint = self._scintillator[-1]
+                scint[...] = parallelsum(scint)
+
+            if self.dumptofile: self.dodumptofile(zbeam)
+
+    def dodumptofile(self,zbeam):
+        #self.dodumptofilePDB(zbeam)
+        self.dodumptofilePickle(zbeam)
+
+    def dodumptofilePDB(self,zbeam):
         if me != 0: return
         ff = PW.PW(self.dumptofile+'_gridcrossing.pdb','a',verbose=0)
         suffix = "_%08d"%(top.it)
         ff.write('time'+suffix,top.time)
-        ff.write('count'+suffix,self.count[0])
-        ff.write('current'+suffix,self.current[0])
-        ff.write('rrms'+suffix,self.rrms[0])
-        ff.write('rprms'+suffix,self.rprms[0])
+        ff.write('zbeam'+suffix,zbeam)
+        ff.write('count'+suffix,self._count[0])
+        ff.write('current'+suffix,self._current[0])
+        ff.write('xbar'+suffix,self._xbar[0])
+        ff.write('ybar'+suffix,self._ybar[0])
+        ff.write('xsqbar'+suffix,self._xsqbar[0])
+        ff.write('ysqbar'+suffix,self._ysqbar[0])
+        ff.write('xrms'+suffix,self._xrms[0])
+        ff.write('yrms'+suffix,self._yrms[0])
+        ff.write('rrms'+suffix,self._rrms[0])
+        ff.write('rprms'+suffix,self._rprms[0])
         if self.ldoradialdiag:
-            ff.write('rprofile'+suffix,self.rprofile[0])
+            ff.write('rprofile'+suffix,self._rprofile[0])
         if self.ldoscintillator:
-            if maxnd(self.scintillator[0]) > 0.:
+            if maxnd(self._scintillator[0]) > 0.:
                 # --- Note that the data is only saved if it is nonzero
                 ff.write('scinttime'+suffix,top.time)
-                ff.write('scintillator'+suffix,self.scintillator[0])
+                ff.write('scintillator'+suffix,self._scintillator[0])
         ff.close()
 
-    def dodumptofilePickle(self):
+    def dodumptofilePickle(self,zbeam):
         if me != 0: return
         if not os.path.exists(self.dumptofile+'_gridcrossing.pkl'):
             ff = open(self.dumptofile+'_gridcrossing.pkl','w')
@@ -341,17 +416,24 @@ rprms:
             ff = open(self.dumptofile+'_gridcrossing.pkl','a')
         suffix = "_%08d"%(top.it)
         cPickle.dump(('time'+suffix,top.time),ff,-1)
-        cPickle.dump(('count'+suffix,self.count[0]),ff,-1)
-        cPickle.dump(('current'+suffix,self.current[0]),ff,-1)
-        cPickle.dump(('rrms'+suffix,self.rrms[0]),ff,-1)
-        cPickle.dump(('rprms'+suffix,self.rprms[0]),ff,-1)
+        cPickle.dump(('zbeam'+suffix,zbeam),ff,-1)
+        cPickle.dump(('count'+suffix,self._count[0]),ff,-1)
+        cPickle.dump(('current'+suffix,self._current[0]),ff,-1)
+        cPickle.dump(('xbar'+suffix,self._xbar[0]),ff,-1)
+        cPickle.dump(('ybar'+suffix,self._ybar[0]),ff,-1)
+        cPickle.dump(('xsqbar'+suffix,self._xsqbar[0]),ff,-1)
+        cPickle.dump(('ysqbar'+suffix,self._ysqbar[0]),ff,-1)
+        cPickle.dump(('xrms'+suffix,self._xrms[0]),ff,-1)
+        cPickle.dump(('yrms'+suffix,self._yrms[0]),ff,-1)
+        cPickle.dump(('rrms'+suffix,self._rrms[0]),ff,-1)
+        cPickle.dump(('rprms'+suffix,self._rprms[0]),ff,-1)
         if self.ldoradialdiag:
-            cPickle.dump(('rprofile'+suffix,self.rprofile[0]),ff,-1)
+            cPickle.dump(('rprofile'+suffix,self._rprofile[0]),ff,-1)
         if self.ldoscintillator:
-            if maxnd(self.scintillator[0]) > 0.:
+            if maxnd(self._scintillator[0]) > 0.:
                 # --- Note that the data is only saved if it is nonzero
                 cPickle.dump(('scinttime'+suffix,top.time),ff,-1)
-                cPickle.dump(('scintillator'+suffix,self.scintillator[0]),ff,-1)
+                cPickle.dump(('scintillator'+suffix,self._scintillator[0]),ff,-1)
         ff.close()
 
     def restorefromfile(self,files=[],readscintillator=1):
@@ -362,16 +444,23 @@ rprms:
         if me != 0: return
         ff = PR.PR(self.dumptofile+'_gridcrossing.pdb')
 
-        self.time = []
-        self.count = []
-        self.current = []
-        self.rrms = []
-        self.rprms = []
+        self._time = []
+        self._zbeam = []
+        self._count = []
+        self._current = []
+        self._xbar = []
+        self._ybar = []
+        self._xsqbar = []
+        self._ysqbar = []
+        self._xrms = []
+        self._yrms = []
+        self._rrms = []
+        self._rprms = []
         # --- At this point, getdiagnostics may not have been executed, so
         # --- self.ldoradialdiag may not be set. So assume that it is and
         # --- create the rprofile list.
-        self.rprofile = []
-        self.scintillator = []
+        self._rprofile = []
+        self._scintillator = []
 
         varlist = list(ff.inquire_names())
         varlist.sort()
@@ -379,19 +468,26 @@ rprms:
             if var[0] == 't':
                 name,it = string.split(var,'_')
                 suffix = "_%d"%(it)
-                self.time.append(ff.read('time'+suffix))
-                self.count.append(ff.read('count'+suffix))
-                self.current.append(ff.read('current'+suffix))
-                self.rrms.append(ff.read('rrms'+suffix))
-                self.rprms.append(ff.read('rprms'+suffix))
+                self._time.append(ff.read('time'+suffix))
+                self._zbeam.append(ff.read('zbeam'+suffix))
+                self._count.append(ff.read('count'+suffix))
+                self._current.append(ff.read('current'+suffix))
+                self._xbar.append(ff.read('xbar'+suffix))
+                self._ybar.append(ff.read('ybar'+suffix))
+                self._xsqbar.append(ff.read('xsqbar'+suffix))
+                self._ysqbar.append(ff.read('ysqbar'+suffix))
+                self._xrms.append(ff.read('xrms'+suffix))
+                self._yrms.append(ff.read('yrms'+suffix))
+                self._rrms.append(ff.read('rrms'+suffix))
+                self._rprms.append(ff.read('rprms'+suffix))
                 try:
-                    self.rprofile.append(ff.read('rprofile'+suffix))
+                    self._rprofile.append(ff.read('rprofile'+suffix))
                 except:
                     # --- This just means that there is no rprofile data
                     pass
                 try:
-                    self.scinttime.append(ff.read('scinttime'+suffix))
-                    self.scintillator.append(ff.read('scintillator'+suffix))
+                    self._scinttime.append(ff.read('scinttime'+suffix))
+                    self._scintillator.append(ff.read('scintillator'+suffix))
                 except:
                     # --- This just means that there is no scintillator data
                     pass
@@ -399,10 +495,10 @@ rprms:
         ff.close()
 
         # --- If there is no rprofile data, then delete the attribute
-        if len(self.rprofile) == 0:
-            del self.rprofile
-        if len(self.scintillator) == 0:
-            del self.scintillator
+        if len(self._rprofile) == 0:
+            del self._rprofile
+        if len(self._scintillator) == 0:
+            del self._scintillator
 
     def restorefromfilePickle(self,files=[],
                               starttime=-largepos,endtime=+largepos,
@@ -455,16 +551,23 @@ rprms:
                  datadict[newname] = datadict[var]
                  del datadict[var]
 
-        self.time = []
-        self.count = []
-        self.current = []
-        self.rrms = []
-        self.rprms = []
+        self._time = []
+        self._zbeam = []
+        self._count = []
+        self._current = []
+        self._xbar = []
+        self._ybar = []
+        self._xsqbar = []
+        self._ysqbar = []
+        self._xrms = []
+        self._yrms = []
+        self._rrms = []
+        self._rprms = []
         # --- At this point, getdiagnostics may not have been executed, so
         # --- self.ldoradialdiag may not be set. So assume that it is and
         # --- create the rprofile list.
-        self.rprofile = []
-        self.scintillator = []
+        self._rprofile = []
+        self._scintillator = []
 
         varlist = datadict.keys()
         varlist.sort()
@@ -472,35 +575,42 @@ rprms:
             if var[0:4] == 'time':
                 name,it = string.split(var,'_')
                 suffix = "_%s"%(it)
-                self.time.append(datadict['time'+suffix])
-                self.count.append(datadict['count'+suffix])
-                self.current.append(datadict['current'+suffix])
-                self.rrms.append(datadict['rrms'+suffix])
-                self.rprms.append(datadict['rprms'+suffix])
+                self._time.append(datadict['time'+suffix])
+                self._zbeam.append(datadict['zbeam'+suffix])
+                self._count.append(datadict['count'+suffix])
+                self._current.append(datadict['current'+suffix])
+                self._xbar.append(datadict['xbar'+suffix])
+                self._ybar.append(datadict['ybar'+suffix])
+                self._xsqbar.append(datadict['xsqbar'+suffix])
+                self._ysqbar.append(datadict['ysqbar'+suffix])
+                self._xrms.append(datadict['xrms'+suffix])
+                self._yrms.append(datadict['yrms'+suffix])
+                self._rrms.append(datadict['rrms'+suffix])
+                self._rprms.append(datadict['rprms'+suffix])
                 try:
-                    self.rprofile.append(datadict['rprofile'+suffix])
+                    self._rprofile.append(datadict['rprofile'+suffix])
                 except:
                     # --- This just means that there is no rprofile data
                     pass
                 try:
-                    self.scinttime.append(datadict['scinttime'+suffix])
-                    self.scintillator.append(datadict['scintillator'+suffix])
+                    self._scinttime.append(datadict['scinttime'+suffix])
+                    self._scintillator.append(datadict['scintillator'+suffix])
                 except:
                     # --- This just means that there is no scintillator data
                     pass
 
         # --- If there is no rprofile data, then delete the attribute
-        if len(self.rprofile) == 0:
-            del self.rprofile
-        if len(self.scintillator) == 0:
-            del self.scintillator
+        if len(self._rprofile) == 0:
+            del self._rprofile
+        if len(self._scintillator) == 0:
+            del self._scintillator
 
     def readscintillator(self,i,file=None):
         if file is None:
             file = self.dumptofile+'_gridcrossing.pkl'
 
         ff = open(file,'r')
-        ff.seek(self.scintillator[i])
+        ff.seek(self._scintillator[i])
         data = cPickle.load(ff)
         ff.close()
         return data[1]
@@ -577,4 +687,71 @@ around the peak current."""
             ii = (gridcurrent[:,iztarget] > currmin)
             Esum = sum(self.arrayrprofile[ii-di:ii+di,:,iztarget],0)
         self.ppfluence(Esum)
+
+    def _pp2d(self,data,lbeamframe=1,**kw):
+        zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+        if lbeamframe:
+            zz = zmesh[:,newaxis]*ones(data.shape[0])[newaxis,:]
+        else:
+            zz = zmesh[:,newaxis] + self.zbeam[newaxis,:]
+        tt = self.time[newaxis,:]*ones(self.nz+1)[:,newaxis]
+        ppgeneric(gridt=data,xmesh=zz,ymesh=tt,**kw)
+
+    def pp2dcount(self,**kw):
+        self._pp2d(self.count,**kw)
+    def pp2dcurrent(self,**kw):
+        self._pp2d(self.current,**kw)
+    def pp2dxbar(self,**kw):
+        self._pp2d(self.xbar,**kw)
+    def pp2dybar(self,**kw):
+        self._pp2d(self.ybar,**kw)
+    def pp2dxsqbar(self,**kw):
+        self._pp2d(self.xsqbar,**kw)
+    def pp2dysqbar(self,**kw):
+        self._pp2d(self.ysqbar,**kw)
+    def pp2dxrms(self,**kw):
+        self._pp2d(self.xrms,**kw)
+    def pp2dyrms(self,**kw):
+        self._pp2d(self.yrms,**kw)
+    def pp2srrms(self,**kw):
+        self._pp2d(self.rrms,**kw)
+    def pp2drprms(self,**kw):
+        self._pp2d(self.rprms,**kw)
+
+    # --- Setup the properties so that the last set of data which is
+    # --- still being accumulated is not returned, and so that the
+    # --- data is converted to an array.
+    def _setupproperty(name,doc=None):
+        def fget(self):
+            if self.nhist is None: nhist = top.nhist
+            else:                  nhist = self.nhist
+            result = getattr(self,'_'+name)
+            if top.it%nhist != int(nhist/2):
+                result = result[:-1]
+            try:
+                result = array(result)
+            except ValueError:
+                # --- This can happen if self.nz changed at some point,
+                # --- which changed the length of the new data so that
+                # --- all of the elements do not have the same length.
+                pass
+            return result
+        return fget,None,None,doc
+
+    time = property(*_setupproperty('time'))
+    zbeam = property(*_setupproperty('zbeam'))
+    count = property(*_setupproperty('count'))
+    current = property(*_setupproperty('current'))
+    xbar = property(*_setupproperty('xbar'))
+    ybar = property(*_setupproperty('ybar'))
+    xsqbar = property(*_setupproperty('xsqbar'))
+    ysqbar = property(*_setupproperty('ysqbar'))
+    xrms = property(*_setupproperty('xrms'))
+    yrms = property(*_setupproperty('yrms'))
+    rrms = property(*_setupproperty('rrms'))
+    rprms = property(*_setupproperty('rprms'))
+    rprofile = property(*_setupproperty('rprofile'))
+    scinttime = property(*_setupproperty('scinttime'))
+    scintillator = property(*_setupproperty('scintillator'))
+    del _setupproperty
 
