@@ -4,7 +4,7 @@ procedure, but using the full simulation instead of 1-D approximation.
 from warp import *
 from timedependentvoltage import TimeVoltage
 
-constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.4 2009/07/31 19:36:57 jlvay Exp $"
+constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.5 2009/08/29 00:02:51 dave Exp $"
 def constantcurrentinjectiondoc():
   import constantcurrentinjection
   print constantcurrentinjection.__doc__
@@ -159,10 +159,11 @@ frz.calc_a = 3
     self.hnp.append(getn())
 
   def disable(self):
-    uninstallafterfs(self.setsourcevolt)
-    setconductorvoltage(self.sourcevolt,condid=self.sourceid)
-    for id,v in map(None,self.othercontrolledids,self.othercontrolledvolts):
-      setconductorvoltage(v,condid=id)
+    if isinstalledafterfs(self.setsourcevolt):
+      uninstallafterfs(self.setsourcevolt)
+      setconductorvoltage(self.sourcevolt,condid=self.sourceid)
+      for id,v in map(None,self.othercontrolledids,self.othercontrolledvolts):
+        setconductorvoltage(v,condid=id)
 
 
 class SpecifiedCurrentRiseTime(ConstantCurrentRiseTime):
