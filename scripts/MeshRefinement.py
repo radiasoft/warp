@@ -1747,6 +1747,10 @@ not given, it uses f3d.mgmaxiters.
       for b in child.walkblocks():
         yield b
 
+  def setattrrecursive(self,name,value):
+    for block in self.root.listofblocks():
+      setattr(block,name,value)
+
   def arraysliceoperation(self,ip,idim,getdataname,op,opnd,null,comp=None):
     """
 Applies the operator to the array at the specified plane. The blocks only
