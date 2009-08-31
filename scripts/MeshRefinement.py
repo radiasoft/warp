@@ -1748,7 +1748,7 @@ not given, it uses f3d.mgmaxiters.
         yield b
 
   def setattrrecursive(self,name,value):
-    for block in self.root.listofblocks():
+    for block in self.root.listofblocks:
       setattr(block,name,value)
 
   def arraysliceoperation(self,ip,idim,getdataname,op,opnd,null,comp=None):
