@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.298 $, $Date: 2009/04/16 21:30:34 $
+#@(#) File W3D.V, version $Revision: 3.299 $, $Date: 2009/09/08 19:23:59 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.298 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.299 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -844,7 +844,8 @@ $setfields2(pgroup:ParticleGroup,np,is,x(np):real,y(np):real,z(np):real,
 $           ux(np):real,uy(np):real,uz(np):real)
 $    subroutine #  sets E,B at particle arrays; determines interpolation
 $               #  parameter alpha and its complement alphabar
-getgradbsq(np,is,ipmin,x(np):real,y(np):real,z(np):real,gaminv(np):real,dt:real) 
+getgradbsq(np,is,x(np):real,y(np):real,z(np):real,
+           bx(np):real,by(np):real,bz(np):real)
          subroutine    #  calculates or fetches grad B^2 components
 getalphas(np,is,ipmin,x(np):real,y(np):real,z(np):real,dt:real)
           subroutine   # calculate interpolation parameter alpha
