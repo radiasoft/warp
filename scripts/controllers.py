@@ -69,7 +69,7 @@ installuserinjection, uninstalluserinjection, installeduserinjection
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.26 2009/04/27 16:45:51 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.27 2009/09/14 22:21:54 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -103,6 +103,7 @@ be restored since the source is not saved anywhere.
   def __init__(self,name=None,lcallonce=0):
     self.funcs = []
     self.time = 0.
+    self.timers = {}
     self.name = name
     self.lcallonce = lcallonce
 
@@ -241,7 +242,10 @@ controllers are restored properly.
   def callfuncsinlist(self,*args,**kw):
     bb = time.time()
     for f in self.controllerfunclist():
+      t1 = time.time()
       f(*args,**kw)
+      t2 = time.time()
+      self.timers[f] = self.timers.get(f,0.) + (t2 - t1)
     aa = time.time()
     return aa - bb
 
@@ -317,6 +321,15 @@ Anything that may have already been installed will therefore be unaffected.
     # --- this instance will be written out and must contain an updated
     # --- list of controllers.
     self.clist = controllers.__dict__['controllerfunctioncontainer'].clist
+
+  def printtimers(self,tmin=1.):
+    """Prints timings of install functions.
+ - tmin=1.: only functions with time greater than tmin will be printed
+    """
+    for c in self.clist:
+      for f in c.controllerfunclist():
+        if c.timers[f] > tmin:
+          print c.name,f,c.timers[f]
 
 # --- This is primarily needed by warp.py so that these objects can be removed
 # --- from the list of python objects which are not written out.
