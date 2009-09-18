@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.169 $, $Date: 2009/07/09 22:15:06 $
+c@(#) File DTOP.F, version $Revision: 3.170 $, $Date: 2009/09/18 20:37:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.169 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.170 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1232,6 +1232,11 @@ c   xmin,xmax: extent of the grid, i.e. grid(0) is at xmin, grid(nx) is at xmax
       integer(ISZ):: ip,ix
       real(kind=8):: gx,dxi,wx
 
+      if (xmax == xmin) then
+        call kaboom("setgrid1d: the grid extent is zero, xmin==xmax")
+        return
+      endif
+
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
 
@@ -1318,6 +1323,11 @@ c   xmin,xmax: extent of the grid, i.e. grid(0) is at xmin, grid(nx) is at xmax
       integer(ISZ):: ip,ix
       real(kind=8):: gx,dxi,wx
 
+      if (xmax == xmin) then
+        call kaboom("deposgrid1d: the grid extent is zero, xmin==xmax")
+        return
+      endif
+
 c     --- Reset grids if requested
       if (itask == 0) then
         grid = 0.
@@ -1358,6 +1368,75 @@ c     --- itask == 0.
       return
       end
 c=============================================================================
+      subroutine deposgrid1dw(itask,np,x,z,w,nx,grid,gridcount,xmin,xmax)
+      integer(ISZ):: itask,nx,np
+      real(kind=8):: x(np), z(np), w(np)
+      real(kind=8):: grid(0:nx), gridcount(0:nx)
+      real(kind=8):: xmin,xmax
+
+c Deposits particle data onto a node centered 1-D mesh using linear
+c interpolation, the average over z as a function of position.
+c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
+c          is not reset. If itask is zero, then grid is divided by
+c          gridcount, the number of particles, to give the average.
+c          Setting itask=1 allows data to be accumulated over multiple
+c          calls to deposgrid1dw, to obtain better statistics.
+c   np: number of particles
+c   x: array of particle positions
+c   z: array of data to be accumulated
+c   nx: number of grid cells
+c   grid: array where the z data is accumulated
+c   gridcount: array where particle number will be accumulated
+c   xmin,xmax: extent of the grid, i.e. grid(0) is at xmin, grid(nx) is at xmax
+
+      integer(ISZ):: ip,ix
+      real(kind=8):: gx,dxi,wx
+
+      if (xmax == xmin) then
+        call kaboom("deposgrid1dw,: the grid extent is zero, xmin==xmax")
+        return
+      endif
+
+c     --- Reset grids if requested
+      if (itask == 0) then
+        grid = 0.
+        gridcount = 0.
+      endif
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gx = (x(ip) - xmin)*dxi
+
+c       --- if within grid, accumulate
+        if (0. <= gx .and. gx < nx) then
+          ix = int(gx)
+          wx = gx - ix
+          grid(ix  ) = grid(ix  ) + z(ip)*(1. - wx)*w(ip)
+          grid(ix+1) = grid(ix+1) + z(ip)*      wx *w(ip)
+          gridcount(ix  ) = gridcount(ix  ) + (1. - wx)*w(ip)
+          gridcount(ix+1) = gridcount(ix+1) +       wx *w(ip)
+        endif
+
+      enddo
+
+c     --- Divide out the number of particles at each grid point, only if
+c     --- itask == 0.
+      if (itask == 0) then
+        do ix=0,nx
+          if (gridcount(ix) > 0.) then
+            grid(ix) = grid(ix)/gridcount(ix)
+          endif
+        enddo
+      endif
+
+      return
+      end
+c=============================================================================
       subroutine getgrid1d(np,x,z,nx,grid,xmin,xmax)
       integer(ISZ):: nx,np
       real(kind=8):: x(np), z(np)
@@ -1375,6 +1454,11 @@ c   xmin,xmax: extent of the grid, i.e. grid(0) is at xmin, grid(nx) is at xmax
 
       integer(ISZ):: ip,ix
       real(kind=8):: gx,dxi,wx
+
+      if (xmax == xmin) then
+        call kaboom("getgrid1d: the grid extent is zero, xmin==xmax")
+        return
+      endif
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
@@ -1417,6 +1501,11 @@ c                        grid(nx,ny) is at (xmax,ymax)
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
+
+      if (xmax == xmin .or. ymax == ymin) then
+        call kaboom("setgrid2d: the grid extent is zero, xmin==xmax or ymin==ymax")
+        return
+      endif
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
@@ -1467,6 +1556,11 @@ c                        grid(nx,ny) is at (xmax,ymax)
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
 
+      if (xmax == xmin .or. ymax == ymin) then
+        call kaboom("setgrid2dw: the grid extent is zero, xmin==xmax or ymin==ymax")
+        return
+      endif
+
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
       dyi = ny/(ymax - ymin)
@@ -1509,7 +1603,7 @@ c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
 c          is not reset. If itask is zero, then grid is divided by
 c          gridcount, the number of particles, to give the average.
 c          Setting itask=1 allows data to be accumulated over multiple
-c          calls to deposgrid1d to obtain better statistics.
+c          calls to deposgrid2d to obtain better statistics.
 c   np: number of particles
 c   x,y: arrays of particle positions
 c   z: array of data to be accumulated
@@ -1521,6 +1615,11 @@ c                        grid(nx,ny) is at (xmax,ymax)
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
+
+      if (xmax == xmin .or. ymax == ymin) then
+        call kaboom("deposgrid2d: the grid extent is zero, xmin==xmax or ymin==ymax")
+        return
+      endif
 
 c     --- Reset grids if requested
       if (itask == 0) then
@@ -1586,7 +1685,7 @@ c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
 c          is not reset. If itask is zero, then grid is divided by
 c          gridcount, the number of particles, to give the average.
 c          Setting itask=1 allows data to be accumulated over multiple
-c          calls to deposgrid1d to obtain better statistics.
+c          calls to deposgrid2dw to obtain better statistics.
 c   np: number of particles
 c   x,y: arrays of particle positions
 c   z: array of data to be accumulated
@@ -1599,6 +1698,11 @@ c                        grid(nx,ny) is at (xmax,ymax)
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
+
+      if (xmax == xmin .or. ymax == ymin) then
+        call kaboom("deposgrid2dw: the grid extent is zero, xmin==xmax or ymin==ymax")
+        return
+      endif
 
 c     --- Reset grids if requested
       if (itask == 0) then
@@ -1666,7 +1770,7 @@ c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
 c          is not reset. If itask is zero, then grid is divided by
 c          gridcount, the number of particles, to give the average.
 c          Setting itask=1 allows data to be accumulated over multiple
-c          calls to deposgrid1d to obtain better statistics.
+c          calls to deposgridrzvect to obtain better statistics.
 c   np: number of particles
 c   x,y: arrays of transverse particle positions (converted to r)
 c   z: array of axial particle positions
@@ -1681,6 +1785,11 @@ c                        grid(nx,ny,:) is at (xmax,ymax)
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
+
+      if (xmax == xmin .or. ymax == ymin) then
+        call kaboom("deposgridrzvect: the grid extent is zero, xmin==xmax or ymin==ymax")
+        return
+      endif
 
 c     --- Reset grids if requested
       if (itask == 0) then
@@ -1768,6 +1877,11 @@ c                        grid(nx,ny) is at (xmax,ymax)
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
 
+      if (xmax == xmin .or. ymax == ymin) then
+        call kaboom("getgrid2d: the grid extent is zero, xmin==xmax or ymin==ymax")
+        return
+      endif
+
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
       dyi = ny/(ymax - ymin)
@@ -1816,6 +1930,11 @@ c                        grid(nx,ny) is at (xmax,ymax)
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi
 
+      if (xmax == xmin .or. ymax == ymin) then
+        call kaboom("getgridngp2d: the grid extent is zero, xmin==xmax or ymin==ymax")
+        return
+      endif
+
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
       dyi = ny/(ymax - ymin)
@@ -1860,6 +1979,11 @@ c                                  grid(nx,ny,nz) is at (xmax,ymax,zmax)
 
       integer(ISZ):: ip,ix,iy,iz
       real(kind=8):: gx,gy,gz,dxi,dyi,dzi,wx,wy,wz
+
+      if (xmax == xmin .or. ymax == ymin .or. zmax == zmin) then
+        call kaboom("setgrid3d: the grid extent is zero, xmin==xmax or ymin==ymax or zmin==zmax")
+        return
+      endif
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
@@ -1912,7 +2036,7 @@ c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
 c          is not reset. If itask is zero, then grid is divided by
 c          gridcount, the number of particles, to give the average.
 c          Setting itask=1 allows data to be accumulated over multiple
-c          calls to deposgrid1d to obtain better statistics.
+c          calls to deposgrid3d to obtain better statistics.
 c   np: number of particles
 c   x,y,z: arrays of particle positions
 c   q: array of data to be accumulated
@@ -1926,6 +2050,11 @@ c                                  grid(nx,ny,nz) is at (xmax,ymax,zmax)
       integer(ISZ):: ip,ix,iy,iz,ixp1,iyp1,izp1
       integer(ISZ):: nxtemp,nytemp,nztemp
       real(kind=8):: gx,gy,gz,dxi,dyi,dzi,wx,wy,wz
+
+      if (xmax == xmin .or. zmax == zmin) then
+        call kaboom("deposgrid3d: the grid extent is zero, xmin==xmax or zmin==zmax")
+        return
+      endif
 
 c     --- Reset grids if requested
       if (itask == 0) then
@@ -2047,7 +2176,7 @@ c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
 c          is not reset. If itask is zero, then grid is divided by
 c          gridcount, the number of particles, to give the average.
 c          Setting itask=1 allows data to be accumulated over multiple
-c          calls to deposgrid1d to obtain better statistics.
+c          calls to deposgrid3dvect to obtain better statistics.
 c   np: number of particles
 c   x,y,z: arrays of particle positions
 c   vx,vy,vz: arrays of vector data
@@ -2062,6 +2191,11 @@ c                                  grid(nx,ny,nz,:) is at (xmax,ymax,zmax)
       integer(ISZ):: ip,ix,iy,iz,ixp1,iyp1,izp1
       integer(ISZ):: nxtemp,nytemp,nztemp
       real(kind=8):: gx,gy,gz,dxi,dyi,dzi,wx,wy,wz
+
+      if (xmax == xmin .or. zmax == zmin) then
+        call kaboom("deposgrid3dvect: the grid extent is zero, xmin==xmax or zmin==zmax")
+        return
+      endif
 
 c     --- Reset grids if requested
       if (itask == 0) then
@@ -2201,6 +2335,11 @@ c                                  grid(nx,ny,nz,:) is at (xmax,ymax,zmax)
       real(kind=8):: xx,yy,gx,gy,gz
       real(kind=8):: dxi,dyi,dzi,wx,wy,wz
       real(kind=8):: xsymmetryplane,ysymmetryplane
+
+      if (xmax == xmin .or. zmax == zmin) then
+        call kaboom("getgrid3d: the grid extent is zero, xmin==xmax or zmin==zmax")
+        return
+      endif
 
 c     --- These now default to zero, but could be input quantities.
       xsymmetryplane = 0.
@@ -2349,6 +2488,11 @@ c                                  grid(nx,ny,nz,:) is at (xmax,ymax,zmax)
       real(kind=8):: dxi,dyi,dzi,wx,wy,wz
       real(kind=8):: xsymmetryplane,ysymmetryplane
 
+      if (xmax == xmin .or. ymax == ymin .or. zmax == zmin) then
+        call kaboom("getgridngp3d: the grid extent is zero, xmin==xmax or ymin==ymax or zmin==zmax")
+        return
+      endif
+
 c     --- These now default to zero, but could be input quantities.
       xsymmetryplane = 0.
       ysymmetryplane = 0.
@@ -2415,6 +2559,11 @@ c                                  grid(nx,ny,nz,:) is at (xmax,ymax,zmax)
       real(kind=8):: gx,gy,gz
       real(kind=8):: dxi,dyi,dzi,wx,wy,wz
       real(kind=8):: xsymmetryplane,ysymmetryplane
+
+      if (xmax == xmin .or. ymax == ymin .or. zmax == zmin) then
+        call kaboom("getgridngp3di: the grid extent is zero, xmin==xmax or ymin==ymax or zmin==zmax")
+        return
+      endif
 
 c     --- These now default to zero, but could be input quantities.
       xsymmetryplane = 0.
