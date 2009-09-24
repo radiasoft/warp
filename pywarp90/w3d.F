@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.434 $, $Date: 2009/06/30 20:26:23 $
+c@(#) File W3D.F, version $Revision: 3.435 $, $Date: 2009/09/24 15:57:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -920,7 +920,7 @@ c  Field-solve for potential.
 
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
-         if (ANY(efetch == 3) .and. fstype < 12 .and.
+         if ((ANY(efetch == 3) .or. ANY(efetch == 7)) .and. fstype < 12 .and.
      &        (solvergeom == XYZgeom .or.
      &        solvergeom == RZgeom .or.
      &        solvergeom == XZgeom .or.
@@ -4244,11 +4244,338 @@ c           --- Adjust sign of E field for appropriate quadrant.
 
         endif
 
+      else if (efetch == 7) then
+
+c       --- Fetch with a 2nd order spline
+        call sete3dspline2(selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
+     &                         dx,dy,dz,nx,ny,nz,ex,ey,ez,
+     &                         l2symtry,l4symtry,lcylindrical)
       endif
 
 !$OMP MASTER
       if (lw3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
 !$OMP END MASTER
+      return
+      end
+c=========================================================================== 
+      subroutine sete3dspline2(selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
+     &                         dx,dy,dz,nx,ny,nz,ex,ey,ez,
+     &                         l2symtry,l4symtry,lcylindrical)
+      use Subtimers3d
+      integer(ISZ):: np,nx,ny,nz
+      real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
+      real(kind=8):: selfe(3,0:nx,0:ny,0:nz),xp(np),yp(np),zp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
+
+c Fetch the E fields using 2nd order splines
+c WARNING!! This code is not complete and will not work for particles
+c near the boundaries!!!
+
+      integer(ISZ):: ip,i,j,k,inext,jnext,knext
+      real(kind=8):: dxi,dyi,dzi
+      real(kind=8):: wx,wy,wz,u0,u1,u2,v0,v1,v2,w0,w1,w2,ysign,xsign
+      real(kind=8):: sx,sy,ext,eyt,ezt
+      real(kind=8):: x,y,xnext,ynext
+
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+
+      if (.not. (l2symtry .or. l4symtry)) then
+
+        if (lcylindrical) then
+          xnext = sqrt(xp(1)**2 + yp(1)**2)
+          ynext = ymmin
+        else
+          xnext = xp(1)
+          ynext = yp(1)
+        endif
+        inext = nint((xnext - xmmin)*dxi)
+        jnext = nint((ynext - ymmin)*dyi)
+        knext = nint((zp(1) - zgrid - zmmin)*dzi)
+
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          k = knext
+          x = xnext
+          y = ynext
+          if (ip < np) then
+            if (lcylindrical) then
+              xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+              ynext = ymmin
+            else
+              xnext = xp(ip+1)
+              ynext = yp(ip+1)
+            endif
+            inext = nint((xnext    - xmmin)*dxi)
+            jnext = nint((ynext    - ymmin)*dyi)
+            knext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+          endif
+
+          wx = (x      - xmmin)*dxi - i
+          wy = (y      - ymmin)*dyi - j
+          wz = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+          w0 = 0.5*(0.5 - wz)**2
+          w1 = (0.75 - wz**2)
+          w2 = 0.5*(0.5 + wz)**2
+
+          ext = u0*v0*w0*selfe(1,i-1,j-1,k-1)
+     &        + u1*v0*w0*selfe(1,i  ,j-1,k-1)
+     &        + u2*v0*w0*selfe(1,i+1,j-1,k-1)
+     &        + u0*v1*w0*selfe(1,i-1,j  ,k-1)
+     &        + u1*v1*w0*selfe(1,i  ,j  ,k-1)
+     &        + u2*v1*w0*selfe(1,i+1,j  ,k-1)
+     &        + u0*v2*w0*selfe(1,i-1,j+1,k-1)
+     &        + u1*v2*w0*selfe(1,i  ,j+1,k-1)
+     &        + u2*v2*w0*selfe(1,i+1,j+1,k-1)
+
+     &        + u0*v0*w1*selfe(1,i-1,j-1,k  )
+     &        + u1*v0*w1*selfe(1,i  ,j-1,k  )
+     &        + u2*v0*w1*selfe(1,i+1,j-1,k  )
+     &        + u0*v1*w1*selfe(1,i-1,j  ,k  )
+     &        + u1*v1*w1*selfe(1,i  ,j  ,k  )
+     &        + u2*v1*w1*selfe(1,i+1,j  ,k  )
+     &        + u0*v2*w1*selfe(1,i-1,j+1,k  )
+     &        + u1*v2*w1*selfe(1,i  ,j+1,k  )
+     &        + u2*v2*w1*selfe(1,i+1,j+1,k  )
+
+     &        + u0*v0*w2*selfe(1,i-1,j-1,k+1)
+     &        + u1*v0*w2*selfe(1,i  ,j-1,k+1)
+     &        + u2*v0*w2*selfe(1,i+1,j-1,k+1)
+     &        + u0*v1*w2*selfe(1,i-1,j  ,k+1)
+     &        + u1*v1*w2*selfe(1,i  ,j  ,k+1)
+     &        + u2*v1*w2*selfe(1,i+1,j  ,k+1)
+     &        + u0*v2*w2*selfe(1,i-1,j+1,k+1)
+     &        + u1*v2*w2*selfe(1,i  ,j+1,k+1)
+     &        + u2*v2*w2*selfe(1,i+1,j+1,k+1)
+
+          eyt = u0*v0*w0*selfe(2,i-1,j-1,k-1)
+     &        + u1*v0*w0*selfe(2,i  ,j-1,k-1)
+     &        + u2*v0*w0*selfe(2,i+1,j-1,k-1)
+     &        + u0*v1*w0*selfe(2,i-1,j  ,k-1)
+     &        + u1*v1*w0*selfe(2,i  ,j  ,k-1)
+     &        + u2*v1*w0*selfe(2,i+1,j  ,k-1)
+     &        + u0*v2*w0*selfe(2,i-1,j+1,k-1)
+     &        + u1*v2*w0*selfe(2,i  ,j+1,k-1)
+     &        + u2*v2*w0*selfe(2,i+1,j+1,k-1)
+
+     &        + u0*v0*w1*selfe(2,i-1,j-1,k  )
+     &        + u1*v0*w1*selfe(2,i  ,j-1,k  )
+     &        + u2*v0*w1*selfe(2,i+1,j-1,k  )
+     &        + u0*v1*w1*selfe(2,i-1,j  ,k  )
+     &        + u1*v1*w1*selfe(2,i  ,j  ,k  )
+     &        + u2*v1*w1*selfe(2,i+1,j  ,k  )
+     &        + u0*v2*w1*selfe(2,i-1,j+1,k  )
+     &        + u1*v2*w1*selfe(2,i  ,j+1,k  )
+     &        + u2*v2*w1*selfe(2,i+1,j+1,k  )
+
+     &        + u0*v0*w2*selfe(2,i-1,j-1,k+1)
+     &        + u1*v0*w2*selfe(2,i  ,j-1,k+1)
+     &        + u2*v0*w2*selfe(2,i+1,j-1,k+1)
+     &        + u0*v1*w2*selfe(2,i-1,j  ,k+1)
+     &        + u1*v1*w2*selfe(2,i  ,j  ,k+1)
+     &        + u2*v1*w2*selfe(2,i+1,j  ,k+1)
+     &        + u0*v2*w2*selfe(2,i-1,j+1,k+1)
+     &        + u1*v2*w2*selfe(2,i  ,j+1,k+1)
+     &        + u2*v2*w2*selfe(2,i+1,j+1,k+1)
+
+          ezt = u0*v0*w0*selfe(3,i-1,j-1,k-1)
+     &        + u1*v0*w0*selfe(3,i  ,j-1,k-1)
+     &        + u2*v0*w0*selfe(3,i+1,j-1,k-1)
+     &        + u0*v1*w0*selfe(3,i-1,j  ,k-1)
+     &        + u1*v1*w0*selfe(3,i  ,j  ,k-1)
+     &        + u2*v1*w0*selfe(3,i+1,j  ,k-1)
+     &        + u0*v2*w0*selfe(3,i-1,j+1,k-1)
+     &        + u1*v2*w0*selfe(3,i  ,j+1,k-1)
+     &        + u2*v2*w0*selfe(3,i+1,j+1,k-1)
+
+     &        + u0*v0*w1*selfe(3,i-1,j-1,k  )
+     &        + u1*v0*w1*selfe(3,i  ,j-1,k  )
+     &        + u2*v0*w1*selfe(3,i+1,j-1,k  )
+     &        + u0*v1*w1*selfe(3,i-1,j  ,k  )
+     &        + u1*v1*w1*selfe(3,i  ,j  ,k  )
+     &        + u2*v1*w1*selfe(3,i+1,j  ,k  )
+     &        + u0*v2*w1*selfe(3,i-1,j+1,k  )
+     &        + u1*v2*w1*selfe(3,i  ,j+1,k  )
+     &        + u2*v2*w1*selfe(3,i+1,j+1,k  )
+
+     &        + u0*v0*w2*selfe(3,i-1,j-1,k+1)
+     &        + u1*v0*w2*selfe(3,i  ,j-1,k+1)
+     &        + u2*v0*w2*selfe(3,i+1,j-1,k+1)
+     &        + u0*v1*w2*selfe(3,i-1,j  ,k+1)
+     &        + u1*v1*w2*selfe(3,i  ,j  ,k+1)
+     &        + u2*v1*w2*selfe(3,i+1,j  ,k+1)
+     &        + u0*v2*w2*selfe(3,i-1,j+1,k+1)
+     &        + u1*v2*w2*selfe(3,i  ,j+1,k+1)
+     &        + u2*v2*w2*selfe(3,i+1,j+1,k+1)
+
+          if (lcylindrical) then
+            if (x > 0.) then
+              eyt = ext*yp(ip)/x
+              ext = ext*xp(ip)/x
+            else
+              ext = ext
+              eyt = 0.
+            endif
+          endif
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      else
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sy = -1.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        inext = nint((abs(xp(1)) - xmmin)*dxi)
+        jnext = nint((abs(yp(1)) - ymmin)*dyi)
+        knext = nint((zp(1) - zgrid - zmmin)*dzi)
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          k = knext
+          if (ip < np) then
+            inext = nint((abs(xp(ip+1)) - xmmin)*dxi)
+            jnext = nint((abs(yp(ip+1)) - ymmin)*dyi)
+            knext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+          endif
+
+          wx = (x      - xmmin)*dxi - i
+          wy = (y      - ymmin)*dyi - j
+          wz = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+          w0 = 0.5*(0.5 - wz)**2
+          w1 = (0.75 - wz**2)
+          w2 = 0.5*(0.5 + wz)**2
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = 1.
+          ysign = 1.
+          if (xp(ip) < 0.) xsign = sx
+          if (yp(ip) < 0.) ysign = sy
+
+          ext = u0*v0*w0*selfe(1,i-1,j-1,k-1)
+     &        + u1*v0*w0*selfe(1,i  ,j-1,k-1)
+     &        + u2*v0*w0*selfe(1,i+1,j-1,k-1)
+     &        + u0*v1*w0*selfe(1,i-1,j  ,k-1)
+     &        + u1*v1*w0*selfe(1,i  ,j  ,k-1)
+     &        + u2*v1*w0*selfe(1,i+1,j  ,k-1)
+     &        + u0*v2*w0*selfe(1,i-1,j+1,k-1)
+     &        + u1*v2*w0*selfe(1,i  ,j+1,k-1)
+     &        + u2*v2*w0*selfe(1,i+1,j+1,k-1)
+
+     &        + u0*v0*w1*selfe(1,i-1,j-1,k  )
+     &        + u1*v0*w1*selfe(1,i  ,j-1,k  )
+     &        + u2*v0*w1*selfe(1,i+1,j-1,k  )
+     &        + u0*v1*w1*selfe(1,i-1,j  ,k  )
+     &        + u1*v1*w1*selfe(1,i  ,j  ,k  )
+     &        + u2*v1*w1*selfe(1,i+1,j  ,k  )
+     &        + u0*v2*w1*selfe(1,i-1,j+1,k  )
+     &        + u1*v2*w1*selfe(1,i  ,j+1,k  )
+     &        + u2*v2*w1*selfe(1,i+1,j+1,k  )
+
+     &        + u0*v0*w2*selfe(1,i-1,j-1,k+1)
+     &        + u1*v0*w2*selfe(1,i  ,j-1,k+1)
+     &        + u2*v0*w2*selfe(1,i+1,j-1,k+1)
+     &        + u0*v1*w2*selfe(1,i-1,j  ,k+1)
+     &        + u1*v1*w2*selfe(1,i  ,j  ,k+1)
+     &        + u2*v1*w2*selfe(1,i+1,j  ,k+1)
+     &        + u0*v2*w2*selfe(1,i-1,j+1,k+1)
+     &        + u1*v2*w2*selfe(1,i  ,j+1,k+1)
+     &        + u2*v2*w2*selfe(1,i+1,j+1,k+1)
+
+          eyt = u0*v0*w0*selfe(2,i-1,j-1,k-1)
+     &        + u1*v0*w0*selfe(2,i  ,j-1,k-1)
+     &        + u2*v0*w0*selfe(2,i+1,j-1,k-1)
+     &        + u0*v1*w0*selfe(2,i-1,j  ,k-1)
+     &        + u1*v1*w0*selfe(2,i  ,j  ,k-1)
+     &        + u2*v1*w0*selfe(2,i+1,j  ,k-1)
+     &        + u0*v2*w0*selfe(2,i-1,j+1,k-1)
+     &        + u1*v2*w0*selfe(2,i  ,j+1,k-1)
+     &        + u2*v2*w0*selfe(2,i+1,j+1,k-1)
+
+     &        + u0*v0*w1*selfe(2,i-1,j-1,k  )
+     &        + u1*v0*w1*selfe(2,i  ,j-1,k  )
+     &        + u2*v0*w1*selfe(2,i+1,j-1,k  )
+     &        + u0*v1*w1*selfe(2,i-1,j  ,k  )
+     &        + u1*v1*w1*selfe(2,i  ,j  ,k  )
+     &        + u2*v1*w1*selfe(2,i+1,j  ,k  )
+     &        + u0*v2*w1*selfe(2,i-1,j+1,k  )
+     &        + u1*v2*w1*selfe(2,i  ,j+1,k  )
+     &        + u2*v2*w1*selfe(2,i+1,j+1,k  )
+
+     &        + u0*v0*w2*selfe(2,i-1,j-1,k+1)
+     &        + u1*v0*w2*selfe(2,i  ,j-1,k+1)
+     &        + u2*v0*w2*selfe(2,i+1,j-1,k+1)
+     &        + u0*v1*w2*selfe(2,i-1,j  ,k+1)
+     &        + u1*v1*w2*selfe(2,i  ,j  ,k+1)
+     &        + u2*v1*w2*selfe(2,i+1,j  ,k+1)
+     &        + u0*v2*w2*selfe(2,i-1,j+1,k+1)
+     &        + u1*v2*w2*selfe(2,i  ,j+1,k+1)
+     &        + u2*v2*w2*selfe(2,i+1,j+1,k+1)
+
+          ezt = u0*v0*w0*selfe(3,i-1,j-1,k-1)
+     &        + u1*v0*w0*selfe(3,i  ,j-1,k-1)
+     &        + u2*v0*w0*selfe(3,i+1,j-1,k-1)
+     &        + u0*v1*w0*selfe(3,i-1,j  ,k-1)
+     &        + u1*v1*w0*selfe(3,i  ,j  ,k-1)
+     &        + u2*v1*w0*selfe(3,i+1,j  ,k-1)
+     &        + u0*v2*w0*selfe(3,i-1,j+1,k-1)
+     &        + u1*v2*w0*selfe(3,i  ,j+1,k-1)
+     &        + u2*v2*w0*selfe(3,i+1,j+1,k-1)
+
+     &        + u0*v0*w1*selfe(3,i-1,j-1,k  )
+     &        + u1*v0*w1*selfe(3,i  ,j-1,k  )
+     &        + u2*v0*w1*selfe(3,i+1,j-1,k  )
+     &        + u0*v1*w1*selfe(3,i-1,j  ,k  )
+     &        + u1*v1*w1*selfe(3,i  ,j  ,k  )
+     &        + u2*v1*w1*selfe(3,i+1,j  ,k  )
+     &        + u0*v2*w1*selfe(3,i-1,j+1,k  )
+     &        + u1*v2*w1*selfe(3,i  ,j+1,k  )
+     &        + u2*v2*w1*selfe(3,i+1,j+1,k  )
+
+     &        + u0*v0*w2*selfe(3,i-1,j-1,k+1)
+     &        + u1*v0*w2*selfe(3,i  ,j-1,k+1)
+     &        + u2*v0*w2*selfe(3,i+1,j-1,k+1)
+     &        + u0*v1*w2*selfe(3,i-1,j  ,k+1)
+     &        + u1*v1*w2*selfe(3,i  ,j  ,k+1)
+     &        + u2*v1*w2*selfe(3,i+1,j  ,k+1)
+     &        + u0*v2*w2*selfe(3,i-1,j+1,k+1)
+     &        + u1*v2*w2*selfe(3,i  ,j+1,k+1)
+     &        + u2*v2*w2*selfe(3,i+1,j+1,k+1)
+
+          ex(ip) = ex(ip) + ext*xsign
+          ey(ip) = ey(ip) + eyt*ysign
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      endif
+
       return
       end
 c=========================================================================== 
@@ -7688,6 +8015,7 @@ c  Uses a second order spline with direct deposition (no particle blocks)
 c     --- This is very memory inefficient, but make dealing with boundary
 c     --- conditions much easier.
       allocate(rhotemp(-1:nx+1,-1:ny+1,-1:nz+1))
+      rhotemp = 0.
 
       g = wght*q/(dx*dy*dz)
       dxi = 1./dx
@@ -9406,7 +9734,7 @@ c is needed for the field gather (efetch == 3).
 
       checkalloc = lforce
 
-      if (ANY(efetch == 3) .and. fstype < 12 .and.
+      if ((ANY(efetch == 3) .or. ANY(efetch == 7)) .and. fstype < 12 .and.
      &    (solvergeom == XYZgeom .or.
      &     solvergeom == RZgeom .or.
      &     solvergeom == XZgeom .or.
