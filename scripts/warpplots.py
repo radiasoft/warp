@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.255 2009/07/17 20:14:43 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.256 2009/09/25 22:34:28 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -3890,11 +3890,13 @@ Plots b envelope +/- x centroid
 def getdecomposedarray(arr,ix=None,iy=None,iz=None,bcast=1,local=0,
                        fullplane=0,xyantisymmetric=0,solver=None):
   """Returns slices of a decomposed array, The shape of
-the object returned depends on the number of arguments specified, which can
-be from none to all three.
+the object returned depends on the number of ix, iy and iz specified, which
+can be from none to all three. Note that the values of ix, iy and iz are
+relative to the fortran indexing, meaning that 0 is the lower boundary
+of the domain.
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None: Value is relative to the fortran indexing.
+  - iz = None:
   - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
@@ -4063,10 +4065,10 @@ def setdecomposedarray(arr,val,ix=None,iy=None,iz=None,local=0,solver=None):
   """Sets slices of a decomposed array. The shape of
 the input object depends on the number of arguments specified, which can
 be from none to all three.
-  - val input array (must be supplied)
+  - val: input array (must be supplied)
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None: Value is relative to the fortran indexing.
+  - iz = None:
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: decomp = top.fsdecomp
@@ -4170,8 +4172,10 @@ be from none to all three.
 # --------------------------------------------------------------------------
 def getrho(ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,solver=None):
   """Returns slices of rho, the charge density array. The shape of the object
-returned depends on the number of arguments specified, which can be from none
-to all three.
+returned depends on the number of ix, iy and iz specified, which can be from
+none to all three. If no components are given, then a 3-D array is returned. 
+With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
+Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None:
@@ -4197,10 +4201,12 @@ to all three.
 
 # --------------------------------------------------------------------------
 def setrho(val,ix=None,iy=None,iz=None,local=0,solver=None):
-  """Sets slices of rho, the charge density array. The shape of the input
-object depends on the number of arguments specified, which can be from none
-to all three.
-  - val input array (must be supplied)
+  """Sets slices of rho, the charge density array. The shape of the object
+returned depends on the number of ix, iy and iz specified, which can be from
+none to all three. If no components are given, then a 3-D array is returned. 
+With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
+Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
+  - val: input array (must be supplied)
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None:
@@ -4219,11 +4225,14 @@ to all three.
 # --------------------------------------------------------------------------
 def getphi(ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,solver=None):
   """Returns slices of phi, the electrostatic potential array. The shape of
-the object returned depends on the number of arguments specified, which can
-be from none to all three.
+the object returned depends on the number of ix, iy and iz specified, which
+can be from none to all three. If no components are given, then a 3-D array
+is returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar
+is returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
+the upper edge.  
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None: Value is relative to the fortran indexing, so iz ranges
+  - iz = None:
                from -1 to nz+1
   - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
@@ -4251,7 +4260,12 @@ def setphi(val,ix=None,iy=None,iz=None,local=0,solver=None):
   """Sets slices of phi, the electrostatic potential array. The shape of
 the input object depends on the number of arguments specified, which can
 be from none to all three.
-  - val input array (must be supplied)
+  The shape of the object
+returned depends on the number of ix, iy and iz specified, which can be from
+none to all three. If no components are given, then a 3-D array is returned. 
+With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
+Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
+  - val: input array (must be supplied)
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None: Value is relative to the fortran indexing, so iz ranges
@@ -4272,13 +4286,16 @@ be from none to all three.
 # --------------------------------------------------------------------------
 def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
              solver=None):
-  """Returns slices of selfe, the electrostatic field array. The shape of
-the object returned depends on the number of arguments specified, which can
-be from none to all three.
-  - comp: field component to get, either 'x', 'y', or 'z'
-  - ix = None
-  - iy = None
-  - iz = None
+  """Returns slices of selfe, the electrostatic field array. The shape of the
+object returned depends on the number of ix, iy and iz specified, which can
+be from none to all three. If no components are given, then a 3-D array is
+returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar is
+returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
+the upper edge.  
+  - comp: field component to get, either 'x', 'y', or 'z', must be given
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
   - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
@@ -4312,14 +4329,15 @@ be from none to all three.
 # --------------------------------------------------------------------------
 def getj(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
          solver=None):
-  """Returns slices of J, the current density array. The shape of
-the object returned depends on the number of arguments specified, which can
-be from none to all three.
-  - comp: field component to get, either 'x', 'y', or 'z'
-  - ix = None
+  """Returns slices of J, the current density array. The shape of the object
+returned depends on the number of ix, iy and iz specified, which can be from
+none to all three. If no components are given, then a 3-D array is returned. 
+With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
+Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
+  - comp: field component to get, either 'x', 'y', or 'z', must be given
+  - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None: Value is relative to the fortran indexing, so iz ranges
-               from -1 to nz+1
+  - iz = None:
   - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
@@ -4343,13 +4361,15 @@ be from none to all three.
 # --------------------------------------------------------------------------
 def getb(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
          solver=None):
-  """Returns slices of B, the magnetic field array. The shape of
-the object returned depends on the number of arguments specified, which can
-be from none to all three.
+  """Returns slices of B, the magnetic field array. The shape of the object
+returned depends on the number of ix, iy and iz specified, which can be from
+none to all three. If no components are given, then a 3-D array is returned. 
+With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
+Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
   - comp: field component to get, either 'x', 'y', or 'z'
-  - ix = None
-  - iy = None
-  - iz = None
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
   - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
@@ -4374,12 +4394,15 @@ be from none to all three.
 def geta(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
          solver=None):
   """Returns slices of B, the magnetic vector potential array. The shape of
-the object returned depends on the number of arguments specified, which can
-be from none to all three.
-  - comp: field component to get, either 'x', 'y', or 'z'
-  - ix = None
+the object returned depends on the number of ix, iy and iz specified, which
+can be from none to all three. If no components are given, then a 3-D array
+is returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar
+is returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
+the upper edge.  
+  - comp: field component to get, either 'x', 'y', or 'z', must be given
+  - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None: Value is relative to the fortran indexing, so iz ranges
+  - iz = None:
   - bcast=1: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   - local=0: When 1, in the parallel version, each process will get its local
@@ -4402,15 +4425,17 @@ be from none to all three.
 
 # --------------------------------------------------------------------------
 def seta(val,comp=None,ix=None,iy=None,iz=None,local=0,solver=None):
-  """Sets slices of a, the electrostatic potential array. The shape of
-the input object depends on the number of arguments specified, which can
-be from none to all three.
-  - val input array (must be supplied)
-  - comp: field component to get, either 'x', 'y', or 'z'
+  """Sets slices of a, the electrostatic potential array. The shape of the
+object returned depends on the number of ix, iy and iz specified, which can
+be from none to all three. If no components are given, then a 3-D array is
+returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar is
+returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
+the upper edge.  
+  - val: input array (must be supplied)
+  - comp: field component to get, either 'x', 'y', or 'z', must be given
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None: Value is relative to the fortran indexing, so iz ranges
-               from -1 to nz+1
+  - iz = None:
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
   if type(comp) == IntType: ic = comp
