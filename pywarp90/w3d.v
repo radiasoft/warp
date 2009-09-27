@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.299 $, $Date: 2009/09/08 19:23:59 $
+#@(#) File W3D.V, version $Revision: 3.300 $, $Date: 2009/09/27 17:58:22 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.299 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.300 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1142,6 +1142,8 @@ setupgrid3dtype(grid:Grid3dtype,check:logical) subroutine
 setupgrid2dtype(grid:Grid2dtype,check:logical) subroutine
       # Checks the consistency of Grid3dtype input and allocates the grid
       # If check is false, then the input is inconsistent.
+setupdecompositionw3d() subroutine
+      # Setup the domain decomposition
 domaindecomposefields(nz:integer,nslaves:integer,lfsautodecomp:logical,
         izfsslave(0:nslaves-1):integer,nzfsslave(0:nslaves-1):integer,
         overlap:integer) subroutine
