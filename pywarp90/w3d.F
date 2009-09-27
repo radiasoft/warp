@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.435 $, $Date: 2009/09/24 15:57:52 $
+c@(#) File W3D.F, version $Revision: 3.436 $, $Date: 2009/09/27 17:59:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -10002,6 +10002,9 @@ c     --- Zero out the particle's E field if requested (the default)
         ey = 0.
         ez = 0.
       endif
+
+c     --- Just return if the efetch is turned off.
+      if (efetch(is) == 0) return
 
       if(fstype == 12) then
         pgroupfsapi => pgroup
