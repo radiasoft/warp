@@ -351,6 +351,7 @@ be unreliable.
 
             if self.dumptofile: self.dodumptofile(zbeam)
 
+    # ----------------------------------------------------------------------
     def dodumptofile(self,zbeam):
         #self.dodumptofilePDB(zbeam)
         self.dodumptofilePickle(zbeam)
@@ -615,6 +616,7 @@ be unreliable.
         ff.close()
         return data[1]
 
+    # ----------------------------------------------------------------------
     def setupanalysis(self):
         self.arraytime = array(self.time)
         self.arraycurrent = array(self.current)
@@ -688,6 +690,7 @@ around the peak current."""
             Esum = sum(self.arrayrprofile[ii-di:ii+di,:,iztarget],0)
         self.ppfluence(Esum)
 
+    # ----------------------------------------------------------------------
     def _pp2d(self,data,lbeamframe=1,**kw):
         zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
         if lbeamframe:
@@ -718,6 +721,97 @@ around the peak current."""
     def pp2drprms(self,**kw):
         self._pp2d(self.rprms,**kw)
 
+    # ----------------------------------------------------------------------
+    def _timeintegrate(self,data,laverage):
+
+        try:
+            self.zmesh
+        except AttributeError:
+            self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+
+        zmin = self.zmesh[0] + self.zbeam.min()
+        zmax = self.zmesh[-1] + self.zbeam.max()
+        nz = nint((zmax - zmin)/self.dz)
+        dz = (zmax - zmin)/nz
+
+        grid = zeros(1+nz,'d')
+        gridcount = zeros(1+nz,'d')
+        gridmesh = zmin + arange(nz+1)*dz
+
+        if laverage:
+            count = self.count
+
+        for i in range(data.shape[0]):
+            if laverage:
+                deposgrid1dw(1,data.shape[1],
+                            self.zmesh+self.zbeam[i],
+                            data[i,:],
+                            count[i,:],
+                            nz,grid,gridcount,zmin,zmax)
+            else:
+                deposgrid1d(1,data.shape[1],
+                            self.zmesh+self.zbeam[i],
+                            data[i,:],
+                            nz,grid,gridcount,zmin,zmax)
+
+        if laverage:
+            result = grid/where(gridcount > 0.,gridcount,1.)
+        else:
+            result = grid
+
+        return result,gridmesh
+
+    def timeintegratedcount(self):
+        return self._timeintegrate(self.count,laverage=0)
+
+    def timeintegratedcurrent(self):
+        return self._timeintegrate(self.current,laverage=0)
+
+    def timeintegratedxbar(self):
+        return self._timeintegrate(self.xbar,laverage=1)
+
+    def timeintegratedybar(self):
+        return self._timeintegrate(self.ybar,laverage=1)
+
+    def timeintegratedxsqbar(self):
+        return self._timeintegrate(self.xsqbar,laverage=1)
+
+    def timeintegratedysqbar(self):
+        return self._timeintegrate(self.ysqbar,laverage=1)
+
+    def timeintegratedxrms(self):
+        data = self.xrms**2
+        result,gridmesh = self._timeintegrate(data,laverage=1)
+        result = sqrt(maximum(0.,result))
+        return result,gridmesh
+
+    def timeintegratedyrms(self):
+        data = self.yrms**2
+        result,gridmesh = self._timeintegrate(data,laverage=1)
+        result = sqrt(maximum(0.,result))
+        return result,gridmesh
+
+    def timeintegratedxprms(self):
+        data = self.xprms**2
+        result,gridmesh = self._timeintegrate(data,laverage=1)
+        result = sqrt(maximum(0.,result))
+        return result,gridmesh
+
+    def timeintegratedyprms(self):
+        data = self.yprms**2
+        result,gridmesh = self._timeintegrate(data,laverage=1)
+        result = sqrt(maximum(0.,result))
+        return result,gridmesh
+
+    def timeintegratedcorkscrew(self):
+        xbarint,gridmesh = self.timeintegratedxbar()
+        ybarint,gridmesh = self.timeintegratedybar()
+        xbarsqint,gridmesh = self._timeintegrate(self.xbar**2,laverage=1)
+        ybarsqint,gridmesh = self._timeintegrate(self.ybar**2,laverage=1)
+        corkscrew = sqrt(maximum(0.,xbarsqint - xbarint**2 + ybarsqint - ybarint**2))
+        return corkscrew,gridmesh
+
+    # ----------------------------------------------------------------------
     # --- Setup the properties so that the last set of data which is
     # --- still being accumulated is not returned, and so that the
     # --- data is converted to an array.
@@ -725,16 +819,27 @@ around the peak current."""
         def fget(self):
             if self.nhist is None: nhist = top.nhist
             else:                  nhist = self.nhist
+            # --- Get the data, removing the last element if the accumulation
+            # --- of the data is not complete.
             result = getattr(self,'_'+name)
             if top.it%nhist != int(nhist/2):
                 result = result[:-1]
-            try:
-                result = array(result)
-            except ValueError:
-                # --- This can happen if self.nz changed at some point,
-                # --- which changed the length of the new data so that
-                # --- all of the elements do not have the same length.
-                pass
+
+            # --- Check if there is a cached array.
+            # --- If so, and if it is the same size as reult, then return it,
+            # --- otherwise convert result to an array and return it.
+            cache = getattr(self,'_cache'+name,None)
+            if cache is not None and len(cache) == len(result):
+                result = cache
+            else:
+                try:
+                    result = array(result)
+                except ValueError:
+                    # --- This can happen if self.nz changed at some point,
+                    # --- which changed the length of the new data so that
+                    # --- all of the elements do not have the same length.
+                    pass
+                setattr(self,'_cache'+name,result)
             return result
         return fget,None,None,doc
 
