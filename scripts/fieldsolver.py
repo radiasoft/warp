@@ -1373,21 +1373,21 @@ class SubcycledPoissonSolver(FieldSolver):
           ydebug = y
           xdebug = sqrt(xdebug**2 + ydebug**2)
         assert xdebug.min() >= self.xmminp,\
-               "Particles in species %d have x below the grid when fetching the field"%jsid
+               "Particles in species %d have x below the grid when fetching the field, min x = %e < %e"%(jsid,xdebug.min(),self.xmminp)
         assert xdebug.max() < self.xmmaxp,\
-               "Particles in species %d have x above the grid when fetching the field"%jsid
+               "Particles in species %d have x above the grid when fetching the field, max x = %e > %e"%(jsid,xdebug.max(),self.xmmaxp)
       if self.nylocal > 0:
         ydebug = y
         if self.l4symtry or self.l2symtry: ydebug = abs(y)
         assert ydebug.min() >= self.ymminp,\
-               "Particles in species %d have y below the grid when fetching the field"%jsid
+               "Particles in species %d have y below the grid when fetching the field, min y = %e < %e"%(jsid,ydebug.min(),self.ymminp)
         assert ydebug.max() < self.ymmaxp,\
-               "Particles in species %d have y above the grid when fetching the field"%jsid
+               "Particles in species %d have y above the grid when fetching the field, max y = %e > %e"%(jsid,ydebug.max(),self.ymmaxp)
       if self.nzlocal > 0:
         assert z.min() >= self.zmminp+self.getzgridprv(),\
-               "Particles in species %d have z below the grid when fetching the field"%jsid
+               "Particles in species %d have z below the grid when fetching the field, min z = %e < %e+%e"%(jsid,z.min(),self.zmminp,self.getzgridprv())
         assert z.max() < self.zmmaxp+self.getzgridprv(),\
-               "Particles in species %d have z above the grid when fetching the field"%jsid
+               "Particles in species %d have z above the grid when fetching the field, max z = %e > %e+%e"%(jsid,z.max(),self.zmmaxp,self.getzgridprv())
 
     args = [x,y,z,ex,ey,ez,bx,by,bz,jsid,pgroup]
 
