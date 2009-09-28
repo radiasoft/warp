@@ -517,9 +517,10 @@ error prone.
   # --- all blocks have been added.
   #--------------------------------------------------------------------------
 
-  def finalize(self):
+  def finalize(self,lforce=0):
     # --- This should only be called at the top level.
-    if self != self.root or self.finalized: return
+    if self != self.root: return
+    if self.finalized and not lforce: return
     blocklists = self.generateblocklevellists()
     self.blocklists = blocklists
     neighborblocklists = self.swapblocklistswithprocessneighbors(blocklists)
@@ -622,10 +623,13 @@ error prone.
               blocklistszm,blocklistszp)
       
   def clearparentsandchildren(self):
-    self.parents = []
-    for child in self.children:
-      child.clearparentsandchildren()
-    self.children = []
+    for block in self.listofblocks:
+      block.parents = []
+      block.children = []
+      block.overlapslower = {}
+      block.overlapshigher = {}
+      block.overlapsparallelleft = {}
+      block.overlapsparallelright = {}
 
   def findallchildren(self,blocklists):
     for block in blocklists[1]:
@@ -649,6 +653,7 @@ error prone.
 Sets the regions that are covered by the children.
     """
     if not self.isfirstcall(): return
+    self.childdomains = None
     # --- Loop over the children, first calling each, then setting
     # --- childdomain appropriately.
     for child in self.children:
