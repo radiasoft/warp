@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.51 $, $Date: 2009/04/22 22:09:35 $
+c W3DSLAVE.M, version $Revision: 1.52 $, $Date: 2009/09/30 17:41:10 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -61,14 +61,16 @@ c===========================================================================
       integer(MPIISZ):: mpierror
       include "mpif.h"
 
+      call MPI_COMM_DUP(MPI_COMM_WORLD,decomp%mpi_comm,mpierror)
+
 c     --- Create communicator groups for processors along each axis.
-      call MPI_COMM_SPLIT(MPI_COMM_WORLD,
+      call MPI_COMM_SPLIT(decomp%mpi_comm,
      &                    decomp%iyproc+decomp%izproc*decomp%nyprocs,
      &                    decomp%my_index,decomp%mpi_comm_x,mpierror)
-      call MPI_COMM_SPLIT(MPI_COMM_WORLD,
+      call MPI_COMM_SPLIT(decomp%mpi_comm,
      &                    decomp%izproc+decomp%ixproc*decomp%nzprocs,
      &                    decomp%my_index,decomp%mpi_comm_y,mpierror)
-      call MPI_COMM_SPLIT(MPI_COMM_WORLD,
+      call MPI_COMM_SPLIT(decomp%mpi_comm,
      &                    decomp%ixproc+decomp%iyproc*decomp%nxprocs,
      &                    decomp%my_index,decomp%mpi_comm_z,mpierror)
 
@@ -470,13 +472,13 @@ c     --- Data to be sent
       right_nx = 0 ! was 1 XXX
       right_ny = 0 ! was 1 XXX
       right_nz = 0 ! was 1 XXX
-      if (fsdecomp%ixproc < fsdecomp%nxprocs-1) then
+      if (ppdecomp%ixproc < ppdecomp%nxprocs-1) then
         right_nx = my_ixpp + my_nxpp - ppdecomp%ix(ppdecomp%ixproc+1) + 1
       endif
-      if (fsdecomp%iyproc < fsdecomp%nyprocs-1) then
+      if (ppdecomp%iyproc < ppdecomp%nyprocs-1) then
         right_ny = my_iypp + my_nypp - ppdecomp%iy(ppdecomp%iyproc+1) + 1
       endif
-      if (fsdecomp%izproc < fsdecomp%nzprocs-1) then
+      if (ppdecomp%izproc < ppdecomp%nzprocs-1) then
         right_nz = my_izpp + my_nzpp - ppdecomp%iz(ppdecomp%izproc+1) + 1
       endif
 
@@ -521,21 +523,21 @@ c     --- Data to be sent
       my_nyfs = fsdecomp%ny(fsdecomp%iyproc)
       my_izfs = fsdecomp%iz(fsdecomp%izproc)
       my_nzfs = fsdecomp%nz(fsdecomp%izproc)
-      do iz=0,fsdecomp%nzprocs-1
+      do iz=0,ppdecomp%nzprocs-1
         right_nz = 0 ! was 1 XXX
-        if (iz < fsdecomp%nzprocs-1) then
+        if (iz < ppdecomp%nzprocs-1) then
           right_nz=ppdecomp%iz(iz)+ppdecomp%nz(iz)-ppdecomp%iz(iz+1)+1
         endif
 
-        do iy=0,fsdecomp%nyprocs-1
+        do iy=0,ppdecomp%nyprocs-1
           right_ny = 0 ! was 1 XXX
-          if (iy < fsdecomp%nyprocs-1) then
+          if (iy < ppdecomp%nyprocs-1) then
             right_ny=ppdecomp%iy(iy)+ppdecomp%ny(iy)-ppdecomp%iy(iy+1)+1
           endif
 
-          do ix=0,fsdecomp%nxprocs-1
+          do ix=0,ppdecomp%nxprocs-1
             right_nx = 0 ! was 1 XXX
-            if (ix < fsdecomp%nxprocs-1) then
+            if (ix < ppdecomp%nxprocs-1) then
               right_nx=ppdecomp%ix(ix)+ppdecomp%nx(ix)-ppdecomp%ix(ix+1)+1
             endif
 
@@ -573,7 +575,7 @@ c     --- Data to be sent
 c     --- Now, do all of the message passing at once.
       call MPI_ALLTOALLW(sourcep,sendcounts,displs,sendtypes,
      &                   source ,recvcounts,displs,recvtypes,
-     &                   MPI_COMM_WORLD,mpierror)
+     &                   fsdecomp%mpi_comm,mpierror)
 
 c     --- Free all of the types
       do iz=0,fsdecomp%nzprocs-1
@@ -799,7 +801,7 @@ c     --- Data to be sent
 c     --- Now, do all of the message passing at once.
       call MPI_ALLTOALLW(phi ,sendcounts,displs,sendtypes,
      &                   phip,recvcounts,displs,recvtypes,
-     &                   MPI_COMM_WORLD,mpierror)
+     &                   ppdecomp%mpi_comm,mpierror)
 
 c     --- Free all of the types
       do iz=0,fsdecomp%nzprocs-1

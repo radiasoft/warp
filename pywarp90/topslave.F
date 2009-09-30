@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.59 $, $Date: 2008/12/09 20:02:37 $
+c TOPSLAVE.M, version $Revision: 1.60 $, $Date: 2009/09/30 17:41:09 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -1172,8 +1172,36 @@ c to all processors.
       if (ltoptimesubs) substarttime = wtime()
       allocate(data2(ndata))
 
-      call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,MPI_SUM,
-     &                   MPI_COMM_WORLD,mpierror)
+      call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
+     &                   MPI_SUM,MPI_COMM_WORLD,mpierror)
+      data = data2
+      deallocate(data2)
+
+!$OMP MASTER
+      if (ltoptimesubs) timeparallelsumrealarray = timeparallelsumrealarray + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine parallelsumrealarraycomm(data,ndata,comm)
+      use Subtimerstop
+      integer(ISZ):: ndata
+      real(kind=8):: data(ndata)
+      integer(ISZ):: comm
+c Does a sum over all of the processors.  Resulting data is broadcast
+c to all processors.
+
+      real(kind=8),allocatable:: data2(:)
+      integer(MPIISZ):: mpierror,comm_temp
+      include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+      allocate(data2(ndata))
+
+      comm_temp = comm
+      call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
+     &                   MPI_SUM,comm_temp,mpierror)
       data = data2
       deallocate(data2)
 
@@ -1233,8 +1261,36 @@ c to all processors.
       if (ltoptimesubs) substarttime = wtime()
       allocate(data2(ndata))
 
-      call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,MPI_MAX,
-     &                   MPI_COMM_WORLD,mpierror)
+      call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
+     &                   MPI_MAX,MPI_COMM_WORLD,mpierror)
+      data = data2
+      deallocate(data2)
+
+!$OMP MASTER
+      if (ltoptimesubs) timeparallelmaxrealarray = timeparallelmaxrealarray + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c==========================================================================
+      subroutine parallelmaxrealarraycomm(data,ndata,comm)
+      use Subtimerstop
+      integer(ISZ):: ndata
+      real(kind=8):: data(ndata)
+      integer(ISZ):: comm
+c Find the max of data over all processors.  Resulting data is broadcast
+c to all processors.
+
+      real(kind=8),allocatable:: data2(:)
+      integer(MPIISZ):: mpierror,comm_temp
+      include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+      allocate(data2(ndata))
+
+      comm_temp = comm
+      call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
+     &                   MPI_MAX,comm_temp,mpierror)
       data = data2
       deallocate(data2)
 
@@ -1259,8 +1315,36 @@ c to all processors.
       if (ltoptimesubs) substarttime = wtime()
       allocate(data2(ndata))
 
-      call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,MPI_MIN,
-     &                   MPI_COMM_WORLD,mpierror)
+      call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
+     &                   MPI_MIN,MPI_COMM_WORLD,mpierror)
+      data = data2
+      deallocate(data2)
+
+!$OMP MASTER
+      if (ltoptimesubs) timeparallelminrealarray = timeparallelminrealarray + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c==========================================================================
+      subroutine parallelminrealarraycomm(data,ndata,comm)
+      use Subtimerstop
+      integer(ISZ):: ndata
+      real(kind=8):: data(ndata)
+      integer(ISZ):: comm
+c Find the min of data over all processors.  Resulting data is broadcast
+c to all processors.
+
+      real(kind=8),allocatable:: data2(:)
+      integer(MPIISZ):: mpierror,comm_temp
+      include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+      allocate(data2(ndata))
+
+      comm_temp = comm
+      call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
+     &                   MPI_MIN,comm_temp,mpierror)
       data = data2
       deallocate(data2)
 

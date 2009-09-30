@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.188 $, $Date: 2009/06/25 15:48:41 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.189 $, $Date: 2009/09/30 17:41:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -367,11 +367,11 @@ c     added by petermc, 26 Sep 2002
 #ifdef MPIPARALLEL
         if (fsdecomp%nxprocs*fsdecomp%nyprocs*fsdecomp%nzprocs > 1) then
 c         --- calculate global sorerror
-          call parallelmaxrealarray(mgerror,1)
+          call parallelmaxrealarraycomm(mgerror,1,fsdecomp%mpi_comm)
 c     added by petermc, 26 Sep 2002
 #ifdef WITHCHOMBO
           if (mgform == 2) then
-             call parallelmaxrealarray(maxres,1)
+             call parallelmaxrealarraycomm(maxres,1,fsdecomp%mpi_comm)
           endif
 #endif
         endif
@@ -518,7 +518,7 @@ c=============================================================================
       endif
 
       if (fsdecomp%nxprocs*fsdecomp%nyprocs*fsdecomp%nzprocs > 1) then
-        call parallelsumrealarray(sss,2)
+        call parallelsumrealarraycomm(sss,2,fsdecomp%mpi_comm)
       endif
       mggetarraysum = sss
 
@@ -5064,7 +5064,7 @@ c       --- Calculate the change in phi.
 #ifdef MPIPARALLEL
         if (fsdecomp%nxprocs*fsdecomp%nyprocs*fsdecomp%nzprocs > 1) then
 c         --- calculate global sorerror
-          call parallelmaxrealarray(mgerror,1)
+          call parallelmaxrealarraycomm(mgerror,1,fsdecomp%mpi_comm)
         endif
 #endif
 
@@ -6462,7 +6462,7 @@ c       --- Calculate the change in phi.
 #ifdef MPIPARALLEL
         if (fsdecomp%nxprocs*fsdecomp%nyprocs*fsdecomp%nzprocs > 1) then
 c         --- calculate global sorerror
-          call parallelmaxrealarray(mgerror,1)
+          call parallelmaxrealarraycomm(mgerror,1,fsdecomp%mpi_comm)
         endif
 #endif
 

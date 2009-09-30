@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.34 $, $Date: 2009/08/28 22:07:12 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.35 $, $Date: 2009/09/30 17:41:10 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -771,7 +771,7 @@ c       --- Calculate the change in phi.
 #ifdef MPIPARALLEL
         if (fsdecomp%nxprocs*fsdecomp%nyprocs*fsdecomp%nzprocs > 1) then
 c         --- calculate global sorerror
-          call parallelmaxrealarray(mgerror,1)
+          call parallelmaxrealarraycomm(mgerror,1,fsdecomp%mpi_comm)
         endif
 #endif
 c       print*,mgiters,mgerror

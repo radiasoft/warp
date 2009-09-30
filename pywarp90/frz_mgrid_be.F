@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.35 $, $Date: 2009/02/04 00:58:30 $
+c version $Revision: 1.36 $, $Date: 2009/09/30 17:41:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -294,7 +294,7 @@ c       mgerror = maxval(abs(phisave - phi))
 #ifdef MPIPARALLEL
         if (fsdecomp%nxprocs*fsdecomp%nyprocs*fsdecomp%nzprocs > 1) then
 c         --- calculate global sorerror
-          call parallelmaxrealarray(mgerror,1)
+          call parallelmaxrealarraycomm(mgerror,1,fsdecomp%mpi_comm)
         endif
 #endif
 

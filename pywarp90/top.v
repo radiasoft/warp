@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.262 $, $Date: 2009/09/18 20:37:09 $
+#@(#) File TOP.V, version $Revision: 3.263 $, $Date: 2009/09/30 17:41:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.262 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.263 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2891,9 +2891,10 @@ iz(0:nzprocs-1) _integer # Starting z indices for the decomposition
 nz(0:nzprocs-1) _integer # Number of z cells for the decomposition
 zmin(0:nzprocs-1) _real # Minimum z location for the decomposition
 zmax(0:nzprocs-1) _real # Maximum z location for the decomposition
-mpi_comm_x integer # MPI communicators grouping processors along the x axis.
-mpi_comm_y integer # MPI communicators grouping processors along the y axis.
-mpi_comm_z integer # MPI communicators grouping processors along the z axis.
+mpi_comm   integer # MPI communicator for all participating processes
+mpi_comm_x integer # MPI communicator grouping processors along the x axis.
+mpi_comm_y integer # MPI communicator grouping processors along the y axis.
+mpi_comm_z integer # MPI communicator grouping processors along the z axis.
 
 ******* Parallel dump:
 nprocs        integer /1/ -dump   # Number of parallel processors
