@@ -4,7 +4,7 @@ procedure, but using the full simulation instead of 1-D approximation.
 from warp import *
 from timedependentvoltage import TimeVoltage
 
-constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.5 2009/08/29 00:02:51 dave Exp $"
+constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.6 2009/09/30 18:39:30 jlvay Exp $"
 def constantcurrentinjectiondoc():
   import constantcurrentinjection
   print constantcurrentinjection.__doc__
@@ -47,7 +47,8 @@ frz.calc_a = 3
   """
 
   def __init__(self,sourceid,currentdensity,sourcevolt,otherids=[],othervolts=[],
-                    othercontrolledids=[],othercontrolledvolts=[],endplatevolt=0.):
+                    othercontrolledids=[],othercontrolledvolts=[],endplatevolt=0.,
+                    l_setvinject=1):
     self.currentdensity = currentdensity
     self.sourceid = sourceid
     self.sourcevolt = sourcevolt
@@ -56,6 +57,7 @@ frz.calc_a = 3
     self.othercontrolledids = othercontrolledids
     self.othercontrolledvolts = othercontrolledvolts
     self.endplatevolt = endplatevolt
+    self.l_setvinject = l_setvinject
 
     # --- Initialize parameters
     chi = 4*eps0/9*sqrt(2*top.pgroup.sq[0]/top.pgroup.sm[0])
@@ -90,7 +92,7 @@ frz.calc_a = 3
       self.blocklists = []
 
     # --- Calculate phiv
-    top.vinject = sourcevolt-self.endplatevolt
+    if self.l_setvinject:top.vinject = sourcevolt-self.endplatevolt
     getinj_phi()
     if w3d.l_inj_rz:
       self.phiv = sum(self.ww*w3d.inj_phi[:,0,0])/self.wwsum
@@ -105,10 +107,10 @@ frz.calc_a = 3
       setconductorvoltage(self.endplatevolt,condid=id)
 
     # --- Setup histories
-    self.hsourcevolt = []
-    self.hafact = []
-    self.hphirho = []
-    self.hnp = []
+    self.hsourcevolt = AppendableArray(typecode='d')
+    self.hafact = AppendableArray(typecode='d')
+    self.hphirho = AppendableArray(typecode='d')
+    self.hnp = AppendableArray(typecode='d')
 
     # --- Make initial call
     fieldsol(-1)
@@ -120,7 +122,7 @@ frz.calc_a = 3
   def setsourcevolt(self):
     # --- Calculate phirho
     #fieldsol(-1) # done afterfs
-    top.vinject = self.endplatevolt
+    if self.l_setvinject:top.vinject = self.endplatevolt
     getinj_phi()
     if w3d.l_inj_rz:
       phirho = -sum(self.ww*w3d.inj_phi[:,0,0])/self.wwsum
@@ -136,9 +138,11 @@ frz.calc_a = 3
       for c in self.blocklists[i]:
         if c.isactive:
           c.phi += self.afact*c.phisave
-    top.vinject = (self.endplatevolt +
+    voltage = (self.endplatevolt +
                    self.afact*(self.sourcevolt-self.endplatevolt))
-    setconductorvoltage(top.vinject[0],condid=self.sourceid)
+    if self.l_setvinject:
+      top.vinject = voltage
+    setconductorvoltage(voltage,condid=self.sourceid)
     for id,v in map(None,self.othercontrolledids,self.othercontrolledvolts):
       voltage = (self.endplatevolt +
                      self.afact*(v-self.endplatevolt))
@@ -153,10 +157,12 @@ frz.calc_a = 3
     for id in self.othercontrolledids:
       setconductorvoltage(self.endplatevolt,condid=id)
 
-    self.hsourcevolt.append(top.vinject[0])
+    self.hsourcevolt.append(voltage)
     self.hafact.append(self.afact)
     self.hphirho.append(phirho)
     self.hnp.append(getn())
+    import os
+
 
   def disable(self):
     if isinstalledafterfs(self.setsourcevolt):
@@ -165,16 +171,21 @@ frz.calc_a = 3
       for id,v in map(None,self.othercontrolledids,self.othercontrolledvolts):
         setconductorvoltage(v,condid=id)
 
-
+  def plothist(self,tscale=1.,vscale=1.,tunits='s',vunits='V',title=1):
+    pla(self.hsourcevolt[:]*vscale,arange(shape(self.hsourcevolt[:])[0])*top.dt*tscale)
+    if title:ptitles('','Time ('+tunits+')','Voltage ('+vunits+')')
+    
 class SpecifiedCurrentRiseTime(ConstantCurrentRiseTime):
   """
 Same as constantcurrentinjection but allows to specify time dependent current profile.
   """
   def __init__(self,sourceid,currentdensityfunc,sourcevolt,otherids=[],othervolts=[],
-                    othercontrolledids=[],othercontrolledvolts=[],endplatevolt=0.):
+                    othercontrolledids=[],othercontrolledvolts=[],endplatevolt=0.,
+                    l_setvinject=1):
     ConstantCurrentRiseTime.__init__(self,sourceid,currentdensityfunc(top.time),sourcevolt,
                                           otherids,othervolts,
-                                          othercontrolledids,othercontrolledvolts,endplatevolt)
+                                          othercontrolledids,othercontrolledvolts,endplatevolt,
+                                          l_setvinject)
     self.currentdensityfunc = currentdensityfunc
     installbeforefs(self.setphiref)
     
