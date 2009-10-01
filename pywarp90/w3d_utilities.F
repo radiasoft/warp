@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.29 $, $Date: 2009/03/27 16:59:07 $
+c@(#) File w3d_utilities.F, version $Revision: 1.30 $, $Date: 2009/10/01 00:22:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -619,7 +619,7 @@ c       --- bestnz is zperproc rounded down.
         bestnz = int(zperproc)
      
 c       --- First processor is easy
-        nzdecomp(0) = bestnz
+        nzdecomp(0) = nint(zperproc)
         izdecomp(0) = 0
         ztot = nzdecomp(0)
 
