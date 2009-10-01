@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.41 $, $Date: 2009/06/19 21:46:57 $
+c F3DSLAVE.M, version $Revision: 1.42 $, $Date: 2009/10/01 00:15:13 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -1409,9 +1409,8 @@ c          relative to the upper index, nx, ny or nz.
         include "mpif.h"
         integer(MPIISZ):: dims,nlocal(-1:2),starts(-1:2),sizes(-1:2)
         integer(MPIISZ):: mpierror
-        real(kind=8):: substarttime,wtime,s1,s2
+        real(kind=8):: substarttime,wtime
         if (lf3dtimesubs) substarttime = wtime()
-        s1 = wtime()
 
 c       --- Compute a hash of the input parameters.
 c       --- Note that this expression is ad hoc and makes no gaurantee
@@ -1456,6 +1455,7 @@ c           --- Setup the array pointers.
             messagedata%zrecvcounts => messagedatacache(ic)%zrecvcounts
             messagedata%zdispls => messagedatacache(ic)%zdispls
 
+            if (lf3dtimesubs) timegetmessagedata = timegetmessagedata + wtime() - substarttime
             return
           endif
 
@@ -1827,6 +1827,10 @@ c         --- Create the data types for data that is to be received
 
         enddo
 
+!$OMP MASTER
+        if (lf3dtimesubs) timegetmessagedata = timegetmessagedata + wtime() - substarttime
+!$OMP END MASTER
+
         return
         end subroutine getmessagedata
 c       ======================================================================
@@ -1907,9 +1911,8 @@ c Exchange the potential on the boundary and/or in the gaurd cells.
 
       include "mpif.h"
       integer(MPIISZ):: mpierror,comm_temp
-      real(kind=8):: substarttime,wtime,s1,s2
+      real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
-      s1 = wtime()
 
 c     --- Generate the MPI data types needed for the communication.
       call getmessagedata(nc,nxlocal,nylocal,nzlocal,
@@ -1974,9 +1977,8 @@ c Exchange the potential on the boundary and/or in the gaurd cells.
 
       include "mpif.h"
       integer(MPIISZ):: mpierror,comm_temp
-      real(kind=8):: substarttime,wtime,s1,s2
+      real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
-      s1 = wtime()
 
 c     --- Generate the MPI data types needed for the communication.
       call getmessagedata(nc,nxlocal,nylocal,nzlocal,
