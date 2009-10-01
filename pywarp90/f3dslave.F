@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.42 $, $Date: 2009/10/01 00:15:13 $
+c F3DSLAVE.M, version $Revision: 1.43 $, $Date: 2009/10/01 21:51:01 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -791,7 +791,7 @@ c=============================================================================
       subroutine mgdividenz_work(nzprocs,izfsdecomp,nzfsdecomp,
      &                           izfsdecompc,nzfsdecompc,nz,nzcoarse,mgscale)
       use Subtimersf3d
-      use Multigrid3d,Only:mgscaleserial
+      use Multigrid3d,Only:mgscaleserial,mggrid_overlap
       integer(ISZ):: nzprocs,nz,nzcoarse
       integer(ISZ):: izfsdecomp(0:nzprocs-1),nzfsdecomp(0:nzprocs-1)
       integer(ISZ):: izfsdecompc(0:nzprocs-1),nzfsdecompc(0:nzprocs-1)
@@ -833,6 +833,16 @@ c         --- problem then to write the code to exchange the data for that case.
           endif
 
         enddo
+
+        if (mggrid_overlap == 1) then
+c         --- This gaurantees that there is enough grid overlap on the
+c         --- coarse grid.
+          do is=0,nzprocs-2
+            if (izfsdecompc(is)+nzfsdecompc(is) < izfsdecompc(is+1)+3) then
+              nzfsdecompc(is) = izfsdecompc(is+1)+3-izfsdecompc(is)
+            endif
+          enddo
+        endif
 
       else
 

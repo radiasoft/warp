@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.189 $, $Date: 2009/09/30 17:41:10 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.190 $, $Date: 2009/10/01 21:51:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -653,7 +653,7 @@ c     --- Do initial SOR passes.
       enddo
 
 #ifdef MPIPARALLEL
-      if (mggrid_overlap > 0) then
+      if (mggrid_overlap > 1) then
         tempdecomp%nxglobal = nxcoarse
         tempdecomp%nyglobal = nycoarse
         tempdecomp%nzglobal = nzcoarse
@@ -934,7 +934,7 @@ c     message added by petermc, 1 Oct 2002
       enddo
 
 #ifdef MPIPARALLEL
-      if (mggrid_overlap > 0) then
+      if (mggrid_overlap > 1) then
         call mgexchange_phi(1,tempdecomp%nx(tempdecomp%ixproc),
      &                        tempdecomp%ny(tempdecomp%iyproc),
      &                        tempdecomp%nz(tempdecomp%izproc),
@@ -970,6 +970,7 @@ c=============================================================================
      &                      ff,localbounds,localboundscoarse,
      &                      lxoffset,lyoffset,lzoffset)
       use Subtimersf3d
+      use Multigrid3d,Only: mgcoarsening
       integer(ISZ):: nx,ny,nz,nxlocal,nylocal,nzlocal
       integer(ISZ):: delx,dely,delz,delcx,delcy,delcz
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse
@@ -988,7 +989,7 @@ c residual will be used as the source term in the next coarser grid and
 c it implicitly includes the factor 0.5/(dxsqi+dysqi+dzsqi) which is
 c too small with the current values of dxsqi etc.
 
-      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ix,iy,iz,nw
       integer(ISZ):: ixcoarse,iycoarse,izcoarse
       integer(ISZ):: ixcoarsemin,ixcoarsemax,iycoarsemin,iycoarsemax
       integer(ISZ):: izcoarsemin,izcoarsemax
@@ -996,17 +997,21 @@ c too small with the current values of dxsqi etc.
       integer(ISZ),allocatable:: ixmina(:),ixmaxa(:)
       integer(ISZ),allocatable:: iymina(:),iymaxa(:)
       integer(ISZ),allocatable:: izmina(:),izmaxa(:)
-      real(kind=8):: r,w,dxi,dyi,dzi,wx(0:3),wy(0:3),wz(0:3)
+      real(kind=8):: r,w,dxi,dyi,dzi
+      real(kind=8),allocatable:: wx(:),wy(:),wz(:)
       real(kind=8),allocatable:: wxa(:,:),wya(:,:),wza(:,:)
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
+c     --- 
+      nw = 2*mgcoarsening
+      allocate(wx(0:nw),wy(0:nw),wz(0:nw))
       allocate(ixmina(0:nxlocalcoarse),ixmaxa(0:nxlocalcoarse))
       allocate(iymina(0:nylocalcoarse),iymaxa(0:nylocalcoarse))
       allocate(izmina(0:nzlocalcoarse),izmaxa(0:nzlocalcoarse))
-      allocate(wxa(0:3,0:nxlocalcoarse))
-      allocate(wya(0:3,0:nylocalcoarse))
-      allocate(wza(0:3,0:nzlocalcoarse))
+      allocate(wxa(0:nw,0:nxlocalcoarse))
+      allocate(wya(0:nw,0:nylocalcoarse))
+      allocate(wza(0:nw,0:nzlocalcoarse))
       wxa = 0.
       wya = 0.
       wza = 0.
@@ -1133,6 +1138,7 @@ c     if (localboundscoarse(5) == 0) rhocoarse(:,:,nzlocalcoarse) = 0.
       deallocate(wxa)
       deallocate(wya)
       deallocate(wza)
+      deallocate(wx,wy,wz)
 
       if (lf3dtimesubs) timerestrict3d = timerestrict3d +
      &                                         wtime() - substarttime
@@ -1409,6 +1415,17 @@ c     --- do loop to cover even and odd points
 
 c     --- end of loop over even and odd points
       enddo
+
+#ifdef MPIPARALLEL
+        if (mggrid_overlap == 1) then
+c         --- Note that this probably won't work for periodic boundaries
+c         --- without an extra guard cell
+          call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
+     &                                 1,1,1,-1,0,localbounds,fsdecomp)
+          call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,1,
+     &                        fsdecomp)
+        endif
+#endif
 
 #ifdef MPIPARALLEL
 c     --- This doesn't seem to be needed.
@@ -2840,6 +2857,7 @@ c=============================================================================
       subroutine getnextcoarselevel3d(nx,ny,nz,nxlocal,nylocal,nzlocal,dx,dy,dz,
      &                                nxcoarse,nycoarse,nzcoarse,
      &                                dxcoarse,dycoarse,dzcoarse)
+      use Multigrid3d,Only: mgcoarsening
       integer(ISZ):: nx,ny,nz,nxlocal,nylocal,nzlocal
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse
@@ -2853,13 +2871,13 @@ c     --- Note that nzlocalcoarse is only used if full-coarsening is done.
 
       real(kind=8):: mingridsize
 
-      nxcoarse = (nx+1)/2
+      nxcoarse = (nx+1)/mgcoarsening
       if (mod(nxcoarse,2) == 1) nxcoarse = nxcoarse + 1
 
-      nycoarse = (ny+1)/2
+      nycoarse = (ny+1)/mgcoarsening
       if (mod(nycoarse,2) == 1) nycoarse = nycoarse + 1
 
-      nzcoarse = (nz+1)/2
+      nzcoarse = (nz+1)/mgcoarsening
       if (mod(nzcoarse,2) == 1) nzcoarse = nzcoarse + 1
 
       mingridsize = min(dx,dy)
