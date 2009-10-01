@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.52 $, $Date: 2009/09/30 17:41:10 $
+c W3DSLAVE.M, version $Revision: 1.53 $, $Date: 2009/10/01 00:24:48 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -109,6 +109,200 @@ c total number of particles.
       end
 c===========================================================================
       subroutine sumsourcepondomainboundaries(nc,nxp,nyp,nzp,sourcep,ppdecomp)
+      use Subtimers3d
+      use Decompositionmodule
+      integer(ISZ):: nc,nxp,nyp,nzp
+      real(kind=8):: sourcep(0:nc-1,0:nxp,0:nyp,0:nzp)
+      type(Decomposition):: ppdecomp
+
+c Gather the charge density in the region where the field solve
+c will be done. This assumes that each processor "owns" source from
+c iz=0 to either iz=nzlocal-1 or nzlocal-2 depending on the overlap. Each is
+c only responsible for sending out the source is owns.
+
+      real(kind=8),allocatable:: sourcepsend(:,:,:,:)
+      real(kind=8),allocatable:: sourceprecv(:,:,:,:)
+      integer(ISZ):: npx,npy,npz
+      integer(ISZ):: ixglobal,ixmaxp
+      integer(ISZ):: iyglobal,iymaxp
+      integer(ISZ):: izglobal,izmaxp
+      integer(ISZ):: ix,iy,iz,ii(0:2),axis
+      integer(ISZ),allocatable:: isend(:,:,:,:),nsend(:,:,:,:)
+      integer(ISZ):: my_ixpp,my_iypp,my_izpp
+      integer(ISZ):: my_nxpp,my_nypp,my_nzpp
+      integer(ISZ):: i1(0:2),i2(0:2)
+      integer(MPIISZ):: dims,nlocal(-1:2),starts(-1:2),sizes(-1:2)
+      integer(MPIISZ):: pp
+      include "mpif.h"
+      integer(ISZ):: mpi_comm
+      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
+      integer(MPIISZ):: w
+      integer(MPIISZ):: messid = 60
+      logical(ISZ):: lsend
+
+      integer(MPIISZ),pointer:: sendtypes(:),sendcounts(:)
+      integer(MPIISZ),pointer:: displs(:)
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+c     --- Note that mpi_comm is type ISZ instead of MPIISZ since the
+c     --- mpi_comm_x in ppdecomp are also ISZ, but it is handled consistently
+c     --- so the correct data is passed around.
+
+      allocate(sourcepsend(0:nc-1,0:nxp,0:nyp,0:nzp))
+      allocate(sourceprecv(0:nc-1,0:nxp,0:nyp,0:nzp))
+
+      npx = ppdecomp%nxprocs
+      npy = ppdecomp%nyprocs
+      npz = ppdecomp%nzprocs
+      allocate(isend(0:2,0:npx-1,0:npy-1,0:npz-1))
+      allocate(nsend(0:2,0:npx-1,0:npy-1,0:npz-1))
+
+      dims = 4
+      nlocal = (/nc,1+nxp,1+nyp,1+nzp/)
+      starts = 0
+      sizes = nlocal
+
+c     --- Calculate what data needs to be sent and received.
+c     --- Data is exchanged with other processors, so the data slice sent
+c     --- is the same slice that is received.
+      my_ixpp = ppdecomp%ix(ppdecomp%ixproc)
+      my_nxpp = ppdecomp%nx(ppdecomp%ixproc)
+      my_iypp = ppdecomp%iy(ppdecomp%iyproc)
+      my_nypp = ppdecomp%ny(ppdecomp%iyproc)
+      my_izpp = ppdecomp%iz(ppdecomp%izproc)
+      my_nzpp = ppdecomp%nz(ppdecomp%izproc)
+
+      do iz=0,ppdecomp%nzprocs-1
+        do iy=0,ppdecomp%nyprocs-1
+          do ix=0,ppdecomp%nxprocs-1
+
+            ixglobal = max(my_ixpp,ppdecomp%ix(ix))
+            ixmaxp   = min(ppdecomp%ix(ix) + ppdecomp%nx(ix),
+     &                     my_ixpp + my_nxpp)
+            isend(0,ix,iy,iz) = ixglobal - my_ixpp
+            nsend(0,ix,iy,iz) = max(0,ixmaxp - ixglobal + 1)
+
+            iyglobal = max(my_iypp,ppdecomp%iy(iy))
+            iymaxp   = min(ppdecomp%iy(iy) + ppdecomp%ny(iy),
+     &                     my_iypp + my_nypp)
+            isend(1,ix,iy,iz) = iyglobal - my_iypp
+            nsend(1,ix,iy,iz) = max(0,iymaxp - iyglobal + 1)
+
+            izglobal = max(my_izpp,ppdecomp%iz(iz))
+            izmaxp   = min(ppdecomp%iz(iz) + ppdecomp%nz(iz),
+     &                     my_izpp + my_nzpp)
+            isend(2,ix,iy,iz) = izglobal - my_izpp
+            nsend(2,ix,iy,iz) = max(0,izmaxp - izglobal + 1)
+
+          enddo
+        enddo
+      enddo
+      nsend(:,ppdecomp%ixproc,ppdecomp%iyproc,ppdecomp%izproc) = 0
+
+c     --- Send the data out to processors that need it.
+c     --- Copy any data locally as well.
+
+      do axis=0,2
+c       --- Skip the non-domain-decomposed axis.
+        if (npx == 1 .and. axis == 0) cycle
+        if (npy == 1 .and. axis == 1) cycle
+        if (npz == 1 .and. axis == 2) cycle
+
+        ii = ppdecomp%iprocgrid
+        if (axis == 0) mpi_comm = ppdecomp%mpi_comm_x
+        if (axis == 1) mpi_comm = ppdecomp%mpi_comm_y
+        if (axis == 2) mpi_comm = ppdecomp%mpi_comm_z
+
+        allocate(sendtypes(0:ppdecomp%nprocgrid(axis)-1))
+        allocate(sendcounts(0:ppdecomp%nprocgrid(axis)-1))
+        allocate(displs(0:ppdecomp%nprocgrid(axis)-1))
+        displs = 0
+
+c       --- Only copy the sourcep that will actually be sent.
+c       sourcepsend = sourcep
+        do pp=0,ppdecomp%nprocgrid(axis)-1
+          ii(axis) = pp
+          if (product(nsend(:,ii(0),ii(1),ii(2))) > 0) then
+            starts(0:2) = isend(:,ii(0),ii(1),ii(2))
+            sizes(0:2) = nsend(:,ii(0),ii(1),ii(2))
+            i1 = starts(0:2)
+            i2 = i1 + sizes(0:2) - 1
+            sourcepsend(:,i1(0):i2(0),i1(1):i2(1),i1(2):i2(2)) =
+     &          sourcep(:,i1(0):i2(0),i1(1):i2(1),i1(2):i2(2))
+          endif
+        enddo
+
+        do pp=0,ppdecomp%nprocgrid(axis)-1
+
+          ii(axis) = pp
+          if (product(nsend(:,ii(0),ii(1),ii(2))) > 0) then
+            starts(0:2) = isend(:,ii(0),ii(1),ii(2))
+            sizes(0:2) = nsend(:,ii(0),ii(1),ii(2))
+            call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                    MPI_ORDER_FORTRAN,
+     &                                    MPI_DOUBLE_PRECISION,
+     &                                    sendtypes(pp),mpierror)
+            call MPI_TYPE_COMMIT(sendtypes(pp),mpierror)
+            sendcounts(pp) = 1
+          else
+            sendtypes(pp) = MPI_DOUBLE_PRECISION
+            sendcounts(pp) = 0
+          endif
+
+        enddo
+
+        call MPI_ALLTOALLW(sourcepsend,sendcounts,displs,
+     &                     sendtypes,
+     &                     sourceprecv,sendcounts,displs,
+     &                     sendtypes,
+     &                     mpi_comm,mpierror)
+
+c       --- Only add in the sourcep that was actually received
+c       sourcep = sourcep + sourcerecv
+        do pp=0,ppdecomp%nprocgrid(axis)-1
+          ii(axis) = pp
+          if (product(nsend(:,ii(0),ii(1),ii(2))) > 0) then
+            starts(0:2) = isend(:,ii(0),ii(1),ii(2))
+            sizes(0:2) = nsend(:,ii(0),ii(1),ii(2))
+            i1 = starts(0:2)
+            i2 = i1 + sizes(0:2) - 1
+            sourcep(:,i1(0):i2(0),i1(1):i2(1),i1(2):i2(2)) =
+     &              sourcep(:,i1(0):i2(0),i1(1):i2(1),i1(2):i2(2)) +
+     &          sourceprecv(:,i1(0):i2(0),i1(1):i2(1),i1(2):i2(2))
+          endif
+        enddo
+
+        do pp=0,ppdecomp%nprocgrid(axis)-1
+          if (sendcounts(pp) > 0) then
+            call MPI_TYPE_FREE(sendtypes(pp),mpierror)
+          endif
+c         if (xrecvcounts(pp) > 0) then
+c           call MPI_TYPE_FREE(xrecvtypes(pp),mpierror)
+c         endif
+        enddo
+
+        deallocate(sendtypes)
+        deallocate(sendcounts)
+        deallocate(displs)
+
+      enddo
+
+      deallocate(isend)
+      deallocate(nsend)
+      deallocate(sourcepsend)
+      deallocate(sourceprecv)
+
+!$OMP MASTER
+      if (lw3dtimesubs) timesumsourcepondomainboundaries = timesumsourcepondomainboundaries + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c===========================================================================
+      subroutine sumsourcepondomainboundaries_orig(nc,nxp,nyp,nzp,sourcep,ppdecomp)
       use Subtimers3d
       use Decompositionmodule
       integer(ISZ):: nc,nxp,nyp,nzp
