@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.241 $, $Date: 2009/08/28 22:07:11 $
+c@(#) File TOP.F, version $Revision: 3.242 $, $Date: 2009/10/01 00:21:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2693,6 +2693,7 @@ c=============================================================================
       use InGen
       use InPart
       use Picglb,Only: xpminlocal,xpmaxlocal
+      use Parallel,Only: nxprocs
       type(ParticleGroup):: pgroup
       integer(ISZ):: js1,js2
       real(kind=8):: xmmax,xmmin
@@ -2704,13 +2705,16 @@ c  Impose boundary conditions on xp
       real(kind=8):: rrsq,rr,rrin
       integer(ISZ):: is,ip,indts
 
-c Parallel version makes call to special routine particleboundaries_parallel
+c Parallel version makes call to special routine particleboundaries_parallel,
+c but only if the x direction is domain decomposed.
 #ifdef MPIPARALLEL
-      call particleboundaries_parallel(0,pgroup,js1,js2,
-     &                                 xmmax,xmmin,xpmaxlocal,xpminlocal,
-     &                                 pboundxy,pboundxy,
-     &                                 lcountaslost,labs,lrz)
-#else
+      if (nxprocs > 1) then
+        call particleboundaries_parallel(0,pgroup,js1,js2,
+     &                                   xmmax,xmmin,xpmaxlocal,xpminlocal,
+     &                                   pboundxy,pboundxy,
+     &                                   lcountaslost,labs,lrz)
+      else
+#endif
 
       if (pboundxy==periodic) then
 
@@ -2811,7 +2815,11 @@ c                 --- compared to the dimensions of the grid.
 
       endif
 
+#ifdef MPIPARALLEL
+c       --- End of if block for nxprocs == 1.
+      endif
 #endif
+
 c --- end of ifelse above for parallel version.
 
       return
@@ -2824,6 +2832,7 @@ c=============================================================================
       use InGen
       use InPart
       use Picglb,Only: ypminlocal,ypmaxlocal
+      use Parallel,Only: nyprocs
       type(ParticleGroup):: pgroup
       integer(ISZ):: js1,js2
       real(kind=8):: ymmax,ymmin
@@ -2838,13 +2847,16 @@ c     --- With radial geometry, the boundary conditions are handled by
 c     --- xparticleboundaries, so nothing is needed here.
       if (lrz) return
 
-c Parallel version makes call to special routine particleboundaries_parallel
+c Parallel version makes call to special routine particleboundaries_parallel,
+c but only if the y direction is domain decomposed.
 #ifdef MPIPARALLEL
-      call particleboundaries_parallel(1,pgroup,js1,js2,
-     &                                 ymmax,ymmin,ypmaxlocal,ypminlocal,
-     &                                 pboundxy,pboundxy,
-     &                                 lcountaslost,labs,lrz)
-#else
+      if (nyprocs > 1) then
+        call particleboundaries_parallel(1,pgroup,js1,js2,
+     &                                   ymmax,ymmin,ypmaxlocal,ypminlocal,
+     &                                   pboundxy,pboundxy,
+     &                                   lcountaslost,labs,lrz)
+      else
+#endif
 
       if (pboundxy==periodic) then
 c     --- periodic boundary condition
@@ -2899,7 +2911,11 @@ c               --- compared to the dimensions of the grid.
 
       endif
 
+#ifdef MPIPARALLEL
+c       --- End of if block for nyprocs == 1.
+      endif
 #endif
+
 c --- end of ifelse above for parallel version.
 
       return
@@ -2912,6 +2928,7 @@ c=============================================================================
       use InPart
       use Picglb,Only: zgrid,zpminlocal,zpmaxlocal
       use Subcycling,Only: ndtstorho,zgridndts
+      use Parallel,Only: nzprocs
       type(ParticleGroup):: pgroup
       integer(ISZ):: js1,js2
       real(kind=8):: zmmax,zmmin
@@ -2926,13 +2943,16 @@ c  --- only ever happen if this is called before a generate had been done.
       real(kind=8):: syslen,zg
       integer(ISZ):: is,ip,indts
 
-c Parallel version makes call to special routine particleboundaries_parallel
+c Parallel version makes call to special routine particleboundaries_parallel,
+c but only if the z direction is domain decomposed.
 #ifdef MPIPARALLEL
-      call particleboundaries_parallel(2,pgroup,js1,js2,
-     &                                 zmmax,zmmin,zpmaxlocal,zpminlocal,
-     &                                 pbound0,pboundnz,
-     &                                 lcountaslost,.false.,.false.)
-#else
+      if (nzprocs > 1) then
+        call particleboundaries_parallel(2,pgroup,js1,js2,
+     &                                   zmmax,zmmin,zpmaxlocal,zpminlocal,
+     &                                   pbound0,pboundnz,
+     &                                   lcountaslost,.false.,.false.)
+      else
+#endif
 
       if (pbound0==periodic) then
 c     --- periodic boundary condition
@@ -2996,7 +3016,11 @@ c               --- compared to the dimensions of the grid.
         enddo
       endif
 
+#ifdef MPIPARALLEL
+c       --- End of if block for nzprocs == 1.
+      endif
 #endif
+
 c --- end of ifelse above for parallel version.
 
       return
@@ -4093,8 +4117,10 @@ c Sorts particles, using a full size extra particle array for temporary
 c space.
 
       integer(ISZ):: is,ip,iy,iz,pindexmin
-      integer(ISZ),allocatable:: pindex(:)
-      integer(ISZ):: npblock((1+ny)*(1+nz))
+      integer(ISZ),pointer:: pindex(:)
+      integer(ISZ),pointer:: npblock(:)
+
+      allocate(npblock((1+ny)*(1+nz)))
 
 c     --- Treat the particles in each species separately
       do is=1,pgroup%ns
@@ -4106,7 +4132,7 @@ c       --- many are in each block
         do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
           iy = abs(pgroup%yp(ip) - ymmin)/dy
           iz = abs(pgroup%zp(ip) - zmmin)/dz
-          pindex(ip) = iy + (ny+1)*iz
+          pindex(ip-pgroup%ins(is)+1) = iy + (ny+1)*iz
         enddo
 
 c       --- Do the sorting
@@ -4119,6 +4145,53 @@ c       --- Do the sorting
 
 c     --- End of loop over species
       enddo
+
+      deallocate(npblock)
+
+      return
+      end
+c=============================================================================
+      subroutine particlesortxyzwithcopy(pgroup,dx,dy,dz,xmmin,ymmin,zmmin,nx,ny,nz)
+      use ParticleGroupmodule
+      type(ParticleGroup):: pgroup
+      real(kind=8):: dx,dy,dz,xmmin,ymmin,zmmin
+      integer(ISZ):: nx,ny,nz
+
+c Sorts particles, using a full size extra particle array for temporary
+c space.
+
+      integer(ISZ):: is,ip,ix,iy,iz,pindexmin
+      integer(ISZ),pointer:: pindex(:)
+      integer(ISZ),pointer:: npblock(:)
+
+      allocate(npblock((1+nx)*(1+ny)*(1+nz)))
+
+c     --- Treat the particles in each species separately
+      do is=1,pgroup%ns
+        allocate(pindex(pgroup%nps(is)))
+
+c       --- First, find which block each particle goes into and count how
+c       --- many are in each block
+        pindex = 0
+        do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+          ix = abs(pgroup%xp(ip) - xmmin)/dx
+          iy = abs(pgroup%yp(ip) - ymmin)/dy
+          iz = abs(pgroup%zp(ip) - zmmin)/dz
+          pindex(ip-pgroup%ins(is)+1) = ix + (nx+1)*(iy + (ny+1)*iz)
+        enddo
+
+c       --- Do the sorting
+        pindexmin = minval(pindex)
+        call particlesortbyindex(pgroup,pindex,pindexmin,
+     &                           pgroup%ins(is),pgroup%nps(is),
+     &                           (1+nx)*(1+ny)*(1+nz),npblock)
+
+        deallocate(pindex)
+
+c     --- End of loop over species
+      enddo
+
+      deallocate(npblock)
 
       return
       end
@@ -4133,9 +4206,11 @@ c=============================================================================
       integer(ISZ):: pindex(np)
 
       integer(ISZ):: ip,ipb,ipid
-      integer(ISZ):: ipblock(nn)
+      integer(ISZ),pointer:: ipblock(:)
       real(kind=8),pointer:: pdata(:)
       
+      allocate(ipblock(nn))
+
       npblock = 0
 
 c     --- First, count how many are in each block
@@ -4181,6 +4256,7 @@ c     --- Now, the sort can be done.
       enddo
 
       deallocate(pdata)
+      deallocate(ipblock)
 
       return
       end
