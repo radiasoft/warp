@@ -1851,6 +1851,7 @@ class Quasistatic(SubcycledPoissonSolver):
   def getmmnts(self,js):
       if self.l_verbose:print me,top.it,self.iz,'enter getmmnts'
       pg = self.pgions
+      if pg.nps[js]==0:return
       il = pg.ins[js]-1
       iu = il+pg.nps[js]
       x = pg.xp[il:iu]
