@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.70 2009/08/13 18:41:29 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.71 2009/10/09 23:48:48 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -1098,7 +1098,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.ptkez,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         vz = self.getvz(js,tc,wt,tp)
-        kez = 0.5*top.sm[js]*vz**2/jperev
+        kez = 0.5*top.pgroup.sm[js]*vz**2/jperev
         if 'pplimits' in kw.keys():
             kw['lframe'] = 1
         settitles("KEz vs time","time","KE (volts)",self.titleright(tc,wt,z))
