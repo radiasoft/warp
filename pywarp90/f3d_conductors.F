@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.69 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.70 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -896,7 +896,7 @@ c normal angle of the surface at that point.
             zi(i) = ziy
             distance = diy
             itheta(i) = pi*0.5
-            if (xiy > ycent) then
+            if (yiy > ycent) then
               iphi(i) = +pi*0.5
             else
               iphi(i) = -pi*0.5
@@ -906,7 +906,7 @@ c normal angle of the surface at that point.
             xi(i) = xiz
             yi(i) = yiz
             zi(i) = ziz
-            if (xiz > zcent) then
+            if (ziz > zcent) then
               itheta(i) = 0.
             else
               itheta(i) = pi
