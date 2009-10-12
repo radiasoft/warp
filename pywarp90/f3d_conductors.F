@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.70 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.71 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -810,111 +810,117 @@ c normal angle of the surface at that point.
           zi(i) = LARGEPOS
           itheta(i) = 0.
           iphi(i) = 0.
-
-        else
-
-          if (vx(i) == 0.) then
-            tx = LARGEPOS
-          else
-            txm = -(xcent - xsize*0.5 - x(i))/vx(i)
-            txp = -(xcent + xsize*0.5 - x(i))/vx(i)
-            if (txm > 0. .and. txp > 0.) then
-              tx = min(txm,txp)
-            else
-              tx = max(txm,txp)
-            endif
-          endif
-          xix = -vx(i)*tx + x(i)
-          yix = -vy(i)*tx + y(i)
-          zix = -vz(i)*tx + z(i)
-          if (tx > 0. .and.
-     &        ymin <= yix .and. yix <= ymax .and.
-     &        zmin <= zix .and. zix <= zmax) then
-            dix = (xix - x(i))**2 + (yix - y(i))**2 + (zix - z(i))**2
-          else
-            dix = LARGEPOS
-          endif
-
-          if (vy(i) == 0.) then
-            ty = LARGEPOS
-          else
-            tym = -(ycent - ysize*0.5 - y(i))/vy(i)
-            typ = -(ycent + ysize*0.5 - y(i))/vy(i)
-            if (tym > 0. .and. typ > 0.) then
-              ty = min(tym,typ)
-            else
-              ty = max(tym,typ)
-            endif
-          endif
-          xiy = -vx(i)*ty + x(i)
-          yiy = -vy(i)*ty + y(i)
-          ziy = -vz(i)*ty + z(i)
-          if (ty > 0. .and.
-     &        xmin <= xiy .and. xiy <= xmax .and.
-     &        zmin <= ziy .and. ziy <= zmax) then
-            diy = (xiy - x(i))**2 + (yiy - y(i))**2 + (ziy - z(i))**2
-          else
-            diy = LARGEPOS
-          endif
-
-          if (vz(i) == 0.) then
-            tz = LARGEPOS
-          else
-            tzm = -(zcent - zsize*0.5 - z(i))/vz(i)
-            tzp = -(zcent + zsize*0.5 - z(i))/vz(i)
-            if (tzm > 0. .and. tzp > 0.) then
-              tz = min(tzm,tzp)
-            else
-              tz = max(tzm,tzp)
-            endif
-          endif
-          xiz = -vx(i)*tz + x(i)
-          yiz = -vy(i)*tz + y(i)
-          ziz = -vz(i)*tz + z(i)
-          if (tz > 0. .and.
-     &        xmin <= xiz .and. xiz <= xmax .and.
-     &        ymin <= yiz .and. yiz <= ymax) then
-            diz = (xiz - x(i))**2 + (yiz - y(i))**2 + (ziz - z(i))**2
-          else
-            diz = LARGEPOS
-          endif
-
-          if (dix < diy) then
-            xi(i) = xix
-            yi(i) = yix
-            zi(i) = zix
-            distance = dix
-            if (xix > xcent) then
-              itheta(i) = +pi*0.5
-            else
-              itheta(i) = -pi*0.5
-            endif
-            iphi(i) = 0.
-          else
-            xi(i) = xiy
-            yi(i) = yiy
-            zi(i) = ziy
-            distance = diy
-            itheta(i) = pi*0.5
-            if (yiy > ycent) then
-              iphi(i) = +pi*0.5
-            else
-              iphi(i) = -pi*0.5
-            endif
-          endif
-          if (diz < distance) then
-            xi(i) = xiz
-            yi(i) = yiz
-            zi(i) = ziz
-            if (ziz > zcent) then
-              itheta(i) = 0.
-            else
-              itheta(i) = pi
-            endif
-            iphi(i) = 0.
-          endif
-
+          cycle
         endif
+
+        if (vx(i) == 0.) then
+          tx = LARGEPOS
+        else
+          txm = -(xcent - xsize*0.5 - x(i))/vx(i)
+          txp = -(xcent + xsize*0.5 - x(i))/vx(i)
+          if (txm > 0. .and. txp > 0.) then
+            tx = min(txm,txp)
+          else
+            tx = max(txm,txp)
+          endif
+        endif
+        xix = -vx(i)*tx + x(i)
+        yix = -vy(i)*tx + y(i)
+        zix = -vz(i)*tx + z(i)
+        if (tx > 0. .and.
+     &      ymin <= yix .and. yix <= ymax .and.
+     &      zmin <= zix .and. zix <= zmax) then
+          dix = (xix - x(i))**2 + (yix - y(i))**2 + (zix - z(i))**2
+        else
+          dix = LARGEPOS
+        endif
+
+        if (vy(i) == 0.) then
+          ty = LARGEPOS
+        else
+          tym = -(ycent - ysize*0.5 - y(i))/vy(i)
+          typ = -(ycent + ysize*0.5 - y(i))/vy(i)
+          if (tym > 0. .and. typ > 0.) then
+            ty = min(tym,typ)
+          else
+            ty = max(tym,typ)
+          endif
+        endif
+        xiy = -vx(i)*ty + x(i)
+        yiy = -vy(i)*ty + y(i)
+        ziy = -vz(i)*ty + z(i)
+        if (ty > 0. .and.
+     &      xmin <= xiy .and. xiy <= xmax .and.
+     &      zmin <= ziy .and. ziy <= zmax) then
+          diy = (xiy - x(i))**2 + (yiy - y(i))**2 + (ziy - z(i))**2
+        else
+          diy = LARGEPOS
+        endif
+
+        if (vz(i) == 0.) then
+          tz = LARGEPOS
+        else
+          tzm = -(zcent - zsize*0.5 - z(i))/vz(i)
+          tzp = -(zcent + zsize*0.5 - z(i))/vz(i)
+          if (tzm > 0. .and. tzp > 0.) then
+            tz = min(tzm,tzp)
+          else
+            tz = max(tzm,tzp)
+          endif
+        endif
+        xiz = -vx(i)*tz + x(i)
+        yiz = -vy(i)*tz + y(i)
+        ziz = -vz(i)*tz + z(i)
+        if (tz > 0. .and.
+     &      xmin <= xiz .and. xiz <= xmax .and.
+     &      ymin <= yiz .and. yiz <= ymax) then
+          diz = (xiz - x(i))**2 + (yiz - y(i))**2 + (ziz - z(i))**2
+        else
+          diz = LARGEPOS
+        endif
+
+        if (dix < diy) then
+          xi(i) = xix
+          yi(i) = yix
+          zi(i) = zix
+          distance = dix
+          if (xix > xcent) then
+            itheta(i) = +pi*0.5
+          else
+            itheta(i) = -pi*0.5
+          endif
+          iphi(i) = 0.
+        else if (dix > diy) then
+          xi(i) = xiy
+          yi(i) = yiy
+          zi(i) = ziy
+          distance = diy
+          itheta(i) = pi*0.5
+          if (yiy > ycent) then
+            iphi(i) = +pi*0.5
+          else
+            iphi(i) = -pi*0.5
+          endif
+        else
+          xi(i) = LARGEPOS
+          yi(i) = LARGEPOS
+          zi(i) = LARGEPOS
+          itheta(i) = 0.
+          iphi(i) = 0.
+          distance = LARGEPOS
+        endif
+        if (diz < distance) then
+          xi(i) = xiz
+          yi(i) = yiz
+          zi(i) = ziz
+          if (ziz > zcent) then
+            itheta(i) = 0.
+          else
+            itheta(i) = pi
+          endif
+          iphi(i) = 0.
+        endif
+
       enddo
 
       return
