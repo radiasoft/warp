@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.204 2009/08/19 22:29:10 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.205 2009/10/13 20:42:38 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -303,6 +303,7 @@ Should never be directly created by the user.
     return result
 
   def draw(self,**kw):
+    # assumed to draw either zx or zr
     nowarn = kw.get('nowarn',0)
     if not nowarn:
       print 'draw method not implemented for '+self.__class__.__name__
@@ -313,6 +314,16 @@ Should never be directly created by the user.
   def drawzr(self,**kw):
     kw.setdefault('fullplane',0)
     self.draw(**kw)
+
+  def drawxy(self,**kw):
+    nowarn = kw.get('nowarn',0)
+    if not nowarn:
+      print 'drawxy method not implemented for '+self.__class__.__name__
+
+  def drawzy(self,**kw):
+    nowarn = kw.get('nowarn',0)
+    if not nowarn:
+      print 'drawzy method not implemented for '+self.__class__.__name__
 
   def plotdata(self,r,z,color='fg',filled=None,fullplane=1):
     z = array(z) + self.zcent
@@ -784,6 +795,12 @@ AssemblyNot class.  Represents 'not' of assemblies.
     self.dxobject = self.left.getdxobject(kwdict=kw)
   def draw(self,**kw):
     self.left.draw(**kw)
+  def drawxy(self,**kw):
+    self.left.drawxy(**kw)
+  def drawzx(self,**kw):
+    self.left.drawzx(**kw)
+  def drawzy(self,**kw):
+    self.left.drawzy(**kw)
 
 
 class AssemblyAnd(Assembly):
@@ -817,6 +834,15 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   def draw(self,**kw):
     self.left.draw(**kw)
     self.right.draw(**kw)
+  def drawxy(self,**kw):
+    self.left.drawxy(**kw)
+    self.right.drawxy(**kw)
+  def drawzx(self,**kw):
+    self.left.drawzx(**kw)
+    self.right.drawzx(**kw)
+  def drawzy(self,**kw):
+    self.left.drawzy(**kw)
+    self.right.drawzy(**kw)
 
 
 class AssemblyPlus(Assembly):
@@ -850,6 +876,15 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   def draw(self,**kw):
     self.left.draw(**kw)
     self.right.draw(**kw)
+  def drawxy(self,**kw):
+    self.left.drawxy(**kw)
+    self.right.drawxy(**kw)
+  def drawzx(self,**kw):
+    self.left.drawzx(**kw)
+    self.right.drawzx(**kw)
+  def drawzy(self,**kw):
+    self.left.drawzy(**kw)
+    self.right.drawzy(**kw)
 
 
 class AssemblyMinus(Assembly):
@@ -883,6 +918,15 @@ AssemblyMinus class.
   def draw(self,**kw):
     self.left.draw(**kw)
     self.right.draw(**kw)
+  def drawxy(self,**kw):
+    self.left.drawxy(**kw)
+    self.right.drawxy(**kw)
+  def drawzx(self,**kw):
+    self.left.drawzx(**kw)
+    self.right.drawzx(**kw)
+  def drawzy(self,**kw):
+    self.left.drawzy(**kw)
+    self.right.drawzy(**kw)
 
 #============================================================================
 class EllipticAssembly(Assembly):
@@ -2375,7 +2419,20 @@ Box class
                       [+self.xsize/2.,+self.ysize/2.,+self.zsize/2.])
 
   def draw(self,color='fg',filled=None,fullplane=1,**kw):
+    self.drawzx(**kw)
+
+  def drawxy(self,color='fg',filled=None,fullplane=1,**kw):
+    y = self.ysize/2.*array([-1,+1,+1,-1,-1])
+    x = self.xsize/2.*array([-1,-1,+1,+1,-1])
+    self.plotdata(y,x,color=color,filled=filled,fullplane=fullplane)
+
+  def drawzx(self,color='fg',filled=None,fullplane=1,**kw):
     r = self.xsize/2.*array([-1,+1,+1,-1,-1])
+    z = self.zsize/2.*array([-1,-1,+1,+1,-1])
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+
+  def drawzy(self,color='fg',filled=None,fullplane=1,**kw):
+    r = self.ysize/2.*array([-1,+1,+1,-1,-1])
     z = self.zsize/2.*array([-1,-1,+1,+1,-1])
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
@@ -2567,6 +2624,52 @@ Plots the r versus z
     r = [self.radius,self.radius,rmin,rmin,self.radius]
     z = self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+
+  def drawzx(self,color='fg',filled=None,fullplane=1,**kw):
+    """
+Plots the x versus z
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 199.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmin=0.: inner range in r to include in plot
+    """
+    self.draw(color=color,filled=filled,fullplane=fullplane,**kw)
+
+  def drawzy(self,color='fg',filled=None,fullplane=1,**kw):
+    """
+Plots the r versus z
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 199.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmin=0.: inner range in r to include in plot
+    """
+    rmin = kw.get('rmin',None)
+    if rmin is None: rmin = 0.
+    r = [self.radius,self.radius,rmin,rmin,self.radius]
+    z = self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+
+  def drawxy(self,color='fg',filled=None,fullplane=1,nn=101,**kw):
+    """
+Plots the x versus y
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 199.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmin=0.: inner range in r to include in plot
+ - nn=100: number of points in the circles
+    """
+    rmin = kw.get('rmin',None)
+    if rmin is None: rmin = 0.
+    theta = linspace(0,2*pi,nn)
+    x = self.radius*cos(theta)
+    y = self.radius*sin(theta)
+    if rmin > 0.:
+      x = array(list(x) + self.rmin*cos(-theta))
+      y = array(list(y) + self.rmin*sin(-theta))
+    self.plotdata(y,x,color=color,filled=filled,fullplane=fullplane)
 
 #============================================================================
 class ZRoundedCylinder(Assembly):
