@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.140 $, $Date: 2009/08/28 22:04:58 $
+c@(#) File F3D.M, version $Revision: 3.141 $, $Date: 2009/10/14 23:43:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -351,6 +351,7 @@ c-----------------------------------------------------------------------------
       logical(ISZ):: lattenuate,doperiodic,dodirichlet,doneumann
       logical(ISZ):: periodicsolve,dirichletsolve
 #ifdef MPIPARALLEL
+      real(kind=8):: kysqtran(2)
       integer(ISZ):: nx_tran,ny_tran,ikxm,ikym
       logical(ISZ):: transposed
 #endif
@@ -682,16 +683,7 @@ c  line is on a single processor.
         call warptranspose(nx,ny,nzlocal,a,nx_tran,ny_tran)
         transposed = .true.
 
-        if (ny_tran == 0) then
-          call kaboom("vpois3d: having nslaves > ny is not supported now")
-c         --- If there is only one y line, pass nx as zero so that
-c         --- transform done on 2 y lines actually transforms on 2 x's
-c         --- next to each other.
-          call vpftz(0,nx_tran,nz,phi_trnsps,norm,0,1,zwork)
-        else
-c         --- pass normal arguments
-          call vpftz(nx_tran,ny_tran,nz,phi_trnsps,norm,1,0,zwork)
-        endif
+        call vpftz(nx_tran,ny_tran,nz,phi_trnsps,norm,1,1,zwork)
 
         if (iwhich == 2 .or. iwhich == 10 .or. ny <= nslaves) then
 c         --- Transpose back if not doing the full field solve
@@ -750,7 +742,7 @@ c           --- precalculate min's.
             endif
 c           --- attenuate transposed array
             call attenuate(nx_tran,ny_tran,nz,phi_trnsps,attx(ix),atty(iy),attz,
-     &                     ikxm,ikym,1,0,1)
+     &                     ikxm,ikym,1,1,1)
           else
             iz = my_index*nzlocal
             call attenuate(nx,ny,nzlocal,a,attx,atty,attz(iz),ikxmin,ikymin,1,1,1)
@@ -790,7 +782,7 @@ c         --- min's.
           endif
 c         --- make conversion with transposed array
           call rhotophi(nx_tran,ny_tran,nz,phi_trnsps,kxsq(ix),kysq(iy),kzsq,
-     &                  ikxm,ikym,1,0,1)
+     &                  ikxm,ikym,1,1,1)
         else
           iz = my_index*nzlocal
           call rhotophi(nx,ny,nzlocal,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1,1)
@@ -824,15 +816,7 @@ c  original format.
           call warptranspose(nx,ny,nzlocal,a,nx_tran,ny_tran)
           transposed = .true.
         endif
-        if (ny_tran == 0) then
-c         --- If there is only one y line, pass nx as zero so that
-c         --- transform done on 2 y lines actually transforms on 2 x's
-c         --- next to each other.
-          call vpftzi(0,nx_tran,nz,phi_trnsps,norm,0,1,zwork)
-        else
-c         --- pass normal arguments
-          call vpftzi(nx_tran,ny_tran,nz,phi_trnsps,norm,1,0,zwork)
-        endif
+        call vpftzi(nx_tran,ny_tran,nz,phi_trnsps,norm,1,1,zwork)
 
 c       --- Rearrange phi again back to original arrangement.
         call warptransposei(nx,ny,nzlocal,a,nx_tran,ny_tran)
@@ -874,8 +858,14 @@ c       --- min's.
         else
           ikym = 0
         endif
-        call tridiag(nx_tran,ny_tran,nz,phi_trnsps,norm,
-     &               kxsq(ix),kysq(iy),kzsq,ikxm,ikym,0,zwork)
+        if (ny > nzprocs) then
+          call tridiag(nx_tran,ny_tran,nz,phi_trnsps,norm,
+     &                 kxsq(ix),kysq(iy),kzsq,ikxm,ikym,1,zwork)
+        else
+          kysqtran = kysq(iy)
+          call tridiag(nx_tran,ny_tran,nz,phi_trnsps,norm,
+     &                 kxsq(ix),kysqtran,kzsq,ikxm,ikym,1,zwork)
+        endif
 
 c       --- Rearrange phi again back to original arrangement.
         call warptransposei(nx,ny,nzlocal,a,nx_tran,ny_tran)
