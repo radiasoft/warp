@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.43 $, $Date: 2009/10/01 21:51:01 $
+c F3DSLAVE.M, version $Revision: 1.44 $, $Date: 2009/10/14 23:40:46 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -154,9 +154,9 @@ c of processors is a power of two.
       integer(MPIISZ):: nlocal(0:2),nlocal_trnsps(0:2)
       include "mpif.h"
       integer(MPIISZ):: mpierror
-      integer(MPIISZ):: sendtypes(0:nzprocs-1),recvtypes(0:nzprocs-1)
-      integer(MPIISZ):: sdispls(0:nzprocs-1),rdispls(0:nzprocs-1)
-      integer(MPIISZ):: sendcounts(0:nzprocs-1),recvcounts(0:nzprocs-1)
+      integer(MPIISZ),pointer:: sendtypes(:),recvtypes(:)
+      integer(MPIISZ),pointer:: sdispls(:),rdispls(:)
+      integer(MPIISZ),pointer:: sendcounts(:),recvcounts(:)
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -181,6 +181,10 @@ c     --- time operation of vpftz.
         return
       endif
 
+      allocate(sendtypes(0:nzprocs-1),recvtypes(0:nzprocs-1))
+      allocate(sdispls(0:nzprocs-1),rdispls(0:nzprocs-1))
+      allocate(sendcounts(0:nzprocs-1),recvcounts(0:nzprocs-1))
+
 c     --- Create the work space that phi is transposed into.
       phi_trnspsnx = nx_tran
       phi_trnspsny = ny_tran
@@ -199,18 +203,19 @@ c     --- are sent to each of the processors.
 
       do ip = 0,nzprocs-1
 
-        if (ny < nzprocs) then
-          starts(0) = 1 + (2*nx_tran)*mod(ip,nzprocs/ny)
-          starts(1) = 1 + int(ip*ny/nzprocs)
-          starts(2) = 0
-          sizes = (/2*nx_tran,1,nzlocal/)
-        else
+        if (ny > nzprocs) then
           starts(0) = 1
           starts(1) = 1 + ny_tran*ip
           starts(2) = 0
           sizes = (/nx_tran,ny_tran,nzlocal/)
+        else if (nx*ny > nzprocs) then
+          starts(0) = 1 + (2*nx_tran)*mod(ip,nzprocs/ny)
+          starts(1) = 1 + int(ip*ny/nzprocs)
+          starts(2) = 0
+          sizes = (/2*nx_tran,1,nzlocal/)
         endif
         if (izproc == nzprocs-1) sizes(2) = nzlocal + 1
+
         call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
      &                                MPI_ORDER_FORTRAN,
      &                                MPI_DOUBLE_PRECISION,
@@ -244,6 +249,10 @@ c     --- Free the data types
 c     --- Now the array phi_trnsps contains 3-D data with dimensions
 c     --- (0:nx_tran,0:ny_tran,nzlocal*nzprocs).
 
+      deallocate(sendtypes,recvtypes)
+      deallocate(sdispls,rdispls)
+      deallocate(sendcounts,recvcounts)
+
 c DONE!
 !$OMP MASTER
       if (lf3dtimesubs) timetranspose = timetranspose + wtime() - substarttime
@@ -270,11 +279,15 @@ c of processors is a power of two.
       integer(MPIISZ):: nlocal(0:2),nlocal_trnsps(0:2)
       include "mpif.h"
       integer(MPIISZ):: mpierror
-      integer(MPIISZ):: sendtypes(0:nzprocs-1),recvtypes(0:nzprocs-1)
-      integer(MPIISZ):: sdispls(0:nzprocs-1),rdispls(0:nzprocs-1)
-      integer(MPIISZ):: sendcounts(0:nzprocs-1),recvcounts(0:nzprocs-1)
+      integer(MPIISZ),pointer:: sendtypes(:),recvtypes(:)
+      integer(MPIISZ),pointer:: sdispls(:),rdispls(:)
+      integer(MPIISZ),pointer:: sendcounts(:),recvcounts(:)
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
+
+      allocate(sendtypes(0:nzprocs-1),recvtypes(0:nzprocs-1))
+      allocate(sdispls(0:nzprocs-1),rdispls(0:nzprocs-1))
+      allocate(sendcounts(0:nzprocs-1),recvcounts(0:nzprocs-1))
 
 c     --- Create an MPI type to refer to the distributed pieces of data that
 c     --- are sent to each of the processors.
@@ -298,17 +311,18 @@ c     --- are sent to each of the processors.
      &                                sendtypes(ip),mpierror)
         call MPI_TYPE_COMMIT(sendtypes(ip),mpierror)
 
-        if (ny < nzprocs) then
-          starts(0) = 1 + (2*nx_tran)*mod(ip,nzprocs/ny)
-          starts(1) = 1 + int(ip*ny/nzprocs)
-          starts(2) = 0
-          sizes = (/2*nx_tran,1,nzlocal/)
-        else
+        if (ny > nzprocs) then
           starts(0) = 1
           starts(1) = 1 + ny_tran*ip
           starts(2) = 0
           sizes = (/nx_tran,ny_tran,nzlocal/)
+        else if (nx*ny > nzprocs) then
+          starts(0) = 1 + (2*nx_tran)*mod(ip,nzprocs/ny)
+          starts(1) = 1 + int(ip*ny/nzprocs)
+          starts(2) = 0
+          sizes = (/2*nx_tran,1,nzlocal/)
         endif
+
         call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
      &                                MPI_ORDER_FORTRAN,
      &                                MPI_DOUBLE_PRECISION,
@@ -330,6 +344,10 @@ c     --- Free the data types
       enddo
 
 c     --- Now the array phi is returned to normal.
+
+      deallocate(sendtypes,recvtypes)
+      deallocate(sdispls,rdispls)
+      deallocate(sendcounts,recvcounts)
 
 c DONE!
 !$OMP MASTER
