@@ -89,6 +89,10 @@ be unreliable.
 
         self.zoldpid = nextpid()
 
+        self.initializedata()
+        installafterstep(self.getdiagnostics)
+
+    def initializedata(self):
         # --- Note to users: when retrieving results, the following attributes
         # --- should be accessed through their associated properties,
         # --- for example self.current, without the underscore.
@@ -104,9 +108,16 @@ be unreliable.
         self._yrms = []
         self._rrms = []
         self._rprms = []
-        self._dummy = None
 
-        installafterstep(self.getdiagnostics)
+        self.ldoradialdiag = ((self.nr is not None) and
+                              (self.rmax is not None))
+        if self.ldoradialdiag:
+            self._rprofile = []
+
+        self.ldoscintillator = (self.scintzmin is not None)
+        if self.ldoscintillator:
+            self._scinttime = []
+            self._scintillator = []
 
     def disable(self):
         uninstallafterstep(self.getdiagnostics)
@@ -123,10 +134,6 @@ be unreliable.
         assert abs((self.zmmax-self.zmmin)-self.nz*self.dz) < 1.e-5*self.dz,\
             "zmmin, zmmax, dz, and nz are not consistent with each other"
 
-        self.ldoradialdiag = ((self.nr is not None) and
-                              (self.rmax is not None))
-
-        self.ldoscintillator = (self.scintzmin is not None)
         if self.ldoscintillator:
             self.scintzmin = nint((self.scintzmin-self.zmmin)/self.dz)*self.dz + self.zmmin
             self.scintzmax = nint((self.scintzmax-self.zmmin)/self.dz)*self.dz + self.zmmin
@@ -188,8 +195,7 @@ be unreliable.
 
         rmax = self.rmax
         nr = self.nr
-        ldoradialdiag = self.ldoradialdiag
-        if ldoradialdiag:
+        if self.ldoradialdiag:
             dr = rmax/nr
 
         if self.ldoscintillator:
@@ -203,17 +209,13 @@ be unreliable.
             zbeam = 0.
         zoldpid = self.zoldpid
 
-        # --- Initialize the data lists and work arrays.
-        if self._dummy is None:
-            self._dummy = zeros(1+nz,'d')
-            if ldoradialdiag:
-                self._rprofile = []
-                self._rprofilecount = zeros((1+nr,1+nz),'d')
-                #self.rprofilemesh = iota(0,nr)*dr
-            if self.ldoscintillator:
-                self._scinttime = []
-                self._scintillator = []
-                self._scintillatorcount = zeros((1+scintnx,1+scintny,1+scintnz))
+        # --- Create temporary work space
+        gridcount = zeros(1+nz,'d')
+        if self.ldoradialdiag:
+            rprofilecount = zeros((1+nr,1+nz),'d')
+            #self.rprofilemesh = iota(0,nr)*dr
+        if self.ldoscintillator:
+            scintillatorcount = zeros((1+scintnx,1+scintny,1+scintnz))
 
         if self.nhist is None: nhist = top.nhist
         else:                  nhist = self.nhist
@@ -240,7 +242,7 @@ be unreliable.
                     self._xsqbar[0].fill(0.)
                     self._ysqbar[0].fill(0.)
                     self._rprms[0].fill(0.)
-                    if ldoradialdiag:
+                    if self.ldoradialdiag:
                         self._rprofile[0].fill(0.)
                     if self.ldoscintillator:
                         self._scintillator[0].fill(0.)
@@ -273,29 +275,29 @@ be unreliable.
                 ww = ones(np,'d')
 
             zc = izc.astype('d')
-            deposgrid1d(1,np,zc,ww,nz,self._count[-1],self._dummy,0.,nz)
-            deposgrid1d(1,np,zc,ww*xc,nz,self._xbar[-1],self._dummy,0.,nz)
-            deposgrid1d(1,np,zc,ww*yc,nz,self._ybar[-1],self._dummy,0.,nz)
-            deposgrid1d(1,np,zc,ww*xc**2,nz,self._xsqbar[-1],self._dummy,0.,nz)
-            deposgrid1d(1,np,zc,ww*yc**2,nz,self._ysqbar[-1],self._dummy,0.,nz)
-            deposgrid1d(1,np,zc,ww*rpc**2,nz,self._rprms[-1],self._dummy,0.,nz)
+            deposgrid1d(1,np,zc,ww,nz,self._count[-1],gridcount,0.,nz)
+            deposgrid1d(1,np,zc,ww*xc,nz,self._xbar[-1],gridcount,0.,nz)
+            deposgrid1d(1,np,zc,ww*yc,nz,self._ybar[-1],gridcount,0.,nz)
+            deposgrid1d(1,np,zc,ww*xc**2,nz,self._xsqbar[-1],gridcount,0.,nz)
+            deposgrid1d(1,np,zc,ww*yc**2,nz,self._ysqbar[-1],gridcount,0.,nz)
+            deposgrid1d(1,np,zc,ww*rpc**2,nz,self._rprms[-1],gridcount,0.,nz)
 
-            if ldoradialdiag or self.ldoscintillator:
+            if self.ldoradialdiag or self.ldoscintillator:
                 vz = getvz(js=js,gather=0)[icrossed]
                 ke = 0.5*top.pgroup.sm[js]*vz**2
                 ww *= top.pgroup.sw[js]
 
-            if ldoradialdiag:
+            if self.ldoradialdiag:
                 rc = sqrt(xc**2 + yc**2)
                 deposgrid2d(1,np,zc,rc,ke*ww,nz,nr,transpose(self._rprofile[-1]),
-                            transpose(self._rprofilecount),0.,nz,0.,rmax)
+                            transpose(rprofilecount),0.,nz,0.,rmax)
 
             if self.ldoscintillator:
                 izmin = (self.scintzmin - (zbeam + zmmin))/dz
                 izmax = (self.scintzmax - (zbeam + zmmin))/dz
                 deposgrid3d(1,np,zc,yc,xc,ke*ww,scintnz,scintny,scintnx,
                             transpose(self._scintillator[-1]),
-                            transpose(self._scintillatorcount),
+                            transpose(scintillatorcount),
                             izmin,izmax,
                             self.scintymin,self.scintymax,
                             self.scintxmin,self.scintxmax)
@@ -341,7 +343,7 @@ be unreliable.
             # --- Scale the current appropriately.
             cu[...] = co*(top.pgroup.sq[js]*top.pgroup.sw[js]/(top.dt*nhist))
 
-            if ldoradialdiag:
+            if self.ldoradialdiag:
                 rprof = self._rprofile[-1]
                 rprof[...] = parallelsum(rprof)
 
@@ -621,10 +623,10 @@ be unreliable.
         self.arraytime = array(self.time)
         self.arraycurrent = array(self.current)
         self.arrayradius = array(self.rrms)
-        self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+        self.zmesh = self.zmmin + arange(0,self.nz+1,dtype='l')*self.dz
 
-        self.currentmax = zeros(self.nz+1,float64)
-        self.ratcurrentmax = zeros(self.nz+1,float64)
+        self.currentmax = zeros(self.nz+1,'d')
+        self.ratcurrentmax = zeros(self.nz+1,'d')
         for iz in range(self.nz+1):
             # --- Find the max current over time at the location iz
             ii = argmax(self.arraycurrent[:,iz])
@@ -692,7 +694,7 @@ around the peak current."""
 
     # ----------------------------------------------------------------------
     def _pp2d(self,data,lbeamframe=1,**kw):
-        zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+        zmesh = self.zmmin + arange(0,self.nz+1,dtype='l')*self.dz
         if lbeamframe:
             zz = zmesh[:,newaxis]*ones(data.shape[0])[newaxis,:]
         else:
