@@ -38,6 +38,7 @@ cross the cell.
 The following quantities are calculated:
 count: count of the number of particles that cross the cell each time
 current: current, same as count but scaled by particle charge and 1/top.dt.
+vzbar:
 xbar, ybar:
 xsqbar, ysqbar:
 xrms, yrms:
@@ -100,6 +101,7 @@ be unreliable.
         self._zbeam = []
         self._count = []
         self._current = []
+        self._vzbar = []
         self._xbar = []
         self._ybar = []
         self._xsqbar = []
@@ -149,6 +151,7 @@ be unreliable.
         self._zbeam.append(zbeam)
         self._count.append(zeros(1+nz,'d'))
         self._current.append(zeros(1+nz,'d'))
+        self._vzbar.append(zeros(1+nz,'d'))
         self._xbar.append(zeros(1+nz,'d'))
         self._ybar.append(zeros(1+nz,'d'))
         self._xsqbar.append(zeros(1+nz,'d'))
@@ -237,6 +240,7 @@ be unreliable.
                 else:
                     self._count[0].fill(0.)
                     self._current[0].fill(0.)
+                    self._vzbar[0].fill(0.)
                     self._xbar[0].fill(0.)
                     self._ybar[0].fill(0.)
                     self._xsqbar[0].fill(0.)
@@ -255,6 +259,7 @@ be unreliable.
             ynew = gety(js=js,gather=0)
             rpnew = getrp(js=js,gather=0)
             znew = getz(js=js,gather=0)
+            vznew = getvz(js=js,gather=0)
             zold = getpid(js=js,id=zoldpid-1,gather=0)
 
             iznew = int((znew - (zbeam + zmmin))/dz)
@@ -266,6 +271,7 @@ be unreliable.
             xc = xnew[icrossed]
             yc = ynew[icrossed]
             rpc = rpnew[icrossed]
+            vzc = vznew[icrossed]
             np = len(izc)
 
             if top.wpid > 0:
@@ -276,6 +282,7 @@ be unreliable.
 
             zc = izc.astype('d')
             deposgrid1d(1,np,zc,ww,nz,self._count[-1],gridcount,0.,nz)
+            deposgrid1d(1,np,zc,ww*vzc,nz,self._vzbar[-1],gridcount,0.,nz)
             deposgrid1d(1,np,zc,ww*xc,nz,self._xbar[-1],gridcount,0.,nz)
             deposgrid1d(1,np,zc,ww*yc,nz,self._ybar[-1],gridcount,0.,nz)
             deposgrid1d(1,np,zc,ww*xc**2,nz,self._xsqbar[-1],gridcount,0.,nz)
@@ -314,6 +321,7 @@ be unreliable.
         if top.it%nhist == int(nhist/2):
             co = self._count[-1]
             cu = self._current[-1]
+            vzbar = self._vzbar[-1]
             xbar = self._xbar[-1]
             ybar = self._ybar[-1]
             xsqbar = self._xsqbar[-1]
@@ -323,6 +331,7 @@ be unreliable.
             # --- Finish the calculation, gathering data from all processors and
             # --- dividing out the count.
             co[...] = parallelsum(co)
+            vzbar[...] = parallelsum(vzbar)
             xbar[...] = parallelsum(xbar)
             ybar[...] = parallelsum(ybar)
             xsqbar[...] = parallelsum(xsqbar)
@@ -330,6 +339,7 @@ be unreliable.
             rp[...] = parallelsum(rp)
 
             cotemp = where(co==0.,1.,co)
+            vzbar[...] = vzbar/cotemp
             xbar[...] = xbar/cotemp
             ybar[...] = ybar/cotemp
             xsqbar[...] = xsqbar/cotemp
@@ -366,6 +376,7 @@ be unreliable.
         ff.write('zbeam'+suffix,zbeam)
         ff.write('count'+suffix,self._count[0])
         ff.write('current'+suffix,self._current[0])
+        ff.write('vzbar'+suffix,self._vzbar[0])
         ff.write('xbar'+suffix,self._xbar[0])
         ff.write('ybar'+suffix,self._ybar[0])
         ff.write('xsqbar'+suffix,self._xsqbar[0])
@@ -422,6 +433,7 @@ be unreliable.
         cPickle.dump(('zbeam'+suffix,zbeam),ff,-1)
         cPickle.dump(('count'+suffix,self._count[0]),ff,-1)
         cPickle.dump(('current'+suffix,self._current[0]),ff,-1)
+        cPickle.dump(('vzbar'+suffix,self._vzbar[0]),ff,-1)
         cPickle.dump(('xbar'+suffix,self._xbar[0]),ff,-1)
         cPickle.dump(('ybar'+suffix,self._ybar[0]),ff,-1)
         cPickle.dump(('xsqbar'+suffix,self._xsqbar[0]),ff,-1)
@@ -451,6 +463,7 @@ be unreliable.
         self._zbeam = []
         self._count = []
         self._current = []
+        self._vzbar = []
         self._xbar = []
         self._ybar = []
         self._xsqbar = []
@@ -475,6 +488,7 @@ be unreliable.
                 self._zbeam.append(ff.read('zbeam'+suffix))
                 self._count.append(ff.read('count'+suffix))
                 self._current.append(ff.read('current'+suffix))
+                self._vzbar.append(ff.read('vzbar'+suffix))
                 self._xbar.append(ff.read('xbar'+suffix))
                 self._ybar.append(ff.read('ybar'+suffix))
                 self._xsqbar.append(ff.read('xsqbar'+suffix))
@@ -558,6 +572,7 @@ be unreliable.
         self._zbeam = []
         self._count = []
         self._current = []
+        self._vzbar = []
         self._xbar = []
         self._ybar = []
         self._xsqbar = []
@@ -582,6 +597,7 @@ be unreliable.
                 self._zbeam.append(datadict['zbeam'+suffix])
                 self._count.append(datadict['count'+suffix])
                 self._current.append(datadict['current'+suffix])
+                self._vzbar.append(datadict['vzbar'+suffix])
                 self._xbar.append(datadict['xbar'+suffix])
                 self._ybar.append(datadict['ybar'+suffix])
                 self._xsqbar.append(datadict['xsqbar'+suffix])
@@ -706,6 +722,8 @@ around the peak current."""
         self._pp2d(self.count,**kw)
     def pp2dcurrent(self,**kw):
         self._pp2d(self.current,**kw)
+    def pp2dvzbar(self,**kw):
+        self._pp2d(self.vzbar,**kw)
     def pp2dxbar(self,**kw):
         self._pp2d(self.xbar,**kw)
     def pp2dybar(self,**kw):
@@ -718,10 +736,49 @@ around the peak current."""
         self._pp2d(self.xrms,**kw)
     def pp2dyrms(self,**kw):
         self._pp2d(self.yrms,**kw)
-    def pp2srrms(self,**kw):
+    def pp2drrms(self,**kw):
         self._pp2d(self.rrms,**kw)
     def pp2drprms(self,**kw):
         self._pp2d(self.rprms,**kw)
+
+    # ----------------------------------------------------------------------
+    def _gettimehistory(self,data,z):
+        d = []
+        t = []
+        for i in range(data.shape[0]):
+            if self.zmmin <= z-self.zbeam[i] <= self.zmmax:
+                t.append(self.time[i])
+                zz = (z - self.zbeam[i] - self.zmmin)/self.dz
+                iz = int(zz)
+                wz = zz - iz
+                if iz < self.nz:
+                    d.append(data[i,iz]*(1. - wz) + data[i,iz+1]*wz)
+                else:
+                    d.append(data[i,iz])
+        return array(d),array(t)
+        
+    def hcount(self,**kw):
+        return self._gettimehistory(self.count,**kw)
+    def hcurrent(self,**kw):
+        return self._gettimehistory(self.current,**kw)
+    def hvzbar(self,**kw):
+        return self._gettimehistory(self.vzbar,**kw)
+    def hxbar(self,**kw):
+        return self._gettimehistory(self.xbar,**kw)
+    def hybar(self,**kw):
+        return self._gettimehistory(self.ybar,**kw)
+    def hxsqbar(self,**kw):
+        return self._gettimehistory(self.xsqbar,**kw)
+    def hysqbar(self,**kw):
+        return self._gettimehistory(self.ysqbar,**kw)
+    def hxrms(self,**kw):
+        return self._gettimehistory(self.xrms,**kw)
+    def hyrms(self,**kw):
+        return self._gettimehistory(self.yrms,**kw)
+    def hrrms(self,**kw):
+        return self._gettimehistory(self.rrms,**kw)
+    def hrprms(self,**kw):
+        return self._gettimehistory(self.rprms,**kw)
 
     # ----------------------------------------------------------------------
     def _timeintegrate(self,data,laverage):
@@ -768,6 +825,9 @@ around the peak current."""
 
     def timeintegratedcurrent(self):
         return self._timeintegrate(self.current,laverage=0)
+
+    def timeintegratedvzbar(self):
+        return self._timeintegrate(self.vzbar,laverage=1)
 
     def timeintegratedxbar(self):
         return self._timeintegrate(self.xbar,laverage=1)
@@ -849,6 +909,7 @@ around the peak current."""
     zbeam = property(*_setupproperty('zbeam'))
     count = property(*_setupproperty('count'))
     current = property(*_setupproperty('current'))
+    vzbar = property(*_setupproperty('vzbar'))
     xbar = property(*_setupproperty('xbar'))
     ybar = property(*_setupproperty('ybar'))
     xsqbar = property(*_setupproperty('xsqbar'))
