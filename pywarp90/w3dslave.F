@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.53 $, $Date: 2009/10/01 00:24:48 $
+c W3DSLAVE.M, version $Revision: 1.54 $, $Date: 2009/10/27 23:33:17 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -108,12 +108,15 @@ c total number of particles.
       return
       end
 c===========================================================================
-      subroutine sumsourcepondomainboundaries(nc,nxp,nyp,nzp,sourcep,ppdecomp)
+      subroutine sumsourcepondomainboundaries_alltoall(nc,nxp,nyp,nzp,sourcep,ppdecomp)
       use Subtimers3d
       use Decompositionmodule
       integer(ISZ):: nc,nxp,nyp,nzp
       real(kind=8):: sourcep(0:nc-1,0:nxp,0:nyp,0:nzp)
       type(Decomposition):: ppdecomp
+
+c WARNING!!! This does not work if more than two processors have sourcep
+c overlapping!!!
 
 c Gather the charge density in the region where the field solve
 c will be done. This assumes that each processor "owns" source from
@@ -302,7 +305,7 @@ c         endif
       return
       end
 c===========================================================================
-      subroutine sumsourcepondomainboundaries_orig(nc,nxp,nyp,nzp,sourcep,ppdecomp)
+      subroutine sumsourcepondomainboundaries(nc,nxp,nyp,nzp,sourcep,ppdecomp)
       use Subtimers3d
       use Decompositionmodule
       integer(ISZ):: nc,nxp,nyp,nzp
@@ -327,7 +330,7 @@ c only responsible for sending out the source is owns.
       integer(ISZ):: i1(0:2),i2(0:2)
       integer(MPIISZ):: dims,nlocal(-1:2),starts(-1:2),sizes(-1:2)
       integer(MPIISZ):: sendtype,recvtype
-      integer(MPIISZ):: itemp,ineighbor
+      integer(MPIISZ):: itemp,ineighbor,nn
       include "mpif.h"
       integer(ISZ):: mpi_comm
       integer(MPIISZ):: mpierror
@@ -448,7 +451,8 @@ c       --- (iproc/ineighbor) even, and the second send odd.
      &                                        MPI_DOUBLE_PRECISION,
      &                                        sendtype,mpierror)
                 call MPI_TYPE_COMMIT(sendtype,mpierror)
-                call MPI_SEND(sourcepsend,1,sendtype,
+                nn = 1
+                call MPI_SEND(sourcepsend,nn,sendtype,
      &                        itemp,messid,mpi_comm,mpierror)
                 call MPI_TYPE_FREE(sendtype,mpierror)
               endif
@@ -469,7 +473,8 @@ c         --- Gather up the data sent to this processor.
      &                                      MPI_DOUBLE_PRECISION,
      &                                      recvtype,mpierror)
               call MPI_TYPE_COMMIT(recvtype,mpierror)
-              call MPI_RECV(sourceprecv,1,recvtype,
+              nn = 1
+              call MPI_RECV(sourceprecv,nn,recvtype,
      &                      itemp,messid,mpi_comm,mpistatus,mpierror)
               call MPI_TYPE_FREE(recvtype,mpierror)
               i1 = starts(0:2)
@@ -494,7 +499,8 @@ c         --- Gather up the data sent to this processor.
      &                                        MPI_DOUBLE_PRECISION,
      &                                        sendtype,mpierror)
                 call MPI_TYPE_COMMIT(sendtype,mpierror)
-                call MPI_SEND(sourcepsend,1,sendtype,
+                nn = 1
+                call MPI_SEND(sourcepsend,nn,sendtype,
      &                        itemp,messid,mpi_comm,mpierror)
                 call MPI_TYPE_FREE(sendtype,mpierror)
               endif
@@ -536,7 +542,7 @@ c  Only first and last processors do anything.
       integer(MPIISZ):: dims,nlocal(-1:2),starts(-1:2),sizes(-1:2)
       integer(MPIISZ):: sendtype
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
-      integer(MPIISZ):: messid = 70
+      integer(MPIISZ):: isend,irecv,messid = 70
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -555,10 +561,14 @@ c       --- Select the chunk of data to send.
      &                                MPI_DOUBLE_PRECISION,
      &                                sendtype,mpierror)
         call MPI_TYPE_COMMIT(sendtype,mpierror)
-        call MPI_SEND(source,1,sendtype,0,messid,mpi_comm,mpierror)
+        nn = 1
+        isend = 0
+        call MPI_SEND(source,nn,sendtype,isend,messid,mpi_comm,mpierror)
 
 c       --- receive back the data sent plus the data from the other processor
-        call MPI_RECV(source,1,sendtype,0,messid,mpi_comm,mpistatus,mpierror)
+        nn = 1
+        irecv = 0
+        call MPI_RECV(source,nn,sendtype,irecv,messid,mpi_comm,mpistatus,mpierror)
         call MPI_TYPE_FREE(sendtype,mpierror)
 
       else if (iproc == 0) then
@@ -572,8 +582,9 @@ c       --- Select the chunk of data to exchange.
 c       --- allocate temporary space to receive the incoming data into
         allocate(sourcetemp(0:nc-1,i1(0):i2(0),i1(1):i2(1),i1(2):i2(2)))
 
+        irecv =  nprocs-1
         call MPI_RECV(sourcetemp,nn,MPI_DOUBLE_PRECISION,
-     &                nprocs-1,messid,mpi_comm,mpistatus,mpierror)
+     &                irecv,messid,mpi_comm,mpistatus,mpierror)
 
 c       --- do the sum
         source(:,i1(0):i2(0),i1(1):i2(1),i1(2):i2(2)) =
@@ -587,7 +598,9 @@ c       --- send the summed data back
      &                                MPI_DOUBLE_PRECISION,
      &                                sendtype,mpierror)
         call MPI_TYPE_COMMIT(sendtype,mpierror)
-        call MPI_SEND(source,1,sendtype,nprocs-1,messid,mpi_comm,mpierror)
+        nn = 1
+        isend = nprocs-1
+        call MPI_SEND(source,nn,sendtype,isend,messid,mpi_comm,mpierror)
         call MPI_TYPE_FREE(sendtype,mpierror)
 
 c       --- The temp array can be deallocated now that the send is complete.
