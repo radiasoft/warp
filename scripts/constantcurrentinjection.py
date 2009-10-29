@@ -4,7 +4,7 @@ procedure, but using the full simulation instead of 1-D approximation.
 from warp import *
 from timedependentvoltage import TimeVoltage
 
-constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.6 2009/09/30 18:39:30 jlvay Exp $"
+constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.7 2009/10/29 17:34:59 dave Exp $"
 def constantcurrentinjectiondoc():
   import constantcurrentinjection
   print constantcurrentinjection.__doc__
@@ -111,6 +111,7 @@ frz.calc_a = 3
     self.hafact = AppendableArray(typecode='d')
     self.hphirho = AppendableArray(typecode='d')
     self.hnp = AppendableArray(typecode='d')
+    self.htime = AppendableArray(typecode='d')
 
     # --- Make initial call
     fieldsol(-1)
@@ -161,6 +162,7 @@ frz.calc_a = 3
     self.hafact.append(self.afact)
     self.hphirho.append(phirho)
     self.hnp.append(getn())
+    self.htime.append(top.time)
     import os
 
 
@@ -172,7 +174,7 @@ frz.calc_a = 3
         setconductorvoltage(v,condid=id)
 
   def plothist(self,tscale=1.,vscale=1.,tunits='s',vunits='V',title=1):
-    pla(self.hsourcevolt[:]*vscale,arange(shape(self.hsourcevolt[:])[0])*top.dt*tscale)
+    pla(self.hsourcevolt[:]*vscale,self.htime*tscale)
     if title:ptitles('','Time ('+tunits+')','Voltage ('+vunits+')')
     
 class SpecifiedCurrentRiseTime(ConstantCurrentRiseTime):
@@ -188,10 +190,12 @@ Same as constantcurrentinjection but allows to specify time dependent current pr
                                           l_setvinject)
     self.currentdensityfunc = currentdensityfunc
     installbeforefs(self.setphiref)
+    self.hphiref = AppendableArray(typecode='d')
     
   def setphiref(self):
     self.currentdensity = self.currentdensityfunc(top.time)
     chi = 4*eps0/9*sqrt(2*top.pgroup.sq[0]/top.pgroup.sm[0])
     self.phiref = (self.currentdensity/chi)**(2./3.)*(top.inj_d[0]*w3d.inj_dz)**(4./3.)
+    self.hphiref.append(self.phiref)
     
 
