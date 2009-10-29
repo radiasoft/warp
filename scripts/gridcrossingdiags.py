@@ -91,7 +91,7 @@ be unreliable.
         self.zoldpid = nextpid()
 
         self.initializedata()
-        installafterstep(self.getdiagnostics)
+        self.enable()
 
     def initializedata(self):
         # --- Note to users: when retrieving results, the following attributes
@@ -120,6 +120,9 @@ be unreliable.
         if self.ldoscintillator:
             self._scinttime = []
             self._scintillator = []
+
+    def enable(self):
+        installafterstep(self.getdiagnostics)
 
     def disable(self):
         uninstallafterstep(self.getdiagnostics)
