@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.54 $, $Date: 2009/10/27 23:33:17 $
+c W3DSLAVE.M, version $Revision: 1.55 $, $Date: 2009/10/30 23:08:57 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -460,9 +460,9 @@ c       --- (iproc/ineighbor) even, and the second send odd.
           endif
 
 c         --- Gather up the data sent to this processor.
-          do itemp=ppdecomp%iprocgrid(axis)-ineighbor,
-     &             ppdecomp%iprocgrid(axis)+ineighbor,
-     &             2*ineighbor
+          do itemp=ppdecomp%iprocgrid(axis)+ineighbor,
+     &             ppdecomp%iprocgrid(axis)-ineighbor,
+     &             -2*ineighbor
             if (itemp < 0 .or. itemp > ppdecomp%nprocgrid(axis)-1) cycle
             ii(axis) = itemp
             if (product(nsend(:,ii(0),ii(1),ii(2))) > 0) then
