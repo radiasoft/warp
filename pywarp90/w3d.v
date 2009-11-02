@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.300 $, $Date: 2009/09/27 17:58:22 $
+#@(#) File W3D.V, version $Revision: 3.301 $, $Date: 2009/11/02 16:48:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.300 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.301 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1231,6 +1231,12 @@ te_constr_test(sc_param:real,delta:real) real function
 te_delta_root_test(sc_param:real,delta_1:real,delta_2:real,tol:real) 
   real function 
    # temp routine link for debugging    
+smooth3d_121(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
+               npass(3):integer,alpha(3):real) subroutine
+   # three points linear smoothing
+smooth3d_121_stride(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
+                    npass(3):integer,alpha(3):real,stride(3):integer) subroutine
+   # three points linear smoothing with stride
 
 ******** Subtimers3d dump:
 lw3dtimesubs logical /.false./
