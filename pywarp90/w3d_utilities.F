@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.30 $, $Date: 2009/10/01 00:22:52 $
+c@(#) File w3d_utilities.F, version $Revision: 1.31 $, $Date: 2009/11/02 16:51:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1070,3 +1070,121 @@ c     --- has caught up (and then they can be deleted).
       return
       end
 c===========================================================================
+      subroutine smooth3d_121(q,nx,ny,nz,npass,alpha)
+c     --- performs a smoothing sequence of n passes of a three points stencil 
+c     --- with coefficients [(1-alpha)/2, alpha, (1-aalpha)/2] along x, y and/or z.      
+       implicit none
+
+       integer(ISZ) :: nx,ny,nz,i,j,k,l,npass(3)
+
+       real(kind=8), dimension(0:nx,0:ny,0:nz) :: q
+       real(kind=8) :: temp0, temp1, alpha(3), a, b
+
+!     x smoothing
+        a = alpha(1)
+        b = (1.-a)/2.
+        do i=1,npass(1)
+          do  l=0,nz
+            do  k=0,ny
+              temp0 = q(0,k,l)
+              do  j=1,nx-1
+                temp1 = q(j,k,l)
+                q(j,k,l) = a*q(j,k,l)+b*(temp0+q(j+1,k,l))
+                temp0 = temp1
+              end do
+            end do
+          end do
+        end do
+
+!           y smoothing
+        a = alpha(2)
+        b = (1.-a)/2.
+        do i=1,npass(2)
+          do  l=0,nz
+            do  j=0,nx
+              temp0 = q(j,0,l)
+              do  k=1,ny-1
+                temp1 = q(j,k,l)
+                q(j,k,l) = a*q(j,k,l)+b*(temp0+q(j,k+1,l))
+                temp0 = temp1
+              end do
+            end do
+          end do
+        end do
+
+!     z smoothing
+        a = alpha(3)
+        b = (1.-a)/2.
+        do i=1,npass(3)
+          do  k=0,ny
+            do  j=0,nx
+              temp0 = q(j,k,0)
+              do  l=1,nz-1
+                temp1 = q(j,k,l)
+                q(j,k,l) = a*q(j,k,l)+b*(temp0+q(j,k,l+1))
+                temp0 = temp1
+              end do
+            end do
+          end do
+        end do
+
+        return
+      end subroutine smooth3d_121
+c===========================================================================
+      subroutine smooth3d_121_stride(q,nx,ny,nz,npass,alpha,stride)
+c     --- performs a smoothing sequence of n passes of a three points stencil 
+c     --- with coefficients [(1-alpha)/2, alpha, (1-aalpha)/2] along x, y and/or z,
+c     --- with a stride.
+       implicit none
+
+       integer(ISZ) :: nx,ny,nz,i,j,k,l,npass(3),stride(3)
+
+       real(kind=8), dimension(0:nx,0:ny,0:nz) :: q
+       real(kind=8) :: tempx(0:nx), tempy(0:ny), tempz(0:nz), alpha(3), a, b
+
+!           x smoothing
+        a = alpha(1)
+        b = (1.-a)/2.
+        do i=1,npass(1)
+          do  l=0,nz
+            do  k=0,ny
+              tempx = q(:,k,l)
+              do  j=stride(1),nx-stride(1)
+                q(j,k,l) = a*q(j,k,l)+b*(tempx(j-stride(1))+q(j+stride(1),k,l))
+              end do
+            end do
+          end do
+        end do
+
+!           y smoothing
+        a = alpha(2)
+        b = (1.-a)/2.
+        do i=1,npass(2)
+          do  l=0,nz
+            do  j=0,nx
+              tempy = q(j,:,l)
+              do  k=stride(2),ny-stride(2)
+                q(j,k,l) = a*q(j,k,l)+b*(tempy(k-stride(2))+q(j,k+stride(2),l))
+              end do
+            end do
+          end do
+        end do
+
+!           z smoothing
+        a = alpha(3)
+        b = (1.-a)/2.
+        do i=1,npass(3)
+          do  k=0,ny
+            do  j=0,nx
+              tempz = q(j,k,:)
+              do  l=stride(3),nz-stride(3)
+                q(j,k,l) = a*q(j,k,l)+b*(tempz(l-stride(3))+q(j,k,l+stride(3)))
+              end do
+            end do
+          end do
+        end do
+
+        return
+      end subroutine smooth3d_121_stride
+c===========================================================================
+
