@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.206 2009/11/02 18:59:45 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.207 2009/11/02 23:46:16 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -4245,7 +4245,6 @@ For options, see documentation of Opyndx.VisualRevolution.
                        rendzmin=None,rendzmax=None,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=rr,zdata=zz,raddata=rad,zcdata=zc,rcdata=rc,
-                       close=1,
                        kwdict=kw)
 
     else:
