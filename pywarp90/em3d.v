@@ -229,7 +229,6 @@ addsubstractfields(child:EM3D_BLOCKtype,child_coarse:EM3D_BLOCKtype,
                    parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer) subroutine
 addsubstractfields_nodal(child:EM3D_BLOCKtype,child_coarse:EM3D_BLOCKtype,
                    parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer) subroutine
-smooth3d_121(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,npass(3):integer,alpha(3):real) subroutine
 shift_em3dblock_ncells_z(b:EM3D_BLOCKtype,n:integer) subroutine
 depose_jxjy_esirkepov_linear_serial_2d(j:real,
                            n:integer,x(n):real,y(n):real,
