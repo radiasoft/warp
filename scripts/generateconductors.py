@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.205 2009/10/13 20:42:38 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.206 2009/11/02 18:59:45 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -360,7 +360,7 @@ Should never be directly created by the user.
       if ne>0:
         netot+=ne
         de = (emax-emin)/(ne-1)
-        energies = emin+arange(ne)*de
+        energies = emin+arange(ne,dtype='l')*de
         setgrid1dw(ne,energies,self.lostparticles_energies[js],n,henergies,emintot,emaxtot)
       for i in range(1,npes):
           ne,emin,emax = mpirecv(i,1)
@@ -368,12 +368,12 @@ Should never be directly created by the user.
             netot+=ne
             he = mpirecv(i,1)
             de = (emax-emin)/(ne-1)
-            energies = emin+arange(ne)*de
+            energies = emin+arange(ne,dtype='l')*de
             setgrid1dw(ne,energies,he,n,henergies,emintot,emaxtot)
             
     if netot>0:
       de = (emaxtot-emintot)/n
-      energies = emintot+arange(n+1)*de
+      energies = emintot+arange(n+1,dtype='l')*de
       return henergies,energies
     else:
       return None,None
@@ -440,14 +440,14 @@ Should never be directly created by the user.
     # setup time min/max and arrays
     if tmin is None:tmin=min(tminl,tmine,tmini)
     if tmax is None:tmax=max(tmaxl,tmaxe,tmaxi)
-    qt = zeros(nt+1,float64)
-    qtmp = zeros(nt+1,float64)
+    qt = zeros(nt+1,'d')
+    qtmp = zeros(nt+1,'d')
     dt = (tmax-tmin)/nt
     # accumulate data
     if nl>0:deposgrid1d(1,nl,tl,ql,nt,qt,qtmp,tmin,tmax)
     if ne>0:deposgrid1d(1,ne,te,qe,nt,qt,qtmp,tmin,tmax)
     if ni>0:deposgrid1d(1,ni,ti,qi,nt,qt,qtmp,tmin,tmax)
-    return arange(tmin,tmax+0.1*dt,dt),qt/dt
+    return arange(tmin,tmax+0.1*dt,dt,dtype='l'),qt/dt
 
   def plot_current_history(self,js=None,l_lost=1,l_emit=1,l_image=1,tmin=None,tmax=None,nt=100,color=black,width=1,type='solid'):
     """
@@ -2116,9 +2116,9 @@ Creates a grid object which can generate conductor data.
     ymmin = self.ymmin + iy*dy
     zmmin = self.zmmin + iz*dz
 
-    xmesh = xmmin + dx*arange(nxlocal+1)
-    ymesh = ymmin + dy*arange(nylocal+1)
-    zmesh = zmmin + dz*arange(nzlocal+1) + zbeam
+    xmesh = xmmin + dx*arange(nxlocal+1,dtype='l')
+    ymesh = ymmin + dy*arange(nylocal+1,dtype='l')
+    zmesh = zmmin + dz*arange(nzlocal+1,dtype='l') + zbeam
     xmesh = compress(logical_and(xmin-dx <= xmesh,xmesh <= xmax+dx),xmesh)
     ymesh = compress(logical_and(ymin-dy <= ymesh,ymesh <= ymax+dy),ymesh)
     zmesh = compress(logical_and(zmin-dz <= zmesh,zmesh <= zmax+dz),zmesh)
@@ -2872,10 +2872,10 @@ Plots the r versus z
     if rmax is None: rmax = w3d.xmmax
     zc = self.length/2. - self.radius2
     rc = self.radius + self.radius2
-    rleft = +rc - self.radius2*sin(arange(101)/100.*pi/2.)
-    zleft = -zc - self.radius2*cos(arange(101)/100.*pi/2.)
-    rrght = +rc - self.radius2*cos(arange(101)/100.*pi/2.)
-    zrght = +zc + self.radius2*sin(arange(101)/100.*pi/2.)
+    rleft = +rc - self.radius2*sin(arange(101,dtype='l')/100.*pi/2.)
+    zleft = -zc - self.radius2*cos(arange(101,dtype='l')/100.*pi/2.)
+    rrght = +rc - self.radius2*cos(arange(101,dtype='l')/100.*pi/2.)
+    zrght = +zc + self.radius2*sin(arange(101,dtype='l')/100.*pi/2.)
     r = [rmax] + list(rleft) + list(rrght) + [rmax,rmax]
     z = [-self.length/2.] + list(zleft) + list(zrght) + [self.length/2.,-self.length/2.]
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
@@ -3567,8 +3567,8 @@ Plate from beamlet pre-accelerator
     dz = (zmmax - zmmin)/nz
     if ny == 0: dy = dx
 
-    xmesh = xmmin + dx*arange(nx+1)
-    ymesh = ymmin + dy*arange(ny+1)
+    xmesh = xmmin + dx*arange(nx+1,dtype='l')
+    ymesh = ymmin + dy*arange(ny+1,dtype='l')
     xmesh = compress(logical_and(xmin-dx <= xmesh,xmesh <= xmax+dx),xmesh)
     ymesh = compress(logical_and(ymin-dy <= ymesh,ymesh <= ymax+dy),ymesh)
     x = ravel(xmesh[:,newaxis]*ones(len(ymesh)))
@@ -4227,24 +4227,28 @@ For options, see documentation of Opyndx.VisualRevolution.
     rendzmin = 0.5*(rminzmin + rmaxzmin)
     rendzmax = 0.5*(rminzmax + rmaxzmax)
 
-   #if not self.lrminofz or not self.lrmaxofz:
+    if not self.lrminofz or not self.lrmaxofz:
 
-   #  --- This doesn't quite work and I didn't want to put the effort
-   #  --- in to fix it.
-   #  rr = concatenate((self.rmaxofzdata,array(self.rminofzdata)[::-1]))
-   #  zz = concatenate((self.zmaxdata,array(self.zmindata)[::-1]))
-   #  radmin = array(self.radmindata)
-   #  radmin = where(radmin < largepos,-radmin,largepos)
-   #  rad = concatenate((self.radmaxdata,[largepos],array(radmin)[::-1]))
-   #  zc = concatenate((self.zcmaxdata,[0.],array(self.zcmindata)[::-1]))
-   #  rc = concatenate((self.rcmaxdata,[0.],array(self.rcmindata)[::-1]))
-   #  v = Opyndx.VisualRevolution(' ',self.zmin,self.zmax,
-   #                   rendzmin=rendzmin,rendzmax=rendzmax,
-   #                   xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
-   #                   rofzdata=rr,zdata=zz,raddata=rad,zcdata=zc,rcdata=rc,
-   #                   kwdict=kw)
-   #else:
-    if 1:
+      rr = concatenate((self.rmaxofzdata,array(self.rminofzdata)[::-1],
+                        [self.rmaxofzdata[0]]))
+      zz = concatenate((self.zmaxdata,array(self.zmindata)[::-1],
+                       [self.zmaxdata[0]]))
+      radmin = array(self.radmindata)
+      radmin = where(radmin < largepos,-radmin,largepos)
+      rad = concatenate((self.radmaxdata,[largepos],array(radmin)[::-1],
+                         [largepos]))
+      zc = concatenate((self.zcmaxdata,[0.],array(self.zcmindata)[::-1],
+                        [0.]))
+      rc = concatenate((self.rcmaxdata,[0.],array(self.rcmindata)[::-1],
+                        [0.]))
+      v = Opyndx.VisualRevolution(zzmin=self.zmin,zzmax=self.zmax,
+                       rendzmin=None,rendzmax=None,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=rr,zdata=zz,raddata=rad,zcdata=zc,rcdata=rc,
+                       close=1,
+                       kwdict=kw)
+
+    else:
       vmin = Opyndx.VisualRevolution(self.rminofz,self.zmin,self.zmax,
                        rendzmin=rendzmin,rendzmax=rendzmax,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
@@ -5207,16 +5211,16 @@ containing a list of primitives.
             nsrmin += 1
       if(nsrmax<>0):
         l_t = 1
-        r_srmax = zeros(nsrmax+1,float64)
-        z_srmax = zeros(nsrmax+1,float64)
-        rc_srmax = zeros(nsrmax,float64)
-        zc_srmax = zeros(nsrmax,float64)
+        r_srmax = zeros(nsrmax+1,'d')
+        z_srmax = zeros(nsrmax+1,'d')
+        rc_srmax = zeros(nsrmax,'d')
+        zc_srmax = zeros(nsrmax,'d')
       if(nsrmin<>0):
         l_b = 1
-        r_srmin = zeros(nsrmin+1,float64)
-        z_srmin = zeros(nsrmin+1,float64)
-        rc_srmin = zeros(nsrmin,float64)
-        zc_srmin = zeros(nsrmin,float64)
+        r_srmin = zeros(nsrmin+1,'d')
+        z_srmin = zeros(nsrmin+1,'d')
+        rc_srmin = zeros(nsrmin,'d')
+        zc_srmin = zeros(nsrmin,'d')
 
       # Fill arrays with datas from parts.
       do = data[0]
