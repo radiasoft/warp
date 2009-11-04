@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.207 2009/11/02 23:46:16 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.208 2009/11/04 23:31:26 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1344,7 +1344,7 @@ distances to outside the surface are positive, inside negative.
     # --- If it is an instance, the class must have a method getvolt
     # --- that takes the time as an argument. If a function, it must
     # --- take one argument, the time.
-    if type(voltage) == FunctionType:
+    if type(voltage) in [FunctionType,MethodType]:
       v = voltage(top.time)
     elif type(voltage) == InstanceType:
       v = voltage.getvolt(top.time)
@@ -3797,7 +3797,7 @@ Methods:
       if zmin is None: zmin = self.zdata[0]
       if zmax is None: zmax = self.zdata[-1]
     else:
-      assert type(self.rofzfunc) in [FunctionType,StringType],\
+      assert type(self.rofzfunc) in [FunctionType,MethodType,StringType],\
              'The rofzfunc is not properly specified'
       self.lrofzfunc = true
       if isinstance(self.rofzfunc,StringType):
@@ -3935,7 +3935,7 @@ Methods:
       if zmin is None: zmin = self.zdata[0]
       if zmax is None: zmax = self.zdata[-1]
     else:
-      assert type(self.rofzfunc) in [FunctionType,StringType],\
+      assert type(self.rofzfunc) in [FunctionType,MethodType,StringType],\
              'The rofzfunc is not properly specified'
       self.lrofzfunc = true
       if isinstance(self.rofzfunc,StringType):
@@ -4077,7 +4077,7 @@ Methods:
       zminmin = self.zmindata[0]
       zmaxmin = self.zmindata[-1]
     else:
-      assert type(self.rminofz) in [FunctionType,StringType],\
+      assert type(self.rminofz) in [FunctionType,MethodType,StringType],\
              'The rminofz is not properly specified'
       self.lrminofz = true
       zminmin = zmin
@@ -4105,7 +4105,7 @@ Methods:
       zminmax = self.zmaxdata[0]
       zmaxmax = self.zmaxdata[-1]
     else:
-      assert type(self.rmaxofz) in [FunctionType,StringType],\
+      assert type(self.rmaxofz) in [FunctionType,MethodType,StringType],\
              'The rmaxofz is not properly specified'
       self.lrmaxofz = true
       zminmax = zmin
