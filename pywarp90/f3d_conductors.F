@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.71 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.72 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -8,6 +8,314 @@ c
 c  It contains the routines for calculating the intersection of points
 c  with various geometrical objects.
 c=======================================================================
+c=======================================================================
+      subroutine conductordelfromintercepts(xmmin,ymmin,zmmin,dx,dy,dz,
+     &                                      nx,ny,nz,nintercepts,
+     &                                      xintercept,yintercept,zintercept,
+     &                                      fuzz)
+      use ConductorGeometryWorkspace
+      real(kind=8):: xmmin,ymmin,zmmin,dx,dy,dz
+      integer(ISZ):: nx,ny,nz,nintercepts
+      real(kind=8):: xintercept(nintercepts,0:ny,0:nz)
+      real(kind=8):: yintercept(nintercepts,0:nx,0:nz)
+      real(kind=8):: zintercept(nintercepts,0:nx,0:ny)
+      real(kind=8):: fuzz
+
+      real(kind=8):: xmmax,ymmax,zmmax
+      integer(ISZ):: ix,iy,iz,ii,idel
+      integer(ISZ):: ix1,ix2,iy1,iy2,iz1,iz2
+      real(kind=8):: x1,x2,y1,y2,z1,z2
+      real(kind=8):: xx,yy,zz
+      real(kind=8):: del,delx,dely,delz
+      real(kind=8):: xside,yside,zside
+
+      xmmax = xmmin + nx*dx
+      ymmax = ymmin + ny*dy
+      zmmax = zmmin + nz*dz
+
+      ncond = 0
+      ncondmax = 0
+      ndels = 0
+      ndelsmax = 0
+      call gchange("ConductorGeometryWorkspace",0)
+
+c     --- Find all of the grid points within the object.
+      do iz=0,nz
+        do iy=0,ny
+          ii = 1
+          do while (ii <= nintercepts .and. xintercept(ii,iy,iz) < LARGEPOS)
+            x1 = xintercept(ii,iy,iz)
+            ii = ii + 1
+            if (ii <= nintercepts) then
+              x2 = xintercept(ii,iy,iz)
+              ii = ii + 1
+            else
+              x2 = LARGEPOS
+            endif
+            if (x2 >= xmmin .and. x1 <= xmmax) then
+              ix1 = max(0.,x1 - fuzz - xmmin)/dx
+              ix2 = min(nx,x2 + fuzz - xmmin)/dx
+              if (xmmin + ix1*dx < x1) ix1 = ix1 + 1
+              if (ncondmax - ncond < ix2 - ix1 + 1) then
+                ncondmax = max(ncondmax*2,ncondmax + (ix2 - ix1 + 1))
+                call gchange("ConductorGeometryWorkspace",0)
+              endif
+              do ix=ix1,ix2
+                ncond = ncond + 1
+                condindx(0,ncond) = ix
+                condindx(1,ncond) = iy
+                condindx(2,ncond) = iz
+              enddo
+            endif
+          enddo
+        enddo
+      enddo
+
+c     --- Find the deltas
+      do iz=0,nz
+        zz = zmmin + iz*dz
+        do iy=0,ny
+          yy = ymmin + iy*dy
+          ii = 1
+          xside = +1.
+          do while (ii <= nintercepts .and. xintercept(ii,iy,iz) < LARGEPOS)
+            if (xmmin <= xintercept(ii,iy,iz) .and.
+     &          xintercept(ii,iy,iz) <= xmmax) then
+              if (xside > 0.) then
+c               --- delpx
+                ix = (xintercept(ii,iy,iz) - xmmin)/dx
+                del = (xintercept(ii,iy,iz) - xmmin)/dx - ix
+                idel = 1
+              else
+c               --- delmx
+                ix = (xintercept(ii,iy,iz) - xmmin)/dx + 1
+                del = ix - (xintercept(ii,iy,iz) - xmmin)/dx
+                idel = 0
+              endif
+              if (del > 0.) then
+                ndels = ndels + 1
+                if (ndels > ndelsmax) then
+                  ndelsmax = max(ndelsmax*2,ndels)
+                  call gchange("ConductorGeometryWorkspace",0)
+                endif
+                indx(0,ndels) = ix
+                indx(1,ndels) = iy
+                indx(2,ndels) = iz
+                dels(idel,ndels) = del
+                iy1 = 1
+                yside = +1.
+                do while (iy1 <= nintercepts .and. yintercept(iy1,ix,iz) < LARGEPOS)
+                  if (yside > 0.) then
+c                   --- delpy
+                    del = (yintercept(iy1,ix,iz) - yy)/dy
+                    idel = 3
+                  else
+c                   --- delmy
+                    del = (yy - yintercept(iy1,ix,iz))/dy
+                    idel = 2
+                  endif
+                  if (del > 0. .and. del < dels(idel,ndels)) then
+                    dels(idel,ndels) = del
+                  endif
+                  iy1 = iy1 + 1
+                  yside = -yside
+                enddo
+                iz1 = 1
+                zside = +1.
+                do while (iz1 <= nintercepts .and. zintercept(iz1,ix,iy) < LARGEPOS)
+                  if (zside > 0.) then
+c                   --- delpz
+                    del = (zintercept(iz1,ix,iy) - zz)/dz
+                    idel = 5
+                  else
+c                   --- delmz
+                    del = (zz - zintercept(iz1,ix,iy))/dz
+                    idel = 4
+                  endif
+                  if (del > 0. .and. del < dels(idel,ndels)) then
+                    dels(idel,ndels) = del
+                  endif
+                  iz1 = iz1 + 1
+                  zside = -zside
+                enddo
+              endif
+            endif
+
+            ii = ii + 1
+            xside = -xside
+
+          enddo
+        enddo
+      enddo
+
+      do iz=0,nz
+        zz = zmmin + iz*dz
+        do ix=0,nx
+          xx = xmmin + ix*dx
+          ii = 1
+          yside = +1.
+          do while (ii <= nintercepts .and. yintercept(ii,ix,iz) < LARGEPOS)
+            if (ymmin <= yintercept(ii,ix,iz) .and.
+     &          yintercept(ii,ix,iz) <= ymmax) then
+              if (yside > 0.) then
+c               --- delpy
+                iy = (yintercept(ii,ix,iz) - ymmin)/dy
+                del = (yintercept(ii,ix,iz) - ymmin)/dy - iy
+                idel = 3
+              else
+c               --- delmy
+                iy = (yintercept(ii,ix,iz) - ymmin)/dy + 1
+                del = iy - (yintercept(ii,ix,iz) - ymmin)/dy
+                idel = 2
+              endif
+
+c             --- Check if the del in x would be less then 1. If so, then
+c             --- this point would have already been gathered when examining
+c             --- x intercepts.
+              ix1 = 1
+              xside = +1.
+              delx = 2.
+              do while (ix1 <= nintercepts .and. xintercept(ix1,iy,iz) < LARGEPOS .and. delx >= 1.)
+                if (xside > 0.) then
+c                 --- delpx
+                  if (xintercept(ix1,iy,iz) >= xx) then
+                    delx = (xintercept(ix1,iy,iz) - xx)/dx
+                  endif
+                else
+c                 --- delmx
+                  if (xintercept(ix1,iy,iz) <= xx) then
+                    delx = (xx - xintercept(ix1,iy,iz))/dx
+                  endif
+                endif
+                ix1 = ix1 + 1
+                xside = -xside
+              enddo
+
+              if (del > 0. .and. delx >= 1.) then
+                ndels = ndels + 1
+                if (ndels > ndelsmax) then
+                  ndelsmax = max(ndelsmax*2,ndels)
+                  call gchange("ConductorGeometryWorkspace",0)
+                endif
+                indx(0,ndels) = ix
+                indx(1,ndels) = iy
+                indx(2,ndels) = iz
+                dels(idel,ndels) = del
+                iz1 = 1
+                zside = +1.
+                do while (iz1 <= nintercepts .and. zintercept(iz1,ix,iy) < LARGEPOS)
+                  if (zside > 0.) then
+c                   --- delpz
+                    del = (zintercept(iz1,ix,iy) - zz)/dz
+                    idel = 5
+                  else
+c                   --- delmz
+                    del = (zz - zintercept(iz1,ix,iy))/dz
+                    idel = 4
+                  endif
+                  if (del > 0. .and. del < dels(idel,ndels)) then
+                    dels(idel,ndels) = del
+                  endif
+                  iz1 = iz1 + 1
+                  zside = -zside
+                enddo
+              endif
+            endif
+
+            ii = ii + 1
+            yside = -yside
+
+          enddo
+        enddo
+      enddo
+
+      do iy=0,ny
+        yy = ymmin + iy*dy
+        do ix=0,nx
+          xx = xmmin + ix*dx
+          ii = 1
+          zside = +1.
+          do while (ii <= nintercepts .and. zintercept(ii,ix,iy) < LARGEPOS)
+            if (zmmin <= zintercept(ii,ix,iy) .and.
+     &          zintercept(ii,ix,iy) <= zmmax) then
+              if (zside > 0.) then
+c               --- delpz
+                iz = (zintercept(ii,ix,iy) - zmmin)/dz
+                del = (zintercept(ii,ix,iy) - zmmin)/dz - iz
+                idel = 5
+              else
+c               --- delmz
+                iz = (zintercept(ii,ix,iy) - zmmin)/dz + 1
+                del = iz - (zintercept(ii,ix,iy) - zmmin)/dz
+                idel = 4
+              endif
+
+c             --- Check if the del in x would be less then 1. If so, then
+c             --- this point would have already been gathered when examining
+c             --- x intercepts.
+              ix1 = 1
+              xside = +1.
+              delx = 2.
+              do while (ix1 <= nintercepts .and. xintercept(ix1,iy,iz) < LARGEPOS .and. delx >= 1.)
+                if (xside > 0.) then
+c                 --- delpx
+                  if (xintercept(ix1,iy,iz) >= xx) then
+                    delx = (xintercept(ix1,iy,iz) - xx)/dx
+                  endif
+                else
+c                 --- delmx
+                  if (xintercept(ix1,iy,iz) <= xx) then
+                    delx = (xx - xintercept(ix1,iy,iz))/dx
+                  endif
+                endif
+                ix1 = ix1 + 1
+                xside = -xside
+              enddo
+
+c             --- Check if the del in y would be less then 1. If so, then
+c             --- this point would have already been gathered when examining
+c             --- y intercepts.
+              iy1 = 1
+              yside = +1.
+              dely = 2.
+              do while (iy1 <= nintercepts .and. yintercept(iy1,ix,iz) < LARGEPOS .and. dely >= 1.)
+                if (yside > 0.) then
+c                 --- delpy
+                  if (yintercept(iy1,ix,iz) >= yy) then
+                    del = (yintercept(iy1,ix,iz) - yy)/dy
+                  endif
+                else
+c                 --- delmy
+                  if (yintercept(iy1,ix,iz) <= yy) then
+                    del = (yy - yintercept(iy1,ix,iz))/dy
+                  endif
+                endif
+                iy1 = iy1 + 1
+                yside = -yside
+              enddo
+
+              if (del > 0. .and. delx >= 1. .and. dely >= 1.) then
+                ndels = ndels + 1
+                if (ndels > ndelsmax) then
+                  ndelsmax = max(ndelsmax*2,ndels)
+                  call gchange("ConductorGeometryWorkspace",0)
+                endif
+                indx(0,ndels) = ix
+                indx(1,ndels) = iy
+                indx(2,ndels) = iz
+                dels(idel,ndels) = del
+              endif
+            endif
+
+            ii = ii + 1
+            zside = -zside
+
+          enddo
+        enddo
+      enddo
+
+      return
+      end
 c=======================================================================
       subroutine setconductorparity(nn,ix,iy,iz,dels,parity,fuzz0,fuzz1,fuzzsign,dfill)
       integer(ISZ):: nn
@@ -1015,6 +1323,74 @@ c       --- The point is on the cylinder exactly.
         delmz(i) = min(0.,zmin - z(i))
         delpz(i) = min(0.,z(i) - zmax)
 
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZCylinderConductorFnew(rad,length,xcent,ycent,zcent,
+     &                              xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
+     &                              xintercept,yintercept,zintercept,
+     &                              fuzz)
+      real(kind=8):: rad,length,xcent,ycent,zcent
+      real(kind=8):: xmmin,ymmin,zmmin,dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: xintercept(2,0:ny,0:nz)
+      real(kind=8):: yintercept(2,0:nx,0:nz)
+      real(kind=8):: zintercept(2,0:nx,0:ny)
+      real(kind=8):: fuzz
+
+c Finds distances along the axis of the points from a cylinder aligned with
+c the z-axis.
+c The notation is that a negative distance means that the point is inside.
+
+      real(kind=8):: zmin,zmax
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: xx,yy,zz,rsq
+
+      zmin = -length*0.5
+      zmax = +length*0.5
+
+      do iz=0,nz
+        do iy=0,ny
+          yy = ymmin + iy*dy - ycent
+          zz = zmmin + iz*dz - zcent
+          if (zmin-fuzz <= zz .and. zz <= zmax+fuzz .and.
+     &        abs(yy) <= rad) then
+            xintercept(1,iy,iz) = xcent - sqrt(max(0.,rad**2 - yy**2))
+            xintercept(2,iy,iz) = xcent + sqrt(max(0.,rad**2 - yy**2))
+          else
+            xintercept(1:2,iy,iz) = LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iz=0,nz
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          zz = zmmin + iz*dz - zcent
+          if (zmin-fuzz <= zz .and. zz <= zmax+fuzz .and.
+     &        abs(xx) <= rad) then
+            yintercept(1,ix,iz) = ycent - sqrt(max(0.,rad**2 - xx**2))
+            yintercept(2,ix,iz) = ycent + sqrt(max(0.,rad**2 - xx**2))
+          else
+            yintercept(1:2,ix,iz) = LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iy=0,ny
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          yy = ymmin + iy*dy - ycent
+          rsq = xx**2 + yy**2
+          if (rsq <= rad**2) then
+            zintercept(1,ix,iy) = zcent + zmin
+            zintercept(2,ix,iy) = zcent + zmax
+          else
+            zintercept(1:2,ix,iy) = LARGEPOS
+          endif
+        enddo
       enddo
 
       return
