@@ -5,19 +5,29 @@ __all__ = ['Smoother']
 
 from warp import *
 
-smoothing_version = "$Id: smoothing.py,v 1.1 2009/11/02 17:49:32 dave Exp $"
+smoothing_version = "$Id: smoothing.py,v 1.2 2009/11/04 21:55:23 jlvay Exp $"
 
 class Smoother(object):
   """
 Creates a smoother object which can be used to smooth a an array in x, y and/or z. 
+
 A number of smoothing sequences are applied, each being a succesion of n passes 
 of a three points stencil with coefficients [(1-a)/2, a, (1-a)/2]. The default, a 
 coefficient of 0.5 results in the stencil [0.25,0.5,0.25] which totally suppresses 
 signals at the wavelength of twice the cell length in the dimension in which it is 
-applied. For suppressing signals at longer wavelength, a stride is being used. 
-For example, for suppressing exactly signals at four, six,  or N times the cell 
+applied. 
+
+For suppressing signals at longer wavelength, a stride is being used. 
+For example, for suppressing exactly signals at four, six, or N times the cell 
 size along a given dimension, respectively use strides of 2, 3 or N/2.
-Use the 'add' function to add smoothing sequence, and the 'apply' function for 
+
+Wide band filtering is obtained using a succession of sequences with different 
+strides.
+
+Optionally, a compensation step may be added to a sequence, reducing smoothing 
+at long wavelengths. The compensation coefficient is calculated automatically.
+
+Use the 'add' function to add a smoothing sequence, and the 'apply' function for 
 application to an array.
 
 Available methods:
@@ -44,7 +54,7 @@ Adds smoothing sequence:
     - npass  = [ 1 , 1 , 1 ]: number of passes in x, y and z,
     - alpha  = [0.5,0.5,0.5]: smoothing coefficients in x ,y and z,
     - stride = [ 1 , 1 , 1 ]: stride in x, y and z,
-    - l_compensate = False  : if True, a compensations step will be added to the sequence.
+    - l_compensate = False  : if True, a compensation step will be added to the sequence.
     """
     self.npass.append(array(npass))
     self.alpha.append(array(alpha))
