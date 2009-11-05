@@ -68,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.84 2009/08/21 20:19:41 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.85 2009/11/05 23:03:38 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -411,6 +411,9 @@ Creates an instance of a Bend lattice element.
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - rc=1.e36 radius of curvature of the bend
+Note that by default, dipo elements will be created with the appropriate
+By to steer a beam (described by the first species) around the bend element.
+To turn this offset, set top.diposet = false.
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                ol=0,error_type='',
@@ -455,8 +458,8 @@ Creates an instance of a Dipo lattice element.
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - ex=0 Ex field (V/m)
   - ey=0 Ey field (V/m)
-  - bx=0 Bx field (T/m)
-  - by=0 By field (T/m)
+  - bx=0 Bx field (T)
+  - by=0 By field (T)
   - ta=0 tangent of entrance angle
   - tb=0 tangent of exit angle
   - x1=0 location of first electric plate
@@ -1848,6 +1851,9 @@ Required arguments:
 The following are all optional and have the same meaning and default as the
 bend arrays with the same suffices:
   - ap,ox,oy
+Note that by default, dipo elements will be created with the appropriate
+By to steer a beam (described by the first species) around the bend element.
+To turn this offset, set top.diposet = false.
   """
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
