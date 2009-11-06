@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.72 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.73 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -9,310 +9,582 @@ c  It contains the routines for calculating the intersection of points
 c  with various geometrical objects.
 c=======================================================================
 c=======================================================================
-      subroutine conductordelfromintercepts(xmmin,ymmin,zmmin,dx,dy,dz,
-     &                                      nx,ny,nz,nintercepts,
-     &                                      xintercept,yintercept,zintercept,
-     &                                      fuzz)
-      use ConductorGeometryWorkspace
-      real(kind=8):: xmmin,ymmin,zmmin,dx,dy,dz
-      integer(ISZ):: nx,ny,nz,nintercepts
-      real(kind=8):: xintercept(nintercepts,0:ny,0:nz)
-      real(kind=8):: yintercept(nintercepts,0:nx,0:nz)
-      real(kind=8):: zintercept(nintercepts,0:nx,0:ny)
-      real(kind=8):: fuzz
+      subroutine conductordelfromintercepts(intercepts,conductors,
+     &                                      dfill,fuzz)
+      use ConductorInterceptTypeModule
+      use ConductorTypeModule
+      type(ConductorInterceptType):: intercepts
+      type(ConductorType):: conductors
+      real(kind=8):: dfill,fuzz
 
+c Given information about the intercepts of grid lines with an object,
+c contained in the intercepts instance, generate the subgrid information
+c needed by the field solve, putting the data directly into the conductors
+c instance.
+c The data in intercepts is a list of interception points along the grid
+c lines in each of the three dimensions. The interceptions need to be in
+c increasing order and the first point must be at the lower edge. Note that
+c if the lower edge extends to -infinity, the value of -LARGEPOS should be
+c used. The last value can be left off if the upper edge extends to +infinity.
+c If there are no intercepts, the list should be filled with LARGEPOS.
+
+      integer(ISZ):: iouter
+
+      real(kind=8):: xmmin,ymmin,zmmin
       real(kind=8):: xmmax,ymmax,zmmax
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxicpt,nyicpt,nzicpt
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+      real(kind=8),pointer:: xvoltages(:,:,:)
+      real(kind=8),pointer:: yvoltages(:,:,:)
+      real(kind=8),pointer:: zvoltages(:,:,:)
+      integer(ISZ),pointer:: xcondids(:,:,:)
+      integer(ISZ),pointer:: ycondids(:,:,:)
+      integer(ISZ),pointer:: zcondids(:,:,:)
+
+      integer(ISZ):: nc,ne,no
+      integer(ISZ):: ncmax,nemax,nomax
       integer(ISZ):: ix,iy,iz,ii,idel
       integer(ISZ):: ix1,ix2,iy1,iy2,iz1,iz2
       real(kind=8):: x1,x2,y1,y2,z1,z2
       real(kind=8):: xx,yy,zz
       real(kind=8):: del,delx,dely,delz
       real(kind=8):: xside,yside,zside
+      integer(ISZ):: indx(0:2)
+      real(kind=8):: dels(0:5),volt(0:5)
+      integer(ISZ):: numb(0:5)
 
+c     --- Create locals to make the coding below more readable
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+      nxicpt = intercepts%nxicpt
+      nyicpt = intercepts%nyicpt
+      nzicpt = intercepts%nzicpt
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+      xvoltages => intercepts%xvoltages
+      yvoltages => intercepts%yvoltages
+      zvoltages => intercepts%zvoltages
+      xcondids => intercepts%xcondids
+      ycondids => intercepts%ycondids
+      zcondids => intercepts%zcondids
+
+c     --- These are handy to precalculate
       xmmax = xmmin + nx*dx
       ymmax = ymmin + ny*dy
       zmmax = zmmin + nz*dz
 
-      ncond = 0
-      ncondmax = 0
-      ndels = 0
-      ndelsmax = 0
-      call gchange("ConductorGeometryWorkspace",0)
+c     --- Create locals to hold the counters
+      ncmax = conductors%interior%n
+      nemax = conductors%evensubgrid%n
+      nomax = conductors%oddsubgrid%n
+      nc = conductors%interior%n
+      ne = conductors%evensubgrid%n
+      no = conductors%oddsubgrid%n
 
-c     --- Find all of the grid points within the object.
-      do iz=0,nz
-        do iy=0,ny
-          ii = 1
-          do while (ii <= nintercepts .and. xintercept(ii,iy,iz) < LARGEPOS)
-            x1 = xintercept(ii,iy,iz)
-            ii = ii + 1
-            if (ii <= nintercepts) then
-              x2 = xintercept(ii,iy,iz)
+c     --- Do this calculation twice. The first time, only count the number
+c     --- of data points accumulated. Then allocate the space all at once.
+c     --- The second time through saves the data.
+c     --- Interestingly, it takes about as much time to allocate the arrays
+c     --- as it does to do the calculation. It is faster to do the calculation
+c     --- twice and do the allocation all at once than it is to do the
+c     --- allocations incrementally during the calculation (which would
+c     --- involve a fair amount of data copying, moving the existing data
+c     --- from old arrays to new arrays).
+      do iouter=1,2
+
+        if (iouter == 2) then
+c         --- Allocate the space all at once before the 2nd time through
+          conductors%interior%nmax = ncmax
+          conductors%evensubgrid%nmax = nemax
+          conductors%oddsubgrid%nmax = nomax
+          call ConductorTypechange(conductors)
+c         --- Direct allocation is slightly faster, but deletes old data
+c         --- and the old arrays would need to be deallocated
+c         allocate(conductors%interior%indx(0:2,ncmax))
+c         allocate(conductors%interior%volt(ncmax))
+c         allocate(conductors%interior%numb(ncmax))
+c         allocate(conductors%interior%ilevel(ncmax))
+c         allocate(conductors%evensubgrid%prevphi(nemax))
+c         allocate(conductors%evensubgrid%indx(0:2,nemax))
+c         allocate(conductors%evensubgrid%dels(0:5,nemax))
+c         allocate(conductors%evensubgrid%volt(0:5,nemax))
+c         allocate(conductors%evensubgrid%numb(0:5,nemax))
+c         allocate(conductors%evensubgrid%efield0(0:2,nemax))
+c         allocate(conductors%evensubgrid%efieldd(0:5,nemax))
+c         allocate(conductors%evensubgrid%ilevel(nemax))
+c         allocate(conductors%oddsubgrid%prevphi(nomax))
+c         allocate(conductors%oddsubgrid%indx(0:2,nomax))
+c         allocate(conductors%oddsubgrid%dels(0:5,nomax))
+c         allocate(conductors%oddsubgrid%volt(0:5,nomax))
+c         allocate(conductors%oddsubgrid%numb(0:5,nomax))
+c         allocate(conductors%oddsubgrid%efield0(0:2,nomax))
+c         allocate(conductors%oddsubgrid%efieldd(0:5,nomax))
+c         allocate(conductors%oddsubgrid%ilevel(nomax))
+        endif
+
+c       --- Find all of the grid points within the object.
+c       --- Only one of the x, y and zintercepts needs to be scanned.
+        do iz=0,nz
+          zz = zmmin + iz*dz
+          do iy=0,ny
+            yy = ymmin + iy*dy
+
+c           --- Loop over xinetercept points, looping over all points,
+c           --- or stopping if the intercept is LARGEPOS (which may mean
+c           --- that there are no intercepts along the current grid line).
+            ii = 1
+            do while (ii <= nxicpt .and. xintercepts(ii,iy,iz) < LARGEPOS)
+
+c             --- x1 and x2 are the intercept points, with the object
+c             --- in between
+              x1 = xintercepts(ii,iy,iz)
               ii = ii + 1
-            else
-              x2 = LARGEPOS
-            endif
-            if (x2 >= xmmin .and. x1 <= xmmax) then
-              ix1 = max(0.,x1 - fuzz - xmmin)/dx
-              ix2 = min(nx,x2 + fuzz - xmmin)/dx
-              if (xmmin + ix1*dx < x1) ix1 = ix1 + 1
-              if (ncondmax - ncond < ix2 - ix1 + 1) then
-                ncondmax = max(ncondmax*2,ncondmax + (ix2 - ix1 + 1))
-                call gchange("ConductorGeometryWorkspace",0)
+              if (ii <= nxicpt) then
+                x2 = xintercepts(ii,iy,iz)
+              else
+                x2 = LARGEPOS
               endif
-              do ix=ix1,ix2
-                ncond = ncond + 1
-                condindx(0,ncond) = ix
-                condindx(1,ncond) = iy
-                condindx(2,ncond) = iz
-              enddo
-            endif
+
+c             --- Check if the object overlaps the grid.
+              if (x2 >= xmmin .and. x1 <= xmmax) then
+
+c               --- Get the range in x grid points that are inside the object
+                ix1 = max(0.,x1 - fuzz - xmmin)/dx
+                ix2 = min(nx,x2 + fuzz - xmmin)/dx
+                if (xmmin + ix1*dx <= x1) ix1 = ix1 + 1
+
+                do ix=ix1,ix2
+
+c                 --- Get the closest distance from the object surface to the
+c                 --- grid point and only include the point if it is within
+c                 --- dfill of the surface.
+c                 --- An optimization would skip this calculation if dfill
+c                 --- is LARGEPOS.
+                  delx = min(ix-ix1,ix2-ix)
+                  dely = LARGEPOS
+                  delz = LARGEPOS
+                  do iy1=1,nyicpt
+                    dely = min(dely,abs(yy - yintercepts(iy1,ix,iz)))
+                    if (yintercepts(iy1,ix,iz) > yy) exit
+                  enddo
+                  do iz1=1,nzicpt
+                    delz = min(delz,abs(zz - zintercepts(iz1,ix,iy)))
+                    if (zintercepts(iz1,ix,iy) > zz) exit
+                  enddo
+
+                  if (delx < dfill .or.
+     &                dely < dfill*dy .or.
+     &                delz < dfill*dz) then
+                    if (iouter == 1) then
+c                     --- The first time through the loop, only count the
+c                     --- number of points
+                      ncmax = ncmax + 1
+                    else
+c                     --- The second time, save the data
+                      nc = nc + 1
+                      conductors%interior%indx(0,nc) = ix
+                      conductors%interior%indx(1,nc) = iy
+                      conductors%interior%indx(2,nc) = iz
+                      conductors%interior%volt(nc) = xvoltages(ii/2,iy,iz)
+                      conductors%interior%numb(nc) = xcondids(ii/2,iy,iz)
+                      conductors%interior%ilevel(nc) = intercepts%mglevel
+                    endif
+                  endif
+
+                enddo
+
+              endif
+              ii = ii + 1
+
+            enddo ! ii
+          enddo ! iy
+        enddo ! iz
+
+c       --- Find the deltas. All three of the x, y, and zintercepts need
+c       --- to be scanned. x is done first. When scanning y, a check is made
+c       --- so that points already gathered from the x scan are skipped, and
+c       --- similarly for z.
+
+        do iz=0,nz
+          zz = zmmin + iz*dz
+          do iy=0,ny
+            yy = ymmin + iy*dy
+
+            ii = 1
+            xside = +1.
+            do while (ii <= nxicpt .and. xintercepts(ii,iy,iz) < LARGEPOS)
+
+c             --- Check that the intercept point is within the grid
+              if (xmmin <= xintercepts(ii,iy,iz) .and.
+     &            xintercepts(ii,iy,iz) <= xmmax) then
+
+                if (xside > 0.) then
+c                 --- delpx
+                  ix = (xintercepts(ii,iy,iz) - xmmin)/dx
+                  del = (xintercepts(ii,iy,iz) - xmmin)/dx - ix
+                  idel = 1
+                else
+c                 --- delmx
+                  ix = (xintercepts(ii,iy,iz) - xmmin)/dx + 1
+                  del = ix - (xintercepts(ii,iy,iz) - xmmin)/dx
+                  idel = 0
+                endif
+
+c               --- Make sure that del is not zero. Note that del would
+c               --- never be negative.
+                if (del > 0.) then
+
+                  if (iouter == 1) then
+                    if (mod(ix+iy+iz,2) == 0) then
+                      nemax = nemax + 1
+                    else
+                      nomax = nomax + 1
+                    endif
+                  else
+
+c                   --- Save the data in temps at first. This separates the
+c                   --- generation of the data from saving it, which needs
+c                   --- check on whether the point is even of odd.
+c                   --- This simplifies the code at the expense of copies.
+                    dels = LARGEPOS
+                    volt = 0.
+                    numb = 0
+                    indx(0) = ix
+                    indx(1) = iy
+                    indx(2) = iz
+                    dels(idel) = del
+                    volt(idel) = xvoltages((ii+1)/2,iy,iz)
+                    numb(idel) = xcondids((ii+1)/2,iy,iz)
+
+c                   --- Scan over the yintercepts to see if the grid point
+c                   --- is near any.
+                    iy1 = 1
+                    yside = +1.
+                    do while (iy1 <= nyicpt .and.
+     &                        yintercepts(iy1,ix,iz) < LARGEPOS)
+                      if (yside > 0.) then
+c                       --- delpy
+                        del = (yintercepts(iy1,ix,iz) - yy)/dy
+                        idel = 3
+                      else
+c                       --- delmy
+                        del = (yy - yintercepts(iy1,ix,iz))/dy
+                        idel = 2
+                      endif
+                      if (del > 0. .and. del < dels(idel)) then
+                        dels(idel) = del
+                        volt(idel) = yvoltages((iy1+1)/2,ix,iz)
+                        numb(idel) = ycondids((iy1+1)/2,ix,iz)
+                      endif
+                      iy1 = iy1 + 1
+                      yside = -yside
+                    enddo
+
+c                   --- Scan over the zintercepts to see if the grid point
+c                   --- is near any.
+                    iz1 = 1
+                    zside = +1.
+                    do while (iz1 <= nzicpt .and.
+     &                        zintercepts(iz1,ix,iy) < LARGEPOS)
+                      if (zside > 0.) then
+c                       --- delpz
+                        del = (zintercepts(iz1,ix,iy) - zz)/dz
+                        idel = 5
+                      else
+c                       --- delmz
+                        del = (zz - zintercepts(iz1,ix,iy))/dz
+                        idel = 4
+                      endif
+                      if (del > 0. .and. del < dels(idel)) then
+                        dels(idel) = del
+                        volt(idel) = zvoltages((iz1+1)/2,ix,iy)
+                        numb(idel) = zcondids((iz1+1)/2,ix,iy)
+                      endif
+                      iz1 = iz1 + 1
+                      zside = -zside
+                    enddo
+
+c                   --- Now save the data in the appropriate place
+                    if (mod(ix+iy+iz,2) == 0) then
+                      ne = ne + 1
+                      conductors%evensubgrid%indx(:,ne) = indx
+                      conductors%evensubgrid%dels(:,ne) = dels
+                      conductors%evensubgrid%volt(:,ne) = volt
+                      conductors%evensubgrid%numb(:,ne) = numb
+                      conductors%evensubgrid%ilevel(ne) = intercepts%mglevel
+                    else
+                      no = no + 1
+                      conductors%oddsubgrid%indx(:,no) = indx
+                      conductors%oddsubgrid%dels(:,no) = dels
+                      conductors%oddsubgrid%volt(:,no) = volt
+                      conductors%oddsubgrid%numb(:,no) = numb
+                      conductors%oddsubgrid%ilevel(no) = intercepts%mglevel
+                    endif
+                  endif
+
+                endif
+              endif
+
+              ii = ii + 1
+              xside = -xside
+
+            enddo
           enddo
         enddo
-      enddo
 
-c     --- Find the deltas
-      do iz=0,nz
-        zz = zmmin + iz*dz
+c       --- Scan over the yintercepts
+        do iz=0,nz
+          zz = zmmin + iz*dz
+          do ix=0,nx
+            xx = xmmin + ix*dx
+
+            ii = 1
+            yside = +1.
+            do while (ii <= nyicpt .and. yintercepts(ii,ix,iz) < LARGEPOS)
+
+              if (ymmin <= yintercepts(ii,ix,iz) .and.
+     &            yintercepts(ii,ix,iz) <= ymmax) then
+
+                if (yside > 0.) then
+c                 --- delpy
+                  iy = (yintercepts(ii,ix,iz) - ymmin)/dy
+                  del = (yintercepts(ii,ix,iz) - ymmin)/dy - iy
+                  idel = 3
+                else
+c                 --- delmy
+                  iy = (yintercepts(ii,ix,iz) - ymmin)/dy + 1
+                  del = iy - (yintercepts(ii,ix,iz) - ymmin)/dy
+                  idel = 2
+                endif
+
+c               --- Check if the del in x would be less then 1. If so, then
+c               --- this point would have already been gathered when examining
+c               --- x intercepts.
+                ix1 = 1
+                xside = +1.
+                delx = 2.
+                do while (ix1 <= nxicpt .and.
+     &                    xintercepts(ix1,iy,iz) < LARGEPOS .and. delx >= 1.)
+                  if (xside > 0.) then
+c                   --- delpx
+                    if (xintercepts(ix1,iy,iz) >= xx) then
+                      delx = (xintercepts(ix1,iy,iz) - xx)/dx
+                    endif
+                  else
+c                   --- delmx
+                    if (xintercepts(ix1,iy,iz) <= xx) then
+                      delx = (xx - xintercepts(ix1,iy,iz))/dx
+                    endif
+                  endif
+                  ix1 = ix1 + 1
+                  xside = -xside
+                enddo
+
+                if (del > 0. .and. delx >= 1.) then
+
+                  if (iouter == 1) then
+                    if (mod(ix+iy+iz,2) == 0) then
+                      nemax = nemax + 1
+                    else
+                      nomax = nomax + 1
+                    endif
+                  else
+
+                    dels = LARGEPOS
+                    volt = 0.
+                    numb = 0
+                    indx(0) = ix
+                    indx(1) = iy
+                    indx(2) = iz
+                    dels(idel) = del
+                    volt(idel) = yvoltages((ii+1)/2,ix,iz)
+                    numb(idel) = ycondids((ii+1)/2,ix,iz)
+
+                    iz1 = 1
+                    zside = +1.
+                    do while (iz1 <= nzicpt .and.
+     &                        zintercepts(iz1,ix,iy) < LARGEPOS)
+                      if (zside > 0.) then
+c                       --- delpz
+                        del = (zintercepts(iz1,ix,iy) - zz)/dz
+                        idel = 5
+                      else
+c                       --- delmz
+                        del = (zz - zintercepts(iz1,ix,iy))/dz
+                        idel = 4
+                      endif
+                      if (del > 0. .and. del < dels(idel)) then
+                        dels(idel) = del
+                        volt(idel) = zvoltages((iz1+1)/2,ix,iy)
+                        numb(idel) = zcondids((iz1+1)/2,ix,iy)
+                      endif
+                      iz1 = iz1 + 1
+                      zside = -zside
+                    enddo
+
+                    if (mod(ix+iy+iz,2) == 0) then
+                      ne = ne + 1
+                      conductors%evensubgrid%indx(:,ne) = indx
+                      conductors%evensubgrid%dels(:,ne) = dels
+                      conductors%evensubgrid%volt(:,ne) = volt
+                      conductors%evensubgrid%numb(:,ne) = numb
+                      conductors%evensubgrid%ilevel(ne) = intercepts%mglevel
+                    else
+                      no = no + 1
+                      conductors%oddsubgrid%indx(:,no) = indx
+                      conductors%oddsubgrid%dels(:,no) = dels
+                      conductors%oddsubgrid%volt(:,no) = volt
+                      conductors%oddsubgrid%numb(:,no) = numb
+                      conductors%oddsubgrid%ilevel(no) = intercepts%mglevel
+                    endif
+                  endif
+
+                endif
+              endif
+
+              ii = ii + 1
+              yside = -yside
+
+            enddo
+          enddo
+        enddo
+
+c       --- Scan over zintercepts
         do iy=0,ny
           yy = ymmin + iy*dy
-          ii = 1
-          xside = +1.
-          do while (ii <= nintercepts .and. xintercept(ii,iy,iz) < LARGEPOS)
-            if (xmmin <= xintercept(ii,iy,iz) .and.
-     &          xintercept(ii,iy,iz) <= xmmax) then
-              if (xside > 0.) then
-c               --- delpx
-                ix = (xintercept(ii,iy,iz) - xmmin)/dx
-                del = (xintercept(ii,iy,iz) - xmmin)/dx - ix
-                idel = 1
-              else
-c               --- delmx
-                ix = (xintercept(ii,iy,iz) - xmmin)/dx + 1
-                del = ix - (xintercept(ii,iy,iz) - xmmin)/dx
-                idel = 0
-              endif
-              if (del > 0.) then
-                ndels = ndels + 1
-                if (ndels > ndelsmax) then
-                  ndelsmax = max(ndelsmax*2,ndels)
-                  call gchange("ConductorGeometryWorkspace",0)
+          do ix=0,nx
+            xx = xmmin + ix*dx
+
+            ii = 1
+            zside = +1.
+            do while (ii <= nzicpt .and. zintercepts(ii,ix,iy) < LARGEPOS)
+
+              if (zmmin <= zintercepts(ii,ix,iy) .and.
+     &            zintercepts(ii,ix,iy) <= zmmax) then
+
+                if (zside > 0.) then
+c                 --- delpz
+                  iz = (zintercepts(ii,ix,iy) - zmmin)/dz
+                  del = (zintercepts(ii,ix,iy) - zmmin)/dz - iz
+                  idel = 5
+                else
+c                 --- delmz
+                  iz = (zintercepts(ii,ix,iy) - zmmin)/dz + 1
+                  del = iz - (zintercepts(ii,ix,iy) - zmmin)/dz
+                  idel = 4
                 endif
-                indx(0,ndels) = ix
-                indx(1,ndels) = iy
-                indx(2,ndels) = iz
-                dels(idel,ndels) = del
+
+c               --- Check if the del in x would be less then 1. If so, then
+c               --- this point would have already been gathered when examining
+c               --- x intercepts.
+                ix1 = 1
+                xside = +1.
+                delx = 2.
+                do while (ix1 <= nxicpt .and.
+     &                    xintercepts(ix1,iy,iz) < LARGEPOS .and. delx >= 1.)
+                  if (xside > 0.) then
+c                   --- delpx
+                    if (xintercepts(ix1,iy,iz) >= xx) then
+                      delx = (xintercepts(ix1,iy,iz) - xx)/dx
+                    endif
+                  else
+c                   --- delmx
+                    if (xintercepts(ix1,iy,iz) <= xx) then
+                      delx = (xx - xintercepts(ix1,iy,iz))/dx
+                    endif
+                  endif
+                  ix1 = ix1 + 1
+                  xside = -xside
+                enddo
+
+c               --- Check if the del in y would be less then 1. If so, then
+c               --- this point would have already been gathered when examining
+c               --- y intercepts.
                 iy1 = 1
                 yside = +1.
-                do while (iy1 <= nintercepts .and. yintercept(iy1,ix,iz) < LARGEPOS)
+                dely = 2.
+                do while (iy1 <= nyicpt .and.
+     &                    yintercepts(iy1,ix,iz) < LARGEPOS .and. dely >= 1.)
                   if (yside > 0.) then
 c                   --- delpy
-                    del = (yintercept(iy1,ix,iz) - yy)/dy
-                    idel = 3
+                    if (yintercepts(iy1,ix,iz) >= yy) then
+                      del = (yintercepts(iy1,ix,iz) - yy)/dy
+                    endif
                   else
 c                   --- delmy
-                    del = (yy - yintercept(iy1,ix,iz))/dy
-                    idel = 2
-                  endif
-                  if (del > 0. .and. del < dels(idel,ndels)) then
-                    dels(idel,ndels) = del
+                    if (yintercepts(iy1,ix,iz) <= yy) then
+                      del = (yy - yintercepts(iy1,ix,iz))/dy
+                    endif
                   endif
                   iy1 = iy1 + 1
                   yside = -yside
                 enddo
-                iz1 = 1
-                zside = +1.
-                do while (iz1 <= nintercepts .and. zintercept(iz1,ix,iy) < LARGEPOS)
-                  if (zside > 0.) then
-c                   --- delpz
-                    del = (zintercept(iz1,ix,iy) - zz)/dz
-                    idel = 5
+
+                if (del > 0. .and. delx >= 1. .and. dely >= 1.) then
+
+                  if (iouter == 1) then
+                    if (mod(ix+iy+iz,2) == 0) then
+                      nemax = nemax + 1
+                    else
+                      nomax = nomax + 1
+                    endif
                   else
-c                   --- delmz
-                    del = (zz - zintercept(iz1,ix,iy))/dz
-                    idel = 4
+
+                    dels = LARGEPOS
+                    volt = 0.
+                    numb = 0
+                    indx(0) = ix
+                    indx(1) = iy
+                    indx(2) = iz
+                    dels(idel) = del
+                    volt(idel) = zvoltages((ii+1)/2,ix,iy)
+                    numb(idel) = zcondids((ii+1)/2,ix,iy)
+ 
+                    if (mod(ix+iy+iz,2) == 0) then
+                      ne = ne + 1
+                      conductors%evensubgrid%indx(:,ne) = indx
+                      conductors%evensubgrid%dels(:,ne) = dels
+                      conductors%evensubgrid%volt(:,ne) = volt
+                      conductors%evensubgrid%numb(:,ne) = numb
+                      conductors%evensubgrid%ilevel(ne) = intercepts%mglevel
+                    else
+                      no = no + 1
+                      conductors%oddsubgrid%indx(:,no) = indx
+                      conductors%oddsubgrid%dels(:,no) = dels
+                      conductors%oddsubgrid%volt(:,no) = volt
+                      conductors%oddsubgrid%numb(:,no) = numb
+                      conductors%oddsubgrid%ilevel(no) = intercepts%mglevel
+                    endif
                   endif
-                  if (del > 0. .and. del < dels(idel,ndels)) then
-                    dels(idel,ndels) = del
-                  endif
-                  iz1 = iz1 + 1
-                  zside = -zside
-                enddo
+
+                endif
               endif
-            endif
 
-            ii = ii + 1
-            xside = -xside
+              ii = ii + 1
+              zside = -zside
 
+            enddo
           enddo
         enddo
-      enddo
 
-      do iz=0,nz
-        zz = zmmin + iz*dz
-        do ix=0,nx
-          xx = xmmin + ix*dx
-          ii = 1
-          yside = +1.
-          do while (ii <= nintercepts .and. yintercept(ii,ix,iz) < LARGEPOS)
-            if (ymmin <= yintercept(ii,ix,iz) .and.
-     &          yintercept(ii,ix,iz) <= ymmax) then
-              if (yside > 0.) then
-c               --- delpy
-                iy = (yintercept(ii,ix,iz) - ymmin)/dy
-                del = (yintercept(ii,ix,iz) - ymmin)/dy - iy
-                idel = 3
-              else
-c               --- delmy
-                iy = (yintercept(ii,ix,iz) - ymmin)/dy + 1
-                del = iy - (yintercept(ii,ix,iz) - ymmin)/dy
-                idel = 2
-              endif
+      enddo ! iouter
 
-c             --- Check if the del in x would be less then 1. If so, then
-c             --- this point would have already been gathered when examining
-c             --- x intercepts.
-              ix1 = 1
-              xside = +1.
-              delx = 2.
-              do while (ix1 <= nintercepts .and. xintercept(ix1,iy,iz) < LARGEPOS .and. delx >= 1.)
-                if (xside > 0.) then
-c                 --- delpx
-                  if (xintercept(ix1,iy,iz) >= xx) then
-                    delx = (xintercept(ix1,iy,iz) - xx)/dx
-                  endif
-                else
-c                 --- delmx
-                  if (xintercept(ix1,iy,iz) <= xx) then
-                    delx = (xx - xintercept(ix1,iy,iz))/dx
-                  endif
-                endif
-                ix1 = ix1 + 1
-                xside = -xside
-              enddo
-
-              if (del > 0. .and. delx >= 1.) then
-                ndels = ndels + 1
-                if (ndels > ndelsmax) then
-                  ndelsmax = max(ndelsmax*2,ndels)
-                  call gchange("ConductorGeometryWorkspace",0)
-                endif
-                indx(0,ndels) = ix
-                indx(1,ndels) = iy
-                indx(2,ndels) = iz
-                dels(idel,ndels) = del
-                iz1 = 1
-                zside = +1.
-                do while (iz1 <= nintercepts .and. zintercept(iz1,ix,iy) < LARGEPOS)
-                  if (zside > 0.) then
-c                   --- delpz
-                    del = (zintercept(iz1,ix,iy) - zz)/dz
-                    idel = 5
-                  else
-c                   --- delmz
-                    del = (zz - zintercept(iz1,ix,iy))/dz
-                    idel = 4
-                  endif
-                  if (del > 0. .and. del < dels(idel,ndels)) then
-                    dels(idel,ndels) = del
-                  endif
-                  iz1 = iz1 + 1
-                  zside = -zside
-                enddo
-              endif
-            endif
-
-            ii = ii + 1
-            yside = -yside
-
-          enddo
-        enddo
-      enddo
-
-      do iy=0,ny
-        yy = ymmin + iy*dy
-        do ix=0,nx
-          xx = xmmin + ix*dx
-          ii = 1
-          zside = +1.
-          do while (ii <= nintercepts .and. zintercept(ii,ix,iy) < LARGEPOS)
-            if (zmmin <= zintercept(ii,ix,iy) .and.
-     &          zintercept(ii,ix,iy) <= zmmax) then
-              if (zside > 0.) then
-c               --- delpz
-                iz = (zintercept(ii,ix,iy) - zmmin)/dz
-                del = (zintercept(ii,ix,iy) - zmmin)/dz - iz
-                idel = 5
-              else
-c               --- delmz
-                iz = (zintercept(ii,ix,iy) - zmmin)/dz + 1
-                del = iz - (zintercept(ii,ix,iy) - zmmin)/dz
-                idel = 4
-              endif
-
-c             --- Check if the del in x would be less then 1. If so, then
-c             --- this point would have already been gathered when examining
-c             --- x intercepts.
-              ix1 = 1
-              xside = +1.
-              delx = 2.
-              do while (ix1 <= nintercepts .and. xintercept(ix1,iy,iz) < LARGEPOS .and. delx >= 1.)
-                if (xside > 0.) then
-c                 --- delpx
-                  if (xintercept(ix1,iy,iz) >= xx) then
-                    delx = (xintercept(ix1,iy,iz) - xx)/dx
-                  endif
-                else
-c                 --- delmx
-                  if (xintercept(ix1,iy,iz) <= xx) then
-                    delx = (xx - xintercept(ix1,iy,iz))/dx
-                  endif
-                endif
-                ix1 = ix1 + 1
-                xside = -xside
-              enddo
-
-c             --- Check if the del in y would be less then 1. If so, then
-c             --- this point would have already been gathered when examining
-c             --- y intercepts.
-              iy1 = 1
-              yside = +1.
-              dely = 2.
-              do while (iy1 <= nintercepts .and. yintercept(iy1,ix,iz) < LARGEPOS .and. dely >= 1.)
-                if (yside > 0.) then
-c                 --- delpy
-                  if (yintercept(iy1,ix,iz) >= yy) then
-                    del = (yintercept(iy1,ix,iz) - yy)/dy
-                  endif
-                else
-c                 --- delmy
-                  if (yintercept(iy1,ix,iz) <= yy) then
-                    del = (yy - yintercept(iy1,ix,iz))/dy
-                  endif
-                endif
-                iy1 = iy1 + 1
-                yside = -yside
-              enddo
-
-              if (del > 0. .and. delx >= 1. .and. dely >= 1.) then
-                ndels = ndels + 1
-                if (ndels > ndelsmax) then
-                  ndelsmax = max(ndelsmax*2,ndels)
-                  call gchange("ConductorGeometryWorkspace",0)
-                endif
-                indx(0,ndels) = ix
-                indx(1,ndels) = iy
-                indx(2,ndels) = iz
-                dels(idel,ndels) = del
-              endif
-            endif
-
-            ii = ii + 1
-            zside = -zside
-
-          enddo
-        enddo
-      enddo
+      conductors%interior%n = nc
+      conductors%evensubgrid%n = ne
+      conductors%oddsubgrid%n = no
 
       return
       end
@@ -1329,24 +1601,61 @@ c       --- The point is on the cylinder exactly.
       end
 c=======================================================================
       subroutine ZCylinderConductorFnew(rad,length,xcent,ycent,zcent,
-     &                              xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
-     &                              xintercept,yintercept,zintercept,
-     &                              fuzz)
+     &                                  voltage,condid,
+     &                                  intercepts,fuzz)
+      use ConductorInterceptTypeModule
       real(kind=8):: rad,length,xcent,ycent,zcent
-      real(kind=8):: xmmin,ymmin,zmmin,dx,dy,dz
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: xintercept(2,0:ny,0:nz)
-      real(kind=8):: yintercept(2,0:nx,0:nz)
-      real(kind=8):: zintercept(2,0:nx,0:ny)
+      real(kind=8):: voltage
+      integer(ISZ):: condid
+      type(ConductorInterceptType):: intercepts
       real(kind=8):: fuzz
 
-c Finds distances along the axis of the points from a cylinder aligned with
-c the z-axis.
-c The notation is that a negative distance means that the point is inside.
+c Finds the intercepts of the object with grid lines along the three axis.
+
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmmax,ymmax,zmmax
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxicpt,nyicpt,nzicpt
+
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+      real(kind=8),pointer:: xvoltages(:,:,:)
+      real(kind=8),pointer:: yvoltages(:,:,:)
+      real(kind=8),pointer:: zvoltages(:,:,:)
+      integer(ISZ),pointer:: xcondids(:,:,:)
+      integer(ISZ),pointer:: ycondids(:,:,:)
+      integer(ISZ),pointer:: zcondids(:,:,:)
 
       real(kind=8):: zmin,zmax
       integer(ISZ):: ix,iy,iz
       real(kind=8):: xx,yy,zz,rsq
+
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+
+      intercepts%nxicpt = 2
+      intercepts%nyicpt = 2
+      intercepts%nzicpt = 2
+      call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+      xvoltages => intercepts%xvoltages
+      yvoltages => intercepts%yvoltages
+      zvoltages => intercepts%zvoltages
+      xcondids => intercepts%xcondids
+      ycondids => intercepts%ycondids
+      zcondids => intercepts%zcondids
 
       zmin = -length*0.5
       zmax = +length*0.5
@@ -1357,10 +1666,12 @@ c The notation is that a negative distance means that the point is inside.
           zz = zmmin + iz*dz - zcent
           if (zmin-fuzz <= zz .and. zz <= zmax+fuzz .and.
      &        abs(yy) <= rad) then
-            xintercept(1,iy,iz) = xcent - sqrt(max(0.,rad**2 - yy**2))
-            xintercept(2,iy,iz) = xcent + sqrt(max(0.,rad**2 - yy**2))
+            xintercepts(1,iy,iz) = xcent - sqrt(max(0.,rad**2 - yy**2))
+            xintercepts(2,iy,iz) = xcent + sqrt(max(0.,rad**2 - yy**2))
+            xvoltages(1,iy,iz) = voltage
+            xcondids(1,iy,iz) = condid
           else
-            xintercept(1:2,iy,iz) = LARGEPOS
+            xintercepts(1:2,iy,iz) = LARGEPOS
           endif
         enddo
       enddo
@@ -1371,10 +1682,12 @@ c The notation is that a negative distance means that the point is inside.
           zz = zmmin + iz*dz - zcent
           if (zmin-fuzz <= zz .and. zz <= zmax+fuzz .and.
      &        abs(xx) <= rad) then
-            yintercept(1,ix,iz) = ycent - sqrt(max(0.,rad**2 - xx**2))
-            yintercept(2,ix,iz) = ycent + sqrt(max(0.,rad**2 - xx**2))
+            yintercepts(1,ix,iz) = ycent - sqrt(max(0.,rad**2 - xx**2))
+            yintercepts(2,ix,iz) = ycent + sqrt(max(0.,rad**2 - xx**2))
+            yvoltages(1,ix,iz) = voltage
+            ycondids(1,ix,iz) = condid
           else
-            yintercept(1:2,ix,iz) = LARGEPOS
+            yintercepts(1:2,ix,iz) = LARGEPOS
           endif
         enddo
       enddo
@@ -1385,10 +1698,12 @@ c The notation is that a negative distance means that the point is inside.
           yy = ymmin + iy*dy - ycent
           rsq = xx**2 + yy**2
           if (rsq <= rad**2) then
-            zintercept(1,ix,iy) = zcent + zmin
-            zintercept(2,ix,iy) = zcent + zmax
+            zintercepts(1,ix,iy) = zcent + zmin
+            zintercepts(2,ix,iy) = zcent + zmax
+            zvoltages(1,ix,iy) = voltage
+            zcondids(1,ix,iy) = condid
           else
-            zintercept(1:2,ix,iy) = LARGEPOS
+            zintercepts(1:2,ix,iy) = LARGEPOS
           endif
         enddo
       enddo

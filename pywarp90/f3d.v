@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.204 $, $Date: 2009/11/04 02:36:01 $
+#@(#) File F3D.V, version $Revision: 3.205 $, $Date: 2009/11/06 21:24:13 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.204 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.205 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -761,22 +761,34 @@ vcap3d(iwhich,rho:real,phi:real,kxsq:real,kysq:real,kzsq:real,attx:real,
        pipeshpe:string,periinz:logical,l2symtry:logical,l4symtry:logical)
      subroutine # External routine for capacity matrix field solve
      
-******** ConductorGeometryWorkspace:
-ncondmax integer
-ncond integer
-condindx(0:2,ncondmax) _integer
-ndelsmax integer
-ndels integer
-indx(0:2,ndelsmax) _integer
-dels(0:5,ndelsmax) _real /LARGEPOS/
+%%%%%%%% ConductorInterceptType:
+mglevel integer
+xmmin real
+ymmin real
+zmmin real
+dx real
+dy real
+dz real
+nx integer
+ny integer
+nz integer
+nxicpt integer
+nyicpt integer
+nzicpt integer
+xintercepts(nxicpt,0:ny,0:nz) _real
+yintercepts(nyicpt,0:nx,0:nz) _real
+zintercepts(nzicpt,0:nx,0:ny) _real
+xvoltages((nxicpt+1)/2,0:ny,0:nz) _real
+yvoltages((nyicpt+1)/2,0:nx,0:nz) _real
+zvoltages((nzicpt+1)/2,0:nx,0:ny) _real
+xcondids((nxicpt+1)/2,0:ny,0:nz) _integer
+ycondids((nyicpt+1)/2,0:nx,0:nz) _integer
+zcondids((nzicpt+1)/2,0:nx,0:ny) _integer
 
 ******** ConductorGeometryGenerators:
-conductordelfromintercepts(xmmin:real,ymmin:real,zmmin:real,
-                           dx:real,dy:real,dz:real,
-                           nx:integer,ny:integer,nz:integer,
-                           nintercepts:integer,
-                           xintercept:real,yintercept:real,zintercept:real,
-                           fuzz:real) subroutine
+conductordelfromintercepts(intercepts:ConductorInterceptType,
+                           conductors:ConductorType,
+                           dfill:real,fuzz:real) subroutine
 solvequartic(a0:real,a1:real,a2:real,a3:real,x1:complex,x2:complex,x3:complex,x4:complex) subroutine
 setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
                    dels:real,parity:integer,fuzz0:real,fuzz1:real,fuzzsign:integer,
@@ -840,11 +852,8 @@ zcylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
         fuzz:real) subroutine
 zcylinderconductorfnew(rad:real,length:real,xcent:real,ycent:real,zcent:real,
-                       xmmin:real,ymmin:real,zmmin:real,
-                       dx:real,dy:real,dz:real,
-                       nx:integer,ny:integer,nz:integer,
-                       xintercept:real,yintercept:real,zintercept:real,
-                       fuzz:real) subroutine
+                       voltage:real,condid:integer,
+                       intercepts:ConductorInterceptType,fuzz:real) subroutine
 zcylinderconductord(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 zcylinderintercept(rad:real,length:real,xcent:real,ycent:real,zcent:real,
