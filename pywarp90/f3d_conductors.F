@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.73 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.74 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -162,8 +162,8 @@ c             --- Check if the object overlaps the grid.
               if (x2 >= xmmin .and. x1 <= xmmax) then
 
 c               --- Get the range in x grid points that are inside the object
-                ix1 = max(0.,x1 - fuzz - xmmin)/dx
-                ix2 = min(nx,x2 + fuzz - xmmin)/dx
+                ix1 = max(0 ,int((x1 - fuzz - xmmin)/dx))
+                ix2 = min(nx,int((x2 + fuzz - xmmin)/dx))
                 if (xmmin + ix1*dx <= x1) ix1 = ix1 + 1
 
                 do ix=ix1,ix2
