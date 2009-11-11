@@ -352,11 +352,17 @@ class MultiGrid3D(SubcycledPoissonSolver):
 
   def gtlchg(self):
     'Calculate the line charge, putting it into the array top.linechg'
-    gtlchg3dfromrho(self.nxlocal,self.nylocal,self.nzlocal,self.rho,
-                    self.dx,self.dy,self.dz,
-                    self.getzgrid(),self.zmminlocal,
-                    self.l2symtry,self.l4symtry,
-                    self.izproc==self.nzprocs-1)
+    if self.solvergeom == w3d.XYZgeom:
+      gtlchg3dfromrho(self.nxlocal,self.nylocal,self.nzlocal,self.rho,
+                      self.dx,self.dy,self.dz,
+                      self.getzgrid(),self.zmminlocal,
+                      self.l2symtry,self.l4symtry,
+                      self.izproc==self.nzprocs-1)
+    elif self.solvergeom==w3d.RZgeom:
+      gtlchgrzfromrho(self.nxlocal,self.nzlocal,self.rho,
+                      self.dx,self.dz,
+                      self.getzgrid(),self.zmminlocal,
+                      self.izproc==self.nzprocs-1)
 
   def setsourcep(self,js,pgroup,zgrid):
     n  = pgroup.nps[js]
