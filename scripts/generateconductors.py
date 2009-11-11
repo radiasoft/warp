@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.208 2009/11/04 23:31:26 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.209 2009/11/11 22:26:58 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -192,6 +192,78 @@ def uninstallconductors(a):
   installedconductors.remove(a)
 
 ##############################################################################
+def installconductorsnew(a,xmin=None,xmax=None,ymin=None,ymax=None,
+                      zmin=None,zmax=None,dfill=2.,
+                      zbeam=None,
+                      nx=None,ny=None,nz=None,
+                      nxlocal=None,nylocal=None,nzlocal=None,
+                      xmmin=None,xmmax=None,ymmin=None,ymmax=None,
+                      zmmin=None,zmmax=None,zscale=1.,
+                      l2symtry=None,l4symtry=None,
+                      installrz=None,gridmode=1,solvergeom=None,
+                      conductors=None,gridrz=None,mgmaxlevels=None,
+                      decomp=None):
+  """
+Installs the given conductors into the field solver. When using the built in
+solver, this should only be called after the generate. When using a python
+level solver, for example MultiGrid3d or MultiGrid2d, this should be called
+only after the solver is registered (with registersolver). In that case, it
+is OK to call this before the generate (and is in fact preferred so that the
+conductors will be setup during the field solve that happens during the
+generate).
+  - a: the assembly of conductors, or list of conductors
+  - xmin,xmax,ymin,ymax,zmin,zmax: extent of conductors. Defaults to the
+    mesh size. These can be set for optimization, to avoid looking
+    for conductors where there are none. Also, they can be used crop a
+    conductor
+  - dfill=2.: points at a depth in the conductor greater than dfill
+              are skipped.
+  - zbeam=top.zbeam: location of the beam frame
+  - nx,ny,nz: Number of grid cells in the mesh. Defaults to values from w3d
+  - nxlocal,nylocal,nzlocal: Number of grid cells in the mesh for the local
+                             processor. Defaults to values from w3d
+  - xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: extent of mesh. Defaults to values
+                                         from w3d
+  - zscale=1.: scale factor on dz. This is used when the relativistic scaling
+              is done for the longitudinal dimension
+  - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
+                       from w3d
+  - decomp: Decomposition instance holding data for parallelization
+  """
+  if conductors is None and gridrz is None:
+    # --- If conductors was not specified, first check if mesh-refinement
+    # --- or other special solver is being used.
+    solver = getregisteredsolver()
+    import __main__
+    if solver is not None:
+      solver.installconductor(a,dfill=dfill)
+      return
+    elif __main__.__dict__.has_key("AMRtree"):
+      __main__.__dict__["AMRtree"].installconductor(a,dfill=dfill)
+      return
+
+  # --- Use whatever conductors object was specified, or
+  # --- if no special solver is being used, use f3d.conductors.
+  if conductors is None: conductors = f3d.conductors
+
+  # --- Set the installrz argument if needed.
+  if installrz is None:
+    installrz = (frz.getpyobject('basegrid') is not None)
+
+  # First, create a grid object
+  g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nz,nxlocal,nylocal,nzlocal,
+           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zscale,l2symtry,l4symtry,
+           installrz,gridrz,
+           mgmaxlevels=mgmaxlevels,
+           decomp=decomp)
+  # Generate the conductor data
+  g.getdatanew(a,dfill)
+  # Then install it
+  g.installintercepts(installrz,gridmode,solvergeom,conductors,gridrz)
+
+  installedconductors.append(a)
+
+##############################################################################
 ##############################################################################
 ##############################################################################
 listofallconductors = []
@@ -222,7 +294,8 @@ Should never be directly created by the user.
   __inputs__ = {'name':'','material':'SS','laccuimagecharge':0,'neumann':0}
 
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
-                    generatorf=None,generatord=None,generatori=None,kw={}):
+                    generatorf=None,generatord=None,generatori=None,
+                    generatorfnew=None,kw={}):
     listofallconductors.append(self)
     self.voltage = v
     self.xcent = x
@@ -237,6 +310,7 @@ Should never be directly created by the user.
     self.generatorf = generatorf
     self.generatord = generatord
     self.generatori = generatori
+    self.generatorfnew = generatorfnew
 
     while 'kw' in kw:
       kwtemp = kw['kw']
@@ -284,6 +358,15 @@ Should never be directly created by the user.
     result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
                    generator=self.generatorf,neumann=self.neumann,
                    kwlist=self.getkwlist())
+    return result
+
+  def gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                     nx,ny,nz,ix,iy,iz,mglevel):
+    result = GridIntercepts(xmmin,ymmin,zmmin,dx,dy,dz,
+                            nx,ny,nz,ix,iy,iz,mglevel,
+                            voltage=self.voltage,condid=self.condid,
+                            generator=self.generatorfnew,neumann=self.neumann,
+                            kwlist=self.getkwlist())
     return result
 
   def distance(self,xx,yy,zz):
@@ -1623,6 +1706,103 @@ Installs the data into the WARP database
 
 ##############################################################################
 
+class GridIntercepts(object):
+  """
+Class to hold and manage intercepts instances.
+  """
+  def __init__(self,xmmin=None,ymmin=None,zmmin=None,dx=None,dy=None,dz=None,
+               nx=None,ny=None,nz=None,ix=None,iy=None,iz=None,mglevel=None,
+               voltage=0.,condid=1,generator=None,neumann=0,
+               kwlist=[],
+               intercepts=None):
+    if intercepts is not None:
+      self.intercepts = intercepts
+    else:
+      self.intercepts = ConductorInterceptType()
+      self.intercepts.mglevel = mglevel
+      self.intercepts.xmmin = xmmin
+      self.intercepts.ymmin = ymmin
+      self.intercepts.zmmin = zmmin
+      self.intercepts.dx = dx
+      self.intercepts.dy = dy
+      self.intercepts.dz = dz
+      self.intercepts.nx = nx
+      self.intercepts.ny = ny
+      self.intercepts.nz = nz
+      self.intercepts.ix = ix
+      self.intercepts.iy = iy
+      self.intercepts.iz = iz
+      fuzz = 1.e-13
+      apply(generator,kwlist + [self.intercepts,fuzz])
+      self.intercepts.xvoltages = voltage
+      self.intercepts.yvoltages = voltage
+      self.intercepts.zvoltages = voltage
+      self.intercepts.xcondids = condid
+      self.intercepts.ycondids = condid
+      self.intercepts.zcondids = condid
+
+  def installlist(interceptslist,solvergeom,conductors,gridrz):
+
+    # --- For each intercept, generate the conductor data in a separate
+    # --- conductors instance.
+    conductorslist = []
+    fuzz = 1.e-13
+    for intercepts,dfill in interceptslist:
+      conductorslist.append(ConductorType())
+      conductordelfromintercepts(intercepts.intercepts,
+                                 conductorslist[-1],dfill,fuzz)
+
+    # --- Count how much data needs to be installed.
+    nc = 0
+    ne = 0
+    no = 0
+
+    for c in conductorslist:
+      nc += c.interior.n
+      ne += c.evensubgrid.n
+      no += c.oddsubgrid.n
+
+    # --- Create the space needed
+    conductors.interior.nmax += nc
+    conductors.evensubgrid.nmax += ne
+    conductors.oddsubgrid.nmax += no
+    conductors.gchange()
+
+    # --- Copy the data
+    for c in conductorslist:
+      nc = c.interior.n
+      nc1 = conductors.interior.n
+      nc2 = conductors.interior.n + nc
+      conductors.interior.indx[:,nc1:nc2] = c.interior.indx[:,:nc]
+      conductors.interior.volt[nc1:nc2] = c.interior.volt[:nc]
+      conductors.interior.numb[nc1:nc2] = c.interior.numb[:nc]
+      conductors.interior.ilevel[nc1:nc2] = c.interior.ilevel[:nc]
+      conductors.interior.n += nc
+
+      ne = c.evensubgrid.n
+      ne1 = conductors.evensubgrid.n
+      ne2 = conductors.evensubgrid.n + ne
+      conductors.evensubgrid.indx[:,ne1:ne2] = c.evensubgrid.indx[:,:ne]
+      conductors.evensubgrid.dels[:,ne1:ne2] = c.evensubgrid.dels[:,:ne]
+      conductors.evensubgrid.volt[:,ne1:ne2] = c.evensubgrid.volt[:,:ne]
+      conductors.evensubgrid.numb[:,ne1:ne2] = c.evensubgrid.numb[:,:ne]
+      conductors.evensubgrid.ilevel[ne1:ne2] = c.evensubgrid.ilevel[:ne]
+      conductors.evensubgrid.n += ne
+
+      no = c.oddsubgrid.n
+      no1 = conductors.oddsubgrid.n
+      no2 = conductors.oddsubgrid.n + no
+      conductors.oddsubgrid.indx[:,no1:no2] = c.oddsubgrid.indx[:,:no]
+      conductors.oddsubgrid.dels[:,no1:no2] = c.oddsubgrid.dels[:,:no]
+      conductors.oddsubgrid.volt[:,no1:no2] = c.oddsubgrid.volt[:,:no]
+      conductors.oddsubgrid.numb[:,no1:no2] = c.oddsubgrid.numb[:,:no]
+      conductors.oddsubgrid.ilevel[no1:no2] = c.oddsubgrid.ilevel[:no]
+      conductors.oddsubgrid.n += no
+
+  installlist = staticmethod(installlist)
+
+##############################################################################
+
 class Distance:
   """
 Class to hold the distance between points and a conductor
@@ -2077,6 +2257,7 @@ Creates a grid object which can generate conductor data.
     # --- Create empty lists of conductors
     self.dlist = []
     self.dlistinstalled = []
+    self.interceptsinstalled = []
 
   def getmeshsize(self,mglevel=0):
     dx = self.dx*self.mglevellx[mglevel]
@@ -2129,6 +2310,46 @@ Creates a grid object which can generate conductor data.
     iy = nint((y - ymmin)/dy)
     iz = zeros(len(xmesh)*len(ymesh),'l')
     return ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nxlocal,nylocal,nzlocal,zmesh,zbeam
+
+  def getmeshnew(self,mglevel=0,extent=None):
+    dx,dy,dz,nxlocal,nylocal,nzlocal,ix,iy,iz = self.getmeshsize(mglevel)
+    _griddzkludge[0] = dz
+
+    if self.zbeam is None: zbeam = top.zbeam
+    else:                  zbeam = self.zbeam
+
+    xmin = max(self.xmin,self.xmmin+ix*dx)
+    xmax = min(self.xmax,self.xmmin+(ix+nxlocal)*dx)
+    ymin = max(self.ymin,self.ymmin+iy*dy)
+    ymax = min(self.ymax,self.ymmin+(iy+nylocal)*dy)
+    zmin = max(self.zmin,self.zmmin+iz*dz+zbeam)
+    zmax = min(self.zmax,self.zmmin+(iz+nzlocal)*dz+zbeam)
+    if extent is not None:
+      if extent.mins[0]-dx > xmin:
+        xmin = int((extent.mins[0]-dx - xmin)/dx)*dx + xmin
+      if extent.mins[1]-dy > ymin:
+        ymin = int((extent.mins[1]-dy - ymin)/dy)*dy + ymin
+      if extent.mins[2]-dz > zmin:
+        zmin = int((extent.mins[2]-dz - zmin)/dz)*dz + zmin
+      if extent.maxs[0]+dx < xmax:
+        xmax = int((extent.maxs[0]+dx - xmin)/dx)*dx + xmin
+        if xmax < extent.maxs[0]+dx: xmax += dx
+      if extent.maxs[1]+dy < ymax:
+        ymax = int((extent.maxs[1]+dy - ymin)/dy)*dy + ymin
+        if ymax < extent.maxs[1]+dy: ymax += dy
+      if extent.maxs[2]+dz < zmax:
+        zmax = int((extent.maxs[2]+dz - zmin)/dz)*dz + zmin
+        if zmax < extent.maxs[2]+dz: zmax += dz
+
+      nxlocal = nint((xmax - xmin)/dx)
+      nylocal = nint((ymax - ymin)/dy)
+      nzlocal = nint((zmax - zmin)/dz)
+      ixlocal = nint((xmin - (self.xmmin+ix*dx))/dx)
+      iylocal = nint((ymin - (self.ymmin+iy*dy))/dy)
+      izlocal = nint((zmin - (self.zmmin+iz*dz))/dz)
+
+    return (xmin,ymin,zmin,dx,dy,dz,nxlocal,nylocal,nzlocal,
+            ixlocal,iylocal,izlocal)
 
   def checkoverlap(self,mglevel,extent):
     if extent is None: return 1
@@ -2242,6 +2463,71 @@ Assembly on this grid.
     if timeit: tt2[9] = endtime - starttime
     if timeit: print tt2
 
+  def getdatanew(self,a,dfill=2.,fuzzsign=-1):
+    """
+Given an Assembly, accumulate the appropriate data to represent that
+Assembly on this grid.
+ - a: the assembly or a list of assemblies
+ - dfill=2.: points at a depth in the conductor greater than dfill
+             are skipped.
+    """
+
+    # --- If 'a' is a list, then recursively call this routine for each
+    # --- element of 'a'. Note that this will be recursive if some elements
+    # --- of 'a' are themselves lists.
+    if type(a) == ListType:
+      for c in a: self.getdatanew(c,dfill=dfill,fuzzsign=fuzzsign)
+      return
+
+    # --- Check if total conductor overlaps with the grid. If it doesn't,
+    # --- then there is no need to check any individual pieces.
+    if not lparallel:
+      aextent = a.getextent()
+      if not self.checkoverlap(0,aextent): return
+    else:
+      # --- Note that for the parallel version, each level must be checked
+      # --- since the levels can have a difference z extent.
+      doesoverlap = 0
+      aextent = a.getextent()
+      for mglevel in range(self.mglevels):
+        if self.checkoverlap(mglevel,aextent): doesoverlap = 1
+      if not doesoverlap: return
+
+    # --- If 'a' is an AssemblyPlus, save time by generating the conductor
+    # --- data for each part separately. Time is saved since only data within
+    # --- the extent of each part is checked. Note that this will be recursive
+    # --- one of the parts of 'a' are themselves an AssemblyPlus.
+    if a.__class__ == AssemblyPlus:
+      self.getdatanew(a.left,dfill=dfill,fuzzsign=fuzzsign)
+      self.getdatanew(a.right,dfill=dfill,fuzzsign=fuzzsign)
+      return
+
+    starttime = wtime()
+    timeit = 0
+    if timeit: tt1 = wtime()
+    if timeit: tt2 = zeros(5,'d')
+    aextent = a.getextent()
+    self.interceptslist = []
+    if timeit: tt2[3] = tt2[3] + wtime() - tt1
+    for mglevel in range(self.mglevels):
+
+      if timeit: tt1 = wtime()
+      xmin,ymin,zmin,dx,dy,dz,nxlocal,nylocal,nzlocal,ixlocal,iylocal,izlocal=self.getmeshnew(mglevel,aextent)
+      if nxlocal == 0 or nylocal == 0 or nzlocal == 0: continue
+      if timeit: tt2[0] = tt2[0] + wtime() - tt1
+
+      if timeit: tt1 = wtime()
+      intercepts = a.gridintercepts(xmin,ymin,zmin,dx,dy,dz,
+                                    nxlocal,nylocal,nzlocal,
+                                    ixlocal,iylocal,izlocal,mglevel)
+      self.interceptslist.append((intercepts,dfill))
+      if timeit: tt2[1] = tt2[1] + wtime() - tt1
+
+    endtime = wtime()
+    self.generatetime = endtime - starttime
+    if timeit: tt2[4] = endtime - starttime
+    if timeit: print tt2
+
   def installdata(self,installrz=1,gridmode=1,solvergeom=None,
                   conductors=f3d.conductors,gridrz=None):
     """
@@ -2261,6 +2547,28 @@ Installs the conductor data into the fortran database
       d.install(installrz,solvergeom,conductors,gridrz)
     self.dlistinstalled += self.dlist
     self.dlist = []
+    if gridmode is not None:
+      f3d.gridmode = gridmode
+
+  def installintercepts(self,installrz=1,gridmode=1,solvergeom=None,
+                        conductors=f3d.conductors,gridrz=None):
+    """
+Installs the conductor data into the fortran database
+    """
+    conductors.levels = self.mglevels
+    conductors.levelix[:self.mglevels] = self.mglevelix[:self.mglevels]
+    conductors.levelnx[:self.mglevels] = self.mglevelnx[:self.mglevels]
+    conductors.leveliy[:self.mglevels] = self.mgleveliy[:self.mglevels]
+    conductors.levelny[:self.mglevels] = self.mglevelny[:self.mglevels]
+    conductors.leveliz[:self.mglevels] = self.mgleveliz[:self.mglevels]
+    conductors.levelnz[:self.mglevels] = self.mglevelnz[:self.mglevels]
+    conductors.levellx[:self.mglevels] = self.mglevellx[:self.mglevels]
+    conductors.levelly[:self.mglevels] = self.mglevelly[:self.mglevels]
+    conductors.levellz[:self.mglevels] = self.mglevellz[:self.mglevels]
+    GridIntercepts.installlist(self.interceptslist,
+                               solvergeom,conductors,gridrz)
+    self.interceptsinstalled += self.interceptslist
+    self.interceptslist = []
     if gridmode is not None:
       f3d.gridmode = gridmode
 
@@ -2591,7 +2899,7 @@ Cylinder aligned with z-axis
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            zcylinderconductorf,zcylinderconductord,
-                           zcylinderintercept,
+                           zcylinderintercept,zcylinderconductorfnew,
                            kw=kw)
     self.radius = radius
     self.length = length
