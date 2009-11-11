@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.74 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.75 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -34,6 +34,7 @@ c If there are no intercepts, the list should be filled with LARGEPOS.
       real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
+      integer(ISZ):: ixlocal,iylocal,izlocal
       integer(ISZ):: nxicpt,nyicpt,nzicpt
       real(kind=8),pointer:: xintercepts(:,:,:)
       real(kind=8),pointer:: yintercepts(:,:,:)
@@ -67,6 +68,9 @@ c     --- Create locals to make the coding below more readable
       nx = intercepts%nx
       ny = intercepts%ny
       nz = intercepts%nz
+      ixlocal = intercepts%ix
+      iylocal = intercepts%iy
+      izlocal = intercepts%iz
       nxicpt = intercepts%nxicpt
       nyicpt = intercepts%nyicpt
       nzicpt = intercepts%nzicpt
@@ -195,9 +199,9 @@ c                     --- number of points
                     else
 c                     --- The second time, save the data
                       nc = nc + 1
-                      conductors%interior%indx(0,nc) = ix
-                      conductors%interior%indx(1,nc) = iy
-                      conductors%interior%indx(2,nc) = iz
+                      conductors%interior%indx(0,nc) = ix + ixlocal
+                      conductors%interior%indx(1,nc) = iy + iylocal
+                      conductors%interior%indx(2,nc) = iz + izlocal
                       conductors%interior%volt(nc) = xvoltages(ii/2,iy,iz)
                       conductors%interior%numb(nc) = xcondids(ii/2,iy,iz)
                       conductors%interior%ilevel(nc) = intercepts%mglevel
@@ -248,7 +252,7 @@ c               --- never be negative.
                 if (del > 0.) then
 
                   if (iouter == 1) then
-                    if (mod(ix+iy+iz,2) == 0) then
+                    if (mod(ix+ixlocal+iy+iylocal+iz+izlocal,2) == 0) then
                       nemax = nemax + 1
                     else
                       nomax = nomax + 1
@@ -262,9 +266,9 @@ c                   --- This simplifies the code at the expense of copies.
                     dels = LARGEPOS
                     volt = 0.
                     numb = 0
-                    indx(0) = ix
-                    indx(1) = iy
-                    indx(2) = iz
+                    indx(0) = ix + ixlocal
+                    indx(1) = iy + iylocal
+                    indx(2) = iz + izlocal
                     dels(idel) = del
                     volt(idel) = xvoltages((ii+1)/2,iy,iz)
                     numb(idel) = xcondids((ii+1)/2,iy,iz)
@@ -318,7 +322,7 @@ c                       --- delmz
                     enddo
 
 c                   --- Now save the data in the appropriate place
-                    if (mod(ix+iy+iz,2) == 0) then
+                    if (mod(ix+ixlocal+iy+iylocal+iz+izlocal,2) == 0) then
                       ne = ne + 1
                       conductors%evensubgrid%indx(:,ne) = indx
                       conductors%evensubgrid%dels(:,ne) = dels
@@ -396,7 +400,7 @@ c                   --- delmx
                 if (del > 0. .and. delx >= 1.) then
 
                   if (iouter == 1) then
-                    if (mod(ix+iy+iz,2) == 0) then
+                    if (mod(ix+ixlocal+iy+iylocal+iz+izlocal,2) == 0) then
                       nemax = nemax + 1
                     else
                       nomax = nomax + 1
@@ -406,9 +410,9 @@ c                   --- delmx
                     dels = LARGEPOS
                     volt = 0.
                     numb = 0
-                    indx(0) = ix
-                    indx(1) = iy
-                    indx(2) = iz
+                    indx(0) = ix + ixlocal
+                    indx(1) = iy + iylocal
+                    indx(2) = iz + izlocal
                     dels(idel) = del
                     volt(idel) = yvoltages((ii+1)/2,ix,iz)
                     numb(idel) = ycondids((ii+1)/2,ix,iz)
@@ -435,7 +439,7 @@ c                       --- delmz
                       zside = -zside
                     enddo
 
-                    if (mod(ix+iy+iz,2) == 0) then
+                    if (mod(ix+ixlocal+iy+iylocal+iz+izlocal,2) == 0) then
                       ne = ne + 1
                       conductors%evensubgrid%indx(:,ne) = indx
                       conductors%evensubgrid%dels(:,ne) = dels
@@ -536,7 +540,7 @@ c                   --- delmy
                 if (del > 0. .and. delx >= 1. .and. dely >= 1.) then
 
                   if (iouter == 1) then
-                    if (mod(ix+iy+iz,2) == 0) then
+                    if (mod(ix+ixlocal+iy+iylocal+iz+izlocal,2) == 0) then
                       nemax = nemax + 1
                     else
                       nomax = nomax + 1
@@ -546,14 +550,14 @@ c                   --- delmy
                     dels = LARGEPOS
                     volt = 0.
                     numb = 0
-                    indx(0) = ix
-                    indx(1) = iy
-                    indx(2) = iz
+                    indx(0) = ix + ixlocal
+                    indx(1) = iy + iylocal
+                    indx(2) = iz + izlocal
                     dels(idel) = del
                     volt(idel) = zvoltages((ii+1)/2,ix,iy)
                     numb(idel) = zcondids((ii+1)/2,ix,iy)
  
-                    if (mod(ix+iy+iz,2) == 0) then
+                    if (mod(ix+ixlocal+iy+iylocal+iz+izlocal,2) == 0) then
                       ne = ne + 1
                       conductors%evensubgrid%indx(:,ne) = indx
                       conductors%evensubgrid%dels(:,ne) = dels
@@ -1601,12 +1605,9 @@ c       --- The point is on the cylinder exactly.
       end
 c=======================================================================
       subroutine ZCylinderConductorFnew(rad,length,xcent,ycent,zcent,
-     &                                  voltage,condid,
      &                                  intercepts,fuzz)
       use ConductorInterceptTypeModule
       real(kind=8):: rad,length,xcent,ycent,zcent
-      real(kind=8):: voltage
-      integer(ISZ):: condid
       type(ConductorInterceptType):: intercepts
       real(kind=8):: fuzz
 
@@ -1668,8 +1669,6 @@ c Finds the intercepts of the object with grid lines along the three axis.
      &        abs(yy) <= rad) then
             xintercepts(1,iy,iz) = xcent - sqrt(max(0.,rad**2 - yy**2))
             xintercepts(2,iy,iz) = xcent + sqrt(max(0.,rad**2 - yy**2))
-            xvoltages(1,iy,iz) = voltage
-            xcondids(1,iy,iz) = condid
           else
             xintercepts(1:2,iy,iz) = LARGEPOS
           endif
@@ -1684,8 +1683,6 @@ c Finds the intercepts of the object with grid lines along the three axis.
      &        abs(xx) <= rad) then
             yintercepts(1,ix,iz) = ycent - sqrt(max(0.,rad**2 - xx**2))
             yintercepts(2,ix,iz) = ycent + sqrt(max(0.,rad**2 - xx**2))
-            yvoltages(1,ix,iz) = voltage
-            ycondids(1,ix,iz) = condid
           else
             yintercepts(1:2,ix,iz) = LARGEPOS
           endif
@@ -1700,8 +1697,6 @@ c Finds the intercepts of the object with grid lines along the three axis.
           if (rsq <= rad**2) then
             zintercepts(1,ix,iy) = zcent + zmin
             zintercepts(2,ix,iy) = zcent + zmax
-            zvoltages(1,ix,iy) = voltage
-            zcondids(1,ix,iy) = condid
           else
             zintercepts(1:2,ix,iy) = LARGEPOS
           endif
