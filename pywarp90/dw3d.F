@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.164 $, $Date: 2009/04/16 21:30:34 $
+c@(#) File DW3D.F, version $Revision: 3.165 $, $Date: 2009/11/11 19:07:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -278,6 +278,93 @@ c       --- at nzlocal.
 
 !$OMP MASTER
       if (lw3dtimesubs) timegtlchg3dfromrho = timegtlchg3dfromrho + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine gtlchgrzfromrho(nxlocal,nzlocal,rho,dx,dz,
+     &                           zgrid,zmminlocal,islastproc)
+      use Constant, Only: pi
+      use Subtimers3d
+      use Picglb,Only: zbeam
+      use Z_arrays,Only: linechg,zzmin,dzz,nzzarr
+      use InDiag3d,Only: lgtlchg3d
+
+      integer(ISZ):: nxlocal,nylocal,nzlocal
+      real(kind=8):: rho(0:nxlocal,0:nzlocal)
+      real(kind=8):: dx,dy,dz,zgrid,zmminlocal
+      logical(ISZ):: l2symtry,l4symtry,islastproc
+
+c  Calculates the line charge density from the rho argument.
+
+      real(kind=8),pointer:: scrtch(:)
+      real(kind=8),pointer:: cellarea(:)
+      real(kind=8):: zz,zg,wzg,dzi
+      integer(ISZ):: ix,iz,izg
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+      if (.not. lgtlchg3d) return
+
+      allocate(scrtch(0:nzlocal))
+      allocate(cellarea(0:nxlocal))
+
+      if (nzlocal == 0) then
+        dzi = 0.
+      else
+        dzi = 1./dz
+      endif
+
+      cellarea(0) = (pi*(0.5*0.5*dx*dx))/0.75
+      do ix = 1, nxlocal
+        cellarea(ix) = 2.*pi*ix*dx*dx
+      enddo
+
+c     conversion factor to go from grid frame to beam frame
+      zz = zgrid + zmminlocal - zzmin - zbeam
+
+c First, sum up the charge density in each axial plane.
+
+!$OMP PARALLEL DO
+      do iz=0,nzlocal
+        scrtch(iz) = sum(rho(:,iz)*cellarea)
+      enddo
+!$OMP END PARALLEL DO
+
+c Then, linearly interpolate the data into the beam frame array, linechg.
+
+      do iz=0,nzzarr
+
+        zg = (iz*dzz - zz)*dzi
+        izg = int(zg + nzlocal) - nzlocal
+        wzg = zg - izg
+
+c       --- This is a bit tricky for the parallel version. Each processor
+c       --- must set linechg only in the range of 0 through nzlocal-1, except
+c       --- the last processor, which needs to set nzlocal as well. This is
+c       --- needed because of the overalap between nzlocal on one processor
+c       --- and 0 on the next processor. The last processor has no overlap
+c       --- at nzlocal.
+        if (0 <= izg .and.
+     &      (izg < nzlocal .or.
+     &       (izg == nzlocal .and. islastproc))) then
+          linechg(iz) = scrtch(izg)*(1. - wzg)
+        else
+          linechg(iz) = 0.
+        endif
+        if (0 < izg+1 .and. izg+1 <= nzlocal) then
+          linechg(iz) = linechg(iz) + scrtch(izg+1)*wzg
+        endif
+
+      enddo
+
+#ifdef MPIPARALLEL
+      call parallelnonzerorealarray(linechg,nzzarr+1)
+#endif
+
+      deallocate(scrtch)
+
+!$OMP MASTER
+      if (lw3dtimesubs) timegtlchgrzfromrho = timegtlchgrzfromrho + wtime() - substarttime
 !$OMP END MASTER
       return
       end
