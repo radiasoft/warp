@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.75 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.76 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -166,8 +166,8 @@ c             --- Check if the object overlaps the grid.
               if (x2 >= xmmin .and. x1 <= xmmax) then
 
 c               --- Get the range in x grid points that are inside the object
-                ix1 = max(0 ,int((x1 - fuzz - xmmin)/dx))
-                ix2 = min(nx,int((x2 + fuzz - xmmin)/dx))
+                ix1 = int((max(x1-fuzz,xmmin) - xmmin)/dx)
+                ix2 = int((min(x2+fuzz,xmmax) - xmmin)/dx)
                 if (xmmin + ix1*dx <= x1) ix1 = ix1 + 1
 
                 do ix=ix1,ix2
@@ -177,7 +177,8 @@ c                 --- grid point and only include the point if it is within
 c                 --- dfill of the surface.
 c                 --- An optimization would skip this calculation if dfill
 c                 --- is LARGEPOS.
-                  delx = min(ix-ix1,ix2-ix)
+                  xx = xmmin + ix*dx
+                  delx = min(xx - x1,x2 - xx)
                   dely = LARGEPOS
                   delz = LARGEPOS
                   do iy1=1,nyicpt
@@ -189,7 +190,7 @@ c                 --- is LARGEPOS.
                     if (zintercepts(iz1,ix,iy) > zz) exit
                   enddo
 
-                  if (delx < dfill .or.
+                  if (delx < dfill*dx .or.
      &                dely < dfill*dy .or.
      &                delz < dfill*dz) then
                     if (iouter == 1) then
@@ -2161,6 +2162,120 @@ c       --- The point is on the cylinder exactly.
         delmz(i) = min(0.,zmin - z(i))
         delpz(i) = min(0.,z(i) - zmax)
 
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZCylinderOutConductorFnew(rad,length,xcent,ycent,zcent,
+     &                                     intercepts,fuzz)
+      use ConductorInterceptTypeModule
+      real(kind=8):: rad,length,xcent,ycent,zcent
+      type(ConductorInterceptType):: intercepts
+      real(kind=8):: fuzz
+
+c Finds the intercepts of the object with grid lines along the three axis.
+
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmmax,ymmax,zmmax
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxicpt,nyicpt,nzicpt
+
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+      real(kind=8),pointer:: xvoltages(:,:,:)
+      real(kind=8),pointer:: yvoltages(:,:,:)
+      real(kind=8),pointer:: zvoltages(:,:,:)
+      integer(ISZ),pointer:: xcondids(:,:,:)
+      integer(ISZ),pointer:: ycondids(:,:,:)
+      integer(ISZ),pointer:: zcondids(:,:,:)
+
+      real(kind=8):: zmin,zmax
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: xx,yy,zz,rsq
+
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+
+      intercepts%nxicpt = 4
+      intercepts%nyicpt = 4
+      intercepts%nzicpt = 2
+      call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+      xvoltages => intercepts%xvoltages
+      yvoltages => intercepts%yvoltages
+      zvoltages => intercepts%zvoltages
+      xcondids => intercepts%xcondids
+      ycondids => intercepts%ycondids
+      zcondids => intercepts%zcondids
+
+      zmin = -length*0.5
+      zmax = +length*0.5
+
+      do iz=0,nz
+        do iy=0,ny
+          yy = ymmin + iy*dy - ycent
+          zz = zmmin + iz*dz - zcent
+          if (zmin-fuzz <= zz .and. zz <= zmax+fuzz) then
+            if (abs(yy) <= rad) then
+              xintercepts(1,iy,iz) = -LARGEPOS
+              xintercepts(2,iy,iz) = xcent - sqrt(max(0.,rad**2 - yy**2))
+              xintercepts(3,iy,iz) = xcent + sqrt(max(0.,rad**2 - yy**2))
+              xintercepts(4,iy,iz) = +LARGEPOS
+            else
+              xintercepts(1,iy,iz) = -LARGEPOS
+              xintercepts(2:4,iy,iz) = +LARGEPOS
+            endif
+          else
+            xintercepts(1:4,iy,iz) = +LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iz=0,nz
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          zz = zmmin + iz*dz - zcent
+          if (zmin-fuzz <= zz .and. zz <= zmax+fuzz) then
+            if (abs(xx) <= rad) then
+              yintercepts(1,ix,iz) = -LARGEPOS
+              yintercepts(2,ix,iz) = ycent - sqrt(max(0.,rad**2 - xx**2))
+              yintercepts(3,ix,iz) = ycent + sqrt(max(0.,rad**2 - xx**2))
+              yintercepts(4,ix,iz) = +LARGEPOS
+            else
+              yintercepts(1,ix,iz) = -LARGEPOS
+              yintercepts(2:4,ix,iz) = +LARGEPOS
+            endif
+          else
+            yintercepts(1:4,ix,iz) = LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iy=0,ny
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          yy = ymmin + iy*dy - ycent
+          rsq = xx**2 + yy**2
+          if (rsq >= rad**2) then
+            zintercepts(1,ix,iy) = zcent + zmin
+            zintercepts(2,ix,iy) = zcent + zmax
+          else
+            zintercepts(1:2,ix,iy) = LARGEPOS
+          endif
+        enddo
       enddo
 
       return
