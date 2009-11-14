@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.190 $, $Date: 2009/10/01 21:51:01 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.191 $, $Date: 2009/11/14 01:13:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -3399,6 +3399,10 @@ c     --- Set the conductor points.
         if (ix < 0 .or. nxlocal < ix .or.
      &      iy < 0 .or. nylocal < iy .or.
      &      iz < 0 .or. nzlocal < iz) then
+          interior%ilevel(ic) = -1
+          cycle
+        endif
+        if (iii(ix,iy,iz) == nmax + 1) then
           interior%ilevel(ic) = -1
           cycle
         endif
