@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.77 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.78 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -156,11 +156,7 @@ c             --- x1 and x2 are the intercept points, with the object
 c             --- in between
               x1 = xintercepts(ii,iy,iz)
               ii = ii + 1
-              if (ii <= nxicpt) then
-                x2 = xintercepts(ii,iy,iz)
-              else
-                x2 = LARGEPOS
-              endif
+              x2 = xintercepts(ii,iy,iz)
 
 c             --- Check if the object overlaps the grid.
               if (x2 >= xmmin .and. x1 <= xmmax) then
@@ -168,8 +164,8 @@ c             --- Check if the object overlaps the grid.
 c               --- Get the range in x grid points that are inside the object
                 ix1 = int((max(x1-fuzz,xmmin) - xmmin)/dx)
                 ix2 = int((min(x2+fuzz,xmmax) - xmmin)/dx)
-                if (xmmin + ix1*dx <= x1) ix1 = ix1 + 1
-                if (xmmin + (ix2+1)*dx <= x2) ix2 = ix2 + 1
+                if (xmmin + ix1*dx <= x1 .and. ix1 < nx) ix1 = ix1 + 1
+                if (xmmin + (ix2+1)*dx <= x2 .and. ix1 < nx) ix2 = ix2 + 1
 
                 do ix=ix1,ix2
 
@@ -178,18 +174,24 @@ c                 --- grid point and only include the point if it is within
 c                 --- dfill of the surface.
 c                 --- An optimization would skip this calculation if dfill
 c                 --- is LARGEPOS.
-                  xx = xmmin + ix*dx
-                  delx = min(xx - x1,x2 - xx)
-                  dely = LARGEPOS
-                  delz = LARGEPOS
-                  do iy1=1,nyicpt
-                    dely = min(dely,abs(yy - yintercepts(iy1,ix,iz)))
-                    if (yintercepts(iy1,ix,iz) > yy) exit
-                  enddo
-                  do iz1=1,nzicpt
-                    delz = min(delz,abs(zz - zintercepts(iz1,ix,iy)))
-                    if (zintercepts(iz1,ix,iy) > zz) exit
-                  enddo
+                  if (dfill < LARGEPOS) then
+                    xx = xmmin + ix*dx
+                    delx = min(xx - x1,x2 - xx)
+                    dely = LARGEPOS
+                    delz = LARGEPOS
+                    do iy1=1,nyicpt
+                      dely = min(dely,abs(yy - yintercepts(iy1,ix,iz)))
+                      if (yintercepts(iy1,ix,iz) > yy) exit
+                    enddo
+                    do iz1=1,nzicpt
+                      delz = min(delz,abs(zz - zintercepts(iz1,ix,iy)))
+                      if (zintercepts(iz1,ix,iy) > zz) exit
+                    enddo
+                  else
+                    delx = 0.
+                    dely = 0.
+                    delz = 0.
+                  endif
 
                   if (delx < dfill*dx .or.
      &                dely < dfill*dy .or.
@@ -598,7 +600,7 @@ c                   --- delmy
       return
       end
 c=======================================================================
-      subroutine intercepts_and(ileft,iright,iresult)
+      subroutine intercepts_or(ileft,iright,iresult)
       use ConductorInterceptTypeModule
       type(ConductorInterceptType):: ileft,iright,iresult
 
@@ -659,7 +661,7 @@ c     --- Make sure that the intercepts have the same grid information
       intercepts => iresult%xintercepts
       voltages => iresult%xvoltages
       condids => iresult%xcondids
-      call interceptand(ileft%ny,ileft%nz)
+      call interceptor(ileft%ny,ileft%nz)
 
       lnicpt = ileft%nyicpt
       lintercepts => ileft%yintercepts
@@ -673,7 +675,7 @@ c     --- Make sure that the intercepts have the same grid information
       intercepts => iresult%yintercepts
       voltages => iresult%yvoltages
       condids => iresult%ycondids
-      call interceptand(ileft%nx,ileft%nz)
+      call interceptor(ileft%nx,ileft%nz)
 
       lnicpt = ileft%nzicpt
       lintercepts => ileft%zintercepts
@@ -687,15 +689,15 @@ c     --- Make sure that the intercepts have the same grid information
       intercepts => iresult%zintercepts
       voltages => iresult%zvoltages
       condids => iresult%zcondids
-      call interceptand(ileft%nx,ileft%ny)
+      call interceptor(ileft%nx,ileft%ny)
 
       return
       CONTAINS
 
-        subroutine interceptand(n1,n2)
+        subroutine interceptor(n1,n2)
         integer(ISZ):: n1,n2
 
-        integer(ISZ):: i0,i1,i2
+        integer(ISZ):: i1,i2
         integer(ISZ):: i0left,i0right,i0result
         real(kind=8):: p1,p2,volt
         integer(ISZ):: condid
@@ -792,7 +794,261 @@ c     --- Make sure that the intercepts have the same grid information
         enddo
 
         return
+        end subroutine interceptor
+
+      end
+c=======================================================================
+      subroutine intercepts_and(ileft,iright,iresult)
+      use ConductorInterceptTypeModule
+      type(ConductorInterceptType):: ileft,iright,iresult
+
+      integer(ISZ):: lnicpt,rnicpt,nicpt
+      real(kind=8),pointer:: lintercepts(:,:,:),rintercepts(:,:,:)
+      real(kind=8),pointer:: lvoltages(:,:,:),rvoltages(:,:,:)
+      integer(ISZ),pointer:: lcondids(:,:,:),rcondids(:,:,:)
+      real(kind=8),pointer:: intercepts(:,:,:)
+      real(kind=8),pointer:: voltages(:,:,:)
+      integer(ISZ),pointer:: condids(:,:,:)
+
+c     --- Make sure that the intercepts have the same grid information
+      if (ileft%mglevel .ne. iright%mglevel .or.
+     &    ileft%xmmin .ne. iright%xmmin .or.
+     &    ileft%ymmin .ne. iright%ymmin .or.
+     &    ileft%zmmin .ne. iright%zmmin .or.
+     &    ileft%dx .ne. iright%dx .or.
+     &    ileft%dy .ne. iright%dy .or.
+     &    ileft%dz .ne. iright%dz .or.
+     &    ileft%nx .ne. iright%nx .or.
+     &    ileft%ny .ne. iright%ny .or.
+     &    ileft%nz .ne. iright%nz .or.
+     &    ileft%ix .ne. iright%ix .or.
+     &    ileft%iy .ne. iright%iy .or.
+     &    ileft%iz .ne. iright%iz) then
+        call kaboom("The left and right intercepts grids do not match")
+        return
+      endif
+
+      iresult%mglevel = ileft%mglevel
+      iresult%xmmin = ileft%xmmin
+      iresult%ymmin = ileft%ymmin
+      iresult%zmmin = ileft%zmmin
+      iresult%dx = ileft%dx
+      iresult%dy = ileft%dy
+      iresult%dz = ileft%dz
+      iresult%nx = ileft%nx
+      iresult%ny = ileft%ny
+      iresult%nz = ileft%nz
+      iresult%ix = ileft%ix
+      iresult%iy = ileft%iy
+      iresult%iz = ileft%iz
+
+      iresult%nxicpt = max(ileft%nxicpt,iright%nxicpt)
+      iresult%nyicpt = max(ileft%nyicpt,iright%nyicpt)
+      iresult%nzicpt = max(ileft%nzicpt,iright%nzicpt)
+      call ConductorInterceptTypechange(iresult)
+
+      lnicpt = ileft%nxicpt
+      lintercepts => ileft%xintercepts
+      lvoltages => ileft%xvoltages
+      lcondids => ileft%xcondids
+      rnicpt = iright%nxicpt
+      rintercepts => iright%xintercepts
+      rvoltages => iright%xvoltages
+      rcondids => iright%xcondids
+      nicpt = iresult%nxicpt
+      intercepts => iresult%xintercepts
+      voltages => iresult%xvoltages
+      condids => iresult%xcondids
+      call interceptand(ileft%ny,ileft%nz)
+
+      lnicpt = ileft%nyicpt
+      lintercepts => ileft%yintercepts
+      lvoltages => ileft%yvoltages
+      lcondids => ileft%ycondids
+      rnicpt = iright%nyicpt
+      rintercepts => iright%yintercepts
+      rvoltages => iright%yvoltages
+      rcondids => iright%ycondids
+      nicpt = iresult%nyicpt
+      intercepts => iresult%yintercepts
+      voltages => iresult%yvoltages
+      condids => iresult%ycondids
+      call interceptand(ileft%nx,ileft%nz)
+
+      lnicpt = ileft%nzicpt
+      lintercepts => ileft%zintercepts
+      lvoltages => ileft%zvoltages
+      lcondids => ileft%zcondids
+      rnicpt = iright%nzicpt
+      rintercepts => iright%zintercepts
+      rvoltages => iright%zvoltages
+      rcondids => iright%zcondids
+      nicpt = iresult%nzicpt
+      intercepts => iresult%zintercepts
+      voltages => iresult%zvoltages
+      condids => iresult%zcondids
+      call interceptand(ileft%nx,ileft%ny)
+
+      return
+      CONTAINS
+
+        subroutine interceptand(n1,n2)
+        integer(ISZ):: n1,n2
+
+        integer(ISZ):: i1,i2
+        integer(ISZ):: i0left,i0right,i0result
+        real(kind=8):: p1,p2
+
+        do i2=0,n2
+          do i1=0,n1
+            i0left = 1
+            i0right = 1
+            i0result = 1
+            do while (i0left < lnicpt .and. i0right < rnicpt)
+
+              p1 = max(lintercepts(i0left,i1,i2),
+     &                 rintercepts(i0right,i1,i2))
+              p2 = min(lintercepts(i0left+1,i1,i2),
+     &                 rintercepts(i0right+1,i1,i2))
+
+              if (p2 > p1) then
+                intercepts(i0result,i1,i2) = p1
+                intercepts(i0result+1,i1,i2) = p2
+                voltages((i0result+1)/2,i1,i2) = lvoltages((i0left+1)/2,i1,i2)
+                condids((i0result+1)/2,i1,i2) = lcondids((i0left+1)/2,i1,i2)
+                i0result = i0result + 2
+              endif
+
+              if (lintercepts(i0left+1,i1,i2) < rintercepts(i0right+1,i1,i2)) then
+                i0left = i0left + 2
+              else if (rintercepts(i0right+1,i1,i2) < lintercepts(i0left+1,i1,i2)) then
+                i0right = i0right + 2
+              else
+                i0left = i0left + 2
+                i0right = i0right + 2
+              endif
+
+            enddo
+            do while (i0result < nicpt)
+              intercepts(i0result,i1,i2) = LARGEPOS
+              intercepts(i0result+1,i1,i2) = LARGEPOS
+              i0result = i0result + 2
+            enddo
+            
+          enddo
+        enddo
+
+        return
         end subroutine interceptand
+
+      end
+c=======================================================================
+      subroutine intercepts_not(ileft,iresult)
+      use ConductorInterceptTypeModule
+      type(ConductorInterceptType):: ileft,iresult
+
+      integer(ISZ):: lnicpt,rnicpt,nicpt
+      real(kind=8),pointer:: lintercepts(:,:,:)
+      real(kind=8),pointer:: lvoltages(:,:,:)
+      integer(ISZ),pointer:: lcondids(:,:,:)
+      real(kind=8),pointer:: intercepts(:,:,:)
+      real(kind=8),pointer:: voltages(:,:,:)
+      integer(ISZ),pointer:: condids(:,:,:)
+
+      iresult%mglevel = ileft%mglevel
+      iresult%xmmin = ileft%xmmin
+      iresult%ymmin = ileft%ymmin
+      iresult%zmmin = ileft%zmmin
+      iresult%dx = ileft%dx
+      iresult%dy = ileft%dy
+      iresult%dz = ileft%dz
+      iresult%nx = ileft%nx
+      iresult%ny = ileft%ny
+      iresult%nz = ileft%nz
+      iresult%ix = ileft%ix
+      iresult%iy = ileft%iy
+      iresult%iz = ileft%iz
+
+      iresult%nxicpt = ileft%nxicpt + 2
+      iresult%nyicpt = ileft%nyicpt + 2
+      iresult%nzicpt = ileft%nzicpt + 2
+      call ConductorInterceptTypechange(iresult)
+
+      lnicpt = ileft%nxicpt
+      lintercepts => ileft%xintercepts
+      lvoltages => ileft%xvoltages
+      lcondids => ileft%xcondids
+      nicpt = iresult%nxicpt
+      intercepts => iresult%xintercepts
+      voltages => iresult%xvoltages
+      condids => iresult%xcondids
+      call interceptnot(ileft%ny,ileft%nz)
+
+      lnicpt = ileft%nyicpt
+      lintercepts => ileft%yintercepts
+      lvoltages => ileft%yvoltages
+      lcondids => ileft%ycondids
+      nicpt = iresult%nyicpt
+      intercepts => iresult%yintercepts
+      voltages => iresult%yvoltages
+      condids => iresult%ycondids
+      call interceptnot(ileft%nx,ileft%nz)
+
+      lnicpt = ileft%nzicpt
+      lintercepts => ileft%zintercepts
+      lvoltages => ileft%zvoltages
+      lcondids => ileft%zcondids
+      nicpt = iresult%nzicpt
+      intercepts => iresult%zintercepts
+      voltages => iresult%zvoltages
+      condids => iresult%zcondids
+      call interceptnot(ileft%nx,ileft%ny)
+
+      return
+      CONTAINS
+
+        subroutine interceptnot(n1,n2)
+        integer(ISZ):: n1,n2
+
+        integer(ISZ):: i1,i2
+        integer(ISZ):: i0left,i0result
+
+        do i2=0,n2
+          do i1=0,n1
+
+            if (lintercepts(1,i1,i2) == -LARGEPOS) then
+c             --- skip the first intercept point (skipping -LARGEPOS)
+              i0left = 2
+              i0result = 1
+            else
+c             --- prepend -LARGEPOS to the list of intercepts
+              i0left = 1
+              i0result = 2
+              intercepts(1,i1,i2) = -LARGEPOS
+              voltages((1+1)/2,i1,i2) = lvoltages((i0left+1)/2,i1,i2)
+              condids((1+1)/2,i1,i2) = lcondids((i0left+1)/2,i1,i2)
+            endif
+
+c           --- copy the rest of the data over
+            do while (i0left <= lnicpt)
+              intercepts(i0result,i1,i2) = lintercepts(i0left,i1,i2)
+              voltages((i0result+1)/2,i1,i2) = lvoltages((i0left+1)/2,i1,i2)
+              condids((i0result+1)/2,i1,i2) = lcondids((i0left+1)/2,i1,i2)
+              i0left = i0left + 1
+              i0result = i0result + 1
+            enddo
+c           --- fill in any remainder with LARGEPOS
+            do while (i0result <= nicpt)
+              intercepts(i0result,i1,i2) = LARGEPOS
+              intercepts(i0result+1,i1,i2) = LARGEPOS
+              i0result = i0result + 1
+            enddo
+            
+          enddo
+        enddo
+
+        return
+        end subroutine interceptnot
 
       end
 c=======================================================================
