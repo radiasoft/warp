@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.210 2009/11/12 22:27:12 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.211 2009/11/16 23:59:29 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -408,19 +408,22 @@ Should never be directly created by the user.
     if not nowarn:
       print 'drawzy method not implemented for '+self.__class__.__name__
 
-  def plotdata(self,r,z,color='fg',filled=None,fullplane=1):
-    z = array(z) + self.zcent
+  def plotdata(self,r,z,color='fg',filled=None,fullplane=1,
+               xcent=None,zcent=None):
+    if xcent is None: xcent = self.xcent
+    if zcent is None: zcent = self.zcent
+    z = array(z) + zcent
     r = array(r)
     if color is not None:
-      plg(self.xcent+r,z,color=color)
+      plg(xcent+r,z,color=color)
       if fullplane:
-        plg(self.xcent-array(r),z,color=color)
+        plg(xcent-array(r),z,color=color)
     if filled is not None:
       if filled == 'condid': filled = self.condid
       c = array([filled]).astype(ubyte)
-      plfp(c,self.xcent+r,z,[len(r)])
+      plfp(c,xcent+r,z,[len(r)])
       if fullplane:
-        plfp(c,self.xcent-array(r),z,[len(r)])
+        plfp(c,xcent-array(r),z,[len(r)])
 
   def get_energy_histogram(self,js=0,n=1000):
     try:
@@ -867,6 +870,8 @@ AssemblyNot class.  Represents 'not' of assemblies.
     return (-self.left.getextent())
   def griddistance(self,ix,iy,iz,xx,yy,zz):
     return (-(self.left.griddistance(ix,iy,iz,xx,yy,zz)))
+  def gridintercepts(self,*args):
+    return (-self.left.gridintercepts(*args))
   def distance(self,xx,yy,zz):
     return (-(self.left.distance(xx,yy,zz)))
   def isinside(self,xx,yy,zz,aura=0.):
@@ -900,6 +905,9 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   def griddistance(self,ix,iy,iz,xx,yy,zz):
     return (self.left.griddistance(ix,iy,iz,xx,yy,zz) *
             self.right.griddistance(ix,iy,iz,xx,yy,zz))
+  def gridintercepts(self,*args):
+    return (self.left.gridintercepts(*args) *
+            self.right.gridintercepts(*args))
   def distance(self,xx,yy,zz):
     return (self.left.distance(xx,yy,zz) *
             self.right.distance(xx,yy,zz))
@@ -942,6 +950,9 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   def griddistance(self,ix,iy,iz,xx,yy,zz):
     return (self.left.griddistance(ix,iy,iz,xx,yy,zz) +
             self.right.griddistance(ix,iy,iz,xx,yy,zz))
+  def gridintercepts(self,*args):
+    return (self.left.gridintercepts(*args) +
+            self.right.gridintercepts(*args))
   def distance(self,xx,yy,zz):
     return (self.left.distance(xx,yy,zz) +
             self.right.distance(xx,yy,zz))
@@ -984,6 +995,9 @@ AssemblyMinus class.
   def griddistance(self,ix,iy,iz,xx,yy,zz):
     return (self.left.griddistance(ix,iy,iz,xx,yy,zz) -
             self.right.griddistance(ix,iy,iz,xx,yy,zz))
+  def gridintercepts(self,*args):
+    return (self.left.gridintercepts(*args) -
+            self.right.gridintercepts(*args))
   def distance(self,xx,yy,zz):
     return (self.left.distance(xx,yy,zz) -
             self.right.distance(xx,yy,zz))
@@ -1771,35 +1785,68 @@ Class to hold and manage intercepts instances.
     # --- Copy the data
     for c in conductorslist:
       nc = c.interior.n
-      nc1 = conductors.interior.n
-      nc2 = conductors.interior.n + nc
-      conductors.interior.indx[:,nc1:nc2] = c.interior.indx[:,:nc]
-      conductors.interior.volt[nc1:nc2] = c.interior.volt[:nc]
-      conductors.interior.numb[nc1:nc2] = c.interior.numb[:nc]
-      conductors.interior.ilevel[nc1:nc2] = c.interior.ilevel[:nc]
-      conductors.interior.n += nc
+      if nc > 0:
+        nc1 = conductors.interior.n
+        nc2 = conductors.interior.n + nc
+        conductors.interior.indx[:,nc1:nc2] = c.interior.indx[:,:nc]
+        conductors.interior.volt[nc1:nc2] = c.interior.volt[:nc]
+        conductors.interior.numb[nc1:nc2] = c.interior.numb[:nc]
+        conductors.interior.ilevel[nc1:nc2] = c.interior.ilevel[:nc]
+        conductors.interior.n += nc
 
       ne = c.evensubgrid.n
-      ne1 = conductors.evensubgrid.n
-      ne2 = conductors.evensubgrid.n + ne
-      conductors.evensubgrid.indx[:,ne1:ne2] = c.evensubgrid.indx[:,:ne]
-      conductors.evensubgrid.dels[:,ne1:ne2] = c.evensubgrid.dels[:,:ne]
-      conductors.evensubgrid.volt[:,ne1:ne2] = c.evensubgrid.volt[:,:ne]
-      conductors.evensubgrid.numb[:,ne1:ne2] = c.evensubgrid.numb[:,:ne]
-      conductors.evensubgrid.ilevel[ne1:ne2] = c.evensubgrid.ilevel[:ne]
-      conductors.evensubgrid.n += ne
+      if ne > 0:
+        ne1 = conductors.evensubgrid.n
+        ne2 = conductors.evensubgrid.n + ne
+        conductors.evensubgrid.indx[:,ne1:ne2] = c.evensubgrid.indx[:,:ne]
+        conductors.evensubgrid.dels[:,ne1:ne2] = c.evensubgrid.dels[:,:ne]
+        conductors.evensubgrid.volt[:,ne1:ne2] = c.evensubgrid.volt[:,:ne]
+        conductors.evensubgrid.numb[:,ne1:ne2] = c.evensubgrid.numb[:,:ne]
+        conductors.evensubgrid.ilevel[ne1:ne2] = c.evensubgrid.ilevel[:ne]
+        conductors.evensubgrid.n += ne
 
       no = c.oddsubgrid.n
-      no1 = conductors.oddsubgrid.n
-      no2 = conductors.oddsubgrid.n + no
-      conductors.oddsubgrid.indx[:,no1:no2] = c.oddsubgrid.indx[:,:no]
-      conductors.oddsubgrid.dels[:,no1:no2] = c.oddsubgrid.dels[:,:no]
-      conductors.oddsubgrid.volt[:,no1:no2] = c.oddsubgrid.volt[:,:no]
-      conductors.oddsubgrid.numb[:,no1:no2] = c.oddsubgrid.numb[:,:no]
-      conductors.oddsubgrid.ilevel[no1:no2] = c.oddsubgrid.ilevel[:no]
-      conductors.oddsubgrid.n += no
+      if no > 0:
+        no1 = conductors.oddsubgrid.n
+        no2 = conductors.oddsubgrid.n + no
+        conductors.oddsubgrid.indx[:,no1:no2] = c.oddsubgrid.indx[:,:no]
+        conductors.oddsubgrid.dels[:,no1:no2] = c.oddsubgrid.dels[:,:no]
+        conductors.oddsubgrid.volt[:,no1:no2] = c.oddsubgrid.volt[:,:no]
+        conductors.oddsubgrid.numb[:,no1:no2] = c.oddsubgrid.numb[:,:no]
+        conductors.oddsubgrid.ilevel[no1:no2] = c.oddsubgrid.ilevel[:no]
+        conductors.oddsubgrid.n += no
 
   installlist = staticmethod(installlist)
+
+  def __neg__(self):
+    "'not' operator, returns inverse of the object"
+   #assert self.neumann == right.neumann,\
+   #  "Neumann objects cannot be mixed with Dirichlet objects"
+    intercepts = ConductorInterceptType()
+    intercepts_not(self.intercepts,intercepts)
+    return GridIntercepts(intercepts=intercepts)
+
+  def __mul__(self,right):
+    "'and' operator, returns intersection of the objects"
+   #assert self.neumann == right.neumann,\
+   #  "Neumann objects cannot be mixed with Dirichlet objects"
+    intercepts = ConductorInterceptType()
+    intercepts_and(self.intercepts,right.intercepts,intercepts)
+    return GridIntercepts(intercepts=intercepts)
+
+  def __add__(self,right):
+    "'or' operator, returns union of the objects"
+   #assert self.neumann == right.neumann,\
+   #  "Neumann objects cannot be mixed with Dirichlet objects"
+    intercepts = ConductorInterceptType()
+    intercepts_or(self.intercepts,right.intercepts,intercepts)
+    return GridIntercepts(intercepts=intercepts)
+
+  def __sub__(self,right):
+    "subtraction operator, returns intersection of one object with the inverse of the other"
+   #assert self.neumann == right.neumann,\
+   #  "Neumann objects cannot be mixed with Dirichlet objects"
+    return self*(-right)
 
 ##############################################################################
 
@@ -2257,6 +2304,7 @@ Creates a grid object which can generate conductor data.
     # --- Create empty lists of conductors
     self.dlist = []
     self.dlistinstalled = []
+    self.interceptslist = []
     self.interceptsinstalled = []
 
   def getmeshsize(self,mglevel=0):
@@ -2507,7 +2555,6 @@ Assembly on this grid.
     if timeit: tt1 = wtime()
     if timeit: tt2 = zeros(5,'d')
     aextent = a.getextent()
-    self.interceptslist = []
     if timeit: tt2[3] = tt2[3] + wtime() - tt1
     for mglevel in range(self.mglevels):
 
@@ -2732,7 +2779,8 @@ Box class
   def drawxy(self,color='fg',filled=None,fullplane=1,**kw):
     y = self.ysize/2.*array([-1,+1,+1,-1,-1])
     x = self.xsize/2.*array([-1,-1,+1,+1,-1])
-    self.plotdata(y,x,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(y,x,color=color,filled=filled,fullplane=fullplane,
+                  xcent=self.ycent,zcent=self.xcent)
 
   def drawzx(self,color='fg',filled=None,fullplane=1,**kw):
     r = self.xsize/2.*array([-1,+1,+1,-1,-1])
@@ -2742,7 +2790,8 @@ Box class
   def drawzy(self,color='fg',filled=None,fullplane=1,**kw):
     r = self.ysize/2.*array([-1,+1,+1,-1,-1])
     z = self.zsize/2.*array([-1,-1,+1,+1,-1])
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,
+                  xcent=self.ycent)
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
@@ -2957,7 +3006,8 @@ Plots the r versus z
     if rmin is None: rmin = 0.
     r = [self.radius,self.radius,rmin,rmin,self.radius]
     z = self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,
+                  xcent=self.ycent)
 
   def drawxy(self,color='fg',filled=None,fullplane=1,nn=101,**kw):
     """
@@ -2977,7 +3027,8 @@ Plots the x versus y
     if rmin > 0.:
       x = array(list(x) + self.rmin*cos(-theta))
       y = array(list(y) + self.rmin*sin(-theta))
-    self.plotdata(y,x,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(y,x,color=color,filled=filled,fullplane=fullplane,
+                  xcent=self.ycent,zcent=self.xcent)
 
 #============================================================================
 class ZRoundedCylinder(Assembly):
