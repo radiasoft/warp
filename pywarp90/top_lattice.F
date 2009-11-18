@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.30 $, $Date: 2009/06/08 22:19:45 $
+c@(#) File top_lattice.F, version $Revision: 3.31 $, $Date: 2009/11/18 21:57:07 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -2099,10 +2099,12 @@ c        --- find index of nearest lmap element
      &                    olmapnn(io),olmapoi(olmapii(io)),olmapio,
      &                    clmapid(iz,io),io)
 c          --- load lattice info into comoving 1d array
-           clmapzs(iz,io) = lmapzs(clmapid(iz,io)) + offset
-           clmapze(iz,io) = lmapze(clmapid(iz,io)) + offset
-           if (clmapzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
-     &                           zlmin+zlframe-zlatbuffer <= clmapze(iz,io))
+           clmapzs(iz,io) = lmapzs(clmapid(iz,io))! + offset
+           clmapze(iz,io) = lmapze(clmapid(iz,io))! + offset
+           if (clmapzs(iz,io) <= zlmax+mod(zlframe,zlatperi)+zlatbuffer .and.
+     &                           zlmin+mod(zlframe,zlatperi)-zlatbuffer <= clmapze(iz,io))
+!           if (clmapzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+!     &                           zlmin+zlframe-zlatbuffer <= clmapze(iz,io))
      &         linlmap(io) = .true.
          enddo
 
@@ -2174,7 +2176,8 @@ c The Lattice is only needed for zlatstrt and zlatperi.
 
 c --- Offset of the lattice, for periodic repeat.
       if (zlatperi > 0.) then
-        offset = (int(10.+(z-zlatstrt)/zlatperi)-10)*zlatperi+zlatstrt
+c        offset = (int(10.+(z-zlatstrt)/zlatperi)-10)*zlatperi+zlatstrt
+        offset = floor((z-zlatstrt)/zlatperi)*zlatperi+zlatstrt
       else
         offset = zlatstrt
       endif
@@ -2938,7 +2941,7 @@ c         --- if frac is zero, no field will be applied
 
           if (.not. lslice) then
 c           --- find z-cell in which particle lies
-            iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+            iz = min(nzlmax, max(0, floor((zp(ip) - zlmin - zlframe)*dzli + 0.5)))
 c           --- Precalculate these quantities. zl is the min of the two and
 c           --- zr is the max. This generalizes the routine, allowing left
 c           --- moving particles, vz < 0.
@@ -5212,13 +5215,13 @@ c         --- Only calculate for particles inside the field grid
       return
       end
 c=============================================================================
-      subroutine applylmap(np,xp,yp,uxp,uyp,npz,zp,uzp,gaminv,vbeam,gammabar,zbeam,zbeamend,zend,lmappid)
+      subroutine applylmapzp(np,xp,yp,uxp,uyp,npz,zp,uzp,gaminv,vbeam,gammabar,zbeam,zbeamend,zend,lmappid)
       use Constant
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
       real(kind=8):: xp(np),yp(np),zp(npz),uxp(np),uyp(np),uzp(npz),gaminv(npz),lmappid(np)
-      real(kind=8):: xtmp,ytmp,ztmp,xpr,ypr,dpp,vbeam,gammabar,zbeam(npz),zend(npz)
+      real(kind=8):: xtmp,ytmp,ztmp,xpr,ypr,dpp,vbeam,gammabar,zbeam(npz),zend(npz),zbeamend(npz)
 
 c Apply the transverse focusing element lmap.
 c   np       number of particles
@@ -5237,7 +5240,7 @@ c   dt       full step size
       integer(ISZ):: io,ip,iz,mapid
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac,xph,yph,scf,uzb,map(0:5,0:5)
       real(kind=8):: xpnew,ypnew,zpnew,uxpnew,uypnew,uzpnew,clghtisq,dzi
-      real(kind=8):: L,Be,ga,k,cx,sx,cy,sy,j1,dx,kx,h,zbeamend(npz),nuz,eta,C
+      real(kind=8):: L,Be,ga,k,cx,sx,cy,sy,j1,dx,kx,h,nuz,eta,C
       real(kind=8):: phx,phy,cosphx,cosphy,sinphx,sinphy,rx,mx,ax1,ax2,ry,my,ay1,ay2
       real(kind=8):: dx1,dpx1,dx2,dpx2,dy1,dpy1,dy2,dpy2,cosphz,sinphz,phasex,phasey,phasez,coefz
       real(kind=8), allocatable:: vz(:)
@@ -5432,11 +5435,11 @@ c         --- set the field
                 map(5,5) = 1.
               case default ! undefined
                 write(0,*) 'Error in definition of maps. Defined types are:'
-                write(0,*) '   -1=continuous focusing,'
-                write(0,*) '   0=drift,' 
-                write(0,*) '   1=bend,'
-                write(0,*) '   2=quad,' 
-                write(0,*) '   3=RFkick.'
+                write(0,*) '  -1 = continuous focusing,'
+                write(0,*) '   0 = drift,' 
+                write(0,*) '   1 = bend,'
+                write(0,*) '   2 = quad,' 
+                write(0,*) '   3 = RFkick.'
                 call abort()
             end select
             xp(ip)  = map(0,0)*xtmp   + map(0,1)*xpr  
@@ -5473,11 +5476,11 @@ c         --- set the field
       end
 
 c=============================================================================
-      subroutine applylmapzbeam(np,xp,yp,uxp,uyp,npz,zp,uzp,gaminv,vbeam,gammabar,zbeam,zbeamend,lmappid)
+      subroutine applylmap(np,xp,yp,uxp,uyp,npz,zp,uzp,gaminv,vbeam,gammabar,zbeam,zbeamend,lmappid)
       use Constant
       use Lattice
       use LatticeInternal
-      integer(ISZ):: np,npz,itot
+      integer(ISZ):: np,npz,ipass,npass
       real(kind=8):: xp(np),yp(np),zp(npz),uxp(np),uyp(np),uzp(npz),gaminv(npz),lmappid(np)
       real(kind=8):: xtmp,ytmp,ztmp,xpr,ypr,dpp,vbeam,gammabar,zbeam(npz)
 
@@ -5496,8 +5499,8 @@ c   dtr      size of right half of time step
 c   dt       full step size
 
       integer(ISZ):: io,ip,iz,mapid
-      real(kind=8):: z1,z2,zl,fl,zr,fr,frac,xph,yph,scf,uzb,map(0:5,0:5)
-      real(kind=8):: xpnew,ypnew,zpnew,uxpnew,uypnew,uzpnew,clghtisq,fractot,dzi
+      real(kind=8):: z1,z2,zl,fl,zr,fr,frac,xph,yph,scf,uzb,map(0:5,0:5),zlast
+      real(kind=8):: xpnew,ypnew,zpnew,uxpnew,uypnew,uzpnew,clghtisq,dzi
       real(kind=8):: L,Be,ga,k,cx,sx,cy,sy,j1,dx,kx,h,zbeamend(npz)
       real(kind=8):: phx,phy,cosphx,cosphy,sinphx,sinphy,rx,mx,ax1,ax2,ry,my,ay1,ay2
       real(kind=8):: dx1,dpx1,dx2,dpx2,dy1,dpy1,dy2,dpy2,cosphz,sinphz,phasex,phasey,phasez,coefz
@@ -5529,13 +5532,30 @@ c           --- find z-cell in which particle lies
 c           --- Precalculate these quantities. zl is the min of the two and
 c           --- zr is the max. This generalizes the routine, allowing left
 c           --- moving particles, vz < 0.
-            z1 = zbeam(ip)
-            z2 = zbeamend(ip)
+            z1 = zbeam(ip)- zlmin - zlframe
+            z2 = zbeamend(ip)- zlmin - zlframe
             dzi = abs(1./dvnz(clmapze(iz,io)-clmapzs(iz,io)))
 c           --- "left" end of velocity advance step
             zl = min(z1,z2)
 c           --- "right" end of velocity advance step
             zr = max(z1,z2)
+            npass=1
+!            write(0,*) 'zl,zr',zl,zr
+            if (zlatperi>0.) then
+              zl = mod(zl,zlatperi)
+              zr = mod(zr,zlatperi)
+!            write(0,*) 'zl,zr',zl,zr
+              if (zr<zl) then
+                npass=2
+                zlast=zr
+                zr=zlatstrt+zlatperi
+              endif
+            endif
+            do ipass=1,npass
+              if (ipass==2) then
+                zr=zlast
+                zl=zlatstrt
+              endif
 c           --- residence fraction
             if (zl<clmapzs(iz,io)) then
               if (zr<clmapzs(iz,io)) then
@@ -5555,8 +5575,8 @@ c           --- residence fraction
               end if
             end if
             L = frac*(clmapze(iz,io)-clmapzs(iz,io))
-            fractot = fractot-frac
-            itot=itot+1
+!            write(0,*) io,ip,np,frac,zl,zr,clmapzs(iz,io),clmapze(iz,io),iz
+!            write(0,*) mapid,lmaptype(mapid)
 c         --- set the field
           if (frac > 0.) then
             map = 0.
@@ -5711,6 +5731,7 @@ c         --- set the field
      &              +  map(5,4)*ztmp  + map(5,5)*dpp)*uzb + uzb     
             gaminv(ip) = 1./sqrt(1. + (uxp(ip)**2 + uyp(ip)**2 + uzp(ip)**2)*clghtisq)
           endif 
+          enddo
         enddo
       enddo
       deallocate(vz)
