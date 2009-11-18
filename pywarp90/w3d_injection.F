@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.125 $, $Date: 2009/08/28 22:07:11 $
+c@(#) File w3d_injection.F, version $Revision: 1.126 $, $Date: 2009/11/18 21:53:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -20,7 +20,7 @@ c=============================================================================
       use InPart
       use InPart3d
       use InMesh3d
-      use Particles,Only: spid,wpid,tpid,rpid,ssn,lmappid
+      use Particles,Only: spid,wpid,tpid,rpid,ssn,lmappid,npid,zbirthpid
       use Picglb
       use InjectVars
       use InjectVars3d
@@ -28,6 +28,8 @@ c=============================================================================
       use Setpwork3d
       use Fields3dParticles
       use DebugFlags,Only: debug
+      use Lattice,Only:lmapfillz
+      use Z_arrays
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -41,7 +43,7 @@ c injection.  The third part is for space-charge limited injection.
 
       integer(ISZ):: is,jsid,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,i1,i2
       integer(ISZ):: inj_is
-      real(kind=8):: rnpinjct,rnn,t
+      real(kind=8):: rnpinjct,rnn,rnncl,rnns,t
       real(kind=8):: rr,vavez,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rsign,dr,dri
       real(kind=8):: qoverm,const,dxi,dyi,dzi,vznorm,rp,ai,bi
       real(kind=8):: clightsqi
@@ -59,6 +61,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: rnrev,wranf,wrandom,wrandomgauss
       integer(ISZ):: ith,nti
       real(kind=8):: cl_const(0:pgroup%ns-1),jton(0:pgroup%ns-1),vzconst(0:pgroup%ns-1)
+      real(kind=8):: te_const(0:pgroup%ns-1), dw
       real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp, xt_tmp, yt_tmp
       real(kind=8),pointer:: ppvz(:)
       integer(ISZ):: spreadx, spready
@@ -193,6 +196,7 @@ c         --- loop over injection sources
 
 c         --- Loop over species.
           do is=1,pgroup%ns
+
             if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is -1 
             jsid = pgroup%sid(is-1)
             inj_js = is - 1
@@ -360,12 +364,20 @@ c             --- The absolute values are needed for the cases of symmetry.
      &             inj_grid(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
 
 c             --- Only save particle if it is within the injection region.
-              if (vzinj > 0.) then
-                if (zpminlocal > zs+zinj .or. zs+zinj >= zpmaxlocal) cycle
+              if (.not. l_inj_zmminmmaxglobal) then
+                if (vzinj > 0.) then
+                  if (zpminlocal > zs+zinj .or. zs+zinj >= zpmaxlocal) cycle
+                else
+                  if (zpminlocal >= zs+zinj .or. zs+zinj > zpmaxlocal) cycle
+                endif
               else
-                if (zpminlocal >= zs+zinj .or. zs+zinj > zpmaxlocal) cycle
+                if (vzinj > 0.) then
+                  if (zpmin+zgrid > zs+zinj .or. zs+zinj >= zpmax+zgrid) cycle
+                 else
+                  if (zpmin+zgrid >= zs+zinj .or. zs+zinj > zpmax+zgrid) cycle
+                endif
               endif
-
+              
               ii = pgroup%ins(is) - 1 - npinjtmp(ij,is)
 c             --- Clear out any old data from pid
               pgroup%pid(ii,:) = 0.
@@ -377,6 +389,9 @@ c             --- Save the particle data
                 pgroup%uxp(ii) = uxt(ip)
                 pgroup%uyp(ii) = uyt(ip)
                 pgroup%uzp(ii) = uzt(ip)
+                if (npid>0) then
+                  pgroup%pid(ii,:) = pidt(ip,:)
+                endif
               else
                 vtx = vzinj*0.5*emitx_s(jsid+1)*ainji + vthperp_s(jsid+1)
                 vty = vzinj*0.5*emity_s(jsid+1)*binji + vthperp_s(jsid+1)
@@ -457,6 +472,7 @@ c             --- and the particle arrays are unallocated.
             endif
 
 #ifdef MPIPARALLEL
+
 c           --- Check if particles are within the transverse domain
 c           --- and skip them if not. Note that this makes inj_npactual
 c           --- unreliable since it is not updated to reflect the
@@ -491,9 +507,10 @@ c           --- live particles are shifted upward. This keeps the block
 c           --- of injected particle contiguous with the rest of the
 c           --- live particles.
             call clearpart(pgroup,is,3)
-              
+
 c           --- Reset pgroup%nps(is).
             pgroup%nps(is) = pgroup%nps(is) + nn
+            nn = i2-i1+1
 
 #endif
 
@@ -561,6 +578,13 @@ c           --- The reusing of variable makes for very confusing naming!
                 ! usage in the routines called by exteb3d. If this is not the case, then the 
                 ! kludge will fail.
                 ginvlab(1:ip) = ginvlab(1:ip)*(tend(1:ip)-tstart(1:ip))/(fulldt_s*0.5)
+c               --- Add in ears and uniform focusing E field pieces
+                call othere3d(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),zlab(1),
+     &                      zbeam*boost_gamma+uzboost*time,
+     &                      zimax,zimin,straight,ifeears,eears,
+     &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
+     &                      exlab(1),eylab(1),ezlab(1),
+     &                      bxlab(1),bylab(1),bzlab(1))
 c               --- Set quad, dipole E and B; All: Bz
                 call exteb3d(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),zlab(1),uzlab(1),
      &                       ginvlab(1),0.,fulldt_s*0.5,
@@ -607,27 +631,33 @@ c           --- time step and so must be done here).
               pgroup%uzp(ii) = pgroup%uzp(ii) -
      &                         vzinj*vtilt_s(jsid+1)*(zmid+ztilt)*zleni
             enddo
+            if (pgroup%lebcancel_pusher) then
+              call ebcancelpush3dt(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
+     &                      pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
+     &                               at(1),bt(1),apt(1),
+     &                               xt(1),yt(1),zt(1),
+     &                               pgroup%sq(is),pgroup%sm(is),bpt(1),2)
+            else
+c             --- do half velocity advance with E fields
+              call epusht3d(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
+     &                      pgroup%uzp(i1:i2),
+     &               at(1),bt(1),apt(1),pgroup%sq(is),pgroup%sm(is),bpt(1),0.5)
 
-c           --- do half velocity advance with E fields
-            call epusht3d(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
-     &                    pgroup%uzp(i1:i2),
-     &             at(1),bt(1),apt(1),pgroup%sq(is),pgroup%sm(is),bpt(1),0.5)
+c             --- Advance relativistic Gamma factor
+              call gammaadv(nn,pgroup%gaminv(i1:i2),pgroup%uxp(i1:i2),
+     &                      pgroup%uyp(i1:i2),
+     &                      pgroup%uzp(i1:i2),
+     &                      gamadv,lrelativ)
 
-c           --- Advance relativistic Gamma factor
-            call gammaadv(nn,pgroup%gaminv(i1:i2),pgroup%uxp(i1:i2),
-     &                    pgroup%uyp(i1:i2),
-     &                    pgroup%uzp(i1:i2),
-     &                    gamadv,lrelativ)
-
-c           --- do half velocity advance with B fields
-            call bpusht3d(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
-     &                    pgroup%uzp(i1:i2),
-     &                    pgroup%gaminv(i1:i2),xt(1),yt(1),zt(1),
-     &                    pgroup%sq(is),pgroup%sm(is),
-     &                    bpt(1),0.5,ibpush)
-
+c             --- do half velocity advance with B fields
+              call bpusht3d(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
+     &                      pgroup%uzp(i1:i2),
+     &                      pgroup%gaminv(i1:i2),xt(1),yt(1),zt(1),
+     &                      pgroup%sq(is),pgroup%sm(is),
+     &                      bpt(1),0.5,ibpush)
+            end if
 c           --- apply linear maps
-            if (pgroup%l_maps(is-1)) then
+            if (nn>0 .and. pgroup%l_maps(is-1)) then
               allocate(dtmaps(nn),zbeam_maps(nn),zbeamend_maps(nn),tlab(nn),zend(nn))
               if (boost_gamma==1.) then
                 zbeam_maps(1:nn) = zinject(ij)
@@ -638,21 +668,32 @@ c           --- apply linear maps
      &                            pgroup%uxp(i1),pgroup%uyp(i1),
      &                         nn,pgroup%zp(i1),pgroup%uzp(i1),pgroup%gaminv(i1),
      &                         vbeam,gammabar,zbeam_maps(1),zbeamend_maps(1),zend(1),lmappid)
-                dtmaps(1:nn) = (zbeamend_maps(1:nn)-zbeam_maps(1:nn))/vbeam
-                call xpusht3d(nn,pgroup%xp(i1),pgroup%yp(i1),
-     &                           pgroup%zp(i1),pgroup%uxp(i1),
-     &                           pgroup%uyp(i1),pgroup%uzp(i1),
-     &                           pgroup%gaminv(i1),dtmaps(1))
+                if (lmapfillz) then
+                  dtmaps(1:nn) = (zbeamend_maps(1:nn)-zbeam_maps(1:nn))/vbeam
+                  call xpusht3d(nn,pgroup%xp(i1),pgroup%yp(i1),
+     &                             pgroup%zp(i1),pgroup%uxp(i1),
+     &                             pgroup%uyp(i1),pgroup%uzp(i1),
+     &                             pgroup%gaminv(i1),dtmaps(1))
+                endif
                else
+                ! there is some inconsistency for injecting particles using linear maps
+                ! for now, just z is pushed 
+                pgroup%zp(i1:i2) = pgroup%zp(i1:i2) + bpt(1:nn)* pgroup%uzp(i1:i2)* pgroup%gaminv(i1:i2)
+                if (.false.) then
                 uzboost = clight*sqrt(boost_gamma*boost_gamma-1.)
                 vzboost = uzboost/boost_gamma
 c               --- get time step in lab frame
-                dtmaps(1:nn) = boost_gamma*dt*(1.+vbeam*vzboost*invclightsq)
+c                dtmaps(1:nn) = boost_gamma*dt*(1.+vbeam*vzboost*invclightsq)
+c                dtmaps(1:nn) = boost_gamma*bpt(1:nn)*(1.+vbeam*vzboost*invclightsq)
+                dtmaps(1:nn) = bpt(1:nn)*gammabar_lab/gammabar
 c               --- get time for each particle in lab frame
-                pgroup%zp(i1:i2) = pgroup%zp(i1:i2)-(dt-bpt(1:nn))*pgroup%uzp(i1:i2)*pgroup%gaminv(i1:i2)
+c                pgroup%zp(i1:i2) = pgroup%zp(i1:i2)-(dt-bpt(1:nn))*pgroup%uzp(i1:i2)*pgroup%gaminv(i1:i2)
                 tlab(1:nn) = boost_gamma*(time)+uzboost*pgroup%zp(i1:i2)*invclightsq
 c               --- get zbeam for each particle in lab frame
-                zbeam_maps(1:nn) = (boost_z0/boost_gamma+(vbeam+vzboost)*tlab(1:nn))/(1.+vbeam*vzboost*invclightsq)
+c                zbeam_maps(1:nn) = (boost_z0/boost_gamma+(vbeam+vzboost)*tlab(1:nn))/(1.+vbeam*vzboost*invclightsq)
+                zbeam_maps(1:nn) = ((time+0.*bpt(1:nn))/dt)*vbeam_lab*dtmaps(1:nn) + pgroup%pid(i1:i2,zbirthpid)
+     &          *(boost_gamma*gammabar_lab/gammabar-1.)
+     &          +(boost_z0/boost_gamma)/(1.+vbeam*vzboost*invclightsq)
                 zbeamend_maps(1:nn) = zbeam_maps(1:nn) + dtmaps(1:nn)*vbeam_lab
 c               --- get particles position in lab frame
                 pgroup%zp(i1:i2) = boost_gamma*pgroup%zp(i1:i2)+uzboost*(time)  
@@ -668,17 +709,21 @@ c               --- apply maps in lab frame
      &                         vbeam_lab,gammabar_lab,zbeam_maps(1),zbeamend_maps(1),
      &                         zend(1),lmappid)
                 tlab(1:nn) = tlab(1:nn)+dtmaps(1:nn)
-                dtmaps(1:nn) = (zend(1:nn)-pgroup%zp(i1:i2))/vbeam_lab
-                call xpusht3d(nn,pgroup%xp(i1),pgroup%yp(i1),
-     &                           pgroup%zp(i1),pgroup%uxp(i1),
-     &                           pgroup%uyp(i1),pgroup%uzp(i1),
-     &                           pgroup%gaminv(i1),dtmaps(1))
+                if (lmapfillz) then
+                  dtmaps(1:nn) = (zend(1:nn)-pgroup%zp(i1:i2))/vbeam_lab
+                  call xpusht3d(nn,pgroup%xp(i1),pgroup%yp(i1),
+     &                             pgroup%zp(i1),pgroup%uxp(i1),
+     &                             pgroup%uyp(i1),pgroup%uzp(i1),
+     &                             pgroup%gaminv(i1),dtmaps(1))
+                endif
 c               --- get particles momenta in boosted frame
                 call setu_in_uzboosted_frame3d(nn,pgroup%uxp(i1),pgroup%uyp(i1),
      &                                            pgroup%uzp(i1),pgroup%gaminv(i1),
      &                                            uzboost,boost_gamma)
 c               --- get particles position in boosted frame
-                pgroup%zp(i1:i2) = boost_gamma*pgroup%zp(i1:i2)-uzboost*(tlab(1:nn))
+c                pgroup%zp(i1:i2) = boost_gamma*pgroup%zp(i1:i2)-uzboost*(tlab(1:nn))
+                pgroup%zp(i1:i2) = (pgroup%zp(i1:i2)-uzboost*(time+bpt(1:nn)))/boost_gamma
+              end if
               end if
               deallocate(zbeam_maps,zbeamend_maps,dtmaps,tlab,zend)
             else
@@ -873,12 +918,11 @@ c             --- Advance relativistic Gamma factor
 c           --- end of loop over species and injection sources
             enddo
           enddo
-
 c Constant current injection is now complete for this time step.
         endif
 
 c------------------------------------------------------------------------
-c Space-Charge Limited injection
+c Space-Charge Limited injection/Thermionic injection
 
 c Particles are initially placed on the emitting surface and given a
 c time of emission uniformly distributed between 0 and dt. They are given
@@ -906,8 +950,21 @@ c
 c For inject == 3
 c Space charge limited injection based off of the Gauss's Law.  This is
 c the scheme to use with time-dependent injection.
+c
+c For inject == 4
+c Thermionic emission. The current density is calculated using the Shottky 
+c emission formula J = A*T*exp(-(W-dW)/(kT)), with A = lambda*((4*pi*me*k^2*e)/(h^3)),
+c lambda~0.5, dw = sqrt(e^3*E/(4*pi*eps0)), where T is the source temperature, 
+c W is the work function, k is the Boltzmann's constant, h is the Planck's contant,
+c and E is the electric field in front of the surface.
+c
+c For inject == 5
+c Combined emission. The current density is empirically set to be 
+c J_cl*(1.-exp(-J_s/J_cl)) where J_cl is the current obtained from the 
+c Child-Langmuir Law as obtained with inject==2, and J_s is the current 
+c given by the Schottky formula as obtained with inject=4.
 
-      elseif (inject == 2 .or. inject == 3) then
+      elseif (inject>1 .and. inject<6) then
 
         if (itask == 1) then
 c         --- Zero npinje_s.
@@ -972,16 +1029,30 @@ c             --- This constant terms includes corrections for injection off
 c             --- of a concentric spheres.  See I. Langmuir,
 c             --- K. Blodgett, "Currents Limited by Space Charge Between
 c             --- Concentric Spheres", PhysRev, 1924.
-              if (inject == 2) then
+              if (inject == 2 .or. inject == 4 .or. inject == 5) then
                 if (linj_spherical) then
                   zs = (inj_dz*inj_d(ij))*rinji
                   sphericalcorrection = (1. + 1.6*zs + 2.06*zs**2)
                 else
                   sphericalcorrection = 1.
                 endif
-                cl_const(jsid) = 4./9.*eps0*
-     &                   (2.*abs(pgroup%sq(is))/pgroup%sm(is))**.5/
-     &                   ((inj_dz*inj_d(ij))**2*sphericalcorrection)*jton(jsid)
+                if (inject == 2) then
+c               --- CL emission
+                  cl_const(jsid) = 4./9.*eps0*
+     &                     (2.*abs(pgroup%sq(is))/pgroup%sm(is))**.5/
+     &                     ((inj_dz*inj_d(ij))**2*sphericalcorrection)*jton(jsid)
+                elseif (inject == 4) then
+c               --- Thermionic emission
+                  te_const(jsid) = ((4.*pi*pgroup%sm(is)*boltzmann**2*pgroup%sq(is))/(planck**3)) 
+     &                           * 0.5 * tempinject(ij)**2/sphericalcorrection*jton(jsid)
+                elseif (inject == 5) then
+c               --- Thermionic emission with space charge
+                  cl_const(jsid) = 4./9.*eps0*
+     &                     (2.*abs(pgroup%sq(is))/pgroup%sm(is))**.5/
+     &                     (inj_dz*inj_d(ij))**2
+                  te_const(jsid) = ((4.*pi*pgroup%sm(is)*boltzmann**2*pgroup%sq(is))/(planck**3)) 
+     &                           * 0.5 * tempinject(ij)**2
+                endif
               endif
 
 c             --- The constant terms in the expression for the normal
@@ -1061,6 +1132,23 @@ c    &     inj_dx*inj_dy/pgroup%sq(is)/pgroup%sw(is)/cos(inj_angl(ix,iy,ij))
                     qadd = eps0*inte - 0.5*qold
                     rnn = qadd/(pgroup%sq(is)*pgroup%sw(is))
                     rnn = rnn/cos(inj_angl(ix,iy,ij))
+                  elseif (inject == 4) then
+c                   --- Thermionic emission
+                    inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
+                    dw   = sqrt((echarge**3*inte)/(4.*pi*eps0))
+                    rnn = te_const(jsid)     
+     &                  * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
+                    rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
+                  elseif (inject == 5) then
+c                   --- Thermionic emission with space-charge
+                    rnncl = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5
+                    inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
+                    dw   = sqrt((echarge**3*inte)/(4.*pi*eps0))
+                    rnns = te_const(jsid)     
+     &                  * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
+                    rnn = rnncl*(1.-exp(-rnns/rnncl))/sphericalcorrection*jton(jsid)
+                    rnn = rnn/cos(inj_angl(ix,iy,ij))
+                    rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
                   endif
 
 c                 --- Make sure that rnn is >= 0.
@@ -2578,7 +2666,7 @@ c=============================================================================
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      if ((inject < 1 .or. inject > 3) .and.
+      if ((inject < 1 .or. inject > 5) .and.
      &    (tinject < 1 .or. tinject > 3)) return
 
 c Set wpid if needed and not set by user
@@ -2923,7 +3011,7 @@ c causing a code crash.
 
 c When using constant current injection, turn off the flag that specifies
 c use of the normal E field with the Child-Langmuir profile
-      if (inject == 1) linj_enormcl = .false.
+      if (inject == 1 .or. inject == 4 .or. inject == 5) linj_enormcl = .false.
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinjctint = timeinjctint + wtime() - substarttime
@@ -3377,7 +3465,7 @@ c to get zp.
       if (lw3dtimesubs) substarttime = wtime()
 
       if (ninject == 0) return
-      if (inject < 1 .or. inject > 3) return
+      if (inject < 1 .or. inject > 5) return
 
       allocate(xx((1+inj_nx)*(1+inj_ny)*ninject))
       allocate(yy((1+inj_nx)*(1+inj_ny)*ninject))
