@@ -16,45 +16,60 @@ except ImportError:
 class EM3D(SubcycledPoissonSolver):
   
   __em3dinputs__ = []
-  __flaginputs__ = {'l_apply_pml':true,'nbndx':10,'nbndy':10,'nbndz':10,
+  __flaginputs__ = {'mode':1,'l_apply_pml':true,
+                    'nbndx':10,'nbndy':10,'nbndz':10,
                     'nxguard':1,'nyguard':1,'nzguard':1,
                     'l_particles_weight':false,'l_usecoeffs':false,
                     'l_pushf':false,'l_pushpot':false,'l_verbose':false,
                     'laser_amplitude':1.,'laser_profile':None,
-                    'laser_gauss_widthx':None,
-                    'laser_gauss_widthy':None,
+                    'laser_gauss_widthx':None,'laser_gauss_centerx':0.,
+                    'laser_gauss_widthy':None,'laser_gauss_centery':0.,
                     'laser_anglex':0.,'laser_angley':0.,
                     'laser_polangle':0.,
                     'laser_wavelength':None,'laser_wavenumber':None,
-                    'laser_frequency':None,'laser_source_z':None,
-                    'laser_focus':None,'laser_focus_velocity':0.,
-                    'nfield_subcycle':1,'ncyclesperstep':None,
-                    'l_2dxz':0,'npass_smooth':array([[0],[0],[0]]),
+                    'laser_frequency':None,
+                    'laser_source_z':None,'laser_source_v':0.,
+                    'laser_focus_z':None,'laser_focus_v':0.,
+                    'ncyclesperstep':1,'ncyclesperstep':None,
+                    'l_2dxz':0,'l_1dz':0,'l_sumjx':0,
+                    'npass_smooth':array([[0],[0],[0]]),
                     'alpha_smooth':array([[0.5],[0.5],[0.5]]),
+                    'stride_smooth':array([[1],[1],[1]]),
                     'l_smooth_particle_fields':True,
+                    'n_smooth_fields':None,
                     'autoset_timestep':true,'dtcoef':1.,#0.99,
                     'deposit_energy_density':false,'refinement':None,
-                    'l_force_nzlocal2nz':false,'inactive':false,
-                    'stencil':false}
+                    'l_force_nzlocal2nz':false,'isactiveem':None,
+                    'l_coarse_patch':false,'stencil':false,
+                    'l_esirkepov':true,'theta_damp':0.}
 
   def __init__(self,**kw):
     self.solveroff=False # flag to turn off the solver, for testing purpose
-    assert top.grid_overlap<>2,"The EM solver needs top.grid_overlap==1!"
+    assert top.grid_overlap<2,"The EM solver needs top.grid_overlap<2!"
     self.grid_overlap = 1
     FieldSolver.__init__(self,kwdict=kw)
 #    top.allspecl = true
     top.lcallfetchb = true
     top.lgridqnt = true
+    self.xgrid=0.
+    self.xgridcont=0.
+    self.nxshifts=0
+    self.vxgrid=0.
     self.zgrid=top.zgrid
     self.nzshifts=0
+    self.odd=0
     # --- Save input parameters
 #    self.processdefaultsfrompackage(EM3D.__w3dinputs__,w3d,kw)
 #    self.processdefaultsfrompackage(EM3D.__topinputs__,top,kw)
     self.processdefaultsfrompackage(EM3D.__em3dinputs__,em3d,kw)
     self.processdefaultsfromdict(EM3D.__flaginputs__,kw)
-    
-    self.isactive= not self.inactive
-        
+    if self.isactiveem is not None:
+      self.isactive=self.isactiveem
+    else:
+      try:
+        self.isactive=self.isactive
+      except:
+        self.isactive=True
     # --- When initializing self.field_coarse, there is some inconsistency 
     # --- with the way that FieldSolver.__init__ resize nzlocal in parallel. 
     # --- This flag takes care of it for now.
@@ -67,7 +82,9 @@ class EM3D(SubcycledPoissonSolver):
     # --- current deposition, smoothing and stencil.
     self.npass_smooth  = array(self.npass_smooth)
     self.alpha_smooth  = array(self.alpha_smooth)
-    minguards = array([1+int(top.depos_order.max(1)/2),self.npass_smooth.sum(1)]).max(0)
+    self.stride_smooth  = array(self.stride_smooth)
+#    minguards = array([1+int(top.depos_order.max(1)/2),self.npass_smooth.sum(1)]).max(0)
+    minguards = 2+int(top.depos_order.max(1)/2)+(self.npass_smooth*self.stride_smooth).sum(1)
     if self.nxguard==1:self.nxguard = minguards[0]
     if self.nyguard==1:self.nyguard = minguards[1]
     if self.nzguard==1:self.nzguard = minguards[2]
@@ -75,8 +92,10 @@ class EM3D(SubcycledPoissonSolver):
       if self.nxguard<2:self.nxguard=2
       if self.nyguard<2:self.nyguard=2
       if self.nzguard<2:self.nzguard=2
-      self.npass_smooth = where(self.npass_smooth==0,1,self.npass_smooth)
-    
+#      self.npass_smooth = where(self.npass_smooth==0,1,self.npass_smooth)
+    if self.l_2dxz:
+      self.nyguard=self.nylocal=self.ny=0
+
     # --- bounds is special since it will sometimes be set from the
     # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
     if 'bounds' not in self.__dict__:
@@ -127,27 +146,56 @@ class EM3D(SubcycledPoissonSolver):
 #    self.zmeshlocal = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
 
     # --- set time step as a fraction of Courant condition
-    # --- also set self.nfield_subcycle if top.dt over Courant condition times dtcoef
-    if self.autoset_timestep:
-      if self.stencil==0:
-        dt=self.dtcoef/(clight*sqrt(1./self.dx**2+1./self.dy**2+1./self.dz**2))
+    # --- also set self.ncyclesperstep if top.dt over Courant condition times dtcoef
+    try:
+      parentid = self.parents[0]
+      parent = self.root.listofblocks[parentid]
+      try:
+        sibling = parent.children[0]
+      except:
+        sibling = None
+    except:
+      parent = None
+      sibling = None
+    if self.ncyclesperstep is None:
+      self.ncyclesperstep = 1
+      if sibling is None:
+        if self.autoset_timestep:
+          if self.mode==2 and self.dtcoef>0.5:self.dtcoef/=2
+          if self.l_2dxz:
+            if self.stencil==0:
+              dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dz**2))
+            else:
+              dtcourant=min(self.dx,self.dz)/clight 
+          else:
+            if self.stencil==0:
+              dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dy**2+1./self.dz**2))
+            else:
+              dtcourant=min(self.dx,self.dy,self.dz)/clight 
+          if top.dt==0.:
+            top.dt=dtcourant*self.dtcoef
+          else:
+            if top.dt>(self.dtcoef*dtcourant):
+#              self.ncyclesperstep = (nint(top.dt/(self.dtcoef*dtcourant))+0)
+              self.ncyclesperstep = int(top.dt/(self.dtcoef*dtcourant)+1.)
+              print '#1', self.ncyclesperstep,top.dt,self.dtcoef,dtcourant
+            else:
+              self.ncyclesperstep = 1./(nint((self.dtcoef*dtcourant)/top.dt)+0)
+              print '#2', self.ncyclesperstep,top.dt,self.dtcoef,dtcourant
       else:
-        dt=self.dtcoef*min(self.dx,self.dy,self.dz)/clight 
-      if top.dt==0.:
-        top.dt=dt
-      else:
-        if top.dt>dt:
-          self.nfield_subcycle=int(top.dt/dt)+1
-    if self.ncyclesperstep is None:self.ncyclesperstep=self.nfield_subcycle
+        self.ncyclesperstep=sibling.ncyclesperstep
     self.dtinit = top.dt
+    
+    if  top.vbeamfrm<>0.:self.bounds[-2:]=-1
     
     self.setbcparallel(0) # x
     self.setbcparallel(1) # y
     self.setbcparallel(2) # z
- 
+    
     if self.refinement is not None:
       ref=self.refinement
       self.field_coarse = self.__class__(l_force_nzlocal2nz=True,
+                               l_coarse_patch=True,
                                nx=self.nx/ref[0],dx=self.dx*ref[0],
                                ny=self.ny/ref[1],dy=self.dy*ref[1],
                                nz=self.nz/ref[2],dz=self.dz*ref[2],
@@ -160,7 +208,9 @@ class EM3D(SubcycledPoissonSolver):
                                xmminlocal=self.xmminlocal,xmmaxlocal=self.xmmaxlocal,
                                ymminlocal=self.ymminlocal,ymmaxlocal=self.ymmaxlocal,
                                zmminlocal=self.zmminlocal,zmmaxlocal=self.zmmaxlocal,
-                               bounds=self.bounds,inactive=not self.isactive,
+                               bounds=self.bounds,
+                               isactiveem=self.isactive,
+                               ncyclesperstep=self.root.listofblocks[self.parents[0]].ncyclesperstep,
                                **self.kw)
 
     if self.xmmin>w3d.xmmaxlocal or self.xmmax<w3d.xmminlocal:return
@@ -174,8 +224,13 @@ class EM3D(SubcycledPoissonSolver):
     self.initializeconductors()
     # --- Handle laser inputs
     self.setuplaser()
-
-    installbeforeloadrho(self.solve2ndhalf)
+    if self.refinement is not None: # --- disable laser on MR patches
+      self.laser_profile=None
+      self.field_coarse.laser_profile=None
+      
+    # ---- install 2nd part of field solve (only for root)
+    if self.refinement is None and not self.l_coarse_patch:
+      installbeforeloadrho(self.solve2ndhalf)
 
   def processdefaultsfrompackage(self,defaults,package,kw):
     for name in defaults:
@@ -253,16 +308,19 @@ class EM3D(SubcycledPoissonSolver):
                                    self.stencil,
                                    self.npass_smooth,
                                    self.l_smooth_particle_fields,
-                                   self.l_2dxz)
+                                   self.ncyclesperstep,
+                                   self.l_2dxz,
+                                   self.theta_damp)
     self.fields = self.block.core.yf
+    
     
   def setuplaser(self):
     if self.laser_profile is not None:
       if self.laser_frequency is None:
         if self.laser_wavenumber is not None:
-          self.laser_wavelength = clight*self.laser_wavenumber
+          self.laser_frequency = clight*self.laser_wavenumber
         elif self.laser_wavelength is not None:
-          self.laser_wavelength = 2.*pi*clight/self.laser_wavelength
+          self.laser_frequency = 2.*pi*clight/self.laser_wavelength
       assert self.laser_frequency is not None,\
              "One of the frequency, wavenumber, or wavelength must be given"
 
@@ -300,26 +358,36 @@ class EM3D(SubcycledPoissonSolver):
         xxex = (arange(f.nx) + 0.5)*f.dx + f.xmin
         xxey = arange(f.nx+1)*f.dx + f.xmin
         yyex = yyey = 0.
-      self.laser_profile = [exp(-((xxex/self.laser_gauss_widthx)**2+(yyex/self.laser_gauss_widthy)**2)/2.),
-                            exp(-((xxey/self.laser_gauss_widthx)**2+(yyey/self.laser_gauss_widthy)**2)/2.)]
+      xxex -= self.laser_gauss_centerx; xxex /= self.laser_gauss_widthx
+      xxey -= self.laser_gauss_centerx; xxey /= self.laser_gauss_widthx
+      yyex -= self.laser_gauss_centery; yyex /= self.laser_gauss_widthy
+      yyey -= self.laser_gauss_centery; yyey /= self.laser_gauss_widthy
+      self.laser_profile = [exp(-(xxex**2+yyex**2)/2.),
+                            exp(-(xxey**2+yyey**2)/2.)]
     elif operator.isSequenceType(self.laser_profile):
-      assert len(self.laser_profile[:,0]) == f.nx,"The specified profile must be of length nx"
-      assert len(self.laser_profile[0,:]) == f.ny,"The specified profile must be of length ny"
+      print f.nx,f.ny,shape(self.laser_profile)
+      assert len(self.laser_profile[:,0]) == f.nx+1,"The specified profile must be of length nx+1"
+      assert len(self.laser_profile[0,:]) == f.ny+1,"The specified profile must be of length ny+1"
+      self.laser_profile_init = self.laser_profile.copy()
+      self.laser_profile = [0.5*(self.laser_profile_init[1:,:]+self.laser_profile_init[:-1,:]),
+                            0.5*(self.laser_profile_init[:,1:]+self.laser_profile_init[:,:-1])]
     elif callable(self.laser_profile):
       self.laser_profile_func = self.laser_profile
 
   def add_laser(self,field):
     if self.laser_profile is None: 
-      e_inz_pos=-1
+      self.block.core.yf.E_inz_pos=w3d.zmmin-(self.nzguard*2.)*self.dz
       return
 
-    if self.laser_source_z>=w3d.zmminlocal and self.laser_source_z<=w3d.zmmaxlocal:
-      self.block.core.yf.E_inz_pos = nint((self.laser_source_z-w3d.zmminlocal)/w3d.dz)
+    if 1:#self.laser_source_z>self.zmmin+self.zgrid and self.laser_source_z<=self.zmmax+self.zgrid:
+      self.block.core.yf.E_inz_pos = self.laser_source_z-self.zgrid
+      if self.laser_focus_z is not None:self.laser_focus_z+=self.laser_focus_v*top.dt/self.ncyclesperstep
+      self.laser_source_z+=self.laser_source_v*top.dt/self.ncyclesperstep
     else:
       return
 
     if self.laser_amplitude_func is not None:
-      self.laser_amplitude = self.laser_amplitude_func(top.time)
+      self.laser_amplitude = self.laser_amplitude_func(top.time*(1.-self.laser_source_v/clight))
     elif self.laser_amplitude_table is not None:
       if top.time < self.laser_amplitude_table[0,1]:
         self.laser_amplitude = self.laser_amplitude_table[0,0]
@@ -352,26 +420,28 @@ class EM3D(SubcycledPoissonSolver):
       xxey = arange(f.nx+1)*f.dx + f.xmin
       yyex = yyey = 0.
     if self.laser_frequency is not None:
-      if self.laser_focus is not None:
-        z0 = self.laser_focus+self.laser_focus_velocity*top.time
-        if self.laser_focus>0.:
-          phaseex = (-(sqrt(xxex**2+yyex**2+z0**2)-z0)/clight-top.time)*self.laser_frequency
-          phaseey = (-(sqrt(xxey**2+yyey**2+z0**2)-z0)/clight-top.time)*self.laser_frequency
+      if self.laser_focus_z is not None:
+        z0 = self.laser_focus_z
+        if self.laser_focus_z>0.:
+          phaseex = (-(sqrt(xxex**2+yyex**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
+          phaseey = (-(sqrt(xxey**2+yyey**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
         else:
-          phaseex = ((sqrt(xxex**2+yyex**2+z0**2)-z0)/clight-top.time)*self.laser_frequency
-          phaseey = ((sqrt(xxey**2+yyey**2+z0**2)-z0)/clight-top.time)*self.laser_frequency
+          phaseex = ((sqrt(xxex**2+yyex**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
+          phaseey = ((sqrt(xxey**2+yyey**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
       else:
-        phaseex = ((xxex*sin(self.laser_anglex)+yyex*sin(self.laser_angley))/clight-top.time)*self.laser_frequency
-        phaseey = ((xxey*sin(self.laser_anglex)+yyey*sin(self.laser_angley))/clight-top.time)*self.laser_frequency
+        phaseex = ((xxex*sin(self.laser_anglex)+yyex*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
+        phaseey = ((xxey*sin(self.laser_anglex)+yyey*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
     else:
       phase = 0.
     f = self.block.core.yf
     if self.l_2dxz:
-      f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin] = self.laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)
-      f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin] = self.laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)
+      laser_amplitude=self.laser_amplitude*top.dt*clight/w3d.dz
+      f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin] = laser_amplitude*self.laser_profile[0]*sin(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
+      f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin] = laser_amplitude*self.laser_profile[1]*sin(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
     else:      
-      f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin:f.jymax+1] = self.laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)
-      f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin:f.jymax  ] = self.laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)
+      laser_amplitude=self.laser_amplitude*top.dt*clight/w3d.dz
+      f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin:f.jymax+1] = laser_amplitude*self.laser_profile[0]*sin(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
+      f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin:f.jymax  ] = laser_amplitude*self.laser_profile[1]*sin(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
     
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     # --- This is called by fetchfield from fieldsolver.py
@@ -395,6 +465,14 @@ class EM3D(SubcycledPoissonSolver):
                  f.Exp,f.Eyp,f.Ezp,
                  w3d.l4symtry)
       else:
+       if nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
+        getf3d_linear(n,x,y,z,ex,ey,ez,
+                 f.xmin,f.ymin,f.zmin+self.zgrid,
+                 f.dx,f.dy,f.dz,
+                 f.nx,f.ny,f.nz,
+                 f.nxguard,f.nyguard,f.nzguard,
+                 f.Exp,f.Eyp,f.Ezp)
+       else:
         getf3d_n(n,x,y,z,ex,ey,ez,
                  f.xmin,f.ymin,f.zmin+self.zgrid,
                  f.dx,f.dy,f.dz,
@@ -404,14 +482,32 @@ class EM3D(SubcycledPoissonSolver):
                  f.Exp,f.Eyp,f.Ezp,
                  w3d.l4symtry)
     elif top.efetch[w3d.jsfsapi]==4:
-      gete3d_n_energy_conserving(n,x,y,z,ex,ey,ez,
-                    f.xmin,f.ymin,f.zmin+self.zgrid,
-                    f.dx,f.dy,f.dz,
-                    f.nx,f.ny,f.nz,
-                    f.nxguard,f.nyguard,f.nzguard,
-                    nox,noy,noz,
-                    f.Exp,f.Eyp,f.Ezp,
-                    w3d.l4symtry)
+      if self.l_2dxz:
+        gete2dxz_n_energy_conserving(n,x,z,ex,ey,ez,
+                      f.xmin,f.zmin+self.zgrid,
+                      f.dx,f.dz,
+                      f.nx,f.nz,
+                      f.nxguard,f.nzguard,
+                      nox,noz,
+                      f.Exp,f.Eyp,f.Ezp,
+                      w3d.l4symtry)
+      else:
+       if nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
+        gete3d_linear_energy_conserving(n,x,y,z,ex,ey,ez,
+                      f.xmin,f.ymin,f.zmin+self.zgrid,
+                      f.dx,f.dy,f.dz,
+                      f.nx,f.ny,f.nz,
+                      f.nxguard,f.nyguard,f.nzguard,
+                      f.Exp,f.Eyp,f.Ezp)
+       else:
+        gete3d_n_energy_conserving(n,x,y,z,ex,ey,ez,
+                      f.xmin,f.ymin,f.zmin+self.zgrid,
+                      f.dx,f.dy,f.dz,
+                      f.nx,f.ny,f.nz,
+                      f.nxguard,f.nyguard,f.nzguard,
+                      nox,noy,noz,
+                      f.Exp,f.Eyp,f.Ezp,
+                      w3d.l4symtry)
     # --- fetch b
     if top.efetch[w3d.jsfsapi] in [1,3,5]:
       if self.l_2dxz:
@@ -433,7 +529,25 @@ class EM3D(SubcycledPoissonSolver):
                  f.Bxp,f.Byp,f.Bzp,
                  w3d.l4symtry)
     elif top.efetch[w3d.jsfsapi]==4:
-      getb3d_n_energy_conserving(n,x,y,z,bx,by,bz,
+      if self.l_2dxz:
+        getb2dxz_n_energy_conserving(n,x,z,bx,by,bz,
+                    f.xmin,f.zmin+self.zgrid,
+                    f.dx,f.dz,
+                    f.nx,f.nz,
+                    f.nxguard,f.nzguard,
+                    nox,noz,
+                    f.Bxp,f.Byp,f.Bzp,
+                    w3d.l4symtry)
+      else:
+       if nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
+        getb3d_linear_energy_conserving(n,x,y,z,bx,by,bz,
+                    f.xmin,f.ymin,f.zmin+self.zgrid,
+                    f.dx,f.dy,f.dz,
+                    f.nx,f.ny,f.nz,
+                    f.nxguard,f.nyguard,f.nzguard,
+                    f.Bxp,f.Byp,f.Bzp)
+       else:
+        getb3d_n_energy_conserving(n,x,y,z,bx,by,bz,
                     f.xmin,f.ymin,f.zmin+self.zgrid,
                     f.dx,f.dy,f.dz,
                     f.nx,f.ny,f.nz,
@@ -445,6 +559,64 @@ class EM3D(SubcycledPoissonSolver):
   def fetchphifrompositions(self,x,z,phi):
     pass
 
+  def getfieldsfrompositions(self,x,y,z):
+    # --- This returns e and b at positions x,y,z
+    n = len(x)
+    if n == 0: return None
+    f = self.block.core.yf
+    if self.l_2dxz:
+      ilist = compress((x>=f.xmin) & (x<f.xmax) &
+                       (z>=(f.zmin+self.zgrid)) & (z<(f.zmax+self.zgrid)),arange(n))
+    else:
+      ilist = compress((x>=f.xmin) & (x<f.xmax) &
+                       (y>=f.ymin) & (y<f.ymax) &
+                       (z>=(f.zmin+self.zgrid)) & (z<(f.zmax+self.zgrid)),arange(n))
+    nlocal = len(ilist)
+    if nlocal>0:
+      x = take(x,ilist)
+      y = take(y,ilist)
+      z = take(z,ilist)
+      ex=zeros(nlocal,'d')
+      ey=zeros(nlocal,'d')
+      ez=zeros(nlocal,'d')
+      bx=zeros(nlocal,'d')
+      by=zeros(nlocal,'d')
+      bz=zeros(nlocal,'d')
+      self.fetchfieldfrompositions(x,y,z,ex,ey,ez,bx,by,bz)
+
+    exp=zeros(n,'d')
+    eyp=zeros(n,'d')
+    ezp=zeros(n,'d')
+    bxp=zeros(n,'d')
+    byp=zeros(n,'d')
+    bzp=zeros(n,'d')
+    if me>0:
+      mpi.send(nlocal,0,3)
+      if nlocal>0:
+        mpi.send((ilist,ex,ey,ez,bx,by,bz),0,3)
+    else:
+      if nlocal>0:
+        for j,i in enumerate(ilist):
+          exp[i] = ex[j]
+          eyp[i] = ey[j]
+          ezp[i] = ez[j]
+          bxp[i] = bx[j]
+          byp[i] = by[j]
+          bzp[i] = bz[j]
+      for ip in range(1,npes):
+        nlocal = mpirecv(ip,3)
+        if nlocal>0:
+          ilist,ex,ey,ez,bx,by,bz=mpirecv(ip,3)
+          for j,i in enumerate(ilist):
+            exp[i] = ex[j]
+            eyp[i] = ey[j]
+            ezp[i] = ez[j]
+            bxp[i] = bx[j]
+            byp[i] = by[j]
+            bzp[i] = bz[j]
+
+    return exp,eyp,ezp,bxp,byp,bzp
+  
   def setsourcep(self,js,pgroup,zgrid):
     if self.l_verbose:print 'setsourcep, species ',js
     n  = pgroup.nps[js]
@@ -462,25 +634,63 @@ class EM3D(SubcycledPoissonSolver):
     if top.wpid==0:
       wfact = zeros((0,), 'd')
     else:
-      wfact = top.pgroup.pid[i:i+n,top.wpid-1]
+      wfact = pgroup.pid[i:i+n,top.wpid-1]
     w3d.jsfsapi=js
     self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w)
-
+    
   def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w):
     n = x.shape[0]
     if n == 0: return
     # --- call routine performing current deposition
     f = self.block.core.yf
     js = w3d.jsfsapi
+    nox = top.depos_order[0,js]
+    noy = top.depos_order[1,js]
+    noz = top.depos_order[2,js]
     if top.wpid==0:
       wfact = ones((1,),'d')
       l_particles_weight = false
     else:
       l_particles_weight = true
     if not self.deposit_energy_density:
-      if self.l_2dxz:
-        j = self.fields.J[:,self.fields.nyguard,:,:].copy()
-        depose_jxjyjz_esirkepov_n_2d(j,n,
+      if self.l_1dz:
+          jx = self.fields.J[self.fields.nxguard,self.fields.nyguard,:,0]*0.
+          jy = self.fields.J[self.fields.nxguard,self.fields.nyguard,:,0]*0.
+          jz = self.fields.J[self.fields.nxguard,self.fields.nyguard,:,0]*0.
+          depose_jxjyjz_esirkepov_linear_serial1d(jx,jy,jz,n,x*0.,y,z,ux,uy,uz,gaminv,
+                                            wfact*w,q/w3d.dx,
+                                            -0.5,-0.5,f.zmin+self.zgrid,
+                                            top.dt*top.pgroup.ndts[js],
+                                            1.,1.,self.fields.dz,
+                                            self.fields.nz,
+                                            l_particles_weight)
+#          for j in range(1,shape(self.fields.Jarray)[0]-1):
+          for j in range(shape(self.fields.Jarray)[0]):
+            self.fields.Jarray[j,self.fields.nyguard,:,0,0]+=jx
+            self.fields.Jarray[j,self.fields.nyguard,:,1,0]+=jy
+            self.fields.Jarray[j,self.fields.nyguard,:,2,0]+=jz
+      elif self.l_2dxz:
+        j = self.fields.J[:,self.fields.nyguard,:,:]*0.
+        if 0:
+#          depose_jxjy_esirkepov_linear_serial_2d(j,n,z,x,z-gaminv*uz*top.dt,x-gaminv*ux*top.dt,
+#                                                 uy,gaminv,
+#                                            wfact,q*w,
+#                                            f.zmin+self.zgrid,f.xmin,
+#                                            top.dt*top.pgroup.ndts[js],
+#                                            f.dz,f.dx,
+#                                            f.nz,f.nx,
+#                                           l_particles_weight)
+          depose_jxjy_esirkepov_linear_serial_2d(j,n,x,z,x-gaminv*ux*top.dt,z-gaminv*uz*top.dt,
+                                                 uy,gaminv,
+                                            wfact,q*w,
+                                            f.xmin,f.zmin+self.zgrid,
+                                            top.dt*top.pgroup.ndts[js],
+                                            f.dx,f.dz,
+                                            f.nx,f.nz,
+                                            l_particles_weight)
+        else:
+         if self.l_esirkepov:
+          depose_jxjyjz_esirkepov_n_2d(j,n,
                                             x,z,ux,uy,uz,
                                             gaminv,wfact,q*w,
                                             f.xmin,f.zmin+self.zgrid,
@@ -491,8 +701,31 @@ class EM3D(SubcycledPoissonSolver):
                                             top.depos_order[0,js],
                                             top.depos_order[2,js],
                                             l_particles_weight,w3d.l4symtry)
-        self.fields.Jarray[:,self.fields.nyguard,:,:,0]+=j[:,:,:].copy()
+         else:
+          depose_j_n_2dxz(j,n,
+                                            x,z,ux,uy,uz,
+                                            gaminv,wfact,q*w,
+                                            f.xmin,f.zmin+self.zgrid,
+                                            top.dt*top.pgroup.ndts[js],
+                                            f.dx,f.dz,
+                                            f.nx,f.nz,
+                                            f.nxguard,f.nzguard,
+                                            top.depos_order[0,js],
+                                            top.depos_order[2,js],
+                                            l_particles_weight,w3d.l4symtry)
+        self.fields.Jarray[:,self.fields.nyguard,:,:,0]+=j[:,:,:]
       else:
+       if 0:#nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
+          depose_jxjyjz_esirkepov_linear_serial(self.fields.J,n,
+                                            x,y,z,ux,uy,uz,
+                                            gaminv,wfact,q*w,
+                                            f.xmin,f.ymin,f.zmin+self.zgrid,
+                                            top.dt*top.pgroup.ndts[js],
+                                            f.dx,f.dy,f.dz,
+                                            f.nx,f.ny,f.nz,
+                                            f.nxguard,f.nyguard,f.nzguard,
+                                            l_particles_weight)
+       else:
           depose_jxjyjz_esirkepov_n(self.fields.J,n,
                                             x,y,z,ux,uy,uz,
                                             gaminv,wfact,q*w,
@@ -517,7 +750,19 @@ class EM3D(SubcycledPoissonSolver):
                                             l_particles_weight,
                                             top.lrelativ)
     if self.l_pushf:
-      depose_rho_n(self.fields.Rho,n,
+      if self.l_2dxz:
+        depose_rho_n_2dxz(self.fields.Rho,n,
+                               x,z,
+                               wfact,q*w,
+                               f.xmin,f.zmin+self.zgrid,
+                               f.dx,f.dz,
+                               f.nx,f.nz,
+                               f.nxguard,f.nzguard,
+                               top.depos_order[0,js],
+                               top.depos_order[2,js],
+                               l_particles_weight,w3d.l4symtry)
+      else:
+        depose_rho_n(self.fields.Rho,n,
                                x,y,z,
                                wfact,q*w,
                                f.xmin,f.ymin,f.zmin+self.zgrid,
@@ -549,12 +794,12 @@ class EM3D(SubcycledPoissonSolver):
     for indts in range(top.nsndts):
       if top.ldts[indts]:
         self.fields.Jarray[...,indts] = 0.
-        if self.refinement is not None:
-          self.field_coarse.fields.Jarray[...,indts] = 0.
+#        if self.refinement is not None:
+#          self.field_coarse.fields.Jarray[...,indts] = 0.
         if self.l_pushf:
           self.fields.Rhoarray[...,indts] = 0.
-          if self.refinement is not None:
-            self.field_coarse.fields.Rho[...,indts] = 0.
+#          if self.refinement is not None:
+#            self.field_coarse.fields.Rho[...,indts] = 0.
         if self.deposit_energy_density:
           self.fields.Mp[...] = 0.
   
@@ -564,10 +809,7 @@ class EM3D(SubcycledPoissonSolver):
     self.fields.J = self.fields.Jarray[:,:,:,:,indts]
     if self.l_pushf: self.fields.Rho = self.fields.Rhoarray[:,:,:,indts]
 
-  def finalizesourcep(self):
-    if self.sourcepfinalized: return
-    self.sourcepfinalized = 1
-    if self.l_verbose:print 'finalizesourcep'
+  def add_source_ndts_slices(self):  
     # --- add slices
     if top.nsndts>1:
       if self.refinement is not None:raise('Error in finalizesourcep:nsndts>1 not fully implemented yet with MR')
@@ -575,11 +817,17 @@ class EM3D(SubcycledPoissonSolver):
         if top.ldts[indts]:
           add_current_slice_3d(self.fields,indts+1)
           if self.l_pushf:add_rho_slice_3d(self.fields,indts+1)
-    # --- smooth current density 
-    if any(self.npass_smooth)>0:self.smoothdensity()
-    self.aftersetsourcep()
-    self.applysourceboundaryconditions()
 
+  def finalizesourcep(self):
+    if self.sourcepfinalized: return
+    self.sourcepfinalized = 1
+    if self.l_verbose:print 'finalizesourcep'
+    # --- add slices
+    self.add_source_ndts_slices()
+    self.aftersetsourcep()
+    # --- smooth current density 
+    if any(self.npass_smooth>0):self.smoothdensity()
+    self.applysourceboundaryconditions()
     if self.l_verbose:print 'finalizesourcep done'
 
   def apply_rho_bc(self,block):
@@ -616,32 +864,243 @@ class EM3D(SubcycledPoissonSolver):
       if self.refinement is not None:
         self.apply_rho_bc(self.block_coarse)
 
+    if self.l_sumjx:
+      j = self.fields.Jarray[0,:,:,:,0]*0.
+      for i in range(shape(self.fields.Jarray)[0]):
+        j+=self.fields.Jarray[i,:,:,:,0]
+      for i in range(shape(self.fields.Jarray)[0]):
+        self.fields.Jarray[i,:,:,:,0]=j.copy()
+        
     # --- point J to first slice of Jarray
     self.fields.J = self.fields.Jarray[:,:,:,:,0]
     if self.l_pushf:self.fields.Rho = self.fields.Rhoarray[:,:,:,0]
     
   def smoothdensity(self):
+    if all(self.npass_smooth==0):return
     nx,ny,nz = shape(self.fields.J[...,0])
     nsm = shape(self.npass_smooth)[1]
     for js in range(nsm):
-      smooth3d_121(self.fields.J[...,0],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-      smooth3d_121(self.fields.J[...,1],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-      smooth3d_121(self.fields.J[...,2],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+#      smooth3d_121(self.fields.J[...,0],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+#      smooth3d_121(self.fields.J[...,1],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+#      smooth3d_121(self.fields.J[...,2],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+      smooth3d_121_stride(self.fields.J[...,0],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      smooth3d_121_stride(self.fields.J[...,1],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      smooth3d_121_stride(self.fields.J[...,2],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
       if self.l_pushf:
-        smooth3d_121(self.fields.Rho[...],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+        smooth3d_121_stride(self.fields.Rho[...],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
 
   def smoothfields(self):
     nx,ny,nz = shape(self.fields.J[...,0])
     nsm = shape(self.npass_smooth)[1]
     for js in range(nsm):
-      smooth3d_121(self.fields.Exp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-      smooth3d_121(self.fields.Eyp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-      smooth3d_121(self.fields.Ezp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-      smooth3d_121(self.fields.Bxp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-      smooth3d_121(self.fields.Byp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-      smooth3d_121(self.fields.Bzp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+      smooth3d_121_stride(self.fields.Exp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      smooth3d_121_stride(self.fields.Eyp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      smooth3d_121_stride(self.fields.Ezp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      smooth3d_121_stride(self.fields.Bxp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      smooth3d_121_stride(self.fields.Byp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      smooth3d_121_stride(self.fields.Bzp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+#      smooth3d_121(self.fields.Exp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+#      smooth3d_121(self.fields.Eyp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+#      smooth3d_121(self.fields.Ezp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+#      smooth3d_121(self.fields.Bxp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+#      smooth3d_121(self.fields.Byp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+#      smooth3d_121(self.fields.Bzp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+    if self.n_smooth_fields is not None:
+     if top.it%self.n_smooth_fields==0:
+#      m = array([0,0,1]) # smooth only in z
+#      f = 1.#array([0,0,1./self.n_smooth_fields])
+#      npass_smooth = array([[ 0 , 0 ],[ 0 , 0 ],[ 1 , 1 ]])
+#      alpha_smooth = array([[ 1., 1.],[ 1., 1.],[0.5, 3./2.]])
+#      npass_smooth = array([[ 0 , 0 ],[ 0 , 0 ],[ 4 , 1 ]])
+#      alpha_smooth = array([[ 1., 1.],[ 1., 1.],[0.5, 3.]])
+#      for i in range(1):
+#       for js in range(2):
+      nsm = shape(self.npass_smooth)[1]
+      for js in range(nsm):
+        smooth3d_121_stride(self.fields.Ex,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        smooth3d_121_stride(self.fields.Ey,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        smooth3d_121_stride(self.fields.Ez,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        smooth3d_121_stride(self.fields.Bx,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        smooth3d_121_stride(self.fields.By,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        smooth3d_121_stride(self.fields.Bz,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+#        smooth3d_121(self.fields.Ex,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
+#        smooth3d_121(self.fields.Ey,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
+#        smooth3d_121(self.fields.Ez,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
+#        smooth3d_121(self.fields.Bx,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
+#        smooth3d_121(self.fields.By,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
+#        smooth3d_121(self.fields.Bz,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
+        if self.l_pushf:
+         smooth3d_121(self.fields.F,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js])
+       
+  def getsmoothx(self):
+    nx = w3d.nx
+    ny = 1
+    nz = 1
+    a = zeros([nx,ny,nz],'d')
+    a[nx/2,:,:]=1.
+    nsm = shape(self.npass_smooth)[1]
+    for js in range(nsm):
+      smooth3d_121_stride(a,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+    return a[:,0,0]
+    
+  def getsmoothz(self):
+    nz = w3d.nz
+    ny = 1
+    nx = 1
+    a = zeros([nx,ny,nz],'d')
+    a[:,:,nz/2]=1.
+    nsm = shape(self.npass_smooth)[1]
+    for js in range(nsm):
+      smooth3d_121_stride(a,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+    return a[0,0,:]
+    
+  def getsmoothxfftth(self):
+    nx = w3d.nx
+    theta=(1.+arange(nx))*pi/nx
+    nsm = shape(self.npass_smooth)[1]
+    f = ones(nx,'d')
+    print nx,shape(theta),shape(f)
+    for js in range(nsm):
+      w = 0.5*(1./self.alpha_smooth[0,js]-1.)
+      f *= ((1.+2.*w*cos(theta*self.stride_smooth[0,js]))/(1.+2.*w))**self.npass_smooth[0,js]
+    return f,theta
+    
+  def pltsmx(self,color=black,width=1.):
+    pla(self.getsmoothx(),color=color,width=width)
+    
+  def pltsmxfft(self,color=black,width=1.):
+    f=abs(fft.fft(self.getsmoothx()))
+    theta=(1.+arange(shape(f)[0]))*2.*pi/shape(f)[0]
+    pla(f,2.*pi/theta,color=color,width=width)
+    
+  def pltsmxfftth(self,color=black,width=1.):
+    f,theta = self.getsmoothxfftth()
+    pla(f,2.*pi/theta,color=color,width=width)
+    
+  def pltsmz(self,color=black,width=1.):
+    pla(self.getsmoothz(),color=color,width=width)
+    
+  def pltsmzfft(self,color=black,width=1.):
+    f=abs(fft.fft(self.getsmoothz()))
+    theta=arange(shape(f)[0])*2.*pi/shape(f)[0]
+    pla(f,theta,color=color,width=width)
+    
+  def binomial_expansion(self,x,y,n):
+    # --- we assume that x is real and y is an array of coefficients
+    # initializes f
+    f = 0.*y
+    # initializes Pascal triangle
+    pt = zeros(n)
+    pt[0] = 1.
+    for i in range(n):
+      f += pt[i]*x**(n-i)*self.getpower(y,i)
+      if i<n-1:pt[1:] = pt[1:]+pt[:-1]
+    return f
+    
+  def getpower(self,y,n):
+    # computes coefficients of y**n where y is a list of coefficients
+    o = shape(y)[0]
+    f = y.copy()
+    for k in range(n):
+      x = f.copy()
+      for i in range(o):
+        for j in range(o):
+          if (i+j)<o:
+            f[i+j] += y[i]*x[j]
+    return f
 
+  def get_binomial_filter_factors(self,n,o):
+    # set costheta as order n expansion of cos(theta)
+    costheta = zeros(o,'d')
+    costheta[0] = 1.
+    s = -1.
+    f = 2.
+    for i in range(2,o,2):
+      costheta[i] = s / f
+      f = f * (f+1.) * (f+2.)
+      s*=-1.
+      
+    # get ((1 + cos(theta))/2)^n
+    cf = self.binomial_expansion(1.,costheta,n)/(2.**n)
+
+    # get coeffs for 1 pass compensation
+    a = cf[2]
+    wcomp1 = -a/(2*a-1.)
+    coefsm1 = 1./(1.+2.*wcomp1)
+
+    # get coeffs for 2 pass compensation
+    a = cf[0]*2**n
+    b = cf[2]*2**n
+    c = cf[4]*2**n
+    A = a**2-4.*a*c-7.*a*b/3.+4.*b**2
+    B = a*b/12.+a*c-b**2
+    alpha = -a+2*b
+    beta = b-4.*(B/A)*(b-a)
+    gamma = (a-2.*b)*B/A
+    delta = sqrt(beta**2-4.*alpha*gamma)
+    print a,b,c,A,B,alpha,beta,gamma,delta
+    
+    print '&&&', beta**2-4.*alpha*gamma,beta**2,4.*alpha*gamma
+    w1 = (-beta+delta)/(2.*alpha)
+    w2 = -B/(w1*A)
+    
+    coefsm2_1 = 1./(1.+2.*w1)
+    coefsm2_2 = 1./(1.+2.*w2)
+
+    return cf,wcomp1,coefsm1,w1,w2,coefsm2_1,coefsm2_2
+    
+    
+    
+    
+    
+    
+  def get_binomial_filter_factorsold(self,n,o):
+    # set costheta as order n expansion of cos(theta)
+    costheta = zeros(o,'d')
+    costheta[0] = 1.
+    s = -1.
+    f = 2.
+    for i in range(2,o,2):
+      costheta[i] = s / f
+      f = f * (f+1.) * (f+2.)
+      s*=-1.
+      
+    # get ((1 + cos(theta))/2)^n
+    cf = self.binomial_expansion(1.,costheta,n)/(2.**n)
+
+    # get coeffs for 1 pass compensation
+    a = cf[2]
+    wcomp1 = -a/(2*a-1.)
+    coefsm1 = 1./(1.+2.*wcomp1)
+
+    # get coeffs for 2 pass compensation
+    alpha = cf[2]
+    beta  = cf[4]
+    a1 = b1 = -1.-2.*alpha
+    c1 = -4.*(1.+alpha)
+    d1 = -alpha
+    a2 = b2 = 1./12.-2.*beta
+    c2 = 4.*(1./3.-beta)
+    d2 = -beta
+    A = (c1*b2-c2*b1)/(c2*a1-c1*a2)
+    B = (c1*d2-c2*d1)/(c2*a1-c1*a2)
+    a = c1*A
+    b = a1*A+b1+c1*B
+    c = a1*B+d1
+    delta = sqrt(b**2-4.*a*c)
+    print a1,b1,c1,a2,b2,c2
+    print '***',delta,b**2-4.*a*c,b,a,c,A,B
+    w2 = (-b+delta)/(2.*a)
+    w1 = A*w2+B
+    
+    coefsm2_1 = 1./(1.+2.*w1)
+    coefsm2_2 = 1./(1.+2.*w2)
+
+    return cf,wcomp1,coefsm1,w1,w2,coefsm2_1,coefsm2_2
+    
   def fetche(self,*args,**kw):
+#    import traceback as tb
+#    tb.print_stack()
     SubcycledPoissonSolver.fetchfield(self,*args,**kw)
 
   def loadrho(self,lzero=None,pgroups=None,**kw):
@@ -725,10 +1184,7 @@ class EM3D(SubcycledPoissonSolver):
                       xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
                       zscale,self.l2symtry,self.l4symtry,
                       installrz=0,
-                      solvergeom=self.solvergeom,conductors=conductorobject,
-                      mgmaxlevels=mgmaxlevels,
-                      my_index=self.my_index,nslaves=self.nslaves,
-                      izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
+                      solvergeom=self.solvergeom,conductors=conductorobject)
 
 #installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
 #                        zmin=None,zmax=None,dfill=2.,
@@ -833,42 +1289,361 @@ class EM3D(SubcycledPoissonSolver):
   def optimizeconvergence(self,resetpasses=1):
     pass
 
+  def move_window_fieldsold(self):
+    if self.refinement is None:
+      # --- move window in x
+      self.xgridcont+=self.vxgrid*top.dt
+      while (abs(self.xgrid-self.xgridcont)>=0.5*self.dx):
+        self.shift_cells_x(1)
+        dx = self.dx*sign(self.vxgrid)
+        w3d.xmmin+=dx
+        w3d.xmmax+=dx
+        w3d.xmminp+=dx
+        w3d.xmmaxp+=dx
+        w3d.xmminlocal+=dx
+        w3d.xmmaxlocal+=dx
+        w3d.xmminglobal+=dx
+        w3d.xmmaxglobal+=dx
+        top.xpmin+=dx
+        top.xpmax+=dx
+        top.xpminlocal+=dx
+        top.xpmaxlocal+=dx
+      # --- move window in z
+      if (abs(top.zgrid-self.zgrid)>=0.5*self.dz):
+        shift_em3dblock_ncells_z(self.block,1)
+        self.zgrid+=self.dz
+        self.nzshifts+=1
+    else:
+      # --- move window in x
+      fc = self.field_coarse
+      fc.vxgrid=self.vxgrid
+      fc.xgridcont+=fc.vxgrid*top.dt
+      while (abs(fc.xgrid-fc.xgridcont)>=0.5*fc.dx):
+        fc.shift_cells_x(1)
+        self.shift_cells_x(self.refinement[0])
+      # --- move window in z
+      if (abs(top.zgrid-fc.zgrid)>=0.5*fc.dz):
+        shift_em3dblock_ncells_z(fc.block,1)
+        shift_em3dblock_ncells_z(self.block,self.refinement[0])
+        fc.zgrid+=fc.dz
+        fc.nzshifts+=1
+        self.zgrid+=self.dz*self.refinement[2]
+        self.nzshifts+=self.refinement[2]
+
   def move_window_fields(self):
-    if (abs(top.zgrid-self.zgrid)<0.5*self.dz):return 
-#    if not self.l_moving_window or ((top.it%self.ndelta_t)!=0): return
-#    if top.time < self.tmin_moving_main_window: return
-    shift_em3dblock_ncells_z(self.block,1)
-    self.zgrid+=self.dz
-    self.nzshifts+=1
-   
+      # --- move window in x
+      self.xgridcont+=self.vxgrid*top.dt
+      while (abs(self.xgrid-self.xgridcont)>=0.5*self.dx):
+        self.shift_cells_x(int(sign(self.vxgrid)))
+        dx = self.dx*sign(self.vxgrid)
+        w3d.xmmin+=dx
+        w3d.xmmax+=dx
+        w3d.xmminp+=dx
+        w3d.xmmaxp+=dx
+        w3d.xmminlocal+=dx
+        w3d.xmmaxlocal+=dx
+        w3d.xmminglobal+=dx
+        w3d.xmmaxglobal+=dx
+        top.xpmin+=dx
+        top.xpmax+=dx
+        top.xpminlocal+=dx
+        top.xpmaxlocal+=dx
+      # --- move window in z
+#      while (abs(top.zgrid-self.zgrid)>=0.5*self.dz):
+      while ((top.zgrid-self.zgrid)>=0.5*self.dz):
+        self.shift_cells_z(1)
+
+  def shift_cells_x(self,n):
+        shift_em3dblock_ncells_x(self.block,n)
+        dx = self.dx*n
+        self.xgrid+=dx
+        self.xmmin+=dx
+        self.xmmax+=dx
+        self.xmminlocal+=dx
+        self.xmmaxlocal+=dx
+        self.fields.xmin+=dx
+        self.fields.xmax+=dx
+        self.block.xmin+=dx
+        self.block.xmax+=dx
+        self.nxshifts+=n
+
+  def shift_cells_z(self,n):
+        shift_em3dblock_ncells_z(self.block,n)
+        self.zgrid+=self.dz*n
+        self.nzshifts+=1
+
   def solve2ndhalf(self):
     if self.solveroff:return
+    if self.mode==2:
+      self.solve2ndhalfmode2()
+      return
     if self.l_verbose:print 'solve 2nd half',self
     if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
-    if top.efetch[0]<>4:node2yee3d(self.block.core.yf)
-    dt = top.dt/self.nfield_subcycle
-    push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
-    if self.l_verbose:print 'solve 2nd half done'
+    self.push_b_part_2()
+    if self.l_pushf:self.exchange_f()
+    em3d_exchange_b(self.block)
     self.move_window_fields()
+    if self.l_verbose:print 'solve 2nd half done'
 
   def dosolve(self,iwhich=0,*args):
+    if self.solveroff:return
+    if self.mode==2:
+      self.dosolvemode2()
+      return
+    if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
+    if self.l_verbose:print 'solve 1st half'
+    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+    self.push_e()
+    self.exchange_e()
+    for i in range(int(self.ncyclesperstep)-1):
+      self.push_b_full()
+      if self.l_pushf:self.exchange_f()
+      self.exchange_b()
+      self.push_e_full(i)
+      self.exchange_e()
+    self.push_b_part_1()
+    if self.l_pushf:self.exchange_f()
+    self.exchange_b()
+    self.setebp()
+    if top.efetch[0]<>4:self.yee2node3d()
+    if self.l_smooth_particle_fields and any(self.npass_smooth>0):
+       self.smoothfields()
+    # --- for fields that are overcycled, they need to be pushed backward every ncyclesperstep
+    self.push_e(dir=-1)
+    self.exchange_e(dir=-1)
+    if self.l_verbose:print 'solve 1st half done'
+
+  def push_e(self,dir=1.):  
+    dt = dir*top.dt/self.ncyclesperstep
+    if self.novercycle==1:
+      if dir>0.:
+        doit=True
+      else:
+        doit=False
+    else:
+      if self.icycle==0 or (self.icycle==self.novercycle-1 and dir>0.):
+        doit=True
+      else:
+        doit=False
+    if doit:
+      self.add_laser(self.fields)
+      if dir<0.:
+        self.fields.Ex_inz*=-1.
+        self.fields.Ey_inz*=-1.
+      if self.l_verbose:print 'push_e',self,dt,top.it,self.icycle
+      push_em3d_eef(self.block,dt,0,self.l_pushf,self.l_pushpot)
+      if dir<0.:
+        self.fields.Ex_inz*=-1.
+        self.fields.Ey_inz*=-1.
+    if self.refinement is not None:
+      self.__class__.__bases__[1].push_e(self.field_coarse,dir)
+
+  def setebp(self):  
+#    if (self.refinement is not None) or \
+#       (self.novercycle>1) or \
+#       (self.l_smooth_particle_fields and any(self.npass_smooth>0)):
+    setebp(self.fields,self.icycle,self.novercycle)
+    if self.refinement is not None:
+      self.__class__.__bases__[1].setebp(self.field_coarse)
+
+  def exchange_e(self,dir=1.):  
+    if self.novercycle==1:
+      if dir>0.:
+        doit=True
+      else:
+        doit=False
+    else:
+      if self.icycle==0 or (self.icycle==self.novercycle-1 and dir>0.):
+        doit=True
+      else:
+        doit=False
+    if doit:
+      em3d_exchange_e(self.block)
+    if self.refinement is not None:
+      self.__class__.__bases__[1].exchange_e(self.field_coarse)
+
+  def push_b_part_1(self,dir=1.):  
+    dt = dir*top.dt/self.ncyclesperstep
+    if self.novercycle==1:
+      if dir>0.:
+        doit=True
+      else:
+        doit=False
+    else:
+      if self.icycle==0 or (self.icycle==self.novercycle-1 and dir>0.):
+        doit=True
+      else:
+        doit=False
+    if doit:
+      if self.l_verbose:print 'push_b part 1',self,dt,top.it,self.icycle,dir
+      push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
+    if self.refinement is not None:
+      self.__class__.__bases__[1].push_b_part_1(self.field_coarse,dir)
+
+  def push_b_part_2(self):
+#    if top.efetch[0]<>4 and (self.refinement is None) and not \
+#       (self.l_smooth_particle_fields and any(self.npass_smooth>0)):node2yee3d(self.block.core.yf)
+    dt = top.dt/self.ncyclesperstep
+    if self.ncyclesperstep<1.:
+      self.novercycle = nint(1./self.ncyclesperstep)
+      self.icycle = (top.it-1)%self.novercycle
+    else:
+      self.novercycle = 1
+      self.icycle = 0
+    if self.icycle==0:
+      if self.l_verbose:print 'push_b part 2',self,dt,top.it,self.icycle
+      push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
+    if self.refinement is not None:
+      self.__class__.__bases__[1].push_b_part_2(self.field_coarse)
+
+  def yee2node3d(self):  
+    yee2node3d(self.block.core.yf)
+    if self.refinement is not None:
+      self.__class__.__bases__[1].yee2node3d(self.field_coarse)
+
+  def node2yee3d(self):  
+    node2yee3d(self.block.core.yf)
+    if self.refinement is not None:
+      self.__class__.__bases__[1].node2yee3d(self.field_coarse)
+
+  def exchange_b(self,dir=1.):  
+    if self.novercycle==1:
+      if dir>0.:
+        doit=True
+      else:
+        doit=False
+    else:
+      if self.icycle==0 or (self.icycle==self.novercycle-1 and dir>0.):
+        doit=True
+      else:
+        doit=False
+    if doit:
+      if self.l_verbose:print 'exchange_b',self,top.it,self.icycle
+      em3d_exchange_b(self.block)
+    if self.refinement is not None:
+      self.__class__.__bases__[1].exchange_b(self.field_coarse,dir)
+
+  def exchange_f(self,dir=1.):  
+    if self.novercycle==1:
+      if dir>0.:
+        doit=True
+      else:
+        doit=False
+    else:
+      if self.icycle==0 or (self.icycle==self.novercycle-1 and dir>0.):
+        doit=True
+      else:
+        doit=False
+    if doit:
+      em3d_exchange_f(self.block)
+    if self.refinement is not None:
+      self.__class__.__bases__[1].exchange_f(self.field_coarse,dir)
+
+  def push_b_full(self):  
+    dt = top.dt/self.ncyclesperstep
+    if self.l_verbose:print 'push_b full',self,dt,top.it,self.icycle
+    push_em3d_bf(self.block,dt,0,self.l_pushf,self.l_pushpot)
+
+  def push_e_full(self,i):  
+    dt = top.dt/self.ncyclesperstep
+    if self.l_pushf:
+      w = float(i+2)/self.ncyclesperstep
+      self.fields.Rho = (1.-w)*self.fields.Rhoold + w*self.fields.Rhoarray[...,0] 
+    if self.l_verbose:print 'push_e full',self,dt,top.it,self.icycle
+    self.add_laser(self.fields)
+    push_em3d_eef(self.block,dt,0,self.l_pushf,self.l_pushpot)
+
+  def dosolvemode2(self,iwhich=0,*args):
     if self.solveroff:return
     if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
     if self.l_verbose:print 'solve 1st half'
     if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
-    dt = top.dt/self.nfield_subcycle
-    if self.l_pushf and self.ncyclesperstep>1:
-      w = 1./self.ncyclesperstep
-      self.fields.Rho = (1.-w)*self.fields.Rhoold + w*self.fields.Rhoarray[...,0] 
-    push_em3d_eef(self.block,dt,0,self.l_pushf,self.l_pushpot)
-    self.add_laser(self.fields)
-    for i in range(self.ncyclesperstep-1):
-      push_em3d_bf(self.block,dt,0,self.l_pushf,self.l_pushpot)
-      if self.l_pushf:
-        w = float(i+2)/self.ncyclesperstep
-        self.fields.Rho = (1.-w)*self.fields.Rhoold + w*self.fields.Rhoarray[...,0] 
-      push_em3d_eef(self.block,dt,0,self.l_pushf,self.l_pushpot)
-    push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
+    dt=top.dt*2
+    if self.odd:
+      push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
+      if self.l_pushf:self.exchange_f()
+      self.exchange_b()
+      self.add_laser(self.fields)
+      push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
+      self.exchange_e()
+    else:
+      self.add_laser(self.fields)
+      push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
+      self.exchange_e()
+      push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
+      if self.l_pushf:self.exchange_f()
+      self.exchange_b()
+    self.odd = 1-self.odd
+    if not all(top.efetch==top.efetch[0]):raise('Error:top.efetch must have same value for every species when using EM solver.')
+    self.setebp()
+    if top.efetch[0]<>4:self.yee2node3d()
+    if self.l_smooth_particle_fields and any(self.npass_smooth>0):
+       self.smoothfields()
+    
+  def solve2ndhalfmode2(self):
+    if self.solveroff:return
+    if self.l_verbose:print 'solve 2nd half',self
+    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+#    if top.efetch[0]<>4:node2yee3d(self.block.core.yf)
+    self.move_window_fields()
+    if self.ncyclesperstep<1.:
+      self.novercycle = nint(1./self.ncyclesperstep)
+      self.icycle = (top.it-1)%self.novercycle
+    else:
+      self.novercycle = 1
+      self.icycle = 0
+    return
+    dt = top.dt
+    if not self.odd:
+      push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
+      push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
+    else:
+      push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
+      self.add_laser(self.fields)
+      push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
+    self.odd = 1-self.odd
+    if self.l_verbose:print 'solve 2nd half done'
+
+  def dosolvemode2old(self,iwhich=0,*args):
+    if self.solveroff:return
+    if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
+    if self.l_verbose:print 'solve 1st half'
+    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+    dt = top.dt*2
+    if self.odd:
+      push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
+      push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
+    else:
+      self.add_laser(self.fields)
+      push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
+      push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
+    self.odd = 1-self.odd
+    if not all(top.efetch==top.efetch[0]):raise('Error:top.efetch must have same value for every species when using EM solver.')
+    if top.efetch[0]<>4:yee2node3d(self.block.core.yf)
+    if self.l_smooth_particle_fields:
+      if self.refinement is None and any(self.npass_smooth>0):
+        self.fields.Exp[...] = self.fields.Ex[...]
+        self.fields.Eyp[...] = self.fields.Ey[...]
+        self.fields.Ezp[...] = self.fields.Ez[...]
+        self.fields.Bxp[...] = self.fields.Bx[...]
+        self.fields.Byp[...] = self.fields.By[...]
+        self.fields.Bzp[...] = self.fields.Bz[...]
+      if any(self.npass_smooth>0):self.smoothfields()
+    
+  def dosolvemode2vold(self,iwhich=0,*args):
+    if self.solveroff:return
+    if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
+    if self.l_verbose:print 'solve 1st half'
+    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+    dt = top.dt*2
+    if self.odd:
+      push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
+      push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
+    else:
+      push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
+      self.add_laser(self.fields)
+      push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
+    self.odd = 1-self.odd
     if not all(top.efetch==top.efetch[0]):raise('Error:top.efetch must have same value for every species when using EM solver.')
     if top.efetch[0]<>4:yee2node3d(self.block.core.yf)
     if self.l_smooth_particle_fields:
@@ -890,10 +1665,11 @@ class EM3D(SubcycledPoissonSolver):
   def genericpfem3d(self,data,title,titles=True,l_transpose=false,direction=None,slice=None,l_abs=False,
                     origins=None,deltas=None,display=1,scale=None,camera=None,l_box=1,
                     interactive=0,labels=['X','Y','Z'],
-                    adjust=0,labelscale=0.5,color='auto',ncolor=None,cmin=None,cmax=None,
+                    adjust=0,labelscale=0.5,color='auto',ncolor=None,cmin=None,cmax=None,cscale=1.,l_csym=0,
                     procs=None,
                     **kw):
     if direction is None and not l_opyndx:direction=2
+    if self.l_2dxz:direction=1
     if kw.has_key('view'):
       view=kw['view']
     else:
@@ -910,17 +1686,22 @@ class EM3D(SubcycledPoissonSolver):
       zscale=kw['zscale']
     else:
       zscale=1
-    f=self.block.core.yf
-    nxd,nyd,nzd=shape(data)
-    if direction==0:
+    if kw.has_key('gridscale'):
+      gridscale=kw['gridscale']
+    else:
+      gridscale=None
+    if self.isactive:
+     f=self.block.core.yf
+     nxd,nyd,nzd=shape(data)
+     if direction==0:
       if slice is None:
         if self.l4symtry:
           slice=0
         else:
           slice=self.nx/2
       xslice = w3d.xmmin+slice*w3d.dx
-      slice = nint((xslice-self.block.xmin)/self.block.dx)
-      if slice<0 or slice>nxd-1:
+      selfslice = nint((xslice-self.block.xmin)/self.block.dx)
+      if selfslice<0 or selfslice>nxd-1:
         data=None
         xmin=xmax=ymin=ymax=0.
       else:
@@ -935,18 +1716,19 @@ class EM3D(SubcycledPoissonSolver):
           ymin=self.block.zmin+self.zgrid
           ymax=self.block.zmax+self.zgrid
         if l_transpose:
-          data=transpose(data[slice,:,:])
+          data=transpose(data[selfslice,:,:])
         else:
-          data=data[slice,:,:]
-    if direction==1:
+          data=data[selfslice,:,:]
+     if direction==1:
       if slice is None:
         if self.l4symtry:
           slice=0
         else:
           slice=self.ny/2
       yslice = w3d.ymmin+slice*w3d.dy
-      slice = nint((yslice-self.block.ymin)/self.block.dy)
-      if slice<0 or slice>nyd-1:
+      selfslice = nint((yslice-self.block.ymin)/self.block.dy)
+      if self.l_2dxz:slice=0
+      if selfslice<0 or selfslice>nyd-1:
         data=None
         xmin=xmax=ymin=ymax=0.
       else:
@@ -961,15 +1743,14 @@ class EM3D(SubcycledPoissonSolver):
           ymin=self.block.zmin+self.zgrid
           ymax=self.block.zmax+self.zgrid
         if l_transpose:
-          data=transpose(data[:,slice,:])
+          data=transpose(data[:,selfslice,:])
         else:
-          data=data[:,slice,:]
-    if direction==2:
+          data=data[:,selfslice,:]
+     if direction==2:
       if slice is None:slice=self.nz/2
       zslice = w3d.zmmin+slice*w3d.dz
-      slice = nint((zslice-self.block.zmin)/self.block.dz)
-      print zslice,slice,self.block.nz
-      if slice<0 or slice>nzd-1:
+      selfslice = nint((zslice-self.block.zmin)/self.block.dz)
+      if selfslice<0 or selfslice>nzd-1:
         data=None
         xmin=xmax=ymin=ymax=0.
       else:
@@ -984,9 +1765,12 @@ class EM3D(SubcycledPoissonSolver):
           ymin=self.block.ymin
           ymax=self.block.ymax
         if l_transpose:
-          data=transpose(data[:,:,slice])
+          data=transpose(data[:,:,selfslice])
         else:
-          data=data[:,:,slice]
+          data=data[:,:,selfslice]
+    if gridscale is not None:
+      data=data.copy()*gridscale
+      kw['gridscale']=None
     if l_abs and data is not None:data=abs(data)
     if cmin is None:
       if data is None:
@@ -1000,6 +1784,12 @@ class EM3D(SubcycledPoissonSolver):
       else:
         maxdata = maxnd(data)
       cmax=parallelmax(maxdata)
+    if cscale is not None:
+      cmin *= cscale
+      cmax *= cscale
+    if l_csym:
+      cmax = max(abs(cmin),abs(cmax))
+      cmin = -cmax
     if procs is None:procs=arange(npes)
     if direction in [0,1,2]:
       kw.setdefault('cmin',cmin)
@@ -1024,7 +1814,9 @@ class EM3D(SubcycledPoissonSolver):
         ptitles(title,xtitle,ytitle,'t = %gs'%(top.time))
       if type(procs) is type(1):procs=[procs]
       if me>0 and me in procs:
-        mpi.send((xmin,xmax,ymin,ymax,data),0,3)
+        mpi.send(self.isactive,0,3)
+        if self.isactive:
+          mpi.send((xmin,xmax,ymin,ymax,data),0,3)
       else:
         if me in procs and data is not None:
           kw.setdefault('xmin',xmin)
@@ -1033,13 +1825,15 @@ class EM3D(SubcycledPoissonSolver):
           kw.setdefault('ymax',ymax)
           ppgeneric(grid=data,**kw)
         for i in range(1,npes):
-          xminp,xmaxp,yminp,ymaxp,data=mpirecv(i,3)
-          if data is not None:
-            kw['xmin']=xminp
-            kw['xmax']=xmaxp
-            kw['ymin']=yminp
-            kw['ymax']=ymaxp
-            ppgeneric(grid=data,lcolorbar=0,**kw)
+          isactive = mpirecv(i,3)
+          if isactive:
+            xminp,xmaxp,yminp,ymaxp,data=mpirecv(i,3)
+            if data is not None:
+              kw['xmin']=xminp
+              kw['xmax']=xmaxp
+              kw['ymin']=yminp
+              kw['ymax']=ymaxp
+              ppgeneric(grid=data,lcolorbar=0,**kw)
     else:
       xmin=self.block.xmin
       xmax=self.block.xmax
@@ -1047,24 +1841,50 @@ class EM3D(SubcycledPoissonSolver):
       ymax=self.block.ymax
       zmin=self.block.zmin
       zmax=self.block.zmax
+      dx=self.block.dx
+      dy=self.block.dy
+      dz=self.block.dz
       if me>0 and me in procs:
-        mpi.send((xmin,xmax,ymin,ymax,zmin,zmax,data),0,3)
+        mpi.send((xmin,xmax,dx,ymin,ymax,dy,zmin,zmax,dz,data),0,3)
       else:
         if ncolor is None:ncolor = 2
         dec = (cmax-cmin)/ncolor
         isos = cmin+arange(ncolor)*dec+dec/2
         origins = [xmin*xscale,ymin*yscale,zmin*zscale]
-        deltas = [w3d.dx*xscale,w3d.dy*yscale,w3d.dz*zscale]
+        deltas = [dx*xscale,dy*yscale,dz*zscale]
+        if color=='auto':
+          color = []
+          for i in range(ncolor):
+            r = array([1.,0.,0.])
+            g = array([0.,1.,0.])
+            b = array([0.,0.,1.])
+            if i<=ncolor/4:
+              color.append(b+g*(i*4./ncolor))
+            elif i<=ncolor/2:
+              color.append(b*(2.-(i*4./ncolor))+g)
+            elif i<=3*ncolor/4:
+              color.append(g+r*((i*4./ncolor)-2.))
+            else:
+              color.append(g*(4.-(i*4./ncolor))+r)
+        colormap,opacity  = DXColormap(data=isos,
+                                       ncolors=ncolor,
+                                       colors=color,
+                                       opacitystart=None,opacityend=None,opacities=None)
+        DXReference(colormap)
         e3d,colorbar = viewisosurface1(data,isos,color=color,display=0,
                         origins=origins,
-                        deltas=deltas)
+                        deltas=deltas,
+                        colormap=colormap)
         dxob = [e3d,colorbar]
         for i in range(1,npes):
-          xminp,xmaxp,yminp,ymaxp,zminp,zmaxp,data=mpirecv(i,3)
+          xminp,xmaxp,dxp,yminp,ymaxp,dyp,zminp,zmaxp,dzp,data=mpirecv(i,3)
           origins = [xminp*xscale,yminp*yscale,zminp*zscale]
+          deltas = [dxp*xscale,dyp*yscale,dzp*zscale]
+          DXReference(colormap)
           e3d,colorbar = viewisosurface1(data,isos,color=color,display=0,
                           origins=origins,
-                          deltas=deltas)
+                          deltas=deltas,
+                          colormap=colormap)
           dxob.append(e3d)
         if l_box:
           box = viewboundingbox(w3d.xmmin*xscale,
@@ -1085,71 +1905,110 @@ class EM3D(SubcycledPoissonSolver):
                      adjust=adjust,
                      scale=scale,
                      labelscale=labelscale)
+    return slice
     
-  def getarray(self,g,guards=0):
+  def getarray(self,g,guards=0,overlap=0):
     if guards:
       return g
     else:
       f=self.fields
       ox=oy=oz=0
-      if self.block.xrbnd==em3d.otherproc:ox=1
-      if self.block.yrbnd==em3d.otherproc:oy=1
-      if self.block.zrbnd==em3d.otherproc:oz=1
-      return g[f.nxguard:-f.nxguard-ox,f.nyguard:-f.nyguard-oy,f.nzguard:-f.nzguard-oz]
+      if not overlap:
+        if self.block.xrbnd==em3d.otherproc:ox=1
+        if self.block.yrbnd==em3d.otherproc:oy=1
+        if self.block.zrbnd==em3d.otherproc:oz=1
+      if self.l_2dxz:
+        return g[f.nxguard:-f.nxguard-ox,0:1,f.nzguard:-f.nzguard-oz]
+      else:
+        return g[f.nxguard:-f.nxguard-ox,f.nyguard:-f.nyguard-oy,f.nzguard:-f.nzguard-oz]
       
-  def pfex(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ex,guards),'E_x',**kw)
+  def pfex(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Exp,guards,overlap=direction is None),'E_x',
+      direction=direction,**kw)
 
-  def pfey(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ey,guards),'E_y',**kw)
+  def pfey(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Eyp,guards,overlap=direction is None),'E_y',
+      direction=direction,**kw)
 
-  def pfez(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ez,guards),'E_z',**kw)
+  def pfez(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Ezp,guards,overlap=direction is None),'E_z',
+      direction=direction,**kw)
 
-  def pfbx(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bx,guards),'B_x',**kw)
+  def pfbx(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Bxp,guards,overlap=direction is None),'B_x',
+      direction=direction,**kw)
 
-  def pfby(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.By,guards),'B_y',**kw)
+  def pfby(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Byp,guards,overlap=direction is None),'B_y',
+      direction=direction,**kw)
 
-  def pfbz(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bz,guards),'B_z',**kw)
+  def pfbz(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Bzp,guards,overlap=direction is None),'B_z',
+      direction=direction,**kw)
 
-  def pfexp(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Exp,guards),'Ep_x',**kw)
+  def pfexp(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Ex,guards,overlap=direction is None),'Ep_x',
+      direction=direction,**kw)
 
-  def pfeyp(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Eyp,guards),'Ep_y',**kw)
+  def pfeyp(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Ey,guards,overlap=direction is None),'Ep_y',
+      direction=direction,**kw)
 
-  def pfezp(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ezp,guards),'Ep_z',**kw)
+  def pfezp(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Ez,guards,overlap=direction is None),'Ep_z',
+      direction=direction,**kw)
 
-  def pfbxp(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bxp,guards),'Bp_x',**kw)
+  def pfbxp(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Bx,guards,overlap=direction is None),'Bp_x',
+      direction=direction,**kw)
 
-  def pfbyp(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Byp,guards),'Bp_y',**kw)
+  def pfbyp(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.By,guards,overlap=direction is None),'Bp_y',
+      direction=direction,**kw)
 
-  def pfbzp(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bzp,guards),'Bp_z',**kw)
+  def pfbzp(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Bz,guards,overlap=direction is None),'Bp_z',
+      direction=direction,**kw)
 
-  def pfjx(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,0],guards),'J_x',**kw)
+  def pfjx(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,0],guards,overlap=direction is None),'J_x',
+      direction=direction,**kw)
 
-  def pfjy(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,1],guards),'J_y',**kw)
+  def pfjy(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,1],guards,overlap=direction is None),'J_y',
+      direction=direction,**kw)
 
-  def pfjz(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,2],guards),'J_z',**kw)
+  def pfjz(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,2],guards,overlap=direction is None),'J_z',
+      direction=direction,**kw)
 
-  def pfrho(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Rho,guards),'Rho',**kw)
+  def pfrho(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Rho,guards,overlap=direction is None),'Rho',
+      direction=direction,**kw)
 
-  def pff(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.fields.F,guards),'F',**kw)
+  def pff(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.F,guards,overlap=direction is None),'F',
+      direction=direction,**kw)
 
-  def pfdive(self,guards=0,**kw):
-      self.genericpfem3d(self.getarray(self.getdive(),guards),'div(E)',**kw)
+  def pfdive(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.getdive(),guards,overlap=direction is None),'div(E)',
+      direction=direction,**kw)
+
+  def pfe(self,l_children=1,guards=0,direction=None,**kw):
+      e = self.getarray(self.fields.Exp**2+self.fields.Eyp**2+self.fields.Ezp**2,guards,overlap=direction is None)
+      self.genericpfem3d(sqrt(e),'E',
+      direction=direction,**kw)
+
+  def pfb(self,l_children=1,guards=0,direction=None,**kw):
+      b = self.getarray(self.fields.Bxp**2+self.fields.Byp**2+self.fields.Bzp**2,guards,overlap=direction is None)
+      self.genericpfem3d(sqrt(b),'B',
+      direction=direction,**kw)
+
+  def pfw(self,l_children=1,guards=0,direction=None,**kw):
+      e = self.getarray(self.fields.Exp**2+self.fields.Eyp**2+self.fields.Ezp**2,guards,overlap=direction is None)
+      b = self.getarray(self.fields.Bxp**2+self.fields.Byp**2+self.fields.Bzp**2,guards,overlap=direction is None)
+      self.genericpfem3d(sqrt(e+b),'W',
+      direction=direction,**kw)
 
   def sezax(self):
     pass
@@ -1196,6 +2055,24 @@ class EM3D(SubcycledPoissonSolver):
   def getbz(self,guards=0):
       return self.getarray(self.fields.Bz,guards)
         
+  def getexp(self,guards=0):
+      return self.getarray(self.fields.Exp,guards)
+
+  def geteyp(self,guards=0):
+      return self.getarray(self.fields.Eyp,guards)
+        
+  def getezp(self,guards=0):
+      return self.getarray(self.fields.Ezp,guards)
+        
+  def getbxp(self,guards=0):
+      return self.getarray(self.fields.Bxp,guards)
+
+  def getbyp(self,guards=0):
+      return self.getarray(self.fields.Byp,guards)
+        
+  def getbzp(self,guards=0):
+      return self.getarray(self.fields.Bzp,guards)
+        
   def getrho(self,guards=0):
       return self.getarray(self.fields.Rho,guards)
 
@@ -1206,9 +2083,13 @@ class EM3D(SubcycledPoissonSolver):
       dive = zeros(shape(self.fields.Ex),'d')
       f = self.fields
       if top.efetch[0]<>4:node2yee3d(f)
-      dive[1:-1,1:-1,1:-1] = (f.Ex[1:-1,1:-1,1:-1]-f.Ex[:-2,1:-1,1:-1])/f.dx \
-                           + (f.Ey[1:-1,1:-1,1:-1]-f.Ey[1:-1,:-2,1:-1])/f.dy \
-                           + (f.Ez[1:-1,1:-1,1:-1]-f.Ez[1:-1,1:-1,:-2])/f.dz 
+      if self.l_2dxz:
+        dive[1:-1,1:-1,1:-1] = (f.Ex[1:-1,0,1:-1]-f.Ex[:-2,0,1:-1])/f.dx \
+                             + (f.Ez[1:-1,0,1:-1]-f.Ez[1:-1,0,:-2])/f.dz 
+      else:
+        dive[1:-1,1:-1,1:-1] = (f.Ex[1:-1,1:-1,1:-1]-f.Ex[:-2,1:-1,1:-1])/f.dx \
+                             + (f.Ey[1:-1,1:-1,1:-1]-f.Ey[1:-1,:-2,1:-1])/f.dy \
+                             + (f.Ez[1:-1,1:-1,1:-1]-f.Ez[1:-1,1:-1,:-2])/f.dz 
       if top.efetch[0]<>4:yee2node3d(f)
       return dive
       
@@ -1222,10 +2103,15 @@ class EM3D(SubcycledPoissonSolver):
       Ex = f.Ex#self.getarray(f.Ex)
       Ey = f.Ey#self.getarray(f.Ey)
       Ez = f.Ez#self.getarray(f.Ez)
-      q.append( (sum(Ex[1:-1,1:-1,1:-1]-Ex[:-2,1:-1,1:-1])/f.dx \
-              +  sum(Ey[1:-1,1:-1,1:-1]-Ey[1:-1,:-2,1:-1])/f.dy \
-              +  sum(Ez[1:-1,1:-1,1:-1]-Ez[1:-1,1:-1,:-2])/f.dz) \
-              * eps0*(f.dx*f.dy*f.dz))
+      if self.l_2dxz:
+        q.append( (sum(Ex[1:-1,0,1:-1]-Ex[:-2,0,1:-1])/f.dx \
+                +  sum(Ez[1:-1,0,1:-1]-Ez[1:-1,0,:-2])/f.dz) \
+                * eps0*(f.dx*f.dz))
+      else:
+        q.append( (sum(Ex[1:-1,1:-1,1:-1]-Ex[:-2,1:-1,1:-1])/f.dx \
+                +  sum(Ey[1:-1,1:-1,1:-1]-Ey[1:-1,:-2,1:-1])/f.dy \
+                +  sum(Ez[1:-1,1:-1,1:-1]-Ez[1:-1,1:-1,:-2])/f.dz) \
+                * eps0*(f.dx*f.dy*f.dz))
       if top.efetch[0]<>4:yee2node3d(f)
     return q
 
@@ -1235,33 +2121,11 @@ class EM3D(SubcycledPoissonSolver):
       flist += [self.field_coarse.block.core.yf]
     q = []
     for f in flist:
-      q.append(sum(f.Rho)*(f.dx*f.dy*f.dz))
+      if self.l_2dxz:
+        q.append(sum(f.Rho)*(f.dx*f.dz))
+      else:
+        q.append(sum(f.Rho)*(f.dx*f.dy*f.dz))
     return q
-
-  def setbcparallelold(self):
-    if top.nzprocs>1:
-      down = top.procneighbors[0,2]
-      up   = top.procneighbors[1,2]
-      # --- check lower bound in z
-      if self.bounds[5] == periodic:
-        condu = up<>me
-      else:
-        condu = up>me
-      if self.bounds[4] == periodic:
-        condd = down<>me
-      else:
-        condd = down<me
-      if condu:
-        mpi.send(self.isactive,up)
-      if condd:
-        isactive,status = mpi.recv(down)
-        if isactive and self.isactive:self.bounds[4]=em3d.otherproc    
-      # --- check upper bound in z
-      if condd:
-        mpi.send(self.isactive,down)
-      if condu:
-        isactive,status = mpi.recv(up)
-        if isactive and self.isactive:self.bounds[5]=em3d.otherproc    
 
   def setbcparallel(self,dir):
     if dir==0:nprocs = top.nxprocs
@@ -1292,6 +2156,641 @@ class EM3D(SubcycledPoissonSolver):
         isactive,status = mpi.recv(up)
         if isactive and self.isactive:self.bounds[ib+1]=em3d.otherproc    
 
+  def connectblocks(self,blo,bup,dir):
+    if dir==0:
+      # --- X
+      loxropen = blo.xrbnd == openbc
+      loylopen = blo.ylbnd == openbc
+      loyropen = blo.yrbnd == openbc
+      lozlopen = blo.zlbnd == openbc
+      lozropen = blo.zrbnd == openbc
+
+      upxlopen = bup.xlbnd == openbc
+      upylopen = bup.ylbnd == openbc
+      upyropen = bup.yrbnd == openbc
+      upzlopen = bup.zlbnd == openbc
+      upzropen = bup.zrbnd == openbc
+
+      # --- sides
+      if loxropen: del blo.sidexr.syf # --- deallocate upper x PML block
+      if upxlopen: del bup.sidexl.syf # --- deallocate lower x PML block
+      blo.sidexr = bup.core       
+#      bup.sidexl = blo.core
+      bup.sidexl = EM3D_FIELDtype()
+      # --- edges
+      if loxropen and loylopen:del blo.edgexryl.syf
+      if loxropen and loyropen:del blo.edgexryr.syf
+      if loxropen and lozlopen:del blo.edgexrzl.syf
+      if loxropen and lozropen:del blo.edgexrzr.syf
+      if upxlopen and upylopen:del bup.edgexlyl.syf
+      if upxlopen and upyropen:del bup.edgexlyr.syf
+      if upxlopen and upzlopen:del bup.edgexlzl.syf
+      if upxlopen and upzropen:del bup.edgexlzr.syf
+      if loylopen:
+        blo.edgexryl = bup.sideyl
+      else:
+        blo.edgexryl = EM3D_FIELDtype()
+      if loyropen:
+        blo.edgexryr = bup.sideyr
+      else:
+        blo.edgexryr = EM3D_FIELDtype()
+      if lozlopen:
+        blo.edgexrzl = bup.sidezl
+      else:
+        blo.edgexrzl = EM3D_FIELDtype()
+      if lozropen:
+        blo.edgexrzr = bup.sidezr
+      else:
+        blo.edgexrzr = EM3D_FIELDtype()
+#      bup.edgexlyl = blo.sideyl
+#      bup.edgexlyr = blo.sideyr
+#      bup.edgexlzl = blo.sidezl
+#      bup.edgexlzr = blo.sidezr
+      bup.edgexlyl = EM3D_FIELDtype()
+      bup.edgexlyr = EM3D_FIELDtype()
+      bup.edgexlzl = EM3D_FIELDtype()
+      bup.edgexlzr = EM3D_FIELDtype()
+      # --- corners
+      if loxropen and loylopen and lozlopen:del blo.cornerxrylzl.syf
+      if loxropen and loyropen and lozlopen:del blo.cornerxryrzl.syf
+      if loxropen and loylopen and lozropen:del blo.cornerxrylzr.syf
+      if loxropen and loyropen and lozropen:del blo.cornerxryrzr.syf
+      if upxlopen and upylopen and upzlopen:del bup.cornerxlylzl.syf
+      if upxlopen and upyropen and upzlopen:del bup.cornerxlyrzl.syf
+      if upxlopen and upylopen and upzropen:del bup.cornerxlylzr.syf
+      if upxlopen and upyropen and upzropen:del bup.cornerxlyrzr.syf
+      if loylopen and lozlopen:
+        blo.cornerxrylzl = bup.edgeylzl
+      else:
+        blo.cornerxrylzl = EM3D_FIELDtype()
+      if loyropen and lozlopen:
+        blo.cornerxryrzl = bup.edgeyrzl
+      else:
+        blo.cornerxryrzl = EM3D_FIELDtype()
+      if loylopen and lozropen:
+        blo.cornerxrylzr = bup.edgeylzr
+      else:
+        blo.cornerxrylzr = EM3D_FIELDtype()
+      if loyropen and lozropen:
+        blo.cornerxryrzr = bup.edgeyrzr
+      else:
+        blo.cornerxryrzr = EM3D_FIELDtype()
+#      bup.cornerxlylzl = blo.edgeylzl
+#      bup.cornerxlyrzl = blo.edgeyrzl
+#      bup.cornerxlylzr = blo.edgeylzr
+#      bup.cornerxlyrzr = blo.edgeyrzr
+      bup.cornerxlylzl = EM3D_FIELDtype()
+      bup.cornerxlyrzl = EM3D_FIELDtype()
+      bup.cornerxlylzr = EM3D_FIELDtype()
+      bup.cornerxlyrzr = EM3D_FIELDtype()
+
+      blo.xrbnd = em3d.otherblock
+      bup.xlbnd = em3d.otherblock
+
+    if dir==1:
+      # --- Y
+      loyropen = blo.yrbnd == openbc
+      lozlopen = blo.zlbnd == openbc
+      lozropen = blo.zrbnd == openbc
+      loxlopen = blo.xlbnd == openbc
+      loxropen = blo.xrbnd == openbc
+
+      upylopen = bup.ylbnd == openbc
+      upzlopen = bup.zlbnd == openbc
+      upzropen = bup.zrbnd == openbc
+      upxlopen = bup.xlbnd == openbc
+      upxropen = bup.xrbnd == openbc
+
+      # --- sides
+      if loyropen: del blo.sideyr.syf # --- deallocate upper y PML block
+      if upylopen: del bup.sideyl.syf # --- deallocate lower y PML block
+      blo.sideyr = bup.core       
+#      bup.sideyl = blo.core
+      bup.sideyl = EM3D_FIELDtype()
+      # --- edges
+      if loyropen and lozlopen:del blo.edgeyrzl.syf
+      if loyropen and lozropen:del blo.edgeyrzr.syf
+      if loyropen and loxlopen:del blo.edgexlyr.syf
+      if loyropen and loxropen:del blo.edgexryr.syf
+      if upylopen and upzlopen:del bup.edgeylzl.syf
+      if upylopen and upzropen:del bup.edgeylzr.syf
+      if upylopen and upxlopen:del bup.edgexlyl.syf
+      if upylopen and upxropen:del bup.edgexryr.syf
+      if loxlopen:
+        blo.edgexlyr = bup.sidexl
+      else:
+        blo.edgexlyr = EM3D_FIELDtype()
+      if loxropen:
+        blo.edgexryr = bup.sidexr
+      else:
+        blo.edgexryr = EM3D_FIELDtype()
+      if lozlopen:
+        blo.edgeyrzl = bup.sidezl
+      else:
+        blo.edgeyrzl = EM3D_FIELDtype()
+      if lozropen:
+        blo.edgeyrzr = bup.sidezr
+      else:
+        blo.edgeyrzr = EM3D_FIELDtype()
+#      bup.edgexlyl = blo.sidexl
+#      bup.edgexryl = blo.sidexr
+#      bup.edgeylzl = blo.sidezl
+#      bup.edgeylzr = blo.sidezr
+      bup.edgexlyl = EM3D_FIELDtype()
+      bup.edgexryl = EM3D_FIELDtype()
+      bup.edgeylzl = EM3D_FIELDtype()
+      bup.edgeylzr = EM3D_FIELDtype()
+      # --- corners
+      if loyropen and lozlopen and loxlopen:del blo.cornerxlyrzl.syf
+      if loyropen and lozropen and loxlopen:del blo.cornerxlyrzr.syf
+      if loyropen and lozlopen and loxropen:del blo.cornerxryrzl.syf
+      if loyropen and lozropen and loxropen:del blo.cornerxryrzr.syf
+      if upylopen and upzlopen and upxlopen:del bup.cornerxlylzl.syf
+      if upylopen and upzropen and upxlopen:del bup.cornerxlylzr.syf
+      if upylopen and upzlopen and upxropen:del bup.cornerxrylzl.syf
+      if upylopen and upzropen and upxropen:del bup.cornerxrylzr.syf
+      if loxlopen and lozlopen:
+        blo.cornerxlyrzl = bup.edgexlzl
+      else:
+        blo.cornerxlyrzl = EM3D_FIELDtype()
+      if loxropen and lozlopen:
+        blo.cornerxryrzl = bup.edgexrzl
+      else:
+        blo.cornerxryrzl = EM3D_FIELDtype()
+      if loxlopen and lozropen:
+        blo.cornerxlyrzr = bup.edgexlzr
+      else:
+        blo.cornerxlyrzr = EM3D_FIELDtype()
+      if loxropen and lozropen:
+        blo.cornerxryrzr = bup.edgexrzr
+      else:
+        blo.cornerxryrzr = EM3D_FIELDtype()
+#      bup.cornerxlylzl = blo.edgexlzl
+#      bup.cornerxrylzl = blo.edgexrzl
+#      bup.cornerxlylzr = blo.edgexlzr
+#      bup.cornerxrylzr = blo.edgexrzr
+      bup.cornerxlylzl = EM3D_FIELDtype()
+      bup.cornerxrylzl = EM3D_FIELDtype()
+      bup.cornerxlylzr = EM3D_FIELDtype()
+      bup.cornerxrylzr = EM3D_FIELDtype()
+
+      blo.yrbnd = em3d.otherblock
+      bup.ylbnd = em3d.otherblock
+
+    if dir==2:
+      # --- Z
+      lozropen = blo.zrbnd == openbc
+      loxlopen = blo.xlbnd == openbc
+      loxropen = blo.xrbnd == openbc
+      loylopen = blo.ylbnd == openbc
+      loyropen = blo.yrbnd == openbc
+
+      upzlopen = bup.zlbnd == openbc
+      upxlopen = bup.xlbnd == openbc
+      upxropen = bup.xrbnd == openbc
+      upylopen = bup.ylbnd == openbc
+      upyropen = bup.yrbnd == openbc
+
+      # --- sides
+      if lozropen: del blo.sidezr.syf # --- deallocate upper y PML block
+      if upzlopen: del bup.sidezl.syf # --- deallocate lower y PML block
+      blo.sidezr = bup.core       
+#      bup.sidezl = blo.core
+      bup.sidezl = EM3D_FIELDtype()
+      # --- edges
+      if lozropen and loxlopen:del blo.edgexlzr.syf
+      if lozropen and loxropen:del blo.edgexrzr.syf
+      if lozropen and loylopen:del blo.edgeylzr.syf
+      if lozropen and loyropen:del blo.edgeyrzr.syf
+      if upzlopen and upxlopen:del bup.edgexlzl.syf
+      if upzlopen and upxropen:del bup.edgexrzl.syf
+      if upzlopen and upylopen:del bup.edgeylzl.syf
+      if upzlopen and upyropen:del bup.edgeyrzl.syf
+      if loxlopen:
+        blo.edgexlzr = bup.sidexl
+      else:
+        blo.edgexlzr = EM3D_FIELDtype()
+      if loxropen:
+        blo.edgexrzr = bup.sidexr
+      else:
+        blo.edgexrzr = EM3D_FIELDtype()
+      if loylopen:
+        blo.edgeylzr = bup.sideyl
+      else:
+        blo.edgeylzr = EM3D_FIELDtype()
+      if loyropen:
+        blo.edgeyrzr = bup.sideyr
+      else:
+        blo.edgeyrzr = EM3D_FIELDtype()
+ #     bup.edgexlzl = blo.sidexl
+ #     bup.edgexrzl = blo.sidexr
+ #     bup.edgeylzl = blo.sideyl
+ #     bup.edgeyrzl = blo.sideyr
+      bup.edgexlzl = EM3D_FIELDtype()
+      bup.edgexrzl = EM3D_FIELDtype()
+      bup.edgeylzl = EM3D_FIELDtype()
+      bup.edgeyrzl = EM3D_FIELDtype()
+      # --- corners
+      if lozropen and loxlopen and loylopen:del blo.cornerxlylzr.syf
+      if lozropen and loxropen and loylopen:del blo.cornerxrylzr.syf
+      if lozropen and loxlopen and loyropen:del blo.cornerxlyrzr.syf
+      if lozropen and loxropen and loyropen:del blo.cornerxryrzr.syf
+      if upzlopen and upxlopen and upylopen:del bup.cornerxlylzl.syf
+      if upzlopen and upxropen and upylopen:del bup.cornerxrylzl.syf
+      if upzlopen and upxlopen and upyropen:del bup.cornerxlyrzl.syf
+      if upzlopen and upxropen and upyropen:del bup.cornerxryrzl.syf
+      if loxlopen and loylopen:
+        blo.cornerxlylzr = bup.edgexlyl
+      else:
+        blo.cornerxlylzr = EM3D_FIELDtype()
+      if loxropen and loylopen:
+        blo.cornerxrylzr = bup.edgexryl
+      else:
+        blo.cornerxrylzr = EM3D_FIELDtype()
+      if loxlopen and loyropen:
+        blo.cornerxlyrzr = bup.edgexlyr
+      else:
+        blo.cornerxlyrzr = EM3D_FIELDtype()
+      if loxropen and loyropen:
+        blo.cornerxryrzr = bup.edgexryr
+      else:
+        blo.cornerxryrzr = EM3D_FIELDtype()
+   #   bup.cornerxlylzl = blo.edgexlyl
+   #   bup.cornerxrylzl = blo.edgexryl
+   #   bup.cornerxlyrzl = blo.edgexlyr
+   #   bup.cornerxryrzl = blo.edgexryr
+      bup.cornerxlylzl = EM3D_FIELDtype()
+      bup.cornerxrylzl = EM3D_FIELDtype()
+      bup.cornerxlyrzl = EM3D_FIELDtype()
+      bup.cornerxryrzl = EM3D_FIELDtype()
+
+      blo.zrbnd = em3d.otherblock
+      bup.zlbnd = em3d.otherblock
+
+  def setdtinit(self):
+    self.dtinit=top.dt
+
+  def setbcoverlaps(self):
+    xlbndmatch = False
+    xrbndmatch = False
+    ylbndmatch = False
+    yrbndmatch = False
+    zlbndmatch = False
+    zrbndmatch = False
+    for n in self.overlapshigher.keys():
+      block = self.root.listofblocks[n].block
+      blockcoarse = self.root.listofblocks[n].field_coarse.block
+      lower = self.overlapshigher[n][0]
+      upper = self.overlapshigher[n][1]
+      # --- check grid matching in upper x
+      if self.fullupper[0] == lower[0] and \
+         all(self.fulllower[1:] == lower[1:]) and \
+         all(self.fullupper[1:] == upper[1:]):
+         if not (self.block.sidexr is block):
+           self.connectblocks(self.block,block,0)
+           self.connectblocks(self.field_coarse.block,blockcoarse,0)
+         xrbndmatch = True
+      # --- check grid matching in upper y
+      if self.fullupper[1] == lower[1] and \
+         all(self.fulllower[0::2] == lower[0::2]) and \
+         all(self.fullupper[0::2] == upper[0::2]):
+         if not (self.block.sideyr is block):
+           self.connectblocks(self.block,block,1)
+           self.connectblocks(self.field_coarse.block,blockcoarse,1)
+         yrbndmatch = True
+      # --- check grid matching in upper z
+      if self.fullupper[2] == lower[2] and \
+         all(self.fulllower[:2] == lower[:2]) and \
+         all(self.fullupper[:2] == upper[:2]):
+         if not (self.block.sidezr is block):
+           self.connectblocks(self.block,block,2)
+           self.connectblocks(self.field_coarse.block,blockcoarse,2)
+         zrbndmatch = True
+    for n in self.overlapslower.keys():
+      block = self.root.listofblocks[n].block
+      blockcoarse = self.root.listofblocks[n].field_coarse.block
+      lower = self.overlapslower[n][0]
+      upper = self.overlapslower[n][1]
+      # --- check grid matching in lower x
+      if self.fulllower[0] == upper[0] and \
+         all(self.fulllower[1:] == lower[1:]) and \
+         all(self.fullupper[1:] == upper[1:]):
+         if not (self.block.sidexl is block):
+           self.connectblocks(block,self.block,0)
+           self.connectblocks(blockcoarse,self.field_coarse.block,0)
+         xlbndmatch = True
+      # --- check grid matching in lower y
+      if self.fulllower[1] == upper[1] and \
+         all(self.fulllower[0::2] == lower[0::2]) and \
+         all(self.fullupper[0::2] == upper[0::2]):
+         if not (self.block.sideyl is block):
+           self.connectblocks(block,self.block,1)
+           self.connectblocks(blockcoarse,self.field_coarse.block,1)
+         ylbndmatch = True
+      # --- check grid matching in lower z
+      if self.fulllower[2] == upper[2] and \
+         all(self.fulllower[:2] == lower[:2]) and \
+         all(self.fullupper[:2] == upper[:2]):
+         if not (self.block.sidezl is block):
+           self.connectblocks(block,self.block,2)
+           self.connectblocks(blockcoarse,self.field_coarse.block,2)
+         zlbndmatch = True
+
+    if not xlbndmatch and self.block.xlbnd == em3d.otherblock:
+           self.block.xlbnd = openbc
+           self.field_coarse.block.xlbnd = openbc
+           # --- TODO: allocate openbc
+    if not xrbndmatch and self.block.xrbnd == em3d.otherblock:
+           self.block.xrbnd = openbc
+           self.field_coarse.block.xrbnd = openbc
+           # --- TODO: allocate openbc
+    if not ylbndmatch and self.block.ylbnd == em3d.otherblock:
+           self.block.ylbnd = openbc
+           self.field_coarse.block.ylbnd = openbc
+           # --- TODO: allocate openbc
+    if not yrbndmatch and self.block.yrbnd == em3d.otherblock:
+           self.block.yrbnd = openbc
+           self.field_coarse.block.yrbnd = openbc
+           # --- TODO: allocate openbc
+    if not zlbndmatch and self.block.zlbnd == em3d.otherblock:
+           self.block.zlbnd = openbc
+           self.field_coarse.block.zlbnd = openbc
+           # --- TODO: allocate openbc
+    if not zrbndmatch and self.block.zrbnd == em3d.otherblock:
+           self.block.zrbnd = openbc
+           self.field_coarse.block.zrbnd = openbc
+           # --- TODO: allocate openbc
+
+    self.bounds = array([self.block.xlbnd,
+                         self.block.xrbnd,
+                         self.block.ylbnd,
+                         self.block.yrbnd,
+                         self.block.zlbnd,
+                         self.block.zrbnd])
+    if self.refinement is not None:
+      self.field_coarse.bounds = array([self.block.xlbnd,
+                           self.block.xrbnd,
+                           self.block.ylbnd,
+                           self.block.yrbnd,
+                           self.block.zlbnd,
+                           self.block.zrbnd])
+      
+  def checkconnections(self):
+    yeefieldtype = -1
+    if self.block.xlbnd==openbc:
+      if self.block.edgexlyl.fieldtype==yeefieldtype:
+         self.block.edgexlyl=EM3D_FIELDtype()
+         self.block.cornerxlylzl=EM3D_FIELDtype()
+         self.block.cornerxlylzr=EM3D_FIELDtype()
+      if self.block.edgexlyr.fieldtype==yeefieldtype:
+         self.block.edgexlyr=EM3D_FIELDtype()
+         self.block.cornerxlyrzl=EM3D_FIELDtype()
+         self.block.cornerxlyrzr=EM3D_FIELDtype()
+      if self.block.edgexlzl.fieldtype==yeefieldtype:
+         self.block.edgexlzl=EM3D_FIELDtype()
+         self.block.cornerxlylzl=EM3D_FIELDtype()
+         self.block.cornerxlyrzl=EM3D_FIELDtype()
+      if self.block.edgexlzr.fieldtype==yeefieldtype:
+         self.block.edgexlzr=EM3D_FIELDtype()
+         self.block.cornerxlylzr=EM3D_FIELDtype()
+         self.block.cornerxlyrzr=EM3D_FIELDtype()
+    if self.block.xrbnd==openbc:
+      if self.block.edgexryl.fieldtype==yeefieldtype:
+         self.block.edgexryl=EM3D_FIELDtype()
+         self.block.cornerxrylzl=EM3D_FIELDtype()
+         self.block.cornerxrylzr=EM3D_FIELDtype()
+      if self.block.edgexryr.fieldtype==yeefieldtype:
+         self.block.edgexryr=EM3D_FIELDtype()
+         self.block.cornerxryrzl=EM3D_FIELDtype()
+         self.block.cornerxryrzr=EM3D_FIELDtype()
+      if self.block.edgexrzl.fieldtype==yeefieldtype:
+         self.block.edgexrzl=EM3D_FIELDtype()
+         self.block.cornerxrylzl=EM3D_FIELDtype()
+         self.block.cornerxryrzl=EM3D_FIELDtype()
+      if self.block.edgexrzr.fieldtype==yeefieldtype:
+         self.block.edgexrzr=EM3D_FIELDtype()
+         self.block.cornerxrylzr=EM3D_FIELDtype()
+         self.block.cornerxryrzr=EM3D_FIELDtype()
+                 
+    if self.block.ylbnd==openbc:
+      if self.block.edgexlyl.fieldtype==yeefieldtype:
+         self.block.edgexlyl=EM3D_FIELDtype()
+         self.block.cornerxlylzl=EM3D_FIELDtype()
+         self.block.cornerxlylzr=EM3D_FIELDtype()
+      if self.block.edgexryl.fieldtype==yeefieldtype:
+         self.block.edgexryl=EM3D_FIELDtype()
+         self.block.cornerxrylzl=EM3D_FIELDtype()
+         self.block.cornerxrylzr=EM3D_FIELDtype()
+      if self.block.edgeylzl.fieldtype==yeefieldtype:
+         self.block.edgeylzl=EM3D_FIELDtype()
+         self.block.cornerxlylzl=EM3D_FIELDtype()
+         self.block.cornerxrylzl=EM3D_FIELDtype()
+      if self.block.edgeylzr.fieldtype==yeefieldtype:
+         self.block.edgeylzr=EM3D_FIELDtype()
+         self.block.cornerxlylzr=EM3D_FIELDtype()
+         self.block.cornerxrylzr=EM3D_FIELDtype()
+    if self.block.yrbnd==openbc:
+      if self.block.edgexlyr.fieldtype==yeefieldtype:
+         self.block.edgexlyr=EM3D_FIELDtype()
+         self.block.cornerxlyrzl=EM3D_FIELDtype()
+         self.block.cornerxlyrzr=EM3D_FIELDtype()
+      if self.block.edgexryr.fieldtype==yeefieldtype:
+         self.block.edgexryr=EM3D_FIELDtype()
+         self.block.cornerxryrzl=EM3D_FIELDtype()
+         self.block.cornerxryrzr=EM3D_FIELDtype()
+      if self.block.edgeyrzl.fieldtype==yeefieldtype:
+         self.block.edgeyrzl=EM3D_FIELDtype()
+         self.block.cornerxlyrzl=EM3D_FIELDtype()
+         self.block.cornerxryrzl=EM3D_FIELDtype()
+      if self.block.edgeyrzr.fieldtype==yeefieldtype:
+         self.block.edgeyrzr=EM3D_FIELDtype()
+         self.block.cornerxlyrzr=EM3D_FIELDtype()
+         self.block.cornerxryrzr=EM3D_FIELDtype()
+
+    if self.block.zlbnd==openbc:
+      if self.block.edgexlzl.fieldtype==yeefieldtype:
+         self.block.edgexlzl=EM3D_FIELDtype()
+         self.block.cornerxlylzl=EM3D_FIELDtype()
+         self.block.cornerxlyrzl=EM3D_FIELDtype()
+      if self.block.edgexrzl.fieldtype==yeefieldtype:
+         self.block.edgexrzl=EM3D_FIELDtype()
+         self.block.cornerxrylzl=EM3D_FIELDtype()
+         self.block.cornerxryrzl=EM3D_FIELDtype()
+      if self.block.edgeylzl.fieldtype==yeefieldtype:
+         self.block.edgeylzl=EM3D_FIELDtype()
+         self.block.cornerxlylzl=EM3D_FIELDtype()
+         self.block.cornerxrylzl=EM3D_FIELDtype()
+      if self.block.edgeyrzl.fieldtype==yeefieldtype:
+         self.block.edgeyrzl=EM3D_FIELDtype()
+         self.block.cornerxlyrzl=EM3D_FIELDtype()
+         self.block.cornerxryrzl=EM3D_FIELDtype()
+    if self.block.zrbnd==openbc:
+      if self.block.edgexlzr.fieldtype==yeefieldtype:
+         self.block.edgexlzr=EM3D_FIELDtype()
+         self.block.cornerxlylzr=EM3D_FIELDtype()
+         self.block.cornerxlyrzr=EM3D_FIELDtype()
+      if self.block.edgexrzr.fieldtype==yeefieldtype:
+         self.block.edgexrzr=EM3D_FIELDtype()
+         self.block.cornerxrylzr=EM3D_FIELDtype()
+         self.block.cornerxryrzr=EM3D_FIELDtype()
+      if self.block.edgeylzr.fieldtype==yeefieldtype:
+         self.block.edgeylzr=EM3D_FIELDtype()
+         self.block.cornerxlylzr=EM3D_FIELDtype()
+         self.block.cornerxrylzr=EM3D_FIELDtype()
+      if self.block.edgeyrzr.fieldtype==yeefieldtype:
+         self.block.edgeyrzr=EM3D_FIELDtype()
+         self.block.cornerxlyrzr=EM3D_FIELDtype()
+         self.block.cornerxryrzr=EM3D_FIELDtype()
+
+    if self.block.xlbnd==openbc and  self.block.ylbnd==openbc:
+      if self.block.cornerxlylzl.fieldtype==yeefieldtype:self.block.cornerxlylzl=EM3D_FIELDtype()
+      if self.block.cornerxlylzr.fieldtype==yeefieldtype:self.block.cornerxlylzr=EM3D_FIELDtype()
+    if self.block.xrbnd==openbc and  self.block.ylbnd==openbc:
+      if self.block.cornerxrylzl.fieldtype==yeefieldtype:self.block.cornerxrylzl=EM3D_FIELDtype()
+      if self.block.cornerxrylzr.fieldtype==yeefieldtype:self.block.cornerxrylzr=EM3D_FIELDtype()
+    if self.block.xlbnd==openbc and  self.block.yrbnd==openbc:
+      if self.block.cornerxlyrzl.fieldtype==yeefieldtype:self.block.cornerxlyrzl=EM3D_FIELDtype()
+      if self.block.cornerxlyrzr.fieldtype==yeefieldtype:self.block.cornerxlyrzr=EM3D_FIELDtype()
+    if self.block.xrbnd==openbc and  self.block.yrbnd==openbc:
+      if self.block.cornerxryrzl.fieldtype==yeefieldtype:self.block.cornerxryrzl=EM3D_FIELDtype()
+      if self.block.cornerxryrzr.fieldtype==yeefieldtype:self.block.cornerxryrzr=EM3D_FIELDtype()
+
+    if self.block.xlbnd==openbc and  self.block.zlbnd==openbc:
+      if self.block.cornerxlylzl.fieldtype==yeefieldtype:self.block.cornerxlylzl=EM3D_FIELDtype()
+      if self.block.cornerxlyrzl.fieldtype==yeefieldtype:self.block.cornerxlyrzl=EM3D_FIELDtype()
+    if self.block.xrbnd==openbc and  self.block.zlbnd==openbc:
+      if self.block.cornerxrylzl.fieldtype==yeefieldtype:self.block.cornerxlylzl=EM3D_FIELDtype()
+      if self.block.cornerxryrzl.fieldtype==yeefieldtype:self.block.cornerxlyrzl=EM3D_FIELDtype()
+    if self.block.xlbnd==openbc and  self.block.zrbnd==openbc:
+      if self.block.cornerxlylzr.fieldtype==yeefieldtype:self.block.cornerxlylzr=EM3D_FIELDtype()
+      if self.block.cornerxlyrzr.fieldtype==yeefieldtype:self.block.cornerxlyrzr=EM3D_FIELDtype()
+    if self.block.xrbnd==openbc and  self.block.zrbnd==openbc:
+      if self.block.cornerxrylzr.fieldtype==yeefieldtype:self.block.cornerxlylzr=EM3D_FIELDtype()
+      if self.block.cornerxryrzr.fieldtype==yeefieldtype:self.block.cornerxlyrzr=EM3D_FIELDtype()
+
+    if self.block.ylbnd==openbc and  self.block.zlbnd==openbc:
+      if self.block.cornerxlylzl.fieldtype==yeefieldtype:self.block.cornerxlylzl=EM3D_FIELDtype()
+      if self.block.cornerxrylzl.fieldtype==yeefieldtype:self.block.cornerxrylzl=EM3D_FIELDtype()
+    if self.block.yrbnd==openbc and  self.block.zlbnd==openbc:
+      if self.block.cornerxlyrzl.fieldtype==yeefieldtype:self.block.cornerxlylzl=EM3D_FIELDtype()
+      if self.block.cornerxryrzl.fieldtype==yeefieldtype:self.block.cornerxrylzl=EM3D_FIELDtype()
+    if self.block.ylbnd==openbc and  self.block.zrbnd==openbc:
+      if self.block.cornerxlylzr.fieldtype==yeefieldtype:self.block.cornerxlylzr=EM3D_FIELDtype()
+      if self.block.cornerxrylzr.fieldtype==yeefieldtype:self.block.cornerxrylzr=EM3D_FIELDtype()
+    if self.block.yrbnd==openbc and  self.block.zrbnd==openbc:
+      if self.block.cornerxlyrzr.fieldtype==yeefieldtype:self.block.cornerxlylzr=EM3D_FIELDtype()
+      if self.block.cornerxryrzr.fieldtype==yeefieldtype:self.block.cornerxrylzr=EM3D_FIELDtype()
+
+    if self.refinement is not None:
+      self.field_coarse.checkconnections()
+
+  def fillchilddomains(self):
+    parent = self.root.listofblocks[self.parents[0]]
+    xl,yl,zl = self.fullloweroverrefinement-parent.fulllower
+#    xu,yu,zu = self.fullupperoverrefinement-parent.fulllower+[1,1,1]
+    xu,yu,zu = self.fullupperoverrefinement-parent.fulllower+[0,0,0]
+
+    if self.bounds[0]==openbc:
+      xlguard = self.nguard[0]
+      xlguarddepos = self.nguarddepos[0]
+    else:
+      xlguard = 0
+      xlguarddepos = 0
+    if self.bounds[1]==openbc:
+      xrguard = self.nguard[0]
+      xrguarddepos = self.nguarddepos[0]
+    else:
+      xrguard = 0
+      xrguarddepos = 0
+
+    if self.bounds[2]==openbc:
+      ylguard = self.nguard[1]
+      ylguarddepos = self.nguarddepos[1]
+    else:
+      ylguard = 0
+      ylguarddepos = 0
+    if self.bounds[3]==openbc:
+      yrguard = self.nguard[1]
+      yrguarddepos = self.nguarddepos[1]
+    else:
+      yrguard = 0
+      yrguarddepos = 0
+
+    if self.bounds[4]==openbc:
+      zlguard = self.nguard[2]
+      zlguarddepos = self.nguarddepos[2]
+    else:
+      zlguard = 0
+      zlguarddepos = 0
+    if self.bounds[5]==openbc:
+      zrguard = self.nguard[2]
+      zrguarddepos = self.nguarddepos[2]
+    else:
+      zrguard = 0
+      zrguarddepos = 0
+
+    cd = parent.childdomains
+    cd[xl:xu,yl:yu,zl:zu]=parent.blocknumber
+    cd[xl+xlguarddepos:xu-xrguarddepos,
+       yl+ylguarddepos:yu-yrguarddepos,
+       zl+zlguarddepos:zu-zrguarddepos]=-self.blocknumber
+    cd[xl+xlguard:xu-xrguard,
+       yl+ylguard:yu-yrguard,
+       zl+zlguard:zu-zrguard]=self.blocknumber
+    
+  def fillchilddomainsold(self):
+    xl,yl,zl = self.fullloweroverrefinement
+    xu,yu,zu = self.fullupperoverrefinement+[1,1,1]
+
+    if self.bounds[0]==openbc:
+      xlguard = self.nguard[0]
+      xlguarddepos = self.nguarddepos[0]
+    else:
+      xlguard = 0
+      xlguarddepos = 0
+    if self.bounds[1]==openbc:
+      xrguard = self.nguard[0]
+      xrguarddepos = self.nguarddepos[0]
+    else:
+      xrguard = 0
+      xrguarddepos = 0
+
+    if self.bounds[2]==openbc:
+      ylguard = self.nguard[1]
+      ylguarddepos = self.nguarddepos[1]
+    else:
+      ylguard = 0
+      ylguarddepos = 0
+    if self.bounds[3]==openbc:
+      yrguard = self.nguard[1]
+      yrguarddepos = self.nguarddepos[1]
+    else:
+      yrguard = 0
+      yrguarddepos = 0
+
+    if self.bounds[4]==openbc:
+      zlguard = self.nguard[2]
+      zlguarddepos = self.nguarddepos[2]
+    else:
+      zlguard = 0
+      zlguarddepos = 0
+    if self.bounds[5]==openbc:
+      zrguard = self.nguard[2]
+      zrguarddepos = self.nguarddepos[2]
+    else:
+      zrguard = 0
+      zrguarddepos = 0
+
+    cd = self.root.listofblocks[self.parents[0]].childdomains
+    cd[xl:xu,yl:yu,zl:zu]=0
+    cd[xl+xlguarddepos:xu-xrguarddepos,
+       yl+ylguarddepos:yu-yrguarddepos,
+       zl+zlguarddepos:zu-zrguarddepos]=-self.blocknumber
+    cd[xl+xlguard:xu-xrguard,
+       yl+ylguard:yu-yrguard,
+       zl+zlguard:zu-zrguard]=self.blocknumber
+    
+
 def allocatesf(f,stencil):
     f.syf = EM3D_SPLITYEEFIELDtype()
     f.fieldtype = f.syf.fieldtype
@@ -1316,14 +2815,34 @@ def pyinit_3dem_block(nx, ny, nz,
                       stencil,
                       npass_smooth,
                       l_smooth_particle_fields,
-                      l_2dxz):
-  
-  procxl = top.procneighbors[0,0]
-  procxr = top.procneighbors[1,0]
-  procyl = top.procneighbors[0,1]
-  procyr = top.procneighbors[1,1]
-  proczl = top.procneighbors[0,2]
-  proczr = top.procneighbors[1,2]
+                      ncyclesperstep,
+                      l_2dxz,
+                      theta_damp):
+                      
+  if xlb == em3d.otherproc:
+    procxl = top.procneighbors[0,0]
+  else:
+    procxl = me
+  if xrb == em3d.otherproc:
+    procxr = top.procneighbors[1,0]
+  else:
+    procxr = me
+  if ylb == em3d.otherproc:
+    procyl = top.procneighbors[0,1]
+  else:
+    procyl = me
+  if yrb == em3d.otherproc:
+    procyr = top.procneighbors[1,1]
+  else:
+    procyr = me
+  if zlb == em3d.otherproc:
+    proczl = top.procneighbors[0,2]
+  else:
+    proczl = me
+  if zrb == em3d.otherproc:
+    proczr = top.procneighbors[1,2]
+  else:
+    proczr = me
   
   b = EM3D_BLOCKtype()
   b.core = EM3D_FIELDtype()
@@ -1331,7 +2850,7 @@ def pyinit_3dem_block(nx, ny, nz,
   b.core.fieldtype = b.core.yf.fieldtype
   b.core.proc = me
   b.core.yf.stencil=stencil
-  
+
   b.nx = nx
   b.ny = ny
   b.nz = nz
@@ -1364,7 +2883,8 @@ def pyinit_3dem_block(nx, ny, nz,
   f.nx = nx
   f.ny = ny
   f.nz = nz
-  if refinement is None and (all(npass_smooth==0) or not l_smooth_particle_fields):
+  f.theta_damp=theta_damp
+  if 0:#refinement is None and (all(npass_smooth==0) or not l_smooth_particle_fields):
     f.nxp = 0
     f.nyp = 0
     f.nzp = 0
@@ -1372,6 +2892,10 @@ def pyinit_3dem_block(nx, ny, nz,
     f.nxp = f.nx
     f.nyp = f.ny
     f.nzp = f.nz
+  if ncyclesperstep<0.75:
+    f.nxpnext = f.nx
+    f.nypnext = f.ny
+    f.nzpnext = f.nz
   if not l_pushf:
     f.nxf = 0
     f.nyf = 0
@@ -1380,6 +2904,10 @@ def pyinit_3dem_block(nx, ny, nz,
     f.nxf = f.nx
     f.nyf = f.ny
     f.nzf = f.nz
+  if f.theta_damp<>0.:
+    f.nxdamp=f.nx
+    f.nydamp=f.ny
+    f.nzdamp=f.nz
   f.nxguard = nxguard
   f.nyguard = nyguard
   f.nzguard = nzguard
@@ -1432,7 +2960,7 @@ def pyinit_3dem_block(nx, ny, nz,
 
   f.gchange()
   
-  if refinement is None and  (all(npass_smooth==0) or not l_smooth_particle_fields):
+  if 0:#refinement is None and  (all(npass_smooth==0) or not l_smooth_particle_fields):
     f.nxp = f.nx
     f.nyp = f.ny
     f.nzp = f.nz
@@ -1459,6 +2987,7 @@ def pyinit_3dem_block(nx, ny, nz,
   if xlb==openbc:
     allocatesf(b.sidexl,stencil)
     init_splitfield(b.sidexl.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz)
+  b.sidexl.proc=me
   if xlb==periodic:
     b.sidexl=b.core
   if xlb==em3d.otherproc:
@@ -1468,6 +2997,7 @@ def pyinit_3dem_block(nx, ny, nz,
   if xrb==openbc:
     allocatesf(b.sidexr,stencil)
     init_splitfield(b.sidexr.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz)
+  b.sidexr.proc=me
   if xrb==periodic:
     b.sidexr=b.core
   if xrb==em3d.otherproc:
@@ -1478,6 +3008,7 @@ def pyinit_3dem_block(nx, ny, nz,
   if ylb==openbc:
     allocatesf(b.sideyl,stencil)
     init_splitfield(b.sideyl.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz)
+  b.sideyl.proc=me
   if ylb==periodic:
     b.sideyl=b.core
   if ylb==em3d.otherproc:
@@ -1487,6 +3018,7 @@ def pyinit_3dem_block(nx, ny, nz,
   if yrb==openbc:
     allocatesf(b.sideyr,stencil)
     init_splitfield(b.sideyr.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz)
+  b.sideyr.proc=me
   if yrb==periodic:
     b.sideyr=b.core
   if yrb==em3d.otherproc:
@@ -1497,6 +3029,7 @@ def pyinit_3dem_block(nx, ny, nz,
   if zlb==openbc:
     allocatesf(b.sidezl,stencil)
     init_splitfield(b.sidezl.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz)
+  b.sidezl.proc=me
   if zlb==periodic:
     b.sidezl=b.core
   if zlb==em3d.otherproc:
@@ -1506,6 +3039,7 @@ def pyinit_3dem_block(nx, ny, nz,
   if zrb==openbc:
     allocatesf(b.sidezr,stencil)
     init_splitfield(b.sidezr.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz)
+  b.sidezr.proc=me
   if zrb==periodic:
     b.sidezr=b.core
   if zrb==em3d.otherproc:
