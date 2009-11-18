@@ -26,7 +26,8 @@ class EM2D(object):
                     'laser_amplitude':1.,'laser_profile':None,
                     'laser_gauss_width':None,'laser_angle':0.,
                     'laser_wavelength':None,'laser_wavenumber':None,
-                    'laser_frequency':None,'laser_source':2,
+                    'laser_frequency':None,'laser_source_x':-1.,
+                    'laser_source_v':0.,
                     'laser_focus':None,'laser_focus_velocity':0.,
                     'density_1d':False,'nfield_subcycle':1,
                     'autoset_timestep':true,'dtcoef':0.99}
@@ -154,7 +155,7 @@ class EM2D(object):
                 self.dx,self.dy,clight,mu0,
                 self.xmmin,self.ymmin,1,
                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
-    self.field.js = self.laser_source
+    self.field.laser_source_x = self.laser_source_x
     self.fpatches  = []
 
 
@@ -179,8 +180,8 @@ class EM2D(object):
                 self.dx/rap,self.dy/rap,clight,mu0,
                 self.xmmin+ixpatch*self.dx,self.ymmin+iypatch*self.dy,rap,
                 xlb,ylb,xrb,yrb)
-    self.fpatchcoarse.js = self.laser_source
-    self.fpatchfine.js = self.laser_source*rap
+    self.fpatchcoarse.laser_source_x = self.laser_source_x
+    self.fpatchfine.laser_source_x = self.laser_source_x
     self.fpatchfine.xminpatch_scatter = self.fpatchfine.xmin+em2d.ntamp_scatter*rap*self.fpatchfine.dx
     self.fpatchfine.xmaxpatch_scatter = self.fpatchfine.xmax-em2d.ntamp_scatter*rap*self.fpatchfine.dx
     self.fpatchfine.yminpatch_scatter = self.fpatchfine.ymin+em2d.ntamp_scatter*rap*self.fpatchfine.dy
@@ -611,8 +612,12 @@ class EM2D(object):
   def add_laser(self,field):
     if self.laser_profile is None: return
 
+    self.field.laser_source_x = self.laser_source_x
+    if self.laser_focus is not None:self.laser_focus+=self.laser_focus_v*top.dt
+    self.laser_source_x+=self.laser_source_v*top.dt
+
     if self.laser_amplitude_func is not None:
-      self.laser_amplitude = self.laser_amplitude_func(top.time)
+      self.laser_amplitude = self.laser_amplitude_func(top.time*(1.-self.laser_source_v/clight))
     elif self.laser_amplitude_table is not None:
       if top.time < self.laser_amplitude_table[0,1]:
         self.laser_amplitude = self.laser_amplitude_table[0,0]
@@ -640,11 +645,11 @@ class EM2D(object):
     if self.laser_frequency is not None:
       if self.laser_focus is not None:
 
-        Z_R = (self.laser_gauss_width**2)/(clight/self.laser_frequency) #>> angular freq.!!
-        z0 = self.laser_focus + self.laser_focus_velocity*top.time
+        Z_R = (self.laser_gauss_width**2)/(clight/(self.laser_frequency*(1.-self.laser_source_v/clight))) #>> angular freq.!!
+        z0 = self.laser_focus 
         z0 = -z0/Z_R  ## now measured in Rayleigh ranges; negative value means we're upstream
  
-        phi0_z=-top.time*self.laser_frequency - 0.5*arctan(z0)
+        phi0_z=-top.time*self.laser_frequency*(1.-self.laser_source_v/clight) - 0.5*arctan(z0)
         omgi_z_sqr=(1. + z0*z0) * (self.laser_gauss_width**2)
         phifac=0.5*z0/omgi_z_sqr   #>> factor of 0.5 due to slab model
         phase=phi0_z + phifac*(xx**2)
@@ -657,13 +662,13 @@ class EM2D(object):
         field.laser_profile[:-1]=qqww[:]
 
       else:
-        phase = (xx*sin(self.laser_angle)/clight-top.time)*self.laser_frequency
+        phase = (xx*sin(self.laser_angle)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
     else:
       phase = 0.
     if (self.l_elaser_out_plane):
-      field.Ez_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)#/clight
+      field.Ez_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)*(1.-self.laser_source_v/clight)#/clight
     else:
-      field.Bz_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)/clight
+      field.Bz_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)*(1.-self.laser_source_v/clight)/clight
 
   def solve(self,iwhich=0):
     if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
