@@ -168,12 +168,17 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,xpold,ypold,uzp,gaminv
         j(iixp0+2,ijxp0+2,2)=j(iixp0+2,ijxp0+2,2)-sd(18)
       
         ! Esirkepov deposition of Jx and Jy is over; now starts linear deposition of Jz
-        xmid=x-dts2dx*vx
-        ymid=y-dts2dy*vy
-
+!        xmid=x-dts2dx*vx
+!        ymid=y-dts2dy*vy
+        xmid=0.5*(x+xold)
+        ymid=0.5*(y+yold)
+        
         ! there is a shift of 0.5 since Ez/Jz are aligned with Bz, at the center of the cell
-        x = x-0.5
-        y = y-0.5
+! old
+!        x = x-0.5
+!        y = y-0.5
+        x = xmid-0.5
+        y = ymid-0.5
 
         wq = wq*vz*invsurf
       
