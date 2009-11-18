@@ -26,7 +26,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.28 2009/06/11 22:13:32 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.29 2009/11/18 22:26:00 jlvay Exp $"
 
 def warputilsdoc():
   import warputils
@@ -492,4 +492,63 @@ class RandomStream(object):
   def __setstate__(self,dict):
     # --- set the state when being unpickled
     self._state = dict['_state']
+
+def asciipart(s,name='particles.dat',format='%10.3e',mode='w'):
+  f = open(name,mode)
+  if type(s) is Species:
+    n=s.getn()
+    x=s.getx()
+    y=s.gety()
+    z=s.getz()
+    ux=s.getux()
+    uy=s.getuy()
+    uz=s.getuz()
+  else:
+    n=getn(js=s)
+    x=getx(js=s)
+    y=gety(js=s)
+    z=getz(js=s)
+    ux=getux(js=s)
+    uy=getuy(js=s)
+    uz=getuz(js=s)
+  npad = len(format%1.)
+  if mode=='w':
+    f.write('x'+' '*npad)
+    f.write('y'+' '*npad)
+    f.write('z'+' '*npad)
+    f.write('ux'+' '*(npad-1))
+    f.write('uy'+' '*(npad-1))
+    f.write('uz'+' '*(npad-1))
+    f.write('\n')
+  for i in range(n):
+    f.write(format%x[i]+' ')
+    f.write(format%y[i]+' ')
+    f.write(format%z[i]+' ')
+    f.write(format%ux[i]+' ')
+    f.write(format%uy[i]+' ')
+    f.write(format%uz[i]+' ')
+    f.write('\n')
+  f.close()
+    
+def bisection(f,a,b,f0=0.,xtol=1.e-10,maxiter=100):
+  """
+Given a function that is monotonic on an interval [a,b], finds x such that 
+f(x)=f0 using the bisection method.
+  """
+  if f(a)-f0 <= 0.:
+      lo = a
+      hi = b
+  else:
+      lo = b
+      hi = a
+ 
+  mid = lo + (hi-lo)/2
+  while (abs(hi-lo)>xtol) or ((mid <> lo) and (mid <> hi)):
+     if f(mid)-f0 <= 0.:
+        lo = mid
+     else:
+        hi = mid
+     mid = lo + (hi-lo)/2
+ 
+  return mid
 
