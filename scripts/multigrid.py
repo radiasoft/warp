@@ -585,31 +585,21 @@ class MultiGrid3D(SubcycledPoissonSolver):
     ix = self.getslicewithguard(None,None,self.nxguard)
     iy = self.getslicewithguard(None,None,self.nyguard)
     iz = self.getslicewithguard(None,None,self.nzguard)
-    Az = (fselfb/clight**2)*potentialp[ix,iy,iz]
+    Az = (fselfb/clight**2)*potentialp
     if self.ny > 0:
-      fieldp[0,:,1:-1,:,1] += (Az[:,2:,:] - Az[:,:-2,:])/(2.*self.dy)
+      ysu = self.nyguard+1
+      yeu = -self.nyguard+1 
+      if yeu==0:yeu=None
+      ysl = self.nyguard-1
+      yel = -self.nyguard-1
+      fieldp[0,:,:,:,1] += (Az[ix,ysu:yeu,iz] - Az[ix,ysl:yel,iz])/(2.*self.dy)
     if self.nx > 0:
-      fieldp[1,1:-1,:,:,1] -= (Az[2:,:,:] - Az[:-2,:,:])/(2.*self.dx)
-    if self.bounds[2] == 1 or self.l2symtry or self.l4symtry:
-      pass
-    elif self.bounds[2] == 0:
-      fieldp[0,:,0,:,1] += (Az[:,1,:] - Az[:,0,:])/(self.dy)
-    elif self.bounds[2] == 2:
-      fieldp[0,:,0,:,1] += (Az[:,1,:] - Az[:,-2,:])/(2.*self.dy)
-    if self.bounds[3] == 0:
-      fieldp[0,:,-1,:,1] += (Az[:,-1,:] - Az[:,-2,:])/(self.dy)
-    elif self.bounds[3] == 2:
-      fieldp[0,:,-1,:,1] += (Az[:,1,:] - Az[:,-2,:])/(2.*self.dy)
-    if self.bounds[0] == 1 or self.l4symtry:
-      pass
-    elif self.bounds[0] == 0:
-      fieldp[1,0,:,:,1] -= (Az[1,:,:] - Az[0,:,:])/(self.dx)
-    elif self.bounds[0] == 2:
-      fieldp[1,0,:,:,1] -= (Az[1,:,:] - Az[-2,:,:])/(2.*self.dx)
-    if self.bounds[1] == 0:
-      fieldp[1,-1,:,:,1] -= (Az[-1,:,:] - Az[-2,:,:])/(self.dx)
-    elif self.bounds[1] == 2:
-      fieldp[1,-1,:,:,1] -= (Az[1,:,:] - Az[-2,:,:])/(2.*self.dx)
+      xsu = self.nxguard+1
+      xeu = -self.nxguard+1 
+      if xeu==0:xeu=None
+      xsl = self.nxguard-1
+      xel = -self.nxguard-1
+      fieldp[1,:,:,:,1] -= (Az[xsu:xeu,iy,iz] - Az[xsl:xel,iy,iz])/(2.*self.dx)
     
   def adddadttoe(self,fieldp,fselfb,potentialp):
     """Ez = -dA/dt = -beta**2 dphi/dz"""
