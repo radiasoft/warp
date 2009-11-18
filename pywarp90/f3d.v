@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.208 $, $Date: 2009/11/16 23:54:57 $
+#@(#) File F3D.V, version $Revision: 3.209 $, $Date: 2009/11/18 02:21:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.208 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.209 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -798,10 +798,25 @@ intercepts_and(ileft:ConductorInterceptType,iright:ConductorInterceptType,
                iresult:ConductorInterceptType) subroutine
 intercepts_not(ileft:ConductorInterceptType,
                iresult:ConductorInterceptType) subroutine
+zplaneconductorfnew(zcent:real,zsign:real,
+                    intercepts:ConductorInterceptType,fuzz:real) subroutine
+planeconductorfnew(z0:real,zsign:real,theta:real,phi:real,
+                   xcent:real,ycent:real,zcent:real,
+                   intercepts:ConductorInterceptType,fuzz:real) subroutine
 zcylinderconductorfnew(rad:real,length:real,xcent:real,ycent:real,zcent:real,
                        intercepts:ConductorInterceptType,fuzz:real) subroutine
 zcylinderoutconductorfnew(rad:real,length:real,xcent:real,ycent:real,zcent:real,
                        intercepts:ConductorInterceptType,fuzz:real) subroutine
+boxconductorfnew(xsize:real,ysize:real,zsize:real,
+                 xcent:real,ycent:real,zcent:real,
+                 intercepts:ConductorInterceptType,fuzz:real) subroutine
+sphereconductorfnew(rad:real,xcent:real,ycent:real,zcent:real,
+                    intercepts:ConductorInterceptType,fuzz:real) subroutine
+zsrfrvconductorfnew(nn:integer,rsrf(nn):real,zsrf(nn):real,
+                    rad(nn-1):real,rc(nn-1):real,zc(nn-1):real,
+                    xcent:real,ycent:real,zcent:real,
+                    intercepts:ConductorInterceptType,fuzz:real) subroutine
+
 solvequartic(a0:real,a1:real,a2:real,a3:real,x1:complex,x2:complex,x3:complex,x4:complex) subroutine
 setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
                    dels:real,parity:integer,fuzz0:real,fuzz1:real,fuzzsign:integer,

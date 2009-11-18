@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.78 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.79 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -568,9 +568,6 @@ c                   --- delmy
                       conductors%evensubgrid%volt(:,ne) = volt
                       conductors%evensubgrid%numb(:,ne) = numb
                       conductors%evensubgrid%ilevel(ne) = intercepts%mglevel
-                  if (delz > 1) then
-                    print*,"delz > 1.",delz,ix,iy,iz,delx,dely,ne
-                  endif
                     else
                       no = no + 1
                       conductors%oddsubgrid%indx(:,no) = indx
@@ -1487,6 +1484,94 @@ c A positive zsign means that the conductor is the region above zcent.
       return
       end
 c=======================================================================
+      subroutine ZPlaneConductorFnew(zcent,zsign,
+     &                               intercepts,fuzz)
+      use ConductorInterceptTypeModule
+      real(kind=8):: zcent,zsign
+      type(ConductorInterceptType):: intercepts
+      real(kind=8):: fuzz
+
+c Finds the intercepts of the object with grid lines along the three axis.
+c A positive zsign means that the conductor is the region above zcent.
+
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmmax,ymmax,zmmax
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: zz
+
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+
+      intercepts%nxicpt = 2
+      intercepts%nyicpt = 2
+      intercepts%nzicpt = 2
+      call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+
+      do iz=0,nz
+        zz = zmmin + iz*dz
+        do iy=0,ny
+          if ((zsign > 0. .and. zz > zcent) .or.
+     &        (zsign < 0. .and. zz < zcent))then
+c           --- inside the object
+            xintercepts(1,iy,iz) = -LARGEPOS
+            xintercepts(2,iy,iz) = +LARGEPOS
+          else
+c           --- outside the object
+            xintercepts(1,iy,iz) = +LARGEPOS
+            xintercepts(2,iy,iz) = +LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iz=0,nz
+        zz = zmmin + iz*dz
+        do ix=0,nx
+          if ((zsign > 0. .and. zz > zcent) .or.
+     &        (zsign < 0. .and. zz < zcent))then
+c           --- inside the object
+            yintercepts(1,ix,iz) = -LARGEPOS
+            yintercepts(2,ix,iz) = +LARGEPOS
+          else
+c           --- outside the object
+            yintercepts(1,ix,iz) = +LARGEPOS
+            yintercepts(2,ix,iz) = +LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iy=0,ny
+        do ix=0,nx
+          if (zsign > 0.) then
+            zintercepts(1,ix,iy) = zcent
+            zintercepts(2,ix,iy) = +LARGEPOS
+          else
+            zintercepts(1,ix,iy) = -LARGEPOS
+            zintercepts(2,ix,iy) = zcent
+          endif
+        enddo
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine ZPlaneConductorD(zcent,zsign,n,x,y,z,distance)
       real(kind=8):: zcent,zsign
       integer(ISZ):: n
@@ -1609,6 +1694,147 @@ c     --- These ensure that divisions by zero do not happen.
           delpz(i) = LARGEPOS*zs
         endif
 
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine PlaneConductorFnew(z0,zsign,theta,phi,xcent,ycent,zcent,
+     &                              intercepts,fuzz)
+      use ConductorInterceptTypeModule
+      real(kind=8):: z0,zsign,theta,phi,xcent,ycent,zcent
+      type(ConductorInterceptType):: intercepts
+      real(kind=8):: fuzz
+
+c Finds the intercepts of the object with grid lines along the three axis.
+c A positive zsign means that the conductor is the region above zcent.
+
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmmax,ymmax,zmmax
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: ctheta,stheta,cphi,sphi,cci,sci,si,zp
+      real(kind=8):: xx,yy,zz
+      real(kind=8):: xi,yi,zi
+
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+
+      intercepts%nxicpt = 2
+      intercepts%nyicpt = 2
+      intercepts%nzicpt = 2
+      call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+
+      ctheta = cos(theta)
+      stheta = sin(theta)
+      cphi = cos(phi)
+      sphi = sin(phi)
+      if (ctheta*cphi .ne. 0.) cci = 1./(ctheta*cphi)
+      if (stheta*cphi .ne. 0.) sci = 1./(stheta*cphi)
+      if (sphi .ne. 0.) si  = 1./(sphi)
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do iy=0,ny
+          yy = ymmin + iy*dy - ycent
+          zp = yy*sphi + zz*ctheta*cphi
+          if (stheta*cphi == 0.) then
+            if ((zsign > 0. .and. zp > z0) .or.
+     &          (zsign < 0. .and. zp < z0))then
+c             --- inside the object
+              xintercepts(1,iy,iz) = -LARGEPOS
+              xintercepts(2,iy,iz) = +LARGEPOS
+            else
+c             --- outside the object
+              xintercepts(1,iy,iz) = +LARGEPOS
+              xintercepts(2,iy,iz) = +LARGEPOS
+            endif
+          else
+            xi = (z0 - zz*ctheta*cphi - yy*sphi)*sci
+            if (zsign > 0.) then
+              xintercepts(1,iy,iz) = xi
+              xintercepts(2,iy,iz) = +LARGEPOS
+            else
+              xintercepts(1,iy,iz) = -LARGEPOS
+              xintercepts(2,iy,iz) = xi
+            endif
+          endif
+        enddo
+      enddo
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          zp = xx*stheta*cphi + zz*ctheta*cphi
+          if (sphi == 0.) then
+            if ((zsign > 0. .and. zp > z0) .or.
+     &          (zsign < 0. .and. zp < z0))then
+c             --- inside the object
+              yintercepts(1,ix,iz) = -LARGEPOS
+              yintercepts(2,ix,iz) = +LARGEPOS
+            else
+c             --- outside the object
+              yintercepts(1,ix,iz) = +LARGEPOS
+              yintercepts(2,ix,iz) = +LARGEPOS
+            endif
+          else
+            yi = (z0 - xx*stheta*cphi - zz*ctheta*cphi)*si
+            if (zsign > 0.) then
+              yintercepts(1,ix,iz) = yi
+              yintercepts(2,ix,iz) = +LARGEPOS
+            else
+              yintercepts(1,ix,iz) = -LARGEPOS
+              yintercepts(2,ix,iz) = yi
+            endif
+          endif
+        enddo
+      enddo
+
+      do iy=0,ny
+        yy = ymmin + iy*dy - ycent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          zp = xx*stheta*cphi + yy*sphi
+          if (ctheta*cphi == 0.) then
+            if ((zsign > 0. .and. zp > z0) .or.
+     &          (zsign < 0. .and. zp < z0)) then
+c             --- inside the object
+              zintercepts(1,ix,iy) = -LARGEPOS
+              zintercepts(2,ix,iy) = +LARGEPOS
+            else
+c             --- outside the object
+              zintercepts(1,ix,iy) = +LARGEPOS
+              zintercepts(2,ix,iy) = +LARGEPOS
+            endif
+          else
+            zi = (z0 - xx*stheta*cphi - yy*sphi)*cci
+            if (zsign > 0.) then
+              zintercepts(1,ix,iy) = zcent
+              zintercepts(2,ix,iy) = +LARGEPOS
+            else
+              zintercepts(1,ix,iy) = -LARGEPOS
+              zintercepts(2,ix,iy) = zcent
+            endif
+          endif
+        enddo
       enddo
 
       return
@@ -1789,6 +2015,91 @@ c The notation is that a negative distance means that the point is inside.
       return
       end
 c=======================================================================
+      subroutine BoxConductorFnew(xsize,ysize,zsize,xcent,ycent,zcent,
+     &                            intercepts,fuzz)
+      use ConductorInterceptTypeModule
+      real(kind=8):: xsize,ysize,zsize,xcent,ycent,zcent
+      type(ConductorInterceptType):: intercepts
+      real(kind=8):: fuzz
+
+c Finds the intercepts of the object with grid lines along the three axis.
+
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmmax,ymmax,zmmax
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: xx,yy,zz
+
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+
+      intercepts%nxicpt = 2
+      intercepts%nyicpt = 2
+      intercepts%nzicpt = 2
+      call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do iy=0,ny
+          yy = ymmin + iy*dy - ycent
+          if (abs(yy) <= ysize*0.5 .and. abs(zz) <= zsize*0.5) then
+            xintercepts(1,iy,iz) = -xsize*0.5 + xcent
+            xintercepts(2,iy,iz) = +xsize*0.5 + xcent
+          else
+            xintercepts(1,iy,iz) = +LARGEPOS
+            xintercepts(2,iy,iz) = +LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          if (abs(xx) <= xsize*0.5 .and. abs(zz) <= zsize*0.5) then
+            yintercepts(1,ix,iz) = -ysize*0.5 + ycent
+            yintercepts(2,ix,iz) = +ysize*0.5 + ycent
+          else
+            yintercepts(1,ix,iz) = +LARGEPOS
+            yintercepts(2,ix,iz) = +LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iy=0,ny
+        yy = ymmin + iy*dy - ycent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          if (abs(xx) <= xsize*0.5 .and. abs(yy) <= ysize*0.5) then
+            zintercepts(1,ix,iy) = -zsize*0.5 + zcent
+            zintercepts(2,ix,iy) = +zsize*0.5 + zcent
+          else
+            zintercepts(1,ix,iy) = +LARGEPOS
+            zintercepts(2,ix,iy) = +LARGEPOS
+          endif
+        enddo
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine BoxConductorD(xsize,ysize,zsize,xcent,ycent,zcent,
      &                         n,x,y,z,distance)
       real(kind=8):: xsize,ysize,zsize,xcent,ycent,zcent
@@ -1798,7 +2109,6 @@ c=======================================================================
 
 c Finds distances from a box.
 c The notation is that a negative distance means that the point is inside.
-c A positive zsign means that the conductor is the region above zcent.
 
       integer(ISZ):: i
       real(kind=8):: xd,yd,zd,dd
@@ -2077,17 +2387,10 @@ c Finds the intercepts of the object with grid lines along the three axis.
       real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
-      integer(ISZ):: nxicpt,nyicpt,nzicpt
 
       real(kind=8),pointer:: xintercepts(:,:,:)
       real(kind=8),pointer:: yintercepts(:,:,:)
       real(kind=8),pointer:: zintercepts(:,:,:)
-      real(kind=8),pointer:: xvoltages(:,:,:)
-      real(kind=8),pointer:: yvoltages(:,:,:)
-      real(kind=8),pointer:: zvoltages(:,:,:)
-      integer(ISZ),pointer:: xcondids(:,:,:)
-      integer(ISZ),pointer:: ycondids(:,:,:)
-      integer(ISZ),pointer:: zcondids(:,:,:)
 
       real(kind=8):: zmin,zmax
       integer(ISZ):: ix,iy,iz
@@ -2111,20 +2414,14 @@ c Finds the intercepts of the object with grid lines along the three axis.
       xintercepts => intercepts%xintercepts
       yintercepts => intercepts%yintercepts
       zintercepts => intercepts%zintercepts
-      xvoltages => intercepts%xvoltages
-      yvoltages => intercepts%yvoltages
-      zvoltages => intercepts%zvoltages
-      xcondids => intercepts%xcondids
-      ycondids => intercepts%ycondids
-      zcondids => intercepts%zcondids
 
       zmin = -length*0.5
       zmax = +length*0.5
 
       do iz=0,nz
+        zz = zmmin + iz*dz - zcent
         do iy=0,ny
           yy = ymmin + iy*dy - ycent
-          zz = zmmin + iz*dz - zcent
           if (zmin-fuzz <= zz .and. zz <= zmax+fuzz .and.
      &        abs(yy) <= rad) then
             xintercepts(1,iy,iz) = xcent - sqrt(max(0.,rad**2 - yy**2))
@@ -2136,9 +2433,9 @@ c Finds the intercepts of the object with grid lines along the three axis.
       enddo
 
       do iz=0,nz
+        zz = zmmin + iz*dz - zcent
         do ix=0,nx
           xx = xmmin + ix*dx - xcent
-          zz = zmmin + iz*dz - zcent
           if (zmin-fuzz <= zz .and. zz <= zmax+fuzz .and.
      &        abs(xx) <= rad) then
             yintercepts(1,ix,iz) = ycent - sqrt(max(0.,rad**2 - xx**2))
@@ -2150,9 +2447,9 @@ c Finds the intercepts of the object with grid lines along the three axis.
       enddo
 
       do iy=0,ny
+        yy = ymmin + iy*dy - ycent
         do ix=0,nx
           xx = xmmin + ix*dx - xcent
-          yy = ymmin + iy*dy - ycent
           rsq = xx**2 + yy**2
           if (rsq <= rad**2) then
             zintercepts(1,ix,iy) = zcent + zmin
@@ -2639,17 +2936,10 @@ c Finds the intercepts of the object with grid lines along the three axis.
       real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
-      integer(ISZ):: nxicpt,nyicpt,nzicpt
 
       real(kind=8),pointer:: xintercepts(:,:,:)
       real(kind=8),pointer:: yintercepts(:,:,:)
       real(kind=8),pointer:: zintercepts(:,:,:)
-      real(kind=8),pointer:: xvoltages(:,:,:)
-      real(kind=8),pointer:: yvoltages(:,:,:)
-      real(kind=8),pointer:: zvoltages(:,:,:)
-      integer(ISZ),pointer:: xcondids(:,:,:)
-      integer(ISZ),pointer:: ycondids(:,:,:)
-      integer(ISZ),pointer:: zcondids(:,:,:)
 
       real(kind=8):: zmin,zmax
       integer(ISZ):: ix,iy,iz
@@ -2673,20 +2963,14 @@ c Finds the intercepts of the object with grid lines along the three axis.
       xintercepts => intercepts%xintercepts
       yintercepts => intercepts%yintercepts
       zintercepts => intercepts%zintercepts
-      xvoltages => intercepts%xvoltages
-      yvoltages => intercepts%yvoltages
-      zvoltages => intercepts%zvoltages
-      xcondids => intercepts%xcondids
-      ycondids => intercepts%ycondids
-      zcondids => intercepts%zcondids
 
       zmin = -length*0.5
       zmax = +length*0.5
 
       do iz=0,nz
+        zz = zmmin + iz*dz - zcent
         do iy=0,ny
           yy = ymmin + iy*dy - ycent
-          zz = zmmin + iz*dz - zcent
           if (zmin-fuzz <= zz .and. zz <= zmax+fuzz) then
             if (abs(yy) <= rad) then
               xintercepts(1,iy,iz) = -LARGEPOS
@@ -2704,9 +2988,9 @@ c Finds the intercepts of the object with grid lines along the three axis.
       enddo
 
       do iz=0,nz
+        zz = zmmin + iz*dz - zcent
         do ix=0,nx
           xx = xmmin + ix*dx - xcent
-          zz = zmmin + iz*dz - zcent
           if (zmin-fuzz <= zz .and. zz <= zmax+fuzz) then
             if (abs(xx) <= rad) then
               yintercepts(1,ix,iz) = -LARGEPOS
@@ -2724,9 +3008,9 @@ c Finds the intercepts of the object with grid lines along the three axis.
       enddo
 
       do iy=0,ny
+        yy = ymmin + iy*dy - ycent
         do ix=0,nx
           xx = xmmin + ix*dx - xcent
-          yy = ymmin + iy*dy - ycent
           rsq = xx**2 + yy**2
           if (rsq >= rad**2) then
             zintercepts(1,ix,iy) = zcent + zmin
@@ -3171,6 +3455,94 @@ c       --- The point is on the sphere exactly.
           endif
         endif
 
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine SphereConductorFnew(rad,xcent,ycent,zcent,
+     &                               intercepts,fuzz)
+      use ConductorInterceptTypeModule
+      real(kind=8):: rad,xcent,ycent,zcent
+      type(ConductorInterceptType):: intercepts
+      real(kind=8):: fuzz
+
+c Finds the intercepts of the object with grid lines along the three axis.
+
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmmax,ymmax,zmmax
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: xx,yy,zz,rsq
+
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+
+      intercepts%nxicpt = 2
+      intercepts%nyicpt = 2
+      intercepts%nzicpt = 2
+      call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do iy=0,ny
+          yy = ymmin + iy*dy - ycent
+          rsq = yy**2 + zz**2
+          if (rsq <= rad**2) then
+            xintercepts(1,iy,iz) = xcent - sqrt(rad**2 - rsq)
+            xintercepts(2,iy,iz) = xcent + sqrt(rad**2 - rsq)
+          else
+            xintercepts(1,iy,iz) = +LARGEPOS
+            xintercepts(2,iy,iz) = +LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          rsq = xx**2 + zz**2
+          if (rsq <= rad**2) then
+            yintercepts(1,ix,iz) = ycent - sqrt(rad**2 - rsq)
+            yintercepts(2,ix,iz) = ycent + sqrt(rad**2 - rsq)
+          else
+            yintercepts(1,ix,iz) = +LARGEPOS
+            yintercepts(2,ix,iz) = +LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iy=0,ny
+        yy = ymmin + iy*dy - ycent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          rsq = xx**2 + yy**2
+          if (rsq <= rad**2) then
+            zintercepts(1,ix,iy) = zcent - sqrt(rad**2 - rsq)
+            zintercepts(2,ix,iy) = zcent + sqrt(rad**2 - rsq)
+          else
+            zintercepts(1,ix,iy) = +LARGEPOS
+            zintercepts(2,ix,iy) = +LARGEPOS
+          endif
+        enddo
       enddo
 
       return
@@ -5784,6 +6156,360 @@ c normal angle of the surface at that point.
         itheta(i) = 0.
         iphi(i) = 0.
       enddo
+
+      return
+      end
+c=======================================================================
+c=======================================================================
+c=======================================================================
+      subroutine ZSrfrvConductorFnew(nn,rsrf,zsrf,rad,rc,zc,xcent,ycent,zcent,
+     &                               intercepts,fuzz)
+      use Constant
+      use ConductorInterceptTypeModule
+      integer(ISZ):: nn
+      real(kind=8):: rsrf(nn),zsrf(nn),rad(nn-1),rc(nn-1),zc(nn-1)
+      real(kind=8):: xcent,ycent,zcent
+      type(ConductorInterceptType):: intercepts
+      real(kind=8):: fuzz
+
+c Finds the intercepts of the object with grid lines along the three axis.
+c A positive zsign means that the conductor is the region above zcent.
+
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmmax,ymmax,zmmax
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxicpt,nyicpt,nzicpt
+
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+
+      real(kind=8),pointer:: rmin(:),rmax(:)
+      real(kind=8),pointer:: zmin(:),zmax(:)
+      real(kind=8),pointer:: th1(:),th2(:)
+      integer(ISZ):: ix,iy,iz,ii
+      real(kind=8):: xx,yy,zz
+      real(kind=8):: minth,maxth,rr,ww,rsq
+      real(kind=8):: x1,x2,y1,y2,t1,t2,z1
+      logical(ISZ):: l1,l2
+      integer(ISZ):: nt,it
+      real(kind=8):: rt(4),tt
+
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+
+      intercepts%nxicpt = 4*nn
+      intercepts%nyicpt = 4*nn
+      intercepts%nzicpt = 4*nn
+      call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+
+      allocate(rmin(nn-1),rmax(nn-1))
+      allocate(zmin(nn-1),zmax(nn-1))
+      allocate(th1(nn-1),th2(nn-1))
+
+      do ii=1,nn-1
+
+        rmin(ii) = min(rsrf(ii),rsrf(ii+1))
+        rmax(ii) = max(rsrf(ii),rsrf(ii+1))
+        zmin(ii) = min(zsrf(ii),zsrf(ii+1))
+        zmax(ii) = max(zsrf(ii),zsrf(ii+1))
+
+        if (rad(ii) .ne. LARGEPOS) then
+
+c         --- The angle in the r-z plane of the start and end of the segment
+          th1(ii) = atan2(rsrf(ii) - rc(ii),zsrf(ii) - zc(ii))
+          th2(ii) = atan2(rsrf(ii+1) - rc(ii),zsrf(ii+1) - zc(ii))
+
+c         --- If rad > 0, then the angle from start to end should be
+c         --- increasing. Otherwise decreasing.
+c         --- Note that both th1 and th2 will also be within the
+c         --- range of -pi to 3*pi.
+          if (th1(ii) > th2(ii) .and. rad(ii) > 0.) then
+            th2(ii) = th2(ii) + 2*pi
+          endif
+          if (th1(ii) < th2(ii) .and. rad(ii) < 0.) then
+            th1(ii) = th1(ii) + 2*pi
+          endif
+
+c         --- If the range of angles includes the extremum of the circle,
+c         --- then the mins or maxs may need to be recalculated.
+          minth = min(th1(ii),th2(ii))
+          maxth = max(th1(ii),th2(ii))
+          if ((minth < -pi*0.5 .and. maxth > -pi*0.5) .or.
+     &        (minth < pi*1.5 .and. maxth > pi*1.5)) then
+            rmin(ii) = rc(ii) - rc(ii)
+          endif
+          if ((minth < pi*0.5 .and. maxth > pi*0.5) .or.
+     &        (minth < pi*2.5 .and. maxth > pi*2.5)) then
+            rmax(ii) = rc(ii) + rc(ii)
+          endif
+          if (minth < pi .and. maxth > pi) then
+            zmin(ii) = zc(ii) - rad(ii)
+          endif
+          if ((minth < 0. .and. maxth > 0.) .or.
+     &        (minth < 2*pi .and. maxth > 2*pi)) then
+            zmax(ii) = zc(ii) + rad(ii)
+          endif
+
+        endif
+
+      enddo
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do iy=0,ny
+          yy = ymmin + iy*dy - ycent
+
+          nxicpt = 1
+
+c         --- Loop over r-z line segments
+          do ii=1,nn-1
+
+c           --- Check if the z of the grid is within the z range of the segment
+            if (zmin(ii) <= zz .and. zz < zmax(ii)) then
+
+              if (rad(ii) == LARGEPOS) then
+c               --- A straight line segment is straightforward
+                ww = (zz - zsrf(ii))/(zsrf(ii+1) - zsrf(ii))
+                rr = rsrf(ii)*(1.-ww) + rsrf(ii+1)*ww
+                if (yy**2 <= rr**2) then
+                  x1 = -sqrt(rr**2 - yy**2)
+                  x2 = +sqrt(rr**2 - yy**2)
+                  xintercepts(nxicpt,iy,iz) = x1 + xcent
+                  nxicpt = nxicpt + 1
+                  xintercepts(nxicpt,iy,iz) = x2 + xcent
+                  nxicpt = nxicpt + 1
+                endif
+              else
+c               --- A circular arc is complicated. This is torus.
+c               --- There can be up to four intercept points.
+c               --- Check each one, starting with the one that has the
+c               --- smallest x intercept. Only the first two have to be
+c               --- carefully checked. The second two would be the same,
+c               --- but with the opposite sign of x. This checks if the
+c               --- angle of the intercept point is within the angular
+c               --- range of the arc. Note that the starting point, th1,
+c               --- is included, whereas the ending point, th2, is not.
+                minth = min(th1(ii),th2(ii))
+                maxth = max(th1(ii),th2(ii))
+                rsq = rad(ii)**2 - (zz - zc(ii))**2
+                nt = 0
+                if (rsq > 0.) then
+                  rr = sqrt(rsq)
+                  tt = atan2(+rr,zz - zc(ii))
+                  if (tt < minth) tt = tt + 2*pi
+                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
+                    nt = nt + 1
+                    rt(nt) = -rc(ii) - rr
+                  endif
+                  tt = atan2(-rr,zz - zc(ii))
+                  if (tt < minth) tt = tt + 2*pi
+                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
+                    nt = nt + 1
+                    rt(nt) = -rc(ii) + rr
+                  endif
+                else
+c                 --- The interception point is at the extreme upper
+c                 --- or lower edge of the torus.
+                  tt = atan2(0.,zz - zc(ii))
+                  if (tt < minth) tt = tt + 2*pi
+                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
+                    nt = nt + 1
+                    rt(nt) = -rc(ii)
+                  endif
+                endif
+
+c               --- Get the possible upper points.
+                if (nt == 1) then
+                  nt = nt + 1
+                  rt(2) = -rt(1)
+                else if (nt == 2) then
+                  nt = nt + 2
+                  rt(3) = -rt(2)
+                  rt(4) = -rt(1)
+                endif
+
+c               --- Check if any of those four points intercept the grid line
+                do it=1,nt
+                  if (yy**2 <= rt(it)**2) then
+                    x1 = sqrt(rt(it)**2 - yy**2)
+                    if (rt(it) < 0.) x1 = -x1
+                    xintercepts(nxicpt,iy,iz) = x1 + xcent
+                    nxicpt = nxicpt + 1
+                  endif
+                enddo
+
+              endif ! straight or curved segment
+            endif ! within z range
+          enddo ! segments
+
+          xintercepts(nxicpt:,iy,iz) = LARGEPOS
+
+        enddo ! iy
+      enddo ! iz
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+
+          nyicpt = 1
+
+c         --- Loop over r-z line segments
+          do ii=1,nn-1
+
+c           --- Check if the z of the grid is within the z range of the segment
+            if (zmin(ii) <= zz .and. zz < zmax(ii)) then
+
+              if (rad(ii) == LARGEPOS) then
+c               --- A straight line segment is straightforward
+                ww = (zz - zsrf(ii))/(zsrf(ii+1) - zsrf(ii))
+                rr = rsrf(ii)*(1.-ww) + rsrf(ii+1)*ww
+                if (xx**2 <= rr**2) then
+                  y1 = -sqrt(rr**2 - xx**2)
+                  y2 = +sqrt(rr**2 - xx**2)
+                  yintercepts(nyicpt,ix,iz) = y1 + ycent
+                  nyicpt = nyicpt + 1
+                  yintercepts(nyicpt,ix,iz) = y2 + ycent
+                  nyicpt = nyicpt + 1
+                endif
+              else
+c               --- A circular arc is complicated. This is torus.
+c               --- There can be up to four intercept points.
+c               --- Check each one, starting with the one that has the
+c               --- smallest y intercept. Only the first two have to be
+c               --- carefully checked. The second two would be the same,
+c               --- but with the opposite sign of y. This checks if the
+c               --- angle of the intercept point is within the angular
+c               --- range of the arc. Note that the starting point, th1,
+c               --- is included, whereas the ending point, th2, is not.
+                minth = min(th1(ii),th2(ii))
+                maxth = max(th1(ii),th2(ii))
+                rsq = rad(ii)**2 - (zz - zc(ii))**2
+                nt = 0
+                if (rsq > 0.) then
+                  rr = sqrt(rsq)
+                  tt = atan2(+rr,zz - zc(ii))
+                  if (tt < minth) tt = tt + 2*pi
+                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
+                    nt = nt + 1
+                    rt(nt) = -rc(ii) - rr
+                  endif
+                  tt = atan2(-rr,zz - zc(ii))
+                  if (tt < minth) tt = tt + 2*pi
+                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
+                    nt = nt + 1
+                    rt(nt) = -rc(ii) + rr
+                  endif
+                else
+c                 --- The interception point is at the extreme upper
+c                 --- or lower edge of the torus.
+                  tt = atan2(0.,zz - zc(ii))
+                  if (tt < minth) tt = tt + 2*pi
+                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
+                    nt = nt + 1
+                    rt(nt) = -rc(ii)
+                  endif
+                endif
+
+c               --- Get the possible upper points.
+                if (nt == 1) then
+                  nt = nt + 1
+                  rt(2) = -rt(1)
+                else if (nt == 2) then
+                  nt = nt + 2
+                  rt(3) = -rt(2)
+                  rt(4) = -rt(1)
+                endif
+
+c               --- Check if any of those four points intercept the grid line
+                do it=1,nt
+                  if (xx**2 <= rt(it)**2) then
+                    y1 = sqrt(rt(it)**2 - xx**2)
+                    if (rt(it) < 0.) y1 = -y1
+                    yintercepts(nyicpt,ix,iz) = y1 + ycent
+                    nyicpt = nyicpt + 1
+                  endif
+                enddo
+
+              endif ! straight or curved segment
+            endif ! within z range
+          enddo ! segments
+
+          yintercepts(nyicpt:,ix,iz) = LARGEPOS
+
+        enddo ! ix
+      enddo ! iz
+
+
+      do iy=0,ny
+        yy = ymmin + iy*dy - ycent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+
+          nzicpt = 1
+
+c         --- Loop over r-z line segments
+          do ii=1,nn-1
+
+            rr = sqrt(xx**2 + yy**2)
+            if (rmin(ii) < rr .and. rr < rmax(ii) .or. rr == rsrf(ii)) then
+              if (rad(ii) == LARGEPOS) then
+                ww = (rr - rsrf(ii))/(rsrf(ii+1) - rsrf(ii))
+                zz = zsrf(ii)*(1.-ww) + zsrf(ii+1)*ww
+                zintercepts(nzicpt,ix,iy) = zz + zcent
+                nzicpt = nzicpt + 1
+              else
+
+c               --- A circular arc is complicated. This is torus.
+c               --- There can be up to two intercept points.
+c               --- Check each one, starting with the one that has the
+c               --- smallest z intercept. This checks if the
+c               --- angle of the intercept point is within the angular
+c               --- range of the arc. Note that the starting point, th1,
+c               --- is included, whereas the ending point, th2, is not.
+                minth = min(th1(ii),th2(ii))
+                maxth = max(th1(ii),th2(ii))
+                z1 = sqrt(rad(ii)**2 - (rr - rc(ii))**2)
+
+                tt = atan2(rr - rc(ii),-z1)
+                if (tt < minth) tt = tt + 2*pi
+                if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
+                  zintercepts(nzicpt,ix,iy) = zc(ii) - z1 + zcent
+                endif
+                
+                if (z1 > 0) then
+                  tt = atan2(rr - rc(ii),+z1)
+                  if (tt < minth) tt = tt + 2*pi
+                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
+                    zintercepts(nzicpt,ix,iy) = zc(ii) + z1 + zcent
+                  endif
+                endif
+
+              endif ! straight or curved segment
+            endif ! within r range
+          enddo ! segments
+
+          zintercepts(nzicpt:,ix,iy) = LARGEPOS
+
+        enddo ! ix
+      enddo ! iy
+
+      deallocate(rmin,rmax)
+      deallocate(zmin,zmax)
+      deallocate(th1,th2)
 
       return
       end
