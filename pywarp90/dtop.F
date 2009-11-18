@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.170 $, $Date: 2009/09/18 20:37:09 $
+c@(#) File DTOP.F, version $Revision: 3.171 $, $Date: 2009/11/18 21:50:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.170 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.171 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -3744,3 +3744,110 @@ c           --- point is inside if a conductor can be ignored.
 
       return
       end subroutine reduceisinsidegrid
+
+      subroutine digital_filter_1d(f,n,c,nt,s)
+      integer(ISZ):: n,s,i,j,nt
+      real(kind=8):: c,f(0:n),center,left
+      
+      
+      do i = 1,nt
+        left = f(0)
+        do j = s,n-s
+          center = f(j)
+          f(j) = c*f(j) + 0.5*(1.-c)*(left+f(j+s))
+          left = center
+        end do
+      end do
+        
+      end subroutine digital_filter_1d
+      
+      subroutine deposeintersect(z1,f1,ssn1,w1,n1,z2,f2,ssn2,w2,n2,z0,hist,fminmax,nf,autoscale,overfrac)
+      integer(ISZ) :: n1,n2,nf, ssn1(n1), ssn2(n2)
+      real(kind=8) :: z1(n1), f1(n1), w1(n1), z2(n2), f2(n2), w2(n2), z0, fminmax(2), hist(0:nf), overfrac
+      logical(ISZ) :: autoscale
+
+c ssn1 and ssn2 are SORTED social security numbers
+
+      integer(ISZ) :: i1, i2, i, j
+      real(kind=8) :: w,fw,df,w0,fmin,fmax
+      real(kind=8), allocatable :: newf(:), fbins(:)
+      
+      i1 = 1
+      i2 = 1
+      fmin = fminmax(1)
+      fmax = fminmax(2)
+      do while(i1<=n1 .and. i2<=n2)
+        if (ssn1(i1)<ssn2(i2)) then
+          i1 = i1+1
+          cycle
+        end if
+        if (ssn1(i1)>ssn2(i2)) then
+          i2 = i2+1
+          cycle
+        end if
+        if (z1(i1)<=z0 .and. z2(i2)>=z0) then
+          w = (z0-z1(i1))/(z2(i2)-z1(i1))
+          fw = f1(i1)*(1.-w)+f2(i2)*w
+          w0 = w1(i1)*(1.-w)+w2(i2)*w
+          if (fmin==1.e36 .and. fmax==1.e36) then
+            fmin=fw
+            fmax=fw
+            j=0
+            df=1.
+          else
+            df = (fmax-fmin)/nf
+            if (fmin==fmax) then
+              if (fw==fmin) then
+                j = 0
+              else
+                if (fw<fmin) then
+                  j = -1
+                else
+                  j = nf
+                end if
+              end if
+            else
+              j = floor((fw-fmin)/df)
+            end if
+            if (j<0 .or. j>(nf-1)) then
+              if (autoscale) then
+                allocate(newf(0:nf),fbins(0:nf))
+                newf = 0.
+                df = (fmax-fmin)/nf
+                do i = 0, nf
+                  fbins(i) = fmin+i*df
+                end do
+                if (j<0)    fmin = fw-overfrac*(fmax-fw)
+                if (j>nf-1) fmax = fw+overfrac*(fw-fmin)
+                if (fmin>fmax) then
+                  write(0,*) 'Error in deposeintersect: fmin>fmax',fmin,fmax
+                  stop
+                end if
+                df = (fmax-fmin)/nf
+                j = floor((fw-fmin)/df)
+                call setgrid1dw(nf+1,fbins,hist,nf,newf,fmin,fmax)
+                hist = newf
+                deallocate(newf,fbins)
+              else
+                i1=i1+1
+                i2=i2+1
+                cycle
+              end if
+            end if
+          end if
+          w = (fw-j*df-fmin)/df
+          if (w<0. .or. w>1.) then
+            write(0,*) 'Error in deposeintersect, w<0 or w>1: ',w,fmin,df,fw,j
+            stop
+          end if
+          hist(j)   = hist(j)   + (1.-w)*w0
+          hist(j+1) = hist(j+1) + w*w0
+        end if
+        i1=i1+1
+        i2=i2+1
+      end do
+      fminmax(1) = fmin
+      fminmax(2) = fmax
+      
+      end subroutine deposeintersect
+
