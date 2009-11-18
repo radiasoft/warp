@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.436 $, $Date: 2009/09/27 17:59:11 $
+c@(#) File W3D.F, version $Revision: 3.437 $, $Date: 2009/11/18 21:55:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -805,7 +805,6 @@ c     BEGIN predictor-corrector loop
             else
                call padvnc3d ("fullv",pgroup)
             endif
-
 c           --- Inject more particles. This adds particles and alters ins
 c           --- and nps.
             call inject3d(1,pgroup)
@@ -1557,7 +1556,7 @@ c=============================================================================
       use InDiag3d
       use Lattice
       use LatticeInternal
-      use Particles,Only: nplive,wpid,chdtspid,uxoldpid,uyoldpid,uzoldpid,lmappid
+      use Particles,Only: nplive,wpid,chdtspid,uxoldpid,uyoldpid,uzoldpid,lmappid,zbirthpid
       use Fields3d
       use Subcycling
       use Fields3dParticles
@@ -2079,20 +2078,25 @@ c           --- apply linear maps
                 call applylmap(ip,xp(ipmin),yp(ipmin),uxp(ipmin),uyp(ipmin),
      &                         ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                         vbeam,gammabar,zbeam_maps(1),zbeamend_maps(1),zend(1),lmappid)
-                dtmaps(1:ip) = (zend(1:ip)-zp(ipmin:ipmin+ip-1))/(uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1))
-                call xpusht3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),dtmaps(1))
+                if (lmapfillz) then
+                  dtmaps(1:ip) = (zend(1:ip)-zp(ipmin:ipmin+ip-1))/(uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1))
+                  call xpusht3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),dtmaps(1))
+                endif
                else
                 uzboost = clight*sqrt(boost_gamma*boost_gamma-1.)
                 vzboost = uzboost/boost_gamma
 c               --- get time step in lab frame
-                dtmaps(1:ip) = boost_gamma*fulldt_s*(1.+vbeam*vzboost*invclightsq)
+                dtmaps(1:ip) = fulldt_s*gammabar_lab/gammabar
 c               --- get time for each particle in lab frame
-                tlab(1:ip) = boost_gamma*time+uzboost*zp(ipmin:ipmin+ip-1)*invclightsq
-c               --- get zbeam for each particle in lab frame
-                zbeam_maps(1:ip) = (boost_z0/boost_gamma+(vbeam+vzboost)*tlab(1:ip))/(1.+vbeam*vzboost*invclightsq)
-                zbeamend_maps(1:ip) = zbeam_maps(1:ip) + dtmaps(1:ip)*vbeam_lab
+c                tlab(1:ip) = boost_gamma*time+uzboost*zp(ipmin:ipmin+ip-1)*invclightsq
 c               --- get particles position in lab frame
                 zp(ipmin:ipmin+ip-1) = boost_gamma*zp(ipmin:ipmin+ip-1)+uzboost*time  
+c               --- get zbeam for each particle in lab frame
+c                zbeam_maps(1:ip) = (boost_z0/boost_gamma+(vbeam+vzboost)*tlab(1:ip))/(1.+vbeam*vzboost*invclightsq)
+                zbeam_maps(1:ip) = (it-1)*vbeam_lab*dtmaps(1:ip) + pgroup%pid(ipmin:ipmin+ip-1,zbirthpid)
+     &          *(boost_gamma*gammabar_lab/gammabar-1.)
+     &          +(boost_z0/boost_gamma)/(1.+vbeam*vzboost*invclightsq)
+                zbeamend_maps(1:ip) = zbeam_maps(1:ip) + dtmaps(1:ip)*vbeam_lab
 c               --- get particles momenta in lab frame
                 call setu_in_uzboosted_frame3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),-uzboost,boost_gamma)
 c               --- apply maps in lab frame
@@ -2101,13 +2105,16 @@ c               --- apply maps in lab frame
      &                         ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                         vbeam_lab,gammabar_lab,zbeam_maps(1),zbeamend_maps(1),
      &                         zend(1),lmappid)
-                tlab(1:ip) = tlab(1:ip)+dtmaps(1:ip)
-                dtmaps(1:ip) = (zend(1:ip)-zp(ipmin:ipmin+ip-1))/(uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1))
-                call xpusht3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),dtmaps(1))
+c                tlab(1:ip) = tlab(1:ip)+dtmaps(1:ip)
+                if (lmapfillz) then
+                  dtmaps(1:ip) = (zend(1:ip)-zp(ipmin:ipmin+ip-1))/(uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1))
+                  call xpusht3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),dtmaps(1))
+                endif
 c               --- get particles momenta in boosted frame
                 call setu_in_uzboosted_frame3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),uzboost,boost_gamma)
 c               --- get particles position in boosted frame
-                zp(ipmin:ipmin+ip-1) = boost_gamma*zp(ipmin:ipmin+ip-1)-uzboost*(tlab(1:ip))
+                zp(ipmin:ipmin+ip-1) = (zp(ipmin:ipmin+ip-1)-uzboost*(time+fulldt_s))/boost_gamma
+
               end if
             end if
 
@@ -3103,6 +3110,119 @@ c to create mismatched values of u and gamma?
        const = 0.5*q*dt/m
        bconst = const
        do ip=1,np
+!     --- get U'
+        uxpr = uxp(ip) + const*exp(ip)
+        uypr = uyp(ip) + const*eyp(ip)
+        uzpr = uzp(ip) + const*ezp(ip)
+        gprsq = (1.+(uxpr*uxpr+uypr*uypr+uzpr*uzpr)*invclightsq)
+!       --- get tau
+        taux = bconst*bxp(ip)
+        tauy = bconst*byp(ip)
+        tauz = bconst*bzp(ip)
+        tausq = taux*taux+tauy*tauy+tauz*tauz
+!       --- get u*
+        ust = (uxpr*taux+uypr*tauy+uzpr*tauz)*invclight
+!       --- get new gamma
+        sigma = gprsq-tausq
+        gisq = 2./(sigma+sqrt(sigma*sigma+4.*(tausq+ust*ust)))
+        gi(ip) = sqrt(gisq)
+!       --- get t,s
+        bg = bconst*sqrt(gisq)
+        tx = bg*bxp(ip)
+        ty = bg*byp(ip)
+        tz = bg*bzp(ip)
+        s = 1./(1.+tausq*gisq)
+!       --- get t.u'
+        tu = tx*uxpr+ty*uypr+tz*uzpr
+!       --- get new U
+        uxp(ip) = s*(uxpr+tx*tu+uypr*tz-uzpr*ty)
+        uyp(ip) = s*(uypr+ty*tu+uzpr*tx-uxpr*tz)
+        uzp(ip) = s*(uzpr+tz*tu+uxpr*ty-uypr*tx)
+       enddo 
+      endif
+      
+!$OMP MASTER
+      if (lw3dtimesubs) timeebcancelpush3d = timeebcancelpush3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine ebcancelpush3dt(np,uxp,uyp,uzp,gi,exp,eyp,ezp,bxp,byp,bzp,q,m,dt,which)
+      use Subtimers3d
+      use Constant
+      integer(ISZ):: np,which
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gi(np)
+      real(kind=8):: exp(np),eyp(np),ezp(np),bxp(np),byp(np),bzp(np),dt(np)
+      real(kind=8):: q,m
+
+c Push the particle velocity with E and B fields, assuming Vmid = 0.5*(Vold+Vnew), 
+c solving directly for the new gamma.
+c This offers better cancellation of E+VxB than the Boris velocity push.
+c Question: should we recompute gamma from the new u, in order to prevent roundoff errors 
+c to create mismatched values of u and gamma?
+
+      integer(ISZ):: ip
+      real(kind=8):: const,bconst,s,gisq,invclight,invclightsq,gprsq
+      real(kind=8):: tx,ty,tz,tu,uxpr,uypr,uzpr,bg,vx,vy,vz
+      real(kind=8):: taux,tauy,tauz,tausq,ust,sigma
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      invclight   = 1./clight
+      invclightsq = 1./(clight*clight)
+      
+      if(which==0) then
+!     --- full push      
+       do ip=1,np
+        const = q*dt(ip)/m
+        bconst = 0.5*const
+!       --- get tau
+        taux = bconst*bxp(ip)
+        tauy = bconst*byp(ip)
+        tauz = bconst*bzp(ip)
+        tausq = taux*taux+tauy*tauy+tauz*tauz
+!       --- get U',gamma'^2
+        uxpr = uxp(ip) + const*exp(ip) + (uyp(ip)*tauz-uzp(ip)*tauy)*gi(ip)
+        uypr = uyp(ip) + const*eyp(ip) + (uzp(ip)*taux-uxp(ip)*tauz)*gi(ip)
+        uzpr = uzp(ip) + const*ezp(ip) + (uxp(ip)*tauy-uyp(ip)*taux)*gi(ip)
+        gprsq = (1.+(uxpr*uxpr+uypr*uypr+uzpr*uzpr)*invclightsq)
+!       --- get u*
+        ust = (uxpr*taux+uypr*tauy+uzpr*tauz)*invclight
+!       --- get new gamma
+        sigma = gprsq-tausq
+        gisq = 2./(sigma+sqrt(sigma*sigma+4.*(tausq+ust*ust)))
+        gi(ip) = sqrt(gisq)
+!       --- get t,s
+        bg = bconst*sqrt(gisq)
+        tx = bg*bxp(ip)
+        ty = bg*byp(ip)
+        tz = bg*bzp(ip)
+        s = 1./(1.+tausq*gisq)
+!       --- get t.u'
+        tu = tx*uxpr+ty*uypr+tz*uzpr
+!       --- get new U
+        uxp(ip) = s*(uxpr+tx*tu+uypr*tz-uzpr*ty)
+        uyp(ip) = s*(uypr+ty*tu+uzpr*tx-uxpr*tz)
+        uzp(ip) = s*(uzpr+tz*tu+uxpr*ty-uypr*tx)
+       enddo 
+      else if(which==1) then
+!     --- first half push     
+       do ip=1,np
+        const = 0.5*q*dt(ip)/m
+!     --- get new U
+        vx = uxp(ip)*gi(ip)
+        vy = uyp(ip)*gi(ip)
+        vz = uzp(ip)*gi(ip)
+        uxp(ip) = uxp(ip) + const*( exp(ip) + vy*bzp(ip)-vz*byp(ip) )
+        uyp(ip) = uyp(ip) + const*( eyp(ip) + vz*bxp(ip)-vx*bzp(ip) )
+        uzp(ip) = uzp(ip) + const*( ezp(ip) + vx*byp(ip)-vy*bxp(ip) )
+        gi(ip) = 1./sqrt(1.+(uxp(ip)*uxp(ip)+uyp(ip)*uyp(ip)+uzp(ip)*uzp(ip))*invclightsq)
+       enddo
+      else if(which==2) then
+!     --- second half push      
+       do ip=1,np
+        const = 0.5*q*dt(ip)/m
+        bconst = const
 !     --- get U'
         uxpr = uxp(ip) + const*exp(ip)
         uypr = uyp(ip) + const*eyp(ip)
@@ -7289,7 +7409,6 @@ c  This seems to be the fastest version.
       if (nx > 0) g = g/dx
       if (ny > 0) g = g/dy
       if (nz > 0) g = g/dz
-
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
