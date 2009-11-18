@@ -393,7 +393,7 @@ the diagnostic is of interest and is meaningfull.
   __flaginputs__ = {'forcesymmetries':1,
                     'lreducedpickle':1,'lnorestoreonpickle':0,
                     'ldosolve':1,'l_internal_dosolve':1,
-                    'gridvz':None,
+                    'gridvz':None,'lchild':False,
                     }
 
   def __init__(self,**kw):
@@ -501,10 +501,9 @@ the diagnostic is of interest and is meaningfull.
       if self.ny > 0: self.dy = (self.ymmax - self.ymmin)/self.ny
       else:           self.dy = self.dx
     if self.dz == 0.: self.dz = (self.zmmax - self.zmmin)/self.nz
-
     # --- Set parallel related parameters and calculate mesh sizes
     self.lparallel = (self.nprocs>1)
-    if not self.lparallel:
+    if not self.lparallel or self.lchild:
       self.my_index = 0
       self.nprocs = 1
       self.nxprocs = 1
