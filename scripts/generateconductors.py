@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.212 2009/11/18 02:21:27 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.213 2009/11/18 22:28:50 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -465,7 +465,7 @@ Should never be directly created by the user.
       return None,None
 
   def plot_energy_histogram(self,js=0,color=black,width=1):
-     histo,energies = self.plot_energy_histogram(js=js)
+     histo,energies = self.get_energy_histogram(js=js)
      if histo is None:
        print "Nothing to plot"
      else:
