@@ -171,7 +171,7 @@ Creates a new species of particles. All arguments are optional.
                The slowest will have dt = 2**(nautodt-1)*top.dt.
   - efetch=1: Method to use for fetching the self fields. See documentation
               of top.efetch for more info.
-  - fselfb=0.: z velocity to use when applying relativistic corrections.
+  - fselfb=None: z velocity to use when applying relativistic corrections.
                No corrections are done if it is zero.
   - limplicit=false: Flag to turn on the implicit particle advance for this
                      species.
@@ -502,6 +502,7 @@ Creates a new species of particles. All arguments are optional.
       gi=1.
 
     kw['lallindomain'] = lallindomain
+    kw['lmomentum'] = lmomentum
     self.addpart(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
     
   def add_uniform_cylinder(self,np,rmax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,
@@ -1637,6 +1638,23 @@ of code."""
 
   def ppzbz(self,**kw):
     return self._callppfunc(ppzbz,**kw)
+
+  def dump(self,filename='pdump.pdb'):
+    f=PW.PW(filename)
+    f.x=self.getx()
+    f.y=self.gety()
+    f.z=self.getz()
+    f.ux=self.getux()
+    f.uy=self.getuy()
+    f.uz=self.getuz()
+    f.gi=self.getgaminv()
+    f.pid=self.getpid()
+    f.close()
+
+  def load(self,filename='pdump.pdb'):
+    f=PR.PR(filename)
+    self.addpart(f.x,f.y,f.z,f.ux,f.uy,f.uz,f.gi,lmomentum=True)
+    f.close()
 
   # --- Fancy python to provide convenient methods for getting various
   # --- species quantities. This allows something like the following, to
