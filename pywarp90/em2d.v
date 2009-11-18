@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.19 $, $Date: 2008/10/30 18:27:20 $
+#@(#) File EM2D.V, version $Revision: 1.20 $, $Date: 2009/11/18 22:02:04 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for the 3-D EM solver of code WARP
@@ -224,7 +224,7 @@ l_pushf            logical /.false./
 ntemp integer
 ipulse integer /1/
 npulse integer
-js integer
+laser_source_x real
 testc real
 sinteta real
 cst1 real
@@ -289,8 +289,8 @@ Ex_in(0:ny+2) _real
 Ez_in(0:ny+2) _real
 By_in(0:ny+2) _real
 Bx_in(0:ny+2) _real
-nxs integer
-nys integer
+nxs integer /0/
+nys integer /0/
 dirprop integer /0/ # if 1 or -1, will suppress forward/backward emission
 Ez_s(0:nxs+3,0:nys+2) _real
 Ezx_s(0:nxs+3,0:nys+2) _real
