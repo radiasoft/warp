@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.302 $, $Date: 2009/11/11 02:05:56 $
+#@(#) File W3D.V, version $Revision: 3.303 $, $Date: 2009/11/18 21:52:41 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.302 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.303 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -622,6 +622,7 @@ inj_ez_3d(0:inj_nx,0:inj_ny,0:inj_nz,inj_ninj)  _real
 *********** Setpwork3d:
 # Scratch arrays for subroutine setptcls
 npgrp             integer /0/
+npidgrp           integer /0/
 indx(npgrp)      _integer
 xt(npgrp)        _real
 yt(npgrp)        _real
@@ -640,6 +641,7 @@ xct(npgrp)       _real
 xpct(npgrp)      _real
 yct(npgrp)       _real
 ypct(npgrp)      _real
+pidt(npgrp,npidgrp)  _real
 
 *********** Multipole dump:
 # Electrostatic multipole moments of the electrostatic potential
@@ -994,7 +996,11 @@ xpusht3d(np,xp(np):real,yp(np):real,zp(np):real,
 ebcancelpush3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gi(np):real,
                   exp(np):real,eyp(np):real,ezp(np):real,
                   bxp(np):real,byp(np):real,bzp(np):real,
-                  q:real,m:real,ddt:real,which:integer) subroutine # velocity push with E+vxB cancellation
+                  q:real,m:real,dt:real,which:integer) subroutine # velocity push with E+vxB cancellation
+ebcancelpush3dt(np,uxp(np):real,uyp(np):real,uzp(np):real,gi(np):real,
+                  exp(np):real,eyp(np):real,ezp(np):real,
+                  bxp(np):real,byp(np):real,bzp(np):real,
+                  q:real,m:real,dt(np):real,which:integer) subroutine # velocity push with E+vxB cancellation
 seteears()  subroutine # Sets eearsofz, the axial confining field
 sete3d(phi1d:real,selfe:real,np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
        xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,nx,ny,nz,
