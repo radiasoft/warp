@@ -143,112 +143,6 @@ else
  end if
 end if
 
-! add source term
-!if (l_elaser_out_plane) then
-!  f%cst1 = (1.-dt*f%clight/f%dy)/(1.+dt*f%clight/f%dy)
-!  f%cst2 =  2.*dt/f%dy /(1.+dt*f%clight/f%dy)
-!else
-  f%cst1 = (1.-dt*f%clight/f%dx)/(1.+dt*f%clight/f%dx)
-  f%cst2 =  2.*dt/f%dx /(1.+dt*f%clight/f%dx)
-!end if
-
-if (f%dirprop/=0) then
-  ! advance Ez_s and Bz_sb
-  do k = 0, f%ny+1
-    do j = 0, f%nx+1
-!      f%Bz_s(j,k) = f%Bz_s(j,k) - 2.*dtsdx * f%Ey_sbnd(j,k) &
-!                                + dtsdy * (f%Ex(j,k+1) - f%Ex(j,k)) 
-      f%By_sbnd(j,k) = f%cst1*f%By_sbnd(j,k) + f%cst2*f%Ez_s(j,k)
-    end do
-  end do
-  ! remove source term in forward or backward direction
-  if (f%dirprop==1 .and. .true.) then
-    do k = 0, f%ny+1
-      do j = 1, f%nx+1
-        f%By(j,k) = f%By(j,k) - dtsdx * (f%Ez(j,k)   - f%Ez(j-1,k)) &
-                              + dtsdx * (f%Ezx_s(j,k)   - f%Ezx_s(j-1,k)) &
-                              - f%dirprop*dtsdx * f%Ez_s(j,k) 
-      end do
-    end do
-!    do k = 1, f%ny+1
-!      do j = 0, f%nx+1
-!        f%Bx(j,k) = f%Bx(j,k) + 1.*dtsdy * (f%Ez_s(j,k)   - f%Ez_s(j,k-1)) 
-!      end do
-!    end do
-  end if
-  if (f%dirprop==-1 .and. .true.) then
-    do k = 0, f%ny+1
-      do j = 1, f%nx+1
-        f%By(j,k) = f%By(j,k) + f%dirprop*dtsdx * f%Ez_s(j,k) 
-      end do
-    end do
-  end if
-end if
-
-
-if (f%l_add_source) then
- if (.not.l_moving_window) then
-  if(l_elaser_out_plane) then
-  ! add contribution from Ez source (Ez_in)
-
-   if (f%l_uselargestencil) then
-    if (f%a==0.) then
-      f%a = 7./12.
-      f%b  = 5./24.
-    end if
-    ! advance By
-    j = f%js
-!    do k = 0, f%ny+1
-    do k = 1, f%ny
-      f%By(j,k) = f%By(j,k) + f%a * dtsdx * (-f%Ez_in(k)) &
-                            + f%b * dtsdx * (-f%Ez_in(k+1)) &
-                            + f%b * dtsdx * (-f%Ez_in(k-1)) 
-    end do
-
-    ! Evaluate Bx and By source
-    do k = 1, f%ny+1
-      f%Bx_in(k) = 0.!f%Bx_in(k) - dtsdy * (f%Ez_in(k) - f%Ez_in(k-1))
-    end do
-
-!    do k = 0, f%ny+1
-    do k = 1, f%ny
-      f%By_in(k) = f%cst1 * f%By_in(k) - f%a*f%cst2 * f%Ez_in(k) &
-                                       - f%b*f%cst2 * f%Ez_in(k+1) &
-                                       - f%b*f%cst2 * f%Ez_in(k-1)
-    end do
-
-   else
-    j = f%js
-    do k = 0, f%ny+1
-      f%By(j,k) = f%By(j,k) + dtsdx * (-f%Ez_in(k))
-    end do
-
-    ! Evaluate Bx and By source
-    do k = 1, f%ny+1
-      f%Bx_in(k) = 0.!f%Bx_in(k) - dtsdy * (f%Ez_in(k) - f%Ez_in(k-1))
-    end do
-
-    do k = 0, f%ny+1
-      f%By_in(k) = f%cst1 * f%By_in(k) - f%cst2 * f%Ez_in(k)
-    end do
-   end if
-
-  else
-    j = f%js-1
-    do k = 0, f%ny+1
-      f%Bz(j,k) = f%Bz(j,k) - dtsdx * (-f%Ey_in(k)) 
-    end do
-  end if
- else
-  if(.not. l_elaser_out_plane) then
-   j = 0
-   do k = 0, f%ny+1
-     f%Bz(j,k) = f%Bz_in(k) 
-   end do
-  end if
- end if
-end if
-
 !IF(f%l_addpatchresidual) then
 !  ALLOCATE(Exapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
 !  ALLOCATE(Eyapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
@@ -340,14 +234,14 @@ implicit none
 
 TYPE(EM2D_FIELDtype) :: f
 INTEGER :: j, k
-real(kind=8) :: dt,dtsdx,dtsdy,mudt
+real(kind=8) :: dt,dtsdx,dtsdy,mudt,xlaser,w
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Bzapr
 
 #ifdef MPIPARALLEL
 include "mpif.h"
 integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
 integer(MPIISZ):: mpirequest
-integer(MPIISZ):: w
+!integer(MPIISZ):: w
 integer(MPIISZ):: messid 
 #endif
 
@@ -426,7 +320,7 @@ else
       f%Ex(j,k) = f%Ex(j,k) + f%a * (dtsdy * (f%Bz(j,  k)   - f%Bz(j,  k-1)) - mudt * f%J(j,  k,1)) &
                             + f%b * (dtsdy * (f%Bz(j+1,k)   - f%Bz(j+1,k-1)) - mudt * f%J(j+1,k,1)) &
                             + f%b * (dtsdy * (f%Bz(j-1,k)   - f%Bz(j-1,k-1)) - mudt * f%J(j-1,k,1)) &
-                            - 0.5*f%Exdj(j,k)
+                            - 0.5*f%Exdj(j,k) * 0.
       f%Exdj(j,k) = - f%a*mudt  * f%J(j,k,1)  &
                     - f%b*mudt  * f%J(j+1,k,1)  &
                     - f%b*mudt  * f%J(j-1,k,1)  
@@ -449,7 +343,7 @@ else
         f%Ey(j,k) = f%Ey(j,k) - f%a * (dtsdx * (f%Bz(j,k)   - f%Bz(j-1,k  )) + mudt * f%J(j,k  ,2)) &
                               - f%b * (dtsdx * (f%Bz(j,k+1) - f%Bz(j-1,k+1)) + mudt * f%J(j,k+1,2)) &
                               - f%b * (dtsdx * (f%Bz(j,k-1) - f%Bz(j-1,k-1)) + mudt * f%J(j,k-1,2)) &
-                            - 0.5*f%Eydj(j,k)                              
+                            - 0.5*f%Eydj(j,k)      * 0.                        
       f%Eydj(j,k) = - f%a*mudt  * f%J(j,k,2)  &
                     - f%b*mudt  * f%J(j,k+1,2)  &
                     - f%b*mudt  * f%J(j,k-1,2)  
@@ -468,12 +362,12 @@ else
       f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
                             - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
                             - mudt  * f%J(j,k,3) &
-                            - 0.5 * f%Ezdj(j,k)
+                            - 0.5 * f%Ezdj(j,k) * 0.
       else
       f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
                             - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
                             - mudt  * f%J(j,k,3) &
-                            - 0.5 * f%Ezdj(j,k)
+                            - 0.5 * f%Ezdj(j,k) * 0.
       end if      
       f%Ezdj(j,k) = - mudt  * f%J(j,k,3)
     end do
@@ -563,38 +457,17 @@ if (f%l_add_source .and. .not.l_moving_window .and. .not. l_elaser_out_plane) th
 end if
 
 if (f%l_add_source) then
- if (.not.l_moving_window) then
-  if(l_elaser_out_plane) then
-!    ! substract contribution from Bx source (Bx_in)
-!    k = f%js-1
-!    do j = 0, f%nx+1
-!      f%Ez(j,k) = f%Ez(j,k) - dtsdy * (-f%Bx_in(j)) 
-!    end do
-    ! substract contribution from Bx source (Bx_in)
-    j = f%js-1
+  xlaser = (f%laser_source_x-f%xmin)/f%dx
+  j = int(xlaser)
+  if (j>-1 .and. j<f%nx+2) then
+    w = xlaser-j
     do k = 0, f%ny+1
-      f%Ez(j,k) = f%Ez(j,k) + dtsdx * (-f%By_in(k)) 
-    end do
-  else
-    ! add contribution from Bz source (Bz_in)
-    j = f%js
-    do k = 0, f%ny+1
-      f%Ey(j,k) = f%Ey(j,k) - dtsdx * (-f%Bz_in(k))
+      f%Ez(j,k) = f%Ez(j,k) + 2.*f%Ez_in(k)*(1.-w)
+      f%Ez(j+1,k) = f%Ez(j+1,k) + 2.*f%Ez_in(k)*w
     end do
   end if
- else
-  if(l_elaser_out_plane) then
-!    k = 0
-!    do j = 0, f%nx+1
-!      f%Ez(j,k) = f%Ez_in(j) 
-!    end do
-    j = 0
-    do k = 0, f%ny+1
-      f%Ez(j,k) = f%Ez_in(k) 
-    end do
-  end if
- end if
 end if
+
 
 !IF(f%l_addpatchresidual) then
 !  ALLOCATE(Bzapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
@@ -832,31 +705,19 @@ else if(.not. (l_moving_window .and. (.not.l_elaser_out_plane))) then
   jb = jf + nbndx
   kf=1
   jk=ntop1+jb+n1x*(kf+nbndy)
-  if(f%js==1) then
-    Ex(jk) = f%Ex(jf,kf) - f%Ex_in(kf)
-  else
-    Ex(jk) = f%Ex(jf,kf) 
-  end if
+  Ex(jk) = f%Ex(jf,kf) 
 
   jk1=nbot1+jb
   do kf = 2, f%ny-1
     kb = kf+nbndy
     jk=jk1+kb*nint
-    if(f%js==1) then
-      Ex(jk) = f%Ex(jf,kf) - f%Ex_in(kf)
-    else
-      Ex(jk) = f%Ex(jf,kf) 
-    end if
+    Ex(jk) = f%Ex(jf,kf) 
   end do
   jk1=ntop2+jb
   do kf = f%ny, f%ny+1
     kb = kf+nbndy
     jk=jk1+kb*n1x
-    if(f%js==1) then
-      Ex(jk) = f%Ex(jf,kf) - f%Ex_in(kf)
-    else
-      Ex(jk) = f%Ex(jf,kf) 
-    end if
+    Ex(jk) = f%Ex(jf,kf) 
   end do
 
   jf = f%nx+1
@@ -882,30 +743,18 @@ else if(.not. (l_moving_window .and. (.not.l_elaser_out_plane))) then
   jb = jf + nbndx
   kf=1
   jk=ntop1+jb+n1x*(kf+nbndy)
-    if(f%js==1) then
-      Ey(jk) = f%Ey(jf,kf) - f%Ey_in(kf)
-    else
-      Ey(jk) = f%Ey(jf,kf) 
-    end if
+  Ey(jk) = f%Ey(jf,kf) 
   jk1=nbot1+jb
   do kf = 2, f%ny-1
     kb = kf+nbndy
     jk=jk1+kb*nint
-    if(f%js==1) then
-      Ey(jk) = f%Ey(jf,kf) - f%Ey_in(kf)
-    else
-      Ey(jk) = f%Ey(jf,kf) 
-    end if
+    Ey(jk) = f%Ey(jf,kf) 
   enddo
   jk1=ntop2+jb
   kf = f%ny
   kb = kf+nbndy
   jk=jk1+kb*n1x
-  if(f%js==1) then
-    Ey(jk) = f%Ey(jf,kf) - f%Ey_in(kf)
-  else
-    Ey(jk) = f%Ey(jf,kf)
-  end if
+  Ey(jk) = f%Ey(jf,kf)
 
   jf = f%nx+1
   jb = jf + nbndx
@@ -980,11 +829,7 @@ jk1=ntop1+kb*n1x
 do jf = 1, f%nx
   jb = jf+nbndx
   jk=jk1+jb
-  if (f%js==1) then
-    Ex(jk) = f%Bx(jf,kf) - f%Bx_in(jf)
-  else
-    Ex(jk) = f%Bx(jf,kf)
-  end if
+  Ex(jk) = f%Bx(jf,kf)
 end do
 
 kf = f%ny+1
@@ -1004,11 +849,7 @@ jk1=ntop1+kb*n1x
 do jf = 1, f%nx+1
   jb = jf+nbndx
   jk = jk1+jb
-  if(f%js==1) then
-    Ey(jk) = f%By(jf,kf) - f%By_in(jf)
-  else
-    Ey(jk) = f%By(jf,kf)
-  end if
+  Ey(jk) = f%By(jf,kf)
 end do
 
 kf = f%ny+1
@@ -1074,11 +915,7 @@ else if(.not. (l_moving_window .and. (.not. l_elaser_out_plane))) then
   jb = jf + nbndx
   kf=1
   jk=ntop1+jb+n1x*(kf+nbndy)
-    if(f%js==1) then
-      Ex(jk) = f%Bx(jf,kf) - f%Bx_in(jf)
-    else
-      Ex(jk) = f%Bx(jf,kf) 
-    end if
+  Ex(jk) = f%Bx(jf,kf) 
 
   jk1=nbot1+jb
   do kf = 2, f%ny-1
@@ -1097,11 +934,7 @@ else if(.not. (l_moving_window .and. (.not. l_elaser_out_plane))) then
   jb = jf + nbndx
   kf=1
   jk=ntop1+jb+n1x*(kf+nbndy)
-    if(f%js==1) then
-      Ex(jk) = f%Bx(jf,kf) - f%Bx_in(jf)
-    else
-      Ex(jk) = f%Bx(jf,kf)
-    end if
+  Ex(jk) = f%Bx(jf,kf)
 
   jk1=nbot2+jb
   do kf = 2, f%ny-1
@@ -1963,7 +1796,6 @@ f%npulse=300
 f%ntemp = 2*max(nx,ny)+4
 f%clight = clight
 f%mu0    = mu0
-f%js = 1 ! position of the source
 if(rap>1) then
   f%nxfsum = nx
   f%nyfsum = ny
