@@ -4,7 +4,7 @@ procedure, but using the full simulation instead of 1-D approximation.
 from warp import *
 from timedependentvoltage import TimeVoltage
 
-constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.7 2009/10/29 17:34:59 dave Exp $"
+constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.8 2009/11/18 22:09:32 jlvay Exp $"
 def constantcurrentinjectiondoc():
   import constantcurrentinjection
   print constantcurrentinjection.__doc__
@@ -58,10 +58,11 @@ frz.calc_a = 3
     self.othercontrolledvolts = othercontrolledvolts
     self.endplatevolt = endplatevolt
     self.l_setvinject = l_setvinject
+    self.hphiref = []
 
     # --- Initialize parameters
-    chi = 4*eps0/9*sqrt(2*top.pgroup.sq[0]/top.pgroup.sm[0])
-    self.phiref = (currentdensity/chi)**(2./3.)*(top.inj_d[0]*w3d.inj_dz)**(4./3.)
+    self.setphiref(currentdensity)
+    print 'phiref = ',self.phiref
     if w3d.l_inj_rz:
       self.ww = 2.*pi*iota(0,w3d.inj_nx)*w3d.inj_dx**2*w3d.inj_area[:,0,0]
       self.ww[0] = 0.25*pi*w3d.inj_dx**2
@@ -121,6 +122,7 @@ frz.calc_a = 3
     installafterfs(self.setsourcevolt)
 
   def setsourcevolt(self):
+    if top.inject==0:return
     # --- Calculate phirho
     #fieldsol(-1) # done afterfs
     if self.l_setvinject:top.vinject = self.endplatevolt
@@ -174,8 +176,40 @@ frz.calc_a = 3
         setconductorvoltage(v,condid=id)
 
   def plothist(self,tscale=1.,vscale=1.,tunits='s',vunits='V',title=1):
-    pla(self.hsourcevolt[:]*vscale,self.htime*tscale)
+    pla(self.hsourcevolt[:]*vscale,self.htime[:]*tscale)
     if title:ptitles('','Time ('+tunits+')','Voltage ('+vunits+')')
+    
+  def setphiref(self,currentdensity=None):
+    if top.inject==0:return
+    if currentdensity is None:
+      self.currentdensity = self.currentdensityfunc(top.time)
+    else:
+      self.currentdensity = currentdensity
+
+    chi = 4*eps0/9*sqrt(2*top.pgroup.sq[0]/top.pgroup.sm[0])
+    d = top.inj_d[0]*w3d.inj_dz
+    if top.inject in [2,3]:
+      # --- space-charge limited injection
+      self.phiref = (self.currentdensity/chi)**(2./3.)*d**(4./3.)
+    elif top.inject in [4,5]:
+      # --- source limited injection
+      kT = top.boltzmann*top.tempinject[0]
+      A0 = ((4.*pi*top.pgroup.sm[0]*top.boltzmann**2*top.pgroup.sq[0])/(top.planck**3)) * 0.5
+      def currentdensfunc(V=0.,J0=0.): 
+        te_const = A0 * top.tempinject[0]**2 
+        dw = sqrt((echarge**3*V/d)/(4.*pi*eps0))
+        J_s = te_const * exp(-(top.workinject-dw)/kT)
+        if top.inject==4:
+          return J_s
+        elif top.inject==5:
+          J_cl = chi/d**2 * V**1.5
+          return J_cl * (1.-exp(-J_s/J_cl))
+      self.phiref = bisection(currentdensfunc,1.e-10,1.e8,f0=self.currentdensity)
+      self.currentdensfunc = currentdensfunc
+    else:
+      raise("Error in ConstantCurrentRiseTime, top.inject<1 or top.inject>5.")
+
+    self.hphiref.append(self.phiref)
     
 class SpecifiedCurrentRiseTime(ConstantCurrentRiseTime):
   """
@@ -191,11 +225,5 @@ Same as constantcurrentinjection but allows to specify time dependent current pr
     self.currentdensityfunc = currentdensityfunc
     installbeforefs(self.setphiref)
     self.hphiref = AppendableArray(typecode='d')
-    
-  def setphiref(self):
-    self.currentdensity = self.currentdensityfunc(top.time)
-    chi = 4*eps0/9*sqrt(2*top.pgroup.sq[0]/top.pgroup.sm[0])
-    self.phiref = (self.currentdensity/chi)**(2./3.)*(top.inj_d[0]*w3d.inj_dz)**(4./3.)
-    self.hphiref.append(self.phiref)
     
 
