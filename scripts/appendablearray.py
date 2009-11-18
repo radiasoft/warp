@@ -1,11 +1,12 @@
 """Array type which can be appended to in an efficient way.
 """
-__all__ = ['AppendableArray']
+__all__ = ['AppendableArray','DynamicHistogram','DynamicHistogramIntersect']
 import sys
 import numpy
+from toppy import deposeintersect
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.15 2008/02/23 01:58:26 dave Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.16 2009/11/18 22:15:13 jlvay Exp $"
 
 class AppendableArray:
   """
@@ -176,3 +177,75 @@ if sys.version < "2.0":
     return self.data()[i:j,...]
   AppendableArray.__getslice__ = _appendablearray__getslice__
 
+class DynamicHistogram:
+  """
+  """
+  def __init__(self,n=100,min=None,max=None,overfrac=0.2):
+    self.n=n
+    self.min = min
+    self.max = max
+    self.overfrac=overfrac
+    self.data=numpy.zeros(n,'d')
+    self.bins=None
+    
+  def checkbounds(self,d):
+    dmin = min(d)
+    dmax = max(d)
+    if self.min is None: self.min=dmin
+    if self.max is None: self.max=dmax
+    if self.bins is None:
+      self.bins = self.min+arange(self.n)*(self.max-self.min)/(self.n-1)
+    l_rescale_array=0
+    if dmin<self.min:
+      minold = self.min
+      self.min=dmin-self.overfrac*(self.max-self.min)
+      l_rescale_array=1
+    if dmax>self.max:
+      maxold = self.max
+      self.max=dmax+self.overfrac*(self.max-self.min)
+      l_rescale_array=1
+    if l_rescale_array:
+      newdata=zeros(self.n,'d')
+      tmpcount = zeros(self.n,'d')
+      deposgrid1d(1,n,self.bins,self.data,n-1,newdata,tmpcount,self.min,self.max)
+      self.bins = self.min+arange(self.n)*(self.max-self.min)/(self.n-1)
+      self.data = newdata
+
+  def accumulate(self,d,weights=None):
+    if type(d) is type(0.):d=array([d])
+    self.checkbounds(d)
+    if weights is None:     
+      setgrid1d(shape(d)[0],d,self.n-1,self.data,self.min,self.max)
+    else:
+      setgrid1dw(shape(d)[0],d,weights,self.n-1,self.data,self.min,self.max)
+
+class DynamicHistogramIntersect(DynamicHistogram):
+  """
+  """
+  def __init__(self,n=100,min=None,max=None,overfrac=0.2):
+     DynamicHistogram.__init__(self,n,min,max,overfrac)
+     
+  def accumulate(self,z1,d1,ssn1,w1,z2,d2,ssn2,w2,z0):
+     if self.min is None:self.min=1.e36
+     if self.max is None:self.max=1.e36
+     minold = self.min
+     maxold = self.max
+     i1 = numpy.argsort(ssn1)
+     i2 = numpy.argsort(ssn2)
+     d1 = numpy.take(d1,i1)
+     d2 = numpy.take(d2,i2)
+     z1 = numpy.take(z1,i1)
+     z2 = numpy.take(z2,i2)
+     ssn1 = numpy.take(ssn1,i1)
+     ssn2 = numpy.take(ssn2,i2)
+     n1 = len(i1)
+     n2 = len(i2)
+     fminmax = numpy.array([self.min,self.max])
+     deposeintersect(z1,d1,ssn1,w1,n1,z2,d2,ssn2,w2,n2,z0,self.data,fminmax,self.n-1,True,self.overfrac)
+     self.min = fminmax[0]
+     self.max = fminmax[1]
+     if self.min<>minold or self.max<>maxold:
+       self.bins = self.min+numpy.arange(self.n)*(self.max-self.min)/(self.n-1)
+
+  def getave(self):
+    return numpy.sum(self.data[:]*self.bins[:])/numpy.sum(self.data[:])
