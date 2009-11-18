@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.264 $, $Date: 2009/10/01 00:21:36 $
+#@(#) File TOP.V, version $Revision: 3.265 $, $Date: 2009/11/18 21:49:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.264 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.265 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -181,6 +181,7 @@ jperev        real /0.0/    [J/eV]        # Conversion factor, Joules per eV
 mu0           real /0.0/    [H/m]         # Permeability of free space
 boltzmann     real /1.3806503e-23/ [J/K]  # Boltzmann's constant
 avogadro      real /6.02214179e23/        # Avogadro's Number
+planck        real /6.62606896e-34/ [J.s] # Planck's constant
 fuz           real /3.e-5/                # for integer-real comparisons
 
 **** Ch_var dump:
@@ -1296,7 +1297,8 @@ randoffset      integer [1]   /0/
 inject    integer    /0/   # Type of injection, (0: turned off,
                            # 1: constant current,
                            # 2: space-charge limited (Child-Langmuir),
-                           # 3: space-charge limited (Gauss's law))
+                           # 3: space-charge limited (Gauss's law)),
+                           # 4: thermionic emission
 inj_param real       /1./  # Relaxation parameter for inject.  Mainly used
                            # for Egun iterative mode - set to 1 for time
                            # dependent injection, 0 for steady-state injection.
@@ -1322,6 +1324,8 @@ vzinject(ninject,ns) _real /0./ [m/s] # Starting velocity.
 finject(ninject,ns) _real /0./ # Species fraction for each source
 winject(ninject,ns) _real /1./ # Scale factor on the particle weight when
                                # weighted particles are used (when wpid > 0)
+tempinject(ninject) _real # temperature of injection source
+workinject(ninject) _real # work function of injection source
 inj_zstart(ninject) _real /0./ [m] # Starting location relative to the emitting
                                    # surface location.
 inj_d(ninject)      _real /1./ # Distance from surface where phi is fetched.
@@ -2488,7 +2492,7 @@ get_zmmnts_stations(ns:integer,jslist(ns):integer,pgroup:ParticleGroup,
             subroutine # gather moments data at regularly spaced stations
 getlabwn()  subroutine # Gets the lab window moments from the z moments
 getvzofz()  subroutine
-setgamma(lrelativ)
+setgamma(pgroup:ParticleGroup,lrelativ:logical)
             subroutine # Converts v to u, sets gammainv for all ptcls
 gammaadv(np,gaminv(np):real,uxp(np):real,uyp(np):real,uzp(np):real,
          gamadv:string,lrelativ)
@@ -2632,6 +2636,11 @@ gridtogrid3d(nxin:integer,nyin:integer,nzin:integer,
 sum_neighbors3d(fin(nx+1,ny+1,nz+1):integer,fout(nx+1,ny+1,nz+1):integer,nx:integer,ny:integer,nz:integer) subroutine # sum neighbouring cells
 reduceisinsidegrid(isinside(0:nx,0:ny,0:nz):real,reducedisinside(0:nx,0:ny,0:nz):real,nx,ny,nz)
               subroutine # Reduces the isinside array, removing redundant data
+digital_filter_1d(f(0:n):real,n:integer,c:real,nt:integer,s:integer) subroutine
+deposeintersect(z1(n1):real,f1(n1):real,ssn1(n1):integer,w1(n1):real,n1:integer,
+                z2(n2):real,f2(n2):real,ssn2(n2):integer,w2(n2):real,n2:integer,
+                z0:real,f(0:nf):real,fminmax(2):real,nf:integer,
+                autoscale:logical,overfrac:real) subroutine
 take2dint(a(0:n1-1,0:n2-1):integer,n1:integer,n2:integer,
           i(n):integer,j(n):integer,n:integer,b(n):integer) subroutine
 getpsgrd(np,xp(np):real,uxp(np):real,nw,nh,psgrd(0:nw,0:nh):real,
