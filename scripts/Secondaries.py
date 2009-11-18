@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.46 2009/07/09 15:13:22 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.47 2009/11/18 22:14:28 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -119,9 +119,9 @@ Class for generating secondaries
     self.x={}
     self.y={}
     self.z={}
-    self.vx={}
-    self.vy={}
-    self.vz={}
+    self.ux={}
+    self.uy={}
+    self.uz={}
     self.pid={}
     # set history list
     self.htime=AppendableArray(typecode='d')
@@ -226,9 +226,9 @@ Class for generating secondaries
       self.x[js]=fzeros(self.npmax[js],'d')
       self.y[js]=fzeros(self.npmax[js],'d')
       self.z[js]=fzeros(self.npmax[js],'d')
-      self.vx[js]=fzeros(self.npmax[js],'d')
-      self.vy[js]=fzeros(self.npmax[js],'d')
-      self.vz[js]=fzeros(self.npmax[js],'d')
+      self.ux[js]=fzeros(self.npmax[js],'d')
+      self.uy[js]=fzeros(self.npmax[js],'d')
+      self.uz[js]=fzeros(self.npmax[js],'d')
       if top.npid>0 :
         self.pid[js]=fzeros([self.npmax[js],top.npid],'d')
 
@@ -238,7 +238,7 @@ Class for generating secondaries
     if not isinstalledafterscraper(self.generate):
       installafterscraper(self.generate)
 
-  def addpart(self,nn,x,y,z,vx,vy,vz,js,weight=None,itype=None,ssnparent=None):
+  def addpart(self,nn,x,y,z,ux,uy,uz,js,weight=None,itype=None,ssnparent=None):
     if self.nps[js]+nn>self.npmax[js]:self.flushpart(js)
     if self.nps[js]+nn>self.npmax[js]:
       self.npmax[js] = nint(nn*1.2)
@@ -249,9 +249,9 @@ Class for generating secondaries
     self.x[js][il:iu]=x*xx
     self.y[js][il:iu]=y*xx
     self.z[js][il:iu]=z*xx
-    self.vx[js][il:iu]=vx
-    self.vy[js][il:iu]=vy
-    self.vz[js][il:iu]=vz
+    self.ux[js][il:iu]=ux
+    self.uy[js][il:iu]=uy
+    self.uz[js][il:iu]=uz
     if weight is not None:self.pid[js][il:iu,top.wpid-1]=weight
     if itype is not None:self.pid[js][il:iu,self.piditype]=itype.astype(float64)
     if ssnparent is not None:self.pid[js][il:iu,top.sppid-1]=ssnparent
@@ -261,34 +261,36 @@ Class for generating secondaries
     if self.nps[js]>0:
        nn=self.nps[js]
        self.totalcount += nn
-       if top.wpid==0 and self.piditype==0:
-         addparticles(x=self.x[js][:nn],
-                      y=self.y[js][:nn],
-                      z=self.z[js][:nn],
-                      vx=self.vx[js][:nn],
-                      vy=self.vy[js][:nn],
-                      vz=self.vz[js][:nn],
-                      gi=1./sqrt(1.+(self.vx[js][:nn]**2+self.vy[js][:nn]**2+self.vz[js][:nn]**2)/clight**2),
-                      js=js,
-                      lmomentum=true,
-                      lallindomain=true)
-       else: 
-         if top.wpid==0:
-           weights=1.
-         else:
-           weights=self.pid[js][:nn,top.wpid-1]
-         addparticles(x=self.x[js][:nn],
-                      y=self.y[js][:nn],
-                      z=self.z[js][:nn],
-                      vx=self.vx[js][:nn],
-                      vy=self.vy[js][:nn],
-                      vz=self.vz[js][:nn],
-                      gi=1./sqrt(1.+(self.vx[js][:nn]**2+self.vy[js][:nn]**2+self.vz[js][:nn]**2)/clight**2),
-                      pid=self.pid[js][:nn,:],
-                      w=weights,
-                      js=js,
-                      lmomentum=true,
-                      lallindomain=true)
+       if self.piditype==0:
+         pid = 0.
+       else:
+         pid = self.pid[js][:nn,:]
+       if top.wpid==0:
+         weights=1.
+       else:
+         weights=self.pid[js][:nn,top.wpid-1]
+       ux=self.ux[js][:nn]
+       uy=self.uy[js][:nn]
+       uz=self.uz[js][:nn]
+       gi=1./sqrt(1.+(ux**2+uy**2+uz**2)/clight**2)
+       # --- get velocity in boosted frame if using a boosted frame of reference
+       if top.boost_gamma>1.:
+         uzboost = clight*sqrt(top.boost_gamma**2-1.)
+         setu_in_uzboosted_frame3d(nn,ux,uy,uz,gi,
+                                   uzboost,
+                                   top.boost_gamma)
+       addparticles(x=self.x[js][:nn],
+                    y=self.y[js][:nn],
+                    z=self.z[js][:nn],
+                    vx=ux,
+                    vy=uy,
+                    vz=uz,
+                    gi=gi,
+                    pid=pid,
+                    w=weights,
+                    js=js,
+                    lmomentum=true,
+                    lallindomain=true)
        self.nps[js]=0
          
   def printall(self,l_cgm=0):
@@ -358,8 +360,8 @@ Class for generating secondaries
     else:
       ymin=w3d.ymmin
     ymax=w3d.ymmax
-    zmin=w3d.zmmin
-    zmax=w3d.zmmax
+    zmin=w3d.zmmin+top.zgrid
+    zmax=w3d.zmmax+top.zgrid
 
     # initializes history quantities
     weighttot=0.
@@ -413,10 +415,16 @@ Class for generating secondaries
         zplost = take(zplost,iit2)
         iit    = take(iit,iit2)
         if self.l_record_timing:tstart=wtime()    
-        uxplost = take(top.uxplost[i1:i2],iit)
-        uyplost = take(top.uyplost[i1:i2],iit)
-        uzplost = take(top.uzplost[i1:i2],iit)
-        gaminvlost = take(top.gaminvlost[i1:i2],iit)
+        uxplost = take(top.uxplost[i1:i2],iit).copy()
+        uyplost = take(top.uyplost[i1:i2],iit).copy()
+        uzplost = take(top.uzplost[i1:i2],iit).copy()
+        gaminvlost = take(top.gaminvlost[i1:i2],iit).copy()
+        # --- get velocity in lab frame if using a boosted frame of reference
+        if 0:#top.boost_gamma>1.:
+          uzboost = clight*sqrt(top.boost_gamma**2-1.)
+          setu_in_uzboosted_frame3d(n,uxplost,uyplost,uzplost,gaminvlost,
+                                    -uzboost,
+                                    top.boost_gamma)
         if self.l_trackssnparents: ssnplost = take(top.pidlost[i1:i2,top.spid-1],iit)
         if self.vmode==1:
           vxplost=uxplost*gaminvlost
@@ -754,6 +762,9 @@ Class for generating secondaries
 #            pid[:,self.xoldpid]=xnew-vx*top.dt
 #            pid[:,self.yoldpid]=ynew-vy*top.dt
 #            pid[:,self.zoldpid]=znew-vz*top.dt
+             # --- apply perdiodic BC
+#             znew = where(znew<zmin,zmax-zmin+znew,znew)
+#             znew = where(znew>zmax,zmin-zmax+znew,znew)
              if w3d.solvergeom==w3d.RZgeom:
                condition = (sqrt(xnew**2+ynew**2)>xmax) or \
                            (znew<zmin) or (znew>zmax)
@@ -1405,22 +1416,22 @@ components of the secondaries (dimensionless).
   def getcosthav(self):
     return self.htime[...],self.costhav[...]
 
-  def plek0av(self,color=black,width=1,type='solid'):
+  def plek0av(self,color=black,width=1,type='solid',marker='o',marks=0,msize=1):
     if me<>0:return
     htime,ek0av=self.getek0av()
-    plg(ek0av,htime,color=color,width=width,type=type)
+    plg(ek0av,htime,color=color,width=width,type=type,marker=marker,marks=marks,msize=msize)
     ptitles('','time (s)','ek0av (eV)')
 
-  def plek0max(self,color=black,width=1,type='solid'):
+  def plek0max(self,color=black,width=1,type='solid',marker='o',marks=0,msize=1):
     if me<>0:return
     htime,ek0max=self.getek0max()
-    plg(ek0max,htime,color=color,width=width,type=type)
+    plg(ek0max,htime,color=color,width=width,type=type,marker=marker,marks=marks,msize=msize)
     ptitles('','time (s)','ek0max (eV)')
 
-  def plcosthav(self,color=black,width=1,type='solid'):
+  def plcosthav(self,color=black,width=1,type='solid',marker='o',marks=0,msize=1):
     if me<>0:return
     htime,costhav=self.getcosthav()
-    plg(costhav,htime,color=color,width=width,type=type)
+    plg(costhav,htime,color=color,width=width,type=type,marker=marker,marks=marks,msize=msize)
     ptitles('','time (s)','costhav')
 
 class PhotoElectrons:
@@ -1560,20 +1571,20 @@ Class for generating photo-electrons
          self.Lambda = sum(sum(incident_species.get_density(nx=2, 
                                                             nz=2, 
                                                             ny=self.nz,
-                                                            ymin=ymin,
-                                                            ymax=ymax,
+                                                            ymin=self.ymin,
+                                                            ymax=self.ymax,
                                                             l_minmax_grid=false,
                                                             l_dividebyvolume=false,
                                                             charge=1),2),0)
        else:
          self.zmin=min(incident_species.getz())
          self.zmax=max(incident_species.getz())
-         self.dz=(zmax-zmin)/self.nz
+         self.dz=(self.zmax-self.zmin)/self.nz
          self.Lambda = sum(sum(incident_species.get_density(nx=2, 
                                                             ny=2, 
                                                             nz=self.nz,
-                                                            zmin=zmin,
-                                                            zmax=zmax,
+                                                            zmin=self.zmin,
+                                                            zmax=self.zmax,
                                                             l_minmax_grid=false,
                                                             l_dividebyvolume=false,
                                                             charge=1),0),0)
@@ -1605,8 +1616,8 @@ Class for generating photo-electrons
          pos.x[:pos.nlast] = pos.x[:pos.nlast]*xran
          pos.vgx[:pos.nlast] = pos.vgx[:pos.nlast]*xran
 
-       if self.l_verbose:print "min and max of photoelectrons=",min((pos.z[:pos.nlast]/pos.slength-0.5)*dz+i*dz),\
-                                                                max((pos.z[:pos.nlast]/pos.slength-0.5)*dz+i*dz)
+       if self.l_verbose:print "min and max of photoelectrons=",min((pos.z[:pos.nlast]/pos.slength)*self.dz+i*self.dz),\
+                                                                max((pos.z[:pos.nlast]/pos.slength)*self.dz+i*self.dz)
        ns = pos.nlast
        js_new=emitted_species.jslist[0]
        usq = (pos.vgx[:pos.nlast]**2 + pos.vgy[:pos.nlast]**2 + pos.vgz[:pos.nlast]**2)/clight**2
