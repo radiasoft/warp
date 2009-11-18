@@ -54,6 +54,7 @@ ntamp_gather                 integer /4/
 transition_zone              real /0./ # length of zone for linear transition from coarse to fine force (in coarse cell units)
 tmin_moving_main_window      real /0./
 otherproc                    integer /10/
+otherblock                   integer /11/
 push_em3d_e(f:EM3D_YEEFIELDtype,dt:real) subroutine
 push_em3d_b(f:EM3D_YEEFIELDtype,dt:real) subroutine
 push_em3d_ef(f:EM3D_YEEFIELDtype,dt:real) subroutine
@@ -93,18 +94,6 @@ depose_jxjyjz_esirkepov_n(j:real,
                            l_particles_weight:logical,
                            l4symtry:logical)
                            subroutine
-depose_jxjyjz_esirkepov_nold(j:real,
-                           n:integer,x(n):real,y(n):real,z(n):real,
-                           ux(n):real,uy(n):real,uz(n):real,
-                           gaminv(n):real,w:real,q:real,
-                           xmin:real,ymin:real,zmin:real,
-                           dt:real,dx:real,dy:real,dz:real,
-                           nx:integer,ny:integer,nz:integer,
-                           nxguard:integer,nyguard:integer,nzguard:integer,
-                           nox:integer,noy:integer,noz:integer,
-                           l_particles_weight:logical,
-                           l4symtry:logical)
-                           subroutine
 depose_jxjyjz_pxpypz_esirkepov_linear_serial(cj:real,mp:real,
                            n:integer,x(n):real,y(n):real,z(n):real,
                            ux(n):real,uy(n):real,uz(n):real,
@@ -133,6 +122,29 @@ depose_rho_n(rho:real,
                            nx:integer,ny:integer,nz:integer,
                            nxguard:integer,nyguard:integer,nzguard:integer,
                            nox:integer,noy:integer,noz:integer,
+                           l_particles_weight:logical,
+                           l4symtry:logical)
+                           subroutine
+depose_rho_n_2dxz(rho:real,
+                           n:integer,x(n):real,z(n):real,
+                           w:real,q:real,
+                           xmin:real,zmin:real,
+                           dx:real,dz:real,
+                           nx:integer,nz:integer,
+                           nxguard:integer,nzguard:integer,
+                           nox:integer,noz:integer,
+                           l_particles_weight:logical,
+                           l4symtry:logical)
+                           subroutine
+depose_j_n_2dxz(cj:real,
+                           n:integer,x(n):real,z(n):real,
+                           ux(n):real,uy(n):real,uz(n):real,
+                           gaminv(n):real,w:real,q:real,
+                           xmin:real,zmin:real,
+                           dt:real,dx:real,dz:real,
+                           nx:integer,nz:integer,
+                           nxguard:integer,nzguard:integer,
+                           nox:integer,noz:integer,
                            l_particles_weight:logical,
                            l4symtry:logical)
                            subroutine
@@ -178,6 +190,16 @@ getb3d_linear_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                nxguard:integer,nyguard:integer,nzguard:integer,
                bxg:real,byg:real,bzg:real)
                            subroutine
+geteb3d_linear_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
+               ex(n):real,ey(n):real,ez(n):real,
+               bx(n):real,by(n):real,bz(n):real,
+               xmin:real,ymin:real,zmin:real,
+               dx:real,dy:real,dz:real,
+               nx:integer,ny:integer,nz:integer,
+               nxguard:integer,nyguard:integer,nzguard:integer,
+               exg:real,eyg:real,ezg:real,
+               bxg:real,byg:real,bzg:real)
+                           subroutine
 gete3d_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                ex(n):real,ey(n):real,ez(n):real,
                xmin:real,ymin:real,zmin:real,
@@ -198,10 +220,31 @@ getb3d_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                bxg:real,byg:real,bzg:real,
                            l4symtry:logical)
                            subroutine
+gete2dxz_n_energy_conserving(n:integer,xp(n):real,zp(n):real,
+               ex(n):real,ey(n):real,ez(n):real,
+               xmin:real,zmin:real,
+               dx:real,dz:real,
+               nx:integer,nz:integer,
+               nxguard:integer,nzguard:integer,
+               nox:integer,noz:integer,
+               exg:real,eyg:real,ezg:real,
+                           l4symtry:logical)
+                           subroutine
+getb2dxz_n_energy_conserving(n:integer,xp(n):real,zp(n):real,
+               bx(n):real,by(n):real,bz(n):real,
+               xmin:real,zmin:real,
+               dx:real,dz:real,
+               nx:integer,nz:integer,
+               nxguard:integer,nzguard:integer,
+               nox:integer,noz:integer,
+               bxg:real,byg:real,bzg:real,
+                           l4symtry:logical)
+                           subroutine
 yee2node3d(f:EM3D_YEEFIELDtype) subroutine
 node2yee3d(f:EM3D_YEEFIELDtype) subroutine
 em3d_exchange_e(b:EM3D_BLOCKtype) subroutine
 em3d_exchange_b(b:EM3D_BLOCKtype) subroutine
+em3d_exchange_f(b:EM3D_BLOCKtype) subroutine
 em3d_exchange_j(b:EM3D_BLOCKtype) subroutine
 em3d_exchange_rho(b:EM3D_BLOCKtype) subroutine
 add_current_slice_3d(f:EM3D_YEEFIELDtype,i:integer) subroutine
@@ -218,29 +261,35 @@ project_jxjyjz(jfine:real,jcoarse:real,jcoarse_mother:real,
                nxc:integer,nyc,nzc:integer,
                nxguard:integer,nyguard:integer,nzguard:integer,
                rapx:integer,rapy:integer,rapz:integer,
-               ixc:integer,iyc:integer,izc:integer) subroutine
+               ixc:integer,iyc:integer,izc:integer,l_2dxz:logical,
+               icycle:integer,novercycle:integer) subroutine
 project_rho(rhofine:real,rhocoarse:real,rhocoarse_mother:real,
                nxf:integer,nyf:integer,nzf:integer,
                nxc:integer,nyc,nzc:integer,
                nxguard:integer,nyguard:integer,nzguard:integer,
                rapx:integer,rapy:integer,rapz:integer,
-               ixc:integer,iyc:integer,izc:integer) subroutine
+               ixc:integer,iyc:integer,izc:integer,l_2dxz:logical) subroutine
+apply_dmask(rho:real,jc:real,dmaskx:real,dmasky:real,dmaskz:real,
+            bounds(6):integer,nguarddepos(3):integer,ntrans(3):integer,
+            nx:integer,ny:integer,nz:integer,nxguard:integer,nyguard:integer,nzguard:integer,
+            l_pushf:logical,l_2dxz:logical) subroutine
 addsubstractfields(child:EM3D_BLOCKtype,child_coarse:EM3D_BLOCKtype,
-                   parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer) subroutine
+                   parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer,l_2dxz:logical) subroutine
 addsubstractfields_nodal(child:EM3D_BLOCKtype,child_coarse:EM3D_BLOCKtype,
-                   parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer) subroutine
+                   parent:EM3D_BLOCKtype,lc(3):integer,ref(3):integer,l_2dxz:logical) subroutine
+shift_em3dblock_ncells_x(b:EM3D_BLOCKtype,n:integer) subroutine
 shift_em3dblock_ncells_z(b:EM3D_BLOCKtype,n:integer) subroutine
 depose_jxjy_esirkepov_linear_serial_2d(j:real,
                            n:integer,x(n):real,y(n):real,
                            xold(n):real,yold(n):real,uz(n):real,
-                           gaminv(n):real,w(n):real,q:real,
+                           gaminv(n):real,w:real,q:real,
                            xmin:real,ymin:real,dt:real,dx:real,dy:real,
                            nx:integer,ny:integer,l_particles_weight:logical)
                            subroutine
 depose_jxjyjz_esirkepov_n_2d(j:real,
                            n:integer,x(n):real,y(n):real,
                            ux(n):real,uy(n):real,uz(n):real,
-                           gaminv(n):real,w(n):real,q:real,
+                           gaminv(n):real,w:real,q:real,
                            xmin:real,zmin:real,dt:real,dx:real,dz:real,
                            nx:integer,nz:integer,
                            nxguard:integer,nzguard:integer,
@@ -248,6 +297,7 @@ depose_jxjyjz_esirkepov_n_2d(j:real,
                            l_particles_weight:logical,
                            l4symtry:logical)
                            subroutine
+setebp(emblock:EM3D_YEEFIELDtype,icycle:integer,novercycle:integer) subroutine
 
 %%%%%%%% EM3D_SPLITYEEFIELDtype:
 fieldtype integer /-2/
@@ -383,6 +433,12 @@ jzmaxg integer /0/ # position of last node of entire grid (interior+guard nodes)
 nxp integer /0/
 nyp integer /0/
 nzp integer /0/
+nxdamp integer /0/
+nydamp integer /0/
+nzdamp integer /0/
+nxpnext integer /0/
+nypnext integer /0/
+nzpnext integer /0/
 nxf integer /0/
 nyf integer /0/
 nzf integer /0/
@@ -411,6 +467,7 @@ dyi real
 dzi real
 clight real
 mu0    real
+theta_damp real /0./
 l_2dxz logical /.False./
 Ex(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Ey(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
@@ -424,6 +481,12 @@ Ezp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 Bxp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 Byp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 Bzp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
+Expnext(-nxguard:nxpnext+nxguard,-nyguard:nypnext+nyguard,-nzguard:nzpnext+nzguard) _real
+Eypnext(-nxguard:nxpnext+nxguard,-nyguard:nypnext+nyguard,-nzguard:nzpnext+nzguard) _real
+Ezpnext(-nxguard:nxpnext+nxguard,-nyguard:nypnext+nyguard,-nzguard:nzpnext+nzguard) _real
+Bxpnext(-nxguard:nxpnext+nxguard,-nyguard:nypnext+nyguard,-nzguard:nzpnext+nzguard) _real
+Bypnext(-nxguard:nxpnext+nxguard,-nyguard:nypnext+nyguard,-nzguard:nzpnext+nzguard) _real
+Bzpnext(-nxguard:nxpnext+nxguard,-nyguard:nypnext+nyguard,-nzguard:nzpnext+nzguard) _real
 F(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
 Rho(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
 Rhoold(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
@@ -436,16 +499,28 @@ Ay(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Az(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Phi(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Mp(-nxguard:nxmp+nxguard,-nyguard:nymp+nyguard,-nzguard:nzmp+nzguard,3) _real
+Exold(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
+Eyold(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
+Ezold(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
+Exbar(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
+Eybar(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
+Ezbar(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
+Excp(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
+Eycp(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
+Ezcp(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
 E_inx_pos integer /-1/
 E_inx_angle real  /0./
 E_inx(-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 E_iny_pos integer /-1/
 E_iny_angle real  /0./
 E_iny(-nxguard:nx+nxguard,-nzguard:nz+nzguard) _real
-E_inz_pos integer /-1/
+E_inz_pos real /0./
 E_inz_angle real  /0./
 Ex_inz(-nxguard:nx+nxguard,-nyguard:ny+nyguard) _real
 Ey_inz(-nxguard:nx+nxguard,-nyguard:ny+nyguard) _real
+dmaskx(-nxguard:nx+nxguard) _real
+dmasky(-nyguard:ny+nyguard) _real
+dmaskz(-nzguard:nz+nzguard) _real
 
 %%%%%%%% EM3D_FIELDtype:
 fieldtype integer /0/
