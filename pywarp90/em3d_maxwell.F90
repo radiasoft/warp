@@ -322,7 +322,7 @@ end module mod_emfield3d
     sf%jxmaxg =  sf%ixmaxg- sf%ixming
     sf%jymaxg =  sf%iymaxg- sf%iyming
     sf%jzmaxg =  sf%izmaxg- sf%izming
-    sf%l_2dxz = sf%l_2dxz
+    sf%l_2dxz = l_2dxz
     call EM3D_SPLITYEEFIELDtypeallot(sf)
 
     return 
@@ -348,22 +348,208 @@ dtsdy = f%clight**2*dt/f%dy
 dtsdz = f%clight**2*dt/f%dz
 mudt  = f%mu0*f%clight**2*dt
 
+if (f%theta_damp/=0.) then
+!  f%exbar = f%theta_damp*f%exbar + f%exold
+!  f%eybar = f%theta_damp*f%eybar + f%eyold
+!  f%ezbar = f%theta_damp*f%ezbar + f%ezold
+  f%exold = f%ex
+  f%eyold = f%ey
+  f%ezold = f%ez
+  f%exbar = (1.-0.5*f%theta_damp)*f%ex+0.5*f%theta_damp*f%exbar
+  f%eybar = (1.-0.5*f%theta_damp)*f%ey+0.5*f%theta_damp*f%eybar
+  f%ezbar = (1.-0.5*f%theta_damp)*f%ez+0.5*f%theta_damp*f%ezbar
+end if
+
 if (f%stencil==0 .or. f%stencil==1) then
   call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                       mudt,dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
-                      f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos,f%Ex_inz,f%Ey_inz,f%l_2dxz)
+                      f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos,f%Ex_inz,f%Ey_inz,f%l_2dxz,f%zmin,f%dz)
 else
   call push_em3d_kyeevec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                          mudt,dtsdx,dtsdy,dtsdz, &
                          f%nx,f%ny,f%nz, &
-                         f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos,f%Ex_inz,f%Ey_inz,f%l_2dxz)
+                         f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos,f%Ex_inz,f%Ey_inz,f%l_2dxz,f%zmin,f%dz)
 end if
 
 return
 end subroutine push_em3d_e
 
 subroutine push_em3d_evec(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
+                          nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,zmin,dz)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz
+real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz,E_inz_pos,zmin,dz
+integer(ISZ) :: j,k,l
+logical(ISZ) :: l_2dxz
+real(kind=8) :: w,zlaser
+
+if (.not. l_2dxz) then
+  ! advance Ex
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-1
+      Ex(j,k,l) = Ex(j,k,l) + dtsdy * (Bz(j,k,l)   - Bz(j,k-1,l  )) &
+                            - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
+                            - mudt  * CJ(j,k,l,1)
+    end do
+   end do
+  end do
+
+  ! advance Ey
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx
+      Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
+                            + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
+                            - mudt  * CJ(j,k,l,2)
+    end do
+   end do
+  end do
+
+  ! advance Ez 
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx
+      Ez(j,k,l) = Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
+                            - dtsdy * (Bx(j,k,l) - Bx(j  ,k-1,l)) &
+                            - mudt  * CJ(j,k,l,3)
+    end do
+   end do
+  end do
+
+  ! --- add laser field
+  zlaser=(E_inz_pos-zmin)/dz
+  l = floor(zlaser)
+  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
+!  if (l>=-nzguard .and. l<nz+nzguard) then
+    w = zlaser-l
+    do k = -nyguard, ny+nyguard
+      do j = -nxguard, nx+nxguard
+       if (.false.) then
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*2.*(1.-w)
+          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*2.*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*2.*w
+          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*2.*w
+        end if
+       else
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*(1.-w)
+          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*w
+          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*w
+        end if
+        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
+          Ex(j,k,l-1) = Ex(j,k,l-1) + Ex_inz(j,k)*(1.-w)/2
+          Ey(j,k,l-1) = Ey(j,k,l-1) + Ey_inz(j,k)*(1.-w)/2
+        end if
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*w/2
+          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*w/2
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*(1.-w)/2
+          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*(1.-w)/2
+        end if
+        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
+          Ex(j,k,l+2) = Ex(j,k,l+2) + Ex_inz(j,k)*w/2
+          Ey(j,k,l+2) = Ey(j,k,l+2) + Ey_inz(j,k)*w/2
+        end if
+       end if
+
+      end do
+    end do
+  end if
+
+else
+
+  k = 0
+  ! advance Ex
+  do l = 0, nz
+    do j = 0, nx-1
+      Ex(j,k,l) = Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
+                            - mudt  * CJ(j,k,l,1)
+    end do
+  end do
+
+  ! advance Ey
+  do l = 0, nz
+    do j = 0, nx
+      Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
+                            + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
+                            - mudt  * CJ(j,k,l,2)
+    end do
+  end do
+
+  ! advance Ez 
+  do l = 0, nz-1
+    do j = 0, nx
+      Ez(j,k,l) = Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
+                            - mudt  * CJ(j,k,l,3)
+    end do
+  end do
+
+  ! --- add laser field
+  zlaser=(E_inz_pos-zmin)/dz
+  l = floor(zlaser)
+  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
+!  if (l>=-nzguard .and. l<nz+nzguard) then
+      w = zlaser-l
+      do j = -nxguard, nx+nxguard
+       if (.false.) then
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*2.*(1.-w)
+          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*2.*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*2.*w
+          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*2.*w
+        end if
+       else
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*(1.-w)
+          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*w
+          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*w
+        end if
+        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
+          Ex(j,:,l-1) = Ex(j,:,l-1) + Ex_inz(j,:)*(1.-w)/2
+          Ey(j,:,l-1) = Ey(j,:,l-1) + Ey_inz(j,:)*(1.-w)/2
+        end if
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*w/2
+          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*w/2
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*(1.-w)/2
+          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*(1.-w)/2
+        end if
+        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
+          Ex(j,:,l+2) = Ex(j,:,l+2) + Ex_inz(j,:)*w/2
+          Ey(j,:,l+2) = Ey(j,:,l+2) + Ey_inz(j,:)*w/2
+        end if
+       end if
+
+!        Ex(j,k,l) = Ex_inz(j,k)
+!        Ey(j,k,l) = Ey_inz(j,k)
+      end do
+  end if
+end if
+
+
+return
+end subroutine push_em3d_evec
+
+subroutine push_em3d_evecold(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
                           nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard,E_inz_pos
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
@@ -412,10 +598,10 @@ if (.not. l_2dxz) then
     l=E_inz_pos
     do k = 0, ny-1
       do j = 0, nx
-        Ex(j,k,l) = Ex(j,k,l) + Ex_inz(j,k)/2
-        Ey(j,k,l) = Ey(j,k,l) + Ey_inz(j,k)/2
-!        Ex(j,k,l) = Ey_inz(j,k)
-!        Ey(j,k,l) = Ex_inz(j,k)
+!        Ex(j,k,l) = Ex(j,k,l) + Ex_inz(j,k)*2
+!        Ey(j,k,l) = Ey(j,k,l) + Ey_inz(j,k)*2
+        Ex(j,k,l) = Ey_inz(j,k)
+        Ey(j,k,l) = Ex_inz(j,k)
       end do
     end do
   end if
@@ -452,8 +638,8 @@ else
   if (E_inz_pos>-1) then
     l=E_inz_pos
       do j = 0, nx
-        Ex(j,:,l) = Ex(j,:,l) + Ex_inz(j,:)/2
-        Ey(j,:,l) = Ey(j,:,l) + Ey_inz(j,:)/2
+        Ex(j,:,l) = Ex(j,:,l) + Ex_inz(j,:)*2
+        Ey(j,:,l) = Ey(j,:,l) + Ey_inz(j,:)*2
 !        Ex(j,k,l) = Ex_inz(j,k)
 !        Ey(j,k,l) = Ey_inz(j,k)
       end do
@@ -462,20 +648,21 @@ end if
 
 
 return
-end subroutine push_em3d_evec
+end subroutine push_em3d_evecold
 
 subroutine push_em3d_kyeevec(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz, &
-                             nx,ny,nz,nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz)
+                             nx,ny,nz,nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,zmin,dz)
 use EM3D_kyee
 implicit none
-integer :: nx,ny,nz,nxguard,nyguard,nzguard,E_inz_pos
+integer :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), intent(IN) :: E_inz_pos,zmin,dz
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz
 logical(ISZ) :: l_2dxz
 
 INTEGER :: j, k, l
-real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt,E_inz_angle
+real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt,E_inz_angle,zlaser,w
 
 if (.not.l_2dxz) then
   ! advance Ex
@@ -612,10 +799,10 @@ if (.not.l_2dxz) then
     l=E_inz_pos
     do k = 0, ny-1
       do j = 0, nx
-        Ex(j,k,l) = Ex(j,k,l) + Ex_inz(j,k)/2
-        Ey(j,k,l) = Ey(j,k,l) + Ey_inz(j,k)/2
-!        Ex(j,k,l) = Ey_inz(j,k)
-!        Ey(j,k,l) = Ex_inz(j,k)
+!        Ex(j,k,l) = Ex(j,k,l) + Ex_inz(j,k)*2
+!        Ey(j,k,l) = Ey(j,k,l) + Ey_inz(j,k)*2
+        Ex(j,k,l) = Ey_inz(j,k)
+        Ey(j,k,l) = Ex_inz(j,k)
       end do
     end do
   end if
@@ -663,13 +850,33 @@ else
   end do
 
   ! --- add laser field
-  if (E_inz_pos>-1) then
-    l=E_inz_pos
-      do j = 0, nx
-        Ex(j,k,l) = Ex(j,k,l) + Ex_inz(j,k)/2
-        Ey(j,k,l) = Ey(j,k,l) + Ey_inz(j,k)/2
-!        Ex(j,k,l) = Ey_inz(j,k)
-!        Ey(j,k,l) = Ex_inz(j,k)
+  zlaser=(E_inz_pos-zmin)/dz
+  l = int(zlaser)
+  if (l>-1 .and. l<nz+1) then
+      w = zlaser-l
+      do j = 0, nx-1
+       if (.true.) then
+        Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*2.*(1.-w)
+        Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*2.*(1.-w)
+        Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*2.*w
+        Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*2.*w
+       else
+        Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*(1.-w)
+        Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*(1.-w)
+        Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*w
+        Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*w
+        Ex(j,:,l-1) = Ex(j,:,l-1) + Ex_inz(j,:)*(1.-w)/2
+        Ey(j,:,l-1) = Ey(j,:,l-1) + Ey_inz(j,:)*(1.-w)/2
+        Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*w/2
+        Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*w/2
+        Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*(1.-w)/2
+        Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*(1.-w)/2
+        Ex(j,:,l+2) = Ex(j,:,l+2) + Ex_inz(j,:)*w/2
+        Ey(j,:,l+2) = Ey(j,:,l+2) + Ey_inz(j,:)*w/2
+       end if
+
+!        Ex(j,k,l) = Ex_inz(j,k)
+!        Ey(j,k,l) = Ey_inz(j,k)
       end do
   end if
 
@@ -686,11 +893,26 @@ TYPE(EM3D_YEEFIELDtype) :: f
 REAL(kind=8), INTENT(IN) :: dt
 
 INTEGER :: j, k, l
-real(kind=8) :: dtsdx,dtsdy,dtsdz
+real(kind=8) :: dtsdx,dtsdy,dtsdz,alpha,beta,gamma
 
 dtsdx = dt/f%dx
 dtsdy = dt/f%dy
 dtsdz = dt/f%dz
+
+if (f%theta_damp/=0.) then
+  f%excp = f%ex
+  f%eycp = f%ey
+  f%ezcp = f%ez
+  f%ex = (1.+0.25*f%theta_damp)*f%ex-0.5*f%exold+(0.5-0.25*f%theta_damp)*f%exbar
+  f%ey = (1.+0.25*f%theta_damp)*f%ey-0.5*f%eyold+(0.5-0.25*f%theta_damp)*f%eybar
+  f%ez = (1.+0.25*f%theta_damp)*f%ez-0.5*f%ezold+(0.5-0.25*f%theta_damp)*f%ezbar
+  alpha = (1.+0.5*f%theta_damp)
+  beta  = -(1.-0.5*f%theta_damp)*f%theta_damp
+  gamma = 0.5*(1.-f%theta_damp)**2*f%theta_damp
+!  f%ex = alpha*f%ex + beta*f%exold + gamma*f%exbar
+!  f%ey = alpha*f%ey + beta*f%eyold + gamma*f%eybar
+!  f%ez = alpha*f%ez + beta*f%ezold + gamma*f%ezbar
+end if
 
 if (f%stencil==0 .or. f%stencil==2) then
   call push_em3d_bvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
@@ -702,6 +924,12 @@ else
                       dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
                       f%nxguard,f%nyguard,f%nzguard,f%l_2dxz)
+end if
+
+if (f%theta_damp/=0.) then
+  f%ex = f%excp
+  f%ey = f%eycp
+  f%ez = f%ezcp
 end if
 
 return
@@ -871,30 +1099,30 @@ else
   ! advance Bx
   do l = 0, nz-1
     do j = 0, nx
-      Bx(j,k,l) = Bx(j,k,l) + alphaz*dtsdz * (Ey(j  ,k  ,l+1) - Ey(j  ,k  ,l  )) &
-                            +  2.5*betaz*dtsdz * (Ey(j+1,k  ,l+1) - Ey(j+1,k  ,l  ) &
-                                           +  Ey(j-1,k  ,l+1) - Ey(j-1,k  ,l  )) 
+      Bx(j,k,l) = Bx(j,k,l) +    alphaz*dtsdz * (Ey(j  ,k  ,l+1) - Ey(j  ,k  ,l  )) &
+                            + 2.5*betaz*dtsdz * (Ey(j+1,k  ,l+1) - Ey(j+1,k  ,l  ) &
+                                              +  Ey(j-1,k  ,l+1) - Ey(j-1,k  ,l  )) 
     end do
   end do
 
   ! advance By
   do l = 0, nz-1
     do j = 0, nx-1
-      By(j,k,l) = By(j,k,l) + alphax*dtsdx * (Ez(j+1,k  ,l  ) - Ez(j  ,k  ,l  )) &  
-                            +  2.5*betax*dtsdx * (Ez(j+1,k  ,l+1) - Ez(j  ,k  ,l+1) &
-                                           +  Ez(j+1,k  ,l-1) - Ez(j  ,k  ,l-1)) &
-                            - alphaz*dtsdz * (Ex(j  ,k  ,l+1) - Ex(j  ,k  ,l  )) &
-                            -  2.5*betaz*dtsdz * (Ex(j+1,k  ,l+1) - Ex(j+1,k  ,l  ) &
-                                           +  Ex(j-1,k  ,l+1) - Ex(j-1,k  ,l  )) 
+      By(j,k,l) = By(j,k,l) +    alphax*dtsdx * (Ez(j+1,k  ,l  ) - Ez(j  ,k  ,l  )) &  
+                            + 2.5*betax*dtsdx * (Ez(j+1,k  ,l+1) - Ez(j  ,k  ,l+1) &
+                                              +  Ez(j+1,k  ,l-1) - Ez(j  ,k  ,l-1)) &
+                            -    alphaz*dtsdz * (Ex(j  ,k  ,l+1) - Ex(j  ,k  ,l  )) &
+                            - 2.5*betaz*dtsdz * (Ex(j+1,k  ,l+1) - Ex(j+1,k  ,l  ) &
+                                              +  Ex(j-1,k  ,l+1) - Ex(j-1,k  ,l  )) 
     end do
   end do
 
   ! advance Bz 
   do l = 0, nz
     do j = 0, nx-1
-      Bz(j,k,l) = Bz(j,k,l) - alphax*dtsdx * (Ey(j+1,k  ,l  ) - Ey(j  ,k  ,l  )) &
-                            -  2.5*betax*dtsdx * (Ey(j+1,k  ,l+1) - Ey(j  ,k  ,l+1) &
-                                           +  Ey(j+1,k  ,l-1) - Ey(j  ,k  ,l-1)) 
+      Bz(j,k,l) = Bz(j,k,l) -    alphax*dtsdx * (Ey(j+1,k  ,l  ) - Ey(j  ,k  ,l  )) &
+                            - 2.5*betax*dtsdx * (Ey(j+1,k  ,l+1) - Ey(j  ,k  ,l+1) &
+                                              +  Ey(j+1,k  ,l-1) - Ey(j  ,k  ,l-1)) 
     end do
   end do
 
@@ -2105,12 +2333,12 @@ else
 
   do l = 0, nz-1
     do j = 0, nx
-      bxz(j,k,l) = agz(l)*bxz(j,k,l) + bpgz(l)*alphaz * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1)) &
-                                     + bpgz(l)* betaz * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
-                                                      +  eyx(j-1,k  ,l+1)+eyz(j-1,k  ,l+1)) &
-                                     + bmgz(l)*alphaz * (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
-                                     + bmgz(l)* betaz * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
-                                                      +  eyx(j-1,k  ,l  )+eyz(j-1,k  ,l  )) 
+      bxz(j,k,l) = agz(l)*bxz(j,k,l) + bpgz(l)*    alphaz * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1)) &
+                                     + bpgz(l)* 2.5*betaz * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
+                                                          +  eyx(j-1,k  ,l+1)+eyz(j-1,k  ,l+1)) &
+                                     + bmgz(l)*    alphaz * (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
+                                     + bmgz(l)* 2.5*betaz * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
+                                                          +  eyx(j-1,k  ,l  )+eyz(j-1,k  ,l  )) 
     end do
   end do
 
@@ -2374,7 +2602,7 @@ INTEGER(ISZ) :: j, k, l,which
                       b%zlbnd, &
                       b%zrbnd)
   ! --- need to exchange e even if not pushing f, for calculation of e at nodes
-  call em3d_exchange_e(b)
+!  call em3d_exchange_e(b)
 
   return
 end subroutine push_em3d_eef
@@ -2400,7 +2628,7 @@ INTEGER(ISZ) :: j, k, l,which
   if(l_pushf) call push_em3d_blockbndf(b,dt,which)
   call push_em3d_blockbndb(b,dt,which)
 
-  if(l_pushf) call em3d_exchange_f(b)
+!  if(l_pushf) call em3d_exchange_f(b)
   call em3d_applybc_b(b%core%yf, &
                       b%xlbnd, &
                       b%xrbnd, &
@@ -2408,7 +2636,7 @@ INTEGER(ISZ) :: j, k, l,which
                       b%yrbnd, &
                       b%zlbnd, &
                       b%zrbnd)
-  call em3d_exchange_b(b)
+!  call em3d_exchange_b(b)
 
   return
 end subroutine push_em3d_bf
@@ -2420,8 +2648,6 @@ implicit none
 TYPE(EM3D_BLOCKtype) :: b
 REAL(kind=8), INTENT(IN) :: dt
 integer(ISZ) :: which
-
-  
 
   if(b%xlbnd==openbc) call push_em3d_splite(b%sidexl%syf,dt,which)
   if(b%xrbnd==openbc) call push_em3d_splite(b%sidexr%syf,dt,which)
@@ -2712,20 +2938,28 @@ integer(ISZ):: n,i,it,zl,zr
   call shift_3darray_ncells_z(f%Bx,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
   call shift_3darray_ncells_z(f%By,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
   call shift_3darray_ncells_z(f%Bz,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
-  do it=1,f%ntimes
-    do i=1,3
-      call shift_3darray_ncells_z(f%Jarray(-f%nxguard,-f%nyguard,-f%nzguard,i,it), &
-                                    f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
-    end do
-  end do
+!  do it=1,f%ntimes
+!    do i=1,3
+!      call shift_3darray_ncells_z(f%Jarray(-f%nxguard,-f%nyguard,-f%nzguard,i,it), &
+!                                    f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
+!    end do
+!  end do
   if (f%nxf>0) then
     call shift_3darray_ncells_z(f%F,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
 !    call shift_3darray_ncells_z(f%Rhoold,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
-    call shift_3darray_ncells_z(f%Rho,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
+!    call shift_3darray_ncells_z(f%Rho,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
 !    do it=1,f%ntimes
 !      call shift_3darray_ncells_z(f%Rhoarray(-f%nxguard,-f%nyguard,-f%nzguard,it), &
 !                                    f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
 !    end do
+  end if
+  if (f%nxpnext>0) then
+    call shift_3darray_ncells_z(f%Expnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
+    call shift_3darray_ncells_z(f%Eypnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
+    call shift_3darray_ncells_z(f%Ezpnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
+    call shift_3darray_ncells_z(f%Bxpnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
+    call shift_3darray_ncells_z(f%Bypnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
+    call shift_3darray_ncells_z(f%Bzpnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
   end if
   if (f%nxpo>0) then
     call shift_3darray_ncells_z(f%Ax,f%nxpo,f%nypo,f%nzpo,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
@@ -2781,19 +3015,19 @@ integer(ISZ), parameter:: otherproc=10, ibuf = 25
 real(kind=8) :: f(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) 
 
 f(:,:,-nzguard:nz+nzguard-n) = f(:,:,-nzguard+n:nz+nzguard)
-if (zr/=otherproc) f(:,:,nz-n+1:nz+nzguard) = 0.
+if (zr/=otherproc) f(:,:,nz+nzguard-n+1:) = 0.
 
 #ifdef MPIPARALLEL
   if (zl==otherproc) then
-     call mpi_packbuffer_init(size(f(:,:,-n+1:nzguard)),ibuf)
-     call mympi_pack(f(:,:,-n+1:nzguard),ibuf)
+     call mpi_packbuffer_init(size(f(:,:,nzguard-n+1:nzguard)),ibuf)
+     call mympi_pack(f(:,:,nzguard-n+1:nzguard),ibuf)
      call mpi_send_pack(procneighbors(0,2),0,ibuf)
   end if    
   if (zr==otherproc) then
-    call mpi_packbuffer_init(size(f(:,:,nz-n+1:nz+nzguard)),ibuf)
+    call mpi_packbuffer_init(size(f(:,:,nz+nzguard-n+1:)),ibuf)
     call mpi_recv_pack(procneighbors(1,2),0,ibuf)
-    f(:,:,nz:nz+nzguard) = reshape(mpi_unpack_real_array( size(f(:,:,nz-n+1:nz+nzguard)),ibuf), &
-                                                         shape(f(:,:,nz-n+1:nz+nzguard)))
+    f(:,:,nz+nzguard-n+1:) = reshape(mpi_unpack_real_array( size(f(:,:,nz+nzguard-n+1:)),ibuf), &
+                                                           shape(f(:,:,nz+nzguard-n+1:)))
   end if
 #endif
 
@@ -2829,12 +3063,220 @@ if (zr/=otherproc) f(:,:,nz+nzguard-n+1:nz+nzguard) = 0.
   return
 end subroutine shift_3darray_ncells_zold
 
+subroutine shift_em3dblock_ncells_x(b,n)
+use mod_emfield3d
+implicit none
+TYPE(EM3D_BLOCKtype) :: b
+integer(ISZ):: n
+
+  ! --- shift core 
+  call shift_em3df_ncells_x(b%core%yf,b%xlbnd,b%xrbnd,n)
+  ! --- shift sides
+  if(b%xlbnd==openbc) call shift_em3dsplitf_ncells_x(b%sidexl%syf,openbc,openbc,n)
+  if(b%xrbnd==openbc) call shift_em3dsplitf_ncells_x(b%sidexr%syf,openbc,openbc,n)
+  if(b%ylbnd==openbc) call shift_em3dsplitf_ncells_x(b%sideyl%syf,b%xlbnd,b%xrbnd,n)
+  if(b%yrbnd==openbc) call shift_em3dsplitf_ncells_x(b%sideyr%syf,b%xlbnd,b%xrbnd,n)
+  if(b%zlbnd==openbc) call shift_em3dsplitf_ncells_x(b%sidezl%syf,b%xlbnd,b%xrbnd,n)
+  if(b%zrbnd==openbc) call shift_em3dsplitf_ncells_x(b%sidezr%syf,b%xlbnd,b%xrbnd,n)
+  ! --- shift edges
+  if(b%xlbnd==openbc .and. b%ylbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgexlyl%syf,openbc,openbc,n)
+  if(b%xrbnd==openbc .and. b%ylbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgexryl%syf,openbc,openbc,n)
+  if(b%xlbnd==openbc .and. b%yrbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgexlyr%syf,openbc,openbc,n)
+  if(b%xrbnd==openbc .and. b%yrbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgexryr%syf,openbc,openbc,n)
+  if(b%xlbnd==openbc .and. b%zlbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgexlzl%syf,openbc,openbc,n)
+  if(b%xrbnd==openbc .and. b%zlbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgexrzl%syf,openbc,openbc,n)
+  if(b%xlbnd==openbc .and. b%zrbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgexlzr%syf,openbc,openbc,n)
+  if(b%xrbnd==openbc .and. b%zrbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgexrzr%syf,openbc,openbc,n)
+  if(b%ylbnd==openbc .and. b%zlbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgeylzl%syf,b%xlbnd,b%xrbnd,n)
+  if(b%yrbnd==openbc .and. b%zlbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgeyrzl%syf,b%xlbnd,b%xrbnd,n)
+  if(b%ylbnd==openbc .and. b%zrbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgeylzr%syf,b%xlbnd,b%xrbnd,n)
+  if(b%yrbnd==openbc .and. b%zrbnd==openbc) call shift_em3dsplitf_ncells_x(b%edgeyrzr%syf,b%xlbnd,b%xrbnd,n)
+  ! --- shift corners
+  if(b%xlbnd==openbc .and. b%ylbnd==openbc .and. b%zlbnd==openbc) &
+  call shift_em3dsplitf_ncells_x(b%cornerxlylzl%syf,openbc,openbc,n)
+  if(b%xrbnd==openbc .and. b%ylbnd==openbc .and. b%zlbnd==openbc) &
+  call shift_em3dsplitf_ncells_x(b%cornerxrylzl%syf,openbc,openbc,n)
+  if(b%xlbnd==openbc .and. b%yrbnd==openbc .and. b%zlbnd==openbc) &
+  call shift_em3dsplitf_ncells_x(b%cornerxlyrzl%syf,openbc,openbc,n)
+  if(b%xrbnd==openbc .and. b%yrbnd==openbc .and. b%zlbnd==openbc) &
+  call shift_em3dsplitf_ncells_x(b%cornerxryrzl%syf,openbc,openbc,n)
+  if(b%xlbnd==openbc .and. b%ylbnd==openbc .and. b%zrbnd==openbc) &
+  call shift_em3dsplitf_ncells_x(b%cornerxlylzr%syf,openbc,openbc,n)
+  if(b%xrbnd==openbc .and. b%ylbnd==openbc .and. b%zrbnd==openbc) &
+  call shift_em3dsplitf_ncells_x(b%cornerxrylzr%syf,openbc,openbc,n)
+  if(b%xlbnd==openbc .and. b%yrbnd==openbc .and. b%zrbnd==openbc) &
+  call shift_em3dsplitf_ncells_x(b%cornerxlyrzr%syf,openbc,openbc,n)
+  if(b%xrbnd==openbc .and. b%yrbnd==openbc .and. b%zrbnd==openbc) &
+  call shift_em3dsplitf_ncells_x(b%cornerxryrzr%syf,openbc,openbc,n)
+  
+  return
+end subroutine shift_em3dblock_ncells_x
+
+subroutine shift_em3df_ncells_x(f,xl,xr,n)
+use mod_emfield3d
+implicit none
+TYPE(EM3D_YEEFIELDtype) :: f
+integer(ISZ):: n,i,it,xl,xr
+  call shift_3darray_ncells_x(f%Ex,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Ey,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Ez,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Bx,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%By,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Bz,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  do it=1,f%ntimes
+    call shift_3darray_ncells_x(f%Jarray(-f%nxguard,-f%nyguard,-f%nzguard,1,it), &
+                                    f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Jarray(-f%nxguard,-f%nyguard,-f%nzguard,2,it), &
+                                    f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Jarray(-f%nxguard,-f%nyguard,-f%nzguard,3,it), &
+                                    f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  end do
+  if (f%nxf>0) then
+    call shift_3darray_ncells_x(f%F,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Rhoold,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+!    call shift_3darray_ncells_x(f%Rho,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    do it=1,f%ntimes
+      call shift_3darray_ncells_x(f%Rhoarray(-f%nxguard,-f%nyguard,-f%nzguard,it), &
+                                    f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    end do
+  end if
+  if (f%nxpnext>0) then
+    call shift_3darray_ncells_x(f%Expnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Eypnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Ezpnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Bxpnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Bypnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Bzpnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  end if
+  if (f%nxpo>0) then
+    call shift_3darray_ncells_x(f%Ax,f%nxpo,f%nypo,f%nzpo,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Ay,f%nxpo,f%nypo,f%nzpo,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Az,f%nxpo,f%nypo,f%nzpo,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Phi,f%nxpo,f%nypo,f%nzpo,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  end if
+  
+  return
+end subroutine shift_em3df_ncells_x
+
+subroutine shift_em3dsplitf_ncells_x(f,xl,xr,n)
+use mod_emfield3d
+implicit none
+TYPE(EM3D_SPLITYEEFIELDtype) :: f
+integer(ISZ):: n,xl,xr
+
+  call shift_3darray_ncells_x(f%Exx,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Exy,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Exz,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+
+  call shift_3darray_ncells_x(f%Eyx,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Eyy,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Eyz,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+
+  call shift_3darray_ncells_x(f%Ezx,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Ezy,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Ezz,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+
+  call shift_3darray_ncells_x(f%Bxy,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Bxz,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+
+  call shift_3darray_ncells_x(f%Byx,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Byz,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+
+  call shift_3darray_ncells_x(f%Bzx,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Bzy,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+
+  call shift_3darray_ncells_x(f%Fx,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Fy,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  call shift_3darray_ncells_x(f%Fz,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  if (f%nxpo>0) then
+    call shift_3darray_ncells_x(f%Ax,f%nxpo,f%nypo,f%nzpo,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Ay,f%nxpo,f%nypo,f%nzpo,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Az,f%nxpo,f%nypo,f%nzpo,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+    call shift_3darray_ncells_x(f%Phi,f%nxpo,f%nypo,f%nzpo,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
+  end if
+
+  return
+end subroutine shift_em3dsplitf_ncells_x
+
+subroutine shift_3darray_ncells_x(f,nx,ny,nz,nxguard,nyguard,nzguard,xl,xr,n)
+#ifdef MPIPARALLEL
+use mpirz
+#endif
+implicit none
+integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard,n,xl,xr
+integer(ISZ), parameter:: otherproc=10, ibuf = 25
+real(kind=8) :: f(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) 
+
+if (n>0) then
+  f(-nxguard:nx+nxguard-n,:,:) = f(-nxguard+n:nx+nxguard,:,:)
+  if (xr/=otherproc) f(nx+nxguard-n+1:,:,:) = 0.
+
+#ifdef MPIPARALLEL
+    if (xl==otherproc) then
+       call mpi_packbuffer_init(size(f(nxguard-n+1:nxguard,:,:)),ibuf)
+       call mympi_pack(f(nxguard-n+1:nxguard,:,:),ibuf)
+       call mpi_send_pack(procneighbors(0,0),0,ibuf)
+    end if    
+    if (xr==otherproc) then
+      call mpi_packbuffer_init(size(f(nx+nxguard-n+1:nx+nxguard,:,:)),ibuf)
+      call mpi_recv_pack(procneighbors(1,0),0,ibuf)
+      f(nx+nxguard-n+1:nx+nxguard,:,:) = reshape(mpi_unpack_real_array( size(f(nx+nxguard-n+1:nx+nxguard,:,:)),ibuf), &
+                                                           shape(f(nx+nxguard-n+1:nx+nxguard,:,:)))
+    end if
+#endif
+end if
+if (n<0) then
+  n=-n
+  f(-nxguard+n:nx+nxguard,:,:) = f(-nxguard:nx+nxguard-n,:,:) 
+  if (xl/=otherproc) f(-nxguard:-nxguard+n-1,:,:) = 0.
+
+#ifdef MPIPARALLEL
+    if (xr==otherproc) then
+       call mpi_packbuffer_init(size(f(nx-nxguard:nx-nxguard+n,:,:)),ibuf)
+       call mympi_pack(f(nx-nxguard:nx-nxguard+n,:,:),ibuf)
+       call mpi_send_pack(procneighbors(1,0),0,ibuf)
+    end if    
+    if (xl==otherproc) then
+      call mpi_packbuffer_init(size(f(:-nxguard+n-1,:,:)),ibuf)
+      call mpi_recv_pack(procneighbors(0,0),0,ibuf)
+      f(:-nxguard+n-1,:,:) = reshape(mpi_unpack_real_array( size(f(:-nxguard+n-1,:,:)),ibuf), &
+                                                                   shape(f(:-nxguard+n-1,:,:)))
+    end if
+#endif
+  n=-n
+end if
+
+  return
+end subroutine shift_3darray_ncells_x
+
 subroutine em3d_applybc_e(f,xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd)
 use mod_emfield3d
 implicit none
 
 TYPE(EM3D_YEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
+
+  if (xlbnd==dirichlet) then
+     f%ex(:f%ixmin-1,:,:) = 0.
+     f%ey(:f%ixmin,:,:) = 0.
+     f%ez(:f%ixmin,:,:) = 0.
+  end if
+  if (xrbnd==dirichlet) then
+     f%ex(f%ixmax:,:,:) = 0.
+     f%ey(f%ixmax:,:,:) = 0.
+     f%ez(f%ixmax:,:,:) = 0.
+  end if
+
+  if (ylbnd==dirichlet) then
+     f%ex(:,:f%iymin,:) = 0.
+     f%ey(:,:f%iymin-1,:) = 0.
+     f%ez(:,:f%iymin,:) = 0.
+  end if
+  if (yrbnd==dirichlet) then
+     f%ex(:,f%iymax:,:) = 0.
+     f%ey(:,f%iymax:,:) = 0.
+     f%ez(:,f%iymax:,:) = 0.
+  end if
 
   if (xlbnd==neumann) then
      f%ex(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:) = -f%ex(f%ixmin:f%ixmin+f%nxguard-1,:,:)
@@ -2867,6 +3309,28 @@ implicit none
 
 TYPE(EM3D_YEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
+
+  if (xlbnd==dirichlet) then
+     f%bx(:f%ixmin,:,:) = 0.
+     f%by(:f%ixmin-1,:,:) = 0.
+     f%bz(:f%ixmin-1,:,:) = 0.
+  end if
+  if (xrbnd==dirichlet) then
+     f%bx(f%ixmax:,:,:) = 0.
+     f%by(f%ixmax:,:,:) = 0.
+     f%bz(f%ixmax:,:,:) = 0.
+  end if
+
+  if (ylbnd==dirichlet) then
+     f%bx(:,:f%iymin-1,:) = 0.
+     f%by(:,:f%iymin,:) = 0.
+     f%bz(:,:f%iymin-1,:) = 0.
+  end if
+  if (yrbnd==dirichlet) then
+     f%bx(:,f%iymax:,:) = 0.
+     f%by(:,f%iymax:,:) = 0.
+     f%bz(:,f%iymax:,:) = 0.
+  end if
 
   if (xlbnd==neumann) then
      f%bx(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:) = f%bx(f%ixmin+1:f%ixmin+f%nxguard,:,:)
@@ -2954,6 +3418,52 @@ implicit none
 TYPE(EM3D_SPLITYEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
 
+  if (xlbnd==dirichlet) then
+     f%exx(:f%ixmin-1,:,:) = 0.
+     f%eyx(:f%ixmin,:,:) = 0.
+     f%ezx(:f%ixmin,:,:) = 0.
+     f%exy(:f%ixmin-1,:,:) = 0.
+     f%eyy(:f%ixmin,:,:) = 0.
+     f%ezy(:f%ixmin,:,:) = 0.
+     f%exz(:f%ixmin-1,:,:) = 0.
+     f%eyz(:f%ixmin,:,:) = 0.
+     f%ezz(:f%ixmin,:,:) = 0.
+  end if
+  if (xrbnd==dirichlet) then
+     f%exx(f%ixmax:,:,:) = 0.
+     f%eyx(f%ixmax:,:,:) = 0.
+     f%ezx(f%ixmax:,:,:) = 0.
+     f%exy(f%ixmax:,:,:) = 0.
+     f%eyy(f%ixmax:,:,:) = 0.
+     f%ezy(f%ixmax:,:,:) = 0.
+     f%exz(f%ixmax:,:,:) = 0.
+     f%eyz(f%ixmax:,:,:) = 0.
+     f%ezz(f%ixmax:,:,:) = 0.
+  end if
+
+  if (ylbnd==dirichlet) then
+     f%exx(:,:f%iymin,:) = 0.
+     f%eyx(:,:f%iymin-1,:) = 0.
+     f%ezx(:,:f%iymin,:) = 0.
+     f%exy(:,:f%iymin,:) = 0.
+     f%eyy(:,:f%iymin-1,:) = 0.
+     f%ezy(:,:f%iymin,:) = 0.
+     f%exz(:,:f%iymin,:) = 0.
+     f%eyz(:,:f%iymin-1,:) = 0.
+     f%ezz(:,:f%iymin,:) = 0.
+  end if
+  if (yrbnd==dirichlet) then
+     f%exx(:,f%iymax:,:) = 0.
+     f%eyx(:,f%iymax:,:) = 0.
+     f%ezx(:,f%iymax:,:) = 0.
+     f%exy(:,f%iymax:,:) = 0.
+     f%eyy(:,f%iymax:,:) = 0.
+     f%ezy(:,f%iymax:,:) = 0.
+     f%exz(:,f%iymax:,:) = 0.
+     f%eyz(:,f%iymax:,:) = 0.
+     f%ezz(:,f%iymax:,:) = 0.
+  end if
+
   if (xlbnd==neumann) then
      f%exx(f%ixmin-1,:,:) = -f%exx(f%ixmin  ,:,:)
      f%exy(f%ixmin-1,:,:) = -f%exy(f%ixmin  ,:,:)
@@ -2985,6 +3495,40 @@ implicit none
 
 TYPE(EM3D_SPLITYEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
+
+  if (xlbnd==dirichlet) then
+     f%bxy(:f%ixmin,:,:) = 0.
+     f%bxz(:f%ixmin,:,:) = 0.
+     f%byx(:f%ixmin-1,:,:) = 0.
+     f%byz(:f%ixmin-1,:,:) = 0.
+     f%bzx(:f%ixmin-1,:,:) = 0.
+     f%bzy(:f%ixmin-1,:,:) = 0.
+  end if
+  if (xrbnd==dirichlet) then
+     f%bxy(f%ixmax:,:,:) = 0.
+     f%bxz(f%ixmax:,:,:) = 0.
+     f%byx(f%ixmax:,:,:) = 0.
+     f%byz(f%ixmax:,:,:) = 0.
+     f%bzx(f%ixmax:,:,:) = 0.
+     f%bzy(f%ixmax:,:,:) = 0.
+  end if
+
+  if (ylbnd==dirichlet) then
+     f%bxy(:,:f%iymin-1,:) = 0.
+     f%bxz(:,:f%iymin-1,:) = 0.
+     f%byx(:,:f%iymin,:) = 0.
+     f%byz(:,:f%iymin,:) = 0.
+     f%bzx(:,:f%iymin-1,:) = 0.
+     f%bzy(:,:f%iymin-1,:) = 0.
+  end if
+  if (yrbnd==dirichlet) then
+     f%bxy(:,f%iymax:,:) = 0.
+     f%bxz(:,f%iymax:,:) = 0.
+     f%byx(:,f%iymax:,:) = 0.
+     f%byz(:,f%iymax:,:) = 0.
+     f%bzx(:,f%iymax:,:) = 0.
+     f%bzy(:,f%iymax:,:) = 0.
+  end if
 
   if (xlbnd==neumann) then
      f%byx(f%ixmin-1,:,:) = -f%byx(f%ixmin  ,:,:)
@@ -3453,8 +3997,8 @@ integer(ISZ) :: ibuf,ix
                                                +  syfu%byz(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:))/syfu%clight
           yfl%bz(yfl%ixmax  :yfl%ixmaxg-1,:,:) = (syfu%bzx(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:) &
                                                +  syfu%bzy(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:))/syfu%clight
-          syfu%bxy(syfu%ixming+1:syfu%ixmin-1,:,:) = yfl%bx(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)*syfu%clight
-          syfu%bxz(syfu%ixming+1:syfu%ixmin-1,:,:) = 0.
+          syfu%bxy(syfu%ixming+1:syfu%ixmin-1,:,:) = 0.
+          syfu%bxz(syfu%ixming+1:syfu%ixmin-1,:,:) = yfl%bx(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)*syfu%clight
           syfu%byx(syfu%ixming  :syfu%ixmin-1,:,:) = yfl%by(yfl%ixmax-yfl%nxguard  :yfl%ixmax-1,:,:)*syfu%clight
           syfu%byz(syfu%ixming  :syfu%ixmin-1,:,:) = 0.
           syfu%bzx(syfu%ixming  :syfu%ixmin-1,:,:) = yfl%bz(yfl%ixmax-yfl%nxguard  :yfl%ixmax-1,:,:)*syfu%clight
@@ -3472,8 +4016,8 @@ integer(ISZ) :: ibuf,ix
                                                +  syfl%byz(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:))/syfl%clight
           yfu%bz(yfu%ixming  :yfu%ixmin-1,:,:) = (syfl%bzx(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:) &
                                                +  syfl%bzy(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:))/syfl%clight
-          syfl%bxy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = yfu%bx(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)*syfl%clight
-          syfl%bxz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = 0.
+          syfl%bxy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = 0.
+          syfl%bxz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = yfu%bx(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)*syfl%clight
           syfl%byx(syfl%ixmax  :syfl%ixmaxg-1,:,:) = yfu%by(yfu%ixmin  :yfu%ixmin+yfu%nxguard-1,:,:)*syfl%clight
           syfl%byz(syfl%ixmax  :syfl%ixmaxg-1,:,:) = 0.
           syfl%bzx(syfl%ixmax  :syfl%ixmaxg-1,:,:) = yfu%bz(yfu%ixmin  :yfu%ixmin+yfu%nxguard-1,:,:)*syfl%clight
@@ -3896,7 +4440,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ix,ibuf
+integer(ISZ) :: ix,ibuf,nguardinl,nguardinu
 
 #ifdef MPIPARALLEL
 integer(MPIISZ)::mpirequest(2),mpierror
@@ -3914,11 +4458,12 @@ integer(MPIISZ)::mpirequest(2),mpierror
 
             ! --- send data down in z
             ibuf = 17
-            call mpi_packbuffer_init((3*yfu%nxguard+2)*size(yfu%J(0,:,:,1)),ibuf)
-            do ix = yfu%ixming,yfu%ixmin-1
+            nguardinu = yfu%nxguard
+            call mpi_packbuffer_init((3*(yfu%nxguard+nguardinu)+2)*size(yfu%J(0,:,:,1)),ibuf)
+            do ix = -yfu%nxguard,-1+nguardinu
               call mympi_pack(yfu%J(ix,:,:,1),ibuf)
             end do
-            do ix = yfu%ixming,yfu%ixmin
+            do ix = -yfu%nxguard,nguardinu
               call mympi_pack(yfu%J(ix,:,:,2),ibuf)
               call mympi_pack(yfu%J(ix,:,:,3),ibuf)
             end do
@@ -3928,11 +4473,12 @@ integer(MPIISZ)::mpirequest(2),mpierror
 
             ! --- send data up in z
             ibuf = 18
-            call mpi_packbuffer_init((3*yfl%nxguard+2)*size(yfl%J(0,:,:,1)),ibuf)
-            do ix = yfl%ixmax, yfl%ixmaxg-1
+            nguardinl = yfl%nxguard
+            call mpi_packbuffer_init((3*(yfl%nxguard+nguardinl)+2)*size(yfl%J(0,:,:,1)),ibuf)
+            do ix = yfl%nx-nguardinl, yfl%nx+yfl%nxguard-1
               call mympi_pack(yfl%J(ix,:,:,1),ibuf)
             end do
-            do ix = yfl%ixmax, yfl%ixmaxg
+            do ix = yfl%nx-nguardinl, yfl%nx+yfl%nxguard
               call mympi_pack(yfl%J(ix,:,:,2),ibuf)
               call mympi_pack(yfl%J(ix,:,:,3),ibuf)
             end do
@@ -3940,12 +4486,15 @@ integer(MPIISZ)::mpirequest(2),mpierror
 
           else
 #endif
-          ix = yfu%nxguard
-          yfu%J(0:ix-1,:,:,1)    = yfu%J(0:ix-1,:,:,1)    + yfl%J(yfl%nx:yfl%nx+ix-1,:,:,1) 
-          yfu%J(0:ix,:,:,2:3)    = yfu%J(0:ix,:,:,2:3)    + yfl%J(yfl%nx:yfl%nx+ix,:,:,2:3)
+            nguardinu = yfu%nxguard
+            nguardinl = yfl%nxguard
+            yfu%J(-nguardinu:yfu%nxguard-1,:,:,1)  = yfu%J(-nguardinu:yfu%nxguard-1,:,:,1)  &
+                                                   + yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard-1,:,:,1) 
+            yfu%J(-nguardinu:yfu%nxguard,:,:,2:3)  = yfu%J(-nguardinu:yfu%nxguard,:,:,2:3)  &
+                                                   + yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:,2:3)
 
-          yfl%J(yfl%nx-ix:yfl%nx-1,:,:,:) = yfl%J(yfl%nx-ix:yfl%nx-1,:,:,:) + yfu%J(-ix:-1,:,:,:)
-          yfl%J(yfl%nx,:,:,2:3) = yfu%J(0,:,:,2:3)
+            yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard-1,:,:,1) = yfu%J(-nguardinu:yfu%nxguard-1,:,:,1)
+            yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:,2:3) = yfu%J(-nguardinu:yfu%nxguard,:,:,2:3) 
 #ifdef MPIPARALLEL
           end if
 #endif
@@ -3962,7 +4511,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ix,ibuf
+integer(ISZ) :: ix,ibuf,nguardinl,nguardinu
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
@@ -3976,13 +4525,14 @@ integer(ISZ) :: ix,ibuf
           
             ! --- recv data from down in z
             ibuf = 19
-            call mpi_packbuffer_init((3*yfu%nxguard+2)*size(yfu%J(0,:,:,1)),ibuf)
+            nguardinu = yfu%nxguard
+            call mpi_packbuffer_init((3*(yfu%nxguard+nguardinu)+2)*size(yfu%J(0,:,:,1)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
-            do ix = 0,yfu%nxguard-1
+            do ix = -nguardinu,yfu%nxguard-1
               yfu%J(ix,:,:,1) = yfu%J(ix,:,:,1) + reshape(mpi_unpack_real_array( size(yfu%J(0,:,:,1)),ibuf), &
                                                                                 shape(yfu%J(0,:,:,1)))
             end do
-            do ix = 0,yfu%nxguard
+            do ix = -nguardinu,yfu%nxguard
               yfu%J(ix,:,:,2) = yfu%J(ix,:,:,2) + reshape(mpi_unpack_real_array( size(yfu%J(0,:,:,1)),ibuf), &
                                                                                 shape(yfu%J(0,:,:,1)))
               yfu%J(ix,:,:,3) = yfu%J(ix,:,:,3) + reshape(mpi_unpack_real_array( size(yfu%J(0,:,:,1)),ibuf), &
@@ -3993,13 +4543,14 @@ integer(ISZ) :: ix,ibuf
 
             ! --- recv data from up in z
             ibuf = 20
-            call mpi_packbuffer_init((3*yfl%nxguard+2)*size(yfl%J(0,:,:,1)),ibuf)
+            nguardinl = yfl%nxguard
+            call mpi_packbuffer_init((3*(yfl%nxguard+nguardinl)+2)*size(yfl%J(0,:,:,1)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
-            do ix = -yfl%nxguard,-1
+            do ix = -yfl%nxguard,nguardinl-1
               yfl%J(yfl%nx+ix,:,:,1) = yfl%J(yfl%nx+ix,:,:,1) + reshape(mpi_unpack_real_array( size(yfl%J(yfl%nx-1,:,:,1)),ibuf),&
                                                                                               shape(yfl%J(yfl%nx-1,:,:,1)))
             end do
-            do ix = -yfl%nxguard,0
+            do ix = -yfl%nxguard,nguardinl
               yfl%J(yfl%nx+ix,:,:,2) = yfl%J(yfl%nx+ix,:,:,2) + reshape(mpi_unpack_real_array( size(yfl%J(yfl%nx-1,:,:,2)),ibuf),&
                                                                                               shape(yfl%J(yfl%nx-1,:,:,2)))
               yfl%J(yfl%nx+ix,:,:,3) = yfl%J(yfl%nx+ix,:,:,3) + reshape(mpi_unpack_real_array( size(yfl%J(yfl%nx-1,:,:,3)),ibuf),&
@@ -4020,7 +4571,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ix,ibuf
+integer(ISZ) :: ix,ibuf,nguardinl,nguardinu
 
 #ifdef MPIPARALLEL
 integer(MPIISZ)::mpirequest(2),mpierror
@@ -4036,9 +4587,10 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ibuf=21
+            nguardinu = yfu%nxguard            
             ! --- send data down in z
-            call mpi_packbuffer_init(size(yfu%rho(0:yfu%nxguard,:,:)),ibuf)
-            do ix = -yfu%nxguard,0
+            call mpi_packbuffer_init(size(yfu%rho(-yfu%nxguard:nguardinu,:,:)),ibuf)
+            do ix = -yfu%nxguard,nguardinu
               call mympi_pack(yfu%rho(ix,:,:),ibuf)
             end do
             call mpi_isend_pack(fl%proc,1,ibuf)
@@ -4047,18 +4599,20 @@ integer(MPIISZ)::mpirequest(2),mpierror
 
             ! --- send data up in z
             ibuf = 22
-            call mpi_packbuffer_init(size(yfl%rho(0:yfl%nxguard,:,:)),ibuf)
-            do ix = 0,yfl%nxguard
-              call mympi_pack(yfl%rho(yfl%nx+ix,:,:),ibuf)
+            nguardinl = yfl%nxguard
+            call mpi_packbuffer_init(size(yfl%rho(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:)),ibuf)
+            do ix = yfl%nx-nguardinl,yfl%nx+yfl%nxguard
+              call mympi_pack(yfl%rho(ix,:,:),ibuf)
             end do
             call mpi_isend_pack(fu%proc,2,ibuf)
 
           else
 #endif
-          ix = yfu%nxguard
-          yfu%Rho(0:ix,:,:)      = yfu%Rho(0:ix,:,:)      + yfl%Rho(yfl%nx:yfl%nx+ix,:,:)
-          yfl%Rho(yfl%nx-ix:yfl%nx-1,:,:) = yfl%Rho(yfl%nx-ix:yfl%nx-1,:,:) + yfu%Rho(-ix:-1,:,:)
-          yfl%Rho(yfl%nx,:,:)   = yfu%Rho(0,:,:)
+          nguardinu = yfu%nxguard
+          nguardinl = yfl%nxguard
+          yfu%Rho(-nguardinu:yfu%nxguard,:,:) = yfu%Rho(-nguardinu:yfu%nxguard,:,:) &
+                                              + yfl%Rho(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:)
+          yfl%Rho(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:) = yfu%Rho(-nguardinu:yfu%nxguard,:,:)
 #ifdef MPIPARALLEL
           end if
 #endif
@@ -4075,7 +4629,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ix, ibuf
+integer(ISZ) :: ix, ibuf,nguardinl,nguardinu
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
@@ -4089,9 +4643,10 @@ integer(ISZ) :: ix, ibuf
           
             ! --- recv data from down in z
             ibuf = 23
-            call mpi_packbuffer_init(size(yfu%rho(0:yfu%nxguard,:,:)),ibuf)
+            nguardinu = yfu%nxguard            
+            call mpi_packbuffer_init(size(yfu%rho(-nguardinu:yfu%nxguard,:,:)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
-            do ix = 0,yfu%nxguard
+            do ix = -nguardinu,yfu%nxguard
               yfu%rho(ix,:,:) = yfu%rho(ix,:,:) + reshape(mpi_unpack_real_array( size(yfu%rho(0,:,:)),ibuf), &
                                                                                     shape(yfu%rho(0,:,:)))
             end do
@@ -4100,10 +4655,11 @@ integer(ISZ) :: ix, ibuf
 
             ! --- recv data from up in z
             ibuf = 24
-            call mpi_packbuffer_init(size(yfl%rho(0:yfl%nxguard,:,:)),ibuf)
+            nguardinl = yfl%nxguard
+            call mpi_packbuffer_init(size(yfl%rho(yfl%nx-yfl%nxguard:yfl%nx+nguardinl,:,:)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
-            do ix = -yfl%nxguard,0
-              yfl%rho(yfl%nx+ix,:,:) = yfl%rho(yfl%nx+ix,:,:) + reshape(mpi_unpack_real_array(size(yfl%rho(yfl%nx,:,:)),ibuf),&
+            do ix = yfl%nx-yfl%nxguard,yfl%nx+nguardinl
+              yfl%rho(ix,:,:) = yfl%rho(ix,:,:) + reshape(mpi_unpack_real_array(size(yfl%rho(yfl%nx,:,:)),ibuf),&
                                                                                             shape(yfl%rho(yfl%nx,:,:)))
             end do
           end if
@@ -4560,8 +5116,8 @@ integer(ISZ) :: ibuf,iy
                                                +  syfu%byz(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:))/syfu%clight
           yfl%bz(:,yfl%iymax  :yfl%iymaxg-1,:) = (syfu%bzx(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:) &
                                                +  syfu%bzy(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:))/syfu%clight
-          syfu%bxy(:,syfu%iyming  :syfu%iymin-1,:) = yfl%bx(:,yfl%iymax-yfl%nyguard  :yfl%iymax-1,:)*syfu%clight
-          syfu%bxz(:,syfu%iyming  :syfu%iymin-1,:) = 0.
+          syfu%bxy(:,syfu%iyming  :syfu%iymin-1,:) = 0.
+          syfu%bxz(:,syfu%iyming  :syfu%iymin-1,:) = yfl%bx(:,yfl%iymax-yfl%nyguard  :yfl%iymax-1,:)*syfu%clight
           syfu%byx(:,syfu%iyming+1:syfu%iymin-1,:) = yfl%by(:,yfl%iymax-yfl%nyguard+1:yfl%iymax-1,:)*syfu%clight
           syfu%byz(:,syfu%iyming+1:syfu%iymin-1,:) = 0.
           syfu%bzx(:,syfu%iyming  :syfu%iymin-1,:) = yfl%bz(:,yfl%iymax-yfl%nyguard  :yfl%iymax-1,:)*syfu%clight
@@ -4579,8 +5135,8 @@ integer(ISZ) :: ibuf,iy
                                                +  syfl%byz(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:))/syfl%clight
           yfu%bz(:,yfu%iyming  :yfu%iymin-1,:) = (syfl%bzx(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:) &
                                                +  syfl%bzy(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:))/syfl%clight
-          syfl%bxy(:,syfl%iymax  :syfl%iymaxg-1,:) = yfu%bx(:,yfu%iymin  :yfu%iymin+yfu%nyguard-1,:)*syfl%clight
-          syfl%bxz(:,syfl%iymax  :syfl%iymaxg-1,:) = 0.
+          syfl%bxy(:,syfl%iymax  :syfl%iymaxg-1,:) = 0.
+          syfl%bxz(:,syfl%iymax  :syfl%iymaxg-1,:) = yfu%bx(:,yfu%iymin  :yfu%iymin+yfu%nyguard-1,:)*syfl%clight
           syfl%byx(:,syfl%iymax+1:syfl%iymaxg-1,:) = yfu%by(:,yfu%iymin+1:yfu%iymin+yfu%nyguard-1,:)*syfl%clight
           syfl%byz(:,syfl%iymax+1:syfl%iymaxg-1,:) = 0.
           syfl%bzx(:,syfl%iymax  :syfl%iymaxg-1,:) = yfu%bz(:,yfu%iymin  :yfu%iymin+yfu%nyguard-1,:)*syfl%clight
@@ -5003,7 +5559,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iy,ibuf
+integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
 
 #ifdef MPIPARALLEL
 integer(MPIISZ)::mpirequest(2),mpierror
@@ -5021,14 +5577,15 @@ integer(MPIISZ)::mpirequest(2),mpierror
 
             ! --- send data down in z
             ibuf = 17
-            call mpi_packbuffer_init((3*yfu%nyguard+2)*size(yfu%J(:,-1,:,1)),ibuf)
-            do iy = yfu%iyming,yfu%iymin
+            nguardinu = yfu%nyguard
+            call mpi_packbuffer_init((3*(yfu%nyguard+nguardinu)+2)*size(yfu%J(:,-1,:,1)),ibuf)
+            do iy = -yfu%nyguard,nguardinu
               call mympi_pack(yfu%J(:,iy,:,1),ibuf)
             end do
-            do iy = yfu%iyming,yfu%iymin-1
+            do iy = -yfu%nyguard,nguardinu-1
               call mympi_pack(yfu%J(:,iy,:,2),ibuf)
             end do
-            do iy = yfu%iyming,yfu%iymin
+            do iy = -yfu%nyguard,nguardinu
               call mympi_pack(yfu%J(:,iy,:,3),ibuf)
             end do
             call mpi_isend_pack(fl%proc,1,ibuf)
@@ -5037,26 +5594,30 @@ integer(MPIISZ)::mpirequest(2),mpierror
 
             ! --- send data up in z
             ibuf = 18
-            call mpi_packbuffer_init((3*yfl%nyguard+2)*size(yfl%J(:,0,:,1)),ibuf)
-            do iy = yfl%iymax, yfl%iymaxg
+            nguardinl = yfl%nyguard
+            call mpi_packbuffer_init((3*(yfl%nyguard+nguardinl)+2)*size(yfl%J(:,0,:,1)),ibuf)
+            do iy = yfl%ny-nguardinl, yfl%ny+yfl%nyguard
               call mympi_pack(yfl%J(:,iy,:,1),ibuf)
             end do
-            do iy = yfl%iymax, yfl%iymaxg-1
+            do iy = yfl%ny-nguardinl, yfl%ny+yfl%nyguard-1
               call mympi_pack(yfl%J(:,iy,:,2),ibuf)
             end do
-            do iy = yfl%iymax, yfl%iymaxg
+            do iy = yfl%ny-nguardinl, yfl%ny+yfl%nyguard
               call mympi_pack(yfl%J(:,iy,:,3),ibuf)
             end do
             call mpi_isend_pack(fu%proc,2,ibuf)
 
           else
 #endif
-          iy = yfu%nyguard
-          yfu%J(:,0:iy  ,:,1:3:2) = yfu%J(:,0:iy,  :,1:3:2) + yfl%J(:,yfl%ny:yfl%ny+iy  ,:,1:3:2)
-          yfu%J(:,0:iy-1,:,2    ) = yfu%J(:,0:iy-1,:,2    ) + yfl%J(:,yfl%ny:yfl%ny+iy-1,:,2    ) 
+          nguardinu = yfu%nyguard
+          nguardinl = yfl%nyguard
+          yfu%J(:,-nguardinu:yfu%nyguard  ,:,1:3:2) = yfu%J(:,-nguardinu:yfu%nyguard,  :,1:3:2) &
+                                                    + yfl%J(:,yfl%ny-nguardinl:+yfl%ny+yfl%nyguard  ,:,1:3:2)
+          yfu%J(:,-nguardinu:yfu%nyguard-1,:,2    ) = yfu%J(:,-nguardinu:yfu%nyguard-1,:,2    ) &
+                                                    + yfl%J(:,yfl%ny-nguardinl:+yfl%ny+yfl%nyguard-1,:,2    ) 
 
-          yfl%J(:,yfl%ny-iy:yfl%ny-1,:,:) = yfl%J(:,yfl%ny-iy:yfl%ny-1,:,:) + yfu%J(:,-iy:-1,:,:)
-          yfl%J(:,yfl%ny,:,1:3:2) = yfu%J(:,0,:,1:3:2)
+          yfl%J(:,yfl%ny-nguardinl:+yfl%ny+yfl%nyguard  ,:,1:3:2) = yfu%J(:,-nguardinu:yfu%nyguard  ,:,1:3:2)
+          yfl%J(:,yfl%ny-nguardinl:+yfl%ny+yfl%nyguard-1,:,2    ) = yfu%J(:,-nguardinu:yfu%nyguard-1,:,2    )
 #ifdef MPIPARALLEL
           end if
 #endif
@@ -5073,7 +5634,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iy,ibuf
+integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
@@ -5087,17 +5648,18 @@ integer(ISZ) :: iy,ibuf
           
             ! --- recv data from down in z
             ibuf = 19
-            call mpi_packbuffer_init((3*yfu%nyguard+2)*size(yfu%J(:,0,:,1)),ibuf)
+            nguardinu = yfu%nyguard
+            call mpi_packbuffer_init((3*(yfu%nyguard+nguardinu)+2)*size(yfu%J(:,0,:,1)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
-            do iy = 0,yfu%nyguard
+            do iy = -nguardinu,yfu%nyguard
               yfu%J(:,iy,:  ,1) = yfu%J(:,iy,:  ,1) + reshape(mpi_unpack_real_array( size(yfu%J(:,0,:,1)),ibuf), &
                                                                                     shape(yfu%J(:,0,:,1)))
             end do
-            do iy = 0,yfu%nyguard-1
+            do iy = -nguardinu,yfu%nyguard-1
               yfu%J(:,iy,:  ,2) = yfu%J(:,iy,:  ,2) + reshape(mpi_unpack_real_array( size(yfu%J(:,0,:,1)),ibuf), &
                                                                                     shape(yfu%J(:,0,:,1)))
             end do
-            do iy = 0,yfu%nyguard
+            do iy = -nguardinu,yfu%nyguard
               yfu%J(:,iy,:  ,3) = yfu%J(:,iy,:  ,3) + reshape(mpi_unpack_real_array( size(yfu%J(:,0,:,1)),ibuf), &
                                                                                     shape(yfu%J(:,0,:,1)))
             end do
@@ -5106,17 +5668,18 @@ integer(ISZ) :: iy,ibuf
 
             ! --- recv data from up in z
             ibuf = 20
-            call mpi_packbuffer_init((3*yfl%nyguard+2)*size(yfl%J(:,0,:,1)),ibuf)
+            nguardinl = yfl%nyguard
+            call mpi_packbuffer_init((3*(yfl%nyguard+nguardinl)+2)*size(yfl%J(:,0,:,1)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
-            do iy = -yfl%nyguard,0
+            do iy = -yfl%nyguard,nguardinl
               yfl%J(:,yfl%ny+iy,:,1) = yfl%J(:,yfl%ny+iy,:,1) + reshape(mpi_unpack_real_array( size(yfl%J(:,yfl%ny-1,:,1)),ibuf),&
                                                                                               shape(yfl%J(:,yfl%ny-1,:,1)))
             end do
-            do iy = -yfl%nyguard,-1
+            do iy = -yfl%nyguard,nguardinl-1
               yfl%J(:,yfl%ny+iy,:,2) = yfl%J(:,yfl%ny+iy,:,2) + reshape(mpi_unpack_real_array( size(yfl%J(:,yfl%ny-1,:,2)),ibuf),&
                                                                                               shape(yfl%J(:,yfl%ny-1,:,2)))
             end do
-            do iy = -yfl%nyguard,0
+            do iy = -yfl%nyguard,nguardinl
               yfl%J(:,yfl%ny+iy,:,3) = yfl%J(:,yfl%ny+iy,:,3) + reshape(mpi_unpack_real_array( size(yfl%J(:,yfl%ny-1,:,3)),ibuf),&
                                                                                               shape(yfl%J(:,yfl%ny-1,:,3)))
             end do
@@ -5135,7 +5698,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iy,ibuf
+integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
 
 #ifdef MPIPARALLEL
 integer(MPIISZ)::mpirequest(2),mpierror
@@ -5151,9 +5714,10 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ibuf=21
+            nguardinu = yfu%nyguard
             ! --- send data down in y
-            call mpi_packbuffer_init(size(yfu%rho(:,0:yfu%nyguard,:)),ibuf)
-            do iy = -yfu%nyguard,0
+            call mpi_packbuffer_init(size(yfu%rho(:,-yfu%nyguard:nguardinu,:)),ibuf)
+            do iy = -yfu%nyguard,nguardinu
               call mympi_pack(yfu%rho(:,iy,:),ibuf)
             end do
             call mpi_isend_pack(fl%proc,1,ibuf)
@@ -5162,18 +5726,20 @@ integer(MPIISZ)::mpirequest(2),mpierror
 
             ! --- send data up in y
             ibuf = 22
-            call mpi_packbuffer_init(size(yfl%rho(:,0:yfl%nyguard,:)),ibuf)
-            do iy = 0,yfl%nyguard
+            nguardinl = yfl%nyguard
+            call mpi_packbuffer_init(size(yfl%rho(:,-nguardinl:yfl%nyguard,:)),ibuf)
+            do iy = -nguardinl,yfl%nyguard
               call mympi_pack(yfl%rho(:,yfl%ny+iy,:),ibuf)
             end do
             call mpi_isend_pack(fu%proc,2,ibuf)
 
           else
 #endif
-          iy = yfu%nyguard
-          yfu%Rho(:,0:iy,:)      = yfu%Rho(:,0:iy,:)      + yfl%Rho(:,yfl%ny:yfl%ny+iy,:)
-          yfl%Rho(:,yfl%ny-iy:yfl%ny-1,:) = yfl%Rho(:,yfl%ny-iy:yfl%ny-1,:) + yfu%Rho(:,-iy:-1,:)
-          yfl%Rho(:,yfl%ny,:)   = yfu%Rho(:,0,:)
+          nguardinu = yfu%nyguard
+          nguardinl = yfl%nyguard
+          yfu%Rho(:,-nguardinu:yfu%nyguard,:) = yfu%Rho(:,-nguardinu:yfu%nyguard,:)      &
+                                              + yfl%Rho(:,-nguardinl:yfl%nyguard,:)
+          yfl%Rho(:,-nguardinl:yfl%nyguard,:) = yfu%Rho(:,-nguardinu:yfu%nyguard,:)                                     
 #ifdef MPIPARALLEL
           end if
 #endif
@@ -5190,7 +5756,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iy, ibuf
+integer(ISZ) :: iy, ibuf,nguardinl,nguardinu
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
@@ -5204,9 +5770,10 @@ integer(ISZ) :: iy, ibuf
           
             ! --- recv data from down in z
             ibuf = 23
-            call mpi_packbuffer_init(size(yfu%rho(:,0:yfu%nyguard,:)),ibuf)
+            nguardinu = yfu%nyguard
+            call mpi_packbuffer_init(size(yfu%rho(:,-nguardinu:yfu%nyguard,:)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
-            do iy = 0,yfu%nyguard
+            do iy = -nguardinu,yfu%nyguard
               yfu%rho(:,iy,:) = yfu%rho(:,iy,:) + reshape(mpi_unpack_real_array( size(yfu%rho(:,0,:)),ibuf), &
                                                                                 shape(yfu%rho(:,0,:)))
             end do
@@ -5215,10 +5782,11 @@ integer(ISZ) :: iy, ibuf
 
             ! --- recv data from up in z
             ibuf = 24
-            call mpi_packbuffer_init(size(yfl%rho(:,0:yfl%nyguard,:)),ibuf)
+            nguardinl = yfl%nyguard
+            call mpi_packbuffer_init(size(yfl%rho(:,yfl%ny-yfl%nyguard:yfl%ny+nguardinl,:)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
-            do iy = -yfl%nyguard,0
-              yfl%rho(:,yfl%ny+iy,:) = yfl%rho(:,yfl%ny+iy,:) + reshape(mpi_unpack_real_array(size(yfl%rho(:,yfl%ny,:)),ibuf),&
+            do iy = yfl%ny-yfl%nyguard,yfl%ny+nguardinl
+              yfl%rho(:,iy,:) = yfl%rho(:,iy,:) + reshape(mpi_unpack_real_array(size(yfl%rho(:,yfl%ny,:)),ibuf),&
                                                                                              shape(yfl%rho(:,yfl%ny,:)))
             end do
           end if
@@ -5667,8 +6235,8 @@ integer(ISZ) :: ibuf,iz
                                                +  syfu%byz(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1))/syfu%clight
           yfl%bz(:,:,yfl%izmax+1:yfl%izmaxg-1) = (syfu%bzx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1) &
                                                +  syfu%bzy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1))/syfu%clight
-          syfu%bxy(:,:,syfu%izming  :syfu%izmin-1) = yfl%bx(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)*syfu%clight
-          syfu%bxz(:,:,syfu%izming  :syfu%izmin-1) = 0.
+          syfu%bxy(:,:,syfu%izming  :syfu%izmin-1) = 0.
+          syfu%bxz(:,:,syfu%izming  :syfu%izmin-1) = yfl%bx(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)*syfu%clight
           syfu%byx(:,:,syfu%izming  :syfu%izmin-1) = 0.
           syfu%byz(:,:,syfu%izming  :syfu%izmin-1) = yfl%by(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)*syfu%clight
           syfu%bzx(:,:,syfu%izming+1:syfu%izmin-1) = yfl%bz(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)*syfu%clight
@@ -5686,8 +6254,8 @@ integer(ISZ) :: ibuf,iz
                                                +  syfl%byz(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1))/syfl%clight
           yfu%bz(:,:,yfu%izming+1:yfu%izmin-1) = (syfl%bzx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1) &
                                                +  syfl%bzy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1))/syfl%clight
-          syfl%bxy(:,:,syfl%izmax  :syfl%izmaxg-1) = yfu%bx(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)*syfl%clight
-          syfl%bxz(:,:,syfl%izmax  :syfl%izmaxg-1) = 0.
+          syfl%bxy(:,:,syfl%izmax  :syfl%izmaxg-1) = 0.
+          syfl%bxz(:,:,syfl%izmax  :syfl%izmaxg-1) = yfu%bx(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)*syfl%clight
           syfl%byx(:,:,syfl%izmax  :syfl%izmaxg-1) = 0.
           syfl%byz(:,:,syfl%izmax  :syfl%izmaxg-1) = yfu%by(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)*syfl%clight
           syfl%bzx(:,:,syfl%izmax+1:syfl%izmaxg-1) = yfu%bz(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)*syfl%clight
@@ -6110,7 +6678,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz,ibuf
+integer(ISZ) :: iz,ibuf,nguardinl,nguardinu
 
 #ifdef MPIPARALLEL
 integer(MPIISZ)::mpirequest(2),mpierror
@@ -6128,12 +6696,15 @@ integer(MPIISZ)::mpirequest(2),mpierror
 
             ! --- send data down in z
             ibuf = 17
-            call mpi_packbuffer_init((3*yfu%nzguard+2)*size(yfu%J(:,:,-1,1)),ibuf)
-            do iz = yfu%izming,yfu%izmin
+            nguardinu = yfu%nzguard
+            call mpi_packbuffer_init((3*(yfu%nzguard+nguardinu)+2)*size(yfu%J(:,:,0,1)),ibuf)
+            do iz = -yfu%nzguard,nguardinu
               call mympi_pack(yfu%J(:,:,iz,1),ibuf)
+            end do
+            do iz = -yfu%nzguard,nguardinu
               call mympi_pack(yfu%J(:,:,iz,2),ibuf)
             end do
-            do iz = yfu%izming,yfu%izmin-1
+            do iz = -yfu%nzguard,nguardinu-1
               call mympi_pack(yfu%J(:,:,iz,3),ibuf)
             end do
             call mpi_isend_pack(fl%proc,1,ibuf)
@@ -6142,24 +6713,33 @@ integer(MPIISZ)::mpirequest(2),mpierror
 
             ! --- send data up in z
             ibuf = 18
-            call mpi_packbuffer_init((3*yfl%nzguard+2)*size(yfl%J(:,:,0,1)),ibuf)
-            do iz = yfl%izmax, yfl%izmaxg
+            nguardinl = yfl%nzguard
+            call mpi_packbuffer_init((3*(yfl%nzguard+nguardinl)+2)*size(yfl%J(:,:,0,1)),ibuf)
+            do iz = yfl%nz-nguardinl, yfl%nz+yfl%nzguard
               call mympi_pack(yfl%J(:,:,iz,1),ibuf)
+            end do
+            do iz = yfl%nz-nguardinl, yfl%nz+yfl%nzguard
               call mympi_pack(yfl%J(:,:,iz,2),ibuf)
             end do
-            do iz = yfl%izmax, yfl%izmaxg-1
+            do iz = yfl%nz-nguardinl, yfl%nz+yfl%nzguard-1
               call mympi_pack(yfl%J(:,:,iz,3),ibuf)
             end do
             call mpi_isend_pack(fu%proc,2,ibuf)
 
           else
 #endif
-          iz = yfu%nzguard
-          yfu%J(:,:,0:iz,1:2)    = yfu%J(:,:,0:iz,1:2)    + yfl%J(:,:,yfl%nz:yfl%nz+iz,1:2)
-          yfu%J(:,:,0:iz-1,3)    = yfu%J(:,:,0:iz-1,3)    + yfl%J(:,:,yfl%nz:yfl%nz+iz-1,3) 
-
-          yfl%J(:,:,yfl%nz-iz:yfl%nz-1,:) = yfl%J(:,:,yfl%nz-iz:yfl%nz-1,:) + yfu%J(:,:,-iz:-1,:)
-          yfl%J(:,:,yfl%nz,1:2) = yfu%J(:,:,0,1:2)
+          nguardinl = yfl%nzguard
+          nguardinu = yfu%nzguard
+          
+          yfu%J(:,:,-nguardinu:yfu%nzguard,1:2) = yfu%J(:,:,-nguardinu:yfu%nzguard,1:2) &
+                                                + yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard,1:2)
+                                                
+          yfu%J(:,:,-nguardinu:yfu%nzguard-1,3) = yfu%J(:,:,-nguardinu:yfu%nzguard-1,3) &
+                                                + yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard-1,3) 
+                                                
+          yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard,1:2) = yfu%J(:,:,-nguardinu:yfu%nzguard,1:2)
+          
+          yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard-1,3) = yfu%J(:,:,-nguardinu:yfu%nzguard-1,3)
 #ifdef MPIPARALLEL
           end if
 #endif
@@ -6176,7 +6756,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz,ibuf
+integer(ISZ) :: iz,ibuf,nguardinl,nguardinu
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
@@ -6190,15 +6770,18 @@ integer(ISZ) :: iz,ibuf
           
             ! --- recv data from down in z
             ibuf = 19
-            call mpi_packbuffer_init((3*yfu%nzguard+2)*size(yfu%J(:,:,0,1)),ibuf)
+            nguardinu = yfu%nzguard
+            call mpi_packbuffer_init((3*(yfu%nzguard+nguardinu)+2)*size(yfu%J(:,:,0,1)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
-            do iz = 0,yfu%nzguard
+            do iz = -nguardinu,yfu%nzguard
               yfu%J(:,:,iz  ,1) = yfu%J(:,:,iz  ,1) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
                                                                                      shape(yfu%J(:,:,0,1)))
+            end do
+            do iz = -nguardinu,yfu%nzguard
               yfu%J(:,:,iz  ,2) = yfu%J(:,:,iz  ,2) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
                                                                                      shape(yfu%J(:,:,0,1)))
             end do
-            do iz = 0,yfu%nzguard-1
+            do iz = -nguardinu,yfu%nzguard-1
               yfu%J(:,:,iz  ,3) = yfu%J(:,:,iz  ,3) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
                                                                                      shape(yfu%J(:,:,0,1)))
             end do
@@ -6207,17 +6790,20 @@ integer(ISZ) :: iz,ibuf
 
             ! --- recv data from up in z
             ibuf = 20
-            call mpi_packbuffer_init((3*yfl%nzguard+2)*size(yfl%J(:,:,0,1)),ibuf)
+            nguardinl = yfl%nzguard
+            call mpi_packbuffer_init((3*(yfl%nzguard+nguardinl)+2)*size(yfl%J(:,:,0,1)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
-            do iz = -yfl%nzguard,0
+            do iz = -yfl%nzguard,nguardinl
               yfl%J(:,:,yfl%nz+iz,1) = yfl%J(:,:,yfl%nz+iz,1) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,1)),ibuf),&
-                                                                                            shape(yfl%J(:,:,yfl%nz-1,1)))
-              yfl%J(:,:,yfl%nz+iz,2) = yfl%J(:,:,yfl%nz+iz,2) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,2)),ibuf),&
-                                                                                            shape(yfl%J(:,:,yfl%nz-1,2)))
+                                                                                              shape(yfl%J(:,:,yfl%nz-1,1)))
             end do
-            do iz = -yfl%nzguard,-1
+            do iz = -yfl%nzguard,nguardinl
+              yfl%J(:,:,yfl%nz+iz,2) = yfl%J(:,:,yfl%nz+iz,2) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,2)),ibuf),&
+                                                                                              shape(yfl%J(:,:,yfl%nz-1,2)))
+            end do
+            do iz = -yfl%nzguard,nguardinl-1
               yfl%J(:,:,yfl%nz+iz,3) = yfl%J(:,:,yfl%nz+iz,3) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,3)),ibuf),&
-                                                                                            shape(yfl%J(:,:,yfl%nz-1,3)))
+                                                                                              shape(yfl%J(:,:,yfl%nz-1,3)))
             end do
           end if
       end select
@@ -6234,7 +6820,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz,ibuf
+integer(ISZ) :: iz,ibuf,nguardinl,nguardinu
 
 #ifdef MPIPARALLEL
 integer(MPIISZ)::mpirequest(2),mpierror
@@ -6250,9 +6836,10 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ibuf=21
+            nguardinu = yfu%nzguard
             ! --- send data down in z
-            call mpi_packbuffer_init(size(yfu%rho(:,:,0:yfu%nzguard)),ibuf)
-            do iz = -yfu%nzguard,0
+            call mpi_packbuffer_init(size(yfu%rho(:,:,-yfu%nzguard:nguardinu)),ibuf)
+            do iz = -yfu%nzguard,nguardinu
               call mympi_pack(yfu%rho(:,:,iz  ),ibuf)
             end do
             call mpi_isend_pack(fl%proc,1,ibuf)
@@ -6261,18 +6848,20 @@ integer(MPIISZ)::mpirequest(2),mpierror
 
             ! --- send data up in z
             ibuf = 22
-            call mpi_packbuffer_init(size(yfl%rho(:,:,0:yfl%nzguard)),ibuf)
-            do iz = 0,yfl%nzguard
+            nguardinl = yfl%nzguard
+            call mpi_packbuffer_init(size(yfl%rho(:,:,-nguardinl:yfl%nzguard)),ibuf)
+            do iz = -nguardinl,yfl%nzguard
               call mympi_pack(yfl%rho(:,:,yfl%nz+iz  ),ibuf)
             end do
             call mpi_isend_pack(fu%proc,2,ibuf)
 
           else
 #endif
-          iz = yfu%nzguard
-          yfu%Rho(:,:,0:iz)      = yfu%Rho(:,:,0:iz)      + yfl%Rho(:,:,yfl%nz:yfl%nz+iz)
-          yfl%Rho(:,:,yfl%nz-iz:yfl%nz-1) = yfl%Rho(:,:,yfl%nz-iz:yfl%nz-1) + yfu%Rho(:,:,-iz:-1)
-          yfl%Rho(:,:,yfl%nz)   = yfu%Rho(:,:,0)
+          nguardinl = yfl%nzguard
+          nguardinu = yfu%nzguard
+          yfu%Rho(:,:,-nguardinu:yfu%nzguard) = yfu%Rho(:,:,-nguardinu:yfu%nzguard) &
+                                              + yfl%Rho(:,:,yfl%nz-nguardinl:yfl%nz+yfu%nzguard)
+          yfl%Rho(:,:,yfl%nz-nguardinl:yfl%nz+yfu%nzguard) = yfu%Rho(:,:,-nguardinu:yfu%nzguard)
 #ifdef MPIPARALLEL
           end if
 #endif
@@ -6289,7 +6878,7 @@ implicit none
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz, ibuf
+integer(ISZ) :: iz, ibuf,nguardinl,nguardinu
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
@@ -6303,9 +6892,10 @@ integer(ISZ) :: iz, ibuf
           
             ! --- recv data from down in z
             ibuf = 23
-            call mpi_packbuffer_init(size(yfu%rho(:,:,0:yfu%nzguard)),ibuf)
+            nguardinu = yfu%nzguard
+            call mpi_packbuffer_init(size(yfu%rho(:,:,-nguardinu:yfu%nzguard)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
-            do iz = 0,yfu%nzguard
+            do iz = -nguardinu,yfu%nzguard
               yfu%rho(:,:,iz  ) = yfu%rho(:,:,iz  ) + reshape(mpi_unpack_real_array( size(yfu%rho(:,:,0)),ibuf), &
                                                                                     shape(yfu%rho(:,:,0)))
             end do
@@ -6314,9 +6904,10 @@ integer(ISZ) :: iz, ibuf
 
             ! --- recv data from up in z
             ibuf = 24
-            call mpi_packbuffer_init(size(yfl%rho(:,:,0:yfl%nzguard)),ibuf)
+            nguardinl = yfl%nzguard
+            call mpi_packbuffer_init(size(yfl%rho(:,:,-yfl%nzguard:nguardinl)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
-            do iz = -yfl%nzguard,0
+            do iz = -yfl%nzguard,nguardinl
               yfl%rho(:,:,yfl%nz+iz  ) = yfl%rho(:,:,yfl%nz+iz  ) + reshape(mpi_unpack_real_array(size(yfl%rho(:,:,yfl%nz)),ibuf),&
                                                                                             shape(yfl%rho(:,:,yfl%nz  )))
             end do
@@ -6403,6 +6994,7 @@ TYPE(EM3D_BLOCKtype) :: b
 #endif
 
   ! --- Y
+ if (.not.b%core%yf%l_2dxz) then
   ! core<--->sides
   call em3d_exchange_bnde_y(b%core,   b%sideyr)
   call em3d_exchange_bnde_y(b%sideyl, b%core)
@@ -6469,7 +7061,8 @@ TYPE(EM3D_BLOCKtype) :: b
   call em3d_exchange_bnde_yrecv(b%edgexrzr,     b%cornerxryrzr)
   call mpi_waitall_requests()
 #endif
-
+  endif
+  
   ! --- Z
   ! core<--->sides
   call em3d_exchange_bnde_z(b%core,   b%sidezr)
@@ -6616,6 +7209,7 @@ TYPE(EM3D_BLOCKtype) :: b
 #endif
 
   ! --- Y
+  if (.not.b%core%yf%l_2dxz) then
   ! core<--->sides
   call em3d_exchange_bndb_y(b%core,   b%sideyr)
   call em3d_exchange_bndb_y(b%sideyl, b%core)
@@ -6682,7 +7276,8 @@ TYPE(EM3D_BLOCKtype) :: b
   call em3d_exchange_bndb_yrecv(b%edgexrzr,     b%cornerxryrzr)
   call mpi_waitall_requests()
 #endif
-
+  endif
+  
   ! --- Z
   ! core<--->sides
   call em3d_exchange_bndb_z(b%core,   b%sidezr)
@@ -6829,6 +7424,7 @@ TYPE(EM3D_BLOCKtype) :: b
 #endif
 
   ! --- Y
+  if (.not.b%core%yf%l_2dxz) then
   ! core<--->sides
   call em3d_exchange_bndf_y(b%core,   b%sideyr)
   call em3d_exchange_bndf_y(b%sideyl, b%core)
@@ -6895,7 +7491,8 @@ TYPE(EM3D_BLOCKtype) :: b
   call em3d_exchange_bndf_yrecv(b%edgexrzr,     b%cornerxryrzr)
   call mpi_waitall_requests()
 #endif
-
+  endif
+  
   ! --- Z
   ! core<--->sides
   call em3d_exchange_bndf_z(b%core,   b%sidezr)
@@ -6986,6 +7583,7 @@ integer(MPIISZ)::mpirequest(2)
 #endif
 
   ! --- Y
+  if (.not.b%core%yf%l_2dxz) then
   ! core<--->sides
   call em3d_exchange_bndj_y(b%core,   b%sideyr)
   if(b%yrbnd /= periodic) call em3d_exchange_bndj_y(b%sideyl, b%core)
@@ -6994,7 +7592,8 @@ integer(MPIISZ)::mpirequest(2)
   call em3d_exchange_bndj_yrecv(b%core,   b%sideyr)
   call mpi_waitall_requests()
 #endif
-
+  endif
+  
   ! --- Z
   ! core<--->sides
   call em3d_exchange_bndj_z(b%core,   b%sidezr)
@@ -7025,6 +7624,7 @@ TYPE(EM3D_BLOCKtype) :: b
 #endif
 
   ! --- Y
+  if (.not.b%core%yf%l_2dxz) then
   ! core<--->sides
   call em3d_exchange_bndrho_y(b%core,   b%sideyr)
   if(b%yrbnd /= periodic) call em3d_exchange_bndrho_y(b%sideyl, b%core)
@@ -7033,6 +7633,7 @@ TYPE(EM3D_BLOCKtype) :: b
   call em3d_exchange_bndrho_yrecv(b%core,   b%sideyr)
   call mpi_waitall_requests()
 #endif
+  endif
 
   ! --- Z
   ! core<--->sides
@@ -7053,13 +7654,14 @@ implicit none
 TYPE(EM3D_YEEFIELDtype) :: f
 
 INTEGER :: j,k,l
-!return
+
+if (.not.f%l_2dxz) then
   do l=-f%nzguard,f%nz+f%nzguard
     do k=-f%nyguard,f%ny+f%nyguard
       do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
-        f%ex(j,k,l)=0.5*(f%ex(j,k,l)+f%ex(j-1,k,l))
-        f%by(j,k,l)=0.5*(f%by(j,k,l)+f%by(j-1,k,l))
-        f%bz(j,k,l)=0.5*(f%bz(j,k,l)+f%bz(j-1,k,l))
+        f%exp(j,k,l)=0.5*(f%exp(j,k,l)+f%exp(j-1,k,l))
+        f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j-1,k,l))
+        f%bzp(j,k,l)=0.5*(f%bzp(j,k,l)+f%bzp(j-1,k,l))
       enddo
     enddo
   enddo
@@ -7067,9 +7669,9 @@ INTEGER :: j,k,l
   do l=-f%nzguard,f%nz+f%nzguard
     do k=f%ny+f%nyguard-1,-f%nyguard+1,-1
       do j=-f%nxguard,f%nx+f%nxguard
-        f%ey(j,k,l)=0.5*(f%ey(j,k,l)+f%ey(j,k-1,l))
-        f%bz(j,k,l)=0.5*(f%bz(j,k,l)+f%bz(j,k-1,l))
-        f%bx(j,k,l)=0.5*(f%bx(j,k,l)+f%bx(j,k-1,l))
+        f%eyp(j,k,l)=0.5*(f%eyp(j,k,l)+f%eyp(j,k-1,l))
+        f%bzp(j,k,l)=0.5*(f%bzp(j,k,l)+f%bzp(j,k-1,l))
+        f%bxp(j,k,l)=0.5*(f%bxp(j,k,l)+f%bxp(j,k-1,l))
       enddo
     enddo
   enddo
@@ -7077,12 +7679,33 @@ INTEGER :: j,k,l
   do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
     do k=-f%nyguard,f%ny+f%nyguard
       do j=-f%nxguard,f%nx+f%nxguard
-        f%ez(j,k,l)=0.5*(f%ez(j,k,l)+f%ez(j,k,l-1))
-        f%bx(j,k,l)=0.5*(f%bx(j,k,l)+f%bx(j,k,l-1))
-        f%by(j,k,l)=0.5*(f%by(j,k,l)+f%by(j,k,l-1))
+        f%ezp(j,k,l)=0.5*(f%ezp(j,k,l)+f%ezp(j,k,l-1))
+        f%bxp(j,k,l)=0.5*(f%bxp(j,k,l)+f%bxp(j,k,l-1))
+        f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j,k,l-1))
       enddo
     enddo
   enddo
+
+else
+
+  k = 0
+  do l=-f%nzguard,f%nz+f%nzguard
+      do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
+        f%exp(j,k,l)=0.5*(f%exp(j,k,l)+f%exp(j-1,k,l))
+        f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j-1,k,l))
+        f%bzp(j,k,l)=0.5*(f%bzp(j,k,l)+f%bzp(j-1,k,l))
+      enddo
+  enddo
+
+  do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
+      do j=-f%nxguard,f%nx+f%nxguard
+        f%ezp(j,k,l)=0.5*(f%ezp(j,k,l)+f%ezp(j,k,l-1))
+        f%bxp(j,k,l)=0.5*(f%bxp(j,k,l)+f%bxp(j,k,l-1))
+        f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j,k,l-1))
+      enddo
+  enddo
+
+endif
 
   return
 end subroutine yee2node3d
@@ -7096,12 +7719,14 @@ TYPE(EM3D_YEEFIELDtype) :: f
 INTEGER :: j,k,l
 !return
 
+if (.not.f%l_2dxz) then
+
   do l=-f%nzguard+1,f%nz+f%nzguard-1
     do k=-f%nyguard,f%ny+f%nyguard
       do j=-f%nxguard,f%nx+f%nxguard
-        f%ez(j,k,l)=2.*f%ez(j,k,l)-f%ez(j,k,l-1)
-        f%bx(j,k,l)=2.*f%bx(j,k,l)-f%bx(j,k,l-1)
-        f%by(j,k,l)=2.*f%by(j,k,l)-f%by(j,k,l-1)
+        f%ezp(j,k,l)=2.*f%ezp(j,k,l)-f%ezp(j,k,l-1)
+        f%bxp(j,k,l)=2.*f%bxp(j,k,l)-f%bxp(j,k,l-1)
+        f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j,k,l-1)
       enddo
     enddo
   enddo
@@ -7109,9 +7734,9 @@ INTEGER :: j,k,l
   do l=-f%nzguard,f%nz+f%nzguard
     do k=-f%nyguard+1,f%ny+f%nyguard-1
       do j=-f%nxguard,f%nx+f%nxguard
-        f%ey(j,k,l)=2.*f%ey(j,k,l)-f%ey(j,k-1,l)
-        f%bz(j,k,l)=2.*f%bz(j,k,l)-f%bz(j,k-1,l)
-        f%bx(j,k,l)=2.*f%bx(j,k,l)-f%bx(j,k-1,l)
+        f%eyp(j,k,l)=2.*f%eyp(j,k,l)-f%eyp(j,k-1,l)
+        f%bzp(j,k,l)=2.*f%bzp(j,k,l)-f%bzp(j,k-1,l)
+        f%bxp(j,k,l)=2.*f%bxp(j,k,l)-f%bxp(j,k-1,l)
       enddo
     enddo
   enddo
@@ -7119,12 +7744,33 @@ INTEGER :: j,k,l
   do l=-f%nzguard,f%nz+f%nzguard
     do k=-f%nyguard,f%ny+f%nyguard
       do j=-f%nxguard+1,f%nx+f%nxguard-1
-        f%ex(j,k,l)=2.*f%ex(j,k,l)-f%ex(j-1,k,l)
-        f%by(j,k,l)=2.*f%by(j,k,l)-f%by(j-1,k,l)
-        f%bz(j,k,l)=2.*f%bz(j,k,l)-f%bz(j-1,k,l)
+        f%exp(j,k,l)=2.*f%exp(j,k,l)-f%exp(j-1,k,l)
+        f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j-1,k,l)
+        f%bzp(j,k,l)=2.*f%bzp(j,k,l)-f%bzp(j-1,k,l)
       enddo
     enddo
   enddo
+
+else
+
+  k=0
+  do l=-f%nzguard+1,f%nz+f%nzguard-1
+      do j=-f%nxguard,f%nx+f%nxguard
+        f%ezp(j,k,l)=2.*f%ezp(j,k,l)-f%ezp(j,k,l-1)
+        f%bxp(j,k,l)=2.*f%bxp(j,k,l)-f%bxp(j,k,l-1)
+        f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j,k,l-1)
+      enddo
+  enddo
+
+  do l=-f%nzguard,f%nz+f%nzguard
+      do j=-f%nxguard+1,f%nx+f%nxguard-1
+        f%exp(j,k,l)=2.*f%exp(j,k,l)-f%exp(j-1,k,l)
+        f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j-1,k,l)
+        f%bzp(j,k,l)=2.*f%bzp(j,k,l)-f%bzp(j-1,k,l)
+      enddo
+  enddo
+
+endif
 
   return
 end subroutine node2yee3d
