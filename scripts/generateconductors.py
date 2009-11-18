@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.211 2009/11/16 23:59:29 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.212 2009/11/18 02:21:27 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1818,6 +1818,45 @@ Class to hold and manage intercepts instances.
 
   installlist = staticmethod(installlist)
 
+  def px(self,ii,xmin=None,xmax=None):
+    if xmin is None:
+      xmin = self.intercepts.xmmin
+    if xmax is None:
+      xmax = self.intercepts.xmmin + self.intercepts.dx*self.intercepts.nx
+    xx = self.intercepts.xintercepts[ii,:,:]
+    xx = xx.clip(xmin,xmax)
+    ppgeneric(gridt=xx,
+              xmin=self.intercepts.zmmin,
+              xmax=self.intercepts.zmmin+self.intercepts.dz*self.intercepts.nz,
+              ymin=self.intercepts.ymmin,
+              ymax=self.intercepts.ymmin+self.intercepts.dy*self.intercepts.ny)
+    
+  def py(self,ii,ymin=None,ymax=None):
+    if ymin is None:
+      ymin = self.intercepts.ymmin
+    if ymax is None:
+      ymax = self.intercepts.ymmin + self.intercepts.dy*self.intercepts.ny
+    yy = self.intercepts.yintercepts[ii,:,:]
+    yy = yy.clip(ymin,ymax)
+    ppgeneric(gridt=yy,
+              xmin=self.intercepts.zmmin,
+              xmax=self.intercepts.zmmin+self.intercepts.dz*self.intercepts.nz,
+              ymin=self.intercepts.xmmin,
+              ymax=self.intercepts.xmmin+self.intercepts.dx*self.intercepts.nx)
+    
+  def pz(self,ii,zmin=None,zmax=None):
+    if zmin is None:
+      zmin = self.intercepts.zmmin
+    if zmax is None:
+      zmax = self.intercepts.zmmin + self.intercepts.dz*self.intercepts.nz
+    zz = self.intercepts.zintercepts[ii,:,:]
+    zz = zz.clip(zmin,zmax)
+    ppgeneric(grid=zz,
+              xmin=self.intercepts.xmmin,
+              xmax=self.intercepts.xmmin+self.intercepts.dx*self.intercepts.nx,
+              ymin=self.intercepts.ymmin,
+              ymax=self.intercepts.ymmin+self.intercepts.dy*self.intercepts.ny)
+    
   def __neg__(self):
     "'not' operator, returns inverse of the object"
    #assert self.neumann == right.neumann,\
@@ -2742,6 +2781,7 @@ Plane class
     kwlist=['z0','zsign','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            planeconductorf,planeconductord,planeintercept,
+                           planeconductorfnew,
                            kw=kw)
     self.z0 = z0
     self.zsign = zsign
@@ -2766,6 +2806,7 @@ Box class
     kwlist=['xsize','ysize','zsize']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            boxconductorf,boxconductord,boxintercept,
+                           boxconductorfnew,
                            kw=kw)
     self.xsize = xsize
     self.ysize = ysize
@@ -3591,6 +3632,7 @@ Sphere
     kwlist = ['radius']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       sphereconductorf,sphereconductord,sphereintercept,
+                      sphereconductorfnew,
                       kw=kw)
     self.radius = radius
     self.createextent([-self.radius,-self.radius,-self.radius],
@@ -4096,6 +4138,114 @@ def rmaxofz():
     f3d.srfrv_r = rmaxofz.rmaxofz(f3d.srfrv_z)
   except TypeError:
     rmaxofz.rmaxofz()
+
+#============================================================================
+class ZSrfrv(Srfrv,Assembly):
+  """
+Surface of revolution
+  - rsrf=None: tablized data of radius
+  - zsrf=None: tablized data of z locations
+  - rad=None: radius of curvature of segments
+              A value of largepos means a straight segment.
+  - zc=None: z center of circle or curved segment
+  - rc=None: r center of circle or curved segment
+      The centers of the circles will be calculated automatically if
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is the same as the length
+      of the list of r and z data.
+      rad[i] is radius for segment from [i] to [i+1]
+      rad[-1] is radius for segment from [-1] to [0]
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
+Methods:
+  - draw: draws the object's r versus z
+  - createdxobject: creates (internally) the object for visualization using
+                    OpenDX. This can be used to specify options on how the
+                    image is made before passing the object to DXImage.
+  - getdxobject: returns a object for visualization. This can be used to
+                 specify options on how the image is made. The returned object
+                 is then passed to DXImage
+  """
+  def __init__(self,rsrf,zsrf,rad=None,rc=None,zc=None,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,**kw):
+    kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                      None,None,
+                      None,zsrfrvconductorfnew,
+                      kw=kw)
+
+    # --- Make sure the input is consistent
+    self.nn = len(zsrf)
+    self.zsrf = zsrf
+    self.rsrf = rsrf
+    self.rad = self.setdatadefaults(rad,self.nn,None)
+    self.zc = self.setdatadefaults(zc,self.nn,None)
+    self.rc = self.setdatadefaults(rc,self.nn,None)
+
+    # --- close the line, appending the first data point to the end.
+    self.nn += 1
+    self.rsrf = list(self.rsrf) + [self.rsrf[0]]
+    self.zsrf = list(self.zsrf) + [self.zsrf[0]]
+
+    self.checkarcs(self.zsrf,self.rsrf,self.rad,self.zc,self.rc)
+
+    self.rmin = min(self.rsrf)
+    self.rmax = max(self.rsrf)
+    self.zmin = min(self.zsrf)
+    self.zmax = max(self.zsrf)
+    for i in range(self.nn-1):
+      if self.rad[i] < largepos:
+        self.rmin = min(self.rmin,-self.rc[i] - self.rad[i])
+        self.rmax = max(self.rmax,+self.rc[i] + self.rad[i])
+        self.zmin = min(self.zmin,self.zc[i] - self.rad[i])
+        self.zmax = max(self.zmax,self.zc[i] + self.rad[i])
+
+    self.createextent([-self.rmax,-self.rmax,self.zmin],
+                      [+self.rmax,+self.rmax,self.zmax])
+
+  def gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                     nx,ny,nz,ix,iy,iz,mglevel):
+    result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                                     nx,ny,nz,ix,iy,iz,mglevel)
+    result.intercepts.xintercepts.sort(axis=0)
+    result.intercepts.yintercepts.sort(axis=0)
+    result.intercepts.zintercepts.sort(axis=0)
+    return result
+
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+    """
+Plots the r versus z
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 199.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - narcpoints=40: number of points to draw along any circular arcs
+    """
+    narcpoints = kw.get('narcpoints',40)
+    r,z = self.getplotdata(False,None,None,
+                           self.rsrf,self.zsrf,self.rad,
+                           self.rc,self.zc,narcpoints)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+
+  def createdxobject(self,kwdict={},**kw):
+    """
+Creates internally the object to be used for visualization.
+For other options, see documentation of Opyndx.VisualRevolution.
+    """
+    kw.update(kwdict)
+    if rmax is None: rmax = self.rmax
+    v = Opyndx.VisualRevolution(
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=self.rsrf,zdata=self.zsrf,
+                       raddata=self.rad,zcdata=self.zc,rcdata=self.rc,
+                       normalsign=-1,
+                       largepos=largepos,
+                       kwdict=kw)
+    self.dxobject = v
 
 #============================================================================
 class ZSrfrvOut(Srfrv,Assembly):
