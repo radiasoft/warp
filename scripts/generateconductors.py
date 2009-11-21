@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.213 2009/11/18 22:28:50 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.214 2009/11/21 00:44:19 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -4049,9 +4049,13 @@ data and make sure it is consistent.
              (i,i+1,2*rad[i],sqrt((zz[i] - zz[i+1])**2 + (rr[i] - rr[i+1])**2))
         zm = 0.5*(zz[i] + zz[i+1])
         rm = 0.5*(rr[i] + rr[i+1])
-        dbm = sqrt((zm - zz[i+1])**2 + (rm - rr[i+1])**2)
+        if zz[i+1] > zz[i]:
+          ip1 = i+1
+        else:
+          ip1 = i
+        dbm = sqrt((zm - zz[ip1])**2 + (rm - rr[ip1])**2)
         dcm = sqrt(rad[i]**2 - dbm**2)
-        angle1 = arcsin((rm - rr[i+1])/dbm)
+        angle1 = arcsin((rm - rr[ip1])/dbm)
         if rad[i] < 0:
           zc[i] = zm + dcm*sin(angle1)
           rc[i] = rm + dcm*cos(angle1)
