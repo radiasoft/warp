@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.214 2009/11/21 00:44:19 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.215 2009/11/21 01:53:14 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -280,6 +280,9 @@ Should never be directly created by the user.
                     and the conductors along the axis.
  - generatord=None: function which generates the smallest distance between the
                     points and the conductor surface.
+ - generatori=None: function which generates the intercept points of the
+                    object surface with particle trajectories
+ - generatorfnew=None: function which generates the x,y and z grid intercepts
  - name='': conductor name (string)
  - material='SS': conductor material
  - laccuimagecharge=0: Flags accumulation of image charges
@@ -1031,7 +1034,8 @@ class EllipticAssembly(Assembly):
 Elliptic assembly
   """
   def __init__(self,ellipticity,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
-                    generatorf=None,generatord=None,generatori=None,**kw):
+                    generatorf=None,generatord=None,generatori=None,
+                    generatorfnew=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
                            self.ellipseconductorf,self.ellipseconductord,
                            self.ellipseintercept,
@@ -1040,6 +1044,7 @@ Elliptic assembly
     self.circlegeneratorf = generatorf
     self.circlegeneratord = generatord
     self.circlegeneratori = generatori
+    self.circlegeneratorfnew = generatorfnew
     self.extent.toellipse(self.ellipticity)
 
   def ellipseconductorf(self,*argtuple):
@@ -1099,6 +1104,7 @@ removed from the dictionary when pickling.
     del dict['generatorf']
     del dict['generatord']
     del dict['generatori']
+    del dict['generatorfnew']
     return dict
 
   def __setstate__(self,dict):
@@ -1109,6 +1115,7 @@ This explicit setstate restores the generator attributes.
     self.generatorf = self.ellipseconductorf
     self.generatord = self.ellipseconductord
     self.generatori = self.ellipseintercept
+    self.generatorfnew = self.ellipseconductorfnew
 
 #============================================================================
 class XAssembly(Assembly):
@@ -1116,7 +1123,8 @@ class XAssembly(Assembly):
 Assembly aligned along X axis
   """
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
-                    generatorf=None,generatord=None,generatori=None,**kw):
+                    generatorf=None,generatord=None,generatori=None,
+                    generatorfnew=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
                            self.xconductorf,self.xconductord,
                            self.xintercept,
@@ -1124,6 +1132,7 @@ Assembly aligned along X axis
     self.zgeneratorf = generatorf
     self.zgeneratord = generatord
     self.zgeneratori = generatori
+    self.zgeneratorfnew = generatorfnew
     self.extent.toX(self.xcent,self.ycent,self.zcent)
 
   def xconductorf(self,*argtuple):
@@ -1206,6 +1215,7 @@ removed from the dictionary when pickling.
     del dict['generatorf']
     del dict['generatord']
     del dict['generatori']
+    del dict['generatorfnew']
     return dict
 
   def __setstate__(self,dict):
@@ -1216,6 +1226,7 @@ This explicit setstate restores the generator attributes.
     self.generatorf = self.xconductorf
     self.generatord = self.xconductord
     self.generatori = self.xintercept
+    self.generatorfnew = self.xconductorfnew
 
 #============================================================================
 class YAssembly(Assembly):
@@ -1223,7 +1234,8 @@ class YAssembly(Assembly):
 Assembly aligned along Y axis
   """
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
-                    generatorf=None,generatord=None,generatori=None,**kw):
+                    generatorf=None,generatord=None,generatori=None,
+                    generatorfnew=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
                            self.yconductorf,self.yconductord,
                            self.yintercept,
@@ -1231,6 +1243,7 @@ Assembly aligned along Y axis
     self.zgeneratorf = generatorf
     self.zgeneratord = generatord
     self.zgeneratori = generatori
+    self.zgeneratorfnew = generatorfnew
     self.extent.toY(self.xcent,self.ycent,self.zcent)
 
   def yconductorf(self,*argtuple):
@@ -1316,6 +1329,7 @@ removed from the dictionary when pickling.
     del dict['generatorf']
     del dict['generatord']
     del dict['generatori']
+    del dict['generatorfnew']
     return dict
 
   def __setstate__(self,dict):
@@ -1326,6 +1340,7 @@ This explicit setstate restores the generator attributes.
     self.generatorf = self.yconductorf
     self.generatord = self.yconductord
     self.generatori = self.yintercept
+    self.generatorfnew = self.yconductorfnew
 
 ##############################################################################
 class ConductorExtent:
@@ -3308,6 +3323,7 @@ Cylinder aligned with X-axis
                             voltage,xcent,ycent,zcent,condid=1)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
                             kw=kw)
 
 #============================================================================
@@ -3337,6 +3353,7 @@ Cylinder aligned with X-axis
                                voltage,xcent,ycent,zcent,condid=1)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
                             kw=kw)
 
 #============================================================================
@@ -3366,6 +3383,7 @@ Cylinder aligned with Y-axis
                             voltage,xcent,ycent,zcent,condid=1)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
                             kw=kw)
 
 #============================================================================
@@ -3395,6 +3413,7 @@ Cylinder aligned with Y-axis
                                voltage,xcent,ycent,zcent,condid=1)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
                             kw=kw)
 
 #============================================================================
@@ -3421,6 +3440,7 @@ Elliptical cylinder aligned with z-axis
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
+                              self.generatorfnew,
                               kw=kw)
 
   def createdxobject(self,kwdict={},**kw):
@@ -3462,6 +3482,7 @@ Outside an elliptical cylinder aligned with z-axis
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
+                              self.generatorfnew,
                               kw=kw)
 
   def createdxobject(self,rend=1.,kwdict={},**kw):
@@ -3508,10 +3529,12 @@ Elliptical cylinder aligned with x-axis
                             voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
-                              self.generatorf,self.generatord,self.generatori)
+                              self.generatorf,self.generatord,self.generatori,
+                              self.generatorfnew)
     XAssembly.__init__(self,
                        voltage,xcent,ycent,zcent,condid,self.kwlist,
                        self.generatorf,self.generatord,self.generatori,
+                       self.generatorfnew,
                        kw=kw)
 
 #============================================================================
@@ -3543,10 +3566,12 @@ Outside of an elliptical cylinder aligned with x-axis
                                voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
-                              self.generatorf,self.generatord,self.generatori)
+                              self.generatorf,self.generatord,self.generatori,
+                              self.generatorfnew)
     XAssembly.__init__(self,
                        voltage,xcent,ycent,zcent,condid,self.kwlist,
                        self.generatorf,self.generatord,self.generatori,
+                       self.generatorfnew,
                        kw=kw)
 
 #============================================================================
@@ -3577,10 +3602,12 @@ Elliptical cylinder aligned with y-axis
                             voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
-                              self.generatorf,self.generatord,self.generatori)
+                              self.generatorf,self.generatord,self.generatori,
+                              self.generatorfnew)
     YAssembly.__init__(self,
                        voltage,xcent,ycent,zcent,condid,self.kwlist,
                        self.generatorf,self.generatord,self.generatori,
+                       self.generatorfnew,
                        kw=kw)
 
 #============================================================================
@@ -3611,10 +3638,12 @@ Outside of an elliptical cylinder aligned with y-axis
                                voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
-                              self.generatorf,self.generatord,self.generatori)
+                              self.generatorf,self.generatord,self.generatori,
+                              self.generatorfnew)
     YAssembly.__init__(self,
                        voltage,xcent,ycent,zcent,condid,self.kwlist,
                        self.generatorf,self.generatord,self.generatori,
+                       self.generatorfnew,
                        kw=kw)
 
 #============================================================================
@@ -3676,6 +3705,7 @@ Elliptoidal sphere
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
+                              self.generatorfnew,
                               kw=kw)
 
 #============================================================================
@@ -4291,7 +4321,7 @@ Methods:
     kwlist = ['lrofzfunc','zmin','zmax','rmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvoutconductorf,zsrfrvoutconductord,
-                      zsrfrvoutintercept,
+                      zsrfrvoutintercept,zsrfrvconductorfnew,
                       kw=kw)
     self.rofzfunc = rofzfunc
     self.rmax = rmax
@@ -4345,6 +4375,27 @@ Methods:
       f3d.rc_sr = self.rcdata
 
     return Assembly.getkwlist(self)
+
+  def gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                     nx,ny,nz,ix,iy,iz,mglevel):
+    # --- This converts the ZSrfrvOut data into the format needed
+    # --- by the ZSrfrv generator.
+    assert not self.lrofzfunc,'Only tabulated data is supported'
+    kwlistsave = self.kwlist
+    self.kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
+    self.nn = len(self.zdata)+3
+    self.rsrf = [self.rmax] + list(self.rofzdata) + [self.rmax,self.rmax]
+    self.zsrf = [self.zmin] + list(self.zdata) + [self.zmax,self.zmin]
+    self.rad = [largepos] + list(self.raddata) + [largepos,largepos]
+    self.rc = [largepos] + list(self.rcdata) + [largepos,largepos]
+    self.zc = [largepos] + list(self.zcdata) + [largepos,largepos]
+    result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                                     nx,ny,nz,ix,iy,iz,mglevel)
+    result.intercepts.xintercepts.sort(axis=0)
+    result.intercepts.yintercepts.sort(axis=0)
+    result.intercepts.zintercepts.sort(axis=0)
+    self.kwlist = kwlistsave
+    return result
 
   def draw(self,color='fg',filled=None,fullplane=1,nzpoints=None,**kw):
     """
@@ -4429,7 +4480,7 @@ Methods:
     kwlist = ['lrofzfunc','zmin','zmax','rmin','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvinconductorf,zsrfrvinconductord,
-                      zsrfrvinintercept,
+                      zsrfrvinintercept,zsrfrvconductorfnew,
                       kw=kw)
     self.rofzfunc = rofzfunc
     self.rmin = rmin
@@ -4490,6 +4541,27 @@ Methods:
       f3d.rc_sr = self.rcdata
 
     return Assembly.getkwlist(self)
+
+  def gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                     nx,ny,nz,ix,iy,iz,mglevel):
+    # --- This converts the ZSrfrvIn data into the format needed
+    # --- by the ZSrfrv generator.
+    assert not self.lrofzfunc,'Only tabulated data is supported'
+    kwlistsave = self.kwlist
+    self.kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
+    self.nn = len(self.zdata)+3
+    self.rsrf = [self.rmin] + list(self.rofzdata) + [self.rmin,self.rmin]
+    self.zsrf = [self.zmin] + list(self.zdata) + [self.zmax,self.zmin]
+    self.rad = [largepos] + list(self.raddata) + [largepos,largepos]
+    self.rc = [largepos] + list(self.rcdata) + [largepos,largepos]
+    self.zc = [largepos] + list(self.zcdata) + [largepos,largepos]
+    result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                                     nx,ny,nz,ix,iy,iz,mglevel)
+    result.intercepts.xintercepts.sort(axis=0)
+    result.intercepts.yintercepts.sort(axis=0)
+    result.intercepts.zintercepts.sort(axis=0)
+    self.kwlist = kwlistsave
+    return result
 
   def draw(self,color='fg',filled=None,fullplane=1,nzpoints=None,**kw):
     """
@@ -4571,7 +4643,7 @@ Methods:
     kwlist = ['lrminofz','lrmaxofz','zmin','zmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvinoutconductorf,zsrfrvinoutconductord,
-                      zsrfrvinoutintercept,
+                      zsrfrvinoutintercept,zsrfrvconductorfnew,
                       kw=kw)
     self.rminofz = rminofz
     self.rmaxofz = rmaxofz
@@ -4682,6 +4754,33 @@ Methods:
       f3d.rc_srmax = self.rcmaxdata
 
     return Assembly.getkwlist(self)
+
+  def gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                     nx,ny,nz,ix,iy,iz,mglevel):
+    # --- This converts the ZSrfrvInOut data into the format needed
+    # --- by the ZSrfrv generator.
+    assert not self.lrminofz and not self.lrmaxofz,\
+           'Only tabulated data is supported'
+    kwlistsave = self.kwlist
+    self.kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
+    self.nn = len(self.zmindata)+len(self.zmaxdata)+1
+    self.rsrf = (list(self.rminofzdata) + list(self.rmaxofzdata[::-1]) +
+                 [self.rminofzdata[0]])
+    self.zsrf = (list(self.zmindata) + list(self.zmaxdata[::-1]) +
+                 [self.zmindata[0]])
+    self.rad = (list(self.radmindata) + [largepos] +
+                list(self.radmaxdata) + [largepos])
+    self.rc = (list(self.rcmindata) + [largepos] +
+               list(self.rcmaxdata) + [largepos])
+    self.zc = (list(self.zcmindata) + [largepos] +
+               list(self.zcmaxdata) + [largepos])
+    result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                                     nx,ny,nz,ix,iy,iz,mglevel)
+    result.intercepts.xintercepts.sort(axis=0)
+    result.intercepts.yintercepts.sort(axis=0)
+    result.intercepts.zintercepts.sort(axis=0)
+    self.kwlist = kwlistsave
+    return result
 
   def draw(self,color='fg',filled=None,fullplane=1,nzpoints=None,**kw):
     """
@@ -4818,6 +4917,7 @@ Outside of an elliptical surface of revolution
     EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
                               condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
+                              self.generatorfnew,
                               kw=kw)
 
 #============================================================================
@@ -4856,6 +4956,7 @@ Inside of an elliptical surface of revolution
     EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
                               condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
+                              self.generatorfnew,
                               kw=kw)
 
 #============================================================================
@@ -4897,6 +4998,7 @@ Between elliptical surfaces of revolution
     EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
                               condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
+                              self.generatorfnew,
                               kw=kw)
 
 #============================================================================
@@ -4934,6 +5036,7 @@ Outside of an surface of revolution aligned along to X axis
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,
                             condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
                             kw=kw)
 
 #============================================================================
@@ -4970,6 +5073,7 @@ Inside of a surface of revolution aligned along the X axis
                       xcdata,rcdata)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
                             kw=kw)
 
 #============================================================================
@@ -5010,6 +5114,7 @@ Between surfaces of revolution aligned along the X axis
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,
                             condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
                             kw=kw)
 
 #============================================================================
@@ -5047,6 +5152,7 @@ Outside of an surface of revolution aligned along to Y axis
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,
                             condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
                             kw=kw)
 
 #============================================================================
@@ -5083,6 +5189,7 @@ Inside of a surface of revolution aligned along the Y axis
                       ycdata,rcdata)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
                             kw=kw)
 
 #============================================================================
@@ -5123,6 +5230,7 @@ Between surfaces of revolution aligned along the Y axis
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,
                             condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
                             kw=kw)
 
 #============================================================================
