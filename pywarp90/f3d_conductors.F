@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.79 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.80 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -253,7 +253,7 @@ c                 --- delmx
 
 c               --- Make sure that delx is not zero. Note that delx would
 c               --- never be negative.
-                if (delx > 0.) then
+                if (0. < delx .and. delx < 1.-fuzz) then
 
                   if (iouter == 1) then
                     if (mod(ix+ixlocal+iy+iylocal+iz+izlocal,2) == 0) then
@@ -292,7 +292,8 @@ c                       --- delmy
                         dely = (yy - yintercepts(iy1,ix,iz))/dy
                         idel = 2
                       endif
-                      if (dely > 0. .and. dely < dels(idel)) then
+                      if (0. < dely .and. dely < 1.-fuzz .and.
+     &                    dely < dels(idel)) then
                         dels(idel) = dely
                         volt(idel) = yvoltages((iy1+1)/2,ix,iz)
                         numb(idel) = ycondids((iy1+1)/2,ix,iz)
@@ -316,7 +317,8 @@ c                       --- delmz
                         delz = (zz - zintercepts(iz1,ix,iy))/dz
                         idel = 4
                       endif
-                      if (delz > 0. .and. delz < dels(idel)) then
+                      if (0. < delz .and. delz < 1.-fuzz .and.
+     &                    delz < dels(idel)) then
                         dels(idel) = delz
                         volt(idel) = zvoltages((iz1+1)/2,ix,iy)
                         numb(idel) = zcondids((iz1+1)/2,ix,iy)
@@ -401,7 +403,7 @@ c                   --- delmx
                   xside = -xside
                 enddo
 
-                if (dely > 0. .and. delx >= 1.) then
+                if (0. < dely .and. dely < 1.-fuzz .and. delx >= 1.-fuzz) then
 
                   if (iouter == 1) then
                     if (mod(ix+ixlocal+iy+iylocal+iz+izlocal,2) == 0) then
@@ -434,7 +436,8 @@ c                       --- delmz
                         delz = (zz - zintercepts(iz1,ix,iy))/dz
                         idel = 4
                       endif
-                      if (delz > 0. .and. delz < dels(idel)) then
+                      if (0. < delz .and. delz < 1.-fuzz .and.
+     &                    delz < dels(idel)) then
                         dels(idel) = delz
                         volt(idel) = zvoltages((iz1+1)/2,ix,iy)
                         numb(idel) = zcondids((iz1+1)/2,ix,iy)
@@ -541,7 +544,8 @@ c                   --- delmy
                   yside = -yside
                 enddo
 
-                if (delz > 0. .and. delx >= 1. .and. dely >= 1.) then
+                if (0. < delz .and. delz < 1.-fuzz .and.
+     &              delx >= 1.-fuzz .and. dely >= 1.-fuzz) then
 
                   if (iouter == 1) then
                     if (mod(ix+ixlocal+iy+iylocal+iz+izlocal,2) == 0) then
@@ -6232,14 +6236,14 @@ c         --- The angle in the r-z plane of the start and end of the segment
           th1(ii) = atan2(rsrf(ii) - rc(ii),zsrf(ii) - zc(ii))
           th2(ii) = atan2(rsrf(ii+1) - rc(ii),zsrf(ii+1) - zc(ii))
 
-c         --- If rad > 0, then the angle from start to end should be
+c         --- If rad < 0, then the angle from start to end should be
 c         --- increasing. Otherwise decreasing.
 c         --- Note that both th1 and th2 will also be within the
 c         --- range of -pi to 3*pi.
-          if (th1(ii) > th2(ii) .and. rad(ii) > 0.) then
+          if (th1(ii) > th2(ii) .and. rad(ii) < 0. .and. zsrf(ii) < zsrf(ii+1)) then
             th2(ii) = th2(ii) + 2*pi
           endif
-          if (th1(ii) < th2(ii) .and. rad(ii) < 0.) then
+          if (th1(ii) < th2(ii) .and. rad(ii) > 0. .and. zsrf(ii) < zsrf(ii+1)) then
             th1(ii) = th1(ii) + 2*pi
           endif
 
@@ -6249,18 +6253,18 @@ c         --- then the mins or maxs may need to be recalculated.
           maxth = max(th1(ii),th2(ii))
           if ((minth < -pi*0.5 .and. maxth > -pi*0.5) .or.
      &        (minth < pi*1.5 .and. maxth > pi*1.5)) then
-            rmin(ii) = rc(ii) - rc(ii)
+            rmin(ii) = rc(ii) - abs(rad(ii))
           endif
           if ((minth < pi*0.5 .and. maxth > pi*0.5) .or.
      &        (minth < pi*2.5 .and. maxth > pi*2.5)) then
-            rmax(ii) = rc(ii) + rc(ii)
+            rmax(ii) = rc(ii) + abs(rad(ii))
           endif
           if (minth < pi .and. maxth > pi) then
-            zmin(ii) = zc(ii) - rad(ii)
+            zmin(ii) = zc(ii) - abs(rad(ii))
           endif
           if ((minth < 0. .and. maxth > 0.) .or.
      &        (minth < 2*pi .and. maxth > 2*pi)) then
-            zmax(ii) = zc(ii) + rad(ii)
+            zmax(ii) = zc(ii) + abs(rad(ii))
           endif
 
         endif
@@ -6306,29 +6310,19 @@ c               --- is included, whereas the ending point, th2, is not.
                 maxth = max(th1(ii),th2(ii))
                 rsq = rad(ii)**2 - (zz - zc(ii))**2
                 nt = 0
-                if (rsq > 0.) then
-                  rr = sqrt(rsq)
-                  tt = atan2(+rr,zz - zc(ii))
-                  if (tt < minth) tt = tt + 2*pi
-                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
-                    nt = nt + 1
-                    rt(nt) = -rc(ii) - rr
-                  endif
-                  tt = atan2(-rr,zz - zc(ii))
-                  if (tt < minth) tt = tt + 2*pi
-                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
-                    nt = nt + 1
-                    rt(nt) = -rc(ii) + rr
-                  endif
-                else
-c                 --- The interception point is at the extreme upper
-c                 --- or lower edge of the torus.
-                  tt = atan2(0.,zz - zc(ii))
-                  if (tt < minth) tt = tt + 2*pi
-                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
-                    nt = nt + 1
-                    rt(nt) = -rc(ii)
-                  endif
+
+                rr = sqrt(rsq)
+                tt = atan2(+rr,zz - zc(ii))
+                if (tt < minth) tt = tt + 2*pi
+                if (minth <= tt .and. tt <= maxth) then
+                  nt = nt + 1
+                  rt(nt) = -rc(ii) - rr
+                endif
+                tt = atan2(-rr,zz - zc(ii))
+                if (tt < minth) tt = tt + 2*pi
+                if (minth <= tt .and. tt <= maxth) then
+                  nt = nt + 1
+                  rt(nt) = -rc(ii) + rr
                 endif
 
 c               --- Get the possible upper points.
@@ -6399,29 +6393,19 @@ c               --- is included, whereas the ending point, th2, is not.
                 maxth = max(th1(ii),th2(ii))
                 rsq = rad(ii)**2 - (zz - zc(ii))**2
                 nt = 0
-                if (rsq > 0.) then
-                  rr = sqrt(rsq)
-                  tt = atan2(+rr,zz - zc(ii))
-                  if (tt < minth) tt = tt + 2*pi
-                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
-                    nt = nt + 1
-                    rt(nt) = -rc(ii) - rr
-                  endif
-                  tt = atan2(-rr,zz - zc(ii))
-                  if (tt < minth) tt = tt + 2*pi
-                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
-                    nt = nt + 1
-                    rt(nt) = -rc(ii) + rr
-                  endif
-                else
-c                 --- The interception point is at the extreme upper
-c                 --- or lower edge of the torus.
-                  tt = atan2(0.,zz - zc(ii))
-                  if (tt < minth) tt = tt + 2*pi
-                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
-                    nt = nt + 1
-                    rt(nt) = -rc(ii)
-                  endif
+
+                rr = sqrt(rsq)
+                tt = atan2(+rr,zz - zc(ii))
+                if (tt < minth) tt = tt + 2*pi
+                if (minth <= tt .and. tt <= maxth) then
+                  nt = nt + 1
+                  rt(nt) = -rc(ii) - rr
+                endif
+                tt = atan2(-rr,zz - zc(ii))
+                if (tt < minth) tt = tt + 2*pi
+                if (minth <= tt .and. tt <= maxth) then
+                  nt = nt + 1
+                  rt(nt) = -rc(ii) + rr
                 endif
 
 c               --- Get the possible upper points.
@@ -6467,8 +6451,12 @@ c         --- Loop over r-z line segments
             rr = sqrt(xx**2 + yy**2)
             if (rmin(ii) < rr .and. rr < rmax(ii) .or. rr == rsrf(ii)) then
               if (rad(ii) == LARGEPOS) then
-                ww = (rr - rsrf(ii))/(rsrf(ii+1) - rsrf(ii))
-                zz = zsrf(ii)*(1.-ww) + zsrf(ii+1)*ww
+                if (rsrf(ii+1) - rsrf(ii) == 0.) then
+                  zz = zsrf(ii)
+                else
+                  ww = (rr - rsrf(ii))/(rsrf(ii+1) - rsrf(ii))
+                  zz = zsrf(ii)*(1.-ww) + zsrf(ii+1)*ww
+                endif
                 zintercepts(nzicpt,ix,iy) = zz + zcent
                 nzicpt = nzicpt + 1
               else
@@ -6488,14 +6476,14 @@ c               --- is included, whereas the ending point, th2, is not.
                 if (tt < minth) tt = tt + 2*pi
                 if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
                   zintercepts(nzicpt,ix,iy) = zc(ii) - z1 + zcent
+                  nzicpt = nzicpt + 1
                 endif
                 
-                if (z1 > 0) then
-                  tt = atan2(rr - rc(ii),+z1)
-                  if (tt < minth) tt = tt + 2*pi
-                  if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
-                    zintercepts(nzicpt,ix,iy) = zc(ii) + z1 + zcent
-                  endif
+                tt = atan2(rr - rc(ii),+z1)
+                if (tt < minth) tt = tt + 2*pi
+                if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
+                  zintercepts(nzicpt,ix,iy) = zc(ii) + z1 + zcent
+                  nzicpt = nzicpt + 1
                 endif
 
               endif ! straight or curved segment
