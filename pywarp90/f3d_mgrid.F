@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.191 $, $Date: 2009/11/14 01:13:28 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.192 $, $Date: 2009/11/24 20:06:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -134,12 +134,6 @@ c     --- The following only used when mgform == 2
       integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
-
-c     --- Note that nx and ny must be even.
-      if (mod(nx,2) == 1 .or. mod(ny,2) == 1) then
-        call kaboom("3D MULTIGRID field solver error, nx and ny must be even")
-        return
-      endif
 
 c     --- Initialize temporaries
       dxsqi  = 1./dx**2
