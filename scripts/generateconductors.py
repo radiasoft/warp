@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.215 2009/11/21 01:53:14 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.216 2009/11/24 01:15:57 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3114,7 +3114,7 @@ Cylinder with rounded corners aligned with z-axis
     kwlist = ['radius','length','radius2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zroundedcylinderconductorf,zroundedcylinderconductord,
-                      zroundedcylinderintercept,
+                      zroundedcylinderintercept,zroundedcylinderconductorfnew,
                       kw=kw)
     self.radius = radius
     self.length = length
@@ -3238,6 +3238,7 @@ Outside of a cylinder with rounded corners aligned with z-axis
                       zroundedcylinderoutconductorf,
                       zroundedcylinderoutconductord,
                       zroundedcylinderoutintercept,
+                      zroundedcylinderoutconductorfnew,
                       kw=kw)
     self.radius = radius
     self.length = length
