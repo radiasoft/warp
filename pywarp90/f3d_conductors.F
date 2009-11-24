@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.80 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.81 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -2729,6 +2729,121 @@ c       --- The point is on the cylinder exactly.
       return
       end
 c=======================================================================
+      subroutine ZRoundedCylinderConductorFnew(rad,length,rad2,
+     &                                         xcent,ycent,zcent,
+     &                                         intercepts,fuzz)
+      use ConductorInterceptTypeModule
+      real(kind=8):: rad,length,rad2,xcent,ycent,zcent
+      type(ConductorInterceptType):: intercepts
+      real(kind=8):: fuzz
+
+c Finds the intercepts of the object with grid lines along the three axis.
+
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmmax,ymmax,zmmax
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+
+      real(kind=8):: zmin,zmax
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: xx,yy,zz,rsq,rr,ri
+
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+
+      intercepts%nxicpt = 2
+      intercepts%nyicpt = 2
+      intercepts%nzicpt = 2
+      call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+
+      zmin = -length*0.5
+      zmax = +length*0.5
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do iy=0,ny
+          yy = ymmin + iy*dy - ycent
+          if (zmin-fuzz <= zz .and. zz <= zmax+fuzz) then
+            if (zmin-fuzz <= zz .and. zz < zmin+rad2) then
+              rr = rad - rad2 + sqrt(max(0.,rad2**2 - (zz - (zmin+rad2))**2))
+            else if (zmax-rad2 < zz .and. zz <= zmax+fuzz) then
+              rr = rad - rad2 + sqrt(max(0.,rad2**2 - (zz - (zmax-rad2))**2))
+            else
+              rr = rad
+            endif
+            if (abs(yy) <= rr) then
+              xintercepts(1,iy,iz) = xcent - sqrt(max(0.,rr**2 - yy**2))
+              xintercepts(2,iy,iz) = xcent + sqrt(max(0.,rr**2 - yy**2))
+            else
+              xintercepts(1:2,iy,iz) = +LARGEPOS
+            endif
+          else
+            xintercepts(1:2,iy,iz) = +LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          if (zmin-fuzz <= zz .and. zz <= zmax+fuzz) then
+            if (zmin-fuzz <= zz .and. zz < zmin+rad2) then
+              rr = rad - rad2 + sqrt(max(0.,rad2**2 - (zz - (zmin+rad2))**2))
+            else if (zmax-rad2 < zz .and. zz <= zmax+fuzz) then
+              rr = rad - rad2 + sqrt(max(0.,rad2**2 - (zz - (zmax-rad2))**2))
+            else
+              rr = rad
+            endif
+            if (abs(xx) <= rr) then
+              yintercepts(1,ix,iz) = ycent - sqrt(max(0.,rr**2 - xx**2))
+              yintercepts(2,ix,iz) = ycent + sqrt(max(0.,rr**2 - xx**2))
+            else
+              yintercepts(1:2,ix,iz) = +LARGEPOS
+            endif
+          else
+            yintercepts(1:2,ix,iz) = +LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iy=0,ny
+        yy = ymmin + iy*dy - ycent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          rsq = xx**2 + yy**2
+          if ((rad-rad2)**2 < rsq .and. rsq <= rad**2) then
+            rr = sqrt(rsq)
+            ri = rad2 - sqrt(max(0.,rad2**2 - (rad-rad2-rr)**2))
+            zintercepts(1,ix,iy) = zcent + zmin + ri
+            zintercepts(2,ix,iy) = zcent + zmax - ri
+          else if (rsq <= (rad-rad2)**2) then
+            zintercepts(1,ix,iy) = zcent + zmin
+            zintercepts(2,ix,iy) = zcent + zmax
+          else
+            zintercepts(1:2,ix,iy) = LARGEPOS
+          endif
+        enddo
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine ZRoundedCylinderConductorD(rad,length,rad2,xcent,ycent,zcent,
      &                                      n,x,y,z,distance)
       real(kind=8):: rad,length,rad2,xcent,ycent,zcent
@@ -3285,6 +3400,127 @@ c       --- The point is on the cylinder exactly.
         delmz(i) = min(0.,zmin - z(i))
         delpz(i) = min(0.,z(i) - zmax)
 
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZRoundedCylinderOutConductorFnew(rad,length,rad2,
+     &                                            xcent,ycent,zcent,
+     &                                            intercepts,fuzz)
+      use ConductorInterceptTypeModule
+      real(kind=8):: rad,length,rad2,xcent,ycent,zcent
+      type(ConductorInterceptType):: intercepts
+      real(kind=8):: fuzz
+
+c Finds the intercepts of the object with grid lines along the three axis.
+
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: xmmax,ymmax,zmmax
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+
+      real(kind=8):: zmin,zmax
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: xx,yy,zz,rsq,rr,ri
+
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+
+      intercepts%nxicpt = 4
+      intercepts%nyicpt = 4
+      intercepts%nzicpt = 2
+      call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+
+      zmin = -length*0.5
+      zmax = +length*0.5
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do iy=0,ny
+          yy = ymmin + iy*dy - ycent
+          if (zmin-fuzz <= zz .and. zz <= zmax+fuzz) then
+            if (zmin-fuzz <= zz .and. zz < zmin+rad2) then
+              rr = rad + rad2 - sqrt(max(0.,rad2**2 - (zz - (zmin+rad2))**2))
+            else if (zmax-rad2 < zz .and. zz <= zmax+fuzz) then
+              rr = rad + rad2 - sqrt(max(0.,rad2**2 - (zz - (zmax-rad2))**2))
+            else
+              rr = rad
+            endif
+            if (abs(yy) <= rr) then
+              xintercepts(1,iy,iz) = -LARGEPOS
+              xintercepts(2,iy,iz) = xcent - sqrt(max(0.,rr**2 - yy**2))
+              xintercepts(3,iy,iz) = xcent + sqrt(max(0.,rr**2 - yy**2))
+              xintercepts(4,iy,iz) = +LARGEPOS
+            else
+              xintercepts(1,iy,iz) = -LARGEPOS
+              xintercepts(2:4,iy,iz) = +LARGEPOS
+            endif
+          else
+            xintercepts(1:4,iy,iz) = +LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          if (zmin-fuzz <= zz .and. zz <= zmax+fuzz) then
+            if (zmin-fuzz <= zz .and. zz < zmin+rad2) then
+              rr = rad + rad2 - sqrt(max(0.,rad2**2 - (zz - (zmin+rad2))**2))
+            else if (zmax-rad2 < zz .and. zz <= zmax+fuzz) then
+              rr = rad + rad2 - sqrt(max(0.,rad2**2 - (zz - (zmax-rad2))**2))
+            else
+              rr = rad
+            endif
+            if (abs(xx) <= rr) then
+              yintercepts(1,ix,iz) = -LARGEPOS
+              yintercepts(2,ix,iz) = ycent - sqrt(max(0.,rr**2 - xx**2))
+              yintercepts(3,ix,iz) = ycent + sqrt(max(0.,rr**2 - xx**2))
+              yintercepts(4,ix,iz) = +LARGEPOS
+            else
+              yintercepts(1,ix,iz) = -LARGEPOS
+              yintercepts(2:4,ix,iz) = +LARGEPOS
+            endif
+          else
+            yintercepts(1:4,ix,iz) = LARGEPOS
+          endif
+        enddo
+      enddo
+
+      do iy=0,ny
+        yy = ymmin + iy*dy - ycent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+          rsq = xx**2 + yy**2
+          if (rsq >= (rad+rad2)**2) then
+            zintercepts(1,ix,iy) = zcent + zmin
+            zintercepts(2,ix,iy) = zcent + zmax
+          else if (rad**2 <= rsq .and. rsq < (rad+rad2)**2) then
+            rr = sqrt(rsq)
+            ri = rad2 - sqrt(max(0.,rad2**2 - (rad+rad2-rr)**2))
+            zintercepts(1,ix,iy) = zcent + zmin + ri
+            zintercepts(2,ix,iy) = zcent + zmax - ri
+          else
+            zintercepts(1:2,ix,iy) = LARGEPOS
+          endif
+        enddo
       enddo
 
       return
