@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.256 2009/09/25 22:34:28 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.257 2009/11/24 00:01:00 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -3731,7 +3731,7 @@ def ppzvzco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
 
 ##########################################################################
 def ppco(y,x,z,uz=1.,marker='\1',msize=1.0,zmin=None,zmax=None,
-         ncolor=None,usepalette=1,local=1):
+         ncolor=None,usepalette=1,npalette=200,local=1):
   """Plots y versus x with color based in z
      - y: y coordinate
      - x: x coordinate
@@ -3740,6 +3740,7 @@ def ppco(y,x,z,uz=1.,marker='\1',msize=1.0,zmin=None,zmax=None,
      - ncolor: number of colors to use, defaults to top.ncolor
      - usepalette=1: when true, uses palette, otherwise uses colors in array
                      color
+     - npalette=200: number of colors to use in the palette
   """
   # --- Make sure the lengths of the input are the same
   assert (len(y) == len(x) == len(z)),"x, y, and z must all be the same length"
@@ -3792,7 +3793,7 @@ def ppco(y,x,z,uz=1.,marker='\1',msize=1.0,zmin=None,zmax=None,
         # --- of each particle to be specified directly, but that is
         # --- really slow.
       else:
-        c = nint(199*ic/(ncolor-1.))
+        c = nint((npalette-1.)*ic/(ncolor-1.))
     else:
       c = color[ic%len(color)]
     plp(take(y,ii),take(x,ii),color=c,marker=marker,msize=msize,local=local)
