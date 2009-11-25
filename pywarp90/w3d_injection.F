@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.126 $, $Date: 2009/11/18 21:53:43 $
+c@(#) File w3d_injection.F, version $Revision: 1.127 $, $Date: 2009/11/25 18:52:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1135,17 +1135,26 @@ c    &     inj_dx*inj_dy/pgroup%sq(is)/pgroup%sw(is)/cos(inj_angl(ix,iy,ij))
                   elseif (inject == 4) then
 c                   --- Thermionic emission
                     inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
-                    dw   = sqrt((echarge**3*inte)/(4.*pi*eps0))
-                    rnn = te_const(jsid)     
-     &                  * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
-                    rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
+                    if ( (pgroup%sq(is)*inte) >= 0.) then
+                      dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
+                      rnn = te_const(jsid)     
+     &                    * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
+                      rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
+                    else
+                      rnn = 0.
+                    endif
                   elseif (inject == 5) then
 c                   --- Thermionic emission with space-charge
                     rnncl = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5
                     inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
-                    dw   = sqrt((echarge**3*inte)/(4.*pi*eps0))
-                    rnns = te_const(jsid)     
-     &                  * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
+                    if ( (pgroup%sq(is)*inte) >= 0.) then
+                      inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
+                      dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
+                      rnns = te_const(jsid)     
+     &                    * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
+                    else
+                      rnns = 0.
+                    end if
                     rnn = rnncl*(1.-exp(-rnns/rnncl))/sphericalcorrection*jton(jsid)
                     rnn = rnn/cos(inj_angl(ix,iy,ij))
                     rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
