@@ -3,10 +3,10 @@
 __all__ = ['AppendableArray','DynamicHistogram','DynamicHistogramIntersect']
 import sys
 import numpy
-from toppy import deposeintersect
+from toppy import deposeintersect,setgrid1d,deposgrid1d
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.16 2009/11/18 22:15:13 jlvay Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.17 2009/11/25 22:28:25 jlvay Exp $"
 
 class AppendableArray:
   """
@@ -187,6 +187,9 @@ class DynamicHistogram:
     self.overfrac=overfrac
     self.data=numpy.zeros(n,'d')
     self.bins=None
+    self.binsdx=None
+    self.binsmin=None
+    self.binsmax=None
     
   def checkbounds(self,d):
     dmin = min(d)
@@ -194,7 +197,11 @@ class DynamicHistogram:
     if self.min is None: self.min=dmin
     if self.max is None: self.max=dmax
     if self.bins is None:
-      self.bins = self.min+arange(self.n)*(self.max-self.min)/(self.n-1)
+      self.binsdx = (self.max-self.min)/(self.n-1)
+      self.bins = self.min+numpy.arange(self.n)*self.binsdx
+      self.binsminmax = numpy.zeros(self.n*2)
+      self.binsminmax[0::2] = self.min+numpy.arange(self.n)*self.binsdx
+      self.binsminmax[1::2] = self.min+numpy.arange(self.n)*self.binsdx+self.binsdx
     l_rescale_array=0
     if dmin<self.min:
       minold = self.min
@@ -205,19 +212,23 @@ class DynamicHistogram:
       self.max=dmax+self.overfrac*(self.max-self.min)
       l_rescale_array=1
     if l_rescale_array:
-      newdata=zeros(self.n,'d')
-      tmpcount = zeros(self.n,'d')
-      deposgrid1d(1,n,self.bins,self.data,n-1,newdata,tmpcount,self.min,self.max)
-      self.bins = self.min+arange(self.n)*(self.max-self.min)/(self.n-1)
+      newdata  = numpy.zeros(self.n,'d')
+      tmpcount = numpy.zeros(self.n,'d')
+      deposgrid1d(1,self.n,self.bins,self.data,self.n-1,newdata,tmpcount,self.min,self.max)
+      self.binsdx = (self.max-self.min)/(self.n-1)
+      self.bins = self.min+numpy.arange(self.n)*self.binsdx
+      self.binsminmax = numpy.zeros(self.n*2)
+      self.binsminmax[0::2] = self.min+numpy.arange(self.n)*self.binsdx
+      self.binsminmax[1::2] = self.min+numpy.arange(self.n)*self.binsdx+self.binsdx
       self.data = newdata
 
   def accumulate(self,d,weights=None):
     if type(d) is type(0.):d=array([d])
     self.checkbounds(d)
     if weights is None:     
-      setgrid1d(shape(d)[0],d,self.n-1,self.data,self.min,self.max)
+      setgrid1d(numpy.shape(d)[0],d,self.n-1,self.data,self.min,self.max)
     else:
-      setgrid1dw(shape(d)[0],d,weights,self.n-1,self.data,self.min,self.max)
+      setgrid1dw(numpy.shape(d)[0],d,weights,self.n-1,self.data,self.min,self.max)
 
 class DynamicHistogramIntersect(DynamicHistogram):
   """
