@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.81 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.82 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -25,8 +25,9 @@ c The data in intercepts is a list of interception points along the grid
 c lines in each of the three dimensions. The interceptions need to be in
 c increasing order and the first point must be at the lower edge. Note that
 c if the lower edge extends to -infinity, the value of -LARGEPOS should be
-c used. The last value can be left off if the upper edge extends to +infinity.
-c If there are no intercepts, the list should be filled with LARGEPOS.
+c used. If there are no intercepts, the list should be filled with LARGEPOS.
+c This routine assumes that the conductors object is empty. If there is
+c any data in it, it is freed.
 
       integer(ISZ):: iouter
 
@@ -50,6 +51,7 @@ c If there are no intercepts, the list should be filled with LARGEPOS.
       integer(ISZ):: ncmax,nemax,nomax
       integer(ISZ):: ix,iy,iz,ii,idel
       integer(ISZ):: ix1,ix2,iy1,iy2,iz1,iz2
+      real(kind=8):: dxi,dyi,dzi
       real(kind=8):: x1,x2,y1,y2,z1,z2
       real(kind=8):: xx,yy,zz
       real(kind=8):: delx,dely,delz
@@ -89,14 +91,24 @@ c     --- These are handy to precalculate
       xmmax = xmmin + nx*dx
       ymmax = ymmin + ny*dy
       zmmax = zmmin + nz*dz
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+
+c     --- Make sure that there is no data in conductors
+      if (conductors%interior%nmax > 0 .or.
+     &    conductors%evensubgrid%nmax > 0 .or.
+     &    conductors%oddsubgrid%nmax > 0) then
+        call ConductorTypefree(conductors)
+      endif
 
 c     --- Create locals to hold the counters
-      ncmax = conductors%interior%n
-      nemax = conductors%evensubgrid%n
-      nomax = conductors%oddsubgrid%n
-      nc = conductors%interior%n
-      ne = conductors%evensubgrid%n
-      no = conductors%oddsubgrid%n
+      ncmax = 0
+      nemax = 0
+      nomax = 0
+      nc = 0
+      ne = 0
+      no = 0
 
 c     --- Do this calculation twice. The first time, only count the number
 c     --- of data points accumulated. Then allocate the space all at once.
@@ -114,29 +126,30 @@ c         --- Allocate the space all at once before the 2nd time through
           conductors%interior%nmax = ncmax
           conductors%evensubgrid%nmax = nemax
           conductors%oddsubgrid%nmax = nomax
-          call ConductorTypechange(conductors)
-c         --- Direct allocation is slightly faster, but deletes old data
-c         --- and the old arrays would need to be deallocated
-c         allocate(conductors%interior%indx(0:2,ncmax))
-c         allocate(conductors%interior%volt(ncmax))
-c         allocate(conductors%interior%numb(ncmax))
-c         allocate(conductors%interior%ilevel(ncmax))
+c         --- Calling ConductorTypeallot has extra overhead and is slower
+c         call ConductorTypeallot(conductors)
+c         --- Direct allocation is slightly faster. This assumes that
+c         --- the arrays are not already associated.
+          allocate(conductors%interior%indx(0:2,ncmax))
+          allocate(conductors%interior%volt(ncmax))
+          allocate(conductors%interior%numb(ncmax))
+          allocate(conductors%interior%ilevel(ncmax))
 c         allocate(conductors%evensubgrid%prevphi(nemax))
-c         allocate(conductors%evensubgrid%indx(0:2,nemax))
-c         allocate(conductors%evensubgrid%dels(0:5,nemax))
-c         allocate(conductors%evensubgrid%volt(0:5,nemax))
-c         allocate(conductors%evensubgrid%numb(0:5,nemax))
+          allocate(conductors%evensubgrid%indx(0:2,nemax))
+          allocate(conductors%evensubgrid%dels(0:5,nemax))
+          allocate(conductors%evensubgrid%volt(0:5,nemax))
+          allocate(conductors%evensubgrid%numb(0:5,nemax))
 c         allocate(conductors%evensubgrid%efield0(0:2,nemax))
 c         allocate(conductors%evensubgrid%efieldd(0:5,nemax))
-c         allocate(conductors%evensubgrid%ilevel(nemax))
+          allocate(conductors%evensubgrid%ilevel(nemax))
 c         allocate(conductors%oddsubgrid%prevphi(nomax))
-c         allocate(conductors%oddsubgrid%indx(0:2,nomax))
-c         allocate(conductors%oddsubgrid%dels(0:5,nomax))
-c         allocate(conductors%oddsubgrid%volt(0:5,nomax))
-c         allocate(conductors%oddsubgrid%numb(0:5,nomax))
+          allocate(conductors%oddsubgrid%indx(0:2,nomax))
+          allocate(conductors%oddsubgrid%dels(0:5,nomax))
+          allocate(conductors%oddsubgrid%volt(0:5,nomax))
+          allocate(conductors%oddsubgrid%numb(0:5,nomax))
 c         allocate(conductors%oddsubgrid%efield0(0:2,nomax))
 c         allocate(conductors%oddsubgrid%efieldd(0:5,nomax))
-c         allocate(conductors%oddsubgrid%ilevel(nomax))
+          allocate(conductors%oddsubgrid%ilevel(nomax))
         endif
 
 c       --- Find all of the grid points within the object.
@@ -162,8 +175,8 @@ c             --- Check if the object overlaps the grid.
               if (x2 >= xmmin .and. x1 <= xmmax) then
 
 c               --- Get the range in x grid points that are inside the object
-                ix1 = int((max(x1-fuzz,xmmin) - xmmin)/dx)
-                ix2 = int((min(x2+fuzz,xmmax) - xmmin)/dx)
+                ix1 = int((max(x1-fuzz,xmmin) - xmmin)*dxi)
+                ix2 = int((min(x2+fuzz,xmmax) - xmmin)*dxi)
                 if (xmmin + ix1*dx <= x1 .and. ix1 < nx) ix1 = ix1 + 1
                 if (xmmin + (ix2+1)*dx <= x2 .and. ix1 < nx) ix2 = ix2 + 1
 
@@ -239,20 +252,21 @@ c             --- Check that the intercept point is within the grid
               if (xmmin <= xintercepts(ii,iy,iz) .and.
      &            xintercepts(ii,iy,iz) <= xmmax) then
 
+                ix = (xintercepts(ii,iy,iz) - xmmin)*dxi
                 if (xside > 0.) then
 c                 --- delpx
-                  ix = (xintercepts(ii,iy,iz) - xmmin)/dx
-                  delx = (xintercepts(ii,iy,iz) - xmmin)/dx - ix
+                  delx = (xintercepts(ii,iy,iz) - xmmin)*dxi - ix
                   idel = 1
                 else
 c                 --- delmx
-                  ix = (xintercepts(ii,iy,iz) - xmmin)/dx + 1
-                  delx = ix - (xintercepts(ii,iy,iz) - xmmin)/dx
+                  ix = ix + 1
+                  delx = ix - (xintercepts(ii,iy,iz) - xmmin)*dxi
                   idel = 0
                 endif
 
 c               --- Make sure that delx is not zero. Note that delx would
-c               --- never be negative.
+c               --- never be negative. Also, skip points that are close
+c               --- to one.
                 if (0. < delx .and. delx < 1.-fuzz) then
 
                   if (iouter == 1) then
@@ -285,11 +299,11 @@ c                   --- is near any.
      &                        yintercepts(iy1,ix,iz) < LARGEPOS)
                       if (yside > 0.) then
 c                       --- delpy
-                        dely = (yintercepts(iy1,ix,iz) - yy)/dy
+                        dely = (yintercepts(iy1,ix,iz) - yy)*dyi
                         idel = 3
                       else
 c                       --- delmy
-                        dely = (yy - yintercepts(iy1,ix,iz))/dy
+                        dely = (yy - yintercepts(iy1,ix,iz))*dyi
                         idel = 2
                       endif
                       if (0. < dely .and. dely < 1.-fuzz .and.
@@ -310,11 +324,11 @@ c                   --- is near any.
      &                        zintercepts(iz1,ix,iy) < LARGEPOS)
                       if (zside > 0.) then
 c                       --- delpz
-                        delz = (zintercepts(iz1,ix,iy) - zz)/dz
+                        delz = (zintercepts(iz1,ix,iy) - zz)*dzi
                         idel = 5
                       else
 c                       --- delmz
-                        delz = (zz - zintercepts(iz1,ix,iy))/dz
+                        delz = (zz - zintercepts(iz1,ix,iy))*dzi
                         idel = 4
                       endif
                       if (0. < delz .and. delz < 1.-fuzz .and.
@@ -368,15 +382,15 @@ c       --- Scan over the yintercepts
               if (ymmin <= yintercepts(ii,ix,iz) .and.
      &            yintercepts(ii,ix,iz) <= ymmax) then
 
+                iy = (yintercepts(ii,ix,iz) - ymmin)*dyi
                 if (yside > 0.) then
 c                 --- delpy
-                  iy = (yintercepts(ii,ix,iz) - ymmin)/dy
-                  dely = (yintercepts(ii,ix,iz) - ymmin)/dy - iy
+                  dely = (yintercepts(ii,ix,iz) - ymmin)*dyi - iy
                   idel = 3
                 else
 c                 --- delmy
-                  iy = (yintercepts(ii,ix,iz) - ymmin)/dy + 1
-                  dely = iy - (yintercepts(ii,ix,iz) - ymmin)/dy
+                  iy = iy + 1
+                  dely = iy - (yintercepts(ii,ix,iz) - ymmin)*dyi
                   idel = 2
                 endif
 
@@ -391,12 +405,12 @@ c               --- x intercepts.
                   if (xside > 0.) then
 c                   --- delpx
                     if (xintercepts(ix1,iy,iz) >= xx) then
-                      delx = (xintercepts(ix1,iy,iz) - xx)/dx
+                      delx = (xintercepts(ix1,iy,iz) - xx)*dxi
                     endif
                   else
 c                   --- delmx
                     if (xintercepts(ix1,iy,iz) <= xx) then
-                      delx = (xx - xintercepts(ix1,iy,iz))/dx
+                      delx = (xx - xintercepts(ix1,iy,iz))*dxi
                     endif
                   endif
                   ix1 = ix1 + 1
@@ -429,11 +443,11 @@ c                   --- delmx
      &                        zintercepts(iz1,ix,iy) < LARGEPOS)
                       if (zside > 0.) then
 c                       --- delpz
-                        delz = (zintercepts(iz1,ix,iy) - zz)/dz
+                        delz = (zintercepts(iz1,ix,iy) - zz)*dzi
                         idel = 5
                       else
 c                       --- delmz
-                        delz = (zz - zintercepts(iz1,ix,iy))/dz
+                        delz = (zz - zintercepts(iz1,ix,iy))*dzi
                         idel = 4
                       endif
                       if (0. < delz .and. delz < 1.-fuzz .and.
@@ -486,15 +500,15 @@ c       --- Scan over zintercepts
               if (zmmin <= zintercepts(ii,ix,iy) .and.
      &            zintercepts(ii,ix,iy) <= zmmax) then
 
+                iz = (zintercepts(ii,ix,iy) - zmmin)*dzi
                 if (zside > 0.) then
 c                 --- delpz
-                  iz = (zintercepts(ii,ix,iy) - zmmin)/dz
-                  delz = (zintercepts(ii,ix,iy) - zmmin)/dz - iz
+                  delz = (zintercepts(ii,ix,iy) - zmmin)*dzi - iz
                   idel = 5
                 else
 c                 --- delmz
-                  iz = (zintercepts(ii,ix,iy) - zmmin)/dz + 1
-                  delz = iz - (zintercepts(ii,ix,iy) - zmmin)/dz
+                  iz = iz + 1
+                  delz = iz - (zintercepts(ii,ix,iy) - zmmin)*dzi
                   idel = 4
                 endif
 
@@ -509,12 +523,12 @@ c               --- x intercepts.
                   if (xside > 0.) then
 c                   --- delpx
                     if (xintercepts(ix1,iy,iz) >= xx) then
-                      delx = (xintercepts(ix1,iy,iz) - xx)/dx
+                      delx = (xintercepts(ix1,iy,iz) - xx)*dxi
                     endif
                   else
 c                   --- delmx
                     if (xintercepts(ix1,iy,iz) <= xx) then
-                      delx = (xx - xintercepts(ix1,iy,iz))/dx
+                      delx = (xx - xintercepts(ix1,iy,iz))*dxi
                     endif
                   endif
                   ix1 = ix1 + 1
@@ -532,12 +546,12 @@ c               --- y intercepts.
                   if (yside > 0.) then
 c                   --- delpy
                     if (yintercepts(iy1,ix,iz) >= yy) then
-                      dely = (yintercepts(iy1,ix,iz) - yy)/dy
+                      dely = (yintercepts(iy1,ix,iz) - yy)*dyi
                     endif
                   else
 c                   --- delmy
                     if (yintercepts(iy1,ix,iz) <= yy) then
-                      dely = (yy - yintercepts(iy1,ix,iz))/dy
+                      dely = (yy - yintercepts(iy1,ix,iz))*dyi
                     endif
                   endif
                   iy1 = iy1 + 1
