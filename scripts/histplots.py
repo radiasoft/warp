@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.36 2009/01/05 19:05:38 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.37 2009/11/30 22:20:04 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -134,6 +134,7 @@ parsing of the arguments is done in one place here and each of the history
 plot functions just passes most of the arguments into this function. The
 only required argument of course is the data to be plotted.
   """
+  if me > 0: return
   kwdefaults = {'absc':None,'js':-1,'perspecies':1,
                 'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
                 'titlet':'','titleb':'','titlel':'','titler':'',
@@ -200,6 +201,7 @@ only required argument of course is the data to be plotted.
 #############################################################################
 # Basic history plot for data in windows
 def hpbasicwin(oord,iw=0,kwdict={},**kw):
+  if me > 0: return
   kw.update(kwdict)
   oord = _extractvarkw(oord,kw)
   zwindows = _extractvarkw('zwindows',kw)
@@ -231,6 +233,7 @@ def hpbasicwin(oord,iw=0,kwdict={},**kw):
 # arguments into this function. The only required argument of course of the
 # data to be plotted.
 def hpbasiccont(oord,oordmesh,kwdict={},**kw):
+  if me > 0: return
   kwdefaults = {'absc':None,'js':-1,'perspecies':1,
                 'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
                 'titlet':'','titleb':'','titlel':'','titler':'',
@@ -322,6 +325,7 @@ Plots data in various ways. By default, makes a mountain range plot.
   - iz when specified, plots history at that location
   - For mountain range plot options, run doc(mountainplot1)
   """
+  if me > 0: return
   kw.update(kwdict)
   #kw.setdefault('titleb','time')
   hzarray = _extractvarkw(hzarray,kw)
