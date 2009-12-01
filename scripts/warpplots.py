@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.257 2009/11/24 00:01:00 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.258 2009/12/01 20:07:10 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1272,6 +1272,8 @@ def ppgeneric_doc(x,y):
   - msize=1.: scaled size of marker
   - ncolor=None: when plotting particle color by number density, number of
                  colors to use, defaults to top.ncolor
+  - npalette=200: number of colors to use in the palette when plotting
+                  particles with colors (passed through to ppco)
   - nx=20, ny=20: grid size when the density is calculated,
   - particles=0: when true, forces plot particles. If a gridded plot (such as
                  contour of cellarray) plot is requested, the particles will
@@ -1292,6 +1294,9 @@ def ppgeneric_doc(x,y):
                                     other title settings.
   - uselog=None: when given, logarithmic levels of the number density are
                  used.  The value gives the log base, 1 is same as 'e'.
+  - usepalette=1: when plotting particles with color, when true, uses palette,
+                  otherwise uses colors in the array color (passed through to
+                  ppco)
   - view=1: view window to use (experts only)
   - width=1.0: width of hash marks for hash plots
   - xbound=dirichlet: sets boundary condition on gridded data for x
@@ -1321,7 +1326,7 @@ _ppgeneric_kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
                 'pplimits':('e','e','e','e'),
                 'particles':0,'uselog':None,'logmin':None,
                 'color':'fg','ncolor':None,
-                'usepalette':1,'marker':'\1','msize':1.0,
+                'usepalette':1,'npalette':200,'marker':'\1','msize':1.0,
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':.9,'hcolor':'fg','width':1.0,
                 'contours':None,'filled':0,'ccolor':'fg',
@@ -1382,6 +1387,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   color = kwvalues['color']
   ncolor = kwvalues['ncolor']
   usepalette = kwvalues['usepalette']
+  npalette = kwvalues['npalette']
   marker = kwvalues['marker']
   msize = kwvalues['msize']
   denmin = kwvalues['denmin']
@@ -1804,7 +1810,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       if ncolor is None: ncolor = top.ncolor
       # --- Plot particles with color based on the density from the grid.
       ppco(yms,x,z1,uz=1.,marker=marker,msize=msize,zmin=cmin,zmax=cmax,
-           ncolor=ncolor,usepalette=usepalette,local=local)
+           ncolor=ncolor,usepalette=usepalette,npalette=npalette,local=local)
     else:
       # --- Plot particles as a solid color.
       plp(yms,x,color=color,marker=marker,msize=msize,local=local)
