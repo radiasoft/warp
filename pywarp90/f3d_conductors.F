@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.82 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.83 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -178,7 +178,7 @@ c               --- Get the range in x grid points that are inside the object
                 ix1 = int((max(x1-fuzz,xmmin) - xmmin)*dxi)
                 ix2 = int((min(x2+fuzz,xmmax) - xmmin)*dxi)
                 if (xmmin + ix1*dx <= x1 .and. ix1 < nx) ix1 = ix1 + 1
-                if (xmmin + (ix2+1)*dx <= x2 .and. ix1 < nx) ix2 = ix2 + 1
+                if (xmmin + (ix2+1)*dx <= x2 .and. ix2 < nx) ix2 = ix2 + 1
 
                 do ix=ix1,ix2
 
@@ -6460,10 +6460,9 @@ c A positive zsign means that the conductor is the region above zcent.
       ny = intercepts%ny
       nz = intercepts%nz
 
-      intercepts%nxicpt = 4*nn
-      intercepts%nyicpt = 4*nn
-      intercepts%nzicpt = 4*nn
-      call ConductorInterceptTypeallot(intercepts)
+      intercepts%nxicpt = 2*(nn-1)
+      intercepts%nyicpt = 2*(nn-1)
+      intercepts%nzicpt = 2*(nn-1)
 
       xintercepts => intercepts%xintercepts
       yintercepts => intercepts%yintercepts
@@ -6504,22 +6503,30 @@ c         --- then the mins or maxs may need to be recalculated.
           if ((minth < -pi*0.5 .and. maxth > -pi*0.5) .or.
      &        (minth < pi*1.5 .and. maxth > pi*1.5)) then
             rmin(ii) = rc(ii) - abs(rad(ii))
+            intercepts%nxicpt = intercepts%nxicpt + 2
+            intercepts%nyicpt = intercepts%nyicpt + 2
           endif
           if ((minth < pi*0.5 .and. maxth > pi*0.5) .or.
      &        (minth < pi*2.5 .and. maxth > pi*2.5)) then
             rmax(ii) = rc(ii) + abs(rad(ii))
+            intercepts%nxicpt = intercepts%nxicpt + 2
+            intercepts%nyicpt = intercepts%nyicpt + 2
           endif
           if (minth < pi .and. maxth > pi) then
             zmin(ii) = zc(ii) - abs(rad(ii))
+            intercepts%nzicpt = intercepts%nzicpt + 2
           endif
           if ((minth < 0. .and. maxth > 0.) .or.
      &        (minth < 2*pi .and. maxth > 2*pi)) then
             zmax(ii) = zc(ii) + abs(rad(ii))
+            intercepts%nzicpt = intercepts%nzicpt + 2
           endif
 
         endif
 
       enddo
+
+      call ConductorInterceptTypeallot(intercepts)
 
       do iz=0,nz
         zz = zmmin + iz*dz - zcent
