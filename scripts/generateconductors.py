@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.217 2009/12/07 19:03:33 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.218 2009/12/07 19:52:12 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2635,6 +2635,7 @@ Assembly on this grid.
     # --- data for each part separately. Time is saved since only data within
     # --- the extent of each part is checked. Note that this will be recursive
     # --- one of the parts of 'a' are themselves an AssemblyPlus.
+    # --- This is still true for the new generation method.
     if a.__class__ == AssemblyPlus:
       self.getdatanew(a.left,dfill=dfill,fuzzsign=fuzzsign)
       self.getdatanew(a.right,dfill=dfill,fuzzsign=fuzzsign)
@@ -2650,7 +2651,6 @@ Assembly on this grid.
 
       if timeit: tt1 = wtime()
       xmin,ymin,zmin,dx,dy,dz,nxlocal,nylocal,nzlocal,ixlocal,iylocal,izlocal=self.getmeshnew(mglevel,aextent)
-#     if nxlocal == 0 or nylocal == 0 or nzlocal == 0: continue
       if timeit: tt2[0] = tt2[0] + wtime() - tt1
 
       if timeit: tt1 = wtime()
