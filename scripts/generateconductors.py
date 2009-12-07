@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.216 2009/11/24 01:15:57 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.217 2009/12/07 19:03:33 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1770,7 +1770,7 @@ Class to hold and manage intercepts instances.
       self.intercepts.ycondids = condid
       self.intercepts.zcondids = condid
 
-  def installlist(interceptslist,solvergeom,conductors,gridrz):
+  def installlist(interceptslist,installrz,solvergeom,conductors,gridrz):
 
     # --- For each intercept, generate the conductor data in a separate
     # --- conductors instance.
@@ -1781,20 +1781,45 @@ Class to hold and manage intercepts instances.
       conductordelfromintercepts(intercepts.intercepts,
                                  conductorslist[-1],dfill,fuzz)
 
+    # --- If the RZ solver is being used and the data is to be installed,
+    # --- then clear out an existing conductor data in the database first.
+    # --- If this is not done, then data from conductor
+    # --- objects will be copied in the RZ database multiple time if
+    # --- multiple objects are installed separately.
+    # --- At the end of the install, the install_conductor_rz routine
+    # --- will copy data back from the RZ database to the database.
+    # --- This is slightly inefficient since for each object installed, all
+    # --- of the accumulated data will be copied back into the database.
+    # --- The way around that is to make the call to install_conductors_rz
+    # --- only after all of the objects have been installed.
+    if solvergeom is None: solvergeom = w3d.solvergeom
+    if(installrz and
+       (solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.XYgeom])):
+      conductors.interior.n = 0
+      conductors.evensubgrid.n = 0
+      conductors.oddsubgrid.n = 0
+
     # --- Count how much data needs to be installed.
-    nc = 0
-    ne = 0
-    no = 0
+    ncnew = 0
+    nenew = 0
+    nonew = 0
 
     for c in conductorslist:
-      nc += c.interior.n
-      ne += c.evensubgrid.n
-      no += c.oddsubgrid.n
+      ncnew += c.interior.n
+      nenew += c.evensubgrid.n
+      nonew += c.oddsubgrid.n
 
-    # --- Create the space needed
-    conductors.interior.nmax += nc
-    conductors.evensubgrid.nmax += ne
-    conductors.oddsubgrid.nmax += no
+    # --- Create the space if needed
+    nc = conductors.interior.n
+    ne = conductors.evensubgrid.n
+    no = conductors.oddsubgrid.n
+    if ncnew + nc > conductors.interior.nmax:
+      conductors.interior.nmax = ncnew + nc
+    if nenew + ne > conductors.evensubgrid.nmax:
+      conductors.evensubgrid.nmax = nenew + ne
+    if nonew + no > conductors.oddsubgrid.nmax:
+      conductors.oddsubgrid.nmax = nonew + no
+
     conductors.gchange()
 
     # --- Copy the data
@@ -1831,6 +1856,17 @@ Class to hold and manage intercepts instances.
         conductors.oddsubgrid.ilevel[no1:no2] = c.oddsubgrid.ilevel[:no]
         conductors.oddsubgrid.n += no
 
+    # --- If the RZ solver is being used, then copy the data into that
+    # --- database. This also copies all of the accumulated data back into
+    # --- the database to allow for plotting and diagnostics.
+    if ncnew + nenew + nonew > 0 and installrz:
+      if solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.XYgeom]:
+        if gridrz is None:
+          frz.install_conductors_rz(conductors,frz.basegrid)
+        else:
+          frz.install_conductors_rz(conductors,gridrz)
+
+  # --- Set so installlist can be called directly from GridIntercepts
   installlist = staticmethod(installlist)
 
   def px(self,ii,xmin=None,xmax=None):
@@ -2614,7 +2650,7 @@ Assembly on this grid.
 
       if timeit: tt1 = wtime()
       xmin,ymin,zmin,dx,dy,dz,nxlocal,nylocal,nzlocal,ixlocal,iylocal,izlocal=self.getmeshnew(mglevel,aextent)
-      if nxlocal == 0 or nylocal == 0 or nzlocal == 0: continue
+#     if nxlocal == 0 or nylocal == 0 or nzlocal == 0: continue
       if timeit: tt2[0] = tt2[0] + wtime() - tt1
 
       if timeit: tt1 = wtime()
@@ -2667,7 +2703,7 @@ Installs the conductor data into the fortran database
     conductors.levelly[:self.mglevels] = self.mglevelly[:self.mglevels]
     conductors.levellz[:self.mglevels] = self.mglevellz[:self.mglevels]
     GridIntercepts.installlist(self.interceptslist,
-                               solvergeom,conductors,gridrz)
+                               installrz,solvergeom,conductors,gridrz)
     self.interceptsinstalled += self.interceptslist
     self.interceptslist = []
     if gridmode is not None:
