@@ -529,7 +529,8 @@ class MultiGrid3D(SubcycledPoissonSolver):
     if not self.lparallel:
       # --- If serial, then defer to getselfep since field and fieldp would
       # --- be the same array.
-      return self.getselfep(recalculate=recalculate,lzero=lzero)
+      self.field = self.getselfep(recalculate=recalculate,lzero=lzero)
+      return self.field
     # --- The rest is the same as self.getselfep, but using the non-p
     # --- attributes.
 
