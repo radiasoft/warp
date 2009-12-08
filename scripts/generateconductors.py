@@ -110,10 +110,19 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.218 2009/12/07 19:52:12 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.219 2009/12/08 01:14:32 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
+
+_lwithnewconductorgeneration = false
+def usenewconductorgeneration():
+  """Use the faster, new method for conductor data generation"""
+  global _lwithnewconductorgeneration
+  _lwithnewconductorgeneration = true
+def useoldconductorgeneration():
+  global _lwithnewconductorgeneration
+  _lwithnewconductorgeneration = false
 
 ##############################################################################
 installedconductors = []
@@ -181,87 +190,25 @@ generate).
            installrz,gridrz,
            mgmaxlevels=mgmaxlevels,
            decomp=decomp)
-  # Generate the conductor data
-  g.getdata(a,dfill)
-  # Then install it
-  g.installdata(installrz,gridmode,solvergeom,conductors,gridrz)
+
+  if _lwithnewconductorgeneration:
+    # --- This method is faster...
+    # Generate the conductor data
+    g.getdatanew(a,dfill)
+    # Then install it
+    g.installintercepts(installrz,gridmode,solvergeom,conductors,gridrz)
+  else:
+    # --- This is the old method, and is now mostly obsolete...
+    # Generate the conductor data
+    g.getdata(a,dfill)
+    # Then install it
+    g.installdata(installrz,gridmode,solvergeom,conductors,gridrz)
+
   installedconductors.append(a)
 
 def uninstallconductors(a):
   "Removes the conductors from the list of installed conductors"
   installedconductors.remove(a)
-
-##############################################################################
-def installconductorsnew(a,xmin=None,xmax=None,ymin=None,ymax=None,
-                      zmin=None,zmax=None,dfill=2.,
-                      zbeam=None,
-                      nx=None,ny=None,nz=None,
-                      nxlocal=None,nylocal=None,nzlocal=None,
-                      xmmin=None,xmmax=None,ymmin=None,ymmax=None,
-                      zmmin=None,zmmax=None,zscale=1.,
-                      l2symtry=None,l4symtry=None,
-                      installrz=None,gridmode=1,solvergeom=None,
-                      conductors=None,gridrz=None,mgmaxlevels=None,
-                      decomp=None):
-  """
-Installs the given conductors into the field solver. When using the built in
-solver, this should only be called after the generate. When using a python
-level solver, for example MultiGrid3d or MultiGrid2d, this should be called
-only after the solver is registered (with registersolver). In that case, it
-is OK to call this before the generate (and is in fact preferred so that the
-conductors will be setup during the field solve that happens during the
-generate).
-  - a: the assembly of conductors, or list of conductors
-  - xmin,xmax,ymin,ymax,zmin,zmax: extent of conductors. Defaults to the
-    mesh size. These can be set for optimization, to avoid looking
-    for conductors where there are none. Also, they can be used crop a
-    conductor
-  - dfill=2.: points at a depth in the conductor greater than dfill
-              are skipped.
-  - zbeam=top.zbeam: location of the beam frame
-  - nx,ny,nz: Number of grid cells in the mesh. Defaults to values from w3d
-  - nxlocal,nylocal,nzlocal: Number of grid cells in the mesh for the local
-                             processor. Defaults to values from w3d
-  - xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: extent of mesh. Defaults to values
-                                         from w3d
-  - zscale=1.: scale factor on dz. This is used when the relativistic scaling
-              is done for the longitudinal dimension
-  - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
-                       from w3d
-  - decomp: Decomposition instance holding data for parallelization
-  """
-  if conductors is None and gridrz is None:
-    # --- If conductors was not specified, first check if mesh-refinement
-    # --- or other special solver is being used.
-    solver = getregisteredsolver()
-    import __main__
-    if solver is not None:
-      solver.installconductor(a,dfill=dfill)
-      return
-    elif __main__.__dict__.has_key("AMRtree"):
-      __main__.__dict__["AMRtree"].installconductor(a,dfill=dfill)
-      return
-
-  # --- Use whatever conductors object was specified, or
-  # --- if no special solver is being used, use f3d.conductors.
-  if conductors is None: conductors = f3d.conductors
-
-  # --- Set the installrz argument if needed.
-  if installrz is None:
-    installrz = (frz.getpyobject('basegrid') is not None)
-
-  # First, create a grid object
-  g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nz,nxlocal,nylocal,nzlocal,
-           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zscale,l2symtry,l4symtry,
-           installrz,gridrz,
-           mgmaxlevels=mgmaxlevels,
-           decomp=decomp)
-  # Generate the conductor data
-  g.getdatanew(a,dfill)
-  # Then install it
-  g.installintercepts(installrz,gridmode,solvergeom,conductors,gridrz)
-
-  installedconductors.append(a)
 
 ##############################################################################
 ##############################################################################
