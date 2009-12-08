@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.83 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.84 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -6464,10 +6464,6 @@ c A positive zsign means that the conductor is the region above zcent.
       intercepts%nyicpt = 2*(nn-1)
       intercepts%nzicpt = 2*(nn-1)
 
-      xintercepts => intercepts%xintercepts
-      yintercepts => intercepts%yintercepts
-      zintercepts => intercepts%zintercepts
-
       allocate(rmin(nn-1),rmax(nn-1))
       allocate(zmin(nn-1),zmax(nn-1))
       allocate(th1(nn-1),th2(nn-1))
@@ -6527,6 +6523,10 @@ c         --- then the mins or maxs may need to be recalculated.
       enddo
 
       call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
 
       do iz=0,nz
         zz = zmmin + iz*dz - zcent
