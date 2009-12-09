@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.242 $, $Date: 2009/10/01 00:21:36 $
+c@(#) File TOP.F, version $Revision: 3.243 $, $Date: 2009/12/09 20:05:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3649,7 +3649,8 @@ c=============================================================================
       subroutine addpart(pgroup,nn,nnpid,x,y,z,vx,vy,vz,gi,
      &                   ex,ey,ez,bx,by,bz,ppid,is,
      &                   lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
-     &                   lmomentum,lfields,l2symtry,l4symtry,lrz)
+     &                   l2symtry,l4symtry,lrz,
+     &                   lmomentum,lfields,lnewparticles,lusespaceabove)
       use ParticleGroupmodule
       use Subtimerstop
       use Constant
@@ -3660,25 +3661,48 @@ c=============================================================================
       real(kind=8):: x(nn),y(nn),z(nn),vx(nn),vy(nn),vz(nn),gi(nn)
       real(kind=8):: ex(nn),ey(nn),ez(nn),bx(nn),by(nn),bz(nn)
       real(kind=8):: ppid(nn,nnpid)
-      logical(ISZ):: lallindomain,lmomentum,lfields,l2symtry,l4symtry,lrz
       real(kind=8):: xmmin,xmmax,ymmin,ymmax,zmmin,zmmax
+      logical(ISZ):: l2symtry,l4symtry,lrz
+      logical(ISZ):: lallindomain,lmomentum,lfields,lnewparticles
+      logical(ISZ):: lusespaceabove
 
 c Adds new particles to the simulation
 c   nn: number of particles to add
-c   x,y,z,vx,vy,vz,gi: coordinates and velocities
+c   x,y,z,vx,vy,vz,gi: coordinates, velocities and gamma inverse
+c   ex,ey,ez,bx,by,bz: E and B fields associated with the particles
 c   is: species number to add particles to
 c   lallindomain: When true, all particles are assumed to be within the
-c                 z extent of the domain and the scraping check is skipped
-c   zmmin,zmmax: z extent of the domain
+c                 extent of the domain and the scraping check is skipped
+c   xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: extent of the domain
+c   l2symtry,l4symtry,lrz: symmetry settings, used when lallindomain is
+c                          false and the new particles are scraped on
+c                          the edge of the domain
 c   lmomentum: Set to false when velocites are input as velocities, and true
 c              when input as massless momentum. Only used when lrelativ is
 c              true.
+c   lfields: when true, copy the fields data
+c   lnewparticles: when true, the particles are treated as newly created
+c                  particles. The ssn will be set if needed, and the
+c                  position saved as the birth location.
+c   lusespaceabove: when true, the new particles are preferentially
+c                   placed in the space above the existing particles,
+c                   otherwise below.
 
-      integer(ISZ):: ip,n1,i1,i2,i
+      integer(ISZ):: ip,n1,i1,i2,j1,j2,ii
+      integer(ISZ):: ilower,ihigher,spacebelow,spaceabove,nbelow,nabove
+      integer(ISZ):: ipgrp1(2),ipgrp2(2)
+      integer(ISZ):: inew1(2),inew2(2)
       real(kind=8):: substarttime,wtime,xt,yt
       if (ltoptimesubs) substarttime = wtime()
 
-      call setuppgroup(pgroup)
+      if (lnewparticles) then
+c       --- pgroup should only ever need setting up if the particles
+c       --- being added are new. However, not calling setuppgroup could
+c       --- lead to crashes in odd cases, for example if non-new
+c       --- particles are being added to a new pgroup. Let's hope that
+c       --- this doesn't come up anytime soon.
+        call setuppgroup(pgroup)
+      endif
 
 c     --- Make sure that 'is' is within the correct range
       if (is < 1 .or. is > pgroup%ns) then
@@ -3687,11 +3711,16 @@ c     --- Make sure that 'is' is within the correct range
         return
       endif
 
+c     --- Make sure that sid is initialized. If not, assume a one-to-one
+c     --- correspondance between the global list of species and the list
+c     --- of species in this pgroup.
       if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is-1
 
 c     --- Make sure that the particles are within the extent of the domain,
 c     --- unless the input declares this to be so, i.e. lallindomain is true.
-      if (.not. lallindomain) then
+      if (lallindomain) then
+        n1 = nn
+      else
         n1 = 0
         do ip=1,nn
           if (z(ip) < zmmin  .or. z(ip) >= zmmax) cycle
@@ -3726,8 +3755,6 @@ c     --- unless the input declares this to be so, i.e. lallindomain is true.
             if (nnpid > 0) ppid(n1,:) = ppid(ip,:)
           endif
         enddo
-      else
-        n1 = nn
       endif
 
 c     --- If velocities input are not momentum, and lrelativ is true,
@@ -3741,44 +3768,138 @@ c     --- momentum.
       endif
 
 c     --- Make room for the particles
-c     pgroup%npid = max(pgroup%npid,nnpid)
-      call chckpart(pgroup,is,0,n1)
+c     --- Depending on the value of lusespaceabove, particles are first added
+c     --- to either the memory above or below the existing particles. If
+c     --- there is not enough space there, split the new particles, adding
+c     --- some to the other side as well. If there still isn't enough space,
+c     --- call chckpart and increase the size of the arrays.  
+c     --- This should hopefully minimize the movement of particle data,
+c     --- only shifting the data when absolutely necessary.
 
-c     --- Now, copy data into arrays
-      i1 = pgroup%ins(is) + pgroup%nps(is)
-      i2 = i1 + n1 - 1
-      pgroup%xp(i1:i2) = x(1:n1)
-      pgroup%yp(i1:i2) = y(1:n1)
-      pgroup%zp(i1:i2) = z(1:n1)
-      pgroup%uxp(i1:i2) = vx(1:n1)
-      pgroup%uyp(i1:i2) = vy(1:n1)
-      pgroup%uzp(i1:i2) = vz(1:n1)
-      pgroup%gaminv(i1:i2) = gi(1:n1)
-      if (lfields) then
-        pgroup%ex(i1:i2) = ex(1:n1)
-        pgroup%ey(i1:i2) = ey(1:n1)
-        pgroup%ez(i1:i2) = ez(1:n1)
-        pgroup%bx(i1:i2) = bx(1:n1)
-        pgroup%by(i1:i2) = by(1:n1)
-        pgroup%bz(i1:i2) = bz(1:n1)
-      end if
-      if (nnpid > 0) pgroup%pid(i1:i2,1:nnpid) = ppid(1:n1,:)
-      if (spid > 0) then
-c       --- Only set the ssn if it is not already set.
-        do ip=i1,i2
-          if (pgroup%pid(ip,spid) == 0) then
-            pgroup%pid(ip,spid) = ssn
-            ssn = ssn + 1
-          endif
-        enddo
-      end if
-c     --- Save birth position or velocity at birth.
-      if (xbirthpid > 0) pgroup%pid(i1:i2,xbirthpid) = x(1:n1)
-      if (ybirthpid > 0) pgroup%pid(i1:i2,ybirthpid) = y(1:n1)
-      if (zbirthpid > 0) pgroup%pid(i1:i2,zbirthpid) = z(1:n1)
-      if (uxbirthpid > 0) pgroup%pid(i1:i2,uxbirthpid) = vx(1:n1)
-      if (uybirthpid > 0) pgroup%pid(i1:i2,uybirthpid) = vy(1:n1)
-      if (uzbirthpid > 0) pgroup%pid(i1:i2,uzbirthpid) = vz(1:n1)
+c     --- ilower is the lowest usable array location.
+      if (is == 1) then
+        ilower = 1
+      else
+        ilower = pgroup%ins(is-1) + pgroup%nps(is-1)
+      endif
+
+c     --- ihigher is the highest usable array location.
+      if (is == pgroup%ns) then
+        ihigher = pgroup%npmax
+      else
+        ihigher = pgroup%ins(is+1) - 1
+      endif
+
+c     --- Calculate the available space.
+      spacebelow = pgroup%ins(is) - ilower
+      spaceabove = ihigher - (pgroup%ins(is) + pgroup%nps(is) - 1)
+
+c     --- If there is not enough room on both ends for the new
+c     --- particles, increase the size of the arrays.
+      if (n1 > spacebelow+spaceabove) then
+        if (lusespaceabove) then
+          call chckpart(pgroup,is,0,n1)
+        else
+          call chckpart(pgroup,is,n1,0)
+        endif
+
+c       --- The indices need to be recalculated.
+c       --- ilower is the lowest usable array location.
+        if (is == 1) then
+          ilower = 1
+        else
+          ilower = pgroup%ins(is-1) + pgroup%nps(is-1)
+        endif
+
+c       --- ihigher is the highest usable array location.
+        if (is == pgroup%ns) then
+          ihigher = pgroup%npmax
+        else
+          ihigher = pgroup%ins(is+1) - 1
+        endif
+
+c       --- Calculate the available space.
+        spacebelow = pgroup%ins(is) - ilower
+        spaceabove = ihigher - (pgroup%ins(is) + pgroup%nps(is) - 1)
+
+      endif
+
+      if (lusespaceabove) then
+c       --- Use up the space above the particles first, putting leftovers below
+        nabove = min(n1,spaceabove)
+        nbelow = n1 - nabove
+      else
+c       --- Use up the space below the particles first, putting leftovers above
+        nbelow = min(n1,spacebelow)
+        nabove = n1 - nbelow
+      endif
+
+c     --- Setup the indices for the pgroup arrays
+      ipgrp1(1) = pgroup%ins(is) - nbelow
+      ipgrp2(1) = pgroup%ins(is) - 1
+      ipgrp1(2) = pgroup%ins(is) + pgroup%nps(is)
+      ipgrp2(2) = ipgrp1(2) + nabove - 1
+
+c     --- Setup the indices for the new particle arrays
+      inew1(1) = 1
+      inew2(1) = nbelow
+      inew1(2) = inew2(1) + 1
+      inew2(2) = n1
+
+c     --- Copy data from the new particles arrays into the pgroup arrays.
+c     --- The loop splits the copy, with the first iteration copying
+c     --- particles below, and the second above the existing particles.
+      do ii=1,2
+
+c       --- Do nothing if there is nothing to copy
+        if (inew2(ii) < inew1(ii)) cycle
+
+        i1 = ipgrp1(ii)
+        i2 = ipgrp2(ii)
+        j1 = inew1(ii)
+        j2 = inew2(ii)
+
+        pgroup%xp(i1:i2) = x(j1:j2)
+        pgroup%yp(i1:i2) = y(j1:j2)
+        pgroup%zp(i1:i2) = z(j1:j2)
+        pgroup%uxp(i1:i2) = vx(j1:j2)
+        pgroup%uyp(i1:i2) = vy(j1:j2)
+        pgroup%uzp(i1:i2) = vz(j1:j2)
+        pgroup%gaminv(i1:i2) = gi(j1:j2)
+        if (lfields) then
+          pgroup%ex(i1:i2) = ex(j1:j2)
+          pgroup%ey(i1:i2) = ey(j1:j2)
+          pgroup%ez(i1:i2) = ez(j1:j2)
+          pgroup%bx(i1:i2) = bx(j1:j2)
+          pgroup%by(i1:i2) = by(j1:j2)
+          pgroup%bz(i1:i2) = bz(j1:j2)
+        end if
+        if (nnpid > 0) pgroup%pid(i1:i2,1:nnpid) = ppid(j1:j2,:)
+
+        if (lnewparticles) then
+          if (spid > 0) then
+c           --- Only set the ssn if it is not already set.
+            do ip=i1,i2
+              if (pgroup%pid(ip,spid) == 0) then
+                pgroup%pid(ip,spid) = ssn
+                ssn = ssn + 1
+              endif
+            enddo
+          end if
+
+c         --- Save birth position or velocity at birth.
+          if (xbirthpid > 0) pgroup%pid(i1:i2,xbirthpid) = x(j1:j2)
+          if (ybirthpid > 0) pgroup%pid(i1:i2,ybirthpid) = y(j1:j2)
+          if (zbirthpid > 0) pgroup%pid(i1:i2,zbirthpid) = z(j1:j2)
+          if (uxbirthpid > 0) pgroup%pid(i1:i2,uxbirthpid) = vx(j1:j2)
+          if (uybirthpid > 0) pgroup%pid(i1:i2,uybirthpid) = vy(j1:j2)
+          if (uzbirthpid > 0) pgroup%pid(i1:i2,uzbirthpid) = vz(j1:j2)
+        endif
+
+      enddo
+
+c     --- Update ins and nps appropriately
+      pgroup%ins(is) = pgroup%ins(is) - nbelow
       pgroup%nps(is) = pgroup%nps(is) + n1
 
 !$OMP MASTER
