@@ -19,7 +19,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.81 2009/08/20 18:30:19 dave Exp $"
+particles_version = "$Id: particles.py,v 1.82 2009/12/09 20:05:56 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1326,7 +1326,8 @@ def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,
                  l2symtry=None,l4symtry=None,lrz=None,
                  resetrho=false,dofieldsol=false,resetmoments=false,
                  pgroup=None,
-                 ex=0.,ey=0.,ez=0.,bx=0.,by=0.,bz=0.,lfields=false):
+                 ex=0.,ey=0.,ez=0.,bx=0.,by=0.,bz=0.,
+                 lfields=false,lnewparticles=true,lusespaceabove=true):
   """
 Adds particles to the simulation
   x,y,z,vx,vy,vz,gi: particle coordinates and velocities. Can be arrays or
@@ -1346,7 +1347,14 @@ Adds particles to the simulation
   lmomentum=false: Set to false when velocities are input as velocities, true
                    when input as massless momentum (as WARP stores them).
                    Only used when top.lrelativ is true.
+  lnewparticles=true: when true, the particles are treated as newly created
+                      particles. The ssn will be set if needed, and the
+                      position saved as the birth location.
+  lusespaceabove=true: when true, the new particles are preferentially
+                       placed in the space above the existing particles,
+                       otherwise below.
   pgroup=top.pgroup: Particle group to add particles too
+
   """
 
   # --- Check if this is a new species
@@ -1472,8 +1480,9 @@ Adds particles to the simulation
   if pgroup is None: pgroup = top.pgroup
   # --- Now data can be passed into the fortran addparticles routine.
   addpart(pgroup,maxlen,top.npid,x,y,z,vx,vy,vz,gi,ex,ey,ez,bx,by,bz,pid,js+1,
-          lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,lmomentum,lfields,
-          l2symtry,l4symtry,lrz)
+          lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
+          l2symtry,l4symtry,lrz,
+          lmomentum,lfields,lnewparticles,lusespaceabove)
 
   # --- If the slice code is active, then call initdtp
   if package()[0] == 'wxy': initdtp(top.pgroup)
