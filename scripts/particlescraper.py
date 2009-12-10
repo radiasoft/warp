@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.90 2009/08/06 01:39:40 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.91 2009/12/10 20:37:03 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -388,7 +388,7 @@ into isinside is consistent with that obtained from the grid.
       ycsym = yc
     return xcsym,ycsym
 
-  def scrapeall(self,clear=0,local=0):
+  def scrapeall(self,clear=0,local=0,jslist=None):
     """Apply scraping to all of the species.
   - clear=0: when true, lost particles are removed from the particle arrays.
              Note that this routine is normally called during the course of
@@ -396,10 +396,12 @@ into isinside is consistent with that obtained from the grid.
              elsewhere.
   - local=0: This only affects the lcollectlpdata option. When true, this
              collection of data is turned off (avoiding a parallel operation).
+  - jslist=None: Optional list of species to scrape. It defaults to all species.
     """
     if len(self.conductors)==0: return
     self.updategrid()
-    for js in xrange(top.pgroup.ns):
+    if jslist is None: jslist = range(top.pgroup.ns)
+    for js in jslist:
       if top.pgroup.ldts[js]:
         if self.l_print_timing:tstart=wtime()
         if self.lfastscraper:
