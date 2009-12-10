@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.244 $, $Date: 2009/12/10 18:54:50 $
+c@(#) File TOP.F, version $Revision: 3.245 $, $Date: 2009/12/10 22:40:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3408,9 +3408,13 @@ c     --- If there is not enough space, then allocate new space.
 c       --- Amount of new space to add: this is calculated to be a sizable
 c       --- chunk, but not too big.  By default, add 10 times the space needed.
 c       --- Limit that to 10000, except, if the space needed is greater than
-c       --- 10000, add the amount of space needed.
-        nadd = nlower + nhigher - spacebelow - spaceabove
-        nadd = min(10*nadd, max(10000, nadd))
+c       --- 10000, add the amount of space needed. Then subtract off the
+c       --- space that is already there.
+        naddlower = min(10*nlower, max(10000, nlower))
+        naddlower = max(0,naddlower - spacebelow)
+        naddhigher = min(10*nhigher, max(10000, nhigher))
+        naddhigher = max(0,naddhigher - spaceabove)
+        nadd = naddlower + naddhigher
 
 c       --- change the particle array dimension variables and allot space
         pgroup%npmax = pgroup%npmax + nadd
@@ -3424,25 +3428,22 @@ c       --- them up to make space below for species is.
         enddo
         pgroup%ipmax(is) = pgroup%ipmax(is) + nadd
 
-c       --- naddlower and higher are used below. These include the total
-c       --- amount of space added, which may be > nlower+nhigher. So, for
-c       --- example, if only nlower > 0, then the particles will be shifted so
-c       --- that all of the space added will go below the existing particles.
-        naddlower = (nlower/(nlower + nhigher))*nadd
-        naddhigher = nadd - naddlower
+c       --- The new space will be above the existing particles, so adjust
+c       --- the two quantities appropriately.
         spaceabove = spaceabove + nadd
+        naddhigher = max(0,naddhigher - nadd)
 
       else
-        naddlower = nlower
-        naddhigher = nhigher
+        naddlower = max(0,nlower - spacebelow)
+        naddhigher = max(0,nhigher - spaceabove)
       endif
 
 c     --- Now, there is enough room to shift the particles appropriately.
 c     --- Note that is some cases no shift will be needed.  In those cases,
 c     --- ishift comes out to be zero and shftpart returns immediately when
-c     --- ishift is zero.
-      ishift = max(0,naddlower - spacebelow) +
-     &         min(0,spaceabove - naddhigher)
+c     --- ishift is zero. Note that in all cases, only one of naddlower
+c     --- and naddhigher will be nonzero.
+      ishift = naddlower - naddhigher
       call shftpart(pgroup,is,ishift)
 
 !$OMP MASTER
