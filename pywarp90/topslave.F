@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.60 $, $Date: 2009/09/30 17:41:09 $
+c TOPSLAVE.M, version $Revision: 1.61 $, $Date: 2009/12/10 18:58:25 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -37,9 +37,10 @@ c to the appropriate processor.
 
       logical(ISZ):: ldoagain
       logical(ISZ):: isleftmostproc,isrightmostproc
-      real(kind=8),pointer:: zz(:),uz(:)
+      integer(ISZ):: ilower,ihigher
+      real(kind=8),pointer:: zz(:),uz(:),zbuff(:)
       real(kind=8):: ztemp,temp,pidtemp(pgroup%npid),syslen,zgrid,rr,rrin
-      integer(MPIISZ):: is1,is2,is,ip,idest,ipid,ii,il,ir,nn,indts,i1,i2
+      integer(ISZ):: is1,is2,is,ip,idest,ipid,ii,il,ir,nn,indts,i1,i2
       integer(MPIISZ):: ins_init(pgroup%ns),nps_init(pgroup%ns)
       integer(MPIISZ):: nsendleft(pgroup%ns),nsendright(pgroup%ns)
       integer(MPIISZ):: nrecvleft(pgroup%ns),nrecvright(pgroup%ns)
@@ -81,24 +82,26 @@ c     --- Get the neighboring processors
       isleftmostproc = (iprocgrid(axis) == 0)
       isrightmostproc = (iprocgrid(axis) == nprocgrid(axis) - 1)
 
-c     --- Setup pointer to correct data coordinates
-      if (axis == 0) then
-        zz => pgroup%xp
-        uz => pgroup%uxp
-      else if (axis == 1) then
-        zz => pgroup%yp
-        uz => pgroup%uyp
-      else if (axis == 2) then
-        zz => pgroup%zp
-        uz => pgroup%uzp
-      endif
-
       ldoagain = .true.
       do while (ldoagain)
 c       --- Set ldoagain flag to false. Later on, particles received are checked
 c       --- if they are within the bounds and if any are not, ldoagain is set
 c       --- to true.
         ldoagain = .false.
+
+c       --- Setup pointer to correct data coordinates
+c       --- This must be done inside the while loop in case a gchange is
+c       --- done below (which would make the pointer references obsolete)
+        if (axis == 0) then
+          zz => pgroup%xp
+          uz => pgroup%uxp
+        else if (axis == 1) then
+          zz => pgroup%yp
+          uz => pgroup%uyp
+        else if (axis == 2) then
+          zz => pgroup%zp
+          uz => pgroup%uzp
+        endif
 
 c       --- Loop over species
         do is=is1,is2
@@ -459,6 +462,8 @@ c     call VTBEGIN(60,IERR)
         do is=is1,is2
 
 c         --- Make sure that there is space for the incoming data.
+c         --- chckpart is only called if the total amount of space
+c         --- available is not enough for the incoming particles.
 c         --- Note that chckpart must be called in this loop - if it is
 c         --- called for all species at once, it could double count the
 c         --- available space between species. If for example there where
@@ -466,89 +471,161 @@ c         --- 10 empty elements between species and each needed 8 elements,
 c         --- chckpart wouldn't shift anything since it would see the 10
 c         --- would be enough for the 8 for each species, not knowing that
 c         --- 16 spaces is really needed.
-          call chckpart(pgroup,int(is,ISZ),
-     &                  int(nrecvleft(is),ISZ),int(nrecvright(is),ISZ))
 
-c         --- Reset pointer to correct data coordinates.
-c         --- This is needed in case the arrays are reallocated in chckpart.
-          if (axis == 0) then
-            zz => pgroup%xp
-          else if (axis == 1) then
-            zz => pgroup%yp
-          else if (axis == 2) then
-            zz => pgroup%zp
+c         --- ilower is the lowest usable array location.
+          ilower = pgroup%ipmax(is-1) + 1
+
+c         --- ihigher is the highest usable array location.
+          ihigher = pgroup%ipmax(is)
+
+c         --- nn is the total space available for new particles, the
+c         --- total available range for species is minus the number of
+c         --- existing particles.
+          nn = ihigher - ilower + 1 - pgroup%nps(is)
+          if (nn < nrecvleft(is)+nrecvright(is)) then
+            call chckpart(pgroup,int(is,ISZ),
+     &                    int(nrecvleft(is),ISZ),int(nrecvright(is),ISZ))
           endif
 
           if (nrecvleft(is) > 0) then
             nn = nrecvleft(is)
             if (nn > 0) then
-              ip = pgroup%ins(is) - nn
-              pgroup%xp(ip:ip+nn-1)     = buffer3(il      :il+   nn-1)
-              pgroup%yp(ip:ip+nn-1)     = buffer3(il+   nn:il+ 2*nn-1)
-              pgroup%zp(ip:ip+nn-1)     = buffer3(il+ 2*nn:il+ 3*nn-1)
-              pgroup%uxp(ip:ip+nn-1)    = buffer3(il+ 3*nn:il+ 4*nn-1)
-              pgroup%uyp(ip:ip+nn-1)    = buffer3(il+ 4*nn:il+ 5*nn-1)
-              pgroup%uzp(ip:ip+nn-1)    = buffer3(il+ 5*nn:il+ 6*nn-1)
-              pgroup%gaminv(ip:ip+nn-1) = buffer3(il+ 6*nn:il+ 7*nn-1)
-              pgroup%ex(ip:ip+nn-1)     = buffer3(il+ 7*nn:il+ 8*nn-1)
-              pgroup%ey(ip:ip+nn-1)     = buffer3(il+ 8*nn:il+ 9*nn-1)
-              pgroup%ez(ip:ip+nn-1)     = buffer3(il+ 9*nn:il+10*nn-1)
-              pgroup%bx(ip:ip+nn-1)     = buffer3(il+10*nn:il+11*nn-1)
-              pgroup%by(ip:ip+nn-1)     = buffer3(il+11*nn:il+12*nn-1)
-              pgroup%bz(ip:ip+nn-1)     = buffer3(il+12*nn:il+13*nn-1)
-              do ipid=1,pgroup%npid
-                pgroup%pid(ip:ip+nn-1,ipid) = buffer3(il+(12+ipid)*nn:il+(13+ipid)*nn-1)
-              enddo
-              il = il + nquant*nn
-              pgroup%ins(is) = pgroup%ins(is) - nn
-              pgroup%nps(is) = pgroup%nps(is) + nn
+
+              call addpart(pgroup,nn,pgroup%npid,
+     &                     buffer3(il      :il+   nn-1),
+     &                     buffer3(il+   nn:il+ 2*nn-1),
+     &                     buffer3(il+ 2*nn:il+ 3*nn-1),
+     &                     buffer3(il+ 3*nn:il+ 4*nn-1),
+     &                     buffer3(il+ 4*nn:il+ 5*nn-1),
+     &                     buffer3(il+ 5*nn:il+ 6*nn-1),
+     &                     buffer3(il+ 6*nn:il+ 7*nn-1),
+     &                     buffer3(il+ 7*nn:il+ 8*nn-1),
+     &                     buffer3(il+ 8*nn:il+ 9*nn-1),
+     &                     buffer3(il+ 9*nn:il+10*nn-1),
+     &                     buffer3(il+10*nn:il+11*nn-1),
+     &                     buffer3(il+11*nn:il+12*nn-1),
+     &                     buffer3(il+12*nn:il+13*nn-1),
+     &                     buffer3(il+13*nn:il+(13+pgroup%npid)*nn-1),
+     &                     is,
+     &                     .true.,0.,0.,0.,0.,0.,0.,.false.,.false.,.false.,
+     &                     .true.,.true.,.false.,.false.)
+
+c             ip = pgroup%ins(is) - nn
+c             pgroup%xp(ip:ip+nn-1)     = buffer3(il      :il+   nn-1)
+c             pgroup%yp(ip:ip+nn-1)     = buffer3(il+   nn:il+ 2*nn-1)
+c             pgroup%zp(ip:ip+nn-1)     = buffer3(il+ 2*nn:il+ 3*nn-1)
+c             pgroup%uxp(ip:ip+nn-1)    = buffer3(il+ 3*nn:il+ 4*nn-1)
+c             pgroup%uyp(ip:ip+nn-1)    = buffer3(il+ 4*nn:il+ 5*nn-1)
+c             pgroup%uzp(ip:ip+nn-1)    = buffer3(il+ 5*nn:il+ 6*nn-1)
+c             pgroup%gaminv(ip:ip+nn-1) = buffer3(il+ 6*nn:il+ 7*nn-1)
+c             pgroup%ex(ip:ip+nn-1)     = buffer3(il+ 7*nn:il+ 8*nn-1)
+c             pgroup%ey(ip:ip+nn-1)     = buffer3(il+ 8*nn:il+ 9*nn-1)
+c             pgroup%ez(ip:ip+nn-1)     = buffer3(il+ 9*nn:il+10*nn-1)
+c             pgroup%bx(ip:ip+nn-1)     = buffer3(il+10*nn:il+11*nn-1)
+c             pgroup%by(ip:ip+nn-1)     = buffer3(il+11*nn:il+12*nn-1)
+c             pgroup%bz(ip:ip+nn-1)     = buffer3(il+12*nn:il+13*nn-1)
+c             do ipid=1,pgroup%npid
+c               pgroup%pid(ip:ip+nn-1,ipid) = buffer3(il+(12+ipid)*nn:il+(13+ipid)*nn-1)
+c             enddo
+
+c             --- Grab pointers to incoming data coordinates.
+c             --- The buffer needs to be used, since when the new particle
+c             --- data is copied into pgroup, the data might be split up and
+c             --- could be noncontiguous.
+              if (axis == 0) then
+                zbuff => buffer3(il      :il+   nn-1) ! x
+              else if (axis == 1) then
+                zbuff => buffer3(il+   nn:il+ 2*nn-1) ! y
+              else if (axis == 2) then
+                zbuff => buffer3(il+ 2*nn:il+ 3*nn-1) ! z
+              endif
+
               if (lrz) then
-                ztemp = maxval(sqrt(pgroup%xp(ip:ip+nn-1)**2 +
-     &                              pgroup%yp(ip:ip+nn-1)**2))
+c               --- ztemp = sqrt(x**2 + y**2)
+                ztemp = maxval(sqrt(buffer3(il      :il+   nn-1)**2 +
+     &                              buffer3(il+   nn:il+ 2*nn-1)**2))
               elseif (labs) then
-                ztemp = maxval(abs(zz(ip:ip+nn-1)))-zgrid
+                ztemp = maxval(abs(zbuff)) - zgrid
               else
-                ztemp = maxval(zz(ip:ip+nn-1))-zgrid
+                ztemp = maxval(zbuff) - zgrid
               endif
               if (ztemp > zpmaxlocal) then
                 ldoagain = .true.
               endif
+
+              il = il + nquant*nn
+
             endif
           endif
 
           if (nrecvright(is) > 0) then
             nn = nrecvright(is)
             if (nn > 0) then
-              ip = pgroup%ins(is) + pgroup%nps(is)
-              pgroup%xp(ip:ip+nn-1)     = buffer4(ir      :ir+ 1*nn-1)
-              pgroup%yp(ip:ip+nn-1)     = buffer4(ir+   nn:ir+ 2*nn-1)
-              pgroup%zp(ip:ip+nn-1)     = buffer4(ir+ 2*nn:ir+ 3*nn-1)
-              pgroup%uxp(ip:ip+nn-1)    = buffer4(ir+ 3*nn:ir+ 4*nn-1)
-              pgroup%uyp(ip:ip+nn-1)    = buffer4(ir+ 4*nn:ir+ 5*nn-1)
-              pgroup%uzp(ip:ip+nn-1)    = buffer4(ir+ 5*nn:ir+ 6*nn-1)
-              pgroup%gaminv(ip:ip+nn-1) = buffer4(ir+ 6*nn:ir+ 7*nn-1)
-              pgroup%ex(ip:ip+nn-1)     = buffer4(ir+ 7*nn:ir+ 8*nn-1)
-              pgroup%ey(ip:ip+nn-1)     = buffer4(ir+ 8*nn:ir+ 9*nn-1)
-              pgroup%ez(ip:ip+nn-1)     = buffer4(ir+ 9*nn:ir+10*nn-1)
-              pgroup%bx(ip:ip+nn-1)     = buffer4(ir+10*nn:ir+11*nn-1)
-              pgroup%by(ip:ip+nn-1)     = buffer4(ir+11*nn:ir+12*nn-1)
-              pgroup%bz(ip:ip+nn-1)     = buffer4(ir+12*nn:ir+13*nn-1)
-              do ipid=1,pgroup%npid
-                pgroup%pid(ip:ip+nn-1,ipid) = buffer4(ir+(12+ipid)*nn:ir+(13+ipid)*nn-1)
-              enddo
-              ir = ir + nquant*nn
-              pgroup%nps(is) = pgroup%nps(is) + nn
+
+              call addpart(pgroup,nn,pgroup%npid,
+     &                     buffer4(ir      :ir+   nn-1),
+     &                     buffer4(ir+   nn:ir+ 2*nn-1),
+     &                     buffer4(ir+ 2*nn:ir+ 3*nn-1),
+     &                     buffer4(ir+ 3*nn:ir+ 4*nn-1),
+     &                     buffer4(ir+ 4*nn:ir+ 5*nn-1),
+     &                     buffer4(ir+ 5*nn:ir+ 6*nn-1),
+     &                     buffer4(ir+ 6*nn:ir+ 7*nn-1),
+     &                     buffer4(ir+ 7*nn:ir+ 8*nn-1),
+     &                     buffer4(ir+ 8*nn:ir+ 9*nn-1),
+     &                     buffer4(ir+ 9*nn:ir+10*nn-1),
+     &                     buffer4(ir+10*nn:ir+11*nn-1),
+     &                     buffer4(ir+11*nn:ir+12*nn-1),
+     &                     buffer4(ir+12*nn:ir+13*nn-1),
+     &                     buffer4(ir+13*nn:ir+(13+pgroup%npid)*nn-1),
+     &                     is,
+     &                     .true.,0.,0.,0.,0.,0.,0.,.false.,.false.,.false.,
+     &                     .true.,.true.,.false.,.true.)
+
+c             ip = pgroup%ins(is) + pgroup%nps(is)
+c             pgroup%xp(ip:ip+nn-1)     = buffer4(ir      :ir+ 1*nn-1)
+c             pgroup%yp(ip:ip+nn-1)     = buffer4(ir+   nn:ir+ 2*nn-1)
+c             pgroup%zp(ip:ip+nn-1)     = buffer4(ir+ 2*nn:ir+ 3*nn-1)
+c             pgroup%uxp(ip:ip+nn-1)    = buffer4(ir+ 3*nn:ir+ 4*nn-1)
+c             pgroup%uyp(ip:ip+nn-1)    = buffer4(ir+ 4*nn:ir+ 5*nn-1)
+c             pgroup%uzp(ip:ip+nn-1)    = buffer4(ir+ 5*nn:ir+ 6*nn-1)
+c             pgroup%gaminv(ip:ip+nn-1) = buffer4(ir+ 6*nn:ir+ 7*nn-1)
+c             pgroup%ex(ip:ip+nn-1)     = buffer4(ir+ 7*nn:ir+ 8*nn-1)
+c             pgroup%ey(ip:ip+nn-1)     = buffer4(ir+ 8*nn:ir+ 9*nn-1)
+c             pgroup%ez(ip:ip+nn-1)     = buffer4(ir+ 9*nn:ir+10*nn-1)
+c             pgroup%bx(ip:ip+nn-1)     = buffer4(ir+10*nn:ir+11*nn-1)
+c             pgroup%by(ip:ip+nn-1)     = buffer4(ir+11*nn:ir+12*nn-1)
+c             pgroup%bz(ip:ip+nn-1)     = buffer4(ir+12*nn:ir+13*nn-1)
+c             do ipid=1,pgroup%npid
+c               pgroup%pid(ip:ip+nn-1,ipid) = buffer4(ir+(12+ipid)*nn:ir+(13+ipid)*nn-1)
+c             enddo
+
+c             --- Grab pointers to incoming data coordinates.
+c             --- The buffer needs to be used, since when the new particle
+c             --- data is copied into pgroup, the data might be split up and
+c             --- could be noncontiguous.
+              if (axis == 0) then
+                zbuff => buffer4(ir      :ir+   nn-1) ! x
+              else if (axis == 1) then
+                zbuff => buffer4(ir+   nn:ir+ 2*nn-1) ! y
+              else if (axis == 2) then
+                zbuff => buffer4(ir+ 2*nn:ir+ 3*nn-1) ! z
+              endif
+
               if (lrz) then
-                ztemp = maxval(sqrt(pgroup%xp(ip:ip+nn-1)**2 +
-     &                              pgroup%yp(ip:ip+nn-1)**2))
+c               --- ztemp = sqrt(x**2 + y**2)
+                ztemp = maxval(sqrt(buffer4(ir      :ir+ 1*nn-1)**2 +
+     &                              buffer4(ir+   nn:ir+ 2*nn-1)**2))
               elseif (labs) then
-                ztemp = minval(abs(zz(ip:ip+nn-1)))-zgrid
+                ztemp = minval(abs(zbuff)) - zgrid
               else
-                ztemp = minval(zz(ip:ip+nn-1))-zgrid
+                ztemp = minval(zbuff) - zgrid
               endif
               if (ztemp < zpminlocal) then
                 ldoagain = .true.
               endif
+
+              ir = ir + nquant*nn
+
             endif
           endif
         enddo
