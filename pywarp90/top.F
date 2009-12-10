@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.243 $, $Date: 2009/12/09 20:05:19 $
+c@(#) File TOP.F, version $Revision: 3.244 $, $Date: 2009/12/10 18:54:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3287,9 +3287,28 @@ c=============================================================================
       use Particles,Only: npid
       type(ParticleGroup):: pgroup
 
+      integer(ISZ):: is
+
       pgroup%npid = npid
 c     call gchange("Particles",0)
       call ParticleGroupchange(pgroup)
+
+c     --- Make sure that ins has a sensible value for all species
+      if (pgroup%ins(1) == 0) pgroup%ins(1) = 1
+      where (pgroup%ins(2:) == 0)
+        pgroup%ins(2:) = pgroup%ins(:pgroup%ns-1) + pgroup%nps(:pgroup%ns-1)
+      end where
+
+c     --- Make sure that ipmax has reasonable values
+      pgroup%ipmax(0) = 0
+      do is=1,pgroup%ns-1
+        if (pgroup%ipmax(is) < pgroup%ins(is)+pgroup%nps(is)-1 .or.
+     &      pgroup%ipmax(is) > pgroup%ins(is+1)-1) then
+           pgroup%ipmax(is) = (pgroup%ins(is)+pgroup%nps(is)-1 +
+     &                         pgroup%ins(is+1)-1)/2
+        endif
+      enddo
+      pgroup%ipmax(pgroup%ns) = pgroup%npmax
 
       return
       end
@@ -3303,7 +3322,7 @@ c=============================================================================
 
 c Allocate space for particles and set up associated arrays.
 
-      integer(ISZ):: is,sid(0:ns),ipmax
+      integer(ISZ):: is,sid(0:ns)
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -3324,13 +3343,14 @@ c     --- Allocate space.
       call setuppgroup(pgroup)
 
 c     --- setup indexing arrays, dividing up the space based on np_s
-      ipmax = 0
+      pgroup%ipmax(0) = 0
       do is=1,pgroup%ns
-        pgroup%ins(is) = ipmax + 1
+        pgroup%ins(is) = pgroup%ipmax(is-1) + 1
         pgroup%nps(is) = 0
-        ipmax = ipmax + np_s(is)
+        pgroup%ipmax(is) = pgroup%ipmax(is-1) + np_s(is)
         if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is-1
       enddo
+      pgroup%ipmax(ns) = pgroup%npmax
 
 !$OMP MASTER
       if (ltoptimesubs) timealotpart = timealotpart + wtime() - substarttime
@@ -3353,7 +3373,7 @@ c space but not enough room above or below, the particles are shifted
 c appropriately. If there is not enough space, add more to the arrays.
 c Particle data is shifted appropriately.
 
-      integer(ISZ):: nadd,i,ishift
+      integer(ISZ):: nadd,naddlower,naddhigher,i,ishift
       integer(ISZ):: ilower,ihigher,spacebelow,spaceabove
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
@@ -3368,25 +3388,11 @@ c     --- Make sure that 'is' is within the correct range
         return
       endif
 
-c     --- Make sure that ins has a sensible value for all species
-      if (pgroup%ins(1) == 0) pgroup%ins(1) = 1
-      where (pgroup%ins(2:) == 0)
-        pgroup%ins(2:) = pgroup%ins(:pgroup%ns-1) + pgroup%nps(:pgroup%ns-1)
-      end where
-
 c     --- ilower is the lowest usable array location.
-      if (is == 1) then
-        ilower = 1
-      else
-        ilower = pgroup%ins(is-1) + pgroup%nps(is-1)
-      endif
+      ilower = pgroup%ipmax(is-1) + 1
 
 c     --- ihigher is the highest usable array location.
-      if (is == pgroup%ns) then
-        ihigher = pgroup%npmax
-      else
-        ihigher = pgroup%ins(is+1) - 1
-      endif
+      ihigher = pgroup%ipmax(is)
 
 c     --- Calculate the available space.
       spacebelow = pgroup%ins(is) - ilower
@@ -3413,19 +3419,30 @@ c       --- change the particle array dimension variables and allot space
 c       --- Loop over species species above 'is', shifting
 c       --- them up to make space below for species is.
         do i=pgroup%ns,is+1,-1
+          pgroup%ipmax(i) = pgroup%ipmax(i) + nadd
           call shftpart(pgroup,i,nadd)
         enddo
+        pgroup%ipmax(is) = pgroup%ipmax(is) + nadd
 
+c       --- naddlower and higher are used below. These include the total
+c       --- amount of space added, which may be > nlower+nhigher. So, for
+c       --- example, if only nlower > 0, then the particles will be shifted so
+c       --- that all of the space added will go below the existing particles.
+        naddlower = (nlower/(nlower + nhigher))*nadd
+        naddhigher = nadd - naddlower
         spaceabove = spaceabove + nadd
 
+      else
+        naddlower = nlower
+        naddhigher = nhigher
       endif
 
 c     --- Now, there is enough room to shift the particles appropriately.
 c     --- Note that is some cases no shift will be needed.  In those cases,
 c     --- ishift comes out to be zero and shftpart returns immediately when
 c     --- ishift is zero.
-      ishift = max(0,nlower - spacebelow) +
-     &         min(0,spaceabove - nhigher)
+      ishift = max(0,naddlower - spacebelow) +
+     &         min(0,spaceabove - naddhigher)
       call shftpart(pgroup,is,ishift)
 
 !$OMP MASTER
@@ -3695,14 +3712,15 @@ c                   otherwise below.
       real(kind=8):: substarttime,wtime,xt,yt
       if (ltoptimesubs) substarttime = wtime()
 
-      if (lnewparticles) then
+c     if (lnewparticles) then
 c       --- pgroup should only ever need setting up if the particles
 c       --- being added are new. However, not calling setuppgroup could
 c       --- lead to crashes in odd cases, for example if non-new
-c       --- particles are being added to a new pgroup. Let's hope that
-c       --- this doesn't come up anytime soon.
+c       --- particles are being added to a new pgroup or if pgroup%ipmax
+c       --- has somehow been corrupted. Not calling it would save only a
+c       --- small amount of time, and is probably not with the risk.
         call setuppgroup(pgroup)
-      endif
+c     endif
 
 c     --- Make sure that 'is' is within the correct range
       if (is < 1 .or. is > pgroup%ns) then
@@ -3777,18 +3795,12 @@ c     --- This should hopefully minimize the movement of particle data,
 c     --- only shifting the data when absolutely necessary.
 
 c     --- ilower is the lowest usable array location.
-      if (is == 1) then
-        ilower = 1
-      else
-        ilower = pgroup%ins(is-1) + pgroup%nps(is-1)
-      endif
+c     --- Note that the call to setuppgroup above is needed to make sure
+c     --- that ipmax is consistent with ins and nps.
+      ilower = pgroup%ipmax(is-1) + 1
 
 c     --- ihigher is the highest usable array location.
-      if (is == pgroup%ns) then
-        ihigher = pgroup%npmax
-      else
-        ihigher = pgroup%ins(is+1) - 1
-      endif
+      ihigher = pgroup%ipmax(is)
 
 c     --- Calculate the available space.
       spacebelow = pgroup%ins(is) - ilower
@@ -3805,18 +3817,10 @@ c     --- particles, increase the size of the arrays.
 
 c       --- The indices need to be recalculated.
 c       --- ilower is the lowest usable array location.
-        if (is == 1) then
-          ilower = 1
-        else
-          ilower = pgroup%ins(is-1) + pgroup%nps(is-1)
-        endif
+        ilower = pgroup%ipmax(is-1) + 1
 
 c       --- ihigher is the highest usable array location.
-        if (is == pgroup%ns) then
-          ihigher = pgroup%npmax
-        else
-          ihigher = pgroup%ins(is+1) - 1
-        endif
+        ihigher = pgroup%ipmax(is)
 
 c       --- Calculate the available space.
         spacebelow = pgroup%ins(is) - ilower
@@ -4089,12 +4093,15 @@ c down and then gchange is called to free the left over space.
 
       oldnpmax = pgroup%npmax
 
+      pgroup%ipmax(0) = 0
       call shftpart(pgroup,1,1-pgroup%ins(1))
       pgroup%ins(1) = 1
+      pgroup%ipmax(1) = pgroup%ins(1) + pgroup%nps(1) - 1
 
       do is=2,pgroup%ns
         call shftpart(pgroup,is,pgroup%ins(is-1)+pgroup%nps(is-1)-pgroup%ins(is))
         pgroup%ins(is) = pgroup%ins(is-1)+pgroup%nps(is-1)
+        pgroup%ipmax(is) = pgroup%ins(is) + pgroup%nps(is) - 1
       enddo
 
       pgroup%npmax = pgroup%ins(pgroup%ns) + pgroup%nps(pgroup%ns) - 1
