@@ -115,7 +115,7 @@ Implements adaptive mesh refinement in 3d
       self.refinement = None
 
       # --- The root block is always active
-      self.isactive = true
+      self.isactive = True
 
       # --- top.nparpgrp is now set in the init of the base class.
       
@@ -250,6 +250,13 @@ Implements adaptive mesh refinement in 3d
       # --- Now calculate the extent of the grid
       self.mins = self.root.minsglobal + self.fulllower*self.deltas
       self.maxs = self.root.minsglobal + self.fullupper*self.deltas
+
+      # --- Recalculate the deltas so that it is done is a manner that is
+      # --- consistent with the calculation elsewhere. This is needed to
+      # --- avoid problems with round off. This ensures that the values
+      # --- of the deltas calculated here and elsewhere will be the same
+      # --- out to machine precision.
+      self.deltas = (self.maxs - self.mins)/self.dims
 
       # --- Note that it is not needed to check if the child overlaps the
       # --- parent. This allows a child to be added to any parent and avoids
@@ -1777,8 +1784,11 @@ contribute within their domains of ownership.
     # --- Each block only needs to check once
     # --- XXX This call breaks something
     #if not self.islastcall(): return null
-    # --- Don't do anything if the ip is outside the block
-    if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return null
+    # --- Don't do anything if the ip is outside the block or if the child
+    # --- is not active
+    if (ip < self.fulllower[idim] or ip > self.fullupper[idim] or
+        not self.isactive):
+      return null
     # --- Get the appropriate slice of potential and the childdomains array
     ii = [slice(None),slice(None),slice(None)]
     ii[idim] = ip - self.fulllower[idim]
@@ -1787,7 +1797,7 @@ contribute within their domains of ownership.
     array = getdata(self.fulllower,self.fullupper)
     if comp is not None and len(shape(array)) == 4: array = array[comp,...]
     if len(self.children) > 0:
-      # --- Skip points that don't self doesn't own
+      # --- Skip points that self doesn't own
       c = self.getchilddomains(self.fulllower,self.fullupper,1)
       array = where(c[ix,iy,iz]==self.blocknumber,array[ix,iy,iz],null)
     else:
@@ -1813,6 +1823,12 @@ Generic plotting routine. This plots only the local domain. Domains of the
 children are also skipped, but the same call is made for them so they will
 be plotted.
     """
+    # --- The the block is not active, then don't do anything.
+    # --- Note that the root block must execute this function so that
+    # --- in parallel, plotlistofthings is called, which is a global
+    # --- operations (and must be called by all processors).
+    if self is not self.root and not self.isactive: return
+
     # --- Wait until all parents have called so that the child's domain
     # --- if not overlapped by a parent. This only affects the cellaray plots.
     # --- This also avoids the child plotting multiple times.
