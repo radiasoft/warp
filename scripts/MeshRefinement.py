@@ -256,7 +256,9 @@ Implements adaptive mesh refinement in 3d
       # --- avoid problems with round off. This ensures that the values
       # --- of the deltas calculated here and elsewhere will be the same
       # --- out to machine precision.
-      self.deltas = (self.maxs - self.mins)/self.dims
+      self.deltas = where(self.dims>0.,
+                          (self.maxs - self.mins)/self.dims,
+                          self.deltas)
 
       # --- Note that it is not needed to check if the child overlaps the
       # --- parent. This allows a child to be added to any parent and avoids
