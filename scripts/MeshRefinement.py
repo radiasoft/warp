@@ -2729,42 +2729,49 @@ with variable dielectric
   def plselfex(self,comp=2,iz=None,colors=None,selfonly=0,scale=1,withguard=1):
     self.plfieldx(iz=iz,iy=0,colors=colors,selfonly=selfonly,scale=scale)
 
-  def plepsilonz(self,ix=None,colors=None,selfonly=0):
+  def plepsilonz(self,ix=None,colors=None,selfonly=0,scale=1):
     if colors is None: colors = color
     elif not operator.isSequenceType(colors): colors = list([colors])
     if self is self.root: accumulateplotlists()
     try:
       if ix < self.fulllower[0]: return
       if ix > self.fullupper[0]: return
-      ix1 = ix - self.fulllower[0]
+      ix1 = ix - self.fulllower[0] + self.nxguard
+      iz1 = self.fulllower[2]
+      iz2 = self.fullupper[2] - 1
       if scale:
-        mesh = self.zmeshlocal
+        mesh = self.zmeshlocal[:-1] + self.dz/2.
       else:
-        iz1 = self.fulllower[2]
-        iz2 = self.fullupper[2]
-        mesh = arange(iz1,iz2+1)/self.totalrefinement[2]
-      plg(self.epsilon[ix1,:],mesh,color=colors[self.blocknumber%len(colors)])
+        mesh = arange(iz1,iz2+1)/self.totalrefinement[2] + 0.5
+      iz1 += -self.fulllower[2] + self.nzguard
+      iz2 += -self.fulllower[2] + self.nzguard
+      print self.epsilon[ix1,iz1:iz2+1].shape,mesh.shape
+      plg(self.epsilon[ix1,iz1:iz2+1],mesh,
+          color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
           child.plepsilonz(ix*child.refinement[0],colors=colors,scale=scale)
     finally:
       if self is self.root: plotlistofthings(lturnofflist=1)
 
-  def plepsilonx(self,iz=None,colors=None,selfonly=0):
+  def plepsilonx(self,iz=None,colors=None,selfonly=0,scale=1):
     if colors is None: colors = color
     elif not operator.isSequenceType(colors): colors = list([colors])
     if self is self.root: accumulateplotlists()
     try:
       if iz < self.fulllower[2]: return
       if iz > self.fullupper[2]: return
-      iz1 = iz - self.fulllower[2]
+      iz1 = iz - self.fulllower[2] + self.nzguard
+      ix1 = self.fulllower[0]
+      ix2 = self.fullupper[0] - 1
       if scale:
-        mesh = self.xmeshlocal
+        mesh = self.xmeshlocal[:-1] + self.dx/2.
       else:
-        ix1 = self.fulllower[0]
-        ix2 = self.fullupper[0]
-        mesh = arange(ix1,ix2+1)/self.totalrefinement[0]
-      plg(self.source[:,iz1],mesh,color=colors[self.blocknumber%len(colors)])
+        mesh = arange(ix1,ix2+1)/self.totalrefinement[0] + 0.5
+      ix1 += -self.fulllower[0] + self.nxguard
+      ix2 += -self.fulllower[0] + self.nxguard
+      plg(self.epsilon[ix1:ix2+1,iz1],mesh,
+          color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
           child.plepsilonx(iz*child.refinement[2],colors=colors,scale=scale)
