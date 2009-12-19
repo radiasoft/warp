@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.220 2009/12/09 20:06:42 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.221 2009/12/19 00:43:46 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -4117,11 +4117,20 @@ data and make sure it is consistent.
           r.append(rdata[i])
           z.append(zdata[i])
         else:
-          zz = span(zdata[i],zdata[i+1],narcpoints)
-          if raddata[i] > 0.:
-            rr = rcdata[i] + sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
-          else:
-            rr = rcdata[i] - sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
+          th1 = arctan2(rdata[i]   - rcdata[i],zdata[i]   - zcdata[i])
+          th2 = arctan2(rdata[i+1] - rcdata[i],zdata[i+1] - zcdata[i])
+          if (th1 > th2 and raddata[i] < 0. and zdata[i] < zdata[i+1]):
+            th2 = th2 + 2*pi
+          if (th1 < th2 and raddata[i] > 0. and zdata[i] < zdata[i+1]):
+            th1 = th1 + 2*pi
+          tt = span(th1,th2,narcpoints)
+          rr = abs(raddata[i])*sin(tt) + rcdata[i]
+          zz = abs(raddata[i])*cos(tt) + zcdata[i]
+          #zz = span(zdata[i],zdata[i+1],narcpoints)
+          #if raddata[i] > 0.:
+          #  rr = rcdata[i] + sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
+          #else:
+          #  rr = rcdata[i] - sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
           r = r + list(rr)
           z = z + list(zz)
       r.append(rdata[-1])
@@ -4190,7 +4199,7 @@ Methods:
                     condid=1,**kw):
     kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      None,None,
+                      None,zsrfrvconductord,
                       None,zsrfrvconductorfnew,
                       kw=kw)
 
@@ -4215,10 +4224,10 @@ Methods:
     self.zmax = max(self.zsrf)
     for i in range(self.nn-1):
       if self.rad[i] < largepos:
-        self.rmin = min(self.rmin,-self.rc[i] - self.rad[i])
-        self.rmax = max(self.rmax,+self.rc[i] + self.rad[i])
-        self.zmin = min(self.zmin,self.zc[i] - self.rad[i])
-        self.zmax = max(self.zmax,self.zc[i] + self.rad[i])
+        self.rmin = min(self.rmin,-self.rc[i] - abs(self.rad[i]))
+        self.rmax = max(self.rmax,+self.rc[i] + abs(self.rad[i]))
+        self.zmin = min(self.zmin,self.zc[i] - abs(self.rad[i]))
+        self.zmax = max(self.zmax,self.zc[i] + abs(self.rad[i]))
 
     self.createextent([-self.rmax,-self.rmax,self.zmin],
                       [+self.rmax,+self.rmax,self.zmax])
