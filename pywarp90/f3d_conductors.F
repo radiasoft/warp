@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.84 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.85 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -255,12 +255,24 @@ c             --- Check that the intercept point is within the grid
                 ix = (xintercepts(ii,iy,iz) - xmmin)*dxi
                 if (xside > 0.) then
 c                 --- delpx
-                  delx = (xintercepts(ii,iy,iz) - xmmin)*dxi - ix
+c                 --- Make sure that ix is outside the object
+                  xx = xmmin + ix*dx
+                  if (ii == 1 .or. xx > xintercepts(ii-1,iy,iz)) then
+                    delx = (xintercepts(ii,iy,iz) - xmmin)*dxi - ix
+                  else
+                    delx = LARGEPOS
+                  endif
                   idel = 1
                 else
 c                 --- delmx
+c                 --- Make sure that ix is outside the object
                   ix = ix + 1
-                  delx = ix - (xintercepts(ii,iy,iz) - xmmin)*dxi
+                  xx = xmmin + ix*dx
+                  if (ii == nxicpt .or. xx < xintercepts(ii+1,iy,iz)) then
+                    delx = ix - (xintercepts(ii,iy,iz) - xmmin)*dxi
+                  else
+                    delx = LARGEPOS
+                  endif
                   idel = 0
                 endif
 
@@ -299,11 +311,20 @@ c                   --- is near any.
      &                        yintercepts(iy1,ix,iz) < LARGEPOS)
                       if (yside > 0.) then
 c                       --- delpy
-                        dely = (yintercepts(iy1,ix,iz) - yy)*dyi
+                        if (iy1 == 1 .or. yy > yintercepts(iy1-1,ix,iz)) then
+                          dely = (yintercepts(iy1,ix,iz) - yy)*dyi
+                        else
+                          dely = LARGEPOS
+                        endif
                         idel = 3
                       else
 c                       --- delmy
-                        dely = (yy - yintercepts(iy1,ix,iz))*dyi
+                        if (iy1 == nyicpt .or.
+     &                      yy < yintercepts(iy1+1,ix,iz)) then
+                          dely = (yy - yintercepts(iy1,ix,iz))*dyi
+                        else
+                          dely = LARGEPOS
+                        endif
                         idel = 2
                       endif
                       if (0. < dely .and. dely < 1.-fuzz .and.
@@ -324,11 +345,20 @@ c                   --- is near any.
      &                        zintercepts(iz1,ix,iy) < LARGEPOS)
                       if (zside > 0.) then
 c                       --- delpz
-                        delz = (zintercepts(iz1,ix,iy) - zz)*dzi
+                        if (iz1 == 1 .or. zz > zintercepts(iz1-1,ix,iy)) then
+                          delz = (zintercepts(iz1,ix,iy) - zz)*dzi
+                        else
+                          delz = LARGEPOS
+                        endif
                         idel = 5
                       else
 c                       --- delmz
-                        delz = (zz - zintercepts(iz1,ix,iy))*dzi
+                        if (iz1 == nzicpt .or.
+     &                      zz < zintercepts(iz1+1,ix,iy)) then
+                          delz = (zz - zintercepts(iz1,ix,iy))*dzi
+                        else
+                          delz = LARGEPOS
+                        endif
                         idel = 4
                       endif
                       if (0. < delz .and. delz < 1.-fuzz .and.
@@ -385,12 +415,22 @@ c       --- Scan over the yintercepts
                 iy = (yintercepts(ii,ix,iz) - ymmin)*dyi
                 if (yside > 0.) then
 c                 --- delpy
-                  dely = (yintercepts(ii,ix,iz) - ymmin)*dyi - iy
+                  yy = ymmin + iy*dy
+                  if (ii == 1 .or. yy > yintercepts(ii-1,ix,iz)) then
+                    dely = (yintercepts(ii,ix,iz) - ymmin)*dyi - iy
+                  else
+                    dely = LARGEPOS
+                  endif
                   idel = 3
                 else
 c                 --- delmy
                   iy = iy + 1
-                  dely = iy - (yintercepts(ii,ix,iz) - ymmin)*dyi
+                  yy = ymmin + iy*dy
+                  if (ii == nyicpt .or. yy < yintercepts(ii+1,ix,iz)) then
+                    dely = iy - (yintercepts(ii,ix,iz) - ymmin)*dyi
+                  else
+                    dely = LARGEPOS
+                  endif
                   idel = 2
                 endif
 
@@ -443,11 +483,20 @@ c                   --- delmx
      &                        zintercepts(iz1,ix,iy) < LARGEPOS)
                       if (zside > 0.) then
 c                       --- delpz
-                        delz = (zintercepts(iz1,ix,iy) - zz)*dzi
+                        if (iz1 == 1 .or. zz > zintercepts(iz1-1,ix,iy)) then
+                          delz = (zintercepts(iz1,ix,iy) - zz)*dzi
+                        else
+                          delz = LARGEPOS
+                        endif
                         idel = 5
                       else
 c                       --- delmz
-                        delz = (zz - zintercepts(iz1,ix,iy))*dzi
+                        if (iz1 == nzicpt .or.
+     &                      zz < zintercepts(iz1+1,ix,iy)) then
+                          delz = (zz - zintercepts(iz1,ix,iy))*dzi
+                        else
+                          delz = LARGEPOS
+                        endif
                         idel = 4
                       endif
                       if (0. < delz .and. delz < 1.-fuzz .and.
@@ -503,12 +552,22 @@ c       --- Scan over zintercepts
                 iz = (zintercepts(ii,ix,iy) - zmmin)*dzi
                 if (zside > 0.) then
 c                 --- delpz
-                  delz = (zintercepts(ii,ix,iy) - zmmin)*dzi - iz
+                  zz = zmmin + iz*dz
+                  if (ii == 1 .or. zz > zintercepts(ii-1,ix,iy)) then
+                    delz = (zintercepts(ii,ix,iy) - zmmin)*dzi - iz
+                  else
+                    delz = LARGEPOS
+                  endif
                   idel = 5
                 else
 c                 --- delmz
                   iz = iz + 1
-                  delz = iz - (zintercepts(ii,ix,iy) - zmmin)*dzi
+                  zz = zmmin + iz*dz
+                  if (ii == nzicpt .or. zz < zintercepts(ii+1,ix,iy)) then
+                    delz = iz - (zintercepts(ii,ix,iy) - zmmin)*dzi
+                  else
+                    delz = LARGEPOS
+                  endif
                   idel = 4
                 endif
 
@@ -6441,12 +6500,13 @@ c A positive zsign means that the conductor is the region above zcent.
 
       real(kind=8),pointer:: rmin(:),rmax(:)
       real(kind=8),pointer:: zmin(:),zmax(:)
+      real(kind=8),pointer:: thmin(:),thmax(:)
       real(kind=8),pointer:: th1(:),th2(:)
-      integer(ISZ):: ix,iy,iz,ii
+      integer(ISZ):: ix,iy,iz,ii,iim1,iip1
       real(kind=8):: xx,yy,zz
-      real(kind=8):: minth,maxth,rr,ww,rsq
+      real(kind=8):: rr,ww,rsq
       real(kind=8):: x1,x2,y1,y2,t1,t2,z1
-      logical(ISZ):: l1,l2
+      logical(ISZ):: l1,l2,ll
       integer(ISZ):: nt,it
       real(kind=8):: rt(4),tt
 
@@ -6466,6 +6526,7 @@ c A positive zsign means that the conductor is the region above zcent.
 
       allocate(rmin(nn-1),rmax(nn-1))
       allocate(zmin(nn-1),zmax(nn-1))
+      allocate(thmin(nn-1),thmax(nn-1))
       allocate(th1(nn-1),th2(nn-1))
 
       do ii=1,nn-1
@@ -6494,26 +6555,26 @@ c         --- range of -pi to 3*pi.
 
 c         --- If the range of angles includes the extremum of the circle,
 c         --- then the mins or maxs may need to be recalculated.
-          minth = min(th1(ii),th2(ii))
-          maxth = max(th1(ii),th2(ii))
-          if ((minth < -pi*0.5 .and. maxth > -pi*0.5) .or.
-     &        (minth < pi*1.5 .and. maxth > pi*1.5)) then
+          thmin(ii) = min(th1(ii),th2(ii))
+          thmax(ii) = max(th1(ii),th2(ii))
+          if ((thmin(ii) < -pi*0.5 .and. thmax(ii) > -pi*0.5) .or.
+     &        (thmin(ii) < pi*1.5 .and. thmax(ii) > pi*1.5)) then
             rmin(ii) = rc(ii) - abs(rad(ii))
             intercepts%nxicpt = intercepts%nxicpt + 2
             intercepts%nyicpt = intercepts%nyicpt + 2
           endif
-          if ((minth < pi*0.5 .and. maxth > pi*0.5) .or.
-     &        (minth < pi*2.5 .and. maxth > pi*2.5)) then
+          if ((thmin(ii) < pi*0.5 .and. thmax(ii) > pi*0.5) .or.
+     &        (thmin(ii) < pi*2.5 .and. thmax(ii) > pi*2.5)) then
             rmax(ii) = rc(ii) + abs(rad(ii))
             intercepts%nxicpt = intercepts%nxicpt + 2
             intercepts%nyicpt = intercepts%nyicpt + 2
           endif
-          if (minth < pi .and. maxth > pi) then
+          if (thmin(ii) < pi .and. thmax(ii) > pi) then
             zmin(ii) = zc(ii) - abs(rad(ii))
             intercepts%nzicpt = intercepts%nzicpt + 2
           endif
-          if ((minth < 0. .and. maxth > 0.) .or.
-     &        (minth < 2*pi .and. maxth > 2*pi)) then
+          if ((thmin(ii) < 0. .and. thmax(ii) > 0.) .or.
+     &        (thmin(ii) < 2*pi .and. thmax(ii) > 2*pi)) then
             zmax(ii) = zc(ii) + abs(rad(ii))
             intercepts%nzicpt = intercepts%nzicpt + 2
           endif
@@ -6539,22 +6600,64 @@ c         --- Loop over r-z line segments
           do ii=1,nn-1
 
 c           --- Check if the z of the grid is within the z range of the segment
-            if (zmin(ii) <= zz .and. zz < zmax(ii)) then
-
+            ll = (zmin(ii) < zz .and. zz < zmax(ii)) .or. zz == zsrf(ii)
+            if (zz == zsrf(ii+1)) then
+c             --- In this end case, only include the point if the lines
+c             --- before and after it are both either above or below it.
+c             --- This will be a peak - two intercepts are gathered.
+              iip1 = ii + 1
+              if (ii == nn-1) iip1 = 1
+              if ((zmin(ii) < zz .and. zmin(iip1) < zz) .or.
+     &            (zmax(ii) > zz .and. zmax(iip1) > zz)) then
+                ll = .true.
+              endif
+            endif
+            if (ll) then
               if (rad(ii) == LARGEPOS) then
-c               --- A straight line segment is straightforward
-                ww = (zz - zsrf(ii))/(zsrf(ii+1) - zsrf(ii))
-                rr = rsrf(ii)*(1.-ww) + rsrf(ii+1)*ww
-                if (yy**2 <= rr**2) then
-                  x1 = -sqrt(rr**2 - yy**2)
-                  x2 = +sqrt(rr**2 - yy**2)
-                  xintercepts(nxicpt,iy,iz) = x1 + xcent
-                  nxicpt = nxicpt + 1
-                  xintercepts(nxicpt,iy,iz) = x2 + xcent
-                  nxicpt = nxicpt + 1
+                if (zsrf(ii+1) - zsrf(ii) == 0.) then
+c                 --- This is tricky (and still not quite right).
+c                 --- Only include the intercept if the lines before and
+c                 --- after it are both either above or below it. This
+c                 --- gets the number of intercepts correct, but doesn't
+c                 --- consistently make the line inside the object.
+                  iim1 = ii - 1
+                  if (iim1 == 0) iim1 = nn-1
+                  iip1 = ii + 1
+                  if (iip1 == nn) iip1 = 1
+c                 --- Search for the next line that has a change in radius.
+c                 --- This is done to skip sequential line segments that
+c                 --- are all at the same radius.
+                  do while (zmin(iip1) == zmax(iip1) .and. iip1 .ne. ii)
+                    iip1 = iip1 + 1
+                    if (iip1 == nn) iip1 = 1
+                  enddo
+                  if ((zmin(iim1) < zz .and. zmin(iip1) < zz) .or.
+     &                (zmax(iim1) > zz .and. zmax(iip1) > zz)) then
+                    rr = rsrf(ii)
+                    if (yy**2 <= rr**2) then
+                      x1 = -sqrt(rr**2 - yy**2)
+                      x2 = +sqrt(rr**2 - yy**2)
+                      xintercepts(nxicpt,iy,iz) = x1 + xcent
+                      nxicpt = nxicpt + 1
+                      xintercepts(nxicpt,iy,iz) = x2 + xcent
+                      nxicpt = nxicpt + 1
+                    endif
+                  endif
+                else
+c                 --- A straight line segment is straightforward
+                  ww = (zz - zsrf(ii))/(zsrf(ii+1) - zsrf(ii))
+                  rr = rsrf(ii)*(1.-ww) + rsrf(ii+1)*ww
+                  if (yy**2 <= rr**2) then
+                    x1 = -sqrt(rr**2 - yy**2)
+                    x2 = +sqrt(rr**2 - yy**2)
+                    xintercepts(nxicpt,iy,iz) = x1 + xcent
+                    nxicpt = nxicpt + 1
+                    xintercepts(nxicpt,iy,iz) = x2 + xcent
+                    nxicpt = nxicpt + 1
+                  endif
                 endif
               else
-c               --- A circular arc is complicated. This is torus.
+c               --- A circular arc is complicated. This is a torus.
 c               --- There can be up to four intercept points.
 c               --- Check each one, starting with the one that has the
 c               --- smallest x intercept. Only the first two have to be
@@ -6563,21 +6666,19 @@ c               --- but with the opposite sign of x. This checks if the
 c               --- angle of the intercept point is within the angular
 c               --- range of the arc. Note that the starting point, th1,
 c               --- is included, whereas the ending point, th2, is not.
-                minth = min(th1(ii),th2(ii))
-                maxth = max(th1(ii),th2(ii))
                 rsq = rad(ii)**2 - (zz - zc(ii))**2
                 nt = 0
 
                 rr = sqrt(rsq)
                 tt = atan2(+rr,zz - zc(ii))
-                if (tt < minth) tt = tt + 2*pi
-                if (minth <= tt .and. tt <= maxth) then
+                if (tt < thmin(ii)) tt = tt + 2*pi
+                if (thmin(ii) <= tt .and. tt <= thmax(ii)) then
                   nt = nt + 1
                   rt(nt) = -rc(ii) - rr
                 endif
                 tt = atan2(-rr,zz - zc(ii))
-                if (tt < minth) tt = tt + 2*pi
-                if (minth <= tt .and. tt <= maxth) then
+                if (tt < thmin(ii)) tt = tt + 2*pi
+                if (thmin(ii) <= tt .and. tt <= thmax(ii)) then
                   nt = nt + 1
                   rt(nt) = -rc(ii) + rr
                 endif
@@ -6622,22 +6723,65 @@ c         --- Loop over r-z line segments
           do ii=1,nn-1
 
 c           --- Check if the z of the grid is within the z range of the segment
-            if (zmin(ii) <= zz .and. zz < zmax(ii)) then
+            ll = (zmin(ii) < zz .and. zz < zmax(ii)) .or. zz == zsrf(ii)
+            if (zz == zsrf(ii+1)) then
+c             --- In this end case, only include the point if the lines
+c             --- before and after it are both either above or below it.
+c             --- This will be a peak - two intercepts are gathered.
+              iip1 = ii + 1
+              if (ii == nn-1) iip1 = 1
+              if ((zmin(ii) < zz .and. zmin(iip1) < zz) .or.
+     &            (zmax(ii) > zz .and. zmax(iip1) > zz)) then
+                ll = .true.
+              endif
+            endif
+            if (ll) then
 
               if (rad(ii) == LARGEPOS) then
 c               --- A straight line segment is straightforward
-                ww = (zz - zsrf(ii))/(zsrf(ii+1) - zsrf(ii))
-                rr = rsrf(ii)*(1.-ww) + rsrf(ii+1)*ww
-                if (xx**2 <= rr**2) then
-                  y1 = -sqrt(rr**2 - xx**2)
-                  y2 = +sqrt(rr**2 - xx**2)
-                  yintercepts(nyicpt,ix,iz) = y1 + ycent
-                  nyicpt = nyicpt + 1
-                  yintercepts(nyicpt,ix,iz) = y2 + ycent
-                  nyicpt = nyicpt + 1
+                if (zsrf(ii+1) - zsrf(ii) == 0.) then
+c                 --- This is tricky (and still not quite right).
+c                 --- Only include the intercept if the lines before and
+c                 --- after it are both either above or below it. This
+c                 --- gets the number of intercepts correct, but doesn't
+c                 --- consistently make the line inside the object.
+                  iim1 = ii - 1
+                  if (iim1 == 0) iim1 = nn-1
+                  iip1 = ii + 1
+                  if (iip1 == nn) iip1 = 1
+c                 --- Search for the next line that has a change in radius.
+c                 --- This is done to skip sequential line segments that
+c                 --- are all at the same radius.
+                  do while (zmin(iip1) == zmax(iip1) .and. iip1 .ne. ii)
+                    iip1 = iip1 + 1
+                    if (iip1 == nn) iip1 = 1
+                  enddo
+                  if ((zmin(iim1) < zz .and. zmin(iip1) < zz) .or.
+     &                (zmax(iim1) > zz .and. zmax(iip1) > zz)) then
+                    rr = rsrf(ii)
+                    if (xx**2 <= rr**2) then
+                      y1 = -sqrt(rr**2 - xx**2)
+                      y2 = +sqrt(rr**2 - xx**2)
+                      yintercepts(nyicpt,ix,iz) = y1 + ycent
+                      nyicpt = nyicpt + 1
+                      yintercepts(nyicpt,ix,iz) = y2 + ycent
+                      nyicpt = nxicpt + 1
+                    endif
+                  endif
+                else
+                  ww = (zz - zsrf(ii))/(zsrf(ii+1) - zsrf(ii))
+                  rr = rsrf(ii)*(1.-ww) + rsrf(ii+1)*ww
+                  if (xx**2 <= rr**2) then
+                    y1 = -sqrt(rr**2 - xx**2)
+                    y2 = +sqrt(rr**2 - xx**2)
+                    yintercepts(nyicpt,ix,iz) = y1 + ycent
+                    nyicpt = nyicpt + 1
+                    yintercepts(nyicpt,ix,iz) = y2 + ycent
+                    nyicpt = nyicpt + 1
+                  endif
                 endif
               else
-c               --- A circular arc is complicated. This is torus.
+c               --- A circular arc is complicated. This is a torus.
 c               --- There can be up to four intercept points.
 c               --- Check each one, starting with the one that has the
 c               --- smallest y intercept. Only the first two have to be
@@ -6646,21 +6790,19 @@ c               --- but with the opposite sign of y. This checks if the
 c               --- angle of the intercept point is within the angular
 c               --- range of the arc. Note that the starting point, th1,
 c               --- is included, whereas the ending point, th2, is not.
-                minth = min(th1(ii),th2(ii))
-                maxth = max(th1(ii),th2(ii))
                 rsq = rad(ii)**2 - (zz - zc(ii))**2
                 nt = 0
 
                 rr = sqrt(rsq)
                 tt = atan2(+rr,zz - zc(ii))
-                if (tt < minth) tt = tt + 2*pi
-                if (minth <= tt .and. tt <= maxth) then
+                if (tt < thmin(ii)) tt = tt + 2*pi
+                if (thmin(ii) <= tt .and. tt <= thmax(ii)) then
                   nt = nt + 1
                   rt(nt) = -rc(ii) - rr
                 endif
                 tt = atan2(-rr,zz - zc(ii))
-                if (tt < minth) tt = tt + 2*pi
-                if (minth <= tt .and. tt <= maxth) then
+                if (tt < thmin(ii)) tt = tt + 2*pi
+                if (thmin(ii) <= tt .and. tt <= thmax(ii)) then
                   nt = nt + 1
                   rt(nt) = -rc(ii) + rr
                 endif
@@ -6706,39 +6848,70 @@ c         --- Loop over r-z line segments
           do ii=1,nn-1
 
             rr = sqrt(xx**2 + yy**2)
-            if (rmin(ii) < rr .and. rr < rmax(ii) .or. rr == rsrf(ii)) then
+            ll = (rmin(ii) < rr .and. rr < rmax(ii)) .or. rr == rsrf(ii)
+            if (rr == rsrf(ii+1)) then
+c             --- In this end case, only include the point if the lines
+c             --- before and after it are both either above or below it.
+c             --- This will be a peak - two intercepts are gathered.
+              iip1 = ii + 1
+              if (ii == nn-1) iip1 = 1
+              if ((rmin(ii) < rr .and. rmin(iip1) < rr) .or.
+     &            (rmax(ii) > rr .and. rmax(iip1) > rr)) then
+                ll = .true.
+              endif
+            endif
+            if (ll) then
               if (rad(ii) == LARGEPOS) then
                 if (rsrf(ii+1) - rsrf(ii) == 0.) then
-                  zz = zsrf(ii)
+c                 --- This is tricky (and still not quite right).
+c                 --- Only include the intercept if the lines before and
+c                 --- after it are both either above or below it. This
+c                 --- gets the number of intercepts correct, but doesn't
+c                 --- consistently make the line inside the object.
+                  iim1 = ii - 1
+                  if (iim1 == 0) iim1 = nn-1
+                  iip1 = ii + 1
+                  if (iip1 == nn) iip1 = 1
+c                 --- Search for the next line that has a change in radius.
+c                 --- This is done to skip sequential line segments that
+c                 --- are all at the same radius.
+                  do while (rmin(iip1) == rmax(iip1) .and. iip1 .ne. ii)
+                    iip1 = iip1 + 1
+                    if (iip1 == nn) iip1 = 1
+                  enddo
+                  if ((rmin(iim1) < rr .and. rmin(iip1) < rr) .or.
+     &                (rmax(iim1) > rr .and. rmax(iip1) > rr)) then
+                    zz = zsrf(ii)
+                    zintercepts(nzicpt,ix,iy) = zz + zcent
+                    nzicpt = nzicpt + 1
+                  endif
                 else
                   ww = (rr - rsrf(ii))/(rsrf(ii+1) - rsrf(ii))
                   zz = zsrf(ii)*(1.-ww) + zsrf(ii+1)*ww
+                  zintercepts(nzicpt,ix,iy) = zz + zcent
+                  nzicpt = nzicpt + 1
                 endif
-                zintercepts(nzicpt,ix,iy) = zz + zcent
-                nzicpt = nzicpt + 1
               else
 
-c               --- A circular arc is complicated. This is torus.
+c               --- A circular arc is complicated. This is a torus.
 c               --- There can be up to two intercept points.
 c               --- Check each one, starting with the one that has the
 c               --- smallest z intercept. This checks if the
 c               --- angle of the intercept point is within the angular
 c               --- range of the arc. Note that the starting point, th1,
 c               --- is included, whereas the ending point, th2, is not.
-                minth = min(th1(ii),th2(ii))
-                maxth = max(th1(ii),th2(ii))
                 z1 = sqrt(rad(ii)**2 - (rr - rc(ii))**2)
 
                 tt = atan2(rr - rc(ii),-z1)
-                if (tt < minth) tt = tt + 2*pi
-                if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
+                if (tt < thmin(ii)) tt = tt + 2*pi
+                if (thmin(ii) < tt .and. tt < thmax(ii) .or. tt == th1(ii)) then
                   zintercepts(nzicpt,ix,iy) = zc(ii) - z1 + zcent
                   nzicpt = nzicpt + 1
                 endif
                 
                 tt = atan2(rr - rc(ii),+z1)
-                if (tt < minth) tt = tt + 2*pi
-                if (minth < tt .and. tt < maxth .or. tt == th1(ii)) then
+                if (tt < thmin(ii)) tt = tt + 2*pi
+                if (thmin(ii) < tt .and. tt < thmax(ii) .or. tt == th1(ii)) then
                   zintercepts(nzicpt,ix,iy) = zc(ii) + z1 + zcent
                   nzicpt = nzicpt + 1
                 endif
@@ -6754,9 +6927,266 @@ c               --- is included, whereas the ending point, th2, is not.
 
       deallocate(rmin,rmax)
       deallocate(zmin,zmax)
+      deallocate(thmin,thmax)
       deallocate(th1,th2)
 
       return
+      end
+c=======================================================================
+      subroutine ZSrfrvConductorD(nn,rsrf,zsrf,rad,rc,zc,xcent,ycent,zcent,
+     &                            n,x,y,z,distance)
+      use Constant
+      integer(ISZ):: nn
+      real(kind=8):: rsrf(nn),zsrf(nn),rad(nn-1),rc(nn-1),zc(nn-1)
+      real(kind=8):: xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances along the axis of the points from a surface of revolution.
+c The notation is that a negative distance means that the point is inside.
+c NOTICE: This only computes distances radially and can only reliably used
+c to determine whether a point is inside or not. The true distance calculation
+c would have to account for distances longitudinally.
+
+      integer(ISZ):: nzicpt
+
+      real(kind=8),pointer:: rmin(:),rmax(:)
+      real(kind=8),pointer:: zmin(:),zmax(:)
+      real(kind=8),pointer:: thmin(:),thmax(:)
+      real(kind=8),pointer:: th1(:),th2(:)
+      real(kind=8),pointer:: zintercepts(:)
+      integer(ISZ):: ii,i,izicpt,iip1,iim1
+      real(kind=8):: xx,yy,rr,zz,tt,rp,zp,tp,m
+      real(kind=8):: ww,z1,dsq,dsqtemp
+      logical(ISZ):: ll
+
+      nzicpt = 2*(nn-1)
+
+      allocate(rmin(nn-1),rmax(nn-1))
+      allocate(zmin(nn-1),zmax(nn-1))
+      allocate(thmin(nn-1),thmax(nn-1))
+      allocate(th1(nn-1),th2(nn-1))
+
+      do ii=1,nn-1
+
+        rmin(ii) = min(rsrf(ii),rsrf(ii+1))
+        rmax(ii) = max(rsrf(ii),rsrf(ii+1))
+        zmin(ii) = min(zsrf(ii),zsrf(ii+1))
+        zmax(ii) = max(zsrf(ii),zsrf(ii+1))
+
+        if (rad(ii) .ne. LARGEPOS) then
+
+c         --- The angle in the r-z plane of the start and end of the segment
+          th1(ii) = atan2(rsrf(ii) - rc(ii),zsrf(ii) - zc(ii))
+          th2(ii) = atan2(rsrf(ii+1) - rc(ii),zsrf(ii+1) - zc(ii))
+
+c         --- If rad < 0, then the angle from start to end should be
+c         --- increasing. Otherwise decreasing.
+c         --- Note that both th1 and th2 will also be within the
+c         --- range of -pi to 3*pi.
+          if (th1(ii) > th2(ii) .and. rad(ii) < 0. .and. zsrf(ii) < zsrf(ii+1)) then
+            th2(ii) = th2(ii) + 2*pi
+          endif
+          if (th1(ii) < th2(ii) .and. rad(ii) > 0. .and. zsrf(ii) < zsrf(ii+1)) then
+            th1(ii) = th1(ii) + 2*pi
+          endif
+
+c         --- If the range of angles includes the extremum of the circle,
+c         --- then the mins or maxs may need to be recalculated.
+          thmin(ii) = min(th1(ii),th2(ii))
+          thmax(ii) = max(th1(ii),th2(ii))
+          if ((thmin(ii) < -pi*0.5 .and. thmax(ii) > -pi*0.5) .or.
+     &        (thmin(ii) < pi*1.5 .and. thmax(ii) > pi*1.5)) then
+            rmin(ii) = rc(ii) - abs(rad(ii))
+          endif
+          if ((thmin(ii) < pi*0.5 .and. thmax(ii) > pi*0.5) .or.
+     &        (thmin(ii) < pi*2.5 .and. thmax(ii) > pi*2.5)) then
+            rmax(ii) = rc(ii) + abs(rad(ii))
+          endif
+          if (thmin(ii) < pi .and. thmax(ii) > pi) then
+            zmin(ii) = zc(ii) - abs(rad(ii))
+            nzicpt = nzicpt + 2
+          endif
+          if ((thmin(ii) < 0. .and. thmax(ii) > 0.) .or.
+     &        (thmin(ii) < 2*pi .and. thmax(ii) > 2*pi)) then
+            zmax(ii) = zc(ii) + abs(rad(ii))
+            nzicpt = nzicpt + 2
+          endif
+
+        endif
+
+      enddo
+
+      allocate(zintercepts(nzicpt))
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        rr = sqrt(xx**2 + yy**2)
+        zz = z(i) - zcent
+        dsq = LARGEPOS
+        izicpt = 0
+
+        do ii=1,nn-1
+
+c         --- Find the distance between the point and the line segment
+          if (rad(ii) == LARGEPOS) then
+            if (zsrf(ii+1) == zsrf(ii)) then
+              zp = zsrf(ii)
+              rp = rr
+            else
+              m = (rsrf(ii+1) - rsrf(ii))/(zsrf(ii+1) - zsrf(ii))
+              zp = (zz + m*rr + m**2*zsrf(ii) - m*rsrf(ii))/(1 + m**2)
+              rp = m*(zp - zsrf(ii)) + rsrf(ii)
+            endif
+            if (rmin(ii) <= rp .and. rp <= rmax(ii) .and.
+     &          zmin(ii) <= zp .and. zp <= zmax(ii)) then
+              dsqtemp = (rr - rp)**2 + (zz - zp)**2
+            else
+              dsqtemp = min((rsrf(ii  ) - rr)**2 + (zsrf(ii  ) - zz)**2,
+     &                      (rsrf(ii+1) - rr)**2 + (zsrf(ii+1) - zz)**2)
+            endif
+
+          else
+
+            tp = atan2(rr - rc(ii),zz - zc(ii))
+            if (tp < thmin(ii)) tp = tp + 2*pi
+            if (thmin(ii) <= tp .and. tp <= thmax(ii)) then
+              rp = abs(rad(ii))*sin(tp) + rc(ii)
+              zp = abs(rad(ii))*cos(tp) + zc(ii)
+              dsqtemp = (rr - rp)**2 + (zz - zp)**2
+            else
+              dsqtemp = min((rsrf(ii  ) - rr)**2 + (zsrf(ii  ) - zz)**2,
+     &                      (rsrf(ii+1) - rr)**2 + (zsrf(ii+1) - zz)**2)
+            endif
+
+          endif
+          dsq = min(dsq,dsqtemp)
+
+c         --- Find any intercepts along the z axis.
+          ll = (rmin(ii) < rr .and. rr < rmax(ii)) .or. rr == rsrf(ii)
+          if (rr == rsrf(ii+1)) then
+c           --- In this end case, only include the point if the lines
+c           --- before and after it are both either above or below it.
+c           --- This will be a peak - two intercepts are gathered.
+            iip1 = ii + 1
+            if (ii == nn-1) iip1 = 1
+            if ((rmin(ii) < rr .and. rmin(iip1) < rr) .or.
+     &          (rmax(ii) > rr .and. rmax(iip1) > rr)) then
+              ll = .true.
+            endif
+          endif
+          if (ll) then
+            if (rad(ii) == LARGEPOS) then
+              if (rsrf(ii+1) - rsrf(ii) == 0.) then
+c               --- This is tricky (and still not quite right).
+c               --- Only include the intercept if the lines before and
+c               --- after it are both either above or below it. This
+c               --- gets the number of intercepts correct, but doesn't
+c               --- consistently make the line inside the object.
+c               --- For the distance calculation though, this shouldn't
+c               --- matter.
+                iim1 = ii - 1
+                if (iim1 == 0) iim1 = nn-1
+                iip1 = ii + 1
+                if (iip1 == nn) iip1 = 1
+c               --- Search for the next line that has a change in radius.
+c               --- This is done to skip sequential line segments that
+c               --- are all at the same radius.
+                do while (rmin(iip1) == rmax(iip1) .and. iip1 .ne. ii)
+                  iip1 = iip1 + 1
+                  if (iip1 == nn) iip1 = 1
+                enddo
+                if ((rmin(iim1) < rr .and. rmin(iip1) < rr) .or.
+     &              (rmax(iim1) > rr .and. rmax(iip1) > rr)) then
+                  z1 = zsrf(ii)
+                  call intsertzicpt(z1 + zcent)
+                endif
+              else
+                ww = (rr - rsrf(ii))/(rsrf(ii+1) - rsrf(ii))
+                z1 = zsrf(ii)*(1.-ww) + zsrf(ii+1)*ww
+                call intsertzicpt(z1 + zcent)
+              endif
+            else
+
+c             --- A circular arc is complicated. This is a torus.
+c             --- There can be up to two intercept points.
+c             --- Check each one, starting with the one that has the
+c             --- smallest z intercept. This checks if the
+c             --- angle of the intercept point is within the angular
+c             --- range of the arc. Note that the starting point, th1,
+c             --- is included, whereas the ending point, th2, is not.
+              z1 = sqrt(rad(ii)**2 - (rr - rc(ii))**2)
+              if (rr == rsrf(ii)) z1 = abs(zsrf(ii) - zc(ii))
+              if (rr == rsrf(ii+1)) z1 = abs(zsrf(ii+1) - zc(ii))
+
+              tt = atan2(rr - rc(ii),-z1)
+              if (tt < thmin(ii)) tt = tt + 2*pi
+              if (thmin(ii) < tt .and. tt < thmax(ii) .or. tt == th1(ii)) then
+                call intsertzicpt(zc(ii) - z1 + zcent)
+              endif
+                
+              tt = atan2(rr - rc(ii),+z1)
+              if (tt < thmin(ii)) tt = tt + 2*pi
+              if (thmin(ii) < tt .and. tt < thmax(ii) .or. tt == th1(ii)) then
+                call intsertzicpt(zc(ii) + z1 + zcent)
+              endif
+
+            endif ! straight or curved segment
+          endif ! within r range
+        enddo ! segments
+
+        distance(i) = sqrt(dsq)
+        if (mod(izicpt,2) == 1) then
+          print*,"ODD ",izicpt,zintercepts
+        endif
+
+        do ii=1,izicpt,2
+          if (zintercepts(ii) <= zz .and. zz <= zintercepts(ii+1)) then
+            distance(i) = -distance(i)
+          endif
+        enddo
+
+      enddo
+
+      deallocate(rmin,rmax)
+      deallocate(zmin,zmax)
+      deallocate(thmin,thmax)
+      deallocate(th1,th2)
+      deallocate(zintercepts)
+
+      return
+      CONTAINS
+
+        subroutine intsertzicpt(zicpt)
+        real(kind=8):: zicpt
+        integer(ISZ):: ii
+
+        izicpt = izicpt + 1
+
+        if (izicpt == 1) then
+          zintercepts(izicpt) = zicpt
+          return
+        endif
+
+        do ii=izicpt-1,1,-1
+          if (zicpt >= zintercepts(ii)) then
+            zintercepts(ii+1) = zicpt
+            exit
+          else
+            zintercepts(ii+1) = zintercepts(ii)
+          endif
+        enddo
+
+        if (zicpt < zintercepts(1)) then
+          zintercepts(1) = zicpt
+        endif
+
+        return
+        end subroutine intsertzicpt
+
       end
 c=======================================================================
 c=======================================================================

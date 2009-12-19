@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.210 $, $Date: 2009/11/24 01:15:02 $
+#@(#) File F3D.V, version $Revision: 3.211 $, $Date: 2009/12/19 00:38:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.210 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.211 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -1001,6 +1001,10 @@ beamletplateintercept(za:real,zb:real,z0:real,thickness:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
+zsrfrvconductord(nn:integer,rsrf(nn):real,zsrf(nn):real,
+        rad(nn-1):real,rc(nn-1):real,zc(nn-1):real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 zsrfrvoutconductorf(lrofzfunc:logical,zmin:real,zmax:real,rmax:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
