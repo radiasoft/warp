@@ -1,5 +1,5 @@
 from warp import *
-optimizer_version = "$Id: optimizer.py,v 1.12 2009/07/11 00:12:37 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.13 2010/01/07 23:10:07 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
@@ -193,7 +193,7 @@ Differential Evolution
   Performs global optimization using genetic evolution algorithms.
   Algorithm taken from Dr Dobb's Journal, April 1997, K Price, R. Storn
   """
-  def __init__(self,npop,nparams,evaluate,params,deltas=None,
+  def __init__(self,npop,nparams,evaluate,params,deltas=None,shifts=None,
                crossover=.5,f=.7,paramsmin=None,paramsmax=None):
     """
 Differential Evolution
@@ -203,6 +203,7 @@ Input:
   - evaluate(params): is function, given a set of parameters, returns a score
   - params: intial set of parameters
   - deltas=0.01: fractional variation of parameters to fill initial population
+  - shifts=0.: absolute variation of parameters to fill initial population
   - crossover=0.5: fraction of crossovers, in range [0,1)
   - f=0.7: differential factor, in range (0,1.2]
   - paramsmin=-1.e+36: Min value of the parameters. This can be a function
@@ -236,7 +237,7 @@ Output:
       self.paramsmax = +ones(nparams)*1.e+36
     else:
       self.paramsmax = paramsmax
-    self.evolve_init(params,deltas)
+    self.evolve_init(params,deltas,shifts)
   def best_params(self):
     "Function to return best set of parameters so far"
     imin = 0
@@ -263,22 +264,28 @@ Output:
     params = minimum(params,self.getparamsmax(params))
     return params
 
-  def evolve_init(self,sample,deltas=None):
+  def evolve_init(self,sample,deltas=None,shifts=None):
     """
 Function to initialize the population.
-Picks parameters randomly distributed by deltas about a base sample set of
-parameters.
+Picks parameters randomly distributed by deltas and shifts about a base
+sample set of parameters.
   - sample: is the initial set of parameters
   - delta=0.01: is the fractional variation about the sample
+                It can either be a scalar or an array the same size as sample.
+  - shifts=0.: is the absolute variation about the sample.
                 It can either be a scalar or an array the same size as sample.
     """
     if deltas is None:             deltas = ones(shape(sample),'d')*0.01
     elif type(deltas) == type(1.): deltas = ones(shape(sample),'d')*deltas
     elif type(deltas) == ListType: deltas = array(deltas)
+    if shifts is None:             shifts = ones(shape(sample),'d')*0.
+    elif type(shifts) == type(1.): shifts = ones(shape(sample),'d')*shifts
+    elif type(shifts) == ListType: shifts = array(shifts)
     self.x1[0,:] = sample
     self.cost[0] = self.evaluate(sample)
     for i in xrange(1,self.npop):
-      trial = sample*(1.+2.*(ranf(self.x1[i,:])-.5)*deltas)
+      trial = (sample*(1.+2.*(random.random(self.nparams)-.5)*deltas) + 
+                      (1.+2.*(random.random(self.nparams)-.5)*shifts))
       self.x1[i,:] = self.constrainparams(trial)
       self.cost[i] = self.evaluate(self.x1[i,:])
 
@@ -308,16 +315,16 @@ parameters.
         a = i
         b = i
         c = i
-        while (a == i):                     a = int(ranf()*self.npop)
-        while (b == i or b == a):           b = int(ranf()*self.npop)
-        while (c == i or c == a or c == b): c = int(ranf()*self.npop)
+        while (a == i):                     a = int(random.random()*self.npop)
+        while (b == i or b == a):           b = int(random.random()*self.npop)
+        while (c == i or c == a or c == b): c = int(random.random()*self.npop)
 
         # --- Randomly pick the first parameter
-        j = int(ranf()*self.nparams)
+        j = int(random.random()*self.nparams)
 
         # --- Load parameters into trial, performing binomial trials
         for k in xrange(self.nparams):
-          if (ranf() < self.crossover or k == self.nparams-1):
+          if (random.random() < self.crossover or k == self.nparams-1):
             # --- Source for trial is a random vector plus weighted differential
             # --- The last parameter always comes from noisy vector
             self.trial[j] = self.x1[c,j] + self.f*(self.x1[a,j] - self.x1[b,j])
