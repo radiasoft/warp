@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.259 2010/01/08 18:12:23 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.260 2010/01/08 18:35:51 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -302,14 +302,13 @@ Opens up an X window
     try: setup.pname
     except AttributeError: raise 'setup has not yet been called'
     assert winnum > 0,'winnum must not be 0'
-    # --- Check file type from window 0
-    if setup.pname[-2:] == 'ps': numb = setup.pname[-7:]
-    elif setup.pname[-3:] in ['cgm','pkl']: numb = setup.pname[-8:]
+    # --- Check file name and type from window 0
+    pname = setup.pname.split('.')[0]
+    filetype = setup.pname.split('.')[-1]
     # --- Create file name
-    pname = arraytostr(top.runid)
     if prefix is not None: pname = prefix + pname
     if suffix is not None: pname = pname + '_' + suffix
-    pname = pname + numb
+    pname = '%s.%s.%s'%(pname,setup.pnumb,filetype)
     if with_gist:
       # --- Open window
       if xon:
