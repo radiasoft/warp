@@ -3,6 +3,7 @@ from warp import *
 class Maps:
   def __init__(self,nux,nuy,nuz,C,nstations=1,eta=0.,xchrom=0.,ychrom=0.,
                     alphax=0.,alphay=0.,dispx=0.,dispy=0.,disppx=0.,disppy=0.,
+                    xtunechirp=0.,ytunechirp=0.,
                     nparpgrp=top.nparpgrp,l_mode=1,l_verbose=0,betax=None,betay=None):
      self.nux = nux
      self.nuy = nuy
@@ -31,6 +32,8 @@ class Maps:
      self.omegax = nux*self.omega0
      self.omegay = nuy*self.omega0
      self.omegaz = nuz*self.omega0
+     self.xtunechirp = xtunechirp
+     self.ytunechirp = ytunechirp
      self.eta = eta
      self.l_verbose=l_verbose
      self.l_mode=l_mode
@@ -63,9 +66,10 @@ class Maps:
                         pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
                         top.vbeam,top.gammabar,
                         ax1,ax2,bx1,bx2,dx1,dx2,
-                        dpx1,dpx2,Qx,xchrom,phasex,
+                        dpx1,dpx2,Qx,xchrom,phasex,self.xtunechirp,
                         ay1,ay2,by1,by2,dy1,dy2,
-                        dpy1,dpy2,Qy,ychrom,phasey,eta,omegaz,phz)
+                        dpy1,dpy2,Qy,ychrom,phasey,self.ytunechirp,
+                        eta,omegaz,phz)
 
 class Maps_simple:
   def __init__(self,nux,nuy,nuz,C,nstations=1,z_rms=0.,eta=0.,xchrom=0.,ychrom=0.,
