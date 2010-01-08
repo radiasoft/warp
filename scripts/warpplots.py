@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.258 2009/12/01 20:07:10 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.259 2010/01/08 18:12:23 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -174,7 +174,8 @@ Does the work needed to start writing plots to a file automatically
   - runcomments='': Additional comments to print on the first plot page
   - cgmfilesize=100000: Max cgmfilesize in units of MBytes.
   - pnumb=None: Optional file name number to be used in place of the
-                next available number. It must be a string.
+                next available number or the command line argument --pnumb.
+                It must be a string.
   - writetodatafile=0: When true, all plot data is written to a data
                        file instead of a gist cgm file.
   - lversiontext=1: When true, write out the version information to the
@@ -194,9 +195,14 @@ Does the work needed to start writing plots to a file automatically
       else:
         suffix = 'cgm'
     if pnumb is None:
-      # --- Get next available plot file name.
-      pname = getnextfilename(prefix,suffix)
-      pnumb = pname[-len(suffix)-4:-len(suffix)-1]
+      # --- Check command line argument
+      if warpoptions.options.pnumb is not None:
+        pnumb = warpoptions.options.pnumb
+        pname = '%s.%s.%s'%(prefix,pnumb,suffix)
+      else:
+        # --- Get next available plot file name.
+        pname = getnextfilename(prefix,suffix)
+        pnumb = pname[-len(suffix)-4:-len(suffix)-1]
     else:
       pname = "%s.%s.%s"%(prefix,pnumb,suffix)
   else:
