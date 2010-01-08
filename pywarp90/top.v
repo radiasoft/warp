@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.267 $, $Date: 2009/12/10 18:54:50 $
+#@(#) File TOP.V, version $Revision: 3.268 $, $Date: 2010/01/08 20:50:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.267 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.268 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2871,9 +2871,9 @@ apply_map(n,x(n):real,y(n):real,z(n):real,ux(n):real,uy(n):real,uz(n):real,
 apply_linear_map(n,x(n):real,y(n):real,z(n):real,ux(n):real,uy(n):real,uz(n):real,
                  gaminv(n):real,vbeam:real,gammabar:real,
                  ax1:real,ax2:real,bx1:real,bx2:real,dx1:real,dx2:real,
-                 dpx1:real,dpx2:real,Qx:real,xchrom:real,phasex:real,
+                 dpx1:real,dpx2:real,Qx:real,xchrom:real,phasex:real,xtunechirp:real,
                  ay1:real,ay2:real,by1:real,by2:real,dy1:real,dy2:real,
-                 dpy1:real,dpy2:real,Qy:real,ychrom:real,phasey:real,
+                 dpy1:real,dpy2:real,Qy:real,ychrom:real,phasey:real,ytunechirp:real,
                  eta:real,omegaz:real,phz:real) subroutine
        # applies linear map
 seteb_in_boosted_frame(n,ex(n):real,ey(n):real,ez(n):real,
