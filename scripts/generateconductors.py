@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.221 2009/12/19 00:43:46 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.222 2010/01/09 02:08:29 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -4236,9 +4236,9 @@ Methods:
                      nx,ny,nz,ix,iy,iz,mglevel):
     result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
                                      nx,ny,nz,ix,iy,iz,mglevel)
-    result.intercepts.xintercepts.sort(axis=0)
-    result.intercepts.yintercepts.sort(axis=0)
-    result.intercepts.zintercepts.sort(axis=0)
+   #result.intercepts.xintercepts.sort(axis=0)
+   #result.intercepts.yintercepts.sort(axis=0)
+   #result.intercepts.zintercepts.sort(axis=0)
     return result
 
   def draw(self,color='fg',filled=None,fullplane=1,**kw):
@@ -4382,9 +4382,9 @@ Methods:
     self.zc = [largepos] + list(self.zcdata) + [largepos,largepos]
     result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
                                      nx,ny,nz,ix,iy,iz,mglevel)
-    result.intercepts.xintercepts.sort(axis=0)
-    result.intercepts.yintercepts.sort(axis=0)
-    result.intercepts.zintercepts.sort(axis=0)
+   #result.intercepts.xintercepts.sort(axis=0)
+   #result.intercepts.yintercepts.sort(axis=0)
+   #result.intercepts.zintercepts.sort(axis=0)
     self.kwlist = kwlistsave
     return result
 
@@ -4548,9 +4548,9 @@ Methods:
     self.zc = [largepos] + list(self.zcdata) + [largepos,largepos]
     result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
                                      nx,ny,nz,ix,iy,iz,mglevel)
-    result.intercepts.xintercepts.sort(axis=0)
-    result.intercepts.yintercepts.sort(axis=0)
-    result.intercepts.zintercepts.sort(axis=0)
+   #result.intercepts.xintercepts.sort(axis=0)
+   #result.intercepts.yintercepts.sort(axis=0)
+   #result.intercepts.zintercepts.sort(axis=0)
     self.kwlist = kwlistsave
     return result
 
@@ -4767,9 +4767,9 @@ Methods:
                list(self.zcmaxdata) + [largepos])
     result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
                                      nx,ny,nz,ix,iy,iz,mglevel)
-    result.intercepts.xintercepts.sort(axis=0)
-    result.intercepts.yintercepts.sort(axis=0)
-    result.intercepts.zintercepts.sort(axis=0)
+   #result.intercepts.xintercepts.sort(axis=0)
+   #result.intercepts.yintercepts.sort(axis=0)
+   #result.intercepts.zintercepts.sort(axis=0)
     self.kwlist = kwlistsave
     return result
 
