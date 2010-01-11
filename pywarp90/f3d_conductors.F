@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.86 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.87 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -6505,13 +6505,13 @@ c A positive zsign means that the conductor is the region above zcent.
       integer(ISZ):: ix,iy,iz,ii,iim1,iip1
       real(kind=8):: xx,yy,zz
       real(kind=8):: rr,ww,rsq
-      real(kind=8):: x1,x2,y1,y2,t1,t2,z1
+      real(kind=8):: x1,x2,y1,y2,t1,t2,z1,z2
       logical(ISZ):: l1,l2,ll
       integer(ISZ):: nt,it
       real(kind=8):: rt(4),tt
 
-      integer(ISZ):: nizflat,iiflat,ic
-      integer(ISZ),pointer:: izflat(:)
+      integer(ISZ):: nirflat,nizflat,iiflat,ic
+      integer(ISZ),pointer:: irflat(:),izflat(:)
 
       xmmin = intercepts%xmmin
       ymmin = intercepts%ymmin
@@ -6592,11 +6592,13 @@ c         --- then the mins or maxs may need to be recalculated.
       yintercepts => intercepts%yintercepts
       zintercepts => intercepts%zintercepts
 
-c     --- izflat tags the line segments that have the same z at both
-c     --- ends and that align with a z grid cell. Some special handling
-c     --- is needed to gaurantee that the line segment is considered
-c     --- inside of the object.
+c     --- irflat and izflat tag line segments that have the same r or z at
+c     --- both ends and that align with an r or z grid cell. Some special
+c     --- handling is needed to gaurantee that the line segment is considered
+c     --- inside of the object. Note that the same array can be used for
+c     --- both x and y.
       allocate(izflat(intercepts%nxicpt))
+      allocate(irflat(intercepts%nzicpt))
 
       do iz=0,nz
         zz = zmmin + iz*dz - zcent
@@ -6745,59 +6747,95 @@ c                   xintercepts(nxicpt,iy,iz) = x1 + xcent
           enddo ! segments
 
 c         --- Do any clean up that is needed if there are line segments
-c         --- that are flat in z.
-          if (nizflat > 0) then
-            do iiflat=1,nizflat
-              ii = izflat(iiflat)
-c             --- If y is outside the larger radius, then there are no
-c             --- intercepts and nothing needs to be done.
-              if (yy > max(rsrf(ii),rsrf(ii+1))) cycle
+c         --- that are flat in z. This needs to be done after the loop over
+c         --- line segments since all of the intercepts are needed.
+c         --- This is rather ugly code, but that is typical for code handling
+c         --- the edge cases.
+c         --- Loop over the flat line segments
+          do iiflat=1,nizflat
+            ii = izflat(iiflat)
 
-c             --- Note that x1 and x2 have different meanings that above.
-              x1 = sqrt(max(0.,min(rsrf(ii),rsrf(ii+1))**2 - yy**2))
-              x2 = sqrt(max(0.,max(rsrf(ii),rsrf(ii+1))**2 - yy**2))
+c           --- If yy is outside the larger radius, then there are no
+c           --- intercepts and nothing needs to be done.
+            if (yy > max(rsrf(ii),rsrf(ii+1))) cycle
 
-              ic = 1
-              do while (ic < nxicpt)
-                if (xintercepts(ic,iy,iz) < -x2 + xcent .and.
-     &              xintercepts(ic+1,iy,iz) == -x2 + xcent) then
-c                 --- Replace the lower point with the upper point, putting
-c                 --- edge inside of the object.
-                  xintercepts(ic+1,iy,iz) = -x1 + xcent
-                else if (xintercepts(ic,iy,iz) == -x1 + xcent .and.
-     &                   xintercepts(ic+1,iy,iz) > -x1 + xcent) then
-c                 --- Replace the upper point with the lower point, putting
-c                 --- edge inside of the object.
-                  xintercepts(ic+1,iy,iz) = -x1 + xcent
-                else if (xintercepts(ic,iy,iz) > -x2 + xcent .and.
-     &                   xintercepts(ic+1,iy,iz) < -x1 + xcent) then
-c                 --- Remove the two points so that the edge between
-c                 --- them is inside the object.
-                  xintercepts(ic:nxicpt-2,iy,iz) = xintercepts(ic+2:nxicpt,iy,iz)
-                  nxicpt = nxicpt - 2
-                  ic = ic - 2
-                else if (xintercepts(ic,iy,iz) < x1 + xcent .and.
-     &                   xintercepts(ic+1,iy,iz) == x1 + xcent) then
-c                 --- Replace the lower point with the upper point, putting
-c                 --- edge inside of the object.
-                  xintercepts(ic+1,iy,iz) = x2 + xcent
-                else if (xintercepts(ic,iy,iz) == x2 + xcent .and.
-     &                   xintercepts(ic+1,iy,iz) > x2 + xcent) then
-c                 --- Replace the upper point with the lower point, putting
-c                 --- edge inside of the object.
-                  xintercepts(ic+1,iy,iz) = x2 + xcent
-                else if (xintercepts(ic,iy,iz) > x1 + xcent .and.
-     &                   xintercepts(ic+1,iy,iz) < x2 + xcent) then
-c                 --- Remove the two points so that the edge between
-c                 --- them is inside the object.
-                  xintercepts(ic:nxicpt-2,iy,iz) = xintercepts(ic+2:nxicpt,iy,iz)
-                  nxicpt = nxicpt - 2
-                  ic = ic - 2
+c           --- Note that x1 and x2 have different meanings that above.
+c           --- Here they are the lower and upper ends of the line segment.
+            x1 = sqrt(max(0.,min(rsrf(ii),rsrf(ii+1))**2 - yy**2))
+            x2 = sqrt(max(0.,max(rsrf(ii),rsrf(ii+1))**2 - yy**2))
+
+c           --- Use a while loop since nxicpt may change
+            ic = 1
+            do while (ic < nxicpt)
+
+              if (xintercepts(ic,iy,iz) < -x2 + xcent .and.
+     &            xintercepts(ic+1,iy,iz) == -x2 + xcent) then
+c               --- Replace the lower point with the upper point, putting
+c               --- edge inside of the object.
+                xintercepts(ic+1,iy,iz) = -x1 + xcent
+
+              else if (xintercepts(ic,iy,iz) == -x1 + xcent .and.
+     &                 xintercepts(ic+1,iy,iz) > -x1 + xcent) then
+c               --- Replace the upper point with the lower point, putting
+c               --- edge inside of the object.
+                xintercepts(ic,iy,iz) = -x2 + xcent
+c               --- It can happen that, with the above change,
+c               --- xintercepts(ic) will be less than xintercept(ic-1). This
+c               --- can only happen if (ic-1) is the lower edge of the
+c               --- line segment. The two points can be removed since they
+c               --- are both on the segment and therefore inside.
+                if (ic > 1) then
+                  if (xintercepts(ic-1,iy,iz) == -x1 + xcent) then
+                    xintercepts(ic-1:nxicpt-3,iy,iz) = xintercepts(ic+1:nxicpt-1,iy,iz)
+                    nxicpt = nxicpt - 2
+                    ic = ic - 2
+                  endif
                 endif
-                ic = ic + 2
-              enddo
+
+              else if (xintercepts(ic,iy,iz) > -x2 + xcent .and.
+     &                 xintercepts(ic+1,iy,iz) < -x1 + xcent) then
+c               --- Remove the two points so that the edge between
+c               --- them is inside the object.
+                xintercepts(ic:nxicpt-2,iy,iz) = xintercepts(ic+2:nxicpt,iy,iz)
+                nxicpt = nxicpt - 2
+                ic = ic - 2
+
+              else if (xintercepts(ic,iy,iz) < x1 + xcent .and.
+     &                 xintercepts(ic+1,iy,iz) == x1 + xcent) then
+c               --- Replace the lower point with the upper point, putting
+c               --- edge inside of the object.
+                xintercepts(ic+1,iy,iz) = x2 + xcent
+
+              else if (xintercepts(ic,iy,iz) == x2 + xcent .and.
+     &                 xintercepts(ic+1,iy,iz) > x2 + xcent) then
+c               --- Replace the upper point with the lower point, putting
+c               --- edge inside of the object.
+                xintercepts(ic,iy,iz) = x1 + xcent
+c               --- It can happen that, with the above change,
+c               --- xintercepts(ic) will be less than xintercept(ic-1). This
+c               --- can only happen if (ic-1) is the lower edge of the
+c               --- line segment. The two points can be removed since they
+c               --- are both on the segment and therefore inside.
+                if (ic > 1) then
+                  if (xintercepts(ic-1,iy,iz) == x2 + xcent) then
+                    xintercepts(ic-1:nxicpt-3,iy,iz) = xintercepts(ic+1:nxicpt-1,iy,iz)
+                    nxicpt = nxicpt - 2
+                    ic = ic - 2
+                  endif
+                endif
+
+              else if (xintercepts(ic,iy,iz) > x1 + xcent .and.
+     &                 xintercepts(ic+1,iy,iz) < x2 + xcent) then
+c               --- Remove the two points so that the edge between
+c               --- them is inside the object.
+                xintercepts(ic:nxicpt-2,iy,iz) = xintercepts(ic+2:nxicpt,iy,iz)
+                nxicpt = nxicpt - 2
+                ic = ic - 2
+
+              endif
+              ic = ic + 2
             enddo
-          endif
+          enddo
 
           xintercepts(nxicpt+1:,iy,iz) = LARGEPOS
 
@@ -6810,6 +6848,7 @@ c                 --- them is inside the object.
           xx = xmmin + ix*dx - xcent
 
           nyicpt = 0
+          nizflat = 0
 
 c         --- Loop over r-z line segments
           do ii=1,nn-1
@@ -6845,6 +6884,10 @@ c                 --- same as a peak - the intercepts at the two ends of
 c                 --- segment will be included. This does
 c                 --- get the number of intercepts correct, but doesn't
 c                 --- consistently make the line inside the object.
+c                 --- Flag this line segment.
+                  nizflat = nizflat + 1
+                  izflat(nizflat) = ii
+c                 --- Get the line segments before and after.
                   iim1 = ii - 1
                   if (iim1 == 0) iim1 = nn-1
                   iip1 = ii + 1
@@ -6944,6 +6987,97 @@ c                   yintercepts(nyicpt,ix,iz) = y1 + ycent
             endif ! within z range
           enddo ! segments
 
+c         --- Do any clean up that is needed if there are line segments
+c         --- that are flat in z. This needs to be done after the loop over
+c         --- line segments since all of the intercepts are needed.
+c         --- This is rather ugly code, but that is typical for code handling
+c         --- the edge cases.
+c         --- Loop over the flat line segments
+          do iiflat=1,nizflat
+            ii = izflat(iiflat)
+
+c           --- If xx is outside the larger radius, then there are no
+c           --- intercepts and nothing needs to be done.
+            if (xx > max(rsrf(ii),rsrf(ii+1))) cycle
+
+c           --- Note that y1 and y2 have different meanings that above.
+c           --- Here they are the lower and upper ends of the line segment.
+            y1 = sqrt(max(0.,min(rsrf(ii),rsrf(ii+1))**2 - xx**2))
+            y2 = sqrt(max(0.,max(rsrf(ii),rsrf(ii+1))**2 - xx**2))
+
+c           --- Use a while loop since nyicpt may change
+            ic = 1
+            do while (ic < nyicpt)
+
+              if (yintercepts(ic,ix,iz) < -y2 + ycent .and.
+     &            yintercepts(ic+1,ix,iz) == -y2 + ycent) then
+c               --- Replace the lower point with the upper point, putting
+c               --- edge inside of the object.
+                yintercepts(ic+1,ix,iz) = -y1 + ycent
+
+              else if (yintercepts(ic,ix,iz) == -y1 + ycent .and.
+     &                 yintercepts(ic+1,ix,iz) > -y1 + ycent) then
+c               --- Replace the upper point with the lower point, putting
+c               --- edge inside of the object.
+                yintercepts(ic,ix,iz) = -y2 + ycent
+c               --- It can happen that, with the above change,
+c               --- yintercepts(ic) will be less than yintercept(ic-1). This
+c               --- can only happen if (ic-1) is the lower edge of the
+c               --- line segment. The two points can be removed since they
+c               --- are both on the segment and therefore inside.
+                if (ic > 1) then
+                  if (yintercepts(ic-1,ix,iz) == -y1 + ycent) then
+                    yintercepts(ic-1:nyicpt-3,ix,iz) = yintercepts(ic+1:nyicpt-1,ix,iz)
+                    nyicpt = nyicpt - 2
+                    ic = ic - 2
+                  endif
+                endif
+
+              else if (yintercepts(ic,ix,iz) > -y2 + ycent .and.
+     &                 yintercepts(ic+1,ix,iz) < -y1 + ycent) then
+c               --- Remove the two points so that the edge between
+c               --- them is inside the object.
+                yintercepts(ic:nyicpt-2,ix,iz) = yintercepts(ic+2:nyicpt,ix,iz)
+                nyicpt = nyicpt - 2
+                ic = ic - 2
+
+              else if (yintercepts(ic,ix,iz) < y1 + ycent .and.
+     &                 yintercepts(ic+1,ix,iz) == y1 + ycent) then
+c               --- Replace the lower point with the upper point, putting
+c               --- edge inside of the object.
+                yintercepts(ic+1,ix,iz) = y2 + ycent
+
+              else if (yintercepts(ic,ix,iz) == y2 + ycent .and.
+     &                 yintercepts(ic+1,ix,iz) > y2 + ycent) then
+c               --- Replace the upper point with the lower point, putting
+c               --- edge inside of the object.
+                yintercepts(ic,ix,iz) = y1 + ycent
+c               --- It can happen that, with the above change,
+c               --- yintercepts(ic) will be less than yintercept(ic-1). This
+c               --- can only happen if (ic-1) is the lower edge of the
+c               --- line segment. The two points can be removed since they
+c               --- are both on the segment and therefore inside.
+                if (ic > 1) then
+                  if (yintercepts(ic-1,ix,iz) == y2 + ycent) then
+                    yintercepts(ic-1:nyicpt-3,ix,iz) = yintercepts(ic+1:nyicpt-1,ix,iz)
+                    nyicpt = nyicpt - 2
+                    ic = ic - 2
+                  endif
+                endif
+
+              else if (yintercepts(ic,ix,iz) > y1 + ycent .and.
+     &                 yintercepts(ic+1,ix,iz) < y2 + ycent) then
+c               --- Remove the two points so that the edge between
+c               --- them is inside the object.
+                yintercepts(ic:nyicpt-2,ix,iz) = yintercepts(ic+2:nyicpt,ix,iz)
+                nyicpt = nyicpt - 2
+                ic = ic - 2
+
+              endif
+              ic = ic + 2
+            enddo
+          enddo
+
           yintercepts(nyicpt+1:,ix,iz) = LARGEPOS
 
         enddo ! ix
@@ -6954,8 +7088,10 @@ c                   yintercepts(nyicpt,ix,iz) = y1 + ycent
         yy = ymmin + iy*dy - ycent
         do ix=0,nx
           xx = xmmin + ix*dx - xcent
+          rr = sqrt(xx**2 + yy**2)
 
           nzicpt = 0
+          nirflat = 0
 
 c         --- Loop over r-z line segments
           do ii=1,nn-1
@@ -6963,7 +7099,6 @@ c         --- Loop over r-z line segments
 c           --- ll will be true if the point (rr) is within the radius of
 c           --- the line segment, including the starting point and
 c           --- excluding the end point.
-            rr = sqrt(xx**2 + yy**2)
             ll = (rmin(ii) < rr .and. rr < rmax(ii)) .or. rr == rsrf(ii)
             if (rr == rsrf(ii+1)) then
 c             --- In this end case, only include the point if the lines
@@ -6989,6 +7124,10 @@ c                 --- same as a peak - the intercepts at the two ends of
 c                 --- segment will be included. This does
 c                 --- get the number of intercepts correct, but doesn't
 c                 --- consistently make the line inside the object.
+c                 --- Flag this line segment.
+                  nirflat = nirflat + 1
+                  irflat(nirflat) = ii
+c                 --- Get the line segments before and after.
                   iim1 = ii - 1
                   if (iim1 == 0) iim1 = nn-1
                   iip1 = ii + 1
@@ -7052,6 +7191,61 @@ c                 zintercepts(nzicpt,ix,iy) = zc(ii) + z1 + zcent
             endif ! within r range
           enddo ! segments
 
+c         --- Do any clean up that is needed if there are line segments
+c         --- that are flat in r. This needs to be done after the loop over
+c         --- line segments since all of the intercepts are needed.
+c         --- This is rather ugly code, but that is typical for code handling
+c         --- the edge cases.
+c         --- Loop over the flat line segments
+          do iiflat=1,nirflat
+            ii = irflat(iiflat)
+
+c           --- Note that z1 and z2 have different meanings that above.
+c           --- Here they are the lower and upper ends of the line segment.
+            z1 = min(zsrf(ii),zsrf(ii+1))
+            z2 = max(zsrf(ii),zsrf(ii+1))
+
+c           --- Use a while loop since nzicpt may change
+            ic = 1
+            do while (ic < nzicpt)
+
+              if (zintercepts(ic,ix,iy) < z1 + zcent .and.
+     &            zintercepts(ic+1,ix,iy) == z1 + zcent) then
+c               --- Replace the lower point with the upper point, putting
+c               --- edge inside of the object.
+                zintercepts(ic+1,ix,iy) = z2 + zcent
+
+              else if (zintercepts(ic,ix,iy) == z2 + zcent .and.
+     &                 zintercepts(ic+1,ix,iy) > z2 + zcent) then
+c               --- Replace the upper point with the lower point, putting
+c               --- edge inside of the object.
+                zintercepts(ic,ix,iy) = z1 + zcent
+c               --- It can happen that, with the above change,
+c               --- zintercepts(ic) will be less than zintercept(ic-1). This
+c               --- can only happen if (ic-1) is the lower edge of the
+c               --- line segment. The two points can be removed since they
+c               --- are both on the segment and therefore inside.
+                if (ic > 1) then
+                  if (zintercepts(ic-1,ix,iy) == z2 + zcent) then
+                    zintercepts(ic-1:nzicpt-3,ix,iy) = zintercepts(ic+1:nzicpt-1,ix,iy)
+                    nzicpt = nzicpt - 2
+                    ic = ic - 2
+                  endif
+                endif
+
+              else if (zintercepts(ic,ix,iy) > z1 + zcent .and.
+     &                 zintercepts(ic+1,ix,iy) < z2 + zcent) then
+c               --- Remove the two points so that the edge between
+c               --- them is inside the object.
+                zintercepts(ic:nzicpt-2,ix,iy) = zintercepts(ic+2:nzicpt,ix,iy)
+                nzicpt = nzicpt - 2
+                ic = ic - 2
+
+              endif
+              ic = ic + 2
+            enddo
+          enddo
+
           zintercepts(nzicpt+1:,ix,iy) = LARGEPOS
 
         enddo ! ix
@@ -7061,7 +7255,7 @@ c                 zintercepts(nzicpt,ix,iy) = zc(ii) + z1 + zcent
       deallocate(zmin,zmax)
       deallocate(thmin,thmax)
       deallocate(th1,th2)
-      deallocate(izflat)
+      deallocate(irflat,izflat)
 
       return
       CONTAINS
