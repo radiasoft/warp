@@ -1780,7 +1780,7 @@ not given, it uses f3d.mgmaxiters.
     for block in self.root.listofblocks:
       setattr(block,name,value)
 
-  def arraysliceoperation(self,ip,idim,getdataname,op,opnd,null,ic=None):
+  def arraysliceoperation(self,ip,idim,getdataname,op,opnd,null,comp=None):
     """
 Applies the operator to the array at the specified plane. The blocks only
 contribute within their domains of ownership.
@@ -1799,7 +1799,31 @@ contribute within their domains of ownership.
     ix,iy,iz = ii
     getdata = getattr(self,getdataname)
     array = getdata(self.fulllower,self.fullupper)
-    if ic is not None and len(shape(array)) == 4: array = array[ic,...]
+
+    if type(comp) != IntType:
+      # --- 'E','B','J','A' will give the field magnitude
+      try:
+        ic = ['x','y','z','E','B','J','A'].index(comp)
+      except ValueError:
+        pass
+      if self.lcylindrical:
+        try:
+          ic = ['r','theta','z','E','B','J','A'].index(comp)
+        except ValueError:
+          pass
+    else:
+      ic = comp
+    assert type(ic) == IntType,"Unrecognized component was input"
+
+    if ic is not None and len(shape(array)) == 4:
+      if ic > 2:
+        arrayx = array[0,...]
+        arrayy = array[1,...]
+        arrayz = array[2,...]
+        array = sqrt(arrayx**2 + arrayy**2 + arrayz**2)
+      else:
+        array = array[ic,...]
+
     if len(self.children) > 0:
       # --- Skip points that self doesn't own
       c = self.getchilddomains(self.fulllower,self.fullupper,1)
@@ -1849,30 +1873,15 @@ be plotted.
     # --- Set the values of cmin and cmax for all levels. This must be
     # --- done by the root level.
     if self is self.root:
+      comp = kw.get('comp','z')
       cmin = kw.get('cmin',None)
       cmax = kw.get('cmax',None)
-
-      comp = kw.get('comp','z')
-      if type(comp) != IntType:
-        try:
-          ic = ['x','y','z'].index(comp)
-        except ValueError:
-          pass
-        if self.lcylindrical:
-          try:
-            ic = ['r','theta','z'].index(comp)
-          except ValueError:
-            pass
-      else:
-        ic = comp
-      assert type(ic) == IntType,"Unrecognized component was input"
-
       cmin_in = cmin
       cmax_in = cmax
       cmin = self.arraysliceoperation(ip,idim,getdataname,min,minnd,+largepos,
-                                      ic)
+                                      comp)
       cmax = self.arraysliceoperation(ip,idim,getdataname,max,maxnd,-largepos,
-                                      ic)
+                                      comp)
       cmin = globalmin(cmin)
       cmax = globalmax(cmax)
 
