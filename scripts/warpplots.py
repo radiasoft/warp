@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.260 2010/01/08 18:35:51 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.261 2010/01/12 17:50:51 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -4304,7 +4304,8 @@ be from none to all three. If no components are given, then a 3-D array is
 returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar is
 returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
 the upper edge.  
-  - comp: field component to get, either 'x', 'y', or 'z', must be given
+  - comp: field component to get, either 'x', 'y', 'z', or 'E', must be given.
+          Use 'E' to get the field magnitude.
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None:
@@ -4316,7 +4317,7 @@ the upper edge.
   - fullplane=0: When 1 and with transverse symmetries, the data is
                  replicated to fill the symmetric regions of the plane.
   """
-  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  assert comp in ['x','y','z','E'],"comp must be one of 'x', 'y', 'z' or 'E'"
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if alltrue(top.efetch != 3) or not w3d.allocated('selfe'):
@@ -4331,12 +4332,27 @@ the upper edge.
     else:
       solver.getselfe()
   if type(comp) == IntType: ic = comp
-  else:                     ic = ['x','y','z'].index(comp)
+  else:                     ic = ['x','y','z','E'].index(comp)
 
-  return getdecomposedarray(solver.selfe[ic,...],ix=ix,iy=iy,iz=iz,
+  if comp == 'E':
+    Ex = getdecomposedarray(solver.selfe[0,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
+    Ey = getdecomposedarray(solver.selfe[1,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    Ez = getdecomposedarray(solver.selfe[2,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    return sqrt(Ex**2 + Ey**2 + Ez**2)
+  else:
+    return getdecomposedarray(solver.selfe[ic,...],ix=ix,iy=iy,iz=iz,
+                              bcast=bcast,local=local,fullplane=fullplane,
+                              xyantisymmetric=(ic in [0,1]),
+                              solver=solver)
 
 # --------------------------------------------------------------------------
 def getj(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
@@ -4346,7 +4362,8 @@ returned depends on the number of ix, iy and iz specified, which can be from
 none to all three. If no components are given, then a 3-D array is returned. 
 With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
 Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
-  - comp: field component to get, either 'x', 'y', or 'z', must be given
+  - comp: field component to get, either 'x', 'y', 'z' or. 'J', must be given.
+          Use 'J' to get the magnitude.
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None:
@@ -4358,17 +4375,32 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
   - fullplane=0: When 1 and with transverse symmetries, the data is
                  replicated to fill the symmetric regions of the plane.
   """
-  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  assert comp in ['x','y','z','J'],"comp must be one of 'x', 'y', 'z' or 'J'"
   if type(comp) == IntType: ic = comp
-  else:                     ic = ['x','y','z'].index(comp)
+  else:                     ic = ['x','y','z','J'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver
 
-  return getdecomposedarray(bfield.j[ic,...],ix=ix,iy=iy,iz=iz,
+  if comp == 'J':
+    Jx = getdecomposedarray(bfield.j[0,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
+    Jy = getdecomposedarray(bfield.j[1,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    Jz = getdecomposedarray(bfield.j[2,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    return sqrt(Jx**2 + Jy**2 + Jz**2)
+  else:
+    return getdecomposedarray(bfield.j[ic,...],ix=ix,iy=iy,iz=iz,
+                              bcast=bcast,local=local,fullplane=fullplane,
+                              xyantisymmetric=(ic in [0,1]),
+                              solver=solver)
 
 # --------------------------------------------------------------------------
 def getb(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
@@ -4378,7 +4410,8 @@ returned depends on the number of ix, iy and iz specified, which can be from
 none to all three. If no components are given, then a 3-D array is returned. 
 With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
 Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
-  - comp: field component to get, either 'x', 'y', or 'z'
+  - comp: field component to get, either 'x', 'y', 'z' or 'B', must be given.
+          Use 'B' to get the magnitude.
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None:
@@ -4390,17 +4423,32 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
   - fullplane=0: When 1 and with transverse symmetries, the data is
                  replicated to fill the symmetric regions of the plane.
   """
-  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  assert comp in ['x','y','z','B'],"comp must be one of 'x', 'y', 'z' or 'B'"
   if type(comp) == IntType: ic = comp
-  else:                     ic = ['x','y','z'].index(comp)
+  else:                     ic = ['x','y','z','B'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver
 
-  return getdecomposedarray(bfield.b[ic,...],ix=ix,iy=iy,iz=iz,
+  if comp == 'B':
+    Bx = getdecomposedarray(bfield.b[0,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
+    By = getdecomposedarray(bfield.b[1,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    Bz = getdecomposedarray(bfield.b[2,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    return sqrt(Bx**2 + By**2 + Bz**2)
+  else:
+    return getdecomposedarray(bfield.b[ic,...],ix=ix,iy=iy,iz=iz,
+                              bcast=bcast,local=local,fullplane=fullplane,
+                              xyantisymmetric=(ic in [0,1]),
+                              solver=solver)
 
 # --------------------------------------------------------------------------
 def geta(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
@@ -4411,7 +4459,8 @@ can be from none to all three. If no components are given, then a 3-D array
 is returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar
 is returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
 the upper edge.  
-  - comp: field component to get, either 'x', 'y', or 'z', must be given
+  - comp: field component to get, either 'x', 'y', 'z' or 'A', must be given.
+          Use 'A' to get the magnitude.
   - ix = None:
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None:
@@ -4423,17 +4472,32 @@ the upper edge.
   - fullplane=0: When 1 and with transverse symmetries, the data is
                  replicated to fill the symmetric regions of the plane.
   """
-  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  assert comp in ['x','y','z','A'],"comp must be one of 'x', 'y', 'z' or 'A'"
   if type(comp) == IntType: ic = comp
-  else:                     ic = ['x','y','z'].index(comp)
+  else:                     ic = ['x','y','z','A'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver
 
-  return getdecomposedarray(bfield.a[ic,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+  if comp == 'A':
+    Ax = getdecomposedarray(bfield.a[0,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
+    Ay = getdecomposedarray(bfield.a[1,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    Az = getdecomposedarray(bfield.a[2,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    return sqrt(Ax**2 + Ay**2 + Az**2)
+  else:
+    return getdecomposedarray(bfield.a[ic,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+                              bcast=bcast,local=local,fullplane=fullplane,
+                              xyantisymmetric=(ic in [0,1]),
+                              solver=solver)
 
 # --------------------------------------------------------------------------
 def seta(val,comp=None,ix=None,iy=None,iz=None,local=0,solver=None):
@@ -4695,7 +4759,8 @@ if sys.version[:5] != "1.5.1":
 def pcselfezy(comp=None,ix=None,fullplane=1,solver=None,
               lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of electrostatic field in the Z-Y plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z' or 'E'.
+          Use 'E' to get the field magnitude.
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
@@ -4721,7 +4786,9 @@ def pcselfezy(comp=None,ix=None,fullplane=1,solver=None,
   else:
     kw['pplimits']=(kw['xmin'],kw['xmax'],
                     solver.ymmin,solver.ymmax)
-  settitles("Electrostatic E%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
+  if comp == 'E': titlet = 'Electrostatic Emagnitude in z-y plane'
+  else:           titlet = 'Electrostatic E%s in z-y plane'%comp
+  settitles(titlet,"Z","Y","ix = "+repr(ix))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
@@ -4742,7 +4809,8 @@ if sys.version[:5] != "1.5.1":
 def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
               lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z', or 'E'.
+          Use 'E' to get the field magnitude.
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
@@ -4768,7 +4836,9 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.xmmin,solver.xmmax)
-  settitles("Electrostatic E%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
+  if comp == 'E': titlet = 'Electrostatic Emagnitude in z-x plane'
+  else:           titlet = 'Electrostatic E%s in z-x plane'%comp
+  settitles(titlet,"Z","X","iy = "+repr(iy))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
@@ -4789,8 +4859,9 @@ if sys.version[:5] != "1.5.1":
 def pcselfezr(comp=None,solver=None,
               lbeamframe=0,vec=0,sz=1,sr=1,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-R plane
-  - comp: field component to plot, either 'r', 'x', 'y', or 'z'
+  - comp: field component to plot, either 'r', 'x', 'y', 'z' or 'E'.
           'r' and 'x' are the same thing.
+          Use 'E' to get the field magnitude.
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sr=1: step size in grid for plotting fewer points
@@ -4804,7 +4875,8 @@ if sys.version[:5] != "1.5.1":
 def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
               local=0,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z' or 'E'.
+          Use 'E' to get the field magnitude.
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - vec=0: when true, plots E field vectors
@@ -4826,7 +4898,9 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
-  settitles("Electrostatic E%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
+  if comp == 'E': titlet = 'Electrostatic Emagnitude in x-y plane'
+  else:           titlet = 'Electrostatic E%s in x-y plane'%comp
+  settitles(titlet,"X","Y","iz = "+repr(iz))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
@@ -4854,7 +4928,8 @@ if sys.version[:5] != "1.5.1":
 def pcjzy(comp=None,ix=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of current density in the Z-Y plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z' or 'J'.
+          Use 'J' to get the field magnitude.
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
@@ -4880,7 +4955,9 @@ def pcjzy(comp=None,ix=None,fullplane=1,solver=None,
   else:
     kw['pplimits']=(kw['xmin'],kw['xmax'],
                     solver.ymmin,solver.ymmax)
-  settitles("Current Density J%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
+  if comp == 'J': titlet = 'Current Density Jmagnitude in z-y plane'
+  else:           titlet = 'Current Density J%s in z-y plane'%comp
+  settitles(titlet,"Z","Y","ix = "+repr(ix))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
@@ -4901,7 +4978,8 @@ if sys.version[:5] != "1.5.1":
 def pcjzx(comp=None,iy=None,fullplane=1,solver=None,
               lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of current density in the Z-X plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z' or 'J'.
+          Use 'J' to get the field magnitude.
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
@@ -4927,7 +5005,9 @@ def pcjzx(comp=None,iy=None,fullplane=1,solver=None,
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.xmmin,solver.xmmax)
-  settitles("Current Density J%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
+  if comp == 'J': titlet = 'Current Density Jmagnitude in z-x plane'
+  else:           titlet = 'Current Density J%s in z-x plane'%comp
+  settitles(titlet,"Z","X","iy = "+repr(iy))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
@@ -4948,7 +5028,8 @@ if sys.version[:5] != "1.5.1":
 def pcjxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
           local=0,**kw):
   """Plots contours of current density in the X-Y plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z' or 'J'.
+          Use 'J' to get the field magnitude.
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - vec=0: when true, plots E field vectors
@@ -4970,7 +5051,9 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
-  settitles("Current Density J%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
+  if comp == 'J': titlet = 'Current Density Jmagnitude in x-y plane'
+  else:           titlet = 'Current Density J%s in x-y plane'%comp
+  settitles(titlet,"X","Y","iz = "+repr(iz))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
@@ -4998,7 +5081,8 @@ if sys.version[:5] != "1.5.1":
 def pcbzy(comp=None,ix=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of the magnetic field in the Z-Y plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z' or 'B'.
+          Use 'B' to get the field magnitude.
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
@@ -5024,7 +5108,9 @@ def pcbzy(comp=None,ix=None,fullplane=1,solver=None,
   else:
     kw['pplimits']=(kw['xmin'],kw['xmax'],
                     solver.ymmin,solver.ymmax)
-  settitles("Magnetic Field B%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
+  if comp == 'B': titlet = 'Magnetic Field Bmagnitude in z-y plane'
+  else:           titlet = 'Magnetic Field B%s in z-y plane'%comp
+  settitles(titlet,"Z","Y","ix = "+repr(ix))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
@@ -5045,7 +5131,8 @@ if sys.version[:5] != "1.5.1":
 def pcbzx(comp=None,iy=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of the magnetic field in the Z-X plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z' or 'B'.
+          Use 'B' to get the field magnitude.
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
@@ -5071,7 +5158,9 @@ def pcbzx(comp=None,iy=None,fullplane=1,solver=None,
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.xmmin,solver.xmmax)
-  settitles("Magnetic Field B%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
+  if comp == 'B': titlet = 'Magnetic Field Bmagnitude in z-x plane'
+  else:           titlet = 'Magnetic Field B%s in z-x plane'%comp
+  settitles(titlet,"Z","X","iy = "+repr(iy))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
@@ -5092,7 +5181,8 @@ if sys.version[:5] != "1.5.1":
 def pcbxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
           local=0,**kw):
   """Plots contours of the magnetic field in the X-Y plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z' or 'B'.
+          Use 'B' to get the field magnitude.
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - vec=0: when true, plots E field vectors
@@ -5114,7 +5204,9 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
-  settitles("Magnetic Field B%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
+  if comp == 'B': titlet = 'Magnetic Field Bmagnitude in x-y plane'
+  else:           titlet = 'Magnetic Field B%s in x-y plane'%comp
+  settitles(titlet,"X","Y","iz = "+repr(iz))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
@@ -5142,7 +5234,8 @@ if sys.version[:5] != "1.5.1":
 def pcazy(comp=None,ix=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of the magnetic vector potential in the Z-Y plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z' or 'A'.
+          Use 'A' to get the field magnitude.
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
@@ -5168,7 +5261,9 @@ def pcazy(comp=None,ix=None,fullplane=1,solver=None,
   else:
     kw['pplimits']=(kw['xmin'],kw['xmax'],
                     solver.ymmin,solver.ymmax)
-  settitles("Magnetic Vector Potential A%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
+  if comp == 'A': titlet = 'Magnetic Vector Potential Amagnitude in z-y plane'
+  else:           titlet = 'Magnetic Vector Potential A%s in z-y plane'%comp
+  settitles(titlet,"Z","Y","ix = "+repr(ix))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
@@ -5189,7 +5284,8 @@ if sys.version[:5] != "1.5.1":
 def pcazx(comp=None,iy=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of the magnetic vector potential in the Z-X plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z' or 'A'.
+          Use 'A' to get the field magnitude.
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
@@ -5215,7 +5311,9 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=None,
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.xmmin,solver.xmmax)
-  settitles("Magnetic Vector Potential A%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
+  if comp == 'A': titlet = 'Magnetic Vector Potential Amagnitude in z-x plane'
+  else:           titlet = 'Magnetic Vector Potential A%s in z-x plane'%comp
+  settitles(titlet,"Z","X","iy = "+repr(iy))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
@@ -5236,7 +5334,8 @@ if sys.version[:5] != "1.5.1":
 def pcaxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
           local=0,**kw):
   """Plots contours of the magnetic vector potential in the X-Y plane
-  - comp: field component to plot, either 'x', 'y', or 'z'
+  - comp: field component to plot, either 'x', 'y', 'z' or 'A'.
+          Use 'A' to get the field magnitude.
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - vec=0: when true, plots E field vectors
@@ -5258,7 +5357,9 @@ def pcaxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
-  settitles("Magnetic Vector Potential A%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
+  if comp == 'A': titlet = 'Magnetic Vector Potential Amagnitude in x-y plane'
+  else:           titlet = 'Magnetic Vector Potential A%s in x-y plane'%comp
+  settitles(titlet,"X","Y","iz = "+repr(iz))
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
