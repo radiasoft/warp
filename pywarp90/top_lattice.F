@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.32 $, $Date: 2010/01/08 20:51:27 $
+c@(#) File top_lattice.F, version $Revision: 3.33 $, $Date: 2010/01/12 18:18:27 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -5803,13 +5803,14 @@ c=============================================================================
       subroutine apply_linear_map(n,x,y,z,ux,uy,uz,gaminv,vbeam,gammabar,
      &                            ax1,ax2,bx1,bx2,dx1,dx2,dpx1,dpx2,Qx,xchrom,phasex,xtunechirp,
      &                            ay1,ay2,by1,by2,dy1,dy2,dpy1,dpy2,Qy,ychrom,phasey,ytunechirp,
-     &                            eta,omegaz,phz)
+     &                            eta,omegaz,phz,zoffsetchirp)
 c applies linear map
       use Constant
       integer(ISZ):: n,i
       real(kind=8):: x(n),y(n),z(n),ux(n),uy(n),uz(n),gaminv(n),Map(0:5,0:5),vbeam,gammabar,
      &               ax1,ax2,bx1,bx2,dx1,dx2,dpx1,dpx2,phasex,Qx,xchrom,xtunechirp,
-     &               ay1,ay2,by1,by2,dy1,dy2,dpy1,dpy2,phasey,Qy,ychrom,ytunechirp,eta,omegaz,phx,phy,phz
+     &               ay1,ay2,by1,by2,dy1,dy2,dpy1,dpy2,phasey,Qy,ychrom,ytunechirp,
+     &               eta,omegaz,phx,phy,phz,zoffsetchirp
       real(kind=8):: xtmp,ytmp,ztmp,scf,xpr,ypr,dpp,uzb,rx,ry,mx,my,irx,iry,clghtisq
 
         clghtisq = 1./clight**2
@@ -5937,8 +5938,8 @@ c         Mz21    = (2*pi*self.mus)**2/(self.eta*Be*self.C)
           ypr = uy(i)*scf
           dpp = (uz(i)-uzb)/uzb
 
-          phx = phasex*(1. + xchrom*dpp/Qx + xtunechirp*ztmp)          !phase change based on value of chromaticity and dp 
-          phy = phasey*(1. + ychrom*dpp/Qy + ytunechirp*ztmp)          !phase change based on value of chromaticity and dp 
+          phx = phasex*(1. + xchrom*dpp/Qx + xtunechirp*(ztmp-zoffsetchirp))          !phase change based on value of chromaticity and dp 
+          phy = phasey*(1. + ychrom*dpp/Qy + ytunechirp*(ztmp-zoffsetchirp))          !phase change based on value of chromaticity and dp 
           Map(0,0) = rx*(cos(phx)+ax1*sin(phx))
           Map(0,1) = mx*sin(phx)
           Map(1,0) = -(1/mx*((ax2-ax1)*cos(phx) + (1+ax1*ax2)*sin(phx)))
