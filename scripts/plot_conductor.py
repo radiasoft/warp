@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.125 2009/04/27 00:30:41 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.126 2010/01/12 18:02:04 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -827,7 +827,8 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
   - plotselfe=0: when true, plot contours or vectors of the electric field
-  - comp='z': the component of the electric field to plot
+  - comp='z': the component of the electric field to plot, 'x', 'y', 'z' or 'E',
+              use 'E' for the magnitude.
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
   - selfecolor=green: color of selfe contours or vectors
@@ -967,7 +968,8 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
   - plotselfe=0: when true, plot contours or vectors of the electric field
-  - comp='z': the component of the electric field to plot
+  - comp='z': the component of the electric field to plot, 'x', 'y', 'z' or 'E',
+              use 'E' for the magnitude.
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
   - selfecolor=green: color of selfe contours or vectors
@@ -1087,7 +1089,8 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
   - plotselfe=0: when true, plot contours or vectors of the electric field
-  - comp='z': the component of the electric field to plot
+  - comp='z': the component of the electric field to plot, 'x', 'y', 'z' or 'E',
+              use 'E' for the magnitude.
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
   - selfecolor=green: color of selfe contours or vectors
@@ -1273,7 +1276,8 @@ in X-Y plane
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
   - plotselfe=0: when true, plot contours or vectors of the electric field
-  - comp='z': the component of the electric field to plot
+  - comp='z': the component of the electric field to plot, 'x', 'y', 'z' or 'E',
+              use 'E' for the magnitude.
   - filled=0 when true, plots filled contours
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
@@ -1346,7 +1350,8 @@ in Z-X plane
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
   - plotselfe=0: when true, plot contours or vectors of the electric field
-  - comp='z': the component of the electric field to plot
+  - comp='z': the component of the electric field to plot, 'x', 'y', 'z' or 'E',
+              use 'E' for the magnitude.
   - filled=0 when true, plots filled contours
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
@@ -1417,7 +1422,8 @@ in Z-Y plane
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
   - plotselfe=0: when true, plot contours or vectors of the electric field
-  - comp='z': the component of the electric field to plot
+  - comp='z': the component of the electric field to plot, 'x', 'y', 'z' or 'E',
+              use 'E' for the magnitude.
   - filled=0 when true, plots filled contours
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
@@ -1486,7 +1492,8 @@ in Z-(-X) plane
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
   - plotselfe=0: when true, plot contours or vectors of the electric field
-  - comp='z': the component of the electric field to plot
+  - comp='z': the component of the electric field to plot, 'x', 'y', 'z' or 'E',
+              use 'E' for the magnitude.
   - filled=0 when true, plots filled contours
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
@@ -1516,7 +1523,8 @@ in Z-(-Y) plane
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
   - plotselfe=0: when true, plot contours or vectors of the electric field
-  - comp='z': the component of the electric field to plot
+  - comp='z': the component of the electric field to plot, 'x', 'y', 'z' or 'E',
+              use 'E' for the magnitude.
   - filled=0 when true, plots filled contours
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
