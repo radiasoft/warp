@@ -453,6 +453,18 @@ error prone.
           cells where rho (or current) is not deposited. This is needed
           for the refinement of the EM solver.
     """
+    # --- A possible thing to do here is set self.root.finalized = false so
+    # --- that if a new child is added later, the finalization will be redone
+    # --- so that the new child is properly incorporated. This could lead to
+    # --- potential problems though, like improperly setup conductors and
+    # --- charge density in the child. So it would be better if this
+    # --- was forced to be explicit so it is clear what is happening.
+    # --- For now, raise an error if a child is being added after finalization.
+    # --- This can be circumvented as needed though by expliciting setting
+    # --- self.root.finalized = false.
+    if self.root.finalized:
+      raise RuntimeError('addchild must be called before any operations, such as a field solve, are done')
+
     if nguard is None: nguard = self.nguard
     if nguarddepos is None: nguarddepos = self.nguarddepos
     # --- Note that all exceptions should be reported.
