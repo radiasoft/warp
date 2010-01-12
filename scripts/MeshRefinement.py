@@ -1715,12 +1715,14 @@ to zero."""
     if lower is None: lower = self.lower
     if upper is None: upper = self.upper
     if type(comp) == StringType:
-      comp = ['x','y','z'].index(comp)
+      ic = ['x','y','z'].index(comp)
+    else:
+      ic = comp
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
     try: field = self.getselfe(recalculate=0)
     except AttributeError: field = self.field
-    return field[comp,ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
+    return field[ic,ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
   def getchilddomains(self,lower,upper,upperedge=0):
     if self.childdomains is None:
       #self.childdomains = fzeros(1+self.dims)  + self.blocknumber
@@ -1778,7 +1780,7 @@ not given, it uses f3d.mgmaxiters.
     for block in self.root.listofblocks:
       setattr(block,name,value)
 
-  def arraysliceoperation(self,ip,idim,getdataname,op,opnd,null,comp=None):
+  def arraysliceoperation(self,ip,idim,getdataname,op,opnd,null,ic=None):
     """
 Applies the operator to the array at the specified plane. The blocks only
 contribute within their domains of ownership.
@@ -1797,7 +1799,7 @@ contribute within their domains of ownership.
     ix,iy,iz = ii
     getdata = getattr(self,getdataname)
     array = getdata(self.fulllower,self.fullupper)
-    if comp is not None and len(shape(array)) == 4: array = array[comp,...]
+    if ic is not None and len(shape(array)) == 4: array = array[ic,...]
     if len(self.children) > 0:
       # --- Skip points that self doesn't own
       c = self.getchilddomains(self.fulllower,self.fullupper,1)
@@ -1810,8 +1812,7 @@ contribute within their domains of ownership.
     result = opnd(array)
     for child in self.children:
       ipc = ip*child.refinement[idim]
-      cresult = child.arraysliceoperation(ipc,idim,getdataname,op,opnd,null,
-                                          comp)
+      cresult = child.arraysliceoperation(ipc,idim,getdataname,op,opnd,null,ic)
       result = op(result,cresult)
     return result
 
@@ -1851,25 +1852,27 @@ be plotted.
       cmin = kw.get('cmin',None)
       cmax = kw.get('cmax',None)
 
-      comp = kw.get('comp',2)
+      comp = kw.get('comp','z')
       if type(comp) != IntType:
         try:
-          comp = ['x','y','z'].index(comp)
+          ic = ['x','y','z'].index(comp)
         except ValueError:
           pass
         if self.lcylindrical:
           try:
-            comp = ['r','theta','z'].index(comp)
+            ic = ['r','theta','z'].index(comp)
           except ValueError:
             pass
-      assert type(comp) == IntType,"Unrecognized component was input"
+      else:
+        ic = comp
+      assert type(ic) == IntType,"Unrecognized component was input"
 
       cmin_in = cmin
       cmax_in = cmax
       cmin = self.arraysliceoperation(ip,idim,getdataname,min,minnd,+largepos,
-                                      comp)
+                                      ic)
       cmax = self.arraysliceoperation(ip,idim,getdataname,max,maxnd,-largepos,
-                                      comp)
+                                      ic)
       cmin = globalmin(cmin)
       cmax = globalmax(cmax)
 
