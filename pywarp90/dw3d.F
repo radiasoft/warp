@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.165 $, $Date: 2009/11/11 19:07:14 $
+c@(#) File DW3D.F, version $Revision: 3.166 $, $Date: 2010/01/13 22:05:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -651,6 +651,119 @@ c       --- Bulk is doubled
 
 !$OMP MASTER
       if (lw3dtimesubs) timegetese3d = timegetese3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine getese3dfromrhophi(nxlocal,nylocal,nzlocal,
+     &                              nxguard,nyguard,nzguard,rho,phi,
+     &                              dx,dy,dz,l4symtry,l2symtry,ese)
+      use Subtimers3d
+      integer(ISZ):: nxlocal,nylocal,nzlocal,nxguard,nyguard,nzguard
+      real(kind=8):: rho(0:nxlocal,0:nylocal,0:nzlocal)
+      real(kind=8):: phi(-nxguard:nxlocal+nxguard,
+     &                   -nyguard:nylocal+nyguard,
+     &                   -nzguard:nzlocal+nzguard)
+      real(kind=8):: dx,dy,dz,ese
+      logical(ISZ):: l4symtry,l2symtry
+
+c Calculate the electrostatic energy, sum of rho*phi*dx*dy*dz/2
+c This does it in a partially vectorized manner.
+
+      integer(ISZ):: ix,iy,iz
+      real(kind=8),pointer:: scrtch(:,:)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      allocate(scrtch(0:nxlocal,0:nylocal))
+      scrtch = 0.0
+
+c     --- Note that the z planes iz=0 and nzlocal may need skipping depending
+c     --- on the boundary conditions.
+
+      do iz=0,nzlocal
+        do iy=0,nylocal
+          do ix=0,nxlocal
+            scrtch(ix,iy) = scrtch(ix,iy) + rho(ix,iy,iz)*phi(ix,iy,iz)
+          enddo
+        enddo
+      enddo
+
+c     --- Apply appropriate multiplication factors for symmetries
+      if (l4symtry) then
+c       --- Center point is unchanged
+c       --- Edges are doubled
+c       --- Bulk is quadrupoled
+        scrtch(0,1:nylocal) = 2.*scrtch(0,1:nylocal)
+        scrtch(1:nxlocal,0) = 2.*scrtch(1:nxlocal,0)
+        scrtch(1:nxlocal,1:nylocal) = 4.*scrtch(1:nxlocal,1:nylocal)
+      else if (l2symtry) then
+c       --- Edge is unchanged
+c       --- Bulk is doubled
+        scrtch(1:nxlocal,0:nylocal) = 2.*scrtch(1:nxlocal,0:nylocal)
+      endif
+
+      do iy=1,nylocal
+        do ix=0,nxlocal
+          scrtch(ix,0) = scrtch(ix,0) + scrtch(ix,iy)
+        enddo
+      enddo
+
+      do ix=0,nxlocal
+        ese = ese + scrtch(ix,0)
+      enddo
+
+      ese = dx*dy*dz*0.5*ese
+
+      deallocate(scrtch)
+
+!$OMP MASTER
+      if (lw3dtimesubs) timegetese3dfromrhophi = timegetese3dfromrhophi + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine geteserzfromrhophi(nxlocal,nzlocal,nxguard,nzguard,rho,phi,
+     &                              dx,dz,xmminlocal,ese)
+      use Subtimers3d
+      use Constant
+      integer(ISZ):: nxlocal,nzlocal,nxguard,nzguard
+      real(kind=8):: rho(0:nxlocal,0:nzlocal)
+      real(kind=8):: phi(-nxguard:nxlocal+nxguard,-nzguard:nzlocal+nzguard)
+      real(kind=8):: dx,dz,xmminlocal,ese
+
+c Calculate the electrostatic energy, sum of r*rho*phi*dx*dz/2
+c This does it in a partially vectorized manner.
+
+      integer(ISZ):: ix,iz
+      real(kind=8):: r
+      real(kind=8),pointer:: scrtch(:)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      allocate(scrtch(0:nxlocal))
+      scrtch = 0.0
+
+c     --- Note that the z planes iz=0 and nzlocal may need skipping depending
+c     --- on the boundary conditions.
+
+      do iz=0,nzlocal
+        do ix=0,nxlocal
+          scrtch(ix) = scrtch(ix) + rho(ix,iz)*phi(ix,iz)
+        enddo
+      enddo
+
+      do ix=0,nxlocal
+        r = xmminlocal + ix*dx
+        ese = ese + r*scrtch(ix)
+      enddo
+
+      ese = 2.*pi*dx*dz*0.5*ese
+
+      deallocate(scrtch)
+
+!$OMP MASTER
+      if (lw3dtimesubs) timegeteserzfromrhophi = timegeteserzfromrhophi + wtime() - substarttime
 !$OMP END MASTER
       return
       end

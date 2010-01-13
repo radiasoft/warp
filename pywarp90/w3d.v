@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.303 $, $Date: 2009/11/18 21:52:41 $
+#@(#) File W3D.V, version $Revision: 3.304 $, $Date: 2010/01/13 22:05:07 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.303 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.304 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -898,6 +898,17 @@ gtlchg3dfromrho(nxlocal:integer,nylocal:integer,nzlocal:integer,
 gtlchgrzfromrho(nxlocal:integer,nzlocal:integer,rho:real,dx:real,dz:real,
                 zgrid:real,zmminlocal:real,islastproc:logical)
              subroutine # Computes line charge density from the rho array in RZ
+getese3dfromrhophi(nx:integer,ny:integer,nz:integer,
+                   ngx:integer,ngy:integer,ngz:integer,
+                   rho:real,phi:real,
+                   dx:real,dy:real,dz:real,
+                   l4symtry:logical,l2symtry:logical,ese:real)
+             subroutine # Computes electrostatic energy from the input arrays
+geteserzfromrhophi(nx:integer,nz:integer,
+                   ngx:integer,ngz:integer,
+                   rho:real,phi:real,
+                   dx:real,dz:real,xmmin:real,ese:real)
+             subroutine # Computes electrostatic energy from the input arrays
 inject3d(itask:integer,pgroup:ParticleGroup)
              subroutine # Injection routine
 injctint(pgroup:ParticleGroup) subroutine # Initialization for injection
@@ -1066,7 +1077,7 @@ getinj_phi_3d() subroutine
 gettinj_phi() subroutine
 fetche3d(pgroup:ParticleGroup,ipmin:integer,ip:integer,is:integer) subroutine
 fetchb3d(pgroup:ParticleGroup,ipmin:integer,ip:integer,is:integer) subroutine
-fetche3dfrompositions(is:integer,indts:integer,n:integer,
+fetche3dfrompositions(jsid:integer,indts:integer,n:integer,
                       x(n):real,y(n):real,z(n):real,
                       ex(n):real,ey(n):real,ez(n):real,
                       bx(n):real,by(n):real,bz(n):real) subroutine
@@ -1261,6 +1272,8 @@ timegetese3d real /0./
 timegtlchg3d real /0./
 timegtlchg3dfromrho real /0./
 timegtlchgrzfromrho real /0./
+timegetese3dfromrhophi real /0./
+timegeteserzfromrhophi real /0./
 timeseteears real /0./
 timepositionadvance3d real /0./
 timepadvnc3d real /0./
