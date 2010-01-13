@@ -364,6 +364,25 @@ class MultiGrid3D(SubcycledPoissonSolver):
                       self.getzgrid(),self.zmminlocal,
                       self.izproc==self.nzprocs-1)
 
+  def getese(self):
+    'Calculate the electrostatic potential energy, rho*phi, and put it in top.ese'
+    # --- ese must be an array to get the returned value in the calls below
+    ese = zeros(1,'d')
+
+    if self.solvergeom == w3d.XYZgeom:
+      getese3dfromrhophi(self.nxlocal,self.nylocal,self.nzlocal,
+                         self.nxguard,self.nyguard,self.nzguard,
+                         self.rho,self.phi,
+                         self.dx,self.dy,self.dz,self.l4symtry,self.l2symtry,
+                         ese)
+    elif self.solvergeom==w3d.RZgeom:
+      geteserzfromrhophi(self.nxlocal,self.nzlocal,
+                         self.nxguard,self.nzguard,
+                         self.rho,self.phi,
+                         self.dx,self.dz,self.xmminlocal,
+                         ese)
+    top.ese = ese[0]
+
   def setsourcep(self,js,pgroup,zgrid):
     n  = pgroup.nps[js]
     if n == 0: return
