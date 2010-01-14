@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.222 2010/01/09 02:08:29 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.223 2010/01/14 01:41:10 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2089,6 +2089,52 @@ obtained by applying the same operation on the self and right conductors.
     # --- of each part. Extract absolute value of the distance.
     selfdist = cond.distance(self.xi,self.yi,self.zi)
     rightdist = cond.distance(right.xi,right.yi,right.zi)
+
+    # --- Get any points where both intercepts are inside of the object.
+    # --- This can happen when conductors are added together and the intercept
+    # --- should end up on the farther side of one of the objects.
+    # --- This uses the intercepts as starting points to find the next
+    # --- further intercept.
+    while any(logical_and(selfdist.distance<-surffuzz,
+                          rightdist.distance<-surffuzz)):
+      ii = logical_and(selfdist.distance<-surffuzz,rightdist.distance<-surffuzz)
+      # --- For each of these points, choose the intercept that is closest
+      # --- to the surface of the combined object.
+      xx = choose(selfdist<rightdist,[self.xi[ii],right.xi[ii]])
+      yy = choose(selfdist<rightdist,[self.yi[ii],right.yi[ii]])
+      zz = choose(selfdist<rightdist,[self.zi[ii],right.zi[ii]])
+      # --- The v's are the same in both self and right.
+      vx = self.vx[ii]
+      vy = self.vy[ii]
+      vz = self.vz[ii]
+      # --- Pick a point along the velocity line that is just a tiny bit
+      # --- further away from the intercept. A tiny bit further is needed
+      # --- to get this point off of the surface of the object.
+      # --- The intercepts in the two
+      # --- conductors will be found starting from that point. That
+      # --- intercept should be on the next farther surface, which may
+      # --- be on the surface of the combined object.
+      s = 1.e-9/sqrt(vx**2 + vy**2 + vz**2)
+      xx -= s*vx
+      yy -= s*vy
+      zz -= s*vz
+      lefti = cond.left.intercept(xx,yy,zz,vx,vy,vz)
+      righti = cond.right.intercept(xx,yy,zz,vx,vy,vz)
+      # --- Replace the intercepts with those calculated here.
+      self.xi[ii] = lefti.xi
+      self.yi[ii] = lefti.yi
+      self.zi[ii] = lefti.zi
+      self.itheta[ii] = lefti.itheta
+      self.iphi[ii] = lefti.iphi
+      right.xi[ii] = righti.xi
+      right.yi[ii] = righti.yi
+      right.zi[ii] = righti.zi
+      right.itheta[ii] = righti.itheta
+      right.iphi[ii] = righti.iphi
+      # --- Recalculate the distances to the combined object
+      selfdist = cond.distance(self.xi,self.yi,self.zi)
+      rightdist = cond.distance(right.xi,right.yi,right.zi)
+
     si = abs(selfdist.distance)
     ri = abs(rightdist.distance)
     # --- Get distances between original point and intercept points.
@@ -4200,7 +4246,7 @@ Methods:
     kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       None,zsrfrvconductord,
-                      None,zsrfrvconductorfnew,
+                      zsrfrvintercept,zsrfrvconductorfnew,
                       kw=kw)
 
     # --- Make sure the input is consistent
