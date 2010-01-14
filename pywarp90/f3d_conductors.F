@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.87 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.88 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -4077,9 +4077,10 @@ c The notation is that a negative distance means that the point is inside.
       return
       end
 c=======================================================================
-      subroutine ztorus_intercept(r1,r2,xcent,ycent,zcent,
+      subroutine ztorus_intercept(r1,r2,thmin,thmax,xcent,ycent,zcent,
      &                            n,x,y,z,vx,vy,vz,tt,itheta,iphi)
-      real(kind=8):: r1,r2,xcent,ycent,zcent
+      use Constant
+      real(kind=8):: r1,r2,thmin,thmax,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
       real(kind=8):: tt(n),itheta(n),iphi(n)
@@ -4090,7 +4091,7 @@ c normal angle of the surface at that point.
       integer(ISZ):: i,nhit,ii
       real(kind=8):: zmin,zmax
       real(kind=8):: vsq,d1,d2
-      real(kind=8):: xx,yy,zz,rr,dd,rrsq,t0,ttemp(4)
+      real(kind=8):: xx,yy,zz,rr,th,dd,rrsq,t0,ttemp(4),ttfinal
       real(kind=8):: a,b,c
       real(kind=8):: v(2),f(2)
       integer(ISZ):: niter,imax,imin
@@ -4218,17 +4219,29 @@ c         --- Do a simple iteration to try to refine the intersection point.
 
         enddo
 
-c       --- Now find the minimum ttemp.
-        imin = 1
-        do ii=2,nhit
-          if ((ttemp(imin) > ttemp(ii) .and. ttemp(ii) > 0. .and.
-     &         ttemp(imin) > 0.) .or.
-     &        (ttemp(ii) > ttemp(imin) .and. ttemp(imin) < 0.)) then
-            imin = ii
+c       --- Now find the minimum ttemp, only checking points with in
+c       --- thmin and thmax.
+        ttfinal = LARGEPOS
+        do ii=1,nhit
+          if ((ttfinal > ttemp(ii) .and. ttemp(ii) > 0. .and.
+     &         ttfinal > 0.) .or.
+     &        (ttemp(ii) > ttfinal .and. ttfinal < 0.)) then
+
+            xx = -vx(i)*ttemp(ii) + x(i) - xcent
+            yy = -vy(i)*ttemp(ii) + y(i) - ycent
+            zz = -vz(i)*ttemp(ii) + z(i) - zcent
+            rr = sqrt(xx**2 + yy**2)
+            th = atan2(rr-r1,zz)
+            if (th < thmin) th = th + 2*pi
+            if (thmin <= th .and. th <= thmax) then
+              imin = ii
+              ttfinal = ttemp(ii)
+            endif
+
           endif
         enddo
 
-        if (ttemp(imin) == LARGEPOS) cycle
+        if (ttfinal == LARGEPOS) cycle
 
         xx = -vx(i)*ttemp(imin) + x(i) - xcent
         yy = -vy(i)*ttemp(imin) + y(i) - ycent
@@ -4245,6 +4258,7 @@ c       --- Now find the minimum ttemp.
 c=======================================================================
       subroutine ZTorusIntercept(r1,r2,xcent,ycent,zcent,
      &                           n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
+      use Constant
       real(kind=8):: r1,r2,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
@@ -4263,7 +4277,7 @@ c normal angle of the surface at that point.
       theta = 0.
       phi = 0.
 
-      call ztorus_intercept(r1,r2,xcent,ycent,zcent,
+      call ztorus_intercept(r1,r2,0.,2.*pi,xcent,ycent,zcent,
      &                      n,x,y,z,vx,vy,vz,tt,theta,phi)
 
       do i=1,n
@@ -7576,6 +7590,229 @@ c             --- is included, whereas the ending point, th2, is not.
 
       end
 c=======================================================================
+      subroutine ZSrfrvIntercept(nn,rsrf,zsrf,rad,rc,zc,xcent,ycent,zcent,
+     &                           n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
+      use Constant
+      integer(ISZ):: nn
+      real(kind=8):: zsrf(nn),rsrf(nn),rad(nn-1),zc(nn-1),rc(nn-1)
+      real(kind=8):: xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
+      real(kind=8):: xi(n),yi(n),zi(n),itheta(n),iphi(n)
+
+c Finds place where particle inside intercepted the surface and the
+c normal angle of the surface at that point.
+
+      real(kind=8),pointer:: rmin(:),rmax(:)
+      real(kind=8),pointer:: zmin(:),zmax(:)
+      real(kind=8),pointer:: thmin(:),thmax(:)
+      real(kind=8),pointer:: th1(:),th2(:)
+      integer(ISZ):: i,ii
+      real(kind=8):: vsq,xx,yy,zz,rr,r1,t1,t2,z1,z2,tt,ttemp,a1,a2,vr
+      real(kind=8):: a,b,c,s,p
+      real(kind=8):: vdotn,dd,th
+
+      allocate(rmin(nn-1),rmax(nn-1))
+      allocate(zmin(nn-1),zmax(nn-1))
+      allocate(thmin(nn-1),thmax(nn-1))
+      allocate(th1(nn-1),th2(nn-1))
+
+      do ii=1,nn-1
+
+        rmin(ii) = min(rsrf(ii),rsrf(ii+1))
+        rmax(ii) = max(rsrf(ii),rsrf(ii+1))
+        zmin(ii) = min(zsrf(ii),zsrf(ii+1))
+        zmax(ii) = max(zsrf(ii),zsrf(ii+1))
+
+        if (rad(ii) .ne. LARGEPOS) then
+
+c         --- The angle in the r-z plane of the start and end of the segment
+          th1(ii) = atan2(rsrf(ii) - rc(ii),zsrf(ii) - zc(ii))
+          th2(ii) = atan2(rsrf(ii+1) - rc(ii),zsrf(ii+1) - zc(ii))
+
+c         --- If rad < 0, then the angle from start to end should be
+c         --- increasing. Otherwise decreasing.
+c         --- Note that both th1 and th2 will also be within the
+c         --- range of -pi to 3*pi.
+          if (th1(ii) > th2(ii) .and. rad(ii) < 0. .and. zsrf(ii) < zsrf(ii+1)) then
+            th2(ii) = th2(ii) + 2*pi
+          endif
+          if (th1(ii) < th2(ii) .and. rad(ii) > 0. .and. zsrf(ii) < zsrf(ii+1)) then
+            th1(ii) = th1(ii) + 2*pi
+          endif
+
+c         --- If the range of angles includes the extremum of the circle,
+c         --- then the mins or maxs may need to be recalculated.
+          thmin(ii) = min(th1(ii),th2(ii))
+          thmax(ii) = max(th1(ii),th2(ii))
+          if ((thmin(ii) < -pi*0.5 .and. thmax(ii) > -pi*0.5) .or.
+     &        (thmin(ii) < pi*1.5 .and. thmax(ii) > pi*1.5)) then
+            rmin(ii) = rc(ii) - abs(rad(ii))
+          endif
+          if ((thmin(ii) < pi*0.5 .and. thmax(ii) > pi*0.5) .or.
+     &        (thmin(ii) < pi*2.5 .and. thmax(ii) > pi*2.5)) then
+            rmax(ii) = rc(ii) + abs(rad(ii))
+          endif
+          if (thmin(ii) < pi .and. thmax(ii) > pi) then
+            zmin(ii) = zc(ii) - abs(rad(ii))
+          endif
+          if ((thmin(ii) < 0. .and. thmax(ii) > 0.) .or.
+     &        (thmin(ii) < 2*pi .and. thmax(ii) > 2*pi)) then
+            zmax(ii) = zc(ii) + abs(rad(ii))
+          endif
+
+        endif
+
+      enddo
+
+      do i=1,n
+
+        tt = LARGEPOS
+        xi(i) = LARGEPOS
+        yi(i) = LARGEPOS
+        zi(i) = LARGEPOS
+        itheta(i) = 0.
+        iphi(i) = 0.
+
+        vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+        if (vsq == 0.) cycle
+
+c       --- Loop over the line segments and calculate the intersection of
+c       --- each with the trajectory. Pick the one where the intersect
+c       --- is within the segment and the intercept time is smallest.
+        do ii=1,nn-1
+          if (rad(ii) == LARGEPOS) then
+            if (zsrf(ii+1) == zsrf(ii)) then
+c             --- Special case of a z plane, where there is only one
+c             --- possible intercept. If vz is zero, then there is no
+c             --- intercept, so skip.
+              if (vz(i) == 0.) cycle
+              t1 = ((z(i)-zcent) - zsrf(ii))/vz(i)
+              xx = -vx(i)*t1 + x(i) - xcent
+              yy = -vy(i)*t1 + y(i) - ycent
+              rr = sqrt(xx**2 + yy**2)
+              if (rr >= min(rsrf(ii),rsrf(ii+1)) .and.
+     &            rr <= max(rsrf(ii),rsrf(ii+1))) then
+                if ((tt > t1 .and. t1 > 0. .and. tt > 0.) .or.
+     &              (t1 > tt .and. tt < 0.)) then
+                  tt = t1
+                  itheta(i) = 0.
+                  iphi(i) = 0.
+                endif
+              endif
+            else
+              s = (rsrf(ii+1) - rsrf(ii))/(zsrf(ii+1) - zsrf(ii))
+              p = rsrf(ii) - s*zsrf(ii)
+              a = (s*vz(i))**2 - vx(i)**2 - vy(i)**2
+              b = 2*(-s*vz(i)*(s*(z(i)-zcent)+p) +
+     &            vx(i)*(x(i)-xcent) + vy(i)*(y(i)-ycent))
+              c = (s*(z(i)-zcent)+p)**2 - (x(i)-xcent)**2 - (y(i)-ycent)**2
+              if ((b**2 - 4*a*c) > 0.) then
+                if (a .ne. 0.) then
+                  t1 = (-b - sqrt(b**2 - 4*a*c))/(2*a)
+                  t2 = (-b + sqrt(b**2 - 4*a*c))/(2*a)
+                else
+                  t1 = -c/b
+                  t2 = t1
+                endif
+                z1 = -vz(i)*t1 + z(i) - zcent
+                z2 = -vz(i)*t2 + z(i) - zcent
+              else
+c               z1 = LARGEPOS
+c               z2 = LARGEPOS
+                cycle
+              endif
+              if (zmin(ii) <= z1 .and. z1 <= zmax(ii)) then
+                if ((tt > t1 .and. t1 > 0. .and. tt > 0.) .or.
+     &              (t1 > tt .and. tt < 0.)) then
+                  tt = t1
+                  xx = -vx(i)*t1 + x(i) - xcent
+                  yy = -vy(i)*t1 + y(i) - ycent
+                  itheta(i) = atan2((zsrf(ii+1) - zsrf(ii)),
+     &                              (rsrf(ii) - rsrf(ii+1)))
+                  iphi(i) = atan2(yy,xx)
+                endif
+              endif
+              if (zmin(ii) <= z2 .and. z2 <= zmax(ii)) then
+                if ((tt > t2 .and. t2 > 0. .and. tt > 0.) .or.
+     &              (t2 > tt .and. tt < 0.)) then
+                  tt = t2
+                  xx = -vx(i)*t2 + x(i) - xcent
+                  yy = -vy(i)*t2 + y(i) - ycent
+                  itheta(i) = atan2((zsrf(ii+1) - zsrf(ii)),
+     &                              (rsrf(ii) - rsrf(ii+1)))
+                  iphi(i) = atan2(yy,xx)
+                endif
+              endif
+
+            endif
+
+          else ! --- Circular line segment
+
+c           --- Use the routine already written for tori.
+            ttemp = LARGEPOS
+            call ztorus_intercept(rc(ii),abs(rad(ii)),thmin(ii),thmax(ii),
+     &                            xcent,ycent,zcent+zc(ii),
+     &                            1,x(i),y(i),z(i),vx(i),vy(i),vz(i),
+     &                            ttemp,a1,a2)
+
+c           --- If the point is the best so far, then save the data.
+c           --- Note that ztorus_intercept checks if the intercept is
+c           --- within thmin and thmax.
+            if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
+     &          (ttemp > tt .and. tt < 0.)) then
+              tt = ttemp
+              itheta(i) = a1
+              iphi(i) = a2
+            endif
+
+          endif
+        enddo
+
+        if (tt .ne. LARGEPOS) then
+          xi(i) = -vx(i)*tt + x(i)
+          yi(i) = -vy(i)*tt + y(i)
+          zi(i) = -vz(i)*tt + z(i)
+
+c         --- Make sure that the normal is oriented to point outward.
+c         --- This is a relatively robust, but somewhat expensive, method
+c         --- and is independent of the direction of the velocity.
+c         --- Take a point along the normal a little bit away
+c         --- from the surface and check if it is inside or not.
+c         --- A "little bit" is a small fraction of the total
+c         --- size of the object. This method will still fail in
+c         --- the case when the little bit crosses a small gap in
+c         --- the object and the point ends up inside the object
+c         --- even though the normal is pointing in the correct
+c         --- direction. This won't be fixed since it is very unlikely.
+          s = 1.e-10*sqrt((maxval(rmax)-minval(rmin))**2 + 
+     &                    (maxval(zmax)-minval(zmin))**2)
+          xx = xi(i) + s*sin(itheta(i))*cos(iphi(i))
+          yy = yi(i) + s*sin(itheta(i))*sin(iphi(i))
+          zz = zi(i) + s*cos(itheta(i))
+          call ZSrfrvConductorD(nn,rsrf,zsrf,rad,rc,zc,
+     &                          xcent,ycent,zcent,1,xx,yy,zz,dd)
+          if (dd < 0.) then
+c           --- dd is inside, so change itheta by pi
+            if (itheta(i) > 0.) then
+              itheta(i) = itheta(i) - pi
+            else if (itheta(i) < 0.) then
+              itheta(i) = itheta(i) + pi
+            endif
+          endif
+
+        endif
+
+      enddo
+
+      deallocate(rmin,rmax)
+      deallocate(zmin,zmax)
+      deallocate(thmin,thmax)
+      deallocate(th1,th2)
+
+      return
+      end
+c=======================================================================
 c=======================================================================
 c=======================================================================
       subroutine ZSrfrvOutConductorF(lrofzfunc,zmin,zmax,rmax,griddz,
@@ -7997,8 +8234,9 @@ c                   --- These angles need to be verified.
 
 c             --- Use the routine already written for tori.
               ttemp = LARGEPOS
-              call ztorus_intercept(rc_sr(il),abs(rad_sr(il)),xcent,ycent,
-     &                              zcent+zc_sr(il),
+c             ---- Note that thmin and thmax should be calculated.
+              call ztorus_intercept(rc_sr(il),abs(rad_sr(il)),0.,2.*pi,
+     &                              xcent,ycent,zcent+zc_sr(il),
      &                              1,x(i),y(i),z(i),vx(i),vy(i),vz(i),
      &                              ttemp,a1,a2)
 
