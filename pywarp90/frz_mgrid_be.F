@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.36 $, $Date: 2009/09/30 17:41:10 $
+c version $Revision: 1.37 $, $Date: 2010/01/19 19:58:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -393,6 +393,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       dzsqi = 1./dz**2
 
       localbounds = globalbounds
+      localboundsc = globalbounds
 
 #ifdef MPIPARALLEL
       lxoffsetall = 0
