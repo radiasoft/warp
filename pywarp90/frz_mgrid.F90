@@ -10831,6 +10831,38 @@ TYPE(GRIDtype), pointer :: g
 
 end subroutine setrhopandphiprz
 
+subroutine gridtypesetactionrho(grid,rho)
+use GRIDtypemodule
+type(GRIDtype):: grid
+real(kind=8),target:: rho(1:grid%nr+1,1:grid%nz+1)
+! This forces the association between rho and rhop when running in serial.
+! Whenever a user sets grid%rho, grid%rhop will automatically be reassigned
+! to point to the same array.
+
+  if (.not. grid%l_parallel) then
+    grid%rhop => rho
+  endif
+
+return
+end
+
+subroutine gridtypesetactionphi(grid,phi)
+use GRIDtypemodule
+type(GRIDtype):: grid
+real(kind=8),target:: phi(1-grid%nguardx:grid%nr+grid%nguardx+1, &
+                          1-grid%nguardz:grid%nz+grid%nguardz+1)
+! This forces the association between phi and phip when running in serial.
+! Whenever a user sets grid%phi, grid%phip will automatically be reassigned
+! to point to the same array.
+
+  if (.not. grid%l_parallel) then
+    grid%phip => phi
+  endif
+
+return
+end
+
+
 subroutine change_loc_part()
 USE multigridrz
 implicit none

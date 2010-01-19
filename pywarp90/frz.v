@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.69 $, $Date: 2009/05/12 00:00:42 $
+#@(#) File FRZ.V, version $Revision: 3.70 $, $Date: 2010/01/19 22:54:19 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.69 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.70 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -427,8 +427,8 @@ invdr real
 invdz real
 zminp real
 invvol(1:nr+1) _real
-rho(1:nr+1,1:nz+1) _real
-phi(1-nguardx:nr+nguardx+1,1-nguardz:nz+nguardz+1) _real        # potential
+rho(1:nr+1,1:nz+1) _real SET
+phi(1-nguardx:nr+nguardx+1,1-nguardz:nz+nguardz+1) _real SET    # potential
 rhop(1:nrpar+1,1:nzpar+1) _real
 phip(1-nguardx:nrpar+nguardx+1,1-nguardz:nzpar+nguardz+1) _real #
 erp(1:nr+1,1:nzp+1) _real
