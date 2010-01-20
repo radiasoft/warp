@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.223 2010/01/14 01:41:10 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.224 2010/01/20 19:36:38 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -985,7 +985,7 @@ Elliptic assembly
                     generatorfnew=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
                            self.ellipseconductorf,self.ellipseconductord,
-                           self.ellipseintercept,
+                           self.ellipseintercept,self.ellipseconductorfnew,
                            kw=kw)
     self.ellipticity = ellipticity
     self.circlegeneratorf = generatorf
@@ -1007,6 +1007,20 @@ Elliptic assembly
     if self.ellipticity != 1.:
       delmy[:] = delmy*self.ellipticity
       delpy[:] = delpy*self.ellipticity
+
+  def ellipseconductorfnew(self,*argtuple):
+    arglist = list(argtuple)
+    intercepts = arglist[-2]
+    if self.ellipticity != 1.:
+      intercepts.ymmin = intercepts.ymmin/self.ellipticity
+      intercepts.dy = intercepts.dy/self.ellipticity
+
+    apply(self.circlegeneratorfnew,arglist)
+
+    if self.ellipticity != 1.:
+      intercepts.ymmin *= self.ellipticity
+      intercepts.dy *= self.ellipticity
+      intercepts.yintercepts *= self.ellipticity
 
   def ellipseconductord(self,*argtuple):
     arglist = list(argtuple)
@@ -1074,7 +1088,7 @@ Assembly aligned along X axis
                     generatorfnew=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
                            self.xconductorf,self.xconductord,
-                           self.xintercept,
+                           self.xintercept,self.xconductorfnew,
                            kw=kw)
     self.zgeneratorf = generatorf
     self.zgeneratord = generatord
@@ -1100,6 +1114,39 @@ Assembly aligned along X axis
     arglist[-3] = argtuple[-7]
     arglist[-2] = argtuple[-6]
     apply(self.zgeneratorf,arglist)
+
+  def xconductorfnew(self,*argtuple):
+    arglist = list(argtuple)
+    intercepts = arglist[-2]
+    i = intercepts
+
+    i.xmmin,i.ymmin,i.zmmin = i.ymmin,i.zmmin,i.xmmin
+    i.dx,i.dy,i.dz = i.dy,i.dz,i.dx
+    i.nx,i.ny,i.nz = i.ny,i.nz,i.nx
+    i.ix,i.iy,i.iz = i.iy,i.iz,i.ix
+
+    apply(self.zgeneratorfnew,arglist)
+
+    i.xmmin,i.ymmin,i.zmmin = i.zmmin,i.xmmin,i.ymmin
+    i.dx,i.dy,i.dz = i.dz,i.dx,i.dy
+    i.nx,i.ny,i.nz = i.nz,i.nx,i.ny
+    i.ix,i.iy,i.iz = i.iz,i.ix,i.iy
+    i.nxicpt,i.nyicpt,i.nzicpt = i.nzicpt,i.nxicpt,i.nyicpt
+
+    temp = intercepts.zintercepts
+    intercepts.zintercepts = intercepts.yintercepts.transpose(0,2,1)
+    intercepts.yintercepts = intercepts.xintercepts.transpose(0,2,1)
+    intercepts.xintercepts = temp
+
+    temp = intercepts.zvoltages
+    intercepts.zvoltages = intercepts.yvoltages.transpose(0,2,1)
+    intercepts.yvoltages = intercepts.xvoltages.transpose(0,2,1)
+    intercepts.xvoltages = temp
+
+    temp = intercepts.zcondids
+    intercepts.zcondids = intercepts.ycondids.transpose(0,2,1)
+    intercepts.ycondids = intercepts.xcondids.transpose(0,2,1)
+    intercepts.xcondids = temp
 
   def xconductord(self,*argtuple):
     arglist = list(argtuple)
@@ -1185,7 +1232,7 @@ Assembly aligned along Y axis
                     generatorfnew=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
                            self.yconductorf,self.yconductord,
-                           self.yintercept,
+                           self.yintercept,self.yconductorfnew,
                            kw=kw)
     self.zgeneratorf = generatorf
     self.zgeneratord = generatord
@@ -1211,6 +1258,39 @@ Assembly aligned along Y axis
     arglist[-3] = argtuple[-5]
     arglist[-2] = argtuple[-4]
     apply(self.zgeneratorf,arglist)
+
+  def yconductorfnew(self,*argtuple):
+    arglist = list(argtuple)
+    intercepts = arglist[-2]
+    i = intercepts
+
+    i.xmmin,i.ymmin,i.zmmin = i.zmmin,i.xmmin,i.ymmin
+    i.dx,i.dy,i.dz = i.dz,i.dx,i.dy
+    i.nx,i.ny,i.nz = i.nz,i.nx,i.ny
+    i.ix,i.iy,i.iz = i.iz,i.ix,i.iy
+
+    apply(self.zgeneratorfnew,arglist)
+
+    i.xmmin,i.ymmin,i.zmmin = i.ymmin,i.zmmin,i.xmmin
+    i.dx,i.dy,i.dz = i.dy,i.dz,i.dx
+    i.nx,i.ny,i.nz = i.ny,i.nz,i.nx
+    i.ix,i.iy,i.iz = i.iy,i.iz,i.ix
+    i.nxicpt,i.nyicpt,i.nzicpt = i.nyicpt,i.nzicpt,i.nxicpt
+
+    temp = intercepts.zintercepts.transpose(0,2,1)
+    intercepts.zintercepts = intercepts.xintercepts
+    intercepts.xintercepts = intercepts.yintercepts.transpose(0,2,1)
+    intercepts.yintercepts = temp
+
+    temp = intercepts.zvoltages.transpose(0,2,1)
+    intercepts.zvoltages = intercepts.xvoltages
+    intercepts.xvoltages = intercepts.yvoltages.transpose(0,2,1)
+    intercepts.yvoltages = temp
+
+    temp = intercepts.zcondids.transpose(0,2,1)
+    intercepts.zcondids = intercepts.xcondids
+    intercepts.xcondids = intercepts.ycondids.transpose(0,2,1)
+    intercepts.ycondids = temp
 
   def yconductord(self,*argtuple):
     arglist = list(argtuple)
@@ -4943,7 +5023,7 @@ Outside of an elliptical surface of revolution
       of the list of r and z data.
     Note that if tablized data is given, the first argument is ignored.
   """
-  def __init__(self,ellipticity,rofzfunc,zmin,zmax,rmax=largepos,
+  def __init__(self,ellipticity,rofzfunc=None,zmin=None,zmax=None,rmax=largepos,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,**kw):
@@ -4982,7 +5062,7 @@ Inside of an elliptical surface of revolution
       of the list of r and z data.
     Note that if tablized data is given, the first argument is ignored.
   """
-  def __init__(self,ellipticity,rofzfunc,zmin,zmax,rmin=0,
+  def __init__(self,ellipticity,rofzfunc=None,zmin=None,zmax=None,rmin=0,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,**kw):
@@ -5020,7 +5100,7 @@ Between elliptical surfaces of revolution
       of the list of r and z data.
     Note that if tablized data is given, the first two arguments are ignored.
   """
-  def __init__(self,ellipticity,rminofz,rmaxofz,zmin,zmax,
+  def __init__(self,ellipticity,rminofz=None,rmaxofz=None,zmin=None,zmax=None,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rminofzdata=None,zmindata=None,radmindata=None,
                     rcmindata=None,zcmindata=None,
@@ -5062,7 +5142,7 @@ Outside of an surface of revolution aligned along to X axis
       of the list of r and x data.
     Note that if tablized data is given, the first argument is ignored.
   """
-  def __init__(self,rofxfunc,xmin,xmax,rmax=largepos,
+  def __init__(self,rofxfunc=None,xmin=None,xmax=None,rmax=largepos,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofxdata=None,xdata=None,raddata=None,
                     xcdata=None,rcdata=None,**kw):
@@ -5100,7 +5180,7 @@ Inside of a surface of revolution aligned along the X axis
       of the list of r and x data.
     Note that if tablized data is given, the first argument is ignored.
   """
-  def __init__(self,rofxfunc,xmin,xmax,rmin=0,
+  def __init__(self,rofxfunc=None,xmin=None,xmax=None,rmin=0,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofxdata=None,xdata=None,raddata=None,
                     xcdata=None,rcdata=None,**kw):
@@ -5136,7 +5216,7 @@ Between surfaces of revolution aligned along the X axis
       of the list of r and x data.
     Note that if tablized data is given, the first two arguments are ignored.
   """
-  def __init__(self,rminofx,rmaxofx,xmin,xmax,
+  def __init__(self,rminofx=None,rmaxofx=None,xmin=None,xmax=None,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rminofxdata=None,xmindata=None,radmindata=None,
                     rcmindata=None,xcmindata=None,
@@ -5178,7 +5258,7 @@ Outside of an surface of revolution aligned along to Y axis
       of the list of r and y data.
     Note that if tablized data is given, the first argument is ignored.
   """
-  def __init__(self,rofyfunc,ymin,ymax,rmax=largepos,
+  def __init__(self,rofyfunc=None,ymin=None,ymax=None,rmax=largepos,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofydata=None,ydata=None,raddata=None,
                     ycdata=None,rcdata=None,**kw):
@@ -5216,7 +5296,7 @@ Inside of a surface of revolution aligned along the Y axis
       of the list of r and y data.
     Note that if tablized data is given, the first argument is ignored.
   """
-  def __init__(self,rofyfunc,ymin,ymax,rmin=0,
+  def __init__(self,rofyfunc=None,ymin=None,ymax=None,rmin=0,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofydata=None,ydata=None,raddata=None,
                     ycdata=None,rcdata=None,**kw):
@@ -5252,7 +5332,7 @@ Between surfaces of revolution aligned along the Y axis
       of the list of r and y data.
     Note that if tablized data is given, the first two arguments are ignored.
   """
-  def __init__(self,rminofy,rmaxofy,ymin,ymax,
+  def __init__(self,rminofy=None,rmaxofy=None,ymin=None,ymax=None,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rminofydata=None,ymindata=None,radmindata=None,
                     rcmindata=None,ycmindata=None,
