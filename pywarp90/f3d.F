@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.141 $, $Date: 2009/10/14 23:43:51 $
+c@(#) File F3D.M, version $Revision: 3.142 $, $Date: 2010/01/20 19:56:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -351,7 +351,7 @@ c-----------------------------------------------------------------------------
       logical(ISZ):: lattenuate,doperiodic,dodirichlet,doneumann
       logical(ISZ):: periodicsolve,dirichletsolve
 #ifdef MPIPARALLEL
-      real(kind=8):: kysqtran(2)
+      real(kind=8):: kysq_tran(2)
       integer(ISZ):: nx_tran,ny_tran,ikxm,ikym
       logical(ISZ):: transposed
 #endif
@@ -862,9 +862,9 @@ c       --- min's.
           call tridiag(nx_tran,ny_tran,nz,phi_trnsps,norm,
      &                 kxsq(ix),kysq(iy),kzsq,ikxm,ikym,1,zwork)
         else
-          kysqtran = kysq(iy)
+          kysq_tran = kysq(iy)
           call tridiag(nx_tran,ny_tran,nz,phi_trnsps,norm,
-     &                 kxsq(ix),kysqtran,kzsq,ikxm,ikym,1,zwork)
+     &                 kxsq(ix),kysq_tran,kzsq,ikxm,ikym,1,zwork)
         endif
 
 c       --- Rearrange phi again back to original arrangement.
