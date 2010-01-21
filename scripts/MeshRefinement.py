@@ -954,6 +954,7 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
     """
     assert self is self.root,"This should only be called by the root block"
     if npes <= 1 or self.l_EM: return
+    if len(self.children) == 0: return
 
     # --- All blocks first send the overlapping sourcep to the neighbors.
     # --- Note that the precedences for sourcep is handled locally so
