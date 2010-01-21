@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.224 2010/01/20 19:36:38 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.225 2010/01/21 02:11:12 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1789,13 +1789,14 @@ Class to hold and manage intercepts instances.
       self.intercepts.iy = iy
       self.intercepts.iz = iz
       fuzz = 1.e-13
-      apply(generator,kwlist + [self.intercepts,fuzz])
-      self.intercepts.xvoltages = voltage
-      self.intercepts.yvoltages = voltage
-      self.intercepts.zvoltages = voltage
-      self.intercepts.xcondids = condid
-      self.intercepts.ycondids = condid
-      self.intercepts.zcondids = condid
+      if nx >= 0 and ny >= 0 and nz >= 0:
+        apply(generator,kwlist + [self.intercepts,fuzz])
+        self.intercepts.xvoltages = voltage
+        self.intercepts.yvoltages = voltage
+        self.intercepts.zvoltages = voltage
+        self.intercepts.xcondids = condid
+        self.intercepts.ycondids = condid
+        self.intercepts.zcondids = condid
 
   def installlist(interceptslist,installrz,solvergeom,conductors,gridrz):
 
