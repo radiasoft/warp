@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.225 2010/01/21 02:11:12 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.226 2010/01/21 23:24:57 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2556,7 +2556,7 @@ Creates a grid object which can generate conductor data.
       nzlocal = nint((zmax - zmin)/dz)
       ixlocal = nint((xmin - (self.xmmin+ix*dx))/dx)
       iylocal = nint((ymin - (self.ymmin+iy*dy))/dy)
-      izlocal = nint((zmin - (self.zmmin+iz*dz))/dz)
+      izlocal = nint((zmin - (self.zmmin+iz*dz+zbeam))/dz)
 
     return (xmin,ymin,zmin,dx,dy,dz,nxlocal,nylocal,nzlocal,
             ixlocal,iylocal,izlocal)
