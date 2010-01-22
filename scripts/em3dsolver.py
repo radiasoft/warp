@@ -172,6 +172,8 @@ class EM3D(SubcycledPoissonSolver):
               dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dy**2+1./self.dz**2))
             else:
               dtcourant=min(self.dx,self.dy,self.dz)/clight 
+          if self.theta_damp>0.:
+            top.dt*=sqrt((2.+self.theta_damp)/(2.+3.*self.theta_damp))
           if top.dt==0.:
             top.dt=dtcourant*self.dtcoef
           else:
@@ -1907,6 +1909,133 @@ class EM3D(SubcycledPoissonSolver):
                      labelscale=labelscale)
     return slice
     
+  ##########################################################################
+  # Gather requested array on processor 0
+  def gatherarray(self,data,direction=None,slice=None,procs=None,guards=0,**kw):
+    if self.l_2dxz:direction=1
+    if self.isactive:
+     f=self.block.core.yf
+     nxd,nyd,nzd=shape(data)
+     if direction==0:
+      if slice is None:
+        if self.l4symtry:
+          slice=0
+        else:
+          slice=self.nx/2
+      xslice = w3d.xmmin+slice*w3d.dx
+      selfslice = nint((xslice-self.block.xmin)/self.block.dx)
+      if selfslice<0 or selfslice>nxd-1:
+        data=None
+        xmin=xmax=ymin=ymax=0.
+      else:
+        xmin=self.block.ymin
+        xmax=self.block.ymax
+        ymin=self.block.zmin
+        ymax=self.block.zmax
+        data=data[selfslice,:,:]
+     if direction==1:
+      if slice is None:
+        if self.l4symtry:
+          slice=0
+        else:
+          slice=self.ny/2
+      yslice = w3d.ymmin+slice*w3d.dy
+      selfslice = nint((yslice-self.block.ymin)/self.block.dy)
+      if self.l_2dxz:slice=0
+      if selfslice<0 or selfslice>nyd-1:
+        data=None
+        xmin=xmax=ymin=ymax=0.
+      else:
+        xmin=self.block.xmin
+        xmax=self.block.xmax
+        ymin=self.block.zmin
+        ymax=self.block.zmax
+        data=data[:,selfslice,:]
+     if direction==2:
+      if slice is None:slice=self.nz/2
+      zslice = w3d.zmmin+slice*w3d.dz
+      selfslice = nint((zslice-self.block.zmin)/self.block.dz)
+      if selfslice<0 or selfslice>nzd-1:
+        data=None
+        xmin=xmax=ymin=ymax=0.
+      else:
+        xmin=self.block.xmin
+        xmax=self.block.xmax
+        ymin=self.block.ymin
+        ymax=self.block.ymax
+        data=data[:,:,selfslice]
+    if procs is None:procs=arange(npes)
+    if me==0:
+      if guards:
+        nxg=self.nxguard
+        nyg=self.nyguard
+        nzg=self.nzguard
+      else:
+        nxg=0
+        nyg=0
+        nzg=0
+    if direction in [0,1,2]:
+      if me==0:
+        if direction==0: datag = zeros([self.ny+1+nyg*2,self.nz+1+nzg*2],'d')
+        if direction==1: datag = zeros([self.nx+1+nxg*2,self.nz+1+nzg*2],'d')
+        if direction==2: datag = zeros([self.nx+1+nxg*2,self.ny+1+nyg*2],'d')
+      else:
+        datag=None
+      if type(procs) is type(1):procs=[procs]
+      validdata = gatherlist(self.isactive and data is not None,bcast=1)
+      validprocs = compress(validdata,arange(len(validdata)))
+      alldata = gatherlist([xmin,ymin,data],dest=0,procs=validprocs)
+      barrier() # this ensures that processor 0 will not bet overflowed with messages
+      if me==0:
+        for i in range(len(alldata)):
+          xminp = alldata[i][0]
+          yminp = alldata[i][1]
+          data  = alldata[i][-1]
+          nx,ny = shape(data)
+          if direction==0:
+            ixmin = nint((xminp-self.ymmin)/self.dy)+nyg
+            iymin = nint((yminp-self.zmmin)/self.dz)+nzg
+          if direction==1:
+            ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
+            iymin = nint((yminp-self.zmmin)/self.dz)+nzg
+          if direction==2:
+            ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
+            iymin = nint((yminp-self.ymmin)/self.dy)+nyg
+          datag[ixmin:ixmin+nx,iymin:iymin+ny] = data[...]
+    else:
+      if me==0:
+        datag = zeros([self.nx+1+nxg*2,self.ny+1+nyg*2,self.nz+1+nzg*2],'d')
+      else:
+        datag = None
+      xmin=self.block.xmin
+      xmax=self.block.xmax
+      ymin=self.block.ymin
+      ymax=self.block.ymax
+      zmin=self.block.zmin
+      zmax=self.block.zmax
+      dx=self.block.dx
+      dy=self.block.dy
+      dz=self.block.dz
+      if me>0 and me in procs:
+        mpi.send((xmin,xmax,dx,ymin,ymax,dy,zmin,zmax,dz,data),0,3)
+      else:
+        for i in range(0,npes):
+          if i<>me:
+            xminp,xmaxp,dxp,yminp,ymaxp,dyp,zminp,zmaxp,dzp,data=mpirecv(i,3)
+          else:
+            xminp = xmin
+            yminp = ymin
+            zminp = zmin
+          if data is not None:
+            nx,ny,nz = shape(data)
+            ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
+            iymin = nint((yminp-self.ymmin)/self.dy)+nyg
+            izmin = nint((zminp-self.zmmin)/self.dz)+nzg
+            datag[ixmin:ixmin+nx,iymin:iymin+ny,izmin:izmin+nz] = data[...]
+      barrier() # this ensures that processor 0 will not bet overflowed with messages
+
+    return datag
+    
   def getarray(self,g,guards=0,overlap=0):
     if guards:
       return g
@@ -1947,27 +2076,27 @@ class EM3D(SubcycledPoissonSolver):
       direction=direction,**kw)
 
   def pfexp(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ex,guards,overlap=direction is None),'Ep_x',
+      self.genericpfem3d(self.getarray(self.fields.Ex,guards,overlap=direction is None),'Eg_x',
       direction=direction,**kw)
 
-  def pfeyp(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ey,guards,overlap=direction is None),'Ep_y',
+  def pfeyg(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Ey,guards,overlap=direction is None),'Eg_y',
       direction=direction,**kw)
 
-  def pfezp(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ez,guards,overlap=direction is None),'Ep_z',
+  def pfezg(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Ez,guards,overlap=direction is None),'Eg_z',
       direction=direction,**kw)
 
-  def pfbxp(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bx,guards,overlap=direction is None),'Bp_x',
+  def pfbxg(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Bx,guards,overlap=direction is None),'Bg_x',
       direction=direction,**kw)
 
-  def pfbyp(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.By,guards,overlap=direction is None),'Bp_y',
+  def pfbyg(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.By,guards,overlap=direction is None),'Bg_y',
       direction=direction,**kw)
 
-  def pfbzp(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bz,guards,overlap=direction is None),'Bp_z',
+  def pfbzg(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.Bz,guards,overlap=direction is None),'Bg_z',
       direction=direction,**kw)
 
   def pfjx(self,l_children=1,guards=0,direction=None,**kw):
@@ -2028,58 +2157,58 @@ class EM3D(SubcycledPoissonSolver):
   def getese(self):
     pass
 
-  def getjx(self,guards=0):
-      return self.getarray(self.fields.J[:,:,:,0],guards)
+  def getjx(self,guards=0,overlap=0):
+      return self.getarray(self.fields.J[:,:,:,0],guards,overlap)
 
-  def getjy(self,guards=0):
-      return self.getarray(self.fields.J[:,:,:,1],guards)
+  def getjy(self,guards=0,overlap=0):
+      return self.getarray(self.fields.J[:,:,:,1],guards,overlap)
 
-  def getjz(self,guards=0):
-      return self.getarray(self.fields.J[:,:,:,2],guards)
+  def getjz(self,guards=0,overlap=0):
+      return self.getarray(self.fields.J[:,:,:,2],guards,overlap)
 
-  def getex(self,guards=0):
-      return self.getarray(self.fields.Ex,guards)
+  def getex(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Exp,guards,overlap)
 
-  def getey(self,guards=0):
-      return self.getarray(self.fields.Ey,guards)
+  def getey(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Eyp,guards,overlap)
         
-  def getez(self,guards=0):
-      return self.getarray(self.fields.Ez,guards)
+  def getez(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Ezp,guards,overlap)
         
-  def getbx(self,guards=0):
-      return self.getarray(self.fields.Bx,guards)
+  def getbx(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Bxp,guards,overlap)
 
-  def getby(self,guards=0):
-      return self.getarray(self.fields.By,guards)
+  def getby(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Byp,guards,overlap)
         
-  def getbz(self,guards=0):
-      return self.getarray(self.fields.Bz,guards)
+  def getbz(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Bzp,guards,overlap)
         
-  def getexp(self,guards=0):
-      return self.getarray(self.fields.Exp,guards)
+  def getexg(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Ex,guards,overlap)
 
-  def geteyp(self,guards=0):
-      return self.getarray(self.fields.Eyp,guards)
+  def geteyg(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Ey,guards,overlap)
         
-  def getezp(self,guards=0):
-      return self.getarray(self.fields.Ezp,guards)
+  def getezg(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Ez,guards,overlap)
         
-  def getbxp(self,guards=0):
-      return self.getarray(self.fields.Bxp,guards)
+  def getbxg(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Bx,guards,overlap)
 
-  def getbyp(self,guards=0):
-      return self.getarray(self.fields.Byp,guards)
+  def getbyg(self,guards=0,overlap=0):
+      return self.getarray(self.fields.By,guards,overlap)
         
-  def getbzp(self,guards=0):
-      return self.getarray(self.fields.Bzp,guards)
+  def getbzg(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Bz,guards,overlap)
         
-  def getrho(self,guards=0):
-      return self.getarray(self.fields.Rho,guards)
+  def getrho(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Rho,guards,overlap)
 
-  def getf(self,guards=0):
-      return self.getarray(self.fields.F,guards)
+  def getf(self,guards=0,overlap=0):
+      return self.getarray(self.fields.F,guards,overlap)
 
-  def getdive(self,guards=0):
+  def getdive(self,guards=0,overlap=0):
       dive = zeros(shape(self.fields.Ex),'d')
       f = self.fields
       if top.efetch[0]<>4:node2yee3d(f)
@@ -2093,6 +2222,71 @@ class EM3D(SubcycledPoissonSolver):
       if top.efetch[0]<>4:yee2node3d(f)
       return dive
       
+  def gete(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Exp**2+self.fields.Eyp**2+self.fields.Ezp**2,guards,overlap)
+
+  def getb(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Bxp**2+self.fields.Byp**2+self.fields.Bzp**2,guards,overlap)
+
+  def getw(self,guards=0,overlap=0):
+      e2 = self.getarray(self.fields.Exp**2+self.fields.Eyp**2+self.fields.Ezp**2,guards,overlap)
+      b2 = self.getarray(self.fields.Bxp**2+self.fields.Byp**2+self.fields.Bzp**2,guards,overlap)
+      return sqrt(e2+clight**2*b2)
+
+  def getw2(self,guards=0,overlap=0):
+      e2 = self.getarray(self.fields.Exp**2+self.fields.Eyp**2+self.fields.Ezp**2,guards,overlap)
+      b2 = self.getarray(self.fields.Bxp**2+self.fields.Byp**2+self.fields.Bzp**2,guards,overlap)
+      return e2+clight**2*b2
+
+  def geteg(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Ex**2+self.fields.Ey**2+self.fields.Ez**2,guards,overlap)
+
+  def getbg(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Bx**2+self.fields.By**2+self.fields.Bz**2,guards,overlap)
+
+  def getwg(self,guards=0,overlap=0):
+      e2 = self.getarray(self.fields.Ex**2+self.fields.Ey**2+self.fields.Ez**2,guards,overlap)
+      b2 = self.getarray(self.fields.Bx**2+self.fields.By**2+self.fields.Bz**2,guards,overlap)
+      return sqrt(e2+clight**2*b2)
+
+  def getwg2(self,guards=0,overlap=0):
+      e2 = self.getarray(self.fields.Ex**2+self.fields.Ey**2+self.fields.Ez**2,guards,overlap)
+      b2 = self.getarray(self.fields.Bx**2+self.fields.By**2+self.fields.Bz**2,guards,overlap)
+      return e2+clight**2*b2
+
+  def gatherex(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getex(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherey(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getey(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherez(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getez(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherbx(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getbx(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherby(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getby(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherbz(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getbz(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherjx(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getjx(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherjy(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getjy(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherjz(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getjz(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherrho(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getrho(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherf(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getf(guards,overlap=direction is None),direction=direction,**kw)
+
   def sumdive(self):
     flist = [self.block.core.yf]
     if self.refinement is not None:
