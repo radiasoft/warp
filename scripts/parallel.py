@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.37 2009/02/05 18:56:13 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.38 2010/01/22 13:21:20 jlvay Exp $"
 
 from warp import gettypecode
 from numpy import *
@@ -121,6 +121,66 @@ def gather(obj,dest=0):
   else:
     mpi.send(obj,dest)
     return [obj]
+
+# ---------------------------------------------------------------------------
+# Gather an object from a list of processors into a list on destination processor,
+# eventually broadcasting result. 
+def gatherlist(obj,dest=0,procs=None,bcast=0):
+  if not lparallel: return [obj]
+  if procs is None:
+    procs=range(mpi.procs)
+  else:
+    procs=list(procs)
+  result = []
+  if mpi.rank == dest:
+    for i in procs:
+      if i == dest:
+        result.append(obj)
+      else:
+        result.append(mpirecv(i))
+  else:
+    if mpi.rank in procs:
+      mpi.send(obj,dest)
+
+  if bcast:
+    result = mpi.bcast(result,dest)
+      
+  return result
+
+# ---------------------------------------------------------------------------
+# Gather an object from a list of processors into a list on destination processor,
+# eventually broadcasting result. The send is decomposed into log2(n) sends 
+# between processors.
+def gatherlog(obj,dest=0,procs=None,bcast=0):
+  if not lparallel: return [obj]
+  if procs is None:
+    procs=range(mpi.procs)
+  else:
+    procs=list(procs)
+  n = int(ceil(log2(len(procs))))
+  obj = [obj]
+  for i in range(n):
+    st = 2**i
+    stp = 2**(i+1)
+    listsend = procs[st::stp]
+    listrecv = procs[::stp][:len(listsend)]
+    if mpi.rank in listsend:
+      ip = listsend.index(mpi.rank)
+      mpi.send(obj,listrecv[ip])
+    if mpi.rank in listrecv:
+      ip = listrecv.index(mpi.rank)
+      obj+=mpirecv(listsend[ip])
+
+  if bcast:
+    obj = mpi.bcast(obj,procs[0])
+  else:
+    if dest<>procs[0]:
+      if mpi.rank==procs[0]:
+        mpi.send(obj,dest)
+      if mpi.rank==dest:
+        obj=mpirecv(procs[0])
+      
+  return obj
 
 # ---------------------------------------------------------------------------
 # Define a barrier
