@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.88 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.89 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -60,6 +60,27 @@ c any data in it, it is freed.
       real(kind=8):: dels(0:5),volt(0:5)
       integer(ISZ):: numb(0:5)
 
+c     --- Make sure that there is no data in conductors
+      if (conductors%interior%nmax > 0 .or.
+     &    conductors%evensubgrid%nmax > 0 .or.
+     &    conductors%oddsubgrid%nmax > 0) then
+        conductors%interior%nmax = 0
+        conductors%evensubgrid%nmax = 0
+        conductors%oddsubgrid%nmax = 0
+        conductors%interior%n = 0
+        conductors%evensubgrid%n = 0
+        conductors%oddsubgrid%n = 0
+        call ConductorTypefree(conductors)
+      endif
+
+c     --- If there are no grid points, then just return
+      if (intercepts%nx < 0 .or. intercepts%ny < 0 .or. intercepts%nz < 0) then
+        conductors%interior%n = 0
+        conductors%evensubgrid%n = 0
+        conductors%oddsubgrid%n = 0
+        return
+      endif
+
 c     --- Create locals to make the coding below more readable
       xmmin = intercepts%xmmin
       ymmin = intercepts%ymmin
@@ -94,13 +115,6 @@ c     --- These are handy to precalculate
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
-
-c     --- Make sure that there is no data in conductors
-      if (conductors%interior%nmax > 0 .or.
-     &    conductors%evensubgrid%nmax > 0 .or.
-     &    conductors%oddsubgrid%nmax > 0) then
-        call ConductorTypefree(conductors)
-      endif
 
 c     --- Create locals to hold the counters
       ncmax = 0
@@ -249,8 +263,8 @@ c       --- similarly for z.
             do while (ii <= nxicpt .and. xintercepts(ii,iy,iz) < LARGEPOS)
 
 c             --- Check that the intercept point is within the grid
-              if (xmmin <= xintercepts(ii,iy,iz) .and.
-     &            xintercepts(ii,iy,iz) <= xmmax) then
+              if (xmmin < xintercepts(ii,iy,iz) .and.
+     &            xintercepts(ii,iy,iz) < xmmax) then
 
                 ix = (xintercepts(ii,iy,iz) - xmmin)*dxi
                 if (xside > 0.) then
@@ -409,8 +423,8 @@ c       --- Scan over the yintercepts
             yside = +1.
             do while (ii <= nyicpt .and. yintercepts(ii,ix,iz) < LARGEPOS)
 
-              if (ymmin <= yintercepts(ii,ix,iz) .and.
-     &            yintercepts(ii,ix,iz) <= ymmax) then
+              if (ymmin < yintercepts(ii,ix,iz) .and.
+     &            yintercepts(ii,ix,iz) < ymmax) then
 
                 iy = (yintercepts(ii,ix,iz) - ymmin)*dyi
                 if (yside > 0.) then
@@ -546,8 +560,8 @@ c       --- Scan over zintercepts
             zside = +1.
             do while (ii <= nzicpt .and. zintercepts(ii,ix,iy) < LARGEPOS)
 
-              if (zmmin <= zintercepts(ii,ix,iy) .and.
-     &            zintercepts(ii,ix,iy) <= zmmax) then
+              if (zmmin < zintercepts(ii,ix,iy) .and.
+     &            zintercepts(ii,ix,iy) < zmmax) then
 
                 iz = (zintercepts(ii,ix,iy) - zmmin)*dzi
                 if (zside > 0.) then
@@ -6678,8 +6692,8 @@ c                 --- be included.
      &                (zmax(iim1) > zz .and. zmax(iip1) > zz)) then
                     rr = rsrf(ii)
                     if (yy**2 <= rr**2) then
-                      x1 = -sqrt(rr**2 - yy**2)
-                      x2 = +sqrt(rr**2 - yy**2)
+                      x1 = -sqrt(max(0.,rr**2 - yy**2))
+                      x2 = +sqrt(max(0.,rr**2 - yy**2))
                       call intserticpt(x1 + xcent,nxicpt,iy,iz,
      &                                 intercepts%nxicpt,ny,nz,xintercepts)
                       call intserticpt(x2 + xcent,nxicpt,iy,iz,
@@ -6695,8 +6709,8 @@ c                 --- A straight line segment is straightforward
                   ww = (zz - zsrf(ii))/(zsrf(ii+1) - zsrf(ii))
                   rr = rsrf(ii)*(1.-ww) + rsrf(ii+1)*ww
                   if (yy**2 <= rr**2) then
-                    x1 = -sqrt(rr**2 - yy**2)
-                    x2 = +sqrt(rr**2 - yy**2)
+                    x1 = -sqrt(max(0.,rr**2 - yy**2))
+                    x2 = +sqrt(max(0.,rr**2 - yy**2))
                     call intserticpt(x1 + xcent,nxicpt,iy,iz,
      &                               intercepts%nxicpt,ny,nz,xintercepts)
                     call intserticpt(x2 + xcent,nxicpt,iy,iz,
@@ -6720,7 +6734,7 @@ c               --- is included, whereas the ending point, th2, is not.
                 rsq = rad(ii)**2 - (zz - zc(ii))**2
                 nt = 0
 
-                rr = sqrt(rsq)
+                rr = sqrt(max(0.,rsq))
                 tt = atan2(+rr,zz - zc(ii))
                 if (tt < thmin(ii)) tt = tt + 2*pi
                 if (thmin(ii) <= tt .and. tt <= thmax(ii)) then
@@ -6747,7 +6761,7 @@ c               --- Get the possible upper points.
 c               --- Check if any of those four points intercept the grid line
                 do it=1,nt
                   if (yy**2 <= rt(it)**2) then
-                    x1 = sqrt(rt(it)**2 - yy**2)
+                    x1 = sqrt(max(0.,rt(it)**2 - yy**2))
                     if (rt(it) < 0.) x1 = -x1
                     call intserticpt(x1 + xcent,nxicpt,iy,iz,
      &                               intercepts%nxicpt,ny,nz,xintercepts)
@@ -6920,8 +6934,8 @@ c                 --- be included.
      &                (zmax(iim1) > zz .and. zmax(iip1) > zz)) then
                     rr = rsrf(ii)
                     if (xx**2 <= rr**2) then
-                      y1 = -sqrt(rr**2 - xx**2)
-                      y2 = +sqrt(rr**2 - xx**2)
+                      y1 = -sqrt(max(0.,rr**2 - xx**2))
+                      y2 = +sqrt(max(0.,rr**2 - xx**2))
                       call intserticpt(y1 + ycent,nyicpt,ix,iz,
      &                                 intercepts%nyicpt,nx,nz,yintercepts)
                       call intserticpt(y2 + ycent,nyicpt,ix,iz,
@@ -6936,8 +6950,8 @@ c                     yintercepts(nyicpt,ix,iz) = y2 + ycent
                   ww = (zz - zsrf(ii))/(zsrf(ii+1) - zsrf(ii))
                   rr = rsrf(ii)*(1.-ww) + rsrf(ii+1)*ww
                   if (xx**2 <= rr**2) then
-                    y1 = -sqrt(rr**2 - xx**2)
-                    y2 = +sqrt(rr**2 - xx**2)
+                    y1 = -sqrt(max(0.,rr**2 - xx**2))
+                    y2 = +sqrt(max(0.,rr**2 - xx**2))
                     call intserticpt(y1 + ycent,nyicpt,ix,iz,
      &                               intercepts%nyicpt,nx,nz,yintercepts)
                     call intserticpt(y2 + ycent,nyicpt,ix,iz,
@@ -6961,7 +6975,7 @@ c               --- is included, whereas the ending point, th2, is not.
                 rsq = rad(ii)**2 - (zz - zc(ii))**2
                 nt = 0
 
-                rr = sqrt(rsq)
+                rr = sqrt(max(0.,rsq))
                 tt = atan2(+rr,zz - zc(ii))
                 if (tt < thmin(ii)) tt = tt + 2*pi
                 if (thmin(ii) <= tt .and. tt <= thmax(ii)) then
@@ -6988,7 +7002,7 @@ c               --- Get the possible upper points.
 c               --- Check if any of those four points intercept the grid line
                 do it=1,nt
                   if (xx**2 <= rt(it)**2) then
-                    y1 = sqrt(rt(it)**2 - xx**2)
+                    y1 = sqrt(max(0.,rt(it)**2 - xx**2))
                     if (rt(it) < 0.) y1 = -y1
                     call intserticpt(y1 + ycent,nyicpt,ix,iz,
      &                               intercepts%nyicpt,nx,nz,yintercepts)
@@ -7181,7 +7195,7 @@ c               --- smallest z intercept. This checks if the
 c               --- angle of the intercept point is within the angular
 c               --- range of the arc. Note that the starting point, th1,
 c               --- is included, whereas the ending point, th2, is not.
-                z1 = sqrt(rad(ii)**2 - (rr - rc(ii))**2)
+                z1 = sqrt(max(0.,rad(ii)**2 - (rr - rc(ii))**2))
 
                 tt = atan2(rr - rc(ii),-z1)
                 if (tt < thmin(ii)) tt = tt + 2*pi
@@ -7519,7 +7533,7 @@ c             --- smallest z intercept. This checks if the
 c             --- angle of the intercept point is within the angular
 c             --- range of the arc. Note that the starting point, th1,
 c             --- is included, whereas the ending point, th2, is not.
-              z1 = sqrt(rad(ii)**2 - (rr - rc(ii))**2)
+              z1 = sqrt(max(0.,rad(ii)**2 - (rr - rc(ii))**2))
               if (rr == rsrf(ii)) z1 = abs(zsrf(ii) - zc(ii))
               if (rr == rsrf(ii+1)) z1 = abs(zsrf(ii+1) - zc(ii))
 
@@ -7539,7 +7553,7 @@ c             --- is included, whereas the ending point, th2, is not.
           endif ! within r range
         enddo ! segments
 
-        distance(i) = sqrt(dsq)
+        distance(i) = sqrt(max(0.,dsq))
         if (mod(izicpt,2) == 1) then
           print*,"ODD ",izicpt,zintercepts
         endif
