@@ -1,5 +1,10 @@
 from warp import *
-optimizer_version = "$Id: optimizer.py,v 1.14 2010/01/24 20:35:28 dave Exp $"
+try:
+  # --- Import threading for the ParticleSwarm optimizer
+  import threading
+except ImportError:
+  pass
+optimizer_version = "$Id: optimizer.py,v 1.15 2010/01/29 23:02:05 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
@@ -374,13 +379,7 @@ class ParticleSwarm:
 Particle swarm optimization
   Performs global optimization
   See for instance http://en.wikipedia.org/wiki/Particle_swarm_optimization
-  """
-  def __init__(self,npop,evaluate,initparams,deltas=None,shifts=None,
-               decel=1.,cognitiveweight=2.,socialweight=2.,globalweight=0.,
-               neighbors=2,decelfinal=0.4,coolingrate=100.,
-               paramsmin=None,paramsmax=None):
-    """
-Particle swarm optimization
+
 Input:
   - npop: size of population. A larger population will give better convergence
           though probably more function evaluations.
@@ -393,18 +392,30 @@ Input:
   - cognitiveweight=2.: How much weight to give to the particle's best case
   - socialweight=2.: How much weight to give to the neighborhood's best case
   - globalweight=0.: How much weight to give to the global best case
-  - neighbors=2: Number of neighbors to include in the neighborhood
+  - neighbors=2: Number of neighbors to include in the neighborhoods
   - decelfinal=0.4: Final value that decel is reduced to during the iterations
-  - coolingrate=100.: Number of iterations over which the decel is reduce
+  - coolingrate=100.: Number of iterations over which the decel is reduced
                       from its initial value to its final value.
   - paramsmin=-1.e+36: Min value of the parameters. This can be a function
                        which takes the params as its single argument.
   - paramsmax=+1.e+36: Max value of the parameters. This can be a function
                        which takes the params as its single argument.
-    """
+
+Methods:
+  swarm(niters=1,nprint=100): do the minimization
+  swarmthread(niters=1,nprint=100,maxthreads=1000000): do the minimization,
+      carrying out the function evaluations in separate threads
+
+  """
+  def __init__(self,npop,evaluate,initparams,deltas=None,shifts=None,
+               decel=1.,cognitiveweight=2.,socialweight=2.,globalweight=0.,
+               neighbors=2,decelfinal=0.4,coolingrate=100.,
+               paramsmin=None,paramsmax=None):
     self.npop = npop
     self.evaluate = evaluate
     self.initparams = initparams
+    self.deltas = deltas
+    self.shifts = shifts
     self.nparams = len(initparams)
     self.decel = decel
     self.cognitiveweight = cognitiveweight
@@ -417,6 +428,7 @@ Input:
     self.globalbestparams = zeros(self.nparams,'d')
     self.globalbestcost = inf
 
+    # --- Total iteration count
     self.count = 0
 
     if paramsmin is None:
@@ -428,32 +440,17 @@ Input:
     else:
       self.paramsmax = paramsmax
 
-    self.setup_neighborhood()
-    self.init_population(initparams,deltas,shifts)
+    self.setup_neighborhoods()
+    self.linitialized = false
 
   def getdecel(self):
+    """Handles the cooling rate on decel factor"""
     if self.count <= self.coolingrate:
       decel = (self.decel - (self.decel - self.decelfinal)*
                             (self.count-1)/self.coolingrate)
     else:
       decel = self.decelfinal
     return decel
-
-  def setglobalbestparams(self):
-    "Function to find best set of parameters so far"
-    for i in range(self.npop):
-      if self.bestcost[i] < self.globalbestcost:
-        self.globalbestcost = self.bestcost[i]
-        self.globalbestparams[:] = self.bestparams[i,:]
-
-  def findbestneighbor(self,neighborhood):
-    bestparams = self.bestparams[neighborhood[0]]
-    bestcost = self.bestcost[neighborhood[0]]
-    for n in neighborhood[1:]:
-      if self.bestcost[n] < bestcost:
-        bestparams = self.bestparams[n]
-        bestcost = self.bestcost[n]
-    return bestparams
 
   def printbestcost(self):
     print "Generation %d, global best cost %f, best cost %f, worst cost %f"% \
@@ -472,19 +469,30 @@ Input:
     params = minimum(params,self.getparamsmax(params))
     return params
 
-  def setup_neighborhood(self):
+  def setup_neighborhoods(self):
     """Setup the neighbors for each particle.
     This uses a simple circle neighborhood"""
-    self.neighborhood = []
+    self.neighborhoods = []
     halfneigh = self.neighbors/2
     for i in range(self.npop):
-      self.neighborhood.append([])
+      self.neighborhoods.append([])
       for n in range(-halfneigh,halfneigh+1):
-        self.neighborhood[-1].append((i+n)%self.npop)
+        self.neighborhoods[-1].append((i+n)%self.npop)
 
-  def init_population(self,initparams,deltas=None,shifts=None):
+  def findbestneighbor(self,neighborhood):
+    """Searches through the given neighborhood, finding the case with the
+best cost."""
+    bestparams = self.bestparams[neighborhood[0]]
+    bestcost = self.bestcost[neighborhood[0]]
+    for n in neighborhood[1:]:
+      if self.bestcost[n] < bestcost:
+        bestparams = self.bestparams[n]
+        bestcost = self.bestcost[n]
+    return bestparams
+
+  def init_population(self):
     """
-Function to initialize the population.
+Initializes the population.
 Picks parameters randomly distributed by deltas and shifts about the initial
 set of parameters.
   - initparams: is the initial set of parameters
@@ -493,12 +501,17 @@ set of parameters.
   - shifts=0.: is the absolute variation
                 It can either be a scalar or an array
     """
+    if self.linitialized: return
+    deltas = self.deltas
+    shifts = self.shifts
     if deltas is None:             deltas = ones(self.nparams,'d')*0.01
     elif type(deltas) == type(1.): deltas = ones(self.nparams,'d')*deltas
     elif type(deltas) == ListType: deltas = array(deltas)
     if shifts is None:             shifts = ones(self.nparams,'d')*0.
     elif type(shifts) == type(1.): shifts = ones(self.nparams,'d')*shifts
     elif type(shifts) == ListType: shifts = array(shifts)
+    self.deltas = deltas
+    self.shifts = shifts
 
     self.trial = zeros((self.npop,self.nparams),'d')
     self.velocity = zeros((self.npop,self.nparams),'d')
@@ -506,39 +519,46 @@ set of parameters.
     self.bestparams = zeros((self.npop,self.nparams),'d')
     self.bestcost = zeros(self.npop,'d')
 
-    # --- First particle starts with the initparams.
-    self.trial[0,:] = initparams
-    self.cost[0] = self.evaluate(initparams)
-    self.bestparams[0,:] = self.trial[0,:]
-    self.bestcost[0] = self.cost[0]
+    for i in range(self.npop):
+      self.initializeparticle(i)
 
-    # --- The rest of the particles are randomly distributed nearby.
-    for i in range(1,self.npop):
-      trial = (initparams*(1.+2.*(random.random(self.nparams)-.5)*deltas) + 
-                          (1.+2.*(random.random(self.nparams)-.5)*shifts))
-      self.trial[i,:] = self.constrainparams(trial)
-      self.cost[i] = self.evaluate(self.trial[i,:])
-      self.bestparams[i,:] = self.trial[i,:]
-      self.bestcost[i] = self.cost[i]
+    self.linitialized = true
 
-    self.setglobalbestparams()
+  def initializeparticle(self,i):
+
+    # --- Start with the initial parameters
+    trial = self.initparams
+    if i > 0:
+      # --- All but the first particle add a random perturbation from
+      # --- the initial parameters.
+      trial = (trial*(1.+2.*(random.random(self.nparams)-.5)*self.deltas) + 
+                     (1.+2.*(random.random(self.nparams)-.5)*self.shifts))
+
+    self.trial[i,:] = self.constrainparams(trial)
+    self.cost[i] = self.evaluate(self.trial[i,:])
+    self.bestparams[i,:] = self.trial[i,:]
+    self.bestcost[i] = self.cost[i]
+
+    if self.bestcost[i] < self.globalbestcost:
+      self.globalbestcost = self.bestcost[i]
+      self.globalbestparams[:] = self.bestparams[i,:]
 
   def updateparticle(self,i):
 
     # --- Update the velocity and trial
-    bestneighbor = self.findbestneighbor(self.neighborhood[i])
     r1 = random.random(self.nparams)
     r2 = random.random(self.nparams)
     r3 = random.random(self.nparams)
+    bestneighbor = self.findbestneighbor(self.neighborhoods[i])
     if all(bestneighbor==self.bestparams[i,:]): r3 = 0.
     self.velocity[i,:] = (self.getdecel()*self.velocity[i,:] +
           r1*self.globalweight*(self.globalbestparams - self.trial[i,:]) +
           r2*self.cognitiveweight*(self.bestparams[i,:] - self.trial[i,:]) +
           r3*self.socialweight*(bestneighbor - self.trial[i,:]))
     self.trial[i,:] += self.velocity[i,:]
+    self.trial[i,:] = self.constrainparams(self.trial[i,:])
 
     # --- Evaluate trial function
-    self.trial[i,:] = self.constrainparams(self.trial[i,:])
     self.cost[i] = self.evaluate(self.trial[i,:])
 
     if self.cost[i] < self.bestcost[i]:
@@ -555,12 +575,165 @@ set of parameters.
       - niters=1: number of iterations to run through
       - nprint=100: base frequency to print cost
     """
+
+    self.init_population()
+
     for count in range(niters):
       self.count += 1
 
       # --- loop through the particles
       for i in range(self.npop):
         self.updateparticle(i)
+
+      # --- Print out loss function
+      if (self.count <= nprint):
+        self.printbestcost()
+      elif ((self.count>nprint) and (self.count<=nprint**2) and
+            ((self.count%nprint)==0)):
+        self.printbestcost()
+      elif ( (self.count%(nprint**2)) == 0):
+        self.printbestcost()
+        print self.best_params()
+
+    self.printbestcost()
+    print self.globalbestparams
+
+  ##### --- threaded code below here --- #####
+  def findbestneighborthread(self,neighborhood):
+    self.bestparamslock.acquire()
+    bestparams = self.bestparams[neighborhood[0]]
+    bestcost = self.bestcost[neighborhood[0]]
+    for n in neighborhood[1:]:
+      if self.bestcost[n] < bestcost:
+        bestparams = self.bestparams[n]
+        bestcost = self.bestcost[n]
+    self.bestparamslock.release()
+    return bestparams
+
+  def initializeparticlethread(self,i):
+
+    # --- Start with the initial parameters
+    trial = self.initparams
+    if i > 0:
+      # --- All but the first particle add a random perturbation from
+      # --- the initial parameters.
+      trial = (trial*(1.+2.*(random.random(self.nparams)-.5)*self.deltas) + 
+                     (1.+2.*(random.random(self.nparams)-.5)*self.shifts))
+
+    self.trial[i,:] = self.constrainparams(trial)
+    self.threadthrottle.acquire()
+    self.cost[i] = self.evaluate(self.trial[i,:])
+    self.threadthrottle.release()
+    self.bestparams[i,:] = self.trial[i,:]
+    self.bestcost[i] = self.cost[i]
+
+    self.globalbestparamslock.acquire()
+    if self.bestcost[i] < self.globalbestcost:
+      self.globalbestcost = self.bestcost[i]
+      self.globalbestparams[:] = self.bestparams[i,:]
+    self.globalbestparamslock.release()
+
+  def updateparticlethread(self,i):
+
+    # --- Update the velocity and trial
+    r1 = random.random(self.nparams)
+    r2 = random.random(self.nparams)
+    r3 = random.random(self.nparams)
+    bestneighbor = self.findbestneighbor(self.neighborhoods[i])
+    if all(bestneighbor==self.bestparams[i,:]): r3 = 0.
+    self.velocity[i,:] = (self.getdecel()*self.velocity[i,:] +
+          r1*self.globalweight*(self.globalbestparams - self.trial[i,:]) +
+          r2*self.cognitiveweight*(self.bestparams[i,:] - self.trial[i,:]) +
+          r3*self.socialweight*(bestneighbor - self.trial[i,:]))
+    self.trial[i,:] += self.velocity[i,:]
+
+    # --- Evaluate trial function
+    self.trial[i,:] = self.constrainparams(self.trial[i,:])
+    self.threadthrottle.acquire()
+    self.cost[i] = self.evaluate(self.trial[i,:])
+    self.threadthrottle.release()
+
+    if self.cost[i] < self.bestcost[i]:
+      self.bestparamslock.acquire()
+      self.bestparams[i,:] = self.trial[i,:]
+      self.bestcost[i] = self.cost[i]
+      self.bestparamslock.release()
+
+    self.globalbestparamslock.acquire()
+    if self.cost[i] < self.globalbestcost:
+      self.globalbestparams[:] = self.trial[i,:]
+      self.globalbestcost = self.cost[i]
+    self.globalbestparamslock.release()
+
+  def init_populationthread(self):
+    """
+Function to initialize the population.
+Picks parameters randomly distributed by deltas and shifts about the initial
+set of parameters.
+  - initparams: is the initial set of parameters
+  - delta=0.01: is the fractional variation
+                It can either be a scalar or an array
+  - shifts=0.: is the absolute variation
+                It can either be a scalar or an array
+    """
+    if self.linitialized: return
+    deltas = self.deltas
+    shifts = self.shifts
+    if deltas is None:             deltas = ones(self.nparams,'d')*0.01
+    elif type(deltas) == type(1.): deltas = ones(self.nparams,'d')*deltas
+    elif type(deltas) == ListType: deltas = array(deltas)
+    if shifts is None:             shifts = ones(self.nparams,'d')*0.
+    elif type(shifts) == type(1.): shifts = ones(self.nparams,'d')*shifts
+    elif type(shifts) == ListType: shifts = array(shifts)
+    self.deltas = deltas
+    self.shifts = shifts
+
+    self.trial = zeros((self.npop,self.nparams),'d')
+    self.velocity = zeros((self.npop,self.nparams),'d')
+    self.cost = zeros(self.npop,'d')
+    self.bestparams = zeros((self.npop,self.nparams),'d')
+    self.bestcost = zeros(self.npop,'d')
+
+    initthreads = []
+    for i in range(self.npop):
+      initthreads.append(
+        threading.Thread(target=self.initializeparticlethread,
+                         name='init%d'%i,
+                         args=(i,)))
+      initthreads[-1].start()
+
+    self.linitialized = true
+
+  def swarmthread(self,niters=1,nprint=100,maxthreads=1000000):
+    """
+    Do the optimization
+      - niters=1: number of iterations to run through
+      - nprint=100: base frequency to print cost
+    """
+
+    self.bestparamslock = threading.RLock()
+    self.globalbestparamslock = threading.RLock()
+    self.threadthrottle = threading.Semaphore(maxthreads)
+
+    self.init_populationthread()
+
+    for count in range(niters):
+      self.count += 1
+
+      # --- loop through the particles, starting a thread for each one
+      iterthreads = []
+      for i in range(self.npop):
+        iterthreads.append(
+          threading.Thread(target=self.updateparticlethread,
+                           name='iter%d'%i,
+                           args=(i,)))
+        iterthreads[-1].start()
+
+      # --- Wait for the threads to finish
+      for t in iterthreads:
+        t.join()
+     #while threading.active_count() > 1:
+     #  print threading.active_count()
 
       # --- Print out loss function
       if (self.count <= nprint):
