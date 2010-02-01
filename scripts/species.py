@@ -1432,6 +1432,9 @@ in radius squared.
   def getvz(self,**kw):
     return getvz(jslist=self.jslist,**kw)
     
+  def getvr(self,**kw):
+    return getvr(jslist=self.jslist,**kw)
+    
   def getvtheta(self,**kw):
     return getvtheta(jslist=self.jslist,**kw)
     
