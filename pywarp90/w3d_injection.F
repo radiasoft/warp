@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.128 $, $Date: 2009/11/25 19:42:26 $
+c@(#) File w3d_injection.F, version $Revision: 1.129 $, $Date: 2010/02/01 19:43:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1146,7 +1146,7 @@ c                   --- Thermionic emission
                   elseif (inject == 5) then
 c                   --- Thermionic emission with space-charge
                     inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
-                    if ( (pgroup%sq(is)*inte) >= 0.) then
+                    if ( (pgroup%sq(is)*inte) > 0.) then
                       rnncl = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5
                       inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
                       dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
