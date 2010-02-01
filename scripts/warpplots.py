@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.261 2010/01/12 17:50:51 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.262 2010/02/01 18:04:30 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -480,8 +480,12 @@ def handleplotfunctioncall(pfunc,args=[],kw={}):
       # --- The file is opened here when something is being written to it.
       # --- It is opened in append mode to avoid accidentally deleting data.
       _plotdatafileobjects[winnum] = open(_plotdatafilenames[winnum],'ab')
-    cPickle.dump((numframeslist[active_window()],
-                  pfunc,args,kw),_plotdatafileobjects[winnum],protocol=-1)
+    try:
+      cPickle.dump((numframeslist[active_window()],
+                    pfunc,args,kw),_plotdatafileobjects[winnum],protocol=-1)
+    except TypeError:
+      cPickle.dump((numframeslist[active_window()],
+                    pfunc,args,kw),_plotdatafileobjects[winnum])
     _plotdatafileobjects[winnum].flush()
 
 class PlotsFromDataFile(object):
@@ -494,6 +498,7 @@ from that data. The available methods are
     self.filename = filename
     self.ff = open(filename,'rb')
     self.frames = self._catalogframes()
+    self.scaleheight = None
     # --- Current default frame number that plotframe will plot
     self.currentframe = 1
   def _catalogframes(self):
@@ -544,6 +549,12 @@ plot the frame.
       if pfunc == 'fma': break
       # --- Skip the hcp commands. This is not handled quite right.
       if pfunc == 'hcp': continue
+      # --- Scale the height of text if the option is set.
+      if pfunc == 'plt' and self.scaleheight is not None:
+        try:
+          kw['height'] *= self.scaleheight
+        except KeyError:
+          kw['height'] = 14.*self.scaleheight
       # --- Make the plot, calling the appropriate gist or matplotlib function
       handleplotfunctioncall(pfunc,args,kw)
   def plotallframes(self):
