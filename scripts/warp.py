@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.191 2009/10/09 23:50:22 dave Exp $"
+warp_version = "$Id: warp.py,v 1.192 2010/02/01 23:10:44 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -843,7 +843,7 @@ Creates a dump file
     written to the file. The default attribute makes a restartable dump file.
   - serial=0: When 1, does a dump of only non-parallel data (parallel version
     only).
-  - onefile=0: When 0, all processors dump to one file, otherwise each dumps to
+  - onefile=0: When 1, all processors dump to one file, otherwise each dumps to
     seperate file. The processor number is appended to the dump filename.
   - pyvars=1: When 1, saves user defined python variables to the file.
   - ff=None: Optional file object. When passed in, write to that file instead
