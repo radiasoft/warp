@@ -4,7 +4,7 @@ try:
     import threading
 except ImportError:
     pass
-optimizer_version = "$Id: optimizer.py,v 1.17 2010/02/01 18:01:48 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.18 2010/02/01 23:45:17 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
@@ -294,7 +294,7 @@ sample set of parameters.
         self.cost[0] = self.evaluate(sample)
         for i in range(1,self.npop):
             trial = (sample*(1.+2.*(random.random(self.nparams)-.5)*deltas) +
-                            (1.+2.*(random.random(self.nparams)-.5)*shifts))
+                            2.*(random.random(self.nparams)-.5)*shifts)
             self.x1[i,:] = self.constrainparams(trial)
             self.cost[i] = self.evaluate(self.x1[i,:])
 
@@ -534,8 +534,8 @@ set of parameters.
         if i > 0:
             # --- All but the first particle add a random perturbation from
             # --- the initial parameters.
-            trial = (trial*(1.+2.*(random.random(self.nparams)-.5)*self.deltas) +
-                           (1.+2.*(random.random(self.nparams)-.5)*self.shifts))
+            trial = (trial*(1.+2.*(random.random(self.nparams)-.5)*self.deltas)
+                         + 2.*(random.random(self.nparams)-.5)*self.shifts)
 
         self.trial[i,:] = self.constrainparams(trial)
         self.cost[i] = self.evaluate(self.trial[i,:])
@@ -619,8 +619,8 @@ Do the optimization
         if i > 0:
             # --- All but the first particle add a random perturbation from
             # --- the initial parameters.
-            trial = (trial*(1.+2.*(random.random(self.nparams)-.5)*self.deltas) +
-                           (1.+2.*(random.random(self.nparams)-.5)*self.shifts))
+            trial = (trial*(1.+2.*(random.random(self.nparams)-.5)*self.deltas)
+                          +2.*(random.random(self.nparams)-.5)*self.shifts)
 
         self.trial[i,:] = self.constrainparams(trial)
         self.threadthrottle.acquire()
