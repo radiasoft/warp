@@ -4,7 +4,7 @@ try:
     import threading
 except ImportError:
     pass
-optimizer_version = "$Id: optimizer.py,v 1.16 2010/01/29 23:52:10 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.17 2010/02/01 18:01:48 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
@@ -458,6 +458,7 @@ Methods:
     def printbestcost(self):
         print "Generation %d, global best cost %f, best cost %f, worst cost %f"% \
               (self.count,self.globalbestcost,min(self.bestcost),max(self.bestcost))
+        print "Global best params ",self.globalbestparams
     def getparamsmin(self,params):
         """Returns the min limit of parameters."""
         if type(self.paramsmin) is FunctionType: return self.paramsmin(params)
@@ -595,7 +596,6 @@ Do the optimization
                 self.printbestcost()
             elif ( (self.count%(nprint**2)) == 0):
                 self.printbestcost()
-                print self.best_params()
 
         self.printbestcost()
         print self.globalbestparams
@@ -745,7 +745,6 @@ Do the optimization
                 self.printbestcost()
             elif ( (self.count%(nprint**2)) == 0):
                 self.printbestcost()
-                print self.best_params()
 
         self.printbestcost()
         print self.globalbestparams
