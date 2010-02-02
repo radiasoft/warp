@@ -4,7 +4,7 @@ try:
     import threading
 except ImportError:
     pass
-optimizer_version = "$Id: optimizer.py,v 1.18 2010/02/01 23:45:17 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.19 2010/02/02 00:20:50 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
@@ -224,6 +224,9 @@ Differential Evolution
         """
         self.npop = npop
         self.nparams = nparams
+        self.deltas = deltas
+        self.shifts = shifts
+        self.initparams = params
         self.crossover = crossover
         self.f = f
         self.evaluate = evaluate
@@ -246,7 +249,7 @@ Differential Evolution
             self.paramsmax = +ones(nparams)*1.e+36
         else:
             self.paramsmax = paramsmax
-        self.evolve_init(params,deltas,shifts)
+        self.linitialized = false
     def best_params(self):
         "Function to return best set of parameters so far"
         imin = 0
@@ -273,7 +276,12 @@ Differential Evolution
         params = minimum(params,self.getparamsmax(params))
         return params
 
-    def evolve_init(self,sample,deltas=None,shifts=None):
+    def evolve_reset(self):
+        "Reset cost function.  Used for example if cost function is changed."
+        for i in range(npop):
+            cost[i] = evaluate(x1[i,:])
+
+    def evolve_init(self):
         """
 Function to initialize the population.
 Picks parameters randomly distributed by deltas and shifts about a base
@@ -284,24 +292,30 @@ sample set of parameters.
   - shifts=0.: is the absolute variation about the sample.
                It can either be a scalar or an array the same size as sample.
         """
+        if self.linitialized: return
+        self.linitialized = true
+
+        sample = self.initparams
+        deltas = self.deltas
+        shifts = self.shifts
         if deltas is None:             deltas = ones(shape(sample),'d')*0.01
         elif type(deltas) == type(1.): deltas = ones(shape(sample),'d')*deltas
         elif type(deltas) == ListType: deltas = array(deltas)
         if shifts is None:             shifts = ones(shape(sample),'d')*0.
         elif type(shifts) == type(1.): shifts = ones(shape(sample),'d')*shifts
         elif type(shifts) == ListType: shifts = array(shifts)
-        self.x1[0,:] = sample
-        self.cost[0] = self.evaluate(sample)
-        for i in range(1,self.npop):
-            trial = (sample*(1.+2.*(random.random(self.nparams)-.5)*deltas) +
-                            2.*(random.random(self.nparams)-.5)*shifts)
+        self.deltas = deltas
+        self.shifts = shifts
+
+        for i in range(self.npop):
+            # --- The first one uses the sample as given.
+            trial = sample
+            if i > 0:
+              # --- The rest use a perturbation from the sample.
+              trial = (trial*(1.+2.*(random.random(self.nparams)-.5)*deltas)
+                            + 2.*(random.random(self.nparams)-.5)*shifts)
             self.x1[i,:] = self.constrainparams(trial)
             self.cost[i] = self.evaluate(self.x1[i,:])
-
-    def evolve_reset(self):
-        "Reset cost function.  Used for example if cost function is changed."
-        for i in range(npop):
-            cost[i] = evaluate(x1[i,:])
 
     def evolve(self,gen_max=1,nprint=100):
         """
@@ -309,6 +323,9 @@ Do the optimization
   - gen_max=1: number of generations to run through
   - nprint=100: base frequency to print cost
         """
+
+        self.evolve_init()
+
         self.score = self.cost[0]
 
         # --- Loop over the generations
@@ -357,6 +374,148 @@ Do the optimization
                 else:
                     # --- otherwise move x1 to secondary array
                     self.x2[i,:] = self.x1[i,:]
+
+            # --- End of population loop, so copy new parameters into x1
+            self.x1[...] = self.x2[...]
+
+            # --- Print out loss function
+            if (self.count <= nprint):
+                self.printbestcost()
+            elif ((self.count>nprint) and (self.count<=nprint**2) and
+                  ((self.count%nprint)==0)):
+                self.printbestcost()
+            elif ( (self.count%(nprint**2)) == 0):
+                self.printbestcost()
+                print self.best_params()
+
+        self.printbestcost()
+        print self.best_params()
+
+    ### --- threaded code below --- ###
+    def initializememberthread(self,i):
+        # --- The first one uses the sample as given.
+        trial = sample
+        if i > 0:
+            # --- The rest use a perturbation from the sample.
+            trial = (trial*(1.+2.*(random.random(self.nparams)-.5)*self.deltas)
+                          + 2.*(random.random(self.nparams)-.5)*self.shifts)
+
+        self.x1[i,:] = self.constrainparams(trial)
+        self.threadthrottle.acquire()
+        self.cost[i] = self.evaluate(self.x1[i,:])
+        self.threadthrottle.release()
+
+    def evolve_initthread(self):
+        """
+Function to initialize the population.
+Picks parameters randomly distributed by deltas and shifts about a base
+sample set of parameters.
+  - sample: is the initial set of parameters
+  - delta=0.01: is the fractional variation about the sample
+                It can either be a scalar or an array the same size as sample.
+  - shifts=0.: is the absolute variation about the sample.
+               It can either be a scalar or an array the same size as sample.
+        """
+        if self.linitialized: return
+
+        sample = self.initparams
+        deltas = self.deltas
+        shifts = self.shifts
+        if deltas is None:             deltas = ones(shape(sample),'d')*0.01
+        elif type(deltas) == type(1.): deltas = ones(shape(sample),'d')*deltas
+        elif type(deltas) == ListType: deltas = array(deltas)
+        if shifts is None:             shifts = ones(shape(sample),'d')*0.
+        elif type(shifts) == type(1.): shifts = ones(shape(sample),'d')*shifts
+        elif type(shifts) == ListType: shifts = array(shifts)
+        self.deltas = deltas
+        self.shifts = shifts
+
+        initthreads = []
+        for i in range(self.npop):
+            initthreads.append(
+              threading.Thread(target=self.self.initializememberthread,
+                               name='init%d'%i,
+                               args=(i,)))
+            initthreads[-1].start()
+
+        self.linitialized = true
+
+    def evolvememberthread(self,i):
+
+        # Mutate/Recombine
+
+        # --- Randomly pick three vectors different from each other and 'i'.
+        a = i
+        b = i
+        c = i
+        while (a == i):                     a = int(random.random()*self.npop)
+        while (b == i or b == a):           b = int(random.random()*self.npop)
+        while (c == i or c == a or c == b): c = int(random.random()*self.npop)
+
+        # --- Randomly pick the first parameter
+        j = int(random.random()*self.nparams)
+
+        # --- Load parameters into trial, performing binomial trials
+        trial = zeros_like(self.x1[i,:])
+        for k in range(self.nparams):
+            if (random.random() < self.crossover or k == self.nparams-1):
+                # --- Source for trial is a random vector plus weighted differential
+                # --- The last parameter always comes from noisy vector
+                trial[j] = self.x1[c,j] + self.f*(self.x1[a,j] - self.x1[b,j])
+            else:
+                # --- Trial parameter come from x1 itself
+                trial[j] = self.x1[i,j]
+            # --- get next parameter
+            j = (j+1)%self.nparams
+
+        # Evaluate/Select
+
+        # --- Evaluate trial function
+        trial = self.constrainparams(trial)
+        self.threadthrottle.acquire
+        score = self.evaluate(trial)
+        self.threadthrottle.release
+
+        if (score <= self.cost[i]):
+            # --- If trial improves on x1, move trial to secondary array
+            # --- and save the new score
+            self.x2[i,:] = trial
+            self.cost[i] = score
+        else:
+            # --- otherwise move x1 to secondary array
+            self.x2[i,:] = self.x1[i,:]
+
+    def evolvethread(self,gen_max=1,nprint=100,maxthreads=1000000):
+        """
+Do the optimization
+  - gen_max=1: number of generations to run through
+  - nprint=100: base frequency to print cost
+  - maxthreads=1000000: The number of threads that will be started will be the
+                        minimum of maxthreads and the size of the population
+        """
+
+        self.threadthrottle = threading.Semaphore(maxthreads)
+
+        self.evolve_init()
+
+        # --- Loop over the generations
+        for count in range(gen_max):
+            self.count = self.count + 1
+
+            # --- loop through population
+            iterthreads = []
+            for i in range(self.npop):
+                iterthreads.append(
+                  threading.Thread(target=self.evolvememberthread,
+                                   name='iter%d'%i,
+                                   args=(i,)))
+                iterthreads[-1].start()
+
+            # --- Wait for the threads to finish
+            for t in iterthreads:
+                t.join()
+             #while threading.active_count() > 1:
+             #  print threading.active_count()
 
             # --- End of population loop, so copy new parameters into x1
             self.x1[...] = self.x2[...]
@@ -711,6 +870,8 @@ set of parameters.
 Do the optimization
   - niters=1: number of iterations to run through
   - nprint=100: base frequency to print cost
+  - maxthreads=1000000: The number of threads that will be started will be the
+                        minimum of maxthreads and the size of the population
         """
 
         self.bestparamslock = threading.RLock()
