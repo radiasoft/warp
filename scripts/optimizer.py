@@ -4,7 +4,7 @@ try:
     import threading
 except ImportError:
     pass
-optimizer_version = "$Id: optimizer.py,v 1.19 2010/02/02 00:20:50 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.20 2010/02/02 01:06:43 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
@@ -393,8 +393,8 @@ Do the optimization
 
     ### --- threaded code below --- ###
     def initializememberthread(self,i):
-        # --- The first one uses the sample as given.
-        trial = sample
+        # --- The first one uses the initial params as given.
+        trial = self.initparams
         if i > 0:
             # --- The rest use a perturbation from the sample.
             trial = (trial*(1.+2.*(random.random(self.nparams)-.5)*self.deltas)
@@ -432,11 +432,18 @@ sample set of parameters.
 
         initthreads = []
         for i in range(self.npop):
+            print "starting init thread ",i
             initthreads.append(
-              threading.Thread(target=self.self.initializememberthread,
+              threading.Thread(target=self.initializememberthread,
                                name='init%d'%i,
                                args=(i,)))
             initthreads[-1].start()
+
+        # --- Wait for the threads to finish
+        for t in initthreads:
+            t.join()
+        #while threading.active_count() > 1:
+        #  print threading.active_count()
 
         self.linitialized = true
 
@@ -496,7 +503,7 @@ Do the optimization
 
         self.threadthrottle = threading.Semaphore(maxthreads)
 
-        self.evolve_init()
+        self.evolve_initthread()
 
         # --- Loop over the generations
         for count in range(gen_max):
@@ -505,6 +512,7 @@ Do the optimization
             # --- loop through population
             iterthreads = []
             for i in range(self.npop):
+                print "starting thread ",i
                 iterthreads.append(
                   threading.Thread(target=self.evolvememberthread,
                                    name='iter%d'%i,
@@ -514,8 +522,8 @@ Do the optimization
             # --- Wait for the threads to finish
             for t in iterthreads:
                 t.join()
-             #while threading.active_count() > 1:
-             #  print threading.active_count()
+            #while threading.active_count() > 1:
+            #  print threading.active_count()
 
             # --- End of population loop, so copy new parameters into x1
             self.x1[...] = self.x2[...]
@@ -863,6 +871,12 @@ set of parameters.
                                args=(i,)))
             initthreads[-1].start()
 
+        # --- Wait for the threads to finish
+        for t in initthreads:
+            t.join()
+        #while threading.active_count() > 1:
+        #  print threading.active_count()
+
         self.linitialized = true
 
     def swarmthread(self,niters=1,nprint=100,maxthreads=1000000):
@@ -895,8 +909,8 @@ Do the optimization
             # --- Wait for the threads to finish
             for t in iterthreads:
                 t.join()
-             #while threading.active_count() > 1:
-             #  print threading.active_count()
+            #while threading.active_count() > 1:
+            #  print threading.active_count()
 
             # --- Print out loss function
             if (self.count <= nprint):
