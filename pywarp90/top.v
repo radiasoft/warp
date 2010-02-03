@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.269 $, $Date: 2010/01/12 18:17:43 $
+#@(#) File TOP.V, version $Revision: 3.270 $, $Date: 2010/02/03 23:43:40 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.269 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.270 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2534,96 +2534,99 @@ acclbfrm(zcorrection)
 # Subroutines in package TOP
 setgrid1d(np:integer,x(np):real,nx:integer,grid(0:nx):real,xmin:real,xmax:real)
         subroutine
-        # Deposits data onto a 1-D grid.
+        # Deposits data onto a 1-D grid using linear weighting.
 setgrid1dw(np:integer,x(np):real,w(np):real,nx:integer,grid(0:nx):real,xmin:real,xmax:real)
         subroutine
-        # Deposits data onto a 1-D grid.
+        # Deposits data onto a 1-D grid using linear weighting.
 deposgrid1d(itask:integer,np:integer,x(np):real,z(np):real,nx:integer,
             grid(0:nx):real,gridcount(0:nx):real,xmin:real,xmax:real)
         subroutine
-        # Deposits data onto a 1-D grid.
+        # Deposits data onto a 1-D grid using linear weighting.
 deposgrid1dw(itask:integer,np:integer,x(np):real,z(np):real,w(np):real,
              nx:integer,
              grid(0:nx):real,gridcount(0:nx):real,xmin:real,xmax:real)
         subroutine
-        # Deposits weighted data onto a 1-D grid.
+        # Deposits weighted data onto a 1-D grid using linear weighting.
 getgrid1d(np:integer,x(np):real,z(np):real,nx:integer,grid(0:nx):real,
           xmin:real,xmax:real)
         subroutine
-        # Gathers data from a 1-D grid.
+        # Gathers data from a 1-D grid using linear weighting.
 setgrid2d(np:integer,x(np):real,y(np):real,nx:integer,ny:integer,
           grid(0:nx,0:ny):real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
-        # Deposits uniform data onto a 2-D grid.
+        # Deposits uniform data onto a 2-D grid using linear weighting.
 deposgrid2d(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
             nx:integer,ny:integer,
             grid(0:nx,0:ny):real,gridcount(0:nx,0:ny):real,
             xmin:real,xmax:real,ymin:real,ymax:real)
         subroutine
-        # Deposits data onto a 2-D grid.
+        # Deposits data onto a 2-D grid using linear weighting.
+deposgrid2dngp(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
+            nx:integer,ny:integer,
+            grid(0:nx,0:ny):real,gridcount(0:nx,0:ny):real,
+            xmin:real,xmax:real,ymin:real,ymax:real)
+        subroutine
+        # Deposits data onto a 2-D grid using nearest grid point weighting.
 setgrid2dw(np:integer,x(np):real,y(np):real,w(np):real,
            nx:integer,ny:integer,grid(0:nx,0:ny):real,
            xmin:real,xmax:real,ymin:real,ymax:real) subroutine
-        # Deposits uniform data onto a 2-D grid.
+        # Deposits uniform data onto a 2-D grid using linear weighting.
 deposgrid2dw(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
              w(np):real,nx:integer,ny:integer,
             grid(0:nx,0:ny):real,gridcount(0:nx,0:ny):real,
             xmin:real,xmax:real,ymin:real,ymax:real)
         subroutine
-        # Deposits data onto a 2-D grid.
+        # Deposits data onto a 2-D grid using linear weighting.
 deposgridrzvect(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
             vx(np):real,vy(np):real,vz(np):real,
             w(np):real,nx:integer,ny:integer,
             grid(0:nx,0:ny,3):real,gridcount(0:nx,0:ny):real,
             xmin:real,xmax:real,ymin:real,ymax:real)
         subroutine
-        # Deposits velocities onto a 2-D radial grid.
+        # Deposits velocities onto a 2-D radial grid using linear weighting.
 getgrid2d(np:integer,x(np):real,y(np):real,z(np):real,
           nx:integer,ny:integer,grid(0:nx,0:ny):real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
-        # Gathers data from a 2-D grid.
+        # Gathers data from a 2-D grid using linear weighting.
 getgridngp2d(np:integer,x(np):real,y(np):real,z(np):real,
              nx:integer,ny:integer,grid(0:nx,0:ny):real,
              xmin:real,xmax:real,ymin:real,ymax:real) subroutine
-        # Gathers data from a 2-D grid using nearest grid point
+        # Gathers data from a 2-D grid using nearest grid point weighting.
 setgrid3d(np:integer,x(np):real,y(np):real,z(np):real,
           nx:integer,ny:integer,nz:integer,
           grid(0:nx,0:ny,0:nz):real,
           xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real)
           subroutine
-        # Deposits uniform data onto a 3-D grid.
+        # Deposits uniform data onto a 3-D grid using linear weighting.
 deposgrid3d(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
             q(np):real,
             nx:integer,ny:integer,nz:integer,
             grid(0:nx,0:ny,0:nz):real,gridcount(0:nx,0:ny,0:nz):real,
             xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real)
         subroutine
-        # Deposits data onto a 3-D grid.
+        # Deposits data onto a 3-D grid using linear weighting.
 deposgrid3dvect(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
             vx(np):real,vy(np):real,vz(np):real,w(np):real,
             nx:integer,ny:integer,nz:integer,
             grid(0:nx,0:ny,0:nz,3):real,gridcount(0:nx,0:ny,0:nz):real,
             xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real)
         subroutine
-        # Deposits velocities onto a 3-D grid.
+        # Deposits velocities onto a 3-D grid using linear weighting.
 getgrid3d(np:integer,x(np):real,y(np):real,z(np):real,f(np):real,
           nx:integer,ny:integer,nz:integer,grid(0:nx,0:ny,0:nz):real,
           xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
           l2symtry:logical,l4symtry:logical) subroutine
-        # Gathers data from a 3-D grid.
+        # Gathers data from a 3-D grid using linear weighting.
 getgridngp3d(np:integer,x(np):real,y(np):real,z(np):real,f(np):real,
              nx:integer,ny:integer,nz:integer,grid(0:nx,0:ny,0:nz):real,
              xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
              zgrid:real,l2symtry:logical,l4symtry:logical) subroutine
-        # Gathers data from a 3-D grid using nearest grid point.
-
-
-
+        # Gathers data from a 3-D grid using nearest grid point weighting.
 grid2grid(unew(0:nxnew,0:nynew):real,nxnew:integer,nynew:integer,
           xminnew:real,xmaxnew:real,yminnew:real,ymaxnew:real,
           uold(0:nxold,0:nyold):real,nxold:integer,nyold:integer,
           xminold:real,xmaxold:real,yminold:real,ymaxold:real) subroutine
-        # project field from one grid to another
+        # project field from one grid to another using linear weighting
 gridtogrid3d(nxin:integer,nyin:integer,nzin:integer,
              xminin:real,xmaxin:real,yminin:real,ymaxin:real,
              zminin:real,zmaxin:real,
