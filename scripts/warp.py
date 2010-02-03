@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.192 2010/02/01 23:10:44 dave Exp $"
+warp_version = "$Id: warp.py,v 1.193 2010/02/03 01:35:24 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -975,14 +975,23 @@ Reads in data from file, redeposits charge density and does field solve
       w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom]):
     mk_grids_ptr()
 
+  # --- Setup the mpi communicators needed for the field solve
+  initializedecomp(top.fsdecomp)
+  top.ppdecomp.mpi_comm_x = top.fsdecomp.mpi_comm_x
+  top.ppdecomp.mpi_comm_y = top.fsdecomp.mpi_comm_y
+  top.ppdecomp.mpi_comm_z = top.fsdecomp.mpi_comm_z
+
   # --- Load the charge density (since it was not saved)
   if not (w3d.solvergeom in [w3d.RZgeom] or top.fstype == 12):
     loadrho()
     # --- Recalculate the fields (since it was not saved)
     if dofieldsol: fieldsol(0)
 
-  # --- Call setup if it is needed.
-  if current_window() == -1: setup()
+  # --- Call setup if it is needed. Note that the call to current_window
+  # --- is only meaningful on PE0. Since all processors must call setup,
+  # --- PE0's return value from current_window is broadcast to all
+  # --- processors.
+  if parallel.broadcast(current_window()) == -1: setup()
 
   # --- Call any functions that had been registered to be called after
   # --- the restart.

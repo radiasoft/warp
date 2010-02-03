@@ -703,6 +703,10 @@ the diagnostic is of interest and is meaningfull.
   def __setstate__(self,dict):
     self.__dict__.update(dict)
 
+    # --- Setup the MPI communicators
+    initializedecomp(self.fsdecomp)
+    initializedecomp(self.ppdecomp)
+
    # --- Need to add conversion for reading in old dump files - yuck!
 
    ## --- Set new z quantities if reading in an old dump file
