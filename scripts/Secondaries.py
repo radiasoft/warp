@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.47 2009/11/18 22:14:28 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.48 2010/02/09 18:11:42 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -351,17 +351,17 @@ Class for generating secondaries
 
     # set computing box mins and maxs
     if w3d.l4symtry:
-      xmin=-w3d.xmmax
+      xmin=-top.xpmaxlocal
     else:
-      xmin=w3d.xmmin
-    xmax=w3d.xmmax
+      xmin=top.xpminlocal
+    xmax=top.xpmaxlocal
     if w3d.l2symtry or w3d.l4symtry:
-      ymin=-w3d.ymmax
+      ymin=-top.ypmaxlocal
     else:
-      ymin=w3d.ymmin
-    ymax=w3d.ymmax
-    zmin=w3d.zmmin+top.zgrid
-    zmax=w3d.zmmax+top.zgrid
+      ymin=top.ypminlocal
+    ymax=top.ypmaxlocal
+    zmin=top.zpminlocal+top.zgrid
+    zmax=top.zpmaxlocal+top.zgrid
 
     # initializes history quantities
     weighttot=0.
@@ -1447,7 +1447,7 @@ Class for generating photo-electrons
  - l_verbose   : sets verbosity (default=0). 
   """
   def __init__(self,posinst_file=None,xfloor=None,xceiling=None,yfloor=None,yceiling=None,
-               nz=100,l_xmirror=0,l_switchyz=0,l_verbose=0):
+               nz=100,l_xmirror=0,l_switchyz=0,l_verbose=0,lcallscrapercontrollers=0):
      self.totalcount = 0
      self.xfloor=xfloor
      self.xceiling=xceiling
@@ -1469,6 +1469,7 @@ Class for generating photo-electrons
      self.gi={}
      self.pid={}
      self.Lambda=0.
+     self.lcallscrapercontrollers=lcallscrapercontrollers
      if posinst_file is not None:init_posinst_for_warp(posinst_file)
      self.install()
      
@@ -1555,13 +1556,13 @@ Class for generating photo-electrons
      if type(self.Lambda) is not type(array([0.])):
        self.nz=0
        if self.l_switchyz:
-         self.ymin=w3d.ymmin
-         self.ymax=w3d.ymmax
-         self.dy=(w3d.ymmax-w3d.ymmin)
+         self.ymin=top.ypminlocal
+         self.ymax=top.ypmaxlocal
+         self.dy=(top.ypmaxlocal-top.ypminlocal)
        else:
-         self.zmin=w3d.zmminlocal
-         self.zmax=w3d.zmmaxlocal
-         self.dz=(w3d.zmmaxlocal-w3d.zmminlocal)
+         self.zmin=top.zpminlocal
+         self.zmax=top.zpmaxlocal
+         self.dz=(top.zpmaxlocal-top.zpminlocal)
      else:
       if incident_species is not None:
        if self.l_switchyz:
@@ -1620,49 +1621,63 @@ Class for generating photo-electrons
                                                                 max((pos.z[:pos.nlast]/pos.slength)*self.dz+i*self.dz)
        ns = pos.nlast
        js_new=emitted_species.jslist[0]
-       usq = (pos.vgx[:pos.nlast]**2 + pos.vgy[:pos.nlast]**2 + pos.vgz[:pos.nlast]**2)/clight**2
-       gaminv = 1./sqrt(1. + usq)
-       dt=ranf(usq)*top.dt
+       x = pos.x[:pos.nlast]
+       y = pos.y[:pos.nlast]
+       z = pos.z[:pos.nlast]
+       ux = pos.vgx[:pos.nlast]
+       uy = pos.vgy[:pos.nlast]
+       uz = pos.vgz[:pos.nlast]
        if self.xfloor is not None:
-         pos.x[:pos.nlast]=where(pos.x[:pos.nlast]>self.xfloor,pos.x[:pos.nlast],self.xfloor)
+         x=where(x>self.xfloor,x,self.xfloor)
        if self.xceiling is not None:
-         pos.x[:pos.nlast]=where(pos.x[:pos.nlast]<self.xceiling,pos.x[:pos.nlast],self.xceiling)
+         x=where(x<self.xceiling,x,self.xceiling)
        if self.yfloor is not None:
-         pos.y[:pos.nlast]=where(pos.y[:pos.nlast]>self.yfloor,pos.y[:pos.nlast],self.yfloor)
+         y=where(y>self.yfloor,y,self.yfloor)
        if self.yceiling is not None:
-         pos.y[:pos.nlast]=where(pos.y[:pos.nlast]<self.yceiling,pos.y[:pos.nlast],self.yceiling)
+         y=where(y<self.yceiling,y,self.yceiling)
+       dt=ranf(x)*top.dt
+       usq = (ux**2 + uy**2 + uz**2)/clight**2
+       gaminv = 1./sqrt(1. + usq)
+       if self.l_switchyz:
+         x = x+dt*ux*gaminv
+         z = y+dt*uy*gaminv
+         y = (z/pos.slength)*self.dz+i*self.dz+self.zmin
+       else:
+         x = x+dt*ux*gaminv
+         y = y+dt*uy*gaminv
+         z = (z/pos.slength)*self.dz+i*self.dz+self.zmin
+       xc = logical_and(x>=top.xpminlocal,x<top.xpmaxlocal)
+       yc = logical_and(y>=top.ypminlocal,y<top.ypmaxlocal)
+       ii = compress(logical_and(xc,yc),arange(ns))
+       x = take(x,ii)
+       y = take(y,ii)
+       z = take(z,ii)
+       ux = take(ux,ii)
+       uy = take(uy,ii)
+       uz = take(uz,ii)
+       gaminv = take(gaminv,ii)
+       np = shape(x)[0]
        if top.wpid==0:
          weights = None
        else:
-         weights = ones(pos.nlast,'d')
-       if self.l_switchyz:
-           self.addpart(ns,pos.x[:pos.nlast]+dt*pos.vgx[:pos.nlast]*gaminv,
-#                         pos.z[:pos.nlast]*0.,
-                         (pos.z[:pos.nlast]/pos.slength)*self.dy+i*self.dy+self.ymin,
-                         pos.y[:pos.nlast]+dt*pos.vgy[:pos.nlast]*gaminv,
-                         pos.vgx[:pos.nlast],
-                         pos.vgz[:pos.nlast],
-                         pos.vgy[:pos.nlast],
-                         gaminv,
-                         js_new,
-                         weights)
-       else:
-           self.addpart(ns,pos.x[:pos.nlast]+dt*pos.vgx[:pos.nlast]*gaminv,
-                         pos.y[:pos.nlast]+dt*pos.vgy[:pos.nlast]*gaminv,
-                         (pos.z[:pos.nlast]/pos.slength)*self.dz+i*self.dz+self.zmin,
-                         pos.vgx[:pos.nlast],
-                         pos.vgy[:pos.nlast],
-                         pos.vgz[:pos.nlast],
-                         gaminv,
-                         js_new,
-                         weights)
+         weights = ones(np,'d')
+       self.addpart(np,x,y,z,ux,uz,uy,gaminv,js_new,weights)
        pos.nlast=0
 
     # --- make sure that all particles are added
     for js in self.x.keys():
       self.flushpart(js)
-    # --- check for particle out of bounds and exchange particles among processors if needed
-    #zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
-    # --- This is not needed here since particleboundaries3d is called
-    # --- immediately after userinjection anyway.
-    #particleboundaries3d(top.pgroup,-1,false)
+    # --- Check for particle out of bounds and exchange particles among
+    # --- processors if needed. A call to particleboundaries3d is made
+    # --- so that particles are scraped on any user defined conductors
+    # --- as well as the grid boundaries.
+    # --- Set the flag so that this generate routine is not called again
+    # --- recursively (since generate is normally called at the end of
+    # --- the scraping).
+    # --- This is all needed in case lcallscrapercontrollers is true.
+    # --- Also set the flag so that the lost particles are not reset.
+    self.lrecursivegenerate = 1
+    top.lresetlostpart = false
+    particleboundaries3d(top.pgroup,-1,self.lcallscrapercontrollers)
+    top.lresetlostpart = true
+    self.lrecursivegenerate = 0
