@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.61 $, $Date: 2009/12/10 18:58:25 $
+c TOPSLAVE.M, version $Revision: 1.62 $, $Date: 2010/02/09 23:38:54 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -1373,6 +1373,41 @@ c to all processors.
 
 !$OMP MASTER
       if (ltoptimesubs) timeparallelmaxrealarray = timeparallelmaxrealarray + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine parallelmaxintegerarray(data,ndata)
+      use Subtimerstop
+      integer(ISZ):: ndata
+      integer(ISZ):: data(ndata)
+c Find the max over all of the processors.  Resulting data is broadcast
+c to all processors.
+
+      integer(MPIISZ),allocatable:: data2(:)
+      integer(MPIISZ),allocatable:: data3(:)
+      integer(MPIISZ):: mpierror
+      include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+      allocate(data2(ndata))
+
+      if (ISZ == 4) then
+        call MPI_ALLREDUCE(data,data2,ndata,MPI_INTEGER,MPI_MAX,
+     &                     MPI_COMM_WORLD,mpierror)
+      else
+        allocate(data3(ndata))
+        data3 = data
+        call MPI_ALLREDUCE(data3,data2,int(ndata,MPIISZ),MPI_INTEGER,MPI_MAX,
+     &                     MPI_COMM_WORLD,mpierror)
+        deallocate(data3)
+      endif
+      data = data2
+      deallocate(data2)
+
+!$OMP MASTER
+      if (ltoptimesubs) timeparallelmaxintegerarray = timeparallelmaxintegerarray + wtime() - substarttime
 !$OMP END MASTER
 
       return

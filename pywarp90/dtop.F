@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.172 $, $Date: 2010/02/03 23:43:39 $
+c@(#) File DTOP.F, version $Revision: 3.173 $, $Date: 2010/02/09 23:38:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.172 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.173 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -2830,6 +2830,112 @@ c           --- See comments above for z.
 
       return
       end
+c=============================================================================
+c=============================================================================
+      subroutine gridcrossingmoments(np,ww,xnew,ynew,znew,vxnew,vynew,vznew,
+     &                               zold,vxold,vyold,vzold,dt,zmmin,dz,
+     &                               nt,nz,num,vzbar,xbar,ybar,
+     &                               xsqbar,ysqbar,rprms)
+      integer(ISZ):: np,nt,nz
+      real(kind=8):: dt,zmmin,dz
+      real(kind=8),dimension(np):: ww,xnew,ynew,znew,vxnew,vynew,vznew
+      real(kind=8),dimension(np):: zold,vxold,vyold,vzold
+      real(kind=8),dimension(nt,0:nz):: num,vzbar,xbar,ybar
+      real(kind=8),dimension(nt,0:nz):: xsqbar,ysqbar,rprms
+
+c This does the grid crossing moments calculation for the case where the time
+c step is subdivided into smaller chunks. The full calculation is done here.
+c This includes cases where particles cross multiple grid cells during a time
+c step.
+
+      integer(ISZ):: ip,izold,iznew,iz,it
+      real(kind=8):: ax,ay,az
+      real(kind=8):: zgrid,delz,dtstar,dm,dp
+      real(kind=8):: x,y,z,vx,vy,vz
+      real(kind=8):: dti,dzi
+
+      dti = 1./dt
+      dzi = 1./dz
+
+      do ip=1,np
+
+        izold = (zold(ip) - zmmin)*dzi
+        iznew = (znew(ip) - zmmin)*dzi
+
+        izold = max(izold,-1)
+        iznew = min(iznew,nz)
+
+c       --- Skip particles that havn't crossed a grid cell.
+        if (iznew <= izold) cycle
+
+c       --- Estimate the force on the particle, to be used in the
+c       --- extrapolation to the grid cell locations.
+        ax = (vxnew(ip) - vxold(ip))*dti
+        ay = (vynew(ip) - vyold(ip))*dti
+        az = (vznew(ip) - vzold(ip))*dti
+
+c       --- Loop over all grid cells that the particle crossed.
+        do iz=izold+1,iznew
+
+c         --- This uses the same algorithm that is used in
+c         --- getextrapolatedparticles. It assumes that the velocity rotation
+c         --- from the magnetic field is small.
+          zgrid = zmmin + iz*dz
+          delz = znew(ip) - zgrid
+          if (az == 0.) then
+            dtstar = -delz/vznew(ip)
+          else
+            if ((vznew(ip)**2 - 2.*az*delz) > 0.) then
+              dm = (-vznew(ip) - sqrt(vznew(ip)**2 - 2.*az*delz))/az
+              dp = (-vznew(ip) + sqrt(vznew(ip)**2 - 2.*az*delz))/az
+              if (abs(dp) < abs(dm)) then
+                dtstar = dp
+              else
+                dtstar = dm
+              endif
+            else
+c             --- In this case, because of az, the particle will never
+c             --- cross the zzep plane, so effectively decrease az
+c             --- so that the particle would just touch the plane.
+c             --- This is very kludgy and ad-hoc, but the calculation
+c             --- of az is already equally kludgy.
+c             --- This should probably never happen since it is known that
+c             --- that particle crossed the grid cell, but it is nice to have
+c             --- the safety just in case.
+              dtstar = -vznew(ip)/az
+            endif
+          endif
+
+          it = ceiling(nt*(dt + dtstar)/dt)
+c         --- This could happen since the above calculation is different from
+c         --- the actual particle advance.
+          if (it < 1 .or. it > nt) cycle
+c         --- This is another way of fixing out of bounds particle.
+c         if (it < 1) it = 1
+c         if (it > nt) it = nt
+
+c         --- Extrapolate to the grid cell.
+          x = xnew(ip) + vxnew(ip)*dtstar + 0.5*ax*dtstar**2
+          y = ynew(ip) + vynew(ip)*dtstar + 0.5*ay*dtstar**2
+          vx = vxnew(ip) + ax*dtstar
+          vy = vynew(ip) + ay*dtstar
+          vz = vznew(ip) + az*dtstar
+
+          num(it,iz) = num(it,iz) + ww(ip)
+          vzbar(it,iz) = vzbar(it,iz) + vz*ww(ip)
+          xbar(it,iz) = xbar(it,iz) + x*ww(ip)
+          ybar(it,iz) = ybar(it,iz) + y*ww(ip)
+          xsqbar(it,iz) = xsqbar(it,iz) + x**2*ww(ip)
+          ysqbar(it,iz) = ysqbar(it,iz) + y**2*ww(ip)
+          rprms(it,iz) = rprms(it,iz) + (x**2 + y**2)*ww(ip)
+
+        enddo
+
+      enddo
+
+      return
+      end
+c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine take2dint(a,n1,n2,i,j,n,b)

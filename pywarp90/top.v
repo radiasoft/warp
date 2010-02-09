@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.270 $, $Date: 2010/02/03 23:43:40 $
+#@(#) File TOP.V, version $Revision: 3.271 $, $Date: 2010/02/09 23:38:54 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.270 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.271 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2637,6 +2637,17 @@ gridtogrid3d(nxin:integer,nyin:integer,nzin:integer,
              gridout(0:nxout,0:nyout,0:nzout):real) subroutine
         # Linearly interpolates from one grid to another. This will also work
         # for 2d and 1d arrays if the n's are set to zero.
+gridcrossingmoments(np:integer,ww(np):real,
+                    xnew(np):real,ynew(np):real,znew(np):real,
+                    vxnew(np):real,vynew(np):real,vznew(np):real,
+                    zold(np):real,vxold(np):real,vyold(np):real,vzold(np):real,
+                    dt:real,zmmin:real,dz:real,
+                    nt:integer,nz:integer,num(nt,0:nz):real,
+                    vzbar(nt,0:nz):real,xbar(nt,0:nz):real,ybar(nt,0:nz):real,
+                    xsqbar(nt,0:nz):real,ysqbar(nt,0:nz):real,
+                    rprms(nt,0:nz):real) subroutine
+        # Do the extrapolation and moments calculation for particles that
+        # cross grid z grid cells.
 sum_neighbors3d(fin(nx+1,ny+1,nz+1):integer,fout(nx+1,ny+1,nz+1):integer,nx:integer,ny:integer,nz:integer) subroutine # sum neighbouring cells
 reduceisinsidegrid(isinside(0:nx,0:ny,0:nz):real,reducedisinside(0:nx,0:ny,0:nz):real,nx,ny,nz)
               subroutine # Reduces the isinside array, removing redundant data
@@ -3103,6 +3114,7 @@ timeparallel_sum_temperature   real /0./
 timeparallelsumrealarray       real /0./
 timeparallelsumintegerarray    real /0./
 timeparallelmaxrealarray       real /0./
+timeparallelmaxintegerarray    real /0./
 timeparallelminrealarray       real /0./
 timeparallellor                real /0./
 timeparallelbroadcastrealarray real /0./
