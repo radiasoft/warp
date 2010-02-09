@@ -21,6 +21,13 @@ cross the cell.
         diagnostic is done.
   - nzscale=1: multiplier on nz - makes it easy to use the w3d grid parameters
                but with a differing number of grid points.
+  - nhist=top.nhist: Specifies how often the data is collected. Note that
+                     nhist can be < 1., in which case the data is subdivided
+                     in a time step based on the time that the particles
+                     crossed the grid cell. The calculation assumes constant
+                     velocity over the time step. The internal value of nhist
+                     may differ slightly from the input value since it is
+                     adjusted so that 1/nhist is an integer.
   - nr,rmax: radial extent of radial profile diagnostic. Both must be given
              for the radial diagnostic to be done.
   - scintxmin,scintxmax,scintymin,scintymax,scintzmin,scintzmax,scintnx,scintny:
@@ -89,6 +96,12 @@ be unreliable.
         self.lmoving_frame = lmoving_frame
 
         self.zoldpid = nextpid()
+        if nhist < 1.:
+          # --- Also save the old velocity to give a better extrapolation.
+          self.vxoldpid = nextpid()
+          self.vyoldpid = nextpid()
+          self.vzoldpid = nextpid()
+
 
         self.initializedata()
         self.enable()
@@ -135,9 +148,17 @@ be unreliable.
         if self.dz is None: self.dz = w3d.dz/self.nzscale
         if self.nz is None:
             self.nz = nint((self.zmmax - self.zmmin)/self.dz)
+            assert self.nz > 0,"GridCrossingDiags: zmmax - zmmin must be > dz"
             self.dz = (self.zmmax - self.zmmin)/self.nz
         assert abs((self.zmmax-self.zmmin)-self.nz*self.dz) < 1.e-5*self.dz,\
             "zmmin, zmmax, dz, and nz are not consistent with each other"
+
+        if self.nhist is not None and self.nhist < 1:
+            self.nt = nint(1./self.nhist)
+            # --- Make sure the nt and nhist are consistent.
+            self.nhist = 1./self.nt
+        else:
+            self.nt = 1
 
         if self.ldoscintillator:
             self.scintzmin = nint((self.scintzmin-self.zmmin)/self.dz)*self.dz + self.zmmin
@@ -150,22 +171,35 @@ be unreliable.
 
     def appendnextarrays(self,zbeam):
         nz = self.nz
-        self._time.append(top.time)
-        self._zbeam.append(zbeam)
-        self._count.append(zeros(1+nz,'d'))
-        self._current.append(zeros(1+nz,'d'))
-        self._vzbar.append(zeros(1+nz,'d'))
-        self._xbar.append(zeros(1+nz,'d'))
-        self._ybar.append(zeros(1+nz,'d'))
-        self._xsqbar.append(zeros(1+nz,'d'))
-        self._ysqbar.append(zeros(1+nz,'d'))
+        if self.nt == 1:
+          ss = (1+nz,)
+          tt = top.time
+          zb = zbeam
+        else:
+          ss = (self.nt,1+nz)
+          # --- The time extends from just after the last time up to and
+          # --- including the current time.
+          tt = top.time - top.dt + arange(1,self.nt+1)*top.dt/self.nt
+          zb = ones(self.nt)*zbeam
+
+        self._time.append(tt)
+        self._zbeam.append(zb)
+        self._count.append(zeros(ss,'d'))
+        self._current.append(zeros(ss,'d'))
+        self._vzbar.append(zeros(ss,'d'))
+        self._xbar.append(zeros(ss,'d'))
+        self._ybar.append(zeros(ss,'d'))
+        self._xsqbar.append(zeros(ss,'d'))
+        self._ysqbar.append(zeros(ss,'d'))
         self._xrms.append(None)
         self._yrms.append(None)
         self._rrms.append(None)
-        self._rprms.append(zeros(1+nz,'d'))
+        self._rprms.append(zeros(ss,'d'))
+
         if self.ldoradialdiag:
             nr = self.nr
             self._rprofile.append(zeros((1+nr,1+nz),'d'))
+
         if self.ldoscintillator:
             if (len(self._scintillator) == 0 or
                 maxnd(self._scintillator[-1]) > 0.):
@@ -195,6 +229,7 @@ be unreliable.
         zmmax = self.zmmax
         dz = self.dz
         nz = self.nz
+        nt = self.nt
 
         # --- Do some error checking
         if zmmax < zmmin: return
@@ -216,7 +251,6 @@ be unreliable.
         zoldpid = self.zoldpid
 
         # --- Create temporary work space
-        gridcount = zeros(1+nz,'d')
         if self.ldoradialdiag:
             rprofilecount = zeros((1+nr,1+nz),'d')
             #self.rprofilemesh = iota(0,nr)*dr
@@ -228,7 +262,9 @@ be unreliable.
 
         # --- The data is gathered from top.it-nhist/2 to top.it+nhist/2-1.
         # --- At the half way point, create space for the next set of data.
-        if len(self._time) == 0 or (top.it-1)%nhist == int(nhist/2):
+        # --- If nhist < 1, then collect data every time step.
+        if (len(self._time) == 0 or nhist < 1. or
+            (top.it-1)%nhist == int(nhist/2)):
 
             if me == 0 and not self.dumptofile:
                 self.appendnextarrays(zbeam)
@@ -258,41 +294,83 @@ be unreliable.
         # --- particles locally.
         if top.pgroup.nps[js] > 0:
 
-            xnew = getx(js=js,gather=0)
-            ynew = gety(js=js,gather=0)
-            rpnew = getrp(js=js,gather=0)
-            znew = getz(js=js,gather=0)
-            vznew = getvz(js=js,gather=0)
-            zold = getpid(js=js,id=zoldpid-1,gather=0)
+            if nt == 1 or self.ldoradialdiag or self.ldoscintillator:
 
-            iznew = int((znew - (zbeam + zmmin))/dz)
-            izold = int((zold - (zbeam + zmmin))/dz)
+                xnew = getx(js=js,gather=0)
+                ynew = gety(js=js,gather=0)
+                rpnew = getrp(js=js,gather=0)
+                znew = getz(js=js,gather=0)
+                vznew = getvz(js=js,gather=0)
+                zold = getpid(js=js,id=zoldpid-1,gather=0)
 
-            icrossed = (iznew > izold)
+                iznew = int((znew - (zbeam + zmmin))/dz)
+                izold = int((zold - (zbeam + zmmin))/dz)
 
-            izc = iznew[icrossed]
-            xc = xnew[icrossed]
-            yc = ynew[icrossed]
-            rpc = rpnew[icrossed]
-            vzc = vznew[icrossed]
-            np = len(izc)
+                icrossed = (iznew > izold)
 
-            if top.wpid > 0:
-                weight = getpid(js=js,id=top.wpid-1,gather=0)
-                ww = weight[icrossed]
+                izc = iznew[icrossed]
+                xc = xnew[icrossed]
+                yc = ynew[icrossed]
+                rpc = rpnew[icrossed]
+                vzc = vznew[icrossed]
+                np = len(izc)
+
+                if top.wpid > 0:
+                    weight = getpid(js=js,id=top.wpid-1,gather=0)
+                    ww = weight[icrossed]
+                else:
+                    ww = ones(np,'d')
+
+                zc = izc.astype('d')
+
+            if nt == 1:
+                gcount = zeros_like(self._count[-1])
+
+                deposgrid1d(1,np,zc,ww,nz,self._count[-1],gcount,0.,nz)
+                deposgrid1d(1,np,zc,ww*vzc,nz,self._vzbar[-1],gcount,0.,nz)
+                deposgrid1d(1,np,zc,ww*xc,nz,self._xbar[-1],gcount,0.,nz)
+                deposgrid1d(1,np,zc,ww*yc,nz,self._ybar[-1],gcount,0.,nz)
+                deposgrid1d(1,np,zc,ww*xc**2,nz,self._xsqbar[-1],gcount,0.,nz)
+                deposgrid1d(1,np,zc,ww*yc**2,nz,self._ysqbar[-1],gcount,0.,nz)
+                deposgrid1d(1,np,zc,ww*rpc**2,nz,self._rprms[-1],gcount,0.,nz)
+
             else:
-                ww = ones(np,'d')
 
-            zc = izc.astype('d')
-            deposgrid1d(1,np,zc,ww,nz,self._count[-1],gridcount,0.,nz)
-            deposgrid1d(1,np,zc,ww*vzc,nz,self._vzbar[-1],gridcount,0.,nz)
-            deposgrid1d(1,np,zc,ww*xc,nz,self._xbar[-1],gridcount,0.,nz)
-            deposgrid1d(1,np,zc,ww*yc,nz,self._ybar[-1],gridcount,0.,nz)
-            deposgrid1d(1,np,zc,ww*xc**2,nz,self._xsqbar[-1],gridcount,0.,nz)
-            deposgrid1d(1,np,zc,ww*yc**2,nz,self._ysqbar[-1],gridcount,0.,nz)
-            deposgrid1d(1,np,zc,ww*rpc**2,nz,self._rprms[-1],gridcount,0.,nz)
+                xnew = getx(js=js,gather=0)
+                ynew = gety(js=js,gather=0)
+                znew = getz(js=js,gather=0)
+                vxnew = getvx(js=js,gather=0)
+                vynew = getvy(js=js,gather=0)
+                vznew = getvz(js=js,gather=0)
+                zold = getpid(js=js,id=zoldpid-1,gather=0)
+                vxold = getpid(js=js,id=self.vxoldpid-1,gather=0)
+                vyold = getpid(js=js,id=self.vyoldpid-1,gather=0)
+                vzold = getpid(js=js,id=self.vzoldpid-1,gather=0)
+                np = len(xnew)
+
+                if top.wpid > 0:
+                    wwnew = getpid(js=js,id=top.wpid-1,gather=0)
+                else:
+                    wwnew = ones(np,'d')
+
+                # --- The computation is too complicated for Python.
+                # --- Do all the work in fortran.
+                # --- This includes cases where particles can cross multiple
+                # --- grid cells in a time step.
+                gridcrossingmoments(np,wwnew,xnew,ynew,znew,vxnew,vynew,vznew,
+                                    zold,vxold,vyold,vzold,
+                                    top.dt,zmmin+zbeam,dz,
+                                    nt,nz,
+                                    self._count[-1],
+                                    self._vzbar[-1],
+                                    self._xbar[-1],
+                                    self._ybar[-1],
+                                    self._xsqbar[-1],
+                                    self._ysqbar[-1],
+                                    self._rprms[-1])
 
             if self.ldoradialdiag or self.ldoscintillator:
+                np = len(izc)
                 vz = getvz(js=js,gather=0)[icrossed]
                 ke = 0.5*top.pgroup.sm[js]*vz**2
                 ww *= top.pgroup.sw[js]
@@ -316,12 +394,16 @@ be unreliable.
             i1 = top.pgroup.ins[js] - 1
             i2 = i1 + top.pgroup.nps[js]
             top.pgroup.pid[i1:i2,zoldpid-1] = top.pgroup.zp[i1:i2]
+            if self.nhist < 1.:
+                top.pgroup.pid[i1:i2,self.vxoldpid-1] = top.pgroup.uxp[i1:i2]
+                top.pgroup.pid[i1:i2,self.vyoldpid-1] = top.pgroup.uyp[i1:i2]
+                top.pgroup.pid[i1:i2,self.vzoldpid-1] = top.pgroup.uzp[i1:i2]
 
         # --- The data is gathered from top.it-nhist/2 to top.it+nhist/2-1.
         # --- At the half way point, finish the calculation by summing over
         # --- processors, dividing by the counts to get the averages, and
         # --- calculating the rms quantities.
-        if top.it%nhist == int(nhist/2):
+        if nhist < 1. or top.it%nhist == int(nhist/2):
             co = self._count[-1]
             cu = self._current[-1]
             vzbar = self._vzbar[-1]
@@ -375,8 +457,8 @@ be unreliable.
         if me != 0: return
         ff = PW.PW(self.dumptofile+'_gridcrossing.pdb','a',verbose=0)
         suffix = "_%08d"%(top.it)
-        ff.write('time'+suffix,top.time)
-        ff.write('zbeam'+suffix,zbeam)
+        ff.write('time'+suffix,self._time[0])
+        ff.write('zbeam'+suffix,self._zbeam[0])
         ff.write('count'+suffix,self._count[0])
         ff.write('current'+suffix,self._current[0])
         ff.write('vzbar'+suffix,self._vzbar[0])
@@ -409,6 +491,7 @@ be unreliable.
             cPickle.dump(('nz',self.nz),ff,-1)
             cPickle.dump(('nzscale',self.nzscale),ff,-1)
             cPickle.dump(('nhist',self.nhist),ff,-1)
+            cPickle.dump(('nt',self.nt),ff,-1)
             cPickle.dump(('nr',self.nr),ff,-1)
             cPickle.dump(('rmax',self.rmax),ff,-1)
             cPickle.dump(('ztarget',self.ztarget),ff,-1)
@@ -432,8 +515,8 @@ be unreliable.
         else:
             ff = open(self.dumptofile+'_gridcrossing.pkl','a')
         suffix = "_%08d"%(top.it)
-        cPickle.dump(('time'+suffix,top.time),ff,-1)
-        cPickle.dump(('zbeam'+suffix,zbeam),ff,-1)
+        cPickle.dump(('time'+suffix,self._time[0]),ff,-1)
+        cPickle.dump(('zbeam'+suffix,self._zbeam[0]),ff,-1)
         cPickle.dump(('count'+suffix,self._count[0]),ff,-1)
         cPickle.dump(('current'+suffix,self._current[0]),ff,-1)
         cPickle.dump(('vzbar'+suffix,self._vzbar[0]),ff,-1)
@@ -541,9 +624,9 @@ be unreliable.
             data = cPickle.load(ff)
         ff.close()
 
-        # --- Read all of the data in. Only save the data if the time is
+        # --- Read all of the data in. Only keep the data if the time is
         # --- between start and endtime.
-        savedata = 0
+        keepdata = 0
         datadict = {}
         for file in files:
             ff = open(file,'r')
@@ -554,11 +637,17 @@ be unreliable.
                 except:
                     break
                 if data[0][:4] == 'time':
-                    if starttime <= data[1] <= endtime:
-                        savedata = 1
+                    if self.nhist < 1.:
+                        # --- Keep the data if any portion of it is with in
+                        # --- the stand and end time.
+                        t1 = data[1][0]
+                        t2 = data[1][-1]
+                    else:
+                        t1 = t2 = data[1]
+                    keepdata = (starttime <= t2 and t1 <= endtime)
                 if not readscintillator and data[0][:12] == 'scintillator':
                     data = (data[0],tell)
-                if savedata:
+                if keepdata:
                     datadict[data[0]] = data[1]
             ff.close()
 
@@ -639,9 +728,9 @@ be unreliable.
 
     # ----------------------------------------------------------------------
     def setupanalysis(self):
-        self.arraytime = array(self.time)
-        self.arraycurrent = array(self.current)
-        self.arrayradius = array(self.rrms)
+        self.arraytime = self.time
+        self.arraycurrent = self.current
+        self.arrayradius = self.rrms
         self.zmesh = self.zmmin + arange(0,self.nz+1,dtype='l')*self.dz
 
         self.currentmax = zeros(self.nz+1,'d')
@@ -887,7 +976,7 @@ around the peak current."""
             # --- Get the data, removing the last element if the accumulation
             # --- of the data is not complete.
             result = getattr(self,'_'+name)
-            if top.it%nhist != int(nhist/2):
+            if nhist > 1 and top.it%nhist != int(nhist/2):
                 result = result[:-1]
 
             # --- Check if there is a cached array.
@@ -899,6 +988,15 @@ around the peak current."""
             else:
                 try:
                     result = array(result)
+                    if (self.nt > 1 and
+                        name not in ['rprofile','scinttime','scintillator']):
+                        # --- Reshape, putting the time blocks into one
+                        # --- dimension.
+                        ss = result.shape
+                        if len(ss) == 2:
+                            result.shape = (ss[0]*ss[1],)
+                        else:
+                            result.shape = (ss[0]*ss[1],ss[2])
                 except ValueError:
                     # --- This can happen if self.nz changed at some point,
                     # --- which changed the length of the new data so that
