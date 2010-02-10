@@ -153,6 +153,8 @@ be unreliable.
         assert abs((self.zmmax-self.zmmin)-self.nz*self.dz) < 1.e-5*self.dz,\
             "zmmin, zmmax, dz, and nz are not consistent with each other"
 
+        self.zmesh = self.zmmin + arange(0,self.nz+1,dtype='l')*self.dz
+
         if self.nhist is not None and self.nhist < 1:
             self.nt = nint(1./self.nhist)
             # --- Make sure the nt and nhist are consistent.
@@ -169,19 +171,25 @@ be unreliable.
             self.scintdx = (self.scintxmax - self.scintxmin)/self.scintnx
             self.scintdy = (self.scintymax - self.scintymin)/self.scintny
 
+    def gettimezbeam(self,zbeam):
+        if self.nt == 1:
+            tt = top.time
+            zb = zbeam
+        else:
+            # --- The time extends from just after the last time up to and
+            # --- including the current time.
+            tt = top.time - top.dt + arange(1,self.nt+1)*top.dt/self.nt
+            zb = ones(self.nt)*zbeam
+        return tt,zb
+
     def appendnextarrays(self,zbeam):
         nz = self.nz
         if self.nt == 1:
-          ss = (1+nz,)
-          tt = top.time
-          zb = zbeam
+            ss = (1+nz,)
         else:
-          ss = (self.nt,1+nz)
-          # --- The time extends from just after the last time up to and
-          # --- including the current time.
-          tt = top.time - top.dt + arange(1,self.nt+1)*top.dt/self.nt
-          zb = ones(self.nt)*zbeam
+            ss = (self.nt,1+nz)
 
+        tt,zb = self.gettimezbeam(zbeam)
         self._time.append(tt)
         self._zbeam.append(zb)
         self._count.append(zeros(ss,'d'))
@@ -277,6 +285,9 @@ be unreliable.
                 if len(self._time) == 0:
                     self.appendnextarrays(zbeam)
                 else:
+                    tt,zb = self.gettimezbeam(zbeam)
+                    self._time[0] = tt
+                    self._zbeam[0] = zb
                     self._count[0].fill(0.)
                     self._current[0].fill(0.)
                     self._vzbar[0].fill(0.)
