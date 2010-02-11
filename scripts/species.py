@@ -380,10 +380,12 @@ Creates a new species of particles. All arguments are optional.
     density[...] = parallelsum(density)
     if dens is None:return density
      
-  def addpart(self,x,y,z,vx,vy,vz,gi=1.,js=None,lmomentum=false,**kw):
+  def addparticles(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,js=None,
+                   lmomentum=false,**kw):
     if js is None:
       js=self.jslist[0]
     addparticles(x,y,z,vx,vy,vz,gi=gi,js=js,lmomentum=lmomentum,**kw)
+  addpart = addparticles
       
   def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,
                       vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,
@@ -503,7 +505,7 @@ Creates a new species of particles. All arguments are optional.
 
     kw['lallindomain'] = lallindomain
     kw['lmomentum'] = lmomentum
-    self.addpart(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
+    self.addparticles(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
     
   def add_uniform_cylinder(self,np,rmax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,
                            xmean=0.,ymean=0,zmean=0,vxmean=0.,vymean=0.,vzmean=0.,
@@ -791,7 +793,7 @@ in radius squared.
       gi=1
 
     kw['lallindomain'] = lallindomain
-    self.addpart(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
+    self.addparticles(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
     
   def add_gaussian_dist(self,np,deltax,deltay,deltaz,vthx=0.,vthy=0.,vthz=0.,
                         xmean=0.,ymean=0.,zmean=0.,vxmean=0.,vymean=0.,vzmean=0.,
@@ -822,7 +824,7 @@ in radius squared.
             gi=1./sqrt(1.+(vxa*vxa+vya*vya+vza*vza)/clight**2)
           else:
             gi=1.
-          self.addpart(xa,ya,za,vxa,vya,vza,gi=gi,js=js,lmomentum=lmomentum,**kw)
+          self.addparticles(xa,ya,za,vxa,vya,vza,gi=gi,js=js,lmomentum=lmomentum,**kw)
     if zdist=='regular': 
       dz=16.*deltaz/nz
       zmin=-(float(nz/2)-0.5)*dz
@@ -858,7 +860,7 @@ in radius squared.
                 gi=1./sqrt(1.+(vxa*vxa+vya*vya+vza*vza)/clight**2)
               else:
                 gi=1.
-              self.addpart(xa,ya,za,vxa,vya,vza,gi=gi,js=js,lmomentum=lmomentum,**kw)
+              self.addparticles(xa,ya,za,vxa,vya,vza,gi=gi,js=js,lmomentum=lmomentum,**kw)
     
   def gather_zmmnts_locs(self):
     get_zmmnts_stations(len(self.jslist),
@@ -1656,7 +1658,7 @@ of code."""
 
   def load(self,filename='pdump.pdb'):
     f=PR.PR(filename)
-    self.addpart(f.x,f.y,f.z,f.ux,f.uy,f.uz,f.gi,lmomentum=True)
+    self.addparticles(f.x,f.y,f.z,f.ux,f.uy,f.uz,f.gi,lmomentum=True)
     f.close()
 
   # --- Fancy python to provide convenient methods for getting various
