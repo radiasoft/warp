@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.304 $, $Date: 2010/01/13 22:05:07 $
+#@(#) File W3D.V, version $Revision: 3.305 $, $Date: 2010/02/11 18:48:56 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.304 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.305 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -261,30 +261,30 @@ lhalfmaxwellinject   /0/  # If 1, then z velocities are injected to produce
 
 *********** InMesh3d dump:
 # Mesh specifications (input qtys)
-xmmin   real  [m]  /0./            # Lower limit of mesh
-xmmax   real  [m]  /0./            # Upper limit of mesh
-ymmin   real  [m]  /0./            # Lower limit of mesh
-ymmax   real  [m]  /0./            # Upper limit of mesh
-zmmin   real  [m]  /0./ +parallel  # Lower limit of mesh
-zmmax   real  [m]  /0./ +parallel  # Upper limit of mesh
-nx      integer    /0/             # Mesh points are 0,...,nx
-ny      integer    /0/             # Mesh points are 0,...,ny
-nz      integer    /0/  +parallel  # Full size of nz
-nxlocal integer    /0/  +parallel  # Mesh points are 0,...,nxlocal
-nylocal integer    /0/  +parallel  # Mesh points are 0,...,nylocal
-nzlocal integer    /0/  +parallel  # Mesh points are 0,...,nzlocal
-xmminlocal  real [m] /0./          # Local value of xmmin
-xmmaxlocal  real [m] /0./          # Local value of xmmax
-ymminlocal  real [m] /0./          # Local value of ymmin
-ymmaxlocal  real [m] /0./          # Local value of ymmax
-zmminlocal  real [m] /0./          # Local value of zmmin
-zmmaxlocal  real [m] /0./          # Local value of zmmax
-xmminglobal real [m]               # Global value of xmmin
-xmmaxglobal real [m]               # Global value of xmmax
-ymminglobal real [m]               # Global value of ymmin
-ymmaxglobal real [m]               # Global value of ymmax
-zmminglobal real [m]               # Global value of zmmin
-zmmaxglobal real [m]               # Global value of zmmax
+xmmin   real  [m]  /0./             # Lower limit of mesh
+xmmax   real  [m]  /0./             # Upper limit of mesh
+ymmin   real  [m]  /0./             # Lower limit of mesh
+ymmax   real  [m]  /0./             # Upper limit of mesh
+zmmin   real  [m]  /0./             # Lower limit of mesh
+zmmax   real  [m]  /0./             # Upper limit of mesh
+nx      integer    /0/              # Mesh points are 0,...,nx
+ny      integer    /0/              # Mesh points are 0,...,ny
+nz      integer    /0/              # Full size of nz
+nxlocal integer    /0/  +parallel   # Mesh points are 0,...,nxlocal
+nylocal integer    /0/  +parallel   # Mesh points are 0,...,nylocal
+nzlocal integer    /0/  +parallel   # Mesh points are 0,...,nzlocal
+xmminlocal  real [m] /0./ +parallel # Local value of xmmin
+xmmaxlocal  real [m] /0./ +parallel # Local value of xmmax
+ymminlocal  real [m] /0./ +parallel # Local value of ymmin
+ymmaxlocal  real [m] /0./ +parallel # Local value of ymmax
+zmminlocal  real [m] /0./ +parallel # Local value of zmmin
+zmmaxlocal  real [m] /0./ +parallel # Local value of zmmax
+xmminglobal real [m]                # Global value of xmmin
+xmmaxglobal real [m]                # Global value of xmmax
+ymminglobal real [m]                # Global value of ymmin
+ymmaxglobal real [m]                # Global value of ymmax
+zmminglobal real [m]                # Global value of zmmin
+zmmaxglobal real [m]                # Global value of zmmax
 
 ******* GridBoundary3d dump:
 bound0    integer /0/  # Type of boundary condition at plane z=0
@@ -536,9 +536,9 @@ dy               real   [m]  /0./      #  mesh spacing in y
 dz               real   [m]  /0./      #  mesh spacing in z
 nxyz             integer /0/
    # size of a field array, (nx+1)*(ny+1)*(nz+1)
-ix_axis          integer [1]           # x location of axis in mesh
-iy_axis          integer [1]           # y location of axis in mesh
-iz_axis          integer [1] +parallel # z location of axis in mesh
+ix_axis          integer [1] # x location of axis in mesh
+iy_axis          integer [1] # y location of axis in mesh
+iz_axis          integer [1] # z location of axis in mesh
 
 *********** InjectVars3d dump:
 inj_ninj             integer  # Auto set to either 1 or ninject. Set to 1
