@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.245 $, $Date: 2009/12/10 22:40:17 $
+c@(#) File TOP.F, version $Revision: 3.246 $, $Date: 2010/02/13 01:47:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1986,7 +1986,7 @@ c=============================================================================
       subroutine getextrapolatedparticles(ipmin,np,pgroup,npid,
      &                                    dt,uxpo,uypo,uzpo,isid,time,zbeam)
       use ParticleGroupmodule
-      use Z_Moments
+      use Z_Moments,Only: zmmntmin,zmmntmax,dzm
       use ExtPart
       use Timers
       integer(ISZ):: ipmin,np,npid,isid
@@ -1994,7 +1994,8 @@ c=============================================================================
       real(kind=8):: dt,time,zbeam
       real(kind=8):: uxpo(np),uypo(np),uzpo(np)
 
-c Given current and previous velocities, extrapolates particles to the
+c Given the information at the end of a time step, the current position and
+c velocity and the previous velocity, extrapolate particles to the
 c positions given (in the lab frame) by zzepwin.
 c The extrapolation is approximate. A better version might use the full
 c advance capabilities (from padvnc3d) but that would probably be overkill.
@@ -2146,6 +2147,93 @@ c           --- dtstarnp1 is way off.
 
       return
       end
+c=============================================================================
+      subroutine getcrossingparticles(ipmin,np,pgroup,dt,isid,time,zbeam)
+      use ZCrossingParticles
+      use ParticleGroupmodule
+      use Z_Moments,Only: zmmntmin,zmmntmax,dzm
+      use Timers
+      integer(ISZ):: ipmin,np,isid
+      type(ParticleGroup):: pgroup
+      real(kind=8):: dt,time,zbeam
+
+c Given the position at time level (i-1) and the velocity at time
+c level (i-1/2), get particles that will cross the positions given
+c (in the lab frame) by zzzcwin over the next time step. This does a
+c fraction of the standard position advance to find the transverse
+c positions. Since this method uses the same advance equation as the
+c standard particle advance, the data accumulated from timestep to
+c timestep match up seamlessly.
+c Note that there is no need for the lepsaveonce option, since this
+c routine only grabs particles that actually are crossing the z location.
+
+      real(kind=8):: zzzc
+      real(kind=8):: dtstar,vx,vy,vz,zold,znew
+      integer(ISZ):: iw,ip,nn
+      integer(ISZ):: nextpid
+
+      real(kind=8):: timetemp,wtime
+
+c     --- Check if the pgroup had been initialized.
+      if (isid == 0) return
+
+      if (npidzcmax .ne. pgroup%npid) then
+        npidzcmax = pgroup%npid
+        call gchange("ZCrossingParticles",0)
+      endif
+
+c     --- Loop over windows
+      do iw=1,nzcwin
+
+c       --- Get the location of the extrapolation plane.
+        if (izzcwin(iw) >= 0) then
+          zzzc = zmmntmin + izzcwin(iw)*dzm + zbeam
+        else
+          zzzc = zzzcwin(iw)
+        endif
+
+c       --- Skip windows that are outside of the grid frame.
+        if (zzzc+dzm <= zmmntmin+zbeam .or.
+     &      zzzc-dzm >= zmmntmax+zbeam) cycle
+
+c       --- Make sure that there is enough room - assuming that all particles
+c       --- could be saved.
+        if (nzc(iw,isid)+np > nzcmax) then
+          nzcmax = nzc(iw,isid)+np
+          call gchange("ExtPart",0)
+        endif
+
+c       --- extrapolate to window if near it
+        do ip=ipmin,ipmin+np-1
+          vz = pgroup%uzp(ip)*pgroup%gaminv(ip)
+          zold = pgroup%zp(ip)
+          znew = pgroup%zp(ip) + dt*vz
+          if (.not. ((zold <= zzzc .and. zzzc <  znew) .or.
+     &               (znew <  zzzc .and. zzzc <= zold))
+     &        .or. vz == 0.) cycle
+
+          dtstar = (zzzc - zold)/vz
+
+          vx = pgroup%uxp(ip)*pgroup%gaminv(ip)
+          vy = pgroup%uyp(ip)*pgroup%gaminv(ip)
+
+          nzc(iw,isid) = nzc(iw,isid) + 1
+          nn = nzc(iw,isid)
+
+          uxzc(nn,iw,isid) = vx
+          uyzc(nn,iw,isid) = vy
+          uzzc(nn,iw,isid) = vz
+          tzc(nn,iw,isid) = time + dtstar
+          xzc(nn,iw,isid) = pgroup%xp(ip) + vx*dtstar
+          yzc(nn,iw,isid) = pgroup%yp(ip) + vy*dtstar
+          if (pgroup%npid > 0) pidzc(nn,:,iw,isid) = pgroup%pid(ip,:)
+
+        enddo
+      enddo
+
+      return
+      end
+c=============================================================================
 c=============================================================================
       subroutine initlabwn(ntlabwnestimate)
       use InDiag

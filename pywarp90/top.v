@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.271 $, $Date: 2010/02/09 23:38:54 $
+#@(#) File TOP.V, version $Revision: 3.272 $, $Date: 2010/02/13 01:47:25 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.271 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.272 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2466,6 +2466,33 @@ uxep(nepmax,nepwin,ns) _real        # X velocities at grid cell centers
 uyep(nepmax,nepwin,ns) _real        # Y velocities at grid cell centers
 uzep(nepmax,nepwin,ns) _real        # Z velocities at grid cell centers
 pidep(nepmax,npidepmax,nepwin,ns) _real # Particle ID 
+
+*********** ZCrossingParticles dump:
+# Arrays that hold data for particles that cross Z positions,
+# calculated in the getcrossingparticles routine.
+nzcwin                  integer /0/ # Number of locations where crossing
+                                    # particles are saved.
+izzcwin(nzcwin)        _integer /-1/ # List of locations where crossing
+                                    # particles are saved (indx of zmntmesh)
+zzzcwin(nzcwin)        _real        # List of lab frame locations where
+                                    # crossing particles are saved
+nzcmax                  integer /0/ # Maximum number of crossing particles
+npidzcmax               integer /0/ # Max number of columns in pidzc
+nzc(nzcwin,ns)         _integer     # Number of crossing particles at each
+                                    # location
+tzc(nzcmax,nzcwin,ns)  _real        # Time particles cross the z locations
+xzc(nzcmax,nzcwin,ns)  _real        # X coordinates of particles when crossing
+                                    # the z locations
+yzc(nzcmax,nzcwin,ns)  _real        # Y coordinates of particles when crossing
+                                    # the z locations
+uxzc(nzcmax,nzcwin,ns) _real        # X velocities of particles when crossing
+                                    # the z locations
+uyzc(nzcmax,nzcwin,ns) _real        # Y velocities of particles when crossing
+                                    # the z locations
+uzzc(nzcmax,nzcwin,ns) _real        # Z velocities of particles when crossing
+                                    # the z locations
+pidzc(nzcmax,npidzcmax,nzcwin,ns) _real # ID of particles when crossing
+                                    # the z locations
 
 *********** TopPhys:
 # "Physics" subroutines at top level

@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.437 $, $Date: 2009/11/18 21:55:29 $
+c@(#) File W3D.F, version $Revision: 3.438 $, $Date: 2010/02/13 01:47:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1940,6 +1940,9 @@ c             end of predictor-only if for vpush
               endif
             endif
 
+c           --- Grab particles that cross user specified z locations.
+            call getcrossingparticles(ipmin,ip,pgroup,fulldt_s,isid,time,zbeam)
+
 c           --- Position advance
             call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
      &                             fulldt_s,bendres,bendradi,vbeam)
@@ -2120,6 +2123,11 @@ c               --- get particles position in boosted frame
 
 c           --- Position advance
             if (center .ne. "hbor2") then
+
+c             --- Grab particles that cross user specified z locations.
+              call getcrossingparticles(ipmin,ip,pgroup,fulldt_s,isid,
+     &                                  time,zbeam)
+
 c             --- hbor2 just does a v advance, no x push
               call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
      &                               fulldt_s,bendres,bendradi,vbeam)
