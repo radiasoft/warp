@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.246 $, $Date: 2010/02/13 01:47:25 $
+c@(#) File TOP.F, version $Revision: 3.247 $, $Date: 2010/02/16 17:37:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2200,7 +2200,7 @@ c       --- Make sure that there is enough room - assuming that all particles
 c       --- could be saved.
         if (nzc(iw,isid)+np > nzcmax) then
           nzcmax = nzc(iw,isid)+np
-          call gchange("ExtPart",0)
+          call gchange("ZCrossingParticles",0)
         endif
 
 c       --- extrapolate to window if near it
