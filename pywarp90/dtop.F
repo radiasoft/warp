@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.173 $, $Date: 2010/02/09 23:38:53 $
+c@(#) File DTOP.F, version $Revision: 3.174 $, $Date: 2010/02/16 23:54:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.173 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.174 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -2832,7 +2832,100 @@ c           --- See comments above for z.
       end
 c=============================================================================
 c=============================================================================
-      subroutine gridcrossingmoments(np,ww,xnew,ynew,znew,vxnew,vynew,vznew,
+      subroutine gridcrossingmoments(is,isid,ipmin,np,pgroup,dt)
+      use ParticleGroupmodule
+      use GridCrossing_Moments
+      use Picglb,Only: zbeam
+      use Particles,Only: wpid
+      integer(ISZ):: is,isid,ipmin,np
+      type(ParticleGroup):: pgroup
+      real(kind=8):: dt
+
+c This does the grid crossing moments calculation, with the time step
+c subdivided into smaller chunks. The full calculation is done here.
+c This includes cases where particles cross multiple grid cells during a time
+c step.
+
+      real(kind=8):: dtgci,dzgci
+      integer(ISZ):: js,ip,izold,iznew,izgc,itgc
+      real(kind=8):: zb,vz,vzi,zold,znew
+      real(kind=8):: zgrid,dtstar
+      real(kind=8):: x,y,vx,vy,ww,ri,rp
+
+c     --- Immediately return if the grid crossing moments are not being done.
+      if (ntgc == 0) return
+
+      dtgci = ntgc/dt
+      dzgci = 1./dzgc
+      js = isid - 1
+
+      if (lmoving_framegc) then
+        zb = zbeam
+      else
+        zb = 0.
+      endif
+
+      do ip=ipmin,ipmin+np-1
+
+        vz = pgroup%uzp(ip)*pgroup%gaminv(ip)
+        zold = pgroup%zp(ip)
+        znew = pgroup%zp(ip) + vz*dt
+        izold = (zold - zmmingc - zb)*dzgci
+        iznew = (znew - zmmingc - zb)*dzgci
+
+        izold = max(izold,-1)
+        iznew = min(iznew,nzgc)
+
+c       --- Skip particles that havn't crossed a grid cell.
+        if (iznew <= izold) cycle
+
+c       --- Loop over all grid cells that the particle crossed.
+        do izgc=izold+1,iznew
+
+c         --- This uses the standard position advance algorithm.
+          vzi = 1./vz
+          zgrid = zmmingc + izgc*dzgc
+          dtstar = (zgrid - zold)*vzi
+
+          itgc = ceiling(dtstar*dtgci)
+
+c         --- This shouldn't happen, but its good to check anyway.
+          if (itgc < 1 .or. itgc > ntgc) cycle
+c         --- This is another way of fixing out of bounds particle.
+c         if (itgc < 1) itgc = 1
+c         if (itgc > ntgc) itgc = ntgc
+
+c         --- Calculate the transverse position at the grid cell
+          vx = pgroup%uxp(ip)*pgroup%gaminv(ip)
+          vy = pgroup%uyp(ip)*pgroup%gaminv(ip)
+          x = pgroup%xp(ip) + vx*dtstar
+          y = pgroup%yp(ip) + vy*dtstar
+          ri = 1./sqrt(x**2 + y**2)
+
+          if (wpid > 0) then
+            ww = pgroup%sw(is)*pgroup%pid(ip,wpid)
+          else
+            ww = pgroup%sw(is)
+          endif
+
+          pnumgc(itgc,izgc,js) = pnumgc(itgc,izgc,js) + ww
+          xbargc(itgc,izgc,js) = xbargc(itgc,izgc,js) + x*ww
+          ybargc(itgc,izgc,js) = ybargc(itgc,izgc,js) + y*ww
+          xsqbargc(itgc,izgc,js) = xsqbargc(itgc,izgc,js) + x**2*ww
+          ysqbargc(itgc,izgc,js) = ysqbargc(itgc,izgc,js) + y**2*ww
+          vzbargc(itgc,izgc,js) = vzbargc(itgc,izgc,js) + vz*ww
+
+          rp = vx*x*ri + vy*y*ri
+          rprmsgc(itgc,izgc,js) = rprmsgc(itgc,izgc,js) + rp**2*ww
+
+        enddo
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine gridcrossingmomentsold(np,ww,xnew,ynew,znew,vxnew,vynew,vznew,
      &                               zold,vxold,vyold,vzold,dt,zmmin,dz,
      &                               nt,nz,num,vzbar,xbar,ybar,
      &                               xsqbar,ysqbar,rprms)
@@ -2935,6 +3028,7 @@ c         --- Extrapolate to the grid cell.
 
       return
       end
+c=============================================================================
 c=============================================================================
 c=============================================================================
 c=============================================================================

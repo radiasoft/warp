@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.272 $, $Date: 2010/02/13 01:47:25 $
+#@(#) File TOP.V, version $Revision: 3.273 $, $Date: 2010/02/16 23:54:59 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.272 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.273 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2136,6 +2136,26 @@ hvyvzbarz(0:nzmmnt*ihvyvzbarz,0:lenhist,0:nshist)  _real [(m/s)**2]
             limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # VyVz bar versus space and time
 
+*********** GridCrossing_Moments dump:
+zmmingc     real /0./ [m] # Grid crossing moments grid minimum in Z
+zmmaxgc     real /0./ [m] # Grid crossing moments grid maximum in Z
+ntgc        integer /0/   # Number of t points in z grid crossing moments grid
+nzgc        integer /0/   # Number of z points in z grid crossing moments grid
+nszgc       integer /0/   # Number of species z grid crossing moments data is
+                          # calculated for. Defaults to zero, unless
+                          # lspeciesmoments is true, then it defaults
+                          # to top.ns.
+dzgc        real [m] /0./ # Grid crossing moments grid cell size
+lmoving_framegc logical /.false./ # Flags whether the grid crossing moments grid
+                                # moves with top.zbeam or not.
+pnumgc(0:ntgc,0:nzgc,0:nszgc) _real    # Number of particles at grid crossing moments
+xbargc(0:ntgc,0:nzgc,0:nszgc) _real    # X bar at grid crossing moments
+ybargc(0:ntgc,0:nzgc,0:nszgc) _real    # Y bar at grid crossing moments
+xsqbargc(0:ntgc,0:nzgc,0:nszgc) _real  # X**2 bar at grid crossing moments
+ysqbargc(0:ntgc,0:nzgc,0:nszgc) _real  # Y**2 bar at grid crossing moments
+rprmsgc(0:ntgc,0:nzgc,0:nszgc) _real   # R' rms at grid crossing moments
+vzbargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vz bar at grid crossing moments
+
 *********** Particles dump:
 # Dynamic particle arrays, and related data
 npmax  integer    /0/ +parallel  # Maximum no. of particles
@@ -2664,7 +2684,9 @@ gridtogrid3d(nxin:integer,nyin:integer,nzin:integer,
              gridout(0:nxout,0:nyout,0:nzout):real) subroutine
         # Linearly interpolates from one grid to another. This will also work
         # for 2d and 1d arrays if the n's are set to zero.
-gridcrossingmoments(np:integer,ww(np):real,
+gridcrossingmoments(js:integer,ipmin:integer,np:integer,pgroup:ParticleGroup,dt:real) subroutine
+        # Calculate moments for particles that cross z grid cells.
+gridcrossingmomentsold(np:integer,ww(np):real,
                     xnew(np):real,ynew(np):real,znew(np):real,
                     vxnew(np):real,vynew(np):real,vznew(np):real,
                     zold(np):real,vxold(np):real,vyold(np):real,vzold(np):real,
