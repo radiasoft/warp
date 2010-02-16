@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.247 $, $Date: 2010/02/16 17:37:01 $
+c@(#) File TOP.F, version $Revision: 3.248 $, $Date: 2010/02/16 23:51:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2173,6 +2173,9 @@ c routine only grabs particles that actually are crossing the z location.
       integer(ISZ):: nextpid
 
       real(kind=8):: timetemp,wtime
+
+c     --- If there are no positions defined, return immediately
+      if (nzcwin == 0) return
 
 c     --- Check if the pgroup had been initialized.
       if (isid == 0) return
