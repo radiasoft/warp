@@ -14,7 +14,8 @@ try:
 except:
     raise SystemExit, "Distutils problem"
 
-optlist,args = getopt.getopt(sys.argv[1:],'gt:F:',['parallel','with-numpy'])
+optlist,args = getopt.getopt(sys.argv[1:],'gt:F:',
+                             ['parallel','with-numpy','fcompexec='])
 machine = sys.platform
 debug   = 0
 fcomp   = None
