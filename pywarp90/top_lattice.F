@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.33 $, $Date: 2010/01/12 18:18:27 $
+c@(#) File top_lattice.F, version $Revision: 3.34 $, $Date: 2010/02/19 01:25:06 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -4164,7 +4164,7 @@ c         --- find location of particle in E field grid
 
 c         --- Only calculate for particles inside the E field grid
           if ((0 <= i .and. i < egrdnx) .and.
-     &        (0 <= j .and. j < egrdny .or. egrdrz(id)) .and.
+     &        (0 <= j .and. j < egrdny .or. egrdrz(id) .or. egrdny == 0) .and.
      &        (0 <= k .and. k < egrdnz)) then
 
 c           --- Calculate linear weights
@@ -4177,16 +4177,18 @@ c           --- Calculate linear weights
 
             efac = egrdsc(ii) + egrdsf(ii)
 
-            if (egrdrz(id)) then
+            if (egrdrz(id) .or. egrdny == 0) then
               ext = xsign*efac*(u0*w0*egrdex(i  ,0  ,k  ,id) +
      &                          u1*w0*egrdex(i+1,0  ,k  ,id) +
      &                          u0*w1*egrdex(i  ,0  ,k+1,id) +
      &                          u1*w1*egrdex(i+1,0  ,k+1,id))
 
-c             eyt = ysign*efac*(u0*w0*egrdey(i  ,0  ,k  ,id) +
-c    &                          u1*w0*egrdey(i+1,0  ,k  ,id) +
-c    &                          u0*w1*egrdey(i  ,0  ,k+1,id) +
-c    &                          u1*w1*egrdey(i+1,0  ,k+1,id))
+              if (.not. egrdrz(id)) then
+                eyt = ysign*efac*(u0*w0*egrdey(i  ,0  ,k  ,id) +
+     &                            u1*w0*egrdey(i+1,0  ,k  ,id) +
+     &                            u0*w1*egrdey(i  ,0  ,k+1,id) +
+     &                            u1*w1*egrdey(i+1,0  ,k+1,id))
+              endif
 
               ezt = zsign*efac*(u0*w0*egrdez(i  ,0  ,k  ,id) +
      &                          u1*w0*egrdez(i+1,0  ,k  ,id) +
@@ -4562,7 +4564,7 @@ c         --- find location of particle in B field grid
 
 c         --- Only calculate for particles inside the B field grid
           if ((0 <= i .and. i < bgrdnx) .and.
-     &        (0 <= j .and. j < bgrdny .or. bgrdrz(id)) .and.
+     &        (0 <= j .and. j < bgrdny .or. bgrdrz(id) .or. bgrdny == 0) .and.
      &        (0 <= k .and. k < bgrdnz)) then
 
 c           --- Calculate linear weights
@@ -4575,16 +4577,18 @@ c           --- Calculate linear weights
 
             bfac = bgrdsc(ii) + bgrdsf(ii)
 
-            if (bgrdrz(id)) then
+            if (bgrdrz(id) .or. bgrdny == 0) then
               bxt = xsign*bfac*(u0*w0*bgrdbx(i  ,0  ,k  ,id) +
      &                          u1*w0*bgrdbx(i+1,0  ,k  ,id) +
      &                          u0*w1*bgrdbx(i  ,0  ,k+1,id) +
      &                          u1*w1*bgrdbx(i+1,0  ,k+1,id))
 
-c             byt = ysign*bfac*(u0*w0*bgrdby(i  ,0  ,k  ,id) +
-c    &                          u1*w0*bgrdby(i+1,0  ,k  ,id) +
-c    &                          u0*w1*bgrdby(i  ,0  ,k+1,id) +
-c    &                          u1*w1*bgrdby(i+1,0  ,k+1,id))
+              if (.not. bgrdrz(id)) then
+                byt = ysign*bfac*(u0*w0*bgrdby(i  ,0  ,k  ,id) +
+     &                            u1*w0*bgrdby(i+1,0  ,k  ,id) +
+     &                            u0*w1*bgrdby(i  ,0  ,k+1,id) +
+     &                            u1*w1*bgrdby(i+1,0  ,k+1,id))
+              endif
 
               bzt = zsign*bfac*(u0*w0*bgrdbz(i  ,0  ,k  ,id) +
      &                          u1*w0*bgrdbz(i+1,0  ,k  ,id) +
