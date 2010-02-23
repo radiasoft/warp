@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.48 2010/02/09 18:11:42 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.49 2010/02/23 14:27:51 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -351,17 +351,17 @@ Class for generating secondaries
 
     # set computing box mins and maxs
     if w3d.l4symtry:
-      xmin=-top.xpmaxlocal
+      xmin=-w3d.xmmax
     else:
-      xmin=top.xpminlocal
-    xmax=top.xpmaxlocal
+      xmin=w3d.xmmin
+    xmax=w3d.xmmax
     if w3d.l2symtry or w3d.l4symtry:
-      ymin=-top.ypmaxlocal
+      ymin=-w3d.ymmax
     else:
-      ymin=top.ypminlocal
-    ymax=top.ypmaxlocal
-    zmin=top.zpminlocal+top.zgrid
-    zmax=top.zpmaxlocal+top.zgrid
+      ymin=w3d.ymmin
+    ymax=w3d.ymmax
+    zmin=w3d.zmmin+top.zgrid
+    zmax=w3d.zmmax+top.zgrid
 
     # initializes history quantities
     weighttot=0.
@@ -776,6 +776,7 @@ Class for generating secondaries
               print 'WARNING from secondaries: new particle outside boundaries, skip creation',
               print '\nLost particle position: ',xplost[i],yplost[i],zplost[i],
               print '\nNew particle position: ',xnew,ynew,znew
+              print 'XYZ min/max: ', xmin,xmax,ymin,ymax,zmin,zmax
 #              self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
 #              xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
               self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
