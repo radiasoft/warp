@@ -19,7 +19,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.82 2009/12/09 20:05:56 dave Exp $"
+particles_version = "$Id: particles.py,v 1.83 2010/02/24 01:33:20 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1342,7 +1342,11 @@ Adds particles to the simulation
                       This is automatically set to true when the code is in
                       slice mode, i.e. after package('wxy'). Except if the
                       option is explicitly set.
-  zmmin=w3d.zmmin,zmmax=w3d.zmmax: z extent of the domain
+  xmmin=top.xpminlocal,xmmax=top.xpmaxlocal,
+  ymmin=top.ypminlocal,ymmax=top.ypmaxlocal,
+  zmmin=top.zpminlocal+top.zbeam,zmmax=top.zpmaxlocal+top.zbeam:
+                   extent of the domain - should only be set in unusual
+                   circumstances.
   l2symtry,l4symtry,lrz: System symmetries, default to w3d values
   lmomentum=false: Set to false when velocities are input as velocities, true
                    when input as massless momentum (as WARP stores them).
@@ -1351,8 +1355,9 @@ Adds particles to the simulation
                       particles. The ssn will be set if needed, and the
                       position saved as the birth location.
   lusespaceabove=true: when true, the new particles are preferentially
-                       placed in the space above the existing particles,
-                       otherwise below.
+                       placed in memory in the space above the existing
+                       particles, otherwise below. This is only needed for
+                       special cases.
   pgroup=top.pgroup: Particle group to add particles too
 
   """
