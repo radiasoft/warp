@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.91 2009/12/10 20:37:03 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.92 2010/02/27 00:00:12 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -108,6 +108,7 @@ conductors are an argument.
     self.lsaveoldvelocities = false
     # --- register any initial conductors
     self.conductors = []
+    self.newconductors = false
     self.reflectiveconductors = false
     self.registerconductors(conductors)
     # --- Allocate arrays for lost particles
@@ -221,8 +222,9 @@ in a time step"""
         # --- with the old.
         self.lsaveoldpositions = true
         #self.lsaveoldvelocities = true
-        # --- Set the flag signifying the presence of reflective conductors
+         # --- Set the flag signifying the presence of reflective conductors
         self.reflectiveconductors = true
+    self.newconductors = true
 
   def unregisterconductors(self,conductor,nooverlap=0):
     """Remove the conductor from the list of conductors that particles are
@@ -231,8 +233,10 @@ scraped on.
     self.conductors.remove(conductor)
     if not nooverlap or self.lfastscraper:
       # --- This is horribly inefficient!!!
-      self.grid.resetgrid()
-      self.updateconductors()
+      #self.grid.resetisinside()
+      #self.updateconductors()
+      # --- This causes the conductor data to be regenerated for all conductors
+      self.newconductors = true
     else:
       self.grid.removeisinside(conductor)
       
@@ -244,55 +248,66 @@ This allows the particles scraper instance to be created before all of the
 data needed by the grid is set up."""
     if self.l_print_timing:tstart=wtime()
     if self.grid is None: lforce = 1
-    if self.usergrid and not lforce: return
 
-    # --- Check if self.grid.decomp is defined. If not, then force
-    # --- an update.
-    try:
-      self.grid.decomp
-    except AttributeError:
-      lforce = 1
+    gridchanged = 0
+    if lforce or not self.usergrid:
 
-    if not lforce:
-      # --- Check if the solver's grid has changed. If not, then
-      # --- return since nothing needs to be done.
-      gdc = self.grid.decomp
-      tdc = top.ppdecomp
-      if (self.grid.nxlocal == w3d.nxp*self.nxscale and
-          self.grid.nylocal == w3d.nyp*self.nyscale and
-          self.grid.nzlocal == w3d.nzp*self.nzscale and
-          self.grid.xmmin == w3d.xmmin and
-          self.grid.xmmax == w3d.xmmax and
-          self.grid.ymmin == w3d.ymmin and
-          self.grid.ymmax == w3d.ymmax and
-          self.grid.zmmin == w3d.zmmin and
-          self.grid.zmmax == w3d.zmmax and
-          gdc.ix[gdc.ixproc] == tdc.ix[tdc.ixproc]*self.nxscale and
-          gdc.iy[gdc.iyproc] == tdc.iy[tdc.iyproc]*self.nyscale and
-          gdc.iz[gdc.izproc] == tdc.iz[tdc.izproc]*self.nzscale and
-          gdc.nx[gdc.ixproc] == tdc.nx[tdc.ixproc]*self.nxscale and
-          gdc.ny[gdc.iyproc] == tdc.ny[tdc.iyproc]*self.nyscale and
-          gdc.nz[gdc.izproc] == tdc.nz[tdc.izproc]*self.nzscale): return
+      # --- Check if self.grid.decomp is defined. If not, then force
+      # --- an update.
+      try:
+        self.grid.decomp
+      except AttributeError:
+        lforce = 1
 
-    # --- Note that a copy of the decomposition is passed in.
-    # --- The decomposition in top may be changed the next time loadbalancing
-    # --- is done, but the decomposition in self.grid should not be changed.
-    # --- Instead, a whole new grid is created.
-    self.grid = Grid(decomp=copy.deepcopy(top.ppdecomp),
-                     nxscale=self.nxscale,nyscale=self.nyscale,
-                     nzscale=self.nzscale)
-    self.updateconductors()
+      if not lforce:
+        # --- Check if the solver's grid has changed. If not, then
+        # --- return since nothing needs to be done.
+        gdc = self.grid.decomp
+        tdc = top.ppdecomp
+        gridchanged = (
+            self.grid.nxlocal == w3d.nxp*self.nxscale and
+            self.grid.nylocal == w3d.nyp*self.nyscale and
+            self.grid.nzlocal == w3d.nzp*self.nzscale and
+            self.grid.xmmin == w3d.xmmin and
+            self.grid.xmmax == w3d.xmmax and
+            self.grid.ymmin == w3d.ymmin and
+            self.grid.ymmax == w3d.ymmax and
+            self.grid.zmmin == w3d.zmmin and
+            self.grid.zmmax == w3d.zmmax and
+            gdc.ix[gdc.ixproc] == tdc.ix[tdc.ixproc]*self.nxscale and
+            gdc.iy[gdc.iyproc] == tdc.iy[tdc.iyproc]*self.nyscale and
+            gdc.iz[gdc.izproc] == tdc.iz[tdc.izproc]*self.nzscale and
+            gdc.nx[gdc.ixproc] == tdc.nx[tdc.ixproc]*self.nxscale and
+            gdc.ny[gdc.iyproc] == tdc.ny[tdc.iyproc]*self.nyscale and
+            gdc.nz[gdc.izproc] == tdc.nz[tdc.izproc]*self.nzscale)
+      else:
+        gridchanged = 1
 
-    if top.chdtspid>0:
-      if (w3d.nxc<>self.grid.nxlocal or
-          w3d.nyc<>self.grid.nylocal or
-          w3d.nzc<>self.grid.nzlocal):
-        w3d.nxc=self.grid.nxlocal
-        w3d.nyc=self.grid.nylocal
-        w3d.nzc=self.grid.nzlocal
-        gchange('Fields3dParticles')
-        sum_neighbors3d(nint(self.grid.isinside),w3d.isnearbycond,
-                        w3d.nxc,w3d.nyc,w3d.nzc)
+      if gridchanged:
+        # --- Note that a copy of the decomposition is passed in.
+        # --- The decomposition in top may be changed the next time
+        # --- loadbalancing is done, but the decomposition in self.grid
+        # --- should not be changed. Instead, a whole new grid is created.
+        self.grid = Grid(decomp=copy.deepcopy(top.ppdecomp),
+                         nxscale=self.nxscale,nyscale=self.nyscale,
+                         nzscale=self.nzscale)
+
+    if self.newconductors or gridchanged:
+      self.newconductors = false
+      self.grid.resetisinside()
+      self.updateconductors()
+
+      if top.chdtspid>0:
+        if (w3d.nxc<>self.grid.nxlocal or
+            w3d.nyc<>self.grid.nylocal or
+            w3d.nzc<>self.grid.nzlocal):
+          w3d.nxc=self.grid.nxlocal
+          w3d.nyc=self.grid.nylocal
+          w3d.nzc=self.grid.nzlocal
+          gchange('Fields3dParticles')
+          sum_neighbors3d(nint(self.grid.isinside),w3d.isnearbycond,
+                          w3d.nxc,w3d.nyc,w3d.nzc)
+
     if self.l_print_timing:
       tend=wtime()
       print 'updategrid',tend-tstart
