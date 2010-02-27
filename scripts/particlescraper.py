@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.92 2010/02/27 00:00:12 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.93 2010/02/27 00:01:49 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -294,7 +294,6 @@ data needed by the grid is set up."""
 
     if self.newconductors or gridchanged:
       self.newconductors = false
-      self.grid.resetisinside()
       self.updateconductors()
 
       if top.chdtspid>0:
@@ -315,6 +314,7 @@ data needed by the grid is set up."""
   def updateconductors(self):
     """Generate the data on the grid from the scraping conductors."""
     if not self.lfastscraper:
+      self.grid.resetisinside()
       for c in self.conductors:
         self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
       # --- reducedisinside is a copy of isinside but will be modified to remove
