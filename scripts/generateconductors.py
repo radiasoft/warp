@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.226 2010/01/21 23:24:57 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.227 2010/02/27 00:14:35 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -220,8 +220,8 @@ Class to hold assemblies of conductors.  Base class of all conductors.
 Should never be directly created by the user.
  - v=0.: voltage on conductor
  - x,y,z=0.,0.,0: center of conductor
- - condid=1: conductor identification number, can be 'next' in which case
-             a unique ID is chosen
+ - condid='next': conductor identification number, can be 'next' in which case
+                  a unique ID is chosen
  - kwlist=[]: list of string names of variable describing conductor
  - generatorf=None: function which generates the distances between the points
                     and the conductors along the axis.
@@ -243,7 +243,7 @@ Should never be directly created by the user.
 
   __inputs__ = {'name':'','material':'SS','laccuimagecharge':0,'neumann':0}
 
-  def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
+  def __init__(self,v=0.,x=0.,y=0.,z=0.,condid='next',kwlist=[],
                     generatorf=None,generatord=None,generatori=None,
                     generatorfnew=None,kw={}):
     listofallconductors.append(self)
