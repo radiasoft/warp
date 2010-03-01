@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.49 2010/02/23 14:27:51 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.50 2010/03/01 20:03:55 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -1641,8 +1641,8 @@ Class for generating photo-electrons
        gaminv = 1./sqrt(1. + usq)
        if self.l_switchyz:
          x = x+dt*ux*gaminv
+         y = (z/pos.slength)*self.dy+i*self.dy+self.ymin
          z = y+dt*uy*gaminv
-         y = (z/pos.slength)*self.dz+i*self.dz+self.zmin
        else:
          x = x+dt*ux*gaminv
          y = y+dt*uy*gaminv
@@ -1662,7 +1662,10 @@ Class for generating photo-electrons
          weights = None
        else:
          weights = ones(np,'d')
-       self.addpart(np,x,y,z,ux,uz,uy,gaminv,js_new,weights)
+       if self.l_switchyz:
+         self.addpart(np,x,y,z,ux,uz,uy,gaminv,js_new,weights)
+       else:
+         self.addpart(np,x,y,z,ux,uy,uz,gaminv,js_new,weights)
        pos.nlast=0
 
     # --- make sure that all particles are added
