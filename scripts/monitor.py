@@ -27,7 +27,7 @@ if sys.hexversion >= 0x20501f0:
   import hashlib
 else:
   import md5 as hashlib
-monitor_version = "$Id: monitor.py,v 1.12 2009/08/21 16:22:52 dave Exp $"
+monitor_version = "$Id: monitor.py,v 1.13 2010/03/01 04:13:49 dave Exp $"
 
 def socketsend(sock,s):
   """
@@ -60,7 +60,7 @@ Creates a monitor for a running job.
   def __init__(self,port=50007,passwd='fj39jfgks'):
     global _ismonitored
     _ismonitored = true
-    self.md5passwd = hashlib.md5.new(passwd)
+    self.md5passwd = hashlib.md5(passwd)
     self.hexdigestpasswd = self.md5passwd.hexdigest()
     self.port = port
     self.initializesocket()
@@ -288,7 +288,7 @@ Make a connection to a running job with a monitor.
   except socket.error:
     _sock.close()
     raise
-  md5passwd = hashlib.md5.new(passwd)
+  md5passwd = hashlib.md5(passwd)
   hexdigestpasswd = md5passwd.hexdigest()
   r = socketrecv(_sock)
   r = socketrecv(_sock)
