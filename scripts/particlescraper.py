@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.93 2010/02/27 00:01:49 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.94 2010/03/01 04:24:20 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -264,7 +264,7 @@ data needed by the grid is set up."""
         # --- return since nothing needs to be done.
         gdc = self.grid.decomp
         tdc = top.ppdecomp
-        gridchanged = (
+        gridchanged = not (
             self.grid.nxlocal == w3d.nxp*self.nxscale and
             self.grid.nylocal == w3d.nyp*self.nyscale and
             self.grid.nzlocal == w3d.nzp*self.nzscale and
