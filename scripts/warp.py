@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.193 2010/02/03 01:35:24 dave Exp $"
+warp_version = "$Id: warp.py,v 1.194 2010/03/02 02:17:49 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -190,12 +190,13 @@ nm = 1.e-9     # nm to meter
 um = 1.e-6     # um to meter
 mm = 1.e-3     # mm to meter
 cm = 0.01      # cm to meter
+ps = 1.0e-12   # picosecond to second
 ns = 1.0e-9    # nanosecond to second
 us = 1.0e-6    # microsecond to second
 ms = 1.0e-3    # millesecond to second
 kV = 1.0e3     # kV to V
 keV = 1.0e3    # keV to eV
-MV = 1.0e3     # MV to V
+MV = 1.0e6     # MV to V
 MeV = 1.0e6    # MeV to eV
 mA = 1.0e-3    # mA to A
 uC = 1.0e-6    # micro-Coulombs to Coulombs
