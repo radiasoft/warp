@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.47 2009/07/31 23:53:03 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.48 2010/03/03 02:14:10 dave Exp $"
 
 class TraceParticle(object):
   """
@@ -72,11 +72,6 @@ Available methods...
     # --- Check if species needs to be setup
     if js not in TraceParticle._instance_dict:
       TraceParticle._instance_dict[js] = 1
-      if top.pgroup.nps[js] == 0:
-        if js == 0:
-          top.pgroup.ins[js] = 1
-        else:
-          top.pgroup.ins[js] = top.pgroup.ins[js-1] + top.pgroup.nps[js-1]
       if top.pgroup.sq[js] == 0.:
         top.pgroup.sq[js] = top.zion*top.echarge
       if top.pgroup.sm[js] == 0.:
@@ -277,16 +272,17 @@ is not alive."""
     if (top.it - self.startit) % self.savedata != 0: return
     for i in xrange(self.nn):
       ii = selectparticles(js=self.js,ssn=self.ssn[i])
-      self.spt[i].append(top.time)
-      self.spx[i].append(getx(js=self.js,ii=ii))
-      self.spy[i].append(gety(js=self.js,ii=ii))
-      self.spz[i].append(getz(js=self.js,ii=ii))
-      self.spvx[i].append(getux(js=self.js,ii=ii))
-      self.spvy[i].append(getuy(js=self.js,ii=ii))
-      self.spvz[i].append(getuz(js=self.js,ii=ii))
-      self.spgi[i].append(getgaminv(js=self.js,ii=ii))
-      if package()[0] == 'wxy':
-        self.spdt[i].append(getpid(js=self.js,ii=ii,id=wxy.dtpid-1))
+      if len(ii) > 0:
+        self.spt[i].append(top.time)
+        self.spx[i].append(getx(js=self.js,ii=ii))
+        self.spy[i].append(gety(js=self.js,ii=ii))
+        self.spz[i].append(getz(js=self.js,ii=ii))
+        self.spvx[i].append(getux(js=self.js,ii=ii))
+        self.spvy[i].append(getuy(js=self.js,ii=ii))
+        self.spvz[i].append(getuz(js=self.js,ii=ii))
+        self.spgi[i].append(getgaminv(js=self.js,ii=ii))
+        if package()[0] == 'wxy':
+          self.spdt[i].append(getpid(js=self.js,ii=ii,id=wxy.dtpid-1))
 
   #----------------------------------------------------------------------
   def getsavedata(self):
