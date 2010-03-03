@@ -19,7 +19,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.83 2010/02/24 01:33:20 dave Exp $"
+particles_version = "$Id: particles.py,v 1.84 2010/03/03 00:06:09 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1336,6 +1336,8 @@ Adds particles to the simulation
                      which defaults to 1. (gi is 1/gamma, the relatistic
                      paramter)
   pid: additional particle information, such as an ID number or weight.
+  w=1.: particle weight; this is only used if top.wpid > 0 and if
+        lnewparticles is true.
   js=0: species to which new particles will be added
   lallindomain=false: When true, all particles are assumed to be with in the
                       extent of the domain so particle scraping is not done.
@@ -1354,6 +1356,8 @@ Adds particles to the simulation
   lnewparticles=true: when true, the particles are treated as newly created
                       particles. The ssn will be set if needed, and the
                       position saved as the birth location.
+                      Set this to false if using addparticles to restore
+                      particles.
   lusespaceabove=true: when true, the new particles are preferentially
                        placed in memory in the space above the existing
                        particles, otherwise below. This is only needed for
@@ -1436,19 +1440,21 @@ Adds particles to the simulation
   bz = array(bz)*ones(maxlen,'d')
   gi = array(gi)*ones(maxlen,'d')
   pid = array(pid)*ones([maxlen,top.npid],'d')
-  if w is not None:
-    w = array(w)*ones(maxlen,'d')
   
-  # --- Set time of creation
-  if top.tpid>0: pid[:,top.tpid-1]=top.time
-  # --- Set weights
-  if w is not None and top.wpid>0: pid[:,top.wpid-1]=w
-  # --- Note that ssn is set in addpart
+  if lnewparticles:
+    # --- Set time of creation
+    if top.tpid > 0:
+      pid[:,top.tpid-1] = top.time
 
-  # --- Set xyz old
-  if top.xoldpid>0: pid[:,top.xoldpid-1]=x.copy()
-  if top.yoldpid>0: pid[:,top.yoldpid-1]=y.copy()
-  if top.zoldpid>0: pid[:,top.zoldpid-1]=z.copy()
+    # --- Set weights
+    if w is not None and top.wpid > 0:
+      pid[:,top.wpid-1] = array(w)*ones(maxlen,'d')
+    # --- Note that ssn is set in addpart
+
+    # --- Set xyz old
+    if top.xoldpid > 0: pid[:,top.xoldpid-1]=x.copy()
+    if top.yoldpid > 0: pid[:,top.yoldpid-1]=y.copy()
+    if top.zoldpid > 0: pid[:,top.zoldpid-1]=z.copy()
 
   # --- Set extent of domain
   if xmmin is None: xmmin = top.xpminlocal
