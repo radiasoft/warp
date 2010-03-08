@@ -41,7 +41,9 @@ class EM3D(SubcycledPoissonSolver):
                     'deposit_energy_density':false,'refinement':None,
                     'l_force_nzlocal2nz':false,'isactiveem':None,
                     'l_coarse_patch':false,'stencil':false,
-                    'l_esirkepov':true,'theta_damp':0.}
+                    'l_esirkepov':true,'theta_damp':0.,
+                    'sigmae':0.,'sigmab':0.,
+                    'colecoefs':None}
 
   def __init__(self,**kw):
     self.solveroff=False # flag to turn off the solver, for testing purpose
@@ -145,6 +147,24 @@ class EM3D(SubcycledPoissonSolver):
     self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
 #    self.zmeshlocal = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
 
+    # --- sets coefficients of Cole solver
+    if self.colecoefs is None:
+      if self.l_2dxz:
+        em3d.betax = 1./8.
+        em3d.alphax = 1.-2*em3d.betax
+      else:
+        em3d.alphax = 7./12.
+        em3d.betax  = 1./12.
+        em3d.gammax = 1./48.
+    else:
+      em3d.alphax = self.colecoefs[0]
+      em3d.betax  = self.colecoefs[1]
+      if not self.l_2dxz:
+        em3d.gammax = self.colecoefs[2]
+    em3d.alphay = em3d.alphaz = em3d.alphax
+    em3d.betay  = em3d.betaz  = em3d.betax
+    em3d.gammay = em3d.gammaz = em3d.gammax
+
     # --- set time step as a fraction of Courant condition
     # --- also set self.ncyclesperstep if top.dt over Courant condition times dtcoef
     try:
@@ -167,11 +187,18 @@ class EM3D(SubcycledPoissonSolver):
               dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dz**2))
             else:
               dtcourant=min(self.dx,self.dz)/clight 
+              Cx = em3d.alphax -2.*em3d.betax
+              Cz = em3d.alphaz -2.*em3d.betaz
+              dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cz/self.dz**2))
           else:
             if self.stencil==0:
               dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dy**2+1./self.dz**2))
             else:
               dtcourant=min(self.dx,self.dy,self.dz)/clight 
+              Cx = em3d.alphax -4.*em3d.betax+4.*em3d.gammax
+              Cy = em3d.alphay -4.*em3d.betay+4.*em3d.gammay
+              Cz = em3d.alphaz -4.*em3d.betaz+4.*em3d.gammaz
+              dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cy/self.dy**2+Cz/self.dz**2))
           if self.theta_damp>0.:
             top.dt*=sqrt((2.+self.theta_damp)/(2.+3.*self.theta_damp))
           if top.dt==0.:
@@ -312,7 +339,9 @@ class EM3D(SubcycledPoissonSolver):
                                    self.l_smooth_particle_fields,
                                    self.ncyclesperstep,
                                    self.l_2dxz,
-                                   self.theta_damp)
+                                   self.theta_damp,
+                                   self.sigmae,
+                                   self.sigmab)
     self.fields = self.block.core.yf
     
     
@@ -3011,7 +3040,9 @@ def pyinit_3dem_block(nx, ny, nz,
                       l_smooth_particle_fields,
                       ncyclesperstep,
                       l_2dxz,
-                      theta_damp):
+                      theta_damp,
+                      sigmae,
+                      sigmab):
                       
   if xlb == em3d.otherproc:
     procxl = top.procneighbors[0,0]
@@ -3078,6 +3109,8 @@ def pyinit_3dem_block(nx, ny, nz,
   f.ny = ny
   f.nz = nz
   f.theta_damp=theta_damp
+  f.sigmae=sigmae
+  f.sigmab=sigmab
   if 0:#refinement is None and (all(npass_smooth==0) or not l_smooth_particle_fields):
     f.nxp = 0
     f.nyp = 0
@@ -3102,6 +3135,10 @@ def pyinit_3dem_block(nx, ny, nz,
     f.nxdamp=f.nx
     f.nydamp=f.ny
     f.nzdamp=f.nz
+  if f.sigmae<>0. or f.sigmab<>0.:
+    f.nxext=f.nx
+    f.nyext=f.ny
+    f.nzext=f.nz
   f.nxguard = nxguard
   f.nyguard = nyguard
   f.nzguard = nzguard
