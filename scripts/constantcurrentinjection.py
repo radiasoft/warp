@@ -4,7 +4,7 @@ procedure, but using the full simulation instead of 1-D approximation.
 from warp import *
 from timedependentvoltage import TimeVoltage
 
-constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.9 2010/03/05 01:02:56 dave Exp $"
+constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.10 2010/03/08 20:24:22 dave Exp $"
 def constantcurrentinjectiondoc():
   import constantcurrentinjection
   print constantcurrentinjection.__doc__
@@ -165,6 +165,13 @@ frz.calc_a = 3
     self.afact = (self.phiref + phirho)/self.phiv
     self.hafactunconstrained.append(self.afact)
 
+    voltage = (self.endplatevolt +
+                   self.afact*(self.sourcevolt-self.endplatevolt))
+
+    # --- The voltage may be constrained by maxvoltagechangerate.
+    # --- Note that this modifies self.afact.
+    voltage = self.constrainvoltage(voltage)
+
     solver = getregisteredsolver()
     if solver is None:
       solver = frz.basegrid
@@ -173,13 +180,6 @@ frz.calc_a = 3
       for c in self.blocklists[i]:
         if c.isactive:
           c.phi += self.afact*c.phisave
-
-    voltage = (self.endplatevolt +
-                   self.afact*(self.sourcevolt-self.endplatevolt))
-
-    # --- The voltage may be constrained by maxvoltagechangerate.
-    # --- Note that this modifies self.afact.
-    voltage = self.constrainvoltage(voltage)
 
     if self.l_setvinject:
       top.vinject = voltage
