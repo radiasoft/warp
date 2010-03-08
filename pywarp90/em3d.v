@@ -22,7 +22,7 @@ s_max_y          real
 s_delta          real    /5./
 sb_coef          real    /0./
 nn               real    /2./
-bnd_cond         integer /3/
+bnd_cond         integer /2/
 
 *********** EM3D_kyee dump:
 alphax real /0.58333333333333337/  # 7./12.
@@ -433,6 +433,9 @@ jzmaxg integer /0/ # position of last node of entire grid (interior+guard nodes)
 nxp integer /0/
 nyp integer /0/
 nzp integer /0/
+nxext integer /0/
+nyext integer /0/
+nzext integer /0/
 nxdamp integer /0/
 nydamp integer /0/
 nzdamp integer /0/
@@ -469,6 +472,8 @@ clight real
 mu0    real
 theta_damp real /0./
 l_2dxz logical /.False./
+sigmae real /0./ # coefficient for extended solver
+sigmab real /0./ # coefficient for extended solver
 Ex(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Ey(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Ez(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
@@ -508,6 +513,42 @@ Ezbar(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _
 Excp(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
 Eycp(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
 Ezcp(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
+DEXY(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+DEXZ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+DEYX(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+DEYZ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+DEZX(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+DEZY(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+DBXY(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+DBXZ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+DBYX(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+DBYZ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+DBZX(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+DBZY(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BXYCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BYXCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BXZCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BZXCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BYZCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BZYCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EXYCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EYXCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EXZCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EZXCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EYZCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EZYCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BXYCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BYXCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BXZCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BZXCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BYZCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+BZYCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EXYCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EYXCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EXZCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EZXCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EYZCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
+EZYCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
 E_inx_pos integer /-1/
 E_inx_angle real  /0./
 E_inx(-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
