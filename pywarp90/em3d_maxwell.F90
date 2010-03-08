@@ -40,8 +40,10 @@ contains
                    lsigmay(-sf%nyguard:sf%ny+sf%nyguard), lsigmay_next(-sf%nyguard:sf%ny+sf%nyguard)
     real(kind=8) :: sigmaz(-sf%nzguard:sf%nz+sf%nzguard),  sigmaz_next(-sf%nzguard:sf%nz+sf%nzguard), &
                    lsigmaz(-sf%nzguard:sf%nz+sf%nzguard), lsigmaz_next(-sf%nzguard:sf%nz+sf%nzguard)
-    integer(ISZ) :: j,which
+    integer(ISZ) :: j,which,jmin
     real(kind=8) :: dt
+    
+    jmin = 1 ! number of cells after which to start absorbing 
     
     sf%afx = 1.
     sf%agx = 1.
@@ -82,15 +84,16 @@ contains
       sigmax=0.
       sigmax_next=0.
       do j = 0, sf%nx
-        sigmax(j)      = (sf%smaxx/sf%dx)*(REAL(j,8)/sf%sdeltax)**sf%nnx
-        sigmax_next(j) = (sf%smaxx/sf%dx)*((REAL(j,8)+0.5)/sf%sdeltax)**sf%nnx
+        if (j>=jmin) then
+          sigmax(j)      = (sf%smaxx/sf%dx)*(REAL(j-jmin,8)/sf%sdeltax)**sf%nnx
+          sigmax_next(j) = (sf%smaxx/sf%dx)*((REAL(j-jmin,8)+0.5)/sf%sdeltax)**sf%nnx
+        end if
         lsigmax(sf%nx-j) = sigmax(j)
         lsigmax_next(sf%nx-j-1) = sigmax_next(j)
       end do
       select case(sf%lsx)
         case(1)
           do j = 0, sf%nx-1
-!            write(0,*) 'sigma,sigma_next',sigmax(j),sigmax_next(j),sigmax(j+1)
             call assign_coefs(bnd_cond,sf%afx(j),sf%bpfx(j),sf%bmfx(j),sf%clight*dt,sf%dx,sigmax(j),sigmax_next(j),sb_coef,which)
             call assign_coefs(bnd_cond,sf%agx(j),sf%bpgx(j),sf%bmgx(j),sf%clight*dt,sf%dx,sigmax_next(j),sigmax(j+1),sb_coef,which)
           end do
@@ -110,9 +113,11 @@ contains
     if (sf%lsy/=0) then
       sigmay=0.
       sigmay_next=0.
-      do j = 0, sf%ny
-        sigmay(j)      = (sf%smaxy/sf%dy)*(REAL(j,8)/sf%sdeltay)**sf%nny
-        sigmay_next(j) = (sf%smaxy/sf%dy)*((REAL(j,8)+0.5)/sf%sdeltay)**sf%nny
+      do j = jmin, sf%ny
+        if (j>=jmin) then
+          sigmay(j)      = (sf%smaxy/sf%dy)*(REAL(j-jmin,8)/sf%sdeltay)**sf%nny
+          sigmay_next(j) = (sf%smaxy/sf%dy)*((REAL(j-jmin,8)+0.5)/sf%sdeltay)**sf%nny
+        end if
         lsigmay(sf%ny-j) = sigmay(j)
         lsigmay_next(sf%ny-j-1) = sigmay_next(j)
       end do
@@ -138,9 +143,11 @@ contains
     if (sf%lsz/=0) then
       sigmaz=0.
       sigmaz_next=0.
-      do j = 0, sf%nz
-        sigmaz(j)      = (sf%smaxz/sf%dz)*(REAL(j,8)/sf%sdeltaz)**sf%nnz
-        sigmaz_next(j) = (sf%smaxz/sf%dz)*((REAL(j,8)+0.5)/sf%sdeltaz)**sf%nnz
+      do j = jmin, sf%nz
+        if (j>=jmin) then
+          sigmaz(j)      = (sf%smaxz/sf%dz)*(REAL(j-jmin,8)/sf%sdeltaz)**sf%nnz
+          sigmaz_next(j) = (sf%smaxz/sf%dz)*((REAL(j-jmin,8)+0.5)/sf%sdeltaz)**sf%nnz
+        end if
         lsigmaz(sf%nz-j) = sigmaz(j)
         lsigmaz_next(sf%nz-j-1) = sigmaz_next(j)
       end do
@@ -181,7 +188,7 @@ REAL(kind=8) :: sigma_local, sigmab, sigmab_next, tp, tpp, tm, tmm, g, gp, gm
   tpp  = EXP(-sigma_next*0.5*dx)
   select case (bnd_cond)
     case (pml,pml_sadjusted)
-       IF(bnd_cond==pml) then
+      IF(bnd_cond==pml) then
         sigma_local = sigma
       else
         sigma_local = MIN(1.e15,abs(tpp-1./tp)/dx)
@@ -191,7 +198,9 @@ REAL(kind=8) :: sigma_local, sigmab, sigmab_next, tp, tpp, tm, tmm, g, gp, gm
         a  =  1.
         bp =  dt / dx
       else
-        a  =  EXP(-sigma_local*dt)
+        a  =  EXP(-sigma_local*dt) ! one can use the exponential intergration or
+!                                     direct differenciation as below for about the same effect.
+!        a  = (1.-sigma_local*dt/2)/(1.+sigma_local*dt/2)
         bp =  (1.-a)/(sigma_local*dx)
       END if
       bm =  -bp
@@ -361,10 +370,23 @@ if (f%theta_damp/=0.) then
 end if
 
 if (f%stencil==0 .or. f%stencil==1) then
+ if (f%sigmae==0.) then
   call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                       mudt,dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
                       f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos,f%Ex_inz,f%Ey_inz,f%l_2dxz,f%zmin,f%dz)
+ else
+  call push_em3dext_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
+                         f%DEXY, f%DEXZ, f%DEYX, f%DEYZ, f%DEZX, f%DEZY, &
+                         f%DBXY, f%DBXZ, f%DBYX, f%DBYZ, f%DBZX, f%DBZY, &
+                         f%BXYCJ, f%BYXCJ, f%BXZCJ, f%BZXCJ, f%BYZCJ, f%BZYCJ, &
+                         f%EXYCJ, f%EYXCJ, f%EXZCJ, f%EZXCJ, f%EYZCJ, f%EZYCJ, &
+                         f%BXYCJT, f%BYXCJT, f%BXZCJT, f%BZXCJT, f%BYZCJT, f%BZYCJT, &
+                         f%EXYCJT, f%EYXCJT, f%EXZCJT, f%EZXCJT, f%EYZCJT, f%EZYCJT, &
+                         dt,f%dx,f%dy,f%dz,f%sigmae,f%mu0,f%clight,f%nx,f%ny,f%nz, &
+                         f%nxguard,f%nyguard,f%nzguard,f%e_inz_pos, &
+                         f%Ex_inz,f%Ey_inz,f%l_2dxz,f%zmin)
+ endif
 else
   call push_em3d_kyeevec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                          mudt,dtsdx,dtsdy,dtsdz, &
@@ -813,10 +835,10 @@ else
   do l = 0, nz
     do j = 0, nx-1
       Ex(j,k,l) = Ex(j,k,l) -     alphaz*dtsdz * (By(j  ,k  ,l) - By(j  ,k  ,l-1)) &
-                            - 2.5*betaz *dtsdz * (By(j+1,k  ,l) - By(j+1,k  ,l-1)  &
+                            -     betaz *dtsdz * (By(j+1,k  ,l) - By(j+1,k  ,l-1)  &
                                                +  By(j-1,k  ,l) - By(j-1,k  ,l-1))  &
                             - alphaz*mudt       * CJ(j,k,l,1) &
-                            - 2.5*betaz*mudt    * (CJ(j+1,k  ,l,1)+CJ(j-1,k  ,l,1) )
+                            -     betaz*mudt    * (CJ(j+1,k  ,l,1)+CJ(j-1,k  ,l,1) )
     end do
   end do
 
@@ -830,9 +852,9 @@ else
                                 + betaz *dtsdz * (Bx(j+1,k  ,l) - Bx(j+1,k  ,l-1) &
                                                +  Bx(j-1,k  ,l) - Bx(j-1,k  ,l-1)) &
                                 - 0.5*(alphax+alphaz)*mudt * CJ(j,k,l,2) &
-                                        - 0.5*2.5*betax *mudt * (CJ(j,k  ,l+1,2) &
+                                        - 0.5*    betax *mudt * (CJ(j,k  ,l+1,2) &
                                                       +  CJ(j,k  ,l-1,2)) &
-                                        - 0.5*2.5*betaz *mudt * (CJ(j+1,k  ,l,2) &
+                                        - 0.5*    betaz *mudt * (CJ(j+1,k  ,l,2) &
                                                       +  CJ(j-1,k  ,l,2)) 
     end do
   end do
@@ -844,7 +866,7 @@ else
                                 + betax *dtsdx * ( By(j,k  ,l+1) - By(j-1,k  ,l+1) &
                                                  +  By(j,k  ,l-1) - By(j-1,k  ,l-1)) &
                                 - alphax*mudt * CJ(j,k,l,3) &
-                                        - 2.5*betax *mudt * (CJ(j,k  ,l+1,3) &
+                                        -     betax *mudt * (CJ(j,k  ,l+1,3) &
                                                       +  CJ(j,k  ,l-1,3))  
     end do
   end do
@@ -885,14 +907,14 @@ end if
 return
 end subroutine push_em3d_kyeevec
 
-subroutine push_em3d_b(f,dt)
+subroutine push_em3d_b(f,dt,which)
 use mod_emfield3d
 implicit none
 
 TYPE(EM3D_YEEFIELDtype) :: f
 REAL(kind=8), INTENT(IN) :: dt
 
-INTEGER :: j, k, l
+INTEGER :: j, k, l, which
 real(kind=8) :: dtsdx,dtsdy,dtsdz,alpha,beta,gamma
 
 dtsdx = dt/f%dx
@@ -915,10 +937,23 @@ if (f%theta_damp/=0.) then
 end if
 
 if (f%stencil==0 .or. f%stencil==2) then
+ if (f%sigmab==0.) then
   call push_em3d_bvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
                       dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
                       f%nxguard,f%nyguard,f%nzguard,f%l_2dxz)
+ else
+  call push_em3dext_bvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
+                         f%DEXY, f%DEXZ, f%DEYX, f%DEYZ, f%DEZX, f%DEZY, &
+                         f%DBXY, f%DBXZ, f%DBYX, f%DBYZ, f%DBZX, f%DBZY, &
+                         f%BXYCJ, f%BYXCJ, f%BXZCJ, f%BZXCJ, f%BYZCJ, f%BZYCJ, &
+                         f%EXYCJ, f%EYXCJ, f%EXZCJ, f%EZXCJ, f%EYZCJ, f%EZYCJ, &
+                         f%BXYCJT, f%BYXCJT, f%BXZCJT, f%BZXCJT, f%BYZCJT, f%BZYCJT, &
+                         f%EXYCJT, f%EYXCJT, f%EXZCJT, f%EZXCJT, f%EYZCJT, f%EZYCJT, &
+                         dt,f%dx,f%dy,f%dz,f%sigmab,f%clight,f%nx,f%ny,f%nz, &
+                         f%nxguard,f%nyguard,f%nzguard,f%e_inz_pos, &
+                         f%Ex_inz,f%Ey_inz,f%l_2dxz,f%zmin,which)
+ endif
 else
   call push_em3d_kyeebvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
                       dtsdx,dtsdy,dtsdz, &
@@ -1100,7 +1135,7 @@ else
   do l = 0, nz-1
     do j = 0, nx
       Bx(j,k,l) = Bx(j,k,l) +    alphaz*dtsdz * (Ey(j  ,k  ,l+1) - Ey(j  ,k  ,l  )) &
-                            + 2.5*betaz*dtsdz * (Ey(j+1,k  ,l+1) - Ey(j+1,k  ,l  ) &
+                            +     betaz*dtsdz * (Ey(j+1,k  ,l+1) - Ey(j+1,k  ,l  ) &
                                               +  Ey(j-1,k  ,l+1) - Ey(j-1,k  ,l  )) 
     end do
   end do
@@ -1109,10 +1144,10 @@ else
   do l = 0, nz-1
     do j = 0, nx-1
       By(j,k,l) = By(j,k,l) +    alphax*dtsdx * (Ez(j+1,k  ,l  ) - Ez(j  ,k  ,l  )) &  
-                            + 2.5*betax*dtsdx * (Ez(j+1,k  ,l+1) - Ez(j  ,k  ,l+1) &
+                            +     betax*dtsdx * (Ez(j+1,k  ,l+1) - Ez(j  ,k  ,l+1) &
                                               +  Ez(j+1,k  ,l-1) - Ez(j  ,k  ,l-1)) &
                             -    alphaz*dtsdz * (Ex(j  ,k  ,l+1) - Ex(j  ,k  ,l  )) &
-                            - 2.5*betaz*dtsdz * (Ex(j+1,k  ,l+1) - Ex(j+1,k  ,l  ) &
+                            -     betaz*dtsdz * (Ex(j+1,k  ,l+1) - Ex(j+1,k  ,l  ) &
                                               +  Ex(j-1,k  ,l+1) - Ex(j-1,k  ,l  )) 
     end do
   end do
@@ -1121,7 +1156,7 @@ else
   do l = 0, nz
     do j = 0, nx-1
       Bz(j,k,l) = Bz(j,k,l) -    alphax*dtsdx * (Ey(j+1,k  ,l  ) - Ey(j  ,k  ,l  )) &
-                            - 2.5*betax*dtsdx * (Ey(j+1,k  ,l+1) - Ey(j  ,k  ,l+1) &
+                            -     betax*dtsdx * (Ey(j+1,k  ,l+1) - Ey(j  ,k  ,l+1) &
                                               +  Ey(j+1,k  ,l-1) - Ey(j  ,k  ,l-1)) 
     end do
   end do
@@ -1261,14 +1296,14 @@ else
    do k = 0, ny
     do j = 0, nx
       F(j,k,l) = F(j,k,l) + alphax*dtsdx * (Ex(j  ,k  ,l  ) - Ex(j-1,k  ,l  )) &
-                          +  2.5*betax*dtsdx * (Ex(j  ,k  ,l+1) - Ex(j-1,k  ,l+1) &
+                          +      betax*dtsdx * (Ex(j  ,k  ,l+1) - Ex(j-1,k  ,l+1) &
                                          +  Ex(j  ,k  ,l-1) - Ex(j-1,k  ,l-1)) &
                           + alphaz*dtsdz * (Ez(j  ,k  ,l  ) - Ez(j  ,k  ,l-1)) &
-                          +  2.5*betaz*dtsdz * (Ez(j+1,k  ,l  ) - Ez(j+1,k  ,l-1) &
+                          +      betaz*dtsdz * (Ez(j+1,k  ,l  ) - Ez(j+1,k  ,l-1) &
                                          +  Ez(j-1,k  ,l  ) - Ez(j-1,k  ,l-1)) &
                           - dtsepsi/2. * ( (alphax+alphaz)* Rho(j,k,l) &
-                                        +   2.5*betax*(Rho(j  ,k  ,l+1)+Rho(j  ,k  ,l-1)) &
-                                        +   2.5*betaz*(Rho(j+1,k  ,l  )+Rho(j-1,k  ,l  )) )
+                                        +       betax*(Rho(j  ,k  ,l+1)+Rho(j  ,k  ,l-1)) &
+                                        +       betaz*(Rho(j+1,k  ,l  )+Rho(j-1,k  ,l  )) )
     end do
    end do
   end do
@@ -1987,10 +2022,10 @@ else
   do l = 0, nz
     do j = 0, nx-1
       exx(j,k,l) = agx(j)*exx(j,k,l) + bpgx(j)*    alphax * ( fx(j+1,k  ,l  ) + fz(j+1,k  ,l  ) ) &
-                                     + bpgx(j)* 2.5*betax * ( fx(j+1,k  ,l+1) + fz(j+1,k  ,l+1)  &
+                                     + bpgx(j)*     betax * ( fx(j+1,k  ,l+1) + fz(j+1,k  ,l+1)  &
                                                           +   fx(j+1,k  ,l-1) + fz(j+1,k  ,l-1))  &
                                      + bmgx(j)*    alphax * ( fx(j  ,k  ,l  ) + fz(j  ,k  ,l  ) ) &
-                                     + bmgx(j)* 2.5*betax * ( fx(j  ,k  ,l+1) + fz(j  ,k  ,l+1)  &
+                                     + bmgx(j)*     betax * ( fx(j  ,k  ,l+1) + fz(j  ,k  ,l+1)  &
                                                           +   fx(j  ,k  ,l-1) + fz(j  ,k  ,l-1))  
     end do
   end do
@@ -1998,10 +2033,10 @@ else
   do l = 0, nz-1
     do j = 0, nx
       ezz(j,k,l) = agz(l)*ezz(j,k,l) + bpgz(l)*    alphaz * ( fx(j  ,k  ,l+1) + fz(j  ,k  ,l+1) ) &
-                                     + bpgz(l)* 2.5*betaz * ( fx(j+1,k  ,l+1) + fz(j+1,k  ,l+1)  &
+                                     + bpgz(l)*     betaz * ( fx(j+1,k  ,l+1) + fz(j+1,k  ,l+1)  &
                                                           +   fx(j-1,k  ,l+1) + fz(j-1,k  ,l+1))  &
                                      + bmgz(l)*    alphaz * ( fx(j  ,k  ,l  ) + fz(j  ,k  ,l  ) ) &
-                                     + bmgz(l)* 2.5*betaz * ( fx(j+1,k  ,l  ) + fz(j+1,k  ,l  )  &
+                                     + bmgz(l)*     betaz * ( fx(j+1,k  ,l  ) + fz(j+1,k  ,l  )  &
                                                           +   fx(j-1,k  ,l  ) + fz(j-1,k  ,l  ))  
     end do
   end do
@@ -2175,6 +2210,8 @@ real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: agz,bpgz,bmgz
 INTEGER :: j, k, l
 logical(ISZ) :: l_2dxz
 
+real(8) :: b,c,dt
+
 if (.not.l_2dxz) then
 
   do l = 0, nz-1
@@ -2331,13 +2368,80 @@ if (.not.l_2dxz) then
 else
   k = 0
 
+  if (.false.) then
+ do l = 0, nz-1
+    do j = 0, nx
+      b = 0.5*(bpgz(l)-bmgz(l))
+      c = 0.5*(bpgz(l)+bmgz(l))
+      bxz(j,k,l) = agz(l)*bxz(j,k,l) + b*    alphaz * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1)) &
+                                     + b*     betaz * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
+                                                    +  eyx(j-1,k  ,l+1)+eyz(j-1,k  ,l+1)) &
+                                     - b*    alphaz * (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
+                                     - b*     betaz * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
+                                                    +  eyx(j-1,k  ,l  )+eyz(j-1,k  ,l  )) &
+                                     + c* (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1)  &
+                                     -    (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  ))) 
+    end do
+  end do
+
+  do l = 0, nz-1
+    do j = 0, nx-1
+      b = 0.5*(bpgx(j)-bmgx(j))
+      c = 0.5*(bpgx(j)+bmgx(j))
+      byx(j,k,l) = agx(j)*byx(j,k,l) + b*    alphax * (ezx(j+1,k  ,l  )+ezz(j+1,k  ,l  )) &
+                                     + b*     betax * (ezx(j+1,k  ,l+1)+ezz(j+1,k  ,l+1) &
+                                                          +  ezx(j+1,k  ,l-1)+ezz(j+1,k  ,l-1)) &
+                                     - b*    alphax * (ezx(j  ,k  ,l  )+ezz(j  ,k  ,l  )) &
+                                     - b*     betax * (ezx(j  ,k  ,l+1)+ezz(j  ,k  ,l+1) &
+                                                          +  ezx(j  ,k  ,l-1)+ezz(j  ,k  ,l-1)) &
+                                     + c*(ezx(j+1,k  ,l  )+ezz(j+1,k  ,l  ) &
+                                     -   (ezx(j  ,k  ,l  )+ezz(j  ,k  ,l  )))
+    end do
+  end do
+
+  do l = 0, nz-1
+    do j = 0, nx-1
+      b = 0.5*(bpgz(l)-bmgz(l))
+      c = 0.5*(bpgz(l)+bmgz(l))
+      byz(j,k,l) = agz(l)*byz(j,k,l) - b*    alphaz * (exx(j  ,k  ,l+1)+exz(j  ,k  ,l+1)) &
+                                     - b*     betaz * (exx(j+1,k  ,l+1)+exz(j+1,k  ,l+1) &
+                                                          +  exx(j-1,k  ,l+1)+exz(j-1,k  ,l+1)) &
+                                     + b*    alphaz * (exx(j  ,k  ,l  )+exz(j  ,k  ,l  )) &
+                                     + b*     betaz * (exx(j+1,k  ,l  )+exz(j+1,k  ,l  ) &
+                                                          +  exx(j-1,k  ,l  )+exz(j-1,k  ,l  )) &
+                                     - c*(exx(j  ,k  ,l+1)+exz(j  ,k  ,l+1) &
+                                     -   (exx(j  ,k  ,l  )+exz(j  ,k  ,l  )))
+
+    end do
+  end do
+
+  do l = 0, nz
+    do j = 0, nx-1
+      b = 0.5*(bpgx(j)-bmgx(j))
+      c = 0.5*(bpgx(j)+bmgx(j))
+      bzx(j,k,l) = agx(j)*bzx(j,k,l) - b*    alphax * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  )) &
+                                     - b*     betax * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
+                                                          +  eyx(j+1,k  ,l-1)+eyz(j+1,k  ,l-1)) &
+                                     + b*    alphax * (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
+                                     + b*     betax * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1) &
+                                                          +  eyx(j  ,k  ,l-1)+eyz(j  ,k  ,l-1)) &
+                                     - c* (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
+                                     -    (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )))
+    end do
+  end do
+
+
+
+  else
+
+
   do l = 0, nz-1
     do j = 0, nx
       bxz(j,k,l) = agz(l)*bxz(j,k,l) + bpgz(l)*    alphaz * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1)) &
-                                     + bpgz(l)* 2.5*betaz * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
+                                     + bpgz(l)*     betaz * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
                                                           +  eyx(j-1,k  ,l+1)+eyz(j-1,k  ,l+1)) &
                                      + bmgz(l)*    alphaz * (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
-                                     + bmgz(l)* 2.5*betaz * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
+                                     + bmgz(l)*     betaz * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
                                                           +  eyx(j-1,k  ,l  )+eyz(j-1,k  ,l  )) 
     end do
   end do
@@ -2345,10 +2449,10 @@ else
   do l = 0, nz-1
     do j = 0, nx-1
       byx(j,k,l) = agx(j)*byx(j,k,l) + bpgx(j)*    alphax * (ezx(j+1,k  ,l  )+ezz(j+1,k  ,l  )) &
-                                     + bpgx(j)* 2.5*betax * (ezx(j+1,k  ,l+1)+ezz(j+1,k  ,l+1) &
+                                     + bpgx(j)*     betax * (ezx(j+1,k  ,l+1)+ezz(j+1,k  ,l+1) &
                                                           +  ezx(j+1,k  ,l-1)+ezz(j+1,k  ,l-1)) &
                                      + bmgx(j)*    alphax * (ezx(j  ,k  ,l  )+ezz(j  ,k  ,l  )) &
-                                     + bmgx(j)* 2.5*betax * (ezx(j  ,k  ,l+1)+ezz(j  ,k  ,l+1) &
+                                     + bmgx(j)*     betax * (ezx(j  ,k  ,l+1)+ezz(j  ,k  ,l+1) &
                                                           +  ezx(j  ,k  ,l-1)+ezz(j  ,k  ,l-1)) 
     end do
   end do
@@ -2356,10 +2460,10 @@ else
   do l = 0, nz-1
     do j = 0, nx-1
       byz(j,k,l) = agz(l)*byz(j,k,l) - bpgz(l)*    alphaz * (exx(j  ,k  ,l+1)+exz(j  ,k  ,l+1)) &
-                                     - bpgz(l)* 2.5*betaz * (exx(j+1,k  ,l+1)+exz(j+1,k  ,l+1) &
+                                     - bpgz(l)*     betaz * (exx(j+1,k  ,l+1)+exz(j+1,k  ,l+1) &
                                                           +  exx(j-1,k  ,l+1)+exz(j-1,k  ,l+1)) &
                                      - bmgz(l)*    alphaz * (exx(j  ,k  ,l  )+exz(j  ,k  ,l  )) &
-                                     - bmgz(l)* 2.5*betaz * (exx(j+1,k  ,l  )+exz(j+1,k  ,l  ) &
+                                     - bmgz(l)*     betaz * (exx(j+1,k  ,l  )+exz(j+1,k  ,l  ) &
                                                           +  exx(j-1,k  ,l  )+exz(j-1,k  ,l  )) 
 
     end do
@@ -2368,14 +2472,15 @@ else
   do l = 0, nz
     do j = 0, nx-1
       bzx(j,k,l) = agx(j)*bzx(j,k,l) - bpgx(j)*    alphax * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  )) &
-                                     - bpgx(j)* 2.5*betax * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
+                                     - bpgx(j)*     betax * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
                                                           +  eyx(j+1,k  ,l-1)+eyz(j+1,k  ,l-1)) &
                                      - bmgx(j)*    alphax * (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
-                                     - bmgx(j)* 2.5*betax * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1) &
+                                     - bmgx(j)*     betax * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1) &
                                                           +  eyx(j  ,k  ,l-1)+eyz(j  ,k  ,l-1)) 
     end do
   end do
-
+  end if
+  
 end if
 
   return
@@ -2545,7 +2650,7 @@ REAL(kind=8), INTENT(IN) :: dt
 INTEGER :: j, k, l
 
   call push_em3d_f(b%core%yf,dt*0.5)
-  call push_em3d_b(b%core%yf,dt*0.5)
+  call push_em3d_b(b%core%yf,dt*0.5,2)
   call push_em3d_blockbndf(b,dt,2)
   call push_em3d_blockbndb(b,dt,2)
 
@@ -2560,7 +2665,7 @@ INTEGER :: j, k, l
   call em3d_exchange_e(b)
 
   call push_em3d_f(b%core%yf,dt*0.5)
-  call push_em3d_b(b%core%yf,dt*0.5)
+  call push_em3d_b(b%core%yf,dt*0.5,1)
   call push_em3d_blockbndf(b,dt,1)
   call push_em3d_blockbndb(b,dt,1)
 
@@ -2619,10 +2724,10 @@ INTEGER(ISZ) :: j, k, l,which
 
   if (which==0) then
     if(l_pushf) call push_em3d_f(b%core%yf,dt)
-    call push_em3d_b(b%core%yf,dt)
+    call push_em3d_b(b%core%yf,dt,which)
   else
     if(l_pushf) call push_em3d_f(b%core%yf,dt*0.5)
-    call push_em3d_b(b%core%yf,dt*0.5)
+    call push_em3d_b(b%core%yf,dt*0.5,which)
   endif
 
   if(l_pushf) call push_em3d_blockbndf(b,dt,which)
@@ -2640,6 +2745,1023 @@ INTEGER(ISZ) :: j, k, l,which
 
   return
 end subroutine push_em3d_bf
+
+subroutine push_em3dext_bvec(ex,ey,ez,bx,by,bz,CJ,DEXY, DEXZ, DEYX, DEYZ, DEZX, DEZY, &
+                             DBXY, DBXZ, DBYX, DBYZ, DBZX, DBZY, &
+                             BXYCJ, BYXCJ, BXZCJ, BZXCJ, BYZCJ, BZYCJ, &
+                             EXYCJ, EYXCJ, EXZCJ, EZXCJ, EYZCJ, EZYCJ, &
+                             BXYCJT, BYXCJT, BXZCJT, BZXCJT, BYZCJT, BZYCJT, &
+                             EXYCJT, EYXCJT, EXZCJT, EZXCJT, EYZCJT, EZYCJT, &
+                             dt,dx,dy,dz,sigma,clight,nx,ny,nz, &
+                             nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,zmin,istep)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard,istep
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez, &
+                DEXY, DEXZ, DEYX, DEYZ, DEZX, DEZY, EXYCJ, EYXCJ, EXZCJ, EZXCJ, EYZCJ, EZYCJ
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: BX, DBXY, &
+                DBXZ, BY, DBYX, DBYZ, BZ, DBZX, DBZY, &
+                          BXYCJ, BYXCJ, BXZCJ, BZXCJ, BYZCJ, BZYCJ, &
+                             BXYCJT, BYXCJT, BXZCJT, BZXCJT, BYZCJT, BZYCJT, &
+                             EXYCJT, EYXCJT, EXZCJT, EZXCJT, EYZCJT, EZYCJT
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz
+real(kind=8), intent(IN out) :: clight,E_inz_pos,zmin,dt,dx,dy,dz,sigma
+integer(ISZ) :: j,k,l
+logical(ISZ) :: l_2dxz
+real(kind=8) :: w,zlaser
+
+REAL :: BETAX, ALPHAX, BETA1X, BETA2X, SIGMAEX, BETAEX, ALPHAEX, BETA1EXY, BETA2EXY, BETA1EXZ, BETA2EXZ, &
+        BETAY, ALPHAY, BETA1Y, BETA2Y, SIGMAEY, BETAEY, ALPHAEY, BETA1EYX, BETA2EYX, BETA1EYZ, BETA2EYZ, &
+        BETAZ, ALPHAZ, BETA1Z, BETA2Z, SIGMAEZ, BETAEZ, ALPHAEZ, BETA1EZX, BETA2EZX, BETA1EZY, BETA2EZY, &
+        SIGMAXBND, SIGMAYBND, SIGMAZBND, &
+        BETAEZX, BETAEZY, AX, AY, SIGMAEZX, SIGMAEZY,sigmax,sigmay,sigmaz
+
+sigmax = sigma*clight/dx
+sigmaz = sigma*clight/dz
+if (l_2dxz) then
+  sigmay = 0.
+else
+  sigmay = sigma*clight/dy
+endif
+
+! the time step is assumed to be dt/2 for ISTEP=1 or 2 but algorithm assumes dt
+IF(ISTEP==1 .or. ISTEP==2) dt=dt*2
+
+BETAX = 1.-0.5*SIGMAX*DT
+ALPHAX = (1.+0.5*SIGMAX*DT)/BETAX
+BETA1X = DT/(DX*BETAX)
+BETA2X = SIGMAX*DT/(2.*BETAX)
+
+BETAY = 1.-0.5*SIGMAY*DT
+ALPHAY = (1.+0.5*SIGMAY*DT)/BETAY
+BETA1Y = DT/(DY*BETAY)
+BETA2Y = SIGMAY*DT/(2.*BETAY)
+
+BETAZ = 1.-0.5*SIGMAZ*DT
+ALPHAZ = (1.+0.5*SIGMAZ*DT)/BETAZ
+BETA1Z = DT/(DZ*BETAZ)
+BETA2Z = SIGMAZ*DT/(2.*BETAZ)
+
+IF(ISTEP.ne.2) THEN
+ if (.not. l_2dxz) then
+  ! advance Bxcj
+  do l = 0, nz-1
+   do k = 0, ny-1
+    do j = 0, nx
+              BXZCJ(J,K,L) = alphaz  * BXZCJ(J,K,L) &
+                           + 2.*(beta1z+beta2z) * EYZCJT(J,K,L)  &
+                           - beta1y * (EZ(J,K+1,L)-EZ(J,K,L)) &
+                           - beta2y * (DEZY(J,K+1,L)+DEZY(J,K,L)) &
+                           + beta2y * Bx(J,K,L) 
+              BXYCJ(J,K,L) = alphay  * BXYCJ(J,K,L) &
+                           - 2.*(beta1y+beta2y) * EZYCJT(J,K,L)  &
+                           + beta1z * (EY(J,K,L+1)-EY(J,K,L)) &
+                           + beta2z * (DEYZ(J,K,L+1)+DEYZ(J,K,L)) &
+                           + beta2z * Bx(J,K,L) 
+      enddo
+    enddo
+  enddo
+  ! advance Bycj
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx-1
+              BYZCJ(J,K,L) = alphaz  * BYZCJ(J,K,L)  &
+                           - 2.*(BETA1Z+BETA2Z) * EXZCJT(J,K,L) &
+                           + BETA1X * (EZ(J+1,K,L)-EZ(J,K,L)) &
+                           + BETA2X * (DEZX(J+1,K,L)+DEZX(J,K,L)) &
+                           + BETA2X * By(J,K,L) 
+              BYXCJ(J,K,L) = ALPHAX  * BYXCJ(J,K,L) &
+                           + 2.*(BETA1X+BETA2X) * EZXCJT(J,K,L) &
+                           - BETA1Z * (EX(J,K,L+1)-EX(J,K,L)) &
+                           - BETA2Z * (DEXZ(J,K,L+1)+DEXZ(J,K,L)) &
+                           + BETA2Z * By(J,K,L) 
+      enddo
+    enddo
+  enddo
+  ! advance Bzcj
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx-1
+              BZYCJ(J,K,L) = ALPHAY  * BZYCJ(J,K,L) &
+                           + 2.*(BETA1Y+BETA2Y) * EXYCJT(J,K,L) &
+                           - BETA1X * (EY(J+1,K,L)-EY(J,K,L)) &
+                           - BETA2X * (DEYX(J+1,K,L)+DEYX(J,K,L)) &
+                           + BETA2X * Bz(J,K,L) 
+              BZXCJ(J,K,L) = ALPHAX  * BZXCJ(J,K,L) &
+                           - 2.*(BETA1X+BETA2X) * EYXCJT(J,K,L) &
+                           + BETA1Y * (EX(J,K+1,L)-EX(J,K,L)) &
+                           + BETA2Y * (DEXY(J,K+1,L)+DEXY(J,K,L)) &
+                           + BETA2Y * Bz(J,K,L)
+      enddo
+    enddo
+  enddo
+ else
+  k = 0
+  ! advance Bxcj
+  do l = 0, nz-1
+    do j = 0, nx
+              BXZCJ(J,K,L) = alphaz  * BXZCJ(J,K,L) &
+                           + 2.*(beta1z+beta2z) * EYZCJT(J,K,L)  &
+                           + beta2y * Bx(J,K,L) 
+              BXYCJ(J,K,L) = alphay  * BXYCJ(J,K,L) &
+                           - 2.*(beta1y+beta2y) * EZYCJT(J,K,L)  &
+                           + beta1z * (EY(J,K,L+1)-EY(J,K,L)) &
+                           + beta2z * (DEYZ(J,K,L+1)+DEYZ(J,K,L)) &
+                           + beta2z * Bx(J,K,L) 
+      enddo
+  enddo
+  ! advance Bycj
+  do l = 0, nz-1
+    do j = 0, nx-1
+              BYZCJ(J,K,L) = alphaz  * BYZCJ(J,K,L)  &
+                           - 2.*(BETA1Z+BETA2Z) * EXZCJT(J,K,L) &
+                           + BETA1X * (EZ(J+1,K,L)-EZ(J,K,L)) &
+                           + BETA2X * (DEZX(J+1,K,L)+DEZX(J,K,L)) &
+                           + BETA2X * By(J,K,L) 
+              BYXCJ(J,K,L) = ALPHAX  * BYXCJ(J,K,L) &
+                           + 2.*(BETA1X+BETA2X) * EZXCJT(J,K,L) &
+                           - BETA1Z * (EX(J,K,L+1)-EX(J,K,L)) &
+                           - BETA2Z * (DEXZ(J,K,L+1)+DEXZ(J,K,L)) &
+                           + BETA2Z * By(J,K,L) 
+      enddo
+  enddo
+  ! advance Bzcj
+  do l = 0, nz
+    do j = 0, nx-1
+              BZYCJ(J,K,L) = ALPHAY  * BZYCJ(J,K,L) &
+                           + 2.*(BETA1Y+BETA2Y) * EXYCJT(J,K,L) &
+                           - BETA1X * (EY(J+1,K,L)-EY(J,K,L)) &
+                           - BETA2X * (DEYX(J+1,K,L)+DEYX(J,K,L)) &
+                           + BETA2X * Bz(J,K,L) 
+              BZXCJ(J,K,L) = ALPHAX  * BZXCJ(J,K,L) &
+                           - 2.*(BETA1X+BETA2X) * EYXCJT(J,K,L) &
+                           + BETA2Y * Bz(J,K,L)
+      enddo
+  enddo
+
+ end if
+
+ if (.not. l_2dxz) then
+  ! advance Bxcj
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx
+              BXYCJT(J,K,L) = (1.-2.*(clight*DT/DY)/(1.+clight*DT/DY)) * BXYCJT(J,K,L) &
+                           + 2.*(DT/DY)/(1.+clight*DT/DY) * EZYCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx
+              BXZCJT(J,K,L) = (1.-2.*(clight*DT/DZ)/(1.+clight*DT/DZ)) * BXZCJT(J,K,L) &
+                           - 2.*(DT/DZ)/(1.+clight*DT/DZ) * EYZCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+  ! advance Bycj
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-1
+              BYZCJT(J,K,L) = (1.-2.*(clight*DT/DZ)/(1.+clight*DT/DZ)) * BYZCJT(J,K,L) &
+                           + 2.*(DT/DZ)/(1.+clight*DT/DZ) * EXZCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx
+              BYXCJT(J,K,L) = (1.-2.*(clight*DT/DX)/(1.+clight*DT/DX)) * BYXCJT(J,K,L) &
+                           - 2.*(DT/DX)/(1.+clight*DT/DX) * EZXCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+  ! advance Bzcj
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx
+              BZXCJT(J,K,L) = (1.-2.*(clight*DT/DX)/(1.+clight*DT/DX)) * BZXCJT(J,K,L) &
+                           + 2.*(DT/DX)/(1.+clight*DT/DX) * EYXCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-1
+              BZYCJT(J,K,L) = (1.-2.*(clight*DT/DY)/(1.+clight*DT/DY)) * BZYCJT(J,K,L) &
+                           - 2.*(DT/DY)/(1.+clight*DT/DY) * EXYCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+
+else
+  k = 0
+
+  ! advance Bxcj
+  do l = 0, nz-1
+    do j = 0, nx
+              BXYCJT(J,K,L) = (1.-2.*(clight*DT/DY)/(1.+clight*DT/DY)) * BXYCJT(J,K,L) &
+                           + 2.*(DT/DY)/(1.+clight*DT/DY) * EZYCJ(J,K,L)
+      enddo
+  enddo
+  do l = 0, nz
+    do j = 0, nx
+              BXZCJT(J,K,L) = (1.-2.*(clight*DT/DZ)/(1.+clight*DT/DZ)) * BXZCJT(J,K,L) &
+                           - 2.*(DT/DZ)/(1.+clight*DT/DZ) * EYZCJ(J,K,L)
+      enddo
+  enddo
+  ! advance Bycj
+  do l = 0, nz
+    do j = 0, nx-1
+              BYZCJT(J,K,L) = (1.-2.*(clight*DT/DZ)/(1.+clight*DT/DZ)) * BYZCJT(J,K,L) &
+                           + 2.*(DT/DZ)/(1.+clight*DT/DZ) * EXZCJ(J,K,L)
+      enddo
+  enddo
+  do l = 0, nz-1
+    do j = 0, nx
+              BYXCJT(J,K,L) = (1.-2.*(clight*DT/DX)/(1.+clight*DT/DX)) * BYXCJT(J,K,L) &
+                           - 2.*(DT/DX)/(1.+clight*DT/DX) * EZXCJ(J,K,L)
+      enddo
+  enddo
+  ! advance Bzcj
+  do l = 0, nz
+    do j = 0, nx
+              BZXCJT(J,K,L) = (1.-2.*(clight*DT/DX)/(1.+clight*DT/DX)) * BZXCJT(J,K,L) &
+                           + 2.*(DT/DX)/(1.+clight*DT/DX) * EYXCJ(J,K,L)
+      enddo
+  enddo
+  do l = 0, nz
+    do j = 0, nx-1
+              BZYCJT(J,K,L) = (1.-2.*(clight*DT/DY)/(1.+clight*DT/DY)) * BZYCJT(J,K,L) &
+                           - 2.*(DT/DY)/(1.+clight*DT/DY) * EXYCJ(J,K,L)
+      enddo
+  enddo
+
+ endif
+
+end if
+
+
+
+BETAX = 1.-0.5*SIGMAX*DT
+ALPHAX = (1.+0.5*SIGMAX*DT)/BETAX
+BETA1X = clight**2*DT/(DX*BETAX)
+BETA2X = SIGMAX*DT/(2.*BETAX)
+
+BETAY = 1.-0.5*SIGMAY*DT
+ALPHAY = (1.+0.5*SIGMAY*DT)/BETAY
+BETA1Y = clight**2*DT/(DY*BETAY)
+BETA2Y = SIGMAY*DT/(2.*BETAY)
+
+BETAZ = 1.-0.5*SIGMAZ*DT
+ALPHAZ = (1.+0.5*SIGMAZ*DT)/BETAZ
+BETA1Z = clight**2*DT/(DZ*BETAZ)
+BETA2Z = SIGMAZ*DT/(2.*BETAZ)
+
+SIGMAEX = SIGMAY+SIGMAZ
+BETAEX = 1.-0.5*SIGMAEX*DT
+ALPHAEX = (1.+0.5*SIGMAEX*DT)/BETAEX
+BETA1EXY = DT/(DY*BETAEX)
+BETA2EXY = SIGMAY*DT/(2.*BETAEX)
+BETA1EXZ = DT/(DZ*BETAEX)
+BETA2EXZ = SIGMAZ*DT/(2.*BETAEX)
+
+SIGMAEY = SIGMAX+SIGMAZ
+BETAEY = 1.-0.5*SIGMAEY*DT
+ALPHAEY = (1.+0.5*SIGMAEY*DT)/BETAEY
+BETA1EYX = DT/(DX*BETAEY)
+BETA2EYX = SIGMAX*DT/(2.*BETAEY)
+BETA1EYZ = DT/(DZ*BETAEY)
+BETA2EYZ = SIGMAZ*DT/(2.*BETAEY)
+
+SIGMAEZ = SIGMAX+SIGMAY
+BETAEZ = 1.-0.5*SIGMAEZ*DT
+ALPHAEZ = (1.+0.5*SIGMAEZ*DT)/BETAEZ
+BETA1EZX = DT/(DX*BETAEZ)
+BETA2EZX = dt*SIGMAX/(2.*BETAEZ)
+BETA1EZY = DT/(DY*BETAEZ)
+BETA2EZY = dt*SIGMAY/(2.*BETAEZ)
+
+IF(ISTEP.EQ.1) THEN
+  beta1x = beta1x/(1.+alphax)
+  beta2x = beta2x/(1.+alphax)
+  alphax = 2.*alphax/(1.+alphax)
+
+  beta1y = beta1y/(1.+alphay)
+  beta2y = beta2y/(1.+alphay)
+  alphay = 2.*alphay/(1.+alphay)
+
+  beta1z = beta1z/(1.+alphaz)
+  beta2z = beta2z/(1.+alphaz)
+  alphaz = 2.*alphaz/(1.+alphaz)
+
+  beta1exy = beta1exy/(1.+alphaex)
+  beta1exz = beta1exz/(1.+alphaex)
+  beta2exy = beta2exy/(1.+alphaex)
+  beta2exz = beta2exz/(1.+alphaex)
+  alphaex = 2.*alphaex/(1.+alphaex)
+
+  beta1eyx = beta1eyx/(1.+alphaey)
+  beta1eyz = beta1eyz/(1.+alphaey)
+  beta2eyx = beta2eyx/(1.+alphaey)
+  beta2eyz = beta2eyz/(1.+alphaey)
+  alphaey = 2.*alphaey/(1.+alphaey)
+
+  beta1ezx = beta1ezx/(1.+alphaez)
+  beta1ezy = beta1ezy/(1.+alphaez)
+  beta2ezx = beta2ezx/(1.+alphaez)
+  beta2ezy = beta2ezy/(1.+alphaez)
+  alphaez = 2.*alphaez/(1.+alphaez)
+end if
+IF(ISTEP.EQ.2) THEN
+  beta1x = beta1x/2
+  beta2x = beta2x/2
+  alphax = (1.+alphax)/2
+
+  beta1y = beta1y/2
+  beta2y = beta2y/2
+  alphay = (1.+alphay)/2
+
+  beta1z = beta1z/2
+  beta2z = beta2z/2
+  alphaz = (1.+alphaz)/2
+
+  beta1exy = beta1exy/2
+  beta1exz = beta1exz/2
+  beta2exy = beta2exy/2
+  beta2exz = beta2exz/2
+  alphaex = (1.+alphaex)/2
+
+  beta1eyx = beta1eyz/2
+  beta1eyz = beta1eyz/2
+  beta2eyx = beta2eyx/2
+  beta2eyz = beta2eyz/2
+  alphaey = (1.+alphaey)/2
+
+  beta1ezx = beta1ezx/2
+  beta1ezy = beta1ezy/2
+  beta2ezx = beta2ezx/2
+  beta2ezy = beta2ezy/2
+  alphaez = (1.+alphaez)/2
+end if
+
+if (.not. l_2dxz) then
+  ! advance Bx
+  do l = 0, nz-1
+   do k = 0, ny-1
+    do j = 0, nx
+              BX(J,K,L)  = ALPHAEX * BX(J,K,L) &
+                         - BETA1exY*(Ez(J,K+1,L)-Ez(J,K,L)) &
+                         - BETA2exY*(DEZY(J,K+1,L)+DEZY(J,K,L)) &
+                         - BETA2exY*(EZYCJ(J,K+1,L)-EZYCJ(J,K,L)) &
+                         + BETA1exZ*(Ey(J,K,L+1)-Ey(J,K,L)) &
+                         + BETA2exZ*(DEYZ(J,K,L+1)+DEYZ(J,K,L)) &
+                         - BETA2exZ*(EYZCJ(J,K,L+1)-EYZCJ(J,K,L)) 
+              DBXY(J,K,L) = ALPHAY * DBXY(J,K,L) &
+                          - BETA1Y*(DEZY(J,K+1,L)-DEZY(J,K,L)) &
+                          - BETA2Y*(Ez(J,K+1,L)+Ez(J,K,L)) &
+                          + BETA1Y*(EZYCJ(J,K+1,L)+EZYCJ(J,K,L))/clight 
+              DBXZ(J,K,L) = ALPHAZ * DBXZ(J,K,L) &
+                          + BETA1Z*(DEYZ(J,K,L+1)-DEYZ(J,K,L)) &
+                          + BETA2Z*(Ey(J,K,L+1)+Ey(J,K,L)) &
+                          - BETA1Z*(EYZCJ(J,K,L+1)+EYZCJ(J,K,L))/clight 
+      enddo
+    enddo
+  enddo
+  ! advance By
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx-1
+              BY(J,K,L)  = ALPHAey * BY(J,K,L) &
+                         - BETA1eyZ*(Ex(J,K,L+1)-Ex(J,K,L)) &
+                         - BETA2eyZ*(DEXZ(J,K,L+1)+DEXZ(J,K,L)) &
+                         - BETA2eyZ*(EXZCJ(J,K,L+1)-EXZCJ(J,K,L)) &
+                         + BETA1eyX*(Ez(J+1,K,L)-Ez(J,K,L)) &
+                         + BETA2eyX*(DEZX(J+1,K,L)+DEZX(J,K,L)) &
+                         - BETA2eyX*(EZXCJ(J+1,K,L)-EZXCJ(J,K,L)) 
+              DBYZ(J,K,L) = ALPHAZ * DBYZ(J,K,L) &
+                         - BETA1Z*(DEXZ(J,K,L+1)-DEXZ(J,K,L)) &
+                         - BETA2Z*(Ex(J,K,L+1)+Ex(J,K,L)) &
+                         + BETA1Z*(EXZCJ(J,K,L+1)+EXZCJ(J,K,L))/clight 
+              DBYX(J,K,L) = ALPHAX * DBYX(J,K,L) &
+                         + BETA1X*(DEZX(J+1,K,L)-DEZX(J,K,L)) &
+                         + BETA2X*(Ez(J+1,K,L)+Ez(J,K,L)) &
+                         - BETA1X*(EZXCJ(J+1,K,L)+EZXCJ(J,K,L))/clight 
+      enddo
+    enddo
+  enddo
+  ! advance Bz
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx-1
+              BZ(J,K,L)  = ALPHAez * BZ(J,K,L) &
+                         - BETA1ezX*(Ey(J+1,K,L)-Ey(J,K,L)) &
+                         - BETA2ezX*(DEYX(J+1,K,L)+DEYX(J,K,L)) &
+                         - BETA2ezX*(EYXCJ(J+1,K,L)-EYXCJ(J,K,L)) &
+                         + BETA1ezY*(Ex(J,K+1,L)-Ex(J,K,L)) &
+                         + BETA2ezY*(DEXY(J,K+1,L)+DEXY(J,K,L)) &
+                         - BETA2ezY*(EXYCJ(J,K+1,L)-EXYCJ(J,K,L)) 
+              DBZX(J,K,L) = ALPHAX * DBZX(J,K,L) &
+                         - BETA1X*(DEYX(J+1,K,L)-DEYX(J,K,L)) &
+                         - BETA2X*(Ey(J+1,K,L)+Ey(J,K,L)) &
+                         + BETA1X*(EYXCJ(J+1,K,L)+EYXCJ(J,K,L))/clight 
+              DBZY(J,K,L) = ALPHAY * DBZY(J,K,L) &
+                         + BETA1Y*(DEXY(J,K+1,L)-DEXY(J,K,L)) &
+                         + BETA2Y*(Ex(J,K+1,L)+Ex(J,K,L)) &
+                         - BETA1Y*(EXYCJ(J,K+1,L)+EXYCJ(J,K,L))/clight 
+      enddo
+    enddo
+  enddo
+
+  ! advance Bxcj part 2
+  do l = 0, nz-1
+   do k = 0, ny-1
+    do j = 0, nx
+              BXZCJ(J,K,L) = BXZCJ(J,K,L) + beta2y * Bx(J,K,L)
+              BXYCJ(J,K,L) = BXYCJ(J,K,L) + beta2z * Bx(J,K,L)
+      enddo
+    enddo
+  enddo
+  ! advance Bycj part 2
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx-1
+              BYZCJ(J,K,L) = BYZCJ(J,K,L) + BETA2X * By(J,K,L)
+              BYXCJ(J,K,L) = BYXCJ(J,K,L) + BETA2Z * By(J,K,L)
+      enddo
+    enddo
+  enddo
+  ! advance Bzcj part 2
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx-1
+              BZYCJ(J,K,L) = BZYCJ(J,K,L) + BETA2X * Bz(J,K,L)
+              BZXCJ(J,K,L) = BZXCJ(J,K,L) + BETA2Y * Bz(J,K,L)
+      enddo
+    enddo
+  enddo
+
+else
+  k = 0
+
+  ! advance Bx
+  do l = 0, nz-1
+    do j = 0, nx
+              BX(J,K,L)  = ALPHAEX * BX(J,K,L) &
+                         + BETA1exZ*(Ey(J,K,L+1)-Ey(J,K,L)) &
+                         + BETA2exZ*(DEYZ(J,K,L+1)+DEYZ(J,K,L)) &
+                         - BETA2exZ*(EYZCJ(J,K,L+1)-EYZCJ(J,K,L)) 
+              DBXZ(J,K,L) = ALPHAZ * DBXZ(J,K,L) &
+                          + BETA1Z*(DEYZ(J,K,L+1)-DEYZ(J,K,L)) &
+                          + BETA2Z*(Ey(J,K,L+1)+Ey(J,K,L)) &
+                          - BETA1Z*(EYZCJ(J,K,L+1)+EYZCJ(J,K,L))/clight 
+      enddo
+  enddo
+  ! advance By
+  do l = 0, nz-1
+    do j = 0, nx-1
+              BY(J,K,L)  = ALPHAey * BY(J,K,L) &
+                         - BETA1eyZ*(Ex(J,K,L+1)-Ex(J,K,L)) &
+                         - BETA2eyZ*(DEXZ(J,K,L+1)+DEXZ(J,K,L)) &
+                         - BETA2eyZ*(EXZCJ(J,K,L+1)-EXZCJ(J,K,L)) &
+                         + BETA1eyX*(Ez(J+1,K,L)-Ez(J,K,L)) &
+                         + BETA2eyX*(DEZX(J+1,K,L)+DEZX(J,K,L)) &
+                         - BETA2eyX*(EZXCJ(J+1,K,L)-EZXCJ(J,K,L)) 
+              DBYZ(J,K,L) = ALPHAZ * DBYZ(J,K,L) &
+                         - BETA1Z*(DEXZ(J,K,L+1)-DEXZ(J,K,L)) &
+                         - BETA2Z*(Ex(J,K,L+1)+Ex(J,K,L)) &
+                         + BETA1Z*(EXZCJ(J,K,L+1)+EXZCJ(J,K,L))/clight 
+              DBYX(J,K,L) = ALPHAX * DBYX(J,K,L) &
+                         + BETA1X*(DEZX(J+1,K,L)-DEZX(J,K,L)) &
+                         + BETA2X*(Ez(J+1,K,L)+Ez(J,K,L)) &
+                         - BETA1X*(EZXCJ(J+1,K,L)+EZXCJ(J,K,L))/clight 
+      enddo
+  enddo
+  ! advance Bz
+  do l = 0, nz
+    do j = 0, nx-1
+              BZ(J,K,L)  = ALPHAez * BZ(J,K,L) &
+                         - BETA1ezX*(Ey(J+1,K,L)-Ey(J,K,L)) &
+                         - BETA2ezX*(DEYX(J+1,K,L)+DEYX(J,K,L)) &
+                         - BETA2ezX*(EYXCJ(J+1,K,L)-EYXCJ(J,K,L)) 
+              DBZX(J,K,L) = ALPHAX * DBZX(J,K,L) &
+                         - BETA1X*(DEYX(J+1,K,L)-DEYX(J,K,L)) &
+                         - BETA2X*(Ey(J+1,K,L)+Ey(J,K,L)) &
+                         + BETA1X*(EYXCJ(J+1,K,L)+EYXCJ(J,K,L))/clight 
+      enddo
+  enddo
+
+  ! advance Bxcj part 2
+  do l = 0, nz-1
+    do j = 0, nx
+              BXZCJ(J,K,L) = BXZCJ(J,K,L) + beta2y * Bx(J,K,L)
+              BXYCJ(J,K,L) = BXYCJ(J,K,L) + beta2z * Bx(J,K,L)
+      enddo
+  enddo
+  ! advance Bycj part 2
+  do l = 0, nz-1
+    do j = 0, nx-1
+              BYZCJ(J,K,L) = BYZCJ(J,K,L) + BETA2X * By(J,K,L)
+              BYXCJ(J,K,L) = BYXCJ(J,K,L) + BETA2Z * By(J,K,L)
+      enddo
+  enddo
+  ! advance Bzcj part 2
+  do l = 0, nz
+    do j = 0, nx-1
+              BZYCJ(J,K,L) = BZYCJ(J,K,L) + BETA2X * Bz(J,K,L)
+              BZXCJ(J,K,L) = BZXCJ(J,K,L) + BETA2Y * Bz(J,K,L)
+      enddo
+  enddo
+endif
+
+RETURN
+END SUBROUTINE push_em3dext_bvec
+
+
+subroutine push_em3dext_evec(ex,ey,ez,bx,by,bz,CJ, &
+                             DEXY, DEXZ, DEYX, DEYZ, DEZX, DEZY, &
+                             DBXY, DBXZ, DBYX, DBYZ, DBZX, DBZY, &
+                             BXYCJ, BYXCJ, BXZCJ, BZXCJ, BYZCJ, BZYCJ, &
+                             EXYCJ, EYXCJ, EXZCJ, EZXCJ, EYZCJ, EZYCJ, &
+                             BXYCJT, BYXCJT, BXZCJT, BZXCJT, BYZCJT, BZYCJT, &
+                             EXYCJT, EYXCJT, EXZCJT, EZXCJT, EYZCJT, EZYCJT, &
+                             dt,dx,dy,dz,sigma,mu,clight,nx,ny,nz, &
+                             nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,zmin)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez, &
+DEXY, DEXZ, DEYX, DEYZ, DEZX, DEZY, EXYCJ, EYXCJ, EXZCJ, EZXCJ, EYZCJ, EZYCJ, &
+                             BXYCJT, BYXCJT, BXZCJT, BZXCJT, BYZCJT, BZYCJT, &
+                             EXYCJT, EYXCJT, EXZCJT, EZXCJT, EYZCJT, EZYCJT
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: &
+BX, DBXY, DBXZ, BY, DBYX, DBYZ, BZ, DBZX, DBZY, &
+                          BXYCJ, BYXCJ, BXZCJ, BZXCJ, BYZCJ, BZYCJ
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz
+real(kind=8), intent(IN) :: mu,clight,E_inz_pos,zmin,dt,dx,dy,dz,sigma
+integer(ISZ) :: j,k,l
+logical(ISZ) :: l_2dxz
+real(kind=8) :: w,zlaser
+
+REAL :: BETAX, ALPHAX, BETA1X, BETA2X, GAMMAX, SIGMAEX, BETAEX, ALPHAEX, BETA1EXY, BETA2EXY, BETA1EXZ, BETA2EXZ, GAMMAEX, &
+        BETAY, ALPHAY, BETA1Y, BETA2Y, GAMMAY, SIGMAEY, BETAEY, ALPHAEY, BETA1EYX, BETA2EYX, BETA1EYZ, BETA2EYZ, GAMMAEY, &
+        BETAZ, ALPHAZ, BETA1Z, BETA2Z, GAMMAZ, SIGMAEZ, BETAEZ, ALPHAEZ, BETA1EZX, BETA2EZX, BETA1EZY, BETA2EZY, GAMMAEZ, &
+        SIGMAXBND, SIGMAYBND, SIGMAZBND, &
+        BETAEZX, BETAEZY, AX, AY, SIGMAEZX, SIGMAEZY,sigmax,sigmay,sigmaz
+
+sigmax = sigma*clight/dx
+sigmaz = sigma*clight/dz
+if (l_2dxz) then
+  sigmay = 0.
+else
+  sigmay = sigma*clight/dy
+endif
+
+BETAX = 1.-0.5*SIGMAX*DT
+ALPHAX = (1.+0.5*SIGMAX*DT)/BETAX
+BETA1X = clight**2*DT/(DX*BETAX)
+BETA2X = SIGMAX*DT/(2.*BETAX)
+GAMMAX = mu*clight**2*DT/BETAX
+
+BETAY = 1.-0.5*SIGMAY*DT
+ALPHAY = (1.+0.5*SIGMAY*DT)/BETAY
+BETA1Y = clight**2*DT/(DY*BETAY)
+BETA2Y = SIGMAY*DT/(2.*BETAY)
+GAMMAY = mu*clight**2*DT/BETAY
+
+BETAZ = 1.-0.5*SIGMAZ*DT
+ALPHAZ = (1.+0.5*SIGMAZ*DT)/BETAZ
+BETA1Z = clight**2*DT/(DZ*BETAZ)
+BETA2Z = SIGMAZ*DT/(2.*BETAZ)
+GAMMAZ = mu*clight**2*DT/BETAZ
+
+if (.not. l_2dxz) then
+  ! advance Excj
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-1
+              EXZCJ(J,K,L) = alphaz  * EXZCJ(J,K,L) &
+                           - 2.*(beta1z+beta2z) * BYZCJT(J,K,L)  &
+                           + beta1y * (BZ(J,K,L)-BZ(J,K-1,L)) &
+                           + beta2y * (DBZY(J,K,L)+DBZY(J,K-1,L)) &
+                           - beta2z * (BYZCJ(J,K,L)+BYZCJ(J,K,L-1)) &
+                           - BETA2y * (BZYCJ(J,K,L)+BZYCJ(J,K-1,L)) &
+                           + beta2y * Ex(J,K,L) &
+                           - gammay * CJ(J,K,L,1)
+              EXYCJ(J,K,L) = alphay  * EXYCJ(J,K,L) &
+                           + 2.*(beta1y+beta2y) * BZYCJT(J,K,L)  &
+                           - beta1z * (BY(J,K,L)-BY(J,K,L-1)) &
+                           - beta2z * (DBYZ(J,K,L)+DBYZ(J,K,L-1)) &
+                           - beta2z * (BYZCJ(J,K,L)+BYZCJ(J,K,L-1)) &
+                           - BETA2y * (BZYCJ(J,K,L)+BZYCJ(J,K-1,L)) &
+                           + beta2z * Ex(J,K,L) &
+                           - gammaz * CJ(J,K,L,1)
+      enddo
+    enddo
+  enddo
+  ! advance Eycj
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx
+              EYZCJ(J,K,L) = alphaz  * EYZCJ(J,K,L)  &
+                           + 2.*(BETA1Z+BETA2Z) * BXZCJT(J,K,L) &
+                           - BETA1X * (BZ(J,K,L)-BZ(J-1,K,L)) &
+                           - BETA2X * (DBZX(J,K,L)+DBZX(J-1,K,L)) &
+                           - BETA2X * (BZXCJ(J,K,L)+BZXCJ(J-1,K,L)) &
+                           - BETA2Z * (BXZCJ(J,K,L)+BXZCJ(J,K,L-1)) &
+                           + BETA2X * Ey(J,K,L) &
+                           - GAMMAX   * CJ(J,K,L,2)
+              EYXCJ(J,K,L) = ALPHAX  * EYXCJ(J,K,L) &
+                           - 2.*(BETA1X+BETA2X) * BZXCJT(J,K,L) &
+                           + BETA1Z * (BX(J,K,L)-BX(J,K,L-1)) &
+                           + BETA2Z * (DBXZ(J,K,L)+DBXZ(J,K,L-1)) &
+                           - BETA2X * (BZXCJ(J,K,L)+BZXCJ(J-1,K,L)) &
+                           - BETA2Z * (BXZCJ(J,K,L)+BXZCJ(J,K,L-1)) &
+                           + BETA2Z * Ey(J,K,L) &
+                           - GAMMAZ   * CJ(J,K,L,2)
+      enddo
+    enddo
+  enddo
+  ! advance Ezcj
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx
+              EZYCJ(J,K,L) = ALPHAY  * EZYCJ(J,K,L) &
+                           - 2.*(BETA1Y+BETA2Y) * BXYCJT(J,K,L) &
+                           + BETA1X * (BY(J,K,L)-BY(J-1,K,L)) &
+                           + BETA2X * (DBYX(J,K,L)+DBYX(J-1,K,L)) &
+                           - BETA2X * (BYXCJ(J,K,L)+BYXCJ(J-1,K,L)) &
+                           - BETA2Y * (BXYCJ(J,K,L)+BXYCJ(J,K-1,L)) &
+                           + BETA2X * Ez(J,K,L) &
+                           - GAMMAX   * CJ(J,K,L,3)
+              EZXCJ(J,K,L) = ALPHAX  * EZXCJ(J,K,L) &
+                           + 2.*(BETA1X+BETA2X) * BYXCJT(J,K,L) &
+                           - BETA1Y * (BX(J,K,L)-BX(J,K-1,L)) &
+                           - BETA2Y * (DBXY(J,K,L)+DBXY(J,K-1,L)) &
+                           - BETA2X * (BYXCJ(J,K,L)+BYXCJ(J-1,K,L)) &
+                           - BETA2Y * (BXYCJ(J,K,L)+BXYCJ(J,K-1,L)) &
+                           + BETA2Y * Ez(J,K,L) &
+                           - GAMMAY   * CJ(J,K,L,3)
+      enddo
+    enddo
+  enddo
+else
+  k = 0
+  do l = 0, nz
+    do j = 0, nx-1
+              EXZCJ(J,K,L) = alphaz  * EXZCJ(J,K,L) &
+                           - 2.*(beta1z+beta2z) * BYZCJT(J,K,L)  &
+                           - beta2z * (BYZCJ(J,K,L)+BYZCJ(J,K,L-1)) &
+                           + beta2y * Ex(J,K,L) &
+                           - gammay * CJ(J,K,L,1)
+              EXYCJ(J,K,L) = alphay  * EXYCJ(J,K,L) &
+                           + 2.*(beta1y+beta2y) * BZYCJT(J,K,L)  &
+                           - beta1z * (BY(J,K,L)-BY(J,K,L-1)) &
+                           - beta2z * (DBYZ(J,K,L)+DBYZ(J,K,L-1)) &
+                           - beta2z * (BYZCJ(J,K,L)+BYZCJ(J,K,L-1)) &
+                           + beta2z * Ex(J,K,L) &
+                           - gammaz * CJ(J,K,L,1)
+      enddo
+  enddo
+  ! advance Eycj
+  do l = 0, nz
+    do j = 0, nx
+              EYZCJ(J,K,L) = alphaz  * EYZCJ(J,K,L)  &
+                           + 2.*(BETA1Z+BETA2Z) * BXZCJT(J,K,L) &
+                           - BETA1X * (BZ(J,K,L)-BZ(J-1,K,L)) &
+                           - BETA2X * (DBZX(J,K,L)+DBZX(J-1,K,L)) &
+                           - BETA2X * (BZXCJ(J,K,L)+BZXCJ(J-1,K,L)) &
+                           - BETA2Z * (BXZCJ(J,K,L)+BXZCJ(J,K,L-1)) &
+                           + BETA2X * Ey(J,K,L) &
+                           - GAMMAX   * CJ(J,K,L,2)
+              EYXCJ(J,K,L) = ALPHAX  * EYXCJ(J,K,L) &
+                           - 2.*(BETA1X+BETA2X) * BZXCJT(J,K,L) &
+                           + BETA1Z * (BX(J,K,L)-BX(J,K,L-1)) &
+                           + BETA2Z * (DBXZ(J,K,L)+DBXZ(J,K,L-1)) &
+                           - BETA2X * (BZXCJ(J,K,L)+BZXCJ(J-1,K,L)) &
+                           - BETA2Z * (BXZCJ(J,K,L)+BXZCJ(J,K,L-1)) &
+                           + BETA2Z * Ey(J,K,L) &
+                           - GAMMAZ   * CJ(J,K,L,2)
+      enddo
+  enddo
+  ! advance Ezcj
+  do l = 0, nz-1
+    do j = 0, nx
+              EZYCJ(J,K,L) = ALPHAY  * EZYCJ(J,K,L) &
+                           - 2.*(BETA1Y+BETA2Y) * BXYCJT(J,K,L) &
+                           + BETA1X * (BY(J,K,L)-BY(J-1,K,L)) &
+                           + BETA2X * (DBYX(J,K,L)+DBYX(J-1,K,L)) &
+                           - BETA2X * (BYXCJ(J,K,L)+BYXCJ(J-1,K,L)) &
+                           + BETA2X * Ez(J,K,L) &
+                           - GAMMAX   * CJ(J,K,L,3)
+              EZXCJ(J,K,L) = ALPHAX  * EZXCJ(J,K,L) &
+                           + 2.*(BETA1X+BETA2X) * BYXCJT(J,K,L) &
+                           - BETA2X * (BYXCJ(J,K,L)+BYXCJ(J-1,K,L)) &
+                           + BETA2Y * Ez(J,K,L) &
+                           - GAMMAY   * CJ(J,K,L,3)
+      enddo
+  enddo
+end if
+
+BETAX = 1.-0.5*SIGMAX*DT
+ALPHAX = (1.+0.5*SIGMAX*DT)/BETAX
+BETA1X = DT/(DX*BETAX)
+BETA2X = SIGMAX*DT/(2.*BETAX)
+
+BETAY = 1.-0.5*SIGMAY*DT
+ALPHAY = (1.+0.5*SIGMAY*DT)/BETAY
+BETA1Y = DT/(DY*BETAY)
+BETA2Y = SIGMAY*DT/(2.*BETAY)
+
+BETAZ = 1.-0.5*SIGMAZ*DT
+ALPHAZ = (1.+0.5*SIGMAZ*DT)/BETAZ
+BETA1Z = DT/(DZ*BETAZ)
+BETA2Z = SIGMAZ*DT/(2.*BETAZ)
+
+SIGMAEX = SIGMAY+SIGMAZ
+BETAEX = 1.-0.5*SIGMAEX*DT
+ALPHAEX = (1.+0.5*SIGMAEX*DT)/BETAEX
+BETA1EXY = clight**2*DT/(DY*BETAEX)
+BETA2EXY = SIGMAY*DT/(2.*BETAEX)
+BETA1EXZ = clight**2*DT/(DZ*BETAEX)
+BETA2EXZ = SIGMAZ*DT/(2.*BETAEX)
+GAMMAEX = mu*clight**2*DT/BETAEX
+
+SIGMAEY = SIGMAX+SIGMAZ
+BETAEY = 1.-0.5*SIGMAEY*DT
+ALPHAEY = (1.+0.5*SIGMAEY*DT)/BETAEY
+BETA1EYX = clight**2*DT/(DX*BETAEY)
+BETA2EYX = SIGMAX*DT/(2.*BETAEY)
+BETA1EYZ = clight**2*DT/(DZ*BETAEY)
+BETA2EYZ = SIGMAZ*DT/(2.*BETAEY)
+GAMMAEY = mu*clight**2*DT/BETAEY
+
+SIGMAEZ = SIGMAX+SIGMAY
+BETAEZ = 1.-0.5*SIGMAEZ*DT
+ALPHAEZ = (1.+0.5*SIGMAEZ*DT)/BETAEZ
+BETA1EZX = clight**2*DT/(DX*BETAEZ)
+BETA2EZX = dt*SIGMAX/(2.*BETAEZ)
+BETA1EZY = clight**2*DT/(DY*BETAEZ)
+BETA2EZY = dt*SIGMAY/(2.*BETAEZ)
+GAMMAEZ = mu*clight**2*DT/BETAEZ
+
+if (.not. l_2dxz) then
+
+  ! advance Ex
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-1
+              Ex(J,K,L) = ALPHAEX * Ex(J,K,L) &
+                        - beta1exz * (BY(J,K,L)-BY(J,K,L-1)) &
+                        + BETA1EXY * (BZ(J,K,L)-BZ(J,K-1,L)) &
+                        - beta2exz * (DBYZ(J,K,L)+DBYZ(J,K,L-1)) &
+                        + BETA2exy * (DBZY(J,K,L)+DBZY(J,K-1,L)) &
+                        - beta2exz * (BYZCJ(J,K,L)+BYZCJ(J,K,L-1)) &
+                        - BETA2exy * (BZYCJ(J,K,L)+BZYCJ(J,K-1,L)) &
+                        - GAMMAEX * CJ(J,K,L,1)
+              DEXZ(J,K,L) = ALPHAZ * DEXZ(J,K,L) &
+                          - BETA1Z * (DBYZ(J,K,L)-DBYZ(J,K,L-1)) &
+                          + BETA1Z * (BYZCJ(J,K,L)+BYZCJ(J,K,L-1))*clight &
+                          - BETA2Z * (BY(J,K,L)+BY(J,K,L-1))
+              DEXY(J,K,L) = ALPHAY * DEXY(J,K,L) &
+                          + BETA1Y * (DBZY(J,K,L)-DBZY(J,K-1,L)) &
+                          - BETA1Y * (BZYCJ(J,K,L)+BZYCJ(J,K-1,L))*clight &
+                          + BETA2Y * (BZ(J,K,L)+BZ(J,K-1,L))
+      enddo
+    enddo
+  enddo
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx-1
+              EXYCJT(J,K,L) = (1.-2.*(clight*DT/DY)/(1.+clight*DT/DY)) * EXYCJT(J,K,L) &
+                           - 2.*clight**2*(DT/DY)/(1.+clight*DT/DY) * BZYCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx-1
+              EXZCJT(J,K,L) = (1.-2.*(clight*DT/DZ)/(1.+clight*DT/DZ)) * EXZCJT(J,K,L) &
+                           + 2.*clight**2*(DT/DZ)/(1.+clight*DT/DZ) * BYZCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+  ! advance Ey
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx
+              Ey(J,K,L) = ALPHAEY * Ey(J,K,L) &
+                        - BETA1EYX * (BZ(J,K,L)-BZ(J-1,K,L)) &
+                        + BETA1EYZ * (BX(J,K,L)-BX(J,K,L-1)) &
+                        - BETA2EYX * (DBZX(J,K,L)+DBZX(J-1,K,L)) &
+                        + BETA2EYZ * (DBXZ(J,K,L)+DBXZ(J,K,L-1)) &
+                        - BETA2EYX * (BZXCJ(J,K,L)+BZXCJ(J-1,K,L)) &
+                        - BETA2EYZ * (BXZCJ(J,K,L)+BXZCJ(J,K,L-1)) &
+                        - GAMMAEY * CJ(J,K,L,2)
+              DEYX(J,K,L) = ALPHAX * DEYX(J,K,L) &
+                          - BETA1X * (DBZX(J,K,L)-DBZX(J-1,K,L)) &
+                          + BETA1X * (BZXCJ(J,K,L)+BZXCJ(J-1,K,L))*clight &
+                          - BETA2X * (BZ(J,K,L)+BZ(J-1,K,L))
+              DEYZ(J,K,L) = ALPHAZ * DEYZ(J,K,L) &
+                          + BETA1Z * (DBXZ(J,K,L)-DBXZ(J,K,L-1)) &
+                          - BETA1Z * (BXZCJ(J,K,L)+BXZCJ(J,K,L-1))*clight &
+                          + BETA2Z * (BX(J,K,L)+BX(J,K,L-1))
+      enddo
+    enddo
+  enddo
+  do l = 0, nz-1
+   do k = 0, ny-1
+    do j = 0, nx
+              EYZCJT(J,K,L) = (1.-2.*(clight*DT/DZ)/(1.+clight*DT/DZ)) * EYZCJT(J,K,L) &
+                           - 2.*clight**2*(DT/DZ)/(1.+clight*DT/DZ) * BXZCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx-1
+              EYXCJT(J,K,L) = (1.-2.*(clight*DT/DX)/(1.+clight*DT/DX)) * EYXCJT(J,K,L) &
+                           + 2.*clight**2*(DT/DX)/(1.+clight*DT/DX) * BZXCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+  ! advance Ez
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx
+              Ez(J,K,L) = ALPHAEZ * Ez(J,K,L) &
+                        + BETA1EZX * (BY(J,K,L)-BY(J-1,K,L)) &
+                        - BETA1EZY * (BX(J,K,L)-BX(J,K-1,L)) &
+                        + BETA2EZX * (DBYX(J,K,L)+DBYX(J-1,K,L)) &
+                        - BETA2EZY * (DBXY(J,K,L)+DBXY(J,K-1,L)) &
+                        - BETA2EZX * (BYXCJ(J,K,L)+BYXCJ(J-1,K,L)) &
+                        - BETA2EZY * (BXYCJ(J,K,L)+BXYCJ(J,K-1,L)) &
+                        - GAMMAEZ * CJ(J,K,L,3)
+              DEZX(J,K,L) = ALPHAX * DEZX(J,K,L) &
+                          + BETA1X * (DBYX(J,K,L)-DBYX(J-1,K,L)) &
+                          - BETA1X * (BYXCJ(J,K,L)+BYXCJ(J-1,K,L))*clight &
+                          + BETA2X * (BY(J,K,L)+BY(J-1,K,L))
+              DEZY(J,K,L) = ALPHAY * DEZY(J,K,L) &
+                          - BETA1Y * (DBXY(J,K,L)-DBXY(J,K-1,L)) &
+                          + BETA1Y * (BXYCJ(J,K,L)+BXYCJ(J,K-1,L))*clight &
+                          - BETA2Y * (BX(J,K,L)+BX(J,K-1,L))
+      enddo
+    enddo
+  enddo
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx-1
+              EZXCJT(J,K,L) = (1.-2.*(clight*DT/DX)/(1.+clight*DT/DX)) * EZXCJT(J,K,L) &
+                           - 2.*clight**2*(DT/DX)/(1.+clight*DT/DX) * BYXCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+  do l = 0, nz-1
+   do k = 0, ny-1
+    do j = 0, nx
+              EZYCJT(J,K,L) = (1.-2.*(clight*DT/DY)/(1.+clight*DT/DY)) * EZYCJT(J,K,L) &
+                           + 2.*clight**2*(DT/DY)/(1.+clight*DT/DY) * BXYCJ(J,K,L)
+      enddo
+    enddo
+  enddo
+
+  ! advance Excj part 2
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-1
+              EXZCJ(J,K,L) = EXZCJ(J,K,L) + beta2y * Ex(J,K,L)
+              EXYCJ(J,K,L) = EXYCJ(J,K,L) + beta2z * Ex(J,K,L)
+      enddo
+    enddo
+  enddo
+  ! advance Eycj part 2
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx
+              EYZCJ(J,K,L) = EYZCJ(J,K,L) + BETA2X * Ey(J,K,L)
+              EYXCJ(J,K,L) = EYXCJ(J,K,L) + BETA2Z * Ey(J,K,L)
+      enddo
+    enddo
+  enddo
+  ! advance Ezcj part 2
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx
+              EZYCJ(J,K,L) = EZYCJ(J,K,L) + BETA2X * Ez(J,K,L)
+              EZXCJ(J,K,L) = EZXCJ(J,K,L) + BETA2Y * Ez(J,K,L)
+      enddo
+    enddo
+  enddo
+else
+  k = 0
+  ! advance Ex
+  do l = 0, nz
+    do j = 0, nx-1
+              Ex(J,K,L) = ALPHAEX * Ex(J,K,L) &
+                        - beta1exz * (BY(J,K,L)-BY(J,K,L-1)) &
+                        - beta2exz * (DBYZ(J,K,L)+DBYZ(J,K,L-1)) &
+                        - beta2exz * (BYZCJ(J,K,L)+BYZCJ(J,K,L-1)) &
+                        - GAMMAEX * CJ(J,K,L,1)
+              DEXZ(J,K,L) = ALPHAZ * DEXZ(J,K,L) &
+                          - BETA1Z * (DBYZ(J,K,L)-DBYZ(J,K,L-1)) &
+                          + BETA1Z * (BYZCJ(J,K,L)+BYZCJ(J,K,L-1))*clight &
+                          - BETA2Z * (BY(J,K,L)+BY(J,K,L-1))
+      enddo
+  enddo
+  do l = 0, nz
+    do j = 0, nx-1
+              EXYCJT(J,K,L) = (1.-2.*(clight*DT/DY)/(1.+clight*DT/DY)) * EXYCJT(J,K,L) &
+                           - 2.*clight**2*(DT/DY)/(1.+clight*DT/DY) * BZYCJ(J,K,L)
+      enddo
+  enddo
+  do l = 0, nz-1
+    do j = 0, nx-1
+              EXZCJT(J,K,L) = (1.-2.*(clight*DT/DZ)/(1.+clight*DT/DZ)) * EXZCJT(J,K,L) &
+                           + 2.*clight**2*(DT/DZ)/(1.+clight*DT/DZ) * BYZCJ(J,K,L)
+      enddo
+  enddo
+  ! advance Ey
+  do l = 0, nz
+    do j = 0, nx
+              Ey(J,K,L) = ALPHAEY * Ey(J,K,L) &
+                        - BETA1EYX * (BZ(J,K,L)-BZ(J-1,K,L)) &
+                        + BETA1EYZ * (BX(J,K,L)-BX(J,K,L-1)) &
+                        - BETA2EYX * (DBZX(J,K,L)+DBZX(J-1,K,L)) &
+                        + BETA2EYZ * (DBXZ(J,K,L)+DBXZ(J,K,L-1)) &
+                        - BETA2EYX * (BZXCJ(J,K,L)+BZXCJ(J-1,K,L)) &
+                        - BETA2EYZ * (BXZCJ(J,K,L)+BXZCJ(J,K,L-1)) &
+                        - GAMMAEY * CJ(J,K,L,2)
+              DEYX(J,K,L) = ALPHAX * DEYX(J,K,L) &
+                          - BETA1X * (DBZX(J,K,L)-DBZX(J-1,K,L)) &
+                          + BETA1X * (BZXCJ(J,K,L)+BZXCJ(J-1,K,L))*clight &
+                          - BETA2X * (BZ(J,K,L)+BZ(J-1,K,L))
+              DEYZ(J,K,L) = ALPHAZ * DEYZ(J,K,L) &
+                          + BETA1Z * (DBXZ(J,K,L)-DBXZ(J,K,L-1)) &
+                          - BETA1Z * (BXZCJ(J,K,L)+BXZCJ(J,K,L-1))*clight &
+                          + BETA2Z * (BX(J,K,L)+BX(J,K,L-1))
+      enddo
+  enddo
+  do l = 0, nz-1
+    do j = 0, nx
+              EYZCJT(J,K,L) = (1.-2.*(clight*DT/DZ)/(1.+clight*DT/DZ)) * EYZCJT(J,K,L) &
+                           - 2.*clight**2*(DT/DZ)/(1.+clight*DT/DZ) * BXZCJ(J,K,L)
+      enddo
+  enddo
+  do l = 0, nz
+    do j = 0, nx-1
+              EYXCJT(J,K,L) = (1.-2.*(clight*DT/DX)/(1.+clight*DT/DX)) * EYXCJT(J,K,L) &
+                           + 2.*clight**2*(DT/DX)/(1.+clight*DT/DX) * BZXCJ(J,K,L)
+      enddo
+  enddo
+  ! advance Ez
+  do l = 0, nz-1
+    do j = 0, nx
+              Ez(J,K,L) = ALPHAEZ * Ez(J,K,L) &
+                        + BETA1EZX * (BY(J,K,L)-BY(J-1,K,L)) &
+                        + BETA2EZX * (DBYX(J,K,L)+DBYX(J-1,K,L)) &
+                        - BETA2EZX * (BYXCJ(J,K,L)+BYXCJ(J-1,K,L)) &
+                        - GAMMAEZ * CJ(J,K,L,3)
+              DEZX(J,K,L) = ALPHAX * DEZX(J,K,L) &
+                          + BETA1X * (DBYX(J,K,L)-DBYX(J-1,K,L)) &
+                          - BETA1X * (BYXCJ(J,K,L)+BYXCJ(J-1,K,L))*clight &
+                          + BETA2X * (BY(J,K,L)+BY(J-1,K,L))
+      enddo
+  enddo
+  do l = 0, nz-1
+    do j = 0, nx-1
+              EZXCJT(J,K,L) = (1.-2.*(clight*DT/DX)/(1.+clight*DT/DX)) * EZXCJT(J,K,L) &
+                           - 2.*clight**2*(DT/DX)/(1.+clight*DT/DX) * BYXCJ(J,K,L)
+      enddo
+  enddo
+  do l = 0, nz-1
+    do j = 0, nx
+              EZYCJT(J,K,L) = (1.-2.*(clight*DT/DY)/(1.+clight*DT/DY)) * EZYCJT(J,K,L) &
+                           + 2.*clight**2*(DT/DY)/(1.+clight*DT/DY) * BXYCJ(J,K,L)
+      enddo
+  enddo
+  ! advance Excj part 2
+  do l = 0, nz
+    do j = 0, nx-1
+              EXZCJ(J,K,L) = EXZCJ(J,K,L) + beta2y * Ex(J,K,L)
+              EXYCJ(J,K,L) = EXYCJ(J,K,L) + beta2z * Ex(J,K,L)
+      enddo
+  enddo
+  ! advance Eycj part 2
+  do l = 0, nz
+    do j = 0, nx
+              EYZCJ(J,K,L) = EYZCJ(J,K,L) + BETA2X * Ey(J,K,L)
+              EYXCJ(J,K,L) = EYXCJ(J,K,L) + BETA2Z * Ey(J,K,L)
+      enddo
+  enddo
+  ! advance Ezcj part 2
+  do l = 0, nz-1
+    do j = 0, nx
+              EZYCJ(J,K,L) = EZYCJ(J,K,L) + BETA2X * Ez(J,K,L)
+              EZXCJ(J,K,L) = EZXCJ(J,K,L) + BETA2Y * Ez(J,K,L)
+      enddo
+  enddo
+endif
+
+RETURN
+END SUBROUTINE push_em3dext_evec
 
 subroutine push_em3d_blockbnde(b,dt,which)
 use mod_emfield3d
