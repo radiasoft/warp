@@ -200,7 +200,7 @@ class EM3D(SubcycledPoissonSolver):
               Cz = em3d.alphaz -4.*em3d.betaz+4.*em3d.gammaz
               dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cy/self.dy**2+Cz/self.dz**2))
           if self.theta_damp>0.:
-            top.dt*=sqrt((2.+self.theta_damp)/(2.+3.*self.theta_damp))
+            dtcourant*=sqrt((2.+self.theta_damp)/(2.+3.*self.theta_damp))
           if top.dt==0.:
             top.dt=dtcourant*self.dtcoef
           else:
