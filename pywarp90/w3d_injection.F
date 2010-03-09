@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.129 $, $Date: 2010/02/01 19:43:49 $
+c@(#) File w3d_injection.F, version $Revision: 1.130 $, $Date: 2010/03/09 00:18:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1210,6 +1210,13 @@ c                 --- be injected.  With the random number, particles will be
 c                 --- injected and but the average number will be less than 1.
                   if(.not. l_inj_regular) then
                     rnn = rnn + wranf()
+c                   --- Using this form will make the random number the same
+c                   --- independently of load balancing.
+c                   --- Note that the line of code below making injctcnt
+c                   --- the same across processors must also be uncommented.
+c                   --- And, xrandom must be digitrev
+c                   rnn = rnn + wrandom(xrandom,
+c    &                int(sqrt(1.*injctcnt)*is*(ix + 1 + (iy+1)*inj_nx)),dig3,1,1)
                   end if
 
 c                 --- Save the number of particles to inject.
@@ -1537,6 +1544,13 @@ c               --- end loop over species
 c             --- end loop over ix
             enddo
 c           --- end loop over iy
+
+#ifdef MPIPARALLEL
+c           --- Make sure that all processors have the same value of injctcnt
+c           --- This will only really work for flat sources, since otherwise
+c           --- particles may be injected on multiple processors.
+c           call parallelmaxintegerarray(injctcnt,1)
+#endif
 
 c           --- Transform particles to lab frame
             do is=1,pgroup%ns
@@ -4836,6 +4850,12 @@ c     --- assign charge deposited on emitter surface (slice 0) to slice 1
         inj_q(:,:,0,:) = 0.
       end if
 
+#ifdef MPIPARALLEL
+c     --- The result calculated on each processor is summed on all
+        call parallelsumrealarray(inj_q,
+     &                            (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
+#endif
+
 !$OMP MASTER
       if (lw3dtimesubs) timeinj_setrhomr = timeinj_setrhomr + wtime() - substarttime
 !$OMP END MASTER
@@ -4903,7 +4923,12 @@ c of Poisson's equation along lines normal to the emitting surface.
       dz_local(inj_nz) = dz_local(inj_nz-1)
 
 c     --- initialize inj_phi_3d
-      call getinj_phi_3d()
+      inj_phi_3d = 0.
+c     --- getinj_phi_3d should not be called since the values that
+c     --- would be calculated are never used and are incorrect. These
+c     --- incorrect values block inj_phi_3d from being updated in
+c     --- the call to parallelnonzerorealarray below.
+c     call getinj_phi_3d()
 
       allocate(rhs(1:inj_nz-1,nn),ab(2,1:inj_nz-1),stat=allocerror)
       if (allocerror /= 0) then
@@ -4981,7 +5006,18 @@ c       --- set temporaries
           end do
         end do
 
+#ifdef MPIPARALLEL
+c     --- The result calculated on each processor is gathered on all
+        call parallelnonzerorealarray(inj_phi_3d,
+     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
+#endif
+
         call inj_transform(nrhs,xxp,yyp,zzp,1,ij,-1,1)
+
+        inj_ex_3d = 0.
+        inj_ey_3d = 0.
+        inj_ez_3d = 0.
+
         do iz = 1, inj_nz-1
           if(iz==1) then
             dz0 = dzmin*deltaz(ij)
@@ -5055,6 +5091,16 @@ c          wz1 = dd*2.**(inj_nz-iz)-1.
           inj_phi(ix,iy,ij) = vinject(ij) - (inj_phi_3d(ix,iy,iz,ij)*wz0+inj_phi_3d(ix,iy,iz+1,ij)*wz1)
         end do
       end do
+
+#ifdef MPIPARALLEL
+c     --- The result calculated on each processor is gathered on all
+        call parallelnonzerorealarray(inj_ex_3d,
+     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
+        call parallelnonzerorealarray(inj_ey_3d,
+     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
+        call parallelnonzerorealarray(inj_ez_3d,
+     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
+#endif
 
       deallocate(rhs,ab)
       deallocate(ex_tmp,ey_tmp,ez_tmp)
