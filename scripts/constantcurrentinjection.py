@@ -4,7 +4,7 @@ procedure, but using the full simulation instead of 1-D approximation.
 from warp import *
 from timedependentvoltage import TimeVoltage
 
-constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.11 2010/03/10 14:36:04 jlvay Exp $"
+constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.12 2010/03/10 23:34:12 dave Exp $"
 def constantcurrentinjectiondoc():
   import constantcurrentinjection
   print constantcurrentinjection.__doc__
@@ -29,15 +29,30 @@ NOTE: This code assumes that RZ geometry is being used and
       that w3d.l_inj_rz = true.
 
 Input arguements:
- - sourceid: conductor id of the source
+ - sourceid: conductor object or id of the source
  - currentdensity: the current density to be injected
- - sourcevolt: the steady-state voltage on the source
- - otherids: a list of all other conductor ids in the system
- - othervolts: a list of the voltages on all other conductors in the system
+ - sourcevolt: the steady-state voltage on the source or extactor plate,
+               the primary conductor with a time dependent voltage
+ - otherids: a list of other conductor objects or ids in the system.
+             Conductors that will have a fixed voltage that is not ground
+             should be included in this list.
+ - othervolts: the steady-state voltages of the other conductors
                (matching otherids)
+ - othercontrolledids: other conductors objects or ids that will have a time
+                       dependent voltage that is proporational to the source
+                       voltage
+ - othercontrolledvolts: the steady-state voltages of the other controlled
+                         conductors
  - endplatevolt=0.: voltage on plate at end of diode. In a triode
                     configuration, or a diode with a guard plate, this should
                     be the voltage on the guard plate.
+ - l_setvinject=1: when true, top.vinject will be set to the same voltage
+                   that the source is set to. This should be true when
+                   the primary conductor with a time dependent voltage is
+                   the source.
+                   If the primary conductor is an extractor plate, this
+                   should be false, and top.vinject must be set to the source
+                   voltage before this is called.
  - maxvoltagechangerate=None: optional maximum rate at which the source voltage
                               can be varied. If this is not specified, the
                               change in the voltage in unconstrained. This
@@ -90,6 +105,9 @@ frz.calc_a = 3
     # --- else at endplatevolt. Though everything is shifted down by
     # --- endplatevolt for convenience, since it is assumed that there
     # --- will be more conductors around, but all at ground.
+    # --- This is needed so that the other conductors won't influence
+    # --- the calculation here, which is supposed to be only the affect
+    # --- of the source (and other controlled conductors).
     setconductorvoltage(sourcevolt-self.endplatevolt,condid=self.sourceid)
     for id,v in zip(othercontrolledids,othercontrolledvolts):
       setconductorvoltage(v-self.endplatevolt,condid=id)
@@ -112,8 +130,10 @@ frz.calc_a = 3
       self.blocklists = []
 
     # --- Calculate phiv
-    if self.l_setvinject:top.vinject = sourcevolt-self.endplatevolt
+    if self.l_setvinject: top.vinject = sourcevolt
+    top.vinject = top.vinject - self.endplatevolt
     getinj_phi()
+    top.vinject = top.vinject + self.endplatevolt
     if w3d.l_inj_rz:
       self.phiv = sum(self.ww*w3d.inj_phi[:,0,0])/self.wwsum
     else:
@@ -140,7 +160,6 @@ frz.calc_a = 3
     installbeforefs(self.setsourcevolt)
 
   def setsourcevolt(self):
-    if self.maxvoltagechangerate is None and top.it<2:return
     if top.inject==0: return
 
     # --- Set the conductor voltages at the endpatevolt so that
@@ -195,7 +214,6 @@ frz.calc_a = 3
     self.hphirho.append(phirho)
     self.hnp.append(getn())
     self.htime.append(top.time)
-#    window(7);fma();plg(self.hsourcevolt[:]);refresh();window(0)
 
   def disable(self):
     if isinstalledbeforefs(self.setsourcevolt):
