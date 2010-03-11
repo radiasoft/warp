@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.126 2010/01/12 18:02:04 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.127 2010/03/11 17:20:24 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2803,13 +2803,14 @@ Sets the voltage on a conductor, given an id.
      - function which takes three arguments, x, y, z positions relative to lab
        frame and returns the voltage (only works in 3d)
      - a scalar voltage value
- - condid=0: conductor id number
+ - condid=0: conductor object or id number
  - discrete=false: when true, z locations for plus/minus z subgrid
                    points are round up/down.
  - setvinject=false: when true, sets top.vinject
  - conductors=f3d.conductors: allows alternate conductor to be set other
                               than the default ones
   """
+  if isinstance(condid,Assembly): condid = condid.condid
   solver = getregisteredsolver()
   if conductors is None:
     if solver is not None:
