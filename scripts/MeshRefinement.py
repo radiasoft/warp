@@ -4,6 +4,7 @@ from __future__ import generators
 __all__ = ['MeshRefinement',
            'MRBlock3D','MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
            'MRBlockImplicit2D','EMMRBlock']
+MeshRefinement_version = "$Id: MeshRefinement.py,v 1.172 2010/03/11 18:22:28 dave Exp $"
 from warp import *
 from find_mgparam import find_mgparam
 import operator
