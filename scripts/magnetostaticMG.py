@@ -9,6 +9,8 @@ try:
 except ImportError:
   pass
 
+magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.36 2010/03/11 19:10:19 dave Exp $"
+
 ##############################################################################
 class MagnetostaticMG(SubcycledPoissonSolver):
   

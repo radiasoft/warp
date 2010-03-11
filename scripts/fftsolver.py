@@ -5,6 +5,8 @@ from warp import *
 from lattice import addnewbgrd,addnewbsqgrad
 import MA
 
+fftsolver_version = "$Id: fftsolver.py,v 1.31 2010/03/11 19:10:18 dave Exp $"
+
 ##############################################################################
 class FieldSolver3dBase(object):
   

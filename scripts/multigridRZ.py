@@ -7,6 +7,8 @@ try:
 except ImportError:
   pass
 
+multigridRZ_version = "$Id: multigridRZ.py,v 1.56 2010/03/11 19:10:19 dave Exp $"
+
 ##############################################################################
 ##############################################################################
 class MultiGridRZ(MultiGrid3D):

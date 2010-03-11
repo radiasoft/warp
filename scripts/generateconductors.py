@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.227 2010/02/27 00:14:35 dave Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.228 2010/03/11 19:10:19 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__

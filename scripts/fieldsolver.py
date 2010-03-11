@@ -5,6 +5,8 @@ from warp import *
 import __main__
 import gc
 
+fieldsolver_version = "$Id: fieldsolver.py,v 1.88 2010/03/11 19:10:19 dave Exp $"
+
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
   """

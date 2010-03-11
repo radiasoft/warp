@@ -2,11 +2,12 @@
 by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWhdf.py,v 1.6 2009/01/08 19:27:35 dave Exp $
 """
 import _pyhl
 from numpy import *
 from types import *
+
+PWhdf_version = "$Id: PWhdf.py,v 1.7 2010/03/11 19:10:18 dave Exp $"
 
 class PW:
     "HDF file writer class."

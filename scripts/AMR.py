@@ -16,6 +16,8 @@ try:
 except ImportError:
   pass
 
+AMR_version = "$Id: AMR.py,v 1.54 2010/03/11 19:10:18 dave Exp $"
+
 class AMRTree(VisualizableClass):
     """
   Adaptive Mesh Refinement class.

@@ -17,6 +17,8 @@ if 1:
   tables = None
   import cPickle
 
+pickledump_version = "$Id: pickledump.py,v 1.11 2010/03/11 19:10:20 dave Exp $"
+
 def pickledump(filename=None,attr=['dump'],vars=[],serial=0,ff=None,
                varsuffix=None,verbose=0):
   """

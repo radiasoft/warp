@@ -3,6 +3,8 @@
 #       python setup.py install
 #
 
+setup_version = "$Id: setup.py,v 1.3 2010/03/11 19:10:20 dave Exp $"
+
 try:
     # --- For installing into site-packages, with python setup.py install
     #from distutils.core import setup

@@ -13,6 +13,8 @@ import sys
 import time
 import readline
 
+sessionlogger_version = "$Id: sessionlogger.py,v 1.2 2010/03/11 19:10:20 dave Exp $"
+
 class ForkedFile(object):
     """
 This class forks the output to both an internal buffer and to the write method

@@ -5,6 +5,8 @@ usual particles as object (Electron, Positron, Water, atoms from periodic table)
 """
 from warp import *
 
+species_version = "$Id: species.py,v 1.75 2010/03/11 19:10:20 dave Exp $"
+
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale>0.:
       return random.normal(loc,scale,size)
