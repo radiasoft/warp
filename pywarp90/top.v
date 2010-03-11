@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.273 $, $Date: 2010/02/16 23:54:59 $
+#@(#) File TOP.V, version $Revision: 3.274 $, $Date: 2010/03/11 01:09:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.273 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.274 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1571,7 +1571,7 @@ epsy(0:nzwind,0:nswind)    _real [m-rad] # Y-Y' emittance
 epsz(0:nzwind,0:nswind)    _real [m-rad] # Z-Z' emittance
 epsnx(0:nzwind,0:nswind)   _real [mm-mrad] # X-X' normalized emittance
 epsny(0:nzwind,0:nswind)   _real [mm-mrad] # Y-Y' normalized emittance
-epsnz(0:nzwind,0:nswind)   _real [mm-mrad] # Z-Z' normalized emittance
+epsnz(0:nzwind,0:nswind)   _real [mm-mrad] # Z-Vz normalized emittance
 epsr(0:nzwind,0:nswind)    _real [m-rad] # Generalized axisymmetric emittance
 epsg(0:nzwind,0:nswind)    _real [m-rad] # Generalized emittance
 epsh(0:nzwind,0:nswind)    _real [m-rad] # Generalized emittance
@@ -1648,7 +1648,7 @@ epsyz(0:nzmmnt,0:nszmmnt)    _real [m-rad] # Y-Y' emittance at grid point
 epszz(0:nzmmnt,0:nszmmnt)    _real [m-rad] # Z-Z' emittance at grid point
 epsnxz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # X-X' normalized emittance at grid point
 epsnyz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Y-Y' normalized emittance at grid point
-epsnzz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Z-Z' normalized emittance at grid point
+epsnzz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Z-Vz normalized emittance at grid point
 epsrz(0:nzmmnt,0:nszmmnt)    _real [m-rad]   # Generalized axisymmetric
                                              # emittance on grid
 epsgz(0:nzmmnt,0:nszmmnt)    _real [m-rad]   # Generalized emittance on grid
@@ -1794,7 +1794,7 @@ hepsny(0:nzwind,0:lenhist,0:nshist)    _real [mm-mr]
    # Y-Y' normalized emittance by window as a function of time
 hepsnz(0:nzwind,0:lenhist,0:nshist)    _real [mm-mr]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
-   # Z-Z' normalized emittance by window as a function of time
+   # Z-Vz normalized emittance by window as a function of time
 hepsr(0:nzwind,0:lenhist,0:nshist)     _real [m-r]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Generalized axisymmetric emittance by window as a function of time
