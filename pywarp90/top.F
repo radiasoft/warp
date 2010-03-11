@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.249 $, $Date: 2010/03/11 01:09:48 $
+c@(#) File TOP.F, version $Revision: 3.250 $, $Date: 2010/03/11 19:42:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1147,8 +1147,8 @@ c         --- Compute overall emittances
           epsnx(0,js) = epsx(0,js)*gamma*vzbar(0,js)*clighti*1.e6
           epsny(0,js) = epsy(0,js)*gamma*vzbar(0,js)*clighti*1.e6
 
-          epsnz(0,js) = 4.*sqrt(max(0.,delzsq*delvzsq - delzvz**2))*clighti
-          epsz(0,js) = epsnz(0,js)/(gamma*vzbar(0,js)*clighti)
+          epsnz(0,js) = gamma*4.*sqrt(max(0.,delzsq*delvzsq - delzvz**2))*clighti
+          epsz(0,js) = epsnz(0,js)/dvnz(gamma*vzbar(0,js)*clighti)
 
 c         --- Compute generalized emittances
           tr = 4.*((delxsq + delysq)*(delxpsq + delypsq)
@@ -1267,8 +1267,8 @@ c             --- Compute overall emittances
               epsnxz(izm,js) = epsxz(izm,js)*gamma*vzbarz(izm,js)*clighti*1.e6
               epsnyz(izm,js) = epsyz(izm,js)*gamma*vzbarz(izm,js)*clighti*1.e6
 
-              epsnzz(izm,js) = 4.*sqrt(max(0.,delzsq*delvzsq - delzvz**2))*clighti
-              epszz(izm,js) = epsnzz(izm,js)/(gamma*vzbarz(izm,js)*clighti)
+              epsnzz(izm,js) = gamma*4.*sqrt(max(0.,delzsq*delvzsq - delzvz**2))*clighti
+              epszz(izm,js) = epsnzz(izm,js)/dvnz(gamma*vzbarz(izm,js)*clighti)
 
 c             --- Compute generalized emittances
               tr = 4.*((delxsq + delysq)*(delxpsq + delypsq)
