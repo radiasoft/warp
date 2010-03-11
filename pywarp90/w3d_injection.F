@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.130 $, $Date: 2010/03/09 00:18:18 $
+c@(#) File w3d_injection.F, version $Revision: 1.131 $, $Date: 2010/03/11 17:21:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3615,7 +3615,7 @@ c     --- the emitting surface.
 
 #ifdef MPIPARALLEL
 c     --- The result calculated on each processor is gathered on all
-      call parallelnonzerorealarray(inj_phi,(1+inj_nx)*(1+inj_ny)*ninject)
+      call parallelnonzerorealarray(inj_phi,(1+inj_nx)*(1+inj_ny)*inj_ninj)
 #endif
 
 c     --- Smooth out inj_phi for this emitting surface.
@@ -4531,7 +4531,8 @@ c     --- the emitting surface.
 
 #ifdef MPIPARALLEL
 c     --- The result calculated on each processor is gathered on all
-      call parallelnonzerorealarray(inj_phi_3d,(1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
+      call parallelnonzerorealarray(inj_phi_3d,
+     &                              (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*inj_ninj)
 #endif
 
       return
@@ -5009,7 +5010,7 @@ c       --- set temporaries
 #ifdef MPIPARALLEL
 c     --- The result calculated on each processor is gathered on all
         call parallelnonzerorealarray(inj_phi_3d,
-     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
+     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*inj_ninj)
 #endif
 
         call inj_transform(nrhs,xxp,yyp,zzp,1,ij,-1,1)
@@ -5095,11 +5096,11 @@ c          wz1 = dd*2.**(inj_nz-iz)-1.
 #ifdef MPIPARALLEL
 c     --- The result calculated on each processor is gathered on all
         call parallelnonzerorealarray(inj_ex_3d,
-     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
+     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*inj_ninj)
         call parallelnonzerorealarray(inj_ey_3d,
-     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
+     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*inj_ninj)
         call parallelnonzerorealarray(inj_ez_3d,
-     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
+     &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*inj_ninj)
 #endif
 
       deallocate(rhs,ab)
@@ -5461,7 +5462,7 @@ c     --- the emitting surface.
         
 #ifdef MPIPARALLEL
 c     --- The result calculated on each processor is gathered on all
-      call parallelnonzerorealarray(inj_phi,(1+inj_nx)*(1+inj_ny)*ninject)
+      call parallelnonzerorealarray(tinj_phi,(1+nttinjmax)*(1+nztmax)*ntinj)
 #endif
 
 
