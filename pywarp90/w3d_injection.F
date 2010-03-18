@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.131 $, $Date: 2010/03/11 17:21:30 $
+c@(#) File w3d_injection.F, version $Revision: 1.132 $, $Date: 2010/03/18 22:45:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3895,11 +3895,13 @@ c    &    ((xx(ip)*binjmin(ij))**2 + (yy(ip)*ainjmin(ij))**2 >=
 c    &    (ainjmin(ij)*binjmin(ij))**2) ) then
 
 c         --- angle of point in transverse plane
-          if(l_inj_rz) then
-            aa = 0.
-          else
-            aa = atan2(yy(ip),dvnz(xx(ip)))
-          end if
+          aa = atan2(yy(ip),xx(ip))
+
+c         --- If using axisymmetric injection, convert x and y to radius.
+          if (l_inj_rz) then
+            xx(ip) = sqrt(rr2)
+            yy(ip) = 0.
+          endif
 
 c         --- angle relative to z axis
           az = atan2(sqrt(rr2)*sign(1.,rinj),(rinj - zz(ip))*sign(1.,rinj))
@@ -3932,7 +3934,6 @@ c           --- Scale the normal E field to match the Child-Langmuir solution
 
 c         --- Set the particle's electric field based off of the normal
 c         --- electric fields.
-          if(l_inj_rz) aa = atan2(yy(ip),dvnz(xx(ip)))
           tex(ip) = -en*sin(az)*cos(aa)
           tey(ip) = -en*sin(az)*sin(aa)
           tez(ip) =  en*cos(az)
@@ -3979,6 +3980,10 @@ c     --- For particles not near the source, the temp arrays are zero.
       ex = ex + tex
       ey = ey + tey
       ez = ez + tez
+
+      deallocate(xx,yy,zz)
+      deallocate(tex,tey,tez)
+      deallocate(ijp)
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinj_sete3d = timeinj_sete3d + wtime() - substarttime
@@ -5251,7 +5256,13 @@ c    &    ((xx(ip)*binjmin(ij))**2 + (yy(ip)*ainjmin(ij))**2 >=
 c    &    (ainjmin(ij)*binjmin(ij))**2) ) then
 
 c         --- angle of point in transverse plane
-          aa = atan2(yy(ip),dvnz(xx(ip)))
+          aa = atan2(yy(ip),xx(ip))
+
+c         --- If using axisymmetric injection, convert x and y to radius.
+          if (l_inj_rz) then
+            xx(ip) = sqrt(rr2)
+            yy(ip) = 0.
+          endif
 
 c         --- angle relative to z axis
           az = asin(sqrt(rr2)*rinji)
@@ -5261,16 +5272,10 @@ c         --- Find coordinates of the point on the secondary surface in front
 c         --- of the emitting surface along a line perpendicular to the
 c         --- emitting surface.
           wr = 1./(1. - deltaz(ij)*dd*rinji)
-          if(l_inj_rz) then
-            px = abs(rinj*sin(az) - inj_xmmin(ij))*dxi
-            px = abs(xx(ip)*wr - inj_xmmin(ij))*dxi
-            py = 0.
-          else
-            px = abs(rinj*sin(az)*cos(aa) - inj_xmmin(ij))*dxi
-            py = abs(rinj*sin(az)*sin(aa) - inj_ymmin(ij))*dyi
-            px = abs(xx(ip)*wr - inj_xmmin(ij))*dxi
-            py = abs(yy(ip)*wr - inj_ymmin(ij))*dyi
-          end if
+c         px = abs(rinj*sin(az)*cos(aa) - inj_xmmin(ij))*dxi
+c         py = abs(rinj*sin(az)*sin(aa) - inj_ymmin(ij))*dyi
+          px = abs(xx(ip)*wr - inj_xmmin(ij))*dxi
+          py = abs(yy(ip)*wr - inj_ymmin(ij))*dyi
 
           if (spreadx*px < 0. .or. (px+1)*spreadx > inj_nx .or.
      &        spready*py < 0. .or. (py+1)*spready > inj_ny) cycle
