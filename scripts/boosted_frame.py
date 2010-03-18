@@ -9,7 +9,8 @@ class Boosted_Frame(object):
     self.betabeam_lab=top.vbeam/clight
     self.betabeamfrm_lab=top.vbeamfrm/clight
     top.vbeam_lab = top.vbeam
-    top.gammabar_lab = top.gammabar
+#    top.gammabar_lab = top.gammabar
+    top.gammabar_lab=1./sqrt(1.-(top.vbeam_lab/clight)**2)
     top.vbeam=clight*(self.betabeam_lab-self.betaframe)/(1.-self.betabeam_lab*self.betaframe)
     top.vbeamfrm=clight*(self.betabeamfrm_lab-self.betaframe)/(1.-self.betabeamfrm_lab*self.betaframe)
     top.gammabar=1./sqrt(1.-(top.vbeam/clight)**2)
