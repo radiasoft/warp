@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.166 $, $Date: 2010/01/13 22:05:07 $
+c@(#) File DW3D.F, version $Revision: 3.167 $, $Date: 2010/03/19 18:08:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -399,7 +399,7 @@ c  Sets rho window diagnostics (they need data from the 3d mesh)
      &    0 <= iy_axis .and. iy_axis <= nylocal) then
 
 !$OMP PARALLEL DO PRIVATE(zwin,iz,z1,z0)
-        do iwin = 0,NWINDOWS
+        do iwin = 0,nzwind
           zwin = 0.5 * (zwindows(1,iwin) + zwindows(2,iwin))
           iz = (zwin + zbeam - zgrid - zmminlocal)*dzi
           if (zwindows(1,iwin).ne.zwindows(2,iwin) .and.
