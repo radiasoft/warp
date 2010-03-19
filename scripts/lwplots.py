@@ -23,7 +23,7 @@ plinechglw: Plots linechglw as a function of time
 
 from warp import *
 import __main__
-lwplots_version = "$Id: lwplots.py,v 1.3 2009/06/27 00:11:02 dave Exp $"
+lwplots_version = "$Id: lwplots.py,v 1.4 2010/03/19 18:11:54 dave Exp $"
 
 def lwplotsdoc():
     import lwplots
@@ -37,11 +37,12 @@ def addlabwindow(zlw):
         iz = argmax(top.zlw)
         if top.zlw[iz] == largepos:
             top.zlw[iz] = zlw
-            return
+            return iz
     # --- More space is needed
     top.nlabwn += 1
     gchange('Lab_Moments')
     top.zlw[-1] = zlw
+    return top.nlabwn-1
 
 ###########################################################################
 def _extractvar(name,varsuffix=None,pkg='top',ff=None):
