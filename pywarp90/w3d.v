@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.306 $, $Date: 2010/03/23 18:52:58 $
+#@(#) File W3D.V, version $Revision: 3.307 $, $Date: 2010/03/23 19:13:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.306 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.307 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -560,16 +560,34 @@ inj_dz               real [m] /0./ # mesh spacing in z for injection
 inj_dz0              real [m] /0./ # mesh spacing in z for injection
 inj_xwide            integer  /2/  # number of cells in x for each emitting pad
 inj_ywide            integer  /2/  # number of cells in y for each emitting pad
-inj_addfdz           real     /0./ # fraction of dz to add to z position at injection
-linj_sphere          logical /.true./
-l_inj_rz             logical /.false./ # if true, make RZ injection with variable weights
-l_inj_regular        logical /.false./ # if true, inject one particle at each grid node and adjust weight accordingly
-l_inj_delay_temp     logical /.false./ # if true, add temperature only after particles at distance inj_dtemp from emitter
-l_inj_addtempz_abs   logical /.false./ # if true, longitudinal thermal velocity is positive
-l_inj_rec_inittime   logical /.false./ # if true, time of creation is recorded in pid
-l_inj_rec_initradius logical /.false./ # if true, radius of creation is recorded in pid
-l_inj_exact          logical /.false./ # if true, position and angle of injected particle computed analytically rather than interpolated
-l_inj_area           logical /.true./  # if false, when l_inj_rz=true, adjust inj_dx so that inj_area is not used (no effect if l_inj_rz=false)
+inj_addfdz           real     /0./ # fraction of dz to add to z position at
+                                   # injection
+l_inj_rz             logical /.false./ # if true, make RZ injection with
+                                       # variable weights and axisymmetric
+                                       # injection grid
+l_inj_rz_grid        logical /.false./ # if true, axisymmetric injection grid
+                                       # is used
+l_inj_regular        logical /.false./ # if true, inject one particle at each
+                                       # grid node and adjust weight accordingly
+l_inj_delay_temp     logical /.false./ # if true, add temperature only after
+                                       # particles at distance inj_dtemp from
+                                       # emitter
+l_inj_addtempz_abs   logical /.false./ # if true, longitudinal thermal velocity
+                                       # is positive
+l_inj_zero_theta     logical /.false./ # When true, and l_inj_rz or
+                                       # l_inj_rz_grid is true, then particles
+                                       # are only created with the transverse
+                                       # angle theta=0.
+l_inj_rec_inittime   logical /.false./ # if true, time of creation is recorded
+                                       # in pid
+l_inj_rec_initradius logical /.false./ # if true, radius of creation is
+                                       # recorded in pid
+l_inj_exact          logical /.false./ # if true, position and angle of
+                                       # injected particle computed
+                                       # analytically rather than interpolated
+l_inj_area           logical /.true./  # if false, when l_inj_rz=true, adjust
+                                       # inj_dx so that inj_area is not used
+                                       # (no effect if l_inj_rz=false)
 l_inj_no_rho_on_emit logical /.false./ # If true, no rho deposited on emitter
 l_inj_use_rho_with_mr logical /.true./ # When true, use the deposited rho
                                        # in the mr calculation of phi
@@ -585,7 +603,8 @@ l_inj_user_particles_dt logical /.false./ # When true, the user also provides
                                           # the fractional time steps 
                                           # of specified injected particles.
                                           # They are set automatically otherwise (default).
-l_inj_zmminmmaxglobal   logical /.false./ # When true, sets inj_zmmin/max to global values in parallel
+l_inj_zmminmmaxglobal   logical /.false./ # When true, sets inj_zmmin/max to
+                                          # global values in parallel
 inj_xmmin(inj_ninj)  _real [m] /0./ # Min x extent of injection mesh
 inj_ymmin(inj_ninj)  _real [m] /0./ # Min y extent of injection mesh
 inj_grid(0:inj_nx,0:inj_ny,inj_ninj) _real [m]
@@ -601,8 +620,6 @@ inj_npactual(0:inj_nx,0:inj_ny,inj_ninj,inj_ns)   _real
 inj_rho(0:inj_nx,0:inj_ny,inj_ninj)  _real
    # Surface charge density at the emitting surface.
 inj_phi(0:inj_nx,0:inj_ny,inj_ninj)  _real
-   # Electrostatic potential at the emitting surface.
-inj_phiv(0:inj_nx,0:inj_ny,inj_ninj)  _real
    # Electrostatic potential at the emitting surface.
 inj_ex(0:inj_nx,0:inj_ny,inj_ninj)  _real
 inj_ey(0:inj_nx,0:inj_ny,inj_ninj)  _real

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.133 $, $Date: 2010/03/23 18:52:58 $
+c@(#) File w3d_injection.F, version $Revision: 1.134 $, $Date: 2010/03/23 19:13:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -20,7 +20,9 @@ c=============================================================================
       use InPart
       use InPart3d
       use InMesh3d
-      use Particles,Only: spid,wpid,tpid,rpid,ssn,lmappid,npid,zbirthpid
+      use Particles,Only: spid,wpid,tpid,rpid,ssn,lmappid,npid,
+     &                    xbirthpid,ybirthpid,zbirthpid,
+     &                    uxbirthpid,uybirthpid,uzbirthpid
       use Picglb
       use InjectVars
       use InjectVars3d
@@ -45,7 +47,7 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: inj_is
       real(kind=8):: rnpinjct,rnn,rnncl,rnns,t
       real(kind=8):: rr,vavez,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rsign,dr,dri
-      real(kind=8):: qoverm,const,dxi,dyi,dzi,vznorm,rp,ai,bi
+      real(kind=8):: qoverm,const,dxi,dyi,dzi,vznorm,rp,ai,bi,xrand,yrand
       real(kind=8):: clightsqi
       real(kind=8):: zinj,ainj,ainji,binj,binji
       real(kind=8):: apinj,bpinj,rinj,rinji,xpinj,ypinj,vzinj,ainjp1,binjp1
@@ -121,16 +123,17 @@ c     --- are setup properly if the fields are change by the user.
       call getinj_phi()
       call gettinj_phi()
 
-c     --- Set factor so correct number of particles are loaded when
-c     --- symmetry is used.  With 2-fold, particles need to be loaded
-c     --- on both sides of the symmetry axis.  With 4-fold, particles
-c     --- need to be loaded in each of the four quadrants.
+c     --- Setup the x and y spread, which are used when accessing the
+c     --- injection arrays, such as inj_phi. This avoids out of bounds access.
+c     --- Note that when spread is 0, the associated weight will also come
+c     --- out to be zero so those terms are not used anyway.
+c     --- This also affects the range that particles are loaded into.
       if(solvergeom==XYZgeom) then
         spreadx = 1
         spready = 1
       elseif(solvergeom==RZgeom) then
         spreadx = 1
-        if(l_inj_rz) then
+        if(l_inj_rz .or. l_inj_rz_grid) then
           spready = 0
         else
           spready = 1
@@ -341,13 +344,6 @@ c           --- that the beam was injected in a field free region.
               larmorfreq = -0.5*pgroup%sq(is)*bz0/pgroup%sm(is)/gammabar
             endif
 
-            spreadx = 1
-            spready = 1
-            if (l_inj_rz) then
-              spreadx = 1
-              spready = 0
-            endif
-
 c           --- Increment the particle counter for the digit reversed seed
             injctcnt = injctcnt + nn
 
@@ -434,6 +430,12 @@ c             --- save radius of creation if rpid > 0
               if(rpid>0) then
                 pgroup%pid(ii,rpid) = sqrt(pgroup%xp(ii)**2+pgroup%yp(ii)**2)
               endif
+              if (xbirthpid > 0) pgroup%pid(ii,xbirthpid) = pgroup%xp(ii)
+              if (ybirthpid > 0) pgroup%pid(ii,ybirthpid) = pgroup%yp(ii)
+              if (zbirthpid > 0) pgroup%pid(ii,zbirthpid) = pgroup%zp(ii)
+              if (uxbirthpid > 0) pgroup%pid(ii,uxbirthpid) = pgroup%uxp(ii)
+              if (uybirthpid > 0) pgroup%pid(ii,uybirthpid) = pgroup%uyp(ii)
+              if (uzbirthpid > 0) pgroup%pid(ii,uzbirthpid) = pgroup%uzp(ii)
 c             --- increment particle counter
               npinjtmp(ij,jsid+1) = npinjtmp(ij,jsid+1) + 1
               inj_prev(ixx        ,iyy        ,ij,inj_is) =
@@ -1017,7 +1019,7 @@ c             --- Don't bother doing anything if finject is 0.
 c             --- The factor to convert current density to particle number.
 c             --- The absolute value is taken of sq so the factor is always
 c             --- positive.
-              if(l_inj_rz) then
+              if(l_inj_rz .or. l_inj_rz_grid) then
                 jton(jsid) = pi*ainj*inj_dx*fulldt_s/
      &                     abs(pgroup%sq(is))/pgroup%sw(is)
               else
@@ -1202,6 +1204,17 @@ c                 --- when using radial injection.
 c                 --- Save the calculated number of particles to inject.
                   inj_np(ix,iy,ij,inj_is) = rnn
 
+                  if (l_inj_rz_grid) then
+c                   --- Scale the number of particles to inject to increase
+c                   --- with the radius. These factors times the first
+c                   --- part of jton give the emitting area of the grid cell.
+                    if (ix == 0) then
+                      rnn = rnn*0.5*inj_dx*ainji
+                    else
+                      rnn = rnn*2.*xm*ainji
+                    endif
+                  endif
+
 c                 --- Add a random number to the number of particles injected
 c                 --- so that the average number of particles injected is
 c                 --- correct.  For example, if rnn < 1., without the
@@ -1263,7 +1276,6 @@ c               --- Loop over the species
 c                 --- Skip this species if no particles are to be injected
                   if (inj_npactual(ix,iy,ij,inj_is) == 0.) cycle
 
-                  rnn = inj_np(ix,iy,ij,inj_is)
                   nn = inj_npactual(ix,iy,ij,inj_is)
 
 c                 --- Double check to make sure that there is room for the
@@ -1282,20 +1294,39 @@ c                   --- increment random number counter
 
 c                   --- calculate x, y and z of new particle
 c                   --- if within injection source load it, else skip it
-                    if(.not.l_inj_regular) then
-                      pgroup%xp(ii) = wrandom(xrandom,injctcnt,dig1,1,1)
-                      pgroup%xp(ii) = xm +
-     &                           spreadx*(pgroup%xp(ii) - .5)*inj_dx*inj_xwide
-                      if(.not. l_inj_rz) then
-                        pgroup%yp(ii) = wrandom(xrandom,injctcnt,dig2,1,1)
-                        pgroup%yp(ii) = ym +
-     &                           spready*(pgroup%yp(ii) - .5)*inj_dy*inj_ywide
-                      else
-                        pgroup%yp(ii)=0.
-                      endif
+                    if(l_inj_regular) then
+c                     --- Particles are placed at the grid locations
+                      pgroup%xp(ii) = xm
+                      pgroup%yp(ii) = ym
                     else
-                      pgroup%xp(ii)=xm
-                      pgroup%yp(ii)=ym
+                      xrand = wrandom(xrandom,injctcnt,dig1,1,1)
+                      if (l_inj_rz_grid) then
+c                       --- Load the particles so that they are uniform
+c                       --- in r**2. The particles are loaded between
+c                       --- (ix-inj_xwide/2)*inj_dx and (ix+inj_xwide/2)*inj_dx.
+                        if (ix == 0) then
+                          p1x = 0.
+                        else
+                          p1x = ((ix-inj_xwide/2)*inj_dx)**2
+                        endif
+                        p2x = ((ix+inj_xwide/2)*inj_dx)**2
+                        xrand = p1x + xrand*(p2x - p1x)
+                        pgroup%xp(ii) = sqrt(xrand)
+                        pgroup%yp(ii) = 0.
+                      else
+                        pgroup%xp(ii) = xm +
+     &                                  spreadx*(xrand - .5)*inj_dx*inj_xwide
+                        if(l_inj_rz) then
+c                         --- The abs is only needed for ix==0, because of
+c                         --- the -0.5 term.
+                          pgroup%xp(ii) = abs(pgroup%xp(ii))
+                          pgroup%yp(ii) = 0.
+                        else
+                          yrand = wrandom(xrandom,injctcnt,dig2,1,1)
+                          pgroup%yp(ii) = ym +
+     &                                    spready*(yrand - .5)*inj_dy*inj_ywide
+                        endif
+                      endif
                     end if
 
 c                   --- Check if particle is within the rectangular or
@@ -1327,34 +1358,50 @@ c                   --- Clear out any old data from pid. This is done here
 c                   --- before pid is used anywhere.
                     pgroup%pid(ii,:) = 0.
 
-                    if(l_inj_regular) then
-                      if(l_inj_rz) then
-                        r_tmp=abs(pgroup%xp(ii))
+c                   --- Find location of particle relative to source
+c                   --- grid. This is needed for zp and az, as well as
+c                   --- for vnorm below.
+c                   --- Calculate this here since x is still r when
+c                   --- rz injection is being done.
+                    ixx = spreadx*(pgroup%xp(ii) - inj_xmmin(ij))*dxi
+                    iyy = spready*(pgroup%yp(ii) - inj_ymmin(ij))*dyi
+                    wxx = spreadx*(pgroup%xp(ii) - inj_xmmin(ij))*dxi - ixx
+                    wyy = spready*(pgroup%yp(ii) - inj_ymmin(ij))*dyi - iyy
+
+c                   --- For the axisymmetric cases, convert r to x and y,
+c                   --- choosing zero or random theta.
+                    if(l_inj_rz .or. l_inj_rz_grid) then
+                      if (l_inj_zero_theta) then
+                        theta_tmp = 0.
+                      else
+                        r_tmp = pgroup%xp(ii)
                         theta_tmp = wrandom(xrandom,injctcnt,dig2,1,1)
-                        theta_tmp = 2.*pi*theta_tmp !rnrev(injctcnt,dig2)
+                        theta_tmp = 2.*pi*theta_tmp
                         pgroup%xp(ii) = r_tmp*cos(theta_tmp)
                         pgroup%yp(ii) = r_tmp*sin(theta_tmp)
+                      endif
+                    endif
+
+                    if(l_inj_regular) then
+                      if(l_inj_rz) then
                         if(ix==0) then
                           pgroup%pid(ii,wpid) = 0.25*inj_dx*ainji
                         else
                           pgroup%pid(ii,wpid) = 2.*r_tmp*ainji
                         end if
-                        pgroup%pid(ii,wpid) = pgroup%pid(ii,wpid)*rnn
+                        pgroup%pid(ii,wpid) = pgroup%pid(ii,wpid)*
+     &                                        inj_np(ix,iy,ij,inj_is)
                       else
-                        pgroup%pid(ii,wpid) = rnn
+                        pgroup%pid(ii,wpid) = inj_np(ix,iy,ij,inj_is)
                       endif
                     else
 c                     --- if inject only radially, use variable weights and
 c                     --- assign pid
                       if(l_inj_rz) then
-                        r_tmp=abs(pgroup%xp(ii))
-                        theta_tmp = wrandom(xrandom,injctcnt,dig2,1,1)
-                        theta_tmp = 2.*pi*theta_tmp !rnrev(injctcnt,dig2)
-                        pgroup%xp(ii) = r_tmp*cos(theta_tmp)
-                        pgroup%yp(ii) = r_tmp*sin(theta_tmp)
                         pgroup%pid(ii,wpid) = 2.*r_tmp*ainji
                       end if
                     end if
+
 c                   --- Scale the particle weight.
                     if (wpid > 0) then
                       if (pgroup%pid(ii,wpid) == 0.) then
@@ -1364,15 +1411,7 @@ c                   --- Scale the particle weight.
                       endif
                     endif
 
-c                   --- Find location of particle relative to source
-c                   --- grid. This is needed for zp and az, as well as
-c                   --- for vnorm below.
-                    ixx = spreadx*(abs(pgroup%xp(ii) - inj_xmmin(ij))*dxi)
-                    iyy = spready*(abs(pgroup%yp(ii) - inj_ymmin(ij))*dyi)
-                    wxx = spreadx*(abs(pgroup%xp(ii) - inj_xmmin(ij))*dxi - ixx)
-                    wyy = spready*(abs(pgroup%yp(ii) - inj_ymmin(ij))*dyi - iyy)
-
-                    if(l_inj_exact .or. l_inj_rz) then
+                    if(l_inj_exact) then
 c                     --- calculate injection surface axial location exactly
                       zm = (pgroup%xp(ii)**2+pgroup%yp(ii)**2)/
      &                     (abs(rinject(ij)) +
@@ -1412,8 +1451,13 @@ c                   --- Only inject particles within the injection region.
                       endif
                     endif
 
-c                   --- Calculate transverse angle
-                    aa = atan2(pgroup%yp(ii),pgroup%xp(ii))
+c                   --- Calculate transverse angle. Use the precalculated
+c                   --- value if it is available.
+                    if(l_inj_rz .or. l_inj_rz_grid) then
+                      aa = theta_tmp
+                    else
+                      aa = atan2(pgroup%yp(ii),pgroup%xp(ii))
+                    endif
 
 c                   --- Calculate and save the fraction of time step this
 c                   --- particle is to be advanced. Also equal to dt minus
@@ -1426,10 +1470,10 @@ c                   --- integer.
 c                   --- The fractions are chosen using the digit reversed
 c                   --- number generator and not particle number since they
 c                   --- are correlated with transverse position.
-                    if(.not. l_inj_regular) then
-                      pgroup%pid(ii,injpid) = rnrev(injctcnt,dig5)
-                    else
+                    if(l_inj_regular) then
                       pgroup%pid(ii,injpid) = rnrev(injctcnt,dig1)
+                    else
+                      pgroup%pid(ii,injpid) = rnrev(injctcnt,dig5)
                     end if
 
 c                   --- save time of creation if tpid > 0
@@ -1486,10 +1530,7 @@ c                   --- are probably not correct.
 c                   --- Include the user specified vbeam (assumed to be a
 c                   --- normal), the thermal velocity, and the term from
 c                   --- the Child-Langmuir solution.
-c                   --- SMALLPOS is also added so that the field gathering
-c                   --- routines don't treat the newly injected particles
-c                   --- as lost particles when the other terms are zero.
-                    pgroup%uzp(ii) = vzinj*cos(az) + vznorm*cos(az) + SMALLPOS
+                    pgroup%uzp(ii) = vzinj*cos(az) + vznorm*cos(az)
                     if(.not. l_inj_delay_temp .and. .not. l_inj_along_B) then
                       if(l_inj_addtempz_abs) then
                         pgroup%uzp(ii) = pgroup%uzp(ii) + abs(vthz_s(jsid+1)*
@@ -1524,6 +1565,13 @@ c                   --- Save SSN
                       pgroup%pid(ii,spid) = ssn
                       ssn = ssn+1
                     end if
+
+                    if (xbirthpid > 0) pgroup%pid(ii,xbirthpid) = pgroup%xp(ii)
+                    if (ybirthpid > 0) pgroup%pid(ii,ybirthpid) = pgroup%yp(ii)
+                    if (zbirthpid > 0) pgroup%pid(ii,zbirthpid) = pgroup%zp(ii)
+                    if (uxbirthpid > 0) pgroup%pid(ii,uxbirthpid)=pgroup%uxp(ii)
+                    if (uybirthpid > 0) pgroup%pid(ii,uybirthpid)=pgroup%uyp(ii)
+                    if (uzbirthpid > 0) pgroup%pid(ii,uzbirthpid)=pgroup%uzp(ii)
 
 c                   --- increment various particle counters
                     npinje_s(jsid+1) = npinje_s(jsid+1) + 1
@@ -2253,6 +2301,13 @@ c                   --- by the radius.
                       pgroup%pid(ii,wpid) = wtinject(ij,is)
                     endif
 
+                    if (xbirthpid > 0) pgroup%pid(ii,xbirthpid) = pgroup%xp(ii)
+                    if (ybirthpid > 0) pgroup%pid(ii,ybirthpid) = pgroup%yp(ii)
+                    if (zbirthpid > 0) pgroup%pid(ii,zbirthpid) = pgroup%zp(ii)
+                    if (uxbirthpid > 0) pgroup%pid(ii,uxbirthpid)=pgroup%uxp(ii)
+                    if (uybirthpid > 0) pgroup%pid(ii,uybirthpid)=pgroup%uyp(ii)
+                    if (uzbirthpid > 0) pgroup%pid(ii,uzbirthpid)=pgroup%uzp(ii)
+
 c                   --- increment particle counter
                     nti = nti + 1
 
@@ -2693,7 +2748,7 @@ c=============================================================================
      &    (tinject < 1 .or. tinject > 3)) return
 
 c Set wpid if needed and not set by user
-      if((l_inj_rz.or.l_inj_regular) .and. wpid==0) then
+      if((l_inj_rz .or. l_inj_regular) .and. wpid==0) then
         if (wpid == 0) wpid = nextpid()
       endif
 
@@ -2734,30 +2789,42 @@ c apinject or bpinject back to zero after the generate.
 c     --- Setup grids covering injection surfaces.
       call getparticleextant(1,xmin,xmax,ymin,ymax,xmmin,xmmax,ymmin,ymmax)
       inj_ninj = ninject
+
+      if (inj_dx == 0.) inj_dx = dx
+      if (inj_dy == 0.) then
+        if (solvergeom == RZgeom .or. l_inj_rz .or. l_inj_rz_grid) then
+          inj_dy = inj_dx
+        else
+          inj_dy = dy
+        endif
+      endif
+      if (inj_dz == 0.) inj_dz = dz
+
       do ij=1,ninject
-        ixmin = max(xmin,xinject(ij) - ainject(ij) - 2*dx)*oneiftrue(.not. l_inj_rz)
-        ixmax = min(xmax,xinject(ij) + ainject(ij) + 2*dx)
-        iymin = max(ymin,yinject(ij) - binject(ij) - 2*dy)*oneiftrue(.not. l_inj_rz)
-        iymax = min(ymax,yinject(ij) + binject(ij) + 2*dy)*oneiftrue(.not. l_inj_rz)
-        if(inj_dx==0.) then
-          inx = nint((ixmax - ixmin)/dx)
+        if (l_inj_rz .or. l_inj_rz_grid) then
+          ixmin = 0
+          ixmax = min(xmax,xinject(ij) + ainject(ij) + 2*inj_dx)
         else
-          inx = nint((ixmax - ixmin)/inj_dx)
+          ixmin = max(xmin,xinject(ij) - ainject(ij) - 2*inj_dx)
+          ixmax = min(xmax,xinject(ij) + ainject(ij) + 2*inj_dx)
         endif
-        if(inj_dy==0.) then
-          iny = nint((iymax - iymin)/dy)
-        else
-          iny = nint((iymax - iymin)/inj_dy)
-        endif
+
+        inx = nint((ixmax - ixmin)/inj_dx)
         inj_nx = max(inj_nx,inx)
-        inj_ny = max(inj_ny,iny)
+
+        if (l_inj_rz .or. l_inj_rz_grid) then
+          inj_ny = 0
+        else
+          iymin = max(ymin,yinject(ij) - binject(ij) - 2*inj_dy)
+          iymax = min(ymax,yinject(ij) + binject(ij) + 2*inj_dy)
+          iny = nint((iymax - iymin)/inj_dy)
+          inj_ny = max(inj_ny,iny)
+        endif
+
       enddo
       call gchange("InjectVars3d",0)
 
-      if(inj_dx==0.) inj_dx = dx
-      if(inj_dy==0.) inj_dy = dy
-      if(inj_dz==0.) inj_dz = dz
-      if(l_inj_rz) then
+      if(l_inj_rz .or. l_inj_rz_grid) then
         if(.not. l_inj_area) then
           inj_dx = ainject(1)/(real(nint(ainject(1)/inj_dx))+0.5)
           inj_xwide = 1
@@ -2766,8 +2833,11 @@ c     --- Setup grids covering injection surfaces.
       else
         l_inj_area = .true.
       end if
-      if(solvergeom==RZgeom) inj_dy = inj_dx
-      if(l_inj_rz) inj_ny = 0
+
+c     --- This is just the standard assumption.
+c     --- Keep for backwards compatibility.
+      if (l_inj_rz) l_inj_exact = .true.
+
       inj_dz0 = inj_dz
       if(inj_nz>1) inj_dz = inj_d(1)*inj_dz/(real(inj_nz-1)*2.**(1./3.)+real(2-inj_nz))**3
       if(inj_nz > 1 .and. ninject > 1) then
@@ -2776,9 +2846,13 @@ c     --- Setup grids covering injection surfaces.
       end if
 
 c     --- Set mins for meshes around each source.
-      inj_xmmin = max(xmin, - inj_nx/2*inj_dx)
-      inj_ymmin = max(ymin, - inj_ny/2*inj_dy)
-      if (l_inj_rz) inj_xmmin = 0.
+      if (l_inj_rz .or. l_inj_rz_grid) then
+        inj_xmmin = 0.
+        inj_ymmin = 0.
+      else
+        inj_xmmin = max(xmin, - inj_nx/2*inj_dx)
+        inj_ymmin = max(ymin, - inj_ny/2*inj_dy)
+      endif
 
 c Set up finject array if not set by the user (if sum of finject = 0).
 c Give each injection source the same distribution of species.
@@ -3632,20 +3706,33 @@ c     --- Calculate the transverse fields
 c     --- Note that sign of inj_ex and inj_ey is not what you think it might
 c     --- be since inj_phi is actually vinject - phi, with an extra minus sign.
       if (linj_eperp) then
-        do ij = 1,inj_ninj
-          do iy = 1,inj_ny-1
+
+        if (l_inj_rz .or. l_inj_rz_grid) then
+
+c         --- Only Ex is nonzero. Ey=0 by symmetry
+          do ij = 1,inj_ninj
             do ix = 1,inj_nx-1
-              inj_ex(ix,iy,ij)=(inj_phi(ix+1,iy  ,ij)-inj_phi(ix-1,iy  ,ij))*dxi*0.5
-              inj_ey(ix,iy,ij)=(inj_phi(ix  ,iy+1,ij)-inj_phi(ix  ,iy-1,ij))*dyi*0.5
+              inj_ex(ix,0,ij) = (inj_phi(ix+1,0,ij) - inj_phi(ix-1,0,ij))*dxi*0.5
             enddo
           enddo
-          do ix = 1,inj_nx-1
-            inj_ex(ix,0,ij) = (inj_phi(ix+1,0,ij) - inj_phi(ix-1,0,ij))*dxi*0.5
+
+        else
+
+          do ij = 1,inj_ninj
+            do iy = 1,inj_ny-1
+              do ix = 1,inj_nx-1
+                inj_ex(ix,iy,ij)=(inj_phi(ix+1,iy  ,ij)-inj_phi(ix-1,iy  ,ij))*dxi*0.5
+                inj_ey(ix,iy,ij)=(inj_phi(ix  ,iy+1,ij)-inj_phi(ix  ,iy-1,ij))*dyi*0.5
+              enddo
+            enddo
+            do ix = 1,inj_nx-1
+              inj_ex(ix,0,ij) = (inj_phi(ix+1,0,ij) - inj_phi(ix-1,0,ij))*dxi*0.5
+            enddo
+            do iy = 1,inj_ny-1
+              inj_ey(0,iy,ij) = (inj_phi(0,iy+1,ij) - inj_phi(0,iy-1,ij))*dyi*0.5
+            enddo
           enddo
-          do iy = 1,inj_ny-1
-            inj_ey(0,iy,ij) = (inj_phi(0,iy+1,ij) - inj_phi(0,iy-1,ij))*dyi*0.5
-          enddo
-        enddo
+        endif
       endif
 
       deallocate(xx,yy,zz,pp)
@@ -3815,12 +3902,12 @@ c     --- E fields for particles behind the virtual surface.
       if(inj_nz>1) call inj_sete_3darray(npart,xp,yp,zp,pid,inj_dz,ex,ey,ez)
 
       if(solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-        if(.not.l_inj_rz) then
-          spreadx = 1
-          spready = 1
-        else
+        if(l_inj_rz .or. l_inj_rz_grid) then
           spreadx = 1
           spready = 0
+        else
+          spreadx = 1
+          spready = 1
         end if
       elseif(solvergeom==XZgeom) then
         spreadx = 1
@@ -3829,7 +3916,7 @@ c     --- E fields for particles behind the virtual surface.
         spreadx = 0
         spready = 0
       end if
-      if (l_inj_rz) spready = 0
+
       tex = 0.
       tey = 0.
       tez = 0.
@@ -3898,7 +3985,7 @@ c         --- angle of point in transverse plane
           aa = atan2(yy(ip),xx(ip))
 
 c         --- If using axisymmetric injection, convert x and y to radius.
-          if (l_inj_rz) then
+          if (l_inj_rz .or. l_inj_rz_grid) then
             xx(ip) = sqrt(rr2)
             yy(ip) = 0.
           endif
@@ -3943,29 +4030,40 @@ c         --- Zero out the original data
           ey(ip) = 0.
           ez(ip) = 0.
 
-          if (linj_eperp .and. .not.l_inj_rz) then
+          if (linj_eperp) then
 c           --- Add in the tangential fields if requested.
 c           --- Fetch the transverse field components. The field is linearly
 c           --- interpolated between the value of the emitting surface
 c           --- (i.e. zero) and the value on the secondary surface.
-            atx = atan2(xx(ip)*sign(1.,rinj),(rinj - zz(ip))*sign(1.,rinj))
-            aty = atan2(yy(ip)*sign(1.,rinj),(rinj - zz(ip))*sign(1.,rinj))
-            sx = 1.
-            sy = 1.
-            if (xx(ip) < inj_xmmin(ij)) sx = -1.
-            if (yy(ip) < inj_ymmin(ij)) sy = -1.
-            etx = (dd*inj_di)*sx*(inj_ex(ix        ,iy        ,ij)*(1.-wx)*(1.-wy) +
-     &                            inj_ex(ix+spreadx,iy        ,ij)*    wx *(1.-wy) +
-     &                            inj_ex(ix        ,iy+spready,ij)*(1.-wx)*    wy  +
-     &                            inj_ex(ix+spreadx,iy+spready,ij)*    wx *    wy   )
-            ety = (dd*inj_di)*sy*(inj_ey(ix        ,iy        ,ij)*(1.-wx)*(1.-wy) +
-     &                            inj_ey(ix+spreadx,iy        ,ij)*    wx *(1.-wy) +
-     &                            inj_ey(ix        ,iy+spready,ij)*(1.-wx)*    wy  +
-     &                            inj_ey(ix+spreadx,iy+spready,ij)*    wx *    wy   )
+            if (l_inj_rz .or. l_inj_rz_grid) then
+              if (spreadx == 1) then
+                atx = atan2(xx(ip)*sign(1.,rinj),(rinj - zz(ip))*sign(1.,rinj))
+                etx = (dd*inj_di)*(inj_ex(ix  ,0,ij)*(1.-wx) + 
+     &                             inj_ex(ix+1,0,ij)*    wx )
+                tex(ip) = tex(ip) + etx*cos(aa)*cos(atx)
+                tey(ip) = tey(ip) + etx*sin(aa)*cos(atx)
+                tez(ip) = tez(ip) + etx*sin(atx)
+              endif
+            else
+              atx = atan2(xx(ip)*sign(1.,rinj),(rinj - zz(ip))*sign(1.,rinj))
+              aty = atan2(yy(ip)*sign(1.,rinj),(rinj - zz(ip))*sign(1.,rinj))
+              sx = 1.
+              sy = 1.
+              if (xx(ip) < inj_xmmin(ij)) sx = -1.
+              if (yy(ip) < inj_ymmin(ij)) sy = -1.
+              etx = (dd*inj_di)*sx*(inj_ex(ix        ,iy        ,ij)*(1.-wx)*(1.-wy) +
+     &                              inj_ex(ix+spreadx,iy        ,ij)*    wx *(1.-wy) +
+     &                              inj_ex(ix        ,iy+spready,ij)*(1.-wx)*    wy  +
+     &                              inj_ex(ix+spreadx,iy+spready,ij)*    wx *    wy   )
+              ety = (dd*inj_di)*sy*(inj_ey(ix        ,iy        ,ij)*(1.-wx)*(1.-wy) +
+     &                              inj_ey(ix+spreadx,iy        ,ij)*    wx *(1.-wy) +
+     &                              inj_ey(ix        ,iy+spready,ij)*(1.-wx)*    wy  +
+     &                              inj_ey(ix+spreadx,iy+spready,ij)*    wx *    wy   )
 
-            tex(ip) = tex(ip) + etx*cos(atx)
-            tey(ip) = tey(ip) + ety*cos(aty)
-            tez(ip) = tez(ip) + etx*sin(atx) + ety*sin(aty)
+              tex(ip) = tex(ip) + etx*cos(atx)
+              tey(ip) = tey(ip) + ety*cos(aty)
+              tez(ip) = tez(ip) + etx*sin(atx) + ety*sin(aty)
+            endif
           endif
 
         endif
@@ -4179,7 +4277,7 @@ c the grid cell.
       dzi = 1./dz
 
 c     --- zero out the array
-      call zeroarry(inj_rho(0,0,1),(1+inj_nx)*(1+inj_ny)*inj_ninj)
+      inj_rho = 0.
 
 c     --- Loop over species and particles
       do is=1,ns
@@ -4210,11 +4308,7 @@ c         --- Ultimately, a particle should be able to check if its near
 c         --- any conductor and do special coding for the field near it.
           if (ij <= 0 .or. ij > ninject) cycle
 
-          ix = int(abs(pgroup%xp(ip) - inj_xmmin(ij))*dxi)
-          iy = int(abs(pgroup%yp(ip) - inj_ymmin(ij))*dyi)
-
 c         --- set temporaries
-          rinji = 1./rinject(ij)
           rinj = rinject(ij)
 
 c         --- Calculate distance of particle from the emitting surface
@@ -4226,6 +4320,7 @@ c           --- used so that for large values of rinj, i.e. a flat emitting
 c           --- surface, the correct value of the distance is calculated,
 c           --- namely zp(ip).
 c           dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
+            rinji = 1./rinject(ij)
             dd = (2.*pgroup%zp(ip) - (pgroup%zp(ip)**2 + rr2)*rinji)/
      &           (1. + sqrt(rr2*rinji**2 + (1. - pgroup%zp(ip)*rinji)**2))
             if (rinj < 0.) dd = -dd
@@ -4239,7 +4334,11 @@ c         --- Only deposit charge of particles close to emitting surface.
           if (abs(dd) < 1.) then
 
 c           --- angle of point in transverse plane
-            aa = atan2(pgroup%yp(ip),dvnz(pgroup%xp(ip)))
+            if(l_inj_rz .or. l_inj_rz_grid) then
+              aa = 0.
+            else
+              aa = atan2(pgroup%yp(ip),dvnz(pgroup%xp(ip)))
+            endif
 
 c           --- angle relative to z axis
             az = atan2(sqrt(rr2),rinj-pgroup%zp(ip))
@@ -4575,7 +4674,7 @@ c Calculate the charge density in the region of the injector mesh refinement.
         sy = 1
       elseif(solvergeom==RZgeom) then
         sx = 1
-        if(l_inj_rz) then
+        if(l_inj_rz .or. l_inj_rz_grid) then
           sy = 0
         else
           sy = 1
@@ -4616,7 +4715,7 @@ c     --- zero out the array
       inj_q = 0.
 
 c     --- Loop over species and particles
-      if(.not. l_inj_rz) then
+      if(.not. l_inj_rz .and. .not. l_inj_rz_grid) then
         do is=1,pgroup%ns
           i1 = pgroup%ins(is)
           i2 = pgroup%ins(is)+pgroup%nps(is)-1
@@ -5162,7 +5261,7 @@ c any conductor surface.
         spready = 1
       elseif(solvergeom==RZgeom) then
         spreadx = 1
-        if(l_inj_rz) then
+        if(l_inj_rz .or. l_inj_rz_grid) then
           spready = 0
         else
           spready = 1
@@ -5259,7 +5358,7 @@ c         --- angle of point in transverse plane
           aa = atan2(yy(ip),xx(ip))
 
 c         --- If using axisymmetric injection, convert x and y to radius.
-          if (l_inj_rz) then
+          if (l_inj_rz .or. l_inj_rz_grid) then
             xx(ip) = sqrt(rr2)
             yy(ip) = 0.
           endif
@@ -5308,7 +5407,7 @@ c            wz = dd*2.**(inj_nz-iz)-1.
           s6 = (1.-wx)*    wy *    wz
           s7 =     wx *    wy *    wz 
 
-          if(l_inj_rz) then
+          if(l_inj_rz .or. l_inj_rz_grid) then
             en = inj_ex_3d(ix        ,iy        ,iz  ,ij)*s0 +
      &           inj_ex_3d(ix+spreadx,iy        ,iz  ,ij)*s1 +
      &           inj_ex_3d(ix        ,iy+spready,iz  ,ij)*s2 +
