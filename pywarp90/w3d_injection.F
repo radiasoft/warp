@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.132 $, $Date: 2010/03/18 22:45:52 $
+c@(#) File w3d_injection.F, version $Revision: 1.133 $, $Date: 2010/03/23 18:52:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5114,7 +5114,7 @@ c     --- The result calculated on each processor is gathered on all
       deallocate(dz_local)
 
 !$OMP MASTER
-      if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
+      if (lw3dtimesubs) timegetinj_phi_mr = timegetinj_phi_mr + wtime() - substarttime
 !$OMP END MASTER
       return
       end
