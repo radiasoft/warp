@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.134 $, $Date: 2010/03/23 19:13:44 $
+c@(#) File w3d_injection.F, version $Revision: 1.135 $, $Date: 2010/03/23 19:33:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1204,7 +1204,7 @@ c                 --- when using radial injection.
 c                 --- Save the calculated number of particles to inject.
                   inj_np(ix,iy,ij,inj_is) = rnn
 
-                  if (l_inj_rz_grid) then
+                  if (l_inj_rz_grid .and. .not. l_inj_rz) then
 c                   --- Scale the number of particles to inject to increase
 c                   --- with the radius. These factors times the first
 c                   --- part of jton give the emitting area of the grid cell.
@@ -1300,7 +1300,7 @@ c                     --- Particles are placed at the grid locations
                       pgroup%yp(ii) = ym
                     else
                       xrand = wrandom(xrandom,injctcnt,dig1,1,1)
-                      if (l_inj_rz_grid) then
+                      if (l_inj_rz_grid .and. .not. l_inj_rz) then
 c                       --- Load the particles so that they are uniform
 c                       --- in r**2. The particles are loaded between
 c                       --- (ix-inj_xwide/2)*inj_dx and (ix+inj_xwide/2)*inj_dx.
