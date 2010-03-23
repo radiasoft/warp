@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.135 $, $Date: 2010/03/23 19:33:29 $
+c@(#) File w3d_injection.F, version $Revision: 1.136 $, $Date: 2010/03/23 21:04:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3090,7 +3090,7 @@ c control of injection.
       call gchange("InjectVars3d",0)
       inj_xwide = max(1,inj_xwide)
       inj_ywide = max(1,inj_ywide)
-      if(l_inj_rz) then
+      if(l_inj_rz .or. l_inj_rz_grid) then
         call fill_inj_rz()
       else
         call fill_inj()
