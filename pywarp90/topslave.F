@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.62 $, $Date: 2010/02/09 23:38:54 $
+c TOPSLAVE.M, version $Revision: 1.63 $, $Date: 2010/03/23 18:52:03 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -1537,11 +1537,13 @@ c Find the nonzero value of data over all processors. This assumes that the
 c non-zero values for each index are the same for all processors.
 c Resulting data is broadcast to all processors.
 
-      real(kind=8):: dmax(ndata),dmin(ndata)
+      real(kind=8),allocatable:: dmax(:),dmin(:)
       integer(MPIISZ):: mpierror
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+
+      allocate(dmax(ndata),dmin(ndata))
 
       call MPI_ALLREDUCE(data,dmax,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,MPI_MAX,
      &                   MPI_COMM_WORLD,mpierror)
@@ -1552,6 +1554,8 @@ c Resulting data is broadcast to all processors.
       elsewhere
         data = dmin
       endwhere
+
+      deallocate(dmax,dmin)
 
 !$OMP MASTER
       if (ltoptimesubs) timeparallelnonzerorealarray = timeparallelnonzerorealarray + wtime() - substarttime
