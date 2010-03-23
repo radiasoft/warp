@@ -4,7 +4,7 @@ procedure, but using the full simulation instead of 1-D approximation.
 from warp import *
 from timedependentvoltage import TimeVoltage
 
-constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.12 2010/03/10 23:34:12 dave Exp $"
+constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.13 2010/03/23 19:57:45 dave Exp $"
 def constantcurrentinjectiondoc():
   import constantcurrentinjection
   print constantcurrentinjection.__doc__
@@ -26,7 +26,7 @@ ccrt = ConstantCurrentRiseTime(sourceid=1,
                                othervolts=[100.,200.,150.,0.])
 
 NOTE: This code assumes that RZ geometry is being used and
-      that w3d.l_inj_rz = true.
+      that w3d.l_inj_rz = true or w3d.l_inj_rz_grid = true.
 
 Input arguements:
  - sourceid: conductor object or id of the source
@@ -93,7 +93,7 @@ frz.calc_a = 3
     self.hphiref = []
     self.setphiref(currentdensity)
     print 'phiref = ',self.phiref
-    if w3d.l_inj_rz:
+    if w3d.l_inj_rz or w3d.l_inj_rz_grid:
       self.ww = 2.*pi*iota(0,w3d.inj_nx)*w3d.inj_dx**2*w3d.inj_area[:,0,0]
       self.ww[0] = 0.25*pi*w3d.inj_dx**2
     else:
@@ -134,7 +134,7 @@ frz.calc_a = 3
     top.vinject = top.vinject - self.endplatevolt
     getinj_phi()
     top.vinject = top.vinject + self.endplatevolt
-    if w3d.l_inj_rz:
+    if w3d.l_inj_rz or w3d.l_inj_rz_grid:
       self.phiv = sum(self.ww*w3d.inj_phi[:,0,0])/self.wwsum
     else:
       self.phiv = sum(self.ww*w3d.inj_phi[:,:,0])/self.wwsum
@@ -177,7 +177,7 @@ frz.calc_a = 3
       top.vinject = self.endplatevolt
     getinj_phi()
 
-    if w3d.l_inj_rz:
+    if w3d.l_inj_rz or w3d.l_inj_rz_grid:
       phirho = -sum(self.ww*w3d.inj_phi[:,0,0])/self.wwsum
     else:
       phirho = -sum(self.ww*w3d.inj_phi[:,:,0])/self.wwsum
