@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.136 $, $Date: 2010/03/23 21:04:26 $
+c@(#) File w3d_injection.F, version $Revision: 1.137 $, $Date: 2010/03/24 22:35:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1307,9 +1307,9 @@ c                       --- (ix-inj_xwide/2)*inj_dx and (ix+inj_xwide/2)*inj_dx.
                         if (ix == 0) then
                           p1x = 0.
                         else
-                          p1x = ((ix-inj_xwide/2)*inj_dx)**2
+                          p1x = (xm - 0.5*inj_xwide*inj_dx)**2
                         endif
-                        p2x = ((ix+inj_xwide/2)*inj_dx)**2
+                        p2x = (xm + 0.5*inj_xwide*inj_dx)**2
                         xrand = p1x + xrand*(p2x - p1x)
                         pgroup%xp(ii) = sqrt(xrand)
                         pgroup%yp(ii) = 0.
