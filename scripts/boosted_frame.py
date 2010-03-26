@@ -25,8 +25,8 @@ class Boosted_Frame(object):
   def boost(self,species,zinject=0.,tinit=0.,l_inject_plane=1,lallindomain=0,l_rmzmean=1.,l_deprho=1,l_savezinit=0):
    print 'enter boost',top.pgroup.nps
    if l_savezinit:
-     if top.zbirthpid==0:
-       top.zbirthpid = nextpid()
+     if top.zbirthlabpid==0:
+       top.zbirthlabpid = nextpid()
        top.pgroup.npid = top.npid
        top.pgroup.gchange()
      iupr=-1
@@ -34,7 +34,7 @@ class Boosted_Frame(object):
        ilpr=iupr+1
        iupr=ilpr+getn(js=js,bcast=0,gather=0)
        if getn(js=js,bcast=0,gather=0):
-         top.pgroup.pid[ilpr:iupr,top.zbirthpid-1] = top.pgroup.zp[ilpr:iupr].copy()
+         top.pgroup.pid[ilpr:iupr,top.zbirthlabpid-1] = top.pgroup.zp[ilpr:iupr].copy()
    if l_inject_plane:
     pg = top.pgroup
     self.species=species
