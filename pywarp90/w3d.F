@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.439 $, $Date: 2010/02/16 23:54:59 $
+c@(#) File W3D.F, version $Revision: 3.440 $, $Date: 2010/03/26 14:25:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1556,7 +1556,7 @@ c=============================================================================
       use InDiag3d
       use Lattice
       use LatticeInternal
-      use Particles,Only: nplive,wpid,chdtspid,uxoldpid,uyoldpid,uzoldpid,lmappid,zbirthpid
+      use Particles,Only: nplive,wpid,chdtspid,uxoldpid,uyoldpid,uzoldpid,lmappid,zbirthlabpid
       use Fields3d
       use Subcycling
       use Fields3dParticles
@@ -2099,7 +2099,7 @@ c               --- get particles position in lab frame
                 zp(ipmin:ipmin+ip-1) = boost_gamma*zp(ipmin:ipmin+ip-1)+uzboost*time  
 c               --- get zbeam for each particle in lab frame
 c                zbeam_maps(1:ip) = (boost_z0/boost_gamma+(vbeam+vzboost)*tlab(1:ip))/(1.+vbeam*vzboost*invclightsq)
-                zbeam_maps(1:ip) = (it-1)*vbeam_lab*dtmaps(1:ip) + pgroup%pid(ipmin:ipmin+ip-1,zbirthpid)
+                zbeam_maps(1:ip) = (it-1)*vbeam_lab*dtmaps(1:ip) + pgroup%pid(ipmin:ipmin+ip-1,zbirthlabpid)
      &          *(boost_gamma*gammabar_lab/gammabar-1.)
      &          +(boost_z0/boost_gamma)/(1.+vbeam*vzboost*invclightsq)
                 zbeamend_maps(1:ip) = zbeam_maps(1:ip) + dtmaps(1:ip)*vbeam_lab
