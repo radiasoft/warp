@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.275 $, $Date: 2010/03/26 14:24:43 $
+#@(#) File TOP.V, version $Revision: 3.276 $, $Date: 2010/03/30 17:51:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.275 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.276 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1679,26 +1679,59 @@ iflabwn integer /1/ # turns on lab window moments (0 off; 1 on)
 itlabwn integer /0/ # Sets how often the lab moments are calculated
 ntlabwn integer     # Maximum number of times lab frame moments are calculated
 ilabwn(nlabwn,0:nslabwn) _integer # Number of times lab frame moments have been calculated
-timelw(ntlabwn,nlabwn,0:nslabwn)     _real # Time in lab frame
-pnumlw(ntlabwn,nlabwn,0:nslabwn)     _real # Number of particles in lab frame
-xbarlw(ntlabwn,nlabwn,0:nslabwn)     _real # X bar in lab frame
-ybarlw(ntlabwn,nlabwn,0:nslabwn)     _real # Y bar in lab frame
-vzbarlw(ntlabwn,nlabwn,0:nslabwn)    _real # Vz bar in lab frame
-epsxlw(ntlabwn,nlabwn,0:nslabwn)     _real # X emittance in lab frame
-epsylw(ntlabwn,nlabwn,0:nslabwn)     _real # Y emittance in lab frame
-epszlw(ntlabwn,nlabwn,0:nslabwn)     _real # Z emittance in lab frame
-epsrlw(ntlabwn,nlabwn,0:nslabwn)     _real # R emittance in lab frame
-vxrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # Vx RMS in lab frame
-vyrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # Vy RMS in lab frame
-vzrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # Vz RMS in lab frame
-xrmslw(ntlabwn,nlabwn,0:nslabwn)     _real # X RMS in lab frame
-yrmslw(ntlabwn,nlabwn,0:nslabwn)     _real # Y RMS in lab frame
-rrmslw(ntlabwn,nlabwn,0:nslabwn)     _real # R RMS in lab frame
-xxpbarlw(ntlabwn,nlabwn,0:nslabwn)   _real # XX' bar in lab frame
-yypbarlw(ntlabwn,nlabwn,0:nslabwn)   _real # YY' bar in lab frame
-currlw(ntlabwn,nlabwn,0:nslabwn)     _real # Current in lab frame
+timelw(ntlabwn,nlabwn,0:nslabwn)    _real # Time in lab frame
+pnumlw(ntlabwn,nlabwn,0:nslabwn)    _real # Number of particles in lab frame
+xbarlw(ntlabwn,nlabwn,0:nslabwn)    _real # X bar in lab frame
+ybarlw(ntlabwn,nlabwn,0:nslabwn)    _real # Y bar in lab frame
+zbarlw(ntlabwn,nlabwn,0:nslabwn)    _real # Z bar in lab frame
+xpbarlw(ntlabwn,nlabwn,0:nslabwn)   _real # X' bar in lab frame
+ypbarlw(ntlabwn,nlabwn,0:nslabwn)   _real # Y' bar in lab frame
+vxbarlw(ntlabwn,nlabwn,0:nslabwn)   _real # Vx bar in lab frame
+vybarlw(ntlabwn,nlabwn,0:nslabwn)   _real # Vy bar in lab frame
+vzbarlw(ntlabwn,nlabwn,0:nslabwn)   _real # Vz bar in lab frame
+xybarlw(ntlabwn,nlabwn,0:nslabwn)   _real # XY bar in lab frame
+xypbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # XY' bar in lab frame
+yxpbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # YX' bar in lab frame
+xpypbarlw(ntlabwn,nlabwn,0:nslabwn) _real # X'Y' bar in lab frame
+xsqbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # XX bar in lab frame
+ysqbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # YY bar in lab frame
+zsqbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # ZZ bar in lab frame
+xpsqbarlw(ntlabwn,nlabwn,0:nslabwn) _real # X'X' bar in lab frame
+ypsqbarlw(ntlabwn,nlabwn,0:nslabwn) _real # Y'Y' bar in lab frame
+vxsqbarlw(ntlabwn,nlabwn,0:nslabwn) _real # VxVx bar in lab frame
+vysqbarlw(ntlabwn,nlabwn,0:nslabwn) _real # VyVy bar in lab frame
+vzsqbarlw(ntlabwn,nlabwn,0:nslabwn) _real # Vz*Vz bar in lab frame
+xxpbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # XX' bar in lab frame
+yypbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # YY' bar in lab frame
+zvzbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # ZVz bar in lab frame
+xvzbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # XVz bar in lab frame
+yvzbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # YVz bar in lab frame
+vxvzbarlw(ntlabwn,nlabwn,0:nslabwn) _real # VxVz bar in lab frame
+vyvzbarlw(ntlabwn,nlabwn,0:nslabwn) _real # VyVz bar in lab frame
+xrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # X RMS in lab frame
+yrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # Y RMS in lab frame
+zrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # Z RMS in lab frame
+rrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # R RMS in lab frame
+xprmslw(ntlabwn,nlabwn,0:nslabwn)   _real # X' RMS in lab frame
+yprmslw(ntlabwn,nlabwn,0:nslabwn)   _real # Y' RMS in lab frame
+epsxlw(ntlabwn,nlabwn,0:nslabwn)    _real # X emittance in lab frame
+epsylw(ntlabwn,nlabwn,0:nslabwn)    _real # Y emittance in lab frame
+epszlw(ntlabwn,nlabwn,0:nslabwn)    _real # Z emittance in lab frame
+epsnxlw(ntlabwn,nlabwn,0:nslabwn)   _real # Normalized X emittance in lab frame
+epsnylw(ntlabwn,nlabwn,0:nslabwn)   _real # Normalized Y emittance in lab frame
+epsnzlw(ntlabwn,nlabwn,0:nslabwn)   _real # Normalized Z emittance in lab frame
+epsrlw(ntlabwn,nlabwn,0:nslabwn)    _real # R emittance in lab frame
+epsglw(ntlabwn,nlabwn,0:nslabwn)    _real # Generalized emittance in lab frame
+epshlw(ntlabwn,nlabwn,0:nslabwn)    _real # Generalized emittance in lab frame
+epsnrlw(ntlabwn,nlabwn,0:nslabwn)   _real # R emittance in lab frame
+epsnglw(ntlabwn,nlabwn,0:nslabwn)   _real # Normalized generalized emittance in lab frame
+epsnhlw(ntlabwn,nlabwn,0:nslabwn)   _real # Normalized generalized emittance in lab frame
+vxrmslw(ntlabwn,nlabwn,0:nslabwn)   _real # Vx RMS in lab frame
+vyrmslw(ntlabwn,nlabwn,0:nslabwn)   _real # Vy RMS in lab frame
+vzrmslw(ntlabwn,nlabwn,0:nslabwn)   _real # Vz RMS in lab frame
+currlw(ntlabwn,nlabwn,0:nslabwn)    _real # Current in lab frame
 lostparslw(ntlabwn,nlabwn,0:nslabwn) _real # Number of lost particles in lab frame
-linechglw(ntlabwn,nlabwn,0:nslabwn)  _real # Line-charge in lab frame
+linechglw(ntlabwn,nlabwn,0:nslabwn) _real # Line-charge in lab frame
 
 *********** Moments dump:
 # Scalar moments of general interest
