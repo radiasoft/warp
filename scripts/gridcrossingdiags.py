@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.29 2010/03/11 19:10:19 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.30 2010/04/01 23:28:26 dave Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -1876,7 +1876,7 @@ around the peak current."""
         return self._gettimehistory(self.rprms,**kw)
 
     # ----------------------------------------------------------------------
-    def _timeintegrate(self,data,laverage):
+    def _timeintegrate(self,data,laverage,weight=None):
 
         try:
             self.zmesh
@@ -1892,11 +1892,15 @@ around the peak current."""
         gridcount = zeros(1+nz,'d')
         gridmesh = zmin + arange(nz+1)*dz
 
-        if laverage:
+        if weight is not None:
+            # --- Use the given weight, with or without averaging
+            count = weight
+        elif laverage:
+            # --- If no weight is given, average using the particle count
             count = self.count
 
         for i in range(data.shape[0]):
-            if laverage:
+            if laverage or weight is not None:
                 deposgrid1dw(1,data.shape[1],
                             self.zmesh+self.zbeam[i],
                             data[i,:],
@@ -1915,56 +1919,56 @@ around the peak current."""
 
         return result,gridmesh
 
-    def timeintegratedcount(self):
-        return self._timeintegrate(self.count,laverage=0)
+    def timeintegratedcount(self,laverage=0,weight=None):
+        return self._timeintegrate(self.count,laverage,weight)
 
-    def timeintegratedcurrent(self):
-        return self._timeintegrate(self.current,laverage=0)
+    def timeintegratedcurrent(self,laverage=0,weight=None):
+        return self._timeintegrate(self.current,laverage,weight)
 
-    def timeintegratedvzbar(self):
-        return self._timeintegrate(self.vzbar,laverage=1)
+    def timeintegratedvzbar(self,laverage=1,weight=None):
+        return self._timeintegrate(self.vzbar,laverage,weight)
 
-    def timeintegratedxbar(self):
-        return self._timeintegrate(self.xbar,laverage=1)
+    def timeintegratedxbar(self,laverage=1,weight=None):
+        return self._timeintegrate(self.xbar,laverage,weight)
 
-    def timeintegratedybar(self):
-        return self._timeintegrate(self.ybar,laverage=1)
+    def timeintegratedybar(self,laverage=1,weight=None):
+        return self._timeintegrate(self.ybar,laverage,weight)
 
-    def timeintegratedxsqbar(self):
-        return self._timeintegrate(self.xsqbar,laverage=1)
+    def timeintegratedxsqbar(self,laverage=1,weight=None):
+        return self._timeintegrate(self.xsqbar,laverage,weight)
 
-    def timeintegratedysqbar(self):
-        return self._timeintegrate(self.ysqbar,laverage=1)
+    def timeintegratedysqbar(self,laverage=1,weight=None):
+        return self._timeintegrate(self.ysqbar,laverage,weight)
 
-    def timeintegratedxrms(self):
+    def timeintegratedxrms(self,laverage=1,weight=None):
         data = self.xrms**2
-        result,gridmesh = self._timeintegrate(data,laverage=1)
+        result,gridmesh = self._timeintegrate(data,laverage,weight)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
-    def timeintegratedyrms(self):
+    def timeintegratedyrms(self,laverage=1,weight=None):
         data = self.yrms**2
-        result,gridmesh = self._timeintegrate(data,laverage=1)
+        result,gridmesh = self._timeintegrate(data,laverage,weight)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
-    def timeintegratedxprms(self):
+    def timeintegratedxprms(self,laverage=1,weight=None):
         data = self.xprms**2
-        result,gridmesh = self._timeintegrate(data,laverage=1)
+        result,gridmesh = self._timeintegrate(data,laverage,weight)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
-    def timeintegratedyprms(self):
+    def timeintegratedyprms(self,laverage=1,weight=None):
         data = self.yprms**2
-        result,gridmesh = self._timeintegrate(data,laverage=1)
+        result,gridmesh = self._timeintegrate(data,laverage,weight)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
-    def timeintegratedcorkscrew(self):
+    def timeintegratedcorkscrew(self,laverage=1,weight=None):
         xbarint,gridmesh = self.timeintegratedxbar()
         ybarint,gridmesh = self.timeintegratedybar()
-        xbarsqint,gridmesh = self._timeintegrate(self.xbar**2,laverage=1)
-        ybarsqint,gridmesh = self._timeintegrate(self.ybar**2,laverage=1)
+        xbarsqint,gridmesh = self._timeintegrate(self.xbar**2,laverage,weight)
+        ybarsqint,gridmesh = self._timeintegrate(self.ybar**2,laverage,weight)
         corkscrew = sqrt(maximum(0.,xbarsqint - xbarint**2 + ybarsqint - ybarint**2))
         return corkscrew,gridmesh
 
