@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.276 $, $Date: 2010/03/30 17:51:42 $
+#@(#) File TOP.V, version $Revision: 3.277 $, $Date: 2010/04/02 17:18:35 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.276 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.277 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2187,7 +2187,14 @@ ybargc(0:ntgc,0:nzgc,0:nszgc) _real    # Y bar at grid crossing moments
 xsqbargc(0:ntgc,0:nzgc,0:nszgc) _real  # X**2 bar at grid crossing moments
 ysqbargc(0:ntgc,0:nzgc,0:nszgc) _real  # Y**2 bar at grid crossing moments
 rprmsgc(0:ntgc,0:nzgc,0:nszgc) _real   # R' rms at grid crossing moments
+vxbargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vx bar at grid crossing moments
+vybargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vy bar at grid crossing moments
 vzbargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vz bar at grid crossing moments
+vxsqbargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vx**2 bar at grid crossing moments
+vysqbargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vy**2 bar at grid crossing moments
+vzsqbargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vz**2 bar at grid crossing moments
+xvxbargc(0:ntgc,0:nzgc,0:nszgc) _real   # XVx bar at grid crossing moments
+yvybargc(0:ntgc,0:nzgc,0:nszgc) _real   # YVy bar at grid crossing moments
 
 *********** Particles dump:
 # Dynamic particle arrays, and related data

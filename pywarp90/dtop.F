@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.174 $, $Date: 2010/02/16 23:54:59 $
+c@(#) File DTOP.F, version $Revision: 3.175 $, $Date: 2010/04/02 17:18:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.174 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.175 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -2913,7 +2913,14 @@ c         --- Calculate the transverse position at the grid cell
           ybargc(itgc,izgc,js) = ybargc(itgc,izgc,js) + y*ww
           xsqbargc(itgc,izgc,js) = xsqbargc(itgc,izgc,js) + x**2*ww
           ysqbargc(itgc,izgc,js) = ysqbargc(itgc,izgc,js) + y**2*ww
+          vxbargc(itgc,izgc,js) = vxbargc(itgc,izgc,js) + vx*ww
+          vybargc(itgc,izgc,js) = vybargc(itgc,izgc,js) + vy*ww
           vzbargc(itgc,izgc,js) = vzbargc(itgc,izgc,js) + vz*ww
+          vxsqbargc(itgc,izgc,js) = vxsqbargc(itgc,izgc,js) + vx**2*ww
+          vysqbargc(itgc,izgc,js) = vysqbargc(itgc,izgc,js) + vy**2*ww
+          vzsqbargc(itgc,izgc,js) = vzsqbargc(itgc,izgc,js) + vz**2*ww
+          xvxbargc(itgc,izgc,js) = xvxbargc(itgc,izgc,js) + x*vx*ww
+          yvybargc(itgc,izgc,js) = yvybargc(itgc,izgc,js) + y*vy*ww
 
           rp = vx*x*ri + vy*y*ri
           rprmsgc(itgc,izgc,js) = rprmsgc(itgc,izgc,js) + rp**2*ww
