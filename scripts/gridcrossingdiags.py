@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.30 2010/04/01 23:28:26 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.31 2010/04/02 17:19:45 dave Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -50,7 +50,11 @@ current: current, same as count but scaled by particle charge and 1/top.dt.
 vzbar:
 xbar, ybar:
 xsqbar, ysqbar:
+vxbar, vybar, vzbar:
+vxsqbar, vysqbar, vzsqbar:
 xrms, yrms:
+vxrms, vyrms, vzrms:
+epsnx, epsny:
 rrms:
 rprms:
 
@@ -110,13 +114,25 @@ be unreliable.
         self._zbeam = []
         self._count = []
         self._current = []
-        self._vzbar = []
         self._xbar = []
         self._ybar = []
         self._xsqbar = []
         self._ysqbar = []
+        self._vxbar = []
+        self._vybar = []
+        self._vzbar = []
+        self._vxsqbar = []
+        self._vysqbar = []
+        self._vzsqbar = []
+        self._xvxbar = []
+        self._yvybar = []
         self._xrms = []
         self._yrms = []
+        self._vxrms = []
+        self._vyrms = []
+        self._vzrms = []
+        self._epsnx = []
+        self._epsny = []
         self._rrms = []
         self._rprms = []
 
@@ -199,10 +215,22 @@ be unreliable.
         self._xsqbar.append(None)
         self._ysqbar.append(None)
         self._rprms.append(None)
+        self._vxbar.append(None)
+        self._vybar.append(None)
         self._vzbar.append(None)
+        self._vxsqbar.append(None)
+        self._vysqbar.append(None)
+        self._vzsqbar.append(None)
+        self._xvxbar.append(None)
+        self._yvybar.append(None)
         self._current.append(None)
         self._xrms.append(None)
         self._yrms.append(None)
+        self._vxrms.append(None)
+        self._vyrms.append(None)
+        self._vzrms.append(None)
+        self._epsnx.append(None)
+        self._epsny.append(None)
         self._rrms.append(None)
 
         if self.ldoradialdiag:
@@ -365,37 +393,72 @@ be unreliable.
             self._xsqbar[-1] = top.xsqbargc[1:,:,self.js].copy()
             self._ysqbar[-1] = top.ysqbargc[1:,:,self.js].copy()
             self._rprms[-1] = top.rprmsgc[1:,:,self.js].copy()
+            self._vxbar[-1] = top.vxbargc[1:,:,self.js].copy()
+            self._vybar[-1] = top.vybargc[1:,:,self.js].copy()
             self._vzbar[-1] = top.vzbargc[1:,:,self.js].copy()
+            self._vxsqbar[-1] = top.vxsqbargc[1:,:,self.js].copy()
+            self._vysqbar[-1] = top.vysqbargc[1:,:,self.js].copy()
+            self._vzsqbar[-1] = top.vzsqbargc[1:,:,self.js].copy()
+            self._xvxbar[-1] = top.xvxbargc[1:,:,self.js].copy()
+            self._yvybar[-1] = top.yvybargc[1:,:,self.js].copy()
 
             co = self._count[-1]
-            vzbar = self._vzbar[-1]
             xbar = self._xbar[-1]
             ybar = self._ybar[-1]
             xsqbar = self._xsqbar[-1]
             ysqbar = self._ysqbar[-1]
             rp = self._rprms[-1]
+            vxbar = self._vxbar[-1]
+            vybar = self._vybar[-1]
+            vzbar = self._vzbar[-1]
+            vxsqbar = self._vxsqbar[-1]
+            vysqbar = self._vysqbar[-1]
+            vzsqbar = self._vzsqbar[-1]
+            xvxbar = self._xvxbar[-1]
+            yvybar = self._yvybar[-1]
 
             # --- Finish the calculation, gathering data from all processors and
             # --- dividing out the count.
             co[...] = parallelsum(co)
-            vzbar[...] = parallelsum(vzbar)
             xbar[...] = parallelsum(xbar)
             ybar[...] = parallelsum(ybar)
             xsqbar[...] = parallelsum(xsqbar)
             ysqbar[...] = parallelsum(ysqbar)
             rp[...] = parallelsum(rp)
+            vxbar[...] = parallelsum(vxbar)
+            vybar[...] = parallelsum(vybar)
+            vzbar[...] = parallelsum(vzbar)
+            vxsqbar[...] = parallelsum(vxsqbar)
+            vysqbar[...] = parallelsum(vysqbar)
+            vzsqbar[...] = parallelsum(vzsqbar)
+            xvxbar[...] = parallelsum(xvxbar)
+            yvybar[...] = parallelsum(yvybar)
 
             cotemp = where(co==0.,1.,co)
-            vzbar[...] = vzbar/cotemp
             xbar[...] = xbar/cotemp
             ybar[...] = ybar/cotemp
             xsqbar[...] = xsqbar/cotemp
             ysqbar[...] = ysqbar/cotemp
             rp[...] = sqrt(rp/cotemp)
+            vxbar[...] = vxbar/cotemp
+            vybar[...] = vybar/cotemp
+            vzbar[...] = vzbar/cotemp
+            vxsqbar[...] = vxsqbar/cotemp
+            vysqbar[...] = vysqbar/cotemp
+            vzsqbar[...] = vzsqbar/cotemp
+            xvxbar[...] = xvxbar/cotemp
+            yvybar[...] = yvybar/cotemp
 
             self._xrms[-1] = sqrt(abs(xsqbar - xbar**2))
             self._yrms[-1] = sqrt(abs(ysqbar - ybar**2))
             self._rrms[-1] = sqrt(abs(xsqbar + ysqbar - xbar**2 - ybar**2))
+            self._vxrms[-1] = sqrt(abs(vxsqbar - vxbar**2))
+            self._vyrms[-1] = sqrt(abs(vysqbar - vybar**2))
+            self._vzrms[-1] = sqrt(abs(vysqbar - vybar**2))
+            self._epsnx[-1] = 4.*sqrt(abs((xsqbar-xbar**2)*(vxsqbar-vxbar**2)
+                                          - (xvxbar - xbar*vxbar)**2))
+            self._epsny[-1] = 4.*sqrt(abs((ysqbar-ybar**2)*(vysqbar-vybar**2)
+                                          - (yvybar - ybar*vybar)**2))
 
             # --- Scale the current appropriately.
             self._current[-1] = co*(top.pgroup.sq[js]/(top.dt*nhist))
@@ -408,7 +471,14 @@ be unreliable.
             top.xsqbargc.fill(0.)
             top.ysqbargc.fill(0.)
             top.rprmsgc.fill(0.)
+            top.vxbargc.fill(0.)
+            top.vybargc.fill(0.)
             top.vzbargc.fill(0.)
+            top.vxsqbargc.fill(0.)
+            top.vysqbargc.fill(0.)
+            top.vzsqbargc.fill(0.)
+            top.xvxbargc.fill(0.)
+            top.yvybargc.fill(0.)
 
 
             if self.ldoradialdiag:
@@ -434,13 +504,25 @@ be unreliable.
         ff.write('zbeam'+suffix,self._zbeam[0])
         ff.write('count'+suffix,self._count[0])
         ff.write('current'+suffix,self._current[0])
-        ff.write('vzbar'+suffix,self._vzbar[0])
         ff.write('xbar'+suffix,self._xbar[0])
         ff.write('ybar'+suffix,self._ybar[0])
         ff.write('xsqbar'+suffix,self._xsqbar[0])
         ff.write('ysqbar'+suffix,self._ysqbar[0])
+        ff.write('vxbar'+suffix,self._vxbar[0])
+        ff.write('vybar'+suffix,self._vybar[0])
+        ff.write('vzbar'+suffix,self._vzbar[0])
+        ff.write('vxsqbar'+suffix,self._vxsqbar[0])
+        ff.write('vysqbar'+suffix,self._vysqbar[0])
+        ff.write('vzsqbar'+suffix,self._vzsqbar[0])
+        ff.write('xvxbar'+suffix,self._xvxbar[0])
+        ff.write('yvybar'+suffix,self._yvybar[0])
         ff.write('xrms'+suffix,self._xrms[0])
         ff.write('yrms'+suffix,self._yrms[0])
+        ff.write('vxrms'+suffix,self._vxrms[0])
+        ff.write('vyrms'+suffix,self._vyrms[0])
+        ff.write('vzrms'+suffix,self._vzrms[0])
+        ff.write('epsnx'+suffix,self._epsnx[0])
+        ff.write('epsny'+suffix,self._epsny[0])
         ff.write('rrms'+suffix,self._rrms[0])
         ff.write('rprms'+suffix,self._rprms[0])
         if self.ldoradialdiag:
@@ -492,13 +574,25 @@ be unreliable.
         cPickle.dump(('zbeam'+suffix,self._zbeam[0]),ff,-1)
         cPickle.dump(('count'+suffix,self._count[0]),ff,-1)
         cPickle.dump(('current'+suffix,self._current[0]),ff,-1)
-        cPickle.dump(('vzbar'+suffix,self._vzbar[0]),ff,-1)
         cPickle.dump(('xbar'+suffix,self._xbar[0]),ff,-1)
         cPickle.dump(('ybar'+suffix,self._ybar[0]),ff,-1)
         cPickle.dump(('xsqbar'+suffix,self._xsqbar[0]),ff,-1)
         cPickle.dump(('ysqbar'+suffix,self._ysqbar[0]),ff,-1)
+        cPickle.dump(('vxbar'+suffix,self._vxbar[0]),ff,-1)
+        cPickle.dump(('vybar'+suffix,self._vybar[0]),ff,-1)
+        cPickle.dump(('vzbar'+suffix,self._vzbar[0]),ff,-1)
+        cPickle.dump(('vxsqbar'+suffix,self._vxsqbar[0]),ff,-1)
+        cPickle.dump(('vysqbar'+suffix,self._vysqbar[0]),ff,-1)
+        cPickle.dump(('vzsqbar'+suffix,self._vzsqbar[0]),ff,-1)
+        cPickle.dump(('xvxbar'+suffix,self._xvxbar[0]),ff,-1)
+        cPickle.dump(('yvybar'+suffix,self._yvybar[0]),ff,-1)
         cPickle.dump(('xrms'+suffix,self._xrms[0]),ff,-1)
         cPickle.dump(('yrms'+suffix,self._yrms[0]),ff,-1)
+        cPickle.dump(('vxrms'+suffix,self._vxrms[0]),ff,-1)
+        cPickle.dump(('vyrms'+suffix,self._vyrms[0]),ff,-1)
+        cPickle.dump(('vzrms'+suffix,self._vzrms[0]),ff,-1)
+        cPickle.dump(('epsnx'+suffix,self._epsnx[0]),ff,-1)
+        cPickle.dump(('epsny'+suffix,self._epsny[0]),ff,-1)
         cPickle.dump(('rrms'+suffix,self._rrms[0]),ff,-1)
         cPickle.dump(('rprms'+suffix,self._rprms[0]),ff,-1)
         if self.ldoradialdiag:
@@ -522,13 +616,25 @@ be unreliable.
         self._zbeam = []
         self._count = []
         self._current = []
-        self._vzbar = []
         self._xbar = []
         self._ybar = []
         self._xsqbar = []
         self._ysqbar = []
+        self._vxbar = []
+        self._vybar = []
+        self._vzbar = []
+        self._vxsqbar = []
+        self._vysqbar = []
+        self._vzsqbar = []
+        self._xvxbar = []
+        self._yvybar = []
         self._xrms = []
         self._yrms = []
+        self._vxrms = []
+        self._vyrms = []
+        self._vzrms = []
+        self._epsnx = []
+        self._epsny = []
         self._rrms = []
         self._rprms = []
         # --- At this point, getdiagnostics may not have been executed, so
@@ -547,13 +653,25 @@ be unreliable.
                 self._zbeam.append(ff.read('zbeam'+suffix))
                 self._count.append(ff.read('count'+suffix))
                 self._current.append(ff.read('current'+suffix))
-                self._vzbar.append(ff.read('vzbar'+suffix))
                 self._xbar.append(ff.read('xbar'+suffix))
                 self._ybar.append(ff.read('ybar'+suffix))
                 self._xsqbar.append(ff.read('xsqbar'+suffix))
                 self._ysqbar.append(ff.read('ysqbar'+suffix))
+                self._vxbar.append(ff.read('vxbar'+suffix))
+                self._vybar.append(ff.read('vybar'+suffix))
+                self._vzbar.append(ff.read('vzbar'+suffix))
+                self._vxsqbar.append(ff.read('vxsqbar'+suffix))
+                self._vysqbar.append(ff.read('vysqbar'+suffix))
+                self._vzsqbar.append(ff.read('vzsqbar'+suffix))
+                self._xvxbar.append(ff.read('xvxbar'+suffix))
+                self._yvybar.append(ff.read('yvybar'+suffix))
                 self._xrms.append(ff.read('xrms'+suffix))
                 self._yrms.append(ff.read('yrms'+suffix))
+                self._vxrms.append(ff.read('vxrms'+suffix))
+                self._vyrms.append(ff.read('vyrms'+suffix))
+                self._vzrms.append(ff.read('vzrms'+suffix))
+                self._epsnx.append(ff.read('epsnx'+suffix))
+                self._epsny.append(ff.read('epsny'+suffix))
                 self._rrms.append(ff.read('rrms'+suffix))
                 self._rprms.append(ff.read('rprms'+suffix))
                 try:
@@ -637,13 +755,25 @@ be unreliable.
         self._zbeam = []
         self._count = []
         self._current = []
-        self._vzbar = []
         self._xbar = []
         self._ybar = []
         self._xsqbar = []
         self._ysqbar = []
+        self._vxbar = []
+        self._vybar = []
+        self._vzbar = []
+        self._vxsqbar = []
+        self._vysqbar = []
+        self._vzsqbar = []
+        self._xvxbar = []
+        self._yvybar = []
         self._xrms = []
         self._yrms = []
+        self._vxrms = []
+        self._vyrms = []
+        self._vzrms = []
+        self._epsnx = []
+        self._epsny = []
         self._rrms = []
         self._rprms = []
         # --- At this point, getdiagnostics may not have been executed, so
@@ -662,13 +792,25 @@ be unreliable.
                 self._zbeam.append(datadict['zbeam'+suffix])
                 self._count.append(datadict['count'+suffix])
                 self._current.append(datadict['current'+suffix])
-                self._vzbar.append(datadict['vzbar'+suffix])
                 self._xbar.append(datadict['xbar'+suffix])
                 self._ybar.append(datadict['ybar'+suffix])
                 self._xsqbar.append(datadict['xsqbar'+suffix])
                 self._ysqbar.append(datadict['ysqbar'+suffix])
+                self._vxbar.append(datadict['vxbar'+suffix])
+                self._vybar.append(datadict['vybar'+suffix])
+                self._vzbar.append(datadict['vzbar'+suffix])
+                self._vxsqbar.append(datadict['vxsqbar'+suffix])
+                self._vysqbar.append(datadict['vysqbar'+suffix])
+                self._vzsqbar.append(datadict['vzsqbar'+suffix])
+                self._xvxbar.append(datadict['xvxbar'+suffix])
+                self._yvybar.append(datadict['yvybar'+suffix])
                 self._xrms.append(datadict['xrms'+suffix])
                 self._yrms.append(datadict['yrms'+suffix])
+                self._vxrms.append(datadict['vxrms'+suffix])
+                self._vyrms.append(datadict['vyrms'+suffix])
+                self._vzrms.append(datadict['vzrms'+suffix])
+                self._epsnx.append(datadict['epsnx'+suffix])
+                self._epsny.append(datadict['epsny'+suffix])
                 self._rrms.append(datadict['rrms'+suffix])
                 self._rprms.append(datadict['rprms'+suffix])
                 try:
@@ -982,13 +1124,25 @@ around the peak current."""
     zbeam = property(*_setupproperty('zbeam'))
     count = property(*_setupproperty('count'))
     current = property(*_setupproperty('current'))
-    vzbar = property(*_setupproperty('vzbar'))
     xbar = property(*_setupproperty('xbar'))
     ybar = property(*_setupproperty('ybar'))
     xsqbar = property(*_setupproperty('xsqbar'))
     ysqbar = property(*_setupproperty('ysqbar'))
+    vxbar = property(*_setupproperty('vxbar'))
+    vybar = property(*_setupproperty('vybar'))
+    vzbar = property(*_setupproperty('vzbar'))
+    vxsqbar = property(*_setupproperty('vxsqbar'))
+    vysqbar = property(*_setupproperty('vysqbar'))
+    vzsqbar = property(*_setupproperty('vzsqbar'))
+    xvxbar = property(*_setupproperty('xvxbar'))
+    yvybar = property(*_setupproperty('yvybar'))
     xrms = property(*_setupproperty('xrms'))
     yrms = property(*_setupproperty('yrms'))
+    vxrms = property(*_setupproperty('vxrms'))
+    vyrms = property(*_setupproperty('vyrms'))
+    vzrms = property(*_setupproperty('vzrms'))
+    epsnx = property(*_setupproperty('epsnx'))
+    epsny = property(*_setupproperty('epsny'))
     rrms = property(*_setupproperty('rrms'))
     rprms = property(*_setupproperty('rprms'))
     rprofile = property(*_setupproperty('rprofile'))
