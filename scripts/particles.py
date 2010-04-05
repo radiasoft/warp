@@ -19,7 +19,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.84 2010/03/03 00:06:09 dave Exp $"
+particles_version = "$Id: particles.py,v 1.85 2010/04/05 18:27:57 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -321,15 +321,24 @@ Multiple selection criteria are supported.
   del kwvalues['jslist']    # Remove list so selectparticles is subsequently
                             # called with one species at a time
   if jslist is not None:
-    if jslist == -1:    jslist = range(0,ns)
-    partlist = array([],'l')
-    for js in jslist:
-        kwvalues['js'] = js
-        newparts = selectparticles(iw, kwvalues)
-        if isinstance(newparts,slice):
-          newparts = arange(newparts.start,newparts.stop)
-        partlist = array(list(partlist)+list(newparts),'l')
-    return partlist
+    if jslist == -1:
+      jslist = range(0,ns)
+    if len(jslist) == 1:
+      # --- If jslist has only one species listed, then it is faster
+      # --- to act as if js had been set and continue through the rest of
+      # --- the function normally.
+      js = jslist[0]
+    else:
+      # --- Otherwise, recursively call this routine for each species in the
+      # --- list, accumulating a list of indices.
+      partlist = array([],'l')
+      for js in jslist:
+          kwvalues['js'] = js
+          newparts = selectparticles(iw, kwvalues)
+          if isinstance(newparts,slice):
+            newparts = arange(newparts.start,newparts.stop)
+          partlist = array(list(partlist)+list(newparts),'l')
+      return partlist
 
   # --- If the w3dobject was not passed in, use w3d, or if the object was
   # --- set to a PDB file, use it.
