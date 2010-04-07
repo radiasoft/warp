@@ -16,7 +16,7 @@ try:
 except ImportError:
   pass
 
-AMR_version = "$Id: AMR.py,v 1.54 2010/03/11 19:10:18 dave Exp $"
+AMR_version = "$Id: AMR.py,v 1.55 2010/04/07 01:26:46 jlvay Exp $"
 
 class AMRTree(VisualizableClass):
     """
@@ -1078,7 +1078,7 @@ def plphirz(grid=None,which='phi',cmin=None,cmax=None,
                  border=1,bordercolor='yellow',borderwidth=1,
                  mesh=0,meshcolor='white',meshwidth=1,meshr=1,
                  siblings=1,children=1,firstcall=1,level=1,maxlevel=0,
-                 delay=0,transit=0):
+                 delay=0,transit=0,l_transpose=0):
     if grid is None:
         g = frz.basegrid
     else:
@@ -1113,29 +1113,40 @@ def plphirz(grid=None,which='phi',cmin=None,cmax=None,
         cmax=frz.ngrids
     if not transit:
       f = f[g.transit_min_r:g.nr+1-g.transit_max_r,g.transit_min_z:g.nz+1-g.transit_max_z]
-    pli(f,zmin,rmin,zmax,rmax,cmin=cmin,cmax=cmax)
+    if not l_transpose:
+      pli(f,zmin,rmin,zmax,rmax,cmin=cmin,cmax=cmax)
+    else:
+      pli(transpose(f),rmin,zmin,rmax,zmax,cmin=cmin,cmax=cmax)
     if(mesh):
         nr = nint(float(g.nr)/meshr)
         nz = nint(float(g.nz)/meshr)
         dr = g.dr*meshr
         dz = g.dz*meshr
-        draw_mesh(nz,nr,g.zmin,g.rmin,dz,dr,color=meshcolor,width=meshwidth)
+        if not l_transpose:
+          draw_mesh(nz,nr,g.zmin,g.rmin,dz,dr,color=meshcolor,width=meshwidth)
+        else:
+          draw_mesh(nr,nz,g.rmin,g.zmin,dr,dz,color=meshcolor,width=meshwidth)
     if(border):
-        draw_box(rmin, rmax, zmin, zmax, color=bordercolor,width=borderwidth)
+        if not l_transpose:
+          draw_box(rmin, rmax, zmin, zmax, color=bordercolor,width=borderwidth)
+        else:
+          draw_box(zmin, zmax, rmin, rmax, color=bordercolor,width=borderwidth)
     time.sleep(delay)
     pyg_pending()
     pyg_idler()
     if(siblings):
       try:
          plphirz(g.next,which,cmin,cmax,border,bordercolor,borderwidth,mesh,meshcolor,meshwidth,meshr,
-                    siblings,children=0,firstcall=0,level=level,maxlevel=maxlevel,delay=delay,transit=transit)
+                    siblings,children=0,firstcall=0,level=level,maxlevel=maxlevel,delay=delay,transit=transit,
+                    l_transpose=l_transpose)
       except:
          pass
     if(children):
       if maxlevel==0 or level<maxlevel:
         try:
           plphirz(g.down,which,cmin,cmax,border,bordercolor,borderwidth,mesh,meshcolor,meshwidth,meshr,
-                     siblings,children,firstcall=0,level=level+1,maxlevel=maxlevel,delay=delay,transit=transit)
+                     siblings,children,firstcall=0,level=level+1,maxlevel=maxlevel,delay=delay,transit=transit,
+                    l_transpose=l_transpose)
         except:
           pass
     if(firstcall):
