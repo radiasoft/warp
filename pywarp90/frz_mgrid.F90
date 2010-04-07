@@ -272,10 +272,10 @@ REAL(8) :: dr,dz,rmin,zmin
 ! adjust new grid boundaries to fall onto mother grid lines
 ! and recalculate mesh spacing for new grid
 
-  jmin = 1 + NINT( (rmini       -mothergrid%rmin) / mothergrid%dr)
-  jmax = 1 + NINT( (rmini+nr*dri-mothergrid%rmin) / mothergrid%dr)
-  lmin = 1 + NINT( (zmini       -mothergrid%zmin) / mothergrid%dz)
-  lmax = 1 + NINT( (zmini+nz*dzi-mothergrid%zmin) / mothergrid%dz)
+  jmin = 1 + nint(   (rmini       -mothergrid%rmin) / mothergrid%dr)
+  jmax = 1 + nint( (rmini+nr*dri-mothergrid%rmin) / mothergrid%dr)
+  lmin = 1 + nint(   (zmini       -mothergrid%zmin) / mothergrid%dz)
+  lmax = 1 + nint( (zmini+nz*dzi-mothergrid%zmin) / mothergrid%dz)
 
   rmin = mothergrid%rmin + (jmin-1) * mothergrid%dr
   zmin = mothergrid%zmin + (lmin-1) * mothergrid%dz
@@ -10087,6 +10087,46 @@ REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
 
 return
 END subroutine add_subgrid
+
+subroutine add_patch(id,rmini,rmax,zmini,zmax,refr,refz,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
+USE multigridrz
+implicit none
+INTEGER(ISZ), INTENT(IN) :: id,refr,refz,transit_min_r,transit_max_r,transit_min_z,transit_max_z
+REAL(8), INTENT(IN) :: rmini,rmax,zmini,zmax
+
+integer(ISZ) :: jmin,jmax,lmin,lmax,nr,nz
+real(8) :: rmin,zmin,dr,dz
+TYPE(GRIDtype), pointer :: mothergrid
+
+  IF(id<1 .or. id>ngrids) then
+    write(o_line,*) 'Fatal error in add_subgrid: id = ', id ,' WHILE id = (1,..,',ngrids,')'
+    call kaboom(trim(o_line))
+    return
+  END if
+
+! adjust new grid boundaries to fall onto mother grid lines
+! and recalculate mesh spacing for new grid
+
+  mothergrid => grids_ptr(id)%grid
+
+  jmin = 1 + floor(   (rmini-mothergrid%rmin) / mothergrid%dr)
+  jmax = 1 + ceiling( (rmax -mothergrid%rmin) / mothergrid%dr)
+  lmin = 1 + floor(   (zmini-mothergrid%zmin) / mothergrid%dz)
+  lmax = 1 + ceiling( (zmax -mothergrid%zmin) / mothergrid%dz)
+  
+  nr = (jmax-jmin)*refr + transit_min_r + transit_max_r
+  nz = (lmax-lmin)*refz + transit_min_z + transit_max_z
+
+  dr = mothergrid%dr / refr
+  dz = mothergrid%dz / refz
+
+  rmin = mothergrid%rmin + (jmin-1) * mothergrid%dr - transit_min_r*dr
+  zmin = mothergrid%zmin + (lmin-1) * mothergrid%dz - transit_min_z*dz
+  
+  call add_grid(grids_ptr(id)%grid,nr,nz,dr,dz,rmin,zmin,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
+
+return
+END subroutine add_patch
 
 subroutine del_subgrid(id)
 USE multigridrz
