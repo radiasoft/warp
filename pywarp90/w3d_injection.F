@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.137 $, $Date: 2010/03/24 22:35:48 $
+c@(#) File w3d_injection.F, version $Revision: 1.138 $, $Date: 2010/04/07 16:31:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4960,6 +4960,9 @@ c     --- The result calculated on each processor is summed on all
         call parallelsumrealarray(inj_q,
      &                            (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
 #endif
+
+      deallocate(ijp)
+      deallocate(dz_local)
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinj_setrhomr = timeinj_setrhomr + wtime() - substarttime
