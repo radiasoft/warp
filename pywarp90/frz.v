@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.70 $, $Date: 2010/01/19 22:54:19 $
+#@(#) File FRZ.V, version $Revision: 3.71 $, $Date: 2010/04/07 01:22:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.70 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.71 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -210,6 +210,13 @@ add_subgrid(id:integer,nr:integer,nz:integer,dr:real,dz:real,
             transit_min_r:integer,transit_max_r:integer,
             transit_min_z:integer,transit_max_z:integer) subroutine
          # add a subgrid to the grid id
+
+add_patch(id:integer,
+            rmin:real,rmax:real,zmin:real,zmax:real,refx:integer,refy:integer,
+            transit_min_r:integer,transit_max_r:integer,
+            transit_min_z:integer,transit_max_z:integer) subroutine
+         # add a patch to the grid id
+
 del_subgrid(id:integer) subroutine
          # delete a subgrid and all its 'children'
 init_gridbnd(g:GRIDtype) subroutine
