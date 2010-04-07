@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.167 $, $Date: 2010/03/19 18:08:00 $
+c@(#) File DW3D.F, version $Revision: 3.168 $, $Date: 2010/04/07 16:32:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -362,6 +362,7 @@ c       --- at nzlocal.
 #endif
 
       deallocate(scrtch)
+      deallocate(cellarea)
 
 !$OMP MASTER
       if (lw3dtimesubs) timegtlchgrzfromrho = timegtlchgrzfromrho + wtime() - substarttime
