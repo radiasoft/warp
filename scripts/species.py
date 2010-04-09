@@ -5,7 +5,7 @@ usual particles as object (Electron, Positron, Water, atoms from periodic table)
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.75 2010/03/11 19:10:20 dave Exp $"
+species_version = "$Id: species.py,v 1.76 2010/04/09 17:36:49 jlvay Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale>0.:
@@ -436,7 +436,8 @@ Creates a new species of particles. All arguments are optional.
       x = random.random(np)
       y = random.random(np)
       z = random.random(np)
-      z = (zminp + (zmaxp - zminp)*z - zmin)/(zmax - zmin)
+      if zmin<>zmax:
+        z = (zminp + (zmaxp - zminp)*z - zmin)/(zmax - zmin)
 
     elif spacing == 'uniform':
       if ymax > ymin and zmax > zmin: dims = 3
