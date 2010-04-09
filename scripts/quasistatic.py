@@ -274,7 +274,8 @@ class Quasistatic(SubcycledPoissonSolver):
      
      # --- sets flag for pushing electrons
      if self.lattice is not None:
-       l_push_elec = self.lattice[self.ist].ecflag     
+       l_push_elec = self.lattice[self.ist].ecflag
+       l_noelec = not l_push_elec
        if self.l_verbose:print 'l_push_elec',l_push_elec
      else:
        l_push_elec = (not self.l_weakstrong) or ((top.it-(npes-me))%self.nelecperiod==0)
@@ -387,11 +388,18 @@ class Quasistatic(SubcycledPoissonSolver):
              if me==npes-1:find_mgparam_rz(true)
            solve_mgridrz(self.gridelecs[1],frz.mgridrz_accuracy,true)
          else:
-           ge = self.gridelecs[1]
-           for ig in range(frz.ngrids):
-             if ig>0:
-               ge = ge.down
-             ge.phi[...]=self.phie[ig][:,:,self.iz+1]
+           if l_noelec:
+             ge = self.gridelecs[1]
+             for ig in range(frz.ngrids):
+               if ig>0:
+                 ge = ge.down
+               ge.phi[...]=0.
+           else:
+             ge = self.gridelecs[1]
+             for ig in range(frz.ngrids):
+               if ig>0:
+                 ge = ge.down
+               ge.phi[...]=self.phie[ig][:,:,self.iz+1]
          if self.l_timing: self.time_solve += wtime()-ptime
 
        if not self.l_elec_greensum:
@@ -1919,7 +1927,7 @@ class Quasistatic(SubcycledPoissonSolver):
       self.ypnbarztmp[js]=sum(ypn*w0)      
       self.x2ztmp[js]=sum(x2*w0)      
       self.y2ztmp[js]=sum(y2*w0)      
-      self.z2ztmp[js]=sum(z*w0)      
+      self.z2ztmp[js]=sum(z2*w0)      
       self.xp2ztmp[js]=sum(xp2*w0)      
       self.yp2ztmp[js]=sum(yp2*w0)      
       self.xpn2ztmp[js]=sum(xpn2*w0)      
@@ -1938,7 +1946,7 @@ class Quasistatic(SubcycledPoissonSolver):
       self.ypnbarztmp[js+1]+=sum(ypn*w1)      
       self.x2ztmp[js+1]+=sum(x2*w1)      
       self.y2ztmp[js+1]+=sum(y2*w1)      
-      self.z2ztmp[js+1]+=sum(z*w1)      
+      self.z2ztmp[js+1]+=sum(z2*w1)      
       self.xp2ztmp[js+1]+=sum(xp2*w1)      
       self.yp2ztmp[js+1]+=sum(yp2*w1)      
       self.xpn2ztmp[js+1]+=sum(xpn2*w1)      
