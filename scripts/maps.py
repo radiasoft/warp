@@ -40,7 +40,7 @@ class Maps:
      self.l_mode=l_mode
      self.nparpgrp = nparpgrp
 
-  def apply_transfer_map(self,pg,il,iu,dt,l_push_z=true):
+  def apply_transfer_map(self,pg,il,iu,dt,l_push_z=true,zbeam=0.):
     top.pgroup=pg
     np = iu - il   
     ax1=ax2=self.alphax
@@ -61,9 +61,13 @@ class Maps:
     omegaz=self.omegaz
     if l_push_z:
       phz=self.omegaz*dt
+      if zbeam==0.:
+        z = pg.zp[il:iu]
+      else:
+        z = pg.zp[il:iu]-zbeam
     else:
       phz=0.
-    apply_linear_map(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
+    apply_linear_map(np,pg.xp[il:iu],pg.yp[il:iu],z,
                         pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
                         top.vbeam,top.gammabar,
                         ax1,ax2,bx1,bx2,dx1,dx2,
@@ -71,6 +75,10 @@ class Maps:
                         ay1,ay2,by1,by2,dy1,dy2,
                         dpy1,dpy2,Qy,ychrom,phasey,self.ytunechirp,
                         eta,omegaz,phz,self.zoffsetchirp)
+    if l_push_z and zbeam<>0.:
+      if zbeam<>0.:
+        z+=zbeam
+      pg.zp[il:iu]=z
 
 class Maps_simple:
   def __init__(self,nux,nuy,nuz,C,nstations=1,z_rms=0.,eta=0.,xchrom=0.,ychrom=0.,
@@ -106,16 +114,11 @@ class Maps_simple:
      self.l_mode=l_mode
      self.nparpgrp = nparpgrp
 
-  def apply_transfer_map(self,sp):
-    js=sp.jslist[0]
-    pg=top.pgroup
-    ng = 1+pg.nps[js]/self.nparpgrp
-    if pg.nps[js]==0:return
-    for ig in range(ng):
-      il = pg.ins[js]-1+self.nparpgrp*ig
-      iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
-      np = iu-il
-      apply_simple_map(np,
+  def apply_transfer_map(self,pg,il,iu,dt,l_push_z=true):
+    top.pgroup=pg
+    np = iu - il   
+    if np==0:return
+    apply_simple_map(np,
                        pg.xp[il:iu],
                        pg.yp[il:iu],
                        pg.uxp[il:iu],
