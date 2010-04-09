@@ -32,8 +32,27 @@ class Quasistatic(SubcycledPoissonSolver):
                vxinitelec=None,vyinitelec=None,vzinitelec=None,strideinitelec=1,
                l_beam_1d=False,sigmax=0.,sigmay=0.,
                l_elec_greensum=False,elec_aellipse=0.,elec_bellipse=0.,
-               Ekick=0.,Lkick=0.,Akick=None,**kw):
-    assert top.grid_overlap<>2,"The quasistatic class needs top.grid_overlap==1!"
+               Ekick=0.,Lkick=0.,Akick=None,
+               nbuckets=1,
+               **kw):
+    assert top.grid_overlap<>2,"Error: the quasistatic class needs top.grid_overlap==1."
+    assert (float(npes)/float(nbuckets))==float(npes/nbuckets),"Error:the number of processors must be proportional to the number of buckets."
+    self.nbuckets=nbuckets
+    bucketmpiid=int(me/nbuckets)
+    self.bucketid=nbuckets-bucketmpiid
+    if nbuckets==1:
+      if lparallel:
+        self.mympigroup=mpi.WORLD
+      else:
+        self.mympigroup=None
+      self.gme=me
+      self.gnpes=npes
+    else:
+      procs = arange(npes)
+      mygroup = compress(int(procs/nbuckets)==bucketmpiid,procs)
+      self.mympigroup=mpi.WORLD.comm_create(mygroup)
+      self.gme = self.mympigroup.rank
+      self.gnpes = self.mympigroup.size
     self.grid_overlap = 1
     FieldSolver.__init__(self,kwdict=kw)
     w3d.solvergeom=w3d.XYgeom
@@ -289,7 +308,8 @@ class Quasistatic(SubcycledPoissonSolver):
      if self.l_timing: self.time_sort += wtime()-ptime
 
      # --- gather moments
-     if top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0):
+#     if top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0):
+     if top.it==0 or (me>=(npes-top.it) and (top.it-(self.gnpes-self.gme))%top.nhist==0):
        if self.l_timing:ptime = wtime()
        if self.l_timing: self.time_getmmnts += wtime()-ptime
 
@@ -300,7 +320,10 @@ class Quasistatic(SubcycledPoissonSolver):
 
      # --- save distribution in file
      if l_savedist:
-       f=PW.PW('dist%g.pdb'%top.it)
+       if self.nbuckets==1:
+         f=PW.PW('dist%g.pdb'%top.it)
+       else:
+         f=PW.PW('dist_%g_%g.pdb'%(self.bucketid,top.it))
        for iz in range(w3d.nzp):
          exec('f.x%i=getx(js=iz)'%iz)
          exec('f.y%i=gety(js=iz)'%iz)
@@ -435,7 +458,8 @@ class Quasistatic(SubcycledPoissonSolver):
 #         if l_plotelec and iz<w3d.nz/max(1,npes):self.plot_electrons()
 
        # --- gather moments
-       if iz<w3d.nzp-1 and (top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0)):
+#       if iz<w3d.nzp-1 and (top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0)):
+       if iz<w3d.nzp-1 and (top.it==0 or (me>=(npes-top.it) and (top.it-(self.gnpes-self.gme))%top.nhist==0)):
          if self.l_timing:ptime = wtime()
          self.getmmnts(iz+1)
          if iz==0:self.getmmnts(iz)
@@ -510,7 +534,8 @@ class Quasistatic(SubcycledPoissonSolver):
      if top.it==0:self.sendrecv_mgparams()
 
      # --- store moments data
-     if top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0):
+#     if top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0):
+     if top.it==0 or (me>=(npes-top.it) and (top.it-(self.gnpes-self.gme))%top.nhist==0):
        if self.l_timing:ptime = wtime()
        self.getmmnts_store()
        if self.l_timing: self.time_getmmnts += wtime()-ptime
@@ -648,7 +673,7 @@ class Quasistatic(SubcycledPoissonSolver):
     if self.l_verbose:print me,top.it,self.iz,'exit store_ionstonext'
     
   def sendrecv_mgparams(self):
-    print me,'enter sendrecv_mgparams'
+    if self.l_verbose:print me,'enter sendrecv_mgparams'
     if not lparallel:return
     tosend = []
     if me==npes-1:
@@ -663,9 +688,9 @@ class Quasistatic(SubcycledPoissonSolver):
             tosend.append(g.mgparam)
 #      for ip in range(npes-1):
 #        mpi.send(tosend,ip)
-      print me,tosend
+      if self.l_verbose:print me,tosend
     recved = parallel.broadcast(tosend,npes-1)
-    print me,recved
+    if self.l_verbose:print me,recved
     if me<npes-1:
 #     recved,status = mpi.recv(npes-1)
       i = 0
@@ -678,7 +703,7 @@ class Quasistatic(SubcycledPoissonSolver):
             g.npost = recved[i];i+=1
             g.npmin = recved[i];i+=1
             g.mgparam = recved[i];i+=1
-    print me,'exit sendrecv_mgparams'
+    if self.l_verbose:print me,'exit sendrecv_mgparams'
 
   def sendrecv_storedions_toprev(self):
     if not lparallel:return
@@ -1578,7 +1603,11 @@ class Quasistatic(SubcycledPoissonSolver):
             self.maps.apply_synchrotron_motion(pg,il,iu,top.dt*self.npushzperiod)
 #            pg.zp[il:iu]+=(pg.uzp[il:iu]*pg.gaminv[il:iu]-top.vbeam)*top.dt
         else:
-          self.maps.apply_transfer_map(pg,il,iu,top.dt,self.l_push_z)
+          if self.bucketid==1:
+            zbeam=0.
+          else:
+            zbeam=-(self.bucketid-1)*(w3d.zmmax-w3d.zmmin)/self.nbuckets
+          self.maps.apply_transfer_map(pg,il,iu,top.dt,self.l_push_z,zbeam=zbeam)
         self.set_gamma(js)
        else:
         # --- push positions (average longitudinal velocity is removed)
@@ -2006,9 +2035,15 @@ class Quasistatic(SubcycledPoissonSolver):
     self.zerommnts()
     if self.l_verbose:print me,top.it,self.iz,'exit getmmnts_store'
       
+  def parallelsum(self,a):
+      return parallelsum(a,comm=self.mympigroup)
+  
+  def parallelmin(self,a):
+      return parallelmin(a,comm=self.mympigroup)
+  
   def getpnum(self):
-      n = parallelmin(len(self.pnum.data()))
-      return parallelsum(self.pnum.data()[:n])
+      n = self.parallelmin(len(self.pnum.data()))
+      return self.parallelsum(self.pnum.data()[:n])
 
   def getxrms(self):
     if not lparallel:
@@ -2017,10 +2052,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return sqrt(self.x2.data()/pnum)
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return sqrt(parallelsum(self.x2.data()[:n])/pnum)   
+      return sqrt(self.parallelsum(self.x2.data()[:n])/pnum)   
 
   def getyrms(self):
     if not lparallel:
@@ -2029,10 +2064,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return sqrt(self.y2.data()/pnum)
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return sqrt(parallelsum(self.y2.data()[:n])/pnum)   
+      return sqrt(self.parallelsum(self.y2.data()[:n])/pnum)   
 
   def getzrms(self):
     if not lparallel:
@@ -2041,10 +2076,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return sqrt(self.z2.data()/pnum)
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return sqrt(parallelsum(self.z2.data()[:n])/pnum)   
+      return sqrt(self.parallelsum(self.z2.data()[:n])/pnum)   
 
   def getxbar(self):
     if not lparallel:
@@ -2053,10 +2088,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return self.xbar.data()/pnum
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return (parallelsum(self.xbar.data()[:n])/pnum)   
+      return (self.parallelsum(self.xbar.data()[:n])/pnum)   
 
   def getybar(self):
     if not lparallel:
@@ -2065,10 +2100,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return self.ybar.data()/pnum
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return (parallelsum(self.ybar.data()[:n])/pnum)   
+      return (self.parallelsum(self.ybar.data()[:n])/pnum)   
 
   def getzbar(self):
     if not lparallel:
@@ -2077,10 +2112,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return self.zbar.data()/pnum
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return (parallelsum(self.zbar.data()[:n])/pnum)   
+      return (self.parallelsum(self.zbar.data()[:n])/pnum)   
 
   def getxpbar(self):
     if not lparallel:
@@ -2089,10 +2124,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return self.xpbar.data()/pnum
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return (parallelsum(self.xpbar.data()[:n])/pnum)   
+      return (self.parallelsum(self.xpbar.data()[:n])/pnum)   
 
   def getypbar(self):
     if not lparallel:
@@ -2101,10 +2136,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return self.ypbar.data()/pnum
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return (parallelsum(self.ypbar.data()[:n])/pnum)   
+      return (self.parallelsum(self.ypbar.data()[:n])/pnum)   
 
   def getxprms(self):
     if not lparallel:
@@ -2113,10 +2148,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return sqrt(self.xp2.data()/pnum)
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return sqrt(parallelsum(self.xp2.data()[:n])/pnum)   
+      return sqrt(self.parallelsum(self.xp2.data()[:n])/pnum)   
 
   def getyprms(self):
     if not lparallel:
@@ -2125,10 +2160,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return sqrt(self.yp2.data()/pnum)
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return sqrt(parallelsum(self.yp2.data()[:n])/pnum)   
+      return sqrt(self.parallelsum(self.yp2.data()[:n])/pnum)   
 
   def getxxpbar(self):
     if not lparallel:
@@ -2137,10 +2172,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return self.xxpbar.data()/pnum
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return (parallelsum(self.xxpbar.data()[:n])/pnum)   
+      return (self.parallelsum(self.xxpbar.data()[:n])/pnum)   
 
   def getyypbar(self):
     if not lparallel:
@@ -2149,10 +2184,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return self.yypbar.data()/pnum
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return (parallelsum(self.yypbar.data()[:n])/pnum)   
+      return (self.parallelsum(self.yypbar.data()[:n])/pnum)   
 
   def getxpnbar(self):
     if not lparallel:
@@ -2161,10 +2196,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return self.xpnbar.data()/pnum
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return (parallelsum(self.xpnbar.data()[:n])/pnum)   
+      return (self.parallelsum(self.xpnbar.data()[:n])/pnum)   
 
   def getypnbar(self):
     if not lparallel:
@@ -2173,10 +2208,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return self.ypnbar.data()/pnum
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return (parallelsum(self.ypnbar.data()[:n])/pnum)   
+      return (self.parallelsum(self.ypnbar.data()[:n])/pnum)   
 
   def getxpnrms(self):
     if not lparallel:
@@ -2185,10 +2220,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return sqrt(self.xpn2.data()/pnum)
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return sqrt(parallelsum(self.xpn2.data()[:n])/pnum)   
+      return sqrt(self.parallelsum(self.xpn2.data()[:n])/pnum)   
 
   def getypnrms(self):
     if not lparallel:
@@ -2197,10 +2232,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return sqrt(self.ypn2.data()/pnum)
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return sqrt(parallelsum(self.ypn2.data()[:n])/pnum)   
+      return sqrt(self.parallelsum(self.ypn2.data()[:n])/pnum)   
 
   def getxxpnbar(self):
     if not lparallel:
@@ -2209,10 +2244,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return self.xxpnbar.data()/pnum
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return (parallelsum(self.xxpnbar.data()[:n])/pnum)   
+      return (self.parallelsum(self.xxpnbar.data()[:n])/pnum)   
 
   def getyypnbar(self):
     if not lparallel:
@@ -2221,10 +2256,10 @@ class Quasistatic(SubcycledPoissonSolver):
       return self.yypnbar.data()/pnum
     else:
       pnum = self.pnum.data()
-      n = parallelmin(len(pnum))
-      pnum = parallelsum(pnum[:n])
+      n = self.parallelmin(len(pnum))
+      pnum = self.parallelsum(pnum[:n])
       pnum = where(pnum==0.,1.,pnum)
-      return (parallelsum(self.yypnbar.data()[:n])/pnum)   
+      return (self.parallelsum(self.yypnbar.data()[:n])/pnum)   
 
   def getemitxrms(self):
     xbar = self.getxbar()
@@ -2235,12 +2270,12 @@ class Quasistatic(SubcycledPoissonSolver):
       xp2 = self.xp2.data()/pnum
       xxp = self.xxpbar.data()/pnum
     else:
-      n = parallelmin(len(self.pnum.data()))
-      pnum = parallelsum(self.pnum.data()[:n])
+      n = self.parallelmin(len(self.pnum.data()))
+      pnum = self.parallelsum(self.pnum.data()[:n])
 #      pnum = where(pnum==0.,1.,pnum)
-      x2  = parallelsum(self.x2.data()[:n])/pnum
-      xp2 = parallelsum(self.xp2.data()[:n])/pnum
-      xxp = parallelsum(self.xxpbar.data()[:n])/pnum
+      x2  = self.parallelsum(self.x2.data()[:n])/pnum
+      xp2 = self.parallelsum(self.xp2.data()[:n])/pnum
+      xxp = self.parallelsum(self.xxpbar.data()[:n])/pnum
     return sqrt((x2-xbar*xbar)*(xp2-xpbar*xpbar)-(xxp-xbar*xpbar)**2)
         
   def getemityrms(self):
@@ -2252,12 +2287,12 @@ class Quasistatic(SubcycledPoissonSolver):
       yp2 = self.yp2.data()/pnum
       yyp = self.yypbar.data()/pnum
     else:
-      n = parallelmin(len(self.pnum.data()))
-      pnum = parallelsum(self.pnum.data()[:n])
+      n = self.parallelmin(len(self.pnum.data()))
+      pnum = self.parallelsum(self.pnum.data()[:n])
 #      pnum = where(pnum==0.,1.,pnum)
-      y2  = parallelsum(self.y2.data()[:n])/pnum
-      yp2 = parallelsum(self.yp2.data()[:n])/pnum
-      yyp = parallelsum(self.yypbar.data()[:n])/pnum
+      y2  = self.parallelsum(self.y2.data()[:n])/pnum
+      yp2 = self.parallelsum(self.yp2.data()[:n])/pnum
+      yyp = self.parallelsum(self.yypbar.data()[:n])/pnum
     return sqrt((y2-ybar*ybar)*(yp2-ypbar*ypbar)-(yyp-ybar*ypbar)**2)
         
   def getemitxnrms(self):
@@ -2269,12 +2304,12 @@ class Quasistatic(SubcycledPoissonSolver):
       xpn2 = self.xpn2.data()/pnum
       xxpn = self.xxpnbar.data()/pnum
     else:
-      n = parallelmin(len(self.pnum.data()))
-      pnum = parallelsum(self.pnum.data()[:n])
+      n = self.parallelmin(len(self.pnum.data()))
+      pnum = self.parallelsum(self.pnum.data()[:n])
       pnum = where(pnum==0.,1.,pnum)
-      x2  = parallelsum(self.x2.data()[:n])/pnum
-      xpn2 = parallelsum(self.xpn2.data()[:n])/pnum
-      xxpn = parallelsum(self.xxpnbar.data()[:n])/pnum
+      x2  = self.parallelsum(self.x2.data()[:n])/pnum
+      xpn2 = self.parallelsum(self.xpn2.data()[:n])/pnum
+      xxpn = self.parallelsum(self.xxpnbar.data()[:n])/pnum
     return sqrt((x2-xbar*xbar)*(xpn2-xpnbar*xpnbar)-(xxpn-xbar*xpnbar)**2)
         
   def getemitynrms(self):
@@ -2286,26 +2321,26 @@ class Quasistatic(SubcycledPoissonSolver):
       ypn2 = self.ypn2.data()/pnum
       yypn = self.yypnbar.data()/pnum
     else:
-      n = parallelmin(len(self.pnum.data()))
-      pnum = parallelsum(self.pnum.data()[:n])
+      n = self.parallelmin(len(self.pnum.data()))
+      pnum = self.parallelsum(self.pnum.data()[:n])
       pnum = where(pnum==0.,1.,pnum)
-      y2  = parallelsum(self.y2.data()[:n])/pnum
-      ypn2 = parallelsum(self.ypn2.data()[:n])/pnum
-      yypn = parallelsum(self.yypnbar.data()[:n])/pnum
+      y2  = self.parallelsum(self.y2.data()[:n])/pnum
+      ypn2 = self.parallelsum(self.ypn2.data()[:n])/pnum
+      yypn = self.parallelsum(self.yypnbar.data()[:n])/pnum
     return sqrt((y2-ybar*ybar)*(ypn2-ypnbar*ypnbar)-(yypn-ybar*ypnbar)**2)
         
   def gatherarray(self,a):
-      if me>0:
-        mpi.send(a[0,:],me-1)
+      if self.gme>0:
+        self.mympigroup.send(a[0,:],self.gme-1)
         b = a.copy()[1:,:]
       else:
         b = a.copy()
-      if me<npes-1:
-        b[-1,:] += mpirecv(me+1)
-      return gatherarray(b,bcast=0)
+      if self.gme<self.gnpes-1:
+        b[-1,:] += mpirecv(self.gme+1,comm=self.mympigroup)
+      return gatherarray(b,bcast=0,comm=self.mympigroup)
       
   def getpnumzhist(self):
-      n = parallelmin(len(self.pnum.data()))
+      n = self.parallelmin(len(self.pnum.data()))
       return self.gatherarray(transpose(self.pnumz.data()[:n,:]))  
 
   def getxbarzhist(self):
@@ -2314,7 +2349,7 @@ class Quasistatic(SubcycledPoissonSolver):
       pnumz = where(pnumz==0.,1.,pnumz)
       return transpose(self.xbarz.data())/pnumz
     else:
-      n = parallelmin(len(self.pnum.data()))
+      n = self.parallelmin(len(self.pnum.data()))
       pnumz = transpose(self.pnumz.data()[:n,:])
       pnumz = where(pnumz==0.,1.,pnumz)
       return (self.gatherarray(transpose(self.xbarz.data()[:n,:]))/self.gatherarray(pnumz))   
@@ -2325,7 +2360,7 @@ class Quasistatic(SubcycledPoissonSolver):
       pnumz = where(pnumz==0.,1.,pnumz)
       return transpose(self.ybarz.data())/pnumz
     else:
-      n = parallelmin(len(self.pnum.data()))
+      n = self.parallelmin(len(self.pnum.data()))
       pnumz = transpose(self.pnumz.data()[:n,:])
       pnumz = where(pnumz==0.,1.,pnumz)
       return (self.gatherarray(transpose(self.ybarz.data()[:n,:]))/self.gatherarray(pnumz))   
@@ -2336,7 +2371,7 @@ class Quasistatic(SubcycledPoissonSolver):
       pnumz = where(pnumz==0.,1.,pnumz)
       return transpose(self.zbarz.data())/pnumz
     else:
-      n = parallelmin(len(self.pnum.data()))
+      n = self.parallelmin(len(self.pnum.data()))
       pnumz = transpose(self.pnumz.data()[:n,:])
       pnumz = where(pnumz==0.,1.,pnumz)
       return (self.gatherarray(transpose(self.zbarz.data()[:n,:]))/self.gatherarray(pnumz))   
@@ -2347,7 +2382,7 @@ class Quasistatic(SubcycledPoissonSolver):
       pnumz = where(pnumz==0.,1.,pnumz)
       return transpose(self.xpbarz.data())/pnumz
     else:
-      n = parallelmin(len(self.pnum.data()))
+      n = self.parallelmin(len(self.pnum.data()))
       pnumz = transpose(self.pnumz.data()[:n,:])
       pnumz = where(pnumz==0.,1.,pnumz)
       return (self.gatherarray(transpose(self.xpbarz.data()[:n,:]))/self.gatherarray(pnumz))   
@@ -2358,7 +2393,7 @@ class Quasistatic(SubcycledPoissonSolver):
       pnumz = where(pnumz==0.,1.,pnumz)
       return transpose(self.ypbarz.data())/pnumz
     else:
-      n = parallelmin(len(self.pnum.data()))
+      n = self.parallelmin(len(self.pnum.data()))
       pnumz = transpose(self.pnumz.data()[:n,:])
       pnumz = where(pnumz==0.,1.,pnumz)
       return (self.gatherarray(transpose(self.ypbarz.data()[:n,:]))/self.gatherarray(pnumz))   
@@ -2369,7 +2404,7 @@ class Quasistatic(SubcycledPoissonSolver):
       pnumz = where(pnumz==0.,1.,pnumz)
       return transpose(sqrt(self.x2z.data()/pnumz))
     else:
-      n = parallelmin(len(self.pnum.data()))
+      n = self.parallelmin(len(self.pnum.data()))
       pnumz = transpose(self.pnumz.data()[:n,:])
       pnumz = where(pnumz==0.,1.,pnumz)
       return sqrt(self.gatherarray(transpose(self.x2z.data()[:n,:]))/self.gatherarray(pnumz))   
@@ -2380,7 +2415,7 @@ class Quasistatic(SubcycledPoissonSolver):
       pnumz = where(pnumz==0.,1.,pnumz)
       return transpose(sqrt(self.y2z.data()/pnumz))
     else:
-      n = parallelmin(len(self.pnum.data()))
+      n = self.parallelmin(len(self.pnum.data()))
       pnumz = transpose(self.pnumz.data()[:n,:])
       pnumz = where(pnumz==0.,1.,pnumz)
       return sqrt(self.gatherarray(transpose(self.y2z.data()[:n,:]))/self.gatherarray(pnumz))   
@@ -2391,7 +2426,7 @@ class Quasistatic(SubcycledPoissonSolver):
       pnumz = where(pnumz==0.,1.,pnumz)
       return transpose(sqrt(self.z2z.data()/pnumz))
     else:
-      n = parallelmin(len(self.pnum.data()))
+      n = self.parallelmin(len(self.pnum.data()))
       pnumz = transpose(self.pnumz.data()[:n,:])
       pnumz = where(pnumz==0.,1.,pnumz)
       return sqrt(self.gatherarray(transpose(self.z2z.data()[:n,:]))/self.gatherarray(pnumz))   
@@ -2406,7 +2441,7 @@ class Quasistatic(SubcycledPoissonSolver):
       xp2z = transpose(self.xp2z.data())/pnumz
       xxpz = transpose(self.xxpbarz.data())/pnumz
     else:
-      n = parallelmin(len(self.pnum.data()))
+      n = self.parallelmin(len(self.pnum.data()))
       pnumz = transpose(self.pnumz.data()[:n,:])
       pnumz = where(pnumz==0.,1.,pnumz)
       x2z  = self.gatherarray(transpose(self.x2z.data()[:n,:])/pnumz)
@@ -2424,7 +2459,7 @@ class Quasistatic(SubcycledPoissonSolver):
       yp2z = transpose(self.yp2z.data())/pnumz
       yypz = transpose(self.yypbarz.data())/pnumz
     else:
-      n = parallelmin(len(self.pnum.data()))
+      n = self.parallelmin(len(self.pnum.data()))
       pnumz = transpose(self.pnumz.data()[:n,:])
       pnumz = where(pnumz==0.,1.,pnumz)
       y2z  = self.gatherarray(transpose(self.y2z.data()[:n,:])/pnumz)
@@ -2432,6 +2467,34 @@ class Quasistatic(SubcycledPoissonSolver):
       yypz = self.gatherarray(transpose(self.yypbarz.data()[:n,:])/pnumz)
     return sqrt(abs((y2z-ybarz*ybarz)*(yp2z-ypbarz*ypbarz)-(yypz-ybarz*ypbarz)**2))
 
+  def getrhoe(self):
+    if me==0:
+      rhoe=transpose(self.rhoe)
+    else:
+      rhoe=transpose(self.rhoe[:,:,1:])
+    return transpose(gatherarray(rhoe))
+      
+  def getrhoi(self):
+    if me==0:
+      rhoi=transpose(self.rhoi)
+    else:
+      rhoi=transpose(self.rhoi[:,:,1:])
+    return transpose(gatherarray(rhoi))
+      
+  def getphie(self):
+    if me==0:
+      phie=transpose(self.phie)
+    else:
+      phie=transpose(self.phie[:,:,1:])
+    return transpose(gatherarray(phie))
+      
+  def getphii(self):
+    if me==0:
+      phii=transpose(self.phii)
+    else:
+      phii=transpose(self.phii[:,:,1:])
+    return transpose(gatherarray(phii))
+      
   def plfrac(self,color=black,width=1,type='solid',xscale=1.,yscale=1.):  
     qspnum = self.getpnum()
     if me==0:
