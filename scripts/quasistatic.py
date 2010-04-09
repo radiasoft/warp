@@ -38,7 +38,7 @@ class Quasistatic(SubcycledPoissonSolver):
     assert top.grid_overlap<>2,"Error: the quasistatic class needs top.grid_overlap==1."
     assert (float(npes)/float(nbuckets))==float(npes/nbuckets),"Error:the number of processors must be proportional to the number of buckets."
     self.nbuckets=nbuckets
-    bucketmpiid=int(me/nbuckets)
+    bucketmpiid=int(me*nbuckets/npes)
     self.bucketid=nbuckets-bucketmpiid
     if nbuckets==1:
       if lparallel:
@@ -49,7 +49,7 @@ class Quasistatic(SubcycledPoissonSolver):
       self.gnpes=npes
     else:
       procs = arange(npes)
-      mygroup = compress(int(procs/nbuckets)==bucketmpiid,procs)
+      mygroup = compress(int(procs*nbuckets/npes)==bucketmpiid,procs)
       self.mympigroup=mpi.WORLD.comm_create(mygroup)
       self.gme = self.mympigroup.rank
       self.gnpes = self.mympigroup.size
