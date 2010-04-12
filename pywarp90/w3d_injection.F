@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.138 $, $Date: 2010/04/07 16:31:39 $
+c@(#) File w3d_injection.F, version $Revision: 1.139 $, $Date: 2010/04/12 02:47:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2582,14 +2582,14 @@ c           --- Make sure that there is enough room in the temporary arrays.
             endif
 
 c           --- Make equivalences so names make sense below
-            ex => at
-            ey => bt
-            ez => apt
-            bx => bpt
-            by => xct
-            bz => xpct
-            bendres => yct
-            bendradi => ypct
+            ex => at(1:nn)
+            ey => bt(1:nn)
+            ez => apt(1:nn)
+            bx => bpt(1:nn)
+            by => xct(1:nn)
+            bz => xpct(1:nn)
+            bendres => yct(1:nn)
+            bendradi => ypct(1:nn)
 
 c           --- Zero the B field which is accumulated below
             ex = 0.
