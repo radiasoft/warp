@@ -11,7 +11,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.149 2010/03/11 19:10:19 dave Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.150 2010/04/12 02:50:02 dave Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -426,8 +426,7 @@ class MultiGrid3D(SubcycledPoissonSolver):
     if n == 0: return
     if top.efetch[js] == 3 and isinstance(self.fieldp,FloatType): return
     if top.efetch[js] != 3 and isinstance(self.potentialp,FloatType): return
-    if (not (self.getconductorobject('p').lcorrectede or
-             f3d.lcorrectede)):
+    if not f3d.lcorrectede:
       sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
              self.xmminp,self.ymminp,self.zmminp,
              self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
@@ -492,19 +491,17 @@ class MultiGrid3D(SubcycledPoissonSolver):
                             self.fsdecomp,self.ppdecomp)
 
     iselfb = args[2]
-    if (iselfb == 0 and
-        (self.getconductorobject(top.fselfb[iselfb]).lcorrectede or
-         f3d.lcorrectede)):
+    if iselfb == 0 and f3d.lcorrectede:
       # --- This only needs to be calculated once, so is only done
       # --- when iselfb == 0.
-      conductorobject = self.getconductorobject('p')
+      conductorobjectp = self.getconductorobject('p')
       # --- This sets up the icgrid
       setupconductorfielddata(self.nx,self.ny,self.nz,
                               self.nxp,self.nyp,self.nzp,
-                              self.dx,self.dy,self.dz,conductorobject,
+                              self.dx,self.dy,self.dz,conductorobjectp,
                               self.ppdecomp)
       # --- This calculates the field
-      getefieldatconductorsubgrid(conductorobject,
+      getefieldatconductorsubgrid(conductorobjectp,
                                   self.potentialp,self.dx,self.dy,self.dz,
                                   self.nxp,self.nyp,self.nzp,
                                   self.nxguard,self.nyguard,self.nzguard,
@@ -528,15 +525,13 @@ class MultiGrid3D(SubcycledPoissonSolver):
         self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
         self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
 
-      if (iselfb == 0 and
-          (self.getconductorobject(top.fselfb[iselfb]).lcorrectede or
-           f3d.lcorrectede)):
+      if iselfb == 0 and f3d.lcorrectede:
         # --- Now correct the E field at conductor points. This matters when
         # --- the edge of conductors are aligned with the mesh and there are no
         # --- subgrid points there.
         # --- This is done when iselfb == 0 since that will be the last
         # --- species - this routine modifies fieldp in place.
-        fixefieldatconductorpoints(conductorobject,self.fieldp,
+        fixefieldatconductorpoints(conductorobjectp,self.fieldp,
                                    self.dx,self.dy,self.dz,
                                    self.nxp,self.nyp,self.nzp)
 
