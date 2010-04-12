@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.89 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.90 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -141,29 +141,32 @@ c         --- Allocate the space all at once before the 2nd time through
           conductors%evensubgrid%nmax = nemax
           conductors%oddsubgrid%nmax = nomax
 c         --- Calling ConductorTypeallot has extra overhead and is slower
-c         call ConductorTypeallot(conductors)
+          call ConductorTypeallot(conductors)
 c         --- Direct allocation is slightly faster. This assumes that
 c         --- the arrays are not already associated.
-          allocate(conductors%interior%indx(0:2,ncmax))
-          allocate(conductors%interior%volt(ncmax))
-          allocate(conductors%interior%numb(ncmax))
-          allocate(conductors%interior%ilevel(ncmax))
+c         --- Unfortunately, this leaves a memory leak. If the conductor
+c         --- object is deleted, the arrays don't seem to be freed. That
+c         --- needs to be fixed.
+c         allocate(conductors%interior%indx(0:2,ncmax))
+c         allocate(conductors%interior%volt(ncmax))
+c         allocate(conductors%interior%numb(ncmax))
+c         allocate(conductors%interior%ilevel(ncmax))
 c         allocate(conductors%evensubgrid%prevphi(nemax))
-          allocate(conductors%evensubgrid%indx(0:2,nemax))
-          allocate(conductors%evensubgrid%dels(0:5,nemax))
-          allocate(conductors%evensubgrid%volt(0:5,nemax))
-          allocate(conductors%evensubgrid%numb(0:5,nemax))
+c         allocate(conductors%evensubgrid%indx(0:2,nemax))
+c         allocate(conductors%evensubgrid%dels(0:5,nemax))
+c         allocate(conductors%evensubgrid%volt(0:5,nemax))
+c         allocate(conductors%evensubgrid%numb(0:5,nemax))
 c         allocate(conductors%evensubgrid%efield0(0:2,nemax))
 c         allocate(conductors%evensubgrid%efieldd(0:5,nemax))
-          allocate(conductors%evensubgrid%ilevel(nemax))
+c         allocate(conductors%evensubgrid%ilevel(nemax))
 c         allocate(conductors%oddsubgrid%prevphi(nomax))
-          allocate(conductors%oddsubgrid%indx(0:2,nomax))
-          allocate(conductors%oddsubgrid%dels(0:5,nomax))
-          allocate(conductors%oddsubgrid%volt(0:5,nomax))
-          allocate(conductors%oddsubgrid%numb(0:5,nomax))
+c         allocate(conductors%oddsubgrid%indx(0:2,nomax))
+c         allocate(conductors%oddsubgrid%dels(0:5,nomax))
+c         allocate(conductors%oddsubgrid%volt(0:5,nomax))
+c         allocate(conductors%oddsubgrid%numb(0:5,nomax))
 c         allocate(conductors%oddsubgrid%efield0(0:2,nomax))
 c         allocate(conductors%oddsubgrid%efieldd(0:5,nomax))
-          allocate(conductors%oddsubgrid%ilevel(nomax))
+c         allocate(conductors%oddsubgrid%ilevel(nomax))
         endif
 
 c       --- Find all of the grid points within the object.
