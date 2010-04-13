@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.175 $, $Date: 2010/04/02 17:18:34 $
+c@(#) File DTOP.F, version $Revision: 3.176 $, $Date: 2010/04/13 17:58:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.175 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.176 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -2834,9 +2834,33 @@ c=============================================================================
 c=============================================================================
       subroutine gridcrossingmoments(is,isid,ipmin,np,pgroup,dt)
       use ParticleGroupmodule
-      use GridCrossing_Moments
       use Picglb,Only: zbeam
       use Particles,Only: wpid
+      use GridCrossing_Moments
+      integer(ISZ):: is,isid,ipmin,np
+      type(ParticleGroup):: pgroup
+      real(kind=8):: dt
+
+      if (.not. lgcmoments) return
+
+c     --- This is a cheap way of allowing multiple GC moments diagnostic.
+      if (associated(gcmoments1)) then
+        call gridcrossingmoments_work(gcmoments1,is,isid,ipmin,np,pgroup,dt)
+      endif
+
+      if (associated(gcmoments2)) then
+        call gridcrossingmoments_work(gcmoments2,is,isid,ipmin,np,pgroup,dt)
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine gridcrossingmoments_work(gc,is,isid,ipmin,np,pgroup,dt)
+      use GridCrossing_MomentsTypeModule
+      use ParticleGroupmodule
+      use Picglb,Only: zbeam
+      use Particles,Only: wpid
+      type(GridCrossing_MomentsType):: gc
       integer(ISZ):: is,isid,ipmin,np
       type(ParticleGroup):: pgroup
       real(kind=8):: dt
@@ -2853,13 +2877,13 @@ c step.
       real(kind=8):: x,y,vx,vy,ww,ri,rp
 
 c     --- Immediately return if the grid crossing moments are not being done.
-      if (ntgc == 0) return
+      if (gc%ntgc == 0) return
 
-      dtgci = ntgc/dt
-      dzgci = 1./dzgc
+      dtgci = gc%ntgc/dt
+      dzgci = 1./gc%dzgc
       js = isid - 1
 
-      if (lmoving_framegc) then
+      if (gc%lmoving_framegc) then
         zb = zbeam
       else
         zb = 0.
@@ -2870,11 +2894,11 @@ c     --- Immediately return if the grid crossing moments are not being done.
         vz = pgroup%uzp(ip)*pgroup%gaminv(ip)
         zold = pgroup%zp(ip)
         znew = pgroup%zp(ip) + vz*dt
-        izold = (zold - zmmingc - zb)*dzgci
-        iznew = (znew - zmmingc - zb)*dzgci
+        izold = (zold - gc%zmmingc - zb)*dzgci
+        iznew = (znew - gc%zmmingc - zb)*dzgci
 
         izold = max(izold,-1)
-        iznew = min(iznew,nzgc)
+        iznew = min(iznew,gc%nzgc)
 
 c       --- Skip particles that havn't crossed a grid cell.
         if (iznew <= izold) cycle
@@ -2884,16 +2908,16 @@ c       --- Loop over all grid cells that the particle crossed.
 
 c         --- This uses the standard position advance algorithm.
           vzi = 1./vz
-          zgrid = zmmingc + izgc*dzgc
+          zgrid = gc%zmmingc + izgc*gc%dzgc
           dtstar = (zgrid - zold)*vzi
 
           itgc = ceiling(dtstar*dtgci)
 
 c         --- This shouldn't happen, but its good to check anyway.
-          if (itgc < 1 .or. itgc > ntgc) cycle
+          if (itgc < 1 .or. itgc > gc%ntgc) cycle
 c         --- This is another way of fixing out of bounds particle.
 c         if (itgc < 1) itgc = 1
-c         if (itgc > ntgc) itgc = ntgc
+c         if (itgc > gc%ntgc) itgc = gc%ntgc
 
 c         --- Calculate the transverse position at the grid cell
           vx = pgroup%uxp(ip)*pgroup%gaminv(ip)
@@ -2908,22 +2932,22 @@ c         --- Calculate the transverse position at the grid cell
             ww = pgroup%sw(is)
           endif
 
-          pnumgc(itgc,izgc,js) = pnumgc(itgc,izgc,js) + ww
-          xbargc(itgc,izgc,js) = xbargc(itgc,izgc,js) + x*ww
-          ybargc(itgc,izgc,js) = ybargc(itgc,izgc,js) + y*ww
-          xsqbargc(itgc,izgc,js) = xsqbargc(itgc,izgc,js) + x**2*ww
-          ysqbargc(itgc,izgc,js) = ysqbargc(itgc,izgc,js) + y**2*ww
-          vxbargc(itgc,izgc,js) = vxbargc(itgc,izgc,js) + vx*ww
-          vybargc(itgc,izgc,js) = vybargc(itgc,izgc,js) + vy*ww
-          vzbargc(itgc,izgc,js) = vzbargc(itgc,izgc,js) + vz*ww
-          vxsqbargc(itgc,izgc,js) = vxsqbargc(itgc,izgc,js) + vx**2*ww
-          vysqbargc(itgc,izgc,js) = vysqbargc(itgc,izgc,js) + vy**2*ww
-          vzsqbargc(itgc,izgc,js) = vzsqbargc(itgc,izgc,js) + vz**2*ww
-          xvxbargc(itgc,izgc,js) = xvxbargc(itgc,izgc,js) + x*vx*ww
-          yvybargc(itgc,izgc,js) = yvybargc(itgc,izgc,js) + y*vy*ww
+          gc%pnumgc(itgc,izgc,js) = gc%pnumgc(itgc,izgc,js) + ww
+          gc%xbargc(itgc,izgc,js) = gc%xbargc(itgc,izgc,js) + x*ww
+          gc%ybargc(itgc,izgc,js) = gc%ybargc(itgc,izgc,js) + y*ww
+          gc%xsqbargc(itgc,izgc,js) = gc%xsqbargc(itgc,izgc,js) + x**2*ww
+          gc%ysqbargc(itgc,izgc,js) = gc%ysqbargc(itgc,izgc,js) + y**2*ww
+          gc%vxbargc(itgc,izgc,js) = gc%vxbargc(itgc,izgc,js) + vx*ww
+          gc%vybargc(itgc,izgc,js) = gc%vybargc(itgc,izgc,js) + vy*ww
+          gc%vzbargc(itgc,izgc,js) = gc%vzbargc(itgc,izgc,js) + vz*ww
+          gc%vxsqbargc(itgc,izgc,js) = gc%vxsqbargc(itgc,izgc,js) + vx**2*ww
+          gc%vysqbargc(itgc,izgc,js) = gc%vysqbargc(itgc,izgc,js) + vy**2*ww
+          gc%vzsqbargc(itgc,izgc,js) = gc%vzsqbargc(itgc,izgc,js) + vz**2*ww
+          gc%xvxbargc(itgc,izgc,js) = gc%xvxbargc(itgc,izgc,js) + x*vx*ww
+          gc%yvybargc(itgc,izgc,js) = gc%yvybargc(itgc,izgc,js) + y*vy*ww
 
           rp = vx*x*ri + vy*y*ri
-          rprmsgc(itgc,izgc,js) = rprmsgc(itgc,izgc,js) + rp**2*ww
+          gc%rprmsgc(itgc,izgc,js) = gc%rprmsgc(itgc,izgc,js) + rp**2*ww
 
         enddo
 
