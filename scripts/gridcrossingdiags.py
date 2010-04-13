@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.32 2010/04/12 02:53:07 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.33 2010/04/13 18:05:13 dave Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -40,6 +40,9 @@ cross the cell.
       in the scintillator attribute.
   - dumptofile=None: When given, the data will be written to a file with
                      the given name as a prefix.
+  - laccumulatedata=true: When true, the data is accumulated, otherwise the
+                          data will be from only the most recent time step.
+                          If false, this assumes that nhist <= 1.
   - starttime,endtime=None: If given, the data will be collected for times
                             only between the two values.
   - lmoving_frame=false: When true, the diagnostic moves with the beam frame.
@@ -72,6 +75,7 @@ be unreliable.
                  scintnx=None,
                  scintny=None,
                  dumptofile=None,
+                 laccumulatedata=true,
                  starttime=None,endtime=None,lmoving_frame=0):
         if isinstance(js,Species):
             self.js = js.jslist[0]
@@ -97,11 +101,17 @@ be unreliable.
         self.scintny = scintny
 
         self.dumptofile = dumptofile
+        self.laccumulatedata = laccumulatedata
         self.starttime = starttime
         self.endtime = endtime
         self.lmoving_frame = lmoving_frame
 
         self.zoldpid = nextpid()
+
+        # --- Set these to None so that the routines below can check whether
+        # --- they have been set up yet.
+        self.gcindex = None
+        self.gcmoments = None
 
         self.initializedata()
         self.enable()
@@ -147,10 +157,46 @@ be unreliable.
             self._scintillator = []
 
     def enable(self):
+        if self.gcmoments is None:
+            # --- Only create the instance here when the diagnostic is
+            # --- enabled.
+            self.gcmoments = GridCrossing_MomentsType()
+
+        # --- Check if one of the built in gcmoments is available for use.
+        # --- If not, complain.
+        if top.getpyobject('gcmoments1') is None:
+            self.gcindex = 1
+            top.gcmoments1 = self.gcmoments
+        elif top.getpyobject('gcmoments2') is None:
+            self.gcindex = 2
+            top.gcmoments2 = self.gcmoments
+        else:
+            raise RunTimeError('Only two grid crossing moments can be enabled at a time')
+
+        # --- This flag must be set for the diagnostics to be done.
+        top.lgcmoments = true
+
         installbeforestep(self.initializegrid)
         installafterstep(self.getdiagnostics)
 
     def disable(self):
+        # --- If not already enabled, then do nothing.
+        if self.gcmoments is None: return
+        if self.gcindex is None: return
+
+        # --- Free up the gcmoments that was being used.
+        if self.gcindex == 1:
+            del top.gcmoments1
+        elif self.gcindex == 2:
+            del top.gcmoments2
+
+        self.gcindex = None
+
+        # --- If there are no other gcmoments active, then turn the flag off.
+        if (top.getpyobject('gcmoments1') is None and
+            top.getpyobject('gcmoments2') is None):
+            top.lgcmoments = false
+        
         uninstallbeforestep(self.initializegrid)
         uninstallafterstep(self.getdiagnostics)
 
@@ -180,14 +226,14 @@ be unreliable.
             self.nt = 1
 
         # --- Setup the GridCrossing_Moments group
-        top.zmmingc = self.zmmin
-        top.zmmaxgc = self.zmmax
-        top.ntgc = self.nt
-        top.nzgc = self.nz
-        top.nszgc = top.ns
-        top.dzgc = self.dz
-        top.lmoving_framegc = self.lmoving_frame
-        gchange('GridCrossing_Moments')
+        self.gcmoments.zmmingc = self.zmmin
+        self.gcmoments.zmmaxgc = self.zmmax
+        self.gcmoments.ntgc = self.nt
+        self.gcmoments.nzgc = self.nz
+        self.gcmoments.nszgc = top.ns
+        self.gcmoments.dzgc = self.dz
+        self.gcmoments.lmoving_framegc = self.lmoving_frame
+        self.gcmoments.gchange()
 
         if self.ldoscintillator:
             self.scintzmin = nint((self.scintzmin-self.zmmin)/self.dz)*self.dz + self.zmmin
@@ -304,11 +350,12 @@ be unreliable.
         if (len(self._time) == 0 or nhist < 1. or
             (top.it-1)%nhist == int(nhist/2)):
 
-            if me == 0 and not self.dumptofile:
+            if self.laccumulatedata and me == 0 and not self.dumptofile:
                 self.appendnextarrays(zbeam)
             else:
                 # --- On other processors or if the data is being dumped to a
-                # --- file, just zero out the existing arrays.
+                # --- file or if the data is not being accumulated, just zero
+                # --- out the existing arrays.
                 # --- There's no reason to keep the history on all processors.
                 # --- The arrays are created the first time the diagnostic
                 # --- is done.
@@ -387,20 +434,20 @@ be unreliable.
         # --- processors, dividing by the counts to get the averages, and
         # --- calculating the rms quantities.
         if nhist < 1. or top.it%nhist == int(nhist/2):
-            self._count[-1] = top.pnumgc[1:,:,self.js].copy()
-            self._xbar[-1] = top.xbargc[1:,:,self.js].copy()
-            self._ybar[-1] = top.ybargc[1:,:,self.js].copy()
-            self._xsqbar[-1] = top.xsqbargc[1:,:,self.js].copy()
-            self._ysqbar[-1] = top.ysqbargc[1:,:,self.js].copy()
-            self._rprms[-1] = top.rprmsgc[1:,:,self.js].copy()
-            self._vxbar[-1] = top.vxbargc[1:,:,self.js].copy()
-            self._vybar[-1] = top.vybargc[1:,:,self.js].copy()
-            self._vzbar[-1] = top.vzbargc[1:,:,self.js].copy()
-            self._vxsqbar[-1] = top.vxsqbargc[1:,:,self.js].copy()
-            self._vysqbar[-1] = top.vysqbargc[1:,:,self.js].copy()
-            self._vzsqbar[-1] = top.vzsqbargc[1:,:,self.js].copy()
-            self._xvxbar[-1] = top.xvxbargc[1:,:,self.js].copy()
-            self._yvybar[-1] = top.yvybargc[1:,:,self.js].copy()
+            self._count[-1] = self.gcmoments.pnumgc[1:,:,self.js].copy()
+            self._xbar[-1] = self.gcmoments.xbargc[1:,:,self.js].copy()
+            self._ybar[-1] = self.gcmoments.ybargc[1:,:,self.js].copy()
+            self._xsqbar[-1] = self.gcmoments.xsqbargc[1:,:,self.js].copy()
+            self._ysqbar[-1] = self.gcmoments.ysqbargc[1:,:,self.js].copy()
+            self._rprms[-1] = self.gcmoments.rprmsgc[1:,:,self.js].copy()
+            self._vxbar[-1] = self.gcmoments.vxbargc[1:,:,self.js].copy()
+            self._vybar[-1] = self.gcmoments.vybargc[1:,:,self.js].copy()
+            self._vzbar[-1] = self.gcmoments.vzbargc[1:,:,self.js].copy()
+            self._vxsqbar[-1] = self.gcmoments.vxsqbargc[1:,:,self.js].copy()
+            self._vysqbar[-1] = self.gcmoments.vysqbargc[1:,:,self.js].copy()
+            self._vzsqbar[-1] = self.gcmoments.vzsqbargc[1:,:,self.js].copy()
+            self._xvxbar[-1] = self.gcmoments.xvxbargc[1:,:,self.js].copy()
+            self._yvybar[-1] = self.gcmoments.yvybargc[1:,:,self.js].copy()
 
             co = self._count[-1]
             xbar = self._xbar[-1]
@@ -465,20 +512,20 @@ be unreliable.
 
             # --- Now that the data was copied out, zero the top arrays
             # --- so that the data doesn't accumulate.
-            top.pnumgc.fill(0.)
-            top.xbargc.fill(0.)
-            top.ybargc.fill(0.)
-            top.xsqbargc.fill(0.)
-            top.ysqbargc.fill(0.)
-            top.rprmsgc.fill(0.)
-            top.vxbargc.fill(0.)
-            top.vybargc.fill(0.)
-            top.vzbargc.fill(0.)
-            top.vxsqbargc.fill(0.)
-            top.vysqbargc.fill(0.)
-            top.vzsqbargc.fill(0.)
-            top.xvxbargc.fill(0.)
-            top.yvybargc.fill(0.)
+            self.gcmoments.pnumgc.fill(0.)
+            self.gcmoments.xbargc.fill(0.)
+            self.gcmoments.ybargc.fill(0.)
+            self.gcmoments.xsqbargc.fill(0.)
+            self.gcmoments.ysqbargc.fill(0.)
+            self.gcmoments.rprmsgc.fill(0.)
+            self.gcmoments.vxbargc.fill(0.)
+            self.gcmoments.vybargc.fill(0.)
+            self.gcmoments.vzbargc.fill(0.)
+            self.gcmoments.vxsqbargc.fill(0.)
+            self.gcmoments.vysqbargc.fill(0.)
+            self.gcmoments.vzsqbargc.fill(0.)
+            self.gcmoments.xvxbargc.fill(0.)
+            self.gcmoments.yvybargc.fill(0.)
 
 
             if self.ldoradialdiag:
