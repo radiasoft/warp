@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.251 $, $Date: 2010/03/30 17:51:42 $
+c@(#) File TOP.F, version $Revision: 3.252 $, $Date: 2010/04/13 21:44:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4593,9 +4593,9 @@ c     --- Make sure that npidlost is up to date.
 
 c     --- Make sure that ins has a sensible value for all species
       if (inslost(1) == 0) inslost(1) = 1
-      where (inslost(2:) == 0)
-        inslost(2:) = inslost(:ns-1) + npslost(:ns-1)
-      end where
+      do i=2,ns
+        if (inslost(i) == 0) inslost(i) = inslost(i-1) + npslost(i-1)
+      end do
 
 c     --- ilower is the lowest usable array location.
       if (is == 1) then
