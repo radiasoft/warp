@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.440 $, $Date: 2010/03/26 14:25:49 $
+c@(#) File W3D.F, version $Revision: 3.441 $, $Date: 2010/04/16 18:35:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -417,7 +417,6 @@ c  Load the particles, calculate the charge density
       pgroup%ns = ns
       call setuppgroup(pgroup)
       call stptcl3d(pgroup)
-      call setgamma(pgroup,lrelativ)
       call injctint(pgroup)
       call particleboundaries3d(pgroup,-1,.true.)
       call remark(" ---  Setting charge density")
@@ -5856,6 +5855,7 @@ c  appropriately.
 c
 c  Picglb is included only to use zbeam
 
+      real(kind=8):: clghtisq,gaminv,gam
       integer(ISZ):: npm,ip,js,isid,i,j,k,i1,ipi
       integer(ISZ):: nxstri_s,nystri_s,nzstri_s,izstripe,icheck
       integer(ISZ):: nfib2,nfib3,nfib4,ii,ioff
@@ -5886,6 +5886,10 @@ c  Picglb is included only to use zbeam
 #endif
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      if (lrelativ) then
+        clghtisq = 1./clight**2
+      endif
 
 c  Call the user supplied particle loading routine if requested
       if (lcallparticleloader) then
@@ -6541,25 +6545,37 @@ c            --- put velocity into particle arrays
                vty = .5*vzt(ii)*epsyt(ii)/bt(ii)*perpscal(ii) + vthperp_s(isid)
              endif
              pgroup%uxp(ipi) = vzt(ii)*apt(ii)*xt(ii)*perpscal(ii) +
-     &                   vtx*uxt(ii) + vzt(ii)*xpct(ii)
+     &                         vtx*uxt(ii) + vzt(ii)*xpct(ii)
              pgroup%uyp(ipi) = vzt(ii)*bpt(ii)*yt(ii)*perpscal(ii) +
-     &                   vty*uyt(ii) + vzt(ii)*ypct(ii)
-             pgroup%uzp(ipi) = vzt(ii)*(1.+vtilt_s(isid)*(zmid - zt(ii))*zleni) +
-     &                   vtzt(ii)*uzt(ii)
+     &                         vty*uyt(ii) + vzt(ii)*ypct(ii)
+             pgroup%uzp(ipi) = vzt(ii)*(1.+vtilt_s(isid)*(zmid - zt(ii))*zleni)+
+     &                         vtzt(ii)*uzt(ii)
+
+c            --- add sinusoidal perturbation to uzp
+             if (vzperamp /= 0.) then
+               pgroup%uzp(ipi) = pgroup%uzp(ipi) +
+     &                   vzperamp*sin(2.*pi*pgroup%zp(ipi)/vzperlam + vzperphs)
+             endif
+
+             if (lrelativ) then
+               gaminv = sqrt ( 1. -  (pgroup%uxp(ipi)**2 +
+     &                                pgroup%uyp(ipi)**2 +
+     &                                pgroup%uzp(ipi)**2)*clghtisq)
+               gam = 1./gaminv
+               pgroup%gaminv(ipi) = gaminv
+               pgroup%uxp(ipi) = gam*pgroup%uxp(ipi)
+               pgroup%uyp(ipi) = gam*pgroup%uyp(ipi)
+               pgroup%uzp(ipi) = gam*pgroup%uzp(ipi)
+             else
+               pgroup%gaminv(ipi) = 1.0
+             endif
+
              if (pgroup%npid > 0) pgroup%pid(ipi,:) = 0.
              if (spid > 0) then
                pgroup%pid(ipi,spid) = ioff + k + i - 1
                ssn = ioff + k + i
              endif
            enddo
-
-c          --- add sinusoidal perturbation to uzp
-           if (vzperamp /= 0.) then
-             do i=ip+1,ipi
-               pgroup%uzp(i) = pgroup%uzp(i) +
-     &                   vzperamp*sin(2.*pi*pgroup%zp(i)/vzperlam + vzperphs)
-             enddo
-           endif
 
 c          --- increment number of particles by size of current group
            ip = ipi
@@ -6636,20 +6652,32 @@ c            --- centroid.
              pgroup%uyp(ipi) = vtz + vty*rr*sin(phi2) + vzt(i)*ypct(i)
              pgroup%uzp(ipi) = vzt(i)*(1.+vtilt_s(isid)*(zmid - zt(i))*zleni) +
      &                   vtzt(i)*uzt(i)
+
+c            --- add sinusoidal perturbation to uzp
+             if (vzperamp /= 0.) then
+                 pgroup%uzp(ipi) = pgroup%uzp(ipi) +
+     &                 vzperamp*sin(2.*pi*pgroup%zp(ipi)/vzperlam + vzperphs)
+             endif
+
+             if (lrelativ) then
+               gaminv = sqrt ( 1. -  (pgroup%uxp(ipi)**2 +
+     &                                pgroup%uyp(ipi)**2 +
+     &                                pgroup%uzp(ipi)**2)*clghtisq)
+               gam = 1./gaminv
+               pgroup%gaminv(ipi) = gaminv
+               pgroup%uxp(ipi) = gam*pgroup%uxp(ipi)
+               pgroup%uyp(ipi) = gam*pgroup%uyp(ipi)
+               pgroup%uzp(ipi) = gam*pgroup%uzp(ipi)
+             else
+               pgroup%gaminv(ipi) = 1.0
+             endif
+
              if (pgroup%npid > 0) pgroup%pid(ipi,:) = 0.
              if (spid > 0) then
                pgroup%pid(ipi,spid) = ioff + k + i - 1
                ssn = ioff + k + i
              endif
            enddo
-
-c          --- add sinusoidal perturbation to uzp
-           if (vzperamp /= 0.) then
-             do i=ip+1,ipi
-               pgroup%uzp(i) = pgroup%uzp(i) +
-     &               vzperamp*sin(2.*pi*pgroup%zp(i)/vzperlam + vzperphs)
-             enddo
-           endif
 
 c          --- increment number of particles by size of current group
            ip = ipi
@@ -6733,20 +6761,32 @@ c                  2nd term: centroid component
 c            --- set longitudinal particle gamma*velocity 
              pgroup%uzp(ipi) = vzt(i)*(1. + vtilt_s(isid)*(zmid - zt(i))*zleni) +
      &                   vtzt(i)*uzt(i)
+
+c            --- add sinusoidal perturbation to uzp
+             if (vzperamp /= 0.) then
+               pgroup%uzp(ipi) = pgroup%uzp(ipi) +
+     &               vzperamp*sin(2.*pi*pgroup%zp(ipi)/vzperlam + vzperphs)
+             endif
+
+             if (lrelativ) then
+               gaminv = sqrt ( 1. -  (pgroup%uxp(ipi)**2 +
+     &                                pgroup%uyp(ipi)**2 +
+     &                                pgroup%uzp(ipi)**2)*clghtisq)
+               gam = 1./gaminv
+               pgroup%gaminv(ipi) = gaminv
+               pgroup%uxp(ipi) = gam*pgroup%uxp(ipi)
+               pgroup%uyp(ipi) = gam*pgroup%uyp(ipi)
+               pgroup%uzp(ipi) = gam*pgroup%uzp(ipi)
+             else
+               pgroup%gaminv(ipi) = 1.0
+             endif
+
              if (pgroup%npid > 0) pgroup%pid(ipi,:) = 0.
              if (spid > 0) then
                pgroup%pid(ipi,spid) = ioff + k + i - 1
                ssn = ioff + k + i
              endif
            enddo
-
-c          --- add sinusoidal perturbation to uzp
-           if (vzperamp /= 0.) then
-             do i=ip+1,ipi
-               pgroup%uzp(i) = pgroup%uzp(i) +
-     &               vzperamp*sin(2.*pi*pgroup%zp(i)/vzperlam + vzperphs)
-             enddo
-           endif
 
 c          --- increment number of particles by size of current group
            ip = ipi
