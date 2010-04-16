@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.105 $, $Date: 2009/08/28 22:07:11 $
+c@(#) File WXY.M, version $Revision: 3.106 $, $Date: 2010/04/16 18:35:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -294,7 +294,6 @@ c  Load the particles, calculate the charge density
       cigarld = .false.
       cylinder = .true.
       call stptcl3d(pgroup)
-      call setgamma(pgroup,lrelativ)
       call initdtp(pgroup)
       call initzpxy(pgroup)
       call remark(" ---  Setting charge density")
