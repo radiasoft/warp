@@ -32,8 +32,16 @@ class Quasistatic(SubcycledPoissonSolver):
                vxinitelec=None,vyinitelec=None,vzinitelec=None,strideinitelec=1,
                l_beam_1d=False,sigmax=0.,sigmay=0.,
                l_elec_greensum=False,elec_aellipse=0.,elec_bellipse=0.,
-               Ekick=0.,Lkick=0.,Akick=None,
-               nbuckets=1,
+               Ekick=0.,Lkick=0.,Akick=None,Bkick=1,
+               nbuckets=1,l_independentbunches=0,nsaverhophi=-1,
+               sec=None,l_posinst_track_electrons=False,
+               l_gas_ionization = 0,          # turn on/off ionization of background gas
+               gas_species      = Dihydrogen,  # background gas species
+               gas_pressure     = 1.e-5*10,    # background gas pressure
+               gas_temperature  = 300.,        # background gas temperature
+               cross_section    = 2.e6,        # background gas ionization cross-section (by beam)
+               emitted_energy0  = 100.,        # ionized electrons mean energy
+               emitted_energy_sigma = 50.,     # ionized electrons energy sigma
                **kw):
     assert top.grid_overlap<>2,"Error: the quasistatic class needs top.grid_overlap==1."
     assert (float(npes)/float(nbuckets))==float(npes/nbuckets),"Error:the number of processors must be proportional to the number of buckets."
@@ -53,6 +61,11 @@ class Quasistatic(SubcycledPoissonSolver):
       self.mympigroup=mpi.WORLD.comm_create(mygroup)
       self.gme = self.mympigroup.rank
       self.gnpes = self.mympigroup.size
+    length=(w3d.zmmax-w3d.zmmin)/self.nbuckets
+    self.zminbucket=-length/2-(self.bucketid-1)*length
+    self.zmaxbucket=self.zminbucket+length
+    self.nzbucket=w3d.nz/self.nbuckets
+    self.l_independentbunches=l_independentbunches
     self.grid_overlap = 1
     FieldSolver.__init__(self,kwdict=kw)
     w3d.solvergeom=w3d.XYgeom
@@ -69,16 +82,8 @@ class Quasistatic(SubcycledPoissonSolver):
       frz.basegrid=gxy[-1]
       frz.init_base(w3d.nx,w3d.ny,w3d.dx,w3d.dy,w3d.xmmin,w3d.ymmin,false)
       frz.mgridrz_accuracy = f3d.mgtol
-      g=frz.basegrid
-      for conductor in conductors:
-#          if self.l_MR:
-#            if l_addblock:raise('conductors need to be installed in quasistatic MR')
-          try:
-            cond = conductor.cond
-          except AttributeError:
-            cond = conductor
-          self.conductors=ConductorType()
-          installconductors(cond,conductors=self.conductors,gridrz=g,nz=0)
+    self.conductors=conductors
+    self.l_condinstalled=0
     self.MRroot = MRroot
     self.dt = w3d.dz/top.vbeam # time step for pushing electrons
     self.nparpgrp = nparpgrp
@@ -124,6 +129,8 @@ class Quasistatic(SubcycledPoissonSolver):
     if self.l_inject_elec_MR:
       top.wpid=nextpid()
     self.scraper=scraper
+    self.sec=sec
+    self.l_posinst_track_electrons=l_posinst_track_electrons
     if maps is not None:
       self.l_maps=true
       self.maps=maps
@@ -143,20 +150,35 @@ class Quasistatic(SubcycledPoissonSolver):
       self.izmax = w3d.nzp
     self.znodes = top.zpminlocal+arange(self.izmax+1)*w3d.dz
     self.wz0=self.wz1=None
-    self.rhoe = zeros([w3d.nx+1,w3d.ny+1,w3d.nzp+1],'d')
-    self.phie = zeros([w3d.nx+3,w3d.ny+3,w3d.nzp+1],'d')
-    self.rhoi = zeros([w3d.nx+1,w3d.ny+1,w3d.nzp+1],'d')
-    self.phii = zeros([w3d.nx+3,w3d.ny+3,w3d.nzp+1],'d')
     self.pgions = top.pgroup
     self.ions = [ions]
     for iz in range(globalmax(w3d.nzp)-1):
       self.ions.append(Species(type=ions.type,fselfb=top.pgroup.fselfb[0]))
       top.pgroup.sq[-1] = top.pgroup.sq[0]
-    ions.jslist = range(top.pgroup.ns)
     self.pgelec = ParticleGroup()
     self.pgelec.gchange()
     top.pgroup = self.pgelec
     self.electrons = Species(type=backgroundtype)
+    if sec is not None:
+      for cond in conductors:
+        sec.add(incident_species=self.electrons,
+                emitted_species=self.electrons,
+                conductor=cond,
+                interaction_type = 0) 
+    self.l_gas_ionization=l_gas_ionization
+    if l_gas_ionization:
+      from ionization import *
+      self.ioniz=[]
+      for iz in range(self.izmin,self.izmax):
+        self.ioniz.append(Ionization())#stride=10,nx=30,ny=30,xmax=0.06,ymax=0.06)
+      torr_to_MKS=133.3224	# 1 Torr=133.3224  N/m**2
+      # ideal gas law: rho=p/(k*T)
+      gas_prefactor = (torr_to_MKS/boltzmann)/294.
+      self.gas_density   = gas_prefactor*gas_pressure*(294./gas_temperature)
+      self.cross_section = cross_section
+      self.emitted_energy_sigma = emitted_energy_sigma
+      self.emitted_energy0 = emitted_energy0
+      self.ioniz_installed=0
     top.pgroup = self.pgions
     self.ionstoprev = [0]
     self.fullsortdone = 0
@@ -266,8 +288,11 @@ class Quasistatic(SubcycledPoissonSolver):
     self.Ekick=Ekick
     self.Lkick=Lkick
     self.Akick=Akick
+    self.Bkick=Bkick
     self.mystation=zeros(self.izmax,'d')
-
+    self.nsaverhophi=nsaverhophi
+    self.timehist=AppendableArray()
+    
   def reset_timers(self):
     self.time_loop=0.
     self.time_sort=0.
@@ -285,9 +310,42 @@ class Quasistatic(SubcycledPoissonSolver):
     self.time_reset_rho1=0.
     self.time_store_ionstoprev=0.
 
+  def install_conductors(self):
+   for g in self.gridions+self.gridelecs+self.gridionscp:
+      for conductor in self.conductors:
+          try:
+            cond = conductor.cond
+          except AttributeError:
+            cond = conductor
+          for ig in range(frz.ngrids):
+#          installconductors(cond,conductors=ConductorType(),gridrz=g,nz=0)
+            installconductors(cond,conductors=ConductorType(),
+                              nx=g.nr,ny=g.nz,nz=0,
+                              xmmin=g.rmin,xmmax=g.rmax,
+                              ymmin=g.zmin,ymmax=g.zmax,
+                              gridrz=g)
+            if ig<frz.ngrids-1:g=g.down
+   self.condinstalled=1
+  
+  def install_ionization(self):
+      for iz in range(self.izmin,self.izmax):
+        self.ioniz[iz].add(incident_species = self.ions[iz],
+                     ndens            = self.gas_density,
+                     emitted_species  = [self.electrons],
+#                    emitted_species  = [gas_ions,electrons],
+                     incident_pgroup  = self.pgions,
+                     emitted_pgroup   = self.pgelec,
+                     cross_section    = self.cross_section*1.e-28*self.pgions.sw[0]/(self.pgelec.sw[0]*w3d.dz),
+                     emitted_energy_sigma = self.emitted_energy_sigma,
+                     emitted_energy0 = self.emitted_energy0)
+      self.ioniz_installed=1
+      
   def step(self,nt=1,l_return_dist=false,l_plotelec=0,l_savedist=0):
    # --- if running in parallel, enforcing l_mode=1
    if npes>1:self.l_mode=1
+   self.setuprhophi()
+   if not self.l_condinstalled:self.install_conductors()
+   if self.l_gas_ionization and not self.ioniz_installed:self.install_ionization()
    for it in range(nt):
      ptimeloop = wtime()
      
@@ -309,7 +367,11 @@ class Quasistatic(SubcycledPoissonSolver):
 
      # --- gather moments
 #     if top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0):
-     if top.it==0 or (me>=(npes-top.it) and (top.it-(self.gnpes-self.gme))%top.nhist==0):
+#     if top.it==0 or (me>=(npes-top.it) and (top.it-(self.gnpes-self.gme))%top.nhist==0):
+#     self.itbucket = top.it-(self.bucketid-1)*npes/self.nbuckets
+     self.itbucket = top.it-(self.bucketid-1)*npes/self.nbuckets
+     if top.it==0 or (me>=(npes-top.it) and (self.itbucket-(self.gnpes-self.gme))%top.nhist==0):
+#       print me,top.it,self.itbucket,self.gnpes-self.gme,self.itbucket-(self.gnpes-self.gme)
        if self.l_timing:ptime = wtime()
        if self.l_timing: self.time_getmmnts += wtime()-ptime
 
@@ -337,8 +399,13 @@ class Quasistatic(SubcycledPoissonSolver):
        f.close()
 
      if l_push_elec:
-        # --- generate electrons (on last processor only)
-       if me==max(0,npes-1) and not(l_plotelec and top.it>0):self.create_electrons()
+       # --- generate electrons (on last processor only)
+       if self.l_independentbunches:
+          if self.gme==max(0,self.gnpes-1) and not(l_plotelec and top.it>0):
+            self.pgelec.nps[0]=0
+            self.create_electrons()
+       else:
+          if me==max(0,npes-1) and not(l_plotelec and top.it>0):self.create_electrons()
 #       if me==max(0,npes-1):self.create_electrons()
 
        # --- (diagnostic) stacking of electron distribution
@@ -432,12 +499,24 @@ class Quasistatic(SubcycledPoissonSolver):
          if self.l_timing: self.time_add_ei_fields += wtime()-ptime
 
        if self.l_timing:ptime = wtime()
-       if l_push_elec and not self.l_elec_greensum:
-         self.rhoe[:,:,self.iz+1] = self.gridelecs[1].rho
-         self.phie[:,:,self.iz+1] = self.gridelecs[1].phi
-       if not self.l_beam_1d:
-         self.rhoi[:,:,self.iz+1] = self.gridions[1].rho
-         self.phii[:,:,self.iz+1] = self.gridions[1].phi
+
+       # --- gather rho and phi copies
+       if self.nsaverhophi>0:
+         if (me>=(npes-top.it) and (self.itbucket-(self.gnpes-self.gme))%self.nsaverhophi==0):
+           if l_push_elec and not self.l_elec_greensum:
+             ge = self.gridelecs[1]
+             for ig in range(frz.ngrids):
+               if ig>0:
+                 ge = ge.down
+               self.rhoe[ig][:,:,self.iz+1] = ge.rho.copy()
+               self.phie[ig][:,:,self.iz+1] = ge.phi.copy()
+           if not self.l_beam_1d:
+             gi = self.gridions[1]
+             for ig in range(frz.ngrids):
+               if ig>0:
+                 gi = gi.down
+               self.rhoi[ig][:,:,self.iz+1] = gi.rho.copy()
+               self.phii[ig][:,:,self.iz+1] = gi.phi.copy()
        if self.l_timing: self.time_stack_rhophi += wtime()-ptime
 
        if l_push_elec:
@@ -459,7 +538,9 @@ class Quasistatic(SubcycledPoissonSolver):
 
        # --- gather moments
 #       if iz<w3d.nzp-1 and (top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0)):
-       if iz<w3d.nzp-1 and (top.it==0 or (me>=(npes-top.it) and (top.it-(self.gnpes-self.gme))%top.nhist==0)):
+#       if iz<w3d.nzp-1 and (top.it==0 or (me>=(npes-top.it) and (top.it-(self.gnpes-self.gme))%top.nhist==0)):
+       if iz<w3d.nzp-1 and (top.it==0 or (me>=(npes-top.it) and (self.itbucket-(self.gnpes-self.gme))%top.nhist==0)):
+
          if self.l_timing:ptime = wtime()
          self.getmmnts(iz+1)
          if iz==0:self.getmmnts(iz)
@@ -514,11 +595,58 @@ class Quasistatic(SubcycledPoissonSolver):
          
     # --- END of FOR loop
      if self.l_timing:ptime = wtime()
-     if l_push_elec:
-       self.rhoe[:,:,0] = self.gridelecs[1].rho
-       self.phie[:,:,0] = self.gridelecs[1].phi
-     self.rhoi[:,:,0] = self.gridions[1].rho
-     self.phii[:,:,0] = self.gridions[1].phi
+
+    # --- gather latest rho and phi copies and save into file
+     if self.nsaverhophi>0:
+       if (me>=(npes-top.it) and (self.itbucket-(self.gnpes-self.gme))%self.nsaverhophi==0):
+         if l_push_elec and not self.l_elec_greensum:
+           ge = self.gridelecs[1]
+           for ig in range(frz.ngrids):
+             if ig>0:
+               ge = ge.down
+             self.rhoe[ig][:,:,0] = ge.rho.copy()
+             self.phie[ig][:,:,0] = ge.phi.copy()
+         if not self.l_beam_1d:
+           gi = self.gridions[1]
+           for ig in range(frz.ngrids):
+             if ig>0:
+               gi = gi.down
+             self.rhoi[ig][:,:,0] = gi.rho.copy()
+             self.phii[ig][:,:,0] = gi.phi.copy()
+         if me==0:
+           f=PW.PW('rhophidata.pdb')
+           f.ngrids=frz.ngrids
+           f.npes=npes
+           f.nz=w3d.nz
+           nx=[]
+           ny=[]
+           xmin=[]
+           xmax=[]
+           ymin=[]
+           ymax=[]
+           ge = self.gridelecs[1]
+           for ig in range(frz.ngrids):
+             if ig>0:
+               ge = ge.down
+             nx.append(ge.nr)
+             ny.append(ge.nz)
+             xmin.append(ge.rmin)
+             xmax.append(ge.rmax)
+             ymin.append(ge.zmin)
+             ymax.append(ge.zmax)
+           f.nx=nx
+           f.ny=ny
+           f.xmin=xmin
+           f.xmax=xmax
+           f.ymin=ymin
+           f.ymax=ymax
+           f.close()
+         f=PW.PW('rhophi%g_%g.pdb'%(me,self.itbucket-(self.gnpes-self.gme)))
+         f.rhoe=self.rhoe
+         f.phie=self.phie
+         f.rhoi=self.rhoi
+         f.phii=self.phii
+         f.close()
      if self.l_timing: self.time_stack_rhophi += wtime()-ptime
 
      if self.l_timing:ptime = wtime()
@@ -535,7 +663,9 @@ class Quasistatic(SubcycledPoissonSolver):
 
      # --- store moments data
 #     if top.it==0 or (me>=(npes-top.it) and (top.it-(npes-me))%top.nhist==0):
-     if top.it==0 or (me>=(npes-top.it) and (top.it-(self.gnpes-self.gme))%top.nhist==0):
+#     if top.it==0 or (me>=(npes-top.it) and (top.it-(self.gnpes-self.gme))%top.nhist==0):
+     if top.it==0 or (me>=(npes-top.it) and (self.itbucket-(self.gnpes-self.gme))%top.nhist==0):
+
        if self.l_timing:ptime = wtime()
        self.getmmnts_store()
        if self.l_timing: self.time_getmmnts += wtime()-ptime
@@ -555,7 +685,10 @@ class Quasistatic(SubcycledPoissonSolver):
      if self.l_verbose:print me,top.it,self.iz,'it = %i, time = %gs.'%(top.it,top.time)
 
      self.time_loop = wtime()-ptimeloop
-
+#     print 'time loop = ',self.time_loop
+#     self.timehist.append(self.time_loop)
+#     fma();pla(self.timehist[:]);refresh()
+     
   def print_timers(self):
     print 'loop               ',self.time_loop
     print 'sort               ',self.time_sort#,' = ',self.time_sort/time_loop,'\%'
@@ -572,6 +705,22 @@ class Quasistatic(SubcycledPoissonSolver):
     print 'push_ions          ',self.time_push_ions
     print 'reset_rho1         ',self.time_reset_rho1
     print 'store_ionstoprev   ',self.time_store_ionstoprev
+  
+  def setuprhophi(self):
+    try:self.rhoe
+    except:
+      self.rhoe = []
+      self.phie = []
+      self.rhoi = []
+      self.phii = []
+      ge = self.gridelecs[0]
+      for ig in range(frz.ngrids):
+        if ig>0:
+          ge = ge.down
+        self.rhoe.append(zeros([ge.nr+1,ge.nz+1,w3d.nzp+1],'d'))
+        self.phie.append(zeros([ge.nr+2*ge.nguardx+1,ge.nz+2*ge.nguardz+1,w3d.nzp+1],'d'))
+        self.rhoi.append(zeros([ge.nr+1,ge.nz+1,w3d.nzp+1],'d'))
+        self.phii.append(zeros([ge.nr+2*ge.nguardx+1,ge.nz+2*ge.nguardz+1,w3d.nzp+1],'d'))
   
   def reset_rho1(self):
     if self.l_verbose:print me,top.it,self.iz,'enter reset_rho1'
@@ -724,7 +873,7 @@ class Quasistatic(SubcycledPoissonSolver):
         if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me+1
 #        print 'recved itn',recved[0],recved[3]
         if pg.npid>0:
-          pid=self.recved[-1]
+          pid=recved[-1]
         else:
           pid=0.
         addparticles(js = js,
@@ -768,7 +917,7 @@ class Quasistatic(SubcycledPoissonSolver):
         if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me-1
 #        print 'recved',recved[0],recved[3]
         if pg.npid>0:
-          pid=self.recved[-1]
+          pid=recved[-1]
         else:
           pid=0.
         addparticles(js = js,
@@ -964,121 +1113,6 @@ class Quasistatic(SubcycledPoissonSolver):
     if self.l_verbose:print me,top.it,self.iz,'exit deposit_ions_last_step'
 #    if lparallel:mpi.barrier()
                       
-  def push_electrons(self):
-       if self.l_verbose:print me,top.it,self.iz,'enter push_electrons'
-       pg = self.pgelec
-       top.pgroup = self.pgelec
-       frz.basegrid = self.gridions[1]
-       mk_grids_ptr()
-       if top.bx0<>0. or top.by0<>0.:
-         bx0 = ones(self.nparpgrp,'d')*top.bx0
-         by0 = ones(self.nparpgrp,'d')*top.by0
-         bz0 = ones(self.nparpgrp,'d')*top.bz0
-         self.l_bfield=1
-       else:
-         self.l_bfield=0
-       # --- loop over species list
-       for sp in [self.electrons]:
-        # --- loop over species index
-        for js in sp.jslist:
-          ng = 1+pg.nps[js]/self.nparpgrp
-          if pg.nps[js]==0:continue
-          for ig in range(ng):
-            il = pg.ins[js]-1+self.nparpgrp*ig
-            iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
-            np = iu-il
-            if np==0:continue
-            # --- gather self-forces
-            if self.l_bfield:
-              if self.l_verbose:print me,top.it,self.iz,'me = ',me,';bpush'
-              bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                          bx0[:np], by0[:np], bz0[:np], pg.sq[js],pg.sm[js],0.5*self.dt, top.ibpush)
-            if self.l_verbose:print me,top.it,self.iz,'me = ',me,';fieldweight' # MR OK
-            if self.l_beam_1d:
-              Lambda = self.pgions.sw[self.iz]*self.pgions.sq[self.iz]/w3d.dz
-              x0 = self.pgions.xp[self.iz]
-              y0 = self.pgions.yp[self.iz]
-              sigmax = self.sigmax[self.iz]
-              sigmay = self.sigmay[self.iz]
-              Exbe, Eybe = Bassetti_Erskine(Lambda,pg.xp[il:iu],pg.yp[il:iu],x0,y0,sigmax,sigmay)
-              pg.ex[il:iu]=Exbe
-              pg.ey[il:iu]=Eybe
-              pg.ez[il:iu]=0.
-            else:
-              pg.ex[il:iu]=0.
-              pg.ey[il:iu]=0.
-              pg.ez[il:iu]=0.
-              fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np,0.,top.efetch[js])
-            if self.l_verbose:print me,top.it,self.iz,'me = ',me,';epush'
-            epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
-                    pg.ex[il:iu],pg.ey[il:iu],pg.ez[il:iu],pg.sq[js],pg.sm[js],0.5*self.dt)
-            gammaadv(np,pg.gaminv[il:iu],pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
-                     top.gamadv,top.lrelativ)
-            if self.l_verbose:print me,top.it,self.iz,'me = ',me,';xpush'
-#            xe=getx(bcast=0,gather=0,pgroup=self.pgelec);ye=gety(bcast=0,gather=0,pgroup=self.pgelec)
-#            print 'peb:iz,xe,ye',self.iz,ave(xe),std(xe),ave(ye),std(ye)
-            if self.l_freeze_xelec:
-              xpush3d(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
-                      pg.uxp[il:iu]*0.,pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],self.dt)
-            else:
-              xpush3d(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
-                      pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],self.dt)
-#            xe=getx(bcast=0,gather=0,pgroup=self.pgelec);ye=gety(bcast=0,gather=0,pgroup=self.pgelec)
-#            print 'pea:iz,xe,ye',self.iz,ave(xe),std(xe),ave(ye),std(ye)
-            pg.zp[il:iu]-=w3d.dz
-#            pli(frz.basegrid.phi);refresh()
-#            ppxy(pgroup=pg,js=js,color=red,msize=2);refresh()
-#            window(3);ppzvx(js=1,msize=2);window(0)
-          if self.l_verbose:print me,top.it,self.iz,'me = ',me,';stckxy3d'
-          stckxy3d(top.pgroup,js,top.zbeam,true)
-          il = pg.ins[js]-1
-          iu = pg.ins[js]-1+pg.nps[js]
-          partbndwithdata(pg.nps[js],pg.xp[il:iu],pg.uxp[il:iu],pg.gaminv[il:iu],
-                          w3d.xmmax,w3d.xmmin,0.,
-                          top.pboundxy,top.pboundxy)
-          partbndwithdata(pg.nps[js],pg.yp[il:iu],pg.uyp[il:iu],pg.gaminv[il:iu],
-                          w3d.ymmax,w3d.ymmin,0.,
-                          top.pboundxy,top.pboundxy)
-          if self.scraper is not None:
-            self.scraper.scrapeall(local=1,clear=1)
-          else:
-            processlostpart(top.pgroup,js+1,top.clearlostpart,top.time+self.dt*top.pgroup.ndts[js],top.zbeam)
-          top.npslost=0
-          ng = 1+pg.nps[js]/self.nparpgrp
-          for ig in range(ng):
-            il = pg.ins[js]-1+self.nparpgrp*ig
-            iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
-            np = iu-il
-            if np==0:continue
-            if self.l_verbose:print me,top.it,self.iz,'me = ',me,';fieldweight' # MR OK
-            if self.l_beam_1d:
-              Lambda = self.pgions.sw[self.iz]*self.pgions.sq[self.iz]/w3d.dz
-              x0 = self.pgions.xp[self.iz]
-              y0 = self.pgions.yp[self.iz]
-              sigmax = self.sigmax[self.iz]
-              sigmay = self.sigmay[self.iz]
-              Exbe, Eybe = Bassetti_Erskine(Lambda,pg.xp[il:iu],pg.yp[il:iu],x0,y0,sigmax,sigmay)
-              pg.ex[il:iu]=Exbe
-              pg.ey[il:iu]=Eybe
-              pg.ez[il:iu]=0.
-            else:
-              pg.ex[il:iu]=0.
-              pg.ey[il:iu]=0.
-              pg.ez[il:iu]=0.
-              fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np,top.zgrid,top.efetch[js])
-#            fetche3d(pg,il+1,np,js+1)
-            if self.l_verbose:print me,top.it,self.iz,'me = ',me,';epush'
-            epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
-                    pg.ex[il:iu],pg.ey[il:iu],pg.ez[il:iu],pg.sq[js],pg.sm[js],0.5*self.dt)
-            gammaadv(np,pg.gaminv[il:iu],pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
-                     top.gamadv,top.lrelativ)
-            if self.l_bfield:
-              if self.l_verbose:print me,top.it,self.iz,'me = ',me,';bpush'
-              bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                          bx0[:np], by0[:np], bz0[:np], pg.sq[js],pg.sm[js],0.5*self.dt, top.ibpush)
-       if self.l_verbose:print me,top.it,self.iz,'exit push_electrons'
-
-
   def sort_ions_along_z(self):
     if self.l_verbose:print me,top.it,self.iz,'enter sort_ions_along_z'
     if not self.fullsortdone:
@@ -1625,7 +1659,7 @@ class Quasistatic(SubcycledPoissonSolver):
 
       # --- apply transverse electric field kick
       if self.Ekick<>0.:
-        if (top.it-(npes-me))%self.maps.nstations==0:
+        if self.Bkick==self.bucketid and (top.it-(npes-me))%self.maps.nstations==0:
           E = self.Ekick
           if self.Akick is not None:
             E *= self.Akick[int(self.mystation[js]/self.maps.nstations)]
@@ -1667,7 +1701,9 @@ class Quasistatic(SubcycledPoissonSolver):
                       top.pbound0,top.pboundnz)
       if js==0:top.pboundnz=0
       if js==w3d.nzp-1:top.pbound0=0
-    if self.scraper is not None:self.scraper.scrape(js)
+    if self.scraper is not None:
+      self.scraper.updategrid()
+      self.scraper.scrape(js)
     processlostpart(pg,js+1,top.clearlostpart,top.time+top.dt*pg.ndts[js],top.zbeam)
     if self.l_verbose:print me,top.it,self.iz,'enter apply_bnd_conditions'
 
@@ -1693,6 +1729,11 @@ class Quasistatic(SubcycledPoissonSolver):
       mpi.send(tosend,me-1)
     pg.nps[0]=0      
     if lparallel and me<npes-1:
+      if self.l_posinst_track_electrons:
+        pos.nlast=0
+        pp_pos2warp(0)
+        pos.time=0.
+        pos.tbirth[:]=0.
       self.recved,status = mpi.recv(me+1)
       np=self.recved[0]
       if np>0:
@@ -1745,12 +1786,16 @@ class Quasistatic(SubcycledPoissonSolver):
      if self.l_verbose:print me,top.it,self.iz,'enter create_electrons'
      pg = self.pgelec
      top.pgroup = self.pgelec
+     if self.l_posinst_track_electrons:
+       pp_pos2warp(0)
+       pos.time=0.
+       pos.tbirth[:]=0.
      # --- generate electrons (on last processor only)
      pg.nps[0]=0
      if self.l_mode==2:
        zmax = w3d.zmmax/2+top.zgrid
      else:
-       zmax = w3d.zmmax-1.e-10*w3d.dz+top.zgrid
+       zmax = self.zmmaxlocal-1.e-10*w3d.dz+top.zgrid
      if self.xinitelec is not None: 
        if self.winitelec is None:
          weight=1.
@@ -1838,9 +1883,147 @@ class Quasistatic(SubcycledPoissonSolver):
       distribute_rho_rz()
       if self.l_verbose:print me,top.it,self.iz,'exit deposit_electrons'
 
+  def push_electrons(self):
+       if self.l_verbose:print me,top.it,self.iz,'enter push_electrons'
+       pg = self.pgelec
+       top.pgroup = self.pgelec
+       frz.basegrid = self.gridions[1]
+       mk_grids_ptr()
+       if top.bx0<>0. or top.by0<>0.:
+         bx0 = ones(self.nparpgrp,'d')*top.bx0
+         by0 = ones(self.nparpgrp,'d')*top.by0
+         bz0 = ones(self.nparpgrp,'d')*top.bz0
+         self.l_bfield=1
+       else:
+         self.l_bfield=0
+       # --- loop over species list
+       for sp in [self.electrons]:
+        # --- loop over species index
+        for js in sp.jslist:
+          ng = 1+pg.nps[js]/self.nparpgrp
+          if pg.nps[js]==0:continue
+          for ig in range(ng):
+            il = pg.ins[js]-1+self.nparpgrp*ig
+            iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
+            np = iu-il
+            if np==0:continue
+            # --- gather self-forces
+            if self.l_bfield:
+              if self.l_verbose:print me,top.it,self.iz,'me = ',me,';bpush'
+              bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                          bx0[:np], by0[:np], bz0[:np], pg.sq[js],pg.sm[js],0.5*self.dt, top.ibpush)
+            if self.l_verbose:print me,top.it,self.iz,'me = ',me,';fieldweight' # MR OK
+            if self.l_beam_1d:
+              Lambda = self.pgions.sw[self.iz]*self.pgions.sq[self.iz]/w3d.dz
+              x0 = self.pgions.xp[self.iz]
+              y0 = self.pgions.yp[self.iz]
+              sigmax = self.sigmax[self.iz]
+              sigmay = self.sigmay[self.iz]
+              Exbe, Eybe = Bassetti_Erskine(Lambda,pg.xp[il:iu],pg.yp[il:iu],x0,y0,sigmax,sigmay)
+              pg.ex[il:iu]=Exbe
+              pg.ey[il:iu]=Eybe
+              pg.ez[il:iu]=0.
+            else:
+              pg.ex[il:iu]=0.
+              pg.ey[il:iu]=0.
+              pg.ez[il:iu]=0.
+              fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np,0.,top.efetch[js])
+            if self.l_verbose:print me,top.it,self.iz,'me = ',me,';epush'
+            epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+                    pg.ex[il:iu],pg.ey[il:iu],pg.ez[il:iu],pg.sq[js],pg.sm[js],0.5*self.dt)
+            gammaadv(np,pg.gaminv[il:iu],pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+                     top.gamadv,top.lrelativ)
+            if self.l_verbose:print me,top.it,self.iz,'me = ',me,';xpush'
+#            xe=getx(bcast=0,gather=0,pgroup=self.pgelec);ye=gety(bcast=0,gather=0,pgroup=self.pgelec)
+#            print 'peb:iz,xe,ye',self.iz,ave(xe),std(xe),ave(ye),std(ye)
+            if not self.l_posinst_track_electrons:
+              if self.l_freeze_xelec:
+                xpush3d(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
+                        pg.uxp[il:iu]*0.,pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],self.dt)
+              else:
+                xpush3d(np,pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
+                        pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],self.dt)
+#            xe=getx(bcast=0,gather=0,pgroup=self.pgelec);ye=gety(bcast=0,gather=0,pgroup=self.pgelec)
+#            print 'pea:iz,xe,ye',self.iz,ave(xe),std(xe),ave(ye),std(ye)
+            pg.zp[il:iu]-=w3d.dz
+#            pli(frz.basegrid.phi);refresh()
+#            ppxy(pgroup=pg,js=js,color=red,msize=2);refresh()
+#            window(3);ppzvx(js=1,msize=2);window(0)
+
+          if self.l_gas_ionization:
+            pgbf=self.pgelec.nps.copy()
+            self.ioniz[self.iz].generate(dt=self.dt)
+
+          if not self.l_posinst_track_electrons:
+            if self.scraper is not None:
+#              top.ns=self.pgelec.ns
+#              gchange('LostParticles')
+              self.scraper.scrapeall(local=1,clear=self.sec is None)
+              if self.sec is not None:
+                self.sec.generate(local=1,l_accumulate_hist=0)
+#                processlostpart(top.pgroup,js+1,top.clearlostpart,top.time+self.dt*top.pgroup.ndts[js],top.zbeam)
+            if 1: 
+              if self.l_verbose:print me,top.it,self.iz,'me = ',me,';stckxy3d'
+              stckxy3d(top.pgroup,js,top.zbeam,true)
+              il = pg.ins[js]-1
+              iu = pg.ins[js]-1+pg.nps[js]
+              partbndwithdata(pg.nps[js],pg.xp[il:iu],pg.uxp[il:iu],pg.gaminv[il:iu],
+                              w3d.xmmax,w3d.xmmin,0.,
+                              top.pboundxy,top.pboundxy)
+              partbndwithdata(pg.nps[js],pg.yp[il:iu],pg.uyp[il:iu],pg.gaminv[il:iu],
+                              w3d.ymmax,w3d.ymmin,0.,
+                              top.pboundxy,top.pboundxy)
+              processlostpart(top.pgroup,js+1,top.clearlostpart,top.time+self.dt*top.pgroup.ndts[js],top.zbeam)
+ #             top.ns=self.pgions.ns
+ #             gchange('LostParticles')
+          else: # track electrons with Posinst
+            pp_warp2pos()
+            pos.dtim=self.dt
+            reset_tl(self.dt)
+            pos.bfield=top.by0
+            pos.om0=(clight**2/emass)*pos.bfield
+            pytrack_electrons()
+            pos.time+=self.dt
+            pp_pos2warp(0)
+          top.npslost=0
+          ng = 1+pg.nps[js]/self.nparpgrp
+          for ig in range(ng):
+            il = pg.ins[js]-1+self.nparpgrp*ig
+            iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
+            np = iu-il
+            if np==0:continue
+            if self.l_verbose:print me,top.it,self.iz,'me = ',me,';fieldweight' # MR OK
+            if self.l_beam_1d:
+              Lambda = self.pgions.sw[self.iz]*self.pgions.sq[self.iz]/w3d.dz
+              x0 = self.pgions.xp[self.iz]
+              y0 = self.pgions.yp[self.iz]
+              sigmax = self.sigmax[self.iz]
+              sigmay = self.sigmay[self.iz]
+              Exbe, Eybe = Bassetti_Erskine(Lambda,pg.xp[il:iu],pg.yp[il:iu],x0,y0,sigmax,sigmay)
+              pg.ex[il:iu]=Exbe
+              pg.ey[il:iu]=Eybe
+              pg.ez[il:iu]=0.
+            else:
+              pg.ex[il:iu]=0.
+              pg.ey[il:iu]=0.
+              pg.ez[il:iu]=0.
+              fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np,top.zgrid,top.efetch[js])
+#            fetche3d(pg,il+1,np,js+1)
+            if self.l_verbose:print me,top.it,self.iz,'me = ',me,';epush'
+            epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+                    pg.ex[il:iu],pg.ey[il:iu],pg.ez[il:iu],pg.sq[js],pg.sm[js],0.5*self.dt)
+            gammaadv(np,pg.gaminv[il:iu],pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+                     top.gamadv,top.lrelativ)
+            if self.l_bfield:
+              if self.l_verbose:print me,top.it,self.iz,'me = ',me,';bpush'
+              bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                          bx0[:np], by0[:np], bz0[:np], pg.sq[js],pg.sm[js],0.5*self.dt, top.ibpush)
+       if self.l_verbose:print me,top.it,self.iz,'exit push_electrons'
+
   def add_ei_fields(self,i=1):
     if self.l_verbose:print me,top.it,self.iz,'enter add_ei_fields'
     if self.l_selfi:self.getselfb(i)
+    
     if self.l_selfe:
         ge = self.gridelecs[i]
         gi = self.gridions[i]
@@ -2467,32 +2650,32 @@ class Quasistatic(SubcycledPoissonSolver):
       yypz = self.gatherarray(transpose(self.yypbarz.data()[:n,:])/pnumz)
     return sqrt(abs((y2z-ybarz*ybarz)*(yp2z-ypbarz*ypbarz)-(yypz-ybarz*ypbarz)**2))
 
-  def getrhoe(self):
+  def getrhoe(self,i=0):
     if me==0:
-      rhoe=transpose(self.rhoe)
+      rhoe=transpose(self.rhoe[i])
     else:
-      rhoe=transpose(self.rhoe[:,:,1:])
+      rhoe=transpose(self.rhoe[i][:,:,1:])
     return transpose(gatherarray(rhoe))
       
   def getrhoi(self):
     if me==0:
-      rhoi=transpose(self.rhoi)
+      rhoi=transpose(self.rhoi[i])
     else:
-      rhoi=transpose(self.rhoi[:,:,1:])
+      rhoi=transpose(self.rhoi[i][:,:,1:])
     return transpose(gatherarray(rhoi))
       
   def getphie(self):
     if me==0:
-      phie=transpose(self.phie)
+      phie=transpose(self.phie[i])
     else:
-      phie=transpose(self.phie[:,:,1:])
+      phie=transpose(self.phie[i][:,:,1:])
     return transpose(gatherarray(phie))
       
   def getphii(self):
     if me==0:
-      phii=transpose(self.phii)
+      phii=transpose(self.phii[i])
     else:
-      phii=transpose(self.phii[:,:,1:])
+      phii=transpose(self.phii[i][:,:,1:])
     return transpose(gatherarray(phii))
       
   def plfrac(self,color=black,width=1,type='solid',xscale=1.,yscale=1.):  
