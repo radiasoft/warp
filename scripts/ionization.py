@@ -10,7 +10,7 @@ try:
 except:
   l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.15 2009/11/18 22:20:08 jlvay Exp $"
+ionization_version = "$Id: ionization.py,v 1.16 2010/04/20 22:31:34 jlvay Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -77,11 +77,13 @@ Class for generating particles from impact ionization.
     self.install()
 
   def add(self,incident_species,emitted_species,cross_section=None,
-          target_species=None,ndens=None,emitted_energy0=0.,emitted_energy_sigma=0.):
+          target_species=None,ndens=None,emitted_energy0=0.,emitted_energy_sigma=0.,
+          incident_pgroup=top.pgroup,target_pgroup=top.pgroup,emitted_pgroup=top.pgroup):
     if not self.inter.has_key(incident_species):
         self.inter[incident_species]={}
         for key in ['target_species','emitted_species','cross_section','ndens',
-                    'remove_incident','remove_target','emitted_energy0','emitted_energy_sigma']:
+                    'remove_incident','remove_target','emitted_energy0','emitted_energy_sigma',
+                    'incident_pgroup','target_pgroup','emitted_pgroup']:
           self.inter[incident_species][key]=[]
     if type(emitted_species)<>type([]):emitted_species=[emitted_species]
     self.inter[incident_species]['target_species']  +=[target_species]
@@ -101,6 +103,9 @@ Class for generating particles from impact ionization.
       self.inter[incident_species]['remove_target']+=[0]
     self.inter[incident_species]['emitted_energy0']   +=[emitted_energy0]
     self.inter[incident_species]['emitted_energy_sigma']   +=[emitted_energy_sigma]
+    self.inter[incident_species]['incident_pgroup']=incident_pgroup
+    self.inter[incident_species]['target_pgroup']  =target_pgroup
+    self.inter[incident_species]['emitted_pgroup'] =emitted_pgroup
     if target_species is not None:
       if not self.target_dens.has_key(target_species):
         self.target_dens[target_species]={}
@@ -111,51 +116,60 @@ Class for generating particles from impact ionization.
       
     for e in emitted_species:
       js=e.jslist[0]
-      if not self.x.has_key(js):
-        self.nps[js]=0
-        self.x[js]=fzeros(self.npmax,'d')
-        self.y[js]=fzeros(self.npmax,'d')
-        self.z[js]=fzeros(self.npmax,'d')
-        self.ux[js]=fzeros(self.npmax,'d')
-        self.uy[js]=fzeros(self.npmax,'d')
-        self.uz[js]=fzeros(self.npmax,'d')
-        self.gi[js]=fzeros(self.npmax,'d')
+      if not self.x.has_key(emitted_pgroup):
+        self.nps[emitted_pgroup]={}
+        self.x[emitted_pgroup]={}
+        self.y[emitted_pgroup]={}
+        self.z[emitted_pgroup]={}
+        self.ux[emitted_pgroup]={}
+        self.uy[emitted_pgroup]={}
+        self.uz[emitted_pgroup]={}
+        self.gi[emitted_pgroup]={}
+      if not self.x[emitted_pgroup].has_key(js):
+        self.nps[emitted_pgroup][js]=0
+        self.x[emitted_pgroup][js]=fzeros(self.npmax,'d')
+        self.y[emitted_pgroup][js]=fzeros(self.npmax,'d')
+        self.z[emitted_pgroup][js]=fzeros(self.npmax,'d')
+        self.ux[emitted_pgroup][js]=fzeros(self.npmax,'d')
+        self.uy[emitted_pgroup][js]=fzeros(self.npmax,'d')
+        self.uz[emitted_pgroup][js]=fzeros(self.npmax,'d')
+        self.gi[emitted_pgroup][js]=fzeros(self.npmax,'d')
 
   def install(self):
     if not isinstalleduserinjection(self.generate):
       installuserinjection(self.generate)
 
-  def addpart(self,nn,x,y,z,ux,uy,uz,gi,js):
+  def addpart(self,nn,x,y,z,ux,uy,uz,gi,pg,js):
     ilf=0
-    while self.nps[js]+nn>self.npmax:
-      il=self.nps[js]
+    while self.nps[pg][js]+nn>self.npmax:
+      il=self.nps[pg][js]
       iu=min(il+nn,self.npmax)
       nf=iu-il
-      self.x [js][il:iu]= x[ilf:ilf+nf]
-      self.y [js][il:iu]= y[ilf:ilf+nf]
-      self.z [js][il:iu]= z[ilf:ilf+nf]
-      self.ux[js][il:iu]=ux[ilf:ilf+nf]
-      self.uy[js][il:iu]=uy[ilf:ilf+nf]
-      self.uz[js][il:iu]=uz[ilf:ilf+nf]
-      self.gi[js][il:iu]=gi[ilf:ilf+nf]
-      self.nps[js]+=nf
-      self.flushpart(js)
+      self.x [pg][js][il:iu]= x[ilf:ilf+nf]
+      self.y [pg][js][il:iu]= y[ilf:ilf+nf]
+      self.z [pg][js][il:iu]= z[ilf:ilf+nf]
+      self.ux[pg][js][il:iu]=ux[ilf:ilf+nf]
+      self.uy[pg][js][il:iu]=uy[ilf:ilf+nf]
+      self.uz[pg][js][il:iu]=uz[ilf:ilf+nf]
+      self.gi[pg][js][il:iu]=gi[ilf:ilf+nf]
+      self.nps[pg][js]+=nf
+      self.flushpart(pg,js)
       ilf+=nf
       nn-=nf
-    il=self.nps[js]
+    il=self.nps[pg][js]
     iu=il+nn
-    self.x [js][il:iu]=x [ilf:]
-    self.y [js][il:iu]=y [ilf:]
-    self.z [js][il:iu]=z [ilf:]
-    self.ux[js][il:iu]=ux[ilf:]
-    self.uy[js][il:iu]=uy[ilf:]
-    self.uz[js][il:iu]=uz[ilf:]
-    self.gi[js][il:iu]=gi[ilf:]
-    self.nps[js]+=nn
+    self.x [pg][js][il:iu]=x [ilf:]
+    self.y [pg][js][il:iu]=y [ilf:]
+    self.z [pg][js][il:iu]=z [ilf:]
+    self.ux[pg][js][il:iu]=ux[ilf:]
+    self.uy[pg][js][il:iu]=uy[ilf:]
+    self.uz[pg][js][il:iu]=uz[ilf:]
+    self.gi[pg][js][il:iu]=gi[ilf:]
+    self.nps[pg][js]+=nn
       
-  def flushpart(self,js):
-      if self.nps[js]>0:
-         nn=self.nps[js]
+  def flushpart(self,pg,js):
+      if self.nps[pg][js]>0:
+         nn=self.nps[pg][js]
 #         condition = (self.x[js][:nn]>w3d.xmmin) & (self.x[js][:nn]<w3d.xmmax) & \
 #                     (self.y[js][:nn]>w3d.ymmin) & (self.y[js][:nn]<w3d.ymmax) & \
 #                     (self.z[js][:nn]>w3d.zmminlocal) & (self.z[js][:nn]<w3d.zmmaxlocal)
@@ -168,16 +182,17 @@ Class for generating particles from impact ionization.
 #           f.z=self.z[js][:nn]
 #           f.close()
 #           raise('')
-         addparticles(x=self.x[js][:nn],
-                      y=self.y[js][:nn],
-                      z=self.z[js][:nn],
-                      vx=self.ux[js][:nn],
-                      vy=self.uy[js][:nn],
-                      vz=self.uz[js][:nn],
-                      gi=self.gi[js][:nn],
+         addparticles(x=self.x[pg][js][:nn],
+                      y=self.y[pg][js][:nn],
+                      z=self.z[pg][js][:nn],
+                      vx=self.ux[pg][js][:nn],
+                      vy=self.uy[pg][js][:nn],
+                      vz=self.uz[pg][js][:nn],
+                      gi=self.gi[pg][js][:nn],
                       lmomentum=True,
+                      pgroup=pg,
                       js=js)
-         self.nps[js]=0
+         self.nps[pg][js]=0
 
   def printall(self,l_cgm=0):
     swidth=0
@@ -242,16 +257,20 @@ Class for generating particles from impact ionization.
 
 #printall(io,l_cgm=1)
 
-  def generate(self):
+  def generate(self,dt=None):
+    if dt is None:dt=top.dt
     if self.l_timing:t1 = time.clock()
     for target_species in self.target_dens.keys():
       self.target_dens[target_species]['ndens_updated']=0    
     for incident_species in self.inter.keys():
       npinc = 0
       ispushed=0
+      ipg=self.inter[incident_species]['incident_pgroup']
+      tpg=self.inter[incident_species]['target_pgroup']
+      epg=self.inter[incident_species]['emitted_pgroup']
       for js in incident_species.jslist:
-        npinc+=top.pgroup.nps[js]
-        if top.pgroup.ldts[js]:ispushed=1
+        npinc+=ipg.nps[js]
+        if ipg.ldts[js]:ispushed=1
       if npinc==0 or not ispushed:continue
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
         ndens=self.inter[incident_species]['ndens'][it]
@@ -265,16 +284,16 @@ Class for generating particles from impact ionization.
           ndens = self.target_dens[target_species]['ndens']
           nptarget=0
           for jstarget in target_species.jslist:
-            nptarget+=top.pgroup.nps[jstarget]
+            nptarget+=tpg.nps[jstarget]
           if nptarget==0:continue
           self.ndensc[...]=0.
           ndens[...]=0.
           for jstarget in target_species.jslist:
-            i1 = top.pgroup.ins[jstarget] - 1
-            i2 = top.pgroup.ins[jstarget] + top.pgroup.nps[jstarget] - 1
-            xt=top.pgroup.xp[i1:i2]
-            yt=top.pgroup.yp[i1:i2]
-            zt=top.pgroup.zp[i1:i2]
+            i1 = tpg.ins[jstarget] - 1
+            i2 = tpg.ins[jstarget] + tpg.nps[jstarget] - 1
+            xt=tpg.xp[i1:i2]
+            yt=tpg.yp[i1:i2]
+            zt=tpg.zp[i1:i2]
             fact=1.
             if w3d.l4symtry:
               xt=abs(xt)
@@ -282,8 +301,8 @@ Class for generating particles from impact ionization.
             elif w3d.l2symtry:
               fact=0.5
             if w3d.l2symtry or w3d.l4symtry:yt=abs(yt)
-            deposgrid3d(1,top.pgroup.nps[jstarget],xt,yt,zt,
-                        top.pgroup.sw[jstarget]*self.invvol*fact*ones(top.pgroup.nps[jstarget],'d'),
+            deposgrid3d(1,tpg.nps[jstarget],xt,yt,zt,
+                        tpg.sw[jstarget]*self.invvol*fact*ones(tpg.nps[jstarget],'d'),
                         self.nx,self.ny,self.nz,ndens,self.ndensc,
                         self.xmin,self.xmax,self.ymin,self.ymax,
                         self.zmin,self.zmax)    
@@ -294,23 +313,26 @@ Class for generating particles from impact ionization.
     for incident_species in self.inter.keys():
       npinc = 0
       ispushed=0
+      ipg=self.inter[incident_species]['incident_pgroup']
+      tpg=self.inter[incident_species]['target_pgroup']
+      epg=self.inter[incident_species]['emitted_pgroup']
       for js in incident_species.jslist:
-        npinc+=top.pgroup.nps[js]
-        if top.pgroup.ldts[js]:ispushed=1
+        npinc+=ipg.nps[js]
+        if ipg.ldts[js]:ispushed=1
       if npinc==0 or not ispushed:continue
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
         ndens=self.inter[incident_species]['ndens'][it]
         for js in incident_species.jslist:
-          i1 = top.pgroup.ins[js] - 1 + top.it%self.stride
-          i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
-          xi=top.pgroup.xp[i1:i2:self.stride]#.copy()
-          yi=top.pgroup.yp[i1:i2:self.stride]#.copy()
-          zi=top.pgroup.zp[i1:i2:self.stride]#.copy()
+          i1 = ipg.ins[js] - 1 + top.it%self.stride
+          i2 = ipg.ins[js] + ipg.nps[js] - 1
+          xi=ipg.xp[i1:i2:self.stride]#.copy()
+          yi=ipg.yp[i1:i2:self.stride]#.copy()
+          zi=ipg.zp[i1:i2:self.stride]#.copy()
           ni = shape(xi)[0]
-          gaminvi=top.pgroup.gaminv[i1:i2:self.stride].copy()
-          uxi=top.pgroup.uxp[i1:i2:self.stride].copy()
-          uyi=top.pgroup.uyp[i1:i2:self.stride].copy()
-          uzi=top.pgroup.uzp[i1:i2:self.stride].copy()
+          gaminvi=ipg.gaminv[i1:i2:self.stride].copy()
+          uxi=ipg.uxp[i1:i2:self.stride].copy()
+          uyi=ipg.uyp[i1:i2:self.stride].copy()
+          uzi=ipg.uzp[i1:i2:self.stride].copy()
           # --- get velocity in lab frame if using a boosted frame of reference
           if top.boost_gamma>1.:
             uzboost = clight*sqrt(top.boost_gamma**2-1.)
@@ -350,7 +372,7 @@ Class for generating particles from impact ionization.
             cross_section = txionpack.get_sigma_impact_array(vi, gastype, incident)
 
           # probability
-          ncol = dp*cross_section*vi*top.dt*top.pgroup.ndts[js]*self.stride
+          ncol = dp*cross_section*vi*dt*ipg.ndts[js]*self.stride
           if top.boost_gamma>1.:ncol*=top.gammabar_lab/top.gammabar
           l_ionization_projectile=0
           if self.inter[incident_species]['remove_incident'][it]:
@@ -366,13 +388,12 @@ Class for generating particles from impact ionization.
             uynew = uyi
             uznew = uzi
             # if projectile is modified, then need to delete it
-            put(top.pgroup.gaminv,array(io)*self.stride+i1,0.)
+            put(ipg.gaminv,array(io)*self.stride+i1,0.)
           xnew = xi
           ynew = yi
           znew = zi
           ifg = 0
           while(nnew>0):
-            #print nnew
             xnewp = take(xnew,io)
             ynewp = take(ynew,io)
             znewp = take(znew,io)
@@ -391,8 +412,11 @@ Class for generating particles from impact ionization.
 #                uznew = zeros(nnew,float64)+1.e-10
                  ek0ionel = self.inter[incident_species]['emitted_energy0'][it]
                  esigionel = self.inter[incident_species]['emitted_energy_sigma'][it]
-                 ek=SpRandom(0.,esigionel,nnew)+ek0ionel	#kinetic energy
-                 ek=abs(ek)
+                 if esigionel==0.:
+                   ek = zeros(nnew)
+                 else:
+                   ek =SpRandom(0.,esigionel,nnew)	#kinetic energy
+                 ek=abs(ek+ek0ionel)	#kinetic energy
                  fact = echarge/(emass*clight**2)
                  gamma=ek*fact+1.		
                  u=clight*sqrt(ek*fact*(gamma+1.))	
@@ -417,17 +441,18 @@ Class for generating particles from impact ionization.
 
               if self.l_verbose:print 'add ',nnew, emitted_species.name,' from by impact ionization:',incident_species.name,'+',target_species.name 
               if self.inter[incident_species]['remove_incident'][it] and (emitted_species.type is incident_species.type):
-                self.addpart(nnew,xnewp,ynewp,znewp,uxnew,uynew,uznew,ginew,emitted_species.jslist[0])
+                self.addpart(nnew,xnewp,ynewp,znewp,uxnew,uynew,uznew,ginew,epg,emitted_species.jslist[0])
               else:
-                self.addpart(nnew,xnew,ynew,znew,uxnew,uynew,uznew,ginew,emitted_species.jslist[0])
+                self.addpart(nnew,xnew,ynew,znew,uxnew,uynew,uznew,ginew,epg,emitted_species.jslist[0])
             ncoli=take(ncoli,io)-1
             io=compress(ncoli>0,arange(nnew))
             nnew = len(io)
                                            
     # make sure that all particles are added and cleared 
-    for js in self.x.keys():
-      self.flushpart(js)
-      processlostpart(top.pgroup,js+1,top.clearlostpart,top.time,top.zbeam)
+    for pg in self.x.keys():
+      for js in self.x[pg].keys():
+        self.flushpart(pg,js)
+        processlostpart(pg,js+1,top.clearlostpart,top.time,top.zbeam)
                        
     if self.l_timing:print 'time ionization = ',time.clock()-t1,'s'
 
