@@ -10088,7 +10088,77 @@ REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
 return
 END subroutine add_subgrid
 
-subroutine add_patch(id,rmini,rmax,zmini,zmax,refr,refz,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
+subroutine add_transit(ntlo, nthi, xmin, xmax, nx, ref, dxparent, xminparent, xmaxparent)
+  implicit none
+  integer(ISZ), intent(inout) :: ntlo,nthi,ref
+  real(8), intent(in) :: dxparent, xminparent, xmaxparent
+  integer(ISZ), intent(inout) :: nx
+  real(8), intent(inout) :: xmin, xmax
+  
+!  integer(ISZ) :: ntl,nth
+  real(8) :: xmin_try, xmax_try
+  
+      xmin_try = xmin-ntlo*dxparent
+      xmax_try = xmax+nthi*dxparent
+      ntlo  = min(ntlo, max(0,ntlo-nint((xminparent-xmin_try)/dxparent)))
+      nthi  = min(nthi, max(0,nthi-nint((xmax_try-xmaxparent)/dxparent)))
+      xmin = xmin - ntlo*dxparent
+      xmax = xmax + nthi*dxparent
+      nx   = nx + ref*(ntlo+nthi)
+
+end subroutine add_transit
+
+subroutine add_patch(id,rmini,rmaxi,zmini,zmaxi,refr,refz,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
+USE multigridrz
+implicit none
+INTEGER(ISZ), INTENT(IN) :: id,refr,refz,transit_min_r,transit_max_r,transit_min_z,transit_max_z
+REAL(8), INTENT(IN) :: rmini,rmaxi,zmini,zmaxi
+
+integer(ISZ) :: jmin,jmax,lmin,lmax,nr,nz
+real(8) :: rmin,zmin,rmax,zmax,dr,dz
+TYPE(GRIDtype), pointer :: mothergrid
+
+  IF(id<1 .or. id>ngrids) then
+    write(o_line,*) 'Fatal error in add_subgrid: id = ', id ,' WHILE id = (1,..,',ngrids,')'
+    call kaboom(trim(o_line))
+    return
+  END if
+
+! adjust new grid boundaries to fall onto mother grid lines
+! and recalculate mesh spacing for new grid
+
+  mothergrid => grids_ptr(id)%grid
+
+  rmin = max(rmini,mothergrid%rmin)
+  rmax = min(rmaxi,mothergrid%rmax)
+  zmin = max(zmini,mothergrid%zmin)
+  zmax = min(zmaxi,mothergrid%zmax)
+  
+  jmin = 1 + floor(   (rmin-mothergrid%rmin) / mothergrid%dr)
+  jmax = 1 + ceiling( (rmax-mothergrid%rmin) / mothergrid%dr)
+  lmin = 1 + floor(   (zmin-mothergrid%zmin) / mothergrid%dz)
+  lmax = 1 + ceiling( (zmax-mothergrid%zmin) / mothergrid%dz)
+  
+  rmin = mothergrid%rmin + (jmin-1) * mothergrid%dr 
+  zmin = mothergrid%zmin + (lmin-1) * mothergrid%dz
+  rmax = mothergrid%rmin + (jmax-1) * mothergrid%dr 
+  zmax = mothergrid%zmin + (lmax-1) * mothergrid%dz
+  
+  nr = (jmax-jmin)*refr
+  nz = (lmax-lmin)*refz
+
+  call add_transit(transit_min_r,transit_max_r,rmin,rmax,nr,refr,mothergrid%dr,mothergrid%rmin,mothergrid%rmax)
+  call add_transit(transit_min_z,transit_max_z,zmin,zmax,nz,refz,mothergrid%dz,mothergrid%zmin,mothergrid%zmax)
+
+  dr = mothergrid%dr / refr
+  dz = mothergrid%dz / refz
+  
+  call add_grid(grids_ptr(id)%grid,nr,nz,dr,dz,rmin,zmin,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
+
+return
+END subroutine add_patch
+
+subroutine add_patchold(id,rmini,rmax,zmini,zmax,refr,refz,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: id,refr,refz,transit_min_r,transit_max_r,transit_min_z,transit_max_z
@@ -10126,7 +10196,7 @@ TYPE(GRIDtype), pointer :: mothergrid
   call add_grid(grids_ptr(id)%grid,nr,nz,dr,dz,rmin,zmin,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
 
 return
-END subroutine add_patch
+END subroutine add_patchold
 
 subroutine del_subgrid(id)
 USE multigridrz
