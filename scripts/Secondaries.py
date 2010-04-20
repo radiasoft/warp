@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.50 2010/03/01 20:03:55 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.51 2010/04/20 22:32:53 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -56,7 +56,7 @@ Class for generating secondaries
   """
   def __init__(self,isinc=None,conductors=None,issec=None,set_params_user=None,material=None,
                     xoldpid=None,yoldpid=None,zoldpid=None,min_age=None,vmode=1,l_verbose=0,
-                    l_set_params_user_only=0,lcallscrapercontrollers=0,l_trackssnparents=0):
+                    l_set_params_user_only=0,lcallscrapercontrollers=0,l_trackssnparents=0,l_usenew=0):
     self.totalcount = 0
     self.totallost = 0
     top.lresetlostpart=true
@@ -68,7 +68,8 @@ Class for generating secondaries
 #    self.type = type
     self.vmode=vmode
     self.l_verbose=l_verbose
-    self.l_record_timing=0
+    self.l_record_timing=1
+    if self.l_record_timing:self.timings=[]
     self.lcallscrapercontrollers = lcallscrapercontrollers
     self.l_trackssnparents=l_trackssnparents
 #    self.condids={}
@@ -83,6 +84,7 @@ Class for generating secondaries
       if top.tpid==0:
         top.tpid=nextpid()
         setuppgroup(top.pgroup)
+    self.l_usenew=l_usenew
     self.install()
     if xoldpid is None:
       self.xoldpid=top.npid-3
@@ -235,8 +237,12 @@ Class for generating secondaries
   def install(self):
     # --- The secondaries should be created immediately after particles
     # --- are scraped.
-    if not isinstalledafterscraper(self.generate):
-      installafterscraper(self.generate)
+    if self.l_usenew:
+      if not isinstalledafterscraper(self.generatenew):
+        installafterscraper(self.generatenew)
+    else:
+      if not isinstalledafterscraper(self.generate):
+        installafterscraper(self.generate)
 
   def addpart(self,nn,x,y,z,ux,uy,uz,js,weight=None,itype=None,ssnparent=None):
     if self.nps[js]+nn>self.npmax[js]:self.flushpart(js)
@@ -256,6 +262,27 @@ Class for generating secondaries
     if itype is not None:self.pid[js][il:iu,self.piditype]=itype.astype(float64)
     if ssnparent is not None:self.pid[js][il:iu,top.sppid-1]=ssnparent
     self.nps[js]+=nn
+      
+  def addparticles(self,nn,x,y,z,ux,uy,uz,js,weight=None,itype=None,ssnparent=None):
+    if weight is not None or itype is not None or ssnparent is not None:
+      pid = zeros((nn,top.npid))
+      if weight is not None:pid[:,top.wpid-1]=weight
+      if itype is not None:pid[:,self.piditype]=itype.astype(float64)
+      if ssnparent is not None:pid[:,top.sppid-1]=ssnparent
+    else:
+      pid=0.
+    gi=1./sqrt(1.+(ux**2+uy**2+uz**2)/clight**2)
+    addparticles(x=x,
+                 y=y,
+                 z=z,
+                 vx=ux,
+                 vy=uy,
+                 vz=uz,
+                 gi=gi,
+                 pid=pid,
+                 js=js,
+                 lmomentum=true,
+                 lallindomain=true)
       
   def flushpart(self,js):
     if self.nps[js]>0:
@@ -332,7 +359,7 @@ Class for generating secondaries
       print title
       print textblock
 
-  def generate(self):
+  def generate(self,local=0,l_accumulate_hist=1):
     # theta and phi are angles from normal to surface with regard to z and x axis respectively
     # psi is angle to rotate warp local frame to Posinst local frame around normal
     # eta is angle between incident velocity vector and normal to surface (called theta in Posinst)
@@ -386,6 +413,7 @@ Class for generating secondaries
         if self.l_verbose:print 'ics',ics
         iit = compress(top.pidlost[i1+top.it%stride:i2:stride,-1]==icond,arange(top.it%stride,top.npslost[js],stride))
         n = len(iit)
+        if self.l_verbose:print 'nlost=',n
         if n==0:continue
         xplost = take(top.xplost[i1:i2],iit)
         yplost = take(top.yplost[i1:i2],iit)
@@ -867,6 +895,7 @@ Class for generating secondaries
           if self.l_record_timing:
             tadd+=wtime()-tstart
 
+    if self.l_record_timing:t3 = time.clock()
     # --- make sure that all particles are added
     for js in self.x.keys():
       self.flushpart(js)
@@ -879,19 +908,22 @@ Class for generating secondaries
     # --- the scraping).
     # --- This is all needed in case lcallscrapercontrollers is true.
     # --- Also set the flag so that the lost particles are not reset.
-    self.lrecursivegenerate = 1
-    top.lresetlostpart = false
-    particleboundaries3d(top.pgroup,-1,self.lcallscrapercontrollers)
-    top.lresetlostpart = true
-    self.lrecursivegenerate = 0
+    if not local:
+      self.lrecursivegenerate = 1
+      top.lresetlostpart = false
+      particleboundaries3d(top.pgroup,-1,self.lcallscrapercontrollers)
+      top.lresetlostpart = true
+      self.lrecursivegenerate = 0
 
-    if self.l_record_timing:t3 = time.clock()
 #    print "tinit,tgen,tadd:",tinit*1.e-6,tgen*1.e-6,tprepadd*1.e-6,tadd*1.e-6
     # --- append total emitted charge in conductors emitparticles_data arrays
     for js in self.inter.keys():
       for ics,c in enumerate(self.inter[js]['conductors']):
         for ie in range(len(self.inter[js]['emitted'][ics])):
-          totemit = globalsum(self.inter[js]['emitted'][ics][ie])
+          if local:
+            totemit = sum(self.inter[js]['emitted'][ics][ie])
+          else:
+            totemit = globalsum(self.inter[js]['emitted'][ics][ie])
           if abs(totemit)>0.:
             c.emitparticles_data.append(array([top.time, 
                                                totemit,
@@ -899,24 +931,662 @@ Class for generating secondaries
                                                self.inter[js]['emitted_species'][ics][ie].jslist[0]]))
 
     # append history arrays
-    weighttot = globalsum(weighttot)
-    ek0av = globalsum(ek0av)
-    costhav = globalsum(costhav)
-    ek0max = globalmax(ek0max)
-    if me==0:
-     if weighttot<>0.:
-      self.htime.append(top.time)
-      self.ek0av.append(ek0av/weighttot)	#cummulative collision kinetic energy [eV] this step
-      self.ek0max.append(ek0max)	#maximum collision kinetic energy [eV]
-      self.costhav.append(costhav/weighttot)
-      self.power_dep.append(ek0av*echarge/top.dt)
-      self.power_emit.append(ek0emitav/top.dt)
-      self.power_diff.append((ek0av*echarge-ek0emitav)/top.dt)
+    if l_accumulate_hist:
+      weighttot = globalsum(weighttot)
+      ek0av = globalsum(ek0av)
+      costhav = globalsum(costhav)
+      ek0max = globalmax(ek0max)
+      if me==0:
+       if weighttot<>0.:
+        self.htime.append(top.time)
+        self.ek0av.append(ek0av/weighttot)	#cummulative collision kinetic energy [eV] this step
+        self.ek0max.append(ek0max)	#maximum collision kinetic energy [eV]
+        self.costhav.append(costhav/weighttot)
+        self.power_dep.append(ek0av*echarge/top.dt)
+        self.power_emit.append(ek0emitav/top.dt)
+        self.power_diff.append((ek0av*echarge-ek0emitav)/top.dt)
 #    w3d.lcallscraper=0
 #    particleboundaries3d(top.pgroup,-1,false)
 #    w3d.lcallscraper=1
 ##    top.npslost=0
     if self.l_record_timing:t4 = time.clock()
+    if self.l_record_timing:self.timings.append([t4-t1,t2-t1,t3-t2,t4-t3,tinit,tgen,tprepadd,tadd])
+#    print 'time Secondaries = ',time.clock()-t1,'s',t2-t1,t3-t2,t4-t3
+    if self.l_verbose>1:print 'secondaries generation finished'
+
+  def generatenew(self,local=0,l_accumulate_hist=1):
+    # theta and phi are angles from normal to surface with regard to z and x axis respectively
+    # psi is angle to rotate warp local frame to Posinst local frame around normal
+    # eta is angle between incident velocity vector and normal to surface (called theta in Posinst)
+
+    if self.lrecursivegenerate: return
+
+    if self.l_verbose>1:print 'start secondaries generation'
+
+    if self.l_record_timing:t1 = time.clock()
+
+    # reset 'emitted' list to zero
+    for js in self.inter.keys():
+     for i in range(len(self.inter[js]['emitted'])):
+      for j in range(len(self.inter[js]['emitted'][i])):  
+       self.inter[js]['emitted'][i][j] = 0.
+
+    # set computing box mins and maxs
+    if w3d.l4symtry:
+      xmin=-w3d.xmmax
+    else:
+      xmin=w3d.xmmin
+    xmax=w3d.xmmax
+    if w3d.l2symtry or w3d.l4symtry:
+      ymin=-w3d.ymmax
+    else:
+      ymin=w3d.ymmin
+    ymax=w3d.ymmax
+    zmin=w3d.zmmin+top.zgrid
+    zmax=w3d.zmmax+top.zgrid
+
+    # initializes history quantities
+    weighttot=0.
+    ek0av=0.
+    costhav=0.
+    ek0max=0.
+    ek0emitav=0.
+    if self.l_record_timing:t2 = time.clock()
+    tinit=tgen=tprepadd=tadd=0.
+    # compute number of secondaries and create them
+    for ints in self.inter.keys():
+     incident_species=self.inter[ints]['incident_species']
+     for js in incident_species.jslist:
+      if self.l_verbose:print 'js',js
+      if top.npslost[js]==0:continue
+#      if top.npslost[js]==0 or top.it%top.pgroup.ndts[js]<>0:continue
+      stride=top.pgroup.ndts[js]
+      i1 = top.inslost[js] - 1 
+      i2 = top.inslost[js] + top.npslost[js] - 1
+      for ics,cond in enumerate(self.inter[incident_species]['conductors']):
+        icond = cond.condid
+        if self.l_verbose:print 'ics',ics
+        iit = compress(top.pidlost[i1+top.it%stride:i2:stride,-1]==icond,arange(top.it%stride,top.npslost[js],stride))
+        n = len(iit)
+        if self.l_verbose:print 'nlost=',n
+        if n==0:continue
+        xplost = take(top.xplost[i1:i2],iit)
+        yplost = take(top.yplost[i1:i2],iit)
+        zplost = take(top.zplost[i1:i2],iit)
+        # exclude particles out of computational box 
+#        if w3d.solvergeom==w3d.RZgeom:
+#          condition = (sqrt(xplost**2+yplost**2)<xmax) & \
+#                      (zplost>zmin) & (zplost<zmax)
+#        else:
+#          condition = (xplost>xmin) & (xplost<xmax) & \
+#                      (yplost>ymin) & (yplost<ymax) & \
+#                      (zplost>zmin) & (zplost<zmax)
+        # exclude particles recently created
+        if self.min_age is not None:
+          inittime = take(top.pidlost[i1:i2,top.tpid-1],iit,0)
+          condition =  ((top.time-inittime)>self.min_age*top.dt)      
+#          condition = condition & ((top.time-inittime)>self.min_age*top.dt)      
+          iit2 = compress(condition,arange(n))
+        else:
+          iit2=arange(n)
+        n = len(iit2)
+        if self.l_verbose:print 'nlost=',n
+        if n==0:continue
+        self.totallost += n
+        xplost = take(xplost,iit2)
+        yplost = take(yplost,iit2)
+        zplost = take(zplost,iit2)
+        iit    = take(iit,iit2)
+        if self.l_record_timing:tstart=wtime()    
+        uxplost = take(top.uxplost[i1:i2],iit).copy()
+        uyplost = take(top.uyplost[i1:i2],iit).copy()
+        uzplost = take(top.uzplost[i1:i2],iit).copy()
+        gaminvlost = take(top.gaminvlost[i1:i2],iit).copy()
+        # --- get velocity in lab frame if using a boosted frame of reference
+        if 0:#top.boost_gamma>1.:
+          uzboost = clight*sqrt(top.boost_gamma**2-1.)
+          setu_in_uzboosted_frame3d(n,uxplost,uyplost,uzplost,gaminvlost,
+                                    -uzboost,
+                                    top.boost_gamma)
+        if self.l_trackssnparents: ssnplost = take(top.pidlost[i1:i2,top.spid-1],iit)
+        if self.vmode==1:
+          vxplost=uxplost*gaminvlost
+          vyplost=uyplost*gaminvlost
+          vzplost=uzplost*gaminvlost
+        elif self.vmode==2:
+          xplostold = take(top.pidlost[i1:i2,self.xoldpid],iit,0)
+          yplostold = take(top.pidlost[i1:i2,self.yoldpid],iit,0)
+          zplostold = take(top.pidlost[i1:i2,self.zoldpid],iit,0)
+          vxplost = (xplost-xplostold)/top.dt
+          vyplost = (yplost-yplostold)/top.dt
+          vzplost = (zplost-zplostold)/top.dt
+        else:
+          raise('Error in Secondaries, one should have lmode=1 or 2, but have lmode=%g'%self.lmode)
+        # set energy of incident particle in eV
+        e0 = where(gaminvlost==1., \
+                   0.5*top.pgroup.sm[js]*(uxplost**2+uyplost**2+uzplost**2)/top.echarge,
+                   (1./gaminvlost-1.)*top.pgroup.sm[js]*clight**2/top.echarge)
+        if self.l_verbose:
+          print 'xplost',xplost
+          print 'yplost',yplost
+          print 'zplost',zplost
+          print 'e0',e0,gaminvlost,uxplost,uyplost,uzplost
+        v = array([vxplost,vyplost,vzplost])
+#        u = array([uxplost,uyplost,uzplost])
+        theta = take(top.pidlost[i1:i2,-3],iit,0)
+        phi   = take(top.pidlost[i1:i2,-2],iit,0)
+        if top.wpid>0: 
+          weight = take(top.pidlost[i1:i2,top.wpid-1],iit,0)
+        else:
+          weight=1.
+        costheta = cos(theta)
+        sintheta = sin(theta)
+        cosphi   = cos(phi)
+        sinphi   = sin(phi)
+        # theta is relative to the z axis, phi to the x axis in the x-y plane 
+        n_unit0 = array([sintheta*cosphi,sintheta*sinphi,costheta])
+        coseta = -sum(v*n_unit0,axis=0)/sqrt(sum(v*v,axis=0))
+        if top.wpid==0:
+          ek0av+=sum(e0)*top.pgroup.sw[js]
+          costhav+=sum(abs(coseta))*top.pgroup.sw[js]
+          weighttot+=n*top.pgroup.sw[js]
+        else:
+          ek0av+=sum(weight*e0)*top.pgroup.sw[js]
+          costhav+=sum(weight*abs(coseta))*top.pgroup.sw[js]
+          weighttot+=sum(weight)*top.pgroup.sw[js]
+        ek0max=max(max(e0),ek0max)
+        if 1:#cond.lcollectlpdata:
+          if not cond.lostparticles_angles.has_key(js):
+            cond.lostparticles_angles[js]=zeros(181,'d')
+          if not cond.lostparticles_energies.has_key(js):
+            cond.lostparticles_energies[js]=zeros(1001,'d')
+          e0min = min(e0)
+          e0max = max(e0)
+#          e0min=0.
+#          e0max=1.e6
+          if not cond.lostparticles_minenergy.has_key(js):
+            cond.lostparticles_minenergy[js]=e0min
+          if not cond.lostparticles_maxenergy.has_key(js):
+            cond.lostparticles_maxenergy[js]=e0max
+          l_rescale_energy_array=0
+          if e0min<cond.lostparticles_minenergy[js]:
+            e0minnew=0.9*e0min
+            l_rescale_energy_array=1
+          else:
+            e0minnew=cond.lostparticles_minenergy[js]
+          if e0max>cond.lostparticles_maxenergy[js]:
+            e0maxnew=1.1*e0max
+            l_rescale_energy_array=1
+          else:
+            e0maxnew=cond.lostparticles_maxenergy[js]
+          if l_rescale_energy_array:
+            newlostparticles_energies=zeros(1001,'d')
+            tmpcount=zeros(1001,'d')
+            e0minold = cond.lostparticles_minenergy[js]
+            e0maxold = cond.lostparticles_maxenergy[js]
+            e0old = e0minold+arange(1001)*(e0maxold-e0minold)/1000
+            deposgrid1d(1,1001,e0old,cond.lostparticles_energies[js],1000,newlostparticles_energies,tmpcount,e0minnew,e0maxnew)
+            try:
+              cond.itrescale.append(top.it)
+            except:
+              cond.itrescale=[top.it]
+            cond.lostparticles_minenergy[js]=e0minnew
+            cond.lostparticles_maxenergy[js]=e0maxnew
+            cond.lostparticles_energies[js]=newlostparticles_energies
+          if top.wpid >0:
+            eweights = weight*top.pgroup.sw[js]
+          else:
+            eweights = ones(n)*top.pgroup.sw[js]
+          setgrid1dw(shape(coseta)[0],arccos(coseta),eweights,180,cond.lostparticles_angles[js],0.,pi)
+          # --- Expand the range of energies by one approximately two cells.
+          # --- This is needed in case there is only one particle, where
+          # --- minenergy == maxenergy.
+          setgrid1dw(shape(e0)[0],e0,eweights,1000,cond.lostparticles_energies[js],0.999*cond.lostparticles_minenergy[js],1.001*cond.lostparticles_maxenergy[js])
+          if js==1:
+           try:
+            cond.sumlostw.append(sum(cond.lostparticles_energies[1]))
+           except:
+            cond.sumlostw = AppendableArray(typecode='d')
+            cond.sumlostw.append(sum(cond.lostparticles_energies[1]))            
+           try:
+            cond.minlostw.append(sum(cond.lostparticles_minenergy[1]))
+           except:
+            cond.minlostw = AppendableArray(typecode='d')
+            cond.minlostw.append(sum(cond.lostparticles_minenergy[1]))            
+           try:
+            cond.maxlostw.append(sum(cond.lostparticles_maxenergy[1]))
+           except:
+            cond.maxlostw = AppendableArray(typecode='d')
+            cond.maxlostw.append(sum(cond.lostparticles_maxenergy[1]))            
+#          else:
+#            setgrid1d(shape(coseta)[0],arccos(coseta),180,cond.lostparticles_angles[js],0.,pi)
+#            # --- Expand the range of energies by one approximately two cells.
+#            # --- This is needed in case there is only one particle, where
+#            # --- minenergy == maxenergy.
+#            setgrid1d(shape(e0)[0],e0,1000,cond.lostparticles_energies[js],0.999*cond.lostparticles_minenergy[js],1.001*cond.lostparticles_maxenergy[js])
+        for ie,emitted_species in enumerate(self.inter[incident_species]['emitted_species'][ics]):
+         js_new=emitted_species.jslist[0]
+         forced_yield = self.inter[incident_species]['forced_yield'][ics]
+         tstart = wtime()
+#         for i in range(n):  
+         if 1:  
+#          print 'v',v[0][i],v[1][i],v[2][i],i,iit[i],js
+#          print 'x',[xplost[i],yplost[i],zplost[i]]
+#          print 'xold',[xplostold[i],yplostold[i],zplostold[i]]
+#          print 'u',[uxplost[i],uyplost[i],uzplost[i]]
+#          print 'e0',e0[i]
+#          coseta[i] = -sum(v[0][i]*n_unit0[0][i]+v[1][i]*n_unit0[1][i]+v[2][i]*n_unit0[2][i])/sqrt(sum(v[0][i]*v[0][i]+v[1][i]*v[1][i]+v[2][i]*v[2][i]))
+#          print 'coseta',coseta[i]
+          l_warning=0
+          l_infinity=0
+          if coseta[i]<0.:
+            l_warning=1
+            swarn = 'WARNING issued by Secondaries.generate: coseta<0.'
+            coseta[i]=-coseta[i]
+            n_unit0[0][i]=-n_unit0[0][i]
+            n_unit0[1][i]=-n_unit0[1][i]
+            n_unit0[2][i]=-n_unit0[2][i]
+            costheta[i] = cos(pi+theta[i])
+            sintheta[i] = sin(pi+theta[i])
+#            print 'coseta 1,2 :',coseta[i],-sum(u[i]*n_unit0[i])/sqrt(sum(u[i]*u[i]))
+#            print 'n 1, 2',n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],sintheta[i]*cosphi[i],sintheta[i]*sinphi[i],costheta[i]
+          if xplost[i]==largepos or yplost[i]==largepos or zplost[i]==largepos:
+            l_warning=1
+            l_infinity=1
+            swarn = 'WARNING issued by Secondaries.generate: particle at infinity'
+          if l_warning and self.l_verbose:
+            print swarn
+#          print 'phi, theta',phi[i],theta[i]
+#          print 'n',n_unit0[0][i],n_unit0[1][i],n_unit0[2][i]
+#          print 'u',u[0][i],u[1][i],u[2][i]
+          if l_infinity:
+            continue
+          if self.l_record_timing:
+            tinit+=wtime()-tstart
+            tstart=wtime()
+          if self.l_verbose:print 'e0, coseta',e0[i],coseta[i]
+
+         init_position_offset = self.inter[incident_species]['init_position_offset'][ics]
+         if forced_yield is not None:
+            ####################################################################
+            # emission with imposed yield (note that initial velocity is tiny) #
+            ####################################################################
+           for i in range(n):  
+             if type(forced_yield) is type(0.):
+               ns=int(forced_yield)
+               if ranf()<(forced_yield-ns):ns+=1
+             else:
+               ns = forced_yield
+             if init_position_offset>0.:
+               xnew = xplost[i]+n_unit0[0][i]*init_position_offset
+               ynew = yplost[i]+n_unit0[1][i]*init_position_offset 
+               znew = zplost[i]+n_unit0[2][i]*init_position_offset
+             else:
+               xnew = xplost[i]
+               ynew = yplost[i] 
+               znew = zplost[i]
+             tmp = ones(ns,'d')
+             if self.l_trackssnparents:
+               ssnparent = tmp*ssnplost[i]
+             else:
+               ssnparent = None
+             self.inter[incident_species]['emitted'][ics][ie] += ns*top.pgroup.sq[js_new]*top.pgroup.sw[js_new]
+             if top.wpid==0:
+                self.addpart(ns,xnew,ynew,znew,1.e-10*tmp,1.e-10*tmp,1.e-10*tmp,js_new,itype=None,ssnparent=ssnparent)
+             else:
+                self.addpart(ns,xnew,ynew,znew,1.e-10*tmp,1.e-10*tmp,1.e-10*tmp,js_new,ones(ns)*weight[i],None,ssnparent=ssnparent)
+             
+         elif emitted_species.type is Electron:
+          if incident_species.type is Electron:
+          ##########################################
+          # electron-induced emission of electrons #
+          ##########################################
+           if self.piditype>0:
+             itypes=AppendableArray(typecode='i',autobump=100)
+           else:
+             itypes=None
+           if 1:
+             itype=self.inter[incident_species]['type'][ics]
+             scale_factor=self.inter[incident_species]['scale_factor'][ics]
+             if scale_factor is None:scale_factor=1.
+             self.prepare_secondaries(itype,pos.maxsec)
+             if top.wpid==0:weight=ones(n,'d')
+             xnew = zeros(n*pos.maxsec,'d')
+             ynew = zeros(n*pos.maxsec,'d')
+             znew = zeros(n*pos.maxsec,'d')
+             uxsec = zeros(n*pos.maxsec,'d')
+             uysec = zeros(n*pos.maxsec,'d')
+             uzsec = zeros(n*pos.maxsec,'d')
+             ns = array([n*pos.maxsec])
+             warpsecelec(n,e0,coseta,weight,ns,xnew,ynew,znew,uxsec,uysec,uzsec,
+                         costheta,sintheta,sinphi,cosphi,n_unit0,xplost,yplost,zplost,vxplost,vyplost,vzplost,
+                         top.pgroup.sm[js_new],Electron.mass,scale_factor,init_position_offset)
+             ns = ns[0]
+             if ns>0:
+              xnew=xnew[:ns]
+              ynew=ynew[:ns]
+              znew=znew[:ns]
+              uxsec=uxsec[:ns]
+              uysec=uysec[:ns]
+              uzsec=uzsec[:ns]
+           else:
+            ns = 0
+            xnew=AppendableArray(typecode='d',autobump=100)
+            ynew=AppendableArray(typecode='d',autobump=100)
+            znew=AppendableArray(typecode='d',autobump=100)
+            uxsec=AppendableArray(typecode='d',autobump=100)
+            uysec=AppendableArray(typecode='d',autobump=100)
+            uzsec=AppendableArray(typecode='d',autobump=100)
+            for i in range(n):  
+               if top.wpid>0:
+                 self.generate_secondaries(e0[i],coseta[i],weight[i],self.inter[incident_species]['type'][ics],
+                                           scale_factor=self.inter[incident_species]['scale_factor'][ics])
+               else:
+                 self.generate_secondaries(e0[i],coseta[i],weight,self.inter[incident_species]['type'][ics],
+                                           scale_factor=self.inter[incident_species]['scale_factor'][ics])
+               if self.secelec_ns[0]>0:
+                 nsemit=self.secelec_ns[0]
+                 ns+=nsemit
+                 ut=self.secelec_ut[:nsemit]
+                 un=self.secelec_un[:nsemit]
+                 uz=self.secelec_uz[:nsemit]
+                 if self.piditype>0:
+                   itypes.append(self.secelec_ityps[:ns])
+                 if self.l_verbose:
+                   e0[i], coseta[i],i1,i2,iit[i],top.npslost,self.secelec_dele,self.secelec_delr,self.secelec_delts            
+                 x,y,z,ux,uy,uz =  self.getxv(i,costheta,sintheta,sinphi,cosphi,n_unit0,xplost,yplost,zplost,vxplost,vyplost,vzplost,un,ut,uz,init_position_offset)
+                 xnew.append(x)
+                 ynew.append(y)
+                 znew.append(z)
+                 uxsec.append(ux)
+                 uysec.append(uy)
+                 uzsec.append(uz)
+            # --- In case that the mass of electrons was artificially changed for 
+            # --- numerical convenience, the velocity of emitted electrons is scaled 
+            # --- so that energy is conserved.
+            if top.pgroup.sm[js_new] <> Electron.mass:
+               mfact = sqrt(Electron.mass/top.pgroup.sm[js_new])
+               uxsec[:]*=mfact
+               uysec[:]*=mfact
+               uzsec[:]*=mfact
+            xnew=xnew.data()
+            ynew=ynew.data()
+            znew=znew.data()
+            uxsec=uxsec.data()
+            uysec=uysec.data()
+            uzsec=uzsec.data()
+
+          else: # incidents are atoms or ions
+          ##########################################
+          # atom/ion-induced emission of electrons #
+          ##########################################
+            xnew=AppendableArray(typecode='d',autobump=100)
+            ynew=AppendableArray(typecode='d',autobump=100)
+            znew=AppendableArray(typecode='d',autobump=100)
+            uxsec=AppendableArray(typecode='d',autobump=100)
+            uysec=AppendableArray(typecode='d',autobump=100)
+            uzsec=AppendableArray(typecode='d',autobump=100)
+            if self.piditype>0:
+              itypes=AppendableArray(typecode='i',autobump=100)
+            else:
+              itypes=None
+            ns = 0
+            if incident_species.type.__class__ in [Atom,Molecule]:
+              if self.inter[incident_species]['material'][ics]=='SS':target_num=10025
+              scale_factor = self.inter[incident_species]['scale_factor'][ics]
+              if scale_factor is None or scale_factor==1.:
+                nbatches = 1
+                l_scale_factor = false
+              else:
+                nbatches = int(scale_factor)+1
+                l_scale_factor = true
+              for i in range(n):  
+               untx=AppendableArray(typecode='d',autobump=10)
+               uttx=AppendableArray(typecode='d',autobump=10)
+               uztx=AppendableArray(typecode='d',autobump=10)
+               for ibatch in range(nbatches):
+#              -- version 0.2.1
+#                 ns=txphysics.ion_ind_elecs(e0[i]/(1.e6*incident_species.type.A),
+#                                            max(0.04,coseta[i]),
+#                                            float(incident_species.type.Z),
+#                                            incident_species.type.A,
+#                                            target_num,
+#                                            self.emitted_e,
+#                                            self.emitted_bn,
+#                                            self.emitted_bt,
+#                                            self.emitted_bz)
+#              -- version 1.9.0
+                 ion_ind_e0 = zeros(1,'d')
+                 ion_ind_ct = zeros(1,'d')
+                 ion_ind_e0[0] = e0[i]/(1.e6)
+                 ion_ind_ct[0] = max(0.04,coseta[i])
+                 Te=0.
+                 Ne=0.
+                 self.emitted_e,self.emitted_bn,self.emitted_bt,self.emitted_bz = \
+                 txigenelec.ion_ind_elecs(ion_ind_e0,
+                                         ion_ind_ct,
+                                         float(incident_species.type.Z),
+                                         incident_species.type.A,
+                                         Te,Ne,
+                                         target_num)
+                 nsemit = self.emitted_e.size
+                 if l_scale_factor:
+                   emitfrac=scale_factor-ibatch
+                 if l_scale_factor and emitfrac<1.:
+                   for iemit in range(nsemit):
+                     if self.emitted_e[iemit]>=0. and ranf()<emitfrac:
+                       gammac = clight/sqrt(1.-self.emitted_bn[iemit]**2 \
+                                              +self.emitted_bt[iemit]**2 \
+                                              +self.emitted_bz[iemit]**2)
+                       untx.append(gammac*self.emitted_bn[iemit])
+                       uttx.append(gammac*self.emitted_bt[iemit])
+                       uztx.append(gammac*self.emitted_bz[iemit])
+                       ns+=1
+                 else:
+                   for iemit in range(nsemit):
+                     if self.emitted_e[iemit]>=0.:
+                       gammac = clight/sqrt(1.-self.emitted_bn[iemit]**2 \
+                                              +self.emitted_bt[iemit]**2 \
+                                              +self.emitted_bz[iemit]**2)
+                       untx.append(gammac*self.emitted_bn[iemit])
+                       uttx.append(gammac*self.emitted_bt[iemit])
+                       uztx.append(gammac*self.emitted_bz[iemit])
+                       ns+=1
+                 
+               un=untx.data()
+               ut=uttx.data()
+               uz=uztx.data()
+               if self.l_verbose:
+                 print 'nb secondaries = ',ns,' from conductor ',icond, e0[i], coseta[i],i1,i2,iit[i],top.npslost          
+               x,y,z,ux,uy,uz =  self.getxv(i,costheta,sintheta,sinphi,cosphi,n_unit0,xplost,yplost,zplost,vxplost,vyplost,vzplost,un,ut,uz,init_position_offset)
+               xnew.append(x)
+               ynew.append(y)
+               znew.append(z)
+               uxsec.append(ux)
+               uysec.append(uy)
+               uzsec.append(uz)
+            xnew=xnew.data()
+            ynew=ynew.data()
+            znew=znew.data()
+            uxsec=uxsec.data()
+            uysec=uysec.data()
+            uzsec=uzsec.data()
+
+          if self.l_record_timing:
+            tgen+=wtime()-tstart
+            tstart=wtime()
+          if ns>0:
+             self.inter[incident_species]['emitted'][ics][ie] += ns*top.pgroup.sq[js_new]*top.pgroup.sw[js_new]
+#            pid[:,self.xoldpid]=xnew-vx*top.dt
+#            pid[:,self.yoldpid]=ynew-vy*top.dt
+#            pid[:,self.zoldpid]=znew-vz*top.dt
+             # --- apply perdiodic BC
+#             znew = where(znew<zmin,zmax-zmin+znew,znew)
+#             znew = where(znew>zmax,zmin-zmax+znew,znew)
+             if 0:
+              if w3d.solvergeom==w3d.RZgeom:
+               condition = (sqrt(xnew**2+ynew**2)>xmax) or \
+                           (znew<zmin) or (znew>zmax)
+              else:
+               condition = (xnew<xmin) or (xnew>xmax) or \
+                           (ynew<ymin) or (ynew>ymax) or \
+                           (znew<zmin) or (znew>zmax)
+              if condition:
+               print 'WARNING from secondaries: new particle outside boundaries, skip creation',
+               print '\nLost particle position: ',xplost[i],yplost[i],zplost[i],
+               print '\nNew particle position: ',xnew,ynew,znew
+               print 'XYZ min/max: ', xmin,xmax,ymin,ymax,zmin,zmax
+#               self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
+#               xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
+               self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
+               n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
+             #else:
+             if self.l_trackssnparents:
+                 ssnparent = ones(ns)*ssnplost[i]
+             else:
+               ssnparent = None
+             if top.wpid==0:
+                e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*(uxsec*uxsec+uysec*uysec+uzsec*uzsec)
+                self.addparticles(ns,xnew,ynew,znew,uxsec,uysec,uzsec,js_new,itype=itypes,ssnparent=ssnparent)
+             else:
+                e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*weight[i]*(uxsec*uxsec+uysec*uysec+uzsec*uzsec)
+                self.addparticles(ns,xnew,ynew,znew,uxsec,uysec,uzsec,js_new,ones(ns)*weight[i],itypes,ssnparent=ssnparent)
+             ek0emitav += sum(e0emit)
+
+          if self.l_record_timing:
+            tadd+=wtime()-tstart
+            tstart=wtime()
+              
+           ########################
+           # emission of neutrals #
+           ########################
+         elif emitted_species.type.__class__ is not Particle and emitted_species.charge_state==0: 
+           for i in range(n):  
+            my_yield=1.+1.82e-4*exp(0.09*180./pi*arccos(coseta[i]))
+            scale_factor = self.inter[incident_species]['scale_factor'][ics]
+            if not (scale_factor is None or scale_factor==1.):
+              my_yield*=scale_factor
+            ns = int(my_yield)
+            # --- The ns+1 is only a temporary fix to avoid an array out of
+            # --- bounds errors. Once the desorb routine is fixed, this
+            # --- code should be updated. Note that as the code is now,
+            # --- in some cases, a desorbed particle will be thrown out.
+            vx = desorb.floatArray(ns+1)
+            vy = desorb.floatArray(ns+1)
+            vz = desorb.floatArray(ns+1)
+            vxnew = zeros(ns,'d')
+            vynew = zeros(ns,'d')
+            vznew = zeros(ns,'d')
+
+            #compute the desorbed neutrals
+            # note that the gamma0 (1.) and rel_weight (top.pgroup.sw[js_new]/top.pgroup.sw[js]) are actually not used
+            desorb.desorb(my_yield,v[0][i],v[1][i],v[2][i],theta[i],phi[i],1.,0.4,top.pgroup.sm[js],top.pgroup.sw[js_new]/top.pgroup.sw[js],vx,vy,vz)
+            scale_factor_velocity = self.inter[incident_species]['scale_factor_velocity'][ics]
+            for ivnew in range(ns):
+              vxnew[ivnew]=vx[ivnew]*scale_factor_velocity
+              vynew[ivnew]=vy[ivnew]*scale_factor_velocity
+              vznew[ivnew]=vz[ivnew]*scale_factor_velocity
+            init_position_offset = self.inter[incident_species]['init_position_offset'][ics]
+            if init_position_offset>0.:
+              xnew = xplost[i]+n_unit0[0][i]*init_position_offset
+              ynew = yplost[i]+n_unit0[1][i]*init_position_offset 
+              znew = zplost[i]+n_unit0[2][i]*init_position_offset
+            else:
+              xnew = xplost[i]
+              ynew = yplost[i] 
+              znew = zplost[i]
+#            pid[:,self.xoldpid]=xnew-vxnew*top.dt
+#            pid[:,self.yoldpid]=ynew-vynew*top.dt
+#            pid[:,self.zoldpid]=znew-vznew*top.dt
+            if w3d.solvergeom==w3d.RZgeom:
+               condition = (sqrt(xnew**2+ynew**2)>xmax) or \
+                           (znew<zmin) or (znew>zmax)
+            else:
+               condition = (xnew<xmin) or (xnew>xmax) or \
+                           (ynew<ymin) or (ynew>ymax) or \
+                           (znew<zmin) or (znew>zmax)
+            if condition:
+              print 'WARNING from secondaries: new neutral particle outside boundaries, skip creation',
+              print '\nLost particle position: ',xplost[i],yplost[i],zplost[i],
+              print '\nNew particle position: ',xnew,ynew,znew
+              if self.vmode==1:
+                self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
+              vxplost[i],vyplost[i],vzplost[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
+              if self.vmode==2:
+                self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
+              xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
+            else:
+              if self.l_trackssnparents:
+                ssnparent = ones(ns)*ssnplost[i]
+              else:
+                ssnparent = None
+              if top.wpid==0:
+                e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*(vxnew*vxnew+vynew*vynew+vznew*vznew)
+                self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,itype=None,ssnparent=ssnparent)
+              else:
+                e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*weight*(vxnew*vxnew+vynew*vynew+vznew*vznew)
+                self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,ones(ns)*weight[i],None,ssnparent=ssnparent)
+              ek0emitav += sum(e0emit)
+            
+#          if self.l_record_timing:
+#            tadd+=wtime()-tstart
+
+    if self.l_record_timing:t3 = time.clock()
+    # --- make sure that all particles are added
+    for js in self.x.keys():
+      self.flushpart(js)
+    # --- Check for particle out of bounds and exchange particles among
+    # --- processors if needed. A call to particleboundaries3d is made
+    # --- so that particles are scraped on any user defined conductors
+    # --- as well as the grid boundaries.
+    # --- Set the flag so that this generate routine is not called again
+    # --- recursively (since generate is normally called at the end of
+    # --- the scraping).
+    # --- This is all needed in case lcallscrapercontrollers is true.
+    # --- Also set the flag so that the lost particles are not reset.
+    if not local:
+      self.lrecursivegenerate = 1
+      top.lresetlostpart = false
+      particleboundaries3d(top.pgroup,-1,self.lcallscrapercontrollers)
+      top.lresetlostpart = true
+      self.lrecursivegenerate = 0
+
+#    print "tinit,tgen,tadd:",tinit*1.e-6,tgen*1.e-6,tprepadd*1.e-6,tadd*1.e-6
+    # --- append total emitted charge in conductors emitparticles_data arrays
+    for js in self.inter.keys():
+      for ics,c in enumerate(self.inter[js]['conductors']):
+        for ie in range(len(self.inter[js]['emitted'][ics])):
+          if local:
+            totemit = sum(self.inter[js]['emitted'][ics][ie])
+          else:
+            totemit = globalsum(self.inter[js]['emitted'][ics][ie])
+          if abs(totemit)>0.:
+            c.emitparticles_data.append(array([top.time, 
+                                               totemit,
+                                               top.dt,
+                                               self.inter[js]['emitted_species'][ics][ie].jslist[0]]))
+
+    # append history arrays
+    if l_accumulate_hist:
+      weighttot = globalsum(weighttot)
+      ek0av = globalsum(ek0av)
+      costhav = globalsum(costhav)
+      ek0max = globalmax(ek0max)
+      if me==0:
+       if weighttot<>0.:
+        self.htime.append(top.time)
+        self.ek0av.append(ek0av/weighttot)	#cummulative collision kinetic energy [eV] this step
+        self.ek0max.append(ek0max)	#maximum collision kinetic energy [eV]
+        self.costhav.append(costhav/weighttot)
+        self.power_dep.append(ek0av*echarge/top.dt)
+        self.power_emit.append(ek0emitav/top.dt)
+        self.power_diff.append((ek0av*echarge-ek0emitav)/top.dt)
+#    w3d.lcallscraper=0
+#    particleboundaries3d(top.pgroup,-1,false)
+#    w3d.lcallscraper=1
+##    top.npslost=0
+    if self.l_record_timing:t4 = time.clock()
+    if self.l_record_timing:self.timings.append([t4-t1,t2-t1,t3-t2,t4-t3,tinit,tgen,tprepadd,tadd])
 #    print 'time Secondaries = ',time.clock()-t1,'s',t2-t1,t3-t2,t4-t3
     if self.l_verbose>1:print 'secondaries generation finished'
     
@@ -940,6 +1610,43 @@ Class for generating secondaries
       else:
         # --- Maybe this should raise an error?
         print "Warning: Secondaries set_params_user function '%s' is not callable."%self.set_params_user
+
+  def getxv(self,i,costheta,sintheta,sinphi,cosphi,n_unit0,xplost,yplost,zplost,vxplost,vyplost,vzplost,un,ut,uz,init_position_offset):
+             if costheta[i]<1.-1.e-10:
+              z_unit0 = array([-sinphi[i],cosphi[i],0.])
+#              z       = -array([uzplost[i]*n_unit0[1][i]-uyplost[i]*n_unit0[2][i],
+#                                uxplost[i]*n_unit0[2][i]-uzplost[i]*n_unit0[0][i],
+#                                uyplost[i]*n_unit0[0][i]-uxplost[i]*n_unit0[1][i]])
+              z       = -array([vzplost[i]*n_unit0[1][i]-vyplost[i]*n_unit0[2][i],
+                                vxplost[i]*n_unit0[2][i]-vzplost[i]*n_unit0[0][i],
+                                vyplost[i]*n_unit0[0][i]-vxplost[i]*n_unit0[1][i]])
+              z_unit  = z/sqrt(sum(z*z))
+              cospsi  = sum(z_unit*z_unit0)
+              sinpsi  = sqrt(max(0.,1.-cospsi*cospsi))
+#              bt0 = (cospsi*bt - sinpsi*bz)
+#              bz0 = (sinpsi*bt + cospsi*bz)
+              ut0 = -(cospsi*ut - sinpsi*uz)
+              uz0 = -(sinpsi*ut + cospsi*uz)
+              un0 = un
+             else:
+              ut0 = ut
+              uz0 = uz
+              un0 = un
+             uxsec = cosphi[i]*costheta[i]*ut0 - sinphi[i]*uz0 + cosphi[i]*sintheta[i]*un0
+             uysec = sinphi[i]*costheta[i]*ut0 + cosphi[i]*uz0 + sinphi[i]*sintheta[i]*un0
+             uzsec =          -sintheta[i]*ut0                 +           costheta[i]*un0
+             tmp=ones(shape(un)[0])
+             del un,ut,uz,un0,ut0,uz0
+             xnew = xplost[i]*tmp
+             ynew = yplost[i]*tmp
+             znew = zplost[i]*tmp
+             if init_position_offset>0.:
+               xnew +=n_unit0[0][i]*init_position_offset
+               ynew +=n_unit0[1][i]*init_position_offset 
+               znew +=n_unit0[2][i]*init_position_offset
+             return xnew,ynew,znew,uxsec,uysec,uzsec
+
+
 
   def set_params(self,maxsec,mat_num=None):
 # This routine sets the parameters for a given material.
@@ -1251,6 +1958,17 @@ Class for generating secondaries
          pos.tpar4 = 0.
 
 
+  def prepare_secondaries(self,itype,maxsec):
+
+   if(maxsec<>pos.maxsec):
+    pos.maxsec = maxsec
+    pos.gchange("bincoeff")
+    init_pascal_triangle(pos.nbc,pos.maxsec)
+ 
+   if  itype<>self.mat_number:
+    self.mat_number=itype
+    self.call_set_params_user(maxsec,self.mat_number)
+
   def generate_secondaries(self,Ek0,costheta,weight,itype,maxsec=10,scale_factor=None):
    """
 Wrapper to secondary electrons routine secelec.
@@ -1275,14 +1993,7 @@ the normalized velocity (bn,bt,bz)=(inward normal,CCW tangent,longitudinal)
 components of the secondaries (dimensionless).
    """
 
-   if(maxsec<>pos.maxsec):
-    pos.maxsec = maxsec
-    pos.gchange("bincoeff")
-    init_pascal_triangle(pos.nbc,pos.maxsec)
- 
-   if  itype<>self.mat_number:
-    self.mat_number=itype
-    self.call_set_params_user(maxsec,self.mat_number)
+   self.prepare_secondaries(itype,maxsec)
 
    ndelerm=0
    ndeltspm=0
