@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.72 2010/02/16 17:43:46 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.73 2010/04/21 00:16:30 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -490,6 +490,7 @@ feature.
 
         # --- If the list of files was not given, then it needs to be
         # --- generated.
+        fnametries = []
         if len(files) == 0:
             # --- If a name was not given, use the instance's name
             if len(names) == 0:
@@ -509,11 +510,14 @@ feature.
                         nplist = range(nprocs)
                     for iproc in nplist:
                         fname = self.name+'_%s_%05d_%05d.pkl'%(self.type,iproc,nprocs)
+                        fnametries.append(fname)
                         if os.path.exists(fname):
                             files.append(fname)
 
         if len(files) == 0:
             print "%s restoredata: warning, no files were found, nothing will be restored"%self.topgroupname
+            if len(fnametries) > 0:
+                print "Tried the filenames:",fnametries
 
         #datadict = self.getPDBdatadict(files)
         datadict = self.getPickledatadict(files)
@@ -1932,6 +1936,7 @@ feature.
 
         # --- If the list of files was not given, then it needs to be
         # --- generated.
+        fnametries = []
         if len(files) == 0:
             # --- If a name was not given, use the instance's name
             if len(names) == 0:
@@ -1943,7 +1948,7 @@ feature.
                 else:
                     if npes > 1:
                         # --- If currently running in parallel, only read in
-                        # --- the date for this processor.
+                        # --- the data for this processor.
                         nplist = [me]
                         nprocs = npes
                     else:
@@ -1951,11 +1956,14 @@ feature.
                         nplist = range(nprocs)
                     for iproc in nplist:
                         fname = self.name+'_ep_%05d_%05d.pkl'%(iproc,nprocs)
+                        fnametries.append(fname)
                         if os.path.exists(fname):
                             files.append(fname)
 
         if len(files) == 0:
             print "ExtPart restoredata: warning, no files were found, nothing will be restored"
+            if len(fnametries) > 0:
+                print "Tried the filenames:",fnametries
 
         #datadict = self.getPDBdatadict(files)
         datadict = self.getPickledatadict(files)
