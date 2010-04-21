@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.33 2010/04/13 18:05:13 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.34 2010/04/21 00:15:22 dave Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -501,7 +501,7 @@ be unreliable.
             self._rrms[-1] = sqrt(abs(xsqbar + ysqbar - xbar**2 - ybar**2))
             self._vxrms[-1] = sqrt(abs(vxsqbar - vxbar**2))
             self._vyrms[-1] = sqrt(abs(vysqbar - vybar**2))
-            self._vzrms[-1] = sqrt(abs(vysqbar - vybar**2))
+            self._vzrms[-1] = sqrt(abs(vzsqbar - vzbar**2))
             self._epsnx[-1] = 4.*sqrt(abs((xsqbar-xbar**2)*(vxsqbar-vxbar**2)
                                           - (xvxbar - xbar*vxbar)**2))
             self._epsny[-1] = 4.*sqrt(abs((ysqbar-ybar**2)*(vysqbar-vybar**2)
@@ -986,10 +986,36 @@ around the peak current."""
         self._pp2d(self.xsqbar,**kw)
     def pp2dysqbar(self,**kw):
         self._pp2d(self.ysqbar,**kw)
+    def pp2dvxbar(self,**kw):
+        self._pp2d(self.vxbar,**kw)
+    def pp2dvybar(self,**kw):
+        self._pp2d(self.vybar,**kw)
+    def pp2dvzbar(self,**kw):
+        self._pp2d(self.vzbar,**kw)
+    def pp2dvxsqbar(self,**kw):
+        self._pp2d(self.vxsqbar,**kw)
+    def pp2dvysqbar(self,**kw):
+        self._pp2d(self.vysqbar,**kw)
+    def pp2dvzsqbar(self,**kw):
+        self._pp2d(self.vzsqbar,**kw)
+    def pp2dxvxbar(self,**kw):
+        self._pp2d(self.xvxbar,**kw)
+    def pp2dyvybar(self,**kw):
+        self._pp2d(self.yvybar,**kw)
     def pp2dxrms(self,**kw):
         self._pp2d(self.xrms,**kw)
     def pp2dyrms(self,**kw):
         self._pp2d(self.yrms,**kw)
+    def pp2dvxrms(self,**kw):
+        self._pp2d(self.vxrms,**kw)
+    def pp2dvyrms(self,**kw):
+        self._pp2d(self.vyrms,**kw)
+    def pp2dvzrms(self,**kw):
+        self._pp2d(self.vzrms,**kw)
+    def pp2depsnx(self,**kw):
+        self._pp2d(self.epsnx,**kw)
+    def pp2depsny(self,**kw):
+        self._pp2d(self.epsny,**kw)
     def pp2drrms(self,**kw):
         self._pp2d(self.rrms,**kw)
     def pp2drprms(self,**kw):
@@ -1011,28 +1037,53 @@ around the peak current."""
                     d.append(data[i,iz])
         return array(d),array(t)
         
-    def hcount(self,**kw):
-        return self._gettimehistory(self.count,**kw)
-    def hcurrent(self,**kw):
-        return self._gettimehistory(self.current,**kw)
-    def hvzbar(self,**kw):
-        return self._gettimehistory(self.vzbar,**kw)
-    def hxbar(self,**kw):
-        return self._gettimehistory(self.xbar,**kw)
-    def hybar(self,**kw):
-        return self._gettimehistory(self.ybar,**kw)
-    def hxsqbar(self,**kw):
-        return self._gettimehistory(self.xsqbar,**kw)
-    def hysqbar(self,**kw):
-        return self._gettimehistory(self.ysqbar,**kw)
-    def hxrms(self,**kw):
-        return self._gettimehistory(self.xrms,**kw)
-    def hyrms(self,**kw):
-        return self._gettimehistory(self.yrms,**kw)
-    def hrrms(self,**kw):
-        return self._gettimehistory(self.rrms,**kw)
-    def hrprms(self,**kw):
-        return self._gettimehistory(self.rprms,**kw)
+    def hcount(self,z):
+        return self._gettimehistory(self.count,z)
+    def hcurrent(self,z):
+        return self._gettimehistory(self.current,z)
+    def hxbar(self,z):
+        return self._gettimehistory(self.xbar,z)
+    def hybar(self,z):
+        return self._gettimehistory(self.ybar,z)
+    def hxsqbar(self,z):
+        return self._gettimehistory(self.xsqbar,z)
+    def hysqbar(self,z):
+        return self._gettimehistory(self.ysqbar,z)
+    def hvxbar(self,z):
+        return self._gettimehistory(self.vxbar,z)
+    def hvybar(self,z):
+        return self._gettimehistory(self.vybar,z)
+    def hvzbar(self,z):
+        return self._gettimehistory(self.vzbar,z)
+    def hvxsqbar(self,z):
+        return self._gettimehistory(self.vxsqbar,z)
+    def hvysqbar(self,z):
+        return self._gettimehistory(self.vysqbar,z)
+    def hvzsqbar(self,z):
+        return self._gettimehistory(self.vzsqbar,z)
+    def hxvxbar(self,z):
+        return self._gettimehistory(self.xvxbar,z)
+    def hyvybar(self,z):
+        return self._gettimehistory(self.yvybar,z)
+    def hxrms(self,z):
+        return self._gettimehistory(self.xrms,z)
+    def hyrms(self,z):
+        return self._gettimehistory(self.yrms,z)
+    def hvxrms(self,z):
+        return self._gettimehistory(self.vxrms,z)
+    def hvyrms(self,z):
+        return self._gettimehistory(self.vyrms,z)
+    def hvzrms(self,z):
+        return self._gettimehistory(self.vzrms,z)
+    def hepsnx(self,z):
+        return self._gettimehistory(self.epsnx,z)
+    def hepsny(self,z):
+        return self._gettimehistory(self.epsny,z)
+    def hrrms(self,z):
+        return self._gettimehistory(self.rrms,z)
+    def hrprms(self,z):
+        return self._gettimehistory(self.rprms,z)
+
 
     # ----------------------------------------------------------------------
     def _timeintegrate(self,data,laverage,weight=None):
