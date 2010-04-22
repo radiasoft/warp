@@ -26,7 +26,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.29 2009/11/18 22:26:00 jlvay Exp $"
+warputils_version = "$Id: warputils.py,v 1.30 2010/04/22 23:37:54 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -543,7 +543,9 @@ f(x)=f0 using the bisection method.
       hi = a
  
   mid = lo + (hi-lo)/2
-  while (abs(hi-lo)>xtol) or ((mid <> lo) and (mid <> hi)):
+  iter = 0
+  while (abs(hi-lo)>xtol) or ((mid <> lo) and (mid <> hi)) and iter < maxiter:
+     iter += 1
      if f(mid)-f0 <= 0.:
         lo = mid
      else:
