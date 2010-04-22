@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.213 $, $Date: 2010/04/15 21:47:38 $
+#@(#) File F3D.V, version $Revision: 3.214 $, $Date: 2010/04/22 23:36:29 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.213 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.214 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -148,11 +148,19 @@ fuzzsign integer /-1/    # When -1, subgrid points with distances == 1 are
                          # skipped, when +1 not skipped.
 lcorrectede logical /.false./ # When true, the E field near conductors is
                               # calculated using a reduced finite
+<<<<<<< f3d.v
+                              # difference.
+nxct integer /0/
+nyct integer /0/
+nzct integer /0/
+icgrid(0:nxct,0:nyct,0:nzct)   _integer # Used to determine which conductor point is at
+=======
                               # difference. This only works when using the
                               # MultiGrid3D field solver that is created and
                               # registered in python. It will not work with
                               # fstype=7 or any of the FFT solvers.
 icgrid(:,:,:)   _integer # Used to determine which conductor point is at
+>>>>>>> 3.213
                          # each grid point when lcorrectede is on.
 coeffs         _MGCoefficients # Precalculated coefficients, used when
                                # lprecalccoeffs is true.

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.192 $, $Date: 2009/11/24 20:06:48 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.193 $, $Date: 2010/04/22 23:36:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -3807,28 +3807,11 @@ c=============================================================================
 c     --- Initialize the data needed for the corrected E field calculation
       if ((lcorrectede .or. conductors%lcorrectede)) then
 
-c       --- First, check if the icgrid array needs to be allocated or
-c       --- reallocated.
-        if (.not. ASSOCIATED(conductors%icgrid)) then
-          doalloc = .true.
-        else
-          if (ALL((/nxlocal+1,nylocal+1,nzlocal+1/) == SHAPE(conductors%icgrid))) then
-            doalloc = .false.
-          else
-            doalloc = .true.
-            deallocate(conductors%icgrid)
-          endif
-        endif
-        if (doalloc) then
-          allocate(conductors%icgrid(0:nxlocal,0:nylocal,0:nzlocal),
-     &             stat=allocerror)
-          if (allocerror /= 0) then
-            print*,"setupconductorfielddata: allocation error ",allocerror,
-     &             ": could not allocate icgrid to shape ",1+nxlocal,1+nylocal,1+nzlocal
-            call kaboom("setupconductorfielddata: allocation error")
-            return
-          endif
-        endif
+c       --- Make sure that icgrid is properly allocated
+        conductors%nxct = nxlocal
+        conductors%nyct = nylocal
+        conductors%nzct = nzlocal
+        call ConductorTypechange(conductors)
 
         nmax = max(conductors%evensubgrid%nmax,conductors%oddsubgrid%nmax)
         conductors%icgrid = 0
@@ -3851,12 +3834,6 @@ c       --- The E field at interior points is ignored for now
           iz = conductors%oddsubgrid%indx(2,io)
           conductors%icgrid(ix,iy,iz) = -io
         enddo
-      else
-
-c       --- Since it is not needed, make sure that the memory is freed.
-        if (ASSOCIATED(conductors%icgrid)) then
-          deallocate(conductors%icgrid)
-        endif
 
       endif
 
