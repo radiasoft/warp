@@ -68,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.85 2009/11/05 23:03:38 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.86 2010/04/23 00:27:07 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3147,8 +3147,7 @@ Input arguments:
     zmmax = zcenter + gaplength/2. + fringelen*ap
     if dz is None: dz = w3d.dz
     nz = nint((zmmax - zmmin)/dz)
-    dz = (zmmax - zmmin)/w3d.nz
-    nz = nint((zmmax - zmmin)/dz)
+    dz = (zmmax - zmmin)/nz
 
   # --- Note that the grid parameters are passed in using a separate dict
   # --- instead of using the generic kw, since kw is expected to contain
