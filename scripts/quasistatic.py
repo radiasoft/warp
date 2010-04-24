@@ -29,7 +29,7 @@ class Quasistatic(SubcycledPoissonSolver):
                npushzperiod=1,lattice=None,l_freeze_xelec=false,
                dispx=None,dispy=None,disppx=None,disppy=None,lcollapsemaps=1,
                xinitelec=None,yinitelec=None,winitelec=None,
-               vxinitelec=None,vyinitelec=None,vzinitelec=None,strideinitelec=1,
+               vxinitelec=None,vyinitelec=None,vzinitelec=None,strideinitelec=1,l_elec4sym=0,
                l_beam_1d=False,sigmax=0.,sigmay=0.,
                l_elec_greensum=False,elec_aellipse=0.,elec_bellipse=0.,
                Ekick=0.,Lkick=0.,Akick=None,Bkick=1,
@@ -117,6 +117,7 @@ class Quasistatic(SubcycledPoissonSolver):
       self.ymaxelec=ymaxelec
     self.nxelec=nxelec
     self.nyelec=nyelec
+    self.l_elec4sym=l_elec4sym
     self.l_weakstrong=l_weakstrong
     self.l_beam_1d=l_beam_1d
     self.sigmax=sigmax
@@ -1809,6 +1810,22 @@ class Quasistatic(SubcycledPoissonSolver):
                          self.vzinitelec[self.ielecstride::self.strideinitelec],
                          w=weight,
                          lmomentum=false)
+       if self.l_elec4sym:
+        for isym in range(3):
+         if isym==0:
+           sx=-1.;sy=1.
+         if isym==1:
+           sx=1.;sy=-1.
+         if isym==2:
+           sx=-1.;sy=-1.
+         self.electrons.addpart(sx*self.xinitelec[self.ielecstride::self.strideinitelec],
+                                sy*self.yinitelec[self.ielecstride::self.strideinitelec],
+                                self.xinitelec[self.ielecstride::self.strideinitelec]*0.+zmax,
+                                sx*self.vxinitelec[self.ielecstride::self.strideinitelec],
+                                sy*self.vyinitelec[self.ielecstride::self.strideinitelec],
+                                self.vzinitelec[self.ielecstride::self.strideinitelec],
+                                w=weight,
+                                lmomentum=false)
        self.ielecstride = (self.ielecstride+1)%self.strideinitelec
      else: 
        if self.l_inject_elec_MR:
