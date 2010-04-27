@@ -11,7 +11,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.150 2010/04/12 02:50:02 dave Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.151 2010/04/27 23:09:58 dave Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -167,7 +167,13 @@ class MultiGrid3D(SubcycledPoissonSolver):
         # --- 'p' object has not yet been created anyway, so do nothing.
         pass
 
-    conductorobject = self.conductorobjects.setdefault(fselfb,ConductorType())
+    #conductorobject = self.conductorobjects.setdefault(fselfb,ConductorType())
+    try:
+      conductorobject = self.conductorobjects[fselfb]
+    except KeyError:
+      conductorobject = ConductorType()
+      self.conductorobjects[fselfb] = conductorobject
+
     installedconductorlist = self.installedconductorlists.setdefault(fselfb,[])
 
     # --- Now, make sure that the conductors are installed into the object.
