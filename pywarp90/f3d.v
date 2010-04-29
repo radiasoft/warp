@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.215 $, $Date: 2010/04/22 23:42:49 $
+#@(#) File F3D.V, version $Revision: 3.216 $, $Date: 2010/04/29 17:21:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.215 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.216 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -202,36 +202,50 @@ lprintmgphimaxchange logical /.false./ # When true, prints the maximum change in
 lprintmgarraysumdiagnostic logical /.false./
 
 *********** Multigrid3d dump:
-gridmode    integer /0/ # Mode of grid motion, if 0, then normal, if 1, then
-                        # grid is assumed not to move.  slice arrays only set
-                        # when iwhich is set to -2.
-mgparam     real    /1.2/ # Acceleration parameter for multigrid fieldsolver
-mgmaxiters  integer /100/ # Maximum number of iterations
-mgmaxlevels integer /101/ # Minimum grid size in x-y to coarsen to
+gridmode    integer /0/ # Mode of grid motion. In most cases this will be
+                        # autoset. Use with care.
+                        # if 0, then grid is assumed to be moving, and the
+                        # conductor information is regenerated every time step.
+                        # This is an expensive operation and should be turned
+                        # off is not needed.
+                        # if 1, then grid is assumed not to move. The
+                        # conductor information is only generated once.
+mgparam     real    /1.2/ # Acceleration parameter for multigrid fieldsolver.
+                          # This can be automatically set by calling
+                          # find_mgparam(). It must be greater than zero and
+                          # less than two.
+mgmaxiters  integer /100/ # Maximum number of V-cycle iterations
+mgmaxlevels integer /101/ # Maximum numer of levels of coarsening
 mgiters     integer       # Actual number of iterations
 mgtol       real  /1.e-6/ # Absolute tolerance in change in last iteration
+                          # Note that this has units of volts.
 mgerror     real          # Maximum error after convergence
-mgform      integer /1/   # When 1, MG operates on phi (and rho),
+mgform      integer /1/   # Do not use - not fully supported
+                          # When 1, MG operates on phi (and rho),
                           # when 2, MG operates on error (and residual)
-downpasses  integer /1/   # Number of downpasses
-uppasses    integer /1/   # Number of uppasses
+downpasses  integer /1/   # Number of downpasses, autoset by find_mgparam()
+uppasses    integer /1/   # Number of uppasses, autoset by find_mgparam()
 mgverbose   integer /1/   # Level of verbosity of multigrid solver
-mgntverbose integer /1/   # Time step period when output is printed
+mgntverbose integer /1/   # Time step period when convergence information
+                          # is printed
 bounds(0:5) integer /6*0/ # Type of boundaries at edge of mesh, in order of
-                          # lower, upper for x, y, z.
+                          # lower, upper for x, y, z. This is generally
+                          # autoset, but can be changed for special purposes.
 mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
                            80,96,112,128,160,192,224,256,320,384,448,512,
                            640,768,896,1024,1280,1536,1792,2048,2560,3072,
                            3584,4096,5120,6144,7168,8192,10240,12288,14336,
                            16384,20480,24576,28672,32768,40960,49152,57344,
                            65536/
-                         # A list of good numbers to use for the grid
-                         # dimension. This is an ordered list of powers of two
-                         # times 1, 3, 5, and 7.
-mgscaleserial real /1.e39/
+                         # This is no longer relevant and should not be used.
+                         # This array is only keep for legacy purposes.
+mgscaleserial real /1.e39/ # Do not use - still being tested
 mggrid_overlap integer /0/ # When 1, extra overlap is taken advantage of to
                            # reduce the amount of parallel communication
+                           # Do not use, except for special purposes.
 mgcoarsening integer /2/ # Amount of coarsening to do for each multigrid level
+                         # Not fully supported. 2 is almost always the best
+                         # value anyway.
 getmglevels(nx:integer,ny:integer,nz:integer,
             nxlocal:integer,nylocal:integer,nzlocal:integer,
             dx:real,dy:real,dz:real,
