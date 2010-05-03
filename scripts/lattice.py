@@ -68,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.86 2010/04/23 00:27:07 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.87 2010/05/03 23:51:55 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -1764,6 +1764,7 @@ class TimeDependentLatticeElement(object):
       test = self.index
     except AttributeError:
       self.index = 0
+    if time < self.time[self.index]: self.index = 0
     while self.time[self.index+1] < time: self.index = self.index + 1
     wt = ((time - self.time[self.index])/
           (self.time[self.index+1] - self.time[self.index]))
