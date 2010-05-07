@@ -68,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.87 2010/05/03 23:51:55 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.88 2010/05/07 16:59:48 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3637,7 +3637,7 @@ such as contours, and cellarray.
     ax.remove('z')
     sz = iz
   else:
-    sz = slice(None)
+    sz = slice(1,-1)
 
   # --- Get the B field. If all three axis specified, just return the value
   # --- at that location.
