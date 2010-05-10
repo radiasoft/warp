@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.71 $, $Date: 2010/04/07 01:22:20 $
+#@(#) File FRZ.V, version $Revision: 3.72 $, $Date: 2010/05/10 17:54:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.71 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.72 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -235,6 +235,10 @@ reset_rzmgrid_rho() subroutine
          # sets rho to zero.
 rhoweightr(xp(np):real,yp(np):real,np:integer,q:real,nx:integer,dx:real,xmmin:real) subroutine
          # deposit charge on radial grid
+rhoweightz(zp(np):real,np:integer,q:real,nz:integer,dz:real,zmin:real) subroutine
+         # deposit charge on 1D grid
+rhoweightz_weight(zp(np):real,wp(np):real,np:integer,q:real,nz:integer,dz:real,zmin:real) subroutine
+         # deposit charge on 1D grid
 rhoweightrz(xp:real,yp:real,zp:real,np:integer,q:real,nr:integer,nz:integer,
             dr:real,dz:real,rgrid:real,zgrid:real) subroutine
 rhoweightrz_weights(xp:real,yp:real,zp:real,w:real,np:integer,q:real,nr:integer,nz:integer,
@@ -250,6 +254,7 @@ rhoweightrzgrid_weights(grid:GRIDtype,xp(np):real,yp(np):real,zp(np):real,
          # deposits rho from weighted particles on the specified grid object
 fieldweightr(xp(np):real,yp(np):real,ex(np):real,ey(np):real,np:integer) subroutine
 fieldweightz(zp:real,ez:real,np:integer,zgrid:real) subroutine
+fieldweightzb(zp:real,ez:real,np:integer,zgrid:real) subroutine
 fieldweightrz(xp:real,yp:real,zp:real,ex:real,ey:real,ez:real,np:integer,zgrid:real,efetch:integer) subroutine
 fieldweightxz(xp:real,zp:real,ex:real,ez:real,np:integer,zgrid:real,efetch:integer) subroutine
 fieldweightxzb(xp:real,zp:real,bx:real,bz:real,np:integer,zgrid:real,efetch:integer) subroutine

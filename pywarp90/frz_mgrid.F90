@@ -6,7 +6,7 @@ module multigrid_common
 USE Constant
 USE multigrid_common_base
 USE GridBoundary3d
-USE InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,XZgeom,XYgeom,Zgeom,Rgeom,l2symtry,l4symtry
+USE InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,XZgeom,XYgeom,Zgeom,Rgeom,Ygeom,l2symtry,l4symtry
 #ifdef MPIPARALLEL
   use Parallel
   use mpirz
@@ -70,7 +70,7 @@ TYPE(BNDtype), POINTER :: b
 
   inveps0 = 1./eps0
 
-  IF(solvergeom==Zgeom) then
+  IF(solvergeom==Ygeom .or. solvergeom==Zgeom) then
     nguardx = 0
   END if
   IF(solvergeom==Rgeom) then
@@ -182,6 +182,8 @@ TYPE(BNDtype), POINTER :: b
       end do
     END if
     IF(solvergeom==Rgeom) bg%invvol = bg%invvol * dz
+  else if(solvergeom==Ygeom) then
+    bg%invvol(:) = 1._8 / dz
   else ! solvergeom==XZgeom or solvergeom==XYgeom
     bg%invvol(:) = 1._8 / (dr * dz)
   END if
@@ -222,7 +224,7 @@ TYPE(BNDtype), POINTER :: b
   bg%izlbnd = izlbndi
   bg%izrbnd = izrbndi
 
-  IF(.not.(solvergeom==Zgeom .or. solvergeom==Rgeom)) then
+  IF(.not.(solvergeom==Zgeom .or. solvergeom==Rgeom .or. solvergeom==Ygeom)) then
     call init_bnd(bg,nr,nz,dr,dz,bg%zmin,bg%zmax)
   else
     nlevels=1
@@ -234,7 +236,7 @@ TYPE(BNDtype), POINTER :: b
 !      bg%bnd(i)%izrbnd=bg%izrbnd
 !    END do
 
-  IF(.not.(solvergeom==Zgeom .or. solvergeom==Rgeom)) then
+  IF(.not.(solvergeom==Zgeom .or. solvergeom==Rgeom .or. solvergeom==Ygeom)) then
     do i = 1, bg%nlevels
       IF(i==1) then
         b => bg%bndfirst
@@ -437,6 +439,8 @@ REAL(8) :: dr,dz,rmin,zmin
       end do
     END if
     IF(solvergeom==Rgeom) g%invvol = g%invvol * dz
+  else if(solvergeom==Ygeom) then
+    g%invvol(:) = 1._8 / dz
   else ! solvergeom==XZgeom or solvergeom==XYgeom
     g%invvol(:) = 1._8 / (dr * dz)
   END if
@@ -446,7 +450,7 @@ REAL(8) :: dr,dz,rmin,zmin
     write(o_line,'(" Add grid ID: ",i5)') g%gid
     call remark(trim(o_line))
   END if
-  IF(solvergeom==Zgeom .or.solvergeom==Rgeom) then
+  IF(solvergeom==Zgeom .or.solvergeom==Rgeom .or. solvergeom==Ygeom) then
     g%nlevels=nlevels
   else
     call init_bnd(g,nr,nz,dr,dz,g%zmin,g%zmax)
@@ -472,7 +476,7 @@ REAL(8) :: dr,dz,rmin,zmin
 
 ! initializes loc_part* arrays
 
-  IF(solvergeom==Zgeom .or. solvergeom==Rgeom) then
+  IF(solvergeom==Zgeom .or. solvergeom==Rgeom .or. solvergeom==Ygeom) then
     lmin=1+nint((g%zmin-g%up%zmin)/g%up%dz)
     lmax=1+nint((g%zmax-g%up%zmin)/g%up%dz)
     g%up%loc_part(1,lmin:lmax-1)=g%gid(1)
@@ -864,7 +868,7 @@ TYPE(GRIDtype), pointer :: gup
   n_avail_ids=n_avail_ids+1
   avail_ids(n_avail_ids)=g%gid(1)
 !   nullify(g%next,g%prev,g%down,g%up)
-  IF(solvergeom/=Zgeom .and. solvergeom/=Rgeom) then
+  IF(solvergeom/=Zgeom .and. solvergeom/=Rgeom .and. solvergeom/=Ygeom) then
     do i = 1, g%nlevels
       IF(i==1) then
         b => g%bndlast
@@ -1175,7 +1179,7 @@ TYPE(GRIDtype), pointer :: g,mother
     NULLIFY(g%next%prev)
   endif
 
-  IF(solvergeom/=Zgeom .and. solvergeom /=Rgeom) call del_grid_bnds(g)
+  IF(solvergeom/=Zgeom .and. solvergeom /=Rgeom .and. solvergeom/=Ygeom) call del_grid_bnds(g)
   call del_overlaps(g)
 
   call ReleaseGRIDtype(g)
@@ -5489,7 +5493,7 @@ REAL(8), INTENT(IN OUT) :: rho0(nr0+1,nz0+1)
     if (basegrid%izlbnd==dirichlet .or. basegrid%izlbnd==patchbnd) basegrid%phi(1:nr0+1,1)     = u0(1:nr0+1,1,1)
     if (basegrid%izrbnd==dirichlet .or. basegrid%izrbnd==patchbnd) basegrid%phi(1:nr0+1,nz0+1) = u0(1:nr0+1,1,nz0+1)
   END if
-  IF(solvergeom==Zgeom) then
+  IF(solvergeom==Zgeom .or. solvergeom==Ygeom) then
     basegrid%phi(1,1)     = u0(1,1,1)
     basegrid%phi(1,nz0+1) = u0(1,1,nz0+1)
   END if
@@ -5669,7 +5673,7 @@ implicit none
 
 if (.not. ASSOCIATED(basegrid)) return
 IF(.not.l_distribute) return
-IF(solvergeom==Zgeom .or. solvergeom==Rgeom) then
+IF(solvergeom==Zgeom .or. solvergeom==Rgeom .or. solvergeom==Ygeom) then
   call distribute_rho(basegrid)
 else
   call children_send_rho_to_parents()
@@ -5687,7 +5691,7 @@ TYPE(GRIDtype) :: grid
   IF(associated(grid%down)) call distribute_rho(grid%down)
   IF(associated(grid%next)) call distribute_rho(grid%next)
   IF(associated(grid%up)) then
-    IF(solvergeom==Zgeom) then
+    IF(solvergeom==Zgeom .or. solvergeom==Ygeom) then
       call deposit_z(unew=grid%up%rho(1,:), uold=grid%rho(1,:), invvolnew=1./grid%up%dz, invvolold=1./grid%dz, &
                      zminold=grid%zmin, zmaxold=grid%zmax, zminnew=grid%up%zmin, zmaxnew=grid%up%zmax)
     else IF(solvergeom==RZgeom) then
@@ -5719,7 +5723,7 @@ INTEGER(ISZ) :: i, ic
 !    grid%mgparam=grid%mgparam+0.05
 
     IF(associated(grid%up)) then
-      IF(solvergeom==Zgeom) then
+      IF(solvergeom==Zgeom .or. solvergeom==Ygeom) then
         CALL interpolate_any_1d(unew=grid%phi(1,:),uold=grid%up%phi(1,:), &
                                 nznew=grid%nz, nzold=grid%up%nz, &
                                 zminold=grid%up%zmin, zmaxold=grid%up%zmax, &
@@ -5762,7 +5766,7 @@ INTEGER(ISZ) :: i, ic
 !    IF(.not. associated(grid%up)) call solve_multigridrz(grid=grid, accuracy=accuracy, l_for_timing=.false.)
     IF(solvergeom==Rgeom) then
       call solve_multigridr(grid=grid)
-    ELSE IF(solvergeom==Zgeom) then
+    ELSE IF(solvergeom==Zgeom .or. solvergeom==Ygeom) then
       call solve_multigridz(grid=grid)
     ELSE IF(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom) then
       call solve_multigridrz(grid=grid, accuracy=accuracy, l_for_timing=.false.)
@@ -5811,7 +5815,7 @@ type(ConductorType),pointer:: conductorstmp
 
 TYPE(BNDtype), POINTER :: b
 
-IF(solvergeom==Zgeom .or. solvergeom==Rgeom) return
+IF(solvergeom==Zgeom .or. solvergeom==Rgeom .or. solvergeom==Ygeom) return
 
 ALLOCATE(mg_ncond(grid%nlevels),mg_necndbdy(grid%nlevels), mg_nocndbdy(grid%nlevels))
 mg_ncond = 0
@@ -5913,7 +5917,7 @@ end subroutine install_conductors_rz
 
 subroutine addconductors_rz(b,nrc,nzc,drc,dzc,rmin,ixlbnd,ixrbnd,izlbnd,izrbnd, &
                             conductors)
-USE InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,XZgeom,XYgeom
+USE InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,XZgeom,XYgeom,Ygeom,Rgeom
 USE multigridrz, ONLY: CONDtype, dirichlet, patchbnd, v_cond, v_bnd, v_dirichlet, bnd_method, egun, ecb, init_bnd_sublevel
 USE BNDtypemodule
 use ConductorTypemodule
@@ -5929,7 +5933,7 @@ REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz
 
 TYPE(CONDtype), POINTER :: c
 
-  IF(solvergeom==XYgeom) then
+  IF(solvergeom==XYgeom .or. solvergeom==Rgeom .or. solvergeom==Ygeom) then
     kl = 1
   else
     kl = 2
@@ -6080,7 +6084,7 @@ TYPE(CONDtype), POINTER :: c
        dzz=0.5_8*(dzp+dzm)  !ecb
      case default
    end select
-   IF(solvergeom==RZgeom) then
+   IF(solvergeom==RZgeom .or. solvergeom==Rgeom) then
     IF(b%cndlast%jj(ii)==1 .and. rmin==0.) then
      b%cndlast%dt(ii) = 1._8/(4._8/(dxp*dxx)+(1._8/dzm+1._8/dzp)/dzz)
      b%cndlast%cfxm(ii) = 0.
@@ -6562,7 +6566,7 @@ else ! IF(solvergeom==XZgeom) then
 
   invvolxz = 1._8 / (dr*dz)
 
-  IF( solvergeom==XYgeom) then
+  IF( solvergeom==XYgeom .or. solvergeom==Ygeom .or. solvergeom==Rgeom) then
     zmin0 = basegrid%zminp
   else ! solvergeom=XZgeom
     zmin0 = basegrid%zminp-zgrid
@@ -7142,6 +7146,78 @@ DEALLOCATE(invdz,zmin)
 
 return
 END SUBROUTINE RHOWEIGHTZ
+
+subroutine rhoweightz_weight(zp,wp,np,q,nz,dz,zgrid)
+USE multigridrz
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: np, nz
+REAL(8), DIMENSION(np), INTENT(IN) :: zp, wp
+REAL(8), INTENT(IN) :: q, dz
+
+REAL(8) :: zpos, ddz, oddz, zgrid
+INTEGER(ISZ) :: i, ln, lnp, igrid
+REAL(8):: substarttime
+LOGICAL(ISZ) :: ingrid
+TYPE(GRIDtype), pointer :: g
+
+REAL(8), DIMENSION(:), ALLOCATABLE :: invdz, zmin
+
+IF(np==0) return
+
+ALLOCATE(invdz(ngrids),zmin(ngrids))
+
+do igrid = 1, ngrids
+  invdz(igrid) = grids_ptr(igrid)%grid%invdz
+  zmin (igrid) = grids_ptr(igrid)%grid%zminp+zgrid
+end do
+
+IF(ngrids>1 .and. .not. l_dep_rho_on_base) then
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    igrid = 1
+    g=>basegrid
+    ingrid=.false.
+    zpos = (zp(i)-zmin(igrid))*invdz(igrid)
+    ln = 1+INT(zpos)
+    do WHILE(.not.ingrid)
+      IF(g%loc_part(1,ln)==igrid) then
+        ingrid=.true.
+      else
+        igrid = g%loc_part(1,ln)
+        g=>grids_ptr(igrid)%grid
+        zpos = (zp(i)-zmin(igrid))*invdz(igrid)
+        ln = 1+INT(zpos)
+      END if
+    end do
+    ddz = zpos-REAL(ln-1)
+    oddz = 1._8-ddz
+    lnp=ln+1
+    g%rhop(1,ln)  = g%rhop(1,ln)  + q * wp(i) * oddz * invdz(igrid)
+    g%rhop(1,lnp) = g%rhop(1,lnp) + q * wp(i) * ddz  * invdz(igrid)
+!      g%rhominz = MIN(g%rhominz,ln)
+!      g%rhomaxz = MAX(g%rhomaxz,lnp)
+  end do
+else
+  ! make charge deposition using CIC weighting
+  igrid = 1
+  do i = 1, np
+    zpos = (zp(i)-zmin(igrid))*invdz(1)
+    ln = 1+INT(zpos)
+    ddz = zpos-REAL(ln-1)
+    oddz = 1._8-ddz
+    lnp=ln+1
+    basegrid%rhop(1,ln)  = basegrid%rhop(1,ln)  + q * wp(i) * oddz * invdz(1)
+    basegrid%rhop(1,lnp) = basegrid%rhop(1,lnp) + q * wp(i) * ddz  * invdz(1)
+!      basegrid%rhominz = MIN(basegrid%rhominz,ln)
+!      basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
+  end do
+END if
+
+DEALLOCATE(invdz,zmin)
+
+return
+END SUBROUTINE RHOWEIGHTZ_WEIGHT
 
 subroutine set_rho_rz(rho,nr,nz,id)
 USE multigridrz
@@ -9092,7 +9168,7 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     ddz = zpos-REAL(ln-1)
     oddz = 1._8-ddz
     ez(i) = ez(i) + 0.5*(oddz * (g%phip(1,ln-1)-g%phip(1,ln+1))  &
-               + ddz  * (g%phip(1,ln  )-g%phip(1,ln+2)))*g%invdz
+                       + ddz  * (g%phip(1,ln  )-g%phip(1,ln+2)))*g%invdz
   END do
 else
   ! make charge deposition using CIC weighting
@@ -9103,12 +9179,66 @@ else
     ddz = zpos-REAL(ln-1)
     oddz = 1._8-ddz
     ez(i) = ez(i) + 0.5*(oddz * (basegrid%phip(1,ln-1)-basegrid%phip(1,ln+1))  &
-               + ddz  * (basegrid%phip(1,ln  )-basegrid%phip(1,ln+2)))*basegrid%invdz
+                       + ddz  * (basegrid%phip(1,ln  )-basegrid%phip(1,ln+2)))*basegrid%invdz
   END do
 END if
 
   return
 end subroutine fieldweightz
+
+subroutine fieldweightzb(zp,br,np,zgrid)
+USE multigridrz
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: np
+REAL(8), DIMENSION(np), INTENT(IN) :: zp
+REAL(8), DIMENSION(np), INTENT(IN OUT) :: br
+REAL(8), INTENT(IN) :: zgrid
+
+REAL(8) :: zpos, ddz, oddz
+INTEGER(ISZ) :: i, l, ln, lnp, igrid
+LOGICAL(ISZ) :: ingrid
+TYPE(GRIDtype), pointer :: g
+
+
+IF(ngrids>1 .and. .not.l_get_field_from_base) then
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    igrid = 1
+    g => basegrid
+    ingrid=.false.
+    zpos = (zp(i)-g%zminp-zgrid)*g%invdz
+    ln = 1+INT(zpos)
+    do WHILE(.not.ingrid)
+      IF(g%loc_part_fd(1,ln)==igrid) then
+        ingrid=.true.
+      else
+        igrid = g%loc_part_fd(1,ln)
+        g=>grids_ptr(igrid)%grid
+        zpos = (zp(i)-g%zminp-zgrid)*g%invdz
+        ln = 1+INT(zpos)
+      END if
+    end do
+    ddz = zpos-REAL(ln-1)
+    oddz = 1._8-ddz
+    br(i) = br(i) + oddz * g%brp(1,ln) + ddz  * g%brp(1,ln+1)
+  END do
+else
+  ! make charge deposition using CIC weighting
+  g => basegrid
+  do i = 1, np
+    ingrid=.false.
+    zpos = (zp(i)-basegrid%zminp-zgrid)*basegrid%invdz
+    ln = 1+INT(zpos)
+    ddz = zpos-REAL(ln-1)
+    oddz = 1._8-ddz
+    br(i) = br(i) + oddz * g%brp(1,ln) + ddz  * g%brp(1,ln+1)
+  END do
+END if
+
+  return
+end subroutine fieldweightzb
 
 subroutine setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
 use ParticleGroupmodule
@@ -10423,7 +10553,7 @@ end subroutine get_cond_rz
 
 subroutine get_cond_rz_grid(grid,conductors)
 USE multigridrz, Only: GRIDtype,BNDtype,CONDtype,&
-                       solvergeom,Zgeom,Rgeom,XYgeom,v_bnd
+                       solvergeom,Zgeom,Rgeom,XYgeom,v_bnd,Ygeom
 USE Conductor3d, Only: ConductorType
 implicit none
 TYPE(GRIDtype) :: grid
@@ -10435,7 +10565,7 @@ TYPE(CONDtype), pointer :: c
 
  IF(solvergeom==Zgeom .or. solvergeom==Rgeom) return
 
- IF(solvergeom==XYgeom) then
+ IF(solvergeom==XYgeom .or. solvergeom==Ygeom) then
    kl = 1
  else
    kl = 2
@@ -11205,6 +11335,8 @@ TYPE(BNDtype), POINTER :: b
       end do
     END if
     IF(solvergeom==Rgeom) bg%invvol = bg%invvol * dz
+  else if(solvergeom==Ygeom) then
+    bg%invvol(:) = 1._8 / dz
   else ! solvergeom==XZgeom or solvergeom==XYgeom
     bg%invvol(:) = 1._8 / (dr * dz)
   END if
@@ -11214,7 +11346,7 @@ TYPE(BNDtype), POINTER :: b
   bg%izlbnd = Bbounds(4)
   bg%izrbnd = Bbounds(5)
 
-  IF(solvergeom==Zgeom .or. solvergeom==Rgeom) then
+  IF(solvergeom==Zgeom .or. solvergeom==Rgeom .or. solvergeom==Ygeom) then
     bg%nlevels=1 ! nlevels XXX
   else
     call init_bnd(bg,nr,nz,dr,dz,bg%zmin,bg%zmax)
@@ -11272,7 +11404,7 @@ use multigridrz
 TYPE(GRIDtype), POINTER :: f
 integer(ISZ) :: i
 
-if(solvergeom==Zgeom) return
+if(solvergeom==Zgeom .or. solvergeom==Ygeom) return
 
 f => basegrid
 do i=1, ngrids
