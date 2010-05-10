@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.31 $, $Date: 2009/11/02 16:51:35 $
+c@(#) File w3d_utilities.F, version $Revision: 1.32 $, $Date: 2010/05/10 18:47:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1072,7 +1072,7 @@ c     --- has caught up (and then they can be deleted).
 c===========================================================================
       subroutine smooth3d_121(q,nx,ny,nz,npass,alpha)
 c     --- performs a smoothing sequence of n passes of a three points stencil 
-c     --- with coefficients [(1-alpha)/2, alpha, (1-aalpha)/2] along x, y and/or z.      
+c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z.      
        implicit none
 
        integer(ISZ) :: nx,ny,nz,i,j,k,l,npass(3)
@@ -1133,7 +1133,7 @@ c     --- with coefficients [(1-alpha)/2, alpha, (1-aalpha)/2] along x, y and/or
 c===========================================================================
       subroutine smooth3d_121_stride(q,nx,ny,nz,npass,alpha,stride)
 c     --- performs a smoothing sequence of n passes of a three points stencil 
-c     --- with coefficients [(1-alpha)/2, alpha, (1-aalpha)/2] along x, y and/or z,
+c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z,
 c     --- with a stride.
        implicit none
 
@@ -1187,4 +1187,103 @@ c     --- with a stride.
         return
       end subroutine smooth3d_121_stride
 c===========================================================================
+      subroutine smooth3d_121_stride_mask(q,mask,nx,ny,nz,npass,alpha,stride)
+c     --- performs a smoothing sequence of n passes of a three points stencil 
+c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z,
+c     --- with a stride.
+       implicit none
+
+       integer(ISZ) :: nx,ny,nz,i,j,k,l,npass(3),stride(3)
+
+       real(kind=8), dimension(0:nx,0:ny,0:nz) :: q,mask
+       real(kind=8) :: tempx(0:nx), tempy(0:ny), tempz(0:nz), alpha(3), a, b
+
+       mask(0:stride(1)-1,:,:)=0.
+       mask(nx-stride(1)+1:,:,:)=0.
+       if (ny>0) then
+         mask(:,0:stride(2)-1,:)=0.
+         mask(:,ny-stride(2)+1:,:)=0.
+       end if
+       mask(:,:,0:stride(3)-1)=0.
+       mask(:,:,nz-stride(3)+1:)=0.
+
+!           x smoothing
+        do i=1,npass(1)
+          do  l=0,nz
+            do  k=0,ny
+              tempx = q(:,k,l)
+              q(stride(1):nx-stride(1),k,l) = 0.
+!              q(:,k,l) = 0.
+              do  j=stride(1),nx-stride(1)
+                ! deposit up
+                b = (1.-alpha(1))/2.
+                b = b*min(mask(j,k,l),mask(j+stride(2),k,l))
+                a = 1.-2*b
+                q(j,k,l) = q(j,k,l) + a/2*tempx(j)
+                q(j+stride(1),k,l) = q(j+stride(1),k,l) + b*tempx(j)
+                ! deposit down
+                b = (1.-alpha(1))/2.
+                b = b*min(mask(j,k,l),mask(j-stride(2),k,l))
+                a = 1.-2*b
+                q(j,k,l) = q(j,k,l) + a/2*tempx(j)
+                q(j-stride(1),k,l) = q(j-stride(1),k,l) + b*tempx(j)
+              end do
+            end do
+          end do
+        end do
+
+!           y smoothing
+        do i=1,npass(2)
+          do  l=0,nz
+            do  j=0,nx
+              tempy = q(j,:,l)
+              q(j,stride(2):ny-stride(2),l) = 0.
+!              q(j,:,l) = 0.
+              do  k=stride(2),ny-stride(2)
+                ! deposit up
+                b = (1.-alpha(2))/2.
+                b = b*min(mask(j,k,l),mask(j,k+stride(2),l))
+                a = 1.-2*b
+                q(j,k,l) = q(j,k,l) + a/2*tempy(k)
+                q(j,k+stride(2),l) = q(j,k+stride(2),l) + b*tempy(k)
+                ! deposit down
+                b = (1.-alpha(2))/2.
+                b = b*min(mask(j,k,l),mask(j,k-stride(2),l))
+                a = 1.-2*b
+                q(j,k,l) = q(j,k,l) + a/2*tempy(k)
+                q(j,k-stride(2),l) = q(j,k-stride(2),l) + b*tempy(k)
+              end do
+            end do
+          end do
+        end do
+
+!           z smoothing
+        do i=1,npass(3)
+          do  k=0,ny
+            do  j=0,nx
+              tempz = q(j,k,:)
+              q(j,k,stride(3):nz-stride(3)) = 0.
+!              q(j,k,:) = 0.
+              do  l=stride(3),nz-stride(3)
+                ! deposit up
+                b = (1.-alpha(3))/2.
+                b = b*min(mask(j,k,l),mask(j,k,l+stride(3)))
+                a = 1.-2*b
+                q(j,k,l) = q(j,k,l) + a/2*tempz(l)
+                q(j,k,l+stride(3)) = q(j,k,l+stride(3)) + b*tempz(l)
+                ! deposit down
+                b = (1.-alpha(3))/2.
+                b = b*min(mask(j,k,l),mask(j,k,l-stride(3)))
+                a = 1.-2*b
+                q(j,k,l) = q(j,k,l) + a/2*tempz(l)
+                q(j,k,l-stride(3)) = q(j,k,l-stride(3)) + b*tempz(l)
+              end do
+            end do
+          end do
+        end do
+
+        return
+      end subroutine smooth3d_121_stride_mask
+c===========================================================================
+
 
