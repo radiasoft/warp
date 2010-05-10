@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.262 2010/02/01 18:04:30 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.263 2010/05/10 19:47:35 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1952,7 +1952,6 @@ Note that both the x and y grids must be passed in.
   pplimits = kwvalues['pplimits']
   scale = kwvalues['scale']
   color = kwvalues['color']
-  fg = kwvalues['fg']
   xbound = kwvalues['xbound']
   ybound = kwvalues['ybound']
   xmesh = kwvalues['xmesh']
