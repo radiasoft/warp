@@ -30,7 +30,7 @@ class Quasistatic(SubcycledPoissonSolver):
                dispx=None,dispy=None,disppx=None,disppy=None,lcollapsemaps=1,
                xinitelec=None,yinitelec=None,winitelec=None,
                vxinitelec=None,vyinitelec=None,vzinitelec=None,strideinitelec=1,l_elec4sym=0,
-               l_beam_1d=False,sigmax=0.,sigmay=0.,
+               l_beam_1d=False,sigmax=0.,sigmay=0.,l_planarYZ=0,
                l_elec_greensum=False,elec_aellipse=0.,elec_bellipse=0.,
                Ekick=0.,Lkick=0.,Akick=None,Bkick=1,
                nbuckets=1,l_independentbunches=0,nsaverhophi=-1,
@@ -68,7 +68,11 @@ class Quasistatic(SubcycledPoissonSolver):
     self.l_independentbunches=l_independentbunches
     self.grid_overlap = 1
     FieldSolver.__init__(self,kwdict=kw)
-    w3d.solvergeom=w3d.XYgeom
+    if l_planarYZ:
+      w3d.solvergeom=w3d.Ygeom
+      frz.l_get_fields_on_grid=False
+    else:
+      w3d.solvergeom=w3d.XYgeom
     self.gridelecs=[]
     self.gridions=[]
     self.gridionscp=[]
@@ -80,7 +84,10 @@ class Quasistatic(SubcycledPoissonSolver):
       gxy.append(GRIDtype())
       self.grids.append(gxy[-1])
       frz.basegrid=gxy[-1]
-      frz.init_base(w3d.nx,w3d.ny,w3d.dx,w3d.dy,w3d.xmmin,w3d.ymmin,false)
+      if l_planarYZ:
+        frz.init_base(0,w3d.ny,w3d.xmmax-w3d.xmmin,w3d.dy,w3d.xmmin,w3d.ymmin,false)
+      else:
+        frz.init_base(w3d.nx,w3d.ny,w3d.dx,w3d.dy,w3d.xmmin,w3d.ymmin,false)
       frz.mgridrz_accuracy = f3d.mgtol
     self.conductors=conductors
     self.l_condinstalled=0
@@ -142,6 +149,7 @@ class Quasistatic(SubcycledPoissonSolver):
       self.pboundxy = top.pboundxy
     else:
       self.pboundxy = pboundxy
+    self.l_planarYZ=l_planarYZ
     # --- sets z range
     if self.l_mode==2:
       self.izmin = w3d.nz/4
@@ -293,6 +301,8 @@ class Quasistatic(SubcycledPoissonSolver):
     self.mystation=zeros(self.izmax,'d')
     self.nsaverhophi=nsaverhophi
     self.timehist=AppendableArray()
+    self.store_rhotoprev()
+    self.store_rhotonext()
     
   def reset_timers(self):
     self.time_loop=0.
@@ -357,7 +367,6 @@ class Quasistatic(SubcycledPoissonSolver):
        if self.l_verbose:print 'l_push_elec',l_push_elec
      else:
        l_push_elec = (not self.l_weakstrong) or ((top.it-(npes-me))%self.nelecperiod==0)
-
      # --- call beforestep functions
      callbeforestepfuncs.callfuncsinlist()
 
@@ -422,16 +431,17 @@ class Quasistatic(SubcycledPoissonSolver):
 #     self.store_ionstoprev()
 #     if self.l_timing: self.time_store_ionstoprev += wtime()-ptime
 #     self.apply_ions_bndconditions(iz)
-
+     self.elec=[]
      # --- loop over "3-D" grid mesh in z
      for iz in range(self.izmax-1,self.izmin-1,-1):
        self.iz=iz
          
-       if iz==(self.izmax-3):
+       if self.iz==(self.izmax-3):
          if self.l_timing:ptime = wtime()
-         self.sendrecv_storedions_toprev()
+         self.sendrecv_storedions_toprev()       
          if self.l_timing: self.time_sendrecv_storeions += wtime()-ptime
        if self.l_timing:ptime = wtime()
+
        # --- push ions velocity (2nd half)
        if me>=(npes-1-top.it):
          if iz<w3d.nzp-1:
@@ -456,9 +466,11 @@ class Quasistatic(SubcycledPoissonSolver):
 #         if  self.l_findmgparam and top.it-1==npes-me-1 and self.iz in [w3d.nzlocal/2,w3d.nzlocal/2+1]:
          if  self.l_findmgparam and top.it==0 and self.iz in [w3d.nzlocal/2,w3d.nzlocal/2+1]:
           if me==npes-1:find_mgparam_rz(true)
+         self.gridions[1].phi=0.
          solve_mgridrz(self.gridions[1],frz.mgridrz_accuracy,true)
          if self.iz==0:
            frz.basegrid=self.gridions[0];mk_grids_ptr()
+           self.gridions[0].phi=0.
            solve_mgridrz(self.gridions[0],frz.mgridrz_accuracy,true)
          if self.l_timing: self.time_solve += wtime()-ptime
 
@@ -477,6 +489,7 @@ class Quasistatic(SubcycledPoissonSolver):
          if l_push_elec:
            if  self.l_findmgparam and top.it==0 and self.iz in [w3d.nzlocal/2,w3d.nzlocal/2+1]:
              if me==npes-1:find_mgparam_rz(true)
+           self.gridelecs[1].phi=0.
            solve_mgridrz(self.gridelecs[1],frz.mgridrz_accuracy,true)
          else:
            if l_noelec:
@@ -503,7 +516,7 @@ class Quasistatic(SubcycledPoissonSolver):
 
        # --- gather rho and phi copies
        if self.nsaverhophi>0:
-         if (me>=(npes-top.it) and (self.itbucket-(self.gnpes-self.gme))%self.nsaverhophi==0):
+         if (me>=(npes-1-top.it) and (self.itbucket-(self.gnpes-self.gme))%self.nsaverhophi==0):
            if l_push_elec and not self.l_elec_greensum:
              ge = self.gridelecs[1]
              for ig in range(frz.ngrids):
@@ -528,6 +541,7 @@ class Quasistatic(SubcycledPoissonSolver):
          if iz==0 and not self.l_elec_greensum:
            self.deposit_electrons(0)
            frz.basegrid=self.gridelecs[0];mk_grids_ptr()
+           self.gridelecs[0].phi=0.
            solve_mgridrz(self.gridelecs[0],frz.mgridrz_accuracy,true)
            self.add_ei_fields(0)
          if self.l_timing: self.time_push_electrons += wtime()-ptime
@@ -599,7 +613,7 @@ class Quasistatic(SubcycledPoissonSolver):
 
     # --- gather latest rho and phi copies and save into file
      if self.nsaverhophi>0:
-       if (me>=(npes-top.it) and (self.itbucket-(self.gnpes-self.gme))%self.nsaverhophi==0):
+       if (me>=(npes-1-top.it) and (self.itbucket-(self.gnpes-self.gme))%self.nsaverhophi==0):
          if l_push_elec and not self.l_elec_greensum:
            ge = self.gridelecs[1]
            for ig in range(frz.ngrids):
@@ -642,7 +656,7 @@ class Quasistatic(SubcycledPoissonSolver):
            f.ymin=ymin
            f.ymax=ymax
            f.close()
-         f=PW.PW('rhophi%g_%g.pdb'%(me,self.itbucket-(self.gnpes-self.gme)))
+         f=PW.PW('rhophi%g_%g.pdb'%(me,self.itbucket-(self.gnpes-1-self.gme)))
          f.rhoe=self.rhoe
          f.phie=self.phie
          f.rhoi=self.rhoi
@@ -725,34 +739,52 @@ class Quasistatic(SubcycledPoissonSolver):
   
   def reset_rho1(self):
     if self.l_verbose:print me,top.it,self.iz,'enter reset_rho1'
-    # --- sends rho1 to previous processor
     # --- reset rho1 on proc 0
-    if not lparallel:
-      bg=frz.basegrid=self.gridions[1]
+    if me == npes-1:
+     for i in range(2):
+      bg=frz.basegrid=self.gridions[i]
       mk_grids_ptr()
       reset_rzmgrid_rho()
-    else:
+    if self.l_verbose:print me,top.it,self.iz,'exit reset_rho1'
+
+  def store_rhotonext(self):
+    gi = self.gridionscp[0]
+    self.rhotonext=[]
+    for ig in range(frz.ngrids):
+      if ig>0:
+        gi = gi.down
+      self.rhotonext.append(gi.rho.copy())
+  
+  def store_rhotoprev(self):
+    gi = self.gridions[0]
+    self.rhotoprev=[]
+    for ig in range(frz.ngrids):
+      if ig>0:
+        gi = gi.down
+      self.rhotoprev.append(gi.rho.copy())
+  
+  def send_rhotonext(self):
+      if me<npes-1:
+        mpi.send(self.rhotonext,me+1)
       if me>0:
-        tosend = []
-        g = self.gridions[1]
+        recved,status = mpi.recv(me-1)
+        g = self.gridions[0]
         for ig in range(frz.ngrids):
           if ig>0:
             g = g.down
-          tosend.append(g.rho)
-        mpi.send(tosend,me-1)
+          g.rho[...] += recved[ig]
+  
+  def send_rhotoprev(self):
+      if me>0:
+        mpi.send(self.rhotoprev,me-1)
       if me<npes-1:
         recved,status = mpi.recv(me+1)
         g = self.gridions[1]
         for ig in range(frz.ngrids):
           if ig>0:
             g = g.down
-          g.rho[...] = recved[ig]
-      if me == npes-1:
-        bg=frz.basegrid=self.gridions[1]
-        mk_grids_ptr()
-        reset_rzmgrid_rho()
-    if self.l_verbose:print me,top.it,self.iz,'exir reset_rho1'
-
+          g.rho[...] += recved[ig]
+    
   def store_ionstoprev(self):
     if self.l_verbose:print me,top.it,self.iz,'enter store_ionstoprev'
     js = 0
@@ -1009,6 +1041,13 @@ class Quasistatic(SubcycledPoissonSolver):
              
   def deposit_ions(self):
     if self.l_verbose:print me,top.it,self.iz,'enter deposit_ions'
+    if self.iz==self.izmax-3:self.sendrecv_storedions_tonext()
+    if self.iz==0:self.deposit_ions_last_step()
+    if self.iz==0:self.store_rhotonext()
+    if self.iz==self.izmax-1:
+      bg=frz.basegrid=self.gridions[1]
+      mk_grids_ptr()
+      reset_rzmgrid_rho()
     pg = self.pgions
     top.pgroup = pg
     js = self.iz
@@ -1018,32 +1057,41 @@ class Quasistatic(SubcycledPoissonSolver):
     mk_grids_ptr()
     # --- reset 2-D rho arrays
     reset_rzmgrid_rho()
-    if iu-il>0:
+    if self.iz==0:self.send_rhotonext()
+    if me>=(npes-1-top.it):
+    # --- send rho to next proc on last step
+     if iu-il>0:
       xp = pg.xp[il:iu]
       yp = pg.yp[il:iu]
       q = pg.sq[js]*pg.sw[js]/w3d.dz
-#      print 'dep x,y,q',xp,yp,q
       # --- deposit ion charge in first grid
-      rhoweightrz_weights(xp,yp,yp,self.wz0[js],iu-il,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
-    if self.iz<self.izmax-1:
+      if self.l_planarYZ:
+        rhoweightz_weight(yp,self.wz0[js],iu-il,q,bg.nz,bg.dz,0.)
+      else:
+        rhoweightrz_weights(xp,yp,yp,self.wz0[js],iu-il,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
+     if self.iz<self.izmax-1 or me==npes-1:
       bg=frz.basegrid=self.gridions[1]
       mk_grids_ptr()
       if iu-il>0:
         # --- deposit ion charge in second grid
-        rhoweightrz_weights(xp,yp,yp,self.wz1[js],iu-il,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
-      if self.iz==0:self.deposit_ions_last_step()
-      # --- distribute rho among patches (WARNING: must be called only once after everything has been deposited.)
-      bg=frz.basegrid=self.gridions[1]
+        if self.l_planarYZ:
+          rhoweightz_weight(yp,self.wz1[js],iu-il,q,bg.nz,bg.dz,0.)
+        else:
+          rhoweightrz_weights(xp,yp,yp,self.wz1[js],iu-il,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
+    if self.iz==0:           self.store_rhotoprev()
+    if self.iz==self.izmax-1:self.send_rhotoprev()
+    # --- distribute rho among patches (WARNING: must be called only once after everything has been deposited.)
+    bg=frz.basegrid=self.gridions[1]
+    mk_grids_ptr()
+    distribute_rho_rz()
+    if self.iz==0:
+      bg=frz.basegrid=self.gridions[0]
       mk_grids_ptr()
       distribute_rho_rz()
-      if self.iz==0:
-        bg=frz.basegrid=self.gridions[0]
-        mk_grids_ptr()
-        distribute_rho_rz()
     if self.l_verbose:print me,top.it,self.iz,'exit deposit_ions'
                       
   def deposit_ions_last_step(self):
-  # deposits ions on last cell at last step, using ions newly advanced, from last two cell.
+  # deposits ions on last cell at last step, using ions newly advanced, from last cell.
     if self.l_verbose:print me,top.it,self.iz,'enter deposit_ions_last_step'
     pg = self.pgions
     top.pgroup = pg
@@ -1053,64 +1101,47 @@ class Quasistatic(SubcycledPoissonSolver):
     iu = il+pg.nps[js]
     np=iu-il
     # --- reset 2-D rho arrays
-    ii=[]
+    bg=frz.basegrid=self.gridionscp[0]
+    mk_grids_ptr()
+    reset_rzmgrid_rho()
     if np>0:
       q = pg.sq[js]*pg.sw[js]/w3d.dz
-      zmin=w3d.zmminp+iz*w3d.dz
-      wz1i = (pg.zp[il:iu]-zmin)/w3d.dz
-      # --- select particles within zmminp <--> zmmaxp
-      ii = compress( (wz1i>=0.) & (wz1i<=1.), arange(np))
-      npi =len(ii)
-      if npi>0:
-        wz1 = take(wz1i,ii)
-        ii+=il
-        xp = take(pg.xp,ii)
-        yp = take(pg.yp,ii)
+      zmin=w3d.zmminp+js*w3d.dz
+      wz1 = (pg.zp[il:iu]-zmin)/w3d.dz
+      # --- select particles in slice js
+      ii = compress(floor(wz1)==0,arange(np))
+      xp = take(pg.xp[il:iu],ii)
+      yp = take(pg.yp[il:iu],ii)
+      wz1 = take(wz1,ii)
+      np = len(ii)
+      if np>0:
         # --- deposit ion charge in first grid
-        bg=frz.basegrid=self.gridionscp[0]
-        mk_grids_ptr()
-        reset_rzmgrid_rho()
-        rhoweightrz_weights(xp,yp,yp,wz1,npi,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
-      # --- select particles outside bounds (> zmmaxp)
-      ii = compress( wz1i>1., arange(np))
-      npi =len(ii)
-      if npi>0:
-        wz0 = 1.-take(wz1i,ii)
-        ii+=il
-        xp = take(pg.xp,ii)
-        yp = take(pg.yp,ii)
+#        print 'dep q,wz1,js',q,wz1,js
+        if self.l_planarYZ:
+          rhoweightz_weight(yp,wz1,np,q,bg.nz,bg.dz,0.)
+        else:
+          rhoweightrz_weights(xp,yp,yp,wz1,np,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
+    il = pg.ins[js-1]-1
+    iu = il+pg.nps[js-1]
+    np=iu-il
+    # --- reset 2-D rho arrays
+    if np>0:
+      q = pg.sq[js-1]*pg.sw[js-1]/w3d.dz
+      zmin=w3d.zmminp+js*w3d.dz
+      wz1 = (pg.zp[il:iu]-zmin)/w3d.dz
+      # --- select particles in slice js
+      ii = compress(floor(wz1)==0,arange(np))
+      xp = take(pg.xp[il:iu],ii)
+      yp = take(pg.yp[il:iu],ii)
+      wz1 = take(wz1,ii)
+      np = len(ii)
+      if np>0:
         # --- deposit ion charge in first grid
-        bg=frz.basegrid=self.gridionscp[1]
-        mk_grids_ptr()
-        reset_rzmgrid_rho()
-        rhoweightrz_weights(xp,yp,yp,wz0,npi,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
-    # --- stacks rho to be sent to next processor
-    if lparallel and me<npes-1:
-      tosend=[]
-      g0 = self.gridionscp[0]
-      g1 = self.gridionscp[1]
-      for ig in range(frz.ngrids):
-        if ig>0:
-          g0 = g0.down
-          g1 = g1.down
-        tosend.append(g0.rho)
-        tosend.append(g1.rho)
-      mpi.send(tosend,me+1)
-      del tosend
-#      self.sendparticlestonext(js,ii)
-    if lparallel and me>0:
-      g0 = self.gridions[0]
-      g1 = self.gridions[1]
-      rhorecved,status = mpi.recv(me-1)
-      for ig in range(frz.ngrids):
-        if ig>0:
-          g0 = g0.down
-          g1 = g1.down
-        g0.rho += rhorecved[ig*2]
-        g1.rho += rhorecved[ig*2+1]
-      del rhorecved
-#      self.recvparticlesfromprevious()
-    self.sendrecv_storedions_tonext()
+#        print 'dep q,wz1,js',q,wz1,js
+        if self.l_planarYZ:
+          rhoweightz_weight(yp,wz1,np,q,bg.nz,bg.dz,0.)
+        else:
+          rhoweightrz_weights(xp,yp,yp,wz1,np,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
     if self.l_verbose:print me,top.it,self.iz,'exit deposit_ions_last_step'
 #    if lparallel:mpi.barrier()
                       
@@ -1309,13 +1340,19 @@ class Quasistatic(SubcycledPoissonSolver):
         pg.bz[il:iu]=0.
         frz.basegrid = self.gridelecs[1]; g = frz.basegrid
         mk_grids_ptr()
-        fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np,top.zgrid,top.efetch[0])
+        if self.l_planarYZ:
+          fieldweightz(pg.yp[il:iu],pg.ey[il:iu],np,top.zgrid)
+        else:
+          fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np,top.zgrid,top.efetch[0])
         pg.ex[il:iu]*=self.wz1[js]
         pg.ey[il:iu]*=self.wz1[js]
         if self.l_selfi:
           frz.basegrid = self.gridions[1]; g = frz.basegrid
           mk_grids_ptr()
-          fieldweightxzb(pg.xp[il:iu],pg.yp[il:iu],pg.bx[il:iu],pg.by[il:iu],np,top.zgrid,top.efetch[0])
+          if self.l_planarYZ:
+            fieldweightzb(pg.yp[il:iu],pg.bx[il:iu],np,top.zgrid)
+          else:
+            fieldweightxzb(pg.xp[il:iu],pg.yp[il:iu],pg.bx[il:iu],pg.by[il:iu],np,top.zgrid,top.efetch[0])
           pg.bx[il:iu]*=self.wz1[js]
           pg.by[il:iu]*=self.wz1[js]
         if self.iz==0:
@@ -1323,7 +1360,10 @@ class Quasistatic(SubcycledPoissonSolver):
           ey = zeros(np,'d')
           frz.basegrid = self.gridelecs[0]; g = frz.basegrid
           mk_grids_ptr()
-          fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],ex,ey,np,top.zgrid,top.efetch[0])
+          if self.l_planarYZ:
+            fieldweightz(pg.yp[il:iu],ey,np,top.zgrid)
+          else:
+            fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],ex,ey,np,top.zgrid,top.efetch[0])
           ex*=self.wz0[js]
           ey*=self.wz0[js]
           pg.ex[il:iu]+=ex
@@ -1333,7 +1373,10 @@ class Quasistatic(SubcycledPoissonSolver):
             by = zeros(np,'d')
             frz.basegrid = self.gridions[0]; g = frz.basegrid
             mk_grids_ptr()
-            fieldweightxzb(pg.xp[il:iu],pg.yp[il:iu],bx,by,np,top.zgrid,top.efetch[0])
+            if self.l_planarYZ:
+              fieldweightzb(pg.yp[il:iu],bx,np,top.zgrid)
+            else:
+              fieldweightxzb(pg.xp[il:iu],pg.yp[il:iu],bx,by,np,top.zgrid,top.efetch[0])
             bx*=self.wz0[js]
             by*=self.wz0[js]
             pg.bx[il:iu]+=bx
@@ -1349,7 +1392,10 @@ class Quasistatic(SubcycledPoissonSolver):
           ey = zeros(np,'d')
           frz.basegrid = self.gridelecs[1]; g = frz.basegrid
           mk_grids_ptr()
-          fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],ex,ey,np,top.zgrid,top.efetch[0])
+          if self.l_planarYZ:
+            fieldweightz(pg.yp[il:iu],ey,np,top.zgrid)
+          else:
+            fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],ex,ey,np,top.zgrid,top.efetch[0])
           ex*=self.wz0[js]
           ey*=self.wz0[js]
           pg.ex[il:iu]+=ex
@@ -1359,7 +1405,10 @@ class Quasistatic(SubcycledPoissonSolver):
             by = zeros(np,'d')
             frz.basegrid = self.gridions[1]; g = frz.basegrid
             mk_grids_ptr()
-            fieldweightxzb(pg.xp[il:iu],pg.yp[il:iu],bx,by,np,top.zgrid,top.efetch[0])
+            if self.l_planarYZ:
+              fieldweightzb(pg.yp[il:iu],bx,np,top.zgrid)
+            else:
+              fieldweightxzb(pg.xp[il:iu],pg.yp[il:iu],bx,by,np,top.zgrid,top.efetch[0])
             bx*=self.wz0[js]
             by*=self.wz0[js]
             pg.bx[il:iu]+=bx
@@ -1418,33 +1467,43 @@ class Quasistatic(SubcycledPoissonSolver):
     if np==0:return
 #    print 'fwb: iz,np,ex,ey,w',js,np,mean(pg.ex[il:iu]),std(pg.ex[il:iu]),mean(pg.ey[il:iu]),std(pg.ey[il:iu]),ave(w),std(w)
     frz.basegrid = g; mk_grids_ptr()
+    if self.l_planarYZ:
+      if l_bfield:
+        fwxz = fieldweightzb
+      else:
+        fwxz = fieldweightz
+    else:
+      if l_bfield:
+        fwxz = fieldweightxzb
+      else:
+        fwxz = fieldweightxz
     if l_add:
      ex=zeros(np,'d')
      ey=zeros(np,'d')
-     if l_bfield:
-       fwxz = fieldweightxzb
-     else:
-       fwxz = fieldweightxz
     else:
-     if l_bfield:
-      ex=pg.bx[il:iu]
-      ey=pg.by[il:iu]
-      fwxz = fieldweightxzb
-     else:
-      ex=pg.ex[il:iu]
-      ey=pg.ey[il:iu]
-      fwxz = fieldweightxz
-    fwxz(pg.xp[il:iu],pg.yp[il:iu],ex,ey,np,top.zgrid,top.efetch[0])
+      if l_bfield:
+        ex=pg.bx[il:iu]
+        ey=pg.by[il:iu]
+      else:
+        ex=pg.ex[il:iu]
+        ey=pg.ey[il:iu]
+    if self.l_planarYZ:
+      if l_bfield:
+        fwxz(pg.yp[il:iu],ex,np,0.) # in this case, ex stands for bx
+      else:
+        fwxz(pg.yp[il:iu],ey,np,0.)
+    else:
+      fwxz(pg.xp[il:iu],pg.yp[il:iu],ex,ey,np,top.zgrid,top.efetch[0])
 #    xe=getx(bcast=0,gather=0,pgroup=self.pgelec);ye=gety(bcast=0,gather=0,pgroup=self.pgelec);
 #    print 'fw: iz,phi,rho,xe,ye',js,mean(g.phi),std(g.phi),mean(g.rho),std(g.rho),mean(xe),std(xe),mean(ye),std(ye)
     if l_add:
-     if l_bfield:
-      pg.bx[il:iu]+=ex*w
-      pg.by[il:iu]+=ey*w
-     else:
-      pg.ex[il:iu]+=ex*w
-      pg.ey[il:iu]+=ey*w
-    else:
+      if l_bfield:
+        pg.bx[il:iu]+=ex*w
+        pg.by[il:iu]+=ey*w
+      else:
+        pg.ex[il:iu]+=ex*w
+        pg.ey[il:iu]+=ey*w
+    else: 
       ex*=w
       ey*=w
 #    print 'fwa: iz,ex,ey',js,mean(pg.ex[il:iu]),std(pg.ex[il:iu]),mean(pg.ey[il:iu]),std(pg.ey[il:iu])
@@ -1660,7 +1719,7 @@ class Quasistatic(SubcycledPoissonSolver):
 
       # --- apply transverse electric field kick
       if self.Ekick<>0.:
-        if self.Bkick==self.bucketid and (top.it-(npes-me))%self.maps.nstations==0:
+        if self.Bkick==self.bucketid and (top.it-(npes-1-me))%self.maps.nstations==0:
           E = self.Ekick
           if self.Akick is not None:
             E *= self.Akick[int(self.mystation[js]/self.maps.nstations)]
@@ -1864,7 +1923,8 @@ class Quasistatic(SubcycledPoissonSolver):
                                           1.e-10,1.e-10,1.e-10,
                                           nx=self.nxelec,ny=self.nyelec,spacing=spacing,lallindomain=true)
      # --- scrape electrons 
-     if self.scraper is not None:self.scraper.scrapeall(local=1,clear=1)
+     if self.scraper is not None:
+       self.scraper.scrapeall(local=1,clear=1)
 #     shrinkpart(pg)
      if self.l_verbose:print me,top.it,self.iz,'exit create_electrons'
 
@@ -1876,6 +1936,7 @@ class Quasistatic(SubcycledPoissonSolver):
       mk_grids_ptr()
       # --- reset 2-D rho arrays
       reset_rzmgrid_rho()
+      bg.rho=0.
       # --- loop over species list
       for sp in [self.electrons]:
         # --- loop over species index
@@ -1887,11 +1948,17 @@ class Quasistatic(SubcycledPoissonSolver):
           if self.l_verbose:print me,top.it,self.iz,'me = ',me,';deposit rho' # MR OK
           # --- deposit rho
           if top.wpid==0:
-            rhoweightrz(pg.xp[il:iu],pg.yp[il:iu],pg.yp[il:iu],np,
+            if self.l_planarYZ:
+              rhoweightz(pg.yp[il:iu],np,pg.sq[js]*pg.sw[js],bg.nz,bg.dz,0.)
+            else:
+              rhoweightrz(pg.xp[il:iu],pg.yp[il:iu],pg.yp[il:iu],np,
                         pg.sq[js]*pg.sw[js],bg.nr,bg.nz,
                         bg.dr,bg.dz,bg.rmin,0.)
           else:
-            rhoweightrz_weights(pg.xp[il:iu],pg.yp[il:iu],pg.yp[il:iu],
+            if self.l_planarYZ:
+              rhoweightz_weight(pg.yp[il:iu],pg.pid[:,top.wpid-1],np,pg.sq[js]*pg.sw[js],bg.nz,bg.dz,0.)
+            else:
+              rhoweightrz_weights(pg.xp[il:iu],pg.yp[il:iu],pg.yp[il:iu],
                         pg.pid[:,top.wpid-1],np,
                         pg.sq[js]*pg.sw[js],bg.nr,bg.nz,
                         bg.dr,bg.dz,bg.rmin,0.)
@@ -1944,7 +2011,10 @@ class Quasistatic(SubcycledPoissonSolver):
               pg.ex[il:iu]=0.
               pg.ey[il:iu]=0.
               pg.ez[il:iu]=0.
-              fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np,0.,top.efetch[js])
+              if self.l_planarYZ:
+                fieldweightz(pg.yp[il:iu],pg.ey[il:iu],np,0.)
+              else:
+                fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np,0.,top.efetch[js])
             if self.l_verbose:print me,top.it,self.iz,'me = ',me,';epush'
             epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
                     pg.ex[il:iu],pg.ey[il:iu],pg.ez[il:iu],pg.sq[js],pg.sm[js],0.5*self.dt)
@@ -2024,7 +2094,10 @@ class Quasistatic(SubcycledPoissonSolver):
               pg.ex[il:iu]=0.
               pg.ey[il:iu]=0.
               pg.ez[il:iu]=0.
-              fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np,top.zgrid,top.efetch[js])
+              if self.l_planarYZ:
+                fieldweightz(pg.yp[il:iu],pg.ey[il:iu],np,0.)
+              else:
+                fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np,top.zgrid,top.efetch[js])
 #            fetche3d(pg,il+1,np,js+1)
             if self.l_verbose:print me,top.it,self.iz,'me = ',me,';epush'
             epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
@@ -2036,6 +2109,11 @@ class Quasistatic(SubcycledPoissonSolver):
               bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
                           bx0[:np], by0[:np], bz0[:np], pg.sq[js],pg.sm[js],0.5*self.dt, top.ibpush)
        if self.l_verbose:print me,top.it,self.iz,'exit push_electrons'
+#       js = 0
+#       il = pg.ins[js]-1
+#       iu = pg.ins[js]-1+pg.nps[js]
+#       if pg.nps[js]>0:
+#         self.elec.append(pg.yp[il:iu].copy())
 
   def add_ei_fields(self,i=1):
     if self.l_verbose:print me,top.it,self.iz,'enter add_ei_fields'
@@ -2074,8 +2152,12 @@ class Quasistatic(SubcycledPoissonSolver):
     for ig in range(frz.ngrids):
       if ig>0:gi=gi.down
       fact = (self.pgions.fselfb[0]/(clight*clight))
-      gi.brp[:,:] =  fact*(gi.phi[1:-1,2:] - gi.phi[1:-1,:-2])/(2.*gi.dz)
-      gi.bzp[:,:] = -fact*(gi.phi[2:,1:-1] - gi.phi[:-2,1:-1])/(2.*gi.dr)
+      if self.l_planarYZ:
+        gi.brp[:,:] = fact*(gi.phi[0,2:] - gi.phi[0,:-2])/(2.*gi.dz)
+        gi.bzp[...] = 0.
+      else:
+        gi.brp[:,:] =  fact*(gi.phi[1:-1,2:] - gi.phi[1:-1,:-2])/(2.*gi.dz)
+        gi.bzp[:,:] = -fact*(gi.phi[2:,1:-1] - gi.phi[:-2,1:-1])/(2.*gi.dr)
       
 #  def adddadttoe(self):
 #    """Ez = -dA/dt = -beta**2 dphi/dz"""
@@ -2927,8 +3009,7 @@ class Quasistaticold:
     # --- loop over 3-D grid mesh in z
     for iz in range(izmax,izmin-1,-1):
       self.iz=iz
-      if self.l_verbose:print me,top.it,self.iz,'me = ',me,';iz = ',iz
-      # --- solve 2d field
+#      if self solve 2d field
       self.solve2dfield()
       # --- switch 2d and 3d slice of potentials
       self.switch2d3d(iz)          
