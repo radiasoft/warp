@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.307 $, $Date: 2010/03/23 19:13:44 $
+#@(#) File W3D.V, version $Revision: 3.308 $, $Date: 2010/05/10 18:26:08 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.307 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.308 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -68,6 +68,7 @@ XZgeom     integer    /3/  # 2-D sheath geometry
 XYgeom     integer    /4/  # 2-D planar geometry
 Zgeom      integer    /5/  # 1-D planar geometry
 Rgeom      integer    /6/  # 1-D radial geometry
+Ygeom      integer    /7/  # 1-D planar geometry
  
 *********** InDiag3d dump:
 lgetese3d logical /.true./ # Sets whether electrostatic-energy is calculated,
@@ -1272,6 +1273,10 @@ smooth3d_121(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
                npass(3):integer,alpha(3):real) subroutine
    # three points linear smoothing
 smooth3d_121_stride(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
+                    npass(3):integer,alpha(3):real,stride(3):integer) subroutine
+   # three points linear smoothing with stride
+smooth3d_121_stride_mask(q(0:nx,0:ny,0:nz):real,mask(0:nx,0:ny,0:nz):real,
+                    nx:integer,ny:integer,nz:integer,
                     npass(3):integer,alpha(3):real,stride(3):integer) subroutine
    # three points linear smoothing with stride
 
