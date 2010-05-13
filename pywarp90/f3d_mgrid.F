@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.193 $, $Date: 2010/04/22 23:36:29 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.194 $, $Date: 2010/05/13 17:18:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -2839,7 +2839,7 @@ c         --- Calculate the residual near the conductor.
 
       call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,
      &                               delx,dely,delz,
-     &                               res,1,localbounds,.false.,.true.)
+     &                               res,1,localbounds,.false.,.false.)
 
       if (lf3dtimesubs) timeresidual = timeresidual +
      &                                         wtime() - substarttime
@@ -3085,6 +3085,11 @@ c=============================================================================
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
+c Note, that for the Neumann and periodic boundary conditions, only the first
+c guard cell is set. This is because the delx etc will only ever be greater
+c than one when a residual array is passed in and the residual in
+c the extra guard cells should alway be zero.
+
       if (delx > 0) then
         if (lwithdirichlet) then
           if (bounds(0) == 0) then
@@ -3101,11 +3106,11 @@ c=============================================================================
           if (bounds(0) == 0) u(-delx:-1,:,:,:)   = 0.
           if (bounds(1) == 0) u(nx+1:nx+delx,:,:,:) = 0.
         endif
-        if (bounds(0) == 1) u(-delx:-1,0:ny,0:nz,:) = u(delx:1:-1,0:ny,0:nz,:)
-        if (bounds(1) == 1) u(nx+1:nx+delx,0:ny,0:nz,:) = u(nx-1:nx-delx:-1,0:ny,0:nz,:)
+        if (bounds(0) == 1) u(-1,0:ny,0:nz,:) = u(1,0:ny,0:nz,:)
+        if (bounds(1) == 1) u(nx+1,0:ny,0:nz,:) = u(nx-1,0:ny,0:nz,:)
         if (bounds(0) == 2 .and. bounds(1) == 2) then
-          u(-delx:-1,0:ny,0:nz,:) = u(nx-delx:nx-1,0:ny,0:nz,:)
-          u(nx:nx+delx,0:ny,0:nz,:) = u(0:delx,0:ny,0:nz,:)
+          u(-1,0:ny,0:nz,:) = u(nx-1,0:ny,0:nz,:)
+          u(nx:nx+1,0:ny,0:nz,:) = u(0:1,0:ny,0:nz,:)
         endif
       endif
 
@@ -3125,11 +3130,11 @@ c=============================================================================
           if (bounds(2) == 0) u(:,-dely:-1,:,:)   = 0.
           if (bounds(3) == 0) u(:,ny+1:ny+dely,:,:) = 0.
         endif
-        if (bounds(2) == 1) u(:,-dely:-1,0:nz,:)   = u(:,dely:1:-1,0:nz,:)
-        if (bounds(3) == 1) u(:,ny+1:ny+dely,0:nz,:) = u(:,ny-1:ny-dely:-1,0:nz,:)
+        if (bounds(2) == 1) u(:,-1,0:nz,:)   = u(:,1,0:nz,:)
+        if (bounds(3) == 1) u(:,ny+1,0:nz,:) = u(:,ny-1,0:nz,:)
         if (bounds(2) == 2 .and. bounds(3) == 2) then
-          u(:,-dely:-1,0:nz,:)   = u(:,ny-dely:ny-1,0:nz,:)
-          u(:,ny:ny+dely,0:nz,:) = u(:,0:dely,0:nz,:)
+          u(:,-1,0:nz,:)   = u(:,ny-1,0:nz,:)
+          u(:,ny:ny+1,0:nz,:) = u(:,0:1,0:nz,:)
         endif
       endif
 
@@ -3149,11 +3154,11 @@ c=============================================================================
           if (bounds(4) == 0) u(:,:,-delz:-1,:)   = 0.
           if (bounds(5) == 0) u(:,:,nz+1:nz+delz,:) = 0.
         endif
-        if (bounds(4) == 1) u(:,:,-delz:-1,:)   = u(:,:,delz:1:-1,:)
-        if (bounds(5) == 1) u(:,:,nz+1:nz+delz,:) = u(:,:,nz-1:nz-delz:-1,:)
+        if (bounds(4) == 1) u(:,:,-1,:)   = u(:,:,1,:)
+        if (bounds(5) == 1) u(:,:,nz+1,:) = u(:,:,nz-1,:)
         if (bounds(4) == 2 .and. bounds(5) == 2) then
-          u(:,:,-delz:-1,:)   = u(:,:,nz-delz:nz-1,:)
-          u(:,:,nz:nz+delz,:) = u(:,:,0:delz,:)
+          u(:,:,-1,:)   = u(:,:,nz-1,:)
+          u(:,:,nz:nz+1,:) = u(:,:,0:1,:)
         endif
       endif
 
