@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.263 2010/05/10 19:47:35 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.264 2010/05/19 00:01:35 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1215,8 +1215,7 @@ def pptitleright(iw=0,kwdict={},**kw):
     zu = zc + wz*w3d.dz
     result = "zc = %9.4e, z range (%9.4e, %9.4e)"%(zc,zl,zu)
   elif iw < 0:
-    if psubset==[]: setup_subsets()
-    result = "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles"
+    result = "subset %d: %d particles"%(-iw,top.npplot[-iw-1])
   else:
     if win is None:
       win = top.zwindows[:,iw] + top.zbeam
