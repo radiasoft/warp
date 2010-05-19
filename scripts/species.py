@@ -5,7 +5,7 @@ usual particles as object (Electron, Positron, Water, atoms from periodic table)
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.76 2010/04/09 17:36:49 jlvay Exp $"
+species_version = "$Id: species.py,v 1.77 2010/05/19 00:44:42 dave Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale>0.:
@@ -1410,6 +1410,19 @@ in radius squared.
   def plzmmnts_locs_emity(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
     self.plzmmnts_locs_data(self.getzmmnts_locs_emityrms(),color,width,type,xscale,yscale,xoffset)
     
+  def selectparticles(self,**kw):
+    # --- This adjusts the indices returned by selectparticles so that they
+    # --- are relative to start of the species. The ii returned can then be
+    # --- used for example like self.xp[ii]. Note that this won't work if
+    # --- jslist has includes multiple species.
+    ii = selectparticles(jslist=self.jslist,**kw)
+    i1 = self.pgroup.ins[self.jslist[0]] - 1
+    if isinstance(ii,slice):
+      ii = slice(ii.start-i1,ii.stop-i1)
+    else:
+      ii = ii - i1
+    return ii
+
   def getn(self,**kw):
     return getn(jslist=self.jslist,**kw)
     
