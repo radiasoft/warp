@@ -19,21 +19,23 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.85 2010/04/05 18:27:57 dave Exp $"
+particles_version = "$Id: particles.py,v 1.86 2010/05/19 00:24:09 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
   print __doc__
 
 ##########################################################################
-# Setup the random subsets. This is only called when the first plot
-# is made so that top.npsplt is known to be set.
+# Setup the random subsets. This should only be used for special purposes.
+# This routine must be explicitly called by the user for this mechanism to
+# be operational.
 # These routines can be called at any time by the user to add more subsets,
 # for example subsets with more or fewer particles, or subsets based on
 # the number of particles in a species other than 0.
-psubset=[]
+psubset={}
 def setup_subsets(js=0,pgroup=None):
   """
+Use of this function is deprecated and is recommended only for special purposes.
 Adds plotting subset to the list. The size of the subsets is controlled by
 top.npplot.
   - js=0 is the species to create a subset for
@@ -47,20 +49,21 @@ top.npplot.
     fracnp = float(pgroup.nps[js])/float(totalnp)
   else:
     fracnp = 1.
-  for np in top.npplot:
+  psubset['n'] = pgroup.nps[js]
+  for i,np in enumerate(top.npplot):
     if pgroup.nps[js] == 0:
-      psubset.append(zeros(0,'i'))
+      psubset[i] = zeros(0,'i')
       continue
     ntopick = min(1.,(np*fracnp)/pgroup.nps[js])
     ii = arange(pgroup.nps[js])
     rr = random.random(pgroup.nps[js])
     #rr = ranf(zeros(pgroup.nps[js]))
-    psubset.append(ii[rr<ntopick].astype('i'))
+    psubset[i] = ii[rr<ntopick].astype('i')
 #----------------------------------------------------------------------------
 def clear_subsets():
   "Clears the particle subsets so that they can be updated."
   global psubset
-  psubset = []
+  psubset = {}
 
 #----------------------------------------------------------------------------
 # Modified version of the sample routine from the random module of Python2.3
@@ -94,8 +97,10 @@ def populationsample(population,k):
     # reselections.
 
     n = population.size
-    if not 0 <= k <= n:
-        raise ValueError, "sample larger than population"
+    if k > n:
+        return population
+    if k < 0:
+        raise ValueError, "sample size must be non-negative"
     rand = random.random
     _int = int
     # --- Result is an array rather than a list ---
@@ -182,21 +187,32 @@ def _getobjectpgroup(kw):
   if suffix == '':
     try:
       pgroup = kw.get('pgroup',object.pgroup)
-    except AttributeError:
+    except (AttributeError,KeyError):
       pgroup = object
   else:
     pgroup = object
   return suffix,object,pgroup
 
 #-------------------------------------------------------------------------
-def _setindices(data,ii,islice,indices,ir1,ir2):
-  if ii is not None:
+def _setindices(data,ii,i1,i2):
+  if len(data) > i2 - i1:
+    # --- This does the down select to get the data for the specific
+    # --- species, the extent of which is set by i1 and i2.
+    # --- The check assumes that if the length of the data array is longer
+    # --- than the extent of the species, then data contains all of the
+    # --- species and the down select is needed.
+    data = data[slice(i1,i2)]
+  if ii is None:
+    # --- If ii was not already set, set it to have the indices covering
+    # --- the full range of the species. No further down selection is needed.
+    ii = arange(i1,i2)
+  else:
+    # --- If ii is a slice, convert it to indices.
     if isinstance(ii,slice): ii = arange(ii.start,ii.stop)
-    data = data[ii]
-    islice = slice(ii.size)
-    indices = ii
-  if indices is None: indices = arange(ir1,ir2)
-  return data,islice,indices
+    # --- Down select data based on the existing ii. Note that the indexing
+    # --- uses ii-i1 since data has already bean sliced using i1 and i2.
+    data = data[ii-i1]
+  return data,ii
 
 #-------------------------------------------------------------------------
 # --- Complete dictionary of possible keywords and their default values
@@ -303,7 +319,7 @@ Multiple selection criteria are supported.
       badargs[k] = v
   if checkargs: return badargs
   if badargs and not allowbadargs:
-    raise "bad argument ",string.join(badargs.keys())
+    raise TypeError,"bad argument "+string.join(badargs.keys())
 
   suffix,object,pgroup = _getobjectpgroup(kwvalues)
 
@@ -346,44 +362,38 @@ Multiple selection criteria are supported.
     if object is not top: w3dobject = object
     else:                 w3dobject = w3d
 
+  i1 = ins[js] - 1
+  i2 = ins[js] + nps[js] - 1
 
-  ir1 = ins[js] - 1
-  ir2 = ins[js] + nps[js] - 1
-
-  if ir2 <= ir1: return array([],'l')
-
-  # --- Note that indices is only calculated if needed. If no down selection
-  # --- is done, the islice will be returned.
-  indices = None
-  islice = slice(ir1,ir2)
+  if i2 <= i1: return array([],'l')
 
   if ssn is not None:
     assert top.spid > 0,"ssn's are not used"
     id = getattrwithsuffix(pgroup,'pid',suffixparticle)[:,top.spid-1]
-    id,islice,indices = _setindices(id,ii,islice,indices,ir1,ir2)
-    ii = compress(nint(id[islice])==ssn,indices)
+    id,ii = _setindices(id,ii,i1,i2)
+    ii = compress(nint(id)==ssn,ii)
 
   if xl is not None or xu is not None:
     if x is None: x = getattrwithsuffix(pgroup,'xp',suffixparticle)
     if xl is None: xl = -largepos
     if xu is None: xu = +largepos
     if xl > xu: print "Warning: xl > xu"
-    x,islice,indices = _setindices(x,ii,islice,indices,ir1,ir2)
-    ii=compress(logical_and(less(xl,x[islice]),less(x[islice],xu)),indices)
+    x,ii = _setindices(x,ii,i1,i2)
+    ii = compress(logical_and(less(xl,x),less(x,xu)),ii)
   if yl is not None or yu is not None:
     if y is None: y = getattrwithsuffix(pgroup,'yp',suffixparticle)
     if yl is None: yl = -largepos
     if yu is None: yu = +largepos
     if yl > yu: print "Warning: yl > yu"
-    y,islice,indices = _setindices(y,ii,islice,indices,ir1,ir2)
-    ii=compress(logical_and(less(yl,y[islice]),less(y[islice],yu)),indices)
+    y,ii = _setindices(y,ii,i1,i2)
+    ii = compress(logical_and(less(yl,y),less(y,yu)),ii)
   if zl is not None or zu is not None:
     if z is None: z = getattrwithsuffix(pgroup,'zp',suffixparticle)
     if zl is None: zl = -largepos
     if zu is None: zu = +largepos
     if zl > zu: print "Warning: zl > zu"
-    z,islice,indices = _setindices(z,ii,islice,indices,ir1,ir2)
-    ii=compress(logical_and(less(zl,z[islice]),less(z[islice],zu)),indices)
+    z,ii = _setindices(z,ii,i1,i2)
+    ii = compress(logical_and(less(zl,z),less(z,zu)),ii)
 
   if ix is not None:
     xmmin = getattrwithsuffix(w3dobject,'xmmin',suffix,pkg='w3d')
@@ -391,16 +401,16 @@ Multiple selection criteria are supported.
     xl = xmmin + ix*dx - wx*dx
     xu = xmmin + ix*dx + wx*dx
     if x is None: x = getattrwithsuffix(pgroup,'xp',suffixparticle)
-    x,islice,indices = _setindices(x,ii,islice,indices,ir1,ir2)
-    ii=compress(logical_and(less(xl,x[islice]),less(x[islice],xu)),indices)
+    x,ii = _setindices(x,ii,i1,i2)
+    ii = compress(logical_and(less(xl,x),less(x,xu)),ii)
   if iy is not None:
     ymmin = getattrwithsuffix(w3dobject,'ymmin',suffix,pkg='w3d')
     dy = getattrwithsuffix(w3dobject,'dy',suffix,pkg='w3d')
     yl = ymmin + iy*dy - wy*dy
     yu = ymmin + iy*dy + wy*dy
     if y is None: y = getattrwithsuffix(pgroup,'yp',suffixparticle)
-    y,islice,indices = _setindices(y,ii,islice,indices,ir1,ir2)
-    ii=compress(logical_and(less(yl,y[islice]),less(y[islice],yu)),indices)
+    y,ii = _setindices(y,ii,i1,i2)
+    ii = compress(logical_and(less(yl,y),less(y,yu)),ii)
   if iz is not None:
     zbeam = getattrwithsuffix(object,'zbeam',suffix)
     zmmin = getattrwithsuffix(w3dobject,'zmmin',suffix,pkg='w3d')
@@ -408,74 +418,68 @@ Multiple selection criteria are supported.
     zl = zmmin + iz*dz - wz*dz + zbeam
     zu = zmmin + iz*dz + wz*dz + zbeam
     if z is None: z = getattrwithsuffix(pgroup,'zp',suffixparticle)
-    z,islice,indices = _setindices(z,ii,islice,indices,ir1,ir2)
-    ii=compress(logical_and(less(zl,z[islice]),less(z[islice],zu)),indices)
+    z,ii = _setindices(z,ii,i1,i2)
+    ii = compress(logical_and(less(zl,z),less(z,zu)),ii)
 
   if xc is not None:
     if x is None: x = getattrwithsuffix(pgroup,'xp',suffixparticle)
     dx = getattrwithsuffix(w3dobject,'dx',suffix,pkg='w3d')
     xl = xc - wx*dx
     xu = xc + wx*dx
-    x,islice,indices = _setindices(x,ii,islice,indices,ir1,ir2)
-    ii=compress(logical_and(less(xl,x[islice]),less(x[islice],xu)),indices)
+    x,ii = _setindices(x,ii,i1,i2)
+    ii = compress(logical_and(less(xl,x),less(x,xu)),ii)
   if yc is not None:
     if y is None: y = getattrwithsuffix(pgroup,'yp',suffixparticle)
     dy = getattrwithsuffix(w3dobject,'dy',suffix,pkg='w3d')
     yl = yc - wy*dy
     yu = yc + wy*dy
-    y,islice,indices = _setindices(y,ii,islice,indices,ir1,ir2)
-    ii=compress(logical_and(less(yl,y[islice]),less(y[islice],yu)),indices)
+    y,ii = _setindices(y,ii,i1,i2)
+    ii = compress(logical_and(less(yl,y),less(y,yu)),ii)
   if zc is not None:
     if z is None: z = getattrwithsuffix(pgroup,'zp',suffixparticle)
     dz = getattrwithsuffix(w3dobject,'dz',suffix,pkg='w3d')
     zl = zc - wz*dz
     zu = zc + wz*dz
-    z,islice,indices = _setindices(z,ii,islice,indices,ir1,ir2)
-    ii=compress(logical_and(less(zl,z[islice]),less(z[islice],zu)),indices)
+    z,ii = _setindices(z,ii,i1,i2)
+    ii = compress(logical_and(less(zl,z),less(z,zu)),ii)
 
   if iw < 0:
-    # --- Add some smarts about choosing which method to use.
-    # --- If the number of particles is increasing, then use the
-    # --- population sampling. Otherwise use the preset subsets.
-    # --- Also, if the number of species has changed, then also
-    # --- use the population sampling.
-    try: selectparticles.npsprev
-    except: selectparticles.npsprev = nps + 0
-    if selectparticles.npsprev.size != ns:
-      selectparticles.npsprev = zeros(ns,'l')
-    if selectparticles.npsprev[js] >= nps[js]:
-      if psubset==[]: setup_subsets()
-      if -iw > len(psubset): raise "Bad window number"
+    if len(psubset) > 0 and psubset['n'] == nps[js]:
+      # --- The use of the precalculated subset is not recommended. It is now
+      # --- only used if the number of particles is the same as the number
+      # --- used when generating the subsets. Also, the routine setup_subsets 
+      # --- must have been explicitly called by the user for psubset to be
+      # --- setup.
+      try:
+        subset = psubset[-iw-1]
+      except KeyError:
+        raise IndexError,"Bad window number"
       if ii is None: nn = nps[js]
       else:          nn = ii.size
-      subset = compress(less(psubset[-iw-1],nn),psubset[-iw-1])
-      if ii is None: ii = ir1 + subset
+      subset = compress(less(subset,nn),subset)
+      if ii is None: ii = i1 + subset
       else:          ii = ii[subset]
     else:
-      # --- Once this method is used, always use it.
-      selectparticles.npsprev = zeros(ns,'l')
+      # --- This chooses a random sampling of the particles. It will be
+      # --- different each time.
       npplot = getattrwithsuffix(object,'npplot',suffix)
-      if indices is None: indices = arange(ir1,ir2)
-      if nps[js] <= npplot[-iw-1]:
-        ii = indices
-      else:
-        ii = populationsample(indices,npplot[-iw-1])
+      if ii is None: ii = arange(i1,i2)
+      ii = populationsample(ii,npplot[-iw-1])
   elif iw == 0:
     if ii is None:
       # --- If all particles are being selected, then a slice object is returned
-      # --- so that a direct refer to the particle array is returned, avoiding
+      # --- so that a reference to the particle array is returned, avoiding
       # --- memory copying.
-      if indices is None: ii = islice
-      else:               ii = indices
+      ii = slice(i1,i2)
   else:
     zbeam = getattrwithsuffix(object,'zbeam',suffix)
     zwindows = getattrwithsuffix(object,'zwindows',suffix)
     if win is None: win = zwindows[:,iw] + zbeam
     if win.ndim == 2: win = win[:,iw]
     if z is None: z = getattrwithsuffix(pgroup,'zp',suffixparticle)
-    z,islice,indices = _setindices(z,ii,islice,indices,ir1,ir2)
-    zslice = z[islice]
-    ii = indices[logical_and(less(win[0],zslice),less(zslice,win[1]))]
+    z,ii = _setindices(z,ii,i1,i2)
+    zslice = z
+    ii = ii[logical_and(less(win[0],zslice),less(zslice,win[1]))]
 
   return ii
 
