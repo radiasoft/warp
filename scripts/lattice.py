@@ -68,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.88 2010/05/07 16:59:48 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.89 2010/05/21 16:11:20 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2230,7 +2230,8 @@ hele arrays with the same suffices:
 # --- EMLT --- XXX
 def addnewemlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,
                ox=0.,oy=0.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
-               es=None,esp=None,phz=None,phpz=None,nn=None,vv=None):
+               es=None,esp=None,phz=None,phpz=None,nn=None,vv=None,
+               time=None,data=None,func=None):
   """
 Adds a new emlt element to the lattice. The element will be placed at the
 appropriate location.
@@ -2239,6 +2240,7 @@ Required arguments:
 One and only one of the following must be supplied (if both are supplied, id
 takes precedence):
   - id: data set ID corresponding to already existing emlt multipole data
+        Note that this index is one based - for the first data set, set id=1.
   - es: 1- or 2-D array containing the multipole data. First dimension is data
     along z, optional second dimension is number of multipole components.
 If 'es' is supplied, the following may also be supplied.
@@ -2252,6 +2254,12 @@ If 'es' is supplied, the following may also be supplied.
 The following are all optional and have the same meaning and default as the
 emlt arrays with the same suffices:
   - ap,ph,sf,sc,ox,oy,rr,rl,gl,gp,pw,pa
+The applied field can be made time dependent by supplying a time varying
+scale factor. One of the following can be supplied:
+  - time,data: two 1-D arrays holding the tabulated scale factor (data) as
+               a function of time (time).
+  - func: a function that takes one argument, the time, and returns the
+          scaling factor.
   """
   # --- Make sure either an 'id' or a dataset, 'es', was passed in.
   assert (id is not None or es is not None), \
@@ -2386,6 +2394,9 @@ emlt arrays with the same suffices:
         if phz is not None: top.esemltph[:n0,-ln:,-1] = transpose(array(phz))
         if phpz is not None: top.esemltphp[:n0,-ln:,-1] = transpose(array(phpz))
 
+  if (time is not None and data is not None) or func is not None:
+    TimeDependentLatticeElement('emltsc',ie,time,data,func)
+
   # --- resetlat must be called before the data can be used
   top.lresetlat = true
 
@@ -2397,7 +2408,8 @@ emlt arrays with the same suffices:
 # --- MMLT --- XXX
 def addnewmmlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,ox=0.,oy=0.,
                aps=0.,ape=0.,ol=0,
-               ms=None,msp=None,phz=None,phpz=None,nn=None,vv=None):
+               ms=None,msp=None,phz=None,phpz=None,nn=None,vv=None,
+               time=None,data=None,func=None):
   """
 Adds a new mmlt element to the lattice. The element will be placed at the
 appropriate location.
@@ -2406,6 +2418,7 @@ Required arguments:
 One and only one of the following must be supplied (if both are supplied, id
 takes precedence):
   - id: data set ID corresponding to already existing mmlt multipole data
+        Note that this index is one based - for the first data set, set id=1.
   - ms: 1- or 2-D array containing the multipole data. First dimension is data
     along z, optional second dimension is number of multipole components.
 If 'ms' is supplied, the following may also be supplied.
@@ -2420,6 +2433,12 @@ The following are all optional and have the same meaning and default as the
 mmlt arrays with the same suffices:
   - ap,ph,sf,sc,ox,oy
   - aps,ape refer to mmltas and mmltae
+The applied field can be made time dependent by supplying a time varying
+scale factor. One of the following can be supplied:
+  - time,data: two 1-D arrays holding the tabulated scale factor (data) as
+               a function of time (time).
+  - func: a function that takes one argument, the time, and returns the
+          scaling factor.
   """
   # --- Make sure either an 'id' or a dataset, 'ms', was passed in.
   assert (id is not None or ms is not None), \
@@ -2550,6 +2569,9 @@ mmlt arrays with the same suffices:
         if phz is not None: top.msmmltph[:n0,-ln:,-1] = transpose(array(phz))
         if phpz is not None: top.msmmltphp[:n0,-ln:,-1] = transpose(array(phpz))
 
+  if (time is not None and data is not None) or func is not None:
+    TimeDependentLatticeElement('mmltsc',ie,time,data,func)
+
   # --- resetlat must be called before the data can be used
   top.lresetlat = true
 
@@ -2645,6 +2667,7 @@ Required arguments:
 Optionally, id may be specified, using a previously defined dataset
 takes precedence):
   - id: data set ID corresponding to already existing egrd data
+        Note that this index is one based - for the first data set, set id=1.
 Or, one or more 3-D field arrays may be specified
   - ex, ey, ez
   - dx,dy: transverse grid cell size must also be specified
@@ -2654,6 +2677,12 @@ egrd arrays with the same suffices:
   - xs,ys,ap,ox,oy,ph,sf,sc,sy
 Some extra data may be saved,
   - pp: the electrostatic potential associated with the E field data
+The applied field can be made time dependent by supplying a time varying
+scale factor. One of the following can be supplied:
+  - time,data: two 1-D arrays holding the tabulated scale factor (data) as
+               a function of time (time).
+  - func: a function that takes one argument, the time, and returns the
+          scaling factor.
   """
   # --- Make sure that enough input was given to create the E arrays
   assert (id is not None) or \
@@ -2761,7 +2790,8 @@ of dx, dy, nx, ny, nz, must be passed in"""
 def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,ot=0.,op=0.,
                sf=0.,sc=1.,sy=0,dx=None,dy=None,bx=None,by=None,bz=None,
-               rz=false,nx=None,ny=None,nz=None):
+               rz=false,nx=None,ny=None,nz=None,
+               time=None,data=None,func=None):
   """
 Adds a new bgrd element to the lattice. The element will be placed at the
 appropriate location.
@@ -2770,6 +2800,7 @@ Required arguments:
 Optionally, id may be specified, using a previously defined dataset
 takes precedence):
   - id: data set ID corresponding to already existing bgrd data
+        Note that this index is one based - for the first data set, set id=1.
 Or, one or more 3-D field arrays may be specified
   - bx, by, bz
   - dx,dy: transverse grid cell size must also be specified
@@ -2777,6 +2808,12 @@ Or, one or more 3-D field arrays may be specified
 The following are all optional and have the same meaning and default as the
 bgrd arrays with the same suffices:
   - xs,ys,ap,ox,oy,ph,ot,op,sf,sc,sy
+The applied field can be made time dependent by supplying a time varying
+scale factor. One of the following can be supplied:
+  - time,data: two 1-D arrays holding the tabulated scale factor (data) as
+               a function of time (time).
+  - func: a function that takes one argument, the time, and returns the
+          scaling factor.
   """
   # --- Make sure that enough input was given to create the B arrays
   assert (id is not None) or \
@@ -2860,6 +2897,9 @@ of dx, dy, nx, ny, nz, must be passed in"""
     if bz is not None: top.bgrdbz[:nx+1,:ny+1,:nz+1,-1] = bz
     top.bgrdrz[-1] = rz
 
+  if (time is not None and data is not None) or func is not None:
+    TimeDependentLatticeElement('bgrdsc',ie,time,data,func)
+
   # --- resetlat must be called before the data can be used
   top.lresetlat = true
 
@@ -2881,6 +2921,7 @@ Required arguments:
 Optionally, id may be specified, using a previously defined dataset
 takes precedence):
   - id: data set ID corresponding to already existing bsqgrad data
+        Note that this index is one based - for the first data set, set id=1.
 Or, the 4-D field array may be specified
   - bsqgrad
   - dx,dy: transverse grid cell size must also be specified
@@ -2993,7 +3034,8 @@ bsqgrad arrays with the same suffices:
 # --- PGRD --- XXX
 def addnewpgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,sf=0.,sc=1.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
-               dx=None,dy=None,phi=None):
+               dx=None,dy=None,phi=None,
+               time=None,data=None,func=None):
 
   """
 Adds a new pgrd element to the lattice. The element will be placed at the
@@ -3003,12 +3045,19 @@ Required arguments:
 Optionally, id may be specified, using a previously defined dataset
 takes precedence):
   - id: data set ID corresponding to already existing pgrd data
+        Note that this index is one based - for the first data set, set id=1.
 Or, 3-D phi array may be specified
   - phi
   - dx,dy: transverse grid cell size must also be specified
 The following are all optional and have the same meaning and default as the
 pgrd arrays with the same suffices:
   - xs,ys,ap,ox,oy,ph,sf,sc,rr,rl,gl,gp,pw,pa
+The applied field can be made time dependent by supplying a time varying
+scale factor. One of the following can be supplied:
+  - time,data: two 1-D arrays holding the tabulated scale factor (data) as
+               a function of time (time).
+  - func: a function that takes one argument, the time, and returns the
+          scaling factor.
   """
   # --- Make sure either an 'id' or a dataset, 'es', was passed in.
   assert (id is not None or phi is not None), \
@@ -3082,6 +3131,9 @@ pgrd arrays with the same suffices:
     top.pgrddy[-1] = dy
     top.pgrddz[-1] = (ze - zs)/nz
     top.pgrd[:nx+1,:ny+1,:nz+1,-1] = phi
+
+  if (time is not None and data is not None) or func is not None:
+    TimeDependentLatticeElement('pgrdsc',ie,time,data,func)
 
   # --- resetlat must be called before the data can be used
   top.lresetlat = true
