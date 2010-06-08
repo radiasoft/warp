@@ -4601,7 +4601,7 @@ INTEGER(ISZ) :: i, ii, ic, j, l, nr, nz, nlocs
 REAL(8), allocatable, DIMENSION(:,:) :: uold, uinit
 REAL(8), allocatable, DIMENSION(:) :: uold_vlocs, uinit_vlocs
 INTEGER(ISZ), allocatable, DIMENSION(:) :: jlocs, klocs
-REAL(8) :: maxerr, maxerr_old, t_solve
+REAL(8) :: maxerr_old, t_solve
 LOGICAL :: do_calc, has_diverged, ispatch
 TYPE(CONDtype), POINTER :: c
 
@@ -4824,7 +4824,7 @@ LOGICAL(ISZ) :: l_for_timing
 INTEGER(ISZ) :: i, ii, ic, j, l, nr, nz, nlocs, jm, jp, lm, lp, jmax
 REAL(8), allocatable, DIMENSION(:,:) :: uold, uinit
 INTEGER(ISZ), DIMENSION(:,:), ALLOCATABLE :: maxjump
-REAL(8) :: maxerr, maxerr_old, t_solve
+REAL(8) :: maxerr_old, t_solve
 LOGICAL :: do_calc, has_diverged
 
 t_relax = 0.

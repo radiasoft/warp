@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.72 $, $Date: 2010/05/10 17:54:06 $
+#@(#) File FRZ.V, version $Revision: 3.73 $, $Date: 2010/06/08 17:38:58 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.72 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.73 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -124,6 +124,7 @@ bnd_method       integer  /0/
 nlevels          integer      # number of multigrid levels
 level            integer      # current multigrid level
 nb_iters         integer      # actual number of iterations used for a solve
+maxerr           real         # convergence error for a solve
 
 *********** FRZmgrid_ptrs dump:
 basegrid _GRIDtype  # primary grid for RZ solver
