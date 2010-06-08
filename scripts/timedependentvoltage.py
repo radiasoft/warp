@@ -1,7 +1,7 @@
 "Class for handling conductors with time dependent voltages."
 from warp import *
 
-timedependentvoltage_version = "$Id: timedependentvoltage.py,v 1.21 2010/03/11 19:10:20 dave Exp $"
+timedependentvoltage_version = "$Id: timedependentvoltage.py,v 1.22 2010/06/08 17:42:09 dave Exp $"
 
 class TimeVoltage:
   """
@@ -56,11 +56,6 @@ Input for constructor:
 
     # --- Make sure that condid is a sequence
     if not type(condid) in [ListType,TupleType]: condid = [condid]
-
-    # --- Loop over condid and get the id's of any conductors listed
-    for i in range(len(condid)):
-      if isinstance(condid[i],Assembly):
-        condid[i] = condid[i].condid
 
     self.condid = condid
     self.tieffenback = tieffenback
