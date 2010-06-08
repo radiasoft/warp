@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.37 $, $Date: 2010/01/19 19:58:08 $
+c version $Revision: 1.38 $, $Date: 2010/06/08 21:08:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -14,20 +14,22 @@ c=============================================================================
       use GRIDtypemodule
       use BoltzmannElectrons
       use Conductor3d
-      use Multigrid3d
       use InGen3d, only:solvergeom,RZgeom
       use Constant, only:eps0
       use Parallel
       use DKInterp, only:interpdk,icalceps,iusing2deps
+      use FRZmgrid, only:lverbose
+      use multigrid_common_base, only: nb_iters,maxerr
 c     use ifcore
       type(GRIDtype):: grid
       real(kind=8):: accuracy,rmax,zmax
 c      real(kind=8),allocatable:: iondensityarray(:,:)
 c      real(kind=8),allocatable:: epsilon(:,:),epszfac(:,:)
-      real(kind=8)aviondensity
+      real(kind=8):: aviondensity
 c      real(kind=8),allocatable:: electrontemparray(:,:)
 c     integer(4):: fff
 
+      integer(ISZ):: bounds(0:5)
       integer(ISZ):: ixbemin,ixbemax,izbemin,izbemax,id
       integer(ISZ):: i,j, ip1
       logical(ISZ):: lrz,lanyuseparticledensity
@@ -163,12 +165,11 @@ c     is the ratio of the epsilon for z derivs to that for x derivs.
      &                        grid%phi,grid%rho,
      &                        bounds,
      &                        grid%rmin,grid%zmin,
-     &                        grid%mgparam,grid%ncycles,grid%ncmax,
-     &                        nlevels,mgerror,accuracy,mgverbose,
+     &                        grid%mgparam,nb_iters,grid%ncmax,
+     &                        nlevels,maxerr,accuracy,lverbose,
      &                        grid%npre,grid%npost,
      &                        lrz,lcndbndy,laddconductor,icndbndy,
-     &                        gridmode,grid%bndfirst,fsdecomp)
-
+     &                        grid%bndfirst,fsdecomp)
 
       return
       end
@@ -179,7 +180,7 @@ c=============================================================================
      &                              mgmaxlevels,mgerror,mgtol,mgverbose,
      &                              downpasses,uppasses,
      &                              lrz,lcndbndy,laddconductor,icndbndy,
-     &                              gridmode,bnd,fsdecomp)
+     &                              bnd,fsdecomp)
       use Subtimersfrz
       use BNDtypemodule
       use Constant
@@ -199,7 +200,7 @@ c=============================================================================
       real(kind=8):: mgerror,mgtol
       integer(ISZ):: downpasses,uppasses
       logical(ISZ):: lrz,lcndbndy,laddconductor
-      integer(ISZ):: icndbndy,gridmode
+      integer(ISZ):: icndbndy
       type(BNDtype):: bnd
       type(Decomposition):: fsdecomp
 
