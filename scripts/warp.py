@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.194 2010/03/02 02:17:49 dave Exp $"
+warp_version = "$Id: warp.py,v 1.195 2010/06/08 17:43:44 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -295,6 +295,8 @@ loadrho: Load the particles onto the charge density mesh
 fieldsol: Solve for the self-fields
 getappliedfields: Gathers the fields from the accelerator lattice at given
                   locations
+getappliedfieldsongrid: Gathers the fields from the accelerator lattice at
+                        a grid of locations
 installbeforefs: Install a function which will be called before a field-solve
 uninstallbeforefs: Uninstall the function called before a field-solve
 isinstalledbeforefs: Checks if a function is installed to be called before a
