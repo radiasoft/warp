@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.194 $, $Date: 2010/05/13 17:18:17 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.195 $, $Date: 2010/06/08 17:55:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -599,6 +599,10 @@ c     --- only it can be checked.
       if (nxlocal .ne. conductors%levelnx(mglevel) .or.
      &    nylocal .ne. conductors%levelny(mglevel) .or.
      &    nzlocal .ne. conductors%levelnz(mglevel)) then
+        print*,"grid nx, ny, nz = ",nxlocal,nylocal,nzlocal
+        print*,"conductor nx,ny,nz = ",conductors%levelnx(mglevel),
+     &                                 conductors%levelny(mglevel),
+     &                                 conductors%levelnz(mglevel)
         call kaboom("vcycle: error: the coarsening level of the conductor is
      &inconsistent with that used by the solver")
         return
