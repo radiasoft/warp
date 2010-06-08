@@ -7,7 +7,7 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.56 2010/03/11 19:10:19 dave Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.57 2010/06/08 17:39:46 dave Exp $"
 
 ##############################################################################
 ##############################################################################
@@ -208,7 +208,7 @@ class MultiGridRZ(MultiGrid3D):
     solve_mgridrz(self.grid,self.mgtol,false)
 
     self.mgiters = frz.nb_iters
-    #self.mgerror = mgerror[0] # not saved anywhere
+    self.mgerror = frz.maxerr
 
   ##########################################################################
   # Define the basic plot commands
