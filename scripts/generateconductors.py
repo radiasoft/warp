@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.228 2010/03/11 19:10:19 dave Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.229 2010/06/08 17:51:59 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -4295,19 +4295,19 @@ def rmaxofz():
 class ZSrfrv(Srfrv,Assembly):
   """
 Surface of revolution
-  - rsrf=None: tablized data of radius
+  - rsrf=None: tablized data of radii
   - zsrf=None: tablized data of z locations
-  - rad=None: radius of curvature of segments
-              A value of largepos means a straight segment.
-  - zc=None: z center of circle or curved segment
-  - rc=None: r center of circle or curved segment
+  - rad=None: optional radius of curvature of segments
+              A value of None or largepos means a straight segment.
+              rad[i] is radius for segment from [i] to [i+1]
+              rad[-1] is radius for segment from [-1] to [0]
+  - zc=None: optional z center of circle or curved segment
+  - rc=None: optional r center of circle or curved segment
       The centers of the circles will be calculated automatically if
       not supplied, or if the centers are supplied, the radii will be
       calculated automatically.
       The length of the radii and centers lists is the same as the length
       of the list of r and z data.
-      rad[i] is radius for segment from [i] to [i+1]
-      rad[-1] is radius for segment from [-1] to [0]
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
   - condid=1: conductor id of conductor, must be integer, or can be 'next' in
@@ -4413,10 +4413,11 @@ Outside of a surface of revolution
               which case a unique ID is chosen
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
-      raddata[i] is radius for segment from zdata[i] to zdata[i+1]
-  - zcdata=None: z center of circle or curved segment
-  - rcdata=None: r center of circle or curved segment
   - raddata=None: optional radius of curvature of segments
+      A value of None or largepos for raddata means a straight segment.
+      raddata[i] is radius for segment from zdata[i] to zdata[i+1]
+  - zcdata=None: optional z center of circle or curved segment
+  - rcdata=None: optional r center of circle or curved segment
       The centers of the circles will be calculated automatically if
       not supplied, or if the centers are supplied, the radii will be
       calculated automatically.
@@ -4573,9 +4574,10 @@ Inside of a surface of revolution
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
   - raddata=None: optional radius of curvature of segments
+      A value of None or largepos for raddata means a straight segment.
       raddata[i] is radius for segment from zdata[i] to zdata[i+1]
-  - zcdata=None: z center of circle or curved segment
-  - rcdata=None: r center of circle or curved segment
+  - zcdata=None: optional z center of circle or curved segment
+  - rcdata=None: optional r center of circle or curved segment
       The centers of the circles will be calculated automatically if
       not supplied, or if the centers are supplied, the radii will be
       calculated automatically.
@@ -4734,9 +4736,10 @@ Between surfaces of revolution
   - rminofzdata,rmaxofzdata=None: optional tablized data of radii of surface
   - zmindata,zmaxdata=None: optional tablized data of z locations of r data
   - radmindata,radmaxdata=None: optional radius of curvature of segments
+      A value of None or largepos for raddata means a straight segment.
       radmindata[i] is radius for segment from zmindata[i] to zmindata[i+1]
-  - zcmindata,zcmaxdata=None: z center of circle or curved segment
-  - rcmindata,rcmaxdata=None: r center of circle or curved segment
+  - zcmindata,zcmaxdata=None: optional z center of circle or curved segment
+  - rcmindata,rcmaxdata=None: optional r center of circle or curved segment
       The centers of the circles will be calculated automatically if
       not supplied, or if the centers are supplied, the radii will be
       calculated automatically.
