@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.49 2010/05/01 19:20:05 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.50 2010/06/08 17:53:37 dave Exp $"
 
 class TraceParticle(object):
   """
@@ -23,6 +23,7 @@ Creator arguments...
                                trace particles are setup before a generate
                                is done. However, care is needed when running
                                in parallel.
+ - lsavefields=0: when true, save the time histories of the field data
 
 Available methods...
  - gett(i=0):  returns history of time for i'th particle
@@ -34,6 +35,14 @@ Available methods...
  - getvz(i=0): returns history of vz for i'th particle
  - getgi(i=0): returns history of gamma inverse for i'th particle
  - getr(i=0):  returns history of r for i'th particle
+
+ if lsavefields is true
+ - getex(i=0):  returns history of Ex for i'th particle
+ - getey(i=0):  returns history of Ey for i'th particle
+ - getez(i=0):  returns history of Ez for i'th particle
+ - getbx(i=0):  returns history of Bx for i'th particle
+ - getby(i=0):  returns history of By for i'th particle
+ - getbz(i=0):  returns history of Bz for i'th particle
 
  - pxt(i=0), pyt(i=0), prt(i=0), pzt(i=0)
    pvxt(i=0), pvyt(i=0), pvzt(i=0), pgit(i=0)
@@ -56,7 +65,7 @@ Available methods...
   #----------------------------------------------------------------------
   def __init__(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=None,
                     maxsteps=1000,savedata=1,js=0,
-                    enforceinitboundaries=true):
+                    enforceinitboundaries=true,lsavefields=false):
     assert js < top.ns,"species must be already existing"
 
     # --- This may be bad to do, but is needed so that the particle
@@ -68,6 +77,7 @@ Available methods...
     self.savedata = savedata
     self.enabled = 0
     self.enforceinitboundaries = enforceinitboundaries
+    self.lsavefields = lsavefields
 
     # --- Check if species needs to be setup
     if js not in TraceParticle._instance_dict:
@@ -251,6 +261,13 @@ is not alive."""
       self.spvz = []
       self.spgi = []
       if package()[0] == 'wxy': self.spdt = []
+      if self.lsavefields:
+        self.spex = []
+        self.spey = []
+        self.spez = []
+        self.spbx = []
+        self.spby = []
+        self.spbz = []
       for i in xrange(self.nn):
         self.spt.append(AppendableArray(maxsteps,typecode='d'))
         self.spx.append(AppendableArray(maxsteps,typecode='d'))
@@ -262,6 +279,13 @@ is not alive."""
         self.spgi.append(AppendableArray(maxsteps,typecode='d'))
         if package()[0] == 'wxy':
           self.spdt.append(AppendableArray(maxsteps,typecode='d'))
+        if self.lsavefields:
+          self.spex.append(AppendableArray(maxsteps,typecode='d'))
+          self.spey.append(AppendableArray(maxsteps,typecode='d'))
+          self.spez.append(AppendableArray(maxsteps,typecode='d'))
+          self.spbx.append(AppendableArray(maxsteps,typecode='d'))
+          self.spby.append(AppendableArray(maxsteps,typecode='d'))
+          self.spbz.append(AppendableArray(maxsteps,typecode='d'))
       self.spsavedata()
 
   #----------------------------------------------------------------------
@@ -284,6 +308,13 @@ is not alive."""
         self.spgi[i].append(getgaminv(js=self.js,ii=ii))
         if package()[0] == 'wxy':
           self.spdt[i].append(getpid(js=self.js,ii=ii,id=wxy.dtpid-1))
+        if self.lsavefields:
+          self.spex[i].append(getex(js=self.js,ii=ii))
+          self.spey[i].append(getey(js=self.js,ii=ii))
+          self.spez[i].append(getez(js=self.js,ii=ii))
+          self.spbx[i].append(getbx(js=self.js,ii=ii))
+          self.spby[i].append(getby(js=self.js,ii=ii))
+          self.spbz[i].append(getbz(js=self.js,ii=ii))
 
   #----------------------------------------------------------------------
   def getsavedata(self):
@@ -318,6 +349,30 @@ is not alive."""
   def getgi(self,i=0): return self.spgi[i].data()
   def getdt(self,i=0): return self.spdt[i].data()
   def getr(self,i=0):  return sqrt(self.getx(i)**2 + self.gety(i)**2)
+  def getex(self,i=0):
+    if not self.lsavefields:
+      raise NameError('lsavefields must be set for the fields to be saved')
+    return self.spex[i].data()
+  def getey(self,i=0):
+    if not self.lsavefields:
+      raise NameError('lsavefields must be set for the fields to be saved')
+    return self.spey[i].data()
+  def getez(self,i=0):
+    if not self.lsavefields:
+      raise NameError('lsavefields must be set for the fields to be saved')
+    return self.spez[i].data()
+  def getbx(self,i=0):
+    if not self.lsavefields:
+      raise NameError('lsavefields must be set for the fields to be saved')
+    return self.spbx[i].data()
+  def getby(self,i=0):
+    if not self.lsavefields:
+      raise NameError('lsavefields must be set for the fields to be saved')
+    return self.spby[i].data()
+  def getbz(self,i=0):
+    if not self.lsavefields:
+      raise NameError('lsavefields must be set for the fields to be saved')
+    return self.spbz[i].data()
 
   #----------------------------------------------------------------------
   def plotparticle(self,y,x,kw):
@@ -411,6 +466,7 @@ done and no diagnostic moments are calculated. Creator arguments...
                                It is a good idea to turn this off if the
                                trace particles are setup before a generate
                                is done.
+ - lsavefields=0: when true, save the time histories of the field data
 
 Available methods...
  - gett(i=0):  returns history of time for i'th particle
@@ -421,6 +477,14 @@ Available methods...
  - getvy(i=0): returns history of vy for i'th particle
  - getvz(i=0): returns history of vz for i'th particle
  - getgi(i=0): returns history of gamma inverse for i'th particle
+
+ if lsavefields is true
+ - getex(i=0):  returns history of Ex for i'th particle
+ - getey(i=0):  returns history of Ey for i'th particle
+ - getez(i=0):  returns history of Ez for i'th particle
+ - getbx(i=0):  returns history of Bx for i'th particle
+ - getby(i=0):  returns history of By for i'th particle
+ - getbz(i=0):  returns history of Bz for i'th particle
 
  - pxt(i=0), pyt(i=0), pzt(i=0), pvxt(i=0), pvyt(i=0), pvzt(i=0), pgit(i=0)
    pxy(i=0), pzx(i=0), pzy(i=0), pzvx(i=0), pzvy(i=0), pzvz(i=0)
@@ -436,7 +500,7 @@ Available methods...
   #----------------------------------------------------------------------
   def __init__(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=None,
                     maxsteps=1000,savedata=1,zerophi=0,resettime=0,js=0,
-                    enforceinitboundaries=true):
+                    enforceinitboundaries=true,lsavefields=false):
     if js not in TraceParticle._instance_dict:
       TraceParticle._instance_dict[js] = 1
       if js == 0:
@@ -448,7 +512,7 @@ Available methods...
       top.pgroup.sm[js] = top.aion*top.amu
       top.pgroup.sw[js] = 0.
     TraceParticle.__init__(self,x,y,z,vx,vy,vz,maxsteps,savedata,js,
-                           enforceinitboundaries)
+                           enforceinitboundaries,lsavefields)
     # --- Do some initialization
     self.spsetup(zerophi)
     # --- Setup the lattice
