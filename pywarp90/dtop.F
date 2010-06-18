@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.177 $, $Date: 2010/04/22 23:33:35 $
+c@(#) File DTOP.F, version $Revision: 3.178 $, $Date: 2010/06/18 17:06:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.177 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.178 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -2832,30 +2832,32 @@ c           --- See comments above for z.
       end
 c=============================================================================
 c=============================================================================
-      subroutine gridcrossingmoments(is,isid,ipmin,np,pgroup,dt)
+      subroutine gridcrossingmoments(is,isid,ipmin,np,pgroup,dt,time)
       use ParticleGroupmodule
       use Picglb,Only: zbeam
       use Particles,Only: wpid
       use GridCrossing_Moments
       integer(ISZ):: is,isid,ipmin,np
       type(ParticleGroup):: pgroup
-      real(kind=8):: dt
+      real(kind=8):: dt,time
 
       if (.not. lgcmoments) return
 
 c     --- This is a cheap way of allowing multiple GC moments diagnostic.
       if (associated(gcmoments1)) then
-        call gridcrossingmoments_work(gcmoments1,is,isid,ipmin,np,pgroup,dt)
+        call gridcrossingmoments_work(gcmoments1,is,isid,ipmin,np,pgroup,
+     &                                dt,time)
       endif
 
       if (associated(gcmoments2)) then
-        call gridcrossingmoments_work(gcmoments2,is,isid,ipmin,np,pgroup,dt)
+        call gridcrossingmoments_work(gcmoments2,is,isid,ipmin,np,pgroup,
+     &                                dt,time)
       endif
 
       return
       end
 c=============================================================================
-      subroutine gridcrossingmoments_work(gc,is,isid,ipmin,np,pgroup,dt)
+      subroutine gridcrossingmoments_work(gc,is,isid,ipmin,np,pgroup,dt,time)
       use GridCrossing_MomentsTypeModule
       use ParticleGroupmodule
       use Picglb,Only: zbeam
@@ -2863,7 +2865,7 @@ c=============================================================================
       type(GridCrossing_MomentsType):: gc
       integer(ISZ):: is,isid,ipmin,np
       type(ParticleGroup):: pgroup
-      real(kind=8):: dt
+      real(kind=8):: dt,time
 
 c This does the grid crossing moments calculation, with the time step
 c subdivided into smaller chunks. The full calculation is done here.
@@ -2878,6 +2880,10 @@ c step.
 
 c     --- Immediately return if the grid crossing moments are not being done.
       if (gc%ntgc == 0) return
+
+c     --- Only do the diagnostic if the time is within the time frame.
+      if (gc%starttimegc >= time+dt .or.
+     &    gc%endtimegc < time) return
 
       dtgci = gc%ntgc/dt
       dzgci = 1./gc%dzgc

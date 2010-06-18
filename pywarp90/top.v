@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.278 $, $Date: 2010/04/13 17:58:04 $
+#@(#) File TOP.V, version $Revision: 3.279 $, $Date: 2010/06/18 17:06:25 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.278 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.279 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2172,6 +2172,8 @@ hvyvzbarz(0:nzmmnt*ihvyvzbarz,0:lenhist,0:nshist)  _real [(m/s)**2]
 %%%%%%%%%%% GridCrossing_MomentsType:
 zmmingc     real /0./ [m] # Grid crossing moments grid minimum in Z
 zmmaxgc     real /0./ [m] # Grid crossing moments grid maximum in Z
+starttimegc real /0./ [s] # Starting time when grid crossing data is collected
+endtimegc   real /0./ [s] # Ending time when grid crossing data is collected
 ntgc        integer /0/   # Number of t points in z grid crossing moments grid
 nzgc        integer /0/   # Number of z points in z grid crossing moments grid
 nszgc       integer /0/   # Number of species z grid crossing moments data is
@@ -2735,7 +2737,7 @@ gridtogrid3d(nxin:integer,nyin:integer,nzin:integer,
              gridout(0:nxout,0:nyout,0:nzout):real) subroutine
         # Linearly interpolates from one grid to another. This will also work
         # for 2d and 1d arrays if the n's are set to zero.
-gridcrossingmoments(js:integer,ipmin:integer,np:integer,pgroup:ParticleGroup,dt:real) subroutine
+gridcrossingmoments(js:integer,ipmin:integer,np:integer,pgroup:ParticleGroup,dt:real,time:real) subroutine
         # Calculate moments for particles that cross z grid cells.
 gridcrossingmomentsold(np:integer,ww(np):real,
                     xnew(np):real,ynew(np):real,znew(np):real,

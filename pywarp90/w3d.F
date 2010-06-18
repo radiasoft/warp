@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.441 $, $Date: 2010/04/16 18:35:14 $
+c@(#) File W3D.F, version $Revision: 3.442 $, $Date: 2010/06/18 17:06:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1943,7 +1943,7 @@ c           --- Grab particles that cross user specified z locations.
             call getcrossingparticles(ipmin,ip,pgroup,fulldt_s,isid,time,zbeam)
 
 c             --- Calculate the grid crossing moments
-            call gridcrossingmoments(is,isid,ipmin,ip,pgroup,fulldt_s)
+            call gridcrossingmoments(is,isid,ipmin,ip,pgroup,fulldt_s,time)
 
 c           --- Position advance
             call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
@@ -2131,7 +2131,7 @@ c             --- Grab particles that cross user specified z locations.
      &                                  time,zbeam)
 
 c             --- Calculate the grid crossing moments
-              call gridcrossingmoments(is,isid,ipmin,ip,pgroup,fulldt_s)
+              call gridcrossingmoments(is,isid,ipmin,ip,pgroup,fulldt_s,time)
 
 c             --- hbor2 just does a v advance, no x push
               call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
