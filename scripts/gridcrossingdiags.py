@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.34 2010/04/21 00:15:22 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.35 2010/06/18 17:07:41 dave Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -228,6 +228,14 @@ be unreliable.
         # --- Setup the GridCrossing_Moments group
         self.gcmoments.zmmingc = self.zmmin
         self.gcmoments.zmmaxgc = self.zmmax
+        if self.starttime is not None:
+            self.gcmoments.starttimegc = self.starttime
+        else:
+            self.gcmoments.starttimegc = -largepos
+        if self.endtime is not None:
+            self.gcmoments.endtimegc = self.endtime
+        else:
+            self.gcmoments.endtimegc = largepos
         self.gcmoments.ntgc = self.nt
         self.gcmoments.nzgc = self.nz
         self.gcmoments.nszgc = top.ns
