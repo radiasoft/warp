@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.19 $, $Date: 2007/04/24 21:37:39 $
+c@(#) File w3d_load.F, version $Revision: 1.20 $, $Date: 2010/06/29 22:49:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -140,7 +140,7 @@ c     --- parabolic equilibrium
 c     --- thermal equilibrium 
       elseif(distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then 
 
-c       --- calculate simentionless space charge parameter 
+c       --- calculate dimensionless space charge parameter 
         sc_param_te = 4.*(k_beta0*emit_b/q_perv)**2 
 
 c       --- Calculate needed value of dimensionless equilibrium parameter 
@@ -448,45 +448,50 @@ c      call kaboom("te_denp_exp: WARNING requested tol not reached")
       return 
       end 
 c=============================================================================
-      real(kind=8) function te_rho_max(delta,frac)
+      real(kind=8) function te_rho_max(delta)
 
       use Constant
-      real(kind=8):: delta, frac 
+      real(kind=8):: delta
+      real(kind=8):: frac, C, rho_half
 
 c te_rho_max estimates the maximum value of rho where the thermal 
 c equilibrium density profile becomes exponentially small.  This 
-c routine contains unpublished formulas that were developed by Ed 
-c Startsev (PPPL) and Steven Lund (LLNL).  
+c routine contains unpublished formulas that can be found in 
+c Startsev and Lund, "Approximate anlytical solutions for continuously 
+c focused beams and single-species plasmas in thermal equilibrium", 
+c PRSTAB 15, 043101 (2008)
 c
 c   te_rho_max  = est of rho where n(rho) = frac 
 c   delta       = dimensionless parameter describing thermal equilibrium 
-c   frac        = value of density at rho limit, i.e., 
-c                   where n(rho=te_rho_max) = frac 
 c
 
 c     Parameter error traps 
 
-      if (frac .gt. 1 .or. frac .le. 0.) then 
-        call kaboom("te_rho_max: frac input not physical") 
-        return
-      endif 
       if (delta .lt. 0.) then
         call kaboom("te_rho_max: delta input not physical") 
         return
       endif  
 
-      if (delta .gt. 0.5) then  
-c       --- weak space charge estimate based on applied field only 
-
+      if (delta .gt. 0.1) then  
+c       --- Weak space charge estimate based on applied field thermal 
+c           distribution where density profile has a Gaussian form in x. 
+c           Pick the max radius in rho to be where the exponentially fall 
+c           off in the tail of the density profile has fractional value 
+c           "frac" set to a safely small value.   
+        frac   =  1.e-9 
         te_rho_max = sqrt( -4.*log(frac)/(1.+delta) ) 
 
       else 
 
-c       --- intermediate to strong space-charge estimate based work 
-c       --- by Startsev and Lund 
-c       --- *** temporary place holder to be fixed ***
-
-        te_rho_max = 1.5*log(Pi/delta) 
+c       --- Intermediate to strong space-charge estimate based work 
+c       --- by Startsev and Lund reference above.  Use formula (25) to 
+c       --- estimate the 1/2 density point and then pick the max value of 
+c       --- rho to be 5 Debye lengths farther out to be safely in the 
+c       --- exponential tail but not too far out to lose grid resolution in 
+c       --- the core.  
+        C = 2.*sqrt(3.+6.*sqrt(2.)) 
+        rho_half = log((C/delta)*sqrt(2.*Pi*log(C/delta))) 
+        te_rho_max = rho_half + 5.
 
       endif 
 
@@ -537,7 +542,7 @@ c value of delta.
 
       integer(ISZ):: ir, ir_trans
       integer(ISZ):: ir_steps 
-      real(kind=8):: frac, rho, drho, tden, tdenp
+      real(kind=8):: rho, drho, tden, tdenp
       real(kind=8):: xdelta   
       real(kind=8):: te_rho_max, te_den_exp, te_denp_exp
       common /tedensity/ xdelta 
@@ -545,11 +550,10 @@ c value of delta.
 
 c     Calculate max value of rho to setup a radial grid.  Set this using 
 c     routine te_rho_max which uses approxmate analytical formulas to 
-c     set the value of rho where the normalized density = frac of the 
-c     unit on-axis value.    
+c     set the value of rho where the normalized density is an 
+c     (exponentially small) fraction of the unit on-axis value.    
 
-      frac   =  1.e-8
-      te_rhomax =  te_rho_max(delta,frac)
+      te_rhomax =  te_rho_max(delta)
       drho   = te_rhomax/float(te_nrho)
       do ir = 0,te_nrho
         te_rho(ir) = drho*float(ir) 
@@ -604,7 +608,7 @@ c     on the rho grid
 
 
 c     Calculate integral of rho*den(rho) on the rho grid from rho = 0 
-c     to rho = te_rho_max using the trapezoidal rule. 
+c     to rho = te_rhomax using the trapezoidal rule. 
       te_rhodenint = 0.5*te_rho(te_nrho)*te_den(1,te_nrho)
       do ir = 1,te_nrho-1
         te_rhodenint = te_rhodenint + te_rho(ir)*te_den(1,ir)
