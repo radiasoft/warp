@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.35 2010/06/18 17:07:41 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.36 2010/06/30 23:44:44 dave Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -843,31 +843,63 @@ be unreliable.
             if var[0:4] == 'time':
                 name,it = string.split(var,'_')
                 suffix = "_%s"%(it)
-                self._time.append(datadict['time'+suffix])
-                self._zbeam.append(datadict['zbeam'+suffix])
-                self._count.append(datadict['count'+suffix])
-                self._current.append(datadict['current'+suffix])
-                self._xbar.append(datadict['xbar'+suffix])
-                self._ybar.append(datadict['ybar'+suffix])
-                self._xsqbar.append(datadict['xsqbar'+suffix])
-                self._ysqbar.append(datadict['ysqbar'+suffix])
-                self._vxbar.append(datadict['vxbar'+suffix])
-                self._vybar.append(datadict['vybar'+suffix])
-                self._vzbar.append(datadict['vzbar'+suffix])
-                self._vxsqbar.append(datadict['vxsqbar'+suffix])
-                self._vysqbar.append(datadict['vysqbar'+suffix])
-                self._vzsqbar.append(datadict['vzsqbar'+suffix])
-                self._xvxbar.append(datadict['xvxbar'+suffix])
-                self._yvybar.append(datadict['yvybar'+suffix])
-                self._xrms.append(datadict['xrms'+suffix])
-                self._yrms.append(datadict['yrms'+suffix])
-                self._vxrms.append(datadict['vxrms'+suffix])
-                self._vyrms.append(datadict['vyrms'+suffix])
-                self._vzrms.append(datadict['vzrms'+suffix])
-                self._epsnx.append(datadict['epsnx'+suffix])
-                self._epsny.append(datadict['epsny'+suffix])
-                self._rrms.append(datadict['rrms'+suffix])
-                self._rprms.append(datadict['rprms'+suffix])
+                #self._time.append(datadict['time'+suffix])
+                #self._zbeam.append(datadict['zbeam'+suffix])
+                #self._count.append(datadict['count'+suffix])
+                #self._current.append(datadict['current'+suffix])
+                #self._xbar.append(datadict['xbar'+suffix])
+                #self._ybar.append(datadict['ybar'+suffix])
+                #self._xsqbar.append(datadict['xsqbar'+suffix])
+                #self._ysqbar.append(datadict['ysqbar'+suffix])
+                #self._vxbar.append(datadict['vxbar'+suffix])
+                #self._vybar.append(datadict['vybar'+suffix])
+                #self._vzbar.append(datadict['vzbar'+suffix])
+                #self._vxsqbar.append(datadict['vxsqbar'+suffix])
+                #self._vysqbar.append(datadict['vysqbar'+suffix])
+                #self._vzsqbar.append(datadict['vzsqbar'+suffix])
+                #self._xvxbar.append(datadict['xvxbar'+suffix])
+                #self._yvybar.append(datadict['yvybar'+suffix])
+                #self._xrms.append(datadict['xrms'+suffix])
+                #self._yrms.append(datadict['yrms'+suffix])
+                #self._vxrms.append(datadict['vxrms'+suffix])
+                #self._vyrms.append(datadict['vyrms'+suffix])
+                #self._vzrms.append(datadict['vzrms'+suffix])
+                #self._epsnx.append(datadict['epsnx'+suffix])
+                #self._epsny.append(datadict['epsny'+suffix])
+                #self._rrms.append(datadict['rrms'+suffix])
+                #self._rprms.append(datadict['rprms'+suffix])
+                # --- Do this in a loop so that the try/except can be done.
+                # --- The try/except is needed in case an older data file is
+                # --- read in, one that doesn't have all of the moments.
+                for v,name in [[self._time,'time'],
+                               [self._zbeam,'zbeam'],
+                               [self._count,'count'],
+                               [self._current,'current'],
+                               [self._xbar,'xbar'],
+                               [self._ybar,'ybar'],
+                               [self._xsqbar,'xsqbar'],
+                               [self._ysqbar,'ysqbar'],
+                               [self._vxbar,'vxbar'],
+                               [self._vybar,'vybar'],
+                               [self._vzbar,'vzbar'],
+                               [self._vxsqbar,'vxsqbar'],
+                               [self._vysqbar,'vysqbar'],
+                               [self._vzsqbar,'vzsqbar'],
+                               [self._xvxbar,'xvxbar'],
+                               [self._yvybar,'yvybar'],
+                               [self._xrms,'xrms'],
+                               [self._yrms,'yrms'],
+                               [self._vxrms,'vxrms'],
+                               [self._vyrms,'vyrms'],
+                               [self._vzrms,'vzrms'],
+                               [self._epsnx,'epsnx'],
+                               [self._epsny,'epsny'],
+                               [self._rrms,'rrms'],
+                               [self._rprms,'rprms']]:
+                    try:
+                        v.append(datadict[name+suffix])
+                    except KeyError:
+                        pass
                 try:
                     self._rprofile.append(datadict['rprofile'+suffix])
                 except:
