@@ -69,7 +69,7 @@ installuserinjection, uninstalluserinjection, installeduserinjection
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.27 2009/09/14 22:21:54 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.28 2010/06/30 23:42:33 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -322,14 +322,26 @@ Anything that may have already been installed will therefore be unaffected.
     # --- list of controllers.
     self.clist = controllers.__dict__['controllerfunctioncontainer'].clist
 
-  def printtimers(self,tmin=1.):
+  def printtimers(self,tmin=1.,lminmax=0.,ff=None):
     """Prints timings of install functions.
  - tmin=1.: only functions with time greater than tmin will be printed
     """
+    if ff is None: ff = warp.sys.stdout
     for c in self.clist:
       for f in c.controllerfunclist():
-        if c.timers[f] > tmin:
-          print c.name,f,c.timers[f]
+        vlist = warp.array(warp.gather(c.timers[f]))
+        if warp.me > 0: continue
+        vsum = warp.sum(vlist)
+        if vsum <= tmin: continue
+        vrms = warp.sqrt(max(0.,warp.ave(vlist**2) - warp.ave(vlist)**2))
+        ff.write('%20s %s %10.4f  %10.4f %10.4f'%(c.name,repr(f),vsum,vsum/warp.npes,vrms))
+        if lminmax:
+          vmin = min(vlist)
+          vmax = max(vlist)
+          ff.write('  %10.4f  %10.4f'%(vmin,vmax))
+        if warp.top.it > 0:
+          ff.write('   %10.4f'%(vsum/warp.npes/(warp.top.it)))
+        ff.write('\n')
 
 # --- This is primarily needed by warp.py so that these objects can be removed
 # --- from the list of python objects which are not written out.
