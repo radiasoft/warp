@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.15 2007/11/16 01:09:56 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.16 2010/06/30 23:43:20 dave Exp $"
 from warp import *
 import controllers
 import signal
@@ -79,19 +79,9 @@ def step(n=1,maxcalls=None,command=None):
     #setinterrupt()
     top.ncall = top.ncall + 1
 
-    bb = wtime()
     controllers.callbeforestepfuncs()
-    aa = wtime()
-    try: step.beforetime = step.beforetime + (aa - bb)
-    except: step.beforetime = 0.
-
     command()
-
-    bb = wtime()
     controllers.callafterstepfuncs()
-    aa = wtime()
-    try: step.aftertime = step.aftertime + (aa - bb)
-    except: step.aftertime = 0.
 
     # --- Get step time
     #top.steptime = wtime() - top.starttime - top.gentime
