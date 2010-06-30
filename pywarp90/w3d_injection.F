@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.139 $, $Date: 2010/04/12 02:47:18 $
+c@(#) File w3d_injection.F, version $Revision: 1.140 $, $Date: 2010/06/30 23:39:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3844,11 +3844,14 @@ c     --- Do the smoothing.
       end
 c=============================================================================
       subroutine inj_sete(pgroup,ipmin,np,ex,ey,ez)
+      use Subtimers3d
       use ParticleGroupmodule
       use InjectVars
       type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,np
       real(kind=8):: ex(np),ey(np),ez(np)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       if (inject <= 0 .and. tinject <= 0) return
 
@@ -3857,6 +3860,9 @@ c=============================================================================
       call tinj_sete3d(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                 pgroup%pid(ipmin,injpid),ex,ey,ez)
 
+!$OMP MASTER
+      if (lw3dtimesubs) timeinj_sete = timeinj_sete + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -3887,8 +3893,8 @@ c any conductor surface.
       real(kind=8):: dxi,dyi,dzi,inj_di
       real(kind=8):: sx,sy
       real(kind=8):: fourthirds,onethird
-      real(kind=8):: substarttime,wtime
       integer(ISZ):: spreadx,spready
+      real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- The user can force the code to skip the special calculation of the 
@@ -5413,12 +5419,8 @@ c            wz = dd*2.**(inj_nz-iz)-1.
           if(l_inj_rz .or. l_inj_rz_grid) then
             en = inj_ex_3d(ix        ,iy        ,iz  ,ij)*s0 +
      &           inj_ex_3d(ix+spreadx,iy        ,iz  ,ij)*s1 +
-     &           inj_ex_3d(ix        ,iy+spready,iz  ,ij)*s2 +
-     &           inj_ex_3d(ix+spreadx,iy+spready,iz  ,ij)*s3 +
      &           inj_ex_3d(ix        ,iy        ,iz+1,ij)*s4 +
-     &           inj_ex_3d(ix+spreadx,iy        ,iz+1,ij)*s5 +
-     &           inj_ex_3d(ix        ,iy+spready,iz+1,ij)*s6 +
-     &           inj_ex_3d(ix+spreadx,iy+spready,iz+1,ij)*s7
+     &           inj_ex_3d(ix+spreadx,iy        ,iz+1,ij)*s5
             tex(ip) = en*cos(aa)
             tey(ip) = en*sin(aa)
           else
