@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.252 $, $Date: 2010/04/13 21:44:24 $
+c@(#) File TOP.F, version $Revision: 3.253 $, $Date: 2010/06/30 23:38:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2151,6 +2151,7 @@ c           --- dtstarnp1 is way off.
       end
 c=============================================================================
       subroutine getcrossingparticles(ipmin,np,pgroup,dt,isid,time,zbeam)
+      use Subtimerstop
       use ZCrossingParticles
       use ParticleGroupmodule
       use Z_Moments,Only: zmmntmin,zmmntmax,dzm
@@ -2173,8 +2174,8 @@ c routine only grabs particles that actually are crossing the z location.
       real(kind=8):: dtstar,vx,vy,vz,zold,znew
       integer(ISZ):: iw,ip,nn
       integer(ISZ):: nextpid
-
-      real(kind=8):: timetemp,wtime
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c     --- If there are no positions defined, return immediately
       if (nzcwin == 0) return
@@ -2236,6 +2237,9 @@ c       --- extrapolate to window if near it
         enddo
       enddo
 
+!$OMP MASTER
+      if (ltoptimesubs) timegetcrossingparticles = timegetcrossingparticles + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -3440,8 +3444,8 @@ c     --- Make sure that ipmax has reasonable values
       end
 c=============================================================================
       subroutine alotpart(pgroup)
-      use ParticleGroupmodule
       use Subtimerstop
+      use ParticleGroupmodule
       use InPart
       use Particles,Only: npmax
       type(ParticleGroup):: pgroup

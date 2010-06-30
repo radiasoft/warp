@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.168 $, $Date: 2010/04/07 16:32:18 $
+c@(#) File DW3D.F, version $Revision: 3.169 $, $Date: 2010/06/30 23:38:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -94,19 +94,28 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine rhodia
+      use Subtimers3d
       use InGen,Only: fstype
       use InGen3d
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       if (fstype == 12) then
         call callpythonfunc("rhodiaregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
         call rhodia3d
       end if
+!$OMP MASTER
+      if (lw3dtimesubs) timerhodia = timerhodia + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine gtlchg
+      use Subtimers3d
       use InGen,Only: fstype
       use InGen3d
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       if (fstype == 12) then
         call callpythonfunc("gtlchgregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
@@ -114,50 +123,77 @@ c=============================================================================
       else if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call gtlchgrz
       end if
+!$OMP MASTER
+      if (lw3dtimesubs) timegtlchg = timegtlchg + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine srhoax
+      use Subtimers3d
       use InGen,Only: fstype
       use InGen3d
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       if (fstype == 12) then
         call callpythonfunc("srhoaxregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
         call srhoax3d
       end if
+!$OMP MASTER
+      if (lw3dtimesubs) timesrhoax = timesrhoax + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine getese
+      use Subtimers3d
       use InGen,Only: fstype
       use InGen3d
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       if (fstype == 12) then
         call callpythonfunc("geteseregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
         call getese3d
       end if
+!$OMP MASTER
+      if (lw3dtimesubs) timegetese = timegetese + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine sphiax
+      use Subtimers3d
       use InGen,Only: fstype
       use InGen3d
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       if (fstype == 12) then
         call callpythonfunc("sphiaxregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
         call sphiax3d
       end if
+!$OMP MASTER
+      if (lw3dtimesubs) timesphiax = timesphiax + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine sezax
+      use Subtimers3d
       use InGen,Only: fstype
       use InGen3d
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       if (fstype == 12) then
         call callpythonfunc("sezaxregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
         call sezax3d
       end if
+!$OMP MASTER
+      if (lw3dtimesubs) timesezax = timesezax + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================

@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.178 $, $Date: 2010/06/18 17:06:25 $
+c@(#) File DTOP.F, version $Revision: 3.179 $, $Date: 2010/06/30 23:38:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -637,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.178 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.179 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -2833,6 +2833,7 @@ c           --- See comments above for z.
 c=============================================================================
 c=============================================================================
       subroutine gridcrossingmoments(is,isid,ipmin,np,pgroup,dt,time)
+      use Subtimerstop
       use ParticleGroupmodule
       use Picglb,Only: zbeam
       use Particles,Only: wpid
@@ -2840,6 +2841,8 @@ c=============================================================================
       integer(ISZ):: is,isid,ipmin,np
       type(ParticleGroup):: pgroup
       real(kind=8):: dt,time
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. lgcmoments) return
 
@@ -2853,6 +2856,10 @@ c     --- This is a cheap way of allowing multiple GC moments diagnostic.
         call gridcrossingmoments_work(gcmoments2,is,isid,ipmin,np,pgroup,
      &                                dt,time)
       endif
+
+!$OMP MASTER
+      if (ltoptimesubs) timegridcrossingmoments = timegridcrossingmoments + wtime() - substarttime
+!$OMP END MASTER
 
       return
       end

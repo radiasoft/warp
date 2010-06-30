@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.308 $, $Date: 2010/05/10 18:26:08 $
+#@(#) File W3D.V, version $Revision: 3.309 $, $Date: 2010/06/30 23:38:57 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.308 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.309 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1291,6 +1291,12 @@ timestep3d real /0./
 timeexteb3d real /0./
 timeothere3d real /0./
 timegetese3d real /0./
+timerhodia real /0./
+timegtlchg real /0./
+timesrhoax real /0./
+timegetese real /0./
+timesphiax real /0./
+timesezax real /0./
 timegtlchg3d real /0./
 timegtlchg3dfromrho real /0./
 timegtlchgrzfromrho real /0./
@@ -1303,8 +1309,10 @@ timegetextpart real /0./
 timeperphi3d real /0./
 timeperb3d real /0./
 timeapplyrhoboundaryconditions real /0./
+timeepush real /0./
 timeepush3d real /0./
 timeepusht3d real /0./
+timebpush real /0./
 timebpush3d real /0./
 timebpusht3d real /0./
 timexpush3d real /0./
@@ -1340,6 +1348,7 @@ timeinj_transform real /0./
 timegetinj_phi real /0./
 timegettinj_phi real /0./
 timegetinj_phi_mr real /0./
+timeinj_sete real /0./
 timeinj_sete3d real /0./
 timetinj_sete3d real /0./
 timeinj_addtemp3d real /0./

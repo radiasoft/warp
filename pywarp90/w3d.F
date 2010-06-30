@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.442 $, $Date: 2010/06/18 17:06:24 $
+c@(#) File W3D.F, version $Revision: 3.443 $, $Date: 2010/06/30 23:38:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1501,43 +1501,60 @@ c         --- transform velocity back to boosted frame
       end
 c=============================================================================
       subroutine epush(np,uxp,uyp,uzp,gaminv,exp,eyp,ezp,sq,sm,dt,dtfact,l_dtmult,l_paraxial)
+      use Subtimers3d
+      use Beam_acc,only:lrelativ
+      use InGen,only:gamadv
+      integer(ISZ):: np
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np),exp(np),eyp(np),ezp(np),sq,sm,dt,dtfact(np)
+      logical(ISZ)::l_dtmult,l_paraxial
+
 c --- Push the particle velocity with E field
-        use Beam_acc,only:lrelativ
-        use InGen,only:gamadv
-        integer(ISZ):: np
-        real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np),exp(np),eyp(np),ezp(np),sq,sm,dt,dtfact(np)
-        logical(ISZ)::l_dtmult,l_paraxial
 
-        if(l_paraxial) then
-          call epush2d(np,uxp,uyp,exp,eyp,sq,sm,dt)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      if(l_paraxial) then
+        call epush2d(np,uxp,uyp,exp,eyp,sq,sm,dt)
+      else
+        if(.not. l_dtmult) then
+          call epush3d(np,uxp,uyp,uzp,exp,eyp,ezp,sq,sm,dt)
         else
-          if(.not. l_dtmult) then
-            call epush3d(np,uxp,uyp,uzp,exp,eyp,ezp,sq,sm,dt)
-          else
-            call epusht3d(np,uxp,uyp,uzp,exp,eyp,ezp,sq,sm,dtfact,dt)
-          endif
-c         --- Advance relativistic Gamma factor
-          call gammaadv(np,gaminv,uxp,uyp,uzp,gamadv,lrelativ)
+          call epusht3d(np,uxp,uyp,uzp,exp,eyp,ezp,sq,sm,dtfact,dt)
         endif
+c       --- Advance relativistic Gamma factor
+        call gammaadv(np,gaminv,uxp,uyp,uzp,gamadv,lrelativ)
+      endif
 
+!$OMP MASTER
+      if (lw3dtimesubs) timeepush = timeepush + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine bpush(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,dtfact,l_dtmult,l_paraxial,ibpush)
+      use Subtimers3d
+      integer(ISZ):: np,ibpush
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np),bxp(np),byp(np),bzp(np),sq,sm,dt,dtfact(np)
+      logical(ISZ)::l_dtmult,l_paraxial
+
 c --- Push the particle velocity with B field
-        integer(ISZ):: np,ibpush
-        real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np),bxp(np),byp(np),bzp(np),sq,sm,dt,dtfact(np)
-        logical(ISZ)::l_dtmult,l_paraxial
-        if(l_paraxial) then
-          call bpush2d(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,ibpush)
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      if(l_paraxial) then
+        call bpush2d(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,ibpush)
+      else
+        if(.not. l_dtmult) then
+          call bpush3d(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,ibpush)
         else
-          if(.not. l_dtmult) then
-            call bpush3d(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,ibpush)
-          else
-            call bpusht3d(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dtfact,dt,ibpush)
-          endif
+          call bpusht3d(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dtfact,dt,ibpush)
         endif
+      endif
         
+!$OMP MASTER
+      if (lw3dtimesubs) timebpush = timebpush + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
