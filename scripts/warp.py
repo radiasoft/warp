@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.195 2010/06/08 17:43:44 dave Exp $"
+warp_version = "$Id: warp.py,v 1.196 2010/06/30 23:45:49 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -572,6 +572,29 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
 
   return ex,ey,ez,bx,by,bz
 
+def getappliedfieldsforspecies(species):
+  dtl = -0.5*top.dt
+  dtr = +0.5*top.dt
+  bendres = ones(species.nps,'d')
+  bendradi = ones(species.nps,'d')
+  gammabar = 1.
+# --- getbend not available in Python yet
+# getbend(species.nps,species.nps,
+#         species.zp,species.uzp,species.gaminv,
+#         bendres,bendradi,dtl,dtr,false)
+
+  othere3d(species.nps,species.xp,species.yp,species.zp,
+           top.zbeam,top.zimax,top.zimin,top.straight,top.ifeears,top.eears,
+           top.eearsofz,top.dzzi,top.nzzarr,top.zzmin,
+           top.dedr,top.dexdx,top.deydy,top.dbdr,top.dbxdy,top.dbydx,
+           species.ex,species.ey,species.ez,
+           species.bx,species.by,species.bz)
+
+  exteb3d(species.nps,species.xp,species.yp,species.zp,
+          species.uzp,species.gaminv,dtl,dtr,
+          species.bx,species.by,species.bz,
+          species.ex,species.ey,species.ez,
+          species.sm,species.sq,bendres,bendradi,gammabar,top.dt)
 
 ##############################################################################
 ##############################################################################
@@ -1010,7 +1033,7 @@ Reads in data from file, redeposits charge density and does field solve
 ##############################################################################
 
 ##############################################################################
-def printtimers(file=None,lminmax=0):
+def printtimers(file=None,lminmax=0,icontrollers=0):
   """Print timers in a nice annotated format
   - file=None: Optional input file. If it is not include, stdout is used. It can
          either be a file name, or a file object. If a file name, a file
@@ -1018,6 +1041,9 @@ def printtimers(file=None,lminmax=0):
          to that file (the file remains open).
   - lminmax=false: When true, include the min and max over the processors
                    when parallel.
+  - icontrollers=0: When 1, prints the timings of the controllers.
+                    When 2, also prints the timings of all of the
+                    installed functions
   """
   if file is None:
     ff = sys.stdout
@@ -1120,8 +1146,107 @@ def printtimers(file=None,lminmax=0):
   if w3d.lw3dtimesubs: _doprint(w3d,'Subtimers3d')
   if f3d.lf3dtimesubs: _doprint(f3d,'Subtimersf3d')
 
+  if icontrollers > 0:
+    for c in controllerfunctioncontainer.clist:
+      vlist = array(gather(c.time))
+      if me > 0: continue
+      vsum = sum(vlist)
+      if vsum == 0.: continue
+      vrms = sqrt(max(0.,ave(vlist**2) - ave(vlist)**2))
+      ff.write('%20s  %10.4f  %10.4f  %10.4f'%(c.name,vsum,vsum/npes,vrms))
+      if lminmax:
+        vmin = min(vlist)
+        vmax = max(vlist)
+        ff.write('  %10.4f  %10.4f'%(vmin,vmax))
+      if top.it > 0:
+        ff.write('   %10.4f'%(vsum/npes/(top.it)))
+      ff.write('\n')
+
+    if icontrollers > 1:
+      controllerfunctioncontainer.printtimers(tmin=0.,lminmax=lminmax,ff=ff)
+
   if closeit:
     ff.close()
+
+def printtimersordered(file=None,depth=3):
+  """Print timers in a nice annotated format, sorted by call sequence
+  - file=None: Optional input file. If it is not include, stdout is used. It
+               can either be a file name, or a file object. If a file name, a
+               file with that name is created. If a file object, the data is
+               written to that file (the file remains open).
+  - depth=3: depth of the call chain to show
+  """
+
+  if file is None:
+    ff = sys.stdout
+    closeit = 0
+  elif type(file) == type(""):
+    ff = open(file,"w")
+    closeit = 1
+  else:
+    ff = file
+    closeit = 0
+
+  def _doprint(i,v,name):
+    if i > depth: return
+    v = sum(gather(v))/npes
+    if v > 0.1:
+      ff.write('%s%-20s  %7.1f\n'%(i*'    ',name,v))
+
+  ff.write('times per CPU (s)\n')
+  _doprint(0,top.steptime,'step')
+  _doprint(1,  callbeforestepfuncs.time,'beforestep')
+  _doprint(1,  w3d.timew3dexe,'w3dexe')
+  _doprint(2,    top.timeacclbfrm,'acclbfrm')
+  _doprint(2,    w3d.timestep3d,'step3d')
+  _doprint(3,      top.timesetlatt,'setlatt')
+  _doprint(3,      w3d.timepadvnc3d,'padvnc3d')
+  #_doprint(4,        w3d.timesetuppadvncsubcyclingaveraging,'setuppadvncsubcyclingaveraging')
+  _doprint(4,        w3d.timefetche3d,'fetche3d')
+  _doprint(4,        w3d.timefetchb3d,'fetchb3d')
+  _doprint(4,        w3d.timeinj_sete,'inj_sete')
+  _doprint(4,        w3d.timeinj_addtemp3d,'inj_addtemp3d')
+  _doprint(4,        w3d.timesete3d_aperture,'sete3d_aperture')
+  _doprint(4,        w3d.timesete3d_relativity,'sete3d_relativity')
+  _doprint(4,        top.timegetbend,'getbend')
+  _doprint(4,        w3d.timebendez3d,'bendez3d')
+  #_doprint(4,        w3d.timegapfield,'gapfield')
+  _doprint(4,        w3d.timeothere3d,'othere3d')
+  _doprint(4,        w3d.timeexteb3d,'exteb3d')
+  #_doprint(4,        w3d.timesetu_in_uzboosted_frame3d,'setu_in_uzboosted_frame3d')
+  _doprint(4,        top.timezgapcorr,'zgapcorr')
+  _doprint(4,        w3d.timeebcancelpush3d,'ebcancelpush3d')
+  _doprint(4,        w3d.timeepush,'epush')
+  _doprint(4,        w3d.timebpush,'bpush')
+  _doprint(4,        top.timegetcrossingparticles,'getcrossingparticles')
+  _doprint(4,        top.timegridcrossingmoments,'gridcrossingmoments')
+  _doprint(4,        w3d.timepositionadvance3d,'positionadvance3d')
+  #_doprint(4,        top.timeapplylmap,'applylmap')
+  _doprint(4,        w3d.timexpusht3d,'xpusht3d')
+  _doprint(4,        top.momentstime,'momentstime')
+  #_doprint(4,        top.timegetextrapolatedparticles,'getextrapolatedparticles')
+  _doprint(4,        w3d.timecheck_cc3d,'check_cc3d')
+  #_doprint(4,        w3d.timesetcurr,'setcurr')
+  _doprint(3,      w3d.timeinject3d,'inject3d')
+  _doprint(3,      userinjection.time,'userinjection')
+  _doprint(3,      w3d.timeparticleboundaries3d,'particleboundaries3d')
+  _doprint(3,      w3d.timeloadrho3d,'loadrho3d')
+  #_doprint(3,      w3d.timeloadj3d,'loadj3d')
+  _doprint(3,      beforefs.time,'beforefs')
+  _doprint(3,      w3d.timefieldsol3d,'fieldsol3d')
+  #_doprint(3,      w3d.timebfieldsol3d,'bfieldsol3d')
+  _doprint(3,      afterfs.time,'afterfs')
+  #_doprint(3,      top.timegetlabwn,'getlabwn')
+  _doprint(3,      w3d.timerhodia,'rhodia')
+  #_doprint(3,      top.timegetvzofz,'getvzofz')
+  _doprint(3,      w3d.timegtlchg,'gtlchg')
+  _doprint(3,      w3d.timesrhoax,'srhoax')
+  _doprint(3,      w3d.timegetese,'getese')
+  _doprint(3,      w3d.timesphiax,'sphiax')
+  _doprint(3,      w3d.timesezax,'sezax')
+  _doprint(1,  callafterstepfuncs.time,'afterstep')
+
+  if closeit: ff.close()
 
 #=============================================================================
 # --- Import the convenience routines for plotting various slices and
