@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.39 2010/04/09 17:08:50 jlvay Exp $"
+parallel_version = "$Id: parallel.py,v 1.40 2010/07/01 20:42:52 jlvay Exp $"
 
 from warp import gettypecode
 from numpy import *
@@ -308,7 +308,7 @@ def globalmin(a,comm=mpiWORLD):
 def globalsum(a,comm=mpiWORLD):
   return globalop(a,sum,"SUM",0.,comm=comm)
 def globalave(a,comm=mpiWORLD):
-  s = globalop(a,sum,"SUM",0.)
+  s = globalop(a,sum,"SUM",0.,comm=comm)
   if len(shape(a)) == 0: a = [a]
   n = globalsum(len(a),comm=comm)
   if n > 0: return s/n
