@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.196 2010/06/30 23:45:49 dave Exp $"
+warp_version = "$Id: warp.py,v 1.197 2010/07/01 23:50:16 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -1226,7 +1226,7 @@ def printtimersordered(file=None,depth=3):
   _doprint(4,        top.momentstime,'momentstime')
   #_doprint(4,        top.timegetextrapolatedparticles,'getextrapolatedparticles')
   _doprint(4,        w3d.timecheck_cc3d,'check_cc3d')
-  #_doprint(4,        w3d.timesetcurr,'setcurr')
+  _doprint(4,        top.timesetcurr,'setcurr')
   _doprint(3,      w3d.timeinject3d,'inject3d')
   _doprint(3,      userinjection.time,'userinjection')
   _doprint(3,      w3d.timeparticleboundaries3d,'particleboundaries3d')
