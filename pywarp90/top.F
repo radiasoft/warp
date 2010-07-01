@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.253 $, $Date: 2010/06/30 23:38:56 $
+c@(#) File TOP.F, version $Revision: 3.254 $, $Date: 2010/07/01 22:29:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1990,7 +1990,6 @@ c=============================================================================
       use ParticleGroupmodule
       use Z_Moments,Only: zmmntmin,zmmntmax,dzm
       use ExtPart
-      use Timers
       integer(ISZ):: ipmin,np,npid,isid
       type(ParticleGroup):: pgroup
       real(kind=8):: dt,time,zbeam
@@ -2155,7 +2154,6 @@ c=============================================================================
       use ZCrossingParticles
       use ParticleGroupmodule
       use Z_Moments,Only: zmmntmin,zmmntmax,dzm
-      use Timers
       integer(ISZ):: ipmin,np,isid
       type(ParticleGroup):: pgroup
       real(kind=8):: dt,time,zbeam
@@ -2631,6 +2629,7 @@ c       --- If only one species, then don't have separate species data.
       end
 c=============================================================================
       subroutine setcurr(pgroup,zbeam,ns,wpid,lspeciesmoments,lzero,bound0)
+      use Subtimerstop
       use ParticleGroupmodule
       use Z_arrays
       type(ParticleGroup):: pgroup
@@ -2643,6 +2642,8 @@ c  Sets 1d beam current as a function of z, directly from particle data
       integer(ISZ):: kk
       real(kind=8):: g,gw,w1,w0
       integer(ISZ):: is,js,ip,isid
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       call checkz_arrays(ns)
 
@@ -2679,6 +2680,9 @@ c  Sets 1d beam current as a function of z, directly from particle data
 
       if (lzero) call percurr(curr,nzzarr,nszarr,bound0)
 
+!$OMP MASTER
+      if (ltoptimesubs) timesetcurr = timesetcurr + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
