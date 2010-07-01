@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.57 $, $Date: 2010/07/01 22:05:27 $
+c W3DSLAVE.M, version $Revision: 1.58 $, $Date: 2010/07/01 23:52:48 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -52,7 +52,6 @@ c get number of slaves and my_pe
       call MPI_COMM_RANK(comm_world_mpiisz,my_indextmp,mpierror)
       nprocs = nprocstmp
       my_index = my_indextmp
-      print*,"COMM ",comm_world,comm_world_mpiisz,nprocs,my_index
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinit_w3d_parallel = timeinit_w3d_parallel + wtime() - substarttime
