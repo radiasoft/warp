@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.63 $, $Date: 2010/03/23 18:52:03 $
+c TOPSLAVE.M, version $Revision: 1.64 $, $Date: 2010/07/01 22:05:27 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -50,12 +50,14 @@ c to the appropriate processor.
 
       include "mpif.h"
       integer(MPIISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
+      integer(MPIISZ):: comm_world_mpiisz
 c     integer(MPIISZ),allocatable:: blocklengths(:),displacements(:)
 c     integer(MPIISZ):: mpinewtype,mpirequest
       integer(MPIISZ):: messid = 20
 
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
 c     --- If this dimension has zero length, then skip the boundary
 c     --- conditions since this will be an ignorable dimension.
@@ -414,12 +416,12 @@ c       --- First send the number of particles to be sent
      &                    MPI_INTEGER,left_pe,messid,
      &                    nrecvright(is1:is2),int(is2-is1+1,MPIISZ),
      &                    MPI_INTEGER,right_pe,messid,
-     &                    MPI_COMM_WORLD,mpistatus,mpierror)
+     &                    comm_world_mpiisz,mpistatus,mpierror)
         call MPI_SENDRECV(nsendright(is1:is2),int(is2-is1+1,MPIISZ),
      &                    MPI_INTEGER,right_pe,messid,
      &                    nrecvleft(is1:is2),int(is2-is1+1,MPIISZ),
      &                    MPI_INTEGER,left_pe,messid,
-     &                    MPI_COMM_WORLD,mpistatus,mpierror)
+     &                    comm_world_mpiisz,mpistatus,mpierror)
 
 #ifdef VAMPIR
 c     call VTEND(30,IERR)
@@ -445,12 +447,12 @@ c     call VTBEGIN(50,IERR)
      &                    right_pe,messid,
      &                    buffer3,nquant*nrecvleftsum,MPI_DOUBLE_PRECISION,
      &                    left_pe,messid,
-     &                    MPI_COMM_WORLD,mpistatus,mpierror)
+     &                    comm_world_mpiisz,mpistatus,mpierror)
         call MPI_SENDRECV(buffer1,nquant*nsendleftsum,MPI_DOUBLE_PRECISION,
      &                    left_pe,messid,
      &                    buffer4,nquant*nrecvrightsum,MPI_DOUBLE_PRECISION,
      &                    right_pe,messid,
-     &                    MPI_COMM_WORLD,mpistatus,mpierror)
+     &                    comm_world_mpiisz,mpistatus,mpierror)
 
 #ifdef VAMPIR
 c     call VTEND(50,IERR)
@@ -673,7 +675,7 @@ c       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
 c       --- Pass particle data to the right
 c       call MPI_SENDRECV(buffer2,nquant*nsendright,MPI_DOUBLE_PRECISION,right_pe,0,
 c    &                    MPI_BOTTOM,1,mpinewtype,left_pe,0,
-c    &                    MPI_COMM_WORLD,mpistatus,mpierror)
+c    &                    comm_world_mpiisz,mpistatus,mpierror)
 c       pgroup%ins(is) = pgroup%ins(is) - nrecvleft
 c       pgroup%nps(is) = pgroup%nps(is) + nrecvleft
 c       call MPI_TYPE_FREE(mpinewtype,mpierror)
@@ -706,7 +708,7 @@ c       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
 c       --- Pass particle data to the left
 c       call MPI_SENDRECV(buffer1,nquant*nsendleft,MPI_DOUBLE_PRECISION,left_pe,0,
 c    &                    MPI_BOTTOM,1,mpinewtype,right_pe,0,
-c    &                    MPI_COMM_WORLD,mpistatus,mpierror)
+c    &                    comm_world_mpiisz,mpistatus,mpierror)
 c       pgroup%nps(is) = pgroup%nps(is) + nrecvright
 c       call MPI_TYPE_FREE(mpinewtype,mpierror)
 c       deallocate(blocklengths,displacements)
@@ -746,7 +748,7 @@ c at once.
       integer(MPIISZ):: inrecv(0:pgroup%ns-1,0:nprocs-1)
       integer(MPIISZ):: nprecv(0:pgroup%ns-1,0:nprocs-1)
       integer(MPIISZ):: pnp,pnpmax,ncoords,ii,js,pip,ip1,ip2,iitemp,ii1,ii2
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       integer(MPIISZ):: sendcounts(0:nprocs-1),sdispls(0:nprocs-1)
       integer(MPIISZ):: recvcounts(0:nprocs-1),rdispls(0:nprocs-1)
       integer(MPIISZ):: allocerror
@@ -754,6 +756,7 @@ c at once.
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
 c     --- First, create arrays that specify which processors owns which
 c     --- location. This is used to make the sorting of particles to
@@ -951,10 +954,10 @@ c     --- Exchange the number of particles which are to be sent to each
 c     --- processor
 c     call MPI_ALLTOALL(pins,int(pgroup%ns,MPIISZ),MPI_INTEGER,
 c    &                  inrecv,int(pgroup%ns,MPIISZ),MPI_INTEGER,
-c    &                  MPI_COMM_WORLD,mpierror)
+c    &                  comm_world_mpiisz,mpierror)
       call MPI_ALLTOALL(pnps,int(pgroup%ns,MPIISZ),MPI_INTEGER,
      &                  nprecv,int(pgroup%ns,MPIISZ),MPI_INTEGER,
-     &                  MPI_COMM_WORLD,mpierror)
+     &                  comm_world_mpiisz,mpierror)
 
 c     --- Resize particle arrays if neccesary. If there is more room available
 c     --- than incoming particles, then spread particles out by giving each
@@ -995,7 +998,7 @@ c     --- Do the communication
       enddo
       call MPI_ALLTOALLV(ptemp,sendcounts,sdispls,MPI_DOUBLE_PRECISION,
      &                   precv,recvcounts,rdispls,MPI_DOUBLE_PRECISION,
-     &                   MPI_COMM_WORLD,mpierror)
+     &                   comm_world_mpiisz,mpierror)
 
 c     --- Calculate inrecv for data set sent to each processor relative
 c     --- to rdispls
@@ -1119,9 +1122,10 @@ c     --- temporary for z moments
       real(kind=8),allocatable:: maxes2(:,:),mines2(:,:)
       integer(MPIISZ):: nn
       include "mpif.h"
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
       allocate(ztemp0(NUMZMMNT,0:nszmmnt))
       allocate(ztemp(0:nzmmnt,NUMZMMNT,0:nszmmnt))
@@ -1132,17 +1136,19 @@ c     --- Do reduction on whole beam moments.
       ztemp0 = zmmnts0
       nn = NUMZMMNT*(1+nszmmnt)
       call MPI_ALLREDUCE(ztemp0,zmmnts0,nn,
-     &                   MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,mpierror)
+     &                   MPI_DOUBLE_PRECISION,MPI_SUM,comm_world_mpiisz,mpierror)
 
 c     --- Do reduction on beam z moments.
       ztemp = zmmnts
       nn = (1+nzmmnt)*NUMZMMNT*(1+nszmmnt)
 c     print*,"PSM1 ",my_index,nn
       call MPI_ALLREDUCE(ztemp,zmmnts,nn,
-     &                   MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,mpierror)
+     &                   MPI_DOUBLE_PRECISION,MPI_SUM,comm_world_mpiisz,mpierror)
 c     call MPI_REDUCE(ztemp,zmmnts,nn,
-c    &                MPI_DOUBLE_PRECISION,MPI_SUM,int(0,MPIISZ),MPI_COMM_WORLD,mpierror)
-c     call MPI_BCAST(zmmnts,nn,MPI_DOUBLE_PRECISION,int(0,MPIISZ),MPI_COMM_WORLD,mpierror)
+c    &                MPI_DOUBLE_PRECISION,MPI_SUM,int(0,MPIISZ),
+c    &                comm_world_mpiisz,mpierror)
+c     call MPI_BCAST(zmmnts,nn,MPI_DOUBLE_PRECISION,int(0,MPIISZ),
+c    &                comm_world_mpiisz,mpierror)
 
 c     print*,"PSM2 ",my_index
 c     --- Find global max's and min's
@@ -1161,10 +1167,10 @@ c     --- This is done minimizing the amount of interprocessor communication
       mines1(6,:) = vzminp
       call MPI_ALLREDUCE(maxes1,maxes2,int(6*(1+nszmmnt),MPIISZ),
      &                   MPI_DOUBLE_PRECISION,
-     &                   MPI_MAX,MPI_COMM_WORLD,mpierror)
+     &                   MPI_MAX,comm_world_mpiisz,mpierror)
       call MPI_ALLREDUCE(mines1,mines2,int(6*(1+nszmmnt),MPIISZ),
      &                   MPI_DOUBLE_PRECISION,
-     &                   MPI_MIN,MPI_COMM_WORLD,mpierror)
+     &                   MPI_MIN,comm_world_mpiisz,mpierror)
       xmaxp = maxes2(1,:)
       ymaxp = maxes2(2,:)
       zmaxp = maxes2(3,:)
@@ -1237,20 +1243,22 @@ c=============================================================================
 c=============================================================================
       subroutine parallelsumrealarray(data,ndata)
       use Subtimerstop
+      use Parallel,Only: comm_world
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
 c Does a sum over all of the processors.  Resulting data is broadcast
 c to all processors.
 
       real(kind=8),allocatable:: data2(:)
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
       allocate(data2(ndata))
 
       call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
-     &                   MPI_SUM,MPI_COMM_WORLD,mpierror)
+     &                   MPI_SUM,comm_world_mpiisz,mpierror)
       data = data2
       deallocate(data2)
 
@@ -1270,15 +1278,15 @@ c Does a sum over all of the processors.  Resulting data is broadcast
 c to all processors.
 
       real(kind=8),allocatable:: data2(:)
-      integer(MPIISZ):: mpierror,comm_temp
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
       allocate(data2(ndata))
 
-      comm_temp = comm
+      comm_world_mpiisz = comm
       call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
-     &                   MPI_SUM,comm_temp,mpierror)
+     &                   MPI_SUM,comm_world_mpiisz,mpierror)
       data = data2
       deallocate(data2)
 
@@ -1291,6 +1299,7 @@ c to all processors.
 c=============================================================================
       subroutine parallelsumintegerarray(data,ndata)
       use Subtimerstop
+      use Parallel,Only: comm_world
       integer(ISZ):: ndata
       integer(ISZ):: data(ndata)
 c Does a sum over all of the processors.  Resulting data is broadcast
@@ -1298,20 +1307,21 @@ c to all processors.
 
       integer(MPIISZ),allocatable:: data2(:)
       integer(MPIISZ),allocatable:: data3(:)
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
       allocate(data2(ndata))
 
       if (ISZ == 4) then
         call MPI_ALLREDUCE(data,data2,ndata,MPI_INTEGER,MPI_SUM,
-     &                     MPI_COMM_WORLD,mpierror)
+     &                     comm_world_mpiisz,mpierror)
       else
         allocate(data3(ndata))
         data3 = data
         call MPI_ALLREDUCE(data3,data2,int(ndata,MPIISZ),MPI_INTEGER,MPI_SUM,
-     &                     MPI_COMM_WORLD,mpierror)
+     &                     comm_world_mpiisz,mpierror)
         deallocate(data3)
       endif
       data = data2
@@ -1326,20 +1336,22 @@ c to all processors.
 c==========================================================================
       subroutine parallelmaxrealarray(data,ndata)
       use Subtimerstop
+      use Parallel,Only: comm_world
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
 c Find the max of data over all processors.  Resulting data is broadcast
 c to all processors.
 
       real(kind=8),allocatable:: data2(:)
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
       allocate(data2(ndata))
 
       call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
-     &                   MPI_MAX,MPI_COMM_WORLD,mpierror)
+     &                   MPI_MAX,comm_world_mpiisz,mpierror)
       data = data2
       deallocate(data2)
 
@@ -1359,15 +1371,15 @@ c Find the max of data over all processors.  Resulting data is broadcast
 c to all processors.
 
       real(kind=8),allocatable:: data2(:)
-      integer(MPIISZ):: mpierror,comm_temp
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
       allocate(data2(ndata))
 
-      comm_temp = comm
+      comm_world_mpiisz = comm
       call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
-     &                   MPI_MAX,comm_temp,mpierror)
+     &                   MPI_MAX,comm_world_mpiisz,mpierror)
       data = data2
       deallocate(data2)
 
@@ -1380,6 +1392,7 @@ c to all processors.
 c=============================================================================
       subroutine parallelmaxintegerarray(data,ndata)
       use Subtimerstop
+      use Parallel,Only: comm_world
       integer(ISZ):: ndata
       integer(ISZ):: data(ndata)
 c Find the max over all of the processors.  Resulting data is broadcast
@@ -1387,20 +1400,21 @@ c to all processors.
 
       integer(MPIISZ),allocatable:: data2(:)
       integer(MPIISZ),allocatable:: data3(:)
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
       allocate(data2(ndata))
 
       if (ISZ == 4) then
         call MPI_ALLREDUCE(data,data2,ndata,MPI_INTEGER,MPI_MAX,
-     &                     MPI_COMM_WORLD,mpierror)
+     &                     comm_world_mpiisz,mpierror)
       else
         allocate(data3(ndata))
         data3 = data
         call MPI_ALLREDUCE(data3,data2,int(ndata,MPIISZ),MPI_INTEGER,MPI_MAX,
-     &                     MPI_COMM_WORLD,mpierror)
+     &                     comm_world_mpiisz,mpierror)
         deallocate(data3)
       endif
       data = data2
@@ -1415,20 +1429,22 @@ c to all processors.
 c==========================================================================
       subroutine parallelminrealarray(data,ndata)
       use Subtimerstop
+      use Parallel,Only: comm_world
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
 c Find the min of data over all processors.  Resulting data is broadcast
 c to all processors.
 
       real(kind=8),allocatable:: data2(:)
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
       allocate(data2(ndata))
 
       call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
-     &                   MPI_MIN,MPI_COMM_WORLD,mpierror)
+     &                   MPI_MIN,comm_world_mpiisz,mpierror)
       data = data2
       deallocate(data2)
 
@@ -1448,15 +1464,15 @@ c Find the min of data over all processors.  Resulting data is broadcast
 c to all processors.
 
       real(kind=8),allocatable:: data2(:)
-      integer(MPIISZ):: mpierror,comm_temp
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
       allocate(data2(ndata))
 
-      comm_temp = comm
+      comm_world_mpiisz = comm
       call MPI_ALLREDUCE(data,data2,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
-     &                   MPI_MIN,comm_temp,mpierror)
+     &                   MPI_MIN,comm_world_mpiisz,mpierror)
       data = data2
       deallocate(data2)
 
@@ -1469,19 +1485,21 @@ c to all processors.
 c==========================================================================
       subroutine parallellor(data)
       use Subtimerstop
+      use Parallel,Only: comm_world
       logical(ISZ):: data
 c Logical OR of data over all processors.  Resulting data is broadcast
 c to all processors.
 
       logical(MPIISZ):: data1,data2
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
       data1 = data
       call MPI_ALLREDUCE(data1,data2,int(1,MPIISZ),MPI_LOGICAL,MPI_LOR,
-     &                   MPI_COMM_WORLD,mpierror)
+     &                   comm_world_mpiisz,mpierror)
       data = data2
 
 !$OMP MASTER
@@ -1493,17 +1511,19 @@ c to all processors.
 c==========================================================================
       subroutine parallelbroadcastrealarray(data,ndata,root)
       use Subtimerstop
+      use Parallel,Only: comm_world
       integer(ISZ):: ndata,root
       real(kind=8):: data(ndata)
 c Broadcast the data to all processors.
 
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
       call MPI_BCAST(data,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,
-     &               int(root,MPIISZ),MPI_COMM_WORLD,mpierror)
+     &               int(root,MPIISZ),comm_world_mpiisz,mpierror)
 
 !$OMP MASTER
       if (ltoptimesubs) timeparallelbroadcastrealarray = timeparallelbroadcastrealarray + wtime() - substarttime
@@ -1514,13 +1534,15 @@ c Broadcast the data to all processors.
 c==========================================================================
       subroutine parallelbarrier()
       use Subtimerstop
+      use Parallel,Only: comm_world
 c Calls MPI barrier
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
-      call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
+      call MPI_BARRIER(comm_world_mpiisz,mpierror)
 
 !$OMP MASTER
       if (ltoptimesubs) timeparallelbarrier = timeparallelbarrier + wtime() - substarttime
@@ -1531,6 +1553,7 @@ c Calls MPI barrier
 c==========================================================================
       subroutine parallelnonzerorealarray(data,ndata)
       use Subtimerstop
+      use Parallel,Only: comm_world
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
 c Find the nonzero value of data over all processors. This assumes that the
@@ -1538,17 +1561,18 @@ c non-zero values for each index are the same for all processors.
 c Resulting data is broadcast to all processors.
 
       real(kind=8),allocatable:: dmax(:),dmin(:)
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
       allocate(dmax(ndata),dmin(ndata))
 
       call MPI_ALLREDUCE(data,dmax,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,MPI_MAX,
-     &                   MPI_COMM_WORLD,mpierror)
+     &                   comm_world_mpiisz,mpierror)
       call MPI_ALLREDUCE(data,dmin,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,MPI_MIN,
-     &                   MPI_COMM_WORLD,mpierror)
+     &                   comm_world_mpiisz,mpierror)
       where (dmax /= 0)
         data = dmax
       elsewhere

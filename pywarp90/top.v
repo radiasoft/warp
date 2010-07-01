@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.280 $, $Date: 2010/06/30 23:38:56 $
+#@(#) File TOP.V, version $Revision: 3.281 $, $Date: 2010/07/01 22:05:27 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.280 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.281 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -3028,6 +3028,8 @@ mpi_comm_y integer # MPI communicator grouping processors along the y axis.
 mpi_comm_z integer # MPI communicator grouping processors along the z axis.
 
 ******* Parallel dump:
+comm_world    integer /0/ -dump   # world communicator used by Warp
+lcomm_world_initted logical /.false./ # set to true with comm_world has been set
 nprocs        integer /1/ -dump   # Number of parallel processors
 nslaves       integer /1/         # Obsolete
 my_index      integer /0/ +parallel -dump # Processor index to array of task ids

@@ -3534,6 +3534,7 @@ END subroutine relaxbndxzwguard
     INTEGER(MPIISZ) :: nr,nz
     INTEGER(MPIISZ) :: p_up, p_down, nsize
     integer(MPIISZ) :: mpi_req(2*nslaves+2),mpistatus(MPI_STATUS_SIZE,2*nslaves+2),mpierror,ir
+    comm_world_mpiisz = comm_world
 
     
 !    write(o_line,*) my_index,':enter exchangefbnd'
@@ -3548,13 +3549,13 @@ END subroutine relaxbndxzwguard
     ! send
     IF(izlbnd<0) then
       ir = ir + 1
-      call mpi_isend(f(0,2),nr,mpi_double_precision,p_down,0_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_isend(f(0,2),nr,mpi_double_precision,p_down,0_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' send to ',p_down,ir
 !      call remark(trim(o_line))
      end if
     IF(izrbnd<0) then
       ir = ir + 1
-      call mpi_isend(f(0,nz),nr,mpi_double_precision,p_up,0_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_isend(f(0,nz),nr,mpi_double_precision,p_up,0_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' send to ',p_up,ir
 !      call remark(trim(o_line))
     end if
@@ -3562,13 +3563,13 @@ END subroutine relaxbndxzwguard
     ! receive
     IF(izrbnd<0) then
       ir = ir + 1
-      call mpi_irecv(f(0,nz+2),nr,mpi_double_precision,p_up,0_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_irecv(f(0,nz+2),nr,mpi_double_precision,p_up,0_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' recv from ',p_up,ir
 !      call remark(trim(o_line))
     end if     
     IF(izlbnd<0) then
       ir = ir + 1
-      call mpi_irecv(f(0,0),nr,mpi_double_precision,p_down,0_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_irecv(f(0,0),nr,mpi_double_precision,p_down,0_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' recv from ',p_down,ir
 !      call remark(trim(o_line))
     end if
@@ -3587,6 +3588,7 @@ END subroutine relaxbndxzwguard
     integer(MPIISZ) :: mpi_req(4),mpistatus(MPI_STATUS_SIZE,4),mpierror,ir
 
     real(8), allocatable, dimension(:) :: ftmpd, ftmpu, ftmpds, ftmpus
+    comm_world_mpiisz = comm_world
     
     ! exchange_fbndz_rb should be more efficient than exchange_fbndz since it is 
     ! exchanging only half the data but is not correct for all the cases in the 
@@ -3616,14 +3618,14 @@ END subroutine relaxbndxzwguard
     IF(izlbnd<0) then
       ir = ir + 1
       ftmpds = f(izf::2,2)
-      call mpi_isend(ftmpds(izf),nr,mpi_double_precision,p_down,0_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_isend(ftmpds(izf),nr,mpi_double_precision,p_down,0_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' send to ',p_down,ir
 !      call remark(trim(o_line))
     end if
     IF(izrbnd<0) then
       ir = ir + 1
       ftmpus = f(izf::2,nz)
-      call mpi_isend(ftmpus(izf),nr,mpi_double_precision,p_up,0_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_isend(ftmpus(izf),nr,mpi_double_precision,p_up,0_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' send to ',p_up,ir
 !      call remark(trim(o_line))
     end if
@@ -3631,13 +3633,13 @@ END subroutine relaxbndxzwguard
     ! receive
     IF(izrbnd<0) then
       ir = ir + 1
-      call mpi_irecv(ftmpu(izf),nr,mpi_double_precision,p_up,0_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_irecv(ftmpu(izf),nr,mpi_double_precision,p_up,0_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' recv from ',p_up,ir
 !      call remark(trim(o_line))
     end if     
     IF(izlbnd<0) then
       ir = ir + 1
-      call mpi_irecv(ftmpd(izf),nr,mpi_double_precision,p_down,0_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_irecv(ftmpd(izf),nr,mpi_double_precision,p_down,0_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' recv from ',p_down,ir
 !      call remark(trim(o_line))
     end if
@@ -3717,6 +3719,7 @@ END subroutine relaxbndxzwguard
     INTEGER(MPIISZ) :: p_up, p_down
     integer(MPIISZ) :: mpi_req(4),mpistatus(MPI_STATUS_SIZE,4),mpierror,ir,j
     real(8), allocatable, dimension(:) :: fd, fu
+    comm_world_mpiisz = comm_world
 
 !    write(o_line,*) my_index,':enter exchangeres'
 !    call remark(trim(o_line))
@@ -3731,13 +3734,13 @@ END subroutine relaxbndxzwguard
     ! send
     IF(izlbnd<0) then
       ir = ir + 1
-      call mpi_isend(rho(1,1),nr+1_4,mpi_double_precision,p_down,1_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_isend(rho(1,1),nr+1_4,mpi_double_precision,p_down,1_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' send to ',p_down
 !      call remark(trim(o_line))
     end if
     IF(izrbnd<0) then
       ir = ir + 1
-      call mpi_isend(rho(1,nz+1),nr+1_4,mpi_double_precision,p_up,1_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_isend(rho(1,nz+1),nr+1_4,mpi_double_precision,p_up,1_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' send to ',p_up
 !      call remark(trim(o_line))
     end if
@@ -3746,14 +3749,14 @@ END subroutine relaxbndxzwguard
     IF(izrbnd<0) then
       ir = ir + 1
       allocate(fu(nr+1))
-      call mpi_irecv(fu(1),nr+1_4,mpi_double_precision,p_up,1_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_irecv(fu(1),nr+1_4,mpi_double_precision,p_up,1_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' recv from ',p_up
 !      call remark(trim(o_line))
     end if
     IF(izlbnd<0) then
       ir = ir + 1
       allocate(fd(nr+1))
-      call mpi_irecv(fd(1),nr+1_4,mpi_double_precision,p_down,1_4,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_irecv(fd(1),nr+1_4,mpi_double_precision,p_down,1_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' recv from ',p_down
 !      call remark(trim(o_line))
    end if
@@ -3780,6 +3783,7 @@ END subroutine relaxbndxzwguard
     INTEGER(MPIISZ) :: nz, p_up, p_down, j, nr
     integer(MPIISZ) :: mpi_req(2),mpistatus(MPI_STATUS_SIZE,2),mpierror,ir
     real(8), allocatable, dimension(:,:) :: fd, fu
+    comm_world_mpiisz = comm_world
 
 !    write(o_line,*) my_index,':enter merge'
 !    call remark(trim(o_line))
@@ -3792,31 +3796,31 @@ END subroutine relaxbndxzwguard
     IF(MOD(my_index/bndcurrent%nworkpproc,2)==0) then
     ! send up
       ir = ir +1
-!      call mpi_isend(f(1:nr+1,1:nz/2+1),(nr+1)*(nz/2+1),mpi_real8,p_up,2,MPI_COMM_WORLD,mpi_req(ir),mpierror)
-      call mpi_isend(f(1,1),int((nr+1)*(nz/2+1),4),mpi_double_precision,p_up,2_4,MPI_COMM_WORLD,mpi_req(ir),mpierror)
+!      call mpi_isend(f(1:nr+1,1:nz/2+1),(nr+1)*(nz/2+1),mpi_real8,p_up,2,comm_world_mpiisz,mpi_req(ir),mpierror)
+      call mpi_isend(f(1,1),int((nr+1)*(nz/2+1),4),mpi_double_precision,p_up,2_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' send to ',p_up
 !      call remark(trim(o_line))
     ! receive up
       ir = ir +1
       allocate(fu(nr+1,nz/2+1:nz+1))
       fu=0.
-      call mpi_irecv(fu(1,nz/2+1),int((nr+1)*(nz/2+1),4),mpi_double_precision,p_up,2_4,mpi_comm_world,mpi_req(ir),mpierror)
-!      call mpi_irecv(fu,(nr+1)*(nz/2+1),mpi_real8,p_up,2,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_irecv(fu(1,nz/2+1),int((nr+1)*(nz/2+1),4),mpi_double_precision,p_up,2_4,comm_world_mpiisz,mpi_req(ir),mpierror)
+!      call mpi_irecv(fu,(nr+1)*(nz/2+1),mpi_real8,p_up,2,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' recv from ',p_up
 !      call remark(trim(o_line))
     else
     ! send down
       ir = ir +1
-!      call mpi_isend(f(1:nr+1,nz/2+1:nz+1),(nr+1)*(nz/2+1),mpi_real8,p_down,2,MPI_COMM_WORLD,mpi_req(ir),mpierror)
-      call mpi_isend(f(1,nz/2+1),int(SIZE(f,1)*(nz/2+1),4),mpi_double_precision,p_down,2_4,MPI_COMM_WORLD,mpi_req(ir),mpierror)
+!      call mpi_isend(f(1:nr+1,nz/2+1:nz+1),(nr+1)*(nz/2+1),mpi_real8,p_down,2,comm_world_mpiisz,mpi_req(ir),mpierror)
+      call mpi_isend(f(1,nz/2+1),int(SIZE(f,1)*(nz/2+1),4),mpi_double_precision,p_down,2_4,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' send to ',p_down
 !      call remark(trim(o_line))
     ! receive down
       ir = ir +1
       allocate(fd(nr+1,1:nz/2+1))
       fd=0.
-      call mpi_irecv(fd(1,1),int((nr+1)*(nz/2+1),4),mpi_double_precision,p_down,2_4,mpi_comm_world,mpi_req(ir),mpierror)
-!      call mpi_irecv(fd,(nr+1)*(nz/2+1),mpi_real8,p_down,2,mpi_comm_world,mpi_req(ir),mpierror)
+      call mpi_irecv(fd(1,1),int((nr+1)*(nz/2+1),4),mpi_double_precision,p_down,2_4,comm_world_mpiisz,mpi_req(ir),mpierror)
+!      call mpi_irecv(fd,(nr+1)*(nz/2+1),mpi_real8,p_down,2,comm_world_mpiisz,mpi_req(ir),mpierror)
 !      write(o_line,*) my_index, ' recv from ',p_down
 !      call remark(trim(o_line))
     END if
@@ -8026,6 +8030,7 @@ INTEGER(MPIISZ):: mpirequest,mpierror
 
 logical(ISZ) :: testthis=.false.
 INTEGER(ISZ), ALLOCATABLE :: wz(:)
+comm_world_mpiisz = comm_world
 
 
 !write(o_line,*) my_index,'Enter get_rho_from_rhop'
@@ -8061,7 +8066,9 @@ do i = 0, nslaves-1
     il = MAX(ilg,ilp)-ilp+1
     iu = MIN(iug,iup)-ilp+1
     IF(il>iu) cycle
-    call mpi_isend(grid%rhop(1,il),int(SIZE(grid%rhop(:,il:iu)),4),mpi_double_precision,int(i,4),0_4,MPI_COMM_WORLD,mpirequest,ierr)
+    call mpi_isend(grid%rhop(1,il),int(SIZE(grid%rhop(:,il:iu)),4), &
+                   mpi_double_precision,int(i,4),0_4,comm_world_mpiisz, &
+                   mpirequest,ierr)
 !    write(o_line,*) my_index,'send to',i
 !    call remark(trim(o_line))
   end if
@@ -8146,6 +8153,7 @@ integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
 INTEGER(MPIISZ):: mpirequest,mpierror
 
 logical(ISZ) :: testthis=.false.
+comm_world_mpiisz = comm_world
 
 !write(o_line,*) my_index,'Enter get_phip_from_phi'
 !call remark(trim(o_line))
@@ -8176,7 +8184,9 @@ do i = 0, nslaves-1
     il = MAX(ilg,ilp)-ilg
     iu = MIN(iug,iup)-ilg
     IF(il>iu) cycle
-    call mpi_isend(grid%phi(0,il),int(SIZE(grid%phi(:,il:iu)),4),mpi_double_precision,int(i,4),0_4,MPI_COMM_WORLD,mpirequest,ierr)
+    call mpi_isend(grid%phi(0,il),int(SIZE(grid%phi(:,il:iu)),4), &
+                   mpi_double_precision,int(i,4),0_4,comm_world_mpiisz, &
+                   mpirequest,ierr)
 !    write(o_line,*) my_index,'send to',i
 !    call remark(trim(o_line))
   end if

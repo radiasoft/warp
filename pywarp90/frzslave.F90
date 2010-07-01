@@ -6,6 +6,7 @@ use Parallel
 INCLUDE 'mpif.h'
 INTEGER(MPIISZ) :: ierr!, size_packbuffer, pack_pos
 INTEGER(MPIISZ) :: mpi_status(mpi_status_size),mpirequests(1000),mpireqpnt=0
+INTEGER(MPIISZ) :: comm_world_mpiisz
 type mpibuffertype
   integer(MPIISZ) :: pack_pos=0
   integer(MPIISZ) :: pack_size=0
@@ -66,20 +67,23 @@ contains
  SUBROUTINE mpi_send_int_scalar(i, tid, tag)
   IMPLICIT NONE
   INTEGER(ISZ), INTENT(IN) :: TID, i, tag
-  call mpi_send(i,1,mpi_integer,int(tid,MPIISZ),int(tag,MPIISZ),MPI_COMM_WORLD,ierr)
+  comm_world_mpiisz = comm_world
+  call mpi_send(i,1,mpi_integer,int(tid,MPIISZ),int(tag,MPIISZ),comm_world_mpiisz,ierr)
  END SUBROUTINE mpi_send_int_scalar
 
  SUBROUTINE mpi_send_int_array(i, tid, tag)
   IMPLICIT NONE
   INTEGER(ISZ), INTENT(IN) :: TID, i(:), tag
-  call mpi_send(i,SIZE(i),mpi_integer,int(tid,MPIISZ),int(tag,MPIISZ),MPI_COMM_WORLD,ierr)
+  comm_world_mpiisz = comm_world
+  call mpi_send(i,SIZE(i),mpi_integer,int(tid,MPIISZ),int(tag,MPIISZ),comm_world_mpiisz,ierr)
  END SUBROUTINE mpi_send_int_array
 
  function mpi_recv_int_scalar(tid,tag)
    implicit none
    INTEGER(ISZ), INTENT(IN) :: tid,tag
    INTEGER(ISZ) :: mpi_recv_int_scalar
-     call mpi_recv(mpi_recv_int_scalar,1,mpi_integer,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world,mpi_status_ignore,ierr)
+   comm_world_mpiisz = comm_world
+     call mpi_recv(mpi_recv_int_scalar,1,mpi_integer,int(tid,MPIISZ),int(tag,MPIISZ),comm_world_mpiisz,mpi_status_ignore,ierr)
    return
  end function mpi_recv_int_scalar
 
@@ -87,7 +91,8 @@ contains
    implicit none
    INTEGER(ISZ), INTENT(IN) :: isize,tid,tag
    INTEGER(ISZ), DIMENSION(isize) :: mpi_recv_int_array
-     call mpi_recv(mpi_recv_int_array,int(isize,MPIISZ),mpi_integer,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world, &
+   comm_world_mpiisz = comm_world
+     call mpi_recv(mpi_recv_int_array,int(isize,MPIISZ),mpi_integer,int(tid,MPIISZ),int(tag,MPIISZ),comm_world_mpiisz, &
                    mpi_status_ignore,ierr)
    return
  end function mpi_recv_int_array
@@ -96,7 +101,8 @@ contains
   IMPLICIT NONE
   INTEGER(ISZ), INTENT(IN) :: TID, tag
   REAL(8) :: r
-  call mpi_send(r,1,mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),MPI_COMM_WORLD,ierr)
+  comm_world_mpiisz = comm_world
+  call mpi_send(r,1,mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),comm_world_mpiisz,ierr)
  END SUBROUTINE mpi_send_real_scalar
 
  SUBROUTINE mpi_send_real_array(r, tid, tag)
@@ -104,7 +110,8 @@ contains
   INTEGER(ISZ), INTENT(IN) :: TID, tag
   REAL(8), DIMENSION(:) :: r
   if (l_mpiverbose) WRITE(0,*) my_index,'send to ',tid
- call mpi_send(r,int(SIZE(r),MPIISZ),mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),MPI_COMM_WORLD,ierr)
+  comm_world_mpiisz = comm_world
+ call mpi_send(r,int(SIZE(r),MPIISZ),mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),comm_world_mpiisz,ierr)
   if (l_mpiverbose) WRITE(0,*) my_index,'sent to ',tid
  END SUBROUTINE mpi_send_real_array
 
@@ -112,7 +119,8 @@ contains
    implicit none
    INTEGER(ISZ), INTENT(IN) :: tid,tag
    REAL(8) :: mpi_recv_real_scalar
-     call mpi_recv(mpi_recv_real_scalar,1,mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world, &
+   comm_world_mpiisz = comm_world
+     call mpi_recv(mpi_recv_real_scalar,1,mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),comm_world_mpiisz, &
                    mpi_status_ignore,ierr)
    return
  end function mpi_recv_real_scalar
@@ -122,7 +130,8 @@ contains
    INTEGER(ISZ), INTENT(IN) :: isize,tid,tag
    REAL(8), DIMENSION(isize) :: mpi_recv_real_array
      if (l_mpiverbose) WRITE(0,*) my_index,'recv from ',tid,isize
-     call mpi_recv(mpi_recv_real_array,int(isize,MPIISZ),mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),mpi_comm_world, &
+     comm_world_mpiisz = comm_world
+     call mpi_recv(mpi_recv_real_array,int(isize,MPIISZ),mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),comm_world_mpiisz, &
                    mpi_status_ignore,ierr)
     if (l_mpiverbose) WRITE(0,*) my_index,'recvd from ',tid
    return
@@ -134,7 +143,8 @@ contains
     REAL(8), DIMENSION(:) :: r
 
 !    WRITE(0,*) 'isend to ',tid,size(r)
-      call mpi_isend(r,int(SIZE(r),MPIISZ),mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),MPI_COMM_WORLD,mpirequests(mpireqpnt+1),ierr)
+      comm_world_mpiisz = comm_world
+      call mpi_isend(r,int(SIZE(r),MPIISZ),mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ),comm_world_mpiisz,mpirequests(mpireqpnt+1),ierr)
       mpireqpnt=mpireqpnt+1
 !    WRITE(0,*) 'isent to ',tid
   END SUBROUTINE mpi_isend_real_array
@@ -143,9 +153,10 @@ contains
     implicit none
     INTEGER(ISZ), INTENT(IN) :: isize,tid,tag
     REAL(8), DIMENSION(isize) :: mpi_irecv_real_array
+      comm_world_mpiisz = comm_world
 !    WRITE(0,*) 'irecv from ',tid
       call mpi_irecv(mpi_irecv_real_array,int(isize,MPIISZ),mpi_double_precision,int(tid,MPIISZ),int(tag,MPIISZ), &
-                     mpi_comm_world,mpirequests(mpireqpnt+1),ierr)
+                     comm_world_mpiisz,mpirequests(mpireqpnt+1),ierr)
       mpireqpnt=mpireqpnt+1
 !    WRITE(0,*) 'irecvd from ',tid
     return
@@ -155,7 +166,8 @@ contains
     implicit none
     REAL(8) :: DATA, mpi_global_compute_real
     INTEGER(MPIISZ) :: op
-      call mpi_allreduce(data,mpi_global_compute_real,int(1,MPIISZ),mpi_double_precision,int(op,MPIISZ),mpi_comm_world,ierr)
+    comm_world_mpiisz = comm_world
+      call mpi_allreduce(data,mpi_global_compute_real,int(1,MPIISZ),mpi_double_precision,int(op,MPIISZ),comm_world_mpiisz,ierr)
     return
   end function mpi_global_compute_real
 
@@ -175,8 +187,9 @@ contains
  subroutine mpi_pack_int_scalar(a,ibuf)
    implicit none
    INTEGER(ISZ), INTENT(IN) :: a,ibuf
+   comm_world_mpiisz = comm_world
      call mpi_pack(a, 1, mpi_integer, mpibuffers(ibuf)%buffer, int(size(mpibuffers(ibuf)%buffer),MPIISZ), &
-          mpibuffers(ibuf)%pack_pos, mpi_comm_world, ierr)
+          mpibuffers(ibuf)%pack_pos, comm_world_mpiisz, ierr)
    return
  end subroutine mpi_pack_int_scalar
 
@@ -184,8 +197,9 @@ contains
    implicit none
    integer(ISZ)::ibuf
    INTEGER(ISZ), DIMENSION(:), INTENT(IN) :: a
+   comm_world_mpiisz = comm_world
      call mpi_pack(a, SIZE(a), mpi_integer, mpibuffers(ibuf)%buffer, int(size(mpibuffers(ibuf)%buffer),MPIISZ), &
-          mpibuffers(ibuf)%pack_pos, mpi_comm_world, ierr)
+          mpibuffers(ibuf)%pack_pos, comm_world_mpiisz, ierr)
    return
  end subroutine mpi_pack_int_array
 
@@ -193,8 +207,9 @@ contains
    implicit none
    integer(ISZ)::ibuf
    REAL(8), INTENT(IN) :: a
+   comm_world_mpiisz = comm_world
      call mpi_pack(a, 1, mpi_double_precision, mpibuffers(ibuf)%buffer, int(size(mpibuffers(ibuf)%buffer),MPIISZ), &
-          mpibuffers(ibuf)%pack_pos, mpi_comm_world, ierr)
+          mpibuffers(ibuf)%pack_pos, comm_world_mpiisz, ierr)
    return
  end subroutine mpi_pack_real_scalar
 
@@ -202,8 +217,9 @@ contains
    implicit none
    integer(ISZ)::ibuf
    REAL(8), DIMENSION(:), INTENT(IN) :: a
+   comm_world_mpiisz = comm_world
      call mpi_pack(a, SIZE(a), mpi_double_precision, mpibuffers(ibuf)%buffer, int(size(mpibuffers(ibuf)%buffer),MPIISZ),&
-          mpibuffers(ibuf)%pack_pos, mpi_comm_world, ierr)
+          mpibuffers(ibuf)%pack_pos, comm_world_mpiisz, ierr)
    return
  end subroutine mpi_pack_real_1darray
 
@@ -211,8 +227,9 @@ contains
    implicit none
    integer(ISZ)::ibuf
    REAL(8), DIMENSION(:,:), INTENT(IN) :: a
+   comm_world_mpiisz = comm_world
      call mpi_pack(a, SIZE(a), mpi_double_precision, mpibuffers(ibuf)%buffer, int(size(mpibuffers(ibuf)%buffer),MPIISZ), &
-          mpibuffers(ibuf)%pack_pos, mpi_comm_world, ierr)
+          mpibuffers(ibuf)%pack_pos, comm_world_mpiisz, ierr)
    return
  end subroutine mpi_pack_real_2darray
 
@@ -220,8 +237,9 @@ contains
    implicit none
    integer(ISZ)::ibuf
    REAL(8), DIMENSION(:,:,:), INTENT(IN) :: a
+   comm_world_mpiisz = comm_world
      call mpi_pack(a, SIZE(a), mpi_double_precision, mpibuffers(ibuf)%buffer, int(size(mpibuffers(ibuf)%buffer),MPIISZ), &
-          mpibuffers(ibuf)%pack_pos, mpi_comm_world, ierr)
+          mpibuffers(ibuf)%pack_pos, comm_world_mpiisz, ierr)
    return
  end subroutine mpi_pack_real_3darray
 
@@ -229,8 +247,9 @@ contains
    implicit none
    integer(ISZ)::ibuf
    INTEGER(ISZ), INTENT(IN) :: tid,tag
+   comm_world_mpiisz = comm_world
      call mpi_send(mpibuffers(ibuf)%buffer,mpibuffers(ibuf)%pack_pos,mpi_packed,int(tid,MPIISZ),int(tag,MPIISZ), &
-          mpi_comm_world, ierr)
+          comm_world_mpiisz, ierr)
    return
  end subroutine mpi_send_pack
 
@@ -238,8 +257,9 @@ contains
    implicit none
    integer(ISZ)::ibuf
    INTEGER(ISZ), INTENT(IN) :: tid,tag
+   comm_world_mpiisz = comm_world
      call mpi_isend(mpibuffers(ibuf)%buffer,mpibuffers(ibuf)%pack_pos,mpi_packed,int(tid,MPIISZ),int(tag,MPIISZ), &
-          mpi_comm_world, mpirequests(mpireqpnt+1), ierr)
+          comm_world_mpiisz, mpirequests(mpireqpnt+1), ierr)
      mpireqpnt=mpireqpnt+1
    return
  end subroutine mpi_isend_pack
@@ -248,8 +268,9 @@ contains
    implicit none
    integer(ISZ)::ibuf
    INTEGER(ISZ), INTENT(IN) :: tid,tag
+   comm_world_mpiisz = comm_world
      call mpi_recv(mpibuffers(ibuf)%buffer,int(size(mpibuffers(ibuf)%buffer),MPIISZ),mpi_packed,int(tid,MPIISZ),int(tag,MPIISZ), &
-          mpi_comm_world, &
+          comm_world_mpiisz, &
                    mpi_status_ignore, ierr)
    return
  end subroutine mpi_recv_pack
@@ -258,8 +279,9 @@ contains
    implicit none
    integer(ISZ)::ibuf
    INTEGER(ISZ), INTENT(IN) :: tid,tag
+   comm_world_mpiisz = comm_world
      call mpi_irecv(mpibuffers(ibuf)%buffer,int(size(mpibuffers(ibuf)%buffer),MPIISZ),mpi_packed,int(tid,MPIISZ),int(tag,MPIISZ), &
-          mpi_comm_world, mpi_status_ignore, mpirequests(mpireqpnt+1), ierr)
+          comm_world_mpiisz, mpi_status_ignore, mpirequests(mpireqpnt+1), ierr)
      mpireqpnt=mpireqpnt+1
    return
  end subroutine mpi_irecv_pack
@@ -268,8 +290,9 @@ contains
    implicit none
    integer(ISZ)::ibuf
    INTEGER(ISZ) :: mpi_unpack_int_scalar
+   comm_world_mpiisz = comm_world
      call mpi_unpack(mpibuffers(ibuf)%buffer,int(size(mpibuffers(ibuf)%buffer),MPIISZ),mpibuffers(ibuf)%pack_pos, &
-          mpi_unpack_int_scalar, 1,mpi_integer,mpi_comm_world,ierr)
+          mpi_unpack_int_scalar, 1,mpi_integer,comm_world_mpiisz,ierr)
    return
  end function mpi_unpack_int_scalar
 
@@ -278,8 +301,9 @@ contains
    integer(ISZ)::ibuf
    INTEGER(ISZ), INTENT(IN) :: isize
    INTEGER(ISZ), DIMENSION(isize) :: mpi_unpack_int_array
+   comm_world_mpiisz = comm_world
      call mpi_unpack(mpibuffers(ibuf)%buffer,int(size(mpibuffers(ibuf)%buffer),MPIISZ),mpibuffers(ibuf)%pack_pos, &
-          mpi_unpack_int_array, int(isize,MPIISZ),mpi_integer,mpi_comm_world,ierr)
+          mpi_unpack_int_array, int(isize,MPIISZ),mpi_integer,comm_world_mpiisz,ierr)
    return
  end function mpi_unpack_int_array
 
@@ -287,8 +311,9 @@ contains
    implicit none
    integer(ISZ)::ibuf
    REAL(8) :: mpi_unpack_real_scalar
+   comm_world_mpiisz = comm_world
      call mpi_unpack(mpibuffers(ibuf)%buffer,int(size(mpibuffers(ibuf)%buffer),MPIISZ),mpibuffers(ibuf)%pack_pos, &
-          mpi_unpack_real_scalar, 1,mpi_double_precision,mpi_comm_world,ierr)
+          mpi_unpack_real_scalar, 1,mpi_double_precision,comm_world_mpiisz,ierr)
    return
  end function mpi_unpack_real_scalar
 
@@ -297,8 +322,9 @@ contains
    integer(ISZ)::ibuf
    INTEGER(ISZ), INTENT(IN) :: isize
    REAL(8), DIMENSION(isize) :: mpi_unpack_real_array
+   comm_world_mpiisz = comm_world
      call mpi_unpack(mpibuffers(ibuf)%buffer,int(size(mpibuffers(ibuf)%buffer),MPIISZ),mpibuffers(ibuf)%pack_pos, &
-          mpi_unpack_real_array, int(isize,MPIISZ), mpi_double_precision,mpi_comm_world,ierr)
+          mpi_unpack_real_array, int(isize,MPIISZ), mpi_double_precision,comm_world_mpiisz,ierr)
    return
  end function mpi_unpack_real_array
 
@@ -316,8 +342,9 @@ end module mpirz
    integer(ISZ)::ibuf
    INTEGER(ISZ), INTENT(IN) :: isize
    REAL(8), DIMENSION(isize) :: a
+   comm_world_mpiisz = comm_world
      call mpi_unpack(mpibuffers(ibuf)%buffer,int(size(mpibuffers(ibuf)%buffer),MPIISZ),mpibuffers(ibuf)%pack_pos, &
-          a, int(isize,MPIISZ), mpi_double_precision,mpi_comm_world,ierr)
+          a, int(isize,MPIISZ), mpi_double_precision,comm_world_mpiisz,ierr)
    return
  end subroutine submpi_unpack_real_array
 #endif

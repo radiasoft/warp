@@ -31,6 +31,7 @@ end type bnd_cummer_pointer
 contains
 
 subroutine champ_b(f,dt)
+use Parallel, Only: comm_world
 implicit none
 
 INTEGER :: j, k
@@ -41,10 +42,11 @@ TYPE(EM2D_FIELDtype) :: f
 
 #ifdef MPIPARALLEL
 include "mpif.h"
-integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
+integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror,comm_world_mpiisz
 integer(MPIISZ):: mpirequest
 integer(MPIISZ):: w
 integer(MPIISZ):: messid 
+comm_world_mpiisz = comm_world
 #endif
 dtsdx = dt/f%dx
 dtsdy = dt/f%dy
@@ -175,24 +177,24 @@ end if
     messid=100
 !    write(0,*) my_index,' sends data to ',my_index-1
     call MPI_ISEND(f%Bz(1,:),size(f%Bz(1,:)),MPI_DOUBLE_PRECISION, &
-                   my_index-1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+                   my_index-1,messid,comm_world_mpiisz,mpirequest,mpierror)
 !    write(0,*) 'done'
     messid=101
 !    write(0,*) my_index,' recv data from ',my_index-1
     call MPI_RECV(f%Bz(0,:),size(f%Bz(0,:)),MPI_DOUBLE_PRECISION, &
-                  my_index-1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+                  my_index-1,messid,comm_world_mpiisz,mpistatus,mpierror)
 !    write(0,*) 'done'
   end if
   if(my_index<nslaves-1) then
     messid=101
 !    write(0,*) my_index,' sends data to ',my_index+1
     call MPI_ISEND(f%Bz(f%nx,:),size(f%Bz(1,:)),MPI_DOUBLE_PRECISION, &
-                   my_index+1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+                   my_index+1,messid,comm_world_mpiisz,mpirequest,mpierror)
 !    write(0,*) 'done'
     messid=100
 !    write(0,*) my_index,' recv data from ',my_index+1
     call MPI_RECV(f%Bz(f%nx+1,:),size(f%Bz(0,:)),MPI_DOUBLE_PRECISION, &
-                  my_index+1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+                  my_index+1,messid,comm_world_mpiisz,mpistatus,mpierror)
 !    write(0,*) 'done'
   end if
 #endif
@@ -230,6 +232,7 @@ end do
 end subroutine champ_f
 
 subroutine champ_e(f,dt)
+use Parallel, Only: comm_world
 implicit none
 
 TYPE(EM2D_FIELDtype) :: f
@@ -239,10 +242,11 @@ real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Bzapr
 
 #ifdef MPIPARALLEL
 include "mpif.h"
-integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
+integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror,comm_world_mpiisz
 integer(MPIISZ):: mpirequest
 !integer(MPIISZ):: w
 integer(MPIISZ):: messid 
+comm_world_mpiisz = comm_world
 #endif
 
 
@@ -498,24 +502,24 @@ end if
     messid=100
 !    write(0,*) my_index,' sends data to ',my_index-1
     call MPI_ISEND(f%Ez(1,:),size(f%Ez(1,:)),MPI_DOUBLE_PRECISION, &
-                   my_index-1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+                   my_index-1,messid,comm_world_mpiisz,mpirequest,mpierror)
 !    write(0,*) 'done'
     messid=101
 !    write(0,*) my_index,' recv data from ',my_index-1
     call MPI_RECV(f%Ez(0,:),size(f%Ez(0,:)),MPI_DOUBLE_PRECISION, &
-                  my_index-1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+                  my_index-1,messid,comm_world_mpiisz,mpistatus,mpierror)
 !    write(0,*) 'done'
   end if
   if(my_index<nslaves-1) then
     messid=101
 !    write(0,*) my_index,' sends data to ',my_index+1
     call MPI_ISEND(f%Ez(f%nx,:),size(f%Ez(1,:)),MPI_DOUBLE_PRECISION, &
-                   my_index+1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+                   my_index+1,messid,comm_world_mpiisz,mpirequest,mpierror)
 !    write(0,*) 'done'
     messid=100
 !    write(0,*) my_index,' recv data from ',my_index+1
     call MPI_RECV(f%Ez(f%nx+1,:),size(f%Ez(0,:)),MPI_DOUBLE_PRECISION, &
-                  my_index+1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+                  my_index+1,messid,comm_world_mpiisz,mpistatus,mpierror)
 !    write(0,*) 'done'
   end if
 #endif

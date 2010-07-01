@@ -425,6 +425,7 @@ END subroutine assign_coefs
 !************* SUBROUTINE move_bnd  **************************************************
 
 subroutine move_bnd(b)
+  use Parallel, Only: comm_world
   implicit none
 
   INTEGER :: j, k, jf, kf, jb, kb,jk,jk1,i,ntop,kmin,kmax
@@ -433,10 +434,11 @@ subroutine move_bnd(b)
 
 #ifdef MPIPARALLEL
   include "mpif.h"
-  integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
+  integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror,comm_world_mpiisz
   integer(MPIISZ):: mpirequest
   integer(MPIISZ):: w
   integer(MPIISZ):: messid 
+  comm_world_mpiisz = comm_world
 #endif
 
   ! Bz
@@ -572,12 +574,12 @@ subroutine move_bnd(b)
       Bztosend(k-kmin+1,2) = b%Bzy(jk)
     end do
     call MPI_ISEND(Bztosend,2*b%nbndy,MPI_DOUBLE_PRECISION, &
-                   my_index-1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+                   my_index-1,messid,comm_world_mpiisz,mpirequest,mpierror)
 !    write(0,*) 'done'
     messid=101
 !    write(0,*) my_index,' recv data from ',my_index-1
     call MPI_RECV(Bzrecv,2*b%nbndy,MPI_DOUBLE_PRECISION, &
-                  my_index-1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+                  my_index-1,messid,comm_world_mpiisz,mpistatus,mpierror)
     j = b%nbndx+0
     do k = kmin, kmax
       jk1 = ntop + k * b%n1x
@@ -611,12 +613,12 @@ subroutine move_bnd(b)
       Bztosend(k-kmin+1,2) = b%Bzy(jk)
     end do
     call MPI_ISEND(Bztosend,2*b%nbndy,MPI_DOUBLE_PRECISION, &
-                   my_index+1,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+                   my_index+1,messid,comm_world_mpiisz,mpirequest,mpierror)
 !    write(0,*) 'done'
     messid=100
 !    write(0,*) my_index,' recv data from ',my_index+1
     call MPI_RECV(Bzrecv,2*b%nbndy,MPI_DOUBLE_PRECISION, &
-                  my_index+1,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+                  my_index+1,messid,comm_world_mpiisz,mpistatus,mpierror)
     j = b%nx-b%nbndx+1
     do k = kmin, kmax
 !      jk1 = b%ntop1 + k * b%n1x

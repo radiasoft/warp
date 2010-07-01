@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.44 $, $Date: 2009/10/14 23:40:46 $
+c F3DSLAVE.M, version $Revision: 1.45 $, $Date: 2010/07/01 22:05:27 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -17,9 +17,11 @@ c This routine sends out and receives boundary data for the SOR field solver.
       integer(MPIISZ):: waitcount,waitstart
 
       include "mpif.h"
-      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,4),mpirequest(4),mpierror
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,4),mpirequest(4)
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
 c     --- calculate index of the processors to the left and to the right,
 c     --- wrapping around at the ends.
@@ -59,19 +61,19 @@ c     --- of the data overlaps.
       if (my_index > 0 .or. bound0 == 2) then
         call MPI_ISEND(phi(-1,-1,left_send),int((nx+3)*(ny+3),MPIISZ),
      &                 MPI_DOUBLE_PRECISION,left_pe,int(nx+ny,MPIISZ),
-     &                 MPI_COMM_WORLD,mpirequest(1),mpierror)
+     &                 comm_world_mpiisz,mpirequest(1),mpierror)
         call MPI_IRECV(phi(-1,-1,left_recv),int((nx+3)*(ny+3),MPIISZ),
      &                 MPI_DOUBLE_PRECISION,left_pe,int(nx+ny,MPIISZ),
-     &                 MPI_COMM_WORLD,mpirequest(2),mpierror)
+     &                 comm_world_mpiisz,mpirequest(2),mpierror)
       endif
 
       if (my_index < nzprocs-1 .or. boundnz == 2) then
         call MPI_ISEND(phi(-1,-1,nz-right_send),int((nx+3)*(ny+3),MPIISZ),
      &                 MPI_DOUBLE_PRECISION,right_pe,int(nx+ny,MPIISZ),
-     &                 MPI_COMM_WORLD,mpirequest(3),mpierror)
+     &                 comm_world_mpiisz,mpirequest(3),mpierror)
         call MPI_IRECV(phi(-1,-1,nz-right_recv),int((nx+3)*(ny+3),MPIISZ),
      &                 MPI_DOUBLE_PRECISION,right_pe,int(nx+ny,MPIISZ),
-     &                 MPI_COMM_WORLD,mpirequest(4),mpierror)
+     &                 comm_world_mpiisz,mpirequest(4),mpierror)
       endif
 
 c     --- Now wait for everything to finish
@@ -153,12 +155,13 @@ c of processors is a power of two.
       integer(MPIISZ):: dims,sizes(0:2),starts(0:2)
       integer(MPIISZ):: nlocal(0:2),nlocal_trnsps(0:2)
       include "mpif.h"
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       integer(MPIISZ),pointer:: sendtypes(:),recvtypes(:)
       integer(MPIISZ),pointer:: sdispls(:),rdispls(:)
       integer(MPIISZ),pointer:: sendcounts(:),recvcounts(:)
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
 c     --- Calculate what the dimensions of the grid will be after the
 c     --- transpose, (0:nx_tran,0:ny_tran).
@@ -238,7 +241,7 @@ c     --- are sent to each of the processors.
 c     --- Do all of the communication at once.
       call MPI_ALLTOALLW(phi,sendcounts,sdispls,sendtypes,
      &                   phi_trnsps,recvcounts,rdispls,recvtypes,
-     &                   MPI_COMM_WORLD,mpierror)
+     &                   comm_world_mpiisz,mpierror)
 
 c     --- Free the data types
       do ip = 0,nzprocs-1
@@ -278,12 +281,13 @@ c of processors is a power of two.
       integer(MPIISZ):: dims,sizes(0:2),starts(0:2)
       integer(MPIISZ):: nlocal(0:2),nlocal_trnsps(0:2)
       include "mpif.h"
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       integer(MPIISZ),pointer:: sendtypes(:),recvtypes(:)
       integer(MPIISZ),pointer:: sdispls(:),rdispls(:)
       integer(MPIISZ),pointer:: sendcounts(:),recvcounts(:)
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
       allocate(sendtypes(0:nzprocs-1),recvtypes(0:nzprocs-1))
       allocate(sdispls(0:nzprocs-1),rdispls(0:nzprocs-1))
@@ -334,7 +338,7 @@ c     --- are sent to each of the processors.
 c     --- Do all of the communication at once.
       call MPI_ALLTOALLW(phi_trnsps,sendcounts,sdispls,sendtypes,
      &                   phi,recvcounts,rdispls,recvtypes,
-     &                   MPI_COMM_WORLD,mpierror)
+     &                   comm_world_mpiisz,mpierror)
 
 
 c     --- Free the data types
@@ -745,16 +749,17 @@ c Gathers data in subgroups of processors
       include "mpif.h"
       integer(MPIISZ):: isend
       integer(MPIISZ):: datatype,subcomm,ierror
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
 c     --- First, create subgroups of processors
       if (nproc < nzprocs) then
-        call MPI_COMM_SPLIT(MPI_COMM_WORLD,int(my_index/nproc,MPIISZ),0,subcomm,
+        call MPI_COMM_SPLIT(comm_world_mpiisz,int(my_index/nproc,MPIISZ),0,subcomm,
      &                      ierror)
       else
-        call MPI_COMM_DUP(MPI_COMM_WORLD,subcomm,ierror)
+        call MPI_COMM_DUP(comm_world_mpiisz,subcomm,ierror)
       endif
 
 c     --- First nstep > 1, create new data type
@@ -1228,6 +1233,7 @@ c===========================================================================
       subroutine printarray3d(nx,ny,nz,iz0,nz0,izs,a,my_index,nzprocs,text,
      &                        mglevel)
       use Subtimersf3d
+      use Parallel,Only: comm_world
       integer(ISZ):: nx,ny,nz,iz0,nz0,izs,my_index,nzprocs,mglevel
       real(kind=8):: a(-1:nx+1,-1:ny+1,iz0:nz)
       character(*):: text
@@ -1239,13 +1245,14 @@ c to getting it correct.
 
       integer(MPIISZ):: ix,iy,iz,lastz,firstz
       include "mpif.h"
-      integer(MPIISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
+      integer(MPIISZ):: mpierror,mpistatus(MPI_STATUS_SIZE),comm_world_mpiisz
       integer(MPIISZ):: nn
       integer(MPIISZ):: messid = 999
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
-      call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
+      call MPI_BARRIER(comm_world_mpiisz,mpierror)
 
 c The value of lastz sets which processor's data is printed out in
 c overlapping regions.
@@ -1260,7 +1267,7 @@ c Each processor prints out its data and then sends a message to the next so it
 c can print its data.
       if (my_index > 0) then
         call MPI_RECV(firstz,int(1,MPIISZ),MPI_INTEGER,int(my_index-1,MPIISZ),messid,
-     &                MPI_COMM_WORLD,mpistatus,mpierror)
+     &                comm_world_mpiisz,mpistatus,mpierror)
         firstz = firstz - izs
       else
         firstz = 0
@@ -1285,10 +1292,10 @@ c the processors deal with files.
       if (my_index < nzprocs - 1) then
         nn = izs+lastz+1
         call MPI_SEND(nn,int(1,MPIISZ),MPI_INTEGER,int(my_index+1,MPIISZ),messid,
-     &                MPI_COMM_WORLD,mpierror)
+     &                comm_world_mpiisz,mpierror)
       endif
 
-      call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
+      call MPI_BARRIER(comm_world_mpiisz,mpierror)
 
 !$OMP MASTER
       if (lf3dtimesubs) timeprintarray3d = timeprintarray3d + wtime() - substarttime
@@ -1938,7 +1945,7 @@ c Exchange the potential on the boundary and/or in the gaurd cells.
       save messagedata
 
       include "mpif.h"
-      integer(MPIISZ):: mpierror,comm_temp
+      integer(MPIISZ):: mpierror,comm_mpiisz
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -1952,28 +1959,28 @@ c     --- Note that there should be no problem with having phi being both
 c     --- the send and receive buffer since there is no overlap between
 c     --- out going and in coming data.
       if (fsdecomp%nxprocs > 1) then
-        comm_temp = fsdecomp%mpi_comm_x
+        comm_mpiisz = fsdecomp%mpi_comm_x
         call MPI_ALLTOALLW(phi,messagedata%xsendcounts,messagedata%xdispls,
      &                     messagedata%xsendtypes,
      &                     phi,messagedata%xrecvcounts,messagedata%xdispls,
      &                     messagedata%xrecvtypes,
-     &                     comm_temp,mpierror)
+     &                     comm_mpiisz,mpierror)
       endif
       if (fsdecomp%nyprocs > 1) then
-        comm_temp = fsdecomp%mpi_comm_y
+        comm_mpiisz = fsdecomp%mpi_comm_y
         call MPI_ALLTOALLW(phi,messagedata%ysendcounts,messagedata%ydispls,
      &                     messagedata%ysendtypes,
      &                     phi,messagedata%yrecvcounts,messagedata%ydispls,
      &                     messagedata%yrecvtypes,
-     &                     comm_temp,mpierror)
+     &                     comm_mpiisz,mpierror)
       endif
       if (fsdecomp%nzprocs > 1) then
-        comm_temp = fsdecomp%mpi_comm_z
+        comm_mpiisz = fsdecomp%mpi_comm_z
         call MPI_ALLTOALLW(phi,messagedata%zsendcounts,messagedata%zdispls,
      &                     messagedata%zsendtypes,
      &                     phi,messagedata%zrecvcounts,messagedata%zdispls,
      &                     messagedata%zrecvtypes,
-     &                     comm_temp,mpierror)
+     &                     comm_mpiisz,mpierror)
       endif
 
 c     --- Note that the MPI types generated are cached and do not need to be
@@ -2004,7 +2011,7 @@ c Exchange the potential on the boundary and/or in the gaurd cells.
       save messagedata
 
       include "mpif.h"
-      integer(MPIISZ):: mpierror,comm_temp
+      integer(MPIISZ):: mpierror,comm_mpiisz
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -2018,28 +2025,28 @@ c     --- Note that there should be no problem with having phi being both
 c     --- the send and receive buffer since there is no overlap between
 c     --- out going and in coming data.
       if (fsdecomp%nxprocs > 1) then
-        comm_temp = fsdecomp%mpi_comm_x
+        comm_mpiisz = fsdecomp%mpi_comm_x
         call MPI_ALLTOALLW(phi,messagedata%xsendcounts,messagedata%xdispls,
      &                     messagedata%xsendtypes,
      &                     phi,messagedata%xrecvcounts,messagedata%xdispls,
      &                     messagedata%xrecvtypes,
-     &                     comm_temp,mpierror)
+     &                     comm_mpiisz,mpierror)
       endif
       if (fsdecomp%nyprocs > 1) then
-        comm_temp = fsdecomp%mpi_comm_y
+        comm_mpiisz = fsdecomp%mpi_comm_y
         call MPI_ALLTOALLW(phi,messagedata%ysendcounts,messagedata%ydispls,
      &                     messagedata%ysendtypes,
      &                     phi,messagedata%yrecvcounts,messagedata%ydispls,
      &                     messagedata%yrecvtypes,
-     &                     comm_temp,mpierror)
+     &                     comm_mpiisz,mpierror)
       endif
       if (fsdecomp%nzprocs > 1) then
-        comm_temp = fsdecomp%mpi_comm_z
+        comm_mpiisz = fsdecomp%mpi_comm_z
         call MPI_ALLTOALLW(phi,messagedata%zsendcounts,messagedata%zdispls,
      &                     messagedata%zsendtypes,
      &                     phi,messagedata%zrecvcounts,messagedata%zdispls,
      &                     messagedata%zrecvtypes,
-     &                     comm_temp,mpierror)
+     &                     comm_mpiisz,mpierror)
       endif
 
 c     --- Note that the MPI types generated are cached and do not need to be
@@ -2123,16 +2130,16 @@ c there are cases when the same two processors exchange data on the left
 c and right, and this cannot be done (easily) with the alltoall.
 
       real(kind=8),pointer:: buffer(:,:,:,:)
-      integer(MPIISZ):: ip,comm_temp
+      integer(MPIISZ):: ip
       integer(MPIISZ):: ix1,ix2,iy1,iy2,iz1,iz2
 
       include "mpif.h"
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_mpiisz
       integer(MPIISZ):: messid = 10
       integer(MPIISZ):: nn
 
-      comm_temp = mpi_comm
+      comm_mpiisz = mpi_comm
 
 c     --- By default, select for full dimension of each axis. The down
 c     --- select is done below.
@@ -2168,7 +2175,7 @@ c       --- on the waitall since that message would never be received.
             nn = nc*(ix2-ix1+1)*(iy2-iy1+1)*(iz2-iz1+1)
             call MPI_SEND(buffer,nn,
      &                    MPI_DOUBLE_PRECISION,ip,messid,
-     &                    comm_temp,mpierror)
+     &                    comm_mpiisz,mpierror)
             deallocate(buffer)
           endif
         enddo
@@ -2190,7 +2197,7 @@ c       --- on the waitall since that message would never be received.
         ip = 0
         call MPI_RECV(buffer,nn,
      &                MPI_DOUBLE_PRECISION,ip,messid,
-     &                comm_temp,mpistatus,mpierror)
+     &                comm_mpiisz,mpistatus,mpierror)
         phi(:,ix1:ix2,iy1:iy2,iz1:iz2) = buffer
         deallocate(buffer)
       endif
@@ -2214,7 +2221,7 @@ c       --- See comments on loop above.
             nn = nc*(ix2-ix1+1)*(iy2-iy1+1)*(iz2-iz1+1)
             call MPI_SEND(buffer,nn,
      &                    MPI_DOUBLE_PRECISION,ip,messid,
-     &                    comm_temp,mpierror)
+     &                    comm_mpiisz,mpierror)
             deallocate(buffer)
           endif
         enddo
@@ -2236,7 +2243,7 @@ c       --- See comments on loop above.
         ip = nprocs - 1
         call MPI_RECV(buffer,nn,
      &                MPI_DOUBLE_PRECISION,ip,messid,
-     &                comm_temp,mpistatus,mpierror)
+     &                comm_mpiisz,mpistatus,mpierror)
         phi(:,ix1:ix2,iy1:iy2,iz1:iz2) = buffer
         deallocate(buffer)
       endif

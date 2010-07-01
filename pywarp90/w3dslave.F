@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.56 $, $Date: 2009/11/02 18:23:35 $
+c W3DSLAVE.M, version $Revision: 1.57 $, $Date: 2010/07/01 22:05:27 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -29,11 +29,12 @@ c This is the routine which divies up the work among the slaves.
       data w3dinitialized/.false./
       save w3dinitialized
       logical(MPIISZ):: initialized
-      integer(MPIISZ):: mpierror,nprocstmp,my_indextmp
+      integer(MPIISZ):: mpierror,comm_world_mpiisz,nprocstmp,my_indextmp
       integer(ISZ):: convertindextoproc
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
 c This routine should only be called once.
       if (w3dinitialized) return
@@ -42,10 +43,16 @@ c This routine should only be called once.
 c get number of slaves and my_pe
       call MPI_INITIALIZED(initialized,mpierror)
       if (.not. initialized) call MPI_INIT(mpierror)
-      call MPI_COMM_SIZE(MPI_COMM_WORLD,nprocstmp,mpierror)
-      call MPI_COMM_RANK(MPI_COMM_WORLD,my_indextmp,mpierror)
+      if (.not. lcomm_world_initted) then
+        comm_world = MPI_COMM_WORLD
+        lcomm_world_initted = .true.
+      endif
+      comm_world_mpiisz = comm_world
+      call MPI_COMM_SIZE(comm_world_mpiisz,nprocstmp,mpierror)
+      call MPI_COMM_RANK(comm_world_mpiisz,my_indextmp,mpierror)
       nprocs = nprocstmp
       my_index = my_indextmp
+      print*,"COMM ",comm_world,comm_world_mpiisz,nprocs,my_index
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinit_w3d_parallel = timeinit_w3d_parallel + wtime() - substarttime
@@ -55,13 +62,15 @@ c get number of slaves and my_pe
       end
 c===========================================================================
       subroutine initializedecomp_work(decomp)
+      use Parallel,Only: comm_world
       use Decompositionmodule
       type(Decomposition):: decomp
 
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
+      comm_world_mpiisz = comm_world
 
-      call MPI_COMM_DUP(MPI_COMM_WORLD,decomp%mpi_comm,mpierror)
+      call MPI_COMM_DUP(comm_world_mpiisz,decomp%mpi_comm,mpierror)
 
 c     --- Create communicator groups for processors along each axis.
       call MPI_COMM_SPLIT(decomp%mpi_comm,
@@ -79,6 +88,7 @@ c     --- Create communicator groups for processors along each axis.
 c===========================================================================
       subroutine sw_globalsum(ns,sw)
       use Subtimers3d
+      use Parallel,Only: comm_world
       integer(ISZ):: ns
       real(kind=8):: sw(ns)
 c As calculated in stptl3d, sw depends on 1 over the number of particles
@@ -87,16 +97,17 @@ c reciprocals of the sw of each processor, and so depends only on the
 c total number of particles.
       real(kind=8):: swtemp(ns)
       integer(ISZ):: is
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
       do is=1,ns
         if (sw(is) /= 0.) sw(is) = 1./sw(is)
       enddo
       swtemp = sw
       call MPI_ALLREDUCE(swtemp,sw,int(ns,MPIISZ),MPI_DOUBLE_PRECISION,MPI_SUM,
-     &                   MPI_COMM_WORLD,mpierror)
+     &                   comm_world_mpiisz,mpierror)
       do is=1,ns
         if (sw(is) /= 0.) sw(is) = 1./sw(is)
       enddo
@@ -625,10 +636,12 @@ c  sets slice at nzlocal+1 equal to the slice at 1
 c  Only first and last processors do anything.
       integer(MPIISZ):: nn1,nn2,pe0,pens
       include "mpif.h"
-      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpirequest
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
       integer(MPIISZ):: messid = 70
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
  
       nn1 = 1*nc*(nx+1+2*delx)*(ny+1+2*dely)
       nn2 = 2*nc*(nx+1+2*delx)*(ny+1+2*dely)
@@ -636,18 +649,18 @@ c  Only first and last processors do anything.
       pens = nzprocs-1
       if (izproc == 0) then
         call MPI_ISEND(pot(:,:,:,0:1),nn2,MPI_DOUBLE_PRECISION,
-     &                 pens,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                 pens,messid,comm_world_mpiisz,mpirequest,mpierror)
       else if (izproc == nzprocs-1) then
         call MPI_ISEND(pot(:,:,:,nzlocal-1),nn1,MPI_DOUBLE_PRECISION,
-     &                 pe0,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                 pe0,messid,comm_world_mpiisz,mpirequest,mpierror)
       endif
  
       if (izproc == 0) then
         call MPI_RECV(pot(:,:,:,-1),nn1,MPI_DOUBLE_PRECISION,
-     &                pens,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                pens,messid,comm_world_mpiisz,mpistatus,mpierror)
       else if (izproc == nzprocs-1) then
         call MPI_RECV(pot(:,:,:,nzlocal:nzlocal+1),nn2,MPI_DOUBLE_PRECISION,
-     &                pe0,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                pe0,messid,comm_world_mpiisz,mpistatus,mpierror)
       endif
 
       if (izproc == 0 .or. izproc == nzprocs-1) then
@@ -857,11 +870,12 @@ c iz=-1 and +1.
       integer(MPIISZ):: izrecv(0:nzprocs-1),nzrecv(0:nzprocs-1)
       include "mpif.h"
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nzprocs),mpirequest(nzprocs)
-      integer(MPIISZ):: mpierror,w
+      integer(MPIISZ):: mpierror,w,comm_world_mpiisz
       integer(MPIISZ):: messid = 81
       integer(ISZ):: convertindextoproc
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+      comm_world_mpiisz = comm_world
 
 c     --- First, calculate what data needs to be sent and received.
 c     --- Note that special cases are needed for the first and last processors
@@ -915,7 +929,7 @@ c     --- Only even processors first to avoid a lock-up.
      &                                   nxprocs,nyprocs,nzprocs)
               call MPI_ISEND(phi(-1,-1,izsend(i)),nn,
      &                       MPI_DOUBLE_PRECISION,
-     &                       iproc,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
+     &                       iproc,messid,comm_world_mpiisz,mpirequest(w),mpierror)
             endif
           endif
         enddo
@@ -930,7 +944,7 @@ c     --- Then, gather up the data sent to this processor.
      &                                 nxprocs,nyprocs,nzprocs)
             call MPI_RECV(phi(-1,-1,izrecv(i)),nn,
      &                    MPI_DOUBLE_PRECISION,
-     &                    iproc,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                    iproc,messid,comm_world_mpiisz,mpistatus,mpierror)
           endif
         endif
       enddo
@@ -947,7 +961,7 @@ c     --- Now the odd processors
      &                                   nxprocs,nyprocs,nzprocs)
               call MPI_ISEND(phi(-1,-1,izsend(i)),nn,
      &                       MPI_DOUBLE_PRECISION,
-     &                       iproc,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
+     &                       iproc,messid,comm_world_mpiisz,mpirequest(w),mpierror)
             endif
           endif
         enddo
@@ -956,7 +970,7 @@ c     --- Now the odd processors
 c     --- This is needed since the sends are done without buffering.
 c     --- No problems have been seem without it, but this just for robustness.
 c     if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
-c     call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
+c     call MPI_BARRIER(comm_world_mpiisz,mpierror)
 
 !$OMP MASTER
       if (lw3dtimesubs) timegetphiforfields3d = timegetphiforfields3d + wtime() - substarttime
