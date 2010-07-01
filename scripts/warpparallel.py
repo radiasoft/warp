@@ -5,12 +5,17 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.79 2009/03/12 22:24:02 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.80 2010/07/01 21:56:43 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
   print warpparallel.__doc__
 
+try:
+  top.comm_world = comm_world.comm_fortran()
+  top.lcomm_world_initted = true
+except:
+  pass
 top.my_index = me
 top.nprocs = npes
 top.nslaves = top.nprocs
@@ -309,7 +314,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
 
   # --- None of the processors can procede past this point until PE0 has
   # --- completed the above.
-  mpi.barrier()
+  comm_world.barrier()
 
   # --- If only writing non-parallel data, then return here
   if serial: return
@@ -337,8 +342,8 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                           '@pgroup%d@parallel'%me,[],[],0,
                           verbose=verbose,lonlymakespace=1)
     ff.close()
-    if me < npes-1: mpi.send(1,me+1)
-    mpi.barrier()
+    if me < npes-1: comm_world.send(1,me+1)
+    comm_world.barrier()
 
   # --- All of the processors open the file for appending
   ff = PW.PW(fname,'a')

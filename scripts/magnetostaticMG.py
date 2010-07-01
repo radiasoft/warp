@@ -9,7 +9,7 @@ try:
 except ImportError:
   pass
 
-magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.36 2010/03/11 19:10:19 dave Exp $"
+magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.37 2010/07/01 21:56:43 dave Exp $"
 
 ##############################################################################
 class MagnetostaticMG(SubcycledPoissonSolver):
@@ -241,14 +241,14 @@ class MagnetostaticMG(SubcycledPoissonSolver):
         if self.fsdecomp.ixproc == self.fsdecomp.nxprocs-1:
           ip = self.convertindextoproc(ix=self.fsdecomp.ixproc+1,
                                        bounds=self.pbounds)
-          mpi.send(self.source[:,self.nxlocal,:,:],ip,tag)
-          self.source[:,self.nxlocal,:,:],status = mpi.recv(ip,tag)
+          comm_world.send(self.source[:,self.nxlocal,:,:],ip,tag)
+          self.source[:,self.nxlocal,:,:],status = comm_world.recv(ip,tag)
         elif self.fsdecomp.ixproc == 0:
           ip = self.convertindextoproc(ix=self.fsdecomp.ixproc-1,
                                        bounds=self.pbounds)
-          sourcetemp,status = mpi.recv(ip,tag)
+          sourcetemp,status = comm_world.recv(ip,tag)
           self.source[:,0,:,:] = self.source[:,0,:,:] + sourcetemp
-          mpi.send(self.source[:,0,:,:],ip,tag)
+          comm_world.send(self.source[:,0,:,:],ip,tag)
 
     if self.pbounds[2] == 2 or self.pbounds[3] == 2:
       if self.nyprocs == 1:
@@ -259,14 +259,14 @@ class MagnetostaticMG(SubcycledPoissonSolver):
         if self.fsdecomp.iyproc == self.fsdecomp.nyprocs-1:
           ip = self.convertindextoproc(iy=self.fsdecomp.iyproc+1,
                                        bounds=self.pbounds)
-          mpi.send(self.source[:,:,self.nylocal,:],ip,tag)
-          self.source[:,:,self.nylocal,:],status = mpi.recv(ip,tag)
+          comm_world.send(self.source[:,:,self.nylocal,:],ip,tag)
+          self.source[:,:,self.nylocal,:],status = comm_world.recv(ip,tag)
         elif self.fsdecomp.iyproc == 0:
           ip = self.convertindextoproc(iy=self.fsdecomp.iyproc-1,
                                        bounds=self.pbounds)
-          sourcetemp,status = mpi.recv(ip,tag)
+          sourcetemp,status = comm_world.recv(ip,tag)
           self.source[:,:,0,:] = self.source[:,:,0,:] + sourcetemp
-          mpi.send(self.source[:,:,0,:],ip,tag)
+          comm_world.send(self.source[:,:,0,:],ip,tag)
 
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
       if self.nzprocs == 1:
@@ -277,14 +277,14 @@ class MagnetostaticMG(SubcycledPoissonSolver):
         if self.fsdecomp.izproc == self.fsdecomp.nzprocs-1:
           ip = self.convertindextoproc(iz=self.fsdecomp.izproc+1,
                                        bounds=self.pbounds)
-          mpi.send(self.source[:,:,:,self.nzlocal],ip,tag)
-          self.source[:,:,:,self.nzlocal],status = mpi.recv(ip,tag)
+          comm_world.send(self.source[:,:,:,self.nzlocal],ip,tag)
+          self.source[:,:,:,self.nzlocal],status = comm_world.recv(ip,tag)
         elif self.fsdecomp.izproc == 0:
           ip = self.convertindextoproc(iz=self.fsdecomp.izproc-1,
                                        bounds=self.pbounds)
-          sourcetemp,status = mpi.recv(ip,tag)
+          sourcetemp,status = comm_world.recv(ip,tag)
           self.source[:,:,:,0] = self.source[:,:,:,0] + sourcetemp
-          mpi.send(self.source[:,:,:,0],ip,tag)
+          comm_world.send(self.source[:,:,:,0],ip,tag)
 
   def installconductor(self,conductor,
                             xmin=None,xmax=None,

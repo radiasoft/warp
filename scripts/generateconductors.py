@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.229 2010/06/08 17:51:59 dave Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.230 2010/07/01 21:56:43 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -388,9 +388,9 @@ Should never be directly created by the user.
     emaxtot=parallelmax(emax)
     netot=0
     if me>0:
-      mpi.send((ne,emin,emax),0,1)
+      comm_world.send((ne,emin,emax),0,1)
       if ne>0:
-        mpi.send(self.lostparticles_energies[js],0,1)
+        comm_world.send(self.lostparticles_energies[js],0,1)
     else:
       henergies = zeros(n+1,'d')
       if ne>0:

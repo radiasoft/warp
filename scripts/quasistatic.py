@@ -49,16 +49,13 @@ class Quasistatic(SubcycledPoissonSolver):
     bucketmpiid=int(me*nbuckets/npes)
     self.bucketid=nbuckets-bucketmpiid
     if nbuckets==1:
-      if lparallel:
-        self.mympigroup=mpi.WORLD
-      else:
-        self.mympigroup=None
+      self.mympigroup=comm_world
       self.gme=me
       self.gnpes=npes
     else:
       procs = arange(npes)
       mygroup = compress(int(procs*nbuckets/npes)==bucketmpiid,procs)
-      self.mympigroup=mpi.WORLD.comm_create(mygroup)
+      self.mympigroup=comm_world.comm_create(mygroup)
       self.gme = self.mympigroup.rank
       self.gnpes = self.mympigroup.size
     length=(w3d.zmmax-w3d.zmmin)/self.nbuckets
@@ -667,7 +664,7 @@ class Quasistatic(SubcycledPoissonSolver):
      if self.l_timing:ptime = wtime()
      self.reset_rho1()
      if self.l_timing: self.time_reset_rho1 += wtime()-ptime
-#       if lparallel:mpi.barrier()
+#       if lparallel:comm_world.barrier()
        
      # --- clear electrons on processor 0, shift them to the previous ones for me>0
      self.clear_electrons()
@@ -765,9 +762,9 @@ class Quasistatic(SubcycledPoissonSolver):
   
   def send_rhotonext(self):
       if me<npes-1:
-        mpi.send(self.rhotonext,me+1)
+        comm_world.send(self.rhotonext,me+1)
       if me>0:
-        recved,status = mpi.recv(me-1)
+        recved,status = comm_world.recv(me-1)
         g = self.gridions[0]
         for ig in range(frz.ngrids):
           if ig>0:
@@ -776,9 +773,9 @@ class Quasistatic(SubcycledPoissonSolver):
   
   def send_rhotoprev(self):
       if me>0:
-        mpi.send(self.rhotoprev,me-1)
+        comm_world.send(self.rhotoprev,me-1)
       if me<npes-1:
-        recved,status = mpi.recv(me+1)
+        recved,status = comm_world.recv(me+1)
         g = self.gridions[1]
         for ig in range(frz.ngrids):
           if ig>0:
@@ -869,12 +866,12 @@ class Quasistatic(SubcycledPoissonSolver):
             tosend.append(g.npmin)
             tosend.append(g.mgparam)
 #      for ip in range(npes-1):
-#        mpi.send(tosend,ip)
+#        comm_world.send(tosend,ip)
       if self.l_verbose:print me,tosend
     recved = parallel.broadcast(tosend,npes-1)
     if self.l_verbose:print me,recved
     if me<npes-1:
-#     recved,status = mpi.recv(npes-1)
+#     recved,status = comm_world.recv(npes-1)
       i = 0
       for glist in [self.gridions,self.gridelecs]:
         for ig in range(len(glist)):
@@ -892,7 +889,7 @@ class Quasistatic(SubcycledPoissonSolver):
     if self.l_verbose:print me,top.it,self.iz,'enter sendrecv_storedions_toprev'
     # --- sends stored ions
     if me>0:
-      mpi.send(self.ionstoprev,me-1)
+      comm_world.send(self.ionstoprev,me-1)
       if self.ionstoprev[0]>0:
         if self.l_parallelverbose:print me, 'sends ',self.ionstoprev[0],' ions to ',me-1
 #        print 'send itn',self.ionstoprev[0],self.ionstoprev[3]
@@ -900,7 +897,7 @@ class Quasistatic(SubcycledPoissonSolver):
     if me<npes-1:
       js = w3d.nzp-1
       pg = self.pgions
-      recved,status = mpi.recv(me+1)
+      recved,status = comm_world.recv(me+1)
       np = recved[0]
       if np>0:
         if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me+1
@@ -936,7 +933,7 @@ class Quasistatic(SubcycledPoissonSolver):
     if self.l_verbose:print me,top.it,self.iz,'enter sendrecv_storedions_tonext'
     # --- sends stored ions
     if me<npes-1:
-      mpi.send(self.ionstonext,me+1)
+      comm_world.send(self.ionstonext,me+1)
       if self.ionstonext[0]>0:
         if self.l_parallelverbose:print me, 'sends ',self.ionstonext[0],' ions to ',me+1
 #        print 'send',self.ionstonext[0],self.ionstonext[3]
@@ -944,7 +941,7 @@ class Quasistatic(SubcycledPoissonSolver):
     if me>0:
       js = 0
       pg = self.pgions
-      recved,status = mpi.recv(me-1)
+      recved,status = comm_world.recv(me-1)
       np = recved[0]
       if np>0:
         if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me-1
@@ -996,7 +993,7 @@ class Quasistatic(SubcycledPoissonSolver):
       tosend.append(take(pg.by,ii))
       tosend.append(take(pg.bz,ii))
       if top.npid>0:tosend.append(take(pg.pid,ii,0))
-    mpi.send(tosend,me+1)
+    comm_world.send(tosend,me+1)
     if tosend[0]>0:
       if self.l_parallelverbose:print me, 'sends ',tosend[0],' ions to ',me+1
     if len(ii)>0:
@@ -1009,7 +1006,7 @@ class Quasistatic(SubcycledPoissonSolver):
     if self.l_verbose:print me,top.it,self.iz,'enter recvparticlesfromprevious'
     pg = self.pgions
     top.pgroup = pg
-    recved,status = mpi.recv(me-1)
+    recved,status = comm_world.recv(me-1)
     np = recved[0]
     if np>0:
       if self.l_parallelverbose:print me, 'recvs ',np,' ions from ',me-1
@@ -1143,7 +1140,7 @@ class Quasistatic(SubcycledPoissonSolver):
         else:
           rhoweightrz_weights(xp,yp,yp,wz1,np,q,bg.nr,bg.nz,bg.dr,bg.dz,bg.rmin,0.)
     if self.l_verbose:print me,top.it,self.iz,'exit deposit_ions_last_step'
-#    if lparallel:mpi.barrier()
+#    if lparallel:comm_world.barrier()
                       
   def sort_ions_along_z(self):
     if self.l_verbose:print me,top.it,self.iz,'enter sort_ions_along_z'
@@ -1786,7 +1783,7 @@ class Quasistatic(SubcycledPoissonSolver):
         tosend.append(pg.uzp[il:iu])
         tosend.append(pg.gaminv[il:iu])
         if top.npid>0:tosend.append(pg.pid[il:iu,:])
-      mpi.send(tosend,me-1)
+      comm_world.send(tosend,me-1)
     pg.nps[0]=0      
     if lparallel and me<npes-1:
       if self.l_posinst_track_electrons:
@@ -1794,7 +1791,7 @@ class Quasistatic(SubcycledPoissonSolver):
         pp_pos2warp(0)
         pos.time=0.
         pos.tbirth[:]=0.
-      self.recved,status = mpi.recv(me+1)
+      self.recved,status = comm_world.recv(me+1)
       np=self.recved[0]
       if np>0:
         if top.npid>0:
@@ -1813,7 +1810,7 @@ class Quasistatic(SubcycledPoissonSolver):
                               lmomentum=1,
                               lallindomain=1)
     if self.l_verbose:print me,top.it,self.iz,'exit clear_electrons'
-#    if lparallel:mpi.barrier()
+#    if lparallel:comm_world.barrier()
     
   def plot_electrons(self):
         if self.l_verbose:print me,top.it,self.iz,'enter plot_electrons'

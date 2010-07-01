@@ -1,25 +1,33 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.40 2010/07/01 20:42:52 jlvay Exp $"
+parallel_version = "$Id: parallel.py,v 1.41 2010/07/01 21:56:43 dave Exp $"
 
-from warp import gettypecode
 from numpy import *
-ArrayType = ndarray
-from types import *
 # --- Try import mpi - if not found, then run in serial mode
+# --- Note that:
+# --- mpi.COMM_WORLD is same as MPI_COMM_WORLD
+# --- mpi.WORLD is a duplicate of MPI_COMM_WORLD
+# --- comm_world is used for most communications (and defaults to mpi.WORLD)
 try:
   import mpi
   mpi.synchronizeQueuedOutput(None)
   me = mpi.rank
   npes = mpi.procs
-  mpiWORLD=mpi.WORLD
+  comm_world = mpi.WORLD
 except ImportError:
   me = 0
   npes = 1
-  mpiWORLD=None
+  comm_world = None
 
 lparallel = (npes > 1)
+
+def setdefaultcomm_world(comm):
+  global comm_world,me,npes
+  if not lparallel: return
+  comm_world = comm
+  me = comm_world.rank
+  npes = comm_world.procs
 
 """
 # --- This check is old enough that it is no longer needed.
@@ -39,11 +47,13 @@ else:
 _newpympi = 1
 
 if _newpympi:
-  def mpirecv(pe=0,ms=0,comm=mpiWORLD):
+  def mpirecv(pe=0,ms=0,comm=None):
+    if comm is None: comm = comm_world
     result,stat = comm.recv(pe,ms)
     return result
 else:
-  def mpirecv(pe=0,ms=0,comm=mpiWORLD):
+  def mpirecv(pe=0,ms=0,comm=None):
+    if comm is None: comm = comm_world
     return comm.recv(pe,ms)
 
 # ---------------------------------------------------------------------------
@@ -51,12 +61,14 @@ else:
 if lparallel:
   mpi.synchronizeQueuedOutput('/dev/null')
 
-def number_of_PE():
+def number_of_PE(comm=None):
+  if not lparallel: return 1
+  if comm is None: comm = comm_world
+  return comm.procs
+def get_rank(comm=None):
   if not lparallel: return 0
-  return mpi.procs
-def get_rank():
-  if not lparallel: return 0
-  return mpi.rank
+  if comm is None: comm = comm_world
+  return comm.rank
 
 # ---------------------------------------------------------------------------
 # Enable output from all processors
@@ -94,14 +106,16 @@ def aprint(obj):
 
 # ---------------------------------------------------------------------------
 # Get address of processor
-def self_address(comm=mpiWORLD):
+def self_address(comm=None):
   if not lparallel: return 0
+  if comm is None: comm = comm_world
   return comm.rank
 
 # ---------------------------------------------------------------------------
 # Copy an array from processor i to processor 0
-def getarray(src,v,dest=0,comm=mpiWORLD):
+def getarray(src,v,dest=0,comm=None):
   if not lparallel: return v
+  if comm is None: comm = comm_world
   if comm.rank == src:
     comm.send(v,dest)
   elif comm.rank == dest:
@@ -109,9 +123,10 @@ def getarray(src,v,dest=0,comm=mpiWORLD):
   return v
 
 # ---------------------------------------------------------------------------
-# Gather an object from all processors in a communicator (default mpiWORLD) into a list
-def gather(obj,dest=0,comm=mpiWORLD):
+# Gather an object from all processors in a communicator (default comm_world) into a list
+def gather(obj,dest=0,comm=None):
   if not lparallel: return [obj]
+  if comm is None: comm = comm_world
   if comm.rank == dest:
     result = []
     for i in range(comm.procs):
@@ -127,8 +142,9 @@ def gather(obj,dest=0,comm=mpiWORLD):
 # ---------------------------------------------------------------------------
 # Gather an object from a list of processors into a list on destination processor,
 # eventually broadcasting result. 
-def gatherlist(obj,dest=0,procs=None,bcast=0,comm=mpiWORLD):
+def gatherlist(obj,dest=0,procs=None,bcast=0,comm=None):
   if not lparallel: return [obj]
+  if comm is None: comm = comm_world
   if procs is None:
     procs=range(comm.procs)
   else:
@@ -153,8 +169,9 @@ def gatherlist(obj,dest=0,procs=None,bcast=0,comm=mpiWORLD):
 # Gather an object from a list of processors into a list on destination processor,
 # eventually broadcasting result. The send is decomposed into log2(n) sends 
 # between processors.
-def gatherlog(obj,dest=0,procs=None,bcast=0,comm=mpiWORLD):
+def gatherlog(obj,dest=0,procs=None,bcast=0,comm=None):
   if not lparallel: return [obj]
+  if comm is None: comm = comm_world
   if procs is None:
     procs=range(comm.procs)
   else:
@@ -179,35 +196,39 @@ def gatherlog(obj,dest=0,procs=None,bcast=0,comm=mpiWORLD):
     if dest<>procs[0]:
       if comm.rank==procs[0]:
         comm.send(obj,dest)
-      if mpi.rank==dest:
+      if comm.rank==dest:
         obj=mpirecv(procs[0],comm=comm)
       
   return obj
 
 # ---------------------------------------------------------------------------
 # Define a barrier
-def barrier(comm=mpiWORLD):
+def barrier(comm=None):
   if not lparallel: return
+  if comm is None: comm = comm_world
   comm.barrier()
 
 # ---------------------------------------------------------------------------
 # Broadcast an object to all processors
-def broadcast(obj,root=0,comm=mpiWORLD):
+def broadcast(obj,root=0,comm=None):
   if not lparallel: return obj
+  if comm is None: comm = comm_world
   return comm.bcast(obj,root)
 
 # ---------------------------------------------------------------------------
 # Gather an object from all processors into a list and scatter back to all
-def gatherall(obj,comm=mpiWORLD):
+def gatherall(obj,comm=None):
   if not lparallel: return obj
+  if comm is None: comm = comm_world
   obj = gather(obj,comm=comm)
   return comm.bcast(obj)
     
 # ---------------------------------------------------------------------------
 # General gatherarray which returns an array object combining the
 # first dimension.
-def gatherarray(a,root=0,othersempty=0,bcast=0,comm=mpiWORLD):
+def gatherarray(a,root=0,othersempty=0,bcast=0,comm=None):
   if not lparallel: return a
+  if comm is None: comm = comm_world
   # --- First check if input can be converted to an array
   isinputok = 1
   try:
@@ -234,12 +255,15 @@ def gatherarray(a,root=0,othersempty=0,bcast=0,comm=mpiWORLD):
   isinputok = globalmin(isinputok,comm=comm)
   if not isinputok:
     print "Error in gather object"
-    if type(a) == ArrayType: print "Object has shape ",shape(a)
+    try:
+      "Object has shape ",shape(a)
+    except NameError:
+      pass
     return None
   # --- All processors but root simply return either the input argument
   # --- or an empty array unless the result is to be broadcast
   if comm.rank != root and not bcast:
-    if othersempty: return zeros(len(shape(a))*[0],gettypecode(a))
+    if othersempty: return zeros(len(shape(a))*[0],a.dtype.char)
     else: return a
   # --- Root processor reshapes the data, removing the first dimension
   # --- Do it bit by bit since the data passed by the other processors may
@@ -250,7 +274,7 @@ def gatherarray(a,root=0,othersempty=0,bcast=0,comm=mpiWORLD):
       newlen = newlen + shape(result[i])[0]
     newshape = list(shape(result[0]))
     newshape[0] = newlen
-    newresult = zeros(newshape,gettypecode(a))
+    newresult = zeros(newshape,a.dtype.char)
     i1 = 0
     for i in range(comm.size):
       i2 = i1 + shape(result[i])[0]
@@ -276,7 +300,8 @@ def gatherarray(a,root=0,othersempty=0,bcast=0,comm=mpiWORLD):
 # Find the nonzero value of array over all processors. This assumes that the
 # non-zero values for each index are the same for all processors.
 # Resulting data is broadcast to all processors.
-def parallelnonzeroarray(a,comm=mpiWORLD):
+def parallelnonzeroarray(a,comm=None):
+  if comm is None: comm = comm_world
   dmax = parallelmax(a,comm=comm)
   dmin = parallelmin(a,comm=comm)
   result = where(not_equal(dmax,0),dmax,dmin)
@@ -284,7 +309,8 @@ def parallelnonzeroarray(a,comm=mpiWORLD):
 
 # ---------------------------------------------------------------------------
 # Generic global operation on a distributed array.
-def globalop(a,localop,mpiop,defaultval,comm=mpiWORLD):
+def globalop(a,localop,mpiop,defaultval,comm=None):
+  if comm is None: comm = comm_world
   if len(shape(a)) == 0:
     local = a
   elif len(a) > 0:
@@ -301,13 +327,17 @@ def globalop(a,localop,mpiop,defaultval,comm=mpiWORLD):
 
 # ---------------------------------------------------------------------------
 # Specific operations on a distributed array.
-def globalmax(a,comm=mpiWORLD):
+def globalmax(a,comm=None):
+  if comm is None: comm = comm_world
   return globalop(a,max,"MAX",-1.e36,comm=comm)
-def globalmin(a,comm=mpiWORLD):
+def globalmin(a,comm=None):
+  if comm is None: comm = comm_world
   return globalop(a,min,"MIN",+1.e36,comm=comm)
-def globalsum(a,comm=mpiWORLD):
+def globalsum(a,comm=None):
+  if comm is None: comm = comm_world
   return globalop(a,sum,"SUM",0.,comm=comm)
-def globalave(a,comm=mpiWORLD):
+def globalave(a,comm=None):
+  if comm is None: comm = comm_world
   s = globalop(a,sum,"SUM",0.,comm=comm)
   if len(shape(a)) == 0: a = [a]
   n = globalsum(len(a),comm=comm)
@@ -316,8 +346,10 @@ def globalave(a,comm=mpiWORLD):
 
 # ---------------------------------------------------------------------------
 # Generic parallel element-by-element operation on a distributed array.
-def parallelop(a,mpiop,comm=mpiWORLD):
+# --- Note that this is no long needed
+def parallelop(a,mpiop,comm=None):
   if not lparallel: return a
+  if comm is None: comm = comm_world
   if type(a) == type(array([])):
     a1d = ravel(a) + 0
     for i in range(len(a1d)):
@@ -329,16 +361,19 @@ def parallelop(a,mpiop,comm=mpiWORLD):
 
 # ---------------------------------------------------------------------------
 # Specific parallel element-by-element operations on a distributed array.
-def parallelmax(a,comm=mpiWORLD):
+def parallelmax(a,comm=None):
   #return parallelop(a,"MAX")
   if not lparallel: return a
+  if comm is None: comm = comm_world
   return comm.allreduce(a,maximum)
-def parallelmin(a,comm=mpiWORLD):
+def parallelmin(a,comm=None):
   #return parallelop(a,"MIN")
   if not lparallel: return a
+  if comm is None: comm = comm_world
   return comm.allreduce(a,minimum)
-def parallelsum(a,comm=mpiWORLD):
+def parallelsum(a,comm=None):
   if not lparallel: return a
+  if comm is None: comm = comm_world
   return comm.allreduce(a,mpi.SUM)
 
 

@@ -5,7 +5,7 @@ from warp import *
 from lattice import addnewbgrd,addnewbsqgrad
 import MA
 
-fftsolver_version = "$Id: fftsolver.py,v 1.31 2010/03/11 19:10:18 dave Exp $"
+fftsolver_version = "$Id: fftsolver.py,v 1.32 2010/07/01 21:56:43 dave Exp $"
 
 ##############################################################################
 class FieldSolver3dBase(object):
@@ -237,12 +237,12 @@ class FieldSolver3dBase(object):
   def makerhoperiodic_parallel(self):
     tag = 70
     if me == self.nzprocs-1:
-      request = mpi.isend(self.rho[:,:,nzlocal],0,tag)
-      self.rho[:,:,nzlocal],status = mpi.recv(0,tag)
+      request = comm_world.isend(self.rho[:,:,nzlocal],0,tag)
+      self.rho[:,:,nzlocal],status = comm_world.recv(0,tag)
     elif me == 0:
-      rhotemp,status = mpi.recv(self.nzprocs-1,tag)
+      rhotemp,status = comm_world.recv(self.nzprocs-1,tag)
       self.rho[:,:,0] = self.rho[:,:,0] + rhotemp
-      request = mpi.isend(self.rho[:,:,0],self.nzprocs-1,tag)
+      request = comm_world.isend(self.rho[:,:,0],self.nzprocs-1,tag)
     if me == 0 or me == self.nzprocs-1:
       status = request.wait()
 

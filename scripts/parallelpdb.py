@@ -1,6 +1,6 @@
 from warp import *
 import PW
-parallelpdb_version = "$Id: parallelpdb.py,v 1.6 2007/12/20 00:36:41 dave Exp $"
+parallelpdb_version = "$Id: parallelpdb.py,v 1.7 2010/07/01 21:56:43 dave Exp $"
 
 # Routines to allow all processors to write data to one file.
 # The PE's sequentially append data to the file. When a file is open,
@@ -31,7 +31,7 @@ class ParallelPW(PW.PW):
 	  if pe != 0:
 	    if me == 0:
 	      self.close()
-	    mpi.barrier()
+	    comm_world.barrier()
 	    if me == pe:
               self.open(self.filename,'a')
           if me == pe:
@@ -40,7 +40,7 @@ class ParallelPW(PW.PW):
 	  if pe != 0:
 	    if me == pe:
 	      self.close()
-	    mpi.barrier()
+	    comm_world.barrier()
 	    if me == 0:
               self.open(self.filename,'a')
           return
@@ -66,7 +66,7 @@ class ParallelPW(PW.PW):
 	  self.defent(name,quantity,tuple(nn[0]))
 	  self.close()
 	# --- Now, all open file at once and write out data simultaneously.
-	mpi.barrier()
+	comm_world.barrier()
         self.open(self.filename,'a')
 	index = ndims*[0]
         index[-1] = nlast[me]
@@ -98,13 +98,13 @@ class ParallelPWold(PW.PW):
           return
         if me == 0:
           if not self.is_open():
-            mpi.send(0,1,1)
+            comm_world.send(0,1,1)
             self.check_open()
         else:
-          i = mpi.recv(me-1,1)
+          i = comm_world.recv(me-1,1)
           if not i:
             if me < npes-1:
-              mpi.send(1,(me+1) % npes,1)
+              comm_world.send(1,(me+1) % npes,1)
             return
           record = 2
           self.open(self.filename,'a')
@@ -116,9 +116,9 @@ class ParallelPWold(PW.PW):
                       "of", name
         self.inquire_handle ().write (name, quantity, record)
         self.close()
-        mpi.send(1,(me+1) % npes,1)
+        comm_world.send(1,(me+1) % npes,1)
         if me == 0:
-          i = mpi.recv(npes-1,1)
+          i = comm_world.recv(npes-1,1)
           self.open(self.filename,'a')
 
   

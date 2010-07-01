@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.264 2010/05/19 00:01:35 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.265 2010/07/01 21:56:43 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -744,8 +744,8 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
         if len(xx) > 0 and len(yy)==len(xx):
           plg(yy,xx,local=1,**kw)
     else:
-      mpi.send(yy,0,3)
-      mpi.send(xx,0,3)
+      comm_world.send(yy,0,3)
+      comm_world.send(xx,0,3)
   else:
     # --- convert some arguments for pylab
     if with_matplotlib:
@@ -4164,7 +4164,7 @@ be from none to all three.
             ppplist.append(ppp[sss[0],sss[1],sss[2]])
 
     # --- Send the data to each of the processors
-    ppp = mpi.scatter(ppplist)[0]
+    ppp = comm_world.scatter(ppplist)[0]
 
     # --- Get the local extent of each processor.
     my_ixpp = decomp.ix[decomp.ixproc]

@@ -622,9 +622,9 @@ class EM3D(SubcycledPoissonSolver):
     byp=zeros(n,'d')
     bzp=zeros(n,'d')
     if me>0:
-      mpi.send(nlocal,0,3)
+      comm_world.send(nlocal,0,3)
       if nlocal>0:
-        mpi.send((ilist,ex,ey,ez,bx,by,bz),0,3)
+        comm_world.send((ilist,ex,ey,ez,bx,by,bz),0,3)
     else:
       if nlocal>0:
         for j,i in enumerate(ilist):
@@ -1845,9 +1845,9 @@ class EM3D(SubcycledPoissonSolver):
         ptitles(title,xtitle,ytitle,'t = %gs'%(top.time))
       if type(procs) is type(1):procs=[procs]
       if me>0 and me in procs:
-        mpi.send(self.isactive,0,3)
+        comm_world.send(self.isactive,0,3)
         if self.isactive:
-          mpi.send((xmin,xmax,ymin,ymax,data),0,3)
+          comm_world.send((xmin,xmax,ymin,ymax,data),0,3)
       else:
         if me in procs and data is not None:
           kw.setdefault('xmin',xmin)
@@ -1876,7 +1876,7 @@ class EM3D(SubcycledPoissonSolver):
       dy=self.block.dy
       dz=self.block.dz
       if me>0 and me in procs:
-        mpi.send((xmin,xmax,dx,ymin,ymax,dy,zmin,zmax,dz,data),0,3)
+        comm_world.send((xmin,xmax,dx,ymin,ymax,dy,zmin,zmax,dz,data),0,3)
       else:
         if ncolor is None:ncolor = 2
         dec = (cmax-cmin)/ncolor
@@ -2046,7 +2046,7 @@ class EM3D(SubcycledPoissonSolver):
       dy=self.block.dy
       dz=self.block.dz
       if me>0 and me in procs:
-        mpi.send((xmin,xmax,dx,ymin,ymax,dy,zmin,zmax,dz,data),0,3)
+        comm_world.send((xmin,xmax,dx,ymin,ymax,dy,zmin,zmax,dz,data),0,3)
       else:
         for i in range(0,npes):
           if i<>me:
@@ -2368,15 +2368,15 @@ class EM3D(SubcycledPoissonSolver):
       else:
         condd = down<me
       if condu:
-        mpi.send(self.isactive,up)
+        comm_world.send(self.isactive,up)
       if condd:
-        isactive,status = mpi.recv(down)
+        isactive,status = comm_world.recv(down)
         if isactive and self.isactive:self.bounds[ib]=em3d.otherproc    
       # --- check upper bound in z
       if condd:
-        mpi.send(self.isactive,down)
+        comm_world.send(self.isactive,down)
       if condu:
-        isactive,status = mpi.recv(up)
+        isactive,status = comm_world.recv(up)
         if isactive and self.isactive:self.bounds[ib+1]=em3d.otherproc    
 
   def connectblocks(self,blo,bup,dir):

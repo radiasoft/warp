@@ -4,7 +4,7 @@ from __future__ import generators
 __all__ = ['MeshRefinement',
            'MRBlock3D','MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
            'MRBlockImplicit2D','EMMRBlock']
-MeshRefinement_version = "$Id: MeshRefinement.py,v 1.172 2010/03/11 18:22:28 dave Exp $"
+MeshRefinement_version = "$Id: MeshRefinement.py,v 1.173 2010/07/01 21:56:42 dave Exp $"
 from warp import *
 from find_mgparam import find_mgparam
 import operator
@@ -594,46 +594,46 @@ error prone.
 
       # --- Exchange lists with processes neighboring along X
       if self.ixproc > 0 and neighborpes[0] >= 0:
-        mpi.send(blocklists,neighborpes[0])
+        comm_world.send(blocklists,neighborpes[0])
       if self.ixproc < self.nxprocs-1 and neighborpes[1] >= 0:
-        blocklistsxp = mpi.recv(neighborpes[1])[0]
+        blocklistsxp = comm_world.recv(neighborpes[1])[0]
       else:
         blocklistsxp = NMAXLEVELS*[[]]
 
       if self.ixproc < self.nxprocs-1 and neighborpes[1] >= 0:
-        mpi.send(blocklists,neighborpes[1])
+        comm_world.send(blocklists,neighborpes[1])
       if self.ixproc > 0 and neighborpes[0] >= 0:
-        blocklistsxm = mpi.recv(neighborpes[0])[0]
+        blocklistsxm = comm_world.recv(neighborpes[0])[0]
       else:
         blocklistsxm = NMAXLEVELS*[[]]
 
       # --- Exchange lists with processes neighboring along Y
       if self.iyproc > 0 and neighborpes[2] >= 0:
-        mpi.send(blocklists,neighborpes[2])
+        comm_world.send(blocklists,neighborpes[2])
       if self.iyproc < self.nyprocs-1 and neighborpes[3] >= 0:
-        blocklistsyp = mpi.recv(neighborpes[3])[0]
+        blocklistsyp = comm_world.recv(neighborpes[3])[0]
       else:
         blocklistsyp = NMAXLEVELS*[[]]
 
       if self.iyproc < self.nyprocs-1 and neighborpes[3] >= 0:
-        mpi.send(blocklists,neighborpes[3])
+        comm_world.send(blocklists,neighborpes[3])
       if self.iyproc > 0 and neighborpes[2] >= 0:
-        blocklistsym = mpi.recv(neighborpes[2])[0]
+        blocklistsym = comm_world.recv(neighborpes[2])[0]
       else:
         blocklistsym = NMAXLEVELS*[[]]
 
       # --- Exchange lists with processes neighboring along Z
       if self.izproc > 0 and neighborpes[4] >= 0:
-        mpi.send(blocklists,neighborpes[4])
+        comm_world.send(blocklists,neighborpes[4])
       if self.izproc < self.nzprocs-1 and neighborpes[5] >= 0:
-        blocklistszp = mpi.recv(neighborpes[5])[0]
+        blocklistszp = comm_world.recv(neighborpes[5])[0]
       else:
         blocklistszp = NMAXLEVELS*[[]]
 
       if self.izproc < self.nzprocs-1 and neighborpes[5] >= 0:
-        mpi.send(blocklists,neighborpes[5])
+        comm_world.send(blocklists,neighborpes[5])
       if self.izproc > 0 and neighborpes[4] >= 0:
-        blocklistszm = mpi.recv(neighborpes[4])[0]
+        blocklistszm = comm_world.recv(neighborpes[4])[0]
       else:
         blocklistszm = NMAXLEVELS*[[]]
 
@@ -991,12 +991,12 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
       # --- operations are blocking.
       for parity in [0,1]:
         if (self.ixproc+self.iyproc+self.izproc)%2 == parity:
-          if pel in senddictsleft:  mpi.send(senddictsleft[pel],pel)
-          if per in senddictsright: mpi.send(senddictsright[per],per)
+          if pel in senddictsleft:  comm_world.send(senddictsleft[pel],pel)
+          if per in senddictsright: comm_world.send(senddictsright[per],per)
         else:
-          if per in senddictsright: dictfromright = mpi.recv(per)[0]
+          if per in senddictsright: dictfromright = comm_world.recv(per)[0]
           else:                     dictfromright = {}
-          if pel in senddictsleft:  dictfromleft = mpi.recv(pel)[0]
+          if pel in senddictsleft:  dictfromleft = comm_world.recv(pel)[0]
           else:                     dictfromleft = {}
 
       # --- Create a list of the blocks that receive data.
