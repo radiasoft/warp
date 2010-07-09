@@ -68,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.89 2010/05/21 16:11:20 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.90 2010/07/09 23:57:10 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2229,7 +2229,7 @@ hele arrays with the same suffices:
 # ----------------------------------------------------------------------------
 # --- EMLT --- XXX
 def addnewemlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,
-               ox=0.,oy=0.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
+               ox=0.,oy=0.,ot=0.,op=0.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
                es=None,esp=None,phz=None,phpz=None,nn=None,vv=None,
                time=None,data=None,func=None):
   """
@@ -2253,7 +2253,7 @@ If 'es' is supplied, the following may also be supplied.
     shape as es.
 The following are all optional and have the same meaning and default as the
 emlt arrays with the same suffices:
-  - ap,ph,sf,sc,ox,oy,rr,rl,gl,gp,pw,pa
+  - ap,ph,sf,sc,ox,oy,ot,op,rr,rl,gl,gp,pw,pa
 The applied field can be made time dependent by supplying a time varying
 scale factor. One of the following can be supplied:
   - time,data: two 1-D arrays holding the tabulated scale factor (data) as
@@ -2308,7 +2308,8 @@ scale factor. One of the following can be supplied:
            'ap':top.emltap,'ax':top.emltax,'ay':top.emltay,
            'ph':top.emltph,
            'sf':top.emltsf,'sc':top.emltsc,
-           'ox':top.emltox,'oy':top.emltoy,'rr':top.emltrr,'rl':top.emltrl,
+           'ox':top.emltox,'oy':top.emltoy,'ot':top.emltot,'op':top.emltop,
+           'rr':top.emltrr,'rl':top.emltrl,
            'gl':top.emltgl,'gp':top.emltgp,'pw':top.emltpw,'pa':top.emltpa}
 
   # --- Shift the existing data in the arrays to open up a space for the
@@ -2406,8 +2407,8 @@ scale factor. One of the following can be supplied:
 
 # ----------------------------------------------------------------------------
 # --- MMLT --- XXX
-def addnewmmlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,ox=0.,oy=0.,
-               aps=0.,ape=0.,ol=0,
+def addnewmmlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,
+               ox=0.,oy=0.,ot=0.,op=0.,aps=0.,ape=0.,ol=0,
                ms=None,msp=None,phz=None,phpz=None,nn=None,vv=None,
                time=None,data=None,func=None):
   """
@@ -2431,7 +2432,7 @@ If 'ms' is supplied, the following may also be supplied.
     shape as ms.
 The following are all optional and have the same meaning and default as the
 mmlt arrays with the same suffices:
-  - ap,ph,sf,sc,ox,oy
+  - ap,ph,sf,sc,ox,oy,ot,op
   - aps,ape refer to mmltas and mmltae
 The applied field can be made time dependent by supplying a time varying
 scale factor. One of the following can be supplied:
@@ -2483,7 +2484,8 @@ scale factor. One of the following can be supplied:
   edict = {'zs':top.mmltzs,'ze':top.mmltze,
            'ap':top.mmltap,'ax':top.mmltax,'ay':top.mmltay,
            'ph':top.mmltph,
-           'sf':top.mmltsf,'sc':top.mmltsc,'ox':top.mmltox,'oy':top.mmltoy,
+           'sf':top.mmltsf,'sc':top.mmltsc,
+           'ox':top.mmltox,'oy':top.mmltoy,'ot':top.mmltot,'op':top.mmltop,
            'aps':top.mmltas,'ape':top.mmltae,'ol':top.mmltol}
 
   # --- Shift the existing data in the arrays to open up a space for the
