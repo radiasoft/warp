@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.34 $, $Date: 2010/02/19 01:25:06 $
+c@(#) File top_lattice.F, version $Revision: 3.35 $, $Date: 2010/07/09 23:47:47 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -1300,12 +1300,15 @@ c============================================================================
       call setupemlts
 
       nemltol = 0
-      if (nemlt >= 0)
-     &  call getelemoverlaps(nemlt,emltzs,emltze,emltol,zlatbuffer,nemltol)
+
+      if (nemlt < 0) return
+
+      call mltgetfulllength(nemlt,emltzs,emltze,emltap,emltid,emltot,
+     &                      emltfs,emltfe)
+      call getelemoverlaps(nemlt,emltfs,emltfe,emltol,zlatbuffer,nemltol)
       call gchange("LatticeInternal",0)
-      if (nemlt >= 0)
-     &  call getelemoverlapindices(nemlt,emltol,nemltol,oemltoi,oemltio,oemltii,
-     &                             oemltnn)
+      call getelemoverlapindices(nemlt,emltol,nemltol,oemltoi,oemltio,oemltii,
+     &                           oemltnn)
 
       return
       end
@@ -1319,12 +1322,15 @@ c============================================================================
       call setupmmlts
 
       nmmltol = 0
-      if (nmmlt >= 0)
-     &  call getelemoverlaps(nmmlt,mmltzs,mmltze,mmltol,zlatbuffer,nmmltol)
+
+      if (nmmlt < 0) return
+
+      call mltgetfulllength(nmmlt,mmltzs,mmltze,mmltap,mmltid,mmltot,
+     &                      mmltfs,mmltfe)
+      call getelemoverlaps(nmmlt,mmltfs,mmltfe,mmltol,zlatbuffer,nmmltol)
       call gchange("LatticeInternal",0)
-      if (nmmlt >= 0)
-     &  call getelemoverlapindices(nmmlt,mmltol,nmmltol,ommltoi,ommltio,ommltii,
-     &                             ommltnn)
+      call getelemoverlapindices(nmmlt,mmltol,nmmltol,ommltoi,ommltio,ommltii,
+     &                           ommltnn)
 
       return
       end
@@ -1474,7 +1480,6 @@ c     --- elements) and then using them in the same routine
       call setupheles
       call setupaccls
       call setupemlts
-      call setupmmlts
       call setuppgrds
       call setupbsqgrads
       call setuplmaps
@@ -1482,9 +1487,12 @@ c     --- elements) and then using them in the same routine
 c     --- Get the overlap level of the lattice elements
       call getoverlaps()
 
-c     --- Note that bgrd and egrd elements must be handled specially.
-      call resetlatbgrd()
+c     --- These elements must be handled specially since they have an extra
+c     --- calculation to get the full length of the elements.
+      call resetlatemlt()
+      call resetlatmmlt()
       call resetlategrd()
+      call resetlatbgrd()
 
 c     --- resetlat no longer needs to be called, as long as no changes are
 c     --- made to the lattice.
@@ -1505,7 +1513,7 @@ c zlatbuffer is the amount of space (on meters) around each element. It is
 c used so that elements right next to each other but not strictly overlapping
 c are considered to be overlapping.
 
-c     --- Note that bgrd and egrd elements must be handled specially.
+c     --- Note some elements handled seperately.
 
       ndrftol = 0
       nbendol = 0
@@ -1514,8 +1522,6 @@ c     --- Note that bgrd and egrd elements must be handled specially.
       nsextol = 0
       nheleol = 0
       nacclol = 0
-      nemltol = 0
-      nmmltol = 0
       npgrdol = 0
       nbsqgradol = 0
 
@@ -1533,10 +1539,6 @@ c     --- Note that bgrd and egrd elements must be handled specially.
      &  call getelemoverlaps(nhele,helezs,heleze,heleol,zlatbuffer,nheleol)
       if (naccl >= 0)
      &  call getelemoverlaps(naccl,acclzs,acclze,acclol,zlatbuffer,nacclol)
-      if (nemlt >= 0)
-     &  call getelemoverlaps(nemlt,emltzs,emltze,emltol,zlatbuffer,nemltol)
-      if (nmmlt >= 0)
-     &  call getelemoverlaps(nmmlt,mmltzs,mmltze,mmltol,zlatbuffer,nmmltol)
       if (npgrd >= 0)
      &  call getelemoverlaps(npgrd,pgrdzs,pgrdze,pgrdol,zlatbuffer,npgrdol)
       if (nbsqgrad >= 0)
@@ -1568,12 +1570,6 @@ c Now, setup indicing arrays in LatticeInternal
       if (naccl >= 0)
      &  call getelemoverlapindices(naccl,acclol,nacclol,oaccloi,oacclio,oacclii,
      &                             oacclnn)
-      if (nemlt >= 0)
-     &  call getelemoverlapindices(nemlt,emltol,nemltol,oemltoi,oemltio,oemltii,
-     &                             oemltnn)
-      if (nmmlt >= 0)
-     &  call getelemoverlapindices(nmmlt,mmltol,nmmltol,ommltoi,ommltio,ommltii,
-     &                             ommltnn)
       if (npgrd >= 0)
      &  call getelemoverlapindices(npgrd,pgrdol,npgrdol,opgrdoi,opgrdio,opgrdii,
      &                             opgrdnn)
@@ -1941,17 +1937,24 @@ c        --- find index of nearest acceleration element
            endif
          enddo
 
+c        --- Calculate the temporaries here to make sure that they are
+c        --- up to date, in case there have been changes.
+         emltct = cos(emltot)
+         emltst = sin(emltot)
+         emltcp = cos(emltop)
+         emltsp = sin(emltop)
+
 c        --- find index of nearest emlt element
 c        --- The cemlt arrays calculated here are needed for the elements
 c        --- described in terms of their multipole components.
          do io=1,nemltol
-           call getelemid(zz,offset,nemlt,emltzs,emltze,emltol,
+           call getelemid(zz,offset,nemlt,emltfs,emltfe,emltol,
      &                    oemltnn(io),oemltoi(oemltii(io)),oemltio,
      &                    cemltid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            id = cemltid(iz,io)
-           cemltzs(iz,io) = emltzs(id) + offset
-           cemltze(iz,io) = emltze(id) + offset
+           cemltzs(iz,io) = emltfs(id) + offset
+           cemltze(iz,io) = emltfe(id) + offset
            cemltph(iz,io) = emltph(id)
            cemltsf(iz,io) = emltsf(id)
            cemltsc(iz,io) = emltsc(id)
@@ -1979,19 +1982,32 @@ c          --- THIS NEEDS CHECKING
            endif
            cemltox(iz,io) = emltox(imulterr)
            cemltoy(iz,io) = emltoy(imulterr)
+           cemltot(iz,io) = emltot(imulterr)
+           cemltop(iz,io) = emltop(imulterr)
+           cemltct(iz,io) = emltct(imulterr)
+           cemltst(iz,io) = emltst(imulterr)
+           cemltcp(iz,io) = emltcp(imulterr)
+           cemltsp(iz,io) = emltsp(imulterr)
          enddo
+
+c        --- Calculate the temporaries here to make sure that they are
+c        --- up to date, in case there have been changes.
+         mmltct = cos(mmltot)
+         mmltst = sin(mmltot)
+         mmltcp = cos(mmltop)
+         mmltsp = sin(mmltop)
 
 c        --- find index of nearest mmlt element
 c        --- The cmmlt arrays calculated here are needed for the elements
 c        --- described in terms of their multipole components.
          do io=1,nmmltol
-           call getelemid(zz,offset,nmmlt,mmltzs,mmltze,mmltol,
+           call getelemid(zz,offset,nmmlt,mmltfs,mmltfe,mmltol,
      &                    ommltnn(io),ommltoi(ommltii(io)),ommltio,
      &                    cmmltid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            id = cmmltid(iz,io)
-           cmmltzs(iz,io) = mmltzs(id) + offset
-           cmmltze(iz,io) = mmltze(id) + offset
+           cmmltzs(iz,io) = mmltfs(id) + offset
+           cmmltze(iz,io) = mmltfe(id) + offset
            cmmltph(iz,io) = mmltph(id)
            cmmltsf(iz,io) = mmltsf(id)
            cmmltsc(iz,io) = mmltsc(id)
@@ -2019,6 +2035,12 @@ c          --- THIS NEEDS CHECKING
            endif
            cmmltox(iz,io) = mmltox(imulterr)
            cmmltoy(iz,io) = mmltoy(imulterr)
+           cmmltot(iz,io) = mmltot(imulterr)
+           cmmltop(iz,io) = mmltop(imulterr)
+           cmmltct(iz,io) = mmltct(imulterr)
+           cmmltst(iz,io) = mmltst(imulterr)
+           cmmltcp(iz,io) = mmltcp(imulterr)
+           cmmltsp(iz,io) = mmltsp(imulterr)
          enddo
 
 c        --- find index of nearest egrd element
@@ -2385,19 +2407,19 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,nemlt,emltzs,emltze,emltol,
+        call getelemid(zz,offset,nemlt,emltfs,emltfe,emltol,
      &                 oemltnn(io),oemltoi(oemltii(io):),oemltio,id,io)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,nemlt,emltzs,emltze,emltol,
+        call getelemid(zz,offset,nemlt,emltfs,emltfe,emltol,
      &                 oemltnn(1),oemltoi(oemltii(1):),oemltio,id,1)
 c       --- Loop over rest of overlap levels looking for a emlt with lower
 c       --- z start.
         id_temp = id
         do ii=2,nemltol
-          call getelemid(zz,offset_temp,nemlt,emltzs,emltze,emltol,
+          call getelemid(zz,offset_temp,nemlt,emltfs,emltfe,emltol,
      &                   oemltnn(ii),oemltoi(oemltii(ii):),oemltio,id_temp,ii)
-          if (emltzs(id_temp)+offset_temp < emltzs(id)+offset) then
+          if (emltfs(id_temp)+offset_temp < emltfs(id)+offset) then
             id = id_temp
             offset = offset_temp
           endif
@@ -2423,19 +2445,19 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,nmmlt,mmltzs,mmltze,mmltol,
+        call getelemid(zz,offset,nmmlt,mmltfs,mmltfe,mmltol,
      &                 ommltnn(io),ommltoi(ommltii(io):),ommltio,id,io)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,nmmlt,mmltzs,mmltze,mmltol,
+        call getelemid(zz,offset,nmmlt,mmltfs,mmltfe,mmltol,
      &                 ommltnn(1),ommltoi(ommltii(1):),ommltio,id,1)
 c       --- Loop over rest of overlap levels looking for a mmlt with lower
 c       --- z start.
         id_temp = id
         do ii=2,nmmltol
-          call getelemid(zz,offset_temp,nmmlt,mmltzs,mmltze,mmltol,
+          call getelemid(zz,offset_temp,nmmlt,mmltfs,mmltfe,mmltol,
      &                   ommltnn(ii),ommltoi(ommltii(ii):),ommltio,id_temp,ii)
-          if (mmltzs(id_temp)+offset_temp < mmltzs(id)+offset) then
+          if (mmltfs(id_temp)+offset_temp < mmltfs(id)+offset) then
             id = id_temp
             offset = offset_temp
           endif
@@ -3477,18 +3499,19 @@ c  The addition is done in mltlocat so that it is only done once per particle
 c  and not once per particle per multipole component.
 
       integer(ISZ):: io,in,ip
-      real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
-      integer(ISZ), allocatable:: izm(:), imm(:)
-      real(kind=8), allocatable, dimension(:):: xxx, yyy, zzz, ttt, wzm, rr, tt,
-     &                                          mltph, mltsf, tex, tey, tez
+      real(kind=8):: n,v,f,fz,sf,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
+      integer(ISZ), allocatable:: izm(:),imm(:),izl(:)
+      real(kind=8), allocatable, dimension(:):: xxx,yyy,zzz,ttt,wzm,rr,tt,
+     &                                          tex,tey,tez
+      real(kind=8):: ex1,ey1,ez1
       integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
       if (.not. emlts .or. .not. linemlt(0)) return
 
-      allocate(izm(np), imm(np), xxx(np), yyy(np), zzz(np), ttt(np), wzm(np), 
-     &         rr(np), tt(np), mltph(np), mltsf(np), tex(np), tey(np), tez(np),
+      allocate(izm(np),imm(np),izl(np),xxx(np),yyy(np),zzz(np),ttt(np),wzm(np),
+     &         rr(np),tt(np),tex(np),tey(np),tez(np),
      &         stat=allocerror)
       if (allocerror /= 0) then
         print*,"applyemlt: allocation error ",allocerror,
@@ -3503,8 +3526,10 @@ c  and not once per particle per multipole component.
 c       --- Get location of particle relative to moment data.
         call mltlocat(np,xp,yp,npz,zp,nemltsets,dzemlt,nzemlt,nzl,nzlmax,
      &                nemltol,io,cemltzs,cemltze,cemltph,cemltsf,cemltsc,
-     &                cemltim,cemltox,cemltoy,imm,izm,wzm,xxx,yyy,zzz,ttt,
-     &                rr,tt,mltph,mltsf,zlmin,zlframe,dzli,
+     &                cemltim,cemltox,cemltoy,cemltot,cemltop,
+     &                cemltct,cemltst,cemltcp,cemltsp,
+     &                imm,izm,wzm,xxx,yyy,zzz,ttt,
+     &                rr,tt,izl,zlmin,zlframe,dzli,
      &                bends,linbend,cbendzs,cbendze,cbendrc,lslice)
 
 c       --- zero temporary field arrays
@@ -3521,11 +3546,10 @@ c           --- Apply accelerating field and it's pseudomultipoles.
             f = 1./(2.*v+2.)
             do ip=1,np
               if (imm(ip) > 0) then
-                coeffp = mltsf(ip)*
-     &                     (esemltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
-     &                      esemltp(izm(ip)+1,in,imm(ip))*wzm(ip))
-                coeff = mltsf(ip)*
-     &                     (esemlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+                sf = cemltsc(izl(ip),io) + cemltsf(izl(ip),io)
+                coeffp = sf*(esemltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                       esemltp(izm(ip)+1,in,imm(ip))*wzm(ip))
+                coeff = sf*(esemlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
      &                      esemlt(izm(ip)+1,in,imm(ip))*wzm(ip))
                 rpow = rr(ip)**(2*v)
                 tex(ip) = tex(ip) - coeffp*rpow*f*xxx(ip)
@@ -3538,17 +3562,16 @@ c           --- The pure dipole term needs special treatment since it
 c           --- breaks down at r = 0.
             do ip=1,np
               if (imm(ip) > 0) then
-                alpha = mltph(ip) +
+                sf = cemltsc(izl(ip),io) + cemltsf(izl(ip),io)
+                alpha = cemltph(izl(ip),io) +
      &                      esemltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
      &                      esemltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
                 alphap =   (esemltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
      &                      esemltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeff = mltsf(ip)*
-     &                     (esemlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+                coeff = sf*(esemlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      esemlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeffp = mltsf(ip)*
-     &                     (esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                      esemltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeffp = sf*(esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                       esemltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
                 cosnt = cos(alpha)
                 sinnt = sin(alpha)
                 tex(ip) = tex(ip) + coeff*cosnt
@@ -3565,17 +3588,16 @@ c           --- Apply the rest of the multipoles.
             fz = 1./n
             do ip=1,np
               if (imm(ip) > 0) then
-                alpha = tt(ip) - mltph(ip) -
+                sf = cemltsc(izl(ip),io) + cemltsf(izl(ip),io)
+                alpha = tt(ip) - cemltph(izl(ip),io) -
      &                      esemltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
      &                      esemltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
                 alphap =   (esemltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
      &                      esemltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeff = mltsf(ip)*
-     &                     (esemlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+                coeff = sf*(esemlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      esemlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeffp = mltsf(ip)*
-     &                     (esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                      esemltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeffp = sf*(esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                       esemltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
                 cosnt = cos(n*alpha)
                 sinnt = sin(n*alpha)
                 rpow = rr(ip)**(n-2+2*v)
@@ -3586,6 +3608,27 @@ c           --- Apply the rest of the multipoles.
               endif
             enddo
           endif
+        enddo
+
+        do ip=1,np
+
+c         --- Rotate field componets back to the lab frame. These are the
+c         --- same rotations as in mltlocat, but in opposite order with
+c         --- the sign of the angle reversed.
+          if (cemltot(izl(ip),io) .ne. 0.) then
+            ex1 = tex(ip)
+            ez1 = tez(ip)
+            tex(ip) = +ex1*cemltct(izl(ip),io) + ez1*cemltst(izl(ip),io)
+            tez(ip) = -ex1*cemltst(izl(ip),io) + ez1*cemltct(izl(ip),io)
+          endif
+
+          if (cemltop(izl(ip),io) .ne. 0.) then
+            ex1 = tex(ip)
+            ey1 = tey(ip)
+            tex(ip) = +ex1*cemltcp(izl(ip),io) - ey1*cemltsp(izl(ip),io)
+            tey(ip) = +ex1*cemltsp(izl(ip),io) + ey1*cemltcp(izl(ip),io)
+          endif
+
         enddo
 
 c       --- do coordinate transform on fields back to warped coordinates
@@ -3604,8 +3647,8 @@ c       --- do coordinate transform on fields back to warped coordinates
         endif
 
       enddo
-      deallocate(izm, imm, xxx, yyy, zzz, ttt, wzm, 
-     &           rr, tt, mltph, mltsf, tex, tey, tez)
+
+      deallocate(izm,imm,izl,xxx,yyy,zzz,ttt,wzm,rr,tt,tex,tey,tez)
 
 !$OMP MASTER
       if (ltoptimesubs) timeapplyemlt = timeapplyemlt + wtime() - substarttime
@@ -3661,18 +3704,19 @@ c  The addition is done in mltlocat so that it is only done once per particle
 c  and not once per particle per multipole component.
 
       integer(ISZ):: io,in,ip
-      real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
-      integer(ISZ), allocatable:: izm(:), imm(:)
-      real(kind=8), allocatable, dimension(:):: xxx, yyy, zzz, ttt, wzm, rr, tt,
-     &                                          mltph, mltsf, tbx, tby, tbz
+      real(kind=8):: n,v,f,fz,sf,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
+      integer(ISZ), allocatable:: izm(:),izl(:),imm(:)
+      real(kind=8), allocatable, dimension(:):: xxx,yyy,zzz,ttt,wzm,rr,tt,
+     &                                          tbx,tby,tbz
+      real(kind=8):: bx1,by1,bz1
       integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
       if (.not. mmlts .or. .not. linmmlt(0)) return
 
-      allocate(izm(np), imm(np), xxx(np), yyy(np), zzz(np), ttt(np), wzm(np), 
-     &         rr(np), tt(np), mltph(np), mltsf(np), tbx(np), tby(np), tbz(np),
+      allocate(izm(np),izl(np),imm(np),xxx(np),yyy(np),zzz(np),ttt(np),wzm(np),
+     &         rr(np),tt(np),tbx(np),tby(np),tbz(np),
      &         stat=allocerror)
       if (allocerror /= 0) then
         print*,"applymmlt: allocation error ",allocerror,
@@ -3687,8 +3731,10 @@ c  and not once per particle per multipole component.
 c       --- Get location of particle relative to moment data.
         call mltlocat(np,xp,yp,npz,zp,nmmltsets,dzmmlt,nzmmlt,nzl,nzlmax,
      &                nmmltol,io,cmmltzs,cmmltze,cmmltph,cmmltsf,cmmltsc,
-     &                cmmltim,cmmltox,cmmltoy,imm,izm,wzm,xxx,yyy,zzz,ttt,
-     &                rr,tt,mltph,mltsf,zlmin,zlframe,dzli,
+     &                cmmltim,cmmltox,cmmltoy,cmmltot,cmmltop,
+     &                cmmltct,cmmltst,cmmltcp,cmmltsp,
+     &                imm,izm,wzm,xxx,yyy,zzz,ttt,
+     &                rr,tt,izl,zlmin,zlframe,dzli,
      &                bends,linbend,cbendzs,cbendze,cbendrc,lslice)
 
 c       --- zero the temporary field arrays
@@ -3705,12 +3751,11 @@ c           --- Apply solenoidal field component and it's pseudomultipoles.
             f = 1./(2.*v+2.)
             do ip=1,np
               if (imm(ip) > 0) then
-                coeffp = mltsf(ip)*
-     &                    (msmmltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
-     &                     msmmltp(izm(ip)+1,in,imm(ip))*wzm(ip))
-                coeff = mltsf(ip)*
-     &                    (msmmlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                     msmmlt(izm(ip)+1,in,imm(ip))*wzm(ip))
+                sf = cmmltsc(izl(ip),io) + cmmltsf(izl(ip),io)
+                coeffp = sf*(msmmltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                       msmmltp(izm(ip)+1,in,imm(ip))*wzm(ip))
+                coeff = sf*(msmmlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                      msmmlt(izm(ip)+1,in,imm(ip))*wzm(ip))
                 rpow = rr(ip)**(2*v)
                 tbx(ip) = tbx(ip) - coeffp*rpow*f*xxx(ip)
                 tby(ip) = tby(ip) - coeffp*rpow*f*yyy(ip)
@@ -3722,17 +3767,16 @@ c           --- The pure dipole term needs special treatment since it
 c           --- breaks down at r = 0.
             do ip=1,np
               if (imm(ip) > 0) then
-                alpha = mltph(ip) +
+                sf = cmmltsc(izl(ip),io) + cmmltsf(izl(ip),io)
+                alpha = cmmltph(izl(ip),io) +
      &                      msmmltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
      &                      msmmltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
                 alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
      &                      msmmltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeff = mltsf(ip)*
-     &                     (msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+                coeff = sf*(msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      msmmlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeffp = mltsf(ip)*
-     &                     (msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                      msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeffp = sf*(msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                       msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
                 cosnt = cos(alpha)
                 sinnt = sin(alpha)
                 tbx(ip) = tbx(ip) - coeff*rpow*sinnt
@@ -3749,17 +3793,16 @@ c           --- Apply the rest of the multipoles.
             fz = 1./n
             do ip=1,np
               if (imm(ip) > 0) then
-                alpha = tt(ip) - mltph(ip) -
+                sf = cmmltsc(izl(ip),io) + cmmltsf(izl(ip),io)
+                alpha = tt(ip) - cmmltph(izl(ip),io) -
      &                      msmmltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
      &                      msmmltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
                 alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
      &                      msmmltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeff = mltsf(ip)*
-     &                     (msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+                coeff = sf*(msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      msmmlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeffp = mltsf(ip)*
-     &                     (msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                      msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeffp = sf*(msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                       msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
                 cosnt = cos(n*alpha)
                 sinnt = sin(n*alpha)
                 rpow = rr(ip)**(n-2+2*v)
@@ -3770,6 +3813,27 @@ c           --- Apply the rest of the multipoles.
               endif
             enddo
           endif
+        enddo
+
+        do ip=1,np
+
+c         --- Rotate field componets back to the lab frame. These are the
+c         --- same rotations as in mltlocat, but in opposite order with
+c         --- the sign of the angle reversed.
+          if (cmmltot(izl(ip),io) .ne. 0.) then
+            bx1 = tbx(ip)
+            bz1 = tbz(ip)
+            tbx(ip) = +bx1*cmmltct(izl(ip),io) + bz1*cmmltst(izl(ip),io)
+            tbz(ip) = -bx1*cmmltst(izl(ip),io) + bz1*cmmltct(izl(ip),io)
+          endif
+
+          if (cmmltop(izl(ip),io) .ne. 0.) then
+            bx1 = tbx(ip)
+            by1 = tby(ip)
+            tbx(ip) = +bx1*cmmltcp(izl(ip),io) - by1*cmmltsp(izl(ip),io)
+            tby(ip) = +bx1*cmmltsp(izl(ip),io) + by1*cmmltcp(izl(ip),io)
+          endif
+
         enddo
 
 c       --- do coordinate transform on fields back to warped coordinates
@@ -3787,20 +3851,72 @@ c       --- do coordinate transform on fields back to warped coordinates
           enddo
         endif
       enddo
-      deallocate(izm, imm, xxx, yyy, zzz, ttt, wzm, 
-     &           rr, tt, mltph, mltsf, tbx, tby, tbz)
+      deallocate(izm,izl,imm,xxx,yyy,zzz,ttt,wzm,rr,tt,tbx,tby,tbz)
 
 !$OMP MASTER
       if (ltoptimesubs) timeapplymmlt = timeapplymmlt + wtime() - substarttime
 !$OMP END MASTER
       return
       end
+c============================================================================ 
+      subroutine mltgetfulllength(nmlt,mltzs,mltze,mltap,mltid,mltot,
+     &                            mltfs,mltfe)
+      integer(ISZ):: nmlt
+      real(kind=8):: mltzs(0:nmlt),mltze(0:nmlt),mltot(0:nmlt),mltap(0:nmlt)
+      integer(ISZ):: mltid(0:nmlt)
+      real(kind=8):: mltfs(0:nmlt),mltfe(0:nmlt)
+
+c Calculate the full axial length of the multipole elements, including the
+c extra length that may be taken up if the element has a rotation away from
+c the z-axis. This uses the specified aperture as the outer extent of the
+c fields.
+c The results are put in mltfs and mltfe.
+
+      integer(ISZ):: im
+      real(kind=8):: zcent
+      real(kind=8):: xmin,xmax,zmin,zmax
+      real(kind=8):: ct,st
+      real(kind=8):: xl(4),zl(4)
+      real(kind=8):: xr(4),zr(4)
+
+      do im = 0,nmlt
+
+c       --- The transverse min and max of the grid
+        xmin = -mltap(im)
+        xmax = +mltap(im)
+
+c       --- Get the zmin and zmax relative to the center of the grid.
+        zcent = 0.5*(mltzs(im) + mltze(im))
+        zmin = mltzs(im) - zcent
+        zmax = mltze(im) - zcent
+
+c       --- Generate the locations of the four corners of the grid in
+c       --- the rotated frame.
+        xr = (/xmin,xmax,xmin,xmax/)
+        zr = (/zmin,zmin,zmax,zmax/)
+
+c       --- Precalculate the cosines and sines.
+        ct = cos(mltot(im))
+        st = sin(mltot(im))
+
+c       --- Convert the corners into the lab frame
+        xl = +xr*ct + zr*st
+        zl = -xr*st + zr*ct
+
+        mltfs(im) = min(mltzs(im),zcent + minval(zl))
+        mltfe(im) = max(mltze(im),zcent + maxval(zl))
+
+      enddo
+
+      return
+      end
 c=============================================================================
       subroutine mltlocat(np,xp,yp,npz,zp,nmltsets,dzmlt,nzmlt,nzl,nzlmax,
      &                    nol,io,cmltzs,cmltze,cmltph,cmltsf,cmltsc,
-     &                    cmltim,cmltox,cmltoy,
-     &                    imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
-     &                    mltph,mltsf,zlmin,zlframe,dzli,bends,linbend,
+     &                    cmltim,cmltox,cmltoy,cmltot,cmltop,
+     &                    cmltct,cmltst,cmltcp,cmltsp,
+     &                    imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,izl,
+     &                    zlmin,zlframe,dzli,bends,linbend,
      &                    cbendzs,cbendze,cbendrc,lslice)
       integer(ISZ):: np,npz,nmltsets,nzl,nzlmax,nol,io
       real(kind=8):: xp(np),yp(np),zp(npz)
@@ -3811,9 +3927,13 @@ c=============================================================================
       real(kind=8):: cmltsf(0:nzlmax,nol),cmltsc(0:nzlmax,nol)
       integer(ISZ):: cmltim(0:nzlmax,nol)
       real(kind=8):: cmltox(0:nzlmax,nol),cmltoy(0:nzlmax,nol)
+      real(kind=8):: cmltot(0:nzlmax,nol),cmltop(0:nzlmax,nol)
+      real(kind=8):: cmltct(0:nzlmax,nol),cmltst(0:nzlmax,nol)
+      real(kind=8):: cmltcp(0:nzlmax,nol),cmltsp(0:nzlmax,nol)
       integer(ISZ):: imm(np),izm(np)
       real(kind=8):: wzm(np),xxx(np),yyy(np),zzz(np)
-      real(kind=8):: ttt(np),rr(np),tt(np),mltph(np),mltsf(np)
+      real(kind=8):: ttt(np),rr(np),tt(np)
+      integer(ISZ):: izl(np)
       logical(ISZ):: bends,linbend
       real(kind=8):: cbendzs(0:nzlmax),cbendze(0:nzlmax),cbendrc(0:nzlmax)
       real(kind=8):: zlmin,zlframe,dzli
@@ -3826,139 +3946,205 @@ c     --- particle and the nearest mult).
 c  Assumes that at most one bend will be between particle and the mult center.
 
       integer(ISZ):: iz,ip
-      real(kind=8):: zz,cent,dzi,rrr,bzs,bze,bendrci
+      real(kind=8):: zptemp,xx,yy,zz,x1,y1,z1
+      real(kind=8):: zcent,zlen,dzi,rrr,bzs,bze,bendrci
 
       if (lslice) then
-        zz = zp(1)
+        zptemp = zp(1)
         iz = 0
       endif
+
       if (.not. bends .or. .not. linbend) then
         do ip=1,np
+
           if (.not. lslice) then
-            zz = zp(ip)
+            zptemp = zp(ip)
 c           --- find z-cell in which particle lies
-            iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
+            iz = max(0., (zptemp - zlmin - zlframe)*dzli + 0.5)
             iz = min(nzl, iz)
           endif
+
+          izl(ip) = iz
           imm(ip) = cmltim(iz,io)
           if (imm(ip) <= 0) cycle
+
           dzi = 1./dzmlt(imm(ip))
-          mltph(ip) = cmltph(iz,io)
-          mltsf(ip) = cmltsc(iz,io) + cmltsf(iz,io)
+          zcent = 0.5*(cmltzs(iz,io) + cmltze(iz,io))
+          zlen = nzmlt(imm(ip))*dzmlt(imm(ip))
+
+c         --- Rotate the positions into the frame of the multipole data
+          xx = xp(ip) - cmltox(iz,io)
+          yy = yp(ip) - cmltoy(iz,io)
+          zz = zptemp - zcent
+
+c         --- transverse rotation to take into account an active rotation 
+c         --- of the field element. Rotation is relative to the z center.
+c         --- Particles are rotated to the frame of the element.
+c         --- Later, the field components accumulated are rotated back. 
+c         --- First, rotate by cmltop about the z axis.
+          if (cmltop(iz,io) .ne. 0.) then
+            x1 = xx
+            y1 = yy
+            xx = +x1*cmltcp(iz,io) + y1*cmltsp(iz,io)
+            yy = -x1*cmltsp(iz,io) + y1*cmltcp(iz,io)
+          endif
+
+c         --- then by cmltot about the new y axis
+          if (cmltot(iz,io) .ne. 0.) then
+            x1 = xx
+            z1 = zz
+            xx = x1*cmltct(iz,io) - z1*cmltst(iz,io)
+            zz = x1*cmltst(iz,io) + z1*cmltct(iz,io)
+          endif
+
 c         --- find z location relative to multipole data
-          izm(ip) = int((zz-cmltzs(iz,io))*dzi)
-          wzm(ip) =     (zz-cmltzs(iz,io))*dzi - izm(ip)
-          if (zz < cmltzs(iz,io)) then
+          izm(ip) = int((zz+zlen/2.)*dzi)
+          wzm(ip) =     (zz+zlen/2.)*dzi - izm(ip)
+          if (zz < -zlen/2.) then
             izm(ip) = 0
             wzm(ip) = 0
             imm(ip) = 0
-          elseif (zz > cmltze(iz,io)) then
+          elseif (zz > +zlen/2.) then
             izm(ip) = nzmlt(imm(ip))
             wzm(ip) = 0
             imm(ip) = 0
           endif
-c         --- Set temporary coordinates and add offset if particle within
-c         --- an element.
-          if (imm(ip) > 0) then
-            xxx(ip) = xp(ip) - cmltox(iz,io)
-            yyy(ip) = yp(ip) - cmltoy(iz,io)
-            zzz(ip) = zz
-            rr(ip) = sqrt(xxx(ip)**2 + yyy(ip)**2)
-            tt(ip) = atan2(yyy(ip),dvnz(xxx(ip)))
-          endif
+
+c         --- Saved the coordinates relative to the multiple data.
+          xxx(ip) = xx
+          yyy(ip) = yy
+          zzz(ip) = zz + zcent
+          rr(ip) = sqrt(xx**2 + yy**2)
+          tt(ip) = atan2(yy,dvnz(xx))
+
         enddo
+
       else
+c       --- With bends
         do ip=1,np
+
           if (.not. lslice) then
-            zz = zp(ip)
+            zptemp = zp(ip)
 c           --- find z-cell in which particle lies
-            iz = max(0., (zz - zlmin - zlframe)*dzli)
+            iz = max(0., (zptemp - zlmin - zlframe)*dzli)
             iz = min(nzl, iz)
           endif
+
 c         --- set temporaries
+          izl(ip) = iz
           imm(ip) = cmltim(iz,io)
           if (imm(ip) <= 0) cycle
+
           dzi = 1./dzmlt(imm(ip))
-          cent = 0.5*(cmltzs(iz,io) + cmltze(iz,io))
-          xxx(ip) = xp(ip)
-          zzz(ip) = zz
-          if (cmltzs(iz,io) <= zz .and. zz <= cmltze(iz,io)) then
-            mltph(ip) = cmltph(iz,io)
-            mltsf(ip) = cmltsc(iz,io) + cmltsf(iz,io)
+          zcent = 0.5*(cmltzs(iz,io) + cmltze(iz,io))
+          zlen = nzmlt(imm(ip))*dzmlt(imm(ip))
+
+          xx = xp(ip)
+          zz = zptemp
+
+          if (cmltzs(iz,io) <= zptemp .and. zptemp <= cmltze(iz,io)) then
 c           --- apply coordinate change left of mult, using index of (iz)
-            if (zz <= cent) then
+            if (zptemp <= zcent) then
               bendrci = 1./cbendrc(iz)
 c             --- find end of bend: if bend extends beyond center of mult, use
 c             --- that as the end of the bend since moments are in coordinate
 c             --- system at the center of the mult
-              if (cbendze(iz) < cent) then
+              if (cbendze(iz) < zcent) then
                 bze = cbendze(iz)
               else
-                bze = cent
+                bze = zcent
               endif
 c             --- if particle is not in bend and full bend is between particle
 c             --- and mult
               rrr = xp(ip) + cbendrc(iz)
-              if (zz < cbendzs(iz) .and. cbendzs(iz) < cent) then
+              if (zptemp < cbendzs(iz) .and. cbendzs(iz) < zcent) then
                 ttt(ip) = (bze - cbendzs(iz))*bendrci
-                zzz(ip) = bze - rrr*sin(ttt(ip)) -
-     &                    (cbendzs(iz) - zz)*cos(ttt(ip))
-                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(iz) -
-     &                    (cbendzs(iz) - zz)*sin(ttt(ip))
+                zz = bze - rrr*sin(ttt(ip))
+     &               - (cbendzs(iz) - zptemp)*cos(ttt(ip))
+                xx = rrr*cos(ttt(ip)) - cbendrc(iz)
+     &               - (cbendzs(iz) - zptemp)*sin(ttt(ip))
 c             --- if particle is in bend
-              elseif (zz < bze .and. cbendzs(iz) < cent) then
-                ttt(ip) = (bze - zz)*bendrci
-                zzz(ip) = bze - rrr*sin(ttt(ip))
-                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(iz)
+              elseif (zptemp < bze .and. cbendzs(iz) < zcent) then
+                ttt(ip) = (bze - zptemp)*bendrci
+                zz = bze - rrr*sin(ttt(ip))
+                xx = rrr*cos(ttt(ip)) - cbendrc(iz)
               endif
 c           --- apply coordinate change right of mult, using index of (iz+1)
-            elseif (zz >= cent .and. iz < nzl) then
+            elseif (zptemp >= zcent .and. iz < nzl) then
               bendrci = 1./cbendrc(iz+1)
 c             --- find start of bend: if bend extends beyond center of mult, use
 c             --- that as the start of the bend since moments are in coordinate
 c             --- system at the center of the mult
-              if (cbendzs(iz+1) < cent) then
-                bzs = cent
+              if (cbendzs(iz+1) < zcent) then
+                bzs = zcent
               else
                 bzs = cbendzs(iz+1)
               endif
 c             --- if particle is not in bend and full bend is between particle
 c             --- and mult
               rrr = xp(ip) + cbendrc(iz+1)
-              if (zz > cbendze(iz+1) .and. cbendze(iz+1) > cent) then
+              if (zptemp > cbendze(iz+1) .and. cbendze(iz+1) > zcent) then
                 ttt(ip) =  - (cbendze(iz+1) - bzs)*bendrci
-                zzz(ip) = bzs - rrr*sin(ttt(ip)) +
-     &                    (zz - cbendze(iz+1))*cos(ttt(ip))
-                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(iz+1) +
-     &                    (zz - cbendze(iz+1))*sin(ttt(ip))
+                zz = bzs - rrr*sin(ttt(ip))
+     &               + (zptemp - cbendze(iz+1))*cos(ttt(ip))
+                xx = rrr*cos(ttt(ip)) - cbendrc(iz+1)
+     &               + (zptemp - cbendze(iz+1))*sin(ttt(ip))
 c             --- if particle is in bend
-              elseif (zz > bzs .and. cbendze(iz+1) > cent) then
-                ttt(ip) = - (zz - bzs)*bendrci
-                zzz(ip) = bzs - rrr*sin(ttt(ip))
-                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(iz+1)
+              elseif (zptemp > bzs .and. cbendze(iz+1) > zcent) then
+                ttt(ip) = - (zptemp - bzs)*bendrci
+                zz = bzs - rrr*sin(ttt(ip))
+                xx = rrr*cos(ttt(ip)) - cbendrc(iz+1)
               endif
             endif
           endif
-c         --- end of coordinate transformation
+c         --- end of coordinate transformation out of the bends
 
-          izm(ip) = int((zzz(ip)-cmltzs(iz,io))*dzi)
-          wzm(ip) =     (zzz(ip)-cmltzs(iz,io))*dzi - izm(ip)
-          if (zzz(ip) < cmltzs(iz,io)) then
+c         --- Rotate the positions into the frame of the multipole data
+c         --- xx and zz have been converted to the lab frame, out of the bends
+          xx = xx     - cmltox(iz,io)
+          yy = yp(ip) - cmltoy(iz,io)
+          zz = zz     - zcent
+
+c         --- transverse rotation to take into account an active rotation 
+c         --- of the field element. Rotation is relative to the z center.
+c         --- Particles are rotated to the frame of the element.
+c         --- Later, the field components accumulated are rotated back. 
+c         --- First, rotate by cmltop about the z axis.
+          if (cmltop(iz,io) .ne. 0.) then
+            x1 = xx
+            y1 = yy
+            xx = +x1*cmltcp(iz,io) + y1*cmltsp(iz,io)
+            yy = -x1*cmltsp(iz,io) + y1*cmltcp(iz,io)
+          endif
+
+c         --- then by cmltot about the new y axis
+          if (cmltot(iz,io) .ne. 0.) then
+            x1 = xx
+            z1 = zz
+            xx = x1*cmltct(iz,io) - z1*cmltst(iz,io)
+            zz = x1*cmltst(iz,io) + z1*cmltct(iz,io)
+          endif
+
+c         --- find z location relative to multipole data
+          izm(ip) = int((zz+zlen/2.)*dzi)
+          wzm(ip) =     (zz+zlen/2.)*dzi - izm(ip)
+          if (zz < -zlen/2.) then
             izm(ip) = 0
             wzm(ip) = 0
             imm(ip) = 0
-          elseif (zzz(ip) > cmltze(iz,io)) then
+          elseif (zz > +zlen/2.) then
             izm(ip) = nzmlt(imm(ip))
             wzm(ip) = 0
             imm(ip) = 0
           endif
-c         --- Add offset
-          if (imm(ip) > 0) then
-            xxx(ip) = xxx(ip) - cmltox(iz,io)
-            yyy(ip) = yp(ip) -  cmltoy(iz,io)
-            rr(ip) = sqrt(xxx(ip)**2 + yyy(ip)**2)
-            tt(ip) = atan2(yyy(ip),dvnz(xxx(ip)))
-          endif
+
+c         --- Saved the coordinates relative to the multiple data.
+          xxx(ip) = xx
+          yyy(ip) = yy
+          zzz(ip) = zz + zcent
+          rr(ip) = sqrt(xx**2 + yy**2)
+          tt(ip) = atan2(yy,dvnz(xx))
+
         enddo
       endif
 

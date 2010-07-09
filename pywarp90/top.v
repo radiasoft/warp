@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.282 $, $Date: 2010/07/01 22:29:12 $
+#@(#) File TOP.V, version $Revision: 3.283 $, $Date: 2010/07/09 23:47:47 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.282 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.283 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -395,6 +395,9 @@ emltsc(0:nemlt)   _real [1] /1./ # Scale factor for electric multipole element
 emltid(0:nemlt)   _integer    # Index of electric multipole dataset 
 emltox(0:neerr)   _real [m]   # Offset in x of electric multipole centers
 emltoy(0:neerr)   _real [m]   # Offset in y of electric multipole centers
+emltot(0:nemlt) _real [rad] /0./ # Offset angle theta relative to the z-axis.
+emltop(0:nemlt) _real [rad] /0./ # Offset angle phi, rotation in the
+                                 # transverse plane.
 emltrr(0:nemlt)   _real [m]   # Radius of electrostatic quadrupole rod
 emltrl(0:nemlt)   _real [m]   # Length of electrostatic quadrupole rod
 emltgl(0:nemlt)   _real [m]   # Length of electrostatic quadrupole gap
@@ -403,6 +406,14 @@ emltpw(0:nemlt)   _real [m]   # End plate width of electrostatic quadrupole
 emltpa(0:nemlt)   _real [m]   # End plate aperture of electrostatic quadrupole
 emltol(0:nemlt)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
+emltfs(0:nemlt)   _real [m]   # Full Z starts of the multiple data,
+                              # including rotation off z-axis (autoset)
+emltfe(0:nemlt)   _real [m]   # Full Z ends of the multiple data,
+                              # including rotation off z-axis (autoset)
+emltct(0:nemlt)   _real [1]   # Cosine of theta (autoset)
+emltst(0:nemlt)   _real [1]   # Sine of theta (autoset)
+emltcp(0:nemlt)   _real [1]   # Cosine of phi (autoset)
+emltsp(0:nemlt)   _real [1]   # Sine of phi (autoset)
 mmltzs(0:nmmlt)   _real [m]   # Z's of magnetic multipole element starts
 mmltze(0:nmmlt)   _real [m]   # Z's of magnetic multipole element ends
 mmltap(0:nmmlt)   _real [m]   # Aperture in magnetic multipole elements
@@ -418,8 +429,19 @@ mmltsc(0:nmmlt)   _real [1] /1./ # Scale factor for magnetic multipole element
 mmltid(0:nmmlt)   _integer    # Index of magnetic multipole dataset
 mmltox(0:nmerr)   _real [m]   # Offset in x of magnetic multipole centers
 mmltoy(0:nmerr)   _real [m]   # Offset in y of magnetic multipole centers
+mmltot(0:nmmlt) _real [rad] /0./ # Offset angle theta relative to the z-axis.
+mmltop(0:nmmlt) _real [rad] /0./ # Offset angle phi, rotation in the
+                                 # transverse plane.
 mmltol(0:nmmlt)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
+mmltfs(0:nmmlt)   _real [m]   # Full Z starts of the multiple data,
+                              # including rotation off z-axis (autoset)
+mmltfe(0:nmmlt)   _real [m]   # Full Z ends of the multiple data,
+                              # including rotation off z-axis (autoset)
+mmltct(0:nmmlt)   _real [1]   # Cosine of theta (autoset)
+mmltst(0:nmmlt)   _real [1]   # Sine of theta (autoset)
+mmltcp(0:nmmlt)   _real [1]   # Cosine of phi (autoset)
+mmltsp(0:nmmlt)   _real [1]   # Sine of phi (autoset)
 acclzs(0:naccl)   _real [m]   # Z's of acceleration gap starts
 acclze(0:naccl)   _real [m]   # Z's of acceleration gap ends
 acclez(0:naccl)   _real [V/m] # Ez's of acceleration gaps, constant part
@@ -820,6 +842,12 @@ cemltid(0:nzlmax,nemltol) _integer         # by z, Index of emlt arrays
 cemltim(0:nzlmax,nemltol) _integer         # by z, Index of multipole dataset
 cemltox(0:nzlmax,nemltol)    _real [m]     # by z, Offset in x of mult centers
 cemltoy(0:nzlmax,nemltol)    _real [m]     # by z, Offset in y of mult centers
+cemltot(0:nzlmax,nemltol)    _real [rad]   # by z, Offset angle theta relative to the z-axis
+cemltop(0:nzlmax,nemltol)    _real [rad]   # by z, Offset angle phi, rotation in the transverse plane.
+cemltct(0:nzlmax,nmmltol)    _real [1]     # by z, Cosine of theta
+cemltst(0:nzlmax,nmmltol)    _real [1]     # by z, Sine of theta
+cemltcp(0:nzlmax,nmmltol)    _real [1]     # by z, Cosine of phi
+cemltsp(0:nzlmax,nmmltol)    _real [1]     # by z, Sine of phi
 cmmltzs(0:nzlmax,nmmltol)    _real [m]     # by z, Z's of magnetic mult starts
 cmmltze(0:nzlmax,nmmltol)    _real [m]     # by z, Z's of magnetic mult ends
 cmmltph(0:nzlmax,nmmltol)    _real [rad]   # by z, Phase of magnetic mult
@@ -829,6 +857,12 @@ cmmltid(0:nzlmax,nmmltol) _integer         # by z, Index of mmlt arrays
 cmmltim(0:nzlmax,nmmltol) _integer         # by z, Index of multipole dataset
 cmmltox(0:nzlmax,nmmltol)    _real [m]     # by z, Offset in x of mult centers
 cmmltoy(0:nzlmax,nmmltol)    _real [m]     # by z, Offset in y of mult centers
+cmmltot(0:nzlmax,nmmltol)    _real [rad]   # by z, Offset angle theta relative to the z-axis
+cmmltop(0:nzlmax,nmmltol)    _real [rad]   # by z, Offset angle phi, rotation in the transverse plane.
+cmmltct(0:nzlmax,nmmltol)    _real [1]     # by z, Cosine of theta
+cmmltst(0:nzlmax,nmmltol)    _real [1]     # by z, Sine of theta
+cmmltcp(0:nzlmax,nmmltol)    _real [1]     # by z, Cosine of phi
+cmmltsp(0:nzlmax,nmmltol)    _real [1]     # by z, Sine of phi
 cacclzs(0:nzlmax,nacclol)    _real [m]     # by z, Z's of accelerator gap start
 cacclze(0:nzlmax,nacclol)    _real [m]     # by z, Z's of accelerator gap ends
 cacclez(0:nzlmax,nacclol)    _real [V/m]   # by z, const Ez's of accl gaps
