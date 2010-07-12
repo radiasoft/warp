@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.283 $, $Date: 2010/07/09 23:47:47 $
+#@(#) File TOP.V, version $Revision: 3.284 $, $Date: 2010/07/12 18:40:17 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.283 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.284 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -844,10 +844,10 @@ cemltox(0:nzlmax,nemltol)    _real [m]     # by z, Offset in x of mult centers
 cemltoy(0:nzlmax,nemltol)    _real [m]     # by z, Offset in y of mult centers
 cemltot(0:nzlmax,nemltol)    _real [rad]   # by z, Offset angle theta relative to the z-axis
 cemltop(0:nzlmax,nemltol)    _real [rad]   # by z, Offset angle phi, rotation in the transverse plane.
-cemltct(0:nzlmax,nmmltol)    _real [1]     # by z, Cosine of theta
-cemltst(0:nzlmax,nmmltol)    _real [1]     # by z, Sine of theta
-cemltcp(0:nzlmax,nmmltol)    _real [1]     # by z, Cosine of phi
-cemltsp(0:nzlmax,nmmltol)    _real [1]     # by z, Sine of phi
+cemltct(0:nzlmax,nemltol)    _real [1]     # by z, Cosine of theta
+cemltst(0:nzlmax,nemltol)    _real [1]     # by z, Sine of theta
+cemltcp(0:nzlmax,nemltol)    _real [1]     # by z, Cosine of phi
+cemltsp(0:nzlmax,nemltol)    _real [1]     # by z, Sine of phi
 cmmltzs(0:nzlmax,nmmltol)    _real [m]     # by z, Z's of magnetic mult starts
 cmmltze(0:nzlmax,nmmltol)    _real [m]     # by z, Z's of magnetic mult ends
 cmmltph(0:nzlmax,nmmltol)    _real [rad]   # by z, Phase of magnetic mult
