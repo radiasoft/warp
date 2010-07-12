@@ -345,6 +345,9 @@ REAL(8) :: dr,dz,rmin,zmin
   if(l_bgrid) then
     g%nrb=g%nr
     g%nzpb=g%nzp
+  else
+    g%nrb = 0
+    g%nzpb = 0
   end if
   call GRIDtypeallot(g)
   g%gid=ngrids+1
