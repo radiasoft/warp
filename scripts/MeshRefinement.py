@@ -4,7 +4,7 @@ from __future__ import generators
 __all__ = ['MeshRefinement',
            'MRBlock3D','MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
            'MRBlockImplicit2D','EMMRBlock']
-MeshRefinement_version = "$Id: MeshRefinement.py,v 1.173 2010/07/01 21:56:42 dave Exp $"
+MeshRefinement_version = "$Id: MeshRefinement.py,v 1.174 2010/07/14 00:46:23 dave Exp $"
 from warp import *
 from find_mgparam import find_mgparam
 import operator
@@ -955,7 +955,7 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
     """
     assert self is self.root,"This should only be called by the root block"
     if npes <= 1 or self.l_EM: return
-    if len(self.children) == 0: return
+    #if len(self.children) == 0: return
 
     # --- All blocks first send the overlapping sourcep to the neighbors.
     # --- Note that the precedences for sourcep is handled locally so
