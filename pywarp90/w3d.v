@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.309 $, $Date: 2010/06/30 23:38:57 $
+#@(#) File W3D.V, version $Revision: 3.310 $, $Date: 2010/07/22 22:55:05 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.309 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.310 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -959,6 +959,8 @@ loadrho3d(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,
           lzero:logical) 
              subroutine # Provides a simple interface to the charge density
                         # loading routine setrho3d
+finalizerho() subroutine # Finish the rho accumulation, taking care of parallel
+                         # communication and boundary conditions
 fetchphi(n:integer,x(n):real,y(n):real,z(n):real,p(n):real)
              subroutine # Fetches the electrostatic potential at the given
                         # list of locations. It uses whatever geometry and
