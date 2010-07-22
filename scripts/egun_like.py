@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.65 2008/11/19 18:29:59 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.66 2010/07/22 22:59:43 dave Exp $"
 
 
 ##############################################################################
@@ -508,10 +508,14 @@ set when a current is specified"""
     # --- over.
     if lstatusline: print ''
 
-    # --- The call to perrho3d is primarily needed for the parallel version.
+    # --- Apply the rho boundary conditions and handle any parallel
+    # --- communication.:This is done here before the rhoparam is applied,
+    # --- since the boundary conditions have already been applied to the
+    # --- previous rho and so that the rho is in the rho arrays for the
+    # --- field solver (instead of the rhop arrays).
     if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None):
       frz.l_distribute = false
-    applyrhoboundaryconditions()
+    finalizerho()
     if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None):
       frz.l_distribute = true
 
