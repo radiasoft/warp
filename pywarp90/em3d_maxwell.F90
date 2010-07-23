@@ -4595,7 +4595,7 @@ real(8)::r,r1,r2
 
   if (f%l_2drz) then
     j = f%ixmin
-    f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(0.25*pi*f%dx)
+    f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(pi*f%dx)
     do j=f%ixmin+1,f%ixmax
       r = abs(j*f%dx)
       f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(2.*pi*r)
@@ -4634,7 +4634,7 @@ real(8)::r
 
   if (f%l_2drz) then
     j = f%ixmin
-    f%rho(j,:,:) = f%rho(j,:,:)/(0.25*pi*f%dx)
+    f%rho(j,:,:) = f%rho(j,:,:)/(pi*f%dx)
     do j=f%ixmin+1,f%ixmax
       r = abs(j)*f%dx
       f%rho(j,:,:) = f%rho(j,:,:)/(2.*pi*r)
