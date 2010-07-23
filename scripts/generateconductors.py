@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.231 2010/07/22 23:00:44 dave Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.232 2010/07/23 23:18:11 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3965,6 +3965,7 @@ Torus
     kwlist = ['r1','r2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       ztorusconductorf,ztorusconductord,ztorusintercept,
+                      zsrfrvconductorfnew,
                       kw=kw)
     self.r1 = r1
     self.r2 = r2
@@ -3972,6 +3973,24 @@ Torus
     rmax = self.r1 + self.r2
     self.createextent([-rmax,-rmax,-self.r2],
                       [+rmax,+rmax,+self.r2])
+
+  def gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                     nx,ny,nz,ix,iy,iz,mglevel):
+    # --- This converts the ZTorus data into the format needed
+    # --- by the ZSrfrv generator. This is done instead of writing a
+    # --- specialized routine to generate the grid intercept data for a torus.
+    kwlistsave = self.kwlist
+    self.kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
+    self.nn = 3
+    self.rsrf = [self.r1,self.r1,self.r1]
+    self.zsrf = [self.r2,-self.r2,self.r2]
+    self.rad = [self.r2,-self.r2]
+    self.rc = [self.r1,self.r1]
+    self.zc = [0.,0.]
+    result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                                     nx,ny,nz,ix,iy,iz,mglevel)
+    self.kwlist = kwlistsave
+    return result
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
