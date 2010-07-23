@@ -195,20 +195,20 @@ subroutine depose_jxjy_esirkepov_linear_serial_2d(j,np,xp,yp,xpold,ypold,uzp,gam
   return
 end subroutine depose_jxjy_esirkepov_linear_serial_2d
 
-subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,zmin, &
+subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,zmin, &
                                                  dt,dx,dz,nx,nz,nxguard,nzguard, &
-                                                 nox,noz,l_particles_weight,l4symtry)
+                                                 nox,noz,l_particles_weight,l4symtry,l_2drz)
    implicit none
    integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard
    real(kind=8), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,3), intent(in out) :: cj
-   real(kind=8), dimension(np) :: xp,zp,uxp,uyp,uzp,gaminv,w
+   real(kind=8), dimension(np) :: xp,yp,zp,uxp,uyp,uzp,gaminv,w
    real(kind=8) :: q,dt,dx,dz,xmin,zmin
-   logical(ISZ) :: l_particles_weight,l4symtry
+   logical(ISZ) :: l_particles_weight,l4symtry,l_2drz
 
    real(kind=8) :: dxi,dzi,dtsdx,dtsdz,xint,yint,zint
    real(kind=8),dimension(-int(nox/2)-1:int((nox+1)/2)+1, &
                           -int(noz/2)-1:int((noz+1)/2)+1) :: sdx,sdz
-   real(kind=8) :: xold,zold,xmid,zmid,x,z,wq,wqx,wqz,tmp,vx,vy,vz,dts2dx,dts2dz, &
+   real(kind=8) :: xold,yold,zold,rold,xmid,zmid,x,y,z,r,wq,wqx,wqz,tmp,vx,vy,vz,dts2dx,dts2dz, &
                    s1x,s2x,s1z,s2z,invvol,invdtdx,invdtdz, &
                    oxint,ozint,xintsq,zintsq,oxintsq,ozintsq, &
                    dtsdx0,dtsdz0,dts2dx0,dts2dz0
@@ -233,15 +233,30 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
 
       do ip=1,np
       
-        x = (xp(ip)-xmin)*dxi
-        z = (zp(ip)-zmin)*dzi
+        if (l_2drz) then
+          r = sqrt(xp(ip)*xp(ip)+yp(ip)*yp(ip))
+          x = (r-xmin)*dxi
+          z = (zp(ip)-zmin)*dzi
+        else
+          x = (xp(ip)-xmin)*dxi
+          z = (zp(ip)-zmin)*dzi
+        end if
         
         vx = uxp(ip)*gaminv(ip)
         vy = uyp(ip)*gaminv(ip)
         vz = uzp(ip)*gaminv(ip)
         
-        xold=x-dtsdx0*vx
-        zold=z-dtsdz0*vz
+        if (l_2drz) then
+          xold = xp(ip)-dt*vx
+          yold = yp(ip)-dt*vy
+          rold = sqrt(xold*xold+yold*yold)
+          xold=(rold-xmin)*dxi
+          zold=z-dtsdz0*vz
+          vx = (x-xold)/dtsdx0
+        else
+          xold=x-dtsdx0*vx
+          zold=z-dtsdz0*vz
+        end if
  
         if (l4symtry) then
           x=abs(x)
@@ -414,6 +429,175 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
 
   return
 end subroutine depose_jxjyjz_esirkepov_n_2d
+
+subroutine depose_jxjyjz_villasenor_n_2d(cj,np,xp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,zmin, &
+                                                 dt,dx,dz,nx,nz,nxguard,nzguard, &
+                                                 nox,noz,l_particles_weight,l4symtry)
+   implicit none
+   integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard
+   real(kind=8), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,3), intent(in out) :: cj
+   real(kind=8), dimension(np) :: xp,zp,uxp,uyp,uzp,gaminv,w
+   real(kind=8) :: q,dt,dx,dz,xmin,zmin
+   logical(ISZ) :: l_particles_weight,l4symtry
+
+   real(kind=8) :: dxi,dzi,dtsdx,dtsdz,xint,yint,zint
+   real(kind=8),dimension(-int(nox/2)-1:int((nox+1)/2)+1, &
+                          -int(noz/2)-1:int((noz+1)/2)+1) :: sdx,sdz
+   real(kind=8) :: xold,zold,xmid,zmid,x,z,wq,wqx,wqz,tmp,vx,vy,vz,deltx,deltz
+   real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
+   real(kind=8)::xnode(-nxguard:nx+nxguard),znode(-nzguard:nz+nzguard),length, &
+                 x1,x2,z1,z2,qq(np),xx1,zz1,xx2,zz2,invvol,deltsx,deltsz,dtsdx0,dtsdz0, &
+                 lengood,wr1,wr2,wz1,wz2,curx,curz,xmoy,zmoy,lengthx,lengthz
+   integer(ISZ) :: iixp0,ikxp0,iixp,ikxp,ip,dix,diz,idx,idz,i,k,ic,kc, interx, interz, jn2,ln2,jni,lni,&
+                   ixmin, ixmax, izmin, izmax, icell, ncells,jn,ln,jn1,ln1,j,jtot,nloop
+   logical(ISZ) :: doit
+   
+      dxi = 1./dx
+      dzi = 1./dz
+      invvol = 1./(dx*dz)
+      dtsdx0 = dt*dxi
+      dtsdz0 = dt*dzi
+
+      deltsx = 1. / 1.e10  
+      deltsz = 1. / 1.e10  
+      
+      do jn = -nxguard, nx+nxguard
+        xnode(jn) = xmin/dx + jn!*dx
+      end do
+
+      do ln = -nzguard, nz+nzguard
+        znode(ln) = zmin/dz + ln!*dz
+      end do
+
+      do ip=1,np
+      
+        x = (xp(ip)-xmin)*dxi
+        z = (zp(ip)-zmin)*dzi
+        
+        vx = uxp(ip)*gaminv(ip)
+        vy = uyp(ip)*gaminv(ip)
+        vz = uzp(ip)*gaminv(ip)
+        
+        xold=x-dtsdx0*vx
+        zold=z-dtsdz0*vz
+ 
+        if (l4symtry) then
+          x=abs(x)
+          xold=abs(xold)
+          vx = (x-xold)/dtsdx0
+        end if
+       
+        if (l_particles_weight) then
+          wq=q*w(ip)*invvol
+        else
+          wq=q*w(1)*invvol
+        end if
+
+        jn1 = floor(xold)
+        ln1 = floor(zold)
+        jn2 = floor(x)
+        ln2 = floor(z)
+        jni = jn2
+        lni = ln2
+        
+        x1 = xold
+        z1 = zold
+        x2 = x
+        z2 = z
+
+        doit = .true.
+
+        nloop = 0
+        do while(doit)
+        
+          deltx = x2-x1
+          deltz = z2-z1
+
+          interx = 0
+          interz = 0
+          
+          if (jn1 .ne. jn2) then
+            if (jn2.gt.jn1) then
+              lengthx = abs ( (xnode (jn2) - xold ) / deltx)
+              interx = 1
+            else  
+              lengthx = abs ( (xnode (jn1) - xold ) / deltx)
+              interx = -1
+            endif
+          end if
+             
+          if (ln1 .ne. ln2) then
+            if (ln2.gt.ln1) then
+              lengthz = abs ( (znode (ln2) - zold ) / deltz)
+              interz = 1
+            else  
+              lengthz = abs ( (znode (ln1) - zold ) / deltz)
+              interz = -1
+            endif
+          end if
+
+          if (interx/=0 .and. interz/=0) then
+            if (lengthx<=lengthz) then
+              interz = 0
+            else 
+              interx = 0
+            end if
+          end if
+
+          if (interx/=0 .or. interz/=0) then
+            if (interx/=0) then
+              length = lengthx
+            else 
+              length = lengthz
+            end if
+            x2 = x1+length*deltx
+            z2 = z1+length*deltz
+            jn2=jn1+interx
+            ln2=ln1+interz
+          end if
+          
+        jn = jn1
+        ln = ln1
+
+        wr1 = (x1-xnode(jn))
+        wr2 = (x2-xnode(jn))
+!        wr1 = (x1**2-xnode(jn)**2)/((xnode(jn)+xnode(jn+1)))
+!        wr2 = (x2**2-xnode(jn)**2)/((xnode(jn)+xnode(jn+1)))
+
+        wz1 = (z1-znode(ln))
+        wz2 = (z2-znode(ln))
+
+        curx = (wr2-wr1) * dx * wq/dt
+        curz = (wz2-wz1) * dz * wq/dt
+
+        xmoy = 0.5*(wr1+wr2)
+        zmoy = 0.5*(wz1+wz2)
+
+        write(0,*) jn,ln,curx,curz,xmoy,zmoy,interx,interz,length
+
+        cj (jn,  ln,  1) = cj (jn  ,ln  ,1) + curx * (1. - zmoy)
+        cj (jn,  ln+1,1) = cj (jn  ,ln+1,1) + curx * zmoy
+        cj (jn,  ln,  3) = cj (jn  ,ln  ,3) + curz * (1. - xmoy)
+        cj (jn+1,ln,  3) = cj (jn+1,ln  ,3) + curz * xmoy
+
+        if (interx/=0 .or. interz/=0) then
+          x1 = x2
+          z1 = z2
+          x2 = x
+          z2 = z
+          jn1 = jn2
+          ln1 = ln2
+          jn2 = jni
+          ln2 = lni
+        endif
+        nloop = nloop+1
+        doit = nloop<3 .and. (interx/=0 .or. interz/=0) 
+        write(0,*) 'doit',doit,nloop,interx,interz
+      enddo  
+    enddo  
+
+  return
+end subroutine depose_jxjyjz_villasenor_n_2d
 
 subroutine depose_jxjyjz_esirkepov_linear_serialold(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,zmin, &
                                                  dt,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard,l_particles_weight)
@@ -1963,18 +2147,18 @@ subroutine depose_rho_linear_serial(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,
   return
 end subroutine depose_rho_linear_serial
 
-subroutine depose_rho_n_2dxz(rho,np,xp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,nzguard,nox,noz, &
-                        l_particles_weight,l4symtry)
+subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,nzguard,nox,noz, &
+                        l_particles_weight,l4symtry,l_2drz)
    implicit none
    integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard
    real(kind=8), dimension(-nxguard:nx+nxguard,0:0,-nzguard:nz+nzguard), intent(in out) :: rho
-   real(kind=8), dimension(np) :: xp,zp,w
+   real(kind=8), dimension(np) :: xp,yp,zp,w
    real(kind=8) :: q,dt,dx,dz,xmin,zmin
-   logical(ISZ) :: l_particles_weight,l4symtry
+   logical(ISZ) :: l_particles_weight,l4symtry,l_2drz
 
    real(kind=8) :: dxi,dzi,xint,zint, &
                    oxint,ozint,xintsq,zintsq,oxintsq,ozintsq
-   real(kind=8) :: x,z,wq,invvol
+   real(kind=8) :: x,z,r,wq,invvol
    real(kind=8) :: sx(-int(nox/2):int((nox+1)/2)), &
                    sz(-int(noz/2):int((noz+1)/2))
    real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
@@ -1991,8 +2175,14 @@ subroutine depose_rho_n_2dxz(rho,np,xp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,nzgu
 
       do ip=1,np
         
-        x = (xp(ip)-xmin)*dxi
-        z = (zp(ip)-zmin)*dzi
+        if (l_2drz) then
+          r = sqrt(xp(ip)*xp(ip)+yp(ip)*yp(ip))
+          x = (r-xmin)*dxi
+          z = (zp(ip)-zmin)*dzi
+        else
+          x = (xp(ip)-xmin)*dxi
+          z = (zp(ip)-zmin)*dzi
+        end if
         
         if (l4symtry) then
           x=abs(x)
@@ -2296,11 +2486,11 @@ subroutine depose_j_n_2dxz(cj,np,xp,zp,ux,uy,uz,gaminv,w,q,xmin,zmin,dt,dx,dz,nx
 
          do ll = izmin, izmax
             do jj = ixmin, ixmax
-              cj(j+jj,0,l+ll,1)=cj(j+jj,0,l+ll,1)+sx(jj)*sz(ll)*wq*vx*0.5
-              cj(j+jj-1,0,l+ll,1)=cj(j+jj-1,0,l+ll,1)+sx(jj)*sz(ll)*wq*vx*0.5
-              cj(j+jj,0,l+ll,2)=cj(j+jj,0,l+ll,2)+sx(jj)*sz(ll)*wq*vy
-              cj(j+jj,0,l+ll,3)=cj(j+jj,0,l+ll,3)+sx(jj)*sz(ll)*wq*vz*0.5
-              cj(j+jj,0,l+ll-1,3)=cj(j+jj,0,l+ll-1,3)+sx(jj)*sz(ll)*wq*vz*0.5
+              cj(j+jj  ,0,l+ll  ,1) = cj(j+jj  ,0,l+ll  ,1) + sx(jj)*sz(ll)*wq*vx*0.5
+              cj(j+jj-1,0,l+ll  ,1) = cj(j+jj-1,0,l+ll  ,1) + sx(jj)*sz(ll)*wq*vx*0.5
+              cj(j+jj  ,0,l+ll  ,2) = cj(j+jj  ,0,l+ll  ,2) + sx(jj)*sz(ll)*wq*vy
+              cj(j+jj  ,0,l+ll  ,3) = cj(j+jj  ,0,l+ll  ,3) + sx(jj)*sz(ll)*wq*vz*0.5
+              cj(j+jj  ,0,l+ll-1,3) = cj(j+jj  ,0,l+ll-1,3) + sx(jj)*sz(ll)*wq*vz*0.5
             end do
         end do
 
@@ -2521,18 +2711,18 @@ end subroutine depose_j_n_2dxz
    return
  end subroutine getf3d_n
 
-subroutine getf2dxz_n(np,xp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
-                     nxguard,nyguard,nzguard,nox,noz,exg,eyg,ezg,l4symtry)
+subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
+                     nxguard,nyguard,nzguard,nox,noz,exg,eyg,ezg,l4symtry,l_2drz)
    
  implicit none
       integer(ISZ) :: np,nx,ny,nz,nxguard,nyguard,nzguard,nox,noz
-      real(kind=8), dimension(np) :: xp,zp,ex,ey,ez
+      real(kind=8), dimension(np) :: xp,yp,zp,ex,ey,ez
       real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: exg,eyg,ezg
       real(kind=8) :: xmin,zmin,dx,dz
-      logical(ISZ) :: l4symtry
+      logical(ISZ) :: l4symtry,l_2drz
       integer(ISZ) :: ip, j, l, ixmin, ixmax, izmin, izmax, &
                       ixmin0, ixmax0, izmin0, izmax0, jj, ll
-      real(kind=8) :: dxi, dzi, x, z, xint, zint
+      real(kind=8) :: dxi, dzi, x, y, z, xint, zint, r, costheta, sintheta
       real(kind=8) :: xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
@@ -2552,6 +2742,19 @@ subroutine getf2dxz_n(np,xp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
 
         x = (xp(ip)-xmin)*dxi
         z = (zp(ip)-zmin)*dzi
+
+        if (l_2drz) then
+          y = (yp(ip)-xmin)*dxi
+          r=sqrt(x*x+y*y)
+          if (r>1.e-20) then
+            costheta=x/r
+            sintheta=y/r
+          else  
+            costheta=1.
+            sintheta=0.
+          end if
+          x=r
+        end if
 
         if (l4symtry) then
           if (x<0.) then
@@ -2612,17 +2815,35 @@ subroutine getf2dxz_n(np,xp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz( 2) = onesixth*zintsq*zint
         end select        
 
-        do ll = izmin, izmax
-          do jj = ixmin, ixmax
-            ex(ip) = ex(ip) + sx(jj)*sz(ll)*exg(j+jj,0,l+ll)*signx
-          end do
-        end do
+        if (l_2drz) then
 
-        do ll = izmin, izmax
-          do jj = ixmin, ixmax
-            ey(ip) = ey(ip) + sx(jj)*sz(ll)*eyg(j+jj,0,l+ll)
+          do ll = izmin, izmax
+            do jj = ixmin, ixmax
+              ex(ip) = ex(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*costheta+eyg(j+jj,0,l+ll)*sintheta)
+            end do
           end do
-        end do
+
+          do ll = izmin, izmax
+            do jj = ixmin, ixmax
+              ey(ip) = ey(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*sintheta-eyg(j+jj,0,l+ll)*costheta)
+            end do
+          end do
+        
+        else
+
+          do ll = izmin, izmax
+            do jj = ixmin, ixmax
+              ex(ip) = ex(ip) + sx(jj)*sz(ll)*exg(j+jj,0,l+ll)*signx
+            end do
+          end do
+
+          do ll = izmin, izmax
+            do jj = ixmin, ixmax
+              ey(ip) = ey(ip) + sx(jj)*sz(ll)*eyg(j+jj,0,l+ll)
+            end do
+          end do
+
+        end if
 
         do ll = izmin, izmax
           do jj = ixmin, ixmax
@@ -2756,18 +2977,18 @@ subroutine getf2dxz_n(np,xp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
    return
  end subroutine geteb3d_linear_energy_conserving
 
-  subroutine gete2dxz_n_energy_conserving(np,xp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,nz,nxguard,nzguard, &
-                                       nox,noz,exg,eyg,ezg,l4symtry)
+  subroutine gete2dxz_n_energy_conserving(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,nz,nxguard,nzguard, &
+                                       nox,noz,exg,eyg,ezg,l4symtry,l_2drz)
    
    implicit none
      integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard
-      real(kind=8), dimension(np) :: xp,zp,ex,ey,ez
-      logical(ISZ) :: l4symtry
+      real(kind=8), dimension(np) :: xp,yp,zp,ex,ey,ez
+      logical(ISZ) :: l4symtry,l_2drz
       real(kind=8), dimension(-nxguard:nx+nxguard,1,-nzguard:nz+nzguard) :: exg,eyg,ezg
-      real(kind=8) :: xmin,zmin,dx,dz
+      real(kind=8) :: xmin,zmin,dx,dz,costheta,sintheta
       integer(ISZ) :: ip, j, l, ixmin, ixmax, izmin, izmax, &
                       ixmin0, ixmax0, izmin0, izmax0, jj, ll
-      real(kind=8) :: dxi, dzi, x, z, xint, zint, &
+      real(kind=8) :: dxi, dzi, x, y, z, r, xint, zint, &
                       xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
@@ -2794,6 +3015,19 @@ subroutine getf2dxz_n(np,xp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
 
         x = (xp(ip)-xmin)*dxi
         z = (zp(ip)-zmin)*dzi
+
+        if (l_2drz) then
+          y = (yp(ip)-xmin)*dxi
+          r=sqrt(x*x+y*y)
+          if (r>1.e-20) then
+            costheta=x/r
+            sintheta=y/r
+          else  
+            costheta=1.
+            sintheta=0.
+          end if
+          x=r
+        end if
 
         if (l4symtry) then
           if (x<0.) then
@@ -2876,23 +3110,43 @@ subroutine getf2dxz_n(np,xp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz0( 1) = 0.5*(0.5+zint)**2
         end if
 
-        do ll = izmin, izmax+1
+        if (l_2drz) then
+       
+          write(0,*) 'field gathering needs to be done for fstype=4 in EM-RZ'
+          stop
+          do ll = izmin, izmax+1
             do jj = ixmin0, ixmax0
               ex(ip) = ex(ip) + sx0(jj)*sz(ll)*exg(j+jj,1,l+ll)*signx
             end do
-        end do
+          end do
 
-        do ll = izmin, izmax+1
+          do ll = izmin, izmax+1
             do jj = ixmin, ixmax+1
               ey(ip) = ey(ip) + sx(jj)*sz(ll)*eyg(j+jj,1,l+ll)
             end do
-        end do
+          end do
 
-        do ll = izmin0, izmax0
+        else
+
+          do ll = izmin, izmax+1
+            do jj = ixmin0, ixmax0
+              ex(ip) = ex(ip) + sx0(jj)*sz(ll)*exg(j+jj,1,l+ll)*signx
+            end do
+          end do
+
+          do ll = izmin, izmax+1
+            do jj = ixmin, ixmax+1
+              ey(ip) = ey(ip) + sx(jj)*sz(ll)*eyg(j+jj,1,l+ll)
+            end do
+          end do
+
+        end if
+
+          do ll = izmin0, izmax0
             do jj = ixmin, ixmax+1
               ez(ip) = ez(ip) + sx(jj)*sz0(ll)*ezg(j+jj,1,l+ll)
             end do
-        end do
+          end do
                      
      end do
 

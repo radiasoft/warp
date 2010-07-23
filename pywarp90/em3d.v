@@ -126,7 +126,7 @@ depose_rho_n(rho:real,
                            l4symtry:logical)
                            subroutine
 depose_rho_n_2dxz(rho:real,
-                           n:integer,x(n):real,z(n):real,
+                           n:integer,x(n):real,y(n):real,z(n):real,
                            w:real,q:real,
                            xmin:real,zmin:real,
                            dx:real,dz:real,
@@ -134,7 +134,7 @@ depose_rho_n_2dxz(rho:real,
                            nxguard:integer,nzguard:integer,
                            nox:integer,noz:integer,
                            l_particles_weight:logical,
-                           l4symtry:logical)
+                           l4symtry:logical,l_2drz:logical)
                            subroutine
 depose_j_n_2dxz(cj:real,
                            n:integer,x(n):real,z(n):real,
@@ -165,14 +165,14 @@ getf3d_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
          nox:integer,noy:integer,noz:integer,
          exg:real,eyg:real,ezg:real,l4symtry:logical)
                            subroutine
-getf2dxz_n(n:integer,xp(n):real,zp(n):real,
+getf2dxz_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
          ex(n):real,ey(n):real,ez(n):real,
          xmin:real,zmin:real,
          dx:real,dz:real,
          nx:integer,ny:integer,nz:integer,
          nxguard:integer,nyguard:integer,nzguard:integer,
          nox:integer,noz:integer,
-         exg:real,eyg:real,ezg:real,l4symtry:logical)
+         exg:real,eyg:real,ezg:real,l4symtry:logical,l_2drz:logical)
                            subroutine
 gete3d_linear_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                ex(n):real,ey(n):real,ez(n):real,
@@ -220,7 +220,7 @@ getb3d_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                bxg:real,byg:real,bzg:real,
                            l4symtry:logical)
                            subroutine
-gete2dxz_n_energy_conserving(n:integer,xp(n):real,zp(n):real,
+gete2dxz_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                ex(n):real,ey(n):real,ez(n):real,
                xmin:real,zmin:real,
                dx:real,dz:real,
@@ -228,7 +228,7 @@ gete2dxz_n_energy_conserving(n:integer,xp(n):real,zp(n):real,
                nxguard:integer,nzguard:integer,
                nox:integer,noz:integer,
                exg:real,eyg:real,ezg:real,
-                           l4symtry:logical)
+                           l4symtry:logical,l_2drz:logical)
                            subroutine
 getb2dxz_n_energy_conserving(n:integer,xp(n):real,zp(n):real,
                bx(n):real,by(n):real,bz(n):real,
@@ -287,6 +287,17 @@ depose_jxjy_esirkepov_linear_serial_2d(j:real,
                            nx:integer,ny:integer,l_particles_weight:logical)
                            subroutine
 depose_jxjyjz_esirkepov_n_2d(j:real,
+                           n:integer,x(n):real,y(n):real,z(n):real,
+                           ux(n):real,uy(n):real,uz(n):real,
+                           gaminv(n):real,w:real,q:real,
+                           xmin:real,zmin:real,dt:real,dx:real,dz:real,
+                           nx:integer,nz:integer,
+                           nxguard:integer,nzguard:integer,
+                           nox:integer,noz:integer,
+                           l_particles_weight:logical,
+                           l4symtry:logical,l_2drz:logical)
+                           subroutine
+depose_jxjyjz_villasenor_n_2d(j:real,
                            n:integer,x(n):real,y(n):real,
                            ux(n):real,uy(n):real,uz(n):real,
                            gaminv(n):real,w:real,q:real,
@@ -356,6 +367,7 @@ nnz integer
 smaxz real
 sdeltaz real
 l_2dxz logical /.False./
+l_2drz logical /.False./
 exx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 exy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 exz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
@@ -472,6 +484,7 @@ clight real
 mu0    real
 theta_damp real /0./
 l_2dxz logical /.False./
+l_2drz logical /.False./
 sigmae real /0./ # coefficient for extended solver
 sigmab real /0./ # coefficient for extended solver
 Ex(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real

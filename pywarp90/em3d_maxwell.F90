@@ -374,7 +374,7 @@ if (f%stencil==0 .or. f%stencil==1) then
   call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                       mudt,dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
-                      f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos,f%Ex_inz,f%Ey_inz,f%l_2dxz,f%zmin,f%dz)
+                      f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos,f%Ex_inz,f%Ey_inz,f%l_2dxz,f%l_2drz,f%zmin,f%dz)
  else
   call push_em3dext_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                          f%DEXY, f%DEXZ, f%DEYX, f%DEYZ, f%DEZX, f%DEZY, &
@@ -398,15 +398,15 @@ return
 end subroutine push_em3d_e
 
 subroutine push_em3d_evec(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
-                          nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,zmin,dz)
+                          nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,l_2drz,zmin,dz)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz
 real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz,E_inz_pos,zmin,dz
 integer(ISZ) :: j,k,l
-logical(ISZ) :: l_2dxz
-real(kind=8) :: w,zlaser
+logical(ISZ) :: l_2dxz,l_2drz
+real(kind=8) :: w,zlaser,rd,ru
 
 if (.not. l_2dxz) then
   ! advance Ex
@@ -492,6 +492,8 @@ if (.not. l_2dxz) then
 
 else
 
+ if (.not. l_2drz) then
+
   k = 0
   ! advance Ex
   do l = 0, nz
@@ -565,6 +567,44 @@ else
 !        Ey(j,k,l) = Ey_inz(j,k)
       end do
   end if
+
+ else ! l_2drz=True
+
+  k = 0
+  ! advance Er
+  do l = 0, nz
+    do j = 0, nx-1
+      Ex(j,k,l) = Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
+                            - mudt  * CJ(j,k,l,1)
+    end do
+  end do
+
+  ! advance Etheta
+  do l = 0, nz
+    do j = 1, nx
+      Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l) - Bz(j-1,k,l)) &
+                            + dtsdz * (Bx(j,k,l) - Bx(j,k,l-1)) &
+                            - mudt  * CJ(j,k,l,2)
+    end do
+    j = 0
+    Ey(j,k,l) = Ey(j,k,l) - 2.*dtsdx * Bz(j,k,l) &
+                          + dtsdz * (Bx(j,k,l)    - Bx(j,k,l-1)) &
+                          - mudt  * CJ(j,k,l,2)
+  end do
+
+  ! advance Ez 
+  do l = 0, nz-1
+    do j = 1, nx
+      ru = 1.+0.5/j
+      rd = 1.-0.5/j
+      Ez(j,k,l) = Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
+                            - mudt  * CJ(j,k,l,3)
+    end do
+    j = 0
+    Ez(j,k,l) = Ez(j,k,l) + 4.*dtsdx * By(j,k,l)  &
+                          - mudt  * CJ(j,k,l,3)
+  end do
+ end if
 end if
 
 
@@ -941,7 +981,7 @@ if (f%stencil==0 .or. f%stencil==2) then
   call push_em3d_bvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
                       dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
-                      f%nxguard,f%nyguard,f%nzguard,f%l_2dxz)
+                      f%nxguard,f%nyguard,f%nzguard,f%l_2dxz,f%l_2drz)
  else
   call push_em3dext_bvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                          f%DEXY, f%DEXZ, f%DEYX, f%DEYZ, f%DEZX, f%DEZY, &
@@ -970,12 +1010,13 @@ end if
 return
 end subroutine push_em3d_b
 
-subroutine push_em3d_bvec(ex,ey,ez,bx,by,bz,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz)
+subroutine push_em3d_bvec(ex,ey,ez,bx,by,bz,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz,l_2drz)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
 real(kind=8), intent(IN) :: dtsdx,dtsdy,dtsdz
 integer(ISZ) :: j,k,l
-logical(ISZ) :: l_2dxz
+logical(ISZ) :: l_2dxz,l_2drz
+real(kind=8) :: rd, ru
 
 if (.not.l_2dxz) then
 
@@ -1010,7 +1051,7 @@ if (.not.l_2dxz) then
   end do
 
 else
-
+ if (.not. l_2drz) then
   k=0
   ! advance Bx
   do l = 0, nz-1
@@ -1034,6 +1075,33 @@ else
     end do
   end do
 
+ else ! l_2drz = True
+
+  k=0
+  ! advance Br
+  do l = 0, nz-1
+    do j = 0, nx
+      Bx(j,k,l) = Bx(j,k,l) + dtsdz * (Ey(j,k,  l+1) - Ey(j,k,l))
+    end do
+  end do
+
+  ! advance Btheta
+  do l = 0, nz-1
+    do j = 0, nx-1
+      By(j,k,l) = By(j,k,l) + dtsdx * (Ez(j+1,k,l  ) - Ez(j,k,l)) &  
+                            - dtsdz * (Ex(j  ,k,l+1) - Ex(j,k,l)) 
+    end do
+  end do
+
+  ! advance Bz 
+  do l = 0, nz
+    do j = 0, nx-1
+      ru = 1.+1./(j+1)
+      Bz(j,k,l) = Bz(j,k,l) - dtsdx * (ru*Ey(j+1,k,l) - Ey(j,k,l)) 
+    end do
+   end do
+
+ end if
 end if
 
 return
@@ -1190,7 +1258,7 @@ if (f%stencil==0 .or. f%stencil==1) then
   call push_em3d_fvec(f%ex,f%ey,f%ez,f%f, f%rho, &
                       dtsepsi,dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
-                      f%nxguard,f%nyguard,f%nzguard,f%l_2dxz)
+                      f%nxguard,f%nyguard,f%nzguard,f%l_2dxz,f%l_2drz)
 else
   call push_em3d_kyeefvec(f%ex,f%ey,f%ez,f%f, f%rho, &
                       dtsepsi,dtsdx,dtsdy,dtsdz, &
@@ -1200,15 +1268,16 @@ endif
 
 end subroutine push_em3d_f
 
-subroutine push_em3d_fvec(ex,ey,ez,f,rho,dtsepsi,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz)
+subroutine push_em3d_fvec(ex,ey,ez,f,rho,dtsepsi,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz,l_2drz)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,f,rho
 real(kind=8), intent(IN) :: dtsdx,dtsdy,dtsdz,dtsepsi
 integer(ISZ) :: j,k,l
-logical(ISZ) :: l_2dxz
+logical(ISZ) :: l_2dxz,l_2drz
+real(kind=8) :: ru,rd
 
 if (.not.l_2dxz) then
-
+  ! --- 3D XYZ
   do l = 0, nz
    do k = 0, ny
     do j = 0, nx
@@ -1221,7 +1290,8 @@ if (.not.l_2dxz) then
   end do
 
 else
-
+ if (.not.l_2drz) then
+  ! --- 2D XZ
   k=0
   do l = 0, nz
     do j = 0, nx
@@ -1230,7 +1300,22 @@ else
                           - dtsepsi * Rho(j,k,l)
     end do
   end do
-
+ else
+  ! --- 2D RZ (axisymmetric)
+  k=0
+  do l = 0, nz
+    do j = 1, nx
+      ru = 1.+0.5/j
+      rd = 1.-0.5/j
+      F(j,k,l) = F(j,k,l) + dtsdx * (ru*Ex(j,k,l) - rd*Ex(j-1,k  ,l  )) &
+                          + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
+                          - dtsepsi * Rho(j,k,l)
+    end do
+    F(j,k,l) = F(j,k,l) + 4.*dtsdx * Ex(j,k,l) &
+                        + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
+                        - dtsepsi * Rho(j,k,l)
+  end do
+ end if
 end if
 
 return
@@ -4481,12 +4566,14 @@ end subroutine em3d_applybc_b
 
 subroutine em3d_applybc_j(f,xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd)
 use mod_emfield3d
+use Constant
 implicit none
 
 TYPE(EM3D_YEEFIELDtype) :: f
-integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
+integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,j
+real(8)::r,r1,r2
 
-  if (xlbnd==neumann) then
+  if (xlbnd==neumann .or. f%l_2drz) then
      f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) = f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) + f%j(f%ixmin:f%ixmin-f%nxguard:-1,:,:,2:3)
      f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) = f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) - f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,1)
   end if
@@ -4506,17 +4593,32 @@ integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
      f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) = f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) - f%j(:,f%iymax:f%iymax+f%nyguard-1:-1,:,2)
   end if
 
+  if (f%l_2drz) then
+    j = f%ixmin
+    f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(0.25*pi*f%dx)
+    do j=f%ixmin+1,f%ixmax
+      r = abs(j*f%dx)
+      f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(2.*pi*r)
+    end do
+    do j=f%ixmin,f%ixmax
+      r = (abs(float(j))+0.5)*f%dx
+      f%j(j,:,:,1) = f%j(j,:,:,1)/(2.*pi*r)
+    end do
+  end if
+
   return
 end subroutine em3d_applybc_j
 
 subroutine em3d_applybc_rho(f,xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd)
 use mod_emfield3d
+use Constant
 implicit none
 
 TYPE(EM3D_YEEFIELDtype) :: f
-integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
+integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,j
+real(8)::r
 
-  if (xlbnd==neumann) then
+  if (xlbnd==neumann .or. f%l_2drz) then
      f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) = f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) + f%rho(f%ixmin:f%ixmin-f%nxguard:-1,:,:)
   end if
   if (xrbnd==neumann) then
@@ -4528,6 +4630,15 @@ integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
   end if
   if (yrbnd==neumann) then
      f%rho(:,f%iymax-f%nyguard:f%iymax,:) = f%rho(:,f%iymax-f%nyguard:f%iymax,:) + f%rho(:,f%iymax:f%iymax+f%nyguard:-1,:)
+  end if
+
+  if (f%l_2drz) then
+    j = f%ixmin
+    f%rho(j,:,:) = f%rho(j,:,:)/(0.25*pi*f%dx)
+    do j=f%ixmin+1,f%ixmax
+      r = abs(j)*f%dx
+      f%rho(j,:,:) = f%rho(j,:,:)/(2.*pi*r)
+    end do
   end if
 
   return
