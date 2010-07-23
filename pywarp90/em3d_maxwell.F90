@@ -272,13 +272,13 @@ END subroutine assign_coefs
 end module mod_emfield3d
 
   subroutine init_splitfield(sf, nx, ny, nz, nxguard, nyguard, nzguard, dt, dx, dy, dz, clight, lsx, lsy, lsz, &
-                             nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz)
+                             nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
     use mod_emfield3d
     TYPE(EM3D_SPLITYEEFIELDtype) :: sf
     INTEGER(ISZ), INTENT(IN) :: nx, ny, nz, nxguard, nyguard, nzguard, nnx, nny, nnz, lsx, lsy, lsz
     REAL(kind=8), INTENT(IN) :: dt, dx, dy, dz, clight, smaxx, smaxy, smaxz, sdeltax, sdeltay, sdeltaz
     integer(ISZ) :: j
-    logical(ISZ) :: l_2dxz
+    logical(ISZ) :: l_2dxz, l_2drz
     
     sf%nx = nx
     sf%ny = ny
@@ -332,6 +332,7 @@ end module mod_emfield3d
     sf%jymaxg =  sf%iymaxg- sf%iyming
     sf%jzmaxg =  sf%izmaxg- sf%izming
     sf%l_2dxz = l_2dxz
+    sf%l_2drz = l_2drz
     call EM3D_SPLITYEEFIELDtypeallot(sf)
 
     return 
@@ -1304,6 +1305,10 @@ else
   ! --- 2D RZ (axisymmetric)
   k=0
   do l = 0, nz
+    j = 0
+    F(j,k,l) = F(j,k,l) + 4.*dtsdx * Ex(j,k,l) &
+                        + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
+                        - dtsepsi * Rho(j,k,l)
     do j = 1, nx
       ru = 1.+0.5/j
       rd = 1.-0.5/j
@@ -1311,9 +1316,6 @@ else
                           + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
                           - dtsepsi * Rho(j,k,l)
     end do
-    F(j,k,l) = F(j,k,l) + 4.*dtsdx * Ex(j,k,l) &
-                        + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
-                        - dtsepsi * Rho(j,k,l)
   end do
  end if
 end if
@@ -1795,7 +1797,7 @@ INTEGER :: j, k, l,which
                            sf%bxy,sf%byx,sf%bzx,sf%bxz,sf%byz,sf%bzy, &
                            sf%afx,sf%afy,sf%afz, &
                            sf%bpfx,sf%bpfy,sf%bpfz, &
-                           sf%bmfx,sf%bmfy,sf%bmfz,sf%l_2dxz)
+                           sf%bmfx,sf%bmfy,sf%bmfz,sf%l_2dxz,sf%l_2drz)
   else
     write(0,*) 'splite extended pml not implemented'
     stop
@@ -1806,7 +1808,7 @@ end subroutine push_em3d_splite
 
 subroutine push_em3d_splitevec(nx,ny,nz,nxguard,nyguard,nzguard, &
                                exx,exy,exz,eyx,eyy,eyz,ezx,ezy,ezz,bxy,byx,bzx,bxz,byz,bzy, &
-                               afx,afy,afz,bpfx,bpfy,bpfz,bmfx,bmfy,bmfz,l_2dxz)
+                               afx,afy,afz,bpfx,bpfy,bpfz,bmfx,bmfy,bmfz,l_2dxz,l_2drz)
 implicit none
 
 integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard
@@ -1819,7 +1821,8 @@ real(kind=8), dimension(-nyguard:ny+nyguard), intent(in) :: afy,bpfy,bmfy
 real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: afz,bpfz,bmfz
 
 INTEGER :: j, k, l
-logical(ISZ) :: l_2dxz
+logical(ISZ) :: l_2dxz,l_2drz
+real(8) :: ru,rd
 
 if (.not.l_2dxz) then
 
@@ -1880,6 +1883,8 @@ if (.not.l_2dxz) then
 else
   k = 0
 
+ if (.not. l_2drz) then
+
   do l = 0, nz
     do j = 0, nx-1
       exz(j,k,l) = afz(l)*exz(j,k,l) - bpfz(l)*(byx(j,k,l)+byz(j,k,l))  &
@@ -1908,6 +1913,44 @@ else
     end do
   end do
 
+ else ! l_2drz=True
+
+  do l = 0, nz
+    do j = 0, nx-1
+      exz(j,k,l) = afz(l)*exz(j,k,l) - bpfz(l)*(byx(j,k,l)+byz(j,k,l))  &
+                                     - bmfz(l)*(byx(j,k,l-1)+byz(j,k,l-1)) !- 0.5_8*dt*j(j,k,l,1)
+    end do
+  end do
+
+  do l = 0, nz
+    j = 0
+    eyx(j,k,l) = afx(j)*eyx(j,k,l) - 2*bpfx(j)*(bzx(j,k,l))  
+    do j = 1, nx
+      eyx(j,k,l) = afx(j)*eyx(j,k,l) - bpfx(j)*(bzx(j,k,l))  &
+                                     - bmfx(j)*(bzx(j-1,k,l)) !- 0.5_8*dt*j(j,k,l,2)
+    end do
+  end do
+
+  do l = 0, nz
+    do j = 0, nx
+      eyz(j,k,l) = afz(l)*eyz(j,k,l) + bpfz(l)*(bxz(j,k,l))  &
+                                     + bmfz(l)*(bxz(j,k,l-1)) !- 0.5_8*dt*j(j,k,l,2)
+    end do
+  end do
+
+  do l = 0, nz-1
+    j = 0
+    ezx(j,k,l) = afx(j)*ezx(j,k,l) + 4*bpfx(j)*(byx(j,k,l)+byz(j,k,l))  
+    do j = 1, nx
+      ru = 1.+0.5/j
+      rd = 1.-0.5/j
+      ezx(j,k,l) = afx(j)*ezx(j,k,l) + ru*bpfx(j)*(byx(j,k,l)+byz(j,k,l))  &
+                                     + rd*bmfx(j)*(byx(j-1,k,l)+byz(j-1,k,l)) !- 0.5_8*dt*j(j,k,l,3)
+    end do
+  end do
+
+ end if
+ 
 end if
 
   return
@@ -2148,7 +2191,7 @@ INTEGER :: j, k, l,which
                              sf%bxy,sf%byx,sf%bzx,sf%bxz,sf%byz,sf%bzy, &
                              sf%agx,sf%agy,sf%agz, &
                              sf%bpgx,sf%bpgy,sf%bpgz, &
-                             sf%bmgx,sf%bmgy,sf%bmgz,sf%l_2dxz)
+                             sf%bmgx,sf%bmgy,sf%bmgz,sf%l_2dxz,sf%l_2drz)
   else
     call push_em3d_splitkyeebvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
                              sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz, &
@@ -2163,7 +2206,7 @@ end subroutine push_em3d_splitb
 
 subroutine push_em3d_splitbvec(nx,ny,nz,nxguard,nyguard,nzguard, &
                                exx,exy,exz,eyx,eyy,eyz,ezx,ezy,ezz,bxy,byx,bzx,bxz,byz,bzy, &
-                               agx,agy,agz,bpgx,bpgy,bpgz,bmgx,bmgy,bmgz,l_2dxz)
+                               agx,agy,agz,bpgx,bpgy,bpgz,bmgx,bmgy,bmgz,l_2dxz,l_2drz)
 implicit none
 
 integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard
@@ -2183,7 +2226,8 @@ real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: agz,bpgz,bmgz
 !real(kind=8), dimension(-nzguard:), intent(in) :: agz,bpgz,bmgz
 
 INTEGER :: j, k, l
-logical(ISZ) :: l_2dxz
+logical(ISZ) :: l_2dxz,l_2drz
+real(8) :: ru
 
 if (.not.l_2dxz) then
 
@@ -2264,12 +2308,22 @@ else
     end do
   end do
 
-  do l = 0, nz
-    do j = 0, nx-1
-      bzx(j,k,l) = agx(j)*bzx(j,k,l) - bpgx(j)*(eyx(j+1,k  ,l)+eyz(j+1,k  ,l)) &
-                                     - bmgx(j)*(eyx(j  ,k  ,l)+eyz(j  ,k  ,l))
+  if (l_2drz) then
+    do l = 0, nz
+      do j = 0, nx-1
+        ru = 1.+1./(j+1)
+        bzx(j,k,l) = agx(j)*bzx(j,k,l) - bpgx(j)*ru*(eyx(j+1,k  ,l)+eyz(j+1,k  ,l)) &
+                                       - bmgx(j)*(eyx(j  ,k  ,l)+eyz(j  ,k  ,l))
+      end do
     end do
-  end do
+  else
+    do l = 0, nz
+      do j = 0, nx-1
+        bzx(j,k,l) = agx(j)*bzx(j,k,l) - bpgx(j)*(eyx(j+1,k  ,l)+eyz(j+1,k  ,l)) &
+                                       - bmgx(j)*(eyx(j  ,k  ,l)+eyz(j  ,k  ,l))
+      end do
+    end do
+  end if
 
 end if
 
@@ -2588,14 +2642,14 @@ INTEGER :: j, k, l,which
                            sf%fx,sf%fy,sf%fz, &
                            sf%afx,sf%afy,sf%afz, &
                            sf%bpfx,sf%bpfy,sf%bpfz, &
-                           sf%bmfx,sf%bmfy,sf%bmfz,sf%l_2dxz)
+                           sf%bmfx,sf%bmfy,sf%bmfz,sf%l_2dxz,sf%l_2drz)
 
   return
 end subroutine push_em3d_splitf
 
 subroutine push_em3d_splitfvec(nx,ny,nz,nxguard,nyguard,nzguard, &
                                exx,exy,exz,eyx,eyy,eyz,ezx,ezy,ezz,fx,fy,fz, &
-                               afx,afy,afz,bpfx,bpfy,bpfz,bmfx,bmfy,bmfz,l_2dxz)
+                               afx,afy,afz,bpfx,bpfy,bpfz,bmfx,bmfy,bmfz,l_2dxz,l_2drz)
 implicit none
 
 integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard
@@ -2608,7 +2662,8 @@ real(kind=8), dimension(-nyguard:ny+nyguard), intent(in) :: afy,bpfy,bmfy
 real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: afz,bpfz,bmfz
 
 INTEGER :: j, k, l
-logical(ISZ) :: l_2dxz
+logical(ISZ) :: l_2dxz,l_2drz
+real(8) :: ru,rd
 
 if (.not.l_2dxz) then
 
@@ -2641,12 +2696,26 @@ if (.not.l_2dxz) then
 
 else
   k = 0
-  do l = 0, nz
-    do j = 0, nx
-     fx(j,k,l) = afx(j)*fx(j,k,l) + bpfx(j)*(exx(j  ,k  ,l  )+exz(j  ,k  ,l  )) &
-                                  + bmfx(j)*(exx(j-1,k  ,l  )+exz(j-1,k  ,l  )) !- (1._8/3._8)*dt*rho(j,k,l)
+
+  if (l_2drz) then
+    do l = 0, nz
+      j = 0
+      fx(j,k,l) = afx(j)*fx(j,k,l) + 4*bpfx(j)*(exx(j  ,k  ,l  )+exz(j  ,k  ,l  )) 
+      do j = 1, nx
+        ru = 1.+0.5/j
+        rd = 1.-0.5/j
+       fx(j,k,l) = afx(j)*fx(j,k,l) + ru*bpfx(j)*(exx(j  ,k  ,l  )+exz(j  ,k  ,l  )) &
+                                    + rd*bmfx(j)*(exx(j-1,k  ,l  )+exz(j-1,k  ,l  )) !- (1._8/3._8)*dt*rho(j,k,l)
+      end do
     end do
-  end do
+  else
+    do l = 0, nz
+      do j = 0, nx
+       fx(j,k,l) = afx(j)*fx(j,k,l) + bpfx(j)*(exx(j  ,k  ,l  )+exz(j  ,k  ,l  )) &
+                                    + bmfx(j)*(exx(j-1,k  ,l  )+exz(j-1,k  ,l  )) !- (1._8/3._8)*dt*rho(j,k,l)
+      end do
+    end do
+  end if
 
   do l = 0, nz
     do j = 0, nx

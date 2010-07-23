@@ -71,7 +71,8 @@ init_splitfield(sf:EM3D_SPLITYEEFIELDtype,
                 lsx:integer,lsy:integer,lsz:integer, 
                 nnx:integer, smaxx:real, sdeltax:real, 
                 nny:integer, smaxy:real, sdeltay:real, 
-                nnz:integer, smaxz:real, sdeltaz:real, l_2dxz:logical) subroutine
+                nnz:integer, smaxz:real, sdeltaz:real, 
+                l_2dxz:logical, l_2drz:logical) subroutine
 depose_jxjyjz_esirkepov_linear_serial(j:real,
                            n:integer,x(n):real,y(n):real,z(n):real,
                            ux(n):real,uy(n):real,uz(n):real,
