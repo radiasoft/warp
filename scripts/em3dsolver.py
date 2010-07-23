@@ -1,5 +1,6 @@
 """Class for doing 3 D electromagnetic solver """
 from warp import *
+from mkpalette import getpalhrgb
 import operator
 
 try:
@@ -31,10 +32,11 @@ class EM3D(SubcycledPoissonSolver):
                     'laser_source_z':None,'laser_source_v':0.,
                     'laser_focus_z':None,'laser_focus_v':0.,
                     'ncyclesperstep':1,'ncyclesperstep':None,
-                    'l_2dxz':0,'l_1dz':0,'l_sumjx':0,
+                    'l_2dxz':0,'l_2drz':0,'l_1dz':0,'l_sumjx':0,
                     'npass_smooth':array([[0],[0],[0]]),
                     'alpha_smooth':array([[0.5],[0.5],[0.5]]),
                     'stride_smooth':array([[1],[1],[1]]),
+                    'mask_smooth':None,
                     'l_smooth_particle_fields':True,
                     'n_smooth_fields':None,
                     'autoset_timestep':true,'dtcoef':1.,#0.99,
@@ -65,6 +67,9 @@ class EM3D(SubcycledPoissonSolver):
 #    self.processdefaultsfrompackage(EM3D.__topinputs__,top,kw)
     self.processdefaultsfrompackage(EM3D.__em3dinputs__,em3d,kw)
     self.processdefaultsfromdict(EM3D.__flaginputs__,kw)
+    if w3d.solvergeom==w3d.XZgeom:self.l_2dxz=True
+    if w3d.solvergeom==w3d.RZgeom:self.l_2drz=True
+    if self.l_2drz: w3d.solvergeom=w3d.RZgeom
     if self.isactiveem is not None:
       self.isactive=self.isactiveem
     else:
@@ -86,7 +91,7 @@ class EM3D(SubcycledPoissonSolver):
     self.alpha_smooth  = array(self.alpha_smooth)
     self.stride_smooth  = array(self.stride_smooth)
 #    minguards = array([1+int(top.depos_order.max(1)/2),self.npass_smooth.sum(1)]).max(0)
-    minguards = 2+int(top.depos_order.max(1)/2)+(self.npass_smooth*self.stride_smooth).sum(1)
+    minguards = 0+2+int(top.depos_order.max(1)/2)+(self.npass_smooth*self.stride_smooth).sum(1)
     if self.nxguard==1:self.nxguard = minguards[0]
     if self.nyguard==1:self.nyguard = minguards[1]
     if self.nzguard==1:self.nzguard = minguards[2]
@@ -95,6 +100,7 @@ class EM3D(SubcycledPoissonSolver):
       if self.nyguard<2:self.nyguard=2
       if self.nzguard<2:self.nzguard=2
 #      self.npass_smooth = where(self.npass_smooth==0,1,self.npass_smooth)
+    if self.l_2drz:self.l_2dxz=True
     if self.l_2dxz:
       self.nyguard=self.nylocal=self.ny=0
 
@@ -339,6 +345,7 @@ class EM3D(SubcycledPoissonSolver):
                                    self.l_smooth_particle_fields,
                                    self.ncyclesperstep,
                                    self.l_2dxz,
+                                   self.l_2drz,
                                    self.theta_damp,
                                    self.sigmae,
                                    self.sigmab)
@@ -467,12 +474,12 @@ class EM3D(SubcycledPoissonSolver):
     f = self.block.core.yf
     if self.l_2dxz:
       laser_amplitude=self.laser_amplitude*top.dt*clight/w3d.dz
-      f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin] = laser_amplitude*self.laser_profile[0]*sin(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
-      f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin] = laser_amplitude*self.laser_profile[1]*sin(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
+      f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin] = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
+      f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
     else:      
       laser_amplitude=self.laser_amplitude*top.dt*clight/w3d.dz
-      f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin:f.jymax+1] = laser_amplitude*self.laser_profile[0]*sin(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
-      f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin:f.jymax  ] = laser_amplitude*self.laser_profile[1]*sin(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
+      f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin:f.jymax+1] = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
+      f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin:f.jymax  ] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
     
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     # --- This is called by fetchfield from fieldsolver.py
@@ -487,14 +494,14 @@ class EM3D(SubcycledPoissonSolver):
     # --- fetch e
     if top.efetch[w3d.jsfsapi] in [1,3,5]:
       if self.l_2dxz:
-        getf2dxz_n(n,x,z,ex,ey,ez,
+        getf2dxz_n(n,x,y,z,ex,ey,ez,
                  f.xmin,f.zmin+self.zgrid,
                  f.dx,f.dz,
                  f.nx,f.ny,f.nz,
                  f.nxguard,f.nyguard,f.nzguard,
                  nox,noz,
                  f.Exp,f.Eyp,f.Ezp,
-                 w3d.l4symtry)
+                 w3d.l4symtry,self.l_2drz)
       else:
        if nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
         getf3d_linear(n,x,y,z,ex,ey,ez,
@@ -514,14 +521,14 @@ class EM3D(SubcycledPoissonSolver):
                  w3d.l4symtry)
     elif top.efetch[w3d.jsfsapi]==4:
       if self.l_2dxz:
-        gete2dxz_n_energy_conserving(n,x,z,ex,ey,ez,
+        gete2dxz_n_energy_conserving(n,x,y,z,ex,ey,ez,
                       f.xmin,f.zmin+self.zgrid,
                       f.dx,f.dz,
                       f.nx,f.nz,
                       f.nxguard,f.nzguard,
                       nox,noz,
                       f.Exp,f.Eyp,f.Ezp,
-                      w3d.l4symtry)
+                      w3d.l4symtry,self.l_2drz)
       else:
        if nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
         gete3d_linear_energy_conserving(n,x,y,z,ex,ey,ez,
@@ -542,14 +549,14 @@ class EM3D(SubcycledPoissonSolver):
     # --- fetch b
     if top.efetch[w3d.jsfsapi] in [1,3,5]:
       if self.l_2dxz:
-        getf2dxz_n(n,x,z,bx,by,bz,
+        getf2dxz_n(n,x,y,z,bx,by,bz,
                  f.xmin,f.zmin+self.zgrid,
                  f.dx,f.dz,
                  f.nx,f.ny,f.nz,
                  f.nxguard,f.nyguard,f.nzguard,
                  nox,noz,
                  f.Bxp,f.Byp,f.Bzp,
-                 w3d.l4symtry)
+                 w3d.l4symtry,self.l_2drz)
       else:
         getf3d_n(n,x,y,z,bx,by,bz,
                  f.xmin,f.ymin,f.zmin+self.zgrid,
@@ -722,7 +729,8 @@ class EM3D(SubcycledPoissonSolver):
         else:
          if self.l_esirkepov:
           depose_jxjyjz_esirkepov_n_2d(j,n,
-                                            x,z,ux,uy,uz,
+#          depose_jxjyjz_villasenor_n_2d(j,n,
+                                            x,y,z,ux,uy,uz,
                                             gaminv,wfact,q*w,
                                             f.xmin,f.zmin+self.zgrid,
                                             top.dt*top.pgroup.ndts[js],
@@ -731,7 +739,7 @@ class EM3D(SubcycledPoissonSolver):
                                             f.nxguard,f.nzguard,
                                             top.depos_order[0,js],
                                             top.depos_order[2,js],
-                                            l_particles_weight,w3d.l4symtry)
+                                            l_particles_weight,w3d.l4symtry,self.l_2drz)
          else:
           depose_j_n_2dxz(j,n,
                                             x,z,ux,uy,uz,
@@ -783,7 +791,7 @@ class EM3D(SubcycledPoissonSolver):
     if self.l_pushf:
       if self.l_2dxz:
         depose_rho_n_2dxz(self.fields.Rho,n,
-                               x,z,
+                               x,y,z,
                                wfact,q*w,
                                f.xmin,f.zmin+self.zgrid,
                                f.dx,f.dz,
@@ -791,7 +799,7 @@ class EM3D(SubcycledPoissonSolver):
                                f.nxguard,f.nzguard,
                                top.depos_order[0,js],
                                top.depos_order[2,js],
-                               l_particles_weight,w3d.l4symtry)
+                               l_particles_weight,w3d.l4symtry,self.l_2drz)
       else:
         depose_rho_n(self.fields.Rho,n,
                                x,y,z,
@@ -910,58 +918,93 @@ class EM3D(SubcycledPoissonSolver):
     if all(self.npass_smooth==0):return
     nx,ny,nz = shape(self.fields.J[...,0])
     nsm = shape(self.npass_smooth)[1]
-    for js in range(nsm):
-#      smooth3d_121(self.fields.J[...,0],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-#      smooth3d_121(self.fields.J[...,1],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-#      smooth3d_121(self.fields.J[...,2],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-      smooth3d_121_stride(self.fields.J[...,0],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-      smooth3d_121_stride(self.fields.J[...,1],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-      smooth3d_121_stride(self.fields.J[...,2],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+    l_mask_method=1
+    if self.mask_smooth is None:
+      self.mask_smooth=[]
+      for js in range(nsm):
+        self.mask_smooth.append(None)
+    if l_mask_method==2:
+      Jcopy = self.fields.J.copy()
       if self.l_pushf:
-        smooth3d_121_stride(self.fields.Rho[...],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        Rhocopy = self.fields.Rho.copy()
+    for js in range(nsm):
+      if self.mask_smooth[js] is None or l_mask_method==2:
+        smooth3d_121_stride(self.fields.J[...,0],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        smooth3d_121_stride(self.fields.J[...,1],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        smooth3d_121_stride(self.fields.J[...,2],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        if self.l_pushf:
+          smooth3d_121_stride(self.fields.Rho[...],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      else:
+        smooth3d_121_stride_mask(self.fields.J[...,0],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        smooth3d_121_stride_mask(self.fields.J[...,1],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        smooth3d_121_stride_mask(self.fields.J[...,2],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        if self.l_pushf:
+          smooth3d_121_stride_mask(self.fields.Rho[...],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+    if l_mask_method==2:
+        for i in range(3):
+          self.fields.J[...,i] *= self.mask_smooth
+          self.fields.J[...,i] += Jcopy[...,i]*(1.-self.mask_smooth)
+        if self.l_pushf:
+          self.fields.Rho *= self.mask_smooth
+          self.fields.Rho += Rhocopy*(1.-self.mask_smooth)
+          
+  def smootharray(self,f,js=None,mask=None):
+    nx,ny,nz = shape(f)
+    if js is None:
+      jslist=arange(shape(self.npass_smooth)[1])
+    else:
+      jslist=[js]
+    for js in jslist:
+     if mask is None:
+      smooth3d_121_stride(f,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+     else:
+      smooth3d_121_stride_mask(f,self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
 
   def smoothfields(self):
     nx,ny,nz = shape(self.fields.J[...,0])
     nsm = shape(self.npass_smooth)[1]
+    l_mask_method=1
+    if self.mask_smooth is None:
+      self.mask_smooth=[]
+      for js in range(nsm):
+        self.mask_smooth.append(None)
+    if l_mask_method==2:
+      Expcopy = self.fields.Exp.copy()
+      Eypcopy = self.fields.Eyp.copy()
+      Ezpcopy = self.fields.Ezp.copy()
+      Bxpcopy = self.fields.Bxp.copy()
+      Bypcopy = self.fields.Byp.copy()
+      Bzpcopy = self.fields.Bzp.copy()
     for js in range(nsm):
-      smooth3d_121_stride(self.fields.Exp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-      smooth3d_121_stride(self.fields.Eyp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-      smooth3d_121_stride(self.fields.Ezp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-      smooth3d_121_stride(self.fields.Bxp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-      smooth3d_121_stride(self.fields.Byp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-      smooth3d_121_stride(self.fields.Bzp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-#      smooth3d_121(self.fields.Exp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-#      smooth3d_121(self.fields.Eyp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-#      smooth3d_121(self.fields.Ezp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-#      smooth3d_121(self.fields.Bxp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-#      smooth3d_121(self.fields.Byp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
-#      smooth3d_121(self.fields.Bzp,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js])
+      if self.mask_smooth[js] is None or l_mask_method==2:
+        mask=None
+      else:
+        mask=self.mask_smooth[js]
+      self.smootharray(self.fields.Exp,js,mask)
+      self.smootharray(self.fields.Eyp,js,mask)
+      self.smootharray(self.fields.Ezp,js,mask)
+      self.smootharray(self.fields.Bxp,js,mask)
+      self.smootharray(self.fields.Byp,js,mask)
+      self.smootharray(self.fields.Bzp,js,mask)
+    if l_mask_method==2:
+        self.fields.Exp *= self.mask_smooth; self.fields.Exp += Expcopy*(1.-self.mask_smooth)
+        self.fields.Eyp *= self.mask_smooth; self.fields.Eyp += Eypcopy*(1.-self.mask_smooth)
+        self.fields.Ezp *= self.mask_smooth; self.fields.Ezp += Ezpcopy*(1.-self.mask_smooth)
+        self.fields.Bxp *= self.mask_smooth; self.fields.Bxp += Bxpcopy*(1.-self.mask_smooth)
+        self.fields.Byp *= self.mask_smooth; self.fields.Byp += Bypcopy*(1.-self.mask_smooth)
+        self.fields.Bzp *= self.mask_smooth; self.fields.Bzp += Bzpcopy*(1.-self.mask_smooth)
     if self.n_smooth_fields is not None:
      if top.it%self.n_smooth_fields==0:
-#      m = array([0,0,1]) # smooth only in z
-#      f = 1.#array([0,0,1./self.n_smooth_fields])
-#      npass_smooth = array([[ 0 , 0 ],[ 0 , 0 ],[ 1 , 1 ]])
-#      alpha_smooth = array([[ 1., 1.],[ 1., 1.],[0.5, 3./2.]])
-#      npass_smooth = array([[ 0 , 0 ],[ 0 , 0 ],[ 4 , 1 ]])
-#      alpha_smooth = array([[ 1., 1.],[ 1., 1.],[0.5, 3.]])
-#      for i in range(1):
-#       for js in range(2):
       nsm = shape(self.npass_smooth)[1]
       for js in range(nsm):
-        smooth3d_121_stride(self.fields.Ex,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-        smooth3d_121_stride(self.fields.Ey,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-        smooth3d_121_stride(self.fields.Ez,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-        smooth3d_121_stride(self.fields.Bx,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-        smooth3d_121_stride(self.fields.By,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-        smooth3d_121_stride(self.fields.Bz,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-#        smooth3d_121(self.fields.Ex,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
-#        smooth3d_121(self.fields.Ey,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
-#        smooth3d_121(self.fields.Ez,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
-#        smooth3d_121(self.fields.Bx,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
-#        smooth3d_121(self.fields.By,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
-#        smooth3d_121(self.fields.Bz,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js]*f)
+        self.smootharray(self.fields.Ex,js)
+        self.smootharray(self.fields.Ey,js)
+        self.smootharray(self.fields.Ez,js)
+        self.smootharray(self.fields.Bx,js)
+        self.smootharray(self.fields.By,js)
+        self.smootharray(self.fields.Bz,js)
         if self.l_pushf:
-         smooth3d_121(self.fields.F,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js])
+          smooth3d_121(self.fields.F,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js])
        
   def getsmoothx(self):
     nx = w3d.nx
@@ -971,7 +1014,7 @@ class EM3D(SubcycledPoissonSolver):
     a[nx/2,:,:]=1.
     nsm = shape(self.npass_smooth)[1]
     for js in range(nsm):
-      smooth3d_121_stride(a,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      self.smootharray(a,js)
     return a[:,0,0]
     
   def getsmoothz(self):
@@ -982,7 +1025,7 @@ class EM3D(SubcycledPoissonSolver):
     a[:,:,nz/2]=1.
     nsm = shape(self.npass_smooth)[1]
     for js in range(nsm):
-      smooth3d_121_stride(a,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      self.smootharray(a,js)
     return a[0,0,:]
     
   def getsmoothxfftth(self):
@@ -1695,7 +1738,8 @@ class EM3D(SubcycledPoissonSolver):
   # Define the basic plot commands
   def genericpfem3d(self,data,title,titles=True,l_transpose=false,direction=None,slice=None,l_abs=False,
                     origins=None,deltas=None,display=1,scale=None,camera=None,l_box=1,
-                    interactive=0,labels=['X','Y','Z'],
+                    interactive=0,labels=['X','Y','Z'],#palette=None,
+                    opacitystart=None,opacityend=None,opacities=None,
                     adjust=0,labelscale=0.5,color='auto',ncolor=None,cmin=None,cmax=None,cscale=1.,l_csym=0,
                     procs=None,
                     **kw):
@@ -1849,12 +1893,14 @@ class EM3D(SubcycledPoissonSolver):
         if self.isactive:
           comm_world.send((xmin,xmax,ymin,ymax,data),0,3)
       else:
+        lcolorbar=1
         if me in procs and data is not None:
           kw.setdefault('xmin',xmin)
           kw.setdefault('xmax',xmax)
           kw.setdefault('ymin',ymin)
           kw.setdefault('ymax',ymax)
           ppgeneric(grid=data,**kw)
+          lcolorbar=0
         for i in range(1,npes):
           isactive = mpirecv(i,3)
           if isactive:
@@ -1864,7 +1910,8 @@ class EM3D(SubcycledPoissonSolver):
               kw['xmax']=xmaxp
               kw['ymin']=yminp
               kw['ymax']=ymaxp
-              ppgeneric(grid=data,lcolorbar=0,**kw)
+              ppgeneric(grid=data,lcolorbar=lcolorbar,**kw)
+              lcolorbar=0
     else:
       xmin=self.block.xmin
       xmax=self.block.xmax
@@ -1884,6 +1931,7 @@ class EM3D(SubcycledPoissonSolver):
         origins = [xmin*xscale,ymin*yscale,zmin*zscale]
         deltas = [dx*xscale,dy*yscale,dz*zscale]
         if color=='auto':
+#         if palette is None:
           color = []
           for i in range(ncolor):
             r = array([1.,0.,0.])
@@ -1897,10 +1945,16 @@ class EM3D(SubcycledPoissonSolver):
               color.append(g+r*((i*4./ncolor)-2.))
             else:
               color.append(g*(4.-(i*4./ncolor))+r)
+#         else:
+#          h,r,g,b = getpalhrgb(palette)
+#          color = transpose(array([r,g,b]))
+#          ncolor = shape(color)[0]
         colormap,opacity  = DXColormap(data=isos,
                                        ncolors=ncolor,
                                        colors=color,
-                                       opacitystart=None,opacityend=None,opacities=None)
+                                       opacitystart=opacitystart,
+                                       opacityend=opacityend,
+                                       opacities=opacities)
         DXReference(colormap)
         e3d,colorbar = viewisosurface1(data,isos,color=color,display=0,
                         origins=origins,
@@ -3040,6 +3094,7 @@ def pyinit_3dem_block(nx, ny, nz,
                       l_smooth_particle_fields,
                       ncyclesperstep,
                       l_2dxz,
+                      l_2drz,
                       theta_damp,
                       sigmae,
                       sigmab):
@@ -3183,6 +3238,7 @@ def pyinit_3dem_block(nx, ny, nz,
   f.clight = clight
   f.mu0    = mu0
   f.l_2dxz = l_2dxz
+  f.l_2drz = l_2drz
 
   if deposit_energy_density:
     f.nxmp=f.nx
