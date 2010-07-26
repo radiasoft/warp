@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.195 $, $Date: 2010/06/08 17:55:16 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.196 $, $Date: 2010/07/26 23:39:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -5315,7 +5315,7 @@ c       --- Alloate new work space
           return
         endif
 
-        rhocoarse = 0.
+c       rhocoarse = 0.
         phicoarse = 0.
 
 c       --- Restriction - note that no scaling factor is needed
@@ -6098,6 +6098,7 @@ c=============================================================================
      &                      delcx,delcz,
      &                      localbounds,localboundscoarse,lxoffset,lzoffset,
      &                      lapplydirichlet)
+      use Multigrid3d,Only: mgcoarsening
       integer(ISZ):: nx,nz,nxlocal,nzlocal,delx,delz,delcx,delcz
       integer(ISZ):: nxcoarse,nzcoarse,nxlocalcoarse,nzlocalcoarse
       real(kind=8):: u(-delx:nxlocal+delx,-delz:nzlocal+delz)
@@ -6110,15 +6111,18 @@ c=============================================================================
       
 c Restrict to a coarser grid.
 
-      integer(ISZ):: ix,iz
+      integer(ISZ):: ix,iz,nw
       integer(ISZ):: ixcoarse,izcoarse
       integer(ISZ):: ixcoarsemin,ixcoarsemax,izcoarsemin,izcoarsemax
       integer(ISZ):: ixmin,ixmax,izmin,izmax
       integer(ISZ),allocatable:: ixmina(:),ixmaxa(:)
       integer(ISZ),allocatable:: izmina(:),izmaxa(:)
       real(kind=8),allocatable:: wxa(:,:),wza(:,:)
-      real(kind=8):: r,w,dx,dz,dxi,dzi,wx(0:3),wz(0:3)
+      real(kind=8):: r,w,dx,dz,dxi,dzi
+      real(kind=8),allocatable:: wx(:),wz(:)
 
+      nw = 2*mgcoarsening
+      allocate(wx(0:nw),wz(0:nw))
       allocate(ixmina(0:nxlocalcoarse),ixmaxa(0:nxlocalcoarse))
       allocate(izmina(0:nzlocalcoarse),izmaxa(0:nzlocalcoarse))
       allocate(wxa(0:3,0:nxlocalcoarse))
@@ -6136,11 +6140,6 @@ c     --- Set the loop limits, including edges when appropriate.
         if (localboundscoarse(1) == 0) ixcoarsemax = nxlocalcoarse - 1
         if (localboundscoarse(4) == 0) izcoarsemin = 1
         if (localboundscoarse(5) == 0) izcoarsemax = nzlocalcoarse - 1
-
-        if (localboundscoarse(0) == 0) ucoarse(0,:) = 0.
-        if (localboundscoarse(1) == 0) ucoarse(nxlocalcoarse,:) = 0.
-        if (localboundscoarse(4) == 0) ucoarse(:,0) = 0.
-        if (localboundscoarse(5) == 0) ucoarse(:,nzlocalcoarse) = 0.
       endif
 
       dx = 1.*nx/nxcoarse
@@ -6153,76 +6152,46 @@ c     --- substantial amount of time.
       do izcoarse=izcoarsemin,izcoarsemax
         izmin = ((izcoarse-1)*nz - lzoffset + 4*nzcoarse)/nzcoarse-3
         izmax = ((izcoarse+1)*nz - lzoffset - 1)/nzcoarse
-        if (izmin < -delz) izmin = -delz
-        if (izmax > nzlocal+delz) izmax = nzlocal+delz
-        if (izmax < izmin) continue
-
+        izmina(izcoarse) = max(izmin,-delz)
+        izmaxa(izcoarse) = min(izmax,nzlocal+delz)
         do iz=izmin,izmax
-          wz(iz-izmin) = 1. - abs(izcoarse - (iz + 1.*lzoffset/nzcoarse)*dzi)
+          wza(iz-izmin,izcoarse) = 1. - abs(izcoarse - (iz + 1.*lzoffset/nzcoarse)*dzi)
         enddo
-
-        if (izcoarse == 0 .and. localboundscoarse(4) == 0) then
-          izmin = 0
-          izmax = 0
-          wz(0) = 2.
-        else if (izcoarse == nzlocalcoarse .and. localboundscoarse(5) == 0) then
-          izmin = nzlocal
-          izmax = nzlocal
-          wz(0) = 2.
-        endif
-
-        izmina(izcoarse) = izmin
-        izmaxa(izcoarse) = izmax
-        wza(:,izcoarse) = wz
-
       enddo
 
       do ixcoarse=ixcoarsemin,ixcoarsemax
         ixmin = ((ixcoarse-1)*nx - lxoffset + 4*nxcoarse)/nxcoarse-3
         ixmax = ((ixcoarse+1)*nx - lxoffset - 1)/nxcoarse
-        if (ixmin < -delx) ixmin = -delx
-        if (ixmax > nxlocal+delx) ixmax = nxlocal+delx
-        if (ixmax < ixmin) continue
-
+        ixmina(ixcoarse) = max(ixmin,-delx)
+        ixmaxa(ixcoarse) = min(ixmax,nxlocal+delx)
         do ix=ixmin,ixmax
-          wx(ix-ixmin) = 1. - abs(ixcoarse - (ix + 1.*lxoffset/nxcoarse)*dxi)
+          wxa(ix-ixmin,ixcoarse) = 1. - abs(ixcoarse - (ix + 1.*lxoffset/nxcoarse)*dxi)
         enddo
-
-        if (ixcoarse == 0 .and. localboundscoarse(0) == 0) then
-          ixmin = 0
-          ixmax = 0
-          wx(0) = 2.
-        else if (ixcoarse == nxcoarse .and. localboundscoarse(1) == 0) then
-          ixmin = nx
-          ixmax = nx
-          wx(0) = 2.
-        endif
-
-        ixmina(ixcoarse) = ixmin
-        ixmaxa(ixcoarse) = ixmax
-        wxa(:,ixcoarse) = wx
-
       enddo
 
 c     --- Do the loops.
+      if (lapplydirichlet .and. localboundscoarse(4) == 0) ucoarse(:,0) = 0.
 !$OMP DO
       do izcoarse=izcoarsemin,izcoarsemax
         izmin = izmina(izcoarse)
         izmax = izmaxa(izcoarse)
+        if (izmax < izmin) continue
         wz(:) = wza(:,izcoarse)
 
+        if (lapplydirichlet .and. localboundscoarse(0) == 0) ucoarse(0,izcoarse) = 0.
         do ixcoarse=ixcoarsemin,ixcoarsemax
           ixmin = ixmina(ixcoarse)
           ixmax = ixmaxa(ixcoarse)
+          if (ixmax < ixmin) continue
           wx(:) = wxa(:,ixcoarse)
 
           r = 0.
           w = 0.
           do iz=izmin,izmax
-              do ix=ixmin,ixmax
-                r = r + wx(ix-ixmin)*wz(iz-izmin)*u(ix,iz)
-                w = w + wx(ix-ixmin)*wz(iz-izmin)
-              enddo
+            do ix=ixmin,ixmax
+              r = r + wx(ix-ixmin)*wz(iz-izmin)*u(ix,iz)
+              w = w + wx(ix-ixmin)*wz(iz-izmin)
+            enddo
           enddo
           if (w > 0.) then
             ucoarse(ixcoarse,izcoarse) = r/w
@@ -6231,12 +6200,15 @@ c     --- Do the loops.
           endif
 
         enddo
+        if (lapplydirichlet .and. localboundscoarse(1) == 0) ucoarse(nxlocalcoarse,izcoarse) = 0.
       enddo
 !$OMP END DO
+      if (lapplydirichlet .and. localboundscoarse(5) == 0) ucoarse(:,nzlocalcoarse) = 0.
 
       deallocate(ixmina,ixmaxa)
       deallocate(izmina,izmaxa)
       deallocate(wxa,wza)
+      deallocate(wx,wz)
 
       return
       end
