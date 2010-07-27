@@ -67,7 +67,8 @@ push_em3d_bf(f:EM3D_BLOCKtype,dt:real,which:integer,l_pushf:logical,l_pushpot:lo
 init_splitfield(sf:EM3D_SPLITYEEFIELDtype, 
                 nx:integer,ny:integer,nz:integer, 
                 nxguard:integer,nyguard:integer,nzguard:integer, 
-                dt:real,dx:real,dy:real,dz:real,clight:real,
+                dt:real,dx:real,dy:real,dz:real,
+                xmin:real,ymin:real,zmin:real,clight:real,
                 lsx:integer,lsy:integer,lsz:integer, 
                 nnx:integer, smaxx:real, sdeltax:real, 
                 nny:integer, smaxy:real, sdeltay:real, 
@@ -354,6 +355,12 @@ dxi real
 dyi real
 dzi real
 dt real
+xmin real
+xmax real
+ymin real
+ymax real
+zmin real
+zmax real
 clight real
 lsx integer
 nnx integer
