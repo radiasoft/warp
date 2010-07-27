@@ -129,6 +129,7 @@ class EM3D(SubcycledPoissonSolver):
           if self.boundxy == periodic: self.bounds[3] = neumann
           if self.forcesymmetries: self.xmmin = 0.
           if self.forcesymmetries: self.ymmin = 0.
+    if self.l_2drz:self.bounds[0]=neumann
     self.bounds = self.bounds.copy()
 
     # --- removes bounds from self.kw to prevent conflict with bounds created 
@@ -3269,12 +3270,23 @@ def pyinit_3dem_block(nx, ny, nz,
   sdeltay=em3d.s_delta
   sdeltaz=em3d.s_delta
   
+  xminm = b.xmin-nbndx*dx
+  xmin0 = b.xmin
+  xminp = b.xmax
+  yminm = b.ymin-nbndy*dy
+  ymin0 = b.ymin
+  yminp = b.ymax
+  zminm = b.zmin-nbndz*dz
+  zmin0 = b.zmin
+  zminp = b.zmax
+  
 # --- sides
 # x
   b.sidexl = EM3D_FIELDtype()
   if xlb==openbc:
     allocatesf(b.sidexl,stencil)
-    init_splitfield(b.sidexl.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.sidexl.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, ymin0, zmin0, 
+                    clight,-1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   b.sidexl.proc=me
   if xlb==periodic:
     b.sidexl=b.core
@@ -3284,7 +3296,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.sidexr = EM3D_FIELDtype()
   if xrb==openbc:
     allocatesf(b.sidexr,stencil)
-    init_splitfield(b.sidexr.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.sidexr.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, ymin0, zmin0, 
+                    clight, 1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   b.sidexr.proc=me
   if xrb==periodic:
     b.sidexr=b.core
@@ -3295,7 +3308,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.sideyl = EM3D_FIELDtype()
   if ylb==openbc:
     allocatesf(b.sideyl,stencil)
-    init_splitfield(b.sideyl.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.sideyl.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminm, zmin0, 
+                    clight, 0,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   b.sideyl.proc=me
   if ylb==periodic:
     b.sideyl=b.core
@@ -3305,7 +3319,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.sideyr = EM3D_FIELDtype()
   if yrb==openbc:
     allocatesf(b.sideyr,stencil)
-    init_splitfield(b.sideyr.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.sideyr.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminp, zmin0, 
+                    clight, 0, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   b.sideyr.proc=me
   if yrb==periodic:
     b.sideyr=b.core
@@ -3316,7 +3331,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.sidezl = EM3D_FIELDtype()
   if zlb==openbc:
     allocatesf(b.sidezl,stencil)
-    init_splitfield(b.sidezl.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.sidezl.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, ymin0, zminm, 
+                    clight, 0, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   b.sidezl.proc=me
   if zlb==periodic:
     b.sidezl=b.core
@@ -3326,7 +3342,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.sidezr = EM3D_FIELDtype()
   if zrb==openbc:
     allocatesf(b.sidezr,stencil)
-    init_splitfield(b.sidezr.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.sidezr.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, ymin0, zminp, 
+                    clight, 0, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   b.sidezr.proc=me
   if zrb==periodic:
     b.sidezr=b.core
@@ -3339,7 +3356,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgexlyl = EM3D_FIELDtype()
   if xlb==openbc and ylb==openbc:
     allocatesf(b.edgexlyl,stencil)
-    init_splitfield(b.edgexlyl.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgexlyl.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminm, zmin0, 
+                    clight,-1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xlb==openbc:
       if ylb==periodic:
@@ -3356,7 +3374,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgexryl = EM3D_FIELDtype()
   if xrb==openbc and ylb==openbc:
     allocatesf(b.edgexryl,stencil)
-    init_splitfield(b.edgexryl.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgexryl.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminm, zmin0, 
+                    clight, 1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xrb==openbc:
       if ylb==periodic:
@@ -3373,7 +3392,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgexlyr = EM3D_FIELDtype()
   if xlb==openbc and yrb==openbc:
     allocatesf(b.edgexlyr,stencil)
-    init_splitfield(b.edgexlyr.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgexlyr.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminp, zmin0, 
+                    clight,-1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xlb==openbc:
       if yrb==periodic:
@@ -3390,7 +3410,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgexryr = EM3D_FIELDtype()
   if xrb==openbc and yrb==openbc:
     allocatesf(b.edgexryr,stencil)
-    init_splitfield(b.edgexryr.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgexryr.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminp, zmin0, 
+                    clight, 1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xrb==openbc:
       if yrb==periodic:
@@ -3408,7 +3429,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgexlzl = EM3D_FIELDtype()
   if xlb==openbc and zlb==openbc:
     allocatesf(b.edgexlzl,stencil)
-    init_splitfield(b.edgexlzl.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgexlzl.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, ymin0, zminm, 
+                    clight,-1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xlb==openbc:
       if zlb==periodic:
@@ -3425,7 +3447,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgexrzl = EM3D_FIELDtype()
   if xrb==openbc and zlb==openbc:
     allocatesf(b.edgexrzl,stencil)
-    init_splitfield(b.edgexrzl.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgexrzl.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, ymin0, zminm, 
+                    clight, 1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xrb==openbc:
       if zlb==periodic:
@@ -3442,7 +3465,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgexlzr = EM3D_FIELDtype()
   if xlb==openbc and zrb==openbc:
     allocatesf(b.edgexlzr,stencil)
-    init_splitfield(b.edgexlzr.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgexlzr.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, ymin0, zminp, 
+                    clight,-1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xlb==openbc:
       if zrb==periodic:
@@ -3459,7 +3483,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgexrzr = EM3D_FIELDtype()
   if xrb==openbc and zrb==openbc:
     allocatesf(b.edgexrzr,stencil)
-    init_splitfield(b.edgexrzr.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgexrzr.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, ymin0, zminp, 
+                    clight, 1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xrb==openbc:
       if zrb==periodic:
@@ -3478,7 +3503,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgeylzl = EM3D_FIELDtype()
   if ylb==openbc and zlb==openbc:
     allocatesf(b.edgeylzl,stencil)
-    init_splitfield(b.edgeylzl.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgeylzl.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminm, zminm, 
+                    clight, 0,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if ylb==openbc:
       if zlb==periodic:
@@ -3495,7 +3521,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgeyrzl = EM3D_FIELDtype()
   if yrb==openbc and zlb==openbc:
     allocatesf(b.edgeyrzl,stencil)
-    init_splitfield(b.edgeyrzl.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgeyrzl.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminp, zminm, 
+                    clight, 0, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if yrb==openbc:
       if zlb==periodic:
@@ -3512,7 +3539,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgeylzr = EM3D_FIELDtype()
   if ylb==openbc and zrb==openbc:
     allocatesf(b.edgeylzr,stencil)
-    init_splitfield(b.edgeylzr.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgeylzr.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminm, zminp, 
+                    clight, 0,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if ylb==openbc:
       if zrb==periodic:
@@ -3529,7 +3557,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.edgeyrzr = EM3D_FIELDtype()
   if yrb==openbc and zrb==openbc:
     allocatesf(b.edgeyrzr,stencil)
-    init_splitfield(b.edgeyrzr.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 0, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.edgeyrzr.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminp, zminp, 
+                    clight, 0, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if yrb==openbc:
       if zrb==periodic:
@@ -3548,7 +3577,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.cornerxlylzl = EM3D_FIELDtype()
   if xlb==openbc and ylb==openbc and zlb==openbc:
     allocatesf(b.cornerxlylzl,stencil)
-    init_splitfield(b.cornerxlylzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.cornerxlylzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminm, zminm, 
+                    clight,-1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xlb==openbc and ylb==openbc:
       if zlb==periodic:
@@ -3571,7 +3601,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.cornerxrylzl = EM3D_FIELDtype()
   if xrb==openbc and ylb==openbc and zlb==openbc:
     allocatesf(b.cornerxrylzl,stencil)
-    init_splitfield(b.cornerxrylzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.cornerxrylzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminm, zminm, 
+                    clight, 1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xrb==openbc and ylb==openbc:
       if zlb==periodic:
@@ -3594,7 +3625,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.cornerxlyrzl = EM3D_FIELDtype()
   if xlb==openbc and yrb==openbc and zlb==openbc:
     allocatesf(b.cornerxlyrzl,stencil)
-    init_splitfield(b.cornerxlyrzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.cornerxlyrzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminp, zminm, 
+                    clight,-1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xlb==openbc and yrb==openbc:
       if zlb==periodic:
@@ -3617,7 +3649,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.cornerxryrzl = EM3D_FIELDtype()
   if xrb==openbc and yrb==openbc and zlb==openbc:
     allocatesf(b.cornerxryrzl,stencil)
-    init_splitfield(b.cornerxryrzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.cornerxryrzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminp, zminm, 
+                    clight, 1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xrb==openbc and yrb==openbc:
       if zlb==periodic:
@@ -3640,7 +3673,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.cornerxlylzr = EM3D_FIELDtype()
   if xlb==openbc and ylb==openbc and zrb==openbc:
     allocatesf(b.cornerxlylzr,stencil)
-    init_splitfield(b.cornerxlylzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.cornerxlylzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminm, zminp, 
+                    clight,-1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xlb==openbc and ylb==openbc:
       if zrb==periodic:
@@ -3663,7 +3697,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.cornerxrylzr = EM3D_FIELDtype()
   if xrb==openbc and ylb==openbc and zrb==openbc:
     allocatesf(b.cornerxrylzr,stencil)
-    init_splitfield(b.cornerxrylzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.cornerxrylzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminm, zminp, 
+                    clight, 1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xrb==openbc and ylb==openbc:
       if zrb==periodic:
@@ -3686,7 +3721,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.cornerxlyrzr = EM3D_FIELDtype()
   if xlb==openbc and yrb==openbc and zrb==openbc:
     allocatesf(b.cornerxlyrzr,stencil)
-    init_splitfield(b.cornerxlyrzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight,-1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.cornerxlyrzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminp, zminp, 
+                    clight,-1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xlb==openbc and yrb==openbc:
       if zrb==periodic:
@@ -3709,7 +3745,8 @@ def pyinit_3dem_block(nx, ny, nz,
   b.cornerxryrzr = EM3D_FIELDtype()
   if xrb==openbc and yrb==openbc and zrb==openbc:
     allocatesf(b.cornerxryrzr,stencil)
-    init_splitfield(b.cornerxryrzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, clight, 1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
+    init_splitfield(b.cornerxryrzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminp, zminp, 
+                    clight, 1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_2dxz, l_2drz)
   else:
     if xrb==openbc and yrb==openbc:
       if zrb==periodic:
