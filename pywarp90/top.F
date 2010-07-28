@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.254 $, $Date: 2010/07/01 22:29:12 $
+c@(#) File TOP.F, version $Revision: 3.255 $, $Date: 2010/07/28 22:07:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2018,7 +2018,9 @@ c --- X extrapolated using constant V and estimated A
 c     --- Check if the pgroup had been initialized.
       if (isid == 0) return
 
-      oneondt = 1./dt
+      if (dt .ne. 0.) then
+        oneondt = 1./dt
+      endif
 
       if (lepsaveonce) then
 c       --- Make sure that epflagpid is setup. This might not be setup if
@@ -2071,12 +2073,20 @@ c         --- This only works if multiple windows don't overlap.
           vx = pgroup%uxp(ip)*pgroup%gaminv(ip)
           vy = pgroup%uyp(ip)*pgroup%gaminv(ip)
           vz = pgroup%uzp(ip)*pgroup%gaminv(ip)
-          ax = (pgroup%uxp(ip) - uxpo(ip-ipmin+1))*oneondt
-          ay = (pgroup%uyp(ip) - uypo(ip-ipmin+1))*oneondt
-          az = (pgroup%uzp(ip) - uzpo(ip-ipmin+1))*oneondt
+
+          if (dt == 0.) then
+            ax = 0.
+            ay = 0.
+            az = 0.
+          else
+            ax = (pgroup%uxp(ip) - uxpo(ip-ipmin+1))*oneondt
+            ay = (pgroup%uyp(ip) - uypo(ip-ipmin+1))*oneondt
+            az = (pgroup%uzp(ip) - uzpo(ip-ipmin+1))*oneondt
+          endif
 
           delz = (pgroup%zp(ip) - zzep)
           if (az == 0.) then
+            if (vz == 0.) cycle
             dtstar = -delz/vz
           else
             if ((vz**2 - 2.*az*delz) > 0.) then
@@ -2108,6 +2118,7 @@ c         --- then wait until then to save the particle.
             delznp1 = (zznp1 - zzep)
 c           dtstarnp1 = 2.*delznp1/(sqrt(vznp1**2 - 2.*az*delznp1) + vznp1)
             if (az == 0.) then
+              if (vznp1 == 0.) cycle
               dtstarnp1 = -delznp1/vznp1
             else
               if ((vznp1**2 - 2.*az*delznp1) > 0.) then
