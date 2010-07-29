@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.90 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.91 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -261,18 +261,22 @@ c       --- similarly for z.
           do iy=0,ny
             yy = ymmin + iy*dy
 
-            ii = 1
-            xside = +1.
-            do while (ii <= nxicpt .and. xintercepts(ii,iy,iz) < LARGEPOS)
+            ii = 0
+            xside = -1.
+            do while (ii+1 <= nxicpt .and. xintercepts(ii+1,iy,iz) < LARGEPOS)
+
+              ii = ii + 1
+              xside = -xside
 
 c             --- Check that the intercept point is within the grid
-              if (xmmin < xintercepts(ii,iy,iz) .and.
-     &            xintercepts(ii,iy,iz) < xmmax) then
+              if (xmmin-dx < xintercepts(ii,iy,iz) .and.
+     &            xintercepts(ii,iy,iz) < xmmax+dx) then
 
-                ix = (xintercepts(ii,iy,iz) - xmmin)*dxi
+                ix = floor((xintercepts(ii,iy,iz) - xmmin)*dxi)
                 if (xside > 0.) then
 c                 --- delpx
 c                 --- Make sure that ix is outside the object
+                  if (ix < 0) cycle
                   xx = xmmin + ix*dx
                   if (ii == 1 .or. xx > xintercepts(ii-1,iy,iz)) then
                     delx = (xintercepts(ii,iy,iz) - xmmin)*dxi - ix
@@ -284,6 +288,7 @@ c                 --- Make sure that ix is outside the object
 c                 --- delmx
 c                 --- Make sure that ix is outside the object
                   ix = ix + 1
+                  if (ix > nx) cycle
                   xx = xmmin + ix*dx
                   if (ii == nxicpt .or. xx < xintercepts(ii+1,iy,iz)) then
                     delx = ix - (xintercepts(ii,iy,iz) - xmmin)*dxi
@@ -409,9 +414,6 @@ c                   --- Now save the data in the appropriate place
                 endif
               endif
 
-              ii = ii + 1
-              xside = -xside
-
             enddo
           enddo
         enddo
@@ -422,16 +424,20 @@ c       --- Scan over the yintercepts
           do ix=0,nx
             xx = xmmin + ix*dx
 
-            ii = 1
-            yside = +1.
-            do while (ii <= nyicpt .and. yintercepts(ii,ix,iz) < LARGEPOS)
+            ii = 0
+            yside = -1.
+            do while (ii+1 <= nyicpt .and. yintercepts(ii+1,ix,iz) < LARGEPOS)
 
-              if (ymmin < yintercepts(ii,ix,iz) .and.
-     &            yintercepts(ii,ix,iz) < ymmax) then
+              ii = ii + 1
+              yside = -yside
 
-                iy = (yintercepts(ii,ix,iz) - ymmin)*dyi
+              if (ymmin-dy < yintercepts(ii,ix,iz) .and.
+     &            yintercepts(ii,ix,iz) < ymmax+dy) then
+
+                iy = floor((yintercepts(ii,ix,iz) - ymmin)*dyi)
                 if (yside > 0.) then
 c                 --- delpy
+                  if (iy < 0) cycle
                   yy = ymmin + iy*dy
                   if (ii == 1 .or. yy > yintercepts(ii-1,ix,iz)) then
                     dely = (yintercepts(ii,ix,iz) - ymmin)*dyi - iy
@@ -442,6 +448,7 @@ c                 --- delpy
                 else
 c                 --- delmy
                   iy = iy + 1
+                  if (iy > ny) cycle
                   yy = ymmin + iy*dy
                   if (ii == nyicpt .or. yy < yintercepts(ii+1,ix,iz)) then
                     dely = iy - (yintercepts(ii,ix,iz) - ymmin)*dyi
@@ -546,9 +553,6 @@ c                       --- delmz
                 endif
               endif
 
-              ii = ii + 1
-              yside = -yside
-
             enddo
           enddo
         enddo
@@ -559,16 +563,20 @@ c       --- Scan over zintercepts
           do ix=0,nx
             xx = xmmin + ix*dx
 
-            ii = 1
-            zside = +1.
-            do while (ii <= nzicpt .and. zintercepts(ii,ix,iy) < LARGEPOS)
+            ii = 0
+            zside = -1.
+            do while (ii+1 <= nzicpt .and. zintercepts(ii+1,ix,iy) < LARGEPOS)
 
-              if (zmmin < zintercepts(ii,ix,iy) .and.
-     &            zintercepts(ii,ix,iy) < zmmax) then
+              ii = ii + 1
+              zside = -zside
 
-                iz = (zintercepts(ii,ix,iy) - zmmin)*dzi
+              if (zmmin-dz < zintercepts(ii,ix,iy) .and.
+     &            zintercepts(ii,ix,iy) < zmmax+dz) then
+
+                iz = floor((zintercepts(ii,ix,iy) - zmmin)*dzi)
                 if (zside > 0.) then
 c                 --- delpz
+                  if (iz < 0) cycle
                   zz = zmmin + iz*dz
                   if (ii == 1 .or. zz > zintercepts(ii-1,ix,iy)) then
                     delz = (zintercepts(ii,ix,iy) - zmmin)*dzi - iz
@@ -579,6 +587,7 @@ c                 --- delpz
                 else
 c                 --- delmz
                   iz = iz + 1
+                  if (iz > nz) cycle
                   zz = zmmin + iz*dz
                   if (ii == nzicpt .or. zz < zintercepts(ii+1,ix,iy)) then
                     delz = iz - (zintercepts(ii,ix,iy) - zmmin)*dzi
@@ -674,9 +683,6 @@ c                   --- delmy
 
                 endif
               endif
-
-              ii = ii + 1
-              zside = -zside
 
             enddo
           enddo
@@ -7557,9 +7563,9 @@ c             --- is included, whereas the ending point, th2, is not.
         enddo ! segments
 
         distance(i) = sqrt(max(0.,dsq))
-        if (mod(izicpt,2) == 1) then
-          print*,"ODD ",izicpt,zintercepts
-        endif
+c       if (mod(izicpt,2) == 1) then
+c         print*,"ODD ",izicpt,zintercepts
+c       endif
 
         do ii=1,izicpt,2
           if (zintercepts(ii) <= zz .and. zz <= zintercepts(ii+1)) then
