@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.234 2010/07/29 18:48:28 dave Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.235 2010/07/29 20:29:09 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2609,7 +2609,9 @@ Assembly on this grid.
     # --- then there is no need to check any individual pieces.
     if not lparallel:
       aextent = a.getextent()
-      if not self.checkoverlap(0,aextent): return
+      # --- Note that the highest mglevel is used, with the largest cell
+      # --- size.
+      if not self.checkoverlap(-1,aextent): return
     else:
       # --- Note that for the parallel version, each level must be checked
       # --- since the levels can have a difference z extent.
@@ -2693,7 +2695,9 @@ Assembly on this grid.
     # --- then there is no need to check any individual pieces.
     if not lparallel:
       aextent = a.getextent()
-      if not self.checkoverlap(0,aextent): return
+      # --- Note that the highest mglevel is used, with the largest cell
+      # --- size.
+      if not self.checkoverlap(-1,aextent): return
     else:
       # --- Note that for the parallel version, each level must be checked
       # --- since the levels can have a difference z extent.
