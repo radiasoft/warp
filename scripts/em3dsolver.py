@@ -129,6 +129,7 @@ class EM3D(SubcycledPoissonSolver):
           if self.boundxy == periodic: self.bounds[3] = neumann
           if self.forcesymmetries: self.xmmin = 0.
           if self.forcesymmetries: self.ymmin = 0.
+    if self.l_2dxz:self.bounds[2:4] = -1
     if self.l_2drz:self.bounds[0]=neumann
     self.bounds = self.bounds.copy()
 
@@ -3371,6 +3372,7 @@ def pyinit_3dem_block(nx, ny, nz,
       if xlb==em3d.otherproc:
         allocatesf(b.edgexlyl,stencil)
         b.edgexlyl.proc=procxl
+        
   b.edgexryl = EM3D_FIELDtype()
   if xrb==openbc and ylb==openbc:
     allocatesf(b.edgexryl,stencil)
@@ -3389,6 +3391,7 @@ def pyinit_3dem_block(nx, ny, nz,
       if xrb==em3d.otherproc:
         allocatesf(b.edgexryl,stencil)
         b.edgexryl.proc=procxr
+        
   b.edgexlyr = EM3D_FIELDtype()
   if xlb==openbc and yrb==openbc:
     allocatesf(b.edgexlyr,stencil)
@@ -3407,6 +3410,7 @@ def pyinit_3dem_block(nx, ny, nz,
       if xlb==em3d.otherproc:
         allocatesf(b.edgexlyr,stencil)
         b.edgexlyr.proc=procxl
+        
   b.edgexryr = EM3D_FIELDtype()
   if xrb==openbc and yrb==openbc:
     allocatesf(b.edgexryr,stencil)
@@ -3444,6 +3448,7 @@ def pyinit_3dem_block(nx, ny, nz,
       if xlb==em3d.otherproc:
         allocatesf(b.edgexlzl,stencil)
         b.edgexlzl.proc=procxl
+        
   b.edgexrzl = EM3D_FIELDtype()
   if xrb==openbc and zlb==openbc:
     allocatesf(b.edgexrzl,stencil)
@@ -3462,6 +3467,7 @@ def pyinit_3dem_block(nx, ny, nz,
       if xrb==em3d.otherproc:
         allocatesf(b.edgexrzl,stencil)
         b.edgexrzl.proc=procxr
+        
   b.edgexlzr = EM3D_FIELDtype()
   if xlb==openbc and zrb==openbc:
     allocatesf(b.edgexlzr,stencil)
@@ -3480,6 +3486,7 @@ def pyinit_3dem_block(nx, ny, nz,
       if xlb==em3d.otherproc:
         allocatesf(b.edgexlzr,stencil)
         b.edgexlzr.proc=procxl
+        
   b.edgexrzr = EM3D_FIELDtype()
   if xrb==openbc and zrb==openbc:
     allocatesf(b.edgexrzr,stencil)
