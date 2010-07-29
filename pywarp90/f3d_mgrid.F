@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.197 $, $Date: 2010/07/29 16:13:33 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.198 $, $Date: 2010/07/29 17:07:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -6232,16 +6232,12 @@ c Restrict to a coarser grid.
       integer(ISZ),allocatable:: izmina(:),izmaxa(:)
       real(kind=8),allocatable:: wxa(:,:),wza(:,:)
       real(kind=8):: r,w,dx,dz,dxi,dzi
-      real(kind=8),allocatable:: wx(:),wz(:)
 
       nw = 2*mgcoarsening
-      allocate(wx(0:nw),wz(0:nw))
       allocate(ixmina(0:nxlocalcoarse),ixmaxa(0:nxlocalcoarse))
       allocate(izmina(0:nzlocalcoarse),izmaxa(0:nzlocalcoarse))
-      allocate(wxa(0:3,0:nxlocalcoarse))
-      allocate(wza(0:3,0:nzlocalcoarse))
-      wxa = 0.
-      wza = 0.
+      allocate(wxa(0:nw,0:nxlocalcoarse))
+      allocate(wza(0:nw,0:nzlocalcoarse))
 
 c     --- Set the loop limits, including edges when appropriate.
       ixcoarsemin = 0
@@ -6289,21 +6285,19 @@ c     --- Do the loops.
         izmin = izmina(izcoarse)
         izmax = izmaxa(izcoarse)
         if (izmax < izmin) continue
-        wz(:) = wza(:,izcoarse)
 
         if (lapplydirichlet .and. localboundscoarse(0) == 0) ucoarse(0,izcoarse) = 0.
         do ixcoarse=ixcoarsemin,ixcoarsemax
           ixmin = ixmina(ixcoarse)
           ixmax = ixmaxa(ixcoarse)
           if (ixmax < ixmin) continue
-          wx(:) = wxa(:,ixcoarse)
 
           r = 0.
           w = 0.
           do iz=izmin,izmax
             do ix=ixmin,ixmax
-              r = r + wx(ix-ixmin)*wz(iz-izmin)*u(ix,iz)
-              w = w + wx(ix-ixmin)*wz(iz-izmin)
+              r = r + wxa(ix-ixmin,ixcoarse)*wza(iz-izmin,izcoarse)*u(ix,iz)
+              w = w + wxa(ix-ixmin,ixcoarse)*wza(iz-izmin,izcoarse)
             enddo
           enddo
           if (w > 0.) then
@@ -6321,7 +6315,6 @@ c     --- Do the loops.
       deallocate(ixmina,ixmaxa)
       deallocate(izmina,izmaxa)
       deallocate(wxa,wza)
-      deallocate(wx,wz)
 
       return
       end
