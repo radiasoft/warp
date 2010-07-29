@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.233 2010/07/29 16:21:36 dave Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.234 2010/07/29 18:48:28 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3430,7 +3430,8 @@ Cylinder aligned with X-axis
       "XCylinder: either length or both xlower and xupper must be specified"
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid=1)
-    XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
+    XAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
                             self.generatorfnew,
                             kw=kw)
@@ -3460,7 +3461,8 @@ Cylinder aligned with X-axis
       "XCylinder: either length or both xlower and xupper must be specified"
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid=1)
-    XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
+    XAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
                             self.generatorfnew,
                             kw=kw)
@@ -3490,7 +3492,8 @@ Cylinder aligned with Y-axis
       "YCylinder: either length or both ylower and yupper must be specified"
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid=1)
-    YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
+    YAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
                             self.generatorfnew,
                             kw=kw)
@@ -3520,7 +3523,8 @@ Cylinder aligned with Y-axis
       "YCylinder: either length or both ylower and yupper must be specified"
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid=1)
-    YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
+    YAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
                             self.generatorfnew,
                             kw=kw)
@@ -3547,7 +3551,8 @@ Elliptical cylinder aligned with z-axis
                             voltage,xcent,ycent,zcent,condid,
                             zlower=zlower,zupper=zupper)
     EllipticAssembly.__init__(self,ellipticity,
-                              voltage,xcent,ycent,zcent,condid,self.kwlist,
+                              self.voltage,self.xcent,self.ycent,self.zcent,
+                              self.condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
                               self.generatorfnew,
                               kw=kw)
@@ -3589,7 +3594,8 @@ Outside an elliptical cylinder aligned with z-axis
                                voltage,xcent,ycent,zcent,condid,
                                zlower=zlower,zupper=zupper)
     EllipticAssembly.__init__(self,ellipticity,
-                              voltage,xcent,ycent,zcent,condid,self.kwlist,
+                              self.voltage,self.xcent,self.ycent,self.zcent,
+                              self.condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
                               self.generatorfnew,
                               kw=kw)
@@ -3637,11 +3643,13 @@ Elliptical cylinder aligned with x-axis
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
-                              voltage,xcent,ycent,zcent,condid,self.kwlist,
+                              self.voltage,self.xcent,self.ycent,self.zcent,
+                              self.condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
                               self.generatorfnew)
     XAssembly.__init__(self,
-                       voltage,xcent,ycent,zcent,condid,self.kwlist,
+                       self.voltage,self.xcent,self.ycent,self.zcent,
+                       self.condid,self.kwlist,
                        self.generatorf,self.generatord,self.generatori,
                        self.generatorfnew,
                        kw=kw)
@@ -3674,11 +3682,13 @@ Outside of an elliptical cylinder aligned with x-axis
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
-                              voltage,xcent,ycent,zcent,condid,self.kwlist,
+                              self.voltage,self.xcent,self.ycent,self.zcent,
+                              self.condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
                               self.generatorfnew)
     XAssembly.__init__(self,
-                       voltage,xcent,ycent,zcent,condid,self.kwlist,
+                       self.voltage,self.xcent,self.ycent,self.zcent,
+                       self.condid,self.kwlist,
                        self.generatorf,self.generatord,self.generatori,
                        self.generatorfnew,
                        kw=kw)
@@ -3710,11 +3720,13 @@ Elliptical cylinder aligned with y-axis
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
-                              voltage,xcent,ycent,zcent,condid,self.kwlist,
+                              self.voltage,self.xcent,self.ycent,self.zcent,
+                              self.condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
                               self.generatorfnew)
     YAssembly.__init__(self,
-                       voltage,xcent,ycent,zcent,condid,self.kwlist,
+                       self.voltage,self.xcent,self.ycent,self.zcent,
+                       self.condid,self.kwlist,
                        self.generatorf,self.generatord,self.generatori,
                        self.generatorfnew,
                        kw=kw)
@@ -3746,11 +3758,13 @@ Outside of an elliptical cylinder aligned with y-axis
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
-                              voltage,xcent,ycent,zcent,condid,self.kwlist,
+                              self.voltage,self.xcent,self.ycent,self.zcent,
+                              self.condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
                               self.generatorfnew)
     YAssembly.__init__(self,
-                       voltage,xcent,ycent,zcent,condid,self.kwlist,
+                       self.voltage,self.xcent,self.ycent,self.zcent,
+                       self.condid,self.kwlist,
                        self.generatorf,self.generatord,self.generatori,
                        self.generatorfnew,
                        kw=kw)
@@ -3812,7 +3826,8 @@ Elliptoidal sphere
     Sphere.__init__(self,radius,
                          voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
-                              voltage,xcent,ycent,zcent,condid,self.kwlist,
+                              self.voltage,self.xcent,self.ycent,self.zcent,
+                              self.condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
                               self.generatorfnew,
                               kw=kw)
@@ -5054,8 +5069,9 @@ Outside of an elliptical surface of revolution
                        voltage,xcent,ycent,zcent,condid,
                        rofzdata,zdata,raddata,
                        zcdata,rcdata)
-    EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
-                              condid,self.kwlist,
+    EllipticAssembly.__init__(self,ellipticity,self.voltage,
+                              self.xcent,self.ycent,self.zcent,
+                              self.condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
                               self.generatorfnew,
                               kw=kw)
@@ -5093,8 +5109,9 @@ Inside of an elliptical surface of revolution
                       voltage,xcent,ycent,zcent,condid,
                       rofzdata,zdata,raddata,
                       zcdata,rcdata)
-    EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
-                              condid,self.kwlist,
+    EllipticAssembly.__init__(self,ellipticity,self.voltage,
+                              self.xcent,self.ycent,self.zcent,
+                              self.condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
                               self.generatorfnew,
                               kw=kw)
@@ -5135,8 +5152,9 @@ Between elliptical surfaces of revolution
                          rcmindata,zcmindata,
                          rmaxofzdata,zmaxdata,radmaxdata,
                          rcmaxdata,zcmaxdata)
-    EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
-                              condid,self.kwlist,
+    EllipticAssembly.__init__(self,ellipticity,self.voltage,
+                              self.xcent,self.ycent,self.zcent,
+                              self.condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
                               self.generatorfnew,
                               kw=kw)
@@ -5173,8 +5191,8 @@ Outside of an surface of revolution aligned along to X axis
                        voltage,xcent,ycent,zcent,condid,
                        rofxdata,xdata,raddata,
                        xcdata,rcdata)
-    XAssembly.__init__(self,voltage,xcent,ycent,zcent,
-                            condid,self.kwlist,
+    XAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
                             self.generatorfnew,
                             kw=kw)
@@ -5211,7 +5229,8 @@ Inside of a surface of revolution aligned along the X axis
                       voltage,xcent,ycent,zcent,condid,
                       rofxdata,xdata,raddata,
                       xcdata,rcdata)
-    XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
+    XAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
                             self.generatorfnew,
                             kw=kw)
@@ -5251,8 +5270,8 @@ Between surfaces of revolution aligned along the X axis
                          rcmindata,xcmindata,
                          rmaxofxdata,xmaxdata,radmaxdata,
                          rcmaxdata,xcmaxdata)
-    XAssembly.__init__(self,voltage,xcent,ycent,zcent,
-                            condid,self.kwlist,
+    XAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
                             self.generatorfnew,
                             kw=kw)
@@ -5289,8 +5308,8 @@ Outside of an surface of revolution aligned along to Y axis
                        voltage,xcent,ycent,zcent,condid,
                        rofydata,ydata,raddata,
                        ycdata,rcdata)
-    YAssembly.__init__(self,voltage,xcent,ycent,zcent,
-                            condid,self.kwlist,
+    YAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
                             self.generatorfnew,
                             kw=kw)
@@ -5327,7 +5346,8 @@ Inside of a surface of revolution aligned along the Y axis
                       voltage,xcent,ycent,zcent,condid,
                       rofydata,ydata,raddata,
                       ycdata,rcdata)
-    YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
+    YAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
                             self.generatorfnew,
                             kw=kw)
@@ -5367,8 +5387,8 @@ Between surfaces of revolution aligned along the Y axis
                          rcmindata,ycmindata,
                          rmayofxdata,ymaxdata,radmaxdata,
                          rcmaxdata,ycmaxdata)
-    YAssembly.__init__(self,voltage,xcent,ycent,zcent,
-                            condid,self.kwlist,
+    YAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
                             self.generatorfnew,
                             kw=kw)
