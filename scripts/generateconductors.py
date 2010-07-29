@@ -110,12 +110,12 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.232 2010/07/23 23:18:11 dave Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.233 2010/07/29 16:21:36 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
 
-_lwithnewconductorgeneration = true
+_lwithnewconductorgeneration = false
 def usenewconductorgeneration():
   """Use the faster, new method for conductor data generation"""
   global _lwithnewconductorgeneration
