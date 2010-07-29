@@ -7,7 +7,7 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.57 2010/06/08 17:39:46 dave Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.58 2010/07/29 16:14:08 dave Exp $"
 
 ##############################################################################
 ##############################################################################
@@ -353,7 +353,7 @@ class MultiGrid2D(MultiGrid3D):
                      self.dx,self.dz*zfact,
                      self._phi[:,0,:],self._rho[:,0,:],self.bounds,
                      self.xmminlocal,
-                     self.mgparam,mgiters,self.mgmaxiters,
+                     self.mgparam,self.mgform,mgiters,self.mgmaxiters,
                      self.mgmaxlevels,mgerror,self.mgtol,mgverbose,
                      self.downpasses,self.uppasses,
                      self.lcndbndy,self.laddconductor,self.icndbndy,
