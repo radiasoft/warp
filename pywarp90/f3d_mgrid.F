@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.196 $, $Date: 2010/07/26 23:39:10 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.197 $, $Date: 2010/07/29 16:13:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -4931,7 +4931,7 @@ c=============================================================================
       subroutine multigrid2dsolve(iwhich,nx,nz,nxlocal,nzlocal,dx,dz,
      &                            phi,rho,bounds,
      &                            xmminlocal,
-     &                            mgparam,mgiters,mgmaxiters,
+     &                            mgparam,mgform,mgiters,mgmaxiters,
      &                            mgmaxlevels,mgerror,mgtol,mgverbose,
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,
@@ -4949,7 +4949,7 @@ c=============================================================================
       integer(ISZ):: bounds(0:5)
       real(kind=8):: xmminlocal
       real(kind=8):: mgparam
-      integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels,mgverbose
+      integer(ISZ):: mgform,mgiters,mgmaxiters,mgmaxlevels,mgverbose
       real(kind=8):: mgerror,mgtol
       integer(ISZ):: downpasses,uppasses
       logical(ISZ):: lcndbndy,laddconductor
@@ -4967,9 +4967,20 @@ c grid cell dimensions are roughly equal. Roughly equal means that
 c   2/3 dx < dz < 4/3 dx
 c This keeps (max(dz,dx) - min(dz,dx))/dx < 1/3. Currently, it is still
 c assumed that dx ~ dy and that semi-coarsening is not needed transversely.
+c
+c The first call to vcycle can be done using one of two forms. When mgform
+c is 1, the normal form is used and phi and rho are passed directly into
+c vcycle. When mgform is 2, the error and the residual are passed in instead.
+c The two produce nearly identical results and there is no effect on
+c convergence.
 
       integer(ISZ):: i,k,ix,iz
       real(kind=8),allocatable:: phisave(:,:)
+
+c     --- The following only used when mgform == 2
+      integer(ISZ):: delx,dely,delz
+      real(kind=8):: dxsqi,dzsqi
+      real(kind=8),allocatable:: rhosave(:,:),res(:,:)
 
       integer(ISZ):: localbounds(0:5)
       character(72):: errline
@@ -5029,6 +5040,39 @@ c     --- Make sure guard planes have sensible values before beginning.
       call applyboundaryconditions3d(nxlocal,0,nzlocal,1,0,1,phi,1,localbounds,
      &                               .false.,.false.)
 
+c     --- If using residual correction form, need to save the original rho.
+c     --- Also setup parallel arrays.
+      if (mgform == 2) then
+!$OMP SINGLE
+        allocate(rhosave(0:nxlocal,0:nzlocal),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"multigrid2dsolve: allocation error ",allocerror,
+     &           ": could not allocate rhosave to shape ",
+     &           nxlocal,nzlocal
+          call kaboom("multigrid2dsolve: allocation error")
+          return
+        endif
+
+        dxsqi = 1./dx**2
+        dzsqi = 1./dz**2
+
+        delx = 1
+        delz = 1
+        if (nx > nxlocal) delx = 3
+        if (nz > nzlocal) delz = 3
+
+        allocate(res(-delx:nxlocal+delx,
+     &               -delz:nzlocal+delz),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"multigrid2dsolve: allocation error ",allocerror,
+     &           ": could not allocate res to shape ",nxlocal,nzlocal
+          call kaboom("multigrid2dsolve: allocation error")
+          return
+        endif
+!$OMP END SINGLE
+        rhosave = rho
+      endif
+
       allocate(phisave(-1:nxlocal+1,-1:nzlocal+1),stat=allocerror)
       if (allocerror /= 0) then
         print*,"multigrid2dsolve: allocation error ",allocerror,
@@ -5047,11 +5091,51 @@ c     --- very few iterations are done.
 c       --- Save current value of phi
         phisave = phi
 
+c       --- If using residual correction form, calculate the residual and
+c       --- copy it into rhosave, zero phisave (the initial error).
+c       --- In the calls to cond_potmg and residual, the last argument
+c       --- is true, telling the routines to use the actual value of
+c       --- voltages rather than zero as is done otherwise for residual
+c       --- correction form since it is operating on the error.
+        if (mgform == 2) then
+          call cond_potmg(conductors%interior,nxlocal,0,nzlocal,1,0,1,
+     &                    phisave,0,mgform,.true.)
+          call condbndymgint(conductors%evensubgrid,nxlocal,0,nzlocal,
+     &                       1,0,1,phisave,localbounds,0,icndbndy)
+          call condbndymgint(conductors%oddsubgrid,nxlocal,0,nzlocal,
+     &                       1,0,1,phisave,localbounds,0,icndbndy)
+          call residual2d(nxlocal,nzlocal,delx,delz,dxsqi,dzsqi,
+     &                    xmminlocal/dx,lrz,phisave,rhosave,res,0,localbounds,
+     &                    mgform,.true.,lcndbndy,icndbndy,conductors)
+#ifdef MPIPARALLEL
+          call mgexchange_phi_periodic(1,nxlocal,0,nzlocal,res,
+     &                                 delx,0,delz,-1,0,localbounds,fsdecomp)
+          call mgexchange_phi(1,nxlocal,0,nzlocal,res,
+     &                        delx,0,delz,-1,-1,fsdecomp)
+#endif
+          rho = res(0:nxlocal,0:nzlocal)
+          phi = 0.
+        endif
+
 c       --- Do one vcycle.
         call vcycle2d(0,1.,nx,nz,nxlocal,nzlocal,dx,dz,phi,rho,
-     &                bounds,mgparam,mgmaxlevels,
+     &                bounds,mgparam,mgform,mgmaxlevels,
      &                downpasses,uppasses,lcndbndy,icndbndy,conductors,
      &                xmminlocal,lrz,fsdecomp)
+
+c       --- If using residual correction form, add the resulting error to phi.
+        if (mgform == 2) phi = phi + phisave
+
+c       --- When using residual correction form, the other planes do need
+c       --- to be set when using other than Dirichlet boundaries since
+c       --- those planes are only set with the error of phi.
+        if (mgform == 2) then
+          call applyboundaryconditions3d(nxlocal,0,nzlocal,1,0,1,phi,1,
+     &                                   localbounds,.false.,.false.)
+#ifdef MPIPARALLEL
+          call mgexchange_phi(1,nxlocal,0,nzlocal,phi,1,0,1,-1,0,fsdecomp)
+#endif
+        endif
 
 c       --- Calculate the change in phi.
         mgerror = 0.
@@ -5087,6 +5171,12 @@ c       --- Make a print out.
         call remark(errline)
       endif
 
+c     --- If using residual correction form, restore saved rho
+      if (mgform == 2) then
+        rho = rhosave
+        deallocate(rhosave,res)
+      endif
+
       deallocate(phisave)
 
 c     --- Restore rho
@@ -5102,7 +5192,7 @@ c     --- Restore rho
 c=============================================================================
       RECURSIVE subroutine vcycle2d(mglevel,mgscale,nx,nz,nxlocal,nzlocal,dx,dz,
      &                              phi,rho,globalbounds,
-     &                              mgparam,
+     &                              mgparam,mgform,
      &                              mgmaxlevels,downpasses,uppasses,
      &                              lcndbndy,icndbndy,conductors,xmminlocal,lrz,
      &                              fsdecomp)
@@ -5117,6 +5207,7 @@ c=============================================================================
       real(kind=8):: phi(-1:nxlocal+1,-1:nzlocal+1),rho(0:nxlocal,0:nzlocal)
       integer(ISZ):: globalbounds(0:5)
       real(kind=8):: mgparam
+      integer(ISZ):: mgform
       integer(ISZ):: mgmaxlevels,downpasses,uppasses
       type(ConductorType):: conductors
       real(kind=8):: xmminlocal
@@ -5180,7 +5271,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 c     --- Do initial SOR passes.
       do i=1,downpasses
         call sorpass2d(mglevel,nxlocal,nzlocal,phi,rho,dxsqi,dzsqi,
-     &                 xminodx,localbounds,mgparam,
+     &                 xminodx,localbounds,mgparam,mgform,
      &                 lcndbndy,icndbndy,conductors,lrz,fsdecomp)
       enddo
 
@@ -5213,7 +5304,7 @@ c     --- coarsening. This is the same check that is done in getmglevels.
 c       --- Get the residual on the current grid.
         call residual2d(nxlocal,nzlocal,delx,delz,dxsqi,dzsqi,
      &                  xminodx,lrz,phi,rho,res,mglevel,localbounds,
-     &                  lcndbndy,icndbndy,conductors)
+     &                  mgform,.false.,lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
         call mgexchange_phi_periodic(1,nxlocal,0,nzlocal,res,
      &                               delx,0,delz,-1,0,localbounds,fsdecomp)
@@ -5333,7 +5424,7 @@ c       --- Continue at the next coarsest level.
         call vcycle2d(mglevel+iszone,mgscalecoarse,nxcoarse,nzcoarse,
      &                nxlocalcoarse,nzlocalcoarse,
      &                dxcoarse,dzcoarse,phicoarse,rhocoarse,
-     &                globalbounds,mgparam,
+     &                globalbounds,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,xmminlocalcoarse,lrz,
      &                coarsedecomp)
@@ -5381,7 +5472,7 @@ c     --- Do final SOR passes.
       do i=1,uppasses
         call sorpass2d(mglevel,nxlocal,nzlocal,phi,rho,
      &                 dxsqi,dzsqi,xminodx,
-     &                 localbounds,mgparam,
+     &                 localbounds,mgparam,mgform,
      &                 lcndbndy,icndbndy,conductors,lrz,fsdecomp)
       enddo
 
@@ -5390,7 +5481,7 @@ c     --- Do final SOR passes.
 c=============================================================================
       subroutine sorpass2d(mglevel,nxlocal,nzlocal,phi,rho,
      &                     dxsqi,dzsqi,xminodx,localbounds,
-     &                     mgparam,lcndbndy,icndbndy,conductors,lrz,fsdecomp)
+     &                     mgparam,mgform,lcndbndy,icndbndy,conductors,lrz,fsdecomp)
       use Constant
       use ConductorTypemodule
       use Decompositionmodule
@@ -5399,6 +5490,7 @@ c=============================================================================
       real(kind=8):: dxsqi,dzsqi,xminodx
       integer(ISZ):: localbounds(0:5)
       real(kind=8):: mgparam
+      integer(ISZ):: mgform
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
@@ -5423,7 +5515,7 @@ c boundaries are periodic.
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmg(conductors%interior,nxlocal,0,nzlocal,1,0,1,
-     &                phi,mglevel,1,.false.)
+     &                phi,mglevel,mgform,.false.)
       call condbndymgint(conductors%evensubgrid,nxlocal,0,nzlocal,1,0,1,
      &                   phi,localbounds,mglevel,icndbndy)
       call condbndymgint(conductors%oddsubgrid ,nxlocal,0,nzlocal,1,0,1,
@@ -5445,7 +5537,7 @@ c     --- do loop to cover even and odd points
 
         call sorhalfpass2d(parity,mglevel,nxlocal,nzlocal,phi,rho,
      &                     dxsqi,dzsqi,xminodx,
-     &                     localbounds,mgparam,
+     &                     localbounds,mgparam,mgform,
      &                     lcndbndy,icndbndy,conductors,lrz)
 
         call applyboundaryconditions3d(nxlocal,0,nzlocal,1,0,1,phi,1,localbounds,
@@ -5475,7 +5567,7 @@ c     call mgexchange_phi(1,nxlocal,0,nzlocal,phi,1,0,1,-1,-1,fsdecomp)
 c=============================================================================
       subroutine sorhalfpass2d(parity,mglevel,nxlocal,nzlocal,phi,rho,
      &                         dxsqi,dzsqi,xminodx,localbounds,
-     &                         mgparam,lcndbndy,icndbndy,conductors,lrz)
+     &                         mgparam,mgform,lcndbndy,icndbndy,conductors,lrz)
       use Constant
       use ConductorTypemodule
       integer(ISZ):: parity,mglevel,nxlocal,nzlocal
@@ -5483,6 +5575,7 @@ c=============================================================================
       real(kind=8):: dxsqi,dzsqi,xminodx
       integer(ISZ):: localbounds(0:5)
       real(kind=8):: mgparam
+      integer(ISZ):: mgform
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
@@ -5543,18 +5636,18 @@ c     --- surface of the conductor boundaries.
         if (parity == 0) then
          call condbndymg2d(conductors%evensubgrid,nxlocal,nzlocal,phi,rho,
      &                     dxsqi,dzsqi,xminodx,lrz,
-     &                     mgparam,localbounds,mglevel,icndbndy)
+     &                     mgparam,localbounds,mglevel,mgform,icndbndy)
         endif
         if (parity == 1) then
          call condbndymg2d(conductors%oddsubgrid,nxlocal,nzlocal,phi,rho,
      &                     dxsqi,dzsqi,xminodx,lrz,
-     &                     mgparam,localbounds,mglevel,icndbndy)
+     &                     mgparam,localbounds,mglevel,mgform,icndbndy)
         endif
       endif
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmg(conductors%interior,nxlocal,0,nzlocal,1,0,1,
-     &                phi,mglevel,1,.false.)
+     &                phi,mglevel,mgform,.false.)
       call condbndymgint(conductors%evensubgrid,nxlocal,0,nzlocal,1,0,1,
      &                   phi,localbounds,mglevel,icndbndy)
       call condbndymgint(conductors%oddsubgrid ,nxlocal,0,nzlocal,1,0,1,
@@ -5631,14 +5724,14 @@ c           --- radius=0 is a special case
 c=============================================================================
       subroutine condbndymg2d(subgrid,nxlocal,nzlocal,phi,rho,dxsqi,dzsqi,
      &                        xminodx,lrz,
-     &                        mgparam,localbounds,mglevel,icndbndy)
+     &                        mgparam,localbounds,mglevel,mgform,icndbndy)
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nxlocal,nzlocal,mglevel
       real(kind=8):: phi(-1:nxlocal+1,-1:nzlocal+1), rho(0:nxlocal,0:nzlocal)
       real(kind=8):: dxsqi,dzsqi,mgparam,xminodx
       logical(ISZ):: lrz
-      integer(ISZ):: localbounds(0:5),icndbndy
+      integer(ISZ):: localbounds(0:5),mgform,icndbndy
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -5656,7 +5749,7 @@ c conductor boundaries for points near conductor surface.
 
 c     --- Only use actual voltage on finest level. Set to zero for
 c     --- coarser levels since solver for the residuals.
-      if (mglevel == 0) then
+      if (mglevel == 0 .and. mgform == 1) then
         voltfac = 1.
       else
         voltfac = 0.
@@ -5771,8 +5864,9 @@ c       --- happen rather than add an extra check on c0.
       return
       end
 c=============================================================================
-      subroutine condbndymgres2d(subgrid,nxlocal,nzlocal,phi,rho,res,dxsqi,dzsqi,xminodx,lrz,
-     &                           localbounds,mglevel,icndbndy,delx,delz)
+      subroutine condbndymgres2d(subgrid,nxlocal,nzlocal,phi,rho,res,dxsqi,dzsqi,
+     &                           xminodx,lrz,localbounds,mglevel,mgform,mgform2init,
+     &                           icndbndy,delx,delz)
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nxlocal,nzlocal,mglevel
@@ -5781,10 +5875,26 @@ c=============================================================================
       real(kind=8):: res(-delx:nxlocal+delx,-delz:nzlocal+delz)
       real(kind=8):: dxsqi,dzsqi,xminodx
       logical(ISZ):: lrz
-      integer(ISZ):: localbounds(0:5),icndbndy
+      integer(ISZ):: localbounds(0:5),mgform,icndbndy
+      logical(ISZ):: mgform2init
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
+c
+c mgform is used to specify what form of operator is being used for
+c multigrid. This only effects the routine at the finest level. When 1, normal
+c form is being used - the residual is calculated directly from phi at level 1.
+c Hence the actual values of the voltages are used. When 2, residual
+c correction form is used and so the residual is being calculated from the
+c error. Use zero for the voltages (zero error).
+c When the normal form is used, the result is scaled by the minimum of the
+c deltas. This is done since the the correct term can get erroneously large
+c as delta approaches zero which hinder convergence. With residual correction
+c form, the opposite is true, when delta nears zero, the large residual is
+c needed to allow rapid convergence.
+c The logical mgform2init is true on the first call to residual when the
+c residual correction form is being used. In that case, the actual voltages
+c need to be used since the residual is operating on phi (and not the error).
 
       integer(ISZ):: ic,ix,iz
       real(kind=8):: pxm,pzm,pxp,pzp
@@ -5799,7 +5909,7 @@ c conductor boundaries for points near conductor surface.
 
 c     --- Only use actual voltage on finest level. Set to zero for
 c     --- coarser levels since solver for the residuals.
-      if (mglevel == 0) then
+      if (mglevel == 0 .and. (mgform == 1 .or. mgform2init)) then
         voltfac = 1.
       else
         voltfac = 0.
@@ -5925,6 +6035,7 @@ c       --- Correct coefficients for axisymmetric case
           endif
         endif
 
+        if (mgform2init) ppp = 1.
         c0 = cxm + cxp + czm + czp
         res(ix,iz) = ppp*(rho(ix,iz) + cxm*pxm + cxp*pxp + czm*pzm + czp*pzp - c0*phi(ix,iz))
 
@@ -5941,7 +6052,7 @@ c       --- Correct coefficients for axisymmetric case
 c=============================================================================
       subroutine residual2d(nxlocal,nzlocal,delx,delz,dxsqi,dzsqi,
      &                      xminodx,lrz,phi,rho,res,mglevel,localbounds,
-     &                      lcndbndy,icndbndy,conductors)
+     &                      mgform,mgform2init,lcndbndy,icndbndy,conductors)
       use ConductorTypemodule
       integer(ISZ):: nxlocal,nzlocal
       integer(ISZ):: delx,delz
@@ -5950,6 +6061,8 @@ c=============================================================================
       real(kind=8):: phi(-1:nxlocal+1,-1:nzlocal+1),rho(0:nxlocal,0:nzlocal)
       real(kind=8):: res(-delx:nxlocal+delx,-delz:nzlocal+delz)
       integer(ISZ):: mglevel,localbounds(0:5)
+      integer(ISZ):: mgform
+      logical(ISZ):: mgform2init
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
@@ -6069,16 +6182,16 @@ c     --- Calculate the residual.
 
 c     --- Zero the residual inside conductors.
       call cond_potmgres(conductors%interior,nxlocal,0,nzlocal,
-     *                   delx,0,delz,res,mglevel,1,.false.)
+     &                   delx,0,delz,res,mglevel,mgform,.false.)
 
       if (lcndbndy) then
 c       --- Calculate the residual near the conductor.
         call condbndymgres2d(conductors%evensubgrid,nxlocal,nzlocal,phi,rho,res,
      &                       dxsqi,dzsqi,xminodx,lrz,localbounds,
-     &                       mglevel,icndbndy,delx,delz)
+     &                       mglevel,mgform,mgform2init,icndbndy,delx,delz)
         call condbndymgres2d(conductors%oddsubgrid,nxlocal,nzlocal,phi,rho,res,
      &                       dxsqi,dzsqi,xminodx,lrz,localbounds,
-     &                       mglevel,icndbndy,delx,delz)
+     &                       mglevel,mgform,mgform2init,icndbndy,delx,delz)
       endif
 
       call applyboundaryconditions3d(nxlocal,0,nzlocal,

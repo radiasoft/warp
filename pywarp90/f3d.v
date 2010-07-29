@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.216 $, $Date: 2010/04/29 17:21:50 $
+#@(#) File F3D.V, version $Revision: 3.217 $, $Date: 2010/07/29 16:13:34 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.216 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.217 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -288,7 +288,7 @@ multigrid2dsolve(iwhich:integer,nx:integer,nz:integer,
                  rho(0:nxlocal,0:nzlocal):real,
                  bounds(0:5):integer,
                  xmminlocal:real,
-                 mgparam:real,mgiters:integer,mgmaxiters:integer,
+                 mgparam:real,mgform:integer,mgiters:integer,mgmaxiters:integer,
                  mgmaxlevels:integer,mgerror:real,mgtol:real,mgverbose:integer,
                  downpasses:integer,uppasses:integer,
                  lcndbndy:logical,laddconductor:logical,icndbndy:integer,
