@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.95 2010/08/02 21:25:07 jlvay Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.96 2010/08/02 22:44:41 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -78,6 +78,14 @@ Class for creating particle scraper for conductors
  - nxscale=1,nyscale=1,nzscale=1: Scale factor on the number of grid cells
                                   on the workig mesh. These should be integer
                                   values.
+ - interceptvelocitymethod='finitedifference':
+        This sets how the velocity is calculated when finding the intercept
+        where lost particles entered a conductor. When 'finitedifference', use
+        a finite difference of the new minus the old particle positions. This
+        gives more robust results in the presence of magnetic fields.
+        When 'actualvelocity', use the actual particle velocity. This option
+        should only ever be used in special cases and for testing.
+        
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
@@ -87,11 +95,13 @@ conductors are an argument.
                     lrefineintercept=0,lrefineallintercept=0,nstepsperorbit=8,
                     lcollectlpdata=0,mglevel=0,aura=0.,
                     install=1,lbeforescraper=0,lfastscraper=0,
-                    grid=None,nxscale=1,nyscale=1,nzscale=1): 
+                    grid=None,nxscale=1,nyscale=1,nzscale=1, 
+                    interceptvelocitymethod='finitedifference'):
     self.mglevel = mglevel
     self.aura = aura
     self.lbeforescraper = lbeforescraper
     self.lfastscraper = lfastscraper
+    self.interceptvelocitymethod = interceptvelocitymethod
     # --- First set so install is false. Reset later with input value.
     # --- This is needed since in some cases registerconductors may want
     # --- to do the install. This just skips it in that case.
@@ -1003,11 +1013,11 @@ counting the current lost on the conductor.
           dt = dt/self.getrefinedtimestepnumber(dt,bx,by,bz,q,m)
 
         # --- use an approximate calculation.
-        if 0:
-         vx = (xc-xo)/dt
-         vy = (yc-yo)/dt
-         vz = (zc-zo)/dt
-        else:
+        if self.interceptvelocitymethod == 'finitedifference':
+          vx = (xc-xo)/dt
+          vy = (yc-yo)/dt
+          vz = (zc-zo)/dt
+        elif self.interceptvelocitymethod == 'actualvelocity':
           ux = take(top.uxplost,ic)
           uy = take(top.uyplost,ic)
           uz = take(top.uzplost,ic)
@@ -1015,6 +1025,8 @@ counting the current lost on the conductor.
           vx = ux*gi
           vy = uy*gi
           vz = uz*gi
+        else:
+          raise ValueError("interceptvelocitymethod has an incorrect value, %s"%self.interceptvelocitymethod)
 
         # --- get v in lab frame
         if top.boost_gamma>1.:
@@ -1203,6 +1215,8 @@ luserefinedifnotlost: when true, if the refined particle orbit is not lost,
       # --- This code is OK in serial, but in parallel, it will break with
       # --- periodic b.c.s and if a particle crosses a parallel domain
       # --- boundary.
+      zmmin = w3d.zmmin + top.zbeam
+      zmmax = w3d.zmmax + top.zbeam
       if top.pboundxy == periodic:
         xc[:] = where(xc > w3d.xmmax,xc-(w3d.xmmax-w3d.xmmin),xc)
         xc[:] = where(xc < w3d.xmmin,xc+(w3d.xmmax-w3d.xmmin),xc)
@@ -1222,23 +1236,19 @@ luserefinedifnotlost: when true, if the refined particle orbit is not lost,
         isinside[:] = where(xc < w3d.xmmin,1,isinside)
         isinside[:] = where(yc > w3d.ymmax,1,isinside)
         isinside[:] = where(yc < w3d.ymmin,1,isinside)
-      if 0:#top.pbound0 == periodic or top.pboundnz == periodic:
-#        zc[:] = where(zc > w3d.zmmax,zc-(w3d.zmmax-w3d.zmmin),zc)
-#        zc[:] = where(zc < w3d.zmmin,zc+(w3d.zmmax-w3d.zmmin),zc)
-        zmin = w3d.zmmin+top.zbeam
-        zmax = w3d.zmmax+top.zbeam
-        zc[:] = where(zc > zmax,zc-(zmax-zmin),zc)
-        zc[:] = where(zc < zmin,zc+(zmax-zmin),zc)
+      if top.pbound0 == periodic or top.pboundnz == periodic:
+        zc[:] = where(zc > zmax,zc-(zmax-zmmin),zc)
+        zc[:] = where(zc < zmmin,zc+(zmax-zmmin),zc)
       if top.pboundnz == reflect:
-        uzo[:] = where(zc > w3d.zmmax,-uzo,uzo)
-        zc[:] = where(zc > w3d.zmmax,2.*w3d.zmmax-zc,zc)
+        uzo[:] = where(zc > zmmax,-uzo,uzo)
+        zc[:] = where(zc > zmmax,2.*zmmax-zc,zc)
       if top.pbound0 == reflect:
-        uzo[:] = where(zc < w3d.zmmin,-uzo,uzo)
-        zc[:] = where(zc < w3d.zmmin,2.*w3d.zmmin-zc,zc)
+        uzo[:] = where(zc < zmmin,-uzo,uzo)
+        zc[:] = where(zc < zmmin,2.*zmmin-zc,zc)
       if top.pboundnz == absorb:
-        isinside[:] = where(zc > w3d.zmmax,1,isinside)
+        isinside[:] = where(zc > zmmax,1,isinside)
       if top.pbound0 == absorb:
-        isinside[:] = where(zc < w3d.zmmin,1,isinside)
+        isinside[:] = where(zc < zmmin,1,isinside)
 
       # --- For the particles that are still outside, set the old positions
       # --- to be the updated positions
