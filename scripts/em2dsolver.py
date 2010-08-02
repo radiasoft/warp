@@ -28,7 +28,7 @@ class EM2D(object):
                     'laser_wavelength':None,'laser_wavenumber':None,
                     'laser_frequency':None,'laser_source_x':-1.,
                     'laser_source_v':0.,
-                    'laser_focus':None,'laser_focus_velocity':0.,
+                    'laser_focus':None,'laser_focus_v':0.,
                     'density_1d':False,'nfield_subcycle':1,
                     'autoset_timestep':true,'dtcoef':0.99}
 
