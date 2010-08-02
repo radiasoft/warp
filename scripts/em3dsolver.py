@@ -1998,10 +1998,15 @@ class EM3D(SubcycledPoissonSolver):
   ##########################################################################
   # Gather requested array on processor 0
   def gatherarray(self,data,direction=None,slice=None,procs=None,guards=0,**kw):
-    if self.l_2dxz:direction=1
+#    if self.l_2dxz:direction=1
+    if self.l_2dxz:data=data[:,self.ny/2,:]
     if self.isactive:
      f=self.block.core.yf
-     nxd,nyd,nzd=shape(data)
+     if self.l_2dxz:
+       nxd,nzd=shape(data)
+       nyd = 1
+     else:
+       nxd,nyd,nzd=shape(data)
      if direction==0:
       if slice is None:
         if self.l4symtry:
@@ -2018,8 +2023,8 @@ class EM3D(SubcycledPoissonSolver):
         xmax=self.block.ymax
         ymin=self.block.zmin
         ymax=self.block.zmax
-        data=data[selfslice,:,:]
-     if direction==1:
+        data=data[selfslice,...]
+     if direction==1 and not self.l_2dxz:
       if slice is None:
         if self.l4symtry:
           slice=0
@@ -2049,7 +2054,7 @@ class EM3D(SubcycledPoissonSolver):
         xmax=self.block.xmax
         ymin=self.block.ymin
         ymax=self.block.ymax
-        data=data[:,:,selfslice]
+        data=data[...,selfslice]
     if procs is None:procs=arange(npes)
     if me==0:
       if guards:
@@ -2062,9 +2067,14 @@ class EM3D(SubcycledPoissonSolver):
         nzg=0
     if direction in [0,1,2]:
       if me==0:
-        if direction==0: datag = zeros([self.ny+1+nyg*2,self.nz+1+nzg*2],'d')
-        if direction==1: datag = zeros([self.nx+1+nxg*2,self.nz+1+nzg*2],'d')
-        if direction==2: datag = zeros([self.nx+1+nxg*2,self.ny+1+nyg*2],'d')
+        if self.l_2dxz:
+          if direction==0: datag = zeros([self.nz+1+nzg*2],'d')
+          if direction==1: datag = zeros([self.nx+1+nxg*2,self.nz+1+nzg*2],'d')
+          if direction==2: datag = zeros([self.nx+1+nxg*2],'d')
+        else:
+          if direction==0: datag = zeros([self.ny+1+nyg*2,self.nz+1+nzg*2],'d')
+          if direction==1: datag = zeros([self.nx+1+nxg*2,self.nz+1+nzg*2],'d')
+          if direction==2: datag = zeros([self.nx+1+nxg*2,self.ny+1+nyg*2],'d')
       else:
         datag=None
       if type(procs) is type(1):procs=[procs]
@@ -2077,20 +2087,34 @@ class EM3D(SubcycledPoissonSolver):
           xminp = alldata[i][0]
           yminp = alldata[i][1]
           data  = alldata[i][-1]
-          nx,ny = shape(data)
-          if direction==0:
-            ixmin = nint((xminp-self.ymmin)/self.dy)+nyg
-            iymin = nint((yminp-self.zmmin)/self.dz)+nzg
-          if direction==1:
-            ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
-            iymin = nint((yminp-self.zmmin)/self.dz)+nzg
-          if direction==2:
-            ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
-            iymin = nint((yminp-self.ymmin)/self.dy)+nyg
-          datag[ixmin:ixmin+nx,iymin:iymin+ny] = data[...]
+          if data is not None:
+           if self.l_2dxz:
+            if direction==0:
+              ny = shape(data)[0]
+              iymin = nint((yminp-self.zmmin)/self.dz)+nzg
+              datag[iymin:iymin+ny] = data[...]
+            if direction==2:
+              nx = shape(data)[0]
+              ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
+              datag[ixmin:ixmin+nx] = data[...]
+           else:
+            nx,ny = shape(data)
+            if direction==0:
+              ixmin = nint((xminp-self.ymmin)/self.dy)+nyg
+              iymin = nint((yminp-self.zmmin)/self.dz)+nzg
+            if direction==1:
+              ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
+              iymin = nint((yminp-self.zmmin)/self.dz)+nzg
+            if direction==2:
+              ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
+              iymin = nint((yminp-self.ymmin)/self.dy)+nyg
+            datag[ixmin:ixmin+nx,iymin:iymin+ny] = data[...]
     else:
       if me==0:
-        datag = zeros([self.nx+1+nxg*2,self.ny+1+nyg*2,self.nz+1+nzg*2],'d')
+        if self.l_2dxz:
+          datag = zeros([self.nx+1+nxg*2,self.nz+1+nzg*2],'d')
+        else:
+          datag = zeros([self.nx+1+nxg*2,self.ny+1+nyg*2,self.nz+1+nzg*2],'d')
       else:
         datag = None
       xmin=self.block.xmin
@@ -2113,11 +2137,17 @@ class EM3D(SubcycledPoissonSolver):
             yminp = ymin
             zminp = zmin
           if data is not None:
-            nx,ny,nz = shape(data)
-            ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
-            iymin = nint((yminp-self.ymmin)/self.dy)+nyg
-            izmin = nint((zminp-self.zmmin)/self.dz)+nzg
-            datag[ixmin:ixmin+nx,iymin:iymin+ny,izmin:izmin+nz] = data[...]
+            if self.l_2dxz:
+              nx,nz = shape(data)
+              ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
+              izmin = nint((zminp-self.zmmin)/self.dz)+nzg
+              datag[ixmin:ixmin+nx,izmin:izmin+nz] = data[...]
+            else:
+              nx,ny,nz = shape(data)
+              ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
+              iymin = nint((yminp-self.ymmin)/self.dy)+nyg
+              izmin = nint((zminp-self.zmmin)/self.dz)+nzg
+              datag[ixmin:ixmin+nx,iymin:iymin+ny,izmin:izmin+nz] = data[...]
       barrier() # this ensures that processor 0 will not bet overflowed with messages
 
     return datag
