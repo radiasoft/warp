@@ -5,7 +5,7 @@ usual particles as object (Electron, Positron, Water, atoms from periodic table)
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.77 2010/05/19 00:44:42 dave Exp $"
+species_version = "$Id: species.py,v 1.78 2010/08/02 21:23:07 jlvay Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale>0.:
@@ -298,7 +298,7 @@ Creates a new species of particles. All arguments are optional.
         density = fzeros([nx+1,ny+1],'d')
         densityc = fzeros([nx+1,ny+1],'d')
       else:
-        if w3d.solvergeom is w3d.XZgeom:
+        if w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
           density = fzeros([nx+1,nz+1],'d')
           densityc = fzeros([nx+1,nz+1],'d')
         else:
@@ -309,7 +309,7 @@ Creates a new species of particles. All arguments are optional.
         nx = shape(dens)[0]-1
         ny = shape(dens)[1]-1
       else:
-        if w3d.solvergeom is w3d.XZgeom:
+        if w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
           nx = shape(dens)[0]-1
           nz = shape(dens)[1]-1
         else:
@@ -331,6 +331,7 @@ Creates a new species of particles. All arguments are optional.
       x=getx(js=js,lost=lost,gather=0)
       y=gety(js=js,lost=lost,gather=0)
       z=getz(js=js,lost=lost,gather=0)
+      if w3d.solvergeom==w3d.RZgeom:x=sqrt(x*x+y*y)
       np=shape(x)[0]
       if np>0:
         if top.wpid==0:
@@ -341,7 +342,7 @@ Creates a new species of particles. All arguments are optional.
         if w3d.solvergeom is w3d.XYgeom:
           deposgrid2d(1,np,x,y,w,nx,ny,density,densityc,xmin,xmax,ymin,ymax)
         else:
-          if w3d.solvergeom is w3d.XZgeom:
+          if w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
             deposgrid2d(1,np,x,z,w,nx,nz,density,densityc,xmin,xmax,zmin,zmax)
           else:
             deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
@@ -357,7 +358,7 @@ Creates a new species of particles. All arguments are optional.
           density[0,:] += density[-1,:]; density[-1,:]=density[0,:]
           density[:,0] += density[:,-1]; density[:,-1]=density[:,0]
     else:
-      if w3d.solvergeom is w3d.XZgeom:
+      if w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
          if l_dividebyvolume:
           density*=nx*nz/((xmax-xmin)*(zmax-zmin))
           if l4symtry:
@@ -366,6 +367,12 @@ Creates a new species of particles. All arguments are optional.
             density[0,:] += density[-1,:]; density[-1,:,:]=density[0,:]
           if w3d.bound0 is periodic:
             density[:,0] += density[:,-1]; density[:,-1]=density[:,0]
+          if w3d.solvergeom==w3d.RZgeom:
+            dr = (xmax-xmin)/nx
+            r = arange(nx+1)*dr
+            for j in range(1,nx+1):
+              density[j,:] /= 2.*pi*r[j]
+            density[0,:] /= pi*dr/2
       else:
          if l_dividebyvolume:
           density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
