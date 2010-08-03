@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.35 $, $Date: 2010/07/09 23:47:47 $
+c@(#) File top_lattice.F, version $Revision: 3.36 $, $Date: 2010/08/03 22:03:06 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -1939,10 +1939,12 @@ c        --- find index of nearest acceleration element
 
 c        --- Calculate the temporaries here to make sure that they are
 c        --- up to date, in case there have been changes.
-         emltct = cos(emltot)
-         emltst = sin(emltot)
-         emltcp = cos(emltop)
-         emltsp = sin(emltop)
+         if (nemlt >= 0) then
+           emltct = cos(emltot)
+           emltst = sin(emltot)
+           emltcp = cos(emltop)
+           emltsp = sin(emltop)
+         endif
 
 c        --- find index of nearest emlt element
 c        --- The cemlt arrays calculated here are needed for the elements
@@ -1992,10 +1994,12 @@ c          --- THIS NEEDS CHECKING
 
 c        --- Calculate the temporaries here to make sure that they are
 c        --- up to date, in case there have been changes.
-         mmltct = cos(mmltot)
-         mmltst = sin(mmltot)
-         mmltcp = cos(mmltop)
-         mmltsp = sin(mmltop)
+         if (nemlt >= 0) then
+           mmltct = cos(mmltot)
+           mmltst = sin(mmltot)
+           mmltcp = cos(mmltop)
+           mmltsp = sin(mmltop)
+         endif
 
 c        --- find index of nearest mmlt element
 c        --- The cmmlt arrays calculated here are needed for the elements
