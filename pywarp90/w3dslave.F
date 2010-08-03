@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.58 $, $Date: 2010/07/01 23:52:48 $
+c W3DSLAVE.M, version $Revision: 1.59 $, $Date: 2010/08/03 22:41:37 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -145,7 +145,7 @@ c only responsible for sending out the source is owns.
       integer(MPIISZ):: sendtype,recvtype
       integer(MPIISZ):: itemp,ineighbor,nn
       include "mpif.h"
-      integer(ISZ):: mpi_comm
+      integer(MPIISZ):: mpi_comm
       integer(MPIISZ):: mpierror
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
       integer(MPIISZ):: w
@@ -153,10 +153,6 @@ c only responsible for sending out the source is owns.
       logical(ISZ):: lsend
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
-
-c     --- Note that mpi_comm is type ISZ instead of MPIISZ since the
-c     --- mpi_comm_x in ppdecomp are also ISZ, but it is handled consistently
-c     --- so the correct data is passed around.
 
       allocate(sourcepsend(0:nc-1,0:nxp,0:nyp,0:nzp))
       allocate(sourceprecv(0:nc-1,0:nxp,0:nyp,0:nzp))
@@ -355,10 +351,12 @@ c  Only first and last processors do anything.
       integer(MPIISZ):: dims,nlocal(-1:2),starts(-1:2),sizes(-1:2)
       integer(MPIISZ):: sendtype
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
+      integer(MPIISZ):: mpi_comm_mpiisz
       integer(MPIISZ):: isend,irecv,messid = 70
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
+      mpi_comm_mpiisz = mpi_comm
       dims = 4
       nlocal = (/nc,1+nxlocal,1+nylocal,1+nzlocal/)
       starts = 0
@@ -376,12 +374,12 @@ c       --- Select the chunk of data to send.
         call MPI_TYPE_COMMIT(sendtype,mpierror)
         nn = 1
         isend = 0
-        call MPI_SEND(source,nn,sendtype,isend,messid,mpi_comm,mpierror)
+        call MPI_SEND(source,nn,sendtype,isend,messid,mpi_comm_mpiisz,mpierror)
 
 c       --- receive back the data sent plus the data from the other processor
         nn = 1
         irecv = 0
-        call MPI_RECV(source,nn,sendtype,irecv,messid,mpi_comm,mpistatus,mpierror)
+        call MPI_RECV(source,nn,sendtype,irecv,messid,mpi_comm_mpiisz,mpistatus,mpierror)
         call MPI_TYPE_FREE(sendtype,mpierror)
 
       else if (iproc == 0) then
@@ -397,7 +395,7 @@ c       --- allocate temporary space to receive the incoming data into
 
         irecv =  nprocs-1
         call MPI_RECV(sourcetemp,nn,MPI_DOUBLE_PRECISION,
-     &                irecv,messid,mpi_comm,mpistatus,mpierror)
+     &                irecv,messid,mpi_comm_mpiisz,mpistatus,mpierror)
 
 c       --- do the sum
         source(:,i1(0):i2(0),i1(1):i2(1),i1(2):i2(2)) =
@@ -413,7 +411,7 @@ c       --- send the summed data back
         call MPI_TYPE_COMMIT(sendtype,mpierror)
         nn = 1
         isend = nprocs-1
-        call MPI_SEND(source,nn,sendtype,isend,messid,mpi_comm,mpierror)
+        call MPI_SEND(source,nn,sendtype,isend,messid,mpi_comm_mpiisz,mpierror)
         call MPI_TYPE_FREE(sendtype,mpierror)
 
 c       --- The temp array can be deallocated now that the send is complete.
@@ -457,7 +455,7 @@ c only responsible for sending out the source is owns.
       integer(MPIISZ),allocatable:: recvtypes(:,:,:),sendtypes(:,:,:)
       integer(MPIISZ),allocatable:: sendcounts(:,:,:),recvcounts(:,:,:)
       integer(MPIISZ),allocatable:: displs(:,:,:)
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,mpi_comm_mpiisz
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -593,9 +591,10 @@ c     --- Data to be sent
       enddo
 
 c     --- Now, do all of the message passing at once.
+      mpi_comm_mpiisz = fsdecomp%mpi_comm
       call MPI_ALLTOALLW(sourcep,sendcounts,displs,sendtypes,
      &                   source ,recvcounts,displs,recvtypes,
-     &                   fsdecomp%mpi_comm,mpierror)
+     &                   mpi_comm_mpiisz,mpierror)
 
 c     --- Free all of the types
       do iz=0,fsdecomp%nzprocs-1
@@ -705,7 +704,7 @@ c phi in the guard planes, iz=-1 and +1.
       integer(MPIISZ),allocatable:: recvtypes(:,:,:),sendtypes(:,:,:)
       integer(MPIISZ),allocatable:: sendcounts(:,:,:),recvcounts(:,:,:)
       integer(MPIISZ),allocatable:: displs(:,:,:)
-      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpierror,mpi_comm_mpiisz
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -821,9 +820,10 @@ c     --- Data to be sent
       enddo
 
 c     --- Now, do all of the message passing at once.
+      mpi_comm_mpiisz = ppdecomp%mpi_comm
       call MPI_ALLTOALLW(phi ,sendcounts,displs,sendtypes,
      &                   phip,recvcounts,displs,recvtypes,
-     &                   ppdecomp%mpi_comm,mpierror)
+     &                   mpi_comm_mpiisz,mpierror)
 
 c     --- Free all of the types
       do iz=0,fsdecomp%nzprocs-1
