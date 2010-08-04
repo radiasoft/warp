@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.21 2009/08/13 17:58:30 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.22 2010/08/04 17:03:06 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -438,6 +438,10 @@ Input arguments:
     theta = arctan2(yy,xx)
     Bsolver.sourcep[0,:,:,:] = -ww*current*sin(theta)
     Bsolver.sourcep[1,:,:,:] = +ww*current*cos(theta)
+
+  # --- Set this, so that the solver thinks that a loadj has been done
+  # --- (which is effectively correct since sourcep was set above).
+  Bsolver.sourcepfinalized = 0
 
   # --- Set convergence tolerence (in Tesla)
   Bsolver.mgtol = abs(bzmax)*tol*ones(3)
