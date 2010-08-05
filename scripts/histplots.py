@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.38 2010/03/11 01:11:23 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.39 2010/08/05 22:22:51 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -96,6 +96,7 @@ Helper function which, given a name, returns the appropriate data. Note that
 name could actually be the variable itself, in which case, it is just
 returned.
   """
+  if me > 0: return 0
   if type(name) == StringType:
     # --- if varsuffix is specified, try to evaluate the name with the
     # --- suffix. If ok, return the result, otherwise, default to the
@@ -365,6 +366,8 @@ Plots data in various ways. By default, makes a mountain range plot.
 ###########################################################################
 ###########################################################################
 ###########################################################################
+# --- Note that in parallel, only processor 0 has the data. All of the others
+# --- just return without doing anything.
 
 def hpzbeam(kwdict={},**kw):
   "Beam frame location."
@@ -441,6 +444,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpekinz(iw=0,kwdict={},**kw):
   "Z Kinetic energy (units of MV)"
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Z Kinetic energy"
   kw['titlel']="(MV)"
@@ -459,6 +463,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpekin(iw=0,kwdict={},**kw):
   "Total Kinetic energy (units of MV)"
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Total Kinetic energy"
   kw['titlel']="(MV)"
@@ -774,6 +779,7 @@ if sys.version[:5] != "1.5.1":
 def hpvzbar(iw=0,beamframe=1,kwdict={},**kw):
   """Mean Z Velocity (beam frame or lab frame)
   - beamframe=1: when true, plot Vz relative to beam frame (vzbar - vbeam)"""
+  if me > 0: return
   kw.update(kwdict)
   kw['titlel']="(m/s)"
   vbeam = _extractvarkw('vbeam',kw)
@@ -963,6 +969,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpvzofz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   "Vz versus space and time."
+  if me > 0: return
   lhvzofz = _extractvarkw('lhvzofz',kw)
   if not lhvzofz: return
   kw.update(kwdict)
@@ -976,6 +983,7 @@ if sys.version[:5] != "1.5.1":
 # --- Plots of current
 def hpcurr(contour=0,overlay=0,iz=None,kwdict={},**kw):
   "Current."
+  if me > 0: return
   lhcurrz = _extractvarkw('lhcurrz',kw)
   lhlinechg = _extractvarkw('lhlinechg',kw)
   lhvzofz = _extractvarkw('lhvzofz',kw)
@@ -1424,6 +1432,7 @@ if sys.version[:5] != "1.5.1":
 
 def hptotalke(kwdict={},**kw):
   "Total Kinetic Energy."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Total Kinetic Energy"
   kw['titlel']="(J)"
@@ -1434,6 +1443,7 @@ def hptotalke(kwdict={},**kw):
 
 def hptotale(kwdict={},**kw):
   "Total Energy."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Total Energy"
   kw['titlel']="(J)"
@@ -1445,6 +1455,7 @@ def hptotale(kwdict={},**kw):
 
 def hpthermale(iw=0,kwdict={},**kw):
   "Z Thermal Energy."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Z Thermal Energy"
   kw['titlel']="(J)"
@@ -1460,6 +1471,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpeps6d(iw=0,kwdict={},**kw):
   "6-D Emittance."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="6-D Emittance"
   kw['titlel']="((!p-m-rad)^3)"
@@ -1473,6 +1485,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpepst(iw=0,kwdict={},**kw):
   "Transverse Emittance."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Transverse Emittance"
   kw['titlel']="(!p-m-rad)"
@@ -1485,6 +1498,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpepsnt(iw=0,kwdict={},**kw):
   "Normalized Transverse Emittance."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Normalized Transverse Emittance"
   kw['titlel']="(!p-mm-mrad)"
@@ -1497,6 +1511,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpxedge(iw=0,kwdict={},**kw):
   "X Beam Edge."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="X Beam Edge"
   kw['titlel']="(m)"
@@ -1508,6 +1523,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpxpedge(iw=0,kwdict={},**kw):
   "X' at Beam Edge."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="X' at Beam Edge"
   kw['titlel']="(m)"
@@ -1523,6 +1539,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpyedge(iw=0,kwdict={},**kw):
   "Y Beam Edge."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Y Beam Edge"
   kw['titlel']="(m)"
@@ -1534,6 +1551,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpypedge(iw=0,kwdict={},**kw):
   "Y' at Beam Edge."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Y' at Beam Edge"
   kw['titlel']="(m)"
@@ -1549,6 +1567,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpredge(iw=0,kwdict={},**kw):
   "R Beam Edge."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="R Beam Edge"
   kw['titlel']="(m)"
@@ -1560,6 +1579,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpxedges(iw=0,kwdict={},**kw):
   "X Beam Edges plus centroid."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="X Beam Edges plus centroid"
   kw['titlel']="(m)"
@@ -1573,6 +1593,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpyedges(iw=0,kwdict={},**kw):
   "Y Beam Edges plus centroid."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Y Beam Edges plus centroid"
   kw['titlel']="(m)"
@@ -1586,6 +1607,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpredges(iw=0,kwdict={},**kw):
   "R Beam Edges."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="R Beam Edges"
   kw['titlel']="(m)"
@@ -1598,6 +1620,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpxxpslope(iw=0,kwdict={},**kw):
   "X-X' slope (xxpbar - xbar*xpbar)/xrms**2."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="X-X' slope"
   kw['titlel']="(rad)"
@@ -1613,6 +1636,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpyypslope(iw=0,kwdict={},**kw):
   "Y-Y' slope (yypbar - ybar*ypbar)/yrms**2."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Y-Y' slope"
   kw['titlel']="(rad)"
@@ -1628,6 +1652,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpenvx(iw=0,kwdict={},**kw):
   "X Beam Edge."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="X Beam Edge"
   kw['titlel']="(m)"
@@ -1639,6 +1664,7 @@ if sys.version[:5] != "1.5.1":
 
 def hpenvy(iw=0,kwdict={},**kw):
   "Y Beam Edge."
+  if me > 0: return
   kw.update(kwdict)
   kw['titlet']="Y Beam Edge"
   kw['titlel']="(m)"
@@ -2338,118 +2364,229 @@ def histplotstest(**kw):
   """
 Test all histplots
   """
+  print 'hptotalke'
   apply(hptotalke,(),kw);fma()
-  apply(hptotalke,(),kw);fma()
+  print 'hptotale'
   apply(hptotale,(),kw);fma()
+  print 'hpthermale'
   apply(hpthermale,(),kw);fma()
+  print 'hpeps6d'
   apply(hpeps6d,(),kw);fma()
+  print 'hpepst'
   apply(hpepst,(),kw);fma()
+  print 'hpepsnt'
   apply(hpepsnt,(),kw);fma()
+  print 'hpxedge'
   apply(hpxedge,(),kw);fma()
+  print 'hpxpedge'
   apply(hpxpedge,(),kw);fma()
+  print 'hpyedge'
   apply(hpyedge,(),kw);fma()
+  print 'hpypedge'
   apply(hpypedge,(),kw);fma()
+  print 'hpredge'
   apply(hpredge,(),kw);fma()
+  print 'hpxedges'
   apply(hpxedges,(),kw);fma()
+  print 'hpyedges'
   apply(hpyedges,(),kw);fma()
+  print 'hpredges'
   apply(hpredges,(),kw);fma()
+  print 'hpxxpslope'
   apply(hpxxpslope,(),kw);fma()
+  print 'hpyypslope'
   apply(hpyypslope,(),kw);fma()
+  print 'hpenvx'
   apply(hpenvx,(),kw);fma()
+  print 'hpenvy'
   apply(hpenvy,(),kw);fma()
+  print 'hpzbeam'
   apply(hpzbeam,(),kw);fma()
+  print 'hpvbeam'
   apply(hpvbeam,(),kw);fma()
+  print 'hpbmlen'
   apply(hpbmlen,(),kw);fma()
+  print 'hpefld'
   apply(hpefld,(),kw);fma()
+  print 'hpekzmbe'
   apply(hpekzmbe,(),kw);fma()
+  print 'hpekzbeam'
   apply(hpekzbeam,(),kw);fma()
+  print 'hpekperp'
   apply(hpekperp,(),kw);fma()
+  print 'hpekinz'
   apply(hpekinz,(),kw);fma()
+  print 'hpekin'
   apply(hpekin,(),kw);fma()
+  print 'hpepsx'
   apply(hpepsx,(),kw);fma()
+  print 'hpepsy'
   apply(hpepsy,(),kw);fma()
+  print 'hpepsz'
   apply(hpepsz,(),kw);fma()
+  print 'hpepsnx'
   apply(hpepsnx,(),kw);fma()
+  print 'hpepsny'
   apply(hpepsny,(),kw);fma()
+  print 'hpepsnz'
   apply(hpepsnz,(),kw);fma()
+  print 'hpepsr'
   apply(hpepsr,(),kw);fma()
+  print 'hpepsg'
   apply(hpepsg,(),kw);fma()
+  print 'hpepsh'
   apply(hpepsh,(),kw);fma()
+  print 'hpepsnr'
   apply(hpepsnr,(),kw);fma()
+  print 'hpepsng'
   apply(hpepsng,(),kw);fma()
+  print 'hpepsnh'
   apply(hpepsnh,(),kw);fma()
+  print 'hppnum'
   apply(hppnum,(),kw);fma()
+  print 'hprhomid'
   apply(hprhomid,(),kw);fma()
+  print 'hprhomax'
   apply(hprhomax,(),kw);fma()
+  print 'hpxbar'
   apply(hpxbar,(),kw);fma()
+  print 'hpybar'
   apply(hpybar,(),kw);fma()
+  print 'hpxybar'
   apply(hpxybar,(),kw);fma()
+  print 'hpxrms'
   apply(hpxrms,(),kw);fma()
+  print 'hpyrms'
   apply(hpyrms,(),kw);fma()
+  print 'hprrms'
   apply(hprrms,(),kw);fma()
+  print 'hpxprms'
   apply(hpxprms,(),kw);fma()
+  print 'hpyprms'
   apply(hpyprms,(),kw);fma()
+  print 'hpxsqbar'
   apply(hpxsqbar,(),kw);fma()
+  print 'hpysqbar'
   apply(hpysqbar,(),kw);fma()
+  print 'hpvxbar'
   apply(hpvxbar,(),kw);fma()
+  print 'hpvybar'
   apply(hpvybar,(),kw);fma()
+  print 'hpvzbar'
   apply(hpvzbar,(),kw);fma()
+  print 'hpxpbar'
   apply(hpxpbar,(),kw);fma()
+  print 'hpypbar'
   apply(hpypbar,(),kw);fma()
+  print 'hpvxrms'
   apply(hpvxrms,(),kw);fma()
+  print 'hpvyrms'
   apply(hpvyrms,(),kw);fma()
+  print 'hpvzrms'
   apply(hpvzrms,(),kw);fma()
+  print 'hpxpsqbar'
   apply(hpxpsqbar,(),kw);fma()
+  print 'hpypsqbar'
   apply(hpypsqbar,(),kw);fma()
+  print 'hpxxpbar'
   apply(hpxxpbar,(),kw);fma()
+  print 'hpyypbar'
   apply(hpyypbar,(),kw);fma()
+  print 'hpxypbar'
   apply(hpxypbar,(),kw);fma()
+  print 'hpyxpbar'
   apply(hpyxpbar,(),kw);fma()
+  print 'hpxpypbar'
   apply(hpxpypbar,(),kw);fma()
+  print 'hpxvzbar'
   apply(hpxvzbar,(),kw);fma()
+  print 'hpyvzbar'
   apply(hpyvzbar,(),kw);fma()
+  print 'hpvxvzbar'
   apply(hpvxvzbar,(),kw);fma()
+  print 'hpvyvzbar'
   apply(hpvyvzbar,(),kw);fma()
+  print 'hplinechg'
   apply(hplinechg,(),kw);fma()
+  print 'hpvzofz'
   apply(hpvzofz,(),kw);fma()
+  print 'hpepsxz'
   apply(hpepsxz,(),kw);fma()
+  print 'hpepsyz'
   apply(hpepsyz,(),kw);fma()
+  print 'hpepsnxz'
   apply(hpepsnxz,(),kw);fma()
+  print 'hpepsnyz'
   apply(hpepsnyz,(),kw);fma()
+  print 'hpepsrz'
   apply(hpepsrz,(),kw);fma()
+  print 'hpepsgz'
   apply(hpepsgz,(),kw);fma()
+  print 'hpepshz'
   apply(hpepshz,(),kw);fma()
+  print 'hpepsnrz'
   apply(hpepsnrz,(),kw);fma()
+  print 'hpepsngz'
   apply(hpepsngz,(),kw);fma()
+  print 'hpepsnhz'
   apply(hpepsnhz,(),kw);fma()
+  print 'hpxbarz'
   apply(hpxbarz,(),kw);fma()
+  print 'hpybarz'
   apply(hpybarz,(),kw);fma()
+  print 'hpxybarz'
   apply(hpxybarz,(),kw);fma()
+  print 'hpxrmsz'
   apply(hpxrmsz,(),kw);fma()
+  print 'hpyrmsz'
   apply(hpyrmsz,(),kw);fma()
+  print 'hprrmsz'
   apply(hprrmsz,(),kw);fma()
+  print 'hpxprmsz'
   apply(hpxprmsz,(),kw);fma()
+  print 'hpyprmsz'
   apply(hpyprmsz,(),kw);fma()
+  print 'hpxsqbarz'
   apply(hpxsqbarz,(),kw);fma()
+  print 'hpysqbarz'
   apply(hpysqbarz,(),kw);fma()
+  print 'hpvxbarz'
   apply(hpvxbarz,(),kw);fma()
+  print 'hpvybarz'
   apply(hpvybarz,(),kw);fma()
+  print 'hpvzbarz'
   apply(hpvzbarz,(),kw);fma()
+  print 'hpxpbarz'
   apply(hpxpbarz,(),kw);fma()
+  print 'hpypbarz'
   apply(hpypbarz,(),kw);fma()
+  print 'hpvxrmsz'
   apply(hpvxrmsz,(),kw);fma()
+  print 'hpvyrmsz'
   apply(hpvyrmsz,(),kw);fma()
+  print 'hpvzrmsz'
   apply(hpvzrmsz,(),kw);fma()
+  print 'hpxpsqbarz'
   apply(hpxpsqbarz,(),kw);fma()
+  print 'hpypsqbarz'
   apply(hpypsqbarz,(),kw);fma()
+  print 'hpxxpbarz'
   apply(hpxxpbarz,(),kw);fma()
+  print 'hpyypbarz'
   apply(hpyypbarz,(),kw);fma()
+  print 'hpxypbarz'
   apply(hpxypbarz,(),kw);fma()
+  print 'hpyxpbarz'
   apply(hpyxpbarz,(),kw);fma()
+  print 'hpxpypbarz'
   apply(hpxpypbarz,(),kw);fma()
+  print 'hpxvzbarz'
   apply(hpxvzbarz,(),kw);fma()
+  print 'hpyvzbarz'
   apply(hpyvzbarz,(),kw);fma()
+  print 'hpvxvzbarz'
   apply(hpvxvzbarz,(),kw);fma()
+  print 'hpvyvzbarz'
   apply(hpvyvzbarz,(),kw);fma()
 
 
