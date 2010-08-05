@@ -358,11 +358,6 @@ REAL(kind=8), INTENT(IN) :: dt
 INTEGER :: j, k, l
 real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
 
-!if(f%nconds>0) then 
-!  call push_em3d_conde(f,dt)
-!  return
-!end if
-
 dtsdx = f%clight**2*dt/f%dx
 dtsdy = f%clight**2*dt/f%dy
 dtsdz = f%clight**2*dt/f%dz
@@ -1668,61 +1663,6 @@ real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
 return
 end subroutine push_em3d_a
 
-subroutine push_em3d_conde(f,dt)
-use mod_emfield3d
-implicit none
-
-TYPE(EM3D_YEEFIELDtype) :: f
-REAL(kind=8), INTENT(IN) :: dt
-
-INTEGER :: j, k, l
-real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
-
-dtsdx = f%clight**2*dt/f%dx
-dtsdy = f%clight**2*dt/f%dy
-dtsdz = f%clight**2*dt/f%dz
-mudt  = f%mu0*f%clight**2*dt
-
-
-  ! advance Ex
-  do l = 0, f%nz
-   do k = 0, f%ny
-    do j = 0, f%nx-1
-      if (.not.f%incond(j,k,l) .and. .not.f%incond(j+1,k,l)) &
-      f%Ex(j,k,l) = f%Ex(j,k,l) + dtsdy * (f%Bz(j,k,l)   - f%Bz(j,k-1,l  )) &
-                                - dtsdz * (f%By(j,k,l)   - f%By(j,k  ,l-1)) &
-                                - mudt  * f%J(j,k,l,1)
-    end do
-   end do
-  end do
-
-  ! advance Ey
-  do l = 0, f%nz
-   do k = 0, f%ny-1
-    do j = 0, f%nx
-      if (.not.f%incond(j,k,l) .and. .not.f%incond(j,k+1,l)) &
-      f%Ey(j,k,l) = f%Ey(j,k,l) - dtsdx * (f%Bz(j,k,l)   - f%Bz(j-1,k,l)) &
-                                + dtsdz * (f%Bx(j,k,l)   - f%Bx(j,k,l-1)) &
-                                - mudt  * f%J(j,k,l,2)
-    end do
-   end do
-  end do
-
-  ! advance Ez 
-  do l = 0, f%nz-1
-   do k = 0, f%ny
-    do j = 0, f%nx
-      if (.not.f%incond(j,k,l) .and. .not.f%incond(j,k,l+1)) &
-      f%Ez(j,k,l) = f%Ez(j,k,l) + dtsdx * (f%By(j,k,l) - f%By(j-1,k  ,l)) &
-                                - dtsdy * (f%Bx(j,k,l) - f%Bx(j  ,k-1,l)) &
-                                - mudt  * f%J(j,k,l,3)
-    end do
-   end do
-  end do
-
-return
-end subroutine push_em3d_conde
-
 subroutine push_em3d_evec_cond(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
                           nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,l_2drz,zmin,dz,incond)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
@@ -1741,7 +1681,7 @@ if (.not. l_2dxz) then ! --- 3D XYZ
   do l = 0, nz
    do k = 0, ny
     do j = 0, nx-1
-      if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+      if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
       Ex(j,k,l) = Ex(j,k,l) + dtsdy * (Bz(j,k,l)   - Bz(j,k-1,l  )) &
                             - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
                             - mudt  * CJ(j,k,l,1)
@@ -1753,7 +1693,7 @@ if (.not. l_2dxz) then ! --- 3D XYZ
   do l = 0, nz
    do k = 0, ny-1
     do j = 0, nx
-      if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+      if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
       Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
                             + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
                             - mudt  * CJ(j,k,l,2)
@@ -1765,7 +1705,7 @@ if (.not. l_2dxz) then ! --- 3D XYZ
   do l = 0, nz-1
    do k = 0, ny
     do j = 0, nx
-      if (.not.incond(j,k,l) .and. .not.incond(j,k,l+1)) &
+      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
       Ez(j,k,l) = Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
                             - dtsdy * (Bx(j,k,l) - Bx(j  ,k-1,l)) &
                             - mudt  * CJ(j,k,l,3)
@@ -1785,36 +1725,36 @@ if (.not. l_2dxz) then ! --- 3D XYZ
       do j = 0, nx-1
        if (.false.) then
         if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*2.*(1.-w)
         end if
         if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*2.*w
         end if
        else
         if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*(1.-w)
         end if
         if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*w
         end if
         if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,k,l-1) = Ex(j,k,l-1) + Ex_inz(j,k)*(1.-w)/2
         end if
         if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*w/2
         end if
         if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*(1.-w)/2
         end if
         if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,k,l+2) = Ex(j,k,l+2) + Ex_inz(j,k)*w/2
         end if
        end if
@@ -1826,36 +1766,36 @@ if (.not. l_2dxz) then ! --- 3D XYZ
       do j = 0, nx
        if (.false.) then
         if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*2.*(1.-w)
         end if
         if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*2.*w
         end if
        else
         if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*(1.-w)
         end if
         if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*w
         end if
         if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,k,l-1) = Ey(j,k,l-1) + Ey_inz(j,k)*(1.-w)/2
         end if
         if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*w/2
         end if
         if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*(1.-w)/2
         end if
         if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,k,l+2) = Ey(j,k,l+2) + Ey_inz(j,k)*w/2
         end if
        end if
@@ -1872,7 +1812,7 @@ else ! --- now 2D XZ or RZ
   ! advance Ex
   do l = 0, nz
     do j = 0, nx-1
-      if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+      if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
       Ex(j,k,l) = Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
                             - mudt  * CJ(j,k,l,1)
     end do
@@ -1881,7 +1821,7 @@ else ! --- now 2D XZ or RZ
   ! advance Ey
   do l = 0, nz
     do j = 0, nx
-      if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+      if (.not.incond(j,k,l)) &
       Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
                             + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
                             - mudt  * CJ(j,k,l,2)
@@ -1891,7 +1831,7 @@ else ! --- now 2D XZ or RZ
   ! advance Ez 
   do l = 0, nz-1
     do j = 0, nx
-      if (.not.incond(j,k,l) .and. .not.incond(j,k,l+1)) &
+      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
       Ez(j,k,l) = Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
                             - mudt  * CJ(j,k,l,3)
     end do
@@ -1907,52 +1847,52 @@ else ! --- now 2D XZ or RZ
       do j = 0, nx
        if (.false.) then
         if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*2.*(1.-w)
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*2.*(1.-w)
         end if
         if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*2.*w
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*2.*w
         end if
        else
         if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*(1.-w)
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*(1.-w)
         end if
         if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*w
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*w
         end if
         if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,:,l-1) = Ex(j,:,l-1) + Ex_inz(j,:)*(1.-w)/2
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,:,l-1) = Ey(j,:,l-1) + Ey_inz(j,:)*(1.-w)/2
         end if
         if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*w/2
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*w/2
         end if
         if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*(1.-w)/2
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*(1.-w)/2
         end if
         if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
-          if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
           Ex(j,:,l+2) = Ex(j,:,l+2) + Ex_inz(j,:)*w/2
-          if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
           Ey(j,:,l+2) = Ey(j,:,l+2) + Ey_inz(j,:)*w/2
         end if
        end if
@@ -1968,7 +1908,7 @@ else ! --- now 2D XZ or RZ
   ! advance Er
   do l = 0, nz
     do j = 0, nx-1
-      if (.not.incond(j,k,l) .and. .not.incond(j+1,k,l)) &
+      if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
       Ex(j,k,l) = Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
                             - mudt  * CJ(j,k,l,1)
     end do
@@ -1977,13 +1917,13 @@ else ! --- now 2D XZ or RZ
   ! advance Etheta
   do l = 0, nz
     do j = 1, nx
-      if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+      if (.not.incond(j,k,l)) &
       Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l) - Bz(j-1,k,l)) &
                             + dtsdz * (Bx(j,k,l) - Bx(j,k,l-1)) &
                             - mudt  * CJ(j,k,l,2)
     end do
     j = 0
-    if (.not.incond(j,k,l) .and. .not.incond(j,k+1,l)) &
+    if (.not.incond(j,k,l)) &
     Ey(j,k,l) = Ey(j,k,l) - 2.*dtsdx * Bz(j,k,l) &
                           + dtsdz * (Bx(j,k,l)    - Bx(j,k,l-1)) &
                           - mudt  * CJ(j,k,l,2)
@@ -1994,12 +1934,12 @@ else ! --- now 2D XZ or RZ
     do j = 1, nx
       ru = 1.+0.5/j
       rd = 1.-0.5/j
-      if (.not.incond(j,k,l) .and. .not.incond(j,k,l+1)) &
+      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
       Ez(j,k,l) = Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
                             - mudt  * CJ(j,k,l,3)
     end do
     j = 0
-    if (.not.incond(j,k,l) .and. .not.incond(j,k,l+1)) &
+    if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
     Ez(j,k,l) = Ez(j,k,l) + 4.*dtsdx * By(j,k,l)  &
                           - mudt  * CJ(j,k,l,3)
   end do
