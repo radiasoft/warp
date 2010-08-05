@@ -69,7 +69,7 @@ installuserinjection, uninstalluserinjection, installeduserinjection
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.28 2010/06/30 23:42:33 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.29 2010/08/05 20:12:19 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -115,12 +115,13 @@ be restored since the source is not saved anywhere.
 
   def __getstate__(self):
     """
-The instance is picklable. Only the names of functions are save. A full
+The instance is picklable. Only the names of functions are saved. A full
 reference to a method's object is saved. The names of functions replace
 the funcs attribute in the dictionary returned. Note that nothing
 special is needed on a restore since the function names will
 automatically be converted back into functions the first time they are
-called (so there is no __setstate__).
+called (so there is no __setstate__). For methods, the name is saved since
+instancemethods cannot be pickled.
 The ControllerFunctionContainer class below ensures that top level
 controllers are restored properly.
     """
@@ -245,7 +246,9 @@ controllers are restored properly.
       t1 = time.time()
       f(*args,**kw)
       t2 = time.time()
-      self.timers[f] = self.timers.get(f,0.) + (t2 - t1)
+      # --- For the timers, use the function (or method) name as the key.
+      # --- This is done since instancemethods cannot be pickled.
+      self.timers[f.__name__] = self.timers.get(f.__name__,0.) + (t2 - t1)
     aa = time.time()
     return aa - bb
 
@@ -329,12 +332,13 @@ Anything that may have already been installed will therefore be unaffected.
     if ff is None: ff = warp.sys.stdout
     for c in self.clist:
       for f in c.controllerfunclist():
-        vlist = warp.array(warp.gather(c.timers[f]))
+        fname = f.__name__
+        vlist = warp.array(warp.gather(c.timers[fname]))
         if warp.me > 0: continue
         vsum = warp.sum(vlist)
         if vsum <= tmin: continue
         vrms = warp.sqrt(max(0.,warp.ave(vlist**2) - warp.ave(vlist)**2))
-        ff.write('%20s %s %10.4f  %10.4f %10.4f'%(c.name,repr(f),vsum,vsum/warp.npes,vrms))
+        ff.write('%20s %s %10.4f  %10.4f %10.4f'%(c.name,fname,vsum,vsum/warp.npes,vrms))
         if lminmax:
           vmin = min(vlist)
           vmax = max(vlist)
