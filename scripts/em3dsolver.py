@@ -1212,8 +1212,6 @@ class EM3D(SubcycledPoissonSolver):
     # --- Each element of this list contains all of the input to the
     # --- installconductor method.
     self.conductordatalist = []
-#    self.mgmaxlevels=0
-#    self.mglevels=0
 
   def installconductor(self,conductor,
                             xmin=None,xmax=None,
@@ -1234,26 +1232,26 @@ class EM3D(SubcycledPoissonSolver):
     if conductor in installedlist: return
     installedlist.append(conductor)
 
+    nx,ny,nz = self.nx,self.ny,self.nz
     if fselfb == 'p':
       zscale = 1.
-      nxlocal,nylocal,nzlocal,nx,ny,nz = self.nxp,self.nyp,self.nzp,self.nx,self.ny,self.nz
-      xmmin,xmmax = self.xmminp,self.xmmaxp
-      ymmin,ymmax = self.ymminp,self.ymmaxp
-      zmmin,zmmax = self.zmminp,self.zmmaxp
+      nxlocal,nylocal,nzlocal = self.nxp,self.nyp,self.nzp
       mgmaxlevels = 1
+      decomp = self.ppdecomp
     else:
       # --- Get relativistic longitudinal scaling factor
       # --- This is quite ready yet.
       beta = fselfb/clight
       zscale = 1./sqrt((1.-beta)*(1.+beta))
-      nxlocal,nylocal,nzlocal,nx,ny,nz = self.nxlocal,self.nylocal,self.nzlocal,self.nx,self.ny,self.nz
-      xmmin,xmmax = self.xmmin,self.xmmax
-      ymmin,ymmax = self.ymmin,self.ymmax
-      zmmin,zmmax = self.zmmin,self.zmmax
+      nxlocal,nylocal,nzlocal = self.nxlocal,self.nylocal,self.nzlocal
       mgmaxlevels = None
+      decomp = self.fsdecomp
 
-    mgmaxlevels=1
+    xmmin,xmmax = self.xmmin,self.xmmax
+    ymmin,ymmax = self.ymmin,self.ymmax
+    zmmin,zmmax = self.zmmin,self.zmmax
     # to be updated
+    mgmaxlevels=1
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
                       nx,ny,nz,
@@ -1261,18 +1259,8 @@ class EM3D(SubcycledPoissonSolver):
                       xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
                       zscale,self.l2symtry,self.l4symtry,
                       installrz=0,
-                      solvergeom=self.solvergeom,conductors=conductorobject)
-
-#installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
-#                        zmin=None,zmax=None,dfill=2.,
-#                        zbeam=None,
-#                        nx=None,ny=None,nz=None,
-#                        nxlocal=None,nylocal=None,nzlocal=None,
-#                        xmmin=None,xmmax=None,ymmin=None,ymmax=None,
-#                        zmmin=None,zmmax=None,zscale=1.,l2symtry=None,l4symtry=None,
-#                        installrz=None,gridmode=1,solvergeom=None,
-#                        conductors=None,gridrz=None,mgmaxlevels=None,
-#                        decomp=None):
+                      solvergeom=self.solvergeom,conductors=conductorobject,
+                      mgmaxlevels=mgmaxlevels,decomp=decomp)
                         
     self.fields.nconds = self.getconductorobject().interior.n
     self.fields.nxcond = self.fields.nx
@@ -1355,6 +1343,7 @@ class EM3D(SubcycledPoissonSolver):
 
   def setconductorvoltage(self,voltage,condid=0,discrete=false,
                           setvinject=false):
+    return
     'calls setconductorvoltage'
     # --- Loop over all of the selfb groups to that all conductor objects
     # --- are handled.
@@ -1463,6 +1452,7 @@ class EM3D(SubcycledPoissonSolver):
     if self.l_verbose:print 'solve 2nd half done'
 
   def dosolve(self,iwhich=0,*args):
+    self.getconductorobject()
     if self.solveroff:return
     if self.mode==2:
       self.dosolvemode2()
