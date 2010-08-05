@@ -1,7 +1,7 @@
 # File MPLOT.PY --- standard post-processing for module-impedance runs
 
 from warp import *
-mplot_version = "$Id: mplot.py,v 1.10 2007/07/11 18:30:44 dave Exp $"
+mplot_version = "$Id: mplot.py,v 1.11 2010/08/05 22:21:29 dave Exp $"
 
 ### MPLOT - setup plots
 def mplot(dumpfile):
@@ -65,7 +65,7 @@ Mountain-range plots of quantities saved vs. z at every timestep
   if nz is None: nz = shape(qty)[0] - 1
 
   if ord is None:
-    if ifvst:
+    if ifvst and hvbeam[0] != 0.:
       ord = dz/hvbeam[0]*(iota(nz+2,2,-1)-2)
     else:
       ord = dz*iota(0,nz)+zmmin
@@ -82,7 +82,7 @@ Mountain-range plots of quantities saved vs. z at every timestep
     titlet = "- " + titlet
     titlel = "- " + titlel
   titleb = "z (beam frame)"
-  if ifvst:
+  if ifvst and hvbeam[0] != 0.:
     titleb = "time (relative to beam arrival at gap)"
   if ifordt:
     titlel = "time       "
@@ -140,6 +140,7 @@ def pmvzofz(ifdelta=1,ifordt=0,ifneg=0,nlines=100,ifvst=1,navg=0,offset=5.e-9,
 ### PVGAP - Mountain-range plot of vgap, which is saved at every 10th accel gap
 def pvgap(_hvgap=None,ifzt=0,ifneg=0,nincr=1,offset=5000,color='fg'):
   if not _hvgap: _hvgap = hvgap
+  assert top.hvbeam[0] != 0.,'top.hvbeam[0] must be nonzero'
   loi = (0.5+(top.zlatstrt+.5*(top.acclzs[::10]+top.acclze[::10])-top.zzmax)/
          (top.hvbeam[0]*top.dt)).astype("i")
   hii = (0.5+(top.zlatstrt+.5*(top.acclzs[::10]+top.acclze[::10])-top.zzmin)/
