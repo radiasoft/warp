@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.284 $, $Date: 2010/07/12 18:40:17 $
+#@(#) File TOP.V, version $Revision: 3.285 $, $Date: 2010/08/06 18:17:16 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.284 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.285 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2422,7 +2422,7 @@ getnsndtsforsubcycling()
              integer function # Get number of ndts groups to loop over
 
 
-*********** SelfB:
+*********** SelfB dump:
 nsselfb integer /0/     # Number of groups with different gammas that
                         # require the 1/gamma**2 correction.
 fselfb(0:nsselfb-1) _real /0./ # The scaling factor, vz.
@@ -2433,7 +2433,7 @@ iselfb(0:ns-1) _integer /0/ # Group number for particles that are affected by
 setupSelfB(pgroup:ParticleGroup) subroutine
                         # Sets up data for particle requiring self B correction
 
-*********** ImplicitModule:
+*********** ImplicitModule dump:
 nsimplicit integer /0/  # Number of implicit groups with different q/m values
 implicitfactor(0:nsimplicit-1) _real # Coefficients for chi for each implicit group
 setupImplicit(pgroup:ParticleGroup) subroutine
