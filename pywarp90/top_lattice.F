@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.36 $, $Date: 2010/08/03 22:03:06 $
+c@(#) File top_lattice.F, version $Revision: 3.37 $, $Date: 2010/08/09 15:30:27 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -1994,7 +1994,7 @@ c          --- THIS NEEDS CHECKING
 
 c        --- Calculate the temporaries here to make sure that they are
 c        --- up to date, in case there have been changes.
-         if (nemlt >= 0) then
+         if (nmmlt >= 0) then
            mmltct = cos(mmltot)
            mmltst = sin(mmltot)
            mmltcp = cos(mmltop)
