@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.140 $, $Date: 2010/06/30 23:39:47 $
+c@(#) File w3d_injection.F, version $Revision: 1.141 $, $Date: 2010/08/10 23:54:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1175,8 +1175,8 @@ c                 --- multiplication of the factor applied to the data from
 c                 --- the previous time step.
                   rnn = rnn*finject(ij,jsid+1)
 
-c                 --- Apply ad-hoc scaling factor
-                  rnn = rnn*inj_f(ij)
+c                 --- Apply ad-hoc scaling factors
+                  rnn = rnn*inj_f(ij)*inj_throttle(ix,iy,ij,inj_is)
 
 c                 --- Average the number of particles for this step with
 c                 --- that of the previous step. This helps the relaxation

@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.310 $, $Date: 2010/07/22 22:55:05 $
+#@(#) File W3D.V, version $Revision: 3.311 $, $Date: 2010/08/10 23:54:36 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.310 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.311 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -612,6 +612,8 @@ inj_grid(0:inj_nx,0:inj_ny,inj_ninj) _real [m]
    # Grid giving axial field grid location of injection sources in the lab frame
 inj_angl(0:inj_nx,0:inj_ny,inj_ninj) _real
    # Grid giving angle of injection sources for each transverse location
+inj_throttle(0:inj_nx,0:inj_ny,inj_ninj,inj_ns) _real /1./
+   # Modifies the rate of particle injection
 inj_np(0:inj_nx,0:inj_ny,inj_ninj,inj_ns)   _real
    # Grid holding number of particles injected on the current time step.
 inj_prev(0:inj_nx,0:inj_ny,inj_ninj,inj_ns) _real
