@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.73 2010/04/21 00:16:30 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.74 2010/08/10 23:55:46 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -465,9 +465,9 @@ self.topgroupname
             ff.close()
 
     ############################################################################
-    def restoredata(self,lforce=0,files=None):
+    def restoredata(self,lforce=0,files=None,nprocs=None):
         #self.restoredataPDB(0,files)
-        self.restoredataPickle(0,files)
+        self.restoredataPickle(0,files,nprocs=nprocs)
 
     def restoredataPickle(self,lforce=0,files=None,names=None,nprocs=None):
         """
