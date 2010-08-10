@@ -4,7 +4,7 @@ try:
     import threading
 except ImportError:
     pass
-optimizer_version = "$Id: optimizer.py,v 1.20 2010/02/02 01:06:43 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.21 2010/08/10 00:10:20 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
@@ -623,7 +623,7 @@ Methods:
         return decel
 
     def printbestcost(self):
-        print "Generation %d, global best cost %f, best cost %f, worst cost %f"% \
+        print "Generation %d, global best cost %e, best cost %e, worst cost %e"% \
               (self.count,self.globalbestcost,min(self.bestcost),max(self.bestcost))
         print "Global best params ",self.globalbestparams
     def getparamsmin(self,params):
@@ -756,16 +756,18 @@ Do the optimization
                 self.updateparticle(i)
 
             # --- Print out loss function
-            if (self.count <= nprint):
-                self.printbestcost()
-            elif ((self.count>nprint) and (self.count<=nprint**2) and
-                  ((self.count%nprint)==0)):
-                self.printbestcost()
-            elif ( (self.count%(nprint**2)) == 0):
-                self.printbestcost()
+            if nprint > 0:
+                if (self.count <= nprint):
+                    self.printbestcost()
+                elif ((self.count>nprint) and (self.count<=nprint**2) and
+                      ((self.count%nprint)==0)):
+                    self.printbestcost()
+                elif ( (self.count%(nprint**2)) == 0):
+                    self.printbestcost()
 
-        self.printbestcost()
-        print self.globalbestparams
+        if nprint > 0:
+            self.printbestcost()
+            print self.globalbestparams
 
     ##### --- threaded code below here --- #####
     def findbestneighborthread(self,neighborhood):
