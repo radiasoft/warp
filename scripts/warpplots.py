@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.265 2010/07/01 21:56:43 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.266 2010/08/10 23:53:34 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1854,7 +1854,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Add colorbar if needed
   if (lcolorbar and
      ((contours is not None and filled==1) or
-      (color == 'density' and x.size > 0) or
+      (color == 'density') or
       (cellarray))):
     if (contours is not None and filled==1):
       try:
@@ -1863,7 +1863,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       except AttributeError:
         nc = contours
         levs = None
-    elif (color == 'density' and x.size > 0):
+    elif (color == 'density'):
       if ncolor is None: ncolor = top.ncolor
       nc = ncolor
       levs = None
