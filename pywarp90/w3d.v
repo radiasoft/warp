@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.311 $, $Date: 2010/08/10 23:54:36 $
+#@(#) File W3D.V, version $Revision: 3.312 $, $Date: 2010/08/11 20:35:32 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.311 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.312 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1106,10 +1106,13 @@ fetche3dfrompositions(jsid:integer,indts:integer,n:integer,
 particlegridboundaries3d(pgroup:ParticleGroup,js:integer) subroutine
 particleboundaries3d(pgroup:ParticleGroup,js:integer,lcallcontrollers:logical) subroutine
 particleboundariesxy(pgroup:ParticleGroup,js:integer,lcallcontrollers:logical) subroutine
-loadperpdist0(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
+loadperpdist0(kioff:integer,np:integer,
+              x(np):real,y(np):real,xp(np):real,yp(np):real,
               rx(np):real,ry(np):real,rxp(np):real,ryp(np):real,
               epsx(np):real,epsy(np):real) subroutine
-loadperpdist(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
+loadperpdist(kioff:integer,np:integer,
+             x(np):real,y(np):real,r(np):real,t(np):real,
+             xp(np):real,yp(np):real,
              rx(np):real,ry(np):real,rxp(np):real,ryp(np):real,
              epsx(np):real,epsy(np):real) subroutine
 check_cc3d(pgroup:ParticleGroup,is:integer,ipmin:integer,np:integer) subroutine
@@ -1209,8 +1212,8 @@ k1re     real [1]     /0./ # Code set: CFE WB distribution k_1*r_e
 f_2      real [m^-2]  /0./ # Code set: CFE WB distribution norm f_2 
 r_e      real [m]     /0./ # Code set: CFE WB distribution edge radius 
 delta    real [1]     /0./ # Code set: CFE TE distribution delta parameter
-logdeltarad real [1] /2.0/   # Bracket radius in log(delta) for delta sol 
-                             #   in TE root find: default: logdeltarad = 2.0 
+logdeltarad real [1] /3.0/   # Bracket radius in log(delta) for delta sol 
+                             #   in TE root find: default: logdeltarad = 3.0 
 logdeltatol real [1] /1.e-4/ # Tolerance to calculate log(delta) for delta sol
                              #   in TE root find: default: logdeltarad = 1.e-4
 glambdad real [1]     /0./ # Code set: CFE TE distribution gamma*lambda_Debye 
