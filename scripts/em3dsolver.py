@@ -31,6 +31,7 @@ class EM3D(SubcycledPoissonSolver):
                     'laser_frequency':None,
                     'laser_source_z':None,'laser_source_v':0.,
                     'laser_focus_z':None,'laser_focus_v':0.,
+                    'laser_mode':1,'laser_emax':None,
                     'ncyclesperstep':1,'ncyclesperstep':None,
                     'l_2dxz':0,'l_2drz':0,'l_1dz':0,'l_sumjx':0,
                     'npass_smooth':array([[0],[0],[0]]),
@@ -355,7 +356,13 @@ class EM3D(SubcycledPoissonSolver):
     self.fields = self.block.core.yf
     
     
+################################################################################
+#                                   LASER
+################################################################################
+
+#===============================================================================
   def setuplaser(self):
+#===============================================================================
     if self.laser_profile is not None:
       if self.laser_frequency is None:
         if self.laser_wavenumber is not None:
@@ -377,13 +384,50 @@ class EM3D(SubcycledPoissonSolver):
     elif callable(self.laser_amplitude):
       self.laser_amplitude_func = self.laser_amplitude
       
+    if self.laser_mode==1:
+      # --- sets positions of E fields on Yee mesh == laser_mode 1
+      f = self.block.core.yf
+      if not self.l_2dxz:
+        self.xxey,self.yyey = getmesh2d(f.xmin,f.dx,f.nx,f.ymin+0.5*f.dy,f.dy,f.ny-1)
+        self.xxex,self.yyex = getmesh2d(f.xmin+0.5*f.dx,f.dx,f.nx-1,f.ymin,f.dy,f.ny)
+      else:
+        self.xxex = (arange(f.nx) + 0.5)*f.dx + f.xmin
+        self.xxey = arange(f.nx+1)*f.dx + f.xmin
+        self.yyex = self.yyey = 0.
+    elif self.laser_mode==2:
+      # --- sets positions of E fields on Yee mesh == laser_mode 2
+      f = self.block.core.yf
+      if not self.l_2dxz:
+        self.laser_xx,self.laser_yy = getmesh2d(f.xmin+0.5*f.dx,f.dx,f.nx-1,f.ymin+0.5*f.dy,f.dy,f.ny-1)
+        self.laser_xx=self.laser_xx.flatten()
+        self.laser_yy=self.laser_yy.flatten()
+        self.laser_nn=shape(self.laser_xx)[0]
+        self.laser_xdx=zeros(self.laser_nn)
+        self.laser_ydy=zeros(self.laser_nn)
+        self.laser_ux=zeros(self.laser_nn)
+        self.laser_uy=zeros(self.laser_nn)
+        self.laser_gi=ones(self.laser_nn)
+      else:
+        self.laser_xx = arange(f.nx)*f.dx + f.xmin + 0.5*f.dx
+        self.laser_nn=shape(self.laser_xx)[0]
+        self.laser_yy=zeros(self.laser_nn)
+        self.laser_xdx=zeros(self.laser_nn)
+        self.laser_ydy=zeros(self.laser_nn)
+        self.laser_ux=zeros(self.laser_nn)
+        self.laser_uy=zeros(self.laser_nn)
+        self.laser_gi=ones(self.laser_nn)
+    else:
+      raise("Error: laser_mode was set to %g but needs to be 1 or 2."%self.laser_mode)
+
     self.setuplaser_profile(self.fields)
 
     if self.laser_source_z is None:
       self.laser_source_z = w3d.zmmin
     self.laser_source_z = max(min(self.laser_source_z,w3d.zmmax),w3d.zmmin)
 
+#===============================================================================
   def setuplaser_profile(self,f):
+#===============================================================================
     # --- Check if laser_profile has a type, is a function, or a table
     self.laser_profile_func = None
     if self.laser_profile == 'gaussian':
@@ -391,35 +435,42 @@ class EM3D(SubcycledPoissonSolver):
              "For a gaussian laser, the width in X must be specified using laser_gauss_widthx"
       assert self.laser_gauss_widthy is not None,\
              "For a gaussian laser, the width in Y must be specified using laser_gauss_widthy"
-      f = self.block.core.yf
-      if not self.l_2dxz:
-        xxey,yyey = getmesh2d(f.xmin,f.dx,f.nx,f.ymin+0.5*f.dy,f.dy,f.ny-1)
-        xxex,yyex = getmesh2d(f.xmin+0.5*f.dx,f.dx,f.nx-1,f.ymin,f.dy,f.ny)
-      else:
-        xxex = (arange(f.nx) + 0.5)*f.dx + f.xmin
-        xxey = arange(f.nx+1)*f.dx + f.xmin
-        yyex = yyey = 0.
-      xxex -= self.laser_gauss_centerx; xxex /= self.laser_gauss_widthx
-      xxey -= self.laser_gauss_centerx; xxey /= self.laser_gauss_widthx
-      yyex -= self.laser_gauss_centery; yyex /= self.laser_gauss_widthy
-      yyey -= self.laser_gauss_centery; yyey /= self.laser_gauss_widthy
-      self.laser_profile = [exp(-(xxex**2+yyex**2)/2.),
-                            exp(-(xxey**2+yyey**2)/2.)]
+      if self.laser_mode==1:
+        xxex = self.xxex-self.laser_gauss_centerx; xxex /= self.laser_gauss_widthx
+        xxey = self.xxey-self.laser_gauss_centerx; xxey /= self.laser_gauss_widthx
+        yyex = self.yyex-self.laser_gauss_centery; yyex /= self.laser_gauss_widthy
+        yyey = self.yyey-self.laser_gauss_centery; yyey /= self.laser_gauss_widthy
+        self.laser_profile = [exp(-(xxex**2+yyex**2)/2.),
+                              exp(-(xxey**2+yyey**2)/2.)]
+      elif self.laser_mode==2:
+        xx = self.laser_xx-self.laser_gauss_centerx; xx /= self.laser_gauss_widthx
+        yy = self.laser_yy-self.laser_gauss_centery; yy /= self.laser_gauss_widthy
+        self.laser_profile = exp(-(xx**2+yy**2)/2.)
+
     elif operator.isSequenceType(self.laser_profile):
-      print f.nx,f.ny,shape(self.laser_profile)
-      assert len(self.laser_profile[:,0]) == f.nx+1,"The specified profile must be of length nx+1"
-      assert len(self.laser_profile[0,:]) == f.ny+1,"The specified profile must be of length ny+1"
-      self.laser_profile_init = self.laser_profile.copy()
-      self.laser_profile = [0.5*(self.laser_profile_init[1:,:]+self.laser_profile_init[:-1,:]),
-                            0.5*(self.laser_profile_init[:,1:]+self.laser_profile_init[:,:-1])]
+      if self.laser_mode==1:
+        assert len(self.laser_profile[:,0]) == f.nx+1,"The specified profile must be of length nx+1"
+        assert len(self.laser_profile[0,:]) == f.ny+1,"The specified profile must be of length ny+1"
+        self.laser_profile_init = self.laser_profile.copy()
+        self.laser_profile = [0.5*(self.laser_profile_init[1:,:]+self.laser_profile_init[:-1,:]),
+                              0.5*(self.laser_profile_init[:,1:]+self.laser_profile_init[:,:-1])]
+      elif self.laser_mode==2:
+        assert len(self.laser_profile[:,0]) == f.nx+1,"The specified profile must be of length nx+1"
+        assert len(self.laser_profile[0,:]) == f.ny+1,"The specified profile must be of length ny+1"
+        self.laser_profile_init = self.laser_profile.copy()
+        self.laser_profile = self.laser_profile_init.flatten()
+
     elif callable(self.laser_profile):
       self.laser_profile_func = self.laser_profile
 
+#===============================================================================
   def add_laser(self,field):
+#===============================================================================
     if self.laser_profile is None: 
       self.block.core.yf.E_inz_pos=w3d.zmmin-(self.nzguard*2.)*self.dz
       return
 
+    self.block.core.yf.E_inz_vel=self.laser_source_v
     if 1:#self.laser_source_z>self.zmmin+self.zgrid and self.laser_source_z<=self.zmmax+self.zgrid:
       self.block.core.yf.E_inz_pos = self.laser_source_z-self.zgrid
       if self.laser_focus_z is not None:self.laser_focus_z+=self.laser_focus_v*top.dt/self.ncyclesperstep
@@ -449,42 +500,140 @@ class EM3D(SubcycledPoissonSolver):
       assert len(self.laser_profile[:,0]) == field.nx,"The specified profile must be of length nx"
       assert len(self.laser_profile[0,:]) == field.ny,"The specified profile must be of length ny"
 
-#    if (self.l_elaser_out_plane):
-#      xx = (arange(self.nx+4) - 0.5)*self.fields.dx+self.fields.xmin
-#    else:
     f = self.block.core.yf
-    if not self.l_2dxz:
-      xxey,yyey = getmesh2d(f.xmin,f.dx,f.nx,f.ymin+0.5*f.dy,f.dy,f.ny-1)
-      xxex,yyex = getmesh2d(f.xmin+0.5*f.dx,f.dx,f.nx-1,f.ymin,f.dy,f.ny)
-    else:
-      xxex = (arange(f.nx) + 0.5)*f.dx + f.xmin
-      xxey = arange(f.nx+1)*f.dx + f.xmin
-      yyex = yyey = 0.
+    betafrm = -self.laser_source_v/clight
+    gammafrm = 1./sqrt((1.-betafrm)*(1.+betafrm))
+
     if self.laser_frequency is not None:
-      if self.laser_focus_z is not None:
-        z0 = self.laser_focus_z
-        if self.laser_focus_z>0.:
-          phaseex = (-(sqrt(xxex**2+yyex**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
-          phaseey = (-(sqrt(xxey**2+yyey**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
+      if self.laser_mode==1:
+        if self.laser_focus_z is not None:
+          z0 = self.laser_focus_z
+          if self.laser_focus_z>0.:
+            fsign = -1.
+          else:
+            fsign = 1.
+          phaseex = (fsign*(sqrt(self.xxex**2+self.yyex**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
+          phaseey = (fsign*(sqrt(self.xxey**2+self.yyey**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
         else:
-          phaseex = ((sqrt(xxex**2+yyex**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
-          phaseey = ((sqrt(xxey**2+yyey**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
-      else:
-        phaseex = ((xxex*sin(self.laser_anglex)+yyex*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
-        phaseey = ((xxey*sin(self.laser_anglex)+yyey*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
+          phaseex = ((self.xxex*sin(self.laser_anglex)+self.yyex*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
+          phaseey = ((self.xxey*sin(self.laser_anglex)+self.yyey*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
+      elif self.laser_mode==2:
+        if self.laser_focus_z is not None:
+          z0 = self.laser_focus_z
+          if self.laser_focus_z>0.:
+            fsign = -1.
+          else:
+            fsign = 1.
+          phase = (fsign*(sqrt(self.laser_xx**2+self.laser_yy**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
+        else:
+          phase = ((self.laser_xx*sin(self.laser_anglex)+self.laser_yy*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
     else:
       phase = 0.
-    f = self.block.core.yf
-    if self.l_2dxz:
+    if self.laser_mode==1:
       laser_amplitude=self.laser_amplitude*top.dt*clight/w3d.dz
-      f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin] = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
-      f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
-    else:      
-      laser_amplitude=self.laser_amplitude*top.dt*clight/w3d.dz
-      f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin:f.jymax+1] = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
-      f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin:f.jymax  ] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
-    
+      if self.l_2dxz:
+        f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin] = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
+        f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
+#        f.Ez_inz[f.jxmin+1:f.jxmax+1,f.jymin] = 2*betafrm/(1.-betafrm)*(f.Ex_inz[f.jxmin+1:f.jxmax+1,f.jymin]-f.Ex_inz[f.jxmin:f.jxmax,f.jymin])
+#        f.Ez_inz[f.jxmin+1:f.jxmax+1,f.jymin] = -betafrm*w3d.dz/w3d.dx*3./(1.-betafrm)*(f.Ex_inz[f.jxmin+1:f.jxmax+1,f.jymin]-f.Ex_inz[f.jxmin:f.jxmax,f.jymin])
+#       f.Ez_inz[f.jxmin+1:f.jxmax+1,f.jymin] = -0.25*betafrm*w3d.dz/w3d.dx*2*(f.Ex_inz[f.jxmin+1:f.jxmax+1,f.jymin]-f.Ex_inz[f.jxmin:f.jxmax,f.jymin])
+#        f.Ez_inz[f.jxmin+1:f.jxmax+1,f.jymin] = betafrm/(gammafrm*(1.-betafrm))*(f.Ex_inz[f.jxmin+1:f.jxmax+1,f.jymin]-f.Ex_inz[f.jxmin:f.jxmax,f.jymin])
+#        f.Ez_inz[f.jxmin+1:f.jxmax+1,f.jymin] = 0.5*betafrm*gammafrm*(f.Ex_inz[f.jxmin+1:f.jxmax+1,f.jymin]-f.Ex_inz[f.jxmin:f.jxmax,f.jymin])
+        Ex_in = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)
+#        f.Ez_inz[f.jxmin+1:f.jxmax,f.jymin] += 1.*gammafrm*betafrm*w3d.dz/w3d.dx*(Ex_in[1:]-Ex_in[:-1])
+        f.Ez_inz[f.jxmin+1:f.jxmax,f.jymin] += 1.6*betafrm*w3d.dz/w3d.dx*(Ex_in[1:]-Ex_in[:-1])
+      else:      
+        f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin:f.jymax+1] = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
+        f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin:f.jymax  ] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
+    elif self.laser_mode==2:
+      
+      self.submethod_laser=2.1
+      if self.submethod_laser==2.1:
+        # --- displaces fixed weight particles on "continuous" trajectories
+        laser_amplitude=self.laser_amplitude/self.laser_emax*0.1*f.dx/top.dt
+        self.laser_ux[...] = laser_amplitude*self.laser_profile*cos(phase)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
+        if not self.l_2dxz:
+          self.laser_uy[...] = laser_amplitude*self.laser_profile*cos(phase)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
+        self.laser_xdx[...] += self.laser_ux*top.dt
+        if not self.l_2dxz:
+          self.laser_ydy[...] += self.laser_uy*top.dt
+#        weights = ones(self.laser_nn)*f.dx*f.dz*eps0/(top.dt)*self.laser_emax*top.dt/(0.1*f.dx)
+        weights = ones(self.laser_nn)*f.dx*clight*eps0*self.laser_emax*top.dt/(0.1*f.dx)
+        if not self.l_2dxz:
+          weights*=f.dy
+        l_particles_weight=False
+
+      elif self.submethod_laser==2.2:
+        # --- displaces particles on fixed segment, adjusting weights
+        self.laser_xdx[...] = f.dx/10
+        self.laser_ux[...] = self.laser_xdx[...]/top.dt      
+        if not self.l_2dxz:
+          self.laser_ydy[...] = f.dy/10
+          self.laser_uy[...] = self.laser_ydy[...]/top.dt      
+        if self.l_2dxz:
+          weights=self.laser_amplitude*self.laser_profile*cos(phase)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
+          weights*=f.dx*f.dz*eps0/(gammafrm*f.dx/10)
+        l_particles_weight=True
+
+      self.laser_depos_order_x=2
+      self.laser_depos_order_y=2
+      self.laser_depos_order_z=2
+#      print min(self.laser_xdx)/w3d.dx,max(self.laser_xdx)/w3d.dx
+
+      if self.laser_source_z<f.zmin+self.zgrid or self.laser_source_z>=f.zmax+self.zgrid:return
+      for q in [1.,-1.]:
+       if self.l_2dxz:
+        depose_jxjyjz_esirkepov_n_2d(f.J,
+                                     self.laser_nn,
+                                     self.laser_xx+q*self.laser_xdx,
+                                     self.laser_yy+q*self.laser_ydy,
+                                     self.laser_source_z*ones(self.laser_nn),
+                                     q*self.laser_ux,
+                                     q*self.laser_uy,
+                                     self.laser_source_v*ones(self.laser_nn),
+                                     self.laser_gi,
+                                     weights,
+                                     q,
+                                     f.xmin,f.zmin+self.zgrid,
+                                     top.dt,
+                                     f.dx,f.dz,
+                                     f.nx,f.nz,
+                                     f.nxguard,f.nzguard,
+                                     self.laser_depos_order_x,
+                                     self.laser_depos_order_z,
+                                     l_particles_weight,
+                                     w3d.l4symtry,
+                                     self.l_2drz)
+       else:
+        depose_jxjyjz_esirkepov_n(f.J,
+                                     self.laser_nn,
+                                     self.laser_xx+q*self.laser_xdx,
+                                     self.laser_yy+q*self.laser_ydy,
+                                     self.laser_source_z*ones(self.laser_nn),
+                                     q*self.laser_ux,
+                                     q*self.laser_uy,
+                                     self.laser_source_v*ones(self.laser_nn),
+                                     self.laser_gi,
+                                     weights,
+                                     q,
+                                     f.xmin,f.ymin,f.zmin+self.zgrid,
+                                     top.dt,
+                                     f.dx,f.dy,f.dz,
+                                     f.nx,f.ny,f.nz,
+                                     f.nxguard,f.nyguard,f.nzguard,
+                                     self.laser_depos_order_x,
+                                     self.laser_depos_order_y,
+                                     self.laser_depos_order_z,
+                                     l_particles_weight,
+                                     w3d.l4symtry)
+
+################################################################################
+# FIELD FETCHING
+################################################################################
+
+#===============================================================================
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
+#===============================================================================
     # --- This is called by fetchfield from fieldsolver.py
     n = len(x)
     if n == 0: return
@@ -600,7 +749,9 @@ class EM3D(SubcycledPoissonSolver):
   def fetchphifrompositions(self,x,z,phi):
     pass
 
+#===============================================================================
   def getfieldsfrompositions(self,x,y,z):
+#===============================================================================
     # --- This returns e and b at positions x,y,z
     n = len(x)
     if n == 0: return None
@@ -658,7 +809,13 @@ class EM3D(SubcycledPoissonSolver):
 
     return exp,eyp,ezp,bxp,byp,bzp
   
+################################################################################
+# CHARGE/CURRENT DEPOSITION
+################################################################################
+
+#===============================================================================
   def setsourcep(self,js,pgroup,zgrid):
+#===============================================================================
     if self.l_verbose:print 'setsourcep, species ',js
     n  = pgroup.nps[js]
     if n == 0: return
@@ -869,6 +1026,8 @@ class EM3D(SubcycledPoissonSolver):
     self.aftersetsourcep()
     # --- smooth current density 
     if any(self.npass_smooth>0):self.smoothdensity()
+    # -- add laser if laser_mode==2
+    if self.laser_mode==2:self.add_laser(self.block.core.yf)
     self.applysourceboundaryconditions()
     if self.l_verbose:print 'finalizesourcep done'
 
@@ -1493,13 +1652,14 @@ class EM3D(SubcycledPoissonSolver):
       else:
         doit=False
     if doit:
-      self.add_laser(self.fields)
-      if dir<0.:
-        self.fields.Ex_inz*=-1.
-        self.fields.Ey_inz*=-1.
+      if self.laser_mode==1:
+        self.add_laser(self.fields)
+        if dir<0.:
+          self.fields.Ex_inz*=-1.
+          self.fields.Ey_inz*=-1.
       if self.l_verbose:print 'push_e',self,dt,top.it,self.icycle
       push_em3d_eef(self.block,dt,0,self.l_pushf,self.l_pushpot)
-      if dir<0.:
+      if self.laser_mode==1 and dir<0.:
         self.fields.Ex_inz*=-1.
         self.fields.Ey_inz*=-1.
     if self.refinement is not None:
@@ -1617,7 +1777,7 @@ class EM3D(SubcycledPoissonSolver):
       w = float(i+2)/self.ncyclesperstep
       self.fields.Rho = (1.-w)*self.fields.Rhoold + w*self.fields.Rhoarray[...,0] 
     if self.l_verbose:print 'push_e full',self,dt,top.it,self.icycle
-    self.add_laser(self.fields)
+    if self.laser_mode==1:self.add_laser(self.fields)
     push_em3d_eef(self.block,dt,0,self.l_pushf,self.l_pushpot)
 
   def dosolvemode2(self,iwhich=0,*args):
@@ -1630,11 +1790,11 @@ class EM3D(SubcycledPoissonSolver):
       push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
       if self.l_pushf:self.exchange_f()
       self.exchange_b()
-      self.add_laser(self.fields)
+      if self.laser_mode==1:self.add_laser(self.fields)
       push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
       self.exchange_e()
     else:
-      self.add_laser(self.fields)
+      if self.laser_mode==1:self.add_laser(self.fields)
       push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
       self.exchange_e()
       push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
@@ -1666,7 +1826,7 @@ class EM3D(SubcycledPoissonSolver):
       push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
     else:
       push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
-      self.add_laser(self.fields)
+      if self.laser_mode==1:self.add_laser(self.fields)
       push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
     self.odd = 1-self.odd
     if self.l_verbose:print 'solve 2nd half done'
@@ -1681,7 +1841,7 @@ class EM3D(SubcycledPoissonSolver):
       push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
       push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
     else:
-      self.add_laser(self.fields)
+      if self.laser_mode==1:self.add_laser(self.fields)
       push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
       push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
     self.odd = 1-self.odd
@@ -1708,7 +1868,7 @@ class EM3D(SubcycledPoissonSolver):
       push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
     else:
       push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
-      self.add_laser(self.fields)
+      if self.laser_mode==1:self.add_laser(self.fields)
       push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
     self.odd = 1-self.odd
     if not all(top.efetch==top.efetch[0]):raise('Error:top.efetch must have same value for every species when using EM solver.')
