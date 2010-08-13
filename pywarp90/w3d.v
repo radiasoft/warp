@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.312 $, $Date: 2010/08/11 20:35:32 $
+#@(#) File W3D.V, version $Revision: 3.313 $, $Date: 2010/08/13 17:38:32 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.312 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.313 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -597,13 +597,20 @@ l_inj_user_particles logical /.false./ # When true, user specified particles
                                        # will be injected using arrays from
                                        # Setpwork3d. Only works with
                                        # inject=1.
+l_inj_user_particles_z logical /.false./ # When true, the user also provides 
+                                         # the z-position of specified injected
+                                         # particles. They are set
+                                         # automatically otherwise
+                                         # from zinject and rinject (default).
 l_inj_user_particles_v logical /.false./ # When true, the user also provides 
-                                         # the velocity of specified injected particles.
-                                         # They are set automatically otherwise (default).
+                                         # the velocity of specified injected
+                                         # particles. They are set
+                                         # automatically otherwise (default).
 l_inj_user_particles_dt logical /.false./ # When true, the user also provides
                                           # the fractional time steps 
                                           # of specified injected particles.
-                                          # They are set automatically otherwise (default).
+                                          # They are set automatically
+                                          # otherwise (default).
 l_inj_zmminmmaxglobal   logical /.false./ # When true, sets inj_zmmin/max to
                                           # global values in parallel
 inj_xmmin(inj_ninj)  _real [m] /0./ # Min x extent of injection mesh

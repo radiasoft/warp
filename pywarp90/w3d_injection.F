@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.141 $, $Date: 2010/08/10 23:54:36 $
+c@(#) File w3d_injection.F, version $Revision: 1.142 $, $Date: 2010/08/13 17:38:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -354,10 +354,24 @@ c             --- The absolute values are needed for the cases of symmetry.
               iyy = spready*(abs(yt(ip) - inj_ymmin(ij))*dyi)
               wxx = spreadx*(abs(xt(ip) - inj_xmmin(ij))*dxi - ixx)
               wyy = spready*(abs(yt(ip) - inj_ymmin(ij))*dyi - iyy)
-              zs = inj_grid(ixx        ,iyy        ,ij)*(1. - wxx)*(1. - wyy) +
-     &             inj_grid(ixx+spreadx,iyy        ,ij)*      wxx *(1. - wyy) +
-     &             inj_grid(ixx        ,iyy+spready,ij)*(1. - wxx)*      wyy  +
-     &             inj_grid(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
+
+              if (l_inj_user_particles_z) then
+                zs = zt(ip)
+              else
+                if(l_inj_exact) then
+c                 --- calculate injection surface axial location exactly
+                  rr = xt(ip)**2+yt(ip)**2
+                  zs = rr/(abs(rinject(ij)) + sqrt(max(0.,rinject(ij)**2 - rr)))
+                  if (rinject(ij) < 0.) zs = -zs
+                  if ((xt(ip)**2+yt(ip)**2) > rinject(ij)**2)
+     &              zs = rinject(ij)
+                else
+                  zs=inj_grid(ixx        ,iyy        ,ij)*(1. - wxx)*(1. - wyy)+
+     &               inj_grid(ixx+spreadx,iyy        ,ij)*      wxx *(1. - wyy)+
+     &               inj_grid(ixx        ,iyy+spready,ij)*(1. - wxx)*      wyy +
+     &               inj_grid(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
+                endif
+              endif
 
 c             --- Only save particle if it is within the injection region.
               if (.not. l_inj_zmminmmaxglobal) then
@@ -385,7 +399,7 @@ c             --- Save the particle data
                 pgroup%uxp(ii) = uxt(ip)
                 pgroup%uyp(ii) = uyt(ip)
                 pgroup%uzp(ii) = uzt(ip)
-                if (npid>0) then
+                if (npid > 0 .and. npidgrp > 0) then
                   pgroup%pid(ii,:) = pidt(ip,:)
                 endif
               else
@@ -3147,10 +3161,10 @@ c Loop over the injection sources.
       do ij=1,ninject
 
 c       --- Provide some simple error checking
-        if (ainject(ij) >= abs(rinject(ij)) .or.
-     &      binject(ij) >= abs(rinject(ij))) then
+        if (ainject(ij) > abs(rinject(ij)) .or.
+     &      binject(ij) > abs(rinject(ij))) then
           call kaboom("fill_inj: Error: the radius of curvature of the injection source must
-     & be greater than its transverse radius")
+     & be greater than or equal to its transverse radius")
           return
         endif
 
@@ -3190,7 +3204,7 @@ c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
               rrsq = xx**2 +  yy**2
               if (rrsq > rinject(ij)**2) rrsq = max(ainject(ij),binject(ij))**2
               inj_grid(ix,iy,ij) = rrsq/
-     &             (abs(rinject(ij)) + sqrt(rinject(ij)**2 - rrsq))
+     &             (abs(rinject(ij)) + sqrt(max(0.,rinject(ij)**2 - rrsq)))
               if (rinject(ij) < 0.) inj_grid(ix,iy,ij) = -inj_grid(ix,iy,ij)
 
               inj_angl(ix,iy,ij) = asin(sqrt(rrsq)/rinject(ij))
