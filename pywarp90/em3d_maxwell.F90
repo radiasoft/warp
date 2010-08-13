@@ -387,7 +387,9 @@ if (f%stencil==0 .or. f%stencil==1) then
    call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                       mudt,dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
-                      f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos,f%Ex_inz,f%Ey_inz,f%l_2dxz,f%l_2drz,f%zmin,f%dz)
+                      f%nxguard,f%nyguard,f%nzguard, &
+                      f%E_inz_pos,f%E_inz_vel,f%Ex_inz,f%Ey_inz,f%Ez_inz, &
+                      f%l_2dxz,f%l_2drz,f%zmin,f%dx,f%dy,f%dz,f%clight)
   end if
  else
   call push_em3dext_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
@@ -412,15 +414,20 @@ return
 end subroutine push_em3d_e
 
 subroutine push_em3d_evec(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
-                          nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,l_2drz,zmin,dz)
+                          nxguard,nyguard,nzguard,e_inz_pos,e_inz_vel,Ex_inz,Ey_inz,Ez_inz, &
+                          l_2dxz,l_2drz,zmin,dx,dy,dz,clight)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
-real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz
-real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz,E_inz_pos,zmin,dz
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz,Ez_inz
+real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz,E_inz_pos,E_inz_vel,zmin,dx,dy,dz,clight
 integer(ISZ) :: j,k,l
 logical(ISZ) :: l_2dxz,l_2drz
-real(kind=8) :: w,zlaser,rd,ru
+real(kind=8) :: w,zlaser,rd,ru,gammafrm,betafrm
+!real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ez_inz
+
+betafrm = e_inz_vel/clight
+gammafrm = 1./sqrt((1.-betafrm)*(1.+betafrm))
 
 ! --- NOTE: if l_2drz is TRUE, then l_2dxz is TRUE
 if (.not. l_2dxz) then ! --- 3D XYZ
@@ -541,15 +548,35 @@ else ! --- now 2D XZ or RZ
   if (l>-nzguard-2 .and. l<nz+nzguard+2) then
 !  if (l>=-nzguard .and. l<nz+nzguard) then
       w = zlaser-l
-      do j = -nxguard, nx+nxguard
-       if (.false.) then
+!      if (l>=-nzguard .and. l<=nz+nzguard) then
+!        do j = -nxguard+1, nx+nxguard-1
+!           Ez_inz(j,:) = 0.5*dz*betafrm/(1.-betafrm)*((Ex_inz(j,:)-Ex_inz(j-1,:))/dx)
+!           Ez_inz(j,:) = betafrm/(1.-betafrm)*((Ex_inz(j,:)-Ex_inz(j-1,:)))
+!           Ez_inz(j,:) = betafrm/(clight/dtsdz-betafrm)*((Ex_inz(j,:)-Ex_inz(j-1,:)))
+!           Ez_inz(j,:) = 0.25*gammafrm*betafrm*((Ex_inz(j,:)-Ex_inz(j-1,:)))
+!            Ez_inz(j,:) = 0.
+!        end do
+!        Ez_inz(-nxguard,:)=0.
+!        Ez_inz(nx+nxguard,:)=0.
+!      end if
+!      do j = -nxguard+1, nx+nxguard-1
+      do j = 0, nx
+       if (.true.) then
         if (l>=-nzguard .and. l<=nz+nzguard) then
           Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*2.*(1.-w)
           Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*2.*(1.-w)
+          Ez(j,:,l  ) = Ez(j,:,l  ) + Ez_inz(j,:)*(1.-w)
+        end if
+        if (l>=-nzguard+1 .and. l<=nz+nzguard) then
+          Ez(j,:,l-1) = Ez(j,:,l-1) + Ez_inz(j,:)*(1.-w)
         end if
         if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
           Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*2.*w
           Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*2.*w
+          Ez(j,:,l+1) = Ez(j,:,l+1) + Ez_inz(j,:)*w
+        end if
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ez(j,:,l)   = Ez(j,:,l)   + Ez_inz(j,:)*w
         end if
        else
         if (l>=-nzguard .and. l<=nz+nzguard) then
