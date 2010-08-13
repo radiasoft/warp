@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.74 2010/08/10 23:55:46 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.75 2010/08/13 22:13:49 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -527,8 +527,8 @@ feature.
         jsmax = 0
         for var,val in datadict.items():
             if var[0] == 'n':
-                name,ii,js = string.split(var,'_')
-                jsmax = max(jsmax,eval(js))
+                ss = string.split(var,'_')
+                jsmax = max(jsmax,int(ss[2]))
                 while jsmax >= len(ntot): ntot.append(0)
                 ntot[jsmax] = ntot[jsmax] + val
 
@@ -573,23 +573,27 @@ feature.
         varlist.sort()
         for var in varlist:
             if var[0] == 'n':
-                name,iis,jss = string.split(var,'_')
-                nn = datadict[var]
-                ii = eval(iis)
-                js = eval(jss)
-                self.t[js].append(datadict['t_%d_%d'%(ii,js)])
-                self.x[js].append(datadict['x_%d_%d'%(ii,js)])
-                self.y[js].append(datadict['y_%d_%d'%(ii,js)])
-                self.ux[js].append(datadict['ux_%d_%d'%(ii,js)])
-                self.uy[js].append(datadict['uy_%d_%d'%(ii,js)])
-                self.uz[js].append(datadict['uz_%d_%d'%(ii,js)])
-                pid = datadict['pid_%d_%d'%(ii,js)]
+                ss = string.split(var,'_')
+                js = int(ss[2])
+                suffix = var[1:]
+                self.t[js].append(datadict['t%s'%suffix])
+                self.x[js].append(datadict['x%s'%suffix])
+                self.y[js].append(datadict['y%s'%suffix])
+                self.ux[js].append(datadict['ux%s'%suffix])
+                self.uy[js].append(datadict['uy%s'%suffix])
+                self.uz[js].append(datadict['uz%s'%suffix])
+                pid = datadict['pid%s'%suffix]
                 if len(pid.shape) == 1:
                     pid.shape = (pid.shape[0],1)
                 self.pid[js].append(pid)
 
     def getPickledatadict(self,files):
         # --- Read in all of the data into a dictionary.
+        # --- The file name is appended to the end of the variable
+        # --- name to avoid duplicate names. For example, when reading
+        # --- in the data from a parallel run, on a time step, data may have
+        # --- been written from multiple processors, duplicating the names
+        # --- in the files from each of the processors.
         datadict = {}
         for file in files:
             ff = open(file,'r')
@@ -598,7 +602,7 @@ feature.
                     data = cPickle.load(ff)
                 except:
                     break
-                datadict[data[0]] = data[1]
+                datadict[data[0]+'_'+file] = data[1]
             ff.close()
         return datadict
 
