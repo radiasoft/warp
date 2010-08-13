@@ -541,7 +541,7 @@ class EM3D(SubcycledPoissonSolver):
 #        f.Ez_inz[f.jxmin+1:f.jxmax+1,f.jymin] = 0.5*betafrm*gammafrm*(f.Ex_inz[f.jxmin+1:f.jxmax+1,f.jymin]-f.Ex_inz[f.jxmin:f.jxmax,f.jymin])
         Ex_in = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)
 #        f.Ez_inz[f.jxmin+1:f.jxmax,f.jymin] += 1.*gammafrm*betafrm*w3d.dz/w3d.dx*(Ex_in[1:]-Ex_in[:-1])
-        f.Ez_inz[f.jxmin+1:f.jxmax,f.jymin] += 1.6*betafrm*w3d.dz/w3d.dx*(Ex_in[1:]-Ex_in[:-1])
+##        f.Ez_inz[f.jxmin+1:f.jxmax,f.jymin] += 1.6*betafrm*w3d.dz/w3d.dx*(Ex_in[1:]-Ex_in[:-1])
       else:      
         f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin:f.jymax+1] = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
         f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin:f.jymax  ] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
