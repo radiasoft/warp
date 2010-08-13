@@ -59,8 +59,8 @@ Note that all take the following additional arguments:
 voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
 name=None,material='SS',laccuimagecharge=0,neumann=0
 
-installconductors(a,...): generates the data needed for the fieldsolve
-                          See its documentation for the additional arguments.
+installconductor(a,...): generates the data needed for the fieldsolve
+                         See its documentation for the additional arguments.
 
 All of the conductor objects have the following methods:
   distance(xx,yy,zz): calculates the shortest distance between each of the
@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.235 2010/07/29 20:29:09 dave Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.236 2010/08/13 18:16:35 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -126,17 +126,17 @@ def useoldconductorgeneration():
 
 ##############################################################################
 installedconductors = []
-def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
-                      zmin=None,zmax=None,dfill=2.,
-                      zbeam=None,
-                      nx=None,ny=None,nz=None,
-                      nxlocal=None,nylocal=None,nzlocal=None,
-                      xmmin=None,xmmax=None,ymmin=None,ymmax=None,
-                      zmmin=None,zmmax=None,zscale=1.,
-                      l2symtry=None,l4symtry=None,
-                      installrz=None,gridmode=1,solvergeom=None,
-                      conductors=None,gridrz=None,mgmaxlevels=None,
-                      decomp=None):
+def installconductor(a,xmin=None,xmax=None,ymin=None,ymax=None,
+                     zmin=None,zmax=None,dfill=2.,
+                     zbeam=None,
+                     nx=None,ny=None,nz=None,
+                     nxlocal=None,nylocal=None,nzlocal=None,
+                     xmmin=None,xmmax=None,ymmin=None,ymmax=None,
+                     zmmin=None,zmmax=None,zscale=1.,
+                     l2symtry=None,l4symtry=None,
+                     installrz=None,gridmode=1,solvergeom=None,
+                     conductors=None,gridrz=None,mgmaxlevels=None,
+                     decomp=None):
   """
 Installs the given conductors into the field solver. When using the built in
 solver, this should only be called after the generate. When using a python
@@ -205,6 +205,11 @@ generate).
     g.installdata(installrz,gridmode,solvergeom,conductors,gridrz)
 
   installedconductors.append(a)
+
+# --- Create a duplicate of the function, using the plural version
+# --- of the name. The plural version was the original and is preserved
+# --- for legacy purposes.
+installconductors = installconductor
 
 def uninstallconductors(a):
   "Removes the conductors from the list of installed conductors"
@@ -6114,8 +6119,8 @@ containing a list of primitives.
         if grid is None:grid=frz.basegrid
         print grid.gid
         for part in self.parts:
-            installconductors(part.installed,xmin=part.rmin,xmax=part.rmax,
-                        zmin=part.zmin,zmax=part.zmax,
+            installconductor(part.installed,xmin=part.rmin,xmax=part.rmax,
+                         zmin=part.zmin,zmax=part.zmax,
                          nx=grid.nr,nz=grid.nz,
                          nxlocal=grid.nxlocal,nzlocal=grid.nzlocal,
                          xmmin=grid.xmin,xmmax=grid.xmax,
@@ -6131,7 +6136,7 @@ containing a list of primitives.
               pass
     else:
       for part in self.parts:
-        installconductors(part.installed)
+        installconductor(part.installed)
 
   def draw(self,ncirc=50,scx=1.,scy=1.,colort='blue',colorb='red',
                  color='none',signx=1.,width=1.):
