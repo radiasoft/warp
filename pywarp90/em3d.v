@@ -577,9 +577,11 @@ E_iny_pos integer /-1/
 E_iny_angle real  /0./
 E_iny(-nxguard:nx+nxguard,-nzguard:nz+nzguard) _real
 E_inz_pos real /0./
+E_inz_vel real /0./
 E_inz_angle real  /0./
 Ex_inz(-nxguard:nx+nxguard,-nyguard:ny+nyguard) _real
 Ey_inz(-nxguard:nx+nxguard,-nyguard:ny+nyguard) _real
+Ez_inz(-nxguard:nx+nxguard,-nyguard:ny+nyguard) _real
 dmaskx(-nxguard:nx+nxguard) _real
 dmasky(-nyguard:ny+nyguard) _real
 dmaskz(-nzguard:nz+nzguard) _real
