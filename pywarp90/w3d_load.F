@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.20 $, $Date: 2010/06/29 22:49:03 $
+c@(#) File w3d_load.F, version $Revision: 1.21 $, $Date: 2010/08/14 00:03:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -723,12 +723,12 @@ c       --- over the uniform distribution to an integral over the
 c       --- specified distribution.  The particle remains within
 c       --- the range [0,1].
         if (hl_nrmrdist(irr+1) == hl_nrmrdist(irr)) then
-          r(ip) = ( r(ip) - hl_intrdist(irr) )/hl_nrmrdist(irr)
+          r(ip) = ( r(ip) - hl_intrdist(irr) )/dvnz(hl_nrmrdist(irr))
         else
-          r(ip) = ( ( sqrt( hl_nrmrdist(irr)**2 -
-     &                      2.*( hl_nrmrdist(irr+1) - hl_nrmrdist(irr) )*
-     &                         ( hl_intrdist(irr) - r(ip) )
-     &                    ) - hl_nrmrdist(irr) 
+          r(ip) = ( ( sqrt(abs( hl_nrmrdist(irr)**2 -
+     &                     2.*( hl_nrmrdist(irr+1) - hl_nrmrdist(irr) )*
+     &                        ( hl_intrdist(irr) - r(ip) )
+     &                    )   ) - hl_nrmrdist(irr) 
      &               )/( hl_nrmrdist(irr+1) - hl_nrmrdist(irr) ) + 
      &               irr 
      &            )/hl_nrdist
