@@ -548,20 +548,9 @@ else ! --- now 2D XZ or RZ
   if (l>-nzguard-2 .and. l<nz+nzguard+2) then
 !  if (l>=-nzguard .and. l<nz+nzguard) then
       w = zlaser-l
-!      if (l>=-nzguard .and. l<=nz+nzguard) then
-!        do j = -nxguard+1, nx+nxguard-1
-!           Ez_inz(j,:) = 0.5*dz*betafrm/(1.-betafrm)*((Ex_inz(j,:)-Ex_inz(j-1,:))/dx)
-!           Ez_inz(j,:) = betafrm/(1.-betafrm)*((Ex_inz(j,:)-Ex_inz(j-1,:)))
-!           Ez_inz(j,:) = betafrm/(clight/dtsdz-betafrm)*((Ex_inz(j,:)-Ex_inz(j-1,:)))
-!           Ez_inz(j,:) = 0.25*gammafrm*betafrm*((Ex_inz(j,:)-Ex_inz(j-1,:)))
-!            Ez_inz(j,:) = 0.
-!        end do
-!        Ez_inz(-nxguard,:)=0.
-!        Ez_inz(nx+nxguard,:)=0.
-!      end if
 !      do j = -nxguard+1, nx+nxguard-1
       do j = 0, nx
-       if (.true.) then
+       if (.false.) then
         if (l>=-nzguard .and. l<=nz+nzguard) then
           Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*2.*(1.-w)
           Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*2.*(1.-w)
