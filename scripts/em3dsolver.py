@@ -534,12 +534,13 @@ class EM3D(SubcycledPoissonSolver):
       if self.l_2dxz:
         f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin] = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
         f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
+        f.Ez_inz[...]=0.
 #        f.Ez_inz[f.jxmin+1:f.jxmax+1,f.jymin] = 2*betafrm/(1.-betafrm)*(f.Ex_inz[f.jxmin+1:f.jxmax+1,f.jymin]-f.Ex_inz[f.jxmin:f.jxmax,f.jymin])
 #        f.Ez_inz[f.jxmin+1:f.jxmax+1,f.jymin] = -betafrm*w3d.dz/w3d.dx*3./(1.-betafrm)*(f.Ex_inz[f.jxmin+1:f.jxmax+1,f.jymin]-f.Ex_inz[f.jxmin:f.jxmax,f.jymin])
 #       f.Ez_inz[f.jxmin+1:f.jxmax+1,f.jymin] = -0.25*betafrm*w3d.dz/w3d.dx*2*(f.Ex_inz[f.jxmin+1:f.jxmax+1,f.jymin]-f.Ex_inz[f.jxmin:f.jxmax,f.jymin])
 #        f.Ez_inz[f.jxmin+1:f.jxmax+1,f.jymin] = betafrm/(gammafrm*(1.-betafrm))*(f.Ex_inz[f.jxmin+1:f.jxmax+1,f.jymin]-f.Ex_inz[f.jxmin:f.jxmax,f.jymin])
 #        f.Ez_inz[f.jxmin+1:f.jxmax+1,f.jymin] = 0.5*betafrm*gammafrm*(f.Ex_inz[f.jxmin+1:f.jxmax+1,f.jymin]-f.Ex_inz[f.jxmin:f.jxmax,f.jymin])
-        Ex_in = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)
+##        Ex_in = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)
 #        f.Ez_inz[f.jxmin+1:f.jxmax,f.jymin] += 1.*gammafrm*betafrm*w3d.dz/w3d.dx*(Ex_in[1:]-Ex_in[:-1])
 ##        f.Ez_inz[f.jxmin+1:f.jxmax,f.jymin] += 1.6*betafrm*w3d.dz/w3d.dx*(Ex_in[1:]-Ex_in[:-1])
       else:      
@@ -552,11 +553,9 @@ class EM3D(SubcycledPoissonSolver):
         # --- displaces fixed weight particles on "continuous" trajectories
         laser_amplitude=self.laser_amplitude/self.laser_emax*0.1*f.dx/top.dt
         self.laser_ux[...] = laser_amplitude*self.laser_profile*cos(phase)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
-        if not self.l_2dxz:
-          self.laser_uy[...] = laser_amplitude*self.laser_profile*cos(phase)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
+        self.laser_uy[...] = laser_amplitude*self.laser_profile*cos(phase)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
         self.laser_xdx[...] += self.laser_ux*top.dt
-        if not self.l_2dxz:
-          self.laser_ydy[...] += self.laser_uy*top.dt
+        self.laser_ydy[...] += self.laser_uy*top.dt
 #        weights = ones(self.laser_nn)*f.dx*f.dz*eps0/(top.dt)*self.laser_emax*top.dt/(0.1*f.dx)
         weights = ones(self.laser_nn)*f.dx*clight*eps0*self.laser_emax*top.dt/(0.1*f.dx)
         if not self.l_2dxz:
