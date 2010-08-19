@@ -1,5 +1,7 @@
 """Functions to plot lab window moments data
 
+getlw: returns the data for a given moment
+
 ppnumlw: Plots number of particles as a function of time
 pxbarlw: Plots X bar as a function of time
 pybarlw: Plots Y bar as a function of time
@@ -57,7 +59,7 @@ plinechglw: Plots line-charge as a function of time
 
 from warp import *
 import __main__
-lwplots_version = "$Id: lwplots.py,v 1.5 2010/05/14 23:42:53 dave Exp $"
+lwplots_version = "$Id: lwplots.py,v 1.6 2010/08/19 18:16:24 dave Exp $"
 
 def lwplotsdoc():
     import lwplots
@@ -110,6 +112,24 @@ def _extractvarkw(name,kw,pkg='top'):
 def _gettitler(ilw,js):
     if js == -1: return "All species in lab window %d"%ilw
     else:        return "Species %d in lab window %d"%(js,ilw)
+
+##########################################################################
+
+def getlw(name,ilw,js=-1,varsuffix=None,ff=None):
+    """Returns the specified lab window data
+  - name: name of the moment to return, for example 'xrms'
+  - ilw: lab window number to return, must be specified
+  - js=-1: species number, zero based. When -1, returns the data combined from
+           all species
+  - varsuffix=None: When specified, variables with that suffix are used
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data.
+    """
+    ilabwn = _extractvar('ilabwn',varsuffix,'top',ff)[ilw,js]
+    s = s_[:ilabwn]
+    if name[-2:] != 'lw': name = name + 'lw'
+    return _extractvar(name,varsuffix,'top',ff)[s,ilw,js]
 
 ##########################################################################
 
