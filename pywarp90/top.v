@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.285 $, $Date: 2010/08/06 18:17:16 $
+#@(#) File TOP.V, version $Revision: 3.286 $, $Date: 2010/08/23 21:59:40 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -33,7 +33,7 @@ NELEMENT = 100             # Default length of arrays describing lattice
 NPARPGRP = 256             # Number of particle per group
 NSUBSETS = 3               # Max number of ptcl "subsets" for scatter plots
 NWINDOWS = 9               # Max number of diagnostic windows
-NUMZMMNT = 28              # Number of z moments
+NUMZMMNT = 33              # Number of z moments
 TNWINM  = 2*NWINDOWS               # Used only for data statements
 NWPNSP1 = NWINDOWS + NSUBSETS + 1  # Used only for data statements
 NEVER   = 0
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.285 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.286 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1579,6 +1579,9 @@ xybar(0:nzwind,0:nswind)   _real [m**2]  # Mean product of X and Y in window
 xypbar(0:nzwind,0:nswind)  _real [m]     # Mean product of X  and Y'
 yxpbar(0:nzwind,0:nswind)  _real [m]     # Mean product of Y  and X'
 xpypbar(0:nzwind,0:nswind) _real [1]     # Mean product of X' and Y'
+xvybar(0:nzwind,0:nswind)  _real [m]     # Mean product of X  and Vy
+yvxbar(0:nzwind,0:nswind)  _real [m]     # Mean product of Y  and Vx
+vxvybar(0:nzwind,0:nswind) _real [1]     # Mean product of Vx and Vy
 xsqbar(0:nzwind,0:nswind)  _real [m**2]  # Mean X-squared in window
 ysqbar(0:nzwind,0:nswind)  _real [m**2]  # Mean Y-squared in window
 zsqbar(0:nzwind,0:nswind)  _real [m**2]  # Mean Z-squared in window
@@ -1589,6 +1592,8 @@ vysqbar(0:nzwind,0:nswind) _real [m/s]   # Mean Vy squared in window
 vzsqbar(0:nzwind,0:nswind) _real [m/s]   # Mean Vz squared in window
 xxpbar(0:nzwind,0:nswind)  _real [m]     # Mean product of X and X' in window
 yypbar(0:nzwind,0:nswind)  _real [m]     # Mean product of Y and Y' in window
+xvxbar(0:nzwind,0:nswind)  _real [m]     # Mean product of X and Vx in window
+yvybar(0:nzwind,0:nswind)  _real [m]     # Mean product of Y and Vy in window
 zvzbar(0:nzwind,0:nswind)  _real [m]     # Mean product of Z and Vz in window
 xvzbar(0:nzwind,0:nswind)  _real [m]     # Mean product of X and Vz in window
 yvzbar(0:nzwind,0:nswind)  _real [m]     # Mean product of X and Vz in window
@@ -1634,6 +1639,11 @@ dzmi             real [1/m] /0./ # Moments grid cell size inverse
 numzmmnt         integer /NUMZMMNT/ # Number of moments calculated
 zmmntdtextmax    real /LARGEPOS/ # Cutoff of time step for extrapolation of
                                  # particles, in units of top.dt.
+l_momentum_moments logical /.false./ # When true, the massless momentum,
+                                     # gamma*v, is used when calculating the
+                                     # moments instead of velocity. Defaults
+                                     # to false. This only matters when
+                                     # lrelativ is true.
 zmntmesh(0:nzmmnt)  _real [m]    # Z mesh associated with Z moments
 zmmntsq(0:nszmmnt)  _real [kg]   # Particle charge of species associated with
                                  # the moments
@@ -1656,6 +1666,9 @@ xybarz(0:nzmmnt,0:nszmmnt)   _real [m**2]  # Mean product of X  and Y  at grid p
 xypbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of X  and Y' at grid point
 yxpbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of Y  and X' at grid point
 xpypbarz(0:nzmmnt,0:nszmmnt) _real [1]     # Mean product of X' and Y' at grid point
+xvybarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of X  and Vy at grid point
+yvxbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of Y  and Vx at grid point
+vxvybarz(0:nzmmnt,0:nszmmnt) _real [1]     # Mean product of Vx and Vy at grid point
 xsqbarz(0:nzmmnt,0:nszmmnt)  _real [m**2]  # Mean X-squared at grid point
 ysqbarz(0:nzmmnt,0:nszmmnt)  _real [m**2]  # Mean Y-squared at grid point
 zsqbarz(0:nzmmnt,0:nszmmnt)  _real [m**2]  # Mean Z-squared at grid point
@@ -1666,6 +1679,8 @@ vysqbarz(0:nzmmnt,0:nszmmnt) _real [m/s]   # Mean Vy squared at grid point
 vzsqbarz(0:nzmmnt,0:nszmmnt) _real [m/s]   # Mean Vz squared at grid point
 xxpbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of X and X' at grid point
 yypbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of Y and Y' at grid point
+xvxbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of X and Vx at grid point
+yvybarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of Y and Vy at grid point
 zvzbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of Z and Vz at grid point
 xvzbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of X and Vz at grid point
 yvzbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of X and Vz at grid point
@@ -1727,6 +1742,9 @@ xybarlw(ntlabwn,nlabwn,0:nslabwn)   _real # XY bar in lab frame
 xypbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # XY' bar in lab frame
 yxpbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # YX' bar in lab frame
 xpypbarlw(ntlabwn,nlabwn,0:nslabwn) _real # X'Y' bar in lab frame
+xvybarlw(ntlabwn,nlabwn,0:nslabwn)  _real # XVy bar in lab frame
+yvxbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # YVx bar in lab frame
+vxvybarlw(ntlabwn,nlabwn,0:nslabwn) _real # VxVy bar in lab frame
 xsqbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # XX bar in lab frame
 ysqbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # YY bar in lab frame
 zsqbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # ZZ bar in lab frame
@@ -1737,6 +1755,8 @@ vysqbarlw(ntlabwn,nlabwn,0:nslabwn) _real # VyVy bar in lab frame
 vzsqbarlw(ntlabwn,nlabwn,0:nslabwn) _real # Vz*Vz bar in lab frame
 xxpbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # XX' bar in lab frame
 yypbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # YY' bar in lab frame
+xvxbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # XVx bar in lab frame
+yvybarlw(ntlabwn,nlabwn,0:nslabwn)  _real # YVy bar in lab frame
 zvzbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # ZVz bar in lab frame
 xvzbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # XVz bar in lab frame
 yvzbarlw(ntlabwn,nlabwn,0:nslabwn)  _real # YVz bar in lab frame
@@ -1961,16 +1981,31 @@ hxxpbar(0:nzwind,0:lenhist,0:nshist)   _real [m]
    # Mean x * x' by window as a function of time
 hyypbar(0:nzwind,0:lenhist,0:nshist)   _real [m]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
-   # Mean y  * y' by window as a function of time
+   # Mean y * y' by window as a function of time
+hxvxbar(0:nzwind,0:lenhist,0:nshist)   _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
+   # Mean x * vx by window as a function of time
+hyvybar(0:nzwind,0:lenhist,0:nshist)   _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
+   # Mean y * vy by window as a function of time
 hxypbar(0:nzwind,0:lenhist,0:nshist)   _real [m]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
-   # Mean x  * y' by window as a function of time 
+   # Mean x * y' by window as a function of time 
 hyxpbar(0:nzwind,0:lenhist,0:nshist)   _real [m]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
-   # Mean y  * x' by window as a function of time 
+   # Mean y * x' by window as a function of time 
 hxpypbar(0:nzwind,0:lenhist,0:nshist)  _real [1]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean x' * y' by window as a function of time
+hxvybar(0:nzwind,0:lenhist,0:nshist)   _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
+   # Mean x * vy by window as a function of time 
+hyvxbar(0:nzwind,0:lenhist,0:nshist)   _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
+   # Mean y * vx by window as a function of time 
+hvxvybar(0:nzwind,0:lenhist,0:nshist)  _real [1]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
+   # Mean vx * vy by window as a function of time
 hxvzbar(0:nzwind,0:lenhist,0:nshist)   _real [1]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean x * vz by window as a function of time
@@ -2167,6 +2202,16 @@ ihyypbarz integer /-1/       # Multiplier for hyypbarz memory size (autoset)
 hyypbarz(0:nzmmnt*ihyypbarz,0:lenhist,0:nshist)  _real [m-rad]
             limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # YY' bar versus space and time
+lhxvxbarz logical /.false./  # Turns on history of XVx bar
+ihxvxbarz integer /-1/       # Multiplier for hxvxbarz memory size (autoset)
+hxvxbarz(0:nzmmnt*ihxvxbarz,0:lenhist,0:nshist)  _real [m-rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
+            +zhist           # XVx bar versus space and time
+lhyvybarz logical /.false./  # Turns on history of YVy bar
+ihyvybarz integer /-1/       # Multiplier for hyvybarz memory size (autoset)
+hyvybarz(0:nzmmnt*ihyvybarz,0:lenhist,0:nshist)  _real [m-rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
+            +zhist           # YVy bar versus space and time
 lhxypbarz logical /.false./  # Turns on history of XY' bar
 ihxypbarz integer /-1/       # Multiplier for hxypbarz memory size (autoset)
 hxypbarz(0:nzmmnt*ihxypbarz,0:lenhist,0:nshist)  _real [m-rad]
@@ -2182,6 +2227,21 @@ ihxpypbarz integer /-1/      # Multiplier for hxpypbarz memory size (autoset)
 hxpypbarz(0:nzmmnt*ihxpypbarz,0:lenhist,0:nshist)  _real [rad**2]
             limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # X'Y' bar versus space and time
+lhxvybarz logical /.false./  # Turns on history of XVy bar
+ihxvybarz integer /-1/       # Multiplier for hxvybarz memory size (autoset)
+hxvybarz(0:nzmmnt*ihxvybarz,0:lenhist,0:nshist)  _real [m-rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
+            +zhist           # XVy bar versus space and time
+lhyvxbarz logical /.false./  # Turns on history of YVx bar
+ihyvxbarz integer /-1/       # Multiplier for hyvxbarz memory size (autoset)
+hyvxbarz(0:nzmmnt*ihyvxbarz,0:lenhist,0:nshist)  _real [m-rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
+            +zhist           # YVx bar versus space and time
+lhvxvybarz logical /.false./ # Turns on history of VxVy bar
+ihvxvybarz integer /-1/      # Multiplier for hvxvybarz memory size (autoset)
+hvxvybarz(0:nzmmnt*ihvxvybarz,0:lenhist,0:nshist)  _real [rad**2]
+            limited (0:nzmmnt,0:jhist,0:nshist)
+            +zhist           # VxVy bar versus space and time
 lhxvzbarz logical /.false./  # Turns on history of XVz bar
 ihxvzbarz integer /-1/       # Multiplier for hxvzbarz memory size (autoset)
 hxvzbarz(0:nzmmnt*ihxvzbarz,0:lenhist,0:nshist)  _real [m*m/s]

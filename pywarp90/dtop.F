@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.179 $, $Date: 2010/06/30 23:38:56 $
+c@(#) File DTOP.F, version $Revision: 3.180 $, $Date: 2010/08/23 21:59:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -97,9 +97,14 @@ c       --- If so, space needs to be allocated for them.
         lgchange = checkzhistarray(lhypsqbarz,ihypsqbarz) .or. lgchange
         lgchange = checkzhistarray(lhxxpbarz,ihxxpbarz) .or. lgchange
         lgchange = checkzhistarray(lhyypbarz,ihyypbarz) .or. lgchange
+        lgchange = checkzhistarray(lhxvxbarz,ihxvxbarz) .or. lgchange
+        lgchange = checkzhistarray(lhyvybarz,ihyvybarz) .or. lgchange
         lgchange = checkzhistarray(lhxypbarz,ihxypbarz) .or. lgchange
         lgchange = checkzhistarray(lhyxpbarz,ihyxpbarz) .or. lgchange
         lgchange = checkzhistarray(lhxpypbarz,ihxpypbarz) .or. lgchange
+        lgchange = checkzhistarray(lhxvybarz,ihxvybarz) .or. lgchange
+        lgchange = checkzhistarray(lhyvxbarz,ihyvxbarz) .or. lgchange
+        lgchange = checkzhistarray(lhvxvybarz,ihvxvybarz) .or. lgchange
         lgchange = checkzhistarray(lhxvzbarz,ihxvzbarz) .or. lgchange
         lgchange = checkzhistarray(lhyvzbarz,ihyvzbarz) .or. lgchange
         lgchange = checkzhistarray(lhvxvzbarz,ihvxvzbarz) .or. lgchange
@@ -217,9 +222,14 @@ c       --- option, or when rewriting the code thusly.
           hypsqbar(iw,jhist,js) = ypsqbar(iw,js)
           hxxpbar(iw,jhist,js)  = xxpbar(iw,js) 
           hyypbar(iw,jhist,js)  = yypbar(iw,js) 
+          hxvxbar(iw,jhist,js)  = xvxbar(iw,js) 
+          hyvybar(iw,jhist,js)  = yvybar(iw,js) 
           hxypbar(iw,jhist,js)  = xypbar(iw,js) 
           hyxpbar(iw,jhist,js)  = yxpbar(iw,js) 
           hxpypbar(iw,jhist,js) = xpypbar(iw,js) 
+          hxvybar(iw,jhist,js)  = xvybar(iw,js) 
+          hyvxbar(iw,jhist,js)  = yvxbar(iw,js) 
+          hvxvybar(iw,jhist,js) = vxvybar(iw,js) 
           hxvzbar(iw,jhist,js)  = xvzbar(iw,js) 
           hyvzbar(iw,jhist,js)  = yvzbar(iw,js) 
           hvxvzbar(iw,jhist,js) = vxvzbar(iw,js) 
@@ -264,9 +274,14 @@ c       --- with the intel compiler.
           if (lhypsqbarz) hypsqbarz(iz,jhist,js) = ypsqbarz(iz,js)
           if (lhxxpbarz)  hxxpbarz(iz,jhist,js)  = xxpbarz(iz,js)
           if (lhyypbarz)  hyypbarz(iz,jhist,js)  = yypbarz(iz,js)
+          if (lhxvxbarz)  hxvxbarz(iz,jhist,js)  = xvxbarz(iz,js)
+          if (lhyvybarz)  hyvybarz(iz,jhist,js)  = yvybarz(iz,js)
           if (lhxypbarz)  hxypbarz(iz,jhist,js)  = xypbarz(iz,js)
           if (lhyxpbarz)  hyxpbarz(iz,jhist,js)  = yxpbarz(iz,js)
           if (lhxpypbarz) hxpypbarz(iz,jhist,js) = xpypbarz(iz,js)
+          if (lhxvybarz)  hxvybarz(iz,jhist,js)  = xvybarz(iz,js)
+          if (lhyvxbarz)  hyvxbarz(iz,jhist,js)  = yvxbarz(iz,js)
+          if (lhvxvybarz) hvxvybarz(iz,jhist,js) = vxvybarz(iz,js)
           if (lhxvzbarz)  hxvzbarz(iz,jhist,js)  = xvzbarz(iz,js)
           if (lhyvzbarz)  hyvzbarz(iz,jhist,js)  = yvzbarz(iz,js)
           if (lhvxvzbarz) hvxvzbarz(iz,jhist,js) = vxvzbarz(iz,js)
@@ -637,7 +652,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.179 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.180 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
