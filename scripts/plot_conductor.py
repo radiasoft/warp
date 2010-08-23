@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.127 2010/03/11 17:20:24 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.128 2010/08/23 21:44:06 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2939,6 +2939,9 @@ Sets the voltage on a conductor, given an id.
       cz = solver.zmmin + icz*solver.dz
       cv = voltage(cx,cy,cz)
 
+    def between0and1(x):
+      return logical_and(0.<x,x<1.)
+
     if evensubgrid.n > 0:
       ieclx = take(nint(conductors.levellx),evensubgrid.ilevel)
       iecly = take(nint(conductors.levelly),evensubgrid.ilevel)
@@ -2951,12 +2954,12 @@ Sets the voltage on a conductor, given an id.
                                 take(conductors.leveliz,evensubgrid.ilevel))
 
       edels = evensubgrid.dels
-      ecxmx = ecx - where(0 < edels[0,:] < 1.,edels[0,:],0)*ieclx*solver.dx
-      ecxpx = ecx + where(0 < edels[1,:] < 1.,edels[1,:],0)*ieclx*solver.dx
-      ecymy = ecy - where(0 < edels[2,:] < 1.,edels[2,:],0)*iecly*solver.dy
-      ecypy = ecy + where(0 < edels[3,:] < 1.,edels[3,:],0)*iecly*solver.dy
-      eczmz = ecz - where(0 < edels[4,:] < 1.,edels[4,:],0)*ieclz*solver.dz
-      eczpz = ecz + where(0 < edels[5,:] < 1.,edels[5,:],0)*ieclz*solver.dz
+      ecxmx = ecx - where(between0and1(edels[0,:]),edels[0,:],0)*ieclx*solver.dx
+      ecxpx = ecx + where(between0and1(edels[1,:]),edels[1,:],0)*ieclx*solver.dx
+      ecymy = ecy - where(between0and1(edels[2,:]),edels[2,:],0)*iecly*solver.dy
+      ecypy = ecy + where(between0and1(edels[3,:]),edels[3,:],0)*iecly*solver.dy
+      eczmz = ecz - where(between0and1(edels[4,:]),edels[4,:],0)*ieclz*solver.dz
+      eczpz = ecz + where(between0and1(edels[5,:]),edels[5,:],0)*ieclz*solver.dz
       ecvmx = voltage(ecxmx,ecy  ,ecz  )
       ecvpx = voltage(ecxpx,ecy  ,ecz  )
       ecvmy = voltage(ecx  ,ecymy,ecz  )
@@ -2976,12 +2979,12 @@ Sets the voltage on a conductor, given an id.
                                 take(conductors.leveliz,oddsubgrid.ilevel))
 
       odels = oddsubgrid.dels
-      ocxmx = ocx - where(0 < odels[0,:] < 1.,odels[0,:],0)*ioclx*solver.dx
-      ocxpx = ocx + where(0 < odels[1,:] < 1.,odels[1,:],0)*ioclx*solver.dx
-      ocymy = ocy - where(0 < odels[2,:] < 1.,odels[2,:],0)*iocly*solver.dy
-      ocypy = ocy + where(0 < odels[3,:] < 1.,odels[3,:],0)*iocly*solver.dy
-      oczmz = ocz - where(0 < odels[4,:] < 1.,odels[4,:],0)*ioclz*solver.dz
-      oczpz = ocz + where(0 < odels[5,:] < 1.,odels[5,:],0)*ioclz*solver.dz
+      ocxmx = ocx - where(between0and1(odels[0,:]),odels[0,:],0)*ioclx*solver.dx
+      ocxpx = ocx + where(between0and1(odels[1,:]),odels[1,:],0)*ioclx*solver.dx
+      ocymy = ocy - where(between0and1(odels[2,:]),odels[2,:],0)*iocly*solver.dy
+      ocypy = ocy + where(between0and1(odels[3,:]),odels[3,:],0)*iocly*solver.dy
+      oczmz = ocz - where(between0and1(odels[4,:]),odels[4,:],0)*ioclz*solver.dz
+      oczpz = ocz + where(between0and1(odels[5,:]),odels[5,:],0)*ioclz*solver.dz
       ocvmx = voltage(ocxmx,ocy  ,ocz  )
       ocvpx = voltage(ocxpx,ocy  ,ocz  )
       ocvmy = voltage(ocx  ,ocymy,ocz  )
