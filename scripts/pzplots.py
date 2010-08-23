@@ -49,6 +49,9 @@ Means:
   pzxypbar: Plots mean product of X  and Y' versus Z
   pzyxpbar: Plots mean product of Y  and X' versus Z
   pzxpypbar: Plots mean product of X' and Y' versus Z
+  pzxvybar: Plots mean product of X  and Vy versus Z
+  pzyvxbar: Plots mean product of Y  and Vx versus Z
+  pzvxvybar: Plots mean product of Vx and Vy versus Z
   pzxsqbar: Plots mean X-squared versus Z
   pzysqbar: Plots mean Y-squared versus Z
   pzzsqbar: Plots mean Z-squared versus Z
@@ -59,6 +62,8 @@ Means:
   pzvzsqbar: Plots mean Vz squared versus Z
   pzxxpbar: Plots mean product of X and X' versus Z
   pzyypbar: Plots mean product of Y and Y' versus Z
+  pzxvxbar: Plots mean product of X and Vx versus Z
+  pzyvybar: Plots mean product of Y and Vy versus Z
   pzzvzbar: Plots mean product of Z and Vz versus Z
   pzxvzbar: Plots mean product of X and Vz versus Z
   pzyvzbar: Plots mean product of Y and Vz versus Z
@@ -80,7 +85,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.23 2009/06/07 00:25:16 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.24 2010/08/23 22:09:09 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -663,6 +668,117 @@ def pzxpypbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
             _gettitler(js))
 
 ##########################################################################
+def pzxvybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None,ff=None):
+  """Plots xvybarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
+  - zoffset=zbeam: offset added to axis
+  - zscale=1: scale of axis
+    plots versus (zoffset + zmntmesh)/zscale
+  - scale=1.: factor to scale data by
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles
+  - varsuffix=None: When specified, variables with that suffix are used
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  xvybarz = _extractvar('xvybarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xvybarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
+  if titles:
+    ptitles("Mean product of X  and Vy versus Z",titleb,"(m-rad)",
+            _gettitler(js))
+
+##########################################################################
+def pzyvxbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None,ff=None):
+  """Plots yvxbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
+  - zoffset=zbeam: offset added to axis
+  - zscale=1: scale of axis
+    plots versus (zoffset + zmntmesh)/zscale
+  - scale=1.: factor to scale data by
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles
+  - varsuffix=None: When specified, variables with that suffix are used
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  yvxbarz = _extractvar('yvxbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(yvxbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
+  if titles:
+    ptitles("Mean product of Y  and Vx versus Z",titleb,"(m-rad)",
+            _gettitler(js))
+
+##########################################################################
+def pzvxvybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
+              marks=0,marker=None,msize=1.,width=1.,lframe=0,
+              titleb=None,titles=1,varsuffix=None,ff=None):
+  """Plots vxvybarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
+  - zoffset=zbeam: offset added to axis
+  - zscale=1: scale of axis
+    plots versus (zoffset + zmntmesh)/zscale
+  - scale=1.: factor to scale data by
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles
+  - varsuffix=None: When specified, variables with that suffix are used
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  vxvybarz = _extractvar('vxvybarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(vxvybarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
+  if titles:
+    ptitles("Mean product of Vx and Vy versus Z",titleb,"(rad^2)",
+            _gettitler(js))
+
+##########################################################################
 def pzxsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
              titleb=None,titles=1,varsuffix=None,ff=None):
@@ -1030,6 +1146,80 @@ def pzyypbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Y and Y' versus Z",titleb,"(m-rad)",
+            _gettitler(js))
+
+##########################################################################
+def pzxvxbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None,ff=None):
+  """Plots xvxbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
+  - zoffset=zbeam: offset added to axis
+  - zscale=1: scale of axis
+    plots versus (zoffset + zmntmesh)/zscale
+  - scale=1.: factor to scale data by
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles
+  - varsuffix=None: When specified, variables with that suffix are used
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  xvxbarz = _extractvar('xvxbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(xvxbarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
+  if titles:
+    ptitles("Mean product of X and Vx versus Z",titleb,"(m-rad)",
+            _gettitler(js))
+
+##########################################################################
+def pzyvybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None,ff=None):
+  """Plots yvybarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
+  - zoffset=zbeam: offset added to axis
+  - zscale=1: scale of axis
+    plots versus (zoffset + zmntmesh)/zscale
+  - scale=1.: factor to scale data by
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles
+  - varsuffix=None: When specified, variables with that suffix are used
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  yvybarz = _extractvar('yvybarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
+  if zoffset is None: zoffset = _extractvar('zbeam',varsuffix,'top',ff)
+  plg(yvybarz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
+  if titles:
+    ptitles("Mean product of Y and Vy versus Z",titleb,"(m-rad)",
             _gettitler(js))
 
 ##########################################################################
@@ -2820,6 +3010,9 @@ Test all pzplots routines.
   apply(pzxypbar,(),kw);fma()
   apply(pzyxpbar,(),kw);fma()
   apply(pzxpypbar,(),kw);fma()
+  apply(pzxvybar,(),kw);fma()
+  apply(pzyvxbar,(),kw);fma()
+  apply(pzvxvybar,(),kw);fma()
   apply(pzxsqbar,(),kw);fma()
   apply(pzysqbar,(),kw);fma()
   apply(pzzsqbar,(),kw);fma()
@@ -2830,6 +3023,8 @@ Test all pzplots routines.
   apply(pzvzsqbar,(),kw);fma()
   apply(pzxxpbar,(),kw);fma()
   apply(pzyypbar,(),kw);fma()
+  apply(pzxvxbar,(),kw);fma()
+  apply(pzyvybar,(),kw);fma()
   apply(pzzvzbar,(),kw);fma()
   apply(pzxvzbar,(),kw);fma()
   apply(pzyvzbar,(),kw);fma()
