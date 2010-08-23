@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.39 2010/08/05 22:22:51 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.40 2010/08/23 22:18:17 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -885,6 +885,26 @@ if sys.version[:5] != "1.5.1":
   hpyypbar.__doc__ = hpyypbar.__doc__ + hpbasicwintext
 
 
+def hpxvxbar(iw=0,kwdict={},**kw):
+  "Mean x*vx."
+  kw.update(kwdict)
+  kw['titlet']="Mean x*vx"
+  kw['titlel']="(m-rad)"
+  hpbasicwin('hxvxbar',iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxvxbar.__doc__ = hpxvxbar.__doc__ + hpbasicwintext
+
+
+def hpyvybar(iw=0,kwdict={},**kw):
+  "Mean y*vy."
+  kw.update(kwdict)
+  kw['titlet']="Mean y*vy"
+  kw['titlel']="(m-rad)"
+  hpbasicwin('hyvybar',iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpyvybar.__doc__ = hpyvybar.__doc__ + hpbasicwintext
+
+
 def hpxypbar(iw=0,kwdict={},**kw):
   "Mean x*y'."
   kw.update(kwdict)
@@ -913,6 +933,36 @@ def hpxpypbar(iw=0,kwdict={},**kw):
   hpbasicwin('hxpypbar',iw,kw)
 if sys.version[:5] != "1.5.1":
   hpxpypbar.__doc__ = hpxpypbar.__doc__ + hpbasicwintext
+
+
+def hpxvybar(iw=0,kwdict={},**kw):
+  "Mean x*vy."
+  kw.update(kwdict)
+  kw['titlet']="Mean x*vy"
+  kw['titlel']="(m-rad)"
+  hpbasicwin('hxvybar',iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxvybar.__doc__ = hpxvybar.__doc__ + hpbasicwintext
+
+
+def hpyvxbar(iw=0,kwdict={},**kw):
+  "Mean y*vx."
+  kw.update(kwdict)
+  kw['titlet']="Mean y*vx"
+  kw['titlel']="(m^2)"
+  hpbasicwin('hyvxbar',iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpyvxbar.__doc__ = hpyvxbar.__doc__ + hpbasicwintext
+
+
+def hpvxvybar(iw=0,kwdict={},**kw):
+  "Mean vx*vy."
+  kw.update(kwdict)
+  kw['titlet']="Mean vx*vy"
+  kw['titlel']="(rad^2)"
+  hpbasicwin('hvxvybar',iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpvxvybar.__doc__ = hpvxvybar.__doc__ + hpbasicwintext
 
 
 def hpxvzbar(iw=0,kwdict={},**kw):
@@ -1353,6 +1403,28 @@ if sys.version[:5] != "1.5.1":
   hpyypbarz.__doc__ = hpyypbarz.__doc__ + hpzarraytext
 
 
+def hpxvxbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "XVx bar."
+  lhxvxbarz = _extractvarkw('lhxvxbarz',kw)
+  if not lhxvxbarz: return
+  kw.update(kwdict)
+  kw['titlet']="XVx bar"
+  hpzarray('hxvxbarz',contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxvxbarz.__doc__ = hpxvxbarz.__doc__ + hpzarraytext
+
+
+def hpyypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "YY' bar."
+  lhyypbarz = _extractvarkw('lhyypbarz',kw)
+  if not lhyypbarz: return
+  kw.update(kwdict)
+  kw['titlet']="YY' bar"
+  hpzarray('hyypbarz',contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpyypbarz.__doc__ = hpyypbarz.__doc__ + hpzarraytext
+
+
 def hpxypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   "XY' bar."
   lhxypbarz = _extractvarkw('lhxypbarz',kw)
@@ -1384,6 +1456,39 @@ def hpxpypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   hpzarray('hxpypbarz',contour,overlay,iz,kw)
 if sys.version[:5] != "1.5.1":
   hpxpypbarz.__doc__ = hpxpypbarz.__doc__ + hpzarraytext
+
+
+def hpxvybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "XVy bar."
+  lhxvybarz = _extractvarkw('lhxvybarz',kw)
+  if not lhxvybarz: return
+  kw.update(kwdict)
+  kw['titlet']="XVy bar"
+  hpzarray('hxvybarz',contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxvybarz.__doc__ = hpxvybarz.__doc__ + hpzarraytext
+
+
+def hpyvxbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "YVx bar."
+  lhyvxbarz = _extractvarkw('lhyvxbarz',kw)
+  if not lhyvxbarz: return
+  kw.update(kwdict)
+  kw['titlet']="YVx bar"
+  hpzarray('hyvxbarz',contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpyvxbarz.__doc__ = hpyvxbarz.__doc__ + hpzarraytext
+
+
+def hpvxvybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "VxVy bar."
+  lhvxvybarz = _extractvarkw('lhvxvybarz',kw)
+  if not lhvxvybarz: return
+  kw.update(kwdict)
+  kw['titlet']="VxVy bar"
+  hpzarray('hvxvybarz',contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpvxvybarz.__doc__ = hpvxvybarz.__doc__ + hpzarraytext
 
 
 def hpxvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
@@ -1903,6 +2008,16 @@ def hzyypbar(iw=0,kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpyypbar(iw=iw,kwdict=kw)
+def hzxvxbar(iw=0,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpxvxbar(iw=iw,kwdict=kw)
+def hzyvybar(iw=0,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpyvybar(iw=iw,kwdict=kw)
 def hzxypbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
@@ -1918,6 +2033,21 @@ def hzxpypbar(iw=0,kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpxpypbar(iw=iw,kwdict=kw)
+def hzxvybar(iw=0,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpxvybar(iw=iw,kwdict=kw)
+def hzyvxbar(iw=0,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpyvxbar(iw=iw,kwdict=kw)
+def hzvxvybar(iw=0,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpvxvybar(iw=iw,kwdict=kw)
 def hzxvzbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
@@ -2108,6 +2238,16 @@ def hzyypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpyypbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kw)
+def hzxvxbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpxvxbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kw)
+def hzyvybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpyvybarz(contour=contour,overlay=overlay,iz=iz,kwdict=kw)
 def hzxypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
@@ -2123,6 +2263,21 @@ def hzxpypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpxpypbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kw)
+def hzxvybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpxvybarz(contour=contour,overlay=overlay,iz=iz,kwdict=kw)
+def hzyvxbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpyvxbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kw)
+def hzvxvybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpvxvybarz(contour=contour,overlay=overlay,iz=iz,kwdict=kw)
 def hzxvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
@@ -2309,9 +2464,14 @@ hpxpsqbar(): Mean x' squared
 hpypsqbar(): Mean y' squared
 hpxxpbar(): Mean x*x'
 hpyypbar(): Mean y*y'
+hpxvxbar(): Mean x*vx
+hpyvybar(): Mean y*vy
 hpxypbar(): Mean x*y'
 hpyxpbar(): Mean y*x'
 hpxpypbar(): Mean x'*y'
+hpxvybar(): Mean x*vy
+hpyvxbar(): Mean y*vx
+hpvxvybar(): Mean vx*vy
 hpxvzbar(): Mean x*vz
 hpyvzbar(): Mean y*vz
 hpvxvzbar(): Mean vx*vz
@@ -2350,9 +2510,14 @@ hpxpsqbarz(): X'**2 bar
 hpypsqbarz(): Y'**2 bar
 hpxxpbarz(): XX' bar
 hpyypbarz(): YY' bar
+hpxvxbarz(): XVx bar
+hpyvybarz(): YVy bar
 hpxypbarz(): XY' bar
 hpyxpbarz(): YX' bar
 hpxpypbarz(): X'Y' bar
+hpxvybarz(): XVy bar
+hpyvxbarz(): YVx bar
+hpvxvybarz(): VxVy bar
 hpxvzbarz(): XVz bar
 hpyvzbarz(): YVz bar
 hpvxvzbarz(): VxVz bar
@@ -2492,12 +2657,22 @@ Test all histplots
   apply(hpxxpbar,(),kw);fma()
   print 'hpyypbar'
   apply(hpyypbar,(),kw);fma()
+  print 'hpxvxbar'
+  apply(hpxvxbar,(),kw);fma()
+  print 'hpyvybar'
+  apply(hpyvybar,(),kw);fma()
   print 'hpxypbar'
   apply(hpxypbar,(),kw);fma()
   print 'hpyxpbar'
   apply(hpyxpbar,(),kw);fma()
   print 'hpxpypbar'
   apply(hpxpypbar,(),kw);fma()
+  print 'hpxvybar'
+  apply(hpxvybar,(),kw);fma()
+  print 'hpyvxbar'
+  apply(hpyvxbar,(),kw);fma()
+  print 'hpvxvybar'
+  apply(hpvxvybar,(),kw);fma()
   print 'hpxvzbar'
   apply(hpxvzbar,(),kw);fma()
   print 'hpyvzbar'
@@ -2574,12 +2749,22 @@ Test all histplots
   apply(hpxxpbarz,(),kw);fma()
   print 'hpyypbarz'
   apply(hpyypbarz,(),kw);fma()
+  print 'hpxvxbarz'
+  apply(hpxvxbarz,(),kw);fma()
+  print 'hpyvybarz'
+  apply(hpyvybarz,(),kw);fma()
   print 'hpxypbarz'
   apply(hpxypbarz,(),kw);fma()
   print 'hpyxpbarz'
   apply(hpyxpbarz,(),kw);fma()
   print 'hpxpypbarz'
   apply(hpxpypbarz,(),kw);fma()
+  print 'hpxvybarz'
+  apply(hpxvybarz,(),kw);fma()
+  print 'hpyvxbarz'
+  apply(hpyvxbarz,(),kw);fma()
+  print 'hpvxvybarz'
+  apply(hpvxvybarz,(),kw);fma()
   print 'hpxvzbarz'
   apply(hpxvzbarz,(),kw);fma()
   print 'hpyvzbarz'
