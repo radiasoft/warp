@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.267 2010/08/27 17:09:33 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.268 2010/08/27 18:41:28 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -5856,7 +5856,7 @@ to make space for the changed font size.
     # --- page.
     ptitle_placement[i][0][1] += (0.9 - 0.895)*scale
     ptitle_placement[i][1][1] -= (0.4 - 0.3927)*scale
-    ptitle_placement[i][2][0] -= (0.13 - 0.12)*scale
+    ptitle_placement[i][2][0] -= (0.14 - 0.12)*scale
     ptitle_placement[i][3][1] -= (0.403 - 0.3927)*scale
 
   # --- Change the default value of the height argument.
