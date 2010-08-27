@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.266 2010/08/10 23:53:34 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.267 2010/08/27 17:09:33 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -5841,4 +5841,26 @@ def plellipse(l,h,np=100,thetamin=0.,thetamax=2.*pi,xcent=0.,ycent=0.,**kw):
   x = 0.5*l*cos(theta) + xcent
   y = 0.5*h*sin(theta) + ycent
   pla(y,x,**kw)
+
+def scale_labels(scale):
+  """Scale the label sizes. This changes the sizes of the lables and shifts them
+to make space for the changed font size.
+  - scale: scale factor.
+  """
+  set_label(0.0182*scale)
+
+  colorbar_fontsize = array([14.,14.,8.,8.,8.,8.,8.,8.,8.,8.])*scale
+
+  for i in range(1):
+    # --- This numbers only work for the systems with plots covering the full
+    # --- page.
+    ptitle_placement[i][0][1] += (0.9 - 0.895)*scale
+    ptitle_placement[i][1][1] -= (0.4 - 0.3927)*scale
+    ptitle_placement[i][2][0] -= (0.13 - 0.12)*scale
+    ptitle_placement[i][3][1] -= (0.403 - 0.3927)*scale
+
+  # --- Change the default value of the height argument.
+  d = list(ptitles.func_defaults)
+  d[-1] = 20.*scale
+  ptitles.func_defaults = tuple(d)
 
