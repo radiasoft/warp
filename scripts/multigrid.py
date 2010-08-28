@@ -11,7 +11,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.151 2010/04/27 23:09:58 dave Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.152 2010/08/28 01:21:21 dave Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -767,7 +767,6 @@ class MultiGrid3D(SubcycledPoissonSolver):
                             self._rho,iondensitygrid3d)
       self.iondensitygrid3d = iondensitygrid3d
       multigridbe3dsolve(iwhich,self.nx,self.ny,self.nz,
-                         self.nxlocal,self.nylocal,self.nzlocal,
                          self.dx,self.dy,self.dz*zfact,
                          self.potential,self.source,
                          rstar,self.linbend,self.bounds,
