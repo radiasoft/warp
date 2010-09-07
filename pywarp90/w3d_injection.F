@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.142 $, $Date: 2010/08/13 17:38:32 $
+c@(#) File w3d_injection.F, version $Revision: 1.143 $, $Date: 2010/09/07 16:18:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -413,8 +413,19 @@ c             --- Save the particle data
                   pgroup%uzp(ii) = vzinj + 0.5*vthz_s(jsid+1)*uzt(ip)
                 endif
               endif
+
 c             --- Save the particle weight
-              if (l_inj_rz) pgroup%pid(ii,wpid) = 2.*rt(ip)*winject(ij,is)
+              if (l_inj_rz) pgroup%pid(ii,wpid) = 2.*rt(ip)
+
+c             --- Scale the particle weight.
+              if (wpid > 0) then
+                if (pgroup%pid(ii,wpid) == 0.) then
+                  pgroup%pid(ii,wpid) = winject(ij,is)
+                else
+                  pgroup%pid(ii,wpid) = pgroup%pid(ii,wpid)*winject(ij,is)
+                endif
+              endif
+
               if (linj_includebz0) then
                 rt(ip) = sqrt((pgroup%xp(ii)+xinject(ij))**2 + (pgroup%yp(ii)+yinject(ij))**2)
                 tt(ip) = atan2(pgroup%yp(ii)+yinject(ij),pgroup%xp(ii)+xinject(ij))
