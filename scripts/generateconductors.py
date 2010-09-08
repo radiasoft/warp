@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.236 2010/08/13 18:16:35 dave Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.237 2010/09/08 05:14:03 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3872,6 +3872,35 @@ Cone
                sqrt(self.r_zmax**2+(self.length/2.)**2))
     self.createextent([-rmax,-rmax,-self.length/2.],
                       [+rmax,+rmax,+self.length/2.])
+
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+    """
+Plots the r versus z
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 199.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmin=0.: inner range in r to include in plot
+    """
+    # --- This is kind of a hack, but this routine doesn't make much sense
+    # --- for an arbitrarily rotated cone.
+    r =             array([self.r_zmin,0.0,0.0,self.r_zmax, self.r_zmin])
+    z = self.length*array([-0.5,      -0.5,0.5,0.5,        -0.5])
+
+    ct = cos(self.theta)
+    st = sin(self.theta)
+    cp = cos(self.phi)
+    sp = sin(self.phi)
+
+    xp = +r*ct - 0*st*sp + z*st*cp
+    yp =       + 0*cp    + z*sp
+    zp = -r*st - 0*ct*sp + z*ct*cp
+    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0)
+
+    xp = -r*ct - 0*st*sp + z*st*cp
+    yp =       + 0*cp    + z*sp
+    zp = +r*st - 0*ct*sp + z*ct*cp
+    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0)
 
 #============================================================================
 class ConeSlope(Assembly):
