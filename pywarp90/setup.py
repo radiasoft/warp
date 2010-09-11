@@ -85,7 +85,7 @@ else:
 # --- source file is, rather than relative to the main build directory.
 # --- This tells distutils to put the objects in the same directory
 # --- as the source files.
-if sys.hexversion >= 0x020300f0:
+if sys.hexversion >= 0x020300f0 and args[0] == 'build':
   sys.argv += ['--build-temp','']
 
 if machine == 'darwin':
