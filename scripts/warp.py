@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.197 2010/07/01 23:50:16 dave Exp $"
+warp_version = "$Id: warp.py,v 1.198 2010/09/13 23:08:14 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -52,8 +52,12 @@ except ImportError:
   from gistdummy import *
 
 # Import the warpC shared object which contains all of WARP
-import warpC
-from warpC import *
+if lparallel:
+  import warpCparallel as warpC
+  from warpCparallel import *
+else:
+  import warpC
+  from warpC import *
 
 from Forthon import *
 from warputils import *
