@@ -5,9 +5,9 @@ SO = so
 PUBLICHOME = $(HOME)/pub
 
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) em3dpy.$(SO) ranffortran.c
-	rm -f warpC.so
+	rm -f warpCparallel.so
 	python setup.py $(FCOMP) --parallel build --build-platlib .
-	#mv warpC.so /home/dave/scriptsnew
+	#mv warpCparallel.so /home/dave/scriptsnew
 
 toppy.$(SO): top.F top_lattice.F dtop.F top.v topslave.F
 	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) top top_lattice.F dtop.F topslave.F
