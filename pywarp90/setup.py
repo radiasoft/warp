@@ -80,6 +80,15 @@ if with_numpy:
 else:
   define_macros = [('WITH_NUMERIC','1')]
 
+if parallel:
+  # --- This is only needed by warpC_Forthon.c
+  define_macros += [('MPIPARALLEL',None)]
+
+if parallel:
+  name = 'warpCparallel'
+else:
+  name = 'warpC'
+
 # --- The behavior of distutils changed from 2.2 to 2.3. In 2.3, the object
 # --- files are always put in a build/temp directory relative to where the
 # --- source file is, rather than relative to the main build directory.
@@ -111,13 +120,13 @@ if machine == 'darwin':
       else:
         os.environ['ARCHFLAGS'] = '-arch x86_64'  # Snow Leopard
 
-setup (name = "warpC",
+setup (name = name,
        version = '3.0',
        author = 'David P. Grote',
        author_email = "DPGrote@lbl.gov",
        description = "Combines warp's packages into one",
        platforms = "Unix, Windows (cygwin), Mac OSX",
-       ext_modules = [Extension('warpC',
+       ext_modules = [Extension(name,
                                 ['warpC_Forthon.c',
                                  os.path.join(builddir,'Forthon.c'),
                                  'pmath_rng.c','ranf.c','ranffortran.c'],
