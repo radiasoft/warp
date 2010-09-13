@@ -4,7 +4,7 @@ procedure, but using the full simulation instead of 1-D approximation.
 from warp import *
 from timedependentvoltage import TimeVoltage
 
-constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.13 2010/03/23 19:57:45 dave Exp $"
+constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.14 2010/09/13 23:02:02 dave Exp $"
 def constantcurrentinjectiondoc():
   import constantcurrentinjection
   print constantcurrentinjection.__doc__
@@ -87,7 +87,10 @@ frz.calc_a = 3
     self.endplatevolt = endplatevolt
     self.l_setvinject = l_setvinject
     self.maxvoltagechangerate = maxvoltagechangerate
-    self.sourcevoltinit = sourcevoltinit or sourcevolt
+    if sourcevoltinit is None:
+        self.sourcevoltinit = endplatevolt
+    else:
+        self.sourcevoltinit = sourcevoltinit
 
     # --- Initialize parameters
     self.hphiref = []
@@ -205,9 +208,10 @@ frz.calc_a = 3
       top.vinject = voltage
     setconductorvoltage(voltage,condid=self.sourceid)
     for id,v in zip(self.othercontrolledids,self.othercontrolledvolts):
-      voltage = (self.endplatevolt +
-                     self.afact*(v-self.endplatevolt))
-      setconductorvoltage(voltage,condid=id)
+      ocvoltage = (self.endplatevolt + voltage*(v-self.endplatevolt)/
+                                          (self.sourcevolt-self.endplatevolt))
+                     #self.afact*(v-self.endplatevolt))
+      setconductorvoltage(ocvoltage,condid=id)
 
     self.hsourcevolt.append(voltage)
     self.hafact.append(self.afact)
