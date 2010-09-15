@@ -19,7 +19,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.86 2010/05/19 00:24:09 dave Exp $"
+particles_version = "$Id: particles.py,v 1.87 2010/09/15 00:07:05 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -259,7 +259,8 @@ Multiple selection criteria are supported.
   - ssn=None: When specified, returns the particle or particles with the given
               ssn. Raises and error if ssn's are not saved - top.spid must be
               setup.
-  - ii=None: If ii is supplied, it is just returned.
+  - ii=None: If ii is supplied, use it for the list of particles instead
+             of choosing particles from the given species.
   - lost=false: When true, returns indices to the lost particles rather than
                 the live particles. Note that the lost particle data will
                 be saved in different arrays than the live particles.
@@ -270,6 +271,14 @@ Multiple selection criteria are supported.
   - pgroup=top.pgroup: Particle group to get particles from 
   """
 
+  """
+Note, that the following kind of code doesn't work, and I'm not sure of an
+easy way to fix it.
+r = getr(jslist=-1)
+ppxy(jslist=-1,x=r,xu=.1)
+The problem is that the array r is only as long as there are many particles,
+but the ii index will be expecting that r have length npmax.
+  """
   # --- Create dictionary of local values and copy it into local dictionary,
   # --- ignoring keywords not listed in _selectparticles_kwdefaults.
   kwvalues = _selectparticles_kwdefaults.copy()
@@ -333,10 +342,13 @@ Multiple selection criteria are supported.
   ns = ins.size
 
   # --- If jslist defined, call selectparticles repeatedly for each species
-  # --- on the list
+  # --- on the list.
+  # --- Note that if ii is not None, then jslist is ignored since the list
+  # --- of particles is already selected and it presumably already contains
+  # --- particles from the species in jslist.
   del kwvalues['jslist']    # Remove list so selectparticles is subsequently
                             # called with one species at a time
-  if jslist is not None:
+  if jslist is not None and ii is None:
     if jslist == -1:
       jslist = range(0,ns)
     if len(jslist) == 1:
@@ -345,16 +357,12 @@ Multiple selection criteria are supported.
       # --- the function normally.
       js = jslist[0]
     else:
-      # --- Otherwise, recursively call this routine for each species in the
-      # --- list, accumulating a list of indices.
-      partlist = array([],'l')
+      # --- Create the ii array, which will contain the indices of all of the
+      # --- particles in the species in jslist.
+      ii = []
       for js in jslist:
-          kwvalues['js'] = js
-          newparts = selectparticles(iw, kwvalues)
-          if isinstance(newparts,slice):
-            newparts = arange(newparts.start,newparts.stop)
-          partlist = array(list(partlist)+list(newparts),'l')
-      return partlist
+        ii += range(ins[js] - 1,ins[js] + nps[js] - 1)
+      ii = array(ii)
 
   # --- If the w3dobject was not passed in, use w3d, or if the object was
   # --- set to a PDB file, use it.
@@ -362,8 +370,14 @@ Multiple selection criteria are supported.
     if object is not top: w3dobject = object
     else:                 w3dobject = w3d
 
-  i1 = ins[js] - 1
-  i2 = ins[js] + nps[js] - 1
+  if ii is None:
+    i1 = ins[js] - 1
+    i2 = ins[js] + nps[js] - 1
+  else:
+    # --- If ii is given, it already includes the particles from the desired
+    # --- species, so no down select to species js is needed.
+    i1 = 0
+    i2 = getattrwithsuffix(pgroup,'npmax',suffixparticle)
 
   if i2 <= i1: return array([],'l')
 
