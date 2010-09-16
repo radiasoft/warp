@@ -548,16 +548,21 @@ class EM3D(SubcycledPoissonSolver):
         f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin:f.jymax  ] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
     elif self.laser_mode==2:
       
-      self.submethod_laser=2.1
+      self.submethod_laser=2.1 # uses 2.1; 2.2 is not complete (accumulation of displaced charge missing)
       if self.submethod_laser==2.1:
         # --- displaces fixed weight particles on "continuous" trajectories
-        laser_amplitude=self.laser_amplitude/self.laser_emax*0.1*f.dx/top.dt
-        self.laser_ux[...] = laser_amplitude*self.laser_profile*cos(phase)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
-        self.laser_uy[...] = laser_amplitude*self.laser_profile*cos(phase)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
+#        dispmax = 0.01*f.dx
+#        laser_amplitude=self.laser_amplitude/self.laser_emax*dispmax*self.laser_frequency
+        dispmax = 0.01*clight
+        laser_amplitude=self.laser_amplitude/self.laser_emax*dispmax
+        laser_amplitude*=self.laser_profile*cos(phase)*(1.-self.laser_source_v/clight)
+        self.laser_ux[...] = laser_amplitude*cos(self.laser_polangle)
+        self.laser_uy[...] = laser_amplitude*sin(self.laser_polangle)
         self.laser_xdx[...] += self.laser_ux*top.dt
         self.laser_ydy[...] += self.laser_uy*top.dt
 #        weights = ones(self.laser_nn)*f.dx*f.dz*eps0/(top.dt)*self.laser_emax*top.dt/(0.1*f.dx)
-        weights = ones(self.laser_nn)*f.dx*clight*eps0*self.laser_emax*top.dt/(0.1*f.dx)
+#        weights = ones(self.laser_nn)*f.dx*clight*eps0*self.laser_emax/(dispmax*self.laser_frequency)
+        weights = ones(self.laser_nn)*f.dx*eps0*self.laser_emax/0.01
         if not self.l_2dxz:
           weights*=f.dy
         l_particles_weight=False
