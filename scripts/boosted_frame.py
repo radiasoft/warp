@@ -22,7 +22,7 @@ class Boosted_Frame(object):
           if top.pgroup.fselfb[js] == fselfbcopy[jss]:
             top.pgroup.fselfb[js]=top.fselfb[jss]
 
-  def boost(self,species,zinject=0.,tinit=0.,l_inject_plane=1,lallindomain=0,l_rmzmean=1.,l_deprho=1,l_savezinit=0):
+  def boost(self,species,zinject=0.,tinit=0.,l_inject_plane=1,lallindomain=0,l_rmzmean=1.,l_deprho=1,l_savezinit=0,l_focus=1):
    print 'enter boost',top.pgroup.nps
    if l_savezinit:
      if top.zbirthlabpid==0:
@@ -90,6 +90,11 @@ class Boosted_Frame(object):
         t = z/vz
         x = getx(pgroup=pg,js=js,bcast=0,gather=0)-t*vx
         y = gety(pgroup=pg,js=js,bcast=0,gather=0)-t*vy
+        # --- correct for focusing effect from shift from z=0 to zinject
+        if l_focus:
+          tfoc = -zinject*self.gammaframe/vz#pr
+          x = x-tfoc*vx#pr
+          y = y-tfoc*vy#pr
         # --- get data in boosted frame
         tpr = -self.gammaframe*t
         zpr = self.gammaframe*self.betaframe*clight*t
@@ -102,7 +107,7 @@ class Boosted_Frame(object):
         vxpr = vx*fact/self.gammaframe
         vypr = vy*fact/self.gammaframe
         vzpr = (vz-self.betaframe*clight)*fact
-        # --- get data at t=0 in boosted frame
+       # --- get data at t=0 in boosted frame
 #        zpr = zpr - vzpr*tpr
         zpr = zpr - top.vbeam*tpr
 #        zpr = zcopy*top.gammabar_lab/top.gammabar
