@@ -19,7 +19,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.87 2010/09/15 00:07:05 dave Exp $"
+particles_version = "$Id: particles.py,v 1.88 2010/09/16 00:29:55 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -362,7 +362,7 @@ but the ii index will be expecting that r have length npmax.
       ii = []
       for js in jslist:
         ii += range(ins[js] - 1,ins[js] + nps[js] - 1)
-      ii = array(ii)
+      ii = array(ii,'l')
 
   # --- If the w3dobject was not passed in, use w3d, or if the object was
   # --- set to a PDB file, use it.
