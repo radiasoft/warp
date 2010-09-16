@@ -35,7 +35,8 @@ fcompiler = FCompiler(machine=machine,
                       fcompname=fcomp)
 
 dummydist = Distribution()
-dummybuild = build(dummydist)
+dummydist.parse_command_line()
+dummybuild = dummydist.get_command_obj('build')
 dummybuild.finalize_options()
 builddir = dummybuild.build_temp
 
