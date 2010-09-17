@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.143 $, $Date: 2010/09/07 16:18:07 $
+c@(#) File w3d_injection.F, version $Revision: 1.144 $, $Date: 2010/09/17 17:07:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3237,7 +3237,7 @@ c             --- The max(0,) chop off any part that crosses the x or y axis.
 
 c             --- If the two by two block is completely outside emitting
 c             --- surface, set the area to zero.
-              if (xl**2 + yl**2 > 1.) then
+              if (xl**2 + yl**2 >= 1.) then
                 area = 0.
 
 c             --- If two by two block straddles edge of emitting surface, do
@@ -3280,9 +3280,18 @@ c               --- would be 1 (since area was calculated above on a
 c               --- unit circle).
                 area = area*dxi*dyi*ainj*binj/(inj_xwide*inj_ywide)
 
+c               --- Prevent the area from being too small. When it is too
+c               --- small, there are problems when the code does rho/area,
+c               --- producing erroneously large numbers.
+c               --- The min value of 0.01 is arbitrary, but should provide a 
+c               --- nice balance between a number that is small enough so
+c               --- cells near the edge don't contribute too much and large
+c               --- enough to avoid computational problems.
+                area = max(area,.01)
+
+              else
 c               --- If the block is completely within the emitting surface,
 c               --- set the area to 1.
-              else
                 area = 1.
               endif
 
@@ -3394,9 +3403,9 @@ c             --- the calculation.
                   area = 0.
                 end if
 
+              else
 c               --- If the block is completely within the emitting surface,
 c               --- set the area to 1.
-              else
                 area = 1.
               endif
 
