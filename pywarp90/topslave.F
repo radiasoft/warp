@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.64 $, $Date: 2010/07/01 22:05:27 $
+c TOPSLAVE.M, version $Revision: 1.65 $, $Date: 2010/09/21 23:58:19 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -40,7 +40,7 @@ c to the appropriate processor.
       integer(ISZ):: ilower,ihigher
       real(kind=8),pointer:: zz(:),uz(:),zbuff(:)
       real(kind=8):: ztemp,temp,pidtemp(pgroup%npid),syslen,zgrid,rr,rrin
-      integer(ISZ):: is1,is2,is,ip,idest,ipid,ii,il,ir,nn,indts,i1,i2
+      integer(ISZ):: is1,is2,is,ip,idest,ipid,ii,il,ir,nn,indts,i1,i2,iii13
       integer(MPIISZ):: ins_init(pgroup%ns),nps_init(pgroup%ns)
       integer(MPIISZ):: nsendleft(pgroup%ns),nsendright(pgroup%ns)
       integer(MPIISZ):: nrecvleft(pgroup%ns),nrecvright(pgroup%ns)
@@ -493,6 +493,15 @@ c         --- existing particles.
             nn = nrecvleft(is)
             if (nn > 0) then
 
+c             --- This special value is needed since when npid == 0, its
+c             --- value would be out of bounds, i.e. > b3size. Note that in
+c             --- addpart, the pid data is only accessed if npid > 0.
+              if (pgroup%npid > 0) then
+                iii13 = il+13*nn
+              else
+                iii13 = il+(13+pgroup%npid)*nn-1  - 1
+              endif
+
               call addpart(pgroup,nn,pgroup%npid,
      &                     buffer3(il      :il+   nn-1),
      &                     buffer3(il+   nn:il+ 2*nn-1),
@@ -507,7 +516,7 @@ c         --- existing particles.
      &                     buffer3(il+10*nn:il+11*nn-1),
      &                     buffer3(il+11*nn:il+12*nn-1),
      &                     buffer3(il+12*nn:il+13*nn-1),
-     &                     buffer3(il+13*nn:il+(13+pgroup%npid)*nn-1),
+     &                     buffer3(iii13   :il+(13+pgroup%npid)*nn-1),
      &                     is,
      &                     .true.,0.,0.,0.,0.,0.,0.,.false.,.false.,.false.,
      &                     .true.,.true.,.false.,.false.)
@@ -564,6 +573,15 @@ c               --- ztemp = sqrt(x**2 + y**2)
             nn = nrecvright(is)
             if (nn > 0) then
 
+c             --- This special value is needed since when npid == 0, its
+c             --- value would be out of bounds, i.e. > b4size. Note that in
+c             --- addpart, the pid data is only accessed if npid > 0.
+              if (pgroup%npid > 0) then
+                iii13 = ir+13*nn
+              else
+                iii13 = ir+(13+pgroup%npid)*nn-1  - 1
+              endif
+
               call addpart(pgroup,nn,pgroup%npid,
      &                     buffer4(ir      :ir+   nn-1),
      &                     buffer4(ir+   nn:ir+ 2*nn-1),
@@ -578,7 +596,7 @@ c               --- ztemp = sqrt(x**2 + y**2)
      &                     buffer4(ir+10*nn:ir+11*nn-1),
      &                     buffer4(ir+11*nn:ir+12*nn-1),
      &                     buffer4(ir+12*nn:ir+13*nn-1),
-     &                     buffer4(ir+13*nn:ir+(13+pgroup%npid)*nn-1),
+     &                     buffer4(iii13   :ir+(13+pgroup%npid)*nn-1),
      &                     is,
      &                     .true.,0.,0.,0.,0.,0.,0.,.false.,.false.,.false.,
      &                     .true.,.true.,.false.,.true.)
