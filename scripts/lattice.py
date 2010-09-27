@@ -68,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.90 2010/07/09 23:57:10 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.91 2010/09/27 17:56:13 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3812,4 +3812,87 @@ class Emitter:
     self.emitted_species.append(js)
 
 
+# ----------------------------------------------------------------------------
+def combinemmlts(imlist=None):
+  """Combine the listed mmlt elements into one big element. This will be much
+more efficient if there are significant overlaps among the elements, but
+only makes sense if there are no offsets. Currently, this assumes that it is
+combining all mmlt elements (the imlist argument is ignored). If all of the
+elements don't have the same offsetse, the routine aborts.
+  """
+  # --- The list defaults to all mmlt elements
+#  if imlist is None:
+  # --- imlist argument is ignored, and is set to include all of them.
+  imlist = range(top.nmmlt+1)
+
+  assert (min(top.mmltox) == max(top.mmltox) and
+          min(top.mmltoy) == max(top.mmltoy) and 
+          min(top.mmltot) == max(top.mmltot) and 
+          min(top.mmltop) == max(top.mmltop)),\
+         "The offsets of all of the elements must be the same"
+
+  # --- Get the full range needed for the new element
+  zs = min(top.mmltzs[imlist])
+  ze = max(top.mmltze[imlist])
+
+  # --- Setup the z-grid for the new element
+  dz = min(top.dzmmlt[top.mmltid[imlist]-1])
+  nzmax = nint((ze - zs)/dz)
+  dz = (ze - zs)/nzmax
+
+  # --- Create arrays to hold the combined data
+  ms = zeros((nzmax+1,top.nmsmult))
+  msp = zeros((nzmax+1,top.nmsmult))
+  temp = zeros(nzmax+1)
+  zz = span(zs,ze,nzmax+1)
+
+  # --- Use interpolation to gather the multiple moments data into a single
+  # --- array. This ignores the phz and phpz.
+  for im in imlist:
+    for imult in range(top.nmsmult):
+      id = top.mmltid[im] - 1
+      if id < 0: continue
+      # --- Note that zeim is set to include all of the data and is not
+      # --- necessarily equal to top.mmltze[im].
+      # --- This could be problematic if there is nonzero extraneous data
+      # --- in the array beyond mmltze.
+      zsim = top.mmltzs[im]
+      zeim = zsim + top.dzmmlt[id]*top.nzmmltmax
+      # --- Do the interpolation.
+      temp.fill(0.)
+      msold = top.msmmlt[:,imult,id]*(top.mmltsf[im] + top.mmltsc[im])
+      getgrid1d(nzmax+1,zz,temp,top.nzmmltmax,msold,zsim,zeim)
+      ms[:,imult] += temp
+      temp.fill(0.)
+      mspold = top.msmmltp[:,imult,id]*(top.mmltsf[im] + top.mmltsc[im])
+      getgrid1d(nzmax+1,zz,temp,top.nzmmltmax,mspold,zsim,zeim)
+      msp[:,imult] += temp
+
+  # --- Save the _n and _v, and other values that make sense
+  mmlt_n = top.mmlt_n.copy()
+  mmlt_v = top.mmlt_v.copy()
+  ap = top.mmltap[imlist[0]]
+  ax = top.mmltax[imlist[0]]
+  ay = top.mmltay[imlist[0]]
+  ph = top.mmltph[imlist[0]]
+  aps = min(top.mmltas[imlist])
+  ape = max(top.mmltae[imlist])
+  ox = top.mmltox[imlist[0]]
+  oy = top.mmltoy[imlist[0]]
+  ot = top.mmltot[imlist[0]]
+  op = top.mmltop[imlist[0]]
+
+  # --- For now, just clear out all of the data, assuming that all mmlts are
+  # --- being combined.
+  top.nmmlt = -1
+  top.nmmltsets = 0
+  top.nmsmult = 0
+  top.nzmmltmax = 0
+  gchange("Lattice")
+  gchange("Mult_data")
+
+  # --- Add the new, combined element
+  addnewmmlt(zs,ze,ap=ap,ax=ax,ay=ay,ph=ph,aps=aps,ape=ape,
+             ox=ox,oy=oy,ot=ot,op=op,
+             ms=ms,msp=msp,nn=mmlt_n,vv=mmlt_v)
 
