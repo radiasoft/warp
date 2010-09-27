@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.144 $, $Date: 2010/09/17 17:07:57 $
+c@(#) File w3d_injection.F, version $Revision: 1.145 $, $Date: 2010/09/27 17:58:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3921,10 +3921,11 @@ c any conductor surface.
       real(kind=8),allocatable:: xx(:),yy(:),zz(:)
       real(kind=8),allocatable:: tex(:),tey(:),tez(:)
       integer(ISZ),allocatable:: ijp(:)
+      real(kind=8),pointer:: zii(:),inj_di(:),rinjecti(:)
       integer(ISZ):: ip,ix,iy,iz,ij
-      real(kind=8):: rinj,rinji,rr2,wr,dd,ca,zii
+      real(kind=8):: rinj,rr2,wr,dd,ddi,ca,rinji
       real(kind=8):: aa,az,atx,aty,px,py,pz,wx,wy,wz,en,etx,ety
-      real(kind=8):: dxi,dyi,dzi,inj_di
+      real(kind=8):: dxi,dyi,dzi
       real(kind=8):: sx,sy
       real(kind=8):: fourthirds,onethird
       integer(ISZ):: spreadx,spready
@@ -3967,6 +3968,11 @@ c     --- E fields for particles behind the virtual surface.
       fourthirds = 4./3.
       onethird = 1./3.
 
+      allocate(zii(ninject),inj_di(ninject),rinjecti(ninject))
+      zii = 1./(inj_dz*inj_d)
+      inj_di = 1./inj_d
+      rinjecti = 1./rinject
+
 c     --- Transform the particles into the frame of the injection source,
 c     --- copying particle data to temporary arrays.
       xx = xp
@@ -3984,12 +3990,10 @@ c       --- emitted from. The int is needed since it is doing double
 c       --- duty and has other information stored in the fractional part.
         ij = ijp(ip)
         if (ij <= 0 .or. ij > ninject) cycle
-        zii = 1./(inj_dz*inj_d(ij))
-        inj_di = 1./inj_d(ij)
 
 c       --- set temporaries
         rinj = rinject(ij)
-        rinji = 1./rinj
+        rinji = rinjecti(ij)
 
 c       --- Calculate distance of particle from the emitting surface
         rr2 = xx(ip)**2 + yy(ip)**2
@@ -4047,16 +4051,18 @@ c         --- emitting surface.
           if (spreadx*px < 0. .or. px*spreadx > inj_nx .or.
      &        spready*py < 0. .or. py*spready > inj_ny) cycle
 
+          ddi = dd*inj_di(ij)
+
 c         --- Calculate the normal electric field from the potential drop in
 c         --- front of the emitting surface. The normal field given by the
 c         --- Child-Langmuir solution (for planar surfaces) is used.
-          en = zii*(inj_phi(ix        ,iy        ,ij)*(1.-wx)*(1.-wy) +
-     &              inj_phi(ix+spreadx,iy        ,ij)*    wx *(1.-wy) +
-     &              inj_phi(ix        ,iy+spready,ij)*(1.-wx)*    wy  +
-     &              inj_phi(ix+spreadx,iy+spready,ij)*    wx *    wy   )
+          en = zii(ij)*(inj_phi(ix        ,iy        ,ij)*(1.-wx)*(1.-wy) +
+     &                  inj_phi(ix+spreadx,iy        ,ij)*    wx *(1.-wy) +
+     &                  inj_phi(ix        ,iy+spready,ij)*(1.-wx)*    wy  +
+     &                  inj_phi(ix+spreadx,iy+spready,ij)*    wx *    wy   )
           if (linj_enormcl) then
 c           --- Scale the normal E field to match the Child-Langmuir solution
-            en = en*fourthirds*(dd*inj_di)**onethird
+            en = en*fourthirds*ddi**onethird
           endif
 
 c         --- Set the particle's electric field based off of the normal
@@ -4078,8 +4084,8 @@ c           --- (i.e. zero) and the value on the secondary surface.
             if (l_inj_rz .or. l_inj_rz_grid) then
               if (spreadx == 1) then
                 atx = atan2(xx(ip)*sign(1.,rinj),(rinj - zz(ip))*sign(1.,rinj))
-                etx = (dd*inj_di)*(inj_ex(ix  ,0,ij)*(1.-wx) + 
-     &                             inj_ex(ix+1,0,ij)*    wx )
+                etx = ddi*(inj_ex(ix  ,0,ij)*(1.-wx) + 
+     &                     inj_ex(ix+1,0,ij)*    wx )
                 tex(ip) = tex(ip) + etx*cos(aa)*cos(atx)
                 tey(ip) = tey(ip) + etx*sin(aa)*cos(atx)
                 tez(ip) = tez(ip) + etx*sin(atx)
@@ -4091,14 +4097,14 @@ c           --- (i.e. zero) and the value on the secondary surface.
               sy = 1.
               if (xx(ip) < inj_xmmin(ij)) sx = -1.
               if (yy(ip) < inj_ymmin(ij)) sy = -1.
-              etx = (dd*inj_di)*sx*(inj_ex(ix        ,iy        ,ij)*(1.-wx)*(1.-wy) +
-     &                              inj_ex(ix+spreadx,iy        ,ij)*    wx *(1.-wy) +
-     &                              inj_ex(ix        ,iy+spready,ij)*(1.-wx)*    wy  +
-     &                              inj_ex(ix+spreadx,iy+spready,ij)*    wx *    wy   )
-              ety = (dd*inj_di)*sy*(inj_ey(ix        ,iy        ,ij)*(1.-wx)*(1.-wy) +
-     &                              inj_ey(ix+spreadx,iy        ,ij)*    wx *(1.-wy) +
-     &                              inj_ey(ix        ,iy+spready,ij)*(1.-wx)*    wy  +
-     &                              inj_ey(ix+spreadx,iy+spready,ij)*    wx *    wy   )
+              etx = ddi*sx*(inj_ex(ix        ,iy        ,ij)*(1.-wx)*(1.-wy) +
+     &                      inj_ex(ix+spreadx,iy        ,ij)*    wx *(1.-wy) +
+     &                      inj_ex(ix        ,iy+spready,ij)*(1.-wx)*    wy  +
+     &                      inj_ex(ix+spreadx,iy+spready,ij)*    wx *    wy   )
+              ety = ddi*sy*(inj_ey(ix        ,iy        ,ij)*(1.-wx)*(1.-wy) +
+     &                      inj_ey(ix+spreadx,iy        ,ij)*    wx *(1.-wy) +
+     &                      inj_ey(ix        ,iy+spready,ij)*(1.-wx)*    wy  +
+     &                      inj_ey(ix+spreadx,iy+spready,ij)*    wx *    wy   )
 
               tex(ip) = tex(ip) + etx*cos(atx)
               tey(ip) = tey(ip) + ety*cos(aty)
@@ -4106,6 +4112,8 @@ c           --- (i.e. zero) and the value on the secondary surface.
             endif
           endif
 
+        else
+          ijp(ip) = 0.
         endif
       enddo
 
@@ -4122,6 +4130,7 @@ c     --- For particles not near the source, the temp arrays are zero.
       deallocate(xx,yy,zz)
       deallocate(tex,tey,tez)
       deallocate(ijp)
+      deallocate(zii,inj_di,rinjecti)
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinj_sete3d = timeinj_sete3d + wtime() - substarttime
@@ -5504,7 +5513,7 @@ c            wz = dd*2.**(inj_nz-iz)-1.
       deallocate(ijp)
 
 !$OMP MASTER
-      if (lw3dtimesubs) timeinj_sete3d = timeinj_sete3d + wtime() - substarttime
+      if (lw3dtimesubs) timeinj_sete_3darray = timeinj_sete_3darray + wtime() - substarttime
 !$OMP END MASTER
       return
       end

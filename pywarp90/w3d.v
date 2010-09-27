@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.313 $, $Date: 2010/08/13 17:38:32 $
+#@(#) File W3D.V, version $Revision: 3.314 $, $Date: 2010/09/27 17:58:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.313 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.314 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1364,6 +1364,7 @@ timegettinj_phi real /0./
 timegetinj_phi_mr real /0./
 timeinj_sete real /0./
 timeinj_sete3d real /0./
+timeinj_sete_3darray real /0./
 timetinj_sete3d real /0./
 timeinj_addtemp3d real /0./
 timeinj_setrho3d real /0./
