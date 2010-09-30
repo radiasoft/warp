@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.73 $, $Date: 2010/06/08 17:38:58 $
+#@(#) File FRZ.V, version $Revision: 3.74 $, $Date: 2010/09/30 13:51:16 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.73 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.74 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -316,6 +316,8 @@ updateguardcells2d() subroutine
          # update guard cells of 2D multigrid solver
 setrhopandphiprz() subroutine
 getallfieldsfromphip() subroutine
+get_rho_from_rhop(grid:GRIDtype) subroutine
+getphiforparticlesrz() subroutine
 
 %%%%%%%% CONDtype:
 # structure for potential calculation close to conductors.
