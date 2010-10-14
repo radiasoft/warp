@@ -19,7 +19,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.88 2010/09/16 00:29:55 dave Exp $"
+particles_version = "$Id: particles.py,v 1.89 2010/10/14 17:42:12 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1373,7 +1373,7 @@ Adds particles to the simulation
                       option is explicitly set.
   xmmin=top.xpminlocal,xmmax=top.xpmaxlocal,
   ymmin=top.ypminlocal,ymmax=top.ypmaxlocal,
-  zmmin=top.zpminlocal+top.zbeam,zmmax=top.zpmaxlocal+top.zbeam:
+  zmmin=top.zpminlocal+top.zgrid,zmmax=top.zpmaxlocal+top.zgrid:
                    extent of the domain - should only be set in unusual
                    circumstances.
   l2symtry,l4symtry,lrz: System symmetries, default to w3d values
@@ -1492,8 +1492,8 @@ Adds particles to the simulation
   else:
     if ymmin is None: ymmin = top.ypminlocal 
     if ymmax is None: ymmax = top.ypmaxlocal 
-  if zmmin is None: zmmin = top.zpminlocal + top.zbeam
-  if zmmax is None: zmmax = top.zpmaxlocal + top.zbeam
+  if zmmin is None: zmmin = top.zpminlocal + top.zgrid
+  if zmmax is None: zmmax = top.zpmaxlocal + top.zgrid
 
   if l2symtry is None: l2symtry = w3d.l2symtry
   if l4symtry is None: l4symtry = w3d.l4symtry
