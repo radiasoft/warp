@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.88 2010/03/11 19:10:19 dave Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.89 2010/10/14 17:40:47 dave Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -731,9 +731,10 @@ the diagnostic is of interest and is meaningfull.
         del self.iamtheregisteredsolver
         registersolver(self)
 
-        # --- Setup the MPI communicators
-        initializedecomp(self.fsdecomp)
-        initializedecomp(self.ppdecomp)
+    # --- Setup the MPI communicators if the arrays are to be restored
+    if not self.lnorestoreonpickle:
+      initializedecomp(self.fsdecomp)
+      initializedecomp(self.ppdecomp)
 
   # ---------------------------------------------------------------------
   def advancezgrid(self):
