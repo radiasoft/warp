@@ -5,7 +5,7 @@ usual particles as object (Electron, Positron, Water, atoms from periodic table)
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.78 2010/08/02 21:23:07 jlvay Exp $"
+species_version = "$Id: species.py,v 1.79 2010/10/14 17:48:29 dave Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale>0.:
@@ -143,8 +143,8 @@ for k in periodic_table.keys():
 #  exec(k+"=periodic_table['"+k+"']")
 del k
 
-Electron=Particle(charge=-echarge,mass=emass,Symbol='e-',name='Electron')
-Positron=Particle(charge= echarge,mass=emass,Symbol='e+',name='Positron')
+Electron = Particle(charge=-echarge,mass=emass,Symbol='e-',name='Electron')
+Positron = Particle(charge=+echarge,mass=emass,Symbol='e+',name='Positron')
 
 Proton = Particle(mass=1.6726231e-27, charge=echarge, Symbol='P',name='Proton')
 Neutron = Particle(mass=1.6749286e-27, charge=0, Symbol='N',name='Neutron')
@@ -185,6 +185,7 @@ Creates a new species of particles. All arguments are optional.
                     weight=None,name='',nautodt=1,
                     efetch=None,fselfb=None,limplicit=None,
                     color='fg',marker='\1',msize=1.0):
+    assert isinstance(type,Particle),'type must be one of either an elementary particle, an element, or one of the predefined molecules'
     # --- Note that some default arguments are None in case the user had
     # --- set the values in pgroup already, in which case they should not
     # --- be overwritten here unless the inputs are explicitly set.
@@ -229,29 +230,33 @@ Creates a new species of particles. All arguments are optional.
 
   def add_group(self,js=None,charge=None,mass=None,charge_state=None,weight=None):   
     if js is None:
-      if top.pgroup.ns==0:
-        condition = 1
-      else:
-        condition = top.pgroup.sm[0]<>0.
-      if condition:
+      # --- If there are no species defined or if ns is 1 (the default) and
+      # --- the first species has already been setup, then a new species needs
+      # --- to be added.
+      if top.pgroup.ns == 0 or top.pgroup.sm[0] != 0.:
         addspecies()
-      js=top.pgroup.ns-1
+      js = top.pgroup.ns-1
+      # --- Setup the starting index for this species in the particle
+      # --- arrays.
       if js > 0:
         top.pgroup.ins[js] = top.pgroup.ins[js-1]+top.pgroup.nps[js-1]
       top.pgroup.sid[js] = js
     self.jslist.append(js)
-    type=self.type
-    if charge is None:charge=self.charge
-    if mass is None:mass=self.mass
-    # set charge
+    type = self.type
+    if charge is None: charge = self.charge
+    if mass is None: mass = self.mass
+    # --- set the charge
     try:
-      top.pgroup.sq[js]=type.charge
+      # --- Try type.charge first, which is the charge of the fundemental
+      # --- particle, or the user set charge.
+      top.pgroup.sq[js] = type.charge
     except:
+      # --- If that doesn't work...
       if type is not None and type.__class__ is not Particle:
-        if charge_state is None:charge_state=self.charge_state
-        top.pgroup.sq[js]=echarge*charge_state
+        if charge_state is None: charge_state = self.charge_state
+        top.pgroup.sq[js] = echarge*charge_state
       else:
-        top.pgroup.sq[js]=charge
+        top.pgroup.sq[js] = charge
     top.zion_s[js]=nint(top.pgroup.sq[js]/echarge)
     # set mass
     try:
@@ -610,7 +615,7 @@ in radius squared.
         print ("add_uniform_cylinder: Warning: no particles loaded since all "+
                "are outside of the y range of the domain of processor %d"%me)
       return
-    if min(zz) > top.zpmaxlocal or max(zz) < top.zpminlocal:
+    if min(zz) > top.zpmaxlocal+top.zgrid or max(zz) < top.zpminlocal+top.zgrid:
       if top.debug:
         print ("add_uniform_cylinder: Warning: no particles loaded since all "+
                "are outside of the z range of the domain of processor %d"%me)
@@ -619,15 +624,14 @@ in radius squared.
     if theta == 0. and phi == 0.:
       # --- When no angle is specified, then the clipping to the domain
       # --- can be done directly on the zmin and zmax
-      # --- NOTE: zbeam still needs to be accounted for.
       if lallindomain:
         # --- Crop the zmin and zmax to be within the local domain
-        zminp = max(zmin+zmean,min(zmax+zmean,top.zpminlocal)) - zmean
-        zmaxp = min(zmax+zmean,max(zmin+zmean,top.zpmaxlocal)) - zmean
+        zminp = max(zmin+zmean,min(zmax+zmean,top.zpminlocal+top.zgrid)) - zmean
+        zmaxp = min(zmax+zmean,max(zmin+zmean,top.zpmaxlocal+top.zgrid)) - zmean
       else:
         # --- Crop the zmin and zmax to be within the global domain
-        zminp = max(zmin+zmean,w3d.zmmin) - zmean
-        zmaxp = min(zmax+zmean,w3d.zmmax) - zmean
+        zminp = max(zmin+zmean,w3d.zmmin+top.zgrid) - zmean
+        zmaxp = min(zmax+zmean,w3d.zmmax+top.zgrid) - zmean
     else:
       # --- When angles are specified, the clipping must be done on a particle
       # --- by particle basis. Copy the zmin and zmax directly over to start.
@@ -754,10 +758,11 @@ in radius squared.
       # --- particle by particle basis.
       if lallindomain:
         # --- Crop the z's to be within the local particle domain
-        indomain = logical_and(top.zpminlocal<=z,z<top.zpmaxlocal)
+        indomain = logical_and(top.zpminlocal+top.zgrid<=z,
+                               z<top.zpmaxlocal+top.zgrid)
       else:
         # --- Crop the z's to be within the global grid domain
-        indomain = logical_and(w3d.zmmin<=z,z<w3d.zmmax)
+        indomain = logical_and(w3d.zmmin+top.zgrid<=z,z<w3d.zmmax+top.zgrid)
       x = compress(indomain,x)
       y = compress(indomain,y)
       z = compress(indomain,z)
@@ -1692,6 +1697,10 @@ of code."""
   # --- print beam.sw
   # --- Note that the documentation can only be obtained by referencing the
   # --- class object. i.e. beam.__class__.sw.__doc__
+  def getjs(self):
+    return self.jslist[0]
+  js = property(getjs)
+
   def _getpgroupattribute(name,doc=None):
     if doc is None:
       doc = top.pgroup.getvardoc(name)
