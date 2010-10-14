@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.198 2010/09/13 23:08:14 dave Exp $"
+warp_version = "$Id: warp.py,v 1.199 2010/10/14 21:16:43 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -412,7 +412,7 @@ def addspecies(newns=1,pgroup=None,sid=None):
   if pgroup is not None:
     pgroup.ns = top.ns
     setuppgroup(pgroup)
-    top.pgroup.sid[-newns:] = sid
+    pgroup.sid[-newns:] = sid
   if top.lspeciesmoments:
     top.nszarr = top.ns
     gchange("Z_arrays")
