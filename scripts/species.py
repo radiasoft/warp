@@ -5,7 +5,7 @@ usual particles as object (Electron, Positron, Water, atoms from periodic table)
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.79 2010/10/14 17:48:29 dave Exp $"
+species_version = "$Id: species.py,v 1.80 2010/10/14 21:18:56 dave Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale>0.:
@@ -180,7 +180,7 @@ Creates a new species of particles. All arguments are optional.
   - color='fg',marker='\1',msize=1.0: Default values used when making particle
                                       plots of the species.
   """
-  def __init__(self,js=None,pgroup=top.pgroup,
+  def __init__(self,js=None,pgroup=None,
                     type=None,charge=echarge,mass=emass,charge_state=0,
                     weight=None,name='',nautodt=1,
                     efetch=None,fselfb=None,limplicit=None,
@@ -190,25 +190,29 @@ Creates a new species of particles. All arguments are optional.
     # --- set the values in pgroup already, in which case they should not
     # --- be overwritten here unless the inputs are explicitly set.
     self.jslist=[]
-    self.pgroup=pgroup
+    # --- If pgroup is not passed in, top.pgroup is used. But, note that
+    # --- a reference to top.pgroup isn't actually saved. The pgroup
+    # --- property would always returns top.pgroup in that case.
+    if pgroup is not None:
+      self._pgroup = pgroup
     self.type=type
     self.add_group(js,charge=charge,mass=mass,charge_state=charge_state,weight=weight)
-    self.charge=top.pgroup.sq[self.jslist[0]]
-    self.mass=top.pgroup.sm[self.jslist[0]]
+    self.charge=self.pgroup.sq[self.jslist[0]]
+    self.mass=self.pgroup.sm[self.jslist[0]]
     if type is None or type.__class__ is not Particle:
       self.charge_state=charge_state
     self.name=name
     self.nautodt = nautodt
     if self.nautodt > 1 and top.chdtspid == 0: top.chdtspid = nextpid()
     if efetch is not None: top.efetch[self.jslist[-1]] = efetch
-    if fselfb is not None: top.pgroup.fselfb[self.jslist[-1]] = fselfb
-    if limplicit is not None: top.pgroup.limplicit[self.jslist[-1]] = limplicit
+    if fselfb is not None: self.pgroup.fselfb[self.jslist[-1]] = fselfb
+    if limplicit is not None: self.pgroup.limplicit[self.jslist[-1]] = limplicit
     for i in xrange(nautodt-1):
       self.add_group(weight=weight)
-      top.pgroup.ndts[self.jslist[-1]]=2*top.pgroup.ndts[self.jslist[-2]]
+      self.pgroup.ndts[self.jslist[-1]]=2*self.pgroup.ndts[self.jslist[-2]]
       if efetch is not None: top.efetch[self.jslist[-1]] = efetch
-      if fselfb is not None: top.pgroup.fselfb[self.jslist[-1]] = fselfb
-      if limplicit is not None: top.pgroup.limplicit[self.jslist[-1]] = limplicit
+      if fselfb is not None: self.pgroup.fselfb[self.jslist[-1]] = fselfb
+      if limplicit is not None: self.pgroup.limplicit[self.jslist[-1]] = limplicit
       # --- zero out sp_fract for the extra species added with larger ndts
       top.sp_fract[self.jslist[-1]] = 0.
 
@@ -233,14 +237,14 @@ Creates a new species of particles. All arguments are optional.
       # --- If there are no species defined or if ns is 1 (the default) and
       # --- the first species has already been setup, then a new species needs
       # --- to be added.
-      if top.pgroup.ns == 0 or top.pgroup.sm[0] != 0.:
-        addspecies()
-      js = top.pgroup.ns-1
+      if self.pgroup.ns == 0 or self.pgroup.sm[0] != 0.:
+        addspecies(pgroup=self.pgroup)
+      js = self.pgroup.ns-1
       # --- Setup the starting index for this species in the particle
       # --- arrays.
       if js > 0:
-        top.pgroup.ins[js] = top.pgroup.ins[js-1]+top.pgroup.nps[js-1]
-      top.pgroup.sid[js] = js
+        self.pgroup.ins[js] = self.pgroup.ins[js-1] + self.pgroup.nps[js-1]
+      self.pgroup.sid[js] = js
     self.jslist.append(js)
     type = self.type
     if charge is None: charge = self.charge
@@ -249,26 +253,26 @@ Creates a new species of particles. All arguments are optional.
     try:
       # --- Try type.charge first, which is the charge of the fundemental
       # --- particle, or the user set charge.
-      top.pgroup.sq[js] = type.charge
+      self.pgroup.sq[js] = type.charge
     except:
       # --- If that doesn't work...
       if type is not None and type.__class__ is not Particle:
         if charge_state is None: charge_state = self.charge_state
-        top.pgroup.sq[js] = echarge*charge_state
+        self.pgroup.sq[js] = echarge*charge_state
       else:
-        top.pgroup.sq[js] = charge
-    top.zion_s[js]=nint(top.pgroup.sq[js]/echarge)
+        self.pgroup.sq[js] = charge
+    top.zion_s[js]=nint(self.pgroup.sq[js]/echarge)
     # set mass
     try:
-      top.pgroup.sm[js]=type.mass
+      self.pgroup.sm[js]=type.mass
     except:
       try: 
-        top.pgroup.sm[js]=type.A*amu
+        self.pgroup.sm[js]=type.A*amu
       except:
-        top.pgroup.sm[js]=mass
-    top.aion_s[js] = top.pgroup.sm[js]/amu
+        self.pgroup.sm[js]=mass
+    top.aion_s[js] = self.pgroup.sm[js]/amu
     if weight is not None:
-      top.pgroup.sw[js]=weight
+      self.pgroup.sw[js]=weight
     # set atomic number, if any
     try:
       top.nion_s[js]=type.Z
@@ -340,10 +344,10 @@ Creates a new species of particles. All arguments are optional.
       np=shape(x)[0]
       if np>0:
         if top.wpid==0:
-          w=top.pgroup.sw[js]*ones(np,'d')
+          w=self.pgroup.sw[js]*ones(np,'d')
         else:
-          w=top.pgroup.sw[js]*getpid(js=js,id=top.wpid-1,gather=0)
-        if charge:w*=top.pgroup.sq[js]   
+          w=self.pgroup.sw[js]*getpid(js=js,id=top.wpid-1,gather=0)
+        if charge:w*=self.pgroup.sq[js]   
         if w3d.solvergeom is w3d.XYgeom:
           deposgrid2d(1,np,x,y,w,nx,ny,density,densityc,xmin,xmax,ymin,ymax)
         else:
@@ -1691,19 +1695,34 @@ of code."""
 
   # --- Fancy python to provide convenient methods for getting various
   # --- species quantities. This allows something like the following, to
-  # --- get and set the species weight.
+  # --- get and set the species weight, for example.
   # --- beam = Species(type=Potassium,charge_state=1)
   # --- beam.sw = npreal/nppart
   # --- print beam.sw
   # --- Note that the documentation can only be obtained by referencing the
   # --- class object. i.e. beam.__class__.sw.__doc__
+
+  # --- Make pgroup a property. This is done so that when pgroup is the same
+  # --- as top.pgroup, a reference to top.pgroup is not actually kept in the
+  # --- self dict. This avoids problems in a dump/restart.
+  def getpgroup(self):
+    try:
+      return self._pgroup
+    except AttributeError:
+      # --- If the _pgroup attribute was not defined, then always use
+      # --- top.pgroup.
+      return top.pgroup
+  pgroup = property(getpgroup)
+
+  # --- Note that this will only work reliably if there is only one js
+  # --- represented.
   def getjs(self):
     return self.jslist[0]
   js = property(getjs)
 
   def _getpgroupattribute(name,doc=None):
     if doc is None:
-      doc = top.pgroup.getvardoc(name)
+      doc = self.pgroup.getvardoc(name)
     def fget(self):
       if len(self.jslist) == 1:
         return getattr(self.pgroup,name)[self.jslist[0]]
@@ -1938,10 +1957,10 @@ of code."""
     if doc is None:
       doc = top.getvardoc(name)
     def fget(self):
-      jsid = top.pgroup.sid[self.jslist[0]]
+      jsid = self.pgroup.sid[self.jslist[0]]
       return getattr(top,name)[jsid]
     def fset(self,value):
-      jsid = top.pgroup.sid[self.jslist[0]]
+      jsid = self.pgroup.sid[self.jslist[0]]
       getattr(top,name)[jsid] = value
     return fget,fset,None,doc
 
@@ -1952,10 +1971,10 @@ of code."""
     if doc is None:
       doc = top.getvardoc(name)
     def fget(self):
-      jsid = top.pgroup.sid[self.jslist[0]]
+      jsid = self.pgroup.sid[self.jslist[0]]
       return getattr(top,name)[...,jsid]
     def fset(self,value):
-      jsid = top.pgroup.sid[self.jslist[0]]
+      jsid = self.pgroup.sid[self.jslist[0]]
       getattr(top,name)[...,jsid] = value
     return fget,fset,None,doc
 
@@ -2082,11 +2101,11 @@ of code."""
     def fget(self):
       # --- A function is needed that takes ilw as an argument
       def _getlabwindowmomentdata(ilw):
-        jsid = top.pgroup.sid[self.jslist[0]]
+        jsid = self.pgroup.sid[self.jslist[0]]
         return getattr(top,name)[:top.ilabwn[ilw,jsid],ilw,jsid]
       return _getlabwindowmomentdata
     def fset(self,value):
-      jsid = top.pgroup.sid[self.jslist[0]]
+      jsid = self.pgroup.sid[self.jslist[0]]
       getattr(top,name)[...,jsid] = value
     return fget,fset,None,doc
 
@@ -2138,10 +2157,10 @@ of code."""
     if doc is None:
       doc = top.getvardoc(name)
     def fget(self):
-      jsid = top.pgroup.sid[self.jslist[0]]
+      jsid = self.pgroup.sid[self.jslist[0]]
       return getattr(top,name)[...,:top.jhist+1,jsid]
     def fset(self,value):
-      jsid = top.pgroup.sid[self.jslist[0]]
+      jsid = self.pgroup.sid[self.jslist[0]]
       getattr(top,name)[...,:top.jhist+1,jsid] = value
     return fget,fset,None,doc
 
