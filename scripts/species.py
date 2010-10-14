@@ -5,7 +5,7 @@ usual particles as object (Electron, Positron, Water, atoms from periodic table)
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.80 2010/10/14 21:18:56 dave Exp $"
+species_version = "$Id: species.py,v 1.81 2010/10/14 21:24:07 dave Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale>0.:
@@ -1722,7 +1722,9 @@ of code."""
 
   def _getpgroupattribute(name,doc=None):
     if doc is None:
-      doc = self.pgroup.getvardoc(name)
+      # --- Note that top is used here since self is not actually defined
+      # --- at this point (since this is called as a class method).
+      doc = top.pgroup.getvardoc(name)
     def fget(self):
       if len(self.jslist) == 1:
         return getattr(self.pgroup,name)[self.jslist[0]]
