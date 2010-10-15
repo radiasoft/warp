@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.443 $, $Date: 2010/06/30 23:38:56 $
+c@(#) File W3D.F, version $Revision: 3.444 $, $Date: 2010/10/15 16:59:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -723,7 +723,7 @@ c  timestep and gathers diagnostics.  When called by W3DGEN, step3d takes
 c  a step of zero size, to compute fields, and gather diagnostics at start 
 c  of run.
 
-      real(kind=8):: getbeamcom
+      real(kind=8):: getbeamcom,zgridnew
       logical(ISZ):: thisstep,thiszbeam,thistime,dolabwn
       real(kind=8):: zbeaml,zbeamr
       real(kind=8):: time1,time2
@@ -816,7 +816,11 @@ c             --- Reset zgrid to be the center of mass of the beam. This should
 c             --- be safe since zgrid should not have been used since it was
 c             --- updated in w3dexe. Ony zgridndts(0) needs to be set since
 c             --- lbeamcom does not work with subcycling.
-              zgrid = getbeamcom(pgroup) - zbeamcomoffset
+              zgridnew = getbeamcom(pgroup) - zbeamcomoffset
+              if (lbeamcomforwardonly) then
+                if (zgridnew < zgrid) zgridnew = zgrid
+              endif
+              zgrid = zgridnew
               zgridndts(0) = zgrid
               call stepid (it, time+dt, zgrid)
             endif

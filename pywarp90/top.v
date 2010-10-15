@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.286 $, $Date: 2010/08/23 21:59:40 $
+#@(#) File TOP.V, version $Revision: 3.287 $, $Date: 2010/10/15 16:59:16 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.286 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.287 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1163,6 +1163,9 @@ lbeamcom                  logical    /.false./
    # When true, zbeam follows the beam center of mass (minus zbeamcomoffset).
 zbeamcomoffset            real /0./
    # Offset of zbeam relative to the beam center of mass when lbeamcom is true.
+lbeamcomforwardonly       logical /.false./
+   # When true, with lbeamcom, the beam frame will only move forward,
+   # ignoring any backward motion of the center of mass.
 relativity                integer /0/
    # Level of relativitistic corrections.
    #  1: scale transverse self E-field by 1/gamma**2
