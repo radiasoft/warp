@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.37 2010/10/19 16:16:32 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.38 2010/10/19 20:22:08 dave Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -323,10 +323,12 @@ be unreliable.
             if top.time > self.endtime: return
 
         if self.lastitsaved is None or self.lastitsaved > top.it:
-            # --- This should never happen, but you can never predict what
-            # --- some user might to.
+            # --- The diagnostic is in some indeterminant state. Any data
+            # --- that there might be can't be used. Set things so that data
+            # --- will start to be saved on the next step, and then return.
+            self.lastitsaved = None
             self.initializegrid()
-            self.lastitsaved += 1
+            return
 
         # --- Create handy locals.
         js = self.js
