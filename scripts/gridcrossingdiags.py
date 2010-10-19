@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.36 2010/06/30 23:44:44 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.37 2010/10/19 16:16:32 dave Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -30,6 +30,13 @@ cross the cell.
                      velocity over the time step. The internal value of nhist
                      may differ slightly from the input value since it is
                      adjusted so that 1/nhist is an integer.
+  - dthist=top.dt*nhist: Time step size for the diagnostic. Like nhist, this
+                         can be less than top.dt. This is effectively the same
+                         as setting nhist, except that if top.dt changes,
+                         nhist will automatically be updated. As with nhist,
+                         if dthist < top.dt, the actual value may differ so
+                         that 1/nhist is an integer. Note that dthist takes
+                         precedence over nhist.
   - nr,rmax: radial extent of radial profile diagnostic. Both must be given
              for the radial diagnostic to be done.
   - scintxmin,scintxmax,scintymin,scintymax,scintzmin,scintzmax,scintnx,scintny:
@@ -68,7 +75,7 @@ be unreliable.
     """
 
     def __init__(self,js,zmmin=None,zmmax=None,dz=None,nz=None,nzscale=1,
-                 nhist=None,nr=None,rmax=None,ztarget=None,
+                 nhist=None,dthist=None,nr=None,rmax=None,ztarget=None,
                  scintxmin=None,scintxmax=None,
                  scintymin=None,scintymax=None,
                  scintzmin=None,scintzmax=None,
@@ -87,6 +94,7 @@ be unreliable.
         self.nz = nz
         self.nzscale = nzscale
         self.nhist = nhist
+        self.dthist = dthist
         self.nr = nr
         self.rmax = rmax
         self.ztarget = ztarget
@@ -105,6 +113,8 @@ be unreliable.
         self.starttime = starttime
         self.endtime = endtime
         self.lmoving_frame = lmoving_frame
+        self.lastitsaved = None
+        self.timeaverage = 0.
 
         self.zoldpid = nextpid()
 
@@ -218,12 +228,18 @@ be unreliable.
 
         self.zmesh = self.zmmin + arange(0,self.nz+1,dtype='l')*self.dz
 
+        if self.dthist is not None:
+            self.nhist = self.dthist/top.dt
+
         if self.nhist is not None and self.nhist < 1:
             self.nt = nint(1./self.nhist)
             # --- Make sure the nt and nhist are consistent.
             self.nhist = 1./self.nt
         else:
             self.nt = 1
+
+        if self.lastitsaved == None:
+            self.lastitsaved = top.it
 
         # --- Setup the GridCrossing_Moments group
         self.gcmoments.zmmingc = self.zmmin
@@ -252,17 +268,9 @@ be unreliable.
             self.scintdx = (self.scintxmax - self.scintxmin)/self.scintnx
             self.scintdy = (self.scintymax - self.scintymin)/self.scintny
 
-    def gettimezbeam(self,zbeam):
-        # --- The time extends from just after the last time up to and
-        # --- including the current time.
-        tt = top.time - top.dt + arange(1,self.nt+1)*top.dt/self.nt
-        zb = ones(self.nt)*zbeam
-        return tt,zb
-
     def appendnextarrays(self,zbeam):
-        tt,zb = self.gettimezbeam(zbeam)
-        self._time.append(tt)
-        self._zbeam.append(zb)
+        self._time.append(None)
+        self._zbeam.append(None)
         self._count.append(None)
         self._xbar.append(None)
         self._ybar.append(None)
@@ -314,7 +322,11 @@ be unreliable.
         if self.endtime is not None:
             if top.time > self.endtime: return
 
-        self.initializegrid()
+        if self.lastitsaved is None or self.lastitsaved > top.it:
+            # --- This should never happen, but you can never predict what
+            # --- some user might to.
+            self.initializegrid()
+            self.lastitsaved += 1
 
         # --- Create handy locals.
         js = self.js
@@ -326,6 +338,11 @@ be unreliable.
 
         # --- Do some error checking
         if zmmax < zmmin: return
+
+        # --- A running time average since the last time the data was
+        # --- collected. Note that this will reset whenever dit == 1.
+        dit = top.it - self.lastitsaved
+        self.timeaverage = (self.timeaverage*(dit - 1) + top.time)/dit
 
         rmax = self.rmax
         nr = self.nr
@@ -352,34 +369,25 @@ be unreliable.
         if self.nhist is None: nhist = top.nhist
         else:                  nhist = self.nhist
 
-        # --- The data is gathered from top.it-nhist/2 to top.it+nhist/2-1.
-        # --- At the half way point, create space for the next set of data.
-        # --- If nhist < 1, then collect data every time step.
-        if (len(self._time) == 0 or nhist < 1. or
-            (top.it-1)%nhist == int(nhist/2)):
+        # --- If the data was gathered in the previous step, then get the
+        # --- arrays setup for the next set of data.
+        if len(self._time) == 0 or self.lastitsaved == top.it-1:
 
-            if self.laccumulatedata and me == 0 and not self.dumptofile:
+            if ((self.laccumulatedata and me == 0 and not self.dumptofile)
+                or len(self._time) == 0):
                 self.appendnextarrays(zbeam)
             else:
                 # --- On other processors or if the data is being dumped to a
                 # --- file or if the data is not being accumulated, just zero
                 # --- out the existing arrays.
                 # --- There's no reason to keep the history on all processors.
-                # --- The arrays are created the first time the diagnostic
-                # --- is done.
-                if len(self._time) == 0:
-                    self.appendnextarrays(zbeam)
-                else:
-                    tt,zb = self.gettimezbeam(zbeam)
-                    self._time[0] = tt
-                    self._zbeam[0] = zb
-                    if self.ldoradialdiag:
-                        self._rprofile[0].fill(0.)
-                    if self.ldoscintillator:
-                        self._scintillator[0].fill(0.)
+                if self.ldoradialdiag:
+                    self._rprofile[0].fill(0.)
+                if self.ldoscintillator:
+                    self._scintillator[0].fill(0.)
 
-        # --- The code below is all local and can be skipped if there are no
-        # --- particles locally.
+        # --- The code block below is all local and can be skipped if there
+        # --- are no particles locally.
         if top.pgroup.nps[js] > 0:
 
             if nt == 1 or self.ldoradialdiag or self.ldoscintillator:
@@ -437,72 +445,69 @@ be unreliable.
             i2 = i1 + top.pgroup.nps[js]
             top.pgroup.pid[i1:i2,self.zoldpid-1] = top.pgroup.zp[i1:i2]
 
-        # --- The data is gathered from top.it-nhist/2 to top.it+nhist/2-1.
-        # --- At the half way point, finish the calculation by summing over
-        # --- processors, dividing by the counts to get the averages, and
-        # --- calculating the rms quantities.
-        if nhist < 1. or top.it%nhist == int(nhist/2):
-            self._count[-1] = self.gcmoments.pnumgc[1:,:,self.js].copy()
-            self._xbar[-1] = self.gcmoments.xbargc[1:,:,self.js].copy()
-            self._ybar[-1] = self.gcmoments.ybargc[1:,:,self.js].copy()
-            self._xsqbar[-1] = self.gcmoments.xsqbargc[1:,:,self.js].copy()
-            self._ysqbar[-1] = self.gcmoments.ysqbargc[1:,:,self.js].copy()
-            self._rprms[-1] = self.gcmoments.rprmsgc[1:,:,self.js].copy()
-            self._vxbar[-1] = self.gcmoments.vxbargc[1:,:,self.js].copy()
-            self._vybar[-1] = self.gcmoments.vybargc[1:,:,self.js].copy()
-            self._vzbar[-1] = self.gcmoments.vzbargc[1:,:,self.js].copy()
-            self._vxsqbar[-1] = self.gcmoments.vxsqbargc[1:,:,self.js].copy()
-            self._vysqbar[-1] = self.gcmoments.vysqbargc[1:,:,self.js].copy()
-            self._vzsqbar[-1] = self.gcmoments.vzsqbargc[1:,:,self.js].copy()
-            self._xvxbar[-1] = self.gcmoments.xvxbargc[1:,:,self.js].copy()
-            self._yvybar[-1] = self.gcmoments.yvybargc[1:,:,self.js].copy()
+        # --- Collect the data after at least nhist steps have gone by since
+        # --- the last time that the data was collected. If nhist < 1, then
+        # --- always collect the data. Note that nhist could have been
+        # --- decreased so that the number of time steps since the last
+        # --- collection could be greater than nhist.
+        if (top.it - self.lastitsaved) >= nhist:
+            self.lastitsaved = top.it
 
-            co = self._count[-1]
-            xbar = self._xbar[-1]
-            ybar = self._ybar[-1]
-            xsqbar = self._xsqbar[-1]
-            ysqbar = self._ysqbar[-1]
-            rp = self._rprms[-1]
-            vxbar = self._vxbar[-1]
-            vybar = self._vybar[-1]
-            vzbar = self._vzbar[-1]
-            vxsqbar = self._vxsqbar[-1]
-            vysqbar = self._vysqbar[-1]
-            vzsqbar = self._vzsqbar[-1]
-            xvxbar = self._xvxbar[-1]
-            yvybar = self._yvybar[-1]
+            count = self.gcmoments.pnumgc[1:,:,self.js]
+            xbar = self.gcmoments.xbargc[1:,:,self.js]
+            ybar = self.gcmoments.ybargc[1:,:,self.js]
+            xsqbar = self.gcmoments.xsqbargc[1:,:,self.js]
+            ysqbar = self.gcmoments.ysqbargc[1:,:,self.js]
+            rprms = self.gcmoments.rprmsgc[1:,:,self.js]
+            vxbar = self.gcmoments.vxbargc[1:,:,self.js]
+            vybar = self.gcmoments.vybargc[1:,:,self.js]
+            vzbar = self.gcmoments.vzbargc[1:,:,self.js]
+            vxsqbar = self.gcmoments.vxsqbargc[1:,:,self.js]
+            vysqbar = self.gcmoments.vysqbargc[1:,:,self.js]
+            vzsqbar = self.gcmoments.vzsqbargc[1:,:,self.js]
+            xvxbar = self.gcmoments.xvxbargc[1:,:,self.js]
+            yvybar = self.gcmoments.yvybargc[1:,:,self.js]
 
-            # --- Finish the calculation, gathering data from all processors and
-            # --- dividing out the count.
-            co[...] = parallelsum(co)
-            xbar[...] = parallelsum(xbar)
-            ybar[...] = parallelsum(ybar)
-            xsqbar[...] = parallelsum(xsqbar)
-            ysqbar[...] = parallelsum(ysqbar)
-            rp[...] = parallelsum(rp)
-            vxbar[...] = parallelsum(vxbar)
-            vybar[...] = parallelsum(vybar)
-            vzbar[...] = parallelsum(vzbar)
-            vxsqbar[...] = parallelsum(vxsqbar)
-            vysqbar[...] = parallelsum(vysqbar)
-            vzsqbar[...] = parallelsum(vzsqbar)
-            xvxbar[...] = parallelsum(xvxbar)
-            yvybar[...] = parallelsum(yvybar)
+            # --- Finish the calculation, gathering data from all processors
+            # --- and dividing out the count.
+            count = parallelsum(count)
+            counti = 1./where(count==0.,1.,count)
+            xbar = parallelsum(xbar)*counti
+            ybar = parallelsum(ybar)*counti
+            xsqbar = parallelsum(xsqbar)*counti
+            ysqbar = parallelsum(ysqbar)*counti
+            rprms = sqrt(parallelsum(rprms)*counti)
+            vxbar = parallelsum(vxbar)*counti
+            vybar = parallelsum(vybar)*counti
+            vzbar = parallelsum(vzbar)*counti
+            vxsqbar = parallelsum(vxsqbar)*counti
+            vysqbar = parallelsum(vysqbar)*counti
+            vzsqbar = parallelsum(vzsqbar)*counti
+            xvxbar = parallelsum(xvxbar)*counti
+            yvybar = parallelsum(yvybar)*counti
 
-            cotemp = where(co==0.,1.,co)
-            xbar[...] = xbar/cotemp
-            ybar[...] = ybar/cotemp
-            xsqbar[...] = xsqbar/cotemp
-            ysqbar[...] = ysqbar/cotemp
-            rp[...] = sqrt(rp/cotemp)
-            vxbar[...] = vxbar/cotemp
-            vybar[...] = vybar/cotemp
-            vzbar[...] = vzbar/cotemp
-            vxsqbar[...] = vxsqbar/cotemp
-            vysqbar[...] = vysqbar/cotemp
-            vzsqbar[...] = vzsqbar/cotemp
-            xvxbar[...] = xvxbar/cotemp
-            yvybar[...] = yvybar/cotemp
+            if self.nt > 1:
+                # --- The time extends from just after the last time up to and
+                # --- including the current time.
+                tt = top.time - top.dt + arange(1,self.nt+1)*top.dt/self.nt
+            else:
+                tt = array([self.timeaverage])
+            self._time[-1] = tt
+            self._zbeam[-1] = ones(self.nt)*zbeam
+            self._count[-1] = count
+            self._xbar[-1] = xbar
+            self._ybar[-1] = ybar
+            self._xsqbar[-1] = xsqbar
+            self._ysqbar[-1] = ysqbar
+            self._rprms[-1] = rprms
+            self._vxbar[-1] = vxbar
+            self._vybar[-1] = vybar
+            self._vzbar[-1] = vzbar
+            self._vxsqbar[-1] = vxsqbar
+            self._vysqbar[-1] = vysqbar
+            self._vzsqbar[-1] = vzsqbar
+            self._xvxbar[-1] = xvxbar
+            self._yvybar[-1] = yvybar
 
             self._xrms[-1] = sqrt(abs(xsqbar - xbar**2))
             self._yrms[-1] = sqrt(abs(ysqbar - ybar**2))
@@ -516,7 +521,7 @@ be unreliable.
                                           - (yvybar - ybar*vybar)**2))
 
             # --- Scale the current appropriately.
-            self._current[-1] = co*(top.pgroup.sq[js]/(top.dt*nhist))
+            self._current[-1] = count*(top.pgroup.sq[js]/(top.dt*nhist))
 
             # --- Now that the data was copied out, zero the top arrays
             # --- so that the data doesn't accumulate.
@@ -534,7 +539,6 @@ be unreliable.
             self.gcmoments.vzsqbargc.fill(0.)
             self.gcmoments.xvxbargc.fill(0.)
             self.gcmoments.yvybargc.fill(0.)
-
 
             if self.ldoradialdiag:
                 rprof = self._rprofile[-1]
@@ -601,6 +605,7 @@ be unreliable.
             cPickle.dump(('nz',self.nz),ff,-1)
             cPickle.dump(('nzscale',self.nzscale),ff,-1)
             cPickle.dump(('nhist',self.nhist),ff,-1)
+            cPickle.dump(('dthist',self.dthist),ff,-1)
             cPickle.dump(('nt',self.nt),ff,-1)
             cPickle.dump(('nr',self.nr),ff,-1)
             cPickle.dump(('rmax',self.rmax),ff,-1)
@@ -783,13 +788,10 @@ be unreliable.
                 except:
                     break
                 if data[0][:4] == 'time':
-                    if self.nhist < 1.:
-                        # --- Keep the data if any portion of it is with in
-                        # --- the stand and end time.
-                        t1 = data[1][0]
-                        t2 = data[1][-1]
-                    else:
-                        t1 = t2 = data[1]
+                    # --- Keep the data if any portion of it is with in
+                    # --- the start and end time.
+                    t1 = data[1][0]
+                    t2 = data[1][-1]
                     keepdata = (starttime <= t2 and t1 <= endtime)
                 if not readscintillator and data[0][:12] == 'scintillator':
                     data = (data[0],tell)
@@ -987,19 +989,27 @@ be unreliable.
 around the peak current."""
         iztarget = int((ztarget - self.zmmin)/self.dz)
         ii = argmax(self.arraycurrent[:,iztarget])
-        di = int(deltat/top.dt/self.nhist)
-        Esum = sum(self.arrayrprofile[ii-di:ii+di,:,iztarget],0)
+        i1 = i2 = ii
+        while i1 >= 0 and self.time[i1] >= self.time[ii] - deltat:
+            i1 -= 1
+        while i2 < len(self.time) and self.time[i2] <= self.time[ii] + deltat:
+            i2 += 1
+        Esum = sum(self.arrayrprofile[i1:i2+1,:,iztarget],0)
         self.ppfluence(Esum)
 
     def ppfluenceatspot(self,deltat=None,currmin=None,tslice=slice(None)):
         iztarget = argmin(ratcurrentmax[tslice])
         if deltat is not None:
             ii = argmax(self.arraycurrent[:,iztarget])
-            di = int(deltat/top.dt/self.nhist)
-            Esum = sum(self.arrayrprofile[ii,:,iztarget],0)
+            i1 = i2 = ii
+            while i1 >= 0 and self.time[i1] >= self.time[ii] - deltat:
+                i1 -= 1
+            while i2 < len(self.time) and self.time[i2] <= self.time[ii] + deltat:
+                i2 += 1
+            Esum = sum(self.arrayrprofile[i1:i2+1,:,iztarget],0)
         elif currmin is not None:
             ii = (gridcurrent[:,iztarget] > currmin)
-            Esum = sum(self.arrayrprofile[ii-di:ii+di,:,iztarget],0)
+            Esum = sum(self.arrayrprofile[ii,:,iztarget],0)
         self.ppfluence(Esum)
 
     # ----------------------------------------------------------------------
@@ -1124,7 +1134,6 @@ around the peak current."""
     def hrprms(self,z):
         return self._gettimehistory(self.rprms,z)
 
-
     # ----------------------------------------------------------------------
     def _timeintegrate(self,data,laverage,weight=None):
 
@@ -1245,7 +1254,7 @@ around the peak current."""
             # --- Get the data, removing the last element if the accumulation
             # --- of the data is not complete.
             result = getattr(self,'_'+name)
-            if nhist > 1 and top.it%nhist != int(nhist/2):
+            if self.lastitsaved < top.it:
                 result = result[:-1]
 
             # --- Check if there is a cached array.
@@ -1256,19 +1265,16 @@ around the peak current."""
                 result = cache
             else:
                 try:
-                    result = array(result)
-                    if name not in ['rprofile','scinttime','scintillator']:
-                        # --- Reshape, putting the time blocks into one
-                        # --- dimension.
-                        ss = result.shape
-                        if len(ss) == 2:
-                            result.shape = (ss[0]*ss[1],)
-                        else:
-                            result.shape = (ss[0]*ss[1],ss[2])
+                    if name in ['rprofile','scinttime','scintillator']:
+                        result = array(result)
+                    else:
+                        # --- concatenate is used since it can handle the case
+                        # --- where nhist changed.
+                        result = concatenate(result,axis=0)
                 except ValueError:
-                    # --- This can happen if self.nz changed at some point,
-                    # --- which changed the length of the new data so that
-                    # --- all of the elements do not have the same length.
+                    # --- This can happen if nz changed at some point,
+                    # --- changing the shape of the results collected so
+                    # --- all of the elements do not have the same shape.
                     pass
                 setattr(self,'_cache'+name,result)
             return result
@@ -1715,39 +1721,39 @@ be unreliable.
         # --- processors, dividing by the counts to get the averages, and
         # --- calculating the rms quantities.
         if nhist < 1. or top.it%nhist == int(nhist/2):
-            co = self._count[-1]
-            cu = self._current[-1]
+            count = self._count[-1]
+            current = self._current[-1]
             vzbar = self._vzbar[-1]
             xbar = self._xbar[-1]
             ybar = self._ybar[-1]
             xsqbar = self._xsqbar[-1]
             ysqbar = self._ysqbar[-1]
-            rp = self._rprms[-1]
+            rprms = self._rprms[-1]
 
             # --- Finish the calculation, gathering data from all processors and
             # --- dividing out the count.
-            co[...] = parallelsum(co)
+            count[...] = parallelsum(count)
             vzbar[...] = parallelsum(vzbar)
             xbar[...] = parallelsum(xbar)
             ybar[...] = parallelsum(ybar)
             xsqbar[...] = parallelsum(xsqbar)
             ysqbar[...] = parallelsum(ysqbar)
-            rp[...] = parallelsum(rp)
+            rprms[...] = parallelsum(rprms)
 
-            cotemp = where(co==0.,1.,co)
+            cotemp = where(count==0.,1.,count)
             vzbar[...] = vzbar/cotemp
             xbar[...] = xbar/cotemp
             ybar[...] = ybar/cotemp
             xsqbar[...] = xsqbar/cotemp
             ysqbar[...] = ysqbar/cotemp
-            rp[...] = sqrt(rp/cotemp)
+            rprms[...] = sqrt(rprms/cotemp)
 
             self._xrms[-1] = sqrt(abs(xsqbar - xbar**2))
             self._yrms[-1] = sqrt(abs(ysqbar - ybar**2))
             self._rrms[-1] = sqrt(abs(xsqbar + ysqbar - xbar**2 - ybar**2))
 
             # --- Scale the current appropriately.
-            cu[...] = co*(top.pgroup.sq[js]*top.pgroup.sw[js]/(top.dt*nhist))
+            current[...] = count*(top.pgroup.sq[js]*top.pgroup.sw[js]/(top.dt*nhist))
 
             if self.ldoradialdiag:
                 rprof = self._rprofile[-1]
