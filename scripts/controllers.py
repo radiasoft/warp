@@ -69,7 +69,7 @@ installuserinjection, uninstalluserinjection, installeduserinjection
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.29 2010/08/05 20:12:19 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.30 2010/10/19 16:13:47 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -333,7 +333,12 @@ Anything that may have already been installed will therefore be unaffected.
     for c in self.clist:
       for f in c.controllerfunclist():
         fname = f.__name__
-        vlist = warp.array(warp.gather(c.timers[fname]))
+        try:
+          vlist = warp.array(warp.gather(c.timers[fname]))
+        except KeyError:
+          # --- If the function fname had never been called, then there
+          # --- would be no data in timers for it.
+          continue
         if warp.me > 0: continue
         vsum = warp.sum(vlist)
         if vsum <= tmin: continue
