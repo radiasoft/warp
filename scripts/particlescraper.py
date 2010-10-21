@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.96 2010/08/02 22:44:41 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.97 2010/10/21 21:26:57 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -85,6 +85,7 @@ Class for creating particle scraper for conductors
         gives more robust results in the presence of magnetic fields.
         When 'actualvelocity', use the actual particle velocity. This option
         should only ever be used in special cases and for testing.
+ - species: List of species that should be scraped. Defaults to all species.
         
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
@@ -96,12 +97,14 @@ conductors are an argument.
                     lcollectlpdata=0,mglevel=0,aura=0.,
                     install=1,lbeforescraper=0,lfastscraper=0,
                     grid=None,nxscale=1,nyscale=1,nzscale=1, 
-                    interceptvelocitymethod='finitedifference'):
+                    interceptvelocitymethod='finitedifference',
+                    species=None):
     self.mglevel = mglevel
     self.aura = aura
     self.lbeforescraper = lbeforescraper
     self.lfastscraper = lfastscraper
     self.interceptvelocitymethod = interceptvelocitymethod
+    self.species = species
     # --- First set so install is false. Reset later with input value.
     # --- This is needed since in some cases registerconductors may want
     # --- to do the install. This just skips it in that case.
@@ -353,6 +356,21 @@ data needed by the grid is set up."""
         allcond = allcond + c
       self.grid.getdistances(allcond)
 
+  def jslist(self,jslist=None):
+    "Return a list of species indices that are scraped"
+    if jslist is not None:
+      # --- If a value if given, just return it
+      result = jslist
+    elif self.species is None:
+      # --- The default is all species
+      result = range(top.pgroup.ns)
+    else:
+      # --- Gather the jslists from each specified species
+      result = []
+      for s in species:
+        result += s.jslist
+    return result
+    
   def saveolddata(self):
     """Saves old particle data. In some cases, the location of the particle
 before it was lost is needed."""
@@ -374,7 +392,7 @@ before it was lost is needed."""
       setuppgroup(top.pgroup)
 
     # --- Do the saving.
-    for js in xrange(top.pgroup.ns):
+    for js in self.jslist():
       if top.pgroup.ldts[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = i1 + top.pgroup.nps[js]
@@ -425,8 +443,7 @@ into isinside is consistent with that obtained from the grid.
     """
     if len(self.conductors)==0: return
     self.updategrid()
-    if jslist is None: jslist = range(top.pgroup.ns)
-    for js in jslist:
+    for js in self.jslist(jslist):
       if top.pgroup.ldts[js]:
         if self.l_print_timing:tstart=wtime()
         if self.lfastscraper:
