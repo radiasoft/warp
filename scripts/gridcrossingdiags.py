@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.39 2010/10/20 17:09:54 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.40 2010/10/21 17:00:20 dave Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -1256,7 +1256,8 @@ around the peak current."""
             # --- Get the data, removing the last element if the accumulation
             # --- of the data is not complete.
             result = getattr(self,'_'+name)
-            if self.lastitsaved < top.it or result[-1] is None:
+            if (self.lastitsaved < top.it or
+                (len(result) > 0 and result[-1] is None)):
                 result = result[:-1]
 
             # --- Check if there is a cached array.
