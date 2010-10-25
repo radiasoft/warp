@@ -100,7 +100,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.268 2010/08/27 18:41:28 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.269 2010/10/25 20:50:55 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1312,7 +1312,9 @@ def ppgeneric_doc(x,y):
   - usepalette=1: when plotting particles with color, when true, uses palette,
                   otherwise uses colors in the array color (passed through to
                   ppco)
-  - view=1: view window to use (experts only)
+  - view=None: view window to use (experts only)
+               When None, uses the current view. Otherwise, the value is passed
+               to plsys.
   - width=1.0: width of hash marks for hash plots
   - xbound=dirichlet: sets boundary condition on gridded data for x
   - xcoffset,ycoffset=0: offsets of coordinates in grid plots
@@ -1351,7 +1353,7 @@ _ppgeneric_kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
                 'ldensityscale':0,'gridscale':None,
                 'flipxaxis':0,'flipyaxis':0,
                 'xcoffset':0.,'ycoffset':0.,
-                'view':1,
+                'view':None,
                 'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
                 'xmesh':None,'ymesh':None,
                 'returngrid':0,'local':1,
@@ -1529,7 +1531,8 @@ Note that either the x and y coordinates or the grid must be passed in.
     titles = 0
 
   # -- Set the plotting view window
-  plsys(view)
+  if view is not None:
+    plsys(view)
 
   # --- Make sure that the grid size nx and ny are consistent with grid
   # --- is one is input
@@ -2035,8 +2038,8 @@ colorbar_placement = [[0.62,0.64,0.43,0.86],[0.62,0.64,0.43,0.86],
                       [0.617,0.627,0.692,0.859],[0.617,0.627,0.428,0.596]]
 colorbar_fontsize = [14.,14.,8.,8.,8.,8.,8.,8.,8.,8.]
 
-def colorbar(zmin,zmax,uselog=None,ncolor=100,view=1,levs=None,colbarlinear=1,
-             ctop=199):
+def colorbar(zmin,zmax,uselog=None,ncolor=100,view=None,levs=None,
+             colbarlinear=1,ctop=199):
   """
 Plots a color bar to the right of the plot square labelled by the z
 values from zmin to zmax.
@@ -2044,7 +2047,8 @@ values from zmin to zmax.
   - uselog=None: when true, labels are printed in the form b^x where b (the
                  base) is given by uselog.
   - ncolor=100: default number of colors to include
-  - view=1: specifies the view that is associated with the color bar
+  - view=None: specifies the view that is associated with the color bar
+               If not given, uses the current view (from plsys).
   - levs: an optional list of color levels
   - ctop=199: number of colors from palette to use
   """
@@ -2054,6 +2058,7 @@ values from zmin to zmax.
   if with_matplotlib:
     pylab.colorbar(pad=0.02,fraction=0.08)
     return
+  if view is None: view = plsys()
   plsys(0)
   xmin,xmax,ymin,ymax = colorbar_placement[view-1]
   fontsize = colorbar_fontsize[view-1]
@@ -2122,7 +2127,7 @@ values from zmin to zmax.
       ylast = ys[i]
   # --- Plot the tick marks
   pldj(llev*[xmax],ys,llev*[xmax+0.005],ys,local=1)
-  # --- Return to plot system 1.
+  # --- Return to plot system to its original value.
   plsys(view)
 
 #############################################################################
@@ -2144,7 +2149,7 @@ Write a palette to the file
   ff.close()
 
 #############################################################################
-def changepalette(returnpalette=0,filename='newpalette',help=0,view=1):
+def changepalette(returnpalette=0,filename='newpalette',help=0,view=None):
   """
 Dynamically change the color palette.
   - returnpalette=0: when true, returns tuple of (red, green, blue)
@@ -2166,6 +2171,7 @@ Mouse actions:
   # --- Print out help if wanted
   if help: print changepalette.__doc__
   # --- min's and max's are the same as in the colorbar routine
+  if view is None: view = plsys()
   xmin,xmax,ymin,ymax = colorbar_placement[view-1]
   # --- Create storate arrays
   # --- rr, gg, bb hold the original palette
