@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.97 2010/10/21 21:26:57 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.98 2010/10/25 22:30:36 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -367,7 +367,7 @@ data needed by the grid is set up."""
     else:
       # --- Gather the jslists from each specified species
       result = []
-      for s in species:
+      for s in self.species:
         result += s.jslist
     return result
     
