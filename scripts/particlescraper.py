@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.98 2010/10/25 22:30:36 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.99 2010/10/26 00:33:55 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -486,6 +486,9 @@ into isinside is consistent with that obtained from the grid.
     ymax = self.grid.ymmin + (iy+ny)*dy
     zmin = self.grid.zmmin + iz*dz + top.zbeam
     zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
+    ixa = nint(-xmin/dx)
+    iya = nint(-ymin/dy)
+    iza = nint(-zmin/dz)
     isinside = self.grid.isinside
 
     # --- Get handy references to the particles in the species
@@ -508,28 +511,28 @@ into isinside is consistent with that obtained from the grid.
       # --- Note that for RZ, the radius is calculated for this, but
       # --- the original particle position is used below.
       rr = sqrt(xx**2 + yy**2)
-      getgrid2d(top.pgroup.nps[js],rr,zz,pp,nx,nz,isinside[:,0,:],
+      getgrid2d(top.pgroup.nps[js],rr,zz,pp,nx,nz,isinside[:,iya,:],
                 xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XZgeom:
       xsym,ysym = self.applysymmetry(xx,0)
-      getgrid2d(top.pgroup.nps[js],xsym,zz,pp,nx,nz,isinside[:,0,:],
+      getgrid2d(top.pgroup.nps[js],xsym,zz,pp,nx,nz,isinside[:,iya,:],
                 xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XYgeom:
       xsym,ysym = self.applysymmetry(xx,yy)
-      getgrid2d(top.pgroup.nps[js],xsym,ysym,pp,nx,ny,isinside[:,:,0],
+      getgrid2d(top.pgroup.nps[js],xsym,ysym,pp,nx,ny,isinside[:,:,iza],
                 xmin,xmax,ymin,ymax)
     elif w3d.solvergeom == w3d.Rgeom:
       # --- Note that for R, the radius is calculated for this, but
       # --- the original particle position is used below.
       rr = sqrt(xx**2 + yy**2)
-      getgrid1d(top.pgroup.nps[js],rr,pp,nx,isinside[:,0,0],
+      getgrid1d(top.pgroup.nps[js],rr,pp,nx,isinside[:,iya,iza],
                 xmin,xmax)
     elif w3d.solvergeom == w3d.Ygeom:
       xsym,ysym = self.applysymmetry(0,yy)
-      getgrid1d(top.pgroup.nps[js],ysym,pp,ny,isinside[0,:,0],
+      getgrid1d(top.pgroup.nps[js],ysym,pp,ny,isinside[ixa,:,iza],
                 ymin,ymax)
     elif w3d.solvergeom == w3d.Zgeom:
-      getgrid1d(top.pgroup.nps[js],zz,pp,nz,isinside[0,0,:],
+      getgrid1d(top.pgroup.nps[js],zz,pp,nz,isinside[ixa,iya,:],
                 ymin,ymax)
     else:
       raise "The particle scraping only works for XYZ, XY, RZ, R, Y and Z geometry"
@@ -615,22 +618,22 @@ into isinside is consistent with that obtained from the grid.
                      zmin-gdz[i],zmax-gdz[i],0.,w3d.l2symtry,w3d.l4symtry)
       elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
         xgsym,ygsym = self.applysymmetry(xg,0)
-        getgridngp2d(nn,xgsym,zg,pp,nx,nz,self.reducedisinside[:,0,:],
+        getgridngp2d(nn,xgsym,zg,pp,nx,nz,self.reducedisinside[:,iya,:],
                      xmin-gdx[i],xmax-gdx[i],zmin-gdz[i],zmax-gdz[i])
       elif w3d.solvergeom == w3d.XYgeom:
         xgsym,ygsym = self.applysymmetry(xg,yg)
-        getgridngp2d(nn,xgsym,ygsym,pp,nx,ny,self.reducedisinside[:,:,0],
+        getgridngp2d(nn,xgsym,ygsym,pp,nx,ny,self.reducedisinside[:,:,iza],
                      xmin-gdx[i],xmax-gdx[i],ymin-gdy[i],ymax-gdy[i])
       elif w3d.solvergeom == w3d.Rgeom:
         xgsym,ygsym = self.applysymmetry(xg,yg)
-        getgridngp1d(nn,xgsym,pp,nx,self.reducedisinside[:,0,0],
+        getgridngp1d(nn,xgsym,pp,nx,self.reducedisinside[:,iya,iza],
                      xmin-gdx[i],xmax-gdx[i])
       elif w3d.solvergeom == w3d.Ygeom:
         xgsym,ygsym = self.applysymmetry(0,yg)
-        getgridngp1d(nn,ygsym,pp,ny,self.reducedisinside[0,:,0],
+        getgridngp1d(nn,ygsym,pp,ny,self.reducedisinside[ixa,:,iza],
                      ymin-gdy[i],ymax-gdy[i])
       elif w3d.solvergeom == w3d.zgeom:
-        getgridngp1d(nn,zgsym,pp,nz,self.reducedisinside[0,0,:],
+        getgridngp1d(nn,zgsym,pp,nz,self.reducedisinside[ixa,iya,:],
                      zmin-gdz[i],zmax-gdz[i])
 
       # --- Loop over the conductors, removing particles that are found inside
@@ -920,18 +923,18 @@ counting the current lost on the conductor.
                    w3d.l2symtry,w3d.l4symtry)
     elif w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom:
       xgsym,ygsym = self.applysymmetry(xg,0)
-      getgridngp2d(nn,xgsym,zg,pp,nx,nz,self.reducedisinside[:,0,:],xmin,xmax,zmin,zmax)
+      getgridngp2d(nn,xgsym,zg,pp,nx,nz,self.reducedisinside[:,iya,:],xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XYgeom:
       xgsym,ygsym = self.applysymmetry(xg,yg)
-      getgridngp2d(nn,xgsym,ygsym,pp,nx,ny,self.reducedisinside[:,:,0],xmin,xmax,ymin,ymax)
+      getgridngp2d(nn,xgsym,ygsym,pp,nx,ny,self.reducedisinside[:,:,iza],xmin,xmax,ymin,ymax)
     elif w3d.solvergeom == w3d.Rgeom:
       xgsym,ygsym = self.applysymmetry(xg,0)
-      getgridngp1d(nn,xgsym,pp,nx,self.reducedisinside[:,0,0],xmin,xmax)
+      getgridngp1d(nn,xgsym,pp,nx,self.reducedisinside[:,iya,iza],xmin,xmax)
     elif w3d.solvergeom == w3d.Ygeom:
       xgsym,ygsym = self.applysymmetry(0,yg)
-      getgridngp1d(nn,ygsym,pp,ny,self.reducedisinside[0,:,0],ymin,ymax)
+      getgridngp1d(nn,ygsym,pp,ny,self.reducedisinside[ixa,:,iza],ymin,ymax)
     elif w3d.solvergeom == w3d.Zgeom:
-      getgridngp1d(nn,zg,pp,nz,self.reducedisinside[0,0,:],zmin,zmax)
+      getgridngp1d(nn,zg,pp,nz,self.reducedisinside[ixa,iya,:],zmin,zmax)
     else:
       raise "The particle scraping only works for XYZ, XZ, XY and RZ geometry"
 
