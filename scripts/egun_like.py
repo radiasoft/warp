@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.66 2010/07/22 22:59:43 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.67 2010/10/28 00:46:46 dave Exp $"
 
 
 ##############################################################################
@@ -380,7 +380,7 @@ set when a current is specified"""
     step(1)
 #    top.it = _it
     tmp_gun_steps = 1
-    print "Number of particles injected = %d"%(top.npinject)
+    print "Number of particles injected for each species = ",top.npinje_s
 
     # --- check if any particles were injected
     npssum = sum(parallelsum(top.pgroup.nps))
