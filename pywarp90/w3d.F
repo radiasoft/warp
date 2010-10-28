@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.444 $, $Date: 2010/10/15 16:59:17 $
+c@(#) File W3D.F, version $Revision: 3.445 $, $Date: 2010/10/28 00:41:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3712,7 +3712,7 @@ c  Evaluation of E, vectorized over particles
 
       if (efetch == 1 .or. efetch == 6) then
 
-        if (.not. (l2symtry .or. l4symtry)) then
+        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
           if (lcylindrical) then
             xnext = sqrt(xp(1)**2 + yp(1)**2)
             ynext = ymmin
@@ -3893,7 +3893,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
 c       --- This uses the precalculated selfe instead of doing
 c       --- the finite differences here..
 
-        if (.not. (l2symtry .or. l4symtry)) then
+        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
           if (lcylindrical) then
             xnext = sqrt(xp(1)**2 + yp(1)**2)
             ynext = ymmin
@@ -4079,7 +4079,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
       elseif (efetch == 4) then
 c       --- Energy conserving
 
-        if (.not. (l2symtry .or. l4symtry)) then
+        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
           if (lcylindrical) then
             xnext = sqrt(xp(1)**2 + yp(1)**2)
             ynext = ymmin
@@ -4241,7 +4241,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
 c       --- This is the same as efetch==1, but has checks to skip particles that
 c       --- are out of bounds.
 
-        if (.not. (l2symtry .or. l4symtry)) then
+        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
           do ip = 1, np
 
             if (lcylindrical) then
@@ -4436,7 +4436,7 @@ c near the boundaries!!!
       dyi = 1./dy
       dzi = 1./dz
 
-      if (.not. (l2symtry .or. l4symtry)) then
+      if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
 
         if (lcylindrical) then
           xnext = sqrt(xp(1)**2 + yp(1)**2)
@@ -4816,7 +4816,7 @@ c  Evaluation of E, vectorized over particles
 
       if (efetch == 1 .or. efetch == 6) then
 
-        if (.not. (l2symtry .or. l4symtry)) then
+        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
           if (lcylindrical) then
             xnext = sqrt(xp(1)**2 + yp(1)**2)
           else
@@ -4940,7 +4940,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
 c       --- This uses the precalculated selfe instead of doing
 c       --- the finite differences here..
 
-        if (.not. (l2symtry .or. l4symtry)) then
+        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
           if (lcylindrical) then
             xnext = sqrt(xp(1)**2 + yp(1)**2)
           else
@@ -5065,7 +5065,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
       elseif (efetch == 4) then
 c       --- Energy conserving
 
-        if (.not. (l2symtry .or. l4symtry)) then
+        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
           if (lcylindrical) then
             xnext = sqrt(xp(1)**2 + yp(1)**2)
           else
@@ -5174,7 +5174,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
 c       --- This is the same as efetch==1, but has checks to skip particles that
 c       --- are out of bounds.
 
-        if (.not. (l2symtry .or. l4symtry)) then
+        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
           do ip = 1, np
 
             if (lcylindrical) then
