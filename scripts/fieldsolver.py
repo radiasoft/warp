@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.89 2010/10/14 17:40:47 dave Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.90 2010/10/28 00:33:59 dave Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -416,6 +416,11 @@ the diagnostic is of interest and is meaningfull.
     # --- once per each group. The not insignificant function call overhead
     # --- of python begins to use up a sizable chunk of time.
     top.nparpgrp = 100000
+
+    if self.solvergeom == w3d.RZgeom:
+      # --- Turn off these flags just in case...
+      self.l2symtry = false
+      self.l4symtry = false
 
     # --- bounds is special since it will sometimes be set from the
     # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
