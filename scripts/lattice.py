@@ -68,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.91 2010/09/27 17:56:13 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.92 2010/11/08 22:20:19 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2350,6 +2350,7 @@ scale factor. One of the following can be supplied:
     top.nzemlt[-1] = n0 - 1
     top.dzemlt[-1] = (top.emltze[ie] - top.emltzs[ie])/(n0 - 1.)
     if nn is None and vv is None:
+      assert top.nesmult > 0,'There are no emlt data sets, so the nn and vv arguments must be specified'
       # --- Assume n and v are ordered correctly and just copy the data in
       top.esemlt[:n0,:n1,-1] = es
       if esp is not None: top.esemltp[:n0,:n1,-1] = esp
@@ -2526,6 +2527,7 @@ scale factor. One of the following can be supplied:
     top.nzmmlt[-1] = n0 - 1
     top.dzmmlt[-1] = (top.mmltze[ie] - top.mmltzs[ie])/(n0 - 1.)
     if nn is None and vv is None:
+      assert top.nmsmult > 0,'There are no mmlt data sets, so the nn and vv arguments must be specified'
       # --- Assume n and v are ordered correctly and just copy the data in
       top.msmmlt[:n0,:n1,-1] = ms
       if msp is not None: top.msmmltp[:n0,:n1,-1] = msp
