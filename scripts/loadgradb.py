@@ -21,7 +21,6 @@ from warp import *
 #fillbsqgrad:
 #  Calculates grad B^2 from Bfield data on grid and loads into top.brgd
 #=================================================================
-true = 1; false = 0
 def setbsqgrad(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
             zmax=0,griddedBOnly=false,symmetry=2,zonly=false,returnb=0):
     print "Setting grad b**2 array"
