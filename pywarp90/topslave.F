@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.65 $, $Date: 2010/09/21 23:58:19 $
+c TOPSLAVE.M, version $Revision: 1.66 $, $Date: 2010/11/08 19:09:43 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -126,9 +126,9 @@ c         --- into the regions of neighboring processors.
             if (lrz) then
               ztemp = sqrt(pgroup%xp(ip)**2 + pgroup%yp(ip)**2)
             else if (labs) then
-              ztemp = abs(zz(ip)-zgrid)
+              ztemp = abs(zz(ip) - zgrid)
             else
-              ztemp = zz(ip)-zgrid
+              ztemp = zz(ip) - zgrid
             endif
 
 c           --- If particle exited to the left, switch with lowest particle
@@ -211,7 +211,7 @@ c             --- The position is adjusted, and the data will still be passed
 c             --- to the appropriate neighbor.
               syslen = zmmax - zmmin
               do ip=i1,i2
-                zz(ip) = zz(ip) + syslen
+                zz(ip) = zz(ip) + syslen*int((zgrid + zmmax - zz(ip))/syslen)
               enddo
 
             elseif (pboundleft==absorb) then
@@ -232,7 +232,7 @@ c             --- The ins and nps are reset to include them.
 c             --- Note that the lrz case is not needed, since r will never
 c             --- be less than zero.
               do ip=i1,i2
-                zz(ip) = zmmin + (zmmin - zz(ip))
+                zz(ip) = zmmin + zgrid + (zmmin + zgrid - zz(ip))
                 uz(ip) = -uz(ip)
               enddo
               pgroup%nps(is) = pgroup%nps(is) + (pgroup%ins(is) - ins_init(is))
@@ -250,7 +250,7 @@ c             --- The position is adjusted, and the data will still be passed
 c             --- to the appropriate neighbor.
               syslen = zmmax - zmmin
               do ip=i1,i2
-                zz(ip) = zz(ip) - syslen
+                zz(ip) = zz(ip) - syslen*int((zz(ip) - zgrid - zmmin)/syslen)
               enddo
 
             elseif (pboundright==absorb) then
@@ -267,6 +267,7 @@ c             --- particles.
 
             elseif (pboundright==reflect) then
 c             --- The position is adjusted, but the data is not sent.
+c             --- zmmin and zmmax are actually xmmin and xmmax here.
 c             --- The ins and nps are reset to include them.
               if (lrz) then
                 do ip=i1,i2
@@ -287,11 +288,11 @@ c                   --- compared to the dimensions of the grid.
               else
                 do ip=i1,i2
                   if (zz(ip) > zmmax) then
-                    zz(ip) = zmmax - (zz(ip) - zmmax)
+                    zz(ip) = zmmax + zgrid - (zz(ip) - zmmax - zgrid)
                   else ! zz == zmmax
 c                   --- Shift the particle in bounds by a number that is small
 c                   --- compared to the dimensions of the grid.
-                    zz(ip) = zmmax - (zmmax - zmmin)*1.e-12
+                    zz(ip) = zmmax + zgrid - (zmmax - zmmin)*1.e-12
                   endif
                   uz(ip) = -uz(ip)
                 enddo
