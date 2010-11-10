@@ -1,4 +1,5 @@
-"""The module supplies functions for dealing with particles.
+"""
+The module supplies functions for dealing with particles.
 
 These commands returns particle info based on selection criteria.
 selectparticles(): return list of indices of particles selected
@@ -19,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.89 2010/10/14 17:42:12 dave Exp $"
+particles_version = "$Id: particles.py,v 1.90 2010/11/10 17:36:19 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -247,27 +248,29 @@ Multiple selection criteria are supported.
   - wy=1.: Width of window around ymesh[iy]
   - iz=-1: When 0 <= iz <= nz, picks particles within zmesh[iz]+-wz*dz
   - wz=1.: Width of window around zmesh[iz]
-  - xl=None: When specified, lower range in x of selection region
-  - xu=None: When specified, upper range in x of selection region
-  - yl=None: When specified, lower range in y of selection region
-  - yu=None: When specified, upper range in y of selection region
-  - zl=None: When specified, lower range in z of selection region
-  - zu=None: When specified, upper range in z of selection region
-  - zc=None: When specified, picks particles within zc+-wz*dz
-  - xc=None: When specified, picks particles within xc+-wx*dx
-  - yc=None: When specified, picks particles within yc+-wy*dy
-  - ssn=None: When specified, returns the particle or particles with the given
-              ssn. Raises and error if ssn's are not saved - top.spid must be
-              setup.
-  - ii=None: If ii is supplied, use it for the list of particles instead
+  - xl=None: Lower range in x of selection region
+  - xu=None: Upper range in x of selection region
+  - yl=None: Lower range in y of selection region
+  - yu=None: Upper range in y of selection region
+  - zl=None: Lower range in z of selection region
+  - zu=None: Upper range in z of selection region
+  - zc=None: Picks particles within zc+-wz*dz
+  - xc=None: Picks particles within xc+-wx*dx
+  - yc=None: Picks particles within yc+-wy*dy
+  - ssn=None: Returns the particle or particles with the given ssn
+              Raises and error if ssn's are not saved - top.spid must be setup.
+  - ii=None: Particle index list
+             If supplied, use it for the list of particles instead
              of choosing particles from the given species.
-  - lost=false: When true, returns indices to the lost particles rather than
-                the live particles. Note that the lost particle data will
-                be saved in different arrays than the live particles.
-  - suffix=None: When specified, python variables with the specified suffix
+  - lost=false: Flags whether lost particles are returned
+                When true, returns indices to the lost particles rather than
+                the live particles. Note that the lost particle data is
+                saved in different arrays than the live particles.
+  - suffix=None: Variable name suffix
+                 When specified, python variables with the specified suffix
                  will be used rather than the arrays from top.pgroup.
-  - object=top: Object to get particle data from. Besides top, this can be an
-                open PDB file, or a dictionary.
+  - object=top: Object to get particle data from
+                Besides top, this can be an open PDB file, or a dictionary.
   - pgroup=top.pgroup: Particle group to get particles from 
   """
 
@@ -279,6 +282,7 @@ ppxy(jslist=-1,x=r,xu=.1)
 The problem is that the array r is only as long as there are many particles,
 but the ii index will be expecting that r have length npmax.
   """
+
   # --- Create dictionary of local values and copy it into local dictionary,
   # --- ignoring keywords not listed in _selectparticles_kwdefaults.
   kwvalues = _selectparticles_kwdefaults.copy()
@@ -844,7 +848,7 @@ def getgaminv(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getex(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Ex field applied to the particles"
+  "Returns the Ex field applied to the particles."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -860,7 +864,7 @@ def getex(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getey(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Ey field applied to the particles"
+  "Returns the Ey field applied to the particles."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -876,7 +880,7 @@ def getey(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getez(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Ez field applied to the particles"
+  "Returns the Ez field applied to the particles."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -892,7 +896,7 @@ def getez(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def geter(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Er field applied to the particles"
+  "Returns the Er field applied to the particles."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -913,7 +917,7 @@ def geter(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getetheta(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Etheta field applied to the particles"
+  "Returns the Etheta field applied to the particles."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -934,7 +938,7 @@ def getetheta(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getbx(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Bx field applied to the particles"
+  "Returns the Bx field applied to the particles."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -950,7 +954,7 @@ def getbx(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getby(iw=0,gather=1,bcast=None,**kw):
-  "Returns the By field applied to the particles"
+  "Returns the By field applied to the particles."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -966,7 +970,7 @@ def getby(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getbz(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Bz field applied to the particles"
+  "Returns the Bz field applied to the particles."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -981,12 +985,12 @@ def getbz(iw=0,gather=1,bcast=None,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getpid(iw=0,id=0,gather=1,bcast=None,**kw):
+def getpid(id=0,iw=0,gather=1,bcast=None,**kw):
   """Returns particle id information.
-  -id=0: which pid value to return
-         Note that when top.wpid or other id's from the top package are used,
-         1 must be subtracted when passed in, i.e. id=top.wpid-1.
-         If id=-1, returns all pids.
+  - id=0: which pid value to return
+          Note that when top.wpid or other id's from the top package are used,
+          1 must be subtracted when passed in, i.e. id=top.wpid-1.
+          If id=-1, returns all pids.
   """
   if bcast is None: bcast = _particlebcastdefault[0]
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -1129,22 +1133,24 @@ def getke(iw=0,js=0,jslist=None,gather=1,bcast=None,**kw):
     return ke
 #-------------------------------------------------------------------------
 # Add the selectparticles documentation to each of the routines.
-_extradoc = """  gather=true: When true, the results from all of the processors are
-            gathered to processor 0. All processors must make the call.
-            What is returned by the other processors is determined by the
-            bcast argument.
-            When false, each processor does the calculation locally, only
-            considers particles within its domain, and returns the local value.
-            The argument is ignored in serial.
-  bcast=1: Only used when gather is true. When true, the result is broadcast
-           from processor 0 to all other processors. The return value is the
-           same on all processors. Otherwise, only processor 0 will have the
-           correct result - the return values on other processors should not
-           be used.
-           Note that the setgetparticlebcastdefault can be used to change
-           the default value to 0, which is more efficient if the bcast is
-           not needed.
-           The argument is ignored in serial.
+_extradoc = """- gather=true: Flags whether results are gathered to processor 0
+              If true, all processors must make the call.
+              What is returned by the other processors is determined by the
+              bcast argument.
+              When false, each processor does the calculation locally, only
+              considers particles within its domain, and returns the
+              local value.
+              The argument is ignored in serial.
+  - bcast=1: Flag whether results are broadcast to all processors
+             Only used when gather is true. When true, the result is broadcast
+             from processor 0 to all other processors. The return value is the
+             same on all processors. Otherwise, only processor 0 will have the
+             correct result - the return values on other processors should not
+             be used.
+             Note that the setgetparticlebcastdefault can be used to change
+             the default value to 0, which is more efficient if the bcast is
+             not needed.
+             The argument is ignored in serial.
 """
 getn.__doc__ = getn.__doc__ + selectparticles.__doc__ + _extradoc
 getx.__doc__ = getx.__doc__ + selectparticles.__doc__ + _extradoc
@@ -1155,6 +1161,8 @@ gettheta.__doc__ = gettheta.__doc__ + selectparticles.__doc__ + _extradoc
 getvx.__doc__ = getvx.__doc__ + selectparticles.__doc__ + _extradoc
 getvy.__doc__ = getvy.__doc__ + selectparticles.__doc__ + _extradoc
 getvz.__doc__ = getvz.__doc__ + selectparticles.__doc__ + _extradoc
+getvr.__doc__ = getvr.__doc__ + selectparticles.__doc__ + _extradoc
+getvtheta.__doc__ = getvtheta.__doc__ + selectparticles.__doc__ + _extradoc
 getux.__doc__ = getux.__doc__ + selectparticles.__doc__ + _extradoc
 getuy.__doc__ = getuy.__doc__ + selectparticles.__doc__ + _extradoc
 getuz.__doc__ = getuz.__doc__ + selectparticles.__doc__ + _extradoc
@@ -1172,6 +1180,7 @@ getbx.__doc__ = getbx.__doc__ + selectparticles.__doc__ + _extradoc
 getby.__doc__ = getby.__doc__ + selectparticles.__doc__ + _extradoc
 getbz.__doc__ = getbz.__doc__ + selectparticles.__doc__ + _extradoc
 getpid.__doc__ = getpid.__doc__ + selectparticles.__doc__ + _extradoc
+getvdrifts.__doc__ = getvdrifts.__doc__ + selectparticles.__doc__ + _extradoc
 getw.__doc__ = getw.__doc__ + selectparticles.__doc__ + _extradoc
 del _extradoc
 #-------------------------------------------------------------------------
@@ -1322,7 +1331,7 @@ The product slope*vz gives the slope for y-vy.
   return (slope,yoffset,ypoffset,vz)
 #-------------------------------------------------------------------------
 def getvzrange(kwdict={}):
-  "Returns a tuple containg the Vz range for plots"
+  "Returns a tuple containing the Vz range for plots"
   suffix = kwdict.get('suffix','')
   object = kwdict.get('object',top)
   vzrng  = getattrwithsuffix(object,'vzrng',suffix)
@@ -1357,40 +1366,47 @@ def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,
                  lfields=false,lnewparticles=true,lusespaceabove=true):
   """
 Adds particles to the simulation
-  x,y,z,vx,vy,vz,gi: particle coordinates and velocities. Can be arrays or
-                     scalars. Scalars are broadcast to all particles. Any
-                     that are unsupplied default to zero, except gi,
-                     which defaults to 1. (gi is 1/gamma, the relatistic
-                     paramter)
-  pid: additional particle information, such as an ID number or weight.
-  w=1.: particle weight; this is only used if top.wpid > 0 and if
-        lnewparticles is true.
-  js=0: species to which new particles will be added
-  lallindomain=false: When true, all particles are assumed to be with in the
-                      extent of the domain so particle scraping is not done.
-                      This is automatically set to true when the code is in
-                      slice mode, i.e. after package('wxy'). Except if the
-                      option is explicitly set.
-  xmmin=top.xpminlocal,xmmax=top.xpmaxlocal,
-  ymmin=top.ypminlocal,ymmax=top.ypmaxlocal,
-  zmmin=top.zpminlocal+top.zgrid,zmmax=top.zpmaxlocal+top.zgrid:
-                   extent of the domain - should only be set in unusual
-                   circumstances.
-  l2symtry,l4symtry,lrz: System symmetries, default to w3d values
-  lmomentum=false: Set to false when velocities are input as velocities, true
-                   when input as massless momentum (as WARP stores them).
-                   Only used when top.lrelativ is true.
-  lnewparticles=true: when true, the particles are treated as newly created
-                      particles. The ssn will be set if needed, and the
-                      position saved as the birth location.
-                      Set this to false if using addparticles to restore
-                      particles.
-  lusespaceabove=true: when true, the new particles are preferentially
-                       placed in memory in the space above the existing
-                       particles, otherwise below. This is only needed for
-                       special cases.
-  pgroup=top.pgroup: Particle group to add particles too
-
+  - x,y,z,vx,vy,vz,gi: particle coordinates and velocities.
+                       Can be arrays or scalars. Scalars are broadcast to all
+                       particles. Any that are unsupplied default to zero,
+                       except gi, which defaults to 1. (gi is 1/gamma, the
+                       relatistic paramter)
+  - pid: additional particle information, such as an ID number or weight.
+  - w=1.: particle weight
+          this is only used if top.wpid > 0 and if lnewparticles is true.
+  - js=0: species to which new particles will be added
+  - lallindomain=false: Flags whether particles are within the parallel domains
+                        When true, all particles are assumed to be with in the
+                        extent of the domain so particle scraping is not done.
+                        This is automatically set to true when the code is in
+                        slice mode, i.e. after package('wxy'). Except if the
+                        option is explicitly set. If false, the particles that
+                        are outside the parallel domain are not added.
+  - xmmin=top.xpminlocal,xmmax=top.xpmaxlocal
+                     x extent of the domain - should only be set in unusual
+                     circumstances.
+  - ymmin=top.ypminlocal,ymmax=top.ypmaxlocal
+                     y extent of the domain - should only be set in unusual
+                     circumstances.
+  - zmmin=top.zpminlocal+top.zgrid,zmmax=top.zpmaxlocal+top.zgrid:
+                     z extent of the domain - should only be set in unusual
+                     circumstances.
+  - l2symtry,l4symtry,lrz: System symmetries, default to w3d values
+  - lmomentum=false: Flags whether momentum or velocities are being input.
+                     Set to false when velocities are input as velocities, true
+                     when input as massless momentum (as WARP stores them).
+                     Only used when top.lrelativ is true.
+  - lnewparticles=true: Flag whether the particles are treated as new.
+                        If so, the ssn will be set if needed, and the
+                        position saved as the birth location.
+                        Set this to false if using addparticles to restore
+                        particles.
+  - lusespaceabove=true: Flag where to put the particles in memory.
+                         When true, the new particles are preferentially
+                         placed in memory in the space above the existing
+                         particles, otherwise below. This is only needed for
+                         special cases.
+  - pgroup=top.pgroup: Particle group to add particles too
   """
 
   # --- Check if this is a new species

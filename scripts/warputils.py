@@ -1,32 +1,12 @@
-"""Utility and convenience routines used in Warp
-
-iota(): returns a array of sequential integers
-remark(): same as print
-sign(): emulation of sign function
-arrayappend(): appends to multi-dimensional array
-exists(): checks if a variable exists
-ave(): averages an array of numbers
-maxnd(): finds max of multi-dimensional array
-minnd(): finds min of multi-dimensional array
-span(): returns an array of evenly spaced numbers
-getnextfilename(): finds next available file name in a numeric sequence
-getmesh2d(): returns tuple of 2 2-d arrays holding the coordinates of the
-             two dimensions
-getmesh3d(): returns tuple of 3 3-d arrays holding the coordinates of the
-             three dimensions
-averagezdata(): Does local averaging over the first dimension of the input
-                array. Can also do down select on the data.
-getdatafromtextfile(): Reads in table data from a text file, returning an array
-                       that holds that data.
-RandomStream: Class the allows creating independent streams of random
-              numbers.
+"""
+Utility and convenience routines used in Warp
 """
 from __future__ import generators # needed for yield statement for P2.2
 from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.30 2010/04/22 23:37:54 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.31 2010/11/10 17:36:19 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -34,6 +14,9 @@ def warputilsdoc():
 
 # --- Convenience function modeled after the iota of basis
 def iota(low,high=None,step=1):
+  """
+Returns a array of sequential integers, with the low end defaulting to 1.
+  """
   if high is None:
     if step > 0:
       return arange(1,low+1,step)
@@ -47,13 +30,18 @@ def iota(low,high=None,step=1):
 
 # --- Convenience function to do printing
 def remark(s):
+  """
+Same as print
+  """
   print s
 
-# --- Replicate the sign function with two arguments. If only one is
-# --- given, return the value from the numpy sign function.
-# --- This should realy be removed.
 numpysign = sign
 def sign(x,y=None):
+  """
+Replicate the sign function with two arguments. If only one is
+given, return the value from the numpy sign function.
+This should really be removed.
+  """
   if y is None: return numpysign(x)
   if isinstance(x,ndarray):
     result = where(greater(y,0.),abs(x),-abs(x))
@@ -83,21 +71,26 @@ Lenght of list of inputs determines number of dimensions.
 
 def getmesh2d(xmin,dx,nx,ymin,dy,ny):
   """
-getmesh2d(xmin,dx,nx,ymin,dy,ny)
-Returns 2 2-d arrays holding the coordinates of the mesh points
+Returns a tuple of 2 2-d arrays holding the coordinates of the mesh points
+in two dimensions.
   """
   return getmeshcoordinates([xmin,ymin],[dx,dy],[nx,ny])
 
 def getmesh3d(xmin,dx,nx,ymin,dy,ny,zmin,dz,nz):
   """
 getmesh3d(xmin,dx,nx,ymin,dy,ny,zmin,dx,nz)
-Returns 3 3-d arrays holding the coordinates of the mesh points
+Returns a tuple of 3 3-d arrays holding the coordinates of the mesh points
+in three dimensions.
   """
   return getmeshcoordinates([xmin,ymin,zmin],[dx,dy,dz],[nx,ny,nz])
 
-# --- This function appends a new element to the end of an array.
-# --- It is not very efficient since it creates a whole new array each time.
 def arrayappend(x,a):
+  """
+Appends a new element to the end of an array.
+It is not very efficient since it creates a whole new array each time.
+It is better to use a standard python list, and then convert to an array
+afterwards.
+  """
   xshape = list(shape(x))
   if isinstance(a,ndarray):
     pass
@@ -131,8 +124,10 @@ main dictionary.
   if x in globals().keys(): return true
   return false
 
-# Returns the average of the input array
 def ave(x,index=0):
+  """
+Returns the average of the input array
+  """
   if len(shape(x)) == 0: return x
   if shape(x)[index] > 0:
     return sum(x,index)/shape(x)[index]
@@ -180,43 +175,62 @@ dimension.
 
 # --- Returns the max of the multiarray
 def maxnd(x,defaultval=-1.e36):
-  """Return the max element of an array of any dimension"""
+  """
+Return the max element of an array of any dimension
+  - x: a scalar or any sequence that can be converted to an array
+  - defaultval=-1.e36: value returned if the input has zero length
+  """
   if isinstance(x,ndarray) and x.size > 0: return x.max()
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
   if len(xtemp) == 0: return defaultval
   return max(xtemp)
 # --- Returns the min of the multiarray
 def minnd(x,defaultval=+1.e36):
-  """Return the min element of an array of any dimension"""
+  """
+Return the min element of an array of any dimension
+  - x: a scalar or any sequence that can be converted to an array
+  - defaultval=+1.e36: value returned if the input has zero length
+  """
   if isinstance(x,ndarray) and x.size > 0: return x.min()
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
   if len(xtemp) == 0: return defaultval
   return min(xtemp)
 # --- Returns the sum of the multiarray
 def sumnd(x,defaultval=0.):
-  """Return the total sum of an array of any dimension"""
+  """
+Return the total sum of an array of any dimension
+  - x: a scalar or any sequence that can be converted to an array
+  - defaultval=0.: value returned if the input has zero length
+  """
   if isinstance(x,ndarray) and x.size > 0: return x.sum()
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
   if len(xtemp) == 0: return defaultval
   return sum(xtemp)
 # --- Returns the sum of the multiarray
 def avend(x,defaultval=0.):
-  """Return the average of an array of any dimension"""
+  """
+Return the average of an array of any dimension
+  - x: a scalar or any sequence that can be converted to an array
+  - defaultval=0.: value returned if the input has zero length
+  """
   if isinstance(x,ndarray) and x.size > 0: return x.sum()/x.size
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
   if len(xtemp) == 0: return defaultval
   return sum(xtemp)/len(xtemp)
 
 def span(lo, hi, num):
-  """Returns an array of num equally spaced numbers starting with lo and
+  """
+Returns an array of num equally spaced numbers starting with lo and
 ending with hi.
   """
   return lo + (hi - lo)*arange(num)/(num-1.)
 
 def makefortranordered(x):
-  """Given an array, returns the same data but with fortran ordering. 
+  """
+Given an array, returns the same data but with fortran ordering. 
 If the array already has the correct ordering, the array is just
-returned as is. Otherwise, a new array is created and the data copied."""
+returned as is. Otherwise, a new array is created and the data copied.
+  """
   assert isinstance(x,ndarray),"Input value must be an array."
   # --- Pick any package, since all have the getstrides method
   pkg = packageobject(getcurrpkg())
@@ -240,6 +254,10 @@ returned as is. Otherwise, a new array is created and the data copied."""
 
 # Gets next available filename with the format 'root.nnn.suffix'.
 def getnextfilename(root,suffix):
+  """
+Finds next available file name in a numeric sequence. The filename is assumed
+to have the format root.XXX.suffix, where XXX is three digits.
+  """
   dir = string.join(os.listdir('.'))
   i = 0
   name = root+('.%03d.'%i)+suffix
@@ -290,22 +308,27 @@ logically Cartesian mesh.
                     be the type of result desired. It should only be float or int,
                     unless you know what you are doing.
 
-Here's an example data file called 'testdata':
-----------------------------------------------
-this line is skipped
-1 0.0379
-2 0.0583
-3 0.0768
-4 0.1201
-----------------------------------------------
-This can be read in with either
-dd = getdatafromtextfile('testdata',nskip=1,dims=[2,4])
-or
-dd = getdatafromtextfile('testdata',nskip=1,dims=[4],nquantities=2)
-Both produce an array of shape (2,4) that looks like
->>> print dd
-[[ 1.    , 2.    , 3.    , 4.    ,]
- [ 0.0379, 0.0583, 0.0768, 0.1201,]]
+Here's an example data file called 'testdata'::
+
+  this line is skipped
+  1 0.0379
+  2 0.0583
+  3 0.0768
+  4 0.1201
+
+This can be read in with either::
+
+  dd = getdatafromtextfile('testdata',nskip=1,dims=[2,4])
+
+or::
+
+  dd = getdatafromtextfile('testdata',nskip=1,dims=[4],nquantities=2)
+
+Both produce an array of shape (2,4) that looks like::
+
+  >>> print dd
+  [[ 1.    , 2.    , 3.    , 4.    ,]
+   [ 0.0379, 0.0583, 0.0768, 0.1201,]]
 
   """
 
@@ -377,28 +400,32 @@ logically Cartesian mesh.
                     be the type of result desired. It should only be float or int,
                     unless you know what you are doing.
 
-Here's an example data file called 'testdata':
-----------------------------------------------
-this line is skipped
-1 0.0379
-2 0.0583
-3 0.0768
-4 0.1201
-----------------------------------------------
-This can be read in with
->>> dd = getdatafromtextfile('testdata',nskip=1,dims=[2,4])
-to produce an array of shape (2,4) that looks like
->>> print dd
-[[ 1.    , 2.    , 3.    , 4.    ,]
- [ 0.0379, 0.0583, 0.0768, 0.1201,]]
+Here's an example data file called 'testdata'::
+
+  this line is skipped
+  1 0.0379
+  2 0.0583
+  3 0.0768
+  4 0.1201
+
+This can be read in with::
+
+  >>> dd = getdatafromtextfile('testdata',nskip=1,dims=[2,4])
+
+to produce an array of shape (2,4) that looks like::
+
+  >>> print dd
+  [[ 1.    , 2.    , 3.    , 4.    ,]
+   [ 0.0379, 0.0583, 0.0768, 0.1201,]]
 
 The second dimension of dims can be None, meaning that all of the data
 will be read in and the size of that dimension will be determined
-automatically.
->>> dd = getdatafromtextfile('testdata',nskip=1,dims=[2,None])
->>> print dd
-[[ 1.    , 2.    , 3.    , 4.    ,]
- [ 0.0379, 0.0583, 0.0768, 0.1201,]]
+automatically.::
+
+  >>> dd = getdatafromtextfile('testdata',nskip=1,dims=[2,None])
+  >>> print dd
+  [[ 1.    , 2.    , 3.    , 4.    ,]
+   [ 0.0379, 0.0583, 0.0768, 0.1201,]]
 
   """
   ff = open(filename,mode)
@@ -454,15 +481,17 @@ automatically.
     return data
 
 class RandomStream(object):
-  """Create an independent stream of random numbers.
->>> r1 = RandomStream()
->>> r2 = RandomStream()
->>> r1.seed([1,2,3])
->>> r2.seed([1,2,3])
->>> print r1.random()
-0.609861272287
->>> print r2.random()
-0.609861272287
+  """Used to create independent streams of random numbers. ::
+
+  >>> r1 = RandomStream()
+  >>> r2 = RandomStream()
+  >>> r1.seed([1,2,3])
+  >>> r2.seed([1,2,3])
+  >>> print r1.random()
+  0.609861272287
+  >>> print r2.random()
+  0.609861272287
+
   """
   def __init__(self):
     # --- Save the initial random number state
@@ -494,6 +523,13 @@ class RandomStream(object):
     self._state = dict['_state']
 
 def asciipart(s,name='particles.dat',format='%10.3e',mode='w'):
+  """
+Writes the particles data from a species to a text file.
+ - s: species instance or species number
+ - name='particles.dat': file name
+ - format='%10.3e': format used to write the data
+ - mode='w': mode used when opening the file
+  """
   f = open(name,mode)
   if type(s) is Species:
     n=s.getn()

@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.99 2010/10/26 00:33:55 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.100 2010/11/10 17:36:19 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -89,7 +89,10 @@ Class for creating particle scraper for conductors
         
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
-conductors are an argument.
+conductors are an argument. Otherwise, nothing further needs to be done - the
+scraping will happen automatically.
+
+Various methods are accessible if additional fine control is needed.
   """
   #__metaclass__ = decorators.TimedClass
   def __init__(self,conductors=None,lsavecondid=0,lsaveintercept=0,
@@ -173,8 +176,9 @@ conductors are an argument.
     self.saveolddata() 
 
   def installscraper(self):
-    """Install the scraper so that it is called during at the appropriate place
-in a time step"""
+    """
+Install the scraper so that it is called during at the appropriate place
+in a time step. This is normally done automically."""
     if not self.install: return
     # --- Install the call to scrape particles
     if self.lbeforescraper:
@@ -254,11 +258,13 @@ scraped on.
       self.grid.removeisinside(conductor)
       
   def updategrid(self,lforce=0):
-    """Update the grid to match any changes to the underlying grid, for example
+    """
+Update the grid to match any changes to the underlying grid, for example
 after load balancing. This also does the initialization of the grid.
 The code is structured this way so that the grid is only created when needed.
 This allows the particles scraper instance to be created before all of the
-data needed by the grid is set up."""
+data needed by the grid is set up. This will normally be called automatically.
+    """
     if self.l_print_timing:tstart=wtime()
     if self.grid is None: lforce = 1
 
@@ -325,7 +331,7 @@ data needed by the grid is set up."""
       print 'updategrid',tend-tstart
 
   def updateconductors(self):
-    """Generate the data on the grid from the scraping conductors."""
+    """Generate the data on the grid from the scraping conductors. This will normally be called automatically."""
     if not self.lfastscraper:
       self.grid.resetisinside()
       for c in self.conductors:
@@ -432,13 +438,15 @@ into isinside is consistent with that obtained from the grid.
     return xcsym,ycsym
 
   def scrapeall(self,clear=0,local=0,jslist=None):
-    """Apply scraping to all of the species.
+    """
+Apply scraping to all of the species. This will normally be called automatically.
   - clear=0: when true, lost particles are removed from the particle arrays.
              Note that this routine is normally called during the course of
              a time step, where the removal of lost particles is handled
              elsewhere.
-  - local=0: This only affects the lcollectlpdata option. When true, this
-             collection of data is turned off (avoiding a parallel operation).
+  - local=0: This only affects the lcollectlpdata option.
+             When true, this collection of data is turned off
+             (avoiding a parallel operation).
   - jslist=None: Optional list of species to scrape. It defaults to all species.
     """
     if len(self.conductors)==0: return
@@ -474,7 +482,7 @@ into isinside is consistent with that obtained from the grid.
   #scrapeall = decorators.timedmethod(scrapeall)
     
   def scrape(self,js):
-    """Apply scraping to species js. It is better to call scrapeall."""
+    """Apply scraping to species js. It is better to call scrapeall. This will normally be called automatically."""
     # --- If there are no particles in this species, that nothing needs to be done
     if top.pgroup.nps[js] == 0: return
 
@@ -1315,7 +1323,7 @@ point to the nearest conductor surface, with negative values indicating
 that the grid point is inside of the conductor. This data is interpolated to
 the particles and particles that get a negative value are considered to be
 inside the conductor and are scraped. It is only approximate due to
-interpolating errors from the grid.
+interpolating errors from the grid. This will normally be called automatically.
     """
     # --- If there are no particles in this species, that nothing needs
     # --- to be done
@@ -1416,6 +1424,8 @@ interpolating errors from the grid.
       put(top.pgroup.gaminv,ilost,0.)
 
   def pdxy(self,iz=0,fullplane=0,xyantisymmetric=0,**kw):
+    """Makes a plot of the internal data used to keep track of the location
+    of conductors. Extra keyword arguments are passed to ppgeneric."""
     if self.lfastscraper:
       data = self.grid.distances
     else:
@@ -1433,6 +1443,8 @@ interpolating errors from the grid.
               ymin=self.grid.ymmin,ymax=self.grid.ymmax,**kw)
 
   def pdzx(self,iy=0,fullplane=0,**kw):
+    """Makes a plot of the internal data used to keep track of the location
+    of conductors. Extra keyword arguments are passed to ppgeneric."""
     if self.lfastscraper:
       data = self.grid.distances
     else:
@@ -1449,6 +1461,8 @@ interpolating errors from the grid.
               ymin=self.grid.xmminlocal,ymax=self.grid.xmmaxlocal,**kw)
 
   def pdzy(self,ix=0,fullplane=0,**kw):
+    """Makes a plot of the internal data used to keep track of the location
+    of conductors. Extra keyword arguments are passed to ppgeneric."""
     if self.lfastscraper:
       data = self.grid.distances
     else:

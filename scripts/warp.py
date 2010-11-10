@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.199 2010/10/14 21:16:43 dave Exp $"
+warp_version = "$Id: warp.py,v 1.200 2010/11/10 17:36:19 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -17,7 +17,8 @@ def oldnonzero(a):
 import os.path
 import time
 import warpoptions
-warpoptions.parse_args()
+if __name__ == '__main__':
+  warpoptions.parse_args()
 
 # --- Check to make sure that the scripts directory is actually in sys.path.
 # --- If warp is being loaded as a module (e.g. via an egg file), then
@@ -139,7 +140,7 @@ except:
   pass
 
 # --- Setup the parallel decompoosition if running in parallel
-if lparallel:
+if lparallel and __name__ == '__main__':
   if warpoptions.options.decomp is not None:
     top.nxprocs = warpoptions.options.decomp[0]
     top.nyprocs = warpoptions.options.decomp[1]
@@ -243,6 +244,10 @@ Computes current density from Child-Langmuir formula
 
 # --- Create python version of dvnz (divisor not zero)
 def dvnz(x):
+  """
+Used to protect is divides and square roots. Returns the argument, except when
+it is zero, then returns smallpos.
+  """
   if len(shape(x)) == 0:
     if x == 0.: return top.smallpos
     else:       return x
@@ -345,11 +350,13 @@ def setseed(x=0,y=0):
     
 # --- Uniform distribution
 def ranf(x=None,i1=None,nbase=None):
-  """Returns a pseudo-random number. If the 2nd and 3rd arguments are given,
+  """
+Returns a pseudo-random number. If the 2nd and 3rd arguments are given,
 returns a digit reversed random number.
-  x=None: if present, returns and array the same shape fill with random numbers
-  i1=None: returns i'th digit reversed number
-  nbase=None: base to use for digit reversing
+  - x=None: if present, returns and array the same shape fill with
+            random numbers
+  - i1=None: returns i'th digit reversed number
+  - nbase=None: base to use for digit reversing
   """
   if not i1:
     if x is None:
@@ -389,7 +396,9 @@ def rnormarray(x,i1=None,nbase1=None,nbase2=None):
 
 #=============================================================================
 def addspecies(newns=1,pgroup=None,sid=None):
-  """Adds one or more new speices. This only allocates the needed arrays.
+  """
+This has been superceded by the Species class (in species.py).
+Adds one or more new speices. This only allocates the needed arrays.
   - newns=1: the number of new species to add
   - pgroup=top.pgroup: the pgroup to add them to
   - sid=iota(top.ns-newns,top.ns-1): the global id of the species being added
@@ -428,7 +437,10 @@ def addspecies(newns=1,pgroup=None,sid=None):
     gchange("Hist")
 #=============================================================================
 def setnspecies(ns):
-  """Set the total number of species."""
+  """
+This has been superceded by the Species class (in species.py).
+Set the total number of species.
+  """
   assert ns >= 0,"The total number of species cannot be negative"
   addspecies(ns-top.ns)
 
@@ -440,10 +452,9 @@ def getappliedfieldsongrid(nx=None,ny=None,nz=None,
   """
 Gets the applied fields from the lattice on a grid. 
 It returns the tuple (ex,ey,ez,bx,by,bz).
-Inputs (optional) are the number of cells in each dimension and the limits of 
-the grid: nx, ny, nz, xmin, xmax, ymin, ymax, zmin, zmax. The defaults values 
-are respectively: w3d.nx, w3d.ny, w3d.nz, w3d.xmmin, w3d.xmmax,
-w3d.ymmin, w3d.ymmax, w3d.zmmin, w3d.zmmax.
+ - nx,ny,nz: Grid dimensions, default to w3d.nx, w3d.ny, w3d.nz
+ - xmin,xmax,ymin,ymax,zmin,zmax: Grid size, default to w3d.xmmin, w3d.xmmax,
+                                  w3d.ymmin, w3d.ymmax, w3d.zmmin, w3d.zmmax.
   """
 
   if nx is None: nx=w3d.nx
@@ -604,10 +615,12 @@ def getappliedfieldsforspecies(species):
 ##############################################################################
 ##############################################################################
 def fixrestoresfrombeforeelementoverlaps(ff):
-  """This checks if the lattice overlap data is inconsistent with the
+  """
+This checks if the lattice overlap data is inconsistent with the
 lattice input. This should only ever happen if an old dump file is
 read in, one created before the element overlaps where implemented.
-If this is the case, the lattice is reset and the overlap data generated."""
+If this is the case, the lattice is reset and the overlap data generated.
+  """
   doreset = 0
   if top.ndrft >= 0 and sum(top.odrftnn) < top.ndrft+1: doreset = 1
   if top.nbend >= 0 and sum(top.obendnn) < top.nbend+1: doreset = 1
@@ -626,8 +639,9 @@ If this is the case, the lattice is reset and the overlap data generated."""
     setlatt()
   
 def fixrestoreswithmomentswithoutspecies(ff):
-  """This is called automatically by restart to fix the arrays which have
-  changed shape. It needs to be called by hand after restore.
+  """
+This is called automatically by restart to fix the arrays which have
+changed shape. It needs to be called by hand after restore.
   """
   # --- First, check if the file has the old moments in it.
   ek = ff.read('ek@top')
@@ -1038,7 +1052,8 @@ Reads in data from file, redeposits charge density and does field solve
 
 ##############################################################################
 def printtimers(file=None,lminmax=0,icontrollers=0):
-  """Print timers in a nice annotated format
+  """
+Print timers in a nice annotated format
   - file=None: Optional input file. If it is not include, stdout is used. It can
          either be a file name, or a file object. If a file name, a file
          with that name is created. If a file object, the data is written
@@ -1173,7 +1188,8 @@ def printtimers(file=None,lminmax=0,icontrollers=0):
     ff.close()
 
 def printtimersordered(file=None,depth=3):
-  """Print timers in a nice annotated format, sorted by call sequence
+  """
+Print timers in a nice annotated format, sorted by call sequence
   - file=None: Optional input file. If it is not include, stdout is used. It
                can either be a file name, or a file object. If a file name, a
                file with that name is created. If a file object, the data is
