@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.106 $, $Date: 2010/04/16 18:35:55 $
+c@(#) File WXY.M, version $Revision: 3.107 $, $Date: 2010/11/11 20:02:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1236,9 +1236,9 @@ c           --- differences. The iteration done
 c           --- Exact translation of position and velocity for warped
 c           --- mesh effect
             call exbendcorxy(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
-     &                       zpo,ds,bendres,bendradi,lexbend)
+     &                       zpo,vbeamfrm*dt,bendres,bendradi,lexbend)
 c           --- Correct position advance for slanted dipole entry/exit
-            call sledgcor(pgroup,ip,ipmin,zpo,zbeam+vbeam*dt,zbeam,vbeam,
+            call sledgcor(pgroup,ip,ipmin,zpo,zbeam+vbeamfrm*dt,zbeam,vbeam,
      &                    pgroup%sm(is),pgroup%sq(is),.true.)
 c         --- PUSHV
           elseif (center == "pushv") then
