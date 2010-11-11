@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.200 2010/11/10 17:36:19 dave Exp $"
+warp_version = "$Id: warp.py,v 1.201 2010/11/11 01:47:22 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -17,8 +17,7 @@ def oldnonzero(a):
 import os.path
 import time
 import warpoptions
-if __name__ == '__main__':
-  warpoptions.parse_args()
+warpoptions.parse_args()
 
 # --- Check to make sure that the scripts directory is actually in sys.path.
 # --- If warp is being loaded as a module (e.g. via an egg file), then
@@ -140,7 +139,7 @@ except:
   pass
 
 # --- Setup the parallel decompoosition if running in parallel
-if lparallel and __name__ == '__main__':
+if lparallel:
   if warpoptions.options.decomp is not None:
     top.nxprocs = warpoptions.options.decomp[0]
     top.nyprocs = warpoptions.options.decomp[1]
