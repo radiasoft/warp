@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.90 2010/11/10 17:36:19 dave Exp $"
+particles_version = "$Id: particles.py,v 1.91 2010/11/11 19:04:33 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -242,21 +242,21 @@ Multiple selection criteria are supported.
   - x=xp: Coordinate to use for x range selection
   - y=yp: Coordinate to use for y range selection
   - z=zp: Coordinate to use for z range selection
-  - ix=-1: When 0 <= ix <= nx, picks particles within xmesh[ix]+-wx*dx
-  - wx=1.: Width of window around xmesh[ix]
-  - iy=-1: When 0 <= iy <= ny, picks particles within ymesh[iy]+-wy*dy
-  - wy=1.: Width of window around ymesh[iy]
-  - iz=-1: When 0 <= iz <= nz, picks particles within zmesh[iz]+-wz*dz
-  - wz=1.: Width of window around zmesh[iz]
+  - ix=None: Picks particles within xmesh[ix]+-wx*dx
+  - iy=None: Picks particles within ymesh[iy]+-wy*dy
+  - iz=None: Picks particles within zbeam+zmesh[iz]+-wz*dz
+  - xc=None: Picks particles within xc+-wx*dx
+  - yc=None: Picks particles within yc+-wy*dy
+  - zc=None: Picks particles within zc+-wz*dz
+  - wx=1.: Width of x selection window in grid cells
+  - wy=1.: Width of y selection window in grid cells
+  - wz=1.: Width of z selection window in grid cells
   - xl=None: Lower range in x of selection region
   - xu=None: Upper range in x of selection region
   - yl=None: Lower range in y of selection region
   - yu=None: Upper range in y of selection region
   - zl=None: Lower range in z of selection region
   - zu=None: Upper range in z of selection region
-  - zc=None: Picks particles within zc+-wz*dz
-  - xc=None: Picks particles within xc+-wx*dx
-  - yc=None: Picks particles within yc+-wy*dy
   - ssn=None: Returns the particle or particles with the given ssn
               Raises and error if ssn's are not saved - top.spid must be setup.
   - ii=None: Particle index list
