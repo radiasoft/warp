@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.37 $, $Date: 2010/08/09 15:30:27 $
+c@(#) File top_lattice.F, version $Revision: 3.38 $, $Date: 2010/11/11 23:50:52 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -3083,9 +3083,13 @@ c less than the entire andvance step on entry/exit of the dipole.
 
         if (lslice) then
           iz = 0
-          if (.not.((zbeamo < cdipozs(iz,io) .and. zbeam >= cdipozs(iz,io)).or.
-     &              (zbeamo < cdipoze(iz,io) .and. zbeam >= cdipoze(iz,io))))
-     &      cycle
+c         --- This check is commented out since there can be slight
+c         --- roundoff differences between zbeam and the zp of the particles
+c         --- leading to the loop to cycling even when the correction should be
+c         --- applied to the particles.
+c         if (.not.((zbeamo < cdipozs(iz,io) .and. zbeam >= cdipozs(iz,io)).or.
+c    &              (zbeamo < cdipoze(iz,io) .and. zbeam >= cdipoze(iz,io))))
+c    &      cycle
         endif
         do ip = ipmin,ipmin+np-1
           if (.not. lslice) then
