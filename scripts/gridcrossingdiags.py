@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.40 2010/10/21 17:00:20 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.41 2010/11/12 00:42:53 dave Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -1245,6 +1245,34 @@ around the peak current."""
             result = sqrt(maximum(0.,result))
         return result,gridmesh
 
+    def timeintegratedtrms(self):
+        """Returns the rms duration of the data"""
+        zmin = self.zmesh[0] + self.zbeam.min()
+        zmax = self.zmesh[-1] + self.zbeam.max()
+        nz = nint((zmax - zmin)/self.dz)
+        dz = (zmax - zmin)/nz
+
+        tgrid = zeros(1+nz,'d')
+        tgridcount = zeros(1+nz,'d')
+        tsqgrid = zeros(1+nz,'d')
+        tsqgridcount = zeros(1+nz,'d')
+        gridmesh = zmin + arange(nz+1)*dz
+
+        nn = self.current.shape[1]
+        zz = (self.zmesh[newaxis,:] + self.zbeam[:,newaxis]).ravel()
+        tt = (ones(nn)[newaxis,:]*self.time[:,newaxis]).ravel()
+        deposgrid1dw(1,len(zz),
+                     zz,tt,self.current.ravel(),
+                     nz,tgrid,tgridcount,zmin,zmax)
+        deposgrid1dw(1,len(zz),
+                     zz,tt**2,self.current.ravel(),
+                     nz,tsqgrid,tsqgridcount,zmin,zmax)
+
+        tbar = tgrid/where(tgridcount > 0.,tgridcount,1.)
+        tsqbar = tsqgrid/where(tsqgridcount > 0.,tsqgridcount,1.)
+        trms = sqrt(maximum(0.,tsqbar - tbar**2))
+        return (trms,gridmesh)
+
     # ----------------------------------------------------------------------
     # --- Setup the properties so that the last set of data which is
     # --- still being accumulated is not returned, and so that the
@@ -1253,20 +1281,30 @@ around the peak current."""
         def fget(self):
             if self.nhist is None: nhist = top.nhist
             else:                  nhist = self.nhist
-            # --- Get the data, removing the last element if the accumulation
-            # --- of the data is not complete.
             result = getattr(self,'_'+name)
+
+            lenresult = len(result)
+
+            # --- Get the length of the data, decrementing by one if the
+            # --- accumulation of the data is not complete.
             if (self.lastitsaved < top.it or
-                (len(result) > 0 and result[-1] is None)):
-                result = result[:-1]
+                (lenresult > 0 and result[-1] is None)):
+                lenresult -= 1
 
             # --- Check if there is a cached array.
             # --- If so, and if it is the same size as reult, then return it,
             # --- otherwise convert result to an array and return it.
             cache = getattr(self,'_cache'+name,None)
-            if cache is not None and len(cache) == len(result):
+            if cache is not None and len(cache) == lenresult:
                 result = cache
             else:
+
+                # --- Get the data, removing the last element if the
+                # --- accumulation of the data is not complete.
+                if (self.lastitsaved < top.it or
+                    (len(result) > 0 and result[-1] is None)):
+                    result = result[:-1]
+
                 try:
                     if name in ['rprofile','scinttime','scintillator']:
                         result = array(result)
