@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.38 $, $Date: 2010/11/11 23:50:52 $
+c@(#) File top_lattice.F, version $Revision: 3.39 $, $Date: 2010/11/12 00:28:58 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -3063,6 +3063,7 @@ c less than the entire andvance step on entry/exit of the dipole.
       integer(ISZ):: io,ip,iz
       real(kind=8),allocatable:: vzi(:)
       real(kind=8):: qoverm,factor
+      real(kind=8):: dstemp
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -3073,6 +3074,7 @@ c less than the entire andvance step on entry/exit of the dipole.
       qoverm = q/m
       if (lslice) then
         vzi = 1./dvnz(vbeam)
+        dstemp = abs(zbeam - zbeamo)
       else
         vzi = pgroup%uzp(ipmin:ipmin+np-1)*pgroup%gaminv(ipmin:ipmin+np-1)
         vzi = 1./dvnz(vzi)
@@ -3083,13 +3085,17 @@ c less than the entire andvance step on entry/exit of the dipole.
 
         if (lslice) then
           iz = 0
-c         --- This check is commented out since there can be slight
+c         --- This check includes some slop, dstemp, since there can be slight
 c         --- roundoff differences between zbeam and the zp of the particles
 c         --- leading to the loop to cycling even when the correction should be
 c         --- applied to the particles.
-c         if (.not.((zbeamo < cdipozs(iz,io) .and. zbeam >= cdipozs(iz,io)).or.
-c    &              (zbeamo < cdipoze(iz,io) .and. zbeam >= cdipoze(iz,io))))
-c    &      cycle
+          if (.not.(
+     &          (zbeamo-dstemp < cdipozs(iz,io) .and.
+     &           zbeam+dstemp >= cdipozs(iz,io)) .or.
+     &          (zbeamo-dstemp < cdipoze(iz,io) .and.
+     &           zbeam+dstemp >= cdipoze(iz,io)))) then
+            cycle
+          endif
         endif
         do ip = ipmin,ipmin+np-1
           if (.not. lslice) then
