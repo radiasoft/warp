@@ -6,7 +6,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.31 2010/11/10 17:36:19 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.32 2010/11/15 20:57:27 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -60,7 +60,7 @@ def getmeshcoordinates(mins,dds,nns):
   """
 getmeshcoordinates(mins,dds,nns)
 Returns arrays holding the coordinates of the mesh points.
-Lenght of list of inputs determines number of dimensions.
+Length of list of inputs determines number of dimensions.
   """
   nns = tuple(array(nns) + 1)
   cc = indices(nns,'d')
@@ -73,6 +73,7 @@ def getmesh2d(xmin,dx,nx,ymin,dy,ny):
   """
 Returns a tuple of 2 2-d arrays holding the coordinates of the mesh points
 in two dimensions.
+ - xmin,dx,nx,ymin,dy,ny: mesh description
   """
   return getmeshcoordinates([xmin,ymin],[dx,dy],[nx,ny])
 
@@ -81,6 +82,7 @@ def getmesh3d(xmin,dx,nx,ymin,dy,ny,zmin,dz,nz):
 getmesh3d(xmin,dx,nx,ymin,dy,ny,zmin,dx,nz)
 Returns a tuple of 3 3-d arrays holding the coordinates of the mesh points
 in three dimensions.
+ - xmin,dx,nx,ymin,dy,ny,zmin,dz,nz: mesh description
   """
   return getmeshcoordinates([xmin,ymin,zmin],[dx,dy,dz],[nx,ny,nz])
 
