@@ -1,4 +1,7 @@
-"""Class for doing complete multigrid field solve"""
+"""
+Classed for doing multigrid field solve in 3-D
+----------------------------------------------
+"""
 # ToDo:
 #  - modify setrhop to check if particles are within grid
 #  - incorporate instances into the particle mover, so charge is deposited and
@@ -11,10 +14,57 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.152 2010/08/28 01:21:21 dave Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.153 2010/11/15 23:00:27 dave Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
+  """
+Creates a 3-D multigrid Poisson solver. There are many input parameters,
+most of which get there default values from one of the fortran packages.
+
+| Input parameters from w3d:
+|    nx,ny,nz,dx,dy,dz,nxlocal,nylocal,nzlocal,
+|    nxpguard,nypguard,nzpguard,
+|    xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
+|    xmminlocal,xmmaxlocal,
+|    ymminlocal,ymmaxlocal,
+|    zmminlocal,zmmaxlocal,
+|    bound0,boundnz,boundxy,l2symtry,l4symtry,
+|    solvergeom,
+|    iondensity,electrontemperature,plasmapotential,
+|    electrondensitymaxscale
+
+| Input parameters from top:
+|    pbound0,pboundnz,pboundxy,
+|    nprocs,nxprocs,nyprocs,nzprocs,
+|    userdecompx,userdecompy,userdecompz,lautodecomp,
+|    lfsautodecomp,zslave,debug
+
+| Input parameters from f3d:
+|    gridmode,mgparam,downpasses,uppasses,
+|    mgmaxiters,mgtol,mgmaxlevels,mgform,
+|    mgverbose,mgntverbose,
+|    lcndbndy,icndbndy,laddconductor,lprecalccoeffs
+
+| Other input paramters:
+|    forcesymmetries=1: When true and either 2 or 4 fold symmetry are set,
+|                       the x and/or y mins are forced to zero.
+|    lreducedpickle=1: When true, when the instance is pickled, the large
+|                      arrays are not included. Experts only.
+|    lnorestoreonpickle=0: When false, when the instance is unpickled, the
+|                          large arrays are restored. Experts only.
+|    ldosolve=1: Flags sets whether a field solve is done.
+|                When true, do the solve, otherwise don't, and also don't
+|                do the charge deposition.
+|    l_internal_dosolve=1: Another flag which sets whether a field solve is done.
+|                          With this flag, if false, the charge deposition is
+|                          still done.
+|    gridvz=None: An option grid velocity, independent of top.vbeam.
+|                 Only used for special purposes.
+|    lchild=False: Internally used flag, true when the instance is a child
+|                  relative to a root grid when doing mesh refinement.
+
+  """
   
   __w3dinputs__ = ['iondensity','electrontemperature','plasmapotential',
                    'electrondensitymaxscale']

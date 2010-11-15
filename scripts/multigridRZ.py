@@ -1,4 +1,7 @@
-"""Class for doing complete multigrid field solve"""
+"""
+Class for doing multigrid field solve on 2-D
+--------------------------------------------
+"""
 from warp import *
 from find_mgparam import find_mgparam
 
@@ -7,11 +10,14 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.58 2010/07/29 16:14:08 dave Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.59 2010/11/15 23:00:27 dave Exp $"
 
 ##############################################################################
 ##############################################################################
 class MultiGridRZ(MultiGrid3D):
+  """
+2-D field solver, axisymmetric and slab, based on the 2-D solver in frz_mgrid.F
+  """
   
   def __init__(self,lreducedpickle=1,**kw):
     kw['lreducedpickle'] = lreducedpickle
@@ -220,6 +226,9 @@ class MultiGridRZ(MultiGrid3D):
 ##############################################################################
 ##############################################################################
 class MultiGrid2D(MultiGrid3D):
+  """
+2-D field solver, axisymmetric and slab, based on the 2-D solver in f3d_mgrid.F
+  """
   
   def __init__(self,lreducedpickle=1,**kw):
     kw['lreducedpickle'] = lreducedpickle
@@ -500,6 +509,9 @@ class MultiGrid2D(MultiGrid3D):
 ##############################################################################
 ##############################################################################
 class MultiGrid2DDielectric(MultiGrid2D):
+  """
+2-D solver allowing for spatially varying dielectric
+  """
   
   def __init__(self,epsilon=None,lreducedpickle=1,**kw):
     MultiGrid2D.__init__(self,lreducedpickle,**kw)
