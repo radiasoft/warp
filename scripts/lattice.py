@@ -68,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.92 2010/11/08 22:20:19 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.93 2010/11/18 23:55:01 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2445,13 +2445,7 @@ scale factor. One of the following can be supplied:
   # --- Make sure either an 'id' or a dataset, 'ms', was passed in.
   assert (id is not None or ms is not None), \
          "either an 'id' or a dataset, 'ms', must be passed in"
-  # --- If a dataset was passed in, make sure that it has the same
-  # --- number of multipole components or less, or that both n and v are
-  # --- passed in
-  assert (ms is None) or \
-         ((len(shape(ms)) == 1) or (shape(ms)[1] <= top.nmsmult) or \
-          (nn is not None and vv is not None)),\
-         "The shape of the dataset must be consistent with the data already created or both n and v must be specified"
+
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
@@ -2507,71 +2501,7 @@ scale factor. One of the following can be supplied:
     # --- If an 'id' was passed in, then just use that.
     top.mmltid[ie] = id
   elif ms is not None:
-    # --- Otherwise, create a new dataset.
-    top.nmmltsets = top.nmmltsets + 1
-    top.mmltid[ie] = top.nmmltsets
-    # --- Make sure that ms is a 2-D array (first dimension is data versus z,
-    # --- second is number of multipole components)
-    if len(shape(ms)) == 1:
-      ms = transpose(array([ms]))
-      if msp is not None: msp = transpose(array([msp]))
-      if phz is not None: phz = transpose(array([phz]))
-      if phpz is not None: phpz = transpose(array([phpz]))
-    # --- Make sure that the first dimension of the arrays is long enough
-    if shape(ms)[0] > top.nzmmltmax+1: top.nzmmltmax = shape(ms)[0] - 1
-    # --- Change the sizes of the arrays
-    gchange("Mult_data")
-    # --- Set basic parameters
-    n0 = shape(ms)[0] # --- Number of data points along z
-    n1 = shape(ms)[1] # --- Number of multipole components
-    top.nzmmlt[-1] = n0 - 1
-    top.dzmmlt[-1] = (top.mmltze[ie] - top.mmltzs[ie])/(n0 - 1.)
-    if nn is None and vv is None:
-      assert top.nmsmult > 0,'There are no mmlt data sets, so the nn and vv arguments must be specified'
-      # --- Assume n and v are ordered correctly and just copy the data in
-      top.msmmlt[:n0,:n1,-1] = ms
-      if msp is not None: top.msmmltp[:n0,:n1,-1] = msp
-      if phz is not None: top.msmmltph[:n0,:n1,-1] = phz
-      if phpz is not None: top.msmmltphp[:n0,:n1,-1] = phpz
-    else:
-      # --- Make sure that n and v are lists
-      if len(shape(nn)) == 0: nn = list([nn])
-      else:                   nn = list(nn)
-      if len(shape(vv)) == 0: vv = list([vv])
-      else:                   vv = list(vv)
-      # --- Make ms a list of arrays
-      ms = list(transpose(ms))
-      if msp is not None: msp = list(transpose(msp))
-      if phz is not None: phz = list(transpose(phz))
-      if phpz is not None: phpz = list(transpose(phpz))
-      # --- Loop over existing multipole components
-      for i in xrange(top.nmsmult):
-        # --- Loop over input multipole components checking if any are the same
-        for j in xrange(len(nn)):
-          if nn[j] == top.mmlt_n[i] and vv[j] == top.mmlt_v[i]:
-            # --- If so, then copy the data to the appropriate place and
-            # --- delete the data from the lists.
-            top.msmmlt[:n0,i,-1] = ms[j]
-            if msp is not None: top.msmmltp[:n0,i,-1] = msp[j]
-            if phz is not None: top.msmmltph[:n0,i,-1] = phz[j]
-            if phpz is not None: top.msmmltphp[:n0,i,-1] = phpz[j]
-            del nn[j],vv[j],ms[j]
-            if msp is not None: del msp[j]
-            if phz is not None: del phz[j]
-            if phpz is not None: del phpz[j]
-            break
-      # --- Now copy in any left over data, increasing the number of multipole
-      # --- components.
-      if len(nn) > 0:
-        ln = len(nn)
-        top.nmsmult = top.nmsmult + ln
-        gchange("Mult_data")
-        top.mmlt_n[-ln:] = nn
-        top.mmlt_v[-ln:] = vv
-        top.msmmlt[:n0,-ln:,-1] = transpose(array(ms))
-        if msp is not None: top.msmmltp[:n0,-ln:,-1] = transpose(array(msp))
-        if phz is not None: top.msmmltph[:n0,-ln:,-1] = transpose(array(phz))
-        if phpz is not None: top.msmmltphp[:n0,-ln:,-1] = transpose(array(phpz))
+    top.mmltid[ie] = addnewmmltdataset(ze-zs,ms,msp,phz,phpz,nn,vv)
 
   if (time is not None and data is not None) or func is not None:
     TimeDependentLatticeElement('mmltsc',ie,time,data,func)
@@ -2582,6 +2512,105 @@ scale factor. One of the following can be supplied:
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to knowne its actual number.
   return ie,top.mmltid[ie]
+
+def addnewmmltdataset(zlen,ms,msp=None,phz=None,phpz=None,nn=None,vv=None):
+  """
+Adds a new mmlt data set.
+Required arguments:
+  - zlen: length, in meters, of the data set
+  - ms: 1- or 2-D array containing the multipole data. First dimension is data
+    along z, optional second dimension is number of multipole components.
+
+The following may also be supplied.
+  - nn, vv: the multipole indices. If these are not specified, then it is
+    assumed that the data in the 'ms' array is layed out with the ordering of
+    the existing mmlt_n and mmlt_v. Must have the same len as the second
+    dimension of ms (can be scalars is ms is 1-D).
+  - msp: first derivative of ms along z. Must have the same shape as ms.
+  - phz, phpz: phase angle along z and it's derivative. Must have the same
+    shape as ms.
+  """
+  # --- Make sure that the data set has the same number of multipole
+  # --- components or less, or that both n and v are passed in.
+  assert ((len(shape(ms)) == 1) or (shape(ms)[1] <= top.nmsmult) or \
+          (nn is not None and vv is not None)),\
+         "The shape of the dataset must be consistent with the data already created or both n and v must be specified"
+
+  # --- Now setup the multipole component dataset.
+  top.nmmltsets = top.nmmltsets + 1
+
+  # --- Make sure that ms is a 2-D array (first dimension is data versus z,
+  # --- second is number of multipole components)
+  if len(shape(ms)) == 1:
+    ms = transpose(array([ms]))
+    if msp is not None: msp = transpose(array([msp]))
+    if phz is not None: phz = transpose(array([phz]))
+    if phpz is not None: phpz = transpose(array([phpz]))
+
+  # --- Make sure that the first dimension of the arrays is long enough
+  if shape(ms)[0] > top.nzmmltmax+1: top.nzmmltmax = shape(ms)[0] - 1
+
+  # --- Change the sizes of the arrays
+  gchange("Mult_data")
+
+  # --- Set basic parameters
+  n0 = shape(ms)[0] # --- Number of data points along z
+  n1 = shape(ms)[1] # --- Number of multipole components
+  top.nzmmlt[-1] = n0 - 1
+  top.dzmmlt[-1] = zlen/(n0 - 1.)
+
+  if nn is None and vv is None:
+    assert top.nmsmult > 0,'There are no mmlt data sets, so the nn and vv arguments must be specified'
+    # --- Assume n and v are ordered correctly and just copy the data in
+    top.msmmlt[:n0,:n1,-1] = ms
+    if msp is not None: top.msmmltp[:n0,:n1,-1] = msp
+    if phz is not None: top.msmmltph[:n0,:n1,-1] = phz
+    if phpz is not None: top.msmmltphp[:n0,:n1,-1] = phpz
+
+  else:
+    # --- Make sure that n and v are lists
+    if len(shape(nn)) == 0: nn = list([nn])
+    else:                   nn = list(nn)
+    if len(shape(vv)) == 0: vv = list([vv])
+    else:                   vv = list(vv)
+
+    # --- Make ms a list of arrays
+    ms = list(transpose(ms))
+    if msp is not None: msp = list(transpose(msp))
+    if phz is not None: phz = list(transpose(phz))
+    if phpz is not None: phpz = list(transpose(phpz))
+
+    # --- Loop over existing multipole components
+    for i in xrange(top.nmsmult):
+      # --- Loop over input multipole components checking if any are the same
+      for j in xrange(len(nn)):
+        if nn[j] == top.mmlt_n[i] and vv[j] == top.mmlt_v[i]:
+          # --- If so, then copy the data to the appropriate place and
+          # --- delete the data from the lists.
+          top.msmmlt[:n0,i,-1] = ms[j]
+          if msp is not None: top.msmmltp[:n0,i,-1] = msp[j]
+          if phz is not None: top.msmmltph[:n0,i,-1] = phz[j]
+          if phpz is not None: top.msmmltphp[:n0,i,-1] = phpz[j]
+          del nn[j],vv[j],ms[j]
+          if msp is not None: del msp[j]
+          if phz is not None: del phz[j]
+          if phpz is not None: del phpz[j]
+          break
+
+    # --- Now copy in any left over data, increasing the number of multipole
+    # --- components.
+    if len(nn) > 0:
+      ln = len(nn)
+      top.nmsmult = top.nmsmult + ln
+      gchange("Mult_data")
+      top.mmlt_n[-ln:] = nn
+      top.mmlt_v[-ln:] = vv
+      top.msmmlt[:n0,-ln:,-1] = transpose(array(ms))
+      if msp is not None: top.msmmltp[:n0,-ln:,-1] = transpose(array(msp))
+      if phz is not None: top.msmmltph[:n0,-ln:,-1] = transpose(array(phz))
+      if phpz is not None: top.msmmltphp[:n0,-ln:,-1] = transpose(array(phpz))
+
+  return top.nmmltsets
 
 # ----------------------------------------------------------------------------
 # --- ACCL --- XXX
