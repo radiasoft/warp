@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.92 2010/11/23 02:13:02 dave Exp $"
+particles_version = "$Id: particles.py,v 1.93 2010/11/23 19:13:00 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -516,7 +516,7 @@ routines.
   _particlebcastdefault[0] = defval
 #-------------------------------------------------------------------------
 def getn(iw=0,gather=1,bcast=None,**kw):
-  "Returns number of particles in selection."
+  "Returns number of particles in selection. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   if isinstance(ii,slice): l = ii.stop - ii.start
@@ -525,7 +525,7 @@ def getn(iw=0,gather=1,bcast=None,**kw):
   else:                    return l
 #-------------------------------------------------------------------------
 def getx(iw=0,gather=1,bcast=None,**kw):
-  "Returns the X positions."
+  "Returns the X positions. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -541,7 +541,7 @@ def getx(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def gety(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Y positions."
+  "Returns the Y positions. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -557,7 +557,7 @@ def gety(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getz(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Z positions."
+  "Returns the Z positions. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -573,7 +573,7 @@ def getz(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getr(iw=0,gather=1,bcast=None,**kw):
-  "Returns the R postions."
+  "Returns the R postions. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -590,7 +590,7 @@ def getr(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def gettheta(iw=0,gather=1,bcast=None,**kw):
-  "Returns the theta postions."
+  "Returns the theta postions. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -607,7 +607,7 @@ def gettheta(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getvx(iw=0,gather=1,bcast=None,**kw):
-  "Returns the X velocity."
+  "Returns the X velocity. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -625,7 +625,7 @@ def getvx(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getvy(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Y velocity."
+  "Returns the Y velocity. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -643,7 +643,7 @@ def getvy(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getvz(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Z velocity."
+  "Returns the Z velocity. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -661,7 +661,7 @@ def getvz(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getvr(iw=0,gather=1,bcast=None,**kw):
-  "Returns the radial velocity."
+  "Returns the radial velocity. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -683,7 +683,7 @@ def getvr(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getvtheta(iw=0,gather=1,bcast=None,**kw):
-  "Returns the azimuthal velocity."
+  "Returns the azimuthal velocity. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -705,7 +705,7 @@ def getvtheta(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getux(iw=0,gather=1,bcast=None,**kw):
-  "Returns the X momentum over mass."
+  "Returns the X momentum over mass. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -721,7 +721,7 @@ def getux(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getuy(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Y momentum over mass."
+  "Returns the Y momentum over mass. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -737,7 +737,7 @@ def getuy(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getuz(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Z momentum over mass."
+  "Returns the Z momentum over mass. For particle selection options, see :py:func:`~particles.selectparticles`. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -753,7 +753,7 @@ def getuz(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getxp(iw=0,gather=1,bcast=None,**kw):
-  "Returns the X velocity over the Z velocity (X')."
+  "Returns the X velocity over the Z velocity (X'). For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -770,7 +770,7 @@ def getxp(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getyp(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Y velocity over the Z velocity (Y')."
+  "Returns the Y velocity over the Z velocity (Y'). For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -787,7 +787,7 @@ def getyp(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getrp(iw=0,gather=1,bcast=None,**kw):
-  "Returns the radial velocity over the Z velocity (R')."
+  "Returns the radial velocity over the Z velocity (R'). For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -809,7 +809,7 @@ def getrp(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def gettp(iw=0,gather=1,bcast=None,**kw):
-  "Returns the azimuthal velocity over the Z velocity (R')."
+  "Returns the azimuthal velocity over the Z velocity (R'). For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -832,7 +832,7 @@ def gettp(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getgaminv(iw=0,gather=1,bcast=None,**kw):
-  "Returns the gamma inverse."
+  "Returns the gamma inverse. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -848,7 +848,7 @@ def getgaminv(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getex(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Ex field applied to the particles."
+  "Returns the Ex field applied to the particles. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -864,7 +864,7 @@ def getex(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getey(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Ey field applied to the particles."
+  "Returns the Ey field applied to the particles. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -880,7 +880,7 @@ def getey(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getez(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Ez field applied to the particles."
+  "Returns the Ez field applied to the particles. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -896,7 +896,7 @@ def getez(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def geter(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Er field applied to the particles."
+  "Returns the Er field applied to the particles. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -917,7 +917,7 @@ def geter(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getetheta(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Etheta field applied to the particles."
+  "Returns the Etheta field applied to the particles. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -938,7 +938,7 @@ def getetheta(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getbx(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Bx field applied to the particles."
+  "Returns the Bx field applied to the particles. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -954,7 +954,7 @@ def getbx(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getby(iw=0,gather=1,bcast=None,**kw):
-  "Returns the By field applied to the particles."
+  "Returns the By field applied to the particles. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -970,7 +970,7 @@ def getby(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getbz(iw=0,gather=1,bcast=None,**kw):
-  "Returns the Bz field applied to the particles."
+  "Returns the Bz field applied to the particles. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -991,6 +991,7 @@ def getpid(id=0,iw=0,gather=1,bcast=None,**kw):
           Note that when top.wpid or other id's from the top package are used,
           1 must be subtracted when passed in, i.e. id=top.wpid-1.
           If id=-1, returns all pids.
+For particle selection options, see :py:func:`~particles.selectparticles`.
   """
   if bcast is None: bcast = _particlebcastdefault[0]
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -1021,7 +1022,7 @@ def getpid(id=0,iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=None,edrift=1,bdrift=1,**kw):
-  "Returns the velocity drifts used in the drift-Lorentz mover."
+  "Returns the velocity drifts used in the drift-Lorentz mover. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   if jslist is None:
     jslist=[js]
@@ -1088,12 +1089,12 @@ def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=None,edrift=1,bdrift=1,**kw)
 #-------------------------------------------------------------------------
 def getw(iw=0,gather=1,bcast=None,**kw):
   """Returns particle weights.
-This is equivalent to getpid(id=top.wpid-1).
+This is equivalent to getpid(id=top.wpid-1). For particle selection options, see :py:func:`~particles.selectparticles`.
   """
   return getpid(id=top.wpid-1,gather=gather,bcast=bcast,**kw)
 #-------------------------------------------------------------------------
 def getke(iw=0,js=0,jslist=None,gather=1,bcast=None,**kw):
-  "Returns the particles kinetic energy"
+  "Returns the particles kinetic energy. For particle selection options, see :py:func:`~particles.selectparticles`."
   if bcast is None: bcast = _particlebcastdefault[0]
   if jslist is None:
     jslist=[js]
@@ -1132,8 +1133,9 @@ def getke(iw=0,js=0,jslist=None,gather=1,bcast=None,**kw):
   else:
     return ke
 #-------------------------------------------------------------------------
-# Add the selectparticles documentation to each of the routines.
-_extradoc = """- gather=true: Flags whether results are gathered to processor 0
+# Add the some parallel documentation to each of the routines.
+_paralleldoc = """
+  - gather=true: Flags whether results are gathered to processor 0
               If true, all processors must make the call.
               What is returned by the other processors is determined by the
               bcast argument.
@@ -1152,37 +1154,37 @@ _extradoc = """- gather=true: Flags whether results are gathered to processor 0
              not needed.
              The argument is ignored in serial.
 """
-getn.__doc__ = getn.__doc__ + selectparticles.__doc__ + _extradoc
-getx.__doc__ = getx.__doc__ + selectparticles.__doc__ + _extradoc
-gety.__doc__ = gety.__doc__ + selectparticles.__doc__ + _extradoc
-getz.__doc__ = getz.__doc__ + selectparticles.__doc__ + _extradoc
-getr.__doc__ = getr.__doc__ + selectparticles.__doc__ + _extradoc
-gettheta.__doc__ = gettheta.__doc__ + selectparticles.__doc__ + _extradoc
-getvx.__doc__ = getvx.__doc__ + selectparticles.__doc__ + _extradoc
-getvy.__doc__ = getvy.__doc__ + selectparticles.__doc__ + _extradoc
-getvz.__doc__ = getvz.__doc__ + selectparticles.__doc__ + _extradoc
-getvr.__doc__ = getvr.__doc__ + selectparticles.__doc__ + _extradoc
-getvtheta.__doc__ = getvtheta.__doc__ + selectparticles.__doc__ + _extradoc
-getux.__doc__ = getux.__doc__ + selectparticles.__doc__ + _extradoc
-getuy.__doc__ = getuy.__doc__ + selectparticles.__doc__ + _extradoc
-getuz.__doc__ = getuz.__doc__ + selectparticles.__doc__ + _extradoc
-getxp.__doc__ = getxp.__doc__ + selectparticles.__doc__ + _extradoc
-getyp.__doc__ = getyp.__doc__ + selectparticles.__doc__ + _extradoc
-getrp.__doc__ = getrp.__doc__ + selectparticles.__doc__ + _extradoc
-gettp.__doc__ = gettp.__doc__ + selectparticles.__doc__ + _extradoc
-getgaminv.__doc__ = getgaminv.__doc__ + selectparticles.__doc__ + _extradoc
-getex.__doc__ = getex.__doc__ + selectparticles.__doc__ + _extradoc
-getey.__doc__ = getey.__doc__ + selectparticles.__doc__ + _extradoc
-getez.__doc__ = getez.__doc__ + selectparticles.__doc__ + _extradoc
-geter.__doc__ = geter.__doc__ + selectparticles.__doc__ + _extradoc
-getetheta.__doc__ = getetheta.__doc__ + selectparticles.__doc__ + _extradoc
-getbx.__doc__ = getbx.__doc__ + selectparticles.__doc__ + _extradoc
-getby.__doc__ = getby.__doc__ + selectparticles.__doc__ + _extradoc
-getbz.__doc__ = getbz.__doc__ + selectparticles.__doc__ + _extradoc
-getpid.__doc__ = getpid.__doc__ + selectparticles.__doc__ + _extradoc
-getvdrifts.__doc__ = getvdrifts.__doc__ + selectparticles.__doc__ + _extradoc
-getw.__doc__ = getw.__doc__ + selectparticles.__doc__ + _extradoc
-del _extradoc
+getn.__doc__ += _paralleldoc
+getx.__doc__ += _paralleldoc
+gety.__doc__ += _paralleldoc
+getz.__doc__ += _paralleldoc
+getr.__doc__ += _paralleldoc
+gettheta.__doc__ += _paralleldoc
+getvx.__doc__ += _paralleldoc
+getvy.__doc__ += _paralleldoc
+getvz.__doc__ += _paralleldoc
+getvr.__doc__ += _paralleldoc
+getvtheta.__doc__ += _paralleldoc
+getux.__doc__ += _paralleldoc
+getuy.__doc__ += _paralleldoc
+getuz.__doc__ += _paralleldoc
+getxp.__doc__ += _paralleldoc
+getyp.__doc__ += _paralleldoc
+getrp.__doc__ += _paralleldoc
+gettp.__doc__ += _paralleldoc
+getgaminv.__doc__ += _paralleldoc
+getex.__doc__ += _paralleldoc
+getey.__doc__ += _paralleldoc
+getez.__doc__ += _paralleldoc
+geter.__doc__ += _paralleldoc
+getetheta.__doc__ += _paralleldoc
+getbx.__doc__ += _paralleldoc
+getby.__doc__ += _paralleldoc
+getbz.__doc__ += _paralleldoc
+getpid.__doc__ += _paralleldoc
+getvdrifts.__doc__ += _paralleldoc
+getw.__doc__ += _paralleldoc
+del _paralleldoc
 #-------------------------------------------------------------------------
 
 ##########################################################################
