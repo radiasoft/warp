@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.128 2010/08/23 21:44:06 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.129 2010/11/23 19:10:28 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -839,7 +839,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
   - inverted=1: when false, draws subgrid lines starting inside the conductor
-  - Arguments to the pcphi and pcrho routine are also valid
+  - See :py:func:`~warpplots.pcphixy` and :py:func:`~warpplots.pcrhoxy` for more plotting options.
   """
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
@@ -980,7 +980,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
   - inverted=1: when false, draws subgrid lines starting inside the conductor
-  - Arguments to the pcphi and pcrho routine are also valid
+  - See :py:func:`~warpplots.pcphizx` and :py:func:`~warpplots.pcrhozx` for more plotting options.
   """
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
@@ -1101,7 +1101,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
   - inverted=1: when false, draws subgrid lines starting inside the conductor
-  - Arguments to the pcphi and pcrho routine are also valid
+  - See :py:func:`~warpplots.pcphizy` and :py:func:`~warpplots.pcrhozy` for more plotting options.
   """
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
@@ -1199,7 +1199,7 @@ def pfxyg(iz=None,fullplane=1,
   """
 Plots conductors and contours of electrostatic potential in X-Y plane in grid
 frame
-Same arguments as pfxy
+Same arguments as py:func:`pfxy`
   """
   pfxy(iz=iz,fullplane=fullplane,scale=0,cond=cond,plotsg=plotsg,fill=fill,
        plotphi=plotphi,plotrho=plotrho,plotselfe=plotselfe,comp=comp,
@@ -1218,7 +1218,7 @@ def pfzxg(iy=None,fullplane=1,lbeamframe=0,
   """
 Plots conductors and contours of electrostatic potential in Z-X plane in grid
 frame
-Same arguments as pfzx
+Same arguments as py:func:`pfzx`
   """
   pfzx(iy=iy,fullplane=fullplane,lbeamframe=lbeamframe,scale=0,
        cond=cond,plotsg=plotsg,fill=fill,
@@ -1241,7 +1241,7 @@ def pfzyg(ix=None,fullplane=1,lbeamframe=0,
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane in grid
 frame
-Same arguments as pfzy
+Same arguments as py:func:`pfzy`
   """
   pfzy(ix=ix,fullplane=fullplane,lbeamframe=lbeamframe,scale=0,
        cond=cond,plotsg=plotsg,fill=fill,
