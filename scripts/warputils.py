@@ -6,11 +6,22 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.32 2010/11/15 20:57:27 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.33 2010/11/23 19:06:19 dave Exp $"
 
 def warputilsdoc():
   import warputils
   print warputils.__doc__
+
+# --- Make a wrapper around the Forthon doc function, which cleans up
+# --- reStructuredText markup.
+def doc(name,printit=1):
+  import Forthon
+  result = Forthon.doc(name,printit=0)
+  # --- This changes function references into doc(funcname).
+  result = re.sub(r':py:func:`(([~\w]*\.)*)([\w]+)`',r'doc(\3)',result)
+  #result = re.sub(r'\A\|',r'',result)
+  if printit: print result
+  else: return result
 
 # --- Convenience function modeled after the iota of basis
 def iota(low,high=None,step=1):
