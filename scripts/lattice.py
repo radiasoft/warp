@@ -68,7 +68,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.93 2010/11/18 23:55:01 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.94 2010/11/23 02:05:03 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -3842,6 +3842,94 @@ class Emitter:
     top.emity_s[js] = emity
     self.emitted_species.append(js)
 
+# ----------------------------------------------------------------------------
+def combineemlts(ielist=None):
+  """Combine the listed emlt elements into one big element. This will be much
+more efficient if there are significant overlaps among the elements, but
+only makes sense if there are no offsets. Currently, this assumes that it is
+combining all emlt elements (the ielist argument is ignored). If all of the
+elements don't have the same offsetse, the routine aborts.
+  """
+  # --- The list defaults to all emlt elements
+#  if ielist is None:
+  # --- ielist argument is ignored, and is set to include all of them.
+  ielist = range(top.nemlt+1)
+
+  assert (min(top.emltox) == max(top.emltox) and
+          min(top.emltoy) == max(top.emltoy) and 
+          min(top.emltot) == max(top.emltot) and 
+          min(top.emltop) == max(top.emltop)),\
+         "The offsets of all of the elements must be the same"
+
+  # --- Get the full range needed for the new element
+  zs = min(top.emltzs[ielist])
+  ze = max(top.emltze[ielist])
+
+  # --- Setup the z-grid for the new element
+  dz = min(top.dzemlt[top.emltid[ielist]-1])
+  nzmax = nint((ze - zs)/dz)
+  dz = (ze - zs)/nzmax
+
+  # --- Create arrays to hold the combined data
+  es = zeros((nzmax+1,top.nesmult))
+  phz = zeros((nzmax+1,top.nesmult))
+  zz = span(zs,ze,nzmax+1)
+
+  # --- Use interpolation to gather the multiple moments data into a single
+  # --- array.
+  for ie in ielist:
+    for imult in range(top.nesmult):
+      id = top.emltid[ie] - 1
+      if id < 0: continue
+      # --- Note that zeie is set to include all of the data and is not
+      # --- necessarily equal to top.emltze[ie].
+      # --- This could be problematic if there is nonzero extraneous data
+      # --- in the array beyond emltze.
+      zsie = top.emltzs[ie]
+      zeie = zsie + top.dzemlt[id]*top.nzemltmax
+
+      # --- Do the interpolation for both the amplitude and phase.
+      estemp = zeros(nzmax+1)
+      esold = top.esemlt[:,imult,id]*(top.emltsf[ie] + top.emltsc[ie])
+      getgrid1d(nzmax+1,zz,estemp,top.nzemltmax,esold,zsie,zeie)
+      phtemp = zeros(nzmax+1)
+      phold = top.esemltph[:,imult,id] + top.emltph[ie]
+      getgrid1d(nzmax+1,zz,phtemp,top.nzemltmax,phold,zsie,zeie)
+
+      esnew = sqrt((estemp*cos(phtemp) + es[:,imult]*cos(phz[:,imult]))**2 +
+                   (estemp*sin(phtemp) + es[:,imult]*sin(phz[:,imult]))**2)
+      phnew = arctan2(estemp*sin(phtemp) + es[:,imult]*sin(phz[:,imult]),
+                      estemp*cos(phtemp) + es[:,imult]*cos(phz[:,imult]))
+      es[:,imult] = esnew
+      phz[:,imult] = phnew
+
+  # --- Save the _n and _v, and other values that make sense
+  emlt_n = top.emlt_n.copy()
+  emlt_v = top.emlt_v.copy()
+  ap = top.emltap[ielist[0]]
+  ax = top.emltax[ielist[0]]
+  ay = top.emltay[ielist[0]]
+  ph = top.emltph[ielist[0]]
+  aps = min(top.emltas[ielist])
+  ape = max(top.emltae[ielist])
+  ox = top.emltox[ielist[0]]
+  oy = top.emltoy[ielist[0]]
+  ot = top.emltot[ielist[0]]
+  op = top.emltop[ielist[0]]
+
+  # --- For now, just clear out all of the data, assuming that all emlts are
+  # --- being combined.
+  top.nemlt = -1
+  top.nemltsets = 0
+  top.nesmult = 0
+  top.nzemltmax = 0
+  gchange("Lattice")
+  gchange("Mult_data")
+
+  # --- Add the new, combined element
+  addnewemlt(zs,ze,ap=ap,ax=ax,ay=ay,ph=ph,aps=aps,ape=ape,
+             ox=ox,oy=oy,ot=ot,op=op,
+             es=es,phz=phz,nn=emlt_n,vv=emlt_v)
 
 # ----------------------------------------------------------------------------
 def combinemmlts(imlist=None):
@@ -3873,12 +3961,11 @@ elements don't have the same offsetse, the routine aborts.
 
   # --- Create arrays to hold the combined data
   ms = zeros((nzmax+1,top.nmsmult))
-  msp = zeros((nzmax+1,top.nmsmult))
-  temp = zeros(nzmax+1)
+  phz = zeros((nzmax+1,top.nmsmult))
   zz = span(zs,ze,nzmax+1)
 
   # --- Use interpolation to gather the multiple moments data into a single
-  # --- array. This ignores the phz and phpz.
+  # --- array.
   for im in imlist:
     for imult in range(top.nmsmult):
       id = top.mmltid[im] - 1
@@ -3889,15 +3976,21 @@ elements don't have the same offsetse, the routine aborts.
       # --- in the array beyond mmltze.
       zsim = top.mmltzs[im]
       zeim = zsim + top.dzmmlt[id]*top.nzmmltmax
-      # --- Do the interpolation.
-      temp.fill(0.)
+
+      # --- Do the interpolation for both the amplitude and phase.
+      mstemp = zeros(nzmax+1)
       msold = top.msmmlt[:,imult,id]*(top.mmltsf[im] + top.mmltsc[im])
-      getgrid1d(nzmax+1,zz,temp,top.nzmmltmax,msold,zsim,zeim)
-      ms[:,imult] += temp
-      temp.fill(0.)
-      mspold = top.msmmltp[:,imult,id]*(top.mmltsf[im] + top.mmltsc[im])
-      getgrid1d(nzmax+1,zz,temp,top.nzmmltmax,mspold,zsim,zeim)
-      msp[:,imult] += temp
+      getgrid1d(nzmax+1,zz,mstemp,top.nzmmltmax,msold,zsim,zeim)
+      phtemp = zeros(nzmax+1)
+      phold = top.msmmltph[:,imult,id] + top.mmltph[im]
+      getgrid1d(nzmax+1,zz,phtemp,top.nzmmltmax,phold,zsim,zeim)
+
+      msnew = sqrt((mstemp*cos(phtemp) + ms[:,imult]*cos(phz[:,imult]))**2 +
+                   (mstemp*sin(phtemp) + ms[:,imult]*sin(phz[:,imult]))**2)
+      phnew = arctan2(mstemp*sin(phtemp) + ms[:,imult]*sin(phz[:,imult]),
+                      mstemp*cos(phtemp) + ms[:,imult]*cos(phz[:,imult]))
+      ms[:,imult] = msnew
+      phz[:,imult] = phnew
 
   # --- Save the _n and _v, and other values that make sense
   mmlt_n = top.mmlt_n.copy()
@@ -3925,5 +4018,5 @@ elements don't have the same offsetse, the routine aborts.
   # --- Add the new, combined element
   addnewmmlt(zs,ze,ap=ap,ax=ax,ay=ay,ph=ph,aps=aps,ape=ape,
              ox=ox,oy=oy,ot=ot,op=op,
-             ms=ms,msp=msp,nn=mmlt_n,vv=mmlt_v)
+             ms=ms,phz=phz,nn=mmlt_n,vv=mmlt_v)
 
