@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.90 2010/10/28 00:33:59 dave Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.91 2010/11/23 19:14:02 dave Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -1715,4 +1715,634 @@ of the arrays used by the field solve"""
                  text+"Particles in species %d have z below the grid when depositing the source, min x = %e"%(js,z.min())
           assert z.max() < self.zmmaxp+self.getzgridndts()[indts],\
                  text+"Particles in species %d have z above the grid when depositing the source, min x = %e"%(js,z.max())
+
+
+##########################################################################
+##########################################################################
+# --- These functions returns or sets slices of any decomposed array whose
+# --- shape is the same as rho.
+##########################################################################
+def getdecomposedarray(arr,ix=None,iy=None,iz=None,bcast=1,local=0,
+                       fullplane=0,xyantisymmetric=0,solver=None):
+  """Returns slices of a decomposed array, The shape of
+the object returned depends on the number of ix, iy and iz specified, which
+can be from none to all three. Note that the values of ix, iy and iz are
+relative to the fortran indexing, meaning that 0 is the lower boundary
+of the domain.
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+  - bcast=1: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of array - no communication is done. Has no effect for
+             serial version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
+  - xyantisymmetric=0: When 1 and with fullplane=1, the data is treated as
+                       anti-symmetric in the transverse plane, resulting
+                       in a sign change during the replication.
+  """
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver == w3d: decomp = top.fsdecomp
+  else:             decomp = solver.fsdecomp
+  if len(arr.shape) == 2: iy = None
+
+  nx = decomp.nxglobal
+  ny = decomp.nyglobal
+  nz = decomp.nzglobal
+  nxlocal = decomp.nx[decomp.ixproc]
+  nylocal = decomp.ny[decomp.iyproc]
+  nzlocal = decomp.nz[decomp.izproc]
+
+  if (decomp.nxprocs <= 1 and decomp.nyprocs <=1 and decomp.nzprocs <= 1):
+    local = 1
+
+  if local or not lparallel:
+    if ix is None     and iy is None     and iz is None    :
+      result = arr[...]
+    if ix is not None and iy is None     and iz is None    :
+      result = arr[ix,...]
+    if ix is None     and iy is not None and iz is None    :
+      result = arr[:,iy,:]
+    if ix is None     and iy is None     and iz is not None:
+      result = arr[...,iz]
+    if ix is not None and iy is not None and iz is None    :
+      result = arr[ix,iy,:]
+    if ix is not None and iy is None     and iz is not None:
+      result = arr[ix,...,iz]
+    if ix is None     and iy is not None and iz is not None:
+      result = arr[:,iy,iz]
+    if ix is not None and iy is not None and iz is not None:
+      result = arr[ix,iy,iz]
+  else:
+
+    # --- Get the local extent of each processor.
+    my_ixpp = decomp.ix[decomp.ixproc]
+    my_nxpp = decomp.nx[decomp.ixproc]
+    my_iypp = decomp.iy[decomp.iyproc]
+    my_nypp = decomp.ny[decomp.iyproc]
+    my_izpp = decomp.iz[decomp.izproc]
+    my_nzpp = decomp.nz[decomp.izproc]
+
+    # --- If ix,iy or iz was given, check if it is within the local domain.
+    if ((ix is None or my_ixpp <= ix and ix <= my_ixpp+my_nxpp) and
+        (iy is None or my_iypp <= iy and iy <= my_iypp+my_nypp) and
+        (iz is None or my_izpp <= iz and iz <= my_izpp+my_nzpp)):
+      # --- If so, grab the appropriate slice of array.
+      sss = [slice(1+nxlocal),
+             slice(1+nylocal),
+             slice(1+nzlocal)]
+      if ix is not None: sss[0] = slice(ix-my_ixpp,ix-my_ixpp+1)
+      if iy is not None: sss[1] = slice(iy-my_iypp,iy-my_iypp+1)
+      if iz is not None: sss[2] = slice(iz-my_izpp,iz-my_izpp+1)
+      if nx == 0: sss[0] = Ellipsis
+      if ny == 0: sss[1] = Ellipsis
+      if nz == 0: sss[2] = Ellipsis
+      result = arr[sss[0],sss[1],sss[2]]
+    else:
+      # --- Otherwise, use None
+      result = None
+
+    # --- Get the data (or None) from all of the processors.
+    resultlist = gather(result)
+
+    if me == 0:
+      # --- Setup the size of the array to be returned and create it.
+      sss = [1+nx,1+ny,1+nz]
+      if ix is not None: sss[0] = 1
+      if iy is not None: sss[1] = 1
+      if iz is not None: sss[2] = 1
+      if nz == 0: del sss[2]
+      if ny == 0: del sss[1]
+      if nx == 0: del sss[0]
+      resultglobal = fzeros(sss,'d')
+
+      # --- Loop over all processors and grab the data sent, putting it into
+      # --- the appropriate place in the array.
+      iproc = 0
+      ix1,ix2 = 0,1
+      iy1,iy2 = 0,1
+      iz1,iz2 = 0,1
+      sss = [1,1,1]
+      for izproc in range(decomp.nzprocs):
+        for iyproc in range(decomp.nyprocs):
+          for ixproc in range(decomp.nxprocs):
+            if resultlist[iproc] is not None:
+              if ix is None:
+                ix1 = decomp.ix[ixproc]
+                ix2 = decomp.ix[ixproc] + decomp.nx[ixproc] + 1
+              if iy is None:
+                iy1 = decomp.iy[iyproc]
+                iy2 = decomp.iy[iyproc] + decomp.ny[iyproc] + 1
+              if iz is None:
+                iz1 = decomp.iz[izproc]
+                iz2 = decomp.iz[izproc] + decomp.nz[izproc] + 1
+              sss[0] = slice(ix1,ix2)
+              sss[1] = slice(iy1,iy2)
+              sss[2] = slice(iz1,iz2)
+              if nx == 0: sss[0] = Ellipsis
+              if ny == 0: sss[1] = Ellipsis
+              if nz == 0: sss[2] = Ellipsis
+              resultglobal[sss[0],sss[1],sss[2]] = resultlist[iproc]
+            iproc += 1
+
+      # --- Now remove any of the reduced dimensions.
+      if ix is None: ix = slice(None)
+      else:          ix = 0
+      if iy is None: iy = slice(None)
+      else:          iy = 0
+      if iz is None: iz = slice(None)
+      else:          iz = 0
+      if nx == 0: ix = Ellipsis
+      if ny == 0: iy = Ellipsis
+      if nz == 0: iz = Ellipsis
+      result = resultglobal[ix,iy,iz]
+
+    if bcast:
+      result = parallel.broadcast(result)
+    else:
+      if me > 0: return None
+
+  if not fullplane:
+    return result
+  else:
+    ii = 0
+    if ix is None and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+      ss = array(shape(result))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      result1 = empty(tuple(ss),'d')
+      if xyantisymmetric: fsign = -1
+      else:               fsign = +1
+      result1[nn:,...] = result
+      result1[nn::-1,...] = fsign*result
+      result = result1
+    if ix is None: ii = ii + 1
+    if iy is None and (solver.l2symtry or solver.l4symtry):
+      ss = array(shape(result))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      result1 = empty(tuple(ss),'d')
+      if xyantisymmetric: fsign = -1
+      else:               fsign = +1
+      if ii == 0:
+        result1[nn:,...] = result
+        result1[nn::-1,...] = fsign*result
+      else:
+        result1[:,nn:,...] = result
+        result1[:,nn::-1,...] = fsign*result
+      result = result1
+    return result
+
+# --------------------------------------------------------------------------
+def setdecomposedarray(arr,val,ix=None,iy=None,iz=None,local=0,solver=None):
+  """Sets slices of a decomposed array. The shape of
+the input object depends on the number of arguments specified, which can
+be from none to all three.
+  - val: input array (must be supplied)
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+  """
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver == w3d: decomp = top.fsdecomp
+  else:             decomp = solver.fsdecomp
+  if len(arr.shape) == 2: iy = None
+
+  nx = decomp.nxglobal
+  ny = decomp.nyglobal
+  nz = decomp.nzglobal
+  nxlocal = decomp.nx[decomp.ixproc]
+  nylocal = decomp.ny[decomp.iyproc]
+  nzlocal = decomp.nz[decomp.izproc]
+
+  if (decomp.nxprocs <= 1 and decomp.nyprocs <=1 and decomp.nzprocs <= 1):
+    local = 1
+
+  if local or not lparallel:
+    if ix is None     and iy is None     and iz is None    :
+      arr[...] = val
+    if ix is not None and iy is None     and iz is None    :
+      arr[ix,...] = val
+    if ix is None     and iy is not None and iz is None    :
+      arr[:,iy,:] = val
+    if ix is None     and iy is None     and iz is not None:
+      arr[...,iz] = val
+    if ix is not None and iy is not None and iz is None    :
+      arr[ix,iy,:] = val
+    if ix is not None and iy is None     and iz is not None:
+      arr[ix,:,iz] = val
+    if ix is None     and iy is not None and iz is not None:
+      arr[:,iy,iz] = val
+    if ix is not None and iy is not None and iz is not None:
+      arr[ix,iy,iz] = val
+  else:
+
+    ppplist = []
+    if me == 0:
+
+      # --- Add extra dimensions so that the input has the same number of
+      # --- dimensions as array.
+      ppp = array(val)
+      sss = list(ppp.shape)
+      if ix is not None and nx > 0: sss[0:0] = [1]
+      if iy is not None and ny > 0: sss[1:1] = [1]
+      if iz is not None and nz > 0: sss[2:2] = [1]
+      ppp.shape = sss
+
+      # --- Loop over all processors and grab the chunk of the input that
+      # --- overlaps each of the domains.
+      ix1,ix2 = 0,1
+      iy1,iy2 = 0,1
+      iz1,iz2 = 0,1
+      sss = [1,1,1]
+      for izproc in range(decomp.nzprocs):
+        for iyproc in range(decomp.nyprocs):
+          for ixproc in range(decomp.nxprocs):
+            if ix is None:
+              ix1 = decomp.ix[ixproc]
+              ix2 = decomp.ix[ixproc] + decomp.nx[ixproc] + 1
+            if iy is None:
+              iy1 = decomp.iy[iyproc]
+              iy2 = decomp.iy[iyproc] + decomp.ny[iyproc] + 1
+            if iz is None:
+              iz1 = decomp.iz[izproc]
+              iz2 = decomp.iz[izproc] + decomp.nz[izproc] + 1
+            sss[0] = slice(ix1,ix2)
+            sss[1] = slice(iy1,iy2)
+            sss[2] = slice(iz1,iz2)
+            if nx == 0: sss[0] = Ellipsis
+            if ny == 0: sss[1] = Ellipsis
+            if nz == 0: sss[2] = Ellipsis
+            ppplist.append(ppp[sss[0],sss[1],sss[2]])
+
+    # --- Send the data to each of the processors
+    ppp = comm_world.scatter(ppplist)[0]
+
+    # --- Get the local extent of each processor.
+    my_ixpp = decomp.ix[decomp.ixproc]
+    my_nxpp = decomp.nx[decomp.ixproc]
+    my_iypp = decomp.iy[decomp.iyproc]
+    my_nypp = decomp.ny[decomp.iyproc]
+    my_izpp = decomp.iz[decomp.izproc]
+    my_nzpp = decomp.nz[decomp.izproc]
+
+    # --- If ix,iy or iz was given, check if it is within the local domain.
+    if ((ix is None or my_ixpp <= ix and ix <= my_ixpp+my_nxpp) and
+        (iy is None or my_iypp <= iy and iy <= my_iypp+my_nypp) and
+        (iz is None or my_izpp <= iz and iz <= my_izpp+my_nzpp)):
+      # --- If so, set the appropriate slice of array.
+      sss = [slice(1+nxlocal),
+             slice(1+nylocal),
+             slice(1+nzlocal)]
+      if ix is not None: sss[0] = slice(ix-my_ixpp,ix-my_ixpp+1)
+      if iy is not None: sss[1] = slice(iy-my_iypp,iy-my_iypp+1)
+      if iz is not None: sss[2] = slice(iz-my_izpp,iz-my_izpp+1)
+      if nx == 0: sss[0] = Ellipsis
+      if ny == 0: sss[1] = Ellipsis
+      if nz == 0: sss[2] = Ellipsis
+      arr[sss[0],sss[1],sss[2]] = ppp
+
+# --------------------------------------------------------------------------
+def getrho(ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,solver=None):
+  """Returns slices of rho, the charge density array. The shape of the object
+returned depends on the number of ix, iy and iz specified, which can be from
+none to all three. If no components are given, then a 3-D array is returned. 
+With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
+Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+  - bcast=1: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of rho - no communication is done. Has no effect for serial
+             version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
+  """
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver is w3d:
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      rho = frz.basegrid.rho
+    else:
+      rho = w3d.rho
+  else:
+    rho = solver.getrho()
+
+  return getdecomposedarray(rho,ix=ix,iy=iy,iz=iz,bcast=bcast,local=local,
+                            fullplane=fullplane,solver=solver)
+
+# --------------------------------------------------------------------------
+def setrho(val,ix=None,iy=None,iz=None,local=0,solver=None):
+  """Sets slices of rho, the charge density array. The shape of the object
+returned depends on the number of ix, iy and iz specified, which can be from
+none to all three. If no components are given, then a 3-D array is returned. 
+With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
+Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
+  - val: input array (must be supplied)
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+  """
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver is w3d:
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      rho = frz.basegrid.rho
+    else:
+      rho = w3d.rho
+  else:
+    rho = solver.getrho()
+
+  setdecomposedarray(rho,val,ix=ix,iy=iy,iz=iz,local=local,solver=solver)
+
+# --------------------------------------------------------------------------
+def getphi(ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,solver=None):
+  """Returns slices of phi, the electrostatic potential array. The shape of
+the object returned depends on the number of ix, iy and iz specified, which
+can be from none to all three. If no components are given, then a 3-D array
+is returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar
+is returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
+the upper edge.  
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+               from -1 to nz+1
+  - bcast=1: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of phi - no communication is done. Has no effect for serial
+             version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
+  """
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver is w3d:
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      phi = frz.basegrid.phi[1:-1,1:-1]
+      iy = None
+    else:
+      phi = w3d.phi[1:-1,1:-1,1:-1]
+  else:
+    phi = solver.getphi()
+
+  return getdecomposedarray(phi,ix=ix,iy=iy,iz=iz,bcast=bcast,local=local,
+                            fullplane=fullplane,solver=solver)
+
+# --------------------------------------------------------------------------
+def setphi(val,ix=None,iy=None,iz=None,local=0,solver=None):
+  """Sets slices of phi, the electrostatic potential array. The shape of
+the input object depends on the number of arguments specified, which can
+be from none to all three.
+  The shape of the object
+returned depends on the number of ix, iy and iz specified, which can be from
+none to all three. If no components are given, then a 3-D array is returned. 
+With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
+Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
+  - val: input array (must be supplied)
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None: Value is relative to the fortran indexing, so iz ranges
+               from -1 to nz+1
+  """
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver is w3d:
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      phi = frz.basegrid.phi[1:-1,1:-1]
+      iy = None
+    else:
+      phi = w3d.phi[1:-1,1:-1,1:-1]
+  else:
+    phi = solver.getphi()
+
+  setdecomposedarray(phi,val,ix=ix,iy=iy,iz=iz,local=local,solver=solver)
+
+# --------------------------------------------------------------------------
+def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
+             solver=None):
+  """Returns slices of selfe, the electrostatic field array. The shape of the
+object returned depends on the number of ix, iy and iz specified, which can
+be from none to all three. If no components are given, then a 3-D array is
+returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar is
+returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
+the upper edge.  
+  - comp: field component to get, either 'x', 'y', 'z', or 'E', must be given.
+          Use 'E' to get the field magnitude.
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+  - bcast=1: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of E - no communication is done. Has no effect for serial
+             version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
+  """
+  assert comp in ['x','y','z','E'],"comp must be one of 'x', 'y', 'z' or 'E'"
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
+  if alltrue(top.efetch != 3) or not w3d.allocated('selfe'):
+    # --- If not already using selfe, then allocate it and set it.
+    # --- Note that this could be an unexpected expense for a user.
+    if solver is w3d:
+      allocateselfeforfieldsolve()
+      nx,ny,nz = array(w3d.phi.shape) - 1
+      getselfe3d(w3d.phi,w3d.nxlocal,w3d.nylocal,w3d.nzlocal,
+                 w3d.selfe,w3d.dx,w3d.dy,w3d.dz,
+                 true,(nx-w3d.nxlocal)/2,(ny-w3d.nylocal)/2,(nz-w3d.nzlocal)/2)
+    else:
+      solver.getselfe()
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z','E'].index(comp)
+
+  if comp == 'E':
+    Ex = getdecomposedarray(solver.selfe[0,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    Ey = getdecomposedarray(solver.selfe[1,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    Ez = getdecomposedarray(solver.selfe[2,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    return sqrt(Ex**2 + Ey**2 + Ez**2)
+  else:
+    return getdecomposedarray(solver.selfe[ic,...],ix=ix,iy=iy,iz=iz,
+                              bcast=bcast,local=local,fullplane=fullplane,
+                              xyantisymmetric=(ic in [0,1]),
+                              solver=solver)
+
+# --------------------------------------------------------------------------
+def getj(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
+         solver=None):
+  """Returns slices of J, the current density array. The shape of the object
+returned depends on the number of ix, iy and iz specified, which can be from
+none to all three. If no components are given, then a 3-D array is returned. 
+With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
+Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
+  - comp: field component to get, either 'x', 'y', 'z' or. 'J', must be given.
+          Use 'J' to get the magnitude.
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+  - bcast=1: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of j - no communication is done. Has no effect for serial
+             version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
+  """
+  assert comp in ['x','y','z','J'],"comp must be one of 'x', 'y', 'z' or 'J'"
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z','J'].index(comp)
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver == w3d: bfield = f3d.bfield
+  else:             bfield = solver
+
+  if comp == 'J':
+    Jx = getdecomposedarray(bfield.j[0,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    Jy = getdecomposedarray(bfield.j[1,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    Jz = getdecomposedarray(bfield.j[2,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    return sqrt(Jx**2 + Jy**2 + Jz**2)
+  else:
+    return getdecomposedarray(bfield.j[ic,...],ix=ix,iy=iy,iz=iz,
+                              bcast=bcast,local=local,fullplane=fullplane,
+                              xyantisymmetric=(ic in [0,1]),
+                              solver=solver)
+
+# --------------------------------------------------------------------------
+def getb(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
+         solver=None):
+  """Returns slices of B, the magnetic field array. The shape of the object
+returned depends on the number of ix, iy and iz specified, which can be from
+none to all three. If no components are given, then a 3-D array is returned. 
+With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
+Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
+  - comp: field component to get, either 'x', 'y', 'z' or 'B', must be given.
+          Use 'B' to get the magnitude.
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+  - bcast=1: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of j - no communication is done. Has no effect for serial
+             version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
+  """
+  assert comp in ['x','y','z','B'],"comp must be one of 'x', 'y', 'z' or 'B'"
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z','B'].index(comp)
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver == w3d: bfield = f3d.bfield
+  else:             bfield = solver
+
+  if comp == 'B':
+    Bx = getdecomposedarray(bfield.b[0,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    By = getdecomposedarray(bfield.b[1,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    Bz = getdecomposedarray(bfield.b[2,...],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    return sqrt(Bx**2 + By**2 + Bz**2)
+  else:
+    return getdecomposedarray(bfield.b[ic,...],ix=ix,iy=iy,iz=iz,
+                              bcast=bcast,local=local,fullplane=fullplane,
+                              xyantisymmetric=(ic in [0,1]),
+                              solver=solver)
+
+# --------------------------------------------------------------------------
+def geta(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
+         solver=None):
+  """Returns slices of B, the magnetic vector potential array. The shape of
+the object returned depends on the number of ix, iy and iz specified, which
+can be from none to all three. If no components are given, then a 3-D array
+is returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar
+is returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
+the upper edge.  
+  - comp: field component to get, either 'x', 'y', 'z' or 'A', must be given.
+          Use 'A' to get the magnitude.
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+  - bcast=1: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of a - no communication is done. Has no effect for serial
+             version.
+  - fullplane=0: When 1 and with transverse symmetries, the data is
+                 replicated to fill the symmetric regions of the plane.
+  """
+  assert comp in ['x','y','z','A'],"comp must be one of 'x', 'y', 'z' or 'A'"
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z','A'].index(comp)
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver == w3d: bfield = f3d.bfield
+  else:             bfield = solver
+
+  if comp == 'A':
+    Ax = getdecomposedarray(bfield.a[0,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    Ay = getdecomposedarray(bfield.a[1,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    Az = getdecomposedarray(bfield.a[2,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+                            bcast=bcast,local=local,fullplane=fullplane,
+                            xyantisymmetric=(ic in [0,1]),
+                            solver=solver)
+    return sqrt(Ax**2 + Ay**2 + Az**2)
+  else:
+    return getdecomposedarray(bfield.a[ic,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+                              bcast=bcast,local=local,fullplane=fullplane,
+                              xyantisymmetric=(ic in [0,1]),
+                              solver=solver)
+
+# --------------------------------------------------------------------------
+def seta(val,comp=None,ix=None,iy=None,iz=None,local=0,solver=None):
+  """Sets slices of a, the electrostatic potential array. The shape of the
+object returned depends on the number of ix, iy and iz specified, which can
+be from none to all three. If no components are given, then a 3-D array is
+returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar is
+returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
+the upper edge.  
+  - val: input array (must be supplied)
+  - comp: field component to get, either 'x', 'y', or 'z', must be given
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+  """
+  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z'].index(comp)
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver == w3d: bfield = f3d.bfield
+  else:             bfield = solver
+
+  setdecomposedarray(bfield.a[ic,1:-1,1:-1,1:-1],val,ix=ix,iy=iy,iz=iz,
+                     local=local,solver=solver)
 

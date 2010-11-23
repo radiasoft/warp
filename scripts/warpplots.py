@@ -1,68 +1,71 @@
-"""Basic graphics commands
-setup(): does the work needed to start writing plots to a file automatically
-winon(): creates X graphic windows and optionally associated cgm or ps files
-fma(): frame advance, sends plots to the plot file and sets window to be
-       cleared for the next plot
-hcp(): send current plot to hard-copy file without clearing the display
-redraw(): redraw the plot display
+"""
+| Basic graphics commands
+|   setup(): does the work needed to start writing plots to a file automatically
+|   winon(): creates X graphic windows and optionally associated cgm or ps files
+|   fma(): frame advance, sends plots to the plot file and sets window to be
+|        cleared for the next plot
+|   hcp(): send current plot to hard-copy file without clearing the display
+|   redraw(): redraw the plot display
 
-All plot commands take the color option. These are possible values:
-fg, bg, white, black, red, green, blue, cyan, magenta, yellow
+| All plot commands take the color option. These are possible values:
+|   fg, bg, white, black, red, green, blue, cyan, magenta, yellow
 
-Many commands take the marker option. These are possible values:
-point, plus, star, circle
+| Many commands take the marker option. These are possible values:
+|   point, plus, star, circle
 
-plg(): basic plotting routine, can plot multi-dimensional arrays
-plp(): plots markers (dots) instead of lines
-limits(): sets plot limits in order left, right, bottom, top
-ptitles(): draw plot titles on the current frame
-zoombox(): when called, use the mouse left button (press and hold) to draw a
-           box around the area to be zoomed to.
-mouse commmands: left button zoom in, middle shifts, right zoom out
+| General plotting commands
+|   plg(): basic plotting routine, can plot multi-dimensional arrays
+|   plp(): plots markers (dots) instead of lines
+|   limits(): sets plot limits in order left, right, bottom, top
+|   ptitles(): draw plot titles on the current frame
+|   zoombox(): when called, use the mouse left button (press and hold) to draw a
+|              box around the area to be zoomed to.
+|   mouse commmands: left button zoom in, middle shifts, right zoom out
 
-These return or set a slice out of the rho or phi array.
-getrho(), getphi(), setrho(), setphi()
+| These return or set a slice out of the rho or phi array.
+|   getrho(), getphi(), setrho(), setphi()
 
-The following plot various particles projections.
-ppzxy(), ppzx(), ppzy(), ppzr()
-ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppzrp(), ppzvr(), ppzvperp()
-ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
-ppvxvy(), ppvxvz(), ppvyvz(), ppvzvperp()
-pptrace()
-pprrp(), pprtp(), pprvr(), pprvz()
+| The following plot various particles projections.
+|   ppzxy(), ppzx(), ppzy(), ppzr()
+|   ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppzrp(), ppzvr(), ppzvperp()
+|   ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
+|   ppvxvy(), ppvxvz(), ppvyvz(), ppvzvperp()
+|   pptrace()
+|   pprrp(), pprtp(), pprvr(), pprvz()
 
-The following plot various particles projections using color.
-ppzxco(), ppzyco(), ppzxyco(), ppzvzco()
+| The following plot various particles projections using color.
+|   ppzxco(), ppzyco(), ppzxyco(), ppzvzco()
 
-Plots arbitrary particle projections using color
-ppco()
+| Plots arbitrary particle projections using color
+|   ppco()
 
-Plots various quantities versus z in beam frame are defined in pzplots.py.
-(see pzplotsdoc())
+| Plots various quantities versus z in beam frame are defined in pzplots.py.
+|   (see pzplotsdoc())
 
-Run histplotsdoc() for a list of history plots.
+| Run histplotsdoc() for a list of history plots.
 
-Plots solution from envelope code.
-penv()
+| Plots solution from envelope code.
+|   penv()
 
-Plots contours of charge density (rho) or electrostatic potential (phi) in
-various planes.
-pcrhozy(), pcrhozx(), pcrhoxy()
-pcphizy(), pcphizx(), pcphixy()
-pcselfezy(), pcselfezx(), pcselfexy()
-pcjzy(), pcjzx(), pcjxy()
-pcbzy(), pcbzx(), pcbxy()
-pcazy(), pcazx(), pcaxy()
+| Plots contours of charge density (rho) or electrostatic potential (phi) in
+| various planes.
+|   pcrhozy(), pcrhozx(), pcrhoxy()
+|   pcphizy(), pcphizx(), pcphixy()
+|   pcselfezy(), pcselfezx(), pcselfexy()
+|   pcjzy(), pcjzx(), pcjxy()
+|   pcbzy(), pcbzx(), pcbxy()
+|   pcazy(), pcazx(), pcaxy()
 
-Dynamically manipulate the color palette using the colorbar
-changepalette
+| Dynamically manipulate the color palette using the colorbar
+|   changepalette()
 
-Dynamically view any gist 3-D surface plot
-viewsurface
+| Dynamically view any gist 3-D surface plot
+|   viewsurface()
 
-pltfld3d(): makes fields plots which have been turned on
-onedplts(): makes 1-D plots which have been turned on
-psplots(): makes particle phase space plots which have been turned on
+|   pltfld3d(): makes fields plots which have been turned on
+|   onedplts(): makes 1-D plots which have been turned on
+|   psplots(): makes particle phase space plots which have been turned on
+
 """
 from warp import *
 
@@ -100,7 +103,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.269 2010/10/25 20:50:55 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.270 2010/11/23 19:14:02 dave Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1236,8 +1239,40 @@ def ppmoments(text):
 #############################################################################
 #############################################################################
 #############################################################################
-def ppgeneric_doc(x,y):
-  doc = selectparticles.__doc__ + """
+#-------------------------------------------------------------------------
+# --- Complete dictionary of possible keywords and their default values
+_ppgeneric_kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
+                'nx':20,'ny':20,'slope':0.,
+                'xoffset':0.,'yoffset':0.,'offset':0.,
+                'xscale':1.,'yscale':1.,'titles':1,
+                'titlet':'','titleb':'','titlel':'','titler':'',
+                'height':20,
+                'lframe':0,'xmin':None,'xmax':None,'ymin':None,'ymax':None,
+                'pplimits':('e','e','e','e'),
+                'particles':0,'uselog':None,'logmin':None,
+                'color':'fg','ncolor':None,
+                'usepalette':1,'npalette':200,'marker':'\1','msize':1.0,
+                'denmin':None,'denmax':None,'chopped':None,
+                'hash':0,'line_scale':.9,'hcolor':'fg','width':1.0,
+                'contours':None,'filled':0,'ccolor':'fg',
+                'cellarray':0,'centering':'node','ctop':199,
+                'cmin':None,'cmax':None,'ireg':None,
+                'xbound':dirichlet,'ybound':dirichlet,
+                'ldensityscale':0,'gridscale':None,
+                'flipxaxis':0,'flipyaxis':0,
+                'xcoffset':0.,'ycoffset':0.,
+                'view':None,
+                'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
+                'xmesh':None,'ymesh':None,
+                'returngrid':0,'local':1,
+                'checkargs':0,'allowbadargs':0}
+
+def ppgeneric(y=None,x=None,kwdict={},**kw):
+  """
+Generic particle plotting routine. Allows plotting of particle points, density
+contours, and/or density hash marks.
+Note that either the x and y coordinates or the grid must be passed in.
+  - y, x: optional particle data (instead of using inputted grid)
   - ccolor='fg': contour color (when not filled)
   - cellarray=0: when true, plot grid as cell array, filling each grid cell
                  with a color determined by the value at that cell
@@ -1299,7 +1334,7 @@ def ppgeneric_doc(x,y):
                   which requires a grid is requested (such as a contour
                   plot), no plotting is done and the grid and extrema are
                   returned in a tuple
-  - slope=0.: slope to subtract from %(y)s coordinate (%(y)s-slope*%(x)s),
+  - slope=0.: slope to subtract from y coordinate (y-slope*x),
               for example to skew the particles in a phase-space plot.
   - surface=0: when true, a 3-d surface plot is made of the gridded data
                Note: to remove window, use the hidesurfaces() command rather
@@ -1319,52 +1354,16 @@ def ppgeneric_doc(x,y):
   - xbound=dirichlet: sets boundary condition on gridded data for x
   - xcoffset,ycoffset=0: offsets of coordinates in grid plots
   - xmin, xmax, ymin, ymax: extrema of density grid, defaults to particle
-                            extrema (x for %(x)s and y for %(y)s)
-  - xoffset=0.: average %(x)s of particles
+                            extrema
+  - xoffset=0.: average x of particles
   - xscale=1.: scaling factor applied to x data
   - ybound=dirichlet: sets boundary condition on gridded data for y
-  - yoffset=0.: average %(y)s of particles
+  - yoffset=0.: average y of particles
   - yscale=1.: scaling factor applied to y data
   - zz: optional third particle data quantity - when supplied, it is
         deposited on a grid and that is used for contour levels, except if
         color='density' is specified, then zz is used directly to color the
         particles
-  """
-  return doc%vars()
-#-------------------------------------------------------------------------
-# --- Complete dictionary of possible keywords and their default values
-_ppgeneric_kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
-                'nx':20,'ny':20,'slope':0.,
-                'xoffset':0.,'yoffset':0.,'offset':0.,
-                'xscale':1.,'yscale':1.,'titles':1,
-                'titlet':'','titleb':'','titlel':'','titler':'',
-                'height':20,
-                'lframe':0,'xmin':None,'xmax':None,'ymin':None,'ymax':None,
-                'pplimits':('e','e','e','e'),
-                'particles':0,'uselog':None,'logmin':None,
-                'color':'fg','ncolor':None,
-                'usepalette':1,'npalette':200,'marker':'\1','msize':1.0,
-                'denmin':None,'denmax':None,'chopped':None,
-                'hash':0,'line_scale':.9,'hcolor':'fg','width':1.0,
-                'contours':None,'filled':0,'ccolor':'fg',
-                'cellarray':0,'centering':'node','ctop':199,
-                'cmin':None,'cmax':None,'ireg':None,
-                'xbound':dirichlet,'ybound':dirichlet,
-                'ldensityscale':0,'gridscale':None,
-                'flipxaxis':0,'flipyaxis':0,
-                'xcoffset':0.,'ycoffset':0.,
-                'view':None,
-                'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
-                'xmesh':None,'ymesh':None,
-                'returngrid':0,'local':1,
-                'checkargs':0,'allowbadargs':0}
-
-def ppgeneric(y=None,x=None,kwdict={},**kw):
-  """
-Generic particle plotting routine. Allows plotting of particle points, density
-contours, and/or density hash marks.
-Note that either the x and y coordinates or the grid must be passed in.
-  - y, x: optional particle data (instead of using inputted grid)
   """
   # --- Create dictionary of local values and copy it into local dictionary,
   # --- ignoring keywords not listed in _ppgeneric_kwdefaults.
@@ -1914,8 +1913,6 @@ Note that either the x and y coordinates or the grid must be passed in.
     if ppp[2] != 'e': ppp[2] = ppp[2]*yscale
     if ppp[3] != 'e': ppp[3] = ppp[3]*yscale
     limits(ppp[0],ppp[1],ppp[2],ppp[3])
-if sys.version[:5] != "1.5.1":
-  ppgeneric.__doc__ = ppgeneric.__doc__ + ppgeneric_doc('x','y')
 
 
 #############################################################################
@@ -2432,7 +2429,7 @@ functions.
   if badargs: raise "bad arguments",string.join(badargs.keys())
 ########################################################################
 def ppzxy(iw=0,**kw):
-  "Plots Z-X and Z-Y in single page"
+  "Plots Z-X and Z-Y in single page. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzxy,(iw,),kw): return
   kw['view'] = 9
@@ -2456,12 +2453,10 @@ def ppzxy(iw=0,**kw):
   ii = selectparticles(iw=iw,win=top.xwindows,z=top.pgroup.xp,kwdict=kw)
   settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(gety(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzxy.__doc__ = ppzxy.__doc__ + ppgeneric_doc('z','x')
 
 ##########################################################################
 def ppzx(iw=0,**kw):
-  "Plots Z-X"
+  "Plots Z-X. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzx,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2475,12 +2470,10 @@ def ppzx(iw=0,**kw):
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getx(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzx.__doc__ = ppzx.__doc__ + ppgeneric_doc('z','x')
 
 ##########################################################################
 def ppzy(iw=0,**kw):
-  "Plots Z-Y"
+  "Plots Z-Y. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzy,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2494,12 +2487,10 @@ def ppzy(iw=0,**kw):
   settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(gety(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzy.__doc__ = ppzy.__doc__ + ppgeneric_doc('z','y')
 
 ##########################################################################
 def ppzr(iw=0,**kw):
-  "Plots Z-R"
+  "Plots Z-R. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzr,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2513,12 +2504,10 @@ def ppzr(iw=0,**kw):
   settitles("R vs Z","Z","R",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getr(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzr.__doc__ = ppzr.__doc__ + ppgeneric_doc('z','r')
 
 ##########################################################################
 def ppzxp(iw=0,**kw):
-  "Plots Z-X'"
+  "Plots Z-X'. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzxp,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2532,12 +2521,10 @@ def ppzxp(iw=0,**kw):
   settitles("X' vs Z","Z","X'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getxp(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzxp.__doc__ = ppzxp.__doc__ + ppgeneric_doc('z',"x'")
 
 ##########################################################################
 def ppzvx(iw=0,**kw):
-  "Plots Z-Vx"
+  "Plots Z-Vx. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvx,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2551,12 +2538,10 @@ def ppzvx(iw=0,**kw):
   settitles("Vx vs Z","Z","Vx",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvx(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzvx.__doc__ = ppzvx.__doc__ + ppgeneric_doc('z',"vx")
 
 ##########################################################################
 def ppzyp(iw=0,**kw):
-  "Plots Z-Y'"
+  "Plots Z-Y'. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzyp,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2570,12 +2555,10 @@ def ppzyp(iw=0,**kw):
   settitles("Y' vs Z","Z","Y'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getyp(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzyp.__doc__ = ppzyp.__doc__ + ppgeneric_doc('z',"y'")
 
 ##########################################################################
 def ppzvy(iw=0,**kw):
-  "Plots Z-Vy"
+  "Plots Z-Vy. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvy,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2589,12 +2572,10 @@ def ppzvy(iw=0,**kw):
   settitles("Vy vs Z","Z","Vy",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvy(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzvy.__doc__ = ppzvy.__doc__ + ppgeneric_doc('z',"vy")
 
 ##########################################################################
 def ppzvz(iw=0,**kw):
-  "Plots Z-Vz"
+  "Plots Z-Vz. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvz,(iw,),kw): return
   (vzmin,vzmax) = getvzrange(kwdict=kw)
@@ -2608,12 +2589,10 @@ def ppzvz(iw=0,**kw):
   settitles("Vz vs Z","Z","Vz",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvz(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzvz.__doc__ = ppzvz.__doc__ + ppgeneric_doc('z',"vz")
 
 ##########################################################################
 def ppzuz(iw=0,**kw):
-  "Plots Z-Uz"
+  "Plots Z-Uz. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzuz,(iw,),kw): return
   kw.setdefault('local',0)
@@ -2622,12 +2601,10 @@ def ppzuz(iw=0,**kw):
   settitles("Uz vs Z","Z","Uz",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getuz(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzuz.__doc__ = ppzuz.__doc__ + ppgeneric_doc('z',"uz")
 
 ##########################################################################
 def ppzvr(iw=0,**kw):
-  "Plots Z-Vr"
+  "Plots Z-Vr. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvr,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2641,12 +2618,10 @@ def ppzvr(iw=0,**kw):
   settitles("Vr vs Z","Z","Vr",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvr(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzvr.__doc__ = ppzvr.__doc__ + ppgeneric_doc('z','vr')
 
 ##########################################################################
 def ppzvtheta(iw=0,**kw):
-  "Plots Z-Vtheta"
+  "Plots Z-Vtheta. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvtheta,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2660,12 +2635,10 @@ def ppzvtheta(iw=0,**kw):
   settitles("Vtheta vs Z","Z","Vtheta",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvtheta(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzvtheta.__doc__ = ppzvtheta.__doc__ + ppgeneric_doc('z','vtheta')
 
 ##########################################################################
 def ppzvperp(iw=0,**kw):
-  "Plots Z-Vperp (sqrt(Vx**2 + Vy**2))"
+  "Plots Z-Vperp (sqrt(Vx**2 + Vy**2)). For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvperp,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2682,12 +2655,10 @@ def ppzvperp(iw=0,**kw):
   vy = getvy(ii=ii,gather=0,**kw)
   vperp = sqrt(vx**2 + vy**2)
   return ppgeneric(vperp,getz(ii=ii,gather=0,**kw),kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzvperp.__doc__ = ppzvperp.__doc__ + ppgeneric_doc('z','vperp')
 
 ##########################################################################
 def ppzrp(iw=0,**kw):
-  "Plots Z-R'"
+  "Plots Z-R'. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzrp,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2701,11 +2672,9 @@ def ppzrp(iw=0,**kw):
   settitles("R' vs Z","Z","R'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getrp(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzrp.__doc__ = ppzrp.__doc__ + ppgeneric_doc('z',"r'")
 ##########################################################################
 def ppxex(iw=0,**kw):
-  "Plots X-Ex"
+  "Plots X-Ex. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxex,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2719,11 +2688,9 @@ def ppxex(iw=0,**kw):
   settitles("Ex vs X","X","Ex",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getex(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppxex.__doc__ = ppxex.__doc__ + ppgeneric_doc('x',"ex")
 ##########################################################################
 def ppxey(iw=0,**kw):
-  "Plots X-Ey"
+  "Plots X-Ey. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxey,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2737,11 +2704,9 @@ def ppxey(iw=0,**kw):
   settitles("Ey vs X","X","Ey",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getey(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppxey.__doc__ = ppxey.__doc__ + ppgeneric_doc('x',"ey")
 ##########################################################################
 def ppxez(iw=0,**kw):
-  "Plots X-Ez"
+  "Plots X-Ez. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxez,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2755,11 +2720,9 @@ def ppxez(iw=0,**kw):
   settitles("Ez vs X","X","Ez",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getez(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppxez.__doc__ = ppxez.__doc__ + ppgeneric_doc('x',"ez")
 ##########################################################################
 def ppxbx(iw=0,**kw):
-  "Plots X-Bx"
+  "Plots X-Bx. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxex,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2773,11 +2736,9 @@ def ppxbx(iw=0,**kw):
   settitles("Bx vs X","X","Bx",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getbx(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppxbx.__doc__ = ppxbx.__doc__ + ppgeneric_doc('x',"bx")
 ##########################################################################
 def ppxby(iw=0,**kw):
-  "Plots X-By"
+  "Plots X-By. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxby,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2791,11 +2752,9 @@ def ppxby(iw=0,**kw):
   settitles("By vs X","X","By",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getby(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppxby.__doc__ = ppxby.__doc__ + ppgeneric_doc('x',"by")
 ##########################################################################
 def ppxbz(iw=0,**kw):
-  "Plots X-Bz"
+  "Plots X-Bz. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxez,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2809,11 +2768,9 @@ def ppxbz(iw=0,**kw):
   settitles("Bz vs X","X","Bz",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getbz(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppxbz.__doc__ = ppxbz.__doc__ + ppgeneric_doc('x',"bz")
 ##########################################################################
 def ppyex(iw=0,**kw):
-  "Plots Y-Ex"
+  "Plots Y-Ex. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyex,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2827,11 +2784,9 @@ def ppyex(iw=0,**kw):
   settitles("Ex vs Y","Y","Ex",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getex(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppyex.__doc__ = ppyex.__doc__ + ppgeneric_doc('y',"ex")
 ##########################################################################
 def ppyey(iw=0,**kw):
-  "Plots Y-Ey"
+  "Plots Y-Ey. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyey,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2845,11 +2800,9 @@ def ppyey(iw=0,**kw):
   settitles("Ey vs Y","Y","Ey",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getey(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppyey.__doc__ = ppyey.__doc__ + ppgeneric_doc('y',"ey")
 ##########################################################################
 def ppyez(iw=0,**kw):
-  "Plots Y-Ez"
+  "Plots Y-Ez. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyez,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2863,11 +2816,9 @@ def ppyez(iw=0,**kw):
   settitles("Ez vs Y","Y","Ez",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getez(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppyez.__doc__ = ppyez.__doc__ + ppgeneric_doc('y',"ez")
 ##########################################################################
 def ppybx(iw=0,**kw):
-  "Plots Y-Bx"
+  "Plots Y-Bx. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyex,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2881,11 +2832,9 @@ def ppybx(iw=0,**kw):
   settitles("Bx vs Y","Y","Bx",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getbx(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppybx.__doc__ = ppybx.__doc__ + ppgeneric_doc('y',"bx")
 ##########################################################################
 def ppyby(iw=0,**kw):
-  "Plots Y-By"
+  "Plots Y-By. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyby,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2899,11 +2848,9 @@ def ppyby(iw=0,**kw):
   settitles("By vs Y","Y","By",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getby(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppyby.__doc__ = ppyby.__doc__ + ppgeneric_doc('y',"by")
 ##########################################################################
 def ppybz(iw=0,**kw):
-  "Plots Y-Bz"
+  "Plots Y-Bz. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyez,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2917,11 +2864,9 @@ def ppybz(iw=0,**kw):
   settitles("Bz vs Y","Y","Bz",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getbz(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppybz.__doc__ = ppybz.__doc__ + ppgeneric_doc('y',"bz")
 ##########################################################################
 def ppzex(iw=0,**kw):
-  "Plots Z-Ex"
+  "Plots Z-Ex. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzex,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2935,11 +2880,9 @@ def ppzex(iw=0,**kw):
   settitles("Ex vs Z","Z","Ex",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getex(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzex.__doc__ = ppzex.__doc__ + ppgeneric_doc('z',"ex")
 ##########################################################################
 def ppzey(iw=0,**kw):
-  "Plots Z-Ey"
+  "Plots Z-Ey. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzey,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2953,11 +2896,9 @@ def ppzey(iw=0,**kw):
   settitles("Ey vs Z","Z","Ey",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getey(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzey.__doc__ = ppzey.__doc__ + ppgeneric_doc('z',"ey")
 ##########################################################################
 def ppzez(iw=0,**kw):
-  "Plots Z-Ez"
+  "Plots Z-Ez. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzez,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2971,11 +2912,9 @@ def ppzez(iw=0,**kw):
   settitles("Ez vs Z","Z","Ez",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getez(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzez.__doc__ = ppzez.__doc__ + ppgeneric_doc('z',"ez")
 ##########################################################################
 def ppzbx(iw=0,**kw):
-  "Plots Z-Bx"
+  "Plots Z-Bx. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzbx,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -2989,11 +2928,9 @@ def ppzbx(iw=0,**kw):
   settitles("Bx vs Z","Z","Bx",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getbx(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzbx.__doc__ = ppzbx.__doc__ + ppgeneric_doc('z',"bx")
 ##########################################################################
 def ppzby(iw=0,**kw):
-  "Plots Z-By"
+  "Plots Z-By. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzby,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -3007,11 +2944,9 @@ def ppzby(iw=0,**kw):
   settitles("By vs Z","Z","By",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getby(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzby.__doc__ = ppzby.__doc__ + ppgeneric_doc('z',"by")
 ##########################################################################
 def ppzbz(iw=0,**kw):
-  "Plots Z-Bz"
+  "Plots Z-Bz. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzbz,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -3025,11 +2960,9 @@ def ppzbz(iw=0,**kw):
   settitles("Bz vs Z","Z","Bz",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getbz(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppzbz.__doc__ = ppzbz.__doc__ + ppgeneric_doc('z',"bz")
 ##########################################################################
 def ppexey(iw=0,**kw):
-  "Plots Ex-Ey."
+  "Plots Ex-Ey. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppexey,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -3043,12 +2976,10 @@ def ppexey(iw=0,**kw):
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   return ppgeneric(getey(ii=ii,gather=0,**kw),getex(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppexey.__doc__ = ppexey.__doc__ + ppgeneric_doc("Ex","Ey")
 
 ##########################################################################
 def ppxy(iw=0,**kw):
-  "Plots X-Y"
+  "Plots X-Y. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxy,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -3061,12 +2992,10 @@ def ppxy(iw=0,**kw):
   settitles("Y vs X","X","Y",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(gety(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppxy.__doc__ = ppxy.__doc__ + ppgeneric_doc('x','y')
 
 ##########################################################################
 def ppxxp(iw=0,**kw):
-  "Plots X-X'. If slope='auto', it is calculated from the moments."
+  "Plots X-X'. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxxp,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
@@ -3084,12 +3013,10 @@ def ppxxp(iw=0,**kw):
   settitles("X' vs X","X","X'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getxp(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppxxp.__doc__ = ppxxp.__doc__ + ppgeneric_doc("x","x'")
 
 ##########################################################################
 def ppyyp(iw=0,**kw):
-  "Plots Y-Y'. If slope='auto', it is calculated from the moments."
+  "Plots Y-Y'. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyyp,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
@@ -3107,12 +3034,10 @@ def ppyyp(iw=0,**kw):
   settitles("Y' vs Y","Y","Y'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getyp(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppyyp.__doc__ = ppyyp.__doc__ + ppgeneric_doc("y","y'")
 
 ##########################################################################
 def ppxpyp(iw=0,**kw):
-  "Plots X'-Y'. If slope='auto', it is calculated from the moments."
+  "Plots X'-Y'. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxpyp,(iw,),kw): return
   slope = kw.get('slope',0.)
@@ -3138,12 +3063,10 @@ def ppxpyp(iw=0,**kw):
   xpms = (xp - xslope*(x-xoffset) - xpoffset)
   ypms = (yp - yslope*(y-yoffset) - ypoffset)
   return ppgeneric(ypms,xpms,kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppxpyp.__doc__ = ppxpyp.__doc__ + ppgeneric_doc("x'","y'")
 
 ##########################################################################
 def ppxvx(iw=0,**kw):
-  "Plots X-Vx. If slope='auto', it is calculated from the moments."
+  "Plots X-Vx. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxvx,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
@@ -3162,12 +3085,10 @@ def ppxvx(iw=0,**kw):
   settitles("Vx vs X","X","Vx",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvx(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppxvx.__doc__ = ppxvx.__doc__ + ppgeneric_doc("x","Vx")
 
 ##########################################################################
 def ppyvy(iw=0,**kw):
-  "Plots Y-Vy. If slope='auto', it is calculated from the moments."
+  "Plots Y-Vy. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyvy,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
@@ -3186,12 +3107,10 @@ def ppyvy(iw=0,**kw):
   settitles("Vy vs Y","Y","Vy",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvy(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppyvy.__doc__ = ppyvy.__doc__ + ppgeneric_doc("y","Vy")
 
 ##########################################################################
 def ppxvz(iw=0,**kw):
-  "Plots X-Vz."
+  "Plots X-Vz. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxvz,(iw,),kw): return
   (vzmin,vzmax) = getvzrange(kwdict=kw)
@@ -3205,12 +3124,10 @@ def ppxvz(iw=0,**kw):
   settitles("Vz vs X","X","Vz",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvz(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppxvz.__doc__ = ppxvz.__doc__ + ppgeneric_doc("x","Vz")
 
 ##########################################################################
 def ppyvz(iw=0,**kw):
-  "Plots Y-Vz."
+  "Plots Y-Vz. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyvz,(iw,),kw): return
   (vzmin,vzmax) = getvzrange(kwdict=kw)
@@ -3224,12 +3141,10 @@ def ppyvz(iw=0,**kw):
   settitles("Vz vs Y","Y","Vz",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvz(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
                    kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppyvz.__doc__ = ppyvz.__doc__ + ppgeneric_doc("y","Vz")
 
 ##########################################################################
 def ppvxvy(iw=0,**kw):
-  "Plots Vx-Vy. If slope='auto', it is calculated from the moments."
+  "Plots Vx-Vy. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppvxvy,(iw,),kw): return
   slope = kw.get('slope',0.)
@@ -3260,12 +3175,10 @@ def ppvxvy(iw=0,**kw):
   vxms = (vx - vxslope*(x-xoffset) - vxoffset)
   vyms = (vy - vyslope*(y-yoffset) - vyoffset)
   return ppgeneric(vyms,vxms,kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppvxvy.__doc__ = ppvxvy.__doc__ + ppgeneric_doc("Vx","Vy")
 
 ##########################################################################
 def ppvxvz(iw=0,**kw):
-  "Plots Vx-Vz. If slope='auto', it is calculated from the moments."
+  "Plots Vx-Vz. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppvxvz,(iw,),kw): return
   (vzmin,vzmax) = getvzrange(kwdict=kw)
@@ -3290,12 +3203,10 @@ def ppvxvz(iw=0,**kw):
   vxms = (vx - vxslope*(x-xoffset) - vxoffset)
   vz = getvz(ii=ii,gather=0,**kw)
   return ppgeneric(vz,vxms,kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppvxvz.__doc__ = ppvxvz.__doc__ + ppgeneric_doc("Vx","Vz")
 
 ##########################################################################
 def ppvyvz(iw=0,**kw):
-  "Plots Vy-Vz. If slope='auto', it is calculated from the moments."
+  "Plots Vy-Vz. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppvyvz,(iw,),kw): return
   (vzmin,vzmax) = getvzrange(kwdict=kw)
@@ -3320,12 +3231,10 @@ def ppvyvz(iw=0,**kw):
   vyms = (vy - vyslope*(y-yoffset) - vyoffset)
   vz = getvz(ii=ii,gather=0,**kw)
   return ppgeneric(vz,vyms,kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppvyvz.__doc__ = ppvyvz.__doc__ + ppgeneric_doc("Vy","Vz")
 
 ##########################################################################
 def ppvzvperp(iw=0,**kw):
-  "Plots Vz-Vperp (sqrt(Vx**2 + Vy**2))"
+  "Plots Vz-Vperp (sqrt(Vx**2 + Vy**2)). For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvperp,(iw,),kw): return
   if kw.has_key('pplimits'):
@@ -3343,8 +3252,6 @@ def ppvzvperp(iw=0,**kw):
   vy = getvy(ii=ii,gather=0,**kw)
   vperp = sqrt(vx**2 + vy**2)
   return ppgeneric(vperp,getvz(ii=ii,gather=0,**kw),kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  ppvzvperp.__doc__ = ppvzvperp.__doc__ + ppgeneric_doc('vz','vperp')
 
 ##########################################################################
 def pprrp(iw=0,scale=0,slopejs=-1,**kw):
@@ -3352,6 +3259,7 @@ def pprrp(iw=0,scale=0,slopejs=-1,**kw):
   - scale=0: when true, scale particle by 2*rms
   - slopejs=-1: Species whose moments are used to calculate the slope
                  -1 means use data combined from all species.
+For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`.
   """
   checkparticleplotarguments(kw)
   if ppmultispecies(pprrp,(iw,scale,slopejs),kw): return
@@ -3391,8 +3299,6 @@ def pprrp(iw=0,scale=0,slopejs=-1,**kw):
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("R' vs R","R","R'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(rp,rr,kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  pprrp.__doc__ = pprrp.__doc__ + ppgeneric_doc("r","r'")
 
 ##########################################################################
 def pprtp(iw=0,scale=0,slopejs=-1,**kw):
@@ -3400,6 +3306,7 @@ def pprtp(iw=0,scale=0,slopejs=-1,**kw):
   - scale=0: when true, scale particle by 2*rms
   - slopejs=-1: Species whose moments are used to calculate the slope
                  -1 means use data combined from all species.
+For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`.
   """
   checkparticleplotarguments(kw)
   if ppmultispecies(pprtp,(iw,scale,slopejs),kw): return
@@ -3439,8 +3346,6 @@ def pprtp(iw=0,scale=0,slopejs=-1,**kw):
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Theta' vs R","R","Theta'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(tp,rr,kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  pprtp.__doc__ = pprtp.__doc__ + ppgeneric_doc("r","theta'")
 
 ##########################################################################
 def pprvr(iw=0,scale=0,slopejs=-1,**kw):
@@ -3448,6 +3353,7 @@ def pprvr(iw=0,scale=0,slopejs=-1,**kw):
   - scale=0: when true, scale particle by 2*rms
   - slopejs=-1: Species whose moments are used to calculate the slope
                  -1 means use data combined from all species.
+For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`.
   """
   checkparticleplotarguments(kw)
   if ppmultispecies(pprvr,(iw,scale,slopejs),kw): return
@@ -3488,12 +3394,10 @@ def pprvr(iw=0,scale=0,slopejs=-1,**kw):
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vr vs R","R","Vr",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(vr,rr,kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  pprvr.__doc__ = pprvr.__doc__ + ppgeneric_doc("r","vr")
 
 ##########################################################################
 def pprvz(iw=0,**kw):
-  "Plots R-Vz"
+  "Plots R-Vz. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(pprvz,(iw,),kw): return
   (vzmin,vzmax) = getvzrange(kwdict=kw)
@@ -3506,8 +3410,6 @@ def pprvz(iw=0,**kw):
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vz vs R","R","Vz",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvz(ii=ii,gather=0,**kw),getr(ii=ii,gather=0,**kw),kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  pprvz.__doc__ = pprvz.__doc__ + ppgeneric_doc("r","vz")
 
 ##########################################################################
 def pptrace(iw=0,normalize=0,**kw):
@@ -3517,6 +3419,7 @@ If slope='auto', it is calculated from the moments.
 pplimits can be a list of up to four tuples, one for each phase space plot.
 If any of the tuples are empty, the limits used will be the usual ones for
 that plot.
+For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`.
   """
   checkparticleplotarguments(kw)
   if ppmultispecies(pptrace,(iw,normalize),kw): return
@@ -3612,8 +3515,6 @@ that plot.
   kw['pplimits'] = pplimits[3]
   settitles("X' vs Y'","Y'","X'")
   ppgeneric(xp,yp,kwdict=kw)
-if sys.version[:5] != "1.5.1":
-  pptrace.__doc__ = pptrace.__doc__ + ppgeneric_doc("x","x'")
 
 ##########################################################################
 ##########################################################################
@@ -3623,6 +3524,7 @@ def ppzxco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
  - ncolor=top.ncolor: number of colors to use
  - nskipcol=top.nskipcol:
  - nstepcol=top.nstepcol:
+For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`.
   """
   # --- First part copied from ppzx
   if ppmultispecies(ppzxco,(iw,),kw): return
@@ -3665,6 +3567,7 @@ def ppzyco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
  - ncolor=top.ncolor: number of colors to use
  - nskipcol=top.nskipcol:
  - nstepcol=top.nstepcol:
+For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`.
   """
   # --- First part copied from ppzy
   if ppmultispecies(ppzyco,(iw,),kw): return
@@ -3705,6 +3608,7 @@ def ppzyco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
 def ppzxyco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
   """Plots Z-X and Z-Y in single frame with color based in paricle index
 See documentation for ppzxco and ppzyco.
+For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`.
   """
   plsys(9)
   ppzxco(ncolor=ncolor,nskipcol=nskipcol,nstepcol=nstepcol,**kw)
@@ -3717,6 +3621,7 @@ def ppzvzco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
  - ncolor=top.ncolor: number of colors to use
  - nskipcol=top.nskipcol:
  - nstepcol=top.nstepcol:
+For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`.
   """
   # --- First part copied from ppzvz
   if ppmultispecies(ppzvzco,(iw,),kw): return
@@ -3758,15 +3663,16 @@ def ppzvzco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
 ##########################################################################
 def ppco(y,x,z,uz=1.,marker='\1',msize=1.0,zmin=None,zmax=None,
          ncolor=None,usepalette=1,npalette=200,local=1):
-  """Plots y versus x with color based in z
-     - y: y coordinate
-     - x: x coordinate
-     - z: used to calculate the color
-     - zmin, zmax: optional bounds on the coloring data
-     - ncolor: number of colors to use, defaults to top.ncolor
-     - usepalette=1: when true, uses palette, otherwise uses colors in array
-                     color
-     - npalette=200: number of colors to use in the palette
+  """
+Plots y versus x with color based in z
+  - y: y coordinate
+  - x: x coordinate
+  - z: used to calculate the color
+  - zmin, zmax: optional bounds on the coloring data
+  - ncolor: number of colors to use, defaults to top.ncolor
+  - usepalette=1: when true, uses palette, otherwise uses colors in array
+                  color
+  - npalette=200: number of colors to use in the palette
   """
   # --- Make sure the lengths of the input are the same
   assert (len(y) == len(x) == len(z)),"x, y, and z must all be the same length"
@@ -3854,7 +3760,8 @@ Plots a and b envelope
   - marker=None marker type (see gist manual for the list)
   - msize=1.0 marker size
   - lframe=0 specifies whether or not to set plot limits
-  - titles=1 specifies whether or not to plot titles"""
+  - titles=1 specifies whether or not to plot titles
+  """
   if not me==0: return
   plg(env.aenv,env.zenv,
       color=color,marks=marks,marker=marker,msize=msize)
@@ -3870,7 +3777,8 @@ Plots a' and b' of envelope
   - marker=None marker type (see gist manual for the list)
   - msize=1.0 marker size
   - lframe=0 specifies whether or not to set plot limits
-  - titles=1 specifies whether or not to plot titles"""
+  - titles=1 specifies whether or not to plot titles
+  """
   if not me==0: return
   plg(env.apenv,env.zenv,
       color=color,marks=marks,marker=marker,msize=msize)
@@ -3886,7 +3794,8 @@ Plots a envelope +/- x centroid
   - marker=None marker type (see gist manual for the list)
   - msize=1.0 marker size
   - lframe=0 specifies whether or not to set plot limits
-  - titles=1 specifies whether or not to plot titles"""
+  - titles=1 specifies whether or not to plot titles
+  """
   if not me==0: return
   plg(+env.aenv+env.xenv,env.zenv,
       color=color,marks=marks,marker=marker,msize=msize)
@@ -3902,641 +3811,14 @@ Plots b envelope +/- x centroid
   - marker=None marker type (see gist manual for the list)
   - msize=1.0 marker size
   - lframe=0 specifies whether or not to set plot limits
-  - titles=1 specifies whether or not to plot titles"""
+  - titles=1 specifies whether or not to plot titles
+  """
   if not me==0: return
   plg(+env.benv+env.xenv,env.zenv,
       color=color,marks=marks,marker=marker,msize=msize)
   plg(-env.benv+env.xenv,env.zenv,
       color=color,marks=marks,marker=marker,msize=msize)
   if titles: ptitles("Y Envelope edges","Z")
-##########################################################################
-##########################################################################
-# --- These functions returns or sets slices of any decomposed array whose
-# --- shape is the same as rho.
-##########################################################################
-def getdecomposedarray(arr,ix=None,iy=None,iz=None,bcast=1,local=0,
-                       fullplane=0,xyantisymmetric=0,solver=None):
-  """Returns slices of a decomposed array, The shape of
-the object returned depends on the number of ix, iy and iz specified, which
-can be from none to all three. Note that the values of ix, iy and iz are
-relative to the fortran indexing, meaning that 0 is the lower boundary
-of the domain.
-  - ix = None:
-  - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None:
-  - bcast=1: When 1, the result is broadcast to all of the processors
-             (otherwise returns None to all but PE0
-  - local=0: When 1, in the parallel version, each process will get its local
-             value of array - no communication is done. Has no effect for
-             serial version.
-  - fullplane=0: When 1 and with transverse symmetries, the data is
-                 replicated to fill the symmetric regions of the plane.
-  - xyantisymmetric=0: When 1 and with fullplane=1, the data is treated as
-                       anti-symmetric in the transverse plane, resulting
-                       in a sign change during the replication.
-  """
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: decomp = top.fsdecomp
-  else:             decomp = solver.fsdecomp
-  if len(arr.shape) == 2: iy = None
-
-  nx = decomp.nxglobal
-  ny = decomp.nyglobal
-  nz = decomp.nzglobal
-  nxlocal = decomp.nx[decomp.ixproc]
-  nylocal = decomp.ny[decomp.iyproc]
-  nzlocal = decomp.nz[decomp.izproc]
-
-  if (decomp.nxprocs <= 1 and decomp.nyprocs <=1 and decomp.nzprocs <= 1):
-    local = 1
-
-  if local or not lparallel:
-    if ix is None     and iy is None     and iz is None    :
-      result = arr[...]
-    if ix is not None and iy is None     and iz is None    :
-      result = arr[ix,...]
-    if ix is None     and iy is not None and iz is None    :
-      result = arr[:,iy,:]
-    if ix is None     and iy is None     and iz is not None:
-      result = arr[...,iz]
-    if ix is not None and iy is not None and iz is None    :
-      result = arr[ix,iy,:]
-    if ix is not None and iy is None     and iz is not None:
-      result = arr[ix,...,iz]
-    if ix is None     and iy is not None and iz is not None:
-      result = arr[:,iy,iz]
-    if ix is not None and iy is not None and iz is not None:
-      result = arr[ix,iy,iz]
-  else:
-
-    # --- Get the local extent of each processor.
-    my_ixpp = decomp.ix[decomp.ixproc]
-    my_nxpp = decomp.nx[decomp.ixproc]
-    my_iypp = decomp.iy[decomp.iyproc]
-    my_nypp = decomp.ny[decomp.iyproc]
-    my_izpp = decomp.iz[decomp.izproc]
-    my_nzpp = decomp.nz[decomp.izproc]
-
-    # --- If ix,iy or iz was given, check if it is within the local domain.
-    if ((ix is None or my_ixpp <= ix and ix <= my_ixpp+my_nxpp) and
-        (iy is None or my_iypp <= iy and iy <= my_iypp+my_nypp) and
-        (iz is None or my_izpp <= iz and iz <= my_izpp+my_nzpp)):
-      # --- If so, grab the appropriate slice of array.
-      sss = [slice(1+nxlocal),
-             slice(1+nylocal),
-             slice(1+nzlocal)]
-      if ix is not None: sss[0] = slice(ix-my_ixpp,ix-my_ixpp+1)
-      if iy is not None: sss[1] = slice(iy-my_iypp,iy-my_iypp+1)
-      if iz is not None: sss[2] = slice(iz-my_izpp,iz-my_izpp+1)
-      if nx == 0: sss[0] = Ellipsis
-      if ny == 0: sss[1] = Ellipsis
-      if nz == 0: sss[2] = Ellipsis
-      result = arr[sss[0],sss[1],sss[2]]
-    else:
-      # --- Otherwise, use None
-      result = None
-
-    # --- Get the data (or None) from all of the processors.
-    resultlist = gather(result)
-
-    if me == 0:
-      # --- Setup the size of the array to be returned and create it.
-      sss = [1+nx,1+ny,1+nz]
-      if ix is not None: sss[0] = 1
-      if iy is not None: sss[1] = 1
-      if iz is not None: sss[2] = 1
-      if nz == 0: del sss[2]
-      if ny == 0: del sss[1]
-      if nx == 0: del sss[0]
-      resultglobal = fzeros(sss,'d')
-
-      # --- Loop over all processors and grab the data sent, putting it into
-      # --- the appropriate place in the array.
-      iproc = 0
-      ix1,ix2 = 0,1
-      iy1,iy2 = 0,1
-      iz1,iz2 = 0,1
-      sss = [1,1,1]
-      for izproc in range(decomp.nzprocs):
-        for iyproc in range(decomp.nyprocs):
-          for ixproc in range(decomp.nxprocs):
-            if resultlist[iproc] is not None:
-              if ix is None:
-                ix1 = decomp.ix[ixproc]
-                ix2 = decomp.ix[ixproc] + decomp.nx[ixproc] + 1
-              if iy is None:
-                iy1 = decomp.iy[iyproc]
-                iy2 = decomp.iy[iyproc] + decomp.ny[iyproc] + 1
-              if iz is None:
-                iz1 = decomp.iz[izproc]
-                iz2 = decomp.iz[izproc] + decomp.nz[izproc] + 1
-              sss[0] = slice(ix1,ix2)
-              sss[1] = slice(iy1,iy2)
-              sss[2] = slice(iz1,iz2)
-              if nx == 0: sss[0] = Ellipsis
-              if ny == 0: sss[1] = Ellipsis
-              if nz == 0: sss[2] = Ellipsis
-              resultglobal[sss[0],sss[1],sss[2]] = resultlist[iproc]
-            iproc += 1
-
-      # --- Now remove any of the reduced dimensions.
-      if ix is None: ix = slice(None)
-      else:          ix = 0
-      if iy is None: iy = slice(None)
-      else:          iy = 0
-      if iz is None: iz = slice(None)
-      else:          iz = 0
-      if nx == 0: ix = Ellipsis
-      if ny == 0: iy = Ellipsis
-      if nz == 0: iz = Ellipsis
-      result = resultglobal[ix,iy,iz]
-
-    if bcast:
-      result = parallel.broadcast(result)
-    else:
-      if me > 0: return None
-
-  if not fullplane:
-    return result
-  else:
-    ii = 0
-    if ix is None and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-      ss = array(shape(result))
-      nn = ss[ii] - 1
-      ss[ii] = 2*nn + 1
-      result1 = empty(tuple(ss),'d')
-      if xyantisymmetric: fsign = -1
-      else:               fsign = +1
-      result1[nn:,...] = result
-      result1[nn::-1,...] = fsign*result
-      result = result1
-    if ix is None: ii = ii + 1
-    if iy is None and (solver.l2symtry or solver.l4symtry):
-      ss = array(shape(result))
-      nn = ss[ii] - 1
-      ss[ii] = 2*nn + 1
-      result1 = empty(tuple(ss),'d')
-      if xyantisymmetric: fsign = -1
-      else:               fsign = +1
-      if ii == 0:
-        result1[nn:,...] = result
-        result1[nn::-1,...] = fsign*result
-      else:
-        result1[:,nn:,...] = result
-        result1[:,nn::-1,...] = fsign*result
-      result = result1
-    return result
-
-# --------------------------------------------------------------------------
-def setdecomposedarray(arr,val,ix=None,iy=None,iz=None,local=0,solver=None):
-  """Sets slices of a decomposed array. The shape of
-the input object depends on the number of arguments specified, which can
-be from none to all three.
-  - val: input array (must be supplied)
-  - ix = None:
-  - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None:
-  """
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: decomp = top.fsdecomp
-  else:             decomp = solver.fsdecomp
-  if len(arr.shape) == 2: iy = None
-
-  nx = decomp.nxglobal
-  ny = decomp.nyglobal
-  nz = decomp.nzglobal
-  nxlocal = decomp.nx[decomp.ixproc]
-  nylocal = decomp.ny[decomp.iyproc]
-  nzlocal = decomp.nz[decomp.izproc]
-
-  if (decomp.nxprocs <= 1 and decomp.nyprocs <=1 and decomp.nzprocs <= 1):
-    local = 1
-
-  if local or not lparallel:
-    if ix is None     and iy is None     and iz is None    :
-      arr[...] = val
-    if ix is not None and iy is None     and iz is None    :
-      arr[ix,...] = val
-    if ix is None     and iy is not None and iz is None    :
-      arr[:,iy,:] = val
-    if ix is None     and iy is None     and iz is not None:
-      arr[...,iz] = val
-    if ix is not None and iy is not None and iz is None    :
-      arr[ix,iy,:] = val
-    if ix is not None and iy is None     and iz is not None:
-      arr[ix,:,iz] = val
-    if ix is None     and iy is not None and iz is not None:
-      arr[:,iy,iz] = val
-    if ix is not None and iy is not None and iz is not None:
-      arr[ix,iy,iz] = val
-  else:
-
-    ppplist = []
-    if me == 0:
-
-      # --- Add extra dimensions so that the input has the same number of
-      # --- dimensions as array.
-      ppp = array(val)
-      sss = list(ppp.shape)
-      if ix is not None and nx > 0: sss[0:0] = [1]
-      if iy is not None and ny > 0: sss[1:1] = [1]
-      if iz is not None and nz > 0: sss[2:2] = [1]
-      ppp.shape = sss
-
-      # --- Loop over all processors and grab the chunk of the input that
-      # --- overlaps each of the domains.
-      ix1,ix2 = 0,1
-      iy1,iy2 = 0,1
-      iz1,iz2 = 0,1
-      sss = [1,1,1]
-      for izproc in range(decomp.nzprocs):
-        for iyproc in range(decomp.nyprocs):
-          for ixproc in range(decomp.nxprocs):
-            if ix is None:
-              ix1 = decomp.ix[ixproc]
-              ix2 = decomp.ix[ixproc] + decomp.nx[ixproc] + 1
-            if iy is None:
-              iy1 = decomp.iy[iyproc]
-              iy2 = decomp.iy[iyproc] + decomp.ny[iyproc] + 1
-            if iz is None:
-              iz1 = decomp.iz[izproc]
-              iz2 = decomp.iz[izproc] + decomp.nz[izproc] + 1
-            sss[0] = slice(ix1,ix2)
-            sss[1] = slice(iy1,iy2)
-            sss[2] = slice(iz1,iz2)
-            if nx == 0: sss[0] = Ellipsis
-            if ny == 0: sss[1] = Ellipsis
-            if nz == 0: sss[2] = Ellipsis
-            ppplist.append(ppp[sss[0],sss[1],sss[2]])
-
-    # --- Send the data to each of the processors
-    ppp = comm_world.scatter(ppplist)[0]
-
-    # --- Get the local extent of each processor.
-    my_ixpp = decomp.ix[decomp.ixproc]
-    my_nxpp = decomp.nx[decomp.ixproc]
-    my_iypp = decomp.iy[decomp.iyproc]
-    my_nypp = decomp.ny[decomp.iyproc]
-    my_izpp = decomp.iz[decomp.izproc]
-    my_nzpp = decomp.nz[decomp.izproc]
-
-    # --- If ix,iy or iz was given, check if it is within the local domain.
-    if ((ix is None or my_ixpp <= ix and ix <= my_ixpp+my_nxpp) and
-        (iy is None or my_iypp <= iy and iy <= my_iypp+my_nypp) and
-        (iz is None or my_izpp <= iz and iz <= my_izpp+my_nzpp)):
-      # --- If so, set the appropriate slice of array.
-      sss = [slice(1+nxlocal),
-             slice(1+nylocal),
-             slice(1+nzlocal)]
-      if ix is not None: sss[0] = slice(ix-my_ixpp,ix-my_ixpp+1)
-      if iy is not None: sss[1] = slice(iy-my_iypp,iy-my_iypp+1)
-      if iz is not None: sss[2] = slice(iz-my_izpp,iz-my_izpp+1)
-      if nx == 0: sss[0] = Ellipsis
-      if ny == 0: sss[1] = Ellipsis
-      if nz == 0: sss[2] = Ellipsis
-      arr[sss[0],sss[1],sss[2]] = ppp
-
-# --------------------------------------------------------------------------
-def getrho(ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,solver=None):
-  """Returns slices of rho, the charge density array. The shape of the object
-returned depends on the number of ix, iy and iz specified, which can be from
-none to all three. If no components are given, then a 3-D array is returned. 
-With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
-Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
-  - ix = None:
-  - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None:
-  - bcast=1: When 1, the result is broadcast to all of the processors
-             (otherwise returns None to all but PE0
-  - local=0: When 1, in the parallel version, each process will get its local
-             value of rho - no communication is done. Has no effect for serial
-             version.
-  - fullplane=0: When 1 and with transverse symmetries, the data is
-                 replicated to fill the symmetric regions of the plane.
-  """
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver is w3d:
-    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-      rho = frz.basegrid.rho
-    else:
-      rho = w3d.rho
-  else:
-    rho = solver.getrho()
-
-  return getdecomposedarray(rho,ix=ix,iy=iy,iz=iz,bcast=bcast,local=local,
-                            fullplane=fullplane,solver=solver)
-
-# --------------------------------------------------------------------------
-def setrho(val,ix=None,iy=None,iz=None,local=0,solver=None):
-  """Sets slices of rho, the charge density array. The shape of the object
-returned depends on the number of ix, iy and iz specified, which can be from
-none to all three. If no components are given, then a 3-D array is returned. 
-With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
-Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
-  - val: input array (must be supplied)
-  - ix = None:
-  - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None:
-  """
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver is w3d:
-    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-      rho = frz.basegrid.rho
-    else:
-      rho = w3d.rho
-  else:
-    rho = solver.getrho()
-
-  setdecomposedarray(rho,val,ix=ix,iy=iy,iz=iz,local=local,solver=solver)
-
-# --------------------------------------------------------------------------
-def getphi(ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,solver=None):
-  """Returns slices of phi, the electrostatic potential array. The shape of
-the object returned depends on the number of ix, iy and iz specified, which
-can be from none to all three. If no components are given, then a 3-D array
-is returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar
-is returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
-the upper edge.  
-  - ix = None:
-  - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None:
-               from -1 to nz+1
-  - bcast=1: When 1, the result is broadcast to all of the processors
-             (otherwise returns None to all but PE0
-  - local=0: When 1, in the parallel version, each process will get its local
-             value of phi - no communication is done. Has no effect for serial
-             version.
-  - fullplane=0: When 1 and with transverse symmetries, the data is
-                 replicated to fill the symmetric regions of the plane.
-  """
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver is w3d:
-    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-      phi = frz.basegrid.phi[1:-1,1:-1]
-      iy = None
-    else:
-      phi = w3d.phi[1:-1,1:-1,1:-1]
-  else:
-    phi = solver.getphi()
-
-  return getdecomposedarray(phi,ix=ix,iy=iy,iz=iz,bcast=bcast,local=local,
-                            fullplane=fullplane,solver=solver)
-
-# --------------------------------------------------------------------------
-def setphi(val,ix=None,iy=None,iz=None,local=0,solver=None):
-  """Sets slices of phi, the electrostatic potential array. The shape of
-the input object depends on the number of arguments specified, which can
-be from none to all three.
-  The shape of the object
-returned depends on the number of ix, iy and iz specified, which can be from
-none to all three. If no components are given, then a 3-D array is returned. 
-With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
-Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
-  - val: input array (must be supplied)
-  - ix = None:
-  - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None: Value is relative to the fortran indexing, so iz ranges
-               from -1 to nz+1
-  """
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver is w3d:
-    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-      phi = frz.basegrid.phi[1:-1,1:-1]
-      iy = None
-    else:
-      phi = w3d.phi[1:-1,1:-1,1:-1]
-  else:
-    phi = solver.getphi()
-
-  setdecomposedarray(phi,val,ix=ix,iy=iy,iz=iz,local=local,solver=solver)
-
-# --------------------------------------------------------------------------
-def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
-             solver=None):
-  """Returns slices of selfe, the electrostatic field array. The shape of the
-object returned depends on the number of ix, iy and iz specified, which can
-be from none to all three. If no components are given, then a 3-D array is
-returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar is
-returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
-the upper edge.  
-  - comp: field component to get, either 'x', 'y', 'z', or 'E', must be given.
-          Use 'E' to get the field magnitude.
-  - ix = None:
-  - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None:
-  - bcast=1: When 1, the result is broadcast to all of the processors
-             (otherwise returns None to all but PE0
-  - local=0: When 1, in the parallel version, each process will get its local
-             value of E - no communication is done. Has no effect for serial
-             version.
-  - fullplane=0: When 1 and with transverse symmetries, the data is
-                 replicated to fill the symmetric regions of the plane.
-  """
-  assert comp in ['x','y','z','E'],"comp must be one of 'x', 'y', 'z' or 'E'"
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  if alltrue(top.efetch != 3) or not w3d.allocated('selfe'):
-    # --- If not already using selfe, then allocate it and set it.
-    # --- Note that this could be an unexpected expense for a user.
-    if solver is w3d:
-      allocateselfeforfieldsolve()
-      nx,ny,nz = array(w3d.phi.shape) - 1
-      getselfe3d(w3d.phi,w3d.nxlocal,w3d.nylocal,w3d.nzlocal,
-                 w3d.selfe,w3d.dx,w3d.dy,w3d.dz,
-                 true,(nx-w3d.nxlocal)/2,(ny-w3d.nylocal)/2,(nz-w3d.nzlocal)/2)
-    else:
-      solver.getselfe()
-  if type(comp) == IntType: ic = comp
-  else:                     ic = ['x','y','z','E'].index(comp)
-
-  if comp == 'E':
-    Ex = getdecomposedarray(solver.selfe[0,...],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    Ey = getdecomposedarray(solver.selfe[1,...],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    Ez = getdecomposedarray(solver.selfe[2,...],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    return sqrt(Ex**2 + Ey**2 + Ez**2)
-  else:
-    return getdecomposedarray(solver.selfe[ic,...],ix=ix,iy=iy,iz=iz,
-                              bcast=bcast,local=local,fullplane=fullplane,
-                              xyantisymmetric=(ic in [0,1]),
-                              solver=solver)
-
-# --------------------------------------------------------------------------
-def getj(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
-         solver=None):
-  """Returns slices of J, the current density array. The shape of the object
-returned depends on the number of ix, iy and iz specified, which can be from
-none to all three. If no components are given, then a 3-D array is returned. 
-With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
-Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
-  - comp: field component to get, either 'x', 'y', 'z' or. 'J', must be given.
-          Use 'J' to get the magnitude.
-  - ix = None:
-  - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None:
-  - bcast=1: When 1, the result is broadcast to all of the processors
-             (otherwise returns None to all but PE0
-  - local=0: When 1, in the parallel version, each process will get its local
-             value of j - no communication is done. Has no effect for serial
-             version.
-  - fullplane=0: When 1 and with transverse symmetries, the data is
-                 replicated to fill the symmetric regions of the plane.
-  """
-  assert comp in ['x','y','z','J'],"comp must be one of 'x', 'y', 'z' or 'J'"
-  if type(comp) == IntType: ic = comp
-  else:                     ic = ['x','y','z','J'].index(comp)
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver
-
-  if comp == 'J':
-    Jx = getdecomposedarray(bfield.j[0,...],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    Jy = getdecomposedarray(bfield.j[1,...],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    Jz = getdecomposedarray(bfield.j[2,...],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    return sqrt(Jx**2 + Jy**2 + Jz**2)
-  else:
-    return getdecomposedarray(bfield.j[ic,...],ix=ix,iy=iy,iz=iz,
-                              bcast=bcast,local=local,fullplane=fullplane,
-                              xyantisymmetric=(ic in [0,1]),
-                              solver=solver)
-
-# --------------------------------------------------------------------------
-def getb(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
-         solver=None):
-  """Returns slices of B, the magnetic field array. The shape of the object
-returned depends on the number of ix, iy and iz specified, which can be from
-none to all three. If no components are given, then a 3-D array is returned. 
-With one, a 2-D array, with two, 1-D array and with 3 a scalar is returned.
-Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
-  - comp: field component to get, either 'x', 'y', 'z' or 'B', must be given.
-          Use 'B' to get the magnitude.
-  - ix = None:
-  - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None:
-  - bcast=1: When 1, the result is broadcast to all of the processors
-             (otherwise returns None to all but PE0
-  - local=0: When 1, in the parallel version, each process will get its local
-             value of j - no communication is done. Has no effect for serial
-             version.
-  - fullplane=0: When 1 and with transverse symmetries, the data is
-                 replicated to fill the symmetric regions of the plane.
-  """
-  assert comp in ['x','y','z','B'],"comp must be one of 'x', 'y', 'z' or 'B'"
-  if type(comp) == IntType: ic = comp
-  else:                     ic = ['x','y','z','B'].index(comp)
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver
-
-  if comp == 'B':
-    Bx = getdecomposedarray(bfield.b[0,...],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    By = getdecomposedarray(bfield.b[1,...],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    Bz = getdecomposedarray(bfield.b[2,...],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    return sqrt(Bx**2 + By**2 + Bz**2)
-  else:
-    return getdecomposedarray(bfield.b[ic,...],ix=ix,iy=iy,iz=iz,
-                              bcast=bcast,local=local,fullplane=fullplane,
-                              xyantisymmetric=(ic in [0,1]),
-                              solver=solver)
-
-# --------------------------------------------------------------------------
-def geta(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
-         solver=None):
-  """Returns slices of B, the magnetic vector potential array. The shape of
-the object returned depends on the number of ix, iy and iz specified, which
-can be from none to all three. If no components are given, then a 3-D array
-is returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar
-is returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
-the upper edge.  
-  - comp: field component to get, either 'x', 'y', 'z' or 'A', must be given.
-          Use 'A' to get the magnitude.
-  - ix = None:
-  - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None:
-  - bcast=1: When 1, the result is broadcast to all of the processors
-             (otherwise returns None to all but PE0
-  - local=0: When 1, in the parallel version, each process will get its local
-             value of a - no communication is done. Has no effect for serial
-             version.
-  - fullplane=0: When 1 and with transverse symmetries, the data is
-                 replicated to fill the symmetric regions of the plane.
-  """
-  assert comp in ['x','y','z','A'],"comp must be one of 'x', 'y', 'z' or 'A'"
-  if type(comp) == IntType: ic = comp
-  else:                     ic = ['x','y','z','A'].index(comp)
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver
-
-  if comp == 'A':
-    Ax = getdecomposedarray(bfield.a[0,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    Ay = getdecomposedarray(bfield.a[1,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    Az = getdecomposedarray(bfield.a[2,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
-                            bcast=bcast,local=local,fullplane=fullplane,
-                            xyantisymmetric=(ic in [0,1]),
-                            solver=solver)
-    return sqrt(Ax**2 + Ay**2 + Az**2)
-  else:
-    return getdecomposedarray(bfield.a[ic,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
-                              bcast=bcast,local=local,fullplane=fullplane,
-                              xyantisymmetric=(ic in [0,1]),
-                              solver=solver)
-
-# --------------------------------------------------------------------------
-def seta(val,comp=None,ix=None,iy=None,iz=None,local=0,solver=None):
-  """Sets slices of a, the electrostatic potential array. The shape of the
-object returned depends on the number of ix, iy and iz specified, which can
-be from none to all three. If no components are given, then a 3-D array is
-returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar is
-returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
-the upper edge.  
-  - val: input array (must be supplied)
-  - comp: field component to get, either 'x', 'y', or 'z', must be given
-  - ix = None:
-  - iy = None: Defaults to 0 except when using 3-D geometry.
-  - iz = None:
-  """
-  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
-  if type(comp) == IntType: ic = comp
-  else:                     ic = ['x','y','z'].index(comp)
-  if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver
-
-  setdecomposedarray(bfield.a[ic,1:-1,1:-1,1:-1],val,ix=ix,iy=iy,iz=iz,
-                     local=local,solver=solver)
 
 ##########################################################################
 def pcrhozy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
@@ -4544,6 +3826,7 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+For plotting options, see :py:func:`ppgeneric`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
@@ -4572,14 +3855,13 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   ppgeneric(gridt=rrr,kwdict=kw,local=1)
   if fullplane and (solver.l2symtry or solver.l4symtry):
     ppgeneric(gridt=rrr,kwdict=kw,local=1,flipyaxis=1)
-if sys.version[:5] != "1.5.1":
-  pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcrhozx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of charge density in the Z-X plane
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+For plotting options, see :py:func:`ppgeneric`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
@@ -4608,21 +3890,19 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   ppgeneric(gridt=rrr,kwdict=kw,local=1)
   if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
     ppgeneric(gridt=rrr,kwdict=kw,local=1,flipyaxis=1)
-if sys.version[:5] != "1.5.1":
-  pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
 def pcrhozr(lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of charge density in the Z-R plane
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+For plotting options, see :py:func:`ppgeneric`.
   """
   pcrhozx(iy=0,fullplane=0,lbeamframe=lbeamframe,solver=solver,local=local,**kw)
-if sys.version[:5] != "1.5.1":
-  pcrhozr.__doc__ = pcrhozr.__doc__ + ppgeneric_doc("z","r")
 ##########################################################################
 def pcrhoxy(iz=None,fullplane=1,solver=None,local=0,**kw):
   """Plots contours of charge density in the X-Y plane
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
+For plotting options, see :py:func:`ppgeneric`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = solver.iz_axis
@@ -4652,14 +3932,13 @@ def pcrhoxy(iz=None,fullplane=1,solver=None,local=0,**kw):
     ppgeneric(grid=rrr,kwdict=kw,local=1,flipxaxis=1,flipyaxis=1)
   elif fullplane and solver.l2symtry:
     ppgeneric(grid=rrr,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
-if sys.version[:5] != "1.5.1":
-  pcrhoxy.__doc__ = pcrhoxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcphizy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-Y plane
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+For plotting options, see :py:func:`ppgeneric`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
@@ -4688,14 +3967,13 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   ppgeneric(gridt=ppp,kwdict=kw,local=1)
   if fullplane and (solver.l2symtry or solver.l4symtry):
     ppgeneric(gridt=ppp,kwdict=kw,local=1,flipyaxis=1)
-if sys.version[:5] != "1.5.1":
-  pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcphizx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+For plotting options, see :py:func:`ppgeneric`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
@@ -4724,21 +4002,19 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   ppgeneric(gridt=ppp,kwdict=kw,local=1)
   if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
     ppgeneric(gridt=ppp,kwdict=kw,local=1,flipyaxis=1)
-if sys.version[:5] != "1.5.1":
-  pcphizx.__doc__ = pcphizx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
 def pcphizr(lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-R plane
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+For plotting options, see :py:func:`ppgeneric`.
   """
   pcphizx(iy=0,fullplane=0,lbeamframe=lbeamframe,solver=solver,local=local,**kw)
-if sys.version[:5] != "1.5.1":
-  pcphizr.__doc__ = pcphizr.__doc__ + ppgeneric_doc("z","r")
 ##########################################################################
 def pcphixy(iz=None,fullplane=1,solver=None,local=0,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
+For plotting options, see :py:func:`ppgeneric`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = solver.iz_axis
@@ -4768,8 +4044,6 @@ def pcphixy(iz=None,fullplane=1,solver=None,local=0,**kw):
     ppgeneric(grid=ppp,kwdict=kw,local=1,flipxaxis=1,flipyaxis=1)
   elif fullplane and solver.l2symtry:
     ppgeneric(grid=ppp,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
-if sys.version[:5] != "1.5.1":
-  pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcselfezy(comp=None,ix=None,fullplane=1,solver=None,
               lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
@@ -4781,6 +4055,7 @@ def pcselfezy(comp=None,ix=None,fullplane=1,solver=None,
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
@@ -4818,8 +4093,6 @@ def pcselfezy(comp=None,ix=None,fullplane=1,solver=None,
     ey = getselfe(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
     ez = getselfe(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(ey[::sy,::sz]),transpose(ez[::sy,::sz]),kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcselfezy.__doc__ = pcselfezy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
               lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
@@ -4831,6 +4104,7 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
@@ -4868,8 +4142,6 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
     ex = getselfe(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
     ez = getselfe(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(ex[::sx,::sz]),transpose(ez[::sx,::sz]),kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcselfezx.__doc__ = pcselfezx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
 def pcselfezr(comp=None,solver=None,
               lbeamframe=0,vec=0,sz=1,sr=1,local=0,**kw):
@@ -4880,12 +4152,11 @@ def pcselfezr(comp=None,solver=None,
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sr=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if comp == 'r': comp = 'x'
   pcselfezx(comp=comp,iy=0,fullplane=0,solver=solver,
             lbeamframe=lbeamframe,vec=vec,sz=sz,sx=sr,local=local,**kw)
-if sys.version[:5] != "1.5.1":
-  pcselfezr.__doc__ = pcselfezr.__doc__ + ppgeneric_doc("z","r")
 ##########################################################################
 def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
               local=0,**kw):
@@ -4896,6 +4167,7 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   - fullplane=1: when true, plots E in the symmetric quadrants
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = solver.iz_axis
@@ -4937,8 +4209,6 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     ex = getselfe(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ey = getselfe(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ppvector(ey[::sx,::sy],ex[::sx,::sy],kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcselfexy.__doc__ = pcselfexy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcjzy(comp=None,ix=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
@@ -4950,6 +4220,7 @@ def pcjzy(comp=None,ix=None,fullplane=1,solver=None,
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
@@ -4987,8 +4258,6 @@ def pcjzy(comp=None,ix=None,fullplane=1,solver=None,
     jy = getj(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
     jz = getj(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(jy[::sy,::sz]),transpose(jz[::sy,::sz]),kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcjzy.__doc__ = pcjzy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcjzx(comp=None,iy=None,fullplane=1,solver=None,
               lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
@@ -5000,6 +4269,7 @@ def pcjzx(comp=None,iy=None,fullplane=1,solver=None,
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
@@ -5037,8 +4307,6 @@ def pcjzx(comp=None,iy=None,fullplane=1,solver=None,
     jx = getj(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
     jz = getj(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(jx[::sx,::sz]),transpose(jz[::sx,::sz]),kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcjzx.__doc__ = pcjzx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
 def pcjxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
           local=0,**kw):
@@ -5049,6 +4317,7 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   - fullplane=1: when true, plots E in the symmetric quadrants
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = solver.iz_axis
@@ -5090,8 +4359,6 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     jx = getj(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
     jy = getj(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ppvector(jy[::sx,::sy],jx[::sx,::sy],kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcjxy.__doc__ = pcjxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcbzy(comp=None,ix=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
@@ -5103,6 +4370,7 @@ def pcbzy(comp=None,ix=None,fullplane=1,solver=None,
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
@@ -5140,8 +4408,6 @@ def pcbzy(comp=None,ix=None,fullplane=1,solver=None,
     by = getb(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
     bz = getb(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(by[::sy,::sz]),transpose(bz[::sy,::sz]),kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcbzy.__doc__ = pcbzy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcbzx(comp=None,iy=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
@@ -5153,6 +4419,7 @@ def pcbzx(comp=None,iy=None,fullplane=1,solver=None,
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
@@ -5190,8 +4457,6 @@ def pcbzx(comp=None,iy=None,fullplane=1,solver=None,
     bx = getb(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
     bz = getb(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(bx[::sx,::sz]),transpose(bz[::sx,::sz]),kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcbzx.__doc__ = pcbzx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
 def pcbxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
           local=0,**kw):
@@ -5202,6 +4467,7 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   - fullplane=1: when true, plots E in the symmetric quadrants
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = solver.iz_axis
@@ -5243,8 +4509,6 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     bx = getb(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
     by = getb(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ppvector(by[::sx,::sy],bx[::sx,::sy],kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcbxy.__doc__ = pcbxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcazy(comp=None,ix=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
@@ -5256,6 +4520,7 @@ def pcazy(comp=None,ix=None,fullplane=1,solver=None,
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
@@ -5293,8 +4558,6 @@ def pcazy(comp=None,ix=None,fullplane=1,solver=None,
     ay = geta(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
     az = geta(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(ay[::sy,::sz]),transpose(az[::sy,::sz]),kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcazy.__doc__ = pcazy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcazx(comp=None,iy=None,fullplane=1,solver=None,
           lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
@@ -5306,6 +4569,7 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=None,
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
@@ -5343,8 +4607,6 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=None,
     ax = geta(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
     az = geta(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(ax[::sx,::sz]),transpose(az[::sx,::sz]),kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcazx.__doc__ = pcazx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
 def pcaxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
           local=0,**kw):
@@ -5355,6 +4617,7 @@ def pcaxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
   - fullplane=1: when true, plots E in the symmetric quadrants
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
+For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = solver.iz_axis
@@ -5396,8 +4659,6 @@ def pcaxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
     ax = geta(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ay = geta(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ppvector(ay[::sx,::sy],ax[::sx,::sy],kwdict=kw,local=1)
-if sys.version[:5] != "1.5.1":
-  pcaxy.__doc__ = pcaxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 ##########################################################################
 def ppdecompositionz(scale=1.,minscale=0.,gap=0.2):
