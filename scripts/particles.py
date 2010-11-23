@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.91 2010/11/11 19:04:33 dave Exp $"
+particles_version = "$Id: particles.py,v 1.92 2010/11/23 02:13:02 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1363,7 +1363,8 @@ def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,
                  resetrho=false,dofieldsol=false,resetmoments=false,
                  pgroup=None,
                  ex=0.,ey=0.,ez=0.,bx=0.,by=0.,bz=0.,
-                 lfields=false,lnewparticles=true,lusespaceabove=true):
+                 lfields=false,lnewparticles=true,lusespaceabove=true,
+                 lreturndata=false):
   """
 Adds particles to the simulation
   - x,y,z,vx,vy,vz,gi: particle coordinates and velocities.
@@ -1406,6 +1407,15 @@ Adds particles to the simulation
                          placed in memory in the space above the existing
                          particles, otherwise below. This is only needed for
                          special cases.
+  - lreturndata=false: When true, the data from the newly created particles
+                       is returned. This will include only particles that
+                       were actually added (i.e. does not include any
+                       particles outside the domain when lallindomain is
+                       false). Also, if lmomentum if false and top.lrelativ
+                       is true, the velocites will have been converted into
+                       massless momentum. If lfields is true, the fields are
+                       also returned. The data is returned in the order
+                       x,y,z,vx,vy,vz,gi,pid,ex,ey,ez,bx,by,bz.
   - pgroup=top.pgroup: Particle group to add particles too
   """
 
@@ -1475,15 +1485,15 @@ Adds particles to the simulation
   vx = array(vx)*ones(maxlen,'d')
   vy = array(vy)*ones(maxlen,'d')
   vz = array(vz)*ones(maxlen,'d')
+  gi = array(gi)*ones(maxlen,'d')
+  pid = array(pid)*ones([maxlen,top.npid],'d')
   ex = array(ex)*ones(maxlen,'d')
   ey = array(ey)*ones(maxlen,'d')
   ez = array(ez)*ones(maxlen,'d')
   bx = array(bx)*ones(maxlen,'d')
   by = array(by)*ones(maxlen,'d')
   bz = array(bz)*ones(maxlen,'d')
-  gi = array(gi)*ones(maxlen,'d')
-  pid = array(pid)*ones([maxlen,top.npid],'d')
-  
+
   if lnewparticles:
     # --- Set time of creation
     if top.tpid > 0:
@@ -1532,11 +1542,18 @@ Adds particles to the simulation
     print "=================================================================="
 
   if pgroup is None: pgroup = top.pgroup
+
+  # --- Get the number of particles before adding the new ones.
+  if lreturndata: nbefore = pgroup.nps[js]
+
   # --- Now data can be passed into the fortran addparticles routine.
   addpart(pgroup,maxlen,top.npid,x,y,z,vx,vy,vz,gi,ex,ey,ez,bx,by,bz,pid,js+1,
           lallindomain,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
           l2symtry,l4symtry,lrz,
           lmomentum,lfields,lnewparticles,lusespaceabove)
+
+  # --- Get the number of particles after adding the new ones.
+  if lreturndata: nafter = pgroup.nps[js]
 
   # --- If the slice code is active, then call initdtp
   if package()[0] == 'wxy': initdtp(top.pgroup)
@@ -1552,4 +1569,20 @@ Adds particles to the simulation
     if top.it%top.nhist == 0:
       top.jhist = top.jhist - 1
       savehist(top.time)
+
+  if lreturndata:
+    if lallindomain:
+      if lfields:
+        return (x,y,z,vx,vy,vz,gi,pid,ex,ey,ez,bx,by,bz)
+      else:
+        return (x,y,z,vx,vy,vz,gi,pid)
+    else:
+      # --- In this case, the particles outside the domain have been removed
+      # --- and new data compressed to the bottom of the arrays.
+      nn = nafter - nbefore
+      if lfields:
+        return (x[:nn],y[:nn],z[:nn],vx[:nn],vy[:nn],vz[:nn],gi[:nn],pid[:nn],ex[:nn],ey[:nn],ez[:nn],bx[:nn],by[:nn],bz[:nn])
+      else:
+        return (x[:nn],y[:nn],z[:nn],vx[:nn],vy[:nn],vz[:nn],gi[:nn],pid[:nn])
+
 
