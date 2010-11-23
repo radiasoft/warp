@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.39 $, $Date: 2010/11/12 00:28:58 $
+c@(#) File top_lattice.F, version $Revision: 3.40 $, $Date: 2010/11/23 02:01:43 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -458,6 +458,7 @@ c     --- count electric multipole data sets
       end
 c============================================================================ 
       subroutine setupemlts()
+      use Constant, only: pi
       use Lattice
       use Mult_data
 
@@ -489,48 +490,54 @@ c       --- specified.
 c     --- Set flags for existence of the elements - checking if the fields
 c     --- are specified.  emlts = .false.
       do ie = 0, nemlt
-         if (emltid(ie) > nemltsets) then
-           call kaboom("setupemlts: emltid must be between 1 and nemltsets, or <= 0")
-           return
-         endif
-         if (emltid(ie) > 0) emlts = .true.
+        if (emltid(ie) > nemltsets) then
+          call kaboom("setupemlts: emltid must be between 1 and nemltsets, or <= 0")
+          return
+        endif
+        if (emltid(ie) > 0) emlts = .true.
       enddo
 
 c     --- Precalculate the axial derivatives of the multipole moments
 c     --- if they were not supplied by the user.
       do i=1,nemltsets
+        if (dzemlt(i) == 0.) then
+          call kaboom("setupemlts: dzemlt must be non zero")
+          return
+        endif
         dzio2 = .5/dzemlt(i)
         do ie=1,nesmult
 c         --- Axial derivative of the moment strengths
-c         --- Find the maximum value.
-          emax = 0.
-          do iz=0,nzemltmax
-            if (abs(esemltp(iz,ie,i)) > emax) emax = abs(esemltp(iz,ie,i))
-          enddo
 c         --- If the max is zero, i.e. the array is unset, then calculate
 c         --- the derivative by finite differencing the data.
-          if (emax == 0.) then
-            esemltp(0,ie,i) = 0.
+c         --- Note that for the end points, a one sided finite difference is
+c         --- used.
+          if (maxval(abs(esemltp(:,ie,i))) == 0.) then
+            esemltp(0,ie,i) = (esemlt(1,ie,i) - esemlt(0,ie,i))/dzemlt(i)
             do iz=1,nzemltmax-1
               esemltp(iz,ie,i) = (esemlt(iz+1,ie,i) - esemlt(iz-1,ie,i))*dzio2
             enddo
-            esemltp(nzemltmax,ie,i) = 0.
+            esemltp(nzemltmax,ie,i) = (esemlt(nzemltmax,ie,i) -
+     &                                 esemlt(nzemltmax-1,ie,i))/dzemlt(i)
           endif
 c         --- Axial derivative of the phase angle
-c         --- Find the maximum value.
-          ephmax = 0.
-          do iz=0,nzemltmax
-            if (abs(esemltphp(iz,ie,i)) > ephmax)
-     &        ephmax = abs(esemltphp(iz,ie,i))
-          enddo
 c         --- If the max is zero, i.e. the array is unset, then calculate
 c         --- the derivative by finite differencing the data.
-          if (ephmax == 0.) then
-            esemltphp(0,ie,i) = 0.
+          if (maxval(abs(esemltphp(:,ie,i))) == 0.) then
+            esemltphp(0,ie,i) = (esemltph(1,ie,i)-esemltph(0,ie,i))/dzemlt(i)
+
             do iz=1,nzemltmax-1
               esemltphp(iz,ie,i)=(esemltph(iz+1,ie,i)-esemltph(iz-1,ie,i))*dzio2
             enddo
-            esemltphp(nzemltmax,ie,i) = 0.
+            esemltphp(nzemltmax,ie,i) = (esemltph(nzemltmax,ie,i) -
+     &                                   esemltph(nzemltmax-1,ie,i))/dzemlt(i)
+            do iz=0,nzemltmax
+              if (esemltphp(iz,ie,i)*dzemlt(i) > pi/2.) then
+                esemltphp(iz,ie,i) = esemltphp(iz,ie,i) - 2.*pi*dzio2
+              endif
+              if (esemltphp(iz,ie,i)*dzemlt(i) < -pi/2.) then
+                esemltphp(iz,ie,i) = esemltphp(iz,ie,i) + 2.*pi*dzio2
+              endif
+            enddo
           endif
         enddo
       enddo
@@ -555,11 +562,12 @@ c     --- count magnetic multipole data sets
       end 
 c============================================================================ 
       subroutine setupmmlts()
+      use Constant, only: pi
       use Lattice
       use Mult_data
 
       integer(ISZ):: im,i,iz
-      real(kind=8):: dzio2,mmax,mphmax
+      real(kind=8):: dzio2
 
       if (zlatperi > 0.) then
         if (nmmlt >= 0) then
@@ -579,48 +587,54 @@ c     --- Set flags for existence of the elements - checking if the fields
 c     --- are specified.
       mmlts = .false.
       do im = 0, nmmlt
-         if (mmltid(im) > nmmltsets) then
-           call kaboom("setupmmlts: mmltid must be between 1 and nmmltsets, or <= 0")
-           return
-         endif
-         if (mmltid(im) > 0) mmlts = .true.
+        if (mmltid(im) > nmmltsets) then
+          call kaboom("setupmmlts: mmltid must be between 1 and nmmltsets, or <= 0")
+          return
+        endif
+        if (mmltid(im) > 0) mmlts = .true.
       enddo
 
 c     --- Precalculate the axial derivatives of the multipole moments
 c     --- if they were not supplied by the user.
       do i=1,nmmltsets
+        if (dzmmlt(i) == 0.) then
+          call kaboom("setupmmlts: dzmmlt must be non zero")
+          return
+        endif
         dzio2 = .5/dzmmlt(i)
         do im=1,nmsmult
 c         --- Axial derivative of the moment strengths
-c         --- Find the maximum value.
-          mmax = 0.
-          do iz=0,nzmmltmax
-            if (abs(msmmltp(iz,im,i)) > mmax) mmax = abs(msmmltp(iz,im,i))
-          enddo
 c         --- If the max is zero, i.e. the array is unset, then calculate
 c         --- the derivative by finite differencing the data.
-          if (mmax == 0.) then
-            msmmltp(0,im,i) = 0.
+c         --- Note that for the end points, a one sided finite difference is
+c         --- used.
+          if (maxval(abs(msmmltp(:,im,i))) == 0.) then
+            msmmltp(0,im,i) = (msmmlt(1,im,i) - msmmlt(0,im,i))/dzmmlt(i)
             do iz=1,nzmmltmax-1
               msmmltp(iz,im,i) = (msmmlt(iz+1,im,i) - msmmlt(iz-1,im,i))*dzio2
             enddo
-            msmmltp(nzmmltmax,im,i) = 0.
+            msmmltp(nzmmltmax,im,i) = (msmmlt(nzmmltmax,im,i) -
+     &                                 msmmlt(nzmmltmax-1,im,i))/dzmmlt(i)
           endif
 c         --- Axial derivative of the phase angle
-c         --- Find the maximum value.
-          mphmax = 0.
-          do iz=0,nzmmltmax
-            if (abs(msmmltphp(iz,im,i)) > mphmax)
-     &        mphmax = abs(msmmltphp(iz,im,i))
-          enddo
 c         --- If the max is zero, i.e. the array is unset, then calculate
 c         --- the derivative by finite differencing the data.
-          if (mphmax == 0.) then
-            msmmltphp(0,im,i) = 0.
+          if (maxval(abs(msmmltphp(:,im,i))) == 0.) then
+            msmmltphp(0,im,i) = (msmmltph(1,im,i)-msmmltph(0,im,i))/dzmmlt(i)
+
             do iz=1,nzmmltmax-1
               msmmltphp(iz,im,i)=(msmmltph(iz+1,im,i)-msmmltph(iz-1,im,i))*dzio2
             enddo
-            msmmltphp(nzmmltmax,im,i) = 0.
+            msmmltphp(nzmmltmax,im,i) = (msmmltph(nzmmltmax,im,i) -
+     &                                   msmmltph(nzmmltmax-1,im,i))/dzmmlt(i)
+            do iz=0,nzmmltmax
+              if (msmmltphp(iz,im,i)*dzmmlt(i) > pi/2.) then
+                msmmltphp(iz,im,i) = msmmltphp(iz,im,i) - 2.*pi*dzio2
+              endif
+              if (msmmltphp(iz,im,i)*dzmmlt(i) < -pi/2.) then
+                msmmltphp(iz,im,i) = msmmltphp(iz,im,i) + 2.*pi*dzio2
+              endif
+            enddo
           endif
         enddo
       enddo
