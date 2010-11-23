@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.287 $, $Date: 2010/10/15 16:59:16 $
+#@(#) File TOP.V, version $Revision: 3.288 $, $Date: 2010/11/23 02:07:02 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.287 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.288 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2280,6 +2280,7 @@ nszgc       integer /0/   # Number of species z grid crossing moments data is
 dzgc        real [m] /0./ # Grid crossing moments grid cell size
 lmoving_framegc logical /.false./ # Flags whether the grid crossing moments grid
                                 # moves with top.zbeam or not.
+zbeamgc     real /0./ [m] # Grid crossing moments grid location
 pnumgc(0:ntgc,0:nzgc,0:nszgc) _real    # Number of particles at grid crossing moments
 xbargc(0:ntgc,0:nzgc,0:nszgc) _real    # X bar at grid crossing moments
 ybargc(0:ntgc,0:nzgc,0:nszgc) _real    # Y bar at grid crossing moments
