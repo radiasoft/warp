@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.41 2010/11/12 00:42:53 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.42 2010/11/23 02:11:40 dave Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -226,8 +226,6 @@ be unreliable.
         assert abs((self.zmmax-self.zmmin)-self.nz*self.dz) < 1.e-5*self.dz,\
             "zmmin, zmmax, dz, and nz are not consistent with each other"
 
-        self.zmesh = self.zmmin + arange(0,self.nz+1,dtype='l')*self.dz
-
         if self.dthist is not None:
             self.nhist = self.dthist/top.dt
 
@@ -356,10 +354,7 @@ be unreliable.
             scintny = self.scintny
             scintnz = self.scintnz
 
-        if self.lmoving_frame:
-            zbeam = top.zbeam
-        else:
-            zbeam = 0.
+        zbeam = self.gcmoments.zbeamgc
 
         # --- Create temporary work space
         if self.ldoradialdiag:
@@ -937,7 +932,6 @@ be unreliable.
         self.arraytime = self.time
         self.arraycurrent = self.current
         self.arrayradius = self.rrms
-        self.zmesh = self.zmmin + arange(0,self.nz+1,dtype='l')*self.dz
 
         self.currentmax = zeros(self.nz+1,'d')
         self.ratcurrentmax = zeros(self.nz+1,'d')
@@ -1016,11 +1010,10 @@ around the peak current."""
 
     # ----------------------------------------------------------------------
     def _pp2d(self,data,lbeamframe=1,**kw):
-        zmesh = self.zmmin + arange(0,self.nz+1,dtype='l')*self.dz
         if lbeamframe:
-            zz = zmesh[:,newaxis]*ones(data.shape[0])[newaxis,:]
+            zz = self.zmesh[:,newaxis]*ones(data.shape[0])[newaxis,:]
         else:
-            zz = zmesh[:,newaxis] + self.zbeam[newaxis,:]
+            zz = self.zmesh[:,newaxis] + self.zbeam[newaxis,:]
         tt = self.time[newaxis,:]*ones(self.nz+1)[:,newaxis]
         ppgeneric(gridt=data,xmesh=zz,ymesh=tt,**kw)
 
@@ -1075,19 +1068,57 @@ around the peak current."""
 
     # ----------------------------------------------------------------------
     def _gettimehistory(self,data,z):
-        d = []
-        t = []
-        for i in range(data.shape[0]):
-            if self.zmmin <= z-self.zbeam[i] <= self.zmmax:
-                t.append(self.time[i])
-                zz = (z - self.zbeam[i] - self.zmmin)/self.dz
-                iz = int(zz)
-                wz = zz - iz
-                if iz < self.nz:
-                    d.append(data[i,iz]*(1. - wz) + data[i,iz+1]*wz)
-                else:
-                    d.append(data[i,iz])
-        return array(d),array(t)
+
+        # --- For each time, get the grid cell where the data is.
+        zz = (z - self.zbeam - self.zmmin)/self.dz
+
+        # --- Get the indices for the times when the grid cells is within
+        # --- the z range.
+        ii = nonzero(logical_and(0. <= zz,zz <= self.nz))[0]
+
+        # --- Get the integer grid cell indices for the times within
+        # --- the z range.
+        iz = int(zz[ii])
+
+        # --- Caclulate the shape function weight for each time within range.
+        wz = zz[ii] - iz
+
+        # --- The shape of the data...
+        n0,n1 = data.shape
+
+        # --- Get a 1-D version of the data.
+        data1d = data.ravel()
+
+        # --- Convert the two indices, ii and iz, to an index into the
+        # --- flattened version of the array, and get the data.
+        i0 = ii*n1 + iz
+        d1 = data1d[i0]*(1. - wz)
+
+        # --- Get indices for the next z element. Note that there are cases
+        # --- where iz = nz, so iz+1 will wrap around to the next time level.
+        # --- This is OK since wz will always be zero for those cases.
+        # --- The check is needed for the last data point, since if it
+        # --- wraps around, it would extend beyond the end of the array.
+        i1 = i0 + 1
+        if i1[-1] == len(data1d): i1[-1] -= 1
+        d2 = data1d[i1]*wz
+
+        return d1+d2,self.time[ii]
+
+        # --- This is the original, but is much slower.
+        #d = []
+        #t = []
+        #for i in range(data.shape[0]):
+        #    if self.zmmin <= z-self.zbeam[i] <= self.zmmax:
+        #        t.append(self.time[i])
+        #        zz = (z - self.zbeam[i] - self.zmmin)/self.dz
+        #        iz = int(zz)
+        #        wz = zz - iz
+        #        if iz < self.nz:
+        #            d.append(data[i,iz]*(1. - wz) + data[i,iz+1]*wz)
+        #        else:
+        #            d.append(data[i,iz])
+        #return array(d),array(t)
         
     def hcount(self,z):
         return self._gettimehistory(self.count,z)
@@ -1139,13 +1170,9 @@ around the peak current."""
     # ----------------------------------------------------------------------
     def _timeintegrate(self,data,laverage,weight=None):
 
-        try:
-            self.zmesh
-        except AttributeError:
-            self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
-
-        zmin = self.zmesh[0] + self.zbeam.min()
-        zmax = self.zmesh[-1] + self.zbeam.max()
+        zmesh = self.zmesh
+        zmin = zmesh[0] + self.zbeam.min()
+        zmax = zmesh[-1] + self.zbeam.max()
         nz = nint((zmax - zmin)/self.dz)
         dz = (zmax - zmin)/nz
 
@@ -1160,18 +1187,16 @@ around the peak current."""
             # --- If no weight is given, average using the particle count
             count = self.count
 
-        for i in range(data.shape[0]):
-            if laverage or weight is not None:
-                deposgrid1dw(1,data.shape[1],
-                            self.zmesh+self.zbeam[i],
-                            data[i,:],
-                            count[i,:],
-                            nz,grid,gridcount,zmin,zmax)
-            else:
-                deposgrid1d(1,data.shape[1],
-                            self.zmesh+self.zbeam[i],
-                            data[i,:],
-                            nz,grid,gridcount,zmin,zmax)
+        zz = (self.zmesh[newaxis,:] + self.zbeam[:,newaxis]).ravel()
+        data = data.ravel()
+
+        if laverage or weight is not None:
+            count = count.ravel()
+            deposgrid1dw(1,len(zz),zz,data,count,
+                         nz,grid,gridcount,zmin,zmax)
+        else:
+            deposgrid1d(1,len(zz),zz,data,
+                        nz,grid,gridcount,zmin,zmax)
 
         if laverage:
             result = grid/where(gridcount > 0.,gridcount,1.)
@@ -1245,8 +1270,11 @@ around the peak current."""
             result = sqrt(maximum(0.,result))
         return result,gridmesh
 
-    def timeintegratedtrms(self):
-        """Returns the rms duration of the data"""
+    def timeintegratedtrms(self,mincurrent=0.):
+        """
+Returns the rms duration of the data
+  - mincurrent=0.: Only include data that has a current above the given value
+        """
         zmin = self.zmesh[0] + self.zbeam.min()
         zmax = self.zmesh[-1] + self.zbeam.max()
         nz = nint((zmax - zmin)/self.dz)
@@ -1261,11 +1289,12 @@ around the peak current."""
         nn = self.current.shape[1]
         zz = (self.zmesh[newaxis,:] + self.zbeam[:,newaxis]).ravel()
         tt = (ones(nn)[newaxis,:]*self.time[:,newaxis]).ravel()
-        deposgrid1dw(1,len(zz),
-                     zz,tt,self.current.ravel(),
+        cu = self.current.ravel()
+        if mincurrent > 0.:
+            cu = where(cu > mincurrent,cu,0.)
+        deposgrid1dw(1,len(zz),zz,tt,cu,
                      nz,tgrid,tgridcount,zmin,zmax)
-        deposgrid1dw(1,len(zz),
-                     zz,tt**2,self.current.ravel(),
+        deposgrid1dw(1,len(zz),zz,tt**2,cu,
                      nz,tsqgrid,tsqgridcount,zmin,zmax)
 
         tbar = tgrid/where(tgridcount > 0.,tgridcount,1.)
@@ -1274,6 +1303,10 @@ around the peak current."""
         return (trms,gridmesh)
 
     # ----------------------------------------------------------------------
+    def _getzmesh(self):
+        return self.zmmin + arange(0,self.nz+1)*self.dz
+    zmesh = property(_getzmesh)
+
     # --- Setup the properties so that the last set of data which is
     # --- still being accumulated is not returned, and so that the
     # --- data is converted to an array.
