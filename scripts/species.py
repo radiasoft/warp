@@ -1,11 +1,13 @@
 """
-This script contains the definition of a number of classes (Particle, Atom, Molecule,
-Species), a dictionary of the periodic table of elements, as well as the instanciation of some
-usual particles as object (Electron, Positron, Water, atoms from periodic table).
+This module contains the definition of the Species class which is used to
+define the species of the simulation particles.  It also defines the particle
+types that are passed into Species. These include all of the atomic elements
+(Hydrogen, etc.) and the following, Electron, Positron, Proton, Neutron,
+Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water 
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.83 2010/11/23 02:13:45 dave Exp $"
+species_version = "$Id: species.py,v 1.84 2010/11/24 01:32:45 dave Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale>0.:
@@ -818,6 +820,23 @@ in radius squared.
   def add_gaussian_dist(self,np,deltax,deltay,deltaz,vthx=0.,vthy=0.,vthz=0.,
                         xmean=0.,ymean=0.,zmean=0.,vxmean=0.,vymean=0.,vzmean=0.,
                         zdist='random',nz=1000,fourfold=0,js=None,lmomentum=0,**kw):
+    """
+Add particles with a Gaussian distribution.
+ - np: total number of particles to load
+ - deltax,deltay,deltaz: width of the distribution
+ - vthx, vthy, vthz: thermal velocity, defaults to 0.
+ - xmean,ymean,zmean: center of the cylinder, defaults to 0.
+ - vxmean,vymean,vzmean: directed velocity, defaults to 0.
+ - zdist='random': type of random distribution along z, possible values are
+                   'random' and 'regular'
+ - nz=1000: number of data points to use along z
+ - fourfold=False: whether to use four fold symmetry.
+ - js: particle species number, don't set it unless you mean it
+ - lmomentum=false: Set to false when velocities are input as velocities, true
+                    when input as massless momentum (as WARP stores them).
+                    Only used when top.lrelativ is true.
+Note that the lreturndata option doesn't work.
+    """
     if fourfold:np=nint(float(np)/4)
     kw['lmomentum'] = lmomentum
     if zdist=='random':
@@ -845,7 +864,7 @@ in radius squared.
             gi=1./sqrt(1.+(vxa*vxa+vya*vya+vza*vza)/clight**2)
           else:
             gi=1.
-          return self.addparticles(xa,ya,za,vxa,vya,vza,gi=gi,js=js,**kw)
+          self.addparticles(xa,ya,za,vxa,vya,vza,gi=gi,js=js,**kw)
     if zdist=='regular': 
       dz=16.*deltaz/nz
       zmin=-(float(nz/2)-0.5)*dz
@@ -881,7 +900,7 @@ in radius squared.
                 gi=1./sqrt(1.+(vxa*vxa+vya*vya+vza*vza)/clight**2)
               else:
                 gi=1.
-              return self.addparticles(xa,ya,za,vxa,vya,vza,gi=gi,js=js,**kw)
+              self.addparticles(xa,ya,za,vxa,vya,vza,gi=gi,js=js,**kw)
     
   def gather_zmmnts_locs(self):
     get_zmmnts_stations(len(self.jslist),
@@ -1442,84 +1461,111 @@ in radius squared.
     return ii
 
   def getn(self,**kw):
+    """Calls :py:func:`~particles.getn` for this species."""
     return getn(jslist=self.jslist,**kw)
     
   def getx(self,**kw):
+    """Calls :py:func:`~particles.getx` for this species."""
     return getx(jslist=self.jslist,**kw)
     
   def gety(self,**kw):
+    """Calls :py:func:`~particles.gety` for this species."""
     return gety(jslist=self.jslist,**kw)
     
   def getz(self,**kw):
+    """Calls :py:func:`~particles.getz` for this species."""
     return getz(jslist=self.jslist,**kw)
     
   def getr(self,**kw):
+    """Calls :py:func:`~particles.getr` for this species."""
     return getr(jslist=self.jslist,**kw)
 
   def gettheta(self,**kw):
+    """Calls :py:func:`~particles.gettheta` for this species."""
     return gettheta(jslist=self.jslist,**kw)
 
   def getvx(self,**kw):
+    """Calls :py:func:`~particles.getvx` for this species."""
     return getvx(jslist=self.jslist,**kw)
     
   def getvy(self,**kw):
+    """Calls :py:func:`~particles.getvy` for this species."""
     return getvy(jslist=self.jslist,**kw)
     
   def getvz(self,**kw):
+    """Calls :py:func:`~particles.getvz` for this species."""
     return getvz(jslist=self.jslist,**kw)
     
   def getvr(self,**kw):
+    """Calls :py:func:`~particles.getvr` for this species."""
     return getvr(jslist=self.jslist,**kw)
     
   def getvtheta(self,**kw):
+    """Calls :py:func:`~particles.getvtheta` for this species."""
     return getvtheta(jslist=self.jslist,**kw)
     
   def getux(self,**kw):
+    """Calls :py:func:`~particles.getux` for this species."""
     return getux(jslist=self.jslist,**kw)
     
   def getuy(self,**kw):
+    """Calls :py:func:`~particles.getuy` for this species."""
     return getuy(jslist=self.jslist,**kw)
     
   def getuz(self,**kw):
+    """Calls :py:func:`~particles.getuz` for this species."""
     return getuz(jslist=self.jslist,**kw)
     
   def getex(self,**kw):
+    """Calls :py:func:`~particles.getex` for this species."""
     return getex(jslist=self.jslist,**kw)
     
   def getey(self,**kw):
+    """Calls :py:func:`~particles.getey` for this species."""
     return getey(jslist=self.jslist,**kw)
     
   def getez(self,**kw):
+    """Calls :py:func:`~particles.getez` for this species."""
     return getez(jslist=self.jslist,**kw)
     
   def getbx(self,**kw):
+    """Calls :py:func:`~particles.getbx` for this species."""
     return getbx(jslist=self.jslist,**kw)
     
   def getby(self,**kw):
+    """Calls :py:func:`~particles.getby` for this species."""
     return getby(jslist=self.jslist,**kw)
     
   def getbz(self,**kw):
+    """Calls :py:func:`~particles.getbz` for this species."""
     return getbz(jslist=self.jslist,**kw)
     
   def getxp(self,**kw):
+    """Calls :py:func:`~particles.getxp` for this species."""
     return getxp(jslist=self.jslist,**kw)
     
   def getyp(self,**kw):
+    """Calls :py:func:`~particles.getyp` for this species."""
     return getyp(jslist=self.jslist,**kw)
     
   def getrp(self,**kw):
+    """Calls :py:func:`~particles.getrp` for this species."""
     return getrp(jslist=self.jslist,**kw)
     
   def gettp(self,**kw):
+    """Calls :py:func:`~particles.gettp` for this species."""
     return gettp(jslist=self.jslist,**kw)
     
   def getgaminv(self,**kw):
+    """Calls :py:func:`~particles.getgaminv` for this species."""
     return getgaminv(jslist=self.jslist,**kw)
     
   def getpid(self,**kw):
+    """Calls :py:func:`~particles.getpid` for this species."""
     return getpid(jslist=self.jslist,**kw)
 
   def getke(self,**kw):
+    """Calls :py:func:`~particles.getke` for this species."""
     return getke(jslist=self.jslist,**kw)
 
   def _callppfunc(self,ppfunc,**kw):
@@ -1532,150 +1578,199 @@ of code."""
     return ppfunc(jslist=self.jslist,**kw)
 
   def ppxy(self,**kw):
+    """Calls :py:func:`~warpplots.ppxy` for this species."""
     return self._callppfunc(ppxy,**kw)
 
   def ppxxp(self,**kw):
+    """Calls :py:func:`~warpplots.ppxxp` for this species."""
     return self._callppfunc(ppxxp,**kw)
 
   def ppyyp(self,**kw):
+    """Calls :py:func:`~warpplots.ppyyp` for this species."""
     return self._callppfunc(ppyyp,**kw)
 
   def ppxpyp(self,**kw):
+    """Calls :py:func:`~warpplots.ppxpyp` for this species."""
     return self._callppfunc(ppxpyp,**kw)
 
   def ppxvx(self,**kw):
+    """Calls :py:func:`~warpplots.ppxvx` for this species."""
     return self._callppfunc(ppxvx,**kw)
 
   def ppyvy(self,**kw):
+    """Calls :py:func:`~warpplots.ppyvy` for this species."""
     return self._callppfunc(ppyvy,**kw)
 
   def ppxvz(self,**kw):
+    """Calls :py:func:`~warpplots.ppxvz` for this species."""
     return self._callppfunc(ppxvz,**kw)
 
   def ppyvz(self,**kw):
+    """Calls :py:func:`~warpplots.ppyvz` for this species."""
     return self._callppfunc(ppyvz,**kw)
 
   def ppzxy(self,**kw):
+    """Calls :py:func:`~warpplots.ppzxy` for this species."""
     return self._callppfunc(ppzxy,**kw)
 
   def ppzx(self,**kw):
+    """Calls :py:func:`~warpplots.ppzx` for this species."""
     return self._callppfunc(ppzx,**kw)
 
   def ppzy(self,**kw):
+    """Calls :py:func:`~warpplots.ppzy` for this species."""
     return self._callppfunc(ppzy,**kw)
 
   def ppzr(self,**kw):
+    """Calls :py:func:`~warpplots.ppzr` for this species."""
     return self._callppfunc(ppzr,**kw)
 
   def ppzxp(self,**kw):
+    """Calls :py:func:`~warpplots.ppzxp` for this species."""
     return self._callppfunc(ppzxp,**kw)
 
   def ppzvx(self,**kw):
+    """Calls :py:func:`~warpplots.ppzvx` for this species."""
     return self._callppfunc(ppzvx,**kw)
 
   def ppzyp(self,**kw):
+    """Calls :py:func:`~warpplots.ppzyp` for this species."""
     return self._callppfunc(ppzyp,**kw)
 
   def ppzvy(self,**kw):
+    """Calls :py:func:`~warpplots.ppzvy` for this species."""
     return self._callppfunc(ppzvy,**kw)
 
   def ppzvz(self,**kw):
+    """Calls :py:func:`~warpplots.ppzvz` for this species."""
     return self._callppfunc(ppzvz,**kw)
 
   def ppxux(self,**kw):
+    """Calls :py:func:`~warpplots.ppxux` for this species."""
     return self._callppfunc(ppxux,**kw)
 
   def ppyuy(self,**kw):
+    """Calls :py:func:`~warpplots.ppyuy` for this species."""
     return self._callppfunc(ppyuy,**kw)
 
   def ppzux(self,**kw):
+    """Calls :py:func:`~warpplots.ppzux` for this species."""
     return self._callppfunc(ppzux,**kw)
 
   def ppzuy(self,**kw):
+    """Calls :py:func:`~warpplots.ppzuy` for this species."""
     return self._callppfunc(ppzuy,**kw)
 
   def ppzuz(self,**kw):
+    """Calls :py:func:`~warpplots.ppzuz` for this species."""
     return self._callppfunc(ppzuz,**kw)
 
   def ppzrp(self,**kw):
+    """Calls :py:func:`~warpplots.ppzrp` for this species."""
     return self._callppfunc(ppzrp,**kw)
 
   def ppzvr(self,**kw):
+    """Calls :py:func:`~warpplots.ppzvr` for this species."""
     return self._callppfunc(ppzvr,**kw)
 
   def ppzvtheta(self,**kw):
+    """Calls :py:func:`~warpplots.ppzvtheta` for this species."""
     return self._callppfunc(ppzvtheta,**kw)
 
   def ppzvperp(self,**kw):
+    """Calls :py:func:`~warpplots.ppzvperp` for this species."""
     return self._callppfunc(ppzvperp,**kw)
 
   def ppvzvperp(self,**kw):
+    """Calls :py:func:`~warpplots.ppvzvperp` for this species."""
     return self._callppfunc(ppvzvperp,**kw)
 
   def pptrace(self,**kw):
+    """Calls :py:func:`~warpplots.pptrace` for this species."""
     return self._callppfunc(pptrace,**kw)
 
   def pprrp(self,**kw):
+    """Calls :py:func:`~warpplots.pprrp` for this species."""
     return self._callppfunc(pprrp,**kw)
 
   def pprtp(self,**kw):
+    """Calls :py:func:`~warpplots.pprtp` for this species."""
     return self._callppfunc(pprtp,**kw)
 
   def pprvz(self,**kw):
+    """Calls :py:func:`~warpplots.pprvz` for this species."""
     return self._callppfunc(pprvz,**kw)
 
   def ppxex(self,**kw):
+    """Calls :py:func:`~warpplots.ppxex` for this species."""
     return self._callppfunc(ppxex,**kw)
 
   def ppxey(self,**kw):
+    """Calls :py:func:`~warpplots.ppxey` for this species."""
     return self._callppfunc(ppxey,**kw)
 
   def ppxez(self,**kw):
+    """Calls :py:func:`~warpplots.ppxez` for this species."""
     return self._callppfunc(ppxez,**kw)
 
   def ppyex(self,**kw):
+    """Calls :py:func:`~warpplots.ppyex` for this species."""
     return self._callppfunc(ppyex,**kw)
 
   def ppyey(self,**kw):
+    """Calls :py:func:`~warpplots.ppyey` for this species."""
     return self._callppfunc(ppyey,**kw)
 
   def ppyez(self,**kw):
+    """Calls :py:func:`~warpplots.ppyez` for this species."""
     return self._callppfunc(ppyez,**kw)
 
   def ppzex(self,**kw):
+    """Calls :py:func:`~warpplots.ppzex` for this species."""
     return self._callppfunc(ppzex,**kw)
 
   def ppzey(self,**kw):
+    """Calls :py:func:`~warpplots.ppzey` for this species."""
     return self._callppfunc(ppzey,**kw)
 
   def ppzez(self,**kw):
+    """Calls :py:func:`~warpplots.ppzez` for this species."""
     return self._callppfunc(ppzez,**kw)
 
   def ppxbx(self,**kw):
+    """Calls :py:func:`~warpplots.ppxbx` for this species."""
     return self._callppfunc(ppxbx,**kw)
 
   def ppxby(self,**kw):
+    """Calls :py:func:`~warpplots.ppxby` for this species."""
     return self._callppfunc(ppxby,**kw)
 
   def ppxbz(self,**kw):
+    """Calls :py:func:`~warpplots.ppxbz` for this species."""
     return self._callppfunc(ppxbz,**kw)
 
   def ppybx(self,**kw):
+    """Calls :py:func:`~warpplots.ppybx` for this species."""
     return self._callppfunc(ppybx,**kw)
 
   def ppyby(self,**kw):
+    """Calls :py:func:`~warpplots.ppyby` for this species."""
     return self._callppfunc(ppyby,**kw)
 
   def ppybz(self,**kw):
+    """Calls :py:func:`~warpplots.ppybz` for this species."""
     return self._callppfunc(ppybz,**kw)
 
   def ppzbx(self,**kw):
+    """Calls :py:func:`~warpplots.ppzbx` for this species."""
     return self._callppfunc(ppzbx,**kw)
 
   def ppzby(self,**kw):
+    """Calls :py:func:`~warpplots.ppzby` for this species."""
     return self._callppfunc(ppzby,**kw)
 
   def ppzbz(self,**kw):
+    """Calls :py:func:`~warpplots.ppzbz` for this species."""
     return self._callppfunc(ppzbz,**kw)
 
   def dump(self,filename='pdump.pdb'):
