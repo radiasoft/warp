@@ -4,13 +4,13 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.42 2010/11/23 02:11:40 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.43 2010/11/24 23:37:51 dave Exp $"
 
 class GridCrossingDiags(object):
     """
-
 Sets up diagnostics at z grid cells that are gathered from particles that
 cross the cell.
+
   - js: species of particles to include. Currently can handle only a single
         species. Can be either the species index number, or an instance of the
         Species class.
@@ -55,18 +55,19 @@ cross the cell.
   - lmoving_frame=false: When true, the diagnostic moves with the beam frame.
 
 The following quantities are calculated:
-count: count of the number of particles that cross the cell each time
-current: current, same as count but scaled by particle charge and 1/top.dt.
-vzbar:
-xbar, ybar:
-xsqbar, ysqbar:
-vxbar, vybar, vzbar:
-vxsqbar, vysqbar, vzsqbar:
-xrms, yrms:
-vxrms, vyrms, vzrms:
-epsnx, epsny:
-rrms:
-rprms:
+
+ - count: count of the number of particles that cross the cell each time
+ - current: current, same as count but scaled by particle charge and 1/top.dt.
+ - vzbar:
+ - xbar, ybar:
+ - xsqbar, ysqbar:
+ - vxbar, vybar, vzbar:
+ - vxsqbar, vysqbar, vzsqbar:
+ - xrms, yrms:
+ - vxrms, vyrms, vzrms:
+ - epsnx, epsny:
+ - rrms:
+ - rprms:
 
 Note that on the first time step, there is no old z data so the determination
 if particles have crossed a grid cell can not be done so the results will
@@ -167,6 +168,11 @@ be unreliable.
             self._scintillator = []
 
     def enable(self):
+        """
+Turn on the diagnostic. This is automatically called when the diagnostic
+is created. This method would be used to turn the diagnostic back on
+after being disabled.
+        """
         if self.gcmoments is None:
             # --- Only create the instance here when the diagnostic is
             # --- enabled.
@@ -190,6 +196,10 @@ be unreliable.
         installafterstep(self.getdiagnostics)
 
     def disable(self):
+        """
+Turn the diagnostic off. No more data will be collected, but any existing
+data will be preserved.
+        """
         # --- If not already enabled, then do nothing.
         if self.gcmoments is None: return
         if self.gcindex is None: return
@@ -662,6 +672,10 @@ be unreliable.
         ff.close()
 
     def restorefromfile(self,files=[],readscintillator=1):
+        """
+Restore the data from a dump file. This is used before post processing data
+after simulation when the dumptofile flag was on.
+        """
         #self.restorefromfilePDB(files,readscintillator)
         self.restorefromfilePickle(files,readscintillator=readscintillator)
 
@@ -1018,52 +1032,148 @@ around the peak current."""
         ppgeneric(gridt=data,xmesh=zz,ymesh=tt,**kw)
 
     def pp2dcount(self,**kw):
+        """
+Make a 2-D plot of the particle count.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.count,**kw)
     def pp2dcurrent(self,**kw):
+        """
+Make a 2-D plot of the current.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.current,**kw)
     def pp2dvzbar(self,**kw):
+        """
+Make a 2-D plot of the vzbar.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.vzbar,**kw)
     def pp2dxbar(self,**kw):
+        """
+Make a 2-D plot of the xbar.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.xbar,**kw)
     def pp2dybar(self,**kw):
+        """
+Make a 2-D plot of the ybar.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.ybar,**kw)
     def pp2dxsqbar(self,**kw):
+        """
+Make a 2-D plot of the x**2 bar.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.xsqbar,**kw)
     def pp2dysqbar(self,**kw):
+        """
+Make a 2-D plot of the y**2 bar.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.ysqbar,**kw)
     def pp2dvxbar(self,**kw):
+        """
+Make a 2-D plot of the vx bar
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.vxbar,**kw)
     def pp2dvybar(self,**kw):
+        """
+Make a 2-D plot of the vy bar
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.vybar,**kw)
     def pp2dvzbar(self,**kw):
+        """
+Make a 2-D plot of the vz bar.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.vzbar,**kw)
     def pp2dvxsqbar(self,**kw):
+        """
+Make a 2-D plot of the vx**2 bar.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.vxsqbar,**kw)
     def pp2dvysqbar(self,**kw):
+        """
+Make a 2-D plot of the vy**2 bar.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.vysqbar,**kw)
     def pp2dvzsqbar(self,**kw):
+        """
+Make a 2-D plot of the vz**2 bar.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.vzsqbar,**kw)
     def pp2dxvxbar(self,**kw):
+        """
+Make a 2-D plot of the x*vx bar.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.xvxbar,**kw)
     def pp2dyvybar(self,**kw):
+        """
+Make a 2-D plot of the y*vy bar.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.yvybar,**kw)
     def pp2dxrms(self,**kw):
+        """
+Make a 2-D plot of the x rms.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.xrms,**kw)
     def pp2dyrms(self,**kw):
+        """
+Make a 2-D plot of the y rms.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.yrms,**kw)
     def pp2dvxrms(self,**kw):
+        """
+Make a 2-D plot of the vx rms.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.vxrms,**kw)
     def pp2dvyrms(self,**kw):
+        """
+Make a 2-D plot of the vy rms.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.vyrms,**kw)
     def pp2dvzrms(self,**kw):
+        """
+Make a 2-D plot of the vz rms.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.vzrms,**kw)
     def pp2depsnx(self,**kw):
+        """
+Make a 2-D plot of the normalized x emittance.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.epsnx,**kw)
     def pp2depsny(self,**kw):
+        """
+Make a 2-D plot of the normalized y emittance.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.epsny,**kw)
     def pp2drrms(self,**kw):
+        """
+Make a 2-D plot of the r rms.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.rrms,**kw)
     def pp2drprms(self,**kw):
+        """
+Make a 2-D plot of the r' rms.
+Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
+        """
         self._pp2d(self.rprms,**kw)
 
     # ----------------------------------------------------------------------
@@ -1121,50 +1231,119 @@ around the peak current."""
         #return array(d),array(t)
         
     def hcount(self,z):
+        """
+Returns the time history of the particle count at the given z location.
+        """
         return self._gettimehistory(self.count,z)
     def hcurrent(self,z):
+        """
+Returns the time history of the current at the given z location.
+        """
         return self._gettimehistory(self.current,z)
     def hxbar(self,z):
+        """
+Returns the time history of the x bar at the given z location.
+        """
         return self._gettimehistory(self.xbar,z)
     def hybar(self,z):
+        """
+Returns the time history of the y bar at the given z location.
+        """
         return self._gettimehistory(self.ybar,z)
     def hxsqbar(self,z):
+        """
+Returns the time history of the x**2 bar at the given z location.
+        """
         return self._gettimehistory(self.xsqbar,z)
     def hysqbar(self,z):
+        """
+Returns the time history of the y**2 bar at the given z location.
+        """
         return self._gettimehistory(self.ysqbar,z)
     def hvxbar(self,z):
+        """
+Returns the time history of the vx bar at the given z location.
+        """
         return self._gettimehistory(self.vxbar,z)
     def hvybar(self,z):
+        """
+Returns the time history of the vy bar at the given z location.
+        """
         return self._gettimehistory(self.vybar,z)
     def hvzbar(self,z):
+        """
+Returns the time history of the vz bar at the given z location.
+        """
         return self._gettimehistory(self.vzbar,z)
     def hvxsqbar(self,z):
+        """
+Returns the time history of the vx**2 bar at the given z location.
+        """
         return self._gettimehistory(self.vxsqbar,z)
     def hvysqbar(self,z):
+        """
+Returns the time history of the vy**2 bar at the given z location.
+        """
         return self._gettimehistory(self.vysqbar,z)
     def hvzsqbar(self,z):
+        """
+Returns the time history of the vz**2 bar at the given z location.
+        """
         return self._gettimehistory(self.vzsqbar,z)
     def hxvxbar(self,z):
+        """
+Returns the time history of the x*vx bar at the given z location.
+        """
         return self._gettimehistory(self.xvxbar,z)
     def hyvybar(self,z):
+        """
+Returns the time history of the y*vy bar at the given z location.
+        """
         return self._gettimehistory(self.yvybar,z)
     def hxrms(self,z):
+        """
+Returns the time history of the x rms at the given z location.
+        """
         return self._gettimehistory(self.xrms,z)
     def hyrms(self,z):
+        """
+Returns the time history of the y rms at the given z location.
+        """
         return self._gettimehistory(self.yrms,z)
     def hvxrms(self,z):
+        """
+Returns the time history of the vx rms at the given z location.
+        """
         return self._gettimehistory(self.vxrms,z)
     def hvyrms(self,z):
+        """
+Returns the time history of the vy rms at the given z location.
+        """
         return self._gettimehistory(self.vyrms,z)
     def hvzrms(self,z):
+        """
+Returns the time history of the vz rms at the given z location.
+        """
         return self._gettimehistory(self.vzrms,z)
     def hepsnx(self,z):
+        """
+Returns the time history of the normalized x emittance at the given z location.
+        """
         return self._gettimehistory(self.epsnx,z)
     def hepsny(self,z):
+        """
+Returns the time history of the normalized y emittance at the given z location.
+        """
         return self._gettimehistory(self.epsny,z)
     def hrrms(self,z):
+        """
+Returns the time history of the r rms  at the given z location.
+        """
         return self._gettimehistory(self.rrms,z)
     def hrprms(self,z):
+        """
+Returns the time history of the r' rms at the given z location.
+        """
         return self._gettimehistory(self.rprms,z)
 
     # ----------------------------------------------------------------------
@@ -1206,51 +1385,184 @@ around the peak current."""
         return result,gridmesh
 
     def timeintegratedcount(self,laverage=0,weight=None):
+        """
+Returns the time integrated particle count. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=0: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         return self._timeintegrate(self.count,laverage,weight)
 
     def timeintegratedcurrent(self,laverage=0,weight=None):
+        """
+Returns the time integrated current. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=0: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         return self._timeintegrate(self.current,laverage,weight)
 
     def timeintegratedvzbar(self,laverage=1,weight=None):
+        """
+Returns the time integrated vz bar. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         return self._timeintegrate(self.vzbar,laverage,weight)
 
     def timeintegratedxbar(self,laverage=1,weight=None):
+        """
+Returns the time integrated x bar. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         return self._timeintegrate(self.xbar,laverage,weight)
 
     def timeintegratedybar(self,laverage=1,weight=None):
+        """
+Returns the time integrated y bar. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         return self._timeintegrate(self.ybar,laverage,weight)
 
     def timeintegratedxsqbar(self,laverage=1,weight=None):
+        """
+Returns the time integrated x**2 bar. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         return self._timeintegrate(self.xsqbar,laverage,weight)
 
     def timeintegratedysqbar(self,laverage=1,weight=None):
+        """
+Returns the time integrated y**2 bar. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         return self._timeintegrate(self.ysqbar,laverage,weight)
 
     def timeintegratedxrms(self,laverage=1,weight=None):
+        """
+Returns the time integrated x rms. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         data = self.xrms**2
         result,gridmesh = self._timeintegrate(data,laverage,weight)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
     def timeintegratedyrms(self,laverage=1,weight=None):
+        """
+Returns the time integrated y rms. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         data = self.yrms**2
         result,gridmesh = self._timeintegrate(data,laverage,weight)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
     def timeintegratedxprms(self,laverage=1,weight=None):
+        """
+Returns the time integrated x' rms. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         data = self.xprms**2
         result,gridmesh = self._timeintegrate(data,laverage,weight)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
     def timeintegratedyprms(self,laverage=1,weight=None):
+        """
+Returns the time integrated y' rms. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         data = self.yprms**2
         result,gridmesh = self._timeintegrate(data,laverage,weight)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
     def timeintegratedcorkscrew(self,laverage=1,weight=None):
+        """
+Returns the time integrated corkscrew. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+The corkscrew is defined as sqrt(xbarsq - xbar**2 + ybarsq - ybar**2)
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         xbarint,gridmesh = self.timeintegratedxbar()
         ybarint,gridmesh = self.timeintegratedybar()
         xbarsqint,gridmesh = self._timeintegrate(self.xbar**2,laverage,weight)
@@ -1259,8 +1571,17 @@ around the peak current."""
         return corkscrew,gridmesh
 
     def timeintegratedvzrms(self,laverage=1,weight=None):
-        '''If laverage is false, then sum up vzrms directly, otherwise sum
-        vzrms**2 and return the sqrt of that'''
+        """
+Returns the time integrated vz rms. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
         if laverage:
             data = self.vzrms**2
         else:
@@ -1272,7 +1593,10 @@ around the peak current."""
 
     def timeintegratedtrms(self,mincurrent=0.):
         """
-Returns the rms duration of the data
+Returns the time integrated t rms. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
   - mincurrent=0.: Only include data that has a current above the given value
         """
         zmin = self.zmesh[0] + self.zbeam.min()
@@ -1354,34 +1678,34 @@ Returns the rms duration of the data
             return result
         return fget,None,None,doc
 
-    time = property(*_setupproperty('time'))
-    zbeam = property(*_setupproperty('zbeam'))
-    count = property(*_setupproperty('count'))
-    current = property(*_setupproperty('current'))
-    xbar = property(*_setupproperty('xbar'))
-    ybar = property(*_setupproperty('ybar'))
-    xsqbar = property(*_setupproperty('xsqbar'))
-    ysqbar = property(*_setupproperty('ysqbar'))
-    vxbar = property(*_setupproperty('vxbar'))
-    vybar = property(*_setupproperty('vybar'))
-    vzbar = property(*_setupproperty('vzbar'))
-    vxsqbar = property(*_setupproperty('vxsqbar'))
-    vysqbar = property(*_setupproperty('vysqbar'))
-    vzsqbar = property(*_setupproperty('vzsqbar'))
-    xvxbar = property(*_setupproperty('xvxbar'))
-    yvybar = property(*_setupproperty('yvybar'))
-    xrms = property(*_setupproperty('xrms'))
-    yrms = property(*_setupproperty('yrms'))
-    vxrms = property(*_setupproperty('vxrms'))
-    vyrms = property(*_setupproperty('vyrms'))
-    vzrms = property(*_setupproperty('vzrms'))
-    epsnx = property(*_setupproperty('epsnx'))
-    epsny = property(*_setupproperty('epsny'))
-    rrms = property(*_setupproperty('rrms'))
-    rprms = property(*_setupproperty('rprms'))
-    rprofile = property(*_setupproperty('rprofile'))
-    scinttime = property(*_setupproperty('scinttime'))
-    scintillator = property(*_setupproperty('scintillator'))
+    time = property(*_setupproperty('time','time data was collected'))
+    zbeam = property(*_setupproperty('zbeam','location of beam frame when data was collected'))
+    count = property(*_setupproperty('count','particle count'))
+    current = property(*_setupproperty('current','current'))
+    xbar = property(*_setupproperty('xbar','x bar'))
+    ybar = property(*_setupproperty('ybar','y bar'))
+    xsqbar = property(*_setupproperty('xsqbar','x**2 bar'))
+    ysqbar = property(*_setupproperty('ysqbar','y**2 bar'))
+    vxbar = property(*_setupproperty('vxbar','vx bar'))
+    vybar = property(*_setupproperty('vybar','vy bar'))
+    vzbar = property(*_setupproperty('vzbar','vz bar'))
+    vxsqbar = property(*_setupproperty('vxsqbar','vx**2 bar'))
+    vysqbar = property(*_setupproperty('vysqbar','vy**2 bar'))
+    vzsqbar = property(*_setupproperty('vzsqbar','vz**2 bar'))
+    xvxbar = property(*_setupproperty('xvxbar','x*vx bar'))
+    yvybar = property(*_setupproperty('yvybar','y*vy bar'))
+    xrms = property(*_setupproperty('xrms','x rms'))
+    yrms = property(*_setupproperty('yrms','y rms'))
+    vxrms = property(*_setupproperty('vxrms','vx rms'))
+    vyrms = property(*_setupproperty('vyrms','vy rms'))
+    vzrms = property(*_setupproperty('vzrms','vz rms'))
+    epsnx = property(*_setupproperty('epsnx','normalized x emittance'))
+    epsny = property(*_setupproperty('epsny','normalized y emittance'))
+    rrms = property(*_setupproperty('rrms','r rms'))
+    rprms = property(*_setupproperty('rprms',"r' rms"))
+    rprofile = property(*_setupproperty('rprofile','radial profile'))
+    scinttime = property(*_setupproperty('scinttime','time when scintillator data was gathered'))
+    scintillator = property(*_setupproperty('scintillator','planar scintillator'))
     del _setupproperty
 
 class GridCrossingDiagsOld(object):
