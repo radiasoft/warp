@@ -1,75 +1,46 @@
-"""Controller operations
+"""
+Controller operations
+=====================
+
+These are the functions which allow installing user created functions so that
+they are called at various places along the time step.  
 
 For each controller, the following three functions are defined.
-install___: Installs a function to be called at that specified time
-uninstall___: Uninstalls the function (so it won't be called anymore)
-isinstalled___: Checks if the function is installed
+ - install___: Installs a function to be called at that specified time
+ - uninstall___: Uninstalls the function (so it won't be called anymore)
+ - isinstalled___: Checks if the function is installed
 
 The functions all take a function or instance method as an argument. Note that
 if an instance method is used, an extra reference to the method's object is saved.
 
 Functions can be called at the following times:
-aftergenerate: immediately after the generate is complete
-beforefs: before the field solve
-afterfs: after the field solve
-beforelr: before the rho is deposited, at the beginning of loadrho
-afterloadrho: after the rho is deposited, at the end of loadrho
-othereuser: during execution of electric fields gathering
-beforestep: before the time step
-afterstep: after the time step
-beforescraper: just before the particle boundary conditions are applied
-particlescraper: just after the particle boundary conditions are applied
-                 but before lost particles are processed
-afterscraper: just after the particle boundary conditions are applied
-particleloader: at the time that the standard particle loader is called
-addconductor: at the start of the multigrid solver (to install conductors)
-beforeplot: before a plot (actually after a frame advance)
-afterplot: after a plot (acutally just before a frame advance)
-plseldom: during a special time step, when position and velocity are
-          synchronized, specified by itplseldom or zzplseldom
-plalways: during a special time step, when position and velocity are
-          synchronized, specified by itplalways or zzplalways
-userinjection: called when particles injection happens, after the position
-               advance and before loadrho is called, allowing a user defined
-               particle distribution to be injected each time step
-
-Here is the complete list of functions:
-
-installaftergenerate, uninstallaftergenerate, isinstalledaftergenerate
-
-installbeforefs, uninstallbeforefs, isinstalledbeforefs
-
-installafterfs, uninstallafterfs, isinstalledafterfs
-
-installbeforeloadrho, uninstallbeforeloadrho, isinstalledbeforeloadrho
-
-installbeforestep, uninstallbeforestep, isinstalledbeforestep
-
-installafterstep, uninstallafterstep, isinstalledafterstep
-
-installbeforescraper, uninstallbeforescraper, isinstalledbeforescraper
-
-installparticlescraper, uninstallparticlescraper, isinstalledparticlescraper
-
-installafterscraper, uninstallafterscraper, isinstalledafterscraper
-
-installparticleloader, uninstallparticleloader, isinstalledparticleloader
-
-installaddconductor, uninstalladdconductor, isinstalledaddconductor
-
-installbeforeplot, uninstallbeforeplot, isinstalledbeforeplot
-
-installafterplot, uninstallafterplot, isinstalledafterplot
-
-installplseldom, uninstallplseldom, isinstalledplseldom
-
-installplalways, uninstallplalways, isinstalledplalways
-
-installuserinjection, uninstalluserinjection, installeduserinjection
+ - aftergenerate: immediately after the generate is complete
+ - beforefs: before the field solve
+ - afterfs: after the field solve
+ - beforelr: before the rho is deposited, at the beginning of loadrho
+ - afterloadrho: after the rho is deposited, at the end of loadrho
+ - othereuser: during execution of electric fields gathering
+ - beforestep: before the time step
+ - afterstep: after the time step
+ - beforescraper: just before the particle boundary conditions are applied
+ - particlescraper: just after the particle boundary conditions are applied
+                    but before lost particles are processed
+ - afterscraper: just after the particle boundary conditions are applied
+ - particleloader: at the time that the standard particle loader is called
+ - addconductor: at the start of the multigrid solver (to install conductors)
+ - beforeplot: before a plot (actually after a frame advance)
+ - afterplot: after a plot (acutally just before a frame advance)
+ - plseldom: during a special time step, when position and velocity are
+             synchronized, specified by itplseldom or zzplseldom
+ - plalways: during a special time step, when position and velocity are
+             synchronized, specified by itplalways or zzplalways
+ - userinjection: called when particles injection happens, after the position
+                  advance and before loadrho is called, allowing a user defined
+                  particle distribution to be injected each time step
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.30 2010/10/19 16:13:47 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.31 2010/11/24 17:37:00 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -376,6 +347,7 @@ def uninstallaftergenerate(f):
   "Removes the function from the list of functions called after a generate"
   aftergenerate.uninstallfuncinlist(f)
 def isinstalledaftergenerate(f):
+  "Checks if the function is called after a generate"
   return aftergenerate.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -388,6 +360,7 @@ def uninstallbeforefs(f):
   beforefs.uninstallfuncinlist(f)
   if not beforefs.hasfuncsinstalled(): warp.w3d.lbeforefs = warp.false
 def isinstalledbeforefs(f):
+  "Checks if the function is called before a field-solve"
   return beforefs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -400,6 +373,7 @@ def uninstallafterfs(f):
   afterfs.uninstallfuncinlist(f)
   if not afterfs.hasfuncsinstalled(): warp.w3d.lafterfs = warp.false
 def isinstalledafterfs(f):
+  "Checks if the function is called after a field-solve"
   return afterfs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -412,6 +386,7 @@ def uninstallbeforeloadrho(f):
   beforelr.uninstallfuncinlist(f)
   if not beforelr.hasfuncsinstalled(): warp.w3d.lbeforelr = warp.false
 def isinstalledbeforeloadrho(f):
+  "Checks if the function is called before a load rho"
   return beforelr.isinstalledfuncinlist(f)
 
 # --- This are defined for backwards compatibility
@@ -429,6 +404,7 @@ def uninstallafterloadrho(f):
   afterloadrho.uninstallfuncinlist(f)
   if not afterloadrho.hasfuncsinstalled(): warp.w3d.lafterloadrho = warp.false
 def isinstalledafterloadrho(f):
+  "Checks if the function is called after a load rho"
   return afterloadrho.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -441,6 +417,7 @@ def uninstallothereuser(f):
   othereuser.uninstallfuncinlist(f)
   if not othereuser.hasfuncsinstalled(): warp.w3d.lothereuser = warp.false
 def isinstalledothereuser(f):
+  "Checks if the function is called during the electric fields gathering"
   return othereuser.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -453,6 +430,7 @@ def uninstallbeforescraper(f):
   beforescraper.uninstallfuncinlist(f)
   if not beforescraper.hasfuncsinstalled(): warp.w3d.lbeforescraper = warp.false
 def isinstalledbeforescraper(f):
+  "Checks if the function is called before scraping particles"
   return beforescraper.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -465,6 +443,7 @@ def uninstallafterscraper(f):
   afterscraper.uninstallfuncinlist(f)
   if not afterscraper.hasfuncsinstalled(): warp.w3d.lafterscraper = warp.false
 def isinstalledafterscraper(f):
+  "Checks if the function is called after scraping particles"
   return afterscraper.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -477,6 +456,7 @@ def uninstallparticlescraper(f):
   callscraper.uninstallfuncinlist(f)
   if not callscraper.hasfuncsinstalled(): warp.w3d.lcallscraper = warp.false
 def isinstalledparticlescraper(f):
+  "Checks if the function is called to scrape particles"
   return callscraper.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -490,6 +470,7 @@ def uninstallparticleloader(f):
   if not callparticleloader.hasfuncsinstalled():
     warp.w3d.lcallparticleloader = warp.false
 def isinstalledparticleloader(f):
+  "Checks if the function is called to load particles"
   return callparticleloader.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -502,6 +483,7 @@ def uninstalladdconductor(f):
   calladdconductor.uninstallfuncinlist(f)
   if not calladdconductor.hasfuncsinstalled(): warp.f3d.laddconductor = warp.false
 def isinstalledaddconductor(f):
+  "Checks if the function is called to add conductors"
   return calladdconductor.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -512,6 +494,7 @@ def uninstallbeforestep(f):
   "Removes the function from the list of functions called before a step"
   callbeforestepfuncs.uninstallfuncinlist(f)
 def isinstalledbeforestep(f):
+  "Checks if the function is called before a step"
   return callbeforestepfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -522,6 +505,7 @@ def uninstallafterstep(f):
   "Removes the function from the list of functions called after a step"
   callafterstepfuncs.uninstallfuncinlist(f)
 def isinstalledafterstep(f):
+  "Checks if the function is called after a step"
   return callafterstepfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -532,6 +516,7 @@ def uninstallbeforeplot(f):
   "Removes the function from the list of functions called before a plot"
   beforeplotfuncs.uninstallfuncinlist(f)
 def isinstalledbeforeplot(f):
+  "Checks if the function is called before a plot"
   return beforeplotfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -542,6 +527,7 @@ def uninstallafterplot(f):
   "Removes the function from the list of functions called after a plot"
   callafterplotfuncs.uninstallfuncinlist(f)
 def isinstalledafterplot(f):
+  "Checks if the function is called after a plot"
   return callafterplotfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -552,6 +538,7 @@ def uninstallplseldom(f):
   "Removes the function from the list of functions controlled by itplseldom and zzplseldom"
   callplseldomfuncs.uninstallfuncinlist(f)
 def isinstalledplseldom(f):
+  "Checks if the function is controlled by itplseldom and zzplseldom"
   return callplseldomfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -562,6 +549,7 @@ def uninstallplalways(f):
   "Removes the function from the list of functions controlled by itplalways and zzplalways"
   callplalwaysfuncs.uninstallfuncinlist(f)
 def isinstalledplalways(f):
+  "Checks if the function is controlled by itplalways and zzplalways"
   return callplalwaysfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -572,6 +560,7 @@ def uninstallafterrestart(f):
   "Removes the function from the list of functions called immediately after a restart"
   callafterrestartfuncs.uninstallfuncinlist(f)
 def isinstalledafterrestart(f):
+  "Checks if the function is called immediately after a restart"
   return callafterrestartfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -586,6 +575,7 @@ def uninstalluserinjection(f):
   "Removes the function installed by installuserinjection"
   userinjection.uninstallfuncinlist(f)
 def isinstalleduserinjection(f):
+  "Checks if the function is called when particles injection happens"
   return userinjection.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
@@ -610,6 +600,7 @@ def uninstalluserparticlesinjection(f):
   if not generateuserparticlesforinjection.hasfuncsinstalled():
     warp.w3d.l_inj_user_particles = warp.false
 def isinstalleduserparticlesinjection(f):
+  "Checks if the function is called during injection"
   return generateuserparticlesforinjection.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
