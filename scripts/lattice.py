@@ -71,7 +71,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.95 2010/11/24 01:34:27 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.96 2010/11/24 17:36:15 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2525,7 +2525,8 @@ takes precedence):
         Note that this index is one based - for the first data set, set id=1.
   - ms: 1- or 2-D array containing the multipole data. First dimension is data
         along z, optional second dimension is number of multipole components.
-        With this input, addnewmmltdataset will automatically be called.
+        With this input, :py:func:`addnewmmltdataset` will automatically
+        be called.
 If 'ms' is supplied, the following may also be supplied.
   - nn, vv: the multipole indices. If these are not specified, then it is
     assumed that the data in the 'ms' array is layed out with the ordering of
