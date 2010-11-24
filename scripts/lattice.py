@@ -1,5 +1,7 @@
 """
 MAD style lattice input
+-----------------------
+
 A lattice is built up by adding pieces together, each of which can be a sum of
 several pieces. The basic elements correspond directly to the lattice elements
 type of Warp. Here is the list...
@@ -42,6 +44,7 @@ addnewquad: Adds a new quadnelement
 addnewsext: Adds a new sext element
 addnewhele: Adds a new hele element
 addnewemlt: Adds a new emlt element
+addnewmmltdataset: Adds a new mmlt data set
 addnewmmlt: Adds a new mmlt element
 addnewaccl: Adds a new accl element
 addnewegrd: Adds a new egrd element
@@ -68,7 +71,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.94 2010/11/23 02:05:03 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.95 2010/11/24 01:34:27 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -219,7 +222,7 @@ Line = LINE
 
 # --- Child can be any type of lattice element with one or more
 # --- parameters changed from the parent.
-class child:
+class Child:
   """
 Creates an instance of the child lattice type.  A child can be any type of
 lattice element with one or more parameters changed from the parent. The first
@@ -258,8 +261,8 @@ list of the parameters which are changed.
   def __neg__(self):
     return self.reversed()
 
-# --- Create an equivalent class to child
-Child = child
+# --- Create an equivalent class to Child
+child = Child
 
 # --- Base element class. All elements have the following attributes:
 # --- Length, aperture, X offset, Y offset, and error type for the offset.
@@ -2408,111 +2411,6 @@ scale factor. One of the following can be supplied:
 
 # ----------------------------------------------------------------------------
 # --- MMLT --- XXX
-def addnewmmlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,
-               ox=0.,oy=0.,ot=0.,op=0.,aps=0.,ape=0.,ol=0,
-               ms=None,msp=None,phz=None,phpz=None,nn=None,vv=None,
-               time=None,data=None,func=None):
-  """
-Adds a new mmlt element to the lattice. The element will be placed at the
-appropriate location.
-Required arguments:
-  - zs, ze: specify the start and end of the element
-One and only one of the following must be supplied (if both are supplied, id
-takes precedence):
-  - id: data set ID corresponding to already existing mmlt multipole data
-        Note that this index is one based - for the first data set, set id=1.
-  - ms: 1- or 2-D array containing the multipole data. First dimension is data
-    along z, optional second dimension is number of multipole components.
-If 'ms' is supplied, the following may also be supplied.
-  - nn, vv: the multipole indices. If these are not specified, then it is
-    assumed that the data in the 'ms' array is layed out with the ordering of
-    the existing mmlt_n and mmlt_v. Must have the same len as the second
-    dimension of ms (can be scalars is ms is 1-D).
-  - msp: first derivative of ms along z. Must have the same shape as ms.
-  - phz, phpz: phase angle along z and it's derivative. Must have the same
-    shape as ms.
-The following are all optional and have the same meaning and default as the
-mmlt arrays with the same suffices:
-  - ap,ph,sf,sc,ox,oy,ot,op
-  - aps,ape refer to mmltas and mmltae
-The applied field can be made time dependent by supplying a time varying
-scale factor. One of the following can be supplied:
-  - time,data: two 1-D arrays holding the tabulated scale factor (data) as
-               a function of time (time).
-  - func: a function that takes one argument, the time, and returns the
-          scaling factor.
-  """
-  # --- Make sure either an 'id' or a dataset, 'ms', was passed in.
-  assert (id is not None or ms is not None), \
-         "either an 'id' or a dataset, 'ms', must be passed in"
-
-  # --- Make sure that at least some of the element is in the proper range,
-  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
-  assert (zs < ze),"element start must be less than element end"
-  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
-
-  # --- Get a dict of the input arguments and their values.
-  ldict = locals()
-
-  # --- Setup the lattice arrays for the insertion of the new element. If
-  # --- there are already mmlts, then find the place where the new one is to
-  # --- be inserted and shift the existing data to open up a space.
-  # --- Note that this uses that same check as in resetlat, that mmltid > 0,
-  # --- to determine whether or not an mmlt is defined.
-  ie = 0
-  # --- Find which element the new one goes before.
-  while (ie <= top.nmmlt and top.mmltzs[ie] <= zs and top.mmltid[ie] > 0):
-    ie = ie + 1
-
-  # --- Increase the size of the arrays by one. Except for the case when
-  # --- there are no elements yet defined, which is true when the not'ed
-  # --- statement is true.
-  if ie > top.nmmlt or top.mmltid[-1] != 0:
-    top.nmmlt = top.nmmlt + 100
-    top.nmerr = top.nmerr + 100
-    gchange("Lattice")
-
-  # --- Setup dictionary relating lattice array with input argument names.
-  # --- This is done here so that the references to the lattice arrays
-  # --- refer to the updated memory locations after the gchange.
-  edict = {'zs':top.mmltzs,'ze':top.mmltze,
-           'ap':top.mmltap,'ax':top.mmltax,'ay':top.mmltay,
-           'ph':top.mmltph,
-           'sf':top.mmltsf,'sc':top.mmltsc,
-           'ox':top.mmltox,'oy':top.mmltoy,'ot':top.mmltot,'op':top.mmltop,
-           'aps':top.mmltas,'ape':top.mmltae,'ol':top.mmltol}
-
-  # --- Shift the existing data in the arrays to open up a space for the
-  # --- new element.
-  if ie <= top.nmmlt:
-    top.mmltid[ie+1:] = top.mmltid[ie:-1] + 0
-    for e in edict.values():
-      e[ie+1:] = e[ie:-1] + 0
-
-  # --- Insert the new element. Note that edict correlates the lattice array
-  # --- with the input arguments and ldict correlate the arguements with
-  # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
-    e[ie] = ldict[xx]
-
-  # --- Now setup the multipole component dataset.
-  if id is not None:
-    # --- If an 'id' was passed in, then just use that.
-    top.mmltid[ie] = id
-  elif ms is not None:
-    top.mmltid[ie] = addnewmmltdataset(ze-zs,ms,msp,phz,phpz,nn,vv)
-
-  if (time is not None and data is not None) or func is not None:
-    TimeDependentLatticeElement('mmltsc',ie,time,data,func)
-
-  # --- resetlat must be called before the data can be used
-  top.lresetlat = true
-
-  # --- Return the id of the new dataset. This allows the user to refer to
-  # --- this new dataset without having to knowne its actual number.
-  return ie,top.mmltid[ie]
-
 def addnewmmltdataset(zlen,ms,msp=None,phz=None,phpz=None,nn=None,vv=None):
   """
 Adds a new mmlt data set.
@@ -2611,6 +2509,112 @@ The following may also be supplied.
       if phpz is not None: top.msmmltphp[:n0,-ln:,-1] = transpose(array(phpz))
 
   return top.nmmltsets
+
+def addnewmmlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,
+               ox=0.,oy=0.,ot=0.,op=0.,aps=0.,ape=0.,ol=0,
+               ms=None,msp=None,phz=None,phpz=None,nn=None,vv=None,
+               time=None,data=None,func=None):
+  """
+Adds a new mmlt element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+One and only one of the following must be supplied (if both are supplied, id
+takes precedence):
+  - id: data set ID corresponding to already existing mmlt multipole data
+        Note that this index is one based - for the first data set, set id=1.
+  - ms: 1- or 2-D array containing the multipole data. First dimension is data
+        along z, optional second dimension is number of multipole components.
+        With this input, addnewmmltdataset will automatically be called.
+If 'ms' is supplied, the following may also be supplied.
+  - nn, vv: the multipole indices. If these are not specified, then it is
+    assumed that the data in the 'ms' array is layed out with the ordering of
+    the existing mmlt_n and mmlt_v. Must have the same len as the second
+    dimension of ms (can be scalars is ms is 1-D).
+  - msp: first derivative of ms along z. Must have the same shape as ms.
+  - phz, phpz: phase angle along z and it's derivative. Must have the same
+    shape as ms.
+The following are all optional and have the same meaning and default as the
+mmlt arrays with the same suffices:
+  - ap,ph,sf,sc,ox,oy,ot,op
+  - aps,ape refer to mmltas and mmltae
+The applied field can be made time dependent by supplying a time varying
+scale factor. One of the following can be supplied:
+  - time,data: two 1-D arrays holding the tabulated scale factor (data) as
+               a function of time (time).
+  - func: a function that takes one argument, the time, and returns the
+          scaling factor.
+  """
+  # --- Make sure either an 'id' or a dataset, 'ms', was passed in.
+  assert (id is not None or ms is not None), \
+         "either an 'id' or a dataset, 'ms', must be passed in"
+
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
+
+  # --- Get a dict of the input arguments and their values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already mmlts, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that mmltid > 0,
+  # --- to determine whether or not an mmlt is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.nmmlt and top.mmltzs[ie] <= zs and top.mmltid[ie] > 0):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.nmmlt or top.mmltid[-1] != 0:
+    top.nmmlt = top.nmmlt + 100
+    top.nmerr = top.nmerr + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict = {'zs':top.mmltzs,'ze':top.mmltze,
+           'ap':top.mmltap,'ax':top.mmltax,'ay':top.mmltay,
+           'ph':top.mmltph,
+           'sf':top.mmltsf,'sc':top.mmltsc,
+           'ox':top.mmltox,'oy':top.mmltoy,'ot':top.mmltot,'op':top.mmltop,
+           'aps':top.mmltas,'ape':top.mmltae,'ol':top.mmltol}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element.
+  if ie <= top.nmmlt:
+    top.mmltid[ie+1:] = top.mmltid[ie:-1] + 0
+    for e in edict.values():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- their values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    e[ie] = ldict[xx]
+
+  # --- Now setup the multipole component dataset.
+  if id is not None:
+    # --- If an 'id' was passed in, then just use that.
+    top.mmltid[ie] = id
+  elif ms is not None:
+    top.mmltid[ie] = addnewmmltdataset(ze-zs,ms,msp,phz,phpz,nn,vv)
+
+  if (time is not None and data is not None) or func is not None:
+    TimeDependentLatticeElement('mmltsc',ie,time,data,func)
+
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
+
+  # --- Return the id of the new dataset. This allows the user to refer to
+  # --- this new dataset without having to knowne its actual number.
+  return ie,top.mmltid[ie]
 
 # ----------------------------------------------------------------------------
 # --- ACCL --- XXX
