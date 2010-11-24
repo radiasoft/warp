@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.22 2010/08/04 17:03:06 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.23 2010/11/24 01:33:22 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -118,18 +118,18 @@ def B0p7(z,zcent,bzmax,R,l,normalizek=1):
                              198*(-c3**-6.5 + c4**-6.5)*R**4 +
                              429*(c3**-7.5 - c4**-7.5)*R**6)
 
-def addsolenoid(zi,zf,ri,ro=None,maxbz=None,current=None,
-                nzpoints=10000,fringelen=10.,
-                nsheets=1,v=1,
-                B0=B0,
-                B0p=B0p,
-                B0pp=B0pp,
-                B0ppp=B0ppp,
-                B0p4=B0p4,
-                B0p5=B0p5,
-                B0p6=B0p6,
-                B0p7=B0p7,
-                **kw):
+def addnewsolenoid(zi,zf,ri,ro=None,maxbz=None,current=None,
+                   nzpoints=10000,fringelen=10.,
+                   nsheets=1,v=1,
+                   B0=B0,
+                   B0p=B0p,
+                   B0pp=B0pp,
+                   B0ppp=B0ppp,
+                   B0p4=B0p4,
+                   B0p5=B0p5,
+                   B0p6=B0p6,
+                   B0p7=B0p7,
+                   **kw):
   """
 Adds a solenoid element represented as a multipole expansion of the field on
 axis. This creates a mmlt lattice element.
@@ -218,7 +218,7 @@ Br(r,z) = -B0'*r/2 + B0'''*r**3/16 - ...
   vv = arange(v+1,dtype='l')
   return addnewmmlt(zs,ze,ap,ms=ms,msp=msp,nn=nn,vv=vv,**kw)
 
-addnewsolenoid = addsolenoid
+addsolenoid = addnewsolenoid
 
 
 #============================================================================
