@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.75 2010/08/13 22:13:49 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.76 2010/11/24 19:01:47 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -35,10 +35,12 @@ The creator options are:
  - name=None: descriptive name for location
  - lautodump=0: when true, after the grid moves beyond the z location,
                 automatically dump the data to a file, clear the arrays and
-                disable itself. Also must have name set.
+                disable itself. Also must have name set. The object
+                writes itself out to a pdb file.
  - dumptofile=0: when true, the particle data is always dumped to a file
                  and not saved in memory. Name must be set. Setting this
                  to true implies that the data is accumulated.
+                 Use the restoredata method to read the data back in.
 
 One of iz or zz must be specified.
 
@@ -250,11 +252,12 @@ self.topgroupname
                     self.pid[js].reshape((self.topnpidmax,))
 
     def enable(self):
-        # --- Add this window to the list
-        # --- Only add this location to the list if it is not already there.
-        # --- Note that it is not an error to have more than one instance
-        # --- have the same location. For example one could be accumulating
-        # --- while another isn't or the widths could be different.
+        """
+Enable this diagnostic. This happens automatically when the diagnostic is
+created. This can be used to turn the diagnostic back on after it had been
+disabled. If the data is being accumulated, any new data will be added after
+the existing data.
+        """
         if self.enabled: return
         self.setupid()
         # --- Set so accumulate method is called after time steps
@@ -262,6 +265,10 @@ self.topgroupname
         self.enabled = 1
 
     def disable(self):
+        """
+Disable the diagnostic. Particle data will no longer be gathered nor
+accumulated. If the data is being accumulated, any existing data is preserved.
+        """
         if not self.enabled: return
         # --- Set so accumulate method is not called after time steps
         uninstallafterstep(self.accumulate)
@@ -466,6 +473,10 @@ self.topgroupname
 
     ############################################################################
     def restoredata(self,lforce=0,files=None,nprocs=None):
+        """
+Restores the data that was written out to a file. This is used when doing
+post processing of the saved data when the flag dumptofile was turned on.  
+        """
         #self.restoredataPDB(0,files)
         self.restoredataPickle(0,files,nprocs=nprocs)
 
@@ -665,6 +676,9 @@ feature.
     def selectparticles(self,val,js=0,tc=None,wt=None,tp=None,z=None,v=None,
                         gather=1,bcast=1):
         """
+This method shouldn't be called directly, but only through one of the "get"
+methods.
+ - val: The data to be selected from.
  - js=0: Species number to gather from.
          If js=='all', then the quantity is gathered from all species into
          a single array.
@@ -709,35 +723,48 @@ feature.
         return result
 
     def getns(self):
+        """Get the number of species for which data is saved."""
         return len(self.t)
     def gett(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the time that each particle was saved. The same options as for :py:func:`selectparticles` apply."""
         return self.selectparticles(self.t,js,tc,wt,tp,z,1.,
                                     gather=gather,bcast=bcast)
     def getx(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the x position of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return self.selectparticles(self.x,js,tc,wt,tp,z,self.getux,
                                     gather=gather,bcast=bcast)
     def gety(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the y position of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return self.selectparticles(self.y,js,tc,wt,tp,z,self.getuy,
                                     gather=gather,bcast=bcast)
     def getux(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the x massless momentum of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return self.selectparticles(self.ux,js,tc,wt,tp,
                                     gather=gather,bcast=bcast)
     def getuy(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the y massless momentum of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return self.selectparticles(self.uy,js,tc,wt,tp,
                                     gather=gather,bcast=bcast)
     def getuz(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the z massless momentum of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return self.selectparticles(self.uz,js,tc,wt,tp,
                                     gather=gather,bcast=bcast)
     def getvx(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the x velocity of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return self.selectparticles(self.ux,js,tc,wt,tp,
                                     gather=gather,bcast=bcast)
     def getvy(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the y velocity of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return self.selectparticles(self.uy,js,tc,wt,tp,
                                     gather=gather,bcast=bcast)
     def getvz(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the z velocity of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return self.selectparticles(self.uz,js,tc,wt,tp,
                                     gather=gather,bcast=bcast)
     def getpid(self,js=0,tc=None,wt=None,tp=None,z=None,id=0,gather=1,bcast=1):
+        """Get the pid of the saved particles.
+  - id=0: which pid to return
+The same options as for :py:func:`selectparticles` apply."""
         self.updatenpidmax()
         if self.topnpidmax > 0:
             return self.selectparticles(self.pid,js,tc,wt,tp,
@@ -747,31 +774,39 @@ feature.
                                     gather=gather,bcast=bcast),0),'d')
 
     def getxp(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the x' of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return (self.getux(js,tc,wt,tp,gather=gather,bcast=bcast)/
                 self.getuz(js,tc,wt,tp,gather=gather,bcast=bcast))
     def getyp(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the y' of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return (self.getuy(js,tc,wt,tp,gather=gather,bcast=bcast)/
                 self.getuz(js,tc,wt,tp,gather=gather,bcast=bcast))
     def getr(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the radial position of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return sqrt(self.getx(js,tc,wt,tp,z,gather=gather,bcast=bcast)**2 +
                     self.gety(js,tc,wt,tp,z,gather=gather,bcast=bcast)**2)
     def gettheta(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the angular position of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         return arctan2(self.gety(js,tc,wt,tp,z,gather=gather,bcast=bcast),
                        self.getx(js,tc,wt,tp,z,gather=gather,bcast=bcast))
     def getvr(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the radial velocity of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         theta = self.gettheta(js,tc,wt,tp,gather=gather,bcast=bcast)
         vx = self.getvx(js,tc,wt,tp,gather=gather,bcast=bcast)
         vy = self.getvy(js,tc,wt,tp,gather=gather,bcast=bcast)
         return (vx*cos(theta) + vy*sin(theta))
     def getrp(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the r' of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         theta = self.gettheta(js,tc,wt,tp,gather=gather,bcast=bcast)
         xp = self.getxp(js,tc,wt,tp,gather=gather,bcast=bcast)
         yp = self.getyp(js,tc,wt,tp,gather=gather,bcast=bcast)
         return (xp*cos(theta) + yp*sin(theta))
     def getn(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the number of saved particles. The same options as for :py:func:`selectparticles` apply."""
         return len(self.gett(js,tc,wt,tp,gather=gather,bcast=bcast))
 
     def xxpslope(self,js=0,tc=None,wt=None,tp=None,z=None):
+        """Get the x-x' slope of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         if self.getn(js,tc,wt,tp) == 0:
             return 0.
         else:
@@ -781,6 +816,7 @@ feature.
                 (ave(self.getx(js,tc,wt,tp,z)*self.getx(js,tc,wt,tp,z)) -
                  ave(self.getx(js,tc,wt,tp,z))*ave(self.getx(js,tc,wt,tp,z))))
     def yypslope(self,js=0,tc=None,wt=None,tp=None,z=None):
+        """Get the y-y' slope of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         if self.getn(js,tc,wt,tp) == 0:
             return 0.
         else:
@@ -790,34 +826,35 @@ feature.
                 (ave(self.gety(js,tc,wt,tp,z)*self.gety(js,tc,wt,tp,z)) -
                  ave(self.gety(js,tc,wt,tp,z))*ave(self.gety(js,tc,wt,tp,z))))
     def rrpslope(self,js=0,tc=None,wt=None,tp=None,z=None):
+        """Get the r-r' slope of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         if self.getn(js,tc,wt,tp) == 0:
             return 0.
         else:
             return (ave(self.getr(js,tc,wt,tp,z)*self.getrp(js,tc,wt,tp))/
                     ave(self.getr(js,tc,wt,tp,z)**2))
 
-    getx.__doc__ = selectparticles.__doc__
-    getns.__doc__ = selectparticles.__doc__
-    gett.__doc__ = selectparticles.__doc__
-    getx.__doc__ = selectparticles.__doc__
-    gety.__doc__ = selectparticles.__doc__
-    getux.__doc__ = selectparticles.__doc__
-    getuy.__doc__ = selectparticles.__doc__
-    getuz.__doc__ = selectparticles.__doc__
-    getvx.__doc__ = selectparticles.__doc__
-    getvy.__doc__ = selectparticles.__doc__
-    getvz.__doc__ = selectparticles.__doc__
-    getxp.__doc__ = selectparticles.__doc__
-    getyp.__doc__ = selectparticles.__doc__
-    getr.__doc__ = selectparticles.__doc__
-    gettheta.__doc__ = selectparticles.__doc__
-    getvr.__doc__ = selectparticles.__doc__
-    getrp.__doc__ = selectparticles.__doc__
-    getn.__doc__ = selectparticles.__doc__
-    xxpslope.__doc__ = selectparticles.__doc__
-    yypslope.__doc__ = selectparticles.__doc__
-    rrpslope.__doc__ = selectparticles.__doc__
-    getpid.__doc__ = selectparticles.__doc__[:-4]+' - id=0: which pid to return\n'
+    #getx.__doc__ += selectparticles.__doc__
+    #getns.__doc__ += selectparticles.__doc__
+    #gett.__doc__ += selectparticles.__doc__
+    #getx.__doc__ += selectparticles.__doc__
+    #gety.__doc__ += selectparticles.__doc__
+    #getux.__doc__ += selectparticles.__doc__
+    #getuy.__doc__ += selectparticles.__doc__
+    #getuz.__doc__ += selectparticles.__doc__
+    #getvx.__doc__ += selectparticles.__doc__
+    #getvy.__doc__ += selectparticles.__doc__
+    #getvz.__doc__ += selectparticles.__doc__
+    #getxp.__doc__ += selectparticles.__doc__
+    #getyp.__doc__ += selectparticles.__doc__
+    #getr.__doc__ += selectparticles.__doc__
+    #gettheta.__doc__ += selectparticles.__doc__
+    #getvr.__doc__ += selectparticles.__doc__
+    #getrp.__doc__ += selectparticles.__doc__
+    #getn.__doc__ += selectparticles.__doc__
+    #xxpslope.__doc__ += selectparticles.__doc__
+    #yypslope.__doc__ += selectparticles.__doc__
+    #rrpslope.__doc__ += selectparticles.__doc__
+    #getpid.__doc__ += selectparticles.__doc__[:-4]+' - id=0: which pid to return\n'
 
     ############################################################################
     ############################################################################
@@ -873,7 +910,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def pxy(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots X-Y for extraploated particles"""
+        """
+Plots X-Y for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric' apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.pxy,(js,tc,wt,tp,z),kw): return
         x = self.getx(js,tc,wt,tp,z)
@@ -888,9 +928,11 @@ each species and each one in the list. Also assign colors accordingly
     ############################################################################
     def pxvx(self,js=0,tc=None,wt=None,tp=None,z=None,slope=0.,offset=0.,
              **kw):
-        """Plots X-Vx for extraploated particles
+        """
+Plots X-Vx for extraploated particles
  - slope=0.: slope subtracted from vx, it is calculated automatically
  - offset=0.: offset in x
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.pxvx,(js,tc,wt,tp,z),kw): return
@@ -913,9 +955,11 @@ each species and each one in the list. Also assign colors accordingly
     ############################################################################
     def pyvy(self,js=0,tc=None,wt=None,tp=None,z=None,slope=0.,offset=0.,
              **kw):
-        """Plots Y-Vy for extraploated particles
+        """
+Plots Y-Vy for extraploated particles
  - slope=0.: slope subtracted from vy, it is calculated automatically
  - offset=0.: offset in y
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.pyvy,(js,tc,wt,tp,z,slope,offset),kw):
@@ -938,7 +982,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def pvxvy(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots Vx-Vy for extraploated particles"""
+        """
+Plots Vx-Vy for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.pvxvy,(js,tc,wt,tp),kw): return
         vx = self.getvx(js,tc,wt,tp)
@@ -951,9 +998,11 @@ each species and each one in the list. Also assign colors accordingly
     ############################################################################
     def prvr(self,js=0,tc=None,wt=None,tp=None,z=None,scale=0.,slope=0.,offset=0.,
              **kw):
-        """Plots R-Vr for extraploated particles
+        """
+Plots R-Vr for extraploated particles
  - slope=0.: slope subtracted from the vr, it is calculated automatically
  - offset=0.: offset in r
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.prvr,(js,tc,wt,tp,z,scale,slope,offset),kw):
@@ -992,9 +1041,11 @@ each species and each one in the list. Also assign colors accordingly
     ############################################################################
     def pxxp(self,js=0,tc=None,wt=None,tp=None,z=None,slope=0.,offset=0.,
              **kw):
-        """Plots X-X' for extraploated particles
+        """
+Plots X-X' for extraploated particles
  - slope=0.: slope subtracted from xp, it is calculated automatically
  - offset=0.: offset in x
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.pxxp,(js,tc,wt,tp,z),kw): return
@@ -1019,9 +1070,11 @@ each species and each one in the list. Also assign colors accordingly
     ############################################################################
     def pyyp(self,js=0,tc=None,wt=None,tp=None,z=None,slope=0.,offset=0.,
              **kw):
-        """Plots Y-Y' for extraploated particles
+        """
+Plots Y-Y' for extraploated particles
  - slope=0.: slope subtracted from yp, it is calculated automatically
  - offset=0.: offset in y
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.pyyp,(js,tc,wt,tp,z,slope,offset),kw):
@@ -1046,7 +1099,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def pxpyp(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots X'-Y' for extraploated particles"""
+        """
+Plots X'-Y' for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.pxpyp,(js,tc,wt,tp),kw): return
         xp = self.getxp(js,tc,wt,tp)
@@ -1061,9 +1117,11 @@ each species and each one in the list. Also assign colors accordingly
     ############################################################################
     def prrp(self,js=0,tc=None,wt=None,tp=None,z=None,scale=0.,slope=0.,offset=0.,
              **kw):
-        """Plots R-R' for extraploated particles
+        """
+Plots R-R' for extraploated particles
  - slope=0.: slope subtracted from the rp, it is calculated automatically
  - offset=0.: offset in r
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.prrp,(js,tc,wt,tp,z,scale,slope,offset),kw):
@@ -1104,7 +1162,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def ptx(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots time-X for extraploated particles"""
+        """
+Plots time-X for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.ptx,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
@@ -1118,7 +1179,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def pty(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots time-Y for extraploated particles"""
+        """
+Plots time-Y for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.pty,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
@@ -1132,7 +1196,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def ptxp(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots time-X' for extraploated particles"""
+        """
+Plots time-X' for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.ptxp,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
@@ -1146,7 +1213,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def ptyp(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots time-Y' for extraploated particles"""
+        """
+Plots time-Y' for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.ptyp,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
@@ -1160,7 +1230,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def ptux(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots time-ux for extraploated particles"""
+        """
+Plots time-ux for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.ptux,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
@@ -1172,7 +1245,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def ptuy(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots time-uy for extraploated particles"""
+        """
+Plots time-uy for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.ptuy,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
@@ -1184,7 +1260,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def ptuz(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots time-uz for extraploated particles"""
+        """
+Plots time-uz for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.ptuz,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
@@ -1196,7 +1275,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def ptvx(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots time-Vx for extraploated particles"""
+        """
+Plots time-Vx for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.ptvx,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
@@ -1208,7 +1290,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def ptvy(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots time-Vy for extraploated particles"""
+        """
+Plots time-Vy for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.ptvy,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
@@ -1220,7 +1305,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def ptvz(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots time-Vz for extraploated particles"""
+        """
+Plots time-Vz for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.ptvz,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
@@ -1232,7 +1320,10 @@ each species and each one in the list. Also assign colors accordingly
 
     ############################################################################
     def ptkez(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
-        """Plots time-kinetic energy for extraploated particles"""
+        """
+Plots time-kinetic energy for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.ptkez,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
@@ -1253,6 +1344,7 @@ Plots X-Y, X-X', Y-Y', Y'-X' in single page
  - pplimits=None: An optional list of up to four tuples, one for each phase
                   space plot. If any of the tuples are empty, the limits used
                   will be the usual ones for that plot.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.ptrace,(js,tc,wt,tp,z,slope,pplimits),kw):
@@ -1305,27 +1397,40 @@ Plots X-Y, X-X', Y-Y', Y'-X' in single page
         settitles("X' vs Y'","Y'","X'",titler)
         ppgeneric(xp,yp,kwdict=kw)
 
-    pxy.__doc__ = pxy.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    pxxp.__doc__ = pxxp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    pyyp.__doc__ = pyyp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    pxpyp.__doc__ = pxpyp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    prrp.__doc__ = prrp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    ptx.__doc__ = ptx.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    pty.__doc__ = pty.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    ptxp.__doc__ = ptxp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    ptyp.__doc__ = ptyp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    ptux.__doc__ = ptux.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    ptuy.__doc__ = ptuy.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    ptuz.__doc__ = ptuz.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    ptvx.__doc__ = ptvx.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    ptvy.__doc__ = ptvy.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    ptvz.__doc__ = ptvz.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
-    ptrace.__doc__ = ptrace.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #pxy.__doc__ = pxy.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #pxxp.__doc__ = pxxp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #pyyp.__doc__ = pyyp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #pxpyp.__doc__ = pxpyp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #prrp.__doc__ = prrp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #ptx.__doc__ = ptx.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #pty.__doc__ = pty.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #ptxp.__doc__ = ptxp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #ptyp.__doc__ = ptyp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #ptux.__doc__ = ptux.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #ptuy.__doc__ = ptuy.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #ptuz.__doc__ = ptuz.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #ptvx.__doc__ = ptvx.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #ptvy.__doc__ = ptvy.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #ptvz.__doc__ = ptvz.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
+    #ptrace.__doc__ = ptrace.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
 
 ############################################################################
 class ExtPart(ParticleAccumulator):
     """This class defines a container to setup and keep track of extropolated
 particle data. It can optionally accumulate the data over multiple time steps.
+Each time step, all particles that are within +-wz of the specified z location
+are extrapolated to the z location and saved. The extrapolation is done by
+first estimating the forces on the particle using a backward difference of
+the velocity, the current velocity minus the previous velocity. This force is
+applied to the current velocity to get the extrapolated velocity. The
+extrapolated position is given by ze = zi + vi*dt + 1/2 a*dt**2, where
+zi and vi are the current position and velocity, a is the estimated force
+over m.
+
+Note that because the extrapolation is inconsistent with the particle advance
+used during the time steps, there can be gaps in the resulting data at time
+step boundaries.
+
 The creator options are:
  - iz: grid location where the extrapolated data is saved.
  - zz: lab location where data is saved.
@@ -1342,10 +1447,12 @@ The creator options are:
  - name=None: descriptive name for location
  - lautodump=0: when true, after the grid moves beyond the z location,
                 automatically dump the data to a file, clear the arrays and
-                disable itself. Also must have name set.
+                disable itself. Also must have name set. The object
+                writes itself out to a pdb file.
  - dumptofile=0: when true, the particle data is always dumped to a file
                  and not saved in memory. Name must be set. Setting this
                  to true implies that the data is accumulated.
+                 Use the restoredata method to read the data back in.
 
 One of iz or zz must be specified.
 
@@ -1420,20 +1527,31 @@ routines (such as ppxxp).
 class ZCrossingParticles(ParticleAccumulator):
     """This class defines a container to setup and keep track of particles
 crossing a Z location. It can optionally accumulate the data over multiple
-time steps.
+time steps. Each time step, during the particle advance, a check is made if
+the particles will cross the z location during the advance, and if so, the
+particle data is saved. The current velocity is saved, as well as the position
+which is advanced the fraction of the time step the brings the particle z to
+the diagnostic z location.
+
+This gives nice results since the calculation of the particle data at the
+diagnostic location is consistent with the particle advance used during the
+simulation.
+
 The creator options are:
  - iz: grid location where the extrapolated data is saved.
  - zz: lab location where data is saved.
- - nepmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
-           otherwise 10000.
+ - nmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
+         otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
  - name=None: descriptive name for location
  - lautodump=0: when true, after the grid moves beyond the z location,
                 automatically dump the data to a file, clear the arrays and
-                disable itself. Also must have name set.
+                disable itself. Also must have name set. The object
+                writes itself out to a pdb file.
  - dumptofile=0: when true, the particle data is always dumped to a file
                  and not saved in memory. Name must be set. Setting this
                  to true implies that the data is accumulated.
+                 Use the restoredata method to read the data back in.
 
 One of iz or zz must be specified.
 
