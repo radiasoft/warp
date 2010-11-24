@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.76 2010/11/24 19:01:47 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.77 2010/11/24 23:44:11 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -30,7 +30,7 @@ The creator options are:
  - iz: grid location where the extrapolated data is saved.
  - zz: lab location where data is saved.
  - nmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
-           otherwise 10000.
+         otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
  - name=None: descriptive name for location
  - lautodump=0: when true, after the grid moves beyond the z location,
@@ -764,6 +764,7 @@ methods.
     def getpid(self,js=0,tc=None,wt=None,tp=None,z=None,id=0,gather=1,bcast=1):
         """Get the pid of the saved particles.
   - id=0: which pid to return
+
 The same options as for :py:func:`selectparticles` apply."""
         self.updatenpidmax()
         if self.topnpidmax > 0:
@@ -912,7 +913,7 @@ each species and each one in the list. Also assign colors accordingly
     def pxy(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
         """
 Plots X-Y for extraploated particles.
-The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric' apply.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
         if self.ppmultispecies(self.pxy,(js,tc,wt,tp,z),kw): return
@@ -932,6 +933,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
 Plots X-Vx for extraploated particles
  - slope=0.: slope subtracted from vx, it is calculated automatically
  - offset=0.: offset in x
+
 The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
@@ -959,6 +961,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
 Plots Y-Vy for extraploated particles
  - slope=0.: slope subtracted from vy, it is calculated automatically
  - offset=0.: offset in y
+
 The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
@@ -1002,6 +1005,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
 Plots R-Vr for extraploated particles
  - slope=0.: slope subtracted from the vr, it is calculated automatically
  - offset=0.: offset in r
+
 The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
@@ -1045,6 +1049,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
 Plots X-X' for extraploated particles
  - slope=0.: slope subtracted from xp, it is calculated automatically
  - offset=0.: offset in x
+
 The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
@@ -1074,6 +1079,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
 Plots Y-Y' for extraploated particles
  - slope=0.: slope subtracted from yp, it is calculated automatically
  - offset=0.: offset in y
+
 The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
@@ -1121,6 +1127,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
 Plots R-R' for extraploated particles
  - slope=0.: slope subtracted from the rp, it is calculated automatically
  - offset=0.: offset in r
+
 The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
@@ -1344,6 +1351,7 @@ Plots X-Y, X-X', Y-Y', Y'-X' in single page
  - pplimits=None: An optional list of up to four tuples, one for each phase
                   space plot. If any of the tuples are empty, the limits used
                   will be the usual ones for that plot.
+
 The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
         """
         self.checkplotargs(kw)
@@ -1432,6 +1440,7 @@ used during the time steps, there can be gaps in the resulting data at time
 step boundaries.
 
 The creator options are:
+
  - iz: grid location where the extrapolated data is saved.
  - zz: lab location where data is saved.
  - wz: width of lab window
@@ -1457,6 +1466,7 @@ The creator options are:
 One of iz or zz must be specified.
 
 Available methods:
+
  - setaccumulate(v=1): Turns accumulation on or off. If turned on, all
                        currently saved data is deleted.
  - clear(): Will clear the existing data.
@@ -1464,6 +1474,7 @@ Available methods:
  - enable(): Turns on collecting of data (only needed after disable)
 
 The follow all take an optional argument to specify species number.
+
  - getn: Get number of particles
  - gett: Get time at which particle was saved
  - getx, y, ux, uy, uz, vx, vy, vz, xp, yp, r, theta, rp: Get the various
@@ -1473,6 +1484,7 @@ The follow all take an optional argument to specify species number.
 The following are available plot routines. All take an optional argument to
 specify species number. Additional arguments are the same as the 'pp' plotting
 routines (such as ppxxp).
+
  - pxy, pxxp, pyyp, pxpyp, prrp, ptx, pty, ptxp, ptyp, ptux, ptuy, ptuz, ptvx
  - ptvy, ptvz, ptrace
     """
@@ -1538,6 +1550,7 @@ diagnostic location is consistent with the particle advance used during the
 simulation.
 
 The creator options are:
+
  - iz: grid location where the extrapolated data is saved.
  - zz: lab location where data is saved.
  - nmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
@@ -1556,6 +1569,7 @@ The creator options are:
 One of iz or zz must be specified.
 
 Available methods:
+
  - setaccumulate(v=1): Turns accumulation on or off. If turned on, all
                        currently saved data is deleted.
  - clear(): Will clear the existing data.
@@ -1563,6 +1577,7 @@ Available methods:
  - enable(): Turns on collecting of data (only needed after disable)
 
 The follow all take an optional argument to specify species number.
+
  - getn: Get number of particles
  - gett: Get time at which particle was saved
  - getx, y, ux, uy, uz, vx, vy, vz, xp, yp, r, theta, rp: Get the various
@@ -1572,6 +1587,7 @@ The follow all take an optional argument to specify species number.
 The following are available plot routines. All take an optional argument to
 specify species number. Additional arguments are the same as the 'pp' plotting
 routines (such as ppxxp).
+
  - pxy, pxxp, pyyp, pxpyp, prrp, ptx, pty, ptxp, ptyp, ptux, ptuy, ptuz, ptvx
  - ptvy, ptvz, ptrace
     """
