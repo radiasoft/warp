@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.93 2010/11/23 19:13:00 dave Exp $"
+particles_version = "$Id: particles.py,v 1.94 2010/11/24 01:34:53 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1135,6 +1135,7 @@ def getke(iw=0,js=0,jslist=None,gather=1,bcast=None,**kw):
 #-------------------------------------------------------------------------
 # Add the some parallel documentation to each of the routines.
 _paralleldoc = """
+
   - gather=true: Flags whether results are gathered to processor 0
               If true, all processors must make the call.
               What is returned by the other processors is determined by the
