@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.100 2010/11/10 17:36:19 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.101 2010/12/01 21:05:51 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -494,9 +494,19 @@ Apply scraping to all of the species. This will normally be called automatically
     ymax = self.grid.ymmin + (iy+ny)*dy
     zmin = self.grid.zmmin + iz*dz + top.zbeam
     zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
-    ixa = nint(-xmin/dx)
-    iya = nint(-ymin/dy)
-    iza = nint(-zmin/dz)
+
+    # --- The ixa etc are the location of the x=0 plane. This is needed
+    # --- since in certain cases, the size of the collapsed dimension
+    # --- can be greater than one and the 0 plane needs to be found, it
+    # --- is the plane where the data is stored. This is true for example
+    # --- with the RZ EM solver.
+    # --- The check of nx > 0 etc is done since in certain cases the xmin
+    # --- can be nonzero when nx is zero, giving an erroneous value for ixa.
+    # --- This is the case when the quasistatic solver is being used.
+    ixa = iya = iza = 0
+    if nx > 0: ixa = nint(-xmin/dx)
+    if ny > 0: iya = nint(-ymin/dy)
+    if nz > 0: iza = nint(-zmin/dz)
     isinside = self.grid.isinside
 
     # --- Get handy references to the particles in the species
@@ -922,6 +932,19 @@ counting the current lost on the conductor.
     yg = ymin+int(abs(y8-ymin)/dy)*dy + array(nn/8*[0.,0.,dy,dy,0.,0.,dy,dy])
     zg = zmin+int(abs(z8-zmin)/dz)*dz + array(nn/8*[0.,0.,0.,0.,dz,dz,dz,dz])
     pp = zeros(nn,'d')
+
+    # --- The ixa etc are the location of the x=0 plane. This is needed
+    # --- since in certain cases, the size of the collapsed dimension
+    # --- can be greater than one and the 0 plane needs to be found, it
+    # --- is the plane where the data is stored. This is true for example
+    # --- with the RZ EM solver.
+    # --- The check of nx > 0 etc is done since in certain cases the xmin
+    # --- can be nonzero when nx is zero, giving an erroneous value for ixa.
+    # --- This is the case when the quasistatic solver is being used.
+    ixa = iya = iza = 0
+    if nx > 0: ixa = nint(-xmin/dx)
+    if ny > 0: iya = nint(-ymin/dy)
+    if nz > 0: iza = nint(-zmin/dz)
 
     # --- Get conductor id that particles are near
     # --- See comments in updateconductors regarding reducedisinside
