@@ -10,7 +10,7 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.59 2010/11/15 23:00:27 dave Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.60 2010/12/02 18:55:12 dave Exp $"
 
 ##############################################################################
 ##############################################################################
@@ -115,8 +115,8 @@ class MultiGridRZ(MultiGrid3D):
     nzp = self.nzp + 2*self.nzguard
     xmminp = self.xmminp - self.dx*self.nxguard
     xmmaxp = self.xmmaxp + self.dx*self.nxguard
-    zmminp = self.zmminp - self.dz*self.nzguard
-    zmmaxp = self.zmmaxp + self.dz*self.nzguard
+    zmminp = self.zmminp - self.dz*self.nzguard + self.getzgridprv()
+    zmmaxp = self.zmmaxp + self.dz*self.nzguard + self.getzgridprv()
     getgrid2d(n,r,z,phi,nxp,nzp,self.potentialp[:,0,:],
               xmminp,xmmaxp,zmminp,zmmaxp)
 
@@ -312,8 +312,8 @@ class MultiGrid2D(MultiGrid3D):
     nzp = self.nzp + 2*self.nzguard
     xmminp = self.xmminp - self.dx*self.nxguard
     xmmaxp = self.xmmaxp + self.dx*self.nxguard
-    zmminp = self.zmminp - self.dz*self.nzguard
-    zmmaxp = self.zmmaxp + self.dz*self.nzguard
+    zmminp = self.zmminp - self.dz*self.nzguard + self.getzgridprv()
+    zmmaxp = self.zmmaxp + self.dz*self.nzguard + self.getzgridprv()
     getgrid2d(n,r,z,phi,nxp,nzp,self.potentialp[:,0,:],
               xmminp,xmmaxp,zmminp,zmmaxp)
 
@@ -761,8 +761,8 @@ Initially, conductors are not implemented.
     nzp = self.nzp + 2*self.nzguard
     xmminp = self.xmminp - self.nxguard*self.dx
     xmmaxp = self.xmmaxp + self.nxguard*self.dx
-    zmminp = self.zmminp - self.nzguard*self.dz
-    zmmaxp = self.zmmaxp + self.nzguard*self.dz
+    zmminp = self.zmminp - self.nzguard*self.dz + self.getzgridprv()
+    zmmaxp = self.zmmaxp + self.nzguard*self.dz + self.getzgridprv()
     getgrid2d(n,r,z,potential,nxp,nzp,self.potentialp[:,0,:],
               xmminp,xmmaxp,zmminp,zmmaxp)
 

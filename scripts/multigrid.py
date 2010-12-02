@@ -14,7 +14,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.153 2010/11/15 23:00:27 dave Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.154 2010/12/02 18:55:12 dave Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -510,14 +510,14 @@ most of which get there default values from one of the fortran packages.
     if n == 0: return
     if isinstance(self.potentialp,FloatType): return
     nxp = self.nxp + 2*self.nxguard
-    nyp = self.nyp + 2*self.nyguard,
+    nyp = self.nyp + 2*self.nyguard
     nzp = self.nzp + 2*self.nzguard
     xmminp = self.xmminp - self.dx*self.nxguard
     xmmaxp = self.xmmaxp + self.dx*self.nxguard
     ymminp = self.ymminp - self.dy*self.nyguard
     ymmaxp = self.ymmaxp + self.dy*self.nyguard
-    zmminp = self.zmminp - self.dz*self.nzguard
-    zmmaxp = self.zmmaxp + self.dz*self.nzguard
+    zmminp = self.zmminp - self.dz*self.nzguard + self.getzgridprv()
+    zmmaxp = self.zmmaxp + self.dz*self.nzguard + self.getzgridprv()
     getgrid3d(n,x,y,z,phi,nxp,nyp,nzp,self.potentialp,
               xmminp,xmmaxp,ymminp,ymmaxp,zmminp,zmmaxp,
               self.l2symtry,self.l4symtry)
