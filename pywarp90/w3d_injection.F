@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.145 $, $Date: 2010/09/27 17:58:06 $
+c@(#) File w3d_injection.F, version $Revision: 1.146 $, $Date: 2010/12/02 18:53:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -376,9 +376,11 @@ c                 --- calculate injection surface axial location exactly
 c             --- Only save particle if it is within the injection region.
               if (.not. l_inj_zmminmmaxglobal) then
                 if (vzinj > 0.) then
-                  if (zpminlocal > zs+zinj .or. zs+zinj >= zpmaxlocal) cycle
+                  if (zpminlocal+zgrid > zs+zinj .or.
+     &                zs+zinj >= zpmaxlocal+zgrid) cycle
                 else
-                  if (zpminlocal >= zs+zinj .or. zs+zinj > zpmaxlocal) cycle
+                  if (zpminlocal+zgrid >= zs+zinj .or.
+     &                zs+zinj > zpmaxlocal+zgrid) cycle
                 endif
               else
                 if (vzinj > 0.) then
@@ -1126,9 +1128,11 @@ c               --- around the cell.
      &                                     + zinj)
 c               --- Check if the z extent is within the domain.
                 if (inj_d(ij) > 0.) then
-                  if(zmin_tmp >= zpmaxlocal.or.zpminlocal > zmax_tmp) cycle
+                  if(zmin_tmp >= zpmaxlocal+zgrid .or.
+     &               zpminlocal+zgrid > zmax_tmp) cycle
                 else
-                  if(zmin_tmp > zpmaxlocal.or.zpminlocal >= zmax_tmp) cycle
+                  if(zmin_tmp > zpmaxlocal+zgrid .or.
+     &               zpminlocal+zgrid >= zmax_tmp) cycle
                 endif
 
 c               --- Loop over the species
@@ -1246,7 +1250,7 @@ c                 --- correct.  For example, if rnn < 1., without the
 c                 --- addition of the random number, no particles would ever
 c                 --- be injected.  With the random number, particles will be
 c                 --- injected and but the average number will be less than 1.
-                  if(.not. l_inj_regular) then
+                  if(.not. l_inj_regular .and. inj_param > 0.) then
                     rnn = rnn + wranf()
 c                   --- Using this form will make the random number the same
 c                   --- independently of load balancing.
@@ -1463,14 +1467,14 @@ c                     --- find injection angle due to curvature by interpolation
 
 c                   --- Only inject particles within the injection region.
                     if (inj_d(ij) > 0.) then
-                      if (pgroup%zp(ii)+zinj < zpminlocal .or.
-     &                    pgroup%zp(ii)+zinj >= zpmaxlocal) then
+                      if (pgroup%zp(ii)+zinj < zpminlocal+zgrid .or.
+     &                    pgroup%zp(ii)+zinj >= zpmaxlocal+zgrid) then
                           inj_npactual(ix,iy,ij,inj_is) = inj_npactual(ix,iy,ij,inj_is) - 1.
                         cycle
                       endif
                     else
-                      if (pgroup%zp(ii)+zinj <= zpminlocal .or.
-     &                    pgroup%zp(ii)+zinj > zpmaxlocal) then
+                      if (pgroup%zp(ii)+zinj <= zpminlocal+zgrid .or.
+     &                    pgroup%zp(ii)+zinj > zpmaxlocal+zgrid) then
                           inj_npactual(ix,iy,ij,inj_is) = inj_npactual(ix,iy,ij,inj_is) - 1.
                         cycle
                       endif
@@ -2070,7 +2074,8 @@ c             --- only if there is a positive number of injected particles.
                 zm = ztinjmn(ij) + iz*dztinj(ij)
 
 c               --- Skip sections that are out of the grid
-                if (zm+dztinj(ij) < zpminlocal .or. zm >= zpmaxlocal) cycle
+                if (zm+dztinj(ij) < zpminlocal+zgrid .or.
+     &              zm >= zpmaxlocal+zgrid) cycle
 
                 ainj = atinjectz(iz,ij)
                 binj = btinjectz(iz,ij)
@@ -2126,17 +2131,16 @@ c                   --- Concentric Spheres", PhysRev, 1924.
                     const = 4./9.*eps0*(2.*abs(qoverm))**.5*dri**2*
      &                      fulldt_s*area/abs(pgroup%sq(is))/pgroup%sw(is)/
      &                      (1. - 0.8*dr*rinji + 0.66*(dr*rinji)**2)
-                    tinjprev(ith,iz,ij,is) =
-     &                  ftinject(ij,jsid+1)*inj_param*const*abs(vavez)**1.5 +
-     &                                (1. - inj_param)*tinjprev(ith,iz,ij,is)
-                    rnn = tinjprev(ith,iz,ij,is)
-                    if (ith == 0) tinjprev(nttinj(ij),iz,ij,is) = tinjprev(ith,iz,ij,is)
+                    rnn = ftinject(ij,jsid+1)*const*abs(vavez)**1.5
+                    rnn = sign(rnn,pgroup%sq(is)*vavez)
+                    rnn = inj_param*rnn +
+     &                    (1. - inj_param)*tinjprev(ith,iz,ij,is)
                   elseif (tinject == 3) then
 c                   --- Find coordinates of the point.
 c                   --- This only works with basic 3d and RZ solvers
                     p1x = abs(xtinject(ij) + p1x - xmmin)/dx
                     p1y = abs(ytinject(ij) + p1y - ymmin)/dy
-                    p1z = (zm - zmminlocal)/dz
+                    p1z = (zm - zmminlocal - zgrid)/dz
                     i1x = p1x
                     i1y = p1y
                     i1z = p1z
@@ -2154,7 +2158,11 @@ c                   --- get charge density at injection point
      &                   rhop(i1x+1,i1y+1,i1z+1)*    w1x *    w1y *    w1z
                     rnn=(eps0*vavez*dri - rr*abs(dr))*area/
      &                   pgroup%sq(is)/pgroup%sw(is)*ftinject(ij,jsid+1)
+                    rnn = inj_param*rnn +
+     &                    (1. - inj_param)*tinjprev(ith,iz,ij,is)
                   endif
+                  tinjprev(ith,iz,ij,is) = rnn
+                  if (ith == 0) tinjprev(nttinj(ij),iz,ij,is) = tinjprev(ith,iz,ij,is)
 
                   rnn = min(rnn,
      &                      abs(jmaxtinj(ij)*area*fulldt_s/pgroup%sq(is)/
@@ -2198,7 +2206,8 @@ c             --- only if there is a positive number of injected particles.
                 zm = ztinjmn(ij) + iz*dztinj(ij)
 
 c               --- Skip sections that are out of the grid
-                if (zm+dztinj(ij) < zpminlocal .or. zm >= zpmaxlocal) cycle
+                if (zm+dztinj(ij) < zpminlocal+zgrid .or.
+     &              zm >= zpmaxlocal+zgrid) cycle
 
                 ainj = atinjectz(iz,ij)
                 binj = btinjectz(iz,ij)
@@ -2264,8 +2273,8 @@ c                   --- calculate position of new particle
                     pgroup%zp(ii) = zm + wz*dztinj(ij)
 
 c                   --- Only inject particles within the injection region.
-                    if (pgroup%zp(ii) < zpminlocal .or.
-     &                  pgroup%zp(ii) >= zpmaxlocal) cycle
+                    if (pgroup%zp(ii) < zpminlocal+zgrid .or.
+     &                  pgroup%zp(ii) >= zpmaxlocal+zgrid) cycle
 
                     t = wrandom(xrandom,injctcnt,dig3,1,1)
                     t = aa + (t - .5)*dtheta
@@ -2437,7 +2446,7 @@ c         --- size, uniformly distributed between 0 and dt.
             jsid = pgroup%sid(is-1)
 c           --- Skip this if no particles of this species were injected.
             if (.not. pgroup%ldts(is-1)) cycle
-            fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
+            fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
             if(ntinject(jsid+1)==0) cycle
 
 c           --- Make sure that there is enough room in the temporary arrays.
@@ -2447,22 +2456,8 @@ c           --- Make sure that there is enough room in the temporary arrays.
             endif
 
 c           --- Make equivalences so names make sense below
-            ex => at
-            ey => bt
-            ez => apt
-            bx => bpt
-            by => xct
-            bz => xpct
             bendres => yct
             bendradi => ypct
-
-c           --- Zero the B field which is accumulated below
-            ex = 0.
-            ey = 0.
-            ez = 0.
-            bx = 0.
-            by = 0.
-            bz = 0.
 
 c           --- Assume that injection will never be done inside a bend.
             bendres = 0.
@@ -2482,6 +2477,20 @@ c           --- and to make the following code look cleaner.
             uz => pgroup%uzp(i1:i2)
             gg => pgroup%gaminv(i1:i2)
             id => pgroup%pid(i1:i2,injpid)
+            ex => pgroup%ex(i1:i2)
+            ey => pgroup%ey(i1:i2)
+            ez => pgroup%ez(i1:i2)
+            bx => pgroup%bx(i1:i2)
+            by => pgroup%by(i1:i2)
+            bz => pgroup%bz(i1:i2)
+
+c           --- Zero the B field which is accumulated below
+            ex = 0.
+            ey = 0.
+            ez = 0.
+            bx = 0.
+            by = 0.
+            bz = 0.
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
@@ -2607,22 +2616,8 @@ c           --- Make sure that there is enough room in the temporary arrays.
             endif
 
 c           --- Make equivalences so names make sense below
-            ex => at(1:nn)
-            ey => bt(1:nn)
-            ez => apt(1:nn)
-            bx => bpt(1:nn)
-            by => xct(1:nn)
-            bz => xpct(1:nn)
             bendres => yct(1:nn)
             bendradi => ypct(1:nn)
-
-c           --- Zero the B field which is accumulated below
-            ex = 0.
-            ey = 0.
-            ez = 0.
-            bx = 0.
-            by = 0.
-            bz = 0.
 
 c           --- Assume that injection will never be done inside a bend.
             bendres = 0.
@@ -2643,6 +2638,12 @@ c           --- Create equivalences
             uz => pgroup%uzp(i1:i2)
             gg => pgroup%gaminv(i1:i2)
             id => pgroup%pid(i1:i2,injpid)
+            ex => pgroup%ex(i1:i2)
+            ey => pgroup%ey(i1:i2)
+            ez => pgroup%ez(i1:i2)
+            bx => pgroup%bx(i1:i2)
+            by => pgroup%by(i1:i2)
+            bz => pgroup%bz(i1:i2)
 #else
 c           --- Create equivalences
             xx => xt(1:nn)
@@ -2653,6 +2654,12 @@ c           --- Create equivalences
             uz => uzt(1:nn)
             gg => rt(1:nn)
             id => perpscal(1:nn)
+            ex => at(1:nn)
+            ey => bt(1:nn)
+            ez => apt(1:nn)
+            bx => bpt(1:nn)
+            by => xct(1:nn)
+            bz => xpct(1:nn)
 c           --- Fetch time step size
             tt(1:nn) = fulldt_s*PACK(mask,mask > 0.)
 c           --- Copy particle data into temporary arrays, collecting
@@ -2668,6 +2675,14 @@ c           --- only particles that have been injected this time step.
             gg = PACK(pgroup%gaminv(i1:i2),mask > 0.)
             id = PACK(pgroup%pid(i1:i2,injpid),mask > 0.)
 #endif
+
+c           --- Zero the B field which is accumulated below
+            ex = 0.
+            ey = 0.
+            ez = 0.
+            bx = 0.
+            by = 0.
+            bz = 0.
 
 c           --- calculate new E self-fields
             if (linj_efromgrid) then
@@ -3574,7 +3589,7 @@ c=============================================================================
       use InjectVars3d
       use InGen3d,Only: solvergeom,RZgeom,l2symtry,l4symtry
       use Picglb,Only: xpminlocal,xpmaxlocal,ypminlocal,ypmaxlocal,
-     &                 zpminlocal,zpmaxlocal
+     &                 zpminlocal,zpmaxlocal,zgrid
 
 c Calculate potential drop from emitting surface at distance
 c of dz from the surface.  This is only done for grid cells
@@ -3673,7 +3688,8 @@ c       --- process.
           if (solvergeom == RZgeom) then
             rr = xx(ii)**2 + yy(ii)**2
             if (rr < xpminlocal**2 .or. rr >= xpmaxlocal**2 .or.
-     &          zz(ii) < zpminlocal .or. zz(ii) >= zpmaxlocal) cycle
+     &          zz(ii) < zpminlocal+zgrid .or.
+     &          zz(ii) >= zpmaxlocal+zgrid) cycle
           else
             if (l4symtry) then
               xm = abs(xx(ii))
@@ -3687,7 +3703,8 @@ c       --- process.
             endif
             if (xm < xpminlocal .or. xm >= xpmaxlocal .or.
      &          ym < ypminlocal .or. ym >= ypmaxlocal .or.
-     &          zz(ii) < zpminlocal .or. zz(ii) >= zpmaxlocal) cycle
+     &          zz(ii) < zpminlocal+zgrid .or.
+     &          zz(ii) >= zpmaxlocal+zgrid) cycle
           endif
           if (nn < ii) then
             xi(nn) = xi(ii)
@@ -4543,7 +4560,7 @@ c=============================================================================
       use Subtimers3d
       use InjectVars
       use InjectVars3d
-      use Picglb,Only: zpminlocal,zpmaxlocal
+      use Picglb,Only: zpminlocal,zpmaxlocal,zgrid
 
 c Calculate potential from emitting surface at distance
 c of dz from the surface.  This is only done for grid cells
@@ -4652,7 +4669,9 @@ c       --- This also removes particles not within the domain of this
 c       --- process.
         nn = i1
         do ii=i1,i2
-          if (zpminlocal <= zz(ii) .and. zz(ii) < zpmaxlocal .and. nn < ii) then
+          if (zpminlocal+zgrid <= zz(ii) .and.
+     &        zz(ii) < zpmaxlocal+zgrid .and.
+     &        nn < ii) then
             xi(nn) = xi(ii)
             yi(nn) = yi(ii)
             zi(nn) = zi(ii)
@@ -5524,7 +5543,7 @@ c===========================================================================
       use InMesh3d
       use InjectVars
       use InjectVars3d
-      use Picglb,Only: zpminlocal,zpmaxlocal
+      use Picglb,Only: zpminlocal,zpmaxlocal,zgrid
 
 c Calculate potential drop from transverse emitting surface at distance
 c of dx from the surface.
@@ -5583,7 +5602,8 @@ c       --- This also removes particles not within the domain of this
 c       --- process.
         nn = i1
         do ii=i1,i2
-          if (zpminlocal <= zz(ii) .and. zz(ii) <= zpmaxlocal) then
+          if (zpminlocal+zgrid <= zz(ii) .and.
+     &        zz(ii) <= zpmaxlocal+zgrid) then
             if (nn < ii) then
               zi(nn) = zi(ii)
               ti(nn) = ti(ii)
@@ -5708,10 +5728,10 @@ c       --- Calculate distance of particle from the emitting surface
         p2x = p1x + rsign*inj_dx*cos(aa)
         p2y = p1y + rsign*inj_dx*aoverb*sin(aa)
         dr = sqrt((p2x - p1x)**2 + (p2y - p1y)**2)
-        dd = (rr - ainj)/dr
+        dd = rsign*(rr - ainj)/dr
 
 c       --- Only calculate E-field if particle close to emitting surface.
-        if (0.0 <= dd .and. abs(dd) <= 1.) then
+        if (0.0 <= dd .and. dd <= 1.) then
 
 c         --- Find coordinates of the point on the secondary surface in front
 c         --- of the emitting surface along a line perpendicular to the
