@@ -14,33 +14,34 @@ The functions all take a function or instance method as an argument. Note that
 if an instance method is used, an extra reference to the method's object is saved.
 
 Functions can be called at the following times:
- - aftergenerate: immediately after the generate is complete
- - beforefs: before the field solve
- - afterfs: after the field solve
- - beforelr: before the rho is deposited, at the beginning of loadrho
- - afterloadrho: after the rho is deposited, at the end of loadrho
- - othereuser: during execution of electric fields gathering
- - beforestep: before the time step
- - afterstep: after the time step
- - beforescraper: just before the particle boundary conditions are applied
- - particlescraper: just after the particle boundary conditions are applied
+ - :py:func:`aftergenerate <installaftergenerate>`: immediately after the generate is complete
+ - :py:func:`beforefs <installbeforefs>`: before the field solve
+ - :py:func:`afterfs <installafterfs>`: after the field solve
+ - :py:func:`beforeloadrho <installbeforeloadrho>`: before the rho is deposited, at the beginning of loadrho
+ - :py:func:`afterloadrho <installafterloadrho>`: after the rho is deposited, at the end of loadrho
+ - :py:func:`othereuser <installothereuser>`: during execution of electric fields gathering
+ - :py:func:`beforestep <installbeforestep>`: before the time step
+ - :py:func:`afterstep <installafterstep>`: after the time step
+ - :py:func:`beforescraper <installbeforescraper>`: just before the particle boundary conditions are applied
+ - :py:func:`particlescraper <installparticlescraper>`: just after the particle boundary conditions are applied
                     but before lost particles are processed
- - afterscraper: just after the particle boundary conditions are applied
- - particleloader: at the time that the standard particle loader is called
- - addconductor: at the start of the multigrid solver (to install conductors)
- - beforeplot: before a plot (actually after a frame advance)
- - afterplot: after a plot (acutally just before a frame advance)
- - plseldom: during a special time step, when position and velocity are
+ - :py:func:`afterscraper <installafterscraper>`: just after the particle boundary conditions are applied
+ - :py:func:`particleloader <installparticleloader>`: at the time that the standard particle loader is called
+ - :py:func:`addconductor <installaddconductor>`: at the start of the multigrid solver (to installconductors)
+ - :py:func:`beforeplot <installbeforeplot>`: before a plot (actually after a frame advance)
+ - :py:func:`afterplot <installafterplot>`: after a plot (acutally just before a frame advance)
+ - :py:func:`plseldom <installplseldom>`: during a special time step, when position and velocity are
              synchronized, specified by itplseldom or zzplseldom
- - plalways: during a special time step, when position and velocity are
+ - :py:func:`plalways <installplalways>`: during a special time step, when position and velocity are
              synchronized, specified by itplalways or zzplalways
- - userinjection: called when particles injection happens, after the position
+ - :py:func:`userinjection <installuserinjection>`: called when particles injection happens, after the position
                   advance and before loadrho is called, allowing a user defined
                   particle distribution to be injected each time step
+ - :py:func:`userparticlesinjection <installuserparticlesinjection>`: allows directly specifying the particles to be injected
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.31 2010/11/24 17:37:00 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.32 2010/12/02 23:13:50 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -229,7 +230,7 @@ controllers are restored properly.
 aftergenerate = ControllerFunction('aftergenerate')
 beforefs = ControllerFunction('beforefs')
 afterfs = ControllerFunction('afterfs')
-beforelr = ControllerFunction('beforelr')
+beforeloadrho = ControllerFunction('beforeloadrho')
 afterloadrho = ControllerFunction('afterloadrho')
 othereuser = ControllerFunction('othereuser')
 beforescraper = ControllerFunction('beforescraper')
@@ -327,7 +328,7 @@ Anything that may have already been installed will therefore be unaffected.
 # --- from the list of python objects which are not written out.
 controllerfunctioncontainer = ControllerFunctionContainer(
                                [aftergenerate,beforefs,afterfs,
-                                beforelr,afterloadrho,othereuser,
+                                beforeloadrho,afterloadrho,othereuser,
                                 beforescraper,afterscraper,callscraper,
                                 callparticleloader,calladdconductor,
                                 callbeforestepfuncs,callafterstepfuncs,
@@ -379,15 +380,15 @@ def isinstalledafterfs(f):
 # ----------------------------------------------------------------------------
 def installbeforeloadrho(f):
   "Adds a function to the list of functions called before a load rho"
-  beforelr.installfuncinlist(f)
+  beforeloadrho.installfuncinlist(f)
   warp.w3d.lbeforelr = warp.true
 def uninstallbeforeloadrho(f):
   "Removes the function from the list of functions called before a load rho"
-  beforelr.uninstallfuncinlist(f)
-  if not beforelr.hasfuncsinstalled(): warp.w3d.lbeforelr = warp.false
+  beforeloadrho.uninstallfuncinlist(f)
+  if not beforeloadrho.hasfuncsinstalled(): warp.w3d.lbeforelr = warp.false
 def isinstalledbeforeloadrho(f):
   "Checks if the function is called before a load rho"
-  return beforelr.isinstalledfuncinlist(f)
+  return beforeloadrho.isinstalledfuncinlist(f)
 
 # --- This are defined for backwards compatibility
 installbeforelr = installbeforeloadrho
