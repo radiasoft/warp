@@ -6,7 +6,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.34 2010/11/24 01:31:23 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.35 2010/12/02 23:14:45 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -18,7 +18,7 @@ def doc(name,printit=1):
   import Forthon
   result = Forthon.doc(name,printit=0)
   # --- This changes function references into doc(funcname).
-  result = re.sub(r':py:func:`(([~\w]*\.)*)([\w]+)`',r'\3',result)
+  result = re.sub(r':py:func:`(([~\w]*\.)*)([\w]+)(( \<[\w]+\>)*)`',r'\3',result)
   #result = re.sub(r'\A\|',r'',result)
   if printit: print result
   else: return result
