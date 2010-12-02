@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.446 $, $Date: 2010/12/02 18:51:46 $
+c@(#) File W3D.F, version $Revision: 3.447 $, $Date: 2010/12/02 23:13:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9584,7 +9584,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
 c     --- This routine is always timed (data saved in lrtime)
       substarttime = wtime()
 
-      if (lbeforelr) call callpythonfunc("beforelr","controllers")
+      if (lbeforelr) call callpythonfunc("beforeloadrho","controllers")
 
 c     --- Ensure that subcycling is setup correctly (in case the user had
 c     --- made changes.
