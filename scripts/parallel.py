@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.41 2010/07/01 21:56:43 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.42 2010/12/02 18:56:17 dave Exp $"
 
 from numpy import *
 # --- Try import mpi - if not found, then run in serial mode
@@ -328,17 +328,21 @@ def globalop(a,localop,mpiop,defaultval,comm=None):
 # ---------------------------------------------------------------------------
 # Specific operations on a distributed array.
 def globalmax(a,comm=None):
+  def _max(a): return array(a).max()
   if comm is None: comm = comm_world
-  return globalop(a,max,"MAX",-1.e36,comm=comm)
+  return globalop(a,_max,"MAX",-1.e36,comm=comm)
 def globalmin(a,comm=None):
+  def _min(a): return array(a).min()
   if comm is None: comm = comm_world
-  return globalop(a,min,"MIN",+1.e36,comm=comm)
+  return globalop(a,_min,"MIN",+1.e36,comm=comm)
 def globalsum(a,comm=None):
+  def _sum(a): return array(a).sum()
   if comm is None: comm = comm_world
-  return globalop(a,sum,"SUM",0.,comm=comm)
+  return globalop(a,_sum,"SUM",0.,comm=comm)
 def globalave(a,comm=None):
+  def _sum(a): return array(a).sum()
   if comm is None: comm = comm_world
-  s = globalop(a,sum,"SUM",0.,comm=comm)
+  s = globalop(a,_sum,"SUM",0.,comm=comm)
   if len(shape(a)) == 0: a = [a]
   n = globalsum(len(a),comm=comm)
   if n > 0: return s/n
