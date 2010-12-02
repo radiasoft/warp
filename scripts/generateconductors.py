@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.237 2010/09/08 05:14:03 dave Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.238 2010/12/02 18:57:15 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2434,7 +2434,7 @@ Creates a grid object which can generate conductor data.
     if installrz is None:
       installrz = (frz.getpyobject('basegrid') is not None)
 
-    if (w3d.solvergeom not in [w3d.RZgeom,w3d.XZgeom,w3d.XYgeom]
+    if (solver.solvergeom not in [w3d.RZgeom,w3d.XZgeom,w3d.XYgeom]
         or not installrz):
       conductors = ConductorType()
       nx,ny,nz = self.nx,self.ny,self.nz
