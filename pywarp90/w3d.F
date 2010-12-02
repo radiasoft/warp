@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.445 $, $Date: 2010/10/28 00:41:38 $
+c@(#) File W3D.F, version $Revision: 3.446 $, $Date: 2010/12/02 18:51:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -10850,7 +10850,7 @@ c     --- Call the appropriate routine to get the phi
         NULLIFY(zfsapi)
         NULLIFY(phifsapi)
       elseif (solvergeom==XYZgeom) then
-        call fetchphi3d(n,x,y,z,p)
+        call fetchphi3d(n,x,y,z,p,zgridprv)
       elseif (solvergeom==RZgeom) then
         call setphirz(n,x,y,z,p,zgrid)
       elseif (solvergeom==XZgeom) then
@@ -10873,7 +10873,7 @@ c     --- Call the appropriate routine to get the phi
       return
       end
 c=============================================================================
-      subroutine fetchphi3d(n,x,y,z,p)
+      subroutine fetchphi3d(n,x,y,z,p,zgridprv)
       use InGen3d
       use InMesh3d
       use Picglb3d
@@ -10881,6 +10881,7 @@ c=============================================================================
       use Fields3dParticles
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),p(n)
+      real(kind=8):: zgridprv
 
 c Fetch phi at points.
 
@@ -10897,19 +10898,20 @@ c Fetch phi at points.
         do ii=1,n
           ix = (abs(x(ii)) - xmminp)*dxi
           iy = (abs(y(ii)) - ymminp)*dyi
-          iz =     (z(ii)  - zmminp)*dzi
+          iz =     (z(ii)  - zmminp - zgridprv)*dzi
           wx = (abs(x(ii)) - xmminp)*dxi - ix
           wy = (abs(y(ii)) - ymminp)*dyi - iy
-          wz =     (z(ii)  - zmminp)*dzi - iz
+          wz =     (z(ii)  - zmminp - zgridprv)*dzi - iz
           ixp1 = ix + 1
           iyp1 = iy + 1
           izp1 = iz + 1
           if (abs(x(ii)) == xmmaxp) ixp1 = ix
           if (abs(y(ii)) == ymmaxp) iyp1 = iy
-          if (abs(z(ii)) == zmmaxp+dz) izp1 = iz
-          if (xmminp    <= abs(x(ii)) .and. abs(x(ii)) <= xmmaxp .and.
-     &        ymminp    <= abs(y(ii)) .and. abs(y(ii)) <= ymmaxp .and.
-     &        zmminp-dz <=     z(ii)  .and.     z(ii)  <= zmmaxp+dz) then
+          if (abs(z(ii)) == zmmaxp+dz+zgridprv) izp1 = iz
+          if (xmminp <= abs(x(ii)) .and. abs(x(ii)) <= xmmaxp .and.
+     &        ymminp <= abs(y(ii)) .and. abs(y(ii)) <= ymmaxp .and.
+     &        zmminp-dz+zgridprv <= z(ii)  .and.
+     &        z(ii)  <= zmmaxp+dz+zgridprv) then
             p(ii) = phip(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
      &              phip(ixp1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
      &              phip(ix  ,iyp1,iz  )*(1.-wx)*    wy *(1.-wz) +
@@ -10924,19 +10926,20 @@ c Fetch phi at points.
         do ii=1,n
           ix =     (x(ii)  - xmminp)*dxi
           iy = (abs(y(ii)) - ymminp)*dyi
-          iz =     (z(ii)  - zmminp)*dzi
+          iz =     (z(ii)  - zmminp - zgridprv)*dzi
           wx =     (x(ii)  - xmminp)*dxi - ix
           wy = (abs(y(ii)) - ymminp)*dyi - iy
-          wz =     (z(ii)  - zmminp)*dzi - iz
+          wz =     (z(ii)  - zmminp - zgridprv)*dzi - iz
           ixp1 = ix + 1
           iyp1 = iy + 1
           izp1 = iz + 1
           if (abs(x(ii)) == xmmaxp) ixp1 = ix
           if (abs(y(ii)) == ymmaxp) iyp1 = iy
-          if (abs(z(ii)) == zmmaxp+dz) izp1 = iz
-          if (xmminp    <=     x(ii)  .and.     x(ii)  <= xmmaxp .and.
-     &        ymminp    <= abs(y(ii)) .and. abs(y(ii)) <= ymmaxp .and.
-     &        zmminp-dz <=     z(ii)  .and.     z(ii)  <= zmmaxp+dz) then
+          if (abs(z(ii)) == zmmaxp+dz+zgridprv) izp1 = iz
+          if (xmminp <=     x(ii)  .and.     x(ii)  <= xmmaxp .and.
+     &        ymminp <= abs(y(ii)) .and. abs(y(ii)) <= ymmaxp .and.
+     &        zmminp-dz+zgridprv <= z(ii)  .and.
+     &        z(ii)  <= zmmaxp+dz+zgridprv) then
             p(ii) = phip(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
      &              phip(ixp1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
      &              phip(ix  ,iyp1,iz  )*(1.-wx)*    wy *(1.-wz) +
@@ -10951,19 +10954,20 @@ c Fetch phi at points.
         do ii=1,n
           ix = (x(ii) - xmminp)*dxi
           iy = (y(ii) - ymminp)*dyi
-          iz = (z(ii) - zmminp)*dzi
+          iz = (z(ii) - zmminp - zgridprv)*dzi
           wx = (x(ii) - xmminp)*dxi - ix
           wy = (y(ii) - ymminp)*dyi - iy
-          wz = (z(ii) - zmminp)*dzi - iz
+          wz = (z(ii) - zmminp - zgridprv)*dzi - iz
           ixp1 = ix + 1
           iyp1 = iy + 1
           izp1 = iz + 1
           if (abs(x(ii)) == xmmaxp) ixp1 = ix
           if (abs(y(ii)) == ymmaxp) iyp1 = iy
-          if (abs(z(ii)) == zmmaxp+dz) izp1 = iz
-          if (xmminp    <= x(ii) .and. x(ii) <= xmmaxp .and.
-     &        ymminp    <= y(ii) .and. y(ii) <= ymmaxp .and.
-     &        zmminp-dz <= z(ii) .and. z(ii) <= zmmaxp+dz) then
+          if (abs(z(ii)) == zmmaxp+dz+zgridprv) izp1 = iz
+          if (xmminp <= x(ii) .and. x(ii) <= xmmaxp .and.
+     &        ymminp <= y(ii) .and. y(ii) <= ymmaxp .and.
+     &        zmminp-dz+zgridprv <= z(ii) .and.
+     &        z(ii) <= zmmaxp+dz+zgridprv) then
             p(ii) = phip(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
      &              phip(ixp1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
      &              phip(ix  ,iyp1,iz  )*(1.-wx)*    wy *(1.-wz) +
