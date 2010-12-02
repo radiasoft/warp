@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.77 2010/11/24 23:44:11 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.78 2010/12/02 23:14:17 dave Exp $"
 
 def extpartdoc():
     import extpart
@@ -1437,7 +1437,8 @@ over m.
 
 Note that because the extrapolation is inconsistent with the particle advance
 used during the time steps, there can be gaps in the resulting data at time
-step boundaries.
+step boundaries. It is recommended that :py:func:`ZCrossingParticles` be used
+instead.  
 
 The creator options are:
 
