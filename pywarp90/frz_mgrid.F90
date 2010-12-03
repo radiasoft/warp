@@ -11415,6 +11415,8 @@ TYPE(BNDtype), POINTER :: b
   bg%xmin=rmin
   bg%xmax=rmin+nr*dr
   bg%nz=nz
+  bg%nrb = 0
+  bg%nzpb = 0
 #ifdef MPIPARALLEL
   if(bg%l_parallel) then
 !  bg%zminp=zpslmin(my_index)
