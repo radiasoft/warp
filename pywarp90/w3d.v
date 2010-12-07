@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.314 $, $Date: 2010/09/27 17:58:06 $
+#@(#) File W3D.V, version $Revision: 3.315 $, $Date: 2010/12/07 18:20:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.314 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.315 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1208,6 +1208,9 @@ domaindecomposeparticles(nz:integer,nslaves:integer,
       # Do the domain decomposition for the particles
 initializedecomp(decomp:Decomposition) subroutine
       # Does some setup for a decompostion object
+flagparticlesbysortedssn(flag:real,np:integer,ssn(np):real,pflag(np):real,
+                         nflagged:integer,ssnflagged(nflagged):real) subroutine
+      # Flag all of the particles listed in the sorted ssnflagged array
 
 
 *********** W3Dload:

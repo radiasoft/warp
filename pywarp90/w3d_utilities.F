@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.32 $, $Date: 2010/05/10 18:47:51 $
+c@(#) File w3d_utilities.F, version $Revision: 1.33 $, $Date: 2010/12/07 18:20:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1285,5 +1285,45 @@ c     --- with a stride.
         return
       end subroutine smooth3d_121_stride_mask
 c===========================================================================
+      subroutine flagparticlesbysortedssn(flag,np,ssn,pflag,
+     &                                    nflagged,ssnflagged)
+      real(kind=8):: flag
+      integer(ISZ):: np,nflagged
+      real(kind=8):: ssn(np),pflag(np)
+      real(kind=8):: ssnflagged(nflagged)
 
+c Flag all of the particles listed in the ssnflagged array.
+c - flag: the value of the flag to be given to the listed particles
+c - np: number of particles
+c - ssn: a sorted list of ssns of the particles that are to be checked
+c - pflag: flag id array that is to be flagged, in the same order as ssn
+c - nflagged: number of ssns to be flagged
+c - ssnflagged: a sorted list of social security numbers that are to
+c               be flagged
 
+      integer(ISZ):: ip,ipflag
+
+c --- Loop over the particles, in the order of sorted ssns
+      ipflag = 1
+      do ip=1,np
+
+c       --- Find the next flagged ssn that is equal to or greater than
+c       --- the ssn of the current particle
+        do while (nint(ssnflagged(ipflag)) < nint(ssn(ip)))
+          ipflag = ipflag + 1
+c         --- Exit the inner loop if there are no more flagged ssns
+          if (ipflag > nflagged) exit
+        enddo
+c       --- Exit the outer loop if there are no more flagged ssns
+        if (ipflag > nflagged) exit
+
+c       --- Set the flag if a flagged particle is found
+        if (nint(ssn(ip)) == nint(ssnflagged(ipflag))) then
+          pflag(ip) = flag
+        endif
+
+      enddo
+
+      return
+      end subroutine flagparticlesbysortedssn
+c===========================================================================
