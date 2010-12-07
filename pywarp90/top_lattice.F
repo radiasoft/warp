@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.40 $, $Date: 2010/11/23 02:01:43 $
+c@(#) File top_lattice.F, version $Revision: 3.41 $, $Date: 2010/12/07 01:32:36 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -3592,13 +3592,13 @@ c           --- breaks down at r = 0.
               if (imm(ip) > 0) then
                 sf = cemltsc(izl(ip),io) + cemltsf(izl(ip),io)
                 alpha = cemltph(izl(ip),io) +
-     &                      esemltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
+     &                      esemltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      esemltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
-                alphap =   (esemltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+                alphap =   (esemltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      esemltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
                 coeff = sf*(esemlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      esemlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeffp = sf*(esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+                coeffp = sf*(esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                       esemltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
                 cosnt = cos(alpha)
                 sinnt = sin(alpha)
@@ -3620,11 +3620,11 @@ c           --- Apply the rest of the multipoles.
                 alpha = tt(ip) - cemltph(izl(ip),io) -
      &                      esemltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
      &                      esemltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
-                alphap =   (esemltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+                alphap =   (esemltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      esemltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
                 coeff = sf*(esemlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      esemlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeffp = sf*(esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+                coeffp = sf*(esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                       esemltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
                 cosnt = cos(n*alpha)
                 sinnt = sin(n*alpha)
@@ -3797,18 +3797,18 @@ c           --- breaks down at r = 0.
               if (imm(ip) > 0) then
                 sf = cmmltsc(izl(ip),io) + cmmltsf(izl(ip),io)
                 alpha = cmmltph(izl(ip),io) +
-     &                      msmmltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
+     &                      msmmltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      msmmltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
-                alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+                alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      msmmltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
                 coeff = sf*(msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      msmmlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeffp = sf*(msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+                coeffp = sf*(msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                       msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
                 cosnt = cos(alpha)
                 sinnt = sin(alpha)
-                tbx(ip) = tbx(ip) - coeff*rpow*sinnt
-                tby(ip) = tby(ip) + coeff*rpow*cosnt
+                tbx(ip) = tbx(ip) - coeff*sinnt
+                tby(ip) = tby(ip) + coeff*cosnt
                 alpha = tt(ip) - alpha
                 cosnt = cos(alpha)
                 sinnt = sin(alpha)
@@ -3825,11 +3825,11 @@ c           --- Apply the rest of the multipoles.
                 alpha = tt(ip) - cmmltph(izl(ip),io) -
      &                      msmmltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
      &                      msmmltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
-                alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+                alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      msmmltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
                 coeff = sf*(msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                      msmmlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
-                coeffp = sf*(msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+                coeffp = sf*(msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
      &                       msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
                 cosnt = cos(n*alpha)
                 sinnt = sin(n*alpha)
