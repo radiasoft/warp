@@ -2819,13 +2819,13 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
 
           do ll = izmin, izmax
             do jj = ixmin, ixmax
-              ex(ip) = ex(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*costheta+eyg(j+jj,0,l+ll)*sintheta)
+              ex(ip) = ex(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*costheta-eyg(j+jj,0,l+ll)*sintheta)
             end do
           end do
 
           do ll = izmin, izmax
             do jj = ixmin, ixmax
-              ey(ip) = ey(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*sintheta-eyg(j+jj,0,l+ll)*costheta)
+              ey(ip) = ey(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*sintheta+eyg(j+jj,0,l+ll)*costheta)
             end do
           end do
         
