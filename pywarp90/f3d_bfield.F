@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.46 $, $Date: 2009/02/04 00:42:10 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.47 $, $Date: 2010/12/10 23:52:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -478,29 +478,15 @@ c=============================================================================
 
 c  Sets magnetic field for particles
 
-c     --- Temp arrays to hold particle data
-c     --- These are needed when lcylindrical is true, in which case x = r and
-c     --- y = 0.
-      real(kind=8),pointer:: x(:),y(:),z(:),bxtemp(:)
 
       integer(ISZ):: ip,i,j,k
       real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
       real(kind=8):: sx,sy
+      real(kind=8):: r
+      real(kind=8):: bxt,byt,bzt,ri
 
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
-
-      if (lcylindrical) then
-c       --- Allocate and set the temporary particle arrays which will hold
-c       --- the radius.
-        allocate(x(np),y(np),bxtemp(np))
-        x = sqrt(xp**2 + yp**2)
-        y = 0.
-      else
-        x => xp
-        y => yp
-      endif
-      z => zp
 
 c  Evaluation of B, vectorized over particles
       tdxi = 1./(2.*dx)
@@ -510,16 +496,16 @@ c  Evaluation of B, vectorized over particles
       dyi = 1./dy
       dzi = 1./dz
 
-      if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
+      if ((.not. (l2symtry .or. l4symtry)) .and. .not. lcylindrical) then
         do ip = 1, np
 
-          i = (x(ip) - xmminlocal) * dxi
-          j = (y(ip) - ymminlocal) * dyi
-          k = (z(ip) - zgrid - zmminlocal) * dzi
+          i = (xp(ip) - xmminlocal) * dxi
+          j = (yp(ip) - ymminlocal) * dyi
+          k = (zp(ip) - zgrid - zmminlocal) * dzi
 
-          u1 = (x(ip) - xmminlocal) * dxi - i
-          v1 = (y(ip) - ymminlocal) * dyi - j
-          w1 = (z(ip) - zgrid - zmminlocal) * dzi - k
+          u1 = (xp(ip) - xmminlocal) * dxi - i
+          v1 = (yp(ip) - ymminlocal) * dyi - j
+          w1 = (zp(ip) - zgrid - zmminlocal) * dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -557,6 +543,47 @@ c  Evaluation of B, vectorized over particles
 
         enddo
 
+      else if (lcylindrical) then
+        do ip = 1, np
+
+          r = sqrt(xp(ip)**2 + yp(ip)**2)
+          if (r > 0.) then
+            ri = 1./r
+          else
+            ri = 0.
+          endif
+
+          i = (r      - xmminlocal) * dxi
+          k = (zp(ip) - zgrid - zmminlocal) * dzi
+
+          u1 = (r      - xmminlocal) * dxi - i
+          w1 = (zp(ip) - zgrid - zmminlocal) * dzi - k
+
+          u0 = 1. - u1
+          w0 = 1. - w1
+
+          bxt = + u0*v0*w0*b(0,i  ,0,k  )
+     &          + u1*v0*w0*b(0,i+1,0,k  )
+     &          + u0*v0*w1*b(0,i  ,0,k+1)
+     &          + u1*v0*w1*b(0,i+1,0,k+1)
+
+          byt = + u0*v0*w0*b(1,i  ,0,k  )
+     &          + u1*v0*w0*b(1,i+1,0,k  )
+     &          + u0*v0*w1*b(1,i  ,0,k+1)
+     &          + u1*v0*w1*b(1,i+1,0,k+1)
+
+          bzt = + u0*v0*w0*b(2,i  ,0,k  )
+     &          + u1*v0*w0*b(2,i+1,0,k  )
+     &          + u0*v0*w1*b(2,i  ,0,k+1)
+     &          + u1*v0*w1*b(2,i+1,0,k+1)
+
+c         --- Transform Br and Btheta into Bx and By
+          bx(ip) = bx(ip) + bxt*xp(ip)*ri - byt*yp(ip)*ri
+          by(ip) = by(ip) + bxt*yp(ip)*ri + byt*xp(ip)*ri
+          bz(ip) = bz(ip) + bzt
+
+        enddo
+
       else
 
 c       --- Set the signs of the B field for particles on negative side of
@@ -568,13 +595,13 @@ c       --- the axis of symmetry.
 c       --- special loop symmetry is used
         do ip = 1, np
 
-          i = (abs(x(ip)) - xmminlocal)*dxi
-          j = (abs(y(ip)) - ymminlocal)*dyi
-          k = (z(ip) - zgrid - zmminlocal)*dzi
+          i = (abs(xp(ip)) - xmminlocal)*dxi
+          j = (abs(yp(ip)) - ymminlocal)*dyi
+          k = (zp(ip) - zgrid - zmminlocal)*dzi
 
-          u1 = (abs(x(ip)) - xmminlocal)*dxi - i
-          v1 = (abs(y(ip)) - ymminlocal)*dyi - j
-          w1 = (z(ip) - zgrid - zmminlocal)*dzi - k
+          u1 = (abs(xp(ip)) - xmminlocal)*dxi - i
+          v1 = (abs(yp(ip)) - ymminlocal)*dyi - j
+          w1 = (zp(ip) - zgrid - zmminlocal)*dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -583,8 +610,8 @@ c       --- special loop symmetry is used
 c         --- Adjust sign of B field for appropriate quadrant.
           xsign = +1.
           ysign = +1.
-          if (x(ip) < 0.) xsign = sx
-          if (y(ip) < 0.) ysign = sy
+          if (xp(ip) < 0.) xsign = sx
+          if (yp(ip) < 0.) ysign = sy
 
           bx(ip) = bx(ip)
      &           + xsign*(u0*v0*w0*b(0,i  ,j  ,k  )
@@ -618,15 +645,6 @@ c         --- Adjust sign of B field for appropriate quadrant.
 
         enddo
 
-      endif
-
-      if (lcylindrical) then
-c       --- Transform Br and Btheta into Bx and By
-        y = atan2(yp,xp)
-        bxtemp = bx
-        bx = bx + bxtemp*cos(y) - by*sin(y)
-        by = by + bxtemp*sin(y) + by*cos(y)
-        deallocate(x,y,bxtemp)
       endif
 
 !$OMP MASTER
