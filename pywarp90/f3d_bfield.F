@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.47 $, $Date: 2010/12/10 23:52:54 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.48 $, $Date: 2010/12/11 00:44:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -478,7 +478,6 @@ c=============================================================================
 
 c  Sets magnetic field for particles
 
-
       integer(ISZ):: ip,i,j,k
       real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
       real(kind=8):: sx,sy
@@ -544,6 +543,7 @@ c  Evaluation of B, vectorized over particles
         enddo
 
       else if (lcylindrical) then
+
         do ip = 1, np
 
           r = sqrt(xp(ip)**2 + yp(ip)**2)
@@ -562,20 +562,20 @@ c  Evaluation of B, vectorized over particles
           u0 = 1. - u1
           w0 = 1. - w1
 
-          bxt = + u0*v0*w0*b(0,i  ,0,k  )
-     &          + u1*v0*w0*b(0,i+1,0,k  )
-     &          + u0*v0*w1*b(0,i  ,0,k+1)
-     &          + u1*v0*w1*b(0,i+1,0,k+1)
+          bxt = + u0*w0*b(0,i  ,0,k  )
+     &          + u1*w0*b(0,i+1,0,k  )
+     &          + u0*w1*b(0,i  ,0,k+1)
+     &          + u1*w1*b(0,i+1,0,k+1)
 
-          byt = + u0*v0*w0*b(1,i  ,0,k  )
-     &          + u1*v0*w0*b(1,i+1,0,k  )
-     &          + u0*v0*w1*b(1,i  ,0,k+1)
-     &          + u1*v0*w1*b(1,i+1,0,k+1)
+          byt = + u0*w0*b(1,i  ,0,k  )
+     &          + u1*w0*b(1,i+1,0,k  )
+     &          + u0*w1*b(1,i  ,0,k+1)
+     &          + u1*w1*b(1,i+1,0,k+1)
 
-          bzt = + u0*v0*w0*b(2,i  ,0,k  )
-     &          + u1*v0*w0*b(2,i+1,0,k  )
-     &          + u0*v0*w1*b(2,i  ,0,k+1)
-     &          + u1*v0*w1*b(2,i+1,0,k+1)
+          bzt = + u0*w0*b(2,i  ,0,k  )
+     &          + u1*w0*b(2,i+1,0,k  )
+     &          + u0*w1*b(2,i  ,0,k+1)
+     &          + u1*w1*b(2,i+1,0,k+1)
 
 c         --- Transform Br and Btheta into Bx and By
           bx(ip) = bx(ip) + bxt*xp(ip)*ri - byt*yp(ip)*ri
