@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.181 $, $Date: 2010/11/23 02:07:02 $
+c@(#) File DTOP.F, version $Revision: 3.182 $, $Date: 2010/12/15 22:38:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -652,7 +652,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.181 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.182 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -4189,4 +4189,117 @@ c ssn1 and ssn2 are SORTED social security numbers
       fminmax(2) = fmax
       
       end subroutine deposeintersect
+c=============================================================================
+      subroutine averagewithlocaldata(np,zz,zrange,din,dout,cout)
+      integer(ISZ):: np
+      real(kind=8):: zrange
+      real(kind=8):: zz(np),din(np),dout(np),cout(np)
 
+      integer(ISZ):: ip,jp
+
+      if (zrange <= 0.) return
+
+      do ip=1,np
+
+        dout(ip) = 0.
+        cout(ip) = 0.
+
+        do jp=1,np
+          if (zz(ip)-zrange < zz(jp) .and. zz(jp) < zz(ip)+zrange) then
+            dout(ip) = dout(ip) + din(jp)
+            cout(ip) = cout(ip) + 1
+          endif
+        enddo
+
+        dout(ip) = dout(ip)/cout(ip)
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine averagewithlocaldatawithsortedz(np,iz,zz,zrange,din,dout,cout)
+      integer(ISZ):: np
+      real(kind=8):: zrange
+      integer(ISZ):: iz(0:np-1)
+      real(kind=8):: zz(0:np-1),din(0:np-1),dout(0:np-1),cout(0:np-1)
+
+      integer(ISZ):: ip,jp,ii,ic
+
+      if (zrange <= 0.) return
+
+      do ii=0,np-1
+
+        ip = iz(ii)
+        dout(ip) = 0.
+        cout(ip) = 0.
+
+        ic = ii
+        jp = iz(ic)
+        do while (zz(jp) > zz(ip)-zrange)
+          dout(ip) = dout(ip) + din(jp)
+          cout(ip) = cout(ip) + 1
+          ic = ic - 1
+          if (ic < 0) exit
+          jp = iz(ic)
+        enddo
+
+        ic = ii + 1
+        if (ic < np) then
+          jp = iz(ic)
+          do while (zz(jp) < zz(ip)+zrange)
+            dout(ip) = dout(ip) + din(jp)
+            cout(ip) = cout(ip) + 1
+            ic = ic + 1
+            if (ic == np) exit
+            jp = iz(ic)
+          enddo
+        endif
+
+        if (cout(ip) .ne. 0.) then
+          dout(ip) = dout(ip)/cout(ip)
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine densitywithlocaldatawithsortedz(np,iz,rr,zz,radius,cout)
+      integer(ISZ):: np
+      real(kind=8):: radius
+      integer(ISZ):: iz(0:np-1)
+      real(kind=8):: rr(0:np-1),zz(0:np-1),cout(0:np-1)
+
+      real(kind=8):: rsq
+      integer(ISZ):: ip,jp,ii,ic
+
+      if (radius <= 0.) return
+
+      rsq = radius**2
+
+c     --- Initialize cout to -1 since each particle will double count itself
+c     --- since cout is incremented for both ip and jp.
+      cout = -1.
+
+      do ii=0,np-1
+
+        ip = iz(ii)
+
+        ic = ii
+        jp = iz(ic)
+        do while (zz(jp)-zz(ip) <= radius)
+          if ((rr(jp) - rr(ip))**2 + (zz(jp) - zz(ip))**2 <= rsq) then
+            cout(ip) = cout(ip) + 1
+            cout(jp) = cout(jp) + 1
+          endif
+          ic = ic + 1
+          if (ic == np) exit
+          jp = iz(ic)
+        enddo
+
+      enddo
+
+      return
+      end
+c=============================================================================

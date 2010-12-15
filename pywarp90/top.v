@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.288 $, $Date: 2010/11/23 02:07:02 $
+#@(#) File TOP.V, version $Revision: 3.289 $, $Date: 2010/12/15 22:38:13 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.288 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.289 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2928,6 +2928,12 @@ psplots(freqflag:integer)
 onedplts(freqflag:integer) subroutine # plots all 1d qtys w/ freqflag
 tolabfrm(zcent:real,nn,x(nn):real,z(nn):real) subroutine
              # Converts data from WARP frame to lab frame.
+averagewithlocaldata(np:integer,zz:real,zrange:real,din:real,dout:real,cout:real) subroutine
+             # Take an average, including particles that are within zrange of zz.
+averagewithlocaldatawithsortedz(np:integer,iz:integer,zz:real,zrange:real,din:real,dout:real,cout:real) subroutine
+             # Take an average, including particles that are within zrange of zz.
+             # This is a much fast erversion.
+densitywithlocaldatawithsortedz(np:integer,iz:integer,rr:real,zz:real,radius:real,cout:real) subroutine
 
 *********** TopUtil:
 # "Utility" subroutines at top level
@@ -2969,6 +2975,10 @@ particlesortxyzwithcopy(pgroup:ParticleGroup,dx:real,dy:real,dz:real,
                         xmmin:real,ymmin:real,zmmin:real,
                         nx:integer,ny:integer,nz:integer)
              subroutine # Sorts particles via a full copy
+particlesortxyzwithcopynew(pgroup:ParticleGroup,dx:real,dy:real,dz:real,
+                           xmmin:real,ymmin:real,zmmin:real,
+                           nx:integer,ny:integer,nz:integer)
+             subroutine # Sorts particles via a partial copy
 processlostpart(pgroup:ParticleGroup,is:integer,clearlostpart:integer,
                 time:real,zbeam:real)
              subroutine # Processes lost particles (particles which have

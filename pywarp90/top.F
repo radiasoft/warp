@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.256 $, $Date: 2010/08/23 21:59:41 $
+c@(#) File TOP.F, version $Revision: 3.257 $, $Date: 2010/12/15 22:38:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5022,7 +5022,7 @@ c     --- Treat the particles in each species separately
 
 c       --- First, find which block each particle goes into and count how
 c       --- many are in each block
-        pindex = 0
+c       pindex = 0
         do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
           ix = abs(pgroup%xp(ip) - xmmin)/dx
           iy = abs(pgroup%yp(ip) - ymmin)/dy
@@ -5125,6 +5125,149 @@ c=============================================================================
       enddo
       do ip=1,npmax
         source(ip) = target(ip)
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine particlesortxyzwithcopynew(pgroup,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                                      nx,ny,nz)
+      use Beam_acc, Only: lrelativ
+      use ParticleGroupmodule
+      type(ParticleGroup):: pgroup
+      real(kind=8):: dx,dy,dz,xmmin,ymmin,zmmin
+      integer(ISZ):: nx,ny,nz
+
+c Sorts particles, moving only those particles that need to be moved.
+
+      integer(ISZ):: nn
+      integer(ISZ):: is,ip,ib,ix,iy,iz,ii,pindexmin,nmove,i1,i2,ipid,np
+      integer(ISZ),pointer:: pindex(:)
+      integer(ISZ),pointer:: npblock(:),ipblock(:)
+      integer(ISZ),pointer:: ipfree(:)
+      integer(ISZ),pointer:: ipmove(:)
+      integer(ISZ),pointer:: pimove(:)
+      real(kind=8),pointer:: pdata(:)
+
+      nn = (1+nx)*(1+ny)*(1+nz)
+      allocate(npblock(nn),ipblock(nn+1))
+
+c     --- Treat the particles in each species separately
+      do is=1,pgroup%ns
+        np = pgroup%nps(is)
+        i1 = pgroup%ins(is)
+        i2 = i1 + np - 1
+        allocate(pindex(np))
+        allocate(ipmove(np))
+        allocate(ipfree(np))
+
+c       --- First, find which block each particle goes into and count how
+c       --- many are in each block.
+        npblock = 0
+        do ip=i1,i2
+          ix = abs(pgroup%xp(ip) - xmmin)/dx
+          iy = abs(pgroup%yp(ip) - ymmin)/dy
+          iz = abs(pgroup%zp(ip) - zmmin)/dz
+          ii = ix + (nx+1)*(iy + (ny+1)*iz)
+          pindex(ip-i1+1) = ii
+          npblock(ii) = npblock(ii) + 1
+        enddo
+
+c       --- Calculate the starting location of each block in the
+c       --- particle arrays. Note that ipblock is one element longer.
+c       --- The last element will contain np+1, which makes indexing
+c       --- easier in a loop below for the last particles.
+c       --- Reassign npblock to the starting position of each block
+c       --- (npblock does double duty).
+        ipblock(1) = 1
+        do ib=2,nn+1
+          ipblock(ib) = ipblock(ib-1) + npblock(ib-1)
+          npblock(ib-1) = ipblock(ib-1)
+        enddo
+
+c       --- Create a list of all of the particles that need to be moved,
+c       --- saving it in ipmove. Note that these are the same places where
+c       --- moved particles will be put. Create a list of these places,
+c       --- organized by where the places are relative to the sorted list.
+c       --- The ipfree is this list, and the npblock stores the location
+c       --- in ipfree where the list of free places are for each grid block.
+        nmove = 0
+        ib = 1
+        do ip=1,np
+c         --- This find the grid block that the particle is currently in.
+          do while (ip > ipblock(ib+1))
+            ib = ib + 1
+          enddo
+c         --- pindex is the grid block where the particles needs to go.
+          ii = pindex(ip)
+c         --- If the particle is outside of the range where it is supposed to
+c         --- be, the save its ip, and add that ip to the list of places
+c         --- where particles can be moved to.
+          if (ip < ipblock(ii) .or. ipblock(ii+1) <= ip) then
+            nmove = nmove + 1
+            ipmove(nmove) = ip
+            ipfree(npblock(ib)) = ip
+            npblock(ib) = npblock(ib) + 1
+          endif
+        enddo
+
+        allocate(pimove(nmove))
+        do ip=1,nmove
+          ii = pindex(ipmove(ip))
+          npblock(ii) = npblock(ii) - 1
+          pimove(ip) = ipfree(npblock(ii))
+        enddo
+
+c       --- Now, the sort can be done.
+        allocate(pdata(nmove))
+        call particlemovesorteddata(np,pgroup%xp(i1:i2),nmove,ipmove,pimove,pdata)
+        call particlemovesorteddata(np,pgroup%yp(i1:i2),nmove,ipmove,pimove,pdata)
+        call particlemovesorteddata(np,pgroup%zp(i1:i2),nmove,ipmove,pimove,pdata)
+        call particlemovesorteddata(np,pgroup%uxp(i1:i2),nmove,ipmove,pimove,pdata)
+        call particlemovesorteddata(np,pgroup%uyp(i1:i2),nmove,ipmove,pimove,pdata)
+        call particlemovesorteddata(np,pgroup%uzp(i1:i2),nmove,ipmove,pimove,pdata)
+        if (lrelativ) then
+          call particlemovesorteddata(np,pgroup%gaminv(i1:i2),nmove,ipmove,pimove,pdata)
+        endif
+        call particlemovesorteddata(np,pgroup%ex(i1:i2),nmove,ipmove,pimove,pdata)
+        call particlemovesorteddata(np,pgroup%ey(i1:i2),nmove,ipmove,pimove,pdata)
+        call particlemovesorteddata(np,pgroup%ez(i1:i2),nmove,ipmove,pimove,pdata)
+        call particlemovesorteddata(np,pgroup%bx(i1:i2),nmove,ipmove,pimove,pdata)
+        call particlemovesorteddata(np,pgroup%by(i1:i2),nmove,ipmove,pimove,pdata)
+        call particlemovesorteddata(np,pgroup%bz(i1:i2),nmove,ipmove,pimove,pdata)
+
+        do ipid=1,pgroup%npid
+          call particlemovesorteddata(np,pgroup%pid(:,i1:i2),nmove,ipmove,pimove,pdata)
+        enddo
+
+        deallocate(pindex)
+        deallocate(ipmove)
+        deallocate(ipfree)
+        deallocate(pimove)
+        deallocate(pdata)
+
+c     --- End of loop over species
+      enddo
+
+      deallocate(npblock)
+      deallocate(ipblock)
+
+      return
+      end
+c=============================================================================
+      subroutine particlemovesorteddata(npmax,source,nmove,ipmove,pimove,pdata)
+      integer(ISZ):: npmax,nmove
+      real(kind=8):: source(npmax)
+      integer(ISZ):: ipmove(nmove),pimove(nmove)
+      real(kind=8):: pdata(nmove)
+
+      integer(ISZ):: ip
+
+      do ip=1,nmove
+        pdata(ip) = source(ipmove(ip))
+      enddo
+      do ip=1,nmove
+        source(pimove(ip)) = pdata(ip)
       enddo
 
       return
