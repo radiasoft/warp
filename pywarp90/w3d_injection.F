@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.146 $, $Date: 2010/12/02 18:53:59 $
+c@(#) File w3d_injection.F, version $Revision: 1.147 $, $Date: 2010/12/16 20:07:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -67,6 +67,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp, xt_tmp, yt_tmp
       real(kind=8),pointer:: ppvz(:)
       integer(ISZ):: spreadx, spready
+      integer(ISZ):: spreadvx, spreadvy
       integer(ISZ):: ixmin,ixmax,iymin,iymax
       logical(ISZ):: linj_cell,ltinj_full_circle
       real(kind=8),pointer:: xx(:),yy(:),zz(:),ux(:),uy(:),uz(:),id(:),gg(:)
@@ -131,8 +132,12 @@ c     --- This also affects the range that particles are loaded into.
       if(solvergeom==XYZgeom) then
         spreadx = 1
         spready = 1
+        spreadvx = 1
+        spreadvy = 1
       elseif(solvergeom==RZgeom) then
         spreadx = 1
+        spreadvx = 1
+        spreadvy = 1
         if(l_inj_rz .or. l_inj_rz_grid) then
           spready = 0
         else
@@ -141,9 +146,13 @@ c     --- This also affects the range that particles are loaded into.
       elseif(solvergeom==XZgeom) then
         spreadx = 1
         spready = 0
+        spreadvx = 1
+        spreadvy = 0
       elseif(solvergeom==Zgeom) then
         spreadx = 0
         spready = 0
+        spreadvx = 0
+        spreadvy = 0
       endif
 
 c If itask = 1, zero npinjected. This is done here since npinjected is set by
@@ -1542,18 +1551,18 @@ c                   --- component of the normal velocity and the specified
 c                   --- vbeam (which is also taken to be normal).
 c                   --- Like the emittance term, the term with ap (and bp)
 c                   --- are probably not correct.
-                    pgroup%uxp(ii) = spreadx*(vzinj*
+                    pgroup%uxp(ii) = spreadvx*(vzinj*
      &                               (apinj*pgroup%xp(ii)*ainji + xpinj)
      &                      - (vznorm + vzinj)*sin(az)*cos(aa))
-                    pgroup%uyp(ii) = spready*(vzinj*
+                    pgroup%uyp(ii) = spreadvy*(vzinj*
      &                               (bpinj*pgroup%yp(ii)*binji + ypinj)
      &                      - (vznorm + vzinj)*sin(az)*sin(aa))
                     if(.not. l_inj_delay_temp .and. .not. l_inj_along_B) then
                       vtx = vzinj*0.5*emitx_s(jsid+1)*ainji + vthperp_s(jsid+1)
                       vty = vzinj*0.5*emity_s(jsid+1)*binji + vthperp_s(jsid+1)
-                      pgroup%uxp(ii) = pgroup%uxp(ii) + spreadx*vtx*
+                      pgroup%uxp(ii) = pgroup%uxp(ii) + spreadvx*vtx*
      &                    wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
-                      pgroup%uyp(ii) = pgroup%uyp(ii) + spready*vty*
+                      pgroup%uyp(ii) = pgroup%uyp(ii) + spreadvy*vty*
      &                    wrandomgauss(vtrandom,injctcnt,dig5,dig6,1,1,.false.)
                     end if
 c                   --- Include the user specified vbeam (assumed to be a
@@ -1804,9 +1813,9 @@ c                 --- used above in the position, since some particles have
 c                 --- been thrown away, but at least it gives unique random
 c                 --- numbers.
                   ii = injctcnt - nn + ip
-                  uxt(ip) = spreadx*vthperp_s(jsid+1)*
+                  uxt(ip) = spreadvx*vthperp_s(jsid+1)*
      &                      wrandomgauss(vtrandom,ii,dig3,dig4,1,1,.false.)
-                  uyt(ip) = spready*vthperp_s(jsid+1)*
+                  uyt(ip) = spreadvy*vthperp_s(jsid+1)*
      &                      wrandomgauss(vtrandom,ii,dig5,dig6,1,1,.false.)
                   uzt(ip) = vthz_s(jsid+1)*
      &                      wrandomgauss(vzrandom,ii,dig7,dig8,1,1,.false.)
