@@ -7,7 +7,7 @@ Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.84 2010/11/24 01:32:45 dave Exp $"
+species_version = "$Id: species.py,v 1.85 2010/12/20 22:22:55 grote Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale>0.:
@@ -121,8 +121,22 @@ periodic_table['Astatine']={'A': 210.0, 'Symbol': 'At', 'Z': 85, 'Group': 17, 'P
 periodic_table['Radon']={'A': 220.0, 'Symbol': 'Rn', 'Z': 86, 'Group': 18, 'Period': 6}
 periodic_table['Francium']={'A': 223.0, 'Symbol': 'Fr', 'Z': 87, 'Group': 1, 'Period': 7}
 periodic_table['Radium']={'A': 226.0, 'Symbol': 'Ra', 'Z': 88, 'Group': 2, 'Period': 7}
-periodic_table['Uranium']={'A':238.0, 'Symbol': 'U', 'Z': 92, 'Group':  3, 'Period': 7}
-periodic_table['Rutherfordium']={'A': 2611.0, 'Symbol': 'Rf', 'Z': 104, 'Group': 4, 'Period': 7}
+periodic_table['Actinium']={'A': 227.0, 'Symbol': 'Ac', 'Z': 89, 'Group': 3, 'Period': 7}
+periodic_table['Thorium']={'A': 232.0381, 'Symbol': 'Th', 'Z': 90, 'Group': 102, 'Period': 7}
+periodic_table['Protactinium']={'A': 231.0359, 'Symbol': 'Pa', 'Z': 91, 'Group': 102, 'Period': 7}
+periodic_table['Uranium']={'A': 238.0289, 'Symbol': 'U', 'Z': 92, 'Group': 102, 'Period': 7}
+periodic_table['Neptunium']={'A': 237.0, 'Symbol': 'Np', 'Z': 93, 'Group': 102, 'Period': 7}
+periodic_table['Plutonium']={'A': 244.0, 'Symbol': 'Pu', 'Z': 94, 'Group': 102, 'Period': 7}
+periodic_table['Americium']={'A': 243.0, 'Symbol': 'Am', 'Z': 95, 'Group': 102, 'Period': 7}
+periodic_table['Curium']={'A': 247.0, 'Symbol': 'Cm', 'Z': 96, 'Group': 102, 'Period': 7}
+periodic_table['Berkelium']={'A': 247.0, 'Symbol': 'Bk', 'Z': 97, 'Group': 102, 'Period': 7}
+periodic_table['Californium']={'A': 251.0, 'Symbol': 'Cf', 'Z': 98, 'Group': 102, 'Period': 7}
+periodic_table['Einsteinium']={'A': 252.0, 'Symbol': 'Es', 'Z': 99, 'Group': 102, 'Period': 7}
+periodic_table['Fermium']={'A': 257.0, 'Symbol': 'Fm', 'Z': 100, 'Group': 102, 'Period': 7}
+periodic_table['Mendelevium']={'A': 258.0, 'Symbol': 'Md', 'Z': 101, 'Group': 102, 'Period': 7}
+periodic_table['Nobelium']={'A': 259.0, 'Symbol': 'No', 'Z': 102, 'Group': 102, 'Period': 7}
+periodic_table['Lawrencium']={'A': 262.0, 'Symbol': 'Lr', 'Z': 103, 'Group': 102, 'Period': 7}
+periodic_table['Rutherfordium']={'A': 261.0, 'Symbol': 'Rf', 'Z': 104, 'Group': 4, 'Period': 7}
 periodic_table['Lawrencium']={'A': 262.0, 'Symbol': 'Lr', 'Z': 103, 'Group': 3, 'Period': 7}
 periodic_table['Dubnium']={'A': 262.0, 'Symbol': 'Db', 'Z': 105, 'Group': 5, 'Period': 7}
 periodic_table['Bohrium']={'A': 264.0, 'Symbol': 'Bh', 'Z': 107, 'Group': 7, 'Period': 7}
