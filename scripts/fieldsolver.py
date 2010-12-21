@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.91 2010/11/23 19:14:02 dave Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.92 2010/12/21 23:54:01 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -1053,7 +1053,7 @@ class SubcycledPoissonSolver(FieldSolver):
     fieldparray was not created, returns 0."""
     indts = min(indts,top.nsndtsphi-1)
     try:
-      return self.fieldparray[...,indts]
+      return self.fieldparray[...,indts,iselfb]
     except AttributeError:
       return 0.
 
@@ -1079,7 +1079,7 @@ class SubcycledPoissonSolver(FieldSolver):
     fieldarray was not created, returns 0."""
     indts = min(indts,top.nsndtsphi-1)
     try:
-      return self.fieldarray[...,indts]
+      return self.fieldarray[...,indts,iselfb]
     except AttributeError:
       return 0.
 
@@ -2152,27 +2152,28 @@ the upper edge.
       getselfe3d(w3d.phi,w3d.nxlocal,w3d.nylocal,w3d.nzlocal,
                  w3d.selfe,w3d.dx,w3d.dy,w3d.dz,
                  true,(nx-w3d.nxlocal)/2,(ny-w3d.nylocal)/2,(nz-w3d.nzlocal)/2)
+      selfe = w3d.selfe
     else:
-      solver.getselfe()
+      selfe = solver.getselfe()
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z','E'].index(comp)
 
   if comp == 'E':
-    Ex = getdecomposedarray(solver.selfe[0,...],ix=ix,iy=iy,iz=iz,
+    Ex = getdecomposedarray(selfe[0,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    Ey = getdecomposedarray(solver.selfe[1,...],ix=ix,iy=iy,iz=iz,
+    Ey = getdecomposedarray(selfe[1,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    Ez = getdecomposedarray(solver.selfe[2,...],ix=ix,iy=iy,iz=iz,
+    Ez = getdecomposedarray(selfe[2,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
     return sqrt(Ex**2 + Ey**2 + Ez**2)
   else:
-    return getdecomposedarray(solver.selfe[ic,...],ix=ix,iy=iy,iz=iz,
+    return getdecomposedarray(selfe[ic,...],ix=ix,iy=iy,iz=iz,
                               bcast=bcast,local=local,fullplane=fullplane,
                               xyantisymmetric=(ic in [0,1]),
                               solver=solver)

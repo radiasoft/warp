@@ -14,7 +14,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.154 2010/12/02 18:55:12 dave Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.155 2010/12/21 23:54:01 grote Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -336,8 +336,13 @@ most of which get there default values from one of the fortran packages.
     iz = slice(iz1,iz2)
     return self.potentialp[ix,iy,iz]
 
-  def getfield(self):
+  def getselfe(self,recalculate=None,lzero=true):
+    self.calcselfe(recalculate=recalculate,lzero=lzero)
     return self.field
+
+  def getselfep(self,recalculate=None,lzero=true):
+    self.calcselfep(recalculate=recalculate,lzero=lzero)
+    return self.fieldp
 
   def _setuprhoproperty():
     doc = "Charge density array"
@@ -362,9 +367,10 @@ most of which get there default values from one of the fortran packages.
   def _setupselfeproperty():
     doc = "Electric field array for particles"
     def fget(self):
-      return self.getselfe(recalculate=1)
+      self.calcselfe()
+      return self.returnfield(0,0)
     def fset(self,value):
-      self.returnfieldp(0,0)[...,0] = value
+      self.returnfieldp(0,0)[...] = value
     return locals()
   selfe = property(**_setupselfeproperty())
   del _setupselfeproperty
@@ -392,9 +398,10 @@ most of which get there default values from one of the fortran packages.
   def _setupselfepproperty():
     doc = "Electric field array for particles"
     def fget(self):
-      return self.getselfep(recalculate=1)
+      self.calcselfep()
+      return self.returnfieldp(0,0)
     def fset(self,value):
-      self.returnfieldp(0,0)[...,0] = value
+      self.returnfieldp(0,0)[...] = value
     return locals()
   selfep = property(**_setupselfepproperty())
   del _setupselfepproperty
@@ -500,7 +507,8 @@ most of which get there default values from one of the fortran packages.
       # --- this code should work OK now. The if statement is left just case
       # --- there is an odd situation.
       if len(bx) != n: return
-      setb3d(self.fieldp[:,:,:,:,1],n,x,y,z,self.getzgridprv(),bx,by,bz,
+      bfield = self.returnfield(0,iselfb=1)
+      setb3d(bfield,n,x,y,z,self.getzgridprv(),bx,by,bz,
              self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
              self.xmminp,self.ymminp,self.zmminp,
              self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
@@ -571,14 +579,15 @@ most of which get there default values from one of the fortran packages.
       # --- loops in descending order.
       tmpnsndts = getnsndtsforsubcycling()
       lzero = ((indts == tmpnsndts-1) and (iselfb == top.nsselfb-1))
-      if lzero:
-        tfieldp = transpose(self.fieldp)
-        tfieldp[...] = 0.
-      self.getselfep(recalculate=1,lzero=lzero)
+      #if lzero:
+      #  tfieldp = transpose(self.fieldp)
+      #  tfieldp[...] = 0.
+      self.calcselfep(recalculate=1,lzero=lzero)
       if abs(top.fselfb[iselfb]) > 0:
         # --- If the self-B correction is nonzero, then calculate and include
         # --- the approximate correction terms A and dA/dt.
-        self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
+        bfieldp = self.returnfieldp(0,iselfb=1)
+        self.getselfb(bfieldp,top.fselfb[iselfb],self.potentialp)
         self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
 
       if iselfb == 0 and f3d.lcorrectede:
@@ -597,31 +606,32 @@ most of which get there default values from one of the fortran packages.
                                  self.bounds,self.fsdecomp,
                                  self.solvergeom==w3d.RZgeom)
 
-  def getselfe(self,recalculate=None,lzero=true):
+  def calcselfe(self,recalculate=None,lzero=true):
     if not self.lparallel:
-      # --- If serial, then defer to getselfep since field and fieldp would
+      # --- If serial, then defer to calcselfep since field and fieldp would
       # --- be the same array.
-      self.field = self.getselfep(recalculate=recalculate,lzero=lzero)
-      return self.field
-    # --- The rest is the same as self.getselfep, but using the non-p
-    # --- attributes.
+      self.calcselfep(recalculate=recalculate,lzero=lzero)
+      self.field = self.fieldp
 
-    # --- Since the selfe is never directly used, except for diagnostics,
-    # --- it should always be recalculated by default.
-    if recalculate is None: recalculate = 1
+    else:
+      # --- The rest is the same as self.calcselfep, but using the non-p
+      # --- attributes.
 
-    self.lwithselfe = 1
-    self.allocatedataarrays()
-    self.field = self.returnfield(0,0)
-    if recalculate:
-      if isinstance(self.potential,FloatType): return
-      if isinstance(self.field,FloatType): return
-      getselfe3d(self.potential,self.nxlocal,self.nylocal,self.nzlocal,
-                 self.field[:,:,:,:,0],self.dx,self.dy,self.dz,
-                 lzero,self.nxguard,self.nyguard,self.nzguard)
-    return self.field[...,0]
+      # --- Since the selfe is never directly used, except for diagnostics,
+      # --- it should always be recalculated by default.
+      if recalculate is None: recalculate = 1
 
-  def getselfep(self,recalculate=None,lzero=true):
+      self.lwithselfe = 1
+      self.allocatedataarrays()
+      self.field = self.returnfield(0,0)
+      if recalculate:
+        if isinstance(self.potential,FloatType): return
+        if isinstance(self.field,FloatType): return
+        getselfe3d(self.potential,self.nxlocal,self.nylocal,self.nzlocal,
+                   self.field,self.dx,self.dy,self.dz,
+                   lzero,self.nxguard,self.nyguard,self.nzguard)
+
+  def calcselfep(self,recalculate=None,lzero=true):
     # --- Make sure that fieldp is at least defined.
     try: self.fieldp
     except AttributeError: self.setfieldpforparticles(0,0,0)
@@ -630,6 +640,7 @@ most of which get there default values from one of the fortran packages.
     # --- If it had not yet been calculated at all, then definitely
     # --- calculate it now.
     if not self.lwithselfep: recalculate = 1
+
     # --- If the E field is not actively being used, then recalculate it,
     # --- unless recalculate is passed in by the user.
     if alltrue(top.efetch != 3) and recalculate is None: recalculate = 1
@@ -641,9 +652,8 @@ most of which get there default values from one of the fortran packages.
       if isinstance(self.potentialp,FloatType): return
       if isinstance(self.fieldp,FloatType): return
       getselfe3d(self.potentialp,self.nxp,self.nyp,self.nzp,
-                 self.fieldp[:,:,:,:,0],self.dx,self.dy,self.dz,
+                 self.fieldp,self.dx,self.dy,self.dz,
                  lzero,self.nxguard,self.nyguard,self.nzguard)
-    return self.fieldp[...,0]
 
   def getslicewithguard(self,i1,i2,guard):
     if i1 is not None: i1 = i1 + guard
@@ -665,14 +675,14 @@ most of which get there default values from one of the fortran packages.
       if yeu==0:yeu=None
       ysl = self.nyguard-1
       yel = -self.nyguard-1
-      fieldp[0,:,:,:,1] += (Az[ix,ysu:yeu,iz] - Az[ix,ysl:yel,iz])/(2.*self.dy)
+      fieldp[0,:,:,:] += (Az[ix,ysu:yeu,iz] - Az[ix,ysl:yel,iz])/(2.*self.dy)
     if self.nx > 0:
       xsu = self.nxguard+1
       xeu = -self.nxguard+1 
       if xeu==0:xeu=None
       xsl = self.nxguard-1
       xel = -self.nxguard-1
-      fieldp[1,:,:,:,1] -= (Az[xsu:xeu,iy,iz] - Az[xsl:xel,iy,iz])/(2.*self.dx)
+      fieldp[1,:,:,:] -= (Az[xsu:xeu,iy,iz] - Az[xsl:xel,iy,iz])/(2.*self.dx)
     
   def adddadttoe(self,fieldp,fselfb,potentialp):
     """Ez = -dA/dt = -beta**2 dphi/dz"""
@@ -680,7 +690,7 @@ most of which get there default values from one of the fortran packages.
     iy = self.getslicewithguard(None,None,self.nyguard)
     # --- This assumes that nzguard is always 1
     Ez = (fselfb/clight)**2*(potentialp[ix,iy,2:]-potentialp[ix,iy,:-2])/(2.*self.dz)
-    fieldp[2,:,:,:,0] += Ez
+    fieldp[2,:,:,:] += Ez
 
   def installconductor(self,conductor,
                             xmin=None,xmax=None,

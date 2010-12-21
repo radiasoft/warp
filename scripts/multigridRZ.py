@@ -10,7 +10,7 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.60 2010/12/02 18:55:12 dave Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.61 2010/12/21 23:54:01 grote Exp $"
 
 ##############################################################################
 ##############################################################################
@@ -104,6 +104,12 @@ class MultiGridRZ(MultiGrid3D):
     if iz2 == 0: iz2 = None
     iz = slice(iz1,iz2)
     return self.potentialp[ix,0,iz]
+
+  def getselfe(self,*args,**kw):
+    return super(self.__class__,self).getselfe(*args,**kw)[:,:,0,:]
+
+  def getselfep(self,*args,**kw):
+    return super(self.__class__,self).getselfep(*args,**kw)[:,:,0,:]
 
   def fetchpotentialfrompositions(self,x,y,z,phi):
     n = len(x)
@@ -301,6 +307,12 @@ class MultiGrid2D(MultiGrid3D):
     if iz2 == 0: iz2 = None
     iz = slice(iz1,iz2)
     return self.potentialp[ix,0,iz]
+
+  def getselfe(self,*args,**kw):
+    return super(self.__class__,self).getselfe(*args,**kw)[:,:,0,:]
+
+  def getselfep(self,*args,**kw):
+    return super(self.__class__,self).getselfep(*args,**kw)[:,:,0,:]
 
   def fetchpotentialfrompositions(self,x,y,z,phi):
     n = len(x)
@@ -653,6 +665,12 @@ Initially, conductors are not implemented.
   def getphip(self):
     'Returns the phip array without the guard cells'
     return MultiGrid3D.getphip(self)[:,0,:]
+
+  def getselfe(self,*args,**kw):
+    return super(self.__class__,self).getselfe(*args,**kw)[:,:,0,:]
+
+  def getselfep(self,*args,**kw):
+    return super(self.__class__,self).getselfep(*args,**kw)[:,:,0,:]
 
   # --- A special version is needed since only part if source is returned.
   def _setuprhoproperty():
