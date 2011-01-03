@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.66 $, $Date: 2010/11/08 19:09:43 $
+c TOPSLAVE.M, version $Revision: 1.67 $, $Date: 2011/01/03 19:15:01 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -19,6 +19,7 @@ c     use InPart
       use Parallel
       use Databuffers
       use Subcycling, Only: ndtstorho,zgridndts
+      use DebugFlags
       integer(ISZ):: axis
       type(ParticleGroup):: pgroup
       integer(ISZ):: js1,js2
@@ -206,6 +207,36 @@ c         --- ends of the full mesh.
           i2 = pgroup%ins(is) - 1
           if (isleftmostproc .and. i2 >= i1) then
 
+            if (debug) then
+c             --- Check if a particle is outside of the particle grid but
+c             --- still within the field grid. This should never happen.
+              do ip=i1,i2
+                if (lrz) then
+                  ztemp = sqrt(pgroup%xp(ip)**2 + pgroup%yp(ip)**2)
+                else if (labs) then
+                  ztemp = abs(zz(ip) - zgrid)
+                else
+                  ztemp = zz(ip) - zgrid
+                endif
+
+                if (zmmin <= ztemp .and. ztemp < zpminlocal) then
+                  if (axis == 0) then
+                    call kaboom("particleboundaries_parallel: there is
+     &something wrong with the loadbalancing - a particle was found between
+     &xmmin and xpminlocal")
+                  else if (axis == 1) then
+                    call kaboom("particleboundaries_parallel: there is
+     &something wrong with the loadbalancing - a particle was found between
+     &ymmin and ypminlocal")
+                  else if (axis == 2) then
+                    call kaboom("particleboundaries_parallel: there is
+     &something wrong with the loadbalancing - a particle was found between
+     &zmmin and zpminlocal")
+                  endif
+                endif
+              enddo
+            endif
+
             if (pboundleft==periodic) then
 c             --- The position is adjusted, and the data will still be passed
 c             --- to the appropriate neighbor.
@@ -244,6 +275,36 @@ c             --- be less than zero.
           i1 = pgroup%ins(is) + pgroup%nps(is)
           i2 = ins_init(is) + nps_init(is) - 1
           if (isrightmostproc .and. i2 >= i1) then
+
+            if (debug) then
+c             --- Check if a particle is outside of the particle grid but
+c             --- still within the field grid. This should never happen.
+              do ip=i1,i2
+                if (lrz) then
+                  ztemp = sqrt(pgroup%xp(ip)**2 + pgroup%yp(ip)**2)
+                else if (labs) then
+                  ztemp = abs(zz(ip) - zgrid)
+                else
+                  ztemp = zz(ip) - zgrid
+                endif
+
+                if (zpmaxlocal < ztemp .and. ztemp <= zmmax) then
+                  if (axis == 0) then
+                    call kaboom("particleboundaries_parallel: there is
+     &something wrong with the loadbalancing - a particle was found between
+     &xmmax and xpmaxlocal")
+                  else if (axis == 1) then
+                    call kaboom("particleboundaries_parallel: there is
+     &something wrong with the loadbalancing - a particle was found between
+     &ymmax and ypmaxlocal")
+                  else if (axis == 2) then
+                    call kaboom("particleboundaries_parallel: there is
+     &something wrong with the loadbalancing - a particle was found between
+     &zmmax and zpmaxlocal")
+                  endif
+                endif
+              enddo
+            endif
 
             if (pboundright==periodic) then
 c             --- The position is adjusted, and the data will still be passed
