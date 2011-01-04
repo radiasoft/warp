@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.447 $, $Date: 2010/12/02 23:13:24 $
+c@(#) File W3D.F, version $Revision: 3.448 $, $Date: 2011/01/04 22:24:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5798,8 +5798,8 @@ c===========================================================================
       logical(ISZ):: lzero
 
 c Calculate the self-E via finite differences of phi.
-c The E field is accumulated, ie. e = e - grad phi, but
-c will be zeroed out if lzero is true.
+c The E field is accumulated, ie. e = e - grad phi, unless lzero,
+c then e = -grad phi.
 
       integer(ISZ):: ix,iy,iz
       real(kind=8):: dxi,dyi,dzi
@@ -5814,9 +5814,6 @@ c     --- Do some checking first.
         call kaboom("getselfe3d: ERROR: the phi array must have guard cells")
       endif
 
-c     --- Zero out the E field is requested
-      if (lzero) selfe = 0.
-
       dxi = 1.0/dx
       dyi = 1.0/dy
       dzi = 1.0/dz
@@ -5825,21 +5822,42 @@ c     --- Zero out the E field is requested
       tdzi = 0.5/dz
 
 c     --- Do the calculation
-      do iz=0,nz
-        do iy=0,ny
-          do ix=0,nx
-            if (nx > 0)
-     &        selfe(0,ix,iy,iz) = selfe(0,ix,iy,iz) +
-     &                  tdxi*(phi(ix-1,iy  ,iz  ) - phi(ix+1,iy  ,iz  ))
-            if (ny > 0)
-     &        selfe(1,ix,iy,iz) = selfe(1,ix,iy,iz) +
-     &                  tdyi*(phi(ix  ,iy-1,iz  ) - phi(ix  ,iy+1,iz  ))
-            if (nz > 0)
-     &        selfe(2,ix,iy,iz) = selfe(2,ix,iy,iz) +
-     &                  tdzi*(phi(ix  ,iy  ,iz-1) - phi(ix  ,iy  ,iz+1))
+c     --- If lzero, then set selfe, otherwise accumulate it.
+      if (lzero) then
+        do iz=0,nz
+          do iy=0,ny
+            do ix=0,nx
+              if (nx > 0)
+     &          selfe(0,ix,iy,iz) = 
+     &                    tdxi*(phi(ix-1,iy  ,iz  ) - phi(ix+1,iy  ,iz  ))
+              if (ny > 0)
+     &          selfe(1,ix,iy,iz) = 
+     &                    tdyi*(phi(ix  ,iy-1,iz  ) - phi(ix  ,iy+1,iz  ))
+              if (nz > 0)
+     &          selfe(2,ix,iy,iz) = 
+     &                    tdzi*(phi(ix  ,iy  ,iz-1) - phi(ix  ,iy  ,iz+1))
+            enddo
           enddo
         enddo
-      enddo
+
+      else
+        do iz=0,nz
+          do iy=0,ny
+            do ix=0,nx
+              if (nx > 0)
+     &          selfe(0,ix,iy,iz) = selfe(0,ix,iy,iz) +
+     &                    tdxi*(phi(ix-1,iy  ,iz  ) - phi(ix+1,iy  ,iz  ))
+              if (ny > 0)
+     &          selfe(1,ix,iy,iz) = selfe(1,ix,iy,iz) +
+     &                    tdyi*(phi(ix  ,iy-1,iz  ) - phi(ix  ,iy+1,iz  ))
+              if (nz > 0)
+     &          selfe(2,ix,iy,iz) = selfe(2,ix,iy,iz) +
+     &                    tdzi*(phi(ix  ,iy  ,iz-1) - phi(ix  ,iy  ,iz+1))
+            enddo
+          enddo
+        enddo
+
+      endif
 
 !$OMP MASTER
       if (lw3dtimesubs) timegetselfe3d = timegetselfe3d + wtime() - substarttime
