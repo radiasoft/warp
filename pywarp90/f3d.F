@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.142 $, $Date: 2010/01/20 19:56:08 $
+c@(#) File F3D.M, version $Revision: 3.143 $, $Date: 2011/01/11 00:24:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -1812,7 +1812,7 @@ c-----------------------------------------------------------------------------
       real(kind=8):: klast, kdxb2, kdyb2, kdx, kdy
       real(kind=8):: dx,dy,pib2,norm
       real(kind=8):: atemp(0:ny,0:nx)
-      real(kind=8):: w1(-1:3,-1:ny+1),w2(-1:3,-1:ny+1)
+      real(kind=8):: w1(-1:3,-1:ny+1),w2(0:2,0:ny)
       w1 = 0.
       w2 = 0.
 
@@ -2002,7 +2002,7 @@ c       --- Invoke the transform routines for the current z-slice
 
 #ifdef MPIPARALLEL
         if (ny > xynppgroup .and. xynppgroup > 1)
-     &    call parallelgatherall(a,(1+nx)*ny/xynppgroup,xynppgroup,1)
+     &    call parallelgatherall(a(:,0:ny-1),(3+nx)*ny/xynppgroup,xynppgroup,1)
 #endif
 !$OMP FLUSH (a)
 
@@ -2101,9 +2101,9 @@ c           --- a bug in the intel compiler, version 8.
 
 #ifdef MPIPARALLEL
         if (nx > xynppgroup .and. xynppgroup > 1) then
-          atemp = transpose(a)
+          atemp = transpose(a(0:nx,0:ny))
           call parallelgatherall(atemp,(1+ny)*nx/xynppgroup,xynppgroup,1)
-          a = transpose(atemp)
+          a(0:nx,0:ny) = transpose(atemp)
         endif
 #endif
 
@@ -2139,7 +2139,7 @@ c           --- a bug in the intel compiler, version 8.
 
 #ifdef MPIPARALLEL
         if (ny > xynppgroup .and. xynppgroup > 1)
-     &    call parallelgatherall(a,(1+nx)*ny/xynppgroup,xynppgroup,1)
+     &    call parallelgatherall(a(:,0:ny-1),(3+nx)*ny/xynppgroup,xynppgroup,1)
 #endif
 
       endif
