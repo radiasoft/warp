@@ -14,7 +14,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.155 2010/12/21 23:54:01 grote Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.156 2011/01/13 23:58:09 grote Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -143,6 +143,7 @@ most of which get there default values from one of the fortran packages.
 
       if '_rho' in dict: del dict['_rho']
       if '_phi' in dict: del dict['_phi']
+      if 'bfieldp' in dict: del dict['bfieldp']
 
     return dict
 
@@ -258,11 +259,6 @@ most of which get there default values from one of the fortran packages.
       # --- This forces all species to use the precalculated E field
       # --- if any have the B correction.
       top.efetch = 3
-      # --- Number of fields (E and B)
-      nfields = 2
-    else:
-      # --- Number of fields (E only)
-      nfields = 1
 
     try:
       self.lwithselfep
@@ -272,7 +268,7 @@ most of which get there default values from one of the fortran packages.
 
     if self.lwithselfep:
       return ((1+self.nxp,1+self.nyp,1+self.nzp),
-              (3,1+self.nxp,1+self.nyp,1+self.nzp,nfields),
+              (3,1+self.nxp,1+self.nyp,1+self.nzp),
               (1+self.nxp+2*self.nxguard,1+self.nyp+2*self.nyguard,1+self.nzp+2*self.nzguard))
     else:
       return ((1+self.nxp,1+self.nyp,1+self.nzp),
@@ -289,7 +285,7 @@ most of which get there default values from one of the fortran packages.
     except AttributeError:
       self.lwithselfe = 0
     if self.lwithselfe:
-      dims[1:1] = [(3,1+self.nxlocal,1+self.nylocal,1+self.nzlocal,1)]
+      dims[1:1] = [(3,1+self.nxlocal,1+self.nylocal,1+self.nzlocal)]
     return tuple(dims)
 
   def getrho(self):
@@ -482,6 +478,15 @@ most of which get there default values from one of the fortran packages.
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
 
+  def returnbfieldp(self):
+    try:
+      self.bfieldp
+    except NameError:
+      self.bfieldp = None
+    if self.bfieldp is None or self.bfieldp.shape != self.field.shape:
+      self.bfieldp = zeros_like(self.fieldp)
+    return self.bfieldp
+
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     # --- This is called by fetchfield from fieldsolver.py
     # --- Only sets the E field from the potential
@@ -507,8 +512,8 @@ most of which get there default values from one of the fortran packages.
       # --- this code should work OK now. The if statement is left just case
       # --- there is an odd situation.
       if len(bx) != n: return
-      bfield = self.returnfield(0,iselfb=1)
-      setb3d(bfield,n,x,y,z,self.getzgridprv(),bx,by,bz,
+      bfieldp = self.returnbfieldp()
+      setb3d(bfieldp,n,x,y,z,self.getzgridprv(),bx,by,bz,
              self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
              self.xmminp,self.ymminp,self.zmminp,
              self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
@@ -586,7 +591,7 @@ most of which get there default values from one of the fortran packages.
       if abs(top.fselfb[iselfb]) > 0:
         # --- If the self-B correction is nonzero, then calculate and include
         # --- the approximate correction terms A and dA/dt.
-        bfieldp = self.returnfieldp(0,iselfb=1)
+        bfieldp = self.returnbfieldp()
         self.getselfb(bfieldp,top.fselfb[iselfb],self.potentialp)
         self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
 
@@ -623,7 +628,7 @@ most of which get there default values from one of the fortran packages.
 
       self.lwithselfe = 1
       self.allocatedataarrays()
-      self.field = self.returnfield(0,0)
+      self.setfieldforfieldsolve(0,0,0)
       if recalculate:
         if isinstance(self.potential,FloatType): return
         if isinstance(self.field,FloatType): return
@@ -632,10 +637,6 @@ most of which get there default values from one of the fortran packages.
                    lzero,self.nxguard,self.nyguard,self.nzguard)
 
   def calcselfep(self,recalculate=None,lzero=true):
-    # --- Make sure that fieldp is at least defined.
-    try: self.fieldp
-    except AttributeError: self.setfieldpforparticles(0,0,0)
-
     # --- Check if the E field should be recalculated.
     # --- If it had not yet been calculated at all, then definitely
     # --- calculate it now.
@@ -647,7 +648,7 @@ most of which get there default values from one of the fortran packages.
 
     self.lwithselfep = 1
     self.allocatedataarrays()
-    self.fieldp = self.returnfieldp(0,0)
+    self.setfieldpforparticles(0,0,0)
     if recalculate:
       if isinstance(self.potentialp,FloatType): return
       if isinstance(self.fieldp,FloatType): return
@@ -664,7 +665,7 @@ most of which get there default values from one of the fortran packages.
     if i2 is None and guard > 0: i2 = -guard
     return slice(i1,i2)
 
-  def getselfb(self,fieldp,fselfb,potentialp):
+  def getselfb(self,bfieldp,fselfb,potentialp):
     ix = self.getslicewithguard(None,None,self.nxguard)
     iy = self.getslicewithguard(None,None,self.nyguard)
     iz = self.getslicewithguard(None,None,self.nzguard)
@@ -675,14 +676,14 @@ most of which get there default values from one of the fortran packages.
       if yeu==0:yeu=None
       ysl = self.nyguard-1
       yel = -self.nyguard-1
-      fieldp[0,:,:,:] += (Az[ix,ysu:yeu,iz] - Az[ix,ysl:yel,iz])/(2.*self.dy)
+      bfieldp[0,:,:,:] += (Az[ix,ysu:yeu,iz] - Az[ix,ysl:yel,iz])/(2.*self.dy)
     if self.nx > 0:
       xsu = self.nxguard+1
       xeu = -self.nxguard+1 
       if xeu==0:xeu=None
       xsl = self.nxguard-1
       xel = -self.nxguard-1
-      fieldp[1,:,:,:] -= (Az[xsu:xeu,iy,iz] - Az[xsl:xel,iy,iz])/(2.*self.dx)
+      bfieldp[1,:,:,:] -= (Az[xsu:xeu,iy,iz] - Az[xsl:xel,iy,iz])/(2.*self.dx)
     
   def adddadttoe(self,fieldp,fselfb,potentialp):
     """Ez = -dA/dt = -beta**2 dphi/dz"""

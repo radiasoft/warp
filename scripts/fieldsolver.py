@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.92 2010/12/21 23:54:01 grote Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.93 2011/01/13 23:58:09 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -1536,7 +1536,7 @@ of the arrays used by the field solve"""
 
     if len(pdims) == 3:
       # --- Also, create fieldparray
-      fieldpdims = list(pdims[1]) + [top.nsndtsphi]
+      fieldpdims = list(pdims[1]) + [top.nsndtsphi,nsselfb]
       if ('fieldparray' not in self.__dict__ or
           shape(self.fieldparray) != tuple(fieldpdims)):
         self.fieldparray = fzeros(fieldpdims,'d')
@@ -1566,7 +1566,7 @@ of the arrays used by the field solve"""
 
       if len(dims) == 3:
         # --- Also, create fieldarray
-        fielddims = list(dims[1]) + [top.nsndtsphi]
+        fielddims = list(dims[1]) + [top.nsndtsphi,nsselfb]
         if ('fieldarray' not in self.__dict__ or
             shape(self.fieldarray) != tuple(fielddims)):
           self.fieldarray = fzeros(fielddims,'d')

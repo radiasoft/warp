@@ -71,7 +71,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.96 2010/11/24 17:36:15 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.97 2011/01/13 23:58:09 grote Exp $"
 
 def latticedoc():
   import lattice
@@ -3321,7 +3321,7 @@ Input arguments:
   w3d.electrontemperature = 0. # turn of Boltzmann electrons
 
   Esolver.solve()
-  Esolver.getselfe(recalculate=1)
+  Esolver.calcselfep(recalculate=1)
 
   w3d.electrontemperature = electrontemperature
 
@@ -3335,9 +3335,9 @@ Input arguments:
   # --- Now add in the gap
   return addnewegrd(Esolver.zmmin,Esolver.zmmax,
                     dx=Esolver.dx,dy=Esolver.dy,
-                    ex=Esolver.fieldp[0,...,0],
-                    ey=Esolver.fieldp[1,...,0],
-                    ez=Esolver.fieldp[2,...,0],
+                    ex=Esolver.fieldp[0,...],
+                    ey=Esolver.fieldp[1,...],
+                    ez=Esolver.fieldp[2,...],
                     rz=lcylindrical,ap=ap,**kw)
 
 # ----------------------------------------------------------------------------
