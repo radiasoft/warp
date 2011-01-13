@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.108 $, $Date: 2011/01/11 00:23:28 $
+c@(#) File WXY.M, version $Revision: 3.109 $, $Date: 2011/01/13 00:59:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -135,10 +135,6 @@ c  When using thick slice model, don't do any iterations
 
 c  Initialize the cycle counter, time, etc.
 
-      if (nrestart == " ") then
-         it = 0
-         time = 0.
-      endif
       call stepid (it,time,zbeam)
 
 c Print values of input variables, other interesting things to text file
