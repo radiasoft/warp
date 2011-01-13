@@ -1,6 +1,6 @@
 from warp import *
 import numpy.linalg as linalg
-env_match_version = "$Id: env_match.py,v 1.3 2008/07/11 21:13:43 dave Exp $"
+env_match_version = "$Id: env_match.py,v 1.4 2011/01/13 00:53:40 grote Exp $"
 
 print 'Envelope matching routines'
 print 'match() matches the beam giving the desired value of sigma, varying'
@@ -138,16 +138,21 @@ def scale(ii=None):
 
 
 ########################################################################
-def matchenv(quads,af,bf,apf,bpf,zz=None,maxiter=100,tol=1.e-10):
-  """Varies 4 quads to match the envelope to the specified final values
-     - quads index of quad elements which are to be varied
-     - af final value of a
-     - bf final value of b
-     - apf final value of a'
-     - bpf final value of b'
-     - zz=env.zu z location of final values (must be env.zl < zz < env.zu)
-     - maxiter=100 maximum number of iterations to perform
-     - tol=1.e-10 tolerance to match final values to"""
+def matchenv(quads,af,bf,apf,bpf,zz=None,maxiter=100,tol=1.e-10,
+             maxtol=largepos):
+  """
+Varies 4 quads to match the envelope to the specified final values
+  - quads: index of quad elements which are to be varied
+  - af: final value of a
+  - bf: final value of b
+  - apf: final value of a'
+  - bpf: final value of b'
+  - zz=env.zu: z location of final values (must be env.zl < zz < env.zu)
+  - maxiter=100: maximum number of iterations to perform
+  - tol=1.e-10: tolerance to match final values to
+  - maxtol=largepos: if the error gets larger than maxtol, then quit. No
+                     solution is likely to be found.
+  """
 
   assert len(quads) == 4,"exactly four quads for varying must be specified"
   assert top.quads,"quad elements must be defined"
@@ -244,6 +249,9 @@ def matchenv(quads,af,bf,apf,bpf,zz=None,maxiter=100,tol=1.e-10):
     denv[:] = [af - asave,bf - bsave,apf - apsave, bpf - bpsave]
     print "error => a = %10.3e b = %10.3e a' = %10.3e b' = %10.3e "%tuple(denv)
     if max(abs(denv)) < tol: notdone = 0
+    if max(abs(denv)) > maxtol:
+      print "\nDid not converge\n"
+      notdone = 0
 
   if iter == maxiter:
     print 'Warning: Maximum number of iterations reached'
@@ -367,3 +375,45 @@ def matchxenv(xf=0.,xpf=0.,yf=0.,ypf=0.,zz=None,maxiter=100,tol=1.e-10):
     print "top.x0 = %20.15e;top.xp0 = %20.15e"%(top.x0,top.xp0)
     print "top.y0 = %20.15e;top.yp0 = %20.15e"%(top.y0,top.yp0)
 
+#----------------------------------------------------------------------------
+from optimizer import ParticleSwarm
+def envmatchswarm(quads,af,bf,apf,bpf,zz=None,maxiter=100,tol=1.e-10):
+  """Varies quads to match the envelope to the specified final values
+     - quads index of quad elements which are to be varied
+     - af final value of a
+     - bf final value of b
+     - apf final value of a'
+     - bpf final value of b'
+     - zz=env.zu z location of final values (must be env.zl < zz < env.zu)
+     - maxiter=100 maximum number of iterations to perform
+     - tol=1.e-10 tolerance to match final values to"""
+
+
+  def evaluate(params):
+    for iq,db in zip(quads,params):
+      top.quaddb[iq] = db
+    step()
+    if zz:
+      iz = int((zz - env.zl)/env.dzenv)
+      wz =     (zz - env.zl)/env.dzenv - iz
+      asave = env.aenv[iz]*(1. - wz) + env.aenv[iz+1]*wz
+      bsave = env.benv[iz]*(1. - wz) + env.benv[iz+1]*wz
+      apsave = env.apenv[iz]*(1. - wz) + env.apenv[iz+1]*wz
+      bpsave = env.bpenv[iz]*(1. - wz) + env.bpenv[iz+1]*wz
+    else:
+      asave = env.aenv[env.nenv]
+      bsave = env.benv[env.nenv]
+      apsave = env.apenv[env.nenv]
+      bpsave = env.bpenv[env.nenv]
+    return (abs(asave - af) +
+            abs(bsave - bf) +
+            abs(apsave - apf) +
+            abs(bpsave - bpf))
+
+  op = ParticleSwarm(10,evaluate,
+                     initparams=top.quaddb[quads],
+                     deltas=0.1)
+
+  env.lenvout = false
+  op.swarm(100)
+  env.lenvout = true
