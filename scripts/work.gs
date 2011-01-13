@@ -1,5 +1,5 @@
 # Gist warpstyle.gs drawing style
-# $Id: work.gs,v 1.4 2001/08/01 23:35:53 dave Exp $
+# $Id: work.gs,v 1.5 2011/01/13 22:36:45 grote Exp $
 
 # Multiple viewports
 #  1:  Standard, full page, left axis
@@ -27,7 +27,7 @@ landscape= 0
 default = {
   legend= 0,
 
-  viewport= { 0.1757, 0.6143, 0.4257, 0.8643 },
+  viewport= { 0.1757, 0.6143, 0.4357, 0.8743 },
 
   ticks= {
 
@@ -70,64 +70,82 @@ system= {
 system= {
   #legend= "Upper Left Quadrant(3)",
   viewport= { 0.1757, 0.3511, 0.6889, 0.8643 },
-  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }},
-           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }} }}
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005} }}
 
 # The fourth coordinate system is only in second quadrant (upper right)
 system= {
   #legend= "Upper Right Quadrant(4)",
   viewport= { 0.4389, 0.6143, 0.6889, 0.8643 },
-  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }},
-           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }} }}
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005} }}
 
 # The fifth coordinate system is only in third quadrant (lower left)
 system= {
   #legend= "Lower Left Quadrant(5)",
   viewport= { 0.1757, 0.3511, 0.4257, 0.6011 },
-  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }},
-           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }} }}
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005} }}
 
 # The sixth coordinate system is only in fourth quadrant (lower right)
 system= {
   #legend= "Lower Right Quadrant(6)",
   viewport= { 0.4389, 0.6143, 0.4257, 0.6011 },
-  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }},
-           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }} }}
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005} }}
 
 # The seventh coordinate system is only in left half
 system= {
   #legend= "Left Half(7)",
   viewport= { 0.1757, 0.3511, 0.4257, 0.8643 },
-  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }},
-           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }} }}
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005} }}
 
 # The eight coordinate system is only in right half
 system= {
   #legend= "Right Half(8)",
   viewport= { 0.4389, 0.6143, 0.4257, 0.8643 },
-  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }},
-           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }} }}
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005} }}
 
 # The nineth coordinate system is only in top half
 system= {
   #legend= "Top Half(9)",
   viewport= { 0.1757, 0.6143, 0.6889, 0.8643 },
-  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }},
-           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }} }}
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005} }}
 
 # The tenth coordinate system is only in botton half
 system= {
   #legend= "Bottom Half(10)",
   viewport= { 0.1757, 0.6143, 0.4257, 0.6011 },
-  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }},
-           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }} }}
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005} }}
 
 # The eleventh coordinate is for full view
 system= {
   #legend= "Full View(11)",
   viewport= { 0.1200, 0.6802, 0.3548, 0.9150 },
-  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }},
-           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }} }}
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },
+                    labelOff= 0.005} }}
 
 # The twelfth coordinate system has left ticks and labels and is used in
 # conjunction with system 2.

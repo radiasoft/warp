@@ -103,7 +103,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.270 2010/11/23 19:14:02 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.271 2011/01/13 22:36:45 grote Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1072,16 +1072,17 @@ color = ["red","green","blue","cyan","magenta","yellow"]
 ########################################################################
 # Note: Subtracted off 0.0337 from X position of titlel (10/21/99)
 ptitle_placement = [
-  [[0.3950, 0.8950], [0.3950, 0.3927], [0.1200, 0.6800], [0.397, 0.37]],
-  [[0.3950, 0.8950], [0.3950, 0.3927], [0.1200, 0.6800], [0.397, 0.37]],
-  [[0.2634, 0.8950], [0.2634, 0.6559], [0.1300, 0.8006], [0.397, 0.37]],
-  [[0.5266, 0.8950], [0.5266, 0.6559], [0.3932, 0.8006], [0.397, 0.37]],
-  [[0.2634, 0.6231], [0.2634, 0.3927], [0.1300, 0.5374], [0.397, 0.37]],
-  [[0.5266, 0.6231], [0.5266, 0.3927], [0.3932, 0.5374], [0.397, 0.37]],
-  [[0.2634, 0.8950], [0.2634, 0.3927], [0.1300, 0.6800], [0.397, 0.37]],
-  [[0.5266, 0.8950], [0.5266, 0.3927], [0.3932, 0.6800], [0.397, 0.37]],
-  [[0.3950, 0.8950], [0.3950, 0.6559], [0.1300, 0.8006], [0.397, 0.37]],
-  [[0.3950, 0.6231], [0.3950, 0.3927], [0.1300, 0.5374], [0.397, 0.37]]]
+  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]],
+  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]],
+  [[0.2634, 0.8880], [0.2634, 0.6590], [0.1300, 0.7760], [0.3950, 0.3750]],
+  [[0.5266, 0.8880], [0.5266, 0.6590], [0.3932, 0.7760], [0.3950, 0.3750]],
+  [[0.2634, 0.6230], [0.2634, 0.3970], [0.1300, 0.5160], [0.3950, 0.3750]],
+  [[0.5266, 0.6230], [0.5266, 0.3970], [0.3932, 0.5160], [0.3950, 0.3750]],
+  [[0.2634, 0.8880], [0.2634, 0.3970], [0.1300, 0.6500], [0.3950, 0.3750]],
+  [[0.5266, 0.8880], [0.5266, 0.3970], [0.3932, 0.6500], [0.3950, 0.3750]],
+  [[0.3950, 0.8880], [0.3950, 0.6590], [0.1300, 0.7760], [0.3950, 0.3750]],
+  [[0.3950, 0.6230], [0.3950, 0.3970], [0.1300, 0.5160], [0.3950, 0.3750]]]
+ptitle_heights = [20.,20.,15.,15.,15.,15.,15.,15.,15.,15.]
 default_titlet=""
 default_titleb=""
 default_titlel=""
@@ -1093,7 +1094,7 @@ def settitles(titlet="",titleb="",titlel="",titler=""):
   if titleb is not None: default_titleb = titleb
   if titlel is not None: default_titlel = titlel
   if titler is not None: default_titler = titler
-def ptitles(titlet="",titleb="",titlel="",titler="",v=None,height=20):
+def ptitles(titlet="",titleb="",titlel="",titler="",v=None,height=None):
   "Plots titles, either uses input or titles set by settitles"
   global framet,frameb,framel,framer
   if "ptitles" in _plotpackage.__dict__:
@@ -1108,6 +1109,7 @@ def ptitles(titlet="",titleb="",titlel="",titler="",v=None,height=20):
   frameb=titleb
   framel=titlel
   framer=titler
+  if height is None: height = ptitle_heights[v-1]
   if titlet:
     if with_gist:
       plt(titlet,ptitle_placement[v-1][0][0],ptitle_placement[v-1][0][1],
@@ -2028,12 +2030,12 @@ between min(z) and max(z) for axis labels. n defaults to eight.
   return levs
 
 #-----------------------------------------------------------------------
-colorbar_placement = [[0.62,0.64,0.43,0.86],[0.62,0.64,0.43,0.86],
+colorbar_placement = [[0.62,0.64,0.4387,0.8713],[0.62,0.64,0.43,0.86],
                       [0.354,0.364,0.692,0.859],[0.617,0.627,0.692,0.859],
                       [0.354,0.364,0.428,0.596],[0.617,0.627,0.428,0.596],
                       [0.354,0.364,0.43,0.86],[0.617,0.627,0.43,0.86],
                       [0.617,0.627,0.692,0.859],[0.617,0.627,0.428,0.596]]
-colorbar_fontsize = [14.,14.,8.,8.,8.,8.,8.,8.,8.,8.]
+colorbar_fontsize = [14.,14.,11.,11.,11.,11.,11.,11.,11.,11.]
 
 def colorbar(zmin,zmax,uselog=None,ncolor=100,view=None,levs=None,
              colbarlinear=1,ctop=199):
