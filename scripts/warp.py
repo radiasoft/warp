@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.201 2010/11/11 01:47:22 dave Exp $"
+warp_version = "$Id: warp.py,v 1.202 2011/01/13 22:37:12 grote Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -948,8 +948,8 @@ Creates a dump file
   top.dumptime = top.dumptime + (wtime() - timetemp)
 
 # --- Restart command
-def restart(filename,suffix='',onefile=0,verbose=false,dofieldsol=true,
-            format='pdb'):
+def restart(filename,suffix='',onefile=0,verbose=false,skip=[],
+            dofieldsol=true,format='pdb'):
   """
 Reads in data from file, redeposits charge density and does field solve
   - filename: restart file name - when restoring parallel run from multiple
@@ -957,6 +957,7 @@ Reads in data from file, redeposits charge density and does field solve
               the '_' before the processor number.
   - onefile=0: Restores from one file unless 0, then each processor restores
                from seperate file.
+  - skip=[]: list of variables to skip
   - dofieldsol=true: When true, call fieldsol(0). This allows special cases
                      where just calling fieldsol(0) is not appropriate or
                      optimal
@@ -980,9 +981,9 @@ Reads in data from file, redeposits charge density and does field solve
     # --- out directly and unpickles them when PR is called. Many things
     # --- reinstall themselves when unpickled.
     if onefile and lparallel:
-      ff = parallelrestore(filename,verbose=verbose,lreturnff=1)
+      ff = parallelrestore(filename,verbose=verbose,skip=skip,lreturnff=1)
     else:
-      ff = pyrestore(filename,verbose=verbose,lreturnff=1)
+      ff = pyrestore(filename,verbose=verbose,skip=skip,lreturnff=1)
 
     # --- Fix old dump files.
     # --- This is the only place where the open dump file is needed.
@@ -991,7 +992,7 @@ Reads in data from file, redeposits charge density and does field solve
 
   # --- Now close the restart file
   elif format == 'pickle':
-    pickledump.picklerestore(filename,verbose)
+    pickledump.picklerestore(filename,verbose,skip=skip)
   else:
     raise InputError
 
