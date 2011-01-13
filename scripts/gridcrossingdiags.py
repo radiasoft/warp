@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.43 2010/11/24 23:37:51 dave Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.44 2011/01/13 00:57:51 grote Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -1185,6 +1185,10 @@ Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
         # --- Get the indices for the times when the grid cells is within
         # --- the z range.
         ii = nonzero(logical_and(0. <= zz,zz <= self.nz))[0]
+
+        #--- Return empty arrays if there is no data
+        if len(ii) == 0.:
+            return zeros(0),zeros(0)
 
         # --- Get the integer grid cell indices for the times within
         # --- the z range.
