@@ -1,5 +1,5 @@
 # Gist warpstyle.gs drawing style
-# $Id: work.gs,v 1.5 2011/01/13 22:36:45 grote Exp $
+# $Id: work.gs,v 1.6 2011/01/14 01:34:01 rcohen Exp $
 
 # Multiple viewports
 #  1:  Standard, full page, left axis
@@ -12,6 +12,9 @@
 #  8:  right half
 #  9:  top half
 #  10: bottom half
+#  14: top third
+#  15: middle third
+#  16: bottom third
 
 # See work.gs for description of meanings
 
@@ -159,6 +162,32 @@ system= {
   viewport= { 0.127, 0.672, 0.363, 0.908 },
   ticks= { horiz= { flags= 0x000 }, vert= { flags= 0x000 },
            frame= 0}}
+
+# The fourteenth coordinate system is only in top third
+system= {
+  #legend= "Top Third(14)",
+  viewport= { 0.1757, 0.6143, 0.761633333, 0.8793 },
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },textStyle={height=.014},
+                    labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },textStyle={height=.014} }} }
+
+# The fifteenth coordinate system is only in middle third
+system= {
+  #legend= "Middle Third(15)",
+  viewport= { 0.1757, 0.6143, 0.5861666666, 0.703833333 },
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },textStyle={height=.014},
+                  labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },textStyle={height=.014}} }}
+
+# The sixteenth coordinate system is only in middle third
+system= {
+  #legend= "Bottom Third(16)",
+  viewport= { 0.1757, 0.6143, 0.4107, 0.528366666 },
+  ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },textStyle={height=.014},
+                  labelOff= 0.005},
+           vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 },textStyle={height=.014}} }}
+
+
 
 legends= {
   x= 0.04698,  y= 0.350,  dx= 0.3758,  dy= 0.0,
