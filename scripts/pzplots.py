@@ -85,7 +85,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.24 2010/08/23 22:09:09 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.25 2011/01/19 20:55:37 grote Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -1885,7 +1885,7 @@ def pzepsnz(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
   plg(epsnzz,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
-    ptitles("Z-Z' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
+    ptitles("Z-Z' normalized emittance versus Z",titleb,"(!p-m-rad)",
             _gettitler(js))
 
 ##########################################################################

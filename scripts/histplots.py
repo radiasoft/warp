@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.40 2010/08/23 22:18:17 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.41 2011/01/19 20:55:36 grote Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -537,7 +537,7 @@ def hpepsnz(iw=0,kwdict={},**kw):
   "Z normalized emittance."
   kw.update(kwdict)
   kw['titlet']="Z normalized emittance"
-  kw['titlel']="(!p-m-clight)"
+  kw['titlel']="(!p-m-rad)"
   hpbasicwin('hepsnz',iw,kw)
 if sys.version[:5] != "1.5.1":
   hpepsnz.__doc__ =  hpepsnz.__doc__ + hpbasicwintext
