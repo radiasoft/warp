@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.44 2011/01/13 00:57:51 grote Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.45 2011/01/22 02:04:39 grote Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -943,18 +943,15 @@ after simulation when the dumptofile flag was on.
 
     # ----------------------------------------------------------------------
     def setupanalysis(self):
-        self.arraytime = self.time
-        self.arraycurrent = self.current
-        self.arrayradius = self.rrms
-
+        if me > 0: return
         self.currentmax = zeros(self.nz+1,'d')
         self.ratcurrentmax = zeros(self.nz+1,'d')
         for iz in range(self.nz+1):
             # --- Find the max current over time at the location iz
-            ii = argmax(self.arraycurrent[:,iz])
+            ii = argmax(self.current[:,iz])
             # --- Save the current and beam radius at that time
-            self.currentmax[iz] = self.arraycurrent[ii,iz]
-            self.ratcurrentmax[iz] = self.arrayradius[ii,iz]*100.
+            self.currentmax[iz] = self.current[ii,iz]
+            self.ratcurrentmax[iz] = self.rrms[ii,iz]*100.
 
         if self.ldoradialdiag:
             self.arrayrprofile = array(self.rprofile)
@@ -966,6 +963,7 @@ after simulation when the dumptofile flag was on.
             self.aa = aa
 
     def saveresults(self,filename):
+        if me > 0: return
         ff = PW.PW(filename)
         ff.zmesh = self.zmesh
         ff.currentmax = self.currentmax
@@ -978,13 +976,17 @@ after simulation when the dumptofile flag was on.
         ff.close()
 
     def ppcurrmax(self):
+        if me > 0: return
+        plsys(1)
         plp(self.currentmax,self.zmesh,msize=3)
+        plsys(2)
         plp(self.ratcurrentmax,self.zmesh,color=blue,msize=3)
-        ptitles('spot size','Z (m)','Current (Amps)',
+        ptitles('spot size','Z (m)','Current (Amps), Spot size (cm)',
                 'Black is peak current, Blue is corresponding radius')
 
     def ppfluence(self,Esum):
         """Plots the fluence as a function of radius"""
+        if me > 0: return
         Etot = sum(Esum)
         self.Esum = Esum
         self.Etot = Etot
@@ -997,8 +999,9 @@ after simulation when the dumptofile flag was on.
     def ppfluenceattarget(self,ztarget,deltat):
         """Plot the fluence on the target, integrating over the time +/- deltat
 around the peak current."""
+        if me > 0: return
         iztarget = int((ztarget - self.zmmin)/self.dz)
-        ii = argmax(self.arraycurrent[:,iztarget])
+        ii = argmax(self.current[:,iztarget])
         i1 = i2 = ii
         while i1 >= 0 and self.time[i1] >= self.time[ii] - deltat:
             i1 -= 1
@@ -1008,9 +1011,10 @@ around the peak current."""
         self.ppfluence(Esum)
 
     def ppfluenceatspot(self,deltat=None,currmin=None,tslice=slice(None)):
+        if me > 0: return
         iztarget = argmin(ratcurrentmax[tslice])
         if deltat is not None:
-            ii = argmax(self.arraycurrent[:,iztarget])
+            ii = argmax(self.current[:,iztarget])
             i1 = i2 = ii
             while i1 >= 0 and self.time[i1] >= self.time[ii] - deltat:
                 i1 -= 1
