@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.448 $, $Date: 2011/01/04 22:24:17 $
+c@(#) File W3D.F, version $Revision: 3.449 $, $Date: 2011/01/22 02:01:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -972,10 +972,12 @@ c  Initialize the moments arrays which are calculated during the synchv and
 c  gen phases.
 c  0. is passed in as a dummy for all of the particles coordinates
 c  which are not used at this time.
-      call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &              0.,0.,0.,0.,0.,1,
-     &              nplive,0.,0.,0.,1,-1,ns,
-     &              tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+      if ((caller == "w3dexe" .and. lspecial) .or.caller == "w3dgen") then
+        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                0.,0.,0.,0.,0.,1,
+     &                nplive,0.,0.,0.,1,-1,ns,
+     &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+      endif
 
 c  If a flag was set making this a "special" step,
 c  do a half-advance to bring v to t.l. it 
@@ -987,9 +989,11 @@ c  do a half-advance to bring v to t.l. it
       endif
 
 c  Finalize the moments calculation and do other diagnostics.
-      call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &              0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
-     &              1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+      if ((caller == "w3dexe" .and. lspecial) .or.caller == "w3dgen") then
+        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
+     &                1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+      endif
       call getlabwn()
       call rhodia
 
@@ -11922,8 +11926,13 @@ c         --- Call perturbative bent beam field solver
 #ifdef MPIPARALLEL
           call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
      &                                 -1,0,bounds,fsdecomp)
-          call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
-     &                        -1,-1,fsdecomp)
+c         --- See comments above
+c         call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+c    &                         -1,-1,0,1,fsdecomp)
+          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+     &                         -1,-1,1,1,fsdecomp)
+          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+     &                         -1,-1,0,0,fsdecomp)
 #endif
 c         --- Note that perphi3d is only called for the RZ solver.
           if (bound0==periodic) call perphi3d()
