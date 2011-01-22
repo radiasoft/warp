@@ -14,7 +14,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.156 2011/01/13 23:58:09 grote Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.157 2011/01/22 02:03:19 grote Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -351,7 +351,7 @@ most of which get there default values from one of the fortran packages.
   del _setuprhoproperty
 
   def _setupphiproperty():
-    doc = "Electrostatic potential array"
+    doc = "Electrostatic potential array, including guard cells"
     def fget(self):
       return self.returnpotential(0,0)
     def fset(self,value):
