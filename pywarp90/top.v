@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.289 $, $Date: 2010/12/15 22:38:13 $
+#@(#) File TOP.V, version $Revision: 3.290 $, $Date: 2011/01/22 01:58:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.289 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.290 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1804,6 +1804,7 @@ ekzbeam(0:nsmmnt) _real [J]      # Z Kinetic energy in the beam frame
                       # 1/2m ave[(vz - vbeam)**2]
 ekperp(0:nsmmnt)  _real [J]      # Perp Kinetic energy
 pz(0:nsmmnt)      _real [kg-m/s] # Total axial momentum (subtracting out Vbeam)
+bmlen(0:nsmmnt)   _real [m]    # RMS beam length
 xmaxp(0:nsmmnt)   _real [m]    # Maximum X  over particles (set intermittently)
 xminp(0:nsmmnt)   _real [m]    # Minimum X  over particles (set intermittently)
 ymaxp(0:nsmmnt)   _real [m]    # Maximum Y  over particles (set intermittently)

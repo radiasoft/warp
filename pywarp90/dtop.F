@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.182 $, $Date: 2010/12/15 22:38:14 $
+c@(#) File DTOP.F, version $Revision: 3.183 $, $Date: 2011/01/22 01:58:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -160,7 +160,7 @@ c  Save results of this time step in history buffers
       hefld(jhist) = ese
 
       do js=0,nshist
-        hbmlen(jhist,js) = sqrt(max(SMALLPOS, zsqbar(0,js)-zbar(0,js)**2))
+        hbmlen(jhist,js) = bmlen(js)
         hekzmbe(jhist,js) = ekzmbe(js)
         hekzbeam(jhist,js) = ekzbeam(js)
         hekperp(jhist,js) = ekperp(js)
@@ -652,7 +652,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.182 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.183 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19

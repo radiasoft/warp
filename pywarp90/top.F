@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.257 $, $Date: 2010/12/15 22:38:13 $
+c@(#) File TOP.F, version $Revision: 3.258 $, $Date: 2011/01/22 01:58:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1476,6 +1476,9 @@ c         --- Compute normalized generalized emittances
      &       2*delvxsq*delyvy*delxy*delxvy + 2*delxsq*delyvy*delyvx*delvxvy +
      &       2*delxvx*delysq*delvxvy*delxvy)
           epsnh(0,js) = sqrt(sqrt(max(0.,th)))*clighti*1.e6
+
+c         --- RMS beam length
+          bmlen(js) = sqrt(max(0., zsqbar(0,js)-zbar(0,js)**2))
 
 c         ---  Axial z momentum in vbeam frame (classical)
           pz(js) = zmmntsm(js)*zmmntsw(js)*pnum(0,js) * (vzbar(0,js)-vbeam)
