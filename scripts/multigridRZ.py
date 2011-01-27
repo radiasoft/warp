@@ -10,7 +10,7 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.61 2010/12/21 23:54:01 grote Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.62 2011/01/27 01:13:29 grote Exp $"
 
 ##############################################################################
 ##############################################################################
@@ -33,6 +33,9 @@ class MultiGridRZ(MultiGrid3D):
     self.nxguard = 1
     self.nyguard = 0
     self.nzguard = 1
+
+    # --- Make sure that the bounds have acceptable values.
+    assert 0 <= min(self.bounds) and max(self.bounds) <= 2,"The boundary conditions have an incorrect value. They must be one of dirichlet, neumann or periodic."
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
     # --- any conductors. This is not really needed here.
@@ -250,6 +253,9 @@ class MultiGrid2D(MultiGrid3D):
     self.nxguard = 1
     self.nyguard = 0
     self.nzguard = 1
+
+    # --- Make sure that the bounds have acceptable values.
+    assert 0 <= min(self.bounds) and max(self.bounds) <= 2,"The boundary conditions have an incorrect value. They must be one of dirichlet, neumann or periodic."
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
     # --- any conductors. This is not really needed here.
@@ -605,6 +611,9 @@ Initially, conductors are not implemented.
     self.nxguard = 1
     self.nyguard = 0
     self.nzguard = 1
+
+    # --- Make sure that the bounds have acceptable values.
+    assert 0 <= min(self.bounds) and max(self.bounds) <= 2,"The boundary conditions have an incorrect value. They must be one of dirichlet, neumann or periodic."
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
     # --- any conductors. This is not really needed here.

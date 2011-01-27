@@ -14,7 +14,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.157 2011/01/22 02:03:19 grote Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.158 2011/01/27 01:13:29 grote Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -82,6 +82,9 @@ most of which get there default values from one of the fortran packages.
     self.nxguard = 1
     self.nyguard = 1
     self.nzguard = 1
+
+    # --- Make sure that the bounds have acceptable values.
+    assert 0 <= min(self.bounds) and max(self.bounds) <= 2,"The boundary conditions have an incorrect value. They must be one of dirichlet, neumann or periodic."
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
     # --- any conductors.
