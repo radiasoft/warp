@@ -311,6 +311,9 @@ depose_jxjyjz_villasenor_n_2d(j:real,
                            l4symtry:logical)
                            subroutine
 setebp(emblock:EM3D_YEEFIELDtype,icycle:integer,novercycle:integer) subroutine
+getdive(ex:real,ey:real,ez:real,dive:real,dx:real,dy:real,dz:real,
+        nx:integer,ny:integer,nz:integer,nxguard:integer,nyguard:integer,nzguard:integer,
+        l_2dxz:logical,l_2drz:logical) subroutine
 
 %%%%%%%% EM3D_SPLITYEEFIELDtype:
 fieldtype integer /-2/
@@ -348,6 +351,10 @@ jzmaxg integer /0/ # position of last node of entire grid (interior+guard nodes)
 nxpo integer /0/
 nypo integer /0/
 nzpo integer /0/
+nconds integer /0/
+nxcond integer /0/
+nycond integer /0/
+nzcond integer /0/
 dx real
 dy real
 dz real
@@ -398,6 +405,7 @@ ax(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 ay(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 az(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 phi(1:3,-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
+incond(-nxguard:nxcond+nxguard,-nyguard:nycond+nyguard,-nzguard:nzcond+nzguard) _logical
 afx(-nxguard:nx+nxguard) _real
 bpfx(-nxguard:nx+nxguard) _real
 bmfx(-nxguard:nx+nxguard) _real
