@@ -1353,6 +1353,59 @@ end if
 return
 end subroutine push_em3d_fvec
 
+subroutine getdive(ex,ey,ez,dive,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz,l_2drz)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,dive
+real(kind=8), intent(IN) :: dx,dy,dz
+integer(ISZ) :: j,k,l
+logical(ISZ) :: l_2dxz,l_2drz
+real(kind=8) :: ru,rd,dxi,dyi,dzi
+
+dxi = 1./dx
+dyi = 1./dy
+dzi = 1./dz
+if (.not.l_2dxz) then
+  ! --- 3D XYZ
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx
+      dive(j,k,l) = dive(j,k,l) + dxi * (Ex(j,k,l) - Ex(j-1,k  ,l  )) &
+                                + dyi * (Ey(j,k,l) - Ey(j  ,k-1,l  )) &
+                                + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 
+    end do
+   end do
+  end do
+
+else
+ if (.not.l_2drz) then
+  ! --- 2D XZ
+  k=0
+  do l = 0, nz
+    do j = 0, nx
+      dive(j,k,l) = dive(j,k,l) + dxi * (Ex(j,k,l) - Ex(j-1,k  ,l  )) &
+                                + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 
+    end do
+  end do
+ else
+  ! --- 2D RZ (axisymmetric)
+  k=0
+  do l = 0, nz
+    j = 0
+    dive(j,k,l) = dive(j,k,l) + 4.*dxi * Ex(j,k,l) &
+                              + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 
+    do j = 1, nx
+      ru = 1.+0.5/j
+      rd = 1.-0.5/j
+      dive(j,k,l) = dive(j,k,l) + dxi * (ru*Ex(j,k,l) - rd*Ex(j-1,k  ,l  )) &
+                                + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 
+    end do
+  end do
+ end if
+end if
+
+return
+end subroutine getdive
+
 subroutine push_em3d_kyeefvec(ex,ey,ez,f,rho,dtsepsi,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz)
 use EM3D_kyee
 implicit none
@@ -2054,13 +2107,18 @@ INTEGER :: j, k, l,which
   call set_bndcoeffsem3d(sf,dt,which)
 
   if (sf%stencil==0 .or. sf%stencil==1) then
-  call push_em3d_splitevec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
-                           sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz, &
-                           sf%bxy,sf%byx,sf%bzx,sf%bxz,sf%byz,sf%bzy, &
-                           sf%afx,sf%afy,sf%afz, &
-                           sf%bpfx,sf%bpfy,sf%bpfz, &
-                           sf%bmfx,sf%bmfy,sf%bmfz,sf%l_2dxz,sf%l_2drz, &
-                           sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
+    call push_em3d_splitevec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
+                             sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz, &
+                             sf%bxy,sf%byx,sf%bzx,sf%bxz,sf%byz,sf%bzy, &
+                             sf%afx,sf%afy,sf%afz, &
+                             sf%bpfx,sf%bpfy,sf%bpfz, &
+                             sf%bmfx,sf%bmfy,sf%bmfz,sf%l_2dxz,sf%l_2drz, &
+                             sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
+    if(sf%nconds>0) then 
+       call push_em3d_splite_setcond(sf%nx,sf%ny,sf%nz,sf%nxcond,sf%nycond,sf%nzcond,sf%nxguard,sf%nyguard,sf%nzguard, &
+                                     sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz,sf%incond,sf%l_2dxz,sf%l_2drz, &
+                                     sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
+    end if
   else
     write(0,*) 'splite extended pml not implemented'
     stop
@@ -2229,6 +2287,97 @@ end if
 
   return
 end subroutine push_em3d_splitevec
+
+subroutine push_em3d_splite_setcond(nx,ny,nz,nxcond,nycond,nzcond,nxguard,nyguard,nzguard, &
+                               exx,exy,exz,eyx,eyy,eyz,ezx,ezy,ezz,incond,l_2dxz,l_2drz, &
+                               xmin,ymin,zmin,dx,dy,dz)
+implicit none
+
+integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard,nxcond,nycond,nzcond
+logical(ISZ), dimension(-nxguard:nxcond+nxguard,-nyguard:nycond+nyguard,-nzguard:nzcond+nzguard), intent(in) :: incond
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: exx,exy,exz, &
+                                                                                                       eyx,eyy,eyz, &
+                                                                                                       ezx,ezy,ezz
+real(kind=8), intent(in) :: xmin,ymin,zmin,dx,dy,dz
+logical(ISZ) :: l_2dxz,l_2drz
+
+INTEGER :: j, k, l
+
+if (.not.l_2dxz) then
+
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-1
+      if (incond(j,k,l) .and. incond(j+1,k,l)) then
+        exx(j,k,l) = 0.
+        exy(j,k,l) = 0.
+        exz(j,k,l) = 0.
+      end if
+    end do
+   end do
+  end do
+
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx
+      if (incond(j,k,l) .and. incond(j,k+1,l)) then
+        eyx(j,k,l) = 0.
+        eyy(j,k,l) = 0.
+        eyz(j,k,l) = 0.
+      end if
+    end do
+   end do
+  end do
+
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx
+      if (incond(j,k,l) .and. incond(j,k,l+1)) then
+        ezx(j,k,l) = 0.
+        ezy(j,k,l) = 0.
+        ezz(j,k,l) = 0.
+      end if
+    end do
+   end do
+  end do
+
+else
+  k = 0
+
+  do l = 0, nz
+    do j = 0, nx-1
+      if (incond(j,k,l) .and. incond(j+1,k,l)) then
+        exx(j,k,l) = 0.
+        exy(j,k,l) = 0.
+        exz(j,k,l) = 0.
+      end if
+    end do
+  end do
+
+  do l = 0, nz
+    do j = 0, nx
+      if (incond(j,k,l)) then
+        eyx(j,k,l) = 0.
+        eyy(j,k,l) = 0.
+        eyz(j,k,l) = 0.
+      end if
+    end do
+  end do
+
+  do l = 0, nz-1
+    do j = 0, nx
+      if (incond(j,k,l) .and. incond(j,k,l+1)) then
+        ezx(j,k,l) = 0.
+        ezy(j,k,l) = 0.
+        ezz(j,k,l) = 0.
+      end if
+    end do
+  end do
+ 
+end if
+
+  return
+end subroutine push_em3d_splite_setcond
 
 subroutine push_em3d_splitef(sf,dt,which)
 use mod_emfield3d
@@ -9390,8 +9539,14 @@ subroutine set_incond(f,n,indx)
 use mod_emfield3d
 TYPE(EM3D_YEEFIELDtype) :: f
 integer(ISZ) :: i,n,indx(3,n)
-  do i=1,n
-    f%incond(indx(1,i),indx(2,i),indx(3,i)) = .true.
-  end do  
+  if (f%l_2dxz) then
+    do i=1,n
+      f%incond(indx(1,i),0,indx(3,i)) = .true.
+    end do  
+  else
+    do i=1,n
+      f%incond(indx(1,i),indx(2,i),indx(3,i)) = .true.
+    end do  
+  end if
 
 end subroutine set_incond
