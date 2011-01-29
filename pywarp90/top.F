@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.258 $, $Date: 2011/01/22 01:58:30 $
+c@(#) File TOP.F, version $Revision: 3.259 $, $Date: 2011/01/29 01:11:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -162,21 +162,23 @@ c      Original expression before reducing number of divides.
 c         phi(i) = phi(i) - ((phi(i)*szp(i)+zpms(i)*asin(phi(i)/perpscal(i)))/
 c    &            (zpms(i)*pi) - zpunifrm(i))/(twoonpi/zpms(i)*szp(i))
 
-          szp(i) = sqrt(zpms(i)-phi(i)**2)
-          phi(i) = phi(i) - ((phi(i)*szp(i)+zpms(i)*asin(phi(i)/perpscal(i)))*
-     &             oneonpi - zpunifrm(i)*zpms(i))*pion2/szp(i)
+          if (phi(i) .ne. 0.) then
+            szp(i) = sqrt(zpms(i)-phi(i)**2)
+            phi(i) = phi(i) - ((phi(i)*szp(i)+zpms(i)*asin(phi(i)/perpscal(i)))*
+     &               oneonpi - zpunifrm(i)*zpms(i))*pion2/szp(i)
 
-          szp(i) = sqrt(zpms(i)-phi(i)**2)
-          phi(i) = phi(i) - ((phi(i)*szp(i)+zpms(i)*asin(phi(i)/perpscal(i)))*
-     &             oneonpi - zpunifrm(i)*zpms(i))*pion2/szp(i)
+            szp(i) = sqrt(zpms(i)-phi(i)**2)
+            phi(i) = phi(i) - ((phi(i)*szp(i)+zpms(i)*asin(phi(i)/perpscal(i)))*
+     &               oneonpi - zpunifrm(i)*zpms(i))*pion2/szp(i)
 
-          szp(i) = sqrt(zpms(i)-phi(i)**2)
-          phi(i) = phi(i) - ((phi(i)*szp(i)+zpms(i)*asin(phi(i)/perpscal(i)))*
-     &             oneonpi - zpunifrm(i)*zpms(i))*pion2/szp(i)
+            szp(i) = sqrt(zpms(i)-phi(i)**2)
+            phi(i) = phi(i) - ((phi(i)*szp(i)+zpms(i)*asin(phi(i)/perpscal(i)))*
+     &               oneonpi - zpunifrm(i)*zpms(i))*pion2/szp(i)
 
-          szp(i) = sqrt(zpms(i)-phi(i)**2)
-          phi(i) = phi(i) - ((phi(i)*szp(i)+zpms(i)*asin(phi(i)/perpscal(i)))*
-     &             oneonpi - zpunifrm(i)*zpms(i))*pion2/szp(i)
+            szp(i) = sqrt(zpms(i)-phi(i)**2)
+            phi(i) = phi(i) - ((phi(i)*szp(i)+zpms(i)*asin(phi(i)/perpscal(i)))*
+     &               oneonpi - zpunifrm(i)*zpms(i))*pion2/szp(i)
+          endif
 
           zp(i) = phi(i)
 
