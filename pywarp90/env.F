@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.42 $, $Date: 2009/02/05 19:43:03 $
+c@(#) File ENV.M, version $Revision: 3.43 $, $Date: 2011/01/31 21:47:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -221,9 +221,19 @@ c exported values consistently
 
       if (lefofz) then
         do ip=1,np 
-          i = int((z(ip)-zlefofz)/dzefofz)
-          w1 = (z(ip)-zlefofz)/dzefofz - i
-          w0 = 1. - w1
+          if (z(ip) < zlefofz) then
+            i = 0
+            w1 = 0.
+            w0 = 1.
+          elseif (z(ip) >= zuefofz) then
+            i = nzefofz-1
+            w1 = 1.
+            w0 = 0.
+          else
+            i = int((z(ip)-zlefofz)/dzefofz)
+            w1 = (z(ip)-zlefofz)/dzefofz - i
+            w0 = 1. - w1
+          endif
           if (lemitne_z) then 
             if (lrelativ) then
               gammabeta = (vz(ip)/clight)/sqrt( 1. - (vz(ip)/clight)**2 )
@@ -1790,35 +1800,34 @@ c Updates quantities which are specified to vary with z.
       real(kind=8):: wz
       real(kind=8):: ibeam_z
 
+      ibeam_z = ibeam
+
 c     --- If nothing is to vary, return.
       if (.not. lefofz) return
 
-c     --- Get location in mesh
-      iz = (z - zlefofz)/dzefofz
-      wz = (z - zlefofz)/dzefofz - iz
-
-c     --- If current location outside of mesh, return
-      if (iz < 0 .or. nzefofz < iz) return
+c     --- If current location outside of mesh, use the value at either end.
+c     --- Otherwise find the location within the mesh.
+      if (z < zlefofz) then
+        iz = 0
+        wz = 0.
+      else if (z >= zuefofz) then
+c       --- Use nzefofz-1 so that iz+1 is within the bounds of the array.
+        iz = nzefofz - 1
+        wz = 1.
+      else
+        iz = (z - zlefofz)/dzefofz
+        wz = (z - zlefofz)/dzefofz - iz
+      endif
 
 c     --- Update the current.
-      ibeam_z = ibeam
       if (libeame_z) then
-        if (iz < nzefofz) then
-          ibeam_z = ibeame_z(iz)*(1.-wz)+ibeame_z(iz+1)*wz
-        elseif (iz == nzefofz) then
-          ibeam_z = ibeame_z(iz)
-        endif
+        ibeam_z = ibeame_z(iz)*(1.-wz)+ibeame_z(iz+1)*wz
       endif
 
 c     --- Update the normalized emittance
       if (lemitne_z) then
-        if (iz < nzefofz) then
-          emitnx_l = emitnxe_z(iz)*(1.-wz)+emitnxe_z(iz+1)*wz
-          emitny_l = emitnye_z(iz)*(1.-wz)+emitnye_z(iz+1)*wz
-        elseif (iz == nzefofz) then
-          emitnx_l = emitnxe_z(iz)
-          emitny_l = emitnye_z(iz)
-        endif
+        emitnx_l = emitnxe_z(iz)*(1.-wz)+emitnxe_z(iz+1)*wz
+        emitny_l = emitnye_z(iz)*(1.-wz)+emitnye_z(iz+1)*wz
       endif
 
 c     --- Recalculate the perveance using update quantities
