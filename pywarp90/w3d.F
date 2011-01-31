@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.449 $, $Date: 2011/01/22 02:01:48 $
+c@(#) File W3D.F, version $Revision: 3.450 $, $Date: 2011/01/31 19:41:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9998,8 +9998,14 @@ c      --- Point rho to the block for the currently active ndts group.
 
 c     --- The rho and phi arrays need to be allocated if they havn't already
 c     --- been.
-      if (.not. associated(rho)) allocate(rho(0:nxlocal,0:nylocal,0:nzlocal))
-      if (.not. associated(phi)) allocate(phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1))
+      if (.not. associated(rho)) then
+        allocate(rho(0:nxlocal,0:nylocal,0:nzlocal))
+        rho = 0.
+      endif
+      if (.not. associated(phi)) then
+        allocate(phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1))
+        phi = 0.
+      endif
 
 #endif
 
