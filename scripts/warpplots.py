@@ -103,7 +103,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.273 2011/01/21 00:53:44 grote Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.274 2011/01/31 19:40:29 grote Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -303,7 +303,7 @@ Opens up an X window
     winon.winnum = winnum
     # --- Check input errors
     try: setup.pname
-    except AttributeError: raise 'setup has not yet been called'
+    except AttributeError: raise RuntimeError,'setup has not yet been called'
     assert winnum > 0,'winnum must not be 0'
     # --- Check file name and type from window 0
     pname = setup.pname.split('.')[0]
@@ -1201,7 +1201,7 @@ def pptitleright(iw=0,kwdict={},**kw):
   badargs = checkarguments(kwvalues,_pptitleright_kwdefaults)
   if checkargs: return badargs
   if badargs and not allowbadargs:
-    raise "bad argument",string.join(badargs.keys())
+    raise TypeError,"bad argument%s"%string.join(badargs.keys())
 
   # --- Return appropriate right title
   if zl is not None or zu is not None:
@@ -1726,8 +1726,8 @@ Note that either the x and y coordinates or the grid must be passed in.
       if logmin is None:
         dmax = maxnd(grid)
         logmin = minnd(where(equal(grid,0.),dmax,grid))/10.
-        if logmin <= 0.:
-          raise "Can't take log since the grid has negative values"
+        assert logmin>0.,\
+               "Can't take log since the grid has negative values"
       grid = log(where(less(grid,logmin),logmin,grid))/logscale
 
   # --- Flip data and plot limits about axis if requested.
@@ -2440,7 +2440,7 @@ functions.
   badargs = ppgeneric(checkargs=1,kwdict=badargs)
   badargs = getxxpslope(checkargs=1,kwdict=badargs)
   kw['allowbadargs'] = 1
-  if badargs: raise "bad arguments",string.join(badargs.keys())
+  if badargs: raise TypeError,"bad arguments%s"%string.join(badargs.keys())
 ########################################################################
 def ppzxy(iw=0,**kw):
   "Plots Z-X and Z-Y in single page. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."

@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.93 2011/01/13 23:58:09 grote Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.94 2011/01/31 19:40:30 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -1504,12 +1504,10 @@ class SubcycledPoissonSolver(FieldSolver):
         self.getpotentialpforparticles(top.nrhopndtscopies-1,indts,iselfb)
 
   def getpdims(self):
-    raise """getpdims must be supplied - it should return a list of the dimensions
-of the arrays used by the particles"""
+    raise NotImplementedError,"getpdims must be supplied - it should return a list of the dimensions of the arrays used by the particles"
 
   def getdims(self):
-    raise """getdims must be supplied - it should return a list of the dimensions
-of the arrays used by the field solve"""
+    raise NotImplementedError,"getdims must be supplied - it should return a list of the dimensions of the arrays used by the field solve"
 
   def allocatedataarrays(self):
     # --- Setup arrays, including extra copies for subcycling
@@ -1608,10 +1606,10 @@ of the arrays used by the field solve"""
         tsourcep[:,indts,0,...] = 0.
 
   def zerosourcepwithfullvsubcycling(self):
-    raise "fullv subcycling not yet implemented"
+    raise NotImplementedError,"fullv subcycling not yet implemented"
 
   def zerosourcepwithhalfvsubcycling(self):
-    raise "halfv subcycling not yet implemented"
+    raise NotImplementedError,"halfv subcycling not yet implemented"
 
   def averagesourcepwithsubcycling(self):
     if top.ndtsaveraging == 0:

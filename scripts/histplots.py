@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.41 2011/01/19 20:55:36 grote Exp $"
+histplots_version = "$Id: histplots.py,v 1.42 2011/01/31 19:40:29 grote Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -149,7 +149,7 @@ only required argument of course is the data to be plotted.
   kwvalues.update(kw)
   kwvalues.update(kwdict)
   badargs = checkarguments(kwvalues,kwdefaults)
-  if badargs: raise "bad argument ",string.join(badargs.keys())
+  if badargs: raise TypeError,"bad argument %s"%string.join(badargs.keys())
   for arg in kwvalues.keys(): exec(arg+" = kwvalues['"+arg+"']")
 
   iend = _extractvar(iend,varsuffix,ff=ff)
@@ -249,7 +249,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
   kwvalues.update(kwdict)
   for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
   badargs = checkarguments(kwvalues,kwdefaults)
-  if badargs: raise "bad argument ",string.join(badargs.keys())
+  if badargs: raise TypeError,"bad argument %s"%string.join(badargs.keys())
 
   iend = _extractvar(iend,varsuffix,ff=ff)
   jend = _extractvar(jend,varsuffix,ff=ff)
@@ -272,7 +272,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
     if len(kw) > 1: badkwlist = badkwlist[:-1] + 's:'
     for arg in kw.keys():
       badkwlist = badkwlist + ' ' + arg
-    raise TypeError, badkwlist
+    raise TypeError,badkwlist
 
   # --- Now complete the setup
   if not absc:
