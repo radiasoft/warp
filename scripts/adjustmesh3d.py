@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.30 2009/03/12 22:24:02 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.31 2011/02/04 00:37:05 grote Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -220,7 +220,7 @@ Resizes the transverse size of the mesh
 
 
 # -------------------------------------------------------------------------
-def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
+def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0,adjustppdecomp=true):
   """Adjust the longitudinal length of the mesh.
   - newlen: the new length of the mesh
   - dorho=1: when true, the charge density is recalculated
@@ -228,72 +228,96 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
   - keepcentered=0: when true, the center of the mesh is unchanged, otherwise,
                     zmmin and zmmax are simply scaled by the ratio of the
                     new length to the old length
+  - adjustppdecomp=true: when true, adjust the particle decomposition
+                         by the same scaling
   """
   # --- Save old grid cell and mesh length
   olddz = w3d.dz
-  oldcenter = 0.5*(w3d.zmmin + w3d.zmmax)
-  # --- Set new mesh length by first scaling the min and max
+
+  # --- Scale everything by the ratio of the new and old grid cell size
   w3d.dz = newlen/w3d.nz
-  w3d.zmminlocal = w3d.zmminlocal*w3d.dz/olddz
-  w3d.zmmaxlocal = w3d.zmmaxlocal*w3d.dz/olddz
-  w3d.zmmin = w3d.zmmin*w3d.dz/olddz
-  w3d.zmmax = w3d.zmmax*w3d.dz/olddz
-  if lparallel:
-    top.zpslmin[:] = top.zpslmin*w3d.dz/olddz
-    top.zpslmax[:] = top.zpslmax*w3d.dz/olddz
-  # --- If requested, recenter the mesh about its old center.
+
+  # --- Shift the center if requested.
   if keepcentered:
-    newcenter = 0.5*(w3d.zmmin + w3d.zmmax)
-    w3d.zmminlocal = w3d.zmminlocal + (oldcenter - newcenter)
-    w3d.zmmaxlocal = w3d.zmmaxlocal + (oldcenter - newcenter)
-    w3d.zmmin = w3d.zmmin + (oldcenter - newcenter)
-    w3d.zmmax = w3d.zmmax + (oldcenter - newcenter)
-    if lparallel:
-      top.zpslmin[:] = top.zpslmin + (oldcenter - newcenter)
-      top.zpslmax[:] = top.zpslmax + (oldcenter - newcenter)
+    oldcenter = 0.5*(w3d.zmmin + w3d.zmmax)
+    newcenter = 0.5*(w3d.zmmin + w3d.zmmax)*w3d.dz/olddz
+    delcenter = oldcenter - newcenter
+  else:
+    delcenter = 0.
+
+  # --- Scale the mins and maxes.
+  w3d.zmmin = w3d.zmmin*w3d.dz/olddz + delcenter
+  w3d.zmmax = w3d.zmmax*w3d.dz/olddz + delcenter
+  w3d.zmminlocal = w3d.zmminlocal*w3d.dz/olddz + delcenter
+  w3d.zmmaxlocal = w3d.zmmaxlocal*w3d.dz/olddz + delcenter
+  top.fsdecomp.zmin = top.fsdecomp.zmin*w3d.dz/olddz + delcenter
+  top.fsdecomp.zmax = top.fsdecomp.zmax*w3d.dz/olddz + delcenter
+  if adjustppdecomp:
+    # --- Scale the particle extrema the same way.
+    top.ppdecomp.zmin = top.ppdecomp.zmin*w3d.dz/olddz + delcenter
+    top.ppdecomp.zmax = top.ppdecomp.zmax*w3d.dz/olddz + delcenter
+    # --- These are no longer used, but update them anyway
+    top.zpslmin = top.zpslmin*w3d.dz/olddz + delcenter
+    top.zpslmax = top.zpslmax*w3d.dz/olddz + delcenter
+  else:
+    # --- The min and max must be adjusted to be within the new grid
+    top.ppdecomp.zmin = top.ppdecomp.zmin.clip(w3d.zmmin,w3d.zmmax)
+    top.ppdecomp.zmax = top.ppdecomp.zmax.clip(w3d.zmmin,w3d.zmmax)
+    # --- iz and nz must be adjusted to be relative to the new zmin
+    top.ppdecomp.iz = int((top.ppdecomp.zmin - w3d.zmmin)/w3d.dz)
+    top.ppdecomp.nz = int((top.ppdecomp.zmax - w3d.zmmin)/w3d.dz -
+                          top.ppdecomp.iz)
+    # --- Check for the cases where int rounded down.
+    zmax1 = w3d.zmmin + (top.ppdecomp.iz + top.ppdecomp.nz)*w3d.dz
+    top.ppdecomp.nz[top.ppdecomp.zmax > zmax1] += 1
+
+  w3d.zmminp = w3d.zmmin + top.ppdecomp.iz[top.ppdecomp.izproc]*w3d.dz
+  w3d.zmmaxp = w3d.zmmin + ((top.ppdecomp.iz[top.ppdecomp.izproc] +
+                             top.ppdecomp.nz[top.ppdecomp.izproc])*w3d.dz)
+  top.zpminlocal = top.ppdecomp.zmin[top.ppdecomp.izproc]
+  top.zpmaxlocal = top.ppdecomp.zmax[top.ppdecomp.izproc]
+
   # --- Recalculate zmesh
-  w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
-  w3d.zmeshlocal[:] = w3d.zmminlocal + iota(0,w3d.nzlocal)*w3d.dz
+  w3d.zmesh[:] = w3d.zmmin + arange(1+w3d.nz)*w3d.dz
+  w3d.zmeshlocal[:] = w3d.zmminlocal + arange(1+w3d.nzlocal)*w3d.dz
+
   # --- Adjust all of the axial meshes
   if top.nzl == w3d.nz:
     top.dzl = w3d.dz
     top.dzli = 1./w3d.dz
     top.zlmin = w3d.zmmin
     top.zlmax = w3d.zmmax
-    top.zlmesh[:] = top.zlmin + iota(0,top.nzl)*top.dzl
+    top.zlmesh[:] = top.zlmin + arange(1+top.nzl)*top.dzl
     setlatt()
   if top.nzzarr == w3d.nz:
     top.dzz = w3d.dz
     top.dzzi = 1./w3d.dz
     top.zzmin = w3d.zmmin
     top.zzmax = w3d.zmmax
-    top.zplmesh[:] = top.zzmin + iota(0,top.nzzarr)*top.dzz
+    top.zplmesh[:] = top.zzmin + arange(1+top.nzzarr)*top.dzz
   if top.nzmmnt == w3d.nz:
     top.dzm = w3d.dz
     top.dzmi = 1./w3d.dz
     top.zmmntmin = w3d.zmmin
     top.zmmntmax = w3d.zmmax
-    top.zmntmesh[:] = top.zmmntmin + iota(0,top.nzmmnt)*top.dzm
+    top.zmntmesh[:] = top.zmmntmin + arange(1+top.nzmmnt)*top.dzm
+
   # --- Rearrange the particles
-  if npes > 0:
-    reorgparticles(top.pgroup,w3d.l4symtry,w3d.l2symtry)
-  else:
-    particlegridboundaries3d(top.pgroup,-1)
-    for js in xrange(top.ns):
-      processlostpart(top.pgroup,js+1,top.clearlostpart,top.time,top.zbeam)
+  particlegridboundaries3d(top.pgroup,-1)
+  for js in xrange(top.ns):
+    processlostpart(top.pgroup,js+1,top.clearlostpart,top.time,top.zbeam)
+
   # --- Reset field solve parameters (kzsq)
-  if top.fstype >= 0:
-    fstypesave = top.fstype
-    top.fstype = 0
-    fieldsol(1)
-    top.fstype = fstypesave
+  if 0 <= top.fstype <= 4:
+    vp3d(1)
+
   # --- Redeposit the charge density
   if dorho:
-    w3d.rho = 0.
     loadrho()
+
   # --- Now ready for next field solve
   if dofs:
-    fieldsol(-1,lbeforefs=1,lafterfs=1)
+    fieldsolve(-1,lbeforefs=1,lafterfs=1)
 
 # -------------------------------------------------------------------------
 def adjustmeshxy(newsize,dorho=1,dofs=0,keepcentered=0):
