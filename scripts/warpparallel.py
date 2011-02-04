@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.80 2010/07/01 21:56:43 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.81 2011/02/04 00:36:16 grote Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -129,6 +129,18 @@ contains that value."""
   else:
     pe = None
   return pe
+
+#-------------------------------------------------------------------------
+def broadcastgroupHist():
+  '''Broadcasts the history data, group Hist, from processor 0 to all of the
+other processors. This is needed since normally, the history data is only
+saved on processor 0.'''
+  varlist = top.varlist("Hist")
+  for vname in varlist:
+    x = top.getpyobject(vname)
+    x = parallel.broadcast(x)
+    if x is not None:
+      setattr(top,vname,x)
 
 ###########################################################################
 ###########################################################################
