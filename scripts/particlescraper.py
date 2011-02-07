@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.101 2010/12/01 21:05:51 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.102 2011/02/07 18:17:22 grote Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -1449,6 +1449,7 @@ interpolating errors from the grid. This will normally be called automatically.
   def pdxy(self,iz=0,fullplane=0,xyantisymmetric=0,**kw):
     """Makes a plot of the internal data used to keep track of the location
     of conductors. Extra keyword arguments are passed to ppgeneric."""
+    self.updategrid()
     if self.lfastscraper:
       data = self.grid.distances
     else:
@@ -1468,6 +1469,7 @@ interpolating errors from the grid. This will normally be called automatically.
   def pdzx(self,iy=0,fullplane=0,**kw):
     """Makes a plot of the internal data used to keep track of the location
     of conductors. Extra keyword arguments are passed to ppgeneric."""
+    self.updategrid()
     if self.lfastscraper:
       data = self.grid.distances
     else:
@@ -1486,6 +1488,7 @@ interpolating errors from the grid. This will normally be called automatically.
   def pdzy(self,ix=0,fullplane=0,**kw):
     """Makes a plot of the internal data used to keep track of the location
     of conductors. Extra keyword arguments are passed to ppgeneric."""
+    self.updategrid()
     if self.lfastscraper:
       data = self.grid.distances
     else:
