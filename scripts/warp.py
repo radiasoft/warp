@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.202 2011/01/13 22:37:12 grote Exp $"
+warp_version = "$Id: warp.py,v 1.203 2011/02/07 18:17:02 grote Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -115,6 +115,7 @@ fval = zeros(1,'l')
 getfortantruefalse(tval,fval)
 true = tval[0]
 false = fval[0]
+del tval,fval
 
 # --- Set default runid to first filename in the command line, stripping off
 # --- the .py suffix.
@@ -173,20 +174,12 @@ mu0       = top.mu0
 boltzmann = top.boltzmann
 largepos  = top.largepos
 smallpos  = top.smallpos
-try:
-  dirichlet = top.dirichlet
-  neumann   = top.neumann
-  periodic  = top.periodic
-  openbc    = top.openbc
-  absorb    = top.absorb
-  reflect   = top.reflect
-except AttributeError:
-  dirichlet = 0
-  neumann   = 1
-  periodic  = 2
-  openbc    = 3
-  absorb    = 0
-  reflect   = 1
+dirichlet = top.dirichlet
+neumann   = top.neumann
+periodic  = top.periodic
+openbc    = top.openbc
+absorb    = top.absorb
+reflect   = top.reflect
 
 # --- Set handy units conversion factors, converting from named unit to MKS.
 inch = 0.0254  # inches to meter
@@ -202,6 +195,8 @@ kV = 1.0e3     # kV to V
 keV = 1.0e3    # keV to eV
 MV = 1.0e6     # MV to V
 MeV = 1.0e6    # MeV to eV
+GV = 1.0e9     # GV to V
+GeV = 1.0e9    # GeV to eV
 mA = 1.0e-3    # mA to A
 uC = 1.0e-6    # micro-Coulombs to Coulombs
 nC = 1.0e-9    # nano-Coulombs to Coulombs
