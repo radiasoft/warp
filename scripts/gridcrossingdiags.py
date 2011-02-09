@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.45 2011/01/22 02:04:39 grote Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.46 2011/02/09 23:58:25 grote Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -477,7 +477,10 @@ data will be preserved.
 
             # --- Finish the calculation, gathering data from all processors
             # --- and dividing out the count.
-            count = parallelsum(count)
+            # --- Note that .copy is used for count, since in serial
+            # --- parallelsum just returns count which is the same array
+            # --- as gcmoments.pnumgc which is zeroed out below.
+            count = parallelsum(count).copy()
             counti = 1./where(count==0.,1.,count)
             xbar = parallelsum(xbar)*counti
             ybar = parallelsum(ybar)*counti
@@ -1520,6 +1523,23 @@ data and the z mesh on which the calculation was done.
                 same as weight=self.count
         """
         data = self.yrms**2
+        result,gridmesh = self._timeintegrate(data,laverage,weight)
+        result = sqrt(maximum(0.,result))
+        return result,gridmesh
+
+    def timeintegratedrrms(self,laverage=1,weight=None):
+        """
+Returns the time integrated r rms. The time integration is done over
+the full range of z where the data was gathered, including the motion of the
+diagnostic with the beam frame. Two arrays are returned, the time integrated
+data and the z mesh on which the calculation was done.
+ - laverage=1: when true, an average is done instead of an accumulation, i.e.
+               the time integrated data is divided by the time integrated
+               particle count.
+ - weight=None: weight to apply when doing the calculation. laverage=1 is the
+                same as weight=self.count
+        """
+        data = self.rrms**2
         result,gridmesh = self._timeintegrate(data,laverage,weight)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
