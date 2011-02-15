@@ -110,7 +110,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.238 2010/12/02 18:57:15 dave Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.239 2011/02/15 11:56:14 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -381,6 +381,12 @@ Should never be directly created by the user.
         plfp(c,xcent-array(r),z,[len(r)])
 
   def get_energy_histogram(self,js=0,n=1000):
+    """
+  Returns energy distribution of particles of species js that have impacted on conductor:
+    - js=0        : species to consider,
+    - n=1000      : number of bins for distribution histogram.
+    Output: histogram array, bins array (both of size n+1).
+    """
     try:
       emin = self.lostparticles_minenergy[js]
       emax = self.lostparticles_maxenergy[js]
@@ -419,8 +425,15 @@ Should never be directly created by the user.
     else:
       return None,None
 
-  def plot_energy_histogram(self,js=0,color=black,width=1):
-     histo,energies = self.get_energy_histogram(js=js)
+  def plot_energy_histogram(self,js=0,color=black,width=1,n=1000):
+     """
+  Plot energy distribution of particles of species js that have impacted on conductor:
+    - js=0        : species to plot,
+    - color=black : curve color,
+    - width=1     : curve width,
+    - n=1000      : number of bins for distribution histogram.
+     """
+     histo,energies = self.get_energy_histogram(js=js,n=n)
      if histo is None:
        print "Nothing to plot"
      else:
@@ -429,20 +442,18 @@ Should never be directly created by the user.
   def get_current_history(self,js=None,l_lost=1,l_emit=1,l_image=1,tmin=None,tmax=None,nt=100):
     """
   Returns conductor current history:
-    - js=None    : select species to consider (default None means that contribution from all species are added)
-    - l_lost=1   : logical flag setting wether lost particles are taken into account
-    - l_emit=1   : logical flag setting wether emitted particles are taken into account
-    - l_image=1  : logical flag setting wether image "particles" are taken into account
-    - t_min=None : min time
-    - t_max=None : max time
-    - nt=100     : nb of cells
+    - js=None   : select species to consider (default None means that contribution from all species are added)
+    - l_lost=1  : logical flag setting wether lost particles are taken into account
+    - l_emit=1  : logical flag setting wether emitted particles are taken into account
+    - l_image=1 : logical flag setting wether image "particles" are taken into account
+    - tmin=None : min time
+    - tmax=None : max time
+    - nt=100    : nb of cells
     """
-    tminl=0.
-    tmaxl=top.time
-    tmine=0.
-    tmaxe=top.time
-    tmini=0.
-    tmaxi=top.time
+    if tmin is None:
+      tminl=tmine=tmini=top.time
+    if tmax is None:
+      tmaxl=tmaxe=tmaxi=0.
     # collect lost particles data
     nl = 0
     datal = self.lostparticles_data.data()
@@ -488,7 +499,7 @@ Should never be directly created by the user.
     if nl>0:deposgrid1d(1,nl,tl,ql,nt,qt,qtmp,tmin,tmax)
     if ne>0:deposgrid1d(1,ne,te,qe,nt,qt,qtmp,tmin,tmax)
     if ni>0:deposgrid1d(1,ni,ti,qi,nt,qt,qtmp,tmin,tmax)
-    return arange(tmin,tmax+0.1*dt,dt,dtype='l'),qt/dt
+    return arange(tmin,tmax+0.1*dt,dt,dtype='d'),qt/dt
 
   def plot_current_history(self,js=None,l_lost=1,l_emit=1,l_image=1,tmin=None,tmax=None,nt=100,color=black,width=1,type='solid'):
     """
@@ -497,8 +508,8 @@ Should never be directly created by the user.
     - l_lost=1     : logical flag setting wether lost particles are taken into account
     - l_emit=1     : logical flag setting wether emitted particles are taken into account
     - l_image=1    : logical flag setting wether image "particles" are taken into account
-    - t_min=None   : min time
-    - t_max=None   : max time
+    - tmin=None    : min time
+    - tmax=None    : max time
     - nt=100       : nb of cells
     - color=black  : line color
     - widht=1      : line width
