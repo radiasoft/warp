@@ -2482,6 +2482,16 @@ class EM3D(SubcycledPoissonSolver):
       dive = zeros(shape(self.fields.Ex),'d')
       f = self.fields
       if top.efetch[0]<>4:node2yee3d(f)
+      getdive(f.Ex,f.Ey,f.Ez,dive,f.dx,f.dy,f.dz,
+              f.nx,f.ny,f.nz,f.nxguard,f.nyguard,f.nzguard,
+              self.l_2dxz,self.l_2drz)
+      if top.efetch[0]<>4:yee2node3d(f)
+      return dive
+
+  def getdiveold(self,guards=0,overlap=0):
+      dive = zeros(shape(self.fields.Ex),'d')
+      f = self.fields
+      if top.efetch[0]<>4:node2yee3d(f)
       if self.l_2dxz:
         dive[1:-1,1:-1,1:-1] = (f.Ex[1:-1,0,1:-1]-f.Ex[:-2,0,1:-1])/f.dx \
                              + (f.Ez[1:-1,0,1:-1]-f.Ez[1:-1,0,:-2])/f.dz 
