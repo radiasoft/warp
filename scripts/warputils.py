@@ -6,7 +6,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.35 2010/12/02 23:14:45 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.36 2011/02/15 19:44:48 grote Exp $"
 
 def warputilsdoc():
   import warputils
@@ -236,6 +236,7 @@ def span(lo, hi, num):
 Returns an array of num equally spaced numbers starting with lo and
 ending with hi.
   """
+  if num == 1: return array([lo])
   return lo + (hi - lo)*arange(num)/(num-1.)
 
 def makefortranordered(x):
