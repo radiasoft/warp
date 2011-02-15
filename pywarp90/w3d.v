@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.315 $, $Date: 2010/12/07 18:20:50 $
+#@(#) File W3D.V, version $Revision: 3.316 $, $Date: 2011/02/15 21:56:22 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.315 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.316 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1055,25 +1055,34 @@ getselfe3d(phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz):real,
            lzero:logical,delx:integer,dely:integer,delz:integer)
              subroutine # Calculates the self-E via finite difference of phi
 setrho3d(rho(0:nx,0:ny,0:nz):real,
-         np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
+         np:integer,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
          q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
          dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
          l2symtry:logical,l4symtry:logical,lcylindrical:logical)
-             subroutine # Computes charge density
+             subroutine # Computes charge density on a 3D grid.
+                        # Calls one of several different routines based on the
+                        # value of depos.
 setrho3dw(rho(0:nx,0:ny,0:nz):real,
-          np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
+          np:integer,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
           wfact(np):real,
           q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
           dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
           l2symtry:logical,l4symtry:logical,lcylindrical:logical)
-             subroutine # Computes charge density
+             subroutine # Computes charge density on a 3D grid
                         # using variable weighted particles
 setrho3dselect(rho(0:nx,0:ny,0:nz):real,rho1d:real,
-               np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
+               np:integer,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
                q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
                dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
                l2symtry:logical,l4symtry:logical)
              subroutine # Computes charge density
+setrho3ddirect2(rho(0:nx,0:ny,0:nz):real,np:integer,
+                xp(np):real,yp(np):real,zp(np):real,zgrid:real,q:real,wght:real,
+                nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real,
+                xmmin:real,ymmin:real,zmmin:real,
+                l2symtry:logical,l4symtry:logical,lcylindrical:logical)
+             subroutine # Computes charge density on a 2D or 3D grid, with
+                        # the option of cylindrical coordinates.
 sezax3d()    subroutine # Sets EZAX, Ez on axix
 sezax()      subroutine # Sets EZAX, Ez on axix
 sphiax3d()   subroutine # Sets PHIAX, E. S. potential on axis
