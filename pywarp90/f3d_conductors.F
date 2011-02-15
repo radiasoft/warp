@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.91 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.92 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1545,10 +1545,10 @@ c     enddo
       end
 c=======================================================================
 c=======================================================================
-      subroutine ZPlaneConductorF(zcent,zsign,
+      subroutine ZPlaneConductorF(z0,zsign,xcent,ycent,zcent,
      &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
      &                            fuzz)
-      real(kind=8):: zcent,zsign
+      real(kind=8):: z0,zsign,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
       real(kind=8):: delmx(n),delpx(n)
@@ -1561,22 +1561,26 @@ c The notation is that a negative distance means that the point is inside.
 c A positive zsign means that the conductor is the region above zcent.
 
       integer(ISZ):: i
+      real(kind=8):: zz
+
+      delmx = LARGEPOS
+      delpx = LARGEPOS
+      delmy = LARGEPOS
+      delpy = LARGEPOS
 
       do i=1,n
 
-        delmx(i) = LARGEPOS
-        delpx(i) = LARGEPOS
-        delmy(i) = LARGEPOS
-        delpy(i) = LARGEPOS
         delmz(i) = LARGEPOS
         delpz(i) = LARGEPOS
 
+        zz = z(i) - zcent
+
         if (zsign > 0.) then
-          if (z(i) <= zcent) delpz(i) = zcent - z(i)
-          if (z(i) >= zcent) delmz(i) = zcent - z(i)
+          if (zz <= z0) delpz(i) = z0 - zz
+          if (zz >= z0) delmz(i) = z0 - zz
         else if (zsign < 0.) then
-          if (z(i) <= zcent) delpz(i) = z(i) - zcent
-          if (z(i) >= zcent) delmz(i) = z(i) - zcent
+          if (zz <= z0) delpz(i) = zz - z0
+          if (zz >= z0) delmz(i) = zz - z0
         endif
 
       enddo
@@ -1584,15 +1588,15 @@ c A positive zsign means that the conductor is the region above zcent.
       return
       end
 c=======================================================================
-      subroutine ZPlaneConductorFnew(zcent,zsign,
+      subroutine ZPlaneConductorFnew(z0,zsign,xcent,ycent,zcent,
      &                               intercepts,fuzz)
       use ConductorInterceptTypeModule
-      real(kind=8):: zcent,zsign
+      real(kind=8):: z0,zsign,xcent,ycent,zcent
       type(ConductorInterceptType):: intercepts
       real(kind=8):: fuzz
 
 c Finds the intercepts of the object with grid lines along the three axis.
-c A positive zsign means that the conductor is the region above zcent.
+c A positive zsign means that the conductor is the region above z0.
 
       real(kind=8):: xmmin,ymmin,zmmin
       real(kind=8):: xmmax,ymmax,zmmax
@@ -1603,7 +1607,7 @@ c A positive zsign means that the conductor is the region above zcent.
       real(kind=8),pointer:: yintercepts(:,:,:)
       real(kind=8),pointer:: zintercepts(:,:,:)
 
-      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: iz
       real(kind=8):: zz
 
       xmmin = intercepts%xmmin
@@ -1626,54 +1630,47 @@ c A positive zsign means that the conductor is the region above zcent.
       zintercepts => intercepts%zintercepts
 
       do iz=0,nz
-        zz = zmmin + iz*dz
-        do iy=0,ny
-          if ((zsign > 0. .and. zz > zcent) .or.
-     &        (zsign < 0. .and. zz < zcent))then
-c           --- inside the object
-            xintercepts(1,iy,iz) = -LARGEPOS
-            xintercepts(2,iy,iz) = +LARGEPOS
-          else
-c           --- outside the object
-            xintercepts(1,iy,iz) = +LARGEPOS
-            xintercepts(2,iy,iz) = +LARGEPOS
-          endif
-        enddo
+        zz = zmmin + iz*dz - zcent
+        if ((zsign > 0. .and. zz > z0) .or.
+     &      (zsign < 0. .and. zz < z0))then
+c         --- inside the object
+          xintercepts(1,:,iz) = -LARGEPOS
+          xintercepts(2,:,iz) = +LARGEPOS
+        else
+c         --- outside the object
+          xintercepts(1,:,iz) = +LARGEPOS
+          xintercepts(2,:,iz) = +LARGEPOS
+        endif
       enddo
 
       do iz=0,nz
-        zz = zmmin + iz*dz
-        do ix=0,nx
-          if ((zsign > 0. .and. zz > zcent) .or.
-     &        (zsign < 0. .and. zz < zcent))then
-c           --- inside the object
-            yintercepts(1,ix,iz) = -LARGEPOS
-            yintercepts(2,ix,iz) = +LARGEPOS
-          else
-c           --- outside the object
-            yintercepts(1,ix,iz) = +LARGEPOS
-            yintercepts(2,ix,iz) = +LARGEPOS
-          endif
-        enddo
+        zz = zmmin + iz*dz - zcent
+        if ((zsign > 0. .and. zz > z0) .or.
+     &      (zsign < 0. .and. zz < z0))then
+c         --- inside the object
+          yintercepts(1,:,iz) = -LARGEPOS
+          yintercepts(2,:,iz) = +LARGEPOS
+        else
+c         --- outside the object
+          yintercepts(1,:,iz) = +LARGEPOS
+          yintercepts(2,:,iz) = +LARGEPOS
+        endif
       enddo
 
-      do iy=0,ny
-        do ix=0,nx
-          if (zsign > 0.) then
-            zintercepts(1,ix,iy) = zcent
-            zintercepts(2,ix,iy) = +LARGEPOS
-          else
-            zintercepts(1,ix,iy) = -LARGEPOS
-            zintercepts(2,ix,iy) = zcent
-          endif
-        enddo
-      enddo
+      if (zsign > 0.) then
+        zintercepts(1,:,:) = z0 + zcent
+        zintercepts(2,:,:) = +LARGEPOS
+      else
+        zintercepts(1,:,:) = -LARGEPOS
+        zintercepts(2,:,:) = z0 + zcent
+      endif
 
       return
       end
 c=======================================================================
-      subroutine ZPlaneConductorD(zcent,zsign,n,x,y,z,distance)
-      real(kind=8):: zcent,zsign
+      subroutine ZPlaneConductorD(z0,zsign,xcent,ycent,zcent,
+     &                            n,x,y,z,distance)
+      real(kind=8):: z0,zsign,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
       real(kind=8):: distance(n)
@@ -1682,15 +1679,16 @@ c Finds distances to surface
 c The notation is that a negative distance means that the point is inside.
 c A positive zsign means that the conductor is the region above zcent.
 
-      distance = zsign*(z - zcent)
+      distance = zsign*(z0 + zcent - z)
 
       return
       end
 c=======================================================================
-      subroutine ZPlaneIntercept(zcent,zsign,n,x,y,z,vx,vy,vz,xi,yi,zi,
+      subroutine ZPlaneIntercept(z0,zsign,xcent,ycent,zcent,
+     &                           n,x,y,z,vx,vy,vz,xi,yi,zi,
      &                           itheta,iphi)
       use Constant
-      real(kind=8):: zcent,zsign
+      real(kind=8):: z0,zsign,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
       real(kind=8):: xi(n),yi(n),zi(n),itheta(n),iphi(n)
@@ -1702,9 +1700,9 @@ c normal angle of the surface at that point.
 
       do i=1,n
         if (vz(i) .ne. 0.) then
-          xi(i) = vx(i)/vz(i)*(zcent - z(i)) + x(i)
-          yi(i) = vy(i)/vz(i)*(zcent - z(i)) + y(i)
-          zi(i) = zcent
+          xi(i) = vx(i)/vz(i)*(z0 + zcent - z(i)) + x(i)
+          yi(i) = vy(i)/vz(i)*(z0 + zcent - z(i)) + y(i)
+          zi(i) = z0 + zcent
           if (zsign > 0) then
             itheta(i) = pi
           else
@@ -1714,7 +1712,7 @@ c normal angle of the surface at that point.
         else
           xi(i) = LARGEPOS
           yi(i) = LARGEPOS
-          zi(i) = zcent
+          zi(i) = z0 + zcent
           itheta(i) = 0.
           iphi(i) = 0.
         endif
@@ -1724,8 +1722,8 @@ c normal angle of the surface at that point.
       end
 c=======================================================================
       subroutine PlaneConductorF(z0,zsign,theta,phi,xcent,ycent,zcent,
-     &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
-     &                            fuzz)
+     &                           n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                           fuzz)
       real(kind=8):: z0,zsign,theta,phi,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)

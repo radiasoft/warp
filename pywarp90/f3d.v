@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.219 $, $Date: 2010/08/28 01:20:52 $
+#@(#) File F3D.V, version $Revision: 3.220 $, $Date: 2011/02/15 19:42:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.219 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.220 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -827,7 +827,7 @@ intercepts_and(ileft:ConductorInterceptType,iright:ConductorInterceptType,
                iresult:ConductorInterceptType) subroutine
 intercepts_not(ileft:ConductorInterceptType,
                iresult:ConductorInterceptType) subroutine
-zplaneconductorfnew(zcent:real,zsign:real,
+zplaneconductorfnew(z0:real,zsign:real,xcent:real,ycent:real,zcent:real,
                     intercepts:ConductorInterceptType,fuzz:real) subroutine
 planeconductorfnew(z0:real,zsign:real,theta:real,phi:real,
                    xcent:real,ycent:real,zcent:real,
@@ -861,13 +861,13 @@ solvequartic(a0:real,a1:real,a2:real,a3:real,x1:complex,x2:complex,x3:complex,x4
 setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
                    dels:real,parity:integer,fuzz0:real,fuzz1:real,fuzzsign:integer,
                    dfill:real) subroutine
-zplaneconductorf(zcent:real,zsign:real,
+zplaneconductorf(z0:real,zsign:real,xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
         delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
         fuzz:real) subroutine
-zplaneconductord(zcent:real,zsign:real,
+zplaneconductord(z0:real,zsign:real,xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
-zplaneintercept(zcent:real,zsign:real,
+zplaneintercept(z0:real,zsign:real,xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 planeconductorf(z0:real,zsign:real,theta:real,phi:real,
