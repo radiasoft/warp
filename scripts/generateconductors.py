@@ -4,6 +4,9 @@ combination of simple geometrical elements.
 The following elements are defined:
 
 Plane(z0=0.,zsign=1,theta=0.,phi=0.,...)
+XPlane(x0=0.,xsign=1,...)
+YPlane(y0=0.,ysign=1,...)
+ZPlane(z0=0.,zsign=1,...)
 Box(xsize,ysize,zsize,...)
 
 Cylinders:
@@ -110,7 +113,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.239 2011/02/15 11:56:14 jlvay Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.240 2011/02/15 19:44:09 grote Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2908,14 +2911,14 @@ assembly.
 class Plane(Assembly):
   """
 Plane class
-  - z0=0: locate of plane relative to zcent
+  - z0=0: location of plane relative to zcent
   - zsign=1: when positive, conductor is in the z>0 side
   - theta=0,phi=0: normal of surface defining plane relative to z-axis
     theta is angle in z-x plane
     phi is angle in z-y plane
-  - voltage=0: box voltage
-  - xcent=0.,ycent=0.,zcent=0.: center of box
-  - condid=1: conductor id of box, must be integer, or can be 'next' in which
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of plane (only zcent is meaningful)
+  - condid=1: conductor id of plane, must be integer, or can be 'next' in which
               case a unique ID is chosen
   """
   def __init__(self,z0=0.,zsign=1.,theta=0.,phi=0.,
@@ -2933,6 +2936,81 @@ Plane class
     if self.theta == 0. and self.phi == 0.: z1,z2 = z0,z0
     else:                                   z1,z2 = -largepos,+largepos
     self.createextent([-largepos,-largepos,z1],[+largepos,+largepos,z2])
+
+#============================================================================
+class ZPlane(Assembly):
+  """
+ZPlane class
+  - z0=0: location of plane relative to zcent
+  - zsign=1: when positive, conductor is in the z>0 side
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of plane (only zcent is meaningful)
+  - condid=1: conductor id of plane, must be integer, or can be 'next' in which
+              case a unique ID is chosen
+  """
+  def __init__(self,z0=0.,zsign=1.,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,**kw):
+    kwlist=['z0','zsign']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                           zplaneconductorf,zplaneconductord,zplaneintercept,
+                           zplaneconductorfnew,
+                           kw=kw)
+    self.z0 = z0
+    self.zsign = zsign
+    if zsign > 0:
+      z1,z2 = z0,+largepos
+    else:
+      z1,z2 = -largepos,z0
+    self.createextent([-largepos,-largepos,z1],[+largepos,+largepos,z2])
+
+#============================================================================
+class XPlane(ZPlane,XAssembly):
+  """
+XPlane class
+  - x0=0: location of plane relative to xcent
+  - xsign=1: when positive, conductor is in the x>0 side
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of plane (only xcent is meaningful)
+  - condid=1: conductor id of plane, must be integer, or can be 'next' in which
+              case a unique ID is chosen
+  """
+  def __init__(self,x0=0.,xsign=1.,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,**kw):
+    self.x0 = x0
+    self.xsign = xsign
+    ZPlane.__init__(self,x0,xsign,
+                         voltage,xcent,ycent,zcent,condid)
+    XAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
+                            self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
+                            kw=kw)
+
+#============================================================================
+class YPlane(ZPlane,YAssembly):
+  """
+YPlane class
+  - y0=0: location of plane relative to ycent
+  - ysign=1: when positive, conductor is in the y>0 side
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of plane (only ycent is meaningful)
+  - condid=1: conductor id of plane, must be integer, or can be 'next' in which
+              case a unique ID is chosen
+  """
+  def __init__(self,y0=0.,ysign=1.,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,**kw):
+    self.y0 = y0
+    self.ysign = ysign
+    ZPlane.__init__(self,y0,ysign,
+                         voltage,xcent,ycent,zcent,condid)
+    YAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
+                            self.condid,self.kwlist,
+                            self.generatorf,self.generatord,self.generatori,
+                            self.generatorfnew,
+                            kw=kw)
 
 #============================================================================
 class Box(Assembly):
