@@ -71,7 +71,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.97 2011/01/13 23:58:09 grote Exp $"
+lattice_version = "$Id: lattice.py,v 1.98 2011/02/16 02:21:05 grote Exp $"
 
 def latticedoc():
   import lattice
@@ -2152,7 +2152,11 @@ hele arrays with the same suffices:
   try: nh = len(ae)
   except TypeError: ae = [ae]
   try: nh = len(am)
-  except TypeError: [am]
+  except TypeError: am = [am]
+  try: nh = len(ep)
+  except TypeError: ep = [ep]
+  try: nh = len(mp)
+  except TypeError: mp = [mp]
 
   # --- Check if these inputs are sequences, and if not, make them lists.
   try: len(nn)
