@@ -428,6 +428,7 @@ bmgz(-nzguard:nz+nzguard) _real
 %%%%%%%% EM3D_YEEFIELDtype:
 fieldtype integer /-1/
 stencil integer /0/ # 0 = Yee; 1 = Yee-enlarged (Karkkainen) on EF,B; 2 = Yee-enlarged (Karkkainen) on E,F
+l_nodecentered logical /.false./
 nx integer /0/ # nb of mesh cells of grid interior in the x direction
 ny integer /0/ # nb of mesh cells of grid interior in the y direction
 nz integer /0/ # nb of mesh cells of grid interior in the z direction
