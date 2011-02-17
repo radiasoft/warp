@@ -9397,6 +9397,8 @@ TYPE(EM3D_YEEFIELDtype) :: f
 
 INTEGER :: j,k,l
 
+if (f%l_nodecentered) return
+
 if (.not.f%l_2dxz) then
   do l=-f%nzguard,f%nz+f%nzguard
     do k=-f%nyguard,f%ny+f%nyguard
@@ -9449,6 +9451,8 @@ else
 
 endif
 
+f%l_nodecentered = .true.
+
   return
 end subroutine yee2node3d
 
@@ -9460,6 +9464,8 @@ TYPE(EM3D_YEEFIELDtype) :: f
 
 INTEGER :: j,k,l
 !return
+
+if (.not.f%l_nodecentered) return
 
 if (.not.f%l_2dxz) then
 
@@ -9513,6 +9519,8 @@ else
   enddo
 
 endif
+
+f%l_nodecentered = .false.
 
   return
 end subroutine node2yee3d
