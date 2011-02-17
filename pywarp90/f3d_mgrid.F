@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.198 $, $Date: 2010/07/29 17:07:08 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.199 $, $Date: 2011/02/17 21:19:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -82,6 +82,7 @@ c=============================================================================
       use ConductorTypemodule
       use Constant
       use Decompositionmodule
+      use Multigrid3d,Only: mgcoarsening
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz,nxlocal,nylocal,nzlocal
       real(kind=8):: phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
@@ -250,9 +251,9 @@ c     --- Also setup parallel arrays.
         delx = 1
         dely = 1
         delz = 1
-        if (nx > nxlocal) delx = 3
-        if (ny > nylocal) dely = 3
-        if (nz > nzlocal) delz = 3
+        if (nx > nxlocal) delx = 2*mgcoarsening - 1
+        if (ny > nylocal) dely = 2*mgcoarsening - 1
+        if (nz > nzlocal) delz = 2*mgcoarsening - 1
 
         allocate(res(-delx:nxlocal+delx,
      &               -dely:nylocal+dely,
@@ -536,7 +537,7 @@ c=============================================================================
      &                            fsdecomp)
       use Subtimersf3d
       use ConductorTypemodule
-      use Multigrid3d,Only: mggrid_overlap
+      use Multigrid3d,Only: mggrid_overlap,mgcoarsening
       use Multigrid3d_diagnostic
       use Decompositionmodule
       use formggetarraysuminterface
@@ -708,9 +709,9 @@ c     --- coarsening. This is the same check that is done in getmglevels.
         delx = 1
         dely = 1
         delz = 1
-        if (nx > nxlocal) delx = 3
-        if (ny > nylocal) dely = 3
-        if (nz > nzlocal) delz = 3
+        if (nx > nxlocal) delx = 2*mgcoarsening - 1
+        if (ny > nylocal) dely = 2*mgcoarsening - 1
+        if (nz > nzlocal) delz = 2*mgcoarsening - 1
 
         allocate(res(-delx:nxlocal+delx,
      &               -dely:nylocal+dely,
@@ -731,7 +732,7 @@ c       --- Get the residual on the current grid.
         call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,res,
      &                               delx,dely,delz,-1,0,localbounds,fsdecomp)
         call mgexchange_phi(1,nxlocal,nylocal,nzlocal,res,
-     &                      delx,dely,delz,-3,-1,fsdecomp)
+     &                      delx,dely,delz,-(2*mgcoarsening-1),-1,fsdecomp)
 #endif
         if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,
