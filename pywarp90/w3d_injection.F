@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.147 $, $Date: 2010/12/16 20:07:26 $
+c@(#) File w3d_injection.F, version $Revision: 1.148 $, $Date: 2011/02/22 19:17:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5820,6 +5820,7 @@ c=============================================================================
       real(kind=8):: xshift,yshift,zshift
       real(kind=8):: xscale,yscale,zscale
       real(kind=8):: xmin,ymin,zmin,xmax,ymax,zmax
+      real(kind=8):: dxtemp,dytemp,dztemp
       real(kind=8):: wranf
 
       xmin = 0.
@@ -5828,6 +5829,22 @@ c=============================================================================
       xmax = dx*nx
       ymax = dy*ny
       zmax = dz*nz
+
+      if (nx > 0) then
+        dxtemp = dx
+      else
+        dxtemp = 0.
+      endif
+      if (ny > 0) then
+        dytemp = dy
+      else
+        dytemp = 0.
+      endif
+      if (nz > 0) then
+        dztemp = dz
+      else
+        dztemp = 0.
+      endif
 
       itot = 1
       do iz=0,nz
@@ -5850,12 +5867,12 @@ c           if (iy == 0 .or. iy == ny) yscale = 0.5
 c           if (iz == 0 .or. iz == nz) zscale = 0.5
             
             do ii=1,int(rnn(ix,iy,iz))
-              xx(itot) = dx*(ix - xshift + xscale*wranf())
-              yy(itot) = dy*(iy - yshift + yscale*wranf())
-              zz(itot) = dz*(iz - zshift + zscale*wranf())
-              if (xmin <= xx(itot) .and. xx(itot) < xmax .and.
-     &            ymin <= yy(itot) .and. yy(itot) < ymax .and.
-     &            zmin <= zz(itot) .and. zz(itot) < zmax) then
+              xx(itot) = dxtemp*(ix - xshift + xscale*wranf())
+              yy(itot) = dytemp*(iy - yshift + yscale*wranf())
+              zz(itot) = dztemp*(iz - zshift + zscale*wranf())
+              if ((xmin <= xx(itot) .and. xx(itot) < xmax .or. nx == 0) .and.
+     &            (ymin <= yy(itot) .and. yy(itot) < ymax .or. ny == 0) .and.
+     &            (zmin <= zz(itot) .and. zz(itot) < zmax .or. nz == 0)) then
                 ex(itot) = 0.5*(exgrid(ix,iy,iz) + exgrid(ix+1,iy,iz))
                 ey(itot) = 0.5*(eygrid(ix,iy,iz) + eygrid(ix,iy+1,iz))
                 ez(itot) = 0.5*(ezgrid(ix,iy,iz) + ezgrid(ix,iy,iz+1))
