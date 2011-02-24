@@ -72,6 +72,7 @@ class EM3D(SubcycledPoissonSolver):
     if w3d.solvergeom==w3d.RZgeom:self.l_2drz=True
     if self.l_2dxz: w3d.solvergeom=w3d.XZgeom
     if self.l_2drz: w3d.solvergeom=w3d.RZgeom
+    self.solvergeom = w3d.solvergeom
     if self.isactiveem is not None:
       self.isactive=self.isactiveem
     else:
