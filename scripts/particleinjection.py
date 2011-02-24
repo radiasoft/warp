@@ -6,7 +6,7 @@ from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.6 2008/11/19 18:30:00 dave Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.7 2011/02/24 00:51:46 grote Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -74,6 +74,40 @@ conductors are an argument.
         # --- is being used. It can also call a routine which includes
         # --- the conductor when calculating the field.
 
+        # --- Test to see if solver is EM
+        # --- If so, just copy the fields and return
+        if isinstance(solver,EM3D) or isinstance(solver,EM2D):
+          # --- We need the fields 1/2 cell displaced from each node on
+          # --- either side of node.
+          # --- So we need values in ghost cells.
+          # --- The EM solver for now has 3 ghost cells on all sides.
+          # --- The following coding assumes that.
+          Exraw = solver.fields.Ex
+          Eyraw = solver.fields.Ey
+          Ezraw = solver.fields.Ez
+          # --- Test to see if fields are staggered; if yes do nothing;
+          # --- if no, stagger them, do calculation, and then convert back.
+          convertback = 0
+          if solver.fields.l_nodecentered:
+            solver.node2yee3d()
+            convertback = 1
+          if shape(Exraw)[1]==1:
+            # --- x-z or r-z
+            Ex = Exraw[2:-3,:,3:-3]
+            Ez = Ezraw[3:-3,:,2:-3]
+            Ey = zeros((shape(Exraw)[0]-6,2,shape(Exraw)[2]-6),'d')
+            # --- formerly assumed node centered so did averaging, e.g.
+            Ex = .5*(Exraw[2:-3,:,3:-3]+Exraw[3:-2,:,3:-3])
+          else:
+            # --- 3D
+            Ex = Exraw[2:-3,3:-3,3:-3]
+            Ey = Eyraw[3:-3,2:-3,3:-3]
+            Ez = Ezraw[3:-3,3:-3,2:-3]
+          if convertback:
+            solver.yee2node3d()
+          return Ex,Ey,Ez
+
+        # --- Electrostatic field solvers
         if solver is w3d: phip = solver.phip
         else:             phip = solver.potentialp
 
@@ -150,12 +184,12 @@ conductors are an argument.
         self.updategrid()
         solver = getregisteredsolver()
         if solver is None: solver = w3d
+        self.l_2d = (solver.solvergeom in [w3d.XYgeom,w3d.RZgeom])
+        self.lcylindrical = (solver.solvergeom==w3d.RZgeom)
+
         dx = solver.dx
         dy = solver.dy
         dz = solver.dz
-        nxp = solver.nxp
-        nyp = solver.nyp
-        nzp = solver.nzp
 
         Ex,Ey,Ez = self.getEfields(solver)
         Qold = self.getintegratedcharge(solver)
@@ -163,14 +197,14 @@ conductors are an argument.
         # --- Sum up the integrals of E normal over the sides of the dual cell
         Enorm  = Ex[1:,:,:]*dy*dz
         Enorm -= Ex[:-1,:,:]*dy*dz
-        Enorm += Ey[:,1:,:]*dx*dz
-        Enorm -= Ey[:,:-1,:]*dx*dz
+        if not self.l_2d:
+          Enorm += Ey[:,1:,:]*dx*dz
+          Enorm -= Ey[:,:-1,:]*dx*dz
         Enorm += Ez[:,:,1:]*dx*dy
         Enorm -= Ez[:,:,:-1]*dx*dy
         Enorm *= eps0
 
         Qnew = Enorm - Qold
-
 
         # --- Only inject particle for cells in or near conductors.
         Qnew = where(self.grid.isinside == 0.,0.,Qnew)
@@ -182,6 +216,16 @@ conductors are an argument.
 
         # --- Make sure it is positive or zero
         rnn = maximum(rnn,0.)
+
+        # --- Scale appropriately for cylindrical coordinates
+        # --- This accounts the difference in area of a grid cell in
+        # --- Cartesian (dx*dy) and cylindrical (pi*r*dx).
+        if self.lcylindrical:
+          if solver.xmmin == 0:
+            rnn[0,...] *= 0.5*pi*solver.dx/solver.dy
+          else:
+            rnn[0,...] *= pi*solver.xmmin/solver.dy
+          rnn[1:,...] *= pi*solver.xmesh[1:,newaxis,newaxis]/solver.dy
 
         # --- Save the number for diagnostics
         self.inj_np = rnn.copy()
@@ -203,10 +247,15 @@ conductors are an argument.
         xx,yy,zz = zeros((3,nn),'d')
         ex,ey,ez = zeros((3,nn),'d')
         pp = zeros(nn,'d')
+        nxp = rnn.shape[0] - 1
+        nyp = rnn.shape[1] - 1
+        nzp = rnn.shape[2] - 1
         createparticlesincells(nxp,nyp,nzp,rnn,Ex,Ey,Ez,self.grid.isinside,
+                               self.lcylindrical,
                                dx,dy,dz,nn,xx,yy,zz,ex,ey,ez,pp)
         xx += solver.xmminp
-        yy += solver.ymminp
+        if not self.l_2d:
+          yy += solver.ymminp
         zz += solver.zmminp
 
         # --- Give particles a thermal velocity.
