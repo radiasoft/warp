@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.148 $, $Date: 2011/02/22 19:17:39 $
+c@(#) File w3d_injection.F, version $Revision: 1.149 $, $Date: 2011/02/24 00:52:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5802,14 +5802,16 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine createparticlesincells(nx,ny,nz,rnn,exgrid,eygrid,ezgrid,
-     &                                  condid,
+     &                                  condid,lcylindrical,
      &                                  dx,dy,dz,nn,xx,yy,zz,ex,ey,ez,pp)
+      use Constant
       integer(ISZ):: nx,ny,nz,nn
       real(kind=8):: rnn(0:nx,0:ny,0:nz)
       real(kind=8):: exgrid(0:nx+1,0:ny,0:nz)
       real(kind=8):: eygrid(0:nx,0:ny+1,0:nz)
       real(kind=8):: ezgrid(0:nx,0:ny,0:nz+1)
       real(kind=8):: condid(0:nx,0:ny,0:nz)
+      logical(ISZ):: lcylindrical
       real(kind=8):: dx,dy,dz
       real(kind=8):: xx(nn),yy(nn),zz(nn)
       real(kind=8):: ex(nn),ey(nn),ez(nn)
@@ -5821,6 +5823,7 @@ c=============================================================================
       real(kind=8):: xscale,yscale,zscale
       real(kind=8):: xmin,ymin,zmin,xmax,ymax,zmax
       real(kind=8):: dxtemp,dytemp,dztemp
+      real(kind=8):: rr,rsq1,rsq2,tt
       real(kind=8):: wranf
 
       xmin = 0.
@@ -5866,20 +5869,50 @@ c           if (iy == 0 .or. iy == ny) yscale = 0.5
             zscale = 1.0
 c           if (iz == 0 .or. iz == nz) zscale = 0.5
             
-            do ii=1,int(rnn(ix,iy,iz))
-              xx(itot) = dxtemp*(ix - xshift + xscale*wranf())
-              yy(itot) = dytemp*(iy - yshift + yscale*wranf())
-              zz(itot) = dztemp*(iz - zshift + zscale*wranf())
-              if ((xmin <= xx(itot) .and. xx(itot) < xmax .or. nx == 0) .and.
-     &            (ymin <= yy(itot) .and. yy(itot) < ymax .or. ny == 0) .and.
-     &            (zmin <= zz(itot) .and. zz(itot) < zmax .or. nz == 0)) then
-                ex(itot) = 0.5*(exgrid(ix,iy,iz) + exgrid(ix+1,iy,iz))
-                ey(itot) = 0.5*(eygrid(ix,iy,iz) + eygrid(ix,iy+1,iz))
-                ez(itot) = 0.5*(ezgrid(ix,iy,iz) + ezgrid(ix,iy,iz+1))
-                pp(itot) = condid(ix,iy,iz)
-                itot = itot + 1
+            if (lcylindrical) then
+
+              if (ix == 0) then
+                rsq1 = 0.
+              else
+                rsq1 = (dxtemp*(ix - xshift))**2
               endif
-            enddo
+              rsq2 = (dxtemp*(ix - xshift + xscale))**2
+
+              do ii=1,int(rnn(ix,iy,iz))
+
+                rr = sqrt(rsq1 + wranf()*(rsq2 - rsq1))
+                tt = 2.*pi*wranf()
+                xx(itot) = rr*cos(tt)
+                yy(itot) = rr*sin(tt)
+                zz(itot) = dztemp*(iz - zshift + zscale*wranf())
+                if ((                       rr       < xmax) .and.
+     &              (zmin <= zz(itot) .and. zz(itot) < zmax)) then
+                  ex(itot) = 0.5*(exgrid(ix,iy,iz) + exgrid(ix+1,iy,iz))
+                  ey(itot) = 0.5*(eygrid(ix,iy,iz) + eygrid(ix,iy+1,iz))
+                  ez(itot) = 0.5*(ezgrid(ix,iy,iz) + ezgrid(ix,iy,iz+1))
+                  pp(itot) = condid(ix,iy,iz)
+                  itot = itot + 1
+                endif
+              enddo
+
+            else
+
+              do ii=1,int(rnn(ix,iy,iz))
+                xx(itot) = dxtemp*(ix - xshift + xscale*wranf())
+                yy(itot) = dytemp*(iy - yshift + yscale*wranf())
+                zz(itot) = dztemp*(iz - zshift + zscale*wranf())
+                if ((xmin <= xx(itot) .and. xx(itot) < xmax .or. nx == 0) .and.
+     &              (ymin <= yy(itot) .and. yy(itot) < ymax .or. ny == 0) .and.
+     &              (zmin <= zz(itot) .and. zz(itot) < zmax .or. nz == 0)) then
+                  ex(itot) = 0.5*(exgrid(ix,iy,iz) + exgrid(ix+1,iy,iz))
+                  ey(itot) = 0.5*(eygrid(ix,iy,iz) + eygrid(ix,iy+1,iz))
+                  ez(itot) = 0.5*(ezgrid(ix,iy,iz) + ezgrid(ix,iy,iz+1))
+                  pp(itot) = condid(ix,iy,iz)
+                  itot = itot + 1
+                endif
+              enddo
+
+            endif
 
           enddo
         enddo

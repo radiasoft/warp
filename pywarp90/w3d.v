@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.316 $, $Date: 2011/02/15 21:56:22 $
+#@(#) File W3D.V, version $Revision: 3.317 $, $Date: 2011/02/24 00:52:34 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.316 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.317 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -960,6 +960,7 @@ createparticlesincells(nx:integer,ny:integer,nz:integer,
                        eygrid(0:nx,0:ny+1,0:nz):real,
                        ezgrid(0:nx,0:ny,0:nz+1):real,
                        condid(0:nx,0:ny,0:nz):real,
+                       lcylindrical:logical,
                        dx:real,dy:real,dz:real,
                        nn:integer,xx(nn):real,yy(nn):real,zz(nn):real,
                        ex(nn):real,ey(nn):real,ez(nn):real,pp(nn):real)
