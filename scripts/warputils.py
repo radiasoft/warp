@@ -6,7 +6,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.36 2011/02/15 19:44:48 grote Exp $"
+warputils_version = "$Id: warputils.py,v 1.37 2011/03/04 19:13:50 jlvay Exp $"
 
 def warputilsdoc():
   import warputils
@@ -397,7 +397,7 @@ Both produce an array of shape (2,4) that looks like::
     return data
 
 def getdatafromtextfile(filename,nskip=0,dims=[],dtype='d',fortranordering=1,
-                        converter=float,mode='r',get_header=false):
+                        converter=float,mode='r',get_header=false,l_checkdims=false):
   """
 Reads data in from a text file. The data is assumed to be laid out on a
 logically Cartesian mesh.
@@ -413,7 +413,8 @@ logically Cartesian mesh.
  - converter=float: Function which converts the strings into numbers. This should
                     be the type of result desired. It should only be float or int,
                     unless you know what you are doing.
-
+ - if l_checkdims: when true, check that the dimensions of the array in the ascii 
+                   file match the ones provided in dims.
 Here's an example data file called 'testdata'::
 
   this line is skipped
@@ -462,8 +463,12 @@ automatically.::
   # --- For the conversion of the strings into numbers, it is faster to use
   # --- float or int rather than eval.
   data = appendablearray.AppendableArray()
-  for line in ff.readlines():
-    dataline = map(converter,string.split(line))
+  lines=ff.readlines()
+  if l_checkdims:assert len(lines)==dims[1],"ERROR reading data from "+filename+": dimensions 2nd axis are incompatible. %g passed as argument, %g found in file."%(dims[1],len(lines))
+  for line in lines:
+    words = string.split(line)
+    if l_checkdims:assert len(words)==dims[0],"ERROR reading data from "+filename+": dimensions 1st axis are incompatible. %g passed as argument, %g found in file."%(dims[0],len(words))
+    dataline = map(converter,words)
     data.append(dataline)
     if ntot is not None and len(data) >= ntot: break
 
@@ -493,7 +498,6 @@ automatically.::
     return data,header
   else:
     return data
-
 class RandomStream(object):
   """Used to create independent streams of random numbers. ::
 
