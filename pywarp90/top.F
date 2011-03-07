@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.259 $, $Date: 2011/01/29 01:11:22 $
+c@(#) File TOP.F, version $Revision: 3.260 $, $Date: 2011/03/07 21:15:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2082,6 +2082,7 @@ c         --- extrapolate to two nearest cells
               vzi = 1./(uzp(ip)*gaminv(ip)+SMALLPOS)
               iz(ip)  = (zp(ip) - zbeam - zmmntmin)*dzmi
               dti = (iz(ip)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
+              dti = max(-zmmntdtextmax*dt,min(zmmntdtextmax*dt,dti))
               pp(3,ip) = uxp(ip)*(1. + dti*oneondt) - uxpo(ip)*dti*oneondt
               pp(7,ip) = uyp(ip)*(1. + dti*oneondt) - uypo(ip)*dti*oneondt
               pp(11,ip) = uzp(ip)*(1. + dti*oneondt) - uzpo(ip)*dti*oneondt
@@ -2098,6 +2099,7 @@ c             pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
               endif
 
               dtip1=((iz(ip)+1)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
+              dtip1 = max(-zmmntdtextmax*dt,min(zmmntdtextmax*dt,dtip1))
               pp(4,ip) = uxp(ip)*(1. + dtip1*oneondt) - uxpo(ip)*dtip1*oneondt
               pp(8,ip) = uyp(ip)*(1. + dtip1*oneondt) - uypo(ip)*dtip1*oneondt
               pp(12,ip) = uzp(ip)*(1. + dtip1*oneondt) - uzpo(ip)*dtip1*oneondt
