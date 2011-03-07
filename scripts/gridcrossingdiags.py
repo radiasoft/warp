@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.46 2011/02/09 23:58:25 grote Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.47 2011/03/07 18:14:39 grote Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -187,7 +187,7 @@ after being disabled.
             self.gcindex = 2
             top.gcmoments2 = self.gcmoments
         else:
-            raise RunTimeError('Only two grid crossing moments can be enabled at a time')
+            raise RuntimeError('Only two grid crossing moments can be enabled at a time')
 
         # --- This flag must be set for the diagnostics to be done.
         top.lgcmoments = true
