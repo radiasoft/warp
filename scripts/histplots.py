@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.42 2011/01/31 19:40:29 grote Exp $"
+histplots_version = "$Id: histplots.py,v 1.43 2011/03/07 18:13:55 grote Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -440,6 +440,126 @@ def hpekperp(kwdict={},**kw):
   hpbasic('hekperp',kw)
 if sys.version[:5] != "1.5.1":
   hpekperp.__doc__ = hpekperp.__doc__ + hpbasictext
+
+
+def hpxmaxp(kwdict={},**kw):
+  "Maximum value of X"
+  kw.update(kwdict)
+  kw['titlet']="Maximum value of X"
+  kw['titlel']="(m)"
+  hpbasic('hxmaxp',kw)
+if sys.version[:5] != "1.5.1":
+  hpxmaxp.__doc__ = hpxmaxp.__doc__ + hpbasictext
+
+
+def hpxminp(kwdict={},**kw):
+  "Minimum value of X"
+  kw.update(kwdict)
+  kw['titlet']="Minimum value of X"
+  kw['titlel']="(m)"
+  hpbasic('hxminp',kw)
+if sys.version[:5] != "1.5.1":
+  hpxminp.__doc__ = hpxminp.__doc__ + hpbasictext
+
+
+def hpymaxp(kwdict={},**kw):
+  "Maximum value of Y"
+  kw.update(kwdict)
+  kw['titlet']="Maximum value of Y"
+  kw['titlel']="(m)"
+  hpbasic('hymaxp',kw)
+if sys.version[:5] != "1.5.1":
+  hpymaxp.__doc__ = hpymaxp.__doc__ + hpbasictext
+
+
+def hpyminp(kwdict={},**kw):
+  "Minimum value of Y"
+  kw.update(kwdict)
+  kw['titlet']="Minimum value of Y"
+  kw['titlel']="(m)"
+  hpbasic('hyminp',kw)
+if sys.version[:5] != "1.5.1":
+  hpyminp.__doc__ = hpyminp.__doc__ + hpbasictext
+
+
+def hpzmaxp(kwdict={},**kw):
+  "Maximum value of Z"
+  kw.update(kwdict)
+  kw['titlet']="Maximum value of Z"
+  kw['titlel']="(m)"
+  hpbasic('hzmaxp',kw)
+if sys.version[:5] != "1.5.1":
+  hpzmaxp.__doc__ = hpzmaxp.__doc__ + hpbasictext
+
+
+def hpzminp(kwdict={},**kw):
+  "Minimum value of Z"
+  kw.update(kwdict)
+  kw['titlet']="Minimum value of z"
+  kw['titlel']="(m)"
+  hpbasic('hzminp',kw)
+if sys.version[:5] != "1.5.1":
+  hpzminp.__doc__ = hpzminp.__doc__ + hpbasictext
+
+
+def hpvxmaxp(kwdict={},**kw):
+  "Maximum value of Vx"
+  kw.update(kwdict)
+  kw['titlet']="Maximum value of Vx"
+  kw['titlel']="(m)"
+  hpbasic('hvxmaxp',kw)
+if sys.version[:5] != "1.5.1":
+  hpvxmaxp.__doc__ = hpvxmaxp.__doc__ + hpbasictext
+
+
+def hpvxminp(kwdict={},**kw):
+  "Minimum value of Vx"
+  kw.update(kwdict)
+  kw['titlet']="Minimum value of Vx"
+  kw['titlel']="(m)"
+  hpbasic('hvxminp',kw)
+if sys.version[:5] != "1.5.1":
+  hpvxminp.__doc__ = hpvxminp.__doc__ + hpbasictext
+
+
+def hpvymaxp(kwdict={},**kw):
+  "Maximum value of Vy"
+  kw.update(kwdict)
+  kw['titlet']="Maximum value of Vy"
+  kw['titlel']="(m)"
+  hpbasic('hvymaxp',kw)
+if sys.version[:5] != "1.5.1":
+  hpvymaxp.__doc__ = hpvymaxp.__doc__ + hpbasictext
+
+
+def hpvyminp(kwdict={},**kw):
+  "Minimum value of Vy"
+  kw.update(kwdict)
+  kw['titlet']="Minimum value of Vy"
+  kw['titlel']="(m)"
+  hpbasic('hvyminp',kw)
+if sys.version[:5] != "1.5.1":
+  hpvyminp.__doc__ = hpvyminp.__doc__ + hpbasictext
+
+
+def hpvzmaxp(kwdict={},**kw):
+  "Maximum value of Vz"
+  kw.update(kwdict)
+  kw['titlet']="Maximum value of Vz"
+  kw['titlel']="(m)"
+  hpbasic('hvzmaxp',kw)
+if sys.version[:5] != "1.5.1":
+  hpvzmaxp.__doc__ = hpvzmaxp.__doc__ + hpbasictext
+
+
+def hpvzminp(kwdict={},**kw):
+  "Minimum value of Vz"
+  kw.update(kwdict)
+  kw['titlet']="Minimum value of Vz"
+  kw['titlel']="(m)"
+  hpbasic('hvzminp',kw)
+if sys.version[:5] != "1.5.1":
+  hpvzminp.__doc__ = hpvzminp.__doc__ + hpbasictext
 
 
 def hpekinz(iw=0,kwdict={},**kw):
@@ -1813,6 +1933,66 @@ def hzekperp(kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpekperp(kwdict=kw)
+def hzxmaxp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpxmaxp(kwdict=kw)
+def hzxminp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpxminp(kwdict=kw)
+def hzymaxp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpymaxp(kwdict=kw)
+def hzyminp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpyminp(kwdict=kw)
+def hzzmaxp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpzmaxp(kwdict=kw)
+def hzzminp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpzminp(kwdict=kw)
+def hzvxmaxp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpvxmaxp(kwdict=kw)
+def hzvxminp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpvxminp(kwdict=kw)
+def hzvymaxp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpvymaxp(kwdict=kw)
+def hzvyminp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpvyminp(kwdict=kw)
+def hzvzmaxp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpvzmaxp(kwdict=kw)
+def hzvzminp(kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpvzminp(kwdict=kw)
 def hzekinz(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
@@ -1928,6 +2108,11 @@ def hzrrms(iw=0,kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hprrms(iw=iw,kwdict=kw)
+def hzzrms(iw=0,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpzrms(iw=iw,kwdict=kw)
 def hzxprms(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
