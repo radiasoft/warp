@@ -71,7 +71,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.98 2011/02/16 02:21:05 grote Exp $"
+lattice_version = "$Id: lattice.py,v 1.99 2011/03/07 18:12:25 grote Exp $"
 
 def latticedoc():
   import lattice
@@ -3577,7 +3577,11 @@ such as contours, and cellarray.
     kw.setdefault('titleb','%s (m)'%ax[0].upper())
     kw.setdefault('titlel','%s (m)'%ax[1].upper())
 
-    ppgeneric(gridt=ee,kwdict=kw)
+    if iz is None:
+      # --- Take the transpose so that z will be along the horizontal axis.
+      ee = ee.T
+
+    ppgeneric(grid=ee,kwdict=kw)
 
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
@@ -3682,7 +3686,11 @@ such as contours, and cellarray.
     kw.setdefault('titleb','%s (m)'%ax[0].upper())
     kw.setdefault('titlel','%s (m)'%ax[1].upper())
 
-    ppgeneric(gridt=bb,kwdict=kw)
+    if iz is None:
+      # --- Take the transpose so that z will be along the horizontal axis.
+      bb = bb.T
+
+    ppgeneric(grid=bb,kwdict=kw)
 
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
@@ -3786,7 +3794,11 @@ such as contours, and cellarray.
     kw.setdefault('titleb','%s (m)'%ax[0].upper())
     kw.setdefault('titlel','%s (m)'%ax[1].upper())
 
-    ppgeneric(gridt=pp,kwdict=kw)
+    if iz is None:
+      # --- Take the transpose so that z will be along the horizontal axis.
+      pp = pp.T
+
+    ppgeneric(grid=pp,kwdict=kw)
 
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
