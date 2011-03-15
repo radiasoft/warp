@@ -2795,7 +2795,7 @@ class Quasistatic(SubcycledPoissonSolver):
     else:
       n = self.parallelmin(len(self.pnum.data()))
       pnum = self.parallelsum(self.pnum.data()[:n])
-#      pnum = where(pnum==0.,1.,pnum)
+      pnum = where(pnum==0.,1.,pnum)
       x2  = self.parallelsum(self.x2.data()[:n])/pnum
       xp2 = self.parallelsum(self.xp2.data()[:n])/pnum
       xxp = self.parallelsum(self.xxpbar.data()[:n])/pnum
@@ -2812,7 +2812,7 @@ class Quasistatic(SubcycledPoissonSolver):
     else:
       n = self.parallelmin(len(self.pnum.data()))
       pnum = self.parallelsum(self.pnum.data()[:n])
-#      pnum = where(pnum==0.,1.,pnum)
+      pnum = where(pnum==0.,1.,pnum)
       y2  = self.parallelsum(self.y2.data()[:n])/pnum
       yp2 = self.parallelsum(self.yp2.data()[:n])/pnum
       yyp = self.parallelsum(self.yypbar.data()[:n])/pnum
