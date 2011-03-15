@@ -1,8 +1,8 @@
 """
 Ionization: class for generating particles from impact ionization.
 """
+__all__ = ['Ionization']
 from warp import *
-from species import *
 import time
 try:
   from txphysics import txionpack
@@ -10,7 +10,8 @@ try:
 except:
   l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.16 2010/04/20 22:31:34 jlvay Exp $"
+
+ionization_version = "$Id: ionization.py,v 1.17 2011/03/15 23:12:31 grote Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
