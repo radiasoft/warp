@@ -4,7 +4,7 @@ from warp import *
 import time
 import string
 import sys, copy
-runcounter_version = "$Id: runcounter.py,v 1.14 2010/07/01 21:56:43 dave Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.15 2011/03/15 23:28:46 grote Exp $"
 
 def runcounter(init=0,delta=1,ensambles=[],prefix=None,suffix="_runcounter",
                sleep=0):
@@ -223,7 +223,8 @@ Accumulates data from multiple runs in a single file.
     # --- Write out any data in the file that is not in datadict or scalardict.
     f_out.write(name,f_indict[name])
   f_out.close()
-  os.system('mv '+filename+'temp '+filename)
+  os.system('cp '+filename+'temp '+filename)
+  os.system('rm -f '+filename+'temp')
 
 
 
