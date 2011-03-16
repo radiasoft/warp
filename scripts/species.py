@@ -7,10 +7,10 @@ Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.85 2010/12/20 22:22:55 grote Exp $"
+species_version = "$Id: species.py,v 1.86 2011/03/16 01:02:01 grote Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
-    if scale>0.:
+    if scale > 0.:
       return random.normal(loc,scale,size)
     else:
       return loc
@@ -348,7 +348,7 @@ Creates a new species of particles. All arguments are optional.
     np=0
     for js in self.jslist:
       np+=getn(js=js)
-    if np==0:
+    if np == 0:
       if dens is None:
         return density
       else:
@@ -359,8 +359,8 @@ Creates a new species of particles. All arguments are optional.
       z=getz(js=js,lost=lost,gather=0)
       if w3d.solvergeom==w3d.RZgeom:x=sqrt(x*x+y*y)
       np=shape(x)[0]
-      if np>0:
-        if top.wpid==0:
+      if np > 0:
+        if top.wpid == 0:
           w=self.pgroup.sw[js]*ones(np,'d')
         else:
           w=self.pgroup.sw[js]*getpid(js=js,id=top.wpid-1,gather=0)
@@ -413,7 +413,7 @@ Creates a new species of particles. All arguments are optional.
           if w3d.bound0 is periodic:
             density[:,:,0] += density[:,:,-1]; density[:,:,-1]=density[:,:,0]
     density[...] = parallelsum(density)
-    if dens is None:return density
+    if dens is None: return density
      
   def addparticles(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,js=None,**kw):
     if js is None:
@@ -437,65 +437,110 @@ Creates a new species of particles. All arguments are optional.
       return
 
     if lallindomain:
-      # --- Crop the zmin and zmax to be within the local domain
+      # --- Crop the min and max to be within the local domain
+      # --- The min and max in the second argument guarantee that if the min and
+      # --- max are outside of the grid, then it will end up with minp = maxp.
+      xminp = max(xmin,min(xmax,top.xpminlocal))
+      xmaxp = min(xmax,max(xmin,top.xpmaxlocal))
+      yminp = max(ymin,min(ymax,top.ypminlocal))
+      ymaxp = min(ymax,max(ymin,top.ypmaxlocal))
       zminp = max(zmin,min(zmax,top.zpminlocal+top.zgrid))
       zmaxp = min(zmax,max(zmin,top.zpmaxlocal+top.zgrid))
     else:
-      # --- Crop the zmin and zmax to be within the global domain
-      zminp = max(zmin,w3d.zmmin+top.zgrid)
-      zmaxp = min(zmax,w3d.zmmax+top.zgrid)
+      # --- Crop the min and max to be within the global domain
+      xminp = max(xmin,min(xmax,w3d.xmmin))
+      xmaxp = min(xmax,max(xmin,w3d.xmmax))
+      yminp = max(ymin,min(ymax,w3d.ymmin))
+      ymaxp = min(ymax,max(ymin,w3d.ymmax))
+      zminp = max(zmin,min(zmax,w3d.zmmin+top.zgrid))
+      zmaxp = min(zmax,max(zmin,w3d.zmmax+top.zgrid))
 
     if spacing == 'random':
       # --- Add a random number to the number of particles so that on
       # --- average, the correct number of particles will be generated.
       np = int(np + random.random())
       # --- Adjust the number of particles to load to based on the
-      # --- width of the cropped zmin and max and the original
-      if zmin==zmax:
-        if lallindomain:
-          if zmin>top.zpmaxlocal+top.zgrid or zmax<top.zpminlocal+top.zgrid:
-            return
+      # --- width of the cropped min and max and the original
+      def setfac(min,max,pminlocal,pmaxlocal,mmin,mmax,minp,maxp,grid):
+        if min == max:
+          if lallindomain:
+            if min>pmaxlocal+grid or max<pminlocal+grid:
+              return None
+          else:
+            if min>mmax+grid or max<mmin+grid:
+              return None
+          return 1.
         else:
-          if zmin>w3d.zmmax+top.zgrid or zmax<w3d.zmmin+top.zgrid:return
-      else:
-        np = nint((zmaxp - zminp)/(zmax - zmin)*np)
+          return (maxp - minp)/(max - min)
+
+      xfac = setfac(xmin,xmax,top.xpminlocal,top.xpmaxlocal,
+                    w3d.xmmin,w3d.xmmax,xminp,xmaxp,0.)
+      if xfac is None: return
+      yfac = setfac(ymin,ymax,top.ypminlocal,top.ypmaxlocal,
+                    w3d.ymmin,w3d.ymmax,yminp,ymaxp,0.)
+      if yfac is None: return
+      zfac = setfac(zmin,zmax,top.zpminlocal,top.zpmaxlocal,
+                    w3d.zmmin,w3d.zmmax,zminp,zmaxp,top.zgrid)
+      if zfac is None: return
+
+      # --- Is nint correct?
+      np = nint(xfac*yfac*zfac*np)
+
       if np == 0:
         if top.debug:
           print ("add_uniform_box: Warning: no particles loaded for random "+
                  "spacing since all are outside of the z range of the domain "+
                  "of processor %d"%me)
         return
+
       x = random.random(np)
       y = random.random(np)
       z = random.random(np)
-      if zmin<>zmax:
-        z = (zminp + (zmaxp - zminp)*z - zmin)/(zmax - zmin)
+
+      x = xminp + (xmaxp - xminp)*x
+      y = yminp + (ymaxp - yminp)*y
+      z = zminp + (zmaxp - zminp)*z
 
     elif spacing == 'uniform':
       if ymax > ymin and zmax > zmin: dims = 3
-      else:           dims = 2
+      else:                           dims = 2
       if nx is None: nx = nint(np**(1./dims))
       if ny is None:
         if dims == 3 or ymax>ymin: ny = nint(np**(1./dims))
-        else:         ny = 1
+        else:                      ny = 1
       if nz is None:
         if dims == 3 or zmax>zmin: nz = nint(np**(1./dims))
-        else:         nz = 1
+        else:                      nz = 1
 
-      # --- Find the range of particle z locations within the cropped
-      # --- zmin and max.
-      if zmin==zmax:
-        if lallindomain:
-          if zmin>top.zpmaxlocal+top.zgrid or zmax<top.zpminlocal+top.zgrid:
-            return
+      # --- Find the range of particle locations within the cropped
+      # --- min and max.
+      def setnp(bmin,bmax,pminlocal,pmaxlocal,mmin,mmax,minp,maxp,n,grid):
+        if bmin == bmax:
+          if lallindomain:
+            if bmin>pmaxlocal+grid or bmax<pminlocal+grid:
+              return None,None
+          else:
+            if bmin>mmax+grid or bmax<mmin+grid:
+              return None,None
+          return 1,0
         else:
-          if zmin>w3d.zmmax+top.zgrid or zmax<w3d.zmmin+top.zgrid:return
-      else:
-        dz = (zmax - zmin)/nz
-        izminp = int((zminp - zmin)/dz + 0.5)
-        izmaxp = int((zmaxp - zmin)/dz + 0.5)
-        nzp = max(0,izmaxp - izminp)
-        np = nx*ny*nzp
+          d = (bmax - bmin)/n
+          iminp = nint((minp - bmin)/d)
+          imaxp = nint((maxp - bmin)/d)
+          return max(0,imaxp - iminp),iminp
+
+      nxp,ixminp = setnp(xmin,xmax,top.xpminlocal,top.xpmaxlocal,
+                         w3d.xmmin,w3d.xmmax,xminp,xmaxp,nx,0.)
+      if nxp is None: return
+      nyp,iyminp = setnp(ymin,ymax,top.ypminlocal,top.ypmaxlocal,
+                         w3d.ymmin,w3d.ymmax,yminp,ymaxp,ny,0.)
+      if nyp is None: return
+      nzp,izminp = setnp(zmin,zmax,top.zpminlocal,top.zpmaxlocal,
+                         w3d.zmmin,w3d.zmmax,zminp,zmaxp,nz,top.zgrid)
+      if nzp is None: return
+
+      np = nxp*nyp*nzp
+
       if np == 0:
         if top.debug:
           print ("add_uniform_box: Warning: no particles loaded for uniform "+
@@ -504,18 +549,18 @@ Creates a new species of particles. All arguments are optional.
         return
 
       if dims == 3:
-        x,y,z = getmesh3d(0.5/nx,1./nx,nx-1,
-                          0.5/ny,1./ny,ny-1,
+        x,y,z = getmesh3d((ixminp + 0.5)/nx,1./nx,nxp-1,
+                          (iyminp + 0.5)/ny,1./ny,nyp-1,
                           (izminp + 0.5)/nz,1./nz,nzp-1)
       else:
-        if ymin==ymax:
-          x,z = getmesh2d(0.5/nx,1./nx,nx-1,
+        if ymin == ymax:
+          x,z = getmesh2d((ixminp + 0.5)/nx,1./nx,nxp-1,
                           (izminp + 0.5)/nz,1./nz,nzp-1)
-          y = zeros((nx,nz),'d')
-        if zmin==zmax:
-          x,y = getmesh2d(0.5/nx,1./nx,nx-1,
-                          0.5/ny,1./ny,ny-1)
-          z = zeros((nx,ny),'d')
+          y = zeros((nxp,nzp),'d')
+        if zmin == zmax:
+          x,y = getmesh2d((ixminp + 0.5)/nx,1./nx,nxp-1,
+                          (iyminp + 0.5)/ny,1./ny,nyp-1)
+          z = zeros((nxp,nyp),'d')
 
       # --- Perform a transpose so that the data is ordered with increasing z.
       # --- The copy is needed since transposed arrays cannot be reshaped.
@@ -526,9 +571,9 @@ Creates a new species of particles. All arguments are optional.
       y.shape = (np,)
       z.shape = (np,)
 
-    x = xmin + (xmax - xmin)*x
-    y = ymin + (ymax - ymin)*y
-    z = zmin + (zmax - zmin)*z
+      x = xmin + (xmax - xmin)*x
+      y = ymin + (ymax - ymin)*y
+      z = zmin + (zmax - zmin)*z
 
     vx=SpRandom(vxmean,vthx,np)
     vy=SpRandom(vymean,vthy,np)
@@ -889,7 +934,7 @@ Note that the lreturndata option doesn't work.
           Nadd=int(Nadd)+1
         else:
           Nadd=int(Nadd)
-        if Nadd>0:
+        if Nadd > 0:
           x=SpRandom(0.,deltax,Nadd)
           y=SpRandom(0.,deltay,Nadd)
           z=zadd+dz*(random.random(Nadd)-0.5)
@@ -949,7 +994,7 @@ Note that the lreturndata option doesn't work.
     self.zmmnts_locs_yp2 = parallelsum(self.zmmnts_locs_yp2)
     self.zmmnts_locs_xxp = parallelsum(self.zmmnts_locs_xxp)
     self.zmmnts_locs_yyp = parallelsum(self.zmmnts_locs_yyp)
-    if me>0:
+    if me > 0:
       self.zmmnts_locs_pnum[...]=0.
       self.zmmnts_locs_xbar[...]=0.
       self.zmmnts_locs_ybar[...]=0.
@@ -981,36 +1026,36 @@ Note that the lreturndata option doesn't work.
     self.zmmnts_locs_yp2 = zeros(self.nzmmnts_locs,'d')
     self.zmmnts_locs_xxp = zeros(self.nzmmnts_locs,'d')
     self.zmmnts_locs_yyp = zeros(self.nzmmnts_locs,'d')
-    if top.xoldpid==0:top.xoldpid=nextpid()
-    if top.yoldpid==0:top.yoldpid=nextpid()
-    if top.zoldpid==0:top.zoldpid=nextpid()
-    if top.uxoldpid==0:top.uxoldpid=nextpid()
-    if top.uyoldpid==0:top.uyoldpid=nextpid()
-    if top.uzoldpid==0:top.uzoldpid=nextpid()
+    if top.xoldpid == 0: top.xoldpid = nextpid()
+    if top.yoldpid == 0: top.yoldpid = nextpid()
+    if top.zoldpid == 0: top.zoldpid = nextpid()
+    if top.uxoldpid == 0: top.uxoldpid = nextpid()
+    if top.uyoldpid == 0: top.uyoldpid = nextpid()
+    if top.uzoldpid == 0: top.uzoldpid = nextpid()
     self.zmmnts_locs_gathered=true
     installafterstep(self.gather_zmmnts_locs)
    
   def set_zmmnts(self):
     self.zmmnts_pnum = AppendableArray(typecode='d')
-    self.zmmnts_xbar =AppendableArray(typecode='d')
-    self.zmmnts_ybar =AppendableArray(typecode='d')
-    self.zmmnts_zbar =AppendableArray(typecode='d')
-    self.zmmnts_xpbar =AppendableArray(typecode='d')
-    self.zmmnts_ypbar =AppendableArray(typecode='d')
-    self.zmmnts_xpnbar =AppendableArray(typecode='d')
-    self.zmmnts_ypnbar =AppendableArray(typecode='d')
-    self.zmmnts_x2 =AppendableArray(typecode='d')
-    self.zmmnts_y2 =AppendableArray(typecode='d')
-    self.zmmnts_z2 =AppendableArray(typecode='d')
-    self.zmmnts_xp2 =AppendableArray(typecode='d')
-    self.zmmnts_yp2 =AppendableArray(typecode='d')
-    self.zmmnts_xxp =AppendableArray(typecode='d')
-    self.zmmnts_yyp =AppendableArray(typecode='d')
-    self.zmmnts_xpn2 =AppendableArray(typecode='d')
-    self.zmmnts_ypn2 =AppendableArray(typecode='d')
-    self.zmmnts_xxpn =AppendableArray(typecode='d')
-    self.zmmnts_yypn =AppendableArray(typecode='d')
-    self.zmmnts_gathered=true
+    self.zmmnts_xbar = AppendableArray(typecode='d')
+    self.zmmnts_ybar = AppendableArray(typecode='d')
+    self.zmmnts_zbar = AppendableArray(typecode='d')
+    self.zmmnts_xpbar = AppendableArray(typecode='d')
+    self.zmmnts_ypbar = AppendableArray(typecode='d')
+    self.zmmnts_xpnbar = AppendableArray(typecode='d')
+    self.zmmnts_ypnbar = AppendableArray(typecode='d')
+    self.zmmnts_x2 = AppendableArray(typecode='d')
+    self.zmmnts_y2 = AppendableArray(typecode='d')
+    self.zmmnts_z2 = AppendableArray(typecode='d')
+    self.zmmnts_xp2 = AppendableArray(typecode='d')
+    self.zmmnts_yp2 = AppendableArray(typecode='d')
+    self.zmmnts_xxp = AppendableArray(typecode='d')
+    self.zmmnts_yyp = AppendableArray(typecode='d')
+    self.zmmnts_xpn2 = AppendableArray(typecode='d')
+    self.zmmnts_ypn2 = AppendableArray(typecode='d')
+    self.zmmnts_xxpn = AppendableArray(typecode='d')
+    self.zmmnts_yypn = AppendableArray(typecode='d')
+    self.zmmnts_gathered = true
     installafterstep(self.gather_zmmnts)
    
   def gather_zmmnts(self):
@@ -1042,7 +1087,7 @@ Note that the lreturndata option doesn't work.
     ypna = zeros(nparpgrp,'d')
     betaa = zeros(nparpgrp,'d')
     for js in self.jslist:
-      if pg.nps[js]==0:continue
+      if pg.nps[js] == 0:continue
       ng = 1+pg.nps[js]/nparpgrp
       for ig in range(ng):
         il = pg.ins[js]-1+nparpgrp*ig
@@ -1119,7 +1164,7 @@ Note that the lreturndata option doesn't work.
     self.zmmnts_ypn2.data()[...] = parallelsum(self.zmmnts_ypn2.data())
     self.zmmnts_xxpn.data()[...] = parallelsum(self.zmmnts_xxpn.data())
     self.zmmnts_yypn.data()[...] = parallelsum(self.zmmnts_yypn.data())
-    if me>0:
+    if me > 0:
       self.zmmnts_pnum.data()[...]=0.
       self.zmmnts_xbar.data()[...]=0.
       self.zmmnts_ybar.data()[...]=0.
@@ -1141,14 +1186,14 @@ Note that the lreturndata option doesn't work.
 
   def getzmmnts_pnum(self): 
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       return self.zmmnts_pnum.data()
     else:
       return None
       
   def getzmmnts_xrms(self): 
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return sqrt(self.zmmnts_x2.data()/pnum)
     else:
@@ -1156,7 +1201,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_yrms(self): 
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return sqrt(self.zmmnts_y2.data()/pnum)
     else:
@@ -1164,7 +1209,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_xprms(self): 
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return sqrt(self.zmmnts_xp2.data()/pnum)
     else:
@@ -1172,7 +1217,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_yprms(self): 
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return sqrt(self.zmmnts_yp2.data()/pnum)
     else:
@@ -1180,7 +1225,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_xbar(self): 
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_xbar.data()/pnum
     else:
@@ -1188,7 +1233,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_ybar(self): 
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_ybar.data()/pnum
     else:
@@ -1196,7 +1241,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_xpbar(self): 
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_xpbar.data()/pnum
     else:
@@ -1204,7 +1249,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_ypbar(self): 
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_ypbar.data()/pnum
     else:
@@ -1212,7 +1257,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_xxpbar(self): 
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_xxp.data()/pnum
     else:
@@ -1220,7 +1265,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_yypbar(self): 
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_yyp.data()/pnum
     else:
@@ -1228,7 +1273,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_emitxrms(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me>0:return None
+    if me > 0: return None
     pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
     xbar = self.getzmmnts_xbar()
     xpbar = self.getzmmnts_xpbar()
@@ -1239,7 +1284,7 @@ Note that the lreturndata option doesn't work.
 
   def getzmmnts_emityrms(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me>0:return None
+    if me > 0: return None
     pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
     ybar = self.getzmmnts_ybar()
     ypbar = self.getzmmnts_ypbar()
@@ -1250,7 +1295,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_emitxnrms(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me>0:return None
+    if me > 0: return None
     pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
     xbar = self.getzmmnts_xbar()
     xpnbar = self.zmmnts_xpnbar.data()/pnum
@@ -1261,7 +1306,7 @@ Note that the lreturndata option doesn't work.
 
   def getzmmnts_emitynrms(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
-    if me>0:return None
+    if me > 0: return None
     pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
     ybar = self.getzmmnts_ybar()
     ypnbar = self.zmmnts_ypnbar.data()/pnum
@@ -1271,7 +1316,7 @@ Note that the lreturndata option doesn't work.
     return sqrt((y2-ybar*ybar)*(ypn2-ypnbar*ypnbar)-(yypn-ybar*ypnbar)**2)
 
   def plzmmnts_data(self,x,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
-    if me==0:
+    if me == 0:
       zst = self.zmmnts_locs
       pla(yscale*x,xscale*(zst-xoffset),color=color,width=width)
 
@@ -1313,14 +1358,14 @@ Note that the lreturndata option doesn't work.
     
   def getzmmnts_locs_pnum(self): 
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       return self.zmmnts_locs_pnum
     else:
       return None
       
   def getzmmnts_locs_xrms(self): 
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return sqrt(self.zmmnts_locs_x2/pnum)
     else:
@@ -1328,7 +1373,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_locs_yrms(self): 
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return sqrt(self.zmmnts_locs_y2/pnum)
     else:
@@ -1336,7 +1381,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_locs_xprms(self): 
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return sqrt(self.zmmnts_locs_xp2/pnum)
     else:
@@ -1344,7 +1389,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_locs_yprms(self): 
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return sqrt(self.zmmnts_locs_yp2/pnum)
     else:
@@ -1352,7 +1397,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_locs_xbar(self): 
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_xbar/pnum
     else:
@@ -1360,7 +1405,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_locs_ybar(self): 
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_ybar/pnum
     else:
@@ -1368,7 +1413,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_locs_xpbar(self): 
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_xpbar/pnum
     else:
@@ -1376,7 +1421,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_locs_ypbar(self): 
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_ypbar/pnum
     else:
@@ -1384,7 +1429,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_locs_xxpbar(self): 
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_xxp/pnum
     else:
@@ -1392,7 +1437,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_locs_yypbar(self): 
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me==0:
+    if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_yyp/pnum
     else:
@@ -1400,7 +1445,7 @@ Note that the lreturndata option doesn't work.
       
   def getzmmnts_locs_emitxrms(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me>0:return None
+    if me > 0: return None
     pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
     xbar = self.getzmmnts_locs_xbar()
     xpbar = self.getzmmnts_locs_xpbar()
@@ -1411,7 +1456,7 @@ Note that the lreturndata option doesn't work.
 
   def getzmmnts_locs_emityrms(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
-    if me>0:return None
+    if me > 0: return None
     pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
     ybar = self.getzmmnts_locs_ybar()
     ypbar = self.getzmmnts_locs_ypbar()
@@ -1421,7 +1466,7 @@ Note that the lreturndata option doesn't work.
     return sqrt((y2-ybar*ybar)*(yp2-ypbar*ypbar)-(yyp-ybar*ypbar)**2)
 
   def plzmmnts_locs_data(self,x,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
-    if me==0:
+    if me == 0:
       zst = self.zmmnts_locs
       pla(yscale*x,xscale*(zst-xoffset),color=color,width=width)
 
