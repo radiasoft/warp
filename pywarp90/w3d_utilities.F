@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.33 $, $Date: 2010/12/07 18:20:50 $
+c@(#) File w3d_utilities.F, version $Revision: 1.34 $, $Date: 2011/03/16 21:01:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1087,27 +1087,31 @@ c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or 
           do  l=0,nz
             do  k=0,ny
               temp0 = q(0,k,l)
+              j=0; q(j,k,l) = q(j,k,l)*(1.-b)+b*q(j+1,k,l)
               do  j=1,nx-1
                 temp1 = q(j,k,l)
                 q(j,k,l) = a*q(j,k,l)+b*(temp0+q(j+1,k,l))
                 temp0 = temp1
               end do
+              j=nx;q(j,k,l) = q(j,k,l)*(1.-b)+b*temp0
             end do
           end do
         end do
 
-!           y smoothing
+!      y smoothing
         a = alpha(2)
         b = (1.-a)/2.
         do i=1,npass(2)
           do  l=0,nz
             do  j=0,nx
               temp0 = q(j,0,l)
+              k=0; q(j,k,l) = q(j,k,l)*(1.-b)+b*q(j,k+1,l)
               do  k=1,ny-1
                 temp1 = q(j,k,l)
                 q(j,k,l) = a*q(j,k,l)+b*(temp0+q(j,k+1,l))
                 temp0 = temp1
               end do
+              k=ny;q(j,k,l) = q(j,k,l)*(1.-b)+b*temp0
             end do
           end do
         end do
@@ -1119,11 +1123,13 @@ c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or 
           do  k=0,ny
             do  j=0,nx
               temp0 = q(j,k,0)
+              l=0; q(j,k,l) = q(j,k,l)*(1.-b)+b*q(j,k,l+1)
               do  l=1,nz-1
                 temp1 = q(j,k,l)
                 q(j,k,l) = a*q(j,k,l)+b*(temp0+q(j,k,l+1))
                 temp0 = temp1
               end do
+              l=nz;q(j,k,l) = q(j,k,l)*(1.-b)+b*temp0
             end do
           end do
         end do
@@ -1149,8 +1155,14 @@ c     --- with a stride.
           do  l=0,nz
             do  k=0,ny
               tempx = q(:,k,l)
-              do  j=stride(1),nx-stride(1)
-                q(j,k,l) = a*q(j,k,l)+b*(tempx(j-stride(1))+q(j+stride(1),k,l))
+              do j=0,stride(1)-1
+                q(j,k,l) = (1.-b)*q(j,k,l)+b*q(j+stride(1),k,l)
+              end do
+              do j=nx-stride(1)+1,nx
+                q(j,k,l) = (1.-b)*q(j,k,l)+b*q(j-stride(1),k,l)
+              end do
+              do j=stride(1),nx-stride(1)
+                q(j,k,l) = a*q(j,k,l)+b*(tempx(j-stride(1))+tempx(j+stride(1)))
               end do
             end do
           end do
@@ -1163,8 +1175,14 @@ c     --- with a stride.
           do  l=0,nz
             do  j=0,nx
               tempy = q(j,:,l)
+              do k=0,stride(2)-1
+                q(j,k,l) = (1.-b)*q(j,k,l)+b*q(j,k+stride(2),l)
+              end do
+              do k=ny-stride(2)+1,ny
+                q(j,k,l) = (1.-b)*q(j,k,l)+b*q(j,k-stride(2),l)
+              end do
               do  k=stride(2),ny-stride(2)
-                q(j,k,l) = a*q(j,k,l)+b*(tempy(k-stride(2))+q(j,k+stride(2),l))
+                q(j,k,l) = a*q(j,k,l)+b*(tempy(k-stride(2))+tempy(k+stride(2)))
               end do
             end do
           end do
@@ -1177,8 +1195,14 @@ c     --- with a stride.
           do  k=0,ny
             do  j=0,nx
               tempz = q(j,k,:)
+              do l=0,stride(3)-1
+                q(j,k,l) = (1.-b)*q(j,k,l)+b*q(j,k,l+stride(3))
+              end do
+              do l=nz-stride(3)+1,nz
+                q(j,k,l) = (1.-b)*q(j,k,l)+b*q(j,k,l-stride(3))
+              end do
               do  l=stride(3),nz-stride(3)
-                q(j,k,l) = a*q(j,k,l)+b*(tempz(l-stride(3))+q(j,k,l+stride(3)))
+                q(j,k,l) = a*q(j,k,l)+b*(tempz(l-stride(3))+tempz(l+stride(3)))
               end do
             end do
           end do
