@@ -6,7 +6,7 @@ from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.7 2011/02/24 00:51:46 grote Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.8 2011/03/16 00:16:27 rcohen Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -20,6 +20,7 @@ extends from i-1/2 to i+1/2.
 
  - conductors: a conductor or list of conductors which act as particle scrapers
                Note that each conductor MUST have a unique id.
+ - rnnmax: if set, is an upper bound to number of particles to inject per timestep per cell
 
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
@@ -27,7 +28,7 @@ conductors are an argument.
     """
     def __init__(self,js=None,conductors=None,vthermal=0.,
                  lcorrectede=None,l_inj_addtempz_abs=None,lsmooth121=0,
-                 grid=None):
+                 grid=None, rnnmax=None):
         self.vthermal = vthermal
         self.lcorrectede = lcorrectede
         self.l_inj_addtempz_abs = l_inj_addtempz_abs
@@ -53,6 +54,8 @@ conductors are an argument.
 
         # --- If the user specified the grid, then add the conductors
         if self.usergrid: self.updateconductors()
+
+        self.rnnmax = rnnmax
 
         self.enable()
 
@@ -216,6 +219,10 @@ conductors are an argument.
 
         # --- Make sure it is positive or zero
         rnn = maximum(rnn,0.)
+
+        # --- If the user has specified a non-zero upper bound to the number of particles, impose it here
+        if self.rnnmax:
+          rnn = minimum(rnn,self.rnnmax)
 
         # --- Scale appropriately for cylindrical coordinates
         # --- This accounts the difference in area of a grid cell in
