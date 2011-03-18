@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.184 $, $Date: 2011/02/07 18:18:23 $
+c@(#) File DTOP.F, version $Revision: 3.185 $, $Date: 2011/03/18 23:47:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -655,7 +655,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.184 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.185 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1853,7 +1853,7 @@ c     --- itask == 0.
       end
 c=============================================================================
       subroutine deposgridrzvect(itask,np,x,y,z,vx,vy,vz,w,nx,ny,grid,gridcount,
-     &                       xmin,xmax,ymin,ymax)
+     &                           xmin,xmax,ymin,ymax)
       integer(ISZ):: itask,nx,ny,np
       real(kind=8):: x(np), y(np), z(np), vx(np), vy(np), vz(np), w(np)
       real(kind=8):: grid(0:nx,0:ny,3), gridcount(0:nx,0:ny)
@@ -1951,6 +1951,92 @@ c     --- itask == 0.
           enddo
         enddo
       endif
+
+      return
+      end
+c=============================================================================
+      subroutine setgrid2dmodbspline2w(np,x,y,w,nx,ny,grid,xmin,xmax,ymin,ymax)
+      integer(ISZ):: nx,ny,np
+      real(kind=8):: x(np), y(np), w(np)
+      real(kind=8):: grid(-1:nx+1,-1:ny+1)
+      real(kind=8):: xmin,xmax,ymin,ymax
+
+c Lays weighted particles down onto a node centered 2-D mesh using a
+c modified second order B-spline.
+c The shape function is as follows:
+c S(x) = | 1 - 5/2 x**2 + 3/2 |x|**3  0 <= |x| <= 1
+c        | 1/2 (2 - |x|)**2 (1 - |x|) 1 <= |x| <= 2
+c        | 0                          otherwise
+c This has an FWHM of 1 grid cell. Note that it is negative in the
+c region 1 <= |x| <= 2.
+c
+c Arugments:
+c   np: number of particles
+c   x,y: arrays of particle positions
+c   w: array of particle weights
+c   nx,ny: number of grid cells
+c   grid: array where particle number will be accumulated. Note that with
+c         normal operation, grid needs to be set to zero before being passed in.
+c   xmin,xmax,ymin,ymax: extent of the grid, i.e. grid(0,0) is at (xmin,ymin),
+c                        grid(nx,ny) is at (xmax,ymax)
+
+      integer(ISZ):: ip,ix,iy
+      real(kind=8):: gx,gy,dxi,dyi,wx,wy
+      real(kind=8):: sxm1,sx00,sxp1,sxp2,sym1,sy00,syp1,syp2
+
+      if (xmax == xmin .or. ymax == ymin) then
+        call kaboom("setgrid2dw: the grid extent is zero, xmin==xmax or ymin==ymax")
+        return
+      endif
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+      dyi = ny/(ymax - ymin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gx = (x(ip) - xmin)*dxi
+        gy = (y(ip) - ymin)*dyi
+
+c       --- if within grid, accumulate
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny) then
+          ix = int(gx)
+          iy = int(gy)
+          wx = gx - ix
+          wy = gy - iy
+
+          sxm1 = -0.5*wx*(1. - wx)**2
+          sx00 = 1. - 2.5*wx**2 + 1.5*wx**3
+          sxp1 = 1. - 2.5*(1. - wx)**2 + 1.5*(1. - wx)**3
+          sxp2 = 0.5*wx**2*(wx - 1.)
+          sym1 = -0.5*wy*(1. - wy)**2
+          sy00 = 1. - 2.5*wy**2 + 1.5*wy**3
+          syp1 = 1. - 2.5*(1. - wy)**2 + 1.5*(1. - wy)**3
+          syp2 = 0.5*wy**2*(wy - 1.)
+
+          grid(ix-1,iy-1) = grid(ix-1,iy-1) + sxm1*sym1*w(ip)
+          grid(ix  ,iy-1) = grid(ix  ,iy-1) + sx00*sym1*w(ip)
+          grid(ix+1,iy-1) = grid(ix+1,iy-1) + sxp1*sym1*w(ip)
+          grid(ix+2,iy-1) = grid(ix+2,iy-1) + sxp2*sym1*w(ip)
+          grid(ix-1,iy  ) = grid(ix-1,iy  ) + sxm1*sy00*w(ip)
+          grid(ix  ,iy  ) = grid(ix  ,iy  ) + sx00*sy00*w(ip)
+          grid(ix+1,iy  ) = grid(ix+1,iy  ) + sxp1*sy00*w(ip)
+          grid(ix+2,iy  ) = grid(ix+2,iy  ) + sxp2*sy00*w(ip)
+          grid(ix-1,iy+1) = grid(ix-1,iy+1) + sxm1*syp1*w(ip)
+          grid(ix  ,iy+1) = grid(ix  ,iy+1) + sx00*syp1*w(ip)
+          grid(ix+1,iy+1) = grid(ix+1,iy+1) + sxp1*syp1*w(ip)
+          grid(ix+2,iy+1) = grid(ix+2,iy+1) + sxp2*syp1*w(ip)
+          grid(ix-1,iy+2) = grid(ix-1,iy+2) + sxm1*syp2*w(ip)
+          grid(ix  ,iy+2) = grid(ix  ,iy+2) + sx00*syp2*w(ip)
+          grid(ix+1,iy+2) = grid(ix+1,iy+2) + sxp1*syp2*w(ip)
+          grid(ix+2,iy+2) = grid(ix+2,iy+2) + sxp2*syp2*w(ip)
+
+        endif
+
+      enddo
 
       return
       end
@@ -4303,6 +4389,59 @@ c     --- since cout is incremented for both ip and jp.
 
       enddo
 
+      return
+      end
+c=============================================================================
+      subroutine enforcepositivity2d(nx,nz,fgrid)
+      integer(ISZ):: nx,nz
+      real(kind=8):: fgrid(-1:nx+1,-1:nz+1)
+
+      integer(ISZ):: ix,iz,iparity,ix0,niter
+      real(kind=8):: sumcap,fminimum
+
+      iparity = 0
+      fminimum = -1.
+      niter = 0
+      do while (fminimum < 0. .and. niter < 5)
+        niter = niter + 1
+        fminimum = 0.
+
+        do iparity = 0,1
+          do iz = 0,nz
+            ix0 = mod(iz + iparity,2)
+            do ix = ix0,nx,2
+
+              if (fgrid(ix,iz) < 0.) then
+                sumcap = max(0.d0,fgrid(ix-1,iz  )) +
+     &                   max(0.d0,fgrid(ix+1,iz  )) +
+     &                   max(0.d0,fgrid(ix  ,iz-1)) +
+     &                   max(0.d0,fgrid(ix  ,iz+1))
+                if (fgrid(ix-1,iz) > 0.) then
+                  fgrid(ix-1,iz) = fgrid(ix-1,iz)*(1.d0 + fgrid(ix,iz)/sumcap)
+                  fminimum = min(fminimum,fgrid(ix-1,iz))
+                endif
+                if (fgrid(ix+1,iz) > 0.) then
+                  fgrid(ix+1,iz) = fgrid(ix+1,iz)*(1.d0 + fgrid(ix,iz)/sumcap)
+                  fminimum = min(fminimum,fgrid(ix+1,iz))
+                endif
+                if (fgrid(ix,iz-1) > 0.) then
+                  fgrid(ix,iz-1) = fgrid(ix,iz-1)*(1.d0 + fgrid(ix,iz)/sumcap)
+                  fminimum = min(fminimum,fgrid(ix,iz-1))
+                endif
+                if (fgrid(ix,iz+1) > 0.) then
+                  fgrid(ix,iz+1) = fgrid(ix,iz+1)*(1.d0 + fgrid(ix,iz)/sumcap)
+                  fminimum = min(fminimum,fgrid(ix,iz+1))
+                endif
+                fgrid(ix,iz) = 0.d0
+
+              endif
+
+            enddo
+          enddo
+        enddo
+
+      enddo
+      
       return
       end
 c=============================================================================

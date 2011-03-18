@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.291 $, $Date: 2011/02/07 18:18:23 $
+#@(#) File TOP.V, version $Revision: 3.292 $, $Date: 2011/03/18 23:48:00 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.291 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.292 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2786,6 +2786,12 @@ deposgridrzvect(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
             xmin:real,xmax:real,ymin:real,ymax:real)
         subroutine
         # Deposits velocities onto a 2-D radial grid using linear weighting.
+setgrid2dmodbspline2w(np:integer,x(np):real,y(np):real,w(np):real,
+           nx:integer,ny:integer,grid(-1:nx+1,-1:ny+1):real,
+           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
+        # Deposits weighted particles on a 2-D grid using a modified
+        # second order B-spline. This is intended for use with the
+        # Forward Semi-Lagrange algorithm.
 getgrid2d(np:integer,x(np):real,y(np):real,z(np):real,
           nx:integer,ny:integer,grid(0:nx,0:ny):real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
@@ -3108,6 +3114,7 @@ seteb_in_boosted_frame(n,ex(n):real,ey(n):real,ez(n):real,
                          bx(n):real,by(n):real,bz(n):real,
                          uxf:real,uyf:real,uzf:real,gammaf:real) subroutine
        # computes E and B fields in Lorentz boosted frame
+enforcepositivity2d(nx:integer,nz:integer,fgrid(-1:nx+1,-1:nz+1):real) subroutine
 
 %%%%%%% Decomposition:
 my_index integer # Processor number
