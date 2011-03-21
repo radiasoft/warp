@@ -113,7 +113,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.240 2011/02/15 19:44:09 grote Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.241 2011/03/21 21:43:41 grote Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2333,9 +2333,6 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
 Creates a grid object which can generate conductor data.
     """
     _default = lambda x,d: (x,d)[x is None]
-    self.zbeam = zbeam
-    if self.zbeam is None: zbeam = top.zbeam
-    else:                  zbeam = self.zbeam
 
     if solver is None:
       solver = w3d
@@ -2377,6 +2374,8 @@ Creates a grid object which can generate conductor data.
     self.l4symtry = _default(l4symtry,solver.l4symtry)
     self.decomp = _default(decomp,solvertop.fsdecomp)
 
+    self._zbeam = zbeam
+    zbeam = self.zbeam
     self.xmin = _default(xmin,self.xmmin)
     self.xmax = _default(xmax,self.xmmax)
     self.ymin = _default(ymin,self.ymmin)
@@ -2488,6 +2487,15 @@ Creates a grid object which can generate conductor data.
     self.interceptslist = []
     self.interceptsinstalled = []
 
+  def getzbeam(self):
+    if self._zbeam is None:
+      return top.zbeam
+    else:
+      return self._zbeam
+  def setzbeam(self,zbeam):
+    self._zbeam = zbeam
+  zbeam = property(getzbeam,setzbeam)
+
   def getmeshsize(self,mglevel=0):
     dx = self.dx*self.mglevellx[mglevel]
     dy = self.dy*self.mglevelly[mglevel]
@@ -2505,8 +2513,7 @@ Creates a grid object which can generate conductor data.
     dx,dy,dz,nxlocal,nylocal,nzlocal,ix,iy,iz = self.getmeshsize(mglevel)
     _griddzkludge[0] = dz
 
-    if self.zbeam is None: zbeam = top.zbeam
-    else:                  zbeam = self.zbeam
+    zbeam = self.zbeam
 
     xmin = max(self.xmin,self.xmmin+ix*dx)
     xmax = min(self.xmax,self.xmmin+(ix+nxlocal)*dx)
@@ -2544,8 +2551,7 @@ Creates a grid object which can generate conductor data.
     dx,dy,dz,nxlocal,nylocal,nzlocal,ix,iy,iz = self.getmeshsize(mglevel)
     _griddzkludge[0] = dz
 
-    if self.zbeam is None: zbeam = top.zbeam
-    else:                  zbeam = self.zbeam
+    zbeam = self.zbeam
 
     xmin = max(self.xmin,self.xmmin+ix*dx)
     xmax = min(self.xmax,self.xmmin+(ix+nxlocal)*dx)
@@ -2586,8 +2592,7 @@ Creates a grid object which can generate conductor data.
     dx,dy,dz,nxlocal,nylocal,nzlocal,ix,iy,iz = self.getmeshsize(mglevel)
 
     if lparallel:
-      if self.zbeam is None: zbeam = top.zbeam
-      else:                  zbeam = self.zbeam
+      zbeam = self.zbeam
       xmin = max(self.xmin,self.xmmin+ix*dx)
       xmax = min(self.xmax,self.xmmin+(ix+nxlocal)*dx)
       ymin = max(self.ymin,self.ymmin+iy*dy)
