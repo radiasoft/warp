@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.102 2011/02/07 18:17:22 grote Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.103 2011/03/21 21:45:28 grote Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -75,6 +75,12 @@ Class for creating particle scraper for conductors
  - grid=None: A instance of the Grid class can be supplied, allowing control
               over the region where the scraping is done and the resolution
               of the scraping data.
+ - gridmode=0: Flag which sets whether the grid is fixed or automatically
+               updated as the beam frame moves. When 0, the grid is
+               automatically updated, when 1, the grid is fixed.
+               Note that when gridmode=0 and the beam frame is moving,
+               there will be some overhead since the internal data related
+               to the conductor location will be updated every time step.
  - nxscale=1,nyscale=1,nzscale=1: Scale factor on the number of grid cells
                                   on the workig mesh. These should be integer
                                   values.
@@ -99,7 +105,7 @@ Various methods are accessible if additional fine control is needed.
                     lrefineintercept=0,lrefineallintercept=0,nstepsperorbit=8,
                     lcollectlpdata=0,mglevel=0,aura=0.,
                     install=1,lbeforescraper=0,lfastscraper=0,
-                    grid=None,nxscale=1,nyscale=1,nzscale=1, 
+                    grid=None,gridmode=0,nxscale=1,nyscale=1,nzscale=1, 
                     interceptvelocitymethod='finitedifference',
                     species=None):
     self.mglevel = mglevel
@@ -116,6 +122,7 @@ Various methods are accessible if additional fine control is needed.
     self.usergrid = (grid is not None)
     # --- Don't create the grid until it is needed.
     self.grid = grid
+    self.gridmode = gridmode
     self.nxscale = nxscale
     self.nyscale = nyscale
     self.nzscale = nzscale
@@ -298,7 +305,8 @@ data needed by the grid is set up. This will normally be called automatically.
             gdc.iz[gdc.izproc] == tdc.iz[tdc.izproc]*self.nzscale and
             gdc.nx[gdc.ixproc] == tdc.nx[tdc.ixproc]*self.nxscale and
             gdc.ny[gdc.iyproc] == tdc.ny[tdc.iyproc]*self.nyscale and
-            gdc.nz[gdc.izproc] == tdc.nz[tdc.izproc]*self.nzscale)
+            gdc.nz[gdc.izproc] == tdc.nz[tdc.izproc]*self.nzscale and
+            (self.zbeamprev == top.zbeam or self.gridmode != 0))
       else:
         gridchanged = 1
 
@@ -310,6 +318,7 @@ data needed by the grid is set up. This will normally be called automatically.
         self.grid = Grid(decomp=copy.deepcopy(top.ppdecomp),
                          nxscale=self.nxscale,nyscale=self.nyscale,
                          nzscale=self.nzscale)
+        self.zbeamprev = self.grid.zbeam
 
     if self.newconductors or gridchanged:
       self.newconductors = false
