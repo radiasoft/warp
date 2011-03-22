@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.41 $, $Date: 2010/12/07 01:32:36 $
+c@(#) File top_lattice.F, version $Revision: 3.42 $, $Date: 2011/03/22 22:58:15 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -3640,6 +3640,8 @@ c           --- Apply the rest of the multipoles.
 
         do ip=1,np
 
+          if (imm(ip) == 0) cycle
+
 c         --- Rotate field componets back to the lab frame. These are the
 c         --- same rotations as in mltlocat, but in opposite order with
 c         --- the sign of the angle reversed.
@@ -3662,12 +3664,14 @@ c         --- the sign of the angle reversed.
 c       --- do coordinate transform on fields back to warped coordinates
         if (bends .and. linbend) then
           do ip=1,np
+            if (imm(ip) == 0) cycle
             ex(ip) = ex(ip) + tex(ip)*cos(ttt(ip)) - tez(ip)*sin(ttt(ip))
             ey(ip) = ey(ip) + tey(ip)
             ez(ip) = ez(ip) + tex(ip)*sin(ttt(ip)) + tez(ip)*cos(ttt(ip))
           enddo
         else
           do ip=1,np
+            if (imm(ip) == 0) cycle
             ex(ip) = ex(ip) + tex(ip)
             ey(ip) = ey(ip) + tey(ip)
             ez(ip) = ez(ip) + tez(ip)
@@ -3845,6 +3849,8 @@ c           --- Apply the rest of the multipoles.
 
         do ip=1,np
 
+          if (imm(ip) == 0) cycle
+
 c         --- Rotate field componets back to the lab frame. These are the
 c         --- same rotations as in mltlocat, but in opposite order with
 c         --- the sign of the angle reversed.
@@ -3867,12 +3873,14 @@ c         --- the sign of the angle reversed.
 c       --- do coordinate transform on fields back to warped coordinates
         if (bends .and. linbend) then
           do ip=1,np
+            if (imm(ip) == 0) cycle
             bx(ip) = bx(ip) + tbx(ip)*cos(ttt(ip)) - tbz(ip)*sin(ttt(ip))
             by(ip) = by(ip) + tby(ip)
             bz(ip) = bz(ip) + tbx(ip)*sin(ttt(ip)) + tbz(ip)*cos(ttt(ip))
           enddo
         else
           do ip=1,np
+            if (imm(ip) == 0) cycle
             bx(ip) = bx(ip) + tbx(ip)
             by(ip) = by(ip) + tby(ip)
             bz(ip) = bz(ip) + tbz(ip)
@@ -4096,6 +4104,8 @@ c             --- if particle is in bend
                 ttt(ip) = (bze - zptemp)*bendrci
                 zz = bze - rrr*sin(ttt(ip))
                 xx = rrr*cos(ttt(ip)) - cbendrc(iz)
+              else
+                ttt(ip) = 0.
               endif
 c           --- apply coordinate change right of mult, using index of (iz+1)
             elseif (zptemp >= zcent .and. iz < nzl) then
@@ -4122,7 +4132,11 @@ c             --- if particle is in bend
                 ttt(ip) = - (zptemp - bzs)*bendrci
                 zz = bzs - rrr*sin(ttt(ip))
                 xx = rrr*cos(ttt(ip)) - cbendrc(iz+1)
+              else
+                ttt(ip) = 0.
               endif
+            else
+              ttt(ip) = 0.
             endif
           endif
 c         --- end of coordinate transformation out of the bends
