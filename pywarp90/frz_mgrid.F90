@@ -6612,7 +6612,7 @@ else ! IF(solvergeom==XZgeom) then
   IF( solvergeom==XYgeom .or. solvergeom==Ygeom .or. solvergeom==Rgeom) then
     zmin0 = basegrid%zminp
   else ! solvergeom=XZgeom
-    zmin0 = basegrid%zminp-zgrid
+    zmin0 = basegrid%zminp+zgrid
   END if
 
   qw = q
@@ -6738,7 +6738,7 @@ else ! IF(solvergeom==XZgeom) then
   IF( solvergeom==XYgeom) then
     zmin0 = basegrid%zminp
   else ! solvergeom=XZgeom
-    zmin0 = basegrid%zminp-zgrid
+    zmin0 = basegrid%zminp+zgrid
   END if
 
   ! make charge deposition using CIC weighting
@@ -6844,7 +6844,7 @@ else ! IF(solvergeom==XZgeom) then
   IF( solvergeom==XYgeom) then
     zmin0 = grid%zminp
   else ! solvergeom=XZgeom
-    zmin0 = grid%zminp-zgrid
+    zmin0 = grid%zminp+zgrid
   END if
 
   qw = q
@@ -6968,7 +6968,7 @@ else ! IF(solvergeom==XZgeom) then
   IF( solvergeom==XYgeom) then
     zmin0 = grid%zminp
   else ! solvergeom=XZgeom
-    zmin0 = grid%zminp-zgrid
+    zmin0 = grid%zminp+zgrid
   END if
 
   ! make charge deposition using CIC weighting
