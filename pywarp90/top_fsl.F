@@ -103,7 +103,8 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine createparticlesfromfgrid(pgroup,js,geometry,zbeam,vbeam)
+      subroutine createparticlesfromfgrid(pgroup,js,geometry,zbeam,vbeam,
+     &                                    pbounds)
       use Subtimerstop
       use ForwardSemiLagrange
       use ParticleGroupmodule
@@ -111,11 +112,14 @@ c=============================================================================
       type(ParticleGroup):: pgroup
       integer(ISZ):: js,geometry
       real(kind=8):: zbeam,vbeam
+      integer(ISZ):: pbounds(0:5)
 
       real(kind=8),pointer:: xp(:),yp(:),zp(:),uxp(:),uyp(:),uzp(:)
       real(kind=8):: vybeam,vzbeam
       integer(ISZ):: npnew,ip
       integer(ISZ):: ix,iz,ivx,ivz
+      integer(ISZ):: ix0,iz0
+      integer(ISZ):: ix1,iz1
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -124,11 +128,33 @@ c=============================================================================
         return
       endif
 
+      if (pbounds(0) == 0) then
+        ix0 = 1
+      else
+        ix0 = 0
+      endif
+      if (pbounds(1) == 0 .or. pbounds(1) == 2) then
+        ix1 = nx_fsl - 1
+      else
+        ix1 = nx_fsl
+      endif
+
+      if (pbounds(4) == 0) then
+        iz0 = 1
+      else
+        iz0 = 0
+      endif
+      if (pbounds(5) == 0 .or. pbounds(5) == 2) then
+        iz1 = nz_fsl - 1
+      else
+        iz1 = nz_fsl
+      endif
+
 c     --- Count how many particles will be created, the number of fgrid
 c     --- cells that are positive.
       npnew = 0
-      do iz=0,nz_fsl
-        do ix=0,nx_fsl
+      do iz=iz0,iz1
+        do ix=ix0,ix1
           do ivz=0,nvz_fsl
             do ivx=0,nvx_fsl
               if (fgrid_fsl(ivx,ivz,ix,iz) > 0.) npnew = npnew + 1
@@ -167,8 +193,8 @@ c       -- XYgeom
 
 c     --- Regenerate the weighted particles at the grid locations
       ip = pgroup%ins(js+1)
-      do iz=0,nz_fsl
-        do ix=0,nx_fsl
+      do iz=iz0,iz1
+        do ix=ix0,ix1
           do ivz=0,nvz_fsl
             do ivx=0,nvx_fsl
               if (fgrid_fsl(ivx,ivz,ix,iz) > 0.) then
@@ -635,16 +661,16 @@ c     endif
       return
       end
 c=============================================================================
-      subroutine remapparticles2d2v(pgroup,geometry,zbeam)
+      subroutine remapparticles2d2v(pgroup,geometry,zbeam,l4symtry,l2symtry)
       use Subtimerstop
       use ForwardSemiLagrange
       use ParticleGroupmodule
       use Particles,Only: wpid
       use InGen,Only: pboundxy,pbound0,pboundnz,pbounds
-      use InGen3d,Only: l4symtry,l2symtry
       type(ParticleGroup):: pgroup
       integer(ISZ):: geometry
       real(kind=8):: zbeam
+      logical(ISZ):: l4symtry,l2symtry
 
       real(kind=8),pointer:: xp(:),zp(:),uxp(:),uzp(:)
       integer(ISZ):: js,ip,i1,i2
@@ -727,7 +753,7 @@ c       --- This is a serial place holder.
      &                             fthreshold_fsl)
 
 c       --- Regenerate the particles from the distribution
-        call createparticlesfromfgrid(pgroup,js,geometry,zbeam,0.)
+        call createparticlesfromfgrid(pgroup,js,geometry,zbeam,0.,pbounds)
         i1 = pgroup%ins(js+1)
         i2 = i1 + pgroup%nps(js+1) - 1
 
