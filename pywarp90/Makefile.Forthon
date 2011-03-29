@@ -9,8 +9,8 @@ all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrz
 	rm -f warpC.so
 	python setup.py $(FCOMP) build --build-platlib .
 
-toppy.$(SO): top.F top_lattice.F dtop.F top.v
-	Forthon -a $(FCOMP) $(DEBUG) top top_lattice.F dtop.F
+toppy.$(SO): top.F top_lattice.F top_fsl.F dtop.F top.v
+	Forthon -a $(FCOMP) $(DEBUG) top top_lattice.F top_fsl.F dtop.F
 
 envpy.$(SO): toppy.$(SO) env.F env.v
 	Forthon -a $(FCOMP) $(DEBUG) env
