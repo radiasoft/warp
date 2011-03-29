@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.293 $, $Date: 2011/03/29 16:03:52 $
+#@(#) File TOP.V, version $Revision: 3.294 $, $Date: 2011/03/29 20:35:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.293 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.294 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2480,7 +2480,7 @@ applyboundaryconditionsonfgrid2d2v(nvx:integer,nvz:integer,
 applyminmaxboundaryconditions2d(nx:integer,nz:integer,v(-1:nx+1,-1:nz+1):real,
                                 pbounds(0:5):integer,lmax:logical) subroutine
 createparticlesfromfgrid(pgroup:ParticleGroup,js:integer,geometry:integer,
-                         zbeam:real,vbeam:real) subroutine
+                         zbeam:real,vbeam:real,pbounds(0:5):integer) subroutine
 enforcepositivity2d(nx:integer,nz:integer,fgrid(-1:nx+1,-1:nz+1):real,
                     threshold:real)
                    subroutine
@@ -2495,7 +2495,8 @@ findminmaxongrid2d2v(np:integer,x(np):real,z(np):real,vx(np):real,vz(np):real,
                      subroutine
 loadfgridguassian(nz:integer,density(0:nz):real,radius(0:nz):real,
                   vthermalperp:real,vthermalparallel:real) subroutine
-remapparticles2d2v(pgroup:ParticleGroup,geometry:integer,zbeam:real) subroutine
+remapparticles2d2v(pgroup:ParticleGroup,geometry:integer,zbeam:real,
+                   l4symtry:logical,l2symtry:logical) subroutine
 setgrid2dmodbspline2w(np:integer,x(np):real,z(np):real,w(np):real,
            nx:integer,nz:integer,grid(-1:nx+1,-1:nz+1):real,
            xmin:real,xmax:real,zmin:real,zmax:real) subroutine
