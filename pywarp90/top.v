@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.292 $, $Date: 2011/03/18 23:48:00 $
+#@(#) File TOP.V, version $Revision: 3.293 $, $Date: 2011/03/29 16:03:52 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.292 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.293 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1109,6 +1109,8 @@ pboundnz                  integer /2/
 pboundxy                  integer /0/
    # boundary condition for particles at x and y (absorb/dirichlet: absorption, 
    # reflect/neumann: reflection, periodic: periodicity)
+pbounds(0:5) integer /6*0/ # Type of boundaries at edge of mesh for particles,
+                           # in order of lower, upper for x, y, z.
 ibpush                    integer /1/
    # Specifies type of B-advance: 0-none, 1-fast, 2-with tan(alpha)/alpha
 ifeears                   integer /0/
@@ -2451,6 +2453,66 @@ by(npmax)       _real [T]       # By of particles
 bz(npmax)       _real [T]       # Bz of particles
 pid(npmax,npid) _real [1]       # Particle ID - used for various purposes
 
+*********** ForwardSemiLagrange dump:
+dvx_fsl real /0./ # Distribution grid cell size in vx
+dvz_fsl real /0./ # Distribution grid cell size in vz
+dx_fsl real /0./ # Distribution grid cell size in x
+dz_fsl real /0./ # Distribution grid cell size in z
+nvx_fsl integer /0/ # Distribution grid size in vx
+nvz_fsl integer /0/ # Distribution grid size in vz
+nx_fsl integer /0/ # Distribution grid size in x
+nz_fsl integer /0/ # Distribution grid size in z
+vxmin_fsl(-1:nx_fsl+1,-1:nz_fsl+1) _real # Distribution grid minimum vx
+vzmin_fsl(-1:nx_fsl+1,-1:nz_fsl+1) _real # Distribution grid minimum vz
+vxmax_fsl(-1:nx_fsl+1,-1:nz_fsl+1) _real # Distribution grid maximum vx
+vzmax_fsl(-1:nx_fsl+1,-1:nz_fsl+1) _real # Distribution grid maximum vz
+xmin_fsl real /0./ # Distribution grid minimum x
+zmin_fsl real /0./ # Distribution grid minimum z
+xmax_fsl real /0./ # Distribution grid maximum x
+zmax_fsl real /0./ # Distribution grid maximum z
+fthreshold_fsl real /0./ # Threshold below which values of f are removed.
+fgrid_fsl(-1:nvx_fsl+1,-1:nvz_fsl+1,-1:nx_fsl+1,-1:nz_fsl+1) _real
+                   # Distribution grid
+applyboundaryconditionsonfgrid2d2v(nvx:integer,nvz:integer,
+                                 nx:integer,nz:integer,
+                                 fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1):real,
+                                 pbounds(0:5):integer) subroutine
+applyminmaxboundaryconditions2d(nx:integer,nz:integer,v(-1:nx+1,-1:nz+1):real,
+                                pbounds(0:5):integer,lmax:logical) subroutine
+createparticlesfromfgrid(pgroup:ParticleGroup,js:integer,geometry:integer,
+                         zbeam:real,vbeam:real) subroutine
+enforcepositivity2d(nx:integer,nz:integer,fgrid(-1:nx+1,-1:nz+1):real,
+                    threshold:real)
+                   subroutine
+enforcepositivity2d2v(nvx:integer,nvz:integer,nx:integer,nz:integer,
+                      fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1):real,
+                      threshold:real) subroutine
+findminmaxongrid2d2v(np:integer,x(np):real,z(np):real,vx(np):real,vz(np):real,
+                     nx:integer,nz:integer,
+                     xmin:real,xmax:real,zmin:real,zmax:real,
+                     vxmin(-1:nx+1,-1:nz+1):real,vxmax(-1:nx+1,-1:nz+1):real,
+                     vzmin(-1:nx+1,-1:nz+1):real,vzmax(-1:nx+1,-1:nz+1):real)
+                     subroutine
+loadfgridguassian(nz:integer,density(0:nz):real,radius(0:nz):real,
+                  vthermalperp:real,vthermalparallel:real) subroutine
+remapparticles2d2v(pgroup:ParticleGroup,geometry:integer,zbeam:real) subroutine
+setgrid2dmodbspline2w(np:integer,x(np):real,z(np):real,w(np):real,
+           nx:integer,nz:integer,grid(-1:nx+1,-1:nz+1):real,
+           xmin:real,xmax:real,zmin:real,zmax:real) subroutine
+        # Deposits weighted particles on a 2-D grid using a modified
+        # second order B-spline. This is intended for use with the
+        # Forward Semi-Lagrange algorithm.
+setgrid2d2vmodbspline2w(np:integer,x(np):real,z(np):real,
+                        vx(np):real,vz(np):real,w(np):real,
+                        nvx:integer,nvz:integer,nx:integer,nz:integer,
+                        grid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1):real,
+                        vxmin(-1:nx+1,-1:nz+1):real,dvx:real,
+                        vzmin(-1:nx+1,-1:nz+1):real,dvz:real,
+                        xmin:real,dx:real,zmin:real,dz:real) subroutine
+        # Deposits weighted particles on a 2-D-2-V grid using a modified
+        # second order B-spline. This is intended for use with the
+        # Forward Semi-Lagrange algorithm.
+ 
 *********** Subcycling dump:
 ndtsaveraging integer /0/ # Sets the type of averaging to do when using
                           # subcycling.
@@ -2786,12 +2848,6 @@ deposgridrzvect(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
             xmin:real,xmax:real,ymin:real,ymax:real)
         subroutine
         # Deposits velocities onto a 2-D radial grid using linear weighting.
-setgrid2dmodbspline2w(np:integer,x(np):real,y(np):real,w(np):real,
-           nx:integer,ny:integer,grid(-1:nx+1,-1:ny+1):real,
-           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
-        # Deposits weighted particles on a 2-D grid using a modified
-        # second order B-spline. This is intended for use with the
-        # Forward Semi-Lagrange algorithm.
 getgrid2d(np:integer,x(np):real,y(np):real,z(np):real,
           nx:integer,ny:integer,grid(0:nx,0:ny):real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
@@ -3114,7 +3170,6 @@ seteb_in_boosted_frame(n,ex(n):real,ey(n):real,ez(n):real,
                          bx(n):real,by(n):real,bz(n):real,
                          uxf:real,uyf:real,uzf:real,gammaf:real) subroutine
        # computes E and B fields in Lorentz boosted frame
-enforcepositivity2d(nx:integer,nz:integer,fgrid(-1:nx+1,-1:nz+1):real) subroutine
 
 %%%%%%% Decomposition:
 my_index integer # Processor number
@@ -3372,3 +3427,15 @@ timezgapcorrxy         real /0./
 timeacclbfrm           real /0./
 
 timegridcrossingmoments real /0./
+
+timeapplyboundaryconditionsonfgrid2d2v real /0./
+timeapplyminmaxboundaryconditions2d    real /0./
+timecreateparticlesfromfgrid           real /0./
+timeenforcepositivity2d                real /0./
+timeenforcepositivity2d2v              real /0./
+timefindminmaxongrid2d2v               real /0./
+timeloadfgridguassian                  real /0./
+timeremapparticles2d2v                 real /0./
+timesetgrid2dmodbspline2w              real /0./
+timesetgrid2d2vmodbspline2w            real /0./
+
