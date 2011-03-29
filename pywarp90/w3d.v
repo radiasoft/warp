@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.317 $, $Date: 2011/02/24 00:52:34 $
+#@(#) File W3D.V, version $Revision: 3.318 $, $Date: 2011/03/29 16:04:07 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.317 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.318 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1001,6 +1001,9 @@ padvnc3d(center:string,pgroup:ParticleGroup)
              subroutine # Advances particles and rho
 perphi3d()
              subroutine # Equates end slices of phi for periodicity
+setboundsfromflags(bounds(0:5):integer,boundxy:integer,bound0:integer,
+                   boundnz:integer,
+                   l2symtry:integer,l4symtry:integer) subroutine
 applyrhoboundaryconditions()
              subroutine # Applies boundary conditions to rho
 applyrhoboundaryconditions3d(rho:real,nc:integer,
