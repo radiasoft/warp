@@ -28,9 +28,8 @@ c     --- Always zero out the data at the extrema in velocity
         fgrid(:,:,nx,0:nz) = 2.*fgrid(:,:,nx,0:nz)
       endif
       if (pbounds(0) == 2 .and. pbounds(1) == 2) then
-        fgrid(:,:,nx,0:nz) = fgrid(:,:,nx,0:nz) + fgrid(:,:,0,0:nz)
-        fgrid(:,:,-1:0,0:nz) = fgrid(:,:,nx-1:nx,0:nz)
-        fgrid(:,:,nx+1,0:nz) = fgrid(:,:,1,0:nz)
+        fgrid(:,:,-1:1,0:nz) = fgrid(:,:,-1:1,0:nz) + fgrid(:,:,nx-1:nx+1,0:nz)
+        fgrid(:,:,nx-1:nx+1,0:nz) = fgrid(:,:,-1:1,0:nz)
       endif
 
       if (pbounds(4) == 0) fgrid(:,:,:,-1) = 0.
@@ -44,9 +43,8 @@ c     --- Always zero out the data at the extrema in velocity
         fgrid(:,:,:,nz) = 2.*fgrid(:,:,:,nz)
       endif
       if (pbounds(4) == 2 .and. pbounds(5) == 2) then
-        fgrid(:,:,:,nz) = fgrid(:,:,:,nz) + fgrid(:,:,:,0)
-        fgrid(:,:,:,-1:0) = fgrid(:,:,:,nz-1:nz)
-        fgrid(:,:,:,nz+1) = fgrid(:,:,:,1)
+        fgrid(:,:,:,-1:1) = fgrid(:,:,:,-1:1) + fgrid(:,:,:,nz-1:nz+1)
+        fgrid(:,:,:,nz-1:nz+1) = fgrid(:,:,:,-1:1)
       endif
 
 !$OMP MASTER
@@ -71,27 +69,23 @@ c=============================================================================
       if (pbounds(0) == 0 .or. pbounds(0) == 1) v(-1,0:nz) = v(1,0:nz)
       if (pbounds(1) == 0 .or. pbounds(1) == 1) v(nx+1,0:nz) = v(nx-1,0:nz)
       if (pbounds(0) == 2 .and. pbounds(1) == 2) then
-        v(-1,0:nz) = v(nx-1,0:nz)
         if (lmax) then
-          v(nx,0:nz) = max(v(nx,0:nz),v(0,0:nz))
+          v(-1:1,0:nz) = max(v(-1:1,0:nz),v(nx-1:nx+1,0:nz))
         else
-          v(nx,0:nz) = min(v(nx,0:nz),v(0,0:nz))
+          v(-1:1,0:nz) = min(v(-1:1,0:nz),v(nx-1:nx+1,0:nz))
         endif
-        v(0,0:nz) = v(nx,0:nz)
-        v(nx+1,0:nz) = v(1,0:nz)
+        v(nx-1:nx+1,0:nz) = v(-1:1,0:nz)
       endif
 
       if (pbounds(4) == 0 .or. pbounds(4) == 1) v(:,-1) = v(:,1)
       if (pbounds(5) == 0 .or. pbounds(5) == 1) v(:,nz+1) = v(:,nz-1)
       if (pbounds(4) == 2 .and. pbounds(5) == 2) then
-        v(:,-1) = v(:,nz-1)
         if (lmax) then
-          v(:,nz) = max(v(:,nz),v(:,0))
+          v(:,-1:1) = max(v(:,-1:1),v(:,nz-1:nz+1))
         else
-          v(:,nz) = min(v(:,nz),v(:,0))
+          v(:,-1:1) = min(v(:,-1:1),v(:,nz-1:nz+1))
         endif
-        v(:,0) = v(:,nz)
-        v(:,nz+1) = v(:,1)
+        v(:,nz-1:nz+1) = v(:,-1:1)
       endif
 
 !$OMP MASTER
