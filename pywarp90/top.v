@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.294 $, $Date: 2011/03/29 20:35:48 $
+#@(#) File TOP.V, version $Revision: 3.295 $, $Date: 2011/04/02 00:20:58 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.294 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.295 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2471,12 +2471,13 @@ zmin_fsl real /0./ # Distribution grid minimum z
 xmax_fsl real /0./ # Distribution grid maximum x
 zmax_fsl real /0./ # Distribution grid maximum z
 fthreshold_fsl real /0./ # Threshold below which values of f are removed.
+flost_fsl real /0./ # The sum of the f that is lost at the boundaries
 fgrid_fsl(-1:nvx_fsl+1,-1:nvz_fsl+1,-1:nx_fsl+1,-1:nz_fsl+1) _real
                    # Distribution grid
 applyboundaryconditionsonfgrid2d2v(nvx:integer,nvz:integer,
                                  nx:integer,nz:integer,
                                  fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1):real,
-                                 pbounds(0:5):integer) subroutine
+                                 pbounds(0:5):integer,flost_fsl:real) subroutine
 applyminmaxboundaryconditions2d(nx:integer,nz:integer,v(-1:nx+1,-1:nz+1):real,
                                 pbounds(0:5):integer,lmax:logical) subroutine
 createparticlesfromfgrid(pgroup:ParticleGroup,js:integer,geometry:integer,

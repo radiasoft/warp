@@ -2,38 +2,68 @@
 c=============================================================================
 c Routines for handing the Forward semi-Lagrangian method
 c=============================================================================
-      subroutine applyboundaryconditionsonfgrid2d2v(nvx,nvz,nx,nz,fgrid,pbounds)
+      subroutine applyboundaryconditionsonfgrid2d2v(nvx,nvz,nx,nz,fgrid,pbounds,
+     &                                              flost_fsl)
       use Subtimerstop
       integer(ISZ):: nvx,nvz,nx,nz
       real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1)
       integer(ISZ):: pbounds(0:5)
+      real(kind=8):: flost_fsl
 
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-c     --- Always zero out the data at the extrema in velocity
+c     --- The the data from the guard cells on velocity and move it to
+c     --- the edge of the domain. This avoids throwing data away, but
+c     --- does make errors in energy and momentum.
+      fgrid(0,:,:,:) = fgrid(0,:,:,:) + fgrid(-1,:,:,:)
       fgrid(-1,:,:,:) = 0.
+      fgrid(nvx,:,:,:) = fgrid(nvx,:,:,:) + fgrid(nvx+1,:,:,:)
       fgrid(nvx+1,:,:,:) = 0.
+      fgrid(:,0,:,:) = fgrid(:,0,:,:) + fgrid(:,-1,:,:)
       fgrid(:,-1,:,:) = 0.
+      fgrid(:,nvz,:,:) = fgrid(:,nvz,:,:) + fgrid(:,nvz+1,:,:)
       fgrid(:,nvz+1,:,:) = 0.
 
-      if (pbounds(0) == 0) fgrid(:,:,-1,0:nz) = 0.
-      if (pbounds(1) == 0) fgrid(:,:,nx+1,0:nz) = 0.
+      if (pbounds(0) == 0) then
+c       --- Save the sum of the data in the guard cell which is about to
+c       --- be thrown away.
+        flost_fsl = flost_fsl + sum(fgrid(:,:,-1:0,:))
+        fgrid(:,:,-1:0,:) = 0.
+      endif
+      if (pbounds(1) == 0) then
+c       --- Save the sum of the data in the guard cell which is about to
+c       --- be thrown away.
+        flost_fsl = flost_fsl + sum(fgrid(:,:,nx:nx+1,:))
+        fgrid(:,:,nx:nx+1,:) = 0.
+      endif
       if (pbounds(0) == 1) then
-        fgrid(:,:,-1,0:nz) = fgrid(:,:,1,0:nz)
-        fgrid(:,:,0,0:nz) = 2.*fgrid(:,:,0,0:nz)
+        fgrid(:,:,1,:) = fgrid(:,:,1,:) + fgrid(:,:,-1,:)
+        fgrid(:,:,-1,:) = fgrid(:,:,1,:)
+        fgrid(:,:,0,:) = 2.*fgrid(:,:,0,:)
       endif
       if (pbounds(1) == 1) then
-        fgrid(:,:,nx+1,0:nz) = fgrid(:,:,nx-1,0:nz)
-        fgrid(:,:,nx,0:nz) = 2.*fgrid(:,:,nx,0:nz)
+        fgrid(:,:,nx-1,:) = fgrid(:,:,nx-1,:) + fgrid(:,:,nx+1,:)
+        fgrid(:,:,nx+1,:) = fgrid(:,:,nx-1,:)
+        fgrid(:,:,nx,:) = 2.*fgrid(:,:,nx,:)
       endif
       if (pbounds(0) == 2 .and. pbounds(1) == 2) then
-        fgrid(:,:,-1:1,0:nz) = fgrid(:,:,-1:1,0:nz) + fgrid(:,:,nx-1:nx+1,0:nz)
-        fgrid(:,:,nx-1:nx+1,0:nz) = fgrid(:,:,-1:1,0:nz)
+        fgrid(:,:,-1:1,:) = fgrid(:,:,-1:1,:) + fgrid(:,:,nx-1:nx+1,:)
+        fgrid(:,:,nx-1:nx+1,:) = fgrid(:,:,-1:1,:)
       endif
 
-      if (pbounds(4) == 0) fgrid(:,:,:,-1) = 0.
-      if (pbounds(5) == 0) fgrid(:,:,:,nz+1) = 0.
+      if (pbounds(4) == 0) then
+c       --- Save the sum of the data in the guard cell which is about to
+c       --- be thrown away.
+        flost_fsl = flost_fsl + sum(fgrid(:,:,:,-1:0))
+        fgrid(:,:,:,-1:0) = 0.
+      endif
+      if (pbounds(5) == 0) then
+c       --- Save the sum of the data in the guard cell which is about to
+c       --- be thrown away.
+        flost_fsl = flost_fsl + sum(fgrid(:,:,:,nz:nz+1))
+        fgrid(:,:,:,nz:nz+1) = 0.
+      endif
       if (pbounds(4) == 1) then
         fgrid(:,:,:,-1) = fgrid(:,:,:,1)
         fgrid(:,:,:,0) = 2.*fgrid(:,:,:,0)
@@ -66,15 +96,15 @@ c=============================================================================
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-      if (pbounds(0) == 0 .or. pbounds(0) == 1) v(-1,0:nz) = v(1,0:nz)
-      if (pbounds(1) == 0 .or. pbounds(1) == 1) v(nx+1,0:nz) = v(nx-1,0:nz)
+      if (pbounds(0) == 0 .or. pbounds(0) == 1) v(-1,:) = v(1,:)
+      if (pbounds(1) == 0 .or. pbounds(1) == 1) v(nx+1,:) = v(nx-1,:)
       if (pbounds(0) == 2 .and. pbounds(1) == 2) then
         if (lmax) then
-          v(-1:1,0:nz) = max(v(-1:1,0:nz),v(nx-1:nx+1,0:nz))
+          v(-1:1,:) = max(v(-1:1,:),v(nx-1:nx+1,:))
         else
-          v(-1:1,0:nz) = min(v(-1:1,0:nz),v(nx-1:nx+1,0:nz))
+          v(-1:1,:) = min(v(-1:1,:),v(nx-1:nx+1,:))
         endif
-        v(nx-1:nx+1,0:nz) = v(-1:1,0:nz)
+        v(nx-1:nx+1,:) = v(-1:1,:)
       endif
 
       if (pbounds(4) == 0 .or. pbounds(4) == 1) v(:,-1) = v(:,1)
@@ -122,6 +152,8 @@ c=============================================================================
         return
       endif
 
+c     --- Be careful not to create particles at the edge of the mesh
+c     --- with Dirichelt boundaries or the upper edge with peridoic.
       if (pbounds(0) == 0) then
         ix0 = 1
       else
@@ -146,12 +178,15 @@ c=============================================================================
 
 c     --- Count how many particles will be created, the number of fgrid
 c     --- cells that are positive.
+c     --- Note that particles will be created everywhere that f is
+c     --- nonzero (even if negative). This is needed for conservation
+c     --- of f.
       npnew = 0
       do iz=iz0,iz1
         do ix=ix0,ix1
           do ivz=0,nvz_fsl
             do ivx=0,nvx_fsl
-              if (fgrid_fsl(ivx,ivz,ix,iz) > 0.) npnew = npnew + 1
+              if (fgrid_fsl(ivx,ivz,ix,iz) .ne. 0.) npnew = npnew + 1
             enddo
           enddo
         enddo
@@ -191,7 +226,7 @@ c     --- Regenerate the weighted particles at the grid locations
         do ix=ix0,ix1
           do ivz=0,nvz_fsl
             do ivx=0,nvx_fsl
-              if (fgrid_fsl(ivx,ivz,ix,iz) > 0.) then
+              if (fgrid_fsl(ivx,ivz,ix,iz) .ne. 0.) then
                 xp(ip) = xmin_fsl + ix*dx_fsl
                 yp(ip) = 0.
                 zp(ip) = zmin_fsl + iz*dz_fsl + zbeam
@@ -230,14 +265,14 @@ c The action is local, avoiding a global calculation.
 c Much care was needed to handle the odd cases, for example if a
 c negative value is surrounded by negative and zero values.
 
-      integer(ISZ):: ix,iz,iparity,ix0,niter,dd,id
+      integer(ISZ):: ix,iz,iparity,ix0,niterinner,dd,id
       real(kind=8):: sumcap,ferror,fdel
-      integer(ISZ):: nitermax
+      integer(ISZ):: niterinnermax
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
 c     --- Repeat the operation until there are no negative locations.
-      nitermax = min(nx/2,nz/2)
+      niterinnermax = min(nx/2,nz/2)
 
 c     --- Loop over the array using even-odd ordering
       do iparity = 0,1
@@ -249,12 +284,12 @@ c           --- For each location, iterate until its value is nonzero
 c           --- (of maximum number of iterations is reached).
 c           --- For each iteration, if sumcap is zero, then increase
 c           --- dd so that a larger region will be searched.
-            niter = 0
+            niterinner = 0
             dd = 1
             do while (fgrid(ix,iz) < threshold .and.
      &                fgrid(ix,iz) .ne. 0. .and.
-     &                niter < nitermax)
-              niter = niter + 1
+     &                niterinner < niterinnermax)
+              niterinner = niterinner + 1
 
 c             --- Create the sum of the surrounding, positive values.
 c             --- this loops over the square of grid cells around the
@@ -347,6 +382,253 @@ c             --- so go to a bigger area.
       return
       end
 c=============================================================================
+      subroutine enforcepositivity2d2vcube(nvx,nvz,nx,nz,fgrid,threshold)
+      use Subtimerstop
+      integer(ISZ):: nvx,nvz,nx,nz
+      real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1)
+      real(kind=8):: threshold
+
+c Given a distribution function, fgrid, this routine enforces positivity
+c by taking any negative values and distributing it to nearby, already
+c positive, locations. It ensures that the integral of fgrid remains fixed.
+c The action is local, avoiding a global calculation.
+
+c This didn't work well. It distributes over the nearest cube. The
+c ordering can sometimes leave isolate cells with f < 0.
+
+      integer(ISZ):: ivx,ivz,ix,iz,iparity,ivx0
+      integer(ISZ):: niter,nitermax
+      integer(ISZ):: jvx1,jvz1,jx1,jz1
+      integer(ISZ):: jvx2,jvz2,jx2,jz2
+      real(kind=8):: sumcap,fdel,fminimum
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
+      nitermax = 5
+
+      niter = 0
+      do
+        niter = niter + 1
+        if (niter > nitermax) exit
+
+        fminimum = threshold
+
+c       --- Loop over the array using even-odd ordering
+        do iparity = 0,1
+          do iz = 0,nz
+            do ix = 0,nx
+              do ivz = 0,nvz
+                ivx0 = mod(iz + ix + ivz + iparity,2)
+                do ivx = ivx0,nvx,2
+
+                  if (fgrid(ivx,ivz,ix,iz) < threshold .and.
+     &                fgrid(ivx,ivz,ix,iz) .ne. 0.) then
+
+c                   --- Create the sum of the surrounding, positive values,
+c                   --- including all of the grid cells within a square,
+c                   --- and including guard cells.
+c                   --- Note that the center cell will be excluded
+c                   --- since it less than the threshold.
+                    jvx1 = ivx - 1
+                    jvx2 = ivx + 1
+                    jvz1 = ivz - 1
+                    jvz2 = ivz + 1
+                    jx1 = ix - 1
+                    jx2 = ix + 1
+                    jz1 = iz - 1
+                    jz2 = iz + 1
+                    sumcap = sum(fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2),
+     &               mask=fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2)>=threshold)
+
+                    if (sumcap > 0.) then
+c                     --- If the sum is > 0, then the distribution of the
+c                     --- negative f can be done. If there is not enough,
+c                     --- some areas will go negative, and will need to
+c                     --- be corrected in the next iteration.
+                      fdel = fgrid(ivx,ivz,ix,iz)/sumcap
+                      fgrid(ivx,ivz,ix,iz) = 0.
+                      where (fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2) >= threshold)
+                        fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2) =
+     &                  fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2) +
+     &                  fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2)*fdel
+                      end where
+                      fminimum = min(fminimum,
+     &                minval(fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2),
+     &                 mask=fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2).ne.0))
+                    endif
+
+                  endif
+
+                enddo
+
+              enddo
+            enddo
+          enddo
+        enddo
+
+        if (fminimum >= threshold .or. fminimum == 0.) exit
+
+      enddo
+
+!$OMP MASTER
+      if (ltoptimesubs) timeenforcepositivity2d2v =
+     &                  timeenforcepositivity2d2v +
+     &                                         wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine enforcepositivity2d2vevenodd(nvx,nvz,nx,nz,fgrid,threshold)
+      use Subtimerstop
+      integer(ISZ):: nvx,nvz,nx,nz
+      real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1)
+      real(kind=8):: threshold
+
+c Given a distribution function, fgrid, this routine enforces positivity
+c by taking any negative values and distributing it to nearby, already
+c positive, locations. It ensures that the integral of fgrid remains fixed.
+c The action is local, avoiding a global calculation.
+
+c This doesn't work so well either. It distributes only to direct
+c neighbors, and not diagonally. The even-odd ordering can leave
+c isolated cells with f < 0.
+
+      integer(ISZ):: ivx,ivz,ix,iz,iparity,ivx0
+      integer(ISZ):: niter,nitermax
+      integer(ISZ):: jvx1,jvz1,jx1,jz1
+      integer(ISZ):: jvx2,jvz2,jx2,jz2
+      real(kind=8):: sumcap,fdel,fminimum
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
+      nitermax = 5
+
+      niter = 0
+      do
+        niter = niter + 1
+        if (niter > nitermax) exit
+
+        fminimum = threshold
+
+c       --- Loop over the array using even-odd ordering
+        do iparity = 0,1
+          do iz = 0,nz
+            do ix = 0,nx
+              do ivz = 0,nvz
+                ivx0 = mod(iz + ix + ivz + iparity,2)
+                do ivx = ivx0,nvx,2
+
+                  if (fgrid(ivx,ivz,ix,iz) < threshold .and.
+     &                fgrid(ivx,ivz,ix,iz) .ne. 0.) then
+
+c                   --- Create the sum of the surrounding, positive values,
+c                   --- including guard cells, but excluding corners.
+                    sumcap = 0.
+                    if (fgrid(ivx-1,ivz  ,ix  ,iz  ) >= threshold)
+     &                sumcap = sumcap + fgrid(ivx-1,ivz  ,ix  ,iz  )
+                    if (fgrid(ivx+1,ivz  ,ix  ,iz  ) >= threshold)
+     &                sumcap = sumcap + fgrid(ivx+1,ivz  ,ix  ,iz  )
+                    if (fgrid(ivx  ,ivz-1,ix  ,iz  ) >= threshold)
+     &                sumcap = sumcap + fgrid(ivx  ,ivz-1,ix  ,iz  )
+                    if (fgrid(ivx  ,ivz+1,ix  ,iz  ) >= threshold)
+     &                sumcap = sumcap + fgrid(ivx  ,ivz+1,ix  ,iz  )
+                    if (fgrid(ivx  ,ivz  ,ix-1,iz  ) >= threshold)
+     &                sumcap = sumcap + fgrid(ivx  ,ivz  ,ix-1,iz  )
+                    if (fgrid(ivx  ,ivz  ,ix+1,iz  ) >= threshold)
+     &                sumcap = sumcap + fgrid(ivx  ,ivz  ,ix+1,iz  )
+                    if (fgrid(ivx  ,ivz  ,ix  ,iz-1) >= threshold)
+     &                sumcap = sumcap + fgrid(ivx  ,ivz  ,ix  ,iz-1)
+                    if (fgrid(ivx  ,ivz  ,ix  ,iz+1) >= threshold)
+     &                sumcap = sumcap + fgrid(ivx  ,ivz  ,ix  ,iz+1)
+
+                    if (sumcap > 0.) then
+c                     --- If the sum is > 0, then the distribution of the
+c                     --- negative f can be done. If there is not enough,
+c                     --- some areas will go negative, and will need to
+c                     --- be corrected in the next iteration.
+                      fdel = fgrid(ivx,ivz,ix,iz)/sumcap
+                      fgrid(ivx,ivz,ix,iz) = 0.
+                      if (fgrid(ivx-1,ivz  ,ix  ,iz  ) >= threshold) then
+                        fgrid(ivx-1,ivz  ,ix  ,iz  ) = 
+     &                  fgrid(ivx-1,ivz  ,ix  ,iz  ) + 
+     &                  fgrid(ivx-1,ivz  ,ix  ,iz  )*fdel
+                        fminimum = min(fminimum,
+     &                                 fgrid(ivx-1,ivz  ,ix  ,iz  ))
+                      endif
+                      if (fgrid(ivx+1,ivz  ,ix  ,iz  ) >= threshold) then
+                        fgrid(ivx+1,ivz  ,ix  ,iz  ) = 
+     &                  fgrid(ivx+1,ivz  ,ix  ,iz  ) + 
+     &                  fgrid(ivx+1,ivz  ,ix  ,iz  )*fdel
+                        fminimum = min(fminimum,
+     &                                 fgrid(ivx+1,ivz  ,ix  ,iz  ))
+                      endif
+                      if (fgrid(ivx  ,ivz-1,ix  ,iz  ) >= threshold) then
+                        fgrid(ivx  ,ivz-1,ix  ,iz  ) = 
+     &                  fgrid(ivx  ,ivz-1,ix  ,iz  ) + 
+     &                  fgrid(ivx  ,ivz-1,ix  ,iz  )*fdel
+                        fminimum = min(fminimum,
+     &                                 fgrid(ivx  ,ivz-1,ix  ,iz  ))
+                      endif
+                      if (fgrid(ivx  ,ivz+1,ix  ,iz  ) >= threshold) then
+                        fgrid(ivx  ,ivz+1,ix  ,iz  ) = 
+     &                  fgrid(ivx  ,ivz+1,ix  ,iz  ) + 
+     &                  fgrid(ivx  ,ivz+1,ix  ,iz  )*fdel
+                        fminimum = min(fminimum,
+     &                                 fgrid(ivx  ,ivz+1,ix  ,iz  ))
+                      endif
+                      if (fgrid(ivx  ,ivz  ,ix-1,iz  ) >= threshold) then
+                        fgrid(ivx  ,ivz  ,ix-1,iz  ) = 
+     &                  fgrid(ivx  ,ivz  ,ix-1,iz  ) + 
+     &                  fgrid(ivx  ,ivz  ,ix-1,iz  )*fdel
+                        fminimum = min(fminimum,
+     &                                 fgrid(ivx  ,ivz  ,ix-1,iz  ))
+                      endif
+                      if (fgrid(ivx  ,ivz  ,ix+1,iz  ) >= threshold) then
+                        fgrid(ivx  ,ivz  ,ix+1,iz  ) = 
+     &                  fgrid(ivx  ,ivz  ,ix+1,iz  ) + 
+     &                  fgrid(ivx  ,ivz  ,ix+1,iz  )*fdel
+                        fminimum = min(fminimum,
+     &                                 fgrid(ivx  ,ivz  ,ix+1,iz  ))
+                      endif
+                      if (fgrid(ivx  ,ivz  ,ix  ,iz-1) >= threshold) then
+                        fgrid(ivx  ,ivz  ,ix  ,iz-1) = 
+     &                  fgrid(ivx  ,ivz  ,ix  ,iz-1) + 
+     &                  fgrid(ivx  ,ivz  ,ix  ,iz-1)*fdel
+                        fminimum = min(fminimum,
+     &                                 fgrid(ivx  ,ivz  ,ix  ,iz-1))
+                      endif
+                      if (fgrid(ivx  ,ivz  ,ix  ,iz+1) >= threshold) then
+                        fgrid(ivx  ,ivz  ,ix  ,iz+1) = 
+     &                  fgrid(ivx  ,ivz  ,ix  ,iz+1) + 
+     &                  fgrid(ivx  ,ivz  ,ix  ,iz+1)*fdel
+                        fminimum = min(fminimum,
+     &                                 fgrid(ivx  ,ivz  ,ix  ,iz+1))
+                      endif
+
+                    endif
+
+                  endif
+
+                enddo
+              enddo
+            enddo
+          enddo
+        enddo
+
+        if (fminimum >= threshold .or. fminimum == 0.) exit
+
+      enddo
+
+!$OMP MASTER
+      if (ltoptimesubs) timeenforcepositivity2d2v =
+     &                  timeenforcepositivity2d2v +
+     &                                         wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
       subroutine enforcepositivity2d2v(nvx,nvz,nx,nz,fgrid,threshold)
       use Subtimerstop
       integer(ISZ):: nvx,nvz,nx,nz
@@ -355,89 +637,155 @@ c=============================================================================
 
 c Given a distribution function, fgrid, this routine enforces positivity
 c by taking any negative values and distributing it to nearby, already
-c positive, locations. If ensures the the integral of fgrid remains fixed.
+c positive, locations. It ensures that the integral of fgrid remains fixed.
 c The action is local, avoiding a global calculation.
-c Much care was needed to handle the odd cases, for example if a
-c negative value is surrounded by negative and zero values.
 
-      integer(ISZ):: ivx,ivz,ix,iz,iparity,ivx0,niter,dd,id
-      integer(ISZ):: jvx,jvz,jx,jz
+c This sweeps from the edge of the grid inward. This ordering seems to
+c work well and doesn't leave isolated cells. The distribution is over
+c neighbors, not including diagonals (though this may not be important).
+c A future version might allow the mid point to move, perhaps being the
+c location of the max f for example.
+
+      integer(ISZ):: kvx,kvz,kx,kz
+      integer(ISZ):: kvxmid,kvzmid,kxmid,kzmid
+      integer(ISZ):: ivx,ivz,ix,iz
+      integer(ISZ):: niter,nitermax
       integer(ISZ):: jvx1,jvz1,jx1,jz1
       integer(ISZ):: jvx2,jvz2,jx2,jz2
-      real(kind=8):: sumcap,fdel
-      logical(ISZ):: lcappedcorrection
-      integer(ISZ):: nitermax
+      real(kind=8):: sumcap,fdel,fminimum
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-c     --- Only one sweep over the grid is needed, since for each
-c     --- location that is negative, the inner loop iterates until its
-c     --- data is appropriately spread out.
+      nitermax = 5
+      kvxmid = nvx/2
+      kvzmid = nvz/2
+      kxmid = nx/2
+      kzmid = nz/2
 
-      nitermax = min(min(nvx/2,nvz/2),min(nx/2,nz/2))
+      niter = 0
+      do
+        niter = niter + 1
+        if (niter > nitermax) exit
 
-c     --- Loop over the array using even-odd ordering
-      do iparity = 0,1
-        do iz = 0,nz
-          do ix = 0,nx
-            do ivz = 0,nvz
-              ivx0 = mod(iz + ix + ivz + iparity,2)
-              do ivx = ivx0,nvx,2
+        fminimum = threshold
+
+c       --- Loop over the array, sweeping in from the edges to the center
+        do kz = 0,nz
+          if (kz < kzmid) then
+            iz = kz
+          else
+            iz = nz - kz + kzmid
+          endif
+
+          do kx = 0,nx
+            if (kx < kxmid) then
+              ix = kx
+            else
+              ix = nx - kx + kxmid
+            endif
+
+            do kvz = 0,nvz
+              if (kvz < kvzmid) then
+                ivz = kvz
+              else
+                ivz = nvz - kvz + kvzmid
+              endif
+
+              do kvx = 0,nvx
+                if (kvx < kvxmid) then
+                  ivx = kvx
+                else
+                  ivx = nvx - kvx + kvxmid
+                endif
 
                 if (fgrid(ivx,ivz,ix,iz) < threshold .and.
      &              fgrid(ivx,ivz,ix,iz) .ne. 0.) then
 
-c                 --- For each location, iterate until its value is zero
-c                 --- (or maximum number of iterations is reached).
-c                 --- For each iteration, if sumcap is zero or there is
-c                 --- not enough positive f nearby to do the full
-c                 --- correction, then increase dd so that a larger region
-c                 --- will be searched.
-                  niter = 0
-                  dd = 1
-                  do 
-                    niter = niter + 1
-                    if (niter >= nitermax) exit
+c                 --- Create the sum of the surrounding, positive values,
+c                 --- including guard cells, but excluding corners.
+                  sumcap = 0.
+                  if (fgrid(ivx-1,ivz  ,ix  ,iz  ) >= threshold)
+     &              sumcap = sumcap + fgrid(ivx-1,ivz  ,ix  ,iz  )
+                  if (fgrid(ivx+1,ivz  ,ix  ,iz  ) >= threshold)
+     &              sumcap = sumcap + fgrid(ivx+1,ivz  ,ix  ,iz  )
+                  if (fgrid(ivx  ,ivz-1,ix  ,iz  ) >= threshold)
+     &              sumcap = sumcap + fgrid(ivx  ,ivz-1,ix  ,iz  )
+                  if (fgrid(ivx  ,ivz+1,ix  ,iz  ) >= threshold)
+     &              sumcap = sumcap + fgrid(ivx  ,ivz+1,ix  ,iz  )
+                  if (fgrid(ivx  ,ivz  ,ix-1,iz  ) >= threshold)
+     &              sumcap = sumcap + fgrid(ivx  ,ivz  ,ix-1,iz  )
+                  if (fgrid(ivx  ,ivz  ,ix+1,iz  ) >= threshold)
+     &              sumcap = sumcap + fgrid(ivx  ,ivz  ,ix+1,iz  )
+                  if (fgrid(ivx  ,ivz  ,ix  ,iz-1) >= threshold)
+     &              sumcap = sumcap + fgrid(ivx  ,ivz  ,ix  ,iz-1)
+                  if (fgrid(ivx  ,ivz  ,ix  ,iz+1) >= threshold)
+     &              sumcap = sumcap + fgrid(ivx  ,ivz  ,ix  ,iz+1)
 
-c                   --- Create the sum of the surrounding, positive values,
-c                   --- including all of the grid cells within a square,
-c                   --- and including guard cells.
-c                   --- Note that the center cell will be excluded
-c                   --- since it less than the threshold.
-                    jvx1 = max(-1,ivx - dd)
-                    jvx2 = min(nvx+1,ivx + dd)
-                    jvz1 = max(-1,ivz - dd)
-                    jvz2 = min(nvz+1,ivz + dd)
-                    jx1 = max(-1,ix - dd)
-                    jx2 = min(nx+1,ix + dd)
-                    jz1 = max(-1,iz - dd)
-                    jz2 = min(nz+1,iz + dd)
-                    sumcap = sum(fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2),
-     &               mask=fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2)>=threshold)
-
-                    if (sumcap > 0. .and. -fgrid(ivx,ivz,ix,iz) <= sumcap) then
-c                     --- If the sum is > 0, and there is enough positive
-c                     --- f nearby, then the distribution of the negative
-c                     --- f can be done. If there is not enough, the loop
-c                     --- will iterate and examine a bigger area.
-                      fdel = fgrid(ivx,ivz,ix,iz)/sumcap
-                      fgrid(ivx,ivz,ix,iz) = 0.
-                      where (fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2) >= threshold)
-                        fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2) =
-     &                  fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2) +
-     &                  fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2)*fdel
-                      end where
-c                     --- Exit the loop since f has been fully corrected.
-                      exit
+                  if (sumcap > 0.) then
+c                   --- If the sum is > 0, then the distribution of the
+c                   --- negative f can be done. If there is not enough,
+c                   --- some areas will go negative, and will need to
+c                   --- be corrected in the next iteration.
+                    fdel = fgrid(ivx,ivz,ix,iz)/sumcap
+                    fgrid(ivx,ivz,ix,iz) = 0.
+                    if (fgrid(ivx-1,ivz  ,ix  ,iz  ) >= threshold) then
+                      fgrid(ivx-1,ivz  ,ix  ,iz  ) = 
+     &                fgrid(ivx-1,ivz  ,ix  ,iz  ) + 
+     &                fgrid(ivx-1,ivz  ,ix  ,iz  )*fdel
+                      fminimum = min(fminimum,
+     &                               fgrid(ivx-1,ivz  ,ix  ,iz  ))
+                    endif
+                    if (fgrid(ivx+1,ivz  ,ix  ,iz  ) >= threshold) then
+                      fgrid(ivx+1,ivz  ,ix  ,iz  ) = 
+     &                fgrid(ivx+1,ivz  ,ix  ,iz  ) + 
+     &                fgrid(ivx+1,ivz  ,ix  ,iz  )*fdel
+                      fminimum = min(fminimum,
+     &                               fgrid(ivx+1,ivz  ,ix  ,iz  ))
+                    endif
+                    if (fgrid(ivx  ,ivz-1,ix  ,iz  ) >= threshold) then
+                      fgrid(ivx  ,ivz-1,ix  ,iz  ) = 
+     &                fgrid(ivx  ,ivz-1,ix  ,iz  ) + 
+     &                fgrid(ivx  ,ivz-1,ix  ,iz  )*fdel
+                      fminimum = min(fminimum,
+     &                               fgrid(ivx  ,ivz-1,ix  ,iz  ))
+                    endif
+                    if (fgrid(ivx  ,ivz+1,ix  ,iz  ) >= threshold) then
+                      fgrid(ivx  ,ivz+1,ix  ,iz  ) = 
+     &                fgrid(ivx  ,ivz+1,ix  ,iz  ) + 
+     &                fgrid(ivx  ,ivz+1,ix  ,iz  )*fdel
+                      fminimum = min(fminimum,
+     &                               fgrid(ivx  ,ivz+1,ix  ,iz  ))
+                    endif
+                    if (fgrid(ivx  ,ivz  ,ix-1,iz  ) >= threshold) then
+                      fgrid(ivx  ,ivz  ,ix-1,iz  ) = 
+     &                fgrid(ivx  ,ivz  ,ix-1,iz  ) + 
+     &                fgrid(ivx  ,ivz  ,ix-1,iz  )*fdel
+                      fminimum = min(fminimum,
+     &                               fgrid(ivx  ,ivz  ,ix-1,iz  ))
+                    endif
+                    if (fgrid(ivx  ,ivz  ,ix+1,iz  ) >= threshold) then
+                      fgrid(ivx  ,ivz  ,ix+1,iz  ) = 
+     &                fgrid(ivx  ,ivz  ,ix+1,iz  ) + 
+     &                fgrid(ivx  ,ivz  ,ix+1,iz  )*fdel
+                      fminimum = min(fminimum,
+     &                               fgrid(ivx  ,ivz  ,ix+1,iz  ))
+                    endif
+                    if (fgrid(ivx  ,ivz  ,ix  ,iz-1) >= threshold) then
+                      fgrid(ivx  ,ivz  ,ix  ,iz-1) = 
+     &                fgrid(ivx  ,ivz  ,ix  ,iz-1) + 
+     &                fgrid(ivx  ,ivz  ,ix  ,iz-1)*fdel
+                      fminimum = min(fminimum,
+     &                               fgrid(ivx  ,ivz  ,ix  ,iz-1))
+                    endif
+                    if (fgrid(ivx  ,ivz  ,ix  ,iz+1) >= threshold) then
+                      fgrid(ivx  ,ivz  ,ix  ,iz+1) = 
+     &                fgrid(ivx  ,ivz  ,ix  ,iz+1) + 
+     &                fgrid(ivx  ,ivz  ,ix  ,iz+1)*fdel
+                      fminimum = min(fminimum,
+     &                               fgrid(ivx  ,ivz  ,ix  ,iz+1))
                     endif
 
-c                   --- Increment the size of the area checked. If the
-c                   --- correction is incomplete, that means that there was
-c                   --- not enough positive f to distribute the error too,
-c                   --- so go to a bigger area.
-                    dd = dd + 1
-
-                  enddo
+                  endif
 
                 endif
 
@@ -445,6 +793,9 @@ c                   --- so go to a bigger area.
             enddo
           enddo
         enddo
+
+        if (fminimum >= threshold .or. fminimum == 0.) exit
+
       enddo
 
 !$OMP MASTER
@@ -598,17 +949,17 @@ c=============================================================================
       endif
 
       if (dvx_fsl == 0. .and. nvx_fsl > 0) then
-        dvx_fsl = 6.*vthermalperp/nvx_fsl
+        dvx_fsl = 8.*vthermalperp/nvx_fsl
       else if (nvx_fsl == 0 .and. dvx_fsl > 0.) then
-        nvx_fsl = 6.*vthermalperp/dvx_fsl
+        nvx_fsl = 8.*vthermalperp/dvx_fsl
       else
         call kaboom("loadfgridguassian: either dvx_fsl or nvx_fsl must be nonzero")
         return
       endif
       if (dvz_fsl == 0. .and. nvz_fsl > 0) then
-        dvz_fsl = 6.*vthermalparallel/nvz_fsl
+        dvz_fsl = 8.*vthermalparallel/nvz_fsl
       else if (nvz_fsl == 0 .and. dvz_fsl > 0.) then
-        nvz_fsl = 6.*vthermalparallel/dvz_fsl
+        nvz_fsl = 8.*vthermalparallel/dvz_fsl
       else
         call kaboom("loadfgridguassian: either dvz_fsl or nvz_fsl must be nonzero")
         return
@@ -690,44 +1041,49 @@ c       -- XYgeom
         i1 = pgroup%ins(js+1)
         i2 = i1 + pgroup%nps(js+1) - 1
 
+c --- Skip the calculation of the min and max for now. This leads to
+c --- an ever growing grid if nonzero f gets to the edge f the mesh.
+c --- Future versions may pass the threshold into findminmaxongrid2d2v
+c --- so the min and max of only those cells with f > threshold are
+c --- counted.
+
 c       --- Find the min and max velocity as a function of position
-        call findminmaxongrid2d2v(pgroup%nps(js+1),xp(i1),zp(i1),
-     &                            uxp(i1),uzp(i1),nx_fsl,nz_fsl,
-     &                            xmin_fsl,xmax_fsl,
-     &                            zmin_fsl+zbeam,zmax_fsl+zbeam,
-     &                            vxmin_fsl,vxmax_fsl,vzmin_fsl,vzmax_fsl)
+c       call findminmaxongrid2d2v(pgroup%nps(js+1),xp(i1),zp(i1),
+c    &                            uxp(i1),uzp(i1),nx_fsl,nz_fsl,
+c    &                            xmin_fsl,xmax_fsl,
+c    &                            zmin_fsl+zbeam,zmax_fsl+zbeam,
+c    &                            vxmin_fsl,vxmax_fsl,vzmin_fsl,vzmax_fsl)
 
 c       --- Do the parallel nastiness of sharing boundary data
 c       --- This is a serial place holder.
-        call setboundsfromflags(pbounds,pboundxy,pbound0,pboundnz,
-     &                          l2symtry,l4symtry)
-        call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vxmin_fsl,
-     &                                       pbounds,.false.)
-        call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vxmax_fsl,
-     &                                       pbounds,.true.)
-        call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vzmin_fsl,
-     &                                       pbounds,.false.)
-        call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vzmax_fsl,
-     &                                       pbounds,.true.)
+c       call setboundsfromflags(pbounds,pboundxy,pbound0,pboundnz,
+c    &                          l2symtry,l4symtry)
+c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vxmin_fsl,
+c    &                                       pbounds,.false.)
+c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vxmax_fsl,
+c    &                                       pbounds,.true.)
+c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vzmin_fsl,
+c    &                                       pbounds,.false.)
+c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vzmax_fsl,
+c    &                                       pbounds,.true.)
 
 c       --- Round the velocity mins and maxs to the grid cells
-        vxmin_fsl = floor(vxmin_fsl/dvx_fsl)*dvx_fsl
-        vzmin_fsl = floor(vzmin_fsl/dvz_fsl)*dvz_fsl
-        vxmax_fsl = ceiling(vxmax_fsl/dvx_fsl)*dvx_fsl
-        vzmax_fsl = ceiling(vzmax_fsl/dvz_fsl)*dvz_fsl
+c       vxmin_fsl = floor(vxmin_fsl/dvx_fsl)*dvx_fsl
+c       vzmin_fsl = floor(vzmin_fsl/dvz_fsl)*dvz_fsl
+c       vxmax_fsl = ceiling(vxmax_fsl/dvx_fsl)*dvx_fsl
+c       vzmax_fsl = ceiling(vzmax_fsl/dvz_fsl)*dvz_fsl
 c       --- Temporary until there are better diagnostics
-        vxmin_fsl = minval(vxmin_fsl)
-        vxmax_fsl = maxval(vxmax_fsl)
-        vzmin_fsl = minval(vzmin_fsl)
-        vzmax_fsl = maxval(vzmax_fsl)
+c       vxmin_fsl = minval(vxmin_fsl)
+c       vxmax_fsl = maxval(vxmax_fsl)
+c       vzmin_fsl = minval(vzmin_fsl)
+c       vzmax_fsl = maxval(vzmax_fsl)
 
 c       --- Resize the grid if needed
-        nvx_fsl = max(nvx_fsl,nint(maxval((vxmax_fsl - vxmin_fsl)/dvx_fsl)))
-        nvz_fsl = max(nvz_fsl,nint(maxval((vzmax_fsl - vzmin_fsl)/dvz_fsl)))
-        call gchange("ForwardSemiLagrange",0)
+c       nvx_fsl = max(nvx_fsl,nint(maxval((vxmax_fsl - vxmin_fsl)/dvx_fsl)))
+c       nvz_fsl = max(nvz_fsl,nint(maxval((vzmax_fsl - vzmin_fsl)/dvz_fsl)))
+c       call gchange("ForwardSemiLagrange",0)
 
 c       --- Deposit the particles into the distribution grid
-c       fgrid_fsl(0:nvx_fsl,0:nvz_fsl,0:nx_fsl,0:nz_fsl) = 0.
         fgrid_fsl = 0.
         call setgrid2d2vmodbspline2w(pgroup%nps(js+1),
      &                               xp(i1),zp(i1),uxp(i1),uzp(i1),
@@ -741,15 +1097,13 @@ c       fgrid_fsl(0:nvx_fsl,0:nvz_fsl,0:nx_fsl,0:nz_fsl) = 0.
 c       --- Do the parallel nastiness of sharing boundary data
 c       --- This is a serial place holder.
         call applyboundaryconditionsonfgrid2d2v(nvx_fsl,nvz_fsl,nx_fsl,nz_fsl,
-     &                                          fgrid_fsl,pbounds)
+     &                                          fgrid_fsl,pbounds,flost_fsl)
 
         call enforcepositivity2d2v(nvx_fsl,nvz_fsl,nx_fsl,nz_fsl,fgrid_fsl,
      &                             fthreshold_fsl)
 
 c       --- Regenerate the particles from the distribution
         call createparticlesfromfgrid(pgroup,js,geometry,zbeam,0.,pbounds)
-        i1 = pgroup%ins(js+1)
-        i2 = i1 + pgroup%nps(js+1) - 1
 
       enddo
 
@@ -916,153 +1270,152 @@ c       --- find location on grid
         gvx = (vx(ip) - vxmin(ix,iz))*dvxi
         gvz = (vz(ip) - vzmin(ix,iz))*dvzi
 
-c       --- if within grid, accumulate
-        if (0. <= gx .and. gx <= nx .and.
-     &      0. <= gz .and. gz <= nz .and.
-     &      0. <= gvx .and. gvx <= nvx .and.
-     &      0. <= gvz .and. gvz <= nvz) then
-          ivx = int(gvx)
-          ivz = int(gvz)
-          wx = gx - ix
-          wz = gz - iz
-          wvx = gvx - ivx
-          wvz = gvz - ivz
+c       --- Particles are always accumulated. Outliers are artificially
+c       --- put at the edge of the mesh.
+        ivx = int(gvx)
+        ivz = int(gvz)
+        wx = gx - ix
+        wz = gz - iz
+        wvx = gvx - ivx
+        wvz = gvz - ivz
 
-c         --- Apply the weight here to reduce the number of multiplies
-          sx(-1) = (-0.5*wx*(1. - wx)**2)*w(ip)
-          sx( 0) = (1. - 2.5*wx**2 + 1.5*wx**3)*w(ip)
-          sx(+1) = (1. - 2.5*(1. - wx)**2 + 1.5*(1. - wx)**3)*w(ip)
-          sx(+2) = (0.5*wx**2*(wx - 1.))*w(ip)
+c       --- Apply the weight here to reduce the number of multiplies
+        sx(-1) = (-0.5*wx*(1. - wx)**2)*w(ip)
+        sx( 0) = (1. - 2.5*wx**2 + 1.5*wx**3)*w(ip)
+        sx(+1) = (1. - 2.5*(1. - wx)**2 + 1.5*(1. - wx)**3)*w(ip)
+        sx(+2) = (0.5*wx**2*(wx - 1.))*w(ip)
 
-          sz(-1) = -0.5*wz*(1. - wz)**2
-          sz( 0) = 1. - 2.5*wz**2 + 1.5*wz**3
-          sz(+1) = 1. - 2.5*(1. - wz)**2 + 1.5*(1. - wz)**3
-          sz(+2) = 0.5*wz**2*(wz - 1.)
+        sz(-1) = -0.5*wz*(1. - wz)**2
+        sz( 0) = 1. - 2.5*wz**2 + 1.5*wz**3
+        sz(+1) = 1. - 2.5*(1. - wz)**2 + 1.5*(1. - wz)**3
+        sz(+2) = 0.5*wz**2*(wz - 1.)
 
-          svx(-1) = -0.5*wvx*(1. - wvx)**2
-          svx( 0) = 1. - 2.5*wvx**2 + 1.5*wvx**3
-          svx(+1) = 1. - 2.5*(1. - wvx)**2 + 1.5*(1. - wvx)**3
-          svx(+2) = 0.5*wvx**2*(wvx - 1.)
+        svx(-1) = -0.5*wvx*(1. - wvx)**2
+        svx( 0) = 1. - 2.5*wvx**2 + 1.5*wvx**3
+        svx(+1) = 1. - 2.5*(1. - wvx)**2 + 1.5*(1. - wvx)**3
+        svx(+2) = 0.5*wvx**2*(wvx - 1.)
 
-          svz(-1) = -0.5*wvz*(1. - wvz)**2
-          svz( 0) = 1. - 2.5*wvz**2 + 1.5*wvz**3
-          svz(+1) = 1. - 2.5*(1. - wvz)**2 + 1.5*(1. - wvz)**3
-          svz(+2) = 0.5*wvz**2*(wvz - 1.)
+        svz(-1) = -0.5*wvz*(1. - wvz)**2
+        svz( 0) = 1. - 2.5*wvz**2 + 1.5*wvz**3
+        svz(+1) = 1. - 2.5*(1. - wvz)**2 + 1.5*(1. - wvz)**3
+        svz(+2) = 0.5*wvz**2*(wvz - 1.)
 
-          if (ix == nx) then
-            jx2 = 1
-          else
-            jx2 = 2
+        if (ix == nx) then
+          jx2 = 1
+        else
+          jx2 = 2
+        endif
+        if (iz == nz) then
+          jz2 = 1
+        else
+          jz2 = 2
+        endif
+
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gz .and. gz < nz .and.
+     &      0. <= gvx .and. gvx < nvx .and.
+     &      0. <= gvz .and. gvz < nvz) then
+          do jz=iz-1,iz+jz2
+            do jx=ix-1,ix+jx2
+c             do jvz=ivz-1,ivz+jvz2
+c               do jvx=ivx-1,ivx+jvx2
+
+c                 --- Unrolling the loop over jvx made a big difference
+c                 --- in the timing, cutting the time in half.
+c                 --- Unrolling jvz only made a small change, a few percent.
+
+c                 --- Removing common subexpressions helped by about 15%
+                  sxz = sx(jx-ix)*sz(jz-iz)
+                  sm1 = svz(-1)*sxz
+                  s00 = svz( 0)*sxz
+                  sp1 = svz(+1)*sxz
+                  sp2 = svz(+2)*sxz
+
+                  grid(ivx-1,ivz-1,jx,jz)=grid(ivx-1,ivz-1,jx,jz)+svx(-1)*sm1
+                  grid(ivx  ,ivz-1,jx,jz)=grid(ivx  ,ivz-1,jx,jz)+svx(0)*sm1
+                  grid(ivx+1,ivz-1,jx,jz)=grid(ivx+1,ivz-1,jx,jz)+svx(1)*sm1
+                  grid(ivx+2,ivz-1,jx,jz)=grid(ivx+2,ivz-1,jx,jz)+svx(2)*sm1
+
+                  grid(ivx-1,ivz  ,jx,jz)=grid(ivx-1,ivz  ,jx,jz)+svx(-1)*s00
+                  grid(ivx  ,ivz  ,jx,jz)=grid(ivx  ,ivz  ,jx,jz)+svx(0)*s00
+                  grid(ivx+1,ivz  ,jx,jz)=grid(ivx+1,ivz  ,jx,jz)+svx(1)*s00
+                  grid(ivx+2,ivz  ,jx,jz)=grid(ivx+2,ivz  ,jx,jz)+svx(2)*s00
+
+                  grid(ivx-1,ivz+1,jx,jz)=grid(ivx-1,ivz+1,jx,jz)+svx(-1)*sp1
+                  grid(ivx  ,ivz+1,jx,jz)=grid(ivx  ,ivz+1,jx,jz)+svx(0)*sp1
+                  grid(ivx+1,ivz+1,jx,jz)=grid(ivx+1,ivz+1,jx,jz)+svx(1)*sp1
+                  grid(ivx+2,ivz+1,jx,jz)=grid(ivx+2,ivz+1,jx,jz)+svx(2)*sp1
+
+                  grid(ivx-1,ivz+2,jx,jz)=grid(ivx-1,ivz+2,jx,jz)+svx(-1)*sp2
+                  grid(ivx  ,ivz+2,jx,jz)=grid(ivx  ,ivz+2,jx,jz)+svx(0)*sp2
+                  grid(ivx+1,ivz+2,jx,jz)=grid(ivx+1,ivz+2,jx,jz)+svx(1)*sp2
+                  grid(ivx+2,ivz+2,jx,jz)=grid(ivx+2,ivz+2,jx,jz)+svx(2)*sp2
+
+c               enddo
+c             enddo
+            enddo
+          enddo
+
+        else
+
+          if (gvx < 0.) then
+            ivx = 0
+            svx = (/0.,1.,0.,0./)
           endif
-          if (iz == nz) then
-            jz2 = 1
-          else
-            jz2 = 2
+          if (gvz < 0.) then
+            ivz = 0
+            svz = (/0.,1.,0.,0./)
           endif
-c         if (ivx == nvx) then
-c           jvx2 = 1
-c         else
-c           jvx2 = 2
-c         endif
-c         if (ivz == nvz) then
-c           jvz2 = 1
-c         else
-c           jvz2 = 2
-c         endif
+          if (ivx == nvx) svx = (/0.,1.,0.,0./)
+          if (ivz == nvz) svz = (/0.,1.,0.,0./)
 
-          if (ivx < nvx .and. ivz < nvz) then
-            do jz=iz-1,iz+jz2
-              do jx=ix-1,ix+jx2
-c               do jvz=ivz-1,ivz+jvz2
-c                 do jvx=ivx-1,ivx+jvx2
+          do jz=iz-1,iz+jz2
+            do jx=ix-1,ix+jx2
+c             do jvz=ivz-1,ivz+jvz2
+c               do jvx=ivx-1,ivx+jvx2
 
-c                   --- Unrolling the loop over jvx made a big difference
-c                   --- in the timing, cutting the time in half.
-c                   --- Unrolling jvz only made a small change, a few percent.
+c                 --- Unrolling the loop over jvx made a big difference
+c                 --- in the timing, cutting the time in half.
+c                 --- Unrolling jvz only made a small change, a few percent.
 
-c                   --- Removing common subexpressions helped by about 15%
-                    sxz = sx(jx-ix)*sz(jz-iz)
-                    sm1 = svz(-1)*sxz
-                    s00 = svz( 0)*sxz
-                    sp1 = svz(+1)*sxz
-                    sp2 = svz(+2)*sxz
+c                 --- Removing common subexpressions helped by about 15%
+                  sxz = sx(jx-ix)*sz(jz-iz)
+                  sm1 = svz(-1)*sxz
+                  s00 = svz( 0)*sxz
+                  sp1 = svz(+1)*sxz
 
-                    grid(ivx-1,ivz-1,jx,jz)=grid(ivx-1,ivz-1,jx,jz)+svx(-1)*sm1
-                    grid(ivx  ,ivz-1,jx,jz)=grid(ivx  ,ivz-1,jx,jz)+svx(0)*sm1
-                    grid(ivx+1,ivz-1,jx,jz)=grid(ivx+1,ivz-1,jx,jz)+svx(1)*sm1
+                  grid(ivx-1,ivz-1,jx,jz)=grid(ivx-1,ivz-1,jx,jz)+svx(-1)*sm1
+                  grid(ivx  ,ivz-1,jx,jz)=grid(ivx  ,ivz-1,jx,jz)+svx(0)*sm1
+                  grid(ivx+1,ivz-1,jx,jz)=grid(ivx+1,ivz-1,jx,jz)+svx(1)*sm1
+
+                  grid(ivx-1,ivz  ,jx,jz)=grid(ivx-1,ivz  ,jx,jz)+svx(-1)*s00
+                  grid(ivx  ,ivz  ,jx,jz)=grid(ivx  ,ivz  ,jx,jz)+svx(0)*s00
+                  grid(ivx+1,ivz  ,jx,jz)=grid(ivx+1,ivz  ,jx,jz)+svx(1)*s00
+
+                  grid(ivx-1,ivz+1,jx,jz)=grid(ivx-1,ivz+1,jx,jz)+svx(-1)*sp1
+                  grid(ivx  ,ivz+1,jx,jz)=grid(ivx  ,ivz+1,jx,jz)+svx(0)*sp1
+                  grid(ivx+1,ivz+1,jx,jz)=grid(ivx+1,ivz+1,jx,jz)+svx(1)*sp1
+
+                  if (ivx < nvx) then
                     grid(ivx+2,ivz-1,jx,jz)=grid(ivx+2,ivz-1,jx,jz)+svx(2)*sm1
-
-                    grid(ivx-1,ivz  ,jx,jz)=grid(ivx-1,ivz  ,jx,jz)+svx(-1)*s00
-                    grid(ivx  ,ivz  ,jx,jz)=grid(ivx  ,ivz  ,jx,jz)+svx(0)*s00
-                    grid(ivx+1,ivz  ,jx,jz)=grid(ivx+1,ivz  ,jx,jz)+svx(1)*s00
                     grid(ivx+2,ivz  ,jx,jz)=grid(ivx+2,ivz  ,jx,jz)+svx(2)*s00
-
-                    grid(ivx-1,ivz+1,jx,jz)=grid(ivx-1,ivz+1,jx,jz)+svx(-1)*sp1
-                    grid(ivx  ,ivz+1,jx,jz)=grid(ivx  ,ivz+1,jx,jz)+svx(0)*sp1
-                    grid(ivx+1,ivz+1,jx,jz)=grid(ivx+1,ivz+1,jx,jz)+svx(1)*sp1
                     grid(ivx+2,ivz+1,jx,jz)=grid(ivx+2,ivz+1,jx,jz)+svx(2)*sp1
+                  endif
 
+                  if (ivz < nvz) then
+                    sp2 = svz(+2)*sxz
                     grid(ivx-1,ivz+2,jx,jz)=grid(ivx-1,ivz+2,jx,jz)+svx(-1)*sp2
                     grid(ivx  ,ivz+2,jx,jz)=grid(ivx  ,ivz+2,jx,jz)+svx(0)*sp2
                     grid(ivx+1,ivz+2,jx,jz)=grid(ivx+1,ivz+2,jx,jz)+svx(1)*sp2
-                    grid(ivx+2,ivz+2,jx,jz)=grid(ivx+2,ivz+2,jx,jz)+svx(2)*sp2
-
-c                 enddo
-c               enddo
-              enddo
-            enddo
-
-          else
-
-            do jz=iz-1,iz+jz2
-              do jx=ix-1,ix+jx2
-c               do jvz=ivz-1,ivz+jvz2
-c                 do jvx=ivx-1,ivx+jvx2
-
-c                   --- Unrolling the loop over jvx made a big difference
-c                   --- in the timing, cutting the time in half.
-c                   --- Unrolling jvz only made a small change, a few percent.
-
-c                   --- Removing common subexpressions helped by about 15%
-                    sxz = sx(jx-ix)*sz(jz-iz)
-                    sm1 = svz(-1)*sxz
-                    s00 = svz( 0)*sxz
-                    sp1 = svz(+1)*sxz
-
-                    grid(ivx-1,ivz-1,jx,jz)=grid(ivx-1,ivz-1,jx,jz)+svx(-1)*sm1
-                    grid(ivx  ,ivz-1,jx,jz)=grid(ivx  ,ivz-1,jx,jz)+svx(0)*sm1
-                    grid(ivx+1,ivz-1,jx,jz)=grid(ivx+1,ivz-1,jx,jz)+svx(1)*sm1
-
-                    grid(ivx-1,ivz  ,jx,jz)=grid(ivx-1,ivz  ,jx,jz)+svx(-1)*s00
-                    grid(ivx  ,ivz  ,jx,jz)=grid(ivx  ,ivz  ,jx,jz)+svx(0)*s00
-                    grid(ivx+1,ivz  ,jx,jz)=grid(ivx+1,ivz  ,jx,jz)+svx(1)*s00
-
-                    grid(ivx-1,ivz+1,jx,jz)=grid(ivx-1,ivz+1,jx,jz)+svx(-1)*sp1
-                    grid(ivx  ,ivz+1,jx,jz)=grid(ivx  ,ivz+1,jx,jz)+svx(0)*sp1
-                    grid(ivx+1,ivz+1,jx,jz)=grid(ivx+1,ivz+1,jx,jz)+svx(1)*sp1
-
                     if (ivx < nvx) then
-                      grid(ivx+2,ivz-1,jx,jz)=grid(ivx+2,ivz-1,jx,jz)+svx(2)*sm1
-                      grid(ivx+2,ivz  ,jx,jz)=grid(ivx+2,ivz  ,jx,jz)+svx(2)*s00
-                      grid(ivx+2,ivz+1,jx,jz)=grid(ivx+2,ivz+1,jx,jz)+svx(2)*sp1
+                      grid(ivx+2,ivz+2,jx,jz)=grid(ivx+2,ivz+2,jx,jz)+svx(2)*sp2
                     endif
+                  endif
 
-                    if (ivz < nvz) then
-                     sp2 = svz(+2)*sxz
-                     grid(ivx-1,ivz+2,jx,jz)=grid(ivx-1,ivz+2,jx,jz)+svx(-1)*sp2
-                     grid(ivx  ,ivz+2,jx,jz)=grid(ivx  ,ivz+2,jx,jz)+svx(0)*sp2
-                     grid(ivx+1,ivz+2,jx,jz)=grid(ivx+1,ivz+2,jx,jz)+svx(1)*sp2
-c                    if (ivx < nvx) then
-c                     grid(ivx+2,ivz+2,jx,jz)=grid(ivx+2,ivz+2,jx,jz)+svx(2)*sp2
-c                    endif
-                    endif
-
-c                 enddo
 c               enddo
-              enddo
+c             enddo
             enddo
-
-          endif
+          enddo
 
         endif
 
