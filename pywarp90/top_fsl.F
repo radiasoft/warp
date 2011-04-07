@@ -2,12 +2,13 @@
 c=============================================================================
 c Routines for handing the Forward semi-Lagrangian method
 c=============================================================================
-      subroutine applyboundaryconditionsonfgrid2d2v(nvx,nvz,nx,nz,fgrid,pbounds,
+      subroutine applyboundaryconditionsonfgrid2d2v(nvx,nvz,nx,nz,fgrid,
+     &                                              localpbounds,
      &                                              flost_fsl)
       use Subtimerstop
       integer(ISZ):: nvx,nvz,nx,nz
       real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1)
-      integer(ISZ):: pbounds(0:5)
+      integer(ISZ):: localpbounds(0:5)
       real(kind=8):: flost_fsl
 
       real(kind=8):: substarttime,wtime
@@ -25,57 +26,65 @@ c     --- does make errors in energy and momentum.
       fgrid(:,nvz,:,:) = fgrid(:,nvz,:,:) + fgrid(:,nvz+1,:,:)
       fgrid(:,nvz+1,:,:) = 0.
 
-      if (pbounds(0) == 0) then
+      if (localpbounds(0) == 0) then
 c       --- Save the sum of the data in the guard cell which is about to
 c       --- be thrown away.
         flost_fsl = flost_fsl + sum(fgrid(:,:,-1:0,:))
         fgrid(:,:,-1:0,:) = 0.
       endif
-      if (pbounds(1) == 0) then
+      if (localpbounds(1) == 0) then
 c       --- Save the sum of the data in the guard cell which is about to
 c       --- be thrown away.
         flost_fsl = flost_fsl + sum(fgrid(:,:,nx:nx+1,:))
         fgrid(:,:,nx:nx+1,:) = 0.
       endif
-      if (pbounds(0) == 1) then
+      if (localpbounds(0) == 1) then
         fgrid(:,:,1,:) = fgrid(:,:,1,:) + fgrid(:,:,-1,:)
         fgrid(:,:,-1,:) = fgrid(:,:,1,:)
         fgrid(:,:,0,:) = 2.*fgrid(:,:,0,:)
       endif
-      if (pbounds(1) == 1) then
+      if (localpbounds(1) == 1) then
         fgrid(:,:,nx-1,:) = fgrid(:,:,nx-1,:) + fgrid(:,:,nx+1,:)
         fgrid(:,:,nx+1,:) = fgrid(:,:,nx-1,:)
         fgrid(:,:,nx,:) = 2.*fgrid(:,:,nx,:)
       endif
-      if (pbounds(0) == 2 .and. pbounds(1) == 2) then
+#ifndef MPIPARALLEL
+      if (localpbounds(0) == 2 .and. localpbounds(1) == 2) then
         fgrid(:,:,-1:1,:) = fgrid(:,:,-1:1,:) + fgrid(:,:,nx-1:nx+1,:)
         fgrid(:,:,nx-1:nx+1,:) = fgrid(:,:,-1:1,:)
       endif
+#endif
 
-      if (pbounds(4) == 0) then
+      if (localpbounds(4) == 0) then
 c       --- Save the sum of the data in the guard cell which is about to
 c       --- be thrown away.
         flost_fsl = flost_fsl + sum(fgrid(:,:,:,-1:0))
         fgrid(:,:,:,-1:0) = 0.
       endif
-      if (pbounds(5) == 0) then
+      if (localpbounds(5) == 0) then
 c       --- Save the sum of the data in the guard cell which is about to
 c       --- be thrown away.
         flost_fsl = flost_fsl + sum(fgrid(:,:,:,nz:nz+1))
         fgrid(:,:,:,nz:nz+1) = 0.
       endif
-      if (pbounds(4) == 1) then
+      if (localpbounds(4) == 1) then
         fgrid(:,:,:,-1) = fgrid(:,:,:,1)
         fgrid(:,:,:,0) = 2.*fgrid(:,:,:,0)
       endif
-      if (pbounds(5) == 1) then
+      if (localpbounds(5) == 1) then
         fgrid(:,:,:,nz+1) = fgrid(:,:,:,nz-1)
         fgrid(:,:,:,nz) = 2.*fgrid(:,:,:,nz)
       endif
-      if (pbounds(4) == 2 .and. pbounds(5) == 2) then
+#ifndef MPIPARALLEL
+      if (localpbounds(4) == 2 .and. localpbounds(5) == 2) then
         fgrid(:,:,:,-1:1) = fgrid(:,:,:,-1:1) + fgrid(:,:,:,nz-1:nz+1)
         fgrid(:,:,:,nz-1:nz+1) = fgrid(:,:,:,-1:1)
       endif
+#endif
+
+#ifdef MPIPARALLEL
+      call sumfondomainboundaries(nvx,nvz,nx,nz,fgrid,localpbounds)
+#endif
 
 !$OMP MASTER
       if (ltoptimesubs) timeapplyboundaryconditionsonfgrid2d2v =
@@ -128,7 +137,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine createparticlesfromfgrid(pgroup,js,geometry,zbeam,vbeam,
-     &                                    pbounds)
+     &                                    localpbounds)
       use Subtimerstop
       use ForwardSemiLagrange
       use ParticleGroupmodule
@@ -136,7 +145,7 @@ c=============================================================================
       type(ParticleGroup):: pgroup
       integer(ISZ):: js,geometry
       real(kind=8):: zbeam,vbeam
-      integer(ISZ):: pbounds(0:5)
+      integer(ISZ):: localpbounds(0:5)
 
       real(kind=8),pointer:: xp(:),yp(:),zp(:),uxp(:),uyp(:),uzp(:)
       real(kind=8):: vybeam,vzbeam
@@ -154,23 +163,25 @@ c=============================================================================
 
 c     --- Be careful not to create particles at the edge of the mesh
 c     --- with Dirichelt boundaries or the upper edge with peridoic.
-      if (pbounds(0) == 0) then
+      if (localpbounds(0) == 0) then
         ix0 = 1
       else
         ix0 = 0
       endif
-      if (pbounds(1) == 0 .or. pbounds(1) == 2) then
+      if (localpbounds(1) == 0 .or. localpbounds(1) == 2 .or.
+     &    localpbounds(1) == -1) then
         ix1 = nx_fsl - 1
       else
         ix1 = nx_fsl
       endif
 
-      if (pbounds(4) == 0) then
+      if (localpbounds(4) == 0) then
         iz0 = 1
       else
         iz0 = 0
       endif
-      if (pbounds(5) == 0 .or. pbounds(5) == 2) then
+      if (localpbounds(5) == 0 .or. localpbounds(5) == 2 .or.
+     &    localpbounds(5) == -1) then
         iz1 = nz_fsl - 1
       else
         iz1 = nz_fsl
@@ -1012,6 +1023,7 @@ c=============================================================================
       use ParticleGroupmodule
       use Particles,Only: wpid
       use InGen,Only: pboundxy,pbound0,pboundnz,pbounds
+      use Parallel
       type(ParticleGroup):: pgroup
       integer(ISZ):: geometry
       real(kind=8):: zbeam
@@ -1019,8 +1031,20 @@ c=============================================================================
 
       real(kind=8),pointer:: xp(:),zp(:),uxp(:),uzp(:)
       integer(ISZ):: js,ip,i1,i2
+      integer(ISZ):: localpbounds(0:5)
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+
+c     --- Setup the boundary conditions for the local domain.
+      call setboundsfromflags(pbounds,pboundxy,pbound0,pboundnz,
+     &                        l2symtry,l4symtry)
+      localpbounds = pbounds
+#ifdef MPIPARALLEL
+      if (ppdecomp%ixproc > 0)                  localpbounds(0) = -1
+      if (ppdecomp%ixproc < ppdecomp%nxprocs-1) localpbounds(1) = -1
+      if (ppdecomp%izproc > 0)                  localpbounds(4) = -1
+      if (ppdecomp%izproc < ppdecomp%nzprocs-1) localpbounds(5) = -1
+#endif
 
       if (geometry == 3) then
 c       -- XZgeom
@@ -1056,16 +1080,14 @@ c    &                            vxmin_fsl,vxmax_fsl,vzmin_fsl,vzmax_fsl)
 
 c       --- Do the parallel nastiness of sharing boundary data
 c       --- This is a serial place holder.
-c       call setboundsfromflags(pbounds,pboundxy,pbound0,pboundnz,
-c    &                          l2symtry,l4symtry)
 c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vxmin_fsl,
-c    &                                       pbounds,.false.)
+c    &                                       localpbounds,.false.)
 c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vxmax_fsl,
-c    &                                       pbounds,.true.)
+c    &                                       localpbounds,.true.)
 c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vzmin_fsl,
-c    &                                       pbounds,.false.)
+c    &                                       localpbounds,.false.)
 c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vzmax_fsl,
-c    &                                       pbounds,.true.)
+c    &                                       localpbounds,.true.)
 
 c       --- Round the velocity mins and maxs to the grid cells
 c       vxmin_fsl = floor(vxmin_fsl/dvx_fsl)*dvx_fsl
@@ -1097,13 +1119,14 @@ c       --- Deposit the particles into the distribution grid
 c       --- Do the parallel nastiness of sharing boundary data
 c       --- This is a serial place holder.
         call applyboundaryconditionsonfgrid2d2v(nvx_fsl,nvz_fsl,nx_fsl,nz_fsl,
-     &                                          fgrid_fsl,pbounds,flost_fsl)
+     &                                          fgrid_fsl,localpbounds,
+     &                                          flost_fsl)
 
         call enforcepositivity2d2v(nvx_fsl,nvz_fsl,nx_fsl,nz_fsl,fgrid_fsl,
      &                             fthreshold_fsl)
 
 c       --- Regenerate the particles from the distribution
-        call createparticlesfromfgrid(pgroup,js,geometry,zbeam,0.,pbounds)
+        call createparticlesfromfgrid(pgroup,js,geometry,zbeam,0.,localpbounds)
 
       enddo
 
@@ -1426,6 +1449,99 @@ c             enddo
      &                  timesetgrid2d2vmodbspline2w +
      &                                         wtime() - substarttime
 !$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine sumfondomainboundaries(nvx,nvz,nx,nz,fgrid,localpbounds)
+      use Subtimerstop
+      use Parallel
+      integer(ISZ):: nvx,nvz,nx,nz
+      real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1)
+      integer(ISZ):: localpbounds(0:5)
+
+c Sum the distribution on domain boundaries.
+c This assumes that each processor "owns" f from iz=0 to iz=nzlocal-1.
+c Each is only responsible for sending out the source is owns.
+
+#ifdef MPIPARALLEL
+
+      real(kind=8),allocatable:: fgridrecv(:,:,:,:)
+      integer(MPIISZ):: dims,nlocal(-2:1),starts(-2:1),sizes(-2:1)
+      integer(MPIISZ):: iplower,ipupper,iparity
+      integer(MPIISZ):: lowertype,uppertype
+      integer(MPIISZ):: nn
+      include "mpif.h"
+      integer(MPIISZ):: mpi_comm
+      integer(MPIISZ):: mpierror
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
+      integer(MPIISZ):: messid = 63
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
+      allocate(fgridrecv(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:1))
+
+      dims = 4
+      nlocal = (/3+nvx,3+nvz,3+nx,3+nz/)
+      starts = 0
+      sizes = nlocal
+
+      starts(1) = -1 + 1
+      sizes(1) = 3
+      call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                              MPI_ORDER_FORTRAN,
+     &                              MPI_DOUBLE_PRECISION,
+     &                              lowertype,mpierror)
+      call MPI_TYPE_COMMIT(lowertype,mpierror)
+
+      starts(1) = nz - 1 + 1
+      sizes(1) = 3
+      call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                              MPI_ORDER_FORTRAN,
+     &                              MPI_DOUBLE_PRECISION,
+     &                              uppertype,mpierror)
+      call MPI_TYPE_COMMIT(uppertype,mpierror)
+
+      mpi_comm = ppdecomp%mpi_comm_z
+
+      iplower = ppdecomp%iprocgrid(2) - 1
+      ipupper = ppdecomp%iprocgrid(2) + 1
+      if (localpbounds(4) == 2 .and. iplower == -1) then
+        iplower = ppdecomp%nprocgrid(2) - 1
+      endif
+      if (localpbounds(5) == 2 .and. ipupper == ppdecomp%nprocgrid(2)) then
+        ipupper = 0
+      endif
+
+      do iparity=0,1
+        if (mod(ppdecomp%iprocgrid(2),2) == iparity .and. iplower >= 0) then
+          nn = 1
+          call MPI_SEND(fgrid,nn,lowertype,
+     &                  iplower,messid,mpi_comm,mpierror)
+          call MPI_RECV(fgrid,nn,lowertype,
+     &                  iplower,messid,mpi_comm,mpistatus,mpierror)
+        elseif (mod(ppdecomp%iprocgrid(2),2) == 1-iparity .and. 
+     &          ipupper < ppdecomp%nprocgrid(2)) then
+          nn = (3+nvx)*(3+nvz)*(3+nx)*(3)
+          call MPI_RECV(fgridrecv,nn,MPI_DOUBLE_PRECISION,
+     &                  ipupper,messid,mpi_comm,mpistatus,mpierror)
+          fgrid(:,:,:,nz-1:nz+1) = fgrid(:,:,:,nz-1:nz+1) + fgridrecv
+          nn = 1
+          call MPI_SEND(fgrid,nn,uppertype,
+     &                  ipupper,messid,mpi_comm,mpierror)
+        endif
+      enddo
+
+      call MPI_TYPE_FREE(lowertype,mpierror)
+      call MPI_TYPE_FREE(uppertype,mpierror)
+
+      deallocate(fgridrecv)
+
+!$OMP MASTER
+      if (ltoptimesubs) timesumfondomainboundaries = timesumfondomainboundaries + wtime() - substarttime
+!$OMP END MASTER
+
+#endif
 
       return
       end

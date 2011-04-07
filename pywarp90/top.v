@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.295 $, $Date: 2011/04/02 00:20:58 $
+#@(#) File TOP.V, version $Revision: 3.296 $, $Date: 2011/04/07 17:13:32 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.295 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.296 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2514,6 +2514,9 @@ setgrid2d2vmodbspline2w(np:integer,x(np):real,z(np):real,
         # Deposits weighted particles on a 2-D-2-V grid using a modified
         # second order B-spline. This is intended for use with the
         # Forward Semi-Lagrange algorithm.
+sumfondomainboundaries(nvx:integer,nvz:integer,nx:integer,nz:integer,
+                       fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1):real,
+                       localpbounds(0:5):integer) subroutine
  
 *********** Subcycling dump:
 ndtsaveraging integer /0/ # Sets the type of averaging to do when using
@@ -3440,4 +3443,5 @@ timeloadfgridguassian                  real /0./
 timeremapparticles2d2v                 real /0./
 timesetgrid2dmodbspline2w              real /0./
 timesetgrid2d2vmodbspline2w            real /0./
+timesumfondomainboundaries             real /0./
 
