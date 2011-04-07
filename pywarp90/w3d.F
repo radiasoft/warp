@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.450 $, $Date: 2011/01/31 19:41:16 $
+c@(#) File W3D.F, version $Revision: 3.451 $, $Date: 2011/04/07 00:32:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8883,19 +8883,21 @@ c  This seems to be the fastest version.
       real(kind=8):: g0,g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1
       real(kind=8):: u1next,v1next,w1next
 
-      g0 = wght*q/(dx*dy*dz)
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
-      if (l2symtry) then
-c       --- The particle weight is reduced by a factor of 2 except near the
-c       --- transverse boundaries.
-        g0 = g0*0.5
-      elseif (l4symtry) then
-c       --- The particle weight is reduced by a factor of 4 except near the
-c       --- transverse boundaries.
-        g0 = g0*0.25
-      endif
+      if (ny > 0) then
+
+        g0 = wght*q/(dx*dy*dz)
+        dxi = 1./dx
+        dyi = 1./dy
+        dzi = 1./dz
+        if (l2symtry) then
+c         --- The particle weight is reduced by a factor of 2 except near the
+c         --- transverse boundaries.
+          g0 = g0*0.5
+        elseif (l4symtry) then
+c         --- The particle weight is reduced by a factor of 4 except near the
+c         --- transverse boundaries.
+          g0 = g0*0.25
+        endif
 
 ! np was made FIRSTPRIVATE to get around a bug when the expression
 ! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
@@ -8904,119 +8906,195 @@ c       --- transverse boundaries.
 !$OMP&                 iinext,jjnext,kknext,u1next,v1next,w1next)
 !$OMP&FIRSTPRIVATE(np)
 
-c     --- vectorized loop to compute indices, weights
-      if (l2symtry) then
-        iinext = int((xp(1) - xmmin)*dxi)
-        jjnext = int((abs(yp(1)) - ymmin)*dyi)
-        kknext = int((zp(1) - zgrid - zmmin)*dzi)
-        u1next = (xp(1) - xmmin)*dxi - iinext
-        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
-        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+c       --- vectorized loop to compute indices, weights
+        if (l2symtry) then
+          iinext = int((xp(1) - xmmin)*dxi)
+          jjnext = int((abs(yp(1)) - ymmin)*dyi)
+          kknext = int((zp(1) - zgrid - zmmin)*dzi)
+          u1next = (xp(1) - xmmin)*dxi - iinext
+          v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+          w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
-        do ip = 1,np
-          ii = iinext
-          jj = jjnext
-          kk = kknext
-          u1 = u1next
-          v1 = v1next
-          w1 = w1next
-          if (ip < np) then
-            iinext = int((xp(ip+1) - xmmin)*dxi)
-            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
-            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
-            u1next = (xp(ip+1) - xmmin)*dxi - iinext
-            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
-            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
-          endif
-          g = g0*wfact(ip)
-          u0 = 1. - u1
-          v0 = 1. - v1
-          w0 = 1. - w1
-          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g
-          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g
-          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
-          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
-          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g
-          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
-          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
-          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
-        enddo
+          do ip = 1,np
+            ii = iinext
+            jj = jjnext
+            kk = kknext
+            u1 = u1next
+            v1 = v1next
+            w1 = w1next
+            if (ip < np) then
+              iinext = int((xp(ip+1) - xmmin)*dxi)
+              jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+              kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+              u1next = (xp(ip+1) - xmmin)*dxi - iinext
+              v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+              w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+            endif
+            g = g0*wfact(ip)
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
+            rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g
+            rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g
+            rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+            rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+            rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g
+            rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
+            rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+            rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+          enddo
 !$OMP END DO
-      elseif (l4symtry) then
-        iinext = int((abs(xp(1)) - xmmin)*dxi)
-        jjnext = int((abs(yp(1)) - ymmin)*dyi)
-        kknext = int((zp(1) - zgrid - zmmin)*dzi)
-        u1next = (abs(xp(1)) - xmmin)*dxi - iinext
-        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
-        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+        elseif (l4symtry) then
+          iinext = int((abs(xp(1)) - xmmin)*dxi)
+          jjnext = int((abs(yp(1)) - ymmin)*dyi)
+          kknext = int((zp(1) - zgrid - zmmin)*dzi)
+          u1next = (abs(xp(1)) - xmmin)*dxi - iinext
+          v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+          w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
-        do ip = 1,np
-          ii = iinext
-          jj = jjnext
-          kk = kknext
-          u1 = u1next
-          v1 = v1next
-          w1 = w1next
-          if (ip < np) then
-            iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
-            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
-            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
-            u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
-            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
-            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
-          endif
-          g = g0*wfact(ip)
-          u0 = 1. - u1
-          v0 = 1. - v1
-          w0 = 1. - w1
-          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g
-          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g
-          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
-          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
-          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g
-          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
-          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
-          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
-        enddo
+          do ip = 1,np
+            ii = iinext
+            jj = jjnext
+            kk = kknext
+            u1 = u1next
+            v1 = v1next
+            w1 = w1next
+            if (ip < np) then
+              iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+              jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+              kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+              u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+              v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+              w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+            endif
+            g = g0*wfact(ip)
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
+            rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g
+            rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g
+            rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+            rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+            rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g
+            rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
+            rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+            rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+          enddo
 !$OMP END DO
-      else
-c       --- normal loop
-        iinext = int((xp(1) - xmmin)*dxi)
-        jjnext = int((yp(1) - ymmin)*dyi)
-        kknext = int((zp(1) - zgrid - zmmin)*dzi)
-        u1next = (xp(1) - xmmin)*dxi - iinext
-        v1next = (yp(1) - ymmin)*dyi - jjnext
-        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+        else
+c         --- normal loop
+          iinext = int((xp(1) - xmmin)*dxi)
+          jjnext = int((yp(1) - ymmin)*dyi)
+          kknext = int((zp(1) - zgrid - zmmin)*dzi)
+          u1next = (xp(1) - xmmin)*dxi - iinext
+          v1next = (yp(1) - ymmin)*dyi - jjnext
+          w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
-        do ip = 1,np
-          ii = iinext
-          jj = jjnext
-          kk = kknext
-          u1 = u1next
-          v1 = v1next
-          w1 = w1next
-          if (ip < np) then
-            iinext = int((xp(ip+1) - xmmin)*dxi)
-            jjnext = int((yp(ip+1) - ymmin)*dyi)
-            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
-            u1next = (xp(ip+1) - xmmin)*dxi - iinext
-            v1next = (yp(ip+1) - ymmin)*dyi - jjnext
-            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
-          endif
-          g = g0*wfact(ip)
-          u0 = 1. - u1
-          v0 = 1. - v1
-          w0 = 1. - w1
-          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g
-          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g
-          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
-          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
-          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g
-          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
-          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
-          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
-        enddo
+          do ip = 1,np
+            ii = iinext
+            jj = jjnext
+            kk = kknext
+            u1 = u1next
+            v1 = v1next
+            w1 = w1next
+            if (ip < np) then
+              iinext = int((xp(ip+1) - xmmin)*dxi)
+              jjnext = int((yp(ip+1) - ymmin)*dyi)
+              kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+              u1next = (xp(ip+1) - xmmin)*dxi - iinext
+              v1next = (yp(ip+1) - ymmin)*dyi - jjnext
+              w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+            endif
+            g = g0*wfact(ip)
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
+            rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g
+            rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g
+            rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+            rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+            rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g
+            rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
+            rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+            rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+          enddo
 !$OMP END DO
+        endif
+
+      else if (ny == 0) then
+
+        g0 = wght*q/(dx*dz)
+        dxi = 1./dx
+        dzi = 1./dz
+        if (l4symtry) then
+c         --- The particle weight is reduced by a factor of 2 except near the
+c         --- transverse boundaries.
+          g0 = g0*0.5
+        endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,kk,u1,u0,v1,v0,w1,w0,ip,
+!$OMP&                 iinext,jjnext,kknext,u1next,v1next,w1next)
+!$OMP&FIRSTPRIVATE(np)
+
+c       --- vectorized loop to compute indices, weights
+        if (l4symtry) then
+          iinext = int((abs(xp(1)) - xmmin)*dxi)
+          kknext = int((zp(1) - zgrid - zmmin)*dzi)
+          u1next = (abs(xp(1)) - xmmin)*dxi - iinext
+          w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+          do ip = 1,np
+            ii = iinext
+            kk = kknext
+            u1 = u1next
+            w1 = w1next
+            if (ip < np) then
+              iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+              kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+              u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+              w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+            endif
+            g = g0*wfact(ip)
+            u0 = 1. - u1
+            w0 = 1. - w1
+            rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*w0*g
+            rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u1*w0*g
+            rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u0*w1*g
+            rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u1*w1*g
+          enddo
+!$OMP END DO
+        else
+c         --- normal loop
+          iinext = int((xp(1) - xmmin)*dxi)
+          kknext = int((zp(1) - zgrid - zmmin)*dzi)
+          u1next = (xp(1) - xmmin)*dxi - iinext
+          w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+          do ip = 1,np
+            ii = iinext
+            kk = kknext
+            u1 = u1next
+            w1 = w1next
+            if (ip < np) then
+              iinext = int((xp(ip+1) - xmmin)*dxi)
+              kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+              u1next = (xp(ip+1) - xmmin)*dxi - iinext
+              w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+            endif
+            g = g0*wfact(ip)
+            u0 = 1. - u1
+            w0 = 1. - w1
+            rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*w0*g
+            rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u1*w0*g
+            rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u0*w1*g
+            rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u1*w1*g
+          enddo
+!$OMP END DO
+        endif
+
       endif
 
 !$OMP END PARALLEL
