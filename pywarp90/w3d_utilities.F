@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.34 $, $Date: 2011/03/16 21:01:35 $
+c@(#) File w3d_utilities.F, version $Revision: 1.35 $, $Date: 2011/04/07 17:12:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -986,12 +986,12 @@ c     --- Set default values for the ppdecomp.xmin etc. from the values in
 c     --- fsdecomp. The grid_overlap is removed so that the ppdecomp
 c     --- domains do not overlap. Note that if lautodecomp is false, these
 c     --- values will be ignored.
-      ppdecomp%xmin = fsdecomp%xmin + int((grid_overlap-1)/2)*dx
-      ppdecomp%ymin = fsdecomp%ymin + int((grid_overlap-1)/2)*dy
-      ppdecomp%zmin = fsdecomp%zmin + int((grid_overlap-1)/2)*dz
-      ppdecomp%xmax = fsdecomp%xmax - int(grid_overlap/2)*dx
-      ppdecomp%ymax = fsdecomp%ymax - int(grid_overlap/2)*dy
-      ppdecomp%zmax = fsdecomp%zmax - int(grid_overlap/2)*dz
+      ppdecomp%xmin = xmmin + (fsdecomp%ix + int((grid_overlap-1)/2))*dx
+      ppdecomp%ymin = ymmin + (fsdecomp%iy + int((grid_overlap-1)/2))*dy
+      ppdecomp%zmin = zmmin + (fsdecomp%iz + int((grid_overlap-1)/2))*dz
+      ppdecomp%xmax = xmmin + (fsdecomp%ix+fsdecomp%nx - int(grid_overlap/2))*dx
+      ppdecomp%ymax = ymmin + (fsdecomp%iy+fsdecomp%ny - int(grid_overlap/2))*dy
+      ppdecomp%zmax = zmmin + (fsdecomp%iz+fsdecomp%nz - int(grid_overlap/2))*dz
 c     --- The domain of the first and last processor extends to the edge
 c     --- of the grid.
       ppdecomp%xmin(0) = fsdecomp%xmin(0)
