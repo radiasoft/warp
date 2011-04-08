@@ -2,14 +2,17 @@
 c=============================================================================
 c Routines for handing the Forward semi-Lagrangian method
 c=============================================================================
-      subroutine applyboundaryconditionsonfgrid2d2v(nvx,nvz,nx,nz,fgrid,
+      subroutine applyboundaryconditionsonfgrid2d2v(nvx,nvz,nx,nz,
+     &                                              nxguard,nzguard,
+     &                                              fgrid,
      &                                              localpbounds,
-     &                                              flost_fsl)
+     &                                              flost,lcellcentered)
       use Subtimerstop
-      integer(ISZ):: nvx,nvz,nx,nz
-      real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1)
+      integer(ISZ):: nvx,nvz,nx,nz,nxguard,nzguard
+      real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-nxguard:nx+1,-nzguard:nz+1)
       integer(ISZ):: localpbounds(0:5)
-      real(kind=8):: flost_fsl
+      real(kind=8):: flost
+      logical(ISZ):: lcellcentered
 
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
@@ -17,6 +20,7 @@ c=============================================================================
 c     --- The the data from the guard cells on velocity and move it to
 c     --- the edge of the domain. This avoids throwing data away, but
 c     --- does make errors in energy and momentum.
+c     --- Note that the velocity grid is always node centered.
       fgrid(0,:,:,:) = fgrid(0,:,:,:) + fgrid(-1,:,:,:)
       fgrid(-1,:,:,:) = 0.
       fgrid(nvx,:,:,:) = fgrid(nvx,:,:,:) + fgrid(nvx+1,:,:,:)
@@ -26,64 +30,138 @@ c     --- does make errors in energy and momentum.
       fgrid(:,nvz,:,:) = fgrid(:,nvz,:,:) + fgrid(:,nvz+1,:,:)
       fgrid(:,nvz+1,:,:) = 0.
 
-      if (localpbounds(0) == 0) then
-c       --- Save the sum of the data in the guard cell which is about to
-c       --- be thrown away.
-        flost_fsl = flost_fsl + sum(fgrid(:,:,-1:0,:))
-        fgrid(:,:,-1:0,:) = 0.
-      endif
-      if (localpbounds(1) == 0) then
-c       --- Save the sum of the data in the guard cell which is about to
-c       --- be thrown away.
-        flost_fsl = flost_fsl + sum(fgrid(:,:,nx:nx+1,:))
-        fgrid(:,:,nx:nx+1,:) = 0.
-      endif
-      if (localpbounds(0) == 1) then
-        fgrid(:,:,1,:) = fgrid(:,:,1,:) + fgrid(:,:,-1,:)
-        fgrid(:,:,-1,:) = fgrid(:,:,1,:)
-        fgrid(:,:,0,:) = 2.*fgrid(:,:,0,:)
-      endif
-      if (localpbounds(1) == 1) then
-        fgrid(:,:,nx-1,:) = fgrid(:,:,nx-1,:) + fgrid(:,:,nx+1,:)
-        fgrid(:,:,nx+1,:) = fgrid(:,:,nx-1,:)
-        fgrid(:,:,nx,:) = 2.*fgrid(:,:,nx,:)
-      endif
+      if (lcellcentered) then
+
+c       --- The grid includes ix=0 through ix=nx-1. ix=-2,-1,nx,nx+1 are all
+c       --- guard cells.
+
+        if (localpbounds(0) == 0) then
+c         --- Save the sum of the data in the guard cell which is about to
+c         --- be thrown away.
+          flost = flost + sum(fgrid(:,:,-2:-1,:))
+          fgrid(:,:,-2:-1,:) = 0.
+        endif
+        if (localpbounds(1) == 0) then
+c         --- Save the sum of the data in the guard cell which is about to
+c         --- be thrown away.
+          flost = flost + sum(fgrid(:,:,nx:nx+1,:))
+          fgrid(:,:,nx:nx+1,:) = 0.
+        endif
+        if (localpbounds(0) == 1) then
+          fgrid(:,:,0,:) = fgrid(:,:,0,:) + fgrid(:,:,-1,:)
+          fgrid(:,:,1,:) = fgrid(:,:,1,:) + fgrid(:,:,-2,:)
+          fgrid(:,:,-1,:) = fgrid(:,:,0,:)
+          fgrid(:,:,-2,:) = fgrid(:,:,1,:)
+        endif
+        if (localpbounds(1) == 1) then
+          fgrid(:,:,nx-1,:) = fgrid(:,:,nx-1,:) + fgrid(:,:,nx,:)
+          fgrid(:,:,nx-2,:) = fgrid(:,:,nx-2,:) + fgrid(:,:,nx+1,:)
+          fgrid(:,:,nx,:) = fgrid(:,:,nx-1,:)
+          fgrid(:,:,nx+1,:) = fgrid(:,:,nx-2,:)
+        endif
 #ifndef MPIPARALLEL
-      if (localpbounds(0) == 2 .and. localpbounds(1) == 2) then
-        fgrid(:,:,-1:1,:) = fgrid(:,:,-1:1,:) + fgrid(:,:,nx-1:nx+1,:)
-        fgrid(:,:,nx-1:nx+1,:) = fgrid(:,:,-1:1,:)
-      endif
+        if (localpbounds(0) == 2 .and. localpbounds(1) == 2) then
+          fgrid(:,:,-2:1,:) = fgrid(:,:,-2:1,:) + fgrid(:,:,nx-2:nx+1,:)
+          fgrid(:,:,nx-2:nx+1,:) = fgrid(:,:,-2:1,:)
+        endif
 #endif
 
-      if (localpbounds(4) == 0) then
-c       --- Save the sum of the data in the guard cell which is about to
-c       --- be thrown away.
-        flost_fsl = flost_fsl + sum(fgrid(:,:,:,-1:0))
-        fgrid(:,:,:,-1:0) = 0.
-      endif
-      if (localpbounds(5) == 0) then
-c       --- Save the sum of the data in the guard cell which is about to
-c       --- be thrown away.
-        flost_fsl = flost_fsl + sum(fgrid(:,:,:,nz:nz+1))
-        fgrid(:,:,:,nz:nz+1) = 0.
-      endif
-      if (localpbounds(4) == 1) then
-        fgrid(:,:,:,-1) = fgrid(:,:,:,1)
-        fgrid(:,:,:,0) = 2.*fgrid(:,:,:,0)
-      endif
-      if (localpbounds(5) == 1) then
-        fgrid(:,:,:,nz+1) = fgrid(:,:,:,nz-1)
-        fgrid(:,:,:,nz) = 2.*fgrid(:,:,:,nz)
-      endif
+        if (localpbounds(4) == 0) then
+c         --- Save the sum of the data in the guard cell which is about to
+c         --- be thrown away.
+          flost = flost + sum(fgrid(:,:,:,-2:-1))
+          fgrid(:,:,:,-2:-1) = 0.
+        endif
+        if (localpbounds(5) == 0) then
+c         --- Save the sum of the data in the guard cell which is about to
+c         --- be thrown away.
+          flost = flost + sum(fgrid(:,:,:,nz:nz+1))
+          fgrid(:,:,:,nz:nz+1) = 0.
+        endif
+        if (localpbounds(4) == 1) then
+          fgrid(:,:,:,0) = fgrid(:,:,:,0) + fgrid(:,:,:,-1)
+          fgrid(:,:,:,1) = fgrid(:,:,:,1) + fgrid(:,:,:,-2)
+          fgrid(:,:,:,-1) = fgrid(:,:,:,0)
+          fgrid(:,:,:,-2) = fgrid(:,:,:,1)
+        endif
+        if (localpbounds(5) == 1) then
+          fgrid(:,:,:,nz-1) = fgrid(:,:,:,nz-1) + fgrid(:,:,:,nz)
+          fgrid(:,:,:,nz-2) = fgrid(:,:,:,nz-2) + fgrid(:,:,:,nz+1)
+          fgrid(:,:,:,nz) = fgrid(:,:,:,nz-1)
+          fgrid(:,:,:,nz+1) = fgrid(:,:,:,nz-2)
+        endif
 #ifndef MPIPARALLEL
-      if (localpbounds(4) == 2 .and. localpbounds(5) == 2) then
-        fgrid(:,:,:,-1:1) = fgrid(:,:,:,-1:1) + fgrid(:,:,:,nz-1:nz+1)
-        fgrid(:,:,:,nz-1:nz+1) = fgrid(:,:,:,-1:1)
-      endif
+        if (localpbounds(4) == 2 .and. localpbounds(5) == 2) then
+          fgrid(:,:,:,-2:1) = fgrid(:,:,:,-2:1) + fgrid(:,:,:,nz-2:nz+1)
+          fgrid(:,:,:,nz-2:nz+1) = fgrid(:,:,:,-2:1)
+        endif
 #endif
+
+      else if (.not. lcellcentered) then
+
+        if (localpbounds(0) == 0) then
+c         --- Save the sum of the data in the guard cell which is about to
+c         --- be thrown away.
+          flost = flost + sum(fgrid(:,:,-1:0,:))
+          fgrid(:,:,-1:0,:) = 0.
+        endif
+        if (localpbounds(1) == 0) then
+c         --- Save the sum of the data in the guard cell which is about to
+c         --- be thrown away.
+          flost = flost + sum(fgrid(:,:,nx:nx+1,:))
+          fgrid(:,:,nx:nx+1,:) = 0.
+        endif
+        if (localpbounds(0) == 1) then
+          fgrid(:,:,1,:) = fgrid(:,:,1,:) + fgrid(:,:,-1,:)
+          fgrid(:,:,-1,:) = fgrid(:,:,1,:)
+          fgrid(:,:,0,:) = 2.*fgrid(:,:,0,:)
+        endif
+        if (localpbounds(1) == 1) then
+          fgrid(:,:,nx-1,:) = fgrid(:,:,nx-1,:) + fgrid(:,:,nx+1,:)
+          fgrid(:,:,nx+1,:) = fgrid(:,:,nx-1,:)
+          fgrid(:,:,nx,:) = 2.*fgrid(:,:,nx,:)
+        endif
+#ifndef MPIPARALLEL
+        if (localpbounds(0) == 2 .and. localpbounds(1) == 2) then
+          fgrid(:,:,-1:1,:) = fgrid(:,:,-1:1,:) + fgrid(:,:,nx-1:nx+1,:)
+          fgrid(:,:,nx-1:nx+1,:) = fgrid(:,:,-1:1,:)
+        endif
+#endif
+
+        if (localpbounds(4) == 0) then
+c         --- Save the sum of the data in the guard cell which is about to
+c         --- be thrown away.
+          flost = flost + sum(fgrid(:,:,:,-1:0))
+          fgrid(:,:,:,-1:0) = 0.
+        endif
+        if (localpbounds(5) == 0) then
+c         --- Save the sum of the data in the guard cell which is about to
+c         --- be thrown away.
+          flost = flost + sum(fgrid(:,:,:,nz:nz+1))
+          fgrid(:,:,:,nz:nz+1) = 0.
+        endif
+        if (localpbounds(4) == 1) then
+          fgrid(:,:,:,1) = fgrid(:,:,:,1) + fgrid(:,:,:,-1)
+          fgrid(:,:,:,-1) = fgrid(:,:,:,1)
+          fgrid(:,:,:,0) = 2.*fgrid(:,:,:,0)
+        endif
+        if (localpbounds(5) == 1) then
+          fgrid(:,:,:,nz-1) = fgrid(:,:,:,nz-1) + fgrid(:,:,:,nz+1)
+          fgrid(:,:,:,nz+1) = fgrid(:,:,:,nz-1)
+          fgrid(:,:,:,nz) = 2.*fgrid(:,:,:,nz)
+        endif
+#ifndef MPIPARALLEL
+        if (localpbounds(4) == 2 .and. localpbounds(5) == 2) then
+          fgrid(:,:,:,-1:1) = fgrid(:,:,:,-1:1) + fgrid(:,:,:,nz-1:nz+1)
+          fgrid(:,:,:,nz-1:nz+1) = fgrid(:,:,:,-1:1)
+        endif
+#endif
+
+      endif
 
 #ifdef MPIPARALLEL
-      call sumfondomainboundaries(nvx,nvz,nx,nz,fgrid,localpbounds)
+      call sumfondomainboundaries(nvx,nvz,nx,nz,nxguard,nzguard,
+     &                            fgrid,localpbounds)
 #endif
 
 !$OMP MASTER
@@ -95,36 +173,78 @@ c       --- be thrown away.
       return
       end
 c=============================================================================
-      subroutine applyminmaxboundaryconditions2d(nx,nz,v,pbounds,lmax)
+      subroutine applyminmaxboundaryconditions2d(nx,nz,nxguard,nzguard,
+     &                                           v,pbounds,lmax,lcellcentered)
       use Subtimerstop
-      integer(ISZ):: nx,nz
-      real(kind=8):: v(-1:nx+1,-1:nz+1)
+      integer(ISZ):: nx,nz,nxguard,nzguard
+      real(kind=8):: v(-nxguard:nx+1,-nzguard:nz+1)
       integer(ISZ):: pbounds(0:5)
       logical(ISZ):: lmax
+      logical(ISZ):: lcellcentered
 
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-      if (pbounds(0) == 0 .or. pbounds(0) == 1) v(-1,:) = v(1,:)
-      if (pbounds(1) == 0 .or. pbounds(1) == 1) v(nx+1,:) = v(nx-1,:)
-      if (pbounds(0) == 2 .and. pbounds(1) == 2) then
-        if (lmax) then
-          v(-1:1,:) = max(v(-1:1,:),v(nx-1:nx+1,:))
-        else
-          v(-1:1,:) = min(v(-1:1,:),v(nx-1:nx+1,:))
-        endif
-        v(nx-1:nx+1,:) = v(-1:1,:)
-      endif
+      if (lcellcentered) then
 
-      if (pbounds(4) == 0 .or. pbounds(4) == 1) v(:,-1) = v(:,1)
-      if (pbounds(5) == 0 .or. pbounds(5) == 1) v(:,nz+1) = v(:,nz-1)
-      if (pbounds(4) == 2 .and. pbounds(5) == 2) then
-        if (lmax) then
-          v(:,-1:1) = max(v(:,-1:1),v(:,nz-1:nz+1))
-        else
-          v(:,-1:1) = min(v(:,-1:1),v(:,nz-1:nz+1))
+        if (pbounds(0) == 0 .or. pbounds(0) == 1) then
+          v(-1,:) = v(0,:)
+          v(-2,:) = v(0,:)
         endif
-        v(:,nz-1:nz+1) = v(:,-1:1)
+        if (pbounds(1) == 0 .or. pbounds(1) == 1) then
+          v(nx,:) = v(nx-1,:)
+          v(nx+1,:) = v(nx-1,:)
+        endif
+        if (pbounds(0) == 2 .and. pbounds(1) == 2) then
+          if (lmax) then
+            v(-2:1,:) = max(v(-2:1,:),v(nx-2:nx+1,:))
+          else
+            v(-2:1,:) = min(v(-2:1,:),v(nx-2:nx+1,:))
+          endif
+          v(nx:nx+1,:) = v(-2:-1,:)
+        endif
+
+        if (pbounds(4) == 0 .or. pbounds(4) == 1) then
+          v(:,-1) = v(:,0)
+          v(:,-2) = v(:,0)
+        endif
+        if (pbounds(5) == 0 .or. pbounds(5) == 1) then
+          v(:,nz) = v(:,nz-1)
+          v(:,nz+1) = v(:,nz-1)
+        endif
+        if (pbounds(4) == 2 .and. pbounds(5) == 2) then
+          if (lmax) then
+            v(:,-2:1) = max(v(:,-2:1),v(:,nz-2:nz+1))
+          else
+            v(:,-2:1) = min(v(:,-2:1),v(:,nz-2:nz+1))
+          endif
+          v(:,nz-2:nz+1) = v(:,-2:1)
+        endif
+
+      else
+
+        if (pbounds(0) == 0 .or. pbounds(0) == 1) v(-1,:) = v(1,:)
+        if (pbounds(1) == 0 .or. pbounds(1) == 1) v(nx+1,:) = v(nx-1,:)
+        if (pbounds(0) == 2 .and. pbounds(1) == 2) then
+          if (lmax) then
+            v(-1:1,:) = max(v(-1:1,:),v(nx-1:nx+1,:))
+          else
+            v(-1:1,:) = min(v(-1:1,:),v(nx-1:nx+1,:))
+          endif
+          v(nx-1:nx+1,:) = v(-1:1,:)
+        endif
+
+        if (pbounds(4) == 0 .or. pbounds(4) == 1) v(:,-1) = v(:,1)
+        if (pbounds(5) == 0 .or. pbounds(5) == 1) v(:,nz+1) = v(:,nz-1)
+        if (pbounds(4) == 2 .and. pbounds(5) == 2) then
+          if (lmax) then
+            v(:,-1:1) = max(v(:,-1:1),v(:,nz-1:nz+1))
+          else
+            v(:,-1:1) = min(v(:,-1:1),v(:,nz-1:nz+1))
+          endif
+          v(:,nz-1:nz+1) = v(:,-1:1)
+        endif
+
       endif
 
 !$OMP MASTER
@@ -153,6 +273,7 @@ c=============================================================================
       integer(ISZ):: ix,iz,ivx,ivz
       integer(ISZ):: ix0,iz0
       integer(ISZ):: ix1,iz1
+      real(kind=8):: xoffset,zoffset
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -161,30 +282,47 @@ c=============================================================================
         return
       endif
 
-c     --- Be careful not to create particles at the edge of the mesh
-c     --- with Dirichelt boundaries or the upper edge with peridoic.
-      if (localpbounds(0) == 0) then
-        ix0 = 1
-      else
-        ix0 = 0
-      endif
-      if (localpbounds(1) == 0 .or. localpbounds(1) == 2 .or.
-     &    localpbounds(1) == -1) then
-        ix1 = nx_fsl - 1
-      else
-        ix1 = nx_fsl
-      endif
+      if (lcellcentered_fsl) then
 
-      if (localpbounds(4) == 0) then
-        iz0 = 1
-      else
+c       --- When cell centered, these values are independent of the
+c       --- boundary conditions.
+        ix0 = 0
+        ix1 = nx_fsl - 1
         iz0 = 0
-      endif
-      if (localpbounds(5) == 0 .or. localpbounds(5) == 2 .or.
-     &    localpbounds(5) == -1) then
         iz1 = nz_fsl - 1
+        xoffset = dx_fsl/2.
+        zoffset = dz_fsl/2.
+
       else
-        iz1 = nz_fsl
+
+c       --- Be careful not to create particles at the edge of the mesh
+c       --- with Dirichelt boundaries or the upper edge with peridoic.
+        if (localpbounds(0) == 0) then
+          ix0 = 1
+        else
+          ix0 = 0
+        endif
+        if (localpbounds(1) == 0 .or. localpbounds(1) == 2 .or.
+     &      localpbounds(1) == -1) then
+          ix1 = nx_fsl - 1
+        else
+          ix1 = nx_fsl
+        endif
+  
+        if (localpbounds(4) == 0) then
+          iz0 = 1
+        else
+          iz0 = 0
+        endif
+        if (localpbounds(5) == 0 .or. localpbounds(5) == 2 .or.
+     &      localpbounds(5) == -1) then
+          iz1 = nz_fsl - 1
+        else
+          iz1 = nz_fsl
+        endif
+        xoffset = 0.
+        zoffset = 0.
+
       endif
 
 c     --- Count how many particles will be created, the number of fgrid
@@ -238,9 +376,9 @@ c     --- Regenerate the weighted particles at the grid locations
           do ivz=0,nvz_fsl
             do ivx=0,nvx_fsl
               if (fgrid_fsl(ivx,ivz,ix,iz) .ne. 0.) then
-                xp(ip) = xmin_fsl + ix*dx_fsl
+                xp(ip) = xmin_fsl + ix*dx_fsl + xoffset
                 yp(ip) = 0.
-                zp(ip) = zmin_fsl + iz*dz_fsl + zbeam
+                zp(ip) = zmin_fsl + iz*dz_fsl + zoffset + zbeam
                 uxp(ip) = vxmin_fsl(ix,iz) + ivx*dvx_fsl
                 uyp(ip) = vybeam
                 uzp(ip) = vzmin_fsl(ix,iz) + ivz*dvz_fsl + vzbeam
@@ -393,258 +531,13 @@ c             --- so go to a bigger area.
       return
       end
 c=============================================================================
-      subroutine enforcepositivity2d2vcube(nvx,nvz,nx,nz,fgrid,threshold)
+      subroutine enforcepositivity2d2v(nvx,nvz,nx,nz,nxguard,nzguard,
+     &                                 fgrid,threshold,lcellcentered)
       use Subtimerstop
-      integer(ISZ):: nvx,nvz,nx,nz
-      real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1)
+      integer(ISZ):: nvx,nvz,nx,nz,nxguard,nzguard
+      real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-nxguard:nx+1,-nzguard:nz+1)
       real(kind=8):: threshold
-
-c Given a distribution function, fgrid, this routine enforces positivity
-c by taking any negative values and distributing it to nearby, already
-c positive, locations. It ensures that the integral of fgrid remains fixed.
-c The action is local, avoiding a global calculation.
-
-c This didn't work well. It distributes over the nearest cube. The
-c ordering can sometimes leave isolate cells with f < 0.
-
-      integer(ISZ):: ivx,ivz,ix,iz,iparity,ivx0
-      integer(ISZ):: niter,nitermax
-      integer(ISZ):: jvx1,jvz1,jx1,jz1
-      integer(ISZ):: jvx2,jvz2,jx2,jz2
-      real(kind=8):: sumcap,fdel,fminimum
-      real(kind=8):: substarttime,wtime
-      if (ltoptimesubs) substarttime = wtime()
-
-      nitermax = 5
-
-      niter = 0
-      do
-        niter = niter + 1
-        if (niter > nitermax) exit
-
-        fminimum = threshold
-
-c       --- Loop over the array using even-odd ordering
-        do iparity = 0,1
-          do iz = 0,nz
-            do ix = 0,nx
-              do ivz = 0,nvz
-                ivx0 = mod(iz + ix + ivz + iparity,2)
-                do ivx = ivx0,nvx,2
-
-                  if (fgrid(ivx,ivz,ix,iz) < threshold .and.
-     &                fgrid(ivx,ivz,ix,iz) .ne. 0.) then
-
-c                   --- Create the sum of the surrounding, positive values,
-c                   --- including all of the grid cells within a square,
-c                   --- and including guard cells.
-c                   --- Note that the center cell will be excluded
-c                   --- since it less than the threshold.
-                    jvx1 = ivx - 1
-                    jvx2 = ivx + 1
-                    jvz1 = ivz - 1
-                    jvz2 = ivz + 1
-                    jx1 = ix - 1
-                    jx2 = ix + 1
-                    jz1 = iz - 1
-                    jz2 = iz + 1
-                    sumcap = sum(fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2),
-     &               mask=fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2)>=threshold)
-
-                    if (sumcap > 0.) then
-c                     --- If the sum is > 0, then the distribution of the
-c                     --- negative f can be done. If there is not enough,
-c                     --- some areas will go negative, and will need to
-c                     --- be corrected in the next iteration.
-                      fdel = fgrid(ivx,ivz,ix,iz)/sumcap
-                      fgrid(ivx,ivz,ix,iz) = 0.
-                      where (fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2) >= threshold)
-                        fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2) =
-     &                  fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2) +
-     &                  fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2)*fdel
-                      end where
-                      fminimum = min(fminimum,
-     &                minval(fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2),
-     &                 mask=fgrid(jvx1:jvx2,jvz1:jvz2,jx1:jx2,jz1:jz2).ne.0))
-                    endif
-
-                  endif
-
-                enddo
-
-              enddo
-            enddo
-          enddo
-        enddo
-
-        if (fminimum >= threshold .or. fminimum == 0.) exit
-
-      enddo
-
-!$OMP MASTER
-      if (ltoptimesubs) timeenforcepositivity2d2v =
-     &                  timeenforcepositivity2d2v +
-     &                                         wtime() - substarttime
-!$OMP END MASTER
-
-      return
-      end
-c=============================================================================
-      subroutine enforcepositivity2d2vevenodd(nvx,nvz,nx,nz,fgrid,threshold)
-      use Subtimerstop
-      integer(ISZ):: nvx,nvz,nx,nz
-      real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1)
-      real(kind=8):: threshold
-
-c Given a distribution function, fgrid, this routine enforces positivity
-c by taking any negative values and distributing it to nearby, already
-c positive, locations. It ensures that the integral of fgrid remains fixed.
-c The action is local, avoiding a global calculation.
-
-c This doesn't work so well either. It distributes only to direct
-c neighbors, and not diagonally. The even-odd ordering can leave
-c isolated cells with f < 0.
-
-      integer(ISZ):: ivx,ivz,ix,iz,iparity,ivx0
-      integer(ISZ):: niter,nitermax
-      integer(ISZ):: jvx1,jvz1,jx1,jz1
-      integer(ISZ):: jvx2,jvz2,jx2,jz2
-      real(kind=8):: sumcap,fdel,fminimum
-      real(kind=8):: substarttime,wtime
-      if (ltoptimesubs) substarttime = wtime()
-
-      nitermax = 5
-
-      niter = 0
-      do
-        niter = niter + 1
-        if (niter > nitermax) exit
-
-        fminimum = threshold
-
-c       --- Loop over the array using even-odd ordering
-        do iparity = 0,1
-          do iz = 0,nz
-            do ix = 0,nx
-              do ivz = 0,nvz
-                ivx0 = mod(iz + ix + ivz + iparity,2)
-                do ivx = ivx0,nvx,2
-
-                  if (fgrid(ivx,ivz,ix,iz) < threshold .and.
-     &                fgrid(ivx,ivz,ix,iz) .ne. 0.) then
-
-c                   --- Create the sum of the surrounding, positive values,
-c                   --- including guard cells, but excluding corners.
-                    sumcap = 0.
-                    if (fgrid(ivx-1,ivz  ,ix  ,iz  ) >= threshold)
-     &                sumcap = sumcap + fgrid(ivx-1,ivz  ,ix  ,iz  )
-                    if (fgrid(ivx+1,ivz  ,ix  ,iz  ) >= threshold)
-     &                sumcap = sumcap + fgrid(ivx+1,ivz  ,ix  ,iz  )
-                    if (fgrid(ivx  ,ivz-1,ix  ,iz  ) >= threshold)
-     &                sumcap = sumcap + fgrid(ivx  ,ivz-1,ix  ,iz  )
-                    if (fgrid(ivx  ,ivz+1,ix  ,iz  ) >= threshold)
-     &                sumcap = sumcap + fgrid(ivx  ,ivz+1,ix  ,iz  )
-                    if (fgrid(ivx  ,ivz  ,ix-1,iz  ) >= threshold)
-     &                sumcap = sumcap + fgrid(ivx  ,ivz  ,ix-1,iz  )
-                    if (fgrid(ivx  ,ivz  ,ix+1,iz  ) >= threshold)
-     &                sumcap = sumcap + fgrid(ivx  ,ivz  ,ix+1,iz  )
-                    if (fgrid(ivx  ,ivz  ,ix  ,iz-1) >= threshold)
-     &                sumcap = sumcap + fgrid(ivx  ,ivz  ,ix  ,iz-1)
-                    if (fgrid(ivx  ,ivz  ,ix  ,iz+1) >= threshold)
-     &                sumcap = sumcap + fgrid(ivx  ,ivz  ,ix  ,iz+1)
-
-                    if (sumcap > 0.) then
-c                     --- If the sum is > 0, then the distribution of the
-c                     --- negative f can be done. If there is not enough,
-c                     --- some areas will go negative, and will need to
-c                     --- be corrected in the next iteration.
-                      fdel = fgrid(ivx,ivz,ix,iz)/sumcap
-                      fgrid(ivx,ivz,ix,iz) = 0.
-                      if (fgrid(ivx-1,ivz  ,ix  ,iz  ) >= threshold) then
-                        fgrid(ivx-1,ivz  ,ix  ,iz  ) = 
-     &                  fgrid(ivx-1,ivz  ,ix  ,iz  ) + 
-     &                  fgrid(ivx-1,ivz  ,ix  ,iz  )*fdel
-                        fminimum = min(fminimum,
-     &                                 fgrid(ivx-1,ivz  ,ix  ,iz  ))
-                      endif
-                      if (fgrid(ivx+1,ivz  ,ix  ,iz  ) >= threshold) then
-                        fgrid(ivx+1,ivz  ,ix  ,iz  ) = 
-     &                  fgrid(ivx+1,ivz  ,ix  ,iz  ) + 
-     &                  fgrid(ivx+1,ivz  ,ix  ,iz  )*fdel
-                        fminimum = min(fminimum,
-     &                                 fgrid(ivx+1,ivz  ,ix  ,iz  ))
-                      endif
-                      if (fgrid(ivx  ,ivz-1,ix  ,iz  ) >= threshold) then
-                        fgrid(ivx  ,ivz-1,ix  ,iz  ) = 
-     &                  fgrid(ivx  ,ivz-1,ix  ,iz  ) + 
-     &                  fgrid(ivx  ,ivz-1,ix  ,iz  )*fdel
-                        fminimum = min(fminimum,
-     &                                 fgrid(ivx  ,ivz-1,ix  ,iz  ))
-                      endif
-                      if (fgrid(ivx  ,ivz+1,ix  ,iz  ) >= threshold) then
-                        fgrid(ivx  ,ivz+1,ix  ,iz  ) = 
-     &                  fgrid(ivx  ,ivz+1,ix  ,iz  ) + 
-     &                  fgrid(ivx  ,ivz+1,ix  ,iz  )*fdel
-                        fminimum = min(fminimum,
-     &                                 fgrid(ivx  ,ivz+1,ix  ,iz  ))
-                      endif
-                      if (fgrid(ivx  ,ivz  ,ix-1,iz  ) >= threshold) then
-                        fgrid(ivx  ,ivz  ,ix-1,iz  ) = 
-     &                  fgrid(ivx  ,ivz  ,ix-1,iz  ) + 
-     &                  fgrid(ivx  ,ivz  ,ix-1,iz  )*fdel
-                        fminimum = min(fminimum,
-     &                                 fgrid(ivx  ,ivz  ,ix-1,iz  ))
-                      endif
-                      if (fgrid(ivx  ,ivz  ,ix+1,iz  ) >= threshold) then
-                        fgrid(ivx  ,ivz  ,ix+1,iz  ) = 
-     &                  fgrid(ivx  ,ivz  ,ix+1,iz  ) + 
-     &                  fgrid(ivx  ,ivz  ,ix+1,iz  )*fdel
-                        fminimum = min(fminimum,
-     &                                 fgrid(ivx  ,ivz  ,ix+1,iz  ))
-                      endif
-                      if (fgrid(ivx  ,ivz  ,ix  ,iz-1) >= threshold) then
-                        fgrid(ivx  ,ivz  ,ix  ,iz-1) = 
-     &                  fgrid(ivx  ,ivz  ,ix  ,iz-1) + 
-     &                  fgrid(ivx  ,ivz  ,ix  ,iz-1)*fdel
-                        fminimum = min(fminimum,
-     &                                 fgrid(ivx  ,ivz  ,ix  ,iz-1))
-                      endif
-                      if (fgrid(ivx  ,ivz  ,ix  ,iz+1) >= threshold) then
-                        fgrid(ivx  ,ivz  ,ix  ,iz+1) = 
-     &                  fgrid(ivx  ,ivz  ,ix  ,iz+1) + 
-     &                  fgrid(ivx  ,ivz  ,ix  ,iz+1)*fdel
-                        fminimum = min(fminimum,
-     &                                 fgrid(ivx  ,ivz  ,ix  ,iz+1))
-                      endif
-
-                    endif
-
-                  endif
-
-                enddo
-              enddo
-            enddo
-          enddo
-        enddo
-
-        if (fminimum >= threshold .or. fminimum == 0.) exit
-
-      enddo
-
-!$OMP MASTER
-      if (ltoptimesubs) timeenforcepositivity2d2v =
-     &                  timeenforcepositivity2d2v +
-     &                                         wtime() - substarttime
-!$OMP END MASTER
-
-      return
-      end
-c=============================================================================
-      subroutine enforcepositivity2d2v(nvx,nvz,nx,nz,fgrid,threshold)
-      use Subtimerstop
-      integer(ISZ):: nvx,nvz,nx,nz
-      real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1)
-      real(kind=8):: threshold
+      logical(ISZ):: lcellcentered
 
 c Given a distribution function, fgrid, this routine enforces positivity
 c by taking any negative values and distributing it to nearby, already
@@ -657,6 +550,8 @@ c neighbors, not including diagonals (though this may not be important).
 c A future version might allow the mid point to move, perhaps being the
 c location of the max f for example.
 
+      integer(ISZ):: kx1,kz1,k1
+      integer(ISZ):: kx2,kz2
       integer(ISZ):: kvx,kvz,kx,kz
       integer(ISZ):: kvxmid,kvzmid,kxmid,kzmid
       integer(ISZ):: ivx,ivz,ix,iz
@@ -673,6 +568,20 @@ c location of the max f for example.
       kxmid = nx/2
       kzmid = nz/2
 
+      if (lcellcentered) then
+        kx1 = 0
+        kx2 = nx - 1
+        kz1 = 0
+        kz2 = nz - 1
+        k1 = 1
+      else
+        kx1 = 0
+        kx2 = nx
+        kz1 = 0
+        kz2 = nz
+        k1 = 0
+      endif
+
       niter = 0
       do
         niter = niter + 1
@@ -681,18 +590,18 @@ c location of the max f for example.
         fminimum = threshold
 
 c       --- Loop over the array, sweeping in from the edges to the center
-        do kz = 0,nz
+        do kz = kz1,kz2
           if (kz < kzmid) then
             iz = kz
           else
-            iz = nz - kz + kzmid
+            iz = nz - kz + kzmid - k1
           endif
 
-          do kx = 0,nx
+          do kx = kx1,kx2
             if (kx < kxmid) then
               ix = kx
             else
-              ix = nx - kx + kxmid
+              ix = nx - kx + kxmid - k1
             endif
 
             do kvz = 0,nvz
@@ -819,26 +728,46 @@ c                   --- be corrected in the next iteration.
       end
 c=============================================================================
       subroutine findminmaxongrid2d2v(np,x,z,vx,vz,nx,nz,
-     &                                xmin,xmax,zmin,zmax,
-     &                                vxmin,vxmax,vzmin,vzmax)
+     &                                nxguard,nzguard,
+     &                                xmin,dx,zmin,dz,
+     &                                vxmin,vxmax,vzmin,vzmax,
+     &                                lcellcentered)
       use Subtimerstop
-      integer(ISZ):: np,nx,nz
+      integer(ISZ):: np,nx,nz,nxguard,nzguard
       real(kind=8):: x(np), z(np), vx(np), vz(np)
-      real(kind=8):: xmin,xmax,zmin,zmax
-      real(kind=8):: vxmin(-1:nx+1,-1:nz+1),vxmax(-1:nx+1,-1:nz+1)
-      real(kind=8):: vzmin(-1:nx+1,-1:nz+1),vzmax(-1:nx+1,-1:nz+1)
+      real(kind=8):: xmin,dx,zmin,dz
+      real(kind=8):: vxmin(-nxguard:nx+1,-nzguard:nz+1)
+      real(kind=8):: vxmax(-nxguard:nx+1,-nzguard:nz+1)
+      real(kind=8):: vzmin(-nxguard:nx+1,-nzguard:nz+1)
+      real(kind=8):: vzmax(-nxguard:nx+1,-nzguard:nz+1)
+      logical(ISZ):: lcellcentered
 
 c Finds the min and max velocities as a function of position
 
-      integer(ISZ):: ip,ix,iz
+      real(kind=8):: xoffset,zoffset
+      real(kind=8):: gxoffset,gzoffset
+      integer(ISZ):: ip,ix,iz,i1
       real(kind=8):: gx,gz,dxi,dzi
       real(kind=8):: lastvalue1,lastvalue2
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-      if (xmax == xmin .or. zmax == zmin) then
-        call kaboom("findminmaxongrid2d2v: the grid extent is zero, xmin==xmax or zmin==ymax")
-        return
+c     --- set grid cell inverse sizes
+      dxi = 1./dx
+      dzi = 1./dz
+
+      if (lcellcentered) then
+        xoffset = dx/2.
+        zoffset = dz/2.
+        gxoffset = 1.
+        gzoffset = 1.
+        i1 = 1
+      else
+        xoffset = 0.
+        zoffset = 0.
+        gxoffset = 0.
+        gzoffset = 0.
+        i1 = 0
       endif
 
       vxmin = +LARGEPOS
@@ -846,22 +775,18 @@ c Finds the min and max velocities as a function of position
       vzmin = +LARGEPOS
       vzmax = -LARGEPOS
 
-c     --- set grid cell inverse sizes
-      dxi = nx/(xmax - xmin)
-      dzi = nz/(zmax - zmin)
-
 c     --- loop over particles
       do ip=1,np
 
 c       --- find location on grid
-        gx = (x(ip) - xmin)*dxi
-        gz = (z(ip) - zmin)*dzi
+        gx = (x(ip) - xmin - xoffset)*dxi
+        gz = (z(ip) - zmin - zoffset)*dzi
 
 c       --- if within grid, accumulate
-        if (0. <= gx .and. gx < nx .and.
-     &      0. <= gz .and. gz < nz) then
-          ix = int(gx)
-          iz = int(gz)
+        if (0.-gxoffset <= gx .and. gx < nx .and.
+     &      0.-gzoffset <= gz .and. gz < nz) then
+          ix = floor(gx)
+          iz = floor(gz)
           vxmin(ix  ,iz  ) = min(vxmin(ix  ,iz  ),vx(ip))
           vxmin(ix+1,iz  ) = min(vxmin(ix+1,iz  ),vx(ip))
           vxmin(ix  ,iz+1) = min(vxmin(ix  ,iz+1),vx(ip))
@@ -897,40 +822,40 @@ c       --- if within grid, accumulate
       return
       CONTAINS
         subroutine cleanuplargepos(v,lpsign)
-        real(kind=8):: v(-1:nx+1,-1:nz+1)
+        real(kind=8):: v(-nxguard:nx+1,-nzguard:nz+1)
         integer(ISZ):: lpsign
 c       --- Remove the LARGEPOS values, replacing them with nearby values.
 c       --- Two sweeps are done, one in each direction, and any LARGEPOS
 c       --- are replaced by the previous value found during the sweep.
-        do iz=-1,nz+1
+        do iz=-nzguard,nz+1
           lastvalue1 = lpsign*LARGEPOS
           lastvalue2 = lpsign*LARGEPOS
-          do ix=-1,nx+1
+          do ix=-nxguard,nx+1
             if (v(ix,iz) == lpsign*LARGEPOS) then
               v(ix,iz) = lastvalue1
             else
               lastvalue1 = v(ix,iz)
             endif
-            if (v(nx-ix,iz) == lpsign*LARGEPOS) then
-              v(nx-ix,iz) = lastvalue2
+            if (v(nx-ix-i1,iz) == lpsign*LARGEPOS) then
+              v(nx-ix-i1,iz) = lastvalue2
             else
-              lastvalue2 = v(nx-ix,iz)
+              lastvalue2 = v(nx-ix-i1,iz)
             endif
           enddo
         enddo
-        do ix=-1,nx+1
+        do ix=-nxguard,nx+1
           lastvalue1 = lpsign*LARGEPOS
           lastvalue2 = lpsign*LARGEPOS
-          do iz=-1,nz+1
+          do iz=-nzguard,nz+1
             if (v(ix,iz) == lpsign*LARGEPOS) then
               v(ix,iz) = lastvalue1
             else
               lastvalue1 = v(ix,iz)
             endif
-            if (v(ix,nz-iz) == lpsign*LARGEPOS) then
-              v(ix,nz-iz) = lastvalue2
+            if (v(ix,nz-iz-i1) == lpsign*LARGEPOS) then
+              v(ix,nz-iz-i1) = lastvalue2
             else
-              lastvalue2 = v(ix,nz-iz)
+              lastvalue2 = v(ix,nz-iz-i1)
             endif
           enddo
         enddo
@@ -940,19 +865,39 @@ c       --- are replaced by the previous value found during the sweep.
       end
 c=============================================================================
       subroutine loadfgridguassian(nz,density,radius,
-     &                             vthermalperp,vthermalparallel)
+     &                             vthermalperp,vthermalparallel,
+     &                             lcellcentered)
       use Subtimerstop
       use Constant
       use ForwardSemiLagrange
       integer(ISZ):: nz
       real(kind=8):: density(0:nz),radius(0:nz)
       real(kind=8):: vthermalperp,vthermalparallel
-      integer(ISZ):: ivx,ivz,ix,iz
-      real(kind=8):: xx,vx,vz,fvz,fvx,sumf
+      logical(ISZ):: lcellcentered
 
+      real(kind=8):: xoffset,zoffset
+      integer(ISZ):: ivx,ivz,ix,iz,ix2,iz2
+      real(kind=8):: xx,vx,vz,fvz,fvx,sumf
       real(kind=8):: fvx0,fvz0
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+
+      lcellcentered_fsl = lcellcentered
+      if (lcellcentered) then
+        nxguard_fsl = 2
+        nzguard_fsl = 2
+        xoffset = dx_fsl/2.
+        zoffset = dz_fsl/2.
+        ix2 = nx_fsl - 1
+        iz2 = nz_fsl - 1
+      else
+        nxguard_fsl = 1
+        nzguard_fsl = 1
+        xoffset = 0.
+        zoffset = 0.
+        ix2 = nx_fsl
+        iz2 = nz_fsl
+      endif
 
       if (nz .ne. nz_fsl) then
         call kaboom("loadfgridguassian: nz must be equal to nz_fsl")
@@ -986,10 +931,10 @@ c=============================================================================
       fvz0 = sqrt(1./(2.*pi*vthermalparallel**2))
       fvx0 = sqrt(1./(2.*pi*vthermalperp**2))
 
-      do iz=0,nz_fsl
+      do iz=0,iz2
         if (density(iz) == 0. .or. radius(iz) == 0.) cycle
-        do ix=0,nx_fsl
-          xx = xmin_fsl + ix*dx_fsl
+        do ix=0,ix2
+          xx = xmin_fsl + ix*dx_fsl + xoffset
           if (abs(xx) > radius(iz)) cycle
           do ivz=0,nvz_fsl
             vz = vzmin_fsl(ix,iz) + ivz*dvz_fsl
@@ -1074,20 +1019,33 @@ c --- counted.
 c       --- Find the min and max velocity as a function of position
 c       call findminmaxongrid2d2v(pgroup%nps(js+1),xp(i1),zp(i1),
 c    &                            uxp(i1),uzp(i1),nx_fsl,nz_fsl,
-c    &                            xmin_fsl,xmax_fsl,
-c    &                            zmin_fsl+zbeam,zmax_fsl+zbeam,
-c    &                            vxmin_fsl,vxmax_fsl,vzmin_fsl,vzmax_fsl)
+c    &                            nxguard_fsl,nzguard_fsl,
+c    &                            xmin_fsl,dx,zmin_fsl+zbeam,dz,
+c    &                            vxmin_fsl,vxmax_fsl,vzmin_fsl,vzmax_fsl,
+c    &                            lcellcentered_fsl)
 
 c       --- Do the parallel nastiness of sharing boundary data
 c       --- This is a serial place holder.
-c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vxmin_fsl,
-c    &                                       localpbounds,.false.)
-c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vxmax_fsl,
-c    &                                       localpbounds,.true.)
-c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vzmin_fsl,
-c    &                                       localpbounds,.false.)
-c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,vzmax_fsl,
-c    &                                       localpbounds,.true.)
+c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,
+c    &                                       nxguard_fsl,nzguard_fsl,
+c    &                                       vxmin_fsl,
+c    &                                       localpbounds,.false.,
+c    &                                       lcellcentered_fsl)
+c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,
+c    &                                       nxguard_fsl,nzguard_fsl,
+c    &                                       vxmax_fsl,
+c    &                                       localpbounds,.true.,
+c    &                                       lcellcentered_fsl)
+c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,
+c    &                                       nxguard_fsl,nzguard_fsl,
+c    &                                       vzmin_fsl,
+c    &                                       localpbounds,.false.,
+c    &                                       lcellcentered_fsl)
+c       call applyminmaxboundaryconditions2d(nx_fsl,nz_fsl,
+c    &                                       nxguard_fsl,nzguard_fsl,
+c    &                                       vzmax_fsl,
+c    &                                       localpbounds,.true.,
+c    &                                       lcellcentered_fsl)
 
 c       --- Round the velocity mins and maxs to the grid cells
 c       vxmin_fsl = floor(vxmin_fsl/dvx_fsl)*dvx_fsl
@@ -1111,19 +1069,22 @@ c       --- Deposit the particles into the distribution grid
      &                               xp(i1),zp(i1),uxp(i1),uzp(i1),
      &                               pgroup%pid(i1,wpid),
      &                               nvx_fsl,nvz_fsl,
-     &                               nx_fsl,nz_fsl,fgrid_fsl,
+     &                               nx_fsl,nz_fsl,nxguard_fsl,nzguard_fsl,
+     &                               fgrid_fsl,
      &                               vxmin_fsl,dvx_fsl,vzmin_fsl,dvz_fsl,
      &                               xmin_fsl,dx_fsl,
-     &                               zmin_fsl+zbeam,dz_fsl)
+     &                               zmin_fsl+zbeam,dz_fsl,lcellcentered_fsl)
 
 c       --- Do the parallel nastiness of sharing boundary data
 c       --- This is a serial place holder.
         call applyboundaryconditionsonfgrid2d2v(nvx_fsl,nvz_fsl,nx_fsl,nz_fsl,
+     &                                          nxguard_fsl,nzguard_fsl,
      &                                          fgrid_fsl,localpbounds,
-     &                                          flost_fsl)
+     &                                          flost_fsl,lcellcentered_fsl)
 
-        call enforcepositivity2d2v(nvx_fsl,nvz_fsl,nx_fsl,nz_fsl,fgrid_fsl,
-     &                             fthreshold_fsl)
+        call enforcepositivity2d2v(nvx_fsl,nvz_fsl,nx_fsl,nz_fsl,
+     &                             nxguard_fsl,nzguard_fsl,
+     &                             fgrid_fsl,fthreshold_fsl,lcellcentered_fsl)
 
 c       --- Regenerate the particles from the distribution
         call createparticlesfromfgrid(pgroup,js,geometry,zbeam,0.,localpbounds)
@@ -1233,16 +1194,18 @@ c       --- if within grid, accumulate
       return
       end
 c=============================================================================
-      subroutine setgrid2d2vmodbspline2w(np,x,z,vx,vz,w,nvx,nvz,nx,nz,grid,
+      subroutine setgrid2d2vmodbspline2w(np,x,z,vx,vz,w,nvx,nvz,nx,nz,
+     &                                   nxguard,nzguard,grid,
      &                                   vxmin,dvx,vzmin,dvz,
-     &                                   xmin,dx,zmin,dz)
+     &                                   xmin,dx,zmin,dz,lcellcentered)
       use Subtimerstop
-      integer(ISZ):: np,nvx,nvz,nx,nz
+      integer(ISZ):: np,nvx,nvz,nx,nz,nxguard,nzguard
       real(kind=8):: x(np), z(np), vx(np), vz(np), w(np)
-      real(kind=8):: grid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1)
-      real(kind=8):: vxmin(-1:nx+1,-1:nz+1),dvx
-      real(kind=8):: vzmin(-1:nx+1,-1:nz+1),dvz
+      real(kind=8):: grid(-1:nvx+1,-1:nvz+1,-nxguard:nx+1,-nzguard:nz+1)
+      real(kind=8):: vxmin(-nxguard:nx+1,-nzguard:nz+1),dvx
+      real(kind=8):: vzmin(-nxguard:nx+1,-nzguard:nz+1),dvz
       real(kind=8):: xmin,dx,zmin,dz
+      logical(ISZ):: lcellcentered
 
 c Lays weighted particles down onto a node centered 2-D-2-V mesh using a
 c modified second order B-spline.
@@ -1264,7 +1227,9 @@ c   vxmin,dvx,vzmin,dvz,xmin,dx,zmin,dz: extent of the grid,
 c         i.e. grid(0,0,0,0) is at (vxmin,vzmin,xmin,zmin),
 c         grid(nvx,nvz,nx,nz) is at (vxmax,vzmax,xmax,zmax)
 
-      integer(ISZ):: ip,ix,iz,ivx,ivz
+      real(kind=8):: xoffset,zoffset
+      real(kind=8):: gxoffset,gzoffset
+      integer(ISZ):: ip,ix,iz,ivx,ivz,i1
       integer(ISZ):: jx,jz,jvx,jvz
       integer(ISZ):: jx2,jz2,jvx2,jvz2
       real(kind=8):: gx,gz,gvx,gvz,dxi,dzi,dvxi,dvzi,wx,wz,wvx,wvz
@@ -1274,6 +1239,20 @@ c         grid(nvx,nvz,nx,nz) is at (vxmax,vzmax,xmax,zmax)
       real(kind=8):: sm1,s00,sp1,sp2
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+
+      if (lcellcentered) then
+        xoffset = dx/2.
+        zoffset = dz/2.
+        gxoffset = 1.
+        gzoffset = 1.
+        i1 = 1
+      else
+        xoffset = 0.
+        zoffset = 0.
+        gxoffset = 0.
+        gzoffset = 0.
+        i1 = 0
+      endif
 
 c     --- set grid cell inverse sizes
       dxi = 1./dx
@@ -1285,10 +1264,10 @@ c     --- loop over particles
       do ip=1,np
 
 c       --- find location on grid
-        gx = (x(ip) - xmin)*dxi
-        gz = (z(ip) - zmin)*dzi
-        ix = int(gx)
-        iz = int(gz)
+        gx = (x(ip) - xmin - xoffset)*dxi
+        gz = (z(ip) - zmin - zoffset)*dzi
+        ix = floor(gx)
+        iz = floor(gz)
 
         gvx = (vx(ip) - vxmin(ix,iz))*dvxi
         gvz = (vz(ip) - vzmin(ix,iz))*dvzi
@@ -1334,8 +1313,8 @@ c       --- Apply the weight here to reduce the number of multiplies
           jz2 = 2
         endif
 
-        if (0. <= gx .and. gx < nx .and.
-     &      0. <= gz .and. gz < nz .and.
+        if (0.-gxoffset <= gx .and. gx < nx .and.
+     &      0.-gzoffset <= gz .and. gz < nz .and.
      &      0. <= gvx .and. gvx < nvx .and.
      &      0. <= gvz .and. gvz < nvz) then
           do jz=iz-1,iz+jz2
@@ -1453,11 +1432,12 @@ c             enddo
       return
       end
 c=============================================================================
-      subroutine sumfondomainboundaries(nvx,nvz,nx,nz,fgrid,localpbounds)
+      subroutine sumfondomainboundaries(nvx,nvz,nx,nz,nxguard,nzguard,
+     &                                  fgrid,localpbounds)
       use Subtimerstop
       use Parallel
-      integer(ISZ):: nvx,nvz,nx,nz
-      real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1)
+      integer(ISZ):: nvx,nvz,nx,nz,nxguard,nzguard
+      real(kind=8):: fgrid(-1:nvx+1,-1:nvz+1,-nxguard:nx+1,-nzguard:nz+1)
       integer(ISZ):: localpbounds(0:5)
 
 c Sum the distribution on domain boundaries.
@@ -1479,15 +1459,15 @@ c Each is only responsible for sending out the source is owns.
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-      allocate(fgridrecv(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:1))
+      allocate(fgridrecv(-1:nvx+1,-1:nvz+1,-nxguard:nx+1,-nzguard:1))
 
       dims = 4
-      nlocal = (/3+nvx,3+nvz,3+nx,3+nz/)
+      nlocal = (/3+nvx,3+nvz,nxguard+2+nx,nzguard+2+nz/)
       starts = 0
       sizes = nlocal
 
       starts(1) = -1 + 1
-      sizes(1) = 3
+      sizes(1) = 2 + nzguard
       call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
      &                              MPI_ORDER_FORTRAN,
      &                              MPI_DOUBLE_PRECISION,
@@ -1495,7 +1475,7 @@ c Each is only responsible for sending out the source is owns.
       call MPI_TYPE_COMMIT(lowertype,mpierror)
 
       starts(1) = nz - 1 + 1
-      sizes(1) = 3
+      sizes(1) = 2 + nzguard
       call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
      &                              MPI_ORDER_FORTRAN,
      &                              MPI_DOUBLE_PRECISION,
@@ -1525,7 +1505,7 @@ c Each is only responsible for sending out the source is owns.
           nn = (3+nvx)*(3+nvz)*(3+nx)*(3)
           call MPI_RECV(fgridrecv,nn,MPI_DOUBLE_PRECISION,
      &                  ipupper,messid,mpi_comm,mpistatus,mpierror)
-          fgrid(:,:,:,nz-1:nz+1) = fgrid(:,:,:,nz-1:nz+1) + fgridrecv
+          fgrid(:,:,:,nz-nzguard:nz+1) = fgrid(:,:,:,nz-nzguard:nz+1)+fgridrecv
           nn = 1
           call MPI_SEND(fgrid,nn,uppertype,
      &                  ipupper,messid,mpi_comm,mpierror)

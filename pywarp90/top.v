@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.296 $, $Date: 2011/04/07 17:13:32 $
+#@(#) File TOP.V, version $Revision: 3.297 $, $Date: 2011/04/08 23:28:10 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.296 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.297 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2454,6 +2454,10 @@ bz(npmax)       _real [T]       # Bz of particles
 pid(npmax,npid) _real [1]       # Particle ID - used for various purposes
 
 *********** ForwardSemiLagrange dump:
+lcellcentered_fsl logical /.true./ # Flags whether the position grid is cell
+                                   # centered or node centered. Note that
+                                   # the velocity grid is always node
+                                   # centered.
 dvx_fsl real /0./ # Distribution grid cell size in vx
 dvz_fsl real /0./ # Distribution grid cell size in vz
 dx_fsl real /0./ # Distribution grid cell size in x
@@ -2462,22 +2466,27 @@ nvx_fsl integer /0/ # Distribution grid size in vx
 nvz_fsl integer /0/ # Distribution grid size in vz
 nx_fsl integer /0/ # Distribution grid size in x
 nz_fsl integer /0/ # Distribution grid size in z
-vxmin_fsl(-1:nx_fsl+1,-1:nz_fsl+1) _real # Distribution grid minimum vx
-vzmin_fsl(-1:nx_fsl+1,-1:nz_fsl+1) _real # Distribution grid minimum vz
-vxmax_fsl(-1:nx_fsl+1,-1:nz_fsl+1) _real # Distribution grid maximum vx
-vzmax_fsl(-1:nx_fsl+1,-1:nz_fsl+1) _real # Distribution grid maximum vz
+nxguard_fsl integer /2/ # Number of guard cells in x, (autoset - depends on lcellcentered_fsl)
+nzguard_fsl integer /2/ # Number of guard cells in z, (autoset - depends on lcellcentered_fsl)
+vxmin_fsl(-nxguard_fsl:nx_fsl+1,-nzguard_fsl:nz_fsl+1) _real # Distribution grid minimum vx
+vzmin_fsl(-nxguard_fsl:nx_fsl+1,-nzguard_fsl:nz_fsl+1) _real # Distribution grid minimum vz
+vxmax_fsl(-nxguard_fsl:nx_fsl+1,-nzguard_fsl:nz_fsl+1) _real # Distribution grid maximum vx
+vzmax_fsl(-nxguard_fsl:nx_fsl+1,-nzguard_fsl:nz_fsl+1) _real # Distribution grid maximum vz
 xmin_fsl real /0./ # Distribution grid minimum x
 zmin_fsl real /0./ # Distribution grid minimum z
 xmax_fsl real /0./ # Distribution grid maximum x
 zmax_fsl real /0./ # Distribution grid maximum z
 fthreshold_fsl real /0./ # Threshold below which values of f are removed.
 flost_fsl real /0./ # The sum of the f that is lost at the boundaries
-fgrid_fsl(-1:nvx_fsl+1,-1:nvz_fsl+1,-1:nx_fsl+1,-1:nz_fsl+1) _real
+fgrid_fsl(-1:nvx_fsl+1,-1:nvz_fsl+1,-nxguard_fsl:nx_fsl+1,-nzguard_fsl:nz_fsl+1) _real
                    # Distribution grid
 applyboundaryconditionsonfgrid2d2v(nvx:integer,nvz:integer,
-                                 nx:integer,nz:integer,
-                                 fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1):real,
-                                 pbounds(0:5):integer,flost_fsl:real) subroutine
+                                   nx:integer,nz:integer,
+                                   nxguard:integer,nzguard:integer,
+                                   fgrid(-1:nvx+1,-1:nvz+1,
+                                      -nxguard:nx+1,-nzguard:nz+1):real,
+                                   pbounds(0:5):integer,
+                                   flost:real,lcellcentered:logical) subroutine
 applyminmaxboundaryconditions2d(nx:integer,nz:integer,v(-1:nx+1,-1:nz+1):real,
                                 pbounds(0:5):integer,lmax:logical) subroutine
 createparticlesfromfgrid(pgroup:ParticleGroup,js:integer,geometry:integer,
@@ -2486,16 +2495,23 @@ enforcepositivity2d(nx:integer,nz:integer,fgrid(-1:nx+1,-1:nz+1):real,
                     threshold:real)
                    subroutine
 enforcepositivity2d2v(nvx:integer,nvz:integer,nx:integer,nz:integer,
-                      fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1):real,
-                      threshold:real) subroutine
+                      nxguard:integer,nzguard:integer,
+                      fgrid(-1:nvx+1,-1:nvz+1,
+                            -nxguard:nx+1,-nzguard:nz+1):real,
+                      threshold:real,lcellcentered:logical) subroutine
 findminmaxongrid2d2v(np:integer,x(np):real,z(np):real,vx(np):real,vz(np):real,
                      nx:integer,nz:integer,
-                     xmin:real,xmax:real,zmin:real,zmax:real,
-                     vxmin(-1:nx+1,-1:nz+1):real,vxmax(-1:nx+1,-1:nz+1):real,
-                     vzmin(-1:nx+1,-1:nz+1):real,vzmax(-1:nx+1,-1:nz+1):real)
+                     nxguard:integer,nzguard:integer,
+                     xmin:real,dx:real,zmin:real,dz:real,
+                     vxmin(-nxguard:nx+1,-nzguard:nz+1):real,
+                     vxmax(-nxguard:nx+1,-nzguard:nz+1):real,
+                     vzmin(-nxguard:nx+1,-nzguard:nz+1):real,
+                     vzmax(-nxguard:nx+1,-nzguard:nz+1):real,
+                     lcellcentered:logical)
                      subroutine
 loadfgridguassian(nz:integer,density(0:nz):real,radius(0:nz):real,
-                  vthermalperp:real,vthermalparallel:real) subroutine
+                  vthermalperp:real,vthermalparallel:real,
+                  lcellcentered:logical) subroutine
 remapparticles2d2v(pgroup:ParticleGroup,geometry:integer,zbeam:real,
                    l4symtry:logical,l2symtry:logical) subroutine
 setgrid2dmodbspline2w(np:integer,x(np):real,z(np):real,w(np):real,
@@ -2507,15 +2523,20 @@ setgrid2dmodbspline2w(np:integer,x(np):real,z(np):real,w(np):real,
 setgrid2d2vmodbspline2w(np:integer,x(np):real,z(np):real,
                         vx(np):real,vz(np):real,w(np):real,
                         nvx:integer,nvz:integer,nx:integer,nz:integer,
-                        grid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1):real,
-                        vxmin(-1:nx+1,-1:nz+1):real,dvx:real,
-                        vzmin(-1:nx+1,-1:nz+1):real,dvz:real,
-                        xmin:real,dx:real,zmin:real,dz:real) subroutine
+                        nxguard:integer,nzguard:integer,
+                        grid(-1:nvx+1,-1:nvz+1,
+                             -nxguard:nx+1,-nzguard:nz+1):real,
+                        vxmin(-nxguard:nx+1,-nzguard:nz+1):real,dvx:real,
+                        vzmin(-nxguard:nx+1,-nzguard:nz+1):real,dvz:real,
+                        xmin:real,dx:real,zmin:real,dz:real,
+                        lcellcentered:logical) subroutine
         # Deposits weighted particles on a 2-D-2-V grid using a modified
         # second order B-spline. This is intended for use with the
         # Forward Semi-Lagrange algorithm.
 sumfondomainboundaries(nvx:integer,nvz:integer,nx:integer,nz:integer,
-                       fgrid(-1:nvx+1,-1:nvz+1,-1:nx+1,-1:nz+1):real,
+                       nxguard:integer,nzguard:integer,
+                       fgrid(-1:nvx+1,-1:nvz+1,
+                             -nxguard:nx+1,-nzguard:nz+1):real,
                        localpbounds(0:5):integer) subroutine
  
 *********** Subcycling dump:
