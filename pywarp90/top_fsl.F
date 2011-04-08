@@ -1466,7 +1466,7 @@ c Each is only responsible for sending out the source is owns.
       starts = 0
       sizes = nlocal
 
-      starts(1) = -1 + 1
+      starts(1) = 0
       sizes(1) = 2 + nzguard
       call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
      &                              MPI_ORDER_FORTRAN,
@@ -1474,7 +1474,7 @@ c Each is only responsible for sending out the source is owns.
      &                              lowertype,mpierror)
       call MPI_TYPE_COMMIT(lowertype,mpierror)
 
-      starts(1) = nz - 1 + 1
+      starts(1) = nz
       sizes(1) = 2 + nzguard
       call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
      &                              MPI_ORDER_FORTRAN,
@@ -1502,7 +1502,7 @@ c Each is only responsible for sending out the source is owns.
      &                  iplower,messid,mpi_comm,mpistatus,mpierror)
         elseif (mod(ppdecomp%iprocgrid(2),2) == 1-iparity .and. 
      &          ipupper < ppdecomp%nprocgrid(2)) then
-          nn = (3+nvx)*(3+nvz)*(3+nx)*(3)
+          nn = (3+nvx)*(3+nvz)*(2+nxguard+nx)*(2+nzguard)
           call MPI_RECV(fgridrecv,nn,MPI_DOUBLE_PRECISION,
      &                  ipupper,messid,mpi_comm,mpistatus,mpierror)
           fgrid(:,:,:,nz-nzguard:nz+1) = fgrid(:,:,:,nz-nzguard:nz+1)+fgridrecv
