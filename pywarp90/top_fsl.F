@@ -1231,7 +1231,7 @@ c         grid(nvx,nvz,nx,nz) is at (vxmax,vzmax,xmax,zmax)
       real(kind=8):: gxoffset,gzoffset
       integer(ISZ):: ip,ix,iz,ivx,ivz,i1
       integer(ISZ):: jx,jz,jvx,jvz
-      integer(ISZ):: jx2,jz2,jvx2,jvz2
+      integer(ISZ):: jx1,jz1,jx2,jz2,jvx2,jvz2
       real(kind=8):: gx,gz,gvx,gvz,dxi,dzi,dvxi,dvzi,wx,wz,wvx,wvz
       real(kind=8):: sx(-1:2),sz(-1:2)
       real(kind=8):: svx(-1:2),svz(-1:2)
@@ -1302,23 +1302,12 @@ c       --- Apply the weight here to reduce the number of multiplies
         svz(+1) = 1. - 2.5*(1. - wvz)**2 + 1.5*(1. - wvz)**3
         svz(+2) = 0.5*wvz**2*(wvz - 1.)
 
-        if (ix == nx) then
-          jx2 = 1
-        else
-          jx2 = 2
-        endif
-        if (iz == nz) then
-          jz2 = 1
-        else
-          jz2 = 2
-        endif
-
         if (0.-gxoffset <= gx .and. gx < nx .and.
      &      0.-gzoffset <= gz .and. gz < nz .and.
      &      0. <= gvx .and. gvx < nvx .and.
      &      0. <= gvz .and. gvz < nvz) then
-          do jz=iz-1,iz+jz2
-            do jx=ix-1,ix+jx2
+          do jz=iz-1,iz+2
+            do jx=ix-1,ix+2
 c             do jvz=ivz-1,ivz+jvz2
 c               do jvx=ivx-1,ivx+jvx2
 
@@ -1360,6 +1349,27 @@ c             enddo
 
         else
 
+          if (ix == -1) then
+            jx1 = 0
+          else
+            jx1 = 1
+          endif
+          if (iz == -1) then
+            jz1 = 0
+          else
+            jz1 = 1
+          endif
+          if (ix == nx) then
+            jx2 = 1
+          else
+            jx2 = 2
+          endif
+          if (iz == nz) then
+            jz2 = 1
+          else
+            jz2 = 2
+          endif
+
           if (gvx < 0.) then
             ivx = 0
             svx = (/0.,1.,0.,0./)
@@ -1371,8 +1381,8 @@ c             enddo
           if (ivx == nvx) svx = (/0.,1.,0.,0./)
           if (ivz == nvz) svz = (/0.,1.,0.,0./)
 
-          do jz=iz-1,iz+jz2
-            do jx=ix-1,ix+jx2
+          do jz=iz-jz1,iz+jz2
+            do jx=ix-jx1,ix+jx2
 c             do jvz=ivz-1,ivz+jvz2
 c               do jvx=ivx-1,ivx+jvx2
 
