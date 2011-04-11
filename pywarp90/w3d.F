@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.451 $, $Date: 2011/04/07 00:32:59 $
+c@(#) File W3D.F, version $Revision: 3.452 $, $Date: 2011/04/11 22:01:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8862,7 +8862,8 @@ c--------------------------------------
       end
 c=============================================================================
       subroutine setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,wfact,q,wght,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+     &                            nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                            l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
       integer(ISZ):: nx,ny,nz
@@ -9042,7 +9043,9 @@ c         --- transverse boundaries.
 c       --- vectorized loop to compute indices, weights
         if (l4symtry) then
           iinext = int((abs(xp(1)) - xmmin)*dxi)
+          if (iinext == nx) iinext = nx - 1
           kknext = int((zp(1) - zgrid - zmmin)*dzi)
+          if (kknext == nz) kknext = nz - 1
           u1next = (abs(xp(1)) - xmmin)*dxi - iinext
           w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
@@ -9053,7 +9056,9 @@ c       --- vectorized loop to compute indices, weights
             w1 = w1next
             if (ip < np) then
               iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+              if (iinext == nx) iinext = nx - 1
               kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+              if (kknext == nz) kknext = nz - 1
               u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
               w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
             endif
@@ -9069,7 +9074,9 @@ c       --- vectorized loop to compute indices, weights
         else
 c         --- normal loop
           iinext = int((xp(1) - xmmin)*dxi)
+          if (iinext == nx) iinext = nx - 1
           kknext = int((zp(1) - zgrid - zmmin)*dzi)
+          if (kknext == nz) kknext = nz - 1
           u1next = (xp(1) - xmmin)*dxi - iinext
           w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
@@ -9080,7 +9087,9 @@ c         --- normal loop
             w1 = w1next
             if (ip < np) then
               iinext = int((xp(ip+1) - xmmin)*dxi)
+              if (iinext == nx) iinext = nx - 1
               kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+              if (kknext == nz) kknext = nz - 1
               u1next = (xp(ip+1) - xmmin)*dxi - iinext
               w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
             endif
