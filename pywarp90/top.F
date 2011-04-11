@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.260 $, $Date: 2011/03/07 21:15:12 $
+c@(#) File TOP.F, version $Revision: 3.261 $, $Date: 2011/04/11 22:03:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -918,6 +918,7 @@ c         --- extrapolate to two nearest cells
             if (pp(0,ip) /= 0.) then
               vzi = 1./(uzp(ip)*gaminv(ip)+SMALLPOS)
               iz(ip)  = (zp(ip) - zbeam - zmmntmin)*dzmi
+              if (iz(ip) == nzmmnt) iz(ip) = nzmmnt - 1
               dti = (iz(ip)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
               dti = max(-zmmntdtextmax*dt,min(zmmntdtextmax*dt,dti))
               pp(3,ip) = uxp(ip)*(1. + dti*oneondt) - uxpo(ip)*dti*oneondt
