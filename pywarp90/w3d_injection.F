@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.149 $, $Date: 2011/02/24 00:52:34 $
+c@(#) File w3d_injection.F, version $Revision: 1.150 $, $Date: 2011/04/12 20:22:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1001,8 +1001,15 @@ c Combined emission. The current density is empirically set to be
 c J_cl*(1.-exp(-J_s/J_cl)) where J_cl is the current obtained from the 
 c Child-Langmuir Law as obtained with inject==2, and J_s is the current 
 c given by the Schottky formula as obtained with inject=4.
+c
+c For inject == 6
+c Similar to inject=1, but allows specification of a non-uniform emission
+c density. The grid inj_np is set by the user to specify the number of
+c particles to inject, instead of calculating it from other quantities.
+c Note that the particle z velocity is set by vzinject and vthz, and that
+c inj_phi is ignored.
 
-      elseif (inject>1 .and. inject<6) then
+      elseif (inject>1 .and. inject<7) then
 
         if (itask == 1) then
 c         --- Zero npinje_s.
@@ -1198,6 +1205,8 @@ c                   --- Thermionic emission with space-charge
                     end if
                     rnn = rnn/cos(inj_angl(ix,iy,ij))
                     rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
+                  elseif (inject == 6) then
+                    rnn = inj_np(ix,iy,ij,inj_is)
                   endif
 
 c                 --- Make sure that rnn is >= 0.
@@ -1240,7 +1249,9 @@ c                 --- when using radial injection.
                   endif
 
 c                 --- Save the calculated number of particles to inject.
-                  inj_np(ix,iy,ij,inj_is) = rnn
+                  if (inject .ne. 6) then
+                    inj_np(ix,iy,ij,inj_is) = rnn
+                  endif
 
                   if (l_inj_rz_grid .and. .not. l_inj_rz) then
 c                   --- Scale the number of particles to inject to increase
@@ -1531,17 +1542,21 @@ c                   --- save radius of creation if rpid > 0
      &                            sqrt(pgroup%xp(ii)**2+pgroup%yp(ii)**2)
                     endif
 
-c                   --- Get the normal velocity for this particle. This is
-c                   --- based on the Child-Langmuir solution, given a
-c                   --- voltage drop, vnorm, and a time since emission,
-c                   --- pid(ii,injpid)*dt.
-                    vnorm = inj_phi(ixx        ,iyy        ,ij)*(1. - wxx)*(1. - wyy) +
-     &                      inj_phi(ixx+spreadx,iyy        ,ij)*      wxx *(1. - wyy) +
-     &                      inj_phi(ixx        ,iyy+spready,ij)*(1. - wxx)*      wyy  +
-     &                      inj_phi(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
-                    vznorm = vzconst(jsid)*abs(vnorm)**1.5*
-     &                       (pgroup%pid(ii,injpid)*fulldt_s)**2
-                    if (inj_d(ij) < 0.) vznorm = -vznorm
+                    if (inject .ne. 6) then
+c                     --- Get the normal velocity for this particle. This is
+c                     --- based on the Child-Langmuir solution, given a
+c                     --- voltage drop, vnorm, and a time since emission,
+c                     --- pid(ii,injpid)*dt.
+                      vnorm = inj_phi(ixx        ,iyy        ,ij)*(1. - wxx)*(1. - wyy) +
+     &                        inj_phi(ixx+spreadx,iyy        ,ij)*      wxx *(1. - wyy) +
+     &                        inj_phi(ixx        ,iyy+spready,ij)*(1. - wxx)*      wyy  +
+     &                        inj_phi(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
+                      vznorm = vzconst(jsid)*abs(vnorm)**1.5*
+     &                         (pgroup%pid(ii,injpid)*fulldt_s)**2
+                      if (inj_d(ij) < 0.) vznorm = -vznorm
+                    else
+                      vznorm = 0.
+                    endif
 
 c                   --- Set transverse coordinates. The emittance term
 c                   --- is probably not correct since it depends on vbeam.
@@ -2793,7 +2808,7 @@ c=============================================================================
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      if ((inject < 1 .or. inject > 5) .and.
+      if ((inject < 1 .or. inject > 6) .and.
      &    (tinject < 1 .or. tinject > 3)) return
 
 c Set wpid if needed and not set by user
@@ -2899,8 +2914,8 @@ c     --- Set mins for meshes around each source.
         inj_xmmin = 0.
         inj_ymmin = 0.
       else
-        inj_xmmin = max(xmin, - inj_nx/2*inj_dx)
-        inj_ymmin = max(ymin, - inj_ny/2*inj_dy)
+        inj_xmmin = max(xmin, min(inj_xmmin,- inj_nx/2*inj_dx))
+        inj_ymmin = max(ymin, min(inj_ymmin,- inj_ny/2*inj_dy))
       endif
 
 c Set up finject array if not set by the user (if sum of finject = 0).
@@ -3157,7 +3172,9 @@ c causing a code crash.
 
 c When using constant current injection, turn off the flag that specifies
 c use of the normal E field with the Child-Langmuir profile
-      if (inject == 1 .or. inject == 4 .or. inject == 5) linj_enormcl = .false.
+      if (inject == 1 .or. inject == 4 .or. inject == 5 .or. inject == 6) then
+        linj_enormcl = .false.
+       endif
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinjctint = timeinjctint + wtime() - substarttime
