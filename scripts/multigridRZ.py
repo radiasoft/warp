@@ -10,7 +10,7 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.62 2011/01/27 01:13:29 grote Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.63 2011/04/13 20:29:57 grote Exp $"
 
 ##############################################################################
 ##############################################################################
@@ -109,10 +109,10 @@ class MultiGridRZ(MultiGrid3D):
     return self.potentialp[ix,0,iz]
 
   def getselfe(self,*args,**kw):
-    return super(self.__class__,self).getselfe(*args,**kw)[:,:,0,:]
+    return super(MultiGridRZ,self).getselfe(*args,**kw)[:,:,0,:]
 
   def getselfep(self,*args,**kw):
-    return super(self.__class__,self).getselfep(*args,**kw)[:,:,0,:]
+    return super(MultiGridRZ,self).getselfep(*args,**kw)[:,:,0,:]
 
   def fetchpotentialfrompositions(self,x,y,z,phi):
     n = len(x)
@@ -315,10 +315,10 @@ class MultiGrid2D(MultiGrid3D):
     return self.potentialp[ix,0,iz]
 
   def getselfe(self,*args,**kw):
-    return super(self.__class__,self).getselfe(*args,**kw)[:,:,0,:]
+    return super(MultiGrid2D,self).getselfe(*args,**kw)[:,:,0,:]
 
   def getselfep(self,*args,**kw):
-    return super(self.__class__,self).getselfep(*args,**kw)[:,:,0,:]
+    return super(MultiGrid2D,self).getselfep(*args,**kw)[:,:,0,:]
 
   def fetchpotentialfrompositions(self,x,y,z,phi):
     n = len(x)
@@ -676,10 +676,10 @@ Initially, conductors are not implemented.
     return MultiGrid3D.getphip(self)[:,0,:]
 
   def getselfe(self,*args,**kw):
-    return super(self.__class__,self).getselfe(*args,**kw)[:,:,0,:]
+    return super(MultiGridImplicit2D,self).getselfe(*args,**kw)[:,:,0,:]
 
   def getselfep(self,*args,**kw):
-    return super(self.__class__,self).getselfep(*args,**kw)[:,:,0,:]
+    return super(MultiGridImplicit2D,self).getselfep(*args,**kw)[:,:,0,:]
 
   # --- A special version is needed since only part if source is returned.
   def _setuprhoproperty():
