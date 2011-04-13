@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.452 $, $Date: 2011/04/11 22:01:48 $
+c@(#) File W3D.F, version $Revision: 3.453 $, $Date: 2011/04/13 20:35:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5914,7 +5914,7 @@ c  Picglb is included only to use zbeam
       character(72):: errline
       real(kind=8):: wranf,wrandom,wrandomgauss
 
-      logical(ISZ):: firstk,lrz
+      logical(ISZ):: firstk,lrz,lxz
       integer(ISZ):: npgrp,iptotal
       integer(ISZ),allocatable,dimension(:):: indx,nptot
       real(kind=8),allocatable,dimension(:):: xt,yt,zt,rt,tt,uxt,uyt,uzt
@@ -5954,6 +5954,7 @@ c  If distrbtn is not set by the user, exit
 
 c     --- Set the lrz flag appropriately.
       lrz = (solvergeom == RZgeom) .or. (solvergeom == Rgeom)
+      lxz = (solvergeom == XZgeom)
 
 c  Set npgrp so arrays are correct size
       if (xrandom == "fibonacc" .or.
@@ -6569,8 +6570,8 @@ c            --- particles at different z's.
              else
                if (l4symtry) xx = abs(xx)
                if (l2symtry .or. l4symtry) yy = abs(yy)
-               if (xx < xpminlocal .or. xx >= xpmaxlocal .or.
-     &             yy < ypminlocal .or. yy >= ypmaxlocal) cycle
+               if (xx < xpminlocal .or. xx >= xpmaxlocal) cycle
+               if (.not. lxz .and. (yy < ypminlocal.or.yy >= ypmaxlocal)) cycle
              endif
 #endif
 
@@ -6666,8 +6667,8 @@ c            --- particles at different z's.
              else
                if (l4symtry) xx = abs(xx)
                if (l2symtry .or. l4symtry) yy = abs(yy)
-               if (xx < xpminlocal .or. xx >= xpmaxlocal .or.
-     &             yy < ypminlocal .or. yy >= ypmaxlocal) cycle
+               if (xx < xpminlocal .or. xx >= xpmaxlocal) cycle
+               if (.not. lxz .and. (yy < ypminlocal.or.yy >= ypmaxlocal)) cycle
              endif
 #endif
 
@@ -6787,8 +6788,8 @@ c            --- particles at different z's.
              else
                if (l4symtry) xx = abs(xx)
                if (l2symtry .or. l4symtry) yy = abs(yy)
-               if (xx < xpminlocal .or. xx >= xpmaxlocal .or.
-     &             yy < ypminlocal .or. yy >= ypmaxlocal) cycle
+               if (xx < xpminlocal .or. xx >= xpmaxlocal) cycle
+               if (.not. lxz .and. (yy < ypminlocal.or.yy >= ypmaxlocal)) cycle
              endif
 #endif
 
