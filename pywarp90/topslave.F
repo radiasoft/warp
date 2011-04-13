@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.67 $, $Date: 2011/01/03 19:15:01 $
+c TOPSLAVE.M, version $Revision: 1.68 $, $Date: 2011/04/13 20:37:30 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -38,7 +38,7 @@ c to the appropriate processor.
 
       logical(ISZ):: ldoagain
       logical(ISZ):: isleftmostproc,isrightmostproc
-      integer(ISZ):: ilower,ihigher
+      integer(ISZ):: ilower,ihigher,iter
       real(kind=8),pointer:: zz(:),uz(:),zbuff(:)
       real(kind=8):: ztemp,temp,pidtemp(pgroup%npid),syslen,zgrid,rr,rrin
       integer(ISZ):: is1,is2,is,ip,idest,ipid,ii,il,ir,nn,indts,i1,i2,iii13
@@ -85,12 +85,22 @@ c     --- Get the neighboring processors
       isleftmostproc = (iprocgrid(axis) == 0)
       isrightmostproc = (iprocgrid(axis) == nprocgrid(axis) - 1)
 
+      iter = 0
       ldoagain = .true.
       do while (ldoagain)
 c       --- Set ldoagain flag to false. Later on, particles received are checked
 c       --- if they are within the bounds and if any are not, ldoagain is set
 c       --- to true.
         ldoagain = .false.
+
+c       --- Quit if more iterations happen than the number of processors. This
+c       --- means that one or more particles are in some strange location
+c       --- that no domain covers.
+        iter = iter + 1
+        if (iter == nprocgrid(axis)+2) then
+          call kaboom("particleboundaries_parallel: the domain for some particles cannot be found")
+          return
+        endif
 
 c       --- Setup pointer to correct data coordinates
 c       --- This must be done inside the while loop in case a gchange is
@@ -242,7 +252,7 @@ c             --- The position is adjusted, and the data will still be passed
 c             --- to the appropriate neighbor.
               syslen = zmmax - zmmin
               do ip=i1,i2
-                zz(ip) = zz(ip) + syslen*int((zgrid + zmmax - zz(ip))/syslen)
+                zz(ip) = zz(ip) + syslen*int((zmmax - (zz(ip) - zgrid))/syslen)
               enddo
 
             elseif (pboundleft==absorb) then
@@ -263,7 +273,7 @@ c             --- The ins and nps are reset to include them.
 c             --- Note that the lrz case is not needed, since r will never
 c             --- be less than zero.
               do ip=i1,i2
-                zz(ip) = zmmin + zgrid + (zmmin + zgrid - zz(ip))
+                zz(ip) = zmmin + (zmmin - (zz(ip) - zgrid)) + zgrid
                 uz(ip) = -uz(ip)
               enddo
               pgroup%nps(is) = pgroup%nps(is) + (pgroup%ins(is) - ins_init(is))
@@ -311,7 +321,7 @@ c             --- The position is adjusted, and the data will still be passed
 c             --- to the appropriate neighbor.
               syslen = zmmax - zmmin
               do ip=i1,i2
-                zz(ip) = zz(ip) - syslen*int((zz(ip) - zgrid - zmmin)/syslen)
+                zz(ip) = zz(ip) - syslen*int(((zz(ip) - zgrid) - zmmin)/syslen)
               enddo
 
             elseif (pboundright==absorb) then
@@ -349,11 +359,11 @@ c                   --- compared to the dimensions of the grid.
               else
                 do ip=i1,i2
                   if (zz(ip) > zmmax) then
-                    zz(ip) = zmmax + zgrid - (zz(ip) - zmmax - zgrid)
+                    zz(ip) = zmmax - ((zz(ip) - zgrid) - zmmax) + zgrid
                   else ! zz == zmmax
 c                   --- Shift the particle in bounds by a number that is small
 c                   --- compared to the dimensions of the grid.
-                    zz(ip) = zmmax + zgrid - (zmmax - zmmin)*1.e-12
+                    zz(ip) = zmmax - (zmmax - zmmin)*1.e-12 + zgrid
                   endif
                   uz(ip) = -uz(ip)
                 enddo
