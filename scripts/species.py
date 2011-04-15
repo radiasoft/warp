@@ -7,7 +7,7 @@ Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.86 2011/03/16 01:02:01 grote Exp $"
+species_version = "$Id: species.py,v 1.87 2011/04/15 20:02:05 jlvay Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale > 0.:
@@ -124,7 +124,7 @@ periodic_table['Radium']={'A': 226.0, 'Symbol': 'Ra', 'Z': 88, 'Group': 2, 'Peri
 periodic_table['Actinium']={'A': 227.0, 'Symbol': 'Ac', 'Z': 89, 'Group': 3, 'Period': 7}
 periodic_table['Thorium']={'A': 232.0381, 'Symbol': 'Th', 'Z': 90, 'Group': 102, 'Period': 7}
 periodic_table['Protactinium']={'A': 231.0359, 'Symbol': 'Pa', 'Z': 91, 'Group': 102, 'Period': 7}
-periodic_table['Uranium']={'A': 238.0289, 'Symbol': 'U', 'Z': 92, 'Group': 102, 'Period': 7}
+periodic_table['Uranium']={'A': 238.02891, 'Symbol': 'U', 'Z': 92, 'Group': 102, 'Period': 7}
 periodic_table['Neptunium']={'A': 237.0, 'Symbol': 'Np', 'Z': 93, 'Group': 102, 'Period': 7}
 periodic_table['Plutonium']={'A': 244.0, 'Symbol': 'Pu', 'Z': 94, 'Group': 102, 'Period': 7}
 periodic_table['Americium']={'A': 243.0, 'Symbol': 'Am', 'Z': 95, 'Group': 102, 'Period': 7}
@@ -150,6 +150,7 @@ periodic_table['Ununbium']={'A': 285.0, 'Symbol': 'Uub', 'Z': 112, 'Group': 12, 
 periodic_table['Ununpentium']={'A': 288.0, 'Symbol': 'Uup', 'Z': 115, 'Group': 15, 'Period': 7}
 periodic_table['Ununquadium']={'A': 289.0, 'Symbol': 'Uuq', 'Z': 114, 'Group': 14, 'Period': 7}
 periodic_table['Ununhexium']={'A': 292.0, 'Symbol': 'Uuh', 'Z': 116, 'Group': 16, 'Period': 7}
+
 for k in periodic_table.keys():
   S=periodic_table[k]['Symbol']
   A=periodic_table[k]['A']
@@ -390,7 +391,7 @@ Creates a new species of particles. All arguments are optional.
           if l4symtry:
             density[0,:] *= 2
           if w3d.boundxy is periodic:
-            density[0,:] += density[-1,:]; density[-1,:,:]=density[0,:]
+            density[0,:] += density[-1,:]; density[-1,:]=density[0,:]
           if w3d.bound0 is periodic:
             density[:,0] += density[:,-1]; density[:,-1]=density[:,0]
           if w3d.solvergeom==w3d.RZgeom:
@@ -1833,16 +1834,29 @@ of code."""
     return self._callppfunc(ppzbz,**kw)
 
   def dump(self,filename='pdump.pdb'):
-    f=PW.PW(filename)
-    f.x=self.getx()
-    f.y=self.gety()
-    f.z=self.getz()
-    f.ux=self.getux()
-    f.uy=self.getuy()
-    f.uz=self.getuz()
-    f.gi=self.getgaminv()
-    f.pid=self.getpid()
-    f.close()
+    if self.getn()==0:
+      return
+      x=y=z=ux=uy=uz=gi=pidNone
+    else:
+      x=self.getx()
+      y=self.gety()
+      z=self.getz()
+      ux=self.getux()
+      uy=self.getuy()
+      uz=self.getuz()
+      gi=self.getgaminv()
+      pid=self.getpid()
+    if me==0:
+      f=PW.PW(filename)
+      f.x=x
+      f.y=y
+      f.z=z
+      f.ux=ux
+      f.uy=uy
+      f.uz=uz
+      f.gi=gi
+      f.pid=pid
+      f.close()
 
   def load(self,filename='pdump.pdb'):
     f=PR.PR(filename)
