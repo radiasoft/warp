@@ -6,7 +6,7 @@ from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.8 2011/03/16 00:16:27 rcohen Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.9 2011/04/19 00:21:45 rcohen Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -20,7 +20,9 @@ extends from i-1/2 to i+1/2.
 
  - conductors: a conductor or list of conductors which act as particle scrapers
                Note that each conductor MUST have a unique id.
- - rnnmax: if set, is an upper bound to number of particles to inject per timestep per cell
+ - rnnmax: if set, is an upper bound to number of particles to inject per timestep per cell.
+              Note in cylindrical geometry, given scaling of rnn by 2 pi r/dy, rnnmax is emitted
+              flux times solver.dx*solver.dy (same significance as cartesian, in that sense).
 
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
@@ -226,13 +228,13 @@ conductors are an argument.
 
         # --- Scale appropriately for cylindrical coordinates
         # --- This accounts the difference in area of a grid cell in
-        # --- Cartesian (dx*dy) and cylindrical (pi*r*dx).
+        # --- Cartesian (dx*dy) and cylindrical (2 pi*r*dx).
         if self.lcylindrical:
           if solver.xmmin == 0:
-            rnn[0,...] *= 0.5*pi*solver.dx/solver.dy
+            rnn[0,...] *= 0.25*pi*solver.dx/solver.dy
           else:
-            rnn[0,...] *= pi*solver.xmmin/solver.dy
-          rnn[1:,...] *= pi*solver.xmesh[1:,newaxis,newaxis]/solver.dy
+            rnn[0,...] *= 2.0*pi*solver.xmmin/solver.dy
+          rnn[1:,...] *= 2.0*pi*solver.xmesh[1:,newaxis,newaxis]/solver.dy
 
         # --- Save the number for diagnostics
         self.inj_np = rnn.copy()
