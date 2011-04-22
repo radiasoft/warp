@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.150 $, $Date: 2011/04/12 20:22:28 $
+c@(#) File w3d_injection.F, version $Revision: 1.151 $, $Date: 2011/04/22 16:15:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5084,7 +5084,8 @@ c=============================================================================
 c Calculate the phi in the emitting region by doing 1-d tridiagonal solves
 c of Poisson's equation along lines normal to the emitting surface.
 
-      integer(ISZ):: i,is,ip,ix,iy,iz,ij,ij1,nrhs,irhs,kd,ldab,ldb,n,info
+      integer(ISZ):: i,is,ip,ix,iy,iz,ij,ij1,irhs,nrhs
+      integer(MPIISZ):: nrhs4,kd,ldab,ldb,n,info
       real(kind=8):: rinj,rinji,rr2,dd,deltaz(ninject)
       real(kind=8):: aa,az,px,py,wx1,wy1,wz1,wx0,wy0,wz0,ww,wws,dz0,dz1,zinj_grid
       real(kind=8):: dxi,dyi,dzmin,ainjsqi,binjsqi,rrsq,onethird,ext,eyt,ezt,atx,aty
@@ -5188,10 +5189,11 @@ c       --- set temporaries
         ldab = 1+kd
         ldb = inj_nz-1
         n = inj_nz-1
+        nrhs4 = nrhs
 #ifdef CYGWIN
-        call dpbsv_('u',n,kd,nrhs,ab,ldab,rhs,ldb,info)
+        call dpbsv_('u',n,kd,nrhs4,ab,ldab,rhs,ldb,info)
 #else
-        call dpbsv('u',n,kd,nrhs,ab,ldab,rhs,ldb,info)
+        call dpbsv('u',n,kd,nrhs4,ab,ldab,rhs,ldb,info)
 #endif
         if(info/=0) then
           write(0,*) 'ERROR in subroutine getinj_phi_mr at exit of call to LAPACK routine dpbsv'
