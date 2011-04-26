@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.94 2011/01/31 19:40:30 grote Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.95 2011/04/26 17:03:04 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -177,17 +177,24 @@ Registers solvers to be used in the particle simulation.
   """
   _registeredfieldsolvers.append(solver)
   top.fstype = 12
+def _checkfstypeforinvalidvalue():
+  if len(_registeredfieldsolvers) > 0 and top.fstype != 12:
+    raise RuntimeError('top.fstype should not be changed when a field solver has been registered')
 def getregisteredsolver(i=0):
   if len(_registeredfieldsolvers) == 0: return None
+  _checkfstypeforinvalidvalue()
   return _registeredfieldsolvers[i]
 def getregisteredsolvers():
   "Return the list of all registered field solver"
+  _checkfstypeforinvalidvalue()
   # --- A copy is returned to prevent the list from being mucked up.
   return copy.copy(_registeredfieldsolvers)
 def registeredsolvers():
+  _checkfstypeforinvalidvalue()
   for solver in _registeredfieldsolvers:
     yield solver
 def unregistersolver(solver=None,i=None):
+  _checkfstypeforinvalidvalue()
   if i is not None:
     del _registeredfieldsolvers[i]
   else:
