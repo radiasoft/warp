@@ -7,7 +7,7 @@ Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.87 2011/04/15 20:02:05 jlvay Exp $"
+species_version = "$Id: species.py,v 1.88 2011/04/27 19:23:53 jlvay Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale > 0.:
@@ -1845,9 +1845,13 @@ of code."""
       uy=self.getuy()
       uz=self.getuz()
       gi=self.getgaminv()
-      pid=self.getpid()
+      if top.npid>0:
+        pid=self.getpid()
+      else:
+        pid=None
     if me==0:
       f=PW.PW(filename)
+      f.time=top.time
       f.x=x
       f.y=y
       f.z=z
