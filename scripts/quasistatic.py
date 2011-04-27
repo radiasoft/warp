@@ -9,6 +9,7 @@ from warp import *
 from getzmom import *
 #from AMR import *
 from appendablearray import *
+from ionization import *
 import __main__
 try:
   from pos import *
@@ -46,6 +47,7 @@ class Quasistatic(SubcycledPoissonSolver):
                emitted_energy0  = 100.,        # ionized electrons mean energy
                emitted_energy_sigma = 50.,     # ionized electrons energy sigma
                freeze_beam_list = [],
+               nde=None,demax=0.1,l_zdediag=0,ke0=0.,
                **kw):
     assert top.grid_overlap<>2,"Error: the quasistatic class needs top.grid_overlap==1."
     assert (float(npes)/float(nbuckets))==float(npes/nbuckets),"Error in Quasistatic:the number of processors must be proportional to the number of buckets."
@@ -55,7 +57,10 @@ class Quasistatic(SubcycledPoissonSolver):
     bucketmpiid=int(me*nbuckets/npes)
     self.bucketid=nbuckets-bucketmpiid
     if not lparallel or nbuckets==1:
-      self.mympigroup=comm_world
+      if not lparallel:
+        self.mympigroup=None
+      else:
+        self.mympigroup=comm_world
       self.gme=me/self.ntgroups
       self.gnpes=npes/self.ntgroups
       mygroup = arange(self.gnpes)[::self.ntgroups]
@@ -218,7 +223,6 @@ class Quasistatic(SubcycledPoissonSolver):
                 interaction_type = 0) 
     self.l_gas_ionization=l_gas_ionization
     if l_gas_ionization:
-      from ionization import *
       self.ioniz=[]
       for iz in range(self.izmin,self.izmax):
         self.ioniz.append(Ionization(stride=1))#stride=10,nx=30,ny=30,xmax=0.06,ymax=0.06)
@@ -291,6 +295,22 @@ class Quasistatic(SubcycledPoissonSolver):
     self.xxpnbarz   = AppendableArray(typecode='d',unitshape=(self.izmax+1,))
     self.yypnbarz   = AppendableArray(typecode='d',unitshape=(self.izmax+1,))
     self.timemmnts = AppendableArray(typecode='d')
+    self.l_zdediag=l_zdediag
+    if self.l_zdediag:
+      if nde is None:
+        self.nde=self.nzbucket
+      else:
+        self.nde=nde
+      self.ke0 = ke0
+      self.demax=demax
+      self.dketmp0 = zeros(self.nde+1,'d')
+      self.denstmp0 = zeros(self.nde+1,'d')
+      self.dketmp1 = zeros(self.nde+1,'d')
+      self.denstmp1 = zeros(self.nde+1,'d')
+      self.dketmp  = zeros((self.izmax+1,self.nde+1,),'d')
+      self.denstmp = zeros((self.izmax+1,self.nde+1,),'d')
+      self.zdedipole = AppendableArray(typecode='d',unitshape=(self.izmax+1,self.nde+1,))
+      self.zdedens   = AppendableArray(typecode='d',unitshape=(self.izmax+1,self.nde+1,))
     self.iz=-1
     self.nelechist=AppendableArray()
     self.l_timing=false
@@ -386,7 +406,7 @@ class Quasistatic(SubcycledPoissonSolver):
                               ymmin=g.zmin,ymmax=g.zmax,
                               gridrz=g)
             if ig<frz.ngrids-1:g=g.down
-   self.condinstalled=1
+   self.l_condinstalled=1
   
   def install_ionization(self):
       for iz in range(self.izmin,self.izmax):
@@ -761,7 +781,7 @@ class Quasistatic(SubcycledPoissonSolver):
      callafterstepfuncs.callfuncsinlist()
      if self.l_verbose:print me,self.iz,'it = %i, time = %gs.'%(top.it,top.time)
 
-     if l_printsteps:print me,self.iz,'it = %i, time = %gs.'%(top.it,top.time)
+     if l_printsteps and me==0:print me,self.iz,'it = %i, time = %gs.'%(top.it,top.time)
 
      self.time_loop = wtime()-ptimeloop
 #     print 'time loop = ',self.time_loop
@@ -1231,8 +1251,11 @@ class Quasistatic(SubcycledPoissonSolver):
           raise()
       izleft = il+compress(iz<0,arange(pg.nps[js]))
       izright = il+compress(iz>0,arange(pg.nps[js]))
-      if js==0 and len(izleft)>0:raise('Error in sort_ions_along_z:js==0 and len(izleft)>0')   
-      if js==w3d.nzp-1 and len(izright)>0:raise('Error in sort_ions_along_z:js==w3d.nzp-1 and len(izright)>0')   
+#      if js==0 and len(izleft)>0:raise('Error in sort_ions_along_z:js==0 and len(izleft)>0')   
+#      if js==w3d.nzp-1 and len(izright)>0:raise('Error in sort_ions_along_z:js==w3d.nzp-1 and len(izright)>0')   
+      # --- Due to roundoff errors, it is possible that particles might be flagged as 
+      if js==0:izleft=[]
+      if js==w3d.nzp-1:izright=[]
       if len(izleft)>0:
         toaddleft = [take(pg.xp,izleft).copy(),
                      take(pg.yp,izleft).copy(),
@@ -1790,7 +1813,10 @@ class Quasistatic(SubcycledPoissonSolver):
         if self.Bkick==self.bucketid and (top.it-(npes-1-me))%self.maps.nstations==0:
           E = self.Ekick
           if self.Akick is not None:
-            E *= self.Akick[int(self.mystation[js]/self.maps.nstations)]
+            try:
+              E *= self.Akick[int(self.mystation[js]/self.maps.nstations)]
+            except:
+              pass
           dt = self.Lkick/(pg.gaminv[il:iu]*pg.uzp[il:iu])
           pg.yp[il:iu] += pg.uyp[il:iu]*pg.gaminv[il:iu]*dt \
                         + 0.5*pg.sq[js]*E*dt**2*pg.gaminv[il:iu]/pg.sm[js]
@@ -2419,7 +2445,10 @@ class Quasistatic(SubcycledPoissonSolver):
         self.xxpbarztmp[:]=0.      
         self.yypbarztmp[:]=0.  
         self.xxpnbarztmp[:]=0.   
-        self.yypnbarztmp[:]=0.     
+        self.yypnbarztmp[:]=0. 
+        if self.l_zdediag:
+          self.denstmp[...]=0.
+          self.dketmp[...]=0.
 
   def getmmnts(self,js):
       if self.l_verbose:print me,top.it,self.iz,'enter getmmnts'
@@ -2438,6 +2467,8 @@ class Quasistatic(SubcycledPoissonSolver):
       yp = uy/uz
       beta = sqrt((1.-gaminv)*(1.+gaminv))
       gamma = 1./gaminv
+      if self.l_zdediag:
+        dke = gamma*pg.sm[js]*clight**2/self.ke0-1.
       if self.lattice is not None:
        ist = (self.ist-1)%self.nst
        if self.lattice[ist].dispx is not None:
@@ -2461,6 +2492,13 @@ class Quasistatic(SubcycledPoissonSolver):
       yypn = y*ypn
       w1 = (z-self.znodes[js])/w3d.dz
       w0 = 1.-w1
+      if self.l_zdediag:
+        self.denstmp0[...]=0.
+        self.dketmp0[...]=0.
+        self.denstmp1[...]=0.
+        self.dketmp1[...]=0.
+        deposgrid1d(1,pg.nps[js],dke,y*w0,self.nde,self.dketmp0,self.denstmp0,-self.demax,self.demax)
+        deposgrid1d(1,pg.nps[js],dke,y*w1,self.nde,self.dketmp1,self.denstmp1,-self.demax,self.demax)
       self.pnumztmp[js]=sum(w0)
       self.xbarztmp[js]=sum(x*w0)      
       self.ybarztmp[js]=sum(y*w0)      
@@ -2480,6 +2518,9 @@ class Quasistatic(SubcycledPoissonSolver):
       self.yypbarztmp[js]=sum(yyp*w0)      
       self.xxpnbarztmp[js]=sum(xxpn*w0)      
       self.yypnbarztmp[js]=sum(yypn*w0)      
+      if self.l_zdediag:
+        self.dketmp[js,:]=self.dketmp0
+        self.denstmp[js,:]=self.denstmp0
       self.pnumztmp[js+1]+=sum(w1)
       self.xbarztmp[js+1]+=sum(x*w1)      
       self.ybarztmp[js+1]+=sum(y*w1)      
@@ -2499,6 +2540,9 @@ class Quasistatic(SubcycledPoissonSolver):
       self.yypbarztmp[js+1]+=sum(yyp*w1)      
       self.xxpnbarztmp[js+1]+=sum(xxpn*w1)      
       self.yypnbarztmp[js+1]+=sum(yypn*w1)      
+      if self.l_zdediag:
+        self.dketmp[js+1,:]+=self.dketmp1
+        self.denstmp[js+1,:]+=self.denstmp1
       if self.l_verbose:print me,top.it,self.iz,'exit getmmnts'
 
   def getmmnts_store(self):
@@ -2542,6 +2586,9 @@ class Quasistatic(SubcycledPoissonSolver):
     self.ypn2z.append(self.ypn2ztmp)
     self.xxpnbarz.append(self.xxpnbarztmp)
     self.yypnbarz.append(self.yypnbarztmp)
+    if self.l_zdediag:
+      self.zdedipole.append(self.dketmp)
+      self.zdedens.append(self.denstmp)
     self.timemmnts.append(top.time)
 #    if top.it==0 or not lparallel:
 #      self.timemmnts.append(top.time)
@@ -2858,9 +2905,7 @@ class Quasistatic(SubcycledPoissonSolver):
         b = parallelsum(a,comm=self.mympitgroup)
       else:
         b = a.copy()
-      if self.mympigroup is None:
-         return sum(a)
-      else:
+      if self.mympigroup is not None:
         # --- update boundary
         if self.gme>0:
           self.mympigroup.send(b[0,:],self.gme-1)
@@ -2992,6 +3037,23 @@ class Quasistatic(SubcycledPoissonSolver):
       yp2z = self.gatherarray(transpose(self.yp2z.data()[:n,:]))/pnumz
       yypz = self.gatherarray(transpose(self.yypbarz.data()[:n,:]))/pnumz
     return sqrt(abs((y2z-ybarz*ybarz)*(yp2z-ypbarz*ypbarz)-(yypz-ybarz*ypbarz)**2))
+
+  def getzdedens(self):
+    if not lparallel:
+      return transpose(self.zdedens.data(),[1,2,0])
+    else:
+      n = self.parallelmin(len(self.pnum.data()))
+      return self.gatherarray(transpose(self.zdedens.data()[:n,...],[1,2,0]))
+
+  def getzdedipole(self):
+    if not lparallel:
+      zdedens = transpose(self.zdedens.data(),[1,2,0])
+      zdedens = where(zdedens==0.,1.,zdedens)
+      return transpose(self.zdedipole.data())/zdedens
+    else:
+      n = self.parallelmin(len(self.pnum.data()))
+      zdedens = transpose(self.zdedens.data()[:n,...],[1,2,0])
+      return (self.gatherarray(transpose(self.zdedipole.data()[:n,:],[1,2,0]))/self.gatherarray(zdedens,1))   
 
   def getrhoe(self,i=0):
     if me==0:
