@@ -618,9 +618,15 @@ else ! --- now 2D XZ or RZ
                             - mudt  * CJ(j,k,l,2)
     end do
     j = 0
-    Ey(j,k,l) = Ey(j,k,l) - 2.*dtsdx * Bz(j,k,l) &
-                          + dtsdz * (Bx(j,k,l)    - Bx(j,k,l-1)) &
-                          - mudt  * CJ(j,k,l,2)
+    if (xmin==0.) then
+      Ey(j,k,l) = Ey(j,k,l) - 2.*dtsdx * Bz(j,k,l) &
+                            + dtsdz * (Bx(j,k,l)    - Bx(j,k,l-1)) &
+                            - mudt  * CJ(j,k,l,2)
+    else
+      Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l) - Bz(j-1,k,l)) &
+                            + dtsdz * (Bx(j,k,l) - Bx(j,k,l-1)) &
+                            - mudt  * CJ(j,k,l,2)
+    end if
   end do
 
   ! advance Ez 
