@@ -13,7 +13,7 @@ Class for generating photo-electrons
                conductors=None,l_secondaries=1,dtfact=1,l_switchyz=0, 
                electronnmax=None,l_posmgsolver=0,l_posscatter=0,
                lrefineallintercept=0,aura=0.,
-               l_3d=0,nz=4,nsz=1.):
+               l_3d=0,nz=4,nsz=1.,nguards=2):
     top.lrelativ = true
     if posinst_file is not None:
       init_posinst_for_warp(posinst_file)
@@ -30,9 +30,10 @@ Class for generating photo-electrons
       self.sigy     = pos.sigy 
       top.prwall    = 2.*max(pos.ach,pos.bch,0.5)
       if l_3d:self.nz=nz
+      self.nguards=nguards
       if pos.ispch==3:
-        if nx is None:nx=pos.imax-1+2
-        if ny is None:ny=pos.jmax-1+2
+        if nx is None:nx=pos.imax-1+self.nguards*2
+        if ny is None:ny=pos.jmax-1+self.nguards*2
 #        if nx is None:nx=pos.imax-1
 #        if ny is None:ny=pos.jmax-1
       if l_switchyz:
@@ -62,7 +63,7 @@ Class for generating photo-electrons
       if weight is None:weight=pos.chmionelnom#/pos.slength#*self.sigz
       if l_3d:weight*=nsz*self.sigz#/self.nz
       self.ioelectrons=Species(type=Electron,weight=weight)
-      self.IOEL=IonizElectrons(l_verbose=0,l_switchyz=l_switchyz)
+      self.IOEL=IonizElectrons(l_verbose=0,l_switchyz=l_switchyz,nsz=nsz)
       self.IOEL.add(emitted_species=self.ioelectrons)
     if l_secondaries:
       self.secelectrons=Species(type=Electron,weight=weight)
@@ -74,10 +75,10 @@ Class for generating photo-electrons
     self.l_switchyz=l_switchyz
     dx = 2.*pos.ach/(pos.imax-1)
     dy = 2.*pos.bch/(pos.jmax-1)
-    if xmin is None:xmin=-pos.ach-dx
-    if xmax is None:xmax= pos.ach+dx
-    if ymin is None:ymin=-pos.bch-dy
-    if ymax is None:ymax= pos.bch+dy
+    if xmin is None:xmin=-pos.ach-self.nguards*dx
+    if xmax is None:xmax= pos.ach+self.nguards*dx
+    if ymin is None:ymin=-pos.bch-self.nguards*dy
+    if ymax is None:ymax= pos.bch+self.nguards*dy
 #    if xmin is None:xmin=-pos.ach*1.05
 #    if xmax is None:xmax= pos.ach*1.05
 #    if ymin is None:ymin=-pos.bch*1.05
@@ -169,22 +170,41 @@ Class for generating photo-electrons
                                                    zcent       = 0.5*(w3d.zmmin+w3d.zmmax),
                                                    condid      = 1)
         if pos.ichsh==2: # rectangular
+         if 0:
+           pass
+#           self.pipe = Plane(theta=-pi/2,ycent=pos.bch) #+  Plane(theta=-pi/2,ycent=pos.bch)
+#
+           self.pipe = -Box(xsize=2.*pos.ach,
+                          ysize=2.*pos.bch,
+                          #zsize=w3d.zmmaxglobal-w3d.zmminglobal)
+                          zsize      = (w3d.zmmax-w3d.zmmin)*10.,
+                          zcent       = 0.5*(w3d.zmmin+w3d.zmmax),
+                                                   condid      = 1)
+         else:
           self.pipe = Box(xsize=2.*pos.ach,
                           ysize=3.*pos.bch,
-                          zsize=w3d.zmmaxglobal-w3d.zmminglobal,
-                          xcent=2.*pos.ach) \
+                          zsize      = (w3d.zmmax-w3d.zmmin)*10.,
+                          zcent       = 0.5*(w3d.zmmin+w3d.zmmax),
+                          xcent=2.*pos.ach,
+                                                   condid      = 1) \
                     + Box(xsize=2.*pos.ach,
                           ysize=3.*pos.bch,
-                          zsize=w3d.zmmaxglobal-w3d.zmminglobal,
-                          xcent=-2.*pos.ach) \
+                          zsize      = (w3d.zmmax-w3d.zmmin)*10.,
+                          zcent       = 0.5*(w3d.zmmin+w3d.zmmax),
+                          xcent=-2.*pos.ach,
+                                                   condid      = 1) \
                     + Box(xsize=2.*pos.ach,
                           ysize=2.*pos.bch,
-                          zsize=w3d.zmmaxglobal-w3d.zmminglobal,
-                          ycent=2.*pos.bch) \
+                          zsize      = (w3d.zmmax-w3d.zmmin)*10.,
+                          zcent       = 0.5*(w3d.zmmin+w3d.zmmax),
+                          ycent=2.*pos.bch,
+                                                   condid      = 1) \
                     + Box(xsize=2.*pos.ach,
                           ysize=2.*pos.bch,
-                          zsize=w3d.zmmaxglobal-w3d.zmminglobal,
-                          ycent=-2.*pos.bch)
+                          zsize      = (w3d.zmmax-w3d.zmmin)*10.,
+                          zcent       = 0.5*(w3d.zmmin+w3d.zmmax),
+                          ycent=-2.*pos.bch,
+                                                   condid      = 1)
         self.scrapegrid=Grid(nx=nx,ny=ny,nzlocal=w3d.nzlocal,nz=w3d.nz)
         self.pipescraper = self.pipe
         import __main__
@@ -197,7 +217,7 @@ Class for generating photo-electrons
  #                                    grid=self.scrapegrid,
                                      lrefineintercept=0,
                                      lrefineallintercept=lrefineallintercept,
-                                     nstepsperorbit=8,
+                                     nstepsperorbit=8*8,
                                      aura=aura)
 #            self.scraper.l_print_timing=1
       self.conductors = [self.pipe]
@@ -334,6 +354,10 @@ Class for generating photo-electrons
 #    if(iim==1.and.ichsh==3) zim=zef_image_open_H(x,y,x0,y0,bch)
       if pos.ichsh==1: 
         ef_image_ell(np,exim,eyim,x,y,x0,y0,pos.ach,pos.bch)
+      if pos.ichsh==2: 
+        ef_image_rect(np,exim,eyim,x,y,x0,y0,pos.ach,pos.bch)
+      if pos.ichsh==3: 
+        ef_image_H(np,exim,eyim,x,y,x0,y0,pos.ach,pos.bch)
       ex[...]+=fact*exim*Lambda/(4.*pi*eps0)
       ey[...]+=fact*eyim*Lambda/(4.*pi*eps0)
 
@@ -476,7 +500,10 @@ Class for generating photo-electrons
 
   def pos_fieldsol(self):
 #     print 'pos_fieldsol'
-    pel = self.phelectrons
+    try:
+      pel = self.phelectrons
+    except:
+      pel = self.ioelectrons
     sel = self.secelectrons
     n=pel.getn()+sel.getn()
     if n==0:return
@@ -506,7 +533,7 @@ Class for generating photo-electrons
     if self.l_posmgsolver:
       phi=pos.phi0
     else:
-      phi=transpose(frz.basegrid.phi[1:-1,1:-1])
+      phi=transpose(frz.basegrid.phi[1+self.nguards:-1-self.nguards,1+self.nguards:-1-self.nguards])
     mgexey(pos.imax,pos.jmax,phi,pos.ex,pos.ey)
     if not self.l_posmgsolver:
       frz.basegrid.phi[...]=0.
@@ -561,12 +588,13 @@ Class for generating photo-electrons
  - l_verbose   : sets verbosity (default=0). 
   """
   def __init__(self,posinst_file=None,xfloor=None,xceiling=None,yfloor=None,yceiling=None,
-               nz=100,l_xmirror=0,l_switchyz=0,l_verbose=0):
+               nz=100,l_xmirror=0,l_switchyz=0,l_verbose=0,nsz=1.):
      self.xfloor=xfloor
      self.xceiling=xceiling
      self.yfloor=yfloor
      self.yceiling=yceiling
      self.nz=nz
+     self.nsz=nsz
      self.l_xmirror=l_xmirror
      self.l_switchyz=l_switchyz
      self.l_verbose=l_verbose
@@ -633,6 +661,7 @@ Class for generating photo-electrons
                       vy=self.vy[js][:nn],
                       vz=self.vz[js][:nn],
                       js=js,
+                      lallindomain=true,
                       lmomentum=true)
        else: 
          addparticles(x=self.x[js][:nn],
@@ -643,6 +672,7 @@ Class for generating photo-electrons
                       vz=self.vz[js][:nn],
                       pid=self.pid[js][:nn,:],
                       js=js,
+                      lallindomain=true,
                       lmomentum=true)
        self.nps[js]=0
          
@@ -692,13 +722,15 @@ Class for generating photo-electrons
      gasden=(gas_prefactor)*pos.pressure*(294/pos.temperature)
      rnipbppm=(1e-28)*pos.crossect*gasden
      for i in range(self.nz):
-       if incident_species is None:
-         rhel = self.Lambda*rnipbppm*clight*top.dt/weightemit
+#       if incident_species is None:
+       if self.nz==1:
+         rhel = self.Lambda*rnipbppm*clight*top.dt/weightemit#*w3d.dz*w3d.nz/pos.slength
        else:
-         rhel = self.Lambda[i]*rnipbppm*clight*top.dt/weightemit
+         rhel = self.Lambda[i]*rnipbppm*clight*top.dt/weightemit#*w3d.dz*w3d.nz/pos.slength
        # rhel is the number of electrons created at each timestep
        n=int(rhel)
        if ranf()<rhel-n:n+=1  # randomly add one electrons based on rhel fractional part
+       print '###',rhel,n
        if self.l_verbose:print ' *** i,rhel,nemit= ',i,rhel,n
        if n==0:continue
        pos.nionel[0]=n   # tells Posinst to emit n photoelectrons
