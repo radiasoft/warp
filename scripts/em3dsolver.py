@@ -73,6 +73,7 @@ class EM3D(SubcycledPoissonSolver):
     if self.l_2dxz: w3d.solvergeom=w3d.XZgeom
     if self.l_2drz: w3d.solvergeom=w3d.RZgeom
     self.solvergeom = w3d.solvergeom
+    particleboundaries3d(top.pgroup,-1,False)
     if self.isactiveem is not None:
       self.isactive=self.isactiveem
     else:
@@ -254,7 +255,8 @@ class EM3D(SubcycledPoissonSolver):
                                **self.kw)
 
     if self.xmmin>w3d.xmmaxlocal or self.xmmax<w3d.xmminlocal:return
-    if self.ymmin>w3d.ymmaxlocal or self.ymmax<w3d.ymminlocal:return
+    if not self.l_2dxz and not self.l_2drz:
+      if self.ymmin>w3d.ymmaxlocal or self.ymmax<w3d.ymminlocal:return
     if self.zmmin>w3d.zmmaxlocal or self.zmmax<w3d.zmminlocal:return
     if self.refinement is not None:
       self.block_coarse = self.field_coarse.block
@@ -750,7 +752,7 @@ class EM3D(SubcycledPoissonSolver):
                     nox,noy,noz,
                     f.Bxp,f.Byp,f.Bzp,
                     w3d.l4symtry)
-      
+
   def fetchphifrompositions(self,x,z,phi):
     pass
 
@@ -1896,9 +1898,11 @@ class EM3D(SubcycledPoissonSolver):
   # Define the basic plot commands
   def genericpfem3d(self,data,title,titles=True,l_transpose=false,direction=None,slice=None,l_abs=False,
                     origins=None,deltas=None,display=1,scale=None,camera=None,l_box=1,
-                    interactive=0,labels=['X','Y','Z'],#palette=None,
+                    interactive=0,labels=['X','Y','Z'],palette=None,
                     opacitystart=None,opacityend=None,opacities=None,
-                    adjust=0,labelscale=0.5,color='auto',ncolor=None,cmin=None,cmax=None,cscale=1.,l_csym=0,
+                    adjust=0,labelscale=0.5,color='auto',ncolor=None,cmin=None,cmax=None,
+                    niso=None,isomin=None,isomax=None,isos=None,opacity=0.5,
+                    cscale=1.,l_csym=0,
                     procs=None,
                     **kw):
     if direction is None and not l_opyndx:direction=2
@@ -2083,43 +2087,68 @@ class EM3D(SubcycledPoissonSolver):
       if me>0 and me in procs:
         comm_world.send((xmin,xmax,dx,ymin,ymax,dy,zmin,zmax,dz,data),0,3)
       else:
+        # --- sets origins and deltas
+        if origins is None:origins = [xmin*xscale,ymin*yscale,zmin*zscale]
+        if deltas is None:deltas = [dx*xscale,dy*yscale,dz*zscale]
+        # --- sets colormap
         if ncolor is None:ncolor = 2
         dec = (cmax-cmin)/ncolor
-        isos = cmin+arange(ncolor)*dec+dec/2
-        origins = [xmin*xscale,ymin*yscale,zmin*zscale]
-        deltas = [dx*xscale,dy*yscale,dz*zscale]
+        colordata = cmin+arange(ncolor)*dec+dec/2
         if color=='auto':
-#         if palette is None:
-          color = []
-          for i in range(ncolor):
-            r = array([1.,0.,0.])
-            g = array([0.,1.,0.])
-            b = array([0.,0.,1.])
-            if i<=ncolor/4:
-              color.append(b+g*(i*4./ncolor))
-            elif i<=ncolor/2:
-              color.append(b*(2.-(i*4./ncolor))+g)
-            elif i<=3*ncolor/4:
-              color.append(g+r*((i*4./ncolor)-2.))
-            else:
-              color.append(g*(4.-(i*4./ncolor))+r)
-#         else:
-#          h,r,g,b = getpalhrgb(palette)
-#          color = transpose(array([r,g,b]))
-#          ncolor = shape(color)[0]
-        colormap,opacity  = DXColormap(data=isos,
-                                       ncolors=ncolor,
-                                       colors=color,
-                                       opacitystart=opacitystart,
-                                       opacityend=opacityend,
-                                       opacities=opacities)
+          if palette is not None:
+            try:
+              hp,rp,gp,bp = getpalhrgb(palette)
+              doautocolormap=False
+              color = transpose(array([rp,gp,bp])/255.)
+              ncolor = shape(color)[0]
+              colormap,opacities = DXColormap(data=colordata,ncolors=ncolor,
+                                              colors=color,min=cmin,max=cmax,
+                                              opacitystart=opacitystart,
+                                              opacityend=opacityend,
+                                              opacities=opacities)
+            except:
+              doautocolormap=True
+              print 'WARNING: Palette not found.'
+          else:
+            doautocolormap=True
+          if doautocolormap:
+            color = []
+            for i in range(ncolor):
+              r = array([1.,0.,0.])
+              g = array([0.,1.,0.])
+              b = array([0.,0.,1.])
+              if i<=ncolor/4:
+                color.append(b+g*(i*4./ncolor))
+              elif i<=ncolor/2:
+                color.append(b*(2.-(i*4./ncolor))+g)
+              elif i<=3*ncolor/4:
+                color.append(g+r*((i*4./ncolor)-2.))
+              else:
+                color.append(g*(4.-(i*4./ncolor))+r)
+            colormap,opacity  = DXColormap(data=colordata,
+                                           ncolors=ncolor,
+                                           colors=color,
+                                           opacitystart=opacitystart,
+                                           opacityend=opacityend,
+                                           opacities=opacities)
         DXReference(colormap)
+        # --- sets isosurfaces values
+        if isos is None:
+          if niso is None:niso=ncolor
+          if isomin is None:isomin = cmin+1.e-6*(cmax-cmin)
+          if isomax is None:isomax = cmax-1.e-6*(cmax-cmin)
+          dei = (isomax-isomin)/niso
+          isos = isomin+arange(niso)*dei+dei/2
+        # --- renders isosurfaces
         e3d,colorbar = viewisosurface1(data,isos,color=color,display=0,
                         origins=origins,
                         deltas=deltas,
+                        opacity=opacity,
                         colormap=colormap)
-        dxob = [e3d,colorbar]
-        for i in range(1,npes):
+#        dxob = [e3d,colorbar]
+        dxob = [e3d]
+        for i in procs:#range(1,npes):
+         if i <> me:
           xminp,xmaxp,dxp,yminp,ymaxp,dyp,zminp,zmaxp,dzp,data=mpirecv(i,3)
           origins = [xminp*xscale,yminp*yscale,zminp*zscale]
           deltas = [dxp*xscale,dyp*yscale,dzp*zscale]
@@ -2127,6 +2156,7 @@ class EM3D(SubcycledPoissonSolver):
           e3d,colorbar = viewisosurface1(data,isos,color=color,display=0,
                           origins=origins,
                           deltas=deltas,
+                          opacity=opacity,
                           colormap=colormap)
           dxob.append(e3d)
         if l_box:
@@ -2137,19 +2167,25 @@ class EM3D(SubcycledPoissonSolver):
                                 w3d.zmmin*zscale,
                                 w3d.zmmax*zscale,color='yellow')
           dxob.append(box)
-        dxob = DXCollect(dxob)
-        if camera is None:
-          camera = DXAutocamera(dxob,direction=[-1.,1.,-1.],width=100.,resolution=640,
-                                aspect=2.,up=[0,1,0],perspective=1,angle=60.,
-                                background='black')
-        DXImage(dxob,camera=camera,
-                     l_interactive=interactive,
-                     labels=labels,
-                     adjust=adjust,
-                     scale=scale,
-                     labelscale=labelscale)
-    return slice
-    
+        if display:
+          dxob.append(colorbar)
+          dxob = DXCollect(dxob)
+          if camera is None:
+            camera = DXAutocamera(dxob,direction=[-1.,1.,-1.],width=100.,resolution=640,
+                                  aspect=2.,up=[0,1,0],perspective=1,angle=60.,
+                                  background='black')
+          DXImage(dxob,camera=camera,
+                       l_interactive=interactive,
+                       labels=labels,
+                       adjust=adjust,
+                       scale=scale,
+                       labelscale=labelscale)
+    if display:
+      return slice
+    else:
+      dxob = DXCollect(dxob)
+      return dxob,colorbar,slice  
+
   ##########################################################################
   # Gather requested array on processor 0
   def gatherarray(self,data,direction=None,slice=None,procs=None,guards=0,**kw):
@@ -2494,8 +2530,8 @@ class EM3D(SubcycledPoissonSolver):
       f = self.fields
       if top.efetch[0]<>4:node2yee3d(f)
       if self.l_2dxz:
-        dive[1:-1,1:-1,1:-1] = (f.Ex[1:-1,0,1:-1]-f.Ex[:-2,0,1:-1])/f.dx \
-                             + (f.Ez[1:-1,0,1:-1]-f.Ez[1:-1,0,:-2])/f.dz 
+           dive[1:-1,0,1:-1] = (f.Ex[1:-1,0,1:-1]-f.Ex[:-2,0,1:-1])/f.dx \
+                            + (f.Ez[1:-1,0,1:-1]-f.Ez[1:-1,0,:-2])/f.dz 
       else:
         dive[1:-1,1:-1,1:-1] = (f.Ex[1:-1,1:-1,1:-1]-f.Ex[:-2,1:-1,1:-1])/f.dx \
                              + (f.Ey[1:-1,1:-1,1:-1]-f.Ey[1:-1,:-2,1:-1])/f.dy \
