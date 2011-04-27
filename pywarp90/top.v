@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.298 $, $Date: 2011/04/12 20:22:28 $
+#@(#) File TOP.V, version $Revision: 3.299 $, $Date: 2011/04/27 19:04:34 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.298 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.299 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2834,6 +2834,11 @@ deposgrid1d(itask:integer,np:integer,x(np):real,z(np):real,nx:integer,
             grid(0:nx):real,gridcount(0:nx):real,xmin:real,xmax:real)
         subroutine
         # Deposits data onto a 1-D grid using linear weighting.
+deposgrid1dngp(itask:integer,np:integer,x(np):real,z(np):real,
+            nx:integer,grid(0:nx):real,gridcount(0:nx):real,
+            xmin:real,xmax:real)
+        subroutine
+        # Deposits data onto a 1-D grid using nearest grid point weighting.
 deposgrid1dw(itask:integer,np:integer,x(np):real,z(np):real,w(np):real,
              nx:integer,
              grid(0:nx):real,gridcount(0:nx):real,xmin:real,xmax:real)
@@ -2843,6 +2848,10 @@ getgrid1d(np:integer,x(np):real,z(np):real,nx:integer,grid(0:nx):real,
           xmin:real,xmax:real)
         subroutine
         # Gathers data from a 1-D grid using linear weighting.
+getgridngp1d(np:integer,x(np):real,z(np):real,
+             nx:integer,grid(0:nx):real,
+             xmin:real,xmax:real) subroutine
+        # Gathers data from a 1-D grid using nearest grid point weighting.
 setgrid2d(np:integer,x(np):real,y(np):real,nx:integer,ny:integer,
           grid(0:nx,0:ny):real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
@@ -3328,13 +3337,17 @@ joule   integer /2/                                   # temperature units in jou
 kelvin  integer /3/                                   # temperature units in kelvin
 t_units integer /1/                                   # temperature units
 l_temp_collapseinz     logical /.false./              # collapse z-slices in temperature calculations
-l_temp_rmcorrelations  logical /.true./               # remove x*v correlations in temperature calculations
+l_temp_rmcorrelations  logical /.true./               # remove x*vx,y*vy,z*vz correlations in temperature calculations
+l_temp_rmcrosscorrelations  logical /.true./          # remove x*vy,x*vz etc cross correlations in temperature calculations
 nxtslices    integer    /0/                           # nb cells in x of temperature slices
 nytslices    integer    /0/                           # nb cells in y of temperature slices
 nztslices    integer    /1/                           # nb temperature slices
 nxtslicesc   integer    /0/                           # nb cells in x of temperature slices (correlation variables)
 nytslicesc   integer    /0/                           # nb cells in y of temperature slices (correlation variables)
 nztslicesc   integer    /1/                           # nb temperature slices               (correlation variables)
+nxtslicescc  integer    /0/                           # nb cells in x of temperature slices (cross correlation variables)
+nytslicescc  integer    /0/                           # nb cells in y of temperature slices (cross correlation variables)
+nztslicescc  integer    /1/                           # nb temperature slices               (cross correlation variables)
 tslicexmin(nztslices) _real                           # min in x of temperature slices
 tslicexmax(nztslices) _real                           # max in x of temperature slices
 tsliceymin(nztslices) _real                           # min in y of temperature slices
@@ -3358,11 +3371,26 @@ xsqbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of x^2  in tempe
 ysqbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of y^2  in temperature slices
 zsqbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of z^2  in temperature slices
 xvxbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of x*vx in temperature slices
+xvybart(0:nxtslicescc,0:nytslicescc,nztslicescc)   _real # average of x*vx in temperature slices
+xvzbart(0:nxtslicescc,0:nytslicescc,nztslicescc)   _real # average of x*vx in temperature slices
+yvxbart(0:nxtslicescc,0:nytslicescc,nztslicescc)   _real # average of y*vy in temperature slices
 yvybart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of y*vy in temperature slices
+yvzbart(0:nxtslicescc,0:nytslicescc,nztslicescc)   _real # average of y*vy in temperature slices
+zvxbart(0:nxtslicescc,0:nytslicescc,nztslicescc)   _real # average of z*vz in temperature slices
+zvybart(0:nxtslicescc,0:nytslicescc,nztslicescc)   _real # average of z*vz in temperature slices
 zvzbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of z*vz in temperature slices
+xybart(0:nxtslicescc,0:nytslicescc,nztslicescc)   _real # average of x*vx in temperature slices
+xzbart(0:nxtslicescc,0:nytslicescc,nztslicescc)   _real # average of x*vx in temperature slices
+yzbart(0:nxtslicescc,0:nytslicescc,nztslicescc)   _real # average of x*vx in temperature slices
+kebart(0:nxtslices,0:nytslices,nztslices)         _real # average of kinetic energy
+kesqbart(0:nxtslices,0:nytslices,nztslices)       _real # average of square of kinetic energy
+xkebart(0:nxtslices,0:nytslices,nztslices)         _real # average of kinetic energy correlations in x
+ykebart(0:nxtslices,0:nytslices,nztslices)         _real # average of kinetic energy correlations in y
+zkebart(0:nxtslices,0:nytslices,nztslices)         _real # average of kinetic energy correlations in z
 tempx(0:nxtslices,0:nytslices,nztslices,nstemp) _real # x-temperature  in temperature slices
 tempy(0:nxtslices,0:nytslices,nztslices,nstemp) _real # y-temperature  in temperature slices
 tempz(0:nxtslices,0:nytslices,nztslices,nstemp) _real # z-temperature  in temperature slices
+dke(0:nxtslices,0:nytslices,nztslices,nstemp)   _real # local energy spread
 tempxz(nztslices,nstemp) _real                        # x-temperature  in temperature slices
 tempyz(nztslices,nstemp) _real                        # y-temperature  in temperature slices
 tempzz(nztslices,nstemp) _real                        # z-temperature  in temperature slices
@@ -3380,7 +3408,8 @@ setregulartgrid(nx:integer,ny:integer,nz:integer,
                 ymax:real,zmin:real,zmax:real,
                 dz:real,nzloc:integer,
                 lcollapse:logical,
-                lcorrel:logical) subroutine           # Set slices regularly in z in a box delimited by (xmin,xmax,ymin,ymax,zmin,zmax).
+                lcorrel:logical,
+                lcrosscorrel:logical) subroutine           # Set slices regularly in z in a box delimited by (xmin,xmax,ymin,ymax,zmin,zmax).
                                                       # nzloc refers to the number of nodes of a lookup table for fast 
                                                       # localization of temperature slices. In general, set nzloc=w3d.nz.
 impact_ion(is1:integer,is2:integer,nbp:real,w:real,
