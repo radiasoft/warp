@@ -5,7 +5,7 @@ __all__ = ['Smoother']
 
 from warp import *
 
-smoothing_version = "$Id: smoothing.py,v 1.2 2009/11/04 21:55:23 jlvay Exp $"
+smoothing_version = "$Id: smoothing.py,v 1.3 2011/04/27 19:22:49 jlvay Exp $"
 
 class Smoother(object):
   """
@@ -66,7 +66,9 @@ Adds smoothing sequence:
       npassc=[0,0,0]
       for i in range(3):
         if npass[i]>0:
-          alphac[i] = self.get_binomial_filter_factors(npass[i],3)
+          alphac[i] = npass[i]*(1.-alpha[i])+1.
+#          alphac[i] = self.get_binomial_filter_factors(npass[i],3)
+#          print 'test : ',alphac[i],npass[i]*(1.-alpha[i])+1.
           npassc[i] = 1
       self.npass.append(array(npassc))
       self.alpha.append(array(alphac))
@@ -249,7 +251,7 @@ Adds smoothing sequence:
     plots spectrum of smoothing function in x
     """
     f=abs(fft.fft(self.getstencilx(nx)))
-    theta=(1.+arange(shape(f)[0]))*2.*pi/shape(f)[0]
+    theta=(arange(shape(f)[0]))*2.*pi/shape(f)[0]
     plg(f,2.*pi/theta,color=color,width=width)
     limits(2.,shape(f)[0],1.e-2,1.)
     logxy(1,1)
@@ -260,7 +262,7 @@ Adds smoothing sequence:
     plots spectrum of smoothing function in y
     """
     f=abs(fft.fft(self.getstencily(ny)))
-    theta=(1.+arange(shape(f)[0]))*2.*pi/shape(f)[0]
+    theta=(arange(shape(f)[0]))*2.*pi/shape(f)[0]
     plg(f,2.*pi/theta,color=color,width=width)
     limits(2.,shape(f)[0],1.e-2,1.)
     logxy(1,1)
@@ -271,7 +273,7 @@ Adds smoothing sequence:
     plots spectrum of smoothing function in z
     """
     f=abs(fft.fft(self.getstencilz(nz)))
-    theta=(1.+arange(shape(f)[0]))*2.*pi/shape(f)[0]
+    theta=(arange(shape(f)[0]))*2.*pi/shape(f)[0]
     plg(f,2.*pi/theta,color=color,width=width)
     limits(2.,shape(f)[0],1.e-2,1.)
     logxy(1,1)
