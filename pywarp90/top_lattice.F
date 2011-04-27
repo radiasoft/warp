@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.42 $, $Date: 2011/03/22 22:58:15 $
+c@(#) File top_lattice.F, version $Revision: 3.43 $, $Date: 2011/04/27 19:11:10 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -5544,15 +5544,12 @@ c         --- set the field
               case(-1) ! continuous focusing
                 phasex = frac*2.*pi*lmapnux(mapid)
                 phasey = frac*2.*pi*lmapnuy(mapid)
-                phasez = frac*2.*pi*lmapnuz(mapid)
                 phx = phasex*(1.+lmapxcr(mapid)*dpp/lmapqx(mapid))          !phase change based on value of chromaticity and dp 
                 phy = phasey*(1.+lmapycr(mapid)*dpp/lmapqy(mapid))          !phase change based on value of chromaticity and dp 
                 cosphx = cos(phx)
                 sinphx = sin(phx)
                 cosphy = cos(phy)
                 sinphy = sin(phy)
-                cosphz = cos(phasez)
-                sinphz = sin(phasez)
                 rx = 1. ! rx=sqrt(bx2/bx1)
                 mx = lmapbx(mapid) ! mx = sqrt(bx1*bx2)
                 ax1 = lmapax(mapid)
@@ -5583,11 +5580,21 @@ c         --- set the field
                 map(1,5) = dpx2 - Map(1,0)*dx1 - Map(1,1)*dpx1
                 map(2,5) = dy2  - Map(2,2)*dy1 - Map(2,3)*dpy1
                 map(3,5) = dpy2 - Map(3,2)*dy1 - Map(3,3)*dpy1
-                map(4,4) = cosphz
-                map(5,5) = cosphz
-                coefz = lmapeta(mapid)*(lmapze(mapid)-lmapzs(mapid))/(2.*pi*lmapnuz(mapid))
-                map(4,5) = -coefz*sinphz
-                map(5,4) = (1./coefz)*sinphz
+                if (lmapnuz(mapid)==0.) then
+                  map(4,4) = 1.
+                  map(5,5) = 1.
+                  map(4,5) = 0.
+                  map(5,4) = 0.
+                else
+                  phasez = frac*2.*pi*lmapnuz(mapid)
+                  cosphz = cos(phasez)
+                  sinphz = sin(phasez)
+                  map(4,4) = cosphz
+                  map(5,5) = cosphz
+                  coefz = lmapeta(mapid)*(lmapze(mapid)-lmapzs(mapid))/(2.*pi*lmapnuz(mapid))
+                  map(4,5) = -coefz*sinphz
+                  map(5,4) = (1./coefz)*sinphz
+                endif
               case(0) ! drift
                 map(0,0) = 1.
                 map(0,1) = L 
@@ -5823,15 +5830,12 @@ c         --- set the field
               case(-1) ! continuous focusing
                 phasex = frac*2.*pi*lmapnux(mapid)
                 phasey = frac*2.*pi*lmapnuy(mapid)
-                phasez = frac*2.*pi*lmapnuz(mapid)
                 phx = phasex*(1.+lmapxcr(mapid)*dpp/lmapqx(mapid))          !phase change based on value of chromaticity and dp 
                 phy = phasey*(1.+lmapycr(mapid)*dpp/lmapqy(mapid))          !phase change based on value of chromaticity and dp 
                 cosphx = cos(phx)
                 sinphx = sin(phx)
                 cosphy = cos(phy)
                 sinphy = sin(phy)
-                cosphz = cos(phasez)
-                sinphz = sin(phasez)
                 rx = 1. ! rx=sqrt(bx2/bx1)
                 mx = lmapbx(mapid) ! mx = sqrt(bx1*bx2)
                 ax1 = lmapax(mapid)
@@ -5864,9 +5868,24 @@ c         --- set the field
                 map(3,5) = dpy2 - Map(3,2)*dy1 - Map(3,3)*dpy1
                 map(4,4) = cosphz
                 map(5,5) = cosphz
-                coefz = lmapeta(mapid)*(lmapze(mapid)-lmapzs(mapid))/(2.*pi*lmapnuz(mapid))
-                map(4,5) = -coefz*sinphz
-                map(5,4) = (1./coefz)*sinphz
+                if (lmapnuz(mapid)==0.) then
+                  map(4,4) = 1.
+                  map(5,5) = 1.
+                  map(4,5) = 0.
+                  map(5,4) = 0.
+                else
+                  phasez = frac*2.*pi*lmapnuz(mapid)
+                  cosphz = cos(phasez)
+                  sinphz = sin(phasez)
+                  map(4,4) = cosphz
+                  map(5,5) = cosphz
+                  coefz = lmapeta(mapid)*(lmapze(mapid)-lmapzs(mapid))/(2.*pi*lmapnuz(mapid))
+                  map(4,5) = -coefz*sinphz
+                  map(5,4) = (1./coefz)*sinphz
+                  coefz = lmapeta(mapid)*(lmapze(mapid)-lmapzs(mapid))/(2.*pi*lmapnuz(mapid))
+                  map(4,5) = -coefz*sinphz
+                  map(5,4) = (1./coefz)*sinphz
+                endif
               case(0) ! drift
                 map(0,0) = 1.
                 map(0,1) = L 
