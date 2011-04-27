@@ -233,36 +233,39 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
 
       do ip=1,np
       
+        x = xp(ip)
         if (l_2drz) then
-          r = sqrt(xp(ip)*xp(ip)+yp(ip)*yp(ip))
-          x = (r-xmin)*dxi
-          z = (zp(ip)-zmin)*dzi
-        else
-          x = (xp(ip)-xmin)*dxi
-          z = (zp(ip)-zmin)*dzi
+          y = yp(ip)
+          x=sqrt(x*x+y*y)
         end if
-        
+        x=x*dxi
+        z = zp(ip)*dzi
+          
         vx = uxp(ip)*gaminv(ip)
         vy = uyp(ip)*gaminv(ip)
         vz = uzp(ip)*gaminv(ip)
-        
+
         if (l_2drz) then
           xold = xp(ip)-dt*vx
           yold = yp(ip)-dt*vy
           rold = sqrt(xold*xold+yold*yold)
-          xold=(rold-xmin)*dxi
-          zold=z-dtsdz0*vz
+          xold=rold*dxi
           vx = (x-xold)/dtsdx0
         else
           xold=x-dtsdx0*vx
-          zold=z-dtsdz0*vz
         end if
+        zold=z-dtsdz0*vz
  
         if (l4symtry) then
           x=abs(x)
           xold=abs(xold)
           vx = (x-xold)/dtsdx0
         end if
+
+        x = x-xmin*dxi
+        z = z-zmin*dzi
+        xold = xold-xmin*dxi
+        zold = zold-zmin*dzi
         
         ! computes maximum number of cells traversed by particle in a given dimension
         ncells = 1+max( int(abs(x-xold)), int(abs(z-zold)))
@@ -1153,9 +1156,9 @@ subroutine depose_jxjyjz_esirkepov_nnew(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
 
       do ip=1,np
       
-        x = (xp(ip)-xmin)*dxi
-        y = (yp(ip)-ymin)*dyi
-        z = (zp(ip)-zmin)*dzi
+        x = xp(ip)*dxi
+        y = yp(ip)*dyi
+        z = zp(ip)*dzi
         
         vx = uxp(ip)*gaminv(ip)
         vy = uyp(ip)*gaminv(ip)
@@ -1173,6 +1176,10 @@ subroutine depose_jxjyjz_esirkepov_nnew(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           vx = (x-xold)/dtsdx0
           vy = (y-yold)/dtsdy0
         end if
+        
+        x = x - xmin*dxi
+        y = y - ymin*dyi
+        z = z - zmin*dzi
         
         ! computes maximum number of cells traversed by particle in a given dimension
         ncells = 1+max( int(abs(x-xold)), int(abs(y-yold)), int(abs(z-zold)))
@@ -2737,24 +2744,26 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       izmax =  int((noz+1)/2)
 
       signx = 1.
-
+      
       do ip=1,np
 
-        x = (xp(ip)-xmin)*dxi
-        z = (zp(ip)-zmin)*dzi
-
         if (l_2drz) then
-          y = (yp(ip)-xmin)*dxi
+          x = xp(ip)
+          y = yp(ip)
           r=sqrt(x*x+y*y)
-          if (r>1.e-20) then
+          if (r*dxi>1.e-20) then
             costheta=x/r
             sintheta=y/r
           else  
             costheta=1.
             sintheta=0.
           end if
-          x=r
+          x = (r-xmin)*dxi
+        else
+          x = (xp(ip)-xmin)*dxi
         end if
+
+        z = (zp(ip)-zmin)*dzi
 
         if (l4symtry) then
           if (x<0.) then
@@ -3013,21 +3022,23 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
 
       do ip=1,np
 
-        x = (xp(ip)-xmin)*dxi
-        z = (zp(ip)-zmin)*dzi
-
         if (l_2drz) then
-          y = (yp(ip)-xmin)*dxi
+          x = xp(ip)
+          y = yp(ip)
           r=sqrt(x*x+y*y)
-          if (r>1.e-20) then
+          if (r*dxi>1.e-20) then
             costheta=x/r
             sintheta=y/r
           else  
             costheta=1.
             sintheta=0.
           end if
-          x=r
+          x = (r-xmin)*dxi
+        else
+          x = (xp(ip)-xmin)*dxi
         end if
+
+        z = (zp(ip)-zmin)*dzi
 
         if (l4symtry) then
           if (x<0.) then
