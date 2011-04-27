@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.261 $, $Date: 2011/04/11 22:03:21 $
+c@(#) File TOP.F, version $Revision: 3.262 $, $Date: 2011/04/27 19:05:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6680,9 +6680,10 @@ c=============================================================================
         return
       end function oneiftrue
 c=============================================================================
-      subroutine reset_temperature()
+      subroutine reset_temperature(is)
       use Temperatures
       use Timers
+      integer(ISZ):: is
       real(kind=8):: timetemp,wtime
       timetemp = wtime()
         pnumt = 0.
@@ -6693,19 +6694,41 @@ c=============================================================================
         vxsqbart = 0.
         vysqbart = 0.
         vzsqbart = 0.
-        tempxz = 0.
-        tempyz = 0.
-        tempzz = 0.
-        if(l_temp_rmcorrelations) then
+        kebart = 0.
+        kesqbart = 0.
+        xkebart = 0.
+        ykebart = 0.
+        zkebart = 0.
+        tempxz(:,is) = 0.
+        tempyz(:,is) = 0.
+        tempzz(:,is) = 0.
+        tempx(:,:,:,is) = 0.
+        tempy(:,:,:,is) = 0.
+        tempz(:,:,:,is) = 0.
+        dke(:,:,:,is) = 0.
+        if(l_temp_rmcorrelations .or. l_temp_rmcrosscorrelations) then
           xbart = 0.
           ybart = 0.
           zbart = 0.
           xsqbart = 0.
           ysqbart = 0.
           zsqbart = 0.
+        endif
+        if(l_temp_rmcorrelations) then
           xvxbart = 0.
           yvybart = 0.
           zvzbart = 0.
+        endif
+        if(l_temp_rmcrosscorrelations) then
+          xybart = 0.
+          xzbart = 0.
+          yzbart = 0.
+          xvybart = 0.
+          xvzbart = 0.
+          yvxbart = 0.
+          yvzbart = 0.
+          zvxbart = 0.
+          zvybart = 0.
         endif
       temperaturestime = temperaturestime + (wtime() - timetemp)
       return
@@ -6741,7 +6764,7 @@ c         set the variable t_unit to the default integers evolt, joule or kelvin
       use Timers
 
       integer(ISZ):: np,is
-      real(kind=8):: w,dt
+      real(kind=8):: w,dt,ke
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np), wp(np)
       real(kind=8):: uxpo(np), uypo(np), uzpo(np) ! uxp, uyp anx uzp of previous time step
@@ -6772,11 +6795,6 @@ c       --- cycle if particle out of zone of calculation
 c       --- loop over temperature slices
         do its = 1, ntl(izl)
           izt = tslice_locator(izl,its)
-
-c         --- cycle if particle not in slice
-          if(xp(ip)<=tslicexmin(izt) .or. xp(ip)>tslicexmax(izt) .or.
-     &       yp(ip)<=tsliceymin(izt) .or. yp(ip)>tsliceymax(izt) .or.
-     &       z_local<=tslicezmin(izt) .or. z_local>tslicezmax(izt)) cycle
 
           if(l_temp_collapseinz) then
 c           --- collapse slice in z, i.e. align Z-locations of particles using
@@ -6820,22 +6838,27 @@ c           --- current velocity and from previous time step
             end if
           end if
 
-c         --- compute coefficients for transverse linear deposition
+c         --- cycle if particle not in slice
+          if(lrtheta) then
+            if(xpt>tslicexmax(izt) .or.
+     &         zpt<=tslicezmin(izt) .or. zpt>tslicezmax(izt)) cycle
+          else
+            if(xpt<=tslicexmin(izt) .or. xpt>tslicexmax(izt) .or.
+     &         ypt<=tsliceymin(izt) .or. ypt>tsliceymax(izt) .or.
+     &         zpt<=tslicezmin(izt) .or. zpt>tslicezmax(izt)) cycle
+          end if
+
+c         --- compute location in arrays
           xt = (xpt-tslicexmin(izt))*dxti(izt)
           yt = (ypt-tsliceymin(izt))*dyti(izt)
           ixt = max(0,min(nxtslices-1,int(xt)))
           iyt = max(0,min(nytslices-1,int(yt)))
-          ddx = xt-ixt
-          ddy = yt-iyt
-          oddx = 1.-ddx
-          oddy = 1.-ddy
 
           if(lw) wpp = wp(ip)
-
-c         --- perform transverse linear deposition
-c         --- node x, y
-          wt = oddx*oddy*wpp
-          pnumt  (ixt,iyt,izt) = pnumt  (ixt,iyt,izt) + oddx*oddy
+          wt=wpp
+          
+c         --- deposit data in arrays
+          pnumt  (ixt,iyt,izt) = pnumt  (ixt,iyt,izt) + 1.
           pnumtw (ixt,iyt,izt) = pnumtw (ixt,iyt,izt) + wt
 
           vxbart  (ixt,iyt,izt) = vxbart  (ixt,iyt,izt) + wt * vxpt
@@ -6846,54 +6869,15 @@ c         --- node x, y
           vysqbart(ixt,iyt,izt) = vysqbart(ixt,iyt,izt) + wt * vypt**2
           vzsqbart(ixt,iyt,izt) = vzsqbart(ixt,iyt,izt) + wt * vzpt**2
 
-c         --- node x+1, y
-          if(ixt+1 <= nxtslices) then
-            wt = ddx*oddy*wpp
-            pnumt  (ixt+1,iyt,izt) = pnumt  (ixt+1,iyt,izt) + ddx*oddy
-            pnumtw (ixt+1,iyt,izt) = pnumtw (ixt+1,iyt,izt) + wt
-
-            vxbart  (ixt+1,iyt,izt) = vxbart  (ixt+1,iyt,izt) + wt * vxpt
-            vybart  (ixt+1,iyt,izt) = vybart  (ixt+1,iyt,izt) + wt * vypt
-            vzbart  (ixt+1,iyt,izt) = vzbart  (ixt+1,iyt,izt) + wt * vzpt
-
-            vxsqbart(ixt+1,iyt,izt) = vxsqbart(ixt+1,iyt,izt) + wt * vxpt**2
-            vysqbart(ixt+1,iyt,izt) = vysqbart(ixt+1,iyt,izt) + wt * vypt**2
-            vzsqbart(ixt+1,iyt,izt) = vzsqbart(ixt+1,iyt,izt) + wt * vzpt**2
+          if (lrelativ) then
+            ke = (1./gaminv(ip)-1.)
+          else
+            ke = vxpt*vxpt + vypt*vypt + vzpt*vzpt
           end if
+          kebart  (ixt,iyt,izt) = kebart  (ixt,iyt,izt) + wt * ke
+          kesqbart(ixt,iyt,izt) = kesqbart(ixt,iyt,izt) + wt * ke**2
 
-c         --- node x, y+1
-          if(iyt+1 <= nytslices) then
-            wt = oddx*ddy*wpp
-            pnumt  (ixt,iyt+1,izt) = pnumt  (ixt,iyt+1,izt) + oddx*ddy
-            pnumtw (ixt,iyt+1,izt) = pnumtw (ixt,iyt+1,izt) + wt
-
-            vxbart  (ixt,iyt+1,izt) = vxbart  (ixt,iyt+1,izt) + wt * vxpt
-            vybart  (ixt,iyt+1,izt) = vybart  (ixt,iyt+1,izt) + wt * vypt
-            vzbart  (ixt,iyt+1,izt) = vzbart  (ixt,iyt+1,izt) + wt * vzpt
-
-            vxsqbart(ixt,iyt+1,izt) = vxsqbart(ixt,iyt+1,izt) + wt * vxpt**2
-            vysqbart(ixt,iyt+1,izt) = vysqbart(ixt,iyt+1,izt) + wt * vypt**2
-            vzsqbart(ixt,iyt+1,izt) = vzsqbart(ixt,iyt+1,izt) + wt * vzpt**2
-          end if
-
-c         --- node x+1, y+1
-          if(ixt+1 <= nxtslices .and. iyt+1 <= nytslices) then
-            wt = ddx*ddy*wpp
-            pnumt  (ixt+1,iyt+1,izt) = pnumt  (ixt+1,iyt+1,izt) + ddx*ddy
-            pnumtw (ixt+1,iyt+1,izt) = pnumtw (ixt+1,iyt+1,izt) + wt
-
-            vxbart  (ixt+1,iyt+1,izt) = vxbart  (ixt+1,iyt+1,izt) + wt * vxpt
-            vybart  (ixt+1,iyt+1,izt) = vybart  (ixt+1,iyt+1,izt) + wt * vypt
-            vzbart  (ixt+1,iyt+1,izt) = vzbart  (ixt+1,iyt+1,izt) + wt * vzpt
-
-            vxsqbart(ixt+1,iyt+1,izt) = vxsqbart(ixt+1,iyt+1,izt) + wt * vxpt**2
-            vysqbart(ixt+1,iyt+1,izt) = vysqbart(ixt+1,iyt+1,izt) + wt * vypt**2
-            vzsqbart(ixt+1,iyt+1,izt) = vzsqbart(ixt+1,iyt+1,izt) + wt * vzpt**2
-          end if
-
-          if(l_temp_rmcorrelations) then
-c           --- node x, y
-            wt = oddx*oddy*wpp
+          if(l_temp_rmcorrelations .or. l_temp_rmcrosscorrelations) then
             xbart   (ixt,iyt,izt) = xbart   (ixt,iyt,izt) + wt * xpt
             ybart   (ixt,iyt,izt) = ybart   (ixt,iyt,izt) + wt * ypt
             zbart   (ixt,iyt,izt) = zbart   (ixt,iyt,izt) + wt * zpt
@@ -6901,60 +6885,29 @@ c           --- node x, y
             xsqbart (ixt,iyt,izt) = xsqbart (ixt,iyt,izt) + wt * xpt**2
             ysqbart (ixt,iyt,izt) = ysqbart (ixt,iyt,izt) + wt * ypt**2
             zsqbart (ixt,iyt,izt) = zsqbart (ixt,iyt,izt) + wt * zpt**2
+          endif
 
+          if(l_temp_rmcorrelations .or. l_temp_rmcrosscorrelations) then
             xvxbart (ixt,iyt,izt) = xvxbart (ixt,iyt,izt) + wt * xpt * vxpt
             yvybart (ixt,iyt,izt) = yvybart (ixt,iyt,izt) + wt * ypt * vypt
             zvzbart (ixt,iyt,izt) = zvzbart (ixt,iyt,izt) + wt * zpt * vzpt
-
-c           --- node x+1, y
-            if(ixt+1 <= nxtslicesc) then
-              wt = ddx*oddy*wpp
-              xbart   (ixt+1,iyt,izt) = xbart   (ixt+1,iyt,izt) + wt * xpt
-              ybart   (ixt+1,iyt,izt) = ybart   (ixt+1,iyt,izt) + wt * ypt
-              zbart   (ixt+1,iyt,izt) = zbart   (ixt+1,iyt,izt) + wt * zpt
-
-              xsqbart (ixt+1,iyt,izt) = xsqbart (ixt+1,iyt,izt) + wt * xpt**2
-              ysqbart (ixt+1,iyt,izt) = ysqbart (ixt+1,iyt,izt) + wt * ypt**2
-              zsqbart (ixt+1,iyt,izt) = zsqbart (ixt+1,iyt,izt) + wt * zpt**2
-
-              xvxbart (ixt+1,iyt,izt) = xvxbart (ixt+1,iyt,izt) + wt * xpt * vxpt
-              yvybart (ixt+1,iyt,izt) = yvybart (ixt+1,iyt,izt) + wt * ypt * vypt
-              zvzbart (ixt+1,iyt,izt) = zvzbart (ixt+1,iyt,izt) + wt * zpt * vzpt
-            end if
-
-c           --- node x, y+1
-            if(iyt+1 <= nytslicesc) then
-              wt = oddx*ddy*wpp
-              xbart   (ixt,iyt+1,izt) = xbart   (ixt,iyt+1,izt) + wt * xpt
-              ybart   (ixt,iyt+1,izt) = ybart   (ixt,iyt+1,izt) + wt * ypt
-              zbart   (ixt,iyt+1,izt) = zbart   (ixt,iyt+1,izt) + wt * zpt
-
-              xsqbart (ixt,iyt+1,izt) = xsqbart (ixt,iyt+1,izt) + wt * xpt**2
-              ysqbart (ixt,iyt+1,izt) = ysqbart (ixt,iyt+1,izt) + wt * ypt**2
-              zsqbart (ixt,iyt+1,izt) = zsqbart (ixt,iyt+1,izt) + wt * zpt**2
-
-              xvxbart (ixt,iyt+1,izt) = xvxbart (ixt,iyt+1,izt) + wt * xpt * vxpt
-              yvybart (ixt,iyt+1,izt) = yvybart (ixt,iyt+1,izt) + wt * ypt * vypt
-              zvzbart (ixt,iyt+1,izt) = zvzbart (ixt,iyt+1,izt) + wt * zpt * vzpt
-            end if
-
-c           --- node x+1, y+1
-            if(ixt+1 <= nxtslicesc .and. iyt+1 <= nytslicesc) then
-              wt = ddx*ddy*wpp
-              xbart   (ixt+1,iyt+1,izt) = xbart   (ixt+1,iyt+1,izt) + wt * xpt
-              ybart   (ixt+1,iyt+1,izt) = ybart   (ixt+1,iyt+1,izt) + wt * ypt
-              zbart   (ixt+1,iyt+1,izt) = zbart   (ixt+1,iyt+1,izt) + wt * zpt
-
-              xsqbart (ixt+1,iyt+1,izt) = xsqbart (ixt+1,iyt+1,izt) + wt * xpt**2
-              ysqbart (ixt+1,iyt+1,izt) = ysqbart (ixt+1,iyt+1,izt) + wt * ypt**2
-              zsqbart (ixt+1,iyt+1,izt) = zsqbart (ixt+1,iyt+1,izt) + wt * zpt**2
-
-              xvxbart (ixt+1,iyt+1,izt) = xvxbart (ixt+1,iyt+1,izt) + wt * xpt * vxpt
-              yvybart (ixt+1,iyt+1,izt) = yvybart (ixt+1,iyt+1,izt) + wt * ypt * vypt
-              zvzbart (ixt+1,iyt+1,izt) = zvzbart (ixt+1,iyt+1,izt) + wt * zpt * vzpt
-
-            endif
+            xkebart (ixt,iyt,izt) = xkebart (ixt,iyt,izt) + wt * xpt * ke
+            ykebart (ixt,iyt,izt) = ykebart (ixt,iyt,izt) + wt * ypt * ke
+            zkebart (ixt,iyt,izt) = zkebart (ixt,iyt,izt) + wt * zpt * ke
           endif
+
+          if(l_temp_rmcrosscorrelations) then
+            xybart (ixt,iyt,izt) = xybart (ixt,iyt,izt) + wt * xpt * ypt
+            xzbart (ixt,iyt,izt) = xzbart (ixt,iyt,izt) + wt * xpt * zpt
+            yzbart (ixt,iyt,izt) = yzbart (ixt,iyt,izt) + wt * ypt * zpt
+            xvybart (ixt,iyt,izt) = xvybart (ixt,iyt,izt) + wt * xpt * vypt
+            xvzbart (ixt,iyt,izt) = xvzbart (ixt,iyt,izt) + wt * xpt * vzpt
+            yvxbart (ixt,iyt,izt) = yvxbart (ixt,iyt,izt) + wt * ypt * vxpt
+            yvzbart (ixt,iyt,izt) = yvzbart (ixt,iyt,izt) + wt * ypt * vzpt
+            zvxbart (ixt,iyt,izt) = zvxbart (ixt,iyt,izt) + wt * zpt * vxpt
+            zvybart (ixt,iyt,izt) = zvybart (ixt,iyt,izt) + wt * zpt * vypt
+          endif
+
         enddo
       enddo
 
@@ -6962,16 +6915,22 @@ c           --- node x+1, y+1
       return
       end
 c===========================================================================
-      subroutine finalize_temperature(is,m)
+      subroutine finalize_temperature(is,m,lrtheta)
       use Constant
       use Temperatures
       use Timers
+      use Beam_acc,only:lrelativ
       integer(ISZ):: is, ixt, iyt, izt
       real(kind=8):: m,timetemp,wtime
-      real(kind=8):: pnumi,tfact,tottmp
-      real(kind=8):: delxsq,delvxsq,delxvx
-      real(kind=8):: delysq,delvysq,delyvy
-      real(kind=8):: delzsq,delvzsq,delzvz
+      real(kind=8):: pnumi,tfact,tottmp,kevar
+      real(kind=8):: xvar,vxvar,xvxbar,xvybar,xvzbar,xybar,xkebar
+      real(kind=8):: yvar,vyvar,yvxbar,yvybar,yvzbar,xzbar,ykebar
+      real(kind=8):: zvar,vzvar,zvxbar,zvybar,zvzbar,yzbar,zkebar
+      real(kind=8):: a1,a2,a3,b1,b2,b3,c1,c2,c3,d1x,d2x,d3x,d1y,d2y,d3y,d1z,d2z,d3z,d1ke,d2ke,d3ke,d
+      real(kind=8)::xvxslope,xvyslope,xvzslope,xkeslope
+      real(kind=8)::yvxslope,yvyslope,yvzslope,ykeslope
+      real(kind=8)::zvxslope,zvyslope,zvzslope,zkeslope
+      logical(ISZ)::lrtheta
       timetemp = wtime()
 
 #ifdef MPIPARALLEL
@@ -6988,7 +6947,6 @@ c     --- Complete the calculation of temperatures: divide by particle number
       do izt = 1, nztslices
         do iyt = 0, nytslices
           do ixt = 0, nxtslices
-
             pnumi = 1./(pnumtw(ixt,iyt,izt)+SMALLPOS)
 
 c           --- Compute averages
@@ -7000,13 +6958,25 @@ c           --- Compute averages
             vysqbart(ixt,iyt,izt) = vysqbart(ixt,iyt,izt) * pnumi
             vzsqbart(ixt,iyt,izt) = vzsqbart(ixt,iyt,izt) * pnumi
 
+            kebart  (ixt,iyt,izt) = kebart  (ixt,iyt,izt) * pnumi
+            kesqbart(ixt,iyt,izt) = kesqbart(ixt,iyt,izt) * pnumi
+
 c           --- Compute second order moments with averages subtracted
-            delvxsq = vxsqbart(ixt,iyt,izt) - vxbart(ixt,iyt,izt)**2
-            delvysq = vysqbart(ixt,iyt,izt) - vybart(ixt,iyt,izt)**2
-            delvzsq = vzsqbart(ixt,iyt,izt) - vzbart(ixt,iyt,izt)**2
+            vxvar = vxsqbart(ixt,iyt,izt) - vxbart(ixt,iyt,izt)**2
+            vyvar = vysqbart(ixt,iyt,izt) - vybart(ixt,iyt,izt)**2
+            vzvar = vzsqbart(ixt,iyt,izt) - vzbart(ixt,iyt,izt)**2
+            kevar = kesqbart(ixt,iyt,izt) - kebart(ixt,iyt,izt)**2
+
+            if (pnumt(ixt,iyt,izt)<=5.) then
+              tempx(ixt,iyt,izt,is) = 0.
+              tempy(ixt,iyt,izt,is) = 0.
+              tempz(ixt,iyt,izt,is) = 0.
+              dke(ixt,iyt,izt,is) = 0.
+              cycle
+            end if
 
 c           --- Compute linear correlations
-            if(l_temp_rmcorrelations) then
+            if(l_temp_rmcorrelations .or. l_temp_rmcorrelations) then
               xbart   (ixt,iyt,izt) = xbart   (ixt,iyt,izt) * pnumi
               ybart   (ixt,iyt,izt) = ybart   (ixt,iyt,izt) * pnumi
               zbart   (ixt,iyt,izt) = zbart   (ixt,iyt,izt) * pnumi
@@ -7015,28 +6985,115 @@ c           --- Compute linear correlations
               ysqbart (ixt,iyt,izt) = ysqbart (ixt,iyt,izt) * pnumi
               zsqbart (ixt,iyt,izt) = zsqbart (ixt,iyt,izt) * pnumi
 
-              xvxbart (ixt,iyt,izt) = xvxbart (ixt,iyt,izt) * pnumi
-              yvybart (ixt,iyt,izt) = yvybart (ixt,iyt,izt) * pnumi
-              zvzbart (ixt,iyt,izt) = zvzbart (ixt,iyt,izt) * pnumi
-
-              delxsq  = xsqbart (ixt,iyt,izt) - xbart (ixt,iyt,izt)**2
-              delxvx  = xvxbart (ixt,iyt,izt) - xbart (ixt,iyt,izt)*vxbart(ixt,iyt,izt)
-
-              delysq  = ysqbart (ixt,iyt,izt) - ybart (ixt,iyt,izt)**2
-              delyvy  = yvybart (ixt,iyt,izt) - ybart (ixt,iyt,izt)*vybart(ixt,iyt,izt)
-
-              delzsq  = zsqbart (ixt,iyt,izt) - zbart (ixt,iyt,izt)**2
-              delzvz  = zvzbart (ixt,iyt,izt) - zbart (ixt,iyt,izt)*vzbart(ixt,iyt,izt)
-
-              if(abs(delxsq)>SMALLPOS) delvxsq = max(SMALLPOS,delvxsq - delxvx**2/delxsq)
-              if(abs(delysq)>SMALLPOS) delvysq = max(SMALLPOS,delvysq - delyvy**2/delysq)
-              if(abs(delzsq)>SMALLPOS) delvzsq = max(SMALLPOS,delvzsq - delzvz**2/delzsq)
+              xvar  = xsqbart (ixt,iyt,izt) - xbart (ixt,iyt,izt)**2
+              yvar  = ysqbart (ixt,iyt,izt) - ybart (ixt,iyt,izt)**2
+              zvar  = zsqbart (ixt,iyt,izt) - zbart (ixt,iyt,izt)**2
+  
+               if (.not. l_temp_rmcrosscorrelations) then
+                xvxbart (ixt,iyt,izt) = xvxbart (ixt,iyt,izt) * pnumi
+                yvybart (ixt,iyt,izt) = yvybart (ixt,iyt,izt) * pnumi
+                zvzbart (ixt,iyt,izt) = zvzbart (ixt,iyt,izt) * pnumi
+                xvxbar  = xvxbart (ixt,iyt,izt) - xbart (ixt,iyt,izt)*vxbart(ixt,iyt,izt)
+                yvybar  = yvybart (ixt,iyt,izt) - ybart (ixt,iyt,izt)*vybart(ixt,iyt,izt)
+                zvzbar  = zvzbart (ixt,iyt,izt) - zbart (ixt,iyt,izt)*vzbart(ixt,iyt,izt)
+                if(abs(xvar)>SMALLPOS) vxvar = vxvar - xvxbar**2/xvar
+                if(abs(yvar)>SMALLPOS) vyvar = vyvar - yvybar**2/yvar
+                if(abs(zvar)>SMALLPOS) vzvar = vzvar - zvzbar**2/zvar
+               else ! l_temp_rmcrosscorrelations is true
+                xvxbart (ixt,iyt,izt) = xvxbart (ixt,iyt,izt) * pnumi
+                xvybart (ixt,iyt,izt) = xvybart (ixt,iyt,izt) * pnumi
+                xvzbart (ixt,iyt,izt) = xvzbart (ixt,iyt,izt) * pnumi
+                yvxbart (ixt,iyt,izt) = yvxbart (ixt,iyt,izt) * pnumi
+                yvybart (ixt,iyt,izt) = yvybart (ixt,iyt,izt) * pnumi
+                yvzbart (ixt,iyt,izt) = yvzbart (ixt,iyt,izt) * pnumi
+                zvxbart (ixt,iyt,izt) = zvxbart (ixt,iyt,izt) * pnumi
+                zvybart (ixt,iyt,izt) = zvybart (ixt,iyt,izt) * pnumi
+                zvzbart (ixt,iyt,izt) = zvzbart (ixt,iyt,izt) * pnumi
+                xkebart (ixt,iyt,izt) = xkebart (ixt,iyt,izt) * pnumi
+                ykebart (ixt,iyt,izt) = ykebart (ixt,iyt,izt) * pnumi
+                zkebart (ixt,iyt,izt) = zkebart (ixt,iyt,izt) * pnumi
+                xybart (ixt,iyt,izt) = xybart (ixt,iyt,izt) * pnumi
+                xzbart (ixt,iyt,izt) = xzbart (ixt,iyt,izt) * pnumi
+                yzbart (ixt,iyt,izt) = yzbart (ixt,iyt,izt) * pnumi
+                xvxbar  = xvxbart (ixt,iyt,izt) - xbart (ixt,iyt,izt)*vxbart(ixt,iyt,izt)
+                xvybar  = xvybart (ixt,iyt,izt) - xbart (ixt,iyt,izt)*vybart(ixt,iyt,izt)
+                xvzbar  = xvzbart (ixt,iyt,izt) - xbart (ixt,iyt,izt)*vzbart(ixt,iyt,izt)
+                yvxbar  = yvxbart (ixt,iyt,izt) - ybart (ixt,iyt,izt)*vxbart(ixt,iyt,izt)
+                yvybar  = yvybart (ixt,iyt,izt) - ybart (ixt,iyt,izt)*vybart(ixt,iyt,izt)
+                yvzbar  = yvzbart (ixt,iyt,izt) - ybart (ixt,iyt,izt)*vzbart(ixt,iyt,izt)
+                zvxbar  = zvxbart (ixt,iyt,izt) - zbart (ixt,iyt,izt)*vxbart(ixt,iyt,izt)
+                zvybar  = zvybart (ixt,iyt,izt) - zbart (ixt,iyt,izt)*vybart(ixt,iyt,izt)
+                zvzbar  = zvzbart (ixt,iyt,izt) - zbart (ixt,iyt,izt)*vzbart(ixt,iyt,izt)
+                xkebar  = xkebart (ixt,iyt,izt) - xbart (ixt,iyt,izt)*kebart(ixt,iyt,izt)
+                ykebar  = ykebart (ixt,iyt,izt) - ybart (ixt,iyt,izt)*kebart(ixt,iyt,izt)
+                zkebar  = zkebart (ixt,iyt,izt) - zbart (ixt,iyt,izt)*kebart(ixt,iyt,izt)
+                xybar  = xybart (ixt,iyt,izt) - xbart (ixt,iyt,izt)*ybart(ixt,iyt,izt)
+                xzbar  = xzbart (ixt,iyt,izt) - xbart (ixt,iyt,izt)*zbart(ixt,iyt,izt)
+                yzbar  = yzbart (ixt,iyt,izt) - ybart (ixt,iyt,izt)*zbart(ixt,iyt,izt)
+                ! --- sets coefficients of linear system
+                a1 = xvar;  b1 = xybar; c1 = xzbar; d1x = xvxbar; d1y = xvybar; d1z = xvzbar; d1ke = xkebar
+                a2 = xybar; b2 = yvar;  c2 = yzbar; d2x = yvxbar; d2y = yvybar; d2z = yvzbar; d2ke = ykebar
+                a3 = xzbar; b3 = yzbar; c3 = zvar;  d3x = zvxbar; d3y = zvybar; d3z = zvzbar; d3ke = zkebar
+                if (lrtheta) then
+                  d = 1./(a1*c3-a3*c1)
+                  xvxslope = (c1*d3x-d1x*c3)*d
+                  yvxslope = 0.
+                  zvxslope = -(a3*xvxslope+d3x)/c3
+                  xvyslope = (c1*d3y-d1y*c3)*d
+                  yvyslope = 0.
+                  zvyslope = -(a3*xvyslope+d3y)/c3
+                  xvzslope = (c1*d3z-d1z*c3)*d
+                  yvzslope = 0.
+                  zvzslope = -(a3*xvzslope+d3z)/c3
+                  xkeslope = (c1*d3ke-d1ke*c3)*d
+                  ykeslope = 0.
+                  zkeslope = -(a3*xkeslope+d3ke)/c3
+                else
+                  d = 1./((a1*c2-a2*c1)*(b2*c3-b3*c2)-(a2*c3-a3*c2)*(b1*c2-b2*c1))
+                  xvxslope = ((d2x*c3-d3x*c2)*(b1*c2-b2*c1)-(d1x*c2-d2x*c1)*(b2*c3-b3*c2))*d
+                  yvxslope = ((a2*c3-a3*c2)*xvxslope+d2x*c3-d3x*c2)/(b3*c2-b2*c3)
+                  zvxslope = -(a1*xvxslope+b1*yvxslope+d1x)/c1
+                  xvyslope = ((d2y*c3-d3y*c2)*(b1*c2-b2*c1)-(d1y*c2-d2y*c1)*(b2*c3-b3*c2))*d
+                  yvyslope = ((a2*c3-a3*c2)*xvyslope+d2y*c3-d3y*c2)/(b3*c2-b2*c3)
+                  zvyslope = -(a1*xvyslope+b1*yvyslope+d1y)/c1
+                  xvzslope = ((d2z*c3-d3z*c2)*(b1*c2-b2*c1)-(d1z*c2-d2z*c1)*(b2*c3-b3*c2))*d
+                  yvzslope = ((a2*c3-a3*c2)*xvzslope+d2z*c3-d3z*c2)/(b3*c2-b2*c3)
+                  zvzslope = -(a1*xvzslope+b1*yvzslope+d1z)/c1
+                  xkeslope = ((d2ke*c3-d3ke*c2)*(b1*c2-b2*c1)-(d1ke*c2-d2ke*c1)*(b2*c3-b3*c2))*d
+                  ykeslope = ((a2*c3-a3*c2)*xkeslope+d2ke*c3-d3ke*c2)/(b3*c2-b2*c3)
+                  zkeslope = -(a1*xkeslope+b1*ykeslope+d1ke)/c1
+                end if
+                ! --- remove correlations on vx, vy and vz
+                vxvar = vxvar - xvxslope**2*xvar - yvxslope**2*yvar - zvxslope**2*zvar 
+     &                        - 2*xvzslope*yvxslope*xybar
+     &                        - 2*xvzslope*zvxslope*xzbar
+     &                        - 2*yvzslope*zvxslope*yzbar
+                vyvar = vyvar - xvyslope**2*xvar - yvyslope**2*yvar - zvyslope**2*zvar
+     &                        - 2*xvzslope*yvyslope*xybar
+     &                        - 2*xvzslope*zvyslope*xzbar
+     &                        - 2*yvzslope*zvyslope*yzbar
+                vzvar = vzvar - xvzslope**2*xvar - yvzslope**2*yvar - zvzslope**2*zvar
+     &                        - 2*xvzslope*yvzslope*xybar
+     &                        - 2*xvzslope*zvzslope*xzbar
+     &                        - 2*yvzslope*zvzslope*yzbar
+                vxvar = abs(vxvar)
+                vyvar = abs(vyvar)
+                vzvar = abs(vzvar)
+                kevar = kevar - xkeslope**2*xvar - ykeslope**2*yvar - zkeslope**2*zvar 
+     &                        - 2*xkeslope*ykeslope*xybar
+     &                        - 2*xkeslope*zkeslope*xzbar
+     &                        - 2*ykeslope*zkeslope*yzbar
+              end if
             end if
 
 c           --- Compute temperatures
-            tempx(ixt,iyt,izt,is) = tfact*delvxsq
-            tempy(ixt,iyt,izt,is) = tfact*delvysq
-            tempz(ixt,iyt,izt,is) = tfact*delvzsq
+            tempx(ixt,iyt,izt,is) = tfact*vxvar
+            tempy(ixt,iyt,izt,is) = tfact*vyvar
+            tempz(ixt,iyt,izt,is) = tfact*vzvar
+
+c           --- Compute energy spread
+            dke(ixt,iyt,izt,is)   = tfact*sqrt(kevar)
+            if (lrelativ) dke(ixt,iyt,izt,is) = dke(ixt,iyt,izt,is) * 2.*clight**2
 
           enddo
         enddo
@@ -7077,7 +7134,7 @@ c         set the variable t_unit to the default integers evolt, joule or kelvin
         logical(ISZ):: lrtheta,l2symtry,l4symtry
 
         ipmin = pgroup%ins(is)
-        call reset_temperature()
+        call reset_temperature(is)
         if(wpid>0) then
           call accumulate_temperature(pgroup%nps(is),
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
@@ -7091,13 +7148,13 @@ c         set the variable t_unit to the default integers evolt, joule or kelvin
      &                pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
      &                pgroup%gaminv(ipmin),pgroup%sw(is),dt,
      &                pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),is,
-     &                pgroup%pid(ipmin,1),.false.,lrtheta,l2symtry,l4symtry)
+     &                pgroup%xp(ipmin),.false.,lrtheta,l2symtry,l4symtry)
         end if
-        call finalize_temperature(is,pgroup%sm(is))
+        call finalize_temperature(is,pgroup%sm(is),lrtheta)
         return
       end
 c=============================================================================
-      subroutine setregulartgrid(nx,ny,nz,xmin,xmax,ymin,ymax,zmin,zmax,dz,nzloc,lcollapse,lcorrel)
+      subroutine setregulartgrid(nx,ny,nz,xmin,xmax,ymin,ymax,zmin,zmax,dz,nzloc,lcollapse,lcorrel,lcrosscorrel)
 c       Setup regular grid for temperature calculation. The temperature is calculated in nz slices
 c       evenly spaced of thickness dz. The spacing between each slice is given by (zmax-zmin)/(nz-1).
 c       In each slice, the temperature will be computed on a nx+1*ny+1 grid of size (xmin,xmax,ymin,ymax).
@@ -7105,7 +7162,7 @@ c       In each slice, the temperature will be computed on a nx+1*ny+1 grid of s
         use InPart
 
         integer(ISZ) :: nx, ny, nz, nzloc
-        logical(ISZ) :: lcollapse, lcorrel
+        logical(ISZ) :: lcollapse, lcorrel, lcrosscorrel
         real(kind=8) :: xmin, xmax, ymin, ymax, zmin, zmax, dz
 
         integer(ISZ) :: i
@@ -7122,6 +7179,14 @@ c       In each slice, the temperature will be computed on a nx+1*ny+1 grid of s
           nztslicesc = nz
         else
           l_temp_rmcorrelations = .false.
+        end if
+        if(lcrosscorrel) then
+          l_temp_rmcrosscorrelations = .true.
+          nxtslicescc = nx
+          nytslicescc = ny
+          nztslicescc = nz
+        else
+          l_temp_rmcrosscorrelations = .false.
         end if
         nztlocator = nzloc
         call gchange("Temperatures",0)
