@@ -11,7 +11,7 @@ except:
   l_txphysics=0
 
 
-ionization_version = "$Id: ionization.py,v 1.17 2011/03/15 23:12:31 grote Exp $"
+ionization_version = "$Id: ionization.py,v 1.18 2011/04/27 19:18:44 jlvay Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -30,13 +30,19 @@ Class for generating particles from impact ionization.
     self.nz = int(where(nz is None,w3d.nzlocal,nz))
     self.xmin = float(where(xmin is None,w3d.xmmin,xmin))
     self.xmax = float(where(xmax is None,w3d.xmmax,xmax))
-    self.ymin = float(where(ymin is None,w3d.ymmin,ymin))
-    self.ymax = float(where(ymax is None,w3d.ymmax,ymax))
     self.zmin = float(where(zmin is None,w3d.zmminlocal,zmin))
     self.zmax = float(where(zmax is None,w3d.zmmaxlocal,zmax))   
     self.dx=(self.xmax-self.xmin)/self.nx
-    self.dy=(self.ymax-self.ymin)/self.ny
     self.dz=(self.zmax-self.zmin)/self.nz
+    if w3d.solvergeom == w3d.RZgeom:
+      self.ymin=self.xmin
+      self.ymax=self.xmax
+      self.dy=self.dx
+      self.ny=self.nx
+    else:
+      self.ymin = float(where(ymin is None,w3d.ymmin,ymin))
+      self.ymax = float(where(ymax is None,w3d.ymmax,ymax))
+      self.dy=(self.ymax-self.ymin)/self.ny
     self.ndensc=fzeros((self.nx+1,self.ny+1,self.nz+1),'d')
     self.invvol=1./(self.dx*self.dy*self.dz)
     self.l_verbose=l_verbose
@@ -78,11 +84,13 @@ Class for generating particles from impact ionization.
     self.install()
 
   def add(self,incident_species,emitted_species,cross_section=None,
-          target_species=None,ndens=None,emitted_energy0=0.,emitted_energy_sigma=0.,
-          incident_pgroup=top.pgroup,target_pgroup=top.pgroup,emitted_pgroup=top.pgroup):
+          target_species=None,ndens=None,target_fluidvel=None,
+          emitted_energy0=0.,emitted_energy_sigma=0.,
+          incident_pgroup=top.pgroup,target_pgroup=top.pgroup,emitted_pgroup=top.pgroup,
+          l_remove_incident=None,l_remove_target=None):
     if not self.inter.has_key(incident_species):
         self.inter[incident_species]={}
-        for key in ['target_species','emitted_species','cross_section','ndens',
+        for key in ['target_species','emitted_species','cross_section','ndens','target_fluidvel',
                     'remove_incident','remove_target','emitted_energy0','emitted_energy_sigma',
                     'incident_pgroup','target_pgroup','emitted_pgroup']:
           self.inter[incident_species][key]=[]
@@ -94,14 +102,21 @@ Class for generating particles from impact ionization.
       self.inter[incident_species]['emitted_species'] +=[emitted_species]
     self.inter[incident_species]['cross_section']   +=[cross_section]
     self.inter[incident_species]['ndens']           +=[ndens]
-    if incident_species is emitted_species[0]:
-      self.inter[incident_species]['remove_incident']+=[1]
+    self.inter[incident_species]['target_fluidvel'] +=[target_fluidvel]
+    if l_remove_incident is None:
+      if incident_species.type is emitted_species[0].type:
+        self.inter[incident_species]['remove_incident']+=[1]
+      else:
+        self.inter[incident_species]['remove_incident']+=[0]
     else:
-      self.inter[incident_species]['remove_incident']+=[0]
-    if target_species is emitted_species[0]:
-      self.inter[incident_species]['remove_target']+=[1]
+      self.inter[incident_species]['remove_incident']+=[l_remove_incident]
+    if l_remove_target is None and target_species is not None:
+      if target_species.type is emitted_species[0].type:
+        self.inter[incident_species]['remove_target']+=[1]
+      else:
+        self.inter[incident_species]['remove_target']+=[0]
     else:
-      self.inter[incident_species]['remove_target']+=[0]
+      self.inter[incident_species]['remove_target']+=[l_remove_target]
     self.inter[incident_species]['emitted_energy0']   +=[emitted_energy0]
     self.inter[incident_species]['emitted_energy_sigma']   +=[emitted_energy_sigma]
     self.inter[incident_species]['incident_pgroup']=incident_pgroup
@@ -113,6 +128,7 @@ Class for generating particles from impact ionization.
         for key in ['ndens','ndens_updated']:
           self.target_dens[target_species][key]=[]
         self.target_dens[target_species]['ndens']           =fzeros((self.nx+1,self.ny+1,self.nz+1),'d')
+        self.target_dens[target_species]['target_fluidvel'] =fzeros((self.nx+1,self.ny+1,self.nz+1,3),'d')
         self.target_dens[target_species]['ndens_updated']   =0
       
     for e in emitted_species:
@@ -135,6 +151,12 @@ Class for generating particles from impact ionization.
         self.uy[emitted_pgroup][js]=fzeros(self.npmax,'d')
         self.uz[emitted_pgroup][js]=fzeros(self.npmax,'d')
         self.gi[emitted_pgroup][js]=fzeros(self.npmax,'d')
+
+  def add_ionization(self,incident_species,emitted_species,**kw):
+    self.add(incident_species,emitted_species,l_remove_target=1,**kw)
+
+  def add_stripping(self,incident_species,emitted_species,**kw):
+    self.add(incident_species,emitted_species,l_remove_incident=1,**kw)
 
   def install(self):
     if not isinstalleduserinjection(self.generate):
@@ -183,6 +205,7 @@ Class for generating particles from impact ionization.
 #           f.z=self.z[js][:nn]
 #           f.close()
 #           raise('')
+#         window(5);ppg(self.y[pg][js][:nn],self.x[pg][js][:nn]);limits(w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax);refresh()
          addparticles(x=self.x[pg][js][:nn],
                       y=self.y[pg][js][:nn],
                       z=self.z[pg][js][:nn],
@@ -194,6 +217,11 @@ Class for generating particles from impact ionization.
                       pgroup=pg,
                       js=js)
          self.nps[pg][js]=0
+         
+         x = self.x[pg][js][:nn]
+         y = self.y[pg][js][:nn]
+         r=sqrt(x*x+y*y)
+         z = self.z[pg][js][:nn]
 
   def printall(self,l_cgm=0):
     swidth=0
@@ -275,6 +303,7 @@ Class for generating particles from impact ionization.
       if npinc==0 or not ispushed:continue
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
         ndens=self.inter[incident_species]['ndens'][it]
+        target_fluidvel=self.inter[incident_species]['target_fluidvel'][it]
         if ndens is not None:
           continue
         else:
@@ -283,6 +312,7 @@ Class for generating particles from impact ionization.
           else:
             self.target_dens[target_species]['ndens_updated']=1
           ndens = self.target_dens[target_species]['ndens']
+          target_fluidvel=self.target_dens[target_species]['target_fluidvel']
           nptarget=0
           for jstarget in target_species.jslist:
             nptarget+=tpg.nps[jstarget]
@@ -295,6 +325,10 @@ Class for generating particles from impact ionization.
             xt=tpg.xp[i1:i2]
             yt=tpg.yp[i1:i2]
             zt=tpg.zp[i1:i2]
+            git=tpg.gaminv[i1:i2]
+            vxt=tpg.uxp[i1:i2]*git
+            vyt=tpg.uyp[i1:i2]*git
+            vzt=tpg.uzp[i1:i2]*git
             fact=1.
             if w3d.l4symtry:
               xt=abs(xt)
@@ -302,9 +336,20 @@ Class for generating particles from impact ionization.
             elif w3d.l2symtry:
               fact=0.5
             if w3d.l2symtry or w3d.l4symtry:yt=abs(yt)
+            if top.wpid==0:
+              weights=ones(tpg.nps[jstarget],'d')
+            else:
+              weights=tpg.pid[i1:i2,top.wpid-1]
+            # --- deposit density
             deposgrid3d(1,tpg.nps[jstarget],xt,yt,zt,
-                        tpg.sw[jstarget]*self.invvol*fact*ones(tpg.nps[jstarget],'d'),
+                        tpg.sw[jstarget]*self.invvol*fact*weights,
                         self.nx,self.ny,self.nz,ndens,self.ndensc,
+                        self.xmin,self.xmax,self.ymin,self.ymax,
+                        self.zmin,self.zmax)    
+            # --- computes target fluid velocity
+            deposgrid3dvect(0,tpg.nps[jstarget],xt,yt,zt,vxt,vyt,vzt,
+                        tpg.sw[jstarget]*self.invvol*fact*weights,
+                        self.nx,self.ny,self.nz,target_fluidvel,self.ndensc,
                         self.xmin,self.xmax,self.ymin,self.ymax,
                         self.zmin,self.zmax)    
 
@@ -323,6 +368,8 @@ Class for generating particles from impact ionization.
       if npinc==0 or not ispushed:continue
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
         ndens=self.inter[incident_species]['ndens'][it]
+        target_fluidvel=self.inter[incident_species]['target_fluidvel'][it]
+#        ndens=1.e23
         for js in incident_species.jslist:
           i1 = ipg.ins[js] - 1 + top.it%self.stride
           i2 = ipg.ins[js] + ipg.nps[js] - 1
@@ -330,10 +377,10 @@ Class for generating particles from impact ionization.
           yi=ipg.yp[i1:i2:self.stride]#.copy()
           zi=ipg.zp[i1:i2:self.stride]#.copy()
           ni = shape(xi)[0]
-          gaminvi=ipg.gaminv[i1:i2:self.stride].copy()
-          uxi=ipg.uxp[i1:i2:self.stride].copy()
-          uyi=ipg.uyp[i1:i2:self.stride].copy()
-          uzi=ipg.uzp[i1:i2:self.stride].copy()
+          gaminvi=ipg.gaminv[i1:i2:self.stride]#.copy()
+          uxi=ipg.uxp[i1:i2:self.stride]#.copy()
+          uyi=ipg.uyp[i1:i2:self.stride]#.copy()
+          uzi=ipg.uzp[i1:i2:self.stride]#.copy()
           # --- get velocity in lab frame if using a boosted frame of reference
           if top.boost_gamma>1.:
             uzboost = clight*sqrt(top.boost_gamma**2-1.)
@@ -343,20 +390,76 @@ Class for generating particles from impact ionization.
           vxi=uxi*gaminvi
           vyi=uyi*gaminvi
           vzi=uzi*gaminvi
-          # compute the relative velocity
-          # NOTE that at this point, the target species is assumed to have a negligible velocity.
-          # this needs to be modified if this approximation is not valid.
-          vi=sqrt(vxi*vxi+vyi*vyi+vzi*vzi)
+          # --- get local target density
           if ndens is None:
             ndens = self.target_dens[target_species]['ndens']
           if type(ndens) in [type(0.),type(0)]:
-            dp=ndens
+            dp=ones(ni,'d')*ndens
+            if target_fluidvel is None:
+              xmin=self.xmin
+              xmax=self.xmax
+              ymin=self.ymin
+              ymax=self.ymax
+              zmin=self.zmin
+              zmax=self.zmax
+            else:
+              vxtf = target_fluidvel[0]
+              vytf = target_fluidvel[1]
+              vztf = target_fluidvel[2]
+              xmin=self.xmin+vxtf*top.time
+              xmax=self.xmax+vxtf*top.time
+              ymin=self.ymin+vytf*top.time
+              ymax=self.ymax+vytf*top.time
+              zmin=self.zmin+vztf*top.time
+              zmax=self.zmax+vztf*top.time
+            if w3d.solvergeom==w3d.RZgeom:
+              ri=sqrt(xi*xi+yi*yi)
+              dp=where((ri>=xmin) & (ri<=xmax) & \
+                       (zi>=zmin) & (zi<=zmax),dp,0.)
+            else:
+              dp=where((xi>=xmin) & (xi<=xmax) & \
+                       (yi>=ymin) & (yi<=ymax) & \
+                       (zi>=zmin) & (zi<=zmax),dp,0.)
           else:
             dp=zeros(ni,'d')
             getgrid3d(ni,xi,yi,zi,dp,
                         self.nx,self.ny,self.nz,ndens, \
                         self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax, 
                         w3d.l2symtry,w3d.l4symtry)    
+          # --- get local target fluid velocity
+          if target_fluidvel is None:
+            if target_species is None:
+              target_fluidvel = [0.,0.,0.]
+            else:
+              target_fluidvel = self.target_dens[target_species]['target_fluidvel']
+          if type(target_fluidvel) in [type([])]:
+            vxtf = target_fluidvel[0]
+            vytf = target_fluidvel[1]
+            vztf = target_fluidvel[2]
+          else:
+            vxtf=zeros(ni,'d')
+            vytf=zeros(ni,'d')
+            vztf=zeros(ni,'d')
+            getgrid3d(ni,xi,yi,zi,vxtf,
+                        self.nx,self.ny,self.nz,target_fluidvel[...,0], \
+                        self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax, 
+                        w3d.l2symtry,w3d.l4symtry)    
+            getgrid3d(ni,xi,yi,zi,vytf,
+                        self.nx,self.ny,self.nz,target_fluidvel[...,1], \
+                        self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax, 
+                        w3d.l2symtry,w3d.l4symtry)    
+            getgrid3d(ni,xi,yi,zi,vztf,
+                        self.nx,self.ny,self.nz,target_fluidvel[...,2], \
+                        self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax, 
+                        w3d.l2symtry,w3d.l4symtry)    
+
+          # compute the relative velocity
+          # NOTE that at this point, the target species is assumed to have a negligible velocity.
+          # this needs to be modified if this approximation is not valid.
+          vxr = vxi-vxtf
+          vyr = vyi-vytf
+          vzr = vzi-vztf
+          vi=sqrt(vxr*vxr+vyr*vyr+vzr*vzr)
           # if no cross-section is provided, then attempt to get it from txphysics
           cross_section = self.inter[incident_species]['cross_section'][it] # cross-section
           if cross_section is None:
@@ -402,12 +505,12 @@ Class for generating particles from impact ionization.
             xnew = xnewp+(ranf(xnewp)-0.5)*1.e-10*self.dx
             ynew = ynewp+(ranf(ynewp)-0.5)*1.e-10*self.dy
             znew = znewp+(ranf(znewp)-0.5)*1.e-10*self.dz
+            if self.inter[incident_species]['remove_incident'][it]:
+              uxnew = take(uxnew,io)
+              uynew = take(uynew,io)
+              uznew = take(uznew,io)
             for emitted_species in self.inter[incident_species]['emitted_species'][it]:
-              if self.inter[incident_species]['remove_incident'][it]:
-                uxnew = take(uxnew,io)
-                uynew = take(uynew,io)
-                uznew = take(uznew,io)
-              else:
+              if not self.inter[incident_species]['remove_incident'][it]:
 #                uxnew = zeros(nnew,float64)+1.e-10
 #                uynew = zeros(nnew,float64)+1.e-10
 #                uznew = zeros(nnew,float64)+1.e-10
