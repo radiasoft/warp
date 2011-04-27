@@ -67,6 +67,7 @@ class Maps:
         z = pg.zp[il:iu]-zbeam
     else:
       phz=0.
+      z = pg.zp[il:iu]
     apply_linear_map(np,pg.xp[il:iu],pg.yp[il:iu],z,
                         pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
                         top.vbeam,top.gammabar,
