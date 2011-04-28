@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.151 $, $Date: 2011/04/22 16:15:56 $
+c@(#) File w3d_injection.F, version $Revision: 1.152 $, $Date: 2011/04/28 13:44:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -21,7 +21,7 @@ c=============================================================================
       use InPart3d
       use InMesh3d
       use Particles,Only: spid,wpid,tpid,rpid,ssn,lmappid,npid,
-     &                    xbirthpid,ybirthpid,zbirthpid,
+     &                    xbirthpid,ybirthpid,zbirthpid,zbirthlabpid,
      &                    uxbirthpid,uybirthpid,uzbirthpid
       use Picglb
       use InjectVars
@@ -705,7 +705,7 @@ c           --- apply linear maps
                 call applylmap(nn,pgroup%xp(i1),pgroup%yp(i1),
      &                            pgroup%uxp(i1),pgroup%uyp(i1),
      &                         nn,pgroup%zp(i1),pgroup%uzp(i1),pgroup%gaminv(i1),
-     &                         vbeam,gammabar,zbeam_maps(1),zbeamend_maps(1),zend(1),lmappid)
+     &                         vbeam,gammabar,zbeam_maps(1),zbeamend_maps(1),lmappid)
                 if (lmapfillz) then
                   dtmaps(1:nn) = (zbeamend_maps(1:nn)-zbeam_maps(1:nn))/vbeam
                   call xpusht3d(nn,pgroup%xp(i1),pgroup%yp(i1),
@@ -729,7 +729,7 @@ c                pgroup%zp(i1:i2) = pgroup%zp(i1:i2)-(dt-bpt(1:nn))*pgroup%uzp(i
                 tlab(1:nn) = boost_gamma*(time)+uzboost*pgroup%zp(i1:i2)*invclightsq
 c               --- get zbeam for each particle in lab frame
 c                zbeam_maps(1:nn) = (boost_z0/boost_gamma+(vbeam+vzboost)*tlab(1:nn))/(1.+vbeam*vzboost*invclightsq)
-                zbeam_maps(1:nn) = ((time+0.*bpt(1:nn))/dt)*vbeam_lab*dtmaps(1:nn) + pgroup%pid(i1:i2,zbirthpid)
+                zbeam_maps(1:nn) = ((time+0.*bpt(1:nn))/dt)*vbeam_lab*dtmaps(1:nn) + pgroup%pid(i1:i2,zbirthlabpid)
      &          *(boost_gamma*gammabar_lab/gammabar-1.)
      &          +(boost_z0/boost_gamma)/(1.+vbeam*vzboost*invclightsq)
                 zbeamend_maps(1:nn) = zbeam_maps(1:nn) + dtmaps(1:nn)*vbeam_lab
@@ -745,7 +745,7 @@ c               --- apply maps in lab frame
      &                            pgroup%uxp(i1),pgroup%uyp(i1),
      &                         nn,pgroup%zp(i1),pgroup%uzp(i1),pgroup%gaminv(i1),
      &                         vbeam_lab,gammabar_lab,zbeam_maps(1),zbeamend_maps(1),
-     &                         zend(1),lmappid)
+     &                         lmappid)
                 tlab(1:nn) = tlab(1:nn)+dtmaps(1:nn)
                 if (lmapfillz) then
                   dtmaps(1:nn) = (zend(1:nn)-pgroup%zp(i1:i2))/vbeam_lab
