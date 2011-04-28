@@ -1418,11 +1418,18 @@ else
   k=0
   do l = 0, nz
     j = 0
-    dive(j,k,l) = dive(j,k,l) + 4.*dxi * Ex(j,k,l) &
-                              + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 
+    if (xmin==0.) then
+      dive(j,k,l) = dive(j,k,l) + 4.*dxi * Ex(j,k,l) &
+                                + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 
+    else
+      ru = 1.+0.5/(xmin/dx)
+      rd = 1.-0.5/(xmin/dx)
+      dive(j,k,l) = dive(j,k,l) + dxi * (ru*Ex(j,k,l) - rd*Ex(j-1,k  ,l  )) &
+                                + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 
+    end if
     do j = 1, nx
-      ru = 1.+0.5/j
-      rd = 1.-0.5/j
+      ru = 1.+0.5/(xmin/dx)
+      rd = 1.-0.5/(xmin/dx)
       dive(j,k,l) = dive(j,k,l) + dxi * (ru*Ex(j,k,l) - rd*Ex(j-1,k  ,l  )) &
                                 + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 
     end do
