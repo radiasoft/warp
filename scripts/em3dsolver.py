@@ -357,6 +357,9 @@ class EM3D(SubcycledPoissonSolver):
                                    self.sigmae,
                                    self.sigmab)
     self.fields = self.block.core.yf
+    if self.l_2drz:    
+      self.vol = 2.*pi*(arange(self.nx+1)*self.dx+self.block.xmin)*self.dx*self.dz
+      if self.block.xmin==0.:self.vol[0] = 0.25*self.dx**2*self.dz
     
     
 ################################################################################
@@ -2603,6 +2606,21 @@ class EM3D(SubcycledPoissonSolver):
 
   def gatherf(self,guards=0,direction=None,**kw):
       return self.gatherarray(self.getf(guards,overlap=direction is None),direction=direction,**kw)
+
+  def get_tot_energy(self):
+    yee2node3d(self.fields)
+    if not self.l_2drz:
+      w2tot = globalsum(self.getw2())
+      if self.l_2dxz:
+        w2tot*=self.dx*self.dz*eps0/2
+      else:
+        w2tot*=self.dx*self.dy*self.dz*eps0/2
+    else:
+      w2 = self.getw2()
+      w2=transpose(w2)*self.vol[:shape(w2)[0]]
+      w2tot = globalsum(w2)*eps0/2
+      
+    return w2tot
 
   def sumdive(self):
     flist = [self.block.core.yf]
