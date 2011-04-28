@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.453 $, $Date: 2011/04/13 20:35:31 $
+c@(#) File W3D.F, version $Revision: 3.454 $, $Date: 2011/04/28 13:42:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -344,9 +344,9 @@ c  Initialize base grid for RZ solver
 #endif
         elseif(solvergeom==XYgeom) then
 #ifdef MPIPARALLEL
-          call init_base(nx,ny,dx,dy,xmmin,ymmin,.true.)
+          call init_base(nxlocal,nylocal,dx,dy,xmminlocal,ymminlocal,.true.)
 #else
-          call init_base(nx,ny,dx,dy,xmmin,ymmin,.false.)
+          call init_base(nxlocal,nylocal,dx,dy,xmminlocal,ymminlocal,.false.)
 #endif
         end if
       end if
@@ -1140,7 +1140,7 @@ c  inculding axial confining fields, and uniform focusing fields.
 
 c  Apply axial confining ears for finite beam.
 
-      if (ifeears == 1) then
+      if (ifeears == 1 .or. ifeears == 3) then
         zs = (zimax - zimin)*straight*0.5
         do ip=1,np
           if ((zp(ip)-zbeam) > zs) then
@@ -2104,10 +2104,9 @@ c           --- apply linear maps
                 zbeamend_maps(1:ip) = zbeam+vbeam*fulldt_s
                 zbeam_maps(1:ip) = zbeam
                 dtmaps(1:ip) = fulldt_s
-                zend(1:ip) = zp(ipmin:ipmin+ip-1)+uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1)*dtmaps(1:ip)
                 call applylmap(ip,xp(ipmin),yp(ipmin),uxp(ipmin),uyp(ipmin),
      &                         ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                         vbeam,gammabar,zbeam_maps(1),zbeamend_maps(1),zend(1),lmappid)
+     &                         vbeam,gammabar,zbeam_maps(1),zbeamend_maps(1),lmappid)
                 if (lmapfillz) then
                   dtmaps(1:ip) = (zend(1:ip)-zp(ipmin:ipmin+ip-1))/(uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1))
                   call xpusht3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),dtmaps(1))
@@ -2115,36 +2114,42 @@ c           --- apply linear maps
                else
                 uzboost = clight*sqrt(boost_gamma*boost_gamma-1.)
                 vzboost = uzboost/boost_gamma
+
 c               --- get time step in lab frame
                 dtmaps(1:ip) = fulldt_s*gammabar_lab/gammabar
+
 c               --- get time for each particle in lab frame
-c                tlab(1:ip) = boost_gamma*time+uzboost*zp(ipmin:ipmin+ip-1)*invclightsq
+                tlab(1:ip) = time*gammabar_lab/gammabar
+
 c               --- get particles position in lab frame
-                zp(ipmin:ipmin+ip-1) = boost_gamma*zp(ipmin:ipmin+ip-1)+uzboost*time  
+                zbeamend_maps(1:ip) = vbeam*time+boost_z0
+                zp(ipmin:ipmin+ip-1) = zp(ipmin:ipmin+ip-1)-zbeamend_maps(1:ip)   ! z*  -> dz*
+                zp(ipmin:ipmin+ip-1) = zp(ipmin:ipmin+ip-1)/gammabar_lab*gammabar ! dz* -> dz
+                
 c               --- get zbeam for each particle in lab frame
-c                zbeam_maps(1:ip) = (boost_z0/boost_gamma+(vbeam+vzboost)*tlab(1:ip))/(1.+vbeam*vzboost*invclightsq)
-                zbeam_maps(1:ip) = (it-1)*vbeam_lab*dtmaps(1:ip) + pgroup%pid(ipmin:ipmin+ip-1,zbirthlabpid)
-     &          *(boost_gamma*gammabar_lab/gammabar-1.)
-     &          +(boost_z0/boost_gamma)/(1.+vbeam*vzboost*invclightsq)
+                zbeam_maps(1:ip) = vbeam_lab*tlab(1:ip)+boost_z0*gammabar/gammabar_lab
                 zbeamend_maps(1:ip) = zbeam_maps(1:ip) + dtmaps(1:ip)*vbeam_lab
+                zp(ipmin:ipmin+ip-1)=zp(ipmin:ipmin+ip-1)+zbeam_maps(1:ip)         ! dz=>z
+
 c               --- get particles momenta in lab frame
                 call setu_in_uzboosted_frame3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),-uzboost,boost_gamma)
 c               --- apply maps in lab frame
-                zend(1:ip) = zp(ipmin:ipmin+ip-1)+uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1)*dtmaps(1:ip)
                 call applylmap(ip,xp(ipmin),yp(ipmin),uxp(ipmin),uyp(ipmin),
      &                         ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                         vbeam_lab,gammabar_lab,zbeam_maps(1),zbeamend_maps(1),
-     &                         zend(1),lmappid)
-c                tlab(1:ip) = tlab(1:ip)+dtmaps(1:ip)
+     &                         lmappid)
                 if (lmapfillz) then
                   dtmaps(1:ip) = (zend(1:ip)-zp(ipmin:ipmin+ip-1))/(uzp(ipmin:ipmin+ip-1)*gaminv(ipmin:ipmin+ip-1))
                   call xpusht3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),dtmaps(1))
                 endif
+
 c               --- get particles momenta in boosted frame
                 call setu_in_uzboosted_frame3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),uzboost,boost_gamma)
 c               --- get particles position in boosted frame
-                zp(ipmin:ipmin+ip-1) = (zp(ipmin:ipmin+ip-1)-uzboost*(time+fulldt_s))/boost_gamma
-
+                zp(ipmin:ipmin+ip-1)=zp(ipmin:ipmin+ip-1)-zbeamend_maps(1:ip)   ! z  -> dz
+                zp(ipmin:ipmin+ip-1)=zp(ipmin:ipmin+ip-1)*gammabar_lab/gammabar ! dz -> dz*
+                zbeamend_maps(1:ip) = vbeam*(time+fulldt_s)+boost_z0
+                zp(ipmin:ipmin+ip-1)=zp(ipmin:ipmin+ip-1)+zbeamend_maps(1:ip)
               end if
             end if
 
@@ -2577,7 +2582,7 @@ c  Copy charge density from frz.basegrid to w3d.rho
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call get_rho_rz(rho(0,0,0),nx,nzlocal,1,0)
       else if(solvergeom==XYgeom) then
-        call get_rho_rz(rho(0,0,0),nx,ny,1,0)
+        call get_rho_rz(rho(0,0,0),nxlocal,nylocal,1,0)
       else if(solvergeom==Zgeom) then
         call get_rho_z(rho(0,0,0),nzlocal,1,0)
       else if(solvergeom==Rgeom) then
@@ -9816,11 +9821,11 @@ c            --- loop over particle blocks
                if(wpid==0) then
                  call rhoweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                            pgroup%yp(ipmin),ip,
-     &                            pgroup%sq(is)*swtmp,nx,ny,dx,dy,xmmin,ymmin)
+     &                            pgroup%sq(is)*swtmp,nxlocal,nylocal,dx,dy,xmmin,ymmin)
                else
                  call rhoweightrz_weights(pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                            pgroup%yp(ipmin),pgroup%pid(ipmin,wpid),ip,
-     &                            pgroup%sq(is)*swtmp,nx,ny,dx,dy,xmmin,ymmin)
+     &                            pgroup%sq(is)*swtmp,nxlocal,nylocal,dx,dy,xmmin,ymmin)
                end if
              enddo
            elseif(solvergeom==Zgeom) then
@@ -10159,7 +10164,7 @@ c  whose field solve region overlap its particle region.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call getrhoforfieldsolverz(nxlocal,nzlocal,rho)
       else if(solvergeom==XYgeom) then
-        call kaboom("XYgeom not tested in parallel")
+        call getrhoforfieldsolverz(nxlocal,nylocal,rho)
       else if(solvergeom==Zgeom) then
         call getrhoforfieldsolvez(nzlocal,rho)
       elseif (solvergeom==XYZgeom) then
@@ -11687,12 +11692,8 @@ c===========================================================================
 #ifdef MPIPARALLEL
 c     --- Distribute phi among the processes so each has phi in its
 c     --- particle domain.
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom .or. solvergeom==Zgeom) then
         call getphiforparticlesrz()
-      elseif (solvergeom==XYgeom) then
-        call kaboom("getphipforparticles not implemented in parallel for XYgeom.")
-c      else if(solvergeom==Zgeom) then
-c        call getphipforparticlesz()
       elseif (solvergeom==XYZgeom) then
         call getphipforparticles3d(1,nxlocal,nylocal,nzlocal,phi,
      &                             nxp,nyp,nzp,phipndts(:,:,:,indts),1,1,1,
@@ -12324,7 +12325,7 @@ c       --- RZ full-multigrid solver
        if (solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
          call multigridrzf(iwhich,phi,rho,nxlocal,nzlocal)
        elseif (solvergeom==XYgeom) then
-         call multigridxyf2(iwhich,phi(:,:,0),rho,nx,ny)
+         call multigridxyf2(iwhich,phi(:,:,0),rho,nxlocal,nylocal)
        endif
       elseif (fstype == 11) then
 c         --- Chombo AMR  full-multigrid solver
