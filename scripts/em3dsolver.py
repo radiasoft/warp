@@ -2524,6 +2524,7 @@ class EM3D(SubcycledPoissonSolver):
       if top.efetch[0]<>4:node2yee3d(f)
       getdive(f.Ex,f.Ey,f.Ez,dive,f.dx,f.dy,f.dz,
               f.nx,f.ny,f.nz,f.nxguard,f.nyguard,f.nzguard,
+              f.xmin,
               self.l_2dxz,self.l_2drz)
       if top.efetch[0]<>4:yee2node3d(f)
       return dive

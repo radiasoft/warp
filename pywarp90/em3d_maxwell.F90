@@ -1380,10 +1380,10 @@ end if
 return
 end subroutine push_em3d_fvec
 
-subroutine getdive(ex,ey,ez,dive,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz,l_2drz)
+subroutine getdive(ex,ey,ez,dive,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard,xmin,l_2dxz,l_2drz)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,dive
-real(kind=8), intent(IN) :: dx,dy,dz
+real(kind=8), intent(IN) :: dx,dy,dz,xmin
 integer(ISZ) :: j,k,l
 logical(ISZ) :: l_2dxz,l_2drz
 real(kind=8) :: ru,rd,dxi,dyi,dzi
@@ -1428,7 +1428,7 @@ else
                                 + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 
     end if
     do j = 1, nx
-      ru = 1.+0.5/(xmin/dx)
+1421      ru = 1.+0.5/(xmin/dx)
       rd = 1.-0.5/(xmin/dx)
       dive(j,k,l) = dive(j,k,l) + dxi * (ru*Ex(j,k,l) - rd*Ex(j-1,k  ,l  )) &
                                 + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 

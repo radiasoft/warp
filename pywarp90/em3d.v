@@ -313,6 +313,7 @@ depose_jxjyjz_villasenor_n_2d(j:real,
 setebp(emblock:EM3D_YEEFIELDtype,icycle:integer,novercycle:integer) subroutine
 getdive(ex:real,ey:real,ez:real,dive:real,dx:real,dy:real,dz:real,
         nx:integer,ny:integer,nz:integer,nxguard:integer,nyguard:integer,nzguard:integer,
+        xmin:real,
         l_2dxz:logical,l_2drz:logical) subroutine
 
 %%%%%%%% EM3D_SPLITYEEFIELDtype:
