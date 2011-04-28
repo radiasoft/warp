@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.262 $, $Date: 2011/04/27 19:05:50 $
+c@(#) File TOP.F, version $Revision: 3.263 $, $Date: 2011/04/28 19:39:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7135,20 +7135,22 @@ c         set the variable t_unit to the default integers evolt, joule or kelvin
 
         ipmin = pgroup%ins(is)
         call reset_temperature(is)
-        if(wpid>0) then
-          call accumulate_temperature(pgroup%nps(is),
+        if (pgroup%nps(is)>0) then
+          if(wpid>0) then
+            call accumulate_temperature(pgroup%nps(is),
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
      &                pgroup%gaminv(ipmin),pgroup%sw(is),dt,
      &                pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),is,
      &                pgroup%pid(ipmin,wpid),.true.,lrtheta,l2symtry,l4symtry)
-        else
-          call accumulate_temperature(pgroup%nps(is),
+          else
+            call accumulate_temperature(pgroup%nps(is),
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
      &                pgroup%gaminv(ipmin),pgroup%sw(is),dt,
      &                pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),is,
      &                pgroup%xp(ipmin),.false.,lrtheta,l2symtry,l4symtry)
+          end if
         end if
         call finalize_temperature(is,pgroup%sm(is),lrtheta)
         return
