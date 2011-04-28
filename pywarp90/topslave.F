@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.68 $, $Date: 2011/04/13 20:37:30 $
+c TOPSLAVE.M, version $Revision: 1.69 $, $Date: 2011/04/28 13:37:14 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -1304,8 +1304,10 @@ c Do a global sum of the data used to calculate local temperatures.
       call parallelsumrealarray(vxsqbart,nn)
       call parallelsumrealarray(vysqbart,nn)
       call parallelsumrealarray(vzsqbart,nn)
+      call parallelsumrealarray(kebart,nn)
+      call parallelsumrealarray(kesqbart,nn)
 
-      if (l_temp_rmcorrelations) then
+      if (l_temp_rmcorrelations .or. l_temp_rmcrosscorrelations) then
 
         nn = (1+nxtslicesc)*(1+nytslicesc)*nztslicesc
         call parallelsumrealarray(xbart,nn)
@@ -1314,10 +1316,28 @@ c Do a global sum of the data used to calculate local temperatures.
         call parallelsumrealarray(xsqbart,nn)
         call parallelsumrealarray(ysqbart,nn)
         call parallelsumrealarray(zsqbart,nn)
-        call parallelsumrealarray(xvxbart,nn)
-        call parallelsumrealarray(yvybart,nn)
-        call parallelsumrealarray(zvzbart,nn)
 
+        if (l_temp_rmcorrelations) then
+          call parallelsumrealarray(xvxbart,nn)
+          call parallelsumrealarray(yvybart,nn)
+          call parallelsumrealarray(zvzbart,nn)
+          call parallelsumrealarray(xkebart,nn)
+          call parallelsumrealarray(ykebart,nn)
+          call parallelsumrealarray(zkebart,nn)
+        endif
+        
+        if (l_temp_rmcrosscorrelations) then
+          call parallelsumrealarray(xybart,nn)
+          call parallelsumrealarray(xzbart,nn)
+          call parallelsumrealarray(yzbart,nn)
+          call parallelsumrealarray(xvybart,nn)
+          call parallelsumrealarray(xvzbart,nn)
+          call parallelsumrealarray(yvxbart,nn)
+          call parallelsumrealarray(yvzbart,nn)
+          call parallelsumrealarray(zvxbart,nn)
+          call parallelsumrealarray(zvybart,nn)
+        endif
+        
       endif
 
 !$OMP MASTER
