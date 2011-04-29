@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.152 $, $Date: 2011/04/28 13:44:03 $
+c@(#) File w3d_injection.F, version $Revision: 1.153 $, $Date: 2011/04/29 23:45:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -55,7 +55,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: inte,qold,qadd
       real(kind=8):: vtx,vty,vtz,larmorfreq,bmag
       real(kind=8):: fulldt_s
-      real(kind=8):: zmid,zleni,ztilt,gamma
+      real(kind=8):: zmid,zleni,ztilt,g2,gamma
       real(kind=8):: p1x,p1y,p1z,p2x,p2y,p2z,w1x,w1y,w1z,area,circum
       real(kind=8):: ellipseperimeter
       real(kind=8):: thetaextent,dtheta,tmin,tmax
@@ -444,8 +444,12 @@ c             --- Scale the particle weight.
                 pgroup%uyp(ii) = pgroup%uyp(ii) + larmorfreq*rt(ip)*cos(tt(ip))
               endif
               if (lrelativ) then
-                pgroup%gaminv(ii) = sqrt(1.-
+                g2 = (1. -
      &   (pgroup%uxp(ii)**2+pgroup%uyp(ii)**2+pgroup%uzp(ii)**2)*clightsqi)
+                if (g2 < 0.) then
+                  call kaboom("inject3d: particle speed is greater than clight")
+                endif
+                pgroup%gaminv(ii) = sqrt(g2)
                 gamma = 1./pgroup%gaminv(ii)
                 pgroup%uxp(ii) = pgroup%uxp(ii)*gamma
                 pgroup%uyp(ii) = pgroup%uyp(ii)*gamma
@@ -1597,8 +1601,12 @@ c                   --- the Child-Langmuir solution.
 c                   --- Calculate gamma inverse and reset the particle
 c                   --- massless momentums properly.
                     if (lrelativ) then
-                      pgroup%gaminv(ii) = sqrt(1.-
+                      g2 = (1. -
      &      (pgroup%uxp(ii)**2+pgroup%uyp(ii)**2+pgroup%uzp(ii)**2)*clightsqi)
+                      if (g2 < 0.) then
+                        call kaboom("inject3d: particle speed is greater than clight")
+                      endif
+                      pgroup%gaminv(ii) = sqrt(g2)
                       gamma = 1./pgroup%gaminv(ii)
                       pgroup%uxp(ii) = pgroup%uxp(ii)*gamma
                       pgroup%uyp(ii) = pgroup%uyp(ii)*gamma
@@ -2333,8 +2341,12 @@ c                     --- velocity has been rotated to be along B.
                       pgroup%uzp(ii) = pgroup%uzp(ii) + vtz
                     endif
                     if (lrelativ) then
-                      pgroup%gaminv(ii) = sqrt(1.-
+                      g2 = (1. -
      &     (pgroup%uxp(ii)**2+pgroup%uyp(ii)**2+pgroup%uzp(ii)**2)*clightsqi)
+                      if (g2 < 0.) then
+                        call kaboom("inject3d: particle speed is greater than clight")
+                      endif
+                      pgroup%gaminv(ii) = sqrt(g2)
                       gamma = 1./pgroup%gaminv(ii)
                       pgroup%uxp(ii) = pgroup%uxp(ii)*gamma
                       pgroup%uyp(ii) = pgroup%uyp(ii)*gamma
