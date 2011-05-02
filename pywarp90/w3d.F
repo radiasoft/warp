@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.454 $, $Date: 2011/04/28 13:42:53 $
+c@(#) File W3D.F, version $Revision: 3.455 $, $Date: 2011/05/02 21:53:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8238,6 +8238,7 @@ c     --- This is very memory inefficient, but make dealing with boundary
 c     --- conditions much easier.
       allocate(rhotemp(-1:nx+1,-1:ny+1,-1:nz+1))
       rhotemp = 0.
+      rhotemp(0:nx,0:ny,0:nz) = rho(0:nx,0:ny,0:nz)
 
       g = wght*q/(dx*dy*dz)
       dxi = 1./dx
