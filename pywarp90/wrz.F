@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.29 $, $Date: 2009/02/05 19:43:03 $
+c@(#) File WRZ.M, version $Revision: 3.30 $, $Date: 2011/05/06 00:01:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -58,6 +58,7 @@ c  Invoked by the GENERATE command, it sets up the problem
 c  declare scratch space for getzmmnt
        
        integer(ISZ):: i,k,ia,izb,is,ip,ipmin,iwin,iz,num,nzma,isid,ismax
+       integer(ISZ):: i1,i2
        integer(ISZ):: nzmb,ieearmax,ieearmin,ir
        real(kind=8):: time1,time2,er,et,ez,frext,zm,zs,eearsprs,eearmax,eearmin
        real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
@@ -170,9 +171,11 @@ c     call zeroarry(curr,nz+1)
       do is=1,ns
          do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
             ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
-            call setrhorz (rho,ip,pgroup%xp(ipmin),pgroup%zp(ipmin),zbeam,
-     &                     pgroup%uzp(ipmin),pgroup%sq(is),pgroup%sw(is),depos)
-            call setcurr(curr,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),pgroup%gaminv(ipmin),
+            i1 = ipmin
+            i2 = ipmin + ip - 1
+            call setrhorz (rho,ip,pgroup%xp(i1:i2),pgroup%zp(i1:i2),zbeam,
+     &                     pgroup%uzp(i1:i2),pgroup%sq(is),pgroup%sw(is),depos)
+            call setcurr(curr,ip,pgroup%zp(i1:i2),pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
      &                   pgroup%sq(is),pgroup%sw(is),zbeam,dz,zmmin)
          enddo
       enddo
@@ -225,10 +228,12 @@ c     call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%ga
 c     do is=1,ns
 c        do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
 c           ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
+c           i1 = ipmin
+c           i2 = ipmin + ip - 1
 c           nplive = ip
-c           call getemits(ip,xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-c    &                    pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-c    &                    pgroup%gaminv(ipmin),pgroup%sm(1),pgroup%sw(1),2,nplive)
+c           call getemits(ip,xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+c    &                    pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),
+c    &                    pgroup%gaminv(i1:i2),pgroup%sm(1),pgroup%sw(1),2,nplive)
 c        enddo
 c        call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,pgroup%sm(1),pgroup%sw(1),3,nplive)
  
@@ -253,20 +258,22 @@ c  Create the dynamic arrays for z moments; calculate moments
            isid = pgroup%sid(is-1) + 1
            do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
               num = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
+              i1 = ipmin
+              i2 = ipmin + num - 1
 c             --- Use t=0 u data also as "old" data for extraps
-              call copyarry (pgroup%uxp(ipmin),uxpo,num)
-              call copyarry (pgroup%uyp(ipmin),uypo,num)
-              call copyarry (pgroup%uzp(ipmin),uzpo,num)
+              call copyarry (pgroup%uxp(i1:i2),uxpo,num)
+              call copyarry (pgroup%uyp(i1:i2),uypo,num)
+              call copyarry (pgroup%uzp(i1:i2),uzpo,num)
               if(wpid==0) then
-                call getzmmnt(num,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                        pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-     &                        pgroup%gaminv(ipmin),pgroup%sq(1),pgroup%sm(1),pgroup%sw(1),dt/2.,
+                call getzmmnt(num,pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                        pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),
+     &                        pgroup%gaminv(i1:i2),pgroup%sq(1),pgroup%sm(1),pgroup%sw(1),dt/2.,
      &                        pgroup%dtscale(is),2,nplive,
      &                        uxpo,uypo,uzpo,is,isid,ismax,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
               else
-                call getzmmnt_weights(num,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                        pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-     &                        pgroup%gaminv(ipmin),pgroup%pid(ipmin,wpid),
+                call getzmmnt_weights(num,pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                        pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),
+     &                        pgroup%gaminv(i1:i2),pgroup%pid(ipmin,wpid),
      &                        pgroup%sq(1),pgroup%sm(1),pgroup%sw(1),dt/2.,pgroup%dtscale(is),2,nplive,
      &                        uxpo,uypo,uzpo,is,isid,ismax,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
               endif
@@ -402,7 +409,7 @@ c=============================================================================
  
 c  Takes a time step
 
-      integer(ISZ):: is,ipmin,ip
+      integer(ISZ):: is,ipmin,ip,i1,i2
  
 c  Announce that we're running
  
@@ -418,8 +425,10 @@ c        call zeroarry(rho,nrz)
          do is=1,ns
             do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
                ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
-               call setrhorz (rho,ip,pgroup%xp(ipmin),pgroup%zp(ipmin),zbeam,
-     &                        pgroup%uzp(ipmin),pgroup%sq(is),pgroup%sw(is),depos)
+               i1 = ipmin
+               i2 = ipmin + ip - 1
+               call setrhorz (rho,ip,pgroup%xp(i1:i2),pgroup%zp(i1:i2),zbeam,
+     &                        pgroup%uzp(i1:i2),pgroup%sq(is),pgroup%sw(is),depos)
             enddo
          enddo
          if (periinz) call perrhorz(rho,nr,nz)
@@ -1031,7 +1040,7 @@ c  Advances the particles position and velocity according to CENTER,
 c  and also advances RHO.
  
  
-      integer(ISZ):: is,ipmin,ip,i,isid,ismax
+      integer(ISZ):: is,ipmin,ip,i,isid,ismax,i1,i2
       real(kind=8),pointer:: er(:), et(:), ez(:)
       real(kind=8),pointer:: br(:), bt(:), bz(:)
       real(kind=8):: frext(nparpgrp)
@@ -1080,20 +1089,22 @@ c  Call seterzrz to fill E_z and E_r arrays
 c  Loop over particle block, and move each block seperately
          do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
             ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
-            call seterzrz (1,phi,force,ip,pgroup%xp(ipmin),pgroup%zp(ipmin),zbeam,
+            i1 = ipmin
+            i2 = ipmin + ip - 1
+            call seterzrz (1,phi,force,ip,pgroup%xp(i1:i2),pgroup%zp(i1:i2),zbeam,
      &                   rmmin,zmmin,zmmax,dr,dz,nr,nz,
-     &                   efetch(is),er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
-            call othererz(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                   efetch(is),er(i1:i2),et(i1:i2),ez(i1:i2),frext,erfld,ezfld,eoffrz)
+            call othererz(ip,pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
      &                    zbeam,zimax,zimin,straight,ifeears,eears,
-     &                    eearsofz,dr,dz,nr,nz,zmmin,er(ipmin),et(ipmin),ez(ipmin),
+     &                    eearsofz,dr,dz,nr,nz,zmmin,er(i1:i2),et(i1:i2),ez(i1:i2),
      &                    eearsrz,rmmin,ezext)
-            call exterz (ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),zbeam,pgroup%xp(ipmin),
-     &                   ez0,er(ipmin),et(ipmin),ez(ipmin),dedr)
-            call extbrz (ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                   pgroup%uzp(ipmin),pgroup%gaminv(ipmin),br(ipmin),bt(ipmin),bz(ipmin))
-            call pushrz (center, ip, pgroup%xp(ipmin), pgroup%yp(ipmin), pgroup%zp(ipmin),
-     &                   pgroup%uxp(ipmin), pgroup%uyp(ipmin), pgroup%uzp(ipmin), pgroup%gaminv(ipmin),
-     &                   er(ipmin), et(ipmin), ez(ipmin), br(ipmin), bt(ipmin), bz(ipmin),
+            call exterz (ip,pgroup%zp(i1:i2),pgroup%uzp(i1:i2),zbeam,pgroup%xp(i1:i2),
+     &                   ez0,er(i1:i2),et(i1:i2),ez(i1:i2),dedr)
+            call extbrz (ip,pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                   pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),br(i1:i2),bt(i1:i2),bz(i1:i2))
+            call pushrz (center, ip, pgroup%xp(i1:i2), pgroup%yp(i1:i2), pgroup%zp(i1:i2),
+     &                   pgroup%uxp(i1:i2), pgroup%uyp(i1:i2), pgroup%uzp(i1:i2), pgroup%gaminv(i1:i2),
+     &                   er(i1:i2), et(i1:i2), ez(i1:i2), br(i1:i2), bt(i1:i2), bz(i1:i2),
      &                   frext, pgroup%sq(is), pgroup%sm(is),
      &                   dt, gamadv)
             if (center .eq. "synchv") then
@@ -1104,25 +1115,25 @@ c             --- z moments
                  uypo(i) = pgroup%uyp(ipmin+i-1)
                  uzpo(i) = pgroup%uzp(ipmin+i-1)
                enddo
-c              call getemits(ip,xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-c    &                       pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-c    &                       pgroup%gaminv(ipmin),pgroup%sm(is),pgroup%sw(is),2,nplive)
+c              call getemits(ip,xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+c    &                       pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),
+c    &                       pgroup%gaminv(i1:i2),pgroup%sm(is),pgroup%sw(is),2,nplive)
                if(wpid==0) then
-                 call getzmmnt(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                         pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-     &                         pgroup%gaminv(ipmin),pgroup%sq(is),pgroup%sm(is),pgroup%sw(is),dt/2.,
+                 call getzmmnt(ip,pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                         pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),
+     &                         pgroup%gaminv(i1:i2),pgroup%sq(is),pgroup%sm(is),pgroup%sw(is),dt/2.,
      &                         pgroup%dtscale(is),2,nplive,
      &                         uxpo,uypo,uzpo,is,isid,ismax,
      &                         tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
                else
-                 call getzmmnt_weights(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                         pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-     &                         pgroup%gaminv(ipmin),pgroup%pid(ipmin,wpid),
+                 call getzmmnt_weights(ip,pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                         pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),
+     &                         pgroup%gaminv(i1:i2),pgroup%pid(ipmin,wpid),
      &                         pgroup%sq(is),pgroup%sm(is),pgroup%sw(is),dt/2.,pgroup%dtscale(is),2,nplive,
      &                         uxpo,uypo,uzpo,is,isid,ismax,
      &                         tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
                endif
-               call setcurr(curr,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),pgroup%gaminv(ipmin),
+               call setcurr(curr,ip,pgroup%zp(i1:i2),pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
      &                      pgroup%sq(is),pgroup%sw(is),zgrid,dz,zmmin)
             endif
          enddo
@@ -1140,10 +1151,10 @@ c    &                       pgroup%gaminv(ipmin),pgroup%sm(is),pgroup%sw(is),2,
             call processlostpart(pgroup,is,clearlostpart,time,zbeam)
             do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
                ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
-               call setrhorz (rho, ip, pgroup%xp(ipmin), pgroup%zp(ipmin), zgrid,
-     &                        pgroup%uzp(ipmin), pgroup%sq(is), pgroup%sw(is), depos)
+               call setrhorz (rho, ip, pgroup%xp(i1:i2), pgroup%zp(i1:i2), zgrid,
+     &                        pgroup%uzp(i1:i2), pgroup%sq(is), pgroup%sw(is), depos)
               if (ifgap) 
-     &         call setcurr(curr,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),pgroup%gaminv(ipmin),
+     &         call setcurr(curr,ip,pgroup%zp(i1:i2),pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
      &                      pgroup%sq(is),pgroup%sw(is),zgrid,dz,zmmin)
             enddo
          endif
