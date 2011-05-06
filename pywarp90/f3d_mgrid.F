@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.199 $, $Date: 2011/02/17 21:19:00 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.200 $, $Date: 2011/05/06 00:11:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -4268,6 +4268,7 @@ c       --- Energy conserving
           i = inext
           j = jnext
           k = knext
+          x = xnext
           xi = xinext
           yj = yjnext
           zk = zknext
@@ -5318,7 +5319,7 @@ c       --- Get the residual on the current grid.
 
 c       --- Note that some y quantities are included as dummies since the
 c       --- routine will change the values.
-        call getnextcoarselevel3d(nx,0,nz,nxlocal,nylocal,nzlocal,dx,dx,dz,
+        call getnextcoarselevel3d(nx,0,nz,nxlocal,0,nzlocal,dx,dx,dz,
      &                            nxcoarse,nycoarse,nzcoarse,
      &                            dxcoarse,dycoarse,dzcoarse)
 
@@ -6699,7 +6700,7 @@ c       --- Get the residual on the current grid.
 
 c       --- Note that some y quantities are included as dummies since the
 c       --- routine will change the values.
-        call getnextcoarselevel3d(nx,0,nz,nxlocal,nylocal,nzlocal,dx,dx,dz,
+        call getnextcoarselevel3d(nx,0,nz,nxlocal,0,nzlocal,dx,dx,dz,
      &                            nxcoarse,nycoarse,nzcoarse,
      &                            dxcoarse,dycoarse,dzcoarse)
 
