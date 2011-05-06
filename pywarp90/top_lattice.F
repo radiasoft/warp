@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.43 $, $Date: 2011/04/27 19:11:10 $
+c@(#) File top_lattice.F, version $Revision: 3.44 $, $Date: 2011/05/06 00:09:04 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -5866,8 +5866,8 @@ c         --- set the field
                 map(1,5) = dpx2 - Map(1,0)*dx1 - Map(1,1)*dpx1
                 map(2,5) = dy2  - Map(2,2)*dy1 - Map(2,3)*dpy1
                 map(3,5) = dpy2 - Map(3,2)*dy1 - Map(3,3)*dpy1
-                map(4,4) = cosphz
-                map(5,5) = cosphz
+c               map(4,4) = cosphz
+c               map(5,5) = cosphz
                 if (lmapnuz(mapid)==0.) then
                   map(4,4) = 1.
                   map(5,5) = 1.
