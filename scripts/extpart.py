@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.78 2010/12/02 23:14:17 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.79 2011/05/06 16:25:32 grote Exp $"
 
 def extpartdoc():
     import extpart
@@ -191,7 +191,7 @@ self.topgroupname
 
     def addspecies(self):
         if self.laccumulate and not self.dumptofile:
-            for js in range(len(self.t),top.ns):
+            for js in range(self.getns(),top.ns):
                 bump = self.nmax
                 self.t.append(AppendableArray(self.nmax,typecode='d',
                                                 autobump=bump))
@@ -247,7 +247,7 @@ self.topgroupname
         # --- This is here in case self.topnpidmax had been update elsewhere
         # --- but self.pid had not.
         if self.laccumulate and not self.dumptofile:
-            for js in range(top.ns):
+            for js in range(self.getns()):
                 if self.pid[js].unitshape()[0] != self.topnpidmax:
                     self.pid[js].reshape((self.topnpidmax,))
 
@@ -425,7 +425,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
     def dodumptofilePDB(self):
         #if me != 0: return
         ff = None
-        for js in range(top.ns):
+        for js in range(self.getns()):
             if len(self.t[js][:]) > 0:
                 if ff is None:
                     # --- Only create the file if there is data to write out.
@@ -448,7 +448,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
     def dodumptofilePickle(self):
         #if me != 0: return
         ff = None
-        for js in range(top.ns):
+        for js in range(self.getns()):
             if len(self.t[js][:]) > 0:
                 if ff is None:
                     # --- Only create the file if there is data to write out.
