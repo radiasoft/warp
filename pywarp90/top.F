@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.263 $, $Date: 2011/04/28 19:39:16 $
+c@(#) File TOP.F, version $Revision: 3.264 $, $Date: 2011/05/06 00:10:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3502,7 +3502,7 @@ c       --- particles absorbed (Dirichlet)
             do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
               rrsq = pgroup%xp(ip)**2 + pgroup%yp(ip)**2
               if (rrsq >= xmmax**2) then
-                rr = sqrt(rr)
+                rr = sqrt(rrsq)
                 if (rrsq > xmmax**2) then
                   pgroup%xp(ip) = (2.*xmmax - rr)*(pgroup%xp(ip)/rr)
                   pgroup%yp(ip) = (2.*xmmax - rr)*(pgroup%yp(ip)/rr)
@@ -7130,26 +7130,28 @@ c       - the default temperature unit is in electron-volt. To select the units,
 c         set the variable t_unit to the default integers evolt, joule or kelvin.
         use InGen
         use Particles,Only: pgroup,wpid
-        integer(ISZ):: is, ipmin, itask
+        integer(ISZ):: is, ipmin, itask, i1, i2
         logical(ISZ):: lrtheta,l2symtry,l4symtry
 
         ipmin = pgroup%ins(is)
         call reset_temperature(is)
         if (pgroup%nps(is)>0) then
+          i1 = ipmin
+          i2 = ipmin + pgroup%nps(is) - 1
           if(wpid>0) then
             call accumulate_temperature(pgroup%nps(is),
-     &                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-     &                pgroup%gaminv(ipmin),pgroup%sw(is),dt,
-     &                pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),is,
-     &                pgroup%pid(ipmin,wpid),.true.,lrtheta,l2symtry,l4symtry)
+     &                pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),
+     &                pgroup%gaminv(i1:i2),pgroup%sw(is),dt,
+     &                pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),is,
+     &                pgroup%pid(i1:i2,wpid),.true.,lrtheta,l2symtry,l4symtry)
           else
             call accumulate_temperature(pgroup%nps(is),
-     &                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-     &                pgroup%gaminv(ipmin),pgroup%sw(is),dt,
-     &                pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),is,
-     &                pgroup%xp(ipmin),.false.,lrtheta,l2symtry,l4symtry)
+     &                pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),
+     &                pgroup%gaminv(i1:i2),pgroup%sw(is),dt,
+     &                pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),is,
+     &                pgroup%xp(i1:i2),.false.,lrtheta,l2symtry,l4symtry)
           end if
         end if
         call finalize_temperature(is,pgroup%sm(is),lrtheta)
