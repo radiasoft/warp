@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.92 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.93 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -4718,7 +4718,7 @@ c since the coordinates passed in may not be regularly spaced.
 c This code assumes that the cylinders do not overlap transversely.
 c Otherwise, the cylinders can be at any angle.
 
-      real(kind=8):: dd
+      real(kind=8):: dd(1)
       integer(ISZ):: i,imin(1),ic
 
       distance = LARGEPOS
@@ -4728,7 +4728,7 @@ c Otherwise, the cylinders can be at any angle.
         call CylinderConductorD(rad(ic),length(ic),theta(ic),phi(ic),
      &                          xcent(ic),ycent(ic),zcent(ic),
      &                          1,x(i),y(i),z(i),dd)
-        distance(i) = min(distance(i),dd)
+        distance(i) = min(distance(i),dd(1))
       enddo
 
       return
@@ -5184,7 +5184,7 @@ c     --- Translate and rotate to frame of Cone
 
 c     --- Get data
       call zconeintercept(r_zmin,r_zmax,length,0.,0.,0.,
-     &                    n,x,y,z,vx,vy,vz,xi,yi,zi,ttheta,tphi)
+     &                    n,x,y,z,vx,vy,vz,xn,yn,zn,ttheta,tphi)
 
 c     --- Rotate and translate interception points to lab frame
       xi = +xn*cos(theta) - yn*sin(theta)*sin(phi) + zn*sin(theta)*cos(phi)
@@ -5340,7 +5340,7 @@ c since the coordinates passed in may not be regularly spaced.
 c This code assumes that the cones do not overlap transversely.
 c Otherwise, the cones can be at any angle.
 
-      real(kind=8):: dd
+      real(kind=8):: dd(1)
       integer(ISZ):: i,imin(1),ic
 
       distance = LARGEPOS
@@ -5350,7 +5350,7 @@ c Otherwise, the cones can be at any angle.
         call ConeConductorD(r_zmin(ic),r_zmax(ic),length(ic),theta(ic),phi(ic),
      &                      xcent(ic),ycent(ic),zcent(ic),
      &                      1,x(i),y(i),z(i),dd)
-        distance(i) = min(distance(i),dd)
+        distance(i) = min(distance(i),dd(1))
       enddo
 
       return
@@ -6128,7 +6128,7 @@ c normal angle of the surface at that point.
       real(kind=8):: ithetax,iphix
       real(kind=8):: ithetay,iphiy
       real(kind=8):: xiz,yiz,ziz,ithetaz,iphiz
-      real(kind=8):: dd
+      real(kind=8):: dd(1)
       logical(ISZ):: linside
 
       zmin = zcent - length/2.
@@ -6260,7 +6260,7 @@ c normal angle of the surface at that point.
      &                         1,xi(i),yi(i),zi(i),dd)
 
 c         linside = (dd < 0.)
-          linside = (dd < -thickness/1000.)
+          linside = (dd(1) < -thickness/1000.)
 
           if (linside) then
             if (-dtx < -dty) then
@@ -7629,9 +7629,11 @@ c normal angle of the surface at that point.
       real(kind=8),pointer:: thmin(:),thmax(:)
       real(kind=8),pointer:: th1(:),th2(:)
       integer(ISZ):: i,ii
-      real(kind=8):: vsq,xx,yy,zz,rr,r1,t1,t2,z1,z2,tt,ttemp,a1,a2,vr
+      real(kind=8):: vsq,xx,yy,zz,rr,r1,t1,t2,z1,z2,tt
+      real(kind=8):: xxa(1),yya(1),zza(1)
+      real(kind=8):: ttemp(1),a1(1),a2(1),vr
       real(kind=8):: a,b,c,s,p
-      real(kind=8):: vdotn,dd,th
+      real(kind=8):: vdotn,dd(1),th
 
       allocate(rmin(nn-1),rmax(nn-1))
       allocate(zmin(nn-1),zmax(nn-1))
@@ -7780,11 +7782,11 @@ c           --- Use the routine already written for tori.
 c           --- If the point is the best so far, then save the data.
 c           --- Note that ztorus_intercept checks if the intercept is
 c           --- within thmin and thmax.
-            if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
-     &          (ttemp > tt .and. tt < 0.)) then
-              tt = ttemp
-              itheta(i) = a1
-              iphi(i) = a2
+            if ((tt > ttemp(1) .and. ttemp(1) > 0. .and. tt > 0.) .or.
+     &          (ttemp(1) > tt .and. tt < 0.)) then
+              tt = ttemp(1)
+              itheta(i) = a1(1)
+              iphi(i) = a2(1)
             endif
 
           endif
@@ -7808,12 +7810,12 @@ c         --- even though the normal is pointing in the correct
 c         --- direction. This won't be fixed since it is very unlikely.
           s = 1.e-10*sqrt((maxval(rmax)-minval(rmin))**2 + 
      &                    (maxval(zmax)-minval(zmin))**2)
-          xx = xi(i) + s*sin(itheta(i))*cos(iphi(i))
-          yy = yi(i) + s*sin(itheta(i))*sin(iphi(i))
-          zz = zi(i) + s*cos(itheta(i))
+          xxa(1) = xi(i) + s*sin(itheta(i))*cos(iphi(i))
+          yya(1) = yi(i) + s*sin(itheta(i))*sin(iphi(i))
+          zza(1) = zi(i) + s*cos(itheta(i))
           call ZSrfrvConductorD(nn,rsrf,zsrf,rad,rc,zc,
-     &                          xcent,ycent,zcent,1,xx,yy,zz,dd)
-          if (dd < 0.) then
+     &                          xcent,ycent,zcent,1,xxa,yya,zza,dd)
+          if (dd(1) < 0.) then
 c           --- dd is inside, so change itheta by pi
             if (itheta(i) > 0.) then
               itheta(i) = itheta(i) - pi
@@ -8165,7 +8167,8 @@ c When inside is == +1, conductor is inside the surface, -1 outside.
 c This is only needed to get the correct orientation of the surface normal.
 
       integer(ISZ):: i,ii,il,niter
-      real(kind=8):: vsq,vv,dd,xx,yy,zz,rr,rrsq,t1,t2,z1,z2,ttemp,a1,a2
+      real(kind=8):: vsq,vv,dd(1),xx,yy,zz,rr,rrsq,t1,t2,z1,z2
+      real(kind=8):: ttemp(1),a1(1),a2(1)
       real(kind=8):: a,b,c,s,p
       real(kind=8):: r_zmin,r_zmax
       real(kind=8):: t(2),d(2)
@@ -8254,7 +8257,7 @@ c                   --- These angles need to be verified.
             else
 
 c             --- Use the routine already written for tori.
-              ttemp = LARGEPOS
+              ttemp(1) = LARGEPOS
 c             ---- Note that thmin and thmax should be calculated.
               call ztorus_intercept(rc_sr(il),abs(rad_sr(il)),0.,2.*pi,
      &                              xcent,ycent,zcent+zc_sr(il),
@@ -8262,21 +8265,21 @@ c             ---- Note that thmin and thmax should be calculated.
      &                              ttemp,a1,a2)
 
 c             --- Check if the intersection point is within the line segment.
-              xx = -vx(i)*ttemp + x(i) - xcent
-              yy = -vy(i)*ttemp + y(i) - ycent
-              zz = -vz(i)*ttemp + z(i) - ycent
+              xx = -vx(i)*ttemp(1) + x(i) - xcent
+              yy = -vy(i)*ttemp(1) + y(i) - ycent
+              zz = -vz(i)*ttemp(1) + z(i) - ycent
               rr = sqrt(xx**2 + yy**2)
               if (z_sr(il) <= zz .and. zz <= z_sr(il+1) .and.
      &            ((rad_sr(il) > 0. .and. rr > rc_sr(il)) .or.
      &             (rad_sr(il) < 0. .and. rr < rc_sr(il)))) then
 c               --- If it is, and the point is the best so far, then save
 c               --- the data.
-                if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
-     &              (ttemp > tt(i) .and. tt(i) < 0.)) then
-                  tt(i) = ttemp
-                  if (inside*rad_sr(il) < 0.) a1 = a1 + pi
-                  itheta(i) = a1
-                  iphi(i) = a2
+                if ((tt(i) > ttemp(1) .and. ttemp(1) > 0. .and. tt(i) > 0.) .or.
+     &              (ttemp(1) > tt(i) .and. tt(i) < 0.)) then
+                  tt(i) = ttemp(1)
+                  if (inside*rad_sr(il) < 0.) a1(1) = a1(1) + pi
+                  itheta(i) = a1(1)
+                  iphi(i) = a2(1)
                 endif
               endif
 
@@ -8307,15 +8310,15 @@ c         call ZSrfrvOutConductorD(lrofzfunc,zmin,zmax,rmax,1.,
 c    &                             xcent,ycent,zcent,1,x(i),y(i),z(i),dd)
 
           t(1) = 0.
-          d(1) = dd
+          d(1) = dd(1)
 
-          t(2) = dd/vv
+          t(2) = dd(1)/vv
           xx = -vx(i)*t(2) + x(i)
           yy = -vy(i)*t(2) + y(i)
           zz = -vz(i)*t(2) + z(i)
 c         call ZSrfrvOutConductorD(lrofzfunc,zmin,zmax,rmax,1.,
 c    &                             xcent,ycent,zcent,1,xx,yy,zz,dd)
-          d(2) = dd
+          d(2) = dd(1)
 
           niter = 0
           if (d(1) == 0. .or. d(2) == 0) niter = 12
