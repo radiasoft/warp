@@ -6,7 +6,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.37 2011/03/04 19:13:50 jlvay Exp $"
+warputils_version = "$Id: warputils.py,v 1.38 2011/05/10 23:28:05 grote Exp $"
 
 def warputilsdoc():
   import warputils
@@ -607,4 +607,33 @@ f(x)=f0 using the bisection method.
      mid = lo + (hi-lo)/2
  
   return mid
+
+
+def getallobjectsizes(minsize=0,withpackages=1):
+  """Makes a printout of all of the user created python objects and their
+sizes.
+ - minsize=1: only prints objects with a size greater than minsize
+ - withpackages=1: when true, also includes the sizes of the fortran packages
+  """
+  import __main__
+  import warp
+  dd = {}
+  for k,v in __main__.__dict__.items():
+    if k in warp.initial_global_dict_keys: continue
+    if isinstance(v,ModuleType): continue
+    if k == 'controllerfunctioncontainer': continue
+    if k == 'registeredsolverscontainer': continue
+    dd[k] = v
+  totals = 0
+  for k,v in [[kk,__main__.__dict__[kk]] for kk in package()]:
+    s = getobjectsize(v)
+    totals += s
+    if s > minsize:
+      print k,s
+  for k,v in dd.items():
+    s = getobjectsize(v)
+    totals += s
+    if s > minsize:
+      print k,s
+  return totals
 
