@@ -7,7 +7,7 @@ Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.88 2011/04/27 19:23:53 jlvay Exp $"
+species_version = "$Id: species.py,v 1.89 2011/05/10 22:40:48 grote Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale > 0.:
@@ -50,6 +50,8 @@ periodic_table={}
 periodic_table['Hydrogen']={'A': 1.0079400000000001, 'Symbol': 'H', 'Z': 1, 'Group': 1, 'Period': 1}
 periodic_table['Helium']={'A': 4.0026020000000004, 'Symbol': 'He', 'Z': 2, 'Group': 18, 'Period': 1}
 periodic_table['Lithium']={'A': 6.9409999999999998, 'Symbol': 'Li', 'Z': 3, 'Group': 1, 'Period': 2}
+periodic_table['Lithium6']={'A': 6.01512279516, 'Symbol': 'Li6', 'Z': 3, 'Group': 1, 'Period': 2}
+periodic_table['Lithium7']={'A': 7.016004558, 'Symbol': 'Li7', 'Z': 3, 'Group': 1, 'Period': 2}
 periodic_table['Beryllium']={'A': 9.0121819999999992, 'Symbol': 'Be', 'Z': 4, 'Group': 2, 'Period': 2}
 periodic_table['Boron']={'A': 10.811, 'Symbol': 'B', 'Z': 5, 'Group': 13, 'Period': 2}
 periodic_table['Carbon']={'A': 12.0107, 'Symbol': 'C', 'Z': 6, 'Group': 14, 'Period': 2}
