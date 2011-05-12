@@ -730,14 +730,14 @@ class EM3D(SubcycledPoissonSolver):
                  w3d.l4symtry)
     elif top.efetch[w3d.jsfsapi]==4:
       if self.l_2dxz:
-        getb2dxz_n_energy_conserving(n,x,z,bx,by,bz,
+        getb2dxz_n_energy_conserving(n,x,y,z,bx,by,bz,
                     f.xmin,f.zmin+self.zgrid,
                     f.dx,f.dz,
                     f.nx,f.nz,
                     f.nxguard,f.nzguard,
                     nox,noz,
                     f.Bxp,f.Byp,f.Bzp,
-                    w3d.l4symtry)
+                    w3d.l4symtry,self.l_2drz)
       else:
        if nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
         getb3d_linear_energy_conserving(n,x,y,z,bx,by,bz,
@@ -1718,8 +1718,8 @@ class EM3D(SubcycledPoissonSolver):
       self.__class__.__bases__[1].push_b_part_1(self.field_coarse,dir)
 
   def push_b_part_2(self):
-#    if top.efetch[0]<>4 and (self.refinement is None) and not \
-#       (self.l_smooth_particle_fields and any(self.npass_smooth>0)):node2yee3d(self.block.core.yf)
+    if top.efetch[0]<>4 and (self.refinement is None) and not \
+       (self.l_smooth_particle_fields and any(self.npass_smooth>0)):self.node2yee3d()
     dt = top.dt/self.ncyclesperstep
     if self.ncyclesperstep<1.:
       self.novercycle = nint(1./self.ncyclesperstep)
@@ -2466,6 +2466,7 @@ class EM3D(SubcycledPoissonSolver):
 
   def getese(self):
     pass
+#    top.ese = self.get_tot_energy()
 
   def getjx(self,guards=0,overlap=0):
       return self.getarray(self.fields.J[:,:,:,0],guards,overlap)
@@ -2609,9 +2610,9 @@ class EM3D(SubcycledPoissonSolver):
       return self.gatherarray(self.getf(guards,overlap=direction is None),direction=direction,**kw)
 
   def get_tot_energy(self):
-    yee2node3d(self.fields)
+#    yee2node3d(self.fields)
     if not self.l_2drz:
-      w2tot = globalsum(self.getw2())
+      w2tot = globalsum(self.getwg2()) # must be getwg2, not getw2
       if self.l_2dxz:
         w2tot*=self.dx*self.dz*eps0/2
       else:
