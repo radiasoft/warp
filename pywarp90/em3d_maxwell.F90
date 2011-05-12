@@ -1428,8 +1428,8 @@ else
                                 + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 
     end if
     do j = 1, nx
-1421      ru = 1.+0.5/(xmin/dx)
-      rd = 1.-0.5/(xmin/dx)
+      ru = 1.+0.5/(xmin/dx+j)
+      rd = 1.-0.5/(xmin/dx+j)
       dive(j,k,l) = dive(j,k,l) + dxi * (ru*Ex(j,k,l) - rd*Ex(j-1,k  ,l  )) &
                                 + dzi * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) 
     end do
