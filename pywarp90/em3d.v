@@ -232,7 +232,7 @@ gete2dxz_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                exg:real,eyg:real,ezg:real,
                            l4symtry:logical,l_2drz:logical)
                            subroutine
-getb2dxz_n_energy_conserving(n:integer,xp(n):real,zp(n):real,
+getb2dxz_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                bx(n):real,by(n):real,bz(n):real,
                xmin:real,zmin:real,
                dx:real,dz:real,
@@ -240,7 +240,7 @@ getb2dxz_n_energy_conserving(n:integer,xp(n):real,zp(n):real,
                nxguard:integer,nzguard:integer,
                nox:integer,noz:integer,
                bxg:real,byg:real,bzg:real,
-                           l4symtry:logical)
+                           l4symtry:logical,l_2drz:logical)
                            subroutine
 yee2node3d(f:EM3D_YEEFIELDtype) subroutine
 node2yee3d(f:EM3D_YEEFIELDtype) subroutine
