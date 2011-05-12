@@ -226,8 +226,8 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
       invvol = 1./(dx*dz)
       dtsdx0 = dt*dxi
       dtsdz0 = dt*dzi
-      dts2dx0 = 0.5*dtsdx
-      dts2dz0 = 0.5*dtsdz
+      dts2dx0 = 0.5*dtsdx0
+      dts2dz0 = 0.5*dtsdz0
       invdtdx = 1./(dt*dz)
       invdtdz = 1./(dt*dx)
 
@@ -776,9 +776,9 @@ subroutine depose_jxjyjz_esirkepov_linear_serialnew(cj,np,xp,yp,zp,uxp,uyp,uzp,g
       dtsdx0 = dt*dxi
       dtsdy0 = dt*dyi
       dtsdz0 = dt*dzi
-      dts2dx0 = 0.5*dtsdx
-      dts2dy0 = 0.5*dtsdy
-      dts2dz0 = 0.5*dtsdz
+      dts2dx0 = 0.5*dtsdx0
+      dts2dy0 = 0.5*dtsdy0
+      dts2dz0 = 0.5*dtsdz0
       invvol = 1./(dx*dy*dz)
       invdtdx = 1./(dt*dy*dz)
       invdtdy = 1./(dt*dx*dz)
@@ -974,9 +974,9 @@ subroutine depose_jxjyjz_esirkepov_linear_serial(cj,np,xp,yp,zp,uxp,uyp,uzp,gami
       dtsdx0 = dt*dxi
       dtsdy0 = dt*dyi
       dtsdz0 = dt*dzi
-      dts2dx0 = 0.5*dtsdx
-      dts2dy0 = 0.5*dtsdy
-      dts2dz0 = 0.5*dtsdz
+      dts2dx0 = 0.5*dtsdx0
+      dts2dy0 = 0.5*dtsdy0
+      dts2dz0 = 0.5*dtsdz0
       invvol = 1./(dx*dy*dz)
       invdtdx = 1./(dt*dy*dz)
       invdtdy = 1./(dt*dx*dz)
@@ -1146,9 +1146,9 @@ subroutine depose_jxjyjz_esirkepov_nnew(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
       dtsdx0 = dt*dxi
       dtsdy0 = dt*dyi
       dtsdz0 = dt*dzi
-      dts2dx0 = 0.5*dtsdx
-      dts2dy0 = 0.5*dtsdy
-      dts2dz0 = 0.5*dtsdz
+      dts2dx0 = 0.5*dtsdx0
+      dts2dy0 = 0.5*dtsdy0
+      dts2dz0 = 0.5*dtsdz0
       invvol = 1./(dx*dy*dz)
       invdtdx = 1./(dt*dy*dz)
       invdtdy = 1./(dt*dx*dz)
@@ -1474,9 +1474,9 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
       dtsdx0 = dt*dxi
       dtsdy0 = dt*dyi
       dtsdz0 = dt*dzi
-      dts2dx0 = 0.5*dtsdx
-      dts2dy0 = 0.5*dtsdy
-      dts2dz0 = 0.5*dtsdz
+      dts2dx0 = 0.5*dtsdx0
+      dts2dy0 = 0.5*dtsdy0
+      dts2dz0 = 0.5*dtsdz0
       invvol = 1./(dx*dy*dz)
       invdtdx = 1./(dt*dy*dz)
       invdtdy = 1./(dt*dx*dz)
@@ -3123,17 +3123,19 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
 
         if (l_2drz) then
        
-          write(0,*) 'field gathering needs to be done for fstype=4 in EM-RZ'
-          stop
+!          write(0,*) 'field gathering needs to be done for fstype=4 in EM-RZ'
+!          stop
           do ll = izmin, izmax+1
             do jj = ixmin0, ixmax0
-              ex(ip) = ex(ip) + sx0(jj)*sz(ll)*exg(j+jj,1,l+ll)*signx
+              ex(ip) = ex(ip) + sz(ll)*sx0(jj)*exg(j+jj,1,l+ll)*costheta
+              ey(ip) = ey(ip) + sz(ll)*sx0(jj)*exg(j+jj,1,l+ll)*sintheta
             end do
           end do
 
           do ll = izmin, izmax+1
             do jj = ixmin, ixmax+1
-              ey(ip) = ey(ip) + sx(jj)*sz(ll)*eyg(j+jj,1,l+ll)
+              ex(ip) = ex(ip) - sz(ll)*sx(jj)*eyg(j+jj,1,l+ll)*sintheta
+              ey(ip) = ey(ip) + sz(ll)*sx(jj)*eyg(j+jj,1,l+ll)*costheta
             end do
           end do
 
@@ -3414,19 +3416,20 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
    return
  end subroutine getb3d_linear_energy_conserving
 
-subroutine getb2dxz_n_energy_conserving(np,xp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,nz,nxguard,nzguard, &
-                                       nox,noz,bxg,byg,bzg,l4symtry)
+subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,nz,nxguard,nzguard, &
+                                       nox,noz,bxg,byg,bzg,l4symtry,l_2drz)
    
       implicit none
       integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard
-      real(kind=8), dimension(np) :: xp,zp,bx,by,bz
-      logical(ISZ) :: l4symtry
+      real(kind=8), dimension(np) :: xp,yp,zp,bx,by,bz
+      logical(ISZ) :: l4symtry,l_2drz
       real(kind=8), dimension(-nxguard:nx+nxguard,1,-nzguard:nz+nzguard) :: bxg,byg,bzg
       real(kind=8) :: xmin,zmin,dx,dz
       integer(ISZ) :: ip, j, l, ixmin, ixmax, izmin, izmax, &
                       ixmin0, ixmax0, izmin0, izmax0, jj, ll
-      real(kind=8) :: dxi, dzi, x, z, xint, zint, &
-                      xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx
+      real(kind=8) :: dxi, dzi, x, y, z, xint, zint, &
+                      xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx, &
+                      r, costheta, sintheta
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
       real(kind=8), DIMENSION(-int((nox)/2):int((nox-1)/2)) :: sx0
@@ -3450,7 +3453,22 @@ subroutine getb2dxz_n_energy_conserving(np,xp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,nz,
 
       do ip=1,np
 
-        x = (xp(ip)-xmin)*dxi
+        if (l_2drz) then
+          x = xp(ip)
+          y = yp(ip)
+          r=sqrt(x*x+y*y)
+          if (r*dxi>1.e-20) then
+            costheta=x/r
+            sintheta=y/r
+          else  
+            costheta=1.
+            sintheta=0.
+          end if
+          x = (r-xmin)*dxi
+        else
+          x = (xp(ip)-xmin)*dxi
+        end if
+
         z = (zp(ip)-zmin)*dzi
 
         if (l4symtry) then
@@ -3534,17 +3552,37 @@ subroutine getb2dxz_n_energy_conserving(np,xp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,nz,
           sz0( 1) = 0.5*(0.5+zint)**2
         end if
 
-        do ll = izmin0, izmax0
+        if (l_2drz) then
+
+          do ll = izmin0, izmax0
+            do jj = ixmin, ixmax+1
+              bx(ip) = bx(ip) + sz0(ll)*sx(jj)*bxg(j+jj,1,l+ll)*costheta
+              by(ip) = by(ip) + sz0(ll)*sx(jj)*bxg(j+jj,1,l+ll)*sintheta
+            end do
+          end do
+
+          do ll = izmin0, izmax0
+            do jj = ixmin0, ixmax0
+              bx(ip) = bx(ip) - sz0(ll)*sx0(jj)*byg(j+jj,1,l+ll)*sintheta
+              by(ip) = by(ip) + sz0(ll)*sx0(jj)*byg(j+jj,1,l+ll)*costheta
+            end do
+          end do
+
+        else
+
+          do ll = izmin0, izmax0
             do jj = ixmin, ixmax+1
               bx(ip) = bx(ip) + sx(jj)*sz0(ll)*bxg(j+jj,1,l+ll)*signx
             end do
-        end do
+          end do
 
-        do ll = izmin0, izmax0
+          do ll = izmin0, izmax0
             do jj = ixmin0, ixmax0
               by(ip) = by(ip) + sx0(jj)*sz0(ll)*byg(j+jj,1,l+ll)
             end do
-        end do
+          end do
+
+        end if
 
         do ll = izmin, izmax+1
             do jj = ixmin0, ixmax0
