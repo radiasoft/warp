@@ -1282,25 +1282,47 @@ c       --- put at the edge of the mesh.
         wvz = gvz - ivz
 
 c       --- Apply the weight here to reduce the number of multiplies
-        sx(-1) = (-0.5*wx*(1. - wx)**2)*w(ip)
-        sx( 0) = (1. - 2.5*wx**2 + 1.5*wx**3)*w(ip)
-        sx(+1) = (1. - 2.5*(1. - wx)**2 + 1.5*(1. - wx)**3)*w(ip)
-        sx(+2) = (0.5*wx**2*(wx - 1.))*w(ip)
+c       --- modified 3-rd order B-spline
+c       sx(-1) = (-0.5*wx*(1. - wx)**2)*w(ip)
+c       sx( 0) = (1. - 2.5*wx**2 + 1.5*wx**3)*w(ip)
+c       sx(+1) = (1. - 2.5*(1. - wx)**2 + 1.5*(1. - wx)**3)*w(ip)
+c       sx(+2) = (0.5*wx**2*(wx - 1.))*w(ip)
 
-        sz(-1) = -0.5*wz*(1. - wz)**2
-        sz( 0) = 1. - 2.5*wz**2 + 1.5*wz**3
-        sz(+1) = 1. - 2.5*(1. - wz)**2 + 1.5*(1. - wz)**3
-        sz(+2) = 0.5*wz**2*(wz - 1.)
+c       sz(-1) = -0.5*wz*(1. - wz)**2
+c       sz( 0) = 1. - 2.5*wz**2 + 1.5*wz**3
+c       sz(+1) = 1. - 2.5*(1. - wz)**2 + 1.5*(1. - wz)**3
+c       sz(+2) = 0.5*wz**2*(wz - 1.)
 
-        svx(-1) = -0.5*wvx*(1. - wvx)**2
-        svx( 0) = 1. - 2.5*wvx**2 + 1.5*wvx**3
-        svx(+1) = 1. - 2.5*(1. - wvx)**2 + 1.5*(1. - wvx)**3
-        svx(+2) = 0.5*wvx**2*(wvx - 1.)
+c       svx(-1) = -0.5*wvx*(1. - wvx)**2
+c       svx( 0) = 1. - 2.5*wvx**2 + 1.5*wvx**3
+c       svx(+1) = 1. - 2.5*(1. - wvx)**2 + 1.5*(1. - wvx)**3
+c       svx(+2) = 0.5*wvx**2*(wvx - 1.)
 
-        svz(-1) = -0.5*wvz*(1. - wvz)**2
-        svz( 0) = 1. - 2.5*wvz**2 + 1.5*wvz**3
-        svz(+1) = 1. - 2.5*(1. - wvz)**2 + 1.5*(1. - wvz)**3
-        svz(+2) = 0.5*wvz**2*(wvz - 1.)
+c       svz(-1) = -0.5*wvz*(1. - wvz)**2
+c       svz( 0) = 1. - 2.5*wvz**2 + 1.5*wvz**3
+c       svz(+1) = 1. - 2.5*(1. - wvz)**2 + 1.5*(1. - wvz)**3
+c       svz(+2) = 0.5*wvz**2*(wvz - 1.)
+
+c       --- 2nd order weigth from Denavit
+        sx(-1) = 0.25*(1. - wx)*(-wx)*w(ip)
+        sx( 0) = 0.25*(4. + wx)*(1. - wx)*w(ip)
+        sx(+1) = 0.25*(5. - wx)*(+wx)*w(ip)
+        sx(+2) = 0.25*(wx)*(wx - 1.)*w(ip)
+
+        sz(-1) = 0.25*(1. - wz)*(-wz)
+        sz( 0) = 0.25*(4. + wz)*(1. - wz)
+        sz(+1) = 0.25*(5. - wz)*(+wz)
+        sz(+2) = 0.25*(wz)*(wz - 1.)
+
+        svx(-1) = 0.25*(1. - wvx)*(-wvx)
+        svx( 0) = 0.25*(4. + wvx)*(1. - wvx)
+        svx(+1) = 0.25*(5. - wvx)*(+wvx)
+        svx(+2) = 0.25*(wvx)*(wvx - 1.)
+
+        svz(-1) = 0.25*(1. - wvz)*(-wvz)
+        svz( 0) = 0.25*(4. + wvz)*(1. - wvz)
+        svz(+1) = 0.25*(5. - wvz)*(+wvz)
+        svz(+2) = 0.25*(wvz)*(wvz - 1.)
 
         if (0.-gxoffset <= gx .and. gx < nx .and.
      &      0.-gzoffset <= gz .and. gz < nz .and.
