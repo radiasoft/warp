@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.21 $, $Date: 2010/08/14 00:03:17 $
+c@(#) File w3d_load.F, version $Revision: 1.22 $, $Date: 2011/05/13 23:13:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -12,6 +12,7 @@ c=============================================================================
       use Constant
       use Beam_acc
       use InPart3d
+      use InGen3d
       use W3Dload
       use W3DloadTE
 
@@ -199,13 +200,18 @@ c     Prepare for loading a specified particle density distribution in r,
 c     based on hl_rdist by calculating needed auxillary variables that will 
 c     employed in the loading process.    
 
-c     --- Multiply hl_rdist by r.
-      do ir=0,hl_nrdist
-        hl_nrmrdist(ir) = hl_rdist(ir)*float(ir)/float(hl_nrdist)
-      enddo
+      if (solvergeom == XZgeom) then
+        hl_nrmrdist = hl_rdist
+      else
+c       --- Multiply hl_rdist by r.
+        do ir=0,hl_nrdist
+          hl_nrmrdist(ir) = hl_rdist(ir)*float(ir)/float(hl_nrdist)
+        enddo
+      endif
 c     --- Integrate r*hl_rdist so it can be normalized.  
-c     --- Note that hl_nrmrdist(0) is ignored since it is always zero.
-      hl_sumrdist = 0.
+c     --- Note that hl_nrmrdist(0) is not ignored since it may not be zero.
+c     --- though it will always be zero when using RZgeom.
+      hl_sumrdist = 0.5*hl_nrmrdist(0)
       do ir=1,hl_nrdist-1
         hl_sumrdist = hl_sumrdist + hl_nrmrdist(ir)
       enddo
@@ -214,6 +220,7 @@ c     --- Calculate integral of hl_rdist from 0 to ir
 c     --- Integral = 0.5*hl_rdist(0) + sum(hl_rdist(1:ir-1)) + 0.5*hl_rdist(ir)
 c     --- Also, normalize rdist.
       hl_intrdist(0) = 0.
+      hl_nrmrdist(0) = hl_nrmrdist(0)/hl_sumrdist
       do ir=1,hl_nrdist
         hl_nrmrdist(ir) = hl_nrmrdist(ir)/hl_sumrdist
         hl_intrdist(ir) = hl_intrdist(ir-1) + 
@@ -650,6 +657,7 @@ c=============================================================================
      &                        epsx,epsy)
       use Constant
       use InPart3d
+      use InGen3d
       use W3Dload
       integer(ISZ):: kioff, np
       real(kind=8):: x(np), y(np), xp(np), yp(np), r(np), t(np) 
@@ -706,7 +714,11 @@ c     under the semiGaussian load option.
 c       --- radius = r in [0,1) and theta = t in [-Pi,Pi) variables 
 c       --- used to construct needed probability transforms
         r(ip) = wrandom(xrandom,ip+kioff-1,dig1,1,1)
-        t(ip) = Pi*( 2.*wrandom(xrandom,ip+kioff-1,dig2,1,1) - 1. )
+        if (solvergeom == XZgeom) then
+          t(ip) = Pi*int( 2.*wrandom(xrandom,ip+kioff-1,dig2,1,1))
+        else
+          t(ip) = Pi*( 2.*wrandom(xrandom,ip+kioff-1,dig2,1,1) - 1. )
+        endif
 
 c       --- Transform the radial positions to match the specified
 c       --- distribution.
@@ -759,8 +771,12 @@ c         --- set particle x' and y' to be uniformly distributed within
 c         --- a unit disk of radius u_max 
           ang_mag   = sqrt(abs(2.*u_max)*
      &                     wrandom(vtrandom,ip+kioff-1,dig3,1,1)) 
-          ang_phase = Pi*( 2.*wrandom(vtrandom,ip+kioff-1,dig4,1,1) - 1. ) 
 
+          if (solvergeom == XZgeom) then
+            ang_phase = Pi*int( 2.*wrandom(vtrandom,ip+kioff-1,dig4,1,1)) 
+          else
+            ang_phase = Pi*( 2.*wrandom(vtrandom,ip+kioff-1,dig4,1,1) - 1. ) 
+          endif
           xp(ip) = ang_mag*cos(ang_phase)  
           yp(ip) = ang_mag*sin(ang_phase) 
           
@@ -790,10 +806,14 @@ c         --- structure of wrandomgauss()
           g_dist = wrandomgauss(vtrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
           xp(ip) = 0.5*(emit_b/r_b)*g_dist
         enddo 
-        do ip = 1,np 
-          g_dist = wrandomgauss(vtrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
-          yp(ip) = 0.5*(emit_b/r_b)*g_dist
-        enddo 
+        if (solvergeom == XZgeom) then
+          yp(ip) = 0.
+        else
+          do ip = 1,np 
+            g_dist = wrandomgauss(vtrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
+            yp(ip) = 0.5*(emit_b/r_b)*g_dist
+          enddo 
+        endif
 
 c       --- undefined option trap 
       else 
