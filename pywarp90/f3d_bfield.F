@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.48 $, $Date: 2010/12/11 00:44:20 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.49 $, $Date: 2011/05/13 23:10:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1612,7 +1612,7 @@ c       --- If jp is not associated with j, then copy the data.
 #else
 
       use Parallel
-      use Fields3dParticles,Only: nxpguard,nypguard,nzpguard
+      use Fields3dParticles,Only: nxpextra,nypextra,nzpextra
 
 c  For parallel version, each processor sends j to neighboring processors
 c  whose field solve region overlap its particle region.
@@ -1627,7 +1627,7 @@ c       call getjforfieldsolvez(nzlocal,j)
      &                           bfield%j,
      &                           bfieldp%nxlocal,bfieldp%nylocal,
      &                           bfieldp%nzlocal,bfieldp%j,
-     &                           nxpguard,nypguard,nzpguard,fsdecomp,ppdecomp)
+     &                           nxpextra,nypextra,nzpextra,fsdecomp,ppdecomp)
       end if
 
 #endif
@@ -1636,11 +1636,11 @@ c       call getjforfieldsolvez(nzlocal,j)
       end
 c=============================================================================
       subroutine setjforfieldsolve3d(nxlocal,nylocal,nzlocal,j,nxp,nyp,nzp,jp,
-     &                               nxpguard,nypguard,nzpguard,
+     &                               nxpextra,nypextra,nzpextra,
      &                               fsdecomp,ppdecomp)
       use Decompositionmodule
       integer(ISZ):: nxlocal,nylocal,nzlocal,nxp,nyp,nzp
-      integer(ISZ):: nxpguard,nypguard,nzpguard
+      integer(ISZ):: nxpextra,nypextra,nzpextra
       real(kind=8):: j(0:2,0:nxlocal,0:nylocal,0:nzlocal)
       real(kind=8):: jp(0:2,0:nxp,0:nyp,0:nzp)
       type(Decomposition):: fsdecomp,ppdecomp

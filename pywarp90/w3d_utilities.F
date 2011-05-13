@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.35 $, $Date: 2011/04/07 17:12:06 $
+c@(#) File w3d_utilities.F, version $Revision: 1.36 $, $Date: 2011/05/13 23:10:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -704,12 +704,12 @@ c       --- Get the new value of nz.
       return
       end
 c=============================================================================
-      subroutine domaindecomposeparticles(nz,nprocs,nzpguard,zmmin,zmmax,dz,
+      subroutine domaindecomposeparticles(nz,nprocs,nzpextra,zmmin,zmmax,dz,
      &                                    userdecomp,lautodecomp,
      &                                    izdecomp,nzdecomp,
      &                                    zpslmin,zpslmax)
       use InGen3d,Only: solvergeom,AMRgeom
-      integer(ISZ):: nz,nprocs,nzpguard
+      integer(ISZ):: nz,nprocs,nzpextra
       real(kind=8):: zmmin,zmmax,dz
       real(kind=8):: userdecomp(0:nprocs-1)
       logical(ISZ):: lautodecomp
@@ -791,9 +791,9 @@ c       --- the int rounds down.
           nzdecomp(i) = nzdecomp(i) + 1
         endif
 
-c       --- Now add in the user specifed guard cells.
-        izdecomp(i) = izdecomp(i) - nzpguard
-        nzdecomp(i) = nzdecomp(i) + 2*nzpguard
+c       --- Now add in the user specifed extra cells.
+        izdecomp(i) = izdecomp(i) - nzpextra
+        nzdecomp(i) = nzdecomp(i) + 2*nzpextra
 
 c       --- Make sure that the processors don't have grid cells
 c       --- sticking out the end beyond the edge of the mesh.
@@ -1001,15 +1001,15 @@ c     --- of the grid.
       ppdecomp%ymax(nyprocs-1) = fsdecomp%ymax(nyprocs-1)
       ppdecomp%zmax(nzprocs-1) = fsdecomp%zmax(nzprocs-1)
 
-      call domaindecomposeparticles(nx,nxprocs,nxpguard,xmmin,xmmax,dx,
+      call domaindecomposeparticles(nx,nxprocs,nxpextra,xmmin,xmmax,dx,
      &                              userdecompx,lautodecomp,
      &                              ppdecomp%ix,ppdecomp%nx,
      &                              ppdecomp%xmin,ppdecomp%xmax)
-      call domaindecomposeparticles(ny,nyprocs,nypguard,ymmin,ymmax,dy,
+      call domaindecomposeparticles(ny,nyprocs,nypextra,ymmin,ymmax,dy,
      &                              userdecompy,lautodecomp,
      &                              ppdecomp%iy,ppdecomp%ny,
      &                              ppdecomp%ymin,ppdecomp%ymax)
-      call domaindecomposeparticles(nz,nzprocs,nzpguard,zmmin,zmmax,dz,
+      call domaindecomposeparticles(nz,nzprocs,nzpextra,zmmin,zmmax,dz,
      &                              userdecompz,lautodecomp,
      &                              ppdecomp%iz,ppdecomp%nz,
      &                              ppdecomp%zmin,ppdecomp%zmax)

@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.456 $, $Date: 2011/05/06 00:03:08 $
+c@(#) File W3D.F, version $Revision: 3.457 $, $Date: 2011/05/13 23:10:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -10192,7 +10192,7 @@ c  whose field solve region overlap its particle region.
       elseif (solvergeom==XYZgeom) then
         call setrhoforfieldsolve3d(nxlocal,nylocal,nzlocal,rho,
      &                             nxp,nyp,nzp,rhopin,
-     &                             nxpguard,nypguard,nzpguard,
+     &                             nxpextra,nypextra,nzpextra,
      &                             fsdecomp,ppdecomp)
       end if
 
@@ -10206,12 +10206,12 @@ c  whose field solve region overlap its particle region.
 c=============================================================================
       subroutine setrhoforfieldsolve3d(nxlocal,nylocal,nzlocal,rho,
      &                                 nxp,nyp,nzp,rhop,
-     &                                 nxpguard,nypguard,nzpguard,
+     &                                 nxpextra,nypextra,nzpextra,
      &                                 fsdecomp,ppdecomp)
       use Subtimers3d
       use Decompositionmodule
       integer(ISZ):: nxlocal,nylocal,nzlocal,nxp,nyp,nzp
-      integer(ISZ):: nxpguard,nypguard,nzpguard
+      integer(ISZ):: nxpextra,nypextra,nzpextra
       real(kind=8):: rho(0:nxlocal,0:nylocal,0:nzlocal)
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
       type(Decomposition):: fsdecomp,ppdecomp

@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.318 $, $Date: 2011/03/29 16:04:07 $
+#@(#) File W3D.V, version $Revision: 3.319 $, $Date: 2011/05/13 23:10:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.318 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.319 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -348,13 +348,13 @@ zwork(2,0:nx,0:nz)      _real           # Work space used to optimize vsftz
 nxp  integer /0/ # Number of grid cells in x axis for phip and rhop
 nyp  integer /0/ # Number of grid cells in y axis for phip and rhop
 nzp  integer /0/ # Number of grid cells in z axis for phip and rhop
-nxpguard integer /0/ # Number of guard cells in x to add extending the grids
+nxpextra integer /0/ # Number of extra cells in x to add extending the grids
                      # beyond the particle domains. Only applies for the
                      # parallel version.
-nypguard integer /0/ # Number of guard cells in y to add extending the grids
+nypextra integer /0/ # Number of extra cells in y to add extending the grids
                      # beyond the particle domains. Only applies for the
                      # parallel version.
-nzpguard integer /0/ # Number of guard cells in z to add extending the grids
+nzpextra integer /0/ # Number of extra cells in z to add extending the grids
                      # beyond the particle domains. Only applies for the
                      # parallel version.
 xmminp real      # Lower limit of x for grid for particles
@@ -363,9 +363,9 @@ ymminp real      # Lower limit of y for grid for particles
 ymmaxp real      # Upper limit of y for grid for particles
 zmminp real      # Lower limit of z for grid for particles
 zmmaxp real      # Upper limit of z for grid for particles
-nrhopndtscopies3d integer # Copy of nrhopndtscopies from top
-nsndts3d          integer # Copy of nsndts from top
-nsndtsphi3d       integer # Copy of nsndtsphi from top
+nrhopndtscopies3d integer /0/ # Copy of nrhopndtscopies from top
+nsndts3d          integer /0/ # Copy of nsndts from top
+nsndtsphi3d       integer /0/ # Copy of nsndtsphi from top
 phip(:,:,:) _real # Potential used by the particles to calculate
                   # the field from the solution of Poisson's equation.
                   # This will be pointed to each of the different ndts
@@ -395,7 +395,7 @@ lrhofinalized logical /.true./
                  # to false. Just before a field solve, the flag is checked,
                  # and if needed, the appropriate operations done.
 
-nsselfb3d integer # Copy of nsselfb from top
+nsselfb3d integer /0/ # Copy of nsselfb from top
 rhopselfb(0:nxp,0:nyp,0:nzp,0:nsselfb3d-1) _real +fassign
                  # Charge density from the particles
                  # for groups which require correction for their self B.
@@ -983,7 +983,7 @@ setrhoforfieldsolve3d(nxlocal:integer,nylocal:integer,nzlocal:integer,
                       rho(0:nxlocal,0:nylocal,0:nzlocal):real,
                       nxp:integer,nyp:integer,nzp:integer,
                       rhop(0:nxp,0:nyp,0:nzp):real,
-                      nxpguard:integer,nypguard:integer,nzpguard:integer,
+                      nxpextra:integer,nypextra:integer,nzpextra:integer,
                       fsdecomp:Decomposition,ppdecomp:Decomposition)
              subroutine # Copies data from rhop to rho - for parallel
 getphipforparticles(indts:integer)
@@ -1214,7 +1214,7 @@ domaindecomposefields(nz:integer,nslaves:integer,lfsautodecomp:logical,
         overlap:integer) subroutine
       # Do the domain decomposition for the field solver
 domaindecomposeparticles(nz:integer,nslaves:integer,
-                nzpguard:integer,zmmin:real,zmmax:real,
+                nzpextra:integer,zmmin:real,zmmax:real,
                 dz:real,zslave(0:nslaves-1):real,lautodecomp:logical,
                 izpslave(0:nslaves-1):integer,nzpslave(0:nslaves-1):integer,
                 zpslmin(0:nslaves-1):real,zpslmax(0:nslaves-1):real) subroutine
