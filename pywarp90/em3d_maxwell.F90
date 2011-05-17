@@ -80,6 +80,7 @@ contains
       sf%bmgz = -0.5*sf%clight*dt/sf%dz
       sf%dt = 0.5*dt
     end if
+
     if (sf%lsx/=0) then
       sigmax=0.
       sigmax_next=0.
@@ -93,6 +94,7 @@ contains
         lsigmax(sf%nx-j) = sigmax(j)
         lsigmax_next(sf%nx-j-1) = sigmax_next(j)
       end do
+
       select case(sf%lsx)
         case(1)
           do j = 0, sf%nx-1
@@ -111,6 +113,7 @@ contains
           sf%bpgx(0:sf%nx-1)=-sf%bpgx(0:sf%nx-1)
        end select
     end if
+
 
     if (sf%lsy/=0) then
       sigmay=0.
@@ -654,6 +657,302 @@ end if
 
 return
 end subroutine push_em3d_evec
+
+
+subroutine push_em3d_evec_cond(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
+                          nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,l_2drz,xmin,zmin,dx,dz,incond)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
+logical(ISZ), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: incond
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz
+real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz,E_inz_pos,xmin,zmin,dx,dz
+integer(ISZ) :: j,k,l
+logical(ISZ) :: l_2dxz,l_2drz
+real(kind=8) :: w,zlaser,rd,ru
+
+! --- NOTE: if l_2drz is TRUE, then l_2dxz is TRUE
+if (.not. l_2dxz) then ! --- 3D XYZ
+  ! advance Ex
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-1
+      if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+      Ex(j,k,l) = Ex(j,k,l) + dtsdy * (Bz(j,k,l)   - Bz(j,k-1,l  )) &
+                            - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
+                            - mudt  * CJ(j,k,l,1)
+    end do
+   end do
+  end do
+
+  ! advance Ey
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx
+      if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+      Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
+                            + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
+                            - mudt  * CJ(j,k,l,2)
+    end do
+   end do
+  end do
+
+  ! advance Ez 
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx
+      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
+      Ez(j,k,l) = Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
+                            - dtsdy * (Bx(j,k,l) - Bx(j  ,k-1,l)) &
+                            - mudt  * CJ(j,k,l,3)
+    end do
+   end do
+  end do
+
+  ! --- add laser field
+  zlaser=(E_inz_pos-zmin)/dz
+  l = floor(zlaser)
+  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
+!  if (l>=-nzguard .and. l<nz+nzguard) then
+    w = zlaser-l
+!    do k = -nyguard, ny+nyguard
+!      do j = -nxguard, nx+nxguard
+    do k = 0, ny
+      do j = 0, nx-1
+       if (.false.) then
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*2.*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*2.*w
+        end if
+       else
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*w
+        end if
+        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,k,l-1) = Ex(j,k,l-1) + Ex_inz(j,k)*(1.-w)/2
+        end if
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*w/2
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*(1.-w)/2
+        end if
+        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,k,l+2) = Ex(j,k,l+2) + Ex_inz(j,k)*w/2
+        end if
+       end if
+
+      end do
+    end do
+
+    do k = 0, ny-1
+      do j = 0, nx
+       if (.false.) then
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*2.*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*2.*w
+        end if
+       else
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*w
+        end if
+        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,k,l-1) = Ey(j,k,l-1) + Ey_inz(j,k)*(1.-w)/2
+        end if
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*w/2
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*(1.-w)/2
+        end if
+        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,k,l+2) = Ey(j,k,l+2) + Ey_inz(j,k)*w/2
+        end if
+       end if
+
+      end do
+    end do
+  end if
+
+else ! --- now 2D XZ or RZ
+
+ if (.not. l_2drz) then ! 2D XZ
+
+  k = 0
+  ! advance Ex
+  do l = 0, nz
+    do j = 0, nx-1
+      if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+      Ex(j,k,l) = Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
+                            - mudt  * CJ(j,k,l,1)
+    end do
+  end do
+
+  ! advance Ey
+  do l = 0, nz
+    do j = 0, nx
+      if (.not.incond(j,k,l)) &
+      Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
+                            + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
+                            - mudt  * CJ(j,k,l,2)
+    end do
+  end do
+
+  ! advance Ez 
+  do l = 0, nz-1
+    do j = 0, nx
+      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
+      Ez(j,k,l) = Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
+                            - mudt  * CJ(j,k,l,3)
+    end do
+  end do
+
+  ! --- add laser field
+  zlaser=(E_inz_pos-zmin)/dz
+  l = floor(zlaser)
+  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
+!  if (l>=-nzguard .and. l<nz+nzguard) then
+      w = zlaser-l
+!      do j = -nxguard, nx+nxguard
+      do j = 0, nx
+       if (.false.) then
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*2.*(1.-w)
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*2.*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*2.*w
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*2.*w
+        end if
+       else
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*(1.-w)
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*w
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*w
+        end if
+        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,:,l-1) = Ex(j,:,l-1) + Ex_inz(j,:)*(1.-w)/2
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,:,l-1) = Ey(j,:,l-1) + Ey_inz(j,:)*(1.-w)/2
+        end if
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*w/2
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*w/2
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*(1.-w)/2
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*(1.-w)/2
+        end if
+        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
+          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+          Ex(j,:,l+2) = Ex(j,:,l+2) + Ex_inz(j,:)*w/2
+          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+          Ey(j,:,l+2) = Ey(j,:,l+2) + Ey_inz(j,:)*w/2
+        end if
+       end if
+
+!        Ex(j,k,l) = Ex_inz(j,k)
+!        Ey(j,k,l) = Ey_inz(j,k)
+      end do
+  end if
+
+ else ! l_2drz=True
+
+  k = 0
+  ! advance Er
+  do l = 0, nz
+    do j = 0, nx-1
+      if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+      Ex(j,k,l) = Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
+                            - mudt  * CJ(j,k,l,1)
+    end do
+  end do
+
+  ! advance Etheta
+  do l = 0, nz
+    do j = 1, nx
+      if (.not.incond(j,k,l)) &
+      Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l) - Bz(j-1,k,l)) &
+                            + dtsdz * (Bx(j,k,l) - Bx(j,k,l-1)) &
+                            - mudt  * CJ(j,k,l,2)
+    end do
+    j = 0
+    if (.not.incond(j,k,l)) &
+    Ey(j,k,l) = Ey(j,k,l) - 2.*dtsdx * Bz(j,k,l) &
+                          + dtsdz * (Bx(j,k,l)    - Bx(j,k,l-1)) &
+                          - mudt  * CJ(j,k,l,2)
+  end do
+
+  ! advance Ez 
+  do l = 0, nz-1
+    do j = 1, nx
+      ru = 1.+0.5/(xmin/dx+j)
+      rd = 1.-0.5/(xmin/dx+j)
+      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
+      Ez(j,k,l) = Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
+                            - mudt  * CJ(j,k,l,3)
+    end do
+    j = 0
+    if (xmin==0.) then
+      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
+      Ez(j,k,l) = Ez(j,k,l) + 4.*dtsdx * By(j,k,l)  &
+                            - mudt  * CJ(j,k,l,3)
+    else
+      ru = 1.+0.5/(xmin/dx+j)
+      rd = 1.-0.5/(xmin/dx+j)
+      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
+      Ez(j,k,l) = Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
+                            - mudt  * CJ(j,k,l,3)
+    end if
+  end do
+ end if
+end if
+
+
+return
+end subroutine push_em3d_evec_cond
 
 subroutine push_em3d_evecold(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
                           nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz)
@@ -1291,23 +1590,27 @@ REAL(kind=8), INTENT(IN) :: dt
 INTEGER :: j, k, l
 real(kind=8) :: dtsdx,dtsdy,dtsdz,dtsepsi
 
-if(f%nconds>0) then 
-  call push_em3d_condf(f,dt)
-  return
-end if
-
 dtsdx = f%clight*dt/f%dx
 dtsdy = f%clight*dt/f%dy
 dtsdz = f%clight*dt/f%dz
 dtsepsi = f%mu0*f%clight**3*dt
 
 if (f%stencil==0 .or. f%stencil==1) then
+ if(f%nconds>0) then 
+  call push_em3d_fvec_cond(f%ex,f%ey,f%ez,f%f, f%rho, &
+                      dtsepsi,dtsdx,dtsdy,dtsdz, &
+                      f%dx,f%dy,f%dz, &
+                      f%nx,f%ny,f%nz, &
+                      f%xmin,f%ymin,f%zmin, &
+                      f%nxguard,f%nyguard,f%nzguard,f%l_2dxz,f%l_2drz,f%incond)
+ else
   call push_em3d_fvec(f%ex,f%ey,f%ez,f%f, f%rho, &
                       dtsepsi,dtsdx,dtsdy,dtsdz, &
                       f%dx,f%dy,f%dz, &
                       f%nx,f%ny,f%nz, &
                       f%xmin,f%ymin,f%zmin, &
                       f%nxguard,f%nyguard,f%nzguard,f%l_2dxz,f%l_2drz)
+ end if
 else
   call push_em3d_kyeefvec(f%ex,f%ey,f%ez,f%f, f%rho, &
                       dtsepsi,dtsdx,dtsdy,dtsdz, &
@@ -1379,6 +1682,75 @@ end if
 
 return
 end subroutine push_em3d_fvec
+
+subroutine push_em3d_fvec_cond(ex,ey,ez,f,rho,dtsepsi,dtsdx,dtsdy,dtsdz,dx,dy,dz,nx,ny,nz, &
+                          xmin,ymin,zmin,nxguard,nyguard,nzguard,l_2dxz,l_2drz,incond)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,f,rho
+logical(ISZ), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: incond
+real(kind=8), intent(IN) :: dtsdx,dtsdy,dtsdz,dtsepsi,xmin,ymin,zmin,dx,dy,dz
+integer(ISZ) :: j,k,l
+logical(ISZ) :: l_2dxz,l_2drz
+real(kind=8) :: ru,rd
+
+if (.not.l_2dxz) then
+  ! --- 3D XYZ
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx
+      if (.not.incond(j,k,l)) &
+        F(j,k,l) = F(j,k,l) + dtsdx * (Ex(j,k,l) - Ex(j-1,k  ,l  )) &
+                            + dtsdy * (Ey(j,k,l) - Ey(j  ,k-1,l  )) &
+                            + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
+                            - dtsepsi * Rho(j,k,l)
+    end do
+   end do
+  end do
+
+else
+ if (.not.l_2drz) then
+  ! --- 2D XZ
+  k=0
+  do l = 0, nz
+    do j = 0, nx
+      if (.not.incond(j,k,l)) &
+        F(j,k,l) = F(j,k,l) + dtsdx * (Ex(j,k,l) - Ex(j-1,k  ,l  )) &
+                            + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
+                            - dtsepsi * Rho(j,k,l)
+    end do
+  end do
+ else
+  ! --- 2D RZ (axisymmetric)
+  k=0
+  do l = 0, nz
+    j = 0
+    if (xmin==0.) then
+      if (.not.incond(j,k,l)) & 
+        F(j,k,l) = F(j,k,l) + 4.*dtsdx * Ex(j,k,l) &
+                            + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
+                            - dtsepsi * Rho(j,k,l)
+    else
+      ru = 1.+0.5/(xmin/dx)
+      rd = 1.-0.5/(xmin/dx)
+      if (.not.incond(j,k,l)) &
+        F(j,k,l) = F(j,k,l) + dtsdx * (ru*Ex(j,k,l) - rd*Ex(j-1,k  ,l  )) &
+                            + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
+                            - dtsepsi * Rho(j,k,l)
+    end if
+    do j = 1, nx
+      ru = 1.+0.5/(xmin/dx+j)
+      rd = 1.-0.5/(xmin/dx+j)
+      if (.not.incond(j,k,l)) & 
+        F(j,k,l) = F(j,k,l) + dtsdx * (ru*Ex(j,k,l) - rd*Ex(j-1,k  ,l  )) &
+                            + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
+                            - dtsepsi * Rho(j,k,l)
+    end do
+  end do
+ end if
+end if
+
+return
+end subroutine push_em3d_fvec_cond
 
 subroutine getdive(ex,ey,ez,dive,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard,xmin,l_2dxz,l_2drz)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
@@ -1527,20 +1899,22 @@ REAL(kind=8), INTENT(IN) :: dt
 INTEGER :: j, k, l
 real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
 
-if(f%nconds>0) then 
-  call push_em3d_condef(f,dt)
-  return
-end if
-
 dtsdx = f%clight*dt/f%dx
 dtsdy = f%clight*dt/f%dy
 dtsdz = f%clight*dt/f%dz
 
 if (f%stencil==0 .or. f%stencil==2) then
-  call push_em3d_efvec(f%ex,f%ey,f%ez,f%f, &
+  if(f%nconds>0) then 
+    call push_em3d_efvec_cond(f%ex,f%ey,f%ez,f%f, &
+                      dtsdx,dtsdy,dtsdz, &
+                      f%nx,f%ny,f%nz, &
+                      f%nxguard,f%nyguard,f%nzguard,f%l_2dxz,f%incond)
+  else
+    call push_em3d_efvec(f%ex,f%ey,f%ez,f%f, &
                       dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
                       f%nxguard,f%nyguard,f%nzguard,f%l_2dxz)
+  end if
 else
   call push_em3d_kyeeefvec(f%ex,f%ey,f%ez,f%f, &
                       dtsdx,dtsdy,dtsdz, &
@@ -1608,6 +1982,70 @@ end if
 
 return
 end subroutine push_em3d_efvec
+
+subroutine push_em3d_efvec_cond(ex,ey,ez,f,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz,incond)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,f
+logical(ISZ), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: incond
+real(kind=8), intent(IN) :: dtsdx,dtsdy,dtsdz
+integer(ISZ) :: j,k,l
+logical(ISZ) :: l_2dxz
+
+if (.not.l_2dxz) then
+
+  ! advance Ex
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-1
+      if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+      Ex(j,k,l) = Ex(j,k,l) + dtsdx * (F(j+1,k,l) - F(j,k,l)) 
+    end do
+   end do
+  end do
+
+  ! advance Ey
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx
+      if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
+      Ey(j,k,l) = Ey(j,k,l) + dtsdy * (F(j,k+1,l) - F(j,k,l))
+    end do
+   end do
+  end do
+
+  ! advance Ez 
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx
+      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
+      Ez(j,k,l) = Ez(j,k,l) + dtsdz * (F(j,k,l+1) - F(j,k,l)) 
+    end do
+   end do
+  end do
+
+else
+
+  k=0
+  ! advance Ex
+  do l = 0, nz
+    do j = 0, nx-1
+      if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
+      Ex(j,k,l) = Ex(j,k,l) + dtsdx * (F(j+1,k,l) - F(j,k,l)) 
+    end do
+  end do
+
+  ! advance Ez 
+  do l = 0, nz-1
+    do j = 0, nx
+      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
+      Ez(j,k,l) = Ez(j,k,l) + dtsdz * (F(j,k,l+1) - F(j,k,l)) 
+    end do
+  end do
+
+end if
+
+return
+end subroutine push_em3d_efvec_cond
 
 subroutine push_em3d_kyeeefvec(ex,ey,ez,f,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz)
 use EM3D_kyee
@@ -1765,377 +2203,6 @@ real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
 
 return
 end subroutine push_em3d_a
-
-subroutine push_em3d_evec_cond(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
-                          nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,l_2drz,xmin,zmin,dx,dz,incond)
-integer :: nx,ny,nz,nxguard,nyguard,nzguard
-real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
-real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
-logical(ISZ), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: incond
-real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz
-real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz,E_inz_pos,xmin,zmin,dx,dz
-integer(ISZ) :: j,k,l
-logical(ISZ) :: l_2dxz,l_2drz
-real(kind=8) :: w,zlaser,rd,ru
-
-! --- NOTE: if l_2drz is TRUE, then l_2dxz is TRUE
-if (.not. l_2dxz) then ! --- 3D XYZ
-  ! advance Ex
-  do l = 0, nz
-   do k = 0, ny
-    do j = 0, nx-1
-      if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-      Ex(j,k,l) = Ex(j,k,l) + dtsdy * (Bz(j,k,l)   - Bz(j,k-1,l  )) &
-                            - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
-                            - mudt  * CJ(j,k,l,1)
-    end do
-   end do
-  end do
-
-  ! advance Ey
-  do l = 0, nz
-   do k = 0, ny-1
-    do j = 0, nx
-      if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-      Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
-                            + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
-                            - mudt  * CJ(j,k,l,2)
-    end do
-   end do
-  end do
-
-  ! advance Ez 
-  do l = 0, nz-1
-   do k = 0, ny
-    do j = 0, nx
-      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
-      Ez(j,k,l) = Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
-                            - dtsdy * (Bx(j,k,l) - Bx(j  ,k-1,l)) &
-                            - mudt  * CJ(j,k,l,3)
-    end do
-   end do
-  end do
-
-  ! --- add laser field
-  zlaser=(E_inz_pos-zmin)/dz
-  l = floor(zlaser)
-  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
-!  if (l>=-nzguard .and. l<nz+nzguard) then
-    w = zlaser-l
-!    do k = -nyguard, ny+nyguard
-!      do j = -nxguard, nx+nxguard
-    do k = 0, ny
-      do j = 0, nx-1
-       if (.false.) then
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*2.*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*2.*w
-        end if
-       else
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*w
-        end if
-        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l-1) = Ex(j,k,l-1) + Ex_inz(j,k)*(1.-w)/2
-        end if
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*w/2
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*(1.-w)/2
-        end if
-        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l+2) = Ex(j,k,l+2) + Ex_inz(j,k)*w/2
-        end if
-       end if
-
-      end do
-    end do
-
-    do k = 0, ny-1
-      do j = 0, nx
-       if (.false.) then
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*2.*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*2.*w
-        end if
-       else
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*w
-        end if
-        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l-1) = Ey(j,k,l-1) + Ey_inz(j,k)*(1.-w)/2
-        end if
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*w/2
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*(1.-w)/2
-        end if
-        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l+2) = Ey(j,k,l+2) + Ey_inz(j,k)*w/2
-        end if
-       end if
-
-      end do
-    end do
-  end if
-
-else ! --- now 2D XZ or RZ
-
- if (.not. l_2drz) then ! 2D XZ
-
-  k = 0
-  ! advance Ex
-  do l = 0, nz
-    do j = 0, nx-1
-      if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-      Ex(j,k,l) = Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
-                            - mudt  * CJ(j,k,l,1)
-    end do
-  end do
-
-  ! advance Ey
-  do l = 0, nz
-    do j = 0, nx
-      if (.not.incond(j,k,l)) &
-      Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
-                            + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
-                            - mudt  * CJ(j,k,l,2)
-    end do
-  end do
-
-  ! advance Ez 
-  do l = 0, nz-1
-    do j = 0, nx
-      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
-      Ez(j,k,l) = Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
-                            - mudt  * CJ(j,k,l,3)
-    end do
-  end do
-
-  ! --- add laser field
-  zlaser=(E_inz_pos-zmin)/dz
-  l = floor(zlaser)
-  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
-!  if (l>=-nzguard .and. l<nz+nzguard) then
-      w = zlaser-l
-!      do j = -nxguard, nx+nxguard
-      do j = 0, nx
-       if (.false.) then
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*2.*(1.-w)
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*2.*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*2.*w
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*2.*w
-        end if
-       else
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*(1.-w)
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*w
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*w
-        end if
-        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l-1) = Ex(j,:,l-1) + Ex_inz(j,:)*(1.-w)/2
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l-1) = Ey(j,:,l-1) + Ey_inz(j,:)*(1.-w)/2
-        end if
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*w/2
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*w/2
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*(1.-w)/2
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*(1.-w)/2
-        end if
-        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l+2) = Ex(j,:,l+2) + Ex_inz(j,:)*w/2
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l+2) = Ey(j,:,l+2) + Ey_inz(j,:)*w/2
-        end if
-       end if
-
-!        Ex(j,k,l) = Ex_inz(j,k)
-!        Ey(j,k,l) = Ey_inz(j,k)
-      end do
-  end if
-
- else ! l_2drz=True
-
-  k = 0
-  ! advance Er
-  do l = 0, nz
-    do j = 0, nx-1
-      if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-      Ex(j,k,l) = Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
-                            - mudt  * CJ(j,k,l,1)
-    end do
-  end do
-
-  ! advance Etheta
-  do l = 0, nz
-    do j = 1, nx
-      if (.not.incond(j,k,l)) &
-      Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l) - Bz(j-1,k,l)) &
-                            + dtsdz * (Bx(j,k,l) - Bx(j,k,l-1)) &
-                            - mudt  * CJ(j,k,l,2)
-    end do
-    j = 0
-    if (.not.incond(j,k,l)) &
-    Ey(j,k,l) = Ey(j,k,l) - 2.*dtsdx * Bz(j,k,l) &
-                          + dtsdz * (Bx(j,k,l)    - Bx(j,k,l-1)) &
-                          - mudt  * CJ(j,k,l,2)
-  end do
-
-  ! advance Ez 
-  do l = 0, nz-1
-    do j = 1, nx
-      ru = 1.+0.5/(xmin/dx+j)
-      rd = 1.-0.5/(xmin/dx+j)
-      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
-      Ez(j,k,l) = Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
-                            - mudt  * CJ(j,k,l,3)
-    end do
-    j = 0
-    if (xmin==0.) then
-      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
-      Ez(j,k,l) = Ez(j,k,l) + 4.*dtsdx * By(j,k,l)  &
-                            - mudt  * CJ(j,k,l,3)
-    else
-      ru = 1.+0.5/(xmin/dx+j)
-      rd = 1.-0.5/(xmin/dx+j)
-      if (.not.incond(j,k,l) .or. .not.incond(j,k,l+1)) &
-      Ez(j,k,l) = Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
-                            - mudt  * CJ(j,k,l,3)
-    end if
-  end do
- end if
-end if
-
-
-return
-end subroutine push_em3d_evec_cond
-
-subroutine push_em3d_condef(f,dt)
-use mod_emfield3d
-implicit none
-
-TYPE(EM3D_YEEFIELDtype) :: f
-REAL(kind=8), INTENT(IN) :: dt
-
-INTEGER :: j, k, l
-real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
-
-  dtsdx = f%clight*dt/f%dx
-  dtsdy = f%clight*dt/f%dy
-  dtsdz = f%clight*dt/f%dz
-
-  ! advance Ex
-  do l = 0, f%nz
-   do k = 0, f%ny
-    do j = 0, f%nx-1
-      if (.not.f%incond(j,k,l) .and. .not.f%incond(j+1,k,l)) &
-      f%Ex(j,k,l) = f%Ex(j,k,l) + dtsdx * (f%F(j+1,k,l) - f%F(j,k,l)) 
-    end do
-   end do
-  end do
-
-  ! advance Ey
-  do l = 0, f%nz
-   do k = 0, f%ny-1
-    do j = 0, f%nx
-      if (.not.f%incond(j,k,l) .and. .not.f%incond(j,k+1,l)) &
-      f%Ey(j,k,l) = f%Ey(j,k,l) + dtsdy * (f%F(j,k+1,l) - f%F(j,k,l))
-    end do
-   end do
-  end do
-
-  ! advance Ez 
-  do l = 0, f%nz-1
-   do k = 0, f%ny
-    do j = 0, f%nx
-      if (.not.f%incond(j,k,l) .and. .not.f%incond(j,k,l+1)) &
-      f%Ez(j,k,l) = f%Ez(j,k,l) + dtsdz * (f%F(j,k,l+1) - f%F(j,k,l)) 
-    end do
-   end do
-  end do
-
-return
-end subroutine push_em3d_condef
-
-subroutine push_em3d_condf(f,dt)
-use mod_emfield3d
-implicit none
-
-TYPE(EM3D_YEEFIELDtype) :: f
-REAL(kind=8), INTENT(IN) :: dt
-
-INTEGER :: j, k, l
-real(kind=8) :: dtsdx,dtsdy,dtsdz,dtsepsi
-
-dtsdx = f%clight*dt/f%dx
-dtsdy = f%clight*dt/f%dy
-dtsdz = f%clight*dt/f%dz
-dtsepsi = f%mu0*f%clight**3*dt
-
-  do l = 0, f%nz
-   do k = 0, f%ny
-    do j = 0, f%nx
-      if (.not.f%incond(j,k,l)) &
-      f%F(j,k,l) = f%F(j,k,l) + dtsdx * (f%Ex(j,k,l) - f%Ex(j-1,k  ,l  )) &
-                              + dtsdy * (f%Ey(j,k,l) - f%Ey(j  ,k-1,l  )) &
-                              + dtsdz * (f%Ez(j,k,l) - f%Ez(j  ,k  ,l-1)) &
-                              - dtsepsi * f%Rho(j,k,l)
-    end do
-   end do
-  end do
-
-end subroutine push_em3d_condf
 
 subroutine push_em3d_splite(sf,dt,which)
 use mod_emfield3d
@@ -2439,6 +2506,11 @@ INTEGER :: j, k, l,which
                              sf%agx,sf%agy,sf%agz, &
                              sf%bpgx,sf%bpgy,sf%bpgz, &
                              sf%bmgx,sf%bmgy,sf%bmgz,sf%l_2dxz)
+    if(sf%nconds>0) then 
+       call push_em3d_splite_setcond(sf%nx,sf%ny,sf%nz,sf%nxcond,sf%nycond,sf%nzcond,sf%nxguard,sf%nyguard,sf%nzguard, &
+                                     sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz,sf%incond,sf%l_2dxz,sf%l_2drz, &
+                                     sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
+    end if
   else
     call push_em3d_splitkyeeefvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
                              sf%exx,sf%eyy,sf%ezz, &
@@ -3112,6 +3184,10 @@ INTEGER :: j, k, l,which
                            sf%bpfx,sf%bpfy,sf%bpfz, &
                            sf%bmfx,sf%bmfy,sf%bmfz,sf%l_2dxz,sf%l_2drz, &
                            sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
+  if(sf%nconds>0) then 
+     call push_em3d_splitf_setcond(sf%nx,sf%ny,sf%nz,sf%nxcond,sf%nycond,sf%nzcond,sf%nxguard,sf%nyguard,sf%nzguard, &
+                                   sf%fx,sf%fy,sf%fz,sf%l_2dxz,sf%incond)
+  end if
 
   return
 end subroutine push_em3d_splitf
@@ -3167,7 +3243,6 @@ if (.not.l_2dxz) then
 
 else
   k = 0
-
   if (l_2drz) then
     if (xmin==0.) then
       do l = 0, nz
@@ -3210,6 +3285,50 @@ end if
 
   return
 end subroutine push_em3d_splitfvec
+
+
+subroutine push_em3d_splitf_setcond(nx,ny,nz,nxcond,nycond,nzcond,nxguard,nyguard,nzguard, &
+                               fx,fy,fz, &
+                               l_2dxz,incond)
+implicit none
+
+integer(ISZ), INTENT(IN) :: nx,ny,nz,nxcond,nycond,nzcond,nxguard,nyguard,nzguard
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: fx,fy,fz
+logical(ISZ), dimension(-nxguard:nxcond+nxguard,-nyguard:nycond+nyguard,-nzguard:nzcond+nzguard), intent(inout) :: incond
+
+INTEGER :: j, k, l
+logical(ISZ) :: l_2dxz
+
+if (.not.l_2dxz) then
+
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx
+     if (incond(j,k,l)) then 
+       fx(j,k,l) = 0. 
+       fy(j,k,l) = 0. 
+       fz(j,k,l) = 0. 
+      end if
+    end do
+   end do
+  end do
+
+else
+  k = 0
+
+    do l = 0, nz
+      do j = 0, nx
+        if (incond(j,k,l)) then 
+          fx(j,k,l) = 0. 
+          fz(j,k,l) = 0. 
+        end if
+      end do
+    end do
+
+end if
+
+  return
+end subroutine push_em3d_splitf_setcond
 
 subroutine push_em3d_splita(sf,dt,which)
 use mod_emfield3d
@@ -5015,47 +5134,87 @@ TYPE(EM3D_YEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
 
   if (xlbnd==dirichlet) then
-     f%ex(:f%ixmin-1,:,:) = 0.
-     f%ey(:f%ixmin,:,:) = 0.
-     f%ez(:f%ixmin,:,:) = 0.
+     f%ey(f%ixmin,:,:) = 0.
+     f%ez(f%ixmin,:,:) = 0.
+     f%ex(f%ixmin-f%nxguard:f%ixmin-1,:,:) =  f%ex(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
+     f%ey(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%ey(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
+     f%ez(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%ez(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
   end if
+
   if (xrbnd==dirichlet) then
-     f%ex(f%ixmax:,:,:) = 0.
-     f%ey(f%ixmax:,:,:) = 0.
-     f%ez(f%ixmax:,:,:) = 0.
+     f%ey(f%ixmax,:,:) = 0.
+     f%ez(f%ixmax,:,:) = 0.
+     f%ex(f%ixmax:f%ixmax+f%nxguard,:,:)   =  f%ex(f%ixmax-1:f%ixmax-f%nxguard-1:-1,:,:)
+     f%ey(f%ixmax+1:f%ixmax+f%nxguard,:,:) = -f%ey(f%ixmax-1:f%ixmax-f%nxguard:-1,:,:)
+     f%ez(f%ixmax+1:f%ixmax+f%nxguard,:,:) = -f%ez(f%ixmax-1:f%ixmax-f%nxguard:-1,:,:)
   end if
 
   if (ylbnd==dirichlet) then
-     f%ex(:,:f%iymin,:) = 0.
-     f%ey(:,:f%iymin-1,:) = 0.
-     f%ez(:,:f%iymin,:) = 0.
+     f%ex(:,f%iymin,:) = 0.
+     f%ez(:,f%iymin,:) = 0.
+     f%ex(:,f%iymin-f%nyguard:f%iymin-1,:) = -f%ex(:,f%iymin+f%nyguard:f%iymin+1:-1,:)
+     f%ey(:,f%iymin-f%nyguard:f%iymin-1,:) =  f%ey(:,f%iymin+f%nyguard-1:f%iymin:-1,:)
+     f%ez(:,f%iymin-f%nyguard:f%iymin-1,:) = -f%ez(:,f%iymin+f%nyguard:f%iymin+1:-1,:)
   end if
+
   if (yrbnd==dirichlet) then
-     f%ex(:,f%iymax:,:) = 0.
-     f%ey(:,f%iymax:,:) = 0.
-     f%ez(:,f%iymax:,:) = 0.
+     f%ex(:,f%iymax,:) = 0.
+     f%ez(:,f%iymax,:) = 0.
+     f%ex(:,f%iymax+1:f%iymax+f%nyguard,:) = -f%ex(:,f%iymax-1:f%iymax-f%nyguard:-1,:)
+     f%ey(:,f%iymax:f%iymax+f%nyguard,:)   =  f%ey(:,f%iymax-1:f%iymax-f%nyguard-1:-1,:)
+     f%ez(:,f%iymax+1:f%iymax+f%nyguard,:) = -f%ez(:,f%iymax-1:f%iymax-f%nyguard:-1,:)
+  end if
+
+  if (zlbnd==dirichlet) then
+     f%ex(:,:,f%izmin) = 0.
+     f%ey(:,:,f%izmin) = 0.
+     f%ex(:,:,f%izmin-f%nzguard:f%izmin-1) = -f%ex(:,:,f%izmin+f%nzguard:f%izmin+1:-1)
+     f%ey(:,:,f%izmin-f%nzguard:f%izmin-1) = -f%ey(:,:,f%izmin+f%nzguard:f%izmin+1:-1)
+     f%ez(:,:,f%izmin-f%nzguard:f%izmin-1) =  f%ez(:,:,f%izmin+f%nzguard-1:f%izmin:-1)
+  end if
+
+  if (zrbnd==dirichlet) then
+     f%ex(:,:,f%izmax) = 0.
+     f%ey(:,:,f%izmax) = 0.
+     f%ex(:,:,f%izmax+1:f%izmax+f%nzguard) = -f%ex(:,:,f%izmax-1:f%izmax-f%nzguard:-1)
+     f%ey(:,:,f%izmax+1:f%izmax+f%nzguard) = -f%ey(:,:,f%izmax-1:f%izmax-f%nzguard:-1)
+     f%ez(:,:,f%izmax:f%izmax+f%nzguard)   =  f%ez(:,:,f%izmax-1:f%izmax-f%nzguard-1:-1)
   end if
 
   if (xlbnd==neumann) then
-     f%ex(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:) = -f%ex(f%ixmin:f%ixmin+f%nxguard-1,:,:)
-     f%ey(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:) = f%ey(f%ixmin+1:f%ixmin+f%nxguard,:,:)
-     f%ez(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:) = f%ez(f%ixmin+1:f%ixmin+f%nxguard,:,:)
+     f%ex(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%ex(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
+     f%ey(f%ixmin-f%nxguard:f%ixmin-1,:,:) =  f%ey(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
+     f%ez(f%ixmin-f%nxguard:f%ixmin-1,:,:) =  f%ez(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
   end if
+
   if (xrbnd==neumann) then
-     f%ex(f%ixmax:f%ixmax+f%nxguard-1:-1,:,:) = -f%ex(f%ixmax-f%nxguard-1:f%ixmax,:,:)
-     f%ey(f%ixmax+1:f%ixmax+f%nxguard:-1,:,:) = f%ey(f%ixmax-f%nxguard:f%ixmax-1,:,:)
-     f%ez(f%ixmax+1:f%ixmax+f%nxguard:-1,:,:) = f%ez(f%ixmax-f%nxguard:f%ixmax-1,:,:)
+     f%ex(f%ixmax:f%ixmax+f%nxguard,:,:)   = -f%ex(f%ixmax-1:f%ixmax-f%nxguard-1:-1,:,:)
+     f%ey(f%ixmax+1:f%ixmax+f%nxguard,:,:) =  f%ey(f%ixmax-1:f%ixmax-f%nxguard:-1,:,:)
+     f%ez(f%ixmax+1:f%ixmax+f%nxguard,:,:) =  f%ez(f%ixmax-1:f%ixmax-f%nxguard:-1,:,:)
   end if
 
   if (ylbnd==neumann) then
-     f%ey(:,f%iymin-1:f%iymin-f%nyguard:-1,:) = -f%ey(:,f%iymin:f%iymin+f%nyguard-1,:)
-     f%ex(:,f%iymin-1:f%iymin-f%nyguard:-1,:) = f%ex(:,f%iymin+1:f%iymin+f%nyguard,:)
-     f%ez(:,f%iymin-1:f%iymin-f%nyguard:-1,:) = f%ez(:,f%iymin+1:f%iymin+f%nyguard,:)
+     f%ex(:,f%iymin-f%nyguard:f%iymin-1,:) =  f%ex(:,f%iymin+f%nyguard:f%iymin+1:-1,:)
+     f%ey(:,f%iymin-f%nyguard:f%iymin-1,:) = -f%ey(:,f%iymin+f%nyguard-1:f%iymin:-1,:)
+     f%ez(:,f%iymin-f%nyguard:f%iymin-1,:) =  f%ez(:,f%iymin+f%nyguard:f%iymin+1:-1,:)
   end if
+
   if (yrbnd==neumann) then
-     f%ey(:,f%iymax:f%iymax+f%nyguard-1:-1,:) = -f%ey(:,f%iymax-f%nyguard-1:f%iymax,:)
-     f%ex(:,f%iymax+1:f%iymax+f%nyguard:-1,:) = f%ex(:,f%iymax-f%nyguard:f%iymax-1,:)
-     f%ez(:,f%iymax+1:f%iymax+f%nyguard:-1,:) = f%ez(:,f%iymax-f%nyguard:f%iymax-1,:)
+     f%ex(:,f%iymax+1:f%iymax+f%nyguard,:) =  f%ex(:,f%iymax-1:f%iymax-f%nyguard:-1,:)
+     f%ey(:,f%iymax:f%iymax+f%nyguard,:)   = -f%ey(:,f%iymax-1:f%iymax-f%nyguard-1:-1,:)
+     f%ez(:,f%iymax+1:f%iymax+f%nyguard,:) =  f%ez(:,f%iymax-1:f%iymax-f%nyguard:-1,:)
+  end if
+
+  if (zlbnd==neumann) then
+     f%ex(:,:,f%izmin-f%nzguard:f%izmin-1) =  f%ex(:,:,f%izmin+f%nzguard:f%izmin+1:-1)
+     f%ey(:,:,f%izmin-f%nzguard:f%izmin-1) =  f%ey(:,:,f%izmin+f%nzguard:f%izmin+1:-1)
+     f%ez(:,:,f%izmin-f%nzguard:f%izmin-1) = -f%ez(:,:,f%izmin+f%nzguard-1:f%izmin:-1)
+  end if
+
+  if (zrbnd==neumann) then
+     f%ex(:,:,f%izmax+1:f%izmax+f%nzguard) =  f%ex(:,:,f%izmax-1:f%izmax-f%nzguard:-1)
+     f%ey(:,:,f%izmax+1:f%izmax+f%nzguard) =  f%ey(:,:,f%izmax-1:f%izmax-f%nzguard:-1)
+     f%ez(:,:,f%izmax:f%izmax+f%nzguard)   = -f%ez(:,:,f%izmax-1:f%izmax-f%nzguard-1:-1)
   end if
 
   return
@@ -5069,47 +5228,81 @@ TYPE(EM3D_YEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
 
   if (xlbnd==dirichlet) then
-     f%bx(:f%ixmin,:,:) = 0.
-     f%by(:f%ixmin-1,:,:) = 0.
-     f%bz(:f%ixmin-1,:,:) = 0.
+     f%bx(f%ixmin,:,:) = 0.
+     f%bx(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%bx(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
+     f%by(f%ixmin-f%nxguard:f%ixmin-1,:,:) =  f%by(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
+     f%bz(f%ixmin-f%nxguard:f%ixmin-1,:,:) =  f%bz(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
   end if
+
   if (xrbnd==dirichlet) then
-     f%bx(f%ixmax:,:,:) = 0.
-     f%by(f%ixmax:,:,:) = 0.
-     f%bz(f%ixmax:,:,:) = 0.
+     f%bx(f%ixmax,:,:) = 0.
+     f%bx(f%ixmax+1:f%ixmax+f%nxguard,:,:) = -f%bx(f%ixmax-1:f%ixmax-f%nxguard:-1,:,:)
+     f%by(f%ixmax:f%ixmax+f%nxguard,:,:)   =  f%by(f%ixmax-1:f%ixmax-f%nxguard-1:-1,:,:)
+     f%bz(f%ixmax:f%ixmax+f%nxguard,:,:)   =  f%bz(f%ixmax-1:f%ixmax-f%nxguard-1:-1,:,:)
   end if
 
   if (ylbnd==dirichlet) then
-     f%bx(:,:f%iymin-1,:) = 0.
-     f%by(:,:f%iymin,:) = 0.
-     f%bz(:,:f%iymin-1,:) = 0.
+     f%by(:,f%iymin,:) = 0.
+     f%bx(:,f%iymin-f%nyguard:f%iymin-1,:) =  f%bx(:,f%iymin+f%nyguard-1:f%iymin:-1,:)
+     f%by(:,f%iymin-f%nyguard:f%iymin-1,:) = -f%by(:,f%iymin+f%nyguard:f%iymin+1:-1,:)
+     f%bz(:,f%iymin-f%nyguard:f%iymin-1,:) =  f%bz(:,f%iymin+f%nyguard-1:f%iymin:-1,:)
   end if
+
   if (yrbnd==dirichlet) then
-     f%bx(:,f%iymax:,:) = 0.
-     f%by(:,f%iymax:,:) = 0.
-     f%bz(:,f%iymax:,:) = 0.
+     f%by(:,f%iymax,:) = 0.
+     f%bx(:,f%iymax:f%iymax+f%nyguard,:)   =  f%bx(:,f%iymax-1:f%iymax-f%nyguard-1:-1,:)
+     f%by(:,f%iymax+1:f%iymax+f%nyguard,:) = -f%by(:,f%iymax-1:f%iymax-f%nyguard:-1,:)
+     f%bz(:,f%iymax:f%iymax+f%nyguard,:)   =  f%bz(:,f%iymax-1:f%iymax-f%nyguard-1:-1,:)
+  end if
+
+  if (zlbnd==dirichlet) then
+     f%bz(:,:,f%izmin) = 0.
+     f%bx(:,:,f%izmin-f%nzguard:f%izmin-1) =  f%bx(:,:,f%izmin+f%nzguard-1:f%izmin:-1)
+     f%by(:,:,f%izmin-f%nzguard:f%izmin-1) =  f%by(:,:,f%izmin+f%nzguard-1:f%izmin:-1)
+     f%bz(:,:,f%izmin-f%nzguard:f%izmin-1) = -f%bz(:,:,f%izmin+f%nzguard:f%izmin+1:-1)
+  end if
+
+  if (zrbnd==dirichlet) then
+     f%bz(:,:,f%izmax) = 0.
+     f%bx(:,:,f%izmax:f%izmax+f%nzguard)   =  f%bx(:,:,f%izmax-1:f%izmax-f%nzguard-1:-1)
+     f%by(:,:,f%izmax:f%izmax+f%nzguard)   =  f%by(:,:,f%izmax-1:f%izmax-f%nzguard-1:-1)
+     f%bz(:,:,f%izmax+1:f%izmax+f%nzguard) = -f%bz(:,:,f%izmax-1:f%izmax-f%nzguard:-1)
   end if
 
   if (xlbnd==neumann) then
-     f%bx(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:) = f%bx(f%ixmin+1:f%ixmin+f%nxguard,:,:)
-     f%by(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:) = -f%by(f%ixmin:f%ixmin+f%nxguard-1,:,:)
-     f%bz(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:) = -f%bz(f%ixmin:f%ixmin+f%nxguard-1,:,:)
+     f%bx(f%ixmin-f%nxguard:f%ixmin-1,:,:) =  f%bx(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
+     f%by(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%by(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
+     f%bz(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%bz(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
   end if
+
   if (xrbnd==neumann) then
-     f%bx(f%ixmax+1:f%ixmax+f%nxguard:-1,:,:) = f%bx(f%ixmax-f%nxguard:f%ixmax-1,:,:)
-     f%by(f%ixmax:f%ixmax+f%nxguard-1:-1,:,:) = -f%by(f%ixmax-f%nxguard-1:f%ixmax,:,:)
-     f%bz(f%ixmax:f%ixmax+f%nxguard-1:-1,:,:) = -f%bz(f%ixmax-f%nxguard-1:f%ixmax,:,:)
+     f%bx(f%ixmax+1:f%ixmax+f%nxguard,:,:) =  f%bx(f%ixmax-1:f%ixmax-f%nxguard:-1,:,:)
+     f%by(f%ixmax:f%ixmax+f%nxguard,:,:)   = -f%by(f%ixmax-1:f%ixmax-f%nxguard-1:-1,:,:)
+     f%bz(f%ixmax:f%ixmax+f%nxguard,:,:)   = -f%bz(f%ixmax-1:f%ixmax-f%nxguard-1:-1,:,:)
   end if
 
   if (ylbnd==neumann) then
-     f%by(:,f%iymin-1:f%iymin-f%nyguard:-1,:) = f%by(:,f%iymin+1:f%iymin+f%nyguard,:)
-     f%bx(:,f%iymin-1:f%iymin-f%nyguard:-1,:) = -f%bx(:,f%iymin:f%iymin+f%nyguard-1,:)
-     f%bz(:,f%iymin-1:f%iymin-f%nyguard:-1,:) = -f%bz(:,f%iymin:f%iymin+f%nyguard-1,:)
+     f%bx(:,f%iymin-f%nyguard:f%iymin-1,:) = -f%bx(:,f%iymin+f%nyguard-1:f%iymin:-1,:)
+     f%by(:,f%iymin-f%nyguard:f%iymin-1,:) =  f%by(:,f%iymin+f%nyguard:f%iymin+1:-1,:)
+     f%bz(:,f%iymin-f%nyguard:f%iymin-1,:) = -f%bz(:,f%iymin+f%nyguard-1:f%iymin:-1,:)
   end if
+
   if (yrbnd==neumann) then
-     f%by(:,f%iymax+1:f%iymax+f%nyguard:-1,:) = f%by(:,f%iymax-f%nyguard:f%iymax-1,:)
-     f%bx(:,f%iymax:f%iymax+f%nyguard-1:-1,:) = -f%bx(:,f%iymax-f%nyguard-1:f%iymax,:)
-     f%bz(:,f%iymax:f%iymax+f%nyguard-1:-1,:) = -f%bz(:,f%iymax-f%nyguard-1:f%iymax,:)
+     f%bx(:,f%iymax:f%iymax+f%nyguard,:)   = -f%bx(:,f%iymax-1:f%iymax-f%nyguard-1:-1,:)
+     f%by(:,f%iymax+1:f%iymax+f%nyguard,:) =  f%by(:,f%iymax-1:f%iymax-f%nyguard:-1,:)
+     f%bz(:,f%iymax:f%iymax+f%nyguard,:)   = -f%bz(:,f%iymax-1:f%iymax-f%nyguard-1:-1,:)
+  end if
+
+  if (zlbnd==neumann) then
+     f%bx(:,:,f%izmin-f%nzguard:f%izmin-1) = -f%bx(:,:,f%izmin+f%nzguard-1:f%izmin:-1)
+     f%by(:,:,f%izmin-f%nzguard:f%izmin-1) = -f%by(:,:,f%izmin+f%nzguard-1:f%izmin:-1)
+     f%bz(:,:,f%izmin-f%nzguard:f%izmin-1) =  f%bz(:,:,f%izmin+f%nzguard:f%izmin+1:-1)
+  end if
+
+  if (zrbnd==neumann) then
+     f%bx(:,:,f%izmax:f%izmax+f%nzguard)   = -f%bx(:,:,f%izmax-1:f%izmax-f%nzguard-1:-1)
+     f%by(:,:,f%izmax:f%izmax+f%nzguard)   = -f%by(:,:,f%izmax-1:f%izmax-f%nzguard-1:-1)
+     f%bz(:,:,f%izmax+1:f%izmax+f%nzguard) =  f%bz(:,:,f%izmax-1:f%izmax-f%nzguard:-1)
   end if
 
   return
@@ -5124,13 +5317,42 @@ TYPE(EM3D_YEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,j
 real(8)::r,r1,r2
 
+  if (xlbnd==dirichlet) then
+     f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) = f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) - f%j(f%ixmin:f%ixmin-f%nxguard:-1,:,:,2:3)
+     f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) = f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) + f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,1)
+  end if
+  if (xrbnd==dirichlet) then
+     f%j(f%ixmax-f%nxguard:f%ixmax,:,:,2:3) = f%j(f%ixmax-f%nxguard:f%ixmax,:,:,2:3) - f%j(f%ixmax+f%nxguard:-1:f%ixmax,:,:,2:3)
+     f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) = f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) + f%j(f%ixmax+f%nxguard-1:f%ixmax:-1,:,:,1)
+  end if
+
+  if (ylbnd==dirichlet) then
+     f%j(:,f%iymin:f%iymin+f%nyguard,:,1:3:2) = f%j(:,f%iymin:f%iymin+f%nyguard,:,1:3:2) &
+                                              - f%j(:,f%iymin:f%iymin-f%nyguard:-1,:,1:3:2)
+     f%j(:,f%iymin:f%iymin+f%nyguard-1,:,2) = f%j(:,f%iymin:f%iymin+f%nyguard-1,:,2) + f%j(:,f%iymin-1:f%iymin-f%nyguard:-1,:,2)
+  end if
+  if (yrbnd==dirichlet) then
+     f%j(:,f%iymax-f%nyguard:f%iymax,:,1:3:2) = f%j(:,f%iymax-f%nyguard:f%iymax,:,1:3:2) &
+                                              - f%j(:,f%iymax+f%nyguard:f%iymax:-1,:,1:3:2)
+     f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) = f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) + f%j(:,f%iymax+f%nyguard-1:f%iymax:-1,:,2)
+  end if
+
+  if (zlbnd==dirichlet) then
+     f%j(:,:,f%izmin:f%izmin+f%nzguard,1:2) = f%j(:,:,f%izmin:f%izmin+f%nzguard,1:2) - f%j(:,:,f%izmin:f%izmin-f%nzguard:-1,1:2)
+     f%j(:,:,f%izmin:f%izmin+f%nzguard-1,3) = f%j(:,:,f%izmin:f%izmin+f%nzguard-1,3) + f%j(:,:,f%izmin-1:f%izmin-f%nzguard:-1,3)
+  end if
+  if (zrbnd==dirichlet) then
+     f%j(:,:,f%izmax-f%nzguard:f%izmax,1:2) = f%j(:,:,f%izmax-f%nzguard:f%izmax,1:2) - f%j(:,:,f%izmax+f%nzguard:f%izmax:-1,1:2)
+     f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) = f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) + f%j(:,:,f%izmax+f%nzguard-1:f%izmax:-1,3)
+  end if
+
   if (xlbnd==neumann .or. (f%l_2drz .and. f%xmin==0.)) then
      f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) = f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) + f%j(f%ixmin:f%ixmin-f%nxguard:-1,:,:,2:3)
      f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) = f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) - f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,1)
   end if
   if (xrbnd==neumann) then
-     f%j(f%ixmax-f%nxguard:f%ixmax,:,:,2:3) = f%j(f%ixmax-f%nxguard:f%ixmax,:,:,2:3) + f%j(f%ixmax:f%ixmax+f%nxguard:-1,:,:,2:3)
-     f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) = f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) - f%j(f%ixmax:f%ixmax+f%nxguard-1:-1,:,:,1)
+     f%j(f%ixmax-f%nxguard:f%ixmax,:,:,2:3) = f%j(f%ixmax-f%nxguard:f%ixmax,:,:,2:3) + f%j(f%ixmax+f%nxguard:f%ixmax:-1,:,:,2:3)
+     f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) = f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) - f%j(f%ixmax+f%nxguard-1:f%ixmax:-1,:,:,1)
   end if
 
   if (ylbnd==neumann) then
@@ -5140,8 +5362,17 @@ real(8)::r,r1,r2
   end if
   if (yrbnd==neumann) then
      f%j(:,f%iymax-f%nyguard:f%iymax,:,1:3:2) = f%j(:,f%iymax-f%nyguard:f%iymax,:,1:3:2) &
-                                              + f%j(:,f%iymax:f%iymax+f%nyguard:-1,:,1:3:2)
-     f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) = f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) - f%j(:,f%iymax:f%iymax+f%nyguard-1:-1,:,2)
+                                              + f%j(:,f%iymax+f%nyguard:f%iymax:-1,:,1:3:2)
+     f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) = f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) - f%j(:,f%iymax+f%nyguard-1:f%iymax:-1,:,2)
+  end if
+
+  if (zlbnd==neumann) then
+     f%j(:,:,f%izmin:f%izmin+f%nzguard,1:2) = f%j(:,:,f%izmin:f%izmin+f%nzguard,1:2) + f%j(:,:,f%izmin:f%izmin-f%nzguard:-1,1:2)
+     f%j(:,:,f%izmin:f%izmin+f%nzguard-1,3) = f%j(:,:,f%izmin:f%izmin+f%nzguard-1,3) - f%j(:,:,f%izmin-1:f%izmin-f%nzguard:-1,3)
+  end if
+  if (zrbnd==neumann) then
+     f%j(:,:,f%izmax-f%nzguard:f%izmax,1:2) = f%j(:,:,f%izmax-f%nzguard:f%izmax,1:2) + f%j(:,:,f%izmax+f%nzguard:f%izmax:-1,1:2)
+     f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) = f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) - f%j(:,:,f%izmax+f%nzguard-1:f%izmax:-1,3)
   end if
 
   if (f%l_2drz) then
@@ -5178,18 +5409,46 @@ TYPE(EM3D_YEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,j
 real(8)::r
 
+  if (xlbnd==dirichlet) then
+     f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) = f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) - f%rho(f%ixmin:f%ixmin-f%nxguard:-1,:,:)
+  end if
+  if (xrbnd==dirichlet) then
+     f%rho(f%ixmax-f%nxguard:f%ixmax,:,:) = f%rho(f%ixmax-f%nxguard:f%ixmax,:,:) - f%rho(f%ixmax+f%nxguard:f%ixmax:-1,:,:)
+  end if
+
+  if (ylbnd==dirichlet) then
+     f%rho(:,f%iymin:f%iymin+f%nyguard,:) = f%rho(:,f%iymin:f%iymin+f%nyguard,:) - f%rho(:,f%iymin:f%iymin-f%nyguard:-1,:)
+  end if
+  if (yrbnd==dirichlet) then
+     f%rho(:,f%iymax-f%nyguard:f%iymax,:) = f%rho(:,f%iymax-f%nyguard:f%iymax,:) - f%rho(:,f%iymax+f%nyguard:f%iymax:-1,:)
+  end if
+
+  if (zlbnd==dirichlet) then
+     f%rho(:,:,f%izmin:f%izmin+f%nzguard) = f%rho(:,:,f%izmin:f%izmin+f%nzguard) - f%rho(:,:,f%izmin:f%izmin-f%nzguard:-1)
+  end if
+  if (zrbnd==dirichlet) then
+     f%rho(:,:,f%izmax-f%nzguard:f%izmax) = f%rho(:,:,f%izmax-f%nzguard:f%izmax) - f%rho(:,:,f%izmax+f%nzguard:f%izmax:-1)
+  end if
+
   if (xlbnd==neumann .or. (f%l_2drz .and. f%xmin==0.)) then
      f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) = f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) + f%rho(f%ixmin:f%ixmin-f%nxguard:-1,:,:)
   end if
   if (xrbnd==neumann) then
-     f%rho(f%ixmax-f%nxguard:f%ixmax,:,:) = f%rho(f%ixmax-f%nxguard:f%ixmax,:,:) + f%rho(f%ixmax:f%ixmax+f%nxguard:-1,:,:)
+     f%rho(f%ixmax-f%nxguard:f%ixmax,:,:) = f%rho(f%ixmax-f%nxguard:f%ixmax,:,:) + f%rho(f%ixmax+f%nxguard:f%ixmax:-1,:,:)
   end if
 
   if (ylbnd==neumann) then
      f%rho(:,f%iymin:f%iymin+f%nyguard,:) = f%rho(:,f%iymin:f%iymin+f%nyguard,:) + f%rho(:,f%iymin:f%iymin-f%nyguard:-1,:)
   end if
   if (yrbnd==neumann) then
-     f%rho(:,f%iymax-f%nyguard:f%iymax,:) = f%rho(:,f%iymax-f%nyguard:f%iymax,:) + f%rho(:,f%iymax:f%iymax+f%nyguard:-1,:)
+     f%rho(:,f%iymax-f%nyguard:f%iymax,:) = f%rho(:,f%iymax-f%nyguard:f%iymax,:) + f%rho(:,f%iymax+f%nyguard:f%iymax:-1,:)
+  end if
+
+  if (zlbnd==neumann) then
+     f%rho(:,:,f%izmin:f%izmin+f%nzguard) = f%rho(:,:,f%izmin:f%izmin+f%nzguard) + f%rho(:,:,f%izmin:f%izmin-f%nzguard:-1)
+  end if
+  if (zrbnd==neumann) then
+     f%rho(:,:,f%izmax-f%nzguard:f%izmax) = f%rho(:,:,f%izmax-f%nzguard:f%izmax) + f%rho(:,:,f%izmax+f%nzguard:f%izmax:-1)
   end if
 
   if (f%l_2drz) then
@@ -5221,49 +5480,72 @@ TYPE(EM3D_SPLITYEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
 
   if (xlbnd==dirichlet) then
-     f%exx(:f%ixmin-1,:,:) = 0.
-     f%eyx(:f%ixmin,:,:) = 0.
-     f%ezx(:f%ixmin,:,:) = 0.
-     f%exy(:f%ixmin-1,:,:) = 0.
-     f%eyy(:f%ixmin,:,:) = 0.
-     f%ezy(:f%ixmin,:,:) = 0.
-     f%exz(:f%ixmin-1,:,:) = 0.
-     f%eyz(:f%ixmin,:,:) = 0.
-     f%ezz(:f%ixmin,:,:) = 0.
+     f%exx(f%ixmin-1,:,:) = f%exx(f%ixmin,:,:)
+     f%eyx(f%ixmin,:,:) = 0.
+     f%ezx(f%ixmin,:,:) = 0.
+     f%exy(f%ixmin-1,:,:) = f%exy(f%ixmin,:,:)
+     f%eyy(f%ixmin,:,:) = 0.
+     f%ezy(f%ixmin,:,:) = 0.
+     f%exz(f%ixmin-1,:,:) = f%exz(f%ixmin,:,:)
+     f%eyz(f%ixmin,:,:) = 0.
+     f%ezz(f%ixmin,:,:) = 0.
   end if
   if (xrbnd==dirichlet) then
-     f%exx(f%ixmax:,:,:) = 0.
-     f%eyx(f%ixmax:,:,:) = 0.
-     f%ezx(f%ixmax:,:,:) = 0.
-     f%exy(f%ixmax:,:,:) = 0.
-     f%eyy(f%ixmax:,:,:) = 0.
-     f%ezy(f%ixmax:,:,:) = 0.
-     f%exz(f%ixmax:,:,:) = 0.
-     f%eyz(f%ixmax:,:,:) = 0.
-     f%ezz(f%ixmax:,:,:) = 0.
+     f%exx(f%ixmax,:,:) = f%exx(f%ixmax-1,:,:)
+     f%eyx(f%ixmax,:,:) = 0.
+     f%ezx(f%ixmax,:,:) = 0.
+     f%exy(f%ixmax,:,:) = f%exy(f%ixmax-1,:,:)
+     f%eyy(f%ixmax,:,:) = 0.
+     f%ezy(f%ixmax,:,:) = 0.
+     f%exz(f%ixmax,:,:) = f%exz(f%ixmax-1,:,:)
+     f%eyz(f%ixmax,:,:) = 0.
+     f%ezz(f%ixmax,:,:) = 0.
   end if
 
   if (ylbnd==dirichlet) then
-     f%exx(:,:f%iymin,:) = 0.
-     f%eyx(:,:f%iymin-1,:) = 0.
-     f%ezx(:,:f%iymin,:) = 0.
-     f%exy(:,:f%iymin,:) = 0.
-     f%eyy(:,:f%iymin-1,:) = 0.
-     f%ezy(:,:f%iymin,:) = 0.
-     f%exz(:,:f%iymin,:) = 0.
-     f%eyz(:,:f%iymin-1,:) = 0.
-     f%ezz(:,:f%iymin,:) = 0.
+     f%exx(:,f%iymin,:) = 0.
+     f%eyx(:,f%iymin-1,:) = f%eyx(:,f%iymin,:)
+     f%ezx(:,f%iymin,:) = 0.
+     f%exy(:,f%iymin,:) = 0.
+     f%eyy(:,f%iymin-1,:) = f%eyy(:,f%iymin,:)
+     f%ezy(:,f%iymin,:) = 0.
+     f%exz(:,f%iymin,:) = 0.
+     f%eyz(:,f%iymin-1,:) = f%eyz(:,f%iymin,:)
+     f%ezz(:,f%iymin,:) = 0.
   end if
   if (yrbnd==dirichlet) then
-     f%exx(:,f%iymax:,:) = 0.
-     f%eyx(:,f%iymax:,:) = 0.
-     f%ezx(:,f%iymax:,:) = 0.
-     f%exy(:,f%iymax:,:) = 0.
-     f%eyy(:,f%iymax:,:) = 0.
-     f%ezy(:,f%iymax:,:) = 0.
-     f%exz(:,f%iymax:,:) = 0.
-     f%eyz(:,f%iymax:,:) = 0.
-     f%ezz(:,f%iymax:,:) = 0.
+     f%exx(:,f%iymax,:) = 0.
+     f%eyx(:,f%iymax,:) = f%eyx(:,f%iymax-1,:)
+     f%ezx(:,f%iymax,:) = 0.
+     f%exy(:,f%iymax,:) = 0.
+     f%eyy(:,f%iymax,:) = f%eyy(:,f%iymax-1,:)
+     f%ezy(:,f%iymax,:) = 0.
+     f%exz(:,f%iymax,:) = 0.
+     f%eyz(:,f%iymax,:) = f%eyz(:,f%iymax-1,:)
+     f%ezz(:,f%iymax,:) = 0.
+  end if
+
+  if (zlbnd==dirichlet) then
+     f%exx(:,:,f%izmin) = 0.
+     f%eyx(:,:,f%izmin) = 0.
+     f%ezx(:,:,f%izmin-1) = f%ezx(:,:,f%izmin)
+     f%exy(:,:,f%izmin) = 0.
+     f%eyy(:,:,f%izmin) = 0.
+     f%ezy(:,:,f%izmin-1) = f%ezy(:,:,f%izmin)
+     f%exz(:,:,f%izmin) = 0.
+     f%eyz(:,:,f%izmin) = 0.
+     f%ezz(:,:,f%izmin-1) = f%ezz(:,:,f%izmin)
+  end if
+  if (zrbnd==dirichlet) then
+     f%exx(:,:,f%izmax) = 0.
+     f%eyx(:,:,f%izmax) = 0.
+     f%ezx(:,:,f%izmax) = f%ezx(:,:,f%izmax-1)
+     f%exy(:,:,f%izmax) = 0.
+     f%eyy(:,:,f%izmax) = 0.
+     f%ezy(:,:,f%izmax) = f%ezx(:,:,f%izmax-1)
+     f%exz(:,:,f%izmax) = 0.
+     f%eyz(:,:,f%izmax) = 0.
+     f%ezz(:,:,f%izmax) = f%ezx(:,:,f%izmax-1)
   end if
 
   if (xlbnd==neumann) then
@@ -5288,6 +5570,17 @@ integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
      f%eyz(:,f%iymax  ,:) = -f%eyz(:,f%iymax-1,:)
   end if
 
+  if (zlbnd==neumann) then
+     f%ezx(:,:,f%izmin-1) = -f%ezx(:,:,f%izmin  )
+     f%ezy(:,:,f%izmin-1) = -f%ezy(:,:,f%izmin  )
+     f%ezz(:,:,f%izmin-1) = -f%ezz(:,:,f%izmin  )
+  end if
+  if (zrbnd==neumann) then
+     f%ezx(:,:,f%izmax  ) = -f%ezx(:,:,f%izmax-1)
+     f%ezy(:,:,f%izmax  ) = -f%ezy(:,:,f%izmax-1)
+     f%ezz(:,:,f%izmax  ) = -f%ezz(:,:,f%izmax-1)
+  end if
+
   return
 end subroutine em3d_applybc_splite
 
@@ -5299,37 +5592,54 @@ TYPE(EM3D_SPLITYEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
 
   if (xlbnd==dirichlet) then
-     f%bxy(:f%ixmin,:,:) = 0.
-     f%bxz(:f%ixmin,:,:) = 0.
-     f%byx(:f%ixmin-1,:,:) = 0.
-     f%byz(:f%ixmin-1,:,:) = 0.
-     f%bzx(:f%ixmin-1,:,:) = 0.
-     f%bzy(:f%ixmin-1,:,:) = 0.
+     f%bxy(f%ixmin,:,:) = 0.
+     f%bxz(f%ixmin,:,:) = 0.
+     f%byx(f%ixmin-1,:,:) = f%byx(f%ixmin,:,:)
+     f%byz(f%ixmin-1,:,:) = f%byz(f%ixmin,:,:)
+     f%bzx(f%ixmin-1,:,:) = f%bzx(f%ixmin,:,:)
+     f%bzy(f%ixmin-1,:,:) = f%bzy(f%ixmin,:,:)
   end if
   if (xrbnd==dirichlet) then
-     f%bxy(f%ixmax:,:,:) = 0.
-     f%bxz(f%ixmax:,:,:) = 0.
-     f%byx(f%ixmax:,:,:) = 0.
-     f%byz(f%ixmax:,:,:) = 0.
-     f%bzx(f%ixmax:,:,:) = 0.
-     f%bzy(f%ixmax:,:,:) = 0.
+     f%bxy(f%ixmax,:,:) = 0.
+     f%bxz(f%ixmax,:,:) = 0.
+     f%byx(f%ixmax,:,:) = f%byx(f%ixmax-1,:,:)
+     f%byz(f%ixmax,:,:) = f%byz(f%ixmax-1,:,:)
+     f%bzx(f%ixmax,:,:) = f%bzx(f%ixmax-1,:,:)
+     f%bzy(f%ixmax,:,:) = f%bzy(f%ixmax-1,:,:)
   end if
 
   if (ylbnd==dirichlet) then
-     f%bxy(:,:f%iymin-1,:) = 0.
-     f%bxz(:,:f%iymin-1,:) = 0.
-     f%byx(:,:f%iymin,:) = 0.
-     f%byz(:,:f%iymin,:) = 0.
-     f%bzx(:,:f%iymin-1,:) = 0.
-     f%bzy(:,:f%iymin-1,:) = 0.
+     f%bxy(:,f%iymin-1,:) = f%bxy(:,f%iymin,:)
+     f%bxz(:,f%iymin-1,:) = f%bxz(:,f%iymin,:)
+     f%byx(:,f%iymin,:) = 0.
+     f%byz(:,f%iymin,:) = 0.
+     f%bzx(:,f%iymin-1,:) = f%bzx(:,f%iymin,:)
+     f%bzy(:,f%iymin-1,:) = f%bzy(:,f%iymin,:)
   end if
   if (yrbnd==dirichlet) then
-     f%bxy(:,f%iymax:,:) = 0.
-     f%bxz(:,f%iymax:,:) = 0.
-     f%byx(:,f%iymax:,:) = 0.
-     f%byz(:,f%iymax:,:) = 0.
-     f%bzx(:,f%iymax:,:) = 0.
-     f%bzy(:,f%iymax:,:) = 0.
+     f%bxy(:,f%iymax,:) = f%bxy(:,f%iymax-1,:)
+     f%bxz(:,f%iymax,:) = f%bxz(:,f%iymax-1,:)
+     f%byx(:,f%iymax,:) = 0.
+     f%byz(:,f%iymax,:) = 0.
+     f%bzx(:,f%iymax,:) = f%bzx(:,f%iymax-1,:)
+     f%bzy(:,f%iymax,:) = f%bzy(:,f%iymax-1,:)
+  end if
+
+  if (zlbnd==dirichlet) then
+     f%bxy(:,:,f%izmin-1) = f%bxy(:,:,f%izmin)
+     f%bxz(:,:,f%izmin-1) = f%bxz(:,:,f%izmin)
+     f%byx(:,:,f%izmin-1) = f%byx(:,:,f%izmin)
+     f%byz(:,:,f%izmin-1) = f%byz(:,:,f%izmin)
+     f%bzx(:,:,f%izmin) = 0.
+     f%bzy(:,:,f%izmin) = 0.
+  end if
+  if (zrbnd==dirichlet) then
+     f%bxy(:,:,f%izmax) = f%bxy(:,:,f%izmax-1)
+     f%bxz(:,:,f%izmax) = f%bxz(:,:,f%izmax-1)
+     f%byx(:,:,f%izmax) = f%byx(:,:,f%izmax-1)
+     f%byz(:,:,f%izmax) = f%byz(:,:,f%izmax-1)
+     f%bzx(:,:,f%izmax) = 0.
+     f%bzy(:,:,f%izmax) = 0.
   end if
 
   if (xlbnd==neumann) then
@@ -5356,6 +5666,19 @@ integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
      f%bxz(:,f%iymax  ,:) = -f%bxz(:,f%iymax-1,:)
      f%bzx(:,f%iymax  ,:) = -f%bzx(:,f%iymax-1,:)
      f%bzy(:,f%iymax  ,:) = -f%bzy(:,f%iymax-1,:)
+  end if
+
+  if (zlbnd==neumann) then
+     f%bxy(:,:,f%izmin-1) = -f%bxy(:,:,f%izmin  )
+     f%bxz(:,:,f%izmin-1) = -f%bxz(:,:,f%izmin  )
+     f%byx(:,:,f%izmin-1) = -f%byx(:,:,f%izmin  )
+     f%byz(:,:,f%izmin-1) = -f%byz(:,:,f%izmin  )
+  end if
+  if (zrbnd==neumann) then
+     f%bxy(:,:,f%izmax  ) = -f%bxy(:,:,f%izmax-1)
+     f%bxz(:,:,f%izmax  ) = -f%bxz(:,:,f%izmax-1)
+     f%byx(:,:,f%izmax  ) = -f%byx(:,:,f%izmax-1)
+     f%byz(:,:,f%izmax  ) = -f%byz(:,:,f%izmax-1)
   end if
 
   return
@@ -9607,6 +9930,7 @@ subroutine set_incond(f,n,indx)
 use mod_emfield3d
 TYPE(EM3D_YEEFIELDtype) :: f
 integer(ISZ) :: i,n,indx(3,n)
+
   if (f%l_2dxz) then
     do i=1,n
       f%incond(indx(1,i),0,indx(3,i)) = .true.
