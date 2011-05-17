@@ -9,7 +9,7 @@ try:
 except ImportError:
   pass
 
-magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.37 2010/07/01 21:56:43 dave Exp $"
+magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.38 2011/05/17 19:19:13 grote Exp $"
 
 ##############################################################################
 class MagnetostaticMG(SubcycledPoissonSolver):
@@ -191,7 +191,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
       setjforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,self.source,
                           self.nxp,self.nyp,self.nzp,self.sourcep,
-                          self.nxpguard,self.nypguard,self.nzpguard,
+                          self.nxpextra,self.nypextra,self.nzpextra,
                           self.fsdecomp,self.ppdecomp)
 
   def getpotentialpforparticles(self,*args):

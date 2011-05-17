@@ -14,7 +14,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.158 2011/01/27 01:13:29 grote Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.159 2011/05/17 19:19:13 grote Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -24,7 +24,7 @@ most of which get there default values from one of the fortran packages.
 
 | Input parameters from w3d:
 |    nx,ny,nz,dx,dy,dz,nxlocal,nylocal,nzlocal,
-|    nxpguard,nypguard,nzpguard,
+|    nxpextra,nypextra,nzpextra,
 |    xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
 |    xmminlocal,xmmaxlocal,
 |    ymminlocal,ymmaxlocal,
@@ -546,7 +546,7 @@ most of which get there default values from one of the fortran packages.
       if isinstance(self.sourcep,FloatType): return
       setrhoforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,self.source,
                             self.nxp,self.nyp,self.nzp,self.sourcep,
-                            self.nxpguard,self.nypguard,self.nzpguard,
+                            self.nxpextra,self.nypextra,self.nzpextra,
                             self.fsdecomp,self.ppdecomp)
 
   def getpotentialpforparticles(self,*args):
@@ -1029,7 +1029,7 @@ tensor that appears from the direct implicit scheme.
                               self.source[...,iimp],
                               self.nxp,self.nyp,self.nzp,
                               self.sourcep[...,iimp],
-                              self.nxpguard,self.nypguard,self.nzpguard,
+                              self.nxpextra,self.nypextra,self.nzpextra,
                               self.fsdecomp,self.ppdecomp)
 
   def dosolve(self,iwhich=0,*args):

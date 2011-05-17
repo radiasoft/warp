@@ -10,7 +10,7 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.63 2011/04/13 20:29:57 grote Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.64 2011/05/17 19:19:13 grote Exp $"
 
 ##############################################################################
 ##############################################################################
@@ -771,7 +771,7 @@ Initially, conductors are not implemented.
         setrhoforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,
                               self.source[...,iimp],
                               self.nxp,self.nyp,self.nzp,self.sourcep[...,iimp],
-                              self.nxpguard,self.nypguard,self.nzpguard,
+                              self.nxpextra,self.nypextra,self.nzpextra,
                               self.fsdecomp,self.ppdecomp)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
