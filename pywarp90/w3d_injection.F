@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.153 $, $Date: 2011/04/29 23:45:04 $
+c@(#) File w3d_injection.F, version $Revision: 1.154 $, $Date: 2011/05/17 18:00:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5097,7 +5097,7 @@ c Calculate the phi in the emitting region by doing 1-d tridiagonal solves
 c of Poisson's equation along lines normal to the emitting surface.
 
       integer(ISZ):: i,is,ip,ix,iy,iz,ij,ij1,irhs,nrhs
-      integer(MPIISZ):: nrhs4,kd,ldab,ldb,n,info
+      integer(ISZ):: nrhs4,kd,ldab,ldb,n,info
       real(kind=8):: rinj,rinji,rr2,dd,deltaz(ninject)
       real(kind=8):: aa,az,px,py,wx1,wy1,wz1,wx0,wy0,wz0,ww,wws,dz0,dz1,zinj_grid
       real(kind=8):: dxi,dyi,dzmin,ainjsqi,binjsqi,rrsq,onethird,ext,eyt,ezt,atx,aty
