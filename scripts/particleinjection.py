@@ -6,7 +6,7 @@ from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.9 2011/04/19 00:21:45 rcohen Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.10 2011/05/24 20:01:48 rcohen Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -22,7 +22,7 @@ extends from i-1/2 to i+1/2.
                Note that each conductor MUST have a unique id.
  - rnnmax: if set, is an upper bound to number of particles to inject per timestep per cell.
               Note in cylindrical geometry, given scaling of rnn by 2 pi r/dy, rnnmax is emitted
-              flux times solver.dx*solver.dy (same significance as cartesian, in that sense).
+              flux in time dt times solver.dx*solver.dy (same significance as cartesian, in that sense).
 
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
