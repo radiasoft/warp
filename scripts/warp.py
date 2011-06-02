@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.203 2011/02/07 18:17:02 grote Exp $"
+warp_version = "$Id: warp.py,v 1.204 2011/06/02 18:00:22 grote Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -873,30 +873,33 @@ def restoreolddump(ff):
 # --- Dump command
 def dump(filename=None,prefix='',suffix='',attr='dump',serial=0,onefile=0,pyvars=1,
          ff=None,varsuffix=None,histz=2,resizeHist=1,verbose=false,
-         hdf=0,format='pdb'):
+         hdf=0,format='',datawriter=None):
   """
 Creates a dump file
   - filename=(prefix+runid+'%06d'%top.it+suffix+'.dump')
   - attr='dump': All variables with the given attribute or group name are
-    written to the file. The default attribute makes a restartable dump file.
+                 written to the file. The default attribute makes a
+                 restartable dump file.
   - serial=0: When 1, does a dump of only non-parallel data (parallel version
-    only).
+              only).
   - onefile=0: When 1, all processors dump to one file, otherwise each dumps to
-    seperate file. The processor number is appended to the dump filename.
+               seperate file. The processor number is appended to the dump
+               filename. It is not recommended to use this option - writing
+               to one file most likely will not work.
   - pyvars=1: When 1, saves user defined python variables to the file.
   - ff=None: Optional file object. When passed in, write to that file instead
              of creating a new one. Note that the inputted file object must be
-             closed by the user.
+             closed by the user. The object most be an instance of a class
+             that conforms to the PW.PW API.
   - varsuffix=None: Suffix to add to the variable names. If none is specified,
                     the suffix '@pkg' is used, where pkg is the package name
                     that the variable is in.
   - resizeHist=1: When true, resize history arrays so that unused locations
                   are removed.
-  - hdf=0: when true, dump into an HDF file rather than a PDB.
-  - format='pdb': specifies the dump format to use. Can be one of
-                  'pdb' for pdb file
-                  'hdf' for hdf file (using pytables)
-                  'pickle' for pickle file
+  - hdf=0: (option is ignored)
+  - format='': If 'pickle', uses pickledump module (not recommended)
+  - datawriter=PW.PW: the data writer class to use. This can be any class that
+                      conforms to the API of PW from the PyPDB package.
   """
   timetemp = wtime()
   if not filename:
@@ -927,24 +930,22 @@ Creates a dump file
     top.lenhist = top.jhist
     gchange("Hist")
   # --- Call routine to make data dump
-  if format in ['pdb','hdf']:
+  if format == 'pickle':
+    pickledump.pickledump(filename,attr,interpreter_variables,serial,ff,
+                          varsuffix,verbose)
+  else:
     if onefile and lparallel:
       paralleldump(filename,attr,interpreter_variables,serial=serial,
                    varsuffix=varsuffix,histz=histz,verbose=verbose)
     else:
       pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
-             varsuffix=varsuffix,verbose=verbose,hdf=hdf)
-  elif format == 'pickle':
-    pickledump.pickledump(filename,attr,interpreter_variables,serial,ff,
-                          varsuffix,verbose)
-  else:
-    raise InputError
+             varsuffix=varsuffix,verbose=verbose,datawriter=datawriter)
   # --- Update dump time
   top.dumptime = top.dumptime + (wtime() - timetemp)
 
 # --- Restart command
 def restart(filename,suffix='',onefile=0,verbose=false,skip=[],
-            dofieldsol=true,format='pdb'):
+            dofieldsol=true,format='',datareader=None):
   """
 Reads in data from file, redeposits charge density and does field solve
   - filename: restart file name - when restoring parallel run from multiple
@@ -956,17 +957,18 @@ Reads in data from file, redeposits charge density and does field solve
   - dofieldsol=true: When true, call fieldsol(0). This allows special cases
                      where just calling fieldsol(0) is not appropriate or
                      optimal
-  - format='pdb': specifies the dump format to use. Can be one of
-                  'pdb' for pdb file
-                  'hdf' for hdf file (using pytables)
-                  'pickle' for pickle file
+  - format='': If 'pickle', uses pickledump module (not recommended)
+  - datareader=PR.PR: the data reader class to use. This can be any class that
+                      conforms to the API of PW from the PyPDB package.
   """
   # --- If each processor is restoring from a seperate file, append
   # --- appropriate suffix, assuming only prefix was passed in
   if lparallel and not onefile:
     filename = filename + '_%05d_%05d%s.dump'%(me,npes,suffix)
 
-  if format in ['pdb','hdf']:
+  if format == 'pickle':
+    pickledump.picklerestore(filename,verbose,skip=skip)
+  else:
     # --- Call different restore routine depending on context.
     # --- Having the restore function return the open file object is very
     # --- kludgy. But it is necessary to avoid opening in
@@ -978,18 +980,13 @@ Reads in data from file, redeposits charge density and does field solve
     if onefile and lparallel:
       ff = parallelrestore(filename,verbose=verbose,skip=skip,lreturnff=1)
     else:
-      ff = pyrestore(filename,verbose=verbose,skip=skip,lreturnff=1)
+      ff = pyrestore(filename,verbose=verbose,skip=skip,lreturnff=1,
+                     datareader=datareader)
 
     # --- Fix old dump files.
     # --- This is the only place where the open dump file is needed.
     restoreolddump(ff)
     ff.close()
-
-  # --- Now close the restart file
-  elif format == 'pickle':
-    pickledump.picklerestore(filename,verbose,skip=skip)
-  else:
-    raise InputError
 
   # --- Now that the dump file has been read in, finish up the restart work.
   # --- First set the current packge. Note that currpkg is only ever defined
@@ -1046,7 +1043,7 @@ Reads in data from file, redeposits charge density and does field solve
 ##############################################################################
 
 ##############################################################################
-def printtimers(file=None,lminmax=0,icontrollers=0):
+def printtimers(file=None,lminmax=0,mintime=0.,icontrollers=0):
   """
 Print timers in a nice annotated format
   - file=None: Optional input file. If it is not include, stdout is used. It can
@@ -1055,6 +1052,8 @@ Print timers in a nice annotated format
          to that file (the file remains open).
   - lminmax=false: When true, include the min and max over the processors
                    when parallel.
+  - mintime=0.: When printing subroutine timings, only include those that
+                have time greater than mintime.
   - icontrollers=0: When 1, prints the timings of the controllers.
                     When 2, also prints the timings of all of the
                     installed functions
@@ -1145,7 +1144,7 @@ Print timers in a nice annotated format
       vlist = array(gather(value))
       if me > 0: continue
       vsum = sum(vlist)
-      if vsum == 0.: continue
+      if vsum <= mintime: continue
       vrms = sqrt(max(0.,ave(vlist**2) - ave(vlist)**2))
       ff.write('%18s  %10.4f  %10.4f  %10.4f'%(name[4:],vsum,vsum/npes,vrms))
       if lminmax:
