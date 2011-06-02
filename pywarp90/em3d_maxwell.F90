@@ -1075,35 +1075,35 @@ if (.not.l_2dxz) then
    do k = 0, ny
     do j = 0, nx-1
       Ex(j,k,l) = Ex(j,k,l) + alphay*dtsdy * (Bz(j  ,k,l  ) - Bz(j  ,k-1,l  )) &
-                            + betay *dtsdy * (Bz(j+1,k,l  ) - Bz(j+1,k-1,l  ) &
-                                           +  Bz(j-1,k,l  ) - Bz(j-1,k-1,l  ) &
-                                           +  Bz(j  ,k,l+1) - Bz(j  ,k-1,l+1) &
+                            + betayx*dtsdy * (Bz(j+1,k,l  ) - Bz(j+1,k-1,l  ) &
+                                           +  Bz(j-1,k,l  ) - Bz(j-1,k-1,l  )) &
+                            + betayz*dtsdy * (Bz(j  ,k,l+1) - Bz(j  ,k-1,l+1) &
                                            +  Bz(j  ,k,l-1) - Bz(j  ,k-1,l-1))&
                             + gammay*dtsdy * (Bz(j+1,k,l+1) - Bz(j+1,k-1,l+1) &
                                            +  Bz(j-1,k,l+1) - Bz(j-1,k-1,l+1) &
                                            +  Bz(j+1,k,l-1) - Bz(j+1,k-1,l-1) &
                                            +  Bz(j-1,k,l-1) - Bz(j-1,k-1,l-1)) &
                             - alphaz*dtsdz * (By(j  ,k  ,l) - By(j  ,k  ,l-1)) &
-                            - betaz *dtsdz * (By(j+1,k  ,l) - By(j+1,k  ,l-1)  &
-                                           +  By(j-1,k  ,l) - By(j-1,k  ,l-1)  &
-                                           +  By(j  ,k+1,l) - By(j  ,k+1,l-1)  &
+                            + betayx*dtsdy * (By(j+1,k  ,l) - By(j+1,k  ,l-1)  &
+                                           +  By(j-1,k  ,l) - By(j-1,k  ,l-1))  &
+                            + betayz*dtsdy * (By(j  ,k+1,l) - By(j  ,k+1,l-1)  &
                                            +  By(j  ,k-1,l) - By(j  ,k-1,l-1)) &
                             - gammaz*dtsdz * (By(j+1,k+1,l) - By(j+1,k+1,l-1)  &
                                            +  By(j-1,k+1,l) - By(j-1,k+1,l-1)  &
                                            +  By(j+1,k-1,l) - By(j+1,k-1,l-1)  &
                                            +  By(j-1,k-1,l) - By(j-1,k-1,l-1)) &
                             - 0.5*(alphay+alphaz)*mudt * CJ(j,k,l,1) &
-                                     - 0.5*betay *mudt * (CJ(j+1,k,l  ,1) &
-                                                     +CJ(j-1,k,l  ,1) &
-                                                     +CJ(j  ,k,l+1,1) &
+                                     - 0.5*betayx *mudt * (CJ(j+1,k,l  ,1) &
+                                                     +CJ(j-1,k,l  ,1)) &
+                                     - 0.5*betayz *mudt * (CJ(j  ,k,l+1,1) &
                                                      +CJ(j  ,k,l-1,1)) &
                                      - 0.5*gammay*mudt * (CJ(j+1,k,l+1,1) &
                                                      +CJ(j-1,k,l+1,1) &
                                                      +CJ(j+1,k,l-1,1) &
                                                      +CJ(j-1,k,l-1,1)) &
-                                     - 0.5*betaz *mudt * (CJ(j+1,k  ,l,1) &
-                                                     +CJ(j-1,k  ,l,1) &
-                                                     +CJ(j  ,k+1,l,1) &
+                                     - 0.5*betazx *mudt * (CJ(j+1,k  ,l,1) &
+                                                     +CJ(j-1,k  ,l,1)) &
+                                     - 0.5*betazy *mudt * (CJ(j  ,k+1,l,1) &
                                                      +CJ(j  ,k-1,l,1)) &
                                      - 0.5*gammaz*mudt * (CJ(j+1,k+1,l,1) &
                                                      +CJ(j-1,k+1,l,1) &
@@ -1118,35 +1118,35 @@ if (.not.l_2dxz) then
    do k = 0, ny-1
     do j = 0, nx
       Ey(j,k,l) = Ey(j,k,l) - alphax*dtsdx * (Bz(j,k  ,l  ) - Bz(j-1,k  ,l  )) &
-                                - betax *dtsdx * (Bz(j,k+1,l  ) - Bz(j-1,k+1,l  ) &
-                                               +  Bz(j,k-1,l  ) - Bz(j-1,k-1,l  ) &
-                                               +  Bz(j,k  ,l+1) - Bz(j-1,k  ,l+1) &
+                                - betaxy *dtsdx * (Bz(j,k+1,l  ) - Bz(j-1,k+1,l  ) &
+                                               +  Bz(j,k-1,l  ) - Bz(j-1,k-1,l  )) &
+                                - betaxz *dtsdx * (Bz(j,k  ,l+1) - Bz(j-1,k  ,l+1) &
                                                +  Bz(j,k  ,l-1) - Bz(j-1,k  ,l-1)) &
                                 - gammax*dtsdx * (Bz(j,k+1,l+1) - Bz(j-1,k+1,l+1) &
                                                +  Bz(j,k-1,l+1) - Bz(j-1,k-1,l+1) &
                                                +  Bz(j,k+1,l-1) - Bz(j-1,k+1,l-1) &
                                                +  Bz(j,k-1,l-1) - Bz(j-1,k-1,l-1)) &                              
                                 + alphaz*dtsdz * (Bx(j  ,k  ,l) - Bx(j  ,k  ,l-1)) &
-                                + betaz *dtsdz * (Bx(j+1,k  ,l) - Bx(j+1,k  ,l-1) &
-                                               +  Bx(j-1,k  ,l) - Bx(j-1,k  ,l-1) &
-                                               +  Bx(j  ,k+1,l) - Bx(j  ,k+1,l-1) &
+                                + betazx *dtsdz * (Bx(j+1,k  ,l) - Bx(j+1,k  ,l-1) &
+                                               +  Bx(j-1,k  ,l) - Bx(j-1,k  ,l-1)) &
+                                + betazy *dtsdz * (Bx(j  ,k+1,l) - Bx(j  ,k+1,l-1) &
                                                +  Bx(j  ,k-1,l) - Bx(j  ,k-1,l-1)) &
                                 + gammaz*dtsdz * (Bx(j+1,k+1,l) - Bx(j+1,k+1,l-1) &
                                                +  Bx(j-1,k+1,l) - Bx(j-1,k+1,l-1) &
                                                +  Bx(j+1,k-1,l) - Bx(j+1,k-1,l-1) &
                                                +  Bx(j-1,k-1,l) - Bx(j-1,k-1,l-1)) &
                                 - 0.5*(alphax+alphaz)*mudt * CJ(j,k,l,2) &
-                                        - 0.5*betax *mudt * (CJ(j,k+1,l  ,2) &
-                                                      +  CJ(j,k-1,l  ,2) &
-                                                      +  CJ(j,k  ,l+1,2) &
+                                        - 0.5*betaxy *mudt * (CJ(j,k+1,l  ,2) &
+                                                      +  CJ(j,k-1,l  ,2)) &
+                                        - 0.5*betaxz *mudt * (CJ(j,k  ,l+1,2) &
                                                       +  CJ(j,k  ,l-1,2)) &
                                         - 0.5*gammax*mudt * (CJ(j,k+1,l+1,2) &
                                                       +  CJ(j,k-1,l+1,2) &
                                                       +  CJ(j,k+1,l-1,2) &
                                                       +  CJ(j,k-1,l-1,2)) &
-                                        - 0.5*betaz *mudt * (CJ(j  ,k+1,l,2) &
-                                                      +  CJ(j  ,k-1,l,2) &
-                                                      +  CJ(j+1,k  ,l,2) &
+                                        - 0.5*betazx *mudt * (CJ(j  ,k+1,l,2) &
+                                                      +  CJ(j  ,k-1,l,2)) &
+                                        - 0.5*betazy *mudt * (CJ(j+1,k  ,l,2) &
                                                       +  CJ(j-1,k  ,l,2)) &
                                         - 0.5*gammaz*mudt * (CJ(j+1,k+1,l,2) &
                                                       +  CJ(j+1,k-1,l,2) &
@@ -1161,35 +1161,35 @@ if (.not.l_2dxz) then
    do k = 0, ny
     do j = 0, nx
       Ez(j,k,l) = Ez(j,k,l) + alphax*dtsdx * (By(j,k  ,l  ) - By(j-1,k  ,l  )) &
-                                + betax *dtsdx * (By(j,k+1,l  ) - By(j-1,k+1,l  ) &
-                                                 +  By(j,k-1,l  ) - By(j-1,k-1,l  ) &
-                                                 +  By(j,k  ,l+1) - By(j-1,k  ,l+1) &
+                                + betaxy*dtsdx * (By(j,k+1,l  ) - By(j-1,k+1,l  ) &
+                                                 +  By(j,k-1,l  ) - By(j-1,k-1,l  )) &
+                                + betaxz*dtsdx * (By(j,k  ,l+1) - By(j-1,k  ,l+1) &
                                                  +  By(j,k  ,l-1) - By(j-1,k  ,l-1)) &
                                 + gammax*dtsdx * (By(j,k+1,l+1) - By(j-1,k+1,l+1) &
                                                  +  By(j,k-1,l+1) - By(j-1,k-1,l+1) &
                                                  +  By(j,k+1,l-1) - By(j-1,k+1,l-1) &
                                                  +  By(j,k-1,l-1) - By(j-1,k-1,l-1)) &
                                 - alphay*dtsdy * (Bx(j  ,k,l  ) - Bx(j  ,k-1,l  )) &
-                                - betay *dtsdy * (Bx(j+1,k,l  ) - Bx(j+1,k-1,l  ) &
-                                                 +  Bx(j-1,k,l  ) - Bx(j-1,k-1,l  ) &
-                                                 +  Bx(j  ,k,l+1) - Bx(j  ,k-1,l+1) &
+                                + betayx*dtsdy * (Bx(j+1,k,l  ) - Bx(j+1,k-1,l  ) &
+                                                 +  Bx(j-1,k,l  ) - Bx(j-1,k-1,l  )) &
+                                + betayz*dtsdy * (Bx(j  ,k,l+1) - Bx(j  ,k-1,l+1) &
                                                  +  Bx(j  ,k,l-1) - Bx(j  ,k-1,l-1)) &
                                 - gammay*dtsdy * (Bx(j+1,k,l+1) - Bx(j+1,k-1,l+1) &
                                                  +  Bx(j-1,k,l+1) - Bx(j-1,k-1,l+1) &
                                                  +  Bx(j+1,k,l-1) - Bx(j+1,k-1,l-1) &
                                                  +  Bx(j-1,k,l-1) - Bx(j-1,k-1,l-1)) &
                                 - 0.5*(alphax+alphay)*mudt * CJ(j,k,l,3) &
-                                        - 0.5*betax *mudt * (CJ(j,k+1,l  ,3) &
-                                                      +  CJ(j,k-1,l  ,3) &
-                                                      +  CJ(j,k  ,l+1,3) &
+                                        - 0.5*betaxy *mudt * (CJ(j,k+1,l  ,3) &
+                                                      +  CJ(j,k-1,l  ,3)) &
+                                        - 0.5*betaxz *mudt * (CJ(j,k  ,l+1,3) &
                                                       +  CJ(j,k  ,l-1,3)) &
                                         - 0.5*gammax*mudt * (CJ(j,k+1,l+1,3) &
                                                       +  CJ(j,k-1,l+1,3) &
                                                       +  CJ(j,k+1,l-1,3) &
                                                       +  CJ(j,k-1,l-1,3)) &
-                                        - 0.5*betay *mudt * (CJ(j+1,k,l  ,3) &
-                                                      +  CJ(j-1,k,l  ,3) &
-                                                      +  CJ(j  ,k,l+1,3) &
+                                        - 0.5*betayx *mudt * (CJ(j+1,k,l  ,3) &
+                                                      +  CJ(j-1,k,l  ,3)) &
+                                        - 0.5*betayz *mudt * (CJ(j  ,k,l+1,3) &
                                                       +  CJ(j  ,k,l-1,3)) &
                                         - 0.5*gammay*mudt * (CJ(j+1,k,l+1,3) &
                                                       +  CJ(j-1,k,l+1,3) &
@@ -1218,10 +1218,10 @@ else
   do l = 0, nz
     do j = 0, nx-1
       Ex(j,k,l) = Ex(j,k,l) -     alphaz*dtsdz * (By(j  ,k  ,l) - By(j  ,k  ,l-1)) &
-                            -     betaz *dtsdz * (By(j+1,k  ,l) - By(j+1,k  ,l-1)  &
+                            -     betazx*dtsdz * (By(j+1,k  ,l) - By(j+1,k  ,l-1)  &
                                                +  By(j-1,k  ,l) - By(j-1,k  ,l-1))  &
                             - alphaz*mudt       * CJ(j,k,l,1) &
-                            -     betaz*mudt    * (CJ(j+1,k  ,l,1)+CJ(j-1,k  ,l,1) )
+                            -     betazx*mudt    * (CJ(j+1,k  ,l,1)+CJ(j-1,k  ,l,1) )
     end do
   end do
 
@@ -1229,15 +1229,15 @@ else
   do l = 0, nz
     do j = 0, nx
       Ey(j,k,l) = Ey(j,k,l) - alphax*dtsdx * (Bz(j,k  ,l  ) - Bz(j-1,k  ,l  )) &
-                                - betax *dtsdx * (Bz(j,k  ,l+1) - Bz(j-1,k  ,l+1) &
+                                - betaxz*dtsdx * (Bz(j,k  ,l+1) - Bz(j-1,k  ,l+1) &
                                                +  Bz(j,k  ,l-1) - Bz(j-1,k  ,l-1)) &
                                 + alphaz*dtsdz * (Bx(j  ,k  ,l) - Bx(j  ,k  ,l-1)) &
-                                + betaz *dtsdz * (Bx(j+1,k  ,l) - Bx(j+1,k  ,l-1) &
+                                + betazx*dtsdz * (Bx(j+1,k  ,l) - Bx(j+1,k  ,l-1) &
                                                +  Bx(j-1,k  ,l) - Bx(j-1,k  ,l-1)) &
                                 - 0.5*(alphax+alphaz)*mudt * CJ(j,k,l,2) &
-                                        - 0.5*    betax *mudt * (CJ(j,k  ,l+1,2) &
+                                        - 0.5*    betaxz *mudt * (CJ(j,k  ,l+1,2) &
                                                       +  CJ(j,k  ,l-1,2)) &
-                                        - 0.5*    betaz *mudt * (CJ(j+1,k  ,l,2) &
+                                        - 0.5*    betazx *mudt * (CJ(j+1,k  ,l,2) &
                                                       +  CJ(j-1,k  ,l,2)) 
     end do
   end do
@@ -1246,10 +1246,10 @@ else
   do l = 0, nz-1
     do j = 0, nx
       Ez(j,k,l) = Ez(j,k,l) + alphax*dtsdx * (By(j,k  ,l  ) - By(j-1,k  ,l  )) &
-                                + betax *dtsdx * ( By(j,k  ,l+1) - By(j-1,k  ,l+1) &
+                                + betaxz *dtsdx * ( By(j,k  ,l+1) - By(j-1,k  ,l+1) &
                                                  +  By(j,k  ,l-1) - By(j-1,k  ,l-1)) &
                                 - alphax*mudt * CJ(j,k,l,3) &
-                                        -     betax *mudt * (CJ(j,k  ,l+1,3) &
+                                        -     betaxz *mudt * (CJ(j,k  ,l+1,3) &
                                                       +  CJ(j,k  ,l-1,3))  
     end do
   end do
@@ -1469,18 +1469,18 @@ if (.not.l_2dxz) then
    do k = 0, ny-1
     do j = 0, nx
       Bx(j,k,l) = Bx(j,k,l) - alphay*dtsdy * (Ez(j  ,k+1,l  ) - Ez(j  ,k  ,l  )) &
-                            -  betay*dtsdy * (Ez(j+1,k+1,l  ) - Ez(j+1,k  ,l  ) &
-                                           +  Ez(j-1,k+1,l  ) - Ez(j-1,k  ,l  ) &
-                                           +  Ez(j  ,k+1,l+1) - Ez(j  ,k  ,l+1) &
+                            - betayx*dtsdy * (Ez(j+1,k+1,l  ) - Ez(j+1,k  ,l  ) &
+                                           +  Ez(j-1,k+1,l  ) - Ez(j-1,k  ,l  )) &
+                            - betayz*dtsdy * (Ez(j  ,k+1,l+1) - Ez(j  ,k  ,l+1) &
                                            +  Ez(j  ,k+1,l-1) - Ez(j  ,k  ,l-1)) &
                             - gammay*dtsdy * (Ez(j+1,k+1,l+1) - Ez(j+1,k  ,l+1) &
                                            +  Ez(j-1,k+1,l+1) - Ez(j-1,k  ,l+1) &
                                            +  Ez(j+1,k+1,l-1) - Ez(j+1,k  ,l-1) &
                                            +  Ez(j-1,k+1,l-1) - Ez(j-1,k  ,l-1)) &
                             + alphaz*dtsdz * (Ey(j  ,k  ,l+1) - Ey(j  ,k  ,l  )) &
-                            +  betaz*dtsdz * (Ey(j+1,k  ,l+1) - Ey(j+1,k  ,l  ) &
-                                           +  Ey(j-1,k  ,l+1) - Ey(j-1,k  ,l  ) &
-                                           +  Ey(j  ,k+1,l+1) - Ey(j  ,k+1,l  ) &
+                            + betazx*dtsdz * (Ey(j+1,k  ,l+1) - Ey(j+1,k  ,l  ) &
+                                           +  Ey(j-1,k  ,l+1) - Ey(j-1,k  ,l  )) &
+                            + betazy*dtsdz * (Ey(j  ,k+1,l+1) - Ey(j  ,k+1,l  ) &
                                            +  Ey(j  ,k-1,l+1) - Ey(j  ,k-1,l  )) &
                             + gammaz*dtsdz * (Ey(j+1,k+1,l+1) - Ey(j+1,k+1,l  ) &
                                            +  Ey(j-1,k+1,l+1) - Ey(j-1,k+1,l  ) &
@@ -1495,18 +1495,18 @@ if (.not.l_2dxz) then
    do k = 0, ny
     do j = 0, nx-1
       By(j,k,l) = By(j,k,l) + alphax*dtsdx * (Ez(j+1,k  ,l  ) - Ez(j  ,k  ,l  )) &  
-                            +  betax*dtsdx * (Ez(j+1,k+1,l  ) - Ez(j  ,k+1,l  ) &
-                                           +  Ez(j+1,k-1,l  ) - Ez(j  ,k-1,l  ) &
-                                           +  Ez(j+1,k  ,l+1) - Ez(j  ,k  ,l+1) &
+                            + betaxy*dtsdx * (Ez(j+1,k+1,l  ) - Ez(j  ,k+1,l  ) &
+                                           +  Ez(j+1,k-1,l  ) - Ez(j  ,k-1,l  )) &
+                            + betaxz*dtsdx * (Ez(j+1,k  ,l+1) - Ez(j  ,k  ,l+1) &
                                            +  Ez(j+1,k  ,l-1) - Ez(j  ,k  ,l-1)) &
                             + gammax*dtsdx * (Ez(j+1,k+1,l+1) - Ez(j  ,k+1,l+1) &
                                            +  Ez(j+1,k-1,l+1) - Ez(j  ,k-1,l+1) &
                                            +  Ez(j+1,k+1,l-1) - Ez(j  ,k+1,l-1) &
                                            +  Ez(j+1,k-1,l-1) - Ez(j  ,k-1,l-1)) &
                             - alphaz*dtsdz * (Ex(j  ,k  ,l+1) - Ex(j  ,k  ,l  )) &
-                            -  betaz*dtsdz * (Ex(j+1,k  ,l+1) - Ex(j+1,k  ,l  ) &
-                                           +  Ex(j-1,k  ,l+1) - Ex(j-1,k  ,l  ) &
-                                           +  Ex(j  ,k+1,l+1) - Ex(j  ,k+1,l  ) &
+                            - betazx*dtsdz * (Ex(j+1,k  ,l+1) - Ex(j+1,k  ,l  ) &
+                                           +  Ex(j-1,k  ,l+1) - Ex(j-1,k  ,l  )) &
+                            - betazy*dtsdz * (Ex(j  ,k+1,l+1) - Ex(j  ,k+1,l  ) &
                                            +  Ex(j  ,k-1,l+1) - Ex(j  ,k-1,l  )) &
                             - gammaz*dtsdz * (Ex(j+1,k+1,l+1) - Ex(j+1,k+1,l  ) &
                                            +  Ex(j-1,k+1,l+1) - Ex(j-1,k+1,l  ) &
@@ -1521,18 +1521,18 @@ if (.not.l_2dxz) then
    do k = 0, ny-1
     do j = 0, nx-1
       Bz(j,k,l) = Bz(j,k,l) - alphax*dtsdx * (Ey(j+1,k  ,l  ) - Ey(j  ,k  ,l  )) &
-                            -  betax*dtsdx * (Ey(j+1,k+1,l  ) - Ey(j  ,k+1,l  ) &
-                                           +  Ey(j+1,k-1,l  ) - Ey(j  ,k-1,l  ) &
-                                           +  Ey(j+1,k  ,l+1) - Ey(j  ,k  ,l+1) &
+                            - betaxy*dtsdx * (Ey(j+1,k+1,l  ) - Ey(j  ,k+1,l  ) &
+                                           +  Ey(j+1,k-1,l  ) - Ey(j  ,k-1,l  )) &
+                            - betaxz*dtsdx * (Ey(j+1,k  ,l+1) - Ey(j  ,k  ,l+1) &
                                            +  Ey(j+1,k  ,l-1) - Ey(j  ,k  ,l-1)) &
                             - gammax*dtsdx * (Ey(j+1,k+1,l+1) - Ey(j  ,k+1,l+1) &
                                            +  Ey(j+1,k-1,l+1) - Ey(j  ,k-1,l+1) &
                                            +  Ey(j+1,k+1,l-1) - Ey(j  ,k+1,l-1) &
                                            +  Ey(j+1,k-1,l-1) - Ey(j  ,k-1,l-1)) &
                             + alphay*dtsdy * (Ex(j  ,k+1,l  ) - Ex(j  ,k  ,l  )) &
-                            +  betay*dtsdy * (Ex(j+1,k+1,l  ) - Ex(j+1,k  ,l  ) &
-                                           +  Ex(j-1,k+1,l  ) - Ex(j-1,k  ,l  ) &
-                                           +  Ex(j  ,k+1,l+1) - Ex(j  ,k  ,l+1) &
+                            + betayx*dtsdy * (Ex(j+1,k+1,l  ) - Ex(j+1,k  ,l  ) &
+                                           +  Ex(j-1,k+1,l  ) - Ex(j-1,k  ,l  )) &
+                            + betayz*dtsdy * (Ex(j  ,k+1,l+1) - Ex(j  ,k  ,l+1) &
                                            +  Ex(j  ,k+1,l-1) - Ex(j  ,k  ,l-1)) &
                             + gammay*dtsdy * (Ex(j+1,k+1,l+1) - Ex(j+1,k  ,l+1) &
                                            +  Ex(j-1,k+1,l+1) - Ex(j-1,k  ,l+1) &
@@ -1549,7 +1549,7 @@ else
   do l = 0, nz-1
     do j = 0, nx
       Bx(j,k,l) = Bx(j,k,l) +    alphaz*dtsdz * (Ey(j  ,k  ,l+1) - Ey(j  ,k  ,l  )) &
-                            +     betaz*dtsdz * (Ey(j+1,k  ,l+1) - Ey(j+1,k  ,l  ) &
+                            +    betazx*dtsdz * (Ey(j+1,k  ,l+1) - Ey(j+1,k  ,l  ) &
                                               +  Ey(j-1,k  ,l+1) - Ey(j-1,k  ,l  )) 
     end do
   end do
@@ -1558,10 +1558,10 @@ else
   do l = 0, nz-1
     do j = 0, nx-1
       By(j,k,l) = By(j,k,l) +    alphax*dtsdx * (Ez(j+1,k  ,l  ) - Ez(j  ,k  ,l  )) &  
-                            +     betax*dtsdx * (Ez(j+1,k  ,l+1) - Ez(j  ,k  ,l+1) &
+                            +    betaxz*dtsdx * (Ez(j+1,k  ,l+1) - Ez(j  ,k  ,l+1) &
                                               +  Ez(j+1,k  ,l-1) - Ez(j  ,k  ,l-1)) &
                             -    alphaz*dtsdz * (Ex(j  ,k  ,l+1) - Ex(j  ,k  ,l  )) &
-                            -     betaz*dtsdz * (Ex(j+1,k  ,l+1) - Ex(j+1,k  ,l  ) &
+                            -    betazx*dtsdz * (Ex(j+1,k  ,l+1) - Ex(j+1,k  ,l  ) &
                                               +  Ex(j-1,k  ,l+1) - Ex(j-1,k  ,l  )) 
     end do
   end do
@@ -1570,7 +1570,7 @@ else
   do l = 0, nz
     do j = 0, nx-1
       Bz(j,k,l) = Bz(j,k,l) -    alphax*dtsdx * (Ey(j+1,k  ,l  ) - Ey(j  ,k  ,l  )) &
-                            -     betax*dtsdx * (Ey(j+1,k  ,l+1) - Ey(j  ,k  ,l+1) &
+                            -    betaxz*dtsdx * (Ey(j+1,k  ,l+1) - Ey(j  ,k  ,l+1) &
                                               +  Ey(j+1,k  ,l-1) - Ey(j  ,k  ,l-1)) 
     end do
   end do
@@ -1827,27 +1827,27 @@ if (.not.l_2dxz) then
    do k = 0, ny
     do j = 0, nx
       F(j,k,l) = F(j,k,l) + alphax*dtsdx * (Ex(j  ,k  ,l  ) - Ex(j-1,k  ,l  )) &
-                          +  betax*dtsdx * (Ex(j  ,k+1,l  ) - Ex(j-1,k+1,l  ) &
-                                         +  Ex(j  ,k-1,l  ) - Ex(j-1,k-1,l  ) &
-                                         +  Ex(j  ,k  ,l+1) - Ex(j-1,k  ,l+1) &
+                          + betaxy*dtsdx * (Ex(j  ,k+1,l  ) - Ex(j-1,k+1,l  ) &
+                                         +  Ex(j  ,k-1,l  ) - Ex(j-1,k-1,l  )) &
+                          + betaxz*dtsdx * (Ex(j  ,k  ,l+1) - Ex(j-1,k  ,l+1) &
                                          +  Ex(j  ,k  ,l-1) - Ex(j-1,k  ,l-1)) &
                           + gammax*dtsdx * (Ex(j  ,k+1,l+1) - Ex(j-1,k+1,l+1) &
                                          +  Ex(j  ,k-1,l+1) - Ex(j-1,k-1,l+1) &
                                          +  Ex(j  ,k+1,l-1) - Ex(j-1,k+1,l-1) &
                                          +  Ex(j  ,k-1,l-1) - Ex(j-1,k-1,l-1)) &
                           + alphay*dtsdy * (Ey(j  ,k  ,l  ) - Ey(j  ,k-1,l  )) &
-                          +  betay*dtsdy * (Ey(j+1,k  ,l  ) - Ey(j+1,k-1,l  ) &
-                                         +  Ey(j-1,k  ,l  ) - Ey(j-1,k-1,l  ) &
-                                         +  Ey(j  ,k  ,l+1) - Ey(j  ,k-1,l+1) &
+                          + betayx*dtsdy * (Ey(j+1,k  ,l  ) - Ey(j+1,k-1,l  ) &
+                                         +  Ey(j-1,k  ,l  ) - Ey(j-1,k-1,l  )) &
+                          + betayz*dtsdy * (Ey(j  ,k  ,l+1) - Ey(j  ,k-1,l+1) &
                                          +  Ey(j  ,k  ,l-1) - Ey(j  ,k-1,l-1)) &
                           + gammay*dtsdy * (Ey(j+1,k  ,l+1) - Ey(j+1,k-1,l+1) &
                                          +  Ey(j-1,k  ,l+1) - Ey(j-1,k-1,l+1) &
                                          +  Ey(j+1,k  ,l-1) - Ey(j+1,k-1,l-1) &
                                          +  Ey(j-1,k  ,l-1) - Ey(j-1,k-1,l-1)) &
                           + alphaz*dtsdz * (Ez(j  ,k  ,l  ) - Ez(j  ,k  ,l-1)) &
-                          +  betaz*dtsdz * (Ez(j+1,k  ,l  ) - Ez(j+1,k  ,l-1) &
-                                         +  Ez(j-1,k  ,l  ) - Ez(j-1,k  ,l-1) &
-                                         +  Ez(j  ,k+1,l  ) - Ez(j  ,k+1,l-1) &
+                          + betazx*dtsdz * (Ez(j+1,k  ,l  ) - Ez(j+1,k  ,l-1) &
+                                         +  Ez(j-1,k  ,l  ) - Ez(j-1,k  ,l-1)) &
+                          + betazy*dtsdz * (Ez(j  ,k+1,l  ) - Ez(j  ,k+1,l-1) &
                                          +  Ez(j  ,k-1,l  ) - Ez(j  ,k-1,l-1)) &
                           + gammaz*dtsdz * (Ez(j+1,k+1,l  ) - Ez(j+1,k+1,l-1) &
                                          +  Ez(j-1,k+1,l  ) - Ez(j-1,k+1,l-1) &
@@ -1855,11 +1855,14 @@ if (.not.l_2dxz) then
                                          +  Ez(j-1,k-1,l  ) - Ez(j-1,k-1,l-1)) &
 
                           - dtsepsi/3. * ( (alphax+alphay+alphaz)* Rho(j,k,l) &
-                                        +   betax*(Rho(j  ,k+1,l  )+Rho(j  ,k-1,l  )+Rho(j  ,k  ,l+1)+Rho(j  ,k  ,l-1)) &
+                                        +  betaxy*(Rho(j  ,k+1,l  )+Rho(j  ,k-1,l  )) &
+                                        +  betaxz*(Rho(j  ,k  ,l+1)+Rho(j  ,k  ,l-1)) &
                                         +  gammax*(Rho(j  ,k+1,l+1)+Rho(j  ,k-1,l+1)+Rho(j  ,k+1,l-1)+Rho(j  ,k-1,l-1)) &
-                                        +   betay*(Rho(j+1,k  ,l  )+Rho(j-1,k  ,l  )+Rho(j  ,k  ,l+1)+Rho(j  ,k  ,l-1)) &
+                                        +  betayx*(Rho(j+1,k  ,l  )+Rho(j-1,k  ,l  )) &
+                                        +  betayz*(Rho(j  ,k  ,l+1)+Rho(j  ,k  ,l-1)) &
                                         +  gammay*(Rho(j+1,k  ,l+1)+Rho(j-1,k  ,l+1)+Rho(j+1,k  ,l-1)+Rho(j-1,k  ,l-1)) &
-                                        +   betaz*(Rho(j+1,k  ,l  )+Rho(j-1,k  ,l  )+Rho(j  ,k+1,l  )+Rho(j  ,k-1,l  )) &
+                                        +  betazx*(Rho(j+1,k  ,l  )+Rho(j-1,k  ,l  )) &
+                                        +  betazy*(Rho(j  ,k+1,l  )+Rho(j  ,k-1,l  )) &
                                         +  gammaz*(Rho(j+1,k+1,l  )+Rho(j-1,k+1,l  )+Rho(j+1,k-1,l  )+Rho(j-1,k-1,l  )) )
     end do
    end do
@@ -1872,14 +1875,14 @@ else
    do k = 0, ny
     do j = 0, nx
       F(j,k,l) = F(j,k,l) + alphax*dtsdx * (Ex(j  ,k  ,l  ) - Ex(j-1,k  ,l  )) &
-                          +      betax*dtsdx * (Ex(j  ,k  ,l+1) - Ex(j-1,k  ,l+1) &
+                          +      betaxz*dtsdx * (Ex(j  ,k  ,l+1) - Ex(j-1,k  ,l+1) &
                                          +  Ex(j  ,k  ,l-1) - Ex(j-1,k  ,l-1)) &
                           + alphaz*dtsdz * (Ez(j  ,k  ,l  ) - Ez(j  ,k  ,l-1)) &
-                          +      betaz*dtsdz * (Ez(j+1,k  ,l  ) - Ez(j+1,k  ,l-1) &
+                          +      betazx*dtsdz * (Ez(j+1,k  ,l  ) - Ez(j+1,k  ,l-1) &
                                          +  Ez(j-1,k  ,l  ) - Ez(j-1,k  ,l-1)) &
                           - dtsepsi/2. * ( (alphax+alphaz)* Rho(j,k,l) &
-                                        +       betax*(Rho(j  ,k  ,l+1)+Rho(j  ,k  ,l-1)) &
-                                        +       betaz*(Rho(j+1,k  ,l  )+Rho(j-1,k  ,l  )) )
+                                        +       betaxz*(Rho(j  ,k  ,l+1)+Rho(j  ,k  ,l-1)) &
+                                        +       betazx*(Rho(j+1,k  ,l  )+Rho(j-1,k  ,l  )) )
     end do
    end do
   end do
@@ -2062,9 +2065,9 @@ if (.not.l_2dxz) then
    do k = 0, ny
     do j = 0, nx-1
       Ex(j,k,l) = Ex(j,k,l) + alphax*dtsdx * (F(j+1,k  ,l  ) - F(j  ,k  ,l  )) &
-                            +  betax*dtsdx * (F(j+1,k+1,l  ) - F(j  ,k+1,l  ) &
-                                           +  F(j+1,k-1,l  ) - F(j  ,k-1,l  ) &
-                                           +  F(j+1,k  ,l+1) - F(j  ,k  ,l+1) &
+                            + betaxy*dtsdx * (F(j+1,k+1,l  ) - F(j  ,k+1,l  ) &
+                                           +  F(j+1,k-1,l  ) - F(j  ,k-1,l  )) &
+                            + betaxz*dtsdx * (F(j+1,k  ,l+1) - F(j  ,k  ,l+1) &
                                            +  F(j+1,k  ,l-1) - F(j  ,k  ,l-1)) &
                             + gammax*dtsdx * (F(j+1,k+1,l+1) - F(j  ,k+1,l+1) &
                                            +  F(j+1,k-1,l+1) - F(j  ,k-1,l+1) &
@@ -2079,9 +2082,9 @@ if (.not.l_2dxz) then
    do k = 0, ny-1
     do j = 0, nx
       Ey(j,k,l) = Ey(j,k,l) + alphay*dtsdy * (F(j  ,k+1,l  ) - F(j  ,k  ,l  )) &
-                            +  betay*dtsdy * (F(j+1,k+1,l  ) - F(j+1,k  ,l  ) &
-                                           +  F(j-1,k+1,l  ) - F(j-1,k  ,l  ) &
-                                           +  F(j  ,k+1,l+1) - F(j  ,k  ,l+1) &
+                            + betayx*dtsdy * (F(j+1,k+1,l  ) - F(j+1,k  ,l  ) &
+                                           +  F(j-1,k+1,l  ) - F(j-1,k  ,l  )) &
+                            + betayz*dtsdy * (F(j  ,k+1,l+1) - F(j  ,k  ,l+1) &
                                            +  F(j  ,k+1,l-1) - F(j  ,k  ,l-1)) &
                             + gammay*dtsdy * (F(j+1,k+1,l+1) - F(j+1,k  ,l+1) &
                                            +  F(j-1,k+1,l+1) - F(j-1,k  ,l+1) &
@@ -2096,9 +2099,9 @@ if (.not.l_2dxz) then
    do k = 0, ny
     do j = 0, nx
       Ez(j,k,l) = Ez(j,k,l) + alphaz*dtsdz * (F(j  ,k  ,l+1) - F(j  ,k  ,l  )) &
-                            +  betaz*dtsdz * (F(j+1,k  ,l+1) - F(j+1,k  ,l  ) &
-                                           +  F(j-1,k  ,l+1) - F(j-1,k  ,l  ) &
-                                           +  F(j  ,k+1,l+1) - F(j  ,k+1,l  ) &
+                            + betazx*dtsdz * (F(j+1,k  ,l+1) - F(j+1,k  ,l  ) &
+                                           +  F(j-1,k  ,l+1) - F(j-1,k  ,l  )) &
+                            + betazy*dtsdz * (F(j  ,k+1,l+1) - F(j  ,k+1,l  ) &
                                            +  F(j  ,k-1,l+1) - F(j  ,k-1,l  )) &
                             + gammaz*dtsdz * (F(j+1,k+1,l+1) - F(j+1,k+1,l  ) &
                                            +  F(j-1,k+1,l+1) - F(j-1,k+1,l  ) &
@@ -2115,7 +2118,7 @@ else
   do l = 0, nz
     do j = 0, nx-1
       Ex(j,k,l) = Ex(j,k,l) + alphax*dtsdx * (F(j+1,k  ,l  ) - F(j  ,k  ,l  )) &
-                            +  betax*dtsdx * (F(j+1,k  ,l+1) - F(j  ,k  ,l+1) &
+                            + betaxz*dtsdx * (F(j+1,k  ,l+1) - F(j  ,k  ,l+1) &
                                            +  F(j+1,k  ,l-1) - F(j  ,k  ,l-1))  
     end do
   end do
@@ -2124,7 +2127,7 @@ else
   do l = 0, nz-1
     do j = 0, nx
       Ez(j,k,l) = Ez(j,k,l) + alphaz*dtsdz * (F(j  ,k  ,l+1) - F(j  ,k  ,l  )) &
-                            +  betaz*dtsdz * (F(j+1,k  ,l+1) - F(j+1,k  ,l  ) &
+                            + betazx*dtsdz * (F(j+1,k  ,l+1) - F(j+1,k  ,l  ) &
                                            +  F(j-1,k  ,l+1) - F(j-1,k  ,l  ))
     end do
   end do
@@ -2609,20 +2612,20 @@ if (.not.l_2dxz) then
   do l = 0, nz
    do k = 0, ny
     do j = 0, nx-1
-      exx(j,k,l) = agx(j)*exx(j,k,l) + bpgx(j)*alphax * ( fx(j+1,k  ,l  ) + fy(j+1,k  ,l  ) + fz(j+1,k  ,l  ) ) &
-                                     + bpgx(j)* betax * ( fx(j+1,k+1,l  ) + fy(j+1,k+1,l  ) + fz(j+1,k+1,l  )  &
-                                                      +   fx(j+1,k-1,l  ) + fy(j+1,k-1,l  ) + fz(j+1,k-1,l  )  &
-                                                      +   fx(j+1,k  ,l+1) + fy(j+1,k  ,l+1) + fz(j+1,k  ,l+1)  &
-                                                      +   fx(j+1,k  ,l-1) + fy(j+1,k  ,l-1) + fz(j+1,k  ,l-1))  &
+      exx(j,k,l) = agx(j)*exx(j,k,l) + bpgx(j)*alphax * ( fx(j+1,k  ,l  ) + fy(j+1,k  ,l  ) + fz(j+1,k  ,l  )) &
+                                     + bpgx(j)*betaxy * ( fx(j+1,k+1,l  ) + fy(j+1,k+1,l  ) + fz(j+1,k+1,l  )  &
+                                                      +   fx(j+1,k-1,l  ) + fy(j+1,k-1,l  ) + fz(j+1,k-1,l  )) &
+                                     + bpgx(j)*betaxz * ( fx(j+1,k  ,l+1) + fy(j+1,k  ,l+1) + fz(j+1,k  ,l+1)  &
+                                                      +   fx(j+1,k  ,l-1) + fy(j+1,k  ,l-1) + fz(j+1,k  ,l-1)) &
                                      + bpgx(j)*gammax * ( fx(j+1,k+1,l+1) + fy(j+1,k+1,l+1) + fz(j+1,k+1,l+1)  &
                                                       +   fx(j+1,k-1,l+1) + fy(j+1,k-1,l+1) + fz(j+1,k-1,l+1)  &
                                                       +   fx(j+1,k+1,l-1) + fy(j+1,k+1,l-1) + fz(j+1,k+1,l-1)  &
                                                       +   fx(j+1,k-1,l-1) + fy(j+1,k-1,l-1) + fz(j+1,k-1,l-1)) &
-                                     + bmgx(j)*alphax * ( fx(j  ,k  ,l  ) + fy(j  ,k  ,l  ) + fz(j  ,k  ,l  ) ) &
-                                     + bmgx(j)* betax * ( fx(j  ,k+1,l  ) + fy(j  ,k+1,l  ) + fz(j  ,k+1,l  )  &
-                                                      +   fx(j  ,k-1,l  ) + fy(j  ,k-1,l  ) + fz(j  ,k-1,l  )  &
-                                                      +   fx(j  ,k  ,l+1) + fy(j  ,k  ,l+1) + fz(j  ,k  ,l+1)  &
-                                                      +   fx(j  ,k  ,l-1) + fy(j  ,k  ,l-1) + fz(j  ,k  ,l-1))  &
+                                     + bmgx(j)*alphax * ( fx(j  ,k  ,l  ) + fy(j  ,k  ,l  ) + fz(j  ,k  ,l  )) &
+                                     + bmgx(j)*betaxy * ( fx(j  ,k+1,l  ) + fy(j  ,k+1,l  ) + fz(j  ,k+1,l  )  &
+                                                      +   fx(j  ,k-1,l  ) + fy(j  ,k-1,l  ) + fz(j  ,k-1,l  )) &
+                                     + bmgx(j)*betaxz * ( fx(j  ,k  ,l+1) + fy(j  ,k  ,l+1) + fz(j  ,k  ,l+1)  &
+                                                      +   fx(j  ,k  ,l-1) + fy(j  ,k  ,l-1) + fz(j  ,k  ,l-1)) &
                                      + bmgx(j)*gammax * ( fx(j  ,k+1,l+1) + fy(j  ,k+1,l+1) + fz(j  ,k+1,l+1)  &
                                                       +   fx(j  ,k-1,l+1) + fy(j  ,k-1,l+1) + fz(j  ,k-1,l+1)  &
                                                       +   fx(j  ,k+1,l-1) + fy(j  ,k+1,l-1) + fz(j  ,k+1,l-1)  &
@@ -2634,23 +2637,23 @@ if (.not.l_2dxz) then
   do l = 0, nz
    do k = 0, ny-1
     do j = 0, nx
-      eyy(j,k,l) = agy(k)*eyy(j,k,l) + bpgy(k)*alphay * ( fx(j  ,k+1,l  ) + fy(j  ,k+1,l  ) + fz(j  ,k+1,l  ) ) &
-                                     + bpgy(k)* betay * ( fx(j+1,k+1,l  ) + fy(j+1,k+1,l  ) + fz(j+1,k+1,l  ) &
-                                                      +   fx(j-1,k+1,l  ) + fy(j-1,k+1,l  ) + fz(j-1,k+1,l  ) &
-                                                      +   fx(j  ,k+1,l+1) + fy(j  ,k+1,l+1) + fz(j  ,k+1,l+1) &
+      eyy(j,k,l) = agy(k)*eyy(j,k,l) + bpgy(k)*alphay * ( fx(j  ,k+1,l  ) + fy(j  ,k+1,l  ) + fz(j  ,k+1,l  )) &
+                                     + bpgy(k)*betayx * ( fx(j+1,k+1,l  ) + fy(j+1,k+1,l  ) + fz(j+1,k+1,l  )  &
+                                                      +   fx(j-1,k+1,l  ) + fy(j-1,k+1,l  ) + fz(j-1,k+1,l  )) &
+                                     + bpgy(k)*betayz * ( fx(j  ,k+1,l+1) + fy(j  ,k+1,l+1) + fz(j  ,k+1,l+1)  &
                                                       +   fx(j  ,k+1,l-1) + fy(j  ,k+1,l-1) + fz(j  ,k+1,l-1)) &
-                                     + bpgy(k)*gammay * ( fx(j+1,k+1,l+1) + fy(j+1,k+1,l+1) + fz(j+1,k+1,l+1) &
-                                                      +   fx(j-1,k+1,l+1) + fy(j-1,k+1,l+1) + fz(j-1,k+1,l+1) &
-                                                      +   fx(j+1,k+1,l-1) + fy(j+1,k+1,l-1) + fz(j+1,k+1,l-1) &
+                                     + bpgy(k)*gammay * ( fx(j+1,k+1,l+1) + fy(j+1,k+1,l+1) + fz(j+1,k+1,l+1)  &
+                                                      +   fx(j-1,k+1,l+1) + fy(j-1,k+1,l+1) + fz(j-1,k+1,l+1)  &
+                                                      +   fx(j+1,k+1,l-1) + fy(j+1,k+1,l-1) + fz(j+1,k+1,l-1)  &
                                                       +   fx(j-1,k+1,l-1) + fy(j-1,k+1,l-1) + fz(j-1,k+1,l-1)) &
-                                     + bmgy(k)*alphay * ( fx(j  ,k  ,l  ) + fy(j  ,k  ,l  ) + fz(j  ,k  ,l  ) ) &
-                                     + bmgy(k)* betay * ( fx(j+1,k  ,l  ) + fy(j+1,k  ,l  ) + fz(j+1,k  ,l  ) &
-                                                      +   fx(j-1,k  ,l  ) + fy(j-1,k  ,l  ) + fz(j-1,k  ,l  ) &
-                                                      +   fx(j  ,k  ,l+1) + fy(j  ,k  ,l+1) + fz(j  ,k  ,l+1) &
+                                     + bmgy(k)*alphay * ( fx(j  ,k  ,l  ) + fy(j  ,k  ,l  ) + fz(j  ,k  ,l  )) &
+                                     + bmgy(k)*betayx * ( fx(j+1,k  ,l  ) + fy(j+1,k  ,l  ) + fz(j+1,k  ,l  )  &
+                                                      +   fx(j-1,k  ,l  ) + fy(j-1,k  ,l  ) + fz(j-1,k  ,l  )) &
+                                     + bmgy(k)*betayz * ( fx(j  ,k  ,l+1) + fy(j  ,k  ,l+1) + fz(j  ,k  ,l+1)  &
                                                       +   fx(j  ,k  ,l-1) + fy(j  ,k  ,l-1) + fz(j  ,k  ,l-1)) &
-                                     + bmgy(k)*gammay * ( fx(j+1,k  ,l+1) + fy(j+1,k  ,l+1) + fz(j+1,k  ,l+1) &
-                                                      +   fx(j-1,k  ,l+1) + fy(j-1,k  ,l+1) + fz(j-1,k  ,l+1) &
-                                                      +   fx(j+1,k  ,l-1) + fy(j+1,k  ,l-1) + fz(j+1,k  ,l-1) &
+                                     + bmgy(k)*gammay * ( fx(j+1,k  ,l+1) + fy(j+1,k  ,l+1) + fz(j+1,k  ,l+1)  &
+                                                      +   fx(j-1,k  ,l+1) + fy(j-1,k  ,l+1) + fz(j-1,k  ,l+1)  &
+                                                      +   fx(j+1,k  ,l-1) + fy(j+1,k  ,l-1) + fz(j+1,k  ,l-1)  &
                                                       +   fx(j-1,k  ,l-1) + fy(j-1,k  ,l-1) + fz(j-1,k  ,l-1)) 
     end do
    end do
@@ -2659,20 +2662,20 @@ if (.not.l_2dxz) then
   do l = 0, nz-1
    do k = 0, ny
     do j = 0, nx
-      ezz(j,k,l) = agz(l)*ezz(j,k,l) + bpgz(l)*alphaz * ( fx(j  ,k  ,l+1) + fy(j  ,k  ,l+1) + fz(j  ,k  ,l+1) ) &
-                                     + bpgz(l)* betaz * ( fx(j+1,k  ,l+1) + fy(j+1,k  ,l+1) + fz(j+1,k  ,l+1)  &
-                                                      +   fx(j-1,k  ,l+1) + fy(j-1,k  ,l+1) + fz(j-1,k  ,l+1)  &
-                                                      +   fx(j  ,k+1,l+1) + fy(j  ,k+1,l+1) + fz(j  ,k+1,l+1)  &
-                                                      +   fx(j  ,k-1,l+1) + fy(j  ,k-1,l+1) + fz(j  ,k-1,l+1))  &
+      ezz(j,k,l) = agz(l)*ezz(j,k,l) + bpgz(l)*alphaz * ( fx(j  ,k  ,l+1) + fy(j  ,k  ,l+1) + fz(j  ,k  ,l+1)) &
+                                     + bpgz(l)*betazx * ( fx(j+1,k  ,l+1) + fy(j+1,k  ,l+1) + fz(j+1,k  ,l+1)  &
+                                                      +   fx(j-1,k  ,l+1) + fy(j-1,k  ,l+1) + fz(j-1,k  ,l+1)) &
+                                     + bpgz(l)*betazy * ( fx(j  ,k+1,l+1) + fy(j  ,k+1,l+1) + fz(j  ,k+1,l+1)  &
+                                                      +   fx(j  ,k-1,l+1) + fy(j  ,k-1,l+1) + fz(j  ,k-1,l+1)) &
                                      + bpgz(l)*gammaz * ( fx(j+1,k+1,l+1) + fy(j+1,k+1,l+1) + fz(j+1,k+1,l+1)  &
                                                       +   fx(j-1,k+1,l+1) + fy(j-1,k+1,l+1) + fz(j-1,k+1,l+1)  &
                                                       +   fx(j+1,k-1,l+1) + fy(j+1,k-1,l+1) + fz(j+1,k-1,l+1)  &
-                                                      +   fx(j-1,k-1,l+1) + fy(j-1,k-1,l+1) + fz(j-1,k-1,l+1))  &
-                                     + bmgz(l)*alphaz * ( fx(j  ,k  ,l  ) + fy(j  ,k  ,l  ) + fz(j  ,k  ,l  ) ) &
-                                     + bmgz(l)* betaz * ( fx(j+1,k  ,l  ) + fy(j+1,k  ,l  ) + fz(j+1,k  ,l  )  &
-                                                      +   fx(j-1,k  ,l  ) + fy(j-1,k  ,l  ) + fz(j-1,k  ,l  )  &
-                                                      +   fx(j  ,k+1,l  ) + fy(j  ,k+1,l  ) + fz(j  ,k+1,l  )  &
-                                                      +   fx(j  ,k-1,l  ) + fy(j  ,k-1,l  ) + fz(j  ,k-1,l  ))  &
+                                                      +   fx(j-1,k-1,l+1) + fy(j-1,k-1,l+1) + fz(j-1,k-1,l+1)) &
+                                     + bmgz(l)*alphaz * ( fx(j  ,k  ,l  ) + fy(j  ,k  ,l  ) + fz(j  ,k  ,l  )) &
+                                     + bmgz(l)*betazx * ( fx(j+1,k  ,l  ) + fy(j+1,k  ,l  ) + fz(j+1,k  ,l  )  &
+                                                      +   fx(j-1,k  ,l  ) + fy(j-1,k  ,l  ) + fz(j-1,k  ,l  )) &
+                                     + bmgz(l)*betazy * ( fx(j  ,k+1,l  ) + fy(j  ,k+1,l  ) + fz(j  ,k+1,l  )  &
+                                                      +   fx(j  ,k-1,l  ) + fy(j  ,k-1,l  ) + fz(j  ,k-1,l  )) &
                                      + bmgz(l)*gammaz * ( fx(j+1,k+1,l  ) + fy(j+1,k+1,l  ) + fz(j+1,k+1,l  )  &
                                                       +   fx(j-1,k+1,l  ) + fy(j-1,k+1,l  ) + fz(j-1,k+1,l  )  &
                                                       +   fx(j+1,k-1,l  ) + fy(j+1,k-1,l  ) + fz(j+1,k-1,l  )  &
@@ -2687,10 +2690,10 @@ else
   do l = 0, nz
     do j = 0, nx-1
       exx(j,k,l) = agx(j)*exx(j,k,l) + bpgx(j)*    alphax * ( fx(j+1,k  ,l  ) + fz(j+1,k  ,l  ) ) &
-                                     + bpgx(j)*     betax * ( fx(j+1,k  ,l+1) + fz(j+1,k  ,l+1)  &
+                                     + bpgx(j)*    betaxz * ( fx(j+1,k  ,l+1) + fz(j+1,k  ,l+1)   &
                                                           +   fx(j+1,k  ,l-1) + fz(j+1,k  ,l-1))  &
                                      + bmgx(j)*    alphax * ( fx(j  ,k  ,l  ) + fz(j  ,k  ,l  ) ) &
-                                     + bmgx(j)*     betax * ( fx(j  ,k  ,l+1) + fz(j  ,k  ,l+1)  &
+                                     + bmgx(j)*    betaxz * ( fx(j  ,k  ,l+1) + fz(j  ,k  ,l+1)   &
                                                           +   fx(j  ,k  ,l-1) + fz(j  ,k  ,l-1))  
     end do
   end do
@@ -2698,10 +2701,10 @@ else
   do l = 0, nz-1
     do j = 0, nx
       ezz(j,k,l) = agz(l)*ezz(j,k,l) + bpgz(l)*    alphaz * ( fx(j  ,k  ,l+1) + fz(j  ,k  ,l+1) ) &
-                                     + bpgz(l)*     betaz * ( fx(j+1,k  ,l+1) + fz(j+1,k  ,l+1)  &
+                                     + bpgz(l)*    betazx * ( fx(j+1,k  ,l+1) + fz(j+1,k  ,l+1)   &
                                                           +   fx(j-1,k  ,l+1) + fz(j-1,k  ,l+1))  &
                                      + bmgz(l)*    alphaz * ( fx(j  ,k  ,l  ) + fz(j  ,k  ,l  ) ) &
-                                     + bmgz(l)*     betaz * ( fx(j+1,k  ,l  ) + fz(j+1,k  ,l  )  &
+                                     + bmgz(l)*    betazx * ( fx(j+1,k  ,l  ) + fz(j+1,k  ,l  )   &
                                                           +   fx(j-1,k  ,l  ) + fz(j-1,k  ,l  ))  
     end do
   end do
@@ -2897,18 +2900,18 @@ if (.not.l_2dxz) then
    do k = 0, ny-1
     do j = 0, nx
       bxy(j,k,l) = agy(k)*bxy(j,k,l) - bpgy(k)*alphay * (ezx(j  ,k+1,l  )+ezy(j  ,k+1,l  )+ezz(j  ,k+1,l  )) &
-                                     - bpgy(k)* betay * (ezx(j+1,k+1,l  )+ezy(j+1,k+1,l  )+ezz(j+1,k+1,l  ) &
-                                                      +  ezx(j-1,k+1,l  )+ezy(j-1,k+1,l  )+ezz(j-1,k+1,l  ) &
-                                                      +  ezx(j  ,k+1,l+1)+ezy(j  ,k+1,l+1)+ezz(j  ,k+1,l+1) &
+                                     - bpgy(k)*betayx * (ezx(j+1,k+1,l  )+ezy(j+1,k+1,l  )+ezz(j+1,k+1,l  ) &
+                                                      +  ezx(j-1,k+1,l  )+ezy(j-1,k+1,l  )+ezz(j-1,k+1,l  )) &
+                                     - bpgy(k)*betayz * (ezx(j  ,k+1,l+1)+ezy(j  ,k+1,l+1)+ezz(j  ,k+1,l+1) &
                                                       +  ezx(j  ,k+1,l-1)+ezy(j  ,k+1,l-1)+ezz(j  ,k+1,l-1)) &
                                      - bpgy(k)*gammay * (ezx(j+1,k+1,l+1)+ezy(j+1,k+1,l+1)+ezz(j+1,k+1,l+1) &
                                                       +  ezx(j-1,k+1,l+1)+ezy(j-1,k+1,l+1)+ezz(j-1,k+1,l+1) &
                                                       +  ezx(j+1,k+1,l-1)+ezy(j+1,k+1,l-1)+ezz(j+1,k+1,l-1) &
                                                       +  ezx(j-1,k+1,l-1)+ezy(j-1,k+1,l-1)+ezz(j-1,k+1,l-1)) &
                                      - bmgy(k)*alphay * (ezx(j  ,k  ,l  )+ezy(j  ,k  ,l  )+ezz(j  ,k  ,l  )) &
-                                     - bmgy(k)* betay * (ezx(j+1,k  ,l  )+ezy(j+1,k  ,l  )+ezz(j+1,k  ,l  ) &
-                                                      +  ezx(j-1,k  ,l  )+ezy(j-1,k  ,l  )+ezz(j-1,k  ,l  ) &
-                                                      +  ezx(j  ,k  ,l+1)+ezy(j  ,k  ,l+1)+ezz(j  ,k  ,l+1) &
+                                     - bmgy(k)*betayx * (ezx(j+1,k  ,l  )+ezy(j+1,k  ,l  )+ezz(j+1,k  ,l  ) &
+                                                      +  ezx(j-1,k  ,l  )+ezy(j-1,k  ,l  )+ezz(j-1,k  ,l  )) &
+                                     - bmgy(k)*betayz * (ezx(j  ,k  ,l+1)+ezy(j  ,k  ,l+1)+ezz(j  ,k  ,l+1) &
                                                       +  ezx(j  ,k  ,l-1)+ezy(j  ,k  ,l-1)+ezz(j  ,k  ,l-1)) &
                                      - bmgy(k)*gammay * (ezx(j+1,k  ,l+1)+ezy(j+1,k  ,l+1)+ezz(j+1,k  ,l+1) &
                                                       +  ezx(j-1,k  ,l+1)+ezy(j-1,k  ,l+1)+ezz(j-1,k  ,l+1) &
@@ -2922,18 +2925,18 @@ if (.not.l_2dxz) then
    do k = 0, ny-1
     do j = 0, nx
       bxz(j,k,l) = agz(l)*bxz(j,k,l) + bpgz(l)*alphaz * (eyx(j  ,k  ,l+1)+eyy(j  ,k  ,l+1)+eyz(j  ,k  ,l+1)) &
-                                     + bpgz(l)* betaz * (eyx(j+1,k  ,l+1)+eyy(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
-                                                      +  eyx(j-1,k  ,l+1)+eyy(j-1,k  ,l+1)+eyz(j-1,k  ,l+1) &
-                                                      +  eyx(j  ,k+1,l+1)+eyy(j  ,k+1,l+1)+eyz(j  ,k+1,l+1) &
+                                     + bpgz(l)*betazx * (eyx(j+1,k  ,l+1)+eyy(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
+                                                      +  eyx(j-1,k  ,l+1)+eyy(j-1,k  ,l+1)+eyz(j-1,k  ,l+1)) &
+                                     + bpgz(l)*betazy * (eyx(j  ,k+1,l+1)+eyy(j  ,k+1,l+1)+eyz(j  ,k+1,l+1) &
                                                       +  eyx(j  ,k-1,l+1)+eyy(j  ,k-1,l+1)+eyz(j  ,k-1,l+1)) &
                                      + bpgz(l)*gammaz * (eyx(j+1,k+1,l+1)+eyy(j+1,k+1,l+1)+eyz(j+1,k+1,l+1) &
                                                       +  eyx(j-1,k+1,l+1)+eyy(j-1,k+1,l+1)+eyz(j-1,k+1,l+1) &
                                                       +  eyx(j+1,k-1,l+1)+eyy(j+1,k-1,l+1)+eyz(j+1,k-1,l+1) &
                                                       +  eyx(j-1,k-1,l+1)+eyy(j-1,k-1,l+1)+eyz(j-1,k-1,l+1)) &
                                      + bmgz(l)*alphaz * (eyx(j  ,k  ,l  )+eyy(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
-                                     + bmgz(l)* betaz * (eyx(j+1,k  ,l  )+eyy(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
-                                                      +  eyx(j-1,k  ,l  )+eyy(j-1,k  ,l  )+eyz(j-1,k  ,l  ) &
-                                                      +  eyx(j  ,k+1,l  )+eyy(j  ,k+1,l  )+eyz(j  ,k+1,l  ) &
+                                     + bmgz(l)*betazx * (eyx(j+1,k  ,l  )+eyy(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
+                                                      +  eyx(j-1,k  ,l  )+eyy(j-1,k  ,l  )+eyz(j-1,k  ,l  )) &
+                                     + bmgz(l)*betazy * (eyx(j  ,k+1,l  )+eyy(j  ,k+1,l  )+eyz(j  ,k+1,l  ) &
                                                       +  eyx(j  ,k-1,l  )+eyy(j  ,k-1,l  )+eyz(j  ,k-1,l  )) &
                                      + bmgz(l)*gammaz * (eyx(j+1,k+1,l  )+eyy(j+1,k+1,l  )+eyz(j+1,k+1,l  ) &
                                                       +  eyx(j-1,k+1,l  )+eyy(j-1,k+1,l  )+eyz(j-1,k+1,l  ) &
@@ -2947,18 +2950,18 @@ if (.not.l_2dxz) then
    do k = 0, ny
     do j = 0, nx-1
       byx(j,k,l) = agx(j)*byx(j,k,l) + bpgx(j)*alphax * (ezx(j+1,k  ,l  )+ezy(j+1,k  ,l  )+ezz(j+1,k  ,l  )) &
-                                     + bpgx(j)* betax * (ezx(j+1,k+1,l  )+ezy(j+1,k+1,l  )+ezz(j+1,k+1,l  ) &
-                                                      +  ezx(j+1,k-1,l  )+ezy(j+1,k-1,l  )+ezz(j+1,k-1,l  ) &
-                                                      +  ezx(j+1,k  ,l+1)+ezy(j+1,k  ,l+1)+ezz(j+1,k  ,l+1) &
+                                     + bpgx(j)*betaxy * (ezx(j+1,k+1,l  )+ezy(j+1,k+1,l  )+ezz(j+1,k+1,l  ) &
+                                                      +  ezx(j+1,k-1,l  )+ezy(j+1,k-1,l  )+ezz(j+1,k-1,l  )) &
+                                     + bpgx(j)*betaxz * (ezx(j+1,k  ,l+1)+ezy(j+1,k  ,l+1)+ezz(j+1,k  ,l+1) &
                                                       +  ezx(j+1,k  ,l-1)+ezy(j+1,k  ,l-1)+ezz(j+1,k  ,l-1)) &
                                      + bpgx(j)*gammax * (ezx(j+1,k+1,l+1)+ezy(j+1,k+1,l+1)+ezz(j+1,k+1,l+1) &
                                                       +  ezx(j+1,k-1,l+1)+ezy(j+1,k-1,l+1)+ezz(j+1,k-1,l+1) &
                                                       +  ezx(j+1,k+1,l-1)+ezy(j+1,k+1,l-1)+ezz(j+1,k+1,l-1) &
                                                       +  ezx(j+1,k-1,l-1)+ezy(j+1,k-1,l-1)+ezz(j+1,k-1,l-1)) &
                                      + bmgx(j)*alphax * (ezx(j  ,k  ,l  )+ezy(j  ,k  ,l  )+ezz(j  ,k  ,l  )) &
-                                     + bmgx(j)* betax * (ezx(j  ,k+1,l  )+ezy(j  ,k+1,l  )+ezz(j  ,k+1,l  ) &
-                                                      +  ezx(j  ,k-1,l  )+ezy(j  ,k-1,l  )+ezz(j  ,k-1,l  ) &
-                                                      +  ezx(j  ,k  ,l+1)+ezy(j  ,k  ,l+1)+ezz(j  ,k  ,l+1) &
+                                     + bmgx(j)*betaxy * (ezx(j  ,k+1,l  )+ezy(j  ,k+1,l  )+ezz(j  ,k+1,l  ) &
+                                                      +  ezx(j  ,k-1,l  )+ezy(j  ,k-1,l  )+ezz(j  ,k-1,l  )) &
+                                     + bmgx(j)*betaxz * (ezx(j  ,k  ,l+1)+ezy(j  ,k  ,l+1)+ezz(j  ,k  ,l+1) &
                                                       +  ezx(j  ,k  ,l-1)+ezy(j  ,k  ,l-1)+ezz(j  ,k  ,l-1)) &
                                      + bmgx(j)*gammax * (ezx(j  ,k+1,l+1)+ezy(j  ,k+1,l+1)+ezz(j  ,k+1,l+1) &
                                                       +  ezx(j  ,k-1,l+1)+ezy(j  ,k-1,l+1)+ezz(j  ,k-1,l+1) &
@@ -2972,18 +2975,18 @@ if (.not.l_2dxz) then
    do k = 0, ny
     do j = 0, nx-1
       byz(j,k,l) = agz(l)*byz(j,k,l) - bpgz(l)*alphaz * (exx(j  ,k  ,l+1)+exy(j  ,k  ,l+1)+exz(j  ,k  ,l+1)) &
-                                     - bpgz(l)* betaz * (exx(j+1,k  ,l+1)+exy(j+1,k  ,l+1)+exz(j+1,k  ,l+1) &
-                                                      +  exx(j-1,k  ,l+1)+exy(j-1,k  ,l+1)+exz(j-1,k  ,l+1) &
-                                                      +  exx(j  ,k+1,l+1)+exy(j  ,k+1,l+1)+exz(j  ,k+1,l+1) &
+                                     - bpgz(l)*betazx * (exx(j+1,k  ,l+1)+exy(j+1,k  ,l+1)+exz(j+1,k  ,l+1) &
+                                                      +  exx(j-1,k  ,l+1)+exy(j-1,k  ,l+1)+exz(j-1,k  ,l+1)) &
+                                     - bpgz(l)*betazy * (exx(j  ,k+1,l+1)+exy(j  ,k+1,l+1)+exz(j  ,k+1,l+1) &
                                                       +  exx(j  ,k-1,l+1)+exy(j  ,k-1,l+1)+exz(j  ,k-1,l+1)) &
                                      - bpgz(l)*gammaz * (exx(j+1,k+1,l+1)+exy(j+1,k+1,l+1)+exz(j+1,k+1,l+1) &
                                                       +  exx(j-1,k+1,l+1)+exy(j-1,k+1,l+1)+exz(j-1,k+1,l+1) &
                                                       +  exx(j+1,k-1,l+1)+exy(j+1,k-1,l+1)+exz(j+1,k-1,l+1) &
                                                       +  exx(j-1,k-1,l+1)+exy(j-1,k-1,l+1)+exz(j-1,k-1,l+1)) &
                                      - bmgz(l)*alphaz * (exx(j  ,k  ,l  )+exy(j  ,k  ,l  )+exz(j  ,k  ,l  )) &
-                                     - bmgz(l)* betaz * (exx(j+1,k  ,l  )+exy(j+1,k  ,l  )+exz(j+1,k  ,l  ) &
-                                                      +  exx(j-1,k  ,l  )+exy(j-1,k  ,l  )+exz(j-1,k  ,l  ) &
-                                                      +  exx(j  ,k+1,l  )+exy(j  ,k+1,l  )+exz(j  ,k+1,l  ) &
+                                     - bmgz(l)*betazx * (exx(j+1,k  ,l  )+exy(j+1,k  ,l  )+exz(j+1,k  ,l  ) &
+                                                      +  exx(j-1,k  ,l  )+exy(j-1,k  ,l  )+exz(j-1,k  ,l  )) &
+                                     - bmgz(l)*betazy * (exx(j  ,k+1,l  )+exy(j  ,k+1,l  )+exz(j  ,k+1,l  ) &
                                                       +  exx(j  ,k-1,l  )+exy(j  ,k-1,l  )+exz(j  ,k-1,l  )) &
                                      - bmgz(l)*gammaz * (exx(j+1,k+1,l  )+exy(j+1,k+1,l  )+exz(j+1,k+1,l  ) &
                                                       +  exx(j-1,k+1,l  )+exy(j-1,k+1,l  )+exz(j-1,k+1,l  ) &
@@ -2998,18 +3001,18 @@ if (.not.l_2dxz) then
    do k = 0, ny-1
     do j = 0, nx-1
       bzx(j,k,l) = agx(j)*bzx(j,k,l) - bpgx(j)*alphax * (eyx(j+1,k  ,l  )+eyy(j+1,k  ,l  )+eyz(j+1,k  ,l  )) &
-                                     - bpgx(j)* betax * (eyx(j+1,k+1,l  )+eyy(j+1,k+1,l  )+eyz(j+1,k+1,l  ) &
-                                                      +  eyx(j+1,k-1,l  )+eyy(j+1,k-1,l  )+eyz(j+1,k-1,l  ) &
-                                                      +  eyx(j+1,k  ,l+1)+eyy(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
+                                     - bpgx(j)*betaxy * (eyx(j+1,k+1,l  )+eyy(j+1,k+1,l  )+eyz(j+1,k+1,l  ) &
+                                                      +  eyx(j+1,k-1,l  )+eyy(j+1,k-1,l  )+eyz(j+1,k-1,l  )) &
+                                     - bpgx(j)*betaxz * (eyx(j+1,k  ,l+1)+eyy(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
                                                       +  eyx(j+1,k  ,l-1)+eyy(j+1,k  ,l-1)+eyz(j+1,k  ,l-1)) &
                                      - bpgx(j)*gammax * (eyx(j+1,k+1,l+1)+eyy(j+1,k+1,l+1)+eyz(j+1,k+1,l+1) &
                                                       +  eyx(j+1,k-1,l+1)+eyy(j+1,k-1,l+1)+eyz(j+1,k-1,l+1) &
                                                       +  eyx(j+1,k+1,l-1)+eyy(j+1,k+1,l-1)+eyz(j+1,k+1,l-1) &
                                                       +  eyx(j+1,k-1,l-1)+eyy(j+1,k-1,l-1)+eyz(j+1,k-1,l-1)) &
                                      - bmgx(j)*alphax * (eyx(j  ,k  ,l  )+eyy(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
-                                     - bmgx(j)* betax * (eyx(j  ,k+1,l  )+eyy(j  ,k+1,l  )+eyz(j  ,k+1,l  ) &
-                                                      +  eyx(j  ,k-1,l  )+eyy(j  ,k-1,l  )+eyz(j  ,k-1,l  ) &
-                                                      +  eyx(j  ,k  ,l+1)+eyy(j  ,k  ,l+1)+eyz(j  ,k  ,l+1) &
+                                     - bmgx(j)*betaxy * (eyx(j  ,k+1,l  )+eyy(j  ,k+1,l  )+eyz(j  ,k+1,l  ) &
+                                                      +  eyx(j  ,k-1,l  )+eyy(j  ,k-1,l  )+eyz(j  ,k-1,l  )) &
+                                     - bmgx(j)*betaxz * (eyx(j  ,k  ,l+1)+eyy(j  ,k  ,l+1)+eyz(j  ,k  ,l+1) &
                                                       +  eyx(j  ,k  ,l-1)+eyy(j  ,k  ,l-1)+eyz(j  ,k  ,l-1)) &
                                      - bmgx(j)*gammax * (eyx(j  ,k+1,l+1)+eyy(j  ,k+1,l+1)+eyz(j  ,k+1,l+1) &
                                                       +  eyx(j  ,k-1,l+1)+eyy(j  ,k-1,l+1)+eyz(j  ,k-1,l+1) &
@@ -3023,18 +3026,18 @@ if (.not.l_2dxz) then
    do k = 0, ny-1
     do j = 0, nx-1
       bzy(j,k,l) = agy(k)*bzy(j,k,l) + bpgy(k)*alphay * (exx(j  ,k+1,l  )+exy(j  ,k+1,l  )+exz(j  ,k+1,l  )) &
-                                     + bpgy(k)* betay * (exx(j+1,k+1,l  )+exy(j+1,k+1,l  )+exz(j+1,k+1,l  ) &
-                                                      +  exx(j-1,k+1,l  )+exy(j-1,k+1,l  )+exz(j-1,k+1,l  ) &
-                                                      +  exx(j  ,k+1,l+1)+exy(j  ,k+1,l+1)+exz(j  ,k+1,l+1) &
+                                     + bpgy(k)*betayx * (exx(j+1,k+1,l  )+exy(j+1,k+1,l  )+exz(j+1,k+1,l  ) &
+                                                      +  exx(j-1,k+1,l  )+exy(j-1,k+1,l  )+exz(j-1,k+1,l  )) &
+                                     + bpgy(k)*betayz * (exx(j  ,k+1,l+1)+exy(j  ,k+1,l+1)+exz(j  ,k+1,l+1) &
                                                       +  exx(j  ,k+1,l-1)+exy(j  ,k+1,l-1)+exz(j  ,k+1,l-1)) &
                                      + bpgy(k)*gammay * (exx(j+1,k+1,l+1)+exy(j+1,k+1,l+1)+exz(j+1,k+1,l+1) &
                                                       +  exx(j-1,k+1,l+1)+exy(j-1,k+1,l+1)+exz(j-1,k+1,l+1) &
                                                       +  exx(j+1,k+1,l-1)+exy(j+1,k+1,l-1)+exz(j+1,k+1,l-1) &
                                                       +  exx(j-1,k+1,l-1)+exy(j-1,k+1,l-1)+exz(j-1,k+1,l-1)) &
                                      + bmgy(k)*alphay * (exx(j  ,k  ,l  )+exy(j  ,k  ,l  )+exz(j  ,k  ,l  )) &
-                                     + bmgy(k)* betay * (exx(j+1,k  ,l  )+exy(j+1,k  ,l  )+exz(j+1,k  ,l  ) &
-                                                      +  exx(j-1,k  ,l  )+exy(j-1,k  ,l  )+exz(j-1,k  ,l  ) &
-                                                      +  exx(j  ,k  ,l+1)+exy(j  ,k  ,l+1)+exz(j  ,k  ,l+1) &
+                                     + bmgy(k)*betayx * (exx(j+1,k  ,l  )+exy(j+1,k  ,l  )+exz(j+1,k  ,l  ) &
+                                                      +  exx(j-1,k  ,l  )+exy(j-1,k  ,l  )+exz(j-1,k  ,l  )) &
+                                     + bmgy(k)*betayz * (exx(j  ,k  ,l+1)+exy(j  ,k  ,l+1)+exz(j  ,k  ,l+1) &
                                                       +  exx(j  ,k  ,l-1)+exy(j  ,k  ,l-1)+exz(j  ,k  ,l-1)) &
                                      + bmgy(k)*gammay * (exx(j+1,k  ,l+1)+exy(j+1,k  ,l+1)+exz(j+1,k  ,l+1) &
                                                       +  exx(j-1,k  ,l+1)+exy(j-1,k  ,l+1)+exz(j-1,k  ,l+1) &
@@ -3053,10 +3056,10 @@ else
       b = 0.5*(bpgz(l)-bmgz(l))
       c = 0.5*(bpgz(l)+bmgz(l))
       bxz(j,k,l) = agz(l)*bxz(j,k,l) + b*    alphaz * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1)) &
-                                     + b*     betaz * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
+                                     + b*    betazx * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
                                                     +  eyx(j-1,k  ,l+1)+eyz(j-1,k  ,l+1)) &
                                      - b*    alphaz * (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
-                                     - b*     betaz * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
+                                     - b*    betazx * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
                                                     +  eyx(j-1,k  ,l  )+eyz(j-1,k  ,l  )) &
                                      + c* (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1)  &
                                      -    (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  ))) 
@@ -3068,10 +3071,10 @@ else
       b = 0.5*(bpgx(j)-bmgx(j))
       c = 0.5*(bpgx(j)+bmgx(j))
       byx(j,k,l) = agx(j)*byx(j,k,l) + b*    alphax * (ezx(j+1,k  ,l  )+ezz(j+1,k  ,l  )) &
-                                     + b*     betax * (ezx(j+1,k  ,l+1)+ezz(j+1,k  ,l+1) &
+                                     + b*    betaxz * (ezx(j+1,k  ,l+1)+ezz(j+1,k  ,l+1) &
                                                           +  ezx(j+1,k  ,l-1)+ezz(j+1,k  ,l-1)) &
                                      - b*    alphax * (ezx(j  ,k  ,l  )+ezz(j  ,k  ,l  )) &
-                                     - b*     betax * (ezx(j  ,k  ,l+1)+ezz(j  ,k  ,l+1) &
+                                     - b*    betaxz * (ezx(j  ,k  ,l+1)+ezz(j  ,k  ,l+1) &
                                                           +  ezx(j  ,k  ,l-1)+ezz(j  ,k  ,l-1)) &
                                      + c*(ezx(j+1,k  ,l  )+ezz(j+1,k  ,l  ) &
                                      -   (ezx(j  ,k  ,l  )+ezz(j  ,k  ,l  )))
@@ -3083,10 +3086,10 @@ else
       b = 0.5*(bpgz(l)-bmgz(l))
       c = 0.5*(bpgz(l)+bmgz(l))
       byz(j,k,l) = agz(l)*byz(j,k,l) - b*    alphaz * (exx(j  ,k  ,l+1)+exz(j  ,k  ,l+1)) &
-                                     - b*     betaz * (exx(j+1,k  ,l+1)+exz(j+1,k  ,l+1) &
+                                     - b*    betazx * (exx(j+1,k  ,l+1)+exz(j+1,k  ,l+1) &
                                                           +  exx(j-1,k  ,l+1)+exz(j-1,k  ,l+1)) &
                                      + b*    alphaz * (exx(j  ,k  ,l  )+exz(j  ,k  ,l  )) &
-                                     + b*     betaz * (exx(j+1,k  ,l  )+exz(j+1,k  ,l  ) &
+                                     + b*    betazx * (exx(j+1,k  ,l  )+exz(j+1,k  ,l  ) &
                                                           +  exx(j-1,k  ,l  )+exz(j-1,k  ,l  )) &
                                      - c*(exx(j  ,k  ,l+1)+exz(j  ,k  ,l+1) &
                                      -   (exx(j  ,k  ,l  )+exz(j  ,k  ,l  )))
@@ -3099,10 +3102,10 @@ else
       b = 0.5*(bpgx(j)-bmgx(j))
       c = 0.5*(bpgx(j)+bmgx(j))
       bzx(j,k,l) = agx(j)*bzx(j,k,l) - b*    alphax * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  )) &
-                                     - b*     betax * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
+                                     - b*    betaxz * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
                                                           +  eyx(j+1,k  ,l-1)+eyz(j+1,k  ,l-1)) &
                                      + b*    alphax * (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
-                                     + b*     betax * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1) &
+                                     + b*    betaxz * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1) &
                                                           +  eyx(j  ,k  ,l-1)+eyz(j  ,k  ,l-1)) &
                                      - c* (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
                                      -    (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )))
@@ -3117,10 +3120,10 @@ else
   do l = 0, nz-1
     do j = 0, nx
       bxz(j,k,l) = agz(l)*bxz(j,k,l) + bpgz(l)*    alphaz * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1)) &
-                                     + bpgz(l)*     betaz * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
+                                     + bpgz(l)*    betazx * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
                                                           +  eyx(j-1,k  ,l+1)+eyz(j-1,k  ,l+1)) &
                                      + bmgz(l)*    alphaz * (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
-                                     + bmgz(l)*     betaz * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
+                                     + bmgz(l)*    betazx * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  ) &
                                                           +  eyx(j-1,k  ,l  )+eyz(j-1,k  ,l  )) 
     end do
   end do
@@ -3128,10 +3131,10 @@ else
   do l = 0, nz-1
     do j = 0, nx-1
       byx(j,k,l) = agx(j)*byx(j,k,l) + bpgx(j)*    alphax * (ezx(j+1,k  ,l  )+ezz(j+1,k  ,l  )) &
-                                     + bpgx(j)*     betax * (ezx(j+1,k  ,l+1)+ezz(j+1,k  ,l+1) &
+                                     + bpgx(j)*    betaxz * (ezx(j+1,k  ,l+1)+ezz(j+1,k  ,l+1) &
                                                           +  ezx(j+1,k  ,l-1)+ezz(j+1,k  ,l-1)) &
                                      + bmgx(j)*    alphax * (ezx(j  ,k  ,l  )+ezz(j  ,k  ,l  )) &
-                                     + bmgx(j)*     betax * (ezx(j  ,k  ,l+1)+ezz(j  ,k  ,l+1) &
+                                     + bmgx(j)*    betaxz * (ezx(j  ,k  ,l+1)+ezz(j  ,k  ,l+1) &
                                                           +  ezx(j  ,k  ,l-1)+ezz(j  ,k  ,l-1)) 
     end do
   end do
@@ -3139,10 +3142,10 @@ else
   do l = 0, nz-1
     do j = 0, nx-1
       byz(j,k,l) = agz(l)*byz(j,k,l) - bpgz(l)*    alphaz * (exx(j  ,k  ,l+1)+exz(j  ,k  ,l+1)) &
-                                     - bpgz(l)*     betaz * (exx(j+1,k  ,l+1)+exz(j+1,k  ,l+1) &
+                                     - bpgz(l)*    betazx * (exx(j+1,k  ,l+1)+exz(j+1,k  ,l+1) &
                                                           +  exx(j-1,k  ,l+1)+exz(j-1,k  ,l+1)) &
                                      - bmgz(l)*    alphaz * (exx(j  ,k  ,l  )+exz(j  ,k  ,l  )) &
-                                     - bmgz(l)*     betaz * (exx(j+1,k  ,l  )+exz(j+1,k  ,l  ) &
+                                     - bmgz(l)*    betazx * (exx(j+1,k  ,l  )+exz(j+1,k  ,l  ) &
                                                           +  exx(j-1,k  ,l  )+exz(j-1,k  ,l  )) 
 
     end do
@@ -3151,10 +3154,10 @@ else
   do l = 0, nz
     do j = 0, nx-1
       bzx(j,k,l) = agx(j)*bzx(j,k,l) - bpgx(j)*    alphax * (eyx(j+1,k  ,l  )+eyz(j+1,k  ,l  )) &
-                                     - bpgx(j)*     betax * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
+                                     - bpgx(j)*    betaxz * (eyx(j+1,k  ,l+1)+eyz(j+1,k  ,l+1) &
                                                           +  eyx(j+1,k  ,l-1)+eyz(j+1,k  ,l-1)) &
                                      - bmgx(j)*    alphax * (eyx(j  ,k  ,l  )+eyz(j  ,k  ,l  )) &
-                                     - bmgx(j)*     betax * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1) &
+                                     - bmgx(j)*    betaxz * (eyx(j  ,k  ,l+1)+eyz(j  ,k  ,l+1) &
                                                           +  eyx(j  ,k  ,l-1)+eyz(j  ,k  ,l-1)) 
     end do
   end do
