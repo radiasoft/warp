@@ -46,7 +46,7 @@ class EM3D(SubcycledPoissonSolver):
                     'l_coarse_patch':false,'stencil':false,
                     'l_esirkepov':true,'theta_damp':0.,
                     'sigmae':0.,'sigmab':0.,
-                    'colecoefs':None}
+                    'colecoefs':None,'l_setcowancoefs':False}
 
   def __init__(self,**kw):
     self.solveroff=False # flag to turn off the solver, for testing purpose
@@ -160,23 +160,54 @@ class EM3D(SubcycledPoissonSolver):
 #    self.zmeshlocal = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
 
     # --- sets coefficients of Cole solver
-    if self.colecoefs is None:
+    if self.l_setcowancoefs:
       if self.l_2dxz:
-        em3d.betax = 1./8.
-        em3d.alphax = 1.-2*em3d.betax
+        delta = min(self.dx,self.dz)
+        rx = (delta/self.dx)**2
+        ry = 0.
+        rz = (delta/self.dz)**2
+        beta = 0.125*(1.-rx*ry*rz/(ry*rz+rz*rx+rx*ry))
+        em3d.betaxz = 0.125*rz
+        em3d.betazx = 0.125*rx
+        em3d.alphax = 1. - 2.*em3d.betaxz 
+        em3d.alphaz = 1. - 2.*em3d.betazx 
       else:
-        em3d.alphax = 7./12.
-        em3d.betax  = 1./12.
-        em3d.gammax = 1./48.
+        delta = min(self.dx,self.dy,self.dz)
+        rx = (delta/self.dx)**2
+        ry = (delta/self.dy)**2
+        rz = (delta/self.dz)**2
+        beta = 0.125*(1.-rx*ry*rz/(ry*rz+rz*rx+rx*ry))
+        em3d.betaxy = ry*beta
+        em3d.betaxz = rz*beta
+        em3d.betayx = rx*beta
+        em3d.betayz = rz*beta
+        em3d.betazx = rx*beta
+        em3d.betazy = ry*beta
+        em3d.gammax = ry*rz*(1./16.-0.125*ry*rz/(ry*rz+rz*rx+rx*ry))
+        em3d.gammay = rx*rz*(1./16.-0.125*rx*rz/(ry*rz+rz*rx+rx*ry))
+        em3d.gammaz = rx*ry*(1./16.-0.125*rx*ry/(ry*rz+rz*rx+rx*ry))
+        em3d.alphax = 1. - 2.*em3d.betaxy - 2.* em3d.betaxz - 4.*em3d.gammax
+        em3d.alphay = 1. - 2.*em3d.betayx - 2.* em3d.betayz - 4.*em3d.gammay
+        em3d.alphaz = 1. - 2.*em3d.betazx - 2.* em3d.betazy - 4.*em3d.gammaz
     else:
-      em3d.alphax = self.colecoefs[0]
-      em3d.betax  = self.colecoefs[1]
-      if not self.l_2dxz:
-        em3d.gammax = self.colecoefs[2]
-    em3d.alphay = em3d.alphaz = em3d.alphax
-    em3d.betay  = em3d.betaz  = em3d.betax
-    em3d.gammay = em3d.gammaz = em3d.gammax
+      if self.colecoefs is None:
+        if self.l_2dxz:
+          em3d.betaxy = 1./8.
+          em3d.alphax = 1.-2*em3d.betax
+        else:
+          em3d.alphax = 7./12.
+          em3d.betaxy  = 1./12.
+          em3d.gammax = 1./48.
+      else:
+        em3d.alphax = self.colecoefs[0]
+        em3d.betaxy  = self.colecoefs[1]
+        if not self.l_2dxz:
+          em3d.gammax = self.colecoefs[2]
+      em3d.alphay = em3d.alphaz = em3d.alphax
+      em3d.betaxz  = em3d.betayx = em3d.betayz = em3d.betazx = em3d.betazy  = em3d.betaxy
+      em3d.gammay = em3d.gammaz = em3d.gammax
 
+    print 'alphax,alphaz,betazx,betaxz',em3d.alphax,em3d.alphaz,em3d.betazx,em3d.betaxz
     # --- set time step as a fraction of Courant condition
     # --- also set self.ncyclesperstep if top.dt over Courant condition times dtcoef
     try:
@@ -199,17 +230,17 @@ class EM3D(SubcycledPoissonSolver):
               dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dz**2))
             else:
               dtcourant=min(self.dx,self.dz)/clight 
-              Cx = em3d.alphax -2.*em3d.betax
-              Cz = em3d.alphaz -2.*em3d.betaz
+              Cx = em3d.alphax -2.*em3d.betaxz
+              Cz = em3d.alphaz -2.*em3d.betazx
               dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cz/self.dz**2))
           else:
             if self.stencil==0:
               dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dy**2+1./self.dz**2))
             else:
               dtcourant=min(self.dx,self.dy,self.dz)/clight 
-              Cx = em3d.alphax -4.*em3d.betax+4.*em3d.gammax
-              Cy = em3d.alphay -4.*em3d.betay+4.*em3d.gammay
-              Cz = em3d.alphaz -4.*em3d.betaz+4.*em3d.gammaz
+              Cx = em3d.alphax -2.*(em3d.betaxy+em3d.betaxz)+4.*em3d.gammax
+              Cy = em3d.alphay -2.*(em3d.betayx+em3d.betayz)+4.*em3d.gammay
+              Cz = em3d.alphaz -2.*(em3d.betazx+em3d.betazy)+4.*em3d.gammaz
               dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cy/self.dy**2+Cz/self.dz**2))
           if self.theta_damp>0.:
             dtcourant*=sqrt((2.+self.theta_damp)/(2.+3.*self.theta_damp))
