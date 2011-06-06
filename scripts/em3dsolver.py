@@ -32,6 +32,9 @@ class EM3D(SubcycledPoissonSolver):
                     'laser_source_z':None,'laser_source_v':0.,
                     'laser_focus_z':None,'laser_focus_v':0.,
                     'laser_mode':1,'laser_emax':None,
+                    'laser_depos_order_x':3,
+                    'laser_depos_order_y':3,
+                    'laser_depos_order_z':3,
                     'ncyclesperstep':1,'ncyclesperstep':None,
                     'l_2dxz':0,'l_2drz':0,'l_1dz':0,'l_sumjx':0,
                     'npass_smooth':array([[0],[0],[0]]),
@@ -616,9 +619,6 @@ class EM3D(SubcycledPoissonSolver):
           weights*=f.dx*f.dz*eps0/(gammafrm*f.dx/10)
         l_particles_weight=True
 
-      self.laser_depos_order_x=2
-      self.laser_depos_order_y=2
-      self.laser_depos_order_z=2
 #      print min(self.laser_xdx)/w3d.dx,max(self.laser_xdx)/w3d.dx
 
       if self.laser_source_z<f.zmin+self.zgrid or self.laser_source_z>=f.zmax+self.zgrid:return
