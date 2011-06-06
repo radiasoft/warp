@@ -1,6 +1,16 @@
 from warp import *
 
 class Boosted_Frame(object):
+  """
+Class transforming particle distribution from lab frame to boosted frame. 
+Boosted particles can optionally be injected through a plane. In this case, the 
+boosted particles are moved from the main top.pgroup to a separate particle group, 
+drift at velocity top.vbeam until they reach the injection plane though which 
+they are injected using Warp's injection routines.
+In the current implementation, the distribution needs to fit entirely in the 
+simulation zone, which is too restrictive for some applications and will need 
+to be lifted in the future.
+  """
   def __init__(self,gammaframe,direction=1.,l_setselfb=1):
     top.boost_gamma=gammaframe
     self.gammaframe=gammaframe
@@ -22,7 +32,8 @@ class Boosted_Frame(object):
           if top.pgroup.fselfb[js] == fselfbcopy[jss]:
             top.pgroup.fselfb[js]=top.fselfb[jss]
 
-  def boost(self,species,zinject=0.,tinit=0.,l_inject_plane=1,lallindomain=0,l_rmzmean=1.,l_deprho=1,l_savezinit=0,l_focus=1):
+  def boost(self,species,zinject=0.,tinit=0.,l_inject_plane=1,lallindomain=0,
+            l_rmzmean=1.,l_deprho=1,l_savezinit=0,l_focus=1,l_project=1):
    print 'enter boost',top.pgroup.nps
    if l_savezinit:
      if top.zbirthlabpid==0:
@@ -88,8 +99,11 @@ class Boosted_Frame(object):
         vy = getvy(pgroup=pg,js=js,bcast=0,gather=0)
         vz = getvz(pgroup=pg,js=js,bcast=0,gather=0)
         t = z/vz
-        x = getx(pgroup=pg,js=js,bcast=0,gather=0)-t*vx
-        y = gety(pgroup=pg,js=js,bcast=0,gather=0)-t*vy
+        x = getx(pgroup=pg,js=js,bcast=0,gather=0)
+        y = gety(pgroup=pg,js=js,bcast=0,gather=0)
+        if not l_project:
+          x-=t*vx
+          y-=t*vy
         # --- correct for focusing effect from shift from z=0 to zinject
         if l_focus:
           tfoc = -zinject*self.gammaframe/vz#pr
@@ -214,6 +228,7 @@ class Boosted_Frame(object):
 #      self.pgroup.xp[il:iu]+=top.dt*getvx(pgroup=self.pgroup,js=js,bcast=0,gather=0)
 #      self.pgroup.yp[il:iu]+=top.dt*getvy(pgroup=self.pgroup,js=js,bcast=0,gather=0)
 #      self.pgroup.zp[il:iu]+=top.dt*self.pgroup.uzp[il:iu]*self.pgroup.gaminv[il:iu] # WARNING: this can cause particles to get out of bounds
+      if top.zoldpid>0:self.pgroup.pid[il:iu,top.zoldpid-1]=self.pgroup.zp[il:iu].copy()
       self.pgroup.zp[il:iu]+=top.dt*top.vbeam
     if all(self.pgroup.nps==0):
       w3d.npgrp = 0
@@ -239,7 +254,8 @@ class Boosted_Frame(object):
         w3d.uxt = take(self.pgroup.uxp,ii)*gi
         w3d.uyt = take(self.pgroup.uyp,ii)*gi
         w3d.uzt = vz
-        w3d.bpt = (take(self.pgroup.zp,ii)-top.zinject)/vz
+#        w3d.bpt = (take(self.pgroup.zp,ii)-top.zinject)/vz
+        w3d.bpt = (take(self.pgroup.zp,ii)-top.zinject)/top.vbeam
         for ipid in range(top.npid):
           w3d.pidt[:,ipid] = take(self.pgroup.pid[:,ipid],ii)
 #        gi=getgaminv(pgroup=self.pgroup,js=js,bcast=0,gather=0)
