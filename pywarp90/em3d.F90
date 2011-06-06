@@ -308,7 +308,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sx0( 0) = 1.-xint
           sx0( 1) = xint
          case(2)
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
@@ -330,7 +330,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sz0( 0) = 1.-zint
           sz0( 1) = zint
          case(2)
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
@@ -362,7 +362,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sx( 0+dix) = 1.-xint
           sx( 1+dix) = xint
          case(2)
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1+dix) = 0.5*(0.5-xint)**2
           sx( 0+dix) = 0.75-xintsq
@@ -384,7 +384,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sz( 0+diz) = 1.-zint
           sz( 1+diz) = zint
          case(2)
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1+diz) = 0.5*(0.5-zint)**2
           sz( 0+diz) = 0.75-zintsq
@@ -1230,7 +1230,7 @@ subroutine depose_jxjyjz_esirkepov_nnew(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sx0( 0) = 1.-xint
           sx0( 1) = xint
          case(2)
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
@@ -1252,7 +1252,7 @@ subroutine depose_jxjyjz_esirkepov_nnew(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sy0( 0) = 1.-yint
           sy0( 1) = yint
          case(2)
-          yint=yint-0.5
+!          yint=yint-0.5
           yintsq = yint*yint
           sy0(-1) = 0.5*(0.5-yint)**2
           sy0( 0) = 0.75-yintsq
@@ -1274,7 +1274,7 @@ subroutine depose_jxjyjz_esirkepov_nnew(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sz0( 0) = 1.-zint
           sz0( 1) = zint
          case(2)
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
@@ -1309,7 +1309,7 @@ subroutine depose_jxjyjz_esirkepov_nnew(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sx( 0+dix) = 1.-xint
           sx( 1+dix) = xint
          case(2)
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1+dix) = 0.5*(0.5-xint)**2
           sx( 0+dix) = 0.75-xintsq
@@ -1331,7 +1331,7 @@ subroutine depose_jxjyjz_esirkepov_nnew(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sy( 0+diy) = 1.-yint
           sy( 1+diy) = yint
          case(2)
-          yint=yint-0.5
+!          yint=yint-0.5
           yintsq = yint*yint
           sy(-1+diy) = 0.5*(0.5-yint)**2
           sy( 0+diy) = 0.75-yintsq
@@ -1353,7 +1353,7 @@ subroutine depose_jxjyjz_esirkepov_nnew(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sz( 0+diz) = 1.-zint
           sz( 1+diz) = zint
          case(2)
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1+diz) = 0.5*(0.5-zint)**2
           sz( 0+diz) = 0.75-zintsq
@@ -1554,7 +1554,7 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sx0( 0) = 1.-xint
           sx0( 1) = xint
          case(2)
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
@@ -1576,7 +1576,7 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sy0( 0) = 1.-yint
           sy0( 1) = yint
          case(2)
-          yint=yint-0.5
+!          yint=yint-0.5
           yintsq = yint*yint
           sy0(-1) = 0.5*(0.5-yint)**2
           sy0( 0) = 0.75-yintsq
@@ -1598,7 +1598,7 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sz0( 0) = 1.-zint
           sz0( 1) = zint
          case(2)
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
@@ -1633,7 +1633,7 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sx( 0+dix) = 1.-xint
           sx( 1+dix) = xint
          case(2)
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1+dix) = 0.5*(0.5-xint)**2
           sx( 0+dix) = 0.75-xintsq
@@ -1655,7 +1655,7 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sy( 0+diy) = 1.-yint
           sy( 1+diy) = yint
          case(2)
-          yint=yint-0.5
+!          yint=yint-0.5
           yintsq = yint*yint
           sy(-1+diy) = 0.5*(0.5-yint)**2
           sy( 0+diy) = 0.75-yintsq
@@ -1677,7 +1677,7 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sz( 0+diz) = 1.-zint
           sz( 1+diz) = zint
          case(2)
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1+diz) = 0.5*(0.5-zint)**2
           sz( 0+diz) = 0.75-zintsq
@@ -2214,7 +2214,7 @@ subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,n
           sx( 0) = 1.-xint
           sx( 1) = xint
          case(2)
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -2236,7 +2236,7 @@ subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,n
           sz( 0) = 1.-zint
           sz( 1) = zint
          case(2)
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -2324,7 +2324,7 @@ subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxg
           sx( 0) = 1.-xint
           sx( 1) = xint
          case(2)
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -2346,7 +2346,7 @@ subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxg
           sy( 0) = 1.-yint
           sy( 1) = yint
          case(2)
-          yint=yint-0.5
+!          yint=yint-0.5
           yintsq = yint*yint
           sy(-1) = 0.5*(0.5-yint)**2
           sy( 0) = 0.75-yintsq
@@ -2368,7 +2368,7 @@ subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxg
           sz( 0) = 1.-zint
           sz( 1) = zint
          case(2)
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -2454,7 +2454,7 @@ subroutine depose_j_n_2dxz(cj,np,xp,zp,ux,uy,uz,gaminv,w,q,xmin,zmin,dt,dx,dz,nx
           sx( 0) = 1.-xint
           sx( 1) = xint
          case(2)
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -2476,7 +2476,7 @@ subroutine depose_j_n_2dxz(cj,np,xp,zp,ux,uy,uz,gaminv,w,q,xmin,zmin,dt,dx,dz,nx
           sz( 0) = 1.-zint
           sz( 1) = zint
          case(2)
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -2630,7 +2630,7 @@ end subroutine depose_j_n_2dxz
           sx( 0) = 1.-xint
           sx( 1) = xint
          case(2)
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -2652,7 +2652,7 @@ end subroutine depose_j_n_2dxz
           sy( 0) = 1.-yint
           sy( 1) = yint
          case(2)
-          yint=yint-0.5
+!          yint=yint-0.5
           yintsq = yint*yint
           sy(-1) = 0.5*(0.5-yint)**2
           sy( 0) = 0.75-yintsq
@@ -2674,7 +2674,7 @@ end subroutine depose_j_n_2dxz
           sz( 0) = 1.-zint
           sz( 1) = zint
          case(2)
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -2787,7 +2787,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sx( 0) = 1.-xint
           sx( 1) = xint
          case(2)
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -2809,7 +2809,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz( 0) = 1.-zint
           sz( 1) = zint
          case(2)
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -3059,7 +3059,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sx( 0) = 1.-xint
           sx( 1) = xint
         elseif (nox==2) then
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -3078,7 +3078,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz( 0) = 1.-zint
           sz( 1) = zint
         elseif (noz==2) then
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -3093,28 +3093,28 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz( 2) = onesixth*zintsq*zint
         end if
 
+        xint=xint-0.5
         if (nox==1) then
           sx0( 0) = 1.
         elseif (nox==2) then
-          xint=xint+0.5
+!          xint=xint+0.5
           sx0(-1) = 1.-xint
           sx0( 0) = xint
         elseif (nox==3) then
-          xint=xint-0.5
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
           sx0( 1) = 0.5*(0.5+xint)**2
         end if
 
+        zint=zint-0.5
         if (noz==1) then
           sz0( 0) = 1.
         elseif (noz==2) then
-          zint=zint+0.5
+!          zint=zint+0.5
           sz0(-1) = 1.-zint
           sz0( 0) = zint
         elseif (noz==3) then
-          zint=zint-0.5
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
@@ -3127,15 +3127,13 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
 !          stop
           do ll = izmin, izmax+1
             do jj = ixmin0, ixmax0
-              ex(ip) = ex(ip) + sz(ll)*sx0(jj)*exg(j+jj,1,l+ll)*costheta
-              ey(ip) = ey(ip) + sz(ll)*sx0(jj)*exg(j+jj,1,l+ll)*sintheta
+              ex(ip) = ex(ip) + sz(ll)*sx0(jj)*(exg(j+jj,1,l+ll)*costheta-eyg(j+jj,1,l+ll)*sintheta)
             end do
           end do
 
           do ll = izmin, izmax+1
             do jj = ixmin, ixmax+1
-              ex(ip) = ex(ip) - sz(ll)*sx(jj)*eyg(j+jj,1,l+ll)*sintheta
-              ey(ip) = ey(ip) + sz(ll)*sx(jj)*eyg(j+jj,1,l+ll)*costheta
+              ey(ip) = ey(ip) + sz(ll)*sx(jj)*(exg(j+jj,1,l+ll)*sintheta+eyg(j+jj,1,l+ll)*costheta)
             end do
           end do
 
@@ -3241,7 +3239,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sx( 0) = 1.-xint
           sx( 1) = xint
         elseif (nox==2) then
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -3260,7 +3258,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sy( 0) = 1.-yint
           sy( 1) = yint
         elseif (noy==2) then
-          yint=yint-0.5
+!          yint=yint-0.5
           yintsq = yint*yint
           sy(-1) = 0.5*(0.5-yint)**2
           sy( 0) = 0.75-yintsq
@@ -3279,7 +3277,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz( 0) = 1.-zint
           sz( 1) = zint
         elseif (noz==2) then
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -3294,42 +3292,42 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz( 2) = onesixth*zintsq*zint
         end if
 
+        xint=xint-0.5
         if (nox==1) then
           sx0( 0) = 1.
         elseif (nox==2) then
-          xint=xint+0.5
+!          xint=xint+0.5
           sx0(-1) = 1.-xint
           sx0( 0) = xint
         elseif (nox==3) then
-          xint=xint-0.5
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
           sx0( 1) = 0.5*(0.5+xint)**2
         end if
 
+        yint=yint-0.5
         if (noy==1) then
           sy0( 0) = 1.
         elseif (noy==2) then
-          yint=yint+0.5
+!          yint=yint+0.5
           sy0(-1) = 1.-yint
           sy0( 0) = yint
         elseif (noy==3) then
-          yint=yint-0.5
           yintsq = yint*yint
           sy0(-1) = 0.5*(0.5-yint)**2
           sy0( 0) = 0.75-yintsq
           sy0( 1) = 0.5*(0.5+yint)**2
         end if
 
+        zint=zint-0.5
         if (noz==1) then
           sz0( 0) = 1.
         elseif (noz==2) then
-          zint=zint+0.5
+!          zint=zint+0.5
           sz0(-1) = 1.-zint
           sz0( 0) = zint
         elseif (noz==3) then
-          zint=zint-0.5
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
@@ -3490,7 +3488,7 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
           sx( 0) = 1.-xint
           sx( 1) = xint
         elseif (nox==2) then
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -3509,7 +3507,7 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
           sz( 0) = 1.-zint
           sz( 1) = zint
         elseif (noz==2) then
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -3524,28 +3522,28 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
           sz( 2) = onesixth*zintsq*zint
         end if
 
+        xint=xint-0.5
         if (nox==1) then
           sx0( 0) = 1.
         elseif (nox==2) then
-          xint=xint+0.5
+!          xint=xint+0.5
           sx0(-1) = 1.-xint
           sx0( 0) = xint
         elseif (nox==3) then
-          xint=xint-0.5
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
           sx0( 1) = 0.5*(0.5+xint)**2
         end if
 
+        zint=zint-0.5
         if (noz==1) then
           sz0( 0) = 1.
         elseif (noz==2) then
-          zint=zint+0.5
+!          zint=zint+0.5
           sz0(-1) = 1.-zint
           sz0( 0) = zint
         elseif (noz==3) then
-          zint=zint-0.5
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
@@ -3556,15 +3554,13 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
 
           do ll = izmin0, izmax0
             do jj = ixmin, ixmax+1
-              bx(ip) = bx(ip) + sz0(ll)*sx(jj)*bxg(j+jj,1,l+ll)*costheta
-              by(ip) = by(ip) + sz0(ll)*sx(jj)*bxg(j+jj,1,l+ll)*sintheta
+              bx(ip) = bx(ip) + sz0(ll)*sx(jj)*(bxg(j+jj,1,l+ll)*costheta-byg(j+jj,1,l+ll)*sintheta)
             end do
           end do
 
           do ll = izmin0, izmax0
             do jj = ixmin0, ixmax0
-              bx(ip) = bx(ip) - sz0(ll)*sx0(jj)*byg(j+jj,1,l+ll)*sintheta
-              by(ip) = by(ip) + sz0(ll)*sx0(jj)*byg(j+jj,1,l+ll)*costheta
+              by(ip) = by(ip) + sz0(ll)*sx0(jj)*(bxg(j+jj,1,l+ll)*sintheta+byg(j+jj,1,l+ll)*costheta)
             end do
           end do
 
@@ -3670,7 +3666,7 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
           sx( 0) = 1.-xint
           sx( 1) = xint
         elseif (nox==2) then
-          xint=xint-0.5
+!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -3689,7 +3685,7 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
           sy( 0) = 1.-yint
           sy( 1) = yint
         elseif (noy==2) then
-          yint=yint-0.5
+!          yint=yint-0.5
           yintsq = yint*yint
           sy(-1) = 0.5*(0.5-yint)**2
           sy( 0) = 0.75-yintsq
@@ -3708,7 +3704,7 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
           sz( 0) = 1.-zint
           sz( 1) = zint
         elseif (noz==2) then
-          zint=zint-0.5
+!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -3723,42 +3719,42 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
           sz( 2) = onesixth*zintsq*zint
         end if
 
+        xint=xint-0.5
         if (nox==1) then
           sx0( 0) = 1.
         elseif (nox==2) then
-          xint=xint+0.5
+!          xint=xint+0.5
           sx0(-1) = 1.-xint
           sx0( 0) = xint
         elseif (nox==3) then
-          xint=xint-0.5
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
           sx0( 1) = 0.5*(0.5+xint)**2
         end if
 
+        yint=yint-0.5
         if (noy==1) then
           sy0( 0) = 1.
         elseif (noy==2) then
-          yint=yint+0.5
+!          yint=yint+0.5
           sy0(-1) = 1.-yint
           sy0( 0) = yint
         elseif (noy==3) then
-          yint=yint-0.5
           yintsq = yint*yint
           sy0(-1) = 0.5*(0.5-yint)**2
           sy0( 0) = 0.75-yintsq
           sy0( 1) = 0.5*(0.5+yint)**2
         end if
 
+        zint=zint-0.5
         if (noz==1) then
           sz0( 0) = 1.
         elseif (noz==2) then
-          zint=zint+0.5
+!          zint=zint+0.5
           sz0(-1) = 1.-zint
           sz0( 0) = zint
         elseif (noz==3) then
-          zint=zint-0.5
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
