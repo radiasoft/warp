@@ -71,7 +71,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.100 2011/04/13 20:34:12 grote Exp $"
+lattice_version = "$Id: lattice.py,v 1.101 2011/06/07 23:51:28 grote Exp $"
 
 def latticedoc():
   import lattice
@@ -3411,29 +3411,29 @@ Plots the field of the emlt element
   if br:
     if not p:
       if nn == 0: cc = 0.
-      else:       cc = ss*(1. + 2*vv/nn)*r**(nn-1+2*vv)*cos(nn*t + tt)
+      else:       cc = (1. + 2*vv/nn)*r**(nn-1+2*vv)*cos(nn*t + tt)
     else:
-      if nn == 0: cc = ss*1./(2*(vv + 1))*r**(2*vv+1)
+      if nn == 0: cc = 1./(2*(vv + 1))*r**(2*vv+1)
       else:       cc = 0.
   elif bt:
     if not p:
       if nn == 0: cc = 0.
-      else:       cc = ss*r**(nn-1+2*vv)*sin(nn*t + tt)
+      else:       cc = r**(nn-1+2*vv)*sin(nn*t + tt)
     else:
       if nn == 0: cc = 0.
       else:       cc = 0.
   elif bz:
     if p:
       if nn == 0: cc = 0.
-      else:       cc = ss*(1. + 2*vv/nn)*r**(nn-1+2*vv)*cos(nn*t + tt)
+      else:       cc = (1. + 2*vv/nn)*r**(nn-1+2*vv)*cos(nn*t + tt)
     else:
-      if nn == 0: cc = ss*r**(2*vv)
-      else:       cc = ss*(-1./nn)*ttp*r**(nn+2*vv)*sin(nn*t + tt)
+      if nn == 0: cc = r**(2*vv)
+      else:       cc = (-1./nn)*ttp*r**(nn+2*vv)*sin(nn*t + tt)
   if not p:
     mm = top.msmmlt[:nz+1,m,id]
   else:
     mm = top.msmmltp[:nz+1,m,id]
-  mm = mm*cc*scale
+  mm = ss*mm*cc*scale
   plg(mm,zz,color=color,**kw)
   if titles:
     ptitles('MMLT element #%d'%im,'Z (m)',
