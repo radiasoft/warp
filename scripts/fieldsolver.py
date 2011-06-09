@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.96 2011/05/17 19:19:12 grote Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.97 2011/06/09 21:50:03 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -921,19 +921,19 @@ the diagnostic is of interest and is meaningfull.
     ppdecomp.zmax[:] = top.ppdecomp.zmax
 
     domaindecomposeparticles(self.nx,self.nxprocs,self.nxpextra,
-                             self.xmmin,self.xmmax,self.dx,
+                             self.xmmin,self.dx,
                              zeros(self.nxprocs,'d'),true,
                              ppdecomp.ix,ppdecomp.nx,
                              ppdecomp.xmin,ppdecomp.xmax)
 
     domaindecomposeparticles(self.ny,self.nyprocs,self.nypextra,
-                             self.ymmin,self.ymmax,self.dy,
+                             self.ymmin,self.dy,
                              zeros(self.nyprocs,'d'),true,
                              ppdecomp.iy,ppdecomp.ny,
                              ppdecomp.ymin,ppdecomp.ymax)
 
     domaindecomposeparticles(self.nz,self.nzprocs,self.nzpextra,
-                             self.zmmin,self.zmmax,self.dz,
+                             self.zmmin,self.dz,
                              zeros(self.nzprocs,'d'),true,
                              ppdecomp.iz,ppdecomp.nz,
                              ppdecomp.zmin,ppdecomp.zmax)

@@ -5,7 +5,7 @@ __all__ = ['LoadBalancer']
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.67 2009/06/19 18:29:01 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.68 2011/06/09 21:50:02 grote Exp $"
 
 def loadbalancedoc():
     import loadbalance
@@ -489,7 +489,7 @@ recalculated on a finer mesh to give better balancing.
         ppdecompmin[0] = max(mmin,ppdecompmin[0] - padlower)
         ppdecompmax[-1] = min(mmax,ppdecompmax[-1] + padupper)
 
-        domaindecomposeparticles(nnglobal,nprocs,nguard,mmin,mmax,dd,
+        domaindecomposeparticles(nnglobal,nprocs,nguard,mmin,dd,
                                  zeros(nprocs,'d'),true,
                                  ppdecompii,ppdecompnn,ppdecompmin,ppdecompmax)
 
@@ -572,20 +572,20 @@ that has already been done.
 
     """
     domaindecomposeparticles(ppdecomp.nxglobal,ppdecomp.nxprocs,nxguard,
-                             w3d.xmmin,w3d.xmmax,w3d.dx,
+                             w3d.xmmin,w3d.dx,
                              zeros(ppdecomp.nxprocs,'d'),true,
                              ppdecomp.ix,ppdecomp.nx,
                              ppdecomp.xmin,ppdecomp.xmax)
 
     domaindecomposeparticles(ppdecomp.nyglobal,ppdecomp.nyprocs,nyguard,
-                             w3d.ymmin,w3d.ymmax,w3d.dy,
+                             w3d.ymmin,w3d.dy,
                              zeros(ppdecomp.nyprocs,'d'),true,
                              ppdecomp.iy,ppdecomp.ny,
                              ppdecomp.ymin,ppdecomp.ymax)
     """
 
     domaindecomposeparticles(ppdecomp.nzglobal,ppdecomp.nzprocs,nzguard,
-                             w3d.zmmin,w3d.zmmax,w3d.dz,
+                             w3d.zmmin,w3d.dz,
                              zeros(ppdecomp.nzprocs,'d'),true,
                              ppdecomp.iz,ppdecomp.nz,
                              ppdecomp.zmin,ppdecomp.zmax)
