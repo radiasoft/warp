@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.93 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.94 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1599,7 +1599,6 @@ c Finds the intercepts of the object with grid lines along the three axis.
 c A positive zsign means that the conductor is the region above z0.
 
       real(kind=8):: xmmin,ymmin,zmmin
-      real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
 
@@ -1808,7 +1807,6 @@ c Finds the intercepts of the object with grid lines along the three axis.
 c A positive zsign means that the conductor is the region above zcent.
 
       real(kind=8):: xmmin,ymmin,zmmin
-      real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
 
@@ -2123,7 +2121,6 @@ c=======================================================================
 c Finds the intercepts of the object with grid lines along the three axis.
 
       real(kind=8):: xmmin,ymmin,zmmin
-      real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
 
@@ -2482,7 +2479,6 @@ c=======================================================================
 c Finds the intercepts of the object with grid lines along the three axis.
 
       real(kind=8):: xmmin,ymmin,zmmin
-      real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
 
@@ -2834,7 +2830,6 @@ c=======================================================================
 c Finds the intercepts of the object with grid lines along the three axis.
 
       real(kind=8):: xmmin,ymmin,zmmin
-      real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
 
@@ -3146,7 +3141,6 @@ c=======================================================================
 c Finds the intercepts of the object with grid lines along the three axis.
 
       real(kind=8):: xmmin,ymmin,zmmin
-      real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
 
@@ -3510,7 +3504,6 @@ c=======================================================================
 c Finds the intercepts of the object with grid lines along the three axis.
 
       real(kind=8):: xmmin,ymmin,zmmin
-      real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
 
@@ -3804,7 +3797,6 @@ c=======================================================================
 c Finds the intercepts of the object with grid lines along the three axis.
 
       real(kind=8):: xmmin,ymmin,zmmin
-      real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
 
@@ -6524,7 +6516,6 @@ c Finds the intercepts of the object with grid lines along the three axis.
 c A positive zsign means that the conductor is the region above zcent.
 
       real(kind=8):: xmmin,ymmin,zmmin
-      real(kind=8):: xmmax,ymmax,zmmax
       real(kind=8):: dx,dy,dz
       integer(ISZ):: nx,ny,nz
       integer(ISZ):: nxicpt,nyicpt,nzicpt
