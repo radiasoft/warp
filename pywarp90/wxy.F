@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.110 $, $Date: 2011/05/05 23:59:28 $
+c@(#) File WXY.M, version $Revision: 3.111 $, $Date: 2011/06/09 21:48:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -243,17 +243,17 @@ c  Calculate mesh dimensioning quantities
       enddo
 
       xpmin = xmmin
-      xpmax = xmmax
+      xpmax = xmmin + nx*dx
       ypmin = ymmin
-      ypmax = ymmax
+      ypmax = ymmin + ny*dy
       zpmin = zmmin
-      zpmax = zmmax
+      zpmax = zmmin + nz*dz
       xpminlocal = xmmin
-      xpmaxlocal = xmmax
+      xpmaxlocal = xmmin + nx*dx
       ypminlocal = ymmin
-      ypmaxlocal = ymmax
+      ypmaxlocal = ymmin + ny*dy
       zpminlocal = zmmin
-      zpmaxlocal = zmmax
+      zpmaxlocal = zmmin + nz*dz
 
 c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
       ix_axis = nint(-xmmin/dx)
@@ -354,10 +354,10 @@ c  and set limits for plots
 c     call remark(" ---  Allocating scratch space for plots")
 c     npsplt = min(nparpgrp-1, npmax)
 c     if (npsplt == 0) npsplt = nparpgrp-1
-      if (xplmin == 0.) xplmin = -xmmax
-      if (xplmax == 0.) xplmax =  xmmax
-      if (yplmin == 0.) yplmin = -ymmax
-      if (yplmax == 0.) yplmax =  ymmax
+      if (xplmin == 0.) xplmin = -(xmmin + nx*dx)
+      if (xplmax == 0.) xplmax =  (xmmin + nx*dx)
+      if (yplmin == 0.) yplmin = -(ymmin + ny*dy)
+      if (yplmax == 0.) yplmax =  (ymmin + ny*dy)
       if (zplmin == 0.) zplmin =  zmminlocal
       if (zplmax == 0.) zplmax =  zmmaxlocal
 
@@ -2718,13 +2718,13 @@ c       --- Otherwise, use 2d field solver
         if (fstype == 0) then
 c         --- FFT solver
           call vpois2d (iwhich, phi(:,:,0), phi(:,:,0), kxsq, kysq,
-     &       attx, atty, filt, xmmax-xmmin, ymmax-ymmin,
+     &       attx, atty, filt, nx*dx, ny*dy,
      &       nx, ny, scrtch, xywork, 0, l2symtry,l4symtry)
 
         elseif (fstype == 1 .or. fstype == 2) then
 c         --- Capacity matrix, FFT solver
           call capmatxyf(iwhich,phi(:,:,0),kxsq,kysq,attx,atty,
-     &             filt,xmmax-xmmin,ymmax-ymmin,nx,ny,dx,dy,xmmin,ymmin,
+     &             filt,nx*dx,ny*dy,nx,ny,dx,dy,xmmin,ymmin,
      &             scrtch,xyphisave,xywork,l2symtry,l4symtry)
         elseif (fstype == 7) then
 c         --- Multigrid solver

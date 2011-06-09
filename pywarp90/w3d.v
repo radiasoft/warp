@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.319 $, $Date: 2011/05/13 23:10:30 $
+#@(#) File W3D.V, version $Revision: 3.320 $, $Date: 2011/06/09 21:48:22 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.319 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.320 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1214,7 +1214,7 @@ domaindecomposefields(nz:integer,nslaves:integer,lfsautodecomp:logical,
         overlap:integer) subroutine
       # Do the domain decomposition for the field solver
 domaindecomposeparticles(nz:integer,nslaves:integer,
-                nzpextra:integer,zmmin:real,zmmax:real,
+                nzpextra:integer,zmmin:real,
                 dz:real,zslave(0:nslaves-1):real,lautodecomp:logical,
                 izpslave(0:nslaves-1):integer,nzpslave(0:nslaves-1):integer,
                 zpslmin(0:nslaves-1):real,zpslmax(0:nslaves-1):real) subroutine

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.169 $, $Date: 2010/06/30 23:38:56 $
+c@(#) File DW3D.F, version $Revision: 3.170 $, $Date: 2011/06/09 21:48:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -1186,7 +1186,8 @@ c Standard values for nmult=2, nres=10, tol=1.e-5.
      
       integer(ISZ):: k, l, iz, imom, lfund, nfit, npts, ngmin 
       integer(ISZ):: np, ith, ipow, ifit, nth, ix, iy    
-      real(kind=8):: ds, xsymin, ysymin, dth, xc, yc, phiinter, chisq   
+      real(kind=8):: ds, xsymin, ysymin, xsymax, ysymax
+      real(kind=8):: dth, xc, yc, phiinter, chisq   
       real(kind=8):: rdat(nptsmx), basis(nptsmx,nfitmx)
       real(kind=8):: usvd(nptsmx,nfitmx), vsvd(nfitmx,nfitmx), wsvd(nfitmx)
       real(kind=8):: tmp(nptsmx) 
@@ -1229,16 +1230,18 @@ c       --- calculate number radial data points npts, min grid index ngmin
 c       --- check for bound errors
         xsymin = xmmin 
         ysymin = ymmin 
+        xsymax = xmmin + dx*nx
+        ysymax = ymmin + dy*ny
         if (l2symtry) ysymin = -ymmax 
         if (l4symtry) then 
-          xsymin = -xmmax 
-          ysymin = -ymmax 
+          xsymin = -xsymax 
+          ysymin = -ysymax 
         endif  
-        if ( (xcen + (npts-1+ngmin)*ds >= xmmax ) .or. 
+        if ( (xcen + (npts-1+ngmin)*ds >= xsymax ) .or. 
      &       (xcen - (npts-1+ngmin)*ds <= xsymin)       ) then 
           call kaboom("multpwrk: data out of x-grid bound")
         endif   
-        if ( (ycen + (npts-1+ngmin)*ds >= ymmax ) .or. 
+        if ( (ycen + (npts-1+ngmin)*ds >= ysymax ) .or. 
      &       (ycen - (npts-1+ngmin)*ds <= ysymin)       ) then 
           call kaboom("multpwrk: data out of y-grid bound")
         endif   

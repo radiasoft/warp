@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.36 $, $Date: 2011/05/13 23:10:31 $
+c@(#) File w3d_utilities.F, version $Revision: 1.37 $, $Date: 2011/06/09 21:48:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -704,13 +704,13 @@ c       --- Get the new value of nz.
       return
       end
 c=============================================================================
-      subroutine domaindecomposeparticles(nz,nprocs,nzpextra,zmmin,zmmax,dz,
+      subroutine domaindecomposeparticles(nz,nprocs,nzpextra,zmmin,dz,
      &                                    userdecomp,lautodecomp,
      &                                    izdecomp,nzdecomp,
      &                                    zpslmin,zpslmax)
       use InGen3d,Only: solvergeom,AMRgeom
       integer(ISZ):: nz,nprocs,nzpextra
-      real(kind=8):: zmmin,zmmax,dz
+      real(kind=8):: zmmin,dz
       real(kind=8):: userdecomp(0:nprocs-1)
       logical(ISZ):: lautodecomp
       integer(ISZ):: izdecomp(0:nprocs-1),nzdecomp(0:nprocs-1)
@@ -755,7 +755,7 @@ c       --- Set minimum z of each processor.
         zlast = zmmin
         do i=0,nprocs-1
           zpslmin(i) = zlast
-          zpslmax(i) = zlast + userdecomp(i)*(zmmax - zmmin)
+          zpslmax(i) = zlast + userdecomp(i)*nz*dz
           zlast = zpslmax(i)
         enddo
 
@@ -1001,15 +1001,15 @@ c     --- of the grid.
       ppdecomp%ymax(nyprocs-1) = fsdecomp%ymax(nyprocs-1)
       ppdecomp%zmax(nzprocs-1) = fsdecomp%zmax(nzprocs-1)
 
-      call domaindecomposeparticles(nx,nxprocs,nxpextra,xmmin,xmmax,dx,
+      call domaindecomposeparticles(nx,nxprocs,nxpextra,xmmin,dx,
      &                              userdecompx,lautodecomp,
      &                              ppdecomp%ix,ppdecomp%nx,
      &                              ppdecomp%xmin,ppdecomp%xmax)
-      call domaindecomposeparticles(ny,nyprocs,nypextra,ymmin,ymmax,dy,
+      call domaindecomposeparticles(ny,nyprocs,nypextra,ymmin,dy,
      &                              userdecompy,lautodecomp,
      &                              ppdecomp%iy,ppdecomp%ny,
      &                              ppdecomp%ymin,ppdecomp%ymax)
-      call domaindecomposeparticles(nz,nzprocs,nzpextra,zmmin,zmmax,dz,
+      call domaindecomposeparticles(nz,nzprocs,nzpextra,zmmin,dz,
      &                              userdecompz,lautodecomp,
      &                              ppdecomp%iz,ppdecomp%nz,
      &                              ppdecomp%zmin,ppdecomp%zmax)

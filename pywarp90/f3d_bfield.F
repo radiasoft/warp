@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.49 $, $Date: 2011/05/13 23:10:30 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.50 $, $Date: 2011/06/09 21:48:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -2198,9 +2198,9 @@ c fits and so was replaced with if statements.
       dx = bfield%dx
       dy = bfield%dy
       dz = bfield%dz
-      xlen = bfield%xmmax - bfield%xmmin
-      ylen = bfield%ymmax - bfield%ymmin
-      zlen = bfield%zmmax - bfield%zmmin
+      xlen = nx*dx
+      ylen = ny*dy
+      zlen = nz*dz
 
       if (bfstype == 0) then
         call vpois3d(iwhich,bfield%a(iaxis,:,:,:),bfield%a(iaxis,:,:,:),

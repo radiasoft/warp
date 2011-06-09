@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.457 $, $Date: 2011/05/13 23:10:30 $
+c@(#) File W3D.F, version $Revision: 3.458 $, $Date: 2011/06/09 21:48:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -225,11 +225,11 @@ c        ymmin = 0.
 c     --- These are only set for backwards compatibility, but should not
 c     --- be used.
       xmminglobal = xmmin
-      xmmaxglobal = xmmax
+      xmmaxglobal = xmmin + nx*dx
       ymminglobal = ymmin
-      ymmaxglobal = ymmax
+      ymmaxglobal = ymmin + ny*dy
       zmminglobal = zmmin
-      zmmaxglobal = zmmax
+      zmmaxglobal = zmmin + nz*dz
 
 #ifdef MPIPARALLEL
       call init_w3d_parallel()
@@ -325,11 +325,11 @@ c  Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzp
 c  Setup arrays for potential and charge density for the particles.
 
       xpmin = xmmin
-      xpmax = xmmax
+      xpmax = xmmin + nx*dx
       ypmin = ymmin
-      ypmax = ymmax
+      ypmax = ymmin + ny*dy
       zpmin = zmmin
-      zpmax = zmmax
+      zpmax = zmmin + nz*dz
 
 c  Initialize base grid for RZ solver
       if (fstype == 10) then
@@ -490,12 +490,12 @@ c  and set limits for plots
 
 c     call remark(" ---  Allocating scratch space for plots")
 c     if (npsplt == 0) npsplt = nparpgrp-1
-      if (xplmin == 0.) xplmin = -xmmax
-      if (xplmax == 0.) xplmax = xmmax
-      if (yplmin == 0.) yplmin = -ymmax
-      if (yplmax == 0.) yplmax = ymmax
+      if (xplmin == 0.) xplmin = -(xmmin + nx*dx)
+      if (xplmax == 0.) xplmax =  (xmmin + nx*dx)
+      if (yplmin == 0.) yplmin = -(ymmin + ny*dy)
+      if (yplmax == 0.) yplmax =  (ymmin + ny*dy)
       if (zplmin == 0.) zplmin = zmmin
-      if (zplmax == 0.) zplmax = zmmax
+      if (zplmax == 0.) zplmax = (zmmin + nz*dz)
 
 c  Setup history mechanism
 
@@ -804,6 +804,7 @@ c     BEGIN predictor-corrector loop
             else
                call padvnc3d ("fullv",pgroup)
             endif
+
 c           --- Inject more particles. This adds particles and alters ins
 c           --- and nps.
             call inject3d(1,pgroup)
@@ -3385,8 +3386,11 @@ c     --- Do nothing if both flags are false
         allocate(pisnearbycond(np))
         i1 = ipmin
         i2 = ipmin + np - 1
-        call getgridngp3di(np,pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
-     &                     pisnearbycond,nxc,nyc,nzc,isnearbycond,xmmin,xmmax,ymmin,ymmax,zmminlocal,zmmaxlocal,zgrid,
+        call getgridngp3di(np,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
+     &                     pgroup%zp(i1:i2),
+     &                     pisnearbycond,nxc,nyc,nzc,isnearbycond,
+     &                     xmminlocal,xmmaxlocal,ymminlocal,ymmaxlocal,
+     &                     zmminlocal,zmmaxlocal,zgrid,
      &                     l2symtry,l4symtry)
       else
         l_pisnearbycond=.false.
@@ -10567,7 +10571,8 @@ c=============================================================================
       subroutine particlegridboundaries3d(pgroup,js)
       use Subtimers3d
       use ParticleGroupmodule
-      use InMesh3d,Only: xmmin,xmmax,ymmin,ymmax,zmmax,zmmin
+      use Picglb3d,Only: dx,dy,dz
+      use InMesh3d,Only: xmmin,nx,ymmin,ny,zmmin,nz
       use InGen3d,Only: l4symtry,l2symtry,solvergeom,RZgeom,Rgeom
       type(ParticleGroup):: pgroup
       integer(ISZ):: js
@@ -10592,14 +10597,14 @@ c       --- Include all species
       endif
 
       call getparticleextant(1,xmin,xmax,ymin,ymax,
-     &                         xmmin,xmmax,ymmin,ymmax)
+     &                         xmmin,xmmin+nx*dx,ymmin,xmmin+ny*dy)
 
       lrz = (solvergeom == RZgeom) .or. (solvergeom == Rgeom)
       call xparticleboundaries(pgroup,js1,js2,xmax,xmin,.true.,
      &                         l4symtry,lrz)
       call yparticleboundaries(pgroup,js1,js2,ymax,ymin,.true.,
      &                         l2symtry .or. l4symtry,lrz)
-      call zparticleboundaries(pgroup,js1,js2,zmmax,zmmin,.true.)
+      call zparticleboundaries(pgroup,js1,js2,zmmin+nz*dz,zmmin,.true.)
 
 !$OMP MASTER
       if (lw3dtimesubs) timeparticlegridboundaries3d = timeparticlegridboundaries3d + wtime() - substarttime
@@ -10655,13 +10660,13 @@ c         --- do it only if species was advanced on this time step
 
 c     --- Apply particle boundary conditions
       call getparticleextant(1,xmin,xmax,ymin,ymax,
-     &                         xmmin,xmmax,ymmin,ymmax)
+     &                         xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy)
       lrz = (solvergeom == RZgeom) .or. (solvergeom == Rgeom)
       call xparticleboundaries(pgroup,js1,js2,xmax,xmin,.true.,
      &                         l4symtry,lrz)
       call yparticleboundaries(pgroup,js1,js2,ymax,ymin,.true.,
      &                         l2symtry .or. l4symtry,lrz)
-      call zparticleboundaries(pgroup,js1,js2,zmmax,zmmin,.true.)
+      call zparticleboundaries(pgroup,js1,js2,zmmin+nz*dz,zmmin,.true.)
 
 c     --- absorb particles passing through semitransparent disc
       call semitransparent_disc(pgroup,dz)
@@ -10740,14 +10745,14 @@ c         --- do it only if species was advanced on this time step
 
 c     --- Apply particle boundary conditions
       call getparticleextant(1,xmin,xmax,ymin,ymax,
-     &                         xmmin,xmmax,ymmin,ymmax)
+     &                         xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy)
       lrz = (solvergeom == RZgeom) .or. (solvergeom == Rgeom)
       call xparticleboundaries(pgroup,js1,js2,xmax,xmin,.true.,
      &                         l4symtry,lrz)
       call yparticleboundaries(pgroup,js1,js2,ymax,ymin,.true.,
      &                         l2symtry .or. l4symtry,lrz)
 c     ---  This is skipped in the xy version.
-c     call zparticleboundaries(pgroup,js1,js2,zmmax,zmmin,.true.)
+c     call zparticleboundaries(pgroup,js1,js2,zmmin+nz*dz,zmmin,.true.)
 
 c     --- absorb particles passing through semitransparent disc
       call semitransparent_disc(pgroup,dz)
@@ -12246,9 +12251,9 @@ c   4  2d fft in transverse plane, tridiag solve in z
 c Note that the select case statement was giving the f90 compiler on HPUX
 c fits and so was replaced with if statements.
 
-      xlen = xmmax - xmmin
-      ylen = ymmax - ymmin
-      zlen = zmmax - zmmin
+      xlen = nx*dx
+      ylen = ny*dy
+      zlen = nz*dz
 
       if (fstype == 0) then
           call vpois3d(iwhich,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
@@ -12267,7 +12272,7 @@ c fits and so was replaced with if statements.
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xlen,ylen,zlen,nx,ny,izfsmax-izfsmin,nz,
      &                scrtch,xywork3d,zwork,
-     &                xmmax,zmminlocal+izfsmin*dz,zgrid,pipeshpe,
+     &                xmmin+nx*dx,zmminlocal+izfsmin*dz,zgrid,pipeshpe,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 3) then
           call kaboom("field solver type 3 (SOR) is no longer available, use 7 (multigrid) instead")

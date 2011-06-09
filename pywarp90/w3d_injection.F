@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.154 $, $Date: 2011/05/17 18:00:05 $
+c@(#) File w3d_injection.F, version $Revision: 1.155 $, $Date: 2011/06/09 21:48:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2863,7 +2863,8 @@ c apinject or bpinject back to zero after the generate.
       enddo
 
 c     --- Setup grids covering injection surfaces.
-      call getparticleextant(1,xmin,xmax,ymin,ymax,xmmin,xmmax,ymmin,ymmax)
+      call getparticleextant(1,xmin,xmax,ymin,ymax,
+     &                       xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy)
       inj_ninj = ninject
 
       if (inj_dx == 0.) inj_dx = dx
