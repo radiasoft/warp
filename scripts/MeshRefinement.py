@@ -4,7 +4,7 @@ from __future__ import generators
 __all__ = ['MeshRefinement',
            'MRBlock3D','MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
            'MRBlockImplicit2D','EMMRBlock']
-MeshRefinement_version = "$Id: MeshRefinement.py,v 1.174 2010/07/14 00:46:23 dave Exp $"
+MeshRefinement_version = "$Id: MeshRefinement.py,v 1.175 2011/06/16 22:28:21 grote Exp $"
 from warp import *
 from find_mgparam import find_mgparam
 import operator
@@ -1734,9 +1734,8 @@ to zero."""
       ic = comp
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
-    try: field = self.getselfe(recalculate=0)
-    except AttributeError: field = self.field
-    return field[ic,ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
+    self.calcselfe(recalculate=0)
+    return self.field[ic,ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
   def getchilddomains(self,lower,upper,upperedge=0):
     if self.childdomains is None:
       #self.childdomains = fzeros(1+self.dims)  + self.blocknumber
@@ -2556,6 +2555,10 @@ Implements adaptive mesh refinement in 2d for the electrostatic field solver
     else:
       return 'getpotentialslice'
 
+  def drawboxzr(self,iy=None,withguards=1,color=[],selfonly=0):
+    self.drawbox(ip=iy,idim=1,withguards=withguards,color=color,
+                 selfonly=selfonly)
+
   def pfzx(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
     kwdict.update(kw)
@@ -2637,6 +2640,10 @@ Implements adaptive mesh refinement in RZ for the electrostatic field solver
       return 'getsourceslice'
     else:
       return 'getpotentialslice'
+
+  def drawboxzr(self,iy=None,withguards=1,color=[],selfonly=0):
+    self.drawbox(ip=iy,idim=1,withguards=withguards,color=color,
+                 selfonly=selfonly)
 
   def pfzx(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
@@ -2723,6 +2730,10 @@ with variable dielectric
       return 'getsourceslice'
     else:
       return 'getpotentialslice'
+
+  def drawboxzr(self,iy=None,withguards=1,color=[],selfonly=0):
+    self.drawbox(ip=iy,idim=1,withguards=withguards,color=color,
+                 selfonly=selfonly)
 
   def pfzx(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
@@ -2853,6 +2864,10 @@ field solver
       return 'getsourceslice'
     else:
       return 'getpotentialslice'
+
+  def drawboxzr(self,iy=None,withguards=1,color=[],selfonly=0):
+    self.drawbox(ip=iy,idim=1,withguards=withguards,color=color,
+                 selfonly=selfonly)
 
   def pfzx(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
