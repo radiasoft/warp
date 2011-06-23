@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.43 $, $Date: 2011/01/31 21:47:38 $
+c@(#) File ENV.M, version $Revision: 3.44 $, $Date: 2011/06/23 20:00:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -179,20 +179,17 @@ c           vz(1:np), epsx(1:np), epsy(1:np), ib(1:np)
 c  Check if there is any envelope data
       if (.not. ASSOCIATED(aenv)) then
         call kaboom("Error: envelope code has not been intialized")
+        envxport = 1
         return
       endif
 
 c  Validity check on input
 
-      zzmin = 1.e6
-      zzmax = -1.e6
-      do ip = 1,np
-         zzmin = min(zzmin, z(ip))
-         zzmax = max(zzmax, z(ip))
-      enddo
-      if (zzmin < zl .or. zzmax > zu) then
-         envxport = 1
-         return
+      zzmin = minval(z)
+      zzmax = maxval(z)
+      if (zzmin < zl .or. zzmax > zu .or. nenv == 0) then
+        envxport = 1
+        return
       endif
 
 c  Interpolate to get envelope values and as a first pass load constant 
