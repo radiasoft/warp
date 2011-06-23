@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.187 $, $Date: 2011/04/27 19:32:04 $
+c@(#) File DTOP.F, version $Revision: 3.188 $, $Date: 2011/06/23 19:59:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -655,7 +655,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.187 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.188 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -2103,8 +2103,8 @@ c       --- find location on grid
         gy = (y(ip) - ymin)*dyi
 
 c       --- if within grid, gather
-        if (0. <= gx .and. gx <= nx .and.
-     &      0. <= gy .and. gy <= ny) then
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny) then
           ix = int(gx)
           iy = int(gy)
           wx = gx - ix
@@ -2113,6 +2113,21 @@ c       --- if within grid, gather
      &            grid(ix+1,iy  )*      wx *(1. - wy) +
      &            grid(ix  ,iy+1)*(1. - wx)*      wy  +
      &            grid(ix+1,iy+1)*      wx *      wy
+
+        else if (0. <= gx .and. gx <= nx .and.
+     &           0. <= gy .and. gy <= ny) then
+          ix = int(gx)
+          iy = int(gy)
+          wx = gx - ix
+          wy = gy - iy
+          z(ip) = grid(ix  ,iy  )*(1. - wx)*(1. - wy)
+          if (gx < nx) then
+            z(ip) = z(ip) + grid(ix+1,iy  )*      wx *(1. - wy)
+          endif
+          if (gy < ny) then
+            z(ip) = z(ip) + grid(ix  ,iy+1)*(1. - wx)*      wy
+          endif
+c         z(ip) = z(ip) + grid(ix+1,iy+1)*      wx *      wy
         endif
 
       enddo
