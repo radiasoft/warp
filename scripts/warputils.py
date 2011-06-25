@@ -6,7 +6,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.39 2011/05/10 23:31:15 grote Exp $"
+warputils_version = "$Id: warputils.py,v 1.40 2011/06/25 01:10:43 grote Exp $"
 
 def warputilsdoc():
   import warputils
@@ -613,17 +613,26 @@ def getruntimememory():
 virtual size in bytes."""
     try:
         memstring = os.popen('ps -p %s -o vsz=""'%os.getpid()).read().strip()
-        if memstring[-1] == 'M':
+        memlist = memstring.split('\n')
+        if len(memlist) > 1:
+            # --- Might by busybox style ouput. The results needs to be
+            # --- searched through to find the data for the process.
+            for pp in memlist:
+                dd = pp.strip().split()
+                if len(dd) > 0 and dd[0] == repr(os.getpid()):
+                    memstring = dd[2]
+                    break
+        if memstring[-1] in ['M','m']:
             m = float(memstring[:-1])*1.e6 
-        elif memstring[-1] == 'K':
+        elif memstring[-1] in ['K','k']:
             m = float(memstring[:-1])*1.e3 
         else:
             m = float(memstring)*1.e3
     except:
-        m = 0.0 
+        m = 0
     return m
 
-def getallobjectsizes(minsize=0,withpackages=1):
+def getallobjectsizes(minsize=1.e20,withpackages=1):
   """Makes a printout of all of the user created python objects and their
 sizes, in bytes.
  - minsize=1: only prints objects with a size greater than minsize
