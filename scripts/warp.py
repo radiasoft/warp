@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.205 2011/06/23 01:14:41 grote Exp $"
+warp_version = "$Id: warp.py,v 1.206 2011/06/29 23:27:12 grote Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -64,6 +64,7 @@ try:
   if me == 0 and sys.platform != 'mac':
     from gist import *
   else:
+    gist.pyg_unhook()
     from gistdummy import *
 except ImportError:
   import warnings
