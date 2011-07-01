@@ -85,7 +85,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.25 2011/01/19 20:55:37 grote Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.26 2011/07/01 17:16:03 grote Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -2666,7 +2666,7 @@ def pzxpedge(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
   plg(xpedgez,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
-    ptitles("Beam X' envelope",titleb,"(m)",
+    ptitles("Beam X' envelope",titleb,"(rad)",
             _gettitler(js))
 
 ##########################################################################
@@ -2746,7 +2746,7 @@ def pzypedge(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
   plg(ypedgez,(zoffset+zmntmesh)/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
-    ptitles("Beam Y' envelope",titleb,"(m)",
+    ptitles("Beam Y' envelope",titleb,"(rad)",
             _gettitler(js))
 
 ##########################################################################
