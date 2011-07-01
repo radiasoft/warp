@@ -4,7 +4,7 @@ from __future__ import generators
 __all__ = ['MeshRefinement',
            'MRBlock3D','MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
            'MRBlockImplicit2D','EMMRBlock']
-MeshRefinement_version = "$Id: MeshRefinement.py,v 1.175 2011/06/16 22:28:21 grote Exp $"
+MeshRefinement_version = "$Id: MeshRefinement.py,v 1.176 2011/07/01 18:02:28 grote Exp $"
 from warp import *
 from find_mgparam import find_mgparam
 import operator
@@ -258,7 +258,8 @@ Implements adaptive mesh refinement in 3d
       # --- of the deltas calculated here and elsewhere will be the same
       # --- out to machine precision.
       self.deltas = where(self.dims>0.,
-                          (self.maxs - self.mins)/self.dims,
+                          (self.maxs - self.mins)/
+                              where(self.dims>0.,self.dims,1),
                           self.deltas)
 
       # --- Note that it is not needed to check if the child overlaps the
