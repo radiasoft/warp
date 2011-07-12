@@ -7,7 +7,7 @@ Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.89 2011/05/10 22:40:48 grote Exp $"
+species_version = "$Id: species.py,v 1.90 2011/07/12 16:20:23 grote Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale > 0.:
@@ -165,6 +165,9 @@ del k
 
 Electron = Particle(charge=-echarge,mass=emass,Symbol='e-',name='Electron')
 Positron = Particle(charge=+echarge,mass=emass,Symbol='e+',name='Positron')
+Muon = Particle(charge=-echarge,mass=1.883531475e-28,Symbol='mu-',name='Muon')
+Antimuon = Particle(charge=+echarge,mass=1.883531475e-28,Symbol='mu+',
+                    name='Antimuon')
 
 Proton = Particle(mass=1.6726231e-27, charge=echarge, Symbol='P',name='Proton')
 Neutron = Particle(mass=1.6749286e-27, charge=0, Symbol='N',name='Neutron')
@@ -205,7 +208,7 @@ Creates a new species of particles. All arguments are optional.
                     weight=None,name='',nautodt=1,
                     efetch=None,fselfb=None,limplicit=None,
                     color='fg',marker='\1',msize=1.0):
-    assert isinstance(type,Particle),'type must be one of either an elementary particle, an element, or one of the predefined molecules'
+    assert type is None or isinstance(type,Particle),'type must be one of either an elementary particle, an element, or one of the predefined molecules'
     # --- Note that some default arguments are None in case the user had
     # --- set the values in pgroup already, in which case they should not
     # --- be overwritten here unless the inputs are explicitly set.
@@ -505,15 +508,31 @@ Creates a new species of particles. All arguments are optional.
       z = zminp + (zmaxp - zminp)*z
 
     elif spacing == 'uniform':
-      if ymax > ymin and zmax > zmin: dims = 3
-      else:                           dims = 2
-      if nx is None: nx = nint(np**(1./dims))
+      assert nx is None or nx > 0,"if nx is given, it must be greater than zero"
+      assert ny is None or ny > 0,"if ny is given, it must be greater than zero"
+      assert nz is None or nz > 0,"if nz is given, it must be greater than zero"
+      if nx is None and xmax <= xmin: nx = 1
+      if ny is None and ymax <= ymin: ny = 1
+      if nz is None and zmax <= zmin: nz = 1
+      dims = 0
+      nptemp = np
+      if nx is None:
+        dims += 1
+      else:
+        nptemp /= nx
       if ny is None:
-        if dims == 3 or ymax>ymin: ny = nint(np**(1./dims))
-        else:                      ny = 1
+        dims += 1
+      else:
+        nptemp /= ny
       if nz is None:
-        if dims == 3 or zmax>zmin: nz = nint(np**(1./dims))
-        else:                      nz = 1
+        dims += 1
+      else:
+        nptemp /= nz
+      if dims > 0:
+        nptemp = nint(nptemp**(1./dims))
+        if nx is None: nx = nptemp
+        if ny is None: ny = nptemp
+        if nz is None: nz = nptemp
 
       # --- Find the range of particle locations within the cropped
       # --- min and max.
