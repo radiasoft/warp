@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.79 2011/05/06 16:25:32 grote Exp $"
+extpart_version = "$Id: extpart.py,v 1.80 2011/07/15 22:42:46 grote Exp $"
 
 def extpartdoc():
     import extpart
@@ -32,13 +32,16 @@ The creator options are:
  - nmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
          otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
- - name=None: descriptive name for location
+ - name=None: descriptive name for location. It must be unique for each
+              instance of the diagnostic.
  - lautodump=0: when true, after the grid moves beyond the z location,
                 automatically dump the data to a file, clear the arrays and
-                disable itself. Also must have name set. The object
+                disable itself. Also must have name set - name is appended to
+                the name of the files where the data is stored. The object
                 writes itself out to a pdb file.
  - dumptofile=0: when true, the particle data is always dumped to a file
-                 and not saved in memory. Name must be set. Setting this
+                 and not saved in memory. Name must be set - name is appended
+                 to the name of the files where the data is stored. Setting this
                  to true implies that the data is accumulated.
                  Use the restoredata method to read the data back in.
 
@@ -84,6 +87,7 @@ self.topuzname
 self.toppidname
 self.topgroupname
     """
+    name_cache = []
 
     def _topproperties(name):
         def fget(self):
@@ -116,6 +120,11 @@ self.topgroupname
         self.zz = zz
         self.laccumulate = laccumulate
         self.lautodump = lautodump
+        if name is not None:
+          if name in self.name_cache:
+            raise ValueError('the name "%s" is not unique'%name)
+          else:
+            self.name_cache.append(name)
         self.name = name
         self.dumptofile = dumptofile
         self.dt = top.dt
@@ -155,6 +164,7 @@ self.topgroupname
             return self.zz
 
     def setuparrays(self,ns,bump=None):
+        self.restored = False
         if self.laccumulate and not self.dumptofile:
             if bump is None: bump = self.nmax
             self.t = []
@@ -303,6 +313,12 @@ accumulated. If the data is being accumulated, any existing data is preserved.
         # --- If self.topnwin is 0 then something is really wrong - this routine
         # --- should never be called if self.topnwin is zero.
         if self.topnwin == 0: return
+        # --- If the data is currently restored from files, which assumes that
+        # --- dumptofiles is true, then reset the arrays so that they are
+        # --- ready to accumulate more data and are prepared for writing
+        # --- that data out to the files.
+        if self.restored:
+          self.setuparrays(self.getns())
         # --- Check if the number of species has changed. This is done to ensure
         # --- crashes don't happen.
         if top.ns > self.getns():
@@ -477,8 +493,10 @@ accumulated. If the data is being accumulated, any existing data is preserved.
 Restores the data that was written out to a file. This is used when doing
 post processing of the saved data when the flag dumptofile was turned on.  
         """
+        if self.restored: return
         #self.restoredataPDB(0,files)
         self.restoredataPickle(0,files,nprocs=nprocs)
+        self.restored = True
 
     def restoredataPickle(self,lforce=0,files=None,names=None,nprocs=None):
         """
@@ -490,8 +508,6 @@ feature.
         if names is None: names = []
         if not self.dumptofile: return
         if not lforce and (not self.enabled or _extforcenorestore): return
-        self.dumptofile = 0
-        self.laccumulate = 1
 
         # --- Check some input, converting to lists if needed.
         if not isinstance(files,ListType):
@@ -577,7 +593,17 @@ feature.
             # --- Set the bump size so that the arrays will be made just
             # --- large enough to hold the data.
             bump = max(ntot) + 1
+
+        # --- Temporarily set dumptofile=0 so that setuparrays will make
+        # --- the arrays appendable, and ready to take the data to be
+        # --- read in.
+        save_dumptofile = self.dumptofile
+        save_laccumulate = self.laccumulate
+        self.dumptofile = 0
+        self.laccumulate = 1
         self.setuparrays(jsmax+1,bump=bump)
+        self.dumptofile = save_dumptofile
+        self.laccumulate = save_laccumulate
 
         # --- This loop must be ordered because of the append
         varlist = datadict.keys()
@@ -1454,13 +1480,16 @@ The creator options are:
                   if the particle is near the plane over multiple time steps.
                   Note that this is a global option - the value must be the
                   same in all instances; it sets flag top.lepsaveonce.
- - name=None: descriptive name for location
+ - name=None: descriptive name for location. It must be unique for each
+              instance of the diagnostic.
  - lautodump=0: when true, after the grid moves beyond the z location,
                 automatically dump the data to a file, clear the arrays and
-                disable itself. Also must have name set. The object
+                disable itself. Also must have name set - name is appended to
+                the name of the files where the data is stored. The object
                 writes itself out to a pdb file.
  - dumptofile=0: when true, the particle data is always dumped to a file
-                 and not saved in memory. Name must be set. Setting this
+                 and not saved in memory. Name must be set - name is appended
+                 to the name of the files where the data is stored. Setting this
                  to true implies that the data is accumulated.
                  Use the restoredata method to read the data back in.
 
@@ -1489,6 +1518,7 @@ routines (such as ppxxp).
  - pxy, pxxp, pyyp, pxpyp, prrp, ptx, pty, ptxp, ptyp, ptux, ptuy, ptuz, ptvx
  - ptvy, ptvz, ptrace
     """
+    name_cache = []
 
     def __init__(self,iz=-1,zz=0.,wz=None,nepmax=None,laccumulate=0,
                  lepsaveonce=None,name=None,lautodump=0,dumptofile=0):
@@ -1557,14 +1587,17 @@ The creator options are:
  - nmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
          otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
- - name=None: descriptive name for location
+ - name=None: descriptive name for location. It must be unique for each
+              instance of the diagnostic.
  - lautodump=0: when true, after the grid moves beyond the z location,
                 automatically dump the data to a file, clear the arrays and
-                disable itself. Also must have name set. The object
+                disable itself. Also must have name set - name is appended to
+                the name of the files where the data is stored. The object
                 writes itself out to a pdb file.
  - dumptofile=0: when true, the particle data is always dumped to a file
-                 and not saved in memory. Name must be set. Setting this
-                 to true implies that the data is accumulated.
+                 and not saved in memory. Name must be set - name is appended
+                 to the name of the files where the data is stored.
+                 Setting this to true implies that the data is accumulated.
                  Use the restoredata method to read the data back in.
 
 One of iz or zz must be specified.
@@ -1592,6 +1625,7 @@ routines (such as ppxxp).
  - pxy, pxxp, pyyp, pxpyp, prrp, ptx, pty, ptxp, ptyp, ptux, ptuy, ptuz, ptvx
  - ptvy, ptvz, ptrace
     """
+    name_cache = []
 
     def __init__(self,iz=-1,zz=0.,nmax=None,laccumulate=0,
                  name=None,lautodump=0,dumptofile=0):
