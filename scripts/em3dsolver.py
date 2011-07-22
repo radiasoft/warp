@@ -196,7 +196,7 @@ class EM3D(SubcycledPoissonSolver):
       if self.colecoefs is None:
         if self.l_2dxz:
           em3d.betaxy = 1./8.
-          em3d.alphax = 1.-2*em3d.betax
+          em3d.alphax = 1.-2*em3d.betaxy
         else:
           em3d.alphax = 7./12.
           em3d.betaxy  = 1./12.
