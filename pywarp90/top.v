@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.299 $, $Date: 2011/04/27 19:04:34 $
+#@(#) File TOP.V, version $Revision: 3.300 $, $Date: 2011/07/22 01:18:36 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.299 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.300 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1279,6 +1279,9 @@ xpcent_s(ns)   _real    [m]     /0./
    # Center X' of each species
 ypcent_s(ns)   _real    [m]     /0./
    # Center Y' of each species
+lhalfmaxwellinject(ns)  _integer  [1]  /0/  # If 1, then z velocities are injected to produce
+                          # a half-Maxwellian distribution function;
+                          # if 0, then rate of injection is Maxwellian
 
 efetch(ns)     _integer /1/
    # Specifies type of fetch used to set internal E field

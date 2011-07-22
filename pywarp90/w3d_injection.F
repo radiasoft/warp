@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.155 $, $Date: 2011/06/09 21:48:22 $
+c@(#) File w3d_injection.F, version $Revision: 1.156 $, $Date: 2011/07/22 01:18:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -308,7 +308,7 @@ c               --- routine wrandomgauss must be called in the correct order.
               endif
 
 c             --- Axial thermal spread
-              if (is>1 .and.lhalfmaxwellinject==1) then
+              if (lhalfmaxwellinject(is)==1) then
 c             inject vz*Maxwellian so f is half-maxwellian
                 uztempfloor = 1.e-14
                 do ip = 1,nn
