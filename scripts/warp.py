@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.206 2011/06/29 23:27:12 grote Exp $"
+warp_version = "$Id: warp.py,v 1.207 2011/08/03 21:23:26 grote Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -556,8 +556,8 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
   # --- Set them based on the particle data
   zlen = zmax - zmin
   if zlen == 0.:
-    top.zlmin = zmin
-    top.zlmax = zmin
+    top.zlmin = 0.
+    top.zlmax = 0.
     top.nzl = 0
     zbeam = zmin
   else:
