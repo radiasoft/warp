@@ -71,7 +71,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.101 2011/06/07 23:51:28 grote Exp $"
+lattice_version = "$Id: lattice.py,v 1.102 2011/08/03 21:20:05 grote Exp $"
 
 def latticedoc():
   import lattice
@@ -3162,7 +3162,7 @@ scale factor. One of the following can be supplied:
     top.pgrdns = top.pgrdns + 1
     top.pgrdid[ie] = top.pgrdns
     # --- Get array size
-    nx,ny,nz = array(shape(phi)) - array([1,1,1])
+    nx,ny,nz = array(shape(phi)) - array([1,1,3])
     # --- Make sure that the arrays are big enough
     top.pgrdnx = max(nx,top.pgrdnx)
     top.pgrdny = max(ny,top.pgrdny)
@@ -3172,7 +3172,7 @@ scale factor. One of the following can be supplied:
     top.pgrddx[-1] = dx
     top.pgrddy[-1] = dy
     top.pgrddz[-1] = (ze - zs)/nz
-    top.pgrd[:nx+1,:ny+1,:nz+1,-1] = phi
+    top.pgrd[:nx+1,:ny+1,:nz+3,-1] = phi
 
   if (time is not None and data is not None) or func is not None:
     TimeDependentLatticeElement('pgrdsc',ie,time,data,func)
