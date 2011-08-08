@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.67 2010/10/28 00:46:46 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.68 2011/08/08 21:53:09 jlvay Exp $"
 
 
 ##############################################################################
@@ -165,6 +165,9 @@ Performs steady-state iterations
   global zd, egundata_curr, egundata_xrmsz, egundata_yrmsz
   global egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz
   global _dtinit,_swinit
+
+  # --- Make sure that w3d.inj_nz=1 or issue error
+  assert (w3d.inj_nz==1),"ERROR: inj_nz must be set to 1 when running in Egun mode."
 
   # --- If the current is specified, make sure that the data will be available
   if current is not None and currentiz is not None:
