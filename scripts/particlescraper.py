@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.103 2011/03/21 21:45:28 grote Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.104 2011/08/13 01:26:43 grote Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -369,6 +369,10 @@ data needed by the grid is set up. This will normally be called automatically.
       allcond = self.conductors[0]
       for c in self.conductors[1:]:
         allcond = allcond + c
+        # --- Remove allcond from the global list of conductors.
+        # --- This prevents a virtual memory leak - otherwise the
+        # --- list would keep on growing.
+        listofallconductors.remove(allcond)
       self.grid.getdistances(allcond)
 
   def jslist(self,jslist=None):
