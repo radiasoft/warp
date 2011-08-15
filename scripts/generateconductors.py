@@ -113,7 +113,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.241 2011/03/21 21:43:41 grote Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.242 2011/08/15 21:04:35 grote Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2018,20 +2018,31 @@ The attribute 'distance' holds the calculated distance.
 
   def __mul__(self,right):
     "'and' operator, returns maximum of distances to surfaces."
-    c = less(self.distance,right.distance)
+    # --- Note that outside of the object, the magnitude of the distances
+    # --- may not be correct (but the sign will be correctly positive).
     return Distance(self.xx,self.yy,self.zz,
-                    choose(c,(self.distance,right.distance)))
+                    maximum(self.distance,right.distance))
+#   c = less(self.distance,right.distance)
+#   return Distance(self.xx,self.yy,self.zz,
+#                   choose(c,(self.distance,right.distance)))
 
   def __add__(self,right):
     "'or' operator, returns minimum of distances to surfaces."
-    c = greater(self.distance,right.distance)
-    dd = Distance(self.xx,self.yy,self.zz,
-                  choose(c,(self.distance,right.distance)))
-    dd.distance = where((self.distance < 0.) & (right.distance >= 0.),
-                        self.distance,dd.distance)
-    dd.distance = where((self.distance >= 0.) & (right.distance < 0.),
-                        right.distance,dd.distance)
-    return dd
+    # --- Note that inside of the object, the magnitude of the distances
+    # --- may not be correct (but the sign will be correctly negative).
+    return Distance(self.xx,self.yy,self.zz,
+                    minimum(self.distance,right.distance))
+#   --- Don't remember why the code was originally written as below,
+#   --- especially the two extra where statements. They seem to be
+#   --- redundant.
+#   c = greater(self.distance,right.distance)
+#   dd = Distance(self.xx,self.yy,self.zz,
+#                 choose(c,(self.distance,right.distance)))
+#   dd.distance = where((self.distance < 0.) & (right.distance >= 0.),
+#                       self.distance,dd.distance)
+#   dd.distance = where((self.distance >= 0.) & (right.distance < 0.),
+#                       right.distance,dd.distance)
+#   return dd
 
   def __sub__(self,right):
     "'or' operator, returns minimum of distances to surfaces."
@@ -2809,25 +2820,29 @@ Installs the conductor data into the fortran database
     if gridmode is not None:
       f3d.gridmode = gridmode
 
-  def getdistances(self,a,mglevel=0):
+  def getdistances(self,a,mglevel=0,lreset=False):
     """
 Given an Assembly, accumulate the distances between the assembly and the
 grid points.
  - a: the assembly
  - mglevel=0: coarsening level to use
+ - lreset=False: when true, reset the distances array so only the conductor
+                 passed in will be included. Otherwise, the distances will
+                 include conductors passed in in previous calls.
     """
     starttime = wtime()
     tt2 = zeros(4,'d')
     tt1 = wtime()
     ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nxlocal,nylocal,nzlocal,zmesh,zbeam = self.getmesh(mglevel)
-    try:
-      self.distances[0,0,0]
-    except AttributeError:
+    if 'distances' not in self.__dict__:
       self.distances = fzeros((1+nxlocal,1+nylocal,1+nzlocal),'d')
+      lreset = True
+    if lreset:
+      self.distances.fill(largepos)
     ix1 = min(ix)
-    ix2 = max(ix)
+    ix2 = max(ix) + 1
     iy1 = min(iy)
-    iy2 = max(iy)
+    iy2 = max(iy) + 1
     tt2[0] = tt2[0] + wtime() - tt1
     if len(x) == 0: return
     for zz in zmesh:
@@ -2840,8 +2855,9 @@ grid points.
       tt2[2] = tt2[2] + wtime() - tt1
       tt1 = wtime()
       dd = d.distance
-      dd.shape = (ix2-ix1+1,iy2-iy1+1)
-      self.distances[ix1:ix2+1,iy1:iy2+1,iz[0]] = dd
+      dd.shape = (ix2-ix1,iy2-iy1)
+      dorig = self.distances[ix1:ix2,iy1:iy2,iz[0]]
+      self.distances[ix1:ix2,iy1:iy2,iz[0]] = minimum(dd,dorig)
       tt2[3] = tt2[3] + wtime() - tt1
     endtime = wtime()
     self.generatetime = endtime - starttime
