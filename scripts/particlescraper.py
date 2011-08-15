@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.104 2011/08/13 01:26:43 grote Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.105 2011/08/15 21:05:43 grote Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -366,14 +366,8 @@ data needed by the grid is set up. This will normally be called automatically.
       # --- Just make a reference. Similarly in setstate.
       self.reducedisinside = self.grid.isinside
     else:
-      allcond = self.conductors[0]
-      for c in self.conductors[1:]:
-        allcond = allcond + c
-        # --- Remove allcond from the global list of conductors.
-        # --- This prevents a virtual memory leak - otherwise the
-        # --- list would keep on growing.
-        listofallconductors.remove(allcond)
-      self.grid.getdistances(allcond)
+      for c in self.conductors:
+        self.grid.getdistances(c)
 
   def jslist(self,jslist=None):
     "Return a list of species indices that are scraped"
