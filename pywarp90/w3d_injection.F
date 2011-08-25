@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.156 $, $Date: 2011/07/22 01:18:36 $
+c@(#) File w3d_injection.F, version $Revision: 1.157 $, $Date: 2011/08/25 21:08:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1526,7 +1526,7 @@ c                   --- are correlated with transverse position.
                     if(l_inj_regular) then
                       pgroup%pid(ii,injpid) = rnrev(injctcnt,dig1)
                     else
-                      pgroup%pid(ii,injpid) = rnrev(injctcnt,dig5)
+                      pgroup%pid(ii,injpid) = rnrev(injctcnt,dig9)
                     end if
 
 c                   --- save time of creation if tpid > 0
@@ -4907,6 +4907,9 @@ c               prevent deposition in cell closer to emitter (gives better resul
                 wz1 = dd/dzmin
               end if
               wz0 = 1.-wz1
+              if (ix < 0 .or. ix+sx > inj_nx) cycle
+              if (iy < 0 .or. iy+sy > inj_ny) cycle
+              if (iz < 0 .or. iz+1  > inj_nz) cycle
 
 c             --- Deposit the particle's charge onto the emitting region.
               ij1 = min(ij,inj_ninj)
@@ -5020,6 +5023,8 @@ c               prevent deposition in cell closer to emitter (gives better resul
                 wz1 = dd/dzmin
               end if
               wz0 = 1.-wz1
+              if (ix < 0 .or. ix+sx > inj_nx) cycle
+              if (iz < 0 .or. iz+1  > inj_nz) cycle
 
 c             --- Deposit the particle's charge onto the emitting region.
               ij1 = min(ij,inj_ninj)
