@@ -4,7 +4,8 @@ from warp import *
 import time
 import string
 import sys, copy
-runcounter_version = "$Id: runcounter.py,v 1.15 2011/03/15 23:28:46 grote Exp $"
+import fcntl
+runcounter_version = "$Id: runcounter.py,v 1.16 2011/08/26 18:40:34 grote Exp $"
 
 def runcounter(init=0,delta=1,ensambles=[],prefix=None,suffix="_runcounter",
                sleep=0):
@@ -111,7 +112,7 @@ third ever increasing. Each run, the first number will be incremented, every
     return counter[0]
 
 def accumulatedata(filename,datadict,scalardict={},pe0only=1,
-                   sortname=None):
+                   sortname=None,withlock=0):
   """
 Accumulates data from multiple runs in a single file.
  - filename: name of the data file
@@ -131,12 +132,20 @@ Accumulates data from multiple runs in a single file.
                   quantity.
   """
   if pe0only and me > 0: return
+
+  if withlock:
+    # --- Grab a lock of the data file.
+    ftemp = open(filename+'.lock','a')
+    fcntl.lockf(ftemp,fcntl.LOCK_EX)
+
   # --- Dictionary of accumulated data to write to file.
   accumulateddata = {}
 
+
   # --- If file already exist, then open it.
   if os.access(filename,os.F_OK):
-    f_in = PR.PR(filename)
+    os.rename(filename,filename+'.temp')
+    f_in = PR.PR(filename+'.temp')
     varlist = list(f_in.inquire_names())
   else:
     f_in = None
@@ -213,7 +222,7 @@ Accumulates data from multiple runs in a single file.
   # --- the original. This is done is case there is a write error. If there
   # --- is an error, the file being written to will be corrupted and all
   # --- of the data lost.
-  f_out = PW.PW(filename+'temp')
+  f_out = PW.PW(filename)
   for name,data in map(None,accumulateddata.keys(),accumulateddata.values()):
     f_out.write(name,data)
   for name,data in map(None,scalardict.keys(),scalardict.values()):
@@ -223,8 +232,13 @@ Accumulates data from multiple runs in a single file.
     # --- Write out any data in the file that is not in datadict or scalardict.
     f_out.write(name,f_indict[name])
   f_out.close()
-  os.system('cp '+filename+'temp '+filename)
-  os.system('rm -f '+filename+'temp')
 
+  if f_in is not None:
+    os.remove(filename+'.temp')
+
+  if withlock:
+    # --- Delete the .lock file and release the lock (by closing it).
+    os.remove(filename+'.lock')
+    ftemp.close()
 
 
