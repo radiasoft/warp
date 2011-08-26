@@ -7,7 +7,7 @@ Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.90 2011/07/12 16:20:23 grote Exp $"
+species_version = "$Id: species.py,v 1.91 2011/08/26 23:08:06 grote Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale > 0.:
@@ -432,8 +432,26 @@ Creates a new species of particles. All arguments are optional.
                       lmomentum=0,spacing='random',nx=None,ny=None,nz=None,
                       lallindomain=0,**kw):
     """
- - lallindomain=0: If true, the code only loads particles within the domain. This
-                   only matters when parallel.
+ - np: number of particles to load. When using uniform spacing, the actual
+       number may be lower.
+ - xmin,xmax,ymin,ymax,zmin,zmax: extent of the box to fill with particles.
+                                  It is OK is one or more dimensions have
+                                  a length of zero.
+ - vthx=0.,vthy=0.,vthz=0.: Thermal velocity
+ - vxmean=0.,vymean=0.,vzmean=0.: Drift velocity
+ - lmomentum=false: Set to false when velocities are input as velocities, true
+                    when input as massless momentum (as WARP stores them).
+                    Only used when top.lrelativ is true.
+ - spacing='random': either 'random' or 'uniform' particle spacing.
+ - nx=None,ny=None,nz=None: With uniform spacing, number of particles along
+                            each axis. If not given, the number along each
+                            axis will be the same, calculated to give a
+                            total number that is less then but close to np.
+                            If all three are given, then np is ignored.
+                            For zero length dimensions, the number is set
+                            to one.
+ - lallindomain=0: If true, the code only loads particles within the domain.
+                   This only matters when parallel.
     """
 
     if np == 0:
@@ -570,19 +588,9 @@ Creates a new species of particles. All arguments are optional.
                  "of processor %d"%me)
         return
 
-      if dims == 3:
-        x,y,z = getmesh3d((ixminp + 0.5)/nx,1./nx,nxp-1,
-                          (iyminp + 0.5)/ny,1./ny,nyp-1,
-                          (izminp + 0.5)/nz,1./nz,nzp-1)
-      else:
-        if ymin == ymax:
-          x,z = getmesh2d((ixminp + 0.5)/nx,1./nx,nxp-1,
-                          (izminp + 0.5)/nz,1./nz,nzp-1)
-          y = zeros((nxp,nzp),'d')
-        if zmin == zmax:
-          x,y = getmesh2d((ixminp + 0.5)/nx,1./nx,nxp-1,
-                          (iyminp + 0.5)/ny,1./ny,nyp-1)
-          z = zeros((nxp,nyp),'d')
+      x,y,z = getmesh3d((ixminp + 0.5)/nx,1./nx,nxp-1,
+                        (iyminp + 0.5)/ny,1./ny,nyp-1,
+                        (izminp + 0.5)/nz,1./nz,nzp-1)
 
       # --- Perform a transpose so that the data is ordered with increasing z.
       # --- The copy is needed since transposed arrays cannot be reshaped.
