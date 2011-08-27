@@ -5,12 +5,15 @@ from warp import *
 from lattice import addnewbgrd,addnewbsqgrad
 import MA
 
-fftsolver_version = "$Id: fftsolver.py,v 1.32 2010/07/01 21:56:43 dave Exp $"
+fftsolver_version = "$Id: fftsolver.py,v 1.33 2011/08/27 00:43:16 grote Exp $"
 
 ##############################################################################
 class FieldSolver3dBase(object):
   
   __w3dinputs__ = ['nx','ny','nz','nzlocal',
+                   'nxguardphi','nyguardphi','nzguardphi',
+                   'nxguardrho','nyguardrho','nzguardrho',
+                   'nxguarde','nyguarde','nzguarde',
                    'xmmin','xmmax','ymmin','ymmax','zmminlocal','zmmaxlocal',
                    'zmmin','zmmax',
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
@@ -151,7 +154,9 @@ class FieldSolver3dBase(object):
     n = len(x)
     if n == 0: return
     setrho3d(self.rho,n,x,y,z,top.zgrid,q,w,top.depos,
-             self.nx,self.ny,self.nzlocal,self.dx,self.dy,self.dz,
+             self.nx,self.ny,self.nzlocal,
+             self.nxguardrho,self.nyguardrho,self.nzguardrho,
+             self.dx,self.dy,self.dz,
              self.xmmin,self.ymmin,self.zmminlocal,self.l2symtry,self.l4symtry,
              self.solvergeom==w3d.RZgeom)
 
@@ -159,7 +164,9 @@ class FieldSolver3dBase(object):
     n = len(x)
     if n == 0: return
     setrho3dselect(self.rho,self.rho,n,x,y,z,top.zgrid,q,w,top.depos,
-             self.nx,self.ny,self.nzlocal,self.dx,self.dy,self.dz,
+             self.nx,self.ny,self.nzlocal,
+             self.nxguardrho,self.nyguardrho,self.nzguardrho,
+             self.dx,self.dy,self.dz,
              self.xmmin,self.ymmin,self.zmminlocal,self.l2symtry,self.l4symtry)
 
   def fetchefrompositions(self,js,x,y,z,ex,ey,ez):
@@ -167,9 +174,11 @@ class FieldSolver3dBase(object):
     if n == 0: return
     sete3d(self.phi,self.selfe,n,x,y,z,top.zgridprv,
            self.xmmin,self.ymmin,self.zmminlocal,
-           self.dx,self.dy,self.dz,self.nx,self.ny,self.nzlocal,top.efetch[js],
-           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
-           0,0,1)
+           self.dx,self.dy,self.dz,self.nx,self.ny,self.nzlocal,
+           self.nxguardphi,self.nyguardphi,self.nzguardphi,
+           self.nxguarde,self.nyguarde,self.nzguarde,
+           top.efetch[js],
+           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
   def fetchbfrompositions(self,x,y,z,bx,by,bz):
     n = len(x)

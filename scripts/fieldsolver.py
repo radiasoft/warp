@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.97 2011/06/09 21:50:03 grote Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.98 2011/08/27 00:43:16 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -80,8 +80,10 @@ package. Only w3d and wxy have field solves defined.
          w3d.solvergeom == w3d.Rgeom  or
          w3d.solvergeom == w3d.Zgeom)):
       allocateselfepforparticles(true)
-      getselfe3d(w3d.phip,w3d.nxp,w3d.nyp,w3d.nzp,w3d.selfep,
-                 w3d.dx,w3d.dy,w3d.dz,true,1,1,1)
+      getselfe3d(w3d.phip,w3d.nxp,w3d.nyp,w3d.nzp,
+                 w3d.nxguardphi,w3d.nyguardphi,w3d.nzguardphi,
+                 w3d.selfep,w3d.nxguarde,w3d.nyguarde,w3d.nzguarde,
+                 w3d.dx,w3d.dy,w3d.dz,true)
     # --- Get the phi needed for injection
     if top.inject > 0: getinj_phi()
 
@@ -388,7 +390,9 @@ the diagnostic is of interest and is meaningfull.
   """
 
   __w3dinputs__ = ['nx','ny','nz','dx','dy','dz','nxlocal','nylocal','nzlocal',
-                   'nxpextra','nypextra','nzpextra',
+                   'nxguardphi','nyguardphi','nzguardphi',
+                   'nxguardrho','nyguardrho','nzguardrho',
+                   'nxguarde','nyguarde','nzguarde',
                    'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
                    'xmminlocal','xmmaxlocal',
                    'ymminlocal','ymmaxlocal',
@@ -920,19 +924,19 @@ the diagnostic is of interest and is meaningfull.
     ppdecomp.zmin[:] = top.ppdecomp.zmin
     ppdecomp.zmax[:] = top.ppdecomp.zmax
 
-    domaindecomposeparticles(self.nx,self.nxprocs,self.nxpextra,
+    domaindecomposeparticles(self.nx,self.nxprocs,0,
                              self.xmmin,self.dx,
                              zeros(self.nxprocs,'d'),true,
                              ppdecomp.ix,ppdecomp.nx,
                              ppdecomp.xmin,ppdecomp.xmax)
 
-    domaindecomposeparticles(self.ny,self.nyprocs,self.nypextra,
+    domaindecomposeparticles(self.ny,self.nyprocs,0,
                              self.ymmin,self.dy,
                              zeros(self.nyprocs,'d'),true,
                              ppdecomp.iy,ppdecomp.ny,
                              ppdecomp.ymin,ppdecomp.ymax)
 
-    domaindecomposeparticles(self.nz,self.nzprocs,self.nzpextra,
+    domaindecomposeparticles(self.nz,self.nzprocs,0,
                              self.zmmin,self.dz,
                              zeros(self.nzprocs,'d'),true,
                              ppdecomp.iz,ppdecomp.nz,
@@ -1763,6 +1767,10 @@ of the domain.
   if (decomp.nxprocs <= 1 and decomp.nyprocs <=1 and decomp.nzprocs <= 1):
     local = 1
 
+  if (nz == 0 and decomp.nzprocs > 1):
+    # --- This is the slice code.
+    local = 1
+
   if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
       result = arr[...]
@@ -2032,7 +2040,9 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
     if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
       rho = frz.basegrid.rho
     else:
-      rho = w3d.rho
+      rho = w3d.rho[w3d.nxguardrho:-w3d.nxguardrho or None,
+                    w3d.nyguardrho:-w3d.nyguardrho or None,
+                    w3d.nzguardrho:-w3d.nzguardrho or None]
   else:
     rho = solver.getrho()
 
@@ -2056,7 +2066,9 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
     if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
       rho = frz.basegrid.rho
     else:
-      rho = w3d.rho
+      rho = w3d.rho[w3d.nxguardrho:-w3d.nxguardrho or None,
+                    w3d.nyguardrho:-w3d.nyguardrho or None,
+                    w3d.nzguardrho:-w3d.nzguardrho or None]
   else:
     rho = solver.getrho()
 
@@ -2088,7 +2100,9 @@ the upper edge.
       phi = frz.basegrid.phi[1:-1,1:-1]
       iy = None
     else:
-      phi = w3d.phi[1:-1,1:-1,1:-1]
+      phi = w3d.phi[w3d.nxguardphi:-w3d.nxguardphi or None,
+                    w3d.nyguardphi:-w3d.nyguardphi or None,
+                    w3d.nzguardphi:-w3d.nzguardphi or None]
   else:
     phi = solver.getphi()
 
@@ -2117,7 +2131,9 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
       phi = frz.basegrid.phi[1:-1,1:-1]
       iy = None
     else:
-      phi = w3d.phi[1:-1,1:-1,1:-1]
+      phi = w3d.phi[w3d.nxguardphi:-w3d.nxguardphi or None,
+                    w3d.nyguardphi:-w3d.nyguardphi or None,
+                    w3d.nzguardphi:-w3d.nzguardphi or None]
   else:
     phi = solver.getphi()
 
@@ -2155,9 +2171,12 @@ the upper edge.
       allocateselfeforfieldsolve()
       nx,ny,nz = array(w3d.phi.shape) - 1
       getselfe3d(w3d.phi,w3d.nxlocal,w3d.nylocal,w3d.nzlocal,
-                 w3d.selfe,w3d.dx,w3d.dy,w3d.dz,
-                 true,(nx-w3d.nxlocal)/2,(ny-w3d.nylocal)/2,(nz-w3d.nzlocal)/2)
-      selfe = w3d.selfe
+                 w3d.nxguardphi,w3d.nyguardphi,w3d.nzguardphi,
+                 w3d.selfe,w3d.nxguarde,w3d.nyguarde,w3d.nzguarde,
+                 w3d.dx,w3d.dy,w3d.dz,true)
+      selfe = w3d.selfe[:,w3d.nxguarde:-w3d.nxguarde or None,
+                          w3d.nyguarde:-w3d.nyguarde or None,
+                          w3d.nzguarde:-w3d.nzguarde or None]
     else:
       selfe = solver.getselfe()
   if type(comp) == IntType: ic = comp
@@ -2211,25 +2230,57 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver
 
+  j = bfield.j[:,bfield.nxguardj:-bfield.nxguardj or None,
+                 bfield.nyguardj:-bfield.nyguardj or None,
+                 bfield.nzguardj:-bfield.nzguardj or None]
+
   if comp == 'J':
-    Jx = getdecomposedarray(bfield.j[0,...],ix=ix,iy=iy,iz=iz,
+    Jx = getdecomposedarray(j[0,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    Jy = getdecomposedarray(bfield.j[1,...],ix=ix,iy=iy,iz=iz,
+    Jy = getdecomposedarray(j[1,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    Jz = getdecomposedarray(bfield.j[2,...],ix=ix,iy=iy,iz=iz,
+    Jz = getdecomposedarray(j[2,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
     return sqrt(Jx**2 + Jy**2 + Jz**2)
   else:
-    return getdecomposedarray(bfield.j[ic,...],ix=ix,iy=iy,iz=iz,
+    return getdecomposedarray(j[ic,...],ix=ix,iy=iy,iz=iz,
                               bcast=bcast,local=local,fullplane=fullplane,
                               xyantisymmetric=(ic in [0,1]),
                               solver=solver)
+
+# --------------------------------------------------------------------------
+def setj(val,comp=None,ix=None,iy=None,iz=None,local=0,solver=None):
+  """Sets slices of j, the current density array. The shape of the
+object returned depends on the number of ix, iy and iz specified, which can
+be from none to all three. If no components are given, then a 3-D array is
+returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar is
+returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
+the upper edge.  
+  - val: input array (must be supplied)
+  - comp: field component to get, either 'x', 'y', or 'z', must be given
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+  """
+  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z'].index(comp)
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver == w3d: bfield = f3d.bfield
+  else:             bfield = solver
+
+  j = bfield.j[:,bfield.nxguardj:-bfield.nxguardj or None,
+                 bfield.nyguardj:-bfield.nyguardj or None,
+                 bfield.nzguardj:-bfield.nzguardj or None]
+
+  setdecomposedarray(j[ic,...],val,ix=ix,iy=iy,iz=iz,
+                     local=local,solver=solver)
 
 # --------------------------------------------------------------------------
 def getb(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
@@ -2259,25 +2310,57 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver
 
+  b = bfield.b[:,bfield.nxguardb:-bfield.nxguardb or None,
+                 bfield.nyguardb:-bfield.nyguardb or None,
+                 bfield.nzguardb:-bfield.nzguardb or None]
+
   if comp == 'B':
-    Bx = getdecomposedarray(bfield.b[0,...],ix=ix,iy=iy,iz=iz,
+    Bx = getdecomposedarray(b[0,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    By = getdecomposedarray(bfield.b[1,...],ix=ix,iy=iy,iz=iz,
+    By = getdecomposedarray(b[1,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    Bz = getdecomposedarray(bfield.b[2,...],ix=ix,iy=iy,iz=iz,
+    Bz = getdecomposedarray(b[2,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
     return sqrt(Bx**2 + By**2 + Bz**2)
   else:
-    return getdecomposedarray(bfield.b[ic,...],ix=ix,iy=iy,iz=iz,
+    return getdecomposedarray(b[ic,...],ix=ix,iy=iy,iz=iz,
                               bcast=bcast,local=local,fullplane=fullplane,
                               xyantisymmetric=(ic in [0,1]),
                               solver=solver)
+
+# --------------------------------------------------------------------------
+def setb(val,comp=None,ix=None,iy=None,iz=None,local=0,solver=None):
+  """Sets slices of b, the magnetic field array. The shape of the
+object returned depends on the number of ix, iy and iz specified, which can
+be from none to all three. If no components are given, then a 3-D array is
+returned.  With one, a 2-D array, with two, 1-D array and with 3 a scalar is
+returned.  Note that 0 is the lower edge of the domain and nx, ny or nz is
+the upper edge.  
+  - val: input array (must be supplied)
+  - comp: field component to get, either 'x', 'y', or 'z', must be given
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
+  """
+  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z'].index(comp)
+  if solver is None: solver = (getregisteredsolver() or w3d)
+  if solver == w3d: bfield = f3d.bfield
+  else:             bfield = solver
+
+  b = bfield.b[:,bfield.nxguardb:-bfield.nxguardb or None,
+                 bfield.nyguardb:-bfield.nyguardb or None,
+                 bfield.nzguardb:-bfield.nzguardb or None]
+
+  setdecomposedarray(b[ic,...],val,ix=ix,iy=iy,iz=iz,
+                     local=local,solver=solver)
 
 # --------------------------------------------------------------------------
 def geta(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
@@ -2308,22 +2391,26 @@ the upper edge.
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver
 
+  a = bfield.a[:,bfield.nxguarda:-bfield.nxguarda or None,
+                 bfield.nyguarda:-bfield.nyguarda or None,
+                 bfield.nzguarda:-bfield.nzguarda or None]
+
   if comp == 'A':
-    Ax = getdecomposedarray(bfield.a[0,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+    Ax = getdecomposedarray(a[0,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    Ay = getdecomposedarray(bfield.a[1,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+    Ay = getdecomposedarray(a[1,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    Az = getdecomposedarray(bfield.a[2,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+    Az = getdecomposedarray(a[2,...],ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
     return sqrt(Ax**2 + Ay**2 + Az**2)
   else:
-    return getdecomposedarray(bfield.a[ic,1:-1,1:-1,1:-1],ix=ix,iy=iy,iz=iz,
+    return getdecomposedarray(a[ic,...],ix=ix,iy=iy,iz=iz,
                               bcast=bcast,local=local,fullplane=fullplane,
                               xyantisymmetric=(ic in [0,1]),
                               solver=solver)
@@ -2349,6 +2436,10 @@ the upper edge.
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver
 
-  setdecomposedarray(bfield.a[ic,1:-1,1:-1,1:-1],val,ix=ix,iy=iy,iz=iz,
+  a = bfield.a[:,bfield.nxguarda:-bfield.nxguarda or None,
+                 bfield.nyguarda:-bfield.nyguarda or None,
+                 bfield.nzguarda:-bfield.nzguarda or None]
+
+  setdecomposedarray(a[ic,...],val,ix=ix,iy=iy,iz=iz,
                      local=local,solver=solver)
 

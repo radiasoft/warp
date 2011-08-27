@@ -4,7 +4,7 @@ from __future__ import generators
 __all__ = ['MeshRefinement',
            'MRBlock3D','MRBlock','MRBlock2D','MRBlockRZ','MRBlock2DDielectric',
            'MRBlockImplicit2D','EMMRBlock']
-MeshRefinement_version = "$Id: MeshRefinement.py,v 1.176 2011/07/01 18:02:28 grote Exp $"
+MeshRefinement_version = "$Id: MeshRefinement.py,v 1.177 2011/08/27 00:43:15 grote Exp $"
 from warp import *
 from find_mgparam import find_mgparam
 import operator
@@ -1155,7 +1155,9 @@ Fortran version
       if not self.l_EM:
         pdims = array([self.nxp,self.nyp,self.nzp])
         childpdims = array([child.nxp,child.nyp,child.nzp])
-        gathersourcefromchild(self.sourcep,self.ncomponents,pdims,
+        gathersourcefromchild(self.sourcep,self.ncomponents,
+                              [self.nxguardrho,self.nyguardrho,self.nzguardrho],
+                              pdims,
                               child.sourcep,childpdims,
                               l,u,fulllower,child.fulllower,child.fullupper,
                               child.refinement,w,
@@ -1171,7 +1173,7 @@ Fortran version
                         self.block.core.yf.Jarray[...,0],
                         cb.nx,cb.ny,cb.nz,
                         self.block.nx,self.block.ny,self.block.nz,
-                        cb.nxguard,cb.nyguard,cb.nzguard,
+                        cb.nxguardphi,cb.nyguardphi,cb.nzguardphi,
                         child.refinement[0],
                         child.refinement[1],
                         child.refinement[2],
@@ -1185,7 +1187,7 @@ Fortran version
                         self.block.core.yf.Rho,
                         cb.nx,cb.ny,cb.nz,
                         self.block.nx,self.block.ny,self.block.nz,
-                        cb.nxguard,cb.nyguard,cb.nzguard,
+                        cb.nxguardphi,cb.nyguardphi,cb.nzguardphi,
                         child.refinement[0],
                         child.refinement[1],
                         child.refinement[2],
@@ -1203,7 +1205,7 @@ Fortran version
                      cb.core.yf.dmaskz,
                      child.bounds,child.nguarddepos*child.refinement,child.refinement*ntrans,
                      cb.nx,cb.ny,cb.nz,
-                     cb.nxguard,cb.nyguard,cb.nzguard,
+                     cb.nxguardphi,cb.nyguardphi,cb.nzguardphi,
                      self.l_pushf,self.l_2dxz)
          apply_dmask(cbc.core.yf.Rhoarray[...,0],
                      cbc.core.yf.Jarray[...,0],
@@ -1212,7 +1214,7 @@ Fortran version
                      cbc.core.yf.dmaskz,
                      child.bounds,child.nguarddepos,array([1,1,1])*ntrans,
                      cbc.nx,cbc.ny,cbc.nz,
-                     cbc.nxguard,cbc.nyguard,cbc.nzguard,
+                     cbc.nxguardphi,cbc.nyguardphi,cbc.nzguardphi,
                      self.l_pushf,self.l_2dxz)
          child.Jaf = cb.core.yf.J.copy()
          child.Jafc = cbc.core.yf.Jarray[...,0].copy()
@@ -1302,7 +1304,7 @@ potential array gives a better initial guess for the field solver.
       # --- The full potential arrays are passed in to avoid copying the subsets
       # --- since the fortran needs contiguous arrays.
       gatherpotentialfromparents(self.potential,self.ncomponents,
-                                 [self.nxguard,self.nyguard,self.nzguard],
+                                 [self.nxguardphi,self.nyguardphi,self.nzguardphi],
                                  self.dims,l,u,
                                  self.fulllower,
                                  parent.potential,parent.dims,parent.fulllower,
@@ -1718,9 +1720,9 @@ to zero."""
   def getpotentialslice(self,lower,upper):
     # --- Note that this takes into account the guard cells in z.
     ix1,iy1,iz1 = (lower - self.fulllower +
-                   array([self.nxguard,self.nyguard,self.nzguard]))
+                   array([self.nxguardphi,self.nyguardphi,self.nzguardphi]))
     ix2,iy2,iz2 = (upper - self.fulllower + 1 +
-                   array([self.nxguard,self.nyguard,self.nzguard]))
+                   array([self.nxguardphi,self.nyguardphi,self.nzguardphi]))
     return self.potential[...,ix1:ix2,iy1:iy2,iz1:iz2]
   def getsourceslice(self,lower,upper,r=[1,1,1]):
     ix1,iy1,iz1 = lower - self.fulllower
@@ -2079,8 +2081,8 @@ Create DX object drawing the object.
       if iy < self.fulllower[1]: return
       if ix > self.fullupper[0]: return
       if iy > self.fullupper[1]: return
-      ix1 = ix - self.fulllower[0] + self.nxguard
-      iy1 = iy - self.fulllower[1] + self.nyguard
+      ix1 = ix - self.fulllower[0] + self.nxguardphi
+      iy1 = iy - self.fulllower[1] + self.nyguardphi
       if scale:
         mesh = self.zmeshlocal
       else:
@@ -2135,8 +2137,8 @@ Create DX object drawing the object.
       if iz < self.fulllower[2]: return
       if ix > self.fullupper[0]: return
       if iz > self.fullupper[2]: return
-      ix1 = ix - self.fulllower[0] + self.nxguard
-      iz1 = iz - self.fulllower[2] + self.nzguard
+      ix1 = ix - self.fulllower[0] + self.nxguardphi
+      iz1 = iz - self.fulllower[2] + self.nzguardphi
       if scale:
         mesh = self.ymeshlocal
       else:
@@ -2774,7 +2776,7 @@ with variable dielectric
     try:
       if ix < self.fulllower[0]: return
       if ix > self.fullupper[0]: return
-      ix1 = ix - self.fulllower[0] + self.nxguard
+      ix1 = ix - self.fulllower[0] + self.nxguardphi
       iz1 = self.fulllower[2]
       iz2 = self.fullupper[2] - 1
       if scale:
@@ -2806,8 +2808,8 @@ with variable dielectric
         mesh = self.xmeshlocal[:-1] + self.dx/2.
       else:
         mesh = arange(ix1,ix2+1)/self.totalrefinement[0] + 0.5
-      ix1 += -self.fulllower[0] + self.nxguard
-      ix2 += -self.fulllower[0] + self.nxguard
+      ix1 += -self.fulllower[0] + self.nxguardphi
+      ix2 += -self.fulllower[0] + self.nxguardphi
       plg(self.epsilon[ix1:ix2+1,iz1],mesh,
           color=colors[self.blocknumber%len(colors)])
       if not selfonly:

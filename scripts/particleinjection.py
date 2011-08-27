@@ -6,7 +6,7 @@ from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.10 2011/05/24 20:01:48 rcohen Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.11 2011/08/27 00:43:16 grote Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -121,7 +121,8 @@ conductors are an argument.
             # --- The shape includes a guard cell in the axis parallel
             # --- to the E field. The calculation of s assumes that there
             # --- is one guard cell on each boundary.
-            s = array(phip.shape) - 2
+            ng = array([w3d.nxguardphi,w3d.nyguardphi,w3d.nzguardphi])
+            s = array(phip.shape) - 2*ng
             Ex = zeros((s[0]+1,s[1],s[2]),'d')
             Ey = zeros((s[0],s[1]+1,s[2]),'d')
             Ez = zeros((s[0],s[1],s[2]+1),'d')

@@ -10,7 +10,7 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.64 2011/05/17 19:19:13 grote Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.65 2011/08/27 00:43:16 grote Exp $"
 
 ##############################################################################
 ##############################################################################
@@ -30,9 +30,9 @@ class MultiGridRZ(MultiGrid3D):
     if (self.solvergeom != w3d.RZgeom and self.solvergeom != w3d.XZgeom):
       self.solvergeom = w3d.RZgeom
     self.ncomponents = 1
-    self.nxguard = 1
-    self.nyguard = 0
-    self.nzguard = 1
+    self.nyguardphi = 0
+    self.nyguardrho = 0
+    self.nyguarde   = 0
 
     # --- Make sure that the bounds have acceptable values.
     assert 0 <= min(self.bounds) and max(self.bounds) <= 2,"The boundary conditions have an incorrect value. They must be one of dirichlet, neumann or periodic."
@@ -75,38 +75,28 @@ class MultiGridRZ(MultiGrid3D):
       self.initializegrid()
 
   def getrho(self):
-    return self.source[:,0,:]
+    'Returns the rho array without the guard cells'
+    return self.source[self.nxguardrho:-self.nxguardrho or None,
+                       0,
+                       self.nzguardrho:-self.nzguardrho or None]
 
   def getrhop(self):
-    return self.sourcep[:,0,:]
+    'Returns the rhop array without the guard cells'
+    return self.sourcep[self.nxguardrho:-self.nxguardrho or None,
+                        0,
+                        self.nzguardrho:-self.nzguardrho or None]
 
   def getphi(self):
     'Returns the phi array without the guard cells'
-    ix1 = self.nxguard
-    if ix1 == 0: ix1 = None
-    ix2 = -self.nxguard
-    if ix2 == 0: ix2 = None
-    ix = slice(ix1,ix2)
-    iz1 = self.nzguard
-    if iz1 == 0: iz1 = None
-    iz2 = -self.nzguard
-    if iz2 == 0: iz2 = None
-    iz = slice(iz1,iz2)
-    return self.potential[ix,0,iz]
+    return self.potential[self.nxguardphi:-self.nxguardphi or None,
+                          0,
+                          self.nzguardphi:-self.nzguardphi or None]
 
   def getphip(self):
     'Returns the phip array without the guard cells'
-    ix1 = self.nxguard
-    if ix1 == 0: ix1 = None
-    ix2 = -self.nxguard
-    if ix2 == 0: ix2 = None
-    ix = slice(ix1,ix2)
-    iz1 = self.nzguard
-    if iz1 == 0: iz1 = None
-    iz2 = -self.nzguard
-    if iz2 == 0: iz2 = None
-    iz = slice(iz1,iz2)
-    return self.potentialp[ix,0,iz]
+    return self.potentialp[self.nxguardphi:-self.nxguardphi or None,
+                           0,
+                           self.nzguardphi:-self.nzguardphi or None]
 
   def getselfe(self,*args,**kw):
     return super(MultiGridRZ,self).getselfe(*args,**kw)[:,:,0,:]
@@ -120,12 +110,12 @@ class MultiGridRZ(MultiGrid3D):
     if isinstance(self.potentialp,FloatType): return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
-    nxp = self.nxp + 2*self.nxguard
-    nzp = self.nzp + 2*self.nzguard
-    xmminp = self.xmminp - self.dx*self.nxguard
-    xmmaxp = self.xmmaxp + self.dx*self.nxguard
-    zmminp = self.zmminp - self.dz*self.nzguard + self.getzgridprv()
-    zmmaxp = self.zmmaxp + self.dz*self.nzguard + self.getzgridprv()
+    nxp = self.nxp + 2*self.nxguardphi
+    nzp = self.nzp + 2*self.nzguardphi
+    xmminp = self.xmminp - self.dx*self.nxguardphi
+    xmmaxp = self.xmmaxp + self.dx*self.nxguardphi
+    zmminp = self.zmminp - self.dz*self.nzguardphi + self.getzgridprv()
+    zmmaxp = self.zmmaxp + self.dz*self.nzguardphi + self.getzgridprv()
     getgrid2d(n,r,z,phi,nxp,nzp,self.potentialp[:,0,:],
               xmminp,xmmaxp,zmminp,zmmaxp)
 
@@ -250,9 +240,9 @@ class MultiGrid2D(MultiGrid3D):
     if (self.solvergeom != w3d.RZgeom and self.solvergeom != w3d.XZgeom):
       self.solvergeom = w3d.RZgeom
     self.ncomponents = 1
-    self.nxguard = 1
-    self.nyguard = 0
-    self.nzguard = 1
+    self.nyguardphi = 0
+    self.nyguardrho = 0
+    self.nyguarde   = 0
 
     # --- Make sure that the bounds have acceptable values.
     assert 0 <= min(self.bounds) and max(self.bounds) <= 2,"The boundary conditions have an incorrect value. They must be one of dirichlet, neumann or periodic."
@@ -281,38 +271,28 @@ class MultiGrid2D(MultiGrid3D):
     self.mgerror = 0.
 
   def getrho(self):
-    return self.source[:,0,:]
+    'Returns the rho array without the guard cells'
+    return self.source[self.nxguardrho:-self.nxguardrho or None,
+                       0,
+                       self.nzguardrho:-self.nzguardrho or None]
 
   def getrhop(self):
-    return self.sourcep[:,0,:]
+    'Returns the rhop array without the guard cells'
+    return self.sourcep[self.nxguardrho:-self.nxguardrho or None,
+                        0,
+                        self.nzguardrho:-self.nzguardrho or None]
 
   def getphi(self):
     'Returns the phi array without the guard cells'
-    ix1 = self.nxguard
-    if ix1 == 0: ix1 = None
-    ix2 = -self.nxguard
-    if ix2 == 0: ix2 = None
-    ix = slice(ix1,ix2)
-    iz1 = self.nzguard
-    if iz1 == 0: iz1 = None
-    iz2 = -self.nzguard
-    if iz2 == 0: iz2 = None
-    iz = slice(iz1,iz2)
-    return self.potential[ix,0,iz]
+    return self.potential[self.nxguardphi:-self.nxguardphi or None,
+                          0,
+                          self.nzguardphi:-self.nzguardphi or None]
 
   def getphip(self):
     'Returns the phip array without the guard cells'
-    ix1 = self.nxguard
-    if ix1 == 0: ix1 = None
-    ix2 = -self.nxguard
-    if ix2 == 0: ix2 = None
-    ix = slice(ix1,ix2)
-    iz1 = self.nzguard
-    if iz1 == 0: iz1 = None
-    iz2 = -self.nzguard
-    if iz2 == 0: iz2 = None
-    iz = slice(iz1,iz2)
-    return self.potentialp[ix,0,iz]
+    return self.potentialp[self.nxguardphi:-self.nxguardphi or None,
+                           0,
+                           self.nzguardphi:-self.nzguardphi or None]
 
   def getselfe(self,*args,**kw):
     return super(MultiGrid2D,self).getselfe(*args,**kw)[:,:,0,:]
@@ -326,12 +306,12 @@ class MultiGrid2D(MultiGrid3D):
     if isinstance(self.potentialp,FloatType): return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
-    nxp = self.nxp + 2*self.nxguard
-    nzp = self.nzp + 2*self.nzguard
-    xmminp = self.xmminp - self.dx*self.nxguard
-    xmmaxp = self.xmmaxp + self.dx*self.nxguard
-    zmminp = self.zmminp - self.dz*self.nzguard + self.getzgridprv()
-    zmmaxp = self.zmmaxp + self.dz*self.nzguard + self.getzgridprv()
+    nxp = self.nxp + 2*self.nxguardphi
+    nzp = self.nzp + 2*self.nzguardphi
+    xmminp = self.xmminp - self.dx*self.nxguardphi
+    xmmaxp = self.xmmaxp + self.dx*self.nxguardphi
+    zmminp = self.zmminp - self.dz*self.nzguardphi + self.getzgridprv()
+    zmmaxp = self.zmmaxp + self.dz*self.nzguardphi + self.getzgridprv()
     getgrid2d(n,r,z,phi,nxp,nzp,self.potentialp[:,0,:],
               xmminp,xmmaxp,zmminp,zmmaxp)
 
@@ -341,12 +321,12 @@ class MultiGrid2D(MultiGrid3D):
     if n == 0: return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
-    nxlocal = self.nxlocal + 2*self.nxguard
-    nzlocal = self.nzlocal + 2*self.nzguard
-    xmminlocal = self.xmminlocal - self.nxguard*self.dx
-    xmmaxlocal = self.xmmaxlocal + self.nxguard*self.dx
-    zmminlocal = self.zmminlocal - self.nzguard*self.dz
-    zmmaxlocal = self.zmmaxlocal + self.nzguard*self.dz
+    nxlocal = self.nxlocal + 2*self.nxguardphi
+    nzlocal = self.nzlocal + 2*self.nzguardphi
+    xmminlocal = self.xmminlocal - self.nxguardphi*self.dx
+    xmmaxlocal = self.xmmaxlocal + self.nxguardphi*self.dx
+    zmminlocal = self.zmminlocal - self.nzguardphi*self.dz
+    zmmaxlocal = self.zmmaxlocal + self.nzguardphi*self.dz
     getgrid2d(n,r,z,potential,nxlocal,nzlocal,self.potential[:,0,:],
               xmminlocal,xmmaxlocal,zmminlocal,zmmaxlocal)
 
@@ -377,6 +357,8 @@ class MultiGrid2D(MultiGrid3D):
     self.lbuildquads = false
     #t0 = wtime()
     multigrid2dsolve(iwhich,self.nx,self.nz,self.nxlocal,self.nzlocal,
+                     self.nxguardphi,self.nzguardphi,
+                     self.nxguardrho,self.nzguardrho,
                      self.dx,self.dz*zfact,
                      self._phi[:,0,:],self._rho[:,0,:],self.bounds,
                      self.xmminlocal,
@@ -518,8 +500,11 @@ class MultiGrid2D(MultiGrid3D):
     rho = self._rho*reps0c
     conductorobject = self.getconductorobject()
     residual2d(self.nxlocal,self.nzlocal,dxsqi,dzsqi,xminodx,lrz,
+               self.nxguardphi,self.nzguardphi,
+               self.nxguardrho,self.nzguardrho,
+               self.nxguardphi,self.nzguardphi,
                self._phi,rho,res,0,self.bounds,
-               self.lcndbndy,self.icndbndy,conductorobject,1,1)
+               self.lcndbndy,self.icndbndy,conductorobject)
     return res
 
 ##############################################################################
@@ -562,6 +547,8 @@ class MultiGrid2DDielectric(MultiGrid2D):
     if self.gridmode == 0: self.clearconductors([top.pgroup.fselfb[iselfb]])
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     multigrid2ddielectricsolve(iwhich,self.nx,self.nz,self.nxlocal,self.nzlocal,
+                     self.nxguardphi,self.nzguardphi,
+                     self.nxguardrho,self.nzguardrho,
                      self.dx,self.dz*zfact,
                      self._phi[:,0,:],self._rho[:,0,:],self.epsilon,self.bounds,
                      self.xmminlocal*zfact,
@@ -579,8 +566,11 @@ class MultiGrid2DDielectric(MultiGrid2D):
     res = zeros(shape(self._phi),'d')
     conductorobject = self.getconductorobject()
     residual2ddielectric(self.nxlocal,self.nzlocal,
-               self._phi,rho,self.epsilon,res,self.dx,self.dz,0,self.bounds,
-               conductorobject)
+                         self.nxguardphi,self.nzguardphi,
+                         self.nxguardrho,self.nzguardrho,
+                         self.nxguardphi,self.nzguardphi,
+                         self._phi,rho,self.epsilon,res,
+                         self.dx,self.dz,0,self.bounds,conductorobject)
     return res
 
 ##############################################################################
@@ -608,9 +598,9 @@ Initially, conductors are not implemented.
     if (self.solvergeom != w3d.RZgeom and self.solvergeom != w3d.XZgeom):
       self.solvergeom = w3d.RZgeom
     self.ncomponents = 1
-    self.nxguard = 1
-    self.nyguard = 0
-    self.nzguard = 1
+    self.nyguardphi = 0
+    self.nyguardrho = 0
+    self.nyguarde   = 0
 
     # --- Make sure that the bounds have acceptable values.
     assert 0 <= min(self.bounds) and max(self.bounds) <= 2,"The boundary conditions have an incorrect value. They must be one of dirichlet, neumann or periodic."
@@ -745,13 +735,17 @@ Initially, conductors are not implemented.
     sourcep = fzeros(self.sourcep.shape[:-1],'d')
     if top.wpid == 0:
       setrho3d(sourcep,n,x,y,z,zgrid,q,w,top.depos,
-               self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
+               self.nxp,self.nyp,self.nzp,
+               self.nxguardrho,self.nyguardrho,self.nzguardrho,
+               self.dx,1.,self.dz,
                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                self.solvergeom==w3d.RZgeom)
     else:
       # --- Need top.pid(:,top.wpid)
       setrho3dw(sourcep,n,x,y,z,zgrid,wght,q,w,top.depos,
-                self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
+                self.nxp,self.nyp,self.nzp,
+                self.nxguardrho,self.nyguardrho,self.nzguardrho,
+                self.dx,1.,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
     self.sourcep[...,0] += sourcep
@@ -771,7 +765,7 @@ Initially, conductors are not implemented.
         setrhoforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,
                               self.source[...,iimp],
                               self.nxp,self.nyp,self.nzp,self.sourcep[...,iimp],
-                              self.nxpextra,self.nypextra,self.nzpextra,
+                              self.nxguardrho,self.nyguardrho,self.nzguardrho,
                               self.fsdecomp,self.ppdecomp)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
@@ -784,12 +778,12 @@ Initially, conductors are not implemented.
     if n == 0: return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
-    nxp = self.nxp + 2*self.nxguard
-    nzp = self.nzp + 2*self.nzguard
-    xmminp = self.xmminp - self.nxguard*self.dx
-    xmmaxp = self.xmmaxp + self.nxguard*self.dx
-    zmminp = self.zmminp - self.nzguard*self.dz + self.getzgridprv()
-    zmmaxp = self.zmmaxp + self.nzguard*self.dz + self.getzgridprv()
+    nxp = self.nxp + 2*self.nxguardphi
+    nzp = self.nzp + 2*self.nzguardphi
+    xmminp = self.xmminp - self.nxguardphi*self.dx
+    xmmaxp = self.xmmaxp + self.nxguardphi*self.dx
+    zmminp = self.zmminp - self.nzguardphi*self.dz + self.getzgridprv()
+    zmmaxp = self.zmmaxp + self.nzguardphi*self.dz + self.getzgridprv()
     getgrid2d(n,r,z,potential,nxp,nzp,self.potentialp[:,0,:],
               xmminp,xmmaxp,zmminp,zmmaxp)
 

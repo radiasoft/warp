@@ -5,7 +5,7 @@ __all__ = ['LoadBalancer']
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.68 2011/06/09 21:50:02 grote Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.69 2011/08/27 00:43:16 grote Exp $"
 
 def loadbalancedoc():
     import loadbalance
@@ -30,10 +30,6 @@ Creation arguments:
  - doloadrho=0: Specifies whether the charge density is recalculated
  - dofs=0: Specifies whether the fields are recalculated
  - verbose=0: Prints output
- - nxguard,nyguard,nzguard=0: Number of extra guard cells to include in the
-              field arrays for the particles. Only needed in special cases,
-              possibly when the interpolated mover is used since intermediate
-              positions in the algorithm may be out of bounds otherwise.
  - spreadx,spready,spreadz=1.: The fraction of processors to spread the work
                                over. Do not use this unless you really know
                                what it means!
@@ -45,7 +41,6 @@ recalculated on a finer mesh to give better balancing.
                  padupperx=None,paduppery=None,padupperz=None,
                  padlowerx=None,padlowery=None,padlowerz=None,
                  doitnow=0,doloadrho=0,dofs=0,verbose=0,
-                 nxguard=0,nyguard=0,nzguard=0,
                  spreadx=1.,spready=1.,spreadz=1.):
         if when is None:
             self.when = {10:1,100:10,1000000:20}
@@ -71,9 +66,6 @@ recalculated on a finer mesh to give better balancing.
         self.dofs = dofs
         self.verbose = verbose
 
-        self.nxguard = nxguard
-        self.nyguard = nyguard
-        self.nzguard = nzguard
 
         self.spreadx = spreadx
         self.spready = spready
@@ -340,7 +332,7 @@ recalculated on a finer mesh to give better balancing.
                                  w3d.xmmin,w3d.xmmax,w3d.dx,0.,top.nxprocs,
                                  top.pgroup.getpyobject('xp'),
                                  top.pgroup.getpyobject('uxp'),
-                                 ppdecomp.nxglobal,self.nxguard,
+                                 ppdecomp.nxglobal,
                                  ppdecomp.xmin,ppdecomp.xmax,
                                  ppdecomp.ix,ppdecomp.nx,usemoments)
             top.xpminlocal = ppdecomp.xmin[top.ixproc]
@@ -355,7 +347,7 @@ recalculated on a finer mesh to give better balancing.
                                  w3d.ymmin,w3d.ymmax,w3d.dy,0.,top.nyprocs,
                                  top.pgroup.getpyobject('yp'),
                                  top.pgroup.getpyobject('uyp'),
-                                 ppdecomp.nyglobal,self.nyguard,
+                                 ppdecomp.nyglobal,
                                  ppdecomp.ymin,ppdecomp.ymax,
                                  ppdecomp.iy,ppdecomp.ny,usemoments)
             top.ypminlocal = ppdecomp.ymin[top.iyproc]
@@ -371,7 +363,7 @@ recalculated on a finer mesh to give better balancing.
                                  top.nzprocs,
                                  top.pgroup.getpyobject('zp'),
                                  top.pgroup.getpyobject('uzp'),
-                                 ppdecomp.nzglobal,self.nzguard,
+                                 ppdecomp.nzglobal,
                                  ppdecomp.zmin,ppdecomp.zmax,
                                  ppdecomp.iz,ppdecomp.nz,usemoments)
             top.zpminlocal = ppdecomp.zmin[top.izproc]
@@ -438,9 +430,9 @@ recalculated on a finer mesh to give better balancing.
         self.runtime += (endtime - starttime)
 
     def dodecomposition(self,axis,ii,minp,maxp,spread,padlower,padupper,
-                   mmin,mmax,dd,beam,nprocs,pp,uu,
-                   nnglobal,nguard,ppdecompmin,ppdecompmax,
-                   ppdecompii,ppdecompnn,usemoments):
+                        mmin,mmax,dd,beam,nprocs,pp,uu,
+                        nnglobal,ppdecompmin,ppdecompmax,
+                        ppdecompii,ppdecompnn,usemoments):
         if (axis < 2 or (maxp - minp)/dd < 10 or not usemoments):
             # --- If the particles only extend over a few grid cells,
             # --- recalculate the distribution on a finer grid to get better
@@ -489,7 +481,7 @@ recalculated on a finer mesh to give better balancing.
         ppdecompmin[0] = max(mmin,ppdecompmin[0] - padlower)
         ppdecompmax[-1] = min(mmax,ppdecompmax[-1] + padupper)
 
-        domaindecomposeparticles(nnglobal,nprocs,nguard,mmin,dd,
+        domaindecomposeparticles(nnglobal,nprocs,0,mmin,dd,
                                  zeros(nprocs,'d'),true,
                                  ppdecompii,ppdecompnn,ppdecompmin,ppdecompmax)
 
@@ -536,7 +528,7 @@ recalculated on a finer mesh to give better balancing.
 #########################################################################
 #########################################################################
 def setparticledomains(zslave,doloadrho=1,dofs=1,padleft=0.,padright=0.,
-                       reorg=0,nxguard=0,nyguard=0,nzguard=0):
+                       reorg=0):
     """
 Sets the particles domains from the input, zslave, in the same way as done
 with top.zslave during the generate. This is only meant to be used after
@@ -550,8 +542,6 @@ that has already been done.
             are to be shifted across multiple processors, otherwise use
             zpartbnd which is fastest when particles are to be shifted only to
             nearest neighbors.
- - nzguard=0: Number of extra guard cells to include in the field arrays for
-              the particles.
     """
     if not lparallel: return
     # --- It is assumed that the user supplied decomposition is specified
@@ -571,20 +561,20 @@ that has already been done.
     ppdecomp.zmax[-1] = min(w3d.zmmax,ppdecomp.zmax[-1] + padright)
 
     """
-    domaindecomposeparticles(ppdecomp.nxglobal,ppdecomp.nxprocs,nxguard,
+    domaindecomposeparticles(ppdecomp.nxglobal,ppdecomp.nxprocs,0,
                              w3d.xmmin,w3d.dx,
                              zeros(ppdecomp.nxprocs,'d'),true,
                              ppdecomp.ix,ppdecomp.nx,
                              ppdecomp.xmin,ppdecomp.xmax)
 
-    domaindecomposeparticles(ppdecomp.nyglobal,ppdecomp.nyprocs,nyguard,
+    domaindecomposeparticles(ppdecomp.nyglobal,ppdecomp.nyprocs,0,
                              w3d.ymmin,w3d.dy,
                              zeros(ppdecomp.nyprocs,'d'),true,
                              ppdecomp.iy,ppdecomp.ny,
                              ppdecomp.ymin,ppdecomp.ymax)
     """
 
-    domaindecomposeparticles(ppdecomp.nzglobal,ppdecomp.nzprocs,nzguard,
+    domaindecomposeparticles(ppdecomp.nzglobal,ppdecomp.nzprocs,0,
                              w3d.zmmin,w3d.dz,
                              zeros(ppdecomp.nzprocs,'d'),true,
                              ppdecomp.iz,ppdecomp.nz,
@@ -636,8 +626,7 @@ that has already been done.
 #########################################################################
 def loadbalanceparticles(doloadrho=1,dofs=1,spread=1.,padleft=0.,padright=0.,
                          reorg=0,pnumz=None,zmin=None,dz=None,
-                         zminp=None,zmaxp=None,verbose=0,
-                         nxguard=0,nyguard=0,nzguard=0):
+                         zminp=None,zmaxp=None,verbose=0):
     """
 Load balances the particles as evenly as possible. The load balancing is
 based off of the data in top.pnumz which of course must already have
@@ -658,8 +647,6 @@ grid points.
  - zminp,zmaxp=None: optional min and max of the region that must be included
                      in the decomposition
  - verbose=0: when true, prints out timing information
- - nzguard=0: Number of extra guard cells to include in the field arrays for
-              the particles.
     """
 
     # --- Convert the number of particles to a decomposition
@@ -674,8 +661,7 @@ grid points.
 
     # --- Apply the new domain decomposition.
     setparticledomains(zslave,doloadrho=doloadrho,dofs=dofs,
-                       padleft=padleft,padright=padright,reorg=reorg,
-                       nxguard=nxguard,nyguard=nyguard,nzguard=nzguard)
+                       padleft=padleft,padright=padright,reorg=reorg)
     endtime = wtime()
     if verbose: print "Load balance time = ",endtime - starttime
 

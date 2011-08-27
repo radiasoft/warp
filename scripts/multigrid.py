@@ -14,7 +14,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.159 2011/05/17 19:19:13 grote Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.160 2011/08/27 00:43:16 grote Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -24,7 +24,9 @@ most of which get there default values from one of the fortran packages.
 
 | Input parameters from w3d:
 |    nx,ny,nz,dx,dy,dz,nxlocal,nylocal,nzlocal,
-|    nxpextra,nypextra,nzpextra,
+|    nxguardphi,nyguardphi,nzguardphi,
+|    nxguardrho,nyguardrho,nzguardrho,
+|    nxguarde,nyguarde,nzguarde,
 |    xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
 |    xmminlocal,xmmaxlocal,
 |    ymminlocal,ymmaxlocal,
@@ -79,9 +81,6 @@ most of which get there default values from one of the fortran packages.
     SubcycledPoissonSolver.__init__(self,kwdict=kw)
     self.solvergeom = w3d.XYZgeom
     self.ncomponents = 1
-    self.nxguard = 1
-    self.nyguard = 1
-    self.nzguard = 1
 
     # --- Make sure that the bounds have acceptable values.
     assert 0 <= min(self.bounds) and max(self.bounds) <= 2,"The boundary conditions have an incorrect value. They must be one of dirichlet, neumann or periodic."
@@ -270,78 +269,76 @@ most of which get there default values from one of the fortran packages.
     self.lwithselfep = self.lwithselfep or sometrue(top.efetch == 3)
 
     if self.lwithselfep:
-      return ((1+self.nxp,1+self.nyp,1+self.nzp),
-              (3,1+self.nxp,1+self.nyp,1+self.nzp),
-              (1+self.nxp+2*self.nxguard,1+self.nyp+2*self.nyguard,1+self.nzp+2*self.nzguard))
+      return ((1+self.nxp+2*self.nxguardrho,
+               1+self.nyp+2*self.nyguardrho,
+               1+self.nzp+2*self.nzguardrho),
+              (3,1+self.nxp+2*self.nxguarde,
+                 1+self.nyp+2*self.nyguarde,
+                 1+self.nzp+2*self.nzguarde),
+              (1+self.nxp+2*self.nxguardphi,
+               1+self.nyp+2*self.nyguardphi,
+               1+self.nzp+2*self.nzguardphi))
     else:
-      return ((1+self.nxp,1+self.nyp,1+self.nzp),
-              (1+self.nxp+2*self.nxguard,1+self.nyp+2*self.nyguard,1+self.nzp+2*self.nzguard))
+      return ((1+self.nxp+2*self.nxguardrho,
+               1+self.nyp+2*self.nyguardrho,
+               1+self.nzp+2*self.nzguardrho),
+              (1+self.nxp+2*self.nxguardphi,
+               1+self.nyp+2*self.nyguardphi,
+               1+self.nzp+2*self.nzguardphi))
 
   def getdims(self):
     # --- Returns the dimensions of the arrays used by the field solver
-    dims = [(1+self.nxlocal,1+self.nylocal,1+self.nzlocal),
-            (1+self.nxlocal+2*self.nxguard,
-             1+self.nylocal+2*self.nyguard,
-             1+self.nzlocal+2*self.nzguard)]
+    dims = [(1+self.nxlocal+2*self.nxguardrho,
+             1+self.nylocal+2*self.nyguardrho,
+             1+self.nzlocal+2*self.nzguardrho),
+            (1+self.nxlocal+2*self.nxguardphi,
+             1+self.nylocal+2*self.nyguardphi,
+             1+self.nzlocal+2*self.nzguardphi)]
     try:
       self.lwithselfe
     except AttributeError:
       self.lwithselfe = 0
     if self.lwithselfe:
-      dims[1:1] = [(3,1+self.nxlocal,1+self.nylocal,1+self.nzlocal)]
+      dims[1:1] = [(3,1+self.nxlocal+2*self.nxguarde,
+                      1+self.nylocal+2*self.nyguarde,
+                      1+self.nzlocal+2*self.nzguarde)]
     return tuple(dims)
 
   def getrho(self):
-    return self.source
+    'Returns the rho array without the guard cells'
+    return self.source[self.nxguardrho:-self.nxguardrho or None,
+                       self.nyguardrho:-self.nyguardrho or None,
+                       self.nzguardrho:-self.nzguardrho or None]
 
   def getrhop(self):
+    'Returns the rhop array without the guard cells'
     return self.sourcep
 
   def getphi(self):
     'Returns the phi array without the guard cells'
-    ix1 = self.nxguard
-    if ix1 == 0: ix1 = None
-    ix2 = -self.nxguard
-    if ix2 == 0: ix2 = None
-    ix = slice(ix1,ix2)
-    iy1 = self.nyguard
-    if iy1 == 0: iy1 = None
-    iy2 = -self.nyguard
-    if iy2 == 0: iy2 = None
-    iy = slice(iy1,iy2)
-    iz1 = self.nzguard
-    if iz1 == 0: iz1 = None
-    iz2 = -self.nzguard
-    if iz2 == 0: iz2 = None
-    iz = slice(iz1,iz2)
-    return self.potential[ix,iy,iz]
+    return self.potential[self.nxguardphi:-self.nxguardphi or None,
+                          self.nyguardphi:-self.nyguardphi or None,
+                          self.nzguardphi:-self.nzguardphi or None]
 
   def getphip(self):
     'Returns the phip array without the guard cells'
-    ix1 = self.nxguard
-    if ix1 == 0: ix1 = None
-    ix2 = -self.nxguard
-    if ix2 == 0: ix2 = None
-    ix = slice(ix1,ix2)
-    iy1 = self.nyguard
-    if iy1 == 0: iy1 = None
-    iy2 = -self.nyguard
-    if iy2 == 0: iy2 = None
-    iy = slice(iy1,iy2)
-    iz1 = self.nzguard
-    if iz1 == 0: iz1 = None
-    iz2 = -self.nzguard
-    if iz2 == 0: iz2 = None
-    iz = slice(iz1,iz2)
-    return self.potentialp[ix,iy,iz]
+    return self.potentialp[self.nxguardphi:-self.nxguardphi or None,
+                           self.nyguardphi:-self.nyguardphi or None,
+                           self.nzguardphi:-self.nzguardphi or None]
 
   def getselfe(self,recalculate=None,lzero=true):
+    'Returns the E field array without the guard cells'
     self.calcselfe(recalculate=recalculate,lzero=lzero)
-    return self.field
+    return self.field[self.nxguarde:-self.nxguarde or None,
+                      self.nyguarde:-self.nyguarde or None,
+                      self.nzguarde:-self.nzguarde or None]
 
   def getselfep(self,recalculate=None,lzero=true):
+    'Returns the E fieldp array without the guard cells'
     self.calcselfep(recalculate=recalculate,lzero=lzero)
-    return self.fieldp
+    return self.fieldp[self.nxguarde:-self.nxguarde or None,
+                       self.nyguarde:-self.nyguarde or None,
+                       self.nzguarde:-self.nzguarde or None]
 
   def _setuprhoproperty():
     doc = "Charge density array"
@@ -417,13 +414,17 @@ most of which get there default values from one of the fortran packages.
   def gtlchg(self):
     'Calculate the line charge, putting it into the array top.linechg'
     if self.solvergeom == w3d.XYZgeom:
-      gtlchg3dfromrho(self.nxlocal,self.nylocal,self.nzlocal,self.rho,
+      gtlchg3dfromrho(self.nxlocal,self.nylocal,self.nzlocal,
+                      self.nxguardrho,self.nyguardrho,self.nzguardrho,
+                      self.rho,
                       self.dx,self.dy,self.dz,
                       self.getzgrid(),self.zmminlocal,
                       self.l2symtry,self.l4symtry,
                       self.izproc==self.nzprocs-1)
     elif self.solvergeom==w3d.RZgeom:
-      gtlchgrzfromrho(self.nxlocal,self.nzlocal,self.rho,
+      gtlchgrzfromrho(self.nxlocal,self.nzlocal,
+                      self.nxguardrho,self.nzguardrho,
+                      self.rho,
                       self.dx,self.dz,
                       self.getzgrid(),self.zmminlocal,
                       self.izproc==self.nzprocs-1)
@@ -435,13 +436,15 @@ most of which get there default values from one of the fortran packages.
 
     if self.solvergeom == w3d.XYZgeom:
       getese3dfromrhophi(self.nxlocal,self.nylocal,self.nzlocal,
-                         self.nxguard,self.nyguard,self.nzguard,
+                         self.nxguardphi,self.nyguardphi,self.nzguardphi,
+                         self.nxguardrho,self.nyguardrho,self.nzguardrho,
                          self.rho,self.phi,
                          self.dx,self.dy,self.dz,self.l4symtry,self.l2symtry,
                          ese)
     elif self.solvergeom==w3d.RZgeom:
       geteserzfromrhophi(self.nxlocal,self.nzlocal,
-                         self.nxguard,self.nzguard,
+                         self.nxguardphi,self.nzguardphi,
+                         self.nxguardrho,self.nzguardrho,
                          self.rho,self.phi,
                          self.dx,self.dz,self.xmminlocal,
                          ese)
@@ -472,21 +475,25 @@ most of which get there default values from one of the fortran packages.
     if isinstance(self.sourcep,FloatType): return
     if top.wpid==0:
       setrho3d(self.sourcep,n,x,y,z,zgrid,q,w,top.depos,
-               self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+               self.nxp,self.nyp,self.nzp,
+               self.nxguardrho,self.nyguardrho,self.nzguardrho,
+               self.dx,self.dy,self.dz,
                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                self.solvergeom==w3d.RZgeom)
     else:
       setrho3dw(self.sourcep,n,x,y,z,zgrid,wfact,q,w,top.depos,
-                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+                self.nxp,self.nyp,self.nzp,
+                self.nxguardrho,self.nyguardrho,self.nzguardrho,
+                self.dx,self.dy,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
 
   def returnbfieldp(self):
     try:
       self.bfieldp
-    except NameError:
+    except AttributeError:
       self.bfieldp = None
-    if self.bfieldp is None or self.bfieldp.shape != self.field.shape:
+    if self.bfieldp is None or self.bfieldp.shape != self.fieldp.shape:
       self.bfieldp = zeros_like(self.fieldp)
     return self.bfieldp
 
@@ -500,16 +507,22 @@ most of which get there default values from one of the fortran packages.
     if not f3d.lcorrectede:
       sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
              self.xmminp,self.ymminp,self.zmminp,
-             self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
-             ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
-             self.nxguard,self.nyguard,self.nzguard)
+             self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,
+             self.nxguardphi,self.nyguardphi,self.nzguardphi,
+             self.nxguarde,self.nyguarde,self.nzguarde,
+             top.efetch[js],
+             ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
     else:
-      sete3dwithconductor(self.getconductorobject('p'),
-             self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
-             self.xmminp,self.ymminp,self.zmminp,
-             self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
-             ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
-             self.nxguard,self.nyguard,self.nzguard)
+      sete3dwithconductor(self.getconductorobject('p'),n,x,y,z,
+                          top.efetch[js],ex,ey,ez,
+                          self.getzgridprv(),
+                          self.xmminp,self.ymminp,self.zmminp,
+                          self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,
+                          self.nxguardphi,self.nyguardphi,self.nzguardphi,
+                          self.nxguarde,self.nyguarde,self.nzguarde,
+                          self.potentialp,self.fieldp,
+                          self.l2symtry,self.l4symtry,
+                          self.solvergeom==w3d.RZgeom)
     if abs(top.fselfb).max() > 0.:
       # --- Note that now fetche3dfrompositions takes B field arguments so
       # --- this code should work OK now. The if statement is left just case
@@ -517,7 +530,9 @@ most of which get there default values from one of the fortran packages.
       if len(bx) != n: return
       bfieldp = self.returnbfieldp()
       setb3d(bfieldp,n,x,y,z,self.getzgridprv(),bx,by,bz,
-             self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+             self.nxp,self.nyp,self.nzp,
+             self.nxguarde,self.nyguarde,self.nzguarde,
+             self.dx,self.dy,self.dz,
              self.xmminp,self.ymminp,self.zmminp,
              self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
@@ -525,15 +540,15 @@ most of which get there default values from one of the fortran packages.
     n = len(x)
     if n == 0: return
     if isinstance(self.potentialp,FloatType): return
-    nxp = self.nxp + 2*self.nxguard
-    nyp = self.nyp + 2*self.nyguard
-    nzp = self.nzp + 2*self.nzguard
-    xmminp = self.xmminp - self.dx*self.nxguard
-    xmmaxp = self.xmmaxp + self.dx*self.nxguard
-    ymminp = self.ymminp - self.dy*self.nyguard
-    ymmaxp = self.ymmaxp + self.dy*self.nyguard
-    zmminp = self.zmminp - self.dz*self.nzguard + self.getzgridprv()
-    zmmaxp = self.zmmaxp + self.dz*self.nzguard + self.getzgridprv()
+    nxp = self.nxp + 2*self.nxguardphi
+    nyp = self.nyp + 2*self.nyguardphi
+    nzp = self.nzp + 2*self.nzguardphi
+    xmminp = self.xmminp - self.dx*self.nxguardphi
+    xmmaxp = self.xmmaxp + self.dx*self.nxguardphi
+    ymminp = self.ymminp - self.dy*self.nyguardphi
+    ymmaxp = self.ymmaxp + self.dy*self.nyguardphi
+    zmminp = self.zmminp - self.dz*self.nzguardphi + self.getzgridprv()
+    zmmaxp = self.zmmaxp + self.dz*self.nzguardphi + self.getzgridprv()
     getgrid3d(n,x,y,z,phi,nxp,nyp,nzp,self.potentialp,
               xmminp,xmmaxp,ymminp,ymmaxp,zmminp,zmmaxp,
               self.l2symtry,self.l4symtry)
@@ -546,7 +561,7 @@ most of which get there default values from one of the fortran packages.
       if isinstance(self.sourcep,FloatType): return
       setrhoforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,self.source,
                             self.nxp,self.nyp,self.nzp,self.sourcep,
-                            self.nxpextra,self.nypextra,self.nzpextra,
+                            self.nxguardrho,self.nyguardrho,self.nzguardrho,
                             self.fsdecomp,self.ppdecomp)
 
   def getpotentialpforparticles(self,*args):
@@ -557,9 +572,9 @@ most of which get there default values from one of the fortran packages.
       if isinstance(self.potential,FloatType): return
       if isinstance(self.potentialp,FloatType): return
       getphipforparticles3d(1,self.nxlocal,self.nylocal,self.nzlocal,
+                            self.nxguardphi,self.nyguardphi,self.nzguardphi,
                             self.potential,
                             self.nxp,self.nyp,self.nzp,self.potentialp,
-                            self.nxguard,self.nyguard,self.nzguard,
                             self.fsdecomp,self.ppdecomp)
 
     iselfb = args[2]
@@ -574,10 +589,10 @@ most of which get there default values from one of the fortran packages.
                               self.ppdecomp)
       # --- This calculates the field
       getefieldatconductorsubgrid(conductorobjectp,
-                                  self.potentialp,self.dx,self.dy,self.dz,
-                                  self.nxp,self.nyp,self.nzp,
-                                  self.nxguard,self.nyguard,self.nzguard,
-                                  self.bounds)
+                             self.dx,self.dy,self.dz,
+                             self.nxp,self.nyp,self.nzp,
+                             self.nxguardphi,self.nyguardphi,self.nzguardphi,
+                             self.potentialp,self.bounds)
     if sometrue(top.efetch == 3):
       self.setfieldpforparticles(*args)
       indts = args[1]
@@ -604,15 +619,18 @@ most of which get there default values from one of the fortran packages.
         # --- subgrid points there.
         # --- This is done when iselfb == 0 since that will be the last
         # --- species - this routine modifies fieldp in place.
-        fixefieldatconductorpoints(conductorobjectp,self.fieldp,
+        fixefieldatconductorpoints(conductorobjectp,
                                    self.dx,self.dy,self.dz,
-                                   self.nxp,self.nyp,self.nzp)
+                                   self.nxp,self.nyp,self.nzp,
+                                   self.nxguarde,self.nyguarde,self.nzguarde,
+                                   self.fieldp)
 
   def applysourceboundaryconditions(self):
-    applyrhoboundaryconditions3d(self.source,self.ncomponents,
-                                 self.nxlocal,self.nylocal,self.nzlocal,
-                                 self.bounds,self.fsdecomp,
-                                 self.solvergeom==w3d.RZgeom)
+    applyrhoboundaryconditions3d(self.ncomponents,
+                             self.nxlocal,self.nylocal,self.nzlocal,
+                             self.nxguardrho,self.nyguardrho,self.nzguardrho,
+                             self.source,self.bounds,self.fsdecomp,
+                             self.solvergeom==w3d.RZgeom)
 
   def calcselfe(self,recalculate=None,lzero=true):
     if not self.lparallel:
@@ -636,8 +654,9 @@ most of which get there default values from one of the fortran packages.
         if isinstance(self.potential,FloatType): return
         if isinstance(self.field,FloatType): return
         getselfe3d(self.potential,self.nxlocal,self.nylocal,self.nzlocal,
-                   self.field,self.dx,self.dy,self.dz,
-                   lzero,self.nxguard,self.nyguard,self.nzguard)
+                   self.nxguardphi,self.nyguardphi,self.nzguardphi,
+                   self.field,self.nxguarde,self.nyguarde,self.nzguarde,
+                   self.dx,self.dy,self.dz,lzero)
 
   def calcselfep(self,recalculate=None,lzero=true):
     # --- Check if the E field should be recalculated.
@@ -656,8 +675,9 @@ most of which get there default values from one of the fortran packages.
       if isinstance(self.potentialp,FloatType): return
       if isinstance(self.fieldp,FloatType): return
       getselfe3d(self.potentialp,self.nxp,self.nyp,self.nzp,
-                 self.fieldp,self.dx,self.dy,self.dz,
-                 lzero,self.nxguard,self.nyguard,self.nzguard)
+                 self.nxguardphi,self.nyguardphi,self.nzguardphi,
+                 self.fieldp,self.nxguarde,self.nyguarde,self.nzguarde,
+                 self.dx,self.dy,self.dz,lzero)
 
   def getslicewithguard(self,i1,i2,guard):
     if i1 is not None: i1 = i1 + guard
@@ -669,29 +689,29 @@ most of which get there default values from one of the fortran packages.
     return slice(i1,i2)
 
   def getselfb(self,bfieldp,fselfb,potentialp):
-    ix = self.getslicewithguard(None,None,self.nxguard)
-    iy = self.getslicewithguard(None,None,self.nyguard)
-    iz = self.getslicewithguard(None,None,self.nzguard)
+    ix = self.getslicewithguard(None,None,self.nxguardphi)
+    iy = self.getslicewithguard(None,None,self.nyguardphi)
+    iz = self.getslicewithguard(None,None,self.nzguardphi)
     Az = (fselfb/clight**2)*potentialp
     if self.ny > 0:
-      ysu = self.nyguard+1
-      yeu = -self.nyguard+1 
+      ysu = self.nyguardphi+1
+      yeu = -self.nyguardphi+1 
       if yeu==0:yeu=None
-      ysl = self.nyguard-1
-      yel = -self.nyguard-1
+      ysl = self.nyguardphi-1
+      yel = -self.nyguardphi-1
       bfieldp[0,:,:,:] += (Az[ix,ysu:yeu,iz] - Az[ix,ysl:yel,iz])/(2.*self.dy)
     if self.nx > 0:
-      xsu = self.nxguard+1
-      xeu = -self.nxguard+1 
+      xsu = self.nxguardphi+1
+      xeu = -self.nxguardphi+1 
       if xeu==0:xeu=None
-      xsl = self.nxguard-1
-      xel = -self.nxguard-1
+      xsl = self.nxguardphi-1
+      xel = -self.nxguardphi-1
       bfieldp[1,:,:,:] -= (Az[xsu:xeu,iy,iz] - Az[xsl:xel,iy,iz])/(2.*self.dx)
     
   def adddadttoe(self,fieldp,fselfb,potentialp):
     """Ez = -dA/dt = -beta**2 dphi/dz"""
-    ix = self.getslicewithguard(None,None,self.nxguard)
-    iy = self.getslicewithguard(None,None,self.nyguard)
+    ix = self.getslicewithguard(None,None,self.nxguardphi)
+    iy = self.getslicewithguard(None,None,self.nyguardphi)
     # --- This assumes that nzguard is always 1
     Ez = (fselfb/clight)**2*(potentialp[ix,iy,2:]-potentialp[ix,iy,:-2])/(2.*self.dz)
     fieldp[2,:,:,:] += Ez
@@ -814,6 +834,8 @@ most of which get there default values from one of the fortran packages.
     if self.electrontemperature == 0:
       multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,
                        self.nxlocal,self.nylocal,self.nzlocal,
+                       self.nxguardphi,self.nyguardphi,self.nzguardphi,
+                       self.nxguardrho,self.nyguardrho,self.nzguardrho,
                        self.dx,self.dy,self.dz*zfact,self.potential,self.source,
                        rstar,self.linbend,self.bounds,
                        self.xmmin,self.ymmin,self.zmmin*zfact,
@@ -889,9 +911,6 @@ tensor that appears from the direct implicit scheme.
     MultiGrid3D.__init__(self,lreducedpickle,kwdict=kw)
     self.solvergeom = w3d.XYZgeom
     self.ncomponents = 1
-    self.nxguard = 1
-    self.nyguard = 1
-    self.nzguard = 1
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
     # --- any conductors. This is not really needed here.
@@ -944,10 +963,12 @@ tensor that appears from the direct implicit scheme.
     return dims
 
   def getrho(self):
-    return self.source[:,:,:,0]
+    'Returns the rho array without the guard cells'
+    return MultiGrid3D.getrho(self)[:,:,:]
 
   def getrhop(self):
-    return self.sourcep[:,:,:,0]
+    'Returns the rhop array without the guard cells'
+    return MultiGrid3D.getrhop(self)[:,:,:]
 
   def getphi(self):
     'Returns the phi array without the guard cells'
@@ -1002,13 +1023,17 @@ tensor that appears from the direct implicit scheme.
       sourcep = self.sourcep[...,-1]
     if top.wpid == 0:
       setrho3d(sourcep,n,x,y,z,zgrid,q,w,top.depos,
-               self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+               self.nxp,self.nyp,self.nzp,
+               self.nxguardrho,self.nyguardrho,self.nzguardrho,
+               self.dx,self.dy,self.dz,
                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                self.solvergeom==w3d.RZgeom)
     else:
       # --- Need top.pid(:,top.wpid)
       setrho3dw(sourcep,n,x,y,z,zgrid,wfact,q,w,top.depos,
-                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+                self.nxp,self.nyp,self.nzp,
+                self.nxguardrho,self.nyguardrho,self.nzguardrho,
+                self.dx,self.dy,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
     if iimp >= 0:
@@ -1029,7 +1054,7 @@ tensor that appears from the direct implicit scheme.
                               self.source[...,iimp],
                               self.nxp,self.nyp,self.nzp,
                               self.sourcep[...,iimp],
-                              self.nxpextra,self.nypextra,self.nzpextra,
+                              self.nxguardrho,self.nyguardrho,self.nzguardrho,
                               self.fsdecomp,self.ppdecomp)
 
   def dosolve(self,iwhich=0,*args):

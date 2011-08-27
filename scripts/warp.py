@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.207 2011/08/03 21:23:26 grote Exp $"
+warp_version = "$Id: warp.py,v 1.208 2011/08/27 00:43:16 grote Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -1178,7 +1178,7 @@ Print timers in a nice annotated format
       ff.write('\n')
 
   if top.ltoptimesubs: _doprint(top,'Subtimerstop')
-  if w3d.lw3dtimesubs: _doprint(w3d,'Subtimers3d')
+  if w3d.lw3dtimesubs: _doprint(w3d,'Subtimersw3d')
   if f3d.lf3dtimesubs: _doprint(f3d,'Subtimersf3d')
 
   if icontrollers > 0:
