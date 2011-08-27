@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.37 $, $Date: 2011/06/09 21:48:22 $
+c@(#) File w3d_utilities.F, version $Revision: 1.38 $, $Date: 2011/08/27 00:35:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -11,7 +11,7 @@ c=============================================================================
 c=============================================================================
       subroutine sortparticlesbyindex1(n,indx,x,y,z,uz,nw,wfact,nblocks,
      &                                 xout,yout,zout,uzout,wfactout,pcounts)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: n,nw,nblocks
       integer(ISZ):: indx(n)
       real(kind=8):: x(n),y(n),z(n),uz(n),wfact(nw)
@@ -65,7 +65,7 @@ c=============================================================================
      &                                 nblocks,
      &                                 xout,yout,zout,uxout,uyout,uzout,
      &                                 gaminvout,wghtout,pcounts)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: n,nw,nblocks
       integer(ISZ):: indx(n)
       real(kind=8):: x(n),y(n),z(n),ux(n),uy(n),uz(n),gaminv(n)
@@ -123,7 +123,7 @@ c     --- Rearrange the particles
 c=============================================================================
       subroutine sortparticlesbyindexgetisort(n,indx,x,y,z,nblocks,
      &                                        xout,yout,zout,isort,pcounts)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: n,nblocks
       integer(ISZ):: indx(n)
       real(kind=8):: x(n),y(n),z(n)
@@ -178,7 +178,7 @@ c=============================================================================
       subroutine getichild(gridnumb,np,x,y,z,ichild,nx,ny,nz,grid,
      &                     xmin,xmax,ymin,ymax,zmin,zmax,zgrid,
      &                     l2symtry,l4symtry)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: gridnumb,nx,ny,nz,np
       real(kind=8):: x(np), y(np), z(np)
       integer(ISZ):: ichild(np)
@@ -254,7 +254,7 @@ c=============================================================================
       subroutine getichildpositiveonly(gridnumb,np,x,y,z,ichild,nx,ny,nz,grid,
      &                                 xmin,xmax,ymin,ymax,zmin,zmax,zgrid,
      &                                 l2symtry,l4symtry)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: gridnumb,nx,ny,nz,np
       real(kind=8):: x(np), y(np), z(np)
       integer(ISZ):: ichild(np)
@@ -329,7 +329,7 @@ c       --- if not within grid, skip it
       end
 c=============================================================================
       subroutine addsortedefield(n,isort,tex,tey,tez,ex,ey,ez)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: n
       integer(ISZ):: isort(0:n-1)
       real(kind=8),dimension(0:n-1):: tex,tey,tez,ex,ey,ez
@@ -353,7 +353,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine getabsgrad3d(nx,ny,nz,f,gr,dx,dy,dz)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: nx,ny,nz
       real(kind=8):: f(0:nx,0:ny,0:nz)
       real(kind=8):: gr(0:nx,0:ny,0:nz)
@@ -847,7 +847,7 @@ c=============================================================================
       end
 c===========================================================================
       subroutine setupdecompositionw3d()
-      use Subtimers3d
+      use Subtimersw3d
       use Parallel
       use InGen
       use InGen3d
@@ -1001,15 +1001,15 @@ c     --- of the grid.
       ppdecomp%ymax(nyprocs-1) = fsdecomp%ymax(nyprocs-1)
       ppdecomp%zmax(nzprocs-1) = fsdecomp%zmax(nzprocs-1)
 
-      call domaindecomposeparticles(nx,nxprocs,nxpextra,xmmin,dx,
+      call domaindecomposeparticles(nx,nxprocs,0,xmmin,dx,
      &                              userdecompx,lautodecomp,
      &                              ppdecomp%ix,ppdecomp%nx,
      &                              ppdecomp%xmin,ppdecomp%xmax)
-      call domaindecomposeparticles(ny,nyprocs,nypextra,ymmin,dy,
+      call domaindecomposeparticles(ny,nyprocs,0,ymmin,dy,
      &                              userdecompy,lautodecomp,
      &                              ppdecomp%iy,ppdecomp%ny,
      &                              ppdecomp%ymin,ppdecomp%ymax)
-      call domaindecomposeparticles(nz,nzprocs,nzpextra,zmmin,dz,
+      call domaindecomposeparticles(nz,nzprocs,0,zmmin,dz,
      &                              userdecompz,lautodecomp,
      &                              ppdecomp%iz,ppdecomp%nz,
      &                              ppdecomp%zmin,ppdecomp%zmax)

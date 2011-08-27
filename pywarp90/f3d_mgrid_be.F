@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.45 $, $Date: 2009/06/08 22:30:42 $
+c version $Revision: 1.46 $, $Date: 2011/08/27 00:35:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -10,7 +10,10 @@ c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
 c=============================================================================
 c=============================================================================
-      subroutine multigridbe3df(iwhich,nx,ny,nz,dx,dy,dz,phi,rho,
+      subroutine multigridbe3df(iwhich,nx,ny,nz,
+     &                          nxguardphi,nyguardphi,nzguardphi,
+     &                          nxguardrho,nyguardrho,nzguardrho,
+     &                          dx,dy,dz,phi,rho,
      &                          rstar,linbend,
      &                          bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                          xmmin,ymmin,zmmin)
@@ -23,8 +26,14 @@ c     use ifcore
 c     integer:: fsf
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: dx,dy,dz
       real(kind=8):: rstar(-1:nz+1)
       logical(ISZ):: linbend
@@ -52,9 +61,13 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
       endif
 
       call setupiondensitygrid3d(xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
+     &                           nxguardrho,nyguardrho,nzguardrho,
      &                           rho,useriondensitygrid3d)
 
-      call multigridbe3dsolve(iwhich,nx,ny,nz,dx,dy,dz,phi,rho,
+      call multigridbe3dsolve(iwhich,nx,ny,nz,
+     &                        nxguardphi,nyguardphi,nzguardphi,
+     &                        nxguardrho,nyguardrho,nzguardrho,
+     &                        dx,dy,dz,phi,rho,
      &                        rstar,linbend,bounds,
      &                        xmmin,ymmin,zmmin,
      &                        mgparam,mgiters,mgmaxiters,
@@ -68,13 +81,17 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
       end
 c=============================================================================
       subroutine setupiondensitygrid3d(xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
+     &                                 nxguardrho,nyguardrho,nzguardrho,
      &                                 rho,iondensitygrid3d)
       use BoltzmannElectrons
       use Grid3dtypemodule
       real(kind=8):: xmmin,ymmin,zmmin
       integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: dx,dy,dz
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
       type(Grid3dtype):: iondensitygrid3d
 
       integer(ISZ):: ixbemin,ixbemax,iybemin,iybemax,izbemin,izbemax
@@ -148,7 +165,10 @@ c       iondensitygrid3d%grid = iondensitygrid3d%grid/eps0
       return
       end
 c=============================================================================
-      subroutine multigridbe3dsolve(iwhich,nx,ny,nz,dx,dy,dz,phi,rho,
+      subroutine multigridbe3dsolve(iwhich,nx,ny,nz,
+     &                              nxguardphi,nyguardphi,nzguardphi,
+     &                              nxguardrho,nyguardrho,nzguardrho,
+     &                              dx,dy,dz,phi,rho,
      &                              rstar,linbend,bounds,
      &                              xmmin,ymmin,zmmin,
      &                              mgparam,mgiters,mgmaxiters,
@@ -164,8 +184,14 @@ c=============================================================================
       use Decompositionmodule
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: dx,dy,dz
       real(kind=8):: rstar(-1:nz+1)
       logical(ISZ):: linbend
@@ -254,7 +280,10 @@ c       --- Save current value of phi
         phisave = phi(0:nx,0:ny,0:nz)
 
 c       --- Do one vcycle.
-        call vcyclebe(0,nx,ny,nz,dx,dy,dz,phi,rho,regionid,
+        call vcyclebe(0,nx,ny,nz,
+     &                nxguardphi,nyguardphi,nzguardphi,
+     &                nxguardrho,nyguardrho,nzguardrho,
+     &                dx,dy,dz,phi,rho,regionid,
      &                xmmin,ymmin,zmmin,
      &                rstar,linbend,bendx,bounds,mgparam,mgmaxlevels,
      &                downpasses,uppasses,lcndbndy,icndbndy,conductors,
@@ -304,7 +333,10 @@ c     --- Undo the change of rho
       return
       end
 c=============================================================================
-      RECURSIVE subroutine vcyclebe(mglevel,nx,ny,nz,dx,dy,dz,
+      RECURSIVE subroutine vcyclebe(mglevel,nx,ny,nz,
+     &                              nxguardphi,nyguardphi,nzguardphi,
+     &                              nxguardrho,nyguardrho,nzguardrho,
+     &                              dx,dy,dz,
      &                              phi,rho,regionid,xmmin,ymmin,zmmin,
      &                              rstar,linbend,bendx,
      $                              bounds,mgparam,
@@ -318,7 +350,14 @@ c     use BoltzmannElectrons
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1),rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       real(kind=8):: xmmin,ymmin,zmmin
       real(kind=8):: rstar(-1:nz+1)
@@ -352,7 +391,10 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
 c     --- Do initial relaxation iterations
       do i=1,downpasses
-        call relaxbe3d(mglevel,nx,ny,nz,phi,rho,regionid,rstar,
+        call relaxbe3d(mglevel,nx,ny,nz,
+     &                 nxguardphi,nyguardphi,nzguardphi,
+     &                 nxguardrho,nyguardrho,nzguardrho,
+     &                 phi,rho,regionid,rstar,
      &                 dxsqi,dysqi,dzsqi,dx,dy,dz,linbend,bendx,
      &                 bounds,mgparam,
      &                 lcndbndy,icndbndy,conductors,iondensitygrid3d)
@@ -422,31 +464,34 @@ c     --- Create and setup array which holds the BE region ids
 
 c       --- Calculate the coarsened phi
         phicoarse = 0.
-        call restrictbe3d(nx,ny,nz,phi,1,1,1,
-     &                    nxcoarse,nycoarse,nzcoarse,phicoarse,1,1,1,
+        call restrictbe3d(nx,ny,nz,
+     &                    nxguardphi,nyguardphi,nzguardphi,phi,
+     &                    nxcoarse,nycoarse,nzcoarse,1,1,1,phicoarse,
      &                    bounds)
-        call cond_potmgbe(conductors%interior,nxcoarse,nycoarse,nzcoarse,
+        call cond_potmgbe(conductors%interior,nxcoarse,nycoarse,nzcoarse,1,1,1,
      &                    phicoarse,mglevel+1)
-        call applytransversebcbe3d(nxcoarse,nycoarse,nzcoarse,phicoarse,bounds)
-        call applylongitudinalbcbe3d(nxcoarse,nycoarse,nzcoarse,
+        call applytransversebcbe3d(nxcoarse,nycoarse,nzcoarse,1,1,1,
+     &                             phicoarse,bounds)
+        call applylongitudinalbcbe3d(nxcoarse,nycoarse,nzcoarse,1,1,1,
      &                               phicoarse,bounds)
 
 
 c       --- Calculate the coarsened Lphi, putting it into rhocoarse
-        call Lphibe(nx,ny,nz,dxsqi,dysqi,dzsqi,dx,dy,dz,phi,Lphi,regionid,
+        call Lphibe(nx,ny,nz,nxguardphi,nyguardphi,nzguardphi,
+     &              dxsqi,dysqi,dzsqi,dx,dy,dz,phi,Lphi,regionid,
      &              mglevel,bounds,
      &              lcndbndy,icndbndy,conductors,iondensitygrid3d)
         Lphi(0:nx,0:ny,0:nz) = rho - Lphi(0:nx,0:ny,0:nz)
-        call applytransversebcbe3d(nx,ny,nz,Lphi,bounds)
-        call applylongitudinalbcbe3d(nx,ny,nz,Lphi,bounds)
-        call restrictbe3d(nx,ny,nz,Lphi,1,1,1,
-     &                    nxcoarse,nycoarse,nzcoarse,rhocoarse,0,0,0,
+        call applytransversebcbe3d(nx,ny,nz,1,1,1,Lphi,bounds)
+        call applylongitudinalbcbe3d(nx,ny,nz,1,1,1,Lphi,bounds)
+        call restrictbe3d(nx,ny,nz,1,1,1,Lphi,
+     &                    nxcoarse,nycoarse,nzcoarse,0,0,0,rhocoarse,
      &                    bounds)
 
         deallocate(Lphi)
 
 c       --- Calculate L(R phi), adding it into rhocoarse
-        call Lphibe(nxcoarse,nycoarse,nzcoarse,
+        call Lphibe(nxcoarse,nycoarse,nzcoarse,1,1,1,
      &              dxcoarsesqi,dycoarsesqi,dzcoarsesqi,
      &              dxcoarse,dycoarse,dzcoarse,
      &              phicoarse,Lphicoarse,regionidcoarse,
@@ -455,8 +500,8 @@ c       --- Calculate L(R phi), adding it into rhocoarse
         rhocoarse = rhocoarse + Lphicoarse(0:nxcoarse,0:nycoarse,0:nzcoarse)
         deallocate(Lphicoarse)
         call cond_potmgbezero(conductors%interior,
-     &                        nxcoarse,nycoarse,nzcoarse,
-     &                        rhocoarse,mglevel+1,0,0)
+     &                        nxcoarse,nycoarse,nzcoarse,0,0,
+     &                        rhocoarse,mglevel+1)
 
 c       --- Save the current coarsened phi since it is needed to apply
 c       --- the corrections after relaxations.
@@ -472,7 +517,7 @@ c       --- the corrections after relaxations.
         phicoarsesave = phicoarse
 
 c       --- Continue at the next coarsest level.
-        call vcyclebe(mglevel+iszone,nxcoarse,nycoarse,nzcoarse,
+        call vcyclebe(mglevel+iszone,nxcoarse,nycoarse,nzcoarse,1,1,1,0,0,0,
      &                dxcoarse,dycoarse,dzcoarse,phicoarse,rhocoarse,
      &                regionidcoarse,xmmin,ymmin,zmmin,
      &                rstar,linbend,bendx,bounds,mgparam,
@@ -485,10 +530,14 @@ c       --- Add in the correction term.
           print*,"Max change in phi = ",maxval(abs(phicoarse))," at MG level ",mglevel
         endif
         deallocate(phicoarsesave)
-        call expandbe3d(nx,ny,nz,phi,
+        call expandbe3d(nx,ny,nz,
+     &                  nxguardphi,nyguardphi,nzguardphi,phi,
      &                  nxcoarse,nycoarse,nzcoarse,phicoarse,
      &                  bounds)
-        call clampphitophimaxbe3d(nx,ny,nz,dx,dy,dz,phi,rho,regionid,
+        call clampphitophimaxbe3d(nx,ny,nz,
+     &                            nxguardphi,nyguardphi,nzguardphi,
+     &                            nxguardrho,nyguardrho,nzguardrho,
+     &                            dx,dy,dz,phi,rho,regionid,
      &                            iondensitygrid3d)
 
         deallocate(phicoarse,rhocoarse)
@@ -498,26 +547,39 @@ c       --- Add in the correction term.
 
 c     --- Do final relaxation passes.
       do i=1,uppasses
-        call relaxbe3d(mglevel,nx,ny,nz,phi,rho,regionid,rstar,
+        call relaxbe3d(mglevel,nx,ny,nz,
+     &                 nxguardphi,nyguardphi,nzguardphi,
+     &                 nxguardrho,nyguardrho,nzguardrho,
+     &                 phi,rho,regionid,rstar,
      &                 dxsqi,dysqi,dzsqi,dx,dy,dz,linbend,bendx,
      &                 bounds,mgparam,
      &                 lcndbndy,icndbndy,conductors,iondensitygrid3d)
-        call clampphitophimaxbe3d(nx,ny,nz,dx,dy,dz,phi,rho,regionid,
+        call clampphitophimaxbe3d(nx,ny,nz,
+     &                            nxguardphi,nyguardphi,nzguardphi,
+     &                            nxguardrho,nyguardrho,nzguardrho,
+     &                            dx,dy,dz,phi,rho,regionid,
      &                            iondensitygrid3d)
       enddo
 
       return
       end
 c=============================================================================
-      subroutine restrictbe3d(nx,ny,nz,u,delx,dely,delz,
-     &                        nxcoarse,nycoarse,nzcoarse,ucoarse,
-     &                        delcx,delcy,delcz,
+      subroutine restrictbe3d(nx,ny,nz,
+     &                        nxguard,nyguard,nzguard,u,
+     &                        nxcoarse,nycoarse,nzcoarse,
+     &                        nxguardc,nyguardc,nzguardc,ucoarse,
      &                        bounds)
 
-      integer(ISZ):: nx,ny,nz,delx,dely,delz,delcx,delcy,delcz
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxguard,nyguard,nzguard
+      integer(ISZ):: nxguardc,nyguardc,nzguardc
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse
-      real(kind=8):: u(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
-      real(kind=8):: ucoarse(-delcx:nxcoarse+delcx,-delcy:nycoarse+delcy,-delcz:nzcoarse+delcz)
+      real(kind=8):: u(-nxguard:nx+nxguard,
+     &                 -nyguard:ny+nyguard,
+     &                 -nzguard:nz+nzguard)
+      real(kind=8):: ucoarse(-nxguardc:nxcoarse+nxguardc,
+     &                       -nyguardc:nycoarse+nyguardc,
+     &                       -nzguardc:nzcoarse+nzguardc)
       integer(ISZ):: bounds(0:5)
       
 c Restrict to a coarser grid.
@@ -545,8 +607,8 @@ c     --- Do the loops.
       do izcoarse=0,nzcoarse
         izmin = ((izcoarse-1)*nz + 4*nzcoarse)/nzcoarse-3
         izmax = ((izcoarse+1)*nz - 1)/nzcoarse
-        if (izmin < -delz) izmin = -delz
-        if (izmax > nz+delz) izmax = nz+delz
+        if (izmin < -nzguard) izmin = -nzguard
+        if (izmax > nz+nzguard) izmax = nz+nzguard
 
         do iz=izmin,izmax
           wz(iz-izmin) = 1. - abs(izcoarse - iz*dzi)
@@ -565,8 +627,8 @@ c     --- Do the loops.
         do iycoarse=0,nycoarse
           iymin = int(ceiling((iycoarse-1)*dy + 1.e-10))
           iymax = int(floor((iycoarse+1)*dy - 1.e-10))
-          if (iymin < -dely) iymin = -dely
-          if (iymax > ny+dely) iymax = ny+dely
+          if (iymin < -nyguard) iymin = -nyguard
+          if (iymax > ny+nyguard) iymax = ny+nyguard
 
           do iy=iymin,iymax
             wy(iy-iymin) = 1. - abs(iycoarse - iy*dyi)
@@ -585,8 +647,8 @@ c     --- Do the loops.
           do ixcoarse=0,nxcoarse
             ixmin = int(ceiling((ixcoarse-1)*dx + 1.e-10))
             ixmax = int(floor((ixcoarse+1)*dx - 1.e-10))
-            if (ixmin < -delx) ixmin = -delx
-            if (ixmax > nx+delx) ixmax = nx+delx
+            if (ixmin < -nxguard) ixmin = -nxguard
+            if (ixmax > nx+nxguard) ixmax = nx+nxguard
 
             do ix=ixmin,ixmax
               wx(ix-ixmin) = 1. - abs(ixcoarse - ix*dxi)
@@ -626,11 +688,15 @@ c     --- Do the loops.
       return
       end
 c=============================================================================
-      subroutine expandbe3d(nx,ny,nz,phi,
+      subroutine expandbe3d(nx,ny,nz,
+     &                      nxguardphi,nyguardphi,nzguardphi,phi,
      &                      nxcoarse,nycoarse,nzcoarse,phicoarse,bounds)
       integer(ISZ):: nx,ny,nz
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
       real(kind=8):: phicoarse(-1:nxcoarse+1,-1:nycoarse+1,-1:nzcoarse+1)
       integer(ISZ):: bounds(0:5)
 
@@ -685,13 +751,20 @@ c     --- Set the loop limits, including edges when appropriate.
         enddo
       enddo
 
-      call applytransversebcbe3d(nx,ny,nz,phi,bounds)
-      call applylongitudinalbcbe3d(nx,ny,nz,phi,bounds)
+      call applytransversebcbe3d(nx,ny,nz,
+     &                           nxguardphi,nyguardphi,nzguardphi,
+     &                           phi,bounds)
+      call applylongitudinalbcbe3d(nx,ny,nz,
+     &                             nxguardphi,nyguardphi,nzguardphi,
+     &                             phi,bounds)
 
       return
       end
 c=============================================================================
-      subroutine relaxbe3d(mglevel,nx,ny,nz,phi,rho,regionid,rstar,
+      subroutine relaxbe3d(mglevel,nx,ny,nz,
+     &                     nxguardphi,nyguardphi,nzguardphi,
+     &                     nxguardrho,nyguardrho,nzguardrho,
+     &                     phi,rho,regionid,rstar,
      &                     dxsqi,dysqi,dzsqi,dx,dy,dz,linbend,bendx,bounds,
      &                     mgparam,lcndbndy,icndbndy,conductors,
      &                     iondensitygrid3d)
@@ -700,7 +773,14 @@ c=============================================================================
       use BoltzmannElectrons
       use Grid3dtypemodule
       integer(ISZ):: mglevel,nx,ny,nz
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1),rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       real(kind=8):: rstar(-1:nz+1)
       real(kind=8):: bendx((nx+1)*(ny+1))
@@ -743,9 +823,15 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
       real(kind=8):: iondensitytmp,rhoe,denom,Lphi,expo
 
 c     --- Put desired potential onto conductors in phi array.
-      call cond_potmgbe(conductors%interior,nx,ny,nz,phi,mglevel)
-      call condbndymgintbe3d(conductors%evensubgrid,nx,ny,nz,phi,bounds,mglevel)
-      call condbndymgintbe3d(conductors%oddsubgrid ,nx,ny,nz,phi,bounds,mglevel)
+      call cond_potmgbe(conductors%interior,nx,ny,nz,
+     &                  nxguardphi,nyguardphi,nzguardphi,
+     &                  phi,mglevel)
+      call condbndymgintbe3d(conductors%evensubgrid,nx,ny,nz,
+     &                       nxguardphi,nyguardphi,nzguardphi,
+     &                       phi,bounds,mglevel)
+      call condbndymgintbe3d(conductors%oddsubgrid,nx,ny,nz,
+     &                       nxguardphi,nyguardphi,nzguardphi,
+     &                       phi,bounds,mglevel)
 
 
 c     --- Set starting and ending parity.
@@ -830,27 +916,43 @@ c       --- Apply altered difference equation to the points near the
 c       --- surface of the conductor boundaries.
         if (lcndbndy) then
           if (parity == 0) then
-           call condbndymgbe(conductors%evensubgrid,nx,ny,nz,phi,rho,regionid,
+           call condbndymgbe(conductors%evensubgrid,nx,ny,nz,
+     &                       nxguardphi,nyguardphi,nzguardphi,
+     &                       nxguardrho,nyguardrho,nzguardrho,
+     &                       phi,rho,regionid,
      &                       dxsqi,dysqi,dzsqi,dx,dy,dz,mgparam,bounds,
      &                       mglevel,icndbndy,iondensitygrid3d)
           endif
           if (parity == 1) then
-           call condbndymgbe(conductors%oddsubgrid,nx,ny,nz,phi,rho,regionid,
+           call condbndymgbe(conductors%oddsubgrid,nx,ny,nz,
+     &                       nxguardphi,nyguardphi,nzguardphi,
+     &                       nxguardrho,nyguardrho,nzguardrho,
+     &                       phi,rho,regionid,
      &                       dxsqi,dysqi,dzsqi,dx,dy,dz,mgparam,bounds,
      &                       mglevel,icndbndy,iondensitygrid3d)
           endif
         endif
 
 c       --- Put desired potential onto conductors in phi array.
-        call cond_potmgbe(conductors%interior,nx,ny,nz,phi,mglevel)
-        call condbndymgintbe3d(conductors%evensubgrid,nx,ny,nz,phi,bounds,mglevel)
-        call condbndymgintbe3d(conductors%oddsubgrid ,nx,ny,nz,phi,bounds,mglevel)
+        call cond_potmgbe(conductors%interior,nx,ny,nz,
+     &                    nxguardphi,nyguardphi,nzguardphi,
+     &                    phi,mglevel)
+        call condbndymgintbe3d(conductors%evensubgrid,nx,ny,nz,
+     &                         nxguardphi,nyguardphi,nzguardphi,
+     &                         phi,bounds,mglevel)
+        call condbndymgintbe3d(conductors%oddsubgrid,nx,ny,nz,
+     &                         nxguardphi,nyguardphi,nzguardphi,
+     &                         phi,bounds,mglevel)
 
 c       --- set phi in the guard planes
 c       --- This must be done inside the loop over parities so that the
 c       --- guard planes are updated with the most recent values.
-        call applytransversebcbe3d(nx,ny,nz,phi,bounds)
-        call applylongitudinalbcbe3d(nx,ny,nz,phi,bounds)
+        call applytransversebcbe3d(nx,ny,nz,
+     &                             nxguardphi,nyguardphi,nzguardphi,
+     &                             phi,bounds)
+        call applylongitudinalbcbe3d(nx,ny,nz,
+     &                               nxguardphi,nyguardphi,nzguardphi,
+     &                               phi,bounds)
 
 c     --- end of loop over even and odd points
       enddo
@@ -858,11 +960,17 @@ c     --- end of loop over even and odd points
       return
       end
 c=============================================================================
-      subroutine cond_potmgbe(interior,nx,ny,nz,phi,mglevel)
+      subroutine cond_potmgbe(interior,nx,ny,nz,
+     &                        nxguardphi,nyguardphi,nzguardphi,
+     &                        phi,mglevel)
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
-      integer(ISZ):: nx,ny,nz,mglevel
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
+      integer(ISZ):: mglevel
 
 c Set conductor points to the desired potential. The potential is used since
 c at all levels, phi is being operated on directly.
@@ -881,7 +989,7 @@ c at all levels, phi is being operated on directly.
       return
       end
 c=============================================================================
-      subroutine cond_potmgbezero(interior,nx,ny,nz,u,mglevel,delt,delz)
+      subroutine cond_potmgbezero(interior,nx,ny,nz,delt,delz,u,mglevel)
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
       integer(ISZ):: nx,ny,nz,mglevel,delt,delz
@@ -903,7 +1011,10 @@ c Set data at conductor points to zero.
       return
       end
 c=============================================================================
-      subroutine condbndymgbe(subgrid,nx,ny,nz,phi,rho,regionid,
+      subroutine condbndymgbe(subgrid,nx,ny,nz,
+     &                        nxguardphi,nyguardphi,nzguardphi,
+     &                        nxguardrho,nyguardrho,nzguardrho,
+     &                        phi,rho,regionid,
      &                        dxsqi,dysqi,dzsqi,dx,dy,dz,
      &                        mgparam,bounds,mglevel,icndbndy,iondensitygrid3d)
       use Constant
@@ -911,11 +1022,18 @@ c=============================================================================
       use BoltzmannElectrons
       use Grid3dtypemodule
       type(ConductorSubGridType):: subgrid
-      integer(ISZ):: nx,ny,nz,mglevel
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1), rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       real(kind=8):: dxsqi,dysqi,dzsqi,dx,dy,dz,mgparam
-      integer(ISZ):: bounds(0:5),icndbndy
+      integer(ISZ):: bounds(0:5),mglevel,icndbndy
       type(Grid3dtype):: iondensitygrid3d
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
@@ -1089,12 +1207,17 @@ c       --- calculate the new phi based on the boundary conditions
       return
       end
 c=============================================================================
-      subroutine condbndymgintbe3d(subgrid,nx,ny,nz,phi,bounds,mglevel)
+      subroutine condbndymgintbe3d(subgrid,nx,ny,nz,
+     &                             nxguardphi,nyguardphi,nzguardphi,
+     &                             phi,bounds,mglevel)
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
-      integer(ISZ):: nx,ny,nz,mglevel
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
-      integer(ISZ):: bounds(0:5)
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
+      integer(ISZ):: bounds(0:5),mglevel
 
 c Sets the potential on points just beyond a Neumann boundary condition.
 
@@ -1132,7 +1255,9 @@ c     --- loop over points near surface of conductors
       return
       end
 c=============================================================================
-      subroutine Lphibe(nx,ny,nz,dxsqi,dysqi,dzsqi,dx,dy,dz,phi,Lphi,regionid,
+      subroutine Lphibe(nx,ny,nz,
+     &                  nxguardphi,nyguardphi,nzguardphi,
+     &                  dxsqi,dysqi,dzsqi,dx,dy,dz,phi,Lphi,regionid,
      &                  mglevel,bounds,
      &                  lcndbndy,icndbndy,conductors,iondensitygrid3d)
       use Constant
@@ -1140,8 +1265,11 @@ c=============================================================================
       use BoltzmannElectrons
       use Grid3dtypemodule
       integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
       real(kind=8):: dxsqi,dysqi,dzsqi,dx,dy,dz
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
       real(kind=8):: Lphi(-1:nx+1,-1:ny+1,-1:nz+1)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       integer(ISZ):: mglevel,bounds(0:5)
@@ -1205,7 +1333,7 @@ c     --- Calculate the Lphi.
 !$OMP END DO
 
 c     --- Zero the Lphi inside conductors.
-      call cond_potmgbezero(conductors%interior,nx,ny,nz,Lphi,mglevel,1,1)
+      call cond_potmgbezero(conductors%interior,nx,ny,nz,1,1,Lphi,mglevel)
 
       if (lcndbndy) then
 c       --- Calculate the Lphi near the conductor.
@@ -1256,7 +1384,8 @@ c=============================================================================
       use Grid3dtypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nz,mglevel
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1), Lphi(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: Lphi(-1:nx+1,-1:ny+1,-1:nz+1)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       real(kind=8):: dxsqi,dysqi,dzsqi,dx,dy,dz
       integer(ISZ):: bounds(0:5),icndbndy
@@ -1432,10 +1561,14 @@ c       --- Zero out the Lphi in points just beyond a Neumann boundary
       return
       end
 c=============================================================================
-      subroutine applytransversebcbe3d(nx,ny,nz,u,bounds)
+      subroutine applytransversebcbe3d(nx,ny,nz,nxguard,nyguard,nzguard,
+     &                                 u,bounds)
       integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxguard,nyguard,nzguard
+      real(kind=8):: u(-nxguard:nx+nxguard,
+     &                 -nyguard:ny+nyguard,
+     &                 -nzguard:nz+nzguard)
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: u(-1:nx+1,-1:ny+1,-1:nz+1)
 
       if (bounds(0) == 0) u(-1,:,:)   = 2.*u(0,:,:) - u(1,:,:)
       if (bounds(1) == 0) u(nx+1,:,:) = 2.*u(nx,:,:) - u(nx-1,:,:)
@@ -1454,10 +1587,15 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine applylongitudinalbcbe3d(nx,ny,nz,u,bounds)
+      subroutine applylongitudinalbcbe3d(nx,ny,nz,nxguard,nyguard,nzguard,
+     &                                   u,bounds)
       integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxguard,nyguard,nzguard
+      real(kind=8):: u(-nxguard:nx+nxguard,
+     &                 -nyguard:ny+nyguard,
+     &                 -nzguard:nz+nzguard)
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: u(-1:nx+1,-1:ny+1,-1:nz+1)
+
       if (bounds(4) == 0) u(:,:,-1)   = 2.*u(:,:,0) - u(:,:,1)
       if (bounds(5) == 0) u(:,:,nz+1) = 2.*u(:,:,nz) - u(:,:,nz-1)
       if (bounds(4) == 1) u(:,:,-1)   = u(:,:,1)
@@ -1468,14 +1606,24 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine clampphitophimaxbe3d(nx,ny,nz,dx,dy,dz,phi,rho,regionid,
+      subroutine clampphitophimaxbe3d(nx,ny,nz,
+     &                                nxguardphi,nyguardphi,nzguardphi,
+     &                                nxguardrho,nyguardrho,nzguardrho,
+     &                                dx,dy,dz,phi,rho,regionid,
      &                                iondensitygrid3d)
       use Constant
       use BoltzmannElectrons
       use Grid3dtypemodule
       integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1),rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       type(Grid3dtype):: iondensitygrid3d
 

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.220 $, $Date: 2011/02/15 19:42:37 $
+#@(#) File F3D.V, version $Revision: 3.221 $, $Date: 2011/08/27 00:35:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.220 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.221 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -22,8 +22,8 @@ ibc                       integer      #  Boundary conditions-future use
 nx                        integer /2/  #  Mesh points are 0,...,nx
 ny                        integer /2/  #  Mesh points are 0,...,ny
 nz                        integer /2/  #  Mesh points are 0,...,nz
-a(0:nx,0:ny)              _real        #  2d charge density, potential array
-b(0:nx,0:ny,0:nz)         _real        #  Charge density, potential array
+a(-1:nx+1,-1:ny+1)        _real        #  2d charge density, potential array
+b(-1:nx+1,-1:ny+1,-1:nz+1) _real        #  Charge density, potential array
 bsav(0:nx,0:ny,0:nz)      _real        #  "Save" array for b
 attx(0:nx-1)              _real        #  Attenuation factor as fcn. of kx
 atty(0:ny-1)              _real        #  Attenuation factor as fcn. of ky
@@ -40,7 +40,10 @@ zwork(2,0:nx,0:nz)        _real        #  Workspace to optimize vpftz
 phi_trnspsnx /0/ integer
 phi_trnspsny /0/ integer
 phi_trnspsnz /0/ integer
-phi_trnsps(-1:phi_trnspsnx+1,-1:phi_trnspsny+1,0:phi_trnspsnz)  _real
+phi_trnspsnxguardphi /1/ integer
+phi_trnspsnyguardphi /1/ integer
+phi_trnspsnzguardphi /1/ integer
+phi_trnsps(-phi_trnspsnxguardphi:phi_trnspsnx+phi_trnspsnxguardphi,-phi_trnspsnyguardphi:phi_trnspsny+phi_trnspsnyguardphi,-phi_trnspsnzguardphi:phi_trnspsnz+phi_trnspsnzguardphi) _real
 
 ******** CapMat3d dump:
 nc3dmax         integer /0/ # Maximum number of points in conductors
@@ -246,6 +249,7 @@ mggrid_overlap integer /0/ # When 1, extra overlap is taken advantage of to
 mgcoarsening integer /2/ # Amount of coarsening to do for each multigrid level
                          # Not fully supported. 2 is almost always the best
                          # value anyway.
+mgusempistate logical /.true./
 getmglevels(nx:integer,ny:integer,nz:integer,
             nxlocal:integer,nylocal:integer,nzlocal:integer,
             dx:real,dy:real,dz:real,
@@ -255,9 +259,15 @@ getmglevels(nx:integer,ny:integer,nz:integer,
    # must be zero when calling this routine.
 multigrid3df(iwhich:integer,nx:integer,ny:integer,nz:integer,
              nxlocal:integer,nylocal:integer,nzlocal:integer,
+             nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+             nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
              dx:real,dy:real,dz:real,
-             phi(-1:nx+1,-1:ny+1,-1:nzlocal+1):real,
-             rho(0:nx,0:ny,0:nzlocal):real,
+             phi(-nxguardphi:nxlocal+nxguardphi,
+                 -nyguardphi:nylocal+nyguardphi,
+                 -nzguardphi:nzlocal+nzguardphi):real,
+             rho(-nxguardrho:nxlocal+nxguardrho,
+                 -nyguardrho:nylocal+nyguardrho,
+                 -nzguardrho:nzlocal+nzguardrho):real,
              rstar(-1:nzlocal+1):real,linbend:logical,
              bound0:integer,boundnz:integer,boundxy:integer,
              l2symtry:logical,l4symtry:logical,
@@ -267,9 +277,15 @@ multigrid3df(iwhich:integer,nx:integer,ny:integer,nz:integer,
    # from the f3d package to control the iterations and conductors.
 multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,
                  nxlocal:integer,nylocal:integer,nzlocal:integer,
+                 nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+                 nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
                  dx:real,dy:real,dz:real,
-                 phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1):real,
-                 rho(0:nxlocal,0:nylocal,0:nzlocal):real,
+                 phi(-nxguardphi:nxlocal+nxguardphi,
+                     -nyguardphi:nylocal+nyguardphi,
+                     -nzguardphi:nzlocal+nzguardphi):real,
+                 rho(-nxguardrho:nxlocal+nxguardrho,
+                     -nyguardrho:nylocal+nyguardrho,
+                     -nzguardrho:nzlocal+nzguardrho):real,
                  rstar(-1:nzlocal+1):real,linbend:logical,bounds(0:5):integer,
                  xmmin:real,ymmin:real,zmmin:real,
                  mgparam:real,mgform:integer,mgiters:integer,
@@ -284,8 +300,13 @@ multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,
    # through the argument list.
 multigrid2dsolve(iwhich:integer,nx:integer,nz:integer,
                  nxlocal:integer,nzlocal:integer,
-                 dx:real,dz:real,phi(-1:nxlocal+1,-1:nzlocal+1):real,
-                 rho(0:nxlocal,0:nzlocal):real,
+                 nxguardphi:integer,nzguardphi:integer,
+                 nxguardrho:integer,nzguardrho:integer,
+                 dx:real,dz:real,
+                 phi(-nxguardphi:nxlocal+nxguardphi,
+                     -nzguardphi:nzlocal+nzguardphi):real,
+                 rho(-nxguardrho:nxlocal+nxguardrho,
+                     -nzguardrho:nzlocal+nzguardrho):real,
                  bounds(0:5):integer,
                  xmminlocal:real,
                  mgparam:real,mgform:integer,mgiters:integer,mgmaxiters:integer,
@@ -298,9 +319,14 @@ multigrid2dsolve(iwhich:integer,nx:integer,nz:integer,
    # Solves Poisson's equation in 2D using the multigrid method. All input is
    # through the argument list.
 multigrid2ddielectricsolve(iwhich:integer,nx:integer,nz:integer,
-                 nxlocal:integer,nzlocal:integer,dx:real,dz:real,
-                 phi(-1:nxlocal+1,-1:nzlocal+1):real,
-                 rho(0:nxlocal,0:nzlocal):real,
+                 nxlocal:integer,nzlocal:integer,
+                 nxguardphi:integer,nzguardphi:integer,
+                 nxguardrho:integer,nzguardrho:integer,
+                 dx:real,dz:real,
+                 phi(-nxguardphi:nxlocal+nxguardphi,
+                     -nzguardphi:nzlocal+nzguardphi):real,
+                 rho(-nxguardrho:nxlocal+nxguardrho,
+                     -nzguardrho:nzlocal+nzguardrho):real,
                  epsilon(0:nxlocal+1,0:nzlocal+1):real,
                  bounds(0:5):integer,xmminlocal:real,
                  mgparam:real,mgiters:integer,mgmaxiters:integer,
@@ -329,25 +355,39 @@ mgsolveimplicites3d(iwhich:integer,nx:integer,ny:integer,nz:integer,
    # Solves Poisson's equation in 3D using the multigrid method including
    # the implicit susceptability. All input is through the argument list.
 residual3d(nxlocal:integer,nylocal:integer,nzlocal:integer,
-         delx:integer,dely:integer,delz:integer,
-         dxsqi:real,dysqi:real,dzsqi:real,
-         phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1):real,
-         rho(0:nxlocal,0:nylocal,0:nzlocal):real,
-         res(-delx:nxlocal+delx,-dely:nylocal+dely,-delz:nzlocal+delz):real,
-         mglevel:integer,bounds(0:5):integer,
-         mgparam:real,mgform:integer,mgform2init:logical,
-         lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
-         lprecalccoeffs:logical)
+           nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+           nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
+           nxguardres:integer,nyguardres:integer,nzguardres:integer,
+           dxsqi:real,dysqi:real,dzsqi:real,
+           phi(-nxguardphi:nxlocal+nxguardphi,
+               -nyguardphi:nylocal+nyguardphi,
+               -nzguardphi:nzlocal+nzguardphi):real,
+           rho(-nxguardrho:nxlocal+nxguardrho,
+               -nyguardrho:nylocal+nyguardrho,
+               -nzguardrho:nzlocal+nzguardrho):real,
+           res(-nxguardres:nxlocal+nxguardres,
+               -nyguardres:nylocal+nyguardres,
+               -nzguardres:nzlocal+nzguardres):real,
+           mglevel:integer,bounds(0:5):integer,
+           mgparam:real,mgform:integer,mgform2init:logical,
+           lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
+           lprecalccoeffs:logical)
    subroutine
    # Calculates the residual for 3d arrays
-residual2d(nxlocal:integer,nzlocal:integer,dxsqi:real,dzsqi:real,
+residual2d(nxlocal:integer,nzlocal:integer,
+           nxguardphi:integer,nzguardphi:integer,
+           nxguardrho:integer,nzguardrho:integer,
+           nxguardres:integer,nzguardres:integer,
+           dxsqi:real,dzsqi:real,
            xminodx:real,lrz:logical,phi:real,rho:real,res:real,
            mglevel:integer,bounds(0:5):integer,
-           lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
-           delx:integer,delz:integer)
+           lcndbndy:logical,icndbndy:integer,conductors:ConductorType)
    subroutine
    # Calculates the residual for 2d arrays
 residual2ddielectric(nxlocal:integer,nzlocal:integer,
+           nxguardphi:integer,nzguardphi:integer,
+           nxguardrho:integer,nzguardrho:integer,
+           nxguardres:integer,nzguardres:integer,
            phi:real,rho:real,epsilon:real,res:real,dx:real,dz:real,
            mglevel:integer,localbounds(0:5):integer,lcndbndy:logical,
            conductors:ConductorType,xminodx:real,lrz:logical)
@@ -355,8 +395,10 @@ residual2ddielectric(nxlocal:integer,nzlocal:integer,
    # Calculates the residual for 2d arrays with a variable dielectric
 restrict3d(nx:integer,ny:integer,nz:integer,
            nxlocal:integer,nylocal:integer,nzlocal:integer,
-           res(-delx:nxlocal+delx,-dely:nylocal+dely,-delz:nzlocal+delz):real,
-           delx:integer,dely:integer,delz:integer,
+           nxguardres:integer,nyguardres:integer,nzguardres:integer,
+           res(-nxguardres:nxlocal+nxguardres,
+               -nyguardres:nylocal+nyguardres,
+               -nzguardres:nzlocal+nzguardres):real,
            nxcoarse:integer,nycoarse:integer,nzcoarse:integer,
            nxlocalcoarse:integer,nylocalcoarse:integer,nzlocalcoarse:integer,
            rhocoarse(0:nxlocalcoarse,0:nylocalcoarse,0:nzlocalcoarse):real,
@@ -366,19 +408,29 @@ restrict3d(nx:integer,ny:integer,nz:integer,
    # Restricts phi in 3 dimensions
 expand3d(nx:integer,ny:integer,nz:integer,
          nxlocal:integer,nylocal:integer,nzlocal:integer,
-         delx:integer,dely:integer,delz:integer,
-         phi(-delx:nxlocal+delx,-dely:nylocal+dely,-delz:nzlocal+delz):real,
+         nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+         phi(-nxguardphi:nxlocal+nxguardphi,
+             -nyguardphi:nylocal+nyguardphi,
+             -nzguardphi:nzlocal+nzguardphi):real,
          nxcoarse:integer,nycoarse:integer,nzcoarse:integer,
          nxlocalcoarse:integer,nylocalcoarse:integer,nzlocalcoarse:integer,
-         phicoarse(0:nxlocalcoarse,0:nylocalcoarse,-1:nzlocalcoarse+1):real,
+         phicoarse(-1:nxlocalcoarse+1,
+                   -1:nylocalcoarse+1,
+                   -1:nzlocalcoarse+1):real,
          bounds(0:5):integer,lxoffset:integer,lyoffset:integer,lzoffset:integer,
          conductors:ConductorType,lprecalccoeffs:logical)
    subroutine
    # Expands phi in 3 dimensiosn
 sorhalfpass3d(parity:integer,mglevel:integer,
               nxlocal:integer,nylocal:integer,nzlocal:integer,
-              phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1):real,
-              rho(0:nxlocal,0:nylocal,0:nzlocal):real,
+              nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+              nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
+              phi(-nxguardphi:nxlocal+nxguardphi,
+                  -nyguardphi:nylocal+nyguardphi,
+                  -nzguardphi:nzlocal+nzguardphi):real,
+              rho(-nxguardrho:nxlocal+nxguardrho,
+                  -nyguardrho:nylocal+nyguardrho,
+                  -nzguardrho:nzlocal+nzguardrho):real,
               rstar(-1:nzlocal+1):real,dxsqi:real,dysqi:real,dzsqi:real,
               linbend:logical,bendx(-1:nxlocal):real,bounds(0:5):integer,
               mgparam:real,mgform:integer,
@@ -388,24 +440,35 @@ sorhalfpass3d(parity:integer,mglevel:integer,
    # Performs one pass of SOR relaxation, either even or odd.
 cond_potmg(interior:ConductorInteriorType,
            nxlocal:integer,nylocal:integer,nzlocal:integer,
-           delx:integer,dely:integer,delz:integer,
-           phi(-delx:nxlocal+delx,-dely:nylocal+dely,-delz:nzlocal+delz):real,
+           nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+           phi(-nxguardphi:nxlocal+nxguardphi,
+               -nyguardphi:nylocal+nyguardphi,
+               -nzguardphi:nzlocal+nzguardphi):real,
            mglevel:integer,mgform:integer,mgform2init:logical)
     subroutine
     # Sets voltage on interior of conductors
 cond_zerorhointerior(interior:ConductorInteriorType,
                      nxlocal:integer,nylocal:integer,nzlocal:integer,
-                     rho(0:nxlocal,0:nylocal,0:nzlocal):real)
+                     nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
+                     rho(-nxguardrho:nxlocal+nxguardrho,
+                         -nyguardrho:nylocal+nyguardrho,
+                         -nzguardrho:nzlocal+nzguardrho):real)
     subroutine
     # Sets rho to zero inside conductor points.
 cond_sumrhointerior(interior:ConductorInteriorType,
                     nxlocal:integer,nylocal:integer,nzlocal:integer,
-                    rho(0:nxlocal,0:nylocal,0:nzlocal):real,
+                    nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
+                    rho(-nxguardrho:nxlocal+nxguardrho,
+                        -nyguardrho:nylocal+nyguardrho,
+                        -nzguardrho:nzlocal+nzguardrho):real,
                     ixmin:integer,ixmax:integer,iymin:integer,iymax:integer,
                     izmin:integer,izmax:integer) real function
 subcond_sumrhointerior(rhosum:real,interior:ConductorInteriorType,
                        nxlocal:integer,nylocal:integer,nzlocal:integer,
-                       rho(0:nxlocal,0:nylocal,0:nzlocal):real,
+                       nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
+                       rho(-nxguardrho:nxlocal+nxguardrho,
+                           -nyguardrho:nylocal+nyguardrho,
+                           -nzguardrho:nzlocal+nzguardrho):real,
                        ixmin:integer,ixmax:integer,iymin:integer,iymax:integer,
                        izmin:integer,izmax:integer) subroutine
 
@@ -414,32 +477,45 @@ setupconductorfielddata(nx:integer,ny:integer,nz:integer,
                         dx:real,dy:real,dz:real,
                         conductors:ConductorType,fsdecomp:Decomposition)
                     subroutine
-getefieldatconductorsubgrid(conductors:ConductorType,phi:real,
-                            dx:real,dy:real,dz:real,
-                            nx:integer,ny:integer,nz:integer,
-                            delx:integer,dely:integer,delz:integer,
-                            bounds(0:5):integer)
+getefieldatconductorsubgrid(conductors:ConductorType,
+                     dx:real,dy:real,dz:real,
+                     nxlocal:integer,nylocal:integer,nzlocal:integer,
+                     nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+                     phi(-nxguardphi:nxlocal+nxguardphi,
+                         -nyguardphi:nylocal+nyguardphi,
+                         -nzguardphi:nzlocal+nzguardphi):real,
+                     bounds(0:5):integer)
                     subroutine
-fixefieldatconductorpoints(conductors:ConductorType,field:real,
+fixefieldatconductorpoints(conductors:ConductorType,
                            dx:real,dy:real,dz:real,
-                           nx:integer,ny:integer,nz:integer)
+                           nxlocal:integer,nylocal:integer,nzlocal:integer,
+                           nxguarde:integer,nyguarde:integer,nzguarde:integer,
+                           field(-nxguarde:nxlocal+nxguarde,
+                                 -nyguarde:nylocal+nyguarde,
+                                 -nzguarde:nzlocal+nzguarde):real)
                     subroutine
     # Fix the two point finite difference operator at conductor points.
-sete3dwithconductor(conductors:ConductorType,phi:real,selfe:real,
-                    np:integer,xp:real,yp:real,zp:real,zgrid:real,
-                    xmmin:real,ymmin:real,zmmin:real,
-                    dx:real,dy:real,dz:real,nx:integer,ny:integer,nz:integer,
-                    efetch:integer,ex:real,ey:real,ez:real,
-                    l2symtry:logical,l4symtry:logical,
-                    lcylindrical:logical,delx:integer,dely:integer,delz:integer)
+sete3dwithconductor(conductors:ConductorType,
+                    np:integer,xp(np):real,yp(np):real,zp(np):real,
+                    efetch:integer,ex(np):real,ey(np):real,ez(np):real,
+                    zgrid:real,xmmin:real,ymmin:real,zmmin:real,
+                    dx:real,dy:real,dz:real,
+                    nxlocal:integer,nylocal:integer,nzlocal:integer,
+                    nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+                    nxguarde:integer,nyguarde:integer,nzguarde:integer,
+                    phi(-nxguardphi:nxlocal+nxguardphi,
+                        -nyguardphi:nylocal+nyguardphi,
+                        -nzguardphi:nzlocal+nzguardphi):real,
+                    selfe:real,
+                    l2symtry:logical,l4symtry:logical,lcylindrical:logical)
                     subroutine
 sete3dongridwithconductor(conductors:ConductorType,phi:real,
-                          dx:real,dy:real,dz:real,
-                          nx:integer,ny:integer,nz:integer,
-                          ex:real,ey:real,ez:real,
-                          delx:integer,dely:integer,delz:integer,
-                          bounds(0:5):integer)
-                          subroutine
+                      dx:real,dy:real,dz:real,
+                      nx:integer,ny:integer,nz:integer,
+                      ex:real,ey:real,ez:real,
+                      nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+                      bounds(0:5):integer)
+                      subroutine
 
 *********** MultigridBE3d dump:
 multigridbe3df(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,
@@ -490,6 +566,15 @@ nz      integer  /0/  # Number of grid cells in z in B grid
 nxlocal integer  /0/  # Number of grid cells in x in B grid
 nylocal integer  /0/  # Number of grid cells in y in B grid
 nzlocal integer  /0/  # Number of grid cells in z in B grid
+nxguarda integer /1/  # Number of guard cells in x for the potential
+nyguarda integer /1/  # Number of guard cells in y for the potential
+nzguarda integer /1/  # Number of guard cells in z for the potential
+nxguardj integer /0/  # Number of guard cells in x for the current density
+nyguardj integer /0/  # Number of guard cells in y for the current density
+nzguardj integer /0/  # Number of guard cells in z for the current density
+nxguardb integer /0/  # Number of guard cells in x for the B field
+nyguardb integer /0/  # Number of guard cells in y for the B field
+nzguardb integer /0/  # Number of guard cells in z for the B field
 dx      real [m] /0./ # x grid cell size in B grid
 dy      real [m] /0./ # y grid cell size in B grid
 dz      real [m] /0./ # z grid cell size in B grid
@@ -541,14 +626,22 @@ lanalyticbtheta logical /.false./ # When true, Btheta is calculated from Jz
                                   # Warning: this option seems to give
                                   # unstable results.
 
-j(0:2,0:nxlocal,0:nylocal,0:nzlocal) _real # Current density
-b(0:2,0:nxlocal,0:nylocal,0:nzlocal) _real # B field, calculated from B = del cross A
-a(0:2,-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1) _real
+j(0:2,-nxguardj:nxlocal+nxguardj,
+      -nyguardj:nylocal+nyguardj,
+      -nzguardj:nzlocal+nzguardj) _real # Current density
+b(0:2,-nxguardb:nxlocal+nxguardb,
+      -nyguardb:nylocal+nyguardb,
+      -nzguardb:nzlocal+nzguardb) _real # B field, calculated from B = del cross A
+a(0:2,-nxguarda:nxlocal+nxguarda,
+      -nyguarda:nylocal+nyguarda,
+      -nzguarda:nzlocal+nzguarda) _real # Magnetic vector potential
 nxold     integer  /0/  # Number of grid cells in x in B grid
 nyold     integer  /0/  # Number of grid cells in y in B grid
 nzold     integer  /0/  # Number of grid cells in z in B grid
-aold(0:2,-1:nxold+1,-1:nyold+1,-1:nzold+1) _real
-  # Vector magnetic potential, calculated from del sq A = J
+aold(0:2,-nxguarda:nxold+nxguarda,
+         -nyguarda:nyold+nyguarda,
+         -nzguarda:nzold+nzguarda) _real
+  # Magnetic vector potential, calculated from del sq A = J
 
 attx(0:nxlocal-1)     _real           # Attenuation factor as fcn. of kx
 atty(0:nylocal-1)     _real           # Attenuation factor as fcn. of ky
@@ -565,7 +658,9 @@ zwork(2,0:nxlocal,0:nz) _real     # Work space used to optimize vsftz
 nsjtmp integer /0/
 jsjtmp(0:nsjtmp-1) _integer /-1/ #
 nsndtsj integer /0/
-jtmp(3,0:nxlocal,0:nylocal,0:nzlocal,0:nsndtsj-1)  _real
+jtmp(3,-nxguardj:nxlocal+nxguardj,
+       -nyguardj:nylocal+nyguardj,
+       -nzguardj:nzlocal+nzguardj,0:nsndtsj-1) _real
              # Temporary copy of the current density from the particles.
 
 conductors ConductorType # Default data structure for conductor data
@@ -588,39 +683,65 @@ loadj3d(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,lzero:logical)
 applyjboundaryconditions(bfield:BFieldGridType,
                          boundxy:integer,bound0:integer,boundnz:integer)
              subroutine #
-setb3d(b(0:2,0:nx,0:ny,0:nzlocal):real,np:integer,xp:real,yp:real,zp:real,zgrid:real,
-       bx:real,by:real,bz:real,nx:integer,ny:integer,nzlocal:integer,
+setb3d(b(0:2,0:nxlocal,0:nylocal,0:nzlocal):real,
+       np:integer,xp:real,yp:real,zp:real,zgrid:real,
+       bx:real,by:real,bz:real,nxlocal:integer,nylocal:integer,nzlocal:integer,
+       nxguardb:integer,nyguardb:integer,nzguardb:integer,
        dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
        l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine #
-fetchafrompositions3d(a(0:2,-1:nx+1,-1:ny+1,-1:nzlocal+1):real,np:integer,
-                      xp(np):real,yp(np):real,zp(np):real,ap(0:2,np):real,zgrid:real,
-                      nx:integer,ny:integer,nzlocal:integer,
+fetchafrompositions3d(a(0:2,-nxguarda:nxlocal+nxguarda,
+                            -nyguarda:nylocal+nyguarda,
+                            -nzguarda:nzlocal+nzguarda):real,
+                      np:integer,
+                      xp(np):real,yp(np):real,zp(np):real,ap(0:2,np):real,
+                      zgrid:real,
+                      nxlocal:integer,nylocal:integer,nzlocal:integer,
+                      nxguarda:integer,nyguarda:integer,nzguarda:integer,
                       dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
                       l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine #
-getbfroma3d(a(0:2,-1:nx+1,-1:ny+1,-1:nzlocal+1):real,b(0:2,0:nx,0:ny,0:nzlocal):real,
-            nx:integer,ny:integer,nzlocal:integer,dx:real,dy:real,dz:real,
+getbfroma3d(a(0:2,-nxguarda:nxlocal+nxguarda,
+                  -nyguarda:nylocal+nyguarda,
+                  -nzguarda:nzlocal+nzguarda):real,
+            b(0:2,-nxguardb:nxlocal+nxguardb,
+                  -nyguardb:nylocal+nyguardb,
+                  -nzguardb:nzlocal+nzguardb):real,
+            nxlocal:integer,nylocal:integer,nzlocal:integer,
+            nxguarda:integer,nyguarda:integer,nzguarda:integer,
+            nxguardb:integer,nyguardb:integer,nzguardb:integer,
+            dx:real,dy:real,dz:real,
             xmmin:real,lcylindrical:logical,lusevectorpotential:logical)
              subroutine #
-curl3d(a:real,b:real,nx:integer,ny:integer,nzlocal:integer,dx:real,dy:real,dz:real,
-       xmmin:real,lcylindrical:logical,
-       adelx:integer,adelz:integer,bdelx:integer,bdelz:integer)
+curl3d(a:real,b:real,nx:integer,ny:integer,nzlocal:integer,
+       nxguarda:integer,nyguarda:integer,nzguarda:integer,
+       nxguardb:integer,nyguardb:integer,nzguardb:integer,
+       dx:real,dy:real,dz:real,
+       xmmin:real,lcylindrical:logical)
              subroutine # Calculates the curl of the input array a, putting
                         # the result into b.
-setj3d(j(0:2,0:nx,0:ny,0:nzlocal):real,j1d:real,np:integer,xp:real,yp:real,zp:real,
+setj3d(j(0:2,-nxguardj:nxlocal+nxguardj,
+             -nyguardj:nylocal+nyguardj,
+             -nzguardj:nzlocal+nzguardj):real,
+       j1d:real,np:integer,xp:real,yp:real,zp:real,
        zgrid:real,uxp:real,uyp:real,uzp:real,gaminv:real,q:real,w:real,
-       nw:integer,wghtp:real,depos:string,nx:integer,ny:integer,nzlocal:integer,
+       nw:integer,wghtp:real,depos:string,
+       nxlocal:integer,nylocal:integer,nzlocal:integer,
+       nxguardj:integer,nyguardj:integer,nzguardj:integer,
        dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
        l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine # Computes current density
 getjforfieldsolve()
              subroutine #
 setjforfieldsolve3d(nxlocal:integer,nylocal:integer,nzlocal:integer,
-                    j(0:2,0:nxlocal,0:nylocal,0:nzlocal):real,
+                    j(0:2,-nxguardj:nxlocal+nxguardj,
+                          -nyguardj:nylocal+nyguardj,
+                          -nzguardj:nzlocal+nzguardj):real,
                     nxp:integer,nyp:integer,nzp:integer,
-                    jp(0:2,0:nxp,0:nyp,0:nzp):real,
-                    nxpguard:integer,nypguard:integer,nzpguard:integer,
+                    jp(0:2,-nxguardj:nxp+nxguardj,
+                           -nyguardj:nyp+nyguardj,
+                           -nzguardj:nzp+nzguardj):real,
+                    nxguardj:integer,nyguardj:integer,nzguardj:integer,
                     fsdecomp:Decomposition,ppdecomp:Decomposition)
              subroutine #
 setupbfieldsforparticles3d(ns:integer,ndts:integer,it:integer,
@@ -635,16 +756,25 @@ getbforparticles()
              subroutine #
 bvp3d(iwhich:integer,bfstype:integer)
              subroutine #
-getanalyticbtheta(b(0:2,0:nx,0:ny,0:nzlocal),j(0:2,0:nx,0:ny,0:nzlocal):real,
-                  nx:integer,ny:integer,nzlocal:integer,dx:real,xmmin:real)
+getanalyticbtheta(b(0:2,-nxguardb:nxlocal+nxguardb,
+                        -nyguardb:nylocal+nyguardb,
+                        -nzguardb:nzlocal+nzguardb):real,
+                  j(0:2,-nxguardj:nxlocal+nxguardj,
+                        -nyguardj:nylocal+nyguardj,
+                        -nzguardj:nzlocal+nzguardj):real,
+                  nxlocal:integer,nylocal:integer,nzlocal:integer,
+                  nxguardb:integer,nyguardb:integer,nzguardb:integer,
+                  nxguardj:integer,nyguardj:integer,nzguardj:integer,
+                  dx:real,xmmin:real)
              subroutine # Calculate and analytic Btheta
 
 *********** AMR3droutines:
-gathersourcefromchild(rho:real,nc:integer,nn:integer,childrho:real,cnn:integer,
-                   l:integer,u:integer,fulllower:integer,
-                   childlower:integer,childupper:integer,
-                   r:integer,weights:real,
-                   radius:real,cradius:real,lcylinderical:logical)
+gathersourcefromchild(rho:real,nc:integer,ng:integer,nn:integer,
+                      childrho:real,cnn:integer,
+                      l:integer,u:integer,fulllower:integer,
+                      childlower:integer,childupper:integer,
+                      r:integer,weights:real,
+                      radius:real,cradius:real,lcylinderical:logical)
       subroutine
 gatherpotentialfromparents(potential:real,nc:integer,ng:integer,nn:integer,
                            l:integer,u:integer,fulllower:integer,
@@ -699,82 +829,118 @@ dtranlan(0:nxlan,0:nylan,0:2) _real
 
 *********** F3Dsubs:
 #  Callable subroutines in the F3D package
-vpois3d  (iwhich:integer,a:real,ak:real,kxsq:real,kysq:real,kzsq:real,
-         attx:real,atty:real,attz:real,filt:real,
-         lx:real,ly:real,lz:real,nx:integer,ny:integer,nzlocal:integer,
-         nz:integer,
-         w:real,xywork:real,zwork:real,ibc:integer,
-         l2symtry:logical,l4symtry:logical,
-         bound0:integer,boundnz:integer,boundxy:integer)
+vpois3d(iwhich:integer,a:real,ak:real,kxsq:real,kysq:real,kzsq:real,
+        attx:real,atty:real,attz:real,filt:real,
+        lx:real,ly:real,lz:real,nx:integer,ny:integer,nzlocal:integer,
+        nz:integer,
+        nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+        w:real,xywork:real,zwork:real,ibc:integer,
+        l2symtry:logical,l4symtry:logical,
+        bound0:integer,boundnz:integer,boundxy:integer)
      subroutine #  The 3d Poisson solver
 vp3x(iwhich) subroutine
      # Python-level interface to VPOIS3d, using FS3 database variables
      #  The user program should declare a similar subroutine w/ its vars.
-vpois2d  (iwhich, a:real, ak:real, kxsq:real, kysq:real, attx:real, atty:real,
-          filt:real, lx:real, ly:real, nx, ny, work:real, xywork:real, ibc,
-          l2symtry:logical,l4symtry:logical)
+vpois2d(iwhich,a:real,ak:real,kxsq:real,kysq:real,attx:real,atty:real,
+        filt:real,lx:real,ly:real,nx:integer,ny:integer,
+        nxguardphi:integer,nyguardphi:integer,
+        work:real,xywork:real,ibc,
+        l2symtry:logical,l4symtry:logical)
      subroutine #  The 2d Sine-Sine Poisson solver
-vsftx    (a:real, work:real, cp:real, cm:real, nx, ny, isetup)
+vsftx(a:real,work:real,cp:real,cm:real,nx:integer,ny:integer,
+      nxguardphi:integer,nyguardphi:integer,isetup)
      subroutine #  Vectorized Sine Fourier Transform in X
-vsfty    (a:real, work:real, cp:real, cm:real, nx, ny, isetup)
+vsfty(a:real,work:real,cp:real,cm:real,nx:integer,ny:integer,
+      nxguardphi:integer,nyguardphi:integer,isetup)
      subroutine #  Vectorized Sine Fourier Transform in Y
-vpftx    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,xywork:real)
+vpftx(nx:integer,ny:integer,nz:integer,
+      nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+      a:real,norm:real,esx,esy,nxy,xywork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in X
-vpfty    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,xywork:real)
+vpfty(nx:integer,ny:integer,nz:integer,
+      nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+      a:real,norm:real,esx,esy,nxy,xywork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in Y
-vpftz    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,zwork:real)
+vpftz(nx:integer,ny:integer,nz:integer,
+      nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+      a:real,norm:real,esx,esy,nxy,zwork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in Z
-vpftxi    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,xywork:real)
+vpftxi(nx:integer,ny:integer,nz:integer,
+       nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+       a:real,norm:real,esx,esy,nxy,xywork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in X
-vpftyi    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,xywork:real)
+vpftyi(nx:integer,ny:integer,nz:integer,
+       nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+       a:real,norm:real,esx,esy,nxy,xywork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in Y
-vpftzi    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,zwork:real)
+vpftzi(nx:integer,ny:integer,nz:integer,
+       nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+       a:real,norm:real,esx,esy,nxy,zwork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in Z
-cosqx(a:real,w:real,c:real,nx:integer,ny:integer,isign:integer) subroutine
-cosqy(a:real,w:real,c:real,nx:integer,ny:integer,isign:integer) subroutine
+cosqx(a:real,w:real,c:real,nx:integer,ny:integer,
+      nxguardphi:integer,nyguardphi:integer,
+      isetup:integer,isign:integer) subroutine
+cosqy(a:real,w:real,c:real,nx:integer,ny:integer,
+      nxguardphi:integer,nyguardphi:integer,
+      isetup:integer,isign:integer) subroutine
 vcpft(r:real,i:real,n:integer,incp:integer,signp:integer,lenv:integer,
       lfd:integer) subroutine
-attenuate(nx:integer,ny:integer,nz:integer,a:real,
+attenuate(nx:integer,ny:integer,nz:integer,
+          nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+          a:real,
           attx:real,atty:real,attz:real,
           ikxmin:integer,ikymin:integer,esx:integer,esy:integer,esz:integer)
      subroutine
-unattenuate(nx:integer,ny:integer,nz:integer,a:real,
+unattenuate(nx:integer,ny:integer,nz:integer,
+            nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+            a:real,
             attx:real,atty:real,attz:real,
             ikxmin:integer,ikymin:integer,esx:integer,esy:integer,esz:integer)
      subroutine
-rhotophi(nx:integer,ny:integer,nz:integer,a:real,kxsq:real,kysq:real,kzsq:real,
+rhotophi(nx:integer,ny:integer,nz:integer,
+         nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+         a:real,kxsq:real,kysq:real,kzsq:real,
          ikxmin:integer,ikymin:integer,esx:integer,esy:integer,esz:integer)
      subroutine
-phitorho(nx:integer,ny:integer,nz:integer,a:real,kxsq:real,kysq:real,kzsq:real,
+phitorho(nx:integer,ny:integer,nz:integer,
+         nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+         a:real,kxsq:real,kysq:real,kzsq:real,
          ikxmin:integer,ikymin:integer,esx:integer,esy:integer,esz:integer)
      subroutine
-pipe3df(iwhich, pipeshpe:real, rho:real, phi:real, kxsq:real, kysq:real,
-        kzsq:real, attx:real, atty:real, attz:real, filt:real,
-        xlen:real, ylen:real, zlen:real, nx:integer, ny:integer, nzlocal:integer,
-        nz:integer, scrtch:real,
+pipe3df(iwhich,pipeshpe:real,rho:real,phi:real,kxsq:real,kysq:real,
+        kzsq:real,attx:real,atty:real,attz:real,filt:real,
+        xlen:real,ylen:real,zlen:real,nx:integer,ny:integer,nzlocal:integer,
+        nz:integer,
+        nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+        scrtch:real,
         l2symtry:logical,l4symtry:logical)
      subroutine #  External interface to capacity field solver
-pipest3d(pipeshpe:real, cap:real, phi:real, kxsq:real, kysq:real, kzsq:real,
-         attx:real, atty:real, attz:real, filt:real, xlen:real,
-         ylen:real, zlen:real,
+pipest3d(pipeshpe:real,cap:real,phi:real,kxsq:real,kysq:real,kzsq:real,
+         attx:real,atty:real,attz:real,filt:real,xlen:real,
+         ylen:real,zlen:real,
          nx:integer,ny:integer,nzlocal:integer,nz:integer,
-         scrtch:real, piperadi:real,
+         nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+         scrtch:real,piperadi:real,
          pipen:real,pipe8th:real,pipex:real,pipey:real,cap3d:real,kpvt:integer,
          l2symtry:logical,l4symtry:logical)
      subroutine #  Sets up capacity matrix
 setcap3d(ncndpts,quadx:real,quady:real,quadz:real,quadcap:real,kpvt:integer,
          nx:integer,ny:integer,nzlocal:integer,nz:integer,
+         nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
          phi:real,work:real,kxsq:real,kysq:real,kzsq:real,attx:real,atty:real,
          attz:real,xlen:real,ylen:real,zlen:real,filt:real,
          l2symtry:logical,l4symtry:logical)
      subroutine # Sets up 3-d cap matrix
 capfs(iwhich,nx:integer,ny:integer,nzlocal:integer,nz:integer,
+      nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+      nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
       phi:real,rho:real,xlen:real,ylen:real,zlen:real,
       kxsq:real,kysq:real,kzsq:real,attx:real,atty:real,attz:real,
       filt:real,work:real,workz:real,xmmax:real,
       pipeshpe:string,periinz:logical,l2symtry:logical,l4symtry:logical)
      subroutine # 3-d field solve using cap matrices
-cndctr3d(nx,ny,xmmax:real,dx:real,dy:real,quadradi:real,quadcent:real,ncndpts,
+cndctr3d(nx:integer,ny:integer,xmmax:real,dx:real,dy:real,
+         quadradi:real,quadcent:real,ncndpts,
          quadx:real,quady:real,quadz:real,quadv:real,nzpts,nendquad,nzquad,
          qdslclen:real,pipeshpe:string,loadquad:logical)
      subroutine # Finds points on quadrupole conductor surfaces
@@ -786,6 +952,8 @@ findqdnd(nquad:integer,quadzs:real,quadde:real,quadvx:real,quadvy:real,
 vcap3d(iwhich,rho:real,phi:real,kxsq:real,kysq:real,kzsq:real,attx:real,
        atty:real,attz:real,filt:real,xlen:real,ylen:real,zlen:real,
        nx:integer,ny:integer,nzlocal:integer,nz:integer,
+       nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+       nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
        scrtch:real,xmmax:real,zmmin:real,zgrid:real,
        pipeshpe:string,periinz:logical,l2symtry:logical,l4symtry:logical)
      subroutine # External routine for capacity matrix field solve
@@ -1118,7 +1286,12 @@ timeexpand2d real /0./
 timeexpand3d real /0./
 timesorpass3d real /0./
 timesorhalfpass3d real /0./
-timemgsor_loop real /0./
+timesorhalfpass3d1 real /0./
+timesorhalfpass3d2 real /0./
+timesorhalfpass3d3 real /0./
+timesorhalfpass3d4 real /0./
+timesorhalfpass3d5 real /0./
+timemgsor_loop_bend real /0./
 timecond_potmg real /0./
 timecond_potmgres real /0./
 timecond_zerorhointerior real /0./
@@ -1141,6 +1314,8 @@ timemggetexchangepes        real /0./
 timegetmessagedata          real /0./
 timemgexchange_phi          real /0./
 timemgexchange_phi_periodic real /0./
+timemgexchange_res          real /0./
+timemgexchange_phiupdate    real /0./
 timeprintarray3d            real /0./
 
 timepera3d                     real /0./
@@ -1169,6 +1344,7 @@ timeapplyparallelboundaryconditions3d real /0./
 
 
 ****** RRRRRR:
-rrr(:,:) _real
-ppp(:,:) _real
+rrr(:,:,:) _real
+ppp(:,:,:) _real
+qqq(:,:,:) _real
 ncalculate integer /0/

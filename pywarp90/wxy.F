@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.111 $, $Date: 2011/06/09 21:48:22 $
+c@(#) File WXY.M, version $Revision: 3.112 $, $Date: 2011/08/27 00:35:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -727,7 +727,8 @@ c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
       if (ANY(efetch == 3)) then
         call allocateselfepforparticles(.true.)
-        call getselfe3d(phi,nx,ny,nzlocal,selfep,dx,dy,dz,.true.,1,1,1)
+        call getselfe3d(phi,nx,ny,nzlocal,nxguardphi,nyguardphi,nzguardphi,
+     &                  selfep,nxguarde,nyguarde,nzguarde,dx,dy,dz,.true.)
       endif
 
 c  Initialize the moments arrays which are calculated during the synchv and
@@ -943,6 +944,8 @@ c         --- the locations where phi is known.
           call sete3d(phi,selfep,ip,
      &                pgroup%xp(i1:i2),pgroup%yp(i1:i2),zpo,
      &                0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nzlocal,
+     &                nxguardphi,nyguardphi,nzguardphi,
+     &                nxguarde,nyguarde,nzguarde,
      &                efetch(is),ex,ey,ez,l2symtry,l4symtry,.false.,1,1,1)
 c         --- The zp is preserved so that the small correction done
 c         --- in setdtp is still used.
@@ -954,6 +957,8 @@ c         --- since lcylindrical is false.
           call setexy(phi,selfep,ip,
      &                pgroup%xp(i1:i2),pgroup%yp(i1:i2),
      &                xmmin,ymmin,dx,dy,nx,ny,
+     &                nxguardphi,nyguardphi,nzguardphi,
+     &                nxguarde,nyguarde,nzguarde,
      &                efetch(is),ex,ey,ez,l2symtry,l4symtry,1,1)
         endif
       elseif(solvergeom==XYgeom) then
@@ -1493,11 +1498,16 @@ c       --- Fix the current
       return
       end
 c=============================================================================
-      subroutine fixrhoxy(rho,nx,ny,nzlocal,bound0,boundnz,lthick)
+      subroutine fixrhoxy(rho,nx,ny,nzlocal,
+     &                    nxguardrho,nyguardrho,nzguardrho,
+     &                    bound0,boundnz,lthick)
       use Subtimersxy
       use GlobalVars,Only:periodic
       integer(ISZ):: nx,ny,nzlocal
-      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nzlocal+nzguardrho)
       integer(ISZ):: bound0,boundnz
       logical(ISZ):: lthick
 
@@ -1996,7 +2006,7 @@ c     --- For both algorithms
       integer(ISZ):: ipmin,nptmp
 
       integer(ISZ):: ip,i,j,ind0,m,ir
-      real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,gxfact,gyfact,f
+      real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,f
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
@@ -2004,14 +2014,17 @@ c     --- For both algorithms
 c       --- Call 3d version.
 c       --- THIS IS BROKEN XXX!
         call kaboom("setrhoxy: lthick is not supported")
-        call setrho3d(rho1d,np,xp,yp,zp,zgrid,q,wght,depos)
+c       call setrho3d(rho1d,np,xp,yp,zp,zgrid,q,wght,depos)
+        call setrho3d(rho1d,np,xp,yp,zp,zgrid,q,wght,depos,
+     &                nx,ny,nzlocal,nxguardrho,nyguardrho,nzguardrho,
+     &                dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
+     &                .false.)
       else
 
 ! np was made FIRSTPRIVATE to get around a bug when the expression
 ! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
 ! I don't know why it works, but it does.
-!$OMP PARALLEL PRIVATE(ipmin,nptmp,f,i,j,u1,u0,v1,v0,ir,ip,ind0,indx,gyfact,gxfact,s,m,ii,jj),FIRSTPRIVATE(np)
-
+!$OMP PARALLEL PRIVATE(ipmin,nptmp,f,i,j,u1,u0,v1,v0,ir,ip,ind0,indx,s,m,ii,jj),FIRSTPRIVATE(np)
 
 c  Set up offset array for vectorized deposition:
 
@@ -2065,10 +2078,8 @@ c       --- special loop for 2-fold symmetry
            indx(1,ir) = ind0 + moff(1)
            indx(2,ir) = ind0 + moff(2)
            indx(3,ir) = ind0 + moff(3)
-           gyfact = 1.
-           if (j == 0) gyfact = 2.
-           s(0,ir) = u0 * v0 * f*gyfact
-           s(1,ir) = u1 * v0 * f*gyfact
+           s(0,ir) = u0 * v0 * f
+           s(1,ir) = u1 * v0 * f
            s(2,ir) = u0 * v1 * f
            s(3,ir) = u1 * v1 * f
         enddo
@@ -2092,13 +2103,9 @@ c       --- special loop for 4-fold symmetry
            indx(1,ir) = ind0 + moff(1)
            indx(2,ir) = ind0 + moff(2)
            indx(3,ir) = ind0 + moff(3)
-           gxfact = 1.
-           gyfact = 1.
-           if (i == 0) gxfact = 2.
-           if (j == 0) gyfact = 2.
-           s(0,ir) = u0 * v0 * f*gxfact*gyfact
-           s(1,ir) = u1 * v0 * f*gyfact
-           s(2,ir) = u0 * v1 * f*gxfact
+           s(0,ir) = u0 * v0 * f
+           s(1,ir) = u1 * v0 * f
+           s(2,ir) = u0 * v1 * f
            s(3,ir) = u1 * v1 * f
         enddo
       else
@@ -2159,10 +2166,8 @@ c     --- vectorized loop to compute indices, weights
           jj(ir) = abs(yp(ip))*dyi
           v1     = abs(yp(ip))*dyi - jj(ir)
           v0     = 1. - v1
-          gyfact = 1.
-          if (jj(ir) == 0) gyfact = 2.
-          s(0,ir) = u0 * v0 * f*gyfact
-          s(1,ir) = u1 * v0 * f*gyfact
+          s(0,ir) = u0 * v0 * f
+          s(1,ir) = u1 * v0 * f
           s(2,ir) = u0 * v1 * f
           s(3,ir) = u1 * v1 * f
         enddo
@@ -2180,13 +2185,9 @@ c     --- vectorized loop to compute indices, weights
           jj(ir) = abs(yp(ip))*dyi
           v1     = abs(yp(ip))*dyi - jj(ir)
           v0     = 1. - v1
-          gxfact = 1.
-          gyfact = 1.
-          if (ii(ir) == 0) gxfact = 2.
-          if (jj(ir) == 0) gyfact = 2.
-          s(0,ir) = u0 * v0 * f*gxfact*gyfact
-          s(1,ir) = u1 * v0 * f*gyfact
-          s(2,ir) = u0 * v1 * f*gxfact
+          s(0,ir) = u0 * v0 * f
+          s(1,ir) = u1 * v0 * f
+          s(2,ir) = u0 * v1 * f
           s(3,ir) = u1 * v1 * f
         enddo
       else
@@ -2241,10 +2242,8 @@ c     --- vectorized loop to compute indices, weights
           j      = abs(yp(ip))*dyi
           v1     = abs(yp(ip))*dyi - j
           v0     = 1. - v1
-          gyfact = 1.
-          if (j == 0) gyfact = 2.
-          rho(i  ,j  ,0) = rho(i  ,j  ,0) + u0 * v0 * f*gyfact
-          rho(i+1,j  ,0) = rho(i+1,j  ,0) + u1 * v0 * f*gyfact
+          rho(i  ,j  ,0) = rho(i  ,j  ,0) + u0 * v0 * f
+          rho(i+1,j  ,0) = rho(i+1,j  ,0) + u1 * v0 * f
           rho(i  ,j+1,0) = rho(i  ,j+1,0) + u0 * v1 * f
           rho(i+1,j+1,0) = rho(i+1,j+1,0) + u1 * v1 * f
         enddo
@@ -2261,13 +2260,9 @@ c     --- vectorized loop to compute indices, weights
           j      = abs(yp(ip))*dyi
           v1     = abs(yp(ip))*dyi - j
           v0     = 1. - v1
-          gxfact = 1.
-          gyfact = 1.
-          if (i == 0) gxfact = 2.
-          if (j == 0) gyfact = 2.
-          rho(i  ,j  ,0) = rho(i  ,j  ,0) + u0 * v0 * f*gxfact*gyfact
-          rho(i+1,j  ,0) = rho(i+1,j  ,0) + u1 * v0 * f*gyfact
-          rho(i  ,j+1,0) = rho(i  ,j+1,0) + u0 * v1 * f*gxfact
+          rho(i  ,j  ,0) = rho(i  ,j  ,0) + u0 * v0 * f
+          rho(i+1,j  ,0) = rho(i+1,j  ,0) + u1 * v0 * f
+          rho(i  ,j+1,0) = rho(i  ,j+1,0) + u0 * v1 * f
           rho(i+1,j+1,0) = rho(i+1,j+1,0) + u1 * v1 * f
         enddo
       else
@@ -2394,6 +2389,8 @@ c        --- loop over particle blocks
          else
            ip = nps_u
            ipmin = ins_u
+           i1 = ipmin
+           i2 = ipmin + ip - 1
            if (ip > 0) then
              call setrhoxy(rho,ip,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
      &                     pgroup%zp(i1:i2),zgrid,
@@ -2414,7 +2411,11 @@ c  Copy charge density from frz.basegrid to w3d.rho
 
 c       --- For FFT solver
 c       --- enforce axial periodicity if rho was zeroed
-        if (lzero) call fixrhoxy(rho,nx,ny,nzlocal,bound0,boundnz,lthick)
+        if (lzero) then
+          call fixrhoxy(rho,nx,ny,nzlocal,
+     &                  nxguardrho,nyguardrho,nzguardrho,
+     &                  bound0,boundnz,lthick)
+        endif
 
       end if
 
@@ -2620,7 +2621,7 @@ c       --- Get information about the closest bend.
         if (bendres < 0.5 .or. iwhich > 0) then
 c         --- if not in a bend, then make direct call to vpxy
           if (fstype == 0 .or. fstype == 1 .or. fstype == 2) then
-            phi(0:nx,0:ny,0:nzlocal) = rho
+            phi(0:nx,0:ny,0:nzlocal) = rho(0:nx,0:ny,0:nzlocal)
           endif
           call vpxy(iwhich)
 
@@ -2634,7 +2635,8 @@ c       --- Make sure the bounds array is up to date with any changes in the
 c       --- flags.
         call setboundsfromflags(bounds,boundxy,bound0,boundnz,l2symtry,l4symtry)
 
-        call applyboundaryconditions3d(nx,ny,nz,1,1,1,phi,1,
+        call applyboundaryconditions3d(nx,ny,nz,
+     &                                 nxguardphi,nyguardphi,nzguardphi,phi,1,
      &                                 bounds,.true.,.false.)
 
 c       --- fill rest of phi array
@@ -2706,29 +2708,35 @@ c       --- Otherwise, use 2d field solver
         if (fstype == 1 .or. fstype == 2) then
           allocxywork = .true.
           if (ASSOCIATED(xyphisave)) then
-            if (ALL((/nx+3,ny+3/) == shape(xyphisave))) then
+            if (ALL((/nx+1+2*nxguardphi,ny+1+2*nyguardphi/) == shape(xyphisave))) then
               allocxywork = .false.
             else
               deallocate(xyphisave)
             endif
           endif
-          if (allocxywork) ALLOCATE(xyphisave(-1:nx+1,-1:ny+1))
+          if (allocxywork) then
+            ALLOCATE(xyphisave(-nxguardphi:nx+nxguardphi,
+     &                         -nyguardphi:ny+nyguardphi))
+          endif
         endif
 
         if (fstype == 0) then
 c         --- FFT solver
-          call vpois2d (iwhich, phi(:,:,0), phi(:,:,0), kxsq, kysq,
-     &       attx, atty, filt, nx*dx, ny*dy,
-     &       nx, ny, scrtch, xywork, 0, l2symtry,l4symtry)
+          call vpois2d(iwhich,phi(:,:,0),phi(:,:,0),kxsq,kysq,
+     &                 attx,atty,filt,nx*dx,ny*dy,
+     &                 nx,ny,nxguardphi,nyguardphi,
+     &                 scrtch,xywork,0,l2symtry,l4symtry)
 
         elseif (fstype == 1 .or. fstype == 2) then
 c         --- Capacity matrix, FFT solver
           call capmatxyf(iwhich,phi(:,:,0),kxsq,kysq,attx,atty,
-     &             filt,nx*dx,ny*dy,nx,ny,dx,dy,xmmin,ymmin,
-     &             scrtch,xyphisave,xywork,l2symtry,l4symtry)
+     &                   filt,nx*dx,ny*dy,nx,ny,nxguardphi,nyguardphi,
+     &                   dx,dy,xmmin,ymmin,
+     &                   scrtch,xyphisave,xywork,l2symtry,l4symtry)
         elseif (fstype == 7) then
 c         --- Multigrid solver
-          call multigridxyf(iwhich,nx,ny,dx,dy,phi(:,:,0),rho(:,:,0),
+          call multigridxyf(iwhich,nx,ny,
+     &                      dx,dy,phi(:,:,0),rho(:,:,0),
      &                      l2symtry,l4symtry,xmmin,ymmin)
 c         --- AMR multigrid solver
         elseif (fstype == 10) then

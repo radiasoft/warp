@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.45 $, $Date: 2010/07/01 22:05:27 $
+c F3DSLAVE.M, version $Revision: 1.46 $, $Date: 2011/08/27 00:35:50 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -138,12 +138,17 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
 c=============================================================================
-      subroutine warptranspose(nx,ny,nzlocal,phi,nx_tran,ny_tran)
+      subroutine warptranspose(nx,ny,nzlocal,nxguardphi,nyguardphi,nzguardphi,
+     &                         phi,nx_tran,ny_tran)
       use Subtimersf3d
       use Parallel
       use Transpose_work_space
       integer(ISZ):: nx,ny,nzlocal,nx_tran,ny_tran
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nzlocal+nzguardphi)
+
 
 c 3-D transpose. The volume (0:nx-1,0:ny-1,0:nzlocal-1) is transposed.
 c Transpose is NOT done in place but uses a separate work array.
@@ -192,13 +197,16 @@ c     --- Create the work space that phi is transposed into.
       phi_trnspsnx = nx_tran
       phi_trnspsny = ny_tran
       phi_trnspsnz = nzlocal*nzprocs
+      phi_trnspsnxguardphi = nxguardphi
+      phi_trnspsnyguardphi = nyguardphi
+      phi_trnspsnzguardphi = nzguardphi
       call gchange("Transpose_work_space",0)
 
 c     --- Create an MPI type to refer to the distributed pieces of data that
 c     --- are sent to each of the processors.
       dims = 3
-      nlocal = (/nx+3,ny+3,nzlocal+1/)
-      nlocal_trnsps = (/nx_tran+3,ny_tran+3,nzlocal*nzprocs+1/)
+      nlocal = (/nx+1+2*nxguardphi,ny+1+2*nyguardphi,1+nzlocal+2*nzguardphi/)
+      nlocal_trnsps = (/nx_tran+1+2*nxguardphi,ny_tran+1+2*nyguardphi,1+nzlocal*nzprocs+2*nzguardphi/)
       sdispls = 0
       rdispls = 0
       sendcounts = 1
@@ -207,14 +215,14 @@ c     --- are sent to each of the processors.
       do ip = 0,nzprocs-1
 
         if (ny > nzprocs) then
-          starts(0) = 1
-          starts(1) = 1 + ny_tran*ip
-          starts(2) = 0
+          starts(0) = nxguardphi
+          starts(1) = nyguardphi + ny_tran*ip
+          starts(2) = nzguardphi
           sizes = (/nx_tran,ny_tran,nzlocal/)
         else if (nx*ny > nzprocs) then
-          starts(0) = 1 + (2*nx_tran)*mod(ip,nzprocs/ny)
-          starts(1) = 1 + int(ip*ny/nzprocs)
-          starts(2) = 0
+          starts(0) = nxguardphi + (2*nx_tran)*mod(ip,nzprocs/ny)
+          starts(1) = nyguardphi + int(ip*ny/nzprocs)
+          starts(2) = nzguardphi
           sizes = (/2*nx_tran,1,nzlocal/)
         endif
         if (izproc == nzprocs-1) sizes(2) = nzlocal + 1
@@ -225,9 +233,9 @@ c     --- are sent to each of the processors.
      &                                sendtypes(ip),mpierror)
         call MPI_TYPE_COMMIT(sendtypes(ip),mpierror)
 
-        starts(0) = 1
-        starts(1) = 1
-        starts(2) = ip*nzlocal
+        starts(0) = nxguardphi
+        starts(1) = nyguardphi
+        starts(2) = nzguardphi + ip*nzlocal
         sizes = (/nx_tran,ny_tran,nzlocal/)
         if (ip == nzprocs-1) sizes(2) = nzlocal + 1
         call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal_trnsps,sizes,starts,
@@ -264,12 +272,16 @@ c DONE!
       return
       end
 c=============================================================================
-      subroutine warptransposei(nx,ny,nzlocal,phi,nx_tran,ny_tran)
+      subroutine warptransposei(nx,ny,nzlocal,nxguardphi,nyguardphi,nzguardphi,
+     &                          phi,nx_tran,ny_tran)
       use Subtimersf3d
       use Parallel
       use Transpose_work_space
       integer(ISZ):: nx,ny,nzlocal,nx_tran,ny_tran
-      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nzlocal+nzguardphi)
 
 c Inverse 3-D transpose. The volume (0:nx-1,0:ny-1,0:nzlocal-1) is transposed.
 c Transpose is NOT done in place but uses a work array.
@@ -296,8 +308,8 @@ c of processors is a power of two.
 c     --- Create an MPI type to refer to the distributed pieces of data that
 c     --- are sent to each of the processors.
       dims = 3
-      nlocal = (/nx+3,ny+3,nzlocal/)
-      nlocal_trnsps = (/nx_tran+3,ny_tran+3,nzlocal*nzprocs/)
+      nlocal = (/nx+1+2*nxguardphi,ny+1+2*nyguardphi,1+nzlocal+2*nzguardphi/)
+      nlocal_trnsps = (/nx_tran+1+2*nxguardphi,ny_tran+1+2*nyguardphi,1+nzlocal*nzprocs+2*nzguardphi/)
       sdispls = 0
       rdispls = 0
       sendcounts = 1
@@ -305,9 +317,9 @@ c     --- are sent to each of the processors.
 
       do ip = 0,nzprocs-1
 
-        starts(0) = 1
-        starts(1) = 1
-        starts(2) = ip*nzlocal
+        starts(0) = nxguardphi
+        starts(1) = nyguardphi
+        starts(2) = nzguardphi + ip*nzlocal
         sizes = (/nx_tran,ny_tran,nzlocal/)
         call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal_trnsps,sizes,starts,
      &                                MPI_ORDER_FORTRAN,
@@ -316,14 +328,14 @@ c     --- are sent to each of the processors.
         call MPI_TYPE_COMMIT(sendtypes(ip),mpierror)
 
         if (ny > nzprocs) then
-          starts(0) = 1
-          starts(1) = 1 + ny_tran*ip
-          starts(2) = 0
+          starts(0) = nxguardphi
+          starts(1) = nyguardphi + ny_tran*ip
+          starts(2) = nzguardphi
           sizes = (/nx_tran,ny_tran,nzlocal/)
         else if (nx*ny > nzprocs) then
-          starts(0) = 1 + (2*nx_tran)*mod(ip,nzprocs/ny)
-          starts(1) = 1 + int(ip*ny/nzprocs)
-          starts(2) = 0
+          starts(0) = nxguardphi + (2*nx_tran)*mod(ip,nzprocs/ny)
+          starts(1) = nyguardphi + int(ip*ny/nzprocs)
+          starts(2) = nzguardphi
           sizes = (/2*nx_tran,1,nzlocal/)
         endif
 
@@ -366,14 +378,19 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine lantzsolver(iwhich,a,kxsq,kysq,kzsq,attx,atty,attz,
-     &                       filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,
+     &                       filt,lx,ly,lz,nx,ny,nz,
+     &                       nxguardphi,nyguardphi,nzguardphi,
+     &                       scrtch,xywork,zwork,
      &                       l2symtry,l4symtry,bound0,boundnz,boundxy)
       use Subtimersf3d
       use Constant
       use Parallel
       use LantzSolverTemp
       integer(ISZ):: iwhich,nx,ny,nz
-      real(kind=8):: a(-1:nx+1,-1:ny+1,-1:nz)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: a(-nxguardphi:nx+nxguardphi,
+     &                 -nyguardphi:ny+nyguardphi,
+     &                 -nzguardphi:nz+nzguardphi)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz-1)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz-1)
       real(kind=8):: filt(5,3)
@@ -417,8 +434,10 @@ c     --- Allocate space if needed or requested
         call gchange("LantzSolverTemp",0)
         lalloted = .true.
 c       --- Initialize the k's
-        call vpois3d(1,a(-1,-1,0),a(-1,-1,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
+        call vpois3d(1,a,a,kxsq,kysq,kzsq,attx,atty,attz,
+     &               filt,lx,ly,lz,nx,ny,nz,nz,
+     &               nxguardphi,nyguardphi,nzguardphi,
+     &               scrtch,xywork,zwork,0,
      &               l2symtry,l4symtry,bound0,boundnz,boundxy)
       endif
 
@@ -426,8 +445,10 @@ c       --- Initialize the k's
 
       print*,0,a(4,5,4)
 c     --- Apply FFT's to transverse planes.
-      call vpois3d(12,a(-1,-1,0),a(-1,-1,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
+      call vpois3d(12,a,a,kxsq,kysq,kzsq,attx,atty,attz,
+     &             filt,lx,ly,lz,nx,ny,nz,nz,
+     &             nxguardphi,nyguardphi,nzguardphi,
+     &             scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
       print*,1,a(4,5,4)
@@ -534,7 +555,8 @@ c     --- Assemble reduced rhs
       enddo
 
 c     --- Transpose reduced tridiagonal matrix
-      call warptranspose(nx,ny,2,dtranlan,nx_tran,ny_tran)
+      call warptranspose(nx,ny,2,nxguardphi,nyguardphi,nzguardphi,
+     &                   dtranlan,nx_tran,ny_tran)
 
 c     --- Find location of transverse data relative to original dimensions.
       jx = mod(my_index*nx_tran,nx)
@@ -571,7 +593,8 @@ c     --- Do tridiag solve
      &                    ctranlan,dtranlan,ikxmin,ikymin,0)
 
 c     --- Transpose back
-      call warptransposei(nx,ny,2,dtranlan,nx_tran,ny_tran)
+      call warptransposei(nx,ny,2,nxguardphi,nyguardphi,nzguardphi,
+     &                    dtranlan,nx_tran,ny_tran)
 
 c     --- Load solved values back into 'a' array.
       do iy=ikymin,ny-1
@@ -595,8 +618,10 @@ c     --- Calculate remaining values
       print*,5,a(4,5,4)
 
 c     --- Apply inverse FFT's to transverse planes.
-      call vpois3d(13,a(-1,-1,0),a(-1,-1,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
+      call vpois3d(13,a,a,kxsq,kysq,kzsq,attx,atty,attz,
+     &             filt,lx,ly,lz,nx,ny,nz,nz,
+     &             nxguardphi,nyguardphi,nzguardphi,
+     &             scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
       print*,6,a(4,5,4)
@@ -653,12 +678,15 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine paralleltridiag(a,kxsq,kysq,kzsq,attx,atty,attz,filt,lx,ly,lz,
-     &                     nx,ny,nz,scrtch,xywork,zwork,l2symtry,l4symtry,
-     &                     bound0,boundnz,boundxy)
+     &                           nx,ny,nz,nxguardphi,nyguardphi,nzguardphi,
+     &                           scrtch,xywork,zwork,l2symtry,l4symtry,
+     &                           bound0,boundnz,boundxy)
       use Subtimersf3d
       use Constant
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: a(-1:nx+1,-1:ny+1,-1:nz+1)
+      integer(ISZ):: nx,ny,nz,nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: a(-nxguardphi:nx+nxguardphi,
+     &                 -nyguardphi:ny+nyguardphi,
+     &                 -nzguardphi:nz+nzguardphi)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz-1)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz-1)
       real(kind=8):: filt(5,3)
@@ -683,8 +711,10 @@ c than the tolerance.
       if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Apply FFT's to transverse planes.
-      call vpois3d(12,a(-1,-1,0),a(-1,-1,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &                filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
+      call vpois3d(12,a,a,kxsq,kysq,kzsq,attx,atty,attz,
+     &                filt,lx,ly,lz,nx,ny,nz,nz,
+     &                nxguardphi,nyguardphi,nzguardphi,
+     &                scrtch,xywork,zwork,0,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
 
 c     --- Minimum index of kxsq and kysq that is used
@@ -727,8 +757,10 @@ c       --- Get error
       enddo
 
 c     --- Apply inverse FFT's to transverse planes.
-      call vpois3d(13,a(-1,-1,0),a(-1,-1,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
+      call vpois3d(13,a,a,kxsq,kysq,kzsq,attx,atty,attz,
+     &             filt,lx,ly,lz,nx,ny,nz,nz,
+     &             nxguardphi,nyguardphi,nzguardphi,
+     &             scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
 !$OMP MASTER
@@ -802,22 +834,79 @@ c=============================================================================
       real(kind=8):: mgscale
 
       call mgdividenz_work(finedecomp%nxprocs,finedecomp%ix,finedecomp%nx,
-     &                     coarsedecomp%ix,coarsedecomp%nx,nx,nxcoarse,mgscale)
+     &                     coarsedecomp%ix,coarsedecomp%nx,nx,nxcoarse,mgscale,
+     &                     finedecomp%mpistatex,coarsedecomp%mpistatex)
       call mgdividenz_work(finedecomp%nyprocs,finedecomp%iy,finedecomp%ny,
-     &                     coarsedecomp%iy,coarsedecomp%ny,ny,nycoarse,mgscale)
+     &                     coarsedecomp%iy,coarsedecomp%ny,ny,nycoarse,mgscale,
+     &                     finedecomp%mpistatey,coarsedecomp%mpistatey)
       call mgdividenz_work(finedecomp%nzprocs,finedecomp%iz,finedecomp%nz,
-     &                     coarsedecomp%iz,coarsedecomp%nz,nz,nzcoarse,mgscale)
+     &                     coarsedecomp%iz,coarsedecomp%nz,nz,nzcoarse,mgscale,
+     &                     finedecomp%mpistatez,coarsedecomp%mpistatez)
+
+c     --- mpistate gives the current state of the process, whether it
+c     --- is active or not. The values correspond to the following states:
+c     --- 0 is active
+c     --- 1 is inactive, but active at the next finest level (so will need
+c     ---   the appropriate data sent to it during the update of phi)
+c     --- 2 is for an inactive process that will be receiving data during the
+c     ---   phi update that needs to be passed to a neighbor in state 1.
+c     ---   Note that a process will never see itself in this state, only
+c     ---   its neighbors. This state is needed to handle the case when a
+c     ---   process in state 1 has only inactive neighbors.
+c     --- 3 inactive (at current and next finest level)
+
+c     --- When a process is inactive along a particular direction, all of
+c     --- its neighbors in the perpendicular plane will also be inactive.
+c     --- If that process is also inactive along another direction, then
+c     --- it will need to get the phi update indirectly, from a neighboring
+c     --- process that is otherwise inactive. This code sets the states of
+c     --- the neighbors in the perpendicular planes appropriately.
+
+c     --- Since the phi update occurs first along x, inactive neighbors
+c     --- along x will never pass data (since it will never have been
+c     --- updated).
+      if (coarsedecomp%mpistatez(coarsedecomp%izproc) == 1 .or.
+     &    coarsedecomp%mpistatey(coarsedecomp%iyproc) == 1) then
+        where (coarsedecomp%mpistatex == 0)
+          coarsedecomp%mpistatex = 3
+        endwhere
+      endif
+c     --- Next, y is updated, so the data passed in x can be passed along
+c     --- in y, but only in cases where the data was actually passed, where
+c     --- the neighbor along z is active or had just received data.
+      if (coarsedecomp%mpistatex(coarsedecomp%ixproc) == 1 .or.
+     &    coarsedecomp%mpistatez(coarsedecomp%izproc) == 1) then
+        if (coarsedecomp%mpistatez(coarsedecomp%izproc) == 0) then
+          where (coarsedecomp%mpistatey == 0)
+            coarsedecomp%mpistatey = 2
+          endwhere
+        else
+          where (coarsedecomp%mpistatey == 0)
+            coarsedecomp%mpistatey = 3
+          endwhere
+        endif
+      endif
+c     --- Finally, z is updated, so any neighbor in z would have its
+c     --- data updated.
+      if (coarsedecomp%mpistatex(coarsedecomp%ixproc) == 1 .or.
+     &    coarsedecomp%mpistatey(coarsedecomp%iyproc) == 1) then
+        where (coarsedecomp%mpistatez == 0)
+          coarsedecomp%mpistatez = 2
+        endwhere
+      endif
 
       return
       end
 c=============================================================================
       subroutine mgdividenz_work(nzprocs,izfsdecomp,nzfsdecomp,
-     &                           izfsdecompc,nzfsdecompc,nz,nzcoarse,mgscale)
+     &                           izfsdecompc,nzfsdecompc,nz,nzcoarse,mgscale,
+     &                           mpistatez,mpistatezc)
       use Subtimersf3d
-      use Multigrid3d,Only:mgscaleserial,mggrid_overlap
+      use Multigrid3d,Only:mgscaleserial,mggrid_overlap,mgusempistate
       integer(ISZ):: nzprocs,nz,nzcoarse
       integer(ISZ):: izfsdecomp(0:nzprocs-1),nzfsdecomp(0:nzprocs-1)
       integer(ISZ):: izfsdecompc(0:nzprocs-1),nzfsdecompc(0:nzprocs-1)
+      integer(ISZ):: mpistatez(0:nzprocs-1),mpistatezc(0:nzprocs-1)
       real(kind=8):: mgscale
 
 c Divides nz for each processor by two. For odd numbers, the starting end
@@ -825,19 +914,33 @@ c is rounded down, and the upper end up. For each processor, if nz ends up
 c being equal to 1, then change it to 2. For the last processor, if nz is 1,
 c also, subtract 1 from izfsdecomp.
 
-      integer(ISZ):: is,nzmin = 2
+      integer(ISZ):: ip,nzmin = 2
+      integer(ISZ):: nactive,ia,ipm1,ipp1
+      integer(ISZ),pointer:: isactive(:)
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
       if (mgscale < mgscaleserial .and. nz > 0) then
 
-        do is=0,nzprocs-1
+        do ip=0,nzprocs-1
 
 c         --- First divide nz by 2. izfsdecomp is rounded down, and nzfsdecomp
 c         --- is rounded up.
-          izfsdecompc(is) = int(floor(1.*izfsdecomp(is)*nzcoarse/nz))
-          nzfsdecompc(is) = int(ceiling(1.*(izfsdecomp(is)+nzfsdecomp(is))*
-     &                                  nzcoarse/nz - izfsdecompc(is)))
+          izfsdecompc(ip) = floor(1.*izfsdecomp(ip)*nzcoarse/nz)
+
+c         --- This check is needed since sometimes roundoff errors will
+c         --- confound the calculation, and ceiling will erroneously
+c         --- round up. If the numerator is an integer multiple of the
+c         --- denominator, then use integer math. Otherwise use float
+c         --- math and round up.
+          if (((izfsdecomp(ip)+nzfsdecomp(ip))*nzcoarse/nz)*nz ==
+     &        (izfsdecomp(ip)+nzfsdecomp(ip))*nzcoarse) then
+            nzfsdecompc(ip) = (izfsdecomp(ip)+nzfsdecomp(ip))*
+     &                                nzcoarse/nz - izfsdecompc(ip)
+          else
+            nzfsdecompc(ip) = ceiling(1.*(izfsdecomp(ip)+nzfsdecomp(ip))*
+     &                                nzcoarse/nz - izfsdecompc(ip))
+          endif
 
 c         --- Then check that no nz are less than nzmin.
 c         --- Note that if nzfsdecomp is already < nzmin, leave it as is.
@@ -847,11 +950,11 @@ c         --- finer grid's gaurd cell, so it would need data from a neighboring
 c         --- cell, where it would normally be able to use data from the gaurd
 c         --- cells. That is a rare occurance so it is simpler to avoid the
 c         --- problem then to write the code to exchange the data for that case.
-          if (nzfsdecompc(is) < nzmin .and. nzfsdecompc(is) < nzfsdecomp(is)) then
-            nzfsdecompc(is) = nzfsdecompc(is) + 1
-            if (izfsdecompc(is)+nzfsdecompc(is) > nzcoarse) then
-              izfsdecompc(is) = izfsdecompc(is) - 1
-              nzfsdecompc(is) = nzcoarse - izfsdecompc(is)
+          if (nzfsdecompc(ip) < nzmin .and. nzfsdecompc(ip) < nzfsdecomp(ip)) then
+            nzfsdecompc(ip) = nzfsdecompc(ip) + 1
+            if (izfsdecompc(ip)+nzfsdecompc(ip) > nzcoarse) then
+              izfsdecompc(ip) = izfsdecompc(ip) - 1
+              nzfsdecompc(ip) = nzcoarse - izfsdecompc(ip)
             endif
           endif
 
@@ -860,9 +963,9 @@ c         --- problem then to write the code to exchange the data for that case.
         if (mggrid_overlap == 1) then
 c         --- This gaurantees that there is enough grid overlap on the
 c         --- coarse grid.
-          do is=0,nzprocs-2
-            if (izfsdecompc(is)+nzfsdecompc(is) < izfsdecompc(is+1)+3) then
-              nzfsdecompc(is) = izfsdecompc(is+1)+3-izfsdecompc(is)
+          do ip=0,nzprocs-2
+            if (izfsdecompc(ip)+nzfsdecompc(ip) < izfsdecompc(ip+1)+3) then
+              nzfsdecompc(ip) = izfsdecompc(ip+1)+3-izfsdecompc(ip)
             endif
           enddo
         endif
@@ -880,6 +983,56 @@ c       --- cover the full system, to avoid passing around lots of small
 c       --- messages.
         izfsdecompc = 0
         nzfsdecompc = nzcoarse
+
+      endif
+
+c     --- Check which processors no longer need to be active. These are
+c     --- the ones that are completely overlapped by the processors on
+c     --- either side. Start searching at the first processor, skipping
+c     --- every other one. Dropping the end processors means that any
+c     --- remaining processors will be somewhat close to each other.
+c     --- First, make all processors have the same state as the fine level.
+      mpistatezc = mpistatez
+
+      if (mgusempistate) then
+
+      allocate(isactive(0:nzprocs-1))
+      nactive = 0
+      do ip = 0,nzprocs-1
+        if (mpistatez(ip) == 0) then
+          isactive(nactive) = ip
+          nactive = nactive + 1
+        else
+          mpistatezc(ip) = 3
+        endif
+      enddo
+
+      if (nactive > 1) then
+        ip = isactive(0)
+        ipp1 = isactive(1)
+        if (izfsdecompc(ipp1) == 0) then
+c         --- If the 2nd processor extends down to 0, then the first processor
+c         --- can be inactive.
+          mpistatezc(ip) = 1
+        endif
+        do ia=2,nactive-2,2
+          ipm1 = isactive(ia-1)
+          ip = isactive(ia)
+          ipp1 = isactive(ia+1)
+          if (izfsdecompc(ipm1)+nzfsdecompc(ipm1) > izfsdecompc(ipp1)) then
+            mpistatezc(ip) = 1
+          endif
+        enddo
+        ipm1 = isactive(nactive-2)
+        ip = isactive(nactive-1)
+        if (mod(nzprocs,2) == 1 .and.
+     &      izfsdecompc(ipm1)+nzfsdecompc(ipm1) == nzcoarse) then
+          mpistatezc(ip) = 1
+        endif
+
+      endif
+
+      deallocate(isactive)
 
       endif
 
@@ -1283,7 +1436,7 @@ c the processors deal with files.
       do iz=firstz,lastz
         do iy=0,ny
           do ix=0,nx
-            write(22,'(I3,x,I3,x,I3,1pE15.5,x,A,I3,I3)') ix,iy,izs+iz,a(ix,iy,iz),text,mglevel,nz0
+            write(22,'(I3,1x,I3,1x,I3,1pE15.5,1x,A,I3,I3)') ix,iy,izs+iz,a(ix,iy,iz),text,mglevel,nz0
           enddo
         enddo
       enddo
@@ -1323,9 +1476,9 @@ c iz=-1 and +1.
       if (lf3dtimesubs) substarttime = wtime()
 
       call getphipforparticles3d_parallel(3,
-     &             bfield%nxlocal,bfield%nylocal,bfield%nzlocal,bfield%b,
+     &             bfield%nxlocal,bfield%nylocal,bfield%nzlocal,0,0,0,bfield%b,
      &             bfieldp%nxlocal,bfieldp%nylocal,bfieldp%nzlocal,bfieldp%b,
-     &             0,0,0,fsdecomp,ppdecomp)
+     &             fsdecomp,ppdecomp)
 
 !$OMP MASTER
       if (lf3dtimesubs) timegetbforparticles3d = timegetbforparticles3d + wtime() - substarttime
@@ -1389,7 +1542,6 @@ c       --- different sets of values for each level of coarsening. The size
 c       --- of the cache will then allow 50 levels, which should be sufficient.
         SAVE
         type messagedatatype
-          integer(ISZ):: id = 0
           integer(MPIISZ),pointer:: xrecvtypes(:),xsendtypes(:)
           integer(MPIISZ),pointer:: xsendcounts(:),xrecvcounts(:)
           integer(MPIISZ),pointer:: xdispls(:)
@@ -1399,17 +1551,37 @@ c       --- of the cache will then allow 50 levels, which should be sufficient.
           integer(MPIISZ),pointer:: zrecvtypes(:),zsendtypes(:)
           integer(MPIISZ),pointer:: zsendcounts(:),zrecvcounts(:)
           integer(MPIISZ),pointer:: zdispls(:)
+          integer(ISZ):: nc_cache = -1
+          integer(ISZ):: nxguard_cache
+          integer(ISZ):: nyguard_cache
+          integer(ISZ):: nzguard_cache
+          integer(ISZ):: ils_cache
+          integer(ISZ):: ile_cache
+          integer(ISZ):: ius_cache
+          integer(ISZ):: iue_cache
+          integer(ISZ),pointer:: ix_cache(:)
+          integer(ISZ),pointer:: iy_cache(:)
+          integer(ISZ),pointer:: iz_cache(:)
+          integer(ISZ),pointer:: nx_cache(:)
+          integer(ISZ),pointer:: ny_cache(:)
+          integer(ISZ),pointer:: nz_cache(:)
+          logical(ISZ):: lguardres_cache
+          logical(ISZ):: lupdatephi_cache
         end type messagedatatype
         integer:: icache = 0
         type(messagedatatype):: messagedatacache(200)
       contains
         subroutine getmessagedata(nc,nxlocal,nylocal,nzlocal,
-     &                            delx,dely,delz,ils,ile,ius,iue,fsdecomp,
+     &                            nxguard,nyguard,nzguard,lguardres,
+     &                            ils,ile,ius,iue,fsdecomp,
      &                            messagedata)
         use Subtimersf3d
         use Decompositionmodule
-        integer(ISZ):: nc,nxlocal,nylocal,nzlocal,ils,ile,ius,iue
-        integer(ISZ):: delx,dely,delz
+        use Multigrid3d,Only: mgcoarsening
+        integer(ISZ):: nc,nxlocal,nylocal,nzlocal
+        logical(ISZ):: lguardres
+        integer(ISZ):: ils,ile,ius,iue
+        integer(ISZ):: nxguard,nyguard,nzguard
         type(Decomposition):: fsdecomp
         type(messagedatatype):: messagedata
 
@@ -1424,15 +1596,24 @@ c ius, iue are the start and end of the range of slices at the upper edges
 c          of the grid that need to be obtained from neighbors. The values are
 c          relative to the upper index, nx, ny or nz.
 
-        integer(ISZ):: ic,id
+c lguardres: when true, the guard cells on the other processors may differ
+c            than what they are locally. In this case, they must be set
+c            accordingly.
+
+        integer(ISZ):: ic
         integer(ISZ):: npx,npy,npz
         integer(ISZ):: px,py,pz
         integer(ISZ):: me_ix,me_iy,me_iz
         integer(ISZ):: me_nx,me_ny,me_nz
         integer(ISZ):: pe_ix,pe_iy,pe_iz
         integer(ISZ):: pe_nx,pe_ny,pe_nz
-        integer(ISZ):: ixls,iyls,izls,ixle,iyle,izle
-        integer(ISZ):: ixus,iyus,izus,ixue,iyue,izue
+        integer(ISZ),pointer:: pe_nxguard(:),pe_nyguard(:),pe_nzguard(:)
+        integer(ISZ):: me_ixls,me_iyls,me_izls,me_ixle,me_iyle,me_izle
+        integer(ISZ):: me_ixus,me_iyus,me_izus,me_ixue,me_iyue,me_izue
+        integer(ISZ),pointer:: pe_ixls(:),pe_iyls(:),pe_izls(:)
+        integer(ISZ),pointer:: pe_ixle(:),pe_iyle(:),pe_izle(:)
+        integer(ISZ),pointer:: pe_ixus(:),pe_iyus(:),pe_izus(:)
+        integer(ISZ),pointer:: pe_ixue(:),pe_iyue(:),pe_izue(:)
         integer(ISZ):: me_ixlgood,me_ixugood
         integer(ISZ):: me_iylgood,me_iyugood
         integer(ISZ):: me_izlgood,me_izugood
@@ -1447,51 +1628,61 @@ c          relative to the upper index, nx, ny or nz.
         real(kind=8):: substarttime,wtime
         if (lf3dtimesubs) substarttime = wtime()
 
-c       --- Compute a hash of the input parameters.
-c       --- Note that this expression is ad hoc and makes no gaurantee
-c       --- of uniqueness.
-        id = + (delx + 3)
-     &       + (dely + 3)*10
-     &       + (delz + 3)*100
-     &       + (ils + 5)*1000
-     &       + (ile + 5)*10000
-     &       + (ius + 5)*100000
-     &       + (iue + 5)*1000000
-     &       + sum(fsdecomp%ix**1)
-     &       + sum(fsdecomp%iy**2)
-     &       + sum(fsdecomp%iz**3)
-     &       + sum(fsdecomp%nx**3)
-     &       + sum(fsdecomp%ny**2)
-     &       + sum(fsdecomp%nz**1)
-
 c       --- Search through the cached data to see if this data set has
 c       --- already been calculated.
 c       --- Note, to turn caching off, only this loop needs to be commented out
         do ic = 1,SIZE(messagedatacache)
 
-          if (messagedatacache(ic)%id == id) then
+c         --- nc_cache will be < 0 for unallocated caches. If the
+c         --- search has found one, then stop looking since there won't
+c         --- be any more cached results further on.
+          if (messagedatacache(ic)%nc_cache < 0) exit
 
-c           --- The id is the same, then there's no need to recalculate.
+          if ((messagedatacache(ic)%nc_cache == nc) .and.
+     &        (messagedatacache(ic)%lguardres_cache .eqv. lguardres) .and.
+     &        (messagedatacache(ic)%lupdatephi_cache .eqv. .false.) .and.
+     &        (messagedatacache(ic)%nxguard_cache == nxguard) .and.
+     &        (messagedatacache(ic)%nyguard_cache == nyguard) .and.
+     &        (messagedatacache(ic)%nzguard_cache == nzguard) .and.
+     &        (messagedatacache(ic)%ils_cache == ils) .and.
+     &        (messagedatacache(ic)%ile_cache == ile) .and.
+     &        (messagedatacache(ic)%ius_cache == ius) .and.
+     &        (messagedatacache(ic)%iue_cache == iue) .and.
+     &        (size(messagedatacache(ic)%ix_cache) == fsdecomp%nxprocs) .and.
+     &        (size(messagedatacache(ic)%iy_cache) == fsdecomp%nyprocs) .and.
+     &        (size(messagedatacache(ic)%iz_cache) == fsdecomp%nzprocs)) then
 
-c           --- Setup the array pointers.
-            messagedata%xsendtypes => messagedatacache(ic)%xsendtypes
-            messagedata%xrecvtypes => messagedatacache(ic)%xrecvtypes
-            messagedata%xsendcounts => messagedatacache(ic)%xsendcounts
-            messagedata%xrecvcounts => messagedatacache(ic)%xrecvcounts
-            messagedata%xdispls => messagedatacache(ic)%xdispls
-            messagedata%ysendtypes => messagedatacache(ic)%ysendtypes
-            messagedata%yrecvtypes => messagedatacache(ic)%yrecvtypes
-            messagedata%ysendcounts => messagedatacache(ic)%ysendcounts
-            messagedata%yrecvcounts => messagedatacache(ic)%yrecvcounts
-            messagedata%ydispls => messagedatacache(ic)%ydispls
-            messagedata%zsendtypes => messagedatacache(ic)%zsendtypes
-            messagedata%zrecvtypes => messagedatacache(ic)%zrecvtypes
-            messagedata%zsendcounts => messagedatacache(ic)%zsendcounts
-            messagedata%zrecvcounts => messagedatacache(ic)%zrecvcounts
-            messagedata%zdispls => messagedatacache(ic)%zdispls
+            if (all(messagedatacache(ic)%ix_cache == fsdecomp%ix) .and.
+     &          all(messagedatacache(ic)%iy_cache == fsdecomp%iy) .and.
+     &          all(messagedatacache(ic)%iz_cache == fsdecomp%iz) .and.
+     &          all(messagedatacache(ic)%nx_cache == fsdecomp%nx) .and.
+     &          all(messagedatacache(ic)%ny_cache == fsdecomp%ny) .and.
+     &          all(messagedatacache(ic)%nz_cache == fsdecomp%nz)) then
 
-            if (lf3dtimesubs) timegetmessagedata = timegetmessagedata + wtime() - substarttime
-            return
+c             --- The cached data is the same, then there's no need
+c             --- to recalculate.
+
+c             --- Setup the array pointers.
+              messagedata%xsendtypes => messagedatacache(ic)%xsendtypes
+              messagedata%xrecvtypes => messagedatacache(ic)%xrecvtypes
+              messagedata%xsendcounts => messagedatacache(ic)%xsendcounts
+              messagedata%xrecvcounts => messagedatacache(ic)%xrecvcounts
+              messagedata%xdispls => messagedatacache(ic)%xdispls
+              messagedata%ysendtypes => messagedatacache(ic)%ysendtypes
+              messagedata%yrecvtypes => messagedatacache(ic)%yrecvtypes
+              messagedata%ysendcounts => messagedatacache(ic)%ysendcounts
+              messagedata%yrecvcounts => messagedatacache(ic)%yrecvcounts
+              messagedata%ydispls => messagedatacache(ic)%ydispls
+              messagedata%zsendtypes => messagedatacache(ic)%zsendtypes
+              messagedata%zrecvtypes => messagedatacache(ic)%zrecvtypes
+              messagedata%zsendcounts => messagedatacache(ic)%zsendcounts
+              messagedata%zrecvcounts => messagedatacache(ic)%zrecvcounts
+              messagedata%zdispls => messagedatacache(ic)%zdispls
+
+              if (lf3dtimesubs) timegetmessagedata = timegetmessagedata + wtime() - substarttime
+              return
+
+            endif
           endif
 
         enddo
@@ -1500,17 +1691,41 @@ c       --- A new data set is needed. Increment the counter and put the data
 c       --- in the next available spot.
         icache = mod(icache,SIZE(messagedatacache)) + 1
 
-c       --- If the id is non zero, then the previous data in the cache needs
-c       --- to be cleaned up.
-        if (messagedatacache(icache)%id .ne. 0) then
-          call freemessagedata(messagedatacache(icache))
+c       --- If nc_cache has been set, then the previous data
+c       --- in the cache needs to be freed.
+        if (messagedatacache(icache)%nc_cache >= 0) then
+          call freemessagedata(icache)
         endif
-
-        messagedatacache(icache)%id = id
 
         npx = fsdecomp%nxprocs
         npy = fsdecomp%nyprocs
         npz = fsdecomp%nzprocs
+
+        messagedatacache(icache)%nc_cache = nc
+        messagedatacache(icache)%nxguard_cache = nxguard
+        messagedatacache(icache)%nyguard_cache = nyguard
+        messagedatacache(icache)%nzguard_cache = nzguard
+        messagedatacache(icache)%ils_cache = ils
+        messagedatacache(icache)%ile_cache = ile
+        messagedatacache(icache)%ius_cache = ius
+        messagedatacache(icache)%iue_cache = iue
+        messagedatacache(icache)%lguardres_cache = lguardres
+        messagedatacache(icache)%lupdatephi_cache = .false.
+
+        allocate(messagedatacache(icache)%ix_cache(npx))
+        allocate(messagedatacache(icache)%iy_cache(npy))
+        allocate(messagedatacache(icache)%iz_cache(npz))
+        allocate(messagedatacache(icache)%nx_cache(npx))
+        allocate(messagedatacache(icache)%ny_cache(npy))
+        allocate(messagedatacache(icache)%nz_cache(npz))
+
+        messagedatacache(icache)%ix_cache = fsdecomp%ix
+        messagedatacache(icache)%iy_cache = fsdecomp%iy
+        messagedatacache(icache)%iz_cache = fsdecomp%iz
+        messagedatacache(icache)%nx_cache = fsdecomp%nx
+        messagedatacache(icache)%ny_cache = fsdecomp%ny
+        messagedatacache(icache)%nz_cache = fsdecomp%nz
+
         allocate(messagedatacache(icache)%xsendtypes(0:npx-1))
         allocate(messagedatacache(icache)%xrecvtypes(0:npx-1))
         allocate(messagedatacache(icache)%xsendcounts(0:npx-1))
@@ -1546,18 +1761,20 @@ c       --- to be cleaned up.
 c       --- Now, do the actual calculation.
 
         dims = 4
-        nlocal = (/nc,1+nxlocal+2*delx,1+nylocal+2*dely,1+nzlocal+2*delz/)
+        nlocal = (/nc,1+nxlocal+2*nxguard,
+     &                1+nylocal+2*nyguard,
+     &                1+nzlocal+2*nzguard/)
         messagedata%xdispls = 0
         messagedata%ydispls = 0
         messagedata%zdispls = 0
 
-c     --- First, calculate what data needs to be sent and received.
+c       --- First, calculate what data needs to be sent and received.
 
-c     --- Send and recv all of the first dimension.
+c       --- Send and recv all of the first dimension.
         starts(-1) = 0
         sizes(-1) = nc
 
-c     --- Data to be sent
+c       --- Data to be sent
         me_ix = fsdecomp%ix(fsdecomp%ixproc)
         me_nx = fsdecomp%nx(fsdecomp%ixproc)
         me_iy = fsdecomp%iy(fsdecomp%iyproc)
@@ -1565,302 +1782,420 @@ c     --- Data to be sent
         me_iz = fsdecomp%iz(fsdecomp%izproc)
         me_nz = fsdecomp%nz(fsdecomp%izproc)
 
-        ixls = -max(-delx,ils)
-        ixle = -ile
-        iyls = -max(-dely,ils)
-        iyle = -ile
-        izls = -max(-delz,ils)
-        izle = -ile
+        me_ixls = me_ix + max(-nxguard,ils)
+        me_ixle = me_ix + max(-nxguard,ile)
+        me_iyls = me_iy + max(-nyguard,ils)
+        me_iyle = me_iy + max(-nyguard,ile)
+        me_izls = me_iz + max(-nzguard,ils)
+        me_izle = me_iz + max(-nzguard,ile)
 
-        ixus = min(delx,ius)
-        ixue = iue
-        iyus = min(dely,ius)
-        iyue = iue
-        izus = min(delz,ius)
-        izue = iue
+        me_ixus = me_ix + me_nx + min(nxguard,ius)
+        me_ixue = me_ix + me_nx + min(nxguard,iue)
+        me_iyus = me_iy + me_ny + min(nyguard,ius)
+        me_iyue = me_iy + me_ny + min(nyguard,iue)
+        me_izus = me_iz + me_nz + min(nzguard,ius)
+        me_izue = me_iz + me_nz + min(nzguard,iue)
 
-c     --- Get the lower and upper range of the good data. Good data means
-c     --- data that was calculated on the processor and is available to send
-c     --- to other processors that need it. The default value is the range of
-c     --- data out to the data that is needed, set by the ixle etc input
-c     --- arguments. If the processor sits on the edge of the grid, then
-c     --- include all of the data in the guard cells as well.
-        me_ixlgood = me_ix + 1 - ixle
-        me_ixugood = me_ix + me_nx - 1 + ixus
-        me_iylgood = me_iy + 1 - iyle
-        me_iyugood = me_iy + me_ny - 1 + iyus
-        me_izlgood = me_iz + 1 - izle
-        me_izugood = me_iz + me_nz - 1 + izus
-        if (me_ix == 0) me_ixlgood = -delx
-        if (me_ix + me_nx == fsdecomp%nxglobal) me_ixugood = me_ix + me_nx + delx
-        if (me_iy == 0) me_iylgood = -dely
-        if (me_iy + me_ny == fsdecomp%nyglobal) me_iyugood = me_iy + me_ny + dely
-        if (me_iz == 0) me_izlgood = -delz
-        if (me_iz + me_nz == fsdecomp%nzglobal) me_izugood = me_iz + me_nz + delz
+        allocate(pe_nxguard(0:fsdecomp%nxprocs-1))
+        allocate(pe_nyguard(0:fsdecomp%nyprocs-1))
+        allocate(pe_nzguard(0:fsdecomp%nzprocs-1))
 
-        do px=0,fsdecomp%nxprocs-1
+        allocate(pe_ixls(0:fsdecomp%nxprocs-1))
+        allocate(pe_iyls(0:fsdecomp%nyprocs-1))
+        allocate(pe_izls(0:fsdecomp%nzprocs-1))
+        allocate(pe_ixle(0:fsdecomp%nxprocs-1))
+        allocate(pe_iyle(0:fsdecomp%nyprocs-1))
+        allocate(pe_izle(0:fsdecomp%nzprocs-1))
+        allocate(pe_ixus(0:fsdecomp%nxprocs-1))
+        allocate(pe_iyus(0:fsdecomp%nyprocs-1))
+        allocate(pe_izus(0:fsdecomp%nzprocs-1))
+        allocate(pe_ixue(0:fsdecomp%nxprocs-1))
+        allocate(pe_iyue(0:fsdecomp%nyprocs-1))
+        allocate(pe_izue(0:fsdecomp%nzprocs-1))
 
-          starts(1) = 0
-          sizes(1) = me_ny + 2*dely + 1
-          starts(2) = 0
-          sizes(2) = me_nz + 2*delz + 1
+        if (lguardres) then
+          where (fsdecomp%nx < fsdecomp%nxglobal)
+            pe_nxguard = 2*mgcoarsening - 1
+          elsewhere
+            pe_nxguard = 1
+          endwhere
+          where (fsdecomp%ny < fsdecomp%nyglobal)
+            pe_nyguard = 2*mgcoarsening - 1
+          elsewhere
+            pe_nyguard = 1
+          endwhere
+          where (fsdecomp%nz < fsdecomp%nzglobal)
+            pe_nzguard = 2*mgcoarsening - 1
+          elsewhere
+            pe_nzguard = 1
+          endwhere
+        else
+          pe_nxguard = nxguard
+          pe_nyguard = nyguard
+          pe_nzguard = nzguard
+        endif
 
-          pe_ix = fsdecomp%ix(px)
-          pe_nx = fsdecomp%nx(px)
+        pe_ixls = fsdecomp%ix + max(-pe_nxguard,ils)
+        pe_ixle = fsdecomp%ix + max(-pe_nxguard,ile)
+        pe_iyls = fsdecomp%iy + max(-pe_nyguard,ils)
+        pe_iyle = fsdecomp%iy + max(-pe_nyguard,ile)
+        pe_izls = fsdecomp%iz + max(-pe_nzguard,ils)
+        pe_izle = fsdecomp%iz + max(-pe_nzguard,ile)
 
-          if (px > fsdecomp%ixproc) then
-c         --- Sending to the lower guard cells on the right
-            i1global = max(pe_ix - ixls,me_ixlgood)
-            i2global = min(pe_ix - ixle,me_ixugood)
-            if (px > fsdecomp%ixproc+1) then
-              i2global = fsdecomp%ix(fsdecomp%ixproc+1) - ixle
+        pe_ixus = fsdecomp%ix + fsdecomp%nx + min(pe_nxguard,ius)
+        pe_ixue = fsdecomp%ix + fsdecomp%nx + min(pe_nxguard,iue)
+        pe_iyus = fsdecomp%iy + fsdecomp%ny + min(pe_nyguard,ius)
+        pe_iyue = fsdecomp%iy + fsdecomp%ny + min(pe_nyguard,iue)
+        pe_izus = fsdecomp%iz + fsdecomp%nz + min(pe_nzguard,ius)
+        pe_izue = fsdecomp%iz + fsdecomp%nz + min(pe_nzguard,iue)
+
+c       --- Get the lower and upper range of the good data. Good data means
+c       --- data that was calculated on the processor and is available to send
+c       --- to other processors that need it. The default value is the range of
+c       --- data out to the data that is needed, set by the me_ixle etc input
+c       --- arguments. If the processor sits on the edge of the grid, then
+c       --- include all of the data in the guard cells as well.
+        me_ixlgood = me_ixle + 1
+        me_ixugood = me_ixus - 1
+        me_iylgood = me_iyle + 1
+        me_iyugood = me_iyus - 1
+        me_izlgood = me_izle + 1
+        me_izugood = me_izus - 1
+        if (me_ix == 0) me_ixlgood = -nxguard
+        if (me_ix + me_nx == fsdecomp%nxglobal) me_ixugood=me_ix+me_nx+nxguard
+        if (me_iy == 0) me_iylgood = -nyguard
+        if (me_iy + me_ny == fsdecomp%nyglobal) me_iyugood=me_iy+me_ny+nyguard
+        if (me_iz == 0) me_izlgood = -nzguard
+        if (me_iz + me_nz == fsdecomp%nzglobal) me_izugood=me_iz+me_nz+nzguard
+
+        if (fsdecomp%mpistatex(fsdecomp%ixproc) >= 1) then
+          messagedata%xsendtypes = MPI_DOUBLE_PRECISION
+          messagedata%xsendcounts = 0
+          messagedata%xrecvtypes = MPI_DOUBLE_PRECISION
+          messagedata%xrecvcounts = 0
+        else
+
+          do px=0,fsdecomp%nxprocs-1
+
+            if (fsdecomp%mpistatex(px) >= 1) then
+              messagedata%xsendtypes(px) = MPI_DOUBLE_PRECISION
+              messagedata%xsendcounts(px) = 0
+              messagedata%xrecvtypes(px) = MPI_DOUBLE_PRECISION
+              messagedata%xrecvcounts(px) = 0
+              cycle
             endif
-          else if (px < fsdecomp%ixproc) then
-c         --- Sending to the upper guard cells on the left
-            i1global = max(pe_ix + pe_nx + ixus,me_ixlgood)
-            i2global = min(pe_ix + pe_nx + ixue,me_ixugood)
-            if (px < fsdecomp%ixproc-1) then
-              i1global = fsdecomp%ix(fsdecomp%ixproc-1) +
-     &                   fsdecomp%nx(fsdecomp%ixproc-1) + ixus
+
+            starts(1) = 0
+            sizes(1) = me_ny + 2*nyguard + 1
+            starts(2) = 0
+            sizes(2) = me_nz + 2*nzguard + 1
+
+            pe_ix = fsdecomp%ix(px)
+            pe_nx = fsdecomp%nx(px)
+
+            pe_ixlgood = pe_ixle(px) + 1
+            pe_ixugood = pe_ixus(px) - 1
+            if (pe_ix == 0) pe_ixlgood = -pe_nxguard(px)
+            if (pe_ix+pe_nx == fsdecomp%nxglobal)
+     &        pe_ixugood = pe_ix + pe_nx + pe_nxguard(px)
+
+            if (px > fsdecomp%ixproc) then
+c             --- Sending to the lower guard cells on the right
+              i1global = max(pe_ixls(px),me_ixlgood)
+              i2global = min(pe_ixle(px),me_ixugood)
+c             if (px > fsdecomp%ixproc+1) then
+c               i2global = pe_ixle(fsdecomp%ixproc+1)
+c             endif
+            else if (px < fsdecomp%ixproc) then
+c             --- Sending to the upper guard cells on the left
+              i1global = max(pe_ixus(px),me_ixlgood)
+              i2global = min(pe_ixue(px),me_ixugood)
+c             if (px < fsdecomp%ixproc-1) then
+c               i1global = pe_ixus(fsdecomp%ixproc-1)
+c             endif
+            else
+c             --- Send nothing to self
+              i1global = 0
+              i2global = -1
             endif
-          else
-c         --- Send nothing to self
-            i1global = 0
-            i2global = -1
-          endif
-          starts(0) = i1global - me_ix + delx
-          sizes(0) = i2global - i1global + 1
+            starts(0) = i1global - me_ix + nxguard
+            sizes(0) = i2global - i1global + 1
 
-c       --- Create the data types for data that is to be sent
-          if (ALL(sizes > 0)) then
-            call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
-     &                                  MPI_ORDER_FORTRAN,
-     &                                  MPI_DOUBLE_PRECISION,
-     &                                  messagedata%xsendtypes(px),mpierror)
-            call MPI_TYPE_COMMIT(messagedata%xsendtypes(px),mpierror)
-            messagedata%xsendcounts(px) = 1
-          else
-            messagedata%xsendtypes(px) = MPI_DOUBLE_PRECISION
-            messagedata%xsendcounts(px) = 0
-          endif
-
-          pe_ixlgood = pe_ix + 1 - ixle
-          pe_ixugood = pe_ix + pe_nx - 1 + ixus
-          if (pe_ix == 0) pe_ixlgood = -delx
-          if (pe_ix+pe_nx == fsdecomp%nxglobal) pe_ixugood = pe_ix + pe_nx + delx
-
-          if (px < fsdecomp%ixproc) then
-c         --- Receiving to the lower guard cells from the left
-            i1global = max(me_ix - ixls,pe_ixlgood)
-            i2global = min(me_ix - ixle,pe_ixugood)
-            if (px < fsdecomp%ixproc-1) then
-              i2global = fsdecomp%ix(px+1) - ixle
+c           --- Create the data types for data that is to be sent
+            if (ALL(sizes > 0)) then
+              call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                      MPI_ORDER_FORTRAN,
+     &                                      MPI_DOUBLE_PRECISION,
+     &                                      messagedata%xsendtypes(px),mpierror)
+              call MPI_TYPE_COMMIT(messagedata%xsendtypes(px),mpierror)
+              messagedata%xsendcounts(px) = 1
+            else
+              messagedata%xsendtypes(px) = MPI_DOUBLE_PRECISION
+              messagedata%xsendcounts(px) = 0
             endif
-          else if (px > fsdecomp%ixproc) then
-c         --- Receiving to the upper guard cells from the right
-            i1global = max(me_ix + me_nx + ixus,pe_ixlgood)
-            i2global = min(me_ix + me_nx + ixue,pe_ixugood)
-            if (px > fsdecomp%ixproc+1) then
-              i1global = fsdecomp%ix(px-1) + fsdecomp%nx(px-1) + ixus
+
+            if (px < fsdecomp%ixproc) then
+c             --- Receiving to the lower guard cells from the left
+              i1global = max(me_ixls,pe_ixlgood)
+              i2global = min(me_ixle,pe_ixugood)
+c             if (px < fsdecomp%ixproc-1) then
+c               i2global = pe_ixle(px+1)
+c             endif
+            else if (px > fsdecomp%ixproc) then
+c             --- Receiving to the upper guard cells from the right
+              i1global = max(me_ixus,pe_ixlgood)
+              i2global = min(me_ixue,pe_ixugood)
+c             if (px > fsdecomp%ixproc+1) then
+c               i1global = pe_ixus(px-1)
+c             endif
+            else
+c             --- Receive nothing from self
+              i1global = 0
+              i2global = -1
             endif
-          else
-c         --- Receive nothing from self
-            i1global = 0
-            i2global = -1
-          endif
-          starts(0) = i1global - me_ix + delx
-          sizes(0) = i2global - i1global + 1
+            starts(0) = i1global - me_ix + nxguard
+            sizes(0) = i2global - i1global + 1
 
-c       --- Create the data types for data that is to be received
-          if (ALL(sizes > 0)) then
-            call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
-     &                                  MPI_ORDER_FORTRAN,
-     &                                  MPI_DOUBLE_PRECISION,
-     &                                  messagedata%xrecvtypes(px),mpierror)
-            call MPI_TYPE_COMMIT(messagedata%xrecvtypes(px),mpierror)
-            messagedata%xrecvcounts(px) = 1
-          else
-            messagedata%xrecvtypes(px) = MPI_DOUBLE_PRECISION
-            messagedata%xrecvcounts(px) = 0
-          endif
-
-        enddo
-
-        do py=0,fsdecomp%nyprocs-1
-
-          starts(0) = 0
-          sizes(0) = me_nx + 2*delx + 1
-          starts(2) = 0
-          sizes(2) = me_nz + 2*delz + 1
-
-          pe_iy = fsdecomp%iy(py)
-          pe_ny = fsdecomp%ny(py)
-
-          if (py > fsdecomp%iyproc) then
-c         --- Sending to the lower guard cells on the right
-            i1global = max(pe_iy - iyls,me_iylgood)
-            i2global = min(pe_iy - iyle,me_iyugood)
-            if (py > fsdecomp%iyproc+1) then
-              i2global = fsdecomp%iy(fsdecomp%iyproc+1) - iyle
+c           --- Create the data types for data that is to be received
+            if (ALL(sizes > 0)) then
+              call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                      MPI_ORDER_FORTRAN,
+     &                                      MPI_DOUBLE_PRECISION,
+     &                                      messagedata%xrecvtypes(px),mpierror)
+              call MPI_TYPE_COMMIT(messagedata%xrecvtypes(px),mpierror)
+              messagedata%xrecvcounts(px) = 1
+            else
+              messagedata%xrecvtypes(px) = MPI_DOUBLE_PRECISION
+              messagedata%xrecvcounts(px) = 0
             endif
-          else if (py < fsdecomp%iyproc) then
-c         --- Sending to the upper guard cells on the left
-            i1global = max(pe_iy + pe_ny + iyus,me_iylgood)
-            i2global = min(pe_iy + pe_ny + iyue,me_iyugood)
-            if (py < fsdecomp%iyproc-1) then
-              i1global = fsdecomp%iy(fsdecomp%iyproc-1) +
-     &                   fsdecomp%ny(fsdecomp%iyproc-1) + iyus
+
+          enddo
+        endif
+
+        if (fsdecomp%mpistatey(fsdecomp%iyproc) >= 1) then
+          messagedata%ysendtypes = MPI_DOUBLE_PRECISION
+          messagedata%ysendcounts = 0
+          messagedata%yrecvtypes = MPI_DOUBLE_PRECISION
+          messagedata%yrecvcounts = 0
+        else
+
+          do py=0,fsdecomp%nyprocs-1
+
+            if (fsdecomp%mpistatey(py) >= 1) then
+              messagedata%ysendtypes(py) = MPI_DOUBLE_PRECISION
+              messagedata%ysendcounts(py) = 0
+              messagedata%yrecvtypes(py) = MPI_DOUBLE_PRECISION
+              messagedata%yrecvcounts(py) = 0
+              cycle
             endif
-          else
-c           --- Send nothing to self
-            i1global = 0
-            i2global = -1
-          endif
-          starts(1) = i1global - me_iy + dely
-          sizes(1) = i2global - i1global + 1
 
-c         --- Create the data types for data that is to be sent
-          if (ALL(sizes > 0)) then
-            call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
-     &                                    MPI_ORDER_FORTRAN,
-     &                                    MPI_DOUBLE_PRECISION,
-     &                                    messagedata%ysendtypes(py),mpierror)
-            call MPI_TYPE_COMMIT(messagedata%ysendtypes(py),mpierror)
-            messagedata%ysendcounts(py) = 1
-          else
-            messagedata%ysendtypes(py) = MPI_DOUBLE_PRECISION
-            messagedata%ysendcounts(py) = 0
-          endif
+            starts(0) = 0
+            sizes(0) = me_nx + 2*nxguard + 1
+            starts(2) = 0
+            sizes(2) = me_nz + 2*nzguard + 1
 
-          pe_iylgood = pe_iy + 1 - iyle
-          pe_iyugood = pe_iy + pe_ny - 1 + iyus
-          if (pe_iy == 0) pe_iylgood = -dely
-          if (pe_iy+pe_ny == fsdecomp%nyglobal) pe_iyugood = pe_iy + pe_ny + dely
+            pe_iy = fsdecomp%iy(py)
+            pe_ny = fsdecomp%ny(py)
 
-          if (py < fsdecomp%iyproc) then
-c           --- Receiving to the lower guard cells from the left
-            i1global = max(me_iy - iyls,pe_iylgood)
-            i2global = min(me_iy - iyle,pe_iyugood)
-            if (py < fsdecomp%iyproc-1) then
-              i2global = fsdecomp%iy(py+1) - iyle
+            pe_iylgood = pe_iyle(py) + 1
+            pe_iyugood = pe_iyus(py) - 1
+            if (pe_iy == 0) pe_iylgood = -pe_nyguard(py)
+            if (pe_iy+pe_ny == fsdecomp%nyglobal)
+     &        pe_iyugood = pe_iy + pe_ny + pe_nyguard(py)
+
+            if (py > fsdecomp%iyproc) then
+c             --- Sending to the lower guard cells on the right
+              i1global = max(pe_iyls(py),me_iylgood)
+              i2global = min(pe_iyle(py),me_iyugood)
+c             if (py > fsdecomp%iyproc+1) then
+c               i2global = pe_iyle(fsdecomp%iyproc+1)
+c             endif
+            else if (py < fsdecomp%iyproc) then
+c             --- Sending to the upper guard cells on the left
+              i1global = max(pe_iyus(py),me_iylgood)
+              i2global = min(pe_iyue(py),me_iyugood)
+c             if (py < fsdecomp%iyproc-1) then
+c               i1global = pe_iyus(fsdecomp%iyproc-1)
+c             endif
+            else
+c             --- Send nothing to self
+              i1global = 0
+              i2global = -1
             endif
-          else if (py > fsdecomp%iyproc) then
-c           --- Receiving to the upper guard cells from the right
-            i1global = max(me_iy + me_ny + iyus,pe_iylgood)
-            i2global = min(me_iy + me_ny + iyue,pe_iyugood)
-            if (py > fsdecomp%iyproc+1) then
-              i1global = fsdecomp%iy(py-1) + fsdecomp%ny(py-1) + iyus
+            starts(1) = i1global - me_iy + nyguard
+            sizes(1) = i2global - i1global + 1
+
+c           --- Create the data types for data that is to be sent
+            if (ALL(sizes > 0)) then
+              call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                      MPI_ORDER_FORTRAN,
+     &                                      MPI_DOUBLE_PRECISION,
+     &                                      messagedata%ysendtypes(py),mpierror)
+              call MPI_TYPE_COMMIT(messagedata%ysendtypes(py),mpierror)
+              messagedata%ysendcounts(py) = 1
+            else
+              messagedata%ysendtypes(py) = MPI_DOUBLE_PRECISION
+              messagedata%ysendcounts(py) = 0
             endif
-          else
-c           --- Receive nothing from self
-            i1global = 0
-            i2global = -1
-          endif
-          starts(1) = i1global - me_iy + dely
-          sizes(1) = i2global - i1global + 1
 
-c         --- Create the data types for data that is to be received
-          if (ALL(sizes > 0)) then
-            call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
-     &                                    MPI_ORDER_FORTRAN,
-     &                                    MPI_DOUBLE_PRECISION,
-     &                                    messagedata%yrecvtypes(py),mpierror)
-            call MPI_TYPE_COMMIT(messagedata%yrecvtypes(py),mpierror)
-            messagedata%yrecvcounts(py) = 1
-          else
-            messagedata%yrecvtypes(py) = MPI_DOUBLE_PRECISION
-            messagedata%yrecvcounts(py) = 0
-          endif
-
-        enddo
-
-        do pz=0,fsdecomp%nzprocs-1
-
-          starts(0) = 0
-          sizes(0) = me_nx + 2*delx + 1
-          starts(1) = 0
-          sizes(1) = me_ny + 2*dely + 1
-
-          pe_iz = fsdecomp%iz(pz)
-          pe_nz = fsdecomp%nz(pz)
-
-          if (pz > fsdecomp%izproc) then
-c           --- Sending to the lower guard cells on the right
-            i1global = max(pe_iz - izls,me_izlgood)
-            i2global = min(pe_iz - izle,me_izugood)
-            if (pz > fsdecomp%izproc+1) then
-              i2global = fsdecomp%iz(fsdecomp%izproc+1) - izle
+            if (py < fsdecomp%iyproc) then
+c             --- Receiving to the lower guard cells from the left
+              i1global = max(me_iyls,pe_iylgood)
+              i2global = min(me_iyle,pe_iyugood)
+c             if (py < fsdecomp%iyproc-1) then
+c               i2global = pe_iyle(py+1)
+c             endif
+            else if (py > fsdecomp%iyproc) then
+c             --- Receiving to the upper guard cells from the right
+              i1global = max(me_iyus,pe_iylgood)
+              i2global = min(me_iyue,pe_iyugood)
+c             if (py > fsdecomp%iyproc+1) then
+c               i1global = pe_iyus(py-1)
+c             endif
+            else
+c             --- Receive nothing from self
+              i1global = 0
+              i2global = -1
             endif
-          else if (pz < fsdecomp%izproc) then
-c           --- Sending to the upper guard cells on the left
-            i1global = max(pe_iz + pe_nz + izus,me_izlgood)
-            i2global = min(pe_iz + pe_nz + izue,me_izugood)
-            if (pz < fsdecomp%izproc-1) then
-              i1global = fsdecomp%iz(fsdecomp%izproc-1) +
-     &                   fsdecomp%nz(fsdecomp%izproc-1) + izus
+            starts(1) = i1global - me_iy + nyguard
+            sizes(1) = i2global - i1global + 1
+
+c           --- Create the data types for data that is to be received
+            if (ALL(sizes > 0)) then
+              call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                      MPI_ORDER_FORTRAN,
+     &                                      MPI_DOUBLE_PRECISION,
+     &                                      messagedata%yrecvtypes(py),mpierror)
+              call MPI_TYPE_COMMIT(messagedata%yrecvtypes(py),mpierror)
+              messagedata%yrecvcounts(py) = 1
+            else
+              messagedata%yrecvtypes(py) = MPI_DOUBLE_PRECISION
+              messagedata%yrecvcounts(py) = 0
             endif
-          else
-c           --- Send nothing to self
-            i1global = 0
-            i2global = -1
-          endif
-          starts(2) = i1global - me_iz + delz
-          sizes(2) = i2global - i1global + 1
 
-c         --- Create the data types for data that is to be sent
-          if (ALL(sizes > 0)) then
-            call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
-     &                                    MPI_ORDER_FORTRAN,
-     &                                    MPI_DOUBLE_PRECISION,
-     &                                    messagedata%zsendtypes(pz),mpierror)
-            call MPI_TYPE_COMMIT(messagedata%zsendtypes(pz),mpierror)
-            messagedata%zsendcounts(pz) = 1
-          else
-            messagedata%zsendtypes(pz) = MPI_DOUBLE_PRECISION
-            messagedata%zsendcounts(pz) = 0
-          endif
+          enddo
+        endif
 
-          pe_izlgood = pe_iz + 1 - izle
-          pe_izugood = pe_iz + pe_nz - 1 + izus
-          if (pe_iz == 0) pe_izlgood = -delz
-          if (pe_iz+pe_nz == fsdecomp%nzglobal) pe_izugood = pe_iz + pe_nz + delz
+        if (fsdecomp%mpistatez(fsdecomp%izproc) >= 1) then
+          messagedata%zsendtypes = MPI_DOUBLE_PRECISION
+          messagedata%zsendcounts = 0
+          messagedata%zrecvtypes = MPI_DOUBLE_PRECISION
+          messagedata%zrecvcounts = 0
+        else
 
-          if (pz < fsdecomp%izproc) then
-c           --- Receiving to the lower guard cells from the left
-            i1global = max(me_iz - izls,pe_izlgood)
-            i2global = min(me_iz - izle,pe_izugood)
-            if (pz < fsdecomp%izproc-1) then
-              i2global = fsdecomp%iz(pz+1) - izle
+          do pz=0,fsdecomp%nzprocs-1
+
+            if (fsdecomp%mpistatez(pz) >= 1) then
+              messagedata%zsendtypes(pz) = MPI_DOUBLE_PRECISION
+              messagedata%zsendcounts(pz) = 0
+              messagedata%zrecvtypes(pz) = MPI_DOUBLE_PRECISION
+              messagedata%zrecvcounts(pz) = 0
+              cycle
             endif
-          else if (pz > fsdecomp%izproc) then
-c           --- Receiving to the upper guard cells from the right
-            i1global = max(me_iz + me_nz + izus,pe_izlgood)
-            i2global = min(me_iz + me_nz + izue,pe_izugood)
-            if (pz > fsdecomp%izproc+1) then
-              i1global = fsdecomp%iz(pz-1) + fsdecomp%nz(pz-1) + izus
+
+            starts(0) = 0
+            sizes(0) = me_nx + 2*nxguard + 1
+            starts(1) = 0
+            sizes(1) = me_ny + 2*nyguard + 1
+
+            pe_iz = fsdecomp%iz(pz)
+            pe_nz = fsdecomp%nz(pz)
+
+            pe_izlgood = pe_izle(pz) + 1
+            pe_izugood = pe_izus(pz) - 1
+            if (pe_iz == 0) pe_izlgood = -pe_nzguard(pz)
+            if (pe_iz+pe_nz == fsdecomp%nzglobal)
+     &        pe_izugood = pe_iz + pe_nz + pe_nzguard(pz)
+
+            if (pz > fsdecomp%izproc) then
+c             --- Sending to the lower guard cells on the right
+              i1global = max(pe_izls(pz),me_izlgood)
+              i2global = min(pe_izle(pz),me_izugood)
+c             if (pz > fsdecomp%izproc+1) then
+c               i2global = pe_izle(fsdecomp%izproc+1)
+c             endif
+            else if (pz < fsdecomp%izproc) then
+c             --- Sending to the upper guard cells on the left
+              i1global = max(pe_izus(pz),me_izlgood)
+              i2global = min(pe_izue(pz),me_izugood)
+c             if (pz < fsdecomp%izproc-1) then
+c               i1global = pe_izus(fsdecomp%izproc-1)
+c             endif
+            else
+c             --- Send nothing to self
+              i1global = 0
+              i2global = -1
             endif
-          else
-c           --- Receive nothing from self
-            i1global = 0
-            i2global = -1
-          endif
-          starts(2) = i1global - me_iz + delz
-          sizes(2) = i2global - i1global + 1
+            starts(2) = i1global - me_iz + nzguard
+            sizes(2) = i2global - i1global + 1
 
-c         --- Create the data types for data that is to be received
-          if (ALL(sizes > 0)) then
-            call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
-     &                                    MPI_ORDER_FORTRAN,
-     &                                    MPI_DOUBLE_PRECISION,
-     &                                    messagedata%zrecvtypes(pz),mpierror)
-            call MPI_TYPE_COMMIT(messagedata%zrecvtypes(pz),mpierror)
-            messagedata%zrecvcounts(pz) = 1
-          else
-            messagedata%zrecvtypes(pz) = MPI_DOUBLE_PRECISION
-            messagedata%zrecvcounts(pz) = 0
-          endif
+c           --- Create the data types for data that is to be sent
+            if (ALL(sizes > 0)) then
+              call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                      MPI_ORDER_FORTRAN,
+     &                                      MPI_DOUBLE_PRECISION,
+     &                                      messagedata%zsendtypes(pz),mpierror)
+              call MPI_TYPE_COMMIT(messagedata%zsendtypes(pz),mpierror)
+              messagedata%zsendcounts(pz) = 1
+            else
+              messagedata%zsendtypes(pz) = MPI_DOUBLE_PRECISION
+              messagedata%zsendcounts(pz) = 0
+            endif
 
-        enddo
+            if (pz < fsdecomp%izproc) then
+c             --- Receiving to the lower guard cells from the left
+              i1global = max(me_izls,pe_izlgood)
+              i2global = min(me_izle,pe_izugood)
+c             if (pz < fsdecomp%izproc-1) then
+c               i2global = pe_izle(pz+1)
+c             endif
+            else if (pz > fsdecomp%izproc) then
+c             --- Receiving to the upper guard cells from the right
+              i1global = max(me_izus,pe_izlgood)
+              i2global = min(me_izue,pe_izugood)
+c             if (pz > fsdecomp%izproc+1) then
+c               i1global = pe_izus(pz-1)
+c             endif
+            else
+c             --- Receive nothing from self
+              i1global = 0
+              i2global = -1
+            endif
+            starts(2) = i1global - me_iz + nzguard
+            sizes(2) = i2global - i1global + 1
+
+c           --- Create the data types for data that is to be received
+            if (ALL(sizes > 0)) then
+              call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                      MPI_ORDER_FORTRAN,
+     &                                      MPI_DOUBLE_PRECISION,
+     &                                      messagedata%zrecvtypes(pz),mpierror)
+              call MPI_TYPE_COMMIT(messagedata%zrecvtypes(pz),mpierror)
+              messagedata%zrecvcounts(pz) = 1
+            else
+              messagedata%zrecvtypes(pz) = MPI_DOUBLE_PRECISION
+              messagedata%zrecvcounts(pz) = 0
+            endif
+
+          enddo
+        endif
+
+        deallocate(pe_nxguard)
+        deallocate(pe_nyguard)
+        deallocate(pe_nzguard)
+
+        deallocate(pe_ixls)
+        deallocate(pe_iyls)
+        deallocate(pe_izls)
+        deallocate(pe_ixle)
+        deallocate(pe_iyle)
+        deallocate(pe_izle)
+        deallocate(pe_ixus)
+        deallocate(pe_iyus)
+        deallocate(pe_izus)
+        deallocate(pe_ixue)
+        deallocate(pe_iyue)
+        deallocate(pe_izue)
 
 !$OMP MASTER
         if (lf3dtimesubs) timegetmessagedata = timegetmessagedata + wtime() - substarttime
@@ -1869,57 +2204,971 @@ c         --- Create the data types for data that is to be received
         return
         end subroutine getmessagedata
 c       ======================================================================
-        subroutine freemessagedata(messagedata)
+        subroutine getmessagedataupdatephi(nc,nxlocal,nylocal,nzlocal,
+     &                                     nxguard,nyguard,nzguard,
+     &                                     ils,ile,ius,iue,fsdecomp,
+     &                                     messagedata)
+        use Subtimersf3d
         use Decompositionmodule
+        use Multigrid3d,Only: mgcoarsening
+        integer(ISZ):: nc,nxlocal,nylocal,nzlocal
+        integer(ISZ):: ils,ile,ius,iue
+        integer(ISZ):: nxguard,nyguard,nzguard
+        type(Decomposition):: fsdecomp
         type(messagedatatype):: messagedata
+
+c Calculate the data needed to do the exchange of potential on the boundary
+c and/or in the gaurd cells. The data is cached, and if already calculated,
+c the cached data is returned, giving a substantial time savings.
+
+c ils, ile are the start and end of the range of slices at the lower edges
+c          of the grid that need to be obtained from neighbors. The values are
+c          relative to 0.
+c ius, iue are the start and end of the range of slices at the upper edges
+c          of the grid that need to be obtained from neighbors. The values are
+c          relative to the upper index, nx, ny or nz.
+
+        integer(ISZ):: ic
+        integer(ISZ):: npx,npy,npz
+        integer(ISZ):: px,py,pz
+        integer(ISZ):: px1,px2,py1,py2,pz1,pz2
+        integer(ISZ):: pxstep,pystep,pzstep
+        integer(ISZ):: me_ix,me_iy,me_iz
+        integer(ISZ):: me_nx,me_ny,me_nz
+        integer(ISZ):: pe_ix,pe_iy,pe_iz
+        integer(ISZ):: pe_nx,pe_ny,pe_nz
+        integer(ISZ):: me_ixls,me_iyls,me_izls,me_ixle,me_iyle,me_izle
+        integer(ISZ):: me_ixus,me_iyus,me_izus,me_ixue,me_iyue,me_izue
+        integer(ISZ),pointer:: pe_ixls(:),pe_iyls(:),pe_izls(:)
+        integer(ISZ),pointer:: pe_ixle(:),pe_iyle(:),pe_izle(:)
+        integer(ISZ),pointer:: pe_ixus(:),pe_iyus(:),pe_izus(:)
+        integer(ISZ),pointer:: pe_ixue(:),pe_iyue(:),pe_izue(:)
+        integer(ISZ):: me_ixlgood,me_ixugood
+        integer(ISZ):: me_iylgood,me_iyugood
+        integer(ISZ):: me_izlgood,me_izugood
+        integer(ISZ):: pe_ixlgood,pe_ixugood
+        integer(ISZ):: pe_iylgood,pe_iyugood
+        integer(ISZ):: pe_izlgood,pe_izugood
+        integer(ISZ):: i1global,i2global
+        integer(MPIISZ):: iproc,nn
+        include "mpif.h"
+        integer(MPIISZ):: dims,nlocal(-1:2),starts(-1:2),sizes(-1:2)
+        integer(MPIISZ):: mpierror
+        real(kind=8):: substarttime,wtime
+        if (lf3dtimesubs) substarttime = wtime()
+
+c       --- Search through the cached data to see if this data set has
+c       --- already been calculated.
+c       --- Note, to turn caching off, only this loop needs to be commented out
+        do ic = 1,SIZE(messagedatacache)
+
+c         --- nc_cache will be < 0 for unallocated caches. If the
+c         --- search has found one, then stop looking since there won't
+c         --- be any more cached results further on.
+          if (messagedatacache(ic)%nc_cache < 0) exit
+
+          if ((messagedatacache(ic)%nc_cache == nc) .and.
+     &        (messagedatacache(ic)%lguardres_cache .eqv. .false.) .and.
+     &        (messagedatacache(ic)%lupdatephi_cache .eqv. .true.) .and.
+     &        (messagedatacache(ic)%nxguard_cache == nxguard) .and.
+     &        (messagedatacache(ic)%nyguard_cache == nyguard) .and.
+     &        (messagedatacache(ic)%nzguard_cache == nzguard) .and.
+     &        (messagedatacache(ic)%ils_cache == ils) .and.
+     &        (messagedatacache(ic)%ile_cache == ile) .and.
+     &        (messagedatacache(ic)%ius_cache == ius) .and.
+     &        (messagedatacache(ic)%iue_cache == iue) .and.
+     &        (size(messagedatacache(ic)%ix_cache) == fsdecomp%nxprocs) .and.
+     &        (size(messagedatacache(ic)%iy_cache) == fsdecomp%nyprocs) .and.
+     &        (size(messagedatacache(ic)%iz_cache) == fsdecomp%nzprocs)) then
+
+            if (all(messagedatacache(ic)%ix_cache == fsdecomp%ix) .and.
+     &          all(messagedatacache(ic)%iy_cache == fsdecomp%iy) .and.
+     &          all(messagedatacache(ic)%iz_cache == fsdecomp%iz) .and.
+     &          all(messagedatacache(ic)%nx_cache == fsdecomp%nx) .and.
+     &          all(messagedatacache(ic)%ny_cache == fsdecomp%ny) .and.
+     &          all(messagedatacache(ic)%nz_cache == fsdecomp%nz)) then
+
+c             --- The cached data is the same, then there's no need
+c             --- to recalculate.
+
+c             --- Setup the array pointers.
+              messagedata%xsendtypes => messagedatacache(ic)%xsendtypes
+              messagedata%xrecvtypes => messagedatacache(ic)%xrecvtypes
+              messagedata%xsendcounts => messagedatacache(ic)%xsendcounts
+              messagedata%xrecvcounts => messagedatacache(ic)%xrecvcounts
+              messagedata%xdispls => messagedatacache(ic)%xdispls
+              messagedata%ysendtypes => messagedatacache(ic)%ysendtypes
+              messagedata%yrecvtypes => messagedatacache(ic)%yrecvtypes
+              messagedata%ysendcounts => messagedatacache(ic)%ysendcounts
+              messagedata%yrecvcounts => messagedatacache(ic)%yrecvcounts
+              messagedata%ydispls => messagedatacache(ic)%ydispls
+              messagedata%zsendtypes => messagedatacache(ic)%zsendtypes
+              messagedata%zrecvtypes => messagedatacache(ic)%zrecvtypes
+              messagedata%zsendcounts => messagedatacache(ic)%zsendcounts
+              messagedata%zrecvcounts => messagedatacache(ic)%zrecvcounts
+              messagedata%zdispls => messagedatacache(ic)%zdispls
+
+              if (lf3dtimesubs) timegetmessagedata = timegetmessagedata + wtime() - substarttime
+              return
+
+            endif
+          endif
+
+        enddo
+
+c       --- A new data set is needed. Increment the counter and put the data
+c       --- in the next available spot.
+        icache = mod(icache,SIZE(messagedatacache)) + 1
+
+c       --- If nc_cache has been set, then the previous data
+c       --- in the cache needs to be freed.
+        if (messagedatacache(icache)%nc_cache >= 0) then
+          call freemessagedata(icache)
+        endif
+
+        npx = fsdecomp%nxprocs
+        npy = fsdecomp%nyprocs
+        npz = fsdecomp%nzprocs
+
+        messagedatacache(icache)%nc_cache = nc
+        messagedatacache(icache)%nxguard_cache = nxguard
+        messagedatacache(icache)%nyguard_cache = nyguard
+        messagedatacache(icache)%nzguard_cache = nzguard
+        messagedatacache(icache)%ils_cache = ils
+        messagedatacache(icache)%ile_cache = ile
+        messagedatacache(icache)%ius_cache = ius
+        messagedatacache(icache)%iue_cache = iue
+        messagedatacache(icache)%lguardres_cache = .false.
+        messagedatacache(icache)%lupdatephi_cache = .true.
+
+        allocate(messagedatacache(icache)%ix_cache(npx))
+        allocate(messagedatacache(icache)%iy_cache(npy))
+        allocate(messagedatacache(icache)%iz_cache(npz))
+        allocate(messagedatacache(icache)%nx_cache(npx))
+        allocate(messagedatacache(icache)%ny_cache(npy))
+        allocate(messagedatacache(icache)%nz_cache(npz))
+
+        messagedatacache(icache)%ix_cache = fsdecomp%ix
+        messagedatacache(icache)%iy_cache = fsdecomp%iy
+        messagedatacache(icache)%iz_cache = fsdecomp%iz
+        messagedatacache(icache)%nx_cache = fsdecomp%nx
+        messagedatacache(icache)%ny_cache = fsdecomp%ny
+        messagedatacache(icache)%nz_cache = fsdecomp%nz
+
+        allocate(messagedatacache(icache)%xsendtypes(0:npx-1))
+        allocate(messagedatacache(icache)%xrecvtypes(0:npx-1))
+        allocate(messagedatacache(icache)%xsendcounts(0:npx-1))
+        allocate(messagedatacache(icache)%xrecvcounts(0:npx-1))
+        allocate(messagedatacache(icache)%xdispls(0:npx-1))
+        allocate(messagedatacache(icache)%ysendtypes(0:npy-1))
+        allocate(messagedatacache(icache)%yrecvtypes(0:npy-1))
+        allocate(messagedatacache(icache)%ysendcounts(0:npy-1))
+        allocate(messagedatacache(icache)%yrecvcounts(0:npy-1))
+        allocate(messagedatacache(icache)%ydispls(0:npy-1))
+        allocate(messagedatacache(icache)%zsendtypes(0:npz-1))
+        allocate(messagedatacache(icache)%zrecvtypes(0:npz-1))
+        allocate(messagedatacache(icache)%zsendcounts(0:npz-1))
+        allocate(messagedatacache(icache)%zrecvcounts(0:npz-1))
+        allocate(messagedatacache(icache)%zdispls(0:npz-1))
+
+        messagedata%xsendtypes => messagedatacache(icache)%xsendtypes
+        messagedata%xrecvtypes => messagedatacache(icache)%xrecvtypes
+        messagedata%xsendcounts => messagedatacache(icache)%xsendcounts
+        messagedata%xrecvcounts => messagedatacache(icache)%xrecvcounts
+        messagedata%xdispls => messagedatacache(icache)%xdispls
+        messagedata%ysendtypes => messagedatacache(icache)%ysendtypes
+        messagedata%yrecvtypes => messagedatacache(icache)%yrecvtypes
+        messagedata%ysendcounts => messagedatacache(icache)%ysendcounts
+        messagedata%yrecvcounts => messagedatacache(icache)%yrecvcounts
+        messagedata%ydispls => messagedatacache(icache)%ydispls
+        messagedata%zsendtypes => messagedatacache(icache)%zsendtypes
+        messagedata%zrecvtypes => messagedatacache(icache)%zrecvtypes
+        messagedata%zsendcounts => messagedatacache(icache)%zsendcounts
+        messagedata%zrecvcounts => messagedatacache(icache)%zrecvcounts
+        messagedata%zdispls => messagedatacache(icache)%zdispls
+
+c       --- Now, do the actual calculation.
+
+        dims = 4
+        nlocal = (/nc,1+nxlocal+2*nxguard,
+     &                1+nylocal+2*nyguard,
+     &                1+nzlocal+2*nzguard/)
+        messagedata%xdispls = 0
+        messagedata%ydispls = 0
+        messagedata%zdispls = 0
+
+c       --- First, calculate what data needs to be sent and received.
+
+c       --- Send and recv all of the first dimension.
+        starts(-1) = 0
+        sizes(-1) = nc
+
+c       --- Data to be sent
+        me_ix = fsdecomp%ix(fsdecomp%ixproc)
+        me_nx = fsdecomp%nx(fsdecomp%ixproc)
+        me_iy = fsdecomp%iy(fsdecomp%iyproc)
+        me_ny = fsdecomp%ny(fsdecomp%iyproc)
+        me_iz = fsdecomp%iz(fsdecomp%izproc)
+        me_nz = fsdecomp%nz(fsdecomp%izproc)
+
+        me_ixls = me_ix + max(-nxguard,ils)
+        me_ixle = me_ix + max(-nxguard,ile)
+        me_iyls = me_iy + max(-nyguard,ils)
+        me_iyle = me_iy + max(-nyguard,ile)
+        me_izls = me_iz + max(-nzguard,ils)
+        me_izle = me_iz + max(-nzguard,ile)
+
+        me_ixus = me_ix + me_nx + min(nxguard,ius)
+        me_ixue = me_ix + me_nx + min(nxguard,iue)
+        me_iyus = me_iy + me_ny + min(nyguard,ius)
+        me_iyue = me_iy + me_ny + min(nyguard,iue)
+        me_izus = me_iz + me_nz + min(nzguard,ius)
+        me_izue = me_iz + me_nz + min(nzguard,iue)
+
+        allocate(pe_ixls(0:fsdecomp%nxprocs-1))
+        allocate(pe_iyls(0:fsdecomp%nyprocs-1))
+        allocate(pe_izls(0:fsdecomp%nzprocs-1))
+        allocate(pe_ixle(0:fsdecomp%nxprocs-1))
+        allocate(pe_iyle(0:fsdecomp%nyprocs-1))
+        allocate(pe_izle(0:fsdecomp%nzprocs-1))
+        allocate(pe_ixus(0:fsdecomp%nxprocs-1))
+        allocate(pe_iyus(0:fsdecomp%nyprocs-1))
+        allocate(pe_izus(0:fsdecomp%nzprocs-1))
+        allocate(pe_ixue(0:fsdecomp%nxprocs-1))
+        allocate(pe_iyue(0:fsdecomp%nyprocs-1))
+        allocate(pe_izue(0:fsdecomp%nzprocs-1))
+
+        pe_ixls = fsdecomp%ix + max(-nxguard,ils)
+        pe_ixle = fsdecomp%ix + max(-nxguard,ile)
+        pe_iyls = fsdecomp%iy + max(-nyguard,ils)
+        pe_iyle = fsdecomp%iy + max(-nyguard,ile)
+        pe_izls = fsdecomp%iz + max(-nzguard,ils)
+        pe_izle = fsdecomp%iz + max(-nzguard,ile)
+
+        pe_ixus = fsdecomp%ix + fsdecomp%nx + min(nxguard,ius)
+        pe_ixue = fsdecomp%ix + fsdecomp%nx + min(nxguard,iue)
+        pe_iyus = fsdecomp%iy + fsdecomp%ny + min(nyguard,ius)
+        pe_iyue = fsdecomp%iy + fsdecomp%ny + min(nyguard,iue)
+        pe_izus = fsdecomp%iz + fsdecomp%nz + min(nzguard,ius)
+        pe_izue = fsdecomp%iz + fsdecomp%nz + min(nzguard,iue)
+
+c       --- Get the lower and upper range of the good data. Good data means
+c       --- data that was calculated on the processor and is available to send
+c       --- to other processors that need it. The default value is the range of
+c       --- data out to the data that is needed, set by the me_ixle etc input
+c       --- arguments. If the processor sits on the edge of the grid, then
+c       --- include all of the data in the guard cells as well.
+        me_ixlgood = me_ixle + 1
+        me_ixugood = me_ixus - 1
+        me_iylgood = me_iyle + 1
+        me_iyugood = me_iyus - 1
+        me_izlgood = me_izle + 1
+        me_izugood = me_izus - 1
+        if (me_ix == 0) me_ixlgood = -nxguard
+        if (me_ix + me_nx == fsdecomp%nxglobal) me_ixugood=me_ix+me_nx+nxguard
+        if (me_iy == 0) me_iylgood = -nyguard
+        if (me_iy + me_ny == fsdecomp%nyglobal) me_iyugood=me_iy+me_ny+nyguard
+        if (me_iz == 0) me_izlgood = -nzguard
+        if (me_iz + me_nz == fsdecomp%nzglobal) me_izugood=me_iz+me_nz+nzguard
+
+c       --- Set the default values so no data is sent or received.
+        messagedata%xsendtypes = MPI_DOUBLE_PRECISION
+        messagedata%xsendcounts = 0
+        messagedata%xrecvtypes = MPI_DOUBLE_PRECISION
+        messagedata%xrecvcounts = 0
+
+c       --- If the processor is active or will be active at the next
+c       --- finest level, then calculate what data needs to be exchanged.
+        if (fsdecomp%mpistatex(fsdecomp%ixproc) < 3) then
+
+          starts(1) = 0
+          sizes(1) = me_ny + 2*nyguard + 1
+          starts(2) = 0
+          sizes(2) = me_nz + 2*nzguard + 1
+
+          if (fsdecomp%mpistatex(fsdecomp%ixproc) == 1) then
+c           --- This process will be active at the next finest level
+c           --- and so needs data for phicoarse to be sent to it.
+
+c           --- Find the active processes to the left and right.
+c           --- px1 and px2 will be the indices to those processes.
+c           --- If there is none, then px1 and/or px2 default to self.
+            px1 = fsdecomp%ixproc
+            px2 = fsdecomp%ixproc
+            do px=fsdecomp%ixproc-1,0,-1
+              if (fsdecomp%mpistatex(px) == 0 .or.
+     &            fsdecomp%mpistatex(px) == 2) then
+                px1 = px
+                exit
+              endif
+            enddo
+            do px=fsdecomp%ixproc+1,fsdecomp%nxprocs-1
+              if (fsdecomp%mpistatex(px) == 0 .or.
+     &            fsdecomp%mpistatex(px) == 2) then
+                px2 = px
+                exit
+              endif
+            enddo
+
+c           --- If there are no active processes, then skip the next block.
+            if (px1 < px2) then
+
+c             --- The loop will only touch the nearest active processes,
+c             --- at most one on each side.
+              pxstep = px2 - px1
+
+c             --- Set the extents of the data needed.
+              if (px1 == fsdecomp%ixproc) then
+c               --- There are no active processes to the left, so set so that
+c               --- the one to the right will send data covering the whole
+c               --- domain. Set the loop limits to skip px1.
+                me_ixle = me_ixls - 1
+                me_ixus = me_ixls
+                px1 = px2
+              else if (px2 == fsdecomp%ixproc) then
+c               --- There are no active processes to the right, so set so that
+c               --- the one to the left will send data covering the whole
+c               --- domain. Set the loop limits to skip px2.
+                me_ixle = me_ixue
+                me_ixus = me_ixue + 1
+                px2 = px1
+              else
+c               --- Set the extents to cover the whole domain, splitting it
+c               --- between the left and right active processes.
+                me_ixle = min(me_ixus - 1,pe_ixus(px1) - 1)
+                me_ixus = me_ixle + 1
+              endif
+
+              do px=px1,px2,pxstep
+
+c               --- Get the extent of data on the neighboring process.
+c               --- This data could have been calculated there, or is
+c               --- from a neighbor of it. At the ends of system, include
+c               --- any guard cells.
+                pe_ix = fsdecomp%ix(px)
+                pe_nx = fsdecomp%nx(px)
+                pe_ixlgood = pe_ixle(px) + 1
+                pe_ixugood = pe_ixus(px) - 1
+                if (pe_ix == 0) pe_ixlgood = -nxguard
+                if (pe_ix+pe_nx == fsdecomp%nxglobal)
+     &            pe_ixugood = pe_ix + pe_nx + nxguard
+
+                if (px < fsdecomp%ixproc) then
+c                 --- Receiving from the left
+                  i1global = max(me_ixls,pe_ixlgood)
+                  i2global = min(me_ixle,pe_ixugood)
+                else if (px > fsdecomp%ixproc) then
+c                 --- Receiving from the right
+                  i1global = max(me_ixus,pe_ixlgood)
+                  i2global = min(me_ixue,pe_ixugood)
+                endif
+                starts(0) = i1global - me_ix + nxguard
+                sizes(0) = i2global - i1global + 1
+
+c               --- Create the data types for data that is to be received
+                if (ALL(sizes > 0)) then
+                  call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                          MPI_ORDER_FORTRAN,
+     &                                          MPI_DOUBLE_PRECISION,
+     &                                          messagedata%xrecvtypes(px),
+     &                                          mpierror)
+                  call MPI_TYPE_COMMIT(messagedata%xrecvtypes(px),mpierror)
+                  messagedata%xrecvcounts(px) = 1
+c                 --- Set the state to active since after the transfer of
+c                 --- data in x, this process will have updated phi that
+c                 --- can be transferred to neighbors in y and z.
+                  fsdecomp%mpistatey(fsdecomp%iyproc) = 0
+                  fsdecomp%mpistatez(fsdecomp%izproc) = 0
+                endif
+
+              enddo
+
+            endif
+
+          else
+
+c           --- Find all of the processes to the left and right up to the
+c           --- next active process. At this point, it doesn't matter
+c           --- whether those processes need to receive data or not.
+            px1 = fsdecomp%ixproc
+            px2 = fsdecomp%ixproc
+            do px=fsdecomp%ixproc-1,0,-1
+              if (fsdecomp%mpistatex(px) == 0 .or.
+     &            fsdecomp%mpistatex(px) == 2) exit
+              px1 = px
+            enddo
+            do px=fsdecomp%ixproc+1,fsdecomp%nxprocs-1
+              if (fsdecomp%mpistatex(px) == 0 .or.
+     &            fsdecomp%mpistatex(px) == 2) exit
+              px2 = px
+            enddo
+
+c           --- If the immediate neighbor is active, or this process is at
+c           --- the end of the system, then set the start of the list to be
+c           --- the process on the other side. This is done so that px1
+c           --- and px2 both point to inactive processes.
+            if (px1 == fsdecomp%ixproc) px1 = px1 + 1
+            if (px2 == fsdecomp%ixproc) px2 = px2 - 1
+
+c           --- If there are no inactive processes around, then do nothing.
+            if (px1 < fsdecomp%ixproc .or. px2 > fsdecomp%ixproc) then
+
+c             --- Loop over all of the nearby inactive processes. There will
+c             --- only ever by one process at most on each side that will
+c             --- need to receive data. Letting px1 and px2 include all of
+c             --- the inactive processes makes for a nice way of determining
+c             --- if the process that needs data is the last one toward the
+c             --- end of the system. If that is the case, special handling
+c             --- is needed since it will only be receiving data from one side.
+              do px=px1,px2
+
+c               --- Skip active processes (this will only be itself) and
+c               --- processes that are inactive at the next finest level.
+                if (fsdecomp%mpistatex(px) .ne. 1) cycle
+
+                if (px > fsdecomp%ixproc) then
+c                 --- Sending to the right
+                  if (px2 == fsdecomp%nxprocs-1) then
+c                   --- The receiving process is to the right of all active
+c                   --- processes so needs all of its data from the active
+c                   --- process to its left.
+                    pe_ixle(px) = pe_ixue(px)
+                    pe_ixus(px) = pe_ixue(px) + 1
+                  else
+c                   --- Split the data between the active processes on
+c                   --- either side.
+                    pe_ixle(px) = min(pe_ixus(px) - 1,me_ixus - 1)
+                    pe_ixus(px) = pe_ixle(px) + 1
+                  endif
+                  i1global = max(pe_ixls(px),me_ixlgood)
+                  i2global = min(pe_ixle(px),me_ixugood)
+                else if (px < fsdecomp%ixproc) then
+c                 --- Sending to the left
+                  if (px1 == 0) then
+c                   --- The receiving process is to the left of all active
+c                   --- processes so needs all of its data from the active
+c                   --- process to its right.
+                    pe_ixle(px) = pe_ixls(px) - 1
+                    pe_ixus(px) = pe_ixls(px)
+                  else
+c                   --- Split the data between the active processes on
+c                   --- either side.
+                    pe_ixle(px) = min(pe_ixus(px) - 1,pe_ixus(px1-1) - 1)
+                    pe_ixus(px) = pe_ixle(px) + 1
+                  endif
+                  i1global = max(pe_ixus(px),me_ixlgood)
+                  i2global = min(pe_ixue(px),me_ixugood)
+                endif
+                starts(0) = i1global - me_ix + nxguard
+                sizes(0) = i2global - i1global + 1
+
+c               --- Create the data types for data that is to be sent
+                if (ALL(sizes > 0)) then
+                  call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                          MPI_ORDER_FORTRAN,
+     &                                          MPI_DOUBLE_PRECISION,
+     &                                          messagedata%xsendtypes(px),
+     &                                          mpierror)
+                  call MPI_TYPE_COMMIT(messagedata%xsendtypes(px),mpierror)
+                  messagedata%xsendcounts(px) = 1
+                endif
+
+              enddo
+            endif
+
+          endif
+
+        endif
+
+c       --- Set the default values so no data is sent or received.
+        messagedata%ysendtypes = MPI_DOUBLE_PRECISION
+        messagedata%ysendcounts = 0
+        messagedata%yrecvtypes = MPI_DOUBLE_PRECISION
+        messagedata%yrecvcounts = 0
+
+c       --- If the processor is active or will be active at the next
+c       --- finest level, then calculate what data needs to be exchanged.
+        if (fsdecomp%mpistatey(fsdecomp%iyproc) < 3) then
+
+          starts(0) = 0
+          sizes(0) = me_nx + 2*nxguard + 1
+          starts(2) = 0
+          sizes(2) = me_nz + 2*nzguard + 1
+
+          if (fsdecomp%mpistatey(fsdecomp%iyproc) == 1) then
+c           --- This process will be active at the next finest level
+c           --- and so needs data for phicoarse to be sent to it.
+
+c           --- Find the active processes to the left and right.
+c           --- py1 and py2 will be the indices to those processes.
+c           --- If there is none, then py1 and/or py2 default to self.
+            py1 = fsdecomp%iyproc
+            py2 = fsdecomp%iyproc
+            do py=fsdecomp%iyproc-1,0,-1
+              if (fsdecomp%mpistatey(py) == 0 .or.
+     &            fsdecomp%mpistatey(py) == 2) then
+                py1 = py
+                exit
+              endif
+            enddo
+            do py=fsdecomp%iyproc+1,fsdecomp%nyprocs-1
+              if (fsdecomp%mpistatey(py) == 0 .or.
+     &            fsdecomp%mpistatey(py) == 2) then
+                py2 = py
+                exit
+              endif
+            enddo
+
+c           --- If there are no active processes, then skip the next block.
+            if (py1 < py2) then
+
+c             --- The loop will only touch the nearest active processes,
+c             --- at most one on each side.
+              pystep = py2 - py1
+
+c             --- Set the extents of the data needed.
+              if (py1 == fsdecomp%iyproc) then
+c               --- There are no active processes to the left, so set so that
+c               --- the one to the right will send data covering the whole
+c               --- domain. Set the loop limits to skip py1.
+                me_iyle = me_iyls - 1
+                me_iyus = me_iyls
+                py1 = py2
+              else if (py2 == fsdecomp%iyproc) then
+c               --- There are no active processes to the right, so set so that
+c               --- the one to the left will send data covering the whole
+c               --- domain. Set the loop limits to skip py2.
+                me_iyle = me_iyue
+                me_iyus = me_iyue + 1
+                py2 = py1
+              else
+c               --- Set the extents to cover the whole domain, splitting it
+c               --- between the left and right active processes.
+                me_iyle = min(me_iyus - 1,pe_iyus(py1) - 1)
+                me_iyus = me_iyle + 1
+              endif
+
+              do py=py1,py2,pystep
+
+c               --- Get the extent of data on the neighboring process.
+c               --- This data could have been calculated there, or is
+c               --- from a neighbor of it. At the ends of system, include
+c               --- any guard cells.
+                pe_iy = fsdecomp%iy(py)
+                pe_ny = fsdecomp%ny(py)
+                pe_iylgood = pe_iyle(py) + 1
+                pe_iyugood = pe_iyus(py) - 1
+                if (pe_iy == 0) pe_iylgood = -nyguard
+                if (pe_iy+pe_ny == fsdecomp%nyglobal)
+     &            pe_iyugood = pe_iy + pe_ny + nyguard
+
+                if (py < fsdecomp%iyproc) then
+c                 --- Receiving from the left
+                  i1global = max(me_iyls,pe_iylgood)
+                  i2global = min(me_iyle,pe_iyugood)
+                else if (py > fsdecomp%iyproc) then
+c                 --- Receiving from the right
+                  i1global = max(me_iyus,pe_iylgood)
+                  i2global = min(me_iyue,pe_iyugood)
+                endif
+                starts(1) = i1global - me_iy + nyguard
+                sizes(1) = i2global - i1global + 1
+
+c               --- Create the data types for data that is to be received
+                if (ALL(sizes > 0)) then
+                  call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                          MPI_ORDER_FORTRAN,
+     &                                          MPI_DOUBLE_PRECISION,
+     &                                          messagedata%yrecvtypes(py),
+     &                                          mpierror)
+                  call MPI_TYPE_COMMIT(messagedata%yrecvtypes(py),mpierror)
+                  messagedata%yrecvcounts(py) = 1
+c                 --- Set the state to active since after the transfer of
+c                 --- data in y, this process will have updated phi that
+c                 --- can be transferred to neighbors in z.
+                  fsdecomp%mpistatez(fsdecomp%izproc) = 0
+                endif
+
+              enddo
+
+            endif
+
+          else
+
+c           --- Find all of the processes to the left and right up to the
+c           --- next active process. At this point, it doesn't matter
+c           --- whether those processes need to receive data or not.
+            py1 = fsdecomp%iyproc
+            py2 = fsdecomp%iyproc
+            do py=fsdecomp%iyproc-1,0,-1
+              if (fsdecomp%mpistatey(py) == 0 .or.
+     &            fsdecomp%mpistatey(py) == 2) exit
+              py1 = py
+            enddo
+            do py=fsdecomp%iyproc+1,fsdecomp%nyprocs-1
+              if (fsdecomp%mpistatey(py) == 0 .or.
+     &            fsdecomp%mpistatey(py) == 2) exit
+              py2 = py
+            enddo
+
+c           --- If the immediate neighbor is active, or this process is at
+c           --- the end of the system, then set the start of the list to be
+c           --- the process on the other side. This is done so that py1
+c           --- and py2 both point to inactive processes.
+            if (py1 == fsdecomp%iyproc) py1 = py1 + 1
+            if (py2 == fsdecomp%iyproc) py2 = py2 - 1
+
+c           --- If there are no inactive processes around, then do nothing.
+            if (py1 < fsdecomp%iyproc .or. py2 > fsdecomp%iyproc) then
+
+c             --- Loop over all of the nearby inactive processes. There will
+c             --- only ever by one process at most on each side that will
+c             --- need to receive data. Letting py1 and py2 include all of
+c             --- the inactive processes makes for a nice way of determining
+c             --- if the process that needs data is the last one toward the
+c             --- end of the system. If that is the case, special handling
+c             --- is needed since it will only be receiving data from one side.
+              do py=py1,py2
+
+c               --- Skip active processes (this will only be itself) and
+c               --- processes that are inactive at the next finest level.
+                if (fsdecomp%mpistatey(py) .ne. 1) cycle
+
+                if (py > fsdecomp%iyproc) then
+c                 --- Sending to the right
+                  if (py2 == fsdecomp%nyprocs-1) then
+c                   --- The receiving process is to the right of all active
+c                   --- processes so needs all of its data from the active
+c                   --- process to its left.
+                    pe_iyle(py) = pe_iyue(py)
+                    pe_iyus(py) = pe_iyue(py) + 1
+                  else
+c                   --- Split the data between the active processes on
+c                   --- either side.
+                    pe_iyle(py) = min(pe_iyus(py) - 1,me_iyus - 1)
+                    pe_iyus(py) = pe_iyle(py) + 1
+                  endif
+                  i1global = max(pe_iyls(py),me_iylgood)
+                  i2global = min(pe_iyle(py),me_iyugood)
+                else if (py < fsdecomp%iyproc) then
+c                 --- Sending to the left
+                  if (py1 == 0) then
+c                   --- The receiving process is to the left of all active
+c                   --- processes so needs all of its data from the active
+c                   --- process to its right.
+                    pe_iyle(py) = pe_iyls(py) - 1
+                    pe_iyus(py) = pe_iyls(py)
+                  else
+c                   --- Split the data between the active processes on
+c                   --- either side.
+                    pe_iyle(py) = min(pe_iyus(py) - 1,pe_iyus(py1-1) - 1)
+                    pe_iyus(py) = pe_iyle(py) + 1
+                  endif
+                  i1global = max(pe_iyus(py),me_iylgood)
+                  i2global = min(pe_iyue(py),me_iyugood)
+                endif
+                starts(1) = i1global - me_iy + nyguard
+                sizes(1) = i2global - i1global + 1
+
+c               --- Create the data types for data that is to be sent
+                if (ALL(sizes > 0)) then
+                  call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                          MPI_ORDER_FORTRAN,
+     &                                          MPI_DOUBLE_PRECISION,
+     &                                          messagedata%ysendtypes(py),
+     &                                          mpierror)
+                  call MPI_TYPE_COMMIT(messagedata%ysendtypes(py),mpierror)
+                  messagedata%ysendcounts(py) = 1
+                endif
+
+              enddo
+            endif
+
+          endif
+
+        endif
+
+c       --- Set the default values so no data is sent or received.
+        messagedata%zsendtypes = MPI_DOUBLE_PRECISION
+        messagedata%zsendcounts = 0
+        messagedata%zrecvtypes = MPI_DOUBLE_PRECISION
+        messagedata%zrecvcounts = 0
+
+c       --- If the processor is active or will be active at the next
+c       --- finest level, then calculate what data needs to be exchanged.
+        if (fsdecomp%mpistatez(fsdecomp%izproc) < 3) then
+
+          starts(0) = 0
+          sizes(0) = me_nx + 2*nxguard + 1
+          starts(1) = 0
+          sizes(1) = me_ny + 2*nyguard + 1
+
+          if (fsdecomp%mpistatez(fsdecomp%izproc) == 1) then
+c           --- This process will be active at the next finest level
+c           --- and so needs data for phicoarse to be sent to it.
+
+c           --- Find the active processes to the left and right.
+c           --- pz1 and pz2 will be the indices to those processes.
+c           --- If there is none, then pz1 and/or pz2 default to self.
+            pz1 = fsdecomp%izproc
+            pz2 = fsdecomp%izproc
+            do pz=fsdecomp%izproc-1,0,-1
+              if (fsdecomp%mpistatez(pz) == 0 .or.
+     &            fsdecomp%mpistatez(pz) == 2) then
+                pz1 = pz
+                exit
+              endif
+            enddo
+            do pz=fsdecomp%izproc+1,fsdecomp%nzprocs-1
+              if (fsdecomp%mpistatez(pz) == 0 .or.
+     &            fsdecomp%mpistatez(pz) == 2) then
+                pz2 = pz
+                exit
+              endif
+            enddo
+
+c           --- If there are no active processes, then skip the next block.
+            if (pz1 < pz2) then
+
+c             --- The loop will only touch the nearest active processes,
+c             --- at most one on each side.
+              pzstep = pz2 - pz1
+
+c             --- Set the extents of the data needed.
+              if (pz1 == fsdecomp%izproc) then
+c               --- There are no active processes to the left, so set so that
+c               --- the one to the right will send data covering the whole
+c               --- domain. Set the loop limits to skip pz1.
+                me_izle = me_izls - 1
+                me_izus = me_izls
+                pz1 = pz2
+              else if (pz2 == fsdecomp%izproc) then
+c               --- There are no active processes to the right, so set so that
+c               --- the one to the left will send data covering the whole
+c               --- domain. Set the loop limits to skip pz2.
+                me_izle = me_izue
+                me_izus = me_izue + 1
+                pz2 = pz1
+              else
+c               --- Set the extents to cover the whole domain, splitting it
+c               --- between the left and right active processes.
+                me_izle = min(me_izus - 1,pe_izus(pz1) - 1)
+                me_izus = me_izle + 1
+              endif
+
+              do pz=pz1,pz2,pzstep
+
+c               --- Get the extent of data on the neighboring process.
+c               --- This data could have been calculated there, or is
+c               --- from a neighbor of it. At the ends of system, include
+c               --- any guard cells.
+                pe_iz = fsdecomp%iz(pz)
+                pe_nz = fsdecomp%nz(pz)
+                pe_izlgood = pe_izle(pz) + 1
+                pe_izugood = pe_izus(pz) - 1
+                if (pe_iz == 0) pe_izlgood = -nzguard
+                if (pe_iz+pe_nz == fsdecomp%nzglobal)
+     &            pe_izugood = pe_iz + pe_nz + nzguard
+
+                if (pz < fsdecomp%izproc) then
+c                 --- Receiving from the left
+                  i1global = max(me_izls,pe_izlgood)
+                  i2global = min(me_izle,pe_izugood)
+                else if (pz > fsdecomp%izproc) then
+c                 --- Receiving from the right
+                  i1global = max(me_izus,pe_izlgood)
+                  i2global = min(me_izue,pe_izugood)
+                endif
+                starts(2) = i1global - me_iz + nzguard
+                sizes(2) = i2global - i1global + 1
+
+c               --- Create the data types for data that is to be received
+                if (ALL(sizes > 0)) then
+                  call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                          MPI_ORDER_FORTRAN,
+     &                                          MPI_DOUBLE_PRECISION,
+     &                                          messagedata%zrecvtypes(pz),
+     &                                          mpierror)
+                  call MPI_TYPE_COMMIT(messagedata%zrecvtypes(pz),mpierror)
+                  messagedata%zrecvcounts(pz) = 1
+                endif
+
+              enddo
+
+            endif
+
+          else
+
+c           --- Find all of the processes to the left and right up to the
+c           --- next active process. At this point, it doesn't matter
+c           --- whether those processes need to receive data or not.
+            pz1 = fsdecomp%izproc
+            pz2 = fsdecomp%izproc
+            do pz=fsdecomp%izproc-1,0,-1
+              if (fsdecomp%mpistatez(pz) == 0 .or.
+     &            fsdecomp%mpistatez(pz) == 2) exit
+              pz1 = pz
+            enddo
+            do pz=fsdecomp%izproc+1,fsdecomp%nzprocs-1
+              if (fsdecomp%mpistatez(pz) == 0 .or.
+     &            fsdecomp%mpistatez(pz) == 2) exit
+              pz2 = pz
+            enddo
+
+c           --- If the immediate neighbor is active, or this process is at
+c           --- the end of the system, then set the start of the list to be
+c           --- the process on the other side. This is done so that pz1
+c           --- and pz2 both point to inactive processes.
+            if (pz1 == fsdecomp%izproc) pz1 = pz1 + 1
+            if (pz2 == fsdecomp%izproc) pz2 = pz2 - 1
+
+c           --- If there are no inactive processes around, then do nothing.
+            if (pz1 < fsdecomp%izproc .or. pz2 > fsdecomp%izproc) then
+
+c             --- Loop over all of the nearby inactive processes. There will
+c             --- only ever by one process at most on each side that will
+c             --- need to receive data. Letting pz1 and pz2 include all of
+c             --- the inactive processes makes for a nice way of determining
+c             --- if the process that needs data is the last one toward the
+c             --- end of the system. If that is the case, special handling
+c             --- is needed since it will only be receiving data from one side.
+              do pz=pz1,pz2
+
+c               --- Skip active processes (this will only be itself) and
+c               --- processes that are inactive at the next finest level.
+                if (fsdecomp%mpistatez(pz) .ne. 1) cycle
+
+                if (pz > fsdecomp%izproc) then
+c                 --- Sending to the right
+                  if (pz2 == fsdecomp%nzprocs-1) then
+c                   --- The receiving process is to the right of all active
+c                   --- processes so needs all of its data from the active
+c                   --- process to its left.
+                    pe_izle(pz) = pe_izue(pz)
+                    pe_izus(pz) = pe_izue(pz) + 1
+                  else
+c                   --- Split the data between the active processes on
+c                   --- either side.
+                    pe_izle(pz) = min(pe_izus(pz) - 1,me_izus - 1)
+                    pe_izus(pz) = pe_izle(pz) + 1
+                  endif
+                  i1global = max(pe_izls(pz),me_izlgood)
+                  i2global = min(pe_izle(pz),me_izugood)
+                else if (pz < fsdecomp%izproc) then
+c                 --- Sending to the left
+                  if (pz1 == 0) then
+c                   --- The receiving process is to the left of all active
+c                   --- processes so needs all of its data from the active
+c                   --- process to its right.
+                    pe_izle(pz) = pe_izls(pz) - 1
+                    pe_izus(pz) = pe_izls(pz)
+                  else
+c                   --- Split the data between the active processes on
+c                   --- either side.
+                    pe_izle(pz) = min(pe_izus(pz) - 1,pe_izus(pz1-1) - 1)
+                    pe_izus(pz) = pe_izle(pz) + 1
+                  endif
+                  i1global = max(pe_izus(pz),me_izlgood)
+                  i2global = min(pe_izue(pz),me_izugood)
+                endif
+                starts(2) = i1global - me_iz + nzguard
+                sizes(2) = i2global - i1global + 1
+
+c               --- Create the data types for data that is to be sent
+                if (ALL(sizes > 0)) then
+                  call MPI_TYPE_CREATE_SUBARRAY(dims,nlocal,sizes,starts,
+     &                                          MPI_ORDER_FORTRAN,
+     &                                          MPI_DOUBLE_PRECISION,
+     &                                          messagedata%zsendtypes(pz),
+     &                                          mpierror)
+                  call MPI_TYPE_COMMIT(messagedata%zsendtypes(pz),mpierror)
+                  messagedata%zsendcounts(pz) = 1
+                endif
+
+              enddo
+            endif
+
+          endif
+
+        endif
+
+        deallocate(pe_ixls)
+        deallocate(pe_iyls)
+        deallocate(pe_izls)
+        deallocate(pe_ixle)
+        deallocate(pe_iyle)
+        deallocate(pe_izle)
+        deallocate(pe_ixus)
+        deallocate(pe_iyus)
+        deallocate(pe_izus)
+        deallocate(pe_ixue)
+        deallocate(pe_iyue)
+        deallocate(pe_izue)
+
+!$OMP MASTER
+        if (lf3dtimesubs) timegetmessagedata = timegetmessagedata + wtime() - substarttime
+!$OMP END MASTER
+
+        return
+        end subroutine getmessagedataupdatephi
+c       ======================================================================
+        subroutine freemessagedata(ic)
+        use Decompositionmodule
+        integer(ISZ):: ic
 
         integer(ISZ):: px,py,pz
         integer(MPIISZ):: mpierror
 
 c       --- Note that fsdecomp%nxprocs etc are not used since they may
 c       --- have changed
+        deallocate(messagedatacache(ic)%ix_cache)
+        deallocate(messagedatacache(ic)%iy_cache)
+        deallocate(messagedatacache(ic)%iz_cache)
+        deallocate(messagedatacache(ic)%nx_cache)
+        deallocate(messagedatacache(ic)%ny_cache)
+        deallocate(messagedatacache(ic)%nz_cache)
 
 c       --- Free all of the types
-        do px=0,SIZE(messagedata%xsendcounts)-1
-          if (messagedata%xsendcounts(px) > 0) then
-            call MPI_TYPE_FREE(messagedata%xsendtypes(px),mpierror)
+        do px=0,SIZE(messagedatacache(ic)%xsendcounts)-1
+          if (messagedatacache(ic)%xsendcounts(px) > 0) then
+            call MPI_TYPE_FREE(messagedatacache(ic)%xsendtypes(px),mpierror)
           endif
-          if (messagedata%xrecvcounts(px) > 0) then
-            call MPI_TYPE_FREE(messagedata%xrecvtypes(px),mpierror)
-          endif
-        enddo
-        do py=0,SIZE(messagedata%ysendcounts)-1
-          if (messagedata%ysendcounts(py) > 0) then
-            call MPI_TYPE_FREE(messagedata%ysendtypes(py),mpierror)
-          endif
-          if (messagedata%yrecvcounts(py) > 0) then
-            call MPI_TYPE_FREE(messagedata%yrecvtypes(py),mpierror)
+          if (messagedatacache(ic)%xrecvcounts(px) > 0) then
+            call MPI_TYPE_FREE(messagedatacache(ic)%xrecvtypes(px),mpierror)
           endif
         enddo
-        do pz=0,SIZE(messagedata%zsendcounts)-1
-          if (messagedata%zsendcounts(pz) > 0) then
-            call MPI_TYPE_FREE(messagedata%zsendtypes(pz),mpierror)
+        do py=0,SIZE(messagedatacache(ic)%ysendcounts)-1
+          if (messagedatacache(ic)%ysendcounts(py) > 0) then
+            call MPI_TYPE_FREE(messagedatacache(ic)%ysendtypes(py),mpierror)
           endif
-          if (messagedata%zrecvcounts(pz) > 0) then
-            call MPI_TYPE_FREE(messagedata%zrecvtypes(pz),mpierror)
+          if (messagedatacache(ic)%yrecvcounts(py) > 0) then
+            call MPI_TYPE_FREE(messagedatacache(ic)%yrecvtypes(py),mpierror)
+          endif
+        enddo
+        do pz=0,SIZE(messagedatacache(ic)%zsendcounts)-1
+          if (messagedatacache(ic)%zsendcounts(pz) > 0) then
+            call MPI_TYPE_FREE(messagedatacache(ic)%zsendtypes(pz),mpierror)
+          endif
+          if (messagedatacache(ic)%zrecvcounts(pz) > 0) then
+            call MPI_TYPE_FREE(messagedatacache(ic)%zrecvtypes(pz),mpierror)
           endif
         enddo
 
-        deallocate(messagedata%xrecvtypes)
-        deallocate(messagedata%xsendtypes)
-        deallocate(messagedata%xsendcounts)
-        deallocate(messagedata%xrecvcounts)
-        deallocate(messagedata%xdispls)
-        deallocate(messagedata%yrecvtypes)
-        deallocate(messagedata%ysendtypes)
-        deallocate(messagedata%ysendcounts)
-        deallocate(messagedata%yrecvcounts)
-        deallocate(messagedata%ydispls)
-        deallocate(messagedata%zrecvtypes)
-        deallocate(messagedata%zsendtypes)
-        deallocate(messagedata%zsendcounts)
-        deallocate(messagedata%zrecvcounts)
-        deallocate(messagedata%zdispls)
+        deallocate(messagedatacache(ic)%xrecvtypes)
+        deallocate(messagedatacache(ic)%xsendtypes)
+        deallocate(messagedatacache(ic)%xsendcounts)
+        deallocate(messagedatacache(ic)%xrecvcounts)
+        deallocate(messagedatacache(ic)%xdispls)
+        deallocate(messagedatacache(ic)%yrecvtypes)
+        deallocate(messagedatacache(ic)%ysendtypes)
+        deallocate(messagedatacache(ic)%ysendcounts)
+        deallocate(messagedatacache(ic)%yrecvcounts)
+        deallocate(messagedatacache(ic)%ydispls)
+        deallocate(messagedatacache(ic)%zrecvtypes)
+        deallocate(messagedatacache(ic)%zsendtypes)
+        deallocate(messagedatacache(ic)%zsendcounts)
+        deallocate(messagedatacache(ic)%zrecvcounts)
+        deallocate(messagedatacache(ic)%zdispls)
 
         return
         end subroutine freemessagedata
@@ -1928,15 +3177,16 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine mgexchange_phi2(nc,nxlocal,nylocal,nzlocal,phi,
-     &                           delx,dely,delz,ils,ile,ius,iue,fsdecomp)
+     &                           nxguardphi,nyguardphi,nzguardphi,
+     &                           ils,ile,ius,iue,fsdecomp)
       use Subtimersf3d
       use Decompositionmodule
       use messagedatatypemodule
       integer(ISZ):: nc,nxlocal,nylocal,nzlocal,ils,ile,ius,iue
-      integer(ISZ):: delx,dely,delz
-      real(kind=8):: phi(0:nc-1,-delx:nxlocal+delx,
-     &                          -dely:nylocal+dely,
-     &                          -delz:nzlocal+delz)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: phi(0:nc-1,-nxguardphi:nxlocal+nxguardphi,
+     &                          -nyguardphi:nylocal+nyguardphi,
+     &                          -nzguardphi:nzlocal+nzguardphi)
       type(Decomposition):: fsdecomp
 
 c Exchange the potential on the boundary and/or in the gaurd cells.
@@ -1951,8 +3201,8 @@ c Exchange the potential on the boundary and/or in the gaurd cells.
 
 c     --- Generate the MPI data types needed for the communication.
       call getmessagedata(nc,nxlocal,nylocal,nzlocal,
-     &                    delx,dely,delz,ils,ile,ius,iue,fsdecomp,
-     &                    messagedata)
+     &                    nxguardphi,nyguardphi,nzguardphi,.false.,
+     &                    ils,ile,ius,iue,fsdecomp,messagedata)
 
 c     --- Now, do all of the message passing at once.
 c     --- Note that there should be no problem with having phi being both
@@ -1994,15 +3244,16 @@ c     --- released.
       end
 c=============================================================================
       subroutine mgexchange_phi(nc,nxlocal,nylocal,nzlocal,phi,
-     &                          delx,dely,delz,i1,i2,fsdecomp)
+     &                          nxguardphi,nyguardphi,nzguardphi,
+     &                          i1,i2,fsdecomp)
       use Subtimersf3d
       use Decompositionmodule
       use messagedatatypemodule
       integer(ISZ):: nc,nxlocal,nylocal,nzlocal,i1,i2
-      integer(ISZ):: delx,dely,delz
-      real(kind=8):: phi(0:nc-1,-delx:nxlocal+delx,
-     &                          -dely:nylocal+dely,
-     &                          -delz:nzlocal+delz)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: phi(0:nc-1,-nxguardphi:nxlocal+nxguardphi,
+     &                          -nyguardphi:nylocal+nyguardphi,
+     &                          -nzguardphi:nzlocal+nzguardphi)
       type(Decomposition):: fsdecomp
 
 c Exchange the potential on the boundary and/or in the gaurd cells.
@@ -2017,8 +3268,8 @@ c Exchange the potential on the boundary and/or in the gaurd cells.
 
 c     --- Generate the MPI data types needed for the communication.
       call getmessagedata(nc,nxlocal,nylocal,nzlocal,
-     &                    delx,dely,delz,i1,i2,-i2,-i1,fsdecomp,
-     &                    messagedata)
+     &                    nxguardphi,nyguardphi,nzguardphi,.false.,
+     &                    i1,i2,-i2,-i1,fsdecomp,messagedata)
 
 c     --- Now, do all of the message passing at once.
 c     --- Note that there should be no problem with having phi being both
@@ -2059,17 +3310,153 @@ c     --- released.
       return
       end
 c=============================================================================
+      subroutine mgexchange_res(nc,nxlocal,nylocal,nzlocal,res,
+     &                          nxguardres,nyguardres,nzguardres,
+     &                          i1,i2,fsdecomp)
+      use Subtimersf3d
+      use Decompositionmodule
+      use messagedatatypemodule
+      integer(ISZ):: nc,nxlocal,nylocal,nzlocal,i1,i2
+      integer(ISZ):: nxguardres,nyguardres,nzguardres
+      real(kind=8):: res(0:nc-1,-nxguardres:nxlocal+nxguardres,
+     &                          -nyguardres:nylocal+nyguardres,
+     &                          -nzguardres:nzlocal+nzguardres)
+      type(Decomposition):: fsdecomp
+
+c Exchange the potential on the boundary and/or in the gaurd cells.
+c This is identical to mgexchange_phi, except for the lguardres=true
+c argument to getmessagedata.
+
+      type(messagedatatype):: messagedata
+      save messagedata
+
+      include "mpif.h"
+      integer(MPIISZ):: mpierror,comm_mpiisz
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
+c     --- Generate the MPI data types needed for the communication.
+      call getmessagedata(nc,nxlocal,nylocal,nzlocal,
+     &                    nxguardres,nyguardres,nzguardres,.true.,
+     &                    i1,i2,-i2,-i1,fsdecomp,messagedata)
+
+c     --- Now, do all of the message passing at once.
+c     --- Note that there should be no problem with having res being both
+c     --- the send and receive buffer since there is no overlap between
+c     --- out going and in coming data.
+      if (fsdecomp%nxprocs > 1) then
+        comm_mpiisz = fsdecomp%mpi_comm_x
+        call MPI_ALLTOALLW(res,messagedata%xsendcounts,messagedata%xdispls,
+     &                     messagedata%xsendtypes,
+     &                     res,messagedata%xrecvcounts,messagedata%xdispls,
+     &                     messagedata%xrecvtypes,
+     &                     comm_mpiisz,mpierror)
+      endif
+      if (fsdecomp%nyprocs > 1) then
+        comm_mpiisz = fsdecomp%mpi_comm_y
+        call MPI_ALLTOALLW(res,messagedata%ysendcounts,messagedata%ydispls,
+     &                     messagedata%ysendtypes,
+     &                     res,messagedata%yrecvcounts,messagedata%ydispls,
+     &                     messagedata%yrecvtypes,
+     &                     comm_mpiisz,mpierror)
+      endif
+      if (fsdecomp%nzprocs > 1) then
+        comm_mpiisz = fsdecomp%mpi_comm_z
+        call MPI_ALLTOALLW(res,messagedata%zsendcounts,messagedata%zdispls,
+     &                     messagedata%zsendtypes,
+     &                     res,messagedata%zrecvcounts,messagedata%zdispls,
+     &                     messagedata%zrecvtypes,
+     &                     comm_mpiisz,mpierror)
+      endif
+
+c     --- Note that the MPI types generated are cached and do not need to be
+c     --- released.
+
+!$OMP MASTER
+      if (lf3dtimesubs) timemgexchange_res = timemgexchange_res + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine mgexchange_phiupdate(nc,nxlocal,nylocal,nzlocal,phi,
+     &                                nxguardphi,nyguardphi,nzguardphi,
+     &                                i1,i2,fsdecomp)
+      use Subtimersf3d
+      use Decompositionmodule
+      use messagedatatypemodule
+      integer(ISZ):: nc,nxlocal,nylocal,nzlocal,i1,i2
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: phi(0:nc-1,-nxguardphi:nxlocal+nxguardphi,
+     &                          -nyguardphi:nylocal+nyguardphi,
+     &                          -nzguardphi:nzlocal+nzguardphi)
+      type(Decomposition):: fsdecomp
+
+c Exchange the potential on the boundary and/or in the gaurd cells.
+
+      type(messagedatatype):: messagedata
+      save messagedata
+
+      include "mpif.h"
+      integer(MPIISZ):: mpierror,comm_mpiisz
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
+c     --- Generate the MPI data types needed for the communication.
+      call getmessagedataupdatephi(nc,nxlocal,nylocal,nzlocal,
+     &                             nxguardphi,nyguardphi,nzguardphi,
+     &                             i1,i2,-i2,-i1,fsdecomp,messagedata)
+
+c     --- Now, do all of the message passing at once.
+c     --- Note that there should be no problem with having phi being both
+c     --- the send and receive buffer since there is no overlap between
+c     --- out going and in coming data.
+      if (fsdecomp%nxprocs > 1) then
+        comm_mpiisz = fsdecomp%mpi_comm_x
+        call MPI_ALLTOALLW(phi,messagedata%xsendcounts,messagedata%xdispls,
+     &                     messagedata%xsendtypes,
+     &                     phi,messagedata%xrecvcounts,messagedata%xdispls,
+     &                     messagedata%xrecvtypes,
+     &                     comm_mpiisz,mpierror)
+      endif
+      if (fsdecomp%nyprocs > 1) then
+        comm_mpiisz = fsdecomp%mpi_comm_y
+        call MPI_ALLTOALLW(phi,messagedata%ysendcounts,messagedata%ydispls,
+     &                     messagedata%ysendtypes,
+     &                     phi,messagedata%yrecvcounts,messagedata%ydispls,
+     &                     messagedata%yrecvtypes,
+     &                     comm_mpiisz,mpierror)
+      endif
+      if (fsdecomp%nzprocs > 1) then
+        comm_mpiisz = fsdecomp%mpi_comm_z
+        call MPI_ALLTOALLW(phi,messagedata%zsendcounts,messagedata%zdispls,
+     &                     messagedata%zsendtypes,
+     &                     phi,messagedata%zrecvcounts,messagedata%zdispls,
+     &                     messagedata%zrecvtypes,
+     &                     comm_mpiisz,mpierror)
+      endif
+
+c     --- Note that the MPI types generated are cached and do not need to be
+c     --- released.
+
+!$OMP MASTER
+      if (lf3dtimesubs) timemgexchange_phiupdate = timemgexchange_phiupdate + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
 c=============================================================================
       subroutine mgexchange_phi_periodic(nc,nxlocal,nylocal,nzlocal,phi,
-     &                                   delx,dely,delz,i1,i2,
+     &                                   nxguardphi,nyguardphi,nzguardphi,i1,i2,
      &                                   localbounds,fsdecomp)
       use Subtimersf3d
       use Decompositionmodule
       integer(ISZ):: nc,nxlocal,nylocal,nzlocal,nx,ny,nz
-      integer(ISZ):: delx,dely,delz,i1,i2
-      real(kind=8):: phi(0:nc-1,-delx:nxlocal+delx,
-     &                          -dely:nylocal+dely,
-     &                          -delz:nzlocal+delz)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi,i1,i2
+      real(kind=8):: phi(0:nc-1,-nxguardphi:nxlocal+nxguardphi,
+     &                          -nyguardphi:nylocal+nyguardphi,
+     &                          -nzguardphi:nzlocal+nzguardphi)
       integer(ISZ):: localbounds(0:5)
       type(Decomposition):: fsdecomp
       real(kind=8):: substarttime,wtime
@@ -2078,29 +3465,32 @@ c=============================================================================
       if ((localbounds(0) == 2 .or. localbounds(1) == 2) .and.
      &    fsdecomp%nxprocs > 0) then
         call mgexchange_phiperiodic_work(0,nc,nxlocal,nylocal,nzlocal,phi,
-     &                                   i1,i2,delx,dely,delz,
+     &                                   i1,i2,nxguardphi,nyguardphi,nzguardphi,
      &                                   fsdecomp%mpi_comm_x,
      &                                   fsdecomp%ixproc,fsdecomp%nxprocs,
      &                                   fsdecomp%nxglobal,
-     &                                   fsdecomp%ix,fsdecomp%nx)
+     &                                   fsdecomp%ix,fsdecomp%nx,
+     &                                   fsdecomp%mpistatex)
       endif
       if ((localbounds(2) == 2 .or. localbounds(3) == 2) .and.
      &    fsdecomp%nyprocs > 0) then
         call mgexchange_phiperiodic_work(1,nc,nxlocal,nylocal,nzlocal,phi,
-     &                                   i1,i2,delx,dely,delz,
+     &                                   i1,i2,nxguardphi,nyguardphi,nzguardphi,
      &                                   fsdecomp%mpi_comm_y,
      &                                   fsdecomp%iyproc,fsdecomp%nyprocs,
      &                                   fsdecomp%nyglobal,
-     &                                   fsdecomp%iy,fsdecomp%ny)
+     &                                   fsdecomp%iy,fsdecomp%ny,
+     &                                   fsdecomp%mpistatey)
       endif
       if ((localbounds(4) == 2 .or. localbounds(5) == 2) .and.
      &    fsdecomp%nzprocs > 0) then
         call mgexchange_phiperiodic_work(2,nc,nxlocal,nylocal,nzlocal,phi,
-     &                                   i1,i2,delx,dely,delz,
+     &                                   i1,i2,nxguardphi,nyguardphi,nzguardphi,
      &                                   fsdecomp%mpi_comm_z,
      &                                   fsdecomp%izproc,fsdecomp%nzprocs,
      &                                   fsdecomp%nzglobal,
-     &                                   fsdecomp%iz,fsdecomp%nz)
+     &                                   fsdecomp%iz,fsdecomp%nz,
+     &                                   fsdecomp%mpistatez)
       endif
 
 !$OMP MASTER
@@ -2110,18 +3500,21 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine mgexchange_phiperiodic_work(axis,nc,nxlocal,nylocal,nzlocal,phi,
-     &                                       i1,i2,delx,dely,delz,
+      subroutine mgexchange_phiperiodic_work(axis,nc,nxlocal,nylocal,nzlocal,
+     &                                       phi,i1,i2,
+     &                                       nxguardphi,nyguardphi,nzguardphi,
      &                                       mpi_comm,iproc,nprocs,nz,
-     &                                       pe_iz,pe_nz)
+     &                                       pe_iz,pe_nz,mpistate)
       use Subtimersf3d
       integer(ISZ):: axis
-      integer(ISZ):: nc,nxlocal,nylocal,nzlocal,i1,i2,delx,dely,delz
-      real(kind=8):: phi(0:nc-1,-delx:nxlocal+delx,
-     &                          -dely:nylocal+dely,
-     &                          -delz:nzlocal+delz)
+      integer(ISZ):: nc,nxlocal,nylocal,nzlocal,i1,i2
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: phi(0:nc-1,-nxguardphi:nxlocal+nxguardphi,
+     &                          -nyguardphi:nylocal+nyguardphi,
+     &                          -nzguardphi:nzlocal+nzguardphi)
       integer(ISZ):: mpi_comm,iproc,nprocs,nz
       integer(ISZ):: pe_iz(0:nprocs-1),pe_nz(0:nprocs-1)
+      integer(ISZ):: mpistate(0:nprocs-1)
 
 c This routine sends out and receives boundary data for the MG field solver.
 c This only sends plane iz=0 when there are periodic boundary conditions.
@@ -2130,7 +3523,7 @@ c there are cases when the same two processors exchange data on the left
 c and right, and this cannot be done (easily) with the alltoall.
 
       real(kind=8),pointer:: buffer(:,:,:,:)
-      integer(MPIISZ):: ip
+      integer(MPIISZ):: ip,ip0,ipn
       integer(MPIISZ):: ix1,ix2,iy1,iy2,iz1,iz2
 
       include "mpif.h"
@@ -2139,26 +3532,38 @@ c and right, and this cannot be done (easily) with the alltoall.
       integer(MPIISZ):: messid = 10
       integer(MPIISZ):: nn
 
+      if (mpistate(iproc) > 0) return
+
       comm_mpiisz = mpi_comm
 
 c     --- By default, select for full dimension of each axis. The down
 c     --- select is done below.
-      ix1 = -delx
-      ix2 = nxlocal + delx
-      iy1 = -dely
-      iy2 = nylocal + dely
-      iz1 = -delz
-      iz2 = nzlocal + delz
+      ix1 = -nxguardphi
+      ix2 = nxlocal + nxguardphi
+      iy1 = -nyguardphi
+      iy2 = nylocal + nyguardphi
+      iz1 = -nzguardphi
+      iz2 = nzlocal + nzguardphi
+
+c     --- Find the first and last processors that are still active.
+      ip0 = -1
+      do ip=0,nprocs-1
+        if (mpistate(ip) == 0) then
+          if (ip0 == -1) ip0 = ip
+          ipn = ip
+        endif
+      enddo
 
 c     --- Sends and receives can all be done synchronously since none
 c     --- of the data overlaps.
-      if (iproc == 0) then
+      if (iproc == ip0) then
 c       --- The loop only covers processors to the right since any processors
 c       --- to the left would not need phi on the left boundary. In some cases,
 c       --- this processor my be sending other than boundary data to the left.
 c       --- This avoids the send, which would cause this process to lock up
 c       --- on the waitall since that message would never be received.
-        do ip=1,nprocs-1
+        do ip=ip0+1,nprocs-1
+          if (mpistate(ip) > 0) cycle
           if (pe_iz(ip) + pe_nz(ip) == nz) then
             if (axis == 0) then
               ix1 = -i2
@@ -2181,7 +3586,7 @@ c       --- on the waitall since that message would never be received.
         enddo
       endif
 
-      if (iproc > 0 .and. pe_iz(iproc) + pe_nz(iproc) == nz) then
+      if (iproc > ip0 .and. pe_iz(iproc) + pe_nz(iproc) == nz) then
         if (axis == 0) then
           ix1 = nxlocal - i2
           ix2 = nxlocal - i1
@@ -2194,17 +3599,17 @@ c       --- on the waitall since that message would never be received.
         endif
         allocate(buffer(0:nc-1,ix1:ix2,iy1:iy2,iz1:iz2))
         nn = nc*(ix2-ix1+1)*(iy2-iy1+1)*(iz2-iz1+1)
-        ip = 0
         call MPI_RECV(buffer,nn,
-     &                MPI_DOUBLE_PRECISION,ip,messid,
+     &                MPI_DOUBLE_PRECISION,ip0,messid,
      &                comm_mpiisz,mpistatus,mpierror)
         phi(:,ix1:ix2,iy1:iy2,iz1:iz2) = buffer
         deallocate(buffer)
       endif
 
-      if (iproc == nprocs - 1 .and. i1 < 0) then
+      if (iproc == ipn .and. i1 < 0) then
 c       --- See comments on loop above.
-        do ip=0,nprocs - 2
+        do ip=0,ipn - 1
+          if (mpistate(ip) > 0) cycle
           if (pe_iz(ip) == 0) then
             if (axis == 0) then
               ix1 = nxlocal + i1
@@ -2227,7 +3632,7 @@ c       --- See comments on loop above.
         enddo
       endif
 
-      if (iproc < nprocs - 1 .and. pe_iz(iproc) == 0 .and. i1 < 0) then
+      if (iproc < ipn .and. pe_iz(iproc) == 0 .and. i1 < 0) then
         if (axis == 0) then
           ix1 = i1
           ix2 = i1
@@ -2240,9 +3645,8 @@ c       --- See comments on loop above.
         endif
         nn = nc*(ix2-ix1+1)*(iy2-iy1+1)*(iz2-iz1+1)
         allocate(buffer(0:nc-1,ix1:ix2,iy1:iy2,iz1:iz2))
-        ip = nprocs - 1
         call MPI_RECV(buffer,nn,
-     &                MPI_DOUBLE_PRECISION,ip,messid,
+     &                MPI_DOUBLE_PRECISION,ipn,messid,
      &                comm_mpiisz,mpistatus,mpierror)
         phi(:,ix1:ix2,iy1:iy2,iz1:iz2) = buffer
         deallocate(buffer)
@@ -2255,15 +3659,15 @@ c=============================================================================
      &                            ph2,recvcounts,recvdispls,recvtypes,
      &                            mpi_comm,mpierror)
       real(kind=8):: ph1(*),ph2(*)
-      integer(4),dimension(:):: sendcounts(0:*),senddispls(0:*),sendtypes(0:*)
-      integer(4),dimension(:):: recvcounts(0:*),recvdispls(0:*),recvtypes(0:*)
+      integer(MPIISZ):: sendcounts(0:*),senddispls(0:*),sendtypes(0:*)
+      integer(MPIISZ):: recvcounts(0:*),recvdispls(0:*),recvtypes(0:*)
       integer(MPIISZ):: mpi_comm,mpierror
 
       include "mpif.h"
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
       integer(MPIISZ):: messid
 
-      integer(4):: nprocs,iproc,ip
+      integer(MPIISZ):: nprocs,iproc,ip,pe,ipisz
 
 c Temporary replacement of MPI_ALLTOALLW until the memory leak is fixed.
 c This ignores the displacements and assumes that ph1 is the same as ph2,
@@ -2273,33 +3677,83 @@ c (or that the processor sends nothing to itself).
       call MPI_COMM_RANK(mpi_comm,iproc,mpierror)
       messid = 7777
 
-      do ip=0,nprocs-1
-        if (iproc < ip) then
-          if (sendcounts(ip) > 0) then
-            call MPI_SEND(ph1,sendcounts(ip),sendtypes(ip),ip,messid,
-     &                    mpi_comm,mpierror)
-          endif
-          if (recvcounts(ip) > 0) then
-            call MPI_RECV(ph2,recvcounts(ip),recvtypes(ip),ip,messid,
-     &                    mpi_comm,mpistatus,mpierror)
-          endif
-        else if (iproc > ip) then
-          if (recvcounts(ip) > 0) then
-            call MPI_RECV(ph2,recvcounts(ip),recvtypes(ip),ip,messid,
-     &                    mpi_comm,mpistatus,mpierror)
-          endif
-          if (sendcounts(ip) > 0) then
-            call MPI_SEND(ph1,sendcounts(ip),sendtypes(ip),ip,messid,
-     &                    mpi_comm,mpierror)
-          endif
-        else
-          if (sendcounts(ip) > 0) then
-            call MPI_SENDRECV(ph1,sendcounts(ip),sendtypes(ip),ip,messid,
-     &                        ph2,recvcounts(ip),recvtypes(ip),ip,messid,
+c     do ip=0,nprocs-1
+c       if (iproc < ip) then
+c         if (sendcounts(ip) > 0) then
+c           call MPI_SEND(ph1,sendcounts(ip),sendtypes(ip),ip,messid,
+c    &                    mpi_comm,mpierror)
+c         endif
+c         if (recvcounts(ip) > 0) then
+c           call MPI_RECV(ph2,recvcounts(ip),recvtypes(ip),ip,messid,
+c    &                    mpi_comm,mpistatus,mpierror)
+c         endif
+c       else if (iproc > ip) then
+c         if (recvcounts(ip) > 0) then
+c           call MPI_RECV(ph2,recvcounts(ip),recvtypes(ip),ip,messid,
+c    &                    mpi_comm,mpistatus,mpierror)
+c         endif
+c         if (sendcounts(ip) > 0) then
+c           call MPI_SEND(ph1,sendcounts(ip),sendtypes(ip),ip,messid,
+c    &                    mpi_comm,mpierror)
+c         endif
+c       else
+c         if (sendcounts(ip) > 0) then
+c           call MPI_SENDRECV(ph1,sendcounts(ip),sendtypes(ip),ip,messid,
+c    &                        ph2,recvcounts(ip),recvtypes(ip),ip,messid,
+c    &                        mpi_comm,mpistatus,mpierror)
+c         endif
+c       endif
+c     enddo
+
+      do pe=0,nprocs-1
+        ip = nprocs - 1 - iproc - pe
+        ip = mod(ip+nprocs,nprocs)
+        ipisz = ip
+        if (ip .ne. iproc) then
+          if (sendcounts(ip) > 0 .or. recvcounts(ip) > 0) then
+            call MPI_SENDRECV(ph1,sendcounts(ip),sendtypes(ip),ipisz,messid,
+     &                        ph2,recvcounts(ip),recvtypes(ip),ipisz,messid,
      &                        mpi_comm,mpistatus,mpierror)
           endif
         endif
       enddo
+
+      return
+      end
+c=============================================================================
+      subroutine startwaitinginline()
+      use Parallel
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
+      include "mpif.h"
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
+      integer(MPIISZ):: messid = 23298
+      integer(MPIISZ):: ip,x
+      comm_world_mpiisz = comm_world
+
+      if (my_index > 0) then
+        ip = my_index - 1
+        call MPI_RECV(x,1,MPI_INTEGER,ip,messid,
+     &                comm_world_mpiisz,mpistatus,mpierror)
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine endwaitinginline()
+      use Parallel
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
+
+      include "mpif.h"
+      integer(MPIISZ):: messid = 23298
+      integer(MPIISZ):: ip,x
+      comm_world_mpiisz = comm_world
+
+      if (my_index < nprocs-1) then
+        x = 1
+        ip = my_index + 1
+        call MPI_SEND(x,1,MPI_INTEGER,ip,messid,
+     &                comm_world_mpiisz,mpierror)
+      endif
 
       return
       end

@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FXY.M, version $Revision: 3.7 $, $Date: 2008/02/01 00:04:00 $
+c@(#) File FXY.M, version $Revision: 3.8 $, $Date: 2011/08/27 00:35:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -55,15 +55,20 @@ c Capacity matrix solver                                                   =
 c                                                                          =
 c===========================================================================
 c=======================================================================
-      subroutine cmsetxy(phi,kxsq,kysq,attx,atty,filt,xlen,ylen,nx,ny,dx,dy,
+      subroutine cmsetxy(phi,kxsq,kysq,attx,atty,filt,xlen,ylen,nx,ny,
+     &                   nxguardphi,nyguardphi,dx,dy,
      &                   xmmin,ymmin,scrtch,phisave,xywork,l2symtry,l4symtry)
       use CapMatxy
-      integer(ISZ):: nx,ny
-      real(kind=8):: phi(-1:nx+1,-1:ny+1)
+      integer(ISZ):: nx,ny,nxguardphi,nyguardphi
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1)
       real(kind=8):: filt(5,2)
-      real(kind=8):: scrtch(*),phisave(-1:nx+1,-1:ny+1),xywork(0:nx,0:ny)
+      real(kind=8):: scrtch(*)
+      real(kind=8):: phisave(-nxguardphi:nx+nxguardphi,
+     &                       -nyguardphi:ny+nyguardphi)
+      real(kind=8):: xywork(0:nx,0:ny)
       real(kind=8):: xlen,ylen,dx,dy,xmmin,ymmin
       logical(ISZ):: l2symtry,l4symtry
 
@@ -71,7 +76,6 @@ c Sets up capacity matrix for xy fieldsolver. Note that the capacity matrix
 c is calculated using field solves which do not do any filtering.
 c (Experience has shown that when filtering is used, the inverse capacity
 c matrix is very ill-conditioned and so the capacity matrix becomes garbled.)
-
 
       real(kind=8):: wx,wy,tt1,tt2,cx,cy
       integer(ISZ):: ix,iy,i,j,info
@@ -115,11 +119,14 @@ c       --- 2 or 4 at a symmetric boundary)
 c       --- Solve for fields, piece-by-piece so that the filtering can be
 c       --- skipped.
         call vpois2d(2,phi,phi,kxsq,kysq,attx,atty,filt,
-     &               xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &               xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &               scrtch,xywork,0,l2symtry,l4symtry)
         call vpois2d(4,phi,phi,kxsq,kysq,attx,atty,filt,
-     &               xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &               xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &               scrtch,xywork,0,l2symtry,l4symtry)
         call vpois2d(5,phi,phi,kxsq,kysq,attx,atty,filt,
-     &               xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &               xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &               scrtch,xywork,0,l2symtry,l4symtry)
 
 c       --- fill matrix with phi
         do j=1,ncxy
@@ -185,15 +192,20 @@ c     --- Return the original saved phi.
       end
 c============================================================================== 
       subroutine capmatxyf(iwhich,phi,kxsq,kysq,attx,atty,filt,xlen,ylen,nx,ny,
-     &                    dx,dy,xmmin,ymmin,scrtch,phisave,xywork,
-     &                    l2symtry,l4symtry)
+     &                     nxguardphi,nyguardphi,
+     &                     dx,dy,xmmin,ymmin,scrtch,phisave,xywork,
+     &                     l2symtry,l4symtry)
       use CapMatxy
-      integer(ISZ):: iwhich,nx,ny
-      real(kind=8):: phi(-1:nx+1,-1:ny+1)
+      integer(ISZ):: iwhich,nx,ny,nxguardphi,nyguardphi
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1)
       real(kind=8):: filt(5,2)
-      real(kind=8):: scrtch(*),phisave(-1:nx+1,-1:ny+1),xywork(0:nx,0:ny)
+      real(kind=8):: scrtch(*)
+      real(kind=8):: phisave(-nxguardphi:nx+nxguardphi,
+     &                       -nyguardphi:ny+nyguardphi)
+      real(kind=8):: xywork(0:nx,0:ny)
       real(kind=8):: xlen,ylen,dx,dy,xmmin,ymmin
       logical(ISZ):: l2symtry,l4symtry
 
@@ -214,16 +226,19 @@ c     --- Initialize the arrays for poisson solve and the capacity matrix.
       if (iwhich == 1 .or. iwhich == 0) then
 
         call vpois2d(1,phi,phi,kxsq,kysq,attx,atty,filt,
-     &               xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &               xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &               scrtch,xywork,0,l2symtry,l4symtry)
 
-        call cmsetxy(phi,kxsq,kysq,attx,atty,filt,xlen,ylen,nx,ny,dx,dy,
+        call cmsetxy(phi,kxsq,kysq,attx,atty,filt,xlen,ylen,nx,ny,
+     &               nxguardphi,nyguardphi,dx,dy,
      &               xmmin,ymmin,scrtch,phisave,xywork,l2symtry,l4symtry)
 
       elseif (iwhich > 1) then
 
 c       --- Make call to do the specialized action requested.
         call vpois2d(iwhich,phi,phi,kxsq,kysq,attx,atty,filt,
-     &               xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &               xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &               scrtch,xywork,0,l2symtry,l4symtry)
 
       endif
 
@@ -237,18 +252,22 @@ c     --- filtered source can be saved.
 
 c     --- First transform phi (actually the source) and filter it.
       call vpois2d(2,phi,phi,kxsq,kysq,attx,atty,filt,
-     &             xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &             xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &             scrtch,xywork,0,l2symtry,l4symtry)
       call vpois2d(3,phi,phi,kxsq,kysq,attx,atty,filt,
-     &             xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &             xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &             scrtch,xywork,0,l2symtry,l4symtry)
 
 c     --- Now, save the transformed and possibly filtered source.
       phisave = phi
 
 c     --- Finish the first field solve: divide by k-squared and untransform.
       call vpois2d(4,phi,phi,kxsq,kysq,attx,atty,filt,
-     &             xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &             xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &             scrtch,xywork,0,l2symtry,l4symtry)
       call vpois2d(5,phi,phi,kxsq,kysq,attx,atty,filt,
-     &             xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &             xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &             scrtch,xywork,0,l2symtry,l4symtry)
 
 c     --- Extract phi error from FFT solution and zero qcond
       do i=1,ncxy
@@ -296,7 +315,8 @@ c     --- transformed and filtered source may be added and so that the
 c     --- filtering can be skipped. Note that the initial transform is
 c     --- only applied to the induced charge.
       call vpois2d(2,phi,phi,kxsq,kysq,attx,atty,filt,
-     &             xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &             xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &             scrtch,xywork,0,l2symtry,l4symtry)
 
 c     --- Sum the induced and transformed beam charge.
       do i=0,nx
@@ -307,9 +327,11 @@ c     --- Sum the induced and transformed beam charge.
 
 c     --- Complete the field solve.
       call vpois2d(4,phi,phi,kxsq,kysq,attx,atty,filt,
-     &             xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &             xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &             scrtch,xywork,0,l2symtry,l4symtry)
       call vpois2d(5,phi,phi,kxsq,kysq,attx,atty,filt,
-     &             xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
+     &             xlen,ylen,nx,ny,nxguardphi,nyguardphi,
+     &             scrtch,xywork,0,l2symtry,l4symtry)
 
       return
       end

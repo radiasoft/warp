@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.321 $, $Date: 2011/07/22 01:18:36 $
+#@(#) File W3D.V, version $Revision: 3.322 $, $Date: 2011/08/27 00:35:51 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.321 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.322 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -283,6 +283,15 @@ ymminglobal real [m]                # Global value of ymmin
 ymmaxglobal real [m]                # Global value of ymmax
 zmminglobal real [m]                # Global value of zmmin
 zmmaxglobal real [m]                # Global value of zmmax
+nxguardphi integer /1/ # Number of guard cells in x for phi arrays
+nyguardphi integer /1/ # Number of guard cells in y for phi arrays
+nzguardphi integer /1/ # Number of guard cells in z for phi arrays
+nxguardrho integer /0/ # Number of guard cells in x for rho arrays
+nyguardrho integer /0/ # Number of guard cells in y for rho arrays
+nzguardrho integer /0/ # Number of guard cells in z for rho arrays
+nxguarde   integer /0/ # Number of guard cells in x for e arrays
+nyguarde   integer /0/ # Number of guard cells in y for e arrays
+nzguarde   integer /0/ # Number of guard cells in z for e arrays
 
 ******* GridBoundary3d dump:
 bound0    integer /0/  # Type of boundary condition at plane z=0
@@ -345,15 +354,6 @@ zwork(2,0:nx,0:nz)      _real           # Work space used to optimize vsftz
 nxp  integer /0/ # Number of grid cells in x axis for phip and rhop
 nyp  integer /0/ # Number of grid cells in y axis for phip and rhop
 nzp  integer /0/ # Number of grid cells in z axis for phip and rhop
-nxpextra integer /0/ # Number of extra cells in x to add extending the grids
-                     # beyond the particle domains. Only applies for the
-                     # parallel version.
-nypextra integer /0/ # Number of extra cells in y to add extending the grids
-                     # beyond the particle domains. Only applies for the
-                     # parallel version.
-nzpextra integer /0/ # Number of extra cells in z to add extending the grids
-                     # beyond the particle domains. Only applies for the
-                     # parallel version.
 xmminp real      # Lower limit of x for grid for particles
 xmmaxp real      # Upper limit of x for grid for particles
 ymminp real      # Lower limit of y for grid for particles
@@ -373,12 +373,19 @@ rhop(:,:,:) _real # Charge density from the particles.
 selfep(:,:,:,:) _real [V/m] # Self E field for the particles,
                             # calculated from phi via finite difference.
                             # Only used when top.efetch = 3
-rhopndts(0:nxp,0:nyp,0:nzp,0:nrhopndtscopies3d-1,0:nsndts3d-1) _real +fassign
+rhopndts(-nxguardrho:nxp+nxguardrho,
+         -nyguardrho:nyp+nyguardrho,
+         -nzguardrho:nzp+nzguardrho,
+         0:nrhopndtscopies3d-1,
+         0:nsndts3d-1) _real +fassign
                  # Charge density from the particles
                  # for groups with different time step sizes.
                  # This includes the time averaged charge density from
                  # faster particles and the old rho from the slower particles.
-phipndts(-1:nxp+1,-1:nyp+1,-1:nzp+1,0:nsndtsphi3d-1) _real +fassign
+phipndts(-nxguardphi:nxp+nxguardphi,
+         -nyguardphi:nyp+nyguardphi,
+         -nzguardphi:nzp+nzguardphi,
+         0:nsndtsphi3d-1) _real +fassign
                  # Potential from the particles
                  # for groups with different time step sizes.
                  # This includes the effect of time averaged charge density
@@ -393,12 +400,18 @@ lrhofinalized logical /.true./
                  # and if needed, the appropriate operations done.
 
 nsselfb3d integer /0/ # Copy of nsselfb from top
-rhopselfb(0:nxp,0:nyp,0:nzp,0:nsselfb3d-1) _real +fassign
+rhopselfb(-nxguardrho:nxp+nxguardrho,
+          -nyguardrho:nyp+nyguardrho,
+          -nzguardrho:nzp+nzguardrho,
+          0:nsselfb3d-1) _real +fassign
                  # Charge density from the particles
                  # for groups which require correction for their self B.
                  # This includes the time averaged charge density from
                  # faster particles and the old rho from the slower particles.
-phipselfb(-1:nxp+1,-1:nyp+1,-1:nzp+1,0:nsselfb3d-1) _real +fassign
+phipselfb(-nxguardphi:nxp+nxguardphi,
+          -nyguardphi:nyp+nyguardphi,
+          -nzguardphi:nzp+nzguardphi,
+          0:nsselfb3d-1) _real +fassign
                  # Temporary copy of the potential from the particles
                  # for groups which require correction for their self B.
                  # This includes the effect of time averaged charge density
@@ -440,6 +453,9 @@ afsapi(:,:) _real
 nx    integer /-1/
 ny    integer /-1/
 nz    integer /-1/
+nxguard integer /0/
+nyguard integer /0/
+nzguard integer /0/
 dx    real /LARGEPOS/
 dy    real /LARGEPOS/
 dz    real /LARGEPOS/
@@ -452,11 +468,15 @@ ymin  real /+LARGEPOS/
 ymax  real /-LARGEPOS/
 zmin  real /+LARGEPOS/
 zmax  real /-LARGEPOS/
-grid(0:nx,0:ny,0:nz) _real
+grid(-nxguard:nx+nxguard,
+     -nyguard:ny+nyguard,
+     -nzguard:nz+nzguard) _real
 
 %%%%%%%%%%% Grid2dtype:
 nx    integer /-1/
 ny    integer /-1/
+nxguard integer /0/
+nyguard integer /0/
 dx    real /LARGEPOS/
 dy    real /LARGEPOS/
 dxi   real /LARGEPOS/
@@ -465,7 +485,8 @@ xmin  real /+LARGEPOS/
 xmax  real /-LARGEPOS/
 ymin  real /+LARGEPOS/
 ymax  real /-LARGEPOS/
-grid(0:nx,0:ny) _real
+grid(-nxguard:nx+nxguard,
+     -nyguard:ny+nyguard) _real
 
 *********** BoltzmannElectrons dump:
 # Parameters controlling the Boltzmann-Electrons.
@@ -915,21 +936,29 @@ getese()     subroutine # Computes electrostatic energy
 gtlchg3d()   subroutine # Computes line charge density
 gtlchg()     subroutine # Computes line charge density
 gtlchg3dfromrho(nxlocal:integer,nylocal:integer,nzlocal:integer,
-                rho(0:nxlocal,0:nylocal,0:nzlocal):real,dx:real,dy:real,dz:real,
+                nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
+                rho(-nxguardrho:nxlocal+nxguardrho,
+                    -nyguardrho:nylocal+nyguardrho,
+                    -nzguardrho:nzlocal+nzguardrho):real,
+                dx:real,dy:real,dz:real,
                 zgrid:real,zmminlocal:real,
                 l2symtry:logical,l4symtry:logical,islastproc:logical)
              subroutine # Computes line charge density from the rho array in 3D
-gtlchgrzfromrho(nxlocal:integer,nzlocal:integer,rho:real,dx:real,dz:real,
+gtlchgrzfromrho(nxlocal:integer,nzlocal:integer,
+                nxguardrho:integer,nzguardrho:integer,
+                rho:real,dx:real,dz:real,
                 zgrid:real,zmminlocal:real,islastproc:logical)
              subroutine # Computes line charge density from the rho array in RZ
 getese3dfromrhophi(nx:integer,ny:integer,nz:integer,
-                   ngx:integer,ngy:integer,ngz:integer,
+                   nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+                   nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
                    rho:real,phi:real,
                    dx:real,dy:real,dz:real,
                    l4symtry:logical,l2symtry:logical,ese:real)
              subroutine # Computes electrostatic energy from the input arrays
 geteserzfromrhophi(nx:integer,nz:integer,
-                   ngx:integer,ngz:integer,
+                   nxguardphi:integer,nzguardphi:integer,
+                   nxguardrho:integer,nzguardrho:integer,
                    rho:real,phi:real,
                    dx:real,dz:real,xmmin:real,ese:real)
              subroutine # Computes electrostatic energy from the input arrays
@@ -977,18 +1006,23 @@ setupFields3dParticles()
 setrhoandphiforfieldsolve(rhop:real,phip:real)
              subroutine # Copies data from rhop to rho - mainly for parallel
 setrhoforfieldsolve3d(nxlocal:integer,nylocal:integer,nzlocal:integer,
-                      rho(0:nxlocal,0:nylocal,0:nzlocal):real,
+                      rho(-nxguardrho:nxlocal+nxguardrho,
+                          -nyguardrho:nylocal+nyguardrho,
+                          -nzguardrho:nzlocal+nzguardrho):real,
                       nxp:integer,nyp:integer,nzp:integer,
-                      rhop(0:nxp,0:nyp,0:nzp):real,
-                      nxpextra:integer,nypextra:integer,nzpextra:integer,
+                      rhop(-nxguardrho:nxp+nxguardrho,
+                           -nyguardrho:nyp+nyguardrho,
+                           -nzguardrho:nzp+nzguardrho):real,
+                      nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
                       fsdecomp:Decomposition,ppdecomp:Decomposition)
              subroutine # Copies data from rhop to rho - for parallel
 getphipforparticles(indts:integer)
              subroutine # Copies data from phi to phip - mainly for parallel
 getphipforparticles3d(nc:integer,nxlocal:integer,nylocal:integer,
-                      nzlocal:integer,phi:real,
+                      nzlocal:integer,
+                      nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+                      phi:real,
                       nxp:integer,nyp:integer,nzp:integer,phip:real,
-                      delx:integer,dely:integer,delz:integer,
                       fsdecomp:Decomposition,ppdecomp:Decomposition)
              subroutine # Calls the parallel routine for copying phi into phip
 allocateselfepforparticles(lforce:logical)
@@ -1003,10 +1037,11 @@ setboundsfromflags(bounds(0:5):integer,boundxy:integer,bound0:integer,
                    l2symtry:integer,l4symtry:integer) subroutine
 applyrhoboundaryconditions()
              subroutine # Applies boundary conditions to rho
-applyrhoboundaryconditions3d(rho:real,nc:integer,
-                             nxlocal:integer,nylocal:integer,nzlocal:integer,
-                             bounds(0:5):integer,fsdecomp:Decomposition,
-                             lrz:logical)
+applyrhoboundaryconditions3d(nc:integer,
+                     nxlocal:integer,nylocal:integer,nzlocal:integer,
+                     nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
+                     rho:real,bounds(0:5):integer,fsdecomp:Decomposition,
+                     lrz:logical)
              subroutine # Applies boundary conditions to 3-D rho
 prntpa3d(lprntpara:logical)
              subroutine # Prints out 3d specific stuff (like prntpara())
@@ -1044,43 +1079,65 @@ ebcancelpush3dt(np,uxp(np):real,uyp(np):real,uzp(np):real,gi(np):real,
                   q:real,m:real,dt(np):real,which:integer) subroutine # velocity push with E+vxB cancellation
 seteears()  subroutine # Sets eearsofz, the axial confining field
 sete3d(phi1d:real,selfe:real,np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
-       xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,nx,ny,nz,
+       xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,
+       nx:integer,ny:integer,nz:integer,
+       nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+       nxguarde:integer,nyguarde:integer,nzguarde:integer,
        efetch:integer,ex(np):real,ey(np):real,ez(np):real,
-       l2symtry:logical,l4symtry:logical,lcylindrical:logical,
-       delx:integer,dely:integer,delz:integer)
+       l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine # Sets internal E field
-getselfe3d(phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz):real,
+getselfe3d(phi(-nxguardphi:nx+nxguardphi,
+               -nyguardphi:ny+nyguardphi,
+               -nzguardphi:nz+nzguardphi):real,
            nx:integer,ny:integer,nz:integer,
-           selfe(3,0:nx,0:ny,0:nz):real,
+           nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+           selfe(0:2,-nxguarde:nx+nxguarde,
+                     -nyguarde:ny+nyguarde,
+                     -nzguarde:nz+nzguarde):real,
+           nxguarde:integer,nyguarde:integer,nzguarde:integer,
            dx:real,dy:real,dz:real,
-           lzero:logical,delx:integer,dely:integer,delz:integer)
+           lzero:logical)
              subroutine # Calculates the self-E via finite difference of phi
-setrho3d(rho(0:nx,0:ny,0:nz):real,
+setrho3d(rho(-nxguardrho:nx+nxguardrho,
+             -nyguardrho:ny+nyguardrho,
+             -nzguardrho:nz+nzguardrho):real,
          np:integer,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
          q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
+         nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
          dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
          l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine # Computes charge density on a 3D grid.
                         # Calls one of several different routines based on the
                         # value of depos.
-setrho3dw(rho(0:nx,0:ny,0:nz):real,
+setrho3dw(rho(-nxguardrho:nx+nxguardrho,
+              -nyguardrho:ny+nyguardrho,
+              -nzguardrho:nz+nzguardrho):real,
           np:integer,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
           wfact(np):real,
           q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
+          nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
           dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
           l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine # Computes charge density on a 3D grid
                         # using variable weighted particles
-setrho3dselect(rho(0:nx,0:ny,0:nz):real,rho1d:real,
+setrho3dselect(rho(-nxguardrho:nx+nxguardrho,
+                   -nyguardrho:ny+nyguardrho,
+                   -nzguardrho:nz+nzguardrho):real,
+               rho1d:real,
                np:integer,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
                q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
+               nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
                dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
                l2symtry:logical,l4symtry:logical)
              subroutine # Computes charge density
-setrho3ddirect2(rho(0:nx,0:ny,0:nz):real,np:integer,
+setrho3ddirect2(rho(-nxguardrho:nx+nxguardrho,
+                    -nyguardrho:ny+nyguardrho,
+                    -nzguardrho:nz+nzguardrho):real,
+                np:integer,
                 xp(np):real,yp(np):real,zp(np):real,zgrid:real,q:real,wght:real,
-                nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real,
-                xmmin:real,ymmin:real,zmmin:real,
+                nx:integer,ny:integer,nz:integer,
+                nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
+                dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
                 l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine # Computes charge density on a 2D or 3D grid, with
                         # the option of cylindrical coordinates.
@@ -1211,7 +1268,7 @@ domaindecomposefields(nz:integer,nslaves:integer,lfsautodecomp:logical,
         overlap:integer) subroutine
       # Do the domain decomposition for the field solver
 domaindecomposeparticles(nz:integer,nslaves:integer,
-                nzpextra:integer,zmmin:real,
+                nzguardrho:integer,zmmin:real,
                 dz:real,zslave(0:nslaves-1):real,lautodecomp:logical,
                 izpslave(0:nslaves-1):integer,nzpslave(0:nslaves-1):integer,
                 zpslmin(0:nslaves-1):real,zpslmax(0:nslaves-1):real) subroutine
@@ -1307,7 +1364,7 @@ smooth3d_121_stride_mask(q(0:nx,0:ny,0:nz):real,mask(0:nx,0:ny,0:nz):real,
                     npass(3):integer,alpha(3):real,stride(3):integer) subroutine
    # three points linear smoothing with stride
 
-******** Subtimers3d dump:
+******** Subtimersw3d dump:
 lw3dtimesubs logical /.false./
 timew3dinit real /0./
 timew3dvers real /0./
@@ -1407,5 +1464,7 @@ timeperpot3d_slave real /0./
 timegetphipforparticles3d_parallel real /0./
 timegetphiforparticles3d real /0./
 timegetphiforfields3d real /0./
+timegetsourcetransfermessagedata real /0./
+timetransfersourceptosource3d real /0./
 
 timerdata(10) real /10*0./

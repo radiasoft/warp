@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.157 $, $Date: 2011/08/25 21:08:51 $
+c@(#) File w3d_injection.F, version $Revision: 1.158 $, $Date: 2011/08/27 00:35:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -12,7 +12,7 @@ c=============================================================================
       subroutine inject3d(itask,pgroup)
       use ParticleGroupmodule
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       use Constant
       use Beam_acc
       use InGen
@@ -2793,7 +2793,7 @@ c     --- End of transverse injection
 c=============================================================================
       subroutine injctint(pgroup)
       use ParticleGroupmodule
-      use Subtimers3d
+      use Subtimersw3d
       use Constant
       use Beam_acc
       use InGen
@@ -3196,7 +3196,7 @@ c use of the normal E field with the Child-Langmuir profile
       end
 c=============================================================================
       subroutine fill_inj()
-      use Subtimers3d
+      use Subtimersw3d
       use InPart
       use InMesh3d
       use InjectVars
@@ -3381,7 +3381,7 @@ c             --- the min is always ij.
       end
 c=============================================================================
       subroutine fill_inj_rz()
-      use Subtimers3d
+      use Subtimersw3d
       use InPart
       use InMesh3d
       use InjectVars
@@ -3481,7 +3481,7 @@ c             --- the min is always ij.
       end
 c=============================================================================
       subroutine inj_transform(np,x,y,z,ni,ijp,tsign,ishift)
-      use Subtimers3d
+      use Subtimersw3d
       use InjectVars
       use InjectVars3d
       integer(ISZ):: np,ni
@@ -3623,7 +3623,7 @@ c         enddo
       end
 c=============================================================================
       subroutine getinj_phi()
-      use Subtimers3d
+      use Subtimersw3d
       use InjectVars
       use InjectVars3d
       use InGen3d,Only: solvergeom,RZgeom,l2symtry,l4symtry
@@ -3934,7 +3934,7 @@ c     --- Do the smoothing.
       end
 c=============================================================================
       subroutine inj_sete(pgroup,ipmin,np,ex,ey,ez)
-      use Subtimers3d
+      use Subtimersw3d
       use ParticleGroupmodule
       use InjectVars
       type(ParticleGroup):: pgroup
@@ -3957,7 +3957,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine inj_sete3d(npart,xp,yp,zp,pid,ex,ey,ez)
-      use Subtimers3d
+      use Subtimersw3d
       use InGen3d
       use InPart
       use InjectVars
@@ -4196,7 +4196,7 @@ c     --- For particles not near the source, the temp arrays are zero.
 c=============================================================================
       subroutine inj_addtemp3d(pgroup,npart,ipmin,dz)
       use ParticleGroupmodule
-      use Subtimers3d
+      use Subtimersw3d
       use InGen3d
       use InPart
       use InPart3d
@@ -4349,7 +4349,7 @@ c=============================================================================
 c=============================================================================
       subroutine inj_setrho3d(pgroup,dz,l2symtry,l4symtry)
       use ParticleGroupmodule
-      use Subtimers3d
+      use Subtimersw3d
       use InPart
       use InjectVars
       use InjectVars3d
@@ -4500,7 +4500,7 @@ c       --- rho only on the right side of the emitting surface.
 c=============================================================================
       subroutine inj_setrho3d_z(pgroup,dz,nzlocal)
       use ParticleGroupmodule
-      use Subtimers3d
+      use Subtimersw3d
       use InPart
       use InjectVars
       use InjectVars3d
@@ -4596,7 +4596,7 @@ c       --- Transform the particles back into the lab frame
       end
 c=============================================================================
       subroutine getinj_phi_3d()
-      use Subtimers3d
+      use Subtimersw3d
       use InjectVars
       use InjectVars3d
       use Picglb,Only: zpminlocal,zpmaxlocal,zgrid
@@ -4751,7 +4751,7 @@ c     --- The result calculated on each processor is gathered on all
 c=============================================================================
       subroutine inj_setrhomr(pgroup)
       use ParticleGroupmodule
-      use Subtimers3d
+      use Subtimersw3d
       use Constant,Only: pi
       use Particles,Only: wpid
       use InGen3d
@@ -5083,7 +5083,7 @@ c     --- The result calculated on each processor is summed on all
       end
 c=============================================================================
       subroutine getinj_phi_mr(nn,xxp,yyp,zzp,xi,yi)
-      use Subtimers3d
+      use Subtimersw3d
       use InPart
       use InGen
       use InGen3d
@@ -5336,7 +5336,7 @@ c     --- The result calculated on each processor is gathered on all
       end
 c=============================================================================
       subroutine inj_sete_3darray(npart,xp,yp,zp,pid,dz,ex,ey,ez)
-      use Subtimers3d
+      use Subtimersw3d
       use InGen3d
       use InPart
       use InjectVars
@@ -5584,7 +5584,7 @@ c            wz = dd*2.**(inj_nz-iz)-1.
       end
 c===========================================================================
       subroutine gettinj_phi()
-      use Subtimers3d
+      use Subtimersw3d
       use Constant
       use InMesh3d
       use InjectVars
@@ -5691,7 +5691,7 @@ c     --- The result calculated on each processor is gathered on all
       end
 c=============================================================================
       subroutine tinj_sete3d(npart,xp,yp,zp,pid,ex,ey,ez)
-      use Subtimers3d
+      use Subtimersw3d
       use Constant
       use InGen3d
       use InMesh3d

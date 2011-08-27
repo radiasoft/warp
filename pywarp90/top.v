@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.300 $, $Date: 2011/07/22 01:18:36 $
+#@(#) File TOP.V, version $Revision: 3.301 $, $Date: 2011/08/27 00:35:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.300 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.301 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -3236,6 +3236,9 @@ iz(0:nzprocs-1) _integer # Starting z indices for the decomposition
 nz(0:nzprocs-1) _integer # Number of z cells for the decomposition
 zmin(0:nzprocs-1) _real # Minimum z location for the decomposition
 zmax(0:nzprocs-1) _real # Maximum z location for the decomposition
+mpistatex(0:nxprocs-1) _integer /0/ # Current state, whether or not using mpi
+mpistatey(0:nyprocs-1) _integer /0/ # Current state, whether or not using mpi
+mpistatez(0:nzprocs-1) _integer /0/ # Current state, whether or not using mpi
 mpi_comm   integer # MPI communicator for all participating processes
 mpi_comm_x integer # MPI communicator grouping processors along the x axis.
 mpi_comm_y integer # MPI communicator grouping processors along the y axis.

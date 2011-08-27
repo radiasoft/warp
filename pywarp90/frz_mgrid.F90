@@ -6658,7 +6658,7 @@ END SUBROUTINE RHOWEIGHTRZ
 
 subroutine rhoweightrz_weights(xp,yp,zp,w,np,q,nr,nz,dr,dz,rgrid,zgrid)
 USE multigridrz
-USE Subtimers3d
+USE Subtimersw3d
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
@@ -6894,7 +6894,7 @@ END SUBROUTINE RHOWEIGHTRZGRID
 subroutine rhoweightrzgrid_weights(grid,xp,yp,zp,w,np,q,nr,nz,dr,dz,rgrid,zgrid)
 use GRIDtypemodule
 USE multigridrz
-USE Subtimers3d
+USE Subtimersw3d
 implicit none
 
 type(GRIDtype):: grid

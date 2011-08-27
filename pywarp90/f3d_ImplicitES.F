@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) Filef3d_ImplicitES.F, version $Revision: 1.10 $, $Date: 2009/08/28 22:07:12 $
+c@(#) Filef3d_ImplicitES.F, version $Revision: 1.11 $, $Date: 2011/08/27 00:35:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid implicit electrostatic field solver.
@@ -993,32 +993,32 @@ c     --- the current level of refinement.
 #else
         lpe0 = .true.
 #endif
-        sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp)
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp,0)
         if (lpe0) print*,"V1 phi",mglevel,sss
         reps0c = mgparam/(eps0*2.*(1./dx**2+1./dy**2+1./dz**2))
-        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,rho,fsdecomp)
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,rho,fsdecomp,0)
         if (lpe0) print*,"V1 rho",mglevel,sss*reps0c
         do i=0,ns-1
-          sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,chi0(:,:,:,i),fsdecomp)
+          sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,chi0(:,:,:,i),fsdecomp,0)
           if (lpe0) print*,"V1 chi0",i,mglevel,sss
         enddo
-        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,coeffs0,fsdecomp)
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,coeffs0,fsdecomp,0)
         if (lpe0) print*,"V1 coeffs0",mglevel,sss
-        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,rhs,fsdecomp)
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,rhs,fsdecomp,0)
         if (lpe0) print*,"V1 rhs",mglevel,sss
         do i3=-1,1
           do i2=0,1
             do i1=0,2
-              sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,coeffs(i1,i2,i3,:,:,:),fsdecomp)
+              sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,coeffs(i1,i2,i3,:,:,:),fsdecomp,0)
               if (lpe0) print*,"V1 coeffs",i1,i2,i3,mglevel,sss
             enddo
           enddo
         enddo
-        sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,bongrid(:,:,:,0),fsdecomp)
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,bongrid(:,:,:,0),fsdecomp,0)
         if (lpe0) print*,"V1 bongrid 0",mglevel,sss
-        sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,bongrid(:,:,:,1),fsdecomp)
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,bongrid(:,:,:,1),fsdecomp,0)
         if (lpe0) print*,"V1 bongrid 1",mglevel,sss
-        sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,bongrid(:,:,:,2),fsdecomp)
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,bongrid(:,:,:,2),fsdecomp,0)
         if (lpe0) print*,"V1 bongrid 2",mglevel,sss
       endif
 
@@ -1029,9 +1029,9 @@ c     --- the current level of refinement.
       enddo
 
       if (lprintmgarraysumdiagnostic) then
-        sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp)
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp,0)
         if (lpe0) print*,"V2 phi",mglevel,sss
-        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,rho,fsdecomp)
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,0,0,0,rho,fsdecomp,0)
         if (lpe0) print*,"V2 rho",mglevel,sss*reps0c
       endif
 
@@ -1058,11 +1058,11 @@ c       --- Get the residual on the current grid.
 #ifdef MPIPARALLEL
         call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,res,
      &                               delx,dely,delz,-1,0,localbounds,fsdecomp)
-        call mgexchange_phi(1,nxlocal,nylocal,nzlocal,res,
+        call mgexchange_res(1,nxlocal,nylocal,nzlocal,res,
      &                      delx,dely,delz,-3,-1,fsdecomp)
 #endif
         if (lprintmgarraysumdiagnostic) then
-          sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,res,fsdecomp)
+          sss = mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,res,fsdecomp,0)
           if (lpe0) print*,"V3 res",mglevel,sss*reps0c
         endif
 
@@ -1194,7 +1194,7 @@ c       --- Restriction
      &                  rhocoarse,0,0,0,1.,localbounds,localboundsc,
      &                  lxoffset,lyoffset,lzoffset)
         if (lprintmgarraysumdiagnostic) then
-          sss = mggetarraysum(nxlocalcoarse,nylocalcoarse,nzlocalcoarse,0,0,0,rhocoarse,coarsedecomp)
+          sss = mggetarraysum(nxlocalcoarse,nylocalcoarse,nzlocalcoarse,0,0,0,rhocoarse,coarsedecomp,0)
           reps0c = mgparam/(eps0*2.*(1./dxcoarse**2+1./dycoarse**2+1./dzcoarse**2))
           if (lpe0) print*,"V3 rhocoarse",mglevel,sss*reps0c
         endif
@@ -1244,9 +1244,9 @@ c       --- Continue at the next coarsest level.
      &              delx,dely,delz,coarsedecomp)
 
         if (lprintmgarraysumdiagnostic) then
-          sss = mggetarraysum(nxlocalcoarse,nylocalcoarse,nzlocalcoarse,1,1,1,phicoarse,coarsedecomp)
+          sss = mggetarraysum(nxlocalcoarse,nylocalcoarse,nzlocalcoarse,1,1,1,phicoarse,coarsedecomp,0)
           if (lpe0) print*,"V4 phicoarse",mglevel,sss
-          sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp)
+          sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp,0)
           if (lpe0) print*,"V4 phi",mglevel,sss
         endif
 
@@ -1282,9 +1282,10 @@ c       --- Add in resulting error.
 #ifdef MPIPARALLEL
         call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
      &                               1,1,1,0,0,localbounds,fsdecomp)
-        call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,-1,fsdecomp)
+        call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+     &                      -1,-1,fsdecomp)
 #endif
-        sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp)
+        sss = mggetarraysum(nxlocal,nylocal,nzlocal,1,1,1,phi,fsdecomp,0)
         if (lpe0) print*,"V5 phi",mglevel,sss
       endif
 
@@ -1421,7 +1422,8 @@ c       --- set phi in the z guard planes
 #ifdef MPIPARALLEL
         call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
      &                               1,1,1,-1,0,localbounds,fsdecomp)
-        call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,0,fsdecomp)
+        call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+     &                      -1,0,fsdecomp)
 #endif
 
 c     --- end of loop over even and odd points
@@ -1429,7 +1431,8 @@ c     --- end of loop over even and odd points
 
 #ifdef MPIPARALLEL
 c     --- Exchange phi in the z guard planes
-      call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,-1,-1,fsdecomp)
+      call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+     &                    -1,-1,fsdecomp)
 #endif
 
       call averageperiodicphi3d(phi,nx,ny,nz,nxlocal,nylocal,nzlocal,1,1,1,

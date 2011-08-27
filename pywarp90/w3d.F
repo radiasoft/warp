@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.458 $, $Date: 2011/06/09 21:48:21 $
+c@(#) File W3D.F, version $Revision: 3.459 $, $Date: 2011/08/27 00:35:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -13,21 +13,36 @@ c=============================================================================
       interface
 
       subroutine assignrhopandphipforparticles(rhopin,phipin)
+      use InMesh3d
       use Fields3dParticles
-      real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phipin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+      real(kind=8),target:: rhopin(-nxguardrho:nxp+nxguardrho,
+     &                             -nyguardrho:nyp+nyguardrho,
+     &                             -nzguardrho:nzp+nzguardrho)
+      real(kind=8),target:: phipin(-nxguardphi:nxp+nxguardphi,
+     &                             -nyguardphi:nyp+nyguardphi,
+     &                             -nzguardphi:nzp+nzguardphi)
       end subroutine assignrhopandphipforparticles
 
-      subroutine assignrhoandphiforfieldsolve(rhoin,phiin)
+      subroutine assignrhoandphiforfieldsolve(rhopin,phipin)
+      use InMesh3d
       use Fields3dParticles
-      real(kind=8),target:: rhoin(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phiin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+      real(kind=8),target:: rhopin(-nxguardrho:nxp+nxguardrho,
+     &                             -nyguardrho:nyp+nyguardrho,
+     &                             -nzguardrho:nzp+nzguardrho)
+      real(kind=8),target:: phipin(-nxguardphi:nxp+nxguardphi,
+     &                             -nyguardphi:nyp+nyguardphi,
+     &                             -nzguardphi:nzp+nzguardphi)
       end subroutine assignrhoandphiforfieldsolve
 
-      subroutine setrhoandphiforfieldsolve(rhoin,phiin)
+      subroutine setrhoandphiforfieldsolve(rhopin,phipin)
+      use InMesh3d
       use Fields3dParticles
-      real(kind=8),target:: rhoin(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phiin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+      real(kind=8),target:: rhopin(-nxguardrho:nxp+nxguardrho,
+     &                             -nyguardrho:nyp+nyguardrho,
+     &                             -nzguardrho:nzp+nzguardrho)
+      real(kind=8),target:: phipin(-nxguardphi:nxp+nxguardphi,
+     &                             -nyguardphi:nyp+nyguardphi,
+     &                             -nzguardphi:nzp+nzguardphi)
       end subroutine setrhoandphiforfieldsolve
 
       subroutine fetche3d(pgroup,ipmin,ip,is)
@@ -40,7 +55,7 @@ c=============================================================================
       end module w3d_interfaces
 c=============================================================================
       subroutine w3dinit
-      use Subtimers3d
+      use Subtimersw3d
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -55,7 +70,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
       end
 c=============================================================================
       subroutine w3dvers (iout)
-      use Subtimers3d
+      use Subtimersw3d
       use W3Dversion
       integer(ISZ):: iout
       real(kind=8):: substarttime,wtime
@@ -70,7 +85,7 @@ c  Echoes code version, etc. to output files as they're created
 c=============================================================================
       subroutine w3dgen()
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       use Ch_var
       use Constant
       use InGen
@@ -531,7 +546,7 @@ c  Set up Eears of z
       end
 c=============================================================================
       subroutine w3dexe()
-      use Subtimers3d
+      use Subtimersw3d
       use Picglb
       use InGen
       use InPart
@@ -637,7 +652,7 @@ c  Continue to run.
       end
 c=============================================================================
       subroutine w3dfin()
-      use Subtimers3d
+      use Subtimersw3d
       use InGen
       use InGen3d
       use InDiag
@@ -696,7 +711,7 @@ c  release storage
       end
 c=============================================================================
       subroutine step3d (caller)
-      use Subtimers3d
+      use Subtimersw3d
       use Constant
       use InGen
       use InGen3d
@@ -940,7 +955,9 @@ c           --- in which cases all species use the same field.
                return
             endif
             call allocateselfepforparticles(.true.)
-            call getselfe3d(phip,nxp,nyp,nzp,selfep,dx,dy,dz,.true.,1,1,1)
+            call getselfe3d(phip,nxp,nyp,nzp,nxguardphi,nyguardphi,nzguardphi,
+     &                      selfep,nxguarde,nyguarde,nzguarde,
+     &                      dx,dy,dz,.true.)
             if(idadt>0) call getefroma3d(selfep(1,0,0,0),nxp,nyp,nzp,dt,dz,vbeamfrm,idadt,zgrid,zgridaprv)
          endif
 
@@ -1041,7 +1058,7 @@ c  Finally, moment diagnostic printout and history storage
 c=============================================================================
       subroutine exteb3d(np,xp,yp,zp,uzp,gaminv,dtl,dtr,
      &                   bx,by,bz,ex,ey,ez,m,q,bendres,bendradi,gammabar,dt)
-      use Subtimers3d
+      use Subtimersw3d
       use Timers
       integer(ISZ):: np
       real(kind=8):: dtl,dtr,m,q,gammabar,dt
@@ -1120,7 +1137,7 @@ c=============================================================================
      &                    ifeears,eears,eearsofz,dzzi,nzzarr,zzmin,
      &                    dedr,dexdx,deydy,dbdr,dbxdy,dbydx,ex,ey,ez,bx,by,bz)
       use InGen3d, only:lothereuser
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np,ifeears,nzzarr
       real(kind=8):: zbeam,zimax,zimin,straight,eears,dzzi,zzmin
       real(kind=8):: dedr,dexdx,deydy,dbdr,dbxdy,dbydx
@@ -1202,7 +1219,7 @@ c     --- x- and y-magnetic fields
       end
 c=============================================================================
       subroutine seteears()
-      use Subtimers3d
+      use Subtimersw3d
       use Beam_acc
       use InGen
       use InPart
@@ -1387,7 +1404,7 @@ c     --- The pgroup%ldts variable should be removed since its not really needed
 c=============================================================================
       subroutine positionadvance3d(pgroup,is,np,ipmin,interpdk,dt,
      &                             bendres,bendradi,vbeam)
-      use Subtimers3d
+      use Subtimersw3d
       use ParticleGroupmodule
       use Particles, Only: xoldpid,yoldpid,zoldpid
       use InGen, Only: boost_gamma
@@ -1513,7 +1530,7 @@ c         --- transform velocity back to boosted frame
       end
 c=============================================================================
       subroutine epush(np,uxp,uyp,uzp,gaminv,exp,eyp,ezp,sq,sm,dt,dtfact,l_dtmult,l_paraxial)
-      use Subtimers3d
+      use Subtimersw3d
       use Beam_acc,only:lrelativ
       use InGen,only:gamadv
       integer(ISZ):: np
@@ -1544,7 +1561,7 @@ c       --- Advance relativistic Gamma factor
       end
 c=============================================================================
       subroutine bpush(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,dtfact,l_dtmult,l_paraxial,ibpush)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np),bxp(np),byp(np),bzp(np),sq,sm,dt,dtfact(np)
       logical(ISZ)::l_dtmult,l_paraxial
@@ -1573,7 +1590,7 @@ c=============================================================================
       subroutine padvnc3d(center,pgroup)
       use ParticleGroupmodule
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       use Constant
       use InMesh3d
       use InGen
@@ -2445,7 +2462,7 @@ c----------------------------------------------------------------------------
       end
 c=============================================================================
       subroutine getextpart(pgroup)
-      use Subtimers3d
+      use Subtimersw3d
       use ParticleGroupmodule
       use GlobalVars
       use InGen
@@ -2485,7 +2502,7 @@ c       --- Include time step size scaling for steady-state and slice modes.
       end
 c=============================================================================
       subroutine perphi3d()
-      use Subtimers3d
+      use Subtimersw3d
       use InGen3d
       use InMesh3d
       use Fields3d
@@ -2538,7 +2555,7 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
 c=============================================================================
       subroutine applyrhoboundaryconditions()
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       use InGen,Only: fstype
       use InGen3d
       use InMesh3d
@@ -2564,9 +2581,12 @@ c     --- Do some error checking
         return
       endif
       if (debug) then
-        if (LBOUND(rho,1) .ne. 0 .or. UBOUND(rho,1) .ne. nxlocal .or.
-     &      LBOUND(rho,2) .ne. 0 .or. UBOUND(rho,2) .ne. nylocal .or.
-     &      LBOUND(rho,3) .ne. 0 .or. UBOUND(rho,3) .ne. nzlocal) then
+        if (LBOUND(rho,1) .ne. -nxguardrho .or.
+     &      UBOUND(rho,1) .ne. nxlocal+nxguardrho .or.
+     &      LBOUND(rho,2) .ne. -nyguardrho .or.
+     &      UBOUND(rho,2) .ne. nylocal+nyguardrho .or.
+     &      LBOUND(rho,3) .ne. -nzguardrho .or.
+     &      UBOUND(rho,3) .ne. nzlocal+nzguardrho) then
           print*,"rho shape = ",LBOUND(rho),UBOUND(rho)
           call kaboom("applyrhoboundaryconditions: rho has wrong shape")
         endif
@@ -2588,13 +2608,13 @@ c  Enforce longitudinal periodicity.
 
 c  Copy charge density from frz.basegrid to w3d.rho
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call get_rho_rz(rho(0,0,0),nx,nzlocal,1,0)
+        call get_rho_rz(rho,nx,nzlocal,1,0)
       else if(solvergeom==XYgeom) then
-        call get_rho_rz(rho(0,0,0),nxlocal,nylocal,1,0)
+        call get_rho_rz(rho,nxlocal,nylocal,1,0)
       else if(solvergeom==Zgeom) then
-        call get_rho_z(rho(0,0,0),nzlocal,1,0)
+        call get_rho_z(rho,nzlocal,1,0)
       else if(solvergeom==Rgeom) then
-        call get_rho_r(rho(0,0,0),nx,1,0)
+        call get_rho_r(rho,nx,1,0)
       end if
 
       if (solvergeom==XYZgeom) then
@@ -2604,27 +2624,41 @@ c       --- flags.
         call setboundsfromflags(bounds,boundxy,bound0,boundnz,l2symtry,l4symtry)
 
 #ifdef MPIPARALLEL
-        call applyrhoboundaryconditions3d(rho,1,nxlocal,nylocal,nzlocal,
+        call applyrhoboundaryconditions3d(1,nxlocal,nylocal,nzlocal,
+     &                                    nxguardrho,nyguardrho,nzguardrho,
+     &                                    rho,
      &                                    bounds,fsdecomp,solvergeom==RZgeom)
 #else
         if (bounds(0) == periodic .or. bounds(1) == periodic) then
-          rho(0,:,:) = rho(0,:,:) + rho(nx,:,:)
-          rho(nx,:,:) = rho(0,:,:)
+          rho(:nxguardrho,:,:) = rho(:nxguardrho,:,:) + rho(nx-nxguardrho:,:,:)
+          rho(nx-nxguardrho:,:,:) = rho(:nxguardrho,:,:)
         endif
         if (bounds(2) == periodic .or. bounds(3) == periodic) then
-          rho(:,0,:) = rho(:,0,:) + rho(:,ny,:)
-          rho(:,ny,:) = rho(:,0,:)
+          rho(:,:nyguardrho,:) = rho(:,:nyguardrho,:) + rho(:,ny-nyguardrho:,:)
+          rho(:,ny-nyguardrho:,:) = rho(:,:nyguardrho,:)
         endif
         if (bounds(4)==periodic .or. bounds(5) == periodic) then
-          rho(:,:,0) = rho(:,:,0) + rho(:,:,nz)
-          rho(:,:,nz) = rho(:,:,0)
+          rho(:,:,:nzguardrho) = rho(:,:,:nzguardrho) + rho(:,:,nz-nzguardrho:)
+          rho(:,:,nz-nzguardrho:) = rho(:,:,:nzguardrho)
         endif
-        if (bounds(0) == neumann) rho(0,:,:) = 2.*rho(0,:,:)
-        if (bounds(1) == neumann) rho(nx,:,:) = 2.*rho(nx,:,:)
-        if (bounds(2) == neumann) rho(:,0,:) = 2.*rho(:,0,:)
-        if (bounds(3) == neumann) rho(:,ny,:) = 2.*rho(:,ny,:)
-        if (bounds(4) == neumann) rho(:,:,0) = 2.*rho(:,:,0)
-        if (bounds(5) == neumann) rho(:,:,nz) = 2.*rho(:,:,nz)
+        if (bounds(0) == neumann) then
+          rho(:nxguardrho,:,:) = rho(:nxguardrho,:,:) + rho(nxguardrho:-nxguardrho:-1,:,:)
+        endif
+        if (bounds(1) == neumann) then
+          rho(nx-nxguardrho:,:,:) = rho(nx-nxguardrho:,:,:) + rho(nx+nxguardrho:nx-nxguardrho:-1,:,:)
+        endif
+        if (bounds(2) == neumann) then
+          rho(:,:nyguardrho,:) = rho(:,:nyguardrho,:) + rho(:,nyguardrho:-nyguardrho:-1,:)
+        endif
+        if (bounds(3) == neumann) then
+          rho(:,ny-nyguardrho:,:) = rho(:,ny-nyguardrho:,:) + rho(:,ny+nyguardrho:ny-nyguardrho:-1,:)
+        endif
+        if (bounds(4) == neumann) then
+          rho(:,:,:nzguardrho) = rho(:,:,:nzguardrho) + rho(:,:,nzguardrho:-nzguardrho:-1)
+        endif
+        if (bounds(5) == neumann) then
+          rho(:,:,nz-nzguardrho:) = rho(:,:,nz-nzguardrho:) + rho(:,:,nz+nzguardrho:nz-nzguardrho:-1)
+        endif
 #endif
       endif
 
@@ -2634,13 +2668,17 @@ c       --- flags.
       return
       end
 c=============================================================================
-      subroutine applyrhoboundaryconditions3d(rho,nc,nxlocal,nylocal,nzlocal,
-     &                                        bounds,fsdecomp,lrz)
+      subroutine applyrhoboundaryconditions3d(nc,nxlocal,nylocal,nzlocal,
+     &                                        nxguardrho,nyguardrho,nzguardrho,
+     &                                        rho,bounds,fsdecomp,lrz)
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       use Decompositionmodule
       integer(ISZ):: nc,nxlocal,nylocal,nzlocal
-      real(kind=8):: rho(0:nc-1,0:nxlocal,0:nylocal,0:nzlocal)
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: rho(0:nc-1,-nxguardrho:nxlocal+nxguardrho,
+     &                          -nyguardrho:nylocal+nyguardrho,
+     &                          -nzguardrho:nzlocal+nzguardrho)
       integer(ISZ):: bounds(0:5)
       type(Decomposition):: fsdecomp
       logical(ISZ):: lrz
@@ -2651,19 +2689,20 @@ c=============================================================================
       if (nxlocal > 0) then
         if ((bounds(0) == neumann) .and. fsdecomp%ixproc == 0
      &      .and. .not. lrz) then
-          rho(:,0,:,:) = 2.*rho(:,0,:,:)
+          rho(:,:nxguardrho,:,:) = rho(:,:nxguardrho,:,:) + rho(:,nxguardrho:-nxguardrho:-1,:,:)
         endif
         if (bounds(1) == neumann .and.
      &      fsdecomp%ixproc == fsdecomp%nxprocs-1) then
-          rho(:,nxlocal,:,:) = 2.*rho(:,nxlocal,:,:)
+          rho(:,nxlocal-nxguardrho:,:,:) = rho(:,nxlocal-nxguardrho:,:,:) + rho(:,nxlocal+nxguardrho:nxlocal-nxguardrho:-1,:,:)
         endif
         if (bounds(0) == periodic .or. bounds(1) == periodic) then
           if (fsdecomp%nxprocs == 1) then
-            rho(:,0,:,:) = rho(:,0,:,:) + rho(:,nxlocal,:,:)
-            rho(:,nxlocal,:,:) = rho(:,0,:,:)
+            rho(:,:nxguardrho,:,:) = rho(:,:nxguardrho,:,:) + rho(:,nxlocal-nxguardrho:,:,:)
+            rho(:,nxlocal-nxguardrho:,:,:) = rho(:,:nxguardrho,:,:)
 #ifdef MPIPARALLEL
           else
             call makesourceperiodic_slave_work(0,rho,nc,nxlocal,nylocal,nzlocal,
+     &                    nxguardrho,nyguardrho,nzguardrho,
      &                    fsdecomp%nxprocs,fsdecomp%ixproc,fsdecomp%mpi_comm_x)
 #endif
           endif
@@ -2672,19 +2711,20 @@ c=============================================================================
 
       if (nylocal > 0) then
         if ((bounds(2) == neumann) .and. fsdecomp%iyproc == 0) then
-          rho(:,:,0,:) = 2.*rho(:,:,0,:)
+          rho(:,:,:nyguardrho,:) = rho(:,:,:nyguardrho,:) + rho(:,:,nyguardrho:-nyguardrho:-1,:)
         endif
         if (bounds(3) == neumann .and.
      &      fsdecomp%iyproc == fsdecomp%nyprocs-1) then
-          rho(:,:,nylocal,:) = 2.*rho(:,:,nylocal,:)
+          rho(:,:,nylocal-nyguardrho:,:) = rho(:,:,nylocal-nyguardrho:,:) + rho(:,:,nylocal+nyguardrho:nylocal-nyguardrho:-1,:)
         endif
         if (bounds(2) == periodic .or. bounds(3) == periodic) then
           if (fsdecomp%nyprocs == 1) then
-            rho(:,:,0,:) = rho(:,:,0,:) + rho(:,:,nylocal,:)
-            rho(:,:,nylocal,:) = rho(:,:,0,:)
+            rho(:,:,:nyguardrho,:) = rho(:,:,:nyguardrho,:) + rho(:,:,nylocal-nyguardrho:,:)
+            rho(:,:,nylocal-nyguardrho:,:) = rho(:,:,:nyguardrho,:)
 #ifdef MPIPARALLEL
           else
             call makesourceperiodic_slave_work(1,rho,nc,nxlocal,nylocal,nzlocal,
+     &                    nxguardrho,nyguardrho,nzguardrho,
      &                    fsdecomp%nyprocs,fsdecomp%iyproc,fsdecomp%mpi_comm_y)
 #endif
           endif
@@ -2693,19 +2733,20 @@ c=============================================================================
 
       if (nzlocal > 0) then
         if (bounds(4) == neumann .and. fsdecomp%izproc == 0) then
-          rho(:,:,:,0) = 2.*rho(:,:,:,0)
+          rho(:,:,:,:nzguardrho) = rho(:,:,:,:nzguardrho) + rho(:,:,:,nzguardrho:-nzguardrho:-1)
         endif
         if (bounds(5) == neumann .and.
      &      fsdecomp%izproc == fsdecomp%nzprocs-1) then
-          rho(:,:,:,nzlocal) = 2.*rho(:,:,:,nzlocal)
+          rho(:,:,:,nzlocal-nzguardrho:) = rho(:,:,:,nzlocal-nzguardrho:) + rho(:,:,:,nzlocal+nzguardrho:nzlocal-nzguardrho:-1)
         endif
         if (bounds(4)==periodic .or. bounds(5) == periodic) then
           if (fsdecomp%nzprocs == 1) then
-            rho(:,:,:,0) = rho(:,:,:,0) + rho(:,:,:,nzlocal)
-            rho(:,:,:,nzlocal) = rho(:,:,:,0)
+            rho(:,:,:,:nzguardrho) = rho(:,:,:,:nzguardrho) + rho(:,:,:,nzlocal-nzguardrho:)
+            rho(:,:,:,nzlocal-nzguardrho:) = rho(:,:,:,:nzguardrho)
 #ifdef MPIPARALLEL
           else
             call makesourceperiodic_slave_work(2,rho,nc,nxlocal,nylocal,nzlocal,
+     &                    nxguardrho,nyguardrho,nzguardrho,
      &                    fsdecomp%nzprocs,fsdecomp%izproc,fsdecomp%mpi_comm_z)
 #endif
           endif
@@ -2720,7 +2761,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine epush3d(np,uxp,uyp,uzp,ex,ey,ez,q,m,ddt)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np
       real(kind=8):: uxp(np),uyp(np),uzp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
@@ -2747,7 +2788,7 @@ c  Push the particle velocity with E field
       end
 c=============================================================================
       subroutine epush2d(np,uxp,uyp,ex,ey,q,m,ddt)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np
       real(kind=8):: uxp(np),uyp(np)
       real(kind=8):: ex(np),ey(np)
@@ -2773,7 +2814,7 @@ c  Push the particle velocity with E field
       end
 c=============================================================================
       subroutine epusht3d(np,uxp,uyp,uzp,ex,ey,ez,q,m,dtp,fdt)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np
       real(kind=8):: uxp(np),uyp(np),uzp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
@@ -2802,7 +2843,7 @@ c each particle.
       end
 c============================================================================= 
       subroutine bpush3d(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,ddt,ibpush)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: bx(np),by(np),bz(np)
@@ -2889,7 +2930,7 @@ c        --- fast b-field rotation algorithm with half Boris angle
       end
 c============================================================================= 
       subroutine bpush2d(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,ddt,ibpush)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: bx(np),by(np),bz(np)
@@ -2973,7 +3014,7 @@ c        --- fast b-field rotation algorithm with half Boris angle
       end
 c============================================================================= 
       subroutine bpusht3d(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,dtp,fdt,ibpush)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: bx(np),by(np),bz(np)
@@ -3038,7 +3079,7 @@ c        --- tan(alpha) / alpha algorithm
       end
 c=========================================================================== 
       subroutine xpush3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,dtp)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np
       real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: dtp
@@ -3062,7 +3103,7 @@ c  Advance particle positions
       end
 c===========================================================================
       subroutine xpusht3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,dtp)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np
       real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: dtp(np)
@@ -3086,7 +3127,7 @@ c  Advance particle positions
       end
 c=============================================================================
       subroutine ebcancelpush3d(np,uxp,uyp,uzp,gi,exp,eyp,ezp,bxp,byp,bzp,q,m,dt,which)
-      use Subtimers3d
+      use Subtimersw3d
       use Constant
       integer(ISZ):: np,which
       real(kind=8):: uxp(np),uyp(np),uzp(np),gi(np)
@@ -3199,7 +3240,7 @@ c to create mismatched values of u and gamma?
       end
 c=============================================================================
       subroutine ebcancelpush3dt(np,uxp,uyp,uzp,gi,exp,eyp,ezp,bxp,byp,bzp,q,m,dt,which)
-      use Subtimers3d
+      use Subtimersw3d
       use Constant
       integer(ISZ):: np,which
       real(kind=8):: uxp(np),uyp(np),uzp(np),gi(np)
@@ -3314,7 +3355,7 @@ c=============================================================================
       subroutine check_cc3d(pgroup,is,ipmin,np,exo,eyo,ezo,bxo,byo,bzo)
       use Constant
       use InGen
-      use Subtimers3d
+      use Subtimersw3d
       use Beam_acc
       use Picglb, only: time,zgrid
       use Picglb3d
@@ -3454,7 +3495,7 @@ c         --- flag to move to group with larger time step
       end
 c============================================================================
       subroutine sete3d_relativity(np,ex,ey,vbeam)
-      use Subtimers3d
+      use Subtimersw3d
       use Constant
       integer(ISZ):: np
       real(kind=8):: ex(np),ey(np)
@@ -3481,7 +3522,7 @@ c Applies the first order relativistic correction to the self E-field.
 c============================================================================ 
       subroutine edamp(eomdamp,it,itdamp,center,np,
      &                 ex,ey,ez,exold,eyold,ezold,exlag,eylag,ezlag)
-      use Subtimers3d
+      use Subtimersw3d
       real(kind=8):: eomdamp
       integer(ISZ):: it,itdamp,np
       real(kind=8):: ex(np), ey(np), ez(np), exold(np), eyold(np), ezold(np)
@@ -3593,7 +3634,7 @@ c        --- don't use modified field if too early in run
       end
 c============================================================================ 
       subroutine bendez3d(np,xp,zp,ez,bendres,bendradi,bends,bnezflag,linbend)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np
       real(kind=8):: xp(np), zp(np), ez(np), bendres(np), bendradi(np)
       logical(ISZ):: bends, bnezflag, linbend
@@ -3624,16 +3665,23 @@ c  at smaller radii, zones are closer together, so field is larger.
       end      
 c=========================================================================== 
       subroutine sete3d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
-     &                  dx,dy,dz,nx,ny,nz,efetch,ex,ey,ez,l2symtry,l4symtry,
-     &                  lcylindrical,delx,dely,delz)
-      use Subtimers3d
+     &                  dx,dy,dz,nx,ny,nz,nxguardphi,nyguardphi,nzguardphi,
+     &                  nxguarde,nyguarde,nzguarde,
+     &                  efetch,ex,ey,ez,l2symtry,l4symtry,
+     &                  lcylindrical)
+      use Subtimersw3d
       integer(ISZ):: np,nx,ny,nz
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      integer(ISZ):: nxguarde,nyguarde,nzguarde
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
-      real(kind=8):: phi1d(0:*),selfe(3,0:nx,0:ny,0:nz),xp(np),yp(np),zp(np)
+      real(kind=8):: phi1d(0:*)
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nyguarde:ny+nyguarde,
+     &                       -nzguarde:nz+nzguarde)
+      real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
       integer(ISZ):: efetch
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
-      integer(ISZ):: delx,dely,delz
 
 c Gets self electric field for particles
 c Note that the phi1d passed in is assumed to start at phi(-1,-1,-1).
@@ -3673,13 +3721,14 @@ c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
 
       if (ny == 0) then
         call seterz(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
-     &              dx,dz,nx,nz,efetch,ex,ey,ez,l2symtry,l4symtry,
-     &              lcylindrical,delx,delz)
+     &              dx,dz,nx,nz,nxguardphi,nzguardphi,nxguarde,nzguarde,
+     &              efetch,ex,ey,ez,l2symtry,l4symtry,
+     &              lcylindrical)
         return
       endif
 
-      nnx  = nx + 1 + 2*delx
-      nnxy = (nx + 1 + 2*delx)*(ny + 1 + 2*dely)
+      nnx  = nx + 1 + 2*nxguardphi
+      nnxy = (nx + 1 + 2*nxguardphi)*(ny + 1 + 2*nyguardphi)
 
 c  Evaluation of offsets occurs on the first call only provided
 c  local arrays are SAVE'd. nnxy is added to all offsets to account for
@@ -3720,7 +3769,7 @@ c     if (noff(1) /= -nnxy) then
          noff(31) = + 2*nnxy + nnx
          noff(32) = + 2*nnxy + nnx   + 1
 
-         noff = noff + delx + nnx*dely + nnxy*delz
+         noff = noff + nxguardphi + nnx*nyguardphi + nnxy*nzguardphi
 
 c     endif
 
@@ -4424,8 +4473,8 @@ c           --- Adjust sign of E field for appropriate quadrant.
 
 c       --- Fetch with a 2nd order spline
         call sete3dspline2(selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
-     &                         dx,dy,dz,nx,ny,nz,ex,ey,ez,
-     &                         l2symtry,l4symtry,lcylindrical)
+     &                     dx,dy,dz,nx,ny,nz,nxguarde,nyguarde,nzguarde,
+     &                     ex,ey,ez,l2symtry,l4symtry,lcylindrical)
       endif
 
 !$OMP MASTER
@@ -4435,18 +4484,20 @@ c       --- Fetch with a 2nd order spline
       end
 c=========================================================================== 
       subroutine sete3dspline2(selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
-     &                         dx,dy,dz,nx,ny,nz,ex,ey,ez,
-     &                         l2symtry,l4symtry,lcylindrical)
-      use Subtimers3d
+     &                         dx,dy,dz,nx,ny,nz,nxguarde,nyguarde,nzguarde,
+     &                         ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+      use Subtimersw3d
       integer(ISZ):: np,nx,ny,nz
+      integer(ISZ):: nxguarde,nyguarde,nzguarde
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
-      real(kind=8):: selfe(3,0:nx,0:ny,0:nz),xp(np),yp(np),zp(np)
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nyguarde:ny+nyguarde,
+     &                       -nzguarde:nz+nzguarde)
+      real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
 c Fetch the E fields using 2nd order splines
-c WARNING!! This code is not complete and will not work for particles
-c near the boundaries!!!
 
       integer(ISZ):: ip,i,j,k,inext,jnext,knext
       real(kind=8):: dxi,dyi,dzi
@@ -4458,7 +4509,85 @@ c near the boundaries!!!
       dyi = 1./dy
       dzi = 1./dz
 
-      if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
+      if (lcylindrical) then
+
+        xnext = sqrt(xp(1)**2 + yp(1)**2)
+        inext = nint((xnext - xmmin)*dxi)
+        knext = nint((zp(1) - zgrid - zmmin)*dzi)
+
+        do ip = 1, np
+
+          i = inext
+          k = knext
+          x = xnext
+          if (ip < np) then
+            xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+            inext = nint((xnext    - xmmin)*dxi)
+            knext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+          endif
+
+          wx = (x      - xmmin)*dxi - i
+          wz = (zp(ip) - zgrid - zmmin)*dzi - k
+
+c         --- !!! I DON'T THINK THIS IS CORRECT!!!
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          w0 = 0.5*(0.5 - wz)**2
+          w1 = (0.75 - wz**2)
+          w2 = 0.5*(0.5 + wz)**2
+
+          ext = u0*w0*selfe(1,i-1,0,k-1)
+     &        + u1*w0*selfe(1,i  ,0,k-1)
+     &        + u2*w0*selfe(1,i+1,0,k-1)
+
+     &        + u0*w1*selfe(1,i-1,0,k  )
+     &        + u1*w1*selfe(1,i  ,0,k  )
+     &        + u2*w1*selfe(1,i+1,0,k  )
+
+     &        + u0*w2*selfe(1,i-1,0,k+1)
+     &        + u1*w2*selfe(1,i  ,0,k+1)
+     &        + u2*w2*selfe(1,i+1,0,k+1)
+
+          eyt = u0*w0*selfe(2,i-1,0,k-1)
+     &        + u1*w0*selfe(2,i  ,0,k-1)
+     &        + u2*w0*selfe(2,i+1,0,k-1)
+
+     &        + u0*w1*selfe(2,i-1,0,k  )
+     &        + u1*w1*selfe(2,i  ,0,k  )
+     &        + u2*w1*selfe(2,i+1,0,k  )
+
+     &        + u0*w2*selfe(2,i-1,0,k+1)
+     &        + u1*w2*selfe(2,i  ,0,k+1)
+     &        + u2*w2*selfe(2,i+1,0,k+1)
+
+          ezt = u0*w0*selfe(3,i-1,0,k-1)
+     &        + u1*w0*selfe(3,i  ,0,k-1)
+     &        + u2*w0*selfe(3,i+1,0,k-1)
+
+     &        + u0*w1*selfe(3,i-1,0,k  )
+     &        + u1*w1*selfe(3,i  ,0,k  )
+     &        + u2*w1*selfe(3,i+1,0,k  )
+
+     &        + u0*w2*selfe(3,i-1,0,k+1)
+     &        + u1*w2*selfe(3,i  ,0,k+1)
+     &        + u2*w2*selfe(3,i+1,0,k+1)
+
+          if (x > 0.) then
+            eyt = ext*yp(ip)/x
+            ext = ext*xp(ip)/x
+          else
+            ext = ext
+            eyt = 0.
+          endif
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      else if (.not. (l2symtry .or. l4symtry)) then
 
         if (lcylindrical) then
           xnext = sqrt(xp(1)**2 + yp(1)**2)
@@ -4756,16 +4885,20 @@ c         --- Adjust sign of E field for appropriate quadrant.
       end
 c=========================================================================== 
       subroutine seterz(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
-     &                  dx,dz,nx,nz,efetch,ex,ey,ez,l2symtry,l4symtry,
-     &                  lcylindrical,delx,delz)
-      use Subtimers3d
+     &                  dx,dz,nx,nz,nxguardphi,nzguardphi,nxguarde,nzguarde,
+     &                  efetch,ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+      use Subtimersw3d
       integer(ISZ):: np,nx,nz
+      integer(ISZ):: nxguardphi,nzguardphi
+      integer(ISZ):: nxguarde,nzguarde
       real(kind=8):: zgrid,xmmin,zmmin,dx,dz
-      real(kind=8):: phi1d(0:*),selfe(3,0:nx,0:nz),xp(np),yp(np),zp(np)
+      real(kind=8):: phi1d(0:*)
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nzguarde:nz+nzguarde)
+      real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
       integer(ISZ):: efetch
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
-      integer(ISZ):: delx,delz
 
 c Gets self electric field for particles
 c Note that the phi1d passed in is assumed to start at phi(-1,-1,-1).
@@ -4803,7 +4936,7 @@ c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      nnx  = nx + 1 + 2*delx
+      nnx  = nx + 1 + 2*nxguardphi
 
 c  Evaluation of offsets occurs on the first call only provided
 c  local arrays are SAVE'd. nnx is added to all offsets to account for
@@ -4825,7 +4958,7 @@ c     if (noff(1) /= -nnx) then
          noff(29) = + 2*nnx
          noff(30) = + 2*nnx          + 1
 
-         noff = noff + delx + nnx*delz
+         noff = noff + nxguardphi + nnx*nzguardphi
 
 c     endif
 
@@ -5309,16 +5442,20 @@ c           --- Adjust sign of E field for appropriate quadrant.
       end
 c=========================================================================== 
       subroutine setexy(phi1d,selfe,np,xp,yp,xmmin,ymmin,
-     &                  dx,dy,nx,ny,efetch,ex,ey,ez,l2symtry,l4symtry,
-     &                  delx,dely)
-      use Subtimers3d
+     &                  dx,dy,nx,ny,nxguardphi,nyguardphi,nxguarde,nyguarde,
+     &                  efetch,ex,ey,ez,l2symtry,l4symtry)
+      use Subtimersw3d
       integer(ISZ):: np,nx,ny
+      integer(ISZ):: nxguardphi,nyguardphi
+      integer(ISZ):: nxguarde,nyguarde
       real(kind=8):: zgrid,xmmin,ymmin,dx,dy
-      real(kind=8):: phi1d(0:*),selfe(3,0:nx,0:ny),xp(np),yp(np)
+      real(kind=8):: phi1d(0:*)
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nyguarde:ny+nyguarde)
+      real(kind=8):: xp(np),yp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
       integer(ISZ):: efetch
       logical(ISZ):: l2symtry,l4symtry
-      integer(ISZ):: delx,dely
 
 c Gets self electric field for particles
 c Note that the phi1d passed in is assumed to start at phi(-1,-1).
@@ -5351,7 +5488,7 @@ c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      nnx  = nx + 1 + 2*delx
+      nnx  = nx + 1 + 2*nxguardphi
 
 c  Evaluation of offsets occurs on the first call only provided
 c  local arrays are SAVE'd. nnxy is added to all offsets to account for
@@ -5371,7 +5508,7 @@ c  of phi(0,0,0) is equivalent to phi1d(nnxy).
       noff(15) = + 2*nnx
       noff(16) = + 2*nnx + 1
 
-      noff = noff + delx + nnx*dely
+      noff = noff + nxguardphi + nnx*nyguardphi
 
 c  Evaluation of E, vectorized over particles
       tdxi = 1. / (2.*dx)
@@ -5811,11 +5948,18 @@ c           --- Adjust sign of E field for appropriate quadrant.
       return
       end
 c=========================================================================== 
-      subroutine getselfe3d(phi,nx,ny,nz,selfe,dx,dy,dz,lzero,delx,dely,delz)
-      use Subtimers3d
-      integer(ISZ):: nx,ny,nz,delx,dely,delz
-      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
-      real(kind=8):: selfe(0:2,0:nx,0:ny,0:nz)
+      subroutine getselfe3d(phi,nx,ny,nz,nxguardphi,nyguardphi,nzguardphi,
+     &                      selfe,nxguarde,nyguarde,nzguarde,
+     &                      dx,dy,dz,lzero)
+      use Subtimersw3d
+      integer(ISZ):: nx,ny,nz,nxguardphi,nyguardphi,nzguardphi
+      integer(ISZ):: nxguarde,nyguarde,nzguarde
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
+      real(kind=8):: selfe(0:2,-nxguarde:nx+nxguarde,
+     &                         -nyguarde:ny+nyguarde,
+     &                         -nzguarde:nz+nzguarde)
       real(kind=8):: dx,dy,dz
       logical(ISZ):: lzero
 
@@ -5830,10 +5974,15 @@ c then e = -grad phi.
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Do some checking first.
-      if ((nx > 0 .and. delx == 0) .or.
-     &    (ny > 0 .and. dely == 0) .or.
-     &    (nz > 0 .and. delz == 0)) then
+      if ((nx > 0 .and. nxguardphi == 0) .or.
+     &    (ny > 0 .and. nyguardphi == 0) .or.
+     &    (nz > 0 .and. nzguardphi == 0)) then
         call kaboom("getselfe3d: ERROR: the phi array must have guard cells")
+      endif
+      if ((nx > 0 .and. nxguarde < nxguardphi-1) .or.
+     &    (nx > 0 .and. nxguarde < nxguardphi-1) .or.
+     &    (nx > 0 .and. nxguarde < nxguardphi-1)) then
+        call kaboom("getselfe3d: ERROR: the self E array must have at least as many guard cells as the phi array minus one")
       endif
 
       dxi = 1.0/dx
@@ -5846,9 +5995,9 @@ c     --- Do some checking first.
 c     --- Do the calculation
 c     --- If lzero, then set selfe, otherwise accumulate it.
       if (lzero) then
-        do iz=0,nz
-          do iy=0,ny
-            do ix=0,nx
+        do iz=-nzguarde,nz+nzguarde
+          do iy=-nyguarde,ny+nyguarde
+            do ix=-nxguarde,nx+nxguarde
               if (nx > 0)
      &          selfe(0,ix,iy,iz) = 
      &                    tdxi*(phi(ix-1,iy  ,iz  ) - phi(ix+1,iy  ,iz  ))
@@ -5863,9 +6012,9 @@ c     --- If lzero, then set selfe, otherwise accumulate it.
         enddo
 
       else
-        do iz=0,nz
-          do iy=0,ny
-            do ix=0,nx
+        do iz=-nzguarde,nz+nzguarde
+          do iy=-nyguarde,ny+nyguarde
+            do ix=-nxguarde,nx+nxguarde
               if (nx > 0)
      &          selfe(0,ix,iy,iz) = selfe(0,ix,iy,iz) +
      &                    tdxi*(phi(ix-1,iy  ,iz  ) - phi(ix+1,iy  ,iz  ))
@@ -5890,7 +6039,7 @@ c=============================================================================
       subroutine stptcl3d(pgroup)
       use ParticleGroupmodule
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       use Beam_acc
       use Constant
       use InGen
@@ -6970,15 +7119,18 @@ c#endif
       end
 c=============================================================================
       subroutine setrho3d(rho,np,xp,yp,zp,zgrid,q,wght,depos,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
+     &                    nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                    dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                    lcylindrical)
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np)
       character(8):: depos
       real(kind=8):: xmmin,ymmin,zmmin
@@ -6995,7 +7147,8 @@ c--------------------------------------
       if (depos == "vector") then
 
         call setrho3dvector(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                      nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                      nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                      dx,dy,dz,xmmin,ymmin,zmmin,
      &                      l2symtry,l4symtry)
 
 c--------------------------------------
@@ -7004,7 +7157,8 @@ c--------------------------------------
       elseif (depos == "scalar") then
 
         call setrho3dscalar(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                      nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                      nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                      dx,dy,dz,xmmin,ymmin,zmmin,
      &                      l2symtry,l4symtry)
 
 c--------------------------------------
@@ -7013,7 +7167,8 @@ c--------------------------------------
       elseif (depos == "direct") then
 
         call setrho3ddirect(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                      nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                      nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                      dx,dy,dz,xmmin,ymmin,zmmin,
      &                      l2symtry,l4symtry)
 
 c--------------------------------------
@@ -7023,11 +7178,13 @@ c--------------------------------------
 
         if (.not. lcylindrical) then
           call setrho3ddirect1(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                         nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                         nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                         dx,dy,dz,xmmin,ymmin,zmmin,
      &                         l2symtry,l4symtry)
         else
           call setrho3ddirect2(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                         nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                         nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                         dx,dy,dz,xmmin,ymmin,zmmin,
      &                         l2symtry,l4symtry,lcylindrical)
         endif
 
@@ -7037,7 +7194,8 @@ c--------------------------------------
       else if (depos == "vector1") then
 
         call setrho3dvector1(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                       nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                       dx,dy,dz,xmmin,ymmin,zmmin,
      &                       l2symtry,l4symtry)
 
 c--------------------------------------
@@ -7046,7 +7204,8 @@ c--------------------------------------
       else if (depos == "dspline2") then
 
         call setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                             nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                             nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                             dx,dy,dz,xmmin,ymmin,zmmin,
      &                             l2symtry,l4symtry)
 
       endif
@@ -7058,13 +7217,14 @@ c--------------------------------------
       end
 c=============================================================================
       subroutine setrho3dvector(rho1d,np,xp,yp,zp,zgrid,q,wght,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+     &                          nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                          dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
+      real(kind=8):: rho1d(0:(1+nx+2*nxguardrho)*(1+ny+2*nyguardrho)*(1+nz+2*nzguardrho)-1)
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -7085,6 +7245,7 @@ c  gather-add-scatter loop.  It seems about 3% slower than the present way.
 c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
+      integer(ISZ):: nnx,nnxy
       integer(ISZ):: moff(0:7)
       integer(ISZ),allocatable:: indx(:,:)
       real(kind=8),allocatable:: s(:,:)
@@ -7093,14 +7254,18 @@ c  handling of blocks of particles at a time)
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1
 
 c     --- Set up offset array for vectorized deposition:
+      nnx = nx + 1 + 2*nxguardrho
+      nnxy = (nx + 1 + 2*nxguardrho)*(ny + 1 + 2*nyguardrho)
       moff(0) = 0
       moff(1) = 1
-      moff(2) = nx+1
-      moff(3) = nx+2
-      moff(4) = (nx+1)*(ny+1)
-      moff(5) = (nx+1)*(ny+1)+1
-      moff(6) = (nx+1)*(ny+1)+nx+1
-      moff(7) = (nx+1)*(ny+1)+nx+2
+      moff(2) = nnx
+      moff(3) = nnx + 1
+      moff(4) = nnxy
+      moff(5) = nnxy + 1
+      moff(6) = nnxy + nnx
+      moff(7) = nnxy + nnx + 1
+
+      moff = moff + nnxy*nzguardrho
 
       g = wght*q/(dx*dy*dz)
       dxi = 1./dx
@@ -7144,7 +7309,7 @@ c         --- transverse boundaries.
             w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
             w0 = 1. - w1
             ir = ip - ipmin
-            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            ind0 = i + j*nnx + k*nnxy
             indx(0,ir) = ind0 + moff(0)
             indx(1,ir) = ind0 + moff(1)
             indx(2,ir) = ind0 + moff(2)
@@ -7177,7 +7342,7 @@ c         --- transverse boundaries.
             w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
             w0 = 1. - w1
             ir = ip - ipmin
-            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            ind0 = i + j*nnx + k*nnxy
             indx(0,ir) = ind0 + moff(0)
             indx(1,ir) = ind0 + moff(1)
             indx(2,ir) = ind0 + moff(2)
@@ -7208,7 +7373,7 @@ c         --- normal loop
             w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
             w0 = 1. - w1
             ir = ip - ipmin
-            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            ind0 = i + j*nnx + k*nnxy
             indx(0,ir) = ind0 + moff(0)
             indx(1,ir) = ind0 + moff(1)
             indx(2,ir) = ind0 + moff(2)
@@ -7248,13 +7413,16 @@ c       --- there'd be a hazard if we interchanged the loops.
       end
 c=============================================================================
       subroutine setrho3dscalar(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+     &                          nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                          dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -7265,7 +7433,7 @@ c  Similar to vector, but rho is treated as a 3d array rather than a 1d array
       integer(ISZ),allocatable:: ii(:), jj(:), kk(:)
       real(kind=8),allocatable:: s(:,:)
 
-      integer(ISZ):: ipmin,nptmp,ip,i,j,k,ind0,ir
+      integer(ISZ):: ipmin,nptmp,ip,i,j,k,ir
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1
 
       g = wght*q/(dx*dy*dz)
@@ -7387,13 +7555,16 @@ c       --- scalar loop does the actual deposition
       end
 c=============================================================================
       subroutine setrho3ddirect(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+     &                          nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                          dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -7500,13 +7671,16 @@ c       --- normal loop
       end
 c=============================================================================
       subroutine setrho3ddirect1(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+     &                           nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                           dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -7705,15 +7879,18 @@ c       --- normal loop
       end
 c=============================================================================
       subroutine setrho3ddirect2(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
+     &                    nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                    dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                    lcylindrical)
       use GlobalVars
       use Constant,Only: pi
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
@@ -8011,13 +8188,14 @@ c       --- normal loop
       end
 c=============================================================================
       subroutine setrho3dvector1(rho1d,np,xp,yp,zp,zgrid,q,wght,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+     &                           nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                           dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
+      real(kind=8):: rho1d(0:(1+nx+2*nxguardrho)*(1+ny+2*nyguardrho)*(1+nz+2*nzguardrho)-1)
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -8026,6 +8204,7 @@ c  Sets charge density
 c  Same as vector except that the float to integer conversions are
 c  precalculated for the next particle since the conversion can be a bottleneck.
 
+      integer(ISZ):: nnx,nnxy
       integer(ISZ):: moff(0:7)
       integer(ISZ),allocatable:: indx(:,:)
       real(kind=8),allocatable:: s(:,:)
@@ -8035,15 +8214,18 @@ c  precalculated for the next particle since the conversion can be a bottleneck.
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1
 
 c  Set up offset array for vectorized deposition:
-
+      nnx = nx + 1 + 2*nxguardrho
+      nnxy = (nx + 1 + 2*nxguardrho)*(ny + 1 + 2*nyguardrho)
       moff(0) = 0
       moff(1) = 1
-      moff(2) = nx+1
-      moff(3) = nx+2
-      moff(4) = (nx+1)*(ny+1)
-      moff(5) = (nx+1)*(ny+1)+1
-      moff(6) = (nx+1)*(ny+1)+nx+1
-      moff(7) = (nx+1)*(ny+1)+nx+2
+      moff(2) = nnx
+      moff(3) = nnx + 1
+      moff(4) = nnxy
+      moff(5) = nnxy + 1
+      moff(6) = nnxy + nnx
+      moff(7) = nnxy + nnx + 1
+
+      moff = moff + nnxy*nzguardrho
 
       g = wght*q/(dx*dy*dz)
       dxi = 1./dx
@@ -8100,7 +8282,7 @@ c         --- transverse boundaries.
             w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
             w0 = 1. - w1
             ir = ip - ipmin
-            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            ind0 = i + j*nnx + k*nnxy
             indx(0,ir) = ind0 + moff(0)
             indx(1,ir) = ind0 + moff(1)
             indx(2,ir) = ind0 + moff(2)
@@ -8141,7 +8323,7 @@ c         --- transverse boundaries.
             w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
             w0 = 1. - w1
             ir = ip - ipmin
-            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            ind0 = i + j*nnx + k*nnxy
             indx(0,ir) = ind0 + moff(0)
             indx(1,ir) = ind0 + moff(1)
             indx(2,ir) = ind0 + moff(2)
@@ -8180,7 +8362,7 @@ c         --- normal loop
             w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
             w0 = 1. - w1
             ir = ip - ipmin
-            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            ind0 = i + j*nnx + k*nnxy
             indx(0,ir) = ind0 + moff(0)
             indx(1,ir) = ind0 + moff(1)
             indx(2,ir) = ind0 + moff(2)
@@ -8221,14 +8403,17 @@ c       --- there'd be a hazard if we interchanged the loops.
       end
 c=============================================================================
       subroutine setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                   nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+     &                           nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                           dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       use InGen,Only: pbound0,pboundnz,pboundxy
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -8243,15 +8428,13 @@ c  Uses a second order spline with direct deposition (no particle blocks)
       real(kind=8):: wxnext,wynext,wznext
       real(kind=8):: u0,u1,u2,v0,v1,v2,w0,w1,w2
       real(kind=8):: gxf,gyf,gxfm1,gyfm1
-      real(kind=8),allocatable:: rhotemp(:,:,:)
 
       if (np == 0) return
 
-c     --- This is very memory inefficient, but make dealing with boundary
-c     --- conditions much easier.
-      allocate(rhotemp(-1:nx+1,-1:ny+1,-1:nz+1))
-      rhotemp = 0.
-      rhotemp(0:nx,0:ny,0:nz) = rho(0:nx,0:ny,0:nz)
+      if (nxguardrho <= 0 .or. nyguardrho <= 0 .or. nzguardrho <= 0) then
+        call kaboom("setrho3ddirectspline2: there must be at least one guard cell on all axis")
+        return
+      endif
 
       g = wght*q/(dx*dy*dz)
       dxi = 1./dx
@@ -8308,35 +8491,35 @@ c     --- vectorized loop to compute indices, weights
           w1 = (0.75 - wz**2)
           w2 = 0.5*(0.5 + wz)**2
 
-          rhotemp(ii-1,jj-1,kk-1) = rhotemp(ii-1,jj-1,kk-1) + u0*v0*w0*g
-          rhotemp(ii  ,jj-1,kk-1) = rhotemp(ii  ,jj-1,kk-1) + u1*v0*w0*g
-          rhotemp(ii+1,jj-1,kk-1) = rhotemp(ii+1,jj-1,kk-1) + u2*v0*w0*g
-          rhotemp(ii-1,jj  ,kk-1) = rhotemp(ii-1,jj  ,kk-1) + u0*v1*w0*g
-          rhotemp(ii  ,jj  ,kk-1) = rhotemp(ii  ,jj  ,kk-1) + u1*v1*w0*g
-          rhotemp(ii+1,jj  ,kk-1) = rhotemp(ii+1,jj  ,kk-1) + u2*v1*w0*g
-          rhotemp(ii-1,jj+1,kk-1) = rhotemp(ii-1,jj+1,kk-1) + u0*v2*w0*g
-          rhotemp(ii  ,jj+1,kk-1) = rhotemp(ii  ,jj+1,kk-1) + u1*v2*w0*g
-          rhotemp(ii+1,jj+1,kk-1) = rhotemp(ii+1,jj+1,kk-1) + u2*v2*w0*g
+          rho(ii-1,jj-1,kk-1) = rho(ii-1,jj-1,kk-1) + u0*v0*w0*g
+          rho(ii  ,jj-1,kk-1) = rho(ii  ,jj-1,kk-1) + u1*v0*w0*g
+          rho(ii+1,jj-1,kk-1) = rho(ii+1,jj-1,kk-1) + u2*v0*w0*g
+          rho(ii-1,jj  ,kk-1) = rho(ii-1,jj  ,kk-1) + u0*v1*w0*g
+          rho(ii  ,jj  ,kk-1) = rho(ii  ,jj  ,kk-1) + u1*v1*w0*g
+          rho(ii+1,jj  ,kk-1) = rho(ii+1,jj  ,kk-1) + u2*v1*w0*g
+          rho(ii-1,jj+1,kk-1) = rho(ii-1,jj+1,kk-1) + u0*v2*w0*g
+          rho(ii  ,jj+1,kk-1) = rho(ii  ,jj+1,kk-1) + u1*v2*w0*g
+          rho(ii+1,jj+1,kk-1) = rho(ii+1,jj+1,kk-1) + u2*v2*w0*g
 
-          rhotemp(ii-1,jj-1,kk  ) = rhotemp(ii-1,jj-1,kk  ) + u0*v0*w1*g
-          rhotemp(ii  ,jj-1,kk  ) = rhotemp(ii  ,jj-1,kk  ) + u1*v0*w1*g
-          rhotemp(ii+1,jj-1,kk  ) = rhotemp(ii+1,jj-1,kk  ) + u2*v0*w1*g
-          rhotemp(ii-1,jj  ,kk  ) = rhotemp(ii-1,jj  ,kk  ) + u0*v1*w1*g
-          rhotemp(ii  ,jj  ,kk  ) = rhotemp(ii  ,jj  ,kk  ) + u1*v1*w1*g
-          rhotemp(ii+1,jj  ,kk  ) = rhotemp(ii+1,jj  ,kk  ) + u2*v1*w1*g
-          rhotemp(ii-1,jj+1,kk  ) = rhotemp(ii-1,jj+1,kk  ) + u0*v2*w1*g
-          rhotemp(ii  ,jj+1,kk  ) = rhotemp(ii  ,jj+1,kk  ) + u1*v2*w1*g
-          rhotemp(ii+1,jj+1,kk  ) = rhotemp(ii+1,jj+1,kk  ) + u2*v2*w1*g
+          rho(ii-1,jj-1,kk  ) = rho(ii-1,jj-1,kk  ) + u0*v0*w1*g
+          rho(ii  ,jj-1,kk  ) = rho(ii  ,jj-1,kk  ) + u1*v0*w1*g
+          rho(ii+1,jj-1,kk  ) = rho(ii+1,jj-1,kk  ) + u2*v0*w1*g
+          rho(ii-1,jj  ,kk  ) = rho(ii-1,jj  ,kk  ) + u0*v1*w1*g
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u1*v1*w1*g
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u2*v1*w1*g
+          rho(ii-1,jj+1,kk  ) = rho(ii-1,jj+1,kk  ) + u0*v2*w1*g
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u1*v2*w1*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u2*v2*w1*g
 
-          rhotemp(ii-1,jj-1,kk+1) = rhotemp(ii-1,jj-1,kk+1) + u0*v0*w2*g
-          rhotemp(ii  ,jj-1,kk+1) = rhotemp(ii  ,jj-1,kk+1) + u1*v0*w2*g
-          rhotemp(ii+1,jj-1,kk+1) = rhotemp(ii+1,jj-1,kk+1) + u2*v0*w2*g
-          rhotemp(ii-1,jj  ,kk+1) = rhotemp(ii-1,jj  ,kk+1) + u0*v1*w2*g
-          rhotemp(ii  ,jj  ,kk+1) = rhotemp(ii  ,jj  ,kk+1) + u1*v1*w2*g
-          rhotemp(ii+1,jj  ,kk+1) = rhotemp(ii+1,jj  ,kk+1) + u2*v1*w2*g
-          rhotemp(ii-1,jj+1,kk+1) = rhotemp(ii-1,jj+1,kk+1) + u0*v2*w2*g
-          rhotemp(ii  ,jj+1,kk+1) = rhotemp(ii  ,jj+1,kk+1) + u1*v2*w2*g
-          rhotemp(ii+1,jj+1,kk+1) = rhotemp(ii+1,jj+1,kk+1) + u2*v2*w2*g
+          rho(ii-1,jj-1,kk+1) = rho(ii-1,jj-1,kk+1) + u0*v0*w2*g
+          rho(ii  ,jj-1,kk+1) = rho(ii  ,jj-1,kk+1) + u1*v0*w2*g
+          rho(ii+1,jj-1,kk+1) = rho(ii+1,jj-1,kk+1) + u2*v0*w2*g
+          rho(ii-1,jj  ,kk+1) = rho(ii-1,jj  ,kk+1) + u0*v1*w2*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u1*v1*w2*g
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u2*v1*w2*g
+          rho(ii-1,jj+1,kk+1) = rho(ii-1,jj+1,kk+1) + u0*v2*w2*g
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u1*v2*w2*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u2*v2*w2*g
 
         enddo
 !$OMP END DO
@@ -8374,35 +8557,35 @@ c     --- vectorized loop to compute indices, weights
           w1 = (0.75 - wz**2)
           w2 = 0.5*(0.5 + wz)**2
 
-          rhotemp(ii-1,jj-1,kk-1) = rhotemp(ii-1,jj-1,kk-1) + u0*v0*w0*g
-          rhotemp(ii  ,jj-1,kk-1) = rhotemp(ii  ,jj-1,kk-1) + u1*v0*w0*g
-          rhotemp(ii+1,jj-1,kk-1) = rhotemp(ii+1,jj-1,kk-1) + u2*v0*w0*g
-          rhotemp(ii-1,jj  ,kk-1) = rhotemp(ii-1,jj  ,kk-1) + u0*v1*w0*g
-          rhotemp(ii  ,jj  ,kk-1) = rhotemp(ii  ,jj  ,kk-1) + u1*v1*w0*g
-          rhotemp(ii+1,jj  ,kk-1) = rhotemp(ii+1,jj  ,kk-1) + u2*v1*w0*g
-          rhotemp(ii-1,jj+1,kk-1) = rhotemp(ii-1,jj+1,kk-1) + u0*v2*w0*g
-          rhotemp(ii  ,jj+1,kk-1) = rhotemp(ii  ,jj+1,kk-1) + u1*v2*w0*g
-          rhotemp(ii+1,jj+1,kk-1) = rhotemp(ii+1,jj+1,kk-1) + u2*v2*w0*g
+          rho(ii-1,jj-1,kk-1) = rho(ii-1,jj-1,kk-1) + u0*v0*w0*g
+          rho(ii  ,jj-1,kk-1) = rho(ii  ,jj-1,kk-1) + u1*v0*w0*g
+          rho(ii+1,jj-1,kk-1) = rho(ii+1,jj-1,kk-1) + u2*v0*w0*g
+          rho(ii-1,jj  ,kk-1) = rho(ii-1,jj  ,kk-1) + u0*v1*w0*g
+          rho(ii  ,jj  ,kk-1) = rho(ii  ,jj  ,kk-1) + u1*v1*w0*g
+          rho(ii+1,jj  ,kk-1) = rho(ii+1,jj  ,kk-1) + u2*v1*w0*g
+          rho(ii-1,jj+1,kk-1) = rho(ii-1,jj+1,kk-1) + u0*v2*w0*g
+          rho(ii  ,jj+1,kk-1) = rho(ii  ,jj+1,kk-1) + u1*v2*w0*g
+          rho(ii+1,jj+1,kk-1) = rho(ii+1,jj+1,kk-1) + u2*v2*w0*g
 
-          rhotemp(ii-1,jj-1,kk  ) = rhotemp(ii-1,jj-1,kk  ) + u0*v0*w1*g
-          rhotemp(ii  ,jj-1,kk  ) = rhotemp(ii  ,jj-1,kk  ) + u1*v0*w1*g
-          rhotemp(ii+1,jj-1,kk  ) = rhotemp(ii+1,jj-1,kk  ) + u2*v0*w1*g
-          rhotemp(ii-1,jj  ,kk  ) = rhotemp(ii-1,jj  ,kk  ) + u0*v1*w1*g
-          rhotemp(ii  ,jj  ,kk  ) = rhotemp(ii  ,jj  ,kk  ) + u1*v1*w1*g
-          rhotemp(ii+1,jj  ,kk  ) = rhotemp(ii+1,jj  ,kk  ) + u2*v1*w1*g
-          rhotemp(ii-1,jj+1,kk  ) = rhotemp(ii-1,jj+1,kk  ) + u0*v2*w1*g
-          rhotemp(ii  ,jj+1,kk  ) = rhotemp(ii  ,jj+1,kk  ) + u1*v2*w1*g
-          rhotemp(ii+1,jj+1,kk  ) = rhotemp(ii+1,jj+1,kk  ) + u2*v2*w1*g
+          rho(ii-1,jj-1,kk  ) = rho(ii-1,jj-1,kk  ) + u0*v0*w1*g
+          rho(ii  ,jj-1,kk  ) = rho(ii  ,jj-1,kk  ) + u1*v0*w1*g
+          rho(ii+1,jj-1,kk  ) = rho(ii+1,jj-1,kk  ) + u2*v0*w1*g
+          rho(ii-1,jj  ,kk  ) = rho(ii-1,jj  ,kk  ) + u0*v1*w1*g
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u1*v1*w1*g
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u2*v1*w1*g
+          rho(ii-1,jj+1,kk  ) = rho(ii-1,jj+1,kk  ) + u0*v2*w1*g
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u1*v2*w1*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u2*v2*w1*g
 
-          rhotemp(ii-1,jj-1,kk+1) = rhotemp(ii-1,jj-1,kk+1) + u0*v0*w2*g
-          rhotemp(ii  ,jj-1,kk+1) = rhotemp(ii  ,jj-1,kk+1) + u1*v0*w2*g
-          rhotemp(ii+1,jj-1,kk+1) = rhotemp(ii+1,jj-1,kk+1) + u2*v0*w2*g
-          rhotemp(ii-1,jj  ,kk+1) = rhotemp(ii-1,jj  ,kk+1) + u0*v1*w2*g
-          rhotemp(ii  ,jj  ,kk+1) = rhotemp(ii  ,jj  ,kk+1) + u1*v1*w2*g
-          rhotemp(ii+1,jj  ,kk+1) = rhotemp(ii+1,jj  ,kk+1) + u2*v1*w2*g
-          rhotemp(ii-1,jj+1,kk+1) = rhotemp(ii-1,jj+1,kk+1) + u0*v2*w2*g
-          rhotemp(ii  ,jj+1,kk+1) = rhotemp(ii  ,jj+1,kk+1) + u1*v2*w2*g
-          rhotemp(ii+1,jj+1,kk+1) = rhotemp(ii+1,jj+1,kk+1) + u2*v2*w2*g
+          rho(ii-1,jj-1,kk+1) = rho(ii-1,jj-1,kk+1) + u0*v0*w2*g
+          rho(ii  ,jj-1,kk+1) = rho(ii  ,jj-1,kk+1) + u1*v0*w2*g
+          rho(ii+1,jj-1,kk+1) = rho(ii+1,jj-1,kk+1) + u2*v0*w2*g
+          rho(ii-1,jj  ,kk+1) = rho(ii-1,jj  ,kk+1) + u0*v1*w2*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u1*v1*w2*g
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u2*v1*w2*g
+          rho(ii-1,jj+1,kk+1) = rho(ii-1,jj+1,kk+1) + u0*v2*w2*g
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u1*v2*w2*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u2*v2*w2*g
 
         enddo
 !$OMP END DO
@@ -8441,35 +8624,35 @@ c       --- normal loop
           w1 = (0.75 - wz**2)
           w2 = 0.5*(0.5 + wz)**2
 
-          rhotemp(ii-1,jj-1,kk-1) = rhotemp(ii-1,jj-1,kk-1) + u0*v0*w0*g
-          rhotemp(ii  ,jj-1,kk-1) = rhotemp(ii  ,jj-1,kk-1) + u1*v0*w0*g
-          rhotemp(ii+1,jj-1,kk-1) = rhotemp(ii+1,jj-1,kk-1) + u2*v0*w0*g
-          rhotemp(ii-1,jj  ,kk-1) = rhotemp(ii-1,jj  ,kk-1) + u0*v1*w0*g
-          rhotemp(ii  ,jj  ,kk-1) = rhotemp(ii  ,jj  ,kk-1) + u1*v1*w0*g
-          rhotemp(ii+1,jj  ,kk-1) = rhotemp(ii+1,jj  ,kk-1) + u2*v1*w0*g
-          rhotemp(ii-1,jj+1,kk-1) = rhotemp(ii-1,jj+1,kk-1) + u0*v2*w0*g
-          rhotemp(ii  ,jj+1,kk-1) = rhotemp(ii  ,jj+1,kk-1) + u1*v2*w0*g
-          rhotemp(ii+1,jj+1,kk-1) = rhotemp(ii+1,jj+1,kk-1) + u2*v2*w0*g
+          rho(ii-1,jj-1,kk-1) = rho(ii-1,jj-1,kk-1) + u0*v0*w0*g
+          rho(ii  ,jj-1,kk-1) = rho(ii  ,jj-1,kk-1) + u1*v0*w0*g
+          rho(ii+1,jj-1,kk-1) = rho(ii+1,jj-1,kk-1) + u2*v0*w0*g
+          rho(ii-1,jj  ,kk-1) = rho(ii-1,jj  ,kk-1) + u0*v1*w0*g
+          rho(ii  ,jj  ,kk-1) = rho(ii  ,jj  ,kk-1) + u1*v1*w0*g
+          rho(ii+1,jj  ,kk-1) = rho(ii+1,jj  ,kk-1) + u2*v1*w0*g
+          rho(ii-1,jj+1,kk-1) = rho(ii-1,jj+1,kk-1) + u0*v2*w0*g
+          rho(ii  ,jj+1,kk-1) = rho(ii  ,jj+1,kk-1) + u1*v2*w0*g
+          rho(ii+1,jj+1,kk-1) = rho(ii+1,jj+1,kk-1) + u2*v2*w0*g
 
-          rhotemp(ii-1,jj-1,kk  ) = rhotemp(ii-1,jj-1,kk  ) + u0*v0*w1*g
-          rhotemp(ii  ,jj-1,kk  ) = rhotemp(ii  ,jj-1,kk  ) + u1*v0*w1*g
-          rhotemp(ii+1,jj-1,kk  ) = rhotemp(ii+1,jj-1,kk  ) + u2*v0*w1*g
-          rhotemp(ii-1,jj  ,kk  ) = rhotemp(ii-1,jj  ,kk  ) + u0*v1*w1*g
-          rhotemp(ii  ,jj  ,kk  ) = rhotemp(ii  ,jj  ,kk  ) + u1*v1*w1*g
-          rhotemp(ii+1,jj  ,kk  ) = rhotemp(ii+1,jj  ,kk  ) + u2*v1*w1*g
-          rhotemp(ii-1,jj+1,kk  ) = rhotemp(ii-1,jj+1,kk  ) + u0*v2*w1*g
-          rhotemp(ii  ,jj+1,kk  ) = rhotemp(ii  ,jj+1,kk  ) + u1*v2*w1*g
-          rhotemp(ii+1,jj+1,kk  ) = rhotemp(ii+1,jj+1,kk  ) + u2*v2*w1*g
+          rho(ii-1,jj-1,kk  ) = rho(ii-1,jj-1,kk  ) + u0*v0*w1*g
+          rho(ii  ,jj-1,kk  ) = rho(ii  ,jj-1,kk  ) + u1*v0*w1*g
+          rho(ii+1,jj-1,kk  ) = rho(ii+1,jj-1,kk  ) + u2*v0*w1*g
+          rho(ii-1,jj  ,kk  ) = rho(ii-1,jj  ,kk  ) + u0*v1*w1*g
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u1*v1*w1*g
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u2*v1*w1*g
+          rho(ii-1,jj+1,kk  ) = rho(ii-1,jj+1,kk  ) + u0*v2*w1*g
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u1*v2*w1*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u2*v2*w1*g
 
-          rhotemp(ii-1,jj-1,kk+1) = rhotemp(ii-1,jj-1,kk+1) + u0*v0*w2*g
-          rhotemp(ii  ,jj-1,kk+1) = rhotemp(ii  ,jj-1,kk+1) + u1*v0*w2*g
-          rhotemp(ii+1,jj-1,kk+1) = rhotemp(ii+1,jj-1,kk+1) + u2*v0*w2*g
-          rhotemp(ii-1,jj  ,kk+1) = rhotemp(ii-1,jj  ,kk+1) + u0*v1*w2*g
-          rhotemp(ii  ,jj  ,kk+1) = rhotemp(ii  ,jj  ,kk+1) + u1*v1*w2*g
-          rhotemp(ii+1,jj  ,kk+1) = rhotemp(ii+1,jj  ,kk+1) + u2*v1*w2*g
-          rhotemp(ii-1,jj+1,kk+1) = rhotemp(ii-1,jj+1,kk+1) + u0*v2*w2*g
-          rhotemp(ii  ,jj+1,kk+1) = rhotemp(ii  ,jj+1,kk+1) + u1*v2*w2*g
-          rhotemp(ii+1,jj+1,kk+1) = rhotemp(ii+1,jj+1,kk+1) + u2*v2*w2*g
+          rho(ii-1,jj-1,kk+1) = rho(ii-1,jj-1,kk+1) + u0*v0*w2*g
+          rho(ii  ,jj-1,kk+1) = rho(ii  ,jj-1,kk+1) + u1*v0*w2*g
+          rho(ii+1,jj-1,kk+1) = rho(ii+1,jj-1,kk+1) + u2*v0*w2*g
+          rho(ii-1,jj  ,kk+1) = rho(ii-1,jj  ,kk+1) + u0*v1*w2*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u1*v1*w2*g
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u2*v1*w2*g
+          rho(ii-1,jj+1,kk+1) = rho(ii-1,jj+1,kk+1) + u0*v2*w2*g
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u1*v2*w2*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u2*v2*w2*g
 
         enddo
 !$OMP END DO
@@ -8477,70 +8660,23 @@ c       --- normal loop
 
 !$OMP END PARALLEL
 
-      rho(0:nx,0:ny,0:nz) = rhotemp(0:nx,0:ny,0:nz)
-
-c     --- Note that the commented out lines below are taken care of elsewhere
-c     --- but are listed here for completeness.
-      if (l4symtry .or. pboundxy == neumann) then
-c       rho(0,:,:) = 2.*rho(0,:,:)
-        rho(1,:,:) = rho(1,:,:) + rhotemp(-1,0:ny,0:nz)
-        if (pboundxy == neumann) then
-c         rho(nx,:,:) = 2.*rho(nx,:,:)
-          rho(nx-1,:,:) = rho(nx-1,:,:) + rhotemp(nx+1,0:ny,0:nz)
-        endif
-      else if (pboundxy == periodic) then
-c       rho(0,:,:) = rho(0,:,:) + rho(nx,:,:)
-c       rho(nx,:,:) = rho(0,:,:)
-        rho(1,:,:) = rho(1,:,:) + rhotemp(nx+1,0:ny,0:nz)
-        rho(nx-1,:,:) = rho(nx-1,:,:) + rhotemp(-1,0:ny,0:nz)
-      endif
-
-      if (l4symtry .or. l2symtry .or. pboundxy == neumann) then
-c       rho(:,0,:) = 2.*rho(:,0,:)
-        rho(:,1,:) = rho(:,1,:) + rhotemp(0:nx,-1,0:nz)
-        if (pboundxy == neumann) then
-c         rho(:,ny,:) = 2.*rho(:,ny,:)
-          rho(:,ny-1,:) = rho(:,ny-1,:) + rhotemp(0:nx,ny+1,0:nz)
-        endif
-      else if (pboundxy == periodic) then
-c       rho(:,0,:) = rho(:,0,:) + rho(:,ny,:)
-c       rho(:,ny,:) = rho(:,0,:)
-        rho(:,1,:) = rho(:,1,:) + rhotemp(0:nx,ny+1,0:nz)
-        rho(:,ny-1,:) = rho(:,ny-1,:) + rhotemp(0:nx,-1,0:nz)
-      endif
-
-      if (pbound0 == periodic .or. pboundnz == periodic) then
-c       rho(:,:,0) = rho(:,:,0) + rho(:,:,nz)
-c       rho(:,:,nz) = rho(:,:,0)
-        rho(:,:,1) = rho(:,:,1) + rhotemp(0:nx,0:ny,nz+1)
-        rho(:,:,nz-1) = rho(:,:,nz-1) + rhotemp(0:nx,0:ny,-1)
-      else
-        if (pbound0 == neumann) then
-c         rho(:,:,0) = 2.*rho(:,:,0)
-          rho(:,:,1) = rho(:,:,1) + rhotemp(0:nx,0:ny,-1)
-        endif
-        if (pboundnz == neumann) then
-c         rho(:,:,nz) = 2.*rho(:,:,nz)
-          rho(:,:,nz-1) = rho(:,:,nz-1) + rhotemp(0:nx,0:ny,nz+1)
-        endif
-      endif
-
-      deallocate(rhotemp)
-
       return
       end
 c=============================================================================
 c=============================================================================
       subroutine setrho3dselect(rho,rho1d,np,xp,yp,zp,zgrid,q,wght,depos,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+     &                          nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                          dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
+      real(kind=8):: rho1d(0:(1+nx+2*nxguardrho)*(1+ny+2*nyguardrho)*(1+nz+2*nzguardrho)-1)
       real(kind=8):: xp(np), yp(np), zp(np)
       character(8):: depos
       real(kind=8):: xmmin,ymmin,zmmin
@@ -8563,9 +8699,9 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
+      integer(ISZ):: nnx,nnxy
       integer(ISZ):: moff(0:7)
       integer(ISZ),allocatable:: indx(:,:)
-      save moff
 c     --- For "scalar" (actually partly vectorized) algorithm
       integer(ISZ),allocatable:: ii(:), jj(:), kk(:)
 c     --- For both algorithms
@@ -8577,17 +8713,18 @@ c     --- For both algorithms
       if (lw3dtimesubs) substarttime = wtime()
 
 c  Set up offset array for vectorized deposition:
+      nnx = nx + 1 + 2*nxguardrho
+      nnxy = (nx + 1 + 2*nxguardrho)*(ny + 1 + 2*nyguardrho)
+      moff(0) = 0
+      moff(1) = 1
+      moff(2) = nnx
+      moff(3) = nnx + 1
+      moff(4) = nnxy
+      moff(5) = nnxy + 1
+      moff(6) = nnxy + nnx
+      moff(7) = nnxy + nnx + 1
 
-c      if (moff(4) /= (nx+1)*(ny+1)) then
-        moff(0) = 0
-        moff(1) = 1
-        moff(2) = nx+1
-        moff(3) = nx+2
-        moff(4) = (nx+1)*(ny+1)
-        moff(5) = (nx+1)*(ny+1)+1
-        moff(6) = (nx+1)*(ny+1)+nx+1
-        moff(7) = (nx+1)*(ny+1)+nx+2
-c      endif
+      moff = moff + nnxy*nzguardrho
 
       g = wght*q / (dx*dy*dz)
       dxi = 1./dx
@@ -8643,7 +8780,7 @@ c       --- transverse boundaries.
            w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
            w0 = 1. - w1
            ir = ip - ipmin
-           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+           ind0 = i + j*nnx + k*nnxy
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
            indx(2,ir) = ind0 + moff(2)
@@ -8676,7 +8813,7 @@ c       --- transverse boundaries.
            w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
            w0 = 1. - w1
            ir = ip - ipmin
-           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+           ind0 = i + j*nnx + k*nnxy
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
            indx(2,ir) = ind0 + moff(2)
@@ -8707,7 +8844,7 @@ c       --- normal loop
            w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
            w0 = 1. - w1
            ir = ip - ipmin
-           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+           ind0 = i + j*nnx + k*nnxy
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
            indx(2,ir) = ind0 + moff(2)
@@ -8841,15 +8978,18 @@ c     --- scalar loop does the actual deposition
       end
 c=============================================================================
       subroutine setrho3dw(rho,np,xp,yp,zp,zgrid,wfact,q,wght,depos,
-     &                     nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
+     &                     nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                     dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                     lcylindrical)
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np), wfact(np)
       character(8):: depos
       real(kind=8):: xmmin,ymmin,zmmin
@@ -8866,11 +9006,13 @@ c--------------------------------------
 
         if (.not. lcylindrical) then
           call setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,wfact,q,wght,
-     &                          nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                          nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                          dx,dy,dz,xmmin,ymmin,zmmin,
      &                          l2symtry,l4symtry)
         else
           call setrho3ddirect2w(rho,np,xp,yp,zp,zgrid,wfact,q,wght,
-     &                          nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                          nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                          dx,dy,dz,xmmin,ymmin,zmmin,
      &                          l2symtry,l4symtry,lcylindrical)
         endif
 
@@ -8882,14 +9024,17 @@ c--------------------------------------
       end
 c=============================================================================
       subroutine setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,wfact,q,wght,
-     &                            nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                            nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                            dx,dy,dz,xmmin,ymmin,zmmin,
      &                            l2symtry,l4symtry)
       use GlobalVars
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np), wfact(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -9132,15 +9277,18 @@ c         --- normal loop
       end
 c=============================================================================
       subroutine setrho3ddirect2w(rho,np,xp,yp,zp,zgrid,wfact,q,wght,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
-     &                    lcylindrical)
+     &                            nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                            dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
+     &                            lcylindrical)
       use GlobalVars
       use Constant,Only: pi
       integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np), wfact(np)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
@@ -9452,7 +9600,7 @@ c     --- for the faster advanced groups.
           if (nrhopndtscopies == 2) then
             rhopndts(:,:,:,1,in1) = rhopndts(:,:,:,0,in1)
           endif
-          call zeroarry(rhopndts(:,:,:,0,in1),(nxp+1)*(nyp+1)*(nzp+1))
+          rhopndts(:,:,:,0,in1) = 0.
         endif
       enddo
 
@@ -9550,7 +9698,7 @@ c     --- are advanced.
         if (mod(ndts(in1),2) == 1) then
 c         --- rho is zeroed for all of the odd cases
           if (ldts(in1)) then
-            call zeroarry(rhopndts(:,:,:,0,in1),(nxp+1)*(nyp+1)*(nzp+1))
+            rhopndts(:,:,:,0,in1) = 0.
           endif
         else
           call kaboom("This version of subcyling is not supported with even step sizes.")
@@ -9681,7 +9829,7 @@ c=============================================================================
       use ParticleGroupmodule
       use w3d_interfaces
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       use InGen
       use InGen3d
       use InPart
@@ -9805,14 +9953,18 @@ c              --- Only load the rho if the positions have been advanced.
                  call setrho3d(rhopndts(:,:,:,0,indts),nps_u,
      &                         pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
      &                         zgridndts(indts),pgroup%sq(is),
-     &                         swtmp,depos,nxp,nyp,nzp,dx,dy,dz,xmminp,ymminp,zmminp,
+     &                         swtmp,depos,nxp,nyp,nzp,
+     &                         nxguardrho,nyguardrho,nzguardrho,
+     &                         dx,dy,dz,xmminp,ymminp,zmminp,
      &                         l2symtry,l4symtry,solvergeom==RZgeom)
                else
                  call setrho3dw(rhopndts(:,:,:,0,indts),nps_u,
      &                          pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
      &                          zgridndts(indts),
      &                          pgroup%pid(i1:i2,wpid),pgroup%sq(is),
-     &                          swtmp,depos,nxp,nyp,nzp,dx,dy,dz,xmminp,ymminp,zmminp,
+     &                          swtmp,depos,nxp,nyp,nzp,
+     &                          nxguardrho,nyguardrho,nzguardrho,
+     &                          dx,dy,dz,xmminp,ymminp,zmminp,
      &                          l2symtry,l4symtry,solvergeom==RZgeom)
                endif
              endif
@@ -9911,7 +10063,7 @@ c     --- Do any loading that is needed for injection
       end
 c=============================================================================
       subroutine finalizerho()
-      use Subtimers3d
+      use Subtimersw3d
       use InGen3d
       use Fields3dParticles
       use Subcycling
@@ -10036,10 +10188,15 @@ c     enddo
 c=============================================================================
       subroutine assignrhopandphipforparticles(rhopin,phipin)
       use InGen3d
+      use InMesh3d
       use Fields3d
       use Fields3dParticles
-      real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phipin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+      real(kind=8),target:: rhopin(-nxguardrho:nxp+nxguardrho,
+     &                             -nyguardrho:nyp+nyguardrho,
+     &                             -nzguardrho:nzp+nzguardrho)
+      real(kind=8),target:: phipin(-nxguardphi:nxp+nxguardphi,
+     &                             -nyguardphi:nyp+nyguardphi,
+     &                             -nzguardphi:nzp+nzguardphi)
 
 c     --- The assignments must be done in a subroutine like this so that
 c     --- the lower and upper bounds of rho and phi are correct.
@@ -10057,7 +10214,7 @@ c=============================================================================
       use InPart,Only: efetch
       use InGen,Only: fstype
       use InGen3d
-      use InMesh3d,Only: nxlocal,nylocal,nzlocal
+      use InMesh3d,Only: nxlocal,nylocal,nzlocal,nxguarde,nyguarde,nzguarde
       use Fields3dParticles,Only: selfep,nxp,nyp,nzp
       logical(ISZ):: lforce
 
@@ -10084,13 +10241,15 @@ c       --- has the wrong shape.
         doallocate = .false.
         if (.not. associated(selfep)) then
           doallocate = .true.
-        else if (ANY(shape(selfep) .ne. (/3,1+nxp,1+nyp,1+nzp/))) then
+        else if (ANY(shape(selfep) .ne. (/3,1+nxp+2*nxguarde,1+nyp+2*nyguarde,1+nzp+2*nzguarde/))) then
           deallocate(selfep)
           doallocate = .true.
         endif
 
         if (doallocate) then
-          allocate(selfep(3,0:nxp,0:nyp,0:nzp))
+          allocate(selfep(3,-nxguarde:nxp+nxguarde,
+     &                      -nyguarde:nyp+nyguarde,
+     &                      -nzguarde:nzp+nzguarde))
         endif
 
       endif
@@ -10098,31 +10257,37 @@ c       --- has the wrong shape.
       return
       end
 c=============================================================================
-      subroutine assignrhoandphiforfieldsolve(rhoin,phiin)
-#ifdef MPIPARALLEL
-      use InMesh3d,Only: nxlocal,nylocal,nzlocal
-#endif
+      subroutine assignrhoandphiforfieldsolve(rhopin,phipin)
+      use InMesh3d
       use Fields3d
       use Fields3dParticles
-      real(kind=8),target:: rhoin(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phiin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+      real(kind=8),target:: rhopin(-nxguardrho:nxp+nxguardrho,
+     &                             -nyguardrho:nyp+nyguardrho,
+     &                             -nzguardrho:nzp+nzguardrho)
+      real(kind=8),target:: phipin(-nxguardphi:nxp+nxguardphi,
+     &                             -nyguardphi:nyp+nyguardphi,
+     &                             -nzguardphi:nzp+nzguardphi)
 
 #ifndef MPIPARALLEL
 
 c      --- Point rho to the block for the currently active ndts group.
-       rho => rhoin
-       phi => phiin
+       rho => rhopin
+       phi => phipin
 
 #else
 
 c     --- The rho and phi arrays need to be allocated if they havn't already
 c     --- been.
       if (.not. associated(rho)) then
-        allocate(rho(0:nxlocal,0:nylocal,0:nzlocal))
+        allocate(rho(-nxguardrho:nxlocal+nxguardrho,
+     &               -nyguardrho:nylocal+nyguardrho,
+     &               -nzguardrho:nzlocal+nzguardrho))
         rho = 0.
       endif
       if (.not. associated(phi)) then
-        allocate(phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1))
+        allocate(phi(-nxguardphi:nxlocal+nxguardphi,
+     &               -nyguardphi:nylocal+nyguardphi,
+     &               -nzguardphi:nzlocal+nzguardphi))
         phi = 0.
       endif
 
@@ -10133,12 +10298,10 @@ c     --- been.
 c=============================================================================
       subroutine allocateselfeforfieldsolve()
 #ifdef MPIPARALLEL
-      use InMesh3d,Only: nxlocal,nylocal,nzlocal
+      use InMesh3d,Only: nxlocal,nylocal,nzlocal,nxguarde,nyguarde,nzguarde
 #endif
       use Fields3d
       use Fields3dParticles
-      real(kind=8),target:: rhoin(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phiin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
 
 #ifndef MPIPARALLEL
 
@@ -10154,12 +10317,14 @@ c     --- selfe needs to be allocated if it hasn't already been.
       doallocate = .false.
       if (.not. associated(selfe)) then
         doallocate = .true.
-      else if (ANY(shape(selfe) .ne. (/3,1+nxlocal,1+nylocal,1+nzlocal/))) then
+      else if (ANY(shape(selfe) .ne. (/3,1+nxlocal+2*nxguarde,1+nylocal+2*nyguarde,1+nzlocal+2*nzguarde/))) then
         deallocate(selfe)
         doallocate = .true.
       endif
       if (doallocate) then
-        allocate(selfe(3,0:nxlocal,0:nylocal,0:nzlocal))
+        allocate(selfe(3,-nxguarde:nxlocal+nxguarde,
+     &                   -nyguarde:nylocal+nyguarde,
+     &                   -nzguarde:nzlocal+nzguarde))
       endif
 
 #endif
@@ -10168,7 +10333,7 @@ c     --- selfe needs to be allocated if it hasn't already been.
       end
 c=============================================================================
       subroutine setrhoandphiforfieldsolve(rhopin,phipin)
-      use Subtimers3d
+      use Subtimersw3d
       use InGen
       use InGen3d
       use InMesh3d
@@ -10178,8 +10343,12 @@ c=============================================================================
 #ifdef MPIPARALLEL
       use Parallel
 #endif
-      real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
-      real(kind=8),target:: phipin(-1:nxp+1,-1:nyp+1,-1:nzp+1)
+      real(kind=8),target:: rhopin(-nxguardrho:nxp+nxguardrho,
+     &                             -nyguardrho:nyp+nyguardrho,
+     &                             -nzguardrho:nzp+nzguardrho)
+      real(kind=8),target:: phipin(-nxguardphi:nxp+nxguardphi,
+     &                             -nyguardphi:nyp+nyguardphi,
+     &                             -nzguardphi:nzp+nzguardphi)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -10196,7 +10365,7 @@ c  whose field solve region overlap its particle region.
       elseif (solvergeom==XYZgeom) then
         call setrhoforfieldsolve3d(nxlocal,nylocal,nzlocal,rho,
      &                             nxp,nyp,nzp,rhopin,
-     &                             nxpextra,nypextra,nzpextra,
+     &                             nxguardrho,nyguardrho,nzguardrho,
      &                             fsdecomp,ppdecomp)
       end if
 
@@ -10210,14 +10379,18 @@ c  whose field solve region overlap its particle region.
 c=============================================================================
       subroutine setrhoforfieldsolve3d(nxlocal,nylocal,nzlocal,rho,
      &                                 nxp,nyp,nzp,rhop,
-     &                                 nxpextra,nypextra,nzpextra,
+     &                                 nxguardrho,nyguardrho,nzguardrho,
      &                                 fsdecomp,ppdecomp)
-      use Subtimers3d
+      use Subtimersw3d
       use Decompositionmodule
       integer(ISZ):: nxlocal,nylocal,nzlocal,nxp,nyp,nzp
-      integer(ISZ):: nxpextra,nypextra,nzpextra
-      real(kind=8):: rho(0:nxlocal,0:nylocal,0:nzlocal)
-      real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: rho(-nxguardrho:nxlocal+nxguardrho,
+     &                   -nyguardrho:nylocal+nyguardrho,
+     &                   -nzguardrho:nzlocal+nzguardrho)
+      real(kind=8):: rhop(-nxguardrho:nxp+nxguardrho,
+     &                    -nyguardrho:nyp+nyguardrho,
+     &                    -nzguardrho:nzp+nzguardrho)
       type(Decomposition):: fsdecomp,ppdecomp
 
       real(kind=8):: substarttime,wtime
@@ -10225,12 +10398,20 @@ c=============================================================================
 
 #ifdef MPIPARALLEL
 
+      call transfersourceptosource3d(1,nxp,nyp,nzp,rhop,
+     &                               nxlocal,nylocal,nzlocal,rho,
+     &                               nxguardrho,nyguardrho,nzguardrho,
+     &                               ppdecomp,fsdecomp)
+
 c     call parallelbarrier()
-      call sumsourcepondomainboundaries(1,nxp,nyp,nzp,rhop,ppdecomp)
+c     call sumsourcepondomainboundaries(1,nxp,nyp,nzp,
+c    &                                  nxguardrho,nyguardrho,nzguardrho,
+c    &                                  rhop,ppdecomp)
 c     call parallelbarrier()
-      call setsourceforfieldsolve3d_parallel(1,nxlocal,nylocal,nzlocal,rho,
-     &                                       nxp,nyp,nzp,rhop,
-     &                                       fsdecomp,ppdecomp)
+c     call setsourceforfieldsolve3d_parallel(1,nxlocal,nylocal,nzlocal,rho,
+c    &                                       nxp,nyp,nzp,rhop,
+c    &                                       nxguardrho,nyguardrho,nzguardrho,
+c    &                                       fsdecomp,ppdecomp)
 
 #endif
 
@@ -10305,11 +10486,11 @@ c     --- rhop is expensive.
       end
 c=============================================================================
       subroutine fetche3d(pgroup,ipmin,ip,is)
-      use Subtimers3d
+      use Subtimersw3d
       use ParticleGroupmodule
       use Particles, toppgroup => pgroup
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       use Picglb
       use Picglb3d
       use InGen,Only: fstype
@@ -10368,8 +10549,10 @@ c     --- Just return if the efetch is turned off.
         call sete3d(phipndts(:,:,:,indts),selfep,ip,
      &              pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
      &              zgridprv,xmminp,ymminp,zmminp,dx,dy,dz,
-     &              nxp,nyp,nzp,efetch(is),
-     &              ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom,1,1,1)
+     &              nxp,nyp,nzp,nxguardphi,nyguardphi,nzguardphi,
+     &              nxguarde,nyguarde,nzguarde,
+     &              efetch(is),
+     &              ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
       elseif(solvergeom==RZgeom) then
         call setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
       elseif(solvergeom==XZgeom) then
@@ -10395,7 +10578,7 @@ c     --- Just return if the efetch is turned off.
 c=============================================================================
       subroutine fetche3dfrompositions(jsid,ndts,n,x,y,z,ex,ey,ez,bx,by,bz)
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       use Picglb
       use Picglb3d
       use InGen,Only: fstype
@@ -10509,9 +10692,11 @@ c       --- and the data needs to be copied around.
         endif
         call allocateselfepforparticles(.false.)
         call sete3d(phipndts(:,:,:,indts),selfep,n,x,y,z,
-     &              zgridprv,xmminp,ymminp,zmminp,dx,dy,dz,nxp,nyp,nzp,
-     &              efetch(is),ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom,
-     &              1,1,1)
+     &              zgridprv,xmminp,ymminp,zmminp,dx,dy,dz,
+     &              nxp,nyp,nzp,nxguardphi,nyguardphi,nzguardphi,
+     &              nxguarde,nyguarde,nzguarde,
+     &              efetch(is),
+     &              ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
       elseif(solvergeom==RZgeom) then
         call fieldweightrz(x,y,z,ex,ey,ez,n,zgridprv,efetch(is))
       elseif(solvergeom==XZgeom) then
@@ -10537,7 +10722,7 @@ c       --- and the data needs to be copied around.
       end
 c=============================================================================
       subroutine fetchb3d(pgroup,ipmin,ip,is)
-      use Subtimers3d
+      use Subtimersw3d
       use ParticleGroupmodule
       use FieldSolveAPI
       type(ParticleGroup):: pgroup
@@ -10569,7 +10754,7 @@ c     --- Don't do anything if there are no particles input.
       end
 c=============================================================================
       subroutine particlegridboundaries3d(pgroup,js)
-      use Subtimers3d
+      use Subtimersw3d
       use ParticleGroupmodule
       use Picglb3d,Only: dx,dy,dz
       use InMesh3d,Only: xmmin,nx,ymmin,ny,zmmin,nz
@@ -10614,7 +10799,7 @@ c       --- Include all species
 c=============================================================================
       subroutine particleboundaries3d(pgroup,js_in,lcallcontrollers)
       use ParticleGroupmodule
-      use Subtimers3d
+      use Subtimersw3d
       use InGen
       use InGen3d
       use InPart
@@ -10699,7 +10884,7 @@ c       --- do it only if species was advanced on this time step
 c=============================================================================
       subroutine particleboundariesxy(pgroup,js_in,lcallcontrollers)
       use ParticleGroupmodule
-      use Subtimers3d
+      use Subtimersw3d
       use InGen
       use InGen3d
       use InPart
@@ -10785,7 +10970,7 @@ c       --- do it only if species was advanced on this time step
 c=============================================================================
       subroutine stckxy3d(pgroup,js,zbeam,lcountaslost)
       use ParticleGroupmodule
-      use Subtimers3d
+      use Subtimersw3d
       use GlobalVars
       use Z_arrays
       type(ParticleGroup):: pgroup
@@ -10926,7 +11111,7 @@ c     --- Put grid min's to zero as appropriate for the symmetry
       end
 c=============================================================================
       subroutine setrstar(rstar,nz,dz,zmmin,zgrid)
-      use Subtimers3d
+      use Subtimersw3d
       integer(ISZ):: nz
       real(kind=8):: rstar(-1:nz+1)
       real(kind=8):: dz,zmmin,zgrid
@@ -10975,7 +11160,7 @@ c     --- Also, make sure the rstar is non-zero.
       end
 c=============================================================================
       subroutine fetchphi(n,x,y,z,p)
-      use Subtimers3d
+      use Subtimersw3d
       use InGen
       use InGen3d
       use Picglb
@@ -11140,7 +11325,7 @@ c===========================================================================
       subroutine sete3d_aperture(np,xp,yp,zp,zgrid,xmminp,ymminp,zmminp,
      &                           zmmaxp,dx,dy,dz,nzp,ex,ey,
      &                           l2symtry,l4symtry)
-      use Subtimers3d
+      use Subtimersw3d
       use Apertures
       integer(ISZ):: np,nzp
       real(kind=8):: zgrid,xmminp,ymminp,zmminp,zmmaxp,dx,dy,dz
@@ -11283,7 +11468,7 @@ c     --- End of loop over apertures
       end
 c===========================================================================
       subroutine set_aperture_e()
-      use Subtimers3d
+      use Subtimersw3d
       use InGen3d
       use Picglb
       use Picglb3d
@@ -11710,7 +11895,7 @@ c     --- End of loop over apertures
       end
 c===========================================================================
       subroutine getphipforparticles(indts)
-      use Subtimers3d
+      use Subtimersw3d
 #ifdef MPIPARALLEL
       use InGen3d
       use InMesh3d
@@ -11728,8 +11913,10 @@ c     --- particle domain.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom .or. solvergeom==Zgeom) then
         call getphiforparticlesrz()
       elseif (solvergeom==XYZgeom) then
-        call getphipforparticles3d(1,nxlocal,nylocal,nzlocal,phi,
-     &                             nxp,nyp,nzp,phipndts(:,:,:,indts),1,1,1,
+        call getphipforparticles3d(1,nxlocal,nylocal,nzlocal,
+     &                             nxguardphi,nyguardphi,nzguardphi,
+     &                             phi,
+     &                             nxp,nyp,nzp,phipndts(:,:,:,indts),
      &                             fsdecomp,ppdecomp)
       end if
 #endif
@@ -11740,19 +11927,28 @@ c     --- particle domain.
       return
       end
 c===========================================================================
-      subroutine getphipforparticles3d(nc,nxlocal,nylocal,nzlocal,phi,
-     &                                 nxp,nyp,nzp,phip,delx,dely,delz,
+      subroutine getphipforparticles3d(nc,nxlocal,nylocal,nzlocal,
+     &                                 nxguardphi,nyguardphi,nzguardphi,
+     &                                 phi,
+     &                                 nxp,nyp,nzp,phip,
      &                                 fsdecomp,ppdecomp)
       use Decompositionmodule
-      integer(ISZ):: nc,nxlocal,nylocal,nzlocal,nxp,nyp,nzp,delx,dely,delz
-      real(kind=8):: phi(0:nc-1,-delx:nxlocal+delx,-dely:nylocal+dely,-delz:nzlocal+delz)
-      real(kind=8):: phip(0:nc-1,-delx:nxp+delx,-dely:nyp+dely,-delz:nzp+delz)
+      integer(ISZ):: nc,nxlocal,nylocal,nzlocal
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      integer(ISZ):: nxp,nyp,nzp
+      real(kind=8):: phi(0:nc-1,-nxguardphi:nxlocal+nxguardphi,
+     &                          -nyguardphi:nylocal+nyguardphi,
+     &                          -nzguardphi:nzlocal+nzguardphi)
+      real(kind=8):: phip(0:nc-1,-nxguardphi:nxp+nxguardphi,
+     &                           -nyguardphi:nyp+nyguardphi,
+     &                           -nzguardphi:nzp+nzguardphi)
       type(Decomposition):: fsdecomp,ppdecomp
 
 #ifdef MPIPARALLEL
-        call getphipforparticles3d_parallel(nc,nxlocal,nylocal,nzlocal,phi,
+        call getphipforparticles3d_parallel(nc,nxlocal,nylocal,nzlocal,
+     &                                      nxguardphi,nyguardphi,nzguardphi,
+     &                                      phi,
      &                                      nxp,nyp,nzp,phip,
-     &                                      delx,dely,delz,
      &                                      fsdecomp,ppdecomp)
 #endif
 
@@ -11760,7 +11956,7 @@ c===========================================================================
       end
 c===========================================================================
       subroutine getphiforfields()
-      use Subtimers3d
+      use Subtimersw3d
       use InGen3d
       use InMesh3d
       use Fields3d
@@ -11781,7 +11977,9 @@ c       call getphiforparticlesrz()
 c      else if(solvergeom==Zgeom) then
 c        call getphiforparticlesz()
       elseif (solvergeom==XYZgeom) then
-        call getphiforfields3d(nxlocal,nylocal,nzlocal,phi)
+        call getphiforfields3d(nxlocal,nylocal,nzlocal,
+     &                         nxguardphi,nyguardphi,nzguardphi,
+     &                         phi)
       end if
 #endif
 
@@ -11791,13 +11989,18 @@ c        call getphiforparticlesz()
       return
       end
 c===========================================================================
-      subroutine setinhomogeneousboundaries(phi,nxlocal,nylocal,nzlocal,dx,dy,dz,
+      subroutine setinhomogeneousboundaries(phi,nxlocal,nylocal,nzlocal,
+     &                                      nxguardphi,nyguardphi,nzguardphi,
+     &                                      dx,dy,dz,
      &                                      bound0,boundnz,boundxy,
      &                                      l2symtry,l4symtry)
       use Constant
       use GlobalVars
       integer(ISZ):: nxlocal,nylocal,nzlocal
-      real(kind=8):: phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: phi(-nxguardphi:nxlocal+nxguardphi,
+     &                   -nyguardphi:nylocal+nyguardphi,
+     &                   -nzguardphi:nzlocal+nzguardphi)
       real(kind=8):: dx,dy,dz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
@@ -11865,7 +12068,7 @@ c     endif
 c===========================================================================
       subroutine fieldsol3d(iwhich)
       use GlobalVars
-      use Subtimers3d
+      use Subtimersw3d
       use Timers
       use InGen
       use Picglb, only: zgrid
@@ -12017,29 +12220,36 @@ c           --- boundary conditions in phi.
      &        rho(ixmin:ixmax,iymin:iymax,izmin:izmax)
 #endif
 c           --- Apply inhomogeneous Dirichlet boundary conditions
-            call setinhomogeneousboundaries(phi,nxlocal,nylocal,nzlocal,dx,dy,dz,
+            call setinhomogeneousboundaries(phi,nxlocal,nylocal,nzlocal,
+     &                                      nxguardphi,nyguardphi,nzguardphi,
+     &                                      dx,dy,dz,
      &                                      bound0,boundnz,boundxy,
      &                                      l2symtry,l4symtry)
           endif
           call vp3d(iwhich)
           call getphiforfields()
-          call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,1,1,1,phi,1,
-     &                                   bounds,.true.,.false.)
+          call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,
+     &                                   nxguardphi,nyguardphi,nzguardphi,
+     &                                   phi,1,bounds,.true.,.false.)
 #ifdef MPIPARALLEL
-          call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+          call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
+     &                                 nxguardphi,nyguardphi,nzguardphi,
      &                                 -1,0,bounds,fsdecomp)
 c         --- This is what should be here, but this is causing a problem
 c         --- under certain conditions, giving a seg fault deep inside of
 c         --- the MPI call. I am hoping that there is a bug in MPI that
 c         --- will be fixed. The routine that this calls have been heavily
 c         --- tested and otherwise work OK.
-c         call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+c         call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,
+c    &                         nxguardphi,nyguardphi,nzguardphi,
 c    &                         -1,-1,0,1,fsdecomp)
 c         --- This does the same thing, but less efficiently, but doesn't
 c         --- exihibit the seg fault.
-          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,
+     &                         nxguardphi,nyguardphi,nzguardphi,
      &                         -1,-1,1,1,fsdecomp)
-          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,
+     &                          nxguardphi,nyguardphi,nzguardphi,
      &                         -1,-1,0,0,fsdecomp)
 #endif
 c         --- Note that perphi3d is only called for the RZ solver.
@@ -12049,17 +12259,22 @@ c         --- Note that perphi3d is only called for the RZ solver.
 c         --- Call perturbative bent beam field solver
           call bendfieldsol3d()
           call getphiforfields()
-          call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,1,1,1,phi,1,
-     &                                   bounds,.true.,.false.)
+          call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,
+     &                                   nxguardphi,nyguardphi,nzguardphi,
+     &                                   phi,1,bounds,.true.,.false.)
 #ifdef MPIPARALLEL
-          call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+          call mgexchange_phi_periodic(1,nxlocal,nylocal,nzlocal,phi,
+     &                                 nxguardphi,nyguardphi,nzguardphi,
      &                                 -1,0,bounds,fsdecomp)
 c         --- See comments above
-c         call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+c         call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,
+c    &                         nxguardphi,nyguardphi,nzguardphi,
 c    &                         -1,-1,0,1,fsdecomp)
-          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,
+     &                         nxguardphi,nyguardphi,nzguardphi,
      &                         -1,-1,1,1,fsdecomp)
-          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,1,1,1,
+          call mgexchange_phi2(1,nxlocal,nylocal,nzlocal,phi,
+     &                         nxguardphi,nyguardphi,nzguardphi,
      &                         -1,-1,0,0,fsdecomp)
 #endif
 c         --- Note that perphi3d is only called for the RZ solver.
@@ -12206,7 +12421,7 @@ c     --- if failure to converge, report the bad news to user
       end
 c=============================================================================
       subroutine vp3d(iwhich)
-      use Subtimers3d
+      use Subtimersw3d
       use Constant
       use InGen
       use InGen3d
@@ -12256,78 +12471,98 @@ c fits and so was replaced with if statements.
       zlen = nz*dz
 
       if (fstype == 0) then
-          call vpois3d(iwhich,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
+          call vpois3d(iwhich,phi,phi,kxsq,kysq,kzsq,
      &                 attx,atty,attz,filt,xlen,ylen,zlen,
-     &                 nx,ny,izfsmax-izfsmin,nz,
+     &                 nx,ny,nzlocal,nz,
+     &                 nxguardphi,nyguardphi,nzguardphi,
      &                 scrtch,xywork3d,zwork,0,l2symtry,l4symtry,
      &                 bound0,boundnz,boundxy)
       elseif (fstype == 1) then
-          call pipe3df(iwhich,pipeshpe,rho(0,0,izfsmin),phi(-1,-1,izfsmin),
+          call pipe3df(iwhich,pipeshpe,rho,phi,
      &                 kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                 xlen,ylen,zlen,
-     &                 nx,ny,izfsmax-izfsmin,nz,scrtch,xywork3d,
+     &                 nx,ny,nzlocal,nz,
+     &                 nxguardphi,nyguardphi,nzguardphi,
+     &                 nxguardrho,nyguardrho,nzguardrho,
+     &                 scrtch,xywork3d,
      &                 zwork,l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 2) then
-          call vcap3d(iwhich,rho(0,0,izfsmin),phi(-1,-1,izfsmin),
+          call vcap3d(iwhich,rho,phi,
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                xlen,ylen,zlen,nx,ny,izfsmax-izfsmin,nz,
+     &                xlen,ylen,zlen,nx,ny,nzlocal,nz,
+     &                nxguardphi,nyguardphi,nzguardphi,
+     &                nxguardrho,nyguardrho,nzguardrho,
      &                scrtch,xywork3d,zwork,
-     &                xmmin+nx*dx,zmminlocal+izfsmin*dz,zgrid,pipeshpe,
+     &                xmmin+nx*dx,zmminlocal,zgrid,pipeshpe,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 3) then
           call kaboom("field solver type 3 (SOR) is no longer available, use 7 (multigrid) instead")
       elseif (fstype == 4) then
           if (iwhich == 1 .or. iwhich == 0) then
-            call vpois3d(1,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
+            call vpois3d(1,phi,phi,kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,izfsmax-izfsmin,nz,scrtch,
-     &                   xywork3d,zwork,0,l2symtry,l4symtry,
+     &                   nx,ny,nzlocal,nz,
+     &                   nxguardphi,nyguardphi,nzguardphi,
+     &                   scrtch,xywork3d,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
           endif
           if (iwhich == -1 .or. iwhich == 0) then
-            call vpois3d(12,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
+            call vpois3d(12,phi,phi,kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,izfsmax-izfsmin,nz,
+     &                   nx,ny,nzlocal,nz,
+     &                   nxguardphi,nyguardphi,nzguardphi,
      &                   scrtch,xywork3d,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
-            call vpois3d(14,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
+            call vpois3d(14,phi,phi,kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,izfsmax-izfsmin,nz,
+     &                   nx,ny,nzlocal,nz,
+     &                   nxguardphi,nyguardphi,nzguardphi,
      &                   scrtch,xywork3d,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
-            call vpois3d(13,phi(-1,-1,izfsmin),phi(-1,-1,izfsmin),kxsq,kysq,kzsq,
+            call vpois3d(13,phi,phi,kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,izfsmax-izfsmin,nz,
+     &                   nx,ny,nzlocal,nz,
+     &                   nxguardphi,nyguardphi,nzguardphi,
      &                   scrtch,xywork3d,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
           endif
 
       elseif (fstype == 5) then
 c         --- General capacity matrix solver in kz space
-          call capmatkz3d(iwhich,phi(-1,-1,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
+          call capmatkz3d(iwhich,phi,rho,
+     &                    kxsq,kysq,kzsq,attx,atty,attz,
      &                    filt,xlen,ylen,zlen,
-     &                    nx,ny,izfsmax-izfsmin,nz,dx,dy,dz,
-     &                    xmmin,ymmin,zmminlocal+izfsmin*dz,scrtch,
+     &                    nx,ny,nzlocal,nz,
+     &                    nxguardphi,nyguardphi,nzguardphi,
+     &                    nxguardrho,nyguardrho,nzguardrho,
+     &                    dx,dy,dz,
+     &                    xmmin,ymmin,zmminlocal,scrtch,
      &                    xywork3d,zwork,l2symtry,l4symtry,
      &                    bound0,boundnz,boundxy)
       elseif (fstype == 6) then
 c         --- General capacity matrix solver
-          call capmat3df(iwhich,phi(-1,-1,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
-     &                  filt,xlen,ylen,zlen,
-     &                  nx,ny,izfsmax-izfsmin,nz,dx,dy,dz,
-     &                  xmmin,ymmin,zmminlocal+izfsmin*dz,scrtch,
-     &                  xywork3d,zwork,l2symtry,l4symtry,
-     &                  bound0,boundnz,boundxy)
+          call capmat3df(iwhich,phi,rho,
+     &                   kxsq,kysq,kzsq,attx,atty,attz,
+     &                   filt,xlen,ylen,zlen,
+     &                   nx,ny,nzlocal,nz,
+     &                   nxguardphi,nyguardphi,nzguardphi,
+     &                   nxguardrho,nyguardrho,nzguardrho,
+     &                   dx,dy,dz,
+     &                   xmmin,ymmin,zmminlocal,scrtch,
+     &                   xywork3d,zwork,l2symtry,l4symtry,
+     &                   bound0,boundnz,boundxy)
 
       elseif (fstype == 7) then
         if (minval(electrontemperature) == 0) then
           call multigrid3df(iwhich,nx,ny,nz,nxlocal,nylocal,nzlocal,
-     &            dx,dy,dz,
-     &            phi(-1,-1,izfsmin-1),rho(0,0,izfsmin),rstar(izfsmin-1),
-     &            linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &            xmmin,ymmin,zmmin,zbeam,zgrid)
+     &                      nxguardphi,nyguardphi,nzguardphi,
+     &                      nxguardrho,nyguardrho,nzguardrho,
+     &                      dx,dy,dz,phi,rho,rstar,
+     &                      linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,
+     &                      xmmin,ymmin,zmmin,zbeam,zgrid)
         else
-          call multigridbe3df(iwhich,nx,ny,nz,dx,dy,dz,phi,rho,
+          call multigridbe3df(iwhich,nx,ny,nz,
+     &                        dx,dy,dz,phi,rho,
      &                        rstar,linbend,
      &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                        xmmin,ymmin,zmmin,zbeam,zgrid)
@@ -12338,17 +12573,19 @@ c         --- General capacity matrix solver
 c         --- Experimental parallel solver
 c         --- Combines local tridiag solves with iteration to exchange
 c         --- boundary data.
-          call paralleltridiag(phi(-1,-1,izfsmin-1),kxsq,kysq,kzsq,
+          call paralleltridiag(phi,kxsq,kysq,kzsq,
      &                         attx,atty,attz,filt,xlen,ylen,zlen,
-     &                         nx,ny,izfsmax-izfsmin,
+     &                         nx,ny,nzlocal,
+     &                         nxguardphi,nyguardphi,nzguardphi,
      &                         scrtch,xywork3d,zwork,l2symtry,l4symtry,
      &                         bound0,boundnz,boundxy)
       elseif (fstype == 9) then
 c         --- Experimental parallel solver based on the method
 c         --- put forward by Lantz
-          call lantzsolver(iwhich,phi(-1,-1,izfsmin-1),kxsq,kysq,kzsq,
+          call lantzsolver(iwhich,phi,kxsq,kysq,kzsq,
      &                     attx,atty,attz,filt,xlen,ylen,zlen,
-     &                     nx,ny,izfsmax-izfsmin,
+     &                     nx,ny,nzlocal,
+     &                     nxguardphi,nyguardphi,nzguardphi,
      &                     scrtch,xywork3d,zwork,l2symtry,l4symtry,
      &                     bound0,boundnz,boundxy)
 
@@ -12362,7 +12599,8 @@ c       --- RZ full-multigrid solver
        endif
       elseif (fstype == 11) then
 c         --- Chombo AMR  full-multigrid solver
-        call cho_solve3d(iwhich,nxlocal,nylocal,nzlocal,nz,dx,dy,dz,
+        call cho_solve3d(iwhich,nxlocal,nylocal,nzlocal,nz,
+     &                   dx,dy,dz,
      &                   l2symtry,l4symtry,xmmin,ymmin,zmminlocal,zmmin)
       elseif (fstype == 12) then
         if (iwhich <= 0) then
@@ -12371,7 +12609,8 @@ c         --- Chombo AMR  full-multigrid solver
 
       elseif (fstype == 13) then
 
-        call multigridbe3df(iwhich,nx,ny,nz,dx,dy,dz,phi,rho,
+        call multigridbe3df(iwhich,nx,ny,nz,
+     &                      dx,dy,dz,phi,rho,
      &                      rstar,linbend,
      &                      bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                      xmmin,ymmin,zmmin,zbeam,zgrid)

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.170 $, $Date: 2011/06/09 21:48:23 $
+c@(#) File DW3D.F, version $Revision: 3.171 $, $Date: 2011/08/27 00:35:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -94,7 +94,7 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine rhodia
-      use Subtimers3d
+      use Subtimersw3d
       use InGen,Only: fstype
       use InGen3d
       real(kind=8):: substarttime,wtime
@@ -111,7 +111,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine gtlchg
-      use Subtimers3d
+      use Subtimersw3d
       use InGen,Only: fstype
       use InGen3d
       real(kind=8):: substarttime,wtime
@@ -130,7 +130,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine srhoax
-      use Subtimers3d
+      use Subtimersw3d
       use InGen,Only: fstype
       use InGen3d
       real(kind=8):: substarttime,wtime
@@ -147,7 +147,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine getese
-      use Subtimers3d
+      use Subtimersw3d
       use InGen,Only: fstype
       use InGen3d
       real(kind=8):: substarttime,wtime
@@ -164,7 +164,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine sphiax
-      use Subtimers3d
+      use Subtimersw3d
       use InGen,Only: fstype
       use InGen3d
       real(kind=8):: substarttime,wtime
@@ -181,7 +181,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine sezax
-      use Subtimers3d
+      use Subtimersw3d
       use InGen,Only: fstype
       use InGen3d
       real(kind=8):: substarttime,wtime
@@ -198,7 +198,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine gtlchg3d
-      use Subtimers3d
+      use Subtimersw3d
       use Picglb
       use InGen3d
       use Picglb3d
@@ -214,7 +214,9 @@ c  Calculates the line charge density from rho.
       if (lw3dtimesubs) substarttime = wtime()
       if (.not. lgtlchg3d .or. .not. associated(rho)) return
 
-      call gtlchg3dfromrho(nxlocal,nylocal,nzlocal,rho,dx,dy,dz,
+      call gtlchg3dfromrho(nxlocal,nylocal,nzlocal,
+     &                     nxguardrho,nyguardrho,nzguardrho,
+     &                     rho,dx,dy,dz,
      &                     zgrid,zmminlocal,l2symtry,l4symtry,
      &                     izproc==nzprocs-1)
 
@@ -224,15 +226,20 @@ c  Calculates the line charge density from rho.
       return
       end
 c=============================================================================
-      subroutine gtlchg3dfromrho(nxlocal,nylocal,nzlocal,rho,dx,dy,dz,
+      subroutine gtlchg3dfromrho(nxlocal,nylocal,nzlocal,
+     &                           nxguardrho,nyguardrho,nzguardrho,
+     &                           rho,dx,dy,dz,
      &                           zgrid,zmminlocal,l2symtry,l4symtry,islastproc)
-      use Subtimers3d
+      use Subtimersw3d
       use Picglb,Only: zbeam
       use Z_arrays,Only: linechg,zzmin,dzz,nzzarr
       use InDiag3d,Only: lgtlchg3d
 
       integer(ISZ):: nxlocal,nylocal,nzlocal
-      real(kind=8):: rho(0:nxlocal,0:nylocal,0:nzlocal)
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: rho(-nxguardrho:nxlocal+nxguardrho,
+     &                   -nyguardrho:nylocal+nyguardrho,
+     &                   -nzguardrho:nzlocal+nzguardrho)
       real(kind=8):: dx,dy,dz,zgrid,zmminlocal
       logical(ISZ):: l2symtry,l4symtry,islastproc
 
@@ -263,16 +270,18 @@ c First, sum up the charge density in each axial plane.
 
         if (l2symtry) then
 c         --- 2-fold: account for only one side of rho being stored
-          scrtch(iz) = sum(rho(:,0,iz)) + 2.*sum(rho(:,1:,iz))
+          scrtch(iz) = sum(rho(0:nxlocal,0,iz)) +
+     &                 2.*sum(rho(0:nxlocal,1:nylocal,iz))
 
         elseif (l4symtry) then
 c         --- 4-fold: account for only one quadrant of rho being stored
-          scrtch(iz) = rho(0,0,iz) + 4.*sum(rho(1:,1:,iz)) +
-     &                   2.*sum(rho(1:,0,iz)) + 2.*sum(rho(0,1:,iz))
+          scrtch(iz) = rho(0,0,iz) + 4.*sum(rho(1:nxlocal,1:nylocal,iz)) +
+     &                               2.*sum(rho(1:nxlocal,0,iz)) +
+     &                               2.*sum(rho(0,1:nylocal,iz))
 
         else
 c         --- no symmetries...
-          scrtch(iz) = sum(rho(:,:,iz))
+          scrtch(iz) = sum(rho(0:nxlocal,0:nylocal,iz))
 
         endif
 
@@ -318,16 +327,20 @@ c       --- at nzlocal.
       return
       end
 c=============================================================================
-      subroutine gtlchgrzfromrho(nxlocal,nzlocal,rho,dx,dz,
+      subroutine gtlchgrzfromrho(nxlocal,nzlocal,
+     &                           nxguardrho,nzguardrho,
+     &                           rho,dx,dz,
      &                           zgrid,zmminlocal,islastproc)
       use Constant, Only: pi
-      use Subtimers3d
+      use Subtimersw3d
       use Picglb,Only: zbeam
       use Z_arrays,Only: linechg,zzmin,dzz,nzzarr
       use InDiag3d,Only: lgtlchg3d
 
-      integer(ISZ):: nxlocal,nylocal,nzlocal
-      real(kind=8):: rho(0:nxlocal,0:nzlocal)
+      integer(ISZ):: nxlocal,nzlocal
+      integer(ISZ):: nxguardrho,nzguardrho
+      real(kind=8):: rho(-nxguardrho:nxlocal+nxguardrho,
+     &                   -nzguardrho:nzlocal+nzguardrho)
       real(kind=8):: dx,dy,dz,zgrid,zmminlocal
       logical(ISZ):: l2symtry,l4symtry,islastproc
 
@@ -362,7 +375,7 @@ c First, sum up the charge density in each axial plane.
 
 !$OMP PARALLEL DO
       do iz=0,nzlocal
-        scrtch(iz) = sum(rho(:,iz)*cellarea)
+        scrtch(iz) = sum(rho(0:nxlocal,iz)*cellarea)
       enddo
 !$OMP END PARALLEL DO
 
@@ -580,7 +593,7 @@ c  Sets 1d array for the charge density on the axis
       end
 c=============================================================================
       subroutine getese3d
-      use Subtimers3d
+      use Subtimersw3d
       use Beam_acc
       use Picglb
       use Picglb3d
@@ -693,14 +706,19 @@ c       --- Bulk is doubled
       end
 c=============================================================================
       subroutine getese3dfromrhophi(nxlocal,nylocal,nzlocal,
-     &                              nxguard,nyguard,nzguard,rho,phi,
-     &                              dx,dy,dz,l4symtry,l2symtry,ese)
-      use Subtimers3d
-      integer(ISZ):: nxlocal,nylocal,nzlocal,nxguard,nyguard,nzguard
-      real(kind=8):: rho(0:nxlocal,0:nylocal,0:nzlocal)
-      real(kind=8):: phi(-nxguard:nxlocal+nxguard,
-     &                   -nyguard:nylocal+nyguard,
-     &                   -nzguard:nzlocal+nzguard)
+     &                              nxguardphi,nyguardphi,nzguardphi,
+     &                              nxguardrho,nyguardrho,nzguardrho,
+     &                              rho,phi,dx,dy,dz,l4symtry,l2symtry,ese)
+      use Subtimersw3d
+      integer(ISZ):: nxlocal,nylocal,nzlocal
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: rho(-nxguardrho:nxlocal+nxguardrho,
+     &                   -nyguardrho:nylocal+nyguardrho,
+     &                   -nzguardrho:nzlocal+nzguardrho)
+      real(kind=8):: phi(-nxguardphi:nxlocal+nxguardphi,
+     &                   -nyguardphi:nylocal+nyguardphi,
+     &                   -nzguardphi:nzlocal+nzguardphi)
       real(kind=8):: dx,dy,dz,ese
       logical(ISZ):: l4symtry,l2symtry
 
@@ -760,13 +778,19 @@ c       --- Bulk is doubled
       return
       end
 c=============================================================================
-      subroutine geteserzfromrhophi(nxlocal,nzlocal,nxguard,nzguard,rho,phi,
-     &                              dx,dz,xmminlocal,ese)
-      use Subtimers3d
+      subroutine geteserzfromrhophi(nxlocal,nzlocal,
+     &                              nxguardphi,nzguardphi,
+     &                              nxguardrho,nzguardrho,
+     &                              rho,phi,dx,dz,xmminlocal,ese)
+      use Subtimersw3d
       use Constant
-      integer(ISZ):: nxlocal,nzlocal,nxguard,nzguard
-      real(kind=8):: rho(0:nxlocal,0:nzlocal)
-      real(kind=8):: phi(-nxguard:nxlocal+nxguard,-nzguard:nzlocal+nzguard)
+      integer(ISZ):: nxlocal,nzlocal
+      integer(ISZ):: nxguardphi,nzguardphi
+      integer(ISZ):: nxguardrho,nzguardrho
+      real(kind=8):: rho(-nxguardrho:nxlocal+nxguardrho,
+     &                   -nzguardrho:nzlocal+nzguardrho)
+      real(kind=8):: phi(-nxguardphi:nxlocal+nxguardphi,
+     &                   -nzguardphi:nzlocal+nzguardphi)
       real(kind=8):: dx,dz,xmminlocal,ese
 
 c Calculate the electrostatic energy, sum of r*rho*phi*dx*dz/2
