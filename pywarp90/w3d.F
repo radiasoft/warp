@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.459 $, $Date: 2011/08/27 00:35:50 $
+c@(#) File W3D.F, version $Revision: 3.460 $, $Date: 2011/08/30 22:12:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2642,7 +2642,12 @@ c       --- flags.
           rho(:,:,nz-nzguardrho:) = rho(:,:,:nzguardrho)
         endif
         if (bounds(0) == neumann) then
-          rho(:nxguardrho,:,:) = rho(:nxguardrho,:,:) + rho(nxguardrho:-nxguardrho:-1,:,:)
+          if (solvergeom .ne. RZgeom) then
+            rho(:nxguardrho,:,:) = rho(:nxguardrho,:,:) + rho(nxguardrho:-nxguardrho:-1,:,:)
+          else if (nxguardrho > 0) then
+            rho(1:nxguardrho,:,:) = rho(1:nxguardrho,:,:) + rho(-1:-nxguardrho:-1,:,:)
+            rho(:-1,:,:) = rho(nxguardrho:1:-1,:,:)
+          endif
         endif
         if (bounds(1) == neumann) then
           rho(nx-nxguardrho:,:,:) = rho(nx-nxguardrho:,:,:) + rho(nx+nxguardrho:nx-nxguardrho:-1,:,:)
@@ -2687,9 +2692,13 @@ c=============================================================================
       if (lw3dtimesubs) substarttime = wtime()
 
       if (nxlocal > 0) then
-        if ((bounds(0) == neumann) .and. fsdecomp%ixproc == 0
-     &      .and. .not. lrz) then
-          rho(:,:nxguardrho,:,:) = rho(:,:nxguardrho,:,:) + rho(:,nxguardrho:-nxguardrho:-1,:,:)
+        if ((bounds(0) == neumann) .and. fsdecomp%ixproc == 0) then
+          if (.not. lrz) then
+            rho(:,:nxguardrho,:,:) = rho(:,:nxguardrho,:,:) + rho(:,nxguardrho:-nxguardrho:-1,:,:)
+          else if (lrz .and. nxguardrho > 0) then
+            rho(:,1:nxguardrho,:,:) = rho(:,1:nxguardrho,:,:) + rho(:,-1:-nxguardrho:-1,:,:)
+            rho(:,:-1,:,:) = rho(:,nxguardrho:1:-1,:,:)
+          endif
         endif
         if (bounds(1) == neumann .and.
      &      fsdecomp%ixproc == fsdecomp%nxprocs-1) then
@@ -4529,7 +4538,6 @@ c Fetch the E fields using 2nd order splines
           wx = (x      - xmmin)*dxi - i
           wz = (zp(ip) - zgrid - zmmin)*dzi - k
 
-c         --- !!! I DON'T THINK THIS IS CORRECT!!!
           u0 = 0.5*(0.5 - wx)**2
           u1 = (0.75 - wx**2)
           u2 = 0.5*(0.5 + wx)**2
@@ -7203,10 +7211,18 @@ c  Direct deposition using a second order spline
 c--------------------------------------
       else if (depos == "dspline2") then
 
-        call setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                             nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
-     &                             dx,dy,dz,xmmin,ymmin,zmmin,
-     &                             l2symtry,l4symtry)
+        if (.not. lcylindrical) then
+          call setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,q,wght,
+     &                               nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                               dx,dy,dz,xmmin,ymmin,zmmin,
+     &                               l2symtry,l4symtry)
+        else
+          call setrho3ddirectspline2cyl(rho,np,xp,yp,zp,zgrid,q,wght,
+     &                                  nx,ny,nz,
+     &                                  nxguardrho,nyguardrho,nzguardrho,
+     &                                  dx,dy,dz,xmmin,ymmin,zmmin,
+     &                                  l2symtry,l4symtry)
+        endif
 
       endif
 
@@ -8406,7 +8422,6 @@ c=============================================================================
      &                           nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
      &                           dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
-      use InGen,Only: pbound0,pboundnz,pboundxy
       integer(ISZ):: np
       integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
       real(kind=8):: dx,dy,dz
@@ -8431,11 +8446,6 @@ c  Uses a second order spline with direct deposition (no particle blocks)
 
       if (np == 0) return
 
-      if (nxguardrho <= 0 .or. nyguardrho <= 0 .or. nzguardrho <= 0) then
-        call kaboom("setrho3ddirectspline2: there must be at least one guard cell on all axis")
-        return
-      endif
-
       g = wght*q/(dx*dy*dz)
       dxi = 1./dx
       dyi = 1./dy
@@ -8455,6 +8465,13 @@ c       --- transverse boundaries.
 ! I don't know why it works, but it does.
 !$OMP PARALLEL PRIVATE(ii,jj,kk,wx,wy,wz,u2,u1,u0,v2,v1,v0,w2,w1,w0,ip)
 !$OMP&FIRSTPRIVATE(np)
+
+      if (ny > 0) then
+
+        if (nxguardrho <= 0 .or. nyguardrho <= 0 .or. nzguardrho <= 0) then
+          call kaboom("setrho3ddirectspline2: there must be at least one guard cell on all axes")
+          return
+        endif
 
 c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
@@ -8657,6 +8674,208 @@ c       --- normal loop
         enddo
 !$OMP END DO
       endif
+
+      else
+
+        if (nxguardrho <= 0 .or. nzguardrho <= 0) then
+          call kaboom("setrho3ddirectspline2: there must be at least one guard cell on all axes")
+          return
+        endif
+
+c     --- NY = 0
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry .or. l4symtry) then
+        iinext = nint((abs(xp(1)) - xmmin)*dxi)
+        kknext = nint((zp(1) - zgrid - zmmin)*dzi)
+        wxnext = (abs(xp(1)) - xmmin)*dxi - iinext
+        wznext = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          kk = kknext
+          wx = wxnext
+          wz = wznext
+          if (ip < np) then
+            iinext = nint((abs(xp(ip+1)) - xmmin)*dxi)
+            kknext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+            wxnext = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          w0 = 0.5*(0.5 - wz)**2
+          w1 = (0.75 - wz**2)
+          w2 = 0.5*(0.5 + wz)**2
+
+          rho(ii-1,0,kk-1) = rho(ii-1,0,kk-1) + u0*w0*g
+          rho(ii  ,0,kk-1) = rho(ii  ,0,kk-1) + u1*w0*g
+          rho(ii+1,0,kk-1) = rho(ii+1,0,kk-1) + u2*w0*g
+
+          rho(ii-1,0,kk  ) = rho(ii-1,0,kk  ) + u0*w1*g
+          rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u1*w1*g
+          rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u2*w1*g
+
+          rho(ii-1,0,kk+1) = rho(ii-1,0,kk+1) + u0*w2*g
+          rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u1*w2*g
+          rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u2*w2*g
+
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        iinext = nint((xp(1) - xmmin)*dxi)
+        kknext = nint((zp(1) - zgrid - zmmin)*dzi)
+        wxnext = (xp(1) - xmmin)*dxi - iinext
+        wznext = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          kk = kknext
+          wx = wxnext
+          wz = wznext
+          if (ip < np) then
+            iinext = nint((xp(ip+1) - xmmin)*dxi)
+            kknext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+            wxnext = (xp(ip+1) - xmmin)*dxi - iinext
+            wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          w0 = 0.5*(0.5 - wz)**2
+          w1 = (0.75 - wz**2)
+          w2 = 0.5*(0.5 + wz)**2
+
+          rho(ii-1,0,kk-1) = rho(ii-1,0,kk-1) + u0*w0*g
+          rho(ii  ,0,kk-1) = rho(ii  ,0,kk-1) + u1*w0*g
+          rho(ii+1,0,kk-1) = rho(ii+1,0,kk-1) + u2*w0*g
+
+          rho(ii-1,0,kk  ) = rho(ii-1,0,kk  ) + u0*w1*g
+          rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u1*w1*g
+          rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u2*w1*g
+
+          rho(ii-1,0,kk+1) = rho(ii-1,0,kk+1) + u0*w2*g
+          rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u1*w2*g
+          rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u2*w2*g
+
+        enddo
+!$OMP END DO
+      endif
+
+      endif
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine setrho3ddirectspline2cyl(rho,np,xp,yp,zp,zgrid,q,wght,
+     &                           nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                           dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+      use GlobalVars
+      use Constant,Only: pi
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
+      real(kind=8):: xp(np), yp(np), zp(np)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  Uses a second order spline with direct deposition (no particle blocks)
+
+      integer(ISZ):: ix,ip,ii,jj,kk
+      integer(ISZ):: iinext,jjnext,kknext
+      real(kind=8):: g,dxi,dyi,dzi
+      real(kind=8):: wx,wy,wz
+      real(kind=8):: wxnext,wynext,wznext
+      real(kind=8):: u0,u1,u2,v0,v1,v2,w0,w1,w2
+      real(kind=8):: gxf,gyf,gxfm1,gyfm1
+
+c     --- Work array holding q/cell volume, the charge density per
+c     --- real particle. This is needed for RZ
+c     --- since the cell volume there has radial dependence.
+      real(kind=8):: cdens(-1:nx)
+      real(kind=8):: x
+
+      if (np == 0) return
+
+      if (nxguardrho <= 0 .or. nzguardrho <= 0) then
+        call kaboom("setrho3ddirectspline2cyl: there must be at least one guard cell on all axes")
+        return
+      endif
+
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+
+      if (xmmin == dx) then
+        cdens(-1) = 8./(13.*pi*0.25*dx*dx*dz)
+      else
+        cdens(-1) = -1./(2.*pi*(dx+xmmin)*dx*dz)
+      endif
+      if (xmmin == 0.) then
+c       --- The factor 8/13 corrects for overdeposition due to the
+c       --- weighting (for uniform distribution)
+c       --- see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
+c       --- and Verboncoeur, J. of Comp. Phys. (for linear weighting)
+        cdens(0) = 8./(13.*pi*0.25*dx*dx*dz)
+      else
+        cdens(0) = 1./(2.*pi*(xmmin)*dx*dz)
+      endif
+      do ix = 1,nx
+        cdens(ix) = 1./(2.*pi*(ix*dx+xmmin)*dx*dz)
+      enddo
+      cdens = cdens*wght*q
+
+c     --- normal loop
+      x = sqrt(xp(1)**2 + yp(1)**2)
+      iinext = nint((x     - xmmin)*dxi)
+      kknext = nint((zp(1) - zgrid - zmmin)*dzi)
+      wxnext = (x     - xmmin)*dxi - iinext
+      wznext = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+      do ip = 1,np
+        ii = iinext
+        kk = kknext
+        wx = wxnext
+        wz = wznext
+        if (ip < np) then
+          x = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+          iinext = nint((x        - xmmin)*dxi)
+          kknext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+          wxnext = (x        - xmmin)*dxi - iinext
+          wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+        endif
+
+        u0 = 0.5*(0.5 - wx)**2 *cdens(ii-1)
+        u1 = (0.75 - wx**2)    *cdens(ii)
+        u2 = 0.5*(0.5 + wx)**2 *cdens(ii+1)
+        w0 = 0.5*(0.5 - wz)**2
+        w1 = (0.75 - wz**2)
+        w2 = 0.5*(0.5 + wz)**2
+
+        rho(ii-1,0,kk-1) = rho(ii-1,0,kk-1) + u0*w0
+        rho(ii  ,0,kk-1) = rho(ii  ,0,kk-1) + u1*w0
+        rho(ii+1,0,kk-1) = rho(ii+1,0,kk-1) + u2*w0
+
+        rho(ii-1,0,kk  ) = rho(ii-1,0,kk  ) + u0*w1
+        rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u1*w1
+        rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u2*w1
+
+        rho(ii-1,0,kk+1) = rho(ii-1,0,kk+1) + u0*w2
+        rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u1*w2
+        rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u2*w2
+
+      enddo
+!$OMP END DO
 
 !$OMP END PARALLEL
 
