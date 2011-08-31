@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.460 $, $Date: 2011/08/30 22:12:10 $
+c@(#) File W3D.F, version $Revision: 3.461 $, $Date: 2011/08/31 20:27:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2641,13 +2641,8 @@ c       --- flags.
           rho(:,:,:nzguardrho) = rho(:,:,:nzguardrho) + rho(:,:,nz-nzguardrho:)
           rho(:,:,nz-nzguardrho:) = rho(:,:,:nzguardrho)
         endif
-        if (bounds(0) == neumann) then
-          if (solvergeom .ne. RZgeom) then
-            rho(:nxguardrho,:,:) = rho(:nxguardrho,:,:) + rho(nxguardrho:-nxguardrho:-1,:,:)
-          else if (nxguardrho > 0) then
-            rho(1:nxguardrho,:,:) = rho(1:nxguardrho,:,:) + rho(-1:-nxguardrho:-1,:,:)
-            rho(:-1,:,:) = rho(nxguardrho:1:-1,:,:)
-          endif
+        if (bounds(0) == neumann .and. solvergeom .ne. RZgeom) then
+          rho(:nxguardrho,:,:) = rho(:nxguardrho,:,:) + rho(nxguardrho:-nxguardrho:-1,:,:)
         endif
         if (bounds(1) == neumann) then
           rho(nx-nxguardrho:,:,:) = rho(nx-nxguardrho:,:,:) + rho(nx+nxguardrho:nx-nxguardrho:-1,:,:)
@@ -2692,13 +2687,9 @@ c=============================================================================
       if (lw3dtimesubs) substarttime = wtime()
 
       if (nxlocal > 0) then
-        if ((bounds(0) == neumann) .and. fsdecomp%ixproc == 0) then
-          if (.not. lrz) then
-            rho(:,:nxguardrho,:,:) = rho(:,:nxguardrho,:,:) + rho(:,nxguardrho:-nxguardrho:-1,:,:)
-          else if (lrz .and. nxguardrho > 0) then
-            rho(:,1:nxguardrho,:,:) = rho(:,1:nxguardrho,:,:) + rho(:,-1:-nxguardrho:-1,:,:)
-            rho(:,:-1,:,:) = rho(:,nxguardrho:1:-1,:,:)
-          endif
+        if ((bounds(0) == neumann) .and. fsdecomp%ixproc == 0 .and.
+     &        .not. lrz) then
+          rho(:,:nxguardrho,:,:) = rho(:,:nxguardrho,:,:) + rho(:,nxguardrho:-nxguardrho:-1,:,:)
         endif
         if (bounds(1) == neumann .and.
      &      fsdecomp%ixproc == fsdecomp%nxprocs-1) then
@@ -8802,7 +8793,7 @@ c  Uses a second order spline with direct deposition (no particle blocks)
 c     --- Work array holding q/cell volume, the charge density per
 c     --- real particle. This is needed for RZ
 c     --- since the cell volume there has radial dependence.
-      real(kind=8):: cdens(-1:nx)
+      real(kind=8):: cdens(-1:nx+1)
       real(kind=8):: x
 
       if (np == 0) return
@@ -8816,21 +8807,24 @@ c     --- since the cell volume there has radial dependence.
       dyi = 1./dy
       dzi = 1./dz
 
-      if (xmmin == dx) then
-        cdens(-1) = 8./(13.*pi*0.25*dx*dx*dz)
+      if (xmmin > dx) then
+        cdens(-1) = 1./(2.*pi*(dx+xmmin)*dx*dz)
       else
-        cdens(-1) = -1./(2.*pi*(dx+xmmin)*dx*dz)
+        cdens(-1) = 0.
       endif
       if (xmmin == 0.) then
 c       --- The factor 8/13 corrects for overdeposition due to the
-c       --- weighting (for uniform distribution)
+c       --- weighting (for uniform distribution). Note that for
+c       --- this shape function, the next cell needs adjusting as well.
 c       --- see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
 c       --- and Verboncoeur, J. of Comp. Phys. (for linear weighting)
         cdens(0) = 8./(13.*pi*0.25*dx*dx*dz)
+        cdens(1) = 1./(2.*pi*(dx+xmmin)*dx*dz)*384./385.
       else
         cdens(0) = 1./(2.*pi*(xmmin)*dx*dz)
+        cdens(1) = 1./(2.*pi*(dx+xmmin)*dx*dz)
       endif
-      do ix = 1,nx
+      do ix = 2,nx+1
         cdens(ix) = 1./(2.*pi*(ix*dx+xmmin)*dx*dz)
       enddo
       cdens = cdens*wght*q
