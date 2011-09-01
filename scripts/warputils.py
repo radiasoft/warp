@@ -6,7 +6,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.40 2011/06/25 01:10:43 grote Exp $"
+warputils_version = "$Id: warputils.py,v 1.41 2011/09/01 17:47:57 grote Exp $"
 
 def warputilsdoc():
   import warputils
@@ -608,11 +608,11 @@ f(x)=f0 using the bisection method.
  
   return mid
 
-def getruntimememory():
+def getruntimememory(diag='vsz'):
     """Return the memory being used during the run time. It returns the
 virtual size in bytes."""
     try:
-        memstring = os.popen('ps -p %s -o vsz=""'%os.getpid()).read().strip()
+        memstring = os.popen('ps -p %d -o %s=""'%(os.getpid(),diag)).read().strip()
         memlist = memstring.split('\n')
         if len(memlist) > 1:
             # --- Might by busybox style ouput. The results needs to be
