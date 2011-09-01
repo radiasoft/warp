@@ -71,7 +71,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.102 2011/08/03 21:20:05 grote Exp $"
+lattice_version = "$Id: lattice.py,v 1.103 2011/09/01 17:47:05 grote Exp $"
 
 def latticedoc():
   import lattice
@@ -3337,11 +3337,14 @@ Input arguments:
     kw['pp'] = Esolver.getphi()
 
   # --- Now add in the gap
+  fieldp = Esolver.fieldp[:,w3d.nxguarde:-w3d.nxguarde or None,
+                            w3d.nyguarde:-w3d.nyguarde or None,
+                            w3d.nzguarde:-w3d.nzguarde or None]
   return addnewegrd(Esolver.zmmin,Esolver.zmmax,
                     dx=Esolver.dx,dy=Esolver.dy,
-                    ex=Esolver.fieldp[0,...],
-                    ey=Esolver.fieldp[1,...],
-                    ez=Esolver.fieldp[2,...],
+                    ex=fieldp[0,...],
+                    ey=fieldp[1,...],
+                    ez=fieldp[2,...],
                     rz=lcylindrical,ap=ap,**kw)
 
 # ----------------------------------------------------------------------------

@@ -9,7 +9,7 @@ try:
 except ImportError:
   pass
 
-magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.39 2011/08/27 00:43:16 grote Exp $"
+magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.40 2011/09/01 17:47:06 grote Exp $"
 
 ##############################################################################
 class MagnetostaticMG(SubcycledPoissonSolver):
@@ -280,8 +280,11 @@ class MagnetostaticMG(SubcycledPoissonSolver):
           (not self.lusevectorpotential and id == 1))): continue
 
       if self.lcylindrical:
-        multigridrzb(iwhich,id,self.potential[id,:,1,:],
-                     self.source[id,:,0,:],
+        multigridrzb(iwhich,id,self.potential[id,
+                                self.nxguardphi-1:(1-self.nxguardphi) or None,1,
+                                self.nzguardphi-1:(1-self.nzguardphi) or None],
+                     self.source[id,self.nxguardrho:-self.nxguardrho or None,0,
+                                    self.nzguardrho:-self.nzguardrho or None],
                      self.nxlocal,self.nzlocal,self.mgtol[id])
       else:
         multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,
