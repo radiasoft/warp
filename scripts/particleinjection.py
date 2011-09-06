@@ -6,7 +6,7 @@ from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.11 2011/08/27 00:43:16 grote Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.12 2011/09/06 17:07:29 grote Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -75,6 +75,18 @@ conductors are an argument.
             return f3d.lcorrectede
 
     def getEfields(self,solver):
+        """Get the E fields from the active field solver.
+This gets the E fields at the face centers of the dual cells. With the
+grid cells at ijk, the fields are obtained at the following locations:
+  Ex(i+-1/2,j     ,k     )
+  Ey(i     ,j+-1/2,k     )
+  Ez(i     ,j     ,k+-1/2)
+The grid points extend inclusively from (0,0,0) to (nx,ny,nz).
+The sizes of the E arrays will be:
+  Ex(nx+2,ny+1,nz+1)
+  Ey(nx+1,ny+2,nz+1)
+  Ez(nx+1,ny+1,nz+2)
+        """
         # --- This routine could do the appropriate sums if mesh refinement
         # --- is being used. It can also call a routine which includes
         # --- the conductor when calculating the field.
@@ -177,6 +189,10 @@ conductors are an argument.
         return Ex,Ey,Ez
 
     def getintegratedcharge(self,solver):
+        """Get the charge, integrated over the dual cell. This is simply
+the charge density at the grid point at the center of the dual cell times
+the area of the dual cell.
+        """
         dx = solver.dx
         dy = solver.dy
         dz = solver.dz
@@ -197,10 +213,13 @@ conductors are an argument.
         dy = solver.dy
         dz = solver.dz
 
+        # --- Get the E fields on the face centers of the dual cell
         Ex,Ey,Ez = self.getEfields(solver)
+
+        # --- Get the charge integrated over the dual cell
         Qold = self.getintegratedcharge(solver)
 
-        # --- Sum up the integrals of E normal over the sides of the dual cell
+        # --- Do the integrals of E normal over the sides of the dual cell
         Enorm  = Ex[1:,:,:]*dy*dz
         Enorm -= Ex[:-1,:,:]*dy*dz
         if not self.l_2d:
@@ -245,11 +264,13 @@ conductors are an argument.
         # --- correct.  For example, if rnn < 1., without the
         # --- addition of the random number, no particles would ever
         # --- be injected.  With the random number, particles will be
-        # --- injected and but the average number will be less than 1.
+        # --- injected but the average number will be less than 1.
         #rnn += where(rnn > 0.,random.random(rnn.shape),0.)
         rnn += random.random(rnn.shape)
 
         # --- Now create the particles. This is easiest to do in fortran.
+        # --- For each dual cell, the particles injected in that cell are
+        # --- evenly distributed throughout the cell.
         # --- This also gets the E field at the cell center for each
         # --- of the particles.
         nn = sum(int(rnn))
