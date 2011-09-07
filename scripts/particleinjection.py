@@ -5,8 +5,9 @@ __all__ = ['InjectionGaussLaw',
 from warp import *
 import generateconductors
 import copy
+from em2dsolver import EM2D
 
-particleinjection_version = "$Id: particleinjection.py,v 1.12 2011/09/06 17:07:29 grote Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.13 2011/09/07 00:26:23 grote Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -169,18 +170,16 @@ The sizes of the E arrays will be:
             yslice = slice(1,-1)
             zslice = slice(1,-1)
 
-            # --- Make sure that phip is 3D
-            if len(phip) == 2:
-                tphip = transpose(phip)
-                tphip.shape = [tphip.shape[0],0,tphip.shape[1]]
-                phip = transpse(tphip)
-                yslice = 0
+            # --- When using a 2D geometry, use all of the y dimension,
+            # --- which should be of length 1.
+            if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom]:
+                yslice = Ellipsis
 
             Ex = ((phip[:-1,yslice,zslice] - phip[1:,yslice,zslice])/dx)
-            if yslice != 0:
-                Ey = ((phip[xslice,:-1,zslice] - phip[xslice,1:,zslice])/dy)
-            else:
+            if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom]:
                 Ey = zeros((phip.shape[0]-2,2,phip.shape[2]-2),'d')
+            else:
+                Ey = ((phip[xslice,:-1,zslice] - phip[xslice,1:,zslice])/dy)
             Ez = ((phip[xslice,yslice,:-1] - phip[xslice,yslice,1:])/dz)
 
         #self.Ex = Ex
