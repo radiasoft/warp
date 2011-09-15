@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.188 $, $Date: 2011/06/23 19:59:15 $
+c@(#) File DTOP.F, version $Revision: 3.189 $, $Date: 2011/09/15 18:24:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -655,7 +655,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.188 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.189 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1255,7 +1255,7 @@ c   xmin,xmax: extent of the grid, i.e. grid(0) is at xmin, grid(nx) is at xmax
         return
       endif
 
-c     --- set grid cell inverse sizes
+c     --- set grid cell inverse size
       dxi = nx/(xmax - xmin)
 
 c     --- loop over particles
@@ -1270,6 +1270,50 @@ c       --- if within grid, accumulate
           wx = gx - ix
           grid(ix  ) = grid(ix  ) + (1. - wx)
           grid(ix+1) = grid(ix+1) +       wx
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine setgrid1dngp(np,x,nx,grid,xmin,xmax)
+      integer(ISZ):: itask,nx,np
+      real(kind=8):: x(np), z(np)
+      real(kind=8):: grid(0:nx), gridcount(0:nx)
+      real(kind=8):: xmin,xmax
+
+c Lays particle data onto a node centered 1-D mesh using nearest grid point
+c interpolation.
+c   np: number of particles
+c   x: arrays of particle positions
+c   nx: number of grid cells
+c   grid: array where the z data is accumulated
+c   xmin,xmax: extent of the grid, i.e. grid(0) is at (xmin),
+c              grid(nx) is at (xmax)
+c              Note that if xmin==xmax, then all
+c              particles will be deposited at ix=0.
+
+      integer(ISZ):: ip,ix
+      real(kind=8):: gx,dxi,wx
+
+c     --- set grid cell inverse size
+      if (xmax .ne. xmin) then
+        dxi = nx/(xmax - xmin)
+      else
+        dxi = 0.
+      endif
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gx = (x(ip) - xmin)*dxi
+
+c       --- if within grid, accumulate
+        if (0. <= gx .and. gx <= nx) then
+          ix = nint(gx)
+          grid(ix) = grid(ix) + 1.
         endif
 
       enddo
@@ -1295,7 +1339,7 @@ c   xmin,xmax: extent of the grid, i.e. grid(0) is at xmin, grid(nx) is at xmax
       integer(ISZ):: ip,ix
       real(kind=8):: gx,dxi,wx
 
-c     --- set grid cell inverse sizes
+c     --- set grid cell inverse size
       dxi = nx/(xmax - xmin)
 
 c     --- loop over particles
@@ -1402,7 +1446,7 @@ c          calls to deposgrid2d to obtain better statistics.
 c   np: number of particles
 c   x: arrays of particle positions
 c   z: array of data to be accumulated
-c   nx,ny: number of grid cells
+c   nx: number of grid cells
 c   grid: array where the z data is accumulated
 c   gridcount: array where particle number will be accumulated
 c   xmin,xmax: extent of the grid, i.e. grid(0) is at (xmin),
@@ -1419,7 +1463,7 @@ c     --- Reset grids if requested
         gridcount = 0.
       endif
 
-c     --- set grid cell inverse sizes
+c     --- set grid cell inverse size
       if (xmax .ne. xmin) then
         dxi = nx/(xmax - xmin)
       else
@@ -1489,7 +1533,7 @@ c     --- Reset grids if requested
         gridcount = 0.
       endif
 
-c     --- set grid cell inverse sizes
+c     --- set grid cell inverse size
       dxi = nx/(xmax - xmin)
 
 c     --- loop over particles
@@ -1546,7 +1590,7 @@ c   xmin,xmax: extent of the grid, i.e. grid(0) is at xmin, grid(nx) is at xmax
         return
       endif
 
-c     --- set grid cell inverse sizes
+c     --- set grid cell inverse size
       dxi = nx/(xmax - xmin)
 
 c     --- loop over particles
@@ -1592,7 +1636,7 @@ c                        grid(nx) is at (xmax)
         return
       endif
 
-c     --- set grid cell inverse sizes
+c     --- set grid cell inverse size
       dxi = nx/(xmax - xmin)
 
 c     --- loop over particles

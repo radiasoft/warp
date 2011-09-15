@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.264 $, $Date: 2011/05/06 00:10:09 $
+c@(#) File TOP.F, version $Revision: 3.265 $, $Date: 2011/09/15 18:24:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7312,4 +7312,89 @@ c       uzp(i1:i2) = (wranf()-0.5)*uz_tmp !old
 
       return
       end subroutine impact_ion
+c=============================================================================
+      subroutine logicalsheath(nionslost,ionslost,nelectronslost,electronslost,
+     &                         nz,lostgrid,zmin,zmax,npmax,z,gaminv)
+      integer(ISZ):: nionslost
+      integer(ISZ):: ionslost(nionslost)
+      integer(ISZ):: nelectronslost
+      integer(ISZ):: electronslost(nelectronslost)
+      integer(ISZ):: nz
+      integer(ISZ):: lostgrid(0:nz)
+      real(kind=8):: zmin,zmax
+      integer(ISZ):: npmax
+      real(kind=8):: z(npmax),gaminv(npmax)
+
+c This implements the logical sheath algorithm, only removing electrons
+c if the same number of ions (locally) has been lost.
+c Note that this does not sort electrons by energy as in the original
+c Parker, Procosinni, Birdsal alrogithm. This could be done by sorting
+c all of the lost electrons by energy before the loop over electrons.
+c A further refinement would allow different weights for electrons and ions.
+c lostgrid would then need to be real.
+c Note that the reflection needs to be handled by the calling routine.
+
+      integer(ISZ):: ii,ip,iz
+      real(kind=8):: gz,dzi,wz
+      integer(ISZ):: nelectronslost_save
+
+c     --- set grid cell inverse size
+      if (zmax .ne. zmin) then
+        dzi = nz/(zmax - zmin)
+      else
+        dzi = 0.
+      endif
+
+c     --- loop over ions - they are all lost
+      do ii=1,nionslost
+        ip = ionslost(ii)
+
+c       --- find location on grid
+        gz = (z(ip) - zmin)*dzi
+
+c       --- if within grid, accumulate
+        if (0. <= gz .and. gz <= nz) then
+          iz = nint(gz)
+          lostgrid(iz) = lostgrid(iz) + 1
+        endif
+
+c       --- set the lost flag
+        gaminv(ip) = 0.
+
+      enddo
+
+c     --- On return, electronslost will have the list of electrons that
+c     --- need to be reflected.
+      nelectronslost_save = nelectronslost
+      nelectronslost = 0
+
+c     --- loop over electrons - they are only lost if there were enough
+c     --- ions lost at the same grid cell, otherwise they'll be reflected
+      do ii=1,nelectronslost_save
+        ip = electronslost(ii)
+
+c       --- find location on grid
+        gz = (z(ip) - zmin)*dzi
+
+c       --- if within grid, check the number of ions
+        if (0. <= gz .and. gz <= nz) then
+          iz = nint(gz)
+          if (lostgrid(iz) > 0) then
+c           --- ions have been lost, so lose the electron
+            lostgrid(iz) = lostgrid(iz) - 1
+            gaminv(ip) = 0.
+          else
+c           --- not enough ions had been lost, so reflect the electron
+            nelectronslost = nelectronslost + 1
+            electronslost(nelectronslost) = electronslost(ii)
+          endif
+        else
+c         --- Particle is outside the grid, so make it lost
+          gaminv(ip) = 0.
+        endif
+
+      enddo
+
+      return
+      end subroutine logicalsheath
 c=============================================================================

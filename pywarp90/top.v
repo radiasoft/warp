@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.301 $, $Date: 2011/08/27 00:35:50 $
+#@(#) File TOP.V, version $Revision: 3.302 $, $Date: 2011/09/15 18:24:16 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.301 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.302 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2824,12 +2824,21 @@ zgapcorr(np:integer,zp(np):real,xp(np):real,uzp(np):real,gaminv(np):real,
 acclbfrm(zcorrection)
             subroutine # Gets the acceleration residence correction for
                        # the beam frame
+logicalsheath(nionslost:integer,ionslost(nionslost):integer,
+              nelectronslost:integer,electronslost(nelectronslost):integer,
+              nz:integer,lostgrid(0:nz):integer,zmin:real,zmax:real,
+              npmax:integer,z(npmax),gaminv(npmax))
+            subroutine # Implements the logical sheath algorhithm, only
+                       # removing as many electrons as ions.
 
 *********** TopDiag:
 # Subroutines in package TOP
 setgrid1d(np:integer,x(np):real,nx:integer,grid(0:nx):real,xmin:real,xmax:real)
         subroutine
         # Deposits data onto a 1-D grid using linear weighting.
+setgrid1dngp(np:integer,x(np):real,nx:integer,grid(0:nx):real,xmin:real,xmax:real)
+        subroutine
+        # Deposits data onto a 1-D grid using nearest grid point weighting.
 setgrid1dw(np:integer,x(np):real,w(np):real,nx:integer,grid(0:nx):real,xmin:real,xmax:real)
         subroutine
         # Deposits data onto a 1-D grid using linear weighting.
