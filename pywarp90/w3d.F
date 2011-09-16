@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.461 $, $Date: 2011/08/31 20:27:07 $
+c@(#) File W3D.F, version $Revision: 3.462 $, $Date: 2011/09/16 20:08:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -833,6 +833,10 @@ c             --- be safe since zgrid should not have been used since it was
 c             --- updated in w3dexe. Ony zgridndts(0) needs to be set since
 c             --- lbeamcom does not work with subcycling.
               zgridnew = getbeamcom(pgroup) - zbeamcomoffset
+              if (lgridqnt) then
+c               --- zgrid is integer number of dz's
+                zgridnew = int(zgridnew/dz + .5)*dz
+              endif
               if (lbeamcomforwardonly) then
                 if (zgridnew < zgrid) zgridnew = zgrid
               endif
