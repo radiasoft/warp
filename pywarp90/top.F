@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.265 $, $Date: 2011/09/15 18:24:16 $
+c@(#) File TOP.F, version $Revision: 3.266 $, $Date: 2011/09/16 20:08:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7198,8 +7198,16 @@ c       In each slice, the temperature will be computed on a nx+1*ny+1 grid of s
         tslicexmax = xmax
         tsliceymin = ymin
         tsliceymax = ymax
-        dxti = nx/(xmax-xmin)
-        dyti = ny/(ymax-ymin)
+        if (xmax .ne. xmin) then
+          dxti = nx/(xmax-xmin)
+        else
+          dxti = 0.
+        endif
+        if (ymax .ne. ymin) then
+          dyti = ny/(ymax-ymin)
+        else
+          dyti = 0.
+        endif
         if(nztslices>1) then
           do i = 1, nztslices
             tslicezmin(i) = zmin+(i-1)*(zmax-zmin)/(nztslices-1)-0.5*dz
