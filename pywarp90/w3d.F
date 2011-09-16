@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.462 $, $Date: 2011/09/16 20:08:56 $
+c@(#) File W3D.F, version $Revision: 3.463 $, $Date: 2011/09/16 22:32:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -854,7 +854,7 @@ c           --- Collect charge density and current
 
 c           --- This is done here in case padvnc3d is called for multiple
 c           --- pgroups
-            if (lgridqnt) then
+            if (lgridqnt .and. .not. lbeamcom) then
 c             --- Advance beam frame location using the nominal beam frame
 c             --- velocity. Note that this may need similar treatment to
 c             --- lbeamcom.
