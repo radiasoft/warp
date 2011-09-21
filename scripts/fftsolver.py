@@ -5,7 +5,7 @@ from warp import *
 from lattice import addnewbgrd,addnewbsqgrad
 import MA
 
-fftsolver_version = "$Id: fftsolver.py,v 1.33 2011/08/27 00:43:16 grote Exp $"
+fftsolver_version = "$Id: fftsolver.py,v 1.34 2011/09/21 22:56:06 grote Exp $"
 
 ##############################################################################
 class FieldSolver3dBase(object):
@@ -153,21 +153,12 @@ class FieldSolver3dBase(object):
   def setrho(self,x,y,z,uz,q,w):
     n = len(x)
     if n == 0: return
-    setrho3d(self.rho,n,x,y,z,top.zgrid,q,w,top.depos,
+    setrho3d(self.rho,n,x,y,z,top.zgrid,q,w,top.depos,array([1,1,1]),
              self.nx,self.ny,self.nzlocal,
              self.nxguardrho,self.nyguardrho,self.nzguardrho,
              self.dx,self.dy,self.dz,
              self.xmmin,self.ymmin,self.zmminlocal,self.l2symtry,self.l4symtry,
              self.solvergeom==w3d.RZgeom)
-
-  def setrhoselect(self,x,y,z,uz,q,w):
-    n = len(x)
-    if n == 0: return
-    setrho3dselect(self.rho,self.rho,n,x,y,z,top.zgrid,q,w,top.depos,
-             self.nx,self.ny,self.nzlocal,
-             self.nxguardrho,self.nyguardrho,self.nzguardrho,
-             self.dx,self.dy,self.dz,
-             self.xmmin,self.ymmin,self.zmminlocal,self.l2symtry,self.l4symtry)
 
   def fetchefrompositions(self,js,x,y,z,ex,ey,ez):
     n = len(x)
@@ -177,7 +168,7 @@ class FieldSolver3dBase(object):
            self.dx,self.dy,self.dz,self.nx,self.ny,self.nzlocal,
            self.nxguardphi,self.nyguardphi,self.nzguardphi,
            self.nxguarde,self.nyguarde,self.nzguarde,
-           top.efetch[js],
+           top.efetch[js],top.depos_order[:,js],
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
   def fetchbfrompositions(self,x,y,z,bx,by,bz):

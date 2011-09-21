@@ -10,7 +10,7 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.65 2011/08/27 00:43:16 grote Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.66 2011/09/21 22:56:06 grote Exp $"
 
 ##############################################################################
 ##############################################################################
@@ -724,9 +724,12 @@ Initially, conductors are not implemented.
     iimp = pgroup.iimplicit[js]
     if top.wpid == 0: wght = zeros((0,), 'd')
     else:             wght = pgroup.pid[i:i+n,top.wpid-1]
-    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,zgrid,q,m,w,iimp)
+    depos_order = top.depos_order[:,js]
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,zgrid,q,m,w,iimp,
+                              depos_order)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,zgrid,q,m,w,iimp):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,zgrid,q,m,w,iimp,
+                           depos_order):
     n  = len(x)
     if n == 0: return
     # --- Create a temporary array to pass into setrho3d. This contributes
@@ -734,7 +737,7 @@ Initially, conductors are not implemented.
     # --- 3-D array so it is accepted by setrho3d.
     sourcep = fzeros(self.sourcep.shape[:-1],'d')
     if top.wpid == 0:
-      setrho3d(sourcep,n,x,y,z,zgrid,q,w,top.depos,
+      setrho3d(sourcep,n,x,y,z,zgrid,q,w,top.depos,depos_order,
                self.nxp,self.nyp,self.nzp,
                self.nxguardrho,self.nyguardrho,self.nzguardrho,
                self.dx,1.,self.dz,
@@ -742,7 +745,7 @@ Initially, conductors are not implemented.
                self.solvergeom==w3d.RZgeom)
     else:
       # --- Need top.pid(:,top.wpid)
-      setrho3dw(sourcep,n,x,y,z,zgrid,wght,q,w,top.depos,
+      setrho3dw(sourcep,n,x,y,z,zgrid,wght,q,w,top.depos,depos_order,
                 self.nxp,self.nyp,self.nzp,
                 self.nxguardrho,self.nyguardrho,self.nzguardrho,
                 self.dx,1.,self.dz,

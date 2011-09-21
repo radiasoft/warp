@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.98 2011/08/27 00:43:16 grote Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.99 2011/09/21 22:56:06 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -1525,6 +1525,21 @@ class SubcycledPoissonSolver(FieldSolver):
     # --- and self B corrections.
     setupSubcycling(top.pgroup)
     setupSelfB(top.pgroup)
+
+    # --- Make sure that the numbers of guard cells are consistent with
+    # --- the order of the deposition and gather.
+    nox = max(top.depos_order[0,:])
+    noy = max(top.depos_order[1,:])
+    noz = max(top.depos_order[2,:])
+    if self.nx > 0: self.nxguardrho = max(self.nxguardrho,nox - 1)
+    if self.ny > 0: self.nyguardrho = max(self.nyguardrho,noy - 1)
+    if self.nz > 0: self.nzguardrho = max(self.nzguardrho,noz - 1)
+    if self.nx > 0: self.nxguardphi = max(self.nxguardphi,nox)
+    if self.ny > 0: self.nyguardphi = max(self.nyguardphi,noy)
+    if self.nz > 0: self.nzguardphi = max(self.nzguardphi,noz)
+    if self.nx > 0: self.nxguarde = max(self.nxguarde,nox - 1)
+    if self.ny > 0: self.nyguarde = max(self.nyguarde,noy - 1)
+    if self.nz > 0: self.nzguarde = max(self.nzguarde,noz - 1)
 
     # --- Get base dimension of the arrays for the particles
     pdims = self.getpdims()

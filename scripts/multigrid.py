@@ -14,7 +14,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.160 2011/08/27 00:43:16 grote Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.161 2011/09/21 22:56:06 grote Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -329,16 +329,16 @@ most of which get there default values from one of the fortran packages.
   def getselfe(self,recalculate=None,lzero=true):
     'Returns the E field array without the guard cells'
     self.calcselfe(recalculate=recalculate,lzero=lzero)
-    return self.field[self.nxguarde:-self.nxguarde or None,
-                      self.nyguarde:-self.nyguarde or None,
-                      self.nzguarde:-self.nzguarde or None]
+    return self.field[:,self.nxguarde:-self.nxguarde or None,
+                        self.nyguarde:-self.nyguarde or None,
+                        self.nzguarde:-self.nzguarde or None]
 
   def getselfep(self,recalculate=None,lzero=true):
     'Returns the E fieldp array without the guard cells'
     self.calcselfep(recalculate=recalculate,lzero=lzero)
-    return self.fieldp[self.nxguarde:-self.nxguarde or None,
-                       self.nyguarde:-self.nyguarde or None,
-                       self.nzguarde:-self.nzguarde or None]
+    return self.fieldp[:,self.nxguarde:-self.nxguarde or None,
+                         self.nyguarde:-self.nyguarde or None,
+                         self.nzguarde:-self.nzguarde or None]
 
   def _setuprhoproperty():
     doc = "Charge density array"
@@ -467,21 +467,23 @@ most of which get there default values from one of the fortran packages.
       wfact = zeros((0,), 'd')
     else:
       wfact = pgroup.pid[i:i+n,top.wpid-1]
-    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w)
+    depos_order = top.depos_order[:,js]
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w,depos_order)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w,
+                           depos_order):
     n = len(x)
     if n == 0: return
     if isinstance(self.sourcep,FloatType): return
     if top.wpid==0:
-      setrho3d(self.sourcep,n,x,y,z,zgrid,q,w,top.depos,
+      setrho3d(self.sourcep,n,x,y,z,zgrid,q,w,top.depos,depos_order,
                self.nxp,self.nyp,self.nzp,
                self.nxguardrho,self.nyguardrho,self.nzguardrho,
                self.dx,self.dy,self.dz,
                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                self.solvergeom==w3d.RZgeom)
     else:
-      setrho3dw(self.sourcep,n,x,y,z,zgrid,wfact,q,w,top.depos,
+      setrho3dw(self.sourcep,n,x,y,z,zgrid,wfact,q,w,top.depos,depos_order,
                 self.nxp,self.nyp,self.nzp,
                 self.nxguardrho,self.nyguardrho,self.nzguardrho,
                 self.dx,self.dy,self.dz,
@@ -510,7 +512,7 @@ most of which get there default values from one of the fortran packages.
              self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,
              self.nxguardphi,self.nyguardphi,self.nzguardphi,
              self.nxguarde,self.nyguarde,self.nzguarde,
-             top.efetch[js],
+             top.efetch[js],top.depos_order[:,js],
              ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
     else:
       sete3dwithconductor(self.getconductorobject('p'),n,x,y,z,
@@ -1009,9 +1011,12 @@ tensor that appears from the direct implicit scheme.
     iimp = pgroup.iimplicit[js]
     if top.wpid == 0: wfact = zeros((0,), 'd')
     else:             wfact = pgroup.pid[i:i+n,top.wpid-1]
-    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,m,w,iimp)
+    depos_order = top.depos_order[:,js]
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,m,w,iimp,
+                              depos_order)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,m,w,iimp):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,m,w,iimp,
+                           depos_order):
     n  = len(x)
     if n == 0: return
     if iimp >= 0:
@@ -1022,7 +1027,7 @@ tensor that appears from the direct implicit scheme.
     else:
       sourcep = self.sourcep[...,-1]
     if top.wpid == 0:
-      setrho3d(sourcep,n,x,y,z,zgrid,q,w,top.depos,
+      setrho3d(sourcep,n,x,y,z,zgrid,q,w,top.depos,top.depos_order,
                self.nxp,self.nyp,self.nzp,
                self.nxguardrho,self.nyguardrho,self.nzguardrho,
                self.dx,self.dy,self.dz,
@@ -1030,7 +1035,7 @@ tensor that appears from the direct implicit scheme.
                self.solvergeom==w3d.RZgeom)
     else:
       # --- Need top.pid(:,top.wpid)
-      setrho3dw(sourcep,n,x,y,z,zgrid,wfact,q,w,top.depos,
+      setrho3dw(sourcep,n,x,y,z,zgrid,wfact,q,w,top.depos,top.depos_order,
                 self.nxp,self.nyp,self.nzp,
                 self.nxguardrho,self.nyguardrho,self.nzguardrho,
                 self.dx,self.dy,self.dz,
