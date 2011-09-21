@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.463 $, $Date: 2011/09/16 22:32:19 $
+c@(#) File W3D.F, version $Revision: 3.464 $, $Date: 2011/09/21 22:53:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -256,8 +256,8 @@ c  (rwallfac = 1 is probably NOT a good guess)
 
       rwall = rwallfac * sqrt( xmmax**2 + xmmin**2 )
 
-c  Calculate derived quantities and species related arrays  (species are 
-c  set from an internal call to "species" in derivqty).   
+c  Calculate derived quantities and species related arrays  (species are
+c  set from an internal call to "species" in derivqty).
       call derivqty
 
 c  Load text lines which are printed at the bottom of all plots.
@@ -733,9 +733,9 @@ c=============================================================================
       use Timers
       character(*):: caller
 
-c  When called by W3DEXE, step3d advances the system forward in time one 
-c  timestep and gathers diagnostics.  When called by W3DGEN, step3d takes 
-c  a step of zero size, to compute fields, and gather diagnostics at start 
+c  When called by W3DEXE, step3d advances the system forward in time one
+c  timestep and gathers diagnostics.  When called by W3DGEN, step3d takes
+c  a step of zero size, to compute fields, and gather diagnostics at start
 c  of run.
 
       real(kind=8):: getbeamcom,zgridnew
@@ -785,7 +785,7 @@ c  Half-step in v from t.l. it-1   if last step was "special"
 c  Full-step in v from t.l. it-3/2 if last step not "special"
 c  No step at all if generating.
 c  Above applies to a non-interpolated species (conventional warp).
-c  For a species using interpolated mover, we allow the option of 
+c  For a species using interpolated mover, we allow the option of
 c  a predictor-corrector scheme.  The number of corrector steps is set
 c  by npcmax; for npcmax > = 0, the predictor step is centered, going from
 c  t.l. it-2 to t.l. it.   For npcmax < 0, predictor step is uncentered
@@ -884,8 +884,8 @@ c  it will still be true that zbeaml < zbeamr.
          time1  = time - abs(0.5*dt)
          time2  = time + abs(0.5*dt)
 
-c  Set logical flags to determine if "always" or "seldom" phase space 
-c  plots, restart dumps, final timesteps, and moment accumulations should 
+c  Set logical flags to determine if "always" or "seldom" phase space
+c  plots, restart dumps, final timesteps, and moment accumulations should
 c  be done at the end of this step.
 
          lfinishd = (it >= nt) .or. (time >= tstop*(1.-MACHEPS)) .or.
@@ -920,9 +920,9 @@ c  Set the "gap" electric field.
 
          call setegap
 
-c  Charge density contour plot diagnostics.  Note -- these diagnostics 
-c  are done at this phase of the particle advance to allow for the eventual 
-c  use of a single array for rho and phi.   
+c  Charge density contour plot diagnostics.  Note -- these diagnostics
+c  are done at this phase of the particle advance to allow for the eventual
+c  use of a single array for rho and phi.
 
          if (lalways .or. lseldom) call pltfld3d("rho",ALWAYS)
          if (lseldom)            call pltfld3d("rho",SELDOM)
@@ -1002,7 +1002,7 @@ c  which are not used at this time.
       endif
 
 c  If a flag was set making this a "special" step,
-c  do a half-advance to bring v to t.l. it 
+c  do a half-advance to bring v to t.l. it
 
       if (caller == "w3dexe" .and. lspecial) then
          call padvnc3d ("synchv",pgroup)
@@ -1019,22 +1019,22 @@ c  Finalize the moments calculation and do other diagnostics.
       call getlabwn()
       call rhodia
 
-c  Gather moments used in diagnostics at "special" timesteps only. 
-c  Compute mean beam z velocity from current and line charge density 
-c  on a 1-d mesh.  Also, calculate the electrostatic energy (getese), 
-c  electrostatic potential on axis (sphiax), and the axial electric 
-c  field (sezax).  
+c  Gather moments used in diagnostics at "special" timesteps only.
+c  Compute mean beam z velocity from current and line charge density
+c  on a 1-d mesh.  Also, calculate the electrostatic energy (getese),
+c  electrostatic potential on axis (sphiax), and the axial electric
+c  field (sezax).
 
       if (lspecial) then
         if (lgetvzofz) call getvzofz
         call gtlchg
         call srhoax
         call getese
-        call sphiax 
+        call sphiax
         call sezax
-      endif 
+      endif
 
-c  Electrostatic potential contour plot diagnostics 
+c  Electrostatic potential contour plot diagnostics
 
       if (lalways .or. lseldom) call pltfld3d("phi",ALWAYS)
       if (lseldom)            call pltfld3d("phi",SELDOM)
@@ -1074,7 +1074,7 @@ c=============================================================================
 c  Calculates "external" E, B fields
 c  Calculates electric or magnetic AG focusing fields, bending and dipole
 c  fields, and accelerating fields.
-c  Includes back-rotation associated with coordinate transformation into By. 
+c  Includes back-rotation associated with coordinate transformation into By.
 
 c  NOTE: When we (someday) set B_self from a Lorentz transformation
 c  on E_self, we'll have to carefully work out a sequence of calls,
@@ -1095,7 +1095,7 @@ c     --- handle uniform fields
 c     --- handle quads
       call applyquad(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,.false.,ex,ey,bx,by)
 
-c     --- handle dipos 
+c     --- handle dipos
       call applydipo(np,np,zp,uzp,gaminv,dtl,dtr,dt,.false.,ex,ey,bx,by)
 
 c     --- handle sexts
@@ -1323,7 +1323,7 @@ c  Note that (it-1) is used since it is advanced before this point.
         ldts(indts) = .false.
         lvdts(indts) = .false.
       endif
-      
+
       return
       end
 c=============================================================================
@@ -1429,7 +1429,7 @@ c=============================================================================
       i1 = ipmin
       i2 = ipmin + np - 1
 
-c     Store old positions if not interpolating; if we are interpolating this 
+c     Store old positions if not interpolating; if we are interpolating this
 c     is done in xpush3dinterp in a more complicated way to allow for
 c     predictor-corrector.
       if (interpdk == 0) then
@@ -1455,15 +1455,15 @@ c     predictor-corrector.
      &                 pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),dt)
         endif
       endif
-      
+
       if (.not. bends .or. .not. linbend) then
         bendres = 0.
       else
         ! the particles are in a bend
         if (boost_gamma>1.) then
-          ! if the calculation is done in a boosted frame, then one must 
-          ! transform the particle quantities into the lab frame for  
-          ! the application of bending elements. 
+          ! if the calculation is done in a boosted frame, then one must
+          ! transform the particle quantities into the lab frame for
+          ! the application of bending elements.
           allocate(dtlab(np),tlab(np))
           invclightsq=1./clight**2
           uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
@@ -1481,12 +1481,12 @@ c         --- transform velocity to lab frame
      &                                      pgroup%uzp(i1:i2),
      &                                      pgroup%gaminv(i1:i2),
      &                                      -uzboost,boost_gamma)
-          ! this is an attempt to fool getbend and zbendcor. 
-          ! Normally, each particle should have its 
-          ! own dt, but this would require to modify the two routines, 
+          ! this is an attempt to fool getbend and zbendcor.
+          ! Normally, each particle should have its
+          ! own dt, but this would require to modify the two routines,
           ! with associated numerical cost.
-          ! This works since gaminv is always multiplied by dt in its 
-          ! usage in the two routines. If this is not the case, then the 
+          ! This works since gaminv is always multiplied by dt in its
+          ! usage in the two routines. If this is not the case, then the
           ! kludge will fail.
           pgroup%gaminv(i1:i2) = pgroup%gaminv(i1:i2)*dtlab(1:np)/dt
         end if
@@ -1500,7 +1500,7 @@ c       --- Correct position advance for warped mesh effect
         call zbendcor(pgroup,np,ipmin,dt,bendres,bendradi)
 
         if (boost_gamma>1.) then
-          ! Need to undo kludge for getbend and zbendcor. 
+          ! Need to undo kludge for getbend and zbendcor.
           pgroup%gaminv(i1:i2) = pgroup%gaminv(i1:i2)*dt/dtlab(1:np)
         end if
 
@@ -1510,7 +1510,7 @@ c       --- Correct position advance for slanted dipole entry/exit
 
         if (boost_gamma>1.) then
 c         --- transform position back to boosted frame
-          pgroup%zp(i1:i2) = boost_gamma*pgroup%zp(i1:i2)-uzboost*tlab(1:np) 
+          pgroup%zp(i1:i2) = boost_gamma*pgroup%zp(i1:i2)-uzboost*tlab(1:np)
 c         --- transform velocity back to boosted frame
           call setu_in_uzboosted_frame3d(np,pgroup%uxp(i1:i2),
      &                                      pgroup%uyp(i1:i2),
@@ -1524,7 +1524,7 @@ c         --- transform velocity back to boosted frame
           deallocate(zpo)
         endif
       endif
-      
+
       if(pgroup%zshift(is)/=0.) pgroup%zp(i1:i2)=pgroup%zp(i1:i2)+pgroup%zshift(is)
 
 !$OMP MASTER
@@ -1584,7 +1584,7 @@ c --- Push the particle velocity with B field
           call bpusht3d(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dtfact,dt,ibpush)
         endif
       endif
-        
+
 !$OMP MASTER
       if (lw3dtimesubs) timebpush = timebpush + wtime() - substarttime
 !$OMP END MASTER
@@ -1745,15 +1745,15 @@ c  Loop over species
 c
 c  If this is a corrector step, do nothing for a species that is neither
 c  interpolated nor implicit
-        if ( interpdk(isid) == 0 
-     &      .and. ipredcor > 0 .and. .not. pgroup%limplicit(isid-1)) cycle 
+        if ( interpdk(isid) == 0
+     &      .and. ipredcor > 0 .and. .not. pgroup%limplicit(isid-1)) cycle
 c
 c  If this is a predictor step for an interpolated
 c  species, save the current uxp's as old velocities.
 c  Note ipredcor = 0 for a synchv step so we are also storing
 c  old v's in that case as well.
-c  
-        if (interpdk(isid) == 1 .and. ipredcor == 0 .and. 
+c
+        if (interpdk(isid) == 1 .and. ipredcor == 0 .and.
      &       (center .ne. "halfv" .or. it == 1 .or. .not. allspecl))
      &        call storeoldu(pgroup,isid)
 
@@ -1814,10 +1814,10 @@ c         --- can have their ndts changed.
           endif
 
 c         --- Zero out B field arrays, but only if B is going
-c         --- to be recomputed; B doesn't get recomputed if 
+c         --- to be recomputed; B doesn't get recomputed if
 c         --- center is "synchv" and interpdk is nonzero and allspecl
 c         --- is 0
-          if (.not. (center .eq. "synchv" .and. interpdk(isid) .ne. 0 
+          if (.not. (center .eq. "synchv" .and. interpdk(isid) .ne. 0
      &        .and. .not. allspecl) .and. lresetparticleb) then
             bx(i1:i2) = 0.
             by(i1:i2) = 0.
@@ -1826,7 +1826,7 @@ c         --- is 0
 
 c         --- Obtain the self-fields
 c         --- Should skip this for implicit species as E is fetched in
-c         --- the python stepper.          
+c         --- the python stepper.
           if (.not. pgroup%limplicit(isid-1)) then
              call fetche3d(pgroup,ipmin,ip,is)
              call fetchb3d(pgroup,ipmin,ip,is)
@@ -1884,7 +1884,7 @@ c             --- Obtain bend radii and residence factors
 c             --- Correct Ez_self for warped mesh effect
               call bendez3d(ip,pgroup%xp(i1:i2),pgroup%zp(i1:i2),ez(i1:i2),
      &                      bendres,bendradi,bends,bnezflag,linbend)
-c             --- Add in Ez from axially-smoothed gaps 
+c             --- Add in Ez from axially-smoothed gaps
               call gapfield(ip,pgroup%zp(i1:i2),ez(i1:i2),zbeam,zzmin,egap(0),dzz)
 c             --- Add in ears and uniform focusing E field pieces
               call othere3d(ip,xp(i1:i2),yp(i1:i2),zp(i1:i2),
@@ -1902,7 +1902,7 @@ c             --- Set quad, dipole E and B; All: Bz
               uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
               exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
               bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
-              zlab(1:ip) = boost_gamma*zp(i1:i2)+uzboost*time  
+              zlab(1:ip) = boost_gamma*zp(i1:i2)+uzboost*time
 !              uzlab(1:ip) = boost_gamma*uzp(i1:i2)+uzboost/gaminv(i1:i2)
 !              ginvlab(1:ip) = 1./(boost_gamma/gaminv(i1:i2)
 !     &                      +     uzboost*uzp(i1:i2)*invclightsq)
@@ -1912,12 +1912,12 @@ c             --- Set quad, dipole E and B; All: Bz
               ginvlab(1:ip) = gaminv(i1:i2)
               call setu_in_uzboosted_frame3d(ip,uxlab(1),uylab(1),uzlab(1),ginvlab(1),-uzboost,boost_gamma)
               tstart(1:ip) = boost_gamma*time+uzboost*zp(i1:i2)*invclightsq
-              tend  (1:ip) = boost_gamma*(time+fulldt_s)+uzboost*(zp(i1:i2) 
+              tend  (1:ip) = boost_gamma*(time+fulldt_s)+uzboost*(zp(i1:i2)
      &                     + uzp(i1:i2)*gaminv(i1:i2)*fulldt_s)*invclightsq
-              ! this is an attempt to fool exteb3d. Normally, each particle should have its 
+              ! this is an attempt to fool exteb3d. Normally, each particle should have its
               ! own dt, but this would require to modify all the routines called by exteb3d.
-              ! We are assuming that ginvlab will always be multiplied by dt in its 
-              ! usage in the routines called by exteb3d. If this is not the case, then the 
+              ! We are assuming that ginvlab will always be multiplied by dt in its
+              ! usage in the routines called by exteb3d. If this is not the case, then the
               ! kludge will fail.
               ginvlab(1:ip) = ginvlab(1:ip)*(tend(1:ip)-tstart(1:ip))/fulldt_s
 c             --- Obtain bend radii and residence factors
@@ -1927,7 +1927,7 @@ c             --- Obtain bend radii and residence factors
 c             --- Correct Ez_self for warped mesh effect
               call bendez3d(ip,pgroup%xp(i1:i2),zlab(1),ezlab(1),
      &                      bendres,bendradi,bends,bnezflag,linbend)
-c             --- Add in Ez from axially-smoothed gaps 
+c             --- Add in Ez from axially-smoothed gaps
               call gapfield(ip,zlab(1),ezlab(1),zbeam,zzmin,egap(0),dzz)
 c             --- Add in ears and uniform focusing E field pieces
               call othere3d(ip,xp(i1:i2),yp(i1:i2),zlab(1),
@@ -1956,7 +1956,7 @@ c           --- Correction to z on entry/exit to accelerator gap
             call zgapcorr(ip,zp(i1:i2),xp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
      &                    -halfdt_s, halfdt_s, fulldt_s, sm(1), sq(1), time)
 c           --- First half-electric field increment to momenta
-c           Only do a vpush for ipredcor = 0, if we are not implicit.  
+c           Only do a vpush for ipredcor = 0, if we are not implicit.
 c           If species is implicit it needs vpush regardless of whether
 c           interpolated or not.   In any case will still
 c           need to calculate gradB for ipredcor = 1; this is
@@ -2010,7 +2010,7 @@ c           --- optionally taken care of by "hbor2" option
 c           --- The hbor1 option does 1st half of a Boris step,
 c           --- hbor2 does 2nd half.  This means for hbor1, the sequence
 c           --- epush, mugradbpush (if interpolating), bpush, for 1/2 dt,
-c           --- and for hbor2, bpush, mugradbpush, epush for 1/2 dt.  
+c           --- and for hbor2, bpush, mugradbpush, epush for 1/2 dt.
 c           --- Use hbor1 to push from a half step to an integer step; hbor2
 c           --- to push from integer to half.
 c           --- with full-v steps except when initalizing, which is
@@ -2025,7 +2025,7 @@ c             --- Obtain bend radii and residence factors
 c             --- Correct Ez_self for warped mesh effect
               call bendez3d(ip,pgroup%xp(i1:i2),pgroup%zp(i1:i2),ez(i1:i2),
      &                      bendres,bendradi,bends,bnezflag,linbend)
-c             --- Add in Ez from axially-smoothed gaps 
+c             --- Add in Ez from axially-smoothed gaps
               call gapfield(ip,pgroup%zp(i1:i2),ez(i1:i2),zbeam,zzmin,egap(0),dzz)
 c             --- Add in ears and uniform focusing E field pieces
               call othere3d(ip,xp(i1:i2),yp(i1:i2),zp(i1:i2),
@@ -2043,19 +2043,19 @@ c             --- Set quad, dipole E and B; All: Bz
               uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
               exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
               bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
-              zlab(1:ip) = boost_gamma*zp(i1:i2)+uzboost*time  
+              zlab(1:ip) = boost_gamma*zp(i1:i2)+uzboost*time
               uxlab(1:ip) = uxp(i1:i2)
               uylab(1:ip) = uyp(i1:i2)
               uzlab(1:ip) = uzp(i1:i2)
               ginvlab(1:ip) = gaminv(i1:i2)
               call setu_in_uzboosted_frame3d(ip,uxlab(1),uylab(1),uzlab(1),ginvlab(1),-uzboost,boost_gamma)
               tstart(1:ip) = boost_gamma*time+uzboost*zp(i1:i2)*invclightsq
-              tend  (1:ip) = boost_gamma*(time+halfdt_s)+uzboost*(zp(i1:i2) 
+              tend  (1:ip) = boost_gamma*(time+halfdt_s)+uzboost*(zp(i1:i2)
      &                     + uzp(i1:i2)*gaminv(i1:i2)*halfdt_s)*invclightsq
-              ! this is an attempt to fool exteb3d. Normally, each particle should have its 
+              ! this is an attempt to fool exteb3d. Normally, each particle should have its
               ! own dt, but this would require to modify all the routines called by exteb3d.
-              ! We are assuming that ginvlab will always be multiplied by dt in its 
-              ! usage in the routines called by exteb3d. If this is not the case, then the 
+              ! We are assuming that ginvlab will always be multiplied by dt in its
+              ! usage in the routines called by exteb3d. If this is not the case, then the
               ! kludge will fail.
               ginvlab(1:ip) = ginvlab(1:ip)*(tend(1:ip)-tstart(1:ip))/halfdt_s
 c             --- Obtain bend radii and residence factors
@@ -2065,7 +2065,7 @@ c             --- Obtain bend radii and residence factors
 c             --- Correct Ez_self for warped mesh effect
               call bendez3d(ip,pgroup%xp(i1:i2),zlab(1),ezlab(1),
      &                      bendres,bendradi,bends,bnezflag,linbend)
-c             --- Add in Ez from axially-smoothed gaps 
+c             --- Add in Ez from axially-smoothed gaps
               call gapfield(ip,zlab(1),ezlab(1),zbeam,zzmin,egap(0),dzz)
 c             --- Add in ears and uniform focusing E field pieces
               call othere3d(ip,xp(i1:i2),yp(i1:i2),zlab(1),
@@ -2107,7 +2107,7 @@ c               part of mugrdbpush.
                   call bpush(ip,uxp(i1:i2),uyp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
      &                          bx(i1:i2),by(i1:i2),bz(i1:i2),sq(is),sm(is),
      &                          fulldt_s,1.,.false.,pgroup%lparaxial(is),-1)
-c                 --- If interpolating with drift kinetics, must do 
+c                 --- If interpolating with drift kinetics, must do
 c                 ---  a mu grad B correction.  Since may be calling
 c                 ---  this on first timestep, must make sure grad B's are
 c                 ---  calculated, so last arg = 1.
@@ -2152,7 +2152,7 @@ c               --- get particles position in lab frame
                 zbeamend_maps(1:ip) = vbeam*time+boost_z0
                 zp(i1:i2) = zp(i1:i2)-zbeamend_maps(1:ip)   ! z*  -> dz*
                 zp(i1:i2) = zp(i1:i2)/gammabar_lab*gammabar ! dz* -> dz
-                
+
 c               --- get zbeam for each particle in lab frame
                 zbeam_maps(1:ip) = vbeam_lab*tlab(1:ip)+boost_z0*gammabar/gammabar_lab
                 zbeamend_maps(1:ip) = zbeam_maps(1:ip) + dtmaps(1:ip)*vbeam_lab
@@ -2215,7 +2215,7 @@ c           --- during a gen step.
               enddo
             endif
             if ((center == "synchv" .and. (interpdk(isid) == 0
-     &          .or. allspecl)) 
+     &          .or. allspecl))
      &          .or. center == "gen" .or. (center == "hbor1"
      &          .and. interpdk(isid) .ne. 0)) then
 c             --- drift-kinetic-interpolated species are always treated
@@ -2235,7 +2235,7 @@ c               --- Obtain bend radii and residence factors
 c               --- Correct Ez_self for warped mesh effect
                 call bendez3d(ip,pgroup%xp(i1:i2),pgroup%zp(i1:i2),ez(i1:i2),
      &                       bendres,bendradi,bends,bnezflag,linbend)
-c               --- Add in Ez from axially-smoothed gaps 
+c               --- Add in Ez from axially-smoothed gaps
                 call gapfield(ip,pgroup%zp(i1:i2),ez(i1:i2),zbeam,zzmin,egap(0),dzz)
 c               --- Add in ears and uniform focusing E field pieces
                 call othere3d(ip,xp(i1:i2),yp(i1:i2),zp(i1:i2),
@@ -2253,19 +2253,19 @@ c               --- Set quad, dipole E and B; All: Bz
                 uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
                 exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
                 bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
-                zlab(1:ip) = boost_gamma*zp(i1:i2)+uzboost*time  
+                zlab(1:ip) = boost_gamma*zp(i1:i2)+uzboost*time
                 uxlab(1:ip) = uxp(i1:i2)
                 uylab(1:ip) = uyp(i1:i2)
                 uzlab(1:ip) = uzp(i1:i2)
                 ginvlab(1:ip) = gaminv(i1:i2)
                 call setu_in_uzboosted_frame3d(ip,uxlab(1),uylab(1),uzlab(1),ginvlab(1),-uzboost,boost_gamma)
                 tstart(1:ip) = boost_gamma*time+uzboost*zp(i1:i2)*invclightsq
-                tend  (1:ip) = boost_gamma*(time+halfdt_s)+uzboost*(zp(i1:i2) 
+                tend  (1:ip) = boost_gamma*(time+halfdt_s)+uzboost*(zp(i1:i2)
      &                       + uzp(i1:i2)*gaminv(i1:i2)*halfdt_s)*invclightsq
-                ! this is an attempt to fool exteb3d. Normally, each particle should have its 
+                ! this is an attempt to fool exteb3d. Normally, each particle should have its
                 ! own dt, but this would require to modify all the routines called by exteb3d.
-                ! We are assuming that ginvlab will always be multiplied by dt in its 
-                ! usage in the routines called by exteb3d. If this is not the case, then the 
+                ! We are assuming that ginvlab will always be multiplied by dt in its
+                ! usage in the routines called by exteb3d. If this is not the case, then the
                 ! kludge will fail.
                 ginvlab(1:ip) = ginvlab(1:ip)*(tend(1:ip)-tstart(1:ip))/halfdt_s
 c               --- Obtain bend radii and residence factors
@@ -2275,7 +2275,7 @@ c               --- Obtain bend radii and residence factors
 c               --- Correct Ez_self for warped mesh effect
                 call bendez3d(ip,pgroup%xp(i1:i2),zlab(1),ezlab(1),
      &                       bendres,bendradi,bends,bnezflag,linbend)
-c               --- Add in Ez from axially-smoothed gaps 
+c               --- Add in Ez from axially-smoothed gaps
                 call gapfield(ip,zlab(1),ezlab(1),zbeam,zzmin,egap(0),dzz)
 c               --- Add in ears and uniform focusing E field pieces
                 call othere3d(ip,xp(i1:i2),yp(i1:i2),zlab(1),
@@ -2845,7 +2845,7 @@ c each particle.
 !$OMP END MASTER
       return
       end
-c============================================================================= 
+c=============================================================================
       subroutine bpush3d(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,ddt,ibpush)
       use Subtimersw3d
       integer(ISZ):: np,ibpush
@@ -2865,7 +2865,7 @@ c  Push the particle velocity with B field
       const = q*ddt*0.5/m
       if (ibpush == 1 .or. ibpush == 3) then
 c        --- fast b-field rotation algorithm
-c        --- ibpush = 3 uses this also for fullv but this routine is 
+c        --- ibpush = 3 uses this also for fullv but this routine is
 c        --- called with ibpush = -1 for halfv or synchv
          do ip=1,np
             tx = gaminv(ip)*bx(ip)*const
@@ -2932,7 +2932,7 @@ c        --- fast b-field rotation algorithm with half Boris angle
 !$OMP END MASTER
       return
       end
-c============================================================================= 
+c=============================================================================
       subroutine bpush2d(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,ddt,ibpush)
       use Subtimersw3d
       integer(ISZ):: np,ibpush
@@ -2952,7 +2952,7 @@ c  Push the particle velocity with B field
       const = q*ddt*0.5/m
       if (ibpush == 1 .or. ibpush == 3) then
 c        --- fast b-field rotation algorithm
-c        --- ibpush = 3 uses this also for fullv but this routine is 
+c        --- ibpush = 3 uses this also for fullv but this routine is
 c        --- called with ibpush = -1 for halfv or synchv
          do ip=1,np
             tx = gaminv(ip)*bx(ip)*const
@@ -3016,7 +3016,7 @@ c        --- fast b-field rotation algorithm with half Boris angle
 !$OMP END MASTER
       return
       end
-c============================================================================= 
+c=============================================================================
       subroutine bpusht3d(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,dtp,fdt,ibpush)
       use Subtimersw3d
       integer(ISZ):: np,ibpush
@@ -3081,7 +3081,7 @@ c        --- tan(alpha) / alpha algorithm
 !$OMP END MASTER
       return
       end
-c=========================================================================== 
+c===========================================================================
       subroutine xpush3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,dtp)
       use Subtimersw3d
       integer(ISZ):: np
@@ -3138,10 +3138,10 @@ c=============================================================================
       real(kind=8):: exp(np),eyp(np),ezp(np),bxp(np),byp(np),bzp(np)
       real(kind=8):: q,m,dt
 
-c Push the particle velocity with E and B fields, assuming Vmid = 0.5*(Vold+Vnew), 
+c Push the particle velocity with E and B fields, assuming Vmid = 0.5*(Vold+Vnew),
 c solving directly for the new gamma.
 c This offers better cancellation of E+VxB than the Boris velocity push.
-c Question: should we recompute gamma from the new u, in order to prevent roundoff errors 
+c Question: should we recompute gamma from the new u, in order to prevent roundoff errors
 c to create mismatched values of u and gamma?
 
       integer(ISZ):: ip
@@ -3153,9 +3153,9 @@ c to create mismatched values of u and gamma?
 
       invclight   = 1./clight
       invclightsq = 1./(clight*clight)
-      
+
       if(which==0) then
-!     --- full push      
+!     --- full push
        const = q*dt/m
        bconst = 0.5*const
        do ip=1,np
@@ -3187,9 +3187,9 @@ c to create mismatched values of u and gamma?
         uxp(ip) = s*(uxpr+tx*tu+uypr*tz-uzpr*ty)
         uyp(ip) = s*(uypr+ty*tu+uzpr*tx-uxpr*tz)
         uzp(ip) = s*(uzpr+tz*tu+uxpr*ty-uypr*tx)
-       enddo 
+       enddo
       else if(which==1) then
-!     --- first half push     
+!     --- first half push
        const = 0.5*q*dt/m
        do ip=1,np
 !     --- get new U
@@ -3202,7 +3202,7 @@ c to create mismatched values of u and gamma?
         gi(ip) = 1./sqrt(1.+(uxp(ip)*uxp(ip)+uyp(ip)*uyp(ip)+uzp(ip)*uzp(ip))*invclightsq)
        enddo
       else if(which==2) then
-!     --- second half push      
+!     --- second half push
        const = 0.5*q*dt/m
        bconst = const
        do ip=1,np
@@ -3234,9 +3234,9 @@ c to create mismatched values of u and gamma?
         uxp(ip) = s*(uxpr+tx*tu+uypr*tz-uzpr*ty)
         uyp(ip) = s*(uypr+ty*tu+uzpr*tx-uxpr*tz)
         uzp(ip) = s*(uzpr+tz*tu+uxpr*ty-uypr*tx)
-       enddo 
+       enddo
       endif
-      
+
 !$OMP MASTER
       if (lw3dtimesubs) timeebcancelpush3d = timeebcancelpush3d + wtime() - substarttime
 !$OMP END MASTER
@@ -3251,10 +3251,10 @@ c=============================================================================
       real(kind=8):: exp(np),eyp(np),ezp(np),bxp(np),byp(np),bzp(np),dt(np)
       real(kind=8):: q,m
 
-c Push the particle velocity with E and B fields, assuming Vmid = 0.5*(Vold+Vnew), 
+c Push the particle velocity with E and B fields, assuming Vmid = 0.5*(Vold+Vnew),
 c solving directly for the new gamma.
 c This offers better cancellation of E+VxB than the Boris velocity push.
-c Question: should we recompute gamma from the new u, in order to prevent roundoff errors 
+c Question: should we recompute gamma from the new u, in order to prevent roundoff errors
 c to create mismatched values of u and gamma?
 
       integer(ISZ):: ip
@@ -3266,9 +3266,9 @@ c to create mismatched values of u and gamma?
 
       invclight   = 1./clight
       invclightsq = 1./(clight*clight)
-      
+
       if(which==0) then
-!     --- full push      
+!     --- full push
        do ip=1,np
         const = q*dt(ip)/m
         bconst = 0.5*const
@@ -3300,9 +3300,9 @@ c to create mismatched values of u and gamma?
         uxp(ip) = s*(uxpr+tx*tu+uypr*tz-uzpr*ty)
         uyp(ip) = s*(uypr+ty*tu+uzpr*tx-uxpr*tz)
         uzp(ip) = s*(uzpr+tz*tu+uxpr*ty-uypr*tx)
-       enddo 
+       enddo
       else if(which==1) then
-!     --- first half push     
+!     --- first half push
        do ip=1,np
         const = 0.5*q*dt(ip)/m
 !     --- get new U
@@ -3315,7 +3315,7 @@ c to create mismatched values of u and gamma?
         gi(ip) = 1./sqrt(1.+(uxp(ip)*uxp(ip)+uyp(ip)*uyp(ip)+uzp(ip)*uzp(ip))*invclightsq)
        enddo
       else if(which==2) then
-!     --- second half push      
+!     --- second half push
        do ip=1,np
         const = 0.5*q*dt(ip)/m
         bconst = const
@@ -3347,9 +3347,9 @@ c to create mismatched values of u and gamma?
         uxp(ip) = s*(uxpr+tx*tu+uypr*tz-uzpr*ty)
         uyp(ip) = s*(uypr+ty*tu+uzpr*tx-uxpr*tz)
         uzp(ip) = s*(uzpr+tz*tu+uxpr*ty-uypr*tx)
-       enddo 
+       enddo
       endif
-      
+
 !$OMP MASTER
       if (lw3dtimesubs) timeebcancelpush3d = timeebcancelpush3d + wtime() - substarttime
 !$OMP END MASTER
@@ -3373,8 +3373,8 @@ c=============================================================================
       integer(ISZ):: np,is,ipmin
       real(kind=8):: exo(np),eyo(np),ezo(np),bxo(np),byo(np),bzo(np)
 
-c Check if particle is under or over the Courant condition limits (ccmin and ccmax) 
-c and register the ones that fall outside the limits for change to group (or species) 
+c Check if particle is under or over the Courant condition limits (ccmin and ccmax)
+c and register the ones that fall outside the limits for change to group (or species)
 c with appropriate time step.
 
       integer(ISZ):: ip0,ips,i1,i2
@@ -3461,14 +3461,14 @@ c     --- Do nothing if both flags are false
         dbz=abs(pgroup%bz(ip0)-bzo(ip))
         denorm = defieldmax*sqrt(exo(ip)*exo(ip)+eyo(ip)*eyo(ip)+ezo(ip)*ezo(ip))
         dbnorm = dbfieldmax*sqrt(bxo(ip)*bxo(ip)+byo(ip)*byo(ip)+bzo(ip)*bzo(ip))
-        ldfield_below_threshold = dex<=denorm .and. dey<=denorm .and. dez<=denorm .and. 
+        ldfield_below_threshold = dex<=denorm .and. dey<=denorm .and. dez<=denorm .and.
      &                            dbx<=dbnorm .and. dby<=dbnorm .and. dbz<=dbnorm
         if (lupOK) then
-c         --- the threshold on field change is lower for increasing time step in order to 
+c         --- the threshold on field change is lower for increasing time step in order to
 c         --- minimize particles changing time steps back and forth due to constant crossing of threshold
           denorm_up = denorm*real(pgroup%ndts(is-1))/pgroup%ndts(is+1-1)
           dbnorm_up = dbnorm*real(pgroup%ndts(is-1))/pgroup%ndts(is+1-1)
-          ldfield_below_threshold_up = dex<=denorm_up .and. dey<=denorm_up .and. dez<=denorm_up .and. 
+          ldfield_below_threshold_up = dex<=denorm_up .and. dey<=denorm_up .and. dez<=denorm_up .and.
      &                                 dbx<=dbnorm_up .and. dby<=dbnorm_up .and. dbz<=dbnorm_up
         endif
         if (nxc>0) then
@@ -3479,8 +3479,8 @@ c         --- minimize particles changing time steps back and forth due to const
           endif
         end if
         dd = max(ddx,ddy,ddz)
-c       --- if dd<ccmin or dd>ccmax, register particle for move to group/species with 
-c       --- appropriate time step 
+c       --- if dd<ccmin or dd>ccmax, register particle for move to group/species with
+c       --- appropriate time step
         if(ldownOK .and. (dd>courantmax .or. (.not. ldfield_below_threshold) .or. l_pisnearbycond)) then
 c         --- flag to move to group with smaller time step
           pgroup%pid(ip0,chdtspid) = -1.
@@ -3523,7 +3523,7 @@ c Applies the first order relativistic correction to the self E-field.
 !$OMP END MASTER
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine edamp(eomdamp,it,itdamp,center,np,
      &                 ex,ey,ez,exold,eyold,ezold,exlag,eylag,ezlag)
       use Subtimersw3d
@@ -3636,7 +3636,7 @@ c        --- don't use modified field if too early in run
 !$OMP END MASTER
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine bendez3d(np,xp,zp,ez,bendres,bendradi,bends,bnezflag,linbend)
       use Subtimersw3d
       integer(ISZ):: np
@@ -3666,12 +3666,12 @@ c  at smaller radii, zones are closer together, so field is larger.
       if (lw3dtimesubs) timebendez3d = timebendez3d + wtime() - substarttime
 !$OMP END MASTER
       return
-      end      
-c=========================================================================== 
+      end
+c===========================================================================
       subroutine sete3d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                  dx,dy,dz,nx,ny,nz,nxguardphi,nyguardphi,nzguardphi,
      &                  nxguarde,nyguarde,nzguarde,
-     &                  efetch,ex,ey,ez,l2symtry,l4symtry,
+     &                  efetch,depos_order,ex,ey,ez,l2symtry,l4symtry,
      &                  lcylindrical)
       use Subtimersw3d
       integer(ISZ):: np,nx,ny,nz
@@ -3684,16 +3684,315 @@ c===========================================================================
      &                       -nzguarde:nz+nzguarde)
       real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
-      integer(ISZ):: efetch
+      integer(ISZ):: efetch,depos_order(0:2)
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
 c Gets self electric field for particles
+c Calls the appropriate routine based on the values of depos_order
+c efetch, and ny.
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      if (ALL(depos_order == 1)) then
+
+        if (efetch == 1 .or. efetch == 6) then
+
+          if (ny == 0) then
+            call sete_from_phi_linear2d(phi1d,np,xp,yp,zp,zgrid,xmmin,zmmin,
+     &                                  dx,dz,nx,nz,nxguardphi,nzguardphi,
+     &                                  ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+          else
+            call sete_from_phi_linear3d(phi1d,np,xp,yp,zp,zgrid,
+     &                                  xmmin,ymmin,zmmin,
+     &                                  dx,dy,dz,nx,ny,nz,
+     &                                  nxguardphi,nyguardphi,nzguardphi,
+     &                                  ex,ey,ez,l2symtry,l4symtry)
+          endif
+
+        elseif (efetch == 2) then
+
+          call kaboom("sete3d: ERROR: efetch=2 is no longer supported")
+
+        elseif (efetch == 3) then
+c         --- This uses the precalculated selfe instead of doing
+c         --- the finite differences here.
+          if (ny == 0) then
+            call sete_from_e_linear2d(selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
+     &                                dx,dz,nx,nz,nxguarde,nzguarde,
+     &                                ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+          else
+            call sete_from_e_linear3d(selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
+     &                                dx,dy,dz,nx,ny,nz,
+     &                                nxguarde,nyguarde,nzguarde,
+     &                                ex,ey,ez,l2symtry,l4symtry)
+          endif
+
+        elseif (efetch == 4) then
+c       --- Energy conserving
+          if (ny == 0) then
+            call sete_from_phi_linearenergyconserving2d(phi1d,np,xp,yp,zp,
+     &                                  zgrid,xmmin,zmmin,
+     &                                  dx,dz,nx,nz,nxguardphi,nzguardphi,
+     &                                  ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+          else
+            call sete_from_phi_linearenergyconserving3d(phi1d,np,xp,yp,zp,zgrid,
+     &                                        xmmin,ymmin,zmmin,
+     &                                        dx,dy,dz,nx,ny,nz,
+     &                                        nxguardphi,nyguardphi,nzguardphi,
+     &                                        ex,ey,ez,l2symtry,l4symtry)
+          endif
+        endif
+
+      else if (ALL(depos_order == 2)) then
+
+c       --- Fetch with a 2nd order spline
+        if (efetch == 4) then
+          if (ny == 0) then
+            call sete_from_e_order2_energyconserving2d(selfe,np,xp,yp,zp,zgrid,
+     &                                 xmmin,zmmin,
+     &                                 dx,dz,nx,nz,
+     &                                 nxguarde,nzguarde,
+     &                                 ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+          else
+            call sete_from_e_order2_energyconserving3d(selfe,np,xp,yp,zp,zgrid,
+     &                                 xmmin,ymmin,zmmin,
+     &                                 dx,dy,dz,nx,ny,nz,
+     &                                 nxguarde,nyguarde,nzguarde,
+     &                                 ex,ey,ez,l2symtry,l4symtry)
+          endif
+
+        else
+
+c         --- All other values of efetch use the momentum conserving version.
+          if (ny == 0) then
+            call sete_from_e_order2_2d(selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
+     &                                 dx,dz,nx,nz,
+     &                                 nxguarde,nzguarde,
+     &                                 ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+          else
+            call sete_from_e_order2_3d(selfe,np,xp,yp,zp,zgrid,
+     &                                 xmmin,ymmin,zmmin,
+     &                                 dx,dy,dz,nx,ny,nz,
+     &                                 nxguarde,nyguarde,nzguarde,
+     &                                 ex,ey,ez,l2symtry,l4symtry)
+          endif
+
+        endif
+
+      else
+        call kaboom('sete3d: depos_order value not supported with electrostatic solver')
+        return
+      endif
+
+!$OMP MASTER
+      if (lw3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c===========================================================================
+      subroutine sete_from_phi_linear2d(phi1d,np,xp,yp,zp,zgrid,xmmin,zmmin,
+     &                                  dx,dz,nx,nz,nxguardphi,nzguardphi,
+     &                                  ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+      integer(ISZ):: np,nx,nz
+      integer(ISZ):: nxguardphi,nzguardphi
+      real(kind=8):: zgrid,xmmin,zmmin,dx,dz
+      real(kind=8):: phi1d(0:*)
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
+
+c Gets self electric field for particles
+c The field is obtained from directly finite differencing phi for each
+c particle, using linear weighting.
+
 c Note that the phi1d passed in is assumed to start at phi(-1,-1,-1).
-c This is a change is behavior from what is was earlier. This change
-c was made to avoid problems with bounds checking. phi needs to be accessed
-c at the plane iz=-1, so when phi was passed in starting at phi(0,0,0), with
-c bounds checking turned on, this would be caught (even though the code was
-c technically correct).
+
+c Algorithm notes: phi array is dimensioned (-1:nx+1,-1:ny+1,-1:nz+1) outside,
+c but is made one dimensional in this routine
+c so cell index into 1d phi array for vectorized deposition is:
+c    i + j*(nx+1) + k*(nx+1)*(ny+1)
+c The field is:
+c    Ex = u0*w0*ex(i  ,k)
+c       + u1*w0*ex(i+1,k)
+c       + ...
+c where:
+c    ex(i,k) = (phi(i-1,k) - phi(i+1,k))/(2*dx)
+
+      integer(ISZ):: nnx,ip,i,k,ind0,inext,knext
+      real(kind=8):: dxi,dzi,tdxi,tdzi,u0,u1,w0,w1,xsign
+      integer(ISZ):: ox,sox
+      real(kind=8):: sx,ext,eyt,ezt
+      real(kind=8):: x,xnext
+      integer(ISZ):: noff(32)
+      save noff
+
+      nnx  = nx + 1 + 2*nxguardphi
+
+c  nnx is added to all offsets to account for
+c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
+c  of phi(0,0,0) is equivalent to phi1d(nnx).
+
+      noff = 0
+      noff(1)  = - nnx
+      noff(2)  = - nnx   + 1
+      noff(7)  =                  - 1
+      noff(8)  =                  + 0
+      noff(9)  =                  + 1
+      noff(10) =                  + 2
+      noff(19) = + nnx            - 1
+      noff(20) = + nnx
+      noff(21) = + nnx            + 1
+      noff(22) = + nnx            + 2
+      noff(29) = + 2*nnx
+      noff(30) = + 2*nnx          + 1
+
+      noff = noff + nxguardphi + nnx*nzguardphi
+
+c  Evaluation of E, vectorized over particles
+      tdxi = 1. / (2.*dx)
+      tdzi = 1. / (2.*dz)
+      dxi = 1./dx
+      dzi = 1./dz
+      eyt = 0.
+
+      if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
+        if (lcylindrical) then
+          xnext = sqrt(xp(1)**2 + yp(1)**2)
+        else
+          xnext = xp(1)
+        endif
+        inext = (xnext - xmmin)*dxi
+        knext = (zp(1) - zgrid - zmmin)*dzi
+
+        do ip = 1, np
+
+          i = inext
+          k = knext
+          x = xnext
+          if (ip < np) then
+            if (lcylindrical) then
+              xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+            else
+              xnext = xp(ip+1)
+            endif
+            inext = (xnext    - xmmin)*dxi
+            knext = (zp(ip+1) - zgrid - zmmin)*dzi
+          endif
+
+          ind0 = i + k*nnx
+
+          u1 = (x      - xmmin)*dxi - i
+          w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u0 = 1. - u1
+          w0 = 1. - w1
+
+          ext=tdxi*(u0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
+     &            + u1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
+     &            + u0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
+     &            + u1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0)))
+
+          ezt=tdzi*(u0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &            + u1*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &            + u0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &            + u1*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0)))
+
+          if (lcylindrical) then
+            if (x > 0.) then
+              eyt = ext*yp(ip)/x
+              ext = ext*xp(ip)/x
+            else
+              ext = ext
+              eyt = 0.
+            endif
+          endif
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      else
+
+c       --- Set offsets for indices on axis of symmetry.  The offsets change
+c       --- the sign of the grid cells which are on the negative side
+c       --- of the axis of symmetry.
+        sox = 0
+        if (l4symtry) sox = 2
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        inext = (abs(xp(1)) - xmmin)*dxi
+        knext = (zp(1) - zgrid - zmmin)*dzi
+        do ip = 1, np
+
+          i = inext
+          k = knext
+          if (ip < np) then
+            inext = (abs(xp(ip+1)) - xmmin)*dxi
+            knext = (zp(ip+1) - zgrid - zmmin)*dzi
+          endif
+
+          ind0 = i + k*nnx
+
+          u1 = (abs(xp(ip)) - xmmin)*dxi - i
+          w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u0 = 1. - u1
+          w0 = 1. - w1
+
+c         --- Set offsets for points on symmetry axis of grid.  The offset
+c         --- for points off the axis is zero.
+          ox = 0
+          if (i == 0 .and. xmmin == 0.) ox = sox
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = tdxi
+          if (xp(ip) < 0.) xsign = sx*tdxi
+          ext=xsign*(u0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
+     &             + u1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
+     &             + u0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
+     &             + u1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0)))
+
+          ezt=tdzi*(u0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &            + u1*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &            + u0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &            + u1*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0)))
+
+          ex(ip) = ex(ip) + ext
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
+      subroutine sete_from_phi_linear3d(phi1d,np,xp,yp,zp,zgrid,
+     &                                  xmmin,ymmin,zmmin,
+     &                                  dx,dy,dz,nx,ny,nz,
+     &                                  nxguardphi,nyguardphi,nzguardphi,
+     &                                  ex,ey,ez,l2symtry,l4symtry)
+      integer(ISZ):: np,nx,ny,nz
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
+      real(kind=8):: phi1d(0:*)
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gets self electric field for particles
+c The field is obtained from directly finite differencing phi for each
+c particle, using linear weighting.
+ 
+c Note that the phi1d passed in is assumed to start at phi(-1,-1,-1).
 
 c Algorithm notes: phi array is dimensioned (-1:nx+1,-1:ny+1,-1:nz+1) outside,
 c but is made one dimensional in this routine
@@ -3704,78 +4003,56 @@ c    Ex = u0*v0*w0*ex(i  ,j  ,k  )
 c       + u1*v0*w0*ex(i+1,j  ,k  )
 c       + u0*v1*w0*ex(i  ,j+1,k  )
 c       + ...
+c where:
+c    ex(i,j,k) = (phi(i-1,j,k) - phi(i+1,j,k))/(2*dx)
 
-      integer(ISZ):: nnx,nnxy,ip,i,j,k,ind0,m,inext,jnext,knext
+      integer(ISZ):: nnx,nnxy,ip,i,j,k,ind0,inext,jnext,knext
       real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
       integer(ISZ):: ox,oy,sox,soy
       real(kind=8):: sx,sy,ext,eyt,ezt
-      real(kind=8):: xi,yj,zk,xinext,yjnext,zknext
-      real(kind=8):: x,y,xnext,ynext
       integer(ISZ):: noff(32)
-      save noff
-
-c     --- For second version
-c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
-      integer(ISZ),allocatable:: indx(:,:)
-      real(kind=8),allocatable:: p(:,:), u1p(:), v1p(:), w1p(:)
-      integer(ISZ):: allocerror
-
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-      if (ny == 0) then
-        call seterz(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
-     &              dx,dz,nx,nz,nxguardphi,nzguardphi,nxguarde,nzguarde,
-     &              efetch,ex,ey,ez,l2symtry,l4symtry,
-     &              lcylindrical)
-        return
-      endif
 
       nnx  = nx + 1 + 2*nxguardphi
       nnxy = (nx + 1 + 2*nxguardphi)*(ny + 1 + 2*nyguardphi)
 
-c  Evaluation of offsets occurs on the first call only provided
-c  local arrays are SAVE'd. nnxy is added to all offsets to account for
+c  nnxy is added to all offsets to account for
 c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
 c  of phi(0,0,0) is equivalent to phi1d(nnxy).
 
-c     if (noff(1) /= -nnxy) then
-         noff(1)  = - nnxy
-         noff(2)  = - nnxy   + 1
-         noff(3)  = - nnxy   + nnx
-         noff(4)  = - nnxy   + nnx   + 1
-         noff(5)  =          - nnx
-         noff(6)  =          - nnx   + 1
-         noff(7)  =                  - 1
-         noff(8)  =                  + 0
-         noff(9)  =                  + 1
-         noff(10) =                  + 2
-         noff(11) =          + nnx   - 1
-         noff(12) =          + nnx
-         noff(13) =          + nnx   + 1
-         noff(14) =          + nnx   + 2
-         noff(15) =          + 2*nnx
-         noff(16) =          + 2*nnx + 1
-         noff(17) = + nnxy   - nnx
-         noff(18) = + nnxy   - nnx   + 1
-         noff(19) = + nnxy           - 1
-         noff(20) = + nnxy
-         noff(21) = + nnxy           + 1
-         noff(22) = + nnxy           + 2
-         noff(23) = + nnxy   + nnx   - 1
-         noff(24) = + nnxy   + nnx
-         noff(25) = + nnxy   + nnx   + 1
-         noff(26) = + nnxy   + nnx   + 2
-         noff(27) = + nnxy   + 2*nnx
-         noff(28) = + nnxy   + 2*nnx + 1
-         noff(29) = + 2*nnxy
-         noff(30) = + 2*nnxy         + 1
-         noff(31) = + 2*nnxy + nnx
-         noff(32) = + 2*nnxy + nnx   + 1
+      noff(1)  = - nnxy
+      noff(2)  = - nnxy   + 1
+      noff(3)  = - nnxy   + nnx
+      noff(4)  = - nnxy   + nnx   + 1
+      noff(5)  =          - nnx
+      noff(6)  =          - nnx   + 1
+      noff(7)  =                  - 1
+      noff(8)  =                  + 0
+      noff(9)  =                  + 1
+      noff(10) =                  + 2
+      noff(11) =          + nnx   - 1
+      noff(12) =          + nnx
+      noff(13) =          + nnx   + 1
+      noff(14) =          + nnx   + 2
+      noff(15) =          + 2*nnx
+      noff(16) =          + 2*nnx + 1
+      noff(17) = + nnxy   - nnx
+      noff(18) = + nnxy   - nnx   + 1
+      noff(19) = + nnxy           - 1
+      noff(20) = + nnxy
+      noff(21) = + nnxy           + 1
+      noff(22) = + nnxy           + 2
+      noff(23) = + nnxy   + nnx   - 1
+      noff(24) = + nnxy   + nnx
+      noff(25) = + nnxy   + nnx   + 1
+      noff(26) = + nnxy   + nnx   + 2
+      noff(27) = + nnxy   + 2*nnx
+      noff(28) = + nnxy   + 2*nnx + 1
+      noff(29) = + 2*nnxy
+      noff(30) = + 2*nnxy         + 1
+      noff(31) = + 2*nnxy + nnx
+      noff(32) = + 2*nnxy + nnx   + 1
 
-         noff = noff + nxguardphi + nnx*nyguardphi + nnxy*nzguardphi
-
-c     endif
+      noff = noff + nxguardphi + nnx*nyguardphi + nnxy*nzguardphi
 
 c  Evaluation of E, vectorized over particles
       tdxi = 1. / (2.*dx)
@@ -3785,712 +4062,322 @@ c  Evaluation of E, vectorized over particles
       dyi = 1./dy
       dzi = 1./dz
 
-      if (efetch == 1 .or. efetch == 6) then
+      if (.not. (l2symtry .or. l4symtry)) then
+        inext = (xp(1) - xmmin)*dxi
+        jnext = (yp(1) - ymmin)*dyi
+        knext = (zp(1) - zgrid - zmmin)*dzi
 
-        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
-          if (lcylindrical) then
-            xnext = sqrt(xp(1)**2 + yp(1)**2)
-            ynext = ymmin
-          else
-            xnext = xp(1)
-            ynext = yp(1)
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          k = knext
+          if (ip < np) then
+            inext = (xp(ip+1) - xmmin)*dxi
+            jnext = (yp(ip+1) - ymmin)*dyi
+            knext = (zp(ip+1) - zgrid - zmmin)*dzi
           endif
-          inext = (xnext - xmmin)*dxi
-          jnext = (ynext - ymmin)*dyi
-          knext = (zp(1) - zgrid - zmmin)*dzi
 
-          do ip = 1, np
+          ind0 = i + j*nnx + k*nnxy
 
-            i = inext
-            j = jnext
-            k = knext
-            x = xnext
-            y = ynext
-            if (ip < np) then
-              if (lcylindrical) then
-                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
-                ynext = ymmin
-              else
-                xnext = xp(ip+1)
-                ynext = yp(ip+1)
-              endif
-              inext = (xnext    - xmmin)*dxi
-              jnext = (ynext    - ymmin)*dyi
-              knext = (zp(ip+1) - zgrid - zmmin)*dzi
-            endif
+          u1 = (xp(ip) - xmmin)*dxi - i
+          v1 = (yp(ip) - ymmin)*dyi - j
+          w1 = (zp(ip) - zgrid - zmmin)*dzi - k
 
-            ind0 = i + j*nnx + k*nnxy
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
 
-            u1 = (x      - xmmin)*dxi - i
-            v1 = (y      - ymmin)*dyi - j
-            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+          ext=tdxi*(u0*v0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
+     &            + u1*v0*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
+     &            + u0*v1*w0*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
+     &            + u1*v1*w0*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0))
+     &            + u0*v0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
+     &            + u1*v0*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0))
+     &            + u0*v1*w1*(phi1d(noff(23)+ind0) - phi1d(noff(25)+ind0))
+     &            + u1*v1*w1*(phi1d(noff(24)+ind0) - phi1d(noff(26)+ind0)))
 
-            u0 = 1. - u1
-            v0 = 1. - v1
-            w0 = 1. - w1
+          eyt=tdyi*(u0*v0*w0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
+     &            + u1*v0*w0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
+     &            + u0*v1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
+     &            + u1*v1*w0*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0))
+     &            + u0*v0*w1*(phi1d(noff(17)+ind0) - phi1d(noff(24)+ind0))
+     &            + u1*v0*w1*(phi1d(noff(18)+ind0) - phi1d(noff(25)+ind0))
+     &            + u0*v1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(27)+ind0))
+     &            + u1*v1*w1*(phi1d(noff(21)+ind0) - phi1d(noff(28)+ind0)))
 
-            ext=tdxi*(u0*v0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
-     &              + u1*v0*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
-     &              + u0*v1*w0*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
-     &              + u1*v1*w0*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0))
-     &              + u0*v0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
-     &              + u1*v0*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0))
-     &              + u0*v1*w1*(phi1d(noff(23)+ind0) - phi1d(noff(25)+ind0))
-     &              + u1*v1*w1*(phi1d(noff(24)+ind0) - phi1d(noff(26)+ind0)))
+          ezt=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &            + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &            + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
+     &            + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
+     &            + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &            + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
+     &            + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
+     &            + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
 
-            eyt=tdyi*(u0*v0*w0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
-     &              + u1*v0*w0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
-     &              + u0*v1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
-     &              + u1*v1*w0*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0))
-     &              + u0*v0*w1*(phi1d(noff(17)+ind0) - phi1d(noff(24)+ind0))
-     &              + u1*v0*w1*(phi1d(noff(18)+ind0) - phi1d(noff(25)+ind0))
-     &              + u0*v1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(27)+ind0))
-     &              + u1*v1*w1*(phi1d(noff(21)+ind0) - phi1d(noff(28)+ind0)))
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
 
-            ezt=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &              + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &              + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
-     &              + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
-     &              + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &              + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
-     &              + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
-     &              + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+        enddo
 
-            if (lcylindrical) then
-              if (x > 0.) then
-                eyt = ext*yp(ip)/x
-                ext = ext*xp(ip)/x
-              else
-                ext = ext
-                eyt = 0.
-              endif
-            endif
+      else
 
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
+c       --- Set offsets for indices on axis of symmetry.  The offsets change
+c       --- the sign of the grid cells which are on the negative side
+c       --- of the axis of symmetry.
+        soy = 2*nnx
+        sox = 0
+        if (l4symtry) sox = 2
 
-          enddo
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sy = -1.
+        sx = 1.
+        if (l4symtry) sx = -1.
 
-        else
+c       --- special loop symmetry is used
+        inext = (abs(xp(1)) - xmmin)*dxi
+        jnext = (abs(yp(1)) - ymmin)*dyi
+        knext = (zp(1) - zgrid - zmmin)*dzi
+        do ip = 1, np
 
-c         --- Set offsets for indices on axis of symmetry.  The offsets change
-c         --- the sign of the grid cells which are on the negative side
-c         --- of the axis of symmetry.
-          soy = 2*nnx
-          sox = 0
-          if (l4symtry) sox = 2
-
-c         --- Set the signs of the E field for particles on negative side of
-c         --- the axis of symmetry.
-          sy = -1.
-          sx = 1.
-          if (l4symtry) sx = -1.
-
-c         --- special loop symmetry is used
-          inext = (abs(xp(1)) - xmmin)*dxi
-          jnext = (abs(yp(1)) - ymmin)*dyi
-          knext = (zp(1) - zgrid - zmmin)*dzi
-          do ip = 1, np
-
-            i = inext
-            j = jnext
-            k = knext
-            if (ip < np) then
-              inext = (abs(xp(ip+1)) - xmmin)*dxi
-              jnext = (abs(yp(ip+1)) - ymmin)*dyi
-              knext = (zp(ip+1) - zgrid - zmmin)*dzi
-            endif
-
-            ind0 = i + j*nnx + k*nnxy
-
-            u1 = (abs(xp(ip)) - xmmin)*dxi - i
-            v1 = (abs(yp(ip)) - ymmin)*dyi - j
-            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
-
-            u0 = 1. - u1
-            v0 = 1. - v1
-            w0 = 1. - w1
-
-c           --- Set offsets for points on symmetry axis of grid.  The offset
-c           --- for points off the axis is zero.
-            ox = 0
-            oy = 0
-            if (i == 0 .and. xmmin == 0.) ox = sox
-            if (j == 0 .and. ymmin == 0.) oy = soy
-
-c           --- Adjust sign of E field for appropriate quadrant.
-            xsign = tdxi
-            ysign = tdyi
-            if (xp(ip) < 0.) xsign = sx*tdxi
-            if (yp(ip) < 0.) ysign = sy*tdyi
-            ext=xsign*(u0*v0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
-     &               + u1*v0*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
-     &               + u0*v1*w0*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
-     &               + u1*v1*w0*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0))
-     &               + u0*v0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
-     &               + u1*v0*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0))
-     &               + u0*v1*w1*(phi1d(noff(23)+ind0+ox)-phi1d(noff(25)+ind0))
-     &               + u1*v1*w1*(phi1d(noff(24)+ind0   )-phi1d(noff(26)+ind0)))
-
-            eyt=ysign*(u0*v0*w0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
-     &               + u1*v0*w0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
-     &               + u0*v1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
-     &               + u1*v1*w0*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0))
-     &               + u0*v0*w1*(phi1d(noff(17)+ind0+oy)-phi1d(noff(24)+ind0))
-     &               + u1*v0*w1*(phi1d(noff(18)+ind0+oy)-phi1d(noff(25)+ind0))
-     &               + u0*v1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(27)+ind0))
-     &               + u1*v1*w1*(phi1d(noff(21)+ind0   )-phi1d(noff(28)+ind0)))
-
-            ezt=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &              + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &              + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
-     &              + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
-     &              + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &              + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
-     &              + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
-     &              + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
-
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        endif
-
-
-      elseif (efetch == 2) then
-
-        call kaboom("sete3d: ERROR: efetch=2 is no longer supported")
-
-      elseif (efetch == 3) then
-c       --- This uses the precalculated selfe instead of doing
-c       --- the finite differences here..
-
-        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
-          if (lcylindrical) then
-            xnext = sqrt(xp(1)**2 + yp(1)**2)
-            ynext = ymmin
-          else
-            xnext = xp(1)
-            ynext = yp(1)
+          i = inext
+          j = jnext
+          k = knext
+          if (ip < np) then
+            inext = (abs(xp(ip+1)) - xmmin)*dxi
+            jnext = (abs(yp(ip+1)) - ymmin)*dyi
+            knext = (zp(ip+1) - zgrid - zmmin)*dzi
           endif
-          xinext = (xnext - xmmin)*dxi
-          yjnext = (ynext - ymmin)*dyi
-          zknext = (zp(1) - zgrid - zmmin)*dzi
-          inext = xinext
-          jnext = yjnext
-          knext = zknext
 
-          do ip = 1, np
+          ind0 = i + j*nnx + k*nnxy
+
+          u1 = (abs(xp(ip)) - xmmin)*dxi - i
+          v1 = (abs(yp(ip)) - ymmin)*dyi - j
+          w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+
+c         --- Set offsets for points on symmetry axis of grid.  The offset
+c         --- for points off the axis is zero.
+          ox = 0
+          oy = 0
+          if (i == 0 .and. xmmin == 0.) ox = sox
+          if (j == 0 .and. ymmin == 0.) oy = soy
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = tdxi
+          ysign = tdyi
+          if (xp(ip) < 0.) xsign = sx*tdxi
+          if (yp(ip) < 0.) ysign = sy*tdyi
+          ext=xsign*(u0*v0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
+     &             + u1*v0*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
+     &             + u0*v1*w0*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
+     &             + u1*v1*w0*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0))
+     &             + u0*v0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
+     &             + u1*v0*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0))
+     &             + u0*v1*w1*(phi1d(noff(23)+ind0+ox)-phi1d(noff(25)+ind0))
+     &             + u1*v1*w1*(phi1d(noff(24)+ind0   )-phi1d(noff(26)+ind0)))
+
+          eyt=ysign*(u0*v0*w0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
+     &             + u1*v0*w0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
+     &             + u0*v1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
+     &             + u1*v1*w0*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0))
+     &             + u0*v0*w1*(phi1d(noff(17)+ind0+oy)-phi1d(noff(24)+ind0))
+     &             + u1*v0*w1*(phi1d(noff(18)+ind0+oy)-phi1d(noff(25)+ind0))
+     &             + u0*v1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(27)+ind0))
+     &             + u1*v1*w1*(phi1d(noff(21)+ind0   )-phi1d(noff(28)+ind0)))
+
+          ezt=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &            + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &            + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
+     &            + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
+     &            + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &            + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
+     &            + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
+     &            + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
+
+        enddo
 
-            x = xnext
-            y = ynext
-            xi = xinext
-            yj = yjnext
-            zk = zknext
-            i = inext
-            j = jnext
-            k = knext
-            if (ip < np) then
-              if (lcylindrical) then
-                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
-                ynext = ymmin
-              else
-                xnext = xp(ip+1)
-                ynext = yp(ip+1)
-              endif
-              xinext = (xnext - xmmin)*dxi
-              yjnext = (ynext - ymmin)*dyi
-              zknext = (zp(ip+1) - zgrid - zmmin)*dzi
-              inext = xinext
-              jnext = yjnext
-              knext = zknext
-            endif
-
-            if (xi < 0. .or. xi > nx .or.
-     &          yj < 0. .or. yj > ny .or.
-     &          zk < 0. .or. zk > nz) cycle
-
-            u1 = xi - i
-            v1 = yj - j
-            w1 = zk - k
-
-            u0 = 1. - u1
-            v0 = 1. - v1
-            w0 = 1. - w1
-
-            ext = u0*v0*w0*selfe(1,i  ,j  ,k  )
-     &          + u1*v0*w0*selfe(1,i+1,j  ,k  )
-     &          + u0*v1*w0*selfe(1,i  ,j+1,k  )
-     &          + u1*v1*w0*selfe(1,i+1,j+1,k  )
-     &          + u0*v0*w1*selfe(1,i  ,j  ,k+1)
-     &          + u1*v0*w1*selfe(1,i+1,j  ,k+1)
-     &          + u0*v1*w1*selfe(1,i  ,j+1,k+1)
-     &          + u1*v1*w1*selfe(1,i+1,j+1,k+1)
-
-            eyt = u0*v0*w0*selfe(2,i  ,j  ,k  )
-     &          + u1*v0*w0*selfe(2,i+1,j  ,k  )
-     &          + u0*v1*w0*selfe(2,i  ,j+1,k  )
-     &          + u1*v1*w0*selfe(2,i+1,j+1,k  )
-     &          + u0*v0*w1*selfe(2,i  ,j  ,k+1)
-     &          + u1*v0*w1*selfe(2,i+1,j  ,k+1)
-     &          + u0*v1*w1*selfe(2,i  ,j+1,k+1)
-     &          + u1*v1*w1*selfe(2,i+1,j+1,k+1)
-
-            ezt = u0*v0*w0*selfe(3,i  ,j  ,k  )
-     &          + u1*v0*w0*selfe(3,i+1,j  ,k  )
-     &          + u0*v1*w0*selfe(3,i  ,j+1,k  )
-     &          + u1*v1*w0*selfe(3,i+1,j+1,k  )
-     &          + u0*v0*w1*selfe(3,i  ,j  ,k+1)
-     &          + u1*v0*w1*selfe(3,i+1,j  ,k+1)
-     &          + u0*v1*w1*selfe(3,i  ,j+1,k+1)
-     &          + u1*v1*w1*selfe(3,i+1,j+1,k+1)
-
-            if (lcylindrical) then
-              if (x > 0.) then
-                eyt = ext*yp(ip)/x
-                ext = ext*xp(ip)/x
-              else
-                ext = ext
-                eyt = 0.
-              endif
-            endif
-
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        else
-
-c         --- Set the signs of the E field for particles on negative side of
-c         --- the axis of symmetry.
-          sy = -1.
-          sx = 1.
-          if (l4symtry) sx = -1.
-
-c         --- special loop symmetry is used
-          xinext = (abs(xp(1)) - xmmin)*dxi
-          yjnext = (abs(yp(1)) - ymmin)*dyi
-          zknext = (zp(1) - zgrid - zmmin)*dzi
-          inext = xinext
-          jnext = yjnext
-          knext = zknext
-
-          do ip = 1, np
-
-            xi = xinext
-            yj = yjnext
-            zk = zknext
-            i = inext
-            j = jnext
-            k = knext
-
-            if (ip < np) then
-              xinext = (abs(xp(ip+1)) - xmmin)*dxi
-              yjnext = (abs(yp(ip+1)) - ymmin)*dyi
-              zknext = (zp(ip+1) - zgrid - zmmin)*dzi
-              inext = xinext
-              jnext = yjnext
-              knext = zknext
-            endif
-
-            if (xi < 0. .or. xi > nx .or.
-     &          yj < 0. .or. yj > ny .or.
-     &          zk < 0. .or. zk > nz) cycle
-
-            u1 = xi - i
-            v1 = yj - j
-            w1 = zk - k
-
-            u0 = 1. - u1
-            v0 = 1. - v1
-            w0 = 1. - w1
-
-c           --- Adjust sign of E field for appropriate quadrant.
-            xsign = +1.
-            ysign = +1.
-            if (xp(ip) < 0.) xsign = sx
-            if (yp(ip) < 0.) ysign = sy
-
-            ext = xsign*(u0*v0*w0*selfe(1,i  ,j  ,k  )
-     &                 + u1*v0*w0*selfe(1,i+1,j  ,k  )
-     &                 + u0*v1*w0*selfe(1,i  ,j+1,k  )
-     &                 + u1*v1*w0*selfe(1,i+1,j+1,k  )
-     &                 + u0*v0*w1*selfe(1,i  ,j  ,k+1)
-     &                 + u1*v0*w1*selfe(1,i+1,j  ,k+1)
-     &                 + u0*v1*w1*selfe(1,i  ,j+1,k+1)
-     &                 + u1*v1*w1*selfe(1,i+1,j+1,k+1))
-
-            eyt = ysign*(u0*v0*w0*selfe(2,i  ,j  ,k  )
-     &                 + u1*v0*w0*selfe(2,i+1,j  ,k  )
-     &                 + u0*v1*w0*selfe(2,i  ,j+1,k  )
-     &                 + u1*v1*w0*selfe(2,i+1,j+1,k  )
-     &                 + u0*v0*w1*selfe(2,i  ,j  ,k+1)
-     &                 + u1*v0*w1*selfe(2,i+1,j  ,k+1)
-     &                 + u0*v1*w1*selfe(2,i  ,j+1,k+1)
-     &                 + u1*v1*w1*selfe(2,i+1,j+1,k+1))
-
-            ezt =        u0*v0*w0*selfe(3,i  ,j  ,k  )
-     &                 + u1*v0*w0*selfe(3,i+1,j  ,k  )
-     &                 + u0*v1*w0*selfe(3,i  ,j+1,k  )
-     &                 + u1*v1*w0*selfe(3,i+1,j+1,k  )
-     &                 + u0*v0*w1*selfe(3,i  ,j  ,k+1)
-     &                 + u1*v0*w1*selfe(3,i+1,j  ,k+1)
-     &                 + u0*v1*w1*selfe(3,i  ,j+1,k+1)
-     &                 + u1*v1*w1*selfe(3,i+1,j+1,k+1)
-
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        endif
-
-      elseif (efetch == 4) then
-c       --- Energy conserving
-
-        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
-          if (lcylindrical) then
-            xnext = sqrt(xp(1)**2 + yp(1)**2)
-            ynext = ymmin
-          else
-            xnext = xp(1)
-            ynext = yp(1)
-          endif
-          inext = (xnext - xmmin)*dxi
-          jnext = (ynext - ymmin)*dyi
-          knext = (zp(1) - zgrid - zmmin)*dzi
-          do ip = 1, np
-
-            i = inext
-            j = jnext
-            k = knext
-            x = xnext
-            y = ynext
-            if (ip < np) then
-              if (lcylindrical) then
-                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
-                ynext = ymmin
-              else
-                xnext = xp(ip+1)
-                ynext = yp(ip+1)
-              endif
-              inext = (xnext    - xmmin)*dxi
-              jnext = (ynext    - ymmin)*dyi
-              knext = (zp(ip+1) - zgrid - zmmin)*dzi
-            endif
-
-            ind0 = i + j*nnx + k*nnxy
-
-            u1 = (x      - xmmin)*dxi - i
-            v1 = (y      - ymmin)*dyi - j
-            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
-
-            u0 = 1. - u1
-            v0 = 1. - v1
-            w0 = 1. - w1
-
-            ext=dxi*(+v0*w0*phi1d(noff( 8)+ind0)
-     &               -v0*w0*phi1d(noff( 9)+ind0)
-     &               +v1*w0*phi1d(noff(12)+ind0)
-     &               -v1*w0*phi1d(noff(13)+ind0)
-     &               +v0*w1*phi1d(noff(20)+ind0)
-     &               -v0*w1*phi1d(noff(21)+ind0)
-     &               +v1*w1*phi1d(noff(24)+ind0)
-     &               -v1*w1*phi1d(noff(25)+ind0))
-
-            eyt=dyi*(+u0*w0*phi1d(noff( 8)+ind0)
-     &               +u1*w0*phi1d(noff( 9)+ind0)
-     &               -u0*w0*phi1d(noff(12)+ind0)
-     &               -u1*w0*phi1d(noff(13)+ind0)
-     &               +u0*w1*phi1d(noff(20)+ind0)
-     &               +u1*w1*phi1d(noff(21)+ind0)
-     &               -u0*w1*phi1d(noff(24)+ind0)
-     &               -u1*w1*phi1d(noff(25)+ind0))
-
-            ezt=dzi*(+u0*v0*phi1d(noff( 8)+ind0)
-     &               +u1*v0*phi1d(noff( 9)+ind0)
-     &               +u0*v1*phi1d(noff(12)+ind0)
-     &               +u1*v1*phi1d(noff(13)+ind0)
-     &               -u0*v0*phi1d(noff(20)+ind0)
-     &               -u1*v0*phi1d(noff(21)+ind0)
-     &               -u0*v1*phi1d(noff(24)+ind0)
-     &               -u1*v1*phi1d(noff(25)+ind0))
-
-            if (lcylindrical) then
-              if (x > 0.) then
-                eyt = ext*yp(ip)/x
-                ext = ext*xp(ip)/x
-              else
-                ext = ext
-                eyt = 0.
-              endif
-            endif
-
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        else
-
-c         --- Set the signs of the E field for particles on negative side of
-c         --- the axis of symmetry.
-          sy = -1.
-          sx = 1.
-          if (l4symtry) sx = -1.
-
-c         --- special loop symmetry is used
-          inext = (abs(xp(1)) - xmmin)*dxi
-          jnext = (abs(yp(1)) - ymmin)*dyi
-          knext = (zp(1) - zgrid - zmmin)*dzi
-          do ip = 1, np
-
-            i = inext
-            j = jnext
-            k = knext
-            if (ip < np) then
-              inext = (abs(xp(ip+1)) - xmmin)*dxi
-              jnext = (abs(yp(ip+1)) - ymmin)*dyi
-              knext = (zp(ip+1) - zgrid - zmmin)*dzi
-            endif
-  
-            ind0 = i + j*nnx + k*nnxy
-
-            u1 = (abs(xp(ip)) - xmmin)*dxi - i
-            v1 = (abs(yp(ip)) - ymmin)*dyi - j
-            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
-
-            u0 = 1. - u1
-            v0 = 1. - v1
-            w0 = 1. - w1
-
-c           --- Adjust sign of E field for appropriate quadrant.
-            xsign = dxi
-            ysign = dyi
-            if (xp(ip) < 0.) xsign = sx*dxi
-            if (yp(ip) < 0.) ysign = sy*dyi
-
-            ext=xsign*(+v0*w0*phi1d(noff( 8)+ind0)
-     &                 -v0*w0*phi1d(noff( 9)+ind0)
-     &                 +v1*w0*phi1d(noff(12)+ind0)
-     &                 -v1*w0*phi1d(noff(13)+ind0)
-     &                 +v0*w1*phi1d(noff(20)+ind0)
-     &                 -v0*w1*phi1d(noff(21)+ind0)
-     &                 +v1*w1*phi1d(noff(24)+ind0)
-     &                 -v1*w1*phi1d(noff(25)+ind0))
-
-            eyt=ysign*(+u0*w0*phi1d(noff( 8)+ind0)
-     &                 +u1*w0*phi1d(noff( 9)+ind0)
-     &                 -u0*w0*phi1d(noff(12)+ind0)
-     &                 -u1*w0*phi1d(noff(13)+ind0)
-     &                 +u0*w1*phi1d(noff(20)+ind0)
-     &                 +u1*w1*phi1d(noff(21)+ind0)
-     &                 -u0*w1*phi1d(noff(24)+ind0)
-     &                 -u1*w1*phi1d(noff(25)+ind0))
-
-            ezt = dzi*(+u0*v0*phi1d(noff( 8)+ind0)
-     &                 +u1*v0*phi1d(noff( 9)+ind0)
-     &                 +u0*v1*phi1d(noff(12)+ind0)
-     &                 +u1*v1*phi1d(noff(13)+ind0)
-     &                 -u0*v0*phi1d(noff(20)+ind0)
-     &                 -u1*v0*phi1d(noff(21)+ind0)
-     &                 -u0*v1*phi1d(noff(24)+ind0)
-     &                 -u1*v1*phi1d(noff(25)+ind0))
-
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        endif
-
-      else if (efetch == 5) then
-c       --- This is the same as efetch==1, but has checks to skip particles that
-c       --- are out of bounds.
-
-        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
-          do ip = 1, np
-
-            if (lcylindrical) then
-              x = sqrt(xp(ip)**2 + yp(ip)**2)
-              y = ymmin
-            else
-              x = xp(ip)
-              y = yp(ip)
-            endif
-
-            xi = (x      - xmmin)*dxi
-            yj = (y      - ymmin)*dyi
-            zk = (zp(ip) - zgrid - zmmin)*dzi
-            if (xi < 0. .or. xi > nx .or.
-     &          yj < 0. .or. yj > ny .or.
-     &          zk < 0. .or. zk > nz) cycle
-            i = int(xi)
-            j = int(yj)
-            k = int(zk)
-            ind0 = i + j*nnx + k*nnxy
-
-            u1 = xi - i
-            v1 = yj - j
-            w1 = zk - k
-
-            u0 = 1. - u1
-            v0 = 1. - v1
-            w0 = 1. - w1
-
-            ext=tdxi*(u0*v0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
-     &              + u1*v0*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
-     &              + u0*v1*w0*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
-     &              + u1*v1*w0*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0))
-     &              + u0*v0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
-     &              + u1*v0*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0))
-     &              + u0*v1*w1*(phi1d(noff(23)+ind0) - phi1d(noff(25)+ind0))
-     &              + u1*v1*w1*(phi1d(noff(24)+ind0) - phi1d(noff(26)+ind0)))
-
-            eyt=tdyi*(u0*v0*w0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
-     &              + u1*v0*w0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
-     &              + u0*v1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
-     &              + u1*v1*w0*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0))
-     &              + u0*v0*w1*(phi1d(noff(17)+ind0) - phi1d(noff(24)+ind0))
-     &              + u1*v0*w1*(phi1d(noff(18)+ind0) - phi1d(noff(25)+ind0))
-     &              + u0*v1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(27)+ind0))
-     &              + u1*v1*w1*(phi1d(noff(21)+ind0) - phi1d(noff(28)+ind0)))
-
-            ezt=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &              + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &              + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
-     &              + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
-     &              + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &              + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
-     &              + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
-     &              + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
-
-            if (lcylindrical) then
-              if (x > 0.) then
-                eyt = ext*yp(ip)/x
-                ext = ext*xp(ip)/x
-              else
-                ext = ext
-                eyt = 0.
-              endif
-            endif
-
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        else
-
-c         --- Set offsets for indices on axis of symmetry.  The offsets change
-c         --- the sign of the grid cells which are on the negative side
-c         --- of the axis of symmetry.
-          soy = 2*nnx
-          sox = 0
-          if (l4symtry) sox = 2
-
-c         --- Set the signs of the E field for particles on negative side of
-c         --- the axis of symmetry.
-          sy = -1.
-          sx = 1.
-          if (l4symtry) sx = -1.
-
-c         --- special loop symmetry is used
-          do ip = 1, np
-
-            xi =  (abs(xp(ip)) - xmmin)*dxi
-            yj =  (abs(yp(ip)) - ymmin)*dyi
-            zk =  (zp(ip) - zgrid - zmmin)*dzi
-            if (xi < 0. .or. xi > nx .or.
-     &          yj < 0. .or. yj > ny .or.
-     &          zk < 0. .or. zk > nz) cycle
-            i = int(xi)
-            j = int(yj)
-            k = int(zk)
-            ind0 = i + j*nnx + k*nnxy
-
-            u1 = xi - i
-            v1 = yj - j
-            w1 = zk - k
-
-            u0 = 1. - u1
-            v0 = 1. - v1
-            w0 = 1. - w1
-
-c           --- Set offsets for points on symmetry axis of grid.  The offset
-c           --- for points off the axis is zero.
-            ox = 0
-            oy = 0
-            if (i == 0 .and. xmmin == 0.) ox = sox
-            if (j == 0 .and. ymmin == 0.) oy = soy
-
-c           --- Adjust sign of E field for appropriate quadrant.
-            xsign = tdxi
-            ysign = tdyi
-            if (xp(ip) < 0.) xsign = sx*tdxi
-            if (yp(ip) < 0.) ysign = sy*tdyi
-            ext=xsign*(u0*v0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
-     &               + u1*v0*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
-     &               + u0*v1*w0*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
-     &               + u1*v1*w0*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0))
-     &               + u0*v0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
-     &               + u1*v0*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0))
-     &               + u0*v1*w1*(phi1d(noff(23)+ind0+ox)-phi1d(noff(25)+ind0))
-     &               + u1*v1*w1*(phi1d(noff(24)+ind0   )-phi1d(noff(26)+ind0)))
-
-            eyt=ysign*(u0*v0*w0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
-     &               + u1*v0*w0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
-     &               + u0*v1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
-     &               + u1*v1*w0*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0))
-     &               + u0*v0*w1*(phi1d(noff(17)+ind0+oy)-phi1d(noff(24)+ind0))
-     &               + u1*v0*w1*(phi1d(noff(18)+ind0+oy)-phi1d(noff(25)+ind0))
-     &               + u0*v1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(27)+ind0))
-     &               + u1*v1*w1*(phi1d(noff(21)+ind0   )-phi1d(noff(28)+ind0)))
-
-            ezt=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &              + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &              + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
-     &              + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
-     &              + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &              + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
-     &              + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
-     &              + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
-
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        endif
-
-      else if (efetch == 7) then
-
-c       --- Fetch with a 2nd order spline
-        call sete3dspline2(selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
-     &                     dx,dy,dz,nx,ny,nz,nxguarde,nyguarde,nzguarde,
-     &                     ex,ey,ez,l2symtry,l4symtry,lcylindrical)
       endif
 
-!$OMP MASTER
-      if (lw3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
-!$OMP END MASTER
       return
       end
-c=========================================================================== 
-      subroutine sete3dspline2(selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
-     &                         dx,dy,dz,nx,ny,nz,nxguarde,nyguarde,nzguarde,
-     &                         ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+c===========================================================================
+      subroutine sete_from_e_linear2d(selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
+     &                                dx,dz,nx,nz,nxguarde,nzguarde,
+     &                                ex,ey,ez,l2symtry,l4symtry,lcylindrical)
       use Subtimersw3d
+      integer(ISZ):: np,nx,nz
+      integer(ISZ):: nxguarde,nzguarde
+      real(kind=8):: zgrid,xmmin,zmmin,dx,dz
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nzguarde:nz+nzguarde)
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
+
+c Gets self electric field for particles
+c The field is obtained from linear interpolation from selfe.
+
+c The field is:
+c    Ex = u0*w0*ex(i  ,k  )
+c       + u1*w0*ex(i+1,k  )
+c       + ...
+
+      integer(ISZ):: ip,i,k,inext,knext
+      real(kind=8):: dxi,dzi,tdxi,tdzi,u0,u1,w0,w1,xsign
+      integer(ISZ):: ox,sox
+      real(kind=8):: sx,ext,eyt,ezt
+      real(kind=8):: xi,zk,xinext,zknext
+      real(kind=8):: x,xnext
+
+c  Evaluation of E, vectorized over particles
+      tdxi = 1. / (2.*dx)
+      tdzi = 1. / (2.*dz)
+      dxi = 1./dx
+      dzi = 1./dz
+      eyt = 0.
+
+c     --- This uses the precalculated selfe instead of doing
+c     --- the finite differences here..
+
+      if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
+        if (lcylindrical) then
+          xnext = sqrt(xp(1)**2 + yp(1)**2)
+        else
+          xnext = xp(1)
+        endif
+        xinext = (xnext - xmmin)*dxi
+        zknext = (zp(1) - zgrid - zmmin)*dzi
+        inext = xinext
+        knext = zknext
+
+        do ip = 1, np
+
+          x = xnext
+          xi = xinext
+          zk = zknext
+          i = inext
+          k = knext
+          if (ip < np) then
+            if (lcylindrical) then
+              xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+            else
+              xnext = xp(ip+1)
+            endif
+            xinext = (xnext - xmmin)*dxi
+            zknext = (zp(ip+1) - zgrid - zmmin)*dzi
+            inext = xinext
+            knext = zknext
+          endif
+
+          if (xi < 0. .or. xi > nx .or.
+     &        zk < 0. .or. zk > nz) cycle
+
+          u1 = xi - i
+          w1 = zk - k
+
+          u0 = 1. - u1
+          w0 = 1. - w1
+
+          ext = u0*w0*selfe(1,i  ,k  )
+     &        + u1*w0*selfe(1,i+1,k  )
+     &        + u0*w1*selfe(1,i  ,k+1)
+     &        + u1*w1*selfe(1,i+1,k+1)
+
+          ezt = u0*w0*selfe(3,i  ,k  )
+     &        + u1*w0*selfe(3,i+1,k  )
+     &        + u0*w1*selfe(3,i  ,k+1)
+     &        + u1*w1*selfe(3,i+1,k+1)
+
+          if (lcylindrical) then
+            if (x > 0.) then
+              eyt = ext*yp(ip)/x
+              ext = ext*xp(ip)/x
+            else
+              ext = ext
+              eyt = 0.
+            endif
+          endif
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      else
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        xinext = (abs(xp(1)) - xmmin)*dxi
+        zknext = (zp(1) - zgrid - zmmin)*dzi
+        inext = xinext
+        knext = zknext
+
+        do ip = 1, np
+
+          xi = xinext
+          zk = zknext
+          i = inext
+          k = knext
+
+          if (ip < np) then
+            xinext = (abs(xp(ip+1)) - xmmin)*dxi
+            zknext = (zp(ip+1) - zgrid - zmmin)*dzi
+            inext = xinext
+            knext = zknext
+          endif
+
+          if (xi < 0. .or. xi > nx .or.
+     &        zk < 0. .or. zk > nz) cycle
+
+          u1 = xi - i
+          w1 = zk - k
+
+          u0 = 1. - u1
+          w0 = 1. - w1
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = +1.
+          if (xp(ip) < 0.) xsign = sx
+
+          ext = u0*w0*selfe(1,i  ,k  )
+     &        + u1*w0*selfe(1,i+1,k  )
+     &        + u0*w1*selfe(1,i  ,k+1)
+     &        + u1*w1*selfe(1,i+1,k+1)
+
+          ezt = u0*w0*selfe(3,i  ,k  )
+     &        + u1*w0*selfe(3,i+1,k  )
+     &        + u0*w1*selfe(3,i  ,k+1)
+     &        + u1*w1*selfe(3,i+1,k+1)
+
+          ex(ip) = ex(ip) + ext*xsign
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
+      subroutine sete_from_e_linear3d(selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
+     &                                dx,dy,dz,nx,ny,nz,
+     &                                nxguarde,nyguarde,nzguarde,
+     &                                ex,ey,ez,l2symtry,l4symtry)
       integer(ISZ):: np,nx,ny,nz
       integer(ISZ):: nxguarde,nyguarde,nzguarde
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
@@ -4499,18 +4386,572 @@ c===========================================================================
      &                       -nzguarde:nz+nzguarde)
       real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
-      logical(ISZ):: l2symtry,l4symtry,lcylindrical
+      logical(ISZ):: l2symtry,l4symtry
 
-c Fetch the E fields using 2nd order splines
+c Gets self electric field for particles
+c The field is obtained from linear interpolation from selfe.
+
+c The field is:
+c    Ex = u0*v0*w0*ex(i  ,j  ,k  )
+c       + u1*v0*w0*ex(i+1,j  ,k  )
+c       + u0*v1*w0*ex(i  ,j+1,k  )
+c       + ...
 
       integer(ISZ):: ip,i,j,k,inext,jnext,knext
-      real(kind=8):: dxi,dyi,dzi
-      real(kind=8):: wx,wy,wz,u0,u1,u2,v0,v1,v2,w0,w1,w2,ysign,xsign
+      real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
+      integer(ISZ):: ox,oy,sox,soy
       real(kind=8):: sx,sy,ext,eyt,ezt
-      real(kind=8):: x,y,xnext,ynext
+      real(kind=8):: xi,yj,zk,xinext,yjnext,zknext
 
+c  Evaluation of E, vectorized over particles
+      tdxi = 1. / (2.*dx)
+      tdyi = 1. / (2.*dy)
+      tdzi = 1. / (2.*dz)
       dxi = 1./dx
       dyi = 1./dy
+      dzi = 1./dz
+
+c     --- This uses the precalculated selfe instead of doing
+c     --- the finite differences here..
+
+      if (.not. (l2symtry .or. l4symtry)) then
+        xinext = (xp(1) - xmmin)*dxi
+        yjnext = (yp(1) - ymmin)*dyi
+        zknext = (zp(1) - zgrid - zmmin)*dzi
+        inext = xinext
+        jnext = yjnext
+        knext = zknext
+
+        do ip = 1, np
+
+          xi = xinext
+          yj = yjnext
+          zk = zknext
+          i = inext
+          j = jnext
+          k = knext
+          if (ip < np) then
+            xinext = (xp(ip+1) - xmmin)*dxi
+            yjnext = (yp(ip+1) - ymmin)*dyi
+            zknext = (zp(ip+1) - zgrid - zmmin)*dzi
+            inext = xinext
+            jnext = yjnext
+            knext = zknext
+          endif
+
+          if (xi < 0. .or. xi > nx .or.
+     &        yj < 0. .or. yj > ny .or.
+     &        zk < 0. .or. zk > nz) cycle
+
+          u1 = xi - i
+          v1 = yj - j
+          w1 = zk - k
+
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+
+          ext = u0*v0*w0*selfe(1,i  ,j  ,k  )
+     &        + u1*v0*w0*selfe(1,i+1,j  ,k  )
+     &        + u0*v1*w0*selfe(1,i  ,j+1,k  )
+     &        + u1*v1*w0*selfe(1,i+1,j+1,k  )
+     &        + u0*v0*w1*selfe(1,i  ,j  ,k+1)
+     &        + u1*v0*w1*selfe(1,i+1,j  ,k+1)
+     &        + u0*v1*w1*selfe(1,i  ,j+1,k+1)
+     &        + u1*v1*w1*selfe(1,i+1,j+1,k+1)
+
+          eyt = u0*v0*w0*selfe(2,i  ,j  ,k  )
+     &        + u1*v0*w0*selfe(2,i+1,j  ,k  )
+     &        + u0*v1*w0*selfe(2,i  ,j+1,k  )
+     &        + u1*v1*w0*selfe(2,i+1,j+1,k  )
+     &        + u0*v0*w1*selfe(2,i  ,j  ,k+1)
+     &        + u1*v0*w1*selfe(2,i+1,j  ,k+1)
+     &        + u0*v1*w1*selfe(2,i  ,j+1,k+1)
+     &        + u1*v1*w1*selfe(2,i+1,j+1,k+1)
+
+          ezt = u0*v0*w0*selfe(3,i  ,j  ,k  )
+     &        + u1*v0*w0*selfe(3,i+1,j  ,k  )
+     &        + u0*v1*w0*selfe(3,i  ,j+1,k  )
+     &        + u1*v1*w0*selfe(3,i+1,j+1,k  )
+     &        + u0*v0*w1*selfe(3,i  ,j  ,k+1)
+     &        + u1*v0*w1*selfe(3,i+1,j  ,k+1)
+     &        + u0*v1*w1*selfe(3,i  ,j+1,k+1)
+     &        + u1*v1*w1*selfe(3,i+1,j+1,k+1)
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      else
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sy = -1.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        xinext = (abs(xp(1)) - xmmin)*dxi
+        yjnext = (abs(yp(1)) - ymmin)*dyi
+        zknext = (zp(1) - zgrid - zmmin)*dzi
+        inext = xinext
+        jnext = yjnext
+        knext = zknext
+
+        do ip = 1, np
+
+          xi = xinext
+          yj = yjnext
+          zk = zknext
+          i = inext
+          j = jnext
+          k = knext
+
+          if (ip < np) then
+            xinext = (abs(xp(ip+1)) - xmmin)*dxi
+            yjnext = (abs(yp(ip+1)) - ymmin)*dyi
+            zknext = (zp(ip+1) - zgrid - zmmin)*dzi
+            inext = xinext
+            jnext = yjnext
+            knext = zknext
+          endif
+
+          if (xi < 0. .or. xi > nx .or.
+     &        yj < 0. .or. yj > ny .or.
+     &        zk < 0. .or. zk > nz) cycle
+
+          u1 = xi - i
+          v1 = yj - j
+          w1 = zk - k
+
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = +1.
+          ysign = +1.
+          if (xp(ip) < 0.) xsign = sx
+          if (yp(ip) < 0.) ysign = sy
+
+          ext = xsign*(u0*v0*w0*selfe(1,i  ,j  ,k  )
+     &               + u1*v0*w0*selfe(1,i+1,j  ,k  )
+     &               + u0*v1*w0*selfe(1,i  ,j+1,k  )
+     &               + u1*v1*w0*selfe(1,i+1,j+1,k  )
+     &               + u0*v0*w1*selfe(1,i  ,j  ,k+1)
+     &               + u1*v0*w1*selfe(1,i+1,j  ,k+1)
+     &               + u0*v1*w1*selfe(1,i  ,j+1,k+1)
+     &               + u1*v1*w1*selfe(1,i+1,j+1,k+1))
+
+          eyt = ysign*(u0*v0*w0*selfe(2,i  ,j  ,k  )
+     &               + u1*v0*w0*selfe(2,i+1,j  ,k  )
+     &               + u0*v1*w0*selfe(2,i  ,j+1,k  )
+     &               + u1*v1*w0*selfe(2,i+1,j+1,k  )
+     &               + u0*v0*w1*selfe(2,i  ,j  ,k+1)
+     &               + u1*v0*w1*selfe(2,i+1,j  ,k+1)
+     &               + u0*v1*w1*selfe(2,i  ,j+1,k+1)
+     &               + u1*v1*w1*selfe(2,i+1,j+1,k+1))
+
+          ezt =        u0*v0*w0*selfe(3,i  ,j  ,k  )
+     &               + u1*v0*w0*selfe(3,i+1,j  ,k  )
+     &               + u0*v1*w0*selfe(3,i  ,j+1,k  )
+     &               + u1*v1*w0*selfe(3,i+1,j+1,k  )
+     &               + u0*v0*w1*selfe(3,i  ,j  ,k+1)
+     &               + u1*v0*w1*selfe(3,i+1,j  ,k+1)
+     &               + u0*v1*w1*selfe(3,i  ,j+1,k+1)
+     &               + u1*v1*w1*selfe(3,i+1,j+1,k+1)
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
+      subroutine sete_from_phi_linearenergyconserving2d(phi1d,np,xp,yp,zp,
+     &                                  zgrid,xmmin,zmmin,
+     &                                  dx,dz,nx,nz,nxguardphi,nzguardphi,
+     &                                  ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+      use Subtimersw3d
+      integer(ISZ):: np,nx,nz
+      integer(ISZ):: nxguardphi,nzguardphi
+      real(kind=8):: zgrid,xmmin,zmmin,dx,dz
+      real(kind=8):: phi1d(0:*)
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
+
+c Gets self electric field for particles
+c The field is obtained from directly finite differencing phi for each
+c particle. NGP weighting is used along the field diretion, otherwise
+c linear weighting is used. This gives energy conservation.
+
+c Note that the phi1d passed in is assumed to start at phi(-1,-1,-1).
+
+      integer(ISZ):: nnx,ip,i,k,ind0,inext,knext
+      real(kind=8):: dxi,dzi,tdxi,tdzi,u0,u1,w0,w1,xsign
+      integer(ISZ):: ox,sox
+      real(kind=8):: sx,ext,eyt,ezt
+      real(kind=8):: xi,zk,xinext,zknext
+      real(kind=8):: x,xnext
+      integer(ISZ):: noff(32)
+
+      nnx  = nx + 1 + 2*nxguardphi
+
+c  nnx is added to all offsets to account for
+c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
+c  of phi(0,0,0) is equivalent to phi1d(nnx).
+
+      noff = 0
+      noff(1)  = - nnx
+      noff(2)  = - nnx   + 1
+      noff(7)  =                  - 1
+      noff(8)  =                  + 0
+      noff(9)  =                  + 1
+      noff(10) =                  + 2
+      noff(19) = + nnx            - 1
+      noff(20) = + nnx
+      noff(21) = + nnx            + 1
+      noff(22) = + nnx            + 2
+      noff(29) = + 2*nnx
+      noff(30) = + 2*nnx          + 1
+
+      noff = noff + nxguardphi + nnx*nzguardphi
+
+c  Evaluation of E, vectorized over particles
+      tdxi = 1. / (2.*dx)
+      tdzi = 1. / (2.*dz)
+      dxi = 1./dx
+      dzi = 1./dz
+      eyt = 0.
+
+      if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
+        if (lcylindrical) then
+          xnext = sqrt(xp(1)**2 + yp(1)**2)
+        else
+          xnext = xp(1)
+        endif
+        inext = (xnext - xmmin)*dxi
+        knext = (zp(1) - zgrid - zmmin)*dzi
+        do ip = 1, np
+
+          i = inext
+          k = knext
+          x = xnext
+          if (ip < np) then
+            if (lcylindrical) then
+              xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+            else
+              xnext = xp(ip+1)
+            endif
+            inext = (xnext    - xmmin)*dxi
+            knext = (zp(ip+1) - zgrid - zmmin)*dzi
+          endif
+
+          ind0 = i + k*nnx
+
+          u1 = (x      - xmmin)*dxi - i
+          w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u0 = 1. - u1
+          w0 = 1. - w1
+
+          ext=dxi*(+w0*phi1d(noff( 8)+ind0)
+     &             -w0*phi1d(noff( 9)+ind0)
+     &             +w1*phi1d(noff(20)+ind0)
+     &             -w1*phi1d(noff(21)+ind0))
+
+          ezt=dzi*(+u0*phi1d(noff( 8)+ind0)
+     &             +u1*phi1d(noff( 9)+ind0)
+     &             -u0*phi1d(noff(20)+ind0)
+     &             -u1*phi1d(noff(21)+ind0))
+
+          if (lcylindrical) then
+            if (x > 0.) then
+              eyt = ext*yp(ip)/x
+              ext = ext*xp(ip)/x
+            else
+              ext = ext
+              eyt = 0.
+            endif
+          endif
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      else
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        inext = (abs(xp(1)) - xmmin)*dxi
+        knext = (zp(1) - zgrid - zmmin)*dzi
+        do ip = 1, np
+
+          i = inext
+          k = knext
+          if (ip < np) then
+            inext = (abs(xp(ip+1)) - xmmin)*dxi
+            knext = (zp(ip+1) - zgrid - zmmin)*dzi
+          endif
+
+          ind0 = i + k*nnx
+
+          u1 = (abs(xp(ip)) - xmmin)*dxi - i
+          w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u0 = 1. - u1
+          w0 = 1. - w1
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = dxi
+          if (xp(ip) < 0.) xsign = sx*dxi
+
+          ext=xsign*(+w0*phi1d(noff( 8)+ind0)
+     &               -w0*phi1d(noff( 9)+ind0)
+     &               +w1*phi1d(noff(20)+ind0)
+     &               -w1*phi1d(noff(21)+ind0))
+
+          ezt = dzi*(+u0*phi1d(noff( 8)+ind0)
+     &               +u1*phi1d(noff( 9)+ind0)
+     &               -u0*phi1d(noff(20)+ind0)
+     &               -u1*phi1d(noff(21)+ind0))
+
+          ex(ip) = ex(ip) + ext
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
+      subroutine sete_from_phi_linearenergyconserving3d(phi1d,np,xp,yp,zp,zgrid,
+     &                                        xmmin,ymmin,zmmin,
+     &                                        dx,dy,dz,nx,ny,nz,
+     &                                        nxguardphi,nyguardphi,nzguardphi,
+     &                                        ex,ey,ez,l2symtry,l4symtry)
+      use Subtimersw3d
+      integer(ISZ):: np,nx,ny,nz
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
+      real(kind=8):: phi1d(0:*)
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gets self electric field for particles
+c The field is obtained from directly finite differencing phi for each
+c particle. NGP weighting is used along the field diretion, otherwise
+c linear weighting is used. This gives energy conservation.
+
+      integer(ISZ):: nnx,nnxy,ip,i,j,k,ind0,inext,jnext,knext
+      real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
+      integer(ISZ):: ox,oy,sox,soy
+      real(kind=8):: sx,sy,ext,eyt,ezt
+      real(kind=8):: xi,yj,zk,xinext,yjnext,zknext
+      integer(ISZ):: noff(32)
+      save noff
+
+      nnx  = nx + 1 + 2*nxguardphi
+      nnxy = (nx + 1 + 2*nxguardphi)*(ny + 1 + 2*nyguardphi)
+
+c  nnxy is added to all offsets to account for
+c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
+c  of phi(0,0,0) is equivalent to phi1d(nnxy).
+
+      noff(8)  =                  + 0
+      noff(9)  =                  + 1
+      noff(12) =          + nnx
+      noff(13) =          + nnx   + 1
+      noff(20) = + nnxy
+      noff(21) = + nnxy           + 1
+      noff(24) = + nnxy   + nnx
+      noff(25) = + nnxy   + nnx   + 1
+
+      noff = noff + nxguardphi + nnx*nyguardphi + nnxy*nzguardphi
+
+c  Evaluation of E, vectorized over particles
+      tdxi = 1. / (2.*dx)
+      tdyi = 1. / (2.*dy)
+      tdzi = 1. / (2.*dz)
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+
+      if (.not. (l2symtry .or. l4symtry)) then
+        inext = (xp(1) - xmmin)*dxi
+        jnext = (yp(1) - ymmin)*dyi
+        knext = (zp(1) - zgrid - zmmin)*dzi
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          k = knext
+          if (ip < np) then
+            inext = (xp(ip+1)    - xmmin)*dxi
+            jnext = (yp(ip+1)    - ymmin)*dyi
+            knext = (zp(ip+1) - zgrid - zmmin)*dzi
+          endif
+
+          ind0 = i + j*nnx + k*nnxy
+
+          u1 = (xp(ip) - xmmin)*dxi - i
+          v1 = (yp(ip) - ymmin)*dyi - j
+          w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+
+          ext=dxi*(+v0*w0*phi1d(noff( 8)+ind0)
+     &             -v0*w0*phi1d(noff( 9)+ind0)
+     &             +v1*w0*phi1d(noff(12)+ind0)
+     &             -v1*w0*phi1d(noff(13)+ind0)
+     &             +v0*w1*phi1d(noff(20)+ind0)
+     &             -v0*w1*phi1d(noff(21)+ind0)
+     &             +v1*w1*phi1d(noff(24)+ind0)
+     &             -v1*w1*phi1d(noff(25)+ind0))
+
+          eyt=dyi*(+u0*w0*phi1d(noff( 8)+ind0)
+     &             +u1*w0*phi1d(noff( 9)+ind0)
+     &             -u0*w0*phi1d(noff(12)+ind0)
+     &             -u1*w0*phi1d(noff(13)+ind0)
+     &             +u0*w1*phi1d(noff(20)+ind0)
+     &             +u1*w1*phi1d(noff(21)+ind0)
+     &             -u0*w1*phi1d(noff(24)+ind0)
+     &             -u1*w1*phi1d(noff(25)+ind0))
+
+          ezt=dzi*(+u0*v0*phi1d(noff( 8)+ind0)
+     &             +u1*v0*phi1d(noff( 9)+ind0)
+     &             +u0*v1*phi1d(noff(12)+ind0)
+     &             +u1*v1*phi1d(noff(13)+ind0)
+     &             -u0*v0*phi1d(noff(20)+ind0)
+     &             -u1*v0*phi1d(noff(21)+ind0)
+     &             -u0*v1*phi1d(noff(24)+ind0)
+     &             -u1*v1*phi1d(noff(25)+ind0))
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      else
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sy = -1.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        inext = (abs(xp(1)) - xmmin)*dxi
+        jnext = (abs(yp(1)) - ymmin)*dyi
+        knext = (zp(1) - zgrid - zmmin)*dzi
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          k = knext
+          if (ip < np) then
+            inext = (abs(xp(ip+1)) - xmmin)*dxi
+            jnext = (abs(yp(ip+1)) - ymmin)*dyi
+            knext = (zp(ip+1) - zgrid - zmmin)*dzi
+          endif
+
+          ind0 = i + j*nnx + k*nnxy
+
+          u1 = (abs(xp(ip)) - xmmin)*dxi - i
+          v1 = (abs(yp(ip)) - ymmin)*dyi - j
+          w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = dxi
+          ysign = dyi
+          if (xp(ip) < 0.) xsign = sx*dxi
+          if (yp(ip) < 0.) ysign = sy*dyi
+
+          ext=xsign*(+v0*w0*phi1d(noff( 8)+ind0)
+     &               -v0*w0*phi1d(noff( 9)+ind0)
+     &               +v1*w0*phi1d(noff(12)+ind0)
+     &               -v1*w0*phi1d(noff(13)+ind0)
+     &               +v0*w1*phi1d(noff(20)+ind0)
+     &               -v0*w1*phi1d(noff(21)+ind0)
+     &               +v1*w1*phi1d(noff(24)+ind0)
+     &               -v1*w1*phi1d(noff(25)+ind0))
+
+          eyt=ysign*(+u0*w0*phi1d(noff( 8)+ind0)
+     &               +u1*w0*phi1d(noff( 9)+ind0)
+     &               -u0*w0*phi1d(noff(12)+ind0)
+     &               -u1*w0*phi1d(noff(13)+ind0)
+     &               +u0*w1*phi1d(noff(20)+ind0)
+     &               +u1*w1*phi1d(noff(21)+ind0)
+     &               -u0*w1*phi1d(noff(24)+ind0)
+     &               -u1*w1*phi1d(noff(25)+ind0))
+
+          ezt = dzi*(+u0*v0*phi1d(noff( 8)+ind0)
+     &               +u1*v0*phi1d(noff( 9)+ind0)
+     &               +u0*v1*phi1d(noff(12)+ind0)
+     &               +u1*v1*phi1d(noff(13)+ind0)
+     &               -u0*v0*phi1d(noff(20)+ind0)
+     &               -u1*v0*phi1d(noff(21)+ind0)
+     &               -u0*v1*phi1d(noff(24)+ind0)
+     &               -u1*v1*phi1d(noff(25)+ind0))
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
+      subroutine sete_from_e_order2_2d(selfe,np,xp,yp,zp,zgrid,
+     &                                 xmmin,zmmin,
+     &                                 dx,dz,nx,nz,
+     &                                 nxguarde,nzguarde,
+     &                                 ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+      use Subtimersw3d
+      integer(ISZ):: np,nx,nz
+      integer(ISZ):: nxguarde,nzguarde
+      real(kind=8):: zgrid,xmmin,zmmin,dx,dz
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nzguarde:nz+nzguarde)
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
+
+c Gets self electric field for particles
+c Fetch the E fields using 2nd order splines
+
+      integer(ISZ):: ip,i,k,inext,knext
+      real(kind=8):: dxi,dzi
+      real(kind=8):: wx,wz,u0,u1,u2,w0,w1,w2,xsign
+      real(kind=8):: sx,ext,eyt,ezt
+      real(kind=8):: x,xnext
+
+      dxi = 1./dx
       dzi = 1./dz
 
       if (lcylindrical) then
@@ -4540,41 +4981,41 @@ c Fetch the E fields using 2nd order splines
           w1 = (0.75 - wz**2)
           w2 = 0.5*(0.5 + wz)**2
 
-          ext = u0*w0*selfe(1,i-1,0,k-1)
-     &        + u1*w0*selfe(1,i  ,0,k-1)
-     &        + u2*w0*selfe(1,i+1,0,k-1)
+          ext = u0*w0*selfe(1,i-1,k-1)
+     &        + u1*w0*selfe(1,i  ,k-1)
+     &        + u2*w0*selfe(1,i+1,k-1)
 
-     &        + u0*w1*selfe(1,i-1,0,k  )
-     &        + u1*w1*selfe(1,i  ,0,k  )
-     &        + u2*w1*selfe(1,i+1,0,k  )
+     &        + u0*w1*selfe(1,i-1,k  )
+     &        + u1*w1*selfe(1,i  ,k  )
+     &        + u2*w1*selfe(1,i+1,k  )
 
-     &        + u0*w2*selfe(1,i-1,0,k+1)
-     &        + u1*w2*selfe(1,i  ,0,k+1)
-     &        + u2*w2*selfe(1,i+1,0,k+1)
+     &        + u0*w2*selfe(1,i-1,k+1)
+     &        + u1*w2*selfe(1,i  ,k+1)
+     &        + u2*w2*selfe(1,i+1,k+1)
 
-          eyt = u0*w0*selfe(2,i-1,0,k-1)
-     &        + u1*w0*selfe(2,i  ,0,k-1)
-     &        + u2*w0*selfe(2,i+1,0,k-1)
+          eyt = u0*w0*selfe(2,i-1,k-1)
+     &        + u1*w0*selfe(2,i  ,k-1)
+     &        + u2*w0*selfe(2,i+1,k-1)
 
-     &        + u0*w1*selfe(2,i-1,0,k  )
-     &        + u1*w1*selfe(2,i  ,0,k  )
-     &        + u2*w1*selfe(2,i+1,0,k  )
+     &        + u0*w1*selfe(2,i-1,k  )
+     &        + u1*w1*selfe(2,i  ,k  )
+     &        + u2*w1*selfe(2,i+1,k  )
 
-     &        + u0*w2*selfe(2,i-1,0,k+1)
-     &        + u1*w2*selfe(2,i  ,0,k+1)
-     &        + u2*w2*selfe(2,i+1,0,k+1)
+     &        + u0*w2*selfe(2,i-1,k+1)
+     &        + u1*w2*selfe(2,i  ,k+1)
+     &        + u2*w2*selfe(2,i+1,k+1)
 
-          ezt = u0*w0*selfe(3,i-1,0,k-1)
-     &        + u1*w0*selfe(3,i  ,0,k-1)
-     &        + u2*w0*selfe(3,i+1,0,k-1)
+          ezt = u0*w0*selfe(3,i-1,k-1)
+     &        + u1*w0*selfe(3,i  ,k-1)
+     &        + u2*w0*selfe(3,i+1,k-1)
 
-     &        + u0*w1*selfe(3,i-1,0,k  )
-     &        + u1*w1*selfe(3,i  ,0,k  )
-     &        + u2*w1*selfe(3,i+1,0,k  )
+     &        + u0*w1*selfe(3,i-1,k  )
+     &        + u1*w1*selfe(3,i  ,k  )
+     &        + u2*w1*selfe(3,i+1,k  )
 
-     &        + u0*w2*selfe(3,i-1,0,k+1)
-     &        + u1*w2*selfe(3,i  ,0,k+1)
-     &        + u2*w2*selfe(3,i+1,0,k+1)
+     &        + u0*w2*selfe(3,i-1,k+1)
+     &        + u1*w2*selfe(3,i  ,k+1)
+     &        + u2*w2*selfe(3,i+1,k+1)
 
           if (x > 0.) then
             eyt = ext*yp(ip)/x
@@ -4592,15 +5033,180 @@ c Fetch the E fields using 2nd order splines
 
       else if (.not. (l2symtry .or. l4symtry)) then
 
-        if (lcylindrical) then
-          xnext = sqrt(xp(1)**2 + yp(1)**2)
-          ynext = ymmin
-        else
-          xnext = xp(1)
-          ynext = yp(1)
-        endif
-        inext = nint((xnext - xmmin)*dxi)
-        jnext = nint((ynext - ymmin)*dyi)
+        inext = nint((xp(1) - xmmin)*dxi)
+        knext = nint((zp(1) - zgrid - zmmin)*dzi)
+
+        do ip = 1, np
+
+          i = inext
+          k = knext
+          if (ip < np) then
+            inext = nint((xp(ip+1) - xmmin)*dxi)
+            knext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+          endif
+
+          wx = (xp(ip) - xmmin)*dxi - i
+          wz = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          w0 = 0.5*(0.5 - wz)**2
+          w1 = (0.75 - wz**2)
+          w2 = 0.5*(0.5 + wz)**2
+
+          ext = u0*w0*selfe(1,i-1,k-1)
+     &        + u1*w0*selfe(1,i  ,k-1)
+     &        + u2*w0*selfe(1,i+1,k-1)
+
+     &        + u0*w1*selfe(1,i-1,k  )
+     &        + u1*w1*selfe(1,i  ,k  )
+     &        + u2*w1*selfe(1,i+1,k  )
+
+     &        + u0*w2*selfe(1,i-1,k+1)
+     &        + u1*w2*selfe(1,i  ,k+1)
+     &        + u2*w2*selfe(1,i+1,k+1)
+
+          eyt = u0*w0*selfe(2,i-1,k-1)
+     &        + u1*w0*selfe(2,i  ,k-1)
+     &        + u2*w0*selfe(2,i+1,k-1)
+
+     &        + u0*w1*selfe(2,i-1,k  )
+     &        + u1*w1*selfe(2,i  ,k  )
+     &        + u2*w1*selfe(2,i+1,k  )
+
+     &        + u0*w2*selfe(2,i-1,k+1)
+     &        + u1*w2*selfe(2,i  ,k+1)
+     &        + u2*w2*selfe(2,i+1,k+1)
+
+          ezt = u0*w0*selfe(3,i-1,k-1)
+     &        + u1*w0*selfe(3,i  ,k-1)
+     &        + u2*w0*selfe(3,i+1,k-1)
+
+     &        + u0*w1*selfe(3,i-1,k  )
+     &        + u1*w1*selfe(3,i  ,k  )
+     &        + u2*w1*selfe(3,i+1,k  )
+
+     &        + u0*w2*selfe(3,i-1,k+1)
+     &        + u1*w2*selfe(3,i  ,k+1)
+     &        + u2*w2*selfe(3,i+1,k+1)
+
+          ex(ip) = ex(ip) + ext
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      else
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        inext = nint((abs(xp(1)) - xmmin)*dxi)
+        knext = nint((zp(1) - zgrid - zmmin)*dzi)
+        do ip = 1, np
+
+          i = inext
+          k = knext
+          if (ip < np) then
+            inext = nint((abs(xp(ip+1)) - xmmin)*dxi)
+            knext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+          endif
+
+          wx = (xp(ip) - xmmin)*dxi - i
+          wz = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          w0 = 0.5*(0.5 - wz)**2
+          w1 = (0.75 - wz**2)
+          w2 = 0.5*(0.5 + wz)**2
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = 1.
+          if (xp(ip) < 0.) xsign = sx
+
+          ext = u0*w0*selfe(1,i-1,k-1)
+     &        + u1*w0*selfe(1,i  ,k-1)
+     &        + u2*w0*selfe(1,i+1,k-1)
+
+     &        + u0*w1*selfe(1,i-1,k  )
+     &        + u1*w1*selfe(1,i  ,k  )
+     &        + u2*w1*selfe(1,i+1,k  )
+
+     &        + u0*w2*selfe(1,i-1,k+1)
+     &        + u1*w2*selfe(1,i  ,k+1)
+     &        + u2*w2*selfe(1,i+1,k+1)
+
+          eyt = u0*w0*selfe(2,i-1,k-1)
+     &        + u1*w0*selfe(2,i  ,k-1)
+     &        + u2*w0*selfe(2,i+1,k-1)
+
+     &        + u0*w1*selfe(2,i-1,k  )
+     &        + u1*w1*selfe(2,i  ,k  )
+     &        + u2*w1*selfe(2,i+1,k  )
+
+     &        + u0*w2*selfe(2,i-1,k+1)
+     &        + u1*w2*selfe(2,i  ,k+1)
+     &        + u2*w2*selfe(2,i+1,k+1)
+
+          ezt = u0*w0*selfe(3,i-1,k-1)
+     &        + u1*w0*selfe(3,i  ,k-1)
+     &        + u2*w0*selfe(3,i+1,k-1)
+
+     &        + u0*w1*selfe(3,i-1,k  )
+     &        + u1*w1*selfe(3,i  ,k  )
+     &        + u2*w1*selfe(3,i+1,k  )
+
+     &        + u0*w2*selfe(3,i-1,k+1)
+     &        + u1*w2*selfe(3,i  ,k+1)
+     &        + u2*w2*selfe(3,i+1,k+1)
+
+          ex(ip) = ex(ip) + ext*xsign
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
+      subroutine sete_from_e_order2_3d(selfe,np,xp,yp,zp,zgrid,
+     &                                 xmmin,ymmin,zmmin,
+     &                                 dx,dy,dz,nx,ny,nz,
+     &                                 nxguarde,nyguarde,nzguarde,
+     &                                 ex,ey,ez,l2symtry,l4symtry)
+      use Subtimersw3d
+      integer(ISZ):: np,nx,ny,nz
+      integer(ISZ):: nxguarde,nyguarde,nzguarde
+      real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nyguarde:ny+nyguarde,
+     &                       -nzguarde:nz+nzguarde)
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gets self electric field for particles
+c Fetch the E fields using 2nd order splines
+
+      integer(ISZ):: ip,i,j,k,inext,jnext,knext
+      real(kind=8):: dxi,dyi,dzi
+      real(kind=8):: wx,wy,wz,u0,u1,u2,v0,v1,v2,w0,w1,w2,ysign,xsign
+      real(kind=8):: sx,sy,ext,eyt,ezt
+
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+
+      if (.not. (l2symtry .or. l4symtry)) then
+
+        inext = nint((xp(1) - xmmin)*dxi)
+        jnext = nint((yp(1) - ymmin)*dyi)
         knext = nint((zp(1) - zgrid - zmmin)*dzi)
 
         do ip = 1, np
@@ -4608,23 +5214,14 @@ c Fetch the E fields using 2nd order splines
           i = inext
           j = jnext
           k = knext
-          x = xnext
-          y = ynext
           if (ip < np) then
-            if (lcylindrical) then
-              xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
-              ynext = ymmin
-            else
-              xnext = xp(ip+1)
-              ynext = yp(ip+1)
-            endif
-            inext = nint((xnext    - xmmin)*dxi)
-            jnext = nint((ynext    - ymmin)*dyi)
+            inext = nint((xp(ip+1) - xmmin)*dxi)
+            jnext = nint((yp(ip+1) - ymmin)*dyi)
             knext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
           endif
 
-          wx = (x      - xmmin)*dxi - i
-          wy = (y      - ymmin)*dyi - j
+          wx = (xp(ip) - xmmin)*dxi - i
+          wy = (yp(ip) - ymmin)*dyi - j
           wz = (zp(ip) - zgrid - zmmin)*dzi - k
 
           u0 = 0.5*(0.5 - wx)**2
@@ -4726,16 +5323,6 @@ c Fetch the E fields using 2nd order splines
      &        + u0*v2*w2*selfe(3,i-1,j+1,k+1)
      &        + u1*v2*w2*selfe(3,i  ,j+1,k+1)
      &        + u2*v2*w2*selfe(3,i+1,j+1,k+1)
-
-          if (lcylindrical) then
-            if (x > 0.) then
-              eyt = ext*yp(ip)/x
-              ext = ext*xp(ip)/x
-            else
-              ext = ext
-              eyt = 0.
-            endif
-          endif
 
           ex(ip) = ex(ip) + ext
           ey(ip) = ey(ip) + eyt
@@ -4886,564 +5473,513 @@ c         --- Adjust sign of E field for appropriate quadrant.
 
       return
       end
-c=========================================================================== 
-      subroutine seterz(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
-     &                  dx,dz,nx,nz,nxguardphi,nzguardphi,nxguarde,nzguarde,
-     &                  efetch,ex,ey,ez,l2symtry,l4symtry,lcylindrical)
+c===========================================================================
+      subroutine sete_from_e_order2_energyconserving2d(selfe,np,xp,yp,zp,zgrid,
+     &                                 xmmin,zmmin,
+     &                                 dx,dz,nx,nz,
+     &                                 nxguarde,nzguarde,
+     &                                 ex,ey,ez,l2symtry,l4symtry,lcylindrical)
       use Subtimersw3d
       integer(ISZ):: np,nx,nz
-      integer(ISZ):: nxguardphi,nzguardphi
       integer(ISZ):: nxguarde,nzguarde
       real(kind=8):: zgrid,xmmin,zmmin,dx,dz
-      real(kind=8):: phi1d(0:*)
       real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
      &                       -nzguarde:nz+nzguarde)
       real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
-      integer(ISZ):: efetch
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
 c Gets self electric field for particles
-c Note that the phi1d passed in is assumed to start at phi(-1,-1,-1).
-c This is a change is behavior from what is was earlier. This change
-c was made to avoid problems with bounds checking. phi needs to be accessed
-c at the plane iz=-1, so when phi was passed in starting at phi(0,0,0), with
-c bounds checking turned on, this would be caught (even though the code was
-c technically correct).
+c Fetch the E fields using 2nd order splines, with linear weigthing used
+c along the field direction. This gives energy conservation.
 
-c Algorithm notes: phi array is dimensioned (-1:nx+1,-1:ny+1,-1:nz+1) outside,
-c but is made one dimensional in this routine
-c so cell index into 1d phi array for vectorized deposition is:
-c    i + j*(nx+1) + k*(nx+1)*(ny+1)
-c The field is:
-c    Ex = u0*v0*w0*ex(i  ,j  ,k  )
-c       + u1*v0*w0*ex(i+1,j  ,k  )
-c       + u0*v1*w0*ex(i  ,j+1,k  )
-c       + ...
-
-      integer(ISZ):: nnx,ip,i,k,ind0,m,inext,knext
-      real(kind=8):: dxi,dzi,tdxi,tdzi,u0,u1,w0,w1,xsign
-      integer(ISZ):: ox,sox
+      integer(ISZ):: ip,i,k,inext,knext
+      real(kind=8):: dxi,dzi
+      real(kind=8):: wx,wz,u10,u11,w10,w11,u20,u21,u22,w20,w21,w22,xsign
       real(kind=8):: sx,ext,eyt,ezt
-      real(kind=8):: xi,zk,xinext,zknext
       real(kind=8):: x,xnext
-      integer(ISZ):: noff(32)
-      save noff
 
-c     --- For second version
-c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
-      integer(ISZ),allocatable:: indx(:,:)
-      real(kind=8),allocatable:: p(:,:), u1p(:), v1p(:), w1p(:)
-      integer(ISZ):: allocerror
-
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-      nnx  = nx + 1 + 2*nxguardphi
-
-c  Evaluation of offsets occurs on the first call only provided
-c  local arrays are SAVE'd. nnx is added to all offsets to account for
-c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
-c  of phi(0,0,0) is equivalent to phi1d(nnx).
-
-c     if (noff(1) /= -nnx) then
-         noff = 0
-         noff(1)  = - nnx
-         noff(2)  = - nnx   + 1
-         noff(7)  =                  - 1
-         noff(8)  =                  + 0
-         noff(9)  =                  + 1
-         noff(10) =                  + 2
-         noff(19) = + nnx            - 1
-         noff(20) = + nnx
-         noff(21) = + nnx            + 1
-         noff(22) = + nnx            + 2
-         noff(29) = + 2*nnx
-         noff(30) = + 2*nnx          + 1
-
-         noff = noff + nxguardphi + nnx*nzguardphi
-
-c     endif
-
-c  Evaluation of E, vectorized over particles
-      tdxi = 1. / (2.*dx)
-      tdzi = 1. / (2.*dz)
       dxi = 1./dx
       dzi = 1./dz
-      eyt = 0.
 
-      if (efetch == 1 .or. efetch == 6) then
+      if (lcylindrical) then
 
-        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
-          if (lcylindrical) then
-            xnext = sqrt(xp(1)**2 + yp(1)**2)
-          else
-            xnext = xp(1)
+        xnext = sqrt(xp(1)**2 + yp(1)**2)
+        inext = nint((xnext - xmmin)*dxi)
+        knext = nint((zp(1) - zgrid - zmmin)*dzi)
+
+        do ip = 1, np
+
+          i = inext
+          k = knext
+          x = xnext
+          if (ip < np) then
+            xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+            inext = nint((xnext    - xmmin)*dxi)
+            knext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
           endif
-          inext = (xnext - xmmin)*dxi
-          knext = (zp(1) - zgrid - zmmin)*dzi
 
-          do ip = 1, np
+          wx = (x      - xmmin)*dxi - i
+          wz = (zp(ip) - zgrid - zmmin)*dzi - k
 
-            i = inext
-            k = knext
-            x = xnext
-            if (ip < np) then
-              if (lcylindrical) then
-                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
-              else
-                xnext = xp(ip+1)
-              endif
-              inext = (xnext    - xmmin)*dxi
-              knext = (zp(ip+1) - zgrid - zmmin)*dzi
-            endif
+          u10 = 1. - wx
+          u11 = wx
+          w10 = 1. - wz
+          w11 = wz
 
-            ind0 = i + k*nnx
+          u20 = 0.5*(0.5 - wx)**2
+          u21 = (0.75 - wx**2)
+          u22 = 0.5*(0.5 + wx)**2
+          w20 = 0.5*(0.5 - wz)**2
+          w21 = (0.75 - wz**2)
+          w22 = 0.5*(0.5 + wz)**2
 
-            u1 = (x      - xmmin)*dxi - i
-            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+          ext = u10*w20*selfe(1,i  ,k-1)
+     &        + u11*w20*selfe(1,i+1,k-1)
 
-            u0 = 1. - u1
-            w0 = 1. - w1
+     &        + u10*w21*selfe(1,i  ,k  )
+     &        + u11*w21*selfe(1,i+1,k  )
 
-            ext=tdxi*(u0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
-     &              + u1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
-     &              + u0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
-     &              + u1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0)))
+     &        + u10*w22*selfe(1,i  ,k+1)
+     &        + u11*w22*selfe(1,i+1,k+1)
 
-            ezt=tdzi*(u0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &              + u1*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &              + u0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &              + u1*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0)))
+          eyt = u20*w20*selfe(2,i-1,k-1)
+     &        + u21*w20*selfe(2,i  ,k-1)
+     &        + u22*w20*selfe(2,i+1,k-1)
 
-            if (lcylindrical) then
-              if (x > 0.) then
-                eyt = ext*yp(ip)/x
-                ext = ext*xp(ip)/x
-              else
-                ext = ext
-                eyt = 0.
-              endif
-            endif
+     &        + u20*w21*selfe(2,i-1,k  )
+     &        + u21*w21*selfe(2,i  ,k  )
+     &        + u22*w21*selfe(2,i+1,k  )
 
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
+     &        + u20*w22*selfe(2,i-1,k+1)
+     &        + u21*w22*selfe(2,i  ,k+1)
+     &        + u22*w22*selfe(2,i+1,k+1)
 
-          enddo
+          ezt = u20*w10*selfe(3,i-1,k  )
+     &        + u21*w10*selfe(3,i  ,k  )
+     &        + u22*w10*selfe(3,i+1,k  )
 
-        else
+     &        + u20*w11*selfe(3,i-1,k+1)
+     &        + u21*w11*selfe(3,i  ,k+1)
+     &        + u22*w11*selfe(3,i+1,k+1)
 
-c         --- Set offsets for indices on axis of symmetry.  The offsets change
-c         --- the sign of the grid cells which are on the negative side
-c         --- of the axis of symmetry.
-          sox = 0
-          if (l4symtry) sox = 2
-
-c         --- Set the signs of the E field for particles on negative side of
-c         --- the axis of symmetry.
-          sx = 1.
-          if (l4symtry) sx = -1.
-
-c         --- special loop symmetry is used
-          inext = (abs(xp(1)) - xmmin)*dxi
-          knext = (zp(1) - zgrid - zmmin)*dzi
-          do ip = 1, np
-
-            i = inext
-            k = knext
-            if (ip < np) then
-              inext = (abs(xp(ip+1)) - xmmin)*dxi
-              knext = (zp(ip+1) - zgrid - zmmin)*dzi
-            endif
-
-            ind0 = i + k*nnx
-
-            u1 = (abs(xp(ip)) - xmmin)*dxi - i
-            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
-
-            u0 = 1. - u1
-            w0 = 1. - w1
-
-c           --- Set offsets for points on symmetry axis of grid.  The offset
-c           --- for points off the axis is zero.
-            ox = 0
-            if (i == 0 .and. xmmin == 0.) ox = sox
-
-c           --- Adjust sign of E field for appropriate quadrant.
-            xsign = tdxi
-            if (xp(ip) < 0.) xsign = sx*tdxi
-            ext=xsign*(u0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
-     &               + u1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
-     &               + u0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
-     &               + u1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0)))
-
-            ezt=tdzi*(u0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &              + u1*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &              + u0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &              + u1*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0)))
-
-            ex(ip) = ex(ip) + ext
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        endif
-
-      elseif (efetch == 2) then
-
-        call kaboom("sete3d: ERROR: efetch=2 is no longer supported")
-
-      elseif (efetch == 3) then
-c       --- This uses the precalculated selfe instead of doing
-c       --- the finite differences here..
-
-        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
-          if (lcylindrical) then
-            xnext = sqrt(xp(1)**2 + yp(1)**2)
+          if (x > 0.) then
+            eyt = ext*yp(ip)/x
+            ext = ext*xp(ip)/x
           else
-            xnext = xp(1)
+            ext = ext
+            eyt = 0.
           endif
-          xinext = (xnext - xmmin)*dxi
-          zknext = (zp(1) - zgrid - zmmin)*dzi
-          inext = xinext
-          knext = zknext
 
-          do ip = 1, np
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
 
-            x = xnext
-            xi = xinext
-            zk = zknext
-            i = inext
-            k = knext
-            if (ip < np) then
-              if (lcylindrical) then
-                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
-              else
-                xnext = xp(ip+1)
-              endif
-              xinext = (xnext - xmmin)*dxi
-              zknext = (zp(ip+1) - zgrid - zmmin)*dzi
-              inext = xinext
-              knext = zknext
-            endif
+        enddo
 
-            if (xi < 0. .or. xi > nx .or.
-     &          zk < 0. .or. zk > nz) cycle
+      else if (.not. (l2symtry .or. l4symtry)) then
 
-            u1 = xi - i
-            w1 = zk - k
+        inext = nint((xp(1) - xmmin)*dxi)
+        knext = nint((zp(1) - zgrid - zmmin)*dzi)
 
-            u0 = 1. - u1
-            w0 = 1. - w1
+        do ip = 1, np
 
-            ext = u0*w0*selfe(1,i  ,k  )
-     &          + u1*w0*selfe(1,i+1,k  )
-     &          + u0*w1*selfe(1,i  ,k+1)
-     &          + u1*w1*selfe(1,i+1,k+1)
-
-            ezt = u0*w0*selfe(3,i  ,k  )
-     &          + u1*w0*selfe(3,i+1,k  )
-     &          + u0*w1*selfe(3,i  ,k+1)
-     &          + u1*w1*selfe(3,i+1,k+1)
-
-            if (lcylindrical) then
-              if (x > 0.) then
-                eyt = ext*yp(ip)/x
-                ext = ext*xp(ip)/x
-              else
-                ext = ext
-                eyt = 0.
-              endif
-            endif
-
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        else
-
-c         --- Set the signs of the E field for particles on negative side of
-c         --- the axis of symmetry.
-          sx = 1.
-          if (l4symtry) sx = -1.
-
-c         --- special loop symmetry is used
-          xinext = (abs(xp(1)) - xmmin)*dxi
-          zknext = (zp(1) - zgrid - zmmin)*dzi
-          inext = xinext
-          knext = zknext
-
-          do ip = 1, np
-
-            xi = xinext
-            zk = zknext
-            i = inext
-            k = knext
-
-            if (ip < np) then
-              xinext = (abs(xp(ip+1)) - xmmin)*dxi
-              zknext = (zp(ip+1) - zgrid - zmmin)*dzi
-              inext = xinext
-              knext = zknext
-            endif
-
-            if (xi < 0. .or. xi > nx .or.
-     &          zk < 0. .or. zk > nz) cycle
-
-            u1 = xi - i
-            w1 = zk - k
-
-            u0 = 1. - u1
-            w0 = 1. - w1
-
-c           --- Adjust sign of E field for appropriate quadrant.
-            xsign = +1.
-            if (xp(ip) < 0.) xsign = sx
-
-            ext = xsign*(u0*w0*selfe(1,i  ,k  )
-     &                 + u1*w0*selfe(1,i+1,k  )
-     &                 + u0*w1*selfe(1,i  ,k+1)
-     &                 + u1*w1*selfe(1,i+1,k+1))
-
-            ezt =        u0*w0*selfe(3,i  ,k  )
-     &                 + u1*w0*selfe(3,i+1,k  )
-     &                 + u0*w1*selfe(3,i  ,k+1)
-     &                 + u1*w1*selfe(3,i+1,k+1)
-
-            ex(ip) = ex(ip) + ext
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        endif
-
-      elseif (efetch == 4) then
-c       --- Energy conserving
-
-        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
-          if (lcylindrical) then
-            xnext = sqrt(xp(1)**2 + yp(1)**2)
-          else
-            xnext = xp(1)
+          i = inext
+          k = knext
+          if (ip < np) then
+            inext = nint((xp(ip+1) - xmmin)*dxi)
+            knext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
           endif
-          inext = (xnext - xmmin)*dxi
-          knext = (zp(1) - zgrid - zmmin)*dzi
-          do ip = 1, np
 
-            i = inext
-            k = knext
-            x = xnext
-            if (ip < np) then
-              if (lcylindrical) then
-                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
-              else
-                xnext = xp(ip+1)
-              endif
-              inext = (xnext    - xmmin)*dxi
-              knext = (zp(ip+1) - zgrid - zmmin)*dzi
-            endif
+          wx = (xp(ip) - xmmin)*dxi - i
+          wz = (zp(ip) - zgrid - zmmin)*dzi - k
 
-            ind0 = i + k*nnx
+          u10 = 1. - wx
+          u11 = wx
+          w10 = 1. - wz
+          w11 = wz
 
-            u1 = (x      - xmmin)*dxi - i
-            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+          u20 = 0.5*(0.5 - wx)**2
+          u21 = (0.75 - wx**2)
+          u22 = 0.5*(0.5 + wx)**2
+          w20 = 0.5*(0.5 - wz)**2
+          w21 = (0.75 - wz**2)
+          w22 = 0.5*(0.5 + wz)**2
 
-            u0 = 1. - u1
-            w0 = 1. - w1
+          ext = u10*w20*selfe(1,i  ,k-1)
+     &        + u11*w20*selfe(1,i+1,k-1)
 
-            ext=dxi*(+w0*phi1d(noff( 8)+ind0)
-     &               -w0*phi1d(noff( 9)+ind0)
-     &               +w1*phi1d(noff(20)+ind0)
-     &               -w1*phi1d(noff(21)+ind0))
+     &        + u10*w21*selfe(1,i  ,k  )
+     &        + u11*w21*selfe(1,i+1,k  )
 
-            ezt=dzi*(+u0*phi1d(noff( 8)+ind0)
-     &               +u1*phi1d(noff( 9)+ind0)
-     &               -u0*phi1d(noff(20)+ind0)
-     &               -u1*phi1d(noff(21)+ind0))
+     &        + u10*w22*selfe(1,i  ,k+1)
+     &        + u11*w22*selfe(1,i+1,k+1)
 
-            if (lcylindrical) then
-              if (x > 0.) then
-                eyt = ext*yp(ip)/x
-                ext = ext*xp(ip)/x
-              else
-                ext = ext
-                eyt = 0.
-              endif
-            endif
+          eyt = u20*w20*selfe(2,i-1,k-1)
+     &        + u21*w20*selfe(2,i  ,k-1)
+     &        + u22*w20*selfe(2,i+1,k-1)
 
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
+     &        + u20*w21*selfe(2,i-1,k  )
+     &        + u21*w21*selfe(2,i  ,k  )
+     &        + u22*w21*selfe(2,i+1,k  )
 
-          enddo
+     &        + u20*w22*selfe(2,i-1,k+1)
+     &        + u21*w22*selfe(2,i  ,k+1)
+     &        + u22*w22*selfe(2,i+1,k+1)
 
-        else
+          ezt = u20*w10*selfe(3,i-1,k  )
+     &        + u21*w10*selfe(3,i  ,k  )
+     &        + u22*w10*selfe(3,i+1,k  )
 
-c         --- Set the signs of the E field for particles on negative side of
-c         --- the axis of symmetry.
-          sx = 1.
-          if (l4symtry) sx = -1.
+     &        + u20*w11*selfe(3,i-1,k+1)
+     &        + u21*w11*selfe(3,i  ,k+1)
+     &        + u22*w11*selfe(3,i+1,k+1)
 
-c         --- special loop symmetry is used
-          inext = (abs(xp(1)) - xmmin)*dxi
-          knext = (zp(1) - zgrid - zmmin)*dzi
-          do ip = 1, np
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
 
-            i = inext
-            k = knext
-            if (ip < np) then
-              inext = (abs(xp(ip+1)) - xmmin)*dxi
-              knext = (zp(ip+1) - zgrid - zmmin)*dzi
-            endif
-  
-            ind0 = i + k*nnx
+        enddo
 
-            u1 = (abs(xp(ip)) - xmmin)*dxi - i
-            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+      else
 
-            u0 = 1. - u1
-            w0 = 1. - w1
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sx = 1.
+        if (l4symtry) sx = -1.
 
-c           --- Adjust sign of E field for appropriate quadrant.
-            xsign = dxi
-            if (xp(ip) < 0.) xsign = sx*dxi
+c       --- special loop symmetry is used
+        inext = nint((abs(xp(1)) - xmmin)*dxi)
+        knext = nint((zp(1) - zgrid - zmmin)*dzi)
+        do ip = 1, np
 
-            ext=xsign*(+w0*phi1d(noff( 8)+ind0)
-     &                 -w0*phi1d(noff( 9)+ind0)
-     &                 +w1*phi1d(noff(20)+ind0)
-     &                 -w1*phi1d(noff(21)+ind0))
+          i = inext
+          k = knext
+          if (ip < np) then
+            inext = nint((abs(xp(ip+1)) - xmmin)*dxi)
+            knext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+          endif
 
-            ezt = dzi*(+u0*phi1d(noff( 8)+ind0)
-     &                 +u1*phi1d(noff( 9)+ind0)
-     &                 -u0*phi1d(noff(20)+ind0)
-     &                 -u1*phi1d(noff(21)+ind0))
+          wx = (xp(ip) - xmmin)*dxi - i
+          wz = (zp(ip) - zgrid - zmmin)*dzi - k
 
-            ex(ip) = ex(ip) + ext
-            ez(ip) = ez(ip) + ezt
+          u10 = 1. - wx
+          u11 = wx
+          w10 = 1. - wz
+          w11 = wz
 
-          enddo
+          u20 = 0.5*(0.5 - wx)**2
+          u21 = (0.75 - wx**2)
+          u22 = 0.5*(0.5 + wx)**2
+          w20 = 0.5*(0.5 - wz)**2
+          w21 = (0.75 - wz**2)
+          w22 = 0.5*(0.5 + wz)**2
 
-        endif
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = 1.
+          if (xp(ip) < 0.) xsign = sx
 
-      else if (efetch == 5) then
-c       --- This is the same as efetch==1, but has checks to skip particles that
-c       --- are out of bounds.
+          ext = u10*w20*selfe(1,i  ,k-1)
+     &        + u11*w20*selfe(1,i+1,k-1)
 
-        if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
-          do ip = 1, np
+     &        + u10*w21*selfe(1,i  ,k  )
+     &        + u11*w21*selfe(1,i+1,k  )
 
-            if (lcylindrical) then
-              x = sqrt(xp(ip)**2 + yp(ip)**2)
-            else
-              x = xp(ip)
-            endif
+     &        + u10*w22*selfe(1,i  ,k+1)
+     &        + u11*w22*selfe(1,i+1,k+1)
 
-            xi = (x      - xmmin)*dxi
-            zk = (zp(ip) - zgrid - zmmin)*dzi
-            if (xi < 0. .or. xi > nx .or.
-     &          zk < 0. .or. zk > nz) cycle
-            i = int(xi)
-            k = int(zk)
-            ind0 = i + k*nnx
+          eyt = u20*w20*selfe(2,i-1,k-1)
+     &        + u21*w20*selfe(2,i  ,k-1)
+     &        + u22*w20*selfe(2,i+1,k-1)
 
-            u1 = xi - i
-            w1 = zk - k
+     &        + u20*w21*selfe(2,i-1,k  )
+     &        + u21*w21*selfe(2,i  ,k  )
+     &        + u22*w21*selfe(2,i+1,k  )
 
-            u0 = 1. - u1
-            w0 = 1. - w1
+     &        + u20*w22*selfe(2,i-1,k+1)
+     &        + u21*w22*selfe(2,i  ,k+1)
+     &        + u22*w22*selfe(2,i+1,k+1)
 
-            ext=tdxi*(u0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
-     &              + u1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
-     &              + u0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
-     &              + u1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0)))
+          ezt = u20*w10*selfe(3,i-1,k  )
+     &        + u21*w10*selfe(3,i  ,k  )
+     &        + u22*w10*selfe(3,i+1,k  )
 
-            ezt=tdzi*(u0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &              + u1*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &              + u0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &              + u1*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0)))
+     &        + u20*w11*selfe(3,i-1,k+1)
+     &        + u21*w11*selfe(3,i  ,k+1)
+     &        + u22*w11*selfe(3,i+1,k+1)
 
-            if (lcylindrical) then
-              if (x > 0.) then
-                eyt = ext*yp(ip)/x
-                ext = ext*xp(ip)/x
-              else
-                ext = ext
-                eyt = 0.
-              endif
-            endif
+          ex(ip) = ex(ip) + ext*xsign
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
 
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        else
-
-c         --- Set offsets for indices on axis of symmetry.  The offsets change
-c         --- the sign of the grid cells which are on the negative side
-c         --- of the axis of symmetry.
-          sox = 0
-          if (l4symtry) sox = 2
-
-c         --- Set the signs of the E field for particles on negative side of
-c         --- the axis of symmetry.
-          sx = 1.
-          if (l4symtry) sx = -1.
-
-c         --- special loop symmetry is used
-          do ip = 1, np
-
-            xi =  (abs(xp(ip)) - xmmin)*dxi
-            zk =  (zp(ip) - zgrid - zmmin)*dzi
-            if (xi < 0. .or. xi > nx .or.
-     &          zk < 0. .or. zk > nz) cycle
-            i = int(xi)
-            k = int(zk)
-            ind0 = i + k*nnx
-
-            u1 = xi - i
-            w1 = zk - k
-
-            u0 = 1. - u1
-            w0 = 1. - w1
-
-c           --- Set offsets for points on symmetry axis of grid.  The offset
-c           --- for points off the axis is zero.
-            ox = 0
-            if (i == 0 .and. xmmin == 0.) ox = sox
-
-c           --- Adjust sign of E field for appropriate quadrant.
-            xsign = tdxi
-            if (xp(ip) < 0.) xsign = sx*tdxi
-            ext=xsign*(u0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
-     &               + u1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
-     &               + u0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
-     &               + u1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0)))
-
-            ezt=tdzi*(u0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &              + u1*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &              + u0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &              + u1*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0)))
-
-            ex(ip) = ex(ip) + ext
-            ez(ip) = ez(ip) + ezt
-
-          enddo
-
-        endif
+        enddo
 
       endif
 
-!$OMP MASTER
-      if (lw3dtimesubs) timesete2d = timesete2d + wtime() - substarttime
-!$OMP END MASTER
       return
       end
-c=========================================================================== 
+c===========================================================================
+      subroutine sete_from_e_order2_energyconserving3d(selfe,np,xp,yp,zp,zgrid,
+     &                                 xmmin,ymmin,zmmin,
+     &                                 dx,dy,dz,nx,ny,nz,
+     &                                 nxguarde,nyguarde,nzguarde,
+     &                                 ex,ey,ez,l2symtry,l4symtry)
+      use Subtimersw3d
+      integer(ISZ):: np,nx,ny,nz
+      integer(ISZ):: nxguarde,nyguarde,nzguarde
+      real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nyguarde:ny+nyguarde,
+     &                       -nzguarde:nz+nzguarde)
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gets self electric field for particles
+c Fetch the E fields using 2nd order splines, with linear weigthing used
+c along the field direction. This gives energy conservation.
+
+      integer(ISZ):: ip,i,j,k,inext,jnext,knext
+      real(kind=8):: dxi,dyi,dzi
+      real(kind=8):: wx,wy,wz
+      real(kind=8):: u10,u11,v10,v11,w10,w11
+      real(kind=8):: u20,u21,u22,v20,v21,v22,w20,w21,w22
+      real(kind=8):: ysign,xsign
+      real(kind=8):: sx,sy,ext,eyt,ezt
+
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+
+      if (.not. (l2symtry .or. l4symtry)) then
+
+        inext = nint((xp(1) - xmmin)*dxi)
+        jnext = nint((yp(1) - ymmin)*dyi)
+        knext = nint((zp(1) - zgrid - zmmin)*dzi)
+
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          k = knext
+          if (ip < np) then
+            inext = nint((xp(ip+1) - xmmin)*dxi)
+            jnext = nint((yp(ip+1) - ymmin)*dyi)
+            knext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+          endif
+
+          wx = (xp(ip) - xmmin)*dxi - i
+          wy = (yp(ip) - ymmin)*dyi - j
+          wz = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u10 = 1. - wx
+          u11 = wx
+          v10 = 1. - wy
+          v11 = wy
+          w10 = 1. - wz
+          w11 = wz
+
+          u20 = 0.5*(0.5 - wx)**2
+          u21 = (0.75 - wx**2)
+          u22 = 0.5*(0.5 + wx)**2
+          v20 = 0.5*(0.5 - wy)**2
+          v21 = (0.75 - wy**2)
+          v22 = 0.5*(0.5 + wy)**2
+          w20 = 0.5*(0.5 - wz)**2
+          w21 = (0.75 - wz**2)
+          w22 = 0.5*(0.5 + wz)**2
+
+          ext = u10*v20*w20*selfe(1,i  ,j-1,k-1)
+     &        + u11*v20*w20*selfe(1,i+1,j-1,k-1)
+     &        + u10*v21*w20*selfe(1,i  ,j  ,k-1)
+     &        + u11*v21*w20*selfe(1,i+1,j  ,k-1)
+     &        + u10*v22*w20*selfe(1,i  ,j+1,k-1)
+     &        + u11*v22*w20*selfe(1,i+1,j+1,k-1)
+
+     &        + u10*v20*w21*selfe(1,i  ,j-1,k  )
+     &        + u11*v20*w21*selfe(1,i+1,j-1,k  )
+     &        + u10*v21*w21*selfe(1,i  ,j  ,k  )
+     &        + u11*v21*w21*selfe(1,i+1,j  ,k  )
+     &        + u10*v22*w21*selfe(1,i  ,j+1,k  )
+     &        + u11*v22*w21*selfe(1,i+1,j+1,k  )
+
+     &        + u10*v20*w22*selfe(1,i  ,j-1,k+1)
+     &        + u11*v20*w22*selfe(1,i+1,j-1,k+1)
+     &        + u10*v21*w22*selfe(1,i  ,j  ,k+1)
+     &        + u11*v21*w22*selfe(1,i+1,j  ,k+1)
+     &        + u10*v22*w22*selfe(1,i  ,j+1,k+1)
+     &        + u11*v22*w22*selfe(1,i+1,j+1,k+1)
+
+          eyt = u20*v10*w20*selfe(2,i-1,j  ,k-1)
+     &        + u21*v10*w20*selfe(2,i  ,j  ,k-1)
+     &        + u22*v10*w20*selfe(2,i+1,j  ,k-1)
+     &        + u20*v11*w20*selfe(2,i-1,j+1,k-1)
+     &        + u21*v11*w20*selfe(2,i  ,j+1,k-1)
+     &        + u22*v11*w20*selfe(2,i+1,j+1,k-1)
+
+     &        + u20*v10*w21*selfe(2,i-1,j  ,k  )
+     &        + u21*v10*w21*selfe(2,i  ,j  ,k  )
+     &        + u22*v10*w21*selfe(2,i+1,j  ,k  )
+     &        + u20*v11*w21*selfe(2,i-1,j+1,k  )
+     &        + u21*v11*w21*selfe(2,i  ,j+1,k  )
+     &        + u22*v11*w21*selfe(2,i+1,j+1,k  )
+
+     &        + u20*v10*w22*selfe(2,i-1,j  ,k+1)
+     &        + u21*v10*w22*selfe(2,i  ,j  ,k+1)
+     &        + u22*v10*w22*selfe(2,i+1,j  ,k+1)
+     &        + u20*v11*w22*selfe(2,i-1,j+1,k+1)
+     &        + u21*v11*w22*selfe(2,i  ,j+1,k+1)
+     &        + u22*v11*w22*selfe(2,i+1,j+1,k+1)
+
+          ezt = u20*v20*w10*selfe(3,i-1,j-1,k  )
+     &        + u21*v20*w10*selfe(3,i  ,j-1,k  )
+     &        + u22*v20*w10*selfe(3,i+1,j-1,k  )
+     &        + u20*v21*w10*selfe(3,i-1,j  ,k  )
+     &        + u21*v21*w10*selfe(3,i  ,j  ,k  )
+     &        + u22*v21*w10*selfe(3,i+1,j  ,k  )
+     &        + u20*v22*w10*selfe(3,i-1,j+1,k  )
+     &        + u21*v22*w10*selfe(3,i  ,j+1,k  )
+     &        + u22*v22*w10*selfe(3,i+1,j+1,k  )
+
+     &        + u20*v20*w11*selfe(3,i-1,j-1,k+1)
+     &        + u21*v20*w11*selfe(3,i  ,j-1,k+1)
+     &        + u22*v20*w11*selfe(3,i+1,j-1,k+1)
+     &        + u20*v21*w11*selfe(3,i-1,j  ,k+1)
+     &        + u21*v21*w11*selfe(3,i  ,j  ,k+1)
+     &        + u22*v21*w11*selfe(3,i+1,j  ,k+1)
+     &        + u20*v22*w11*selfe(3,i-1,j+1,k+1)
+     &        + u21*v22*w11*selfe(3,i  ,j+1,k+1)
+     &        + u22*v22*w11*selfe(3,i+1,j+1,k+1)
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      else
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sy = -1.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        inext = nint((abs(xp(1)) - xmmin)*dxi)
+        jnext = nint((abs(yp(1)) - ymmin)*dyi)
+        knext = nint((zp(1) - zgrid - zmmin)*dzi)
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          k = knext
+          if (ip < np) then
+            inext = nint((abs(xp(ip+1)) - xmmin)*dxi)
+            jnext = nint((abs(yp(ip+1)) - ymmin)*dyi)
+            knext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+          endif
+
+          wx = (xp(ip) - xmmin)*dxi - i
+          wy = (yp(ip) - ymmin)*dyi - j
+          wz = (zp(ip) - zgrid - zmmin)*dzi - k
+
+          u10 = 1. - wx
+          u11 = wx
+          v10 = 1. - wy
+          v11 = wy
+          w10 = 1. - wz
+          w11 = wz
+
+          u20 = 0.5*(0.5 - wx)**2
+          u21 = (0.75 - wx**2)
+          u22 = 0.5*(0.5 + wx)**2
+          v20 = 0.5*(0.5 - wy)**2
+          v21 = (0.75 - wy**2)
+          v22 = 0.5*(0.5 + wy)**2
+          w20 = 0.5*(0.5 - wz)**2
+          w21 = (0.75 - wz**2)
+          w22 = 0.5*(0.5 + wz)**2
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = 1.
+          ysign = 1.
+          if (xp(ip) < 0.) xsign = sx
+          if (yp(ip) < 0.) ysign = sy
+
+          ext = u10*v20*w20*selfe(1,i  ,j-1,k-1)
+     &        + u11*v20*w20*selfe(1,i+1,j-1,k-1)
+     &        + u10*v21*w20*selfe(1,i  ,j  ,k-1)
+     &        + u11*v21*w20*selfe(1,i+1,j  ,k-1)
+     &        + u10*v22*w20*selfe(1,i  ,j+1,k-1)
+     &        + u11*v22*w20*selfe(1,i+1,j+1,k-1)
+
+     &        + u10*v20*w21*selfe(1,i  ,j-1,k  )
+     &        + u11*v20*w21*selfe(1,i+1,j-1,k  )
+     &        + u10*v21*w21*selfe(1,i  ,j  ,k  )
+     &        + u11*v21*w21*selfe(1,i+1,j  ,k  )
+     &        + u10*v22*w21*selfe(1,i  ,j+1,k  )
+     &        + u11*v22*w21*selfe(1,i+1,j+1,k  )
+
+     &        + u10*v20*w22*selfe(1,i  ,j-1,k+1)
+     &        + u11*v20*w22*selfe(1,i+1,j-1,k+1)
+     &        + u10*v21*w22*selfe(1,i  ,j  ,k+1)
+     &        + u11*v21*w22*selfe(1,i+1,j  ,k+1)
+     &        + u10*v22*w22*selfe(1,i  ,j+1,k+1)
+     &        + u11*v22*w22*selfe(1,i+1,j+1,k+1)
+
+          eyt = u20*v10*w20*selfe(2,i-1,j  ,k-1)
+     &        + u21*v10*w20*selfe(2,i  ,j  ,k-1)
+     &        + u22*v10*w20*selfe(2,i+1,j  ,k-1)
+     &        + u20*v11*w20*selfe(2,i-1,j+1,k-1)
+     &        + u21*v11*w20*selfe(2,i  ,j+1,k-1)
+     &        + u22*v11*w20*selfe(2,i+1,j+1,k-1)
+
+     &        + u20*v10*w21*selfe(2,i-1,j  ,k  )
+     &        + u21*v10*w21*selfe(2,i  ,j  ,k  )
+     &        + u22*v10*w21*selfe(2,i+1,j  ,k  )
+     &        + u20*v11*w21*selfe(2,i-1,j+1,k  )
+     &        + u21*v11*w21*selfe(2,i  ,j+1,k  )
+     &        + u22*v11*w21*selfe(2,i+1,j+1,k  )
+
+     &        + u20*v10*w22*selfe(2,i-1,j  ,k+1)
+     &        + u21*v10*w22*selfe(2,i  ,j  ,k+1)
+     &        + u22*v10*w22*selfe(2,i+1,j  ,k+1)
+     &        + u20*v11*w22*selfe(2,i-1,j+1,k+1)
+     &        + u21*v11*w22*selfe(2,i  ,j+1,k+1)
+     &        + u22*v11*w22*selfe(2,i+1,j+1,k+1)
+
+          ezt = u20*v20*w10*selfe(3,i-1,j-1,k  )
+     &        + u21*v20*w10*selfe(3,i  ,j-1,k  )
+     &        + u22*v20*w10*selfe(3,i+1,j-1,k  )
+     &        + u20*v21*w10*selfe(3,i-1,j  ,k  )
+     &        + u21*v21*w10*selfe(3,i  ,j  ,k  )
+     &        + u22*v21*w10*selfe(3,i+1,j  ,k  )
+     &        + u20*v22*w10*selfe(3,i-1,j+1,k  )
+     &        + u21*v22*w10*selfe(3,i  ,j+1,k  )
+     &        + u22*v22*w10*selfe(3,i+1,j+1,k  )
+
+     &        + u20*v20*w11*selfe(3,i-1,j-1,k+1)
+     &        + u21*v20*w11*selfe(3,i  ,j-1,k+1)
+     &        + u22*v20*w11*selfe(3,i+1,j-1,k+1)
+     &        + u20*v21*w11*selfe(3,i-1,j  ,k+1)
+     &        + u21*v21*w11*selfe(3,i  ,j  ,k+1)
+     &        + u22*v21*w11*selfe(3,i+1,j  ,k+1)
+     &        + u20*v22*w11*selfe(3,i-1,j+1,k+1)
+     &        + u21*v22*w11*selfe(3,i  ,j+1,k+1)
+     &        + u22*v22*w11*selfe(3,i+1,j+1,k+1)
+
+          ex(ip) = ex(ip) + ext*xsign
+          ey(ip) = ey(ip) + eyt*ysign
+          ez(ip) = ez(ip) + ezt
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
       subroutine setexy(phi1d,selfe,np,xp,yp,xmmin,ymmin,
      &                  dx,dy,nx,ny,nxguardphi,nyguardphi,nxguarde,nyguarde,
      &                  efetch,ex,ey,ez,l2symtry,l4symtry)
@@ -5473,7 +6009,7 @@ c       + u1*v0*ex(i+1,j  )
 c       + u0*v1*ex(i  ,j+1)
 c       + ...
 
-      integer(ISZ):: nnx,nnxy,ip,i,j,ind0,m,inext,jnext
+      integer(ISZ):: nnx,nnxy,ip,i,j,ind0,inext,jnext
       real(kind=8):: dxi,dyi,tdxi,tdyi,u0,u1,v0,v1,ysign,xsign
       integer(ISZ):: ox,oy,sox,soy
       real(kind=8):: sx,sy,ext,eyt
@@ -5811,7 +6347,7 @@ c         --- special loop symmetry is used
               inext = (abs(xp(ip+1)) - xmmin)*dxi
               jnext = (abs(yp(ip+1)) - ymmin)*dyi
             endif
-  
+
             ind0 = i + j*nnx
 
             u1 = (abs(xp(ip)) - xmmin)*dxi - i
@@ -5950,7 +6486,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
 !$OMP END MASTER
       return
       end
-c=========================================================================== 
+c===========================================================================
       subroutine getselfe3d(phi,nx,ny,nz,nxguardphi,nyguardphi,nzguardphi,
      &                      selfe,nxguarde,nyguarde,nzguarde,
      &                      dx,dy,dz,lzero)
@@ -6002,13 +6538,13 @@ c     --- If lzero, then set selfe, otherwise accumulate it.
           do iy=-nyguarde,ny+nyguarde
             do ix=-nxguarde,nx+nxguarde
               if (nx > 0)
-     &          selfe(0,ix,iy,iz) = 
+     &          selfe(0,ix,iy,iz) =
      &                    tdxi*(phi(ix-1,iy  ,iz  ) - phi(ix+1,iy  ,iz  ))
               if (ny > 0)
-     &          selfe(1,ix,iy,iz) = 
+     &          selfe(1,ix,iy,iz) =
      &                    tdyi*(phi(ix  ,iy-1,iz  ) - phi(ix  ,iy+1,iz  ))
               if (nz > 0)
-     &          selfe(2,ix,iy,iz) = 
+     &          selfe(2,ix,iy,iz) =
      &                    tdzi*(phi(ix  ,iy  ,iz-1) - phi(ix  ,iy  ,iz+1))
             enddo
           enddo
@@ -6206,36 +6742,36 @@ c       --- Also, normalize rdist.
         enddo
       endif
 
-c     Calculate rms equivalent matched beam equilibria in a continuous 
-c     focusing channel for use in generalized psudo-equilibrium distribution 
-c     loads.  
-c     
-c     As presently implemented, this only calculates the equilibrium 
-c     once for a single beam slice, making it useful only for xy slice code 
+c     Calculate rms equivalent matched beam equilibria in a continuous
+c     focusing channel for use in generalized psudo-equilibrium distribution
+c     loads.
+c
+c     As presently implemented, this only calculates the equilibrium
+c     once for a single beam slice, making it useful only for xy slice code
 c     simulations.  To get this to work in 3D, the following should be done:
-c       1) Modify the main particle loading loop to first load the particle 
-c          z coordinates of the full beam distribution before any transverse 
-c          loading.  
-c       2) Using the loaded z coordinates and the desired transverse loading 
-c          option, calculate the range max -> min of all continuous focusing 
-c          eqivalent beam parameters for all particles 
-c       3) Based on the ranges of parameters in 2) calculate needed equilibria 
-c          for the transverse load by discretizing the parameter range and 
-c          then calculating the equilibria in scaled coordinates over the 
-c          discretized range.  
-c       4) Go through the main particle loading loop again to load the 
-c          transverse distribution using the equilibria calculated in 3).  
-c          Interpolation can be used for equilibria not saved at exactly the 
+c       1) Modify the main particle loading loop to first load the particle
+c          z coordinates of the full beam distribution before any transverse
+c          loading.
+c       2) Using the loaded z coordinates and the desired transverse loading
+c          option, calculate the range max -> min of all continuous focusing
+c          eqivalent beam parameters for all particles
+c       3) Based on the ranges of parameters in 2) calculate needed equilibria
+c          for the transverse load by discretizing the parameter range and
+c          then calculating the equilibria in scaled coordinates over the
+c          discretized range.
+c       4) Go through the main particle loading loop again to load the
+c          transverse distribution using the equilibria calculated in 3).
+c          Interpolation can be used for equilibria not saved at exactly the
 c          parameter values needed.
 
 
-      if (distrbtn == "WB" .or. distrbtn == "Waterbag"  .or.  
-     &    distrbtn == "PA" .or. distrbtn == "Parabolic" .or. 
-     &    distrbtn == "TE" .or. distrbtn == "ThermalEquilibrium") then 
+      if (distrbtn == "WB" .or. distrbtn == "Waterbag"  .or.
+     &    distrbtn == "PA" .or. distrbtn == "Parabolic" .or.
+     &    distrbtn == "TE" .or. distrbtn == "ThermalEquilibrium") then
 
         call  perp_cfe_den()
 
-      endif 
+      endif
 
 c----------------------------------
 c  Begin main loop over species
@@ -6291,8 +6827,8 @@ c         --- Only set np_s is it had not been set be the user
         endif
 
 c       --- Inverse of the number of particles. When multiplied by the particle
-c       --- index and added to the normalized value of zmin, the normalized 
-c       --- axial location of the particle in the beam, between 0 and 1, 
+c       --- index and added to the normalized value of zmin, the normalized
+c       --- axial location of the particle in the beam, between 0 and 1,
 c       --- results.
         rnpmi = 1./dvnz(real(npm,kind=8))
 
@@ -6467,20 +7003,20 @@ c        --- unormalize z to fetch envelope
          i = i1 - k + 1
          zt(1:i) = zbeam + zimin_s(isid) + zlen*zt(1:i)
 
-c        --- fetch envelope, centroid, and emittance.  Reset values 
-c        --- after initial set if axial varying emittance, axial velocity, 
+c        --- fetch envelope, centroid, and emittance.  Reset values
+c        --- after initial set if axial varying emittance, axial velocity,
 c        --- and axial thermal velocity are input
          if (nenvofz > 0) then
            do i=1,i1-k+1
-c            --- envelope interpolations 
+c            --- envelope interpolations
              iz = (zt(i) - zimin_s(isid) - zbeam)*zleni*nenvofz
              wz = (zt(i) - zimin_s(isid) - zbeam)*zleni*nenvofz - iz
-c            --- envelope 
+c            --- envelope
              at(i)  = aofz(iz)*(1.-wz)  + aofz(iz+1)*wz
              bt(i)  = bofz(iz)*(1.-wz)  + bofz(iz+1)*wz
              apt(i) = apofz(iz)*(1.-wz) + apofz(iz+1)*wz
              bpt(i) = bpofz(iz)*(1.-wz) + bpofz(iz+1)*wz
-c            --- centroid 
+c            --- centroid
              xct(i)  = xofz(iz)*(1.-wz)  + xofz(iz+1)*wz
              yct(i)  = yofz(iz)*(1.-wz)  + yofz(iz+1)*wz
              xpct(i) = xpofz(iz)*(1.-wz) + xpofz(iz+1)*wz
@@ -6492,13 +7028,13 @@ c            --- centroid
            if (icheck == 1) then
               call kaboom("stptcl3d: ERROR: out-of-range z sent to ENVXPORT")
            endif
-c          --- set axial thermal velocity based on species .... note that 
-c          --- at present this is inconsistent with envxport not knowing about 
-c          --- individual species.  Eventually this might be fixed with a 
-c          --- generalized envelope solver 
+c          --- set axial thermal velocity based on species .... note that
+c          --- at present this is inconsistent with envxport not knowing about
+c          --- individual species.  Eventually this might be fixed with a
+c          --- generalized envelope solver
            do i=1,npgrp
              vtzt(i) = vthz_s(isid)
-           enddo 
+           enddo
          else
 c          --- set only first time through
            if (firstk) then
@@ -6513,18 +7049,18 @@ c
                xpct(i) = xp0_s(isid) + xpcent_s(isid)
                ypct(i) = yp0_s(isid) + ypcent_s(isid)
 c
-               epsxt(i) = emitx_s(isid) 
-               epsyt(i) = emity_s(isid) 
+               epsxt(i) = emitx_s(isid)
+               epsyt(i) = emity_s(isid)
 c
-               vzt(i)  = vbeam_s(isid) 
-               vtzt(i) = vthz_s(isid) 
+               vzt(i)  = vbeam_s(isid)
+               vtzt(i) = vthz_s(isid)
 c
                ibeamt(i) = ibeam_s(isid)
              enddo
            endif
          endif
-c        --- reset emittance interpolations               
-         if (nemitofz > 0) then 
+c        --- reset emittance interpolations
+         if (nemitofz > 0) then
            do i=1,i1-k+1
              iz = (zt(i) - zimin_s(isid) - zbeam)*zleni*nemitofz
              wz = (zt(i) - zimin_s(isid) - zbeam)*zleni*nemitofz - iz
@@ -6532,19 +7068,19 @@ c
              epsxt(i) = emitxofz(iz)*(1.-wz) + emitxofz(iz+1)*wz
              epsyt(i) = emityofz(iz)*(1.-wz) + emityofz(iz+1)*wz
            enddo
-         endif  
-c        --- reset axial velocity interpolations 
-         if (nvbeamofz > 0) then 
+         endif
+c        --- reset axial velocity interpolations
+         if (nvbeamofz > 0) then
            do i=1,i1-k+1
 c
              iz = (zt(i) - zimin_s(isid) - zbeam)*zleni*nvbeamofz
              wz = (zt(i) - zimin_s(isid) - zbeam)*zleni*nvbeamofz - iz
 c
              vzt(i) = vbeamofz(iz)*(1.-wz) + vbeamofz(iz+1)*wz
-           enddo 
-         endif 
-c        --- reset axial thermal velocity interpolations 
-         if (nvthzofz > 0) then 
+           enddo
+         endif
+c        --- reset axial thermal velocity interpolations
+         if (nvthzofz > 0) then
            do i=1,i1-k+1
 c
              iz = (zt(i) - zimin_s(isid) - zbeam)*zleni*nvthzofz
@@ -6552,18 +7088,18 @@ c
 c
              vtzt(i) = vthzofz(iz)*(1.-wz) + vthzofz(iz+1)*wz
            enddo
-         endif 
-c        --- XXX beam current interpolations (placeholder)  
-c         if () then 
-c           do i=1,i1-k+1 
-c             ibeamt(i) = .... 
-c           enddo 
-c         endif  
+         endif
+c        --- XXX beam current interpolations (placeholder)
+c         if () then
+c           do i=1,i1-k+1
+c             ibeamt(i) = ....
+c           enddo
+c         endif
 
 
 c  Load tranverse stuff
 c  semi-gaussian distribution
-         if (distrbtn(:8) == "semigaus" .or. distrbtn == "SG" .or. 
+         if (distrbtn(:8) == "semigaus" .or. distrbtn == "SG" .or.
      &       distrbtn == "SemiGaussian") then
 
 c          --- load normalized tranverse space variables
@@ -6896,38 +7432,38 @@ c            --- add sinusoidal perturbation to uzp
 c          --- increment number of particles by size of current group
            ip = ipi
 
-c        --- Load various transverse distributions 
-c        --- using local Courant-Snyder zero-current invariants (0 suffixes) 
-c        --- appropriate for periodic focusing channels or 
+c        --- Load various transverse distributions
+c        --- using local Courant-Snyder zero-current invariants (0 suffixes)
+c        --- appropriate for periodic focusing channels or
 
-         elseif (distrbtn == "WB"  .or. distrbtn == "Waterbag"  .or.  
-     &           distrbtn == "PA"  .or. distrbtn == "Parabolic" .or. 
-     &           distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium" .or. 
-     &           distrbtn == "KV0" .or. 
-     &           distrbtn == "WB0" .or. distrbtn == "Waterbag0"  .or.  
-     &           distrbtn == "PA0" .or. distrbtn == "Parabolic0" .or. 
-     &           distrbtn == "GA0" .or. distrbtn == "Gaussian0"  .or. 
-     &           distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") 
-     &           then 
+         elseif (distrbtn == "WB"  .or. distrbtn == "Waterbag"  .or.
+     &           distrbtn == "PA"  .or. distrbtn == "Parabolic" .or.
+     &           distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium" .or.
+     &           distrbtn == "KV0" .or.
+     &           distrbtn == "WB0" .or. distrbtn == "Waterbag0"  .or.
+     &           distrbtn == "PA0" .or. distrbtn == "Parabolic0" .or.
+     &           distrbtn == "GA0" .or. distrbtn == "Gaussian0"  .or.
+     &           distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium")
+     &           then
 
-c          --- Load transverse particles in x-x', y-y' phase space using 
-c          --- the local beam envelope and emittance in the slice of each 
-c          --- particle 
+c          --- Load transverse particles in x-x', y-y' phase space using
+c          --- the local beam envelope and emittance in the slice of each
+c          --- particle
 
-           if (distrbtn == "WB" .or. distrbtn == "Waterbag"  .or.  
-     &         distrbtn == "PA" .or. distrbtn == "Parabolic" .or. 
-     &         distrbtn == "TE" .or. distrbtn == "ThermalEquilibrium") then 
-c            --- use transforms of continuous focusing equilibria 
+           if (distrbtn == "WB" .or. distrbtn == "Waterbag"  .or.
+     &         distrbtn == "PA" .or. distrbtn == "Parabolic" .or.
+     &         distrbtn == "TE" .or. distrbtn == "ThermalEquilibrium") then
+c            --- use transforms of continuous focusing equilibria
              call loadperpdist(k+ioff,i1-k+1,xt,yt,rt,tt,uxt,uyt,
      &                         at,bt,apt,bpt,epsxt,epsyt)
-           elseif (distrbtn == "KV0" .or. 
-     &             distrbtn == "WB0" .or. distrbtn == "Waterbag0"  .or.  
-     &             distrbtn == "PA0" .or. distrbtn == "Parabolic0" .or. 
-     &             distrbtn == "GA0" .or. distrbtn == "Gaussian0") then 
-c            --- use zero applied field Courant-Snyder invariants 
+           elseif (distrbtn == "KV0" .or.
+     &             distrbtn == "WB0" .or. distrbtn == "Waterbag0"  .or.
+     &             distrbtn == "PA0" .or. distrbtn == "Parabolic0" .or.
+     &             distrbtn == "GA0" .or. distrbtn == "Gaussian0") then
+c            --- use zero applied field Courant-Snyder invariants
              call loadperpdist0(k+ioff,i1-k+1,xt,yt,uxt,uyt,
      &                          at,bt,apt,bpt,epsxt,epsyt)
-           endif 
+           endif
 
 c!$OMP CRITICAL (STPTCL3D2)
 c#ifdef _OPENMP
@@ -6936,13 +7472,13 @@ c           iptotal = iptotal + i1-k+1
 c#endif
 c!$OMP END CRITICAL (STPTCL3D2)
 
-c          --- load coordinates 
+c          --- load coordinates
            ipi = ip
            do i=1,i1-k+1
 
-c            --- set longitudinal particle coordinates 
-c                  1st term: distribution about centroid 
-c                  2nd term: centroid component  
+c            --- set longitudinal particle coordinates
+c                  1st term: distribution about centroid
+c                  2nd term: centroid component
              pgroup%xp(ipi+1) = xt(i) + xct(i)
              pgroup%yp(ipi+1) = yt(i) + yct(i)
 
@@ -6965,14 +7501,14 @@ c            --- particles at different z's.
 
              ipi = ipi + 1
 
-c            --- set the longitudinal particle coordinate 
+c            --- set the longitudinal particle coordinate
              pgroup%zp(ipi) = zt(i)
-c            --- set transverse particle gamma*velocity   
-c                  1st term: rescale uxp returned in x' units to uxp  
-c                  2nd term: centroid component 
+c            --- set transverse particle gamma*velocity
+c                  1st term: rescale uxp returned in x' units to uxp
+c                  2nd term: centroid component
              pgroup%uxp(ipi) = vzt(i)*uxt(i) + vzt(i)*xpct(i)
              pgroup%uyp(ipi) = vzt(i)*uyt(i) + vzt(i)*ypct(i)
-c            --- set longitudinal particle gamma*velocity 
+c            --- set longitudinal particle gamma*velocity
              pgroup%uzp(ipi) = vzt(i)*(1. + vtilt_s(isid)*(zmid - zt(i))*zleni) +
      &                   vtzt(i)*uzt(i)
 
@@ -7121,7 +7657,7 @@ c#endif
       return
       end
 c=============================================================================
-      subroutine setrho3d(rho,np,xp,yp,zp,zgrid,q,wght,depos,
+      subroutine setrho3d(rho,np,xp,yp,zp,zgrid,q,wght,depos,depos_order,
      &                    nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
      &                    dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                    lcylindrical)
@@ -7136,6 +7672,7 @@ c=============================================================================
      &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np)
       character(8):: depos
+      integer(ISZ):: depos_order(0:2)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
@@ -7144,67 +7681,61 @@ c  Sets charge density using various algorithms
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-c--------------------------------------
-c  Vectorized deposition loop
-c--------------------------------------
-      if (depos == "vector") then
+      if (ALL(depos_order == 1)) then
 
-        call setrho3dvector(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                      nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
-     &                      dx,dy,dz,xmmin,ymmin,zmmin,
-     &                      l2symtry,l4symtry)
+c       --- Vectorized deposition loop
+        if (depos == "vector") then
 
-c--------------------------------------
-c  Scalar deposition loop
-c--------------------------------------
-      elseif (depos == "scalar") then
+          call setrho3dvector(rho,np,xp,yp,zp,zgrid,q,wght,
+     &                        nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                        dx,dy,dz,xmmin,ymmin,zmmin,
+     &                        l2symtry,l4symtry)
 
-        call setrho3dscalar(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                      nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
-     &                      dx,dy,dz,xmmin,ymmin,zmmin,
-     &                      l2symtry,l4symtry)
+c       --- Scalar deposition loop
+        elseif (depos == "scalar") then
 
-c--------------------------------------
-c  Direct deposition loop
-c--------------------------------------
-      elseif (depos == "direct") then
+          call setrho3dscalar(rho,np,xp,yp,zp,zgrid,q,wght,
+     &                        nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                        dx,dy,dz,xmmin,ymmin,zmmin,
+     &                        l2symtry,l4symtry)
 
-        call setrho3ddirect(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                      nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
-     &                      dx,dy,dz,xmmin,ymmin,zmmin,
-     &                      l2symtry,l4symtry)
+c       --- Direct deposition loop
+        elseif (depos == "direct") then
 
-c--------------------------------------
-c  Direct deposition loop with precalculated integer conversions
-c--------------------------------------
-      elseif (depos == "direct1") then
+          call setrho3ddirect(rho,np,xp,yp,zp,zgrid,q,wght,
+     &                        nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                        dx,dy,dz,xmmin,ymmin,zmmin,
+     &                        l2symtry,l4symtry)
 
-        if (.not. lcylindrical) then
-          call setrho3ddirect1(rho,np,xp,yp,zp,zgrid,q,wght,
+c       --- Direct deposition loop with precalculated integer conversions
+        elseif (depos == "direct1") then
+
+          if (.not. lcylindrical) then
+            call setrho3ddirect1(rho,np,xp,yp,zp,zgrid,q,wght,
+     &                           nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                           dx,dy,dz,xmmin,ymmin,zmmin,
+     &                           l2symtry,l4symtry)
+          else
+            call setrho3ddirect2(rho,np,xp,yp,zp,zgrid,q,wght,
+     &                           nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                           dx,dy,dz,xmmin,ymmin,zmmin,
+     &                           l2symtry,l4symtry,lcylindrical)
+          endif
+
+c       --- Vectorized deposition loop with precalculated integer conversions
+        else if (depos == "vector1") then
+
+          call setrho3dvector1(rho,np,xp,yp,zp,zgrid,q,wght,
      &                         nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
      &                         dx,dy,dz,xmmin,ymmin,zmmin,
      &                         l2symtry,l4symtry)
-        else
-          call setrho3ddirect2(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                         nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
-     &                         dx,dy,dz,xmmin,ymmin,zmmin,
-     &                         l2symtry,l4symtry,lcylindrical)
+
         endif
 
-c--------------------------------------
-c  Vectorized deposition loop with precalculated integer conversions
-c--------------------------------------
-      else if (depos == "vector1") then
+      else if (ALL(depos_order == 2)) then
 
-        call setrho3dvector1(rho,np,xp,yp,zp,zgrid,q,wght,
-     &                       nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
-     &                       dx,dy,dz,xmmin,ymmin,zmmin,
-     &                       l2symtry,l4symtry)
-
-c--------------------------------------
-c  Direct deposition using a second order spline
-c--------------------------------------
-      else if (depos == "dspline2") then
+c       --- Direct deposition using a second order spline
+c       --- Formerly depos == "dspline2"
 
         if (.not. lcylindrical) then
           call setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,q,wght,
@@ -7219,6 +7750,9 @@ c--------------------------------------
      &                                  l2symtry,l4symtry)
         endif
 
+      else
+        call kaboom("setho3d: order of deposition is not supported in the electrostatic solver")
+        return
       endif
 
 !$OMP END PARALLEL
@@ -8881,320 +9415,7 @@ c     --- normal loop
       end
 c=============================================================================
 c=============================================================================
-      subroutine setrho3dselect(rho,rho1d,np,xp,yp,zp,zgrid,q,wght,depos,
-     &                          nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
-     &                          dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
-      use GlobalVars
-      use Subtimersw3d
-      integer(ISZ):: np
-      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
-      real(kind=8):: dx,dy,dz
-      real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
-     &                   -nyguardrho:ny+nyguardrho,
-     &                   -nzguardrho:nz+nzguardrho)
-      real(kind=8):: rho1d(0:(1+nx+2*nxguardrho)*(1+ny+2*nyguardrho)*(1+nz+2*nzguardrho)-1)
-      real(kind=8):: xp(np), yp(np), zp(np)
-      character(8):: depos
-      real(kind=8):: xmmin,ymmin,zmmin
-      logical(ISZ):: l2symtry,l4symtry
-
-c  Sets charge density
-
-c  Algorithm notes: rho array is dimensioned (0:nx,0:ny,0:nz) outside,
-c  but is made one dimensional in this routine
-c  so cell index into 1d rho array for vectorized deposition is:
-c     i + j*(nx+1) + k*(nx+1)*(ny+1)
-c  In each case,
-c     rho(i  ,j  ,k  ) = rho(i  ,j  ,k  ) + u0*v0*w0*g
-c     rho(i+1,j  ,k  ) = rho(i+1,j  ,k  ) + u1*v0*w0*g
-c  Note that many changes are possible; for example, we might define
-c  ind0(ir) and not use indx; this saves some store operations but
-c  leads to a more complicated indirect address for the vectorized
-c  gather-add-scatter loop.  It seems about 3% slower than the present way.
-c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
-c  handling of blocks of particles at a time)
-
-c     --- For vectorized algorithm
-      integer(ISZ):: nnx,nnxy
-      integer(ISZ):: moff(0:7)
-      integer(ISZ),allocatable:: indx(:,:)
-c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ),allocatable:: ii(:), jj(:), kk(:)
-c     --- For both algorithms
-      real(kind=8),allocatable:: s(:,:)
-
-      integer(ISZ):: ipmin,nptmp,ip,i,j,k,ind0,m,ir
-      real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-c  Set up offset array for vectorized deposition:
-      nnx = nx + 1 + 2*nxguardrho
-      nnxy = (nx + 1 + 2*nxguardrho)*(ny + 1 + 2*nyguardrho)
-      moff(0) = 0
-      moff(1) = 1
-      moff(2) = nnx
-      moff(3) = nnx + 1
-      moff(4) = nnxy
-      moff(5) = nnxy + 1
-      moff(6) = nnxy + nnx
-      moff(7) = nnxy + nnx + 1
-
-      moff = moff + nnxy*nzguardrho
-
-      g = wght*q / (dx*dy*dz)
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
-      if (l2symtry) then
-c       --- The particle weight is reduced by a factor of 2 except near the
-c       --- transverse boundaries.
-        g = g*0.5
-      elseif (l4symtry) then
-c       --- The particle weight is reduced by a factor of 4 except near the
-c       --- transverse boundaries.
-        g = g*0.25
-      endif
-
-! np was made FIRSTPRIVATE to get around a bug when the expression
-! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
-! I don't know why it works, but it does.
-!$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,k,u1,u0,v1,v0,w1,w0,ir,ip,ind0,indx,
-!$OMP&                 s,m,ii,jj,kk)
-!$OMP&FIRSTPRIVATE(np)
-
-      if (depos == "vector") then 
-        allocate(indx(0:7,0:nparpgrp-1),s(0:7,0:nparpgrp-1))
-      elseif (depos == "scalar") then
-        allocate(ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1),
-     &           s(0:7,0:nparpgrp-1))
-      endif
-
-!$OMP DO
-      do ipmin = 1,np,nparpgrp
-        nptmp = min(nparpgrp, np+1-ipmin)
-        s = 0.
-
-c--------------------------------------
-c  Begin vectorized deposition loop
-c--------------------------------------
-      if (depos == "vector") then
-
-c     --- vectorized loop to compute indices, weights
-      if (l2symtry) then
-c       --- special loop for 2-fold symmetry
-c       --- The particle weight is reduced by a factor of 2 except near the
-c       --- transverse boundaries.
-        do ip = ipmin,ipmin+nptmp-1
-           i  = int((xp(ip) - xmmin)*dxi)
-           u1 =     (xp(ip) - xmmin)*dxi - i
-           u0 = 1. - u1
-           j  = int((abs(yp(ip)) - ymmin)*dyi)
-           v1 =     (abs(yp(ip)) - ymmin)*dyi - j
-           v0 = 1. - v1
-           k  = int((zp(ip) - zgrid - zmmin)*dzi)
-           w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
-           w0 = 1. - w1
-           ir = ip - ipmin
-           ind0 = i + j*nnx + k*nnxy
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           indx(4,ir) = ind0 + moff(4)
-           indx(5,ir) = ind0 + moff(5)
-           indx(6,ir) = ind0 + moff(6)
-           indx(7,ir) = ind0 + moff(7)
-           s(0,ir) = u0*v0*w0*g
-           s(1,ir) = u1*v0*w0*g
-           s(2,ir) = u0*v1*w0*g
-           s(3,ir) = u1*v1*w0*g
-           s(4,ir) = u0*v0*w1*g
-           s(5,ir) = u1*v0*w1*g
-           s(6,ir) = u0*v1*w1*g
-           s(7,ir) = u1*v1*w1*g
-        enddo
-      elseif (l4symtry) then
-c       --- special loop for 4-fold symmetry
-c       --- The particle weight is reduced by a factor of 4 except near the
-c       --- transverse boundaries.
-        do ip = ipmin,ipmin+nptmp-1
-           i  = int((abs(xp(ip)) - xmmin)*dxi)
-           u1 =     (abs(xp(ip)) - xmmin)*dxi - i
-           u0 = 1. - u1
-           j  = int((abs(yp(ip)) - ymmin)*dyi)
-           v1 =     (abs(yp(ip)) - ymmin)*dyi - j
-           v0 = 1. - v1
-           k  = int((zp(ip) - zgrid - zmmin)*dzi)
-           w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
-           w0 = 1. - w1
-           ir = ip - ipmin
-           ind0 = i + j*nnx + k*nnxy
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           indx(4,ir) = ind0 + moff(4)
-           indx(5,ir) = ind0 + moff(5)
-           indx(6,ir) = ind0 + moff(6)
-           indx(7,ir) = ind0 + moff(7)
-           s(0,ir) = u0*v0*w0*g
-           s(1,ir) = u1*v0*w0*g
-           s(2,ir) = u0*v1*w0*g
-           s(3,ir) = u1*v1*w0*g
-           s(4,ir) = u0*v0*w1*g
-           s(5,ir) = u1*v0*w1*g
-           s(6,ir) = u0*v1*w1*g
-           s(7,ir) = u1*v1*w1*g
-        enddo
-      else
-c       --- normal loop
-        do ip = ipmin,ipmin+nptmp-1
-           i  = int((xp(ip) - xmmin)*dxi)
-           u1 =     (xp(ip) - xmmin)*dxi - i
-           u0 = 1. - u1
-           j  = int((yp(ip) - ymmin)*dyi)
-           v1 =     (yp(ip) - ymmin)*dyi - j
-           v0 = 1. - v1
-           k  = int((zp(ip) - zgrid - zmmin)*dzi)
-           w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
-           w0 = 1. - w1
-           ir = ip - ipmin
-           ind0 = i + j*nnx + k*nnxy
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           indx(4,ir) = ind0 + moff(4)
-           indx(5,ir) = ind0 + moff(5)
-           indx(6,ir) = ind0 + moff(6)
-           indx(7,ir) = ind0 + moff(7)
-           s(0,ir) = u0*v0*w0*g
-           s(1,ir) = u1*v0*w0*g
-           s(2,ir) = u0*v1*w0*g
-           s(3,ir) = u1*v1*w0*g
-           s(4,ir) = u0*v0*w1*g
-           s(5,ir) = u1*v0*w1*g
-           s(6,ir) = u0*v1*w1*g
-           s(7,ir) = u1*v1*w1*g
-        enddo
-      endif
-c     --- vectorized deposition over the 8 cells touched;
-c     --- there'd be a hazard if we interchanged the loops.
-!$OMP CRITICAL (CRITICAL_SETRHO3D1)
-      do ir = 0,nptmp-1
-        do m = 0, 7
-           rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
-        enddo
-      enddo
-!$OMP END CRITICAL (CRITICAL_SETRHO3D1)
-
-c--------------------------------------
-c  Begin scalar deposition loop
-c--------------------------------------
-      elseif (depos == "scalar") then
-
-c  Begin main loop over species
-
-c     --- vectorized loop to compute indices, weights
-      if (l2symtry) then
-        do ip = ipmin,ipmin+nptmp-1
-          ir = ip - ipmin
-          ii(ir) = int((xp(ip) - xmmin)*dxi)
-          u1     =     (xp(ip) - xmmin)*dxi - ii(ir)
-          u0     = 1. - u1
-          jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
-          v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
-          v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - zmmin)*dzi)
-          w1     =     (zp(ip) - zgrid - zmmin)*dzi - kk(ir)
-          w0     = 1. - w1
-          s(0,ir) = u0*v0*w0*g
-          s(1,ir) = u1*v0*w0*g
-          s(2,ir) = u0*v1*w0*g
-          s(3,ir) = u1*v1*w0*g
-          s(4,ir) = u0*v0*w1*g
-          s(5,ir) = u1*v0*w1*g
-          s(6,ir) = u0*v1*w1*g
-          s(7,ir) = u1*v1*w1*g
-        enddo
-      elseif (l4symtry) then
-        do ip = ipmin,ipmin+nptmp-1
-          ir = ip - ipmin
-          ii(ir) = int((abs(xp(ip)) - xmmin)*dxi)
-          u1     =     (abs(xp(ip)) - xmmin)*dxi - ii(ir)
-          u0     = 1. - u1
-          jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
-          v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
-          v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - zmmin)*dzi)
-          w1     =     (zp(ip) - zgrid - zmmin)*dzi - kk(ir)
-          w0     = 1. - w1
-          s(0,ir) = u0*v0*w0*g
-          s(1,ir) = u1*v0*w0*g
-          s(2,ir) = u0*v1*w0*g
-          s(3,ir) = u1*v1*w0*g
-          s(4,ir) = u0*v0*w1*g
-          s(5,ir) = u1*v0*w1*g
-          s(6,ir) = u0*v1*w1*g
-          s(7,ir) = u1*v1*w1*g
-        enddo
-      else
-c       --- normal loop
-        do ip = ipmin,ipmin+nptmp-1
-          ir = ip - ipmin
-          ii(ir) = int((xp(ip) - xmmin)*dxi)
-          u1     = (xp(ip) - xmmin)*dxi - ii(ir)
-          u0     = 1. - u1
-          jj(ir) = int((yp(ip) - ymmin)*dyi)
-          v1     = (yp(ip) - ymmin)*dyi - jj(ir)
-          v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - zmmin)*dzi)
-          w1     = (zp(ip) - zgrid - zmmin)*dzi - kk(ir)
-          w0     = 1. - w1
-          s(0,ir) = u0*v0*w0*g
-          s(1,ir) = u1*v0*w0*g
-          s(2,ir) = u0*v1*w0*g
-          s(3,ir) = u1*v1*w0*g
-          s(4,ir) = u0*v0*w1*g
-          s(5,ir) = u1*v0*w1*g
-          s(6,ir) = u0*v1*w1*g
-          s(7,ir) = u1*v1*w1*g
-        enddo
-      endif
-c     --- scalar loop does the actual deposition
-!$OMP CRITICAL (CRITICAL_SETRHO3D2)
-      do ir = 0, nptmp-1
-        rho(ii(ir)  ,jj(ir)  ,kk(ir)  )=rho(ii(ir)  ,jj(ir)  ,kk(ir)  )+s(0,ir)
-        rho(ii(ir)+1,jj(ir)  ,kk(ir)  )=rho(ii(ir)+1,jj(ir)  ,kk(ir)  )+s(1,ir)
-        rho(ii(ir)  ,jj(ir)+1,kk(ir)  )=rho(ii(ir)  ,jj(ir)+1,kk(ir)  )+s(2,ir)
-        rho(ii(ir)+1,jj(ir)+1,kk(ir)  )=rho(ii(ir)+1,jj(ir)+1,kk(ir)  )+s(3,ir)
-        rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)=rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)+s(4,ir)
-        rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)=rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)+s(5,ir)
-        rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)=rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)+s(6,ir)
-        rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)=rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)+s(7,ir)
-      enddo
-!$OMP END CRITICAL (CRITICAL_SETRHO3D2)
-
-      endif
-
-      enddo
-!$OMP END DO
-
-      if (depos == "vector") then 
-        deallocate(indx,s)
-      elseif (depos == "scalar") then
-        deallocate(ii,jj,kk,s)
-      endif
-
-!$OMP END PARALLEL
-
-      if (lw3dtimesubs) timesetrho3d = timesetrho3d + wtime() - substarttime
-      return
-      end
-c=============================================================================
-      subroutine setrho3dw(rho,np,xp,yp,zp,zgrid,wfact,q,wght,depos,
+      subroutine setrho3dw(rho,np,xp,yp,zp,zgrid,wfact,q,wght,depos,depos_order,
      &                     nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
      &                     dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                     lcylindrical)
@@ -9209,6 +9430,7 @@ c=============================================================================
      &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np), wfact(np)
       character(8):: depos
+      integer(ISZ):: depos_order(0:2)
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
@@ -9217,10 +9439,9 @@ c  Sets charge density using various algorithms
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-c--------------------------------------
-c  Direct deposition loop with precalculated integer conversions
-c--------------------------------------
+      if (ALL(depos_order == 1)) then
 
+c       --- Direct deposition loop with precalculated integer conversions
         if (.not. lcylindrical) then
           call setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,wfact,q,wght,
      &                          nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
@@ -9233,6 +9454,10 @@ c--------------------------------------
      &                          l2symtry,l4symtry,lcylindrical)
         endif
 
+      else
+        call kaboom("setho3dw: order of deposition is not supported in the electrostatic solver")
+        return
+      endif
 
 !$OMP END PARALLEL
 
@@ -10158,7 +10383,7 @@ c          --- Scale the weight, sw, by the time step scale size. This only
 c          --- makes sense for steady-state and slice modes. In time-dependent
 c          --- mode, it is assumed that dtscale has not been changed from 1.
            swtmp = pgroup%sw(is)*pgroup%dtscale(is)
-  
+
            if(solvergeom==XYZgeom) then
              ipmin = ins_u
              i1 = ipmin
@@ -10170,7 +10395,7 @@ c              --- Only load the rho if the positions have been advanced.
                  call setrho3d(rhopndts(:,:,:,0,indts),nps_u,
      &                         pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
      &                         zgridndts(indts),pgroup%sq(is),
-     &                         swtmp,depos,nxp,nyp,nzp,
+     &                         swtmp,depos,depos_order(:,is),nxp,nyp,nzp,
      &                         nxguardrho,nyguardrho,nzguardrho,
      &                         dx,dy,dz,xmminp,ymminp,zmminp,
      &                         l2symtry,l4symtry,solvergeom==RZgeom)
@@ -10179,7 +10404,7 @@ c              --- Only load the rho if the positions have been advanced.
      &                          pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
      &                          zgridndts(indts),
      &                          pgroup%pid(i1:i2,wpid),pgroup%sq(is),
-     &                          swtmp,depos,nxp,nyp,nzp,
+     &                          swtmp,depos,depos_order(:,is),nxp,nyp,nzp,
      &                          nxguardrho,nyguardrho,nzguardrho,
      &                          dx,dy,dz,xmminp,ymminp,zmminp,
      &                          l2symtry,l4symtry,solvergeom==RZgeom)
@@ -10642,6 +10867,7 @@ c    &                                       fsdecomp,ppdecomp)
 c=============================================================================
       subroutine setupFields3dParticles()
       use InGen,Only: fstype
+      use InPart,Only: depos_order,efetch
       use Picglb3d
       use InMesh3d
       use Fields3d
@@ -10654,6 +10880,8 @@ c=============================================================================
 #endif
 
 c Ensures that the phip and rhop arrays are setup properly.
+
+      integer(ISZ):: ng
 
       if (fstype == 12) return
 
@@ -10678,6 +10906,17 @@ c Ensures that the phip and rhop arrays are setup properly.
       zmminp = zmmin + ppdecomp%iz(iprocgrid(2))*dz
       zmmaxp = zmmin + (ppdecomp%iz(izproc) + ppdecomp%nz(izproc))*dz
 #endif
+
+      ng = MAXVAL(depos_order)
+      if (nxp > 0) nxguardrho = max(nxguardrho,ng - 1)
+      if (nyp > 0) nyguardrho = max(nyguardrho,ng - 1)
+      if (nzp > 0) nzguardrho = max(nzguardrho,ng - 1)
+      if (nxp > 0) nxguardphi = max(nxguardphi,ng)
+      if (nyp > 0) nyguardphi = max(nyguardphi,ng)
+      if (nzp > 0) nzguardphi = max(nzguardphi,ng)
+      if (nxp > 0) nxguarde = max(nxguarde,ng - 1)
+      if (nyp > 0) nyguarde = max(nyguarde,ng - 1)
+      if (nzp > 0) nzguarde = max(nzguarde,ng - 1)
 
       nrhopndtscopies3d = nrhopndtscopies
       nsndts3d = nsndts
@@ -10711,7 +10950,7 @@ c=============================================================================
       use Picglb
       use Picglb3d
       use InGen,Only: fstype
-      use InPart,Only: efetch
+      use InPart,Only: efetch,depos_order
       use InGen3d
       use InMesh3d
       use Fields3d
@@ -10768,7 +11007,7 @@ c     --- Just return if the efetch is turned off.
      &              zgridprv,xmminp,ymminp,zmminp,dx,dy,dz,
      &              nxp,nyp,nzp,nxguardphi,nyguardphi,nzguardphi,
      &              nxguarde,nyguarde,nzguarde,
-     &              efetch(is),
+     &              efetch(is),depos_order(:,is),
      &              ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
       elseif(solvergeom==RZgeom) then
         call setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
@@ -10799,7 +11038,7 @@ c=============================================================================
       use Picglb
       use Picglb3d
       use InGen,Only: fstype
-      use InPart,Only: efetch
+      use InPart,Only: efetch,depos_order
       use InGen3d
       use InMesh3d
       use Fields3d
@@ -10912,7 +11151,7 @@ c       --- and the data needs to be copied around.
      &              zgridprv,xmminp,ymminp,zmminp,dx,dy,dz,
      &              nxp,nyp,nzp,nxguardphi,nyguardphi,nzguardphi,
      &              nxguarde,nyguarde,nzguarde,
-     &              efetch(is),
+     &              efetch(is),depos_order(:,is),
      &              ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
       elseif(solvergeom==RZgeom) then
         call fieldweightrz(x,y,z,ex,ey,ez,n,zgridprv,efetch(is))
@@ -11088,7 +11327,7 @@ c       --- do it only if species was advanced on this time step
           call processlostpart(pgroup,js+1,clearlostpart,
      &                         time+dt*pgroup%ndts(js),zbeam)
         endif
-      enddo    
+      enddo
 
       if (lcallcontrollers .and. lafterscraper)
      &  call callpythonfunc("afterscraper","controllers")
@@ -11174,7 +11413,7 @@ c       --- do it only if species was advanced on this time step
           call processlostpart(pgroup,js+1,clearlostpart,
      &                         time+dt*pgroup%ndts(js),zbeam)
         endif
-      enddo    
+      enddo
 
       if (lcallcontrollers .and. lafterscraper)
      &  call callpythonfunc("afterscraper","controllers")
@@ -11236,7 +11475,7 @@ c     --- been specified.
         enddo
 !$OMP END PARALLEL DO
       endif
-      
+
       if (MINVAL(prwallz) < LARGEPOS) then
 !$OMP PARALLEL DO PRIVATE(iz)
         do ip = pgroup%ins(js+1),pgroup%ins(js+1)+pgroup%nps(js+1)-1
@@ -12303,13 +12542,13 @@ c===========================================================================
       use Decompositionmodule
       integer(ISZ):: iwhich
 
-c  Field solver for 3d warped Cartesian geometry. 
+c  Field solver for 3d warped Cartesian geometry.
 c  Enter with charge density in rho array, old potential in phi array.
 c  Exit with new potential in phi array, and rho unchanged.
-c  
+c
 c  For field solve in a bend there are two possible cases:
-c      1) Call to an SOR field solver.  
-c      2) Iteration loop for a perturbative calculation of fields. 
+c      1) Call to an SOR field solver.
+c      2) Iteration loop for a perturbative calculation of fields.
 c         The loop is in bendfieldsol3d
 
       real(kind=8):: timetemp
@@ -12321,8 +12560,8 @@ c         The loop is in bendfieldsol3d
       if (lw3dtimesubs) substarttime = wtime()
       timetemp = wtime()
 
-c     --- If no field solve, return 
-      if ( fstype == -1) return 
+c     --- If no field solve, return
+      if ( fstype == -1) return
 
       if (l4symtry .and. l2symtry) then
         call kaboom("fieldsol3d: both l4symtry and l2symtry are set to true")
@@ -12430,10 +12669,10 @@ c         --- If not in bend, call VP3D
 c           --- When copying rho into phi, be careful not to overwrite any
 c           --- boundary conditions in phi.
 #ifndef MPIPARALLEL
-            phipndts(ixmin:ixmax,iymin:iymax,izmin:izmax,isndts) = 
+            phipndts(ixmin:ixmax,iymin:iymax,izmin:izmax,isndts) =
      &        rhopndts(ixmin:ixmax,iymin:iymax,izmin:izmax,nrhopndtscopies-1,indts)
 #else
-            phi(ixmin:ixmax,iymin:iymax,izmin:izmax) = 
+            phi(ixmin:ixmax,iymin:iymax,izmin:izmax) =
      &        rho(ixmin:ixmax,iymin:iymax,izmin:izmax)
 #endif
 c           --- Apply inhomogeneous Dirichlet boundary conditions
@@ -12518,7 +12757,7 @@ c     --- turn back on the bends after the fieldsolve when computing in a booste
       if (linbendturnedoff) then
         linbend=.true.
       end if
-      
+
 !$OMP MASTER
       if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
       fstime = fstime + (wtime() - timetemp)
@@ -12566,7 +12805,7 @@ c        --- save phi this slice, for future algebra
             enddo
          enddo
          do i = 0, nxlocal
-            phisav(i,-1) = phisav(i,nzlocal-1) 
+            phisav(i,-1) = phisav(i,nzlocal-1)
          enddo
 c        --- loop over mesh points in z
          do k = 0, nzlocal-1
@@ -12580,12 +12819,12 @@ c           --- only modify source if actually in a bend, or at entrance/exit
                do i = 1, nxlocal-1
                   x = xmmin + i*dx
                   r = 1./(rs + x)
-                  phi(i,j,k) = rho(i,j,k)*rs*r 
+                  phi(i,j,k) = rho(i,j,k)*rs*r
      &             + eps0 * ( (phisav(i+1,k) - phisav(i-1,k)) *0.5*dxi*r
      &                  + (phisav(i,k+1) - 2.*phisav(i,k) + phisav(i,k-1))
      &                  * (-2.*x*r + x**2*r**2) * dzi**2
      &                  - ccmult * (phisav(i,k+1) - phisav(i,k-1)) * 0.5*dzi
-     &                  * (rs*r)**3 * x * dhdz 
+     &                  * (rs*r)**3 * x * dhdz
      &                      )
                enddo
             else
@@ -12664,7 +12903,7 @@ c fstype
 c   0  only 3d fft on rectangular mesh, square pipe
 c   1  3d fft and Kz capacity matrix for variable pipe shape
 c   2  3d fft and 3d capacity matrix for internal quadrupole conductors
-c   3  3d SOR field solve 
+c   3  3d SOR field solve
 c   4  2d fft in transverse plane, tridiag solve in z
 
       if (fstype .ne. -1 .and. fstype .ne. 12) then

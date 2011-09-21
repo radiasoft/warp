@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.322 $, $Date: 2011/08/27 00:35:51 $
+#@(#) File W3D.V, version $Revision: 3.323 $, $Date: 2011/09/21 22:53:45 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.322 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.323 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -1083,7 +1083,8 @@ sete3d(phi1d:real,selfe:real,np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
        nx:integer,ny:integer,nz:integer,
        nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
        nxguarde:integer,nyguarde:integer,nzguarde:integer,
-       efetch:integer,ex(np):real,ey(np):real,ez(np):real,
+       efetch:integer,depos_order(0:2):integer,
+       ex(np):real,ey(np):real,ez(np):real,
        l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine # Sets internal E field
 getselfe3d(phi(-nxguardphi:nx+nxguardphi,
@@ -1102,7 +1103,8 @@ setrho3d(rho(-nxguardrho:nx+nxguardrho,
              -nyguardrho:ny+nyguardrho,
              -nzguardrho:nz+nzguardrho):real,
          np:integer,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
-         q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
+         q:real,wght:real,depos:string,depos_order(0:2):integer,
+         nx:integer,ny:integer,nz:integer,
          nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
          dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
          l2symtry:logical,l4symtry:logical,lcylindrical:logical)
@@ -1114,22 +1116,13 @@ setrho3dw(rho(-nxguardrho:nx+nxguardrho,
               -nzguardrho:nz+nzguardrho):real,
           np:integer,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
           wfact(np):real,
-          q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
+          q:real,wght:real,depos:string,depos_order(0:2):integer,
+          nx:integer,ny:integer,nz:integer,
           nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
           dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
           l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine # Computes charge density on a 3D grid
                         # using variable weighted particles
-setrho3dselect(rho(-nxguardrho:nx+nxguardrho,
-                   -nyguardrho:ny+nyguardrho,
-                   -nzguardrho:nz+nzguardrho):real,
-               rho1d:real,
-               np:integer,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
-               q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
-               nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
-               dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
-               l2symtry:logical,l4symtry:logical)
-             subroutine # Computes charge density
 setrho3ddirect2(rho(-nxguardrho:nx+nxguardrho,
                     -nyguardrho:ny+nyguardrho,
                     -nzguardrho:nz+nzguardrho):real,
