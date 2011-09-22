@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.25 2011/09/22 00:26:59 grote Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.26 2011/09/22 23:19:07 grote Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -481,8 +481,8 @@ Input arguments:
 
   # --- Scale the B field to get exactly bzmax.
   if scalebz:
-    ix_axis = nint(-Bsolver.xmmin/Bsolver.dx)
-    iy_axis = nint(-Bsolver.ymmin/Bsolver.dy)
+    ix_axis = nint(-Bsolver.xmmin/Bsolver.dx) + Bsolver.nxguarde
+    iy_axis = nint(-Bsolver.ymmin/Bsolver.dy) + Bsolver.nyguarde
     bzmax_actual = max(abs(Bsolver.field[2,ix_axis,iy_axis,:]))
     if bzmax_actual > 0.:
       Bsolver.source[...] = abs(bzmax/bzmax_actual)*Bsolver.source
@@ -495,10 +495,13 @@ Input arguments:
   kw.setdefault('ap',rinner)
 
   # --- Now add in the solenoid element
+  field = Bsolver.field[:,Bsolver.nxguarde:-Bsolver.nxguarde or None,
+                          Bsolver.nyguarde:-Bsolver.nyguarde or None,
+                          Bsolver.nzguarde:-Bsolver.nzguarde or None]
   return addnewbgrd(Bsolver.zmmin,Bsolver.zmmax,
                     dx=Bsolver.dx,dy=Bsolver.dy,
-                    bx=Bsolver.field[0,...],
-                    by=Bsolver.field[1,...],
-                    bz=Bsolver.field[2,...],
+                    bx=field[0,...],
+                    by=field[1,...],
+                    bz=field[2,...],
                     rz=lcylindrical,**kw)
 
