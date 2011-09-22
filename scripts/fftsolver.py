@@ -5,7 +5,7 @@ from warp import *
 from lattice import addnewbgrd,addnewbsqgrad
 import MA
 
-fftsolver_version = "$Id: fftsolver.py,v 1.34 2011/09/21 22:56:06 grote Exp $"
+fftsolver_version = "$Id: fftsolver.py,v 1.35 2011/09/22 23:20:02 grote Exp $"
 
 ##############################################################################
 class FieldSolver3dBase(object):
@@ -131,7 +131,7 @@ class FieldSolver3dBase(object):
     self.rho = fzeros((1+self.nx,1+self.ny,1+self.nzlocal),'d')
     self.phi = fzeros((1+self.nx,1+self.ny,3+self.nzlocal),'d')
     self.rstar = fzeros(3+self.nzlocal,'d')
-    if sometrue(top.efetch == 3):
+    if sometrue(top.efetch == 3) or maxnd(top.depos_order) > 1:
       self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nzlocal),'d')
     else:
       self.selfe = 0.

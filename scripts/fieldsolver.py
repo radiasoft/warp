@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.99 2011/09/21 22:56:06 grote Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.100 2011/09/22 23:20:01 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -73,7 +73,8 @@ package. Only w3d and wxy have field solves defined.
   # --- Now do extra work, updating arrays which depend directly on phi,
   # --- but only when a complete field solve was done.
   if iwhich == -1 or iwhich == 0:
-    if (sometrue(top.efetch == 3) and top.fstype != 12 and
+    if ((sometrue(top.efetch == 3) or maxnd(top.depos_order) > 1) and
+        top.fstype != 12 and
         (w3d.solvergeom == w3d.XYZgeom or
          w3d.solvergeom == w3d.RZgeom or
          w3d.solvergeom == w3d.XZgeom or
@@ -2179,7 +2180,8 @@ the upper edge.
   assert comp in ['x','y','z','E'],"comp must be one of 'x', 'y', 'z' or 'E'"
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  if alltrue(top.efetch != 3) or not w3d.allocated('selfe'):
+  if ((alltrue(top.efetch != 3) and maxnd(top.depos_order) == 1) or
+      not w3d.allocated('selfe')):
     # --- If not already using selfe, then allocate it and set it.
     # --- Note that this could be an unexpected expense for a user.
     if solver is w3d:

@@ -14,7 +14,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.161 2011/09/21 22:56:06 grote Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.162 2011/09/22 23:20:01 grote Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -266,7 +266,9 @@ most of which get there default values from one of the fortran packages.
       self.lwithselfep
     except AttributeError:
       self.lwithselfep = 0
-    self.lwithselfep = self.lwithselfep or sometrue(top.efetch == 3)
+    self.lwithselfep = (self.lwithselfep or
+                        sometrue(top.efetch == 3) or
+                        maxnd(top.depos_order) > 1)
 
     if self.lwithselfep:
       return ((1+self.nxp+2*self.nxguardrho,
@@ -595,7 +597,7 @@ most of which get there default values from one of the fortran packages.
                              self.nxp,self.nyp,self.nzp,
                              self.nxguardphi,self.nyguardphi,self.nzguardphi,
                              self.potentialp,self.bounds)
-    if sometrue(top.efetch == 3):
+    if sometrue(top.efetch == 3) or maxnd(top.depos_order) > 1:
       self.setfieldpforparticles(*args)
       indts = args[1]
       # --- If this is the first group, set make sure that fieldp gets
@@ -668,7 +670,9 @@ most of which get there default values from one of the fortran packages.
 
     # --- If the E field is not actively being used, then recalculate it,
     # --- unless recalculate is passed in by the user.
-    if alltrue(top.efetch != 3) and recalculate is None: recalculate = 1
+    if (alltrue(top.efetch != 3) and maxnd(top.depos_order) == 1 and
+        recalculate is None):
+      recalculate = 1
 
     self.lwithselfep = 1
     self.allocatedataarrays()
