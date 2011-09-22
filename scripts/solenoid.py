@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.24 2011/09/01 17:47:06 grote Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.25 2011/09/22 00:26:59 grote Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -433,16 +433,16 @@ Input arguments:
 
   # --- Put the current into the solver
   if lcylindrical:
-    Bsolver.sourcep[1,w3d.nxguardrho:-w3d.nxguardrho or None,0,
-                      w3d.nzguardrho:-w3d.nzguardrho or None] = +ww*current
+    Bsolver.sourcep[1,Bsolver.nxguardrho:-Bsolver.nxguardrho or None,0,
+                      Bsolver.nzguardrho:-Bsolver.nzguardrho or None] = +ww*current
   else:
     theta = arctan2(yy,xx)
-    Bsolver.sourcep[0,w3d.nxguardrho:-w3d.nxguardrho or None,
-                      w3d.nyguardrho:-w3d.nyguardrho or None,
-                      w3d.nzguardrho:-w3d.nzguardrho or None] = -ww*current*sin(theta)
-    Bsolver.sourcep[1,w3d.nxguardrho:-w3d.nxguardrho or None,
-                      w3d.nyguardrho:-w3d.nyguardrho or None,
-                      w3d.nzguardrho:-w3d.nzguardrho or None] = +ww*current*cos(theta)
+    Bsolver.sourcep[0,Bsolver.nxguardrho:-Bsolver.nxguardrho or None,
+                      Bsolver.nyguardrho:-Bsolver.nyguardrho or None,
+                      Bsolver.nzguardrho:-Bsolver.nzguardrho or None] = -ww*current*sin(theta)
+    Bsolver.sourcep[1,Bsolver.nxguardrho:-Bsolver.nxguardrho or None,
+                      Bsolver.nyguardrho:-Bsolver.nyguardrho or None,
+                      Bsolver.nzguardrho:-Bsolver.nzguardrho or None] = +ww*current*cos(theta)
 
   # --- Set this, so that the solver thinks that a loadj has been done
   # --- (which is effectively correct since sourcep was set above).
