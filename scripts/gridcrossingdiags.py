@@ -4,16 +4,18 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.47 2011/03/07 18:14:39 grote Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.48 2011/09/26 17:37:59 grote Exp $"
 
 class GridCrossingDiags(object):
     """
 Sets up diagnostics at z grid cells that are gathered from particles that
 cross the cell.
 
-  - js: species of particles to include. Currently can handle only a single
-        species. Can be either the species index number, or an instance of the
-        Species class.
+  - js: species of particles to include. This can be a single species, or
+        a list of species.  Can be either the species index number, or
+        instances of the Species class.
+        Note that the radial and scintillator diagnostics can handle only a
+        single species and will only include the first species listed.
   - zmmin,zmmax,dz,nz: grid parameters
         zmmin and zmmax default to w3d.zmmin and w3d.zmmax.
         dz defaults to w3d.dz/nzscale.
@@ -85,10 +87,16 @@ be unreliable.
                  dumptofile=None,
                  laccumulatedata=true,
                  starttime=None,endtime=None,lmoving_frame=0):
-        if isinstance(js,Species):
-            self.js = js.jslist[0]
-        else:
-            self.js = js
+        try:
+            len(js)
+            jslist = js
+        except:
+            jslist = [js]
+        self.jslist = []
+        for sp in jslist:
+            if isinstance(sp,Species):
+                sp = sp.js
+            self.jslist.append(sp)
         self.zmmin = zmmin
         self.zmmax = zmmax
         self.dz = dz
@@ -116,8 +124,6 @@ be unreliable.
         self.lmoving_frame = lmoving_frame
         self.lastitsaved = None
         self.timeaverage = 0.
-
-        self.zoldpid = nextpid()
 
         # --- Set these to None so that the routines below can check whether
         # --- they have been set up yet.
@@ -166,6 +172,10 @@ be unreliable.
         if self.ldoscintillator:
             self._scinttime = []
             self._scintillator = []
+
+        if self.ldoradialdiag or self.ldoscintillator:
+            self.zoldpid = nextpid()
+
 
     def enable(self):
         """
@@ -262,10 +272,11 @@ data will be preserved.
             self.gcmoments.endtimegc = largepos
         self.gcmoments.ntgc = self.nt
         self.gcmoments.nzgc = self.nz
-        self.gcmoments.nszgc = top.ns
+        self.gcmoments.nszgc = len(self.jslist)
         self.gcmoments.dzgc = self.dz
         self.gcmoments.lmoving_framegc = self.lmoving_frame
         self.gcmoments.gchange()
+        self.gcmoments.jslistgc[:] = self.jslist
 
         if self.ldoscintillator:
             self.scintzmin = nint((self.scintzmin-self.zmmin)/self.dz)*self.dz + self.zmmin
@@ -322,7 +333,7 @@ data will be preserved.
         if getcurrpkg() != 'w3d': return
 
         # --- Check if particle was advanced
-        if not top.pgroup.ldts[self.js]: return
+        if not any(top.pgroup.ldts[self.jslist]): return
 
         # --- Check the start and end times
         if self.starttime is not None:
@@ -339,7 +350,7 @@ data will be preserved.
             return
 
         # --- Create handy locals.
-        js = self.js
+        js = self.jslist[0]
         zmmin = self.zmmin
         zmmax = self.zmmax
         dz = self.dz
@@ -397,7 +408,7 @@ data will be preserved.
         # --- are no particles locally.
         if top.pgroup.nps[js] > 0:
 
-            if nt == 1 or self.ldoradialdiag or self.ldoscintillator:
+            if self.ldoradialdiag or self.ldoscintillator:
 
                 xnew = getx(js=js,gather=0)
                 ynew = gety(js=js,gather=0)
@@ -426,7 +437,6 @@ data will be preserved.
 
                 zc = izc.astype('d')
 
-            if self.ldoradialdiag or self.ldoscintillator:
                 np = len(izc)
                 vz = getvz(js=js,gather=0)[icrossed]
                 ke = 0.5*top.pgroup.sm[js]*vz**2
@@ -447,10 +457,11 @@ data will be preserved.
                             self.scintymin,self.scintymax,
                             self.scintxmin,self.scintxmax)
 
-            # --- Save particle z positions.
-            i1 = top.pgroup.ins[js] - 1
-            i2 = i1 + top.pgroup.nps[js]
-            top.pgroup.pid[i1:i2,self.zoldpid-1] = top.pgroup.zp[i1:i2]
+            if self.ldoradialdiag or self.ldoscintillator:
+                # --- Save particle z positions.
+                i1 = top.pgroup.ins[js] - 1
+                i2 = i1 + top.pgroup.nps[js]
+                top.pgroup.pid[i1:i2,self.zoldpid-1] = top.pgroup.zp[i1:i2]
 
         # --- Collect the data after at least nhist steps have gone by since
         # --- the last time that the data was collected. If nhist < 1, then
@@ -460,20 +471,20 @@ data will be preserved.
         if (top.it - self.lastitsaved) >= nhist:
             self.lastitsaved = top.it
 
-            count = self.gcmoments.pnumgc[1:,:,self.js]
-            xbar = self.gcmoments.xbargc[1:,:,self.js]
-            ybar = self.gcmoments.ybargc[1:,:,self.js]
-            xsqbar = self.gcmoments.xsqbargc[1:,:,self.js]
-            ysqbar = self.gcmoments.ysqbargc[1:,:,self.js]
-            rprms = self.gcmoments.rprmsgc[1:,:,self.js]
-            vxbar = self.gcmoments.vxbargc[1:,:,self.js]
-            vybar = self.gcmoments.vybargc[1:,:,self.js]
-            vzbar = self.gcmoments.vzbargc[1:,:,self.js]
-            vxsqbar = self.gcmoments.vxsqbargc[1:,:,self.js]
-            vysqbar = self.gcmoments.vysqbargc[1:,:,self.js]
-            vzsqbar = self.gcmoments.vzsqbargc[1:,:,self.js]
-            xvxbar = self.gcmoments.xvxbargc[1:,:,self.js]
-            yvybar = self.gcmoments.yvybargc[1:,:,self.js]
+            count = self.gcmoments.pnumgc[1:,:,:]
+            xbar = self.gcmoments.xbargc[1:,:,:]
+            ybar = self.gcmoments.ybargc[1:,:,:]
+            xsqbar = self.gcmoments.xsqbargc[1:,:,:]
+            ysqbar = self.gcmoments.ysqbargc[1:,:,:]
+            rprms = self.gcmoments.rprmsgc[1:,:,:]
+            vxbar = self.gcmoments.vxbargc[1:,:,:]
+            vybar = self.gcmoments.vybargc[1:,:,:]
+            vzbar = self.gcmoments.vzbargc[1:,:,:]
+            vxsqbar = self.gcmoments.vxsqbargc[1:,:,:]
+            vysqbar = self.gcmoments.vysqbargc[1:,:,:]
+            vzsqbar = self.gcmoments.vzsqbargc[1:,:,:]
+            xvxbar = self.gcmoments.xvxbargc[1:,:,:]
+            yvybar = self.gcmoments.yvybargc[1:,:,:]
 
             # --- Finish the calculation, gathering data from all processors
             # --- and dividing out the count.
@@ -531,7 +542,7 @@ data will be preserved.
                                           - (yvybar - ybar*vybar)**2))
 
             # --- Scale the current appropriately.
-            self._current[-1] = count*(top.pgroup.sq[js]/(top.dt*nhist))
+            self._current[-1] = count*(top.pgroup.sq[self.jslist][newaxis,newaxis,:]/(top.dt*nhist))
 
             # --- Now that the data was copied out, zero the top arrays
             # --- so that the data doesn't accumulate.
@@ -608,7 +619,7 @@ data will be preserved.
         if not os.path.exists(self.dumptofile+'_gridcrossing.pkl'):
             ff = open(self.dumptofile+'_gridcrossing.pkl','w')
             # --- Save the input parameters to the file.
-            cPickle.dump(('js',self.js),ff,-1)
+            cPickle.dump(('jslist',self.jslist),ff,-1)
             cPickle.dump(('zmmin',self.zmmin),ff,-1)
             cPickle.dump(('zmmax',self.zmmax),ff,-1)
             cPickle.dump(('dz',self.dz),ff,-1)
@@ -945,16 +956,26 @@ after simulation when the dumptofile flag was on.
         return data[1]
 
     # ----------------------------------------------------------------------
-    def setupanalysis(self):
+    def getijfromjs(self,js):
+        if js is None: return 0
+        try:
+            ij = self.jslist.index(js)
+        except ValueError:
+            raise Exception('Species js is not in the list of diagnosed species')
+        return ij
+
+    # ----------------------------------------------------------------------
+    def setupanalysis(self,js=None):
         if me > 0: return
+        ij = self.getijfromjs(js)
         self.currentmax = zeros(self.nz+1,'d')
         self.ratcurrentmax = zeros(self.nz+1,'d')
         for iz in range(self.nz+1):
             # --- Find the max current over time at the location iz
-            ii = argmax(self.current[:,iz])
+            ii = argmax(self.current[:,iz,ij])
             # --- Save the current and beam radius at that time
-            self.currentmax[iz] = self.current[ii,iz]
-            self.ratcurrentmax[iz] = self.rrms[ii,iz]*100.
+            self.currentmax[iz] = self.current[ii,iz,ij]
+            self.ratcurrentmax[iz] = self.rrms[ii,iz,ij]*100.
 
         if self.ldoradialdiag:
             self.arrayrprofile = array(self.rprofile)
@@ -999,12 +1020,13 @@ after simulation when the dumptofile flag was on.
         ptitles('%d KeV'%ee,'R (cm)','joules/sq-cm','Energy deposition on target, summed over 5 ns')
         plt("Etot = %7.2f mJ"%(Etot*1000.),.45,.82)
 
-    def ppfluenceattarget(self,ztarget,deltat):
+    def ppfluenceattarget(self,ztarget,deltat,js=None):
         """Plot the fluence on the target, integrating over the time +/- deltat
 around the peak current."""
         if me > 0: return
+        ij = self.getijfromjs(js)
         iztarget = int((ztarget - self.zmmin)/self.dz)
-        ii = argmax(self.current[:,iztarget])
+        ii = argmax(self.current[:,iztarget,ij])
         i1 = i2 = ii
         while i1 >= 0 and self.time[i1] >= self.time[ii] - deltat:
             i1 -= 1
@@ -1013,11 +1035,12 @@ around the peak current."""
         Esum = sum(self.arrayrprofile[i1:i2+1,:,iztarget],0)
         self.ppfluence(Esum)
 
-    def ppfluenceatspot(self,deltat=None,currmin=None,tslice=slice(None)):
+    def ppfluenceatspot(self,deltat=None,currmin=None,tslice=slice(None),js=None):
         if me > 0: return
+        ij = self.getijfromjs(js)
         iztarget = argmin(ratcurrentmax[tslice])
         if deltat is not None:
-            ii = argmax(self.current[:,iztarget])
+            ii = argmax(self.current[:,iztarget,ij])
             i1 = i2 = ii
             while i1 >= 0 and self.time[i1] >= self.time[ii] - deltat:
                 i1 -= 1
@@ -1031,12 +1054,14 @@ around the peak current."""
 
     # ----------------------------------------------------------------------
     def _pp2d(self,data,lbeamframe=1,**kw):
+        js = kw.get('js',None)
+        ij = self.getijfromjs(js)
         if lbeamframe:
             zz = self.zmesh[:,newaxis]*ones(data.shape[0])[newaxis,:]
         else:
             zz = self.zmesh[:,newaxis] + self.zbeam[newaxis,:]
         tt = self.time[newaxis,:]*ones(self.nz+1)[:,newaxis]
-        ppgeneric(gridt=data,xmesh=zz,ymesh=tt,**kw)
+        ppgeneric(gridt=data[...,ij],xmesh=zz,ymesh=tt,**kw)
 
     def pp2dcount(self,**kw):
         """
@@ -1184,7 +1209,8 @@ Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
         self._pp2d(self.rprms,**kw)
 
     # ----------------------------------------------------------------------
-    def _gettimehistory(self,data,z):
+    def _gettimehistory(self,data,z,js):
+        ij = self.getijfromjs(js)
 
         # --- For each time, get the grid cell where the data is.
         zz = (z - self.zbeam - self.zmmin)/self.dz
@@ -1205,10 +1231,10 @@ Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
         wz = zz[ii] - iz
 
         # --- The shape of the data...
-        n0,n1 = data.shape
+        n0,n1 = data[...,ij].shape
 
         # --- Get a 1-D version of the data.
-        data1d = data.ravel()
+        data1d = data[...,ij].ravel()
 
         # --- Convert the two indices, ii and iz, to an index into the
         # --- flattened version of the array, and get the data.
@@ -1241,124 +1267,125 @@ Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
         #            d.append(data[i,iz])
         #return array(d),array(t)
         
-    def hcount(self,z):
+    def hcount(self,z,js=None):
         """
 Returns the time history of the particle count at the given z location.
         """
-        return self._gettimehistory(self.count,z)
-    def hcurrent(self,z):
+        return self._gettimehistory(self.count,z,js)
+    def hcurrent(self,z,js=None):
         """
 Returns the time history of the current at the given z location.
         """
-        return self._gettimehistory(self.current,z)
-    def hxbar(self,z):
+        return self._gettimehistory(self.current,z,js)
+    def hxbar(self,z,js=None):
         """
 Returns the time history of the x bar at the given z location.
         """
-        return self._gettimehistory(self.xbar,z)
-    def hybar(self,z):
+        return self._gettimehistory(self.xbar,z,js)
+    def hybar(self,z,js=None):
         """
 Returns the time history of the y bar at the given z location.
         """
-        return self._gettimehistory(self.ybar,z)
-    def hxsqbar(self,z):
+        return self._gettimehistory(self.ybar,z,js)
+    def hxsqbar(self,z,js=None):
         """
 Returns the time history of the x**2 bar at the given z location.
         """
-        return self._gettimehistory(self.xsqbar,z)
-    def hysqbar(self,z):
+        return self._gettimehistory(self.xsqbar,z,js)
+    def hysqbar(self,z,js=None):
         """
 Returns the time history of the y**2 bar at the given z location.
         """
-        return self._gettimehistory(self.ysqbar,z)
-    def hvxbar(self,z):
+        return self._gettimehistory(self.ysqbar,z,js)
+    def hvxbar(self,z,js=None):
         """
 Returns the time history of the vx bar at the given z location.
         """
-        return self._gettimehistory(self.vxbar,z)
-    def hvybar(self,z):
+        return self._gettimehistory(self.vxbar,z,js)
+    def hvybar(self,z,js=None):
         """
 Returns the time history of the vy bar at the given z location.
         """
-        return self._gettimehistory(self.vybar,z)
-    def hvzbar(self,z):
+        return self._gettimehistory(self.vybar,z,js)
+    def hvzbar(self,z,js=None):
         """
 Returns the time history of the vz bar at the given z location.
         """
-        return self._gettimehistory(self.vzbar,z)
-    def hvxsqbar(self,z):
+        return self._gettimehistory(self.vzbar,z,js)
+    def hvxsqbar(self,z,js=None):
         """
 Returns the time history of the vx**2 bar at the given z location.
         """
-        return self._gettimehistory(self.vxsqbar,z)
-    def hvysqbar(self,z):
+        return self._gettimehistory(self.vxsqbar,z,js)
+    def hvysqbar(self,z,js=None):
         """
 Returns the time history of the vy**2 bar at the given z location.
         """
-        return self._gettimehistory(self.vysqbar,z)
-    def hvzsqbar(self,z):
+        return self._gettimehistory(self.vysqbar,z,js)
+    def hvzsqbar(self,z,js=None):
         """
 Returns the time history of the vz**2 bar at the given z location.
         """
-        return self._gettimehistory(self.vzsqbar,z)
-    def hxvxbar(self,z):
+        return self._gettimehistory(self.vzsqbar,z,js)
+    def hxvxbar(self,z,js=None):
         """
 Returns the time history of the x*vx bar at the given z location.
         """
-        return self._gettimehistory(self.xvxbar,z)
-    def hyvybar(self,z):
+        return self._gettimehistory(self.xvxbar,z,js)
+    def hyvybar(self,z,js=None):
         """
 Returns the time history of the y*vy bar at the given z location.
         """
-        return self._gettimehistory(self.yvybar,z)
-    def hxrms(self,z):
+        return self._gettimehistory(self.yvybar,z,js)
+    def hxrms(self,z,js=None):
         """
 Returns the time history of the x rms at the given z location.
         """
-        return self._gettimehistory(self.xrms,z)
-    def hyrms(self,z):
+        return self._gettimehistory(self.xrms,z,js)
+    def hyrms(self,z,js=None):
         """
 Returns the time history of the y rms at the given z location.
         """
-        return self._gettimehistory(self.yrms,z)
-    def hvxrms(self,z):
+        return self._gettimehistory(self.yrms,z,js)
+    def hvxrms(self,z,js=None):
         """
 Returns the time history of the vx rms at the given z location.
         """
-        return self._gettimehistory(self.vxrms,z)
-    def hvyrms(self,z):
+        return self._gettimehistory(self.vxrms,z,js)
+    def hvyrms(self,z,js=None):
         """
 Returns the time history of the vy rms at the given z location.
         """
-        return self._gettimehistory(self.vyrms,z)
-    def hvzrms(self,z):
+        return self._gettimehistory(self.vyrms,z,js)
+    def hvzrms(self,z,js=None):
         """
 Returns the time history of the vz rms at the given z location.
         """
-        return self._gettimehistory(self.vzrms,z)
-    def hepsnx(self,z):
+        return self._gettimehistory(self.vzrms,z,js)
+    def hepsnx(self,z,js=None):
         """
 Returns the time history of the normalized x emittance at the given z location.
         """
-        return self._gettimehistory(self.epsnx,z)
-    def hepsny(self,z):
+        return self._gettimehistory(self.epsnx,z,js)
+    def hepsny(self,z,js=None):
         """
 Returns the time history of the normalized y emittance at the given z location.
         """
-        return self._gettimehistory(self.epsny,z)
-    def hrrms(self,z):
+        return self._gettimehistory(self.epsny,z,js)
+    def hrrms(self,z,js=None):
         """
 Returns the time history of the r rms  at the given z location.
         """
-        return self._gettimehistory(self.rrms,z)
-    def hrprms(self,z):
+        return self._gettimehistory(self.rrms,z,js)
+    def hrprms(self,z,js=None):
         """
 Returns the time history of the r' rms at the given z location.
         """
-        return self._gettimehistory(self.rprms,z)
+        return self._gettimehistory(self.rprms,z,js)
 
     # ----------------------------------------------------------------------
-    def _timeintegrate(self,data,laverage,weight=None):
+    def _timeintegrate(self,data,laverage,weight=None,js=None):
+        ij = self.getijfromjs(js)
 
         zmesh = self.zmesh
         zmin = zmesh[0] + self.zbeam.min()
@@ -1378,10 +1405,10 @@ Returns the time history of the r' rms at the given z location.
             count = self.count
 
         zz = (self.zmesh[newaxis,:] + self.zbeam[:,newaxis]).ravel()
-        data = data.ravel()
+        data = data[...,ij].ravel()
 
         if laverage or weight is not None:
-            count = count.ravel()
+            count = count[...,ij].ravel()
             deposgrid1dw(1,len(zz),zz,data,count,
                          nz,grid,gridcount,zmin,zmax)
         else:
@@ -1395,7 +1422,7 @@ Returns the time history of the r' rms at the given z location.
 
         return result,gridmesh
 
-    def timeintegratedcount(self,laverage=0,weight=None):
+    def timeintegratedcount(self,laverage=0,weight=None,js=None):
         """
 Returns the time integrated particle count. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1407,9 +1434,9 @@ data and the z mesh on which the calculation was done.
  - weight=None: weight to apply when doing the calculation. laverage=1 is the
                 same as weight=self.count
         """
-        return self._timeintegrate(self.count,laverage,weight)
+        return self._timeintegrate(self.count,laverage,weight,js)
 
-    def timeintegratedcurrent(self,laverage=0,weight=None):
+    def timeintegratedcurrent(self,laverage=0,weight=None,js=None):
         """
 Returns the time integrated current. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1421,9 +1448,9 @@ data and the z mesh on which the calculation was done.
  - weight=None: weight to apply when doing the calculation. laverage=1 is the
                 same as weight=self.count
         """
-        return self._timeintegrate(self.current,laverage,weight)
+        return self._timeintegrate(self.current,laverage,weight,js)
 
-    def timeintegratedvzbar(self,laverage=1,weight=None):
+    def timeintegratedvzbar(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated vz bar. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1435,9 +1462,9 @@ data and the z mesh on which the calculation was done.
  - weight=None: weight to apply when doing the calculation. laverage=1 is the
                 same as weight=self.count
         """
-        return self._timeintegrate(self.vzbar,laverage,weight)
+        return self._timeintegrate(self.vzbar,laverage,weight,js)
 
-    def timeintegratedxbar(self,laverage=1,weight=None):
+    def timeintegratedxbar(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated x bar. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1449,9 +1476,9 @@ data and the z mesh on which the calculation was done.
  - weight=None: weight to apply when doing the calculation. laverage=1 is the
                 same as weight=self.count
         """
-        return self._timeintegrate(self.xbar,laverage,weight)
+        return self._timeintegrate(self.xbar,laverage,weight,js)
 
-    def timeintegratedybar(self,laverage=1,weight=None):
+    def timeintegratedybar(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated y bar. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1463,9 +1490,9 @@ data and the z mesh on which the calculation was done.
  - weight=None: weight to apply when doing the calculation. laverage=1 is the
                 same as weight=self.count
         """
-        return self._timeintegrate(self.ybar,laverage,weight)
+        return self._timeintegrate(self.ybar,laverage,weight,js)
 
-    def timeintegratedxsqbar(self,laverage=1,weight=None):
+    def timeintegratedxsqbar(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated x**2 bar. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1477,9 +1504,9 @@ data and the z mesh on which the calculation was done.
  - weight=None: weight to apply when doing the calculation. laverage=1 is the
                 same as weight=self.count
         """
-        return self._timeintegrate(self.xsqbar,laverage,weight)
+        return self._timeintegrate(self.xsqbar,laverage,weight,js)
 
-    def timeintegratedysqbar(self,laverage=1,weight=None):
+    def timeintegratedysqbar(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated y**2 bar. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1491,9 +1518,9 @@ data and the z mesh on which the calculation was done.
  - weight=None: weight to apply when doing the calculation. laverage=1 is the
                 same as weight=self.count
         """
-        return self._timeintegrate(self.ysqbar,laverage,weight)
+        return self._timeintegrate(self.ysqbar,laverage,weight,js)
 
-    def timeintegratedxrms(self,laverage=1,weight=None):
+    def timeintegratedxrms(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated x rms. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1506,11 +1533,11 @@ data and the z mesh on which the calculation was done.
                 same as weight=self.count
         """
         data = self.xrms**2
-        result,gridmesh = self._timeintegrate(data,laverage,weight)
+        result,gridmesh = self._timeintegrate(data,laverage,weight,js)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
-    def timeintegratedyrms(self,laverage=1,weight=None):
+    def timeintegratedyrms(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated y rms. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1523,11 +1550,11 @@ data and the z mesh on which the calculation was done.
                 same as weight=self.count
         """
         data = self.yrms**2
-        result,gridmesh = self._timeintegrate(data,laverage,weight)
+        result,gridmesh = self._timeintegrate(data,laverage,weight,js)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
-    def timeintegratedrrms(self,laverage=1,weight=None):
+    def timeintegratedrrms(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated r rms. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1540,11 +1567,11 @@ data and the z mesh on which the calculation was done.
                 same as weight=self.count
         """
         data = self.rrms**2
-        result,gridmesh = self._timeintegrate(data,laverage,weight)
+        result,gridmesh = self._timeintegrate(data,laverage,weight,js)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
-    def timeintegratedxprms(self,laverage=1,weight=None):
+    def timeintegratedxprms(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated x' rms. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1557,11 +1584,11 @@ data and the z mesh on which the calculation was done.
                 same as weight=self.count
         """
         data = self.xprms**2
-        result,gridmesh = self._timeintegrate(data,laverage,weight)
+        result,gridmesh = self._timeintegrate(data,laverage,weight,js)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
-    def timeintegratedyprms(self,laverage=1,weight=None):
+    def timeintegratedyprms(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated y' rms. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1574,11 +1601,11 @@ data and the z mesh on which the calculation was done.
                 same as weight=self.count
         """
         data = self.yprms**2
-        result,gridmesh = self._timeintegrate(data,laverage,weight)
+        result,gridmesh = self._timeintegrate(data,laverage,weight,js)
         result = sqrt(maximum(0.,result))
         return result,gridmesh
 
-    def timeintegratedcorkscrew(self,laverage=1,weight=None):
+    def timeintegratedcorkscrew(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated corkscrew. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1591,14 +1618,14 @@ The corkscrew is defined as sqrt(xbarsq - xbar**2 + ybarsq - ybar**2)
  - weight=None: weight to apply when doing the calculation. laverage=1 is the
                 same as weight=self.count
         """
-        xbarint,gridmesh = self.timeintegratedxbar()
-        ybarint,gridmesh = self.timeintegratedybar()
-        xbarsqint,gridmesh = self._timeintegrate(self.xbar**2,laverage,weight)
-        ybarsqint,gridmesh = self._timeintegrate(self.ybar**2,laverage,weight)
+        xbarint,gridmesh = self.timeintegratedxbar(js)
+        ybarint,gridmesh = self.timeintegratedybar(js)
+        xbarsqint,gridmesh = self._timeintegrate(self.xbar**2,laverage,weight,js)
+        ybarsqint,gridmesh = self._timeintegrate(self.ybar**2,laverage,weight,js)
         corkscrew = sqrt(maximum(0.,xbarsqint - xbarint**2 + ybarsqint - ybarint**2))
         return corkscrew,gridmesh
 
-    def timeintegratedvzrms(self,laverage=1,weight=None):
+    def timeintegratedvzrms(self,laverage=1,weight=None,js=None):
         """
 Returns the time integrated vz rms. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1614,12 +1641,12 @@ data and the z mesh on which the calculation was done.
             data = self.vzrms**2
         else:
             data = self.vzrms
-        result,gridmesh = self._timeintegrate(data,laverage,weight)
+        result,gridmesh = self._timeintegrate(data,laverage,weight,js)
         if laverage:
             result = sqrt(maximum(0.,result))
         return result,gridmesh
 
-    def timeintegratedtrms(self,mincurrent=0.):
+    def timeintegratedtrms(self,mincurrent=0.,js=None):
         """
 Returns the time integrated t rms. The time integration is done over
 the full range of z where the data was gathered, including the motion of the
@@ -1627,6 +1654,8 @@ diagnostic with the beam frame. Two arrays are returned, the time integrated
 data and the z mesh on which the calculation was done.
   - mincurrent=0.: Only include data that has a current above the given value
         """
+        ij = self.getijfromjs(js)
+
         zmin = self.zmesh[0] + self.zbeam.min()
         zmax = self.zmesh[-1] + self.zbeam.max()
         nz = nint((zmax - zmin)/self.dz)
@@ -1641,7 +1670,7 @@ data and the z mesh on which the calculation was done.
         nn = self.current.shape[1]
         zz = (self.zmesh[newaxis,:] + self.zbeam[:,newaxis]).ravel()
         tt = (ones(nn)[newaxis,:]*self.time[:,newaxis]).ravel()
-        cu = self.current.ravel()
+        cu = self.current[...,ij].ravel()
         if mincurrent > 0.:
             cu = where(cu > mincurrent,cu,0.)
         deposgrid1dw(1,len(zz),zz,tt,cu,
