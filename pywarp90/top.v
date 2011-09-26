@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.302 $, $Date: 2011/09/15 18:24:16 $
+#@(#) File TOP.V, version $Revision: 3.303 $, $Date: 2011/09/26 17:36:03 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.302 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.303 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2288,24 +2288,25 @@ nszgc       integer /0/   # Number of species z grid crossing moments data is
                           # calculated for. Defaults to zero, unless
                           # lspeciesmoments is true, then it defaults
                           # to top.ns.
+jslistgc(0:nszgc-1) _integer # List of species that are diagnosed.
 dzgc        real [m] /0./ # Grid crossing moments grid cell size
 lmoving_framegc logical /.false./ # Flags whether the grid crossing moments grid
                                 # moves with top.zbeam or not.
 zbeamgc     real /0./ [m] # Grid crossing moments grid location
-pnumgc(0:ntgc,0:nzgc,0:nszgc) _real    # Number of particles at grid crossing moments
-xbargc(0:ntgc,0:nzgc,0:nszgc) _real    # X bar at grid crossing moments
-ybargc(0:ntgc,0:nzgc,0:nszgc) _real    # Y bar at grid crossing moments
-xsqbargc(0:ntgc,0:nzgc,0:nszgc) _real  # X**2 bar at grid crossing moments
-ysqbargc(0:ntgc,0:nzgc,0:nszgc) _real  # Y**2 bar at grid crossing moments
-rprmsgc(0:ntgc,0:nzgc,0:nszgc) _real   # R' rms at grid crossing moments
-vxbargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vx bar at grid crossing moments
-vybargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vy bar at grid crossing moments
-vzbargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vz bar at grid crossing moments
-vxsqbargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vx**2 bar at grid crossing moments
-vysqbargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vy**2 bar at grid crossing moments
-vzsqbargc(0:ntgc,0:nzgc,0:nszgc) _real   # Vz**2 bar at grid crossing moments
-xvxbargc(0:ntgc,0:nzgc,0:nszgc) _real   # XVx bar at grid crossing moments
-yvybargc(0:ntgc,0:nzgc,0:nszgc) _real   # YVy bar at grid crossing moments
+pnumgc(0:ntgc,0:nzgc,0:nszgc-1) _real    # Number of particles at grid crossing moments
+xbargc(0:ntgc,0:nzgc,0:nszgc-1) _real    # X bar at grid crossing moments
+ybargc(0:ntgc,0:nzgc,0:nszgc-1) _real    # Y bar at grid crossing moments
+xsqbargc(0:ntgc,0:nzgc,0:nszgc-1) _real  # X**2 bar at grid crossing moments
+ysqbargc(0:ntgc,0:nzgc,0:nszgc-1) _real  # Y**2 bar at grid crossing moments
+rprmsgc(0:ntgc,0:nzgc,0:nszgc-1) _real   # R' rms at grid crossing moments
+vxbargc(0:ntgc,0:nzgc,0:nszgc-1) _real   # Vx bar at grid crossing moments
+vybargc(0:ntgc,0:nzgc,0:nszgc-1) _real   # Vy bar at grid crossing moments
+vzbargc(0:ntgc,0:nzgc,0:nszgc-1) _real   # Vz bar at grid crossing moments
+vxsqbargc(0:ntgc,0:nzgc,0:nszgc-1) _real   # Vx**2 bar at grid crossing moments
+vysqbargc(0:ntgc,0:nzgc,0:nszgc-1) _real   # Vy**2 bar at grid crossing moments
+vzsqbargc(0:ntgc,0:nzgc,0:nszgc-1) _real   # Vz**2 bar at grid crossing moments
+xvxbargc(0:ntgc,0:nzgc,0:nszgc-1) _real   # XVx bar at grid crossing moments
+yvybargc(0:ntgc,0:nzgc,0:nszgc-1) _real   # YVy bar at grid crossing moments
 
 *********** GridCrossing_Moments dump:
 # This allows up to two independent grid crossing moments diagnostics

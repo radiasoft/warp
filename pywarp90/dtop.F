@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.189 $, $Date: 2011/09/15 18:24:16 $
+c@(#) File DTOP.F, version $Revision: 3.190 $, $Date: 2011/09/26 17:36:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -655,7 +655,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.189 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.190 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -3069,7 +3069,7 @@ c This includes cases where particles cross multiple grid cells during a time
 c step.
 
       real(kind=8):: dtgci,dzgci
-      integer(ISZ):: js,ip,izold,iznew,izgc,itgc
+      integer(ISZ):: js,ij,ip,izold,iznew,izgc,itgc
       real(kind=8):: zb,vz,vzi,zold,znew
       real(kind=8):: zgrid,dtstar
       real(kind=8):: x,y,vx,vy,ww,ri,rp
@@ -3081,9 +3081,17 @@ c     --- Only do the diagnostic if the time is within the time frame.
       if (gc%starttimegc >= time+dt .or.
      &    gc%endtimegc < time) return
 
+c     --- Determine whether js is in the list of species diagnosed
+c     --- Also, ij will be its index
+      js = isid - 1
+      do ij=0,gc%nszgc-1
+        if (gc%jslistgc(ij) == js) exit
+      enddo
+c     --- If the species is not being diagnosed, then return
+      if (ij == gc%nszgc) return
+
       dtgci = gc%ntgc/dt
       dzgci = 1./gc%dzgc
-      js = isid - 1
 
       if (gc%lmoving_framegc) then
         zb = zbeam
@@ -3135,22 +3143,22 @@ c         --- Calculate the transverse position at the grid cell
             ww = pgroup%sw(is)
           endif
 
-          gc%pnumgc(itgc,izgc,js) = gc%pnumgc(itgc,izgc,js) + ww
-          gc%xbargc(itgc,izgc,js) = gc%xbargc(itgc,izgc,js) + x*ww
-          gc%ybargc(itgc,izgc,js) = gc%ybargc(itgc,izgc,js) + y*ww
-          gc%xsqbargc(itgc,izgc,js) = gc%xsqbargc(itgc,izgc,js) + x**2*ww
-          gc%ysqbargc(itgc,izgc,js) = gc%ysqbargc(itgc,izgc,js) + y**2*ww
-          gc%vxbargc(itgc,izgc,js) = gc%vxbargc(itgc,izgc,js) + vx*ww
-          gc%vybargc(itgc,izgc,js) = gc%vybargc(itgc,izgc,js) + vy*ww
-          gc%vzbargc(itgc,izgc,js) = gc%vzbargc(itgc,izgc,js) + vz*ww
-          gc%vxsqbargc(itgc,izgc,js) = gc%vxsqbargc(itgc,izgc,js) + vx**2*ww
-          gc%vysqbargc(itgc,izgc,js) = gc%vysqbargc(itgc,izgc,js) + vy**2*ww
-          gc%vzsqbargc(itgc,izgc,js) = gc%vzsqbargc(itgc,izgc,js) + vz**2*ww
-          gc%xvxbargc(itgc,izgc,js) = gc%xvxbargc(itgc,izgc,js) + x*vx*ww
-          gc%yvybargc(itgc,izgc,js) = gc%yvybargc(itgc,izgc,js) + y*vy*ww
+          gc%pnumgc(itgc,izgc,ij) = gc%pnumgc(itgc,izgc,ij) + ww
+          gc%xbargc(itgc,izgc,ij) = gc%xbargc(itgc,izgc,ij) + x*ww
+          gc%ybargc(itgc,izgc,ij) = gc%ybargc(itgc,izgc,ij) + y*ww
+          gc%xsqbargc(itgc,izgc,ij) = gc%xsqbargc(itgc,izgc,ij) + x**2*ww
+          gc%ysqbargc(itgc,izgc,ij) = gc%ysqbargc(itgc,izgc,ij) + y**2*ww
+          gc%vxbargc(itgc,izgc,ij) = gc%vxbargc(itgc,izgc,ij) + vx*ww
+          gc%vybargc(itgc,izgc,ij) = gc%vybargc(itgc,izgc,ij) + vy*ww
+          gc%vzbargc(itgc,izgc,ij) = gc%vzbargc(itgc,izgc,ij) + vz*ww
+          gc%vxsqbargc(itgc,izgc,ij) = gc%vxsqbargc(itgc,izgc,ij) + vx**2*ww
+          gc%vysqbargc(itgc,izgc,ij) = gc%vysqbargc(itgc,izgc,ij) + vy**2*ww
+          gc%vzsqbargc(itgc,izgc,ij) = gc%vzsqbargc(itgc,izgc,ij) + vz**2*ww
+          gc%xvxbargc(itgc,izgc,ij) = gc%xvxbargc(itgc,izgc,ij) + x*vx*ww
+          gc%yvybargc(itgc,izgc,ij) = gc%yvybargc(itgc,izgc,ij) + y*vy*ww
 
           rp = vx*x*ri + vy*y*ri
-          gc%rprmsgc(itgc,izgc,js) = gc%rprmsgc(itgc,izgc,js) + rp**2*ww
+          gc%rprmsgc(itgc,izgc,ij) = gc%rprmsgc(itgc,izgc,ij) + rp**2*ww
 
         enddo
 
