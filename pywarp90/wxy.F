@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.113 $, $Date: 2011/09/27 16:53:59 $
+c@(#) File WXY.M, version $Revision: 3.114 $, $Date: 2011/09/27 17:56:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -3866,6 +3866,17 @@ c       --- Direct deposition loop with precalculated integer conversions
      &                        dx,dy,xmmin,ymmin,
      &                        l2symtry,l4symtry)
 
+      else if (ALL(depos_order == 2)) then
+
+c       --- Direct deposition using a second order spline
+c       --- Formerly depos == "dspline2"
+
+        call setrhoxydirectspline2w(rho,np,xp,yp,wfact,uzp,gaminv,
+     &                              q,wght,vbeamfrm,
+     &                              nx,ny,nxguardrho,nyguardrho,
+     &                              dx,dy,xmmin,ymmin,
+     &                              l2symtry,l4symtry)
+
       else
         call kaboom("sethoxyw: order of deposition is not supported in the electrostatic solver")
         return
@@ -4012,6 +4023,193 @@ c       --- normal loop
           rho(ii+1,jj  ) = rho(ii+1,jj  ) + u1*v0*f
           rho(ii  ,jj+1) = rho(ii  ,jj+1) + u0*v1*f
           rho(ii+1,jj+1) = rho(ii+1,jj+1) + u1*v1*f
+        enddo
+!$OMP END DO
+      endif
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine setrhoxydirectspline2w(rho,np,xp,yp,wfact,uzp,gaminv,
+     &                                  q,wght,vbeamfrm,
+     &                                  nx,ny,nxguardrho,nyguardrho,
+     &                                  dx,dy,xmmin,ymmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nxguardrho,nyguardrho
+      real(kind=8):: dx,dy
+      real(kind=8):: q,wght,vbeamfrm
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho)
+      real(kind=8):: xp(np), yp(np), wfact(np), uzp(np), gaminv(np)
+      real(kind=8):: xmmin,ymmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  Uses a second order spline with direct deposition (no particle blocks)
+
+      integer(ISZ):: ip,ii,jj
+      integer(ISZ):: iinext,jjnext
+      real(kind=8):: g,dxi,dyi
+      real(kind=8):: wx,wy
+      real(kind=8):: wxnext,wynext
+      real(kind=8):: u0,u1,u2,v0,v1,v2,f
+      real(kind=8):: gxf,gyf,gxfm1,gyfm1
+
+      if (np == 0) return
+
+      g = wght*q/(dx*dy)
+      dxi = 1./dx
+      dyi = 1./dy
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,wx,wy,u2,u1,u0,v2,v1,v0,ip)
+!$OMP&FIRSTPRIVATE(np)
+
+      if (nxguardrho <= 0 .or. nyguardrho <= 0) then
+        call kaboom("setrhoxydirectspline2: there must be at least one guard cell on all axes")
+        return
+      endif
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry) then
+        iinext = nint((xp(1) - xmmin)*dxi)
+        jjnext = nint((abs(yp(1)) - ymmin)*dyi)
+        wxnext = (xp(1) - xmmin)*dxi - iinext
+        wynext = (abs(yp(1)) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))*wfact(ip)
+          else
+            f = 1.*wfact(ip)
+          endif
+          ii = iinext
+          jj = jjnext
+          wx = wxnext
+          wy = wynext
+          if (ip < np) then
+            iinext = nint((xp(ip+1) - xmmin)*dxi)
+            jjnext = nint((abs(yp(ip+1)) - ymmin)*dyi)
+            wxnext = (xp(ip+1) - xmmin)*dxi - iinext
+            wynext = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+          endif
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+
+          rho(ii-1,jj-1) = rho(ii-1,jj-1) + u0*v0*f
+          rho(ii  ,jj-1) = rho(ii  ,jj-1) + u1*v0*f
+          rho(ii+1,jj-1) = rho(ii+1,jj-1) + u2*v0*f
+          rho(ii-1,jj  ) = rho(ii-1,jj  ) + u0*v1*f
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u1*v1*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u2*v1*f
+          rho(ii-1,jj+1) = rho(ii-1,jj+1) + u0*v2*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u1*v2*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u2*v2*f
+
+        enddo
+!$OMP END DO
+      elseif (l4symtry) then
+        iinext = nint((abs(xp(1)) - xmmin)*dxi)
+        jjnext = nint((abs(yp(1)) - ymmin)*dyi)
+        wxnext = (abs(xp(1)) - xmmin)*dxi - iinext
+        wynext = (abs(yp(1)) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))*wfact(ip)
+          else
+            f = 1.*wfact(ip)
+          endif
+          ii = iinext
+          jj = jjnext
+          wx = wxnext
+          wy = wynext
+          if (ip < np) then
+            iinext = nint((abs(xp(ip+1)) - xmmin)*dxi)
+            jjnext = nint((abs(yp(ip+1)) - ymmin)*dyi)
+            wxnext = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            wynext = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+          endif
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+
+          rho(ii-1,jj-1) = rho(ii-1,jj-1) + u0*v0*f
+          rho(ii  ,jj-1) = rho(ii  ,jj-1) + u1*v0*f
+          rho(ii+1,jj-1) = rho(ii+1,jj-1) + u2*v0*f
+          rho(ii-1,jj  ) = rho(ii-1,jj  ) + u0*v1*f
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u1*v1*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u2*v1*f
+          rho(ii-1,jj+1) = rho(ii-1,jj+1) + u0*v2*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u1*v2*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u2*v2*f
+
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        iinext = nint((xp(1) - xmmin)*dxi)
+        jjnext = nint((yp(1) - ymmin)*dyi)
+        wxnext = (xp(1) - xmmin)*dxi - iinext
+        wynext = (yp(1) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))*wfact(ip)
+          else
+            f = 1.*wfact(ip)
+          endif
+          ii = iinext
+          jj = jjnext
+          wx = wxnext
+          wy = wynext
+          if (ip < np) then
+            iinext = nint((xp(ip+1) - xmmin)*dxi)
+            jjnext = nint((yp(ip+1) - ymmin)*dyi)
+            wxnext = (xp(ip+1) - xmmin)*dxi - iinext
+            wynext = (yp(ip+1) - ymmin)*dyi - jjnext
+          endif
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+
+          rho(ii-1,jj-1) = rho(ii-1,jj-1) + u0*v0*f
+          rho(ii  ,jj-1) = rho(ii  ,jj-1) + u1*v0*f
+          rho(ii+1,jj-1) = rho(ii+1,jj-1) + u2*v0*f
+          rho(ii-1,jj  ) = rho(ii-1,jj  ) + u0*v1*f
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u1*v1*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u2*v1*f
+          rho(ii-1,jj+1) = rho(ii-1,jj+1) + u0*v2*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u1*v2*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u2*v2*f
+
         enddo
 !$OMP END DO
       endif
