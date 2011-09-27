@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.201 $, $Date: 2011/08/27 00:35:50 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.202 $, $Date: 2011/09/27 16:49:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -3416,11 +3416,15 @@ c the extra guard cells should alway be zero.
           if (bounds(0) == 0) u(-nxguard:-1,:,:,:)   = 0.
           if (bounds(1) == 0) u(nx+1:nx+nxguard,:,:,:) = 0.
         endif
-        if (bounds(0) == 1) u(-1,0:ny,0:nz,:) = u(1,0:ny,0:nz,:)
-        if (bounds(1) == 1) u(nx+1,0:ny,0:nz,:) = u(nx-1,0:ny,0:nz,:)
+        if (bounds(0) == 1) then
+          u(-nxguard:-1,0:ny,0:nz,:) = u(nxguard:1:-1,0:ny,0:nz,:)
+        endif
+        if (bounds(1) == 1) then
+          u(nx+1:nx+nxguard,0:ny,0:nz,:) = u(nx-1:nx-nxguard:-1,0:ny,0:nz,:)
+        endif
         if (bounds(0) == 2 .and. bounds(1) == 2) then
-          u(-1,0:ny,0:nz,:) = u(nx-1,0:ny,0:nz,:)
-          u(nx:nx+1,0:ny,0:nz,:) = u(0:1,0:ny,0:nz,:)
+          u(-nxguard:-1,0:ny,0:nz,:) = u(nx-nxguard:nx-1,0:ny,0:nz,:)
+          u(nx:nx+nxguard,0:ny,0:nz,:) = u(0:nxguard,0:ny,0:nz,:)
         endif
       endif
 
@@ -3440,11 +3444,15 @@ c the extra guard cells should alway be zero.
           if (bounds(2) == 0) u(:,-nyguard:-1,:,:)   = 0.
           if (bounds(3) == 0) u(:,ny+1:ny+nyguard,:,:) = 0.
         endif
-        if (bounds(2) == 1) u(:,-1,0:nz,:)   = u(:,1,0:nz,:)
-        if (bounds(3) == 1) u(:,ny+1,0:nz,:) = u(:,ny-1,0:nz,:)
+        if (bounds(2) == 1) then
+          u(:,-nyguard:-1,0:nz,:)   = u(:,nyguard:1:-1,0:nz,:)
+        endif
+        if (bounds(3) == 1) then
+          u(:,ny+1:ny+nyguard,0:nz,:) = u(:,ny-1:ny-nyguard:-1,0:nz,:)
+        endif
         if (bounds(2) == 2 .and. bounds(3) == 2) then
-          u(:,-1,0:nz,:)   = u(:,ny-1,0:nz,:)
-          u(:,ny:ny+1,0:nz,:) = u(:,0:1,0:nz,:)
+          u(:,-nyguard:-1,0:nz,:)   = u(:,ny-nyguard:ny-1,0:nz,:)
+          u(:,ny:ny+nyguard,0:nz,:) = u(:,0:nyguard,0:nz,:)
         endif
       endif
 
@@ -3464,11 +3472,15 @@ c the extra guard cells should alway be zero.
           if (bounds(4) == 0) u(:,:,-nzguard:-1,:)   = 0.
           if (bounds(5) == 0) u(:,:,nz+1:nz+nzguard,:) = 0.
         endif
-        if (bounds(4) == 1) u(:,:,-1,:)   = u(:,:,1,:)
-        if (bounds(5) == 1) u(:,:,nz+1,:) = u(:,:,nz-1,:)
+        if (bounds(4) == 1) then
+          u(:,:,-nzguard:-1,:)   = u(:,:,nzguard:1:-1,:)
+        endif
+        if (bounds(5) == 1) then
+          u(:,:,nz+1:nz+nzguard,:) = u(:,:,nz-1:nz-nzguard:-1,:)
+        endif
         if (bounds(4) == 2 .and. bounds(5) == 2) then
-          u(:,:,-1,:)   = u(:,:,nz-1,:)
-          u(:,:,nz:nz+1,:) = u(:,:,0:1,:)
+          u(:,:,-nzguard:-1,:)   = u(:,:,nz-nzguard:nz-1,:)
+          u(:,:,nz:nz+nzguard,:) = u(:,:,0:nzguard,:)
         endif
       endif
 
