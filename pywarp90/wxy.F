@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.112 $, $Date: 2011/08/27 00:35:51 $
+c@(#) File WXY.M, version $Revision: 3.113 $, $Date: 2011/09/27 16:53:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -8,8 +8,25 @@ c  XY electrostatic PIC code, Cartesian geometry, for beam problems
 c  Alex Friedman, LLNL, (510)422-0827
 c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
+      module wxy_interfaces
+      interface
+
+      subroutine assignrhoandphiforfieldsolvexy(rhopin,phipin)
+      use InMesh3d
+      use Fields3dParticles
+      real(kind=8),target:: rhopin(-nxguardrho:nxp+nxguardrho,
+     &                             -nyguardrho:nyp+nyguardrho,
+     &                             -nzguardrho:nzp+nzguardrho)
+      real(kind=8),target:: phipin(-nxguardphi:nxp+nxguardphi,
+     &                             -nyguardphi:nyp+nyguardphi,
+     &                             -nzguardphi:nzp+nzguardphi)
+      end subroutine assignrhoandphiforfieldsolvexy
+
+      end interface
+      end module wxy_interfaces
+c=============================================================================
       subroutine wxyinit
-      use Subtimersxy
+      use Subtimerswxy
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
@@ -22,7 +39,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
       end
 c=============================================================================
       subroutine wxyvers (iout)
-      use Subtimersxy
+      use Subtimerswxy
       use WXYversion
       integer(ISZ):: iout
       real(kind=8):: substarttime,wtime
@@ -34,7 +51,7 @@ c  Echoes code version, etc. to output files as they're created
       end
 c=============================================================================
       subroutine wxygen()
-      use Subtimersxy
+      use Subtimerswxy
       use GlobalVars
       use Ch_var
       use Constant
@@ -63,6 +80,7 @@ c=============================================================================
       use Damped_eom
       use Hist
       use AMR
+      use wxy_interfaces
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -209,7 +227,7 @@ c  Create the dynamic arrays for fields
 
 c  This is a kludge for now to get the arrays setup.
 
-      call assignrhoandphiforfieldsolve(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
+      call assignrhoandphiforfieldsolvexy(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
       call assignrhopandphipforparticles(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
 
 c  Set the value of prwall, radius at which particles are lost
@@ -390,7 +408,7 @@ c  Initial fieldsolve, diagnostics
       end
 c=============================================================================
       subroutine wxyexe()
-      use Subtimersxy
+      use Subtimerswxy
       use Picglb
       use InGen
       use InGenxy
@@ -552,7 +570,7 @@ c     endif
       end
 c=============================================================================
       subroutine wxyfin()
-      use Subtimersxy
+      use Subtimerswxy
       use InGen
       use InGen3d
       use InDiag
@@ -607,7 +625,7 @@ c  release storage
       end
 c=============================================================================
       subroutine stepxy (caller)
-      use Subtimersxy
+      use Subtimerswxy
       use Constant
       use InGen
       use InGen3d
@@ -725,7 +743,7 @@ c  Field-solve for potential
 
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
-      if (ANY(efetch == 3)) then
+      if (ANY(efetch == 3) .or. ANY(depos_order > 1)) then
         call allocateselfepforparticles(.true.)
         call getselfe3d(phi,nx,ny,nzlocal,nxguardphi,nyguardphi,nzguardphi,
      &                  selfep,nxguarde,nyguarde,nzguarde,dx,dy,dz,.true.)
@@ -789,7 +807,7 @@ c=============================================================================
       subroutine extebxy(np,xp,yp,zp,uzp,gaminv,dtl,dtr,
      &                   bx,by,bz,ex,ey,ez,m,q,bendres,bendradi,lexbend,
      &                   gammabar,zbeam,vbeam,dt,time)
-      use Subtimersxy
+      use Subtimerswxy
       use Timers
       integer(ISZ):: np
       real(kind=8):: dtl,dtr,m,q,gammabar,zbeam,vbeam,dt,time
@@ -862,7 +880,7 @@ c     --- Accumulate time for applying fields from the lattice
       end
 c=============================================================================
       subroutine otherexy (np,xp,yp,dedr,dexdx,deydy,dbdr,ex,ey,ez,bx,by,bz)
-      use Subtimersxy
+      use Subtimerswxy
       integer(ISZ):: np
       real(kind=8):: dedr,dexdx,deydy,dbdr
       real(kind=8):: xp(np), yp(np)
@@ -907,10 +925,10 @@ c=============================================================================
       subroutine fetchexy(pgroup,ipmin,ip,is,ex,ey,ez)
       use ParticleGroupmodule
       use GlobalVars
-      use Subtimersxy
+      use Subtimerswxy
       use Picglb
       use Picglb3d
-      use InPart,Only: efetch
+      use InPart,Only: efetch,depos_order
       use InGenxy
       use InGen3d
       use InMesh3d
@@ -946,7 +964,7 @@ c         --- the locations where phi is known.
      &                0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nzlocal,
      &                nxguardphi,nyguardphi,nzguardphi,
      &                nxguarde,nyguarde,nzguarde,
-     &                efetch(is),ex,ey,ez,l2symtry,l4symtry,.false.,1,1,1)
+     &                efetch(is),depos_order,ex,ey,ez,l2symtry,l4symtry,.false.)
 c         --- The zp is preserved so that the small correction done
 c         --- in setdtp is still used.
           pgroup%zp(i1:i2) = zpo
@@ -957,9 +975,9 @@ c         --- since lcylindrical is false.
           call setexy(phi,selfep,ip,
      &                pgroup%xp(i1:i2),pgroup%yp(i1:i2),
      &                xmmin,ymmin,dx,dy,nx,ny,
-     &                nxguardphi,nyguardphi,nzguardphi,
-     &                nxguarde,nyguarde,nzguarde,
-     &                efetch(is),ex,ey,ez,l2symtry,l4symtry,1,1)
+     &                nxguardphi,nyguardphi,
+     &                nxguarde,nyguarde,
+     &                efetch(is),depos_order,ex,ey,ez,l2symtry,l4symtry)
         endif
       elseif(solvergeom==XYgeom) then
         call fieldweightxz(pgroup%xp(i1:i2),pgroup%yp(i1:i2),ex,ey,ip,zgridprv,
@@ -967,10 +985,826 @@ c         --- since lcylindrical is false.
       end if
       return
       end
+c===========================================================================
+      subroutine setexy(phi1d,selfe,np,xp,yp,xmmin,ymmin,
+     &                  dx,dy,nx,ny,nxguardphi,nyguardphi,
+     &                  nxguarde,nyguarde,
+     &                  efetch,depos_order,ex,ey,ez,l2symtry,l4symtry)
+      use Subtimerswxy
+      integer(ISZ):: np,nx,ny
+      integer(ISZ):: nxguardphi,nyguardphi
+      integer(ISZ):: nxguarde,nyguarde
+      real(kind=8):: xmmin,ymmin,dx,dy
+      real(kind=8):: phi1d(0:*)
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nyguarde:ny+nyguarde)
+      real(kind=8):: xp(np),yp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      integer(ISZ):: efetch,depos_order(0:2)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gets self electric field for particles
+c Calls the appropriate routine based on the values of depos_order
+c efetch, and ny.
+
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
+
+      ez = 0.
+
+      if (ALL(depos_order == 1)) then
+
+        if (efetch == 1 .or. efetch == 6) then
+
+          call sete_from_phi_linearxy(phi1d,np,xp,yp,
+     &                                xmmin,ymmin,
+     &                                dx,dy,nx,ny,
+     &                                nxguardphi,nyguardphi,
+     &                                ex,ey,l2symtry,l4symtry)
+
+        elseif (efetch == 2) then
+
+          call kaboom("setexy: ERROR: efetch=2 is no longer supported")
+
+        elseif (efetch == 3) then
+c         --- This uses the precalculated selfe instead of doing
+c         --- the finite differences here.
+          call sete_from_e_linearxy(selfe,np,xp,yp,xmmin,ymmin,
+     &                              dx,dy,nx,ny,
+     &                              nxguarde,nyguarde,
+     &                              ex,ey,l2symtry,l4symtry)
+
+        elseif (efetch == 4) then
+c       --- Energy conserving
+          call sete_from_phi_linearenergyconservingxy(phi1d,np,xp,yp,
+     &                                                xmmin,ymmin,
+     &                                                dx,dy,nx,ny,
+     &                                                nxguardphi,nyguardphi,
+     &                                                ex,ey,l2symtry,l4symtry)
+        endif
+
+      else if (ALL(depos_order == 2)) then
+
+c       --- Fetch with a 2nd order spline
+        if (efetch == 4) then
+          call sete_from_e_order2_energyconservingxy(selfe,np,xp,yp,
+     &                                               xmmin,ymmin,
+     &                                               dx,dy,nx,ny,
+     &                                               nxguarde,nyguarde,
+     &                                               ex,ey,l2symtry,l4symtry)
+
+        else
+
+c         --- All other values of efetch use the momentum conserving version.
+          call sete_from_e_order2_xy(selfe,np,xp,yp,
+     &                               xmmin,ymmin,
+     &                               dx,dy,nx,ny,
+     &                               nxguarde,nyguarde,
+     &                               ex,ey,l2symtry,l4symtry)
+
+        endif
+
+      else
+        call kaboom('setexy: depos_order value not supported with electrostatic solver')
+        return
+      endif
+
+!$OMP MASTER
+      if (lwxytimesubs) timesetexy = timesetexy + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c===========================================================================
+      subroutine sete_from_phi_linearxy(phi1d,np,xp,yp,
+     &                                  xmmin,ymmin,
+     &                                  dx,dy,nx,ny,
+     &                                  nxguardphi,nyguardphi,
+     &                                  ex,ey,l2symtry,l4symtry)
+      integer(ISZ):: np,nx,ny
+      integer(ISZ):: nxguardphi,nyguardphi
+      real(kind=8):: xmmin,ymmin,dx,dy
+      real(kind=8):: phi1d(0:*)
+      real(kind=8):: xp(np),yp(np)
+      real(kind=8):: ex(np),ey(np)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gets self electric field for particles
+c The field is obtained from directly finite differencing phi for each
+c particle, using linear weighting.
+ 
+c Note that the phi1d passed in is assumed to start at phi(-1,-1).
+
+c Algorithm notes: phi array is dimensioned (-1:nx+1,-1:ny+1) outside,
+c but is made one dimensional in this routine
+c so cell index into 1d phi array for vectorized deposition is:
+c    i + j*(nx+1)
+c The field is:
+c    Ex = u0*v0*ex(i  ,j  )
+c       + u1*v0*ex(i+1,j  )
+c       + u0*v1*ex(i  ,j+1)
+c       + ...
+c where:
+c    ex(i,j) = (phi(i-1,j) - phi(i+1,j))/(2*dx)
+
+      integer(ISZ):: nnx,nnxy,ip,i,j,ind0,inext,jnext
+      real(kind=8):: dxi,dyi,tdxi,tdyi,u0,u1,v0,v1,ysign,xsign
+      integer(ISZ):: ox,oy,sox,soy
+      real(kind=8):: sx,sy,ext,eyt
+      integer(ISZ):: noff(32)
+
+      nnx  = nx + 1 + 2*nxguardphi
+
+c  nnxy is added to all offsets to account for
+c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
+c  of phi(0,0,0) is equivalent to phi1d(nnxy).
+
+      noff(5)  =          - nnx
+      noff(6)  =          - nnx   + 1
+      noff(7)  =                  - 1
+      noff(8)  =                  + 0
+      noff(9)  =                  + 1
+      noff(10) =                  + 2
+      noff(11) =          + nnx   - 1
+      noff(12) =          + nnx
+      noff(13) =          + nnx   + 1
+      noff(14) =          + nnx   + 2
+      noff(15) =          + 2*nnx
+      noff(16) =          + 2*nnx + 1
+
+      noff = noff + nxguardphi + nnx*nyguardphi
+
+c  Evaluation of E, vectorized over particles
+      tdxi = 1. / (2.*dx)
+      tdyi = 1. / (2.*dy)
+      dxi = 1./dx
+      dyi = 1./dy
+
+      if (.not. (l2symtry .or. l4symtry)) then
+        inext = (xp(1) - xmmin)*dxi
+        jnext = (yp(1) - ymmin)*dyi
+
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          if (ip < np) then
+            inext = (xp(ip+1) - xmmin)*dxi
+            jnext = (yp(ip+1) - ymmin)*dyi
+          endif
+
+          ind0 = i + j*nnx
+
+          u1 = (xp(ip) - xmmin)*dxi - i
+          v1 = (yp(ip) - ymmin)*dyi - j
+
+          u0 = 1. - u1
+          v0 = 1. - v1
+
+          ext=tdxi*(u0*v0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
+     &            + u1*v0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
+     &            + u0*v1*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
+     &            + u1*v1*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0)))
+
+          eyt=tdyi*(u0*v0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
+     &            + u1*v0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
+     &            + u0*v1*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
+     &            + u1*v1*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0)))
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+
+        enddo
+
+      else
+
+c       --- Set offsets for indices on axis of symmetry.  The offsets change
+c       --- the sign of the grid cells which are on the negative side
+c       --- of the axis of symmetry.
+        soy = 2*nnx
+        sox = 0
+        if (l4symtry) sox = 2
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sy = -1.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        inext = (abs(xp(1)) - xmmin)*dxi
+        jnext = (abs(yp(1)) - ymmin)*dyi
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          if (ip < np) then
+            inext = (abs(xp(ip+1)) - xmmin)*dxi
+            jnext = (abs(yp(ip+1)) - ymmin)*dyi
+          endif
+
+          ind0 = i + j*nnx
+
+          u1 = (abs(xp(ip)) - xmmin)*dxi - i
+          v1 = (abs(yp(ip)) - ymmin)*dyi - j
+
+          u0 = 1. - u1
+          v0 = 1. - v1
+
+c         --- Set offsets for points on symmetry axis of grid.  The offset
+c         --- for points off the axis is zero.
+          ox = 0
+          oy = 0
+          if (i == 0 .and. xmmin == 0.) ox = sox
+          if (j == 0 .and. ymmin == 0.) oy = soy
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = tdxi
+          ysign = tdyi
+          if (xp(ip) < 0.) xsign = sx*tdxi
+          if (yp(ip) < 0.) ysign = sy*tdyi
+          ext=xsign*(u0*v0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
+     &             + u1*v0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
+     &             + u0*v1*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
+     &             + u1*v1*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0)))
+
+          eyt=ysign*(u0*v0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
+     &             + u1*v0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
+     &             + u0*v1*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
+     &             + u1*v1*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0)))
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
+      subroutine sete_from_e_linearxy(selfe,np,xp,yp,xmmin,ymmin,
+     &                                dx,dy,nx,ny,
+     &                                nxguarde,nyguarde,
+     &                                ex,ey,l2symtry,l4symtry)
+      integer(ISZ):: np,nx,ny
+      integer(ISZ):: nxguarde,nyguarde
+      real(kind=8):: xmmin,ymmin,dx,dy
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nyguarde:ny+nyguarde)
+      real(kind=8):: xp(np),yp(np)
+      real(kind=8):: ex(np),ey(np)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gets self electric field for particles
+c The field is obtained from linear interpolation from selfe.
+
+c The field is:
+c    Ex = u0*v0*ex(i  ,j  )
+c       + u1*v0*ex(i+1,j  )
+c       + u0*v1*ex(i  ,j+1)
+c       + ...
+
+      integer(ISZ):: ip,i,j,inext,jnext
+      real(kind=8):: dxi,dyi,tdxi,tdyi,u0,u1,v0,v1,ysign,xsign
+      integer(ISZ):: ox,oy,sox,soy
+      real(kind=8):: sx,sy,ext,eyt
+      real(kind=8):: xi,yj,xinext,yjnext
+
+c  Evaluation of E, vectorized over particles
+      tdxi = 1. / (2.*dx)
+      tdyi = 1. / (2.*dy)
+      dxi = 1./dx
+      dyi = 1./dy
+
+c     --- This uses the precalculated selfe instead of doing
+c     --- the finite differences here..
+
+      if (.not. (l2symtry .or. l4symtry)) then
+        xinext = (xp(1) - xmmin)*dxi
+        yjnext = (yp(1) - ymmin)*dyi
+        inext = xinext
+        jnext = yjnext
+
+        do ip = 1, np
+
+          xi = xinext
+          yj = yjnext
+          i = inext
+          j = jnext
+          if (ip < np) then
+            xinext = (xp(ip+1) - xmmin)*dxi
+            yjnext = (yp(ip+1) - ymmin)*dyi
+            inext = xinext
+            jnext = yjnext
+          endif
+
+          if (xi < 0. .or. xi > nx .or.
+     &        yj < 0. .or. yj > ny) cycle
+
+          u1 = xi - i
+          v1 = yj - j
+
+          u0 = 1. - u1
+          v0 = 1. - v1
+
+          ext = u0*v0*selfe(1,i  ,j  )
+     &        + u1*v0*selfe(1,i+1,j  )
+     &        + u0*v1*selfe(1,i  ,j+1)
+     &        + u1*v1*selfe(1,i+1,j+1)
+
+          eyt = u0*v0*selfe(2,i  ,j  )
+     &        + u1*v0*selfe(2,i+1,j  )
+     &        + u0*v1*selfe(2,i  ,j+1)
+     &        + u1*v1*selfe(2,i+1,j+1)
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+
+        enddo
+
+      else
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sy = -1.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        xinext = (abs(xp(1)) - xmmin)*dxi
+        yjnext = (abs(yp(1)) - ymmin)*dyi
+        inext = xinext
+        jnext = yjnext
+
+        do ip = 1, np
+
+          xi = xinext
+          yj = yjnext
+          i = inext
+          j = jnext
+
+          if (ip < np) then
+            xinext = (abs(xp(ip+1)) - xmmin)*dxi
+            yjnext = (abs(yp(ip+1)) - ymmin)*dyi
+            inext = xinext
+            jnext = yjnext
+          endif
+
+          if (xi < 0. .or. xi > nx .or.
+     &        yj < 0. .or. yj > ny) cycle
+
+          u1 = xi - i
+          v1 = yj - j
+
+          u0 = 1. - u1
+          v0 = 1. - v1
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = +1.
+          ysign = +1.
+          if (xp(ip) < 0.) xsign = sx
+          if (yp(ip) < 0.) ysign = sy
+
+          ext = xsign*(u0*v0*selfe(1,i  ,j  )
+     &               + u1*v0*selfe(1,i+1,j  )
+     &               + u0*v1*selfe(1,i  ,j+1)
+     &               + u1*v1*selfe(1,i+1,j+1))
+
+          eyt = ysign*(u0*v0*selfe(2,i  ,j  )
+     &               + u1*v0*selfe(2,i+1,j  )
+     &               + u0*v1*selfe(2,i  ,j+1)
+     &               + u1*v1*selfe(2,i+1,j+1))
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
+      subroutine sete_from_phi_linearenergyconservingxy(phi1d,np,xp,yp,
+     &                                                  xmmin,ymmin,
+     &                                                  dx,dy,nx,ny,
+     &                                                  nxguardphi,nyguardphi,
+     &                                                  ex,ey,l2symtry,l4symtry)
+      integer(ISZ):: np,nx,ny
+      integer(ISZ):: nxguardphi,nyguardphi
+      real(kind=8):: xmmin,ymmin,dx,dy
+      real(kind=8):: phi1d(0:*)
+      real(kind=8):: xp(np),yp(np)
+      real(kind=8):: ex(np),ey(np)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gets self electric field for particles
+c The field is obtained from directly finite differencing phi for each
+c particle. NGP weighting is used along the field diretion, otherwise
+c linear weighting is used. This gives energy conservation.
+
+      integer(ISZ):: nnx,nnxy,ip,i,j,ind0,inext,jnext
+      real(kind=8):: dxi,dyi,tdxi,tdyi,u0,u1,v0,v1,ysign,xsign
+      integer(ISZ):: ox,oy,sox,soy
+      real(kind=8):: sx,sy,ext,eyt
+      real(kind=8):: xi,yj,xinext,yjnext
+      integer(ISZ):: noff(32)
+      save noff
+
+      nnx  = nx + 1 + 2*nxguardphi
+
+c  nnxy is added to all offsets to account for
+c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
+c  of phi(0,0,0) is equivalent to phi1d(nnxy).
+
+      noff(8)  =                  + 0
+      noff(9)  =                  + 1
+      noff(12) =          + nnx
+      noff(13) =          + nnx   + 1
+
+      noff = noff + nxguardphi + nnx*nyguardphi
+
+c  Evaluation of E, vectorized over particles
+      tdxi = 1. / (2.*dx)
+      tdyi = 1. / (2.*dy)
+      dxi = 1./dx
+      dyi = 1./dy
+
+      if (.not. (l2symtry .or. l4symtry)) then
+        inext = (xp(1) - xmmin)*dxi
+        jnext = (yp(1) - ymmin)*dyi
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          if (ip < np) then
+            inext = (xp(ip+1)    - xmmin)*dxi
+            jnext = (yp(ip+1)    - ymmin)*dyi
+          endif
+
+          ind0 = i + j*nnx
+
+          u1 = (xp(ip) - xmmin)*dxi - i
+          v1 = (yp(ip) - ymmin)*dyi - j
+
+          u0 = 1. - u1
+          v0 = 1. - v1
+
+          ext=dxi*(+v0*phi1d(noff( 8)+ind0)
+     &             -v0*phi1d(noff( 9)+ind0)
+     &             +v1*phi1d(noff(12)+ind0)
+     &             -v1*phi1d(noff(13)+ind0))
+
+          eyt=dyi*(+u0*phi1d(noff( 8)+ind0)
+     &             +u1*phi1d(noff( 9)+ind0)
+     &             -u0*phi1d(noff(12)+ind0)
+     &             -u1*phi1d(noff(13)+ind0))
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+
+        enddo
+
+      else
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sy = -1.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        inext = (abs(xp(1)) - xmmin)*dxi
+        jnext = (abs(yp(1)) - ymmin)*dyi
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          if (ip < np) then
+            inext = (abs(xp(ip+1)) - xmmin)*dxi
+            jnext = (abs(yp(ip+1)) - ymmin)*dyi
+          endif
+
+          ind0 = i + j*nnx
+
+          u1 = (abs(xp(ip)) - xmmin)*dxi - i
+          v1 = (abs(yp(ip)) - ymmin)*dyi - j
+
+          u0 = 1. - u1
+          v0 = 1. - v1
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = dxi
+          ysign = dyi
+          if (xp(ip) < 0.) xsign = sx*dxi
+          if (yp(ip) < 0.) ysign = sy*dyi
+
+          ext=xsign*(+v0*phi1d(noff( 8)+ind0)
+     &               -v0*phi1d(noff( 9)+ind0)
+     &               +v1*phi1d(noff(12)+ind0)
+     &               -v1*phi1d(noff(13)+ind0))
+
+          eyt=ysign*(+u0*phi1d(noff( 8)+ind0)
+     &               +u1*phi1d(noff( 9)+ind0)
+     &               -u0*phi1d(noff(12)+ind0)
+     &               -u1*phi1d(noff(13)+ind0))
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
+      subroutine sete_from_e_order2_xy(selfe,np,xp,yp,
+     &                                 xmmin,ymmin,
+     &                                 dx,dy,nx,ny,
+     &                                 nxguarde,nyguarde,
+     &                                 ex,ey,l2symtry,l4symtry)
+      integer(ISZ):: np,nx,ny
+      integer(ISZ):: nxguarde,nyguarde
+      real(kind=8):: xmmin,ymmin,dx,dy
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nyguarde:ny+nyguarde)
+      real(kind=8):: xp(np),yp(np)
+      real(kind=8):: ex(np),ey(np)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gets self electric field for particles
+c Fetch the E fields using 2nd order splines
+
+      integer(ISZ):: ip,i,j,inext,jnext
+      real(kind=8):: dxi,dyi
+      real(kind=8):: wx,wy,u0,u1,u2,v0,v1,v2,ysign,xsign
+      real(kind=8):: sx,sy,ext,eyt
+
+      dxi = 1./dx
+      dyi = 1./dy
+
+      if (.not. (l2symtry .or. l4symtry)) then
+
+        inext = nint((xp(1) - xmmin)*dxi)
+        jnext = nint((yp(1) - ymmin)*dyi)
+
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          if (ip < np) then
+            inext = nint((xp(ip+1) - xmmin)*dxi)
+            jnext = nint((yp(ip+1) - ymmin)*dyi)
+          endif
+
+          wx = (xp(ip) - xmmin)*dxi - i
+          wy = (yp(ip) - ymmin)*dyi - j
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+
+          ext = u0*v0*selfe(1,i-1,j-1)
+     &        + u1*v0*selfe(1,i  ,j-1)
+     &        + u2*v0*selfe(1,i+1,j-1)
+     &        + u0*v1*selfe(1,i-1,j  )
+     &        + u1*v1*selfe(1,i  ,j  )
+     &        + u2*v1*selfe(1,i+1,j  )
+     &        + u0*v2*selfe(1,i-1,j+1)
+     &        + u1*v2*selfe(1,i  ,j+1)
+     &        + u2*v2*selfe(1,i+1,j+1)
+
+          eyt = u0*v0*selfe(2,i-1,j-1)
+     &        + u1*v0*selfe(2,i  ,j-1)
+     &        + u2*v0*selfe(2,i+1,j-1)
+     &        + u0*v1*selfe(2,i-1,j  )
+     &        + u1*v1*selfe(2,i  ,j  )
+     &        + u2*v1*selfe(2,i+1,j  )
+     &        + u0*v2*selfe(2,i-1,j+1)
+     &        + u1*v2*selfe(2,i  ,j+1)
+     &        + u2*v2*selfe(2,i+1,j+1)
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+
+        enddo
+
+      else
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sy = -1.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        inext = nint((abs(xp(1)) - xmmin)*dxi)
+        jnext = nint((abs(yp(1)) - ymmin)*dyi)
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          if (ip < np) then
+            inext = nint((abs(xp(ip+1)) - xmmin)*dxi)
+            jnext = nint((abs(yp(ip+1)) - ymmin)*dyi)
+          endif
+
+          wx = abs(xp(ip) - xmmin)*dxi - i
+          wy = abs(yp(ip) - ymmin)*dyi - j
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = 1.
+          ysign = 1.
+          if (xp(ip) < 0.) xsign = sx
+          if (yp(ip) < 0.) ysign = sy
+
+          ext = u0*v0*selfe(1,i-1,j-1)
+     &        + u1*v0*selfe(1,i  ,j-1)
+     &        + u2*v0*selfe(1,i+1,j-1)
+     &        + u0*v1*selfe(1,i-1,j  )
+     &        + u1*v1*selfe(1,i  ,j  )
+     &        + u2*v1*selfe(1,i+1,j  )
+     &        + u0*v2*selfe(1,i-1,j+1)
+     &        + u1*v2*selfe(1,i  ,j+1)
+     &        + u2*v2*selfe(1,i+1,j+1)
+
+          eyt = u0*v0*selfe(2,i-1,j-1)
+     &        + u1*v0*selfe(2,i  ,j-1)
+     &        + u2*v0*selfe(2,i+1,j-1)
+     &        + u0*v1*selfe(2,i-1,j  )
+     &        + u1*v1*selfe(2,i  ,j  )
+     &        + u2*v1*selfe(2,i+1,j  )
+     &        + u0*v2*selfe(2,i-1,j+1)
+     &        + u1*v2*selfe(2,i  ,j+1)
+     &        + u2*v2*selfe(2,i+1,j+1)
+
+          ex(ip) = ex(ip) + ext*xsign
+          ey(ip) = ey(ip) + eyt*ysign
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
+      subroutine sete_from_e_order2_energyconservingxy(selfe,np,xp,yp,
+     &                                                 xmmin,ymmin,
+     &                                                 dx,dy,nx,ny,
+     &                                                 nxguarde,nyguarde,
+     &                                                 ex,ey,l2symtry,l4symtry)
+      integer(ISZ):: np,nx,ny
+      integer(ISZ):: nxguarde,nyguarde
+      real(kind=8):: xmmin,ymmin,dx,dy
+      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
+     &                       -nyguarde:ny+nyguarde)
+      real(kind=8):: xp(np),yp(np)
+      real(kind=8):: ex(np),ey(np)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gets self electric field for particles
+c Fetch the E fields using 2nd order splines, with linear weigthing used
+c along the field direction. This gives energy conservation.
+
+      integer(ISZ):: ip,i,j,inext,jnext
+      real(kind=8):: dxi,dyi
+      real(kind=8):: wx,wy
+      real(kind=8):: u10,u11,v10,v11
+      real(kind=8):: u20,u21,u22,v20,v21,v22
+      real(kind=8):: ysign,xsign
+      real(kind=8):: sx,sy,ext,eyt
+
+      dxi = 1./dx
+      dyi = 1./dy
+
+      if (.not. (l2symtry .or. l4symtry)) then
+
+        inext = nint((xp(1) - xmmin)*dxi)
+        jnext = nint((yp(1) - ymmin)*dyi)
+
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          if (ip < np) then
+            inext = nint((xp(ip+1) - xmmin)*dxi)
+            jnext = nint((yp(ip+1) - ymmin)*dyi)
+          endif
+
+          wx = (xp(ip) - xmmin)*dxi - i
+          wy = (yp(ip) - ymmin)*dyi - j
+
+          u10 = 1. - wx
+          u11 = wx
+          v10 = 1. - wy
+          v11 = wy
+
+          u20 = 0.5*(0.5 - wx)**2
+          u21 = (0.75 - wx**2)
+          u22 = 0.5*(0.5 + wx)**2
+          v20 = 0.5*(0.5 - wy)**2
+          v21 = (0.75 - wy**2)
+          v22 = 0.5*(0.5 + wy)**2
+
+          ext = u10*v20*selfe(1,i  ,j-1)
+     &        + u11*v20*selfe(1,i+1,j-1)
+     &        + u10*v21*selfe(1,i  ,j  )
+     &        + u11*v21*selfe(1,i+1,j  )
+     &        + u10*v22*selfe(1,i  ,j+1)
+     &        + u11*v22*selfe(1,i+1,j+1)
+
+          eyt = u20*v10*selfe(2,i-1,j  )
+     &        + u21*v10*selfe(2,i  ,j  )
+     &        + u22*v10*selfe(2,i+1,j  )
+     &        + u20*v11*selfe(2,i-1,j+1)
+     &        + u21*v11*selfe(2,i  ,j+1)
+     &        + u22*v11*selfe(2,i+1,j+1)
+
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+
+        enddo
+
+      else
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sy = -1.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        inext = nint((abs(xp(1)) - xmmin)*dxi)
+        jnext = nint((abs(yp(1)) - ymmin)*dyi)
+        do ip = 1, np
+
+          i = inext
+          j = jnext
+          if (ip < np) then
+            inext = nint((abs(xp(ip+1)) - xmmin)*dxi)
+            jnext = nint((abs(yp(ip+1)) - ymmin)*dyi)
+          endif
+
+          wx = (xp(ip) - xmmin)*dxi - i
+          wy = (yp(ip) - ymmin)*dyi - j
+
+          u10 = 1. - wx
+          u11 = wx
+          v10 = 1. - wy
+          v11 = wy
+
+          u20 = 0.5*(0.5 - wx)**2
+          u21 = (0.75 - wx**2)
+          u22 = 0.5*(0.5 + wx)**2
+          v20 = 0.5*(0.5 - wy)**2
+          v21 = (0.75 - wy**2)
+          v22 = 0.5*(0.5 + wy)**2
+
+c         --- Adjust sign of E field for appropriate quadrant.
+          xsign = 1.
+          ysign = 1.
+          if (xp(ip) < 0.) xsign = sx
+          if (yp(ip) < 0.) ysign = sy
+
+          ext = u10*v20*selfe(1,i  ,j-1)
+     &        + u11*v20*selfe(1,i+1,j-1)
+     &        + u10*v21*selfe(1,i  ,j  )
+     &        + u11*v21*selfe(1,i+1,j  )
+     &        + u10*v22*selfe(1,i  ,j+1)
+     &        + u11*v22*selfe(1,i+1,j+1)
+
+          eyt = u20*v10*selfe(2,i-1,j  )
+     &        + u21*v10*selfe(2,i  ,j  )
+     &        + u22*v10*selfe(2,i+1,j  )
+     &        + u20*v11*selfe(2,i-1,j+1)
+     &        + u21*v11*selfe(2,i  ,j+1)
+     &        + u22*v11*selfe(2,i+1,j+1)
+
+          ex(ip) = ex(ip) + ext*xsign
+          ey(ip) = ey(ip) + eyt*ysign
+
+        enddo
+
+      endif
+
+      return
+      end
+c===========================================================================
 c=============================================================================
       subroutine padvncxy(center,pgroup)
       use ParticleGroupmodule
-      use Subtimersxy
+      use Subtimerswxy
       use GlobalVars
       use InMesh3d
       use InGen
@@ -1501,7 +2335,7 @@ c=============================================================================
       subroutine fixrhoxy(rho,nx,ny,nzlocal,
      &                    nxguardrho,nyguardrho,nzguardrho,
      &                    bound0,boundnz,lthick)
-      use Subtimersxy
+      use Subtimerswxy
       use GlobalVars,Only:periodic
       integer(ISZ):: nx,ny,nzlocal
       integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
@@ -1545,7 +2379,7 @@ c     --- Sum up rho over the processors.
       end
 c=============================================================================
       subroutine fixcurrxy(curr,nzzarr,nszarr,bound0,boundnz,lthick)
-      use Subtimersxy
+      use Subtimerswxy
       use GlobalVars,Only:periodic
       integer(ISZ):: nzzarr,nszarr
       real(kind=8):: curr(0:nzzarr,0:nszarr)
@@ -1577,7 +2411,7 @@ c       --- Sum up the current from all of the speices.
       end
 c=============================================================================
       subroutine epushxy(np,uxp,uyp,uzp,ex,ey,ez,q,m,dtp,fdt)
-      use Subtimersxy
+      use Subtimerswxy
       integer(ISZ):: np
       real(kind=8):: uxp(np),uyp(np),uzp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
@@ -1602,7 +2436,7 @@ c  Push the particle velocity with E field
       end
 c============================================================================= 
       subroutine bpushxy(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,dtp,fdt,ibpush)
-      use Subtimersxy
+      use Subtimerswxy
       integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: bx(np),by(np),bz(np)
@@ -1663,7 +2497,7 @@ c        --- tan(alpha) / alpha algorithm
       end
 c=========================================================================== 
       subroutine xpushxy(np,xp,yp,zp,uxp,uyp,uzp,gaminv,dtp)
-      use Subtimersxy
+      use Subtimerswxy
       integer(ISZ):: np
       real(kind=8):: dtp(np)
       real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
@@ -1707,7 +2541,7 @@ c zbeam.
 c============================================================================ 
       subroutine initdtp(pgroup)
       use ParticleGroupmodule
-      use Subtimersxy
+      use Subtimerswxy
       use Beam_acc
       use InGen
       use InGenxy
@@ -1740,7 +2574,7 @@ c     --- if any values are zero.
       end
 c============================================================================ 
       subroutine setdtp(np,dtp,xp,zp,zpo,uzp,bendres,bendradi,zgridprv)
-      use Subtimersxy
+      use Subtimerswxy
       use InGenxy
       integer(ISZ):: np
       real(kind=8):: dtp(np),xp(np),zp(np),zpo(np),uzp(np)
@@ -1803,7 +2637,7 @@ c           --- rather than just move the particle ds.
       end      
 c============================================================================ 
       subroutine getnewdtpwithe(np,dtp,uzp,gaminv,ez,q,m,ds)
-      use Subtimersxy
+      use Subtimerswxy
       integer(ISZ):: np
       real(kind=8):: dtp(np),uzp(np),gaminv(np),ez(np)
       real(kind=8):: q,m,ds
@@ -1817,7 +2651,7 @@ c============================================================================
       end
 c============================================================================ 
       subroutine nextbend(zbeam,zz)
-      use Subtimersxy
+      use Subtimerswxy
       use InGen
       use Lattice
       use LatticeInternal
@@ -1857,7 +2691,7 @@ c       --- If no bends, return a big number.
       end
 c============================================================================ 
       subroutine bendezxy(np,xp,zp,ez,bendres,bendradi,bends,bnezflag)
-      use Subtimersxy
+      use Subtimerswxy
       integer(ISZ):: np
       real(kind=8):: xp(np),zp(np),ez(np),bendres,bendradi
       logical(ISZ):: bends,bnezflag
@@ -1881,7 +2715,7 @@ c  at smaller radii, zones are closer together, so field is larger.
       end      
 c=========================================================================== 
       subroutine exbendcorxy(np,xp,zp,uxp,uzp,zpo,ds,bendres,bendradi,lexbend)
-      use Subtimersxy
+      use Subtimerswxy
       integer(ISZ):: np
       real(kind=8):: xp(np), zp(np), zpo(np), uxp(np), uzp(np)
       real(kind=8):: ds,bendres,bendradi
@@ -1931,7 +2765,7 @@ c         --- translate velocity
 c=========================================================================== 
       subroutine bendcorxy(np,xp,zp,uxp,uzp,gaminv,dtp,zpo,ds,
      &                     bendres,bendradi,lexbend)
-      use Subtimersxy
+      use Subtimerswxy
       integer(ISZ):: np
       real(kind=8):: xp(np),zp(np),zpo(np),uxp(np),uzp(np),gaminv(np),dtp(np)
       real(kind=8):: ds,bendres,bendradi
@@ -1963,50 +2797,28 @@ c       --- and 1 - this avoids potential problems with roundoff errors.
       return
       end      
 c=========================================================================== 
-      subroutine setrhoxy(rho1d,np,xp,yp,zp,zgrid,uzp,gaminv,q,wght)
-      use Subtimersxy
+      subroutine setrhoxy(rho,np,xp,yp,zp,zgrid,uzp,gaminv,
+     &                    q,wght,vbeamfrm,depos,depos_order,
+     &                    nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                    dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
-      use InGen
-      use InGenxy
-      use InGen3d
-      use InMesh3d
-      use Fields3d
-      use Picglb3d
+      use InGenxy,Only: lthick
+      use Subtimerswxy
       integer(ISZ):: np
-      real(kind=8):: q,wght,zgrid
-      real(kind=8):: rho1d(0:*)
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght,vbeamfrm
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
       real(kind=8):: xp(np), yp(np), zp(np), uzp(np), gaminv(np)
+      character(8):: depos
+      integer(ISZ):: depos_order(0:2)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
-c  Sets charge density.
-c  When using thick slice version, makes call to 3d version of setrho.
-c  When using slice version, puts all charge at iz=0.  The call to
-c  the fixrhoxy routine is then used to distribute the charge density
-c  throughout the rho array after all of the particles have been deposited.
+c  Sets charge density using various algorithms
 
-c  Algorithm notes: rho array is dimensioned (0:nx,0:ny,0:nzlocal) outside,
-c  but is made one dimensional in this routine
-c  so cell index into 1d rho array for vectorized deposition is:
-c     i + j*(nx+1)
-c  In each case,
-c     rho(i  ,j  ,0  ) = rho(i  ,j  ,0  ) + u0*v0*g*vbeamfrm/(uzp*gaminv)
-c     rho(i+1,j  ,0  ) = rho(i+1,j  ,0  ) + u1*v0*g*vbeamfrm/(uzp*gaminv)
-c  Note that many changes are possible; for example, we might define
-c  ind0(ir) and not use indx; this saves some store operations but
-c  leads to a more complicated indirect address for the vectorized
-c  gather-add-scatter loop.  It seems about 3% slower than the present way.
-c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
-c  handling of blocks of particles at a time)
-
-c     --- For vectorized algorithm
-      integer(ISZ):: moff(0:3), indx(0:3,0:nparpgrp-1)
-c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ):: ii(0:nparpgrp-1), jj(0:nparpgrp-1)
-c     --- For both algorithms
-      real(kind=8):: s(0:3,0:nparpgrp-1)
-      integer(ISZ):: ipmin,nptmp
-
-      integer(ISZ):: ip,i,j,ind0,m,ir
-      real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,f
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
@@ -2014,28 +2826,124 @@ c     --- For both algorithms
 c       --- Call 3d version.
 c       --- THIS IS BROKEN XXX!
         call kaboom("setrhoxy: lthick is not supported")
-c       call setrho3d(rho1d,np,xp,yp,zp,zgrid,q,wght,depos)
-        call setrho3d(rho1d,np,xp,yp,zp,zgrid,q,wght,depos,
-     &                nx,ny,nzlocal,nxguardrho,nyguardrho,nzguardrho,
+        call setrho3d(rho,np,xp,yp,zp,zgrid,q,wght,depos,
+     &                nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
      &                dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                .false.)
+        return
+      endif
+
+      if (ALL(depos_order == 1)) then
+
+c       --- Vectorized deposition loop
+        if (depos == "vector") then
+
+          call setrhoxyvector(rho,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                        nx,ny,nxguardrho,nyguardrho,
+     &                        dx,dy,xmmin,ymmin,
+     &                        l2symtry,l4symtry)
+
+c       --- Scalar deposition loop
+        elseif (depos == "scalar") then
+
+          call setrhoxyscalar(rho,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                        nx,ny,nxguardrho,nyguardrho,
+     &                        dx,dy,xmmin,ymmin,
+     &                        l2symtry,l4symtry)
+
+c       --- Direct deposition loop
+        elseif (depos == "direct") then
+
+          call setrhoxydirect(rho,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                        nx,ny,nxguardrho,nyguardrho,
+     &                        dx,dy,xmmin,ymmin,
+     &                        l2symtry,l4symtry)
+
+c       --- Direct deposition loop with precalculated integer conversions
+        elseif (depos == "direct1") then
+
+          call setrhoxydirect1(rho,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                         nx,ny,nxguardrho,nyguardrho,
+     &                         dx,dy,xmmin,ymmin,
+     &                         l2symtry,l4symtry)
+
+c       --- Vectorized deposition loop with precalculated integer conversions
+        else if (depos == "vector1") then
+
+          call setrhoxyvector1(rho,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                         nx,ny,nxguardrho,nyguardrho,
+     &                         dx,dy,xmmin,ymmin,
+     &                         l2symtry,l4symtry)
+
+        endif
+
+      else if (ALL(depos_order == 2)) then
+
+c       --- Direct deposition using a second order spline
+c       --- Formerly depos == "dspline2"
+
+        call setrhoxydirectspline2(rho,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                             nx,ny,nxguardrho,nyguardrho,
+     &                             dx,dy,xmmin,ymmin,
+     &                             l2symtry,l4symtry)
+
       else
+        call kaboom("sethoxy: order of deposition is not supported in the electrostatic solver")
+        return
+      endif
 
-! np was made FIRSTPRIVATE to get around a bug when the expression
-! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
-! I don't know why it works, but it does.
-!$OMP PARALLEL PRIVATE(ipmin,nptmp,f,i,j,u1,u0,v1,v0,ir,ip,ind0,indx,s,m,ii,jj),FIRSTPRIVATE(np)
+!$OMP END PARALLEL
 
-c  Set up offset array for vectorized deposition:
+      if (lwxytimesubs) timesetrhoxy = timesetrhoxy + wtime() - substarttime
+      return
+      end
+c=============================================================================
+      subroutine setrhoxyvector(rho1d,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                          nx,ny,nxguardrho,nyguardrho,
+     &                          dx,dy,xmmin,ymmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nxguardrho,nyguardrho
+      real(kind=8):: dx,dy
+      real(kind=8):: q,wght,vbeamfrm
+      real(kind=8):: rho1d(0:(1+nx+2*nxguardrho)*(1+ny+2*nyguardrho)-1)
+      real(kind=8):: xp(np), yp(np), uzp(np), gaminv(np)
+      real(kind=8):: xmmin,ymmin
+      logical(ISZ):: l2symtry,l4symtry
 
+c  Sets charge density
+
+c  Algorithm notes: rho array is dimensioned (0:nx,0:ny) outside,
+c  but is made one dimensional in this routine
+c  so cell index into 1d rho array for vectorized deposition is:
+c     i + j*(nx+1)
+c  In each case,
+c     rho(i  ,j  ) = rho(i  ,j  ) + u0*v0*g
+c     rho(i+1,j  ) = rho(i+1,j  ) + u1*v0*g
+c  Note that many changes are possible; for example, we might define
+c  ind0(ir) and not use indx; this saves some store operations but
+c  leads to a more complicated indirect address for the vectorized
+c  gather-add-scatter loop.  It seems about 3% slower than the present way.
+c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
+c  handling of blocks of particles at a time)
+
+      integer(ISZ):: nnx,nnxy
+      integer(ISZ):: moff(0:3)
+      integer(ISZ),allocatable:: indx(:,:)
+      real(kind=8),allocatable:: s(:,:)
+
+      integer(ISZ):: ipmin,nptmp,ip,i,j,ind0,m,ir
+      real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,f
+
+c     --- Set up offset array for vectorized deposition:
+      nnx = nx + 1 + 2*nxguardrho
+      nnxy = (nx + 1 + 2*nxguardrho)*(ny + 1 + 2*nyguardrho)
       moff(0) = 0
       moff(1) = 1
-      moff(2) = nx+1
-      moff(3) = nx+2
+      moff(2) = nnx
+      moff(3) = nnx + 1
 
-c  Begin main loop over species, groups of nparpgrp particles
-
-      g = wght * q / (dx * dy)
+      g = wght*q/(dx*dy)
       dxi = 1./dx
       dyi = 1./dy
       if (l2symtry) then
@@ -2048,269 +2956,1110 @@ c       --- transverse boundaries.
         g = g*0.25
       endif
 
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,u1,u0,v1,v0,ir,ip,ind0,indx,m)
+!$OMP&FIRSTPRIVATE(np)
+
+      allocate(indx(0:3,0:nparpgrp-1),s(0:3,0:nparpgrp-1))
+
 !$OMP DO
       do ipmin = 1,np,nparpgrp
         nptmp = min(nparpgrp, np+1-ipmin)
 
-c--------------------------------------
-c  Begin vectorized deposition loop
-c--------------------------------------
-      if (depos == "vector") then
+c       --- vectorized loop to compute indices, weights
+        if (l2symtry) then
+c         --- special loop for 2-fold symmetry
+c         --- The particle weight is reduced by a factor of 2 except near the
+c         --- transverse boundaries.
+          do ip = ipmin,ipmin+nptmp-1
+            if (vbeamfrm .ne. 0.) then
+              f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+            else
+              f = 1.
+            endif
+            i  = int((xp(ip) - xmmin)*dxi)
+            u1 =     (xp(ip) - xmmin)*dxi - i
+            u0 = 1. - u1
+            j  = int((abs(yp(ip)) - ymmin)*dyi)
+            v1 =     (abs(yp(ip)) - ymmin)*dyi - j
+            v0 = 1. - v1
+            ir = ip - ipmin
+            ind0 = i + j*nnx
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            s(0,ir) = u0*v0*f
+            s(1,ir) = u1*v0*f
+            s(2,ir) = u0*v1*f
+            s(3,ir) = u1*v1*f
+          enddo
+        elseif (l4symtry) then
+c         --- special loop for 4-fold symmetry
+c         --- The particle weight is reduced by a factor of 4 except near the
+c         --- transverse boundaries.
+          do ip = ipmin,ipmin+nptmp-1
+            if (vbeamfrm .ne. 0.) then
+              f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+            else
+              f = 1.
+            endif
+            i  = int((abs(xp(ip)) - xmmin)*dxi)
+            u1 =     (abs(xp(ip)) - xmmin)*dxi - i
+            u0 = 1. - u1
+            j  = int((abs(yp(ip)) - ymmin)*dyi)
+            v1 =     (abs(yp(ip)) - ymmin)*dyi - j
+            v0 = 1. - v1
+            ir = ip - ipmin
+            ind0 = i + j*nnx
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            s(0,ir) = u0*v0*f
+            s(1,ir) = u1*v0*f
+            s(2,ir) = u0*v1*f
+            s(3,ir) = u1*v1*f
+          enddo
+        else
+c         --- normal loop
+          do ip = ipmin,ipmin+nptmp-1
+            if (vbeamfrm .ne. 0.) then
+              f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+            else
+              f = 1.
+            endif
+            i  = int((xp(ip) - xmmin)*dxi)
+            u1 =     (xp(ip) - xmmin)*dxi - i
+            u0 = 1. - u1
+            j  = int((yp(ip) - ymmin)*dyi)
+            v1 =     (yp(ip) - ymmin)*dyi - j
+            v0 = 1. - v1
+            ir = ip - ipmin
+            ind0 = i + j*nnx
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            s(0,ir) = u0*v0*f
+            s(1,ir) = u1*v0*f
+            s(2,ir) = u0*v1*f
+            s(3,ir) = u1*v1*f
+          enddo
+        endif
 
-c     --- vectorized loop to compute indices, weights
-      if (l2symtry) then
-c       --- special loop for 2-fold symmetry
-        do ip = ipmin,ipmin+nptmp-1
-          if (vbeamfrm .ne. 0.) then
-             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
-           else
-             f = 1.
-           endif
-           i  = (xp(ip) - xmmin) * dxi
-           u1 = (xp(ip) - xmmin) * dxi - i
-           u0 = 1. - u1
-           j  = abs(yp(ip))*dyi
-           v1 = abs(yp(ip))*dyi - j
-           v0 = 1. - v1
-           ir = ip - ipmin
-           ind0 = i + j*(nx+1)
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           s(0,ir) = u0 * v0 * f
-           s(1,ir) = u1 * v0 * f
-           s(2,ir) = u0 * v1 * f
-           s(3,ir) = u1 * v1 * f
+c       --- vectorized deposition over the 8 cells touched;
+c       --- there'd be a hazard if we interchanged the loops.
+!$OMP CRITICAL (CRITICAL_SETRHOXYVECTOR)
+        do ir = 0,nptmp-1
+          do m = 0, 3
+            rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+          enddo
         enddo
-      elseif (l4symtry) then
-c       --- special loop for 4-fold symmetry
-        do ip = ipmin,ipmin+nptmp-1
-          if (vbeamfrm .ne. 0.) then
-             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
-           else
-             f = 1.
-           endif
-           i  = abs(xp(ip))*dxi
-           u1 = abs(xp(ip))*dxi - i
-           u0 = 1. - u1
-           j  = abs(yp(ip))*dyi
-           v1 = abs(yp(ip))*dyi - j
-           v0 = 1. - v1
-           ir = ip - ipmin
-           ind0 = i + j*(nx+1)
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           s(0,ir) = u0 * v0 * f
-           s(1,ir) = u1 * v0 * f
-           s(2,ir) = u0 * v1 * f
-           s(3,ir) = u1 * v1 * f
-        enddo
-      else
-c       --- normal loop
-        do ip = ipmin,ipmin+nptmp-1
-          if (vbeamfrm .ne. 0.) then
-             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
-           else
-             f = 1.
-           endif
-           i  = (xp(ip) - xmmin) * dxi
-           u1 = (xp(ip) - xmmin) * dxi - i
-           u0 = 1. - u1
-           j  = (yp(ip) - ymmin) * dyi
-           v1 = (yp(ip) - ymmin) * dyi - j
-           v0 = 1. - v1
-           ir = ip - ipmin
-           ind0 = i + j*(nx+1)
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           s(0,ir) = u0 * v0 * f
-           s(1,ir) = u1 * v0 * f
-           s(2,ir) = u0 * v1 * f
-           s(3,ir) = u1 * v1 * f
-        enddo
-      endif
-c     --- vectorized deposition over the 8 cells touched;
-c     --- there'd be a hazard if we interchanged the loops.
-!$OMP CRITICAL (CRITICAL_SETRHOXY1)
-      do ir = 0,nptmp-1
-        do m = 0, 3
-          rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
-        enddo
+!$OMP END CRITICAL (CRITICAL_SETRHOXYVECTOR)
+
       enddo
-!$OMP END CRITICAL (CRITICAL_SETRHOXY1)
+!$OMP END DO
 
-c--------------------------------------
-c  Begin scalar deposition loop
-c--------------------------------------
-      elseif (depos == "scalar") then
+      deallocate(indx,s)
+!$OMP END PARALLEL
 
-c  Begin main loop over species, groups of nparpgrp particles
+      return
+      end
+c=============================================================================
+      subroutine setrhoxyscalar(rho,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                          nx,ny,nxguardrho,nyguardrho,
+     &                          dx,dy,xmmin,ymmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nxguardrho,nyguardrho
+      real(kind=8):: dx,dy
+      real(kind=8):: q,wght,vbeamfrm
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho)
+      real(kind=8):: xp(np), yp(np), uzp(np), gaminv(np)
+      real(kind=8):: xmmin,ymmin
+      logical(ISZ):: l2symtry,l4symtry
 
-c     --- vectorized loop to compute indices, weights
+c  Sets charge density
+c  Similar to vector, but rho is treated as a 2d array rather than a 1d array
+
+      integer(ISZ),allocatable:: ii(:), jj(:)
+      real(kind=8),allocatable:: s(:,:)
+
+      integer(ISZ):: ipmin,nptmp,ip,i,j,ir
+      real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,f
+
+      g = wght*q/(dx*dy)
+      dxi = 1./dx
+      dyi = 1./dy
       if (l2symtry) then
-        do ip = ipmin,ipmin+nptmp-1
-          if (vbeamfrm .ne. 0.) then
-            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
-          else
-            f = 1.
-          endif
-          ir = ip - ipmin
-          ii(ir) = (xp(ip) - xmmin) * dxi
-          u1     = (xp(ip) - xmmin) * dxi - ii(ir)
-          u0     = 1. - u1
-          jj(ir) = abs(yp(ip))*dyi
-          v1     = abs(yp(ip))*dyi - jj(ir)
-          v0     = 1. - v1
-          s(0,ir) = u0 * v0 * f
-          s(1,ir) = u1 * v0 * f
-          s(2,ir) = u0 * v1 * f
-          s(3,ir) = u1 * v1 * f
-        enddo
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
       elseif (l4symtry) then
-        do ip = ipmin,ipmin+nptmp-1
-          if (vbeamfrm .ne. 0.) then
-            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
-          else
-            f = 1.
-          endif
-          ir = ip - ipmin
-          ii(ir) = abs(xp(ip))*dxi
-          u1     = abs(xp(ip))*dxi - ii(ir)
-          u0     = 1. - u1
-          jj(ir) = abs(yp(ip))*dyi
-          v1     = abs(yp(ip))*dyi - jj(ir)
-          v0     = 1. - v1
-          s(0,ir) = u0 * v0 * f
-          s(1,ir) = u1 * v0 * f
-          s(2,ir) = u0 * v1 * f
-          s(3,ir) = u1 * v1 * f
-        enddo
-      else
-c       --- normal loop
-        do ip = ipmin,ipmin+nptmp-1
-          if (vbeamfrm .ne. 0.) then
-            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
-          else
-            f = 1.
-          endif
-          ir = ip - ipmin
-          ii(ir) = (xp(ip) - xmmin) * dxi
-          u1     = (xp(ip) - xmmin) * dxi - ii(ir)
-          u0     = 1. - u1
-          jj(ir) = (yp(ip) - ymmin) * dyi
-          v1     = (yp(ip) - ymmin) * dyi - jj(ir)
-          v0     = 1. - v1
-          s(0,ir) = u0 * v0 * f
-          s(1,ir) = u1 * v0 * f
-          s(2,ir) = u0 * v1 * f
-          s(3,ir) = u1 * v1 * f
-        enddo
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
       endif
-c     --- scalar loop does the actual deposition
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ipmin,nptmp,u1,u0,v1,v0,ir,ip,
+!$OMP&                 s,ii,jj)
+!$OMP&FIRSTPRIVATE(np)
+
+      allocate(ii(0:nparpgrp-1), jj(0:nparpgrp-1))
+      allocate(s(0:3,0:nparpgrp-1))
+
+!$OMP DO
+      do ipmin = 1,np,nparpgrp
+        nptmp = min(nparpgrp, np+1-ipmin)
+
+c       --- vectorized loop to compute indices, weights
+        if (l2symtry) then
+          do ip = ipmin,ipmin+nptmp-1
+            if (vbeamfrm .ne. 0.) then
+              f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+            else
+              f = 1.
+            endif
+            ir = ip - ipmin
+            ii(ir) = int((xp(ip) - xmmin)*dxi)
+            u1     =     (xp(ip) - xmmin)*dxi - ii(ir)
+            u0     = 1. - u1
+            jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
+            v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
+            v0     = 1. - v1
+            s(0,ir) = u0*v0*f
+            s(1,ir) = u1*v0*f
+            s(2,ir) = u0*v1*f
+            s(3,ir) = u1*v1*f
+          enddo
+        elseif (l4symtry) then
+          do ip = ipmin,ipmin+nptmp-1
+            if (vbeamfrm .ne. 0.) then
+              f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+            else
+              f = 1.
+            endif
+            ir = ip - ipmin
+            ii(ir) = int((abs(xp(ip)) - xmmin)*dxi)
+            u1     =     (abs(xp(ip)) - xmmin)*dxi - ii(ir)
+            u0     = 1. - u1
+            jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
+            v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
+            v0     = 1. - v1
+            s(0,ir) = u0*v0*f
+            s(1,ir) = u1*v0*f
+            s(2,ir) = u0*v1*f
+            s(3,ir) = u1*v1*f
+          enddo
+        else
+c         --- normal loop
+          do ip = ipmin,ipmin+nptmp-1
+            if (vbeamfrm .ne. 0.) then
+              f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+            else
+              f = 1.
+            endif
+            ir = ip - ipmin
+            ii(ir) = int((xp(ip) - xmmin)*dxi)
+            u1     = (xp(ip) - xmmin)*dxi - ii(ir)
+            u0     = 1. - u1
+            jj(ir) = int((yp(ip) - ymmin)*dyi)
+            v1     = (yp(ip) - ymmin)*dyi - jj(ir)
+            v0     = 1. - v1
+            s(0,ir) = u0*v0*f
+            s(1,ir) = u1*v0*f
+            s(2,ir) = u0*v1*f
+            s(3,ir) = u1*v1*f
+          enddo
+        endif
+c       --- scalar loop does the actual deposition
 !$OMP CRITICAL (CRITICAL_SETRHOXY2)
       do ir = 0, nptmp-1
-        rho(ii(ir)  ,jj(ir)  ,0) = rho(ii(ir)  ,jj(ir)  ,0) + s(0,ir)
-        rho(ii(ir)+1,jj(ir)  ,0) = rho(ii(ir)+1,jj(ir)  ,0) + s(1,ir)
-        rho(ii(ir)  ,jj(ir)+1,0) = rho(ii(ir)  ,jj(ir)+1,0) + s(2,ir)
-        rho(ii(ir)+1,jj(ir)+1,0) = rho(ii(ir)+1,jj(ir)+1,0) + s(3,ir)
+        rho(ii(ir)  ,jj(ir)  ) = rho(ii(ir)  ,jj(ir)  ) + s(0,ir)
+        rho(ii(ir)+1,jj(ir)  ) = rho(ii(ir)+1,jj(ir)  ) + s(1,ir)
+        rho(ii(ir)  ,jj(ir)+1) = rho(ii(ir)  ,jj(ir)+1) + s(2,ir)
+        rho(ii(ir)+1,jj(ir)+1) = rho(ii(ir)+1,jj(ir)+1) + s(3,ir)
       enddo
 !$OMP END CRITICAL (CRITICAL_SETRHOXY2)
 
-c--------------------------------------
-c  Direct deposition loop with precalculated integer conversions
-c--------------------------------------
-      elseif (depos == "direct1") then
+      enddo
+!$OMP END DO
 
-c  Begin main loop over species, groups of nparpgrp particles
+      deallocate(ii,jj,s)
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine setrhoxydirect(rho,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                          nx,ny,nxguardrho,nyguardrho,
+     &                          dx,dy,xmmin,ymmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nxguardrho,nyguardrho
+      real(kind=8):: dx,dy
+      real(kind=8):: q,wght,vbeamfrm
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho)
+      real(kind=8):: xp(np), yp(np), uzp(np), gaminv(np)
+      real(kind=8):: xmmin,ymmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  No particle blocks are used (since there are no temporary arrays).
+
+      integer(ISZ):: ip,ii,jj
+      real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,f
+
+      g = wght*q/(dx*dy)
+      dxi = 1./dx
+      dyi = 1./dy
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,u1,u0,v1,v0,ip)
+!$OMP&FIRSTPRIVATE(np)
 
 c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
-        do ip = ipmin,ipmin+nptmp-1
+!$OMP DO
+        do ip = 1,np
           if (vbeamfrm .ne. 0.) then
             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
           else
             f = 1.
           endif
-          i      = (xp(ip) - xmmin) * dxi
-          u1     = (xp(ip) - xmmin) * dxi - i
-          u0     = 1. - u1
-          j      = abs(yp(ip))*dyi
-          v1     = abs(yp(ip))*dyi - j
-          v0     = 1. - v1
-          rho(i  ,j  ,0) = rho(i  ,j  ,0) + u0 * v0 * f
-          rho(i+1,j  ,0) = rho(i+1,j  ,0) + u1 * v0 * f
-          rho(i  ,j+1,0) = rho(i  ,j+1,0) + u0 * v1 * f
-          rho(i+1,j+1,0) = rho(i+1,j+1,0) + u1 * v1 * f
+          ii = int((xp(ip) - xmmin)*dxi)
+          u1 =     (xp(ip) - xmmin)*dxi - ii
+          u0 = 1. - u1
+          jj = int((abs(yp(ip)) - ymmin)*dyi)
+          v1 =     (abs(yp(ip)) - ymmin)*dyi - jj
+          v0 = 1. - v1
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u0*v0*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u1*v0*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u0*v1*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u1*v1*f
         enddo
+!$OMP END DO
       elseif (l4symtry) then
-        do ip = ipmin,ipmin+nptmp-1
+!$OMP DO
+        do ip = 1,np
           if (vbeamfrm .ne. 0.) then
             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
           else
             f = 1.
           endif
-          i      = abs(xp(ip))*dxi
-          u1     = abs(xp(ip))*dxi - i
-          u0     = 1. - u1
-          j      = abs(yp(ip))*dyi
-          v1     = abs(yp(ip))*dyi - j
-          v0     = 1. - v1
-          rho(i  ,j  ,0) = rho(i  ,j  ,0) + u0 * v0 * f
-          rho(i+1,j  ,0) = rho(i+1,j  ,0) + u1 * v0 * f
-          rho(i  ,j+1,0) = rho(i  ,j+1,0) + u0 * v1 * f
-          rho(i+1,j+1,0) = rho(i+1,j+1,0) + u1 * v1 * f
+          ii = int((abs(xp(ip)) - xmmin)*dxi)
+          u1 =     (abs(xp(ip)) - xmmin)*dxi - ii
+          u0 = 1. - u1
+          jj = int((abs(yp(ip)) - ymmin)*dyi)
+          v1 =     (abs(yp(ip)) - ymmin)*dyi - jj
+          v0 = 1. - v1
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u0*v0*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u1*v0*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u0*v1*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u1*v1*f
         enddo
+!$OMP END DO
       else
 c       --- normal loop
-        do ip = ipmin,ipmin+nptmp-1
+!$OMP DO
+        do ip = 1,np
           if (vbeamfrm .ne. 0.) then
             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
           else
             f = 1.
           endif
-          i      = (xp(ip) - xmmin) * dxi
-          u1     = (xp(ip) - xmmin) * dxi - i
-          u0     = 1. - u1
-          j      = (yp(ip) - ymmin) * dyi
-          v1     = (yp(ip) - ymmin) * dyi - j
-          v0     = 1. - v1
-          rho(i  ,j  ,0) = rho(i  ,j  ,0) + u0 * v0 * f
-          rho(i+1,j  ,0) = rho(i+1,j  ,0) + u1 * v0 * f
-          rho(i  ,j+1,0) = rho(i  ,j+1,0) + u0 * v1 * f
-          rho(i+1,j+1,0) = rho(i+1,j+1,0) + u1 * v1 * f
+          ii = int((xp(ip) - xmmin)*dxi)
+          u1 = (xp(ip) - xmmin)*dxi - ii
+          u0 = 1. - u1
+          jj = int((yp(ip) - ymmin)*dyi)
+          v1 = (yp(ip) - ymmin)*dyi - jj
+          v0 = 1. - v1
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u0*v0*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u1*v0*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u0*v1*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u1*v1*f
         enddo
+!$OMP END DO
       endif
 
-      endif
-
-      enddo
 !$OMP END PARALLEL
 
-c     --- End of slice version
+      return
+      end
+c=============================================================================
+      subroutine setrhoxydirect1(rho,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                           nx,ny,nxguardrho,nyguardrho,
+     &                           dx,dy,xmmin,ymmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nxguardrho,nyguardrho
+      real(kind=8):: dx,dy
+      real(kind=8):: q,wght,vbeamfrm
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho)
+      real(kind=8):: xp(np), yp(np), uzp(np), gaminv(np)
+      real(kind=8):: xmmin,ymmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  No particle blocks are used (since there are no temporary arrays).
+c  Also, the float to integer conversions are precalculated.
+c  This seems to be the fastest version.
+
+      integer(ISZ):: ip,ii,jj
+      integer(ISZ):: iinext,jjnext
+      real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,f
+      real(kind=8):: u1next,v1next
+
+      g = wght*q
+      if (nx > 0) g = g/dx
+      if (ny > 0) g = g/dy
+      dxi = 1./dx
+      dyi = 1./dy
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
       endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,u1,u0,v1,v0,ip,
+!$OMP&                 iinext,jjnext,u1next,v1next)
+!$OMP&FIRSTPRIVATE(np)
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry) then
+        iinext = int((xp(1) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
+          ii = iinext
+          jj = jjnext
+          u1 = u1next
+          v1 = v1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u0*v0*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u1*v0*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u0*v1*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u1*v1*f
+        enddo
+!$OMP END DO
+      elseif (l4symtry) then
+        iinext = int((abs(xp(1)) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        u1next = (abs(xp(1)) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
+          ii = iinext
+          jj = jjnext
+          u1 = u1next
+          v1 = v1next
+          if (ip < np) then
+            iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u0*v0*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u1*v0*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u0*v1*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u1*v1*f
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        iinext = int((xp(1) - xmmin)*dxi)
+        jjnext = int((yp(1) - ymmin)*dyi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        v1next = (yp(1) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
+          ii = iinext
+          jj = jjnext
+          u1 = u1next
+          v1 = v1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            jjnext = int((yp(ip+1) - ymmin)*dyi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            v1next = (yp(ip+1) - ymmin)*dyi - jjnext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u0*v0*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u1*v0*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u0*v1*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u1*v1*f
+        enddo
+!$OMP END DO
+      endif
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine setrhoxyvector1(rho1d,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                           nx,ny,nxguardrho,nyguardrho,
+     &                           dx,dy,xmmin,ymmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nxguardrho,nyguardrho
+      real(kind=8):: dx,dy
+      real(kind=8):: q,wght,vbeamfrm
+      real(kind=8):: rho1d(0:(1+nx+2*nxguardrho)*(1+ny+2*nyguardrho)-1)
+      real(kind=8):: xp(np), yp(np), uzp(np), gaminv(np)
+      real(kind=8):: xmmin,ymmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  Same as vector except that the float to integer conversions are
+c  precalculated for the next particle since the conversion can be a bottleneck.
+
+      integer(ISZ):: nnx,nnxy
+      integer(ISZ):: moff(0:3)
+      integer(ISZ),allocatable:: indx(:,:)
+      real(kind=8),allocatable:: s(:,:)
+
+      integer(ISZ):: ipmin,nptmp,ip,i,j,ind0,m,ir
+      integer(ISZ):: inext,jnext
+      real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,f
+
+c  Set up offset array for vectorized deposition:
+      nnx = nx + 1 + 2*nxguardrho
+      nnxy = (nx + 1 + 2*nxguardrho)*(ny + 1 + 2*nyguardrho)
+      moff(0) = 0
+      moff(1) = 1
+      moff(2) = nnx
+      moff(3) = nnx + 1
+
+      g = wght*q/(dx*dy)
+      dxi = 1./dx
+      dyi = 1./dy
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,u1,u0,v1,v0,ir,ip,ind0,indx,
+!$OMP&                 m,inext,jnext)
+!$OMP&FIRSTPRIVATE(np)
+
+      allocate(indx(0:3,0:nparpgrp-1),s(0:3,0:nparpgrp-1))
+
+!$OMP DO
+      do ipmin = 1,np,nparpgrp
+        nptmp = min(nparpgrp, np+1-ipmin)
+
+c       --- Here, the i,j are precalculated for the next particle
+c       --- since the float to integer conversion can be expensive.
+c       --- Tests however only show about a 5% speed up.
+
+c       --- vectorized loop to compute indices, weights
+        if (l2symtry) then
+c         --- special loop for 2-fold symmetry
+c         --- The particle weight is reduced by a factor of 2 except near the
+c         --- transverse boundaries.
+          inext = int((xp(ipmin) - xmmin)*dxi)
+          jnext = int((abs(yp(ipmin)) - ymmin)*dyi)
+          do ip = ipmin,ipmin+nptmp-1
+            if (vbeamfrm .ne. 0.) then
+              f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+            else
+              f = 1.
+            endif
+            i = inext
+            j = jnext
+            if (ip < ipmin+nptmp-1) then
+              inext = int((xp(ip+1) - xmmin)*dxi)
+              jnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            endif
+            u1 =     (xp(ip) - xmmin)*dxi - i
+            u0 = 1. - u1
+            v1 =     (abs(yp(ip)) - ymmin)*dyi - j
+            v0 = 1. - v1
+            ir = ip - ipmin
+            ind0 = i + j*nnx
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            s(0,ir) = u0*v0*f
+            s(1,ir) = u1*v0*f
+            s(2,ir) = u0*v1*f
+            s(3,ir) = u1*v1*f
+          enddo
+        elseif (l4symtry) then
+c         --- special loop for 4-fold symmetry
+c         --- The particle weight is reduced by a factor of 4 except near the
+c         --- transverse boundaries.
+          inext  = int((abs(xp(ipmin)) - xmmin)*dxi)
+          jnext  = int((abs(yp(ipmin)) - ymmin)*dyi)
+          do ip = ipmin,ipmin+nptmp-1
+            if (vbeamfrm .ne. 0.) then
+              f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+            else
+              f = 1.
+            endif
+            i = inext
+            j = jnext
+            if (ip < ipmin+nptmp-1) then
+               inext = int((abs(xp(ip+1)) - xmmin)*dxi)
+               jnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            endif
+            u1 =     (abs(xp(ip)) - xmmin)*dxi - i
+            u0 = 1. - u1
+            v1 =     (abs(yp(ip)) - ymmin)*dyi - j
+            v0 = 1. - v1
+            ir = ip - ipmin
+            ind0 = i + j*nnx
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            s(0,ir) = u0*v0*f
+            s(1,ir) = u1*v0*f
+            s(2,ir) = u0*v1*f
+            s(3,ir) = u1*v1*f
+          enddo
+        else
+c         --- normal loop
+          inext = int((xp(ipmin) - xmmin)*dxi)
+          jnext = int((yp(ipmin) - ymmin)*dyi)
+          do ip = ipmin,ipmin+nptmp-1
+            if (vbeamfrm .ne. 0.) then
+              f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+            else
+              f = 1.
+            endif
+            i = inext
+            j = jnext
+            if (ip < ipmin+nptmp-1) then
+              inext = int((xp(ip+1) - xmmin)*dxi)
+              jnext = int((yp(ip+1) - ymmin)*dyi)
+            endif
+            u1 =     (xp(ip) - xmmin)*dxi - i
+            u0 = 1. - u1
+            v1 =     (yp(ip) - ymmin)*dyi - j
+            v0 = 1. - v1
+            ir = ip - ipmin
+            ind0 = i + j*nnx
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            s(0,ir) = u0*v0*f
+            s(1,ir) = u1*v0*f
+            s(2,ir) = u0*v1*f
+            s(3,ir) = u1*v1*f
+          enddo
+        endif
+
+c       --- vectorized deposition over the 8 cells touched;
+c       --- there'd be a hazard if we interchanged the loops.
+!$OMP CRITICAL (CRITICAL_SETRHOXY1)
+        do ir = 0,nptmp-1
+          do m = 0, 3
+            rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+          enddo
+        enddo
+!$OMP END CRITICAL (CRITICAL_SETRHOXY1)
+
+      enddo
+!$OMP END DO
+
+      deallocate(indx,s)
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine setrhoxydirectspline2(rho,np,xp,yp,uzp,gaminv,q,wght,vbeamfrm,
+     &                                 nx,ny,nxguardrho,nyguardrho,
+     &                                 dx,dy,xmmin,ymmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nxguardrho,nyguardrho
+      real(kind=8):: dx,dy
+      real(kind=8):: q,wght,vbeamfrm
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho)
+      real(kind=8):: xp(np), yp(np), uzp(np), gaminv(np)
+      real(kind=8):: xmmin,ymmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  Uses a second order spline with direct deposition (no particle blocks)
+
+      integer(ISZ):: ip,ii,jj
+      integer(ISZ):: iinext,jjnext
+      real(kind=8):: g,dxi,dyi
+      real(kind=8):: wx,wy
+      real(kind=8):: wxnext,wynext
+      real(kind=8):: u0,u1,u2,v0,v1,v2,f
+      real(kind=8):: gxf,gyf,gxfm1,gyfm1
+
+      if (np == 0) return
+
+      g = wght*q/(dx*dy)
+      dxi = 1./dx
+      dyi = 1./dy
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,wx,wy,u2,u1,u0,v2,v1,v0,ip)
+!$OMP&FIRSTPRIVATE(np)
+
+      if (nxguardrho <= 0 .or. nyguardrho <= 0) then
+        call kaboom("setrhoxydirectspline2: there must be at least one guard cell on all axes")
+        return
+      endif
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry) then
+        iinext = nint((xp(1) - xmmin)*dxi)
+        jjnext = nint((abs(yp(1)) - ymmin)*dyi)
+        wxnext = (xp(1) - xmmin)*dxi - iinext
+        wynext = (abs(yp(1)) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
+          ii = iinext
+          jj = jjnext
+          wx = wxnext
+          wy = wynext
+          if (ip < np) then
+            iinext = nint((xp(ip+1) - xmmin)*dxi)
+            jjnext = nint((abs(yp(ip+1)) - ymmin)*dyi)
+            wxnext = (xp(ip+1) - xmmin)*dxi - iinext
+            wynext = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+          endif
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+
+          rho(ii-1,jj-1) = rho(ii-1,jj-1) + u0*v0*f
+          rho(ii  ,jj-1) = rho(ii  ,jj-1) + u1*v0*f
+          rho(ii+1,jj-1) = rho(ii+1,jj-1) + u2*v0*f
+          rho(ii-1,jj  ) = rho(ii-1,jj  ) + u0*v1*f
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u1*v1*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u2*v1*f
+          rho(ii-1,jj+1) = rho(ii-1,jj+1) + u0*v2*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u1*v2*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u2*v2*f
+
+        enddo
+!$OMP END DO
+      elseif (l4symtry) then
+        iinext = nint((abs(xp(1)) - xmmin)*dxi)
+        jjnext = nint((abs(yp(1)) - ymmin)*dyi)
+        wxnext = (abs(xp(1)) - xmmin)*dxi - iinext
+        wynext = (abs(yp(1)) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
+          ii = iinext
+          jj = jjnext
+          wx = wxnext
+          wy = wynext
+          if (ip < np) then
+            iinext = nint((abs(xp(ip+1)) - xmmin)*dxi)
+            jjnext = nint((abs(yp(ip+1)) - ymmin)*dyi)
+            wxnext = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            wynext = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+          endif
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+
+          rho(ii-1,jj-1) = rho(ii-1,jj-1) + u0*v0*f
+          rho(ii  ,jj-1) = rho(ii  ,jj-1) + u1*v0*f
+          rho(ii+1,jj-1) = rho(ii+1,jj-1) + u2*v0*f
+          rho(ii-1,jj  ) = rho(ii-1,jj  ) + u0*v1*f
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u1*v1*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u2*v1*f
+          rho(ii-1,jj+1) = rho(ii-1,jj+1) + u0*v2*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u1*v2*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u2*v2*f
+
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        iinext = nint((xp(1) - xmmin)*dxi)
+        jjnext = nint((yp(1) - ymmin)*dyi)
+        wxnext = (xp(1) - xmmin)*dxi - iinext
+        wynext = (yp(1) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
+          ii = iinext
+          jj = jjnext
+          wx = wxnext
+          wy = wynext
+          if (ip < np) then
+            iinext = nint((xp(ip+1) - xmmin)*dxi)
+            jjnext = nint((yp(ip+1) - ymmin)*dyi)
+            wxnext = (xp(ip+1) - xmmin)*dxi - iinext
+            wynext = (yp(ip+1) - ymmin)*dyi - jjnext
+          endif
+
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+
+          rho(ii-1,jj-1) = rho(ii-1,jj-1) + u0*v0*f
+          rho(ii  ,jj-1) = rho(ii  ,jj-1) + u1*v0*f
+          rho(ii+1,jj-1) = rho(ii+1,jj-1) + u2*v0*f
+          rho(ii-1,jj  ) = rho(ii-1,jj  ) + u0*v1*f
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u1*v1*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u2*v1*f
+          rho(ii-1,jj+1) = rho(ii-1,jj+1) + u0*v2*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u1*v2*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u2*v2*f
+
+        enddo
+!$OMP END DO
+      endif
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine setrhoxyw(rho,np,xp,yp,zp,zgrid,wfact,uzp,gaminv,q,wght,
+     &                     vbeamfrm,depos,depos_order,
+     &                     nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                     dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+      use GlobalVars
+      use InGenxy,Only: lthick
+      use Subtimerswxy
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz,nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght,vbeamfrm
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho,
+     &                   -nzguardrho:nz+nzguardrho)
+      real(kind=8):: xp(np), yp(np), zp(np), wfact(np), uzp(np), gaminv(np)
+      character(8):: depos
+      integer(ISZ):: depos_order(0:2)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density using various algorithms
+
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
+
+      if (lthick) then
+c       --- Call 3d version.
+c       --- THIS IS BROKEN XXX!
+        call kaboom("setrhoxyw: lthick is not supported")
+        call setrho3dw(rho,np,xp,yp,zp,zgrid,wfact,q,wght,depos,depos_order,
+     &                 nx,ny,nz,nxguardrho,nyguardrho,nzguardrho,
+     &                 dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
+     &                 .false.)
+        return
+      endif
+
+      if (ALL(depos_order == 1)) then
+
+c       --- Direct deposition loop with precalculated integer conversions
+        call setrhoxydirect1w(rho,np,xp,yp,wfact,uzp,gaminv,q,wght,vbeamfrm,
+     &                        nx,ny,nxguardrho,nyguardrho,
+     &                        dx,dy,xmmin,ymmin,
+     &                        l2symtry,l4symtry)
+
+      else
+        call kaboom("sethoxyw: order of deposition is not supported in the electrostatic solver")
+        return
+      endif
+
+!$OMP END PARALLEL
+
       if (lwxytimesubs) timesetrhoxy = timesetrhoxy + wtime() - substarttime
       return
       end
 c=============================================================================
+      subroutine setrhoxydirect1w(rho,np,xp,yp,wfact,uzp,gaminv,q,wght,vbeamfrm,
+     &                            nx,ny,nxguardrho,nyguardrho,
+     &                            dx,dy,xmmin,ymmin,
+     &                            l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nxguardrho,nyguardrho
+      real(kind=8):: dx,dy
+      real(kind=8):: q,wght,vbeamfrm
+      real(kind=8):: rho(-nxguardrho:nx+nxguardrho,
+     &                   -nyguardrho:ny+nyguardrho)
+      real(kind=8):: xp(np), yp(np), wfact(np), uzp(np), gaminv(np)
+      real(kind=8):: xmmin,ymmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  No particle blocks are used (since there are no temporary arrays).
+c  Also, the float to integer conversions are precalculated.
+c  This seems to be the fastest version.
+
+      integer(ISZ):: ip,ii,jj
+      integer(ISZ):: iinext,jjnext
+      real(kind=8):: g0,g,dxi,dyi,u0,u1,v0,v1,f
+      real(kind=8):: u1next,v1next
+
+      g0 = wght*q/(dx*dy)
+      dxi = 1./dx
+      dyi = 1./dy
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g0 = g0*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g0 = g0*0.25
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,u1,u0,v1,v0,ip,
+!$OMP&                 iinext,jjnext,u1next,v1next)
+!$OMP&FIRSTPRIVATE(np)
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry) then
+        iinext = int((xp(1) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g0*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))*wfact(ip)
+          else
+            f = 1.*wfact(ip)
+          endif
+          ii = iinext
+          jj = jjnext
+          u1 = u1next
+          v1 = v1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u0*v0*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u1*v0*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u0*v1*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u1*v1*f
+        enddo
+!$OMP END DO
+      elseif (l4symtry) then
+        iinext = int((abs(xp(1)) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        u1next = (abs(xp(1)) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g0*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))*wfact(ip)
+          else
+            f = 1.*wfact(ip)
+          endif
+          ii = iinext
+          jj = jjnext
+          u1 = u1next
+          v1 = v1next
+          if (ip < np) then
+            iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u0*v0*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u1*v0*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u0*v1*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u1*v1*f
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        iinext = int((xp(1) - xmmin)*dxi)
+        jjnext = int((yp(1) - ymmin)*dyi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        v1next = (yp(1) - ymmin)*dyi - jjnext
+!$OMP DO
+        do ip = 1,np
+          if (vbeamfrm .ne. 0.) then
+            f = g0*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))*wfact(ip)
+          else
+            f = 1.*wfact(ip)
+          endif
+          ii = iinext
+          jj = jjnext
+          u1 = u1next
+          v1 = v1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            jjnext = int((yp(ip+1) - ymmin)*dyi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            v1next = (yp(ip+1) - ymmin)*dyi - jjnext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          rho(ii  ,jj  ) = rho(ii  ,jj  ) + u0*v0*f
+          rho(ii+1,jj  ) = rho(ii+1,jj  ) + u1*v0*f
+          rho(ii  ,jj+1) = rho(ii  ,jj+1) + u0*v1*f
+          rho(ii+1,jj+1) = rho(ii+1,jj+1) + u1*v1*f
+        enddo
+!$OMP END DO
+      endif
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine assignrhoandphiforfieldsolvexy(rhopin,phipin)
+      use InMesh3d
+      use Fields3d
+      use Fields3dParticles
+      real(kind=8),target:: rhopin(-nxguardrho:nxp+nxguardrho,
+     &                             -nyguardrho:nyp+nyguardrho,
+     &                             -nzguardrho:nzp+nzguardrho)
+      real(kind=8),target:: phipin(-nxguardphi:nxp+nxguardphi,
+     &                             -nyguardphi:nyp+nyguardphi,
+     &                             -nzguardphi:nzp+nzguardphi)
+
+c      --- This is the same as assignrhoandphiforfieldsolve, except that
+c      --- in parallel, the same assignment is done instead of
+c      --- allocating separate arrays for rho and phi.
+
+c      --- Point rho to the block for the currently active ndts group.
+       rho => rhopin
+       phi => phipin
+
+       return
+       end
+c=============================================================================
       subroutine loadrhoxy(pgroup,ins_i,nps_i,is_i,lzero)
       use ParticleGroupmodule
-      use Subtimersxy
+      use Subtimerswxy
       use GlobalVars
       use InGen
       use InGenxy
       use InGen3d
+      use InPart,Only: depos_order
       use Picglb
       use Picglb3d
       use Particles,Only: wpid
       use Particlesxy
       use InMesh3d
       use Fields3d
+      use Fields3dParticles
       use GridBoundary3d
+      use wxy_interfaces
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
@@ -2331,6 +4080,10 @@ c     --- Ensure that subcycling is setup correctly (in case the user had
 c     --- made changes.
       call setupSubcycling(pgroup)
       call setupSelfB(pgroup)
+      call setupFields3dParticles()
+
+      call assignrhoandphiforfieldsolvexy(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
+      call assignrhopandphipforparticles(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
 
       if(depos == 'none') then
         if (lafterloadrho) call callpythonfunc("afterloadrho","controllers")
@@ -2392,10 +4145,23 @@ c        --- loop over particle blocks
            i1 = ipmin
            i2 = ipmin + ip - 1
            if (ip > 0) then
-             call setrhoxy(rho,ip,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
-     &                     pgroup%zp(i1:i2),zgrid,
-     &                     pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
-     &                     pgroup%sq(is),pgroup%sw(is))
+             if(wpid==0) then
+               call setrhoxy(rho,ip,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
+     &                       pgroup%zp(i1:i2),zgrid,
+     &                       pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
+     &                       pgroup%sq(is),pgroup%sw(is),
+     &                       vbeamfrm,depos,depos_order,
+     &                       nx,ny,nzlocal,nxguardrho,nyguardrho,nzguardrho,
+     &                       dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+             else
+               call setrhoxyw(rho,ip,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
+     &                        pgroup%zp(i1:i2),zgrid,pgroup%pid(i1:i2,wpid),
+     &                        pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
+     &                        pgroup%sq(is),pgroup%sw(is),
+     &                        vbeamfrm,depos,depos_order,
+     &                        nx,ny,nzlocal,nxguardrho,nyguardrho,nzguardrho,
+     &                        dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+             endif
            endif
          end if
       enddo
@@ -2409,9 +4175,38 @@ c  Copy charge density from frz.basegrid to w3d.rho
         call get_rho_rz(rho,nx,ny,1,0)
       else
 
-c       --- For FFT solver
-c       --- enforce axial periodicity if rho was zeroed
         if (lzero) then
+
+c         --- Set the bounds array.
+          call setboundsfromflags(bounds,boundxy,bound0,boundnz,l2symtry,l4symtry)
+
+          if (bounds(0) == periodic .or. bounds(1) == periodic) then
+            rho(:nxguardrho,:,:) = rho(:nxguardrho,:,:) + rho(nx-nxguardrho:,:,:)
+            rho(nx-nxguardrho:,:,:) = rho(:nxguardrho,:,:)
+          endif
+          if (bounds(2) == periodic .or. bounds(3) == periodic) then
+            rho(:,:nyguardrho,:) = rho(:,:nyguardrho,:) + rho(:,ny-nyguardrho:,:)
+            rho(:,ny-nyguardrho:,:) = rho(:,:nyguardrho,:)
+          endif
+          if (bounds(0) == neumann) then
+            rho(:nxguardrho,:,:) = rho(:nxguardrho,:,:) +
+     &                             rho(nxguardrho:-nxguardrho:-1,:,:)
+          endif
+          if (bounds(1) == neumann) then
+            rho(nx-nxguardrho:,:,:) = rho(nx-nxguardrho:,:,:) +
+     &                                rho(nx+nxguardrho:nx-nxguardrho:-1,:,:)
+          endif
+          if (bounds(2) == neumann) then
+            rho(:,:nyguardrho,:) = rho(:,:nyguardrho,:) +
+     &                             rho(:,nyguardrho:-nyguardrho:-1,:)
+          endif
+          if (bounds(3) == neumann) then
+            rho(:,ny-nyguardrho:,:) = rho(:,ny-nyguardrho:,:) +
+     &                                rho(:,ny+nyguardrho:ny-nyguardrho:-1,:)
+          endif
+
+c         --- For FFT solver
+c         --- enforce axial periodicity if rho was zeroed
           call fixrhoxy(rho,nx,ny,nzlocal,
      &                  nxguardrho,nyguardrho,nzguardrho,
      &                  bound0,boundnz,lthick)
@@ -2429,7 +4224,7 @@ c=============================================================================
      &                     zbeam,dzz,zzmin,
      &                     ns,lspeciesmoments,dz,lthick)
       use GlobalVars
-      use Subtimersxy
+      use Subtimerswxy
       integer(ISZ):: nzzarr,nszarr,np,is,ns
       real(kind=8):: q,wght,zbeam,dzz,zzmin,dz
       real(kind=8):: curr(0:nzzarr,0:nszarr), zp(np), uzp(np), gaminv(np)
@@ -2496,7 +4291,7 @@ c       --- Sum the charge times velocity over all particles.
       end
 c=============================================================================
       subroutine bendfieldsolxy(bendradi)
-      use Subtimersxy
+      use Subtimerswxy
       use Constant
       use InGen3d
       use Picglb3d
@@ -2576,7 +4371,7 @@ c     --- if failure to converge, report the bad news to user
       end
 c=============================================================================
       subroutine fieldsolxy(iwhich)
-      use Subtimersxy
+      use Subtimerswxy
       use Timers
       use InGen
       use InGenxy
@@ -2664,7 +4459,7 @@ c         --- Fill rest of phi array with copy of new phi
       end
 c=============================================================================
       subroutine vpxy(iwhich)
-      use Subtimersxy
+      use Subtimerswxy
       use Constant
       use InGen
       use InGenxy

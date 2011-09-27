@@ -1,5 +1,5 @@
 wxy
-#@(#) File WXY.V, version $Revision: 3.49 $, $Date: 2009/02/03 19:35:49 $
+#@(#) File WXY.V, version $Revision: 3.50 $, $Date: 2011/09/27 16:53:59 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WXY of code WARP
@@ -9,7 +9,7 @@ wxy
 
 *********** WXYversion:
 # Quantities associated with version control 
-verswxy character*19 /"$Revision: 3.49 $"/ # Current code version, set by CVS
+verswxy character*19 /"$Revision: 3.50 $"/ # Current code version, set by CVS
 
 *********** Particlesxy dump parallel:
 dtpid      integer # ID in the pid array where the time step size for each
@@ -86,7 +86,7 @@ fetchexy(pgroup:ParticleGroup,ipmin:integer,ip:integer,is:integer,
          ex:real,ey:real,ez:real)
 	     subroutine # Returns electric field on particles from phi
 
-*********** Subtimersxy:
+*********** Subtimerswxy:
 lwxytimesubs logical /.false./
 timewxyinit real /0./
 timewxyvers real /0./
@@ -110,6 +110,7 @@ timebendezxy real /0./
 timeexbendcorxy real /0./
 timebendcorxy real /0./
 timesetrhoxy real /0./
+timesetexy real /0./
 timeloadrhoxy real /0./
 timesetcurrxy real /0./
 timebendfieldsolxy real /0./
