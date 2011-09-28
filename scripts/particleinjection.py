@@ -7,7 +7,7 @@ import generateconductors
 import copy
 from em2dsolver import EM2D
 
-particleinjection_version = "$Id: particleinjection.py,v 1.13 2011/09/07 00:26:23 grote Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.14 2011/09/28 21:03:23 rcohen Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -22,8 +22,10 @@ extends from i-1/2 to i+1/2.
  - conductors: a conductor or list of conductors which act as particle scrapers
                Note that each conductor MUST have a unique id.
  - rnnmax: if set, is an upper bound to number of particles to inject per timestep per cell.
-              Note in cylindrical geometry, given scaling of rnn by 2 pi r/dy, rnnmax is emitted
-              flux in time dt times solver.dx*solver.dy (same significance as cartesian, in that sense).
+              Note in cylindrical geometry, it is the number injected per timestep per cell divided
+              by r (which for a constant flux density is constant, since the cell volume is proportional to r)
+ - relax: if set, it is the relaxation paramter for the injected number,
+              rnn =  relax*rnn + (1.-relax)*rnn_old
 
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
@@ -31,11 +33,13 @@ conductors are an argument.
     """
     def __init__(self,js=None,conductors=None,vthermal=0.,
                  lcorrectede=None,l_inj_addtempz_abs=None,lsmooth121=0,
-                 grid=None, rnnmax=None):
+                 grid=None, rnnmax=None,relax=None):
         self.vthermal = vthermal
         self.lcorrectede = lcorrectede
         self.l_inj_addtempz_abs = l_inj_addtempz_abs
         self.lsmooth121 = lsmooth121
+        self.relax = relax
+        self.inj_np = 0.   # initial "old" value of number of particles to inject
 
         #if js is None: js = range(top.ns)
         ## --- Make sure that js is a list
@@ -94,12 +98,25 @@ The sizes of the E arrays will be:
 
         # --- Test to see if solver is EM
         # --- If so, just copy the fields and return
-        if isinstance(solver,EM3D) or isinstance(solver,EM2D):
+        if isinstance(solver,EM3D):
           # --- We need the fields 1/2 cell displaced from each node on
           # --- either side of node.
           # --- So we need values in ghost cells.
-          # --- The EM solver for now has 3 ghost cells on all sides.
-          # --- The following coding assumes that.
+          # --- The EM solver has solver.nxguard guard cells, uppper and lower, in x,
+          # ---  solver.nyguard guard cells in y, etc.
+          # --- All fields have nj+2*ngj+1 values in direction j
+          # --- this means there is an allocated but unused row for E_j at the uppermost index in
+          # --- direction j.  
+          # --- For injection we need Ex from half cell below first physical node in x to half cell above
+          # --- last physical node in x, and from first physical node in z to last physical node in z
+          # --- (with obvious permutations for y and z).
+          # --- em3d's Ex starts 1/2 cell into first guard cell in x and continues to an unused value
+          # ---   1/2 cell above last guard cell; and at lower bound (lowest node) of first guard cell
+          # ---   in z to last upper bound (highest node) of last guard cell in z.  (and analagous for
+          # ---   the other components.
+          # --- Hence we use Ex values running from index nxg-1 to buut not including (hence upper
+          # ---  limit for Python slice) index -nxg in x, and index nzg to but not incluidng -nzg in z, and
+          # ---  similar permutations for the other field components.
           Exraw = solver.fields.Ex
           Eyraw = solver.fields.Ey
           Ezraw = solver.fields.Ez
@@ -109,18 +126,21 @@ The sizes of the E arrays will be:
           if solver.fields.l_nodecentered:
             solver.node2yee3d()
             convertback = 1
+          nxguard=solver.nxguard
+          nyguard=solver.nyguard
+          nzguard=solver.nzguard
           if shape(Exraw)[1]==1:
             # --- x-z or r-z
-            Ex = Exraw[2:-3,:,3:-3]
-            Ez = Ezraw[3:-3,:,2:-3]
-            Ey = zeros((shape(Exraw)[0]-6,2,shape(Exraw)[2]-6),'d')
+            Ex = Exraw[nxguard-1:-nxguard,:,nxguard:-nxguard]
+            Ez = Ezraw[nzguard:-nzguard,:,nzguard-1:-nzguard]
+            Ey = zeros((shape(Ex)[2],2,shape(Ez)[0]),'d')
             # --- formerly assumed node centered so did averaging, e.g.
-            Ex = .5*(Exraw[2:-3,:,3:-3]+Exraw[3:-2,:,3:-3])
+            #          Ex = .5*(Exraw[2:-3,:,3:-3]+Exraw[3:-2,:,3:-3])
           else:
             # --- 3D
-            Ex = Exraw[2:-3,3:-3,3:-3]
-            Ey = Eyraw[3:-3,2:-3,3:-3]
-            Ez = Ezraw[3:-3,3:-3,2:-3]
+            Ex = Exraw[nxguard-1:-nxguard,nyguard:-nyguard,nxguard:-nxguard]
+            Ey = Eyraw[nxguard:-nxguard,nyguard-1:-nyguard,nxguard:-nxguard]            
+            Ez = Ezraw[nzguard:-nzguard,nyguard:-nyguard,nzguard-1:-nzguard]
           if convertback:
             solver.yee2node3d()
           return Ex,Ey,Ez
@@ -219,13 +239,30 @@ the area of the dual cell.
         Qold = self.getintegratedcharge(solver)
 
         # --- Do the integrals of E normal over the sides of the dual cell
-        Enorm  = Ex[1:,:,:]*dy*dz
-        Enorm -= Ex[:-1,:,:]*dy*dz
-        if not self.l_2d:
-          Enorm += Ey[:,1:,:]*dx*dz
-          Enorm -= Ey[:,:-1,:]*dx*dz
-        Enorm += Ez[:,:,1:]*dx*dy
-        Enorm -= Ez[:,:,:-1]*dx*dy
+        if not self.lcylindrical:
+          Enorm  = Ex[1:,:,:]*dy*dz
+          Enorm -= Ex[:-1,:,:]*dy*dz
+          if not self.l_2d:
+            Enorm += Ey[:,1:,:]*dx*dz
+            Enorm -= Ey[:,:-1,:]*dx*dz
+          Enorm += Ez[:,:,1:]*dx*dy
+          Enorm -= Ez[:,:,:-1]*dx*dy
+        else:    # cylindrical; 2D RZ only
+          # define dual space x array
+          xgrid = solver.xmesh[1:,newaxis,newaxis]
+          xdual = zeros([len(xgrid)+1,1,1],"d")
+          xdual[0] = .5*xgrid[0]
+          xdual[1:-1] = .5*(xgrid[1:]+xgrid[:-1])
+          xdual[-1] = xgrid[-1]+dx/2.
+          Enorm = zeros([len(Ez[:,0,0]),1,len(Ex[0,0,:])],"d")
+          Enorm[0,:,:] = Ex[1,:,:]*xdual[0]**2*pi*dz
+          # note Ex[0,:,:] is in a guard cell, not used
+          Enorm[1:,:,:] = Ex[2:,:,:]*xdual[1:]*2.*pi*dz
+          Enorm[1:,:,:] -= Ex[1:-1,:,:]*xdual[:-1]*2.*pi*dz
+          Enorm[0,:,:] += Ez[0,:,1:]*xgrid[0]**2*.25*pi
+          Enorm[0,:,:] -= Ez[0,:,:-1]*xgrid[0]**2*.25*pi
+          Enorm[1:,:,:] += Ez[1:,:,1:]*xgrid*2.*pi*dx
+          Enorm[1:,:,:] -= Ez[1:,:,:-1]*xgrid*2.*pi*dx
         Enorm *= eps0
 
         Qnew = Enorm - Qold
@@ -243,7 +280,13 @@ the area of the dual cell.
 
         # --- If the user has specified a non-zero upper bound to the number of particles, impose it here
         if self.rnnmax:
-          rnn = minimum(rnn,self.rnnmax)
+          if self.lcylindrical:
+            rnnmaxuse = zeros([len(xgrid)+1,1,1])
+            rnnmaxuse[0] = self.rnnmax*xgrid[0]**2/32.
+            rnnmaxuse[1:] = self.rnnmax*xgrid[:]
+            rnn = minimum(rnn,rnnmaxuse)
+          else:
+            rnn = minimum(rnn,self.rnnmax)
 
         # --- Scale appropriately for cylindrical coordinates
         # --- This accounts the difference in area of a grid cell in
@@ -254,6 +297,10 @@ the area of the dual cell.
           else:
             rnn[0,...] *= 2.0*pi*solver.xmmin/solver.dy
           rnn[1:,...] *= 2.0*pi*solver.xmesh[1:,newaxis,newaxis]/solver.dy
+
+        if (self.relax):
+          # self.inj_np holds the previous timestep's rnn data
+          rnn = self.relax*rnn + (1.-self.relax)*self.inj_np
 
         # --- Save the number for diagnostics
         self.inj_np = rnn.copy()
