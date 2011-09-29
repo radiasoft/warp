@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.43 2011/03/07 18:13:55 grote Exp $"
+histplots_version = "$Id: histplots.py,v 1.44 2011/09/29 00:17:54 grote Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -506,7 +506,7 @@ def hpvxmaxp(kwdict={},**kw):
   "Maximum value of Vx"
   kw.update(kwdict)
   kw['titlet']="Maximum value of Vx"
-  kw['titlel']="(m)"
+  kw['titlel']="(m/s)"
   hpbasic('hvxmaxp',kw)
 if sys.version[:5] != "1.5.1":
   hpvxmaxp.__doc__ = hpvxmaxp.__doc__ + hpbasictext
@@ -516,7 +516,7 @@ def hpvxminp(kwdict={},**kw):
   "Minimum value of Vx"
   kw.update(kwdict)
   kw['titlet']="Minimum value of Vx"
-  kw['titlel']="(m)"
+  kw['titlel']="(m/s)"
   hpbasic('hvxminp',kw)
 if sys.version[:5] != "1.5.1":
   hpvxminp.__doc__ = hpvxminp.__doc__ + hpbasictext
@@ -526,7 +526,7 @@ def hpvymaxp(kwdict={},**kw):
   "Maximum value of Vy"
   kw.update(kwdict)
   kw['titlet']="Maximum value of Vy"
-  kw['titlel']="(m)"
+  kw['titlel']="(m/s)"
   hpbasic('hvymaxp',kw)
 if sys.version[:5] != "1.5.1":
   hpvymaxp.__doc__ = hpvymaxp.__doc__ + hpbasictext
@@ -536,7 +536,7 @@ def hpvyminp(kwdict={},**kw):
   "Minimum value of Vy"
   kw.update(kwdict)
   kw['titlet']="Minimum value of Vy"
-  kw['titlel']="(m)"
+  kw['titlel']="(m/s)"
   hpbasic('hvyminp',kw)
 if sys.version[:5] != "1.5.1":
   hpvyminp.__doc__ = hpvyminp.__doc__ + hpbasictext
@@ -546,7 +546,7 @@ def hpvzmaxp(kwdict={},**kw):
   "Maximum value of Vz"
   kw.update(kwdict)
   kw['titlet']="Maximum value of Vz"
-  kw['titlel']="(m)"
+  kw['titlel']="(m/s)"
   hpbasic('hvzmaxp',kw)
 if sys.version[:5] != "1.5.1":
   hpvzmaxp.__doc__ = hpvzmaxp.__doc__ + hpbasictext
@@ -556,10 +556,20 @@ def hpvzminp(kwdict={},**kw):
   "Minimum value of Vz"
   kw.update(kwdict)
   kw['titlet']="Minimum value of Vz"
-  kw['titlel']="(m)"
+  kw['titlel']="(m/s)"
   hpbasic('hvzminp',kw)
 if sys.version[:5] != "1.5.1":
   hpvzminp.__doc__ = hpvzminp.__doc__ + hpbasictext
+
+
+def hpnpinject(kwdict={},**kw):
+  "Number of particles injected"
+  kw.update(kwdict)
+  kw['titlet']="Number of particles injected"
+  kw['titlel']="#"
+  hpbasic('hnpinject',kw)
+if sys.version[:5] != "1.5.1":
+  hpnpinject.__doc__ = hpnpinject.__doc__ + hpbasictext
 
 
 def hpekinz(iw=0,kwdict={},**kw):
