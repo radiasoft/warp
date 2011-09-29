@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.303 $, $Date: 2011/09/26 17:36:03 $
+#@(#) File TOP.V, version $Revision: 3.304 $, $Date: 2011/09/29 00:17:25 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.303 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.304 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1289,7 +1289,6 @@ efetch(ns)     _integer /1/
    # 2: (no longer supported)
    # 3: indirect calculation from pre-calculated E (finite differences of phi)
    # 4: energy conserving - uses nearest grid point interpolation
-   # 5: same as 1, but checks for particles out of bounds
    # Method 3 is generally fastest but requires lots of extra storage space.
    # Next best is 1.
 
@@ -1875,6 +1874,8 @@ hvzmaxp(0:lenhist,0:nshist)   _real [m/s]   limited (0:jhist,0:nshist)
    # History of maximum Vz over particles
 hvzminp(0:lenhist,0:nshist)   _real [m/s]   limited (0:jhist,0:nshist)
    # History of minimum Vz over particles
+hnpinject(0:lenhist,0:nshist) _real [1]     limited (0:jhist,0:nshist)
+   # History of the number of particles injected
 hepsx(0:nzwind,0:lenhist,0:nshist)     _real [m-r]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # X-X' emittance by window as a function of time

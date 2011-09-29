@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.190 $, $Date: 2011/09/26 17:36:04 $
+c@(#) File DTOP.F, version $Revision: 3.191 $, $Date: 2011/09/29 00:17:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -149,6 +149,7 @@ c============================================================================
       use Z_Moments
       use Z_arrays
       use Hist
+      use InjectVars,Only: npinje_s
       real(kind=8):: tim
 c  Save results of this time step in history buffers
       integer(ISZ):: iw,iz,js
@@ -179,6 +180,11 @@ c  Save results of this time step in history buffers
         hvyminp(jhist,js) = vyminp(js)
         hvzmaxp(jhist,js) = vzmaxp(js)
         hvzminp(jhist,js) = vzminp(js)
+        if (js < nshist) then
+          hnpinject(jhist,js) = npinje_s(js+1)
+        else
+          hnpinject(jhist,js) = sum(npinje_s)
+        endif
 
 c       --- Hopefully, this comment no longer applies.
 c       --- "This way" means using array notation, without the loops.
@@ -655,7 +661,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.190 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.191 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
