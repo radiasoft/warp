@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.80 2011/07/15 22:42:46 grote Exp $"
+extpart_version = "$Id: extpart.py,v 1.81 2011/09/29 00:16:10 grote Exp $"
 
 def extpartdoc():
     import extpart
@@ -529,7 +529,7 @@ feature.
                 else:
                     if npes > 1:
                         # --- If currently running in parallel, only read in
-                        # --- the date for this processor.
+                        # --- the data for this processor.
                         nplist = [me]
                         nprocs = npes
                     else:
@@ -550,14 +550,22 @@ feature.
         datadict = self.getPickledatadict(files)
 
         # --- Get total number of particles
+        # --- jsmax is calculated since this object could be restored
+        # --- into a python session that did not have all of the species
+        # --- declared.
         ntot = []
-        jsmax = 0
+        jsmax = top.ns - 1
         for var,val in datadict.items():
             if var[0] == 'n':
                 ss = string.split(var,'_')
                 jsmax = max(jsmax,int(ss[2]))
                 while jsmax >= len(ntot): ntot.append(0)
                 ntot[jsmax] = ntot[jsmax] + val
+
+        if npes > 1:
+            # --- Make sure that all processors have the same number of
+            # --- species.
+            jsmax = globalmax(jsmax)
 
         # --- Get the size of the pid array. If self.topnpidmax is zero, that
         # --- probably means that this data is being read in for
@@ -581,7 +589,6 @@ feature.
                     assert self.topnpidmax == npid,\
                            'npid is different than in the run where the %s data was saved'%self.topgroupname
                 break
-
 
         if len(ntot) == 0:
             # --- No data was read in, so this value won't be used.
@@ -722,7 +729,7 @@ methods.
             nn = sum(map(len,val))
             rr = AppendableArray(initlen=nn,typecode='d')
             for js in range(len(val)):
-                rr.append(self.selectparticles(val,js,tc,wt,tp))
+                rr.append(self.selectparticles(val,js,tc,wt,tp,gather=0))
             result = rr[...]
         elif tc is None:
             result = val[js][...]
@@ -740,9 +747,9 @@ methods.
             except TypeError:
                 # --- or a constant
                 pass
-            z = self.getzz()
+            zz = self.getzz()
             vz = self.getvz(js,tc,wt,tp)
-            delt = (z - z)/vz
+            delt = (z - zz)/vz
             result = result + v*delt
 
         if lparallel and gather: result = gatherarray(result,bcast=bcast)
