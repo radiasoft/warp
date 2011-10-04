@@ -7,7 +7,7 @@ Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.91 2011/08/26 23:08:06 grote Exp $"
+species_version = "$Id: species.py,v 1.92 2011/10/04 21:47:26 grote Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale > 0.:
@@ -430,7 +430,7 @@ Creates a new species of particles. All arguments are optional.
   def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,
                       vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,
                       lmomentum=0,spacing='random',nx=None,ny=None,nz=None,
-                      lallindomain=0,**kw):
+                      lallindomain=0,solvergeom=None,**kw):
     """
  - np: number of particles to load. When using uniform spacing, the actual
        number may be lower.
@@ -452,6 +452,7 @@ Creates a new species of particles. All arguments are optional.
                             to one.
  - lallindomain=0: If true, the code only loads particles within the domain.
                    This only matters when parallel.
+ - solvergeom=w3d.solvergeom: Specifies the geometry to use
     """
 
     if np == 0:
@@ -462,49 +463,48 @@ Creates a new species of particles. All arguments are optional.
 
     if lallindomain:
       # --- Crop the min and max to be within the local domain
-      # --- The min and max in the second argument guarantee that if the min and
-      # --- max are outside of the grid, then it will end up with minp = maxp.
-      xminp = max(xmin,min(xmax,top.xpminlocal))
-      xmaxp = min(xmax,max(xmin,top.xpmaxlocal))
-      yminp = max(ymin,min(ymax,top.ypminlocal))
-      ymaxp = min(ymax,max(ymin,top.ypmaxlocal))
-      zminp = max(zmin,min(zmax,top.zpminlocal+top.zgrid))
-      zmaxp = min(zmax,max(zmin,top.zpmaxlocal+top.zgrid))
+      xdmin,xdmax = top.xpminlocal,top.xpmaxlocal
+      ydmin,ydmax = top.ypminlocal,top.ypmaxlocal
+      zdmin,zdmax = top.zpminlocal+top.zgrid,top.zpmaxlocal+top.zgrid
     else:
       # --- Crop the min and max to be within the global domain
-      xminp = max(xmin,min(xmax,w3d.xmmin))
-      xmaxp = min(xmax,max(xmin,w3d.xmmax))
-      yminp = max(ymin,min(ymax,w3d.ymmin))
-      ymaxp = min(ymax,max(ymin,w3d.ymmax))
-      zminp = max(zmin,min(zmax,w3d.zmmin+top.zgrid))
-      zmaxp = min(zmax,max(zmin,w3d.zmmax+top.zgrid))
+      xdmin,xdmax = w3d.xmmin,w3d.xmmax
+      ydmin,ydmax = w3d.ymmin,w3d.ymmax
+      zdmin,zdmax = w3d.zmmin+top.zgrid,w3d.zmmax+top.zgrid
+
+    if solvergeom is None: solvergeom = w3d.solvergeom
+    if solvergeom == w3d.XZgeom:
+      ydmin,ydmax = -largepos,+largepos
+
+    # --- The min and max in the second argument guarantee that if the min and
+    # --- max are outside of the grid, then it will end up with minp = maxp.
+    xminp = max(xmin,min(xmax,xdmin))
+    xmaxp = min(xmax,max(xmin,xdmax))
+    yminp = max(ymin,min(ymax,ydmin))
+    ymaxp = min(ymax,max(ymin,ydmax))
+    zminp = max(zmin,min(zmax,zdmin))
+    zmaxp = min(zmax,max(zmin,zdmax))
 
     if spacing == 'random':
       # --- Add a random number to the number of particles so that on
       # --- average, the correct number of particles will be generated.
       np = int(np + random.random())
+
       # --- Adjust the number of particles to load to based on the
       # --- width of the cropped min and max and the original
-      def setfac(min,max,pminlocal,pmaxlocal,mmin,mmax,minp,maxp,grid):
+      def setfac(min,max,dmin,dmax,minp,maxp):
         if min == max:
-          if lallindomain:
-            if min>pmaxlocal+grid or max<pminlocal+grid:
-              return None
-          else:
-            if min>mmax+grid or max<mmin+grid:
-              return None
+          if min > dmax or max < dmin:
+            return None
           return 1.
         else:
           return (maxp - minp)/(max - min)
 
-      xfac = setfac(xmin,xmax,top.xpminlocal,top.xpmaxlocal,
-                    w3d.xmmin,w3d.xmmax,xminp,xmaxp,0.)
+      xfac = setfac(xmin,xmax,xdmin,xdmax,xminp,xmaxp)
       if xfac is None: return
-      yfac = setfac(ymin,ymax,top.ypminlocal,top.ypmaxlocal,
-                    w3d.ymmin,w3d.ymmax,yminp,ymaxp,0.)
+      yfac = setfac(ymin,ymax,ydmin,ydmax,yminp,ymaxp)
       if yfac is None: return
-      zfac = setfac(zmin,zmax,top.zpminlocal,top.zpmaxlocal,
-                    w3d.zmmin,w3d.zmmax,zminp,zmaxp,top.zgrid)
+      zfac = setfac(zmin,zmax,zdmin,zdmax,zminp,zmaxp)
       if zfac is None: return
 
       # --- Is nint correct?
@@ -554,29 +554,22 @@ Creates a new species of particles. All arguments are optional.
 
       # --- Find the range of particle locations within the cropped
       # --- min and max.
-      def setnp(bmin,bmax,pminlocal,pmaxlocal,mmin,mmax,minp,maxp,n,grid):
+      def setnp(bmin,bmax,dmin,dmax,minp,maxp,n):
         if bmin == bmax:
-          if lallindomain:
-            if bmin>pmaxlocal+grid or bmax<pminlocal+grid:
-              return None,None
-          else:
-            if bmin>mmax+grid or bmax<mmin+grid:
-              return None,None
-          return 1,0
+          if bmin > dmax or bmax < dmin:
+            return None,None
+          return n,0
         else:
           d = (bmax - bmin)/n
           iminp = nint((minp - bmin)/d)
           imaxp = nint((maxp - bmin)/d)
           return max(0,imaxp - iminp),iminp
 
-      nxp,ixminp = setnp(xmin,xmax,top.xpminlocal,top.xpmaxlocal,
-                         w3d.xmmin,w3d.xmmax,xminp,xmaxp,nx,0.)
+      nxp,ixminp = setnp(xmin,xmax,xdmin,xdmax,xminp,xmaxp,nx)
       if nxp is None: return
-      nyp,iyminp = setnp(ymin,ymax,top.ypminlocal,top.ypmaxlocal,
-                         w3d.ymmin,w3d.ymmax,yminp,ymaxp,ny,0.)
+      nyp,iyminp = setnp(ymin,ymax,ydmin,ydmax,yminp,ymaxp,ny)
       if nyp is None: return
-      nzp,izminp = setnp(zmin,zmax,top.zpminlocal,top.zpmaxlocal,
-                         w3d.zmmin,w3d.zmmax,zminp,zmaxp,nz,top.zgrid)
+      nzp,izminp = setnp(zmin,zmax,zdmin,zdmax,zminp,zmaxp,nz)
       if nzp is None: return
 
       np = nxp*nyp*nzp
@@ -624,6 +617,7 @@ Creates a new species of particles. All arguments are optional.
                            lmomentum=0,spacing='random',nr=None,nz=None,
                            thetamin=0.,thetamax=2.*pi,
                            lvariableweights=None,lallindomain=0,
+                           solvergeom=None,
                            ellipticity=1.,wscale=1.,
                            **kw):
     """Creates particles, uniformly filling a cylinder.
@@ -662,6 +656,7 @@ in radius squared.
               variable weights are being used.
  - lallindomain=0: If true, the code only loads particles within the domain.
                    This only matters when parallel.
+ - solvergeom=w3d.solvergeom: Specifies the geometry to use
  - ellipticity: factor multiplying size in y, i.e. y-size is given by rmax*ellipticity
     """
     if np == 0:
@@ -669,6 +664,21 @@ in radius squared.
         print ("add_uniform_cylinder: Warning: no particles loaded since "+
                "the input np is zero")
       return
+
+    if lallindomain:
+      # --- Crop the min and max to be within the local domain
+      xdmin,xdmax = top.xpminlocal,top.xpmaxlocal
+      ydmin,ydmax = top.ypminlocal,top.ypmaxlocal
+      zdmin,zdmax = top.zpminlocal+top.zgrid,top.zpmaxlocal+top.zgrid
+    else:
+      # --- Crop the min and max to be within the global domain
+      xdmin,xdmax = w3d.xmmin,w3d.xmmax
+      ydmin,ydmax = w3d.ymmin,w3d.ymmax
+      zdmin,zdmax = w3d.zmmin+top.zgrid,w3d.zmmax+top.zgrid
+
+    if solvergeom is None: solvergeom = w3d.solvergeom
+    if solvergeom == w3d.XZgeom:
+      ydmin,ydmax = -largepos,+largepos
 
     # --- Precalculate the trigonometrics if needed.
     if theta != 0. or phi != 0.:
@@ -700,17 +710,17 @@ in radius squared.
     if w3d.l2symtry or w3d.l4symtry: yy = abs(yy)
 
     # --- If outside the domain, just return.
-    if min(xx) > top.xpmaxlocal or max(xx) < top.xpminlocal:
+    if min(xx) > xdmax or max(xx) < xdmin:
       if top.debug:
         print ("add_uniform_cylinder: Warning: no particles loaded since all "+
                "are outside of the x range of the domain of processor %d"%me)
       return
-    if min(yy) > top.ypmaxlocal or max(yy) < top.ypminlocal:
+    if min(yy) > ydmax or max(yy) < ydmin:
       if top.debug:
         print ("add_uniform_cylinder: Warning: no particles loaded since all "+
                "are outside of the y range of the domain of processor %d"%me)
       return
-    if min(zz) > top.zpmaxlocal+top.zgrid or max(zz) < top.zpminlocal+top.zgrid:
+    if min(zz) > zdmax or max(zz) < zdmin:
       if top.debug:
         print ("add_uniform_cylinder: Warning: no particles loaded since all "+
                "are outside of the z range of the domain of processor %d"%me)
@@ -719,14 +729,8 @@ in radius squared.
     if theta == 0. and phi == 0.:
       # --- When no angle is specified, then the clipping to the domain
       # --- can be done directly on the zmin and zmax
-      if lallindomain:
-        # --- Crop the zmin and zmax to be within the local domain
-        zminp = max(zmin+zmean,min(zmax+zmean,top.zpminlocal+top.zgrid)) - zmean
-        zmaxp = min(zmax+zmean,max(zmin+zmean,top.zpmaxlocal+top.zgrid)) - zmean
-      else:
-        # --- Crop the zmin and zmax to be within the global domain
-        zminp = max(zmin+zmean,w3d.zmmin+top.zgrid) - zmean
-        zmaxp = min(zmax+zmean,w3d.zmmax+top.zgrid) - zmean
+      zminp = max(zmin+zmean,min(zmax+zmean,zdmin)) - zmean
+      zmaxp = min(zmax+zmean,max(zmin+zmean,zdmax)) - zmean
     else:
       # --- When angles are specified, the clipping must be done on a particle
       # --- by particle basis. Copy the zmin and zmax directly over to start.
@@ -825,21 +829,14 @@ in radius squared.
       yy = y
       if w3d.l4symtry: xx = abs(xx)
       if w3d.l2symtry or w3d.l4symtry: yy = abs(yy)
-      if lallindomain:
-        # --- Crop to be within the local particle domain
-        indomain = logical_and(
-                     logical_and(top.xpminlocal<=xx,xx<top.xpmaxlocal),
-                     logical_and(top.ypminlocal<=yy,yy<top.ypmaxlocal))
-      else:
-        # --- Crop to be within the global grid domain
-        indomain = logical_and(
-                     logical_and(top.xpmin<=xx,xx<top.xpmax),
-                     logical_and(top.ypmin<=yy,yy<top.ypmax))
-      x = compress(indomain,x)
-      y = compress(indomain,y)
-      z = compress(indomain,z)
+      indomain = logical_and(
+                   logical_and(xdmin <= xx,xx < xdmax),
+                   logical_and(ydmin <= yy,yy < ydmax))
+      x = x[indomain]
+      y = y[indomain]
+      z = z[indomain]
       if vtheta != 0.:
-        r = compress(indomain,r)
+        r = r[indomain]
       np = len(z)
       if np == 0:
         if top.debug:
@@ -851,18 +848,12 @@ in radius squared.
     if theta != 0. or phi != 0.:
       # --- When angles are specified, the clipping in z must be done on a
       # --- particle by particle basis.
-      if lallindomain:
-        # --- Crop the z's to be within the local particle domain
-        indomain = logical_and(top.zpminlocal+top.zgrid<=z,
-                               z<top.zpmaxlocal+top.zgrid)
-      else:
-        # --- Crop the z's to be within the global grid domain
-        indomain = logical_and(w3d.zmmin+top.zgrid<=z,z<w3d.zmmax+top.zgrid)
-      x = compress(indomain,x)
-      y = compress(indomain,y)
-      z = compress(indomain,z)
+      indomain = logical_and(zdmin <= z,z < zdmax)
+      x = x[indomain]
+      y = y[indomain]
+      z = z[indomain]
       if vtheta != 0.:
-        r = compress(indomain,r)
+        r = r[indomain]
       np = len(z)
       if np == 0:
         if top.debug:
