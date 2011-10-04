@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.38 $, $Date: 2011/08/27 00:35:51 $
+c@(#) File w3d_utilities.F, version $Revision: 1.39 $, $Date: 2011/10/04 21:43:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -960,15 +960,13 @@ c     --- Calculate how the work is to be arranged among the processors.
 c     --- Set the grid cell size, which is needed below. It must be set here
 c     --- after the field solve domain decomposition since nzlocal may be
 c     --- determined from the user supplied decomposition.
-      dx = (xmmax - xmmin)/nx
-      if (ny == 0) then
-        dy = dx
-      else
+      if (nx > 0) then
+        dx = (xmmax - xmmin)/nx
+      endif
+      if (ny > 0) then
         dy = (ymmax - ymmin)/ny
       endif
-      if (nz == 0) then
-        dz = 0.
-      else
+      if (nz > 0) then
         dz = (zmmax - zmmin)/nz
       endif
 
