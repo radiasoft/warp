@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.466 $, $Date: 2011/09/27 17:46:59 $
+c@(#) File W3D.F, version $Revision: 3.467 $, $Date: 2011/10/04 21:42:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -11202,7 +11202,7 @@ c=============================================================================
       use ParticleGroupmodule
       use Picglb3d,Only: dx,dy,dz
       use InMesh3d,Only: xmmin,nx,ymmin,ny,zmmin,nz
-      use InGen3d,Only: l4symtry,l2symtry,solvergeom,RZgeom,Rgeom
+      use InGen3d,Only: l4symtry,l2symtry,solvergeom,RZgeom,Rgeom,XZgeom
       type(ParticleGroup):: pgroup
       integer(ISZ):: js
 
@@ -11212,7 +11212,7 @@ c     --- exchanging particles among processors.
 
       integer(ISZ):: js1,js2
       real(kind=8):: xmin,xmax,ymin,ymax
-      logical(ISZ):: lrz
+      logical(ISZ):: lrz,lxz
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -11225,14 +11225,16 @@ c       --- Include all species
         js2 = js
       endif
 
-      call getparticleextant(1,xmin,xmax,ymin,ymax,
-     &                         xmmin,xmmin+nx*dx,ymmin,xmmin+ny*dy)
+      call getparticleextent(xmmin,xmmin+nx*dx,ymmin,xmmin+ny*dy,
+     &                       l2symtry,l4symtry,solvergeom,
+     &                       xmin,xmax,ymin,ymax)
 
       lrz = (solvergeom == RZgeom) .or. (solvergeom == Rgeom)
+      lxz = (solvergeom == XZgeom)
       call xparticleboundaries(pgroup,js1,js2,xmax,xmin,.true.,
      &                         l4symtry,lrz)
       call yparticleboundaries(pgroup,js1,js2,ymax,ymin,.true.,
-     &                         l2symtry .or. l4symtry,lrz)
+     &                         l2symtry .or. l4symtry,lrz .or. lxz)
       call zparticleboundaries(pgroup,js1,js2,zmmin+nz*dz,zmmin,.true.)
 
 !$OMP MASTER
@@ -11261,7 +11263,7 @@ c should also be made there.
 
       integer(ISZ):: js1,js2,js
       real(kind=8):: xmin,xmax,ymin,ymax
-      logical(ISZ):: lrz
+      logical(ISZ):: lrz,lxz
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -11288,13 +11290,15 @@ c         --- do it only if species was advanced on this time step
      &  call callpythonfunc("beforescraper","controllers")
 
 c     --- Apply particle boundary conditions
-      call getparticleextant(1,xmin,xmax,ymin,ymax,
-     &                         xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy)
+      call getparticleextent(xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy,
+     &                       l2symtry,l4symtry,solvergeom,
+     &                       xmin,xmax,ymin,ymax)
       lrz = (solvergeom == RZgeom) .or. (solvergeom == Rgeom)
+      lxz = (solvergeom == XZgeom)
       call xparticleboundaries(pgroup,js1,js2,xmax,xmin,.true.,
      &                         l4symtry,lrz)
       call yparticleboundaries(pgroup,js1,js2,ymax,ymin,.true.,
-     &                         l2symtry .or. l4symtry,lrz)
+     &                         l2symtry .or. l4symtry,lrz .or. lxz)
       call zparticleboundaries(pgroup,js1,js2,zmmin+nz*dz,zmmin,.true.)
 
 c     --- absorb particles passing through semitransparent disc
@@ -11346,7 +11350,7 @@ c with the call to zparticleboundaries commented out.
 
       integer(ISZ):: js1,js2,js
       real(kind=8):: xmin,xmax,ymin,ymax
-      logical(ISZ):: lrz
+      logical(ISZ):: lrz,lxz
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -11373,13 +11377,15 @@ c         --- do it only if species was advanced on this time step
      &  call callpythonfunc("beforescraper","controllers")
 
 c     --- Apply particle boundary conditions
-      call getparticleextant(1,xmin,xmax,ymin,ymax,
-     &                         xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy)
+      call getparticleextent(xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy,
+     &                       l2symtry,l4symtry,solvergeom,
+     &                       xmin,xmax,ymin,ymax)
       lrz = (solvergeom == RZgeom) .or. (solvergeom == Rgeom)
+      lxz = (solvergeom == XZgeom)
       call xparticleboundaries(pgroup,js1,js2,xmax,xmin,.true.,
      &                         l4symtry,lrz)
       call yparticleboundaries(pgroup,js1,js2,ymax,ymin,.true.,
-     &                         l2symtry .or. l4symtry,lrz)
+     &                         l2symtry .or. l4symtry,lrz .or. lxz)
 c     ---  This is skipped in the xy version.
 c     call zparticleboundaries(pgroup,js1,js2,zmmin+nz*dz,zmmin,.true.)
 
@@ -11484,12 +11490,19 @@ c     --- been specified.
       return
       end
 c=============================================================================
-      subroutine getparticleextant(n,xmin,xmax,ymin,ymax,
-     &                               xmmin,xmmax,ymmin,ymmax)
-      use InGen3d
-      integer(ISZ):: n
-      real(kind=8):: xmin(n),xmax(n),ymin(n),ymax(n)
-      real(kind=8):: xmmin(n),xmmax(n),ymmin(n),ymmax(n)
+      subroutine getparticleextent(xmmin,xmmax,ymmin,ymmax,
+     &                             l2symtry,l4symtry,solvergeom,
+     &                             xmin,xmax,ymin,ymax)
+      use InGen3d,Only: RZgeom,XZgeom
+      real(kind=8):: xmmin,xmmax,ymmin,ymmax
+      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: solvergeom
+      real(kind=8):: xmin,xmax,ymin,ymax
+
+c Given the system size and the symmetries and geometry, return the full
+c extent of the particles. When there are symmetries, the full extent
+c goes from -mmax to +mmax. With RZ geometry, the extent in both x and y
+c goes from -xmmax to xmmax. In XZ geometry, the extent in y is infinite.
 
       xmin = xmmin
       xmax = xmmax
