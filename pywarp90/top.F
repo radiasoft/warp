@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.266 $, $Date: 2011/09/16 20:08:21 $
+c@(#) File TOP.F, version $Revision: 3.267 $, $Date: 2011/10/04 21:38:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3555,7 +3555,7 @@ c --- end of ifelse above for parallel version.
       end
 c=============================================================================
       subroutine yparticleboundaries(pgroup,js1,js2,ymmax,ymmin,lcountaslost,
-     &                               labs,lrz)
+     &                               labs,lskipy)
       use ParticleGroupmodule
       use GlobalVars
       use InGen
@@ -3565,7 +3565,7 @@ c=============================================================================
       type(ParticleGroup):: pgroup
       integer(ISZ):: js1,js2
       real(kind=8):: ymmax,ymmin
-      logical(ISZ):: lcountaslost,labs,lrz
+      logical(ISZ):: lcountaslost,labs,lskipy
 
 c  Impose boundary conditions on yp
 
@@ -3574,7 +3574,8 @@ c  Impose boundary conditions on yp
 
 c     --- With radial geometry, the boundary conditions are handled by
 c     --- xparticleboundaries, so nothing is needed here.
-      if (lrz) return
+c     --- lskipy would also be true for XZ geometry.
+      if (lskipy) return
 
 c Parallel version makes call to special routine particleboundaries_parallel,
 c but only if the y direction is domain decomposed.
@@ -3583,7 +3584,7 @@ c but only if the y direction is domain decomposed.
         call particleboundaries_parallel(1,pgroup,js1,js2,
      &                                   ymmax,ymmin,ypmaxlocal,ypminlocal,
      &                                   pboundxy,pboundxy,
-     &                                   lcountaslost,labs,lrz)
+     &                                   lcountaslost,labs,lskipy)
       else
 #endif
 
