@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.94 2010/11/24 01:34:53 dave Exp $"
+particles_version = "$Id: particles.py,v 1.95 2011/10/04 21:45:52 grote Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1508,16 +1508,16 @@ Adds particles to the simulation
     # --- Note that ssn is set in addpart
 
     # --- Set xyz old
-    if top.xoldpid > 0: pid[:,top.xoldpid-1]=x.copy()
-    if top.yoldpid > 0: pid[:,top.yoldpid-1]=y.copy()
-    if top.zoldpid > 0: pid[:,top.zoldpid-1]=z.copy()
+    if top.xoldpid > 0: pid[:,top.xoldpid-1] = x.copy()
+    if top.yoldpid > 0: pid[:,top.yoldpid-1] = y.copy()
+    if top.zoldpid > 0: pid[:,top.zoldpid-1] = z.copy()
 
   # --- Set extent of domain
   if xmmin is None: xmmin = top.xpminlocal
   if xmmax is None: xmmax = top.xpmaxlocal 
   if w3d.solvergeom == w3d.XZgeom:
-    if ymmin is None: ymmin = -1. 
-    if ymmax is None: ymmax =  1.
+    if ymmin is None: ymmin = -largepos
+    if ymmax is None: ymmax = +largepos
   else:
     if ymmin is None: ymmin = top.ypminlocal 
     if ymmax is None: ymmax = top.ypmaxlocal 
