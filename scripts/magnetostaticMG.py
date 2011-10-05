@@ -9,7 +9,7 @@ try:
 except ImportError:
   pass
 
-magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.40 2011/09/01 17:47:06 grote Exp $"
+magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.41 2011/10/05 21:47:05 grote Exp $"
 
 ##############################################################################
 class MagnetostaticMG(SubcycledPoissonSolver):
@@ -22,8 +22,9 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                    'mgmaxiters','mgtol','mgmaxlevels','mgform','mgverbose',
                    'lcndbndy','icndbndy','laddconductor','lprecalccoeffs'] 
 
-  def __init__(self,**kw):
+  def __init__(self,luse2D=false,**kw):
     self.grid_overlap = 2
+    self.luse2D = luse2D
 
     # --- Save input parameters
     self.processdefaultsfrompackage(MagnetostaticMG.__f3dinputs__,f3d,kw)
@@ -34,7 +35,13 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     if self.lcylindrical: self.solvergeom = w3d.RZgeom
 
     SubcycledPoissonSolver.__init__(self,kwdict=kw)
+    if (self.solvergeom != w3d.RZgeom and self.solvergeom != w3d.XZgeom):
+      self.solvergeom = w3d.RZgeom
     self.ncomponents = 3
+    if self.solvergeom == w3d.RZgeom or self.solvergeom == w3d.XZgeom:
+      self.nyguardphi = 0
+      self.nyguardrho = 0
+      self.nyguarde   = 0
     self.lusevectorpotential = true
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
@@ -169,7 +176,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
            self.nxguardrho,self.nyguardrho,self.nzguardrho,
            self.dx,self.dy,self.dz,
            self.xmminp,self.ymminp,self.zmminp,
-           self.l2symtry,self.l4symtry,self.lcylindrical)
+           self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     n = len(x)
@@ -179,7 +186,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
            self.nxguarde,self.nyguarde,self.nzguarde,
            self.dx,self.dy,self.dz,
            self.xmminp,self.ymminp,self.zmminp,
-           self.l2symtry,self.l4symtry,self.lcylindrical)
+           self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
   def fetchpotentialfrompositions(self,x,y,z,a):
     n = len(x)
@@ -189,7 +196,8 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                           self.nxguardphi,self.nyguardphi,self.nzguardphi,
                           self.dx,self.dy,self.dz,
                           self.xmminp,self.ymminp,self.zmminp,
-                          self.l2symtry,self.l4symtry,self.lcylindrical)
+                          self.l2symtry,self.l4symtry,
+                          self.solvergeom==w3d.RZgeom)
 
   def setsourceforfieldsolve(self,*args):
     SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
@@ -262,7 +270,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     self.source[...] = self.source*mu0*eps0
     conductorobject = self.getconductorobject()
 
-    if self.lcylindrical:
+    if self.solvergeom == w3d.RZgeom and not self.luse2D:
       init_bworkgrid(self.nxlocal,self.nzlocal,self.dx,self.dz,
                      self.xmminlocal,self.zmminlocal,self.bounds,
                      self.lparallel)
@@ -279,9 +287,33 @@ class MagnetostaticMG(SubcycledPoissonSolver):
           ((self.lusevectorpotential and (id == 0 or id == 2)) or
           (not self.lusevectorpotential and id == 1))): continue
 
-      if self.lcylindrical:
-        multigridrzb(iwhich,id,self.potential[id,
-                                self.nxguardphi-1:(1-self.nxguardphi) or None,1,
+      if ((self.luse2D and self.solvergeom == w3d.RZgeom) or
+          self.solvergeom == w3d.XZgeom):
+        bounds = self.bounds.copy()
+        if self.solvergeom == w3d.RZgeom and id < 2 and self.xmminlocal == 0.:
+          lmagnetostaticrz = (id < 2)
+          bounds[0] = dirichlet
+          self.potential[id,:self.nxguardphi+1,:,:] = 0.
+        else:
+          lmagnetostaticrz = false
+        multigrid2dsolve(iwhich,self.nx,self.nz,self.nxlocal,self.nzlocal,
+                         self.nxguardphi,self.nzguardphi,
+                         self.nxguardrho,self.nzguardrho,
+                         self.dx,self.dz,
+                         self.potential[id,:,0,:],
+                         self.source[id,:,0,:],
+                         bounds,self.xmminlocal,
+                         self.mgparam[id],self.mgform[id],
+                         self.mgiters[id],self.mgmaxiters[id],
+                         self.mgmaxlevels[id],self.mgerror[id],
+                         self.mgtol[id],self.mgverbose[id],
+                         self.downpasses[id],self.uppasses[id],
+                         self.lcndbndy,self.laddconductor,self.icndbndy,
+                         self.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
+                         lmagnetostaticrz,self.fsdecomp)
+      elif (not self.luse2D) and self.solvergeom == w3d.RZgeom:
+          multigridrzb(iwhich,id,self.potential[id,
+                                self.nxguardphi-1:(1-self.nxguardphi) or None,self.nyguardphi,
                                 self.nzguardphi-1:(1-self.nzguardphi) or None],
                      self.source[id,self.nxguardrho:-self.nxguardrho or None,0,
                                     self.nzguardrho:-self.nzguardrho or None],
@@ -309,7 +341,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
   # # --- MG solver already takes care of the longitudinal BC's.
   # setaboundaries3d(self.potential,self.nx,self.ny,self.nzlocal,
   #                  self.zmminlocal,self.zmmaxlocal,self.zmmin,self.zmmax,
-  #                  self.bounds,self.lcylindrical,false)
+  #                  self.bounds,self.solvergeom==w3d.RZgeom,false)
 
     # --- Now take the curl of A to get B.
     getbfroma3d(self.potential,self.field,
@@ -317,7 +349,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                 self.nxguardphi,self.nyguardphi,self.nzguardphi,
                 self.nxguarde,self.nyguarde,self.nzguarde,
                 self.dx,self.dy,self.dz,self.xmminlocal,
-                self.lcylindrical,self.lusevectorpotential)
+                self.solvergeom==w3d.RZgeom,self.lusevectorpotential)
 
     # --- If using the analytic form of Btheta, calculate it here.
     if self.lanalyticbtheta:
