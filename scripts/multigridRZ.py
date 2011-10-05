@@ -10,7 +10,7 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.66 2011/09/21 22:56:06 grote Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.67 2011/10/05 21:15:33 grote Exp $"
 
 ##############################################################################
 ##############################################################################
@@ -367,7 +367,7 @@ class MultiGrid2D(MultiGrid3D):
                      self.downpasses,self.uppasses,
                      self.lcndbndy,self.laddconductor,self.icndbndy,
                      f3d.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
-                     self.fsdecomp)
+                     false,self.fsdecomp)
     #t1 = wtime()
     #print "Multigrid time = ",t1-t0
 
