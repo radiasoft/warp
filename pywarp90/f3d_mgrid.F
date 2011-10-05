@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.202 $, $Date: 2011/09/27 16:49:37 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.203 $, $Date: 2011/10/05 21:14:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -5286,6 +5286,7 @@ c=============================================================================
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,
      &                            gridmode,conductors,lrz,
+     &                            lmagnetostatic,
      &                            fsdecomp)
       use Subtimersf3d
       use ConductorTypemodule
@@ -5309,7 +5310,7 @@ c=============================================================================
       logical(ISZ):: lcndbndy,laddconductor
       integer(ISZ):: icndbndy,gridmode
       type(ConductorType):: conductors
-      logical(ISZ):: lrz
+      logical(ISZ):: lrz,lmagnetostatic
       type(Decomposition):: fsdecomp
 
 c Use the multigrid method for solving Poisson's equation on a 2D Cartesian
@@ -5462,7 +5463,8 @@ c       --- correction form since it is operating on the error.
      &                    nxguardrho,nzguardrho,
      &                    nxguardres,nzguardres,
      &                    dxsqi,dzsqi,
-     &                    xmminlocal/dx,lrz,phisave,rhosave,res,0,localbounds,
+     &                    xmminlocal/dx,lrz,lmagnetostatic,
+     &                    phisave,rhosave,res,0,localbounds,
      &                    mgform,.true.,lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
           call mgexchange_phi_periodic(1,nxlocal,0,nzlocal,res,
@@ -5482,7 +5484,7 @@ c       --- Do one vcycle.
      &                dx,dz,phi,rho,
      &                bounds,mgparam,mgform,mgmaxlevels,
      &                downpasses,uppasses,lcndbndy,icndbndy,conductors,
-     &                xmminlocal,lrz,fsdecomp)
+     &                xmminlocal,lrz,lmagnetostatic,fsdecomp)
 
 c       --- If using residual correction form, add the resulting error to phi.
         if (mgform == 2) then
@@ -5579,6 +5581,7 @@ c=============================================================================
      &                              mgparam,mgform,
      &                              mgmaxlevels,downpasses,uppasses,
      &                              lcndbndy,icndbndy,conductors,xmminlocal,lrz,
+     &                              lmagnetostatic,
      &                              fsdecomp)
       use ConductorTypemodule
       use Multigrid3d_diagnostic
@@ -5600,7 +5603,7 @@ c=============================================================================
       integer(ISZ):: mgmaxlevels,downpasses,uppasses
       type(ConductorType):: conductors
       real(kind=8):: xmminlocal
-      logical(ISZ):: lcndbndy,lrz
+      logical(ISZ):: lcndbndy,lrz,lmagnetostatic
       integer(ISZ):: icndbndy
       type(Decomposition):: fsdecomp
 
@@ -5666,7 +5669,8 @@ c     --- Do initial SOR passes.
      &                 nxguardrho,nzguardrho,
      &                 phi,rho,dxsqi,dzsqi,
      &                 xminodx,localbounds,mgparam,mgform,
-     &                 lcndbndy,icndbndy,conductors,lrz,fsdecomp)
+     &                 lcndbndy,icndbndy,conductors,lrz,
+     &                 lmagnetostatic,fsdecomp)
       enddo
 
       if (lprintmgarraysumdiagnostic) then
@@ -5703,7 +5707,8 @@ c       --- Get the residual on the current grid.
      &                  nxguardrho,nzguardrho,
      &                  nxguardres,nzguardres,
      &                  dxsqi,dzsqi,
-     &                  xminodx,lrz,phi,rho,res,mglevel,localbounds,
+     &                  xminodx,lrz,lmagnetostatic,
+     &                    phi,rho,res,mglevel,localbounds,
      &                  mgform,.false.,lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
         call mgexchange_phi_periodic(1,nxlocal,0,nzlocal,res,
@@ -5835,7 +5840,7 @@ c       --- Continue at the next coarsest level.
      &                globalbounds,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,xmminlocalcoarse,lrz,
-     &                coarsedecomp)
+     &                lmagnetostatic,coarsedecomp)
 
         if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nxlocalcoarse,0,nzlocalcoarse,1,0,1,
@@ -5908,7 +5913,8 @@ c     --- Do final SOR passes.
      &                 nxguardrho,nzguardrho,
      &                 phi,rho,dxsqi,dzsqi,
      &                 xminodx,localbounds,mgparam,mgform,
-     &                 lcndbndy,icndbndy,conductors,lrz,fsdecomp)
+     &                 lcndbndy,icndbndy,conductors,lrz,
+     &                 lmagnetostatic,fsdecomp)
       enddo
 
       return
@@ -5919,7 +5925,8 @@ c=============================================================================
      &                     nxguardrho,nzguardrho,
      &                     phi,rho,
      &                     dxsqi,dzsqi,xminodx,localbounds,
-     &                     mgparam,mgform,lcndbndy,icndbndy,conductors,lrz,fsdecomp)
+     &                     mgparam,mgform,lcndbndy,icndbndy,conductors,lrz,
+     &                     lmagnetostatic,fsdecomp)
       use Constant
       use ConductorTypemodule
       use Decompositionmodule
@@ -5937,7 +5944,7 @@ c=============================================================================
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
-      logical(ISZ):: lrz
+      logical(ISZ):: lrz,lmagnetostatic
       type(Decomposition):: fsdecomp
 
 c This routine does one pass of point SOR with even-odd (red-black)
@@ -5983,7 +5990,8 @@ c     --- do loop to cover even and odd points
      &                     nxguardrho,nzguardrho,
      &                     phi,rho,dxsqi,dzsqi,xminodx,
      &                     localbounds,mgparam,mgform,
-     &                     lcndbndy,icndbndy,conductors,lrz)
+     &                     lcndbndy,icndbndy,conductors,lrz,
+     &                     lmagnetostatic)
 
         call applyboundaryconditions3d(nxlocal,0,nzlocal,
      &                                 nxguardphi,0,nzguardphi,phi,1,
@@ -6021,7 +6029,8 @@ c=============================================================================
      &                         nxguardrho,nzguardrho,
      &                         phi,rho,
      &                         dxsqi,dzsqi,xminodx,localbounds,
-     &                         mgparam,mgform,lcndbndy,icndbndy,conductors,lrz)
+     &                         mgparam,mgform,lcndbndy,icndbndy,conductors,lrz,
+     &                         lmagnetostatic)
       use Constant
       use ConductorTypemodule
       integer(ISZ):: parity,mglevel,nxlocal,nzlocal
@@ -6038,7 +6047,7 @@ c=============================================================================
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
-      logical(ISZ):: lrz
+      logical(ISZ):: lrz,lmagnetostatic
 
 c This routine does one pass of point SOR with either even or odd
 c parity. It makes calls to the routines which specify internal
@@ -6090,7 +6099,7 @@ c     --- Loop over the bulk of the array, excluding boundaries.
      &                  nxlocal,nzlocal,
      &                  nxguardphi,nzguardphi,
      &                  nxguardrho,nzguardrho,
-     &                  phi,rho,dxsqi,dzsqi,xminodx,lrz)
+     &                  phi,rho,dxsqi,dzsqi,xminodx,lrz,lmagnetostatic)
 
 c     --- Apply altered difference equation to the points near the
 c     --- surface of the conductor boundaries.
@@ -6099,14 +6108,14 @@ c     --- surface of the conductor boundaries.
          call condbndymg2d(conductors%evensubgrid,nxlocal,nzlocal,
      &                     nxguardphi,nzguardphi,
      &                     nxguardrho,nzguardrho,
-     &                     phi,rho,dxsqi,dzsqi,xminodx,lrz,
+     &                     phi,rho,dxsqi,dzsqi,xminodx,lrz,lmagnetostatic,
      &                     mgparam,localbounds,mglevel,mgform,icndbndy)
         endif
         if (parity == 1) then
          call condbndymg2d(conductors%oddsubgrid,nxlocal,nzlocal,
      &                     nxguardphi,nzguardphi,
      &                     nxguardrho,nzguardrho,
-     &                     phi,rho,dxsqi,dzsqi,xminodx,lrz,
+     &                     phi,rho,dxsqi,dzsqi,xminodx,lrz,lmagnetostatic,
      &                     mgparam,localbounds,mglevel,mgform,icndbndy)
         endif
       endif
@@ -6127,7 +6136,7 @@ c=============================================================================
      &                        nxguardphi,nzguardphi,
      &                        nxguardrho,nzguardrho,
      &                        phi,rho,
-     &                        dxsqi,dzsqi,xminodx,lrz)
+     &                        dxsqi,dzsqi,xminodx,lrz,lmagnetostatic)
       integer(ISZ):: ixmin,ixmax,izmin,izmax,parity
       real(kind=8):: mgparam
       integer(ISZ):: nxlocal,nzlocal
@@ -6138,11 +6147,12 @@ c=============================================================================
       real(kind=8):: rho(-nxguardrho:nxlocal+nxguardrho,
      &                   -nzguardrho:nzlocal+nzguardrho)
       real(kind=8):: dxsqi,dzsqi,xminodx
-      logical(ISZ):: lrz
+      logical(ISZ):: lrz,lmagnetostatic
 
       integer(ISZ):: ix,iz,ix1
       real(kind=8):: dxsqic0,dzsqic0,dxsqic,dzsqic
       real(kind=8):: const0,const,rr(0:nxlocal),rri(0:nxlocal)
+      real(kind=8):: constB
 
 c     --- Set temporary variables (these are used to increase performance)
       const = mgparam*0.5/(dxsqi + dzsqi)
@@ -6156,29 +6166,60 @@ c     --- Set temporary variables (these are used to increase performance)
 
       if (lrz) then
 
-c       --- Precalculate the radius for efficiency
-        do ix=0,nxlocal
-          rr(ix) = ix + xminodx
-          if (rr(ix) > 0.) rri(ix) = dxsqic/rr(ix)
-        enddo
+        if (lmagnetostatic) then
 
-        do iz=izmin,izmax
-          ix1 = ixmin + mod(ixmin + iz + parity,2)
-          if (rr(ix1) == 0.) then
-c           --- radius=0 is a special case
-            phi(ix1,iz) = rho(ix1,iz)*const0 +
-     &                   (4*phi(ix1+1,iz))*dxsqic0 +
-     &                   (phi(ix1,iz-1) + phi(ix1,iz+1))*dzsqic0 +
-     &                   (1. - mgparam)*phi(ix1,iz)
-            ix1 = ix1 + 2
-          endif
-          do ix=ix1,ixmax,2
-            phi(ix,iz) = rho(ix,iz)*const +
-     &                   ((rr(ix)-0.5)*phi(ix-1,iz) + (rr(ix)+0.5)*phi(ix+1,iz))*rri(ix) +
-     &                   (phi(ix,iz-1) + phi(ix,iz+1))*dzsqic +
-     &                   (1. - mgparam)*phi(ix,iz)
+c         --- Precalculate the radius for efficiency
+          do ix=0,nxlocal
+            rr(ix) = ix + xminodx
+            if (rr(ix) > 0.) rri(ix) = 1./rr(ix)
           enddo
-        enddo
+
+          do iz=izmin,izmax
+            ix1 = ixmin + mod(ixmin + iz + parity,2)
+            if (rr(ix1) == 0.) then
+c             --- radius=0 is a special case
+              phi(ix1,iz) = rho(ix1,iz)*const0 +
+     &                     (4*phi(ix1+1,iz))*dxsqic0 +
+     &                     (phi(ix1,iz-1) + phi(ix1,iz+1))*dzsqic0 +
+     &                     (1. - mgparam)*phi(ix1,iz)
+              ix1 = ix1 + 2
+            endif
+            do ix=ix1,ixmax,2
+              constB = mgparam/(2.*dxsqi + 2.*dzsqi + dxsqi*rri(ix)**2)
+              phi(ix,iz) = (rho(ix,iz) +
+     &                      ((rr(ix)-0.5)*phi(ix-1,iz) + (rr(ix)+0.5)*phi(ix+1,iz))*dxsqi*rri(ix) +
+     &                      (phi(ix,iz-1) + phi(ix,iz+1))*dzsqi)*constB +
+     &                     (1. - mgparam)*phi(ix,iz)
+            enddo
+          enddo
+
+        else
+
+c         --- Precalculate the radius for efficiency
+          do ix=0,nxlocal
+            rr(ix) = ix + xminodx
+            if (rr(ix) > 0.) rri(ix) = dxsqic/rr(ix)
+          enddo
+
+          do iz=izmin,izmax
+            ix1 = ixmin + mod(ixmin + iz + parity,2)
+            if (rr(ix1) == 0.) then
+c             --- radius=0 is a special case
+              phi(ix1,iz) = rho(ix1,iz)*const0 +
+     &                     (4*phi(ix1+1,iz))*dxsqic0 +
+     &                     (phi(ix1,iz-1) + phi(ix1,iz+1))*dzsqic0 +
+     &                     (1. - mgparam)*phi(ix1,iz)
+              ix1 = ix1 + 2
+            endif
+            do ix=ix1,ixmax,2
+              phi(ix,iz) = rho(ix,iz)*const +
+     &                     ((rr(ix)-0.5)*phi(ix-1,iz) + (rr(ix)+0.5)*phi(ix+1,iz))*rri(ix) +
+     &                     (phi(ix,iz-1) + phi(ix,iz+1))*dzsqic +
+     &                     (1. - mgparam)*phi(ix,iz)
+            enddo
+          enddo
+
+        endif
 
       else
 
@@ -6200,7 +6241,7 @@ c=============================================================================
      &                        nxguardphi,nzguardphi,
      &                        nxguardrho,nzguardrho,
      &                        phi,rho,dxsqi,dzsqi,
-     &                        xminodx,lrz,
+     &                        xminodx,lrz,lmagnetostatic,
      &                        mgparam,localbounds,mglevel,mgform,icndbndy)
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
@@ -6213,7 +6254,7 @@ c=============================================================================
      &                   -nzguardrho:nzlocal+nzguardrho)
       real(kind=8):: dxsqi,dzsqi,mgparam,xminodx
       integer(ISZ):: mglevel
-      logical(ISZ):: lrz
+      logical(ISZ):: lrz,lmagnetostatic
       integer(ISZ):: localbounds(0:5),mgform,icndbndy
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
@@ -6338,6 +6379,9 @@ c       --- isolated case which doesn't make sense anyway, so let a NaN
 c       --- happen rather than add an extra check on c0.
 
         c0 = cxm + cxp + czm + czp
+        if (rr(ix) > 0. .and. lrz .and. lmagnetostatic) then
+          c0 = c0 + dxsqi*rri(ix)**2
+        endif
         phi(ix,iz) = mgparam*(rho(ix,iz) + cxm*pxm + cxp*pxp + czm*pzm + czp*pzp)/c0
      &               + (1. - mgparam)*subgrid%prevphi(ic)
 
@@ -6352,7 +6396,8 @@ c=============================================================================
      &                           nxguardrho,nzguardrho,
      &                           nxguardres,nzguardres,
      &                           phi,rho,res,dxsqi,dzsqi,
-     &                           xminodx,lrz,localbounds,
+     &                           xminodx,lrz,lmagnetostatic,
+     &                           localbounds,
      &                           mglevel,mgform,mgform2init,
      &                           icndbndy)
       use ConductorSubGridTypemodule
@@ -6368,7 +6413,7 @@ c=============================================================================
       real(kind=8):: res(-nxguardres:nxlocal+nxguardres,
      &                   -nzguardres:nzlocal+nzguardres)
       real(kind=8):: dxsqi,dzsqi,xminodx
-      logical(ISZ):: lrz
+      logical(ISZ):: lrz,lmagnetostatic
       integer(ISZ):: localbounds(0:5),mgform,icndbndy
       logical(ISZ):: mgform2init
 
@@ -6532,6 +6577,14 @@ c       --- Correct coefficients for axisymmetric case
         if (mgform2init) ppp = 1.
         c0 = cxm + cxp + czm + czp
         res(ix,iz) = ppp*(rho(ix,iz) + cxm*pxm + cxp*pxp + czm*pzm + czp*pzp - c0*phi(ix,iz))
+        
+        if (lmagnetostatic) then
+          if (rr(ix) == 0.) then
+            res(ix,iz) = 0.
+          else
+            res(ix,iz) = res(ix,iz) - phi(ix,iz)*dxsqi*rri(ix)**2
+          endif
+        endif
 
         if (0. >= dels(0,ic) .and. dels(0,ic) >= -1.) res(ix-1,iz) = 0.
         if (0. >= dels(1,ic) .and. dels(1,ic) >= -1.) res(ix+1,iz) = 0.
@@ -6549,12 +6602,13 @@ c=============================================================================
      &                      nxguardrho,nzguardrho,
      &                      nxguardres,nzguardres,
      &                      dxsqi,dzsqi,
-     &                      xminodx,lrz,phi,rho,res,mglevel,localbounds,
+     &                      xminodx,lrz,lmagnetostatic,
+     &                      phi,rho,res,mglevel,localbounds,
      &                      mgform,mgform2init,lcndbndy,icndbndy,conductors)
       use ConductorTypemodule
       integer(ISZ):: nxlocal,nzlocal
       real(kind=8):: dxsqi,dzsqi,xminodx
-      logical(ISZ):: lrz
+      logical(ISZ):: lrz,lmagnetostatic
       integer(ISZ):: nxguardphi,nzguardphi
       integer(ISZ):: nxguardrho,nzguardrho
       integer(ISZ):: nxguardres,nzguardres
@@ -6639,6 +6693,17 @@ c     --- Calculate the residual.
      &                   - phi(ix,iz)*const
           enddo
 
+          if (lmagnetostatic) then
+            ix1 = ixmin
+            if (rr(ix1) == 0) then
+              res(ix1,iz) = 0.
+              ix1 = ix1 + 1
+            endif
+            do ix=ix1,ixmax
+              res(ix,iz) = res(ix,iz) - phi(ix,iz)*dxsqi/rr(ix)**2
+            enddo
+          endif
+
           if (localbounds(1) == 0) then
             res(nxlocal:nxlocal+nxguardres,iz) = 0.
           else if (localbounds(1)  > 0 .and. nxguardres > 1) then
@@ -6695,14 +6760,16 @@ c       --- Calculate the residual near the conductor.
      &                       nxguardrho,nzguardrho,
      &                       nxguardres,nzguardres,
      &                       phi,rho,res,
-     &                       dxsqi,dzsqi,xminodx,lrz,localbounds,
+     &                       dxsqi,dzsqi,xminodx,lrz,lmagnetostatic,
+     &                       localbounds,
      &                       mglevel,mgform,mgform2init,icndbndy)
         call condbndymgres2d(conductors%oddsubgrid,nxlocal,nzlocal,
      &                       nxguardphi,nzguardphi,
      &                       nxguardrho,nzguardrho,
      &                       nxguardres,nzguardres,
      &                       phi,rho,res,
-     &                       dxsqi,dzsqi,xminodx,lrz,localbounds,
+     &                       dxsqi,dzsqi,xminodx,lrz,lmagnetostatic,
+     &                       localbounds,
      &                       mglevel,mgform,mgform2init,icndbndy)
       endif
 
