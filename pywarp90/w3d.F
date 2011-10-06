@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.467 $, $Date: 2011/10/04 21:42:46 $
+c@(#) File W3D.F, version $Revision: 3.468 $, $Date: 2011/10/06 20:38:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6015,10 +6015,10 @@ c     --- Do some checking first.
      &    (nz > 0 .and. nzguardphi == 0)) then
         call kaboom("getselfe3d: ERROR: the phi array must have guard cells")
       endif
-      if ((nx > 0 .and. nxguarde < nxguardphi-1) .or.
-     &    (nx > 0 .and. nxguarde < nxguardphi-1) .or.
-     &    (nx > 0 .and. nxguarde < nxguardphi-1)) then
-        call kaboom("getselfe3d: ERROR: the self E array must have at least as many guard cells as the phi array minus one")
+      if ((nx > 0 .and. nxguarde > nxguardphi-1) .or.
+     &    (nx > 0 .and. nxguarde > nxguardphi-1) .or.
+     &    (nx > 0 .and. nxguarde > nxguardphi-1)) then
+        call kaboom("getselfe3d: ERROR: the phi array must have at least one more guard cell than the self E array")
       endif
 
       dxi = 1.0/dx
