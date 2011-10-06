@@ -10,7 +10,7 @@ try:
 except ImportError:
   pass
 
-multigridRZ_version = "$Id: multigridRZ.py,v 1.67 2011/10/05 21:15:33 grote Exp $"
+multigridRZ_version = "$Id: multigridRZ.py,v 1.68 2011/10/06 20:36:47 grote Exp $"
 
 ##############################################################################
 ##############################################################################
@@ -360,8 +360,9 @@ class MultiGrid2D(MultiGrid3D):
                      self.nxguardphi,self.nzguardphi,
                      self.nxguardrho,self.nzguardrho,
                      self.dx,self.dz*zfact,
-                     self._phi[:,0,:],self._rho[:,0,:],self.bounds,
-                     self.xmminlocal,
+                     self._phi[:,self.nyguardphi,:],
+                     self._rho[:,self.nyguardrho,:],
+                     self.bounds,self.xmminlocal,
                      self.mgparam,self.mgform,mgiters,self.mgmaxiters,
                      self.mgmaxlevels,mgerror,self.mgtol,mgverbose,
                      self.downpasses,self.uppasses,
@@ -400,8 +401,8 @@ class MultiGrid2D(MultiGrid3D):
     t0 = wtime()
     n = self.nxlocal*self.nzlocal
     nrhs = 1
-    b = -self.source[:-1,0,:-1]/eps0
-    phi = self.potential[1:-1,0,1:-1]
+    b = -self.source[:-1,self.nyguardrho,:-1]/eps0
+    phi = self.potential[1:-1,self.nyguardphi,1:-1]
     info = zeros(1,'l')
 
     values = fzeros((5,n),'d')
@@ -503,7 +504,8 @@ class MultiGrid2D(MultiGrid3D):
                self.nxguardphi,self.nzguardphi,
                self.nxguardrho,self.nzguardrho,
                self.nxguardphi,self.nzguardphi,
-               self._phi,rho,res,0,self.bounds,
+               self._phi[:,self.nyguardphi,:],rho[:,self.nyguardrho,:],
+               res[:,self.nyguardphi,:],0,self.bounds,
                self.lcndbndy,self.icndbndy,conductorobject)
     return res
 
@@ -550,7 +552,9 @@ class MultiGrid2DDielectric(MultiGrid2D):
                      self.nxguardphi,self.nzguardphi,
                      self.nxguardrho,self.nzguardrho,
                      self.dx,self.dz*zfact,
-                     self._phi[:,0,:],self._rho[:,0,:],self.epsilon,self.bounds,
+                     self._phi[:,self.nyguardphi,:],
+                     self._rho[:,self.nyguardrhp,:],
+                     self.epsilon,self.bounds,
                      self.xmminlocal*zfact,
                      self.mgparam,mgiters,self.mgmaxiters,
                      self.mgmaxlevels,mgerror,self.mgtol,mgverbose,
