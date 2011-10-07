@@ -233,6 +233,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
 
       do ip=1,np
       
+        ! --- computes current position in grid units
         x = xp(ip)
         if (l_2drz) then
           y = yp(ip)
@@ -241,10 +242,12 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
         x=x*dxi
         z = zp(ip)*dzi
           
+        ! --- computes velocity
         vx = uxp(ip)*gaminv(ip)
         vy = uyp(ip)*gaminv(ip)
         vz = uzp(ip)*gaminv(ip)
 
+        ! --- computes old position in grid units
         if (l_2drz) then
           xold = xp(ip)-dt*vx
           yold = yp(ip)-dt*vy
@@ -256,12 +259,14 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
         end if
         zold=z-dtsdz0*vz
  
+        ! --- applies 4-fold symmetry
         if (l4symtry) then
           x=abs(x)
           xold=abs(xold)
           vx = (x-xold)/dtsdx0
         end if
 
+        ! --- sets positions relative to grid  start
         x = x-xmin*dxi
         z = z-zmin*dzi
         xold = xold-xmin*dxi
@@ -286,6 +291,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
         x = x+dtsdx*vx
         z = z+dtsdz*vz
         
+        ! --- computes particles "weights"
         if (l_particles_weight) then
           wq=q*w(ip)
         else
@@ -293,14 +299,25 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
         end if
         wqx = wq*invdtdx
         wqz = wq*invdtdz
-!       computation of current at x(n+1/2),v(n+1/2)
 
-        iixp0=floor(x)
-        ikxp0=floor(z)
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          iixp0=nint(x)
+        else
+          iixp0=floor(x)
+        end if
+        if (noz==2*(noz/2)) then
+          ikxp0=nint(z)
+        else
+          ikxp0=floor(z)
+        end if
 
+        ! --- computes distance between particle and node for current positions
         xint=x-iixp0
         zint=z-ikxp0
 
+        ! --- computes coefficients for node centered quantities
         select case(nox)
          case(0)
           sx0( 0) = 1.
@@ -308,7 +325,6 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sx0( 0) = 1.-xint
           sx0( 1) = xint
          case(2)
-!          xint=xint-0.5
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
@@ -330,7 +346,6 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sz0( 0) = 1.-zint
           sz0( 1) = zint
          case(2)
-!          zint=zint-0.5
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
@@ -345,16 +360,31 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sz0( 2) = onesixth*zintsq*zint
         end select        
 
-        iixp=floor(xold)
-        ikxp=floor(zold)
+        ! --- finds node of cell containing particles for old positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          iixp=nint(xold)
+        else
+          iixp=floor(xold)
+        end if
+        if (noz==2*(noz/2)) then
+          ikxp=nint(zold)
+        else
+          ikxp=floor(zold)
+        end if
+
+        ! --- computes distance between particle and node for old positions
         xint = xold-iixp
         zint = zold-ikxp
 
+        ! --- computes node separation between old and current positions
         dix = iixp-iixp0
         diz = ikxp-ikxp0
 
+        ! --- zero out coefficients (needed because of different dix and diz for each particle)
         sx=0.;sz=0.
 
+        ! --- computes coefficients for quantities centered between nodes
         select case(nox)
          case(0)
           sx( 0+dix) = 1.
@@ -362,7 +392,6 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sx( 0+dix) = 1.-xint
           sx( 1+dix) = xint
          case(2)
-!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1+dix) = 0.5*(0.5-xint)**2
           sx( 0+dix) = 0.75-xintsq
@@ -384,7 +413,6 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sz( 0+diz) = 1.-zint
           sz( 1+diz) = zint
          case(2)
-!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1+diz) = 0.5*(0.5-zint)**2
           sz( 0+diz) = 0.75-zintsq
@@ -399,15 +427,17 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           sz( 2+diz) = onesixth*zintsq*zint
         end select        
 
+        ! --- computes coefficients difference
         dsx = sx - sx0
         dsz = sz - sz0
         
+        ! --- computes min/max positions of current contributions
         ixmin = min(0,dix)-int(nox/2)
         ixmax = max(0,dix)+int((nox+1)/2)
         izmin = min(0,diz)-int(noz/2)
         izmax = max(0,diz)+int((noz+1)/2)
 
-
+        ! --- add current contributions
         do k=izmin, izmax
             do i=ixmin, ixmax
               ic = iixp0+i
@@ -1090,7 +1120,6 @@ subroutine depose_jxjyjz_esirkepov_linear_serial(cj,np,xp,yp,zp,uxp,uyp,uzp,gami
                 cj(ic,jc,kc,1) = cj(ic,jc,kc,1) + sdx(i,j,k)
               end if
               if(j<iymax) then
-!        write(0,*) ip,np,i,j,k,wqy,dsy(j),yold,y,dtsdy,vy, ( (sz0(k)+0.5*dsz(k))*sx0(i) + (0.5*sz0(k)+1./3.*dsz(k))*dsx(i))
                 sdy(i,j,k)  = wqy*dsy(j)*( (sz0(k)+0.5*dsz(k))*sx0(i) + (0.5*sz0(k)+1./3.*dsz(k))*dsx(i))
                 if (j>iymin) sdy(i,j,k)=sdy(i,j,k)+sdy(i,j-1,k)
                 cj(ic,jc,kc,2) = cj(ic,jc,kc,2) + sdy(i,j,k)
@@ -1484,18 +1513,22 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
 
       do ip=1,np
       
+        ! --- computes current position in grid units
         x = (xp(ip)-xmin)*dxi
         y = (yp(ip)-ymin)*dyi
         z = (zp(ip)-zmin)*dzi
         
+        ! --- computes velocity
         vx = uxp(ip)*gaminv(ip)
         vy = uyp(ip)*gaminv(ip)
         vz = uzp(ip)*gaminv(ip)
         
+        ! --- computes old position in grid units
         xold=x-dtsdx0*vx
         yold=y-dtsdy0*vy
         zold=z-dtsdz0*vz
  
+        ! --- applies 4-fold symmetry
         if (l4symtry) then
           x=abs(x)
           y=abs(y)
@@ -1529,6 +1562,7 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
         y = y+dtsdy*vy
         z = z+dtsdz*vz
         
+        ! --- computes particles "weights"
         if (l_particles_weight) then
           wq=q*w(ip)
         else
@@ -1537,16 +1571,31 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
         wqx = wq*invdtdx
         wqy = wq*invdtdy
         wqz = wq*invdtdz
-!       computation of current at x(n+1/2),v(n+1/2)
 
-        iixp0=floor(x)
-        ijxp0=floor(y)
-        ikxp0=floor(z)
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          iixp0=nint(x)
+        else
+          iixp0=floor(x)
+        end if
+        if (noy==2*(noy/2)) then
+          ijxp0=nint(y)
+        else
+          ijxp0=floor(y)
+        end if
+        if (noz==2*(noz/2)) then
+          ikxp0=nint(z)
+        else
+          ikxp0=floor(z)
+        end if
 
+        ! --- computes distance between particle and node for current positions
         xint=x-iixp0
         yint=y-ijxp0
         zint=z-ikxp0
 
+        ! --- computes coefficients for node centered quantities
         select case(nox)
          case(0)
           sx0( 0) = 1.
@@ -1554,7 +1603,6 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sx0( 0) = 1.-xint
           sx0( 1) = xint
          case(2)
-!          xint=xint-0.5
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
@@ -1576,7 +1624,6 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sy0( 0) = 1.-yint
           sy0( 1) = yint
          case(2)
-!          yint=yint-0.5
           yintsq = yint*yint
           sy0(-1) = 0.5*(0.5-yint)**2
           sy0( 0) = 0.75-yintsq
@@ -1598,7 +1645,6 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sz0( 0) = 1.-zint
           sz0( 1) = zint
          case(2)
-!          zint=zint-0.5
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
@@ -1613,19 +1659,38 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sz0( 2) = onesixth*zintsq*zint
         end select        
 
-        iixp=floor(xold)
-        ijxp=floor(yold)
-        ikxp=floor(zold)
+        ! --- finds node of cell containing particles for old positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          iixp=nint(xold)
+        else
+          iixp=floor(xold)
+        end if
+        if (noy==2*(noy/2)) then
+          ijxp=nint(yold)
+        else
+          ijxp=floor(yold)
+        end if
+        if (noz==2*(noz/2)) then
+          ikxp=nint(zold)
+        else
+          ikxp=floor(zold)
+        end if
+
+        ! --- computes distance between particle and node for old positions
         xint = xold-iixp
         yint = yold-ijxp
         zint = zold-ikxp
 
+        ! --- computes node separation between old and current positions
         dix = iixp-iixp0
         diy = ijxp-ijxp0
         diz = ikxp-ikxp0
 
+        ! --- zero out coefficients (needed because of different dix and diz for each particle)
         sx=0.;sy=0.;sz=0.
 
+        ! --- computes coefficients for quantities centered between nodes
         select case(nox)
          case(0)
           sx( 0+dix) = 1.
@@ -1633,7 +1698,6 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sx( 0+dix) = 1.-xint
           sx( 1+dix) = xint
          case(2)
-!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1+dix) = 0.5*(0.5-xint)**2
           sx( 0+dix) = 0.75-xintsq
@@ -1655,7 +1719,6 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sy( 0+diy) = 1.-yint
           sy( 1+diy) = yint
          case(2)
-!          yint=yint-0.5
           yintsq = yint*yint
           sy(-1+diy) = 0.5*(0.5-yint)**2
           sy( 0+diy) = 0.75-yintsq
@@ -1677,7 +1740,6 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sz( 0+diz) = 1.-zint
           sz( 1+diz) = zint
          case(2)
-!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1+diz) = 0.5*(0.5-zint)**2
           sz( 0+diz) = 0.75-zintsq
@@ -1692,10 +1754,12 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
           sz( 2+diz) = onesixth*zintsq*zint
         end select        
 
+        ! --- computes coefficients difference
         dsx = sx - sx0
         dsy = sy - sy0
         dsz = sz - sz0
         
+        ! --- computes min/max positions of current contributions
         ixmin = min(0,dix)-int(nox/2)
         ixmax = max(0,dix)+int((nox+1)/2)
         iymin = min(0,diy)-int(noy/2)
@@ -1703,6 +1767,7 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
         izmin = min(0,diz)-int(noz/2)
         izmax = max(0,diz)+int((noz+1)/2)
 
+        ! --- add current contributions
         do k=izmin, izmax
           do j=iymin, iymax
             do i=ixmin, ixmax
@@ -1715,7 +1780,6 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
                 cj(ic,jc,kc,1) = cj(ic,jc,kc,1) + sdx(i,j,k)
               end if
               if(j<iymax) then
-!        write(0,*) ip,np,i,j,k,wqy,dsy(j),yold,y,dtsdy,vy, ( (sz0(k)+0.5*dsz(k))*sx0(i) + (0.5*sz0(k)+1./3.*dsz(k))*dsx(i))
                 sdy(i,j,k)  = wqy*dsy(j)*( (sz0(k)+0.5*dsz(k))*sx0(i) + (0.5*sz0(k)+1./3.*dsz(k))*dsx(i))
                 if (j>iymin) sdy(i,j,k)=sdy(i,j,k)+sdy(i,j-1,k)
                 cj(ic,jc,kc,2) = cj(ic,jc,kc,2) + sdy(i,j,k)
@@ -2182,6 +2246,7 @@ subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,n
 
       do ip=1,np
         
+        ! --- computes current position in grid units
         if (l_2drz) then
           r = sqrt(xp(ip)*xp(ip)+yp(ip)*yp(ip))
           x = (r-xmin)*dxi
@@ -2191,22 +2256,36 @@ subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,n
           z = (zp(ip)-zmin)*dzi
         end if
         
+        ! --- applies 4-fold symmetry
         if (l4symtry) then
           x=abs(x)
         end if
         
-        j=floor(x)
-        l=floor(z)
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          j=nint(x)
+        else
+          j=floor(x)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+        else
+          l=floor(z)
+        end if
 
+        ! --- computes distance between particle and node for current positions
         xint = x-j
         zint = z-l
 
+        ! --- computes particles "weights"
         if (l_particles_weight) then
           wq=q*w(ip)*invvol
         else
           wq=q*invvol
         end if
       
+        ! --- computes coefficients for node centered quantities
         select case(nox)
          case(0)
           sx( 0) = 1.
@@ -2214,7 +2293,6 @@ subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,n
           sx( 0) = 1.-xint
           sx( 1) = xint
          case(2)
-!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -2236,7 +2314,6 @@ subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,n
           sz( 0) = 1.-zint
           sz( 1) = zint
          case(2)
-!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -2251,6 +2328,7 @@ subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,n
           sz( 2) = onesixth*zintsq*zint
         end select        
 
+        ! --- add charge density contributions
          do ll = izmin, izmax
             do jj = ixmin, ixmax
               rho(j+jj,0,l+ll)=rho(j+jj,0,l+ll)+sx(jj)*sz(ll)*wq
@@ -2294,29 +2372,48 @@ subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxg
 
       do ip=1,np
         
+        ! --- computes current position in grid units
         x = (xp(ip)-xmin)*dxi
         y = (yp(ip)-ymin)*dyi
         z = (zp(ip)-zmin)*dzi
         
+        ! --- applies 4-fold symmetry
         if (l4symtry) then
           x=abs(x)
           y=abs(y)
         end if
-        
-        j=floor(x)
-        k=floor(y)
-        l=floor(z)
+      
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          j=nint(x)
+        else
+          j=floor(x)
+        end if
+        if (noy==2*(noy/2)) then
+          k=nint(y)
+        else
+          k=floor(y)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+        else
+          l=floor(z)
+        end if
 
+        ! --- computes distance between particle and node for current positions
         xint = x-j
         yint = y-k
         zint = z-l
 
+        ! --- computes particles "weights"
         if (l_particles_weight) then
           wq=q*w(ip)*invvol
         else
           wq=q*invvol
         end if
       
+        ! --- computes coefficients for node centered quantities
         select case(nox)
          case(0)
           sx( 0) = 1.
@@ -2324,7 +2421,6 @@ subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxg
           sx( 0) = 1.-xint
           sx( 1) = xint
          case(2)
-!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -2346,7 +2442,6 @@ subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxg
           sy( 0) = 1.-yint
           sy( 1) = yint
          case(2)
-!          yint=yint-0.5
           yintsq = yint*yint
           sy(-1) = 0.5*(0.5-yint)**2
           sy( 0) = 0.75-yintsq
@@ -2368,7 +2463,6 @@ subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxg
           sz( 0) = 1.-zint
           sz( 1) = zint
          case(2)
-!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -2383,6 +2477,7 @@ subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxg
           sz( 2) = onesixth*zintsq*zint
         end select        
 
+        ! --- add charge density contributions
          do ll = izmin, izmax
           do kk = iymin, iymax
             do jj = ixmin, ixmax
@@ -2435,8 +2530,18 @@ subroutine depose_j_n_2dxz(cj,np,xp,zp,ux,uy,uz,gaminv,w,q,xmin,zmin,dt,dx,dz,nx
           x=abs(x)
         end if
         
-        j=floor(x)
-        l=floor(z)
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          j=nint(x)
+        else
+          j=floor(x)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+        else
+          l=floor(z)
+        end if
 
         xint = x-j
         zint = z-l
@@ -2454,7 +2559,6 @@ subroutine depose_j_n_2dxz(cj,np,xp,zp,ux,uy,uz,gaminv,w,q,xmin,zmin,dt,dx,dz,nx
           sx( 0) = 1.-xint
           sx( 1) = xint
          case(2)
-!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -2476,7 +2580,6 @@ subroutine depose_j_n_2dxz(cj,np,xp,zp,ux,uy,uz,gaminv,w,q,xmin,zmin,dt,dx,dz,nx
           sz( 0) = 1.-zint
           sz( 1) = zint
          case(2)
-!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -2615,9 +2718,23 @@ end subroutine depose_j_n_2dxz
           end if
         end if
 
-        j=floor(x)
-        k=floor(y)
-        l=floor(z)
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          j=nint(x)
+        else
+          j=floor(x)
+        end if
+        if (noy==2*(noy/2)) then
+          k=nint(y)
+        else
+          k=floor(y)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+        else
+          l=floor(z)
+        end if
 
         xint=x-j
         yint=y-k
@@ -2630,7 +2747,6 @@ end subroutine depose_j_n_2dxz
           sx( 0) = 1.-xint
           sx( 1) = xint
          case(2)
-!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -2652,7 +2768,6 @@ end subroutine depose_j_n_2dxz
           sy( 0) = 1.-yint
           sy( 1) = yint
          case(2)
-!          yint=yint-0.5
           yintsq = yint*yint
           sy(-1) = 0.5*(0.5-yint)**2
           sy( 0) = 0.75-yintsq
@@ -2674,7 +2789,6 @@ end subroutine depose_j_n_2dxz
           sz( 0) = 1.-zint
           sz( 1) = zint
          case(2)
-!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -2774,8 +2888,18 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           end if
         end if
 
-        j=floor(x)
-        l=floor(z)
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          j=nint(x)
+        else
+          j=floor(x)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+        else
+          l=floor(z)
+        end if
 
         xint=x-j
         zint=z-l
@@ -2787,7 +2911,6 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sx( 0) = 1.-xint
           sx( 1) = xint
          case(2)
-!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -2809,7 +2932,6 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz( 0) = 1.-zint
           sz( 1) = zint
          case(2)
-!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -2996,27 +3118,27 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       real(kind=8), dimension(-nxguard:nx+nxguard,1,-nzguard:nz+nzguard) :: exg,eyg,ezg
       real(kind=8) :: xmin,zmin,dx,dz,costheta,sintheta
       integer(ISZ) :: ip, j, l, ixmin, ixmax, izmin, izmax, &
-                      ixmin0, ixmax0, izmin0, izmax0, jj, ll
+                      ixmin0, ixmax0, izmin0, izmax0, jj, ll, j0, l0
       real(kind=8) :: dxi, dzi, x, y, z, r, xint, zint, &
                       xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int((nox)/2):int((nox-1)/2)) :: sx0
-      real(kind=8), DIMENSION(-int((noz)/2):int((noz-1)/2)) :: sz0
+      real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx0
+      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
       dzi = 1./dz
 
       ixmin = -int(nox/2)
-      ixmax =  int((nox-1)/2)
+      ixmax =  int((nox+1)/2)-1
       izmin = -int(noz/2)
-      izmax =  int((noz-1)/2)
+      izmax =  int((noz+1)/2)-1
 
       ixmin0 = -int((nox)/2)
-      ixmax0 =  int((nox-1)/2)
+      ixmax0 =  int((nox+1)/2)
       izmin0 = -int((noz)/2)
-      izmax0 =  int((noz-1)/2)
+      izmax0 =  int((noz+1)/2)
 
       signx = 1.
 
@@ -3049,8 +3171,20 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           end if
         end if
         
-        j=floor(x)
-        l=floor(z)
+        if (nox==2*(nox/2)) then
+          j=nint(x)
+          j0=floor(x-0.5)
+        else
+          j=floor(x)
+          j0=floor(x)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+          l0=floor(z-0.5)
+        else
+          l=floor(z)
+          l0=floor(z)
+        end if
 
         xint=x-j
         zint=z-l
@@ -3059,7 +3193,6 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sx( 0) = 1.-xint
           sx( 1) = xint
         elseif (nox==2) then
-!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -3078,7 +3211,6 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz( 0) = 1.-zint
           sz( 1) = zint
         elseif (noz==2) then
-!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -3093,13 +3225,14 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz( 2) = onesixth*zintsq*zint
         end if
 
-        xint=xint-0.5
+        xint=x-0.5-j0
+        zint=z-0.5-l0
+
         if (nox==1) then
           sx0( 0) = 1.
         elseif (nox==2) then
-!          xint=xint+0.5
-          sx0(-1) = 1.-xint
-          sx0( 0) = xint
+          sx0( 0) = 1.-xint
+          sx0( 1) = xint
         elseif (nox==3) then
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
@@ -3107,13 +3240,11 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sx0( 1) = 0.5*(0.5+xint)**2
         end if
 
-        zint=zint-0.5
         if (noz==1) then
           sz0( 0) = 1.
         elseif (noz==2) then
-!          zint=zint+0.5
-          sz0(-1) = 1.-zint
-          sz0( 0) = zint
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
         elseif (noz==3) then
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
@@ -3127,7 +3258,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
 !          stop
           do ll = izmin, izmax+1
             do jj = ixmin0, ixmax0
-              ex(ip) = ex(ip) + sz(ll)*sx0(jj)*(exg(j+jj,1,l+ll)*costheta-eyg(j+jj,1,l+ll)*sintheta)
+              ex(ip) = ex(ip) + sz(ll)*sx0(jj)*(exg(j0+jj,1,l+ll)*costheta-eyg(j0+jj,1,l+ll)*sintheta)
             end do
           end do
 
@@ -3141,7 +3272,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
 
           do ll = izmin, izmax+1
             do jj = ixmin0, ixmax0
-              ex(ip) = ex(ip) + sx0(jj)*sz(ll)*exg(j+jj,1,l+ll)*signx
+              ex(ip) = ex(ip) + sx0(jj)*sz(ll)*exg(j0+jj,1,l+ll)*signx
             end do
           end do
 
@@ -3155,7 +3286,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
 
           do ll = izmin0, izmax0
             do jj = ixmin, ixmax+1
-              ez(ip) = ez(ip) + sx(jj)*sz0(ll)*ezg(j+jj,1,l+ll)
+              ez(ip) = ez(ip) + sx(jj)*sz0(ll)*ezg(j+jj,1,l0+ll)
             end do
           end do
                      
@@ -3174,15 +3305,15 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: exg,eyg,ezg
       real(kind=8) :: xmin,ymin,zmin,dx,dy,dz
       integer(ISZ) :: ip, j, k, l, ixmin, ixmax, iymin, iymax, izmin, izmax, &
-                      ixmin0, ixmax0, iymin0, iymax0, izmin0, izmax0, jj, kk, ll
+                      ixmin0, ixmax0, iymin0, iymax0, izmin0, izmax0, jj, kk, ll, j0, k0, l0
       real(kind=8) :: dxi, dyi, dzi, x, y, z, xint, yint, zint, &
                       xintsq,oxint,yintsq,oyint,zintsq,ozint,oxintsq,oyintsq,ozintsq,signx,signy
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int((nox)/2):int((nox-1)/2)) :: sx0
-      real(kind=8), DIMENSION(-int((noy)/2):int((noy-1)/2)) :: sy0
-      real(kind=8), DIMENSION(-int((noz)/2):int((noz-1)/2)) :: sz0
+      real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx0
+      real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy0
+      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
@@ -3190,18 +3321,18 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       dzi = 1./dz
 
       ixmin = -int(nox/2)
-      ixmax =  int((nox-1)/2)
+      ixmax =  int((nox+11)/2)-1
       iymin = -int(noy/2)
-      iymax =  int((noy-1)/2)
+      iymax =  int((noy+11)/2)-1
       izmin = -int(noz/2)
-      izmax =  int((noz-1)/2)
+      izmax =  int((noz+11)/2)-1
 
       ixmin0 = -int((nox)/2)
-      ixmax0 =  int((nox-1)/2)
+      ixmax0 =  int((nox+1)/2)
       iymin0 = -int((noy)/2)
-      iymax0 =  int((noy-1)/2)
+      iymax0 =  int((noy+1)/2)
       izmin0 = -int((noz)/2)
-      izmax0 =  int((noz-1)/2)
+      izmax0 =  int((noz+1)/2)
 
       signx = 1.
       signy = 1.
@@ -3227,9 +3358,27 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           end if
         end if
         
-        j=floor(x)
-        k=floor(y)
-        l=floor(z)
+        if (nox==2*(nox/2)) then
+          j=nint(x)
+          j0=floor(x-0.5)
+        else
+          j=floor(x)
+          j0=floor(x)
+        end if
+        if (noy==2*(noy/2)) then
+          k=nint(y)
+          k0=floor(y-0.5)
+        else
+          k=floor(y)
+          k0=floor(y)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+          l0=floor(z-0.5)
+        else
+          l=floor(z)
+          l0=floor(z)
+        end if
 
         xint=x-j
         yint=y-k
@@ -3239,7 +3388,6 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sx( 0) = 1.-xint
           sx( 1) = xint
         elseif (nox==2) then
-!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -3258,7 +3406,6 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sy( 0) = 1.-yint
           sy( 1) = yint
         elseif (noy==2) then
-!          yint=yint-0.5
           yintsq = yint*yint
           sy(-1) = 0.5*(0.5-yint)**2
           sy( 0) = 0.75-yintsq
@@ -3277,7 +3424,6 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz( 0) = 1.-zint
           sz( 1) = zint
         elseif (noz==2) then
-!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -3292,13 +3438,15 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sz( 2) = onesixth*zintsq*zint
         end if
 
-        xint=xint-0.5
+        xint=x-0.5-j0
+        yint=y-0.5-k0
+        zint=z-0.5-l0
+
         if (nox==1) then
           sx0( 0) = 1.
         elseif (nox==2) then
-!          xint=xint+0.5
-          sx0(-1) = 1.-xint
-          sx0( 0) = xint
+          sx0( 0) = 1.-xint
+          sx0( 1) = xint
         elseif (nox==3) then
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
@@ -3306,13 +3454,11 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sx0( 1) = 0.5*(0.5+xint)**2
         end if
 
-        yint=yint-0.5
         if (noy==1) then
           sy0( 0) = 1.
         elseif (noy==2) then
-!          yint=yint+0.5
-          sy0(-1) = 1.-yint
-          sy0( 0) = yint
+          sy0( 0) = 1.-yint
+          sy0( 1) = yint
         elseif (noy==3) then
           yintsq = yint*yint
           sy0(-1) = 0.5*(0.5-yint)**2
@@ -3320,13 +3466,11 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sy0( 1) = 0.5*(0.5+yint)**2
         end if
 
-        zint=zint-0.5
         if (noz==1) then
           sz0( 0) = 1.
         elseif (noz==2) then
-!          zint=zint+0.5
-          sz0(-1) = 1.-zint
-          sz0( 0) = zint
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
         elseif (noz==3) then
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
@@ -3337,7 +3481,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
         do ll = izmin, izmax+1
           do kk = iymin, iymax+1
             do jj = ixmin0, ixmax0
-              ex(ip) = ex(ip) + sx0(jj)*sy(kk)*sz(ll)*exg(j+jj,k+kk,l+ll)*signx
+              ex(ip) = ex(ip) + sx0(jj)*sy(kk)*sz(ll)*exg(j0+jj,k+kk,l+ll)*signx
             end do
           end do
         end do
@@ -3345,7 +3489,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
         do ll = izmin, izmax+1
           do kk = iymin0, iymax0
             do jj = ixmin, ixmax+1
-              ey(ip) = ey(ip) + sx(jj)*sy0(kk)*sz(ll)*eyg(j+jj,k+kk,l+ll)*signy
+              ey(ip) = ey(ip) + sx(jj)*sy0(kk)*sz(ll)*eyg(j+jj,k0+kk,l+ll)*signy
             end do
           end do
         end do
@@ -3353,7 +3497,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
         do ll = izmin0, izmax0
           do kk = iymin, iymax+1
             do jj = ixmin, ixmax+1
-              ez(ip) = ez(ip) + sx(jj)*sy(kk)*sz0(ll)*ezg(j+jj,k+kk,l+ll)
+              ez(ip) = ez(ip) + sx(jj)*sy(kk)*sz0(ll)*ezg(j+jj,k+kk,l0+ll)
             end do
           end do
         end do
@@ -3424,28 +3568,28 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
       real(kind=8), dimension(-nxguard:nx+nxguard,1,-nzguard:nz+nzguard) :: bxg,byg,bzg
       real(kind=8) :: xmin,zmin,dx,dz
       integer(ISZ) :: ip, j, l, ixmin, ixmax, izmin, izmax, &
-                      ixmin0, ixmax0, izmin0, izmax0, jj, ll
+                      ixmin0, ixmax0, izmin0, izmax0, jj, ll, j0, l0
       real(kind=8) :: dxi, dzi, x, y, z, xint, zint, &
                       xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx, &
                       r, costheta, sintheta
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int((nox)/2):int((nox-1)/2)) :: sx0
-      real(kind=8), DIMENSION(-int((noz)/2):int((noz-1)/2)) :: sz0
+      real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx0
+      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
       dzi = 1./dz
 
       ixmin = -int(nox/2)
-      ixmax =  int((nox-1)/2)
+      ixmax =  int((nox+1)/2)-1
       izmin = -int(noz/2)
-      izmax =  int((noz-1)/2)
+      izmax =  int((noz+1)/2)-1
 
       ixmin0 = -int((nox)/2)
-      ixmax0 =  int((nox-1)/2)
+      ixmax0 =  int((nox+1)/2)
       izmin0 = -int((noz)/2)
-      izmax0 =  int((noz-1)/2)
+      izmax0 =  int((noz+1)/2)
 
       signx = 1.
 
@@ -3477,9 +3621,21 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
             signx = 1.
           end if
         end if
-        
-        j=floor(x)
-        l=floor(z)
+
+        if (nox==2*(nox/2)) then
+          j=nint(x)
+          j0=floor(x-0.5)
+        else
+          j=floor(x)
+          j0=floor(x)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+          l0=floor(z-0.5)
+        else
+          l=floor(z)
+          l0=floor(z)
+        end if
 
         xint=x-j
         zint=z-l
@@ -3488,7 +3644,6 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
           sx( 0) = 1.-xint
           sx( 1) = xint
         elseif (nox==2) then
-!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -3507,7 +3662,6 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
           sz( 0) = 1.-zint
           sz( 1) = zint
         elseif (noz==2) then
-!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -3522,13 +3676,14 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
           sz( 2) = onesixth*zintsq*zint
         end if
 
-        xint=xint-0.5
+        xint=x-0.5-j0
+        zint=z-0.5-l0
+
         if (nox==1) then
           sx0( 0) = 1.
         elseif (nox==2) then
-!          xint=xint+0.5
-          sx0(-1) = 1.-xint
-          sx0( 0) = xint
+          sx0( 0) = 1.-xint
+          sx0( 1) = xint
         elseif (nox==3) then
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
@@ -3536,13 +3691,11 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
           sx0( 1) = 0.5*(0.5+xint)**2
         end if
 
-        zint=zint-0.5
         if (noz==1) then
           sz0( 0) = 1.
         elseif (noz==2) then
-!          zint=zint+0.5
-          sz0(-1) = 1.-zint
-          sz0( 0) = zint
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
         elseif (noz==3) then
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
@@ -3554,13 +3707,13 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
 
           do ll = izmin0, izmax0
             do jj = ixmin, ixmax+1
-              bx(ip) = bx(ip) + sz0(ll)*sx(jj)*(bxg(j+jj,1,l+ll)*costheta-byg(j+jj,1,l+ll)*sintheta)
+              bx(ip) = bx(ip) + sz0(ll)*sx(jj)*(bxg(j+jj,1,l0+ll)*costheta-byg(j+jj,1,l0+ll)*sintheta)
             end do
           end do
 
           do ll = izmin0, izmax0
             do jj = ixmin0, ixmax0
-              by(ip) = by(ip) + sz0(ll)*sx0(jj)*(bxg(j+jj,1,l+ll)*sintheta+byg(j+jj,1,l+ll)*costheta)
+              by(ip) = by(ip) + sz0(ll)*sx0(jj)*(bxg(j0+jj,1,l0+ll)*sintheta+byg(j0+jj,1,l0+ll)*costheta)
             end do
           end do
 
@@ -3568,13 +3721,13 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
 
           do ll = izmin0, izmax0
             do jj = ixmin, ixmax+1
-              bx(ip) = bx(ip) + sx(jj)*sz0(ll)*bxg(j+jj,1,l+ll)*signx
+              bx(ip) = bx(ip) + sx(jj)*sz0(ll)*bxg(j+jj,1,l0+ll)*signx
             end do
           end do
 
           do ll = izmin0, izmax0
             do jj = ixmin0, ixmax0
-              by(ip) = by(ip) + sx0(jj)*sz0(ll)*byg(j+jj,1,l+ll)
+              by(ip) = by(ip) + sx0(jj)*sz0(ll)*byg(j0+jj,1,l0+ll)
             end do
           end do
 
@@ -3582,10 +3735,10 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
 
         do ll = izmin, izmax+1
             do jj = ixmin0, ixmax0
-              bz(ip) = bz(ip) + sx0(jj)*sz(ll)*bzg(j+jj,1,l+ll)
+              bz(ip) = bz(ip) + sx0(jj)*sz(ll)*bzg(j0+jj,1,l+ll)
             end do
         end do
-                
+                 
      end do
 
    return
@@ -3601,15 +3754,15 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
       real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: bxg,byg,bzg
       real(kind=8) :: xmin,ymin,zmin,dx,dy,dz
       integer(ISZ) :: ip, j, k, l, ixmin, ixmax, iymin, iymax, izmin, izmax, &
-                      ixmin0, ixmax0, iymin0, iymax0, izmin0, izmax0, jj, kk, ll
+                      ixmin0, ixmax0, iymin0, iymax0, izmin0, izmax0, jj, kk, ll, j0, k0, l0
       real(kind=8) :: dxi, dyi, dzi, x, y, z, xint, yint, zint, &
                       xintsq,oxint,yintsq,oyint,zintsq,ozint,oxintsq,oyintsq,ozintsq,signx,signy
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int((nox)/2):int((nox-1)/2)) :: sx0
-      real(kind=8), DIMENSION(-int((noy)/2):int((noy-1)/2)) :: sy0
-      real(kind=8), DIMENSION(-int((noz)/2):int((noz-1)/2)) :: sz0
+      real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx0
+      real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy0
+      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
@@ -3617,21 +3770,28 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
       dzi = 1./dz
 
       ixmin = -int(nox/2)
-      ixmax =  int((nox-1)/2)
+      ixmax =  int((nox+1)/2)-1
       iymin = -int(noy/2)
-      iymax =  int((noy-1)/2)
+      iymax =  int((noy+1)/2)-1
       izmin = -int(noz/2)
-      izmax =  int((noz-1)/2)
+      izmax =  int((noz+1)/2)-1
 
       ixmin0 = -int((nox)/2)
-      ixmax0 =  int((nox-1)/2)
+      ixmax0 =  int((nox+1)/2)
       iymin0 = -int((noy)/2)
-      iymax0 =  int((noy-1)/2)
+      iymax0 =  int((noy+1)/2)
       izmin0 = -int((noz)/2)
-      izmax0 =  int((noz-1)/2)
+      izmax0 =  int((noz+1)/2)
 
       signx = 1.
       signy = 1.
+
+      sx=0
+      sy=0.
+      sz=0.
+      sx0=0.
+      sy0=0.
+      sz0=0.
 
       do ip=1,np
 
@@ -3653,20 +3813,33 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
             signy = 1.
           end if
         end if
-        
-        j=floor(x)
-        k=floor(y)
-        l=floor(z)
 
-        xint=x-j
-        yint=y-k
-        zint=z-l
+        if (nox==2*(nox/2)) then
+          j=nint(x)
+          j0=floor(x-0.5)
+        else
+          j=floor(x)
+          j0=floor(x)
+        end if
+        if (noy==2*(noy/2)) then
+          k=nint(y)
+          k0=floor(y-0.5)
+        else
+          k=floor(y)
+          k0=floor(y)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+          l0=floor(z-0.5)
+        else
+          l=floor(z)
+          l0=floor(z)
+        end if
 
         if (nox==1) then
           sx( 0) = 1.-xint
           sx( 1) = xint
         elseif (nox==2) then
-!          xint=xint-0.5
           xintsq = xint*xint
           sx(-1) = 0.5*(0.5-xint)**2
           sx( 0) = 0.75-xintsq
@@ -3685,7 +3858,6 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
           sy( 0) = 1.-yint
           sy( 1) = yint
         elseif (noy==2) then
-!          yint=yint-0.5
           yintsq = yint*yint
           sy(-1) = 0.5*(0.5-yint)**2
           sy( 0) = 0.75-yintsq
@@ -3704,7 +3876,6 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
           sz( 0) = 1.-zint
           sz( 1) = zint
         elseif (noz==2) then
-!          zint=zint-0.5
           zintsq = zint*zint
           sz(-1) = 0.5*(0.5-zint)**2
           sz( 0) = 0.75-zintsq
@@ -3719,13 +3890,15 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
           sz( 2) = onesixth*zintsq*zint
         end if
 
-        xint=xint-0.5
+        xint=x-0.5-j0
+        yint=y-0.5-k0
+        zint=z-0.5-l0
+
         if (nox==1) then
           sx0( 0) = 1.
         elseif (nox==2) then
-!          xint=xint+0.5
-          sx0(-1) = 1.-xint
-          sx0( 0) = xint
+          sx0( 0) = 1.-xint
+          sx0( 1) = xint
         elseif (nox==3) then
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
@@ -3733,13 +3906,11 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
           sx0( 1) = 0.5*(0.5+xint)**2
         end if
 
-        yint=yint-0.5
         if (noy==1) then
           sy0( 0) = 1.
         elseif (noy==2) then
-!          yint=yint+0.5
-          sy0(-1) = 1.-yint
-          sy0( 0) = yint
+          sy0( 0) = 1.-yint
+          sy0( 1) = yint
         elseif (noy==3) then
           yintsq = yint*yint
           sy0(-1) = 0.5*(0.5-yint)**2
@@ -3747,13 +3918,11 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
           sy0( 1) = 0.5*(0.5+yint)**2
         end if
 
-        zint=zint-0.5
         if (noz==1) then
           sz0( 0) = 1.
         elseif (noz==2) then
-!          zint=zint+0.5
-          sz0(-1) = 1.-zint
-          sz0( 0) = zint
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
         elseif (noz==3) then
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
@@ -3764,7 +3933,7 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
         do ll = izmin0, izmax0
           do kk = iymin0, iymax0
             do jj = ixmin, ixmax+1
-              bx(ip) = bx(ip) + sx(jj)*sy0(kk)*sz0(ll)*bxg(j+jj,k+kk,l+ll)*signx
+              bx(ip) = bx(ip) + sx(jj)*sy0(kk)*sz0(ll)*bxg(j+jj,k0+kk,l0+ll)*signx
             end do
           end do
         end do
@@ -3772,7 +3941,7 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
         do ll = izmin0, izmax0
           do kk = iymin, iymax+1
             do jj = ixmin0, ixmax0
-              by(ip) = by(ip) + sx0(jj)*sy(kk)*sz0(ll)*byg(j+jj,k+kk,l+ll)*signy
+              by(ip) = by(ip) + sx0(jj)*sy(kk)*sz0(ll)*byg(j0+jj,k+kk,l0+ll)*signy
             end do
           end do
         end do
@@ -3780,7 +3949,7 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
         do ll = izmin, izmax+1
           do kk = iymin0, iymax0
             do jj = ixmin0, ixmax0
-              bz(ip) = bz(ip) + sx0(jj)*sy0(kk)*sz(ll)*bzg(j+jj,k+kk,l+ll)
+              bz(ip) = bz(ip) + sx0(jj)*sy0(kk)*sz(ll)*bzg(j0+jj,k0+kk,l+ll)
             end do
           end do
         end do
