@@ -2552,6 +2552,10 @@ class EM3D(SubcycledPoissonSolver):
   def getrho(self,guards=0,overlap=0):
       return self.getarray(self.fields.Rho,guards,overlap)
 
+  def getrhop(self,guards=0,overlap=1):
+    # a version of getrho with default overlap = 1, needed for particleinjection.py
+     return self.getrho(guards,overlap)
+
   def getf(self,guards=0,overlap=0):
       return self.getarray(self.fields.F,guards,overlap)
 
@@ -3357,7 +3361,6 @@ class EM3D(SubcycledPoissonSolver):
        yl+ylguard:yu-yrguard,
        zl+zlguard:zu-zrguard]=self.blocknumber
     
-
 def allocatesf(f,stencil):
     f.syf = EM3D_SPLITYEEFIELDtype()
     f.fieldtype = f.syf.fieldtype
@@ -4062,6 +4065,7 @@ def pyinit_3dem_block(nx, ny, nz,
         b.cornerxryrzr.proc=procxr      
 
   return b
+
 
 ##############################################################################
 # --- This can only be done after the class is defined.
