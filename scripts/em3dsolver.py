@@ -791,7 +791,7 @@ class EM3D(SubcycledPoissonSolver):
     pass
 
 #===============================================================================
-  def getfieldsfrompositions(self,x,y,z):
+  def getfieldsfrompositions(self,x,y,z,gather=True):
 #===============================================================================
     # --- This returns e and b at positions x,y,z
     n = len(x)
@@ -817,6 +817,12 @@ class EM3D(SubcycledPoissonSolver):
       bz=zeros(nlocal,'d')
       self.fetchfieldfrompositions(x,y,z,ex,ey,ez,bx,by,bz)
 
+    if not gather:
+      if nlocal>0:
+        return ilist,ex,ey,ez,bx,by,bz
+      else:
+        return None,None,None,None,None,None,None
+      
     exp=zeros(n,'d')
     eyp=zeros(n,'d')
     ezp=zeros(n,'d')
@@ -909,7 +915,7 @@ class EM3D(SubcycledPoissonSolver):
             self.fields.Jarray[j,self.fields.nyguard,:,1,0]+=jy
             self.fields.Jarray[j,self.fields.nyguard,:,2,0]+=jz
       elif self.l_2dxz:
-        j = self.fields.J[:,self.fields.nyguard,:,:]*0.
+        j = self.fields.J[:,self.fields.nyguard,:,:]
         if 0:
 #          depose_jxjy_esirkepov_linear_serial_2d(j,n,z,x,z-gaminv*uz*top.dt,x-gaminv*ux*top.dt,
 #                                                 uy,gaminv,
@@ -953,7 +959,6 @@ class EM3D(SubcycledPoissonSolver):
                                             top.depos_order[0,js],
                                             top.depos_order[2,js],
                                             l_particles_weight,w3d.l4symtry)
-        self.fields.Jarray[:,self.fields.nyguard,:,:,0]+=j[:,:,:]
       else:
        if 0:#nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
           depose_jxjyjz_esirkepov_linear_serial(self.fields.J,n,
