@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.51 $, $Date: 2011/08/27 00:35:50 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.52 $, $Date: 2011/10/07 19:55:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -980,19 +980,20 @@ c     --- The derivative is calculated above. Note that the d/dtheta terms
 c     --- which appear in Br and Bz are still ignored, assuming axisymmetry.
 c     --- Because of the way the guard cells are set for the y plane,
 c     --- the derivatives there calculated above are zero.
+c     --- Note that if nylocal==0 and nyguardphi==0, the values of iymin
+c     --- and iymax will not make sense. For mainly this reason, the extra
+c     --- term is applied to all values of iy and iz.
       if (lcylindrical) then
         do ix=ixmin,ixmax
           r = (xmminlocal + dx*ix)
           if (r > 0.) then
             ri = 1./r
-            b(2,ix,iymin:iymax,izmin:izmax)=
-     &      b(2,ix,iymin:iymax,izmin:izmax)+
-     &      a(1,ix,iymin:iymax,izmin:izmax)*ri
+            b(2,ix,:,:)= b(2,ix,:,:)+ a(1,ix,:,:)*ri
           else
 c           --- This can be justified by writing out the del cross A in
 c           --- Cartesian coordinates, and using
 c           --- a(1,1,0,iz) = a(0,0,-1,iz) = -a(1,-1,0,iz) = -a(0,0,+1,iz)
-            b(2,ix,iymin:iymax,izmin:izmax) = 2.*b(2,ix,iymin:iymax,izmin:izmax)
+            b(2,ix,:,:) = 2.*b(2,ix,:,:)
           endif
         enddo
       endif
