@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.52 $, $Date: 2011/10/07 19:55:58 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.53 $, $Date: 2011/10/10 17:49:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -988,12 +988,15 @@ c     --- term is applied to all values of iy and iz.
           r = (xmminlocal + dx*ix)
           if (r > 0.) then
             ri = 1./r
-            b(2,ix,:,:)= b(2,ix,:,:)+ a(1,ix,:,:)*ri
+            b(2,ix,0,izmin:izmax)=
+     &      b(2,ix,0,izmin:izmax)+
+     &      a(1,ix,0,izmin:izmax)*ri
           else
 c           --- This can be justified by writing out the del cross A in
 c           --- Cartesian coordinates, and using
 c           --- a(1,1,0,iz) = a(0,0,-1,iz) = -a(1,-1,0,iz) = -a(0,0,+1,iz)
-            b(2,ix,:,:) = 2.*b(2,ix,:,:)
+            b(2,ix,0,izmin:izmax) = 2.*b(2,ix,0,izmin:izmax)
+
           endif
         enddo
       endif
