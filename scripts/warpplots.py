@@ -103,7 +103,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.274 2011/01/31 19:40:29 grote Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.275 2011/10/10 22:53:15 grote Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -1926,83 +1926,100 @@ Note that either the x and y coordinates or the grid must be passed in.
 
 #############################################################################
 #############################################################################
-# --- Complete dictionary of possible keywords and their default values
-# --- ccolor is included since this routine is called by higher level
-# --- routines that pass in ccolor. It is not used here.
-_ppvector_kwdefaults = {'titles':1,'lframe':0,
-                        'xmin':None,'xmax':None,'ymin':None,'ymax':None,
-                        'pplimits':('e','e','e','e'),'scale':1.,
-                        'color':'fg',
-                        'xbound':dirichlet,'ybound':dirichlet,
-                        'xmesh':None,'ymesh':None,'local':1,
-                        'ccolor':None,
-                        'checkargs':0,'allowbadargs':0}
-def ppvector(gridy=None,gridx=None,kwdict={},**kw):
+def ppvector(gridy=None,gridx=None,ymesh=None,xmesh=None,scale=None,
+             xmin=None,xmax=None,ymin=None,ymax=None,**kw):
   """
 Generic vector plotting routine.
 Note that both the x and y grids must be passed in.
+The input can be 1-d or 2-d. If 1-d, ymesh, xmesh and scale must all be
+supplied.
   - gridy, gridx: x and y vector comnponents
+  - ymesh, xmesh: x and y coordinates
+  - scale: scale length of the vectors. This must be supplied when plotting
+           1-d data. For 2-d, the default will set the length of the largest
+           vector to the grid cell size (scale=(cell size)/(max vector)).
+  - xmin,xmax,ymin,ymax: grid extrema; only used if ymesh and xmesh are not
+                         specified
   """
-
-  # --- Create dictionary of local values and copy it into local dictionary,
-  # --- ignoring keywords not listed in _ppvector_kwdefaults.
-  kwvalues = _ppvector_kwdefaults.copy()
-  kwvalues.update(kw)
-  kwvalues.update(kwdict)
-  #for arg in _ppvector_kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
-  # --- This is MUCH faster than the loop, about 100x, but not as nice looking.
-  titles = kwvalues['titles']
-  lframe = kwvalues['lframe']
-  xmin = kwvalues['xmin']
-  xmax = kwvalues['xmax']
-  ymin = kwvalues['ymin']
-  ymax = kwvalues['ymax']
-  pplimits = kwvalues['pplimits']
-  scale = kwvalues['scale']
-  color = kwvalues['color']
-  xbound = kwvalues['xbound']
-  ybound = kwvalues['ybound']
-  xmesh = kwvalues['xmesh']
-  ymesh = kwvalues['ymesh']
-  local = kwvalues['local']
-  ccolor = kwvalues['ccolor']
-  checkargs = kwvalues['checkargs']
-  allowbadargs = kwvalues['allowbadargs']
-
-  # --- Check the argument list for bad arguments.
-  # --- 'checkargs' allows this routine to be called only to check the
-  # --- input for bad arguments.
-  # --- 'allowbadargs' allows this routine to be called with bad arguments.
-  # --- These are intentionally undocumented features.
-  badargs = checkarguments(kwvalues,_ppvector_kwdefaults)
-  if checkargs: return badargs
-  assert (not badargs or allowbadargs), \
-         "bad argument: %s"%string.join(badargs.keys())
-
   # --- Do some error checking on the consistency of the input
   assert gridx is not None and gridy is not None,"both gridx and gridy must be specified"
+  assert len(shape(gridx)) == len(shape(gridy)),"gridx and gridy must have the same number of dimensions"
+  assert all(shape(gridx) == shape(gridy)),"gridx and gridy must be the same shape"
 
-  nx = shape(gridx)[0] - 1
-  ny = shape(gridx)[1] - 1
+  if len(shape(gridx)) == 1:
+    # --- handle 1-D arrays
+    assert ymesh is not None and xmesh is not None,"if gridx is 1-d, xmesh and ymesh must be supplied"
+    assert scale is not None,"if gridx is 1-d, scale must be supplied"
+    assert len(gridx) > 0,"at least one point must be given"
+    
+    # --- This is a bit of hackery. plv is expecting a 2-d array with both
+    # --- dimensions at least 2. So, the input arrays need to be reshaped
+    # --- appropriately, but this is tricky since the number of points
+    # --- must be factorable.
+    # --- If the number of points is even, then the shape can be (n/2,2).
+    # --- If the number of points is odd, replicate the last point and then
+    # --- do shape = ((n+1)/2,2).
+    # --- If the number of points is less than 4, replicate as many points
+    # --- is needed to get 4 points.
+    n = len(gridx)
+    while n%2 == 1 or n < 4:
+      newgridx = zeros(n+1,dtype=array(gridx).dtype)
+      newgridy = zeros(n+1,dtype=array(gridy).dtype)
+      newxmesh = zeros(n+1,dtype=array(xmesh).dtype)
+      newymesh = zeros(n+1,dtype=array(ymesh).dtype)
+      newgridx[:n] = gridx
+      newgridy[:n] = gridy
+      newxmesh[:n] = xmesh
+      newymesh[:n] = ymesh
+      newgridx[n] = gridx[-1]
+      newgridy[n] = gridy[-1]
+      newxmesh[n] = xmesh[-1]
+      newymesh[n] = ymesh[-1]
+      gridx = newgridx
+      gridy = newgridy
+      xmesh = newxmesh
+      ymesh = newymesh
+      n += 1
 
-  assert (shape(gridy)[0] - 1) == nx and (shape(gridy)[1] - 1) == ny,"gridx and gridy must be the same shape"
+    gridx.shape = (n/2,2)
+    gridy.shape = (n/2,2)
+    xmesh.shape = (n/2,2)
+    ymesh.shape = (n/2,2)
+    plv(gridy,gridx,ymesh,xmesh,scale=scale,**kw)
 
-  if xmin is None: xmin = 0
-  if xmax is None: xmax = nx
-  if ymin is None: ymin = 0
-  if ymax is None: ymax = ny
+  else:
+    # --- handle 2-D arrays
+    nx = shape(gridx)[0] - 1
+    ny = shape(gridx)[1] - 1
 
-  # --- Get meshes
-  dx = (xmax - xmin)/nx
-  dy = (ymax - ymin)/ny
-  xx,yy = getmesh2d(xmin,dx,nx,ymin,dy,ny)
+    if xmesh is None:
+      if xmin is None: xmin = 0
+      if xmax is None: xmax = nx
+      dx = (xmax - xmin)/nx
+      xmesh = span(xmin,xmax,nx+1)
+    else:
+      dx = (maxnd(xmesh) - minnd(xmesh))/nx
 
-  # --- Compute scale
-  scale = scale*min(dx,dy)/dvnz(max(maxnd(abs(gridx)),maxnd(abs(gridy))))
-  #print scale
+    if ymesh is None:
+      if ymin is None: ymin = 0
+      if ymax is None: ymax = ny
+      dy = (ymax - ymin)/ny
+      ymesh = span(ymin,ymax,ny+1)
+    else:
+      dy = (maxnd(ymesh) - minnd(ymesh))/ny
 
-  # --- Make plot
-  plv(gridy,gridx,yy,xx,scale=scale,local=local)
+    if len(shape(xmesh)) == 1:
+      xmesh = xmesh[:,newaxis]*ones(ny+1)[newaxis,:]
+    if len(shape(ymesh)) == 1:
+      ymesh = ymesh[newaxis,:]*ones(ny+1)[:,newaxis]
+
+    # --- Compute scale
+    if scale is None:
+      scale = min(dx,dy)/dvnz(max(maxnd(abs(gridx)),maxnd(abs(gridy))))
+    #print scale
+
+    # --- Make plot
+    plv(gridy,gridx,ymesh,xmesh,scale=scale,**kw)
 
 #############################################################################
 #############################################################################
