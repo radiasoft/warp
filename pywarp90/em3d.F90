@@ -219,7 +219,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
                    ixmin, ixmax, izmin, izmax, icell, ncells
 
     sx0=0.;sz0=0.
-    sdz=0.
+    sdx=0.;sdz=0.
       
       dxi = 1./dx
       dzi = 1./dz
@@ -1495,7 +1495,7 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
                    ixmin, ixmax, iymin, iymax, izmin, izmax, icell, ncells
 
     sx0=0.;sy0=0.;sz0=0.
-    sdz=0.
+    sdx=0.;sdy=0.;sdz=0.
       
       dxi = 1./dx
       dyi = 1./dy
@@ -2947,7 +2947,6 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
         end select        
 
         if (l_2drz) then
-
           do ll = izmin, izmax
             do jj = ixmin, ixmax
               ex(ip) = ex(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*costheta-eyg(j+jj,0,l+ll)*sintheta)
@@ -3123,8 +3122,8 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
                       xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx0
-      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz0
+      real(kind=8), DIMENSION(-int((nox-1)/2):int(nox/2)) :: sx0
+      real(kind=8), DIMENSION(-int((noz-1)/2):int(noz/2)) :: sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
@@ -3135,10 +3134,10 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       izmin = -int(noz/2)
       izmax =  int((noz+1)/2)-1
 
-      ixmin0 = -int((nox)/2)
-      ixmax0 =  int((nox+1)/2)
-      izmin0 = -int((noz)/2)
-      izmax0 =  int((noz+1)/2)
+      ixmin0 = -int((nox-1)/2)
+      ixmax0 =  int((nox)/2)
+      izmin0 = -int((noz-1)/2)
+      izmax0 =  int((noz)/2)
 
       signx = 1.
 
@@ -3311,9 +3310,9 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx0
-      real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy0
-      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz0
+      real(kind=8), DIMENSION(-int((nox-1)/2):int(nox/2)) :: sx0
+      real(kind=8), DIMENSION(-int((noy-1)/2):int(noy/2)) :: sy0
+      real(kind=8), DIMENSION(-int((noz-1)/2):int(noz/2)) :: sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
@@ -3327,12 +3326,12 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       izmin = -int(noz/2)
       izmax =  int((noz+11)/2)-1
 
-      ixmin0 = -int((nox)/2)
-      ixmax0 =  int((nox+1)/2)
-      iymin0 = -int((noy)/2)
-      iymax0 =  int((noy+1)/2)
-      izmin0 = -int((noz)/2)
-      izmax0 =  int((noz+1)/2)
+      ixmin0 = -int((nox-1)/2)
+      ixmax0 =  int((nox)/2)
+      iymin0 = -int((noy-1)/2)
+      iymax0 =  int((noy)/2)
+      izmin0 = -int((noz-1)/2)
+      izmax0 =  int((noz)/2)
 
       signx = 1.
       signy = 1.
@@ -3574,8 +3573,8 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
                       r, costheta, sintheta
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx0
-      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz0
+      real(kind=8), DIMENSION(-int((nox-1)/2):int(nox/2)) :: sx0
+      real(kind=8), DIMENSION(-int((noz-1)/2):int(noz/2)) :: sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
@@ -3586,12 +3585,17 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
       izmin = -int(noz/2)
       izmax =  int((noz+1)/2)-1
 
-      ixmin0 = -int((nox)/2)
-      ixmax0 =  int((nox+1)/2)
-      izmin0 = -int((noz)/2)
-      izmax0 =  int((noz+1)/2)
+      ixmin0 = -int((nox-1)/2)
+      ixmax0 =  int((nox)/2)
+      izmin0 = -int((noz-1)/2)
+      izmax0 =  int((noz)/2)
 
       signx = 1.
+
+      sx=0
+      sz=0.
+      sx0=0.
+      sz0=0.
 
       do ip=1,np
 
@@ -3760,9 +3764,9 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx0
-      real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy0
-      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz0
+      real(kind=8), DIMENSION(-int((nox-1)/2):int(nox/2)) :: sx0
+      real(kind=8), DIMENSION(-int((noy-1)/2):int(noy/2)) :: sy0
+      real(kind=8), DIMENSION(-int((noz-1)/2):int(noz/2)) :: sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
@@ -3776,12 +3780,12 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
       izmin = -int(noz/2)
       izmax =  int((noz+1)/2)-1
 
-      ixmin0 = -int((nox)/2)
-      ixmax0 =  int((nox+1)/2)
-      iymin0 = -int((noy)/2)
-      iymax0 =  int((noy+1)/2)
-      izmin0 = -int((noz)/2)
-      izmax0 =  int((noz+1)/2)
+      ixmin0 = -int((nox-1)/2)
+      ixmax0 =  int((nox)/2)
+      iymin0 = -int((noy-1)/2)
+      iymax0 =  int((noy)/2)
+      izmin0 = -int((noz-1)/2)
+      izmax0 =  int((noz)/2)
 
       signx = 1.
       signy = 1.
