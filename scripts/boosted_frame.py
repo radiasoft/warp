@@ -88,8 +88,7 @@ to be lifted in the future.
          zmean=0.
        if getn(pgroup=pg,js=js,bcast=0,gather=0)>0: 
         gaminvbeam_lab = getgaminv(pgroup=pg,js=js,bcast=0,gather=0)
-#        betabeam_lab  = sqrt(1.-gaminvbeam_lab*gaminvbeam_lab)
-        betabeam_lab  = sqrt(1.-1./(gaminvbeam_lab*gaminvbeam_lab))
+        betabeam_lab  = sqrt(1.-gaminvbeam_lab*gaminvbeam_lab)
         betabeam_frame = (betabeam_lab-self.betaframe)/(1.-betabeam_lab*self.betaframe)
         gammabeam_frame  = 1./sqrt(1.-betabeam_frame*betabeam_frame)
         zcopy = z.copy()
