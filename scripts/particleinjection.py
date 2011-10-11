@@ -7,7 +7,7 @@ import generateconductors
 import copy
 from em2dsolver import EM2D
 
-particleinjection_version = "$Id: particleinjection.py,v 1.14 2011/09/28 21:03:23 rcohen Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.15 2011/10/11 21:25:56 rcohen Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -105,18 +105,15 @@ The sizes of the E arrays will be:
           # --- The EM solver has solver.nxguard guard cells, uppper and lower, in x,
           # ---  solver.nyguard guard cells in y, etc.
           # --- All fields have nj+2*ngj+1 values in direction j
-          # --- this means there is an allocated but unused row for E_j at the uppermost index in
-          # --- direction j.  
-          # --- For injection we need Ex from half cell below first physical node in x to half cell above
-          # --- last physical node in x, and from first physical node in z to last physical node in z
-          # --- (with obvious permutations for y and z).
-          # --- em3d's Ex starts 1/2 cell into first guard cell in x and continues to an unused value
-          # ---   1/2 cell above last guard cell; and at lower bound (lowest node) of first guard cell
-          # ---   in z to last upper bound (highest node) of last guard cell in z.  (and analagous for
-          # ---   the other components.
-          # --- Hence we use Ex values running from index nxg-1 to buut not including (hence upper
-          # ---  limit for Python slice) index -nxg in x, and index nzg to but not incluidng -nzg in z, and
-          # ---  similar permutations for the other field components.
+          # --- So for Ex there are values starting 1/2 cell below the first computational guard cell and ending
+          # ---  1/2 cell below the upper end of the compuational grid (last guard-cell node).
+          # ---  Hence the index of Ex corresponding to the one just below the first PHYSICAL cell
+          # ---  is nxguard, and use Ex values running from index nxguard up to but not including
+          # ---  index -(nxguard-1), hence in Python slicing language, slicing  nxguard:-(nxguard-1)
+          # ---  In the z direction we need Ex from index nzguard to but not including -nzguard, i.e.
+          # ---  slicing nzguard:-nzguard.   Similar permutations for other field components.
+          # ---  The above slicing fails if nxguard = 1, for example; better to be bullet-proof and so slice
+          # --- from nxguard:nxguard+nx+2 in x, and nzguard:nz+1 in z.
           Exraw = solver.fields.Ex
           Eyraw = solver.fields.Ey
           Ezraw = solver.fields.Ez
@@ -129,18 +126,21 @@ The sizes of the E arrays will be:
           nxguard=solver.nxguard
           nyguard=solver.nyguard
           nzguard=solver.nzguard
+          nx=solver.nx
+          ny=solver.ny
+          nz=solver.nz
           if shape(Exraw)[1]==1:
             # --- x-z or r-z
-            Ex = Exraw[nxguard-1:-nxguard,:,nxguard:-nxguard]
-            Ez = Ezraw[nzguard:-nzguard,:,nzguard-1:-nzguard]
-            Ey = zeros((shape(Ex)[2],2,shape(Ez)[0]),'d')
+            Ex = Exraw[nxguard:nxguard+nx+2,:,nzguard:nzguard+nz+1]
+            Ez = Ezraw[nxguard:nxguard+nx+1,:,nzguard:nzguard+nz+2]
+            Ey = zeros((shape(Ez)[0],2,shape(Ex)[2]),'d')
             # --- formerly assumed node centered so did averaging, e.g.
             #          Ex = .5*(Exraw[2:-3,:,3:-3]+Exraw[3:-2,:,3:-3])
           else:
             # --- 3D
-            Ex = Exraw[nxguard-1:-nxguard,nyguard:-nyguard,nxguard:-nxguard]
-            Ey = Eyraw[nxguard:-nxguard,nyguard-1:-nyguard,nxguard:-nxguard]            
-            Ez = Ezraw[nzguard:-nzguard,nyguard:-nyguard,nzguard-1:-nzguard]
+            Ex = Exraw[nxguard:nxguard+nx+2,nyguard:nyguard+ny+1,nxguard:nzguard+nz+1]
+            Ey = Eyraw[nxguard:nxguard+nx+1,nyguard:nyguard+ny+2,nxguard:nzguard+nz+1]
+            Ez = Ezraw[nxguard:nxguard+nx+1,nyguard:nyguard+ny+1,nxguard:nzguard+nz+2]
           if convertback:
             solver.yee2node3d()
           return Ex,Ey,Ez
