@@ -5349,8 +5349,13 @@ real(8)::r,r1,r2
      f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) = f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) + f%j(:,:,f%izmax+f%nzguard-1:f%izmax:-1,3)
   end if
 
-  if (xlbnd==neumann .or. (f%l_2drz .and. f%xmin==0.)) then
+  if (xlbnd==neumann .and. .not. (f%l_2drz .and. f%xmin==0.)) then
      f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) = f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) + f%j(f%ixmin:f%ixmin-f%nxguard:-1,:,:,2:3)
+     f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) = f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) - f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,1)
+  end if
+  if (f%l_2drz .and. f%xmin==0.) then
+     f%j(f%ixmin+1:f%ixmin+f%nxguard,:,:,2:3) = f%j(f%ixmin+1:f%ixmin+f%nxguard,:,:,2:3) &
+                                              + f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,2:3)
      f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) = f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) - f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,1)
   end if
   if (xrbnd==neumann) then
@@ -5385,7 +5390,7 @@ real(8)::r,r1,r2
     end do
     j = f%ixmin
     if (f%xmin==0.) then
-      f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(0.5*pi*f%dx) ! 0.5 set for charge conservation
+      f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(pi*f%dx/3.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
     else
       r = abs(f%xmin+j*f%dx)
       f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(2.*pi*r)
@@ -5433,8 +5438,11 @@ real(8)::r
      f%rho(:,:,f%izmax-f%nzguard:f%izmax) = f%rho(:,:,f%izmax-f%nzguard:f%izmax) - f%rho(:,:,f%izmax+f%nzguard:f%izmax:-1)
   end if
 
-  if (xlbnd==neumann .or. (f%l_2drz .and. f%xmin==0.)) then
+  if (xlbnd==neumann .and. .not. (f%l_2drz .and. f%xmin==0.)) then
      f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) = f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) + f%rho(f%ixmin:f%ixmin-f%nxguard:-1,:,:)
+  end if
+  if (f%l_2drz .and. f%xmin==0.) then
+     f%rho(f%ixmin+1:f%ixmin+f%nxguard,:,:) = f%rho(f%ixmin+1:f%ixmin+f%nxguard,:,:) + f%rho(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:)
   end if
   if (xrbnd==neumann) then
      f%rho(f%ixmax-f%nxguard:f%ixmax,:,:) = f%rho(f%ixmax-f%nxguard:f%ixmax,:,:) + f%rho(f%ixmax+f%nxguard:f%ixmax:-1,:,:)
@@ -5461,7 +5469,7 @@ real(8)::r
     end do
     j = f%ixmin
     if (f%xmin==0.) then
-      f%rho(j,:,:) = f%rho(j,:,:)/(0.5*pi*f%dx) ! 0.5 set for charge conservation
+      f%rho(j,:,:) = f%rho(j,:,:)/(pi*f%dx/3.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
     else
       r = abs(f%xmin+j*f%dx)
       f%rho(j,:,:) = f%rho(j,:,:)/(2.*pi*r)
