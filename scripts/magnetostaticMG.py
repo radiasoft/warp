@@ -9,7 +9,7 @@ try:
 except ImportError:
   pass
 
-magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.42 2011/10/06 20:36:47 grote Exp $"
+magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.43 2011/10/14 15:36:33 grote Exp $"
 
 ##############################################################################
 class MagnetostaticMG(SubcycledPoissonSolver):
@@ -35,13 +35,14 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     if self.lcylindrical: self.solvergeom = w3d.RZgeom
 
     SubcycledPoissonSolver.__init__(self,kwdict=kw)
-    if (self.solvergeom != w3d.RZgeom and self.solvergeom != w3d.XZgeom):
+    if self.ny == 0 and self.solvergeom not in [w3d.RZgeom,w3d.XZgeom]:
       self.solvergeom = w3d.RZgeom
-    self.ncomponents = 3
-    if self.solvergeom == w3d.RZgeom or self.solvergeom == w3d.XZgeom:
+    if self.solvergeom in [w3d.RZgeom,w3d.XZgeom]:
       self.nyguardphi = 0
       self.nyguardrho = 0
       self.nyguarde   = 0
+
+    self.ncomponents = 3
     self.lusevectorpotential = true
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
