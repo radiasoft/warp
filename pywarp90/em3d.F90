@@ -208,7 +208,8 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
    real(kind=8) :: dxi,dzi,dtsdx,dtsdz,xint,yint,zint
    real(kind=8),dimension(-int(nox/2)-1:int((nox+1)/2)+1, &
                           -int(noz/2)-1:int((noz+1)/2)+1) :: sdx,sdz
-   real(kind=8) :: xold,yold,zold,rold,xmid,zmid,x,y,z,r,wq,wqx,wqz,tmp,vx,vy,vz,dts2dx,dts2dz, &
+   real(kind=8) :: xold,yold,zold,rold,xmid,zmid,x,y,z,r,c,s,wq,wqx,wqz, &
+                   tmp,vx,vy,vz,dts2dx,dts2dz, &
                    s1x,s2x,s1z,s2z,invvol,invdtdx,invdtdz, &
                    oxint,ozint,xintsq,zintsq,oxintsq,ozintsq, &
                    dtsdx0,dtsdz0,dts2dx0,dts2dz0
@@ -237,7 +238,15 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
         x = xp(ip)
         if (l_2drz) then
           y = yp(ip)
-          x=sqrt(x*x+y*y)
+          r=sqrt(x*x+y*y)
+          if (r*dxi>1.e-10) then
+            c = x/r 
+            s = y/r
+          else
+            c = 1.
+            s = 0.
+          end if
+          x = r
         end if
         x=x*dxi
         z = zp(ip)*dzi
@@ -253,6 +262,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
           yold = yp(ip)-dt*vy
           rold = sqrt(xold*xold+yold*yold)
           xold=rold*dxi
+          vy = -vx*s+vy*c
           vx = (x-xold)/dtsdx0
         else
           xold=x-dtsdx0*vx
@@ -2832,6 +2842,87 @@ end subroutine depose_j_n_2dxz
    return
  end subroutine getf3d_n
 
+ subroutine averagef3d_rz(nx,ny,nz,nxguard,nyguard,nzguard,fxg,fyg,fzg,ntheta)
+ use Constant
+ implicit none
+      integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard,ntheta
+      real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: fxg,fyg,fzg
+      real(kind=8), dimension(0:nx/2+1) :: fr,ft,fz
+      integer(ISZ) :: it,j, k, l, ix, iy
+      real(kind=8) :: c,s,theta,wx,wy,owx,owy,xctr,yctr,x,y,r
+      
+      xctr = real(nx)/2
+      yctr = real(ny)/2
+      do l=-nzguard, nz+nzguard
+        fr = 0.
+        ft = 0.
+        fz = 0.
+        do it=1,ntheta
+          theta = 2*pi*it/ntheta
+          c = cos(theta)
+          s = sin(theta)
+          do j=0,nx/2
+            x = xctr+j*c
+            y = yctr+j*s
+            
+            ix = floor(x)
+            iy = floor(y)
+        
+            wx = x-ix
+            wy = y-iy
+            
+            owx = 1.-wx
+            owy = 1.-wy
+            
+            fr(j) = fr(j) + owx*owy*(fxg(ix  ,iy  ,l)*c+fyg(ix  ,iy  ,l)*s) &
+                          + wx *owy*(fxg(ix+1,iy  ,l)*c+fyg(ix+1,iy  ,l)*s) &
+                          + owx*wy *(fxg(ix  ,iy+1,l)*c+fyg(ix  ,iy+1,l)*s) &
+                          + wx *wy *(fxg(ix+1,iy+1,l)*c+fyg(ix+1,iy+1,l)*s) 
+        
+            ft(j) = ft(j) + owx*owy*(-fxg(ix  ,iy  ,l)*s+fyg(ix  ,iy  ,l)*c) &
+                          + wx *owy*(-fxg(ix+1,iy  ,l)*s+fyg(ix+1,iy  ,l)*c) &
+                          + owx*wy *(-fxg(ix  ,iy+1,l)*s+fyg(ix  ,iy+1,l)*c) &
+                          + wx *wy *(-fxg(ix+1,iy+1,l)*s+fyg(ix+1,iy+1,l)*c) 
+
+            fz(j) = fz(j) + owx*owy*fzg(ix  ,iy  ,l) &
+                          + wx *owy*fzg(ix+1,iy  ,l) &
+                          + owx*wy *fzg(ix  ,iy+1,l) &
+                          + wx *wy *fzg(ix+1,iy+1,l)
+                          
+          end do
+        end do
+        fr=fr/ntheta
+        ft=ft/ntheta
+        fz=fz/ntheta
+        fxg(:,:,l) = 0.
+        fyg(:,:,l) = 0.
+        fzg(:,:,l) = 0.
+        do k=0,ny
+          do j=0,nx
+            x = j-xctr
+            y = k-yctr
+            r = sqrt(x**2+y**2)
+            if (r<1.e-10) then
+              c=1.
+              s=0.
+            else
+              c=x/r
+              s=y/r
+            end if
+            ix = int(r)
+            if (ix>nx/2) cycle
+            wx = r-ix
+            owx = 1-wx
+            fxg(j,k,l) = owx*(fr(ix)*c-ft(ix)*s) + wx*(fr(ix+1)*c-ft(ix+1)*s)
+            fyg(j,k,l) = owx*(fr(ix)*s+ft(ix)*c) + wx*(fr(ix+1)*s+ft(ix+1)*c)
+            fzg(j,k,l) = owx*fz(ix) + wx*fz(ix+1)
+          end do
+        end do
+      end do
+
+   return
+ end subroutine averagef3d_rz
+
 subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
                      nxguard,nyguard,nzguard,nox,noz,exg,eyg,ezg,l4symtry,l_2drz)
    
@@ -2985,6 +3076,130 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
 
    return
  end subroutine getf2dxz_n
+
+subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
+                     nxguard,nyguard,nzguard,nox,noz,exg,eyg,ezg,l4symtry,l_2drz)
+   
+ implicit none
+      integer(ISZ) :: np,nx,ny,nz,nxguard,nyguard,nzguard,nox,noz
+      real(kind=8), dimension(np) :: xp,yp,zp,ex,ey,ez
+      real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: exg,eyg,ezg
+      real(kind=8) :: xmin,zmin,dx,dz
+      logical(ISZ) :: l4symtry,l_2drz
+      integer(ISZ) :: ip, j, l, ixmin, ixmax, izmin, izmax, &
+                      ixmin0, ixmax0, izmin0, izmax0, jj, ll
+      real(kind=8) :: dxi, dzi, x, y, z, xint, zint, r, costheta, sintheta
+      real(kind=8) :: xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx
+      real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
+      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
+      real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
+
+      dxi = 1./dx
+      dzi = 1./dz
+
+      ixmin = -int(nox/2)
+      ixmax =  int((nox+1)/2)
+      izmin = -int(noz/2)
+      izmax =  int((noz+1)/2)
+
+      signx = 1.
+      
+      do ip=1,np
+
+          x = xp(ip)
+          y = yp(ip)
+          r=sqrt(x*x+y*y)
+          if (r*dxi>1.e-20) then
+            costheta=x/r
+            sintheta=y/r
+          else  
+            costheta=1.
+            sintheta=0.
+          end if
+          r = (r-xmin)
+
+        z = (zp(ip)-zmin)*dzi
+
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          j=nint(r*dxi)
+        else
+          j=floor(r*dxi)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+        else
+          l=floor(z)
+        end if
+
+        xint=(r**2-j**2*dx**2)/((2.*j+1)*dx**2)
+        zint=z-l
+
+        select case(nox)
+         case(0)
+          sx( 0) = 1.
+         case(1)
+          sx( 0) = 1.-xint
+          sx( 1) = xint
+         case(2)
+          xintsq = xint*xint
+          sx(-1) = 0.5*(0.5-xint)**2
+          sx( 0) = 0.75-xintsq
+          sx( 1) = 0.5*(0.5+xint)**2
+         case(3)
+          oxint = 1.-xint
+          xintsq = xint*xint
+          oxintsq = oxint*oxint
+          sx(-1) = onesixth*oxintsq*oxint
+          sx( 0) = twothird-xintsq*(1.-xint/2)
+          sx( 1) = twothird-oxintsq*(1.-oxint/2)
+          sx( 2) = onesixth*xintsq*xint
+        end select        
+
+        select case(noz)
+         case(0)
+          sz( 0) = 1.
+         case(1)
+          sz( 0) = 1.-zint
+          sz( 1) = zint
+         case(2)
+          zintsq = zint*zint
+          sz(-1) = 0.5*(0.5-zint)**2
+          sz( 0) = 0.75-zintsq
+          sz( 1) = 0.5*(0.5+zint)**2
+         case(3)
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz(-1) = onesixth*ozintsq*ozint
+          sz( 0) = twothird-zintsq*(1.-zint/2)
+          sz( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz( 2) = onesixth*zintsq*zint
+        end select        
+
+          do ll = izmin, izmax
+            do jj = ixmin, ixmax
+              ex(ip) = ex(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*costheta-eyg(j+jj,0,l+ll)*sintheta)
+            end do
+          end do
+
+          do ll = izmin, izmax
+            do jj = ixmin, ixmax
+              ey(ip) = ey(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*sintheta+eyg(j+jj,0,l+ll)*costheta)
+            end do
+          end do
+ 
+        do ll = izmin, izmax
+          do jj = ixmin, ixmax
+            ez(ip) = ez(ip) + sx(jj)*sz(ll)*ezg(j+jj,0,l+ll)
+          end do
+        end do
+
+     end do
+
+   return
+ end subroutine getf2drz_n
 
  subroutine gete3d_linear_energy_conserving(np,xp,yp,zp,ex,ey,ez,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz, &
                                             nxguard,nyguard,nzguard,exg,eyg,ezg)
