@@ -170,7 +170,19 @@ getf3d_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
          nox:integer,noy:integer,noz:integer,
          exg:real,eyg:real,ezg:real,l4symtry:logical)
                            subroutine
+averagef3d_rz(nx:integer,ny:integer,nz:integer,
+              nxguard:integer,nyguard:integer,nzguard:integer,
+              fxg:real,fyg:real,fzg:real,ntheta:integer) subroutine
 getf2dxz_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
+         ex(n):real,ey(n):real,ez(n):real,
+         xmin:real,zmin:real,
+         dx:real,dz:real,
+         nx:integer,ny:integer,nz:integer,
+         nxguard:integer,nyguard:integer,nzguard:integer,
+         nox:integer,noz:integer,
+         exg:real,eyg:real,ezg:real,l4symtry:logical,l_2drz:logical)
+                           subroutine
+getf2drz_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
          ex(n):real,ey(n):real,ez(n):real,
          xmin:real,zmin:real,
          dx:real,dz:real,
