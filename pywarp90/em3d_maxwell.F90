@@ -621,11 +621,7 @@ else ! --- now 2D XZ or RZ
                             - mudt  * CJ(j,k,l,2)
     end do
     j = 0
-    if (xmin==0.) then
-      Ey(j,k,l) = Ey(j,k,l) - 2.*dtsdx * Bz(j,k,l) &
-                            + dtsdz * (Bx(j,k,l)    - Bx(j,k,l-1)) &
-                            - mudt  * CJ(j,k,l,2)
-    else
+    if (xmin/=0.) then
       Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l) - Bz(j-1,k,l)) &
                             + dtsdz * (Bx(j,k,l) - Bx(j,k,l-1)) &
                             - mudt  * CJ(j,k,l,2)
@@ -1442,8 +1438,9 @@ else
   ! advance Bz 
   do l = 0, nz
     do j = 0, nx-1
-      ru = 1.+1./(xmin/dx+j+1)
-      Bz(j,k,l) = Bz(j,k,l) - dtsdx * (ru*Ey(j+1,k,l) - Ey(j,k,l)) 
+      ru = 1.+0.5/(xmin/dx+j+0.5)
+      rd = 1.-0.5/(xmin/dx+j+0.5)
+      Bz(j,k,l) = Bz(j,k,l) - dtsdx * (ru*Ey(j+1,k,l) - rd*Ey(j,k,l)) 
     end do
    end do
 
@@ -5136,6 +5133,12 @@ implicit none
 TYPE(EM3D_YEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
 
+  if (f%l_2drz .and. f%xmin==0.) then
+     f%ex(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%ex(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
+     f%ey(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%ey(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
+     f%ez(f%ixmin-f%nxguard:f%ixmin-1,:,:) =  f%ez(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
+  end if
+
   if (xlbnd==dirichlet) then
      f%ey(f%ixmin,:,:) = 0.
      f%ez(f%ixmin,:,:) = 0.
@@ -5229,6 +5232,12 @@ implicit none
 
 TYPE(EM3D_YEEFIELDtype) :: f
 integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
+
+  if (f%l_2drz .and. f%xmin==0.) then
+     f%bx(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%bx(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
+     f%by(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%by(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
+     f%bz(f%ixmin-f%nxguard:f%ixmin-1,:,:) =  f%bz(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
+  end if
 
   if (xlbnd==dirichlet) then
      f%bx(f%ixmin,:,:) = 0.
@@ -5349,7 +5358,7 @@ real(8)::r,r1,r2
      f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) = f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) + f%j(:,:,f%izmax+f%nzguard-1:f%izmax:-1,3)
   end if
 
-  if (xlbnd==neumann .and. .not. (f%l_2drz .and. f%xmin==0.)) then
+  if (xlbnd==neumann) then
      f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) = f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) + f%j(f%ixmin:f%ixmin-f%nxguard:-1,:,:,2:3)
      f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) = f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) - f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,1)
   end if
@@ -5390,7 +5399,8 @@ real(8)::r,r1,r2
     end do
     j = f%ixmin
     if (f%xmin==0.) then
-      f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(pi*f%dx/3.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
+      f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(pi*f%dx/4.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
+!      f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(pi*f%dx/3.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
     else
       r = abs(f%xmin+j*f%dx)
       f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(2.*pi*r)
@@ -5438,7 +5448,7 @@ real(8)::r
      f%rho(:,:,f%izmax-f%nzguard:f%izmax) = f%rho(:,:,f%izmax-f%nzguard:f%izmax) - f%rho(:,:,f%izmax+f%nzguard:f%izmax:-1)
   end if
 
-  if (xlbnd==neumann .and. .not. (f%l_2drz .and. f%xmin==0.)) then
+  if (xlbnd==neumann) then
      f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) = f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) + f%rho(f%ixmin:f%ixmin-f%nxguard:-1,:,:)
   end if
   if (f%l_2drz .and. f%xmin==0.) then
@@ -5469,7 +5479,8 @@ real(8)::r
     end do
     j = f%ixmin
     if (f%xmin==0.) then
-      f%rho(j,:,:) = f%rho(j,:,:)/(pi*f%dx/3.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
+      f%rho(j,:,:) = f%rho(j,:,:)/(pi*f%dx/4.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
+!      f%rho(j,:,:) = f%rho(j,:,:)/(pi*f%dx/3.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
     else
       r = abs(f%xmin+j*f%dx)
       f%rho(j,:,:) = f%rho(j,:,:)/(2.*pi*r)
