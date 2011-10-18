@@ -136,7 +136,7 @@ class EM3D(SubcycledPoissonSolver):
           if self.forcesymmetries: self.xmmin = 0.
           if self.forcesymmetries: self.ymmin = 0.
     if self.l_2dxz:self.bounds[2:4] = -1
-    if self.l_2drz:self.bounds[0]=neumann
+    if self.l_2drz:self.bounds[0]=-1
     self.bounds = self.bounds.copy()
 
     # --- removes bounds from self.kw to prevent conflict with bounds created 
@@ -684,6 +684,7 @@ class EM3D(SubcycledPoissonSolver):
 #    if (not (self.getconductorobject(top.fselfb[iselfb]).lcorrectede or
 #    else:
     f = self.block.core.yf
+
     # --- fetch e
     if top.efetch[w3d.jsfsapi] in [1,3,5]:
       if self.l_2dxz:
@@ -2421,7 +2422,7 @@ class EM3D(SubcycledPoissonSolver):
       self.genericpfem3d(self.getarray(self.fields.Bzp,guards,overlap=direction is None),'B_z',
       direction=direction,**kw)
 
-  def pfexp(self,l_children=1,guards=0,direction=None,**kw):
+  def pfexg(self,l_children=1,guards=0,direction=None,**kw):
       self.genericpfem3d(self.getarray(self.fields.Ex,guards,overlap=direction is None),'Eg_x',
       direction=direction,**kw)
 
@@ -2568,7 +2569,7 @@ class EM3D(SubcycledPoissonSolver):
               f.xmin,
               self.l_2dxz,self.l_2drz)
       if top.efetch[0]<>4:yee2node3d(f)
-      return dive
+      return self.getarray(dive,guards,overlap)
 
   def getdiveold(self,guards=0,overlap=0):
       dive = zeros(shape(self.fields.Ex),'d')
