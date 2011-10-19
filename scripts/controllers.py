@@ -41,7 +41,7 @@ Functions can be called at the following times:
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.32 2010/12/02 23:13:50 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.33 2011/10/19 22:58:36 grote Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -215,8 +215,10 @@ controllers are restored properly.
   def callfuncsinlist(self,*args,**kw):
     bb = time.time()
     for f in self.controllerfunclist():
+      #warp.barrier()
       t1 = time.time()
       f(*args,**kw)
+      #warp.barrier()
       t2 = time.time()
       # --- For the timers, use the function (or method) name as the key.
       # --- This is done since instancemethods cannot be pickled.
@@ -303,14 +305,8 @@ Anything that may have already been installed will therefore be unaffected.
     """
     if ff is None: ff = warp.sys.stdout
     for c in self.clist:
-      for f in c.controllerfunclist():
-        fname = f.__name__
-        try:
-          vlist = warp.array(warp.gather(c.timers[fname]))
-        except KeyError:
-          # --- If the function fname had never been called, then there
-          # --- would be no data in timers for it.
-          continue
+      for fname,time in c.timers.items():
+        vlist = warp.array(warp.gather(time))
         if warp.me > 0: continue
         vsum = warp.sum(vlist)
         if vsum <= tmin: continue
