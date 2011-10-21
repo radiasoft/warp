@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.191 $, $Date: 2011/09/29 00:17:25 $
+c@(#) File DTOP.F, version $Revision: 3.192 $, $Date: 2011/10/21 18:00:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -661,7 +661,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.191 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.192 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -3078,7 +3078,7 @@ c step.
       integer(ISZ):: js,ij,ip,izold,iznew,izgc,itgc
       real(kind=8):: zb,vz,vzi,zold,znew
       real(kind=8):: zgrid,dtstar
-      real(kind=8):: x,y,vx,vy,ww,ri,rp
+      real(kind=8):: x,y,vx,vy,ww,r,ri,rp
 
 c     --- Immediately return if the grid crossing moments are not being done.
       if (gc%ntgc == 0) return
@@ -3141,7 +3141,8 @@ c         --- Calculate the transverse position at the grid cell
           vy = pgroup%uyp(ip)*pgroup%gaminv(ip)
           x = pgroup%xp(ip) + vx*dtstar
           y = pgroup%yp(ip) + vy*dtstar
-          ri = 1./sqrt(x**2 + y**2)
+          r = sqrt(x**2 + y**2)
+          ri = 1./r
 
           if (wpid > 0) then
             ww = pgroup%sw(is)*pgroup%pid(ip,wpid)
@@ -3162,6 +3163,10 @@ c         --- Calculate the transverse position at the grid cell
           gc%vzsqbargc(itgc,izgc,ij) = gc%vzsqbargc(itgc,izgc,ij) + vz**2*ww
           gc%xvxbargc(itgc,izgc,ij) = gc%xvxbargc(itgc,izgc,ij) + x*vx*ww
           gc%yvybargc(itgc,izgc,ij) = gc%yvybargc(itgc,izgc,ij) + y*vy*ww
+
+          gc%xmaxgc(itgc,izgc,ij) = max(x,gc%xmaxgc(itgc,izgc,ij))
+          gc%ymaxgc(itgc,izgc,ij) = max(y,gc%ymaxgc(itgc,izgc,ij))
+          gc%rmaxgc(itgc,izgc,ij) = max(r,gc%rmaxgc(itgc,izgc,ij))
 
           rp = vx*x*ri + vy*y*ri
           gc%rprmsgc(itgc,izgc,ij) = gc%rprmsgc(itgc,izgc,ij) + rp**2*ww
