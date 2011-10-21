@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.48 2011/09/26 17:37:59 grote Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.49 2011/10/21 18:02:38 grote Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -39,7 +39,7 @@ cross the cell.
                          if dthist < top.dt, the actual value may differ so
                          that 1/nhist is an integer. Note that dthist takes
                          precedence over nhist.
-  - nr,rmax: radial extent of radial profile diagnostic. Both must be given
+  - nr,rmmax: radial extent of radial profile diagnostic. Both must be given
              for the radial diagnostic to be done.
   - scintxmin,scintxmax,scintymin,scintymax,scintzmin,scintzmax,scintnx,scintny:
       specifies a volume where scintillator planes will be. All parameters
@@ -70,6 +70,7 @@ The following quantities are calculated:
  - epsnx, epsny:
  - rrms:
  - rprms:
+ - xmax, ymax, rmax
 
 Note that on the first time step, there is no old z data so the determination
 if particles have crossed a grid cell can not be done so the results will
@@ -78,7 +79,7 @@ be unreliable.
     """
 
     def __init__(self,js,zmmin=None,zmmax=None,dz=None,nz=None,nzscale=1,
-                 nhist=None,dthist=None,nr=None,rmax=None,ztarget=None,
+                 nhist=None,dthist=None,nr=None,rmmax=None,ztarget=None,
                  scintxmin=None,scintxmax=None,
                  scintymin=None,scintymax=None,
                  scintzmin=None,scintzmax=None,
@@ -105,7 +106,7 @@ be unreliable.
         self.nhist = nhist
         self.dthist = dthist
         self.nr = nr
-        self.rmax = rmax
+        self.rmmax = rmmax
         self.ztarget = ztarget
 
         self.scintxmin = scintxmin
@@ -162,9 +163,12 @@ be unreliable.
         self._epsny = []
         self._rrms = []
         self._rprms = []
+        self._xmax = []
+        self._ymax = []
+        self._rmax = []
 
         self.ldoradialdiag = ((self.nr is not None) and
-                              (self.rmax is not None))
+                              (self.rmmax is not None))
         if self.ldoradialdiag:
             self._rprofile = []
 
@@ -313,6 +317,9 @@ data will be preserved.
         self._epsnx.append(None)
         self._epsny.append(None)
         self._rrms.append(None)
+        self._xmax.append(None)
+        self._ymax.append(None)
+        self._rmax.append(None)
 
         if self.ldoradialdiag:
             nr = self.nr
@@ -365,10 +372,10 @@ data will be preserved.
         dit = top.it - self.lastitsaved
         self.timeaverage = (self.timeaverage*(dit - 1) + top.time)/dit
 
-        rmax = self.rmax
+        rmmax = self.rmmax
         nr = self.nr
         if self.ldoradialdiag:
-            dr = rmax/nr
+            dr = rmmax/nr
 
         if self.ldoscintillator:
             scintnx = self.scintnx
@@ -445,7 +452,7 @@ data will be preserved.
             if self.ldoradialdiag:
                 rc = sqrt(xc**2 + yc**2)
                 deposgrid2d(1,np,zc,rc,ke*ww,nz,nr,transpose(self._rprofile[-1]),
-                            transpose(rprofilecount),0.,nz,0.,rmax)
+                            transpose(rprofilecount),0.,nz,0.,rmmax)
 
             if self.ldoscintillator:
                 izmin = (self.scintzmin - (zbeam + zmmin))/dz
@@ -485,6 +492,9 @@ data will be preserved.
             vzsqbar = self.gcmoments.vzsqbargc[1:,:,:]
             xvxbar = self.gcmoments.xvxbargc[1:,:,:]
             yvybar = self.gcmoments.yvybargc[1:,:,:]
+            xmax = self.gcmoments.xmaxgc[1:,:,:]
+            ymax = self.gcmoments.ymaxgc[1:,:,:]
+            rmax = self.gcmoments.rmaxgc[1:,:,:]
 
             # --- Finish the calculation, gathering data from all processors
             # --- and dividing out the count.
@@ -506,6 +516,9 @@ data will be preserved.
             vzsqbar = parallelsum(vzsqbar)*counti
             xvxbar = parallelsum(xvxbar)*counti
             yvybar = parallelsum(yvybar)*counti
+            xmax = parallelmax(xmax)
+            ymax = parallelmax(ymax)
+            rmax = parallelmax(rmax)
 
             if self.nt > 1:
                 # --- The time extends from just after the last time up to and
@@ -529,6 +542,9 @@ data will be preserved.
             self._vzsqbar[-1] = vzsqbar
             self._xvxbar[-1] = xvxbar
             self._yvybar[-1] = yvybar
+            self._xmax[-1] = xmax
+            self._ymax[-1] = ymax
+            self._rmax[-1] = rmax
 
             self._xrms[-1] = sqrt(abs(xsqbar - xbar**2))
             self._yrms[-1] = sqrt(abs(ysqbar - ybar**2))
@@ -560,6 +576,9 @@ data will be preserved.
             self.gcmoments.vzsqbargc.fill(0.)
             self.gcmoments.xvxbargc.fill(0.)
             self.gcmoments.yvybargc.fill(0.)
+            self.gcmoments.xmaxgc.fill(0.)
+            self.gcmoments.ymaxgc.fill(0.)
+            self.gcmoments.rmaxgc.fill(0.)
 
             if self.ldoradialdiag:
                 rprof = self._rprofile[-1]
@@ -605,6 +624,9 @@ data will be preserved.
         ff.write('epsny'+suffix,self._epsny[0])
         ff.write('rrms'+suffix,self._rrms[0])
         ff.write('rprms'+suffix,self._rprms[0])
+        ff.write('xmax'+suffix,self._xmax[0])
+        ff.write('ymax'+suffix,self._ymax[0])
+        ff.write('rmax'+suffix,self._rmax[0])
         if self.ldoradialdiag:
             ff.write('rprofile'+suffix,self._rprofile[0])
         if self.ldoscintillator:
@@ -629,7 +651,7 @@ data will be preserved.
             cPickle.dump(('dthist',self.dthist),ff,-1)
             cPickle.dump(('nt',self.nt),ff,-1)
             cPickle.dump(('nr',self.nr),ff,-1)
-            cPickle.dump(('rmax',self.rmax),ff,-1)
+            cPickle.dump(('rmmax',self.rmmax),ff,-1)
             cPickle.dump(('ztarget',self.ztarget),ff,-1)
             cPickle.dump(('dumptofile',self.dumptofile),ff,-1)
             cPickle.dump(('starttime',self.starttime),ff,-1)
@@ -676,6 +698,9 @@ data will be preserved.
         cPickle.dump(('epsny'+suffix,self._epsny[0]),ff,-1)
         cPickle.dump(('rrms'+suffix,self._rrms[0]),ff,-1)
         cPickle.dump(('rprms'+suffix,self._rprms[0]),ff,-1)
+        cPickle.dump(('xmax'+suffix,self._xmax[0]),ff,-1)
+        cPickle.dump(('ymax'+suffix,self._ymax[0]),ff,-1)
+        cPickle.dump(('rmax'+suffix,self._rmax[0]),ff,-1)
         if self.ldoradialdiag:
             cPickle.dump(('rprofile'+suffix,self._rprofile[0]),ff,-1)
         if self.ldoscintillator:
@@ -722,6 +747,9 @@ after simulation when the dumptofile flag was on.
         self._epsny = []
         self._rrms = []
         self._rprms = []
+        self._xmax = []
+        self._ymax = []
+        self._rmax = []
         # --- At this point, getdiagnostics may not have been executed, so
         # --- self.ldoradialdiag may not be set. So assume that it is and
         # --- create the rprofile list.
@@ -759,6 +787,9 @@ after simulation when the dumptofile flag was on.
                 self._epsny.append(ff.read('epsny'+suffix))
                 self._rrms.append(ff.read('rrms'+suffix))
                 self._rprms.append(ff.read('rprms'+suffix))
+                self._xmax.append(ff.read('xmax'+suffix))
+                self._ymax.append(ff.read('ymax'+suffix))
+                self._rmax.append(ff.read('rmax'+suffix))
                 try:
                     self._rprofile.append(ff.read('rprofile'+suffix))
                 except:
@@ -858,6 +889,9 @@ after simulation when the dumptofile flag was on.
         self._epsny = []
         self._rrms = []
         self._rprms = []
+        self._xmax = []
+        self._ymax = []
+        self._rmax = []
         # --- At this point, getdiagnostics may not have been executed, so
         # --- self.ldoradialdiag may not be set. So assume that it is and
         # --- create the rprofile list.
@@ -922,7 +956,10 @@ after simulation when the dumptofile flag was on.
                                [self._epsnx,'epsnx'],
                                [self._epsny,'epsny'],
                                [self._rrms,'rrms'],
-                               [self._rprms,'rprms']]:
+                               [self._rprms,'rprms'],
+                               [self._xmax,'xmax'],
+                               [self._ymax,'ymax'],
+                               [self._rmax,'rmax']]:
                     try:
                         v.append(datadict[name+suffix])
                     except KeyError:
@@ -979,7 +1016,7 @@ after simulation when the dumptofile flag was on.
 
         if self.ldoradialdiag:
             self.arrayrprofile = array(self.rprofile)
-            dr = self.rmax/self.nr
+            dr = self.rmmax/self.nr
             self.rprofilemesh = iota(0,self.nr)*dr
             aa = pi*2.*self.rprofilemesh*dr # --- Is this correct???
             aa[0] = pi*0.25*dr**2
@@ -1382,6 +1419,21 @@ Returns the time history of the r rms  at the given z location.
 Returns the time history of the r' rms at the given z location.
         """
         return self._gettimehistory(self.rprms,z,js)
+    def hxmax(self,z,js=None):
+        """
+Returns the time history of the x max at the given z location.
+        """
+        return self._gettimehistory(self.xmax,z,js)
+    def hymax(self,z,js=None):
+        """
+Returns the time history of the y max at the given z location.
+        """
+        return self._gettimehistory(self.ymax,z,js)
+    def hrmax(self,z,js=None):
+        """
+Returns the time history of the r max at the given z location.
+        """
+        return self._gettimehistory(self.rmax,z,js)
 
     # ----------------------------------------------------------------------
     def _timeintegrate(self,data,laverage,weight=None,js=None):
@@ -1760,6 +1812,9 @@ data and the z mesh on which the calculation was done.
     epsny = property(*_setupproperty('epsny','normalized y emittance'))
     rrms = property(*_setupproperty('rrms','r rms'))
     rprms = property(*_setupproperty('rprms',"r' rms"))
+    xmax = property(*_setupproperty('xmax','x max'))
+    ymax = property(*_setupproperty('ymax','y max'))
+    rmax = property(*_setupproperty('rmax','r max'))
     rprofile = property(*_setupproperty('rprofile','radial profile'))
     scinttime = property(*_setupproperty('scinttime','time when scintillator data was gathered'))
     scintillator = property(*_setupproperty('scintillator','planar scintillator'))
