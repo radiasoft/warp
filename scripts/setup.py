@@ -5,7 +5,7 @@
 
 import os
 
-setup_version = "$Id: setup.py,v 1.6 2011/04/26 23:54:11 grote Exp $"
+setup_version = "$Id: setup.py,v 1.7 2011/10/27 22:07:22 grote Exp $"
 
 try:
     # --- For installing into site-packages, with python setup.py install
@@ -24,11 +24,14 @@ os.renames('parallel.py','parallel/__init__.py')
 
 try:
     setup (name = 'warp',
+           version = '3.0',
            author = 'David P. Grote, Jean-Luc Vay, et. al.',
-           author_email = 'DPGrote@lbl.gov',
-           description = 'Warp scripts',
+           author_email = 'dpgrote@lbl.gov',
+           description = 'Warp PIC accelerator code',
            long_description = """
-    Warp scripts""",
+Warp is a PIC code designed to model particle accelerators and similar
+machines that are space-charge dominated.""",
+           url = 'http://warp.lbl.gov',
            platforms = 'Linux, Unix, Windows (cygwin), Mac OSX',
            packages = ['warp','warp.GUI','warpoptions','parallel'],
            package_dir = {'warp': '.'},
