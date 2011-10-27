@@ -12,7 +12,7 @@ try:
     from distutils.dist import Distribution
     from distutils.command.build import build
 except:
-    raise SystemExit, "Distutils problem"
+    raise SystemExit, 'Distutils problem'
 
 optlist,args = getopt.getopt(sys.argv[1:],'gt:F:',
                              ['parallel','with-numpy',
@@ -39,6 +39,15 @@ dummydist.parse_command_line()
 dummybuild = dummydist.get_command_obj('build')
 dummybuild.finalize_options()
 builddir = dummybuild.build_temp
+
+if 'install' in dummydist.commands:
+  # --- When an install is being done, set packagename so that the warpC.so
+  # --- will get installed into the site-packages/warp directory.
+  packagename = 'warp.'
+else:
+  # --- When a build is being done, put the warpC.so into the build directory,
+  # --- which will typically be the pywarp90 directory.
+  packagename = ''
 
 warppkgs = ['top','env','w3d','f3d','wxy','fxy','wrz','frz','her','cir','cho','em2d','em3d']
 
@@ -121,13 +130,17 @@ if machine == 'darwin':
       else:
         os.environ['ARCHFLAGS'] = '-arch x86_64'  # Snow Leopard
 
-setup (name = name,
+setup (name = 'warp',
        version = '3.0',
-       author = 'David P. Grote',
-       author_email = "DPGrote@lbl.gov",
-       description = "Combines warp's packages into one",
-       platforms = "Unix, Windows (cygwin), Mac OSX",
-       ext_modules = [Extension(name,
+       author = 'David P. Grote, Jean-Luc Vay, et. al.',
+       author_email = 'dpgrote@lbl.gov',
+       description = 'Warp PIC accelerator code',
+       long_description = """
+Warp is a PIC code designed to model particle accelerators and similar
+machines that are space-charge dominated.""",
+       url = 'http://warp.lbl.gov',
+       platforms = 'Linux, Unix, Windows (cygwin), Mac OSX',
+       ext_modules = [Extension(packagename+name,
                                 ['warpC_Forthon.c',
                                  os.path.join(builddir,'Forthon.c'),
                                  'pmath_rng.c','ranf.c','ranffortran.c'],
