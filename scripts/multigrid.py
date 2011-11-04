@@ -14,7 +14,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.162 2011/09/22 23:20:01 grote Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.163 2011/11/04 21:38:48 grote Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -887,6 +887,15 @@ most of which get there default values from one of the fortran packages.
   def pfxyg(self,**kw): self.genericpf(kw,pfxyg)
   def pfzxg(self,**kw): self.genericpf(kw,pfzxg)
   def pfzyg(self,**kw): self.genericpf(kw,pfzyg)
+  def pcrhozx(self,*args,**kw): pcrhozx(*args,solver=self,**kw)
+  def pcrhozy(self,*args,**kw): pcrhozy(*args,solver=self,**kw)
+  def pcrhoxy(self,*args,**kw): pcrhoxy(*args,solver=self,**kw)
+  def pcphizx(self,*args,**kw): pcphizx(*args,solver=self,**kw)
+  def pcphizy(self,*args,**kw): pcphizy(*args,solver=self,**kw)
+  def pcphixy(self,*args,**kw): pcphixy(*args,solver=self,**kw)
+  def pcselfezx(self,*args,**kw): pcselfezx(*args,solver=self,**kw)
+  def pcselfezy(self,*args,**kw): pcselfezy(*args,solver=self,**kw)
+  def pcselfexy(self,*args,**kw): pcselfexy(*args,solver=self,**kw)
 
   def getresidual(self):
     res = zeros(shape(self._phi),'d')
