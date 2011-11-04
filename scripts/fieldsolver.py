@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.100 2011/09/22 23:20:01 grote Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.101 2011/11/04 21:28:19 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -2324,12 +2324,20 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z','B'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver
+  if solver == w3d:
+    bfield = f3d.bfield
+    nxguardb = bfield.nxguardb
+    nyguardb = bfield.nyguardb
+    nzguardb = bfield.nzguardb
+  else:
+    bfield = solver
+    nxguardb = bfield.nxguarde
+    nyguardb = bfield.nyguarde
+    nzguardb = bfield.nzguarde
 
-  b = bfield.b[:,bfield.nxguardb:-bfield.nxguardb or None,
-                 bfield.nyguardb:-bfield.nyguardb or None,
-                 bfield.nzguardb:-bfield.nzguardb or None]
+  b = bfield.b[:,nxguardb:-nxguardb or None,
+                 nyguardb:-nyguardb or None,
+                 nzguardb:-nzguardb or None]
 
   if comp == 'B':
     Bx = getdecomposedarray(b[0,...],ix=ix,iy=iy,iz=iz,
@@ -2369,12 +2377,20 @@ the upper edge.
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver
+  if solver == w3d:
+    bfield = f3d.bfield
+    nxguardb = bfield.nxguardb
+    nyguardb = bfield.nyguardb
+    nzguardb = bfield.nzguardb
+  else:
+    bfield = solver
+    nxguardb = bfield.nxguarde
+    nyguardb = bfield.nyguarde
+    nzguardb = bfield.nzguarde
 
-  b = bfield.b[:,bfield.nxguardb:-bfield.nxguardb or None,
-                 bfield.nyguardb:-bfield.nyguardb or None,
-                 bfield.nzguardb:-bfield.nzguardb or None]
+  b = bfield.b[:,nxguardb:-nxguardb or None,
+                 nyguardb:-nyguardb or None,
+                 nzguardb:-nzguardb or None]
 
   setdecomposedarray(b[ic,...],val,ix=ix,iy=iy,iz=iz,
                      local=local,solver=solver)
