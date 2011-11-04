@@ -6,7 +6,7 @@ from warp import *
 import struct # needed for makefortranordered
 import appendablearray
 
-warputils_version = "$Id: warputils.py,v 1.41 2011/09/01 17:47:57 grote Exp $"
+warputils_version = "$Id: warputils.py,v 1.42 2011/11/04 21:39:11 grote Exp $"
 
 def warputilsdoc():
   import warputils
@@ -632,7 +632,7 @@ virtual size in bytes."""
         m = 0
     return m
 
-def getallobjectsizes(minsize=1.e20,withpackages=1):
+def getallobjectsizes(minsize=1.e20,withpackages=1,withwarpglobals=0):
   """Makes a printout of all of the user created python objects and their
 sizes, in bytes.
  - minsize=1: only prints objects with a size greater than minsize
@@ -642,7 +642,7 @@ sizes, in bytes.
   import warp
   dd = {}
   for k,v in __main__.__dict__.items():
-    if k in warp.initial_global_dict_keys: continue
+    if not withwarpglobals and k in warp.initial_global_dict_keys: continue
     if isinstance(v,ModuleType): continue
     if k == 'controllerfunctioncontainer': continue
     if k == 'registeredsolverscontainer': continue
