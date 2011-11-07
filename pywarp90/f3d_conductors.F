@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.94 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.95 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -4705,23 +4705,20 @@ c=======================================================================
 c Finds distances from a list of cylinders at arbitrary angles.
 c The notation is that a negative distance means that the point is inside.
 
-c The very kludgy code used to calculate the deltas won't work here
-c since the coordinates passed in may not be regularly spaced.
-c This code assumes that the cylinders do not overlap transversely.
-c Otherwise, the cylinders can be at any angle.
+      real(kind=8),pointer:: dd(:)
+      integer(ISZ):: i,ic
 
-      real(kind=8):: dd(1)
-      integer(ISZ):: i,imin(1),ic
+      allocate(dd(n))
 
       distance = LARGEPOS
-      do i=1,n
-        imin = minloc(abs(x(i) - xcent) + abs(y(i) - ycent))
-        ic = imin(1)
+      do ic=1,ncylinders
         call CylinderConductorD(rad(ic),length(ic),theta(ic),phi(ic),
      &                          xcent(ic),ycent(ic),zcent(ic),
-     &                          1,x(i),y(i),z(i),dd)
-        distance(i) = min(distance(i),dd(1))
+     &                          n,x,y,z,dd)
+        distance = min(distance,dd)
       enddo
+
+      deallocate(dd)
 
       return
       end
