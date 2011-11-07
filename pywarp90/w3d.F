@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.469 $, $Date: 2011/11/07 22:58:04 $
+c@(#) File W3D.F, version $Revision: 3.470 $, $Date: 2011/11/07 23:04:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -115,6 +115,7 @@ c=============================================================================
       use Hist
       use InDiag3d
       use ExtPart
+      use Subcycling,Only: zgridndts
       use w3d_interfaces
 c     use ifcore
 
@@ -288,7 +289,7 @@ c  Setup the initial location and velocity of the beam frame.
       vbeamfrm = vbeam
       zgrid = zbeam
       zgridndts = zbeam
-      zgridprv = zbveam
+      zgridprv = zbeam
 
 c  Calculate mesh dimensioning quantities
 

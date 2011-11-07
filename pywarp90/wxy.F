@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.115 $, $Date: 2011/11/07 22:58:04 $
+c@(#) File WXY.M, version $Revision: 3.116 $, $Date: 2011/11/07 23:05:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -80,6 +80,7 @@ c=============================================================================
       use Damped_eom
       use Hist
       use AMR
+      use Subcycling,Only: zgridndts
       use wxy_interfaces
 #ifdef MPIPARALLEL
       use Parallel

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.40 $, $Date: 2011/11/07 22:58:04 $
+c@(#) File w3d_utilities.F, version $Revision: 1.41 $, $Date: 2011/11/07 23:04:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1021,9 +1021,6 @@ c     --- Reset local values
       nxlocal = fsdecomp%nx(ixproc)
       nylocal = fsdecomp%ny(iyproc)
       nzlocal = fsdecomp%nz(izproc)
-      ixfsmin = 0
-      iyfsmin = 0
-      izfsmin = 0
       xmminlocal = fsdecomp%xmin(ixproc)
       ymminlocal = fsdecomp%ymin(iyproc)
       zmminlocal = fsdecomp%zmin(izproc)
