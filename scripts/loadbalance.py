@@ -5,7 +5,7 @@ __all__ = ['LoadBalancer']
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.69 2011/08/27 00:43:16 grote Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.70 2011/11/07 23:01:05 grote Exp $"
 
 def loadbalancedoc():
     import loadbalance
@@ -691,11 +691,11 @@ needed since some processors may have more conductor points than others.
     # --- grid cells, subgrid points, and conductor points, appropriately
     # --- weighted.
     weight = zeros(top.nzfsslave[me]+1,'d')
-    for iz in iota(w3d.izfsmin,w3d.izfsmax):
+    for iz in iota(0,w3d.nz):
         nec = len(oldnonzero(logical_not(f3d.iecndz[:f3d.necndbdy]-iz)))
         noc = len(oldnonzero(logical_not(f3d.iocndz[:f3d.nocndbdy]-iz)))
         nc  = len(oldnonzero(logical_not(f3d.izcond[:f3d.ncond]-iz)))
-        weight[iz-w3d.izfsmin] = ((w3d.nx+1)*(w3d.ny+1) +
+        weight[iz] = ((w3d.nx+1)*(w3d.ny+1) +
                                   sgweight*(nec + noc) +
                                   condweight*nc)
     weight = gatherallzfsarray(weight)
@@ -831,8 +831,6 @@ def _adjustz():
     w3d.nzlocal = top.nzfsslave[me]
     zpmin = w3d.zmmin + top.ppdecomp.iz[me]*w3d.dz
     zpmax = (top.ppdecomp.iz[me]+top.ppdecomp.nz[me])*w3d.dz + w3d.zmmin
-    w3d.izfsmin = 0.
-    w3d.izfsmax = top.nzfsslave[me]
     w3d.zmminlocal = top.izfsslave[me]*w3d.dz + w3d.zmmin
     w3d.zmmaxlocal = (top.izfsslave[me]+top.nzfsslave[me])*w3d.dz+w3d.zmmin
 

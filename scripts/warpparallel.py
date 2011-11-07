@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.81 2011/02/04 00:36:16 grote Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.82 2011/11/07 23:01:05 grote Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -258,7 +258,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             ff.write(pdbname,w3d.zmmax)
           elif p == 'w3d' and vname in ['zmminp']:
             ff.write(pdbname,w3d.zmmin)
-          elif p == 'w3d' and vname in ['nzlocal','izfsmax','nzp']:
+          elif p == 'w3d' and vname in ['nzlocal','nzp']:
             ff.write(pdbname,w3d.nz)
           elif ((p=='top' and vname in ['np','nplive','npmax']) or
                 (p=='wxy' and vname in ['npmaxxy'])):

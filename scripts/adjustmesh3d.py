@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.31 2011/02/04 00:37:05 grote Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.32 2011/11/07 23:01:05 grote Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -46,7 +46,6 @@ Warning - this does not yet work in parallel
   w3d.ny = ny
   w3d.nz = nz
   w3d.nzlocal = w3d.nz
-  w3d.izfsmax = w3d.nz
   w3d.nmxy  = max(w3d.nx,w3d.ny)
   w3d.nmxyz = max(w3d.nx,w3d.ny,w3d.nz)
   w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
