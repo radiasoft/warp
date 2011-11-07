@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.171 $, $Date: 2011/08/27 00:35:49 $
+c@(#) File DW3D.F, version $Revision: 3.172 $, $Date: 2011/11/07 22:58:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -643,7 +643,7 @@ c     --- into a critical section.
 #ifdef _OPENMP
       do iy=0,nylocal
 #endif
-      do iz=izfsmin,izfsmax-1
+      do iz=0,nz-1
         phiextun = 0.
         if (ifeears == 1) then
           if (iz*dz+zz < -zm) phiextun=eears*.5*(iz*dz+zz+zm)**2

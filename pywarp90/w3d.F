@@ -1,7 +1,7 @@
 #include "top.h"
 
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.468 $, $Date: 2011/10/06 20:38:23 $
+c@(#) File W3D.F, version $Revision: 3.469 $, $Date: 2011/11/07 22:58:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -274,9 +274,7 @@ c  Print values of input variables, other interesting things to text file
         call edit (warpout, "InMesh3d")
       endif
 
-c  Create the dynamic arrays for fields, contour plot workspace
-c  Also set vbeamfrm and set so that by default izfsmax = nz
-c (for full field solve).
+c  Create the dynamic arrays for fields
 
       nmxy  = max(nx,ny)
       nmxyz = max(nx,ny,nz)
@@ -284,8 +282,13 @@ c (for full field solve).
       call setupSubcycling(pgroup)
       call setupSelfB(pgroup)
       call setupFields3dParticles()
+
+c  Setup the initial location and velocity of the beam frame.
+
       vbeamfrm = vbeam
-      if (izfsmax == 0) izfsmax = nzlocal
+      zgrid = zbeam
+      zgridndts = zbeam
+      zgridprv = zbveam
 
 c  Calculate mesh dimensioning quantities
 

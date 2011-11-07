@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.323 $, $Date: 2011/09/21 22:53:45 $
+#@(#) File W3D.V, version $Revision: 3.324 $, $Date: 2011/11/07 22:58:04 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.323 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.324 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -54,12 +54,6 @@ lbeforescraper   logical /.false./ # Turns on call to python function "beforescr
 lafterscraper   logical /.false./ # Turns on call to python function "afterscraper"
 lcallscraper   logical /.false./ # Turns on call to python function "callscraper"
 lcallparticleloader logical /.false./ # Turns on call to python function "callparticleloader"
-ixfsmin    integer    /0/ +parallel # Lower x boundary for partial field solve.
-ixfsmax    integer    /0/ +parallel # Upper x boundary for partial field solve.
-iyfsmin    integer    /0/ +parallel # Lower y boundary for partial field solve.
-iyfsmax    integer    /0/ +parallel # Upper y boundary for partial field solve.
-izfsmin    integer    /0/ +parallel # Lower z boundary for partial field solve.
-izfsmax    integer    /0/ +parallel # Upper z boundary for partial field solve.
 solvergeom integer    /0/  # Geometry of field solver
 XYZgeom    integer    /0/  # 3D-XYZ geometry will be used if solvergeom=XYZgeom
 RZgeom     integer    /1/  # axisymmetric RZ geometry will be used if solvergeom=RZgeom

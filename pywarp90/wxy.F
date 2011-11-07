@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.114 $, $Date: 2011/09/27 17:56:44 $
+c@(#) File WXY.M, version $Revision: 3.115 $, $Date: 2011/11/07 22:58:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -194,17 +194,14 @@ c  since all particles will be at the same element.
       zlmin = 0.
       zlmax = 0.
 
-c  Set vbeamfrm, adjust x and ymmin for symmetries and set
-c  so that by default izfsmax = nz (for full field solve).
+c  adjust x and ymmin for symmetries
 
-      vbeamfrm = vbeam
       if (l2symtry) then
         ymmin = 0.
       elseif (l4symtry) then
         xmmin = 0.
         ymmin = 0.
       endif
-      if (izfsmax == 0) izfsmax = nz
 
 c  Setup arrays for potential and charge density for the particles.
 
@@ -224,6 +221,13 @@ c  Create the dynamic arrays for fields
       call setupSubcycling(pgroup)
       call setupSelfB(pgroup)
       call setupFields3dParticles()
+
+c  Initialize beam frame location and velocity
+
+      vbeamfrm = vbeam
+      zgrid = zbeam
+      zgridndts = zbeam
+      zgridprv = zbeam
 
 c  This is a kludge for now to get the arrays setup.
 
