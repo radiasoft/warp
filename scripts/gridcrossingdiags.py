@@ -4,7 +4,7 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.49 2011/10/21 18:02:38 grote Exp $"
+gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.50 2011/11/07 20:51:33 grote Exp $"
 
 class GridCrossingDiags(object):
     """
@@ -516,9 +516,9 @@ data will be preserved.
             vzsqbar = parallelsum(vzsqbar)*counti
             xvxbar = parallelsum(xvxbar)*counti
             yvybar = parallelsum(yvybar)*counti
-            xmax = parallelmax(xmax)
-            ymax = parallelmax(ymax)
-            rmax = parallelmax(rmax)
+            xmax = parallelmax(xmax).copy()
+            ymax = parallelmax(ymax).copy()
+            rmax = parallelmax(rmax).copy()
 
             if self.nt > 1:
                 # --- The time extends from just after the last time up to and
@@ -576,8 +576,8 @@ data will be preserved.
             self.gcmoments.vzsqbargc.fill(0.)
             self.gcmoments.xvxbargc.fill(0.)
             self.gcmoments.yvybargc.fill(0.)
-            self.gcmoments.xmaxgc.fill(0.)
-            self.gcmoments.ymaxgc.fill(0.)
+            self.gcmoments.xmaxgc.fill(-largepos)
+            self.gcmoments.ymaxgc.fill(-largepos)
             self.gcmoments.rmaxgc.fill(0.)
 
             if self.ldoradialdiag:
