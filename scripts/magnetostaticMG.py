@@ -9,7 +9,7 @@ try:
 except ImportError:
   pass
 
-magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.43 2011/10/14 15:36:33 grote Exp $"
+magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.44 2011/11/11 22:36:47 grote Exp $"
 
 ##############################################################################
 class MagnetostaticMG(SubcycledPoissonSolver):
@@ -124,21 +124,21 @@ class MagnetostaticMG(SubcycledPoissonSolver):
 
   def getj(self):
     'Returns the current density array'
-    return self.source[self.nxguardrho:-self.nxguardrho or None,
-                       self.nyguardrho:-self.nyguardrho or None,
-                       self.nzguardrho:-self.nzguardrho or None]
+    return self.source[:,self.nxguardrho:-self.nxguardrho or None,
+                         self.nyguardrho:-self.nyguardrho or None,
+                         self.nzguardrho:-self.nzguardrho or None]
 
   def getb(self):
     'Returns the B field array'
-    return self.field[self.nxguarde:-self.nxguarde or None,
-                      self.nyguarde:-self.nyguarde or None,
-                      self.nzguarde:-self.nzguarde or None]
+    return self.field[:,self.nxguarde:-self.nxguarde or None,
+                        self.nyguarde:-self.nyguarde or None,
+                        self.nzguarde:-self.nzguarde or None]
   
   def geta(self):
     'Returns the a array without the guard cells'
-    return self.potential[self.nxguardphi:-self.nxguardphi or None,
-                          self.nyguardphi:-self.nyguardphi or None,
-                          self.nzguardphi:-self.nzguardphi or None]
+    return self.potential[:,self.nxguardphi:-self.nxguardphi or None,
+                            self.nyguardphi:-self.nyguardphi or None,
+                            self.nzguardphi:-self.nzguardphi or None]
 
   def loadj(self,lzero=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,**kw)
