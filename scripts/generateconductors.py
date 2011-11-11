@@ -60,7 +60,7 @@ Surfaces of revolution:
 
 Note that all take the following additional arguments:
 voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
-name=None,material='SS',laccuimagecharge=0,neumann=0
+name=None,material='SS',laccuimagecharge=0,neumann=0,conductivity=None
 
 installconductor(a,...): generates the data needed for the fieldsolve
                          See its documentation for the additional arguments.
@@ -113,7 +113,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.242 2011/08/15 21:04:35 grote Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.243 2011/11/11 01:26:09 grote Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -240,6 +240,8 @@ Should never be directly created by the user.
  - generatorfnew=None: function which generates the x,y and z grid intercepts
  - name='': conductor name (string)
  - material='SS': conductor material
+ - conductivity=None: Conductivity of the conductor. Currently only used
+                      by the Electromagnetic field solver.
  - laccuimagecharge=0: Flags accumulation of image charges
   """
 
@@ -249,7 +251,8 @@ Should never be directly created by the user.
   zcent = 0.
   nextcondid = 1
 
-  __inputs__ = {'name':'','material':'SS','laccuimagecharge':0,'neumann':0}
+  __inputs__ = {'name':'','material':'SS','laccuimagecharge':0,'neumann':0,
+                'conductivity':None}
 
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid='next',kwlist=[],
                     generatorf=None,generatord=None,generatori=None,
@@ -833,7 +836,8 @@ AssemblyNot class.  Represents 'not' of assemblies.
   """
   def __init__(self,l):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                      kw={'material':l.material,'name':l.name,'neumann':l.neumann})
+                      kw={'material':l.material,'name':l.name,
+                          'neumann':l.neumann,'conductivity':l.conductivity})
     self.left = l
   def getextent(self):
     return (-self.left.getextent())
@@ -866,7 +870,8 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                      kw={'material':l.material,'name':(l.name or r.name),'neumann':l.neumann})
+                      kw={'material':l.material,'name':(l.name or r.name),
+                          'neumann':l.neumann,'conductivity':l.conductivity})
     self.left = l
     self.right = r
   def getextent(self):
@@ -911,7 +916,8 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                      kw={'material':l.material,'name':(l.name or r.name),'neumann':l.neumann})
+                      kw={'material':l.material,'name':(l.name or r.name),
+                          'neumann':l.neumann,'conductivity':l.conductivity})
     self.left = l
     self.right = r
   def getextent(self):
@@ -956,7 +962,8 @@ AssemblyMinus class.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                      kw={'material':l.material,'name':(l.name or r.name),'neumann':l.neumann})
+                      kw={'material':l.material,'name':(l.name or r.name),
+                          'neumann':l.neumann,'conductivity':l.conductivity})
     self.left = l
     self.right = r
   def getextent(self):
