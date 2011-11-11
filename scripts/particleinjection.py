@@ -7,7 +7,7 @@ import generateconductors
 import copy
 from em2dsolver import EM2D
 
-particleinjection_version = "$Id: particleinjection.py,v 1.16 2011/10/11 22:22:37 rcohen Exp $"
+particleinjection_version = "$Id: particleinjection.py,v 1.17 2011/11/11 21:52:26 rcohen Exp $"
 def particleinjection_doc():
   import particleinjection
   print particleinjection.__doc__
@@ -128,8 +128,8 @@ The sizes of the E arrays will be:
           if shape(Exraw)[1]==1:
             # --- x-z or r-z
             Ex = Exraw[nxguard-1:-nxguard,:,nzguard:-nzguard]
-            Ez = Ezraw[nzguard:-nzguard,:,nzguard-1:-nzguard]
-            Ey = zeros((shape(Ex)[2],2,shape(Ez)[0]),'d')
+            Ez = Ezraw[nxguard:-nxguard,:,nzguard-1:-nzguard]
+            Ey = zeros((shape(Ez)[0],2,shape(Ex)[2]),'d')
             # --- formerly assumed node centered so did averaging, e.g.
             #          Ex = .5*(Exraw[2:-3,:,3:-3]+Exraw[3:-2,:,3:-3])
           else:
