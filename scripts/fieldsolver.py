@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.101 2011/11/04 21:28:19 grote Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.102 2011/11/16 07:01:57 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -2244,12 +2244,20 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z','J'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver
+  if solver == w3d:
+    bfield = f3d.bfield
+    nxguardj = bfield.nxguardj
+    nyguardj = bfield.nyguardj
+    nzguardj = bfield.nzguardj
+  else:
+    bfield = solver
+    nxguardj = bfield.nxguardrho
+    nyguardj = bfield.nyguardrho
+    nzguardj = bfield.nzguardrho
 
-  j = bfield.j[:,bfield.nxguardj:-bfield.nxguardj or None,
-                 bfield.nyguardj:-bfield.nyguardj or None,
-                 bfield.nzguardj:-bfield.nzguardj or None]
+  j = bfield.j[:,nxguardj:-nxguardj or None,
+                 nyguardj:-nyguardj or None,
+                 nzguardj:-nzguardj or None]
 
   if comp == 'J':
     Jx = getdecomposedarray(j[0,...],ix=ix,iy=iy,iz=iz,
@@ -2289,12 +2297,20 @@ the upper edge.
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver
+  if solver == w3d:
+    bfield = f3d.bfield
+    nxguardj = bfield.nxguardj
+    nyguardj = bfield.nyguardj
+    nzguardj = bfield.nzguardj
+  else:
+    bfield = solver
+    nxguardj = bfield.nxguardrho
+    nyguardj = bfield.nyguardrho
+    nzguardj = bfield.nzguardrho
 
-  j = bfield.j[:,bfield.nxguardj:-bfield.nxguardj or None,
-                 bfield.nyguardj:-bfield.nyguardj or None,
-                 bfield.nzguardj:-bfield.nzguardj or None]
+  j = bfield.j[:,nxguardj:-nxguardj or None,
+                 nyguardj:-nyguardj or None,
+                 nzguardj:-nzguardj or None]
 
   setdecomposedarray(j[ic,...],val,ix=ix,iy=iy,iz=iz,
                      local=local,solver=solver)
@@ -2421,12 +2437,20 @@ the upper edge.
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z','A'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver
+  if solver == w3d:
+    bfield = f3d.bfield
+    nxguarda = bfield.nxguarda
+    nyguarda = bfield.nyguarda
+    nzguarda = bfield.nzguarda
+  else:
+    bfield = solver
+    nxguarda = bfield.nxguardphi
+    nyguarda = bfield.nyguardphi
+    nzguarda = bfield.nzguardphi
 
-  a = bfield.a[:,bfield.nxguarda:-bfield.nxguarda or None,
-                 bfield.nyguarda:-bfield.nyguarda or None,
-                 bfield.nzguarda:-bfield.nzguarda or None]
+  a = bfield.a[:,nxguarda:-nxguarda or None,
+                 nyguarda:-nyguarda or None,
+                 nzguarda:-nzguarda or None]
 
   if comp == 'A':
     Ax = getdecomposedarray(a[0,...],ix=ix,iy=iy,iz=iz,
@@ -2466,12 +2490,20 @@ the upper edge.
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver
+  if solver == w3d:
+    bfield = f3d.bfield
+    nxguarda = bfield.nxguarda
+    nyguarda = bfield.nyguarda
+    nzguarda = bfield.nzguarda
+  else:
+    bfield = solver
+    nxguarda = bfield.nxguardphi
+    nyguarda = bfield.nyguardphi
+    nzguarda = bfield.nzguardphi
 
-  a = bfield.a[:,bfield.nxguarda:-bfield.nxguarda or None,
-                 bfield.nyguarda:-bfield.nyguarda or None,
-                 bfield.nzguarda:-bfield.nzguarda or None]
+  a = bfield.a[:,nxguarda:-nxguarda or None,
+                 nyguarda:-nyguarda or None,
+                 nzguarda:-nzguarda or None]
 
   setdecomposedarray(a[ic,...],val,ix=ix,iy=iy,iz=iz,
                      local=local,solver=solver)
