@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.208 2011/08/27 00:43:16 grote Exp $"
+warp_version = "$Id: warp.py,v 1.209 2011/11/17 05:42:15 grote Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -1180,6 +1180,7 @@ Print timers in a nice annotated format
   if top.ltoptimesubs: _doprint(top,'Subtimerstop')
   if w3d.lw3dtimesubs: _doprint(w3d,'Subtimersw3d')
   if f3d.lf3dtimesubs: _doprint(f3d,'Subtimersf3d')
+  #if em3d.lem3dtimesubs: _doprint(em3d,'Subtimersem3d')
 
   if icontrollers > 0:
     for c in controllerfunctioncontainer.clist:
@@ -1308,6 +1309,7 @@ from multigridRZ import MultiGridImplicit2D
 from em3dsolver import EM3D
 from MeshRefinement import *
 from magnetostaticMG import MagnetostaticMG
+from magnetostaticMG import MagnetostaticFFT
 from MeshRefinementB import MRBlockB
 from implicitstep import ImplicitStep
 from species import *

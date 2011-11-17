@@ -9,7 +9,7 @@ try:
 except ImportError:
   pass
 
-magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.44 2011/11/11 22:36:47 grote Exp $"
+magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.45 2011/11/17 05:42:15 grote Exp $"
 
 ##############################################################################
 class MagnetostaticMG(SubcycledPoissonSolver):
@@ -388,9 +388,77 @@ class MagnetostaticMG(SubcycledPoissonSolver):
   def pcazx(self,**kw): self.genericpf(kw,pcazx)
   def pcaxy(self,**kw): self.genericpf(kw,pcaxy)
 
+##############################################################################
+class MagnetostaticFFT(MagnetostaticMG):
+  
+  def __init__(self,**kw):
+
+    MagnetostaticMG.__init__(self,kwdict=kw)
+
+    # --- Only cylindrical geometry is supported
+    if self.solvergeom != w3d.RZgeom:
+      raise Exception("MagnetostaticFFT only supports cylindrial geometry")
+
+  def dosolve(self,iwhich=0,*args):
+
+    self.source[...] = self.source*mu0*eps0
+
+    lr = self.xmmax - self.xmmin
+    lz = self.zmmax - self.zmmin
+    kzsq = fzeros(1+self.nz)
+    attz = fzeros(1+self.nz/2)
+    filt = w3d.filt[:,2]
+    rfsmat = fzeros((1+self.nx,3,1+self.nz))
+    scrtch2 = fzeros((1+self.nz))
+
+    # --- Initialize kzsq and attz.
+    vpoisrzb(1,self.potential[0,...],kzsq,attz,filt,lr,lz,self.nx,self.nz,
+             rfsmat,scrtch2,0)
+    if iwhich == 1: return
+
+    for axis in range(3):
+      if (self.lanalyticbtheta and
+          ((self.lusevectorpotential and (axis == 0 or axis == 2)) or
+          (not self.lusevectorpotential and axis == 1))): continue
+      # --- vpoisrzb converts J to A in place.
+      a = self.source[axis,self.nxguardrho:-self.nxguardrho or None,
+                           self.nyguardrho:-self.nyguardrho or None,
+                           self.nzguardrho:-self.nzguardrho or None].copy()
+      vpoisrzb(-1,a,kzsq,attz,filt,lr,lz,self.nx,self.nz,
+               rfsmat,scrtch2,axis)
+      self.potential[axis,self.nxguardphi:-self.nxguardphi or None,
+                          self.nyguardrho:-self.nyguardrho or None,
+                          self.nzguardphi:-self.nzguardphi or None] = a
+
+      # --- This is needed since vpoisrzb doesn't have access to the guard cells.
+      applyboundaryconditions3d(self.nx,self.ny,self.nz,
+                                self.nxguardphi,self.nyguardphi,self.nzguardphi,
+                                self.potential[axis,...],1,
+                                array([1,0,1,1,2,2]),true,false)
+
+    # --- Now take the curl of A to get B.
+    getbfroma3d(self.potential,self.field,
+                self.nxlocal,self.nylocal,self.nzlocal,
+                self.nxguardphi,self.nyguardphi,self.nzguardphi,
+                self.nxguarde,self.nyguarde,self.nzguarde,
+                self.dx,self.dy,self.dz,self.xmminlocal,
+                self.solvergeom==w3d.RZgeom,self.lusevectorpotential)
+
+    # --- If using the analytic form of Btheta, calculate it here.
+    if self.lanalyticbtheta:
+      getanalyticbtheta(self.field,self.source,
+                        self.nxlocal,self.nylocal,self.nzlocal,
+                        self.nxguarde,self.nyguarde,self.nzguarde,
+                        self.nxguardrho,self.nyguardrho,self.nzguardrho,
+                        self.dx,self.xmminlocal)
+
+    # --- Unscale the current density
+    self.source[...] = self.source/(mu0*eps0)
+
 # --- This can only be done after MagnetostaticMG is defined.
 try:
   psyco.bind(MagnetostaticMG)
+  psyco.bind(MagnetostaticFFT)
 except NameError:
   pass
 
