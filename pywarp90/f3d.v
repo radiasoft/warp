@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.222 $, $Date: 2011/10/05 21:14:29 $
+#@(#) File F3D.V, version $Revision: 3.223 $, $Date: 2011/11/17 05:40:45 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.222 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.223 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -257,6 +257,12 @@ getmglevels(nx:integer,ny:integer,nz:integer,
    subroutine
    # Calculates levels of coarsening. Note that mglevels
    # must be zero when calling this routine.
+applyboundaryconditions3d(nx:integer,ny:integer,nz:integer,
+                          nxguard:integer,nyguard:integer,nzguard:integer,
+                          u:real,ncomp:integer,
+                          bounds:integer,lwithdirichlet:logical,
+                          lzerodirichlet:logical)
+   subroutine # Applies boundary condition to the potential array
 multigrid3df(iwhich:integer,nx:integer,ny:integer,nz:integer,
              nxlocal:integer,nylocal:integer,nzlocal:integer,
              nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
@@ -768,6 +774,10 @@ getanalyticbtheta(b(0:2,-nxguardb:nxlocal+nxguardb,
                   nxguardj:integer,nyguardj:integer,nzguardj:integer,
                   dx:real,xmmin:real)
              subroutine # Calculate and analytic Btheta
+vpoisrzb(iwhich:integer,a:real,kzsq:real,attz:real,filt:real,
+         lr:real,lz:real,nr:integer,nz:integer,
+         rfsmat:real,scrtch2:real,axis:integer)
+             subroutine # FFT/tridiag Poisson solver for B fields
 
 *********** AMR3droutines:
 gathersourcefromchild(rho:real,nc:integer,ng:integer,nn:integer,

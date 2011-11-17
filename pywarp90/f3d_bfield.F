@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.53 $, $Date: 2011/10/10 17:49:49 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.54 $, $Date: 2011/11/17 05:40:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -2427,3 +2427,366 @@ c fits and so was replaced with if statements.
 c=============================================================================
 c=============================================================================
 c=============================================================================
+c=======================================================================
+      subroutine vpoisrzb(iwhich,a,kzsq,attz,filt,lr,lz,nr,nz,rfsmat,scrtch2,
+     &                    axis)
+      use Constant
+      integer(ISZ):: iwhich,nr,nz
+      real(kind=8):: a(0:nr, 0:nz)
+      real(kind=8):: kzsq(0:nz), lr, lz
+      real(kind=8):: attz(0:nz/2)
+      real(kind=8):: filt(5)
+      real(kind=8):: rfsmat(0:nr,3,0:nz),scrtch2(0:nz)
+      integer(ISZ):: axis
+
+c-----------------------------------------------------------------------------
+c          This is a copy of vpoisrz with the surface resistivity removed
+c          and the extra A added from the vector grad squared.
+c               Vectorized RZ Poisson solver:
+c               Periodic FFT in z, tridiagonal solve in r
+c               Debbie Callahan, LLNL, October 1989.
+c
+c          The periodic FFT in z for this routine is based on the
+c          routines in VPOIS3D by Alex Friedman.  The difference
+c          scheme in the radial direction is based on the scheme
+c          presented in Birdsall and Langdon, "Plasma Physics via
+c          Computer Simulation," pp.333-334.
+c
+c          Returned value: 0 if ok, 1 if error
+c
+c          IWHICH = ... -1: full fieldsolve; assumes kzsq and attz
+c                           have been set already.  This is equivalent to a
+c                           sequence of calls with iwhich = 2,3,4,5.
+c                        0: full fieldsolve; kzsq will be set herein.
+c                           This is equivalent to a sequence of calls with
+c                           iwhich = 1,2,3,4,5. (THIS IS THE SIMPLEST USAGE.)
+c                        1: set kzsq etc. and attz etc., return.
+c                        2: forward transform in z, return.
+c                        3: apply k-space filter using attz, return.
+c                        4: solve tridiagonal system in r, return.
+c                        5: inverse transform, return.
+c                        8: apply reciprocal of filter in k-space, return.
+c                        9: apply k^2 factor (turns phi into rho), return.
+c                  A ... Array to transform (pass it to this routine twice)
+c                        See array declarations below these comments.
+c               KZSQ ... Discrete analog to dr*dr*kz^2
+c                        See array declarations below these comments.
+c               ATTZ ... Attenuation factor for each mode number in z.
+c                        See array declarations below these comments.
+c            FILT(i) ... Spatial filtering coefficients; array should be
+c                        dimensioned (5) in calling routine.
+c                        These refer to filtering in the z direction
+c                        and there are four coefficients:
+c                        filt(1): coefficient a1, of sin^2 term (boosting)
+c                        filt(2): coefficient a2, of tan^4 term (smoothing)
+c                        filt(3): cutoff k dx, k dy, or k dz, e.g. pi/2
+c                        filt(4): exponent N (sharpness of cutoff) e.g. 8.
+c                        filt(5): W factor in binomial filter, e.g. 0.5
+c                        (A value of .5 gives the familiar 1/4:1/2:1/4 filter)
+c                        See Birdsall and Langdon, "Plasma Physics via
+c                        Computer Simulation," Appendices B and C.
+c               EPS0 ... Epsilon-0; use 1/4Pi for CGS, 1 for rationalized.
+c            LR,  LZ ... System lengths
+c            NR,  NZ ... Number of mesh points (mesh runs from 0 to NR, etc.)
+c                        At present these must be powers of two.
+c             RFSMAT ... Array of dimension (0:nr,3,0:nz) -- workspace for
+c                        storing the radial fieldsolve tridiagonal system
+c
+c  For the (periodic) z direction, k dz = 2 pi j/nz, j = 0, ..., nz/2.
+c        The longest wavelength (excepting the k=0 mode) is nz dz = lz.
+c
+c  The periodic FFT in z for this routine is based on the routines in
+c  VPOIS3D by Alex Friedman.  The difference scheme in the radial direction
+c  is based on the scheme presented in Birdsall and Langdon,
+c  "Plasma Physics via Computer Simulation," pp.333-334.
+c
+c  This routine was inspired by Langdon's scalar sine-periodic solver "sppois"
+c-----------------------------------------------------------------------------
+
+      integer(ISZ):: ikz,ikr,iz,ir,nrlast,nz2,nr2
+      real(kind=8):: klast,kdzb2,kdz
+      real(kind=8):: dr,dz,norm,dr2
+c  Error checking; so far, only possible error is non-power-of-2 nz
+
+      if  ( nz .ne. 2**int( .5 + log(real(nz)) / log(2.) ) ) then
+         return
+      endif
+
+c  Set useful constants
+
+      nz2 = nz / 2
+      nr2 = nr / 2
+      dr = lr / nr
+      dr2 = dr*dr
+      dz = lz / nz
+
+c ----------------------------------------------------------------------------
+c  For poisson equation, kzsq(ikz) is a discrete
+c  analog to dr*dr*kz^2, etc.  If the user has requested it,
+c  we set up ksq arrays for a seven point scheme now; the coding for kzsq
+c  is arranged so that it will vectorize on "most" compilers.
+c  Also, compute attenuation factors as functions of mode numbers in z.
+c ----------------------------------------------------------------------------
+
+      if (iwhich .eq. 0 .or. iwhich .eq. 1) then
+
+c        --- compute z direction coefficients---
+         do ikz = 0, nz
+            kzsq(ikz) = ikz
+         enddo
+         do ikz = 0, nz2
+            kzsq(ikz) = dr2*(2./dz*sin(pi*(nz2-kzsq(ikz))/nz))**2
+         enddo
+         do ikz = (nz2+1),nz
+            kzsq(ikz) = dr2*(2./dz*sin(pi*(kzsq(ikz)-nz2)/nz))**2
+         enddo
+
+
+c        --- spatial filtering in z; binomial filter, or unity
+         do ikz = 0, nz2
+            kdz = 2. * pi * ikz / nz
+            attz(ikz) = (1.+2.*filt(5)*cos(kdz)) / (1.+2.*filt(5))
+         enddo
+         if (filt(1) .ne. 0. .or. filt(2) .ne. 0.) then
+c           --- compute first form of spatial filtering
+            do ikz = 0, nz2
+               kdzb2 = pi * ikz / nz
+               attz(ikz) = attz(ikz) * (exp( filt(1)*(sin(kdzb2))**2
+     &          - filt(2)*(tan(kdzb2))**4 ))**2
+         enddo
+         endif
+         if (filt(3) .ne. 0.) then
+c           --- compute second form of spatial filtering
+            klast = filt(3) * nz / (2. * pi)
+            do ikz = 0, nz2
+               attz(ikz) = attz(ikz) * exp(-(ikz/klast)**filt(4))
+           enddo
+         endif
+
+      endif
+
+c ----------------------------------------------------------------------------
+c  Do the forward transform
+c ----------------------------------------------------------------------------
+
+      if (iwhich.le.0 .or. iwhich.eq.2) then
+
+      norm = .5 * dz
+c        --- Normalize the array
+      do iz = 0, nz-1
+        do ir = 0, nr
+          a(ir,iz) = a(ir,iz) * norm
+        enddo
+      enddo
+
+c  Here we perform the periodic transforms in z, two r's at a time.
+
+c        --- shift k-space origin to middle.
+         do iz = 1, nz-1, 2
+           do ir = 0, nr
+             a(ir,iz) = -a(ir,iz)
+           enddo
+         enddo
+c        --- do the transforms
+         call vcpft (a(0,0), a(1,0), nz, (nr+1),-1,nr2,2)
+         call vrpft2(a(0,0), a(1,0), nz, (nr+1),   nr2,2)
+
+      endif
+
+c ----------------------------------------------------------------------------
+c  Apply k-space filter; attenuate mode-by-mode
+c ----------------------------------------------------------------------------
+
+      if (iwhich.le.0 .or. iwhich.eq.3) then
+
+         if (maxval(attz) < 1.) then
+           do ikz = 1, nz2-1
+             do ikr = 1, nr
+               a(ikr,-ikz+nz2) = a(ikr,-ikz+nz2)*attz(ikz)
+               a(ikr, ikz+nz2) = a(ikr, ikz+nz2)*attz(ikz)
+             enddo
+           enddo
+         endif
+
+      endif
+
+c ----------------------------------------------------------------------------
+c  Convert rhok to phik. This is done by solving a tri-diagonal system
+c  for each value of kzsq
+c ----------------------------------------------------------------------------
+
+      if (iwhich.le.0 .or. iwhich.eq.4) then
+
+c  Fill the tridiagonal matrix, stored in band storage mode.  For each
+c  inversion, we need to subtract kzsq from the diagonal (rfsmat(ikr,2))
+c  term.  The first and last rows of the matrix are special cases.
+c  The solve is done so that it is vectorized in z.
+
+c  Fill the matrix...
+c   If we have a conducting wall, we have eqns 0 - (nr-1)  (phi(nr) = 0)
+c   but if we have resistive walls then we have 0 - (nr) eqns
+c   (phi(nr+1)=0), so set nrlast.
+      nrlast = nr-1
+
+      do ikz = 0,nz
+         rfsmat(0,1,ikz) =  0.
+         rfsmat(0,2,ikz) =  4. + kzsq(ikz)
+         rfsmat(0,3,ikz) = -4.
+      enddo
+      do ikr = 1, nrlast-1
+        do ikz = 0,nz
+            rfsmat(ikr,1,ikz) = -1. + 1./(2.*ikr)
+            rfsmat(ikr,2,ikz) =  2. + kzsq(ikz)
+            rfsmat(ikr,3,ikz) = -1. - 1./(2.*ikr)
+        enddo
+        if (axis < 2) then
+            rfsmat(ikr,2,ikz) = rfsmat(ikr,2,ikz) - 1./(ikr*dr)**2
+        endif
+      enddo
+       do ikz = 0,nz
+          rfsmat(nrlast,1,ikz) = -1. + 1./(2.*nrlast)
+          rfsmat(nrlast,2,ikz) =  2. + kzsq(ikz)
+          rfsmat(nrlast,3,ikz) =  0.
+          if (axis < 2) then
+              rfsmat(nrlast,2,ikz) = rfsmat(nrlast,2,ikz) - 1./(nrlast*dr)**2
+          endif
+       enddo
+
+c   Multiply rho by dr*dr and divide by epsilon_0...
+
+      do ikr=0,nrlast
+        do ikz = 0,nz
+           a(ikr,ikz) = a(ikr,ikz)*dr2/eps0
+        enddo
+      enddo
+
+c   Eliminate the lower diagonal from the matrix... 
+      do ikr=1,nrlast
+        do ikz = 0,nz
+          rfsmat(ikr,2,ikz) = rfsmat(ikr,2,ikz)
+     &                        - rfsmat(ikr-1,3,ikz)*rfsmat(ikr,1,ikz
+     &                        )/rfsmat(ikr-1,2,ikz)
+          a(ikr,ikz) = a(ikr,ikz)
+     &               - a(ikr-1,ikz)*rfsmat(ikr,1,ikz)/rfsmat(ikr-1,2,ikz)
+          rfsmat(ikr,1,ikz) = 0.
+        enddo
+      enddo
+
+c   Divide each row by the diagonal...
+      do ikr=0,nrlast
+        do ikz = 0,nz
+          rfsmat(ikr,3,ikz) = rfsmat(ikr,3,ikz)/rfsmat(ikr,2,ikz)
+          a(ikr,ikz) = a(ikr,ikz)/rfsmat(ikr,2,ikz)
+          rfsmat(ikr,2,ikz) = 1.
+        enddo
+      enddo
+
+c   Back substitute to get the solution
+      do ikr=(nrlast-1),0,-1
+        do ikz = 0,nz
+           a(ikr,ikz) = a(ikr,ikz) - a(ikr+1,ikz)*rfsmat(ikr,3,ikz)
+           rfsmat(ikr,3,ikz) = 0.
+        enddo
+      enddo
+
+c   Set boundary condition -- phi = 0 at r = r_wall
+
+      do ikz = 0,nz
+        a(nr,ikz) = 0.
+      enddo
+
+      endif
+
+c ----------------------------------------------------------------------------
+c  Do the inverse transform
+c ----------------------------------------------------------------------------
+
+      if (iwhich.le.0 .or. iwhich.eq.5) then
+
+c  Inverse transform and shift in z.
+
+c        --- do the transforms
+         call vrpfti2(a(0,0), a(1,0), nz, (nr+1),   nr2,2)
+         call vcpft  (a(0,0), a(1,0), nz, (nr+1),+1,nr2,2)
+
+c        --- shift k-space origin back.
+         do iz = 1, nz-1, 2
+           do ir = 0, nr
+            a(ir,iz) = -a(ir,iz)
+           enddo
+         enddo
+
+c  Re-normalize the array
+
+         norm = 1. / lz
+         do ir = 0, nr
+           do iz = 0, nz-1
+               a(ir,iz) = a(ir,iz) * norm
+           enddo
+         enddo
+c  Enforce periodic bc's in z
+
+         do ir = 0, nr
+            a(ir,nz) = a(ir,0)
+         enddo
+
+      endif
+
+c ----------------------------------------------------------------------------
+c  The usual fieldsolve has been completed.  Utility operations follow.
+c ----------------------------------------------------------------------------
+
+c ----------------------------------------------------------------------------
+c  Un-filter in k space
+c ----------------------------------------------------------------------------
+
+c     if (iwhich.eq.8) then
+
+c     do 1740 iky = 1, ny-1
+c        do 1720 ikx = 1, nx-1
+c           ak(ikx,iky,0   ) = ak(ikx,iky,0   )
+c    &       / (attx(ikx) * atty(iky) * attz(0))
+c           ak(ikx,iky,-nz2) = ak(ikx,iky,-nz2)
+c    &       / (attx(ikx) * atty(iky) * attz(nz2))
+c1720    continue
+c        do 1740 ikz = 1, nz2-1
+c        do 1740 ikx = 1, nx-1
+c           ak(ikx,iky,-ikz) = ak(ikx,iky,-ikz)
+c    &       / (attx(ikx) * atty(iky) * attz(ikz))
+c           ak(ikx,iky, ikz) = ak(ikx,iky, ikz)
+c    &       / (attx(ikx) * atty(iky) * attz(ikz))
+c1740 continue
+
+c     endif
+
+c ----------------------------------------------------------------------------
+c  Multiply by k^2 factor, in contrast to the usual division.
+c  This is useful if one wants to recreate rho from phi.
+c ----------------------------------------------------------------------------
+
+c     if (iwhich.eq.9) then
+
+c     do 1850 iky = 1, ny-1
+c        do 1800 ikx = 1, nx-1
+c           ak(ikx,iky,0   ) = ak(ikx,iky,0   )
+c    &                            * ( kxsq(ikx) + kysq(iky) )
+c           ak(ikx,iky,-nz2) = ak(ikx,iky,-nz2)
+c    &                            * ( kxsq(ikx) + kysq(iky) + kzsq(nz2) )
+c1800    continue
+c        do 1850 ikz = 1, nz2-1
+c        do 1850 ikx = 1, nx-1
+c           ak(ikx,iky,-ikz) = ak(ikx,iky,-ikz)
+c    &                         * ( kxsq(ikx) + kysq(iky) + kzsq(ikz) )
+c           ak(ikx,iky, ikz) = ak(ikx,iky, ikz)
+c    &                         * ( kxsq(ikx) + kysq(iky) + kzsq(ikz) )
+c1850 continue
+
+c     endif
+
+c ----------------------------------------------------------------------------
+c  End of VPOIS3D
+c ----------------------------------------------------------------------------
+
+      return
+      end
+c======================================================================
