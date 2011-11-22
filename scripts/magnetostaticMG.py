@@ -9,7 +9,7 @@ try:
 except ImportError:
   pass
 
-magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.45 2011/11/17 05:42:15 grote Exp $"
+magnetostaticMG_version = "$Id: magnetostaticMG.py,v 1.46 2011/11/22 20:27:37 grote Exp $"
 
 ##############################################################################
 class MagnetostaticMG(SubcycledPoissonSolver):
@@ -393,7 +393,12 @@ class MagnetostaticFFT(MagnetostaticMG):
   
   def __init__(self,**kw):
 
-    MagnetostaticMG.__init__(self,kwdict=kw)
+    # --- Force periodic boundary conditions in z, since that is the only
+    # --- boundary conditions currently supported.
+    self.bound0 = periodic
+    self.boundnz = periodic
+
+    MagnetostaticMG.__init__(self,**kw)
 
     # --- Only cylindrical geometry is supported
     if self.solvergeom != w3d.RZgeom:
