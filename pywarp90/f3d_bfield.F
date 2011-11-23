@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.55 $, $Date: 2011/11/23 02:08:46 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.56 $, $Date: 2011/11/23 02:19:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1204,9 +1204,9 @@ c=============================================================================
       real(kind=8):: j1d(0:3*(1+nxlocal+2*nxguardj)*
      &                       (1+nylocal+2*nyguardj)*
      &                       (1+nzlocal+2*nzguardj)-1)
-      real(kind=8),target:: xp(np), yp(np), zp(np)
-      real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
-      real(kind=8),target:: wghtp(nw)
+      real(kind=8):: xp(np), yp(np), zp(np)
+      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
+      real(kind=8):: wghtp(nw)
       character(8):: depos
       real(kind=8):: dx,dy,dz
       real(kind=8):: xmminlocal,ymminlocal,zmminlocal
@@ -1315,14 +1315,8 @@ c         --- transverse boundaries.
 !$OMP&                 gyf,gxf,s,m,ii,jj,kk,x,y,z,ux,uy,uz)
 !$OMP&FIRSTPRIVATE(np)
 
-      if (lcylindrical) then
-c       --- Allocate temporary particle arrays which will hold
-c       --- the radius.
-c       --- This is done in the parallel block since each thread must allocate
-c       --- its own work arrays.
-        allocate(x(nparpgrp),y(nparpgrp))
-        allocate(ux(nparpgrp),uy(nparpgrp))
-      endif
+      allocate(x(nparpgrp),y(nparpgrp),z(nparpgrp))
+      allocate(ux(nparpgrp),uy(nparpgrp),uz(nparpgrp),gi(nparpgrp))
 
       allocate(indx(0:7,0:nparpgrp-1))
       allocate(s(0:7,0:nparpgrp-1))
@@ -1344,15 +1338,15 @@ c       --- Setup temporary particle arrays
      &                   uyp(ipmin:ipmin+nptmp-1)*cos(y(1:nptmp))
           y(1:nptmp) = 0.
         else
-          x => xp(ipmin:ipmin+nptmp-1)
-          y => yp(ipmin:ipmin+nptmp-1)
-          ux => uxp(ipmin:ipmin+nptmp-1)
-          uy => uyp(ipmin:ipmin+nptmp-1)
+          x = xp(ipmin:ipmin+nptmp-1)
+          y = yp(ipmin:ipmin+nptmp-1)
+          ux = uxp(ipmin:ipmin+nptmp-1)
+          uy = uyp(ipmin:ipmin+nptmp-1)
         endif
-        z => zp(ipmin:ipmin+nptmp-1)
-        uz => uzp(ipmin:ipmin+nptmp-1)
-        gi => gaminv(ipmin:ipmin+nptmp-1)
-        if (nw == np) wght => wghtp(ipmin:ipmin+nptmp-1)
+        z = zp(ipmin:ipmin+nptmp-1)
+        uz = uzp(ipmin:ipmin+nptmp-1)
+        gi = gaminv(ipmin:ipmin+nptmp-1)
+        if (nw == np) wght = wghtp(ipmin:ipmin+nptmp-1)
 
 c--------------------------------------
 c  Begin vectorized deposition loop
@@ -1489,6 +1483,7 @@ c     --- there'd be a hazard if we interchanged the loops.
 
       enddo
 
+      deallocate(x,y,z,ux,uy,uz,gi)
       deallocate(indx,s,v)
 
       return
@@ -1510,9 +1505,9 @@ c=============================================================================
       real(kind=8):: j(0:2,-nxguardj:nxlocal+nxguardj,
      &                     -nyguardj:nylocal+nyguardj,
      &                     -nzguardj:nzlocal+nzguardj)
-      real(kind=8),target:: xp(np), yp(np), zp(np)
-      real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
-      real(kind=8),target:: wghtp(nw)
+      real(kind=8):: xp(np), yp(np), zp(np)
+      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
+      real(kind=8):: wghtp(nw)
       character(8):: depos
       real(kind=8):: dx,dy,dz
       real(kind=8):: xmminlocal,ymminlocal,zmminlocal
@@ -1602,14 +1597,8 @@ c         --- transverse boundaries.
 !$OMP&                 gyf,gxf,s,m,ii,jj,kk,x,y,z,ux,uy,uz)
 !$OMP&FIRSTPRIVATE(np)
 
-      if (lcylindrical) then
-c       --- Allocate temporary particle arrays which will hold
-c       --- the radius.
-c       --- This is done in the parallel block since each thread must allocate
-c       --- its own work arrays.
-        allocate(x(nparpgrp),y(nparpgrp))
-        allocate(ux(nparpgrp),uy(nparpgrp))
-      endif
+      allocate(x(nparpgrp),y(nparpgrp),z(nparpgrp))
+      allocate(ux(nparpgrp),uy(nparpgrp),uz(nparpgrp),gi(nparpgrp))
 
       allocate(ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1))
       allocate(s(0:7,0:nparpgrp-1))
@@ -1630,15 +1619,15 @@ c       --- Setup temporary particle arrays
      &                   uyp(ipmin:ipmin+nptmp-1)*cos(y(1:nptmp))
           y(1:nptmp) = 0.
         else
-          x => xp(ipmin:ipmin+nptmp-1)
-          y => yp(ipmin:ipmin+nptmp-1)
-          ux => uxp(ipmin:ipmin+nptmp-1)
-          uy => uyp(ipmin:ipmin+nptmp-1)
+          x = xp(ipmin:ipmin+nptmp-1)
+          y = yp(ipmin:ipmin+nptmp-1)
+          ux = uxp(ipmin:ipmin+nptmp-1)
+          uy = uyp(ipmin:ipmin+nptmp-1)
         endif
-        z => zp(ipmin:ipmin+nptmp-1)
-        uz => uzp(ipmin:ipmin+nptmp-1)
-        gi => gaminv(ipmin:ipmin+nptmp-1)
-        if (nw == np) wght => wghtp(ipmin:ipmin+nptmp-1)
+        z = zp(ipmin:ipmin+nptmp-1)
+        uz = uzp(ipmin:ipmin+nptmp-1)
+        gi = gaminv(ipmin:ipmin+nptmp-1)
+        if (nw == np) wght = wghtp(ipmin:ipmin+nptmp-1)
 
 c  Begin main loop over species
 
@@ -1760,6 +1749,7 @@ c     --- scalar loop does the actual deposition
 
       enddo
 
+      deallocate(x,y,z,ux,uy,uz,gi)
       deallocate(ii, jj, kk)
       deallocate(s)
 
@@ -1782,9 +1772,9 @@ c=============================================================================
       real(kind=8):: j(0:2,-nxguardj:nxlocal+nxguardj,
      &                     -nyguardj:nylocal+nyguardj,
      &                     -nzguardj:nzlocal+nzguardj)
-      real(kind=8),target:: xp(np), yp(np), zp(np)
-      real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
-      real(kind=8),target:: wghtp(nw)
+      real(kind=8):: xp(np), yp(np), zp(np)
+      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
+      real(kind=8):: wghtp(nw)
       character(8):: depos
       real(kind=8):: dx,dy,dz
       real(kind=8):: xmminlocal,ymminlocal,zmminlocal
@@ -2075,9 +2065,9 @@ c=============================================================================
       real(kind=8):: j(0:2,-nxguardj:nxlocal+nxguardj,
      &                     -nyguardj:nylocal+nyguardj,
      &                     -nzguardj:nzlocal+nzguardj)
-      real(kind=8),target:: xp(np), yp(np), zp(np)
-      real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
-      real(kind=8),target:: wghtp(nw)
+      real(kind=8):: xp(np), yp(np), zp(np)
+      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
+      real(kind=8):: wghtp(nw)
       character(8):: depos
       real(kind=8):: dx,dy,dz
       real(kind=8):: xmminlocal,ymminlocal,zmminlocal
