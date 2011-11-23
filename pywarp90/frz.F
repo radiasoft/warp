@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FRZ.M, version $Revision: 3.14 $, $Date: 2003/10/23 23:26:40 $
+c@(#) File FRZ.M, version $Revision: 3.15 $, $Date: 2011/11/23 02:22:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Written by Debbie Callahan
@@ -901,10 +901,10 @@ c  Enforce periodic bc's in z
          a(ir,nz) = a(ir,0)
       enddo
 
-      schrg(nz) = schrg(0)
 c  Advect the surface charge with the moving window.
       if (eta .ne. 0.) then
          norm = .5 * dz
+         schrg(nz) = schrg(0)
          call advect(schrg,a,phikold,vbeam,taurc,dt,nr,nz,dz,scrtch)
 
 c        --- Transform the old potential at the wall here since it's
