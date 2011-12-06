@@ -58,6 +58,9 @@ Surfaces of revolution:
  YSrfrvIn(rofzfunc,zmin,zmax,rmin,...)
  YSrfrvInOut(rminofz,rmaxofz,zmin,zmax,...)
 
+Special:
+ CADconductor(filename,...)
+
 Note that all take the following additional arguments:
 voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
 name=None,material='SS',laccuimagecharge=0,neumann=0,conductivity=None
@@ -113,7 +116,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.243 2011/11/11 01:26:09 grote Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.244 2011/12/06 23:18:31 grote Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2742,7 +2745,7 @@ Assembly on this grid.
       if not self.checkoverlap(-1,aextent): return
     else:
       # --- Note that for the parallel version, each level must be checked
-      # --- since the levels can have a difference z extent.
+      # --- since the levels can have a different z extent.
       doesoverlap = 0
       aextent = a.getextent()
       for mglevel in range(self.mglevels):
@@ -2752,7 +2755,7 @@ Assembly on this grid.
     # --- If 'a' is an AssemblyPlus, save time by generating the conductor
     # --- data for each part separately. Time is saved since only data within
     # --- the extent of each part is checked. Note that this will be recursive
-    # --- one of the parts of 'a' are themselves an AssemblyPlus.
+    # --- if some of the parts of 'a' are themselves an AssemblyPlus.
     # --- This is still true for the new generation method.
     if a.__class__ == AssemblyPlus:
       self.getdatanew(a.left,dfill=dfill,fuzzsign=fuzzsign)
@@ -2934,6 +2937,65 @@ assembly.
 ##############################################################################
 ##############################################################################
 ##############################################################################
+
+#============================================================================
+class CADconductor(Assembly):
+  """
+Conductor defined in a CAD file.
+  - filename: CAD file
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: origin of CAD object
+  - condid=1: conductor id, must be integer, or can be 'next' in which
+              case a unique ID is chosen
+  """
+  def __init__(self,filename,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,**kw):
+    assert _lwithnewconductorgeneration,\
+      'CADconductor can only be used with the new conductor generation method'
+    kwlist=['filename']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                           self.conductorf,self.conductord,self.intercept,
+                           self.conductorfnew,
+                           kw=kw)
+    self.filename = filename
+    # --- The extent is not used with the new method, but define it anyway.
+    self.createextent([-largepos,-largepos,-largepos],
+                      [+largepos,+largepos,+largepos])
+
+  def conductorf(self):
+    raise Exception('This function should never be called')
+
+  def conductord(self,filename,xcent,ycent,zcent,n,x,y,z,distance):
+    import CADmodule
+    if xcent != 0.: x = x - xcent
+    if ycent != 0.: y = y - ycent
+    if zcent != 0.: z = z - zcent
+    distance[:] = CADmodule.CADgetdistances(filename,x,y,z)
+
+  def intercept(self,filename,xcent,ycent,zcent,
+                n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi):
+    raise Exception('CADconductor intercept not yet implemented')
+
+  def conductorfnew(self,filename,xcent,ycent,zcent,intercepts,fuzz):
+    import CADmodule
+    ii = CADmodule.CADgetintercepts(filename,
+                                    intercepts.xmmin+xcent,
+                                    intercepts.ymmin+ycent,
+                                    intercepts.zmmin+zcent,
+                                    intercepts.dx,
+                                    intercepts.dy,
+                                    intercepts.dz,
+                                    intercepts.nx,
+                                    intercepts.ny,
+                                    intercepts.nz)
+    intercepts.nxicpt = ii[0].shape[0]
+    intercepts.nyicpt = ii[1].shape[0]
+    intercepts.nzicpt = ii[2].shape[0]
+    intercepts.gchange()
+    intercepts.xintercepts[...] = ii[0]
+    intercepts.yintercepts[...] = ii[1]
+    intercepts.zintercepts[...] = ii[2]
 
 #============================================================================
 class Plane(Assembly):
