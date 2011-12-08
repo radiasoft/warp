@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.41 $, $Date: 2011/11/07 23:04:54 $
+c@(#) File w3d_utilities.F, version $Revision: 1.42 $, $Date: 2011/12/08 22:10:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1214,14 +1214,20 @@ c     --- with a stride.
        real(kind=8), dimension(0:nx,0:ny,0:nz) :: q,mask
        real(kind=8) :: tempx(0:nx), tempy(0:ny), tempz(0:nz), alpha(3), a, b
 
-       mask(0:stride(1)-1,:,:)=0.
-       mask(nx-stride(1)+1:,:,:)=0.
-       if (ny>0) then
-         mask(:,0:stride(2)-1,:)=0.
-         mask(:,ny-stride(2)+1:,:)=0.
-       end if
-       mask(:,:,0:stride(3)-1)=0.
-       mask(:,:,nz-stride(3)+1:)=0.
+       if (npass(1) > 0 .and. stride(1) > 0) then
+         mask(0:stride(1)-1,:,:)=0.
+         mask(nx-stride(1)+1:,:,:)=0.
+       endif
+       if (npass(2) > 0 .and. stride(2) > 0) then
+         if (ny>0) then
+           mask(:,0:stride(2)-1,:)=0.
+           mask(:,ny-stride(2)+1:,:)=0.
+         end if
+       endif
+       if (npass(3) > 0 .and. stride(3) > 0) then
+         mask(:,:,0:stride(3)-1)=0.
+         mask(:,:,nz-stride(3)+1:)=0.
+       endif
 
 !           x smoothing
         do i=1,npass(1)
@@ -1233,13 +1239,13 @@ c     --- with a stride.
               do  j=stride(1),nx-stride(1)
                 ! deposit up
                 b = (1.-alpha(1))/2.
-                b = b*min(mask(j,k,l),mask(j+stride(2),k,l))
+                b = b*min(mask(j,k,l),mask(j+stride(1),k,l))
                 a = 1.-2*b
                 q(j,k,l) = q(j,k,l) + a/2*tempx(j)
                 q(j+stride(1),k,l) = q(j+stride(1),k,l) + b*tempx(j)
                 ! deposit down
                 b = (1.-alpha(1))/2.
-                b = b*min(mask(j,k,l),mask(j-stride(2),k,l))
+                b = b*min(mask(j,k,l),mask(j-stride(1),k,l))
                 a = 1.-2*b
                 q(j,k,l) = q(j,k,l) + a/2*tempx(j)
                 q(j-stride(1),k,l) = q(j-stride(1),k,l) + b*tempx(j)
