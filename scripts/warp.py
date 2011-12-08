@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.209 2011/11/17 05:42:15 grote Exp $"
+warp_version = "$Id: warp.py,v 1.210 2011/12/08 22:49:28 grote Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -1301,6 +1301,7 @@ from generateconductors import *
 from plot_conductor import *
 from multigrid import MultiGrid
 from multigrid import MultiGrid3D
+from multigrid import FullMultiGrid3D
 from multigrid import MultiGridImplicit3D
 from multigridRZ import MultiGridRZ
 from multigridRZ import MultiGrid2D
