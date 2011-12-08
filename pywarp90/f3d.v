@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.223 $, $Date: 2011/11/17 05:40:45 $
+#@(#) File F3D.V, version $Revision: 3.224 $, $Date: 2011/12/08 22:48:05 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.223 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.224 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -303,6 +303,33 @@ multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,
                  lprecalccoeffs:logical,fsdecomp:Decomposition)
    subroutine
    # Solves Poisson's equation using the multigrid method. All input is
+   # through the argument list.
+fullmultigrid3dsolve(iwhich:integer,mglevel:integer,
+                     nx:integer,ny:integer,nz:integer,
+                     nxlocal:integer,nylocal:integer,nzlocal:integer,
+                     nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
+                     nxguardrho:integer,nyguardrho:integer,nzguardrho:integer,
+                     dx:real,dy:real,dz:real,
+                     phi(-nxguardphi:nxlocal+nxguardphi,
+                         -nyguardphi:nylocal+nyguardphi,
+                         -nzguardphi:nzlocal+nzguardphi):real,
+                     rho(-nxguardrho:nxlocal+nxguardrho,
+                         -nyguardrho:nylocal+nyguardrho,
+                         -nzguardrho:nzlocal+nzguardrho):real,
+                     rstar(-1:nzlocal+1):real,linbend:logical,
+                     bounds(0:5):integer,
+                     xmmin:real,ymmin:real,zmmin:real,
+                     mgparam:real,mgiters:integer,
+                     mgmaxiters:integer,mgmaxvcycles:integer,
+                     mgmaxlevels:integer,
+                     mgerror:real,mgtol:real,
+                     mgverbose:integer,
+                     downpasses:integer,uppasses:integer,
+                     lcndbndy:logical,laddconductor:logical,icndbndy:integer,
+                     gridmode:integer,conductors:ConductorType,
+                     lprecalccoeffs:logical,fsdecomp:Decomposition)
+   subroutine
+   # Solves Poisson's equation using the full multigrid method. All input is
    # through the argument list.
 multigrid2dsolve(iwhich:integer,nx:integer,nz:integer,
                  nxlocal:integer,nzlocal:integer,
@@ -1282,6 +1309,7 @@ conductorsmoothshading() subroutine
 ******** Subtimersf3d:
 lf3dtimesubs logical /.false./
 timemultigrid3dsolve real /0./
+timefullmultigrid3dsolve real /0./
 timemultigrid2dsolve real /0./
 timemultigridrzsolve real /0./
 timegathersourcefromchild real /0./

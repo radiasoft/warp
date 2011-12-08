@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.203 $, $Date: 2011/10/05 21:14:28 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.204 $, $Date: 2011/12/08 22:48:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -496,6 +496,466 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
       return
       end
 c=============================================================================
+      RECURSIVE subroutine fullmultigrid3dsolve(iwhich,mglevel,
+     &                                nx,ny,nz,nxlocal,nylocal,nzlocal,
+     &                                nxguardphi,nyguardphi,nzguardphi,
+     &                                nxguardrho,nyguardrho,nzguardrho,
+     &                                dx,dy,dz,phi,rho,
+     &                                rstar,linbend,globalbounds,
+     &                                xmmin,ymmin,zmmin,
+     &                                mgparam,mgiters,mgmaxiters,
+     &                                mgmaxvcycles,
+     &                                mgmaxlevels,mgerror,mgtol,mgverbose,
+     &                                downpasses,uppasses,
+     &                                lcndbndy,laddconductor,icndbndy,
+     &                                gridmode,conductors,lprecalccoeffs,
+     &                                fsdecomp)
+      use Subtimersf3d
+      use ConductorTypemodule
+      use Constant
+      use Decompositionmodule
+      integer(ISZ):: iwhich,mglevel
+      integer(ISZ):: nx,ny,nz,nxlocal,nylocal,nzlocal
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
+      integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+      real(kind=8):: phi(-nxguardphi:nxlocal+nxguardphi,
+     &                   -nyguardphi:nylocal+nyguardphi,
+     &                   -nzguardphi:nzlocal+nzguardphi)
+      real(kind=8):: rho(-nxguardrho:nxlocal+nxguardrho,
+     &                   -nyguardrho:nylocal+nyguardrho,
+     &                   -nzguardrho:nzlocal+nzguardrho)
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: rstar(-1:nzlocal+1)
+      logical(ISZ):: linbend
+      integer(ISZ):: globalbounds(0:5)
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: mgparam
+      integer(ISZ):: mgiters,mgmaxiters,mgmaxvcycles,mgmaxlevels,mgverbose
+      real(kind=8):: mgerror,mgtol
+      integer(ISZ):: downpasses,uppasses
+      logical(ISZ):: lcndbndy,laddconductor,lprecalccoeffs
+      integer(ISZ):: icndbndy,gridmode
+      type(ConductorType):: conductors
+      type(Decomposition):: fsdecomp
+
+c Use the full multigrid method for solving Poisson's equation on a
+c 3-D Cartesian mesh. The fieldsolver allows internal conductors with
+c subgrid scale resolution.
+c
+c When the grid cells are rectangular, semi-coarsening is done until the
+c grid cell dimensions are roughly equal. Roughly equal means that
+c   2/3 dx < dz < 4/3 dx
+c This keeps (max(dz,dx) - min(dz,dx))/dx < 1/3. Currently, it is still
+c assumed that dx ~ dy and that semi-coarsening is not needed transversely.
+c
+c mgmaxvcycles is the number of vcycles for the coarse solves. For this,
+c              the error is not calculated
+c mgmaxiters is the max number of vcycles at the finest level. This level is
+c            iterated to convergence.
+
+      integer(ISZ):: mgform = 1
+      real(kind=8):: dxsqi,dysqi,dzsqi,reps0c,rdel
+      integer(ISZ):: i,ii,k,ix,iy,iz
+      real(kind=8):: rs,x,r
+      real(kind=8),allocatable:: phisave(:,:,:)
+      real(kind=8),pointer:: phitemp(:,:,:),rhotemp(:,:,:)
+      real(kind=8):: bendx(-1:nxlocal+1)
+      real(kind=8),allocatable:: rhosave(:,:,:),res(:,:,:)
+      character(72):: errline
+      integer(ISZ):: nxcoarse,nycoarse,nzcoarse
+      integer(ISZ):: nxlocalcoarse,nylocalcoarse,nzlocalcoarse
+      real(kind=8):: dxcoarse,dycoarse,dzcoarse
+      real(kind=8):: dxcoarsesqi,dycoarsesqi,dzcoarsesqi
+      real(kind=8):: ff
+      real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
+      integer(ISZ):: ixproc,iyproc,izproc
+      integer(ISZ):: localbounds(0:5),localboundsc(0:5)
+      integer(ISZ):: lxoffsetall(0:fsdecomp%nxprocs-1)
+      integer(ISZ):: rxoffsetall(0:fsdecomp%nxprocs-1)
+      integer(ISZ):: lyoffsetall(0:fsdecomp%nyprocs-1)
+      integer(ISZ):: ryoffsetall(0:fsdecomp%nyprocs-1)
+      integer(ISZ):: lzoffsetall(0:fsdecomp%nzprocs-1)
+      integer(ISZ):: rzoffsetall(0:fsdecomp%nzprocs-1)
+      integer(ISZ):: lxoffset,rxoffset
+      integer(ISZ):: lyoffset,ryoffset
+      integer(ISZ):: lzoffset,rzoffset
+      type(Decomposition):: coarsedecomp
+      type(Decomposition):: tempdecomp
+      integer(ISZ):: allocerror
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
+c     --- If doing initialization only, then exit.
+      if (iwhich == 1) return
+
+c     --- Initialize temporaries
+      dxsqi  = 1./dx**2
+      dysqi  = 1./dy**2
+      dzsqi  = 1./dz**2
+
+c     --- Setup the boundary conditions for the local domain.
+      localbounds = globalbounds
+#ifdef MPIPARALLEL
+      if (fsdecomp%ix(fsdecomp%ixproc) > 0)          localbounds(0) = -1
+      if (fsdecomp%ix(fsdecomp%ixproc)+nxlocal < nx) localbounds(1) = -1
+      if (fsdecomp%iy(fsdecomp%iyproc) > 0)          localbounds(2) = -1
+      if (fsdecomp%iy(fsdecomp%iyproc)+nylocal < ny) localbounds(3) = -1
+      if (fsdecomp%iz(fsdecomp%izproc) > 0)          localbounds(4) = -1
+      if (fsdecomp%iz(fsdecomp%izproc)+nzlocal < nz) localbounds(5) = -1
+#endif
+
+c     --- Determine the points that make up the conductor.  This takes extra
+c     --- time and so should not be done if the grid is not moving in the lab
+c     --- frame.  Set gridmode to 1 to avoid this call. The data is then
+c     --- converted and expanded for the multigrid solver.
+
+      if (mglevel == 0) then
+c       --- This does the conductor setup for all mglevels
+        if (gridmode == 0 .or. iwhich == -2) then
+          conductors%interior%n = 0
+          conductors%evensubgrid%n = 0
+          conductors%oddsubgrid%n = 0
+          if (laddconductor) call callpythonfunc("calladdconductor","controllers")
+        endif
+        call checkconductors(nx,ny,nz,nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                       conductors,fsdecomp)
+
+c       --- This calculates the coefficients for all mglevels
+        if (lprecalccoeffs) then
+          call precalculatecoefficients3d(nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                                    conductors,mgparam,localbounds)
+        endif
+
+c       --- Preset rho to increase performance (reducing the number of
+c       --- multiplies in the main SOR sweep loop).
+c       --- This is done at the finest level only. The restrictions will
+c       --- then also have the multiplication applied.
+        reps0c = mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
+        rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
+        if (.not. linbend) then
+          rho = rho*reps0c
+        else
+c         --- For bends, also include curvature corrections.
+          do iz=0,nzlocal
+            rs = rstar(iz)
+            do ix=0,nxlocal
+              x  = xmmin + (ix + fsdecomp%ix(fsdecomp%ixproc))*dx
+              r  = rs + x
+c             --- rearranged to reduce divides
+c             --- rho(ix,:,iz) = rho(ix,:,iz)*(rs/r)*reps0c/
+c             ---             ( 1. + (x/r)*((x/r)-2.)*rdel )
+              rho(ix,:,iz) = rho(ix,:,iz)*reps0c*rs*r/(r*r + x*(x-2.*r)*rdel)
+            enddo
+          enddo
+c         --- Fill scratch array with x values so it can be looked up
+c         --- in the bent beam loop instead of calculated.
+          do ix = -1,nxlocal+1
+            bendx(ix) = xmmin + (ix + fsdecomp%ix(fsdecomp%ixproc))*dx
+          enddo
+c         --- Change rstar if using Nuemann boundary conditions
+          if (globalbounds(4) == 1) rstar(-1) = rstar(1)
+          if (globalbounds(5) == 1) rstar(nzlocal+1) = rstar(nzlocal-1)
+        endif
+
+      endif
+
+c     --- Caclulate the potential on the next coarser level.
+c     --- Check if this is the coarsest level. If so, then don't do any further
+c     --- coarsening. This is the same check that is done in getmglevels.
+      if (nx >= 4 .and. ny >= 4 .and. nz >= 4 .and.
+     &    mglevel < mgmaxlevels) then
+
+        call getnextcoarselevel3d(nx,ny,nz,nxlocal,nylocal,nzlocal,dx,dy,dz,
+     &                            nxcoarse,nycoarse,nzcoarse,
+     &                            dxcoarse,dycoarse,dzcoarse)
+
+        dxcoarsesqi = 1./dxcoarse**2
+        dycoarsesqi = 1./dycoarse**2
+        dzcoarsesqi = 1./dzcoarse**2
+
+        localboundsc = globalbounds
+
+#ifdef MPIPARALLEL
+        coarsedecomp%nxglobal = nxcoarse
+        coarsedecomp%nyglobal = nycoarse
+        coarsedecomp%nzglobal = nzcoarse
+        coarsedecomp%mpi_comm_x = fsdecomp%mpi_comm_x
+        coarsedecomp%mpi_comm_y = fsdecomp%mpi_comm_y
+        coarsedecomp%mpi_comm_z = fsdecomp%mpi_comm_z
+        coarsedecomp%ixproc = fsdecomp%ixproc
+        coarsedecomp%iyproc = fsdecomp%iyproc
+        coarsedecomp%izproc = fsdecomp%izproc
+        coarsedecomp%nxprocs = fsdecomp%nxprocs
+        coarsedecomp%nyprocs = fsdecomp%nyprocs
+        coarsedecomp%nzprocs = fsdecomp%nzprocs
+        allocate(coarsedecomp%ix(0:fsdecomp%nxprocs-1))
+        allocate(coarsedecomp%nx(0:fsdecomp%nxprocs-1))
+        allocate(coarsedecomp%iy(0:fsdecomp%nyprocs-1))
+        allocate(coarsedecomp%ny(0:fsdecomp%nyprocs-1))
+        allocate(coarsedecomp%iz(0:fsdecomp%nzprocs-1))
+        allocate(coarsedecomp%nz(0:fsdecomp%nzprocs-1))
+        allocate(coarsedecomp%mpistatex(0:fsdecomp%nxprocs-1))
+        allocate(coarsedecomp%mpistatey(0:fsdecomp%nyprocs-1))
+        allocate(coarsedecomp%mpistatez(0:fsdecomp%nzprocs-1))
+c       --- Find domains in coarser grid
+        call mgdividenz(fsdecomp,coarsedecomp,nx,ny,nz,
+     &                  nxcoarse,nycoarse,nzcoarse,mgscale)
+c       --- Reset value to corrected one
+        nxlocalcoarse = coarsedecomp%nx(ixproc)
+        nylocalcoarse = coarsedecomp%ny(iyproc)
+        nzlocalcoarse = coarsedecomp%nz(izproc)
+c       --- Difference between starts and ends of coarse and fine grids.
+c       --- Should only be in the range 0-2.
+        lxoffsetall = (nxcoarse*fsdecomp%ix-nx*coarsedecomp%ix)
+        rxoffsetall = (nx*(coarsedecomp%ix + coarsedecomp%nx) -
+     &                 nxcoarse*(fsdecomp%ix + fsdecomp%nx))
+        lyoffsetall = (nycoarse*fsdecomp%iy-ny*coarsedecomp%iy)
+        ryoffsetall = (ny*(coarsedecomp%iy + coarsedecomp%ny) -
+     &                 nycoarse*(fsdecomp%iy + fsdecomp%ny))
+        lzoffsetall = (nzcoarse*fsdecomp%iz-nz*coarsedecomp%iz)
+        rzoffsetall = (nz*(coarsedecomp%iz + coarsedecomp%nz) -
+     &                 nzcoarse*(fsdecomp%iz + fsdecomp%nz))
+c       --- Note that the lzoffsetall and rzoffsetall can only be used in
+c       --- MPIPARALLEL sections since they will be unallocated in the
+c       --- serial code. So, separate scalars are used in code which is
+c       --- used in the serial version.
+        lxoffset = lxoffsetall(ixproc)
+        rxoffset = rxoffsetall(ixproc)
+        lyoffset = lyoffsetall(iyproc)
+        ryoffset = ryoffsetall(iyproc)
+        lzoffset = lzoffsetall(izproc)
+        rzoffset = rzoffsetall(izproc)
+        if (coarsedecomp%ix(ixproc) > 0) localboundsc(0) = -1
+        if (coarsedecomp%ix(ixproc)+nxlocalcoarse < nxcoarse) localboundsc(1) = -1
+        if (coarsedecomp%iy(iyproc) > 0) localboundsc(2) = -1
+        if (coarsedecomp%iy(iyproc)+nylocalcoarse < nycoarse) localboundsc(3) = -1
+        if (coarsedecomp%iz(izproc) > 0) localboundsc(4) = -1
+        if (coarsedecomp%iz(izproc)+nzlocalcoarse < nzcoarse) localboundsc(5) = -1
+#else
+        nxlocalcoarse = nxcoarse
+        nylocalcoarse = nycoarse
+        nzlocalcoarse = nzcoarse
+        lxoffset = 0
+        rxoffset = 0
+        lyoffset = 0
+        ryoffset = 0
+        lzoffset = 0
+        rzoffset = 0
+#endif
+
+c       --- Alloate new work space
+        allocate(phicoarse(-1:nxlocalcoarse+1,
+     &                     -1:nylocalcoarse+1,
+     &                     -1:nzlocalcoarse+1),
+     &           stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vcycle: allocation error ",allocerror,
+     &           ": could not allocate phicoarse to shape ",
+     &           nxlocalcoarse,nylocalcoarse,nzlocalcoarse
+          call kaboom("vcycle: allocation error")
+          return
+        endif
+        allocate(rhocoarse(0:nxlocalcoarse,0:nylocalcoarse,0:nzlocalcoarse),
+     &           stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vcycle: allocation error ",allocerror,
+     &           ": could not allocate rhocoarse to shape ",
+     &           nxlocalcoarse,nylocalcoarse,nzlocalcoarse
+          call kaboom("vcycle: allocation error")
+          return
+        endif
+
+c       --- Restrict fine rho to coarse rho
+        ff = (dxsqi+dysqi+dzsqi)/(dxcoarsesqi + dycoarsesqi + dzcoarsesqi)
+        call restrict3d(nx,ny,nz,nxlocal,nylocal,nzlocal,
+     &                  nxguardrho,nyguardrho,nzguardrho,rho,
+     &                  nxcoarse,nycoarse,nzcoarse,
+     &                  nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
+     &                  rhocoarse,ff,localbounds,localboundsc,
+     &                  lxoffset,lyoffset,lzoffset)
+
+        if (lprecalccoeffs) conductors%coeffs => conductors%coeffs%coarser
+
+        phicoarse = 0.
+        call fullmultigrid3dsolve(iwhich,mglevel+1,
+     &                            nxcoarse,nycoarse,nzcoarse,
+     &                            nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
+     &                            nxguardphi,nyguardphi,nzguardphi,
+     &                            nxguardrho,nyguardrho,nzguardrho,
+     &                            dxcoarse,dycoarse,dzcoarse,
+     &                            phicoarse,rhocoarse,
+     &                            rstar,linbend,globalbounds,
+     &                            xmmin,ymmin,zmmin,
+     &                            mgparam,mgiters,mgmaxvcycles,mgmaxvcycles,
+     &                            mgmaxlevels,mgerror,mgtol,mgverbose,
+     &                            downpasses,uppasses,
+     &                            lcndbndy,laddconductor,icndbndy,
+     &                            gridmode,conductors,lprecalccoeffs,
+     &                            coarsedecomp)
+
+        if (lprecalccoeffs) conductors%coeffs => conductors%coeffs%finer
+
+c       --- Expand coarse phi into fine phi
+        phi = 0.
+        call expand3d(nx,ny,nz,nxlocal,nylocal,nzlocal,
+     &                nxguardphi,nyguardphi,nzguardphi,
+     &                phi,
+     &                nxcoarse,nycoarse,nzcoarse,
+     &                nxlocalcoarse,nylocalcoarse,nzlocalcoarse,
+     &                phicoarse,localbounds,lxoffset,lyoffset,lzoffset,
+     &                conductors,lprecalccoeffs)
+
+        deallocate(phicoarse,rhocoarse)
+
+#ifdef MPIPARALLEL
+        deallocate(coarsedecomp%ix)
+        deallocate(coarsedecomp%nx)
+        deallocate(coarsedecomp%iy)
+        deallocate(coarsedecomp%ny)
+        deallocate(coarsedecomp%iz)
+        deallocate(coarsedecomp%nz)
+        deallocate(coarsedecomp%mpistatex)
+        deallocate(coarsedecomp%mpistatey)
+        deallocate(coarsedecomp%mpistatez)
+#endif
+
+      endif
+
+      if (lprecalccoeffs) then
+        do iz=0,nzlocal
+          do iy=0,nylocal
+            do ix=0,nxlocal
+              if (conductors%coeffs%data(7,ix,iy,iz) == 0.) then
+                phi(ix,iy,iz) = conductors%coeffs%data(6,ix,iy,iz)
+              endif
+            enddo
+          enddo
+        enddo
+      endif
+
+c     --- Make sure guard planes have sensible values before beginning.
+      call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,
+     &                               nxguardphi,nyguardphi,nzguardphi,phi,1,
+     &                               localbounds,.false.,.false.)
+
+      if (mglevel == 0) then
+c       --- The convergence error is only calculated at the finest mglevel
+        allocate(phisave(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1),
+     &           stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"multigrid3dsolve: allocation error ",allocerror,
+     &         ": could not allocate phisave to shape ",nxlocal,nylocal,nzlocal
+          call kaboom("multigrid3dsolve: allocation error")
+          return
+        endif
+      endif
+
+c     --- Main multigrid v-cycle loop. At the finest level, calculate error
+c     --- each iteration since very few iterations are done.
+      mgiters = 0
+      mgerror = 2.*mgtol + 1.
+      do while (mgerror > mgtol .and. mgiters < mgmaxiters)
+        mgiters = mgiters + 1
+
+        if (mglevel == 0) then
+c         --- Save current value of phi
+          phisave = phi(-1:nxlocal+1,-1:nylocal+1,-1:nzlocal+1)
+        endif
+
+c       --- Do one vcycle.
+        call vcycle(mglevel,1.,nx,ny,nz,nxlocal,nylocal,nzlocal,
+     &              nxguardphi,nyguardphi,nzguardphi,
+     &              nxguardrho,nyguardrho,nzguardrho,
+     &              dx,dy,dz,phi,rho,
+     &              rstar,linbend,bendx,globalbounds,mgparam,mgform,mgmaxlevels,
+     &              downpasses,uppasses,lcndbndy,icndbndy,conductors,
+     &              lprecalccoeffs,fsdecomp)
+
+        if (mglevel == 0) then
+c         --- Calculate the change in phi.
+          mgerror = 0.
+          do iz=0,nzlocal
+            do iy=0,nylocal
+              do ix=0,nxlocal
+                mgerror = max(mgerror,abs(phisave(ix,iy,iz) - phi(ix,iy,iz)))
+              enddo
+            enddo
+          enddo
+
+#ifdef MPIPARALLEL
+          if (fsdecomp%nxprocs*fsdecomp%nyprocs*fsdecomp%nzprocs > 1) then
+c           --- calculate global sorerror
+            call parallelmaxrealarraycomm(mgerror,1,fsdecomp%mpi_comm)
+          endif
+#endif
+        endif
+
+      enddo
+
+      if (mglevel == 0) then
+#ifdef MPIPARALLEL
+c       --- If there are extra guard cells, then make the data consistent
+c       --- across the processors.
+        if ((nxguardphi > 1 .and. fsdecomp%nxprocs > 1) .or.
+     &      (nyguardphi > 1 .and. fsdecomp%nyprocs > 1) .or.
+     &      (nzguardphi > 1 .and. fsdecomp%nzprocs > 1)) then
+          call mgexchange_phi(1,nxlocal,nylocal,nzlocal,phi,
+     &                        nxguardphi,nyguardphi,nzguardphi,
+     &                        -max(nxguardphi,nyguardphi,nzguardphi),
+     &                        0,fsdecomp)
+        endif
+#endif
+      endif
+
+c     --- Set boundary conditions. This is only really needed for the
+c     --- Dirichlet boundaries, but this is convenient to call.
+      call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,
+     &                               nxguardphi,nyguardphi,nzguardphi,
+     &                               phi,1,
+     &                               localbounds,.true.,.false.)
+
+      if (mglevel == 0) then
+
+c       --- Note that at the coarse levels, it will almost always be the case
+c       --- that mgerror > mgtol, since the number of vcycles is limited
+c       --- for efficiency.
+
+c       --- Make a print out.
+        if (mgverbose>=1 .or. (mgverbose>=0 .and. mgerror > mgtol)) then
+          if (mgerror > mgtol) then
+            call remark("Multigrid: Maximum number of iterations reached")
+          endif
+          write(errline,20) mgerror,mgiters
+  20      format("Multigrid: Error converged to ",1pe11.3," in ",i5," v-cycles")
+          call remark(errline)
+        endif
+      
+        deallocate(phisave)
+
+c       --- Restore rho
+        reps0c = 1./reps0c
+        if (.not. linbend) then
+          rho = rho*reps0c
+        else
+c         --- For bends, also include curvature corrections.
+          do iz=0,nzlocal
+            rs = rstar(iz)
+            do ix=0,nxlocal
+              x  = xmmin + (ix + fsdecomp%ix(fsdecomp%ixproc))*dx
+              r  = rs + x
+              rho(ix,:,iz) = rho(ix,:,iz)/rs*reps0c*( r + x*((x/r)-2.)*rdel )
+            enddo
+          enddo
+        endif
+
+        if (lf3dtimesubs) timefullmultigrid3dsolve = timefullmultigrid3dsolve +
+     &                                         wtime() - substarttime
+
+      endif
+
+      return
+      end
+c=============================================================================
       module formggetarraysuminterface
       contains
       function mggetarraysum(nxlocal,nylocal,nzlocal,delx,dely,delz,a,fsdecomp,
@@ -824,7 +1284,7 @@ c     message added by petermc, 1 Oct 2002
         if (lpe0) print*,"V2 rho",mglevel,sss
       endif
 
-c     --- Check if this is the finest level. If so, then don't do any further
+c     --- Check if this is the coarsest level. If so, then don't do any further
 c     --- coarsening. This is the same check that is done in getmglevels.
       if (nx >= 4 .and. ny >= 4 .and. nz >= 4 .and.
      &    mglevel < mgmaxlevels) then
