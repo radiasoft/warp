@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.204 $, $Date: 2011/12/08 22:48:05 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.205 $, $Date: 2011/12/08 22:55:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -554,6 +554,7 @@ c mgmaxiters is the max number of vcycles at the finest level. This level is
 c            iterated to convergence.
 
       integer(ISZ):: mgform = 1
+      real(kind=8):: mgscale = 1.
       real(kind=8):: dxsqi,dysqi,dzsqi,reps0c,rdel
       integer(ISZ):: i,ii,k,ix,iy,iz
       real(kind=8):: rs,x,r
@@ -863,7 +864,7 @@ c         --- Save current value of phi
         endif
 
 c       --- Do one vcycle.
-        call vcycle(mglevel,1.,nx,ny,nz,nxlocal,nylocal,nzlocal,
+        call vcycle(mglevel,mgscale,nx,ny,nz,nxlocal,nylocal,nzlocal,
      &              nxguardphi,nyguardphi,nzguardphi,
      &              nxguardrho,nyguardrho,nzguardrho,
      &              dx,dy,dz,phi,rho,
