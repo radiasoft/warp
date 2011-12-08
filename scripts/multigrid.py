@@ -14,7 +14,7 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.163 2011/11/04 21:38:48 grote Exp $"
+multigrid_version = "$Id: multigrid.py,v 1.164 2011/12/08 22:49:04 grote Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):
@@ -911,6 +911,87 @@ most of which get there default values from one of the fortran packages.
     return res
 
 MultiGrid = MultiGrid3D
+
+##############################################################################
+##############################################################################
+class FullMultiGrid3D(MultiGrid3D):
+  def __init__(self,mgmaxvcycles=2,**kw):
+    self.mgmaxvcycles = mgmaxvcycles
+    MultiGrid3D.__init__(self,**kw)
+
+  def dosolve(self,iwhich=0,*args):
+    if not self.l_internal_dosolve: return
+    # --- set for longitudinal relativistic contraction 
+    iselfb = args[2]
+    beta = top.pgroup.fselfb[iselfb]/clight
+    zfact = 1./sqrt((1.-beta)*(1.+beta))
+
+    # --- This is only done for convenience.
+    self._phi = self.potential
+    self._rho = self.source
+    if isinstance(self.potential,FloatType): return
+
+    # --- Setup data for bends.
+    rstar = zeros(3+self.nzlocal,'d')
+    if top.bends:
+
+      # --- This commented out code does the same thing as the line below
+      # --- setting linbend but is a bit more complicated. It is preserved
+      # --- in case of some unforeseen problem with the code below.
+      #ii = (top.cbendzs <= self.zmmax+zgrid and
+      #                     self.zmmin+zgrid <= top.cbendze)
+      #self.linbend = sometrue(ii)
+
+      setrstar(rstar,self.nzlocal,self.dz,self.zmminlocal,self.getzgrid())
+      self.linbend = rstar.min() < largepos
+
+    mgverbose = self.getmgverbose()
+    mgiters = zeros(1,'l')
+    mgerror = zeros(1,'d')
+    # --- This takes care of clear out the conductor information if needed.
+    # --- Note that f3d.gridmode is passed in below - this still allows the
+    # --- user to use the addconductor method if needed.
+    if self.gridmode == 0: self.clearconductors([top.pgroup.fselfb[iselfb]])
+    conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
+    if self.electrontemperature == 0:
+      fullmultigrid3dsolve(iwhich,0,self.nx,self.ny,self.nz,
+                       self.nxlocal,self.nylocal,self.nzlocal,
+                       self.nxguardphi,self.nyguardphi,self.nzguardphi,
+                       self.nxguardrho,self.nyguardrho,self.nzguardrho,
+                       self.dx,self.dy,self.dz*zfact,self.potential,self.source,
+                       rstar,self.linbend,self.bounds,
+                       self.xmmin,self.ymmin,self.zmmin*zfact,
+                       self.mgparam,mgiters,self.mgmaxiters,self.mgmaxvcycles,
+                       self.mgmaxlevels,mgerror,self.mgtol,mgverbose,
+                       self.downpasses,self.uppasses,
+                       self.lcndbndy,self.laddconductor,self.icndbndy,
+                       f3d.gridmode,conductorobject,self.lprecalccoeffs,
+                       self.fsdecomp)
+    else:
+      # --- These are the plain multigrid solvers, since the full MG versions
+      # --- have not yet be written.
+      iondensitygrid3d = Grid3dtype()
+      setupiondensitygrid3d(self.xmmin,self.ymmin,self.zmmin,
+                            self.dx,self.dy,self.dz,
+                            self.nxlocal,self.nylocal,self.nzlocal,
+                            self._rho,iondensitygrid3d)
+      self.iondensitygrid3d = iondensitygrid3d
+      multigridbe3dsolve(iwhich,self.nx,self.ny,self.nz,
+                         self.dx,self.dy,self.dz*zfact,
+                         self.potential,self.source,
+                         rstar,self.linbend,self.bounds,
+                         self.xmmin,self.ymmin,self.zmmin*zfact,
+                         self.mgparam,mgiters,self.mgmaxiters,
+                         self.mgmaxlevels,mgerror,self.mgtol,mgverbose,
+                         self.downpasses,self.uppasses,
+                         self.lcndbndy,self.laddconductor,self.icndbndy,
+                         f3d.gridmode,conductorobject,
+                         iondensitygrid3d,
+                         self.fsdecomp)
+    self.mgiters = mgiters[0]
+    self.mgerror = mgerror[0]
+
+
 
 ##############################################################################
 ##############################################################################
