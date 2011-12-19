@@ -5,7 +5,7 @@ from warp import *
 import __main__
 import gc
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.102 2011/11/16 07:01:57 grote Exp $"
+fieldsolver_version = "$Id: fieldsolver.py,v 1.103 2011/12/19 18:51:17 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -2180,8 +2180,17 @@ the upper edge.
   assert comp in ['x','y','z','E'],"comp must be one of 'x', 'y', 'z' or 'E'"
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  if ((alltrue(top.efetch != 3) and maxnd(top.depos_order) == 1) or
-      not w3d.allocated('selfe')):
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z','E'].index(comp)
+
+  import em3dsolver
+  if isinstance(solver,em3dsolver.EM3D):
+    Ex = solver.getex()
+    Ey = solver.getey()
+    Ez = solver.getez()
+
+  elif ((alltrue(top.efetch != 3) and maxnd(top.depos_order) == 1) or
+        not w3d.allocated('selfe')):
     # --- If not already using selfe, then allocate it and set it.
     # --- Note that this could be an unexpected expense for a user.
     if solver is w3d:
@@ -2196,25 +2205,30 @@ the upper edge.
                           w3d.nzguarde:-w3d.nzguarde or None]
     else:
       selfe = solver.getselfe()
-  if type(comp) == IntType: ic = comp
-  else:                     ic = ['x','y','z','E'].index(comp)
+
+    Ex = selfe[0,...]
+    Ey = selfe[1,...]
+    Ez = selfe[2,...]
 
   if comp == 'E':
-    Ex = getdecomposedarray(selfe[0,...],ix=ix,iy=iy,iz=iz,
+    Ex = getdecomposedarray(Ex,ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    Ey = getdecomposedarray(selfe[1,...],ix=ix,iy=iy,iz=iz,
+    Ey = getdecomposedarray(Ey,ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    Ez = getdecomposedarray(selfe[2,...],ix=ix,iy=iy,iz=iz,
+    Ez = getdecomposedarray(Ez,ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
     return sqrt(Ex**2 + Ey**2 + Ez**2)
   else:
-    return getdecomposedarray(selfe[ic,...],ix=ix,iy=iy,iz=iz,
+    if   ic == 0: E = Ex
+    elif ic == 1: E = Ey
+    elif ic == 2: E = Ez
+    return getdecomposedarray(E,ix=ix,iy=iy,iz=iz,
                               bcast=bcast,local=local,fullplane=fullplane,
                               xyantisymmetric=(ic in [0,1]),
                               solver=solver)
