@@ -103,7 +103,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.275 2011/10/10 22:53:15 grote Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.276 2011/12/19 22:03:20 grote Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -293,8 +293,8 @@ Opens up an X window
         except:
           gist.window(winnum,dpi=dpi,style=style)
       else:
-        if xon: gist.window(winnum,dpi=dpi,style=style)
-        else:   gist.window(winnum,dpi=dpi,display='',style=style)
+        if xon: gist.window(winnum,dpi=dpi,style=style,display=os.environ['DISPLAY'])
+        else:   gist.window(winnum,dpi=dpi,style=style,display='')
   else:
     # --- Get the next winnum if it wasn't passed in.
     if winnum == 0:
@@ -4990,12 +4990,14 @@ def psplotsalways():
 def psplotsseldom():
   psplots(seldom)
 
+##########################################################################
 def gstyle():
     global gist_style
     gist_style = gist.get_style()
     for i in range(0,len(gist_style['systems'])):
       gist_style['systems'][i]['legend']=''
 
+##########################################################################
 def set_label(height=None,font=None,bold=0,italic=0,axis='all',system=None):
     """change plots label attributes
     - height=None,
@@ -5005,9 +5007,8 @@ def set_label(height=None,font=None,bold=0,italic=0,axis='all',system=None):
     - italic=0
     - axis='all'
     - system='all'"""
-    global gist_style
     try:
-      a=gist_style
+      gist_style
     except:
       gstyle()
 
@@ -5046,6 +5047,30 @@ def set_label(height=None,font=None,bold=0,italic=0,axis='all',system=None):
           gist_style ['systems'][i]['ticks']['vertical']['textStyle']['font']=font
     set_style(gist_style)
 
+##########################################################################
+def scale_labels(scale):
+  """Scale the label sizes. This changes the sizes of the lables and shifts them
+to make space for the changed font size.
+  - scale: scale factor.
+  """
+  set_label(height=0.0182*scale)
+
+  colorbar_fontsize = array([14.,14.,8.,8.,8.,8.,8.,8.,8.,8.])*scale
+
+  for i in range(1):
+    # --- This numbers only work for the systems with plots covering the full
+    # --- page.
+    ptitle_placement[i][0][1] += (0.9 - 0.895)*scale
+    ptitle_placement[i][1][1] -= (0.4 - 0.3927)*scale
+    ptitle_placement[i][2][0] -= (0.14 - 0.12)*scale
+    ptitle_placement[i][3][1] -= (0.403 - 0.3927)*scale
+
+  # --- Change the default value of the height argument.
+  d = list(ptitles.func_defaults)
+  d[-1] = 20.*scale
+  ptitles.func_defaults = tuple(d)
+
+##########################################################################
 def setlinewidth(width=1.):
   """Set the line width for the axis and the data.
 Note that this does not affect contour lines.
@@ -5066,6 +5091,82 @@ Note that this does not affect contour lines.
       s['legend']=''
     gist.set_style(style)
 
+##########################################################################
+def setviewport(x0=None,x1=None,y0=None,y1=None,view=None,
+                movecurrenttitles=False):
+    """Set the viewport for a view. This will automatically move the
+titles and colorbars. (Though, the change to the color bar location
+will only take affect on the next plot.)
+ - x0,x1,y0,y1: The viewport in universal coordinates (ranging between
+                0 and 1). If any are not given, the current value is used.
+ - view=current view: View to change.
+ - movecurrenttitles=False: When true, and if view is the current view,
+                            then actively move any titles currently
+                            being displayed.
+    """
+    if view is None: view = plsys()
+    print plsys()
+    try:
+        gist_style
+    except:
+        gstyle()
+
+    # --- Get the any unspecified view port dimensions. These are
+    # --- needed for the title placements.
+    if x0 is None: x0 = gist_style['systems'][view-1]['viewport'][0]
+    if x1 is None: x1 = gist_style['systems'][view-1]['viewport'][1]
+    if y0 is None: y0 = gist_style['systems'][view-1]['viewport'][2]
+    if y1 is None: y1 = gist_style['systems'][view-1]['viewport'][3]
+
+    # --- Set the new viewport
+    gist_style['systems'][view-1]['viewport'][0] = x0
+    gist_style['systems'][view-1]['viewport'][1] = x1
+    gist_style['systems'][view-1]['viewport'][2] = y0
+    gist_style['systems'][view-1]['viewport'][3] = y1
+    currentview = plsys()
+    set_style(gist_style)
+    plsys(currentview)
+
+    # --- Save the current location of the titles.
+    t = copy.copy(ptitle_placement[view-1][0])
+    b = copy.copy(ptitle_placement[view-1][1])
+    l = copy.copy(ptitle_placement[view-1][2])
+    r = copy.copy(ptitle_placement[view-1][3])
+
+    # --- Set the new location of the titles.
+    ptitle_placement[view-1][0] = [(x0+x1)/2.,y1 + 0.0327]
+    ptitle_placement[view-1][1] = [(x0+x1)/2.,y0 - 0.0277]
+    ptitle_placement[view-1][2] = [x0 - 0.0557,(y0+y1)/2.]
+    ptitle_placement[view-1][3] = [(x0+x1)/2.,y0 - 0.0577]
+
+    if movecurrenttitles and view == plsys():
+        # --- If changing the current view, then move any existing
+        # --- plot titles.
+        currentview = plsys()
+        plsys(0)
+        try:
+            # --- This assumes that the titles are the first four elements
+            # --- in system zero. dx and dy specify the change in location.
+            pledit(1,dx=ptitle_placement[view-1][0][0] - t[0],
+                     dy=ptitle_placement[view-1][0][1] - t[1])
+            pledit(2,dx=ptitle_placement[view-1][1][0] - b[0],
+                     dy=ptitle_placement[view-1][1][1] - b[1])
+            pledit(3,dx=ptitle_placement[view-1][2][0] - l[0],
+                     dy=ptitle_placement[view-1][2][1] - l[1])
+            pledit(4,dx=ptitle_placement[view-1][3][0] - r[0],
+                     dy=ptitle_placement[view-1][3][1] - r[1])
+        except:
+            pass
+        plsys(currentview)
+
+    # --- Update the location of the colorbar. Note that the colorbar
+    # --- is not redrawn.
+    colorbar_placement[view-1] = [x1+0.0057,x1+0.0257,y0+0.003,y1-0.003]
+
+    # --- Return the new viewport
+    return (x0,x1,y0,y1)
+
+##########################################################################
 class getstdout:
     def __init__(self):
         self.out = []
@@ -5076,6 +5177,7 @@ class getstdout:
     def flush(self):
         pass
 
+##########################################################################
 def wplq(i):
     """return dictionary of plot options"""
     s = sys.stdout
@@ -5107,6 +5209,7 @@ def wplq(i):
             k = k+1
     return l
 
+##########################################################################
 def aplq():
     """return list of dictionaries for all elements in active window"""
     list = []
@@ -5114,18 +5217,19 @@ def aplq():
     i = 1
     while l>0:
       try:
-        d=gist.wplq(i)
+        d = wplq(i)
       except:
         try:
-          d=gist.get_style()
+          d = gist.get_style()
         except:
           return list
-      l=len(d)
+      l = len(d)
       if l>0:
-        list=list+[d]
-        i=i+1
+        list = list+[d]
+        i = i + 1
     return list
 
+##########################################################################
 def plellipse(l,h,np=100,thetamin=0.,thetamax=2.*pi,xcent=0.,ycent=0.,**kw):
   """Plot ellipse
        - l,               : length
@@ -5139,26 +5243,4 @@ def plellipse(l,h,np=100,thetamin=0.,thetamax=2.*pi,xcent=0.,ycent=0.,**kw):
   x = 0.5*l*cos(theta) + xcent
   y = 0.5*h*sin(theta) + ycent
   pla(y,x,**kw)
-
-def scale_labels(scale):
-  """Scale the label sizes. This changes the sizes of the lables and shifts them
-to make space for the changed font size.
-  - scale: scale factor.
-  """
-  set_label(0.0182*scale)
-
-  colorbar_fontsize = array([14.,14.,8.,8.,8.,8.,8.,8.,8.,8.])*scale
-
-  for i in range(1):
-    # --- This numbers only work for the systems with plots covering the full
-    # --- page.
-    ptitle_placement[i][0][1] += (0.9 - 0.895)*scale
-    ptitle_placement[i][1][1] -= (0.4 - 0.3927)*scale
-    ptitle_placement[i][2][0] -= (0.14 - 0.12)*scale
-    ptitle_placement[i][3][1] -= (0.403 - 0.3927)*scale
-
-  # --- Change the default value of the height argument.
-  d = list(ptitles.func_defaults)
-  d[-1] = 20.*scale
-  ptitles.func_defaults = tuple(d)
 
