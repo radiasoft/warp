@@ -56,6 +56,15 @@
 |   pcbzy(), pcbzx(), pcbxy()
 |   pcazy(), pcazx(), pcaxy()
 
+| Change and query the properties of the plot
+|   set_label(): change label properties, such as font and size
+|   scale_labels(): scale the label sizes
+|   setlinewidth(): set the default line with, including the axis
+|                   and tick marks
+|   setviewport(): change the plotting viewport
+|   wplq(): get information about a plot element in the current view
+|   aplq(): get information about all plot elements in the current view
+
 | Dynamically manipulate the color palette using the colorbar
 |   changepalette()
 
@@ -103,7 +112,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.276 2011/12/19 22:03:20 grote Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.277 2011/12/19 22:15:51 grote Exp $"
 
 def warpplotsdoc():
   import warpplots
