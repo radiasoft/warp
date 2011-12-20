@@ -62,7 +62,7 @@ Special:
  CADconductor(filename,...)
 
 Note that all take the following additional arguments:
-voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
 name=None,material='SS',laccuimagecharge=0,neumann=0,conductivity=None
 
 installconductor(a,...): generates the data needed for the fieldsolve
@@ -116,7 +116,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.244 2011/12/06 23:18:31 grote Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.245 2011/12/20 01:00:57 grote Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1009,7 +1009,7 @@ class EllipticAssembly(Assembly):
   """
 Elliptic assembly
   """
-  def __init__(self,ellipticity,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
+  def __init__(self,ellipticity,v=0.,x=0.,y=0.,z=0.,condid='next',kwlist=[],
                     generatorf=None,generatord=None,generatori=None,
                     generatorfnew=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
@@ -1112,7 +1112,7 @@ class XAssembly(Assembly):
   """
 Assembly aligned along X axis
   """
-  def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
+  def __init__(self,v=0.,x=0.,y=0.,z=0.,condid='next',kwlist=[],
                     generatorf=None,generatord=None,generatori=None,
                     generatorfnew=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
@@ -1256,7 +1256,7 @@ class YAssembly(Assembly):
   """
 Assembly aligned along Y axis
   """
-  def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
+  def __init__(self,v=0.,x=0.,y=0.,z=0.,condid='next',kwlist=[],
                     generatorf=None,generatord=None,generatori=None,
                     generatorfnew=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
@@ -2945,12 +2945,12 @@ Conductor defined in a CAD file.
   - filename: CAD file
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: origin of CAD object
-  - condid=1: conductor id, must be integer, or can be 'next' in which
-              case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,filename,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+                    condid='next',**kw):
     assert _lwithnewconductorgeneration,\
       'CADconductor can only be used with the new conductor generation method'
     kwlist=['filename']
@@ -3008,12 +3008,12 @@ Plane class
     phi is angle in z-y plane
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of plane (only zcent is meaningful)
-  - condid=1: conductor id of plane, must be integer, or can be 'next' in which
-              case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,z0=0.,zsign=1.,theta=0.,phi=0.,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+                    condid='next',**kw):
     kwlist=['z0','zsign','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            planeconductorf,planeconductord,planeintercept,
@@ -3035,12 +3035,12 @@ ZPlane class
   - zsign=1: when positive, conductor is in the z>0 side
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of plane (only zcent is meaningful)
-  - condid=1: conductor id of plane, must be integer, or can be 'next' in which
-              case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,z0=0.,zsign=1.,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+                    condid='next',**kw):
     kwlist=['z0','zsign']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            zplaneconductorf,zplaneconductord,zplaneintercept,
@@ -3062,12 +3062,12 @@ XPlane class
   - xsign=1: when positive, conductor is in the x>0 side
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of plane (only xcent is meaningful)
-  - condid=1: conductor id of plane, must be integer, or can be 'next' in which
-              case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,x0=0.,xsign=1.,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+                    condid='next',**kw):
     self.x0 = x0
     self.xsign = xsign
     ZPlane.__init__(self,x0,xsign,
@@ -3086,12 +3086,12 @@ YPlane class
   - ysign=1: when positive, conductor is in the y>0 side
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of plane (only ycent is meaningful)
-  - condid=1: conductor id of plane, must be integer, or can be 'next' in which
-              case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,y0=0.,ysign=1.,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+                    condid='next',**kw):
     self.y0 = y0
     self.ysign = ysign
     ZPlane.__init__(self,y0,ysign,
@@ -3109,11 +3109,11 @@ Box class
   - xsize,ysize,zsize: box size
   - voltage=0: box voltage
   - xcent=0.,ycent=0.,zcent=0.: center of box
-  - condid=1: conductor id of box, must be integer, or can be 'next' in which
-              case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,xsize,ysize,zsize,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+                    condid='next',**kw):
     kwlist=['xsize','ysize','zsize']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            boxconductorf,boxconductord,boxintercept,
@@ -3162,11 +3162,11 @@ Cylinder class
     phi is angle in z-y plane
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,radius,length,theta=0.,phi=0.,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
     kwlist = ['radius','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            cylinderconductorf,cylinderconductord,
@@ -3228,11 +3228,11 @@ Cylinders class for a list of cylinders
     phi is angle in z-y plane
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,radius,length,theta=0.,phi=0.,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
     kwlist = ['ncylinders','radius','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            cylindersconductorf,cylindersconductord,
@@ -3281,15 +3281,15 @@ Cylinder aligned with z-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - zlower,zupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and zcent. If both are
                    given, then length and zcent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,zlower=None,zupper=None,**kw):
+                    condid='next',zlower=None,zupper=None,**kw):
     if zlower is not None and zupper is not None:
       length = zupper - zlower
       zcent = 0.5*(zlower + zupper)
@@ -3390,8 +3390,8 @@ Cylinder with rounded corners aligned with z-axis
   - radius2: radius of rounded corners
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - zlower,zupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and zcent. If both are
                    given, then length and zcent are ignored. If only one is
@@ -3399,7 +3399,7 @@ Cylinder with rounded corners aligned with z-axis
   """
   def __init__(self,radius,length=None,radius2=None,voltage=0.,
                     xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,zlower=None,zupper=None,**kw):
+                    condid='next',zlower=None,zupper=None,**kw):
     if zlower is not None and zupper is not None:
       length = zupper - zlower
       zcent = 0.5*(zlower + zupper)
@@ -3449,15 +3449,15 @@ Outside of a cylinder aligned with z-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - zlower,zupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and zcent. If both are
                    given, then length and zcent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,zlower=None,zupper=None,**kw):
+                    condid='next',zlower=None,zupper=None,**kw):
     if zlower is not None and zupper is not None:
       length = zupper - zlower
       zcent = 0.5*(zlower + zupper)
@@ -3512,8 +3512,8 @@ Outside of a cylinder with rounded corners aligned with z-axis
   - radius2: radius of rounded corners
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - zlower,zupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and zcent. If both are
                    given, then length and zcent are ignored. If only one is
@@ -3521,7 +3521,7 @@ Outside of a cylinder with rounded corners aligned with z-axis
   """
   def __init__(self,radius,length=None,radius2=None,voltage=0.,
                     xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,zlower=None,zupper=None,**kw):
+                    condid='next',zlower=None,zupper=None,**kw):
     if zlower is not None and zupper is not None:
       length = zupper - zlower
       zcent = 0.5*(zlower + zupper)
@@ -3600,15 +3600,15 @@ Cylinder aligned with X-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - xlower,xupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and xcent. If both are
                    given, then length and xcent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,xlower=None,xupper=None,**kw):
+                    condid='next',xlower=None,xupper=None,**kw):
     if xlower is not None and xupper is not None:
       length = xupper - xlower
       xcent = 0.5*(xlower + xupper)
@@ -3617,7 +3617,7 @@ Cylinder aligned with X-axis
     assert length is not None,\
       "XCylinder: either length or both xlower and xupper must be specified"
     ZCylinder.__init__(self,radius,length,
-                            voltage,xcent,ycent,zcent,condid=1)
+                            voltage,xcent,ycent,zcent,condid)
     XAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
                             self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
@@ -3631,15 +3631,15 @@ Cylinder aligned with X-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - xlower,xupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and xcent. If both are
                    given, then length and xcent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,xlower=None,xupper=None,**kw):
+                    condid='next',xlower=None,xupper=None,**kw):
     if xlower is not None and xupper is not None:
       length = xupper - xlower
       xcent = 0.5*(xlower + xupper)
@@ -3648,7 +3648,7 @@ Cylinder aligned with X-axis
     assert length is not None,\
       "XCylinder: either length or both xlower and xupper must be specified"
     ZCylinderOut.__init__(self,radius,length,
-                               voltage,xcent,ycent,zcent,condid=1)
+                               voltage,xcent,ycent,zcent,condid)
     XAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
                             self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
@@ -3662,15 +3662,15 @@ Cylinder aligned with Y-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - ylower,yupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and ycent. If both are
                    given, then length and ycent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,ylower=None,yupper=None,**kw):
+                    condid='next',ylower=None,yupper=None,**kw):
     if ylower is not None and yupper is not None:
       length = yupper - ylower
       ycent = 0.5*(ylower + yupper)
@@ -3679,7 +3679,7 @@ Cylinder aligned with Y-axis
     assert length is not None,\
       "YCylinder: either length or both ylower and yupper must be specified"
     ZCylinder.__init__(self,radius,length,
-                            voltage,xcent,ycent,zcent,condid=1)
+                            voltage,xcent,ycent,zcent,condid)
     YAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
                             self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
@@ -3693,15 +3693,15 @@ Cylinder aligned with Y-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - ylower,yupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and ycent. If both are
                    given, then length and ycent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,ylower=None,yupper=None,**kw):
+                    condid='next',ylower=None,yupper=None,**kw):
     if ylower is not None and yupper is not None:
       length = yupper - ylower
       ycent = 0.5*(ylower + yupper)
@@ -3710,7 +3710,7 @@ Cylinder aligned with Y-axis
     assert length is not None,\
       "YCylinder: either length or both ylower and yupper must be specified"
     ZCylinderOut.__init__(self,radius,length,
-                               voltage,xcent,ycent,zcent,condid=1)
+                               voltage,xcent,ycent,zcent,condid)
     YAssembly.__init__(self,self.voltage,self.xcent,self.ycent,self.zcent,
                             self.condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori,
@@ -3725,15 +3725,15 @@ Elliptical cylinder aligned with z-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - zlower,zupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and zcent. If both are
                    given, then length and zcent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,ellipticity,radius,length=None,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     zlower=None,zupper=None,**kw):
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid,
@@ -3768,15 +3768,15 @@ Outside an elliptical cylinder aligned with z-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - zlower,zupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and zcent. If both are
                    given, then length and zcent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,ellipticity,radius,length=None,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     zlower=None,zupper=None,**kw):
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid,
@@ -3811,15 +3811,15 @@ Elliptical cylinder aligned with x-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - xlower,xupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and xcent. If both are
                    given, then length and xcent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,ellipticity,radius,length=None,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     xlower=None,xupper=None,**kw):
     if xlower is not None and xupper is not None:
       length = xupper - xlower
@@ -3850,15 +3850,15 @@ Outside of an elliptical cylinder aligned with x-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - xlower,xupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and xcent. If both are
                    given, then length and xcent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,ellipticity,radius,length=None,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     xlower=None,xupper=None,**kw):
     if xlower is not None and xupper is not None:
       length = xupper - xlower
@@ -3889,15 +3889,15 @@ Elliptical cylinder aligned with y-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - ylower,yupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and ycent. If both are
                    given, then length and ycent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,ellipticity,radius,length=None,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,ylower=None,yupper=None,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',ylower=None,yupper=None,**kw):
     if ylower is not None and yupper is not None:
       length = yupper - ylower
       ycent = 0.5*(ylower + yupper)
@@ -3927,15 +3927,15 @@ Outside of an elliptical cylinder aligned with y-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - ylower,yupper: Optionally, the lower and upper extent of the cylinder
                    can be specified instead of length and ycent. If both are
                    given, then length and ycent are ignored. If only one is
                    given, it is ignored.
   """
   def __init__(self,ellipticity,radius,length=None,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,ylower=None,yupper=None,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',ylower=None,yupper=None,**kw):
     if ylower is not None and yupper is not None:
       length = yupper - ylower
       ycent = 0.5*(ylower + yupper)
@@ -3964,11 +3964,11 @@ Sphere
   - radius: radius
   - voltage=0: sphere voltage
   - xcent=0.,ycent=0.,zcent=0.: center of sphere
-  - condid=1: conductor id of sphere, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,radius,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+                    condid='next',**kw):
     kwlist = ['radius']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       sphereconductorf,sphereconductord,sphereintercept,
@@ -4006,11 +4006,11 @@ Elliptoidal sphere
   - radius: radius
   - voltage=0: sphere voltage
   - xcent=0.,ycent=0.,zcent=0.: center of sphere
-  - condid=1: conductor id of sphere, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
     Sphere.__init__(self,radius,
                          voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
@@ -4032,11 +4032,11 @@ Cone
     phi is angle in z-y plane
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,theta,phi,voltage=0.,
-                    xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
     kwlist = ['r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       coneconductorf,coneconductord,coneintercept,
@@ -4095,11 +4095,11 @@ Cone
     phi is angle in z-y plane
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,slope,length,theta,phi,voltage=0.,
-                    xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
     kwlist = ['r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       coneconductorf,coneconductord,coneintercept,
@@ -4134,11 +4134,11 @@ Cones
     phi is angle in z-y plane
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,theta,phi,voltage=0.,
-                    xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
     kwlist = ['ncones','r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       conesconductorf,conesconductord,conesintercept,
@@ -4190,10 +4190,10 @@ Torus
   - r2: poloidal radius
   - voltage=0: torus voltage
   - xcent=0.,ycent=0.,zcent=0.: center of torus
-  - condid=1: conductor id of torus, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
-  def __init__(self,r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+  def __init__(self,r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
     kwlist = ['r1','r2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       ztorusconductorf,ztorusconductord,ztorusintercept,
@@ -4254,12 +4254,12 @@ Rectangular grid
   - thickness: metal thickness
   - voltage=0: beamlet plate voltage
   - xcent=0.,ycent=0.,zcent=0.: center of beamlet plate
-  - condid=1: conductor id of beamlet plate, must be integer, or can be 'next'
-              in which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,xcellsize,ycellsize,length,thickness,
                voltage=0.,
-               xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+               xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
     kwlist = ['xcellsize','ycellsize','length','thickness']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zgridconductorf,zgridconductord,zgridintercept,
@@ -4291,11 +4291,11 @@ Plate from beamlet pre-accelerator
   - thickness: thickness of the plate
   - voltage=0: beamlet plate voltage
   - xcent=0.,ycent=0.,zcent=0.: center of beamlet plate
-  - condid=1: conductor id of beamlet plate, must be integer, or can be 'next'
-              in which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,za,zb,z0,thickness,voltage=0.,
-               xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+               xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
     kwlist = ['za','zb','z0','thickness']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       beamletplateconductorf,beamletplateconductord,
@@ -4561,8 +4561,8 @@ Surface of revolution
       of the list of r and z data.
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
 Methods:
   - draw: draws the object's r versus z
   - createdxobject: creates (internally) the object for visualization using
@@ -4574,7 +4574,7 @@ Methods:
   """
   def __init__(self,rsrf,zsrf,rad=None,rc=None,zc=None,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+                    condid='next',**kw):
     kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       None,zsrfrvconductord,
@@ -4660,8 +4660,8 @@ Outside of a surface of revolution
   - rmax=largepos: max radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
   - raddata=None: optional radius of curvature of segments
@@ -4685,7 +4685,7 @@ Methods:
                  is then passed to DXImage
   """
   def __init__(self,rofzfunc=None,zmin=None,zmax=None,rmax=largepos,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,**kw):
     kwlist = ['lrofzfunc','zmin','zmax','rmax','griddz']
@@ -4820,8 +4820,8 @@ Inside of a surface of revolution
   - rmin=0: min radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
   - raddata=None: optional radius of curvature of segments
@@ -4845,7 +4845,7 @@ Methods:
                  is then passed to DXImage
   """
   def __init__(self,rofzfunc=None,zmin=None,zmax=None,rmin=0,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,**kw):
     kwlist = ['lrofzfunc','zmin','zmax','rmin','griddz']
@@ -4982,8 +4982,8 @@ Between surfaces of revolution
                          any tablized if not given
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rminofzdata,rmaxofzdata=None: optional tablized data of radii of surface
   - zmindata,zmaxdata=None: optional tablized data of z locations of r data
   - radmindata,radmaxdata=None: optional radius of curvature of segments
@@ -5007,7 +5007,7 @@ Methods:
                  is then passed to DXImage
   """
   def __init__(self,rminofz=None,rmaxofz=None,zmin=None,zmax=None,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rminofzdata=None,zmindata=None,radmindata=None,
                     rcmindata=None,zcmindata=None,
                     rmaxofzdata=None,zmaxdata=None,radmaxdata=None,
@@ -5263,8 +5263,8 @@ Outside of an elliptical surface of revolution
   - rmax=largepos: max radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
       raddata[i] is radius for segment from zdata[i] to zdata[i+1]
@@ -5279,7 +5279,7 @@ Outside of an elliptical surface of revolution
     Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,ellipticity,rofzfunc=None,zmin=None,zmax=None,rmax=largepos,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,**kw):
     ZSrfrvOut.__init__(self,rofzfunc,zmin,zmax,rmax,
@@ -5303,8 +5303,8 @@ Inside of an elliptical surface of revolution
   - rmin=0: min radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
   - raddata=None: optional radius of curvature of segments
@@ -5319,7 +5319,7 @@ Inside of an elliptical surface of revolution
     Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,ellipticity,rofzfunc=None,zmin=None,zmax=None,rmin=0,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,**kw):
     ZSrfrvIn.__init__(self,rofzfunc,zmin,zmax,rmin,
@@ -5342,8 +5342,8 @@ Between elliptical surfaces of revolution
   - zmin,zmax: z-extent of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rminofzdata,rmaxofzdata=None: optional tablized data of radii of surface
   - zmindata,zmaxdata=None: optional tablized data of z locations of r data
   - radmindata,radmaxdata=None: optional radius of curvature of segments
@@ -5358,7 +5358,7 @@ Between elliptical surfaces of revolution
     Note that if tablized data is given, the first two arguments are ignored.
   """
   def __init__(self,ellipticity,rminofz=None,rmaxofz=None,zmin=None,zmax=None,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rminofzdata=None,zmindata=None,radmindata=None,
                     rcmindata=None,zcmindata=None,
                     rmaxofzdata=None,zmaxdata=None,radmaxdata=None,
@@ -5385,8 +5385,8 @@ Outside of an surface of revolution aligned along to X axis
   - rmax=largepos: max radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rofxdata=None: optional tablized data of radius of surface
   - xdata=None: optional tablized data of x locations of rofxdata
       raddata[i] is radius for segment from xdata[i] to xdata[i+1]
@@ -5401,7 +5401,7 @@ Outside of an surface of revolution aligned along to X axis
     Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,rofxfunc=None,xmin=None,xmax=None,rmax=largepos,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rofxdata=None,xdata=None,raddata=None,
                     xcdata=None,rcdata=None,**kw):
     ZSrfrvOut.__init__(self,rofxfunc,xmin,xmax,rmax,
@@ -5423,8 +5423,8 @@ Inside of a surface of revolution aligned along the X axis
   - rmin=0: min radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rofxdata=None: optional tablized data of radius of surface
   - xdata=None: optional tablized data of x locations of rofxdata
   - raddata=None: optional radius of curvature of segments
@@ -5439,7 +5439,7 @@ Inside of a surface of revolution aligned along the X axis
     Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,rofxfunc=None,xmin=None,xmax=None,rmin=0,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rofxdata=None,xdata=None,raddata=None,
                     xcdata=None,rcdata=None,**kw):
     ZSrfrvIn.__init__(self,rofxfunc,xmin,xmax,rmin,
@@ -5460,8 +5460,8 @@ Between surfaces of revolution aligned along the X axis
   - xmin,xmax: x-extent of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rminofxdata,rmaxofxdata=None: optional tablized data of radii of surface
   - xmindata,xmaxdata=None: optional tablized data of x locations of r data
   - radmindata,radmaxdata=None: optional radius of curvature of segments
@@ -5476,7 +5476,7 @@ Between surfaces of revolution aligned along the X axis
     Note that if tablized data is given, the first two arguments are ignored.
   """
   def __init__(self,rminofx=None,rmaxofx=None,xmin=None,xmax=None,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rminofxdata=None,xmindata=None,radmindata=None,
                     rcmindata=None,xcmindata=None,
                     rmaxofxdata=None,xmaxdata=None,radmaxdata=None,
@@ -5502,8 +5502,8 @@ Outside of an surface of revolution aligned along to Y axis
   - rmax=largepos: max radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rofydata=None: optional tablized data of radius of surface
   - ydata=None: optional tablized data of y locations of rofydata
       raddata[i] is radius for segment from ydata[i] to ydata[i+1]
@@ -5518,7 +5518,7 @@ Outside of an surface of revolution aligned along to Y axis
     Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,rofyfunc=None,ymin=None,ymax=None,rmax=largepos,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rofydata=None,ydata=None,raddata=None,
                     ycdata=None,rcdata=None,**kw):
     ZSrfrvOut.__init__(self,rofyfunc,ymin,ymax,rmax,
@@ -5540,8 +5540,8 @@ Inside of a surface of revolution aligned along the Y axis
   - rmin=0: min radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rofydata=None: optional tablized data of radius of surface
   - ydata=None: optional tablized data of y locations of rofydata
   - raddata=None: optional radius of curvature of segments
@@ -5556,7 +5556,7 @@ Inside of a surface of revolution aligned along the Y axis
     Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,rofyfunc=None,ymin=None,ymax=None,rmin=0,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rofydata=None,ydata=None,raddata=None,
                     ycdata=None,rcdata=None,**kw):
     ZSrfrvIn.__init__(self,rofyfunc,ymin,ymax,rmin,
@@ -5577,8 +5577,8 @@ Between surfaces of revolution aligned along the Y axis
   - ymin,ymax: y-extent of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   - rminofydata,rmaxofydata=None: optional tablized data of radii of surface
   - ymindata,ymaxdata=None: optional tablized data of y locations of r data
   - radmindata,radmaxdata=None: optional radius of curvature of segments
@@ -5593,7 +5593,7 @@ Between surfaces of revolution aligned along the Y axis
     Note that if tablized data is given, the first two arguments are ignored.
   """
   def __init__(self,rminofy=None,rmaxofy=None,ymin=None,ymax=None,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
                     rminofydata=None,ymindata=None,radmindata=None,
                     rcmindata=None,ycmindata=None,
                     rmaxofydata=None,ymaxdata=None,radmaxdata=None,
@@ -5620,11 +5620,11 @@ Annulus class
     phi is angle in z-y plane
   - voltage=0: annulus voltage
   - xcent=0.,ycent=0.,zcent=0.: center of annulus
-  - condid=1: conductor id of annulus, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,rmin,rmax,length,theta=0.,phi=0.,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
     assert (rmin<rmax),"rmin must be less than rmax"
     kwlist = ['rmin','rmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
@@ -5702,11 +5702,11 @@ Creates an Annulus as a surface of revolution.
   - length: length of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,rmin,rmax,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
 
     self.rmin = rmin
     self.rmax = rmax
@@ -5740,11 +5740,11 @@ Creates an Annulus as a surface of revolution.
   - length: length of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,ellipticity,rmin,rmax,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
 
     self.rmin = rmin
     self.rmax = rmax
@@ -5775,11 +5775,11 @@ Cone
   - length: length
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
 
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
@@ -5806,11 +5806,11 @@ Cone
   - length: length
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,slope,intercept,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
 
     self.slope = slope
     self.intercept = intercept
@@ -5838,11 +5838,11 @@ Cone outside
   - length: length
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
 
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
@@ -5869,11 +5869,11 @@ Cone outside
   - length: length
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer, or can be 'next' in
-              which case a unique ID is chosen
+  - condid='next': conductor id, must be integer, or can be 'next' in
+                   which case a unique ID is chosen
   """
   def __init__(self,slope,intercept,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',**kw):
 
     self.slope = slope
     self.intercept = intercept
@@ -5943,7 +5943,7 @@ Either specify the quadrupole structure...
   - prr: Change on right plate max radius
   - xcent=0.,ycent=0.: transverse center of quadrupole
   - zcent: axial center of quadrupole, default taken from element
-  - condid=1: conductor id of quadrupole, must be integer
+  - condid='next': conductor id of quadrupole, must be integer
   - splitrodids=false: when true, the condid's of the x and y rods are
                        different, y is the negative of x (which is condid)
 Or give the quadrupole id to use...
@@ -5963,7 +5963,7 @@ Or give the quadrupole id to use...
     assert vx is not None,'vx must be specified'
     assert vy is not None,'vy must be specified'
     if zcent is None: zcent = 0.
-    if condid is None: condid = 1
+    if condid is None: condid = 'next'
   else:
     if ap is None: ap = getattr(top,elem+'ap')[elemid]
     if rl is None: rl = getattr(top,elem+'rl')[elemid]
