@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.26 2011/09/22 23:19:07 grote Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.27 2011/12/20 20:17:36 grote Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -305,7 +305,7 @@ Input arguments:
   solverdict['nprocs'] = 1
   if lcylindrical:
     solverdict['ny'] = 0
-    Bsolver = MagnetostaticMG(lcylindrical=1,**solverdict)
+    Bsolver = MagnetostaticMG(lcylindrical=1,luse2D=True,**solverdict)
     xx,zz = getmesh2d(0.,Bsolver.dx,Bsolver.nx,
                       Bsolver.zmmin,Bsolver.dz,Bsolver.nz)
     yy = zeros(xx.shape,'d')
