@@ -7,7 +7,7 @@ Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
 
-species_version = "$Id: species.py,v 1.92 2011/10/04 21:47:26 grote Exp $"
+species_version = "$Id: species.py,v 1.93 2011/12/20 19:41:59 grote Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale > 0.:
@@ -449,7 +449,8 @@ Creates a new species of particles. All arguments are optional.
                             total number that is less then but close to np.
                             If all three are given, then np is ignored.
                             For zero length dimensions, the number is set
-                            to one.
+                            to one. They will be rounded to the nearest
+                            integer.
  - lallindomain=0: If true, the code only loads particles within the domain.
                    This only matters when parallel.
  - solvergeom=w3d.solvergeom: Specifies the geometry to use
@@ -558,7 +559,7 @@ Creates a new species of particles. All arguments are optional.
         if bmin == bmax:
           if bmin > dmax or bmax < dmin:
             return None,None
-          return n,0
+          return nint(n),0
         else:
           d = (bmax - bmin)/n
           iminp = nint((minp - bmin)/d)
@@ -647,6 +648,7 @@ in radius squared.
  - spacing='random': either 'random' or 'uniform' particle spacing. For uniform,
                      r and z are uniform, theta is still random
  - nr,nz: for 'uniform' spacing, number of particles along r and z axis
+          These will be rounded to the nearest integer.
  - thetamin=0.,thetamax=2.*pi: range of theta around the cylinder
  - lvariableweights: By default, if wpid is set, then the particles will be
                      weighted according to their radius, otherwise all will
@@ -760,8 +762,10 @@ in radius squared.
         z = ones(np)
     else:
       if zmax != zmin:
-        if nr is None: nr = nint(np**(1./2.))
-        if nz is None: nz = nint(np**(1./2.))
+        if nr is None: nr = np**(1./2.)
+        if nz is None: nz = np**(1./2.)
+        nr = nint(nr)
+        nz = nint(nz)
 
         # --- Find the range of particle z locations within the cropped
         # --- zmin and max.
@@ -781,6 +785,7 @@ in radius squared.
                         (izminp + 0.5)/nz,1./nz,nzp-1)
       else: # zmax == zmin
         if nr is None: nr = np
+        nr = nint(nr)
         np = nr
         r = getmesh1d(0.5/nr,1./nr,nr-1)
         z = ones(np)
