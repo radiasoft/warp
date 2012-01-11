@@ -116,7 +116,7 @@ except ImportError:
   # --- disabling any visualization.
   VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.245 2011/12/20 01:00:57 grote Exp $"
+generateconductors_version = "$Id: generateconductors.py,v 1.246 2012/01/11 23:00:55 grote Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -580,20 +580,22 @@ Should never be directly created by the user.
       ymmax = mins[1]
       zmmin = frz.basegrid.zmin
       zmmax = frz.basegrid.zmax
-      ixproc = top.ixproc
-      iyproc = top.iyproc
-      izproc = top.izproc
-      ixlocal = top.fsdecomp.ix[top.ixproc]
-      iylocal = top.fsdecomp.iy[top.iyproc]
-      izlocal = top.fsdecomp.iz[top.izproc]
+      ixproc = top.fsdecomp.ixproc
+      iyproc = top.fsdecomp.iyproc
+      izproc = top.fsdecomp.izproc
+      ixlocal = top.fsdecomp.ix[ixproc]
+      iylocal = top.fsdecomp.iy[iyproc]
+      izlocal = top.fsdecomp.iz[izproc]
       # --- This needs to be fixed to handle mesh refinement properly
       l2symtry = w3d.l2symtry
       l4symtry = w3d.l4symtry
     else:
       if g is None:
         g = w3d
+        fsdecomp = top.fsdecomp
         interior = f3d.conductors.interior
       else:
+        fsdecomp = g.fsdecomp
         try:
           interior = g.getconductorobject().interior
         except AttributeError:
@@ -621,12 +623,12 @@ Should never be directly created by the user.
       ymmax = g.ymmax
       zmmin = g.zmmin
       zmmax = g.zmmax
-      ixproc = g.ixproc
-      iyproc = g.iyproc
-      izproc = g.izproc
-      ixlocal = g.fsdecomp.ix[g.ixproc]
-      iylocal = g.fsdecomp.iy[g.iyproc]
-      izlocal = g.fsdecomp.iz[g.izproc]
+      ixproc = fsdecomp.ixproc
+      iyproc = fsdecomp.iyproc
+      izproc = fsdecomp.izproc
+      ixlocal = fsdecomp.ix[ixproc]
+      iylocal = fsdecomp.iy[iyproc]
+      izlocal = fsdecomp.iz[izproc]
       l2symtry = g.l2symtry
       l4symtry = g.l4symtry
 
@@ -700,7 +702,9 @@ Should never be directly created by the user.
                               ixminlocal,ixmaxlocal,izminlocal,izmaxlocal,
                               dx,xmmin)
       else:
-        subcond_sumrhointerior(qinterior,interior,nxlocal,nylocal,nzlocal,rho,
+        subcond_sumrhointerior(qinterior,interior,nxlocal,nylocal,nzlocal,
+                               g.nxguardrho,g.nyguardrho,g.nzguardrho,
+                               rho,
                                ixminlocal,ixmaxlocal,iyminlocal,iymaxlocal,
                                izminlocal,izmaxlocal)
       qc = qc - qinterior[0]*dx*dy*dz
@@ -2979,23 +2983,23 @@ Conductor defined in a CAD file.
 
   def conductorfnew(self,filename,xcent,ycent,zcent,intercepts,fuzz):
     import CADmodule
-    ii = CADmodule.CADgetintercepts(filename,
-                                    intercepts.xmmin+xcent,
-                                    intercepts.ymmin+ycent,
-                                    intercepts.zmmin+zcent,
-                                    intercepts.dx,
-                                    intercepts.dy,
-                                    intercepts.dz,
-                                    intercepts.nx,
-                                    intercepts.ny,
-                                    intercepts.nz)
-    intercepts.nxicpt = ii[0].shape[0]
-    intercepts.nyicpt = ii[1].shape[0]
-    intercepts.nzicpt = ii[2].shape[0]
+    xi,yi,zi = CADmodule.CADgetintercepts(filename,
+                                          intercepts.xmmin+xcent,
+                                          intercepts.ymmin+ycent,
+                                          intercepts.zmmin+zcent,
+                                          intercepts.dx,
+                                          intercepts.dy,
+                                          intercepts.dz,
+                                          intercepts.nx,
+                                          intercepts.ny,
+                                          intercepts.nz)
+    intercepts.nxicpt = xi.shape[0]
+    intercepts.nyicpt = yi.shape[0]
+    intercepts.nzicpt = zi.shape[0]
     intercepts.gchange()
-    intercepts.xintercepts[...] = ii[0]
-    intercepts.yintercepts[...] = ii[1]
-    intercepts.zintercepts[...] = ii[2]
+    intercepts.xintercepts[...] = xi
+    intercepts.yintercepts[...] = yi
+    intercepts.zintercepts[...] = zi
 
 #============================================================================
 class Plane(Assembly):
