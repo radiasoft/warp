@@ -49,6 +49,11 @@ else:
   # --- which will typically be the pywarp90 directory.
   packagename = ''
 
+if 'install' in dummydist.commands:
+  # --- During an install, remove the build/lib directory, since distutils
+  # --- doesn't update an older warpC.so even if there were changes.
+  os.system('rm -rf build/lib*')
+
 warppkgs = ['top','env','w3d','f3d','wxy','fxy','wrz','frz','her','cir','cho','em2d','em3d']
 
 def makeobjects(pkg):
