@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.267 $, $Date: 2011/10/04 21:38:28 $
+c@(#) File TOP.F, version $Revision: 3.268 $, $Date: 2012/01/20 21:32:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2936,6 +2936,8 @@ c     --- number of species as the z moments.
               vysqbarlw(ilw,i,js) = w1*vysqbarz(iz,js) + w0*vysqbarz(iz+1,js)
               vzsqbarlw(ilw,i,js) = w1*vzsqbarz(iz,js) + w0*vzsqbarz(iz+1,js)
               xxpbarlw(ilw,i,js)  = w1*xxpbarz(iz,js)  + w0*xxpbarz(iz+1,js)
+              xvxbarlw(ilw,i,js)  = w1*xvxbarz(iz,js)  + w0*xvxbarz(iz+1,js)
+              yvybarlw(ilw,i,js)  = w1*yvybarz(iz,js)  + w0*yvybarz(iz+1,js)
               yypbarlw(ilw,i,js)  = w1*yypbarz(iz,js)  + w0*yypbarz(iz+1,js)
               zvzbarlw(ilw,i,js)  = w1*zvzbarz(iz,js)  + w0*zvzbarz(iz+1,js)
               xvzbarlw(ilw,i,js)  = w1*xvzbarz(iz,js)  + w0*xvzbarz(iz+1,js)
