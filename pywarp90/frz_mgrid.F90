@@ -9926,8 +9926,8 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
     ingrid=.false.
     rpos = (r-g%rmin)*g%invdr
     zpos = (z-g%zmin)*g%invdz
-    jn = 1+nint(rpos)
-    ln = 1+nint(zpos)
+    jn = 1+int(rpos)
+    ln = 1+int(zpos)
     do WHILE(.not.ingrid)
      if (jn<1 .or. jn>g%nr+1 .or. ln<1 .or. ln>g%nz+1) then
       ingrid=.true.
@@ -9943,8 +9943,8 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
 !          IF(r<g%rmin.or.r>=g%rmax.or.z<g%zmin.or.z>=g%zmax) cycle
           rpos = (r-g%rmin)*g%invdr
           zpos = (z-g%zminp)*g%invdz
-          jn = 1+nint(rpos)
-          ln = 1+nint(zpos)
+          jn = 1+int(rpos)
+          ln = 1+int(zpos)
         end if
       END if
      END if
@@ -9970,8 +9970,8 @@ else
     ingrid=.false.
     rpos = (r-basegrid%rmin)*basegrid%invdr
     zpos = (z-basegrid%zmin)*basegrid%invdz
-    jn = 1+nint(rpos)
-    ln = 1+nint(zpos)
+    jn = 1+int(rpos)
+    ln = 1+int(zpos)
     ddr = rpos-REAL(jn-1)
     ddz = zpos-REAL(ln-1)
     oddr = 1._8-ddr
