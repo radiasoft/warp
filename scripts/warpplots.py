@@ -112,7 +112,7 @@ import re
 import os
 import sys
 import string
-warpplots_version = "$Id: warpplots.py,v 1.277 2011/12/19 22:15:51 grote Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.278 2012/01/26 23:31:29 grote Exp $"
 
 def warpplotsdoc():
   import warpplots
@@ -363,11 +363,9 @@ def plotruninfo():
   if with_matplotlib:
     aa.text(0.12,0.28,ss)
   runmaker = arraytostr(top.runmaker)
-  codeid = arraytostr(top.codeid)
-  rundate = arraytostr(top.rundate)
   runtime = arraytostr(top.runtime)
   runid = arraytostr(top.runid)
-  ss = '%-28s  %-8s  %-8s  %-9s  %-8s'%(runmaker,codeid,rundate,runtime,runid)
+  ss = '%s, %s %s'%(runmaker,runtime,runid)
   if with_gist:
     # --- Replace _ with !_ so that it prints an underscore instead of making
     # --- a subscript. This is most important for the runid.
