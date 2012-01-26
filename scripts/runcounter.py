@@ -5,9 +5,9 @@ import time
 import string
 import sys, copy
 import fcntl
-runcounter_version = "$Id: runcounter.py,v 1.16 2011/08/26 18:40:34 grote Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.17 2012/01/26 23:34:20 grote Exp $"
 
-def runcounter(init=0,delta=1,ensambles=[],prefix=None,suffix="_runcounter",
+def runcounter(init=0,delta=1,ensembles=[],prefix=None,suffix="_runcounter",
                sleep=0):
   """
 Each time runcounter is called, it will return a number incremented from the
@@ -17,16 +17,16 @@ allows for example parameter scans.
  - init=0: initial value which is returned the first time runcounter is
            called.
  - delta=1: value number if incremented by
- - ensambles=None: size of multiple ensambles
+ - ensembles=None: size of multiple ensembles
  - prefix=runid: prefix for file name where state is stored.
  - suffix="_runcounter": suffix for file name
 
-Using ensambles, multiple counters can be returned. The number of counters
-returned is one greater than the number of ensambles. When a counter reaches
+Using ensembles, multiple counters can be returned. The number of counters
+returned is one greater than the number of ensembles. When a counter reaches
 its ensamble value, it is reset and the next counter is incremented. init and
 delta can be lists specifying the initial value and delta for each ensamble.
 They default to 0 and 1 respectively.
-For example, if ensambles = [10,15], the returned value will be a tuple of
+For example, if ensembles = [10,15], the returned value will be a tuple of
 three numbers. The first between 0 and 9, the second between 0 and 14, and the
 third ever increasing. Each run, the first number will be incremented, every
 10 runs the second will be incremented and the first reset, etc.
@@ -35,16 +35,16 @@ third ever increasing. Each run, the first number will be incremented, every
   # --- Set default prefix
   if not prefix: prefix = arraytostr(top.runid)
 
-  # --- Handle ensambles
-  assert type(ensambles) in [IntType,ListType,TupleType,ArrayType],\
-         'ensambles must either be an integer or one of a list, tuple, or array'
+  # --- Handle ensembles
+  assert type(ensembles) in [IntType,ListType,TupleType,ArrayType],\
+         'ensembles must either be an integer or one of a list, tuple, or array'
   # --- Make sure it is a list and make sure that it is a copy since it is
   # --- appended to.
-  if type(ensambles) == IntType: ensambles = [ensambles]
-  ensambles = copy.copy(list(ensambles))
+  if type(ensembles) == IntType: ensembles = [ensembles]
+  ensembles = copy.copy(list(ensembles))
   # --- Add the maximum value of integers to the last value. This simplifies
   # --- the code below.
-  ensambles.append(sys.maxint)
+  ensembles.append(sys.maxint)
   
   # --- Handle init values
   assert type(init) in [IntType,ListType,TupleType,ArrayType],\
@@ -52,8 +52,8 @@ third ever increasing. Each run, the first number will be incremented, every
   # --- Make sure it is a list
   if type(init) == IntType: init = [init]
   init = list(init)
-  # --- Make sure that init is the same length as ensambles by appending zeroes
-  while len(init) < len(ensambles): init.append(0)
+  # --- Make sure that init is the same length as ensembles by appending zeroes
+  while len(init) < len(ensembles): init.append(0)
 
   # --- Handle delta values
   assert type(delta) in [IntType,ListType,TupleType,ArrayType],\
@@ -61,8 +61,8 @@ third ever increasing. Each run, the first number will be incremented, every
   # --- Make sure it is a list
   if type(delta) == IntType: delta = [delta]
   delta = list(delta)
-  # --- Make sure that delta is the same length as ensambles by appending ones
-  while len(delta) < len(ensambles): delta.append(1)
+  # --- Make sure that delta is the same length as ensembles by appending ones
+  while len(delta) < len(ensembles): delta.append(1)
 
   try:
     # --- Try to open the runcounter file
@@ -79,11 +79,11 @@ third ever increasing. Each run, the first number will be incremented, every
     # --- Add the delta to the first element
     counter[0] = counter[0] + delta[0]
     # --- Loop over elements, checking if each is greater than the
-    # --- size of the ensambles
+    # --- size of the ensembles
     # --- Note that because sys.maxint is in the last element, i can
     # --- never go beyond the end of the lists.
     i = 0
-    while counter[i] >= ensambles[i]:
+    while counter[i] >= ensembles[i]:
       counter[i] = init[i]
       i = i + 1
       counter[i] = counter[i] + delta[i]
@@ -106,7 +106,7 @@ third ever increasing. Each run, the first number will be incremented, every
 
   # --- Return the counter as a tuple so it can be returned to multiple
   # --- variables.
-  if len(ensambles) > 1:
+  if len(ensembles) > 1:
     return tuple(counter)
   else:
     return counter[0]
