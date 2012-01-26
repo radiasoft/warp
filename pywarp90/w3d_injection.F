@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.159 $, $Date: 2011/10/04 21:42:47 $
+c@(#) File w3d_injection.F, version $Revision: 1.160 $, $Date: 2012/01/26 23:29:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -994,7 +994,7 @@ c Space charge limited injection based off of the Gauss's Law.  This is
 c the scheme to use with time-dependent injection.
 c
 c For inject == 4
-c Thermionic emission. The current density is calculated using the Shottky 
+c Thermionic emission. The current density is calculated using the Schottky 
 c emission formula J = A*T*exp(-(W-dW)/(kT)), with A = lambda*((4*pi*me*k^2*e)/(h^3)),
 c lambda~0.5, dw = sqrt(e^3*E/(4*pi*eps0)), where T is the source temperature, 
 c W is the work function, k is the Boltzmann's constant, h is the Planck's contant,
@@ -1012,8 +1012,23 @@ c density. The grid inj_np is set by the user to specify the number of
 c particles to inject, instead of calculating it from other quantities.
 c Note that the particle z velocity is set by vzinject and vthz, and that
 c inj_phi is ignored.
+c
+c For inject == 7
+c Taylor-Langmuur ionic emission. The current density is calculated using the
+c Taylor-Langmuur emission formula with the Schottky term added.
+c J = A*exp(-(W-dW)/(kT))
+c dw = sqrt(e^3*E/(4*pi*eps0)), where T is the source temperature, 
+c W is the work function, k is the Boltzmann's constant
+c and E is the electric field in front of the surface. A and W must be supplied
+c using lambdarinject and workinject.
+c
+c For inject == 8
+c Combined emission. The current density is empirically set to be 
+c J_cl*(1.-exp(-(J_s/J_cl)**eta))**(1./eta) where J_cl is the current obtained
+c from the Child-Langmuir Law as obtained with inject==2, and J_s is the
+c current given by the Taylor-Langmuur equation.
 
-      elseif (inject>1 .and. inject<7) then
+      elseif (inject>1 .and. inject<9) then
 
         if (itask == 1) then
 c         --- Zero npinje_s.
@@ -1078,7 +1093,8 @@ c             --- This constant terms includes corrections for injection off
 c             --- of a concentric spheres.  See I. Langmuir,
 c             --- K. Blodgett, "Currents Limited by Space Charge Between
 c             --- Concentric Spheres", PhysRev, 1924.
-              if (inject == 2 .or. inject == 4 .or. inject == 5) then
+              if (inject == 2 .or. inject == 4 .or. inject == 5 .or.
+     &            inject == 7 .or. inject == 8) then
                 if (linj_spherical) then
                   zs = (inj_dz*inj_d(ij))*rinji
                   sphericalcorrection = (1. + 1.6*zs + 2.06*zs**2)
@@ -1092,15 +1108,27 @@ c               --- CL emission
      &                     ((inj_dz*inj_d(ij))**2*sphericalcorrection)*jton(jsid)
                 elseif (inject == 4) then
 c               --- Thermionic emission
-                  te_const(jsid) = ((4.*pi*pgroup%sm(is)*boltzmann**2*pgroup%sq(is))/(planck**3)) 
-     &                           * 0.5 * tempinject(ij)**2/sphericalcorrection*jton(jsid)
+                  te_const(jsid) = lambdarinject(ij)*((4.*pi*pgroup%sm(is)*boltzmann**2*pgroup%sq(is))/(planck**3)) 
+     &                           *tempinject(ij)**2/sphericalcorrection*jton(jsid)
                 elseif (inject == 5) then
 c               --- Thermionic emission with space charge
                   cl_const(jsid) = 4./9.*eps0*
      &                     (2.*abs(pgroup%sq(is))/pgroup%sm(is))**.5/
      &                     (inj_dz*inj_d(ij))**2
-                  te_const(jsid) = ((4.*pi*pgroup%sm(is)*boltzmann**2*pgroup%sq(is))/(planck**3)) 
-     &                           * 0.5 * tempinject(ij)**2
+                  te_const(jsid) = lambdarinject(ij)*((4.*pi*pgroup%sm(is)*boltzmann**2*pgroup%sq(is))/(planck**3)) 
+     &                           *tempinject(ij)**2
+
+                elseif (inject == 7) then
+c               --- Taylor-Langmuir ionic emission
+                  te_const(jsid) = lambdarinject(ij)/sphericalcorrection*jton(jsid)
+
+                elseif (inject == 8) then
+c               --- Taylor-Langmuir ionic emission with space charge
+                  cl_const(jsid) = 4./9.*eps0*
+     &                     (2.*abs(pgroup%sq(is))/pgroup%sm(is))**.5/
+     &                     (inj_dz*inj_d(ij))**2
+                  te_const(jsid) = lambdarinject(ij)
+
                 endif
               endif
 
@@ -1172,6 +1200,7 @@ c                   --- Child-Langmuir
                     rnn = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5/
      &                    cos(inj_angl(ix,iy,ij))
                     rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
+
                   elseif (inject == 3) then
 c                   --- Gauss's law
 c                   rnn = (eps0*inj_phi(ix,iy,ij)/
@@ -1183,6 +1212,7 @@ c    &     inj_dx*inj_dy/pgroup%sq(is)/pgroup%sw(is)/cos(inj_angl(ix,iy,ij))
                     qadd = eps0*inte - 0.5*qold
                     rnn = qadd/(pgroup%sq(is)*pgroup%sw(is))
                     rnn = rnn/cos(inj_angl(ix,iy,ij))
+
                   elseif (inject == 4) then
 c                   --- Thermionic emission
                     inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
@@ -1194,23 +1224,52 @@ c                   --- Thermionic emission
                     else
                       rnn = 0.
                     endif
+
                   elseif (inject == 5) then
 c                   --- Thermionic emission with space-charge
                     inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
                     if ( (pgroup%sq(is)*inte) > 0.) then
                       rnncl = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5
-                      inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
                       dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
                       rnns = te_const(jsid)     
      &                    * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
-                      rnn = rnncl*(1.-exp(-rnns/rnncl))/sphericalcorrection*jton(jsid)
+                      rnn = rnncl*(1.-exp(-(rnns/rnncl)**fitexpinject(ij)))**(1./fitexpinject(ij))/sphericalcorrection*jton(jsid)
                     else
                       rnn = 0.
                     end if
                     rnn = rnn/cos(inj_angl(ix,iy,ij))
                     rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
+
                   elseif (inject == 6) then
                     rnn = inj_np(ix,iy,ij,inj_is)
+
+                  elseif (inject == 7) then
+c                   --- Taylor-Langmuir ionic emission
+                    inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
+                    if ( (pgroup%sq(is)*inte) >= 0.) then
+                      dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
+                      rnn = te_const(jsid)     
+     &                    * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
+                      rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
+                    else
+                      rnn = 0.
+                    endif
+
+                  elseif (inject == 8) then
+c                   --- Taylor-Langmuir ionic emission with space-charge
+                    inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
+                    if ( (pgroup%sq(is)*inte) > 0.) then
+                      rnncl = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5
+                      dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
+                      rnns = te_const(jsid)     
+     &                    * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
+                      rnn = rnncl*(1.-exp(-(rnns/rnncl)**fitexpinject(ij)))**(1./fitexpinject(ij))/sphericalcorrection*jton(jsid)
+                    else
+                      rnn = 0.
+                    end if
+                    rnn = rnn/cos(inj_angl(ix,iy,ij))
+                    rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
+
                   endif
 
 c                 --- Make sure that rnn is >= 0.
@@ -2820,7 +2879,7 @@ c=============================================================================
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      if ((inject < 1 .or. inject > 6) .and.
+      if ((inject < 1 .or. inject > 8) .and.
      &    (tinject < 1 .or. tinject > 3)) return
 
 c Set wpid if needed and not set by user
@@ -3186,7 +3245,8 @@ c causing a code crash.
 
 c When using constant current injection, turn off the flag that specifies
 c use of the normal E field with the Child-Langmuir profile
-      if (inject == 1 .or. inject == 4 .or. inject == 5 .or. inject == 6) then
+      if (inject == 1 .or. inject == 4 .or. inject == 5 .or. inject == 6 .or.
+     &    inject == 7 .or. inject == 8) then
         linj_enormcl = .false.
        endif
 
@@ -3651,7 +3711,7 @@ c to get zp.
       if (lw3dtimesubs) substarttime = wtime()
 
       if (ninject == 0) return
-      if (inject < 1 .or. inject > 5) return
+      if (inject < 1 .or. inject > 8 .or. inject == 6) return
 
       allocate(xx((1+inj_nx)*(1+inj_ny)*ninject))
       allocate(yy((1+inj_nx)*(1+inj_ny)*ninject))

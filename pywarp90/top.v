@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.305 $, $Date: 2011/10/21 18:00:39 $
+#@(#) File TOP.V, version $Revision: 3.306 $, $Date: 2012/01/26 23:29:51 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -56,11 +56,11 @@ M_SUM        = M_GET_RHO + 1
 
 *********** Code_version:
 # -------- CVS updates this when a new major "release" occurs ------------
-codeid   character*8  /"warp r2"/     # Name of code, and major version
+codeid   character*8  /"warp r3"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.305 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.306 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -200,7 +200,7 @@ pline2   character*(80)       # 2 above bottom (usually main label)
 pline1   character*(80)       # 1 above bottom (usually aux. label)
 runid    character*(40) /"warp"/ # Four-character run name
 rundate  character*(8)  /" "/    # Run date
-runtime  character*(8)  /" "/    # Run time
+runtime  character*(24) /" "/    # Run time
 runmaker character*(35) /" "/    # Name of person running code / special notes
 
 *********** Lattice dump:
@@ -1339,9 +1339,11 @@ inject    integer    /0/   # Type of injection, (0: turned off,
                            # 1: constant current,
                            # 2: space-charge limited (Child-Langmuir),
                            # 3: space-charge limited (Gauss's law)),
-                           # 4: thermionic emission
-                           # 5: mixed thermionic and space-charge limited
+                           # 4: Richardson-Dushman thermionic emission
+                           # 5: mixed Richardson-Dushman thermionic and space-charge limited emission
                            # 6: user specified emission distribution
+                           # 7: Taylor-Langmuir ionic emission
+                           # 8: mixed Taylor-Langmuir ionic and space-charge limited emission
 inj_param real       /1./  # Relaxation parameter for inject.  Mainly used
                            # for Egun iterative mode - set to 1 for time
                            # dependent injection, 0 for steady-state injection.
@@ -1367,8 +1369,15 @@ vzinject(ninject,ns) _real /0./ [m/s] # Starting velocity.
 finject(ninject,ns) _real /0./ # Species fraction for each source
 winject(ninject,ns) _real /1./ # Scale factor on the particle weight when
                                # weighted particles are used (when wpid > 0)
-tempinject(ninject) _real # temperature of injection source
-workinject(ninject) _real # work function of injection source
+tempinject(ninject) _real # temperature of injection source for
+                          # thermionic emission
+workinject(ninject) _real # work function of injection source for
+                          # thermionic emission
+lambdarinject(ninject) _real /0.5/ # Coefficient of emitted current density
+                                   # for thermionic emission
+fitexpinject(ninject) _real /1./ # Exponential fitting factor for scaling
+                                 # between thermionic and space-charge limited
+                                 # emission
 inj_zstart(ninject) _real /0./ [m] # Starting location relative to the emitting
                                    # surface location.
 inj_d(ninject)      _real /1./ # Distance from surface where phi is fetched.
