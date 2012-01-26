@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.210 2011/12/08 22:49:28 grote Exp $"
+warp_version = "$Id: warp.py,v 1.211 2012/01/26 23:31:01 grote Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -151,6 +151,7 @@ if sys.argv[0]:
     top.runid = t
     del h,t
 runid = arraytostr(top.runid)
+top.runtime = time.asctime()
 
 # --- Check if the compiler was ifort - if so, set the stacksize unlimited
 # --- The fcompname is not yet be available yet if Forthon is not up to date
@@ -194,6 +195,8 @@ euler     = top.euler
 jperev    = top.jperev
 mu0       = top.mu0
 boltzmann = top.boltzmann
+avogadro  = top.avogadro
+planck    = top.planck
 largepos  = top.largepos
 smallpos  = top.smallpos
 dirichlet = top.dirichlet
