@@ -286,6 +286,9 @@ def printversion(v):
 def versionstext():
   "Returns a string which has the version information of packages loaded."
   r = 'Python WARP\n'
+  r += 'Origin date: %s\n'%top.origindate
+  r += 'Local date: %s\n'%top.localdate
+  r += 'Blob hash: %s\n'%top.blobhash
   pkg = package()
   fmt = '******  %s version %s\n'
   if 'fxy' in pkg: r=r+fmt%('Fieldsolver FXY',printversion(fxy.versfxy))

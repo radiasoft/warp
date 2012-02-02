@@ -99,6 +99,11 @@ if parallel:
   # --- This is only needed by warpC_Forthon.c
   define_macros += [('MPIPARALLEL',None)]
 
+datestring = os.popen('git log --branches=master --remotes=origin -n 1 --pretty=%aD').read().strip()
+define_macros += [('GITORIGINDATE','"'+datestring+'"')]
+datestring = os.popen('git log -n 1 --pretty=%aD').read().strip()
+define_macros += [('GITLOCALDATE','"'+datestring+'"')]
+
 if parallel:
   name = 'warpCparallel'
 else:

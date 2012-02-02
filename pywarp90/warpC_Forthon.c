@@ -39,6 +39,7 @@ void initwarpC(void)
 {
   PyObject *m, *d;
   PyObject *pystdout;
+  PyObject *date;
 #ifdef MPIPARALLEL
   m = Py_InitModule("warpCparallel", warpC_methods);
 #else
@@ -51,6 +52,19 @@ void initwarpC(void)
   ErrorObject = PyString_FromString("warpC.error");
 #endif
   PyDict_SetItemString(d, "error", ErrorObject);
+
+  date = PyString_FromString(GITORIGINDATE);
+  PyDict_SetItemString(d, "origindate", date);
+  Py_XDECREF(date);
+
+  date = PyString_FromString(GITLOCALDATE);
+  PyDict_SetItemString(d, "localdate", date);
+  Py_XDECREF(date);
+
+  date = PyString_FromString("$Id:$");
+  PyDict_SetItemString(d, "blobhash", date);
+  Py_XDECREF(date);
+
   if (PyErr_Occurred())
     Py_FatalError("can not initialize module warpC");
 
