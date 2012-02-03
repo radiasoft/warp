@@ -103,6 +103,8 @@ datestring = os.popen('git log --branches=master --remotes=origin -n 1 --pretty=
 define_macros += [('GITORIGINDATE','"'+datestring+'"')]
 datestring = os.popen('git log -n 1 --pretty=%aD').read().strip()
 define_macros += [('GITLOCALDATE','"'+datestring+'"')]
+commithash = os.popen('git log -n 1 --pretty=%h').read().strip()
+define_macros += [('GITCOMMITHASH','"'+commithash+'"')]
 
 if parallel:
   name = 'warpCparallel'

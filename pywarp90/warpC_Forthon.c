@@ -61,8 +61,8 @@ void initwarpC(void)
   PyDict_SetItemString(d, "localdate", date);
   Py_XDECREF(date);
 
-  date = PyString_FromString("$Id:$");
-  PyDict_SetItemString(d, "blobhash", date);
+  date = PyString_FromString(GITCOMMITHASH);
+  PyDict_SetItemString(d, "commithash", date);
   Py_XDECREF(date);
 
   if (PyErr_Occurred())
