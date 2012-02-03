@@ -521,7 +521,7 @@ Should never be directly created by the user.
     - tmax=None    : max time
     - nt=100       : nb of cells
     - color=black  : line color
-    - widht=1      : line width
+    - width=1      : line width
     - type='solid' : line type
     """
     if me<>0:return
