@@ -1,0 +1,14 @@
+
+# Ignore Mac extra files
+.DS_Store
+
+# Ignore python compiled files
+*.pyc
+
+# Ignore files created during the build
+Makefile
+build
+*.o
+*.so
+forthonf2c.h
+ranffortran.c
