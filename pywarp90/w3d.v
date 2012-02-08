@@ -189,6 +189,13 @@ zdist(0:nzdist)           _real
    # User specified arbitrary particle distribution in z
    # Data is assumed to be uniformly spaced in a normalized range from 0 to 1
    # with 0 being at zimin and 1 being at zimax.
+lnormalize_zdist           logical /.true./
+   # When true, zdist will be normalized so that the total number of particles
+   # and total charge are unchanged. When false, zdist will be used as is, as
+   # a direct scaling factor on the line-charge - where zdist is one, the
+   # specified line-charge will be loaded. This case has the nice property
+   # that if zdist is changed in one place, the number of particles loaded
+   # elsewhere will not be affected.
 nrmzdist(0:nzdist)          _real
    # Normalized zdist. sum(nrmzdist)=1. Calculated automatically.
 intzdist(0:nzdist)         _real

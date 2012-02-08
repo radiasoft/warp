@@ -6317,6 +6317,12 @@ c         --- Only set np_s is it had not been set be the user
             np_s(isid) = nxstripe*nystripe*nzstripe*sp_fract(isid)
           endif
         endif
+
+        if (nzdist > 0 .and. .not. lnormalize_zdist) then
+c         --- If not normalizing zdist, then scale the number of particles
+c         --- to be loaded.
+          np_s(isid) = np_s(isid)*sumzdist/nzdist
+        endif
         npm = np_s(isid)
 
         zmid = .5 * (zimax_s(isid) + zimin_s(isid)) + zbeam
@@ -7081,15 +7087,6 @@ c--------------------------------
 c     --- end of if checking for positive npm and distrbtn is not preload
       endif
 
-c     --- Find maximum of zdist, which is used to scale sw.  See below.
-      zdistmax = 0
-      if (nzdist > 0) then
-        zdistmax = nrmzdist(0)
-        do iz=1,nzdist
-          if (nrmzdist(iz) > zdistmax) zdistmax = nrmzdist(iz)
-        enddo
-      endif
-
 c     --- Get the global number of particles
       allocate(nptot(0:pgroup%ns-1))
       nptot = pgroup%nps
@@ -7131,14 +7128,23 @@ c       --- Adjust weighting of particles since cigar() makes beam more dense
      &                        (straight_s(isid) + (1. - straight_s(isid))*2./3.)
         endif
 
-c       --- Scale sw when using zdist so that ibeam/vbeam gives the maximum
-c       --- linecharge of the distribution.  sw is scaled by the ratio of the
-c       --- sum of zdist and the the product of the max of zdist and the
-c       --- number of grid points in zdist.  That is the ratio of the loaded
-c       --- linecharge and what the linecharge would have been with a uniform
-c       --- distribution.
         if (nzdist > 0) then
+          if (lnormalize_zdist) then
+c           --- When zdist is being normalized, scale sw so that ibeam/vbeam
+c           --- gives the maximum line-charge of the distribution. sw is scaled
+c           --- by the ratio of the sum of zdist and the the product of the
+c           --- max of zdist and the number of grid points in zdist. That is
+c           --- the ratio of the loaded linecharge and what the linecharge
+c           --- would have been with a uniform distribution.
+          zdistmax = maxval(nrmzdist)
           pgroup%sw(js+1) = pgroup%sw(js+1)/(zdistmax*nzdist)
+          else
+c           --- When not normalizing zdist, scale sw so that the total charge
+c           --- is scaled by the sum of zdist. This needs to be done since
+c           --- nptot above has been scaled by the sum of zdist but the
+c           --- line-charge calculated from ibeam/vbeam has not been scaled.
+            pgroup%sw(js+1) = pgroup%sw(js+1)*sumzdist/nzdist
+        endif
         endif
 
       enddo
