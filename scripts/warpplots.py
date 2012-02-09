@@ -365,7 +365,12 @@ def plotruninfo():
   runmaker = arraytostr(top.runmaker)
   runtime = arraytostr(top.runtime)
   runid = arraytostr(top.runid)
-  ss = '%s, %s %s'%(runmaker,runtime,runid)
+  try:
+    pnumb = '.' + setup.pnumb
+  except AttributeError:
+    # --- In case setup had not been called yet.
+    pnumb = ''
+  ss = '%s, %s %s%s'%(runmaker,runtime,runid,pnumb)
   if with_gist:
     # --- Replace _ with !_ so that it prints an underscore instead of making
     # --- a subscript. This is most important for the runid.

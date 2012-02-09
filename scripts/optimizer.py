@@ -613,6 +613,13 @@ Methods:
         self.setup_neighborhoods()
         self.linitialized = false
 
+    def reset(self):
+        """Resets the optimizer to start with a new population, starting from
+the previous best global parameters. The deceleration is also reset."""
+        self.initparams = self.globalbestparams.copy()
+        self.linitialized = false
+        self.count = 0
+
     def getdecel(self):
         """Handles the cooling rate on decel factor"""
         if self.count <= self.coolingrate:
