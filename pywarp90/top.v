@@ -1371,8 +1371,8 @@ winject(ninject,ns) _real /1./ # Scale factor on the particle weight when
                                # weighted particles are used (when wpid > 0)
 tempinject(ninject) _real # temperature of injection source for
                           # thermionic emission
-workinject(ninject) _real # work function of injection source for
-                          # thermionic emission
+workinject(ninject,ns) _real # work function of injection source for
+                             # thermionic emission
 lambdarinject(ninject) _real /0.5/ # Coefficient of emitted current density
                                    # for thermionic emission
 fitexpinject(ninject) _real /1./ # Exponential fitting factor for scaling
@@ -1401,10 +1401,10 @@ npinjtmp(ninject,ns) _integer # Temporary for saving actual number of
                            # in parallel version.
 injctspc  integer    /0/   # Extra space added to particle arrays
 injctcnt  integer          # Count for random number generators
-jmininj(ninject) _real /0/        # Minimum current density emited from the
+jmininj(ninject,ns) _real /0/     # Minimum current density emited from the
                                   # source.
-jmaxinj(ninject) _real /LARGEPOS/ # Maximum current density emittable from
-                                  # the source.
+jmaxinj(ninject,ns) _real /LARGEPOS/ # Maximum current density emittable from
+                                     # the source.
 inj_nsmooth integer /0/    # Number of smoothing iterations to do on the
                            # E field in front of the emitting surface.
 linj_spherical logical /.true./ # Flags whether or not to include the

@@ -21,8 +21,8 @@ eta                       real /0.0/   #  Resistivity of wall (ohm/m)
 taurc                     real /0.0/   #  RC time
 filt(5)                   real /5*0./  #  Spatial filtering coefficients
 vbeam                     real /0./    #  Beam velocity
-nr                        integer /64/ #  Mesh points are 0,...,nr
-nz                        integer /64/ #  Mesh points are 0,...,nz
+nr                        integer /0/  #  Mesh points are 0,...,nr
+nz                        integer /0/  #  Mesh points are 0,...,nz
 b(0:nr,0:nz)              _real        #  Charge density, potential array
 bsav(0:nr,0:nz)           _real        #  "Save" array for b
 schrg(0:nz)               _real        #  Surface charge for resistive wall

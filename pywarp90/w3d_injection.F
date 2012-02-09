@@ -1219,7 +1219,7 @@ c                   --- Thermionic emission
                     if ( (pgroup%sq(is)*inte) >= 0.) then
                       dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
                       rnn = te_const(jsid)     
-     &                    * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
+     &                    * exp(-(workinject(ij,is)-dw)/(boltzmann*tempinject(ij)))
                       rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
                     else
                       rnn = 0.
@@ -1232,7 +1232,7 @@ c                   --- Thermionic emission with space-charge
                       rnncl = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5
                       dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
                       rnns = te_const(jsid)     
-     &                    * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
+     &                    * exp(-(workinject(ij,is)-dw)/(boltzmann*tempinject(ij)))
                       rnn = rnncl*(1.-exp(-(rnns/rnncl)**fitexpinject(ij)))**(1./fitexpinject(ij))/sphericalcorrection*jton(jsid)
                     else
                       rnn = 0.
@@ -1249,7 +1249,7 @@ c                   --- Taylor-Langmuir ionic emission
                     if ( (pgroup%sq(is)*inte) >= 0.) then
                       dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
                       rnn = te_const(jsid)     
-     &                    * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
+     &                    * exp(-(workinject(ij,is)-dw)/(boltzmann*tempinject(ij)))
                       rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
                     else
                       rnn = 0.
@@ -1262,7 +1262,7 @@ c                   --- Taylor-Langmuir ionic emission with space-charge
                       rnncl = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5
                       dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
                       rnns = te_const(jsid)     
-     &                    * exp(-(workinject(ij)-dw)/(boltzmann*tempinject(ij)))
+     &                    * exp(-(workinject(ij,is)-dw)/(boltzmann*tempinject(ij)))
                       rnn = rnncl*(1.-exp(-(rnns/rnncl)**fitexpinject(ij)))**(1./fitexpinject(ij))/sphericalcorrection*jton(jsid)
                     else
                       rnn = 0.
@@ -1297,8 +1297,8 @@ c                 --- iterative mode.
 
 c                 --- Force injected current to be between the range
 c                 --- jmininj to jmaxinj.
-                  rnn = min(rnn,jmaxinj(ij)*jton(jsid))
-                  rnn = max(rnn,jmininj(ij)*jton(jsid))
+                  rnn = min(rnn,jmaxinj(ij,is)*jton(jsid))
+                  rnn = max(rnn,jmininj(ij,is)*jton(jsid))
 
 c                 --- Scale the number of particles injected by the fraction
 c                 --- of the grid cell covered by the source. This will only
