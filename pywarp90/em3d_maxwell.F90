@@ -381,11 +381,20 @@ end if
 if (f%stencil==0 .or. f%stencil==1) then
  if (f%sigmae==0.) then
   if(f%nconds>0) then 
-   call push_em3d_evec_cond(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
-                      mudt,dtsdx,dtsdy,dtsdz, &
-                      f%nx,f%ny,f%nz, &
-                      f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos, &
-                      f%Ex_inz,f%Ey_inz,f%l_2dxz,f%l_2drz,f%xmin,f%zmin,f%dx,f%dz,f%incond)
+   if(f%nxs>0) then
+    call push_em3d_evec_conduction(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
+                       mudt,dtsdx,dtsdy,dtsdz, &
+                       f%nx,f%ny,f%nz, &
+                       f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos, &
+                       f%Ex_inz,f%Ey_inz,f%l_2dxz,f%l_2drz,f%xmin,f%zmin,f%dx,f%dz, &
+                       f%sigmax,f%sigmay,f%sigmaz)
+   else
+    call push_em3d_evec_cond(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
+                       mudt,dtsdx,dtsdy,dtsdz, &
+                       f%nx,f%ny,f%nz, &
+                       f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos, &
+                       f%Ex_inz,f%Ey_inz,f%l_2dxz,f%l_2drz,f%xmin,f%zmin,f%dx,f%dz,f%incond)
+   endif
   else
    call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                       mudt,dtsdx,dtsdy,dtsdz, &
@@ -654,7 +663,6 @@ end if
 return
 end subroutine push_em3d_evec
 
-
 subroutine push_em3d_evec_cond(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
                           nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,l_2drz,xmin,zmin,dx,dz,incond)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
@@ -674,9 +682,9 @@ if (.not. l_2dxz) then ! --- 3D XYZ
    do k = 0, ny
     do j = 0, nx-1
       if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-      Ex(j,k,l) = Ex(j,k,l) + dtsdy * (Bz(j,k,l)   - Bz(j,k-1,l  )) &
-                            - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
-                            - mudt  * CJ(j,k,l,1)
+        Ex(j,k,l) = Ex(j,k,l) + dtsdy * (Bz(j,k,l)   - Bz(j,k-1,l  )) &
+                              - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
+                              - mudt  * CJ(j,k,l,1)
     end do
    end do
   end do
@@ -686,9 +694,9 @@ if (.not. l_2dxz) then ! --- 3D XYZ
    do k = 0, ny-1
     do j = 0, nx
       if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-      Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
-                            + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
-                            - mudt  * CJ(j,k,l,2)
+        Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
+                              + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
+                              - mudt  * CJ(j,k,l,2)
     end do
    end do
   end do
@@ -949,6 +957,282 @@ end if
 
 return
 end subroutine push_em3d_evec_cond
+
+subroutine push_em3d_evec_conduction(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
+                          nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,l_2drz,xmin,zmin,dx,dz, &
+                          sigmax,sigmay,sigmaz)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: sigmax,sigmay,sigmaz
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz
+real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz,E_inz_pos,xmin,zmin,dx,dz
+integer(ISZ) :: j,k,l
+logical(ISZ) :: l_2dxz,l_2drz
+real(kind=8) :: w,zlaser,rd,ru,a
+
+! --- NOTE: if l_2drz is TRUE, then l_2dxz is TRUE
+if (.not. l_2dxz) then ! --- 3D XYZ
+  ! advance Ex
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-1
+      a = 0.5*mudt*sigmax(j,k,l)
+      a = (1-a)/(1+a)
+      Ex(j,k,l) = a*Ex(j,k,l) + dtsdy * (Bz(j,k,l)   - Bz(j,k-1,l  )) &
+                              - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
+                              - mudt  * CJ(j,k,l,1)
+    end do
+   end do
+  end do
+
+  ! advance Ey
+  do l = 0, nz
+   do k = 0, ny-1
+    do j = 0, nx
+      a = 0.5*mudt*sigmay(j,k,l)
+      a = (1-a)/(1+a)
+      Ey(j,k,l) = a*Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
+                              + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
+                              - mudt  * CJ(j,k,l,2)
+    end do
+   end do
+  end do
+
+  ! advance Ez 
+  do l = 0, nz-1
+   do k = 0, ny
+    do j = 0, nx
+      a = 0.5*mudt*sigmaz(j,k,l)
+      a = (1-a)/(1+a)
+      Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
+                              - dtsdy * (Bx(j,k,l) - Bx(j  ,k-1,l)) &
+                              - mudt  * CJ(j,k,l,3)
+    end do
+   end do
+  end do
+
+  ! --- add laser field
+  zlaser=(E_inz_pos-zmin)/dz
+  l = floor(zlaser)
+  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
+!  if (l>=-nzguard .and. l<nz+nzguard) then
+    w = zlaser-l
+!    do k = -nyguard, ny+nyguard
+!      do j = -nxguard, nx+nxguard
+    do k = 0, ny
+      do j = 0, nx-1
+       if (.false.) then
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*2.*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*2.*w
+        end if
+       else
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*w
+        end if
+        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
+          Ex(j,k,l-1) = Ex(j,k,l-1) + Ex_inz(j,k)*(1.-w)/2
+        end if
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*w/2
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*(1.-w)/2
+        end if
+        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
+          Ex(j,k,l+2) = Ex(j,k,l+2) + Ex_inz(j,k)*w/2
+        end if
+       end if
+
+      end do
+    end do
+
+    do k = 0, ny-1
+      do j = 0, nx
+       if (.false.) then
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*2.*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*2.*w
+        end if
+       else
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*w
+        end if
+        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
+          Ey(j,k,l-1) = Ey(j,k,l-1) + Ey_inz(j,k)*(1.-w)/2
+        end if
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*w/2
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*(1.-w)/2
+        end if
+        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
+          Ey(j,k,l+2) = Ey(j,k,l+2) + Ey_inz(j,k)*w/2
+        end if
+       end if
+
+      end do
+    end do
+  end if
+
+else ! --- now 2D XZ or RZ
+
+ if (.not. l_2drz) then ! 2D XZ
+
+  k = 0
+  ! advance Ex
+  do l = 0, nz
+    do j = 0, nx-1
+      a = 0.5*mudt*sigmax(j,k,l)
+      a = (1-a)/(1+a)
+      Ex(j,k,l) = a*Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
+                              - mudt  * CJ(j,k,l,1)
+    end do
+  end do
+
+  ! advance Ey
+  do l = 0, nz
+    do j = 0, nx
+      a = 0.5*mudt*sigmay(j,k,l)
+      a = (1-a)/(1+a)
+      Ey(j,k,l) = a*Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
+                              + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
+                              - mudt  * CJ(j,k,l,2)
+    end do
+  end do
+
+  ! advance Ez 
+  do l = 0, nz-1
+    do j = 0, nx
+      a = 0.5*mudt*sigmaz(j,k,l)
+      a = (1-a)/(1+a)
+      Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
+                              - mudt  * CJ(j,k,l,3)
+    end do
+  end do
+
+  ! --- add laser field
+  zlaser=(E_inz_pos-zmin)/dz
+  l = floor(zlaser)
+  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
+!  if (l>=-nzguard .and. l<nz+nzguard) then
+      w = zlaser-l
+!      do j = -nxguard, nx+nxguard
+      do j = 0, nx
+       if (.false.) then
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*2.*(1.-w)
+          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*2.*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*2.*w
+          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*2.*w
+        end if
+       else
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*(1.-w)
+          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*(1.-w)
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*w
+          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*w
+        end if
+        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
+          Ex(j,:,l-1) = Ex(j,:,l-1) + Ex_inz(j,:)*(1.-w)/2
+          Ey(j,:,l-1) = Ey(j,:,l-1) + Ey_inz(j,:)*(1.-w)/2
+        end if
+        if (l>=-nzguard .and. l<=nz+nzguard) then
+          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*w/2
+          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*w/2
+        end if
+        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
+          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*(1.-w)/2
+          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*(1.-w)/2
+        end if
+        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
+          Ex(j,:,l+2) = Ex(j,:,l+2) + Ex_inz(j,:)*w/2
+          Ey(j,:,l+2) = Ey(j,:,l+2) + Ey_inz(j,:)*w/2
+        end if
+       end if
+
+!        Ex(j,k,l) = Ex_inz(j,k)
+!        Ey(j,k,l) = Ey_inz(j,k)
+      end do
+  end if
+
+ else ! l_2drz=True
+
+  k = 0
+  ! advance Er
+  do l = 0, nz
+    do j = 0, nx-1
+      a = 0.5*mudt*sigmax(j,k,l)
+      a = (1-a)/(1+a)
+      Ex(j,k,l) = a*Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
+                              - mudt  * CJ(j,k,l,1)
+    end do
+  end do
+
+  ! advance Etheta
+  do l = 0, nz
+    do j = 1, nx
+      a = 0.5*mudt*sigmay(j,k,l)
+      a = (1-a)/(1+a)
+      Ey(j,k,l) = a*Ey(j,k,l) - dtsdx * (Bz(j,k,l) - Bz(j-1,k,l)) &
+                              + dtsdz * (Bx(j,k,l) - Bx(j,k,l-1)) &
+                              - mudt  * CJ(j,k,l,2)
+    end do
+    j = 0
+    a = 0.5*mudt*sigmay(j,k,l)
+    a = (1-a)/(1+a)
+    Ey(j,k,l) = a*Ey(j,k,l) - 2.*dtsdx * Bz(j,k,l) &
+                            + dtsdz * (Bx(j,k,l)    - Bx(j,k,l-1)) &
+                            - mudt  * CJ(j,k,l,2)
+  end do
+
+  ! advance Ez 
+  do l = 0, nz-1
+    do j = 1, nx
+      ru = 1.+0.5/(xmin/dx+j)
+      rd = 1.-0.5/(xmin/dx+j)
+      a = 0.5*mudt*sigmaz(j,k,l)
+      a = (1-a)/(1+a)
+      Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
+                              - mudt  * CJ(j,k,l,3)
+    end do
+    j = 0
+    if (xmin==0.) then
+      a = 0.5*mudt*sigmaz(j,k,l)
+      a = (1-a)/(1+a)
+      Ez(j,k,l) = a*Ez(j,k,l) + 4.*dtsdx * By(j,k,l)  &
+                              - mudt  * CJ(j,k,l,3)
+    else
+      ru = 1.+0.5/(xmin/dx+j)
+      rd = 1.-0.5/(xmin/dx+j)
+      a = 0.5*mudt*sigmaz(j,k,l)
+      a = (1-a)/(1+a)
+      Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
+                              - mudt  * CJ(j,k,l,3)
+    end if
+  end do
+ end if
+end if
+
+
+return
+end subroutine push_em3d_evec_conduction
 
 subroutine push_em3d_evecold(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
                           nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz)
