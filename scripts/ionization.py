@@ -58,6 +58,14 @@ Class for generating particles from impact ionization.
     self.uy={}
     self.uz={}
     self.gi={}
+    self.pidtag={}
+    # --- This is kind of messy, but the injpid must be handled. When injection
+    # --- is being done, it needs to be set properly in order for the emitted
+    # --- particles to have the correctly calculated E fields when they are created
+    # --- near an emitting surface. The injpid of the incident particles are passed to
+    # --- the emitted particles.
+    self.injpid={}
+    self.emitted_id = None
     self.l_timing=l_timing
     if l_txphysics:
             # Initialize the kinds of gases
@@ -85,21 +93,27 @@ Class for generating particles from impact ionization.
 
   def add(self,incident_species,emitted_species,cross_section=None,
           target_species=None,ndens=None,target_fluidvel=None,
-          emitted_energy0=0.,emitted_energy_sigma=0.,
+          emitted_energy0=None,emitted_energy_sigma=None,
           incident_pgroup=top.pgroup,target_pgroup=top.pgroup,emitted_pgroup=top.pgroup,
-          l_remove_incident=None,l_remove_target=None):
+          l_remove_incident=None,l_remove_target=None,emitted_tag=None):
     if not self.inter.has_key(incident_species):
         self.inter[incident_species]={}
         for key in ['target_species','emitted_species','cross_section','ndens','target_fluidvel',
-                    'remove_incident','remove_target','emitted_energy0','emitted_energy_sigma',
+                    'remove_incident','remove_target',
+                    'emitted_energy0','emitted_energy_sigma','emitted_tag',
                     'incident_pgroup','target_pgroup','emitted_pgroup']:
           self.inter[incident_species][key]=[]
     if type(emitted_species)<>type([]):emitted_species=[emitted_species]
     self.inter[incident_species]['target_species']  +=[target_species]
-    if emitted_species[0] in [incident_species,target_species]:
-      self.inter[incident_species]['emitted_species'] +=[emitted_species[1:]]
-    else:
-      self.inter[incident_species]['emitted_species'] +=[emitted_species]
+    # --- This if block was removed. It is unclear what the reason was for the block.
+    # --- It precluded the charge exchange interaction, since in that case the
+    # --- incident and emitted species are the same, and the if block removed
+    # --- emission of the emitted species.
+    #if emitted_species[0] in [incident_species,target_species]:
+    #  self.inter[incident_species]['emitted_species'] +=[emitted_species[1:]]
+    #else:
+    #  self.inter[incident_species]['emitted_species'] +=[emitted_species]
+    self.inter[incident_species]['emitted_species'] +=[emitted_species]
     self.inter[incident_species]['cross_section']   +=[cross_section]
     self.inter[incident_species]['ndens']           +=[ndens]
     self.inter[incident_species]['target_fluidvel'] +=[target_fluidvel]
@@ -117,8 +131,17 @@ Class for generating particles from impact ionization.
         self.inter[incident_species]['remove_target']+=[0]
     else:
       self.inter[incident_species]['remove_target']+=[l_remove_target]
+    if emitted_energy0 is None and not self.inter[incident_species]['remove_incident'][-1]:
+      # --- If the incident species is not being removed, then the emitted
+      # --- particles are drawn from a random distribution. If not specified,
+      # --- the default energy of the emitted particles is zero.
+      emitted_energy0 = 0.
+      emitted_energy_sigma = 0.
     self.inter[incident_species]['emitted_energy0']   +=[emitted_energy0]
     self.inter[incident_species]['emitted_energy_sigma']   +=[emitted_energy_sigma]
+    self.inter[incident_species]['emitted_tag']   +=[emitted_tag]
+    if emitted_tag is not None and self.emitted_id is None:
+      self.emitted_id = nextpid()
     self.inter[incident_species]['incident_pgroup']=incident_pgroup
     self.inter[incident_species]['target_pgroup']  =target_pgroup
     self.inter[incident_species]['emitted_pgroup'] =emitted_pgroup
@@ -142,6 +165,8 @@ Class for generating particles from impact ionization.
         self.uy[emitted_pgroup]={}
         self.uz[emitted_pgroup]={}
         self.gi[emitted_pgroup]={}
+        self.pidtag[emitted_pgroup]={}
+        self.injpid[emitted_pgroup]={}
       if not self.x[emitted_pgroup].has_key(js):
         self.nps[emitted_pgroup][js]=0
         self.x[emitted_pgroup][js]=fzeros(self.npmax,'d')
@@ -151,6 +176,10 @@ Class for generating particles from impact ionization.
         self.uy[emitted_pgroup][js]=fzeros(self.npmax,'d')
         self.uz[emitted_pgroup][js]=fzeros(self.npmax,'d')
         self.gi[emitted_pgroup][js]=fzeros(self.npmax,'d')
+        if emitted_tag is not None:
+          self.pidtag[emitted_pgroup][js]=fzeros(self.npmax,'d')
+        if top.injpid > 0:
+          self.injpid[emitted_pgroup][js]=fzeros(self.npmax,'d')
 
   def add_ionization(self,incident_species,emitted_species,**kw):
     self.add(incident_species,emitted_species,l_remove_target=1,**kw)
@@ -158,12 +187,22 @@ Class for generating particles from impact ionization.
   def add_stripping(self,incident_species,emitted_species,**kw):
     self.add(incident_species,emitted_species,l_remove_incident=1,**kw)
 
+  def add_chargeexchange(self,incident_species,emitted_species,**kw):
+    self.add(incident_species,emitted_species,l_remove_incident=1,**kw)
+
   def install(self):
     if not isinstalleduserinjection(self.generate):
       installuserinjection(self.generate)
 
-  def addpart(self,nn,x,y,z,ux,uy,uz,gi,pg,js):
+  def addpart(self,nn,x,y,z,ux,uy,uz,gi,pg,js,tag,injpid):
     ilf=0
+    if injpid is not None:
+      # --- This is needed in case injection is setup after the interactions
+      # --- are setup. If that happens, the array would not have been allocated.
+      try:
+        self.injpid[pg][js]
+      except KeyError:
+        self.injpid[pg][js]=fzeros(self.npmax,'d')
     while self.nps[pg][js]+nn>self.npmax:
       il=self.nps[pg][js]
       iu=min(il+nn,self.npmax)
@@ -175,6 +214,10 @@ Class for generating particles from impact ionization.
       self.uy[pg][js][il:iu]=uy[ilf:ilf+nf]
       self.uz[pg][js][il:iu]=uz[ilf:ilf+nf]
       self.gi[pg][js][il:iu]=gi[ilf:ilf+nf]
+      if tag is not None:
+        self.pidtag[pg][js][il:iu]=tag
+      if injpid is not None:
+        self.injpid[pg][js][il:iu]=injpid[ilf:ilf+nf]
       self.nps[pg][js]+=nf
       self.flushpart(pg,js)
       ilf+=nf
@@ -188,6 +231,10 @@ Class for generating particles from impact ionization.
     self.uy[pg][js][il:iu]=uy[ilf:]
     self.uz[pg][js][il:iu]=uz[ilf:]
     self.gi[pg][js][il:iu]=gi[ilf:]
+    if tag is not None:
+      self.pidtag[pg][js][il:iu]=tag
+    if injpid is not None:
+      self.injpid[pg][js][il:iu]=injpid[ilf:]
     self.nps[pg][js]+=nn
       
   def flushpart(self,pg,js):
@@ -206,6 +253,13 @@ Class for generating particles from impact ionization.
 #           f.close()
 #           raise('')
 #         window(5);ppg(self.y[pg][js][:nn],self.x[pg][js][:nn]);limits(w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax);refresh()
+         pidpairs = []
+         try:
+           pidpairs.append([self.emitted_id,self.pidtag[pg][js][:nn]])
+         except KeyError:
+           pass
+         if top.injpid > 0:
+           pidpairs.append([top.injpid,self.injpid[pg][js][:nn]])
          addparticles(x=self.x[pg][js][:nn],
                       y=self.y[pg][js][:nn],
                       z=self.z[pg][js][:nn],
@@ -213,15 +267,17 @@ Class for generating particles from impact ionization.
                       vy=self.uy[pg][js][:nn],
                       vz=self.uz[pg][js][:nn],
                       gi=self.gi[pg][js][:nn],
+                      pidpairs=pidpairs,
                       lmomentum=True,
                       pgroup=pg,
                       js=js)
          self.nps[pg][js]=0
          
-         x = self.x[pg][js][:nn]
-         y = self.y[pg][js][:nn]
-         r=sqrt(x*x+y*y)
-         z = self.z[pg][js][:nn]
+         # --- These lines don't do anything
+         #x = self.x[pg][js][:nn]
+         #y = self.y[pg][js][:nn]
+         #r=sqrt(x*x+y*y)
+         #z = self.z[pg][js][:nn]
 
   def printall(self,l_cgm=0):
     swidth=0
@@ -238,10 +294,10 @@ Class for generating particles from impact ionization.
           tname=target_species.name
         twidth=max(twidth,len(tname))
         firstelement = []
-        if not self.inter[incident_species]['remove_incident'][it]:
-          firstelement = [incident_species]
-        if not self.inter[incident_species]['remove_target'][it]:
-          firstelement = [target_species]
+        #if not self.inter[incident_species]['remove_incident'][it]:
+        #  firstelement = [incident_species]
+        #if not self.inter[incident_species]['remove_target'][it]:
+        #  firstelement = [target_species]
         for ie,emitted_species in enumerate(firstelement+self.inter[incident_species]['emitted_species'][it]):
           ename=emitted_species.name
           if not ewidth.has_key(ie):
@@ -266,10 +322,10 @@ Class for generating particles from impact ionization.
         else:
           cname='(CS=%g)'%(self.inter[incident_species]['cross_section'][it])
         firstelement = []
-        if not self.inter[incident_species]['remove_incident'][it]:
-          firstelement = [incident_species]
-        if not self.inter[incident_species]['remove_target'][it]:
-          firstelement = [target_species]
+        #if not self.inter[incident_species]['remove_incident'][it]:
+        #  firstelement = [incident_species]
+        #if not self.inter[incident_species]['remove_target'][it]:
+        #  firstelement = [target_species]
         for ie,emitted_species in enumerate(firstelement+self.inter[incident_species]['emitted_species'][it]):
           if ie==0:
             ename=fe[ie]%emitted_species.name[:ewidth[ie]]
@@ -381,6 +437,12 @@ Class for generating particles from impact ionization.
           uxi=ipg.uxp[i1:i2:self.stride]#.copy()
           uyi=ipg.uyp[i1:i2:self.stride]#.copy()
           uzi=ipg.uzp[i1:i2:self.stride]#.copy()
+          if top.injpid > 0:
+            # --- Save the injpid of the incident particles so that it can be
+            # --- passed to the emitted particles.
+            injpid = ipg.pid[i1:i2:self.stride,top.injpid-1]
+          else:
+            injpid = None
           # --- get velocity in lab frame if using a boosted frame of reference
           if top.boost_gamma>1.:
             uzboost = clight*sqrt(top.boost_gamma**2-1.)
@@ -465,9 +527,9 @@ Class for generating particles from impact ionization.
           if cross_section is None:
             try:
               gastype = self.txphysics_targets[target_species.type]
-              if self.l_verbose:print incident_species.name+' on '+target_species.name+':', gastype
+              if self.l_verbose:print incident_species.name+' on '+ ((target_species is None and 'background gas') or target_species.name) +':', gastype
             except:                    
-              raise('Error in ionization: cross section of '+incident_species.name+' on '+target_species.name+' is not available. Please provide.')
+              raise('Error in ionization: cross section of '+incident_species.name+' on '+((target_species is None and 'background gas') or target_species.name)+' is not available. Please provide.')
             # This is an integer flag to specify electron (0) or ion (1)
             if incident_species.type in (Electron,Positron):
               incident = 0
@@ -487,10 +549,13 @@ Class for generating particles from impact ionization.
           ncoli=where(r<ncol,ncoli+1,ncoli)
           io=compress(ncoli>0,arange(ni))
           nnew = len(io)
-          if self.inter[incident_species]['remove_incident'][it]:
+          if self.inter[incident_species]['emitted_energy0'][it] is None:
+            # --- When emitted_energy0 is not specified, use the energy of
+            # --- the incident particles for the emitted particles.
             uxnew = uxi
             uynew = uyi
             uznew = uzi
+          if self.inter[incident_species]['remove_incident'][it]:
             # if projectile is modified, then need to delete it
             put(ipg.gaminv,array(io)*self.stride+i1,0.)
           xnew = xi
@@ -501,40 +566,39 @@ Class for generating particles from impact ionization.
             xnewp = take(xnew,io)
             ynewp = take(ynew,io)
             znewp = take(znew,io)
+            if top.injpid > 0: injpid = injpid[io]
             ifg+=1
             xnew = xnewp+(ranf(xnewp)-0.5)*1.e-10*self.dx
             ynew = ynewp+(ranf(ynewp)-0.5)*1.e-10*self.dy
             znew = znewp+(ranf(znewp)-0.5)*1.e-10*self.dz
-            if self.inter[incident_species]['remove_incident'][it]:
+            if self.inter[incident_species]['emitted_energy0'][it] is None:
               uxnew = take(uxnew,io)
               uynew = take(uynew,io)
               uznew = take(uznew,io)
             for emitted_species in self.inter[incident_species]['emitted_species'][it]:
-              if not self.inter[incident_species]['remove_incident'][it]:
-#                uxnew = zeros(nnew,float64)+1.e-10
-#                uynew = zeros(nnew,float64)+1.e-10
-#                uznew = zeros(nnew,float64)+1.e-10
-                 ek0ionel = self.inter[incident_species]['emitted_energy0'][it]
-                 esigionel = self.inter[incident_species]['emitted_energy_sigma'][it]
-                 if esigionel==0.:
-                   ek = zeros(nnew)
-                 else:
-                   ek =SpRandom(0.,esigionel,nnew)	#kinetic energy
-                 ek=abs(ek+ek0ionel)	#kinetic energy
-                 fact = echarge/(emass*clight**2)
-                 gamma=ek*fact+1.		
-                 u=clight*sqrt(ek*fact*(gamma+1.))	
-                 # velocity direction: random in (x-y) plane plus small longitudianl component:
-                 phi=2.*pi*ranf(u)
-                 vx=cos(phi); vy=sin(phi); vz=0.01*ranf(u)
-                 # convert into a unit vector:
-                 vu=sqrt(vx**2+vy**2+vz**2)
-                 # renormalize:
-                 vx/=vu; vy/=vu; vz/=vu
-                 # find components of v*gamma:
-                 uxnew=u*vx
-                 uynew=u*vy
-                 uznew=u*vz
+              if self.inter[incident_species]['emitted_energy0'][it] is not None:
+                # --- Create new velocities for the emitted particles.
+                ek0ionel = self.inter[incident_species]['emitted_energy0'][it]
+                esigionel = self.inter[incident_species]['emitted_energy_sigma'][it]
+                if esigionel==0.:
+                  ek = zeros(nnew)
+                else:
+                  ek =SpRandom(0.,esigionel,nnew)	#kinetic energy
+                ek=abs(ek+ek0ionel)	#kinetic energy
+                fact = echarge/(emass*clight**2)
+                gamma=ek*fact+1.		
+                u=clight*sqrt(ek*fact*(gamma+1.))	
+                # velocity direction: random in (x-y) plane plus small longitudianl component:
+                phi=2.*pi*ranf(u)
+                vx=cos(phi); vy=sin(phi); vz=0.01*ranf(u)
+                # convert into a unit vector:
+                vu=sqrt(vx**2+vy**2+vz**2)
+                # renormalize:
+                vx/=vu; vy/=vu; vz/=vu
+                # find components of v*gamma:
+                uxnew=u*vx
+                uynew=u*vy
+                uznew=u*vz
 
               ginew = 1./sqrt(1.+(uxnew**2+uynew**2+uznew**2)/clight**2)
               # --- get velocity in boosted frame if using a boosted frame of reference
@@ -543,11 +607,13 @@ Class for generating particles from impact ionization.
                                           uzboost,
                                           top.boost_gamma)
 
-              if self.l_verbose:print 'add ',nnew, emitted_species.name,' from by impact ionization:',incident_species.name,'+',target_species.name 
+              if self.l_verbose:print 'add ',nnew, emitted_species.name,' from by impact ionization:',incident_species.name,'+',((target_species is None and 'background gas') or target_species.name)
               if self.inter[incident_species]['remove_incident'][it] and (emitted_species.type is incident_species.type):
-                self.addpart(nnew,xnewp,ynewp,znewp,uxnew,uynew,uznew,ginew,epg,emitted_species.jslist[0])
+                self.addpart(nnew,xnewp,ynewp,znewp,uxnew,uynew,uznew,ginew,epg,emitted_species.jslist[0],
+                             self.inter[incident_species]['emitted_tag'][it],injpid)
               else:
-                self.addpart(nnew,xnew,ynew,znew,uxnew,uynew,uznew,ginew,epg,emitted_species.jslist[0])
+                self.addpart(nnew,xnew,ynew,znew,uxnew,uynew,uznew,ginew,epg,emitted_species.jslist[0],
+                             self.inter[incident_species]['emitted_tag'][it],injpid)
             ncoli=take(ncoli,io)-1
             io=compress(ncoli>0,arange(nnew))
             nnew = len(io)
