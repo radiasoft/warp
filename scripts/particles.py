@@ -222,7 +222,7 @@ _selectparticles_kwdefaults = {"js":0,"jslist":None,"win":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
                 "xl":None,"xu":None,"yl":None,"yu":None,"zl":None,"zu":None,
                 "zc":None,"xc":None,"yc":None,
-                "ssn":None,"ii":None,
+                "ssn":None,"ssnid":None,"ii":None,
                 "lost":false,"suffix":'',"object":top,"pgroup":top.pgroup,
                 "w3dobject":None,
                 'checkargs':0,'allowbadargs':0}
@@ -257,8 +257,10 @@ Multiple selection criteria are supported.
   - yu=None: Upper range in y of selection region
   - zl=None: Lower range in z of selection region
   - zu=None: Upper range in z of selection region
-  - ssn=None: Returns the particle or particles with the given ssn
-              Raises and error if ssn's are not saved - top.spid must be setup.
+  - ssn=None: Returns the particle or particles with the specified ssn
+              Raises and error if ssn's are not saved - top.spid must be setup
+              or the ssnid must be specified.
+  - ssnid=top.spid: ID to use when selecting particles with a specified ssn.
   - ii=None: Particle index list
              If supplied, use it for the list of particles instead
              of choosing particles from the given species.
@@ -312,6 +314,7 @@ but the ii index will be expecting that r have length npmax.
   xc = kwvalues['xc']
   yc = kwvalues['yc']
   ssn = kwvalues['ssn']
+  ssnid = kwvalues['ssnid']
   ii = kwvalues['ii']
   lost = kwvalues['lost']
   suffix = kwvalues['suffix']
@@ -386,8 +389,9 @@ but the ii index will be expecting that r have length npmax.
   if i2 <= i1: return array([],'l')
 
   if ssn is not None:
-    assert top.spid > 0,"ssn's are not used"
-    id = getattrwithsuffix(pgroup,'pid',suffixparticle)[:,top.spid-1]
+    if ssnid is None: ssnid = top.spid
+    assert ssnid > 0,"ssn's are not used"
+    id = getattrwithsuffix(pgroup,'pid',suffixparticle)[:,ssnid-1]
     id,ii = _setindices(id,ii,i1,i2)
     ii = compress(nint(id)==ssn,ii)
 
@@ -1366,6 +1370,7 @@ def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,
                  resetrho=false,dofieldsol=false,resetmoments=false,
                  pgroup=None,
                  ex=0.,ey=0.,ez=0.,bx=0.,by=0.,bz=0.,
+                 pidpairs=None,
                  lfields=false,lnewparticles=true,lusespaceabove=true,
                  lreturndata=false):
   """
@@ -1376,6 +1381,9 @@ Adds particles to the simulation
                        except gi, which defaults to 1. (gi is 1/gamma, the
                        relatistic paramter)
   - pid: additional particle information, such as an ID number or weight.
+  - pidpairs=None: Allows setting specific pid columns. Argument must be a
+                   list of lists, each having the format [id,pidvalue]. The
+                   assigment pid[:,id-1] = pidvalue is done.
   - w=1.: particle weight
           this is only used if top.wpid > 0 and if lnewparticles is true.
   - js=0: species to which new particles will be added
@@ -1511,6 +1519,11 @@ Adds particles to the simulation
     if top.xoldpid > 0: pid[:,top.xoldpid-1] = x.copy()
     if top.yoldpid > 0: pid[:,top.yoldpid-1] = y.copy()
     if top.zoldpid > 0: pid[:,top.zoldpid-1] = z.copy()
+
+  # --- Load in any pid data passed in
+  if pidpairs is not None:
+    for id,pp in pidpairs:
+      pid[:,id-1] = pp.copy()
 
   # --- Set extent of domain
   if xmmin is None: xmmin = top.xpminlocal
