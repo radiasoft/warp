@@ -553,7 +553,7 @@ class MultiGrid2DDielectric(MultiGrid2D):
                      self.nxguardrho,self.nzguardrho,
                      self.dx,self.dz*zfact,
                      self._phi[:,self.nyguardphi,:],
-                     self._rho[:,self.nyguardrhp,:],
+                     self._rho[:,self.nyguardrho,:],
                      self.epsilon,self.bounds,
                      self.xmminlocal*zfact,
                      self.mgparam,mgiters,self.mgmaxiters,
