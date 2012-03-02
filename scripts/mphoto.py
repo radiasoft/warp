@@ -27,7 +27,7 @@
 
 yes = 1; no = 0
 from warp import *
-import numpy, os, string
+import numpy, os
 from tifrw import *
 
 mphoto_version = "$Id: mphoto.py,v 1.6 2009/01/08 19:30:23 dave Exp $"
@@ -236,7 +236,7 @@ tif file, including options for unfolding and filtering.
 	num = '00'; lfirst = yes
 	if numphoto == 'seq':
 		for file in os.listdir(os.curdir):
-			fname = string.split(file, '.')
+			fname = file.split('.')
 			try:
 				if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][1:] > num):
 					num = fname[1][1:]

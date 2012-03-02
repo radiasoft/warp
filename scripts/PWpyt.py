@@ -211,7 +211,7 @@ FloatScalar.
       """
       origname = name
       if len(name) > _max_name_len:
-          hash = string.translate(md5.new(origname).digest(),_transtable)
+          hash = md5.new(origname).digest().translate(_transtable)
           hashedname = hash[:_max_name_len]
           h.createArray(self.inquire_group(),
                         hashedname,

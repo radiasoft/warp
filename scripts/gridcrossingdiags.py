@@ -760,7 +760,7 @@ after simulation when the dumptofile flag was on.
         varlist.sort()
         for var in varlist:
             if var[0] == 't':
-                name,it = string.split(var,'_')
+                name,it = var.split('_')
                 suffix = "_%d"%(it)
                 self._time.append(ff.read('time'+suffix))
                 self._zbeam.append(ff.read('zbeam'+suffix))
@@ -858,7 +858,7 @@ after simulation when the dumptofile flag was on.
         # --- Fix old bad naming
         varlist = datadict.keys()
         for var in varlist:
-            name,it = string.split(var,'_')
+            name,it = var.split('_')
             if len(it) < 8:
                  newname = name + '_' + (8-len(it))*'0' + it
                  datadict[newname] = datadict[var]
@@ -902,7 +902,7 @@ after simulation when the dumptofile flag was on.
         varlist.sort()
         for var in varlist:
             if var[0:4] == 'time':
-                name,it = string.split(var,'_')
+                name,it = var.split('_')
                 suffix = "_%s"%(it)
                 #self._time.append(datadict['time'+suffix])
                 #self._zbeam.append(datadict['zbeam'+suffix])
@@ -2395,7 +2395,7 @@ be unreliable.
         varlist.sort()
         for var in varlist:
             if var[0] == 't':
-                name,it = string.split(var,'_')
+                name,it = var.split('_')
                 suffix = "_%d"%(it)
                 self._time.append(ff.read('time'+suffix))
                 self._zbeam.append(ff.read('zbeam'+suffix))
@@ -2481,7 +2481,7 @@ be unreliable.
         # --- Fix old bad naming
         varlist = datadict.keys()
         for var in varlist:
-            name,it = string.split(var,'_')
+            name,it = var.split('_')
             if len(it) < 8:
                  newname = name + '_' + (8-len(it))*'0' + it
                  datadict[newname] = datadict[var]
@@ -2510,7 +2510,7 @@ be unreliable.
         varlist.sort()
         for var in varlist:
             if var[0:4] == 'time':
-                name,it = string.split(var,'_')
+                name,it = var.split('_')
                 suffix = "_%s"%(it)
                 self._time.append(datadict['time'+suffix])
                 self._zbeam.append(datadict['zbeam'+suffix])

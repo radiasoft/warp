@@ -660,9 +660,8 @@ def tablewrite(outfile, tdata, sep='\t', fmt="%12.8f"):
 #        Reads a table of numeric data in formatted txt file 'expfile',
 #        which contains the numbers in columns separated by separator 'sep'.
 #    """
-#    import string
 #    tdata = open(expfile, 'r').readlines()
-#    tdata = map(lambda s : string.split(string.strip(s), sep), tdata)
+#    tdata = map(lambda s : s.strip().split(sep), tdata)
 #    return array(map(lambda s:map(float,s),tdata))
 
 def tableread(expfile, sep='\t', R1=0, C1=0):
@@ -672,12 +671,11 @@ def tableread(expfile, sep='\t', R1=0, C1=0):
         R1 and C1 are the first row and column to begin download
         R2 and C2 are the last row and column
     """
-    import string
     tdata = open(expfile, 'r').readlines()
     for ii in range(0,R1): del tdata[ii]
     for line in tdata:
         lineno = tdata.index(line)
-        line = string.split(string.strip(line), sep)
+        line = line.strip().split(sep)
         for ii in range(0,C1): del line[ii]
         tdata[lineno] = line
         for ii in range(0, len(line)):

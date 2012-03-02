@@ -272,7 +272,7 @@ def getnextfilename(root,suffix):
 Finds next available file name in a numeric sequence. The filename is assumed
 to have the format root.XXX.suffix, where XXX is three digits.
   """
-  dir = string.join(os.listdir('.'))
+  dir = ' '.join(os.listdir('.'))
   i = 0
   name = root+('.%03d.'%i)+suffix
   # --- escape adds a backslash to all non-alphanumeric characters. This is
@@ -366,7 +366,7 @@ Both produce an array of shape (2,4) that looks like::
   # --- float or int rather than eval.
   i = 0
   while i < ntot:
-    dataline = map(converter,string.split(ff.readline()))
+    dataline = map(converter,ff.readline().split())
     nd = len(dataline)
     data[i:i+nd] = dataline
     i = i + nd
@@ -466,7 +466,7 @@ automatically.::
   lines=ff.readlines()
   if l_checkdims:assert len(lines)==dims[1],"ERROR reading data from "+filename+": dimensions 2nd axis are incompatible. %g passed as argument, %g found in file."%(dims[1],len(lines))
   for line in lines:
-    words = string.split(line)
+    words = line.split()
     if l_checkdims:assert len(words)==dims[0],"ERROR reading data from "+filename+": dimensions 1st axis are incompatible. %g passed as argument, %g found in file."%(dims[0],len(words))
     dataline = map(converter,words)
     data.append(dataline)

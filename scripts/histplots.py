@@ -149,7 +149,7 @@ only required argument of course is the data to be plotted.
   kwvalues.update(kw)
   kwvalues.update(kwdict)
   badargs = checkarguments(kwvalues,kwdefaults)
-  if badargs: raise TypeError,"bad argument %s"%string.join(badargs.keys())
+  if badargs: raise TypeError,"bad argument %s"%' '.join(badargs.keys())
   for arg in kwvalues.keys(): exec(arg+" = kwvalues['"+arg+"']")
 
   iend = _extractvar(iend,varsuffix,ff=ff)
@@ -249,7 +249,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
   kwvalues.update(kwdict)
   for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
   badargs = checkarguments(kwvalues,kwdefaults)
-  if badargs: raise TypeError,"bad argument %s"%string.join(badargs.keys())
+  if badargs: raise TypeError,"bad argument %s"%' '.join(badargs.keys())
 
   iend = _extractvar(iend,varsuffix,ff=ff)
   jend = _extractvar(jend,varsuffix,ff=ff)

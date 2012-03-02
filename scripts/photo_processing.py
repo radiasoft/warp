@@ -20,7 +20,6 @@
 from warp import *
 import Image
 import os
-import string
 import numpy
 import mphoto
 import gifmaker
@@ -47,7 +46,7 @@ same name but with "montage" appended.
     T0 = []
     T1 = []
     for file in os.listdir(os.curdir):
-        fname = string.split(file, '.')
+        fname = file.split( '.')
         if len(fname) == 3:
             if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0] == label):
                 L.append(file)
@@ -113,7 +112,7 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
     	# -- Looking for biggest number of picture file name --
 		max_num = '00';
 		for file in os.listdir(os.curdir):
-			fname = string.split(file,'.')
+			fname = file.split('.')
 			try:
 				if len(fname)== 3:
 					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'z'):
@@ -127,7 +126,7 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
 		m_num='00'
 		if num_movie==None:
 			for mfile in os.listdir(os.curdir):
-				mfname = string.split(mfile, '.')
+				mfname = mfile.split( '.')
 
 				try:
 					if len(mfname)== 4:
@@ -149,7 +148,7 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
 		sequence = []
 
 		for file in os.listdir(os.curdir):
-			fname = string.split(file,'.')
+			fname = file.split('.')
 			try:
 				if len(fname)== 3:
 					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'z'):
@@ -174,7 +173,7 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
     	# -- Looking for biggest number of picture file name --
 		max_num = '00';
 		for file in os.listdir(os.curdir):
-			fname = string.split(file,'.')
+			fname = file.split('.')
 			try:
 				if len(fname)== 3:
 					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'y'):
@@ -188,7 +187,7 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
 		m_num='00'
 		if num_movie==None:
 			for mfile in os.listdir(os.curdir):
-				mfname = string.split(mfile, '.')
+				mfname = mfile.split( '.')
 
 				try:
 					if len(mfname)== 4:
@@ -210,7 +209,7 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
 		sequence = []
 
 		for file in os.listdir(os.curdir):
-			fname = string.split(file,'.')
+			fname = file.split('.')
 			try:	
 				if len(fname)== 3:
 					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'y'):
@@ -234,7 +233,7 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
  	# -- Looking for biggest number of picture file name --
 		max_num = '00';
 		for file in os.listdir(os.curdir):
-			fname = string.split(file,'.')
+			fname = file.split('.')
 			try:
 				if len(fname)== 3:
 					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'x'):
@@ -248,7 +247,7 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
 		m_num='00'
 		if num_movie==None:
 			for mfile in os.listdir(os.curdir):
-				mfname = string.split(mfile, '.')
+				mfname = mfile.split( '.')
 			
 				try:
 					if len(mfname)== 4:
@@ -270,7 +269,7 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
 		sequence = []
 
 		for file in os.listdir(os.curdir):
-			fname = string.split(file,'.')
+			fname = file.split('.')
 			try:
 				if len(fname)== 3:
 					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'x'):

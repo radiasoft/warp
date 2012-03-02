@@ -111,7 +111,6 @@ import controllers
 import re
 import os
 import sys
-import string
 warpplots_version = "$Id: warpplots.py,v 1.278 2012/01/26 23:31:29 grote Exp $"
 
 def warpplotsdoc():
@@ -1213,7 +1212,7 @@ def pptitleright(iw=0,kwdict={},**kw):
   badargs = checkarguments(kwvalues,_pptitleright_kwdefaults)
   if checkargs: return badargs
   if badargs and not allowbadargs:
-    raise TypeError,"bad argument%s"%string.join(badargs.keys())
+    raise TypeError,"bad argument%s"%' '.join(badargs.keys())
 
   # --- Return appropriate right title
   if zl is not None or zu is not None:
@@ -1471,7 +1470,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   badargs = checkarguments(kwvalues,_ppgeneric_kwdefaults)
   if checkargs: return badargs
   assert (not badargs or allowbadargs), \
-         "bad argument: %s"%string.join(badargs.keys())
+         "bad argument: %s"%' '.join(badargs.keys())
 
   # --- If gridt is given, take the transpose and put it in grid. Note that
   # --- this will overwrite a grid argument. This is done here to reduce
@@ -2469,7 +2468,7 @@ functions.
   badargs = ppgeneric(checkargs=1,kwdict=badargs)
   badargs = getxxpslope(checkargs=1,kwdict=badargs)
   kw['allowbadargs'] = 1
-  if badargs: raise TypeError,"bad arguments%s"%string.join(badargs.keys())
+  if badargs: raise TypeError,"bad arguments%s"%' '.join(badargs.keys())
 ########################################################################
 def ppzxy(iw=0,**kw):
   "Plots Z-X and Z-Y in single page. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
@@ -5199,21 +5198,21 @@ def wplq(i):
     sys.stdout = s
     l = {}
     for j in range(0,len(r)):
-      line = string.split(r[j])
+      line = r[j].spplit()
       if(len(line)>0):
         k = 0
         while k <len(line):
-          if(string.find(line[k],'=')>0):
-             arg = string.replace(line[k],'=','')
-             val = string.replace(line[k+1],',','')
+          if(line[k].find('=')>0):
+             arg = line[k].replace('=','')
+             val = line[k+1].replace(',','')
              try:
                val=float(val)
              except:
                try:
                  val=int(val)
                except:
-                 val = string.replace(val,'"','')
-                 val = string.replace(val,"'",'')
+                 val = val.replace('"','')
+                 val = val.replace("'",'')
                  pass
              l[arg]=val
              k = k+2

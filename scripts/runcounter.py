@@ -2,7 +2,6 @@
 # run. The run number is save in a file in between runs.
 from warp import *
 import time
-import string
 import sys, copy
 import fcntl
 runcounter_version = "$Id: runcounter.py,v 1.17 2012/01/26 23:34:20 grote Exp $"
@@ -68,7 +67,7 @@ third ever increasing. Each run, the first number will be incremented, every
     # --- Try to open the runcounter file
     runcounterfile = open(prefix+suffix,"r")
     # --- Read in the state, converting each number into an integer
-    counter = map(string.atoi,string.split(runcounterfile.readline()))
+    counter = map(int,runcounterfile.readline().split())
     runcounterfile.close()
   except IOError:
     # --- If no such file, then flag counter
@@ -96,7 +95,7 @@ third ever increasing. Each run, the first number will be incremented, every
   # --- PE0 (or serial job) can now write out the next value
   if me == 0:
     runcounterfile = open(prefix+suffix,"w")
-    runcounterfile.write(string.join(map(repr,counter)) + '\n')
+    runcounterfile.write(' '.join(map(repr,counter)) + '\n')
     runcounterfile.close()
 
   # --- Make this job wait a few seconds to make sure it is not running

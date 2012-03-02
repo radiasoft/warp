@@ -332,7 +332,7 @@ but the ii index will be expecting that r have length npmax.
       badargs[k] = v
   if checkargs: return badargs
   if badargs and not allowbadargs:
-    raise TypeError,"bad argument "+string.join(badargs.keys())
+    raise TypeError,"bad argument "+' '.join(badargs.keys())
 
   suffix,object,pgroup = _getobjectpgroup(kwvalues)
 

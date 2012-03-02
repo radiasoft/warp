@@ -7,7 +7,6 @@ __all__ = ['ExtPart','dumpExtPart','restoreExtPart','ZCrossingParticles']
 from warp import *
 from appendablearray import *
 import cPickle
-import string
 extpart_version = "$Id: extpart.py,v 1.81 2011/09/29 00:16:10 grote Exp $"
 
 def extpartdoc():
@@ -557,7 +556,7 @@ feature.
         jsmax = top.ns - 1
         for var,val in datadict.items():
             if var[0] == 'n':
-                ss = string.split(var,'_')
+                ss = var.split('_')
                 jsmax = max(jsmax,int(ss[2]))
                 while jsmax >= len(ntot): ntot.append(0)
                 ntot[jsmax] = ntot[jsmax] + val
@@ -617,7 +616,7 @@ feature.
         varlist.sort()
         for var in varlist:
             if var[0] == 'n':
-                ss = string.split(var,'_')
+                ss = var.split('_')
                 js = int(ss[2])
                 suffix = var[1:]
                 self.t[js].append(datadict['t%s'%suffix])
@@ -685,14 +684,14 @@ feature.
         varlist.sort()
         for var in varlist:
             if var[0] == 'n':
-                name,ii,js = string.split(var,'_')
+                name,ii,js = var.split('_')
                 jsmax = max(jsmax,eval(js))
                 while jsmax >= len(ntot): ntot.append(0)
                 ntot[jsmax] = ntot[jsmax] + ff.read(var)
         self.setuparrays(jsmax+1,bump=max(array(ntot))+1)
         for var in varlist:
             if var[0] == 'n':
-                name,iis,jss = string.split(var,'_')
+                name,iis,jss = var.split('_')
                 nn = ff.read(var)
                 ii = eval(iis)
                 js = eval(jss)
@@ -904,7 +903,7 @@ functions.
         """
         badargs = ppgeneric(checkargs=1,kwdict=kw)
         kw['allowbadargs'] = 1
-        if badargs: raise 'bad arguments ',string.join(badargs.keys())
+        if badargs: raise 'bad arguments ',' '.join(badargs.keys())
 
     def titleright(self,tc=None,wt=None,z=None,slope=None):
         if tc is None:
@@ -2153,7 +2152,7 @@ feature.
         jsmax = 0
         for var,val in datadict.items():
             if var[0] == 'n':
-                name,ii,js = string.split(var,'_')
+                name,ii,js = var.split('_')
                 jsmax = max(jsmax,eval(js))
                 while jsmax >= len(ntot): ntot.append(0)
                 ntot[jsmax] = ntot[jsmax] + val
@@ -2199,7 +2198,7 @@ feature.
         varlist.sort()
         for var in varlist:
             if var[0] == 'n':
-                name,iis,jss = string.split(var,'_')
+                name,iis,jss = var.split('_')
                 nn = datadict[var]
                 ii = eval(iis)
                 js = eval(jss)
@@ -2263,14 +2262,14 @@ feature.
         varlist.sort()
         for var in varlist:
             if var[0] == 'n':
-                name,ii,js = string.split(var,'_')
+                name,ii,js = var.split('_')
                 jsmax = max(jsmax,eval(js))
                 while jsmax >= len(ntot): ntot.append(0)
                 ntot[jsmax] = ntot[jsmax] + ff.read(var)
         self.setuparrays(jsmax+1,bump=max(array(ntot))+1)
         for var in varlist:
             if var[0] == 'n':
-                name,iis,jss = string.split(var,'_')
+                name,iis,jss = var.split('_')
                 nn = ff.read(var)
                 ii = eval(iis)
                 js = eval(jss)
@@ -2427,7 +2426,7 @@ functions.
         """
         badargs = ppgeneric(checkargs=1,kwdict=kw)
         kw['allowbadargs'] = 1
-        if badargs: raise 'bad arguments ',string.join(badargs.keys())
+        if badargs: raise 'bad arguments ',' '.join(badargs.keys())
 
     def titleright(self,tc=None,wt=None,z=None,slope=None):
         if tc is None:

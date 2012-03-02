@@ -24,7 +24,6 @@ gunppzr: plots streamlines of particle trajectories - requires top.spid
 
 """
 from warp import *
-import string
 import curses.ascii
 import sys
 import adjustmesh3d
@@ -227,7 +226,7 @@ set when a current is specified"""
   # --- Set the attribute 'dump' on the rho array so it is automatically saved
   # --- on a dump. This is done since rho holds the current state of the
   # --- solution.
-  if 'dump' not in string.split(w3d.getvarattr('rho')):
+  if 'dump' not in w3d.getvarattr('rho').split():
     w3d.addvarattr("rho","dump")
 
   # --- Set verbosity so that the one line diagnostic is not printed out.
