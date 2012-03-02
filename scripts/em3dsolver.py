@@ -142,7 +142,7 @@ class EM3D(SubcycledPoissonSolver):
     # --- removes bounds from self.kw to prevent conflict with bounds created 
     # --- by the MR class, when adding MR children.
     try:
-      if self.kw.has_key('bounds'):self.kw.pop('bounds')
+      if 'bounds' in self.kw:self.kw.pop('bounds')
     except:
       pass
       
@@ -313,14 +313,14 @@ class EM3D(SubcycledPoissonSolver):
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(package,name))
-      if kw.has_key(name): del kw[name]
+      if name in kw: del kw[name]
 
   def processdefaultsfromdict(self,dict,kw):
     for name,defvalue in dict.iteritems():
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
-      if kw.has_key(name): del kw[name]
+      if name in kw: del kw[name]
 
   def getpdims(self):
     # --- Returns the dimensions of the arrays used by the particles
@@ -1947,23 +1947,23 @@ class EM3D(SubcycledPoissonSolver):
                     **kw):
     if direction is None and not l_opyndx:direction=2
     if self.l_2dxz:direction=1
-    if kw.has_key('view'):
+    if 'view' in kw:
       view=kw['view']
     else:
       view=1
-    if kw.has_key('xscale'):
+    if 'xscale' in kw:
       xscale=kw['xscale']
     else:
       xscale=1
-    if kw.has_key('yscale'):
+    if 'yscale' in kw:
       yscale=kw['yscale']
     else:
       yscale=1
-    if kw.has_key('zscale'):
+    if 'zscale' in kw:
       zscale=kw['zscale']
     else:
       zscale=1
-    if kw.has_key('gridscale'):
+    if 'gridscale' in kw:
       gridscale=kw['gridscale']
     else:
       gridscale=None

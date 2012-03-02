@@ -178,7 +178,7 @@ generate).
     if solver is not None:
       solver.installconductor(a,dfill=dfill)
       return
-    elif __main__.__dict__.has_key("AMRtree"):
+    elif "AMRtree" in __main__.__dict__:
       __main__.__dict__["AMRtree"].installconductor(a,dfill=dfill)
       return
 

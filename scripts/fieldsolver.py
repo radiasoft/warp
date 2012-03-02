@@ -661,14 +661,14 @@ the diagnostic is of interest and is meaningfull.
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(package,name))
-      if kw.has_key(name): del kw[name]
+      if name in kw: del kw[name]
 
   def processdefaultsfromdict(self,dict,kw):
     for name,defvalue in dict.iteritems():
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
-      if kw.has_key(name): del kw[name]
+      if name in kw: del kw[name]
 
   def initializeDecomposition(self,decomp):
 

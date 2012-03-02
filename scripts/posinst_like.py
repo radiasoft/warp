@@ -615,14 +615,14 @@ Class for generating photo-electrons
   def add(self,incident_species=None,emitted_species=None):
     isinc=incident_species
     issec=[]
-    if not self.inter.has_key(isinc):
+    if isinc not in self.inter:
         self.inter[isinc]={}
         for key in ['incident_species','emitted_species']:
           self.inter[isinc][key]=[]
         self.inter[isinc]['incident_species']=incident_species
     self.inter[isinc]['emitted_species'] = emitted_species
     js=emitted_species.jslist[0]
-    if not self.x.has_key(js):
+    if js not in self.x:
       self.nps[js]=0
       self.x[js]=fzeros(self.npmax,'d')
       self.y[js]=fzeros(self.npmax,'d')

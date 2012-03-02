@@ -96,7 +96,7 @@ Class for generating particles from impact ionization.
           emitted_energy0=None,emitted_energy_sigma=None,
           incident_pgroup=top.pgroup,target_pgroup=top.pgroup,emitted_pgroup=top.pgroup,
           l_remove_incident=None,l_remove_target=None,emitted_tag=None):
-    if not self.inter.has_key(incident_species):
+    if incident_species not in self.inter:
         self.inter[incident_species]={}
         for key in ['target_species','emitted_species','cross_section','ndens','target_fluidvel',
                     'remove_incident','remove_target',
@@ -146,7 +146,7 @@ Class for generating particles from impact ionization.
     self.inter[incident_species]['target_pgroup']  =target_pgroup
     self.inter[incident_species]['emitted_pgroup'] =emitted_pgroup
     if target_species is not None:
-      if not self.target_dens.has_key(target_species):
+      if target_species not in self.target_dens:
         self.target_dens[target_species]={}
         for key in ['ndens','ndens_updated']:
           self.target_dens[target_species][key]=[]
@@ -156,7 +156,7 @@ Class for generating particles from impact ionization.
       
     for e in emitted_species:
       js=e.jslist[0]
-      if not self.x.has_key(emitted_pgroup):
+      if emitted_pgroup not in self.x:
         self.nps[emitted_pgroup]={}
         self.x[emitted_pgroup]={}
         self.y[emitted_pgroup]={}
@@ -167,7 +167,7 @@ Class for generating particles from impact ionization.
         self.gi[emitted_pgroup]={}
         self.pidtag[emitted_pgroup]={}
         self.injpid[emitted_pgroup]={}
-      if not self.x[emitted_pgroup].has_key(js):
+      if js not in self.x[emitted_pgroup]:
         self.nps[emitted_pgroup][js]=0
         self.x[emitted_pgroup][js]=fzeros(self.npmax,'d')
         self.y[emitted_pgroup][js]=fzeros(self.npmax,'d')
@@ -300,7 +300,7 @@ Class for generating particles from impact ionization.
         #  firstelement = [target_species]
         for ie,emitted_species in enumerate(firstelement+self.inter[incident_species]['emitted_species'][it]):
           ename=emitted_species.name
-          if not ewidth.has_key(ie):
+          if ie not in ewidth:
             ewidth[ie]=len(ename)
           else:
             ewidth[ie]=max(ewidth[ie],len(ename))

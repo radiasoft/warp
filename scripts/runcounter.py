@@ -204,7 +204,7 @@ Accumulates data from multiple runs in a single file.
 
   # --- Sort data if requested.
   if sortname is not None:
-    assert accumulateddata.has_key(sortname),"The quantity %s must be included for sorting."%sortname
+    assert sortname in accumulateddata,"The quantity %s must be included for sorting."%sortname
     s = accumulateddata[sortname]
     i = argsort(s)
     sorteddata = {}

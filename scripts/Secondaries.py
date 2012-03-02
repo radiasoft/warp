@@ -197,7 +197,7 @@ Class for generating secondaries
     issec=[]
     for e in emitted_species:
       issec.append(e.jslist[0])
-    if not self.inter.has_key(isinc):
+    if isinc not in self.inter:
         self.inter[isinc]={}
         for key in ['emitted','condids','issec','conductors','type','isneut','incident_species', \
                     'emitted_species','material','scale_factor','scale_factor_velocity','forced_yield', \
@@ -219,7 +219,7 @@ Class for generating secondaries
     self.inter[isinc]['init_position_offset']  += [init_position_offset]
     for e in emitted_species:
       js=e.jslist[0]
-      if not self.x.has_key(js):
+      if js not in self.x:
         self.nps[js]=0
         self.npmax[js]=4096
         self.allocate_temps(js)
@@ -331,7 +331,7 @@ Class for generating secondaries
       for ics,cond in enumerate(self.inter[js]['conductors']):
         cwidth=max(cwidth,len(cond.name))
         for ie,emitted_species in enumerate(self.inter[js]['emitted_species'][ics]):
-          if not ewidth.has_key(ie):
+          if ie not in ewidth:
             ewidth[ie]=len(emitted_species.name)
           else:
             ewidth[ie]=max(ewidth[ie],len(emitted_species.name))
@@ -501,17 +501,17 @@ Class for generating secondaries
           weighttot+=sum(weight)*top.pgroup.sw[js]
         ek0max=max(max(e0),ek0max)
         if 1:#cond.lcollectlpdata:
-          if not cond.lostparticles_angles.has_key(js):
+          if js not in cond.lostparticles_angles:
             cond.lostparticles_angles[js]=zeros(181,'d')
-          if not cond.lostparticles_energies.has_key(js):
+          if js not in cond.lostparticles_energies:
             cond.lostparticles_energies[js]=zeros(1001,'d')
           e0min = min(e0)
           e0max = max(e0)
 #          e0min=0.
 #          e0max=1.e6
-          if not cond.lostparticles_minenergy.has_key(js):
+          if js not in cond.lostparticles_minenergy:
             cond.lostparticles_minenergy[js]=e0min
-          if not cond.lostparticles_maxenergy.has_key(js):
+          if js not in cond.lostparticles_maxenergy:
             cond.lostparticles_maxenergy[js]=e0max
           l_rescale_energy_array=0
           if e0min<cond.lostparticles_minenergy[js]:
@@ -1096,17 +1096,17 @@ Class for generating secondaries
           weighttot+=sum(weight)*top.pgroup.sw[js]
         ek0max=max(max(e0),ek0max)
         if 1:#cond.lcollectlpdata:
-          if not cond.lostparticles_angles.has_key(js):
+          if js not in cond.lostparticles_angles:
             cond.lostparticles_angles[js]=zeros(181,'d')
-          if not cond.lostparticles_energies.has_key(js):
+          if js not in cond.lostparticles_energies:
             cond.lostparticles_energies[js]=zeros(1001,'d')
           e0min = min(e0)
           e0max = max(e0)
 #          e0min=0.
 #          e0max=1.e6
-          if not cond.lostparticles_minenergy.has_key(js):
+          if js not in cond.lostparticles_minenergy:
             cond.lostparticles_minenergy[js]=e0min
-          if not cond.lostparticles_maxenergy.has_key(js):
+          if js not in cond.lostparticles_maxenergy:
             cond.lostparticles_maxenergy[js]=e0max
           l_rescale_energy_array=0
           if e0min<cond.lostparticles_minenergy[js]:
@@ -2188,14 +2188,14 @@ Class for generating photo-electrons
   def add(self,incident_species=None,emitted_species=None):
     isinc=incident_species
     issec=[]
-    if not self.inter.has_key(isinc):
+    if isinc not in self.inter:
         self.inter[isinc]={}
         for key in ['incident_species','emitted_species']:
           self.inter[isinc][key]=[]
         self.inter[isinc]['incident_species']=incident_species
     self.inter[isinc]['emitted_species'] = emitted_species
     js=emitted_species.jslist[0]
-    if not self.x.has_key(js):
+    if js not in self.x:
       self.nps[js]=0
       self.npmax[js]=4096
       self.allocate_temps(js)

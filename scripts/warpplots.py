@@ -2435,7 +2435,7 @@ def ppmultispecies(pp,args,kw):
   """checks if js defined and assign it to a list if plotting multispecies.
   Also assign colors accordingly
   """
-  if kw.has_key('js'):
+  if 'js' in kw:
     js = kw['js']
     if js != -1 and type(js) != ListType:
       return false
@@ -2475,7 +2475,7 @@ def ppzxy(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzxy,(iw,),kw): return
   kw['view'] = 9
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2487,7 +2487,7 @@ def ppzxy(iw=0,**kw):
   ppgeneric(getx(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),kwdict=kw)
 
   kw['view'] = 10
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2501,7 +2501,7 @@ def ppzx(iw=0,**kw):
   "Plots Z-X. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzx,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2518,7 +2518,7 @@ def ppzy(iw=0,**kw):
   "Plots Z-Y. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzy,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2535,7 +2535,7 @@ def ppzr(iw=0,**kw):
   "Plots Z-R. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzr,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2552,7 +2552,7 @@ def ppzxp(iw=0,**kw):
   "Plots Z-X'. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzxp,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2569,7 +2569,7 @@ def ppzvx(iw=0,**kw):
   "Plots Z-Vx. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvx,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2586,7 +2586,7 @@ def ppzyp(iw=0,**kw):
   "Plots Z-Y'. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzyp,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2603,7 +2603,7 @@ def ppzvy(iw=0,**kw):
   "Plots Z-Vy. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvy,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2621,7 +2621,7 @@ def ppzvz(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvz,(iw,),kw): return
   (vzmin,vzmax) = getvzrange(kwdict=kw)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
@@ -2649,7 +2649,7 @@ def ppzvr(iw=0,**kw):
   "Plots Z-Vr. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvr,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2666,7 +2666,7 @@ def ppzvtheta(iw=0,**kw):
   "Plots Z-Vtheta. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvtheta,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2683,7 +2683,7 @@ def ppzvperp(iw=0,**kw):
   "Plots Z-Vperp (sqrt(Vx**2 + Vy**2)). For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvperp,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     vperpmin = min(top.xpplmin*top.vbeam,top.ypplmin*top.vbeam)
@@ -2703,7 +2703,7 @@ def ppzrp(iw=0,**kw):
   "Plots Z-R'. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzrp,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2719,7 +2719,7 @@ def ppxex(iw=0,**kw):
   "Plots X-Ex. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxex,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2735,7 +2735,7 @@ def ppxey(iw=0,**kw):
   "Plots X-Ey. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxey,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2751,7 +2751,7 @@ def ppxez(iw=0,**kw):
   "Plots X-Ez. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxez,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2767,7 +2767,7 @@ def ppxbx(iw=0,**kw):
   "Plots X-Bx. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxex,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2783,7 +2783,7 @@ def ppxby(iw=0,**kw):
   "Plots X-By. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxby,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2799,7 +2799,7 @@ def ppxbz(iw=0,**kw):
   "Plots X-Bz. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxez,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2815,7 +2815,7 @@ def ppyex(iw=0,**kw):
   "Plots Y-Ex. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyex,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2831,7 +2831,7 @@ def ppyey(iw=0,**kw):
   "Plots Y-Ey. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyey,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2847,7 +2847,7 @@ def ppyez(iw=0,**kw):
   "Plots Y-Ez. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyez,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2863,7 +2863,7 @@ def ppybx(iw=0,**kw):
   "Plots Y-Bx. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyex,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2879,7 +2879,7 @@ def ppyby(iw=0,**kw):
   "Plots Y-By. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyby,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2895,7 +2895,7 @@ def ppybz(iw=0,**kw):
   "Plots Y-Bz. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyez,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2911,7 +2911,7 @@ def ppzex(iw=0,**kw):
   "Plots Z-Ex. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzex,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2927,7 +2927,7 @@ def ppzey(iw=0,**kw):
   "Plots Z-Ey. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzey,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2943,7 +2943,7 @@ def ppzez(iw=0,**kw):
   "Plots Z-Ez. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzez,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2959,7 +2959,7 @@ def ppzbx(iw=0,**kw):
   "Plots Z-Bx. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzbx,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2975,7 +2975,7 @@ def ppzby(iw=0,**kw):
   "Plots Z-By. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzby,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -2991,7 +2991,7 @@ def ppzbz(iw=0,**kw):
   "Plots Z-Bz. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzbz,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -3007,7 +3007,7 @@ def ppexey(iw=0,**kw):
   "Plots Ex-Ey. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppexey,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xpplmin*top.vbeam,top.xpplmax*top.vbeam,
@@ -3024,7 +3024,7 @@ def ppxy(iw=0,**kw):
   "Plots X-Y. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxy,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
@@ -3045,7 +3045,7 @@ def ppxxp(iw=0,**kw):
     kw['slope'] = slope
     kw['yoffset'] = xpoffset
     kw['xoffset'] = xoffset
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
@@ -3066,7 +3066,7 @@ def ppyyp(iw=0,**kw):
     kw['slope'] = slope
     kw['yoffset'] = ypoffset
     kw['xoffset'] = yoffset
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
@@ -3090,7 +3090,7 @@ def ppxpyp(iw=0,**kw):
   else:
     (xslope,xoffset,xpoffset) = (slope,0.,0.)
     (yslope,yoffset,ypoffset) = (slope,0.,0.)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
@@ -3116,7 +3116,7 @@ def ppxvx(iw=0,**kw):
     kw['slope'] = slope*vz
     kw['yoffset'] = xpoffset*vz
     kw['xoffset'] = xoffset
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,
@@ -3138,7 +3138,7 @@ def ppyvy(iw=0,**kw):
     kw['slope'] = slope*vz
     kw['yoffset'] = ypoffset*vz
     kw['xoffset'] = yoffset
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,
@@ -3156,7 +3156,7 @@ def ppxvz(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxvz,(iw,),kw): return
   (vzmin,vzmax) = getvzrange(kwdict=kw)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,vzmin,vzmax)
@@ -3173,7 +3173,7 @@ def ppyvz(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyvz,(iw,),kw): return
   (vzmin,vzmax) = getvzrange(kwdict=kw)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,vzmin,vzmax)
@@ -3201,7 +3201,7 @@ def ppvxvy(iw=0,**kw):
   else:
     (vxslope,xoffset,vxoffset) = (slope,0.,0.)
     (vyslope,yoffset,vyoffset) = (slope,0.,0.)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xpplmin*top.vbeam,top.xpplmax*top.vbeam,
@@ -3232,7 +3232,7 @@ def ppvxvz(iw=0,**kw):
     vxoffset = xpoffset*vz
   else:
     (vxslope,xoffset,vxoffset) = (slope,0.,0.)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xpplmin*top.vbeam,top.xpplmax*top.vbeam,vzmin,vzmax)
@@ -3260,7 +3260,7 @@ def ppvyvz(iw=0,**kw):
     vyoffset = ypoffset*vz
   else:
     (vyslope,yoffset,vyoffset) = (slope,0.,0.)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.ypplmin*top.vbeam,top.ypplmax*top.vbeam,vzmin,vzmax)
@@ -3279,7 +3279,7 @@ def ppvzvperp(iw=0,**kw):
   "Plots Vz-Vperp (sqrt(Vx**2 + Vy**2)). For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvperp,(iw,),kw): return
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     vperpmin = min(top.xpplmin*top.vbeam,top.ypplmin*top.vbeam)
@@ -3332,7 +3332,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
     else:
       slope = 0.
     kw['slope'] = slope
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
@@ -3379,7 +3379,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
     else:
       slope = 0.
     kw['slope'] = slope
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
@@ -3426,7 +3426,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
     else:
       slope = 0.
     kw['slope'] = slope
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
@@ -3443,7 +3443,7 @@ def pprvz(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(pprvz,(iw,),kw): return
   (vzmin,vzmax) = getvzrange(kwdict=kw)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (0.,max(top.xplmax,top.yplmax),vzmin,vzmax)
@@ -3886,7 +3886,7 @@ For plotting options, see :py:func:`ppgeneric`.
     kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
@@ -3921,7 +3921,7 @@ For plotting options, see :py:func:`ppgeneric`.
     kw.setdefault('ymax',solver.xmmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
@@ -3960,7 +3960,7 @@ For plotting options, see :py:func:`ppgeneric`.
     kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
@@ -3998,7 +3998,7 @@ For plotting options, see :py:func:`ppgeneric`.
     kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
@@ -4033,7 +4033,7 @@ For plotting options, see :py:func:`ppgeneric`.
     kw.setdefault('ymax',solver.xmmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
@@ -4072,7 +4072,7 @@ For plotting options, see :py:func:`ppgeneric`.
     kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
@@ -4113,7 +4113,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.zmmax + zbeam)
     kw.setdefault('ymin',solver.ymmin)
     kw.setdefault('ymax',solver.ymmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits']=(kw['xmin'],kw['xmax'],
@@ -4162,7 +4162,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.zmmax + zbeam)
     kw.setdefault('ymin',solver.xmmin)
     kw.setdefault('ymax',solver.xmmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
@@ -4223,7 +4223,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.xmmax)
     kw.setdefault('ymin',solver.ymmin)
     kw.setdefault('ymax',solver.ymmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
@@ -4278,7 +4278,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.zmmax + zbeam)
     kw.setdefault('ymin',solver.ymmin)
     kw.setdefault('ymax',solver.ymmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits']=(kw['xmin'],kw['xmax'],
@@ -4327,7 +4327,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.zmmax + zbeam)
     kw.setdefault('ymin',solver.xmmin)
     kw.setdefault('ymax',solver.xmmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
@@ -4373,7 +4373,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.xmmax)
     kw.setdefault('ymin',solver.ymmin)
     kw.setdefault('ymax',solver.ymmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
@@ -4428,7 +4428,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.zmmax + zbeam)
     kw.setdefault('ymin',solver.ymmin)
     kw.setdefault('ymax',solver.ymmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits']=(kw['xmin'],kw['xmax'],
@@ -4477,7 +4477,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.zmmax + zbeam)
     kw.setdefault('ymin',solver.xmmin)
     kw.setdefault('ymax',solver.xmmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
@@ -4523,7 +4523,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.xmmax)
     kw.setdefault('ymin',solver.ymmin)
     kw.setdefault('ymax',solver.ymmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
@@ -4578,7 +4578,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.zmmax + zbeam)
     kw.setdefault('ymin',solver.ymmin)
     kw.setdefault('ymax',solver.ymmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits']=(kw['xmin'],kw['xmax'],
@@ -4627,7 +4627,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.zmmax + zbeam)
     kw.setdefault('ymin',solver.xmmin)
     kw.setdefault('ymax',solver.xmmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
@@ -4673,7 +4673,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw.setdefault('xmax',solver.xmmax)
     kw.setdefault('ymin',solver.ymmin)
     kw.setdefault('ymax',solver.ymmax)
-  if kw.has_key('pplimits'):
+  if 'pplimits' in kw:
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
