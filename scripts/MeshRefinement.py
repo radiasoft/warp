@@ -972,11 +972,11 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
     for pe in self.neighborpeslist: senddictsleft[pe] = {}
     for pe in self.neighborpeslist: senddictsright[pe] = {}
     for block in self.listofblocks:
-      for (pe,othernumber),data in block.overlapsparallelleft.items():
+      for (pe,othernumber),data in block.overlapsparallelleft.iteritems():
         l,u = data
         sourcep = block.getsourcepslice(l,u)
         senddictsleft[pe].setdefault(othernumber,[]).append((l,u,sourcep))
-      for (pe,othernumber),data in block.overlapsparallelright.items():
+      for (pe,othernumber),data in block.overlapsparallelright.iteritems():
         l,u = data
         sourcep = block.getsourcepslice(l,u)
         senddictsright[pe].setdefault(othernumber,[]).append((l,u,sourcep))
@@ -1004,7 +1004,7 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
       blocksreceivingdata = []
 
       # --- Add in the data from the right
-      for blocknumber,data in dictfromright.items():
+      for blocknumber,data in dictfromright.iteritems():
         block = self.getblockfromnumber(blocknumber)
         for l,u,osourcep in data:
           ssourcep = block.getsourcepslice(l,u)
@@ -1012,7 +1012,7 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
         blocksreceivingdata.append(block)
 
       # --- The from the left
-      for blocknumber,data in dictfromleft.items():
+      for blocknumber,data in dictfromleft.iteritems():
         block = self.getblockfromnumber(blocknumber)
         for l,u,osourcep in data:
           ssourcep = block.getsourcepslice(l,u)
@@ -1048,7 +1048,7 @@ block.
     # --- (unecessary) computational work, since it already will be done
     # --- at the end of gathersourcepfromchildren.
     for block in self.listofblocks:
-      for othernumber,overlapdomain in block.overlapshigher.items():
+      for othernumber,overlapdomain in block.overlapshigher.iteritems():
         other = block.getblockfromnumber(othernumber)
         l,u = overlapdomain
         ssourcep = block.getsourcepslice(l,u)
@@ -1112,7 +1112,7 @@ restoresourcepinoverlaps.  Note that this is not recursive, since it is
 called separately by each block from gathersourcepfromchildren.
     """
     if self.l_EM: return
-    for othernumber,overlapdomain in self.overlapslower.items():
+    for othernumber,overlapdomain in self.overlapslower.iteritems():
       l,u = overlapdomain
       ssourcep = self.getsourcepslice(l,u)
       ssourcep[...] = 0.
@@ -1233,7 +1233,7 @@ block.
     # --- The loop does not need to be in ascending order, but this just
     # --- matches the getsourcepfromoverlaps routine.
     for block in self.listofblocks:
-      for othernumber,overlapdomain in block.overlapslower.items():
+      for othernumber,overlapdomain in block.overlapslower.iteritems():
         other = block.getblockfromnumber(othernumber)
         l,u = overlapdomain
         ssourcep = block.getsourcepslice(l,u)

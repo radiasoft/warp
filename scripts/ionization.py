@@ -285,7 +285,7 @@ Class for generating particles from impact ionization.
     ewidth={}
     title='        *** Particle/particle interactions ***\n'
     textblock=''
-    for incident_species in self.inter.keys():
+    for incident_species in self.inter:
       swidth=max(swidth,len(incident_species.name))
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
         if target_species is None:
@@ -307,9 +307,9 @@ Class for generating particles from impact ionization.
     fs='%%-%gs'%swidth
     ft='%%-%gs'%twidth
     fe={}
-    for ie in ewidth.keys():
+    for ie in ewidth:
       fe[ie]='%%-%gs'%ewidth[ie]
-    for incident_species in self.inter.keys():
+    for incident_species in self.inter:
       sname=fs%incident_species.name[:swidth]
       textblock+='\n'
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
@@ -345,9 +345,9 @@ Class for generating particles from impact ionization.
   def generate(self,dt=None):
     if dt is None:dt=top.dt
     if self.l_timing:t1 = time.clock()
-    for target_species in self.target_dens.keys():
+    for target_species in self.target_dens:
       self.target_dens[target_species]['ndens_updated']=0    
-    for incident_species in self.inter.keys():
+    for incident_species in self.inter:
       npinc = 0
       ispushed=0
       ipg=self.inter[incident_species]['incident_pgroup']
@@ -412,7 +412,7 @@ Class for generating particles from impact ionization.
 #          if w3d.l2symtry or w3d.l4symtry:self.ndens[:,0,:]*=2.
 #          if w3d.l4symtry:self.ndens[0,:,:]*=2.
       
-    for incident_species in self.inter.keys():
+    for incident_species in self.inter:
       npinc = 0
       ispushed=0
       ipg=self.inter[incident_species]['incident_pgroup']
@@ -619,8 +619,8 @@ Class for generating particles from impact ionization.
             nnew = len(io)
                                            
     # make sure that all particles are added and cleared 
-    for pg in self.x.keys():
-      for js in self.x[pg].keys():
+    for pg in self.x:
+      for js in self.x[pg]:
         self.flushpart(pg,js)
         processlostpart(pg,js+1,top.clearlostpart,top.time,top.zbeam)
                        

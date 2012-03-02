@@ -63,7 +63,7 @@ class AMRTree(VisualizableClass):
         cleanblocks = self.blocks.copy()
         del dict['blocks']
         dict['cleanblocks'] = cleanblocks
-        for gid in cleanblocks.keys():
+        for gid in cleanblocks:
           cleanblocks[gid]['grid'] = gid
         return dict
 
@@ -131,7 +131,7 @@ class AMRTree(VisualizableClass):
         self.blocks.installconductor(conductor,dfill=self.dfill)
       else:
         self.restorefrzgrid()
-        for block in self.blocks.values():
+        for block in self.blocks.itervalues():
           g = block['grid']
           if conductor not in block['installed_conductors']:
             try:
@@ -941,7 +941,7 @@ class AMRTree(VisualizableClass):
                     pass
         # install conductors
         for cond,dfill in zip(self.conductors,self.conductorsdfill):
-          for block in self.blocks.values():
+          for block in self.blocks.itervalues():
             g=block['grid']
             if g is not frz.basegrid:
              if cond not in block['installed_conductors']:

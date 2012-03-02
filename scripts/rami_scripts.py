@@ -291,7 +291,7 @@ def seek_name(var, l3d=no, lhist=no):
         if var == "hcurr":      return "transpose(top.hcurrz)"
     if var in top.varlist("dump"):  return pre+var[1:]+suf
     if var in w3d.varlist("dump"):  return "w3d."+var
-    if var in globals().keys():     return var
+    if var in globals():     return var
     if var == "zscale":
         if l3d: return "top.zmntmesh"
         else:   return "top.hzbeam"
@@ -376,7 +376,7 @@ def gen_plot(vars=(), xaxis="", runid=None, kwdict={},  **kw):
              'xscale': 1.0, 'xoffset': 0.0, 'yscale': 1.0, 'yoffset': 0.0,
              'titleb': "S (m)", 'titlel': "", 'titlet': "", 'titler': "", 'titles': 1}
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
-    for key in pldef.keys():    exec key+"=pldef['"+key+"']"
+    for key in pldef:    exec key+"=pldef['"+key+"']"
     #
     if runid is None:
         runid = arraytostr(top.runid)
@@ -627,13 +627,13 @@ def plot_comp(runs={}, plots=("env", "emit", "cent"), kwdict={}, **kw):
     """
     if  len(runs) < 2: runs[arraytostr(top.runid)+"0"] = {'type': "solid"}
     pldef = {'titlet': ''}
-    for run in runs.keys():
+    for run in runs:
         restore("data."+run+".pdb")
         pldef['titlet'] = pldef['titlet']+ run+" ("+runs[run]['type']+"); "
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
     #
     for plot in plots:
-        for run in runs.keys():
+        for run in runs:
             temp = pldef.copy()
             temp.update(runs[run])
             exec "plot_"+plot+"('"+run[:-1]+"', kwdict=temp)"

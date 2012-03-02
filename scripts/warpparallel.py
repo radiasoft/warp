@@ -549,7 +549,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0,lreturnff=0)
 
   # --- Get a list of all of the conductor variables
   groups = sortrestorevarsbysuffix(vlistparallel,[])
-  if 'conductors%d'%me in groups.keys():
+  if 'conductors%d'%me in groups:
     vlistconductors = groups['conductors%d'%me]
     pyrestoreforthonobject(ff,'f3d.conductors',vlistconductors,fobjdict,
                            varsuffix,verbose,doarrays=0,
@@ -558,7 +558,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0,lreturnff=0)
                            varsuffix,verbose,doarrays=1,
                            gpdbname='conductors%d@parallel'%me)
 
-  if 'pgroup%d'%me in groups.keys():
+  if 'pgroup%d'%me in groups:
     vlistpgroup = groups['pgroup%d'%me]
     pyrestoreforthonobject(ff,'top.pgroup',vlistpgroup,fobjdict,
                            varsuffix,verbose,doarrays=0,

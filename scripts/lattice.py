@@ -1829,13 +1829,13 @@ drft arrays with the same suffices:
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element.
   if ie <= top.ndrft:
-    for e in edict.values():
+    for e in edict.itervalues():
       e[ie+1:] = e[ie:-1] + 0
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     e[ie] = ldict[xx]
 
   # --- resetlat must be called before the data can be used
@@ -1896,13 +1896,13 @@ To turn this offset, set top.diposet = false.
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element.
   if ie <= top.nbend:
-    for e in edict.values():
+    for e in edict.itervalues():
       e[ie+1:] = e[ie:-1] + 0
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     e[ie] = ldict[xx]
 
   # --- resetlat must be called before the data can be used
@@ -1962,13 +1962,13 @@ dipo arrays with the same suffices:
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element.
   if ie <= top.ndipo:
-    for e in edict.values():
+    for e in edict.itervalues():
       e[ie+1:] = e[ie:-1] + 0
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     e[ie] = ldict[xx]
 
   # --- resetlat must be called before the data can be used
@@ -2044,7 +2044,7 @@ quad and qdel arrays with the same suffices:
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element.
   if ie <= top.nquad:
-    for e in edict.values():
+    for e in edict.itervalues():
       if len(shape(e)) == 1:
         e[ie+1:] = e[ie:-1] + 0
       else:
@@ -2054,7 +2054,7 @@ quad and qdel arrays with the same suffices:
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     if len(shape(e)) == 1:
       e[ie] = ldict[xx]
     else:
@@ -2113,13 +2113,13 @@ sext arrays with the same suffices:
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element.
   if ie <= top.nsext:
-    for e in edict.values():
+    for e in edict.itervalues():
       e[ie+1:] = e[ie:-1] + 0
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     e[ie] = ldict[xx]
 
   # --- resetlat must be called before the data can be used
@@ -2211,7 +2211,7 @@ hele arrays with the same suffices:
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element.
   if ie <= top.nhele:
-    for e in edict.values():
+    for e in edict.itervalues():
       if len(shape(e)) == 1:
         e[ie+1:] = e[ie:-1] + 0
       else:
@@ -2221,7 +2221,7 @@ hele arrays with the same suffices:
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     if len(shape(e)) == 1:
       e[ie] = ldict[xx]
     else:
@@ -2323,13 +2323,13 @@ scale factor. One of the following can be supplied:
   # --- new element. The element id must be handled seperately.
   if ie <= top.nemlt:
     top.emltid[ie+1:] = top.emltid[ie:-1] + 0
-    for e in edict.values():
+    for e in edict.itervalues():
       e[ie+1:] = e[ie:-1] + 0
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     e[ie] = ldict[xx]
 
   # --- Now setup the multipole component dataset.
@@ -2595,13 +2595,13 @@ scale factor. One of the following can be supplied:
   # --- new element.
   if ie <= top.nmmlt:
     top.mmltid[ie+1:] = top.mmltid[ie:-1] + 0
-    for e in edict.values():
+    for e in edict.itervalues():
       e[ie+1:] = e[ie:-1] + 0
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     e[ie] = ldict[xx]
 
   # --- Now setup the multipole component dataset.
@@ -2673,7 +2673,7 @@ accl arrays with the same suffices:
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element.
   if ie <= top.naccl:
-    for e in edict.values():
+    for e in edict.itervalues():
       if len(shape(e)) == 1:
         e[ie+1:] = e[ie:-1] + 0
       else:
@@ -2683,7 +2683,7 @@ accl arrays with the same suffices:
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     if len(shape(e)) == 1:
       e[ie] = ldict[xx]
     else:
@@ -2772,13 +2772,13 @@ of dx, dy, nx, ny, nz, must be passed in"""
   # --- new element. The element id must be handled seperately.
   if ie <= top.negrd:
     top.egrdid[ie+1:] = top.egrdid[ie:-1] + 0
-    for e in edict.values():
+    for e in edict.itervalues():
       e[ie+1:] = e[ie:-1] + 0
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     e[ie] = ldict[xx]
 
   # --- Now setup the 3-D field grid dataset
@@ -2904,13 +2904,13 @@ of dx, dy, nx, ny, nz, must be passed in"""
   # --- new element. The element id must be handled seperately.
   if ie <= top.nbgrd:
     top.bgrdid[ie+1:] = top.bgrdid[ie:-1] + 0
-    for e in edict.values():
+    for e in edict.itervalues():
       e[ie+1:] = e[ie:-1] + 0
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     e[ie] = ldict[xx]
 
   # --- Now setup the 3-D field grid dataset
@@ -3026,13 +3026,13 @@ bsqgrad arrays with the same suffices:
   # --- new element. The element id must be handled seperately.
   if ie <= top.nbsqgrad:
     top.bsqgradid[ie+1:] = top.bsqgradid[ie:-1] + 0
-    for e in edict.values():
+    for e in edict.itervalues():
       e[ie+1:] = e[ie:-1] + 0
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     e[ie] = ldict[xx]
 
   # --- Now setup the 3-D field grid dataset
@@ -3144,13 +3144,13 @@ scale factor. One of the following can be supplied:
   # --- new element. The element id must be handled seperately.
   if ie <= top.npgrd:
     top.pgrdid[ie+1:] = top.pgrdid[ie:-1] + 0
-    for e in edict.values():
+    for e in edict.itervalues():
       e[ie+1:] = e[ie:-1] + 0
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
   # --- their values.
-  for (xx,e) in map(None,edict.keys(),edict.values()):
+  for (xx,e) in edict.iteritems():
     e[ie] = ldict[xx]
 
   # --- Now setup the 3-D field grid dataset

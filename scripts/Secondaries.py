@@ -326,7 +326,7 @@ Class for generating secondaries
     swidth=0
     cwidth=0
     ewidth={}
-    for js in self.inter.keys():
+    for js in self.inter:
       swidth=max(swidth,len(self.inter[js]['incident_species'].name))
       for ics,cond in enumerate(self.inter[js]['conductors']):
         cwidth=max(cwidth,len(cond.name))
@@ -338,9 +338,9 @@ Class for generating secondaries
     fs='%%-%gs'%swidth
     fc='%%-%gs'%cwidth
     fe={}
-    for ie in ewidth.keys():
+    for ie in ewidth:
       fe[ie]='%%-%gs'%ewidth[ie]
-    for js in self.inter.keys():
+    for js in self.inter:
       sname=fs%self.inter[js]['incident_species'].name
       textblock+='\n'
       for ics,cond in enumerate(self.inter[js]['conductors']):
@@ -371,7 +371,7 @@ Class for generating secondaries
     if self.l_record_timing:t1 = time.clock()
 
     # reset 'emitted' list to zero
-    for js in self.inter.keys():
+    for js in self.inter:
      for i in range(len(self.inter[js]['emitted'])):
       for j in range(len(self.inter[js]['emitted'][i])):  
        self.inter[js]['emitted'][i][j] = 0.
@@ -399,7 +399,7 @@ Class for generating secondaries
     if self.l_record_timing:t2 = time.clock()
     tinit=tgen=tprepadd=tadd=0.
     # compute number of secondaries and create them
-    for ints in self.inter.keys():
+    for ints in self.inter:
      incident_species=self.inter[ints]['incident_species']
      for js in incident_species.jslist:
       if self.l_verbose:print 'js',js
@@ -897,7 +897,7 @@ Class for generating secondaries
 
     if self.l_record_timing:t3 = time.clock()
     # --- make sure that all particles are added
-    for js in self.x.keys():
+    for js in self.x:
       self.flushpart(js)
     # --- Check for particle out of bounds and exchange particles among
     # --- processors if needed. A call to particleboundaries3d is made
@@ -917,7 +917,7 @@ Class for generating secondaries
 
 #    print "tinit,tgen,tadd:",tinit*1.e-6,tgen*1.e-6,tprepadd*1.e-6,tadd*1.e-6
     # --- append total emitted charge in conductors emitparticles_data arrays
-    for js in self.inter.keys():
+    for js in self.inter:
       for ics,c in enumerate(self.inter[js]['conductors']):
         for ie in range(len(self.inter[js]['emitted'][ics])):
           if local:
@@ -966,7 +966,7 @@ Class for generating secondaries
     if self.l_record_timing:t1 = time.clock()
 
     # reset 'emitted' list to zero
-    for js in self.inter.keys():
+    for js in self.inter:
      for i in range(len(self.inter[js]['emitted'])):
       for j in range(len(self.inter[js]['emitted'][i])):  
        self.inter[js]['emitted'][i][j] = 0.
@@ -994,7 +994,7 @@ Class for generating secondaries
     if self.l_record_timing:t2 = time.clock()
     tinit=tgen=tprepadd=tadd=0.
     # compute number of secondaries and create them
-    for ints in self.inter.keys():
+    for ints in self.inter:
      incident_species=self.inter[ints]['incident_species']
      for js in incident_species.jslist:
       if self.l_verbose:print 'js',js
@@ -1533,7 +1533,7 @@ Class for generating secondaries
 
     if self.l_record_timing:t3 = time.clock()
     # --- make sure that all particles are added
-    for js in self.x.keys():
+    for js in self.x:
       self.flushpart(js)
     # --- Check for particle out of bounds and exchange particles among
     # --- processors if needed. A call to particleboundaries3d is made
@@ -1553,7 +1553,7 @@ Class for generating secondaries
 
 #    print "tinit,tgen,tadd:",tinit*1.e-6,tgen*1.e-6,tprepadd*1.e-6,tadd*1.e-6
     # --- append total emitted charge in conductors emitparticles_data arrays
-    for js in self.inter.keys():
+    for js in self.inter:
       for ics,c in enumerate(self.inter[js]['conductors']):
         for ie in range(len(self.inter[js]['emitted'][ics])):
           if local:
@@ -2262,7 +2262,7 @@ Class for generating photo-electrons
        self.nps[js]=0
          
   def generate(self):
-    for ints in self.inter.keys():
+    for ints in self.inter:
      incident_species=self.inter[ints]['incident_species']
      emitted_species=self.inter[incident_species]['emitted_species']
      if type(self.Lambda) is not type(array([0.])):
@@ -2380,7 +2380,7 @@ Class for generating photo-electrons
        pos.nlast=0
 
     # --- make sure that all particles are added
-    for js in self.x.keys():
+    for js in self.x:
       self.flushpart(js)
     # --- Check for particle out of bounds and exchange particles among
     # --- processors if needed. A call to particleboundaries3d is made

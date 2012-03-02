@@ -281,7 +281,7 @@ Should never be directly created by the user.
       del kw['kw']
       kw.update(kwtemp)
 
-    for name,default in Assembly.__inputs__.items():
+    for name,default in Assembly.__inputs__.iteritems():
       self.__dict__[name] = kw.get(name,default)
       if name in kw: del kw[name]
     assert len(kw) == 0,"Invalid keyword arguments "+str(kw.keys())

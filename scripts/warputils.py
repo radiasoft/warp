@@ -132,9 +132,9 @@ main dictionary.
  - x: Name of variable - must be a string.
   """
   import __main__
-  if x in __main__.__dict__.keys(): return true
-  if x in locals().keys(): return true
-  if x in globals().keys(): return true
+  if x in __main__.__dict__: return true
+  if x in locals(): return true
+  if x in globals(): return true
   return false
 
 def ave(x,index=0):
@@ -641,7 +641,7 @@ sizes, in bytes.
   import __main__
   import warp
   dd = {}
-  for k,v in __main__.__dict__.items():
+  for k,v in __main__.__dict__.iteritems():
     if not withwarpglobals and k in warp.initial_global_dict_keys: continue
     if isinstance(v,ModuleType): continue
     if k == 'controllerfunctioncontainer': continue
@@ -653,7 +653,7 @@ sizes, in bytes.
     totals += s
     if s > minsize:
       print k,s
-  for k,v in dd.items():
+  for k,v in dd.iteritems():
     s = getobjectsize(v)*8
     totals += s
     if s > minsize:

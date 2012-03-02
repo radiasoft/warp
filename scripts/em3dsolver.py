@@ -3009,7 +3009,7 @@ class EM3D(SubcycledPoissonSolver):
     yrbndmatch = False
     zlbndmatch = False
     zrbndmatch = False
-    for n in self.overlapshigher.keys():
+    for n in self.overlapshigher:
       block = self.root.listofblocks[n].block
       blockcoarse = self.root.listofblocks[n].field_coarse.block
       lower = self.overlapshigher[n][0]
@@ -3038,7 +3038,7 @@ class EM3D(SubcycledPoissonSolver):
            self.connectblocks(self.block,block,2)
            self.connectblocks(self.field_coarse.block,blockcoarse,2)
          zrbndmatch = True
-    for n in self.overlapslower.keys():
+    for n in self.overlapslower:
       block = self.root.listofblocks[n].block
       blockcoarse = self.root.listofblocks[n].field_coarse.block
       lower = self.overlapslower[n][0]

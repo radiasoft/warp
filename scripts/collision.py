@@ -253,7 +253,7 @@ the fieldspecies is affected by collision against the testspecies.
     # --- Loop over the field species, colliding all of the test species
     # --- against it. This way, the averages are only calculated once for
     # --- each field species.
-    for field,testspecies in self.fielddict.items():
+    for field,testspecies in self.fielddict.iteritems():
 
       # --- Get the particle data of the field species. Note that the
       # --- collisions can always be done locally.

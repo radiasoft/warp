@@ -1162,7 +1162,7 @@ def ptitlebottom(text=""):
 def checkarguments(input,arglist):
   "Compare inputs against and argument list and return list of bad arguments"
   #inputcopy = input.copy()
-  #for i in inputcopy.keys():
+  #for i in inputcopy:
   #  if i in arglist: del inputcopy[i]
   #return inputcopy
   result = {}
@@ -1186,7 +1186,7 @@ def pptitleright(iw=0,kwdict={},**kw):
   kwvalues = _pptitleright_kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
-  #for arg in _pptitleright_kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  #for arg in _pptitleright_kwdefaults: exec(arg+" = kwvalues['"+arg+"']")
   # --- This is MUCH faster than the loop, about 100x, but not as nice looking.
   js = kwvalues['js']
   win = kwvalues['win']
@@ -1391,7 +1391,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   kwvalues.update(kw)
   kwvalues.update(kwdict)
 
-  #for arg in _ppgeneric_kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  #for arg in _ppgeneric_kwdefaults: exec(arg+" = kwvalues['"+arg+"']")
   # --- This is MUCH faster than the loop, about 100x, but not as nice looking.
   zz = kwvalues['zz']
   weights = kwvalues['weights']

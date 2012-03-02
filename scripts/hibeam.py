@@ -45,11 +45,11 @@ try:
 except KeyError:
   ztime = {}
 
-for k,v in hinit.items():
+for k,v in hinit.iteritems():
   v = re.sub('\.f\w*','0',v) # Change .false. to 0
   v = re.sub('\.t\w*','1',v) # Change .true. to 1
   exec(k+'='+v)
-for k,v in ztime.items():
+for k,v in ztime.iteritems():
   v = re.sub('\.f\w*','0',v) # Change .false. to 0
   v = re.sub('\.t\w*','1',v) # Change .true. to 1
   exec(k+'='+v)

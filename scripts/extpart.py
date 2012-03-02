@@ -554,7 +554,7 @@ feature.
         # --- declared.
         ntot = []
         jsmax = top.ns - 1
-        for var,val in datadict.items():
+        for var,val in datadict.iteritems():
             if var[0] == 'n':
                 ss = var.split('_')
                 jsmax = max(jsmax,int(ss[2]))
@@ -572,7 +572,7 @@ feature.
         # --- If self.topnpidmax is nonzero and different than the size
         # --- of pid, raise an exception since there is likely something
         # --- wrong.
-        for var,val in datadict.items():
+        for var,val in datadict.iteritems():
             if var[0:3] == 'pid':
                 try:
                     npid = val.shape[1]
@@ -951,7 +951,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.pxy,(js,tc,wt,tp,z),kw): return
         x = self.getx(js,tc,wt,tp,z)
         y = self.gety(js,tc,wt,tp,z)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
@@ -981,7 +981,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
                 offset = 0.
         kw['slope'] = slope
         kw['offset'] = offset
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("Vx vs X","X","Vx",self.titleright(tc,wt,z,slope))
         return ppgeneric(vx,x,kwdict=kw)
@@ -1010,7 +1010,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
                 offset = 0.
         kw['slope'] = slope
         kw['offset'] = offset
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("Vy vs Y","Y","Vy",self.titleright(tc,wt,z,slope))
         return ppgeneric(vy,y,kwdict=kw)
@@ -1025,7 +1025,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.pvxvy,(js,tc,wt,tp),kw): return
         vx = self.getvx(js,tc,wt,tp)
         vy = self.getvy(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("Vy vs Vx","Vx","Vy",self.titleright(tc,wt,z))
         return ppgeneric(vy,vx,kwdict=kw)
@@ -1069,7 +1069,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
             else:
                 slope = 0.
         kw['slope'] = slope
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("Vr vs R","R","Vr",self.titleright(tc,wt,z,slope))
         return ppgeneric(vr,r,kwdict=kw)
@@ -1097,7 +1097,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
                 offset = 0.
         kw['slope'] = slope
         kw['offset'] = offset
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
@@ -1128,7 +1128,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
                 offset = 0.
         kw['slope'] = slope
         kw['offset'] = offset
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
@@ -1145,7 +1145,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.pxpyp,(js,tc,wt,tp),kw): return
         xp = self.getxp(js,tc,wt,tp)
         yp = self.getyp(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
@@ -1191,7 +1191,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
             else:
                 slope = 0.
         kw['slope'] = slope
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
@@ -1209,7 +1209,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.ptx,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         x = self.getx(js,tc,wt,tp,z)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = ('e','e',top.xplmin,top.xplmax)
@@ -1226,7 +1226,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.pty,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         y = self.gety(js,tc,wt,tp,z)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = ('e','e',top.yplmin,top.yplmax)
@@ -1243,7 +1243,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.ptxp,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         xp = self.getxp(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = ('e','e',top.xpplmin,top.xpplmax)
@@ -1260,7 +1260,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.ptyp,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         yp = self.getyp(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = ('e','e',top.ypplmin,top.ypplmax)
@@ -1277,7 +1277,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.ptux,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         ux = self.getux(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("ux vs time","time","ux",self.titleright(tc,wt,z))
         return ppgeneric(ux,t,kwdict=kw)
@@ -1292,7 +1292,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.ptuy,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         uy = self.getuy(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("uy vs time","time","uy",self.titleright(tc,wt,z))
         return ppgeneric(uy,t,kwdict=kw)
@@ -1307,7 +1307,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.ptuz,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         uz = self.getuz(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("uz vs time","time","uz",self.titleright(tc,wt,z))
         return ppgeneric(uz,t,kwdict=kw)
@@ -1322,7 +1322,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.ptvx,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         vx = self.getvx(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("Vx vs time","time","Vx",self.titleright(tc,wt,z))
         return ppgeneric(vx,t,kwdict=kw)
@@ -1337,7 +1337,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.ptvy,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         vy = self.getvy(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("Vy vs time","time","Vy",self.titleright(tc,wt,z))
         return ppgeneric(vy,t,kwdict=kw)
@@ -1352,7 +1352,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.ptvz,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         vz = self.getvz(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("Vz vs time","time","Vz",self.titleright(tc,wt,z))
         return ppgeneric(vz,t,kwdict=kw)
@@ -1368,7 +1368,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         t = self.gett(js,tc,wt,tp,z)
         vz = self.getvz(js,tc,wt,tp)
         kez = 0.5*top.pgroup.sm[js]*vz**2/jperev
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("KEz vs time","time","KE (volts)",self.titleright(tc,wt,z))
         return ppgeneric(kez,t,kwdict=kw)
@@ -2150,7 +2150,7 @@ feature.
         # --- Get total number of particles
         ntot = []
         jsmax = 0
-        for var,val in datadict.items():
+        for var,val in datadict.iteritems():
             if var[0] == 'n':
                 name,ii,js = var.split('_')
                 jsmax = max(jsmax,eval(js))
@@ -2163,7 +2163,7 @@ feature.
         # --- If top.npidepmax is nonzero and different than the size
         # --- of pid, raise an exception since there is likely something
         # --- wrong.
-        for var,val in datadict.items():
+        for var,val in datadict.iteritems():
             if var[0:3] == 'pid':
                 try:
                     npid = val.shape[1]
@@ -2471,7 +2471,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.pxy,(js,tc,wt,tp,z),kw): return
         x = self.getx(js,tc,wt,tp,z)
         y = self.gety(js,tc,wt,tp,z)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
@@ -2498,7 +2498,7 @@ each species and each one in the list. Also assign colors accordingly
                 offset = 0.
         kw['slope'] = slope
         kw['offset'] = offset
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
@@ -2526,7 +2526,7 @@ each species and each one in the list. Also assign colors accordingly
                 offset = 0.
         kw['slope'] = slope
         kw['offset'] = offset
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
@@ -2540,7 +2540,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.pxpyp,(js,tc,wt,tp),kw): return
         xp = self.getxp(js,tc,wt,tp)
         yp = self.getyp(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
@@ -2583,7 +2583,7 @@ each species and each one in the list. Also assign colors accordingly
             else:
                 slope = 0.
         kw['slope'] = slope
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
@@ -2598,7 +2598,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.ptx,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         x = self.getx(js,tc,wt,tp,z)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = ('e','e',top.xplmin,top.xplmax)
@@ -2612,7 +2612,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.pty,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         y = self.gety(js,tc,wt,tp,z)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = ('e','e',top.yplmin,top.yplmax)
@@ -2626,7 +2626,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.ptxp,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         xp = self.getxp(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = ('e','e',top.xpplmin,top.xpplmax)
@@ -2640,7 +2640,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.ptyp,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         yp = self.getyp(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         else:
             kw['pplimits'] = ('e','e',top.ypplmin,top.ypplmax)
@@ -2654,7 +2654,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.ptux,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         ux = self.getux(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("ux vs time","time","ux",self.titleright(tc,wt,z))
         return ppgeneric(ux,t,kwdict=kw)
@@ -2666,7 +2666,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.ptuy,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         uy = self.getuy(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("uy vs time","time","uy",self.titleright(tc,wt,z))
         return ppgeneric(uy,t,kwdict=kw)
@@ -2678,7 +2678,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.ptuz,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         uz = self.getuz(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("uz vs time","time","uz",self.titleright(tc,wt,z))
         return ppgeneric(uz,t,kwdict=kw)
@@ -2690,7 +2690,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.ptvx,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         vx = self.getvx(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("Vx vs time","time","Vx",self.titleright(tc,wt,z))
         return ppgeneric(vx,t,kwdict=kw)
@@ -2702,7 +2702,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.ptvy,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         vy = self.getvy(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("Vy vs time","time","Vy",self.titleright(tc,wt,z))
         return ppgeneric(vy,t,kwdict=kw)
@@ -2714,7 +2714,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.ptvz,(js,tc,wt,tp,z),kw): return
         t = self.gett(js,tc,wt,tp,z)
         vz = self.getvz(js,tc,wt,tp)
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("Vz vs time","time","Vz",self.titleright(tc,wt,z))
         return ppgeneric(vz,t,kwdict=kw)
@@ -2727,7 +2727,7 @@ each species and each one in the list. Also assign colors accordingly
         t = self.gett(js,tc,wt,tp,z)
         vz = self.getvz(js,tc,wt,tp)
         kez = 0.5*top.pgroup.sm[js]*vz**2/jperev
-        if 'pplimits' in kw.keys():
+        if 'pplimits' in kw:
             kw['lframe'] = 1
         settitles("KEz vs time","time","KE (volts)",self.titleright(tc,wt,z))
         return ppgeneric(kez,t,kwdict=kw)

@@ -312,7 +312,7 @@ recalculated on a finer mesh to give better balancing.
 
         # --- Find frequency of load balancing
         ii = max(self.when.values())
-        for key,value in self.when.items():
+        for key,value in self.when.iteritems():
             if top.it < key: ii = min(ii,value)
 
         # --- Just return if load balancing not done now.

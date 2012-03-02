@@ -151,11 +151,11 @@ Accumulates data from multiple runs in a single file.
     varlist = []
 
   # --- Remove names in scalardict from varlist.
-  for name,data in map(None,scalardict.keys(),scalardict.values()):
+  for name,data in scalardict.iteritems():
     if name in varlist: varlist.remove(name)
 
   # --- Loop over the items in the dictionary.
-  for name,data in map(None,datadict.keys(),datadict.values()):
+  for name,data in datadict.iteritems():
     if name in varlist: varlist.remove(name)
 
     # --- Read in data if file exists.
@@ -208,7 +208,7 @@ Accumulates data from multiple runs in a single file.
     s = accumulateddata[sortname]
     i = argsort(s)
     sorteddata = {}
-    for name,data in map(None,accumulateddata.keys(),accumulateddata.values()):
+    for name,data in ulateddata.iteritems():
       if len(transpose(data)) == len(s):
         sorteddata[name] = transpose(take(transpose(data),i))
       else:
@@ -222,9 +222,9 @@ Accumulates data from multiple runs in a single file.
   # --- is an error, the file being written to will be corrupted and all
   # --- of the data lost.
   f_out = PW.PW(filename)
-  for name,data in map(None,accumulateddata.keys(),accumulateddata.values()):
+  for name,data in accumulateddata.iteritems():
     f_out.write(name,data)
-  for name,data in map(None,scalardict.keys(),scalardict.values()):
+  for name,data in scalardict.iteritems():
     f_out.write(name,data)
     if name in varlist: varlist.remove(name)
   for name in varlist:

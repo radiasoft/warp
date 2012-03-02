@@ -677,7 +677,7 @@ Class for generating photo-electrons
        self.nps[js]=0
          
   def generate(self):
-    for ints in self.inter.keys():
+    for ints in self.inter:
      incident_species=self.inter[ints]['incident_species']
      emitted_species=self.inter[incident_species]['emitted_species']
      if incident_species is None:
@@ -784,5 +784,5 @@ Class for generating photo-electrons
        pos.nlast=0
 
     # --- make sure that all particles are added
-    for js in self.x.keys():
+    for js in self.x:
       self.flushpart(js)

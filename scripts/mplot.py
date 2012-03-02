@@ -56,7 +56,7 @@ Mountain-range plots of quantities saved vs. z at every timestep
   kwvalues = kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
-  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  for arg in kwdefaults: exec(arg+" = kwvalues['"+arg+"']")
   badargs = checkarguments(kwvalues,kwdefaults)
   if badargs: raise "bad argument ",' '.join(badargs.keys())
 

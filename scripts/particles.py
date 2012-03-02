@@ -290,7 +290,7 @@ but the ii index will be expecting that r have length npmax.
   kwvalues = _selectparticles_kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
-  #for arg in _selectparticles_kwdefaults.keys(): exec arg+" = kwvalues['"+arg+"']"
+  #for arg in _selectparticles_kwdefaults: exec arg+" = kwvalues['"+arg+"']"
   # --- This is MUCH faster than the loop, about 100x, but not as nice looking.
   js = kwvalues['js']
   jslist = kwvalues['jslist']
@@ -1210,7 +1210,7 @@ The product slope*vz gives the slope for x-vx.
     # --- This is only needed since no other routines take the slopejs
     # --- argument.
     kwdictcopy = kwdict.copy()
-    if 'slopejs' in kwdictcopy.keys(): del kwdictcopy['slopejs']
+    if 'slopejs' in kwdictcopy: del kwdictcopy['slopejs']
     return kwdictcopy
   zl = kwdict.get('zl')
   zu = kwdict.get('zu')
@@ -1282,7 +1282,7 @@ The product slope*vz gives the slope for y-vy.
     # --- This is only needed since no other routines take the slopejs
     # --- argument.
     kwdictcopy = kwdict.copy()
-    if 'slopejs' in kwdictcopy.keys(): del kwdictcopy['slopejs']
+    if 'slopejs' in kwdictcopy: del kwdictcopy['slopejs']
     return kwdictcopy
   zl = kwdict.get('zl')
   zu = kwdict.get('zu')
