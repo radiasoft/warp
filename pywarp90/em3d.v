@@ -448,6 +448,9 @@ l_nodecentered logical /.false./
 nx integer /0/ # nb of mesh cells of grid interior in the x direction
 ny integer /0/ # nb of mesh cells of grid interior in the y direction
 nz integer /0/ # nb of mesh cells of grid interior in the z direction
+nxs integer /0/ # nb of mesh cells of grid interior in the x direction for conductivity array
+nys integer /0/ # nb of mesh cells of grid interior in the y direction for conductivity array
+nzs integer /0/ # nb of mesh cells of grid interior in the z direction for conductivity array
 nxguard integer /1/ # nb of guard cells in the x direction
 nyguard integer /1/ # nb of guard cells in the y direction
 nzguard integer /1/ # nb of guard cells in the z direction
@@ -526,6 +529,9 @@ Ez(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Bx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 By(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Bz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+Sigmax(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real
+Sigmay(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real
+Sigmaz(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real
 Exp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 Eyp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 Ezp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real

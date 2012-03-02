@@ -492,9 +492,9 @@ c     --- Create and setup array which holds the BE region ids
 
 c       --- Calculate the coarsened phi
         phicoarse = 0.
-        call restrict2d(nx,nz,nxlocal,nzlocal,phi,1,1,
+        call restrict2d(nx,nz,nxlocal,nzlocal,1,1,phi,
      &                  nxcoarse,nzcoarse,nxlocalcoarse,nzlocalcoarse,
-     &                  phicoarse,1,1,
+     &                  phicoarse,
      &                  localbounds,localboundsc,lxoffset,lzoffset,.false.)
         call cond_potmgberz(bnd%next,nxlocalcoarse,nzlocalcoarse,phicoarse,
      &                      mglevel+1)
@@ -520,9 +520,9 @@ c       allocate(rrr(-1:nxlocal+1,-1:nzlocal+1),stat=allocerror)
 c       endif
 c       rrr = Lphi
 c       endif
-        call restrict2d(nx,nz,nxlocal,nzlocal,Lphi,delx,delz,
+        call restrict2d(nx,nz,nxlocal,nzlocal,delx,delz,Lphi,
      &                  nxcoarse,nzcoarse,nxlocalcoarse,nzlocalcoarse,
-     &                  rhocoarse,0,0,
+     &                  rhocoarse,
      &                  localbounds,localboundsc,lxoffset,lzoffset,.false.)
 
         deallocate(Lphi)
@@ -563,7 +563,7 @@ c       --- Add in the correction term.
         if (lprintmgphimaxchange) then
           print*,"Max change in phi = ",maxval(abs(phicoarse))," at MG level ",mglevel
         endif
-        call expand2d(nx,nz,nxlocal,nzlocal,phi,
+        call expand2d(nx,nz,nxlocal,nzlocal,1,1,phi,
      &                nxcoarse,nzcoarse,nxlocalcoarse,nzlocalcoarse,phicoarse,
      &                localbounds,lxoffset,lzoffset)
         call clampphitophimaxberz(nxlocal,nzlocal,dx,dz,phi,rho,regionid)
