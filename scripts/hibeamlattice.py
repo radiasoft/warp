@@ -122,7 +122,7 @@ class child:
   def __init__(self,parent,**changes):
     self.parent = eval(parent,globals())
     self.__dict__.update(changes)
-    if self.__dict__.has_key('l'):
+    if 'l' in self.__dict__:
       self.__dict__['length'] = self.__dict__['l']
   def __getattr__(self,name):
     return eval('self.parent.'+name,locals())

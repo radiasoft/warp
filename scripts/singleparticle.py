@@ -376,9 +376,7 @@ is not alive."""
 
   #----------------------------------------------------------------------
   def plotparticle(self,y,x,kw):
-    trajectory = kw.get('trajectory',1)
-    if 'trajectory' in kw: del kw['trajectory']
-    if trajectory == 1:
+    if kw.pop('trajectory',True):
       apply(plg,(y,x),kw)
     else:
       if len(x) > 0:
@@ -386,64 +384,49 @@ is not alive."""
 
   #----------------------------------------------------------------------
   def pxt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","time (s)","x (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","time (s)","x (m)")
     self.plotparticle(self.getx(i),self.gett(i),kw)
   def pyt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","time (s)","y (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","time (s)","y (m)")
     self.plotparticle(self.gety(i),self.gett(i),kw)
   def prt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","time (s)","r (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","time (s)","r (m)")
     self.plotparticle(self.getr(i),self.gett(i),kw)
   def pzt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","time (s)","z (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","time (s)","z (m)")
     self.plotparticle(self.getz(i),self.gett(i),kw)
   def pvxt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","time (s)","Vx (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","time (s)","Vx (m/s)")
     self.plotparticle(self.getvx(i),self.gett(i),kw)
   def pvyt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","time (s)","Vy (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","time (s)","Vy (m/s)")
     self.plotparticle(self.getvy(i),self.gett(i),kw)
   def pvzt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","time (s)","Vz (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","time (s)","Vz (m/s)")
     self.plotparticle(self.getvz(i),self.gett(i),kw)
   def pgit(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","time (s)","gamma inverse")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","time (s)","gamma inverse")
     self.plotparticle(self.getgi(i),self.gett(i),kw)
   def pxy(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","x (m)","y (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","x (m)","y (m)")
     self.plotparticle(self.gety(i),self.getx(i),kw)
   def pzx(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","z (m)","x (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","z (m)","x (m)")
     self.plotparticle(self.getx(i),self.getz(i),kw)
   def pzy(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","z (m)","y (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","z (m)","y (m)")
     self.plotparticle(self.gety(i),self.getz(i),kw)
   def pzr(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","z (m)","r (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","z (m)","r (m)")
     self.plotparticle(self.getr(i),self.getz(i),kw)
   def pzvx(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","z (m)","Vx (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","z (m)","Vx (m/s)")
     self.plotparticle(self.getvx(i),self.getz(i),kw)
   def pzvy(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","z (m)","Vy (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","z (m)","Vy (m/s)")
     self.plotparticle(self.getvy(i),self.getz(i),kw)
   def pzvz(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Trace particle","z (m)","Vz (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Trace particle","z (m)","Vz (m/s)")
     self.plotparticle(self.getvz(i),self.getz(i),kw)
 
 class NoninteractingParticles(TraceParticle):
@@ -923,63 +906,48 @@ is not alive."""
 
   #----------------------------------------------------------------------
   def pxt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","time (s)","x (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","time (s)","x (m)")
     apply(plg,(self.getx(i),self.gett(i)),kw)
   def pyt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","time (s)","y (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","time (s)","y (m)")
     apply(plg,(self.gety(i),self.gett(i)),kw)
   def prt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","time (s)","r (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","time (s)","r (m)")
     apply(plg,(self.getr(i),self.gett(i)),kw)
   def pzt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","time (s)","z (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","time (s)","z (m)")
     apply(plg,(self.getz(i),self.gett(i)),kw)
   def pvxt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","time (s)","Vx (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","time (s)","Vx (m/s)")
     apply(plg,(self.getvx(i),self.gett(i)),kw)
   def pvyt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","time (s)","Vy (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","time (s)","Vy (m/s)")
     apply(plg,(self.getvy(i),self.gett(i)),kw)
   def pvzt(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","time (s)","Vz (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","time (s)","Vz (m/s)")
     apply(plg,(self.getvz(i),self.gett(i)),kw)
   def pgit(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","time (s)","gamma inverse")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","time (s)","gamma inverse")
     apply(plg,(self.getgi(i),self.gett(i)),kw)
   def pxy(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","x (m)","y (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","x (m)","y (m)")
     apply(plg,(self.gety(i),self.getx(i)),kw)
   def pzx(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","z (m)","x (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","z (m)","x (m)")
     apply(plg,(self.getx(i),self.getz(i)),kw)
   def pzy(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","z (m)","y (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","z (m)","y (m)")
     apply(plg,(self.gety(i),self.getz(i)),kw)
   def pzr(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","z (m)","r (m)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","z (m)","r (m)")
     apply(plg,(self.getr(i),self.getz(i)),kw)
   def pzvx(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","z (m)","Vx (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","z (m)","Vx (m/s)")
     apply(plg,(self.getvx(i),self.getz(i)),kw)
   def pzvy(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","z (m)","Vy (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","z (m)","Vy (m/s)")
     apply(plg,(self.getvy(i),self.getz(i)),kw)
   def pzvz(self,i=0,**kw):
-    if kw.get("titles",1): ptitles("Single particle","z (m)","Vz (m/s)")
-    if kw.has_key("titles"): del kw["titles"]
+    if kw.pop('titles',True): ptitles("Single particle","z (m)","Vz (m/s)")
     apply(plg,(self.getvz(i),self.getz(i)),kw)
 

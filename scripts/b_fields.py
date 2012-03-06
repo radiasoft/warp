@@ -246,7 +246,7 @@ yplot, zplot define coords of desired plot axis
              'titlet': "B-field of Bgrd element vs. x", 'titler': "", 'titles': 1}
     if plot_title <> "": pldef['titlet'] = plot_title
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
-    for key in pldef.keys():    exec key+"=pldef['"+key+"']"
+    for key in pldef:    exec key+"=pldef['"+key+"']"
     #
     iiz = nint(zplot/top.bgrddz[nspec]) + nint(top.bgrdnz/2)
     iiy = nint(yplot/top.bgrddy[nspec]) + nint(top.bgrdny/2)
@@ -288,7 +288,7 @@ yplot, zplot define coords of desired plot axis
              'titlet': "B-field of Bgrd element vs. x", 'titler': "", 'titles': 1}
     if plot_title <> "": pldef['titlet'] = plot_title
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
-    for key in pldef.keys():    exec key+"=pldef['"+key+"']"
+    for key in pldef:    exec key+"=pldef['"+key+"']"
     #
     iiz = nint(zplot/top.bgrddz[nspec]) + nint(top.bgrdnz/2)
     iix = nint(xplot/top.bgrddx[nspec]) + nint(top.bgrdnx/2)
@@ -330,7 +330,7 @@ xplot, yplot define coords of desired plot axis
              'titlet': "B-field of Bgrd element vs. z", 'titler': "", 'titles': 1}
     if plot_title <> "": pldef['titlet'] = plot_title
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
-    for key in pldef.keys():    exec key+"=pldef['"+key+"']"
+    for key in pldef:    exec key+"=pldef['"+key+"']"
     #
     iix = nint(xplot/top.bgrddx[nspec]) + nint(top.bgrdnx/2)
     iiy = nint(yplot/top.bgrddy[nspec]) + nint(top.bgrdny/2)
@@ -372,7 +372,7 @@ xplot, yplot define coords of desired plot axis
              'titlet': "B-field of Bgrd element vs. z", 'titler': "", 'titles': 1}
     if plot_title <> "": pldef['titlet'] = plot_title
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
-    for key in pldef.keys():    exec key+"=pldef['"+key+"']"
+    for key in pldef:    exec key+"=pldef['"+key+"']"
     #
     iix = nint(xplot/top.bgrddx[nspec]) + nint(top.bgrdnx/2)
     iiy = nint(yplot/top.bgrddy[nspec]) + nint(top.bgrdny/2)

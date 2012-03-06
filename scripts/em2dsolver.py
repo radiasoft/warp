@@ -46,17 +46,17 @@ class EM2D(object):
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(w3d,name))
-      if kw.has_key(name): del kw[name]
+      if name in kw: del kw[name]
     for name in EM2D.__em2dinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(em2d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(em2d,name))
-      if kw.has_key(name): del kw[name]
+      if name in kw: del kw[name]
     for name,defvalue in EM2D.__flaginputs__.iteritems():
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
-      if kw.has_key(name): del kw[name]
+      if name in kw: del kw[name]
     em2d.l_elaser_out_plane = self.l_elaser_out_plane
 
     # --- bounds is special since it will sometimes be set from the

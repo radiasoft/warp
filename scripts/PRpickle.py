@@ -53,7 +53,7 @@ which is useful for names that are not usable as python attributes.
 
     def inquire_names(self):
         'inquire_names() = sorted list of names in the file'
-        ls = self._pickledict.keys()
+        ls = self._pickledict
         ls.sort()
         return ls
 

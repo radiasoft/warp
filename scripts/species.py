@@ -153,7 +153,7 @@ periodic_table['Ununpentium']={'A': 288.0, 'Symbol': 'Uup', 'Z': 115, 'Group': 1
 periodic_table['Ununquadium']={'A': 289.0, 'Symbol': 'Uuq', 'Z': 114, 'Group': 14, 'Period': 7}
 periodic_table['Ununhexium']={'A': 292.0, 'Symbol': 'Uuh', 'Z': 116, 'Group': 16, 'Period': 7}
 
-for k in periodic_table.keys():
+for k in periodic_table:
   S=periodic_table[k]['Symbol']
   A=periodic_table[k]['A']
   Z=periodic_table[k]['Z']

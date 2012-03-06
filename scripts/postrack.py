@@ -103,7 +103,7 @@ def plot_moms(plots = ("env", "emit", "remit", "cent", "vz", "np"), jspec=None, 
         is provided via the parameter 'jspec'
     """
     if jspec is None: jspec = range(1, top.ns)
-    if 'titlet' in kw.keys(): title = kw['titlet']
+    if 'titlet' in kw: title = kw['titlet']
     else: title = ''
     for plot in plots:
         kw['titlet'] = title+' '+plot+" from "

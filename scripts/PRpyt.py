@@ -246,7 +246,7 @@ that PR can read it in.
         self._cache.update(globalpickledict)
 
         # --- Add all of the names to the list
-        self._names += globalpickledict.keys()
+        self._names += globalpickledict
 
     def _readtable(self,table):
         for i in table.iterrows():

@@ -150,7 +150,7 @@ only required argument of course is the data to be plotted.
   kwvalues.update(kwdict)
   badargs = checkarguments(kwvalues,kwdefaults)
   if badargs: raise TypeError,"bad argument %s"%' '.join(badargs.keys())
-  for arg in kwvalues.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  for arg in kwvalues: exec(arg+" = kwvalues['"+arg+"']")
 
   iend = _extractvar(iend,varsuffix,ff=ff)
   oord = _extractvar(oord,varsuffix,ff=ff)
@@ -206,7 +206,7 @@ def hpbasicwin(oord,iw=0,kwdict={},**kw):
   kw.update(kwdict)
   oord = _extractvarkw(oord,kw)
   zwindows = _extractvarkw('zwindows',kw)
-  if 'lzshift' in kw.keys():
+  if 'lzshift' in kw:
     lzshift = kw['lzshift']
     del kw['lzshift']
   else:
@@ -247,7 +247,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
   kwvalues = kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
-  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  for arg in kwdefaults: exec(arg+" = kwvalues['"+arg+"']")
   badargs = checkarguments(kwvalues,kwdefaults)
   if badargs: raise TypeError,"bad argument %s"%' '.join(badargs.keys())
 
@@ -262,7 +262,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
   if jstep is None: jstep = max(jend/32,1)
 
   # --- Check through the possible keyword arguments
-  for arg in kw.keys():
+  for arg in kw:
     if arg in keywords:
       exec(arg+" = kw['"+arg+"']")
       del kw[arg]
@@ -270,7 +270,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
   if len(kw) > 0:
     badkwlist = 'unexpected keyword argument:'
     if len(kw) > 1: badkwlist = badkwlist[:-1] + 's:'
-    for arg in kw.keys():
+    for arg in kw:
       badkwlist = badkwlist + ' ' + arg
     raise TypeError,badkwlist
 
