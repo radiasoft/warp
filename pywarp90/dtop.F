@@ -127,6 +127,7 @@ c  Make call to hst routine to utilize the hst package
       end
 c============================================================================
       logical function checkzhistarray(lhzarray,ihzarray)
+      use Hist,Only:jhist
       logical(ISZ):: lhzarray
       integer(ISZ):: ihzarray
 c For histories of moments versus z, checks whether gchange should be called
@@ -137,6 +138,13 @@ c to 1 if the flag has been set to collect the history.
       if (lhzarray) then
         if (ihzarray < 0) checkzhistarray = .true.
         ihzarray = 1
+      else
+c       --- If the history is not being collected, and no data has been
+c       --- collected yet, then set so that the array will not get allocated.
+        if (jhist <= 0 .and. ihzarray > 0) then
+          checkzhistarray = .true.
+          ihzarray = -1
+        endif
       endif
       return
       end

@@ -518,17 +518,20 @@ c     if (npsplt == 0) npsplt = nparpgrp-1
 
 c  Setup history mechanism
 
-      if (nhist > 0) then
+c     --- This section is not needed, since the history arrays will be
+c     --- allocated as needed when the data is gathered.
+c     if (nhist > 0) then
 c       --- create the dynamic arrays for history data; set pointer into them
-        call remark(" ---  Allocating history arrays")
-        if (lenhist == 0) lenhist = min ( nt/nhist + 1, 100)
-        call gchange("Hist", 0)
-        jhist = -1
-      elseif (nhist < 0) then
+c       call remark(" ---  Allocating history arrays")
+c       if (lenhist == 0) lenhist = min ( nt/nhist + 1, 100)
+c       call gchange("Hist", 0)
+c       jhist = -1
+c     elseif (nhist < 0) then
 c       --- call interpreter routine to setup hst package
 c       --- setup_hst is in bas.wrp
-        call execuser("setup_hst")
-      endif
+c       --- This is no longer supported.
+c       call execuser("setup_hst")
+c     endif
 
 c  Print interesting things to plot file and teletype
 
