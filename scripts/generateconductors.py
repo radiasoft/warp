@@ -6031,7 +6031,6 @@ Or give the quadrupole id to use...
   # --- Add end plates
   if pw > 0. and (ap > 0. or pa > 0.):
     if pa == 0.: pa = ap
-    if pr == 0.: pr = 2*w3d.xmmax
     if gp > 0.:
       v1 = vx+vxp
       v2 = vy+vyp
@@ -6046,7 +6045,7 @@ Or give the quadrupole id to use...
     else:
       lidsign = +1
       ridsign = +1
-    if pr < 1.4142*w3d.xmmax:
+    if pr is not None:
       plate1 = ZAnnulus(pa+pal,pr+prl,pw+pwl,v1,xcent,ycent,
                         zcent-0.5*(rl+gl)-pw/2.,lidsign*condid,
                         kw=kw)
