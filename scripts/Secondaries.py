@@ -191,7 +191,7 @@ Class for generating secondaries
 #      if material=='Au' and incident_species.type is Hydrogen: interaction_type=3
 #      if material=='Au' and incident_species.type is Helium:   interaction_type=4
 #      if material=='SS' and incident_species.type is Potassium:interaction_type=5
-      if interaction_type is None:raise('Error in Secondaries: invalid material or incident species')
+      if interaction_type is None:raise Exception('Error in Secondaries: invalid material or incident species')
     isinc=incident_species
     if type(emitted_species)<>type([]):emitted_species=[emitted_species]
     issec=[]
@@ -466,7 +466,7 @@ Class for generating secondaries
           vyplost = (yplost-yplostold)/top.dt
           vzplost = (zplost-zplostold)/top.dt
         else:
-          raise('Error in Secondaries, one should have lmode=1 or 2, but have lmode=%g'%self.lmode)
+          raise Exception('Error in Secondaries, one should have lmode=1 or 2, but have lmode=%g'%self.lmode)
         # set energy of incident particle in eV
         e0 = where(gaminvlost==1., \
                    0.5*top.pgroup.sm[js]*(uxplost**2+uyplost**2+uzplost**2)/top.echarge,
@@ -1061,7 +1061,7 @@ Class for generating secondaries
           vyplost = (yplost-yplostold)/top.dt
           vzplost = (zplost-zplostold)/top.dt
         else:
-          raise('Error in Secondaries, one should have lmode=1 or 2, but have lmode=%g'%self.lmode)
+          raise Exception('Error in Secondaries, one should have lmode=1 or 2, but have lmode=%g'%self.lmode)
         # set energy of incident particle in eV
         e0 = where(gaminvlost==1., \
                    0.5*top.pgroup.sm[js]*(uxplost**2+uyplost**2+uzplost**2)/top.echarge,
@@ -1659,7 +1659,7 @@ Class for generating secondaries
 # He -> Au - mat_num=4 
 # K  -> SS - mat_num=5 
        if mat_num is None:
-         raise("Error in set_params: mat_num has not been setup.")
+         raise Exception("Error in set_params: mat_num has not been setup.")
 
 # Set the values
 # maxsec must be ten or greater

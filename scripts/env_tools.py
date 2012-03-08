@@ -371,9 +371,9 @@ class Match3:
     else:
       self.im = im
     if 'emit' in self.im and 'emitn' in self.im:
-      raise "emit and emitn cannot be 2 of the 3 quantities varied"
+      raise Exception("emit and emitn cannot be 2 of the 3 quantities varied")
     if 'dedx' in self.im and 'dbdx' in self.im:
-      raise "dedx and dbdx cannot be 2 of the 3 quantities varied"
+      raise Exception("dedx and dbdx cannot be 2 of the 3 quantities varied")
     if sig0_desr:
       self.sig0x_desr = sig0_desr
       self.sig0y_desr = sig0_desr

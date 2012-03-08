@@ -123,7 +123,7 @@ Input for constructor:
       for f in self.voltfunc.controllerfunclist():
         result = f(time)
       return result
-    raise "At least one method of calculating the voltage must be specified"
+    raise Exception("At least one method of calculating the voltage must be specified")
 
   def applyvoltage(self,time=None):
     # --- AMR is being used, this routine will install itself there to

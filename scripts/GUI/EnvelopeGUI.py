@@ -170,7 +170,7 @@ class EnvelopeGUI(wx.Frame):
 
     def OnInitializeButton(self, event):
         envgen()
-                
+
     def OnFmaButton(self, event):
         fma()
 
@@ -218,7 +218,7 @@ class EnvelopeGUI(wx.Frame):
     def OnSetystartTextEnter(self, event):
         top.b0 = 1.e-3*eval(self.SetYstart.GetValue())
         self.DoStep()
-  
+
     def OnSetxemitnTextEnter(self, event):
         top.emitnx = 1.e-6*eval(self.SetXEmitn.GetValue())
         if self.SetYEmitn.GetValue() == '': top.emitny = top.emitnx
@@ -254,18 +254,18 @@ class EnvelopeGUI(wx.Frame):
         top.zion = eval(self.SetZion.GetValue())
         derivqty()
         self.DoStep()
-      
+
     def DoStep(self,override=0):
         if self.dorunonchange or override:
             envexe()
             self.MakeEnvPlot()
-        
+
     def MakeEnvPlot(self,y=None,x=None):
         if self.dofmabeforeplot: fma()
         if x is not None: self.xsave = x
         if y is not None: self.ysave = y
         try:
-            for x,y in map(None,self.xsave,self.ysave):
+            for x,y in zip(self.xsave,self.ysave):
                 x = env.getpyobject(x)
                 y = env.getpyobject(y)
                 if x is not None and y is not None:

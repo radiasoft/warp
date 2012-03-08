@@ -457,7 +457,7 @@ class EM3D(SubcycledPoissonSolver):
         self.laser_uy=zeros(self.laser_nn)
         self.laser_gi=ones(self.laser_nn)
     else:
-      raise("Error: laser_mode was set to %g but needs to be 1 or 2."%self.laser_mode)
+      raise Exception("Error: laser_mode was set to %g but needs to be 1 or 2."%self.laser_mode)
 
     self.setuplaser_profile(self.fields)
 
@@ -1058,7 +1058,7 @@ class EM3D(SubcycledPoissonSolver):
   def add_source_ndts_slices(self):  
     # --- add slices
     if top.nsndts>1:
-      if self.refinement is not None:raise('Error in finalizesourcep:nsndts>1 not fully implemented yet with MR')
+      if self.refinement is not None:raise Exception('Error in finalizesourcep:nsndts>1 not fully implemented yet with MR')
       for indts in range(top.nsndts-2,-1,-1):
         if top.ldts[indts]:
           add_current_slice_3d(self.fields,indts+1)
@@ -1650,7 +1650,7 @@ class EM3D(SubcycledPoissonSolver):
       self.solve2ndhalfmode2()
       return
     if self.l_verbose:print 'solve 2nd half',self
-    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     self.push_b_part_2()
     if self.l_pushf:self.exchange_f()
     em3d_exchange_b(self.block)
@@ -1663,9 +1663,9 @@ class EM3D(SubcycledPoissonSolver):
     if self.mode==2:
       self.dosolvemode2()
       return
-    if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
+    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
     if self.l_verbose:print 'solve 1st half'
-    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     self.push_e()
     self.exchange_e()
     for i in range(int(self.ncyclesperstep)-1):
@@ -1829,9 +1829,9 @@ class EM3D(SubcycledPoissonSolver):
 
   def dosolvemode2(self,iwhich=0,*args):
     if self.solveroff:return
-    if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
+    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
     if self.l_verbose:print 'solve 1st half'
-    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     dt=top.dt*2
     if self.odd:
       push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
@@ -1848,7 +1848,7 @@ class EM3D(SubcycledPoissonSolver):
       if self.l_pushf:self.exchange_f()
       self.exchange_b()
     self.odd = 1-self.odd
-    if not all(top.efetch==top.efetch[0]):raise('Error:top.efetch must have same value for every species when using EM solver.')
+    if not all(top.efetch==top.efetch[0]):raise Exception('Error:top.efetch must have same value for every species when using EM solver.')
     self.setebp()
     if top.efetch[0]<>4:self.yee2node3d()
     if self.l_smooth_particle_fields and any(self.npass_smooth>0):
@@ -1857,7 +1857,7 @@ class EM3D(SubcycledPoissonSolver):
   def solve2ndhalfmode2(self):
     if self.solveroff:return
     if self.l_verbose:print 'solve 2nd half',self
-    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
 #    if top.efetch[0]<>4:node2yee3d(self.block.core.yf)
     self.move_window_fields()
     if self.ncyclesperstep<1.:
@@ -1880,9 +1880,9 @@ class EM3D(SubcycledPoissonSolver):
 
   def dosolvemode2old(self,iwhich=0,*args):
     if self.solveroff:return
-    if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
+    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
     if self.l_verbose:print 'solve 1st half'
-    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     dt = top.dt*2
     if self.odd:
       push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
@@ -1892,7 +1892,7 @@ class EM3D(SubcycledPoissonSolver):
       push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
       push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
     self.odd = 1-self.odd
-    if not all(top.efetch==top.efetch[0]):raise('Error:top.efetch must have same value for every species when using EM solver.')
+    if not all(top.efetch==top.efetch[0]):raise Exception('Error:top.efetch must have same value for every species when using EM solver.')
     if top.efetch[0]<>4:yee2node3d(self.block.core.yf)
     if self.l_smooth_particle_fields:
       if self.refinement is None and any(self.npass_smooth>0):
@@ -1906,9 +1906,9 @@ class EM3D(SubcycledPoissonSolver):
     
   def dosolvemode2vold(self,iwhich=0,*args):
     if self.solveroff:return
-    if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
+    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
     if self.l_verbose:print 'solve 1st half'
-    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     dt = top.dt*2
     if self.odd:
       push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
@@ -1918,7 +1918,7 @@ class EM3D(SubcycledPoissonSolver):
       if self.laser_mode==1:self.add_laser(self.fields)
       push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
     self.odd = 1-self.odd
-    if not all(top.efetch==top.efetch[0]):raise('Error:top.efetch must have same value for every species when using EM solver.')
+    if not all(top.efetch==top.efetch[0]):raise Exception('Error:top.efetch must have same value for every species when using EM solver.')
     if top.efetch[0]<>4:yee2node3d(self.block.core.yf)
     if self.l_smooth_particle_fields:
       if self.refinement is None and any(self.npass_smooth>0):

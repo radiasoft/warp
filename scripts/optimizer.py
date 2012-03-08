@@ -235,7 +235,7 @@ Differential Evolution
         if (f < 0. or f > 1.2):
             print "Warning: differential factor f outside of the range (0,1.2]"
         if (npop < 4):
-            raise "Error: number of populations, npop, must be greater than 3"
+            raise Exception("Error: number of populations, npop, must be greater than 3")
         self.trial = zeros(nparams,'d')
         self.x1 = zeros((npop,nparams),'d')
         self.x2 = zeros((npop,nparams),'d')
@@ -961,7 +961,7 @@ class Simpleoptimizer:
         self.x[id,-1] = min(self.x[id,-1],-1.e-14)
         #if self.params[id] < self.paramsmin[id] or self.params[id] > self.paramsmax[id]:
             #print id
-            #raise "Params out of bounds"
+            #raise Exception("Params out of bounds")
     def __init__(self,params,func,loss,vary=0.01,paramsmin=None,paramsmax=None,
                  maxxdisparity=1.e5 ):
         self.nparams = len(params)
@@ -986,7 +986,7 @@ class Simpleoptimizer:
                 self.paramsmax = ones(self.nparams)*paramsmax
         for i in range(self.nparams):
             if not (self.paramsmin[i] < self.params[i] < self.paramsmax[i]):
-                raise "ERROR: Starting value is outside the parameter limits"
+                raise Exception("ERROR: Starting value is outside the parameter limits")
                 return
         self.x = zeros((self.nparams,3),'d')
         self.f = zeros((self.nparams,3),'d')

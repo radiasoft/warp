@@ -27,7 +27,7 @@ restored (since the calling code is not returned to).
   oldsignal = signal.signal(signal.SIGINT,_defaultcontrolC)
   if _controlCrecieved:
     _controlCrecieved = 0
-    raise "Interrupt requested"
+    raise Exception("Interrupt requested")
 def setinterrupt():
   global _controlCrecieved,_defaultcontrolC
   _controlCrecieved = 0

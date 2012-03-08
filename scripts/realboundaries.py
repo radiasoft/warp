@@ -84,17 +84,17 @@ Constructor arguments
   def __init__(s,x,y,v=0.,m=None,newmesh=0):
     # --- Check for errors in the input
     if len(x) != len(y):
-      raise "Coordinate arrays must be of the same length"
+      raise Exception("Coordinate arrays must be of the same length")
     if type(v) == type(x) and len(v) != len(x):
-      raise "Voltage array must be of the same length as the coordinate arrays"
+      raise Exception("Voltage array must be of the same length as the coordinate arrays")
     if m:
       n = shape(m)
       if n[0] != n[1]:
-        raise "Input matrix must be square"
+        raise Exception("Input matrix must be square")
       if n[0] != len(x):
-        raise "Size of matrix must be same as length of coordinate array"
+        raise Exception("Size of matrix must be same as length of coordinate array")
     if min(s.ingrid(x,y)) == 0:
-      raise "All conductor points must be within the grid"
+      raise Exception("All conductor points must be within the grid")
     # --- Save the input into the class
     s.xcond = x
     s.ycond = y
@@ -437,7 +437,7 @@ Constructor arguments:
       s.rr = rr
     # --- Only need to make sure that the aperture is greater than zero.
     if s.ap <= 0.:
-      raise "Aperture must be greater then zero"
+      raise Exception("Aperture must be greater then zero")
     # --- Reset the mesh if requested.
     if s.newmesh:
       # --- Set gridmax to be big enough to include the specified amount
@@ -579,7 +579,7 @@ Constructor arguments:
     global _realboundarycount
     # --- Only allow one instance of this class.
     if _realboundarycount > 0:
-      raise "There can only be one instance of the RealBoundary class"
+      raise Exception("There can only be one instance of the RealBoundary class")
     _realboundarycount = 1
     self._realboundarycount = _realboundarycount
     # --- Save the input arguments

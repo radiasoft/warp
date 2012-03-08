@@ -154,7 +154,7 @@ The package env must be generated before calling this routine
     total = sqrt(sum(p[:]*p[:]))
     if (total>stpmax): p[:] = p[:] * stpmax / total # Scale if attempted step is too big.
     slope = sum (g[:]*p[:])
-    if (slope >= 0.0): raise 'Roundoff problem in lnsrch'
+    if (slope >= 0.0): raise Exception('Roundoff problem in lnsrch')
     junk = zeros ((4),'d')
     for i in range(4): junk[i] = abs (p[i]) / max (abs(xold[i]),1.0)
     test = max (junk[:]) # Compute lambda_min

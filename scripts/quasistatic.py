@@ -1248,11 +1248,11 @@ class Quasistatic(SubcycledPoissonSolver):
       if len(iz)>0:
         if min(iz)<-1 or max(iz)>1: 
           print 'error in sort_ions_along_z:iz',js,min(iz),max(iz),pg.zp[il:iu]
-          raise()
+          raise Exception('error in sort_ions_along_z')
       izleft = il+compress(iz<0,arange(pg.nps[js]))
       izright = il+compress(iz>0,arange(pg.nps[js]))
-#      if js==0 and len(izleft)>0:raise('Error in sort_ions_along_z:js==0 and len(izleft)>0')   
-#      if js==w3d.nzp-1 and len(izright)>0:raise('Error in sort_ions_along_z:js==w3d.nzp-1 and len(izright)>0')   
+#      if js==0 and len(izleft)>0:raise Exception('Error in sort_ions_along_z:js==0 and len(izleft)>0')
+#      if js==w3d.nzp-1 and len(izright)>0:raise Exception('Error in sort_ions_along_z:js==w3d.nzp-1 and len(izright)>0')
       # --- Due to roundoff errors, it is possible that particles might be flagged as 
       if js==0:izleft=[]
       if js==w3d.nzp-1:izright=[]
@@ -3201,7 +3201,7 @@ class Quasistaticold:
             l_addblock=false
         g=frz.basegrid
         for conductor in conductors:
-          if l_addblock:raise('conductors need to be installed in quasistatic MR')
+          if l_addblock:raise Exception('conductors need to be installed in quasistatic MR')
           try:
             cond = conductor.cond
           except AttributeError:
@@ -3509,7 +3509,7 @@ class Quasistaticold:
             bg.phi[1:-1,1:-1] = w3d.phi[:,:,iz+1].copy() 
           w3d.phi[:,:,iz+1] = phitmp.copy()
         else:
-          raise('this part needs to be programmed: Quasistatic+Boris-l_MR')
+          raise Exception('this part needs to be programmed: Quasistatic+Boris-l_MR')
       # --- update guard cells of 2-D solver
       updateguardcells2d()
       if frz.l_get_fields_on_grid:getallfieldsfromphip()

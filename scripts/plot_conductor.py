@@ -397,7 +397,7 @@ by the conductor number.
   # --- Loop over all conductor points, drawing a fill polygon for each.
   ixall = list(ixc) + list(ixs)
   iyall = list(iyc) + list(iys)
-  for ix,iy in map(None,ixall,iyall):
+  for ix,iy in zip(ixall,iyall):
     # --- For each point, deal with the grid cell up and to the right.
     # --- This is done so that no two grid points draw over the same spot.
     i1 = _corner1(ix  ,iy  ,px,py,+delpx,+delpy,numb,numbpx,numbpy,0,
@@ -670,7 +670,7 @@ by the conductor number.
   # --- Loop over all conductor points, drawing a fill polygon for each.
   ixall = list(ixc) + list(ixs)
   iyall = list(iyc) + list(iys)
-  for ix,iy in map(None,ixall,iyall):
+  for ix,iy in zip(ixall,iyall):
     if iiisurf[ix,iy] == 0 or iiis[0,ix,iy] > 0: continue
     iix = []
     iiy = []

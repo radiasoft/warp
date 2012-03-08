@@ -13,7 +13,12 @@ try:
     # --- For creating an egg file, with python setup.py bdist_egg
     #from setuptools import setup
 except:
-    raise SystemExit, 'Distutils problem'
+    raise SystemExit('Distutils problem')
+
+try:
+    from distutils.command.build_py import build_py_2to3 as build_py
+except ImportError:
+    from distutils.command.build_py import build_py
 
 # --- Hack warning:
 # --- Put warpoptions.py and parallel.py into subdirectories so that they
@@ -35,7 +40,8 @@ machines that are space-charge dominated.""",
            platforms = 'Linux, Unix, Windows (cygwin), Mac OSX',
            packages = ['warp','warp.GUI','warpoptions','parallel'],
            package_dir = {'warp': '.'},
-           package_data = {'warp':['*.gs','*.gp']}
+           package_data = {'warp':['*.gs','*.gp']},
+           cmdclass = {'build_py':build_py}
            )
 
 finally:

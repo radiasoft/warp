@@ -255,7 +255,7 @@ cover exactly one half lattice period. Also, env.dzenv should be set.
         break
     if (error > errorlimit):
       print "Slice", i, ": After", niter, "steps"
-      raise "No convergence in sethermesenvelope"
+      raise Exception("No convergence in sethermesenvelope")
     # --- Calculate the envelope value at the position of this slice
     zu = env.zu
     dz = env.dzenv
@@ -285,7 +285,7 @@ cover exactly one half lattice period. Also, env.dzenv should be set.
 def hermeserrorcheck():
   """Checks for some inconsistencies in the Hermes flags."""
   if her.icharge != 7 and her.lcurgrid:
-     raise 'In hermeserrorcheck. Error: Use her.lcurgrid=true only if her.icharge=7'
+     raise Exception('In hermeserrorcheck. Error: Use her.lcurgrid=true only if her.icharge=7')
   if her.icharge != 7 and her.lezcenter:
      print 'In hermeserrorcheck. Warning: her.lezcenter is ignored if her.icharge is not 7'
   if her.lviscous and (not her.lezbeam):

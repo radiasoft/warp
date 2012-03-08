@@ -3032,8 +3032,8 @@ Implements adaptive mesh refinement in 3d for the electromagnetic field solver
 
   def dosolveem(self,iwhich=0,*args):
     if self.solveroff:return
-    if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
-    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
+    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     self.push_e()
     self.exchange_e()
     self.push_eb_subcycle()
@@ -3054,8 +3054,8 @@ Implements adaptive mesh refinement in 3d for the electromagnetic field solver
     
   def solve2ndhalf(self):
     if self.solveroff:return
-    if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
-    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM3D.')
+    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
+    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     self.push_b_part_2()
     self.exchange_f()
     self.exchange_b()
