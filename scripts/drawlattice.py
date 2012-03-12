@@ -527,7 +527,7 @@ type, and should draw any general lattice.
   plg(xaxis+offsetaxis,zaxis)
   # --- Plot the labels
   if ilabflg:
-    for z,x,c in map(None,zl,xl,cl):
+    for z,x,c in zip(zl,xl,cl):
       z+=top.zlatstrt
       if l_inboostedframe:
         z = z/top.boost_gamma-vzboost*top.time

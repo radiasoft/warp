@@ -261,7 +261,7 @@ class FieldSolver3dBase(object):
     pass
 
   def solve(self,iwhich=0):
-    raise "solve must be implemented"
+    raise Exception("solve must be implemented")
 
   ##########################################################################
   # Define the basic plot commands

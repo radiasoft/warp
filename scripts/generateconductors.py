@@ -2894,7 +2894,7 @@ does not overlap any others. The flag nooverlap must be set as a reminder.
     else:
       print "removeisinside only works when the assembly does not overlap any others"
       print 'Set the nooverlap flag to true is this is the case.'
-      raise ''
+      raise Exception('removeisinside only works when the assembly does not overlap any others')
 
   def getisinside(self,a,mglevel=0,aura=0.):
     """
@@ -5087,12 +5087,12 @@ Methods:
       if zminmin is not None and zminmax is not None: zmin = min(zminmin,zminmax)
       elif zminmin is not None: zmin = zminmin
       elif zminmax is not None: zmin = zminmax
-      else: raise 'zmin must be specified'
+      else: raise Exception('zmin must be specified')
     if zmax is None:
       if zmaxmin is not None and zmaxmax is not None: zmax = min(zmaxmin,zmaxmax)
       elif zmaxmin is not None: zmax = zmaxmin
       elif zmaxmax is not None: zmax = zmaxmax
-      else: raise 'zmax must be specified'
+      else: raise Exception('zmax must be specified')
     self.zmin = zmin
     self.zmax = zmax
 

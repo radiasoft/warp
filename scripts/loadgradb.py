@@ -42,9 +42,9 @@ def setbsqgrad(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
             griddedBOnly == false
         # calculate dx,dy,dz
         if nx == 0 or ny == 0 or nz == 0:
-            raise "Error setting grad Bsq: nx, ny, or nz = 0"
+            raise Exception("Error setting grad Bsq: nx, ny, or nz = 0")
         if xmax-xmin == 0 or ymax-ymin == 0 or zmax-zmin == 0:
-            raise "Error setting grad Bsq: xmin=xmax or ymin=ymax"
+            raise Exception("Error setting grad Bsq: xmin=xmax or ymin=ymax")
         dx=(xmax-xmin)/nx
         dy=(ymax-ymin)/ny
         dz=(zmax-zmin)/nz
@@ -175,5 +175,5 @@ def fillbsqgrad(bx,by,bz,dx,dy,dz,symmetry=0,zonly=false):
           dbsqdx[0,:,:]=0.
           dbsqdy[:,0,:]=0.
         else:
-          raise("Unimplemented data symmetry parameter")
+          raise Exception("Unimplemented data symmetry parameter")
     dbsqdz[:,:,0]=(bsq[:,:,1]-bsq[:,:,0])*dzi

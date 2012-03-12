@@ -41,7 +41,7 @@ def checksymmetry():
     if max(abs(top.xpcent_s)) != 0: ok = 0
     if max(abs(top.ypcent_s)) != 0: ok = 0
     if not ok:
-      raise "ERROR: Beam is being offset with four-fold symmetry turned on"
+      raise Exception("ERROR: Beam is being offset with four-fold symmetry turned on")
 
   if w3d.l2symtry:
     ok = 1
@@ -52,7 +52,7 @@ def checksymmetry():
     if max(abs(top.ycent_s)) != 0: ok = 0
     if max(abs(top.ypcent_s)) != 0: ok = 0
     if not ok:
-      raise "ERROR: Beam is being offset in y with two-fold symmetry turned on"
+      raise Exception("ERROR: Beam is being offset in y with two-fold symmetry turned on")
 
 ############################################################################
 def checkparticleload():
@@ -79,12 +79,12 @@ def checkparticleload():
     izl = (top.zimin - env.zl)/env.dzenv
     izr = (top.zimax - env.zl)/env.dzenv
     if izl < 0 or izr > 0:
-      raise "ERROR: beam axial extent extends beyond range of envelope calculation"
+      raise Exception("ERROR: beam axial extent extends beyond range of envelope calculation")
     if (max(+env.aenv[izl:izr+1]+env.xenv[izl:izr+1]) > gridxmax or
         min(-env.aenv[izl:izr+1]+env.xenv[izl:izr+1]) < gridxmin or
         max(+env.benv[izl:izr+1]+env.yenv[izl:izr+1]) > gridymax or
         min(-env.benv[izl:izr+1]+env.yenv[izl:izr+1]) < gridymin):
-      raise "ERROR: transverse extent of envelope is larger than the field grid"
+      raise Exception("ERROR: transverse extent of envelope is larger than the field grid")
 
   # --- Make sure user supplied envelope is not bigger than the mesh.
   if currpkg=='w3d' and w3d.nenvofz > 0:
@@ -92,7 +92,7 @@ def checkparticleload():
         min(-w3d.aofz+w3d.xofz) < gridxmin or
         max(+w3d.bofz+w3d.yofz) > gridymax or
         min(-w3d.bofz+w3d.yofz) < gridymin):
-      raise "ERROR: User specified axially varying envelope extends beyond the field grid"
+      raise Exception("ERROR: User specified axially varying envelope extends beyond the field grid")
 
   # --- Make sure slice particles are loaded within the mesh
   if currpkg=='wxy':
@@ -100,7 +100,7 @@ def checkparticleload():
         -top.a0 + top.x0 < gridxmin or
         +top.b0 + top.y0 > gridymax or
         -top.b0 + top.y0 < gridymin):
-      raise "ERROR: grid size extends beyond the field grid"
+      raise Exception("ERROR: grid size extends beyond the field grid")
 
 
 ############################################################################
@@ -108,17 +108,17 @@ def checkibpush():
   """Makes sure that if ibpush is zero, there are no B-field elements"""
   if top.ibpush == 0:
     if top.nquad >= 0 and (max(top.quaddb) > 0. or maxnd(top.quadbt) > 0.):
-      raise "ERROR: magnetic quad elements are defined but top.ibpush is zero"
+      raise Exception("ERROR: magnetic quad elements are defined but top.ibpush is zero")
     if top.nhele >= 0 and maxnd(top.heleam) > 0.:
-      raise "ERROR: magnetic hele elements are defined but top.ibpush is zero"
+      raise Exception("ERROR: magnetic hele elements are defined but top.ibpush is zero")
     if top.ndipo >= 0 and (max(top.dipobx) > 0. or max(top.dipoby) > 0.):
-      raise "ERROR: magnetic dipo elements are defined but top.ibpush is zero"
+      raise Exception("ERROR: magnetic dipo elements are defined but top.ibpush is zero")
     if top.nsext >= 0 and max(top.sextdb) > 0.:
-      raise "ERROR: magnetic sext elements are defined but top.ibpush is zero"
+      raise Exception("ERROR: magnetic sext elements are defined but top.ibpush is zero")
     if top.nmmlt >= 0 and (max(top.mmltzs) > 0. or max(top.mmltze) > 0.):
-      raise "ERROR: mmlt elements are defined but top.ibpush is zero"
+      raise Exception("ERROR: mmlt elements are defined but top.ibpush is zero")
     if top.nbgrd >= 0 and (max(top.bgrdzs) > 0. or max(top.bgrdze) > 0.):
-      raise "ERROR: bgrd elements are defined but top.ibpush is zero"
+      raise Exception("ERROR: bgrd elements are defined but top.ibpush is zero")
 
 ############################################################################
 def checkenv():
@@ -127,7 +127,7 @@ def checkenv():
   if env.tunezs != env.tuneze:
     if (env.tunezs <  env.zl or env.zu <= env.tunezs or
         env.tuneze <= env.zl or env.zu <  env.tuneze):
-      raise "ERROR: tunezs and tuneze must be with the zl and zu"
+      raise Exception("ERROR: tunezs and tuneze must be with the zl and zu")
 
 ############################################################################
 def _overlapcheck(elem):

@@ -123,7 +123,7 @@ not, then the derivatives will be done with a finite difference of fringe.
     quadnn = array(quadnn)
     quadvv = array(quadvv)
   else:
-    raise "No quad elements were specified, maybe need to pass usequads=true"
+    raise Exception("No quad elements were specified, maybe need to pass usequads=true")
 
   # --- Make sure that the fringelen and scale are arrays.
   fringelen = fringelen*ones(len(quadzs),'d')

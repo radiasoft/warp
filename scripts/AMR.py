@@ -104,26 +104,26 @@ class AMRTree(VisualizableClass):
       if self.solvergeom == w3d.XYZgeom:
         self.blocks.loadrho(lzero=lzero,lrootonly=lrootonly)
       else:
-        raise "Only 3d supported as registered solver."
+        raise Exception("Only 3d supported as registered solver.")
 
     def solve(self):
       if self.solvergeom == w3d.XYZgeom:
         self.generate()
         self.blocks.solve()
       else:
-        raise "Only 3d supported as registered solver."
+        raise Exception("Only 3d supported as registered solver.")
 
     def fetche(self):
       if self.solvergeom == w3d.XYZgeom:
         self.blocks.fetche()
       else:
-        raise "Only 3d supported as registered solver."
+        raise Exception("Only 3d supported as registered solver.")
 
     def fetchphi(self):
       if self.solvergeom == w3d.XYZgeom:
         self.blocks.fetchphi()
       else:
-        raise "Only 3d supported as registered solver."
+        raise Exception("Only 3d supported as registered solver.")
 
     def installconductor(self,conductor,dfill=2):
       self.addconductor(conductor,dfill)
@@ -842,7 +842,7 @@ class AMRTree(VisualizableClass):
       print 'generate grids at it = ',top.it
 
       # check if w3d.AMRlevels set properly and set defaut variables
-      if w3d.AMRlevels<=0: raise('Error: AMRTree.generate called with w3d.AMRlevels<=0/')
+      if w3d.AMRlevels<=0: raise Exception('Error: AMRTree.generate called with w3d.AMRlevels<=0/')
       self.MRfact   = w3d.AMRrefinement
       self.ntransit = w3d.AMRtransit
 

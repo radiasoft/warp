@@ -386,7 +386,7 @@ set when a current is specified"""
 
     # --- check if any particles were injected
     npssum = sum(parallelsum(top.pgroup.nps))
-    if (npssum == 0): raise 'No particles injected'
+    if (npssum == 0): raise Exception('No particles injected')
 #   if (npssum == 0): break
 
     # --- only save particles on last iteration
@@ -772,7 +772,7 @@ Performs steady-state iterations in a cascade using different resolutions.
   # initialize itersub
   if itersub is None: itersub = iter
   iterlast = iter
-  if(itersub==0):raise('Error in gunmg: called with iter=0 or itersub=0')
+  if(itersub==0):raise Exception('Error in gunmg: called with iter=0 or itersub=0')
   # Define function that makes charge deposition on grid at next level.
   # This is used needed on the last iteration at a given level so that
   # the charge density is transmitted to the next level.
@@ -800,7 +800,7 @@ Performs steady-state iterations in a cascade using different resolutions.
     gundt[i] = gundt[i+1]*2
     gunnpinject[i] = int(gunnpinject[i+1]/2)
   if(w3d.solvergeom<>w3d.RZgeom):
-    raise('function not yet implemented')
+    raise Exception('function not yet implemented')
   else:
     # mg loop
     for i in range(0,nmg+1):

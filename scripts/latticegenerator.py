@@ -577,21 +577,21 @@ class LatticeGenerator:
   #-----------------------------------------------------------------------
   # --- These are the functions that need to be defined by the user
   def endcondition(s,s1):
-      raise "The function endcondition needs to be defined"
+      raise Exception("The function endcondition needs to be defined")
   def midpulsegapvoltage(s,s1):
-      raise "The function midpulsegapvoltage needs to be defined"
+      raise Exception("The function midpulsegapvoltage needs to be defined")
   def tilt(s,s1):
-      raise "The function tilt needs to be defined"
+      raise Exception("The function tilt needs to be defined")
   def occupancy(s,s1):
-      raise "The function occupancy needs to be defined"
+      raise Exception("The function occupancy needs to be defined")
   def amean(s,s1):
-      raise "The function amean needs to be defined"
+      raise Exception("The function amean needs to be defined")
   def sigma(s,s1):
-      raise "The function sigma needs to be defined"
+      raise Exception("The function sigma needs to be defined")
   def aperture(s,s1):
-      raise "The function aperture needs to be defined"
+      raise Exception("The function aperture needs to be defined")
   def lmagnetic(s,s1):
-      raise "The function lmagnetic needs to be defined"
+      raise Exception("The function lmagnetic needs to be defined")
   def riseprofile(s,t):
       return t
   def earlength(s,s1):

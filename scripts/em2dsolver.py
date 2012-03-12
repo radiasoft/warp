@@ -671,8 +671,8 @@ class EM2D(object):
       field.Bz_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)*(1.-self.laser_source_v/clight)/clight
 
   def solve(self,iwhich=0):
-    if any(top.fselfb<>0.):raise('Error:EM solver does not work if fselfb<>0.')
-    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM2D.')
+    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
+    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM2D.')
     # --- Set nxl and nyl if using large stencil
     if(not self.l_onegrid):
       project_j(self.field,self.fpatchcoarse,self.fpatchfine)

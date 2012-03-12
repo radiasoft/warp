@@ -236,7 +236,7 @@ self.topgroupname
             if self.topizwin[i] == self.iz and self.iz >= 0: return i
             if self.topzzwin[i] == self.zz and self.iz == -1: return i
         if not safe:
-            raise "Uh Ooh! Somehow the window was deleted! I can't continue! "+self.titleright()
+            raise Exception("Uh Ooh! Somehow the window was deleted! I can't continue! "+self.titleright())
         else:
             return None
 
@@ -903,7 +903,7 @@ functions.
         """
         badargs = ppgeneric(checkargs=1,kwdict=kw)
         kw['allowbadargs'] = 1
-        if badargs: raise 'bad arguments ',' '.join(badargs.keys())
+        if badargs: raise Exception('bad arguments ',' '.join(badargs.keys()))
 
     def titleright(self,tc=None,wt=None,z=None,slope=None):
         if tc is None:
@@ -1836,7 +1836,7 @@ class ExtPartDeprecated:
             if top.izepwin[i] == self.iz and self.iz >= 0: return i
             if top.zzepwin[i] == self.zz and self.iz == -1: return i
         if not safe:
-            raise "Uh Ooh! Somehow the window was deleted! I can't continue! "+self.titleright()
+            raise Exception("Uh Ooh! Somehow the window was deleted! I can't continue! "+self.titleright())
         else:
             return None
 
@@ -2426,7 +2426,7 @@ functions.
         """
         badargs = ppgeneric(checkargs=1,kwdict=kw)
         kw['allowbadargs'] = 1
-        if badargs: raise 'bad arguments ',' '.join(badargs.keys())
+        if badargs: raise Exception('bad arguments ',' '.join(badargs.keys()))
 
     def titleright(self,tc=None,wt=None,z=None,slope=None):
         if tc is None:

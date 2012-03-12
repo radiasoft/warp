@@ -195,7 +195,7 @@ controllers are restored properly.
         if f == funcname:
           self.funcs.remove(func)
           return
-    raise 'Warning: no such function had been installed'
+    raise Exception('Warning: no such function had been installed')
 
   def isinstalledfuncinlist(self,f):
     # --- An element by element search is needed

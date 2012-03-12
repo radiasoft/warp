@@ -47,7 +47,7 @@ class PW:
     def check_open (self):
         "check_open (): raise exception if not open for write."
         if not self.is_open ():
-            raise PW.Error, 'PW object not open for write.'
+            raise PW.Error('PW object not open for write.')
 
     def close (self):
         "close(): close the file."
@@ -105,7 +105,7 @@ class PW:
         #elif mode == "a":
             #self.__dict__['_nodelist'] = pypdb.append (filename)
         else:
-            raise ValueError, "Improper mode: " + mode
+            raise ValueError("Improper mode: " + mode)
 
 
     def new_directory_name(self,name):
@@ -125,7 +125,7 @@ class PW:
         -- make a link, return status"""
         #self.check_open()
         #return self.inquire_nodelist().ln(name)
-        raise "Links unsupported"
+        raise Exception("Links unsupported")
 
     def set_directory (self, name):
         """set_directory(name) 
@@ -169,14 +169,14 @@ class PW:
           self.inquire_nodelist().addNode(anode)
         else:
           # TODO: write as pickled object as a string
-          raise "type unsupported"
+          raise Exception("type unsupported")
 
     def defent (self, name, quantity, indx):
         """Define entry for quantity in file as 'name'"""
         self.check_open()
         if self.inquire_verbosity () > 1: 
             print "PW::defining entry for", name
-        raise "defent not supported"
+        raise Exception("defent not supported")
 
 
 if __name__ == "__main__":

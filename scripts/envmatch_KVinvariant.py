@@ -147,7 +147,7 @@ For all parameterization cases other than 0 (SolCase != '0'), Match() prints a m
     print 'top.lrelativ =', top.lrelativ 
     print 'but top.relativity =', top.relativity
     print 'Must set both consistently to True or False.'
-    raise
+    raise Exception('top.lrelativ and top.relativity not consistent')
   # --- Lattice Parameters
   global lperiod,sigma0x,sigma0y,si
   lperiod = top.tunelen
@@ -1360,7 +1360,7 @@ It is assumed that the lattice and continuous limit quantities have been appropr
       Qy0 = ( (sigma0y/lperiod)**2*rybar - emity0**2/(rybar**3) )* \
             (rxbar+rybar)/2.
       Q0  = ( Qx0 + Qy0 )/2.
-  else: raise 'Error: Seed Case Not Defined'
+  else: raise Exception('Error: Seed Case Not Defined')
   # --- define new iteration
   rx0  = []
   ry0  = []
@@ -1771,7 +1771,7 @@ on exiting the update.
       Qy1 = ( (sigma0y/lperiod)**2*rybar - emity1**2/(rybar**3) )* \
             (rxbar+rybar)/2.
       Q1  = ( Qx1 + Qy1 )/2.
-  else: raise 'Error: Parameterization Case Not Defined'
+  else: raise Exception('Error: Parameterization Case Not Defined')
   # --- construct updated iteration envelope functions from betatron functions
   rx1  = []
   ry1  = []

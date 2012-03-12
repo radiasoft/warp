@@ -560,7 +560,7 @@ Apply scraping to all of the species. This will normally be called automatically
       getgrid1d(top.pgroup.nps[js],zz,pp,nz,isinside[ixa,iya,:],
                 ymin,ymax)
     else:
-      raise "The particle scraping only works for XYZ, XY, RZ, R, Y and Z geometry"
+      raise Exception("The particle scraping only works for XYZ, XY, RZ, R, Y and Z geometry")
 
     # --- Get indices for all of the particles which are close to a
     # --- conductor. If there are none, then immediately return.
@@ -930,7 +930,7 @@ counting the current lost on the conductor.
     if self.lcollectlpdata:iscrape1=iscrape.copy()
 
     # --- Duplicate the particle list eight times, once for each corner.
-    iscrape = repeat(iscrape,8)
+    iscrape = numpy.repeat(iscrape,8)
     nn = len(iscrape)
     x8 = take(xx,iscrape-i1)
     y8 = take(yy,iscrape-i1)
@@ -974,7 +974,7 @@ counting the current lost on the conductor.
     elif w3d.solvergeom == w3d.Zgeom:
       getgridngp1d(nn,zg,pp,nz,self.reducedisinside[ixa,iya,:],zmin,zmax)
     else:
-      raise "The particle scraping only works for XYZ, XZ, XY and RZ geometry"
+      raise Exception("The particle scraping only works for XYZ, XZ, XY and RZ geometry")
 
     if w3d.solvergeom in [w3d.RZgeom,w3d.Rgeom]:
       xx = top.xplost[i1:i2]
@@ -1412,7 +1412,7 @@ interpolating errors from the grid. This will normally be called automatically.
       getgrid2d(top.pgroup.nps[js],zsym,pp,nz,distances[0,0,:],
                 zmin,zmax)
     else:
-      raise "The particle scraping only works for XYZ, XY and RZ geometry"
+      raise Exception("The particle scraping only works for XYZ, XY and RZ geometry")
 
     # --- Any particles which have a negative distance are approximately
     # --- inside of the conductors. Those are considered lost or reflected.

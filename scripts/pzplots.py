@@ -158,7 +158,7 @@ def pzpnum(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -195,7 +195,7 @@ def pzppcell(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -247,7 +247,7 @@ def pzxbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -284,7 +284,7 @@ def pzybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -321,7 +321,7 @@ def pzzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -358,7 +358,7 @@ def pzxpbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -395,7 +395,7 @@ def pzypbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -432,7 +432,7 @@ def pzvxbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -469,7 +469,7 @@ def pzvybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -506,7 +506,7 @@ def pzvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -543,7 +543,7 @@ def pzxybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -580,7 +580,7 @@ def pzxypbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -617,7 +617,7 @@ def pzyxpbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -654,7 +654,7 @@ def pzxpypbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -691,7 +691,7 @@ def pzxvybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -728,7 +728,7 @@ def pzyvxbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -765,7 +765,7 @@ def pzvxvybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -802,7 +802,7 @@ def pzxsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -839,7 +839,7 @@ def pzysqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -876,7 +876,7 @@ def pzzsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -913,7 +913,7 @@ def pzxpsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -950,7 +950,7 @@ def pzypsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -987,7 +987,7 @@ def pzvxsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1024,7 +1024,7 @@ def pzvysqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1061,7 +1061,7 @@ def pzvzsqbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1098,7 +1098,7 @@ def pzxxpbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1135,7 +1135,7 @@ def pzyypbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1172,7 +1172,7 @@ def pzxvxbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1209,7 +1209,7 @@ def pzyvybar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1246,7 +1246,7 @@ def pzzvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1283,7 +1283,7 @@ def pzxvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1320,7 +1320,7 @@ def pzyvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1357,7 +1357,7 @@ def pzvxvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1394,7 +1394,7 @@ def pzvyvzbar(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1431,7 +1431,7 @@ def pzxrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1468,7 +1468,7 @@ def pzyrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1505,7 +1505,7 @@ def pzzrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1542,7 +1542,7 @@ def pzrrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1579,7 +1579,7 @@ def pzxprms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1616,7 +1616,7 @@ def pzyprms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1653,7 +1653,7 @@ def pzepsx(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1690,7 +1690,7 @@ def pzepsy(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1727,7 +1727,7 @@ def pzepsz(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1764,7 +1764,7 @@ def pzepsr(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1801,7 +1801,7 @@ def pzepsnx(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1838,7 +1838,7 @@ def pzepsny(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1875,7 +1875,7 @@ def pzepsnz(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1912,7 +1912,7 @@ def pzepsnr(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1949,7 +1949,7 @@ def pzepsg(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -1986,7 +1986,7 @@ def pzepsh(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2023,7 +2023,7 @@ def pzepsng(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2060,7 +2060,7 @@ def pzepsnh(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2097,7 +2097,7 @@ def pzvxrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2134,7 +2134,7 @@ def pzvyrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2171,7 +2171,7 @@ def pzvzrms(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2209,7 +2209,7 @@ def pzxxpslope(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2252,7 +2252,7 @@ def pzyypslope(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2292,7 +2292,7 @@ def pzrhomid(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2325,7 +2325,7 @@ def pzrhomax(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2360,7 +2360,7 @@ def pzcurr(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2396,7 +2396,7 @@ def pzegap(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2429,7 +2429,7 @@ def pzlchg(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2464,7 +2464,7 @@ def pzvzofz(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2498,7 +2498,7 @@ def pzezax(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2532,7 +2532,7 @@ def pzphiax(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2577,7 +2577,7 @@ def pzrhoax(zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2613,7 +2613,7 @@ def pzenvx(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2651,7 +2651,7 @@ def pzxpedge(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2693,7 +2693,7 @@ def pzenvy(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2731,7 +2731,7 @@ def pzypedge(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2773,7 +2773,7 @@ def pzenvr(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2811,7 +2811,7 @@ def pzxedges(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2851,7 +2851,7 @@ def pzyedges(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2891,7 +2891,7 @@ def pzredges(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2930,7 +2930,7 @@ def pzenvxp(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2972,7 +2972,7 @@ def pzenvyp(js=-1,zoffset=None,zscale=1.,scale=1.,color="fg",linetype="solid",
                     instead of the fortran variables
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot."""
-  if zscale == 0.: raise "zscale must be nonzero"
+  if zscale == 0.: raise Exception("zscale must be nonzero")
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
@@ -2996,76 +2996,76 @@ def pzplotstest(**kw):
   """
 Test all pzplots routines.
   """
-  apply(pzpnum,(),kw);fma()
-  apply(pzppcell,(),kw);fma()
-  apply(pzxbar,(),kw);fma()
-  apply(pzybar,(),kw);fma()
-  apply(pzzbar,(),kw);fma()
-  apply(pzxpbar,(),kw);fma()
-  apply(pzypbar,(),kw);fma()
-  apply(pzvxbar,(),kw);fma()
-  apply(pzvybar,(),kw);fma()
-  apply(pzvzbar,(),kw);fma()
-  apply(pzxybar,(),kw);fma()
-  apply(pzxypbar,(),kw);fma()
-  apply(pzyxpbar,(),kw);fma()
-  apply(pzxpypbar,(),kw);fma()
-  apply(pzxvybar,(),kw);fma()
-  apply(pzyvxbar,(),kw);fma()
-  apply(pzvxvybar,(),kw);fma()
-  apply(pzxsqbar,(),kw);fma()
-  apply(pzysqbar,(),kw);fma()
-  apply(pzzsqbar,(),kw);fma()
-  apply(pzxpsqbar,(),kw);fma()
-  apply(pzypsqbar,(),kw);fma()
-  apply(pzvxsqbar,(),kw);fma()
-  apply(pzvysqbar,(),kw);fma()
-  apply(pzvzsqbar,(),kw);fma()
-  apply(pzxxpbar,(),kw);fma()
-  apply(pzyypbar,(),kw);fma()
-  apply(pzxvxbar,(),kw);fma()
-  apply(pzyvybar,(),kw);fma()
-  apply(pzzvzbar,(),kw);fma()
-  apply(pzxvzbar,(),kw);fma()
-  apply(pzyvzbar,(),kw);fma()
-  apply(pzvxvzbar,(),kw);fma()
-  apply(pzvyvzbar,(),kw);fma()
-  apply(pzxrms,(),kw);fma()
-  apply(pzyrms,(),kw);fma()
-  apply(pzzrms,(),kw);fma()
-  apply(pzxprms,(),kw);fma()
-  apply(pzyprms,(),kw);fma()
-  apply(pzepsx,(),kw);fma()
-  apply(pzepsy,(),kw);fma()
-  apply(pzepsz,(),kw);fma()
-  apply(pzepsnx,(),kw);fma()
-  apply(pzepsny,(),kw);fma()
-  apply(pzepsnz,(),kw);fma()
-  apply(pzepsg,(),kw);fma()
-  apply(pzepsh,(),kw);fma()
-  apply(pzepsng,(),kw);fma()
-  apply(pzepsnh,(),kw);fma()
-  apply(pzvxrms,(),kw);fma()
-  apply(pzvyrms,(),kw);fma()
-  apply(pzvzrms,(),kw);fma()
-  apply(pzxxpslope,(),kw);fma()
-  apply(pzyypslope,(),kw);fma()
-  apply(pzrhomid,(),kw);fma()
-  apply(pzrhomax,(),kw);fma()
-  apply(pzcurr,(),kw);fma()
-  apply(pzegap,(),kw);fma()
-  apply(pzlchg,(),kw);fma()
-  apply(pzvzofz,(),kw);fma()
-  apply(pzezax,(),kw);fma()
-  apply(pzphiax,(),kw);fma()
-  apply(pzrhoax,(),kw);fma()
-  apply(pzenvx,(),kw);fma()
-  apply(pzenvy,(),kw);fma()
-  apply(pzxedge,(),kw);fma()
-  apply(pzxpedge,(),kw);fma()
-  apply(pzyedge,(),kw);fma()
-  apply(pzypedge,(),kw);fma()
-  apply(pzxedges,(),kw);fma()
-  apply(pzyedges,(),kw);fma()
-  apply(pzenvxp,(),kw);fma()
-  apply(pzenvyp,(),kw);fma()
+  pzpnum(**kw);fma()
+  pzppcell(**kw);fma()
+  pzxbar(**kw);fma()
+  pzybar(**kw);fma()
+  pzzbar(**kw);fma()
+  pzxpbar(**kw);fma()
+  pzypbar(**kw);fma()
+  pzvxbar(**kw);fma()
+  pzvybar(**kw);fma()
+  pzvzbar(**kw);fma()
+  pzxybar(**kw);fma()
+  pzxypbar(**kw);fma()
+  pzyxpbar(**kw);fma()
+  pzxpypbar(**kw);fma()
+  pzxvybar(**kw);fma()
+  pzyvxbar(**kw);fma()
+  pzvxvybar(**kw);fma()
+  pzxsqbar(**kw);fma()
+  pzysqbar(**kw);fma()
+  pzzsqbar(**kw);fma()
+  pzxpsqbar(**kw);fma()
+  pzypsqbar(**kw);fma()
+  pzvxsqbar(**kw);fma()
+  pzvysqbar(**kw);fma()
+  pzvzsqbar(**kw);fma()
+  pzxxpbar(**kw);fma()
+  pzyypbar(**kw);fma()
+  pzxvxbar(**kw);fma()
+  pzyvybar(**kw);fma()
+  pzzvzbar(**kw);fma()
+  pzxvzbar(**kw);fma()
+  pzyvzbar(**kw);fma()
+  pzvxvzbar(**kw);fma()
+  pzvyvzbar(**kw);fma()
+  pzxrms(**kw);fma()
+  pzyrms(**kw);fma()
+  pzzrms(**kw);fma()
+  pzxprms(**kw);fma()
+  pzyprms(**kw);fma()
+  pzepsx(**kw);fma()
+  pzepsy(**kw);fma()
+  pzepsz(**kw);fma()
+  pzepsnx(**kw);fma()
+  pzepsny(**kw);fma()
+  pzepsnz(**kw);fma()
+  pzepsg(**kw);fma()
+  pzepsh(**kw);fma()
+  pzepsng(**kw);fma()
+  pzepsnh(**kw);fma()
+  pzvxrms(**kw);fma()
+  pzvyrms(**kw);fma()
+  pzvzrms(**kw);fma()
+  pzxxpslope(**kw);fma()
+  pzyypslope(**kw);fma()
+  pzrhomid(**kw);fma()
+  pzrhomax(**kw);fma()
+  pzcurr(**kw);fma()
+  pzegap(**kw);fma()
+  pzlchg(**kw);fma()
+  pzvzofz(**kw);fma()
+  pzezax(**kw);fma()
+  pzphiax(**kw);fma()
+  pzrhoax(**kw);fma()
+  pzenvx(**kw);fma()
+  pzenvy(**kw);fma()
+  pzxedge(**kw);fma()
+  pzxpedge(**kw);fma()
+  pzyedge(**kw);fma()
+  pzypedge(**kw);fma()
+  pzxedges(**kw);fma()
+  pzyedges(**kw);fma()
+  pzenvxp(**kw);fma()
+  pzenvyp(**kw);fma()

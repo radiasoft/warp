@@ -3588,7 +3588,7 @@ such as contours, and cellarray.
 
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
-    raise '3-d plot Not yet implemented'
+    raise Exception('3-d plot Not yet implemented')
 
 def plotbgrd(ib=0,component=None,ix=None,iy=None,iz=None,withbends=1,
              zlatstrt=None,withscaling=1,**kw):
@@ -3697,7 +3697,7 @@ such as contours, and cellarray.
 
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
-    raise '3-d plot Not yet implemented'
+    raise Exception('3-d plot Not yet implemented')
 
 def plotpgrd(ip=0,component=None,ix=None,iy=None,iz=None,withbends=1,
              zlatstrt=None,withscaling=1,**kw):
@@ -3805,7 +3805,7 @@ such as contours, and cellarray.
 
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
-    raise '3-d plot Not yet implemented'
+    raise Exception('3-d plot Not yet implemented')
 
 class Emitter:
   def __init__(self,a,b=None,ap=0.,bp=0.,x=0.,y=0.,z=0.,r=largepos,xp=0.,yp=0.,
@@ -3857,7 +3857,7 @@ class Emitter:
       try:
         js=s.jslist[0]
       except:
-        raise('Error in Emitter.add_component: either js or s must be defined.')
+        raise Exception('Error in Emitter.add_component: either js or s must be defined.')
 
     gchange('InjectVars')
     top.vzinject[self.iinject,js] = vz

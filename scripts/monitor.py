@@ -70,7 +70,7 @@ Creates a monitor for a running job.
       installafterfs(self.checksocket)
       installafterstep(self.getcommands)
     else:
-      raise "Error: quiting since socket could not be created"
+      raise Exception("Error: quiting since socket could not be created")
 
   def initializesocket(self):
     try:
@@ -287,7 +287,7 @@ Make a connection to a running job with a monitor.
     _sock.connect((machine,port))
   except socket.error:
     _sock.close()
-    raise
+    raise Exception('socket error')
   md5passwd = hashlib.md5(passwd)
   hexdigestpasswd = md5passwd.hexdigest()
   r = socketrecv(_sock)

@@ -158,7 +158,7 @@ def ppnumlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -197,7 +197,7 @@ def pxbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -236,7 +236,7 @@ def pybarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -275,7 +275,7 @@ def pzbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -314,7 +314,7 @@ def pxpbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -353,7 +353,7 @@ def pypbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -392,7 +392,7 @@ def pvxbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -431,7 +431,7 @@ def pvybarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -470,7 +470,7 @@ def pvzbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -509,7 +509,7 @@ def pxybarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -548,7 +548,7 @@ def pxypbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -587,7 +587,7 @@ def pyxpbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -626,7 +626,7 @@ def pxpypbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -665,7 +665,7 @@ def pxsqbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -704,7 +704,7 @@ def pysqbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -743,7 +743,7 @@ def pzsqbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -782,7 +782,7 @@ def pxpsqbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -821,7 +821,7 @@ def pypsqbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -860,7 +860,7 @@ def pvxsqbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -899,7 +899,7 @@ def pvysqbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -938,7 +938,7 @@ def pvzsqbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -977,7 +977,7 @@ def pxxpbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1016,7 +1016,7 @@ def pyypbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1055,7 +1055,7 @@ def pzvzbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1094,7 +1094,7 @@ def pxvzbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1133,7 +1133,7 @@ def pyvzbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1172,7 +1172,7 @@ def pvxvzbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1211,7 +1211,7 @@ def pvyvzbarlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1250,7 +1250,7 @@ def pxrmslw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1289,7 +1289,7 @@ def pyrmslw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1328,7 +1328,7 @@ def pzrmslw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1367,7 +1367,7 @@ def prrmslw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1406,7 +1406,7 @@ def pxprmslw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1445,7 +1445,7 @@ def pyprmslw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1484,7 +1484,7 @@ def pepsxlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1523,7 +1523,7 @@ def pepsylw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1562,7 +1562,7 @@ def pepszlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1601,7 +1601,7 @@ def pepsnxlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1640,7 +1640,7 @@ def pepsnylw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1679,7 +1679,7 @@ def pepsnzlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1718,7 +1718,7 @@ def pepsrlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1757,7 +1757,7 @@ def pepsglw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1796,7 +1796,7 @@ def pepshlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1835,7 +1835,7 @@ def pepsnrlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1874,7 +1874,7 @@ def pepsnglw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1913,7 +1913,7 @@ def pepsnhlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1952,7 +1952,7 @@ def pvxrmslw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -1991,7 +1991,7 @@ def pvyrmslw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -2030,7 +2030,7 @@ def pvzrmslw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -2069,7 +2069,7 @@ def pcurrlw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -2108,7 +2108,7 @@ def plostparslw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -2147,7 +2147,7 @@ def plinechglw(ilw,js=-1,toffset=0.,tscale=1.,scale=1.,
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     """
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"
@@ -2252,7 +2252,7 @@ func =\
   - ff=None: An opened file object can be specified as the place from which to
              get the data to plot.
     \"\"\"
-    if tscale == 0.: raise "tscale must be nonzero"
+    if tscale == 0.: raise Exception("tscale must be nonzero")
     if titleb is None:
         if tscale == 1.: titleb = "t (s)"
         else: titleb = "t"

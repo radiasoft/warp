@@ -237,7 +237,7 @@ Available data:
       s.savedquadde = take(top.quadde,s.iquads)
       s.savedquaddb = take(top.quaddb,s.iquads)
     except IndexError:
-      raise "Error: iquads index out of bounds"
+      raise Exception("Error: iquads index out of bounds")
     # --- Save initial aperture and grid size
     s.initialaperture = top.prwall
     s.initialxmmax = w3d.xmmax
@@ -358,7 +358,7 @@ to do, defaulting to 1."""
     # --- Scale if attempted step is too big.
     if (total>s.stpmax): p[:] = p[:] * s.stpmax / total
     slope = sum (g[:]*p[:])
-    if (slope >= 0.0): raise 'Roundoff problem in lnsrch'
+    if (slope >= 0.0): raise Exception('Roundoff problem in lnsrch')
     junk = zeros ((4),'d')
     for i in range(4): junk[i] = abs (p[i]) / max (abs(xold[i]),1.0)
     # --- Compute lambda_min

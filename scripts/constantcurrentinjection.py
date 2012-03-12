@@ -255,7 +255,7 @@ frz.calc_a = 3
       self.phiref = bisection(currentdensfunc,1.e-10,1.e8,f0=self.currentdensity)
       self.currentdensfunc = currentdensfunc
     else:
-      raise("Error in ConstantCurrentRiseTime, top.inject<1 or top.inject>5.")
+      raise Exception("Error in ConstantCurrentRiseTime, top.inject<1 or top.inject>5.")
 
     self.hphiref.append(self.phiref)
     

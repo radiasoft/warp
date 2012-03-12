@@ -197,7 +197,7 @@ Class for creating particle scraper for a plate with multiple apertures
     for ii in xrange(len(ix)):
       dd = rad - sqrt((xx[ii] - xcent)**2 + (yy[ii] - ycent)**2)
       ddlist[ii] = max(dd)
-    for (iix,iiy,dd) in map(None,ix,iy,ddlist): ddtemp[iix,iiy] = dd
+    for (iix,iiy,dd) in zip(ix,iy,ddlist): ddtemp[iix,iiy] = dd
 
     # --- For each z plane, copy in the data, compared to the distances
     # --- to the conductor in z.

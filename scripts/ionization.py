@@ -251,7 +251,7 @@ Class for generating particles from impact ionization.
 #           f.y=self.y[js][:nn]
 #           f.z=self.z[js][:nn]
 #           f.close()
-#           raise('')
+#           raise Exception('')
 #         window(5);ppg(self.y[pg][js][:nn],self.x[pg][js][:nn]);limits(w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax);refresh()
          pidpairs = []
          try:
@@ -529,7 +529,7 @@ Class for generating particles from impact ionization.
               gastype = self.txphysics_targets[target_species.type]
               if self.l_verbose:print incident_species.name+' on '+ ((target_species is None and 'background gas') or target_species.name) +':', gastype
             except:                    
-              raise('Error in ionization: cross section of '+incident_species.name+' on '+((target_species is None and 'background gas') or target_species.name)+' is not available. Please provide.')
+              raise Exception('Error in ionization: cross section of '+incident_species.name+' on '+((target_species is None and 'background gas') or target_species.name)+' is not available. Please provide.')
             # This is an integer flag to specify electron (0) or ion (1)
             if incident_species.type in (Electron,Positron):
               incident = 0
