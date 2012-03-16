@@ -649,6 +649,7 @@ sizes, in bytes.
     dd[k] = v
   totals = 0
   for k,v in [[kk,__main__.__dict__[kk]] for kk in package()]:
+    del dd[k]
     s = getobjectsize(v)*8
     totals += s
     if s > minsize:
