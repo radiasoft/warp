@@ -871,10 +871,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  # --- This logic is needed since in the parallel version, zmminlocal is local.
-  # --- If the user passes in a value, it must be checked for consistency,
-  # --- otherwise coding below could lead to a deadlock in the parallel version
-  if iz is None: iz = solver.iz_axis
+  if iz is None: iz = nint(-solver.zmmin/solver.dz)
   if w3d.solvergeom<>w3d.XYgeom:
     if iz < 0 or solver.nz < iz: return
   if scale:
@@ -882,15 +879,11 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     dy = solver.dy
     xmmin = solver.xmmin
     ymmin = solver.ymmin
-    xmmax = solver.xmmax
-    ymmax = solver.ymmax
   else:
     dx = 1.
     dy = 1.
     xmmin = 0.
     ymmin = 0.
-    xmmax = solver.nx
-    ymmax = solver.ny
   if plotphi or plotrho or plotselfe:
     if not scale:
       kwdict['xmin'] = 0
