@@ -129,7 +129,6 @@ a value given a velocity. This returns the Appropriate value.
                     'incident_pgroup','target_pgroup','emitted_pgroup']:
           self.inter[incident_species][key]=[]
     if not iterable(emitted_species): emitted_species=[emitted_species]
-    self.inter[incident_species]['target_species']  +=[target_species]
     # --- This if block was removed. It is unclear what the reason was for the block.
     # --- It precluded the charge exchange interaction, since in that case the
     # --- incident and emitted species are the same, and the if block removed
@@ -150,6 +149,7 @@ a value given a velocity. This returns the Appropriate value.
     # --- Same for target_species - only include it if its an instance of species.
     if isinstance(target_species,Particle): target_species = None
 
+    self.inter[incident_species]['target_species']  +=[target_species]
     self.inter[incident_species]['emitted_species'] +=[e_species]
     self.inter[incident_species]['cross_section']   +=[cross_section]
     self.inter[incident_species]['ndens']           +=[ndens]
