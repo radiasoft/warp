@@ -92,7 +92,7 @@ Class for creating particle scraper for conductors
         When 'actualvelocity', use the actual particle velocity. This option
         should only ever be used in special cases and for testing.
  - species: List of species that should be scraped. Defaults to all species.
-        
+
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
 conductors are an argument. Otherwise, nothing further needs to be done - the
@@ -105,7 +105,7 @@ Various methods are accessible if additional fine control is needed.
                     lrefineintercept=0,lrefineallintercept=0,nstepsperorbit=8,
                     lcollectlpdata=0,mglevel=0,aura=0.,
                     install=1,lbeforescraper=0,lfastscraper=0,
-                    grid=None,gridmode=0,nxscale=1,nyscale=1,nzscale=1, 
+                    grid=None,gridmode=0,nxscale=1,nyscale=1,nzscale=1,
                     interceptvelocitymethod='finitedifference',
                     species=None):
     self.mglevel = mglevel
@@ -180,7 +180,7 @@ Various methods are accessible if additional fine control is needed.
     # --- problem. Fixing the other will be more complicated - perhaps
     # --- requiring a flag that says whether the xold has been saved
     # --- yet.
-    self.saveolddata() 
+    self.saveolddata()
 
   def installscraper(self):
     """
@@ -263,7 +263,7 @@ scraped on.
       self.newconductors = true
     else:
       self.grid.removeisinside(conductor)
-      
+
   def updategrid(self,lforce=0):
     """
 Update the grid to match any changes to the underlying grid, for example
@@ -383,7 +383,7 @@ data needed by the grid is set up. This will normally be called automatically.
       for s in self.species:
         result += s.jslist
     return result
-    
+
   def saveolddata(self):
     """Saves old particle data. In some cases, the location of the particle
 before it was lost is needed."""
@@ -487,7 +487,7 @@ Apply scraping to all of the species. This will normally be called automatically
       particlegridboundaries3d(top.pgroup,-1)
     self.saveolddata()
   #scrapeall = decorators.timedmethod(scrapeall)
-    
+
   def scrape(self,js):
     """Apply scraping to species js. It is better to call scrapeall. This will normally be called automatically."""
     # --- If there are no particles in this species, that nothing needs to be done
@@ -567,7 +567,7 @@ Apply scraping to all of the species. This will normally be called automatically
     # --- Note, of course, that close may mean inside.
     iclose = compress(pp>0.,arange(i1,i2))
     if len(iclose) == 0: return
- 
+
     # --- Get the positions of particles which are close to a conductor.
     xx = take(xx,iclose-i1)
     yy = take(yy,iclose-i1)
@@ -581,9 +581,9 @@ Apply scraping to all of the species. This will normally be called automatically
       gdx = [0.,dx,0.,dx,0.,dx,0.,dx]
       gdy = [0.,0.,dy,dy,0.,0.,dy,dy]
       gdz = [0.,0.,0.,0.,dz,dz,dz,dz]
-      xg = xmin+int(abs(xx-xmin)/dx)*dx 
-      yg = ymin+int(abs(yy-ymin)/dy)*dy 
-      zg = zmin+int(abs(zz-zmin)/dz)*dz 
+      xg = xmin+int(abs(xx-xmin)/dx)*dx
+      yg = ymin+int(abs(yy-ymin)/dy)*dy
+      zg = zmin+int(abs(zz-zmin)/dz)*dz
     elif w3d.solvergeom in [w3d.RZgeom]:
       nd = 2
       gdx = [0.,dx,0.,dx]
@@ -594,20 +594,20 @@ Apply scraping to all of the species. This will normally be called automatically
       # --- is probably faster
       #rr = sqrt(xx**2 + yy**2)
       rr = take(rr,iclose-i1)
-      xg = xmin+int(abs(rr-xmin)/dx)*dx 
-      zg = zmin+int(abs(zz-zmin)/dz)*dz 
+      xg = xmin+int(abs(rr-xmin)/dx)*dx
+      zg = zmin+int(abs(zz-zmin)/dz)*dz
     elif w3d.solvergeom in [w3d.XZgeom]:
       nd = 2
       gdx = [0.,dx,0.,dx]
       gdz = [0.,0.,dz,dz]
-      xg = xmin+int(abs(xx-xmin)/dx)*dx 
-      zg = zmin+int(abs(zz-zmin)/dz)*dz 
+      xg = xmin+int(abs(xx-xmin)/dx)*dx
+      zg = zmin+int(abs(zz-zmin)/dz)*dz
     elif w3d.solvergeom == w3d.XYgeom:
       nd = 2
       gdx = [0.,dx,0.,dx]
       gdy = [0.,0.,dy,dy]
-      xg = xmin+int(abs(xx-xmin)/dx)*dx 
-      yg = ymin+int(abs(yy-ymin)/dy)*dy 
+      xg = xmin+int(abs(xx-xmin)/dx)*dx
+      yg = ymin+int(abs(yy-ymin)/dy)*dy
     elif w3d.solvergeom in [w3d.Rgeom]:
       nd = 1
       gdx = [0.,dx]
@@ -617,16 +617,16 @@ Apply scraping to all of the species. This will normally be called automatically
       # --- is probably faster
       #rr = sqrt(xx**2 + yy**2)
       rr = take(rr,iclose-i1)
-      xg = xmin+int(abs(rr-xmin)/dx)*dx 
+      xg = xmin+int(abs(rr-xmin)/dx)*dx
     elif w3d.solvergeom == w3d.Ygeom:
       nd = 1
       gdy = [0.,dy]
-      yg = ymin+int(abs(yy-ymin)/dy)*dy 
+      yg = ymin+int(abs(yy-ymin)/dy)*dy
     elif w3d.solvergeom == w3d.zgeom:
       nd = 1
       gdz = [0.,dz]
-      zg = zmin+int(abs(zz-zmin)/dz)*dz 
-    
+      zg = zmin+int(abs(zz-zmin)/dz)*dz
+
     nn = len(iclose)
     pp = zeros(nn,'d')
 
@@ -670,7 +670,7 @@ Apply scraping to all of the species. This will normally be called automatically
         itempclose=arange(nn)
 
         # --- Get indices of particles that are close to the conductor
-        ii = compress(pp == c.condid,itempclose) 
+        ii = compress(pp == c.condid,itempclose)
 
         # --- If there are no particles close, then skip to the next conductor
         if len(ii) == 0: continue
@@ -856,11 +856,11 @@ Apply scraping to all of the species. This will normally be called automatically
         # --- Remove the already handled particles, returning if there
         # --- are no more.
         put(iclose,iic,-1)
-        iclose = compress(iclose>=0,iclose)        
+        iclose = compress(iclose>=0,iclose)
         nn = len(iclose)
         if nn == 0: return
         put(itempclose,iic,-1)
-        itempclose = compress(itempclose>=0,itempclose)        
+        itempclose = compress(itempclose>=0,itempclose)
         xx = take(xx,itempclose)
         yy = take(yy,itempclose)
         zz = take(zz,itempclose)
@@ -882,7 +882,7 @@ counting the current lost on the conductor.
     jsid = top.pgroup.sid[js]
 
     # --- Just return if there are no lost particles.
-    if top.npslost[jsid] == 0: 
+    if top.npslost[jsid] == 0:
       if self.lcollectlpdata and not local:
         # --- If data is being collected, the 0 from this processor must still
         # --- be added to the sum.
@@ -890,7 +890,7 @@ counting the current lost on the conductor.
           # --- This parallelsum coordinates with the ones below.
           w=parallelsum(0.)
           if w<>0.:
-            c.lostparticles_data.append(array([top.time, 
+            c.lostparticles_data.append(array([top.time,
                                                w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                                top.dt,
                                                jsid]))
@@ -985,12 +985,12 @@ counting the current lost on the conductor.
     # --- Loop over the conductors, removing particles inside of each.
     for c in self.conductors:
       ii = compress(pp == c.condid,arange(nn))
-      if len(ii) == 0: 
+      if len(ii) == 0:
         if self.lcollectlpdata and not local:
           # --- This parallelsum coordinates with the other processors
           w=parallelsum(0.)
           if w<>0.:
-            c.lostparticles_data.append(array([top.time, 
+            c.lostparticles_data.append(array([top.time,
                                                w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                                top.dt,
                                                jsid]))
@@ -1007,7 +1007,7 @@ counting the current lost on the conductor.
           # --- This parallelsum coordinates with the other processors
           w=parallelsum(0.)
           if w<>0.:
-            c.lostparticles_data.append(array([top.time, 
+            c.lostparticles_data.append(array([top.time,
                                                w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                                top.dt,
                                                jsid]))
@@ -1144,7 +1144,7 @@ counting the current lost on the conductor.
           w = sum(take(top.pidlost[:,top.wpid-1],pidtoconsider))
         # --- This parallelsum coordinates with the ones above
         if not local:w=parallelsum(w)
-        c.lostparticles_data.append(array([top.time, 
+        c.lostparticles_data.append(array([top.time,
                                            w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                            top.dt,
                                            jsid]))
@@ -1159,7 +1159,7 @@ particle).
     magB = sqrt(bx**2 + by**2 + bz**2)
     omegac = q/m*magB
 
-    # --- Get the number of steps for each particle. 
+    # --- Get the number of steps for each particle.
     # --- This is set by self.nstepsperorbit which is the number of steps
     # --- per cyclotron orbit.
     isteps = nint(dt*omegac/(2.*pi)*self.nstepsperorbit)

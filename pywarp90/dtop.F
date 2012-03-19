@@ -1325,7 +1325,7 @@ c       --- find location on grid
         gx = (x(ip) - xmin)*dxi
 
 c       --- if within grid, accumulate
-        if (0. <= gx .and. gx <= nx) then
+        if (-0.5 < gx .and. gx < nx+0.5) then
           ix = nint(gx)
           grid(ix) = grid(ix) + 1.
         endif
@@ -1491,7 +1491,7 @@ c       --- find location on grid
         gx = (x(ip) - xmin)*dxi
 
 c       --- if within grid, accumulate
-        if (0. <= gx .and. gx <= nx) then
+        if (-0.5 < gx .and. gx < nx+0.5) then
           ix = nint(gx)
           grid(ix) = grid(ix) + z(ip)
           gridcount(ix) = gridcount(ix) + 1.
@@ -1660,7 +1660,7 @@ c       --- find location on grid
         gx = (x(ip) - xmin)*dxi
 
 c       --- if within grid, gather
-        if (0. <= gx .and. gx <= nx) then
+        if (-0.5 < gx .and. gx < nx+0.5) then
           ix = nint(gx)
           z(ip) = grid(ix)
         endif
@@ -1914,8 +1914,8 @@ c       --- find location on grid
         gy = (y(ip) - ymin)*dyi
 
 c       --- if within grid, accumulate
-        if (0. <= gx .and. gx <= nx .and.
-     &      0. <= gy .and. gy <= ny) then
+        if (-0.5 < gx .and. gx < nx+0.5 .and.
+     &      -0.5 < gy .and. gy < ny+0.5) then
           ix = nint(gx)
           iy = nint(gy)
           grid(ix,iy) = grid(ix,iy) + z(ip)
@@ -2229,8 +2229,8 @@ c       --- find location on grid
         gy = (y(ip) - ymin)*dyi
 
 c       --- if within grid, gather
-        if (0. <= gx .and. gx <= nx .and.
-     &      0. <= gy .and. gy <= ny) then
+        if (-0.5 < gx .and. gx < nx+0.5 .and.
+     &      -0.5 < gy .and. gy < ny+0.5) then
           ix = nint(gx)
           iy = nint(gy)
           z(ip) = grid(ix,iy)
@@ -2803,9 +2803,9 @@ c       --- find location on grid, taking into account any symmetries.
         gz = (z(ip) - zmin - zgrid)*dzi
 
 c       --- if within grid, gather
-        if (0. <= gx .and. gx <= nx .and.
-     &      0. <= gy .and. gy <= ny .and.
-     &      0. <= gz .and. gz <= nz) then
+        if (-0.5 < gx .and. gx < nx+0.5 .and.
+     &      -0.5 < gy .and. gy < ny+0.5 .and.
+     &      -0.5 < gz .and. gz < nz+0.5) then
           ix = nint(gx)
           iy = nint(gy)
           iz = nint(gz)
@@ -2875,9 +2875,9 @@ c       --- find location on grid, taking into account any symmetries.
         gz = (z(ip) - zmin - zgrid)*dzi
 
 c       --- if within grid, gather
-        if (0. <= gx .and. gx <= nx .and.
-     &      0. <= gy .and. gy <= ny .and.
-     &      0. <= gz .and. gz <= nz) then
+        if (-0.5 < gx .and. gx < nx+0.5 .and.
+     &      -0.5 < gy .and. gy < ny+0.5 .and.
+     &      -0.5 < gz .and. gz < nz+0.5) then
           ix = nint(gx)
           iy = nint(gy)
           iz = nint(gz)
