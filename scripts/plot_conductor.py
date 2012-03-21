@@ -2880,7 +2880,7 @@ Sets the voltage on a conductor, given an id.
       # --- For conductors to the left, find the location of the conductor
       # --- and linear interpolate from the voltage data. If the discrete flag
       # --- is set, then round down to the nearest grid point.
-      ecmz = iecz + where(0 < evensubgrid.dels[4,:] < 1.,
+      ecmz = iecz + where(logical_and(0 < evensubgrid.dels[4,:],evensubgrid.dels[4,:] < 1.),
                           -evensubgrid.dels[4,:],0)*iecl
       iecmz = ecmz.astype(long)
       if discrete: wecmz = 0.
@@ -2888,7 +2888,7 @@ Sets the voltage on a conductor, given an id.
       ecvmz = take(voltage,iecmz)*(1.-wecmz) + take(voltage,iecmz+1)*wecmz
 
       # --- Same for conductors to the right. If discrete is set, round up.
-      ecpz = iecz + where(0 < evensubgrid.dels[5,:] < 1.,
+      ecpz = iecz + where(logical_and(0 < evensubgrid.dels[5,:],evensubgrid.dels[5,:] < 1.),
                           -evensubgrid.dels[5,:],0)*iecl
       iecpz = ecpz.astype(long)
       if discrete: wecpz = 1.
@@ -2907,14 +2907,14 @@ Sets the voltage on a conductor, given an id.
       ocvmy = ocv
       ocvpy = ocv
 
-      ocmz = iocz + where(0 < oddsubgrid.dels[4,:] < 1.,
+      ocmz = iocz + where(logical_and(0 < oddsubgrid.dels[4,:],oddsubgrid.dels[4,:] < 1.),
                           -oddsubgrid.dels[4,:],0)*iocl
       iocmz = ocmz.astype(long)
       if discrete: wocmz = 0.
       else:        wocmz = ocmz - iocmz
       ocvmz = take(voltage,iocmz)*(1.-wocmz) + take(voltage,iocmz+1)*wocmz
 
-      ocpz = iocz + where(0 < oddsubgrid.dels[5,:] < 1.,
+      ocpz = iocz + where(logical_and(0 < oddsubgrid.dels[5,:],oddsubgrid.dels[5,:] < 1.),
                           -oddsubgrid.dels[5,:],0)*iocl
       iocpz = ocpz.astype(long)
       if discrete: wocpz = 1.
