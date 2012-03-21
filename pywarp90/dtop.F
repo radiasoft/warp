@@ -45,7 +45,7 @@ c     --- called 'oneliner'.
 c  Set builtin Hist arrays
         lgchange = .false.
 c       --- increase the size of Hist arrays if necessary
-        if (jhist == lenhist) then
+        if (jhist == lenhist .or. lenhist == 0) then
           lenhist = lenhist + max(100,int(0.5*lenhist))
           lgchange = .true.
         endif
