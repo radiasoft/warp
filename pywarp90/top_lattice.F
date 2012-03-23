@@ -1002,65 +1002,65 @@ c       --- has the effect for the residence corrected elements to find
 c       --- the field at the given location without any correction.
 
 c       --- handle quads
-        call applyquad(nn,bsqgradtemp(0,0,0, 0,id),
-     &                 bsqgradtemp(0,0,0, 1,id),nn,
-     &                 bsqgradtemp(0,0,0, 2,id),
-     &                 bsqgradtemp(0,0,0, 3,id),
-     &                 bsqgradtemp(0,0,0, 4,id),
+        call applyquad(nn,bsqgradtemp(:,:,:, 0,id),
+     &                 bsqgradtemp(:,:,:, 1,id),nn,
+     &                 bsqgradtemp(:,:,:, 2,id),
+     &                 bsqgradtemp(:,:,:, 3,id),
+     &                 bsqgradtemp(:,:,:, 4,id),
      &                 0.,0.,0.,.false.,
-     &                 bsqgradtemp(0,0,0, 5,id),
-     &                 bsqgradtemp(0,0,0, 6,id),
-     &                 bsqgradtemp(0,0,0, 8,id),
-     &                 bsqgradtemp(0,0,0, 9,id))
+     &                 bsqgradtemp(:,:,:, 5,id),
+     &                 bsqgradtemp(:,:,:, 6,id),
+     &                 bsqgradtemp(:,:,:, 8,id),
+     &                 bsqgradtemp(:,:,:, 9,id))
 
 c       --- handle dipos 
-        call applydipo(nn,nn,bsqgradtemp(0,0,0, 2,id),
-     &                 bsqgradtemp(0,0,0, 3,id),
-     &                 bsqgradtemp(0,0,0, 4,id),
-     &                 0.,0.,0.,.false.,bsqgradtemp(0,0,0, 5,id),
-     &                 bsqgradtemp(0,0,0, 6,id),
-     &                 bsqgradtemp(0,0,0, 8,id),
-     &                 bsqgradtemp(0,0,0, 9,id))
+        call applydipo(nn,nn,bsqgradtemp(:,:,:, 2,id),
+     &                 bsqgradtemp(:,:,:, 3,id),
+     &                 bsqgradtemp(:,:,:, 4,id),
+     &                 0.,0.,0.,.false.,bsqgradtemp(:,:,:, 5,id),
+     &                 bsqgradtemp(:,:,:, 6,id),
+     &                 bsqgradtemp(:,:,:, 8,id),
+     &                 bsqgradtemp(:,:,:, 9,id))
 
 c       --- handle sexts
-        call applysext(nn,bsqgradtemp(0,0,0, 0,id),
-     &                 bsqgradtemp(0,0,0, 1,id),nn,
-     &                 bsqgradtemp(0,0,0, 2,id),
-     &                 bsqgradtemp(0,0,0, 3,id),
-     &                 bsqgradtemp(0,0,0, 4,id),0.,0.,0.,.false.,
-     &                 bsqgradtemp(0,0,0, 5,id),
-     &                 bsqgradtemp(0,0,0, 6,id),
-     &                 bsqgradtemp(0,0,0, 8,id),
-     &                 bsqgradtemp(0,0,0, 9,id))
+        call applysext(nn,bsqgradtemp(:,:,:, 0,id),
+     &                 bsqgradtemp(:,:,:, 1,id),nn,
+     &                 bsqgradtemp(:,:,:, 2,id),
+     &                 bsqgradtemp(:,:,:, 3,id),
+     &                 bsqgradtemp(:,:,:, 4,id),0.,0.,0.,.false.,
+     &                 bsqgradtemp(:,:,:, 5,id),
+     &                 bsqgradtemp(:,:,:, 6,id),
+     &                 bsqgradtemp(:,:,:, 8,id),
+     &                 bsqgradtemp(:,:,:, 9,id))
 
 c       --- handle hard-edge electric and magnetic multipoles
-        call applyhele(nn,bsqgradtemp(0,0,0, 0,id),
-     &                 bsqgradtemp(0,0,0, 1,id),nn,
-     &                 bsqgradtemp(0,0,0, 2,id),
-     &                 bsqgradtemp(0,0,0, 3,id),
-     &                 bsqgradtemp(0,0,0, 4,id),0.,0.,0.,.false.,
-     &                 bsqgradtemp(0,0,0, 5,id),
-     &                 bsqgradtemp(0,0,0, 6,id),
-     &                 bsqgradtemp(0,0,0, 7,id),
-     &                 bsqgradtemp(0,0,0, 8,id),
-     &                 bsqgradtemp(0,0,0, 9,id),
-     &                 bsqgradtemp(0,0,0,10,id))
+        call applyhele(nn,bsqgradtemp(:,:,:, 0,id),
+     &                 bsqgradtemp(:,:,:, 1,id),nn,
+     &                 bsqgradtemp(:,:,:, 2,id),
+     &                 bsqgradtemp(:,:,:, 3,id),
+     &                 bsqgradtemp(:,:,:, 4,id),0.,0.,0.,.false.,
+     &                 bsqgradtemp(:,:,:, 5,id),
+     &                 bsqgradtemp(:,:,:, 6,id),
+     &                 bsqgradtemp(:,:,:, 7,id),
+     &                 bsqgradtemp(:,:,:, 8,id),
+     &                 bsqgradtemp(:,:,:, 9,id),
+     &                 bsqgradtemp(:,:,:,10,id))
 
 c       --- handle magnetostatic multipole components
-        call applymmlt(nn,bsqgradtemp(0,0,0, 0,id),
-     &                 bsqgradtemp(0,0,0, 1,id),nn,
-     &                 bsqgradtemp(0,0,0, 2,id),0.,0.,0.,.false.,
-     &                 bsqgradtemp(0,0,0, 8,id),
-     &                 bsqgradtemp(0,0,0, 9,id),
-     &                 bsqgradtemp(0,0,0,10,id))
+        call applymmlt(nn,bsqgradtemp(:,:,:, 0,id),
+     &                 bsqgradtemp(:,:,:, 1,id),nn,
+     &                 bsqgradtemp(:,:,:, 2,id),0.,0.,0.,.false.,
+     &                 bsqgradtemp(:,:,:, 8,id),
+     &                 bsqgradtemp(:,:,:, 9,id),
+     &                 bsqgradtemp(:,:,:,10,id))
 
 c       --- handle magnetic fields from 3-D grid
-        call applybgrd(nn,bsqgradtemp(0,0,0, 0,id),
-     &                 bsqgradtemp(0,0,0, 1,id),nn,
-     &                 bsqgradtemp(0,0,0, 2,id),.false.,
-     &                 bsqgradtemp(0,0,0, 8,id),
-     &                 bsqgradtemp(0,0,0, 9,id),
-     &                 bsqgradtemp(0,0,0,10,id))
+        call applybgrd(nn,bsqgradtemp(:,:,:, 0,id),
+     &                 bsqgradtemp(:,:,:, 1,id),nn,
+     &                 bsqgradtemp(:,:,:, 2,id),.false.,
+     &                 bsqgradtemp(:,:,:, 8,id),
+     &                 bsqgradtemp(:,:,:, 9,id),
+     &                 bsqgradtemp(:,:,:,10,id))
 
 
 c       --- Calculate B dot B
@@ -1792,7 +1792,7 @@ c        --- find the elements at each of the grid points.
 c        --- find index of nearest drft element
          do io=1,ndrftol
            call getelemid(zz,offset,ndrft,drftzs,drftze,drftol,
-     &                    odrftnn(io),odrftoi(odrftii(io)),odrftio,
+     &                    odrftnn(io),odrftoi(odrftii(io):),odrftio,
      &                    cdrftid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            cdrftzs(iz,io) = drftzs(cdrftid(iz,io)) + offset
@@ -1809,7 +1809,7 @@ c        --- doesn't make much sense. The extra indexing is done so that the
 c        --- getelemid routine can still be used.
          if (nbend >= 0) then
            call getelemid(zz,offset,nbend,bendzs,bendze,bendol,
-     &                    obendnn(1),obendoi(obendii(1)),obendio,
+     &                    obendnn(1),obendoi(obendii(1):),obendio,
      &                    cbendid(iz),1)
 c          --- load lattice info into comoving 1d array
            cbendzs(iz) = bendzs(cbendid(iz)) + offset
@@ -1827,7 +1827,7 @@ c        --- The cdipo arrays calculated here are needed for residence
 c        --- corrections (when dipos is true), and internal conductors.
          do io=1,ndipool
            call getelemid(zz,offset,ndipo,dipozs,dipoze,dipool,
-     &                    odiponn(io),odipooi(odipoii(io)),odipoio,
+     &                    odiponn(io),odipooi(odipoii(io):),odipoio,
      &                    cdipoid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            cdipozs(iz,io) = dipozs(cdipoid(iz,io)) + offset
@@ -1848,7 +1848,7 @@ c        --- The cquad arrays calculated here are needed for residence
 c        --- corrections (when quads is true) and the internal conductors.
          do io=1,nquadol
            call getelemid(zz,offset,nquad,quadzs,quadze,quadol,
-     &                    oquadnn(io),oquadoi(oquadii(io)),oquadio,
+     &                    oquadnn(io),oquadoi(oquadii(io):),oquadio,
      &                    cquadid(iz,io),io)
            id = cquadid(iz,io)
 c          --- load lattice info into comoving 1d array
@@ -1895,7 +1895,7 @@ c        --- The csext arrays calculated here are needed for residence
 c        --- corrections (when sexts is true).
          do io=1,nsextol
            call getelemid(zz,offset,nsext,sextzs,sextze,sextol,
-     &                    osextnn(io),osextoi(osextii(io)),osextio,
+     &                    osextnn(io),osextoi(osextii(io):),osextio,
      &                    csextid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            csextzs(iz,io) = sextzs(csextid(iz,io)) + offset
@@ -1910,7 +1910,7 @@ c          --- load lattice info into comoving 1d array
 c        --- find index of nearest hard-edge multipole element
          do io=1,nheleol
            call getelemid(zz,offset,nhele,helezs,heleze,heleol,
-     &                    ohelenn(io),oheleoi(oheleii(io)),oheleio,
+     &                    ohelenn(io),oheleoi(oheleii(io):),oheleio,
      &                    cheleid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            chelezs(iz,io) = helezs(cheleid(iz,io)) + offset
@@ -1923,7 +1923,7 @@ c          --- load lattice info into comoving 1d array
 c        --- find index of nearest acceleration element
          do io=1,nacclol
            call getelemid(zz,offset,naccl,acclzs,acclze,acclol,
-     &                    oacclnn(io),oaccloi(oacclii(io)),oacclio,
+     &                    oacclnn(io),oaccloi(oacclii(io):),oacclio,
      &                    cacclid(iz,io),io)
            id = cacclid(iz,io)
            if (acclze(id) + offset > acclzstt) then
@@ -1965,7 +1965,7 @@ c        --- The cemlt arrays calculated here are needed for the elements
 c        --- described in terms of their multipole components.
          do io=1,nemltol
            call getelemid(zz,offset,nemlt,emltfs,emltfe,emltol,
-     &                    oemltnn(io),oemltoi(oemltii(io)),oemltio,
+     &                    oemltnn(io),oemltoi(oemltii(io):),oemltio,
      &                    cemltid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            id = cemltid(iz,io)
@@ -2020,7 +2020,7 @@ c        --- The cmmlt arrays calculated here are needed for the elements
 c        --- described in terms of their multipole components.
          do io=1,nmmltol
            call getelemid(zz,offset,nmmlt,mmltfs,mmltfe,mmltol,
-     &                    ommltnn(io),ommltoi(ommltii(io)),ommltio,
+     &                    ommltnn(io),ommltoi(ommltii(io):),ommltio,
      &                    cmmltid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            id = cmmltid(iz,io)
@@ -2068,7 +2068,7 @@ c        --- Note that the full lengths are used here, in case there is
 c        --- a rotation off the z-axis.
          do io=1,negrdol
            call getelemid(zz,offset,negrd,egrdfs,egrdfe,egrdol,
-     &                    oegrdnn(io),oegrdoi(oegrdii(io)),oegrdio,
+     &                    oegrdnn(io),oegrdoi(oegrdii(io):),oegrdio,
      &                    cegrdid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            cegrdzs(iz,io) = egrdfs(cegrdid(iz,io)) + offset
@@ -2087,7 +2087,7 @@ c        --- Note that the full lengths are used here, in case there is
 c        --- a rotation off the z-axis.
          do io=1,nbgrdol
            call getelemid(zz,offset,nbgrd,bgrdfs,bgrdfe,bgrdol,
-     &                    obgrdnn(io),obgrdoi(obgrdii(io)),obgrdio,
+     &                    obgrdnn(io),obgrdoi(obgrdii(io):),obgrdio,
      &                    cbgrdid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            cbgrdzs(iz,io) = bgrdfs(cbgrdid(iz,io)) + offset
@@ -2104,7 +2104,7 @@ c        --- The cpgrdid array calculated here is needed for the electrostatic
 c        --- elements described by potential data on a 3-D grid.
          do io=1,npgrdol
            call getelemid(zz,offset,npgrd,pgrdzs,pgrdze,pgrdol,
-     &                    opgrdnn(io),opgrdoi(opgrdii(io)),opgrdio,
+     &                    opgrdnn(io),opgrdoi(opgrdii(io):),opgrdio,
      &                    cpgrdid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            cpgrdzs(iz,io) = pgrdzs(cpgrdid(iz,io)) + offset
@@ -2121,7 +2121,7 @@ c        --- The cbsqgradid array calculated here is needed for the magnetic
 c        --- elements described by grad B^2 field data on a 3-D grid.
          do io=1,nbsqgradol
            call getelemid(zz,offset,nbsqgrad,bsqgradzs,bsqgradze,bsqgradol,
-     &                    obsqgradnn(io),obsqgradoi(obsqgradii(io)),obsqgradio,
+     &                    obsqgradnn(io),obsqgradoi(obsqgradii(io):),obsqgradio,
      &                    cbsqgradid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            cbsqgradzs(iz,io) = bsqgradzs(cbsqgradid(iz,io)) + offset
@@ -2136,7 +2136,7 @@ c          --- The grid points intentionally overlap to avoid roundoff errors.
 c        --- find index of nearest lmap element
          do io=1,nlmapol
            call getelemid(zz,offset,nlmap,lmapzs,lmapze,lmapol,
-     &                    olmapnn(io),olmapoi(olmapii(io)),olmapio,
+     &                    olmapnn(io),olmapoi(olmapii(io):),olmapio,
      &                    clmapid(iz,io),io)
 c          --- load lattice info into comoving 1d array
            clmapzs(iz,io) = lmapzs(clmapid(iz,io))! + offset
@@ -6763,7 +6763,7 @@ c by the calling routine.
       real(kind=8):: zs,ze,zc
       real(kind=8):: gapez,z1,z2,vn,frac,qoverm
       real(kind=8):: zz,zl,zr,vbeamfrmo,deltav
-      real(kind=8):: zznew
+      real(kind=8):: zznew(1)
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -6833,9 +6833,10 @@ c         --- Note that the max's inside the sqrt are for idiot proofing.
           endif
 c         --- do correction on position
           zznew = zz
-          call zgapcorr(1,zznew,0.,vbeamfrm,1.,-dt*0.5,dt*0.5,dt,
+          call zgapcorr(1,zznew,(/0./),(/vbeamfrm/),(/1./),
+     &                  -dt*0.5,dt*0.5,dt,
      &                  aion*amu,zion*echarge,time)
-          zcorrection = zcorrection + zznew - zz
+          zcorrection = zcorrection + zznew(1) - zz
 c         --- add acceleration to beam frame velocity
           vbeamfrm = vbeamfrm + gapez*qoverm*dt*frac
 c         --- also change beam frame velocity

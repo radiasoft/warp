@@ -9382,12 +9382,14 @@ real(kind=8):: ex(ip),ey(ip),ez(ip)
   if (.not. ASSOCIATED(basegrid)) return
 
   if(.not.mgridrz_deform) then
-    call fieldweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin), &
+    call fieldweightrz(pgroup%xp(ipmin:ipmin+ip-1),pgroup%yp(ipmin:ipmin+ip-1),&
+                       pgroup%zp(ipmin:ipmin+ip-1), &
                        ex,ey,ez,ip,zgridprv,efetch(is))
   else
     if(is==1 .and. ipmin==pgroup%ins(is)) call calc_phi3d_from_phirz()
-    call sete3d(mgridrz_phi3d,selfe(1,0,0,0),ip, &
-                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin), &
+    call sete3d(mgridrz_phi3d,selfe,ip, &
+                pgroup%xp(ipmin:ipmin+ip-1),pgroup%yp(ipmin:ipmin+ip-1), &
+                pgroup%zp(ipmin:ipmin+ip-1), &
                 zgridprv,0.,0.,basegrid%zmin, &
                 basegrid%dr,basegrid%dr,basegrid%dz, &
                 mgridrz_nx,mgridrz_ny,mgridrz_nz, &
@@ -10353,7 +10355,8 @@ END subroutine add_subgrid
 
 subroutine add_transit(ntlo, nthi, xmin, xmax, nx, ref, dxparent, xminparent, xmaxparent)
   implicit none
-  integer(ISZ), intent(inout) :: ntlo,nthi,ref
+  integer(ISZ), intent(inout) :: ntlo,nthi
+  integer(ISZ), intent(in) :: ref
   real(8), intent(in) :: dxparent, xminparent, xmaxparent
   integer(ISZ), intent(inout) :: nx
   real(8), intent(inout) :: xmin, xmax
@@ -10374,7 +10377,8 @@ end subroutine add_transit
 subroutine add_patch(id,rmini,rmaxi,zmini,zmaxi,refr,refz,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
 USE multigridrz
 implicit none
-INTEGER(ISZ), INTENT(IN) :: id,refr,refz,transit_min_r,transit_max_r,transit_min_z,transit_max_z
+INTEGER(ISZ), INTENT(IN) :: id,refr,refz
+INTEGER(ISZ), INTENT(INOUT) :: transit_min_r,transit_max_r,transit_min_z,transit_max_z
 REAL(8), INTENT(IN) :: rmini,rmaxi,zmini,zmaxi
 
 integer(ISZ) :: jmin,jmax,lmin,lmax,nr,nz

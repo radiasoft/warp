@@ -4215,7 +4215,7 @@ c     --- Make sure that 'is' is within the correct range
      &                    .true.,
      &                    pgroup%ex,pgroup%ey,pgroup%ez,
      &                    pgroup%bx,pgroup%by,pgroup%bz,
-     &                    0.)
+     &                    (/0./))
       endif
       return
       end
@@ -5409,6 +5409,8 @@ c=============================================================================
       use InPart
       use LostParticles
       integer(ISZ):: is,ishift
+
+      real(kind=8):: dummy(1)
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -5417,13 +5419,13 @@ c=============================================================================
      &                    inslost,npslost,npidlost,
      &                    xplost,yplost,zplost,uxplost,uyplost,uzplost,
      &                    gaminvlost,
-     &                    .false.,0.,0.,0.,0.,0.,0.,pidlost)
+     &                    .false.,dummy,dummy,dummy,dummy,dummy,dummy,pidlost)
       else
         call shftpartwork(is,ishift,npmaxlost,ns,
      &                    inslost,npslost,npidlost,
      &                    xplost,yplost,zplost,uxplost,uyplost,uzplost,
      &                    gaminvlost,
-     &                    .false.,0.,0.,0.,0.,0.,0.,0.)
+     &                    .false.,dummy,dummy,dummy,dummy,dummy,dummy,dummy)
       endif
 
 !$OMP MASTER

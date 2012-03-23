@@ -1,5 +1,5 @@
 #include "top.h"
-c============================================================================ 
+c============================================================================
 c     ROUTINES TO INTERPOLATE BETWEEN DRIFT KINETICS AND FULL ION ORBIT
 c     These are:
 c     setptrs, sets temporary E and B arrays in database equal to the E's and
@@ -15,12 +15,12 @@ c     getveff, gets components of interpolated velocity used in x push
 c       Also calls getvperpparsq, and calls setfields on corrector step
 c     getvdrift, calculates vdrift from ExB and gradB
 c     setfields, sets E,B at particle arrays
-c     getgradbsq, calculates or fetches grad B^2 components, and 
+c     getgradbsq, calculates or fetches grad B^2 components, and
 c       interpolation parameter alpha and its complement alphabar
 c     This version has relativistic corrections.  Basic approach:
 c       gamma should be updated from full Boris velocity push,
 c       as it is only the Epush that affects gamma.
-c     
+c
 c============================================================================
       subroutine mugrdbpush(pgroup,npd,is,ipmin,dtb,needcalcgradb)
 c     Determines effective B to use in an extra bpush to implement
@@ -41,7 +41,7 @@ c      q is electron charge.
       integer(ISZ):: npd,is,isid,ipmin,needcalcgradb
       real(kind=8):: dtb
 c
-      integer(ISZ):: ip,ipmin1,i
+      integer(ISZ):: ip,ipmin1,i,i1,i2
       real(kind=8):: bdbsqds,coef,bxeff(npd),byeff(npd),bzeff(npd)
       real(kind=8):: vxbx,vxby,vxbz
 
@@ -53,9 +53,11 @@ c     to calculate grad B^2 and the interpolation parameter
 c     if this is the grad B push before the B push.
 c     Note grdbsq(i,) is dbsqdz, dbsqdx, dbsqdy for i=1,2,3.
 
-      if (needcalcgradb .ne. 0) call getgradbsq(npd,is,pgroup%xp(ipmin),
-     & pgroup%yp(ipmin),pgroup%zp(ipmin),
-     & pgroup%bx(ipmin),pgroup%by(ipmin),pgroup%bz(ipmin))
+      i1 = ipmin
+      i2 = ipmin + npd - 1
+      if (needcalcgradb .ne. 0) call getgradbsq(npd,is,pgroup%xp(i1:i2),
+     & pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     & pgroup%bx(i1:i2),pgroup%by(i1:i2),pgroup%bz(i1:i2))
       if (needcalcgradb .ne. 0) call getalphas(pgroup,npd,isid,ipmin,
      & 2.*dtb)
 c      print*,"start mugrdb, uxp,dtb = ", pgroup%uxp(ipmin),needcalcgradb,dtb
@@ -98,7 +100,7 @@ c      use Particles, only: chdtspid
       use Particles,Only: xoldpid,yoldpid,zoldpid,
      &                    bxoldpid,byoldpid,bzoldpid
       type(ParticleGroup):: pgroup
-      integer(ISZ):: npd,is,isid,ipmin
+      integer(ISZ):: npd,is,isid,ipmin,i1,i2
       integer(ISZ):: ip,i,ipmin1,ipc
       real(kind=8):: xpr(npd),ypr(npd),zpr(npd),xbar(npd),dt
       real(kind=8):: ybar(npd),zbar(npd)
@@ -118,6 +120,8 @@ c     declare some pointers
       endif
 
       isid = pgroup%sid(is-1) + 1
+      i1 = ipmin
+      i2 = ipmin + npd - 1
 
 c      print*, "ENTERING INTERPOLATION ROUTINES, ey,ez=",pgroup%ey(1),pgroup%ez(1)
 
@@ -134,7 +138,7 @@ c      which we will calculate from the saved Preds in getvdrift.
 c      If this is a predictor step and implicit, we need to gather the current
 c      field (saved from end of previous predictor) to the current corrected
 c      particle positions.  Half of it is used to advance the particles.
-      if (impinterp == 1 .and. ipredcor == 0) 
+      if (impinterp == 1 .and. ipredcor == 0)
      &     call setTotalE(pgroup,npd,is,ipmin,dt)
 c     For non-implicit interpolated mover with leapfrog predictor,
 c      time step for xpush is 2 dt for ipredcor = 0, dt for ipredcor = 1
@@ -146,28 +150,28 @@ c     & zold(1),pgroup%xp(1),pgroup%yp(1),pgroup%zp(1)
 c      print*, "and uxp,uyp,uzp =", pgroup%uxp(1),pgroup%uyp(1),pgroup%uzp(1)
       dtuse = dt
 c      print*, "ipredcor = ", ipredcor
-      if (impinterp == 0 .and. npcmax .ge. 0 .and. ipredcor == 0 .and. 
+      if (impinterp == 0 .and. npcmax .ge. 0 .and. ipredcor == 0 .and.
      &  it > 1) dtuse = 2.*dt
 c      print*, "it = ", it
 c     get effective velocities for old positions
-c     We must calculate grad B and B^2 now for ipredcor = 1; 
+c     We must calculate grad B and B^2 now for ipredcor = 1;
 c     for ipredcor = 0 it is done by the calls to mugrdbpush in padvnc3d.
       if (ipredcor > 0)
-     & call getgradbsq(npd,isid,pgroup%xp(ipmin),
-     & pgroup%yp(ipmin),pgroup%zp(ipmin),pgroup%bx(ipmin),pgroup%by(ipmin),
-     & pgroup%bz(ipmin))
-c     If npcmax >= 0 and we are not using the implicit mover, 
-c     we need to calculate the interpolation factors 
+     & call getgradbsq(npd,isid,pgroup%xp(i1:i2),
+     & pgroup%yp(i1:i2),pgroup%zp(i1:i2),pgroup%bx(i1:i2),pgroup%by(i1:i2),
+     & pgroup%bz(i1:i2))
+c     If npcmax >= 0 and we are not using the implicit mover,
+c     we need to calculate the interpolation factors
 c     separately for ipredcor = 0 (timestep different than for mugrdbush).
-      if (impinterp == 0 .and. npcmax .ge. 0) 
+      if (impinterp == 0 .and. npcmax .ge. 0)
      &      call getalphas(pgroup,npd,isid,ipmin,dtuse)
-      call getveff(pgroup,npd,is,ipmin,pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &             pgroup%zp(ipmin),"predictor",dt)
+      call getveff(pgroup,npd,is,ipmin,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
+     &             pgroup%zp(i1:i2),"predictor",dt)
 c      print *,"xp,vxeff,vbx,vex,alpha = ",pgroup%xp(ipmin),uxeff(1),vbx(1),vex(1),alpha(1)
 
 c
 c     If we are doing correction with average drifts,
-c.....save the old B's (prev timestep) for use in constructing 
+c.....save the old B's (prev timestep) for use in constructing
 c......averages for corrector.  This is available during the predictor step.
 c     We don't need this for the implicit version.
       if (impinterp == 0 .and. ipredcor == 0) then
@@ -187,7 +191,7 @@ c      The following is a LOCAL predictor-corrector loop to get an
 c      approximation to v_d at half-integer steps.  This will not be used
 c      when we do the global predictor-corrector of step3d which entails
 c      predicting from n-1 to n+1, field solving, and then correcting
-c      n to n+1.   To exercise the latter be sure to set 
+c      n to n+1.   To exercise the latter be sure to set
 c      npredcorv to zero.  It is also not used in base operation of
 c      implicit mover.  We use the implicit approx to advanced fields
 c      to do the centering.
@@ -195,7 +199,7 @@ c
 c      BEGIN predictor-corrector loop for v_eff
        do ipc = 1,npredcorv
         ipmin1=ipmin-1
-        do i=1,npd      
+        do i=1,npd
           ip=i+ipmin1
           xpr(i)=pgroup%xp(ip)
           ypr(i)=pgroup%yp(ip)
@@ -203,17 +207,17 @@ c      BEGIN predictor-corrector loop for v_eff
         enddo
 c       print*,"xpush1",ipmin,dt,alpha(1)
 c       print*,npd,xpr(1),ypr(1),zpr(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
-        call xpush3d (npd,xpr,ypr,zpr,uxeff,uyeff,uzeff,pgroup%gaminv(ipmin),
+        call xpush3d (npd,xpr,ypr,zpr,uxeff,uyeff,uzeff,pgroup%gaminv(i1:i2),
      &                dt)
 c       Now construct averaged positions; self.actr is centering param
         acntrbar=1.-acntr(isid)
-        do i=1,npd      
+        do i=1,npd
           ip=i+ipmin1
           xbar(i)=acntr(isid)*xpr(i)+acntrbar*pgroup%xp(ip)
           ybar(i)=acntr(isid)*ypr(i)+acntrbar*pgroup%yp(ip)
           zbar(i)=acntr(isid)*zpr(i)+acntrbar*pgroup%zp(ip)
         enddo
-c       Note need to make sure the trial position doesn't move a 
+c       Note need to make sure the trial position doesn't move a
 c       particle out of bounds of the field array.  IF it does,
 c       apply particle b.c.s.  Don't change the v's so use
 c       scratch arrays.  Also this won't do the right
@@ -229,7 +233,7 @@ c       --- particles with neighboring processors.
      &                             pboundxy,pbound0,pboundnz,
      &                             solvergeom==RZgeom)
 
-        do i=1,npd      
+        do i=1,npd
           if (gaminvscratch(i)==0.) then
             ip=i+ipmin1
             xbar(i) = pgroup%xp(ip)
@@ -260,7 +264,7 @@ c     note if interpolation is such that veff is the pure v,
 c     (that is if alpha = 1), then
 c     the result of the final push will be identical to
 c     a full conventional push.
-        
+
 c     If this is a (global) predictor step we need to swap the x arrays
 c      so we are pushing from n-1 and also defining a new set of xold's
 c      for the next time step.  If it is a corrector step then copy
@@ -273,11 +277,11 @@ c      don't do it here.
 c     temporary option
       if (impinterp == 0 .and. npcmax .ge. 0) call swapxarrays(pgroup,npd,is,ipmin)
       if (impinterp == 0 .and. npcmax < 0) call swapxarr2(pgroup,npd,is,ipmin)
-        
+
 c      print*,"xpush2",dt,alpha(1)
 c      print*,npd,pgroup%xp(1),pgroup%yp(1),pgroup%zp(1),uxeff(1),uyeff(1),uzeff(1),pgroup%gaminv(1)
-      call xpush3d (npd,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &              uxeff,uyeff,uzeff,pgroup%gaminv(ipmin),dtuse)
+      call xpush3d (npd,pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &              uxeff,uyeff,uzeff,pgroup%gaminv(i1:i2),dtuse)
 
 c      print*,"pushed",ipmin,pgroup%xp(1),pgroup%yp(1),pgroup%zp(1),
 c     &    uxeff(1),uyeff(1),uzeff(1),gaminv(1)
@@ -360,7 +364,7 @@ c           v's for predictor
             uparsq(i) = 0.5*(uparsq_new(i)+uparoldB**2*bsqi(i))
 c           total momentum per mass squared:
             usq_new(i) = uxp(i)**2+uyp(i)**2+uzp(i)**2
-            usq(i) = .5*(usq_new(i) + uxold(i)**2 + 
+            usq(i) = .5*(usq_new(i) + uxold(i)**2 +
      &           uyold(i)**2 + uzold(i)**2)
 c         if (i == 1) then
 c            print*, " second pass:"
@@ -438,7 +442,7 @@ c           corrector step, which comes first.
 c.......Corrector
 c.......For the implicit scheme this is the first part of the
 c.......step, correcting predictor from previous timestep.
-c.......We need quantities at both the current and predicted future 
+c.......We need quantities at both the current and predicted future
 c.......timesteps
           do i=1,npd
             uparB = uxp(i)*bx(i) + uyp(i)*by(i) + uzp(i)*bz(i)
@@ -448,7 +452,7 @@ c.......timesteps
             uparoBpred(i) = uparBnew/(Bnewsq+dksmall)
             usq(i) = uxp(i)**2+uyp(i)**2+uzp(i)**2
           enddo
-        endif   
+        endif
       endif
       return
       end
@@ -515,7 +519,7 @@ c     declare some pointers
 
 c     On the v-predictor step, fields have been pre-computed.
 c     On the v-corrector step, need to recompute, as the
-c      positions have changed.  
+c      positions have changed.
 c     Note at least for now we don't do these correctors for
 c      either implicit or the scheme with predictor-corrector in
 c      step3d.
@@ -618,7 +622,7 @@ c      CORRECTOR for implicit, corrects previous timestep's predictor
         do i=1,npd
 c       add uparallel to drifts to get the drift-kinetic velocity;
 c       for the corrector we need to average current and predicted
-c       timestep versions.   The drifts for the old step are stored during the 
+c       timestep versions.   The drifts for the old step are stored during the
 c       previous timestep's predictor and so are vdxold, etc;
 c       The drifts for the current timestep are calculated using the
 c       fields calculated at the end of the last timestep (predictor),
@@ -775,7 +779,7 @@ c        vpoly(i) = (bz(i)*dvexdt-bx(i)*dvezdt)*qbsqi
 c        vpolz(i) = (bx(i)*dveydt-by(i)*dvexdt)*qbsqi
 c      enddo
 c      return
-c      end  
+c      end
 
 c=========================================================================
       subroutine setfields(pgroup,npd,is,ipmin,x,y,z,ex,ey,ez,bx,by,bz,dt)
@@ -835,7 +839,7 @@ c     Now get the gradients of B**2
 
 c=========================================================================
       subroutine getgradbsq(npd,is,x,y,z,bx,by,bz)
-c      calculate grad B**2;  also calculates B^2, 1/B^2, and 
+c      calculate grad B**2;  also calculates B^2, 1/B^2, and
 c      interpolation parameter alpha and its complement
 c      Note shape of gradbsq is (3,npd), and the components
 c       are grdbsq(1,:) = dbsq/dz; grdbsq(2,:) = dbsq/dx;
@@ -863,7 +867,7 @@ c      print*,"entering getalpha from getgradbsq"
 c
 c     Assumes  E and B are already set, either via setfields
 c      or via calls in padvnc3d.
-c     Calculate B**2 
+c     Calculate B**2
       do i=1,npd
           bsq(i)=bx(i)**2 + by(i)**2 + bz(i)**2
           bsq_safe=bsq(i)+dksmall
@@ -926,7 +930,7 @@ c      use Picglb
 c         calculate interpolation parameter, 0 if magnetized, 1 if not
           omegacesq = gaminv(i)*gaminv(i)*qovermsq(isid)*bsq(i)
           omegadtsq = omegacesq*dtuse**2
-          alpha(i) = usealphacalc(isid)/sqrt(1.+alphcoef*omegadtsq)  
+          alpha(i) = usealphacalc(isid)/sqrt(1.+alphcoef*omegadtsq)
      &       + notusealphcalc(isid)
           alphabar(i)=1.-alpha(i)
        enddo
@@ -935,7 +939,7 @@ c         calculate interpolation parameter, 0 if magnetized, 1 if not
 c         calculate interpolation parameter, 0 if magnetized, 1 if not
           omegacesq = gaminv(i)*gaminv(i)*qovermsq(isid)*bsq(i)
           omegadtsq = omegacesq*dtuse**2
-          alpha(i) = usealphacalc(isid)/(1.+alphcoef*omegadtsq)  
+          alpha(i) = usealphacalc(isid)/(1.+alphcoef*omegadtsq)
      &       + notusealphcalc(isid)
           alphabar(i)=1.-alpha(i)
        enddo
@@ -944,7 +948,7 @@ c         calculate interpolation parameter, 0 if magnetized, 1 if not
 c         calculate interpolation parameter, 0 if magnetized, 1 if not
           omegacesq = gaminv(i)*gaminv(i)*qovermsq(isid)*bsq(i)
           omegadtsq = omegacesq*dtuse**2
-          alpha(i) = usealphacalc(isid)/(1.+alphcoef*omegadtsq)**palpha  
+          alpha(i) = usealphacalc(isid)/(1.+alphcoef*omegadtsq)**palpha
      &       + notusealphcalc(isid)
           alphabar(i)=1.-alpha(i)
        enddo
@@ -982,9 +986,9 @@ c      use InGen
       enddo
       return
       end
-    
 
-c============================================================================ 
+
+c============================================================================
 c END INTERPOLATION ROUTINES
 c============================================================================
 c    Temporarily sets top.pgroup.xp=x, etc, calls fetch3d, and resets
@@ -1164,7 +1168,7 @@ c     For now this only works with rz solver
 c     Construct a grid of x and z values, so we can get
 c     values of B on it.
 c      print*, "IN SET_POL"
- 
+
 c     create grid for epsilon and epszfac
       epsilon2d%xmin=0.
       epsilon2d%ymin=0.
@@ -1208,14 +1212,14 @@ c     calculate interpolation parameter, 0 if magnetized, 1 if not
 c     For now, nonrelativistic.  Need to think about appropriate
 c     generalization for fields
 c     For now check to see if ANY species is interpolated; if so
-c     calculate epsilon for the last such species.  Need to 
+c     calculate epsilon for the last such species.  Need to
 c     generalize.
       do is = 1,ns
        if (interpdk(is) == 1) then
         omegacsq = qovermsq(is)*Bsq
 c        print*, "qovermsq,Bsq,dt,omegacsq", qovermsq(is),Bsq(0,0),dt,
 c     &       omegacsq(0,0)
-        alphabar = 1. - usealphacalc(is)/sqrt(1.+alphcoef*omegacsq*dt**2)  
+        alphabar = 1. - usealphacalc(is)/sqrt(1.+alphcoef*omegacsq*dt**2)
      &       - notusealphcalc(is)
 c       We should introduce partial density fractions.  But for our test
 c       just take the total density if a species is interpolated
@@ -1233,7 +1237,7 @@ c         print*, "omegacsq, omegapsq ",omegacsq(0,0),omegapsq(0,0)
        endif
 c       print*, "epsilon2d = ", epsilon2d(1,1)
       enddo
-         
+
       return
       end
 c
@@ -1303,7 +1307,7 @@ c    --- Set quad, dipole E and B
      &              bx,by,bz,
      &              ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
      &              bendres,bendradi,gammabar,dt)
-      
+
       lresetparticlee = .false.
       deallocate(bendres, bendradi,bx,by,bz)
       return

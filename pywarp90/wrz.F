@@ -10,11 +10,11 @@ c  David P. Grote, LLNL, (510)423-7194
 c  Debbie Callahan, LLNL, (510)423-5926
 c=============================================================================
       subroutine wrzinit
- 
+
 c  Called at first reference to package (not nec. a "run" etc.).
- 
+
       call wrzvers (STDOUT)
- 
+
       return
       end
 c=============================================================================
@@ -51,20 +51,21 @@ c=============================================================================
       use FFTDiagrz
       use Sortrz
       use LinearBeam
- 
+
 c  Invoked by the GENERATE command, it sets up the problem
- 
+
 
 c  declare scratch space for getzmmnt
-       
+
        integer(ISZ):: i,k,ia,izb,is,ip,ipmin,iwin,iz,num,nzma,isid,ismax
        integer(ISZ):: i1,i2
        integer(ISZ):: nzmb,ieearmax,ieearmin,ir
-       real(kind=8):: time1,time2,er,et,ez,frext,zm,zs,eearsprs,eearmax,eearmin
+       real(kind=8):: time1,time2,zm,zs,eearsprs,eearmax,eearmin
+       real(kind=8):: er(1),et(1),ez(1),frext(1)
        real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
        real(kind=8):: wtimeoff
 
-c    Heap check on NLTSS       
+c    Heap check on NLTSS
 c      ierr = mzparam("check",1)
 c      write(STDOUT,*)"Ierr = ",ierr
 c    Heap check on NERSC
@@ -74,30 +75,30 @@ c      list(ilist)=-1
 c      enddo
 c      list(7) = 1
 c      ierr = mzparam(list,7)
- 
+
 c  Announce that we're starting up
- 
+
       write (STDOUT,10)
    10 format(" ***  particle simulation package RZ generating  ***")
 
 c  Estimate wall radius, needed for g-factor calc
-      
+
       rwall = rwallfac * rmmax
 
 c  Calculate derived quantities
 
-      call derivqty 
- 
+      call derivqty
+
 c  Initialize the cycle counter, time, etc.
- 
+
       if (nrestart .eq. " ") then
          it = 0
          time = 0.
       endif
       call stepid (it, time, zgrid)
- 
+
 c  Print values of input variables, other interesting things to text file
-      if (warpout > -1) then 
+      if (warpout > -1) then
         call edit (warpout, "runid")
         call edit (warpout, "it")
         call edit (warpout, "time")
@@ -106,12 +107,12 @@ c  Print values of input variables, other interesting things to text file
         call edit (warpout, "InPartrz")
         call edit (warpout, "InMeshrz")
       endif
- 
+
 c  Create the dynamic arrays for fields, contour plot workspace
       nmrz  = max(nr, nz)
       nrz = (nr+1) * (nz+1)
       call gallot ("Fieldsrz", 0)
- 
+
 c  Calculate mesh dimensioning quantities
       dr = (rmmax - rmmin) / nr
       dz = (zmmax - zmmin) / nz
@@ -130,11 +131,11 @@ c  Allocate the 1-d arrays
       do k = 0, nz
          zplmesh(k) = zmesh(k)
       enddo
- 
-c  Create the dynamic arrays for particles (set npmax to an estimated 
+
+c  Create the dynamic arrays for particles (set npmax to an estimated
 c  length for now, for those loading schemes that don't actually
 c  use a user-set npmax directly)
- 
+
       if (xrandom .eq. "grid") npmax = nxstripe*nystripe*nzstripe
       if (xrandom .eq. "fibonacc") npmax = nfibgrps*fibg1
       if (shell) npmax = nz
@@ -147,7 +148,7 @@ c          npmax = 8*ia/2*(ia+1)*izb
       call alotpart(pgroup)
 
 c  Load the particles, calculate the charge density and current
- 
+
       if (shell) then
          call ldshell
       elseif (linbeam) then
@@ -167,7 +168,7 @@ c     call zeroarry(curr,nz+1)
       rho = 0.
       curr = 0.
 
-      call wtimeon 
+      call wtimeon
       do is=1,ns
          do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
             ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
@@ -192,7 +193,7 @@ c     call zeroarry(rhov,nrz)
 c     call zeroarry(currv,nz+1)
       rhov = 0.
       currv = 0.
-      call wtimeon 
+      call wtimeon
         do is = 1,ns
           call psort(pgroup%nps(is),zbeam,dz)
           call vstrhorz(rhov,zbeam,pgroup%sq(is),pgroup%sw(is),rmesh)
@@ -209,13 +210,13 @@ c     call zeroarry(currv,nz+1)
 
 c  Initialize the surface charge if we are including resistivity
       call setsc
- 
+
 c  Change the size of the dynamic arrays for particles to true length
- 
+
       call ParticleGroupchange(pgroup)
 
 c  Create the dynamic arrays for particle moments; calculate moments
- 
+
       zwindows(1,0) = zmmin
       zwindows(2,0) = zmmax
       nzwind = 0
@@ -236,7 +237,7 @@ c    &                    pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),
 c    &                    pgroup%gaminv(i1:i2),pgroup%sm(1),pgroup%sw(1),2,nplive)
 c        enddo
 c        call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,pgroup%sm(1),pgroup%sw(1),3,nplive)
- 
+
 c     enddo
 c  Create the dynamic arrays for z moments; calculate moments
 
@@ -283,10 +284,10 @@ c             --- Use t=0 u data also as "old" data for extraps
      &                   1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
          enddo
       endif
- 
+
 c  Create the scratch arrays for phase space plots (permanent, for now)
 c  and set limits for plots
- 
+
 c     npsplt = min(nparpgrp, npmax)
       if (xplmin .eq. 0.) xplmin = rmmin
       if (xplmax .eq. 0.) xplmax = rmmax
@@ -294,23 +295,23 @@ c     npsplt = min(nparpgrp, npmax)
       if (yplmax .eq. 0.) yplmax = rmmax
       if (zplmin .eq. 0.) zplmin = zmmin
       if (zplmax .eq. 0.) zplmax = zmmax
- 
+
 c  Create the dynamic arrays for history data; set pointer into them
- 
-      lenhist = min ( nt/nhist + 1 , 100) 
+
+      lenhist = min ( nt/nhist + 1 , 100)
       call gallot ("Hist", 0)
       jhist = -1
 
 c  Allocate arrays which are used to find the fourier transform of
 c  a quantity as a diagnostic
-      
+
       nzfft = nzzarr
       call gallot ("FFTDiagrz", 0)
- 
+
 c  Print interesting things to plot file and teletype
       call prntpara(dr,dr,dz,lprntpara,pgroup)
       call prntparz(lprntpara)
- 
+
 c  Initial call to fieldsolver in order to initialize attz, kzsq, etc.
       call vprz (1)
 
@@ -321,7 +322,7 @@ c  Call the field solver so  we can plot phi on axis at t=0
       if (periinz) call perphirz(phi(0,-1),nr,nz)
 
 c  Call seterzrz to fill E_z and E_r arrays
-         call seterzrz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
+         call seterzrz (-1,phi,force,1,pgroup%xp,pgroup%zp,zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                efetch(1),er,et,ez,frext,erfld,ezfld,eoffrz)
          call setexte(it,dt,dz,vbeam,nr,nz)
@@ -329,7 +330,7 @@ c  Call seterzrz to fill E_z and E_r arrays
 c  If we are looking at a mode which is initially excited, find the index
 c  corresponding to that mode
       if (fftdiag) call getindx(kzsq,kzpert,indxk,nz,dr)
- 
+
 c  Initial fieldsolve, diagnostics
       call steprz ("wrzgen  ")
 
@@ -406,19 +407,19 @@ c=============================================================================
       use Particles,Only: pgroup,nplive
       use Picglbrz
       use Fieldsrz
- 
+
 c  Takes a time step
 
       integer(ISZ):: is,ipmin,ip,i1,i2
- 
+
 c  Announce that we're running
- 
+
       if (it.eq.0) write (STDOUT,10)
    10 format(" ***  particle simulation package RZ running  ***")
- 
+
 c  If it=0 calculate rho.  This way we can play with the initial
 c  conditions in Python after we generate.
- 
+
       if (it.eq.0) then
 c        call zeroarry(rho,nrz)
          rho = 0.
@@ -447,26 +448,26 @@ c           call zeroarry(rhov,nrz)
          call vprz (-1)
          if (periinz) call perphirz(phi(0,-1),nr,nz)
       endif
- 
+
 c  set timestep counter, time
- 
+
       it = it + 1
       time = it * dt
       zgrid = zgrid + vbeam*dt
       call stepid (it, time, zgrid)
- 
+
 c  set logicals
- 
+
       lfirst = .false.
       if (ncall .eq. 1) lfirst = .true.
       llast = .false.
       if (ncall .eq. maxcalls) llast = .true.
- 
+
 c  call the routine that does the actual work
- 
+
       call steprz ("wrzexe  ")
 c  Have we reached the end of the run ?
- 
+
       if ( lfinishd ) then
          call remark("wrzexe: problem completed.")
          return
@@ -477,7 +478,7 @@ c  Have we reached the end of the run ?
       else
          return
       endif
- 
+
       end
 c=============================================================================
       subroutine wrzfin()
@@ -496,29 +497,29 @@ c=============================================================================
       use Io
       use Particles,Only: pgroup
       use Picglb
- 
+
 c  Finish up at end of RUN, or on receipt of FIN
- 
- 
+
+
 c  print final edits
- 
+
 c  perform diagnostics (unless we just did)
- 
+
 c  Create history plots
- 
+
 c  Make a restart dump (unless we just did, or the user inhibits it)
- 
+
 c  create final printouts
- 
+
 c  release storage
- 
+
       call gfree ("Fieldsrz")
       call gfree ("Hist")
       call gfree ("Win_Moments")
       call gfree ("Moments")
       call gfree ("Particles")
       call gfree ("Z_arrays")
- 
+
       return
       end
 c=============================================================================
@@ -540,22 +541,22 @@ c=============================================================================
       use FFTDiagrz
       character(*):: caller
       logical(ISZ):: thisstep,thiszbeam
- 
+
 c  Advances the system forward in time, when called by WRZEXE
 c  Takes a step of zero size, to compute fields, diagnostics,
 c  at start of run when called by WRZGEN.
 
-      real(kind=8):: zbeaml,zbeamr,er,et,ez,frext
- 
+      real(kind=8):: zbeaml,zbeamr,er(1),et(1),ez(1),frext(1)
+
 c  Set logicals
- 
+
       lspecial = (lspecial .or. lfirst)
- 
+
 c  Main particle advance: x to t.l. it; v to t.l. it-1/2
 c  Half-step in v from t.l. it-1 if last step was "special"
 c  Full-step in v from t.l. it-3/2 if last step not "special"
 c  No step at all if only generating.
- 
+
       if (caller .eq. "wrzexe") then
          if (lspecial) then
             call padvncrz ("halfv   ")
@@ -575,7 +576,7 @@ c  arrays.
 
 c  "Frequent" or "infreq" phase space plots or restart dump, or done,
 c  at end of this step? Set flags
- 
+
       lfinishd = (it .ge. nt) .or. (time .ge. tstop-fuz)
       lalways  = thisstep (it           ,itplalways,NCONTROL) .or.
      &           thiszbeam(zbeaml,zbeamr,zzplalways,NCONTROL) .or.
@@ -608,7 +609,7 @@ c  Charge density and line charge plots
       if (lseldom) then
          call pltfldrz("rho",SELDOM)
       endif
- 
+
 c  Field-solve for potential (copy rho into phi first, compute e.s.e. after)
       if (lbeforefs) call callpythonfunc("beforefs","controllers")
       call copyarry (rho, phi(0,0), nrz)
@@ -622,13 +623,13 @@ c  Field-solve for potential (copy rho into phi first, compute e.s.e. after)
       endif
       if ((caller .eq. "wrzgen").and.(ifeears .eq. 3)) then
 c  Call seterzrz to fill E_z and E_r arrays
-         call seterzrz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
+         call seterzrz (-1,phi,force,1,pgroup%xp,pgroup%zp,zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                efetch(1),er,et,ez,frext,erfld,ezfld,eoffrz)
          call getforce
          call setexte(it,dt,dz,vbeam,nr,nz)
       endif
- 
+
 c  Electrostatic potential plots
       if (lalways .or. lseldom) call pltfldrz("phi",ALWAYS)
       if (lseldom) call pltfldrz("phi",SELDOM)
@@ -658,24 +659,24 @@ c     if (lseldom) call ppphivz(SELDOM)
 c  Phi on axis and Vz vs Z plot in one frame in color for videos
 c     if (lalways .or. lseldom) call ppphivzc(ALWAYS)
 c     if (lseldom) call ppphivzc(SELDOM)
- 
+
 c  Phase space diagnostics
       if (lalways .or. lseldom) call psplots (ALWAYS)
       if (lseldom) call psplots (SELDOM)
- 
+
 c  Finally, final diagnostics and history stuff
 c  (put here so frame index looks nicer)
 
       if (caller .eq. "wrzexe") then
          if (lspecial) then
-            if (fftdiag) call fftdrz 
+            if (fftdiag) call fftdrz
             call minidiag (it,time,lmoments)
          endif
       else
-         if (fftdiag) call fftdrz 
+         if (fftdiag) call fftdrz
          call minidiag (it,time,lmoments)
       endif
- 
+
       return
       end
 c=============================================================================
@@ -686,20 +687,20 @@ c=============================================================================
       real(kind=8):: rp(np), tp(np), zp(np)
       real(kind=8):: uzp(np), gaminv(np)
       real(kind=8):: br(np), bt(np), bz(np)
- 
+
 
       integer(ISZ):: ip
- 
- 
+
+
 c -- Set Bz to axial field
       do ip = 1,np
- 
+
         br(ip) = 0.
         bt(ip) = 0.
         bz(ip) = bz0
- 
+
       enddo
- 
+
       return
       end
 c=============================================================================
@@ -708,12 +709,12 @@ c=============================================================================
       real(kind=8):: zbeam,ez0,dedr
       real(kind=8):: zp(np), uzp(np), rp(np)
       real(kind=8):: er(np), et(np), ez(np)
- 
+
 c  Set the electric fields from the quads etc.
 c  Also zeros the electric field if particle is lost (uzp(ip)=0).
 
       integer(ISZ):: ip
- 
+
       do ip=1,np
 
         if (dedr .ne. 0.) then
@@ -721,14 +722,14 @@ c  Also zeros the electric field if particle is lost (uzp(ip)=0).
         endif
 
       enddo
- 
+
       return
       end
 c=============================================================================
       subroutine fixrhorz
- 
+
 c  Corrects charge density for curvature
- 
+
       return
       end
 c=============================================================================
@@ -815,15 +816,15 @@ c=============================================================================
       use InGen
       use InGenrz
       use Z_arrays
- 
+
 c  Calculate the electrostatic energy, sum of rho*phi*r*pi
 c  Includes external fields: Uniform focusing and eears for cigars
 c  This does it in a partially vectorized manner.
- 
+
 
       real(kind=8):: zm,phiextun
       integer(ISZ):: ir,iz
- 
+
       ese = 0.
       zm = (zimax - zimin)*(1. - straight)/2.
 
@@ -860,11 +861,11 @@ c  Use scrtch(1,ir) to hold the cell volumes
      &          phiextun - dedr * 0.5 * rmesh(ir)**2)*scrtch(1,ir)
         enddo
       enddo
- 
+
       do ir=0,nr
         ese = ese + scrtch(0,ir)
       enddo
- 
+
       return
       end
 c=============================================================================
@@ -879,17 +880,17 @@ c=============================================================================
       use InGen
       use InGenrz
       use LinearBeam
- 
+
 
       real(kind=8):: density,sumr,sumr2,sume,sumer,sume2,denom,slope,yint
       integer(ISZ):: icount,ir,iz,irsave,irz,nbeam
- 
+
 c  Calculate the linear external force which balances the space-charge
 c  force of the beam particles.
- 
+
 c  Method 1 -- calculate average density and then use analytic formula
 c  for finding force
- 
+
       if (frcetype .eq. "analytic") then
         if (.not. linbeam) then
          density = 0.0
@@ -900,12 +901,12 @@ c  for finding force
               icount = icount + 1
            endif
          enddo
- 
+
          density = density/float(icount)
         else
          density = rho(0,nz/2)
         endif
- 
+
          dedr = -pgroup%sq(1)*density*0.5/eps0
          do iz = 0,nz
          do ir = 0,nr
@@ -914,10 +915,10 @@ c  for finding force
          enddo
 
       endif
- 
+
 C  Method 2 -- Do a linear regression of the electric field and
 c  use this to calculate the force
- 
+
       if (frcetype .eq. "regress") then
          dr = rmesh(3) - rmesh(2)
          do ir = 0,nr-1
@@ -934,8 +935,8 @@ c           if (rhalf(ir).lt.a0) then
                sumr2 = sumr2 + rhalf(ir)**2
             endif
          enddo
- 
- 
+
+
          sume = 0.0
          sumer = 0.0
          sume2 = 0.
@@ -946,13 +947,13 @@ c           if (rhalf(ir).lt.a0) then
          do ir = 0,irz
             force(ir,iz) = pgroup%sq(1)*(phi(ir,iz) - phi(ir+1,iz))/dr
          enddo
- 
+
          do ir = 0,irz
             sumer = sumer + force(ir,iz)*rhalf(ir)
             sume  = sume  + force(ir,iz)
             sume2 = sume2 + force(ir,iz)**2
          enddo
- 
+
          nbeam = irz + 1
          denom = nbeam*sumr2 - sumr**2
          if (denom .ne. 0.) then
@@ -963,12 +964,12 @@ c           if (rhalf(ir).lt.a0) then
          slope = 0.
          yint = 0.
          endif
- 
+
          do ir = 0,nr
             force(ir,iz) = -(slope*rmesh(ir) + yint)
          enddo
 
- 
+
        enddo
       endif
 
@@ -988,10 +989,10 @@ c  If forcetype is dedr, then external force is added via exterz
          enddo
          enddo
       endif
- 
+
       return
       end
- 
+
 c=============================================================================
       subroutine gtlchgrzold
       use Constant
@@ -1000,22 +1001,22 @@ c=============================================================================
       use InGenrz
       use Fieldsrz
       use Z_arrays
- 
+
 c  Calculates the line charge density from rho.
 
 
       integer(ISZ):: iz,ir
- 
+
       do iz=0,nz
         linechg(iz) = 0.0
         do ir=0,nr
           linechg(iz) = linechg(iz) + rho(ir,iz)*rmesh(ir)
         enddo
- 
+
         linechg(iz) = linechg(iz)*2.*pi*dr
- 
+
       enddo
- 
+
       return
       end
 c=============================================================================
@@ -1035,17 +1036,17 @@ c=============================================================================
       use Z_Moments
       use LinearBeam
       character(*):: center
- 
+
 c  Advances the particles position and velocity according to CENTER,
 c  and also advances RHO.
- 
- 
+
+
       integer(ISZ):: is,ipmin,ip,i,isid,ismax,i1,i2
       real(kind=8),pointer:: er(:), et(:), ez(:)
       real(kind=8),pointer:: br(:), bt(:), bz(:)
       real(kind=8):: frext(nparpgrp)
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
- 
+
       ismax = maxval(pgroup%sid)+1
       er => pgroup%ex
       et => pgroup%ey
@@ -1061,7 +1062,7 @@ c        call zeroarry(rho,nrz)
       endif
 c     call zeroarry(curr,nz+1)
       curr = 0.
- 
+
 c  Zero the moments if center is synchv
       if (center .eq. "synchv") then
 c       call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,pgroup%sm(1),pgroup%sw(1),1,nplive)
@@ -1070,22 +1071,22 @@ c       call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%
      &                nplive,0.,0.,0.,1,-1,ns,
      &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
       endif
- 
+
 c  Loop over species
       do is=1,ns
          isid = pgroup%sid(is-1) + 1
 c  Call seterzrz to fill E_z and E_r arrays
          if (it .le. 1) then
-         call seterzrz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
+         call seterzrz (-1,phi,force,1,pgroup%xp,pgroup%zp,zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
-     &                efetch(is),er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
+     &                efetch(is),er,et,ez,frext,erfld,ezfld,eoffrz)
          else
-         call seterzrz (0,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
+         call seterzrz (0,phi,force,1,pgroup%xp,pgroup%zp,zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
-     &                efetch(is),er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
+     &                efetch(is),er,et,ez,frext,erfld,ezfld,eoffrz)
          endif
          call setexte(it,dt,dz,vbeam,nr,nz)
- 
+
 c  Loop over particle block, and move each block seperately
          do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
             ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
@@ -1138,22 +1139,26 @@ c    &                       pgroup%gaminv(i1:i2),pgroup%sm(is),pgroup%sw(is),2,
             endif
          enddo
          if (center .eq. "fullv" .or. center .eq. "halfv") then
-            if (periinz) call periz(pgroup%nps(is),pgroup%zp(pgroup%ins(is)),zgrid,zmmax,zmmin)
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is) + pgroup%nps(is) - 1
+            if (periinz) call periz(pgroup%nps(is),pgroup%zp(i1:i2),zgrid,zmmax,zmmin)
             if (stickyz)
-     &         call stckyz(pgroup%nps(is),pgroup%zp(pgroup%ins(is)),zmmax,zmmin,dz,pgroup%uxp(pgroup%ins(is)),
-     & pgroup%uyp(pgroup%ins(is)),pgroup%uzp(pgroup%ins(is)),pgroup%gaminv(pgroup%ins(is)),zgrid)
+     &         call stckyz(pgroup%nps(is),pgroup%zp(i1:i2),zmmax,zmmin,dz,pgroup%uxp(i1:i2),
+     & pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),zgrid)
             if (stickyxy) call stckyrz(pgroup%nps(is),
-     &                                pgroup%xp(pgroup%ins(is)),rmmax,rmmin,dr,
-     &                                 pgroup%zp(pgroup%ins(is)),zmmin,dz,
-     & pgroup%uxp(pgroup%ins(is)),pgroup%uyp(pgroup%ins(is)),pgroup%uzp(pgroup%ins(is)),
-     &                                 pgroup%gaminv(pgroup%ins(is)),
+     &                                pgroup%xp(i1:i2),rmmax,rmmin,dr,
+     &                                 pgroup%zp(i1:i2),zmmin,dz,
+     & pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),pgroup%uzp(i1:i2),
+     &                                 pgroup%gaminv(i1:i2),
      &                                 zgrid,pgroup%ins(is),it)
             call processlostpart(pgroup,is,clearlostpart,time,zbeam)
             do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
                ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
+               i1 = ipmin
+               i2 = ipmin + ip - 1
                call setrhorz (rho, ip, pgroup%xp(i1:i2), pgroup%zp(i1:i2), zgrid,
      &                        pgroup%uzp(i1:i2), pgroup%sq(is), pgroup%sw(is), depos)
-              if (ifgap) 
+              if (ifgap)
      &         call setcurr(curr,ip,pgroup%zp(i1:i2),pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
      &                      pgroup%sq(is),pgroup%sw(is),zgrid,dz,zmmin)
             enddo
@@ -1174,50 +1179,50 @@ c         call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgrou
      &                 0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
      &                 1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
          endif
- 
+
 c        --- Make rho periodic if periodic in z
          if ((center.eq."fullv" .or. center.eq."halfv") .and. periinz)
      &         call perrhorz(rho,nr,nz)
- 
+
 c        --- Set center of beam, if particles were advanced
          if (center.eq."fullv" .or. center.eq."halfv") zbeam = zgrid
- 
+
       enddo
 c        --- calculate rho diagnostics
          if (center .eq. "synchv") call rhodiarz
- 
+
       return
       end
 c=============================================================================
       subroutine perphirzold(phi,nr,nz)
       integer(ISZ):: nr,nz
       real(kind=8):: phi(0:nr,-1:nz+1)
- 
+
 c  Sets the first and last slices of phi for periodicity
 
       integer(ISZ):: ir
- 
+
       do ir=0,nr
           phi(ir,-1)   = phi(ir,nz-1)
           phi(ir,nz+1) = phi(ir,1)
       enddo
- 
+
       return
       end
 c=============================================================================
       subroutine perrhorzold(rho,nr,nz)
       integer(ISZ):: nr,nz
       real(kind=8):: rho(0:nr,0:nz)
- 
+
 c  Adds the first and last slices of rho for periodicity
 
       integer(ISZ):: ir
- 
+
       do ir=0,nr
        rho(ir,0)  = (rho(ir,0) + rho(ir,nz))
        rho(ir,nz) = rho(ir,0)
       enddo
- 
+
       return
       end
 c=============================================================================
@@ -1233,20 +1238,20 @@ c=============================================================================
       real(kind=8):: er(np),et(np),ez(np),br(np),bt(np),bz(np),frext(np)
       real(kind=8):: q,m,dt
       real(kind=8):: tmp(np)
- 
+
 c  Advances the particles
- 
+
 
       integer(ISZ):: ip
       real(kind=8):: tr,tt,tz,tsq,sr,st,sz,urppr,utppr,uzppr,urppl,utppl,uzppl
       real(kind=8):: urpmi,utpmi,uzpmi
       real(kind=8):: x2p,y2p
- 
+
 c  -------  Half Velocity Advance  -------
 c  from it-1 to it-1/2
- 
+
       if (center .eq. "halfv") then
- 
+
         do ip=1,np
           tr = gaminv(ip)*q*br(ip)*dt/(4.*m)
           tt = gaminv(ip)*q*bt(ip)*dt/(4.*m)
@@ -1255,32 +1260,32 @@ c  from it-1 to it-1/2
           sr = 2.*tr/(1. + tsq)
           st = 2.*tt/(1. + tsq)
           sz = 2.*tz/(1. + tsq)
- 
+
           urppr = urp(ip) + utp(ip)*tz - uzp(ip)*tt
           utppr = utp(ip) + uzp(ip)*tr - urp(ip)*tz
           uzppr = uzp(ip) + urp(ip)*tt - utp(ip)*tr
- 
+
           urppl = urp(ip) + utppr*sz - uzppr*st
           utppl = utp(ip) + uzppr*sr - urppr*sz
           uzppl = uzp(ip) + urppr*st - utppr*sr
- 
+
           urp(ip) = urppl + (q*er(ip)+frext(ip))*dt/(2.*m)
           utp(ip) = utppl + q*et(ip)*dt/(2.*m)
           uzp(ip) = uzppl + q*ez(ip)*dt/(2.*m)
         enddo
- 
+
       endif
- 
+
 c  -------  Synchronize Velocity With Position  -------
 c  from it-1/2 to it
- 
+
       if (center .eq. "synchv") then
- 
+
         do ip=1,np
           urpmi = urp(ip) + (q*er(ip)+frext(ip))*dt/(2.*m)
           utpmi = utp(ip) + q*et(ip)*dt/(2.*m)
           uzpmi = uzp(ip) + q*ez(ip)*dt/(2.*m)
- 
+
           tr = gaminv(ip)*q*br(ip)*dt/(4.*m)
           tt = gaminv(ip)*q*bt(ip)*dt/(4.*m)
           tz = gaminv(ip)*q*bz(ip)*dt/(4.*m)
@@ -1288,28 +1293,28 @@ c  from it-1/2 to it
           sr = 2.*tr/(1. + tsq)
           st = 2.*tt/(1. + tsq)
           sz = 2.*tz/(1. + tsq)
- 
+
           urppr = urpmi + utpmi*tz - uzpmi*tt
           utppr = utpmi + uzpmi*tr - urpmi*tz
           uzppr = uzpmi + urpmi*tt - utpmi*tr
- 
+
           urp(ip) = urpmi + utppr*sz - uzppr*st
           utp(ip) = utpmi + uzppr*sr - urppr*sz
           uzp(ip) = uzpmi + urppr*st - utppr*sr
         enddo
- 
+
       endif
- 
+
 c  -------  Full Velocity Advance  -------
 c  from it-3/2 to it-1/2
- 
+
       if (center .eq. "fullv") then
- 
+
         do ip=1,np
           urpmi = urp(ip) + (q*er(ip)+frext(ip))*dt/(2.*m)
           utpmi = utp(ip) + q*et(ip)*dt/(2.*m)
           uzpmi = uzp(ip) + q*ez(ip)*dt/(2.*m)
- 
+
           tr = gaminv(ip)*q*br(ip)*dt/(2.*m)
           tt = gaminv(ip)*q*bt(ip)*dt/(2.*m)
           tz = gaminv(ip)*q*bz(ip)*dt/(2.*m)
@@ -1317,29 +1322,29 @@ c  from it-3/2 to it-1/2
           sr = 2.*tr/(1. + tsq)
           st = 2.*tt/(1. + tsq)
           sz = 2.*tz/(1. + tsq)
- 
+
           urppr = urpmi + utpmi*tz - uzpmi*tt
           utppr = utpmi + uzpmi*tr - urpmi*tz
           uzppr = uzpmi + urpmi*tt - utpmi*tr
- 
+
           urppl = urpmi + utppr*sz - uzppr*st
           utppl = utpmi + uzppr*sr - urppr*sz
           uzppl = uzpmi + urppr*st - utppr*sr
- 
+
           urp(ip) = urppl + (q*er(ip)+frext(ip))*dt/(2.*m)
           utp(ip) = utppl + q*et(ip)*dt/(2.*m)
           uzp(ip) = uzppl + q*ez(ip)*dt/(2.*m)
         enddo
- 
+
       endif
- 
+
 c  -------  Gamma Advance     -------
       call gammaadv(np,gaminv,urp,utp,uzp,gamadv,lrelativ)
 c  -------  Advance Position  -------
 c  from it-1 to it
- 
+
       if (center .eq. "halfv" .or. center .eq. "fullv") then
- 
+
 c  Update the positions using the particle advance given in Birdsall and
 c  Langdon p 338, then rotate velocities to match coordinates of the
 c  particle -- See diagram p 339 of B&L
@@ -1367,9 +1372,9 @@ c            tp(ip) = tp(ip) + asin(y2p/rp(ip))
              rp(ip) = -rp(ip)
         endif
         enddo
- 
+
       endif
- 
+
       return
       end
 c=============================================================================
@@ -1385,13 +1390,13 @@ c=============================================================================
       real(kind=8):: er(np), et(np), ez(np), frext(np)
       real(kind=8):: erfld(0:nr,0:nz), ezfld(0:nr,0:nz)
       integer(ISZ):: efetch
- 
+
       integer(ISZ):: ip,iz,ir,i,k
       real(kind=8):: tdri,tdzi,r1,w1,r2,w2
 
 c  Sets electric field and external force for a group of up to 64 particles
- 
- 
+
+
 c  Algorithm notes: phi array is dimensioned (0:nr,0:nz),
 c  so cell index into 1d phi array for vectorized deposition is:
 c     i + k*(nr+1)
@@ -1401,26 +1406,26 @@ c        + u1 *  w2 * er(i+1,k  )
 c        + u2 *  w1 * er(i  ,k+1)
 c        + u1 *  w1 * er(i+1,k+1)
 c     ...
- 
+
 c  Evaluate E field on the grid
- 
+
       tdri = 1. / (2. * dr)
       tdzi = 1. / (2. * dz)
 
-c  itask = 0; fill the field arrays 
+c  itask = 0; fill the field arrays
       if (itask .le. 0) then
 
 c  Do the boundaries separately -- phi(-1,iz) = phi(1,iz) since the
 c  system is cylindrically symmetric.
-c     if ((.not. shell) .and. (.not. linbeam)) then 
-      if (.not. shell) then 
+c     if ((.not. shell) .and. (.not. linbeam)) then
+      if (.not. shell) then
       do iz = 0,nz
          erfld(0,iz) = tdri*(phi(1,iz) - phi(1,iz))
          ezfld(0,iz) = tdzi*(phi(0,iz-1) - phi(0,iz+1))
          erfld(nr,iz) = (1./dr)*(phi(nr-1,iz) - phi(nr,iz))
          ezfld(nr,iz) = tdzi*(phi(nr,iz-1) - phi(nr,iz+1))
       enddo
- 
+
       do ir = 1,nr-1
       do iz = 1,nz
          erfld(ir,iz) = tdri*(phi(ir-1,iz) - phi(ir+1,iz))
@@ -1448,7 +1453,7 @@ c        erfld(nr,iz) = (1./dr)*(phi(nr-1,iz) - phi(nr,iz))
          erfld(nr,iz) = 0.0
          ezfld(nr,iz) = tdzi*(phi(nr,iz-1) - phi(nr,iz+1))
       enddo
- 
+
       do ir = 1,nr-1
       do iz = 0,nz
 c        erfld(ir,iz) = (phi(ir-1,iz) - phi(ir,iz))/dr
@@ -1470,51 +1475,51 @@ c        erfld(ir,iz) = (phi(ir-1,iz) - phi(ir,iz))/dr
       enddo
       enddo
       endif
- 
+
 c  Interpolate the electric field and the external force to the particles ...
 c  We use volume weighting scheme in cylindrical coordinates.
- 
+
       if (itask .eq. 1) then
 
       do ip = 1, np
- 
+
          i =  (rp(ip) - rmmin) / dr
          k =  (zp(ip) - zbeam - zmmin) / dz
- 
+
          r1 = (rp(ip) - rmmin)  - i*dr
          w1 = (zp(ip) - zbeam - zmmin)  - k*dz
- 
+
          r2 = dr - r1
          w2 = dz - w1
- 
+
          w1 = w1 / dz
          w2 = w2 / dz
- 
+
          r1 = r1 / dr
          r2 = r2 / dr
- 
+
          er(ip) = (r2 *  w2 * erfld(i,k)
      &           + r1 *  w2 * erfld(i+1,k)
      &           + r2 *  w1 * erfld(i,k+1)
      &           + r1 *  w1 * erfld(i+1,k+1))
- 
+
          frext(ip) = (r2 *  w2 * force(i,k)
      &              + r1 *  w2 * force(i+1,k)
      &              + r2 *  w1 * force(i,k+1)
      &              + r1 *  w1 * force(i+1,k+1))
- 
+
 c   Set e_theta to zero ...
          et(ip) = 0.0
- 
+
          ez(ip) = (r2 *  w2 * ezfld(i,k)
      &           + r1 *  w2 * ezfld(i+1,k)
      &           + r2 *  w1 * ezfld(i,k+1)
      &           + r1 *  w1 * ezfld(i+1,k+1))
- 
+
       enddo
 
       endif
- 
+
       return
       end
 c=============================================================================
@@ -1530,13 +1535,13 @@ c   charge density at each z point.
 
       integer(ISZ):: iz,ir
       real(kind=8):: vol
- 
+
          vol = 2.*dz*dr*dr*pi
          do iz = 0,nz-1
 c  the 1/8 is because the volume at r=0 is 1/8 *(2.*pi*dr*dr*dz)
            schrg(iz) = rho(0,iz)/8.
            do ir = 1,nr
-            schrg(iz) = schrg(iz) + rho(ir,iz)*ir 
+            schrg(iz) = schrg(iz) + rho(ir,iz)*ir
            enddo
          enddo
          do iz = 0,nz-1
@@ -1545,10 +1550,10 @@ c  the 1/8 is because the volume at r=0 is 1/8 *(2.*pi*dr*dr*dz)
 
 c  Make the surface charge periodic
       schrg(nz) = schrg(0)
- 
+
       return
       end
- 
+
 c=============================================================================
       subroutine stptclrz
       use GlobalVars
@@ -1564,11 +1569,11 @@ c=============================================================================
       use Setpworkrz
       integer(ISZ):: envxport
       character(72):: errline
- 
+
 c  Loads particles; sets npmax, np, etc.
 c  Note that species 1 is the main (beam) ion species, and obtains
 c  its charge, mass, etc. from global quantities such as aion, zion.
- 
+
       integer(ISZ):: npm,ip,np_main,is,k_outer,i1_outer,k,i1,i,izstripe,icheck
       integer(ISZ):: nfib2,nfib3,nfib4,j,ii,ipart,ipmin,ipt
       integer(ISZ):: np
@@ -1576,7 +1581,7 @@ c  its charge, mass, etc. from global quantities such as aion, zion.
       real(kind=8):: phi1,phi2,r,vr,vt,gfact,z0
       real(kind=8):: uxpert(0:nparpgrp),uzpert(0:nparpgrp)
       real(kind=8):: wranf,rm,rnrev
- 
+
 c  Set npgrp so Setpworkrz arrays are correct size
       if (xrandom .eq. "fibonacc") npgrp = nparpgrp
       if (xrandom .eq. "digitrev") npgrp = nparpgrp
@@ -1587,27 +1592,27 @@ c  Set npgrp so Setpworkrz arrays are correct size
      &         xrandom
         call kaboom(errline)
       endif
- 
+
       call gallot ("Setpworkrz", 0)
- 
+
 c  Set npm to loop through all possible particles
       if (xrandom .eq. "fibonacc") npm = nfibgrps*fibg1
       if (xrandom .eq. "digitrev") npm = npmax
       if (xrandom .eq. "pseudo"  ) npm = npmax
       if (xrandom .eq. "grid"    ) npm = nxstripe*nystripe*nzstripe
- 
+
       ip = 0
       np = 0
       np_main=npm-np_pert
       rnpmi = 1./np_main
       strgt=straight
- 
+
 c----------------------------------
 c  Begin main loop over species
 c----------------------------------
- 
+
       do 1000 is = 1, ns
- 
+
       zmid = .5 * (zimax + zimin)
       zlen = zimax - zimin
       zleft=zimin
@@ -1616,9 +1621,9 @@ c  CODE CURRENTLY IMPLEMENT FOR semi-gauss, cigar LOADING
       do 1001 k_outer = 1, npm, np_main
 c
       i1_outer = min(npm, k_outer+np_main-1)
-c 
+c
 c  MAIN INITIALIZATION LOOP
-c 
+c
       do k = k_outer, i1_outer, npgrp
          i1 = min(i1_outer, k+npgrp-1)
 c
@@ -1730,7 +1735,7 @@ c          --- set only first time through
              enddo
            endif
          endif
-           
+
 
 c  Load tranverse stuff
 c  semi-gaussian distribution
@@ -1939,7 +1944,7 @@ c
 1001  continue
 c
 c  Set particle number, indices, etc.
- 
+
       pgroup%ins(is) = np + 1
       pgroup%nps(is) = ip - np
       np = ip
@@ -1950,7 +1955,7 @@ c  Set particle number, indices, etc.
          if (vbeam .ne. 0.)
      &    pgroup%sw(is) = abs(ibeam*(zimax-zimin)/(vbeam*echarge*zion*np))
       endif
- 
+
 c     Adjust weighting of particles since cigar() makes beam more dense,
 c     also adjust for removal of particles used in perturbation.
       if (cigarld) then
@@ -1970,7 +1975,7 @@ c        pgroup%yp(ipart) = atan(pgroup%yp(ipart)/pgroup%xp(ipart))
          pgroup%yp(ipart) = 0.
          pgroup%xp(ipart) = r
       enddo
-c   Add perturbation in velocity 
+c   Add perturbation in velocity
       if (vzpert .gt. 0.) then
          gfact = log(rmmax/a0)/(2.*pi*eps0)
          vphase = sqrt(abs(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1))))
@@ -1994,13 +1999,13 @@ c   Add perturbation in velocity
          gfact = log(rmmax/a0)/(2.*pi*eps0)
          vphase = sqrt(abs(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1))))
          z0 = 1./kzpert
-         
+
          do ipart = 1,np
             pgroup%uzp(ipart) = pgroup%uzp(ipart) + (vzpert*vphase)/
      &                   (1.+(pgroup%zp(ipart)/z0)**2)
          enddo
       endif
-            
+
 
 c  If particle has left the region, put it back using periodic bc's
 
@@ -2020,13 +2025,13 @@ c  If particle has left the region, put it back using periodic bc's
 
 
  1000 continue
- 
+
 c--------------------------------
 c  End main loop over species
 c--------------------------------
- 
+
       call gfree ("Setpworkrz")
- 
+
       return
       end
 c=============================================================================
@@ -2041,10 +2046,10 @@ c=============================================================================
       real(kind=8):: rho1d (0:*)
       real(kind=8):: rp(np), zp(np), uzp(np)
       character(*):: depos
- 
+
 c  Sets charge density
 
- 
+
 c  Algorithm notes: rho array is dimensioned (0:nr,0:nz),
 c  so cell index into 1d rho array for vectorized deposition is:
 c     i + k*(nr+1)
@@ -2057,7 +2062,7 @@ c  leads to a more complicated indirect address for the vectorized
 c  gather-add-scatter loop.  It seems about 3% slower than the present way.
 c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
- 
+
       integer(ISZ):: ip,ir,i,k,ind0,m
       real(kind=8):: g,r1,r2,w1,w2
 
@@ -2067,25 +2072,25 @@ c     --- For "scalar" (actually partly vectorized) algorithm
       integer(ISZ):: ii(0:256-1), kk(0:256-1)
 c     --- For both algorithms
       real(kind=8):: s(0:3,0:256-1)
- 
+
 c  Set rmesh(0) to be dr/8 so that loop will vectorize and then
 c  set it back at the end.
       rmesh(0) =  dr / 8.
- 
+
 c--------------------------------------
 c  Begin vectorized deposition loop
 c--------------------------------------
       if (depos .eq. "vector") then
- 
+
 c  Set up offset array for vectorized deposition:
- 
+
       moff(0) = 0
       moff(1) = 1
       moff(2) = nr+1
       moff(3) = nr+2
- 
+
 c  Begin main loop over species, groups of 256 particles
- 
+
       g = wght * q / (pi * (dr * dz)**2)
 c     --- set all weights equal to zero
       do ip = 0, np-1
@@ -2124,21 +2129,21 @@ c     --- there'd be a hazard if we interchanged the loops.
             rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
          enddo
       enddo
- 
+
 c    --- density at r=0 is only 1/2 of what it should be since particles
 c        in the region r=-dr to r=0 would contribute the same amount of
 c        density as those in r=0 to r=dr
 c     do i = 0,nz
 c        rho1d(i*(nr+1)) = 2.*rho1d(i*(nr+1))
 c     enddo
- 
+
 c--------------------------------------
 c  Begin scalar deposition loop
 c--------------------------------------
       elseif (depos .eq. "scalar") then
- 
+
 c  Begin main loop over species, groups of 64 particles
- 
+
       g = wght * q / (pi * (dr * dz)**2)
 c     --- vectorized loop to compute indices, weights
       do ip = 1, np
@@ -2165,19 +2170,19 @@ c     --- scalar loop does the actual deposition
          rho(ii(ir)+1,kk(ir)+1)
      &  =rho(ii(ir)+1,kk(ir)+1) + s(3,ir)
       enddo
- 
+
 c    --- density at r=0 is only 1/2 of what it should be since particles
 c        in the region r=-dr to r=0 would contribute the same amount of
 c        density as those in r=0 to r=dr
 c     do i = 0,nz
 c        rho1d(i*(nr+1)) = 2.*rho1d(i*(nr+1))
 c     enddo
- 
+
       endif
 
 c  Put rmesh(0) back
       rmesh(0) = rmmin
- 
+
       return
       end
 c=============================================================================
@@ -2187,11 +2192,11 @@ c=============================================================================
       real(kind=8):: rmmax,rmmin,dr,zmmin,dz,zgrid
       real(kind=8):: rp(np), zp(np)
       real(kind=8):: urp(np), utp(np), uzp(np), gaminv(np)
- 
+
 c  Enforces sticky b.c.'s on the r wall
 
       integer(ISZ):: ip
- 
+
       do ip=1,np
         if (rp(ip).ge.rmmax-dr) gaminv(ip) = 0.
 c       if (rp(ip).ge.rmmax-dr) then
@@ -2202,7 +2207,7 @@ c         utp(ip) = 0.0
 c         uzp(ip) = 0.0
 c       endif
       enddo
- 
+
       return
       end
 c=============================================================================
@@ -2231,10 +2236,10 @@ c=============================================================================
       use InGen
       use Fieldsrz
       integer(ISZ):: iwhich
- 
+
 c  Interface to VPOISRZ using variables from database of package RZ
- 
- 
+
+
       call vpoisrz (iwhich, phi(0,0), phi(0,0), kzsq, schrg, eta,
      & phikold, taurc,
      & attz, filt, dt, vbeam, rmmax-rmmin, zmmax-zmmin,
@@ -2273,7 +2278,7 @@ c=============================================================================
       use Z_arrays
 
       integer(ISZ):: iz
-      
+
       do iz = 0,nzfft
          xreal(iz) = linechg(iz)
          ximag(iz) = 0.
@@ -2341,7 +2346,7 @@ c   Make all the group numbers positive
           igrp(n) = igrp(n) + ignme
        enddo
 
-c   Allocate space if ignmax is larger than it was the last time 
+c   Allocate space if ignmax is larger than it was the last time
        if (ignmax .gt. ignold) call gchange("Sortrz",0)
 
 c      call zeroarry(nig,ignmax)
@@ -2355,7 +2360,7 @@ c   Get the number of particles in each group
 
        ipnt(1) = 1
        ipindex(1) = 1
-c   Put the particle numbers into an array and use pointers to 
+c   Put the particle numbers into an array and use pointers to
 c   keep track of where the groups begin and end
        do ign = 2,ignmax
           ipnt(ign) = ipnt(ign-1) + nig(ign-1)
@@ -2380,14 +2385,14 @@ c=============================================================================
       real(kind=8):: zbeam,q,wght
       real(kind=8):: curr(0:*)
 c  Sets charge density
- 
+
 c--------------------------------------
 c  Begin vectorized deposition loop
 c--------------------------------------
 
       integer(ISZ):: ign,m,ip,ioffset,npart
       real(kind=8):: g,dzi,w0,w1
- 
+
       g = wght * q / dz
       dzi = 1. / dz
 
@@ -2409,7 +2414,7 @@ c     --- vectorized loop to compute indices, weights
          curr(index(0,m)+1)=curr(index(0,m)+1) + s(1,m)
        enddo
       enddo
- 
+
       return
       end
 
@@ -2425,7 +2430,7 @@ c=============================================================================
       real(kind=8):: rho1d(0:*)
       real(kind=8):: moff(0:3)
 c  Sets charge density
- 
+
       real(kind=8):: rmesh(0:nr)
       integer(ISZ):: ign,npart,ioffset,ip,i,k,ind0,m
       real(kind=8):: g,r1,r2,w1,w2
@@ -2433,11 +2438,11 @@ c  Sets charge density
 c   Set rmesh(0) to dr/8 so that the first loop vectorizes
 c   set it back at the end of the routine
       rmesh(0) = dr/8.
- 
+
 c--------------------------------------
 c  Begin vectorized deposition loop
 c--------------------------------------
- 
+
       g = wght * q / (pi * (dr * dz)**2)
       moff(0) = 0
       moff(1) = 1
@@ -2463,10 +2468,10 @@ c     --- vectorized loop to compute indices, weights
          index(3,m) = ind0 + moff(3)
          s(0,m) = g * r2 * w2 / (2.*rmesh(i))
          s(2,m) = g * r2 * w1 / (2.*rmesh(i))
-         s(1,m) = g * r1 * w2 / (2.*rmesh(i+1)) 
-         s(3,m) = g * r1 * w1 / (2.*rmesh(i+1)) 
+         s(1,m) = g * r1 * w2 / (2.*rmesh(i+1))
+         s(3,m) = g * r1 * w1 / (2.*rmesh(i+1))
        enddo
-         
+
        do m = 1,npart
          rho1d(index(0,m))=rho1d(index(0,m)) + s(0,m)
          rho1d(index(1,m))=rho1d(index(1,m)) + s(1,m)
@@ -2474,7 +2479,7 @@ c     --- vectorized loop to compute indices, weights
          rho1d(index(3,m))=rho1d(index(3,m)) + s(3,m)
        enddo
       enddo
- 
+
 c  Return rmesh(0) to the correct value
       rmesh(0) = rmmin
 
@@ -2507,12 +2512,12 @@ c=============================================================================
        vphase = sqrt(abs(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1))))
 
 c  Load particles in a shell, one particle per cell
-       
+
        if (vzpert .lt. 0.) then
        z0 = 1./kzpert
        do iz = 1,nz
           pgroup%zp(iz) = zimin + dz*(iz-1) + dz/2.
-          pgroup%xp(iz) = a0 + dr/2. 
+          pgroup%xp(iz) = a0 + dr/2.
           pgroup%uzp(iz) = vbeam + vzpert*vphase/(1. + (pgroup%zp(iz)/z0)**2)
           pgroup%uxp(iz) = 0.
           pgroup%uyp(iz) = 0.
@@ -2521,7 +2526,7 @@ c  Load particles in a shell, one particle per cell
        elseif (vzpert .gt. 0.) then
        do iz = 1,nz
           pgroup%zp(iz) = zimin + dz*(iz-1) + dz/2.
-          pgroup%xp(iz) = a0 + dr/2. 
+          pgroup%xp(iz) = a0 + dr/2.
           pgroup%uzp(iz) = vbeam + vzpert*vphase*cos(kzpert*pgroup%zp(iz))
           pgroup%uxp(iz) = 0.
           pgroup%uyp(iz) = 0.
@@ -2534,8 +2539,8 @@ c  Load particles in a shell, one particle per cell
        else
        do iz = 1,nz
           pgroup%zp(iz) = zimin + dz*(iz-1) + dz/2.
-          pgroup%xp(iz) = a0 + dr/2. 
-          pgroup%uzp(iz) = vbeam 
+          pgroup%xp(iz) = a0 + dr/2.
+          pgroup%uzp(iz) = vbeam
           pgroup%uxp(iz) = 0.
           pgroup%uyp(iz) = 0.
           pgroup%yp(iz) = 0.
@@ -2565,7 +2570,7 @@ c=============================================================================
 
        zlen = zimax - zimin
 
-c  Load particles 
+c  Load particles
 
        zs = zlen * straight
        zends = zlen*(1.-straight)
@@ -2611,8 +2616,8 @@ c        do isame = 1,8*ir
          do isame = 1,(8*ir+4)
            ipart = ipart + 1
            pgroup%zp(ipart) = (iz + 0.5)*dz + zmmin
-c          pgroup%xp(ipart) = ir*dr 
-           pgroup%xp(ipart) = dr * (ir + 0.5*(1. + (1./(2.*ir+1.)))) 
+c          pgroup%xp(ipart) = ir*dr
+           pgroup%xp(ipart) = dr * (ir + 0.5*(1. + (1./(2.*ir+1.))))
            pgroup%yp(ipart) = 0.
            pgroup%uxp(ipart) = 0.
            pgroup%uyp(ipart) = 0.
@@ -2633,7 +2638,7 @@ c    &                  (pgroup%zp(ipart)-zmid)/z02 * xp(ipart)
          do isame = 1,12*ia+8
            ipart = ipart + 1
            pgroup%zp(ipart) = (iz + 0.5)*dz + zmmin
-c          pgroup%xp(ipart) = ir*dr 
+c          pgroup%xp(ipart) = ir*dr
            pgroup%xp(ipart) = dr * (ia + (8.*ia+8.)/(12.*ia+8.))
            pgroup%yp(ipart) = 0.
            pgroup%uxp(ipart) = 0.
@@ -2686,8 +2691,8 @@ c          do isame = 1,8*ir
            do isame = 1,(8*ir+4)
              ipart = ipart + 1
              pgroup%zp(ipart) = zt
-c            pgroup%xp(ipart) = ir*dr 
-             pgroup%xp(ipart) = dr * (ir + 0.5*(1. + (1./(2.*ir+1.)))) 
+c            pgroup%xp(ipart) = ir*dr
+             pgroup%xp(ipart) = dr * (ir + 0.5*(1. + (1./(2.*ir+1.))))
              pgroup%yp(ipart) = 0.
              pgroup%uxp(ipart) = 0.
              pgroup%uyp(ipart) = 0.
@@ -2707,7 +2712,7 @@ c    &                      (pgroup%zp(ipart)-zmid)/z02 * xp(ipart)
          do isame = 1,12*ia+8
            ipart = ipart + 1
            pgroup%zp(ipart) = (iz + 0.5)*dz + zmmin
-c          pgroup%xp(ipart) = ir*dr 
+c          pgroup%xp(ipart) = ir*dr
            pgroup%xp(ipart) = dr * (ir + (8.*ia+8.)/(12.*ia+8.))
            pgroup%yp(ipart) = 0.
            pgroup%uxp(ipart) = 0.
@@ -2780,7 +2785,7 @@ c--------------------------------------------------------------------
       real(kind=8):: dt,vbeam,ibeam,q,m,a0
       integer(ISZ):: iz,istp,ikz
       real(kind=8):: lamb0,gfact,eoverm,taumdt,taupdt,tauodt,growthrate
-      
+
 c   This routine solves the 1-d fluid equations with resistance and
 c   capacitance.  It uses the equations found in the article
 c   "Asymptotic Analysis of the Longitudinal Instability of a Heavy
@@ -2849,14 +2854,14 @@ c  update lambda
          do ikz = 0,nz-1
            lamfld(ikz) = lamfld(ikz) - ikdt(ikz)*lamb0*vzfld(ikz)
          enddo
-c  update the electric field 
+c  update the electric field
 c         do ikz = 0,nz-1
 c           e1fld(ikz) = e1fld(ikz) * taumdt/taupdt - (2.*eta*dt)/taupdt
 c    &                * (lamb0 * vzfld(ikz) + 0.5 * vbeam *
 c    &                (lamfld(ikz) + lamold(ikz)))
 c        enddo
          do ikz = 0,nz-1
-           e1fld(ikz) = (e1fld(ikz)*tauodt - 
+           e1fld(ikz) = (e1fld(ikz)*tauodt -
      &                  eta*(vbeam*0.5*(lamfld(ikz) + lamold(ikz))
      &                 + lamb0*vzfld(ikz)))/
      &                  (1.+tauodt)
@@ -2944,7 +2949,7 @@ c        --- do the transforms
       real(kind=8):: arryr(0:nz),arryi(0:nz)
       integer(ISZ):: iz
       real(kind=8):: znorm
-    
+
 c        --- do the back transforms
          call vcpft  (arryr(0), arryi(0), nz, 1,+1,1,1)
 c        --- shift k-space origin back.
@@ -2983,7 +2988,7 @@ c  Also set up the integral of the current for phi on axis plots
          enddo
 
       elseif (taurc .ne. 0.) then
-c  Advect the external electric field 
+c  Advect the external electric field
       nl = int(vbeam*dt/dz)
 
       do iz = 0, (nz-nl)
@@ -2998,7 +3003,7 @@ c  Advect the external electric field
          ezext(iz) = scrtch(iz,0)
       enddo
 
-c  Update the external electric field using 
+c  Update the external electric field using
 c  taurc/dt * (E^(n+1) - E^n) + E^n = eta*Curr0
          do iz = 0,nz
             ezext(iz) = dt/taurc*(ezext(iz)*(taurc/dt - 1.)

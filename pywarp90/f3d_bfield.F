@@ -2632,7 +2632,7 @@ c     --- Ensure that the Bp array is setup properly
       if(solvergeom==XYZgeom) then
 c       --- Note the -1 is passed in for ns as a flag to skip the
 c       --- setting up of jptmp.
-        call setupbfieldsforparticles3d(-1,0,0,bfield,bfieldp)
+        call setupbfieldsforparticles3d(-1,(/0/),0,bfield,bfieldp)
       endif
 
 #ifndef MPIPARALLEL
