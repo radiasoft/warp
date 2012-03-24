@@ -817,6 +817,7 @@ c=============================================================================
 #ifdef MPIPARALLEL
       call initializedecomp_work(decomp)
 #else
+      decomp%mpi_comm = 0
       decomp%mpi_comm_x = 0
       decomp%mpi_comm_y = 0
       decomp%mpi_comm_z = 0
@@ -944,6 +945,7 @@ c     --- Setup the decomposition data
 
 c     --- Create communicator groups for processors along each axis.
       call initializedecomp(fsdecomp)
+      ppdecomp%mpi_comm = fsdecomp%mpi_comm
       ppdecomp%mpi_comm_x = fsdecomp%mpi_comm_x
       ppdecomp%mpi_comm_y = fsdecomp%mpi_comm_y
       ppdecomp%mpi_comm_z = fsdecomp%mpi_comm_z
