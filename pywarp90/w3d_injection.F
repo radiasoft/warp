@@ -209,7 +209,7 @@ c         --- loop over injection sources
 c         --- Loop over species.
           do is=1,pgroup%ns
 
-            if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is -1 
+            if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is -1
             jsid = pgroup%sid(is-1)
             inj_js = is - 1
             inj_is = min(jsid+1,inj_ns)
@@ -322,7 +322,7 @@ c               default: injection rate is shifted Maxwellian
      &                                   1,1,.true.)
                 enddo
               endif
-                
+
 
 c             --- Initialize positions as rectangular or elliptical depending on linj_rectangle
               if(linj_rectangle) then
@@ -398,7 +398,7 @@ c             --- Only save particle if it is within the injection region.
                   if (zpmin+zgrid >= zs+zinj .or. zs+zinj > zpmax+zgrid) cycle
                 endif
               endif
-              
+
               ii = pgroup%ins(is) - 1 - npinjtmp(ij,is)
 c             --- Clear out any old data from pid
               pgroup%pid(ii,:) = 0.
@@ -459,7 +459,7 @@ c             --- Scale the particle weight.
               endif
 c             --- Save the ID of the injection source.
               pgroup%pid(ii,injpid) = ij
-c             --- Save SSN 
+c             --- Save SSN
               if (spid>0) then
                 pgroup%pid(ii,spid) = ssn
                 ssn = ssn+1
@@ -491,7 +491,7 @@ c             --- increment particle counter
 c           --- Get actual number of particles injected and ipmin
             nn = npinjtmp(ij,jsid+1)
             if(nn==0) cycle
-            
+
 c           --- Sum npinje_s to get the total number of particles injected.
             npinje_s(jsid+1) = npinje_s(jsid+1) + nn
             npinjected       = npinjected       + nn
@@ -508,9 +508,9 @@ c             --- The check if nn > 0 is needed since if npmax was zero
 c             --- and no particles were injected then npmax stays zero
 c             --- and the particle arrays are unallocated.
               call inj_transform(nn,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
-     &                           pgroup%zp(i1:i2),1,ij,1,1)
+     &                           pgroup%zp(i1:i2),1,(/ij/),1,1)
               call inj_transform(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
-     &                           pgroup%uzp(i1:i2),1,ij,1,0)
+     &                           pgroup%uzp(i1:i2),1,(/ij/),1,0)
             endif
 
 #ifdef MPIPARALLEL
@@ -587,9 +587,9 @@ c           --- The reusing of variable makes for very confusing naming!
               ip = min(nparpgrp, pgroup%ins(is)+nn-ipmin)
               ii = ipmin - pgroup%ins(is) + 1
               if (boost_gamma==1.) then
-                call exteb3d(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &                       pgroup%zp(ipmin),pgroup%uzp(ipmin),
-     &                       pgroup%gaminv(ipmin),0.,fulldt_s*0.5,
+                call exteb3d(ip,pgroup%xp(ipmin:ipmin+ip-1),pgroup%yp(ipmin:ipmin+ip-1),
+     &                       pgroup%zp(ipmin:ipmin+ip-1),pgroup%uzp(ipmin:ipmin+ip-1),
+     &                       pgroup%gaminv(ipmin:ipmin+ip-1),0.,fulldt_s*0.5,
      &                       xt(ii),yt(ii),zt(ii),at(ii),bt(ii),apt(ii),
      &                       pgroup%sm(is),pgroup%sq(is),uxt(ii),uyt(ii),
      &                       1.,fulldt_s)
@@ -605,30 +605,30 @@ c           --- The reusing of variable makes for very confusing naming!
                 uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
                 exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
                 bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
-                zlab(1:ip) = boost_gamma*pgroup%zp(ipmin:ipmin+ip-1)+uzboost*time  
+                zlab(1:ip) = boost_gamma*pgroup%zp(ipmin:ipmin+ip-1)+uzboost*time
                 uxlab(1:ip) = pgroup%uxp(ipmin:ipmin+ip-1)
                 uylab(1:ip) = pgroup%uyp(ipmin:ipmin+ip-1)
                 uzlab(1:ip) = pgroup%uzp(ipmin:ipmin+ip-1)
                 ginvlab(1:ip) = pgroup%gaminv(ipmin:ipmin+ip-1)
                 call setu_in_uzboosted_frame3d(ip,uxlab(1),uylab(1),uzlab(1),ginvlab(1),-uzboost,boost_gamma)
                 tstart(1:ip) = boost_gamma*time+uzboost*pgroup%zp(ipmin:ipmin+ip-1)*invclightsq
-                tend  (1:ip) = boost_gamma*(time+fulldt_s*0.5)+uzboost*(pgroup%zp(ipmin:ipmin+ip-1) 
+                tend  (1:ip) = boost_gamma*(time+fulldt_s*0.5)+uzboost*(pgroup%zp(ipmin:ipmin+ip-1)
      &                       + pgroup%uzp(ipmin:ipmin+ip-1)*pgroup%gaminv(ipmin:ipmin+ip-1)*fulldt_s*0.5)*invclightsq
-                ! this is an attempt to fool exteb3d. Normally, each particle should have its 
+                ! this is an attempt to fool exteb3d. Normally, each particle should have its
                 ! own dt, but this would require to modify all the routines called by exteb3d.
-                ! We are assuming that ginvlab will always be multiplied by dt in its 
-                ! usage in the routines called by exteb3d. If this is not the case, then the 
+                ! We are assuming that ginvlab will always be multiplied by dt in its
+                ! usage in the routines called by exteb3d. If this is not the case, then the
                 ! kludge will fail.
                 ginvlab(1:ip) = ginvlab(1:ip)*(tend(1:ip)-tstart(1:ip))/(fulldt_s*0.5)
 c               --- Add in ears and uniform focusing E field pieces
-                call othere3d(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),zlab(1),
+                call othere3d(ip,pgroup%xp(ipmin:ipmin+ip-1),pgroup%yp(ipmin:ipmin+ip-1),zlab(1),
      &                      zbeam*boost_gamma+uzboost*time,
      &                      zimax,zimin,straight,ifeears,eears,
      &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
      &                      exlab(1),eylab(1),ezlab(1),
      &                      bxlab(1),bylab(1),bzlab(1))
 c               --- Set quad, dipole E and B; All: Bz
-                call exteb3d(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),zlab(1),uzlab(1),
+                call exteb3d(ip,pgroup%xp(ipmin:ipmin+ip-1),pgroup%yp(ipmin:ipmin+ip-1),zlab(1),uzlab(1),
      &                       ginvlab(1),0.,fulldt_s*0.5,
      &                       bxlab(1),bylab(1),bzlab(1),
      &                       exlab(1),eylab(1),ezlab(1),
@@ -658,7 +658,7 @@ c           --- Set fractional time to advance particles
                 bpt(ip) = (ip - .5)*rnpinjct*fulldt_s
               enddo
             else
-              ! --- need to reverse order of btp set by user since other components are 
+              ! --- need to reverse order of btp set by user since other components are
               ! --- put in reverse order in internal particle arrays
               bpt(1:nn) = bpt(nn:1:-1)
             end if
@@ -719,7 +719,7 @@ c           --- apply linear maps
                 endif
                else
                 ! there is some inconsistency for injecting particles using linear maps
-                ! for now, just z is pushed 
+                ! for now, just z is pushed
                 pgroup%zp(i1:i2) = pgroup%zp(i1:i2) + bpt(1:nn)* pgroup%uzp(i1:i2)* pgroup%gaminv(i1:i2)
                 if (.false.) then
                 uzboost = clight*sqrt(boost_gamma*boost_gamma-1.)
@@ -738,7 +738,7 @@ c                zbeam_maps(1:nn) = (boost_z0/boost_gamma+(vbeam+vzboost)*tlab(1
      &          +(boost_z0/boost_gamma)/(1.+vbeam*vzboost*invclightsq)
                 zbeamend_maps(1:nn) = zbeam_maps(1:nn) + dtmaps(1:nn)*vbeam_lab
 c               --- get particles position in lab frame
-                pgroup%zp(i1:i2) = boost_gamma*pgroup%zp(i1:i2)+uzboost*(time)  
+                pgroup%zp(i1:i2) = boost_gamma*pgroup%zp(i1:i2)+uzboost*(time)
 c               --- get particles momenta in lab frame
                 call setu_in_uzboosted_frame3d(nn,pgroup%uxp(i1),pgroup%uyp(i1),
      &                                            pgroup%uzp(i1),pgroup%gaminv(i1),
@@ -776,7 +776,7 @@ c           --- do full position advance
      &                      pgroup%uzp(i1:i2),
      &                      pgroup%gaminv(i1:i2),bpt(1))
             end if
-            
+
 c           --- Calculate Gamma inverse
 c           if (lrelativ) then
 c             do ip=pgroup%ins(is),pgroup%ins(is)+nn-1
@@ -826,11 +826,11 @@ c             --- Make sure there is enough temp space
 c             --- calculate new E self-fields
               if (linj_efromgrid) then
                 call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,
-     &                                     pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &                                     pgroup%zp(ipmin),at,bt,apt,xt,yt,zt)
+     &                                     pgroup%xp(ipmin:ipmin+nn-1),pgroup%yp(ipmin:ipmin+nn-1),
+     &                                     pgroup%zp(ipmin:ipmin+nn-1),at,bt,apt,xt,yt,zt)
                 call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,
-     &                                     pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &                                     pgroup%zp(ipmin),xt,yt,zt)
+     &                                     pgroup%xp(ipmin:ipmin+nn-1),pgroup%yp(ipmin:ipmin+nn-1),
+     &                                     pgroup%zp(ipmin:ipmin+nn-1),xt,yt,zt)
               else
                 at = 0.
                 bt = 0.
@@ -839,8 +839,8 @@ c             --- calculate new E self-fields
                 yt = 0.
                 zt = 0.
               endif
-              call inj_sete3d(nn,pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &                        pgroup%zp(ipmin),pgroup%pid(ipmin,injpid),
+              call inj_sete3d(nn,pgroup%xp(ipmin:ipmin+nn-1),pgroup%yp(ipmin:ipmin+nn-1),
+     &                        pgroup%zp(ipmin:ipmin+nn-1),pgroup%pid(ipmin:ipmin+nn-1,injpid),
      &                        at,bt,apt)
 
 c             --- get external fields at current positions
@@ -875,23 +875,23 @@ c             --- get external fields at current positions
                   uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
                   exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
                   bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
-                  zlab(1:ip) = boost_gamma*pgroup%zp(ipmin:ipmin+ip-1)+uzboost*time  
+                  zlab(1:ip) = boost_gamma*pgroup%zp(ipmin:ipmin+ip-1)+uzboost*time
                   uxlab(1:ip) = pgroup%uxp(ipmin:ipmin+ip-1)
                   uylab(1:ip) = pgroup%uyp(ipmin:ipmin+ip-1)
                   uzlab(1:ip) = pgroup%uzp(ipmin:ipmin+ip-1)
                   ginvlab(1:ip) = pgroup%gaminv(ipmin:ipmin+ip-1)
                   call setu_in_uzboosted_frame3d(ip,uxlab(1),uylab(1),uzlab(1),ginvlab(1),-uzboost,boost_gamma)
                   tstart(1:ip) = boost_gamma*time+uzboost*pgroup%zp(ipmin:ipmin+ip-1)*invclightsq
-                  tend  (1:ip) = boost_gamma*(time+fulldt_s*0.5)+uzboost*(pgroup%zp(ipmin:ipmin+ip-1) 
+                  tend  (1:ip) = boost_gamma*(time+fulldt_s*0.5)+uzboost*(pgroup%zp(ipmin:ipmin+ip-1)
      &                         + pgroup%uzp(ipmin:ipmin+ip-1)*pgroup%gaminv(ipmin:ipmin+ip-1)*fulldt_s*0.5)*invclightsq
-                  ! this is an attempt to fool exteb3d. Normally, each particle should have its 
+                  ! this is an attempt to fool exteb3d. Normally, each particle should have its
                   ! own dt, but this would require to modify all the routines called by exteb3d.
-                  ! We are assuming that ginvlab will always be multiplied by dt in its 
-                  ! usage in the routines called by exteb3d. If this is not the case, then the 
+                  ! We are assuming that ginvlab will always be multiplied by dt in its
+                  ! usage in the routines called by exteb3d. If this is not the case, then the
                   ! kludge will fail.
                   ginvlab(1:ip) = ginvlab(1:ip)*(tend(1:ip)-tstart(1:ip))/(fulldt_s*0.5)
 c                 --- Set quad, dipole E and B; All: Bz
-                  call exteb3d(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),zlab(1),uzlab(1),
+                  call exteb3d(ip,pgroup%xp(ipmin:ipmin+ip-1),pgroup%yp(ipmin:ipmin+ip-1),zlab(1),uzlab(1),
      &                         ginvlab(1),-fulldt_s*0.5,0.,
      &                         bxlab(1),bylab(1),bzlab(1),
      &                         exlab(1),eylab(1),ezlab(1),
@@ -922,39 +922,39 @@ c             --- Set fractional time to advance particles
               enddo
 
 c             --- complete B advance
-              call bpusht3d(nn,pgroup%uxp(ipmin),pgroup%uyp(ipmin),
-     &                      pgroup%uzp(ipmin),pgroup%gaminv(ipmin),
+              call bpusht3d(nn,pgroup%uxp(ipmin:ipmin+nn-1),pgroup%uyp(ipmin:ipmin+nn-1),
+     &                      pgroup%uzp(ipmin:ipmin+nn-1),pgroup%gaminv(ipmin:ipmin+nn-1),
      &                      xt(1),yt(1),zt(1),pgroup%sq(is),pgroup%sm(is),
      &                      bpt(1),0.5,ibpush)
 
 c             --- complete the E advance
-              call epusht3d(nn,pgroup%uxp(ipmin),pgroup%uyp(ipmin),
-     &                      pgroup%uzp(ipmin),
+              call epusht3d(nn,pgroup%uxp(ipmin:ipmin+nn-1),pgroup%uyp(ipmin:ipmin+nn-1),
+     &                      pgroup%uzp(ipmin:ipmin+nn-1),
      &                      at(1),bt(1),apt(1),pgroup%sq(is),pgroup%sm(is),
      &                      bpt(1),0.5)
 
 c             --- Advance relativistic Gamma factor
-              call gammaadv(nn,pgroup%gaminv(ipmin),pgroup%uxp(ipmin),
-     &                      pgroup%uyp(ipmin),pgroup%uzp(ipmin),
+              call gammaadv(nn,pgroup%gaminv(ipmin:ipmin+nn-1),pgroup%uxp(ipmin:ipmin+nn-1),
+     &                      pgroup%uyp(ipmin:ipmin+nn-1),pgroup%uzp(ipmin:ipmin+nn-1),
      &                      gamadv,lrelativ)
 
 c             --- Now, move velocites back one half a step
 c             --- first half of a backward B advance
-              call bpush3d(nn,pgroup%uxp(ipmin),pgroup%uyp(ipmin),
-     &                     pgroup%uzp(ipmin),
-     &                     pgroup%gaminv(ipmin),xt(1),yt(1),zt(1),
+              call bpush3d(nn,pgroup%uxp(ipmin:ipmin+nn-1),pgroup%uyp(ipmin:ipmin+nn-1),
+     &                     pgroup%uzp(ipmin:ipmin+nn-1),
+     &                     pgroup%gaminv(ipmin:ipmin+nn-1),xt(1),yt(1),zt(1),
      &                     pgroup%sq(is),pgroup%sm(is),
      &                     -0.5*fulldt_s,ibpush)
 
 c             --- then half of a backward E advance
-              call epush3d(nn,pgroup%uxp(ipmin),pgroup%uyp(ipmin),
-     &                     pgroup%uzp(ipmin),
+              call epush3d(nn,pgroup%uxp(ipmin:ipmin+nn-1),pgroup%uyp(ipmin:ipmin+nn-1),
+     &                     pgroup%uzp(ipmin:ipmin+nn-1),
      &                     at(1),bt(1),apt(1),pgroup%sq(is),pgroup%sm(is),
      &                     -0.5*fulldt_s)
 
 c             --- Advance relativistic Gamma factor
-              call gammaadv(nn,pgroup%gaminv(ipmin),pgroup%uxp(ipmin),
-     &                      pgroup%uyp(ipmin),pgroup%uzp(ipmin),
+              call gammaadv(nn,pgroup%gaminv(ipmin:ipmin+nn-1),pgroup%uxp(ipmin:ipmin+nn-1),
+     &                      pgroup%uyp(ipmin:ipmin+nn-1),pgroup%uzp(ipmin:ipmin+nn-1),
      &                      gamadv,lrelativ)
 
 c           --- end of loop over species and injection sources
@@ -994,16 +994,16 @@ c Space charge limited injection based off of the Gauss's Law.  This is
 c the scheme to use with time-dependent injection.
 c
 c For inject == 4
-c Thermionic emission. The current density is calculated using the Schottky 
+c Thermionic emission. The current density is calculated using the Schottky
 c emission formula J = A*T*exp(-(W-dW)/(kT)), with A = lambda*((4*pi*me*k^2*e)/(h^3)),
-c lambda~0.5, dw = sqrt(e^3*E/(4*pi*eps0)), where T is the source temperature, 
+c lambda~0.5, dw = sqrt(e^3*E/(4*pi*eps0)), where T is the source temperature,
 c W is the work function, k is the Boltzmann's constant, h is the Planck's contant,
 c and E is the electric field in front of the surface.
 c
 c For inject == 5
-c Combined emission. The current density is empirically set to be 
-c J_cl*(1.-exp(-J_s/J_cl)) where J_cl is the current obtained from the 
-c Child-Langmuir Law as obtained with inject==2, and J_s is the current 
+c Combined emission. The current density is empirically set to be
+c J_cl*(1.-exp(-J_s/J_cl)) where J_cl is the current obtained from the
+c Child-Langmuir Law as obtained with inject==2, and J_s is the current
 c given by the Schottky formula as obtained with inject=4.
 c
 c For inject == 6
@@ -1017,13 +1017,13 @@ c For inject == 7
 c Taylor-Langmuur ionic emission. The current density is calculated using the
 c Taylor-Langmuur emission formula with the Schottky term added.
 c J = A*exp(-(W-dW)/(kT))
-c dw = sqrt(e^3*E/(4*pi*eps0)), where T is the source temperature, 
+c dw = sqrt(e^3*E/(4*pi*eps0)), where T is the source temperature,
 c W is the work function, k is the Boltzmann's constant
 c and E is the electric field in front of the surface. A and W must be supplied
 c using lambdarinject and workinject.
 c
 c For inject == 8
-c Combined emission. The current density is empirically set to be 
+c Combined emission. The current density is empirically set to be
 c J_cl*(1.-exp(-(J_s/J_cl)**eta))**(1./eta) where J_cl is the current obtained
 c from the Child-Langmuir Law as obtained with inject==2, and J_s is the
 c current given by the Taylor-Langmuur equation.
@@ -1108,14 +1108,14 @@ c               --- CL emission
      &                     ((inj_dz*inj_d(ij))**2*sphericalcorrection)*jton(jsid)
                 elseif (inject == 4) then
 c               --- Thermionic emission
-                  te_const(jsid) = lambdarinject(ij)*((4.*pi*pgroup%sm(is)*boltzmann**2*pgroup%sq(is))/(planck**3)) 
+                  te_const(jsid) = lambdarinject(ij)*((4.*pi*pgroup%sm(is)*boltzmann**2*pgroup%sq(is))/(planck**3))
      &                           *tempinject(ij)**2/sphericalcorrection*jton(jsid)
                 elseif (inject == 5) then
 c               --- Thermionic emission with space charge
                   cl_const(jsid) = 4./9.*eps0*
      &                     (2.*abs(pgroup%sq(is))/pgroup%sm(is))**.5/
      &                     (inj_dz*inj_d(ij))**2
-                  te_const(jsid) = lambdarinject(ij)*((4.*pi*pgroup%sm(is)*boltzmann**2*pgroup%sq(is))/(planck**3)) 
+                  te_const(jsid) = lambdarinject(ij)*((4.*pi*pgroup%sm(is)*boltzmann**2*pgroup%sq(is))/(planck**3))
      &                           *tempinject(ij)**2
 
                 elseif (inject == 7) then
@@ -1218,7 +1218,7 @@ c                   --- Thermionic emission
                     inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
                     if ( (pgroup%sq(is)*inte) >= 0.) then
                       dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
-                      rnn = te_const(jsid)     
+                      rnn = te_const(jsid)
      &                    * exp(-(workinject(ij,is)-dw)/(boltzmann*tempinject(ij)))
                       rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
                     else
@@ -1231,7 +1231,7 @@ c                   --- Thermionic emission with space-charge
                     if ( (pgroup%sq(is)*inte) > 0.) then
                       rnncl = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5
                       dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
-                      rnns = te_const(jsid)     
+                      rnns = te_const(jsid)
      &                    * exp(-(workinject(ij,is)-dw)/(boltzmann*tempinject(ij)))
                       rnn = rnncl*(1.-exp(-(rnns/rnncl)**fitexpinject(ij)))**(1./fitexpinject(ij))/sphericalcorrection*jton(jsid)
                     else
@@ -1248,7 +1248,7 @@ c                   --- Taylor-Langmuir ionic emission
                     inte = (inj_phi(ix,iy,ij)/(inj_dz*abs(inj_d(ij))))
                     if ( (pgroup%sq(is)*inte) >= 0.) then
                       dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
-                      rnn = te_const(jsid)     
+                      rnn = te_const(jsid)
      &                    * exp(-(workinject(ij,is)-dw)/(boltzmann*tempinject(ij)))
                       rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
                     else
@@ -1261,7 +1261,7 @@ c                   --- Taylor-Langmuir ionic emission with space-charge
                     if ( (pgroup%sq(is)*inte) > 0.) then
                       rnncl = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5
                       dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
-                      rnns = te_const(jsid)     
+                      rnns = te_const(jsid)
      &                    * exp(-(workinject(ij,is)-dw)/(boltzmann*tempinject(ij)))
                       rnn = rnncl*(1.-exp(-(rnns/rnncl)**fitexpinject(ij)))**(1./fitexpinject(ij))/sphericalcorrection*jton(jsid)
                     else
@@ -1680,7 +1680,7 @@ c                   --- number and the fraction of the timestep the
 c                   --- particle is advanced.
                     pgroup%pid(ii,injpid) = pgroup%pid(ii,injpid) + ij
 
-c                   --- Save SSN 
+c                   --- Save SSN
                     if (spid>0) then
                       pgroup%pid(ii,spid) = ssn
                       ssn = ssn+1
@@ -1723,16 +1723,17 @@ c           call parallelmaxintegerarray(injctcnt,1)
 c           --- Transform particles to lab frame
             do is=1,pgroup%ns
               jsid = pgroup%sid(is-1)
-              ii = pgroup%ins(is)
               nn = npinjtmp(ij,jsid+1)
+              i1 = pgroup%ins(is)
+              i2 = pgroup%ins(is) + nn - 1
               if (nn > 0) then
 c               --- The check if nn > 0 is needed since if npmax was zero
 c               --- and no particles were injected then npmax stays zero
 c               --- and the particle arrays are unallocated.
-                call inj_transform(nn,pgroup%xp(ii),pgroup%yp(ii),
-     &                             pgroup%zp(ii),1,ij,1,1)
-                call inj_transform(nn,pgroup%uxp(ii),pgroup%uyp(ii),
-     &                             pgroup%uzp(ii),1,ij,1,0)
+                call inj_transform(nn,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
+     &                             pgroup%zp(i1:i2),1,(/ij/),1,1)
+                call inj_transform(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
+     &                             pgroup%uzp(i1:i2),1,(/ij/),1,0)
               endif
             enddo
 
@@ -1786,7 +1787,7 @@ c           --- live particles are shifted upward. This keeps the block
 c           --- of injected particle contiguous with the rest of the
 c           --- live particles.
             call clearpart(pgroup,is,3)
-              
+
 c           --- Adjust npinje_s(jsid+1) so it doesn't include the particles
 c           --- which were just scraped. Also, reset pgroup%nps(is).
             npinje_s(jsid+1) = pgroup%nps(is)
@@ -2387,10 +2388,10 @@ c                     --- particles beyond thetamin and thetamax.
 c                     --- When the particles are injected along B, the thermal
 c                     --- velocity can only be added after the directed
 c                     --- velocity has been rotated to be along B.
-                      vtx = 0.5*vztinject(ij)*emitx_s(jsid+1)/(circum/thetaextent) + 
+                      vtx = 0.5*vztinject(ij)*emitx_s(jsid+1)/(circum/thetaextent) +
      &                      vthperp_s(jsid+1)
      &                    *wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
-                      vty = 0.5*vztinject(ij)*emity_s(jsid+1)/(circum/thetaextent) + 
+                      vty = 0.5*vztinject(ij)*emity_s(jsid+1)/(circum/thetaextent) +
      &                      vthperp_s(jsid+1)
      &                    *wrandomgauss(vtrandom,injctcnt,dig5,dig6,1,1,.false.)
                       vtz = vthz_s(jsid+1)
@@ -2417,7 +2418,7 @@ c                   --- Clear out any old data from pid. This is done here
 c                   --- before pid is used anywhere.
                     pgroup%pid(ii,:) = 0.
                     pgroup%pid(ii,injpid) = ninject + ij + rnrev(injctcnt,dig5)
-c                   --- Save SSN 
+c                   --- Save SSN
                     if (spid>0) then
                       pgroup%pid(ii,spid) = ssn
                       ssn = ssn+1
@@ -2518,7 +2519,7 @@ c           --- live particles are shifted upward. This keeps the block
 c           --- of injected particle contiguous with the rest of the
 c           --- live particles.
             call clearpart(pgroup,is,3)
-              
+
 c           --- Adjust ntinject(jsid+1) so it doesn't include the particles
 c           --- which were just scraped. Also, reset pgroup%nps(is).
             ntinject(jsid+1) = pgroup%nps(is)
@@ -3119,7 +3120,7 @@ c of theta points if not already set.
             thetamintinj(iz,ij) = 0.
             thetamaxtinj(iz,ij) = 2.*pi
           endif
-          circum = ellipseperimeter(atinjectz(:,ij),btinjectz(:,ij))*
+          circum = ellipseperimeter(atinjectz(iz,ij),btinjectz(iz,ij))*
      &             (thetamaxtinj(iz,ij) - thetamintinj(iz,ij))/(2.*pi)
           circummax = max(circummax,circum)
         enddo
@@ -3165,7 +3166,7 @@ c source, than the two arrays are made big enough to save the data for all
 c species for each source. If cases come up where this is too much wasted
 c space, then the code can later be changed by only making inj_ns as big
 c as is needed, i.e. the maximum number of species emitted from any one
-c source.  
+c source.
       inj_ns = 1
       do ij=1,ninject
         nn = 0
@@ -3187,7 +3188,7 @@ c of the data is saved seperately for each source (whether or not they are
 c too close to another). If cases comes up where this is too much wasted
 c space, then the code can be changed so that inj_ninj is only made as big
 c as needed, i.e. the maximum number of sources that are too close to each
-c other.  
+c other.
 c The radius of each source is taken to be the maximum of a and b. This
 c makes the checks much simpler but overly conservative.
 c     inj_ninj = 1
@@ -3310,7 +3311,7 @@ c       --- Loop over transverse plane.
 c           --- transverse coordinate relative to center of source
             xx = ix*inj_dx + inj_xmmin(ij)
             yy = iy*inj_dy + inj_ymmin(ij)
-            
+
 c           --- Check whether the cell is within the injection area.
 c           --- This depends on whether the source is elliptical or
 c           --- rectangular.
@@ -3398,7 +3399,7 @@ c               --- unit circle).
 c               --- Prevent the area from being too small. When it is too
 c               --- small, there are problems when the code does rho/area,
 c               --- producing erroneously large numbers.
-c               --- The min value of 0.01 is arbitrary, but should provide a 
+c               --- The min value of 0.01 is arbitrary, but should provide a
 c               --- nice balance between a number that is small enough so
 c               --- cells near the edge don't contribute too much and large
 c               --- enough to avoid computational problems.
@@ -3752,7 +3753,7 @@ c       --- Set some temporaries.
               r2sq = yysq*binjsqi
             else
               r1sq = xxsq*ainjsqi + yysq*binjsqi
-              r2sq = 0. 
+              r2sq = 0.
             endif
             if (r1sq < 1.0 .and. r2sq < 1.0) then
 
@@ -3778,7 +3779,7 @@ c             --- emitting surface.
           enddo
         enddo
 
-        call inj_transform(i2-i1+1,xx(i1),yy(i1),zz(i1),1,ij,1,1)
+        call inj_transform(i2-i1+1,xx(i1),yy(i1),zz(i1),1,(/ij/),1,1)
 
 c       --- Select only those data points which are within the grid.
 c       --- This also removes particles not within the domain of this
@@ -3832,7 +3833,7 @@ c     --- the emitting surface.
       do ii=1,nn
         inj_phi(xi(ii),yi(ii),in(ii)) = vinject(in(ii)) - pp(ii)
       enddo
-        
+
       if(inj_nz>1) then
         inj_dz = inj_dz_tmp
         call getinj_phi_mr(nn,xx,yy,zz,xi,yi)
@@ -4001,15 +4002,19 @@ c=============================================================================
       type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,np
       real(kind=8):: ex(np),ey(np),ez(np)
+
+      integer(ISZ):: i1,i2
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
       if (inject <= 0 .and. tinject <= 0) return
 
-      call inj_sete3d(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                pgroup%pid(ipmin,injpid),ex,ey,ez)
-      call tinj_sete3d(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                 pgroup%pid(ipmin,injpid),ex,ey,ez)
+      i1 = ipmin
+      i2 = ipmin + np - 1
+      call inj_sete3d(np,pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                pgroup%pid(i1:i2,injpid),ex,ey,ez)
+      call tinj_sete3d(np,pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                 pgroup%pid(i1:i2,injpid),ex,ey,ez)
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinj_sete = timeinj_sete + wtime() - substarttime
@@ -4049,7 +4054,7 @@ c any conductor surface.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-c     --- The user can force the code to skip the special calculation of the 
+c     --- The user can force the code to skip the special calculation of the
 c     --- E fields for particles behind the virtual surface.
       if (linj_efromgrid) return
 
@@ -4201,7 +4206,7 @@ c           --- (i.e. zero) and the value on the secondary surface.
             if (l_inj_rz .or. l_inj_rz_grid) then
               if (spreadx == 1) then
                 atx = atan2(xx(ip)*sign(1.,rinj),(rinj - zz(ip))*sign(1.,rinj))
-                etx = ddi*(inj_ex(ix  ,0,ij)*(1.-wx) + 
+                etx = ddi*(inj_ex(ix  ,0,ij)*(1.-wx) +
      &                     inj_ex(ix+1,0,ij)*    wx )
                 tex(ip) = tex(ip) + etx*cos(aa)*cos(atx)
                 tey(ip) = tey(ip) + etx*sin(aa)*cos(atx)
@@ -4762,7 +4767,7 @@ c              endif
           enddo
         enddo
 
-        call inj_transform(i2-i1+1,xx(i1),yy(i1),zz(i1),1,ij,1,1)
+        call inj_transform(i2-i1+1,xx(i1),yy(i1),zz(i1),1,(/ij/),1,1)
 
 c       --- Select only those data points which are within the grid.
 c       --- This also removes particles not within the domain of this
@@ -4798,7 +4803,7 @@ c     --- the emitting surface.
       do ii=1,nn
         inj_phi_3d(xi(ii),yi(ii),zi(ii),in(ii)) = pp(ii)
       enddo
-        
+
       deallocate(xx,yy,zz,xi,yi,zi,in,pp)
 
 #ifdef MPIPARALLEL
@@ -5295,7 +5300,7 @@ c     --- The result calculated on each processor is gathered on all
      &                                (1+inj_nx)*(1+inj_ny)*(1+inj_nz)*inj_ninj)
 #endif
 
-        call inj_transform(nrhs,xxp,yyp,zzp,1,ij,-1,1)
+        call inj_transform(nrhs,xxp,yyp,zzp,1,(/ij/),-1,1)
 
         inj_ex_3d = 0.
         inj_ey_3d = 0.
@@ -5347,8 +5352,8 @@ c           --- transform field vector from source coordinates to lab coordinate
           end do
           inj_ez_3d(:,:,0,ij) = inj_ez_3d(:,:,1,ij)
         end do
-        call inj_transform(nrhs,xxp,yyp,zzp,1,ij,1,1)
-        call inj_transform(nrhs,inj_ex_3d,inj_ey_3d,inj_ez_3d,1,ij,1,0)
+        call inj_transform(nrhs,xxp,yyp,zzp,1,(/ij/),1,1)
+        call inj_transform(nrhs,inj_ex_3d,inj_ey_3d,inj_ez_3d,1,(/ij/),1,0)
 c        inj_phi_3d = inj_phi_tmp
 c           --- Obtain the self-field from the electrostatic potential
         call fetche3dfrompositions(0,1,nn,xxp,yyp,zzp,ex_tmp,ey_tmp,ez_tmp,
@@ -5583,7 +5588,7 @@ c            wz = dd*2.**(inj_nz-iz)-1.
           s4 = (1.-wx)*(1.-wy)*    wz
           s5 =     wx *(1.-wy)*    wz
           s6 = (1.-wx)*    wy *    wz
-          s7 =     wx *    wy *    wz 
+          s7 =     wx *    wy *    wz
 
           if(l_inj_rz .or. l_inj_rz_grid) then
             en = inj_ex_3d(ix        ,iy        ,iz  ,ij)*s0 +
@@ -5738,7 +5743,7 @@ c     --- the emitting surface.
       do ii=1,nn
         tinj_phi(ti(ii),zi(ii),in(ii)) = vtinject(in(ii)) - pp(ii)
       enddo
-        
+
 #ifdef MPIPARALLEL
 c     --- The result calculated on each processor is gathered on all
       call parallelnonzerorealarray(tinj_phi,(1+nttinjmax)*(1+nztmax)*ntinj)
@@ -5783,7 +5788,7 @@ c any conductor surface.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-c     --- The user can force the code to skip the special calculation of the 
+c     --- The user can force the code to skip the special calculation of the
 c     --- E fields for particles behind the virtual surface.
       if (linj_efromgrid) return
 
@@ -5807,7 +5812,7 @@ c       --- duty and has other information stored in the fractional part.
         iz = zz/dztinj(ij)
         if (iz < 0. .or. iz >= nztinj(ij)) cycle
         wz = zz/dztinj(ij) - iz
-        
+
         ainj = atinjectz(iz,ij)
         binj = btinjectz(iz,ij)
         ainjp1 = atinjectz(iz+1,ij)
@@ -5966,7 +5971,7 @@ c           if (ix == 0 .or. ix == nx) xscale = 0.5
 c           if (iy == 0 .or. iy == ny) yscale = 0.5
             zscale = 1.0
 c           if (iz == 0 .or. iz == nz) zscale = 0.5
-            
+
             if (lcylindrical) then
 
               if (ix == 0) then

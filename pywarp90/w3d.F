@@ -1544,15 +1544,20 @@ c         --- transform velocity back to boosted frame
       return
       end
 c=============================================================================
-      subroutine epush(np,uxp,uyp,uzp,gaminv,exp,eyp,ezp,sq,sm,dt,dtfact,l_dtmult,l_paraxial)
+      subroutine epush(np,uxp,uyp,uzp,gaminv,exp,eyp,ezp,sq,sm,dt,
+     &                 ndtfact,dtfact,l_dtmult,l_paraxial)
       use Subtimersw3d
       use Beam_acc,only:lrelativ
       use InGen,only:gamadv
-      integer(ISZ):: np
-      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np),exp(np),eyp(np),ezp(np),sq,sm,dt,dtfact(np)
+      integer(ISZ):: np,ndtfact
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
+      real(kind=8):: exp(np),eyp(np),ezp(np)
+      real(kind=8):: sq,sm,dt
+      real(kind=8):: dtfact(ndtfact)
       logical(ISZ)::l_dtmult,l_paraxial
 
 c --- Push the particle velocity with E field
+c --- If l_dtmult is true, then ndtfact must equal np.
 
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -1575,13 +1580,18 @@ c       --- Advance relativistic Gamma factor
       return
       end
 c=============================================================================
-      subroutine bpush(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,dtfact,l_dtmult,l_paraxial,ibpush)
+      subroutine bpush(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,
+     &                 ndtfact,dtfact,l_dtmult,l_paraxial,ibpush)
       use Subtimersw3d
-      integer(ISZ):: np,ibpush
-      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np),bxp(np),byp(np),bzp(np),sq,sm,dt,dtfact(np)
+      integer(ISZ):: np,ndtfact,ibpush
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
+      real(kind=8):: bxp(np),byp(np),bzp(np)
+      real(kind=8):: sq,sm,dt
+      real(kind=8):: dtfact(ndtfact)
       logical(ISZ)::l_dtmult,l_paraxial
 
 c --- Push the particle velocity with B field
+c --- If l_dtmult is true, then ndtfact must equal np.
 
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -1667,6 +1677,7 @@ c     --- Create local pointers to the arrays in pgroup.
 #endif
       real(kind=8),pointer:: maxp(:,:),minp(:,:)
       real(kind=8),pointer:: zmmnts0(:,:),zmmnts(:,:,:)
+      real(kind=8):: dummy(1) = (/1./)
       real(kind=8):: substarttime,wtime
 
       if (lw3dtimesubs) substarttime = wtime()
@@ -1981,7 +1992,7 @@ c           for ipredcor = 1 (if we are not implicit).
               else
                 call epush(ip,uxp(i1:i2),uyp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
      &                        ex(i1:i2),ey(i1:i2),ez(i1:i2),sq(is),sm(is),
-     &                        halfdt_s,1.,.false.,pgroup%lparaxial(is))
+     &                        halfdt_s,1,dummy,.false.,pgroup%lparaxial(is))
 c               --- Magnetic field increment to momenta
 c               --- If interpolating with drift kinetics, must do half
 c               ---  a mu grad B correction before and half after Bpush
@@ -1992,12 +2003,12 @@ c    &                         ex(i1:i2),ey(i1:i2),ez(i1:i2))
                 endif
                 call bpush(ip,uxp(i1:i2),uyp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
      &                        bx(i1:i2),by(i1:i2),bz(i1:i2),sq(is),sm(is),
-     &                        fulldt_s,1.,.false.,pgroup%lparaxial(is),ibpush)
+     &                        fulldt_s,1,dummy,.false.,pgroup%lparaxial(is),ibpush)
                 if (interpdk(isid) .ne. 0)
      &          call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,0)
                 call epush(ip,uxp(i1:i2),uyp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
      &                        ex(i1:i2),ey(i1:i2),ez(i1:i2),sq(is),sm(is),
-     &                        halfdt_s,1.,.false.,pgroup%lparaxial(is))
+     &                        halfdt_s,1,dummy,.false.,pgroup%lparaxial(is))
 c             end of predictor-only if for vpush
               endif
             endif
@@ -2117,7 +2128,7 @@ c               part of mugrdbpush.
                 if (interpdk(isid) .ne. 0) then
                   call bpush(ip,uxp(i1:i2),uyp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
      &                          bx(i1:i2),by(i1:i2),bz(i1:i2),sq(is),sm(is),
-     &                          fulldt_s,1.,.false.,pgroup%lparaxial(is),-1)
+     &                          fulldt_s,1,dummy,.false.,pgroup%lparaxial(is),-1)
 c                 --- If interpolating with drift kinetics, must do
 c                 ---  a mu grad B correction.  Since may be calling
 c                 ---  this on first timestep, must make sure grad B's are
@@ -2126,12 +2137,12 @@ c                 ---  calculated, so last arg = 1.
                 else
                   call bpush(ip,uxp(i1:i2),uyp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
      &                          bx(i1:i2),by(i1:i2),bz(i1:i2),sq(is),sm(is),
-     &                          halfdt_s,1.,.false.,pgroup%lparaxial(is),ibpush)
+     &                          halfdt_s,1,dummy,.false.,pgroup%lparaxial(is),ibpush)
                 endif
 c               --- Final half-electric field increment to momenta
                 call epush(ip,uxp(i1:i2),uyp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
      &                        ex(i1:i2),ey(i1:i2),ez(i1:i2),sq(is),sm(is),
-     &                        halfdt_s,1.,.false.,pgroup%lparaxial(is))
+     &                        halfdt_s,1,dummy,.false.,pgroup%lparaxial(is))
 c             end of predictor-only loop
               endif
             endif
@@ -2319,7 +2330,7 @@ c               --- Set quad, dipole E and B; All: Bz
 c               --- Half electric field increment to momenta
                 call epush(ip,uxp(i1:i2),uyp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
      &                        ex(i1:i2),ey(i1:i2),ez(i1:i2),sq(is),sm(is),
-     &                        halfdt_s,1.,.false.,pgroup%lparaxial(is))
+     &                        halfdt_s,1,dummy,.false.,pgroup%lparaxial(is))
 c               --- If interpolating with drift kinetics, must do half
 c               ---  a mu grad B correction
 c               --- Half magnetic field increment to momenta
@@ -2327,12 +2338,12 @@ c               --- Half magnetic field increment to momenta
                   call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,1)
                   call bpush(ip,uxp(i1:i2),uyp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
      &                          bx(i1:i2),by(i1:i2),bz(i1:i2),sq(is),sm(is),
-     &                          fulldt_s,1.,.false.,pgroup%lparaxial(is),-1)
+     &                          fulldt_s,1,dummy,.false.,pgroup%lparaxial(is),-1)
 c                 Half a Boris push
                 else
                   call bpush(ip,uxp(i1:i2),uyp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
      &                          bx(i1:i2),by(i1:i2),bz(i1:i2),sq(is),sm(is),
-     &                          halfdt_s,1.,.false.,pgroup%lparaxial(is),ibpush)
+     &                          halfdt_s,1,dummy,.false.,pgroup%lparaxial(is),ibpush)
                 endif
               endif
               if (center == "gen") then
@@ -12626,7 +12637,7 @@ c     --- Do some error checking.
 
 c     --- Calculate rstar here since it is only used by the field solver and
 c     --- to ensure that it is set when the field solver is called.
-      if (linbend) call setrstar(rstar(-1),nzlocal,dz,zmminlocal,zgrid)
+      if (linbend) call setrstar(rstar,nzlocal,dz,zmminlocal,zgrid)
 
 c     --- Make sure the bounds array is up to date with any changes in the
 c     --- flags.
