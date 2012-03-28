@@ -40,7 +40,7 @@ machines that are space-charge dominated.""",
            platforms = 'Linux, Unix, Windows (cygwin), Mac OSX',
            packages = ['warp','warp.GUI','warpoptions','parallel'],
            package_dir = {'warp': '.'},
-           package_data = {'warp':['*.gs','*.gp','*.so']},
+           package_data = {'warp':['*.gs','*.gp','*.so','aladdin_8.txt']},
            cmdclass = {'build_py':build_py}
            )
 
