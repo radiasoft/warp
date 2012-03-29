@@ -1,16 +1,16 @@
 #DEBUG = -g #--fargs -C
 FARGS = --farg "-DMPIPARALLEL -I/usr/local/mpi/include"
-FCOMP = -F gfortran --fcompexec ftn --fargs "-fPIC" --cargs "-fPIC"
+FCOMP = 
 SO = so
-PUBLICHOME = 
-FORTHON = /global/u2/g/grote/hopper/public/python/bin/Forthon
-PYTHON = /global/u2/g/grote/hopper/public/python/bin/python
-BUILDBASE = --build-base buildparallel
+PUBLICHOME = $(HOME)/public
+FORTHON = Forthon
+PYTHON = python
+BUILDBASEDIR = buildparallel
+BUILDBASE = --build-base $(BUILDBASEDIR)
 
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) em3dpy.$(SO) ranffortran.c
-	rm -f warpCparallel.so
-	$(PYTHON) setup.py $(FCOMP) --parallel build --build-platlib . $(BUILDBASE)
-	mv warpCparallel.so ../scripts
+	$(PYTHON) setup.py $(FCOMP) --parallel build $(BUILDBASE)
+	mv $(BUILDBASEDIR)/*/warpCparallel.so ../scripts
 
 toppy.$(SO): top.F top_lattice.F top_fsl.F dtop.F top.v topslave.F
 	$(FORTHON) -a $(FCOMP) $(FARGS) $(DEBUG) top top_lattice.F top_fsl.F dtop.F topslave.F $(BUILDBASE)
