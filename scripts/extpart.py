@@ -866,6 +866,50 @@ The same options as for :py:func:`selectparticles` apply."""
             return (ave(self.getr(js,tc,wt,tp,z)*self.getrp(js,tc,wt,tp))/
                     ave(self.getr(js,tc,wt,tp,z)**2))
 
+    def epsnx(self,js=0,tc=None,wt=None,tp=None,z=None):
+        """Get the normalized X emittance of the saved particles. The same options as for :py:func:`selectparticles` apply."""
+        if self.getn(js,tc,wt,tp) == 0:
+            return 0.
+        else:
+            xx = self.getx(js,tc,wt,tp,z)
+            vx = self.getvx(js,tc,wt,tp,z)
+            txe = ((ave(xx**2) - ave(xx)**2)*(ave(vx**2) - ave(vx)**2) -
+                   (ave(xx*vx) - ave(xx)*ave(vx))**2)
+            return 4.*sqrt(txe)/top.clight
+
+    def epsx(self,js=0,tc=None,wt=None,tp=None,z=None):
+        """Get the unnormalized X emittance of the saved particles. The same options as for :py:func:`selectparticles` apply."""
+        if self.getn(js,tc,wt,tp) == 0:
+            return 0.
+        else:
+            xx = self.getx(js,tc,wt,tp,z)
+            xp = self.getvx(js,tc,wt,tp,z)/self.getvz(js,tc,wt,tp,z)
+            txe = ((ave(xx**2) - ave(xx)**2)*(ave(xp**2) - ave(xp)**2) -
+                   (ave(xx*xp) - ave(xx)*ave(xp))**2)
+            return 4.*sqrt(txe)
+
+    def epsny(self,js=0,tc=None,wt=None,tp=None,z=None):
+        """Get the normalized Y emittance of the saved particles. The same options as for :py:func:`selectparticles` apply."""
+        if self.getn(js,tc,wt,tp) == 0:
+            return 0.
+        else:
+            yy = self.gety(js,tc,wt,tp,z)
+            vy = self.getvy(js,tc,wt,tp,z)
+            tye = ((ave(yy**2) - ave(yy)**2)*(ave(vy**2) - ave(vy)**2) -
+                   (ave(yy*vy) - ave(yy)*ave(vy))**2)
+            return 4.*sqrt(tye)/top.clight
+
+    def epsy(self,js=0,tc=None,wt=None,tp=None,z=None):
+        """Get the unnormalized Y emittance of the saved particles. The same options as for :py:func:`selectparticles` apply."""
+        if self.getn(js,tc,wt,tp) == 0:
+            return 0.
+        else:
+            yy = self.gety(js,tc,wt,tp,z)
+            yp = self.getvy(js,tc,wt,tp,z)/self.getvz(js,tc,wt,tp,z)
+            tye = ((ave(yy**2) - ave(yy)**2)*(ave(yp**2) - ave(yp)**2) -
+                   (ave(yy*yp) - ave(yy)*ave(yp))**2)
+            return 4.*sqrt(tye)
+
     #getx.__doc__ += selectparticles.__doc__
     #getns.__doc__ += selectparticles.__doc__
     #gett.__doc__ += selectparticles.__doc__
