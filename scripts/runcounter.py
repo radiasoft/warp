@@ -144,7 +144,7 @@ Accumulates data from multiple runs in a single file.
   # --- If file already exist, then open it.
   if os.access(filename,os.F_OK):
     os.rename(filename,filename+'.temp')
-    f_in = PR.PR(filename+'.temp')
+    f_in = PRpickle.PR(filename+'.temp')
     varlist = list(f_in.inquire_names())
   else:
     f_in = None
@@ -221,7 +221,7 @@ Accumulates data from multiple runs in a single file.
   # --- the original. This is done is case there is a write error. If there
   # --- is an error, the file being written to will be corrupted and all
   # --- of the data lost.
-  f_out = PW.PW(filename)
+  f_out = PWpickle.PW(filename)
   for name,data in accumulateddata.iteritems():
     f_out.write(name,data)
   for name,data in scalardict.iteritems():
