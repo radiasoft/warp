@@ -653,11 +653,11 @@ sizes, in bytes.
     s = getobjectsize(v)*8
     totals += s
     if s > minsize:
-      print k,s
+      print k,s,'bytes'
   for k,v in dd.iteritems():
     s = getobjectsize(v)*8
     totals += s
     if s > minsize:
-      print k,s
+      print k,s,'bytes'
   return totals
 
