@@ -83,9 +83,11 @@ warpobjects = map(lambda p:os.path.join(builddir,p),warpobjects)
 library_dirs = fcompiler.libdirs
 libraries = fcompiler.libs
 if parallel:
+  # --- This are things which might be defined in setup.local.py
   #library_dirs = library_dirs + ['/usr/lpp/ppe.poe/lib']
-  libraries = fcompiler.libs + ['mpi','mpi_f77']
+  #libraries = fcompiler.libs + ['mpi','mpi_f77']
   #warpobjects = warpobjects + ['/usr/local/mpi/ifc_farg.o']
+  pass
 
 include_dirs = [builddir]
 if with_numpy:
