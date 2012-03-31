@@ -12,3 +12,6 @@ build
 *.so
 forthonf2c.h
 ranffortran.c
+
+# Ignore local makefile definitions
+Makefile.local
