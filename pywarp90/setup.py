@@ -128,9 +128,9 @@ if machine == 'darwin':
       os.environ['ARCHFLAGS'] = '-arch x86_64'
     elif os.environ['MACHTYPE'] == 'powerpc':
       os.environ['ARCHFLAGS'] = '-arch ppc'
-#---  If the shell is bash, MACHTYPE is undefined.  So get what we can from uname. We will assume that if
-#---  we are running Snow Leopard we are -arch x86-64 and if running Leopard on intel we are -arch i386.
-#---  This can be over-ridden by defining MACHTYPE.
+# ---  If the shell is bash, MACHTYPE is undefined.  So get what we can from uname. We will assume that if
+# ---  we are running Snow Leopard we are -arch x86-64 and if running Leopard on intel we are -arch i386.
+# ---  This can be over-ridden by defining MACHTYPE.
   else:
     archtype = os.uname()[-1]
     if archtype in ['Power Macintosh','ppc']:
@@ -141,6 +141,15 @@ if machine == 'darwin':
         os.environ['ARCHFLAGS'] = '-arch i386'  # Leopard or earlier
       else:
         os.environ['ARCHFLAGS'] = '-arch x86_64'  # Snow Leopard
+
+# --- Check if there is a file, setup.local.py, holding local definitions
+# --- that might be needed to build Warp. Note that execfile is used so
+# --- that everything defined up to this point is available, and anything
+# --- can be redefined.
+try:
+  execfile('setup.local.py')
+except IOError:
+  pass
 
 setup (name = 'warp',
        version = '3.0',

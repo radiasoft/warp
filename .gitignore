@@ -8,10 +8,12 @@
 # Ignore files created during the build
 Makefile
 build
+buildparallel
 *.o
 *.so
 forthonf2c.h
 ranffortran.c
 
-# Ignore local makefile definitions
+# Ignore local definitions for building
 Makefile.local
+setup.local.py
