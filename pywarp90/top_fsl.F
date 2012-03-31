@@ -1066,8 +1066,8 @@ c       call gchange("ForwardSemiLagrange",0)
 c       --- Deposit the particles into the distribution grid
         fgrid_fsl = 0.
         call setgrid2d2vmodbspline2w(pgroup%nps(js+1),
-     &                               xp(i1),zp(i1),uxp(i1),uzp(i1),
-     &                               pgroup%pid(i1,wpid),
+     &                               xp(i1:i2),zp(i1:i2),uxp(i1:i2),uzp(i1:i2),
+     &                               pgroup%pid(i1:i2,wpid),
      &                               nvx_fsl,nvz_fsl,
      &                               nx_fsl,nz_fsl,nxguard_fsl,nzguard_fsl,
      &                               fgrid_fsl,
