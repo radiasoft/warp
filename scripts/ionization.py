@@ -830,7 +830,8 @@ Chebyshev fitting.
         gamma = sqrt(1./(1. - vi**2/clight**2))
         E = self.mass*clight**2*(gamma - 1.)/jperev
         result = self.chebyshev(E)
-        ii = nonzero(E < self.Emin)[0]
+        result[E==0] = 0.
+        ii = nonzero(logical_and(0. < E,E < self.Emin))[0]
         if len(ii) > 0:
             result[ii] = exp(self.logcsslopemin*(log(E[ii]) - self.logEmin) + self.logcsEmin)
         ii = nonzero(E > self.Emax)[0]
@@ -978,7 +979,8 @@ At least for now, linear interpolation in log-log space is used for simplicity.
         w = (log(Eclipped) - self.logdata[ii,0])/(self.logdata[ii+1,0] - self.logdata[ii,0])
         result = exp(self.logdata[ii,1]*(1. - w) + self.logdata[ii+1,1]*w)
 
-        ii = nonzero(Earray < self.data[0,0])[0]
+        result[Earray==0] = 0.
+        ii = nonzero(logical_and(0. < Earray,Earray < self.data[0,0]))[0]
         if len(ii) > 0:
             result[ii] = exp(self.logcsslopemin*(log(Earray[ii]) - self.logdata[0,0]) + self.logcsEmin)
         ii = nonzero(Earray > self.data[-1,0])[0]
