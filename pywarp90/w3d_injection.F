@@ -357,6 +357,15 @@ c           --- Increment the particle counter for the digit reversed seed
             injctcnt = injctcnt + nn
 
             do ip=1,nn
+
+c             --- Check if the particle is within the transverse injection
+c             --- region. This is only really needed when
+c             --- l_inj_user_particles is true.
+              if (xt(ip) < inj_xmmin(ij)) cycle
+              if (yt(ip) < inj_ymmin(ij)) cycle
+              if (xt(ip) >= inj_xmmin(ij) + inj_nx*inj_dx) cycle
+              if (yt(ip) >= inj_ymmin(ij) + inj_ny*inj_dy) cycle
+
 c             --- find injection surface axial location via interpolation
 c             --- The absolute values are needed for the cases of symmetry.
               ixx = spreadx*(abs(xt(ip) - inj_xmmin(ij))*dxi)
