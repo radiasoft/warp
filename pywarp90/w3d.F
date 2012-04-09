@@ -1,5 +1,4 @@
 #include "top.h"
-
 c=============================================================================
 c@(#) File W3D.F, version $Revision: 3.470 $, $Date: 2011/11/07 23:04:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
@@ -3771,16 +3770,16 @@ c       --- Energy conserving
 c       --- Fetch with a 2nd order spline
         if (efetch == 4) then
           if (ny == 0) then
-            call sete_from_e_order2_energyconserving2d(selfe,np,xp,yp,zp,zgrid,
+            call sete_from_e_order2_energyconserving2d(phi1d,np,xp,yp,zp,zgrid,
      &                                 xmmin,zmmin,
      &                                 dx,dz,nx,nz,
-     &                                 nxguarde,nzguarde,
+     &                                 nxguardphi,nzguardphi,
      &                                 ex,ey,ez,l2symtry,l4symtry,lcylindrical)
           else
-            call sete_from_e_order2_energyconserving3d(selfe,np,xp,yp,zp,zgrid,
+            call sete_from_e_order2_energyconserving3d(phi1d,np,xp,yp,zp,zgrid,
      &                                 xmmin,ymmin,zmmin,
      &                                 dx,dy,dz,nx,ny,nz,
-     &                                 nxguarde,nyguarde,nzguarde,
+     &                                 nxguardphi,nyguardphi,nzguardphi,
      &                                 ex,ey,ez,l2symtry,l4symtry)
           endif
 
@@ -5496,17 +5495,17 @@ c         --- Adjust sign of E field for appropriate quadrant.
       return
       end
 c===========================================================================
-      subroutine sete_from_e_order2_energyconserving2d(selfe,np,xp,yp,zp,zgrid,
+      subroutine sete_from_e_order2_energyconserving2d(phi,np,xp,yp,zp,zgrid,
      &                                 xmmin,zmmin,
      &                                 dx,dz,nx,nz,
-     &                                 nxguarde,nzguarde,
+     &                                 nxguardphi,nzguardphi,
      &                                 ex,ey,ez,l2symtry,l4symtry,lcylindrical)
       use Subtimersw3d
       integer(ISZ):: np,nx,nz
-      integer(ISZ):: nxguarde,nzguarde
+      integer(ISZ):: nxguardphi,nzguardphi
       real(kind=8):: zgrid,xmmin,zmmin,dx,dz
-      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
-     &                       -nzguarde:nz+nzguarde)
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
       real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
@@ -5517,8 +5516,11 @@ c along the field direction. This gives energy conservation.
 
       integer(ISZ):: ip,i,k,inext,knext
       real(kind=8):: dxi,dzi
-      real(kind=8):: wx,wz,u10,u11,w10,w11,u20,u21,u22,w20,w21,w22,xsign
-      real(kind=8):: sx,ext,eyt,ezt
+      real(kind=8):: wx,wz
+      real(kind=8):: u10,u11,u12,w10,w11,w12
+      real(kind=8):: u20,u21,u22,w20,w21,w22
+      real(kind=8):: ext,eyt,ezt
+      real(kind=8):: sx,xsign
       real(kind=8):: x,xnext
 
       dxi = 1./dx
@@ -5544,10 +5546,12 @@ c along the field direction. This gives energy conservation.
           wx = (x      - xmmin)*dxi - i
           wz = (zp(ip) - zgrid - zmmin)*dzi - k
 
-          u10 = 1. - wx
-          u11 = wx
-          w10 = 1. - wz
-          w11 = wz
+          u10 = wx - 0.5
+          u11 = - 2*wx
+          u12 = 0.5 + wx
+          w10 = wz - 0.5
+          w11 = - 2*wz
+          w12 = 0.5 + wz
 
           u20 = 0.5*(0.5 - wx)**2
           u21 = (0.75 - wx**2)
@@ -5556,34 +5560,29 @@ c along the field direction. This gives energy conservation.
           w21 = (0.75 - wz**2)
           w22 = 0.5*(0.5 + wz)**2
 
-          ext = u10*w20*selfe(1,i  ,k-1)
-     &        + u11*w20*selfe(1,i+1,k-1)
+          ext = + u10*w20*phi(i-1,k-1)
+     &          + u11*w20*phi(i  ,k-1)
+     &          + u12*w20*phi(i+1,k-1)
 
-     &        + u10*w21*selfe(1,i  ,k  )
-     &        + u11*w21*selfe(1,i+1,k  )
+     &          + u10*w21*phi(i-1,k  )
+     &          + u11*w21*phi(i  ,k  )
+     &          + u12*w21*phi(i+1,k  )
 
-     &        + u10*w22*selfe(1,i  ,k+1)
-     &        + u11*w22*selfe(1,i+1,k+1)
+     &          + u10*w22*phi(i-1,k+1)
+     &          + u11*w22*phi(i  ,k+1)
+     &          + u12*w22*phi(i+1,k+1)
 
-          eyt = u20*w20*selfe(2,i-1,k-1)
-     &        + u21*w20*selfe(2,i  ,k-1)
-     &        + u22*w20*selfe(2,i+1,k-1)
+          ezt = + u20*w10*phi(i-1,k-1)
+     &          + u21*w10*phi(i  ,k-1)
+     &          + u22*w10*phi(i+1,k-1)
 
-     &        + u20*w21*selfe(2,i-1,k  )
-     &        + u21*w21*selfe(2,i  ,k  )
-     &        + u22*w21*selfe(2,i+1,k  )
+     &          + u20*w11*phi(i-1,k  )
+     &          + u21*w11*phi(i  ,k  )
+     &          + u22*w11*phi(i+1,k  )
 
-     &        + u20*w22*selfe(2,i-1,k+1)
-     &        + u21*w22*selfe(2,i  ,k+1)
-     &        + u22*w22*selfe(2,i+1,k+1)
-
-          ezt = u20*w10*selfe(3,i-1,k  )
-     &        + u21*w10*selfe(3,i  ,k  )
-     &        + u22*w10*selfe(3,i+1,k  )
-
-     &        + u20*w11*selfe(3,i-1,k+1)
-     &        + u21*w11*selfe(3,i  ,k+1)
-     &        + u22*w11*selfe(3,i+1,k+1)
+     &          + u20*w12*phi(i-1,k+1)
+     &          + u21*w12*phi(i  ,k+1)
+     &          + u22*w12*phi(i+1,k+1)
 
           if (x > 0.) then
             eyt = ext*yp(ip)/x
@@ -5593,9 +5592,9 @@ c along the field direction. This gives energy conservation.
             eyt = 0.
           endif
 
-          ex(ip) = ex(ip) + ext
-          ey(ip) = ey(ip) + eyt
-          ez(ip) = ez(ip) + ezt
+          ex(ip) = ex(ip) - ext*dxi
+          ey(ip) = ey(ip) - eyt*dxi
+          ez(ip) = ez(ip) - ezt*dzi
 
         enddo
 
@@ -5616,10 +5615,12 @@ c along the field direction. This gives energy conservation.
           wx = (xp(ip) - xmmin)*dxi - i
           wz = (zp(ip) - zgrid - zmmin)*dzi - k
 
-          u10 = 1. - wx
-          u11 = wx
-          w10 = 1. - wz
-          w11 = wz
+          u10 = wx - 0.5
+          u11 = - 2*wx
+          u12 = 0.5 + wx
+          w10 = wz - 0.5
+          w11 = - 2*wz
+          w12 = 0.5 + wz
 
           u20 = 0.5*(0.5 - wx)**2
           u21 = (0.75 - wx**2)
@@ -5628,38 +5629,32 @@ c along the field direction. This gives energy conservation.
           w21 = (0.75 - wz**2)
           w22 = 0.5*(0.5 + wz)**2
 
-          ext = u10*w20*selfe(1,i  ,k-1)
-     &        + u11*w20*selfe(1,i+1,k-1)
+          ext = + u10*w20*phi(i-1,k-1)
+     &          + u11*w20*phi(i  ,k-1)
+     &          + u12*w20*phi(i+1,k-1)
 
-     &        + u10*w21*selfe(1,i  ,k  )
-     &        + u11*w21*selfe(1,i+1,k  )
+     &          + u10*w21*phi(i-1,k  )
+     &          + u11*w21*phi(i  ,k  )
+     &          + u12*w21*phi(i+1,k  )
 
-     &        + u10*w22*selfe(1,i  ,k+1)
-     &        + u11*w22*selfe(1,i+1,k+1)
+     &          + u10*w22*phi(i-1,k+1)
+     &          + u11*w22*phi(i  ,k+1)
+     &          + u12*w22*phi(i+1,k+1)
 
-          eyt = u20*w20*selfe(2,i-1,k-1)
-     &        + u21*w20*selfe(2,i  ,k-1)
-     &        + u22*w20*selfe(2,i+1,k-1)
+          ezt = + u20*w10*phi(i-1,k-1)
+     &          + u21*w10*phi(i  ,k-1)
+     &          + u22*w10*phi(i+1,k-1)
 
-     &        + u20*w21*selfe(2,i-1,k  )
-     &        + u21*w21*selfe(2,i  ,k  )
-     &        + u22*w21*selfe(2,i+1,k  )
+     &          + u20*w11*phi(i-1,k  )
+     &          + u21*w11*phi(i  ,k  )
+     &          + u22*w11*phi(i+1,k  )
 
-     &        + u20*w22*selfe(2,i-1,k+1)
-     &        + u21*w22*selfe(2,i  ,k+1)
-     &        + u22*w22*selfe(2,i+1,k+1)
+     &          + u20*w12*phi(i-1,k+1)
+     &          + u21*w12*phi(i  ,k+1)
+     &          + u22*w12*phi(i+1,k+1)
 
-          ezt = u20*w10*selfe(3,i-1,k  )
-     &        + u21*w10*selfe(3,i  ,k  )
-     &        + u22*w10*selfe(3,i+1,k  )
-
-     &        + u20*w11*selfe(3,i-1,k+1)
-     &        + u21*w11*selfe(3,i  ,k+1)
-     &        + u22*w11*selfe(3,i+1,k+1)
-
-          ex(ip) = ex(ip) + ext
-          ey(ip) = ey(ip) + eyt
-          ez(ip) = ez(ip) + ezt
+          ex(ip) = ex(ip) - ext*dxi
+          ez(ip) = ez(ip) - ezt*dzi
 
         enddo
 
@@ -5673,6 +5668,7 @@ c       --- the axis of symmetry.
 c       --- special loop symmetry is used
         inext = nint((abs(xp(1)) - xmmin)*dxi)
         knext = nint((zp(1) - zgrid - zmmin)*dzi)
+
         do ip = 1, np
 
           i = inext
@@ -5685,10 +5681,12 @@ c       --- special loop symmetry is used
           wx = (xp(ip) - xmmin)*dxi - i
           wz = (zp(ip) - zgrid - zmmin)*dzi - k
 
-          u10 = 1. - wx
-          u11 = wx
-          w10 = 1. - wz
-          w11 = wz
+          u10 = wx - 0.5
+          u11 = - 2*wx
+          u12 = 0.5 + wx
+          w10 = wz - 0.5
+          w11 = - 2*wz
+          w12 = 0.5 + wz
 
           u20 = 0.5*(0.5 - wx)**2
           u21 = (0.75 - wx**2)
@@ -5701,38 +5699,32 @@ c         --- Adjust sign of E field for appropriate quadrant.
           xsign = 1.
           if (xp(ip) < 0.) xsign = sx
 
-          ext = u10*w20*selfe(1,i  ,k-1)
-     &        + u11*w20*selfe(1,i+1,k-1)
+          ext = + u10*w20*phi(i-1,k-1)
+     &          + u11*w20*phi(i  ,k-1)
+     &          + u12*w20*phi(i+1,k-1)
 
-     &        + u10*w21*selfe(1,i  ,k  )
-     &        + u11*w21*selfe(1,i+1,k  )
+     &          + u10*w21*phi(i-1,k  )
+     &          + u11*w21*phi(i  ,k  )
+     &          + u12*w21*phi(i+1,k  )
 
-     &        + u10*w22*selfe(1,i  ,k+1)
-     &        + u11*w22*selfe(1,i+1,k+1)
+     &          + u10*w22*phi(i-1,k+1)
+     &          + u11*w22*phi(i  ,k+1)
+     &          + u12*w22*phi(i+1,k+1)
 
-          eyt = u20*w20*selfe(2,i-1,k-1)
-     &        + u21*w20*selfe(2,i  ,k-1)
-     &        + u22*w20*selfe(2,i+1,k-1)
+          ezt = + u20*w10*phi(i-1,k-1)
+     &          + u21*w10*phi(i  ,k-1)
+     &          + u22*w10*phi(i+1,k-1)
 
-     &        + u20*w21*selfe(2,i-1,k  )
-     &        + u21*w21*selfe(2,i  ,k  )
-     &        + u22*w21*selfe(2,i+1,k  )
+     &          + u20*w11*phi(i-1,k  )
+     &          + u21*w11*phi(i  ,k  )
+     &          + u22*w11*phi(i+1,k  )
 
-     &        + u20*w22*selfe(2,i-1,k+1)
-     &        + u21*w22*selfe(2,i  ,k+1)
-     &        + u22*w22*selfe(2,i+1,k+1)
+     &          + u20*w12*phi(i-1,k+1)
+     &          + u21*w12*phi(i  ,k+1)
+     &          + u22*w12*phi(i+1,k+1)
 
-          ezt = u20*w10*selfe(3,i-1,k  )
-     &        + u21*w10*selfe(3,i  ,k  )
-     &        + u22*w10*selfe(3,i+1,k  )
-
-     &        + u20*w11*selfe(3,i-1,k+1)
-     &        + u21*w11*selfe(3,i  ,k+1)
-     &        + u22*w11*selfe(3,i+1,k+1)
-
-          ex(ip) = ex(ip) + ext*xsign
-          ey(ip) = ey(ip) + eyt
-          ez(ip) = ez(ip) + ezt
+          ex(ip) = ex(ip) - ext*dxi*xsign
+          ez(ip) = ez(ip) - ezt*dzi
 
         enddo
 
@@ -5741,18 +5733,18 @@ c         --- Adjust sign of E field for appropriate quadrant.
       return
       end
 c===========================================================================
-      subroutine sete_from_e_order2_energyconserving3d(selfe,np,xp,yp,zp,zgrid,
+      subroutine sete_from_e_order2_energyconserving3d(phi,np,xp,yp,zp,zgrid,
      &                                 xmmin,ymmin,zmmin,
      &                                 dx,dy,dz,nx,ny,nz,
-     &                                 nxguarde,nyguarde,nzguarde,
+     &                                 nxguardphi,nyguardphi,nzguardphi,
      &                                 ex,ey,ez,l2symtry,l4symtry)
       use Subtimersw3d
       integer(ISZ):: np,nx,ny,nz
-      integer(ISZ):: nxguarde,nyguarde,nzguarde
+      integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
-      real(kind=8):: selfe(3,-nxguarde:nx+nxguarde,
-     &                       -nyguarde:ny+nyguarde,
-     &                       -nzguarde:nz+nzguarde)
+      real(kind=8):: phi(-nxguardphi:nx+nxguardphi,
+     &                   -nyguardphi:ny+nyguardphi,
+     &                   -nzguardphi:nz+nzguardphi)
       real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
       logical(ISZ):: l2symtry,l4symtry
@@ -5764,7 +5756,7 @@ c along the field direction. This gives energy conservation.
       integer(ISZ):: ip,i,j,k,inext,jnext,knext
       real(kind=8):: dxi,dyi,dzi
       real(kind=8):: wx,wy,wz
-      real(kind=8):: u10,u11,v10,v11,w10,w11
+      real(kind=8):: u10,u11,u12,v10,v11,v12,w10,w11,w12
       real(kind=8):: u20,u21,u22,v20,v21,v22,w20,w21,w22
       real(kind=8):: ysign,xsign
       real(kind=8):: sx,sy,ext,eyt,ezt
@@ -5794,12 +5786,15 @@ c along the field direction. This gives energy conservation.
           wy = (yp(ip) - ymmin)*dyi - j
           wz = (zp(ip) - zgrid - zmmin)*dzi - k
 
-          u10 = 1. - wx
-          u11 = wx
-          v10 = 1. - wy
-          v11 = wy
-          w10 = 1. - wz
-          w11 = wz
+          u10 = wx - 0.5
+          u11 = - 2*wx
+          u12 = 0.5 + wx
+          v10 = wy - 0.5
+          v11 = - 2*wy
+          v12 = 0.5 + wy
+          w10 = wz - 0.5
+          w11 = - 2*wz
+          w12 = 0.5 + wz
 
           u20 = 0.5*(0.5 - wx)**2
           u21 = (0.75 - wx**2)
@@ -5811,71 +5806,99 @@ c along the field direction. This gives energy conservation.
           w21 = (0.75 - wz**2)
           w22 = 0.5*(0.5 + wz)**2
 
-          ext = u10*v20*w20*selfe(1,i  ,j-1,k-1)
-     &        + u11*v20*w20*selfe(1,i+1,j-1,k-1)
-     &        + u10*v21*w20*selfe(1,i  ,j  ,k-1)
-     &        + u11*v21*w20*selfe(1,i+1,j  ,k-1)
-     &        + u10*v22*w20*selfe(1,i  ,j+1,k-1)
-     &        + u11*v22*w20*selfe(1,i+1,j+1,k-1)
+          ext = u10*v20*w20*phi(i-1,j-1,k-1)
+     &        + u11*v20*w20*phi(i  ,j-1,k-1)
+     &        + u12*v20*w20*phi(i+1,j-1,k-1)
+     &        + u10*v21*w20*phi(i-1,j  ,k-1)
+     &        + u11*v21*w20*phi(i  ,j  ,k-1)
+     &        + u12*v21*w20*phi(i+1,j  ,k-1)
+     &        + u10*v22*w20*phi(i-1,j+1,k-1)
+     &        + u11*v22*w20*phi(i  ,j+1,k-1)
+     &        + u12*v22*w20*phi(i+1,j+1,k-1)
 
-     &        + u10*v20*w21*selfe(1,i  ,j-1,k  )
-     &        + u11*v20*w21*selfe(1,i+1,j-1,k  )
-     &        + u10*v21*w21*selfe(1,i  ,j  ,k  )
-     &        + u11*v21*w21*selfe(1,i+1,j  ,k  )
-     &        + u10*v22*w21*selfe(1,i  ,j+1,k  )
-     &        + u11*v22*w21*selfe(1,i+1,j+1,k  )
+     &        + u10*v20*w21*phi(i-1,j-1,k  )
+     &        + u11*v20*w21*phi(i  ,j-1,k  )
+     &        + u12*v20*w21*phi(i+1,j-1,k  )
+     &        + u10*v21*w21*phi(i-1,j  ,k  )
+     &        + u11*v21*w21*phi(i  ,j  ,k  )
+     &        + u12*v21*w21*phi(i+1,j  ,k  )
+     &        + u10*v22*w21*phi(i-1,j+1,k  )
+     &        + u11*v22*w21*phi(i  ,j+1,k  )
+     &        + u12*v22*w21*phi(i+1,j+1,k  )
 
-     &        + u10*v20*w22*selfe(1,i  ,j-1,k+1)
-     &        + u11*v20*w22*selfe(1,i+1,j-1,k+1)
-     &        + u10*v21*w22*selfe(1,i  ,j  ,k+1)
-     &        + u11*v21*w22*selfe(1,i+1,j  ,k+1)
-     &        + u10*v22*w22*selfe(1,i  ,j+1,k+1)
-     &        + u11*v22*w22*selfe(1,i+1,j+1,k+1)
+     &        + u10*v20*w22*phi(i-1,j-1,k+1)
+     &        + u11*v20*w22*phi(i  ,j-1,k+1)
+     &        + u12*v20*w22*phi(i+1,j-1,k+1)
+     &        + u10*v21*w22*phi(i-1,j  ,k+1)
+     &        + u11*v21*w22*phi(i  ,j  ,k+1)
+     &        + u12*v21*w22*phi(i+1,j  ,k+1)
+     &        + u10*v22*w22*phi(i-1,j+1,k+1)
+     &        + u11*v22*w22*phi(i  ,j+1,k+1)
+     &        + u12*v22*w22*phi(i+1,j+1,k+1)
 
-          eyt = u20*v10*w20*selfe(2,i-1,j  ,k-1)
-     &        + u21*v10*w20*selfe(2,i  ,j  ,k-1)
-     &        + u22*v10*w20*selfe(2,i+1,j  ,k-1)
-     &        + u20*v11*w20*selfe(2,i-1,j+1,k-1)
-     &        + u21*v11*w20*selfe(2,i  ,j+1,k-1)
-     &        + u22*v11*w20*selfe(2,i+1,j+1,k-1)
+          eyt = u20*v10*w20*phi(i-1,j-1,k-1)
+     &        + u21*v10*w20*phi(i  ,j-1,k-1)
+     &        + u22*v10*w20*phi(i+1,j-1,k-1)
+     &        + u20*v11*w20*phi(i-1,j  ,k-1)
+     &        + u21*v11*w20*phi(i  ,j  ,k-1)
+     &        + u22*v11*w20*phi(i+1,j  ,k-1)
+     &        + u20*v12*w20*phi(i-1,j+1,k-1)
+     &        + u21*v12*w20*phi(i  ,j+1,k-1)
+     &        + u22*v12*w20*phi(i+1,j+1,k-1)
 
-     &        + u20*v10*w21*selfe(2,i-1,j  ,k  )
-     &        + u21*v10*w21*selfe(2,i  ,j  ,k  )
-     &        + u22*v10*w21*selfe(2,i+1,j  ,k  )
-     &        + u20*v11*w21*selfe(2,i-1,j+1,k  )
-     &        + u21*v11*w21*selfe(2,i  ,j+1,k  )
-     &        + u22*v11*w21*selfe(2,i+1,j+1,k  )
+     &        + u20*v10*w21*phi(i-1,j-1,k  )
+     &        + u21*v10*w21*phi(i  ,j-1,k  )
+     &        + u22*v10*w21*phi(i+1,j-1,k  )
+     &        + u20*v11*w21*phi(i-1,j  ,k  )
+     &        + u21*v11*w21*phi(i  ,j  ,k  )
+     &        + u22*v11*w21*phi(i+1,j  ,k  )
+     &        + u20*v12*w21*phi(i-1,j+1,k  )
+     &        + u21*v12*w21*phi(i  ,j+1,k  )
+     &        + u22*v12*w21*phi(i+1,j+1,k  )
 
-     &        + u20*v10*w22*selfe(2,i-1,j  ,k+1)
-     &        + u21*v10*w22*selfe(2,i  ,j  ,k+1)
-     &        + u22*v10*w22*selfe(2,i+1,j  ,k+1)
-     &        + u20*v11*w22*selfe(2,i-1,j+1,k+1)
-     &        + u21*v11*w22*selfe(2,i  ,j+1,k+1)
-     &        + u22*v11*w22*selfe(2,i+1,j+1,k+1)
+     &        + u20*v10*w22*phi(i-1,j-1,k+1)
+     &        + u21*v10*w22*phi(i  ,j-1,k+1)
+     &        + u22*v10*w22*phi(i+1,j-1,k+1)
+     &        + u20*v11*w22*phi(i-1,j  ,k+1)
+     &        + u21*v11*w22*phi(i  ,j  ,k+1)
+     &        + u22*v11*w22*phi(i+1,j  ,k+1)
+     &        + u20*v12*w22*phi(i-1,j+1,k+1)
+     &        + u21*v12*w22*phi(i  ,j+1,k+1)
+     &        + u22*v12*w22*phi(i+1,j+1,k+1)
 
-          ezt = u20*v20*w10*selfe(3,i-1,j-1,k  )
-     &        + u21*v20*w10*selfe(3,i  ,j-1,k  )
-     &        + u22*v20*w10*selfe(3,i+1,j-1,k  )
-     &        + u20*v21*w10*selfe(3,i-1,j  ,k  )
-     &        + u21*v21*w10*selfe(3,i  ,j  ,k  )
-     &        + u22*v21*w10*selfe(3,i+1,j  ,k  )
-     &        + u20*v22*w10*selfe(3,i-1,j+1,k  )
-     &        + u21*v22*w10*selfe(3,i  ,j+1,k  )
-     &        + u22*v22*w10*selfe(3,i+1,j+1,k  )
+          ezt = u20*v20*w10*phi(i-1,j-1,k-1)
+     &        + u21*v20*w10*phi(i  ,j-1,k-1)
+     &        + u22*v20*w10*phi(i+1,j-1,k-1)
+     &        + u20*v21*w10*phi(i-1,j  ,k-1)
+     &        + u21*v21*w10*phi(i  ,j  ,k-1)
+     &        + u22*v21*w10*phi(i+1,j  ,k-1)
+     &        + u20*v22*w10*phi(i-1,j+1,k-1)
+     &        + u21*v22*w10*phi(i  ,j+1,k-1)
+     &        + u22*v22*w10*phi(i+1,j+1,k-1)
 
-     &        + u20*v20*w11*selfe(3,i-1,j-1,k+1)
-     &        + u21*v20*w11*selfe(3,i  ,j-1,k+1)
-     &        + u22*v20*w11*selfe(3,i+1,j-1,k+1)
-     &        + u20*v21*w11*selfe(3,i-1,j  ,k+1)
-     &        + u21*v21*w11*selfe(3,i  ,j  ,k+1)
-     &        + u22*v21*w11*selfe(3,i+1,j  ,k+1)
-     &        + u20*v22*w11*selfe(3,i-1,j+1,k+1)
-     &        + u21*v22*w11*selfe(3,i  ,j+1,k+1)
-     &        + u22*v22*w11*selfe(3,i+1,j+1,k+1)
+     &        + u20*v20*w11*phi(i-1,j-1,k  )
+     &        + u21*v20*w11*phi(i  ,j-1,k  )
+     &        + u22*v20*w11*phi(i+1,j-1,k  )
+     &        + u20*v21*w11*phi(i-1,j  ,k  )
+     &        + u21*v21*w11*phi(i  ,j  ,k  )
+     &        + u22*v21*w11*phi(i+1,j  ,k  )
+     &        + u20*v22*w11*phi(i-1,j+1,k  )
+     &        + u21*v22*w11*phi(i  ,j+1,k  )
+     &        + u22*v22*w11*phi(i+1,j+1,k  )
 
-          ex(ip) = ex(ip) + ext
-          ey(ip) = ey(ip) + eyt
-          ez(ip) = ez(ip) + ezt
+     &        + u20*v20*w12*phi(i-1,j-1,k+1)
+     &        + u21*v20*w12*phi(i  ,j-1,k+1)
+     &        + u22*v20*w12*phi(i+1,j-1,k+1)
+     &        + u20*v21*w12*phi(i-1,j  ,k+1)
+     &        + u21*v21*w12*phi(i  ,j  ,k+1)
+     &        + u22*v21*w12*phi(i+1,j  ,k+1)
+     &        + u20*v22*w12*phi(i-1,j+1,k+1)
+     &        + u21*v22*w12*phi(i  ,j+1,k+1)
+     &        + u22*v22*w12*phi(i+1,j+1,k+1)
+
+          ex(ip) = ex(ip) - ext*dxi
+          ey(ip) = ey(ip) - eyt*dyi
+          ez(ip) = ez(ip) - ezt*dzi
 
         enddo
 
@@ -5906,12 +5929,15 @@ c       --- special loop symmetry is used
           wy = (yp(ip) - ymmin)*dyi - j
           wz = (zp(ip) - zgrid - zmmin)*dzi - k
 
-          u10 = 1. - wx
-          u11 = wx
-          v10 = 1. - wy
-          v11 = wy
-          w10 = 1. - wz
-          w11 = wz
+          u10 = wx - 0.5
+          u11 = - 2*wx
+          u12 = 0.5 + wx
+          v10 = wy - 0.5
+          v11 = - 2*wy
+          v12 = 0.5 + wy
+          w10 = wz - 0.5
+          w11 = - 2*wz
+          w12 = 0.5 + wz
 
           u20 = 0.5*(0.5 - wx)**2
           u21 = (0.75 - wx**2)
@@ -5929,71 +5955,99 @@ c         --- Adjust sign of E field for appropriate quadrant.
           if (xp(ip) < 0.) xsign = sx
           if (yp(ip) < 0.) ysign = sy
 
-          ext = u10*v20*w20*selfe(1,i  ,j-1,k-1)
-     &        + u11*v20*w20*selfe(1,i+1,j-1,k-1)
-     &        + u10*v21*w20*selfe(1,i  ,j  ,k-1)
-     &        + u11*v21*w20*selfe(1,i+1,j  ,k-1)
-     &        + u10*v22*w20*selfe(1,i  ,j+1,k-1)
-     &        + u11*v22*w20*selfe(1,i+1,j+1,k-1)
+          ext = u10*v20*w20*phi(i-1,j-1,k-1)
+     &        + u11*v20*w20*phi(i  ,j-1,k-1)
+     &        + u12*v20*w20*phi(i+1,j-1,k-1)
+     &        + u10*v21*w20*phi(i-1,j  ,k-1)
+     &        + u11*v21*w20*phi(i  ,j  ,k-1)
+     &        + u12*v21*w20*phi(i+1,j  ,k-1)
+     &        + u10*v22*w20*phi(i-1,j+1,k-1)
+     &        + u11*v22*w20*phi(i  ,j+1,k-1)
+     &        + u12*v22*w20*phi(i+1,j+1,k-1)
 
-     &        + u10*v20*w21*selfe(1,i  ,j-1,k  )
-     &        + u11*v20*w21*selfe(1,i+1,j-1,k  )
-     &        + u10*v21*w21*selfe(1,i  ,j  ,k  )
-     &        + u11*v21*w21*selfe(1,i+1,j  ,k  )
-     &        + u10*v22*w21*selfe(1,i  ,j+1,k  )
-     &        + u11*v22*w21*selfe(1,i+1,j+1,k  )
+     &        + u10*v20*w21*phi(i-1,j-1,k  )
+     &        + u11*v20*w21*phi(i  ,j-1,k  )
+     &        + u12*v20*w21*phi(i+1,j-1,k  )
+     &        + u10*v21*w21*phi(i-1,j  ,k  )
+     &        + u11*v21*w21*phi(i  ,j  ,k  )
+     &        + u12*v21*w21*phi(i+1,j  ,k  )
+     &        + u10*v22*w21*phi(i-1,j+1,k  )
+     &        + u11*v22*w21*phi(i  ,j+1,k  )
+     &        + u12*v22*w21*phi(i+1,j+1,k  )
 
-     &        + u10*v20*w22*selfe(1,i  ,j-1,k+1)
-     &        + u11*v20*w22*selfe(1,i+1,j-1,k+1)
-     &        + u10*v21*w22*selfe(1,i  ,j  ,k+1)
-     &        + u11*v21*w22*selfe(1,i+1,j  ,k+1)
-     &        + u10*v22*w22*selfe(1,i  ,j+1,k+1)
-     &        + u11*v22*w22*selfe(1,i+1,j+1,k+1)
+     &        + u10*v20*w22*phi(i-1,j-1,k+1)
+     &        + u11*v20*w22*phi(i  ,j-1,k+1)
+     &        + u12*v20*w22*phi(i+1,j-1,k+1)
+     &        + u10*v21*w22*phi(i-1,j  ,k+1)
+     &        + u11*v21*w22*phi(i  ,j  ,k+1)
+     &        + u12*v21*w22*phi(i+1,j  ,k+1)
+     &        + u10*v22*w22*phi(i-1,j+1,k+1)
+     &        + u11*v22*w22*phi(i  ,j+1,k+1)
+     &        + u12*v22*w22*phi(i+1,j+1,k+1)
 
-          eyt = u20*v10*w20*selfe(2,i-1,j  ,k-1)
-     &        + u21*v10*w20*selfe(2,i  ,j  ,k-1)
-     &        + u22*v10*w20*selfe(2,i+1,j  ,k-1)
-     &        + u20*v11*w20*selfe(2,i-1,j+1,k-1)
-     &        + u21*v11*w20*selfe(2,i  ,j+1,k-1)
-     &        + u22*v11*w20*selfe(2,i+1,j+1,k-1)
+          eyt = u20*v10*w20*phi(i-1,j-1,k-1)
+     &        + u21*v10*w20*phi(i  ,j-1,k-1)
+     &        + u22*v10*w20*phi(i+1,j-1,k-1)
+     &        + u20*v11*w20*phi(i-1,j  ,k-1)
+     &        + u21*v11*w20*phi(i  ,j  ,k-1)
+     &        + u22*v11*w20*phi(i+1,j  ,k-1)
+     &        + u20*v12*w20*phi(i-1,j+1,k-1)
+     &        + u21*v12*w20*phi(i  ,j+1,k-1)
+     &        + u22*v12*w20*phi(i+1,j+1,k-1)
 
-     &        + u20*v10*w21*selfe(2,i-1,j  ,k  )
-     &        + u21*v10*w21*selfe(2,i  ,j  ,k  )
-     &        + u22*v10*w21*selfe(2,i+1,j  ,k  )
-     &        + u20*v11*w21*selfe(2,i-1,j+1,k  )
-     &        + u21*v11*w21*selfe(2,i  ,j+1,k  )
-     &        + u22*v11*w21*selfe(2,i+1,j+1,k  )
+     &        + u20*v10*w21*phi(i-1,j-1,k  )
+     &        + u21*v10*w21*phi(i  ,j-1,k  )
+     &        + u22*v10*w21*phi(i+1,j-1,k  )
+     &        + u20*v11*w21*phi(i-1,j  ,k  )
+     &        + u21*v11*w21*phi(i  ,j  ,k  )
+     &        + u22*v11*w21*phi(i+1,j  ,k  )
+     &        + u20*v12*w21*phi(i-1,j+1,k  )
+     &        + u21*v12*w21*phi(i  ,j+1,k  )
+     &        + u22*v12*w21*phi(i+1,j+1,k  )
 
-     &        + u20*v10*w22*selfe(2,i-1,j  ,k+1)
-     &        + u21*v10*w22*selfe(2,i  ,j  ,k+1)
-     &        + u22*v10*w22*selfe(2,i+1,j  ,k+1)
-     &        + u20*v11*w22*selfe(2,i-1,j+1,k+1)
-     &        + u21*v11*w22*selfe(2,i  ,j+1,k+1)
-     &        + u22*v11*w22*selfe(2,i+1,j+1,k+1)
+     &        + u20*v10*w22*phi(i-1,j-1,k+1)
+     &        + u21*v10*w22*phi(i  ,j-1,k+1)
+     &        + u22*v10*w22*phi(i+1,j-1,k+1)
+     &        + u20*v11*w22*phi(i-1,j  ,k+1)
+     &        + u21*v11*w22*phi(i  ,j  ,k+1)
+     &        + u22*v11*w22*phi(i+1,j  ,k+1)
+     &        + u20*v12*w22*phi(i-1,j+1,k+1)
+     &        + u21*v12*w22*phi(i  ,j+1,k+1)
+     &        + u22*v12*w22*phi(i+1,j+1,k+1)
 
-          ezt = u20*v20*w10*selfe(3,i-1,j-1,k  )
-     &        + u21*v20*w10*selfe(3,i  ,j-1,k  )
-     &        + u22*v20*w10*selfe(3,i+1,j-1,k  )
-     &        + u20*v21*w10*selfe(3,i-1,j  ,k  )
-     &        + u21*v21*w10*selfe(3,i  ,j  ,k  )
-     &        + u22*v21*w10*selfe(3,i+1,j  ,k  )
-     &        + u20*v22*w10*selfe(3,i-1,j+1,k  )
-     &        + u21*v22*w10*selfe(3,i  ,j+1,k  )
-     &        + u22*v22*w10*selfe(3,i+1,j+1,k  )
+          ezt = u20*v20*w10*phi(i-1,j-1,k-1)
+     &        + u21*v20*w10*phi(i  ,j-1,k-1)
+     &        + u22*v20*w10*phi(i+1,j-1,k-1)
+     &        + u20*v21*w10*phi(i-1,j  ,k-1)
+     &        + u21*v21*w10*phi(i  ,j  ,k-1)
+     &        + u22*v21*w10*phi(i+1,j  ,k-1)
+     &        + u20*v22*w10*phi(i-1,j+1,k-1)
+     &        + u21*v22*w10*phi(i  ,j+1,k-1)
+     &        + u22*v22*w10*phi(i+1,j+1,k-1)
 
-     &        + u20*v20*w11*selfe(3,i-1,j-1,k+1)
-     &        + u21*v20*w11*selfe(3,i  ,j-1,k+1)
-     &        + u22*v20*w11*selfe(3,i+1,j-1,k+1)
-     &        + u20*v21*w11*selfe(3,i-1,j  ,k+1)
-     &        + u21*v21*w11*selfe(3,i  ,j  ,k+1)
-     &        + u22*v21*w11*selfe(3,i+1,j  ,k+1)
-     &        + u20*v22*w11*selfe(3,i-1,j+1,k+1)
-     &        + u21*v22*w11*selfe(3,i  ,j+1,k+1)
-     &        + u22*v22*w11*selfe(3,i+1,j+1,k+1)
+     &        + u20*v20*w11*phi(i-1,j-1,k  )
+     &        + u21*v20*w11*phi(i  ,j-1,k  )
+     &        + u22*v20*w11*phi(i+1,j-1,k  )
+     &        + u20*v21*w11*phi(i-1,j  ,k  )
+     &        + u21*v21*w11*phi(i  ,j  ,k  )
+     &        + u22*v21*w11*phi(i+1,j  ,k  )
+     &        + u20*v22*w11*phi(i-1,j+1,k  )
+     &        + u21*v22*w11*phi(i  ,j+1,k  )
+     &        + u22*v22*w11*phi(i+1,j+1,k  )
 
-          ex(ip) = ex(ip) + ext*xsign
-          ey(ip) = ey(ip) + eyt*ysign
-          ez(ip) = ez(ip) + ezt
+     &        + u20*v20*w12*phi(i-1,j-1,k+1)
+     &        + u21*v20*w12*phi(i  ,j-1,k+1)
+     &        + u22*v20*w12*phi(i+1,j-1,k+1)
+     &        + u20*v21*w12*phi(i-1,j  ,k+1)
+     &        + u21*v21*w12*phi(i  ,j  ,k+1)
+     &        + u22*v21*w12*phi(i+1,j  ,k+1)
+     &        + u20*v22*w12*phi(i-1,j+1,k+1)
+     &        + u21*v22*w12*phi(i  ,j+1,k+1)
+     &        + u22*v22*w12*phi(i+1,j+1,k+1)
+
+          ex(ip) = ex(ip) - ext*dxi*xsign
+          ey(ip) = ey(ip) - eyt*dyi*ysign
+          ez(ip) = ez(ip) - ezt*dzi
 
         enddo
 
