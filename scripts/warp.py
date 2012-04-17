@@ -1,4 +1,10 @@
-warp_version = "$Id: warp.py,v 1.211 2012/01/26 23:31:01 grote Exp $"
+#import sys
+#from cached_import import simple_finder
+#sys.meta_path.append(simple_finder())
+
+import time
+warpstarttime = time.time()
+
 # import all of the neccesary packages
 import __main__
 import sys
@@ -1377,3 +1383,10 @@ initial_global_dict_keys.remove('registeredsolverscontainer')
 # --- dump file.
 warpversions = versionstext()
 
+warpendtime = time.time()
+print 'import warp time ',warpendtime - warpstarttime,'seconds'
+print warp.__file__
+try:
+  print warpC.__file__
+except AttributeError:
+  print 'warpC built in'
