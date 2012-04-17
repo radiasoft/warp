@@ -4,9 +4,10 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 
-__all__ = ['PlaneSave','plane_save_version']
+__all__ = ['PlaneSave']
 
 from warp import *
+import cPickle
 plane_save_version = "$Id: plane_save.py,v 1.24 2009/06/29 18:24:38 dave Exp $"
 
 class PlaneSave:
@@ -48,9 +49,9 @@ Input:
     self.lsaveparticles = lsaveparticles
 
     if allways_save:
-      self.save_this_step = true
+      self.started_saving_particles = True
     else:
-      self.save_this_step = false
+      self.started_saving_particles = False
 
     # --- defines useful variables
     self.it = 0
@@ -59,11 +60,45 @@ Input:
     installafterfs(self.saveplane)
 
     # --- Set the name of the file which will hold the data
-    self.f = None
     if filename is None:
       self.filename = arraytostr(top.runid)+".plane"
     else:
       self.filename = filename
+
+    self.initted = False
+
+  def write(self,name,val):
+    # --- Check if _f is defined. If not, the create the file as needed.
+    try:
+      self._f
+    except AttributeError:
+
+      fileexists = os.access(self.filename,os.F_OK)
+      if self.newfile or not fileexists:
+        self._f = open(self.filename,'w')
+        self.writeinitialdata()
+      else:
+        self._f = None
+
+    if self._f is None or self._f.closed:
+      self._f = open(self.filename,'a')
+
+    # --- Write the data out as a named tuple
+    cPickle.dump((name,val),self._f,-1)
+
+  def flush(self):
+    if me > 0: return
+    if self._f is not None and not self._f.closed:
+      self._f.flush()
+
+  def fileclose(self):
+    if me > 0: return
+    try:
+      if not self._f.closed:
+        self._f.set_verbosity(0)
+        self._f.close()
+    except AttributeError:
+      pass
 
   def initsaveplane(self):
 
@@ -108,61 +143,56 @@ Input:
     # --- The file is only opened and the data written on processor 0
     if me > 0: return
 
-    fileexists = os.access(self.filename,os.F_OK)
-    if self.newfile or not fileexists:
-      self.f = PW.PW(self.filename)
+    # --- save some initial data, and plane size and location and time step
+    self.write('lsavephi',self.lsavephi)
+    self.write('lsaveparticles',self.lsaveparticles)
+    self.write('zplane',self.zplane)
+    self.write('dt',top.dt)
+    self.write('deltat',self.deltat)
+    self.write('tmin',top.time)
 
-      # --- save some initial data, and plane size and location and time step
-      self.f.lsavephi   = self.lsavephi
-      self.f.lsaveparticles = self.lsaveparticles
-      self.f.zplane    = self.zplane
-      self.f.dt        = top.dt
-      self.f.deltat = self.deltat
+    if self.lsaveparticles:
+      self.write('npid',top.npid)
+      # --- Write out particle quantities for each species
+      for js in self.jslist:
+        self.write('sq_%d'%js,top.pgroup.sq[js])
+        self.write('sm_%d'%js,top.pgroup.sm[js])
+        self.write('sw_%d'%js,top.pgroup.sw[js])
 
-      if self.lsaveparticles:
-        self.f.npid      = top.npid
-        # --- Write out particle quantities for each species
-        for js in self.jslist:
-          self.f.write('sq_%d'%js,top.pgroup.sq[js])
-          self.f.write('sm_%d'%js,top.pgroup.sm[js])
-          self.f.write('sw_%d'%js,top.pgroup.sw[js])
+    if self.lsavephi:
+      # --- Note that the file is already open
+      self.write('deltaz',self.deltaz)
+      self.write('nx_plane',w3d.nx)
+      self.write('ny_plane',w3d.ny)
+      self.write('ixa_plane',w3d.ix_axis)
+      self.write('iya_plane',w3d.iy_axis)
+      self.write('xmmin',w3d.xmmin)
+      self.write('xmmax',w3d.xmmax)
+      self.write('ymmin',w3d.ymmin)
+      self.write('ymmax',w3d.ymmax)
+      self.write('deltaz',self.deltaz)
 
-      if self.lsavephi:
-        # --- Note that the file is already open
-        self.f.deltaz    = self.deltaz
-        self.f.nx_plane  = w3d.nx
-        self.f.ny_plane  = w3d.ny
-        self.f.ixa_plane = w3d.ix_axis
-        self.f.iya_plane = w3d.iy_axis
-        self.f.xmmin     = w3d.xmmin
-        self.f.xmmax     = w3d.xmmax
-        self.f.ymmin     = w3d.ymmin
-        self.f.ymmax     = w3d.ymmax
-        self.f.deltaz    = self.deltaz
-     
-        # --- set sym_plane and write it out
-        if (w3d.l4symtry):
-          sym_plane = 4
-        elif (w3d.l2symtry):
-          sym_plane = 2
-        else:
-          sym_plane = 1
-        self.f.sym_plane = sym_plane
+      # --- set sym_plane and write it out
+      if (w3d.l4symtry):
+        sym_plane = 4
+      elif (w3d.l2symtry):
+        sym_plane = 2
+      else:
+        sym_plane = 1
+      self.write('sym_plane',sym_plane)
 
-        # --- Write out the solver geometry flag
-        self.f.solvergeom = w3d.solvergeom
-
-      self.f.set_verbosity(0)
-      self.f.close()
+      # --- Write out the solver geometry flag
+      # --- This must be the last thing written out before the phi or particle
+      # --- data, since it is used to flag the end of the initial data.
+      self.write('solvergeom',w3d.solvergeom)
 
   def saveplane(self):
 
-    if self.f is None:
-      self.f = 0
+    if not self.initted:
       self.initsaveplane()
       self.initsaveparticles()
       self.initsavephi()
-      self.writeinitialdata()
+      self.initted = True
 
     # --- Only save data if zplane is within the grid.
     if(self.zplane < w3d.zmmin+top.zbeam or
@@ -172,10 +202,6 @@ Input:
     itt = max(1,nint(self.deltat/top.dt))
     if (top.it % itt) > 0: return
 
-    if me == 0:
-      # --- open file in append mode
-      self.f = PW.PW(self.filename,'a')
-
     # --- save for each species
     for js in self.jslist:
       self.saveplanespecies(js)
@@ -183,36 +209,23 @@ Input:
     # --- Save phi at the plane
     self.saveplanephi()
 
-    if me == 0:
-      if(self.save_this_step):
-        # --- Write start time and update end time
-        if(self.it==1): self.f.tmin = top.time
-        self.f.tmax = top.time
-
-      # --- close file
-      self.f.set_verbosity(0)
-      self.f.close()
+    # --- Make sure the data is written out to the file
+    if self.started_saving_particles:
+      self.flush()
 
   def saveplanephi(self):
     if not self.lsavephi: return
 
     # --- phi is saved every time step whether or not there are particles saved
     # --- but only after saving has started.
-    if(self.save_this_step):
+    if self.started_saving_particles:
       # --- get the two planes of phi to be saved
       iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
       izz = max(1,nint(self.deltaz/w3d.dz))
       self.phi_save = transpose(array([transpose(getphi(iz=iz-izz)),
                                        transpose(getphi(iz=iz))]))
       if me == 0:
-        try:
-          self.f.write('phiplane%09d'%self.it,self.phi_save)
-        except:
-          print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-          print "ERROR: There was an error writing out the particle data"
-          print "       This most likely means that an attempt was made"
-          print "       to overwrite an existing file."
-          print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        self.write('phiplane%09d'%self.it,self.phi_save)
 
   def saveplanespecies(self,js):
     if not self.lsaveparticles: return
@@ -226,8 +239,7 @@ Input:
       zold = top.pgroup.pid[j1:j2,self.zoldpid]
 
       # --- Find all of the particles which just crossed zplane.
-      ii = compress(logical_and(zold < self.zplane,self.zplane <= z),
-                    iota(j1,j2))
+      ii = logical_and(zold < self.zplane,self.zplane <= z)
 
       # --- Get the data for those particles that crossed the zplane.
       xx = top.pgroup.xp[ii]
@@ -238,6 +250,9 @@ Input:
       uz = top.pgroup.uzp[ii]
       gi = top.pgroup.gaminv[ii]
       id = top.pgroup.pid[ii,:]
+
+      # --- The old z can now be reset
+      zold[:] = z
 
     else:
 
@@ -265,32 +280,23 @@ Input:
 
     np_save = len(xx)
 
-    if np_save > 0: self.save_this_step = true
+    if not self.started_saving_particles:
+      self.started_saving_particles = (globalmax(np_save) > 0)
 
-    self.save_this_step = parallel.broadcast(self.save_this_step)
+    if not self.started_saving_particles:
+      return
 
-    if (self.save_this_step):
-      self.it = self.it + 1
+    self.it = self.it + 1
 
-    if (np_save > 0 and self.save_this_step and me == 0):
-      suffix = '%09d_%d'%(self.it,js)
-      try:
-        self.f.write('xp'+suffix,    xx)
-        self.f.write('yp'+suffix,    yy)
-        self.f.write('zp'+suffix,    zz)
-        self.f.write('uxp'+suffix,   ux)
-        self.f.write('uyp'+suffix,   uy)
-        self.f.write('uzp'+suffix,   uz)
-        self.f.write('gaminv'+suffix,gi)
-        self.f.write('pid'+suffix,   id)
-      except:
-        print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        print "ERROR: There was an error writing out the particle data"
-        print "       This most likely means that an attempt was made"
-        print "       to overwrite an existing file."
-        print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    if np_save == 0 or me > 0: return
 
-    # --- The old z can now be reset
-    if top.pgroup.nps[js] > 0:
-      zold[:] = z
+    suffix = '%09d_%d'%(self.it,js)
+    self.write('xp'+suffix,xx)
+    self.write('yp'+suffix,yy)
+    self.write('zp'+suffix,zz)
+    self.write('uxp'+suffix,ux)
+    self.write('uyp'+suffix,uy)
+    self.write('uzp'+suffix,uz)
+    self.write('gaminv'+suffix,gi)
+    self.write('pid'+suffix,id)
 
