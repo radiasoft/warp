@@ -10,7 +10,7 @@ import cPickle
 
 class PlaneRestore:
   """
-Saves the particle data and phi to a file just after the 
+Saves the particle data and phi to a file just after the
 field solve is finished. The positions and velocities are staggered.
 It is automatically called every time step after the field solve
 Input:
@@ -24,10 +24,11 @@ Input:
   - starttime=None: If specified, the time at which to start the simulation.
                     This can be used to skip part of the saved data, or to
                     start at an earlier time before saved data is available.
+  - verbose=False: When True, prints messages about what is happening
   """
 
   def __init__(self,filename,zplane=None,js=None,
-               l_restore_phi=1,lrestoreparticles=1,starttime=None):
+               l_restore_phi=1,lrestoreparticles=1,starttime=None,verbose=False):
 
     # --- Save some input values
     self.filename = filename
@@ -36,6 +37,7 @@ Input:
     self.l_restore_phi = l_restore_phi
     self.lrestoreparticles = lrestoreparticles
     self.starttime = starttime
+    self.verbose = verbose
 
     # --- Install the routines that do the work.
     installuserinjection(self.restoreparticles)
@@ -62,6 +64,8 @@ Input:
     # --- name will be 'phiplane%09d'%it
     self.data['it'] = int(name[8:])
 
+    if self.verbose: print "PlaneRestore: read in data from step %d"%self.data['it']
+
   def initrestoreplane(self):
 
     if self.zplane is None: self.zplane = w3d.zmmin
@@ -83,7 +87,7 @@ Input:
     if not self.lsaveparticles: self.lrestoreparticles = false
 
     # --- get time level of first plane and subtract 1
-    self.it_restore = 0
+    self.it_restore = -1
 
     # --- get time step, tmin, tmax
     self.dt = initdata['dt']
@@ -151,7 +155,7 @@ Input:
       # --- if saved is 2 or 4 fold symmetric and restored isn't,
       # --- lower half of restored is filled with inverted saved phi
       if ((self.sym_plane == 2 and (not w3d.l2symtry and not w3d.l4symtry)) or
-          (self.sym_plane == 4 and (not w3d.l2symtry and not w3d.l4symtry))): 
+          (self.sym_plane == 4 and (not w3d.l2symtry and not w3d.l4symtry))):
         self.ny0_r2 = max(0, - self.ny_plane - iya_plane + w3d.iy_axis)
         self.nym_r2 = min(w3d.ny, 0 - iya_plane + w3d.iy_axis)
         self.ny0_s2 = - self.ny0_r + w3d.iy_axis + iya_plane
@@ -166,12 +170,20 @@ Input:
     # --- Reset the time to the start time if specified.
     if self.starttime is not None:
       top.time = self.starttime
-      while self.time_restore <= top.time - top.dt:
+      while self.time_restore+self.dt <= top.time:
         # --- increment the timelevel of the plane
         self.it_restore += 1
         self.time_restore += self.dt
       # --- Setup phi at the start time
       self.restoreplane_bfs()
+
+    if self.verbose:
+      print "PlaneRestore: initial data"
+      print "  File",self.filename
+      print "  Restoring phi",self.lsavephi
+      print "  Restoring particles",self.lsaveparticles
+      print "  Start time",self.tmin
+      print "  Time step",self.dt
 
   ###########################################################################
   def disable_plane_restore(self):
@@ -191,7 +203,7 @@ No particles are loaded."""
     # --- Set the time to the desired time.
     top.time = time
 
-    while self.time_restore <= top.time:
+    while self.time_restore+self.dt <= top.time:
       # --- increment the timelevel of the plane
       self.it_restore += 1
       self.time_restore += self.dt
@@ -205,7 +217,6 @@ No particles are loaded."""
 
     # --- load saved phi into the phi array
     self.restore_phi(iz,self.it_restore)
-
 
   ###########################################################################
   def restoreparticles(self):
@@ -222,14 +233,14 @@ No particles are loaded."""
     # --- time level of the simulation. This allows the stored data dt
     # --- to be different than the current simulation dt.
     while self.time_restore <= top.time:
+
       # --- increment the timelevel of the plane
       self.it_restore += 1
       self.time_restore += self.dt
-      it = self.it_restore
 
       # --- load particles for each species
       for js in self.jslist:
-        self.restoreparticlespecies(js,it)
+        self.restoreparticlespecies(js,self.it_restore)
 
   def restoreparticlespecies(self,js=0,it=0):
     if not self.lrestoreparticles: return
@@ -238,13 +249,17 @@ No particles are loaded."""
       self.readnextstep()
 
     # --- Apparently, no data was written for this step, so do nothing
-    if self.data['it'] > it: return
+    if self.data['it'] > it:
+      if self.verbose: print "PlaneRestore: no data for step",it
+      return
 
     # --- put restored data into particle arrays, adjusting the z location
     suffix = '%09d_%d'%(it,js)
 
     # --- Check if data was written for this step.
-    if 'xp'+suffix not in self.data: return
+    if 'xp'+suffix not in self.data:
+      if self.verbose: print "PlaneRestore: no particle data for step",it
+      return
 
     xx = self.data['xp'+suffix]
     yy = self.data['yp'+suffix]
@@ -265,8 +280,16 @@ No particles are loaded."""
     elif id.shape[1] > top.npid:
       id = id[:,:top.npid]
 
+    # --- Check if particles are being added out of bounds
+    if min(zz) < top.zpmin+top.zbeam or max(zz) > top.zpmax+top.zbeam:
+      print "PlaneRestore: restored particles are out of bounds."
+      print "\nThe extent of the simulation is %f to %f"%(top.zpmin+top.zbeam,top.zpmax+top.zbeam)
+      print "The extent of the restored particles is %f to %f\n"%(min(zz),max(zz))
+      raise Exception("PlaneRestore: restored particles are out of bounds.")
+
     # --- Note that all processors read in the data, but only particles
     # --- within the processors domain are added.
+    if self.verbose: print "PlaneRestore: Restoring %d particles on step %d"%(len(xx),it)
     addparticles(xx,yy,zz,ux,uy,uz,gi,id,
                  js=js,
                  lallindomain=false,
@@ -290,6 +313,8 @@ No particles are loaded."""
 
     # --- load saved phi into the phi array
     self.restore_phi(iz,self.it_restore)
+
+    if self.verbose: print "PlaneRestore: Restoring phi on step %d"%(len(xx),it)
 
   def restoreplane_afs(self):
     # --- this routine resets the potential at the plane iz=-1 after the
@@ -419,7 +444,7 @@ No particles are loaded."""
     j2 = self.nym_r+1
     for i in range(2):
       phi[i1:i2,j1:j2,iz+i] = (
-          take(savedphi[:,0,i],self.irmesh  )*(1.-self.wrmesh) + 
+          take(savedphi[:,0,i],self.irmesh  )*(1.-self.wrmesh) +
           take(savedphi[:,0,i],self.irmesh+1)*self.wrmesh)
 
 #============================================================================
@@ -428,8 +453,9 @@ No particles are loaded."""
 #============================================================================
 class PlaneRestoreOriginal:
   """
+OBSOLETE
 Use only when reading in old PlaneSave datafiles that used PyPDB format.
-Saves the particle data and phi to a file just after the 
+Saves the particle data and phi to a file just after the
 field solve is finished. The positions and velocities are staggered.
 It is automatically called every time step after the field solve
 Input:
@@ -541,7 +567,7 @@ Input:
       # --- if saved is 2 or 4 fold symmetric and restored isn't,
       # --- lower half of restored is filled with inverted saved phi
       if ((self.f.sym_plane == 2 and (not w3d.l2symtry and not w3d.l4symtry)) or
-          (self.f.sym_plane == 4 and (not w3d.l2symtry and not w3d.l4symtry))): 
+          (self.f.sym_plane == 4 and (not w3d.l2symtry and not w3d.l4symtry))):
         self.ny0_r2 = max(0, - self.f.ny_plane - self.f.iya_plane + w3d.iy_axis)
         self.nym_r2 = min(w3d.ny, 0 - self.f.iya_plane + w3d.iy_axis)
         self.ny0_s2 = - self.ny0_r + w3d.iy_axis + self.f.iya_plane
@@ -676,7 +702,7 @@ No particles are loaded."""
     self.restore_phi(iz,self.it_restore)
 
   def restoreplane_afs(self):
-    # --- this routine resets the potential at the plane iz=-1 after the 
+    # --- this routine resets the potential at the plane iz=-1 after the
     # --- field solve if this is needed
 
     # --- restore only if between grid bounds
@@ -694,7 +720,7 @@ No particles are loaded."""
   def restore_phi(self,iz,it):
     # --- return if flag indicates phi not to be restored
     if self.l_restore_phi is 0: return
-    
+
     # --- Read in the phi data if it is available. The second read is looking
     # --- for the old suffix format.
     savedphi = None
@@ -735,7 +761,7 @@ No particles are loaded."""
                 solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax,
                 savedphi[...,i],self.f.nx_plane,self.f.ny_plane,
                 self.f.xmmin,self.f.xmmax,self.f.ymmin,self.f.ymmax)
-      
+
     if ((self.f.sym_plane == 2 and (not solver.l2symtry and not solver.l4symtry)) or
         (self.f.sym_plane == 4 and (not solver.l2symtry and not solver.l4symtry))):
     #     phi(self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz-1:iz)=
@@ -801,6 +827,6 @@ No particles are loaded."""
     j2 = self.nym_r+1
     for i in range(2):
       phi[i1:i2,j1:j2,iz+i] = (
-          take(savedphi[:,0,i],self.irmesh  )*(1.-self.wrmesh) + 
+          take(savedphi[:,0,i],self.irmesh  )*(1.-self.wrmesh) +
           take(savedphi[:,0,i],self.irmesh+1)*self.wrmesh)
 

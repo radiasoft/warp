@@ -211,6 +211,7 @@ Input:
 
     # --- Make sure the data is written out to the file
     if self.started_saving_particles:
+      self.it += 1
       self.flush()
 
   def saveplanephi(self):
@@ -242,14 +243,14 @@ Input:
       ii = logical_and(zold < self.zplane,self.zplane <= z)
 
       # --- Get the data for those particles that crossed the zplane.
-      xx = top.pgroup.xp[ii]
-      yy = top.pgroup.yp[ii]
-      zz = top.pgroup.zp[ii]
-      ux = top.pgroup.uxp[ii]
-      uy = top.pgroup.uyp[ii]
-      uz = top.pgroup.uzp[ii]
-      gi = top.pgroup.gaminv[ii]
-      id = top.pgroup.pid[ii,:]
+      xx = top.pgroup.xp[j1:j2][ii]
+      yy = top.pgroup.yp[j1:j2][ii]
+      zz = top.pgroup.zp[j1:j2][ii]
+      ux = top.pgroup.uxp[j1:j2][ii]
+      uy = top.pgroup.uyp[j1:j2][ii]
+      uz = top.pgroup.uzp[j1:j2][ii]
+      gi = top.pgroup.gaminv[j1:j2][ii]
+      id = top.pgroup.pid[j1:j2,:][ii,:]
 
       # --- The old z can now be reset
       zold[:] = z
@@ -286,17 +287,15 @@ Input:
     if not self.started_saving_particles:
       return
 
-    self.it = self.it + 1
+    if np_save > 0 and me == 0:
+      suffix = '%09d_%d'%(self.it,js)
+      self.write('xp'+suffix,xx)
+      self.write('yp'+suffix,yy)
+      self.write('zp'+suffix,zz)
+      self.write('uxp'+suffix,ux)
+      self.write('uyp'+suffix,uy)
+      self.write('uzp'+suffix,uz)
+      self.write('gaminv'+suffix,gi)
+      self.write('pid'+suffix,id)
 
-    if np_save == 0 or me > 0: return
-
-    suffix = '%09d_%d'%(self.it,js)
-    self.write('xp'+suffix,xx)
-    self.write('yp'+suffix,yy)
-    self.write('zp'+suffix,zz)
-    self.write('uxp'+suffix,ux)
-    self.write('uyp'+suffix,uy)
-    self.write('uzp'+suffix,uz)
-    self.write('gaminv'+suffix,gi)
-    self.write('pid'+suffix,id)
 
