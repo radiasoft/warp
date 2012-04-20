@@ -314,7 +314,7 @@ No particles are loaded."""
     # --- load saved phi into the phi array
     self.restore_phi(iz,self.it_restore)
 
-    if self.verbose: print "PlaneRestore: Restoring phi on step %d"%(len(xx),it)
+    if self.verbose: print "PlaneRestore: Restoring phi on step %d"%(self.it_restore)
 
   def restoreplane_afs(self):
     # --- this routine resets the potential at the plane iz=-1 after the
