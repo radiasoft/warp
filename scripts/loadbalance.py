@@ -73,6 +73,9 @@ recalculated on a finer mesh to give better balancing.
 
         self.runtime = 0.
 
+        self.reorg = None
+        self.doparticleboundaries = None
+
         if not lparallel: return
 
         if doitnow: self.doloadbalance()
@@ -389,6 +392,8 @@ recalculated on a finer mesh to give better balancing.
         # --- On step zero, a complete reorganization is done so the reorg flag
         # --- is set to true to use the particle sorter which is more efficient
         # --- in that case.
+        if self.reorg is not None: reorg = self.reorg
+        if self.doparticleboundaries is not None: doparticleboundaries = self.doparticleboundaries
         if reorg or (top.it==1 and doparticleboundaries):
             reorgparticles(top.pgroup,w3d.l4symtry,w3d.l2symtry,
                            w3d.solvergeom==w3d.RZgeom)
