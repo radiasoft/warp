@@ -1776,9 +1776,6 @@ of the domain.
   nx = decomp.nxglobal
   ny = decomp.nyglobal
   nz = decomp.nzglobal
-  nxlocal = decomp.nx[decomp.ixproc]
-  nylocal = decomp.ny[decomp.iyproc]
-  nzlocal = decomp.nz[decomp.izproc]
 
   if (decomp.nxprocs <= 1 and decomp.nyprocs <=1 and decomp.nzprocs <= 1):
     local = 1
@@ -1819,9 +1816,9 @@ of the domain.
         (iy is None or my_iypp <= iy and iy <= my_iypp+my_nypp) and
         (iz is None or my_izpp <= iz and iz <= my_izpp+my_nzpp)):
       # --- If so, grab the appropriate slice of array.
-      sss = [slice(1+nxlocal),
-             slice(1+nylocal),
-             slice(1+nzlocal)]
+      sss = [slice(1+decomp.nx[decomp.ixproc]),
+             slice(1+decomp.ny[decomp.iyproc]),
+             slice(1+decomp.nz[decomp.izproc])]
       if ix is not None: sss[0] = slice(ix-my_ixpp,ix-my_ixpp+1)
       if iy is not None: sss[1] = slice(iy-my_iypp,iy-my_iypp+1)
       if iz is not None: sss[2] = slice(iz-my_izpp,iz-my_izpp+1)
@@ -1860,13 +1857,16 @@ of the domain.
             if resultlist[iproc] is not None:
               if ix is None:
                 ix1 = decomp.ix[ixproc]
-                ix2 = decomp.ix[ixproc] + decomp.nx[ixproc] + 1
+                ix2 = decomp.ix[ixproc] + resultlist[iproc].shape[0]
               if iy is None:
                 iy1 = decomp.iy[iyproc]
-                iy2 = decomp.iy[iyproc] + decomp.ny[iyproc] + 1
+                if ny == 0:
+                  iy2 = iy1 + 1
+                else:
+                  iy2 = decomp.iy[iyproc] + resultlist[iproc].shape[1]
               if iz is None:
                 iz1 = decomp.iz[izproc]
-                iz2 = decomp.iz[izproc] + decomp.nz[izproc] + 1
+                iz2 = decomp.iz[izproc] + resultlist[iproc].shape[-1]
               sss[0] = slice(ix1,ix2)
               sss[1] = slice(iy1,iy2)
               sss[2] = slice(iz1,iz2)
@@ -2188,6 +2188,10 @@ the upper edge.
     Ex = solver.getex()
     Ey = solver.getey()
     Ez = solver.getez()
+    if solver.ny == 0:
+      Ex = Ex[:,0,:]
+      Ey = Ey[:,0,:]
+      Ez = Ez[:,0,:]
 
   elif ((alltrue(top.efetch != 3) and maxnd(top.depos_order) == 1) or
         not w3d.allocated('selfe')):
