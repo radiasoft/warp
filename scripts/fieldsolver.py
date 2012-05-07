@@ -978,15 +978,15 @@ the diagnostic is of interest and is meaningfull.
   def sezax(self):
     pass
 
-  def pfzx(self,**kw):
-    'Plots potential in z-x plane. Does nothing if not defined.'
-    pass
-  def pfzy(self,**kw):
-    'Plots potential in z-y plane. Does nothing if not defined.'
-    pass
-  def pfxy(self,**kw):
-    'Plots potential in x-y plane. Does nothing if not defined.'
-    pass
+# def pfzx(self,**kw):
+#   'Plots potential in z-x plane. Does nothing if not defined.'
+#   pass
+# def pfzy(self,**kw):
+#   'Plots potential in z-y plane. Does nothing if not defined.'
+#   pass
+# def pfxy(self,**kw):
+#   'Plots potential in x-y plane. Does nothing if not defined.'
+#   pass
 
   # ---------------------------------------------------------------------
   # --- These can optionally be defined, making use of some of the above
