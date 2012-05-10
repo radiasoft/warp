@@ -217,11 +217,10 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     else:
       self.setfieldpforparticles(*args)
       getphipforparticles3d(3,self.nxlocal,self.nylocal,self.nzlocal,
-                            self.nxguardphi,self.nyguardphi,self.nzguardphi,
+                            self.nxguarde,self.nyguarde,self.nzguarde,
                             self.field,
                             self.nxp,self.nyp,self.nzp,self.fieldp,
                             self.fsdecomp,self.ppdecomp)
-
 
   def applysourceboundaryconditions(self):
     applyrhoboundaryconditions3d(self.ncomponents,

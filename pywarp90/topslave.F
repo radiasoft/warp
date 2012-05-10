@@ -733,6 +733,12 @@ c     call VTEND(70,IERR)
 
       enddo
 
+      b1size = 0
+      b2size = 0
+      b3size = 0
+      b4size = 0
+      call gchange("Databuffers",0)
+
 c What follows (but is commented out) is the preferred version, but
 c it causes a core dump for some unknown reason.
 c Now it needs to be adjusted to send all species at once.

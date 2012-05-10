@@ -1476,7 +1476,8 @@ c iz=-1 and +1.
       if (lf3dtimesubs) substarttime = wtime()
 
       call getphipforparticles3d_parallel(3,
-     &             bfield%nxlocal,bfield%nylocal,bfield%nzlocal,0,0,0,bfield%b,
+     &             bfield%nxlocal,bfield%nylocal,bfield%nzlocal,
+     &             bfield%nxguardb,bfield%nyguardb,bfield%nzguardb,bfield%b,
      &             bfieldp%nxlocal,bfieldp%nylocal,bfieldp%nzlocal,bfieldp%b,
      &             fsdecomp,ppdecomp)
 
@@ -1520,8 +1521,10 @@ c iz=-1 and +1.
       if (fsdecomp%iz(fsdecomp%izproc)+nzlocal < nz) localbounds(5) = -1
 
       call mgexchange_phi_periodic(3,nxlocal,nylocal,nzlocal,bfield%a,
-     &                             1,1,1,0,0,localbounds,fsdecomp)
-      call mgexchange_phi(3,nxlocal,nylocal,nzlocal,bfield%a,1,1,1,
+     &                             bfield%nxguarda,bfield%nyguarda,bfield%nzguarda,
+     &                             0,0,localbounds,fsdecomp)
+      call mgexchange_phi(3,nxlocal,nylocal,nzlocal,bfield%a,
+     &                    bfield%nxguarda,bfield%nyguarda,bfield%nzguarda,
      &                    -1,0,fsdecomp)
 
 !$OMP MASTER

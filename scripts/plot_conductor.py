@@ -854,19 +854,23 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     # --- method of that instance.
     solver = getregisteredsolver()
     if solver is not None:
-      # --- Note that kw is not a valid keyword and so must be removed. Its
-      # --- contents have been put into kwdict.
-      kw = copy.copy(locals())
-      kw.update(kwdict)
-      del kw['kw']
-      del kw['kwdict']
-      solver.pfxy(**kw)
-      return
+      if hasattr(solver,'pfxy'):
+        # --- If the solver has pfxy defined, call that instead.
+        # --- Note that kw is not a valid keyword and so must be removed. Its
+        # --- contents have been put into kwdict.
+        kw = copy.copy(locals())
+        kw.update(kwdict)
+        del kw['kw']
+        del kw['kwdict']
+        solver.pfxy(**kw)
+        return
     else:
       solver = w3d
   if conductors is None:
-    if solver is w3d: conductors = f3d.conductors
-    else:             conductors = solver.conductors
+    if solver is w3d:
+      conductors = f3d.conductors
+    elif hasattr(solver,'conductors'):
+      conductors = solver.conductors
 
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
@@ -988,19 +992,23 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     # --- method of that instance.
     solver = getregisteredsolver()
     if solver is not None:
-      # --- Note that kw is not a valid keyword and so must be removed. Its
-      # --- contents have been put into kwdict.
-      kw = copy.copy(locals())
-      kw.update(kwdict)
-      del kw['kw']
-      del kw['kwdict']
-      solver.pfzx(**kw)
-      return
+      if hasattr(solver,'pfzx'):
+        # --- If the solver has pfzx defined, call that instead.
+        # --- Note that kw is not a valid keyword and so must be removed. Its
+        # --- contents have been put into kwdict.
+        kw = copy.copy(locals())
+        kw.update(kwdict)
+        del kw['kw']
+        del kw['kwdict']
+        solver.pfzx(**kw)
+        return
     else:
       solver = w3d
   if conductors is None:
-    if solver is w3d: conductors = f3d.conductors
-    else:             conductors = solver.conductors
+    if solver is w3d:
+      conductors = f3d.conductors
+    elif hasattr(solver,'conductors'):
+      conductors = solver.conductors
 
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
@@ -1109,19 +1117,23 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     # --- method of that instance.
     solver = getregisteredsolver()
     if solver is not None:
-      # --- Note that kw is not a valid keyword and so must be removed. Its
-      # --- contents have been put into kwdict.
-      kw = copy.copy(locals())
-      kw.update(kwdict)
-      del kw['kw']
-      del kw['kwdict']
-      solver.pfzy(**kw)
-      return
+      if hasattr(solver,'pfzy'):
+        # --- If the solver has pfzy defined, call that instead.
+        # --- Note that kw is not a valid keyword and so must be removed. Its
+        # --- contents have been put into kwdict.
+        kw = copy.copy(locals())
+        kw.update(kwdict)
+        del kw['kw']
+        del kw['kwdict']
+        solver.pfzy(**kw)
+        return
     else:
       solver = w3d
   if conductors is None:
-    if solver is w3d: conductors = f3d.conductors
-    else:             conductors = solver.conductors
+    if solver is w3d:
+      conductors = f3d.conductors
+    elif hasattr(solver,'conductors'):
+      conductors = solver.conductors
 
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)

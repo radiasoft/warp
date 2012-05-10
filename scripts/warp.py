@@ -543,7 +543,11 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
   """
   try: n = len(x)
   except TypeError: n = 1
-  if n == 0: return
+
+  ex,ey,ez = zeros((3,n),'d')
+  bx,by,bz = zeros((3,n),'d')
+
+  if n == 0: return ex,ey,ez,bx,by,bz
 
   # --- Allow z to be a scalar (as in the slice case)
   if len(shape(z)) == 0: z = z*ones(n,'d')
@@ -558,9 +562,6 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
   zlmaxsave = top.zlmax
   nzlsave = top.nzl
   nzlmaxsave = top.nzlmax
-
-  ex,ey,ez = zeros((3,n),'d')
-  bx,by,bz = zeros((3,n),'d')
 
   zmin = min(z)
   zmax = max(z)
