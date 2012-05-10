@@ -1739,11 +1739,9 @@ class TimeDependentLatticeElement(object):
   def __init__(self,attr,id,time=None,data=None,func=None):
     self.attr = attr
     self.id = id
-    if func is None:
-      self.time = time
-      self.data = data
-    else:
-      self.func = func
+    self.time = time
+    self.data = data
+    self.func = func
 
     # --- Setup data histories
     self.htime = []
@@ -1753,12 +1751,16 @@ class TimeDependentLatticeElement(object):
     installafterfs(self.applydata)
 
   def applydata(self,time=None):
-    getattr(top,self.attr)[self.id] = self.getdata(time)
+    if time is None: time = top.time
+    data = self.getdata(time)
+    getattr(top,self.attr)[self.id] = data
+    self.htime.append(time)
+    self.hdata.append(data)
 
   def getdata(self,time=None):
     if time is None: time = top.time
-    if self.data is not None: return self.fromdata(time)
-    elif self.func is not None: return self.func(time)
+    if self.func is not None: return self.func(time)
+    elif self.data is not None: return self.fromdata(time)
 
   def fromdata(self,time):
     if time <= self.time[0]: return self.data[0]
@@ -1773,8 +1775,6 @@ class TimeDependentLatticeElement(object):
           (self.time[self.index+1] - self.time[self.index]))
     data = (self.data[self.index  ]*(1. - wt) +
             self.data[self.index+1]*wt)
-    self.htime.append(time)
-    self.hdata.append(data)
     return data
 
 #########################################################################
@@ -2624,7 +2624,8 @@ scale factor. One of the following can be supplied:
 # ----------------------------------------------------------------------------
 # --- ACCL --- XXX
 def addnewaccl(zs,ze,ez=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,xw=0.,sw=0.,
-               et=0.,ts=0.,dt=0.):
+               et=0.,ts=0.,dt=0.,
+               time=None,data=None,func=None):
   """
 Adds a new accl element to the lattice. The element will be placed at the
 appropriate location.
@@ -2633,6 +2634,13 @@ Required arguments:
 The following are all optional and have the same meaning and default as the
 accl arrays with the same suffices:
   - ez,ap,ox,oy,xw,sw,et,ts,dt
+The applied field can be made time dependent by supplying a time varying
+scale factor. One of the following can be supplied. If given, this function
+will return the handler for the time dependence.
+  - time,data: two 1-D arrays holding the tabulated scale factor (data) as
+               a function of time (time).
+  - func: a function that takes one argument, the time, and returns the
+          scaling factor.
   """
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
@@ -2692,6 +2700,10 @@ accl arrays with the same suffices:
 
   # --- resetlat must be called before the data can be used
   top.lresetlat = true
+
+  if (time is not None and data is not None) or func is not None:
+    tdle = TimeDependentLatticeElement('acclez',ie,time,data,func)
+    return ie,tdle
 
   return ie
 
