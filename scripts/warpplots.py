@@ -1543,7 +1543,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Make sure that nothing is not plotted over a surface plot
   if surface:
     particles = 0
-    contours = 0
+    contours = None
     cellarray = 0
     hash = 0
     lframe = 0
@@ -1915,8 +1915,8 @@ Note that either the x and y coordinates or the grid must be passed in.
       zrange = 1.5*maxnd(abs(grid))
       vo = Opyndx.DXMountainPlot(f=grid,xmin=xmin,ymin=ymin,dx=dx,dy=dy)
     except ImportError:
-      import pl3d
-      import plwf
+      from gist import pl3d
+      from gist import plwf
       pl3d.orient3()
       pl3d.light3()
       plwf.plwf(grid,xmesh,ymesh,fill=grid,edges=0)
@@ -2356,7 +2356,7 @@ When finished, press return in the python window.
 Returns the final values of the parameters that can be passed to pl3d.rot3
 to reproduce the same orientation.
   """
-  import pl3d
+  from gist import pl3d
   pl3d.gnomon(gnomon)
   [xmin3min,xmax3max,ymin3min,ymax3max,sys] = limits()
   while 1:
@@ -2386,7 +2386,7 @@ vertical the y angle. With button 2 pressed, horizontal changes the x angle.
 When finished, press return in the python window.
   - scale=4.: multiplicative factor to convert mouse movement to angle change
   """
-  import pl3d
+  from gist import pl3d
   pl3d.gnomon(gnomon)
   pl3d.orient3(phi=0.,theta=0.)
   [xmin3min,xmax3max,ymin3min,ymax3max] = pl3d.draw3(1)
