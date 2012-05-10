@@ -825,7 +825,7 @@ Class for generating secondaries
            ########################
            # emission of neutrals #
            ########################
-           elif emitted_species.type.__class__ is not Particle and emitted_species.charge_state==0: 
+           elif hasattr(emitted_species,'charge_state') and emitted_species.charge_state==0: 
             my_yield=1.+1.82e-4*exp(0.09*180./pi*arccos(coseta[i]))
             scale_factor = self.inter[incident_species]['scale_factor'][ics]
             if not (scale_factor is None or scale_factor==1.):
@@ -1460,7 +1460,7 @@ Class for generating secondaries
            ########################
            # emission of neutrals #
            ########################
-         elif emitted_species.type.__class__ is not Particle and emitted_species.charge_state==0: 
+         elif hasattr(emitted_species,'charge_state') and emitted_species.charge_state==0: 
            for i in range(n):  
             my_yield=1.+1.82e-4*exp(0.09*180./pi*arccos(coseta[i]))
             scale_factor = self.inter[incident_species]['scale_factor'][ics]
