@@ -6,11 +6,11 @@ c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
 c  Alex Friedman, LLNL, (510)422-0827
 c  David P. Grote, LLNL, (510)495-2961
-c============================================================================ 
+c============================================================================
       subroutine countdrfts()
       use Lattice
 
-c     --- count drfts 
+c     --- count drfts
 
       integer(ISZ):: idrft,nndrft
 
@@ -20,9 +20,9 @@ c     --- count drfts
       enddo
       ndrft = nndrft
 
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine setupdrfts()
       use Lattice
 
@@ -49,11 +49,11 @@ c     --- are specified.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countbends()
       use Lattice
 
-c     --- count bends 
+c     --- count bends
 
       integer(ISZ):: ib,nnbend
 
@@ -63,9 +63,9 @@ c     --- count bends
       enddo
       nbend = nnbend
 
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine setupbends()
       use Lattice
 
@@ -90,11 +90,11 @@ c     --- are specified.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countdipos()
       use Lattice
 
-c     --- count dipoles 
+c     --- count dipoles
 
       integer(ISZ):: id,nndipo
 
@@ -104,26 +104,26 @@ c     --- count dipoles
       enddo
       ndipo = nndipo
 
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine setupdipos()
       use Constant
       use Lattice
       use Beam_acc
       use InGen, only: boost_gamma
 
-c     --- if autoset dipoles are specified, then derive dipole locations 
-c     --- consistently from bend locations and radii 
+c     --- if autoset dipoles are specified, then derive dipole locations
+c     --- consistently from bend locations and radii
 
       integer(ISZ):: id
 
-      if (diposet) then 
+      if (diposet) then
         do id = 0, ndipo
            if (id <= nbend) then
               if (bendrc(id) .ne. 0.) then
 c                --- auto-set dipole field to match bend radius of curvature
-                 if (dipoby(id) == 0. .and. dipoex(id) == 0.) then 
+                 if (dipoby(id) == 0. .and. dipoex(id) == 0.) then
                    if (boost_gamma==1.) then
                     dipoby(id) = aion * amu / (zion * echarge)
      &                            * gammabar * vbeam / dvnz(bendrc(id))
@@ -145,7 +145,7 @@ c                --- auto-set dipole entrance & exit angles for "box dipoles"
               endif
            endif
         enddo
-      endif 
+      endif
 
       if (zlatperi > 0.) then
         if (ndipo >= 0) then
@@ -178,11 +178,11 @@ c     --- are specified.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countquads()
       use Lattice
 
-c     --- count quads 
+c     --- count quads
 
       integer(ISZ):: iq,nnquad
 
@@ -192,9 +192,9 @@ c     --- count quads
       enddo
       nquad = nnquad
 
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine setupquads()
       use Lattice
 
@@ -277,11 +277,11 @@ c     --- Gaussian distribution of offsets
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countsexts()
       use Lattice
 
-c     --- count sextupoles 
+c     --- count sextupoles
 
       integer(ISZ):: is,nnsext
 
@@ -293,7 +293,7 @@ c     --- count sextupoles
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine setupsexts()
       use Lattice
 
@@ -319,11 +319,11 @@ c     --- are specified.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countheles()
       use Lattice
 
-c     --- count hard-edge multipole elements and number of multipole 
+c     --- count hard-edge multipole elements and number of multipole
 c     --- components in each element
 
       integer(ISZ):: ih,ii,nnhele,nnhmlt
@@ -332,19 +332,19 @@ c     --- components in each element
       nnhmlt = -1
       do ih = 0, nhele
          if (helezs(ih) .ne. heleze(ih)) nnhele = ih
-         do ii = 1, nhmlt 
+         do ii = 1, nhmlt
             if (heleae(ii,ih) .ne. 0. .or. heleep(ii,ih) .ne. 0.) helene(ih)=ii
             if (heleam(ii,ih) .ne. 0. .or. helemp(ii,ih) .ne. 0.) helenm(ih)=ii
             if (nnhmlt < helene(ih)) nnhmlt = helene(ih)
-            if (nnhmlt < helenm(ih)) nnhmlt = helenm(ih)           
+            if (nnhmlt < helenm(ih)) nnhmlt = helenm(ih)
          enddo
       enddo
       nhele = nnhele
-      nhmlt = nnhmlt  
+      nhmlt = nnhmlt
 
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine setupheles()
       use Lattice
 
@@ -355,7 +355,7 @@ c============================================================================
           if (helezs(0) == heleze(0)) then
              helezs(0) = helezs(nhele) - zlatperi
              heleze(0) = heleze(nhele) - zlatperi
-             do ii = 1, nhmlt 
+             do ii = 1, nhmlt
                 heleae(ii,0) = heleae(ii,nhele)
                 heleep(ii,0) = heleep(ii,nhele)
                 heleam(ii,0) = heleam(ii,nhele)
@@ -364,11 +364,11 @@ c============================================================================
                 hele_v(ii,0) = hele_v(ii,nhele)
                 helepe(ii,0) = helepe(ii,nhele)
                 helepm(ii,0) = helepm(ii,nhele)
-             enddo 
-             helene(0) = helene(nhele)  
-             helenm(0) = helenm(nhele)  
-             heleox(0) = heleox(nhele)   
-             heleoy(0) = heleoy(nhele) 
+             enddo
+             helene(0) = helene(nhele)
+             helenm(0) = helenm(nhele)
+             heleox(0) = heleox(nhele)
+             heleoy(0) = heleoy(nhele)
              helerr(0) = helerr(nhele)
              helerl(0) = helerl(nhele)
              helegl(0) = helegl(nhele)
@@ -383,19 +383,19 @@ c     --- Set flags for existence of the elements - checking if the fields
 c     --- are specified.
       heles = .false.
       do ih = 0, nhele
-         do ii = 1,nhmlt 
+         do ii = 1,nhmlt
             if (heleae(ii,ih).ne.0. .or. heleam(ii,ih).ne.0. .or.
      &          heleep(ii,ih).ne.0. .or. helemp(ii,ih).ne.0.) heles = .true.
-         enddo 
+         enddo
       enddo
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countaccls()
       use Lattice
 
-c     --- count acceleration gaps 
+c     --- count acceleration gaps
 
       integer(ISZ):: ia,nnaccl
 
@@ -405,9 +405,9 @@ c     --- count acceleration gaps
       enddo
       naccl = nnaccl
 
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine setupaccls()
       use Lattice
 
@@ -440,11 +440,11 @@ c     --- are specified.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countemlts()
       use Lattice
 
-c     --- count electric multipole data sets 
+c     --- count electric multipole data sets
 
       integer(ISZ):: ie,nnemlt
 
@@ -456,7 +456,7 @@ c     --- count electric multipole data sets
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine setupemlts()
       use Constant, only: pi
       use Lattice
@@ -476,7 +476,7 @@ c       --- specified.
              emltsf(0) = emltsf(nemlt)
              emltsc(0) = emltsc(nemlt)
              emltid(0) = emltid(nemlt)
-             emltap(0) = emltap(nemlt) 
+             emltap(0) = emltap(nemlt)
              emltrr(0) = emltrr(nemlt)
              emltrl(0) = emltrl(nemlt)
              emltgl(0) = emltgl(nemlt)
@@ -544,11 +544,11 @@ c         --- the derivative by finite differencing the data.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countmmlts()
       use Lattice
 
-c     --- count magnetic multipole data sets 
+c     --- count magnetic multipole data sets
 
       integer(ISZ):: im,nnmmlt
 
@@ -558,9 +558,9 @@ c     --- count magnetic multipole data sets
       enddo
       nmmlt = nnmmlt
 
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine setupmmlts()
       use Constant, only: pi
       use Lattice
@@ -578,7 +578,7 @@ c============================================================================
              mmltsf(0) = mmltsf(nmmlt)
              mmltsc(0) = mmltsc(nmmlt)
              mmltid(0) = mmltid(nmmlt)
-             mmltap(0) = mmltap(nmmlt) 
+             mmltap(0) = mmltap(nmmlt)
           endif
         endif
       endif
@@ -641,7 +641,7 @@ c         --- the derivative by finite differencing the data.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countegrds()
       use Lattice
 
@@ -655,9 +655,9 @@ c     --- count egridded field data sets s
       enddo
       negrd = nnegrd
 
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine setupegrds()
       use Lattice
       use EGRDdata
@@ -677,7 +677,7 @@ c============================================================================
              egrdsy(0) = egrdsy(negrd)
              egrdox(0) = egrdox(negrd)
              egrdoy(0) = egrdoy(negrd)
-             egrdph(0) = egrdph(negrd) 
+             egrdph(0) = egrdph(negrd)
              egrdot(0) = egrdot(negrd)
              egrdop(0) = egrdop(negrd)
              egrdap(0) = egrdap(negrd)
@@ -706,7 +706,7 @@ c     --- Note that this coding is not executed if egrdns=0.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countbgrds()
       use Lattice
 
@@ -720,9 +720,9 @@ c     --- count bgridded field data sets s
       enddo
       nbgrd = nnbgrd
 
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine setupbgrds()
       use Lattice
       use BGRDdata
@@ -742,7 +742,7 @@ c============================================================================
              bgrdsy(0) = bgrdsy(nbgrd)
              bgrdox(0) = bgrdox(nbgrd)
              bgrdoy(0) = bgrdoy(nbgrd)
-             bgrdph(0) = bgrdph(nbgrd) 
+             bgrdph(0) = bgrdph(nbgrd)
              bgrdot(0) = bgrdot(nbgrd)
              bgrdop(0) = bgrdop(nbgrd)
              bgrdap(0) = bgrdap(nbgrd)
@@ -771,13 +771,13 @@ c     --- Note that this coding is not executed if bgrdns=0.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countpgrds()
       use Lattice
 
       integer(ISZ):: ip,nnpgrd
 
-c     --- count potential gridded field data sets 
+c     --- count potential gridded field data sets
 
       nnpgrd = -1
       do ip = 0, npgrd
@@ -787,7 +787,7 @@ c     --- count potential gridded field data sets
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine setuppgrds()
       use Lattice
       use PGRDdata
@@ -806,7 +806,7 @@ c============================================================================
              pgrdsc(0) = pgrdsc(npgrd)
              pgrdox(0) = pgrdox(npgrd)
              pgrdoy(0) = pgrdoy(npgrd)
-             pgrdph(0) = pgrdph(npgrd) 
+             pgrdph(0) = pgrdph(npgrd)
              pgrdap(0) = pgrdap(npgrd)
              pgrdrr(0) = pgrdrr(npgrd)
              pgrdrl(0) = pgrdrl(npgrd)
@@ -839,19 +839,19 @@ c     --- Note that this coding is not executed if pgrdns=0.
 
 c     --- Calculate sines and cosines of pgrdph for efficiency
       do i=0,npgrd
-        pgrdsp(i) = sin(pgrdph(i)) 
-        pgrdcp(i) = cos(pgrdph(i)) 
-      enddo 
+        pgrdsp(i) = sin(pgrdph(i))
+        pgrdcp(i) = cos(pgrdph(i))
+      enddo
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countbsqgrads()
       use Lattice
 
       integer(ISZ):: ib,nnbsqgrad
 
-c     --- count B squared gridded field data sets 
+c     --- count B squared gridded field data sets
 
       nnbsqgrad = -1
       do ib = 0, nbsqgrad
@@ -861,9 +861,9 @@ c     --- count B squared gridded field data sets
       enddo
       nbsqgrad = nnbsqgrad
 
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine setupbsqgrads()
       use Lattice
       use BSQGRADdata
@@ -885,7 +885,7 @@ c============================================================================
              bsqgradsy(0) = bsqgradsy(nbsqgrad)
              bsqgradox(0) = bsqgradox(nbsqgrad)
              bsqgradoy(0) = bsqgradoy(nbsqgrad)
-             bsqgradph(0) = bsqgradph(nbsqgrad) 
+             bsqgradph(0) = bsqgradph(nbsqgrad)
              bsqgradap(0) = bsqgradap(nbsqgrad)
           endif
         endif
@@ -912,13 +912,13 @@ c     --- Note that this coding is not executed if bsqgradns=0.
 
 c     --- Calculate sines and cosines of bsqgradph for efficiency
       do i=0,nbsqgrad
-        bsqgradsp(i) = sin(bsqgradph(i)) 
-        bsqgradcp(i) = cos(bsqgradph(i)) 
-      enddo 
+        bsqgradsp(i) = sin(bsqgradph(i))
+        bsqgradcp(i) = cos(bsqgradph(i))
+      enddo
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine calculatebsqgrad()
       use Subtimerstop
       use Lattice
@@ -930,7 +930,7 @@ c============================================================================
       real(kind=8):: xx,yy,zz,temp,dxi,dyi,dzi
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
-      
+
 c     --- If bsqgrad is calculated, then setup the position
 c     --- arrays. XXX This assumes that there is a one to one correspondence
 c     --- betweeen bsqgrad elements and datasets, i.e. that the same id is
@@ -954,13 +954,13 @@ c     --- routines also gather E.
                 yy = bsqgradys(ib) + bsqgraddy(id)*iy
                 zz = bsqgradzs(ib) + bsqgraddz(id)*iz
 
-c               --- Transverse rotation to take into account for a rotation 
+c               --- Transverse rotation to take into account for a rotation
 c               --- of the field element.
                 if ( bsqgradph(ib) .ne. 0. ) then
-                  temp = xx  
-                  xx =  temp*bsqgradcp(ib) - yy*bsqgradsp(ib) 
-                  yy = +temp*bsqgradsp(ib) + yy*bsqgradcp(ib) 
-                endif 
+                  temp = xx
+                  xx =  temp*bsqgradcp(ib) - yy*bsqgradsp(ib)
+                  yy = +temp*bsqgradsp(ib) + yy*bsqgradcp(ib)
+                endif
 
 c               --- Add in any offsets
                 xx = xx - bsqgradox(ib)
@@ -1013,7 +1013,7 @@ c       --- handle quads
      &                 bsqgradtemp(:,:,:, 8,id),
      &                 bsqgradtemp(:,:,:, 9,id))
 
-c       --- handle dipos 
+c       --- handle dipos
         call applydipo(nn,nn,bsqgradtemp(:,:,:, 2,id),
      &                 bsqgradtemp(:,:,:, 3,id),
      &                 bsqgradtemp(:,:,:, 4,id),
@@ -1085,8 +1085,10 @@ c       --- First, do the interior points
         if (bsqgradnc == 3) then
           bsqgrad(2,1:nx-1,:,:,id) = (bsqgradtemp(2:nx,:,:,5,id) -
      &                                bsqgradtemp(0:nx-2,:,:,5,id))*0.5*dxi
-          bsqgrad(3,:,1:ny-1,:,id) = (bsqgradtemp(:,2:ny,:,5,id) -
-     &                                bsqgradtemp(:,0:ny-2,:,5,id))*0.5*dyi
+          if (bsqgradny > 0) then
+            bsqgrad(3,:,1:ny-1,:,id) = (bsqgradtemp(:,2:ny,:,5,id) -
+     &                                  bsqgradtemp(:,0:ny-2,:,5,id))*0.5*dyi
+          endif
         endif
 
 c       --- Now do the boundaries
@@ -1098,15 +1100,21 @@ c       --- First upper boundaries, one-sided differences
         if (bsqgradnc == 3) then
           bsqgrad(2,nx,:,:,id) = (bsqgradtemp(nx,:,:,5,id) -
      &                            bsqgradtemp(nx-1,:,:,5,id))*dxi
-          bsqgrad(3,:,ny,:,id) = (bsqgradtemp(:,ny,:,5,id) -
-     &                            bsqgradtemp(:,ny-1,:,5,id))*dyi
+          if (ny > 0) then
+            bsqgrad(3,:,ny,:,id) = (bsqgradtemp(:,ny,:,5,id) -
+     &                              bsqgradtemp(:,ny-1,:,5,id))*dyi
+          endif
 c         --- now lower boundaries. Treat differently depending on symmetry.
           if (bsqgradsy(ib) == 0) then
 c           --- no symmetry
             bsqgrad(2,0,:,:,id) = (bsqgradtemp(1,:,:,5,id) -
      &                             bsqgradtemp(0,:,:,5,id))*dxi
-            bsqgrad(3,:,0,:,id) = (bsqgradtemp(:,1,:,5,id) -
-     &                             bsqgradtemp(:,0,:,5,id))*dyi
+            if (bsqgradny > 0) then
+              bsqgrad(3,:,0,:,id) = (bsqgradtemp(:,1,:,5,id) -
+     &                               bsqgradtemp(:,0,:,5,id))*dyi
+            else
+              bsqgrad(3,:,0,:,id) = 0.
+            endif
           else if (bsqgradsy(ib) == 2) then
 c           --- quadrupole symmetry
             bsqgrad(2,0,:,:,id) = 0.
@@ -1125,11 +1133,11 @@ c           --- quadrupole symmetry
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine countlmaps()
       use Lattice
 
-c     --- count lmaps 
+c     --- count lmaps
 
       integer(ISZ):: ilmap,nnlmap
 
@@ -1139,9 +1147,9 @@ c     --- count lmaps
       enddo
       nlmap = nnlmap
 
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine setuplmaps()
       use Lattice
 
@@ -1168,9 +1176,9 @@ c     --- are specified.
 
       return
       end
-c============================================================================ 
-c============================================================================ 
-c============================================================================ 
+c============================================================================
+c============================================================================
+c============================================================================
       subroutine resetlatdrft()
       use Lattice
       use LatticeInternal
@@ -1190,7 +1198,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlatbend()
       use Lattice
       use LatticeInternal
@@ -1209,7 +1217,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlatdipo()
       use Lattice
       use LatticeInternal
@@ -1228,7 +1236,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlatquad()
       use Lattice
       use LatticeInternal
@@ -1247,7 +1255,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlatsext()
       use Lattice
       use LatticeInternal
@@ -1266,7 +1274,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlathele()
       use Lattice
       use LatticeInternal
@@ -1285,7 +1293,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlataccl()
       use Lattice
       use LatticeInternal
@@ -1304,7 +1312,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlatemlt()
       use Lattice
       use LatticeInternal
@@ -1326,7 +1334,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlatmmlt()
       use Lattice
       use LatticeInternal
@@ -1348,7 +1356,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlategrd()
       use Lattice
       use LatticeInternal
@@ -1358,7 +1366,7 @@ c============================================================================
       call setupegrds
 
       negrdol = 0
-      
+
       if (negrd < 0) return
 
       call egrdgetfulllength()
@@ -1369,7 +1377,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlatbgrd()
       use Lattice
       use LatticeInternal
@@ -1379,7 +1387,7 @@ c============================================================================
       call setupbgrds
 
       nbgrdol = 0
-      
+
       if (nbgrd < 0) return
 
       call bgrdgetfulllength()
@@ -1390,7 +1398,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlatpgrd()
       use Lattice
       use LatticeInternal
@@ -1409,7 +1417,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlatbsqgrad()
       use Lattice
       use LatticeInternal
@@ -1429,7 +1437,7 @@ c============================================================================
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine resetlatlmap()
       use Lattice
       use LatticeInternal
@@ -1449,8 +1457,8 @@ c============================================================================
 
       return
       end
-c============================================================================ 
-c============================================================================ 
+c============================================================================
+c============================================================================
       subroutine resetlat()
       use Subtimerstop
       use Lattice
@@ -1476,16 +1484,16 @@ c  called after all of the element have been updated.
       call countpgrds
       call countbsqgrads
       call countlmaps
-     
-c     --- resize lattice arrays (use corrected ndipo size if autoset dipoles, 
+
+c     --- resize lattice arrays (use corrected ndipo size if autoset dipoles,
 c     --- bends imply dipoles for autoset dipoles, see following code)
-      if (diposet) ndipo = max(ndipo, nbend)    
+      if (diposet) ndipo = max(ndipo, nbend)
       call gchange("Lattice", 0)
 
-c     --- the rest of the lattice reset is carried out in a work routine 
-c     --- to avoid possibilites of a bug associated with resizing 
-c     --- multidimensional dynamics arrays (used for hard-edge multipole 
-c     --- elements) and then using them in the same routine  
+c     --- the rest of the lattice reset is carried out in a work routine
+c     --- to avoid possibilites of a bug associated with resizing
+c     --- multidimensional dynamics arrays (used for hard-edge multipole
+c     --- elements) and then using them in the same routine
       call setupdrfts
       call setupbends
       call setupdipos
@@ -1515,9 +1523,9 @@ c     --- made to the lattice.
 !$OMP MASTER
       if (ltoptimesubs) timeresetlat = timeresetlat + wtime() - substarttime
 !$OMP END MASTER
-      return 
-      end 
-c============================================================================ 
+      return
+      end
+c============================================================================
       subroutine getoverlaps()
       use Lattice
       use LatticeInternal
@@ -1596,8 +1604,8 @@ c Now, setup indicing arrays in LatticeInternal
 
       return
       end
-c============================================================================ 
-c============================================================================ 
+c============================================================================
+c============================================================================
       subroutine getelemoverlaps(nelem,elemzs,elemze,elemol,zlatbuffer,nelemol)
       integer(ISZ):: nelem,nelemol
       real(kind=8):: elemzs(0:nelem),elemze(0:nelem)
@@ -1619,7 +1627,7 @@ c     --- Loop over the rest of the elements...
 
 c       --- Skip element if it is flagged to ignore overlaps.
         if (elemol(ie) == -1) cycle
-      
+
 c       --- First assume that this element doesn't overlap any others.
         overlaps = .false.
 
@@ -1652,7 +1660,7 @@ c     --- maxval(elemol) would be -1.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine getelemoverlapindices(nelem,elemol,
      &                                 nelemol,oelemoi,oelemio,oelemii,oelemnn)
       use Lattice
@@ -1697,7 +1705,7 @@ c     --- element will by default be in overlap level 1.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine setlatt
       use Subtimerstop
       use InGen
@@ -1718,7 +1726,7 @@ c  should be loaded at the same time.
 
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine setlattzt(zbeam,time)
       use Lattice
       use LatticeInternal
@@ -1729,12 +1737,12 @@ c============================================================================
 c  Sets the lattice data at zbeam and time into 1d arrays.
 
 
-c  If the transition from one element to the next falls to left of cell 
+c  If the transition from one element to the next falls to left of cell
 c  center, associate the "right" element with the cell; here, idipo(j)=i+1.
 
 c                                                            (dipole elements
 c                                                             begin and end
-c            |<- cell j-1 ->|<-- cell j -->|<- cell j+1 ->|   at midpoints of 
+c            |<- cell j-1 ->|<-- cell j -->|<- cell j+1 ->|   at midpoints of
 c                                                             dipo-drifts)
 c        |                      |                                |
 c        |<----- element i ---->|<-------- element i+1 --------->|
@@ -1743,7 +1751,7 @@ c |             |xxxxxxx|               |xxxxxxxxxxxxxxx|                 |
 c | dipo-drift  |dipo i |  dipo-drift   |   dipo i+1    |   dipo-drift    |
 c |             |xxxxxxx|               |xxxxxxxxxxxxxxx|                 |
 c              /         \             /                 \              z --->
-c          dipozs(i)  dipoze(i)    dipozs(i+1)         dipoze(i+1)     
+c          dipozs(i)  dipoze(i)    dipozs(i+1)         dipoze(i+1)
 c       cdipozs(j-1)  cdipoze(j-1) cdipozs(j)          cdipoze(j)
 c                                  cdipozs(j+1)        cdipoze(j+1)
 
@@ -1756,7 +1764,7 @@ c     --- Save the z location and time at which the internal lattice frame
 c     --- is set.
       if (boost_gamma>1. .and. vbeamfrm/=0.) then
         uzboost = clight*sqrt(boost_gamma*boost_gamma-1.)
-        zlframe = boost_gamma*zbeam + uzboost*time 
+        zlframe = boost_gamma*zbeam + uzboost*time
         zltime  = boost_gamma*time  + uzboost*zbeam/(clight**2)
       else
         zlframe = zbeam
@@ -1858,14 +1866,14 @@ c          --- load lattice info into comoving 1d array
            cquadde(iz,io) = quadde(id)
            cquadvx(iz,io) = quadvx(id)
            cquadvy(iz,io) = quadvy(id)
-           if (ntquad > 0 .and. 
+           if (ntquad > 0 .and.
      &         quadts(id)<=time .and. time<quadts(id)+ntquad*quaddt(id)) then
              ii = int((time - quadts(id))/quaddt(id))
              wi = (time - quadts(id))/quaddt(id) - ii
              cquadde(iz,io) = cquadde(iz,io) + quadet(ii  ,id)*(1. - wi) +
-     &                                         quadet(ii+1,id)*      wi 
+     &                                         quadet(ii+1,id)*      wi
              cquaddb(iz,io) = cquaddb(iz,io) + quadbt(ii  ,id)*(1. - wi) +
-     &                                         quadbt(ii+1,id)*      wi 
+     &                                         quadbt(ii+1,id)*      wi
            endif
 c          --- set index for offset quads.  NOTE that this uses "nqerr"
 c          --- and not "nquad".  This gives us a choice of either:
@@ -1881,7 +1889,7 @@ c          --- THIS NEEDS CHECKING, especially when iqerr is nonzero.
            if (nqerr == 0) then
              iquaderr = 0
            else
-             iquaderr = mod(iquaderu, nqerr) 
+             iquaderr = mod(iquaderu, nqerr)
            endif
            cqoffx(iz,io) = qoffx(iquaderr)
            cqoffy(iz,io) = qoffy(iquaderr)
@@ -1930,14 +1938,14 @@ c        --- find index of nearest acceleration element
              cacclzs(iz,io) = acclzs(id) + offset
              cacclze(iz,io) = acclze(id) + offset
              cacclez(iz,io) = acclez(id)
-             cacclxw(iz,io) = acclxw(id) 
-             cacclsw(iz,io) = acclsw(id) 
+             cacclxw(iz,io) = acclxw(id)
+             cacclsw(iz,io) = acclsw(id)
              if (acclts(id) <= time .and.
      &                         time < acclts(id)+ntaccl*accldt(id)) then
                ii = int((time - acclts(id))/accldt(id))
                wi = (time - acclts(id))/accldt(id) - ii
                cacclez(iz,io) = acclez(id) + acclet(ii  ,id)*(1. - wi) +
-     &                                       acclet(ii+1,id)*      wi 
+     &                                       acclet(ii+1,id)*      wi
              endif
              if (cacclzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
      &                             zlmin+zlframe-zlatbuffer <= cacclze(iz,io))
@@ -1947,7 +1955,7 @@ c        --- find index of nearest acceleration element
              cacclze(iz,io) = 0.
              cacclez(iz,io) = 0.
              cacclxw(iz,io) = 0.
-             cacclsw(iz,io) = 0.  
+             cacclsw(iz,io) = 0.
            endif
          enddo
 
@@ -2196,7 +2204,7 @@ c  associate the "right" element with z; here, ielem(j)=i+1.
 
 c                                                            (elements
 c                                                             begin and end
-c            |<- cell j-1 ->|<-- cell j -->|<- cell j+1 ->|   at midpoints of 
+c            |<- cell j-1 ->|<-- cell j -->|<- cell j+1 ->|   at midpoints of
 c                                                             elem-drifts)
 c        |                      |                                |
 c        |<----- element i ---->|<-------- element i+1 --------->|
@@ -2205,7 +2213,7 @@ c |             |xxxxxxx|               |xxxxxxxxxxxxxxx|                 |
 c | elem-drift  |elem i |  elem-drift   |   elem i+1    |   elem-drift    |
 c |             |xxxxxxx|               |xxxxxxxxxxxxxxx|                 |
 c              /         \             /                 \              z --->
-c          elemzs(i)  elemze(i)    elemzs(i+1)         elemze(i+1)     
+c          elemzs(i)  elemze(i)    elemzs(i+1)         elemze(i+1)
 c       celemzs(j-1)  celemze(j-1) celemzs(j)          celemze(j)
 c                                  celemzs(j+1)        celemze(j+1)
 
@@ -2621,7 +2629,7 @@ c Apply uniform fields.
 !$OMP END MASTER
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine getbend(np,npz,zp,uzp,gaminv,bendres,bendradi,dtl,dtr,lslice)
       use Subtimerstop
       use InGen
@@ -2857,7 +2865,7 @@ c           --- residence fraction
             if (fl > fr) frac = (cquadze(iz,io)-zl)*dzi(ip)
             if (fr > fl) frac = (zr-cquadzs(iz,io))*dzi(ip)
           endif
-      
+
 c         --- set the field
           if (frac > 0.) then
             xpmqoff = xp(ip) - cqoffx(iz,io)
@@ -3017,7 +3025,7 @@ c         --- set the field
 !$OMP END MASTER
       return
       end
-c=========================================================================== 
+c===========================================================================
       subroutine zbendcor(pgroup,np,ipmin,ddt,bendres,bendradi)
       use Subtimerstop
       use ParticleGroupmodule
@@ -3053,9 +3061,9 @@ c  "along the centerline."
       if (ltoptimesubs) timezbendcor = timezbendcor + wtime() - substarttime
 !$OMP END MASTER
       return
-      end      
-c=========================================================================== 
-c=========================================================================== 
+      end
+c===========================================================================
+c===========================================================================
       subroutine sledgcor(pgroup,np,ipmin,zpo,zbeam,zbeamo,vbeam,m,q,lslice)
       use Subtimerstop
       use ParticleGroupmodule
@@ -3068,11 +3076,11 @@ c===========================================================================
       real(kind=8):: q, m
       logical(ISZ):: lslice
 
-c Applies position and velocity jump corrections on entry/exit of dipoles 
-c with slanted faces.  (Must be called after all z advancement is done this 
-c timestep, so that entry/exit of the bend is detected exactly once.)    
-c Accounts for the fact that the jumped velocities act on the particles for 
-c less than the entire andvance step on entry/exit of the dipole.  
+c Applies position and velocity jump corrections on entry/exit of dipoles
+c with slanted faces.  (Must be called after all z advancement is done this
+c timestep, so that entry/exit of the bend is detected exactly once.)
+c Accounts for the fact that the jumped velocities act on the particles for
+c less than the entire andvance step on entry/exit of the dipole.
 
       integer(ISZ):: io,ip,iz
       real(kind=8),allocatable:: vzi(:)
@@ -3117,7 +3125,7 @@ c           --- find z-cell in which particle lies
             iz = min(nzl,int(max(0.,(pgroup%zp(ip)-zlmin-zlframe)*dzli+0.5)))
           endif
           if ((zpo(ip) < cdipozs(iz,io)) .and.
-     &        (pgroup%zp(ip) >= cdipozs(iz,io))) then 
+     &        (pgroup%zp(ip) >= cdipozs(iz,io))) then
 c           --- entered dipole
             factor = cdipoby(iz,io)*cdipota(iz,io)*qoverm
             if (factor == 0) cycle
@@ -3128,7 +3136,7 @@ c           --- entered dipole
             pgroup%yp(ip)  = pgroup%yp(ip) -
      &            (pgroup%zp(ip)-cdipozs(iz,io))*vzi(ip)*pgroup%yp(ip)*factor
           elseif ((zpo(ip) <  cdipoze(iz,io)) .and.
-     &             (pgroup%zp(ip) >= cdipoze(iz,io))) then  
+     &             (pgroup%zp(ip) >= cdipoze(iz,io))) then
 c           --- exited dipole
             factor = cdipoby(iz,io)*cdipotb(iz,io)*qoverm
             if (factor == 0) cycle
@@ -3138,7 +3146,7 @@ c           --- exited dipole
      &            (pgroup%zp(ip)-cdipoze(iz,io))*vzi(ip)*pgroup%xp(ip)*factor
             pgroup%yp(ip)  = pgroup%yp(ip) -
      &            (pgroup%zp(ip)-cdipoze(iz,io))*vzi(ip)*pgroup%yp(ip)*factor
-          endif 
+          endif
         enddo
       enddo
 
@@ -3894,7 +3902,7 @@ c       --- do coordinate transform on fields back to warped coordinates
 !$OMP END MASTER
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine mltgetfulllength(nmlt,mltzs,mltze,mltap,mltid,mltot,
      &                            mltfs,mltfe)
       integer(ISZ):: nmlt
@@ -4013,10 +4021,10 @@ c         --- Rotate the positions into the frame of the multipole data
           yy = yp(ip) - cmltoy(iz,io)
           zz = zptemp - zcent
 
-c         --- transverse rotation to take into account an active rotation 
+c         --- transverse rotation to take into account an active rotation
 c         --- of the field element. Rotation is relative to the z center.
 c         --- Particles are rotated to the frame of the element.
-c         --- Later, the field components accumulated are rotated back. 
+c         --- Later, the field components accumulated are rotated back.
 c         --- First, rotate by cmltop about the z axis.
           if (cmltop(iz,io) .ne. 0.) then
             x1 = xx
@@ -4147,10 +4155,10 @@ c         --- xx and zz have been converted to the lab frame, out of the bends
           yy = yp(ip) - cmltoy(iz,io)
           zz = zz     - zcent
 
-c         --- transverse rotation to take into account an active rotation 
+c         --- transverse rotation to take into account an active rotation
 c         --- of the field element. Rotation is relative to the z center.
 c         --- Particles are rotated to the frame of the element.
-c         --- Later, the field components accumulated are rotated back. 
+c         --- Later, the field components accumulated are rotated back.
 c         --- First, rotate by cmltop about the z axis.
           if (cmltop(iz,io) .ne. 0.) then
             x1 = xx
@@ -4192,7 +4200,7 @@ c         --- Saved the coordinates relative to the multiple data.
 
       return
       end
-c=========================================================================== 
+c===========================================================================
       subroutine applyegrd(np,xp,yp,npz,zp,lslice,ex,ey,ez)
       use Subtimerstop
       use Lattice
@@ -4303,10 +4311,10 @@ c         --- find particle coordinates in frame of gridded field
           yt = yp(ip) - egrdoy(ii)
           zt = zz     - zcent(iz,io)
 
-c         --- transverse rotation to take into account an active rotation 
+c         --- transverse rotation to take into account an active rotation
 c         --- of the field element. Rotation is relative to the z center.
 c         --- Particles are rotated to the frame of the element.
-c         --- Later, the field components accumulated are rotated back. 
+c         --- Later, the field components accumulated are rotated back.
 c         --- First, rotate by egrdph about the z axis.
           if (egrdop(ii) .ne. 0.) then
             x1 = xt
@@ -4329,7 +4337,7 @@ c         --- then by egrdop about the new z axis
             y1 = yt
             xt = +x1*ca(ii) + y1*sa(ii)
             yt = -x1*sa(ii) + y1*ca(ii)
-          endif 
+          endif
 
 c         --- If data is in RZ, then replace x with the radius and y=ys
           if (egrdrz(id)) then
@@ -4356,13 +4364,13 @@ c         --- swapping x and y, and by swapping Ex and Ey (done at the end
 c         --- of the loop). The sign of Ez is also changed. In the third
 c         --- quadrant, the signs of both Ex and Ey are changed.
 c                 Quadrupole symmetries on field grid
-c           
-c             Quadrant      E_x            E_y             E_z 
+c
+c             Quadrant      E_x            E_y             E_z
 c             --------------------------------------------------------
-c                I          E_x( x, y,z)   E_y( x, y,z)    E_z( x, y,z) 
-c                II         E_x(-x, y,z)  -E_y(-x, y,z)   -E_z(-x, y,z)  
-c                III       -E_x(-x,-y,z)  -E_y(-x,-y,z)    E_z(-x,-y,z) 
-c                IV        -E_x( x,-y,z)   E_x( x,-y,z)   -E_z( x,-y,z) 
+c                I          E_x( x, y,z)   E_y( x, y,z)    E_z( x, y,z)
+c                II         E_x(-x, y,z)  -E_y(-x, y,z)   -E_z(-x, y,z)
+c                III       -E_x(-x,-y,z)  -E_y(-x,-y,z)    E_z(-x,-y,z)
+c                IV        -E_x( x,-y,z)   E_x( x,-y,z)   -E_z( x,-y,z)
 
           if (egrdsy(ii) == 2) then
 c           --- Get quadrant that the particle is in.
@@ -4453,10 +4461,10 @@ c           --- Calculate linear weights
             endif
 
 c            if (egrdsy(ii) == 2 .and. xsign*ysign < 0.) then
-c              temp = ext 
+c              temp = ext
 c              ext = eyt
 c              eyt = temp
-c            endif 
+c            endif
 
             if (egrdrz(id)) then
 c             --- For the RZ case, ext now holds Er. Convert it to Ex and Ey.
@@ -4478,7 +4486,7 @@ c           --- of the angle reversed.
               ey1 = eyt
               ext = +ex1*ca(ii) - ey1*sa(ii)
               eyt = +ex1*sa(ii) + ey1*ca(ii)
-            endif 
+            endif
 
             if (egrdot(ii) .ne. 0.) then
               ex1 = ext
@@ -4494,7 +4502,7 @@ c           --- of the angle reversed.
               eyt = +ex1*sp(ii) + ey1*cp(ii)
             endif
 
-c           --- add in the resulting field 
+c           --- add in the resulting field
             ex(ip) = ex(ip) + ext
             ey(ip) = ey(ip) + eyt
             ez(ip) = ez(ip) + ezt
@@ -4515,7 +4523,7 @@ c           --- add in the resulting field
 !$OMP END MASTER
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine egrdgetfulllength()
       use Lattice
       use LatticeInternal
@@ -4592,7 +4600,7 @@ c       yl = +x2*sp + y2*cp
 
       return
       end
-c=========================================================================== 
+c===========================================================================
       subroutine applybgrd(np,xp,yp,npz,zp,lslice,bx,by,bz)
       use Subtimerstop
       use Lattice
@@ -4703,10 +4711,10 @@ c         --- find particle coordinates in frame of gridded field
           yt = yp(ip) - bgrdoy(ii)
           zt = zz     - zcent(iz,io)
 
-c         --- transverse rotation to take into account an active rotation 
+c         --- transverse rotation to take into account an active rotation
 c         --- of the field element. Rotation is relative to the z center.
 c         --- Particles are rotated to the frame of the element.
-c         --- Later, the field components accumulated are rotated back. 
+c         --- Later, the field components accumulated are rotated back.
 c         --- First, rotate by bgrdop about the z axis.
           if (bgrdop(ii) .ne. 0.) then
             x1 = xt
@@ -4729,7 +4737,7 @@ c         --- then by bgrdph about the new z axis
             y1 = yt
             xt = +x1*ca(ii) + y1*sa(ii)
             yt = -x1*sa(ii) + y1*ca(ii)
-          endif 
+          endif
 
 c         --- If data is in RZ, then replace x with the radius and y=ys
           if (bgrdrz(id)) then
@@ -4756,13 +4764,13 @@ c         --- swapping x and y, and by swapping Bx and By (done at the end
 c         --- of the loop). The sign of Bz is also changed. In the third
 c         --- quadrant, the signs of both Bx and By are changed.
 c                 Quadrupole symmetries on field grid
-c           
-c             Quadrant      B_x            B_y             B_z 
+c
+c             Quadrant      B_x            B_y             B_z
 c             --------------------------------------------------------
-c                I          B_x( x, y,z)   B_y( x, y,z)    B_z( x, y,z) 
-c                II         B_x(-x, y,z)  -B_y(-x, y,z)   -B_z(-x, y,z)  
-c                III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z) 
-c                IV        -B_x( x,-y,z)   B_x( x,-y,z)   -B_z( x,-y,z) 
+c                I          B_x( x, y,z)   B_y( x, y,z)    B_z( x, y,z)
+c                II         B_x(-x, y,z)  -B_y(-x, y,z)   -B_z(-x, y,z)
+c                III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z)
+c                IV        -B_x( x,-y,z)   B_x( x,-y,z)   -B_z( x,-y,z)
 
           if (bgrdsy(ii) == 2) then
 c           --- Get quadrant that the particle is in.
@@ -4853,10 +4861,10 @@ c           --- Calculate linear weights
             endif
 
 c            if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
-c              temp = bxt 
+c              temp = bxt
 c              bxt = byt
 c              byt = temp
-c            endif 
+c            endif
 
             if (bgrdrz(id)) then
 c             --- For the RZ case, bxt now holds Br. Convert it to Bx and By.
@@ -4878,7 +4886,7 @@ c           --- of the angle reversed.
               by1 = byt
               bxt = +bx1*ca(ii) - by1*sa(ii)
               byt = +bx1*sa(ii) + by1*ca(ii)
-            endif 
+            endif
 
             if (bgrdot(ii) .ne. 0.) then
               bx1 = bxt
@@ -4894,7 +4902,7 @@ c           --- of the angle reversed.
               byt = +bx1*sp(ii) + by1*cp(ii)
             endif
 
-c           --- add in the resulting field 
+c           --- add in the resulting field
             bx(ip) = bx(ip) + bxt
             by(ip) = by(ip) + byt
             bz(ip) = bz(ip) + bzt
@@ -4915,7 +4923,7 @@ c           --- add in the resulting field
 !$OMP END MASTER
       return
       end
-c============================================================================ 
+c============================================================================
       subroutine bgrdgetfulllength()
       use Lattice
       use LatticeInternal
@@ -4994,7 +5002,7 @@ c       yl = +x2*sp + y2*cp
 
       return
       end
-c=========================================================================== 
+c===========================================================================
       subroutine applybsqgrad(np,xp,yp,npz,zp,lslice,b)
       use Subtimerstop
       use Lattice
@@ -5024,6 +5032,7 @@ c             + ...
 
       integer(ISZ):: io,ip,i,j,k,iz,ii,id,ic
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
+      real(kind=8):: txp0,typ0
       real(kind=8):: tb(bsqgradnc)
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
@@ -5060,19 +5069,27 @@ c           --- find the location of the particle in the internal lattice arrays
 c         --- Cycle if this element is turned off
           if (id <= 0) cycle
 
-c         --- find transverse particle coordinate in frame of gridded field 
+c         --- find transverse particle coordinate in frame of gridded field
 c         --- transverse offsets
           txp = xp(ip) - bsqgradox(ii)
           typ = yp(ip) - bsqgradoy(ii)
-c         --- transverse rotation to take into account an active rotation 
-c         --- of the field element.  Particles are rotated in that oposite 
-c         --- sense of the element. Later the field components accumulated 
-c         --- must be rotated back. 
+c         --- transverse rotation to take into account an active rotation
+c         --- of the field element.  Particles are rotated in that oposite
+c         --- sense of the element. Later the field components accumulated
+c         --- must be rotated back.
           if ( bsqgradph(ii) .ne. 0. ) then
-            temp = txp  
-            txp =  temp*bsqgradcp(ii) + typ*bsqgradsp(ii) 
-            typ = -temp*bsqgradsp(ii) + typ*bsqgradcp(ii) 
-          endif 
+            temp = txp
+            txp =  temp*bsqgradcp(ii) + typ*bsqgradsp(ii)
+            typ = -temp*bsqgradsp(ii) + typ*bsqgradcp(ii)
+          endif
+
+c         --- If data is in RZ, then replace x with the radius and y=ys
+          if (bsqgradrz(id)) then
+            txp0 = txp
+            typ0 = typ
+            txp = sqrt(txp**2 + typ**2)
+            typ = bsqgradys(ii)
+          endif
 
 c         --- Shift coordinates to measure from the edge of the field grid
           txp = txp - bsqgradxs(ii)
@@ -5090,13 +5107,13 @@ c         --- swapping x and y, and by swapping Bx and By (done at the end
 c         --- of the loop). The sign of Bz is also changed. In the third
 c         --- quadrant, the signs of both Bx and By are changed.
 c                 Quadrupole symmetries on field grid
-c           
-c             Quadrant      B_x            B_y             B_z 
+c
+c             Quadrant      B_x            B_y             B_z
 c             --------------------------------------------------------
-c                I          B_x( x, y,z)   B_y( x, y,z)    B_z( x, y,z) 
-c                II         B_y( y,-x,z)  -B_x( y,-x,z)   -B_z( y,-x,z)  
-c                III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z) 
-c                IV        -B_y(-y, x,z)   B_x(-y, x,z)   -B_z(-y, x,z) 
+c                I          B_x( x, y,z)   B_y( x, y,z)    B_z( x, y,z)
+c                II         B_y( y,-x,z)  -B_x( y,-x,z)   -B_z( y,-x,z)
+c                III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z)
+c                IV        -B_y(-y, x,z)   B_x(-y, x,z)   -B_z(-y, x,z)
 
           if (bsqgradsy(ii) == 2) then
 c           --- Get quadrant that the particle is in.
@@ -5134,64 +5151,81 @@ c         --- Calculate linear weights
 
 c         --- Only calculate for particles inside the B field grid
           if (0 <= i .and. i < bsqgradnx .and.
-     &        0 <= j .and. j < bsqgradny .and.
+     &        ((0 <= j .and. j < bsqgradny) .or. bsqgradrz(id)) .and.
      &        0 <= k .and. k < bsqgradnz) then
 
             bfac = bsqgradsc(ii) + bsqgradsf(ii)
 
-            tb = bfac*(u0*v0*w0*bsqgrad(:,i  ,j  ,k  ,id) +
-     &                 u1*v0*w0*bsqgrad(:,i+1,j  ,k  ,id) +
-     &                 u0*v1*w0*bsqgrad(:,i  ,j+1,k  ,id) +
-     &                 u1*v1*w0*bsqgrad(:,i+1,j+1,k  ,id) +
-     &                 u0*v0*w1*bsqgrad(:,i  ,j  ,k+1,id) +
-     &                 u1*v0*w1*bsqgrad(:,i+1,j  ,k+1,id) +
-     &                 u0*v1*w1*bsqgrad(:,i  ,j+1,k+1,id) +
-     &                 u1*v1*w1*bsqgrad(:,i+1,j+1,k+1,id))
-
-
-           if(.false.) then
-c --- original
-            if (bsqgradsy(ii) == 2 .and. xsign*ysign < 0.) then
-              do ic=0,bsqgradnc/3-1
-                tb(1+ic*3) = xsign*tb(1+ic*3)
-                tb(2+ic*3) = ysign*tb(2+ic*3)
-                tb(3+ic*3) = zsign*tb(3+ic*3)
-              enddo
-              if (xsign*ysign < 0.) then
-                do ic=0,bsqgradnc/3-1
-                  temp = tb(1+ic*3)
-                  tb(1+ic*3) = tb(2+ic*3)
-                  tb(2+ic*3) = temp
-                enddo
-              endif 
+            if (bsqgradny == 0 .or. bsqgradrz(id)) then
+              tb = bfac*(u0*w0*bsqgrad(:,i  ,0  ,k  ,id) +
+     &                   u1*w0*bsqgrad(:,i+1,0  ,k  ,id) +
+     &                   u0*w1*bsqgrad(:,i  ,0  ,k+1,id) +
+     &                   u1*w1*bsqgrad(:,i+1,0  ,k+1,id))
+            else
+              tb = bfac*(u0*v0*w0*bsqgrad(:,i  ,j  ,k  ,id) +
+     &                   u1*v0*w0*bsqgrad(:,i+1,j  ,k  ,id) +
+     &                   u0*v1*w0*bsqgrad(:,i  ,j+1,k  ,id) +
+     &                   u1*v1*w0*bsqgrad(:,i+1,j+1,k  ,id) +
+     &                   u0*v0*w1*bsqgrad(:,i  ,j  ,k+1,id) +
+     &                   u1*v0*w1*bsqgrad(:,i+1,j  ,k+1,id) +
+     &                   u0*v1*w1*bsqgrad(:,i  ,j+1,k+1,id) +
+     &                   u1*v1*w1*bsqgrad(:,i+1,j+1,k+1,id))
             endif
-           else
-c --- modified
-            if (bsqgradsy(ii) == 2) then
-              do ic=0,bsqgradnc/3-1
-                tb(1+ic*3) = zsign*tb(1+ic*3)
-                tb(2+ic*3) = ysign*tb(2+ic*3)
-                tb(3+ic*3) = xsign*tb(3+ic*3)
-              enddo
-              if (xsign*ysign < 0.) then
-                do ic=0,bsqgradnc/3-1
-                  temp = tb(3+ic*3)
-                  tb(3+ic*3) = tb(2+ic*3)
-                  tb(2+ic*3) = temp
-                enddo
-              endif 
-            endif 
-           end if
 
-c           --- rotate transverse field componets for correct lab frame 
-c               orientation if the element is rotated.  
+
+            if(.false.) then
+c --- original
+             if (bsqgradsy(ii) == 2 .and. xsign*ysign < 0.) then
+               do ic=0,bsqgradnc/3-1
+                 tb(1+ic*3) = xsign*tb(1+ic*3)
+                 tb(2+ic*3) = ysign*tb(2+ic*3)
+                 tb(3+ic*3) = zsign*tb(3+ic*3)
+               enddo
+               if (xsign*ysign < 0.) then
+                 do ic=0,bsqgradnc/3-1
+                   temp = tb(1+ic*3)
+                   tb(1+ic*3) = tb(2+ic*3)
+                   tb(2+ic*3) = temp
+                 enddo
+               endif
+             endif
+            else
+c --- modified
+             if (bsqgradsy(ii) == 2) then
+               do ic=0,bsqgradnc/3-1
+                 tb(1+ic*3) = zsign*tb(1+ic*3)
+                 tb(2+ic*3) = ysign*tb(2+ic*3)
+                 tb(3+ic*3) = xsign*tb(3+ic*3)
+               enddo
+               if (xsign*ysign < 0.) then
+                 do ic=0,bsqgradnc/3-1
+                   temp = tb(3+ic*3)
+                   tb(3+ic*3) = tb(2+ic*3)
+                   tb(2+ic*3) = temp
+                 enddo
+               endif
+             endif
+            endif
+
+            if (bsqgradrz(id)) then
+              if (txp .ne. 0) then
+                tb(3) = tb(2)*typ0/txp
+                tb(2) = tb(2)*txp0/txp
+              else
+                tb(3) = 0.
+                tb(2) = tb(2)
+              endif
+            endif
+
+c           --- rotate transverse field componets for correct lab frame
+c               orientation if the element is rotated.
             if ( bsqgradph(ii) .ne. 0. ) then
               do ic=0,bsqgradnc/3-1
                 temp = tb(1+ic*3)
-                tb(1+ic*3) = temp*bsqgradcp(ii) - tb(2+ic*3)*bsqgradsp(ii) 
-                tb(2+ic*3) = temp*bsqgradsp(ii) + tb(2+ic*3)*bsqgradcp(ii)         
+                tb(1+ic*3) = temp*bsqgradcp(ii) - tb(2+ic*3)*bsqgradsp(ii)
+                tb(2+ic*3) = temp*bsqgradsp(ii) + tb(2+ic*3)*bsqgradcp(ii)
               enddo
-            endif 
+            endif
 
 c           --- Accumulate the interpolated field.
             b(:,ip) = b(:,ip) + tb
@@ -5206,7 +5240,7 @@ c           --- Accumulate the interpolated field.
 !$OMP END MASTER
       return
       end
-c=========================================================================== 
+c===========================================================================
       subroutine applypgrd(np,xp,yp,npz,zp,lslice,ex,ey,ez)
       use Subtimerstop
       use Lattice
@@ -5275,20 +5309,20 @@ c           --- cycle if lost particle
 c         --- Cycle if this element is turned off
           if (id <= 0) cycle
 
-c         --- find transverse particle coordinate in frame of gridded field 
+c         --- find transverse particle coordinate in frame of gridded field
 c         --- transverse offsets
           txp = xp(ip) - pgrdox(ii)
           typ = yp(ip) - pgrdoy(ii)
 
-c         --- transverse rotation to take into account an active rotation 
-c         --- of the field element.  Particles are rotated in that oposite 
-c         --- sense of the element. Later the field components accumulated 
-c         --- must be rotated back. 
+c         --- transverse rotation to take into account an active rotation
+c         --- of the field element.  Particles are rotated in that oposite
+c         --- sense of the element. Later the field components accumulated
+c         --- must be rotated back.
           if ( pgrdph(ii) .ne. 0. ) then
-            temp = txp  
-            txp =  temp*pgrdcp(ii) + typ*pgrdsp(ii) 
-            typ = -temp*pgrdsp(ii) + typ*pgrdcp(ii) 
-          endif 
+            temp = txp
+            txp =  temp*pgrdcp(ii) + typ*pgrdsp(ii)
+            typ = -temp*pgrdsp(ii) + typ*pgrdcp(ii)
+          endif
 
 c         --- find location of particle in potential grid
           i =  abs(txp - pgrdxs(ii))*pgrddxi(id)
@@ -5393,20 +5427,20 @@ c         --- find the location of the particle in the internal lattice arrays
 c         --- Cycle if this element is turned off
           if (id <= 0) cycle
 
-c         --- find transverse particle coordinate in frame of gridded field 
+c         --- find transverse particle coordinate in frame of gridded field
 c         --- transverse offsets
           txp = xp(ip) - pgrdox(ii)
           typ = yp(ip) - pgrdoy(ii)
 
-c         --- transverse rotation to take into account an active rotation 
-c         --- of the field element.  Particles are rotated in that oposite 
-c         --- sense of the element. Later the field components accumulated 
-c         --- must be rotated back. 
+c         --- transverse rotation to take into account an active rotation
+c         --- of the field element.  Particles are rotated in that oposite
+c         --- sense of the element. Later the field components accumulated
+c         --- must be rotated back.
           if ( pgrdph(ii) .ne. 0. ) then
-            temp = txp  
-            txp =  temp*pgrdcp(ii) + typ*pgrdsp(ii) 
-            typ = -temp*pgrdsp(ii) + typ*pgrdcp(ii) 
-          endif 
+            temp = txp
+            txp =  temp*pgrdcp(ii) + typ*pgrdsp(ii)
+            typ = -temp*pgrdsp(ii) + typ*pgrdcp(ii)
+          endif
 
 c         --- find location of particle in potential grid
           i =  abs(txp - pgrdxs(ii))*pgrddxi(id)
@@ -5492,12 +5526,12 @@ c   dt       full step size
       vz  = uzp*gaminv
       uzb = vbeam*gammabar
       clghtisq = 1./clight**2
-      
+
       do io=1,nlmapol
         if (.not. linlmap(io)) cycle
 
         do ip = 1, np
-                      
+
 c           --- find z-cell in which particle lies
             iz = max(0., (zbeam(ip) - zlmin - zlframe)*dzli + 0.5)
             mapid = clmapid(iz,io)
@@ -5544,8 +5578,8 @@ c         --- set the field
               case(-1) ! continuous focusing
                 phasex = frac*2.*pi*lmapnux(mapid)
                 phasey = frac*2.*pi*lmapnuy(mapid)
-                phx = phasex*(1.+lmapxcr(mapid)*dpp/lmapqx(mapid))          !phase change based on value of chromaticity and dp 
-                phy = phasey*(1.+lmapycr(mapid)*dpp/lmapqy(mapid))          !phase change based on value of chromaticity and dp 
+                phx = phasex*(1.+lmapxcr(mapid)*dpp/lmapqx(mapid))          !phase change based on value of chromaticity and dp
+                phy = phasey*(1.+lmapycr(mapid)*dpp/lmapqy(mapid))          !phase change based on value of chromaticity and dp
                 cosphx = cos(phx)
                 sinphx = sin(phx)
                 cosphy = cos(phy)
@@ -5566,8 +5600,8 @@ c         --- set the field
                 dpx2 = lmapdpx(mapid)
                 dy2 = lmapdy(mapid)
                 dpy2 = lmapdpy(mapid)
-                map(0,0) = rx*(cosphx+ax1*sinphx) 
-                map(0,1) = mx*sinphx 
+                map(0,0) = rx*(cosphx+ax1*sinphx)
+                map(0,1) = mx*sinphx
 !                map(1,0) = -(1/mx*((ax2-ax1)*cosphx + (1+ax1*ax2)*sinphx))
                 map(1,0) = -(1./mx*(1.+ax1*ax2)*sinphx)
                 map(1,1) = (cosphx - ax2*sinphx) ! irx*(cosphx - ax2*sinphx)
@@ -5597,13 +5631,13 @@ c         --- set the field
                 endif
               case(0) ! drift
                 map(0,0) = 1.
-                map(0,1) = L 
+                map(0,1) = L
                 map(1,1) = 1.
                 map(2,2) = 1.
-                map(2,3) = L 
+                map(2,3) = L
                 map(3,3) = 1.
                 map(4,4) = 1.
-                map(4,5) = L/(ga*ga*Be*Be) 
+                map(4,5) = L/(ga*ga*Be*Be)
                 map(5,5) = 1.
               case(1) ! bend
                 h = lmapangle(mapid)/(clmapze(iz,io)-clmapzs(iz,io))
@@ -5613,16 +5647,16 @@ c         --- set the field
                 sx = sin(kx*L)/kx
                 dx = (1.-cx)/kx**2
                 J1 = (L - sx)/kx**2
-                map(0,0) = cx 
-                map(0,1) = sx 
+                map(0,0) = cx
+                map(0,1) = sx
                 map(0,5) = (h/Be)*dx
-                map(1,0) = -kx**2*sx 
-                map(1,1) = cx 
+                map(1,0) = -kx**2*sx
+                map(1,1) = cx
                 map(1,5) = (h/Be)*sx
-                map(2,2) = 1. 
-                map(2,3) = L 
-                map(3,3) = 1. 
-                map(4,0) = -(h/Be)*sx 
+                map(2,2) = 1.
+                map(2,3) = L
+                map(3,3) = 1.
+                map(4,0) = -(h/Be)*sx
                 map(4,1) = -(h/Be)*dx
                 map(4,4) =  1.
                 map(4,5) =  -(h/Be)**2*J1+L/(Be**2*ga**2)
@@ -5635,10 +5669,10 @@ c         --- set the field
                   ! --- focusing quad
                   cx = cos(k*L)
                   sx = sin(k*L)/k
-                  cy = cos(k*L) 
-                  sy = -sin(k*L)/k 
-                  !cy = cosh(k*L) 
-                  !sy = -sinh(k*L)/k 
+                  cy = cos(k*L)
+                  sy = -sin(k*L)/k
+                  !cy = cosh(k*L)
+                  !sy = -sinh(k*L)/k
                 else ! (k>0. and L<0.) or (k<0. and L>0.)
                   k = abs(k)
                   L = abs(L)
@@ -5647,8 +5681,8 @@ c         --- set the field
                   !sx = -sinh(k*L)/k
                   cx = cos(k*L)
                   sx = -sin(k*L)/k
-                  cy = cos(k*L) 
-                  sy = sin(k*L)/k 
+                  cy = cos(k*L)
+                  sy = sin(k*L)/k
                 end if
                 map(0,0) = cx
                 map(0,1) = sx
@@ -5675,38 +5709,38 @@ c         --- set the field
               case default ! undefined
                 write(0,*) 'Error in definition of maps. Defined types are:'
                 write(0,*) '  -1 = continuous focusing,'
-                write(0,*) '   0 = drift,' 
+                write(0,*) '   0 = drift,'
                 write(0,*) '   1 = bend,'
-                write(0,*) '   2 = quad,' 
+                write(0,*) '   2 = quad,'
                 write(0,*) '   3 = RFkick.'
                 call abort()
             end select
-            xp(ip)  = map(0,0)*xtmp   + map(0,1)*xpr  
+            xp(ip)  = map(0,0)*xtmp   + map(0,1)*xpr
      &              + map(0,2)*ytmp   + map(0,3)*ypr
      &              + map(0,4)*ztmp   + map(0,5)*dpp
-                          
+
             uxp(ip) = (map(1,0)*xtmp  + map(1,1)*xpr
      &              +  map(1,2)*ytmp  + map(1,3)*ypr
-     &              +  map(1,4)*ztmp  + map(1,5)*dpp)/scf 
-                      
+     &              +  map(1,4)*ztmp  + map(1,5)*dpp)/scf
+
             yp(ip)  = map(2,0)*xtmp   + map(2,1)*xpr
      &              + map(2,2)*ytmp   + map(2,3)*ypr
-     &              + map(2,4)*ztmp   + map(2,5)*dpp     
-                       
+     &              + map(2,4)*ztmp   + map(2,5)*dpp
+
             uyp(ip) = (map(3,0)*xtmp  + map(3,1)*xpr
      &              +  map(3,2)*ytmp  + map(3,3)*ypr
-     &              +  map(3,4)*ztmp  + map(3,5)*dpp)/scf    
-                    
+     &              +  map(3,4)*ztmp  + map(3,5)*dpp)/scf
+
             zbeam(ip) = zbeam(ip) + L
             zp(ip)  = map(4,0)*xtmp   + map(4,1)*xpr
      &              + map(4,2)*ytmp   + map(4,3)*ypr
      &              + map(4,4)*ztmp   + map(4,5)*dpp + zbeam(ip)
-                    
+
             uzp(ip) = (map(5,0)*xtmp  + map(5,1)*xpr
      &              +  map(5,2)*ytmp  + map(5,3)*ypr
-     &              +  map(5,4)*ztmp  + map(5,5)*dpp)*uzb + uzb     
+     &              +  map(5,4)*ztmp  + map(5,5)*dpp)*uzb + uzb
             gaminv(ip) = 1./sqrt(1. + (uxp(ip)**2 + uyp(ip)**2 + uzp(ip)**2)*clghtisq)
-          endif 
+          endif
         enddo
       enddo
       deallocate(vz)
@@ -5760,7 +5794,7 @@ c   dt       full step size
       vz  = uzp*gaminv
       uzb = vbeam*gammabar
       clghtisq = 1./clight**2
-      
+
       do io=1,nlmapol
         if (.not. linlmap(io)) cycle
 
@@ -5830,8 +5864,8 @@ c         --- set the field
               case(-1) ! continuous focusing
                 phasex = frac*2.*pi*lmapnux(mapid)
                 phasey = frac*2.*pi*lmapnuy(mapid)
-                phx = phasex*(1.+lmapxcr(mapid)*dpp/lmapqx(mapid))          !phase change based on value of chromaticity and dp 
-                phy = phasey*(1.+lmapycr(mapid)*dpp/lmapqy(mapid))          !phase change based on value of chromaticity and dp 
+                phx = phasex*(1.+lmapxcr(mapid)*dpp/lmapqx(mapid))          !phase change based on value of chromaticity and dp
+                phy = phasey*(1.+lmapycr(mapid)*dpp/lmapqy(mapid))          !phase change based on value of chromaticity and dp
                 cosphx = cos(phx)
                 sinphx = sin(phx)
                 cosphy = cos(phy)
@@ -5852,8 +5886,8 @@ c         --- set the field
                 dpx2 = lmapdpx(mapid)
                 dy2 = lmapdy(mapid)
                 dpy2 = lmapdpy(mapid)
-                map(0,0) = rx*(cosphx+ax1*sinphx) 
-                map(0,1) = mx*sinphx 
+                map(0,0) = rx*(cosphx+ax1*sinphx)
+                map(0,1) = mx*sinphx
 !                map(1,0) = -(1/mx*((ax2-ax1)*cosphx + (1+ax1*ax2)*sinphx))
                 map(1,0) = -(1./mx*(1.+ax1*ax2)*sinphx)
                 map(1,1) = (cosphx - ax2*sinphx) ! irx*(cosphx - ax2*sinphx)
@@ -5888,13 +5922,13 @@ c               map(5,5) = cosphz
                 endif
               case(0) ! drift
                 map(0,0) = 1.
-                map(0,1) = L 
+                map(0,1) = L
                 map(1,1) = 1.
                 map(2,2) = 1.
-                map(2,3) = L 
+                map(2,3) = L
                 map(3,3) = 1.
                 map(4,4) = 1.
-                map(4,5) = L/(ga*ga*Be*Be) 
+                map(4,5) = L/(ga*ga*Be*Be)
                 map(5,5) = 1.
               case(1) ! bend
                 h = lmapangle(mapid)/(clmapze(iz,io)-clmapzs(iz,io))
@@ -5904,16 +5938,16 @@ c               map(5,5) = cosphz
                 sx = sin(kx*L)/kx
                 dx = (1.-cx)/kx**2
                 J1 = (L - sx)/kx**2
-                map(0,0) = cx 
-                map(0,1) = sx 
+                map(0,0) = cx
+                map(0,1) = sx
                 map(0,5) = (h/Be)*dx
-                map(1,0) = -kx**2*sx 
-                map(1,1) = cx 
+                map(1,0) = -kx**2*sx
+                map(1,1) = cx
                 map(1,5) = (h/Be)*sx
-                map(2,2) = 1. 
-                map(2,3) = L 
-                map(3,3) = 1. 
-                map(4,0) = -(h/Be)*sx 
+                map(2,2) = 1.
+                map(2,3) = L
+                map(3,3) = 1.
+                map(4,0) = -(h/Be)*sx
                 map(4,1) = -(h/Be)*dx
                 map(4,4) =  1.
                 map(4,5) =  -(h/Be)**2*J1+L/(Be**2*ga**2)
@@ -5926,10 +5960,10 @@ c               map(5,5) = cosphz
                   ! --- focusing quad
                   cx = cos(k*L)
                   sx = sin(k*L)/k
-                  cy = cos(k*L) 
-                  sy = -sin(k*L)/k 
-                  !cy = cosh(k*L) 
-                  !sy = -sinh(k*L)/k 
+                  cy = cos(k*L)
+                  sy = -sin(k*L)/k
+                  !cy = cosh(k*L)
+                  !sy = -sinh(k*L)/k
                 else ! (k>0. and L<0.) or (k<0. and L>0.)
                   k = abs(k)
                   L = abs(L)
@@ -5938,8 +5972,8 @@ c               map(5,5) = cosphz
                   !sx = -sinh(k*L)/k
                   cx = cos(k*L)
                   sx = -sin(k*L)/k
-                  cy = cos(k*L) 
-                  sy = sin(k*L)/k 
+                  cy = cos(k*L)
+                  sy = sin(k*L)/k
                 end if
                 map(0,0) = cx
                 map(0,1) = sx
@@ -5956,32 +5990,32 @@ c               map(5,5) = cosphz
                 write(0,*) 'Error in definition of maps: defined types are -1=continuous focusing, 0=drift, 1=bend, 2=quad.'
                 call abort()
             end select
-            xp(ip)  = map(0,0)*xtmp   + map(0,1)*xpr  
+            xp(ip)  = map(0,0)*xtmp   + map(0,1)*xpr
      &              + map(0,2)*ytmp   + map(0,3)*ypr
      &              + map(0,4)*ztmp   + map(0,5)*dpp
-                          
+
             uxp(ip) = (map(1,0)*xtmp  + map(1,1)*xpr
      &              +  map(1,2)*ytmp  + map(1,3)*ypr
-     &              +  map(1,4)*ztmp  + map(1,5)*dpp)/scf 
-                      
+     &              +  map(1,4)*ztmp  + map(1,5)*dpp)/scf
+
             yp(ip)  = map(2,0)*xtmp   + map(2,1)*xpr
      &              + map(2,2)*ytmp   + map(2,3)*ypr
-     &              + map(2,4)*ztmp   + map(2,5)*dpp     
-                       
+     &              + map(2,4)*ztmp   + map(2,5)*dpp
+
             uyp(ip) = (map(3,0)*xtmp  + map(3,1)*xpr
      &              +  map(3,2)*ytmp  + map(3,3)*ypr
-     &              +  map(3,4)*ztmp  + map(3,5)*dpp)/scf    
-                    
+     &              +  map(3,4)*ztmp  + map(3,5)*dpp)/scf
+
             zbeam(ip) = zbeam(ip) + L
             zp(ip)  = map(4,0)*xtmp   + map(4,1)*xpr
      &              + map(4,2)*ytmp   + map(4,3)*ypr
      &              + map(4,4)*ztmp   + map(4,5)*dpp + zbeam(ip)
-                    
+
             uzp(ip) = (map(5,0)*xtmp  + map(5,1)*xpr
      &              +  map(5,2)*ytmp  + map(5,3)*ypr
-     &              +  map(5,4)*ztmp  + map(5,5)*dpp)*uzb + uzb     
+     &              +  map(5,4)*ztmp  + map(5,5)*dpp)*uzb + uzb
             gaminv(ip) = 1./sqrt(1. + (uxp(ip)**2 + uyp(ip)**2 + uzp(ip)**2)*clghtisq)
-          endif 
+          endif
           enddo
         enddo
       enddo
@@ -6004,7 +6038,7 @@ c applies simple linear map
           y (i) = Mty(1,1)*ytmp       + Mty(1,2)*uy(i)/uz(i)
           uy(i) = Mty(2,1)*ytmp*uz(i) + Mty(2,2)*uy(i)
         end do
-        
+
         return
       end subroutine apply_simple_map
 c=============================================================================
@@ -6023,31 +6057,31 @@ c applies simple linear map
           uxp = ux(i)*scf
           uyp = uy(i)*scf
           uzp = (uz(i)-uzb)/uzb
-          x(i)  = Map(0,0)*xtmp   + Map(0,1)*uxp  
-     &          + Map(0,2)*ytmp   + Map(0,3)*uyp  
-     &          + Map(0,4)*ztmp   + Map(0,5)*uzp  
-                          
-          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*uxp  
-     &          +  Map(1,2)*ytmp  + Map(1,3)*uyp  
-     &          +  Map(1,4)*ztmp  + Map(1,5)*uzp)/scf 
-                      
-          y(i)  = Map(2,0)*xtmp   + Map(2,1)*uxp  
-     &          + Map(2,2)*ytmp   + Map(2,3)*uyp  
-     &          + Map(2,4)*ztmp   + Map(2,5)*uzp        
-                       
-          uy(i) = (Map(3,0)*xtmp  + Map(3,1)*uxp  
-     &          +  Map(3,2)*ytmp  + Map(3,3)*uyp  
-     &          +  Map(3,4)*ztmp  + Map(3,5)*uzp)/scf    
-                      
-          z(i)  = Map(4,0)*xtmp   + Map(4,1)*uxp  
-     &          + Map(4,2)*ytmp   + Map(4,3)*uyp  
-     &          + Map(4,4)*ztmp   + Map(4,5)*uzp     
-                      
-          uz(i) = (Map(5,0)*xtmp  + Map(5,1)*uxp  
-     &          +  Map(5,2)*ytmp  + Map(5,3)*uyp  
-     &          +  Map(5,4)*ztmp  + Map(5,5)*uzp)*uzb + uzb     
+          x(i)  = Map(0,0)*xtmp   + Map(0,1)*uxp
+     &          + Map(0,2)*ytmp   + Map(0,3)*uyp
+     &          + Map(0,4)*ztmp   + Map(0,5)*uzp
+
+          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*uxp
+     &          +  Map(1,2)*ytmp  + Map(1,3)*uyp
+     &          +  Map(1,4)*ztmp  + Map(1,5)*uzp)/scf
+
+          y(i)  = Map(2,0)*xtmp   + Map(2,1)*uxp
+     &          + Map(2,2)*ytmp   + Map(2,3)*uyp
+     &          + Map(2,4)*ztmp   + Map(2,5)*uzp
+
+          uy(i) = (Map(3,0)*xtmp  + Map(3,1)*uxp
+     &          +  Map(3,2)*ytmp  + Map(3,3)*uyp
+     &          +  Map(3,4)*ztmp  + Map(3,5)*uzp)/scf
+
+          z(i)  = Map(4,0)*xtmp   + Map(4,1)*uxp
+     &          + Map(4,2)*ytmp   + Map(4,3)*uyp
+     &          + Map(4,4)*ztmp   + Map(4,5)*uzp
+
+          uz(i) = (Map(5,0)*xtmp  + Map(5,1)*uxp
+     &          +  Map(5,2)*ytmp  + Map(5,3)*uyp
+     &          +  Map(5,4)*ztmp  + Map(5,5)*uzp)*uzb + uzb
         end do
-        
+
         return
       end subroutine apply_map
 c=============================================================================
@@ -6065,7 +6099,7 @@ c applies linear map
       real(kind=8):: xtmp,ytmp,ztmp,scf,xpr,ypr,dpp,uzb,rx,ry,mx,my,irx,iry,clghtisq
 
         clghtisq = 1./clight**2
- 
+
         Map = 0.
         Map(4,4) = cos(phz)
         Map(5,5) = cos(phz)
@@ -6085,7 +6119,7 @@ c       Mz11 = 1.
 c       if self.sync_flag:
 c        Mz12 = -self.eta*self.L
 c       else:
-c        Mz12 = 0   
+c        Mz12 = 0
 c       Mz21 = 0.
 c       Mz22 = 1.
 c       Tx13 = self.dx2 - Mx11*self.dx1 - Mx12*self.dpx1
@@ -6093,7 +6127,7 @@ c       Tx23 = self.dpx2 - Mx21*self.dx1 - Mx22*self.dpx1
 c       Ty13 = self.dy2 - My11*self.dy1 - My12*self.dpy1
 c       Ty23 = self.dpy2 - My21*self.dy1 - My22*self.dpy1
 c       Be   = top.vbeam/top.clight
-c        if self.sync_flag:  
+c        if self.sync_flag:
 c         Mz21    = (2*pi*self.mus)**2/(self.eta*Be*self.C)
 
         uzb =  gammabar*vbeam
@@ -6105,8 +6139,8 @@ c         Mz21    = (2*pi*self.mus)**2/(self.eta*Be*self.C)
         my = sqrt(by1*by2)
 
         if(xchrom==0. .and. ychrom==0.  .and. omegaz==0.) then
-         phx = phasex       
-         phy = phasey       
+         phx = phasex
+         phy = phasey
 
          Map(0,0) = rx*(cos(phx)+ax1*sin(phx))
          Map(0,1) = mx*sin(phx)
@@ -6127,20 +6161,20 @@ c         Mz21    = (2*pi*self.mus)**2/(self.eta*Be*self.C)
           dpp = (uz(i)-uzb)/uzb
 
           x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr
-                          
-          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr)/scf 
-                      
-          y(i)  = Map(2,2)*ytmp   + Map(2,3)*ypr         
-                       
-          uy(i) = (Map(3,2)*ytmp  + Map(3,3)*ypr)/scf 
+
+          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr)/scf
+
+          y(i)  = Map(2,2)*ytmp   + Map(2,3)*ypr
+
+          uy(i) = (Map(3,2)*ytmp  + Map(3,3)*ypr)/scf
 
           gaminv(i) = 1./sqrt(1. + (ux(i)**2 + uy(i)**2 + uz(i)**2)*clghtisq)
 
          end do
 
         elseif(xchrom==0. .and. ychrom==0.) then
-         phx = phasex         
-         phy = phasey          
+         phx = phasex
+         phy = phasey
 
          Map(0,0) = rx*(cos(phx)+ax1*sin(phx))
          Map(0,1) = mx*sin(phx)
@@ -6164,17 +6198,17 @@ c         Mz21    = (2*pi*self.mus)**2/(self.eta*Be*self.C)
           ypr = uy(i)*scf
           dpp = (uz(i)-uzb)/uzb
 
-          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr + Map(0,5)*dpp  
-                          
-          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr + Map(1,5)*dpp)/scf 
-                      
-          y(i)  = Map(2,2)*ytmp   + Map(2,3)*ypr + Map(2,5)*dpp        
-                       
-          uy(i) = (Map(3,2)*ytmp  + Map(3,3)*ypr + Map(3,5)*dpp)/scf    
-                      
-          z(i)  = Map(4,4)*ztmp   + Map(4,5)*dpp     
-                      
-          uz(i) = (Map(5,4)*ztmp  + Map(5,5)*dpp)*uzb + uzb     
+          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr + Map(0,5)*dpp
+
+          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr + Map(1,5)*dpp)/scf
+
+          y(i)  = Map(2,2)*ytmp   + Map(2,3)*ypr + Map(2,5)*dpp
+
+          uy(i) = (Map(3,2)*ytmp  + Map(3,3)*ypr + Map(3,5)*dpp)/scf
+
+          z(i)  = Map(4,4)*ztmp   + Map(4,5)*dpp
+
+          uz(i) = (Map(5,4)*ztmp  + Map(5,5)*dpp)*uzb + uzb
 
           gaminv(i) = 1./sqrt(1. + (ux(i)**2 + uy(i)**2 + uz(i)**2)*clghtisq)
 
@@ -6189,8 +6223,8 @@ c         Mz21    = (2*pi*self.mus)**2/(self.eta*Be*self.C)
           ypr = uy(i)*scf
           dpp = (uz(i)-uzb)/uzb
 
-          phx = phasex*(1. + xchrom*dpp/Qx + xtunechirp*(ztmp-zoffsetchirp))          !phase change based on value of chromaticity and dp 
-          phy = phasey*(1. + ychrom*dpp/Qy + ytunechirp*(ztmp-zoffsetchirp))          !phase change based on value of chromaticity and dp 
+          phx = phasex*(1. + xchrom*dpp/Qx + xtunechirp*(ztmp-zoffsetchirp))          !phase change based on value of chromaticity and dp
+          phy = phasey*(1. + ychrom*dpp/Qy + ytunechirp*(ztmp-zoffsetchirp))          !phase change based on value of chromaticity and dp
           Map(0,0) = rx*(cos(phx)+ax1*sin(phx))
           Map(0,1) = mx*sin(phx)
           Map(1,0) = -(1/mx*((ax2-ax1)*cos(phx) + (1+ax1*ax2)*sin(phx)))
@@ -6204,17 +6238,17 @@ c         Mz21    = (2*pi*self.mus)**2/(self.eta*Be*self.C)
           Map(2,5) = dy2  - Map(2,2)*dy1 - Map(2,3)*dpy1
           Map(3,5) = dpy2 - Map(3,2)*dy1 - Map(3,3)*dpy1
 
-          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr + Map(0,5)*dpp  
-                          
-          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr + Map(1,5)*dpp)/scf 
-                      
-          y(i)  = Map(2,2)*ytmp   + Map(2,3)*ypr + Map(2,5)*dpp        
-                       
-          uy(i) = (Map(3,2)*ytmp  + Map(3,3)*ypr + Map(3,5)*dpp)/scf    
-                      
-          z(i)  = Map(4,4)*ztmp   + Map(4,5)*dpp     
-                      
-          uz(i) = (Map(5,4)*ztmp  + Map(5,5)*dpp)*uzb + uzb     
+          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr + Map(0,5)*dpp
+
+          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr + Map(1,5)*dpp)/scf
+
+          y(i)  = Map(2,2)*ytmp   + Map(2,3)*ypr + Map(2,5)*dpp
+
+          uy(i) = (Map(3,2)*ytmp  + Map(3,3)*ypr + Map(3,5)*dpp)/scf
+
+          z(i)  = Map(4,4)*ztmp   + Map(4,5)*dpp
+
+          uz(i) = (Map(5,4)*ztmp  + Map(5,5)*dpp)*uzb + uzb
 
           gaminv(i) = 1./sqrt(1. + (ux(i)**2 + uy(i)**2 + uz(i)**2)*clghtisq)
 
@@ -6223,30 +6257,30 @@ c         Mz21    = (2*pi*self.mus)**2/(self.eta*Be*self.C)
 
 c --- complete set for reference
 c
-c          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr  
-c     &          + Map(0,2)*ytmp   + Map(0,3)*ypr  
-c     &          + Map(0,4)*ztmp   + Map(0,5)*dpp  
-                          
-c          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr  
-c     &          +  Map(1,2)*ytmp  + Map(1,3)*ypr  
-c     &          +  Map(1,4)*ztmp  + Map(1,5)*dpp)/scf 
-                      
-c          y(i)  = Map(2,0)*xtmp   + Map(2,1)*xpr  
-c     &          + Map(2,2)*ytmp   + Map(2,3)*ypr  
-c     &          + Map(2,4)*ztmp   + Map(2,5)*dpp        
-                       
-c          uy(i) = (Map(3,0)*xtmp  + Map(3,1)*xpr  
-c     &          +  Map(3,2)*ytmp  + Map(3,3)*ypr  
-c     &          +  Map(3,4)*ztmp  + Map(3,5)*dpp)/scf    
-                      
-c          z(i)  = Map(4,0)*xtmp   + Map(4,1)*xpr  
-c     &          + Map(4,2)*ytmp   + Map(4,3)*ypr  
-c     &          + Map(4,4)*ztmp   + Map(4,5)*dpp     
-                      
-c          uz(i) = (Map(5,0)*xtmp  + Map(5,1)*xpr  
-c     &          +  Map(5,2)*ytmp  + Map(5,3)*ypr  
-c     &          +  Map(5,4)*ztmp  + Map(5,5)*dpp)*uzb + uzb     
-        
+c          x(i)  = Map(0,0)*xtmp   + Map(0,1)*xpr
+c     &          + Map(0,2)*ytmp   + Map(0,3)*ypr
+c     &          + Map(0,4)*ztmp   + Map(0,5)*dpp
+
+c          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*xpr
+c     &          +  Map(1,2)*ytmp  + Map(1,3)*ypr
+c     &          +  Map(1,4)*ztmp  + Map(1,5)*dpp)/scf
+
+c          y(i)  = Map(2,0)*xtmp   + Map(2,1)*xpr
+c     &          + Map(2,2)*ytmp   + Map(2,3)*ypr
+c     &          + Map(2,4)*ztmp   + Map(2,5)*dpp
+
+c          uy(i) = (Map(3,0)*xtmp  + Map(3,1)*xpr
+c     &          +  Map(3,2)*ytmp  + Map(3,3)*ypr
+c     &          +  Map(3,4)*ztmp  + Map(3,5)*dpp)/scf
+
+c          z(i)  = Map(4,0)*xtmp   + Map(4,1)*xpr
+c     &          + Map(4,2)*ytmp   + Map(4,3)*ypr
+c     &          + Map(4,4)*ztmp   + Map(4,5)*dpp
+
+c          uz(i) = (Map(5,0)*xtmp  + Map(5,1)*xpr
+c     &          +  Map(5,2)*ytmp  + Map(5,3)*ypr
+c     &          +  Map(5,4)*ztmp  + Map(5,5)*dpp)*uzb + uzb
+
         return
       end subroutine apply_linear_map
 c=============================================================================
@@ -6403,7 +6437,7 @@ c           --- and Ez - the expression reduces to q*V/m for small V.
 !$OMP END MASTER
       return
       end
-c=========================================================================== 
+c===========================================================================
       subroutine zgapcorr(np,zp,xp,uzp,gaminv,dtl,dtr,dt,m,q,time)
       use Subtimerstop
       use Lattice
@@ -6641,7 +6675,7 @@ c  ------------------------------------------------------------
 !$OMP END MASTER
       return
       end
-c=========================================================================== 
+c===========================================================================
       subroutine zgapcorrxy(np,zp,xp,uzp,gaminv,dtp,dtl,dtr,dt,m,q,time)
       use Subtimerstop
       use Lattice

@@ -692,12 +692,13 @@ bsqgradns integer /0/ # Number of data sets
 bsqgradnc integer /0/ # Number of components stored in bsqgrad
 bsqgradntemp integer /0/ # Number of temporary components stored for
                          # automatic calculation of grad B dot B
-bsqgraddx(bsqgradns)                      _real [m]   # X cell size
-bsqgraddy(bsqgradns)                      _real [m]   # Y cell size
-bsqgraddz(bsqgradns)                      _real [m]   # Z cell size
-bsqgraddxi(bsqgradns)                     _real [1/m] # 1 over X cell size (autoset)
-bsqgraddyi(bsqgradns)                     _real [1/m] # 1 over Y cell size (autoset)
-bsqgraddzi(bsqgradns)                     _real [1/m] # 1 over Z cell size (autoset)
+bsqgraddx(bsqgradns)  _real [m]   # X cell size
+bsqgraddy(bsqgradns)  _real [m]   # Y cell size
+bsqgraddz(bsqgradns)  _real [m]   # Z cell size
+bsqgraddxi(bsqgradns) _real [1/m] # 1 over X cell size (autoset)
+bsqgraddyi(bsqgradns) _real [1/m] # 1 over Y cell size (autoset)
+bsqgraddzi(bsqgradns) _real [1/m] # 1 over Z cell size (autoset)
+bsqgradrz(bsqgradns)  _logical /0/ # When true, bsqgrad data is RZ only
 bsqgrad(bsqgradnc,0:bsqgradnx,0:bsqgradny,0:bsqgradnz,bsqgradns) _real
   # B field stored in interleaved array. First dimension is changable,
   # allowing option of storing additional data.
