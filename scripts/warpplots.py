@@ -1278,7 +1278,7 @@ _ppgeneric_kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
                 'cellarray':0,'centering':'node','ctop':199,
                 'cmin':None,'cmax':None,'ireg':None,
                 'xbound':dirichlet,'ybound':dirichlet,
-                'ldensityscale':0,'gridscale':None,
+                'ldensityscale':False,'ldensitycylindrical':False,'gridscale':None,
                 'flipxaxis':0,'flipyaxis':0,
                 'xcoffset':0.,'ycoffset':0.,
                 'view':None,
@@ -1327,7 +1327,9 @@ Note that either the x and y coordinates or the grid must be passed in.
   - height=20: font size of the axes titles
   - hcolor='fg': color of hash marks for hash plots
   - lcolorbar=1: when plotting colorized data, include a colorbar
-  - ldensityscale=0: when true, scale the density by its max.
+  - ldensityscale=False: when true, scale the density by its max.
+  - ldensitycylindrical=False: when true, the density is calculated on a
+                               cylindrical grid
   - lframe=0: when true, the plot limits are set to the plmin and plmax input
               arguments, which default to the plmin and plmax variables from
               the group InDiag
@@ -1445,6 +1447,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   xbound = kwvalues['xbound']
   ybound = kwvalues['ybound']
   ldensityscale = kwvalues['ldensityscale']
+  ldensitycylindrical = kwvalues['ldensitycylindrical']
   gridscale = kwvalues['gridscale']
   flipxaxis = kwvalues['flipxaxis']
   flipyaxis = kwvalues['flipyaxis']
@@ -1639,10 +1642,17 @@ Note that either the x and y coordinates or the grid must be passed in.
     densitygrid = fzeros((1+nx,1+ny),'d')
 
     # --- Deposit the density onto the grid.
-    if(weights is None):
-      setgrid2d(x.size,x,yms,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
+    if ldensitycylindrical:
+      if weights is None:
+        setgrid2dcylindrical(x.size,x,yms,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
+      else:
+        setgrid2dcylindricalw(x.size,x,yms,weights,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
     else:
-      setgrid2dw(x.size,x,yms,weights,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
+      if weights is None:
+        setgrid2d(x.size,x,yms,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
+      else:
+        setgrid2dw(x.size,x,yms,weights,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
+
     # --- If parallel, do a reduction on the grid
     if lparallel and not local:
       try:
@@ -1698,9 +1708,10 @@ Note that either the x and y coordinates or the grid must be passed in.
       densitygrid[0,:] = densitygrid[0,:] + densitygrid[-1,:]
       densitygrid[-1,:] = densitygrid[0,:]
     if ybound == neumann:
-      densitygrid[:,0] = 2.*densitygrid[:,0]
+      if not ldensitycylindrical:
+        densitygrid[:,0] = 2.*densitygrid[:,0]
       densitygrid[:,-1] = 2.*densitygrid[:,-1]
-    elif ybound == periodic:
+    elif ybound == periodic and not ldensitycylindrical:
       densitygrid[:,0] = densitygrid[:,0] + densitygrid[:,-1]
       densitygrid[:,-1] = densitygrid[:,0]
 
@@ -2541,6 +2552,7 @@ def ppzr(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
   kw.setdefault('local',0)
+  kw.setdefault('ldensitycylindrical',True)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("R vs Z","Z","R",pptitleright(iw=iw,kwdict=kw))

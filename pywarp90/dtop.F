@@ -1778,6 +1778,171 @@ c       --- if within grid, accumulate
       return
       end
 c=============================================================================
+      subroutine setgrid2dcylindrical(np,z,r,nz,nr,grid,zmin,zmax,rmin,rmax)
+      use Constant,Only: pi
+      integer(ISZ):: nz,nr,np
+      real(kind=8):: z(np), r(np)
+      real(kind=8):: grid(0:nz,0:nr)
+      real(kind=8):: zmin,zmax,rmin,rmax
+
+c Lays particles down onto a node centered 2-D mesh using linear interpolation,
+c calculating the number of particles as a function of position.
+c   np: number of particles
+c   z,r: arrays of particle positions
+c   nz,nr: number of grid cells
+c   grid: array where particle number will be accumulated. Note that with
+c         normal operation, grid needs to be set to zero before being passed in.
+c   zmin,zmax,rmin,rmax: extent of the grid, i.e. grid(0,0) is at (zmin,rmin),
+c                        grid(nz,nr) is at (zmax,rmax)
+
+      integer(ISZ):: ip,iz,ir
+      real(kind=8):: gz,gr,dz,dr,dzi,dri,wz,wr
+      real(kind=8),pointer:: cdens(:)
+
+      if (nr < 0 .or. nz < 0) then
+        call kaboom("setgrid2dcylindrical: the grid sizes must be >= 0")
+        return
+      endif
+
+c     --- set grid cell inverse sizes
+      if (nr > 0) then
+        dr = (rmax - rmin)/nr
+      else
+        dr = 1.
+      endif
+      if (nz > 0) then
+        dz = (zmax - zmin)/nz
+      else
+        dz = 1.
+      endif
+      dri = 1./dr
+      dzi = 1./dz
+
+      allocate(cdens(0:nr))
+
+      if (rmin == 0.) then
+c       --- The factor 0.75 corrects for overdeposition due to linear
+c       --- weighting (for uniform distribution)
+c       --- see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
+c       --- and Verboncoeur, J. of Comp. Phys.,
+        cdens(0) = 0.75/(pi*(0.5*0.5*dr*dr*dz))
+      else
+        cdens(0) = 1./(2.*pi*(rmin)*dr*dz)
+      endif
+      do ir = 1,nr
+        cdens(ir) = 1./(2.*pi*(ir*dr+rmin)*dr*dz)
+      enddo
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gr = (r(ip) - rmin)*dri
+        gz = (z(ip) - zmin)*dzi
+
+c       --- if within grid, accumulate
+        if (0. <= gr .and. gr < nr .and.
+     &      0. <= gz .and. gz < nz) then
+          ir = int(gr)
+          iz = int(gz)
+          wr = gr - ir
+          wz = gz - iz
+          grid(iz  ,ir  ) = grid(iz  ,ir  ) + (1. - wz)*(1. - wr)*cdens(ir)
+          grid(iz+1,ir  ) = grid(iz+1,ir  ) +       wz *(1. - wr)*cdens(ir)
+          grid(iz  ,ir+1) = grid(iz  ,ir+1) + (1. - wz)*      wr* cdens(ir+1)
+          grid(iz+1,ir+1) = grid(iz+1,ir+1) +       wz *      wr* cdens(ir+1)
+        endif
+
+      enddo
+
+      deallocate(cdens)
+
+      return
+      end
+c=============================================================================
+      subroutine setgrid2dcylindricalw(np,z,r,w,nz,nr,grid,zmin,zmax,rmin,rmax)
+      use Constant,Only: pi
+      integer(ISZ):: nz,nr,np
+      real(kind=8):: z(np), r(np), w(np)
+      real(kind=8):: grid(0:nz,0:nr)
+      real(kind=8):: zmin,zmax,rmin,rmax
+
+c Lays weighted particles down onto a node centered 2-D mesh using linear
+c interpolation, calculating the number of particles as a function of position.
+c   np: number of particles
+c   z,r: arrays of particle positions
+c   w: array of particle weights
+c   nz,nr: number of grid cells
+c   grid: array where particle number will be accumulated. Note that with
+c         normal operation, grid needs to be set to zero before being passed in.
+c   zmin,zmax,rmin,rmax: extent of the grid, i.e. grid(0,0) is at (zmin,rmin),
+c                        grid(nz,nr) is at (zmax,rmax)
+
+      integer(ISZ):: ip,iz,ir
+      real(kind=8):: gz,gr,dz,dr,dzi,dri,wz,wr
+      real(kind=8),pointer:: cdens(:)
+
+      if (nr < 0 .or. nz < 0) then
+        call kaboom("setgrid2dcylindrical: the grid sizes must be >= 0")
+        return
+      endif
+
+c     --- set grid cell inverse sizes
+      if (nr > 0) then
+        dr = (rmax - rmin)/nr
+      else
+        dr = 1.
+      endif
+      if (nz > 0) then
+        dz = (zmax - zmin)/nz
+      else
+        dz = 1.
+      endif
+      dri = 1./dr
+      dzi = 1./dz
+
+      allocate(cdens(0:nr))
+
+      if (rmin == 0.) then
+c       --- The factor 0.75 corrects for overdeposition due to linear
+c       --- weighting (for uniform distribution)
+c       --- see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
+c       --- and Verboncoeur, J. of Comp. Phys.,
+        cdens(0) = 0.75/(pi*(0.5*0.5*dr*dr*dz))
+      else
+        cdens(0) = 1./(2.*pi*(rmin)*dr*dz)
+      endif
+      do ir = 1,nr
+        cdens(ir) = 1./(2.*pi*(ir*dr+rmin)*dr*dz)
+      enddo
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gr = (r(ip) - rmin)*dri
+        gz = (z(ip) - zmin)*dzi
+
+c       --- if within grid, accumulate
+        if (0. <= gr .and. gr < nr .and.
+     &      0. <= gz .and. gz < nz) then
+          ir = int(gr)
+          iz = int(gz)
+          wr = gr - ir
+          wz = gz - iz
+          grid(iz  ,ir  ) = grid(iz  ,ir  ) + (1. - wz)*(1. - wr)*w(ip)*cdens(ir)
+          grid(iz+1,ir  ) = grid(iz+1,ir  ) +       wz *(1. - wr)*w(ip)*cdens(ir)
+          grid(iz  ,ir+1) = grid(iz  ,ir+1) + (1. - wz)*      wr *w(ip)*cdens(ir+1)
+          grid(iz+1,ir+1) = grid(iz+1,ir+1) +       wz *      wr *w(ip)*cdens(ir+1)
+        endif
+
+      enddo
+
+      deallocate(cdens)
+
+      return
+      end
+c=============================================================================
       subroutine deposgrid2d(itask,np,x,y,z,nx,ny,grid,gridcount,
      &                       xmin,xmax,ymin,ymax)
       integer(ISZ):: itask,nx,ny,np
@@ -1841,85 +2006,6 @@ c       --- if within grid, accumulate
           gridcount(ix+1,iy  ) = gridcount(ix+1,iy  ) +       wx *(1. - wy)
           gridcount(ix  ,iy+1) = gridcount(ix  ,iy+1) + (1. - wx)*      wy
           gridcount(ix+1,iy+1) = gridcount(ix+1,iy+1) +       wx *      wy
-        endif
-
-      enddo
-
-c     --- Divide out the number of particles at each grid point, only if
-c     --- itask == 0.
-      if (itask == 0) then
-        do iy=0,ny
-          do ix=0,nx
-            if (gridcount(ix,iy) > 0.) then
-              grid(ix,iy) = grid(ix,iy)/gridcount(ix,iy)
-            endif
-          enddo
-        enddo
-      endif
-
-      return
-      end
-c=============================================================================
-      subroutine deposgrid2dngp(itask,np,x,y,z,nx,ny,grid,gridcount,
-     &                          xmin,xmax,ymin,ymax)
-      integer(ISZ):: itask,nx,ny,np
-      real(kind=8):: x(np), y(np), z(np)
-      real(kind=8):: grid(0:nx,0:ny), gridcount(0:nx,0:ny)
-      real(kind=8):: xmin,xmax,ymin,ymax
-
-c Deposits particle data onto a node centered 2-D mesh using nearest grid point
-c interpolation, the average over z as a function of position.
-c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
-c          is not reset. If itask is zero, then grid is divided by
-c          gridcount, the number of particles, to give the average.
-c          Setting itask=1 allows data to be accumulated over multiple
-c          calls to deposgrid2d to obtain better statistics.
-c   np: number of particles
-c   x,y: arrays of particle positions
-c   z: array of data to be accumulated
-c   nx,ny: number of grid cells
-c   grid: array where the z data is accumulated
-c   gridcount: array where particle number will be accumulated
-c   xmin,xmax,ymin,ymax: extent of the grid, i.e. grid(0,0) is at (xmin,ymin),
-c                        grid(nx,ny) is at (xmax,ymax)
-c                        Note that if xmin==xmax (or ymin==ymax), then all
-c                        particles will be depisited at ix=0 (or iy=0).
-
-      integer(ISZ):: ip,ix,iy
-      real(kind=8):: gx,gy,dxi,dyi,wx,wy
-
-c     --- Reset grids if requested
-      if (itask == 0) then
-        grid = 0.
-        gridcount = 0.
-      endif
-
-c     --- set grid cell inverse sizes
-      if (xmax .ne. xmin) then
-        dxi = nx/(xmax - xmin)
-      else
-        dxi = 0.
-      endif
-      if (ymax .ne. ymin) then
-        dyi = ny/(ymax - ymin)
-      else
-        dyi = 0.
-      endif
-
-c     --- loop over particles
-      do ip=1,np
-
-c       --- find location on grid
-        gx = (x(ip) - xmin)*dxi
-        gy = (y(ip) - ymin)*dyi
-
-c       --- if within grid, accumulate
-        if (-0.5 < gx .and. gx < nx+0.5 .and.
-     &      -0.5 < gy .and. gy < ny+0.5) then
-          ix = nint(gx)
-          iy = nint(gy)
-          grid(ix,iy) = grid(ix,iy) + z(ip)
-          gridcount(ix,iy) = gridcount(ix,iy) + 1.
         endif
 
       enddo
@@ -2003,6 +2089,85 @@ c       --- if within grid, accumulate
           gridcount(ix+1,iy  ) = gridcount(ix+1,iy  ) +       wx *(1. - wy) * w(ip)
           gridcount(ix  ,iy+1) = gridcount(ix  ,iy+1) + (1. - wx)*      wy  * w(ip)
           gridcount(ix+1,iy+1) = gridcount(ix+1,iy+1) +       wx *      wy  * w(ip)
+        endif
+
+      enddo
+
+c     --- Divide out the number of particles at each grid point, only if
+c     --- itask == 0.
+      if (itask == 0) then
+        do iy=0,ny
+          do ix=0,nx
+            if (gridcount(ix,iy) > 0.) then
+              grid(ix,iy) = grid(ix,iy)/gridcount(ix,iy)
+            endif
+          enddo
+        enddo
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine deposgrid2dngp(itask,np,x,y,z,nx,ny,grid,gridcount,
+     &                          xmin,xmax,ymin,ymax)
+      integer(ISZ):: itask,nx,ny,np
+      real(kind=8):: x(np), y(np), z(np)
+      real(kind=8):: grid(0:nx,0:ny), gridcount(0:nx,0:ny)
+      real(kind=8):: xmin,xmax,ymin,ymax
+
+c Deposits particle data onto a node centered 2-D mesh using nearest grid point
+c interpolation, the average over z as a function of position.
+c   itask: when zero, grid is reset to zero beforehand, when not zero, grid
+c          is not reset. If itask is zero, then grid is divided by
+c          gridcount, the number of particles, to give the average.
+c          Setting itask=1 allows data to be accumulated over multiple
+c          calls to deposgrid2d to obtain better statistics.
+c   np: number of particles
+c   x,y: arrays of particle positions
+c   z: array of data to be accumulated
+c   nx,ny: number of grid cells
+c   grid: array where the z data is accumulated
+c   gridcount: array where particle number will be accumulated
+c   xmin,xmax,ymin,ymax: extent of the grid, i.e. grid(0,0) is at (xmin,ymin),
+c                        grid(nx,ny) is at (xmax,ymax)
+c                        Note that if xmin==xmax (or ymin==ymax), then all
+c                        particles will be depisited at ix=0 (or iy=0).
+
+      integer(ISZ):: ip,ix,iy
+      real(kind=8):: gx,gy,dxi,dyi,wx,wy
+
+c     --- Reset grids if requested
+      if (itask == 0) then
+        grid = 0.
+        gridcount = 0.
+      endif
+
+c     --- set grid cell inverse sizes
+      if (xmax .ne. xmin) then
+        dxi = nx/(xmax - xmin)
+      else
+        dxi = 0.
+      endif
+      if (ymax .ne. ymin) then
+        dyi = ny/(ymax - ymin)
+      else
+        dyi = 0.
+      endif
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gx = (x(ip) - xmin)*dxi
+        gy = (y(ip) - ymin)*dyi
+
+c       --- if within grid, accumulate
+        if (-0.5 < gx .and. gx < nx+0.5 .and.
+     &      -0.5 < gy .and. gy < ny+0.5) then
+          ix = nint(gx)
+          iy = nint(gy)
+          grid(ix,iy) = grid(ix,iy) + z(ip)
+          gridcount(ix,iy) = gridcount(ix,iy) + 1.
         endif
 
       enddo

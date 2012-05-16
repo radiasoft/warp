@@ -2883,6 +2883,18 @@ setgrid2d(np:integer,x(np):real,y(np):real,nx:integer,ny:integer,
           grid(0:nx,0:ny):real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
         # Deposits uniform data onto a 2-D grid using linear weighting.
+setgrid2dw(np:integer,x(np):real,y(np):real,w(np):real,
+           nx:integer,ny:integer,grid(0:nx,0:ny):real,
+           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
+        # Deposits uniform data onto a 2-D grid using linear weighting.
+setgrid2dcylindrical(np:integer,z(np):real,r(np):real,nz:integer,nr:integer,
+                     grid(0:nz,0:nr):real,
+                     zmin:real,zmax:real,rmin:real,rmax:real) subroutine
+        # Deposits uniform data onto a 2-D cylindrical grid using linear weighting.
+setgrid2dcylindricalw(np:integer,z(np):real,r(np):real,w(np):real,
+                      nz:integer,nr:integer,grid(0:nz,0:nr):real,
+                      zmin:real,zmax:real,rmin:real,rmax:real) subroutine
+        # Deposits uniform data onto a 2-D cylindrical grid using linear weighting.
 deposgrid2d(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
             nx:integer,ny:integer,
             grid(0:nx,0:ny):real,gridcount(0:nx,0:ny):real,
@@ -2895,10 +2907,6 @@ deposgrid2dngp(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
             xmin:real,xmax:real,ymin:real,ymax:real)
         subroutine
         # Deposits data onto a 2-D grid using nearest grid point weighting.
-setgrid2dw(np:integer,x(np):real,y(np):real,w(np):real,
-           nx:integer,ny:integer,grid(0:nx,0:ny):real,
-           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
-        # Deposits uniform data onto a 2-D grid using linear weighting.
 deposgrid2dw(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
              w(np):real,nx:integer,ny:integer,
             grid(0:nx,0:ny):real,gridcount(0:nx,0:ny):real,
