@@ -1711,6 +1711,9 @@ c     --- Create local pointers to the arrays in pgroup.
 
       halfdt = 0.5*dt
 
+      if (luserappliedfields)
+     &  call callpythonfunc("userappliedfields","controllers")
+
 !$OMP PARALLEL
 !$OMP&PRIVATE(ip,xpo,ypo,zpo,uxpo,uypo,uzpo,bendres,bendradi,
 !$OMP&        uxpadv,uypadv,uzpadv,maxp,minp,zmmnts0,zmmnts)

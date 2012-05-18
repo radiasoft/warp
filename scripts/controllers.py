@@ -38,6 +38,8 @@ Functions can be called at the following times:
                   advance and before loadrho is called, allowing a user defined
                   particle distribution to be injected each time step
  - :py:func:`userparticlesinjection <installuserparticlesinjection>`: allows directly specifying the particles to be injected
+ - :py:func:`userappliedfields <installuserappliedfields>`: allows directly specifying any fields to be applied to the particles
+                                                            during the advance
 
 """
 from __future__ import generators
@@ -249,6 +251,7 @@ callplalwaysfuncs = ControllerFunction('callplalwaysfuncs')
 callafterrestartfuncs = ControllerFunction('callafterrestartfuncs',lcallonce=1)
 userinjection = ControllerFunction('userinjection')
 generateuserparticlesforinjection = ControllerFunction('generateuserparticlesforinjection')
+userappliedfields = ControllerFunction('userappliedfields')
 
 #=============================================================================
 class ControllerFunctionContainer:
@@ -332,7 +335,8 @@ controllerfunctioncontainer = ControllerFunctionContainer(
                                 callplseldomfuncs,callplalwaysfuncs,
                                 callafterrestartfuncs,
                                 userinjection,
-                                generateuserparticlesforinjection])
+                                generateuserparticlesforinjection,
+                                userappliedfields])
 
 
 #=============================================================================
@@ -599,6 +603,23 @@ def uninstalluserparticlesinjection(f):
 def isinstalleduserparticlesinjection(f):
   "Checks if the function is called during injection"
   return generateuserparticlesforinjection.isinstalledfuncinlist(f)
+
+# ----------------------------------------------------------------------------
+def installuserappliedfields(f):
+  """
+Adds a user defined function which can specify E and B fields which are applied
+to the particles during the particle advance. This function is called at the
+start of padvnc3d. Note, that the following must be done in this install function:
+ - lresetparticlee and/or lresetparticleb must be set to false
+ - the E and/or B of the particles must be zeroed if they are otherwise unset
+"""
+  userappliedfields.installfuncinlist(f)
+def uninstalluserappliedfields(f):
+  "Removes the function installed by installuserappliedfields"
+  userappliedfields.uninstallfuncinlist(f)
+def isinstalleduserappliedfields(f):
+  "Checks if the function is called when which applies fields"
+  return userappliedfields.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
