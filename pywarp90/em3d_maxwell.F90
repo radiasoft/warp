@@ -1575,7 +1575,7 @@ use mod_emfield3d
 implicit none
 
 TYPE(EM3D_YEEFIELDtype) :: f
-REAL(kind=8), INTENT(IN) :: dt
+REAL(kind=8) :: dt
 
 INTEGER :: j, k, l, which
 real(kind=8) :: dtsdx,dtsdy,dtsdz,alpha,beta,gamma
@@ -3684,7 +3684,7 @@ use mod_emfield3d
 implicit none
 
 TYPE(EM3D_BLOCKtype) :: b
-REAL(kind=8), INTENT(IN) :: dt
+REAL(kind=8) :: dt
 
 INTEGER :: j, k, l
 
@@ -5285,11 +5285,11 @@ integer(ISZ):: n,i,it,xl,xr
   call shift_3darray_ncells_x(f%By,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
   call shift_3darray_ncells_x(f%Bz,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
   do it=1,f%ntimes
-    call shift_3darray_ncells_x(f%Jarray(-f%nxguard,-f%nyguard,-f%nzguard,1,it), &
+    call shift_3darray_ncells_x(f%Jarray(:,:,:,1,it), &
                                     f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
-    call shift_3darray_ncells_x(f%Jarray(-f%nxguard,-f%nyguard,-f%nzguard,2,it), &
+    call shift_3darray_ncells_x(f%Jarray(:,:,:,2,it), &
                                     f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
-    call shift_3darray_ncells_x(f%Jarray(-f%nxguard,-f%nyguard,-f%nzguard,3,it), &
+    call shift_3darray_ncells_x(f%Jarray(:,:,:,3,it), &
                                     f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
   end do
   if (f%nxf>0) then
@@ -5297,7 +5297,7 @@ integer(ISZ):: n,i,it,xl,xr
     call shift_3darray_ncells_x(f%Rhoold,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
 !    call shift_3darray_ncells_x(f%Rho,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
     do it=1,f%ntimes
-      call shift_3darray_ncells_x(f%Rhoarray(-f%nxguard,-f%nyguard,-f%nzguard,it), &
+      call shift_3darray_ncells_x(f%Rhoarray(:,:,:,it), &
                                     f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,xl,xr,n)
     end do
   end if
