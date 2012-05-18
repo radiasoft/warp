@@ -5618,7 +5618,7 @@ real(8)::r,r1,r2
      f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) = f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) + f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,1)
   end if
   if (xrbnd==dirichlet) then
-     f%j(f%ixmax-f%nxguard:f%ixmax,:,:,2:3) = f%j(f%ixmax-f%nxguard:f%ixmax,:,:,2:3) - f%j(f%ixmax+f%nxguard:-1:f%ixmax,:,:,2:3)
+     f%j(f%ixmax-f%nxguard:f%ixmax,:,:,2:3) = f%j(f%ixmax-f%nxguard:f%ixmax,:,:,2:3) - f%j(f%ixmax+f%nxguard:f%ixmax:-1,:,:,2:3)
      f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) = f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) + f%j(f%ixmax+f%nxguard-1:f%ixmax:-1,:,:,1)
   end if
 
