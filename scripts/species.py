@@ -1782,6 +1782,10 @@ of code."""
     """Calls :py:func:`~warpplots.pprtp` for this species."""
     return self._callppfunc(pprtp,**kw)
 
+  def pprvr(self,**kw):
+    """Calls :py:func:`~warpplots.pprvr` for this species."""
+    return self._callppfunc(pprvr,**kw)
+
   def pprvz(self,**kw):
     """Calls :py:func:`~warpplots.pprvz` for this species."""
     return self._callppfunc(pprvz,**kw)
