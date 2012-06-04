@@ -3473,12 +3473,7 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           do ll = izmin, izmax+1
             do jj = ixmin0, ixmax0
               ex(ip) = ex(ip) + sz(ll)*sx0(jj)*(exg(j0+jj,1,l+ll)*costheta-eyg(j0+jj,1,l+ll)*sintheta)
-            end do
-          end do
-
-          do ll = izmin, izmax+1
-            do jj = ixmin, ixmax+1
-              ey(ip) = ey(ip) + sz(ll)*sx(jj)*(exg(j+jj,1,l+ll)*sintheta+eyg(j+jj,1,l+ll)*costheta)
+              ey(ip) = ey(ip) + sz(ll)*sx0(jj)*(exg(j0+jj,1,l+ll)*sintheta+eyg(j0+jj,1,l+ll)*costheta)
             end do
           end do
 
@@ -3926,13 +3921,8 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
 
           do ll = izmin0, izmax0
             do jj = ixmin, ixmax+1
-              bx(ip) = bx(ip) + sz0(ll)*sx(jj)*(bxg(j+jj,1,l0+ll)*costheta-byg(j+jj,1,l0+ll)*sintheta)
-            end do
-          end do
-
-          do ll = izmin0, izmax0
-            do jj = ixmin0, ixmax0
-              by(ip) = by(ip) + sz0(ll)*sx0(jj)*(bxg(j0+jj,1,l0+ll)*sintheta+byg(j0+jj,1,l0+ll)*costheta)
+              bx(ip) = bx(ip) + sx(jj)*sz0(ll)*(bxg(j+jj,1,l0+ll)*costheta-byg(j+jj,1,l0+ll)*sintheta)
+              by(ip) = by(ip) + sx(jj)*sz0(ll)*(bxg(j+jj,1,l0+ll)*sintheta+byg(j+jj,1,l0+ll)*costheta)
             end do
           end do
 

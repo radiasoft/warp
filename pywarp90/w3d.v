@@ -54,6 +54,8 @@ lbeforescraper   logical /.false./ # Turns on call to python function "beforescr
 lafterscraper   logical /.false./ # Turns on call to python function "afterscraper"
 lcallscraper   logical /.false./ # Turns on call to python function "callscraper"
 lcallparticleloader logical /.false./ # Turns on call to python function "callparticleloader"
+luserappliedfields logical /.false./ # Turns on call to python function "userappliedfields"
+                                     # just before particle advance
 solvergeom integer    /0/  # Geometry of field solver
 XYZgeom    integer    /0/  # 3D-XYZ geometry will be used if solvergeom=XYZgeom
 RZgeom     integer    /1/  # axisymmetric RZ geometry will be used if solvergeom=RZgeom
