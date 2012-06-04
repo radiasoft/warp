@@ -1462,6 +1462,7 @@ c============================================================================
       subroutine resetlat()
       use Subtimerstop
       use Lattice
+      use LatticeInternal,Only: dzl
 
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
@@ -1507,6 +1508,7 @@ c     --- elements) and then using them in the same routine
       call setuplmaps
 
 c     --- Get the overlap level of the lattice elements
+      zlatbuffer = max(zlatbuffer,dzl)
       call getoverlaps()
 
 c     --- These elements must be handled specially since they have an extra
@@ -1637,8 +1639,8 @@ c       --- current one.
 c         --- Skip element if it is flagged to ignore overlaps.
           if (elemol(ii) == -1) cycle
 c         --- For each overlap, set the corresponding overlap level to true.
-          if (elemze(ie)+zlatbuffer > elemzs(ii) .and.
-     &        elemze(ii)+zlatbuffer > elemzs(ie)) then
+          if (elemze(ie)+zlatbuffer >= elemzs(ii) .and.
+     &        elemze(ii)+zlatbuffer >= elemzs(ie)) then
             overlaps(elemol(ii)) = .true.
           endif
         enddo
@@ -2137,7 +2139,7 @@ c          --- load lattice info into comoving 1d array
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
            if (cbsqgradzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
-     &                           zlmin+zlframe-zlatbuffer <= cbsqgradze(iz,io))
+     &                              zlmin+zlframe-zlatbuffer <= cbsqgradze(iz,io))
      &       linbsqgrad(io) = .true.
          enddo
 

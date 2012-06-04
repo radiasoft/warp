@@ -400,14 +400,13 @@ c  Re-size the dynamic arrays for the lattice (scan for true length, first).
 c  Also allocate the dynamic internal lattice arrays.
 
       call remark(" ---  Resetting lattice array sizes")
-      call resetlat
       if (nzlmax == 0) nzlmax = nz
       if (nzl    == 0 .or. nzl > nzlmax) nzl = nzlmax
-      call gchange("LatticeInternal", 0)
       if (zlmin == 0.) zlmin = zmmin
       if (zlmax == 0.) zlmax = zmmax
       dzl = (zlmax - zlmin)/nzl
       dzli = 1./dzl
+      call resetlat
       do k = 0, nzl
          zlmesh(k) = zlmin + k*dzl
       enddo
