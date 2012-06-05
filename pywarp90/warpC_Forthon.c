@@ -69,7 +69,7 @@ void initwarpC(void)
     Py_FatalError("can not initialize module warpC");
 
   pystdout = PySys_GetObject("stdout");
-  PyFile_WriteString("Forthon edition\n",pystdout);
+  /* PyFile_WriteString("Forthon edition\n",pystdout); */
 
   import_array();
 

@@ -77,7 +77,7 @@ except ImportError:
   warnings.warn("there was an error importing gist; if this is a problem, restart python and type 'import gist' for details, otherwise Warp will run OK but with no graphics")
   from gistdummy import *
 
-# Import the warpC shared object which contains all of WARP
+# Import the warpC shared object which contains all of Warp
 # --- If python had been built statically, then warpCparallel is linked
 # --- in under the name warpC.
 if lparallel and not lstatic_python:
@@ -93,7 +93,7 @@ import pickledump
 from numpy import random
 RandomArray = random
 
-# --- The WARP modules must be imported in the order below because of
+# --- The Warp modules must be imported in the order below because of
 # --- linking dependencies.
 from toppy import *
 from envpy import *
@@ -291,32 +291,23 @@ def printversion(v):
 
 def versionstext():
   "Returns a string which has the version information of packages loaded."
-  r = 'Python WARP\n'
-  r += 'Origin date: %s\n'%warpC.origindate
-  r += 'Local date: %s\n'%warpC.localdate
-  r += 'Commit hash: %s\n'%warpC.commithash
-  pkg = package()
-  fmt = '******  %s version %s\n'
-  if 'fxy' in pkg: r=r+fmt%('Fieldsolver FXY',printversion(fxy.versfxy))
-  if 'frz' in pkg: r=r+fmt%('Fieldsolver FRZ',printversion(frz.versfrz))
-  if 'f3d' in pkg: r=r+fmt%('Fieldsolver F3D',printversion(f3d.versf3d))
-  if 'env' in pkg: r=r+fmt%('Envelope solver ENV',printversion(env.versenv))
-  if 'cir' in pkg: r=r+fmt%('Envelope solver CIR',printversion(cir.verscir))
-  if 'her' in pkg: r=r+fmt%('Envelope solver HER',printversion(her.versher))
-  if 'wxy' in pkg: r=r+fmt%('Particle package WXY',printversion(wxy.verswxy))
-  if 'wrz' in pkg: r=r+fmt%('Particle package WRZ',printversion(wrz.verswrz))
-  if 'w3d' in pkg: r=r+fmt%('Particle package W3D',printversion(w3d.versw3d))
-  if 'top' in pkg: r=r+fmt%('Main package TOP',printversion(top.verstop))
+  r = '# Warp\n'
+  r += '# Origin date: %s\n'%warpC.origindate
+  r += '# Local date: %s\n'%warpC.localdate
+  r += '# Commit hash: %s\n'%warpC.commithash
+  r += '# %s\n'%warp.__file__
+  try:
+    r += '# %s\n'%warpC.__file__
+  except AttributeError:
+    r += '# %s\n'%'warpC built in'
+  r += '# %s\n'%time.ctime(top.starttime)
   return r
-print time.ctime(top.starttime)
-print versionstext()[:-1] # --- skip last line feed
-print 'For more help, type warphelp()'
 
 #=============================================================================
 # --- Declare the documentation for the warp module.
 def warpdoc():
   print """
-Imports the basic modules needed to run WARP, including
+Imports the basic modules needed to run Warp, including
 numpy, gist, warpplots
 
 as well as additional modules
@@ -1385,9 +1376,7 @@ initial_global_dict_keys.remove('registeredsolverscontainer')
 warpversions = versionstext()
 
 warpendtime = time.time()
-print 'import warp time ',warpendtime - warpstarttime,'seconds'
-print warp.__file__
-try:
-  print warpC.__file__
-except AttributeError:
-  print 'warpC built in'
+
+print warpversions[:-1] # --- skip last line feed
+print '# import warp time',warpendtime - warpstarttime,'seconds'
+print '# For more help, type warphelp()'
