@@ -381,6 +381,40 @@ c     call VTEND(10,IERR)
 c     call VTBEGIN(20,IERR)
 #endif
 
+        if (maxbuffersize > 0) then
+c         --- Make sure that the number of particle to be sent is less than
+c         --- maximum buffer size.
+          nsendleftsum = 0
+          nsendrightsum = 0
+          do is=is1,is2
+            nsendleft(is) = pgroup%ins(is) - ins_init(is)
+            nsendleftsum = nsendleftsum + nsendleft(is)
+            if (nsendleftsum > maxbuffersize) then
+              nsendleft(is) = nsendleft(is) - (nsendleftsum - maxbuffersize)
+              pgroup%ins(is) = pgroup%ins(is) - (nsendleftsum - maxbuffersize)
+              pgroup%nps(is) = pgroup%nps(is) + (nsendleftsum - maxbuffersize)
+              nsendleftsum = nsendleftsum - (nsendleftsum - maxbuffersize)
+              ldoagain = .true.
+            endif
+
+            nsendright(is) = ins_init(is) + nps_init(is)
+     &                            - pgroup%ins(is) - pgroup%nps(is)
+            nsendrightsum = nsendrightsum + nsendright(is)
+            if (nsendrightsum > maxbuffersize) then
+              nsendright(is) = nsendright(is) - (nsendrightsum - maxbuffersize)
+              pgroup%nps(is) = pgroup%nps(is) + (nsendrightsum - maxbuffersize)
+              nsendrightsum = nsendrightsum - (nsendrightsum - maxbuffersize)
+              ldoagain = .true.
+            endif
+          enddo
+
+c         --- If the max buffer size was reached, don't count this
+c         --- iteration toward the total.
+          call parallellor(ldoagain)
+          if (ldoagain) iter = iter - 1
+
+        endif
+
 c Here is what happens...
 c  First, particle data to be sent is copied into temporary buffers.
 c  Second, exchange number of particles to be sent in each direction.
@@ -611,29 +645,37 @@ c             do ipid=1,pgroup%npid
 c               pgroup%pid(ip:ip+nn-1,ipid) = buffer3(il+(12+ipid)*nn:il+(13+ipid)*nn-1)
 c             enddo
 
-c             --- Grab pointers to incoming data coordinates.
-c             --- The buffer needs to be used, since when the new particle
-c             --- data is copied into pgroup, the data might be split up and
-c             --- could be noncontiguous.
-              if (axis == 0) then
-                zbuff => buffer3(il      :il+   nn-1) ! x
-              else if (axis == 1) then
-                zbuff => buffer3(il+   nn:il+ 2*nn-1) ! y
-              else if (axis == 2) then
-                zbuff => buffer3(il+ 2*nn:il+ 3*nn-1) ! z
-              endif
+              if (.not. ldoagain) then
+c               --- If the doagain flag is not already set, then check
+c               --- if any particles coming from the left are greater
+c               --- than then local domain, and need to be passsed
+c               --- futher on.
 
-              if (lrz) then
-c               --- ztemp = sqrt(x**2 + y**2)
-                ztemp = maxval(sqrt(buffer3(il      :il+   nn-1)**2 +
-     &                              buffer3(il+   nn:il+ 2*nn-1)**2))
-              elseif (labs) then
-                ztemp = maxval(abs(zbuff)) - zgrid
-              else
-                ztemp = maxval(zbuff) - zgrid
-              endif
-              if (ztemp > zpmaxlocal) then
-                ldoagain = .true.
+c               --- Grab pointers to incoming data coordinates.
+c               --- The buffer needs to be used, since when the new particle
+c               --- data is copied into pgroup, the data might be split up and
+c               --- could be noncontiguous.
+                if (axis == 0) then
+                  zbuff => buffer3(il      :il+   nn-1) ! x
+                else if (axis == 1) then
+                  zbuff => buffer3(il+   nn:il+ 2*nn-1) ! y
+                else if (axis == 2) then
+                  zbuff => buffer3(il+ 2*nn:il+ 3*nn-1) ! z
+                endif
+
+                if (lrz) then
+c                 --- ztemp = sqrt(x**2 + y**2)
+                  ztemp = maxval(sqrt(buffer3(il      :il+   nn-1)**2 +
+     &                                buffer3(il+   nn:il+ 2*nn-1)**2))
+                elseif (labs) then
+                  ztemp = maxval(abs(zbuff)) - zgrid
+                else
+                  ztemp = maxval(zbuff) - zgrid
+                endif
+                if (ztemp > zpmaxlocal) then
+                  ldoagain = .true.
+                endif
+
               endif
 
               il = il + nquant*nn
@@ -691,29 +733,37 @@ c             do ipid=1,pgroup%npid
 c               pgroup%pid(ip:ip+nn-1,ipid) = buffer4(ir+(12+ipid)*nn:ir+(13+ipid)*nn-1)
 c             enddo
 
-c             --- Grab pointers to incoming data coordinates.
-c             --- The buffer needs to be used, since when the new particle
-c             --- data is copied into pgroup, the data might be split up and
-c             --- could be noncontiguous.
-              if (axis == 0) then
-                zbuff => buffer4(ir      :ir+   nn-1) ! x
-              else if (axis == 1) then
-                zbuff => buffer4(ir+   nn:ir+ 2*nn-1) ! y
-              else if (axis == 2) then
-                zbuff => buffer4(ir+ 2*nn:ir+ 3*nn-1) ! z
-              endif
+              if (.not. ldoagain) then
+c               --- If the doagain flag is not already set, then check
+c               --- if any particles coming from the right are less
+c               --- than then local domain, and need to be passsed
+c               --- futher on.
 
-              if (lrz) then
-c               --- ztemp = sqrt(x**2 + y**2)
-                ztemp = maxval(sqrt(buffer4(ir      :ir+ 1*nn-1)**2 +
-     &                              buffer4(ir+   nn:ir+ 2*nn-1)**2))
-              elseif (labs) then
-                ztemp = minval(abs(zbuff)) - zgrid
-              else
-                ztemp = minval(zbuff) - zgrid
-              endif
-              if (ztemp < zpminlocal) then
-                ldoagain = .true.
+c               --- Grab pointers to incoming data coordinates.
+c               --- The buffer needs to be used, since when the new particle
+c               --- data is copied into pgroup, the data might be split up and
+c               --- could be noncontiguous.
+                if (axis == 0) then
+                  zbuff => buffer4(ir      :ir+   nn-1) ! x
+                else if (axis == 1) then
+                  zbuff => buffer4(ir+   nn:ir+ 2*nn-1) ! y
+                else if (axis == 2) then
+                  zbuff => buffer4(ir+ 2*nn:ir+ 3*nn-1) ! z
+                endif
+
+                if (lrz) then
+c                 --- ztemp = sqrt(x**2 + y**2)
+                  ztemp = maxval(sqrt(buffer4(ir      :ir+ 1*nn-1)**2 +
+     &                                buffer4(ir+   nn:ir+ 2*nn-1)**2))
+                elseif (labs) then
+                  ztemp = minval(abs(zbuff)) - zgrid
+                else
+                  ztemp = minval(zbuff) - zgrid
+                endif
+                if (ztemp < zpminlocal) then
+                  ldoagain = .true.
+                endif
+
               endif
 
               ir = ir + nquant*nn

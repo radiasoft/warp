@@ -4862,7 +4862,6 @@ c=============================================================================
       use Particles,Only: wpid
       use LostParticles
       use Z_arrays
-      use Parallel,Only: my_index
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,clearlostpart
       real(kind=8):: time,zbeam

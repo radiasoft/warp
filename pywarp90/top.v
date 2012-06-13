@@ -3326,6 +3326,7 @@ zpslmax(0:nzprocs-1)   _real    # Particle Z maximum for each slave
 
 ******* Databuffers:
 # Primarily used as data buffers for message passing
+maxbuffersize integer /-1/
 b1size integer /1/
 buffer1(b1size) _real
 b2size integer /1/
