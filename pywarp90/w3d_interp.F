@@ -33,6 +33,7 @@ c      Beff = alphabar*((gamma*m dB/ds)/2 q B^2) v x B
 c           = 0.25 alphabar (m/qB^4)(B dot grad B^2)(v x B)
 c     In all of above alphabar=1-alpha, complement of interp param.
 c      q is electron charge.
+      use Subtimersw3d
       use ParticleGroupmodule
       use DKInterp
       use DKInterptmp
@@ -44,6 +45,8 @@ c
       integer(ISZ):: ip,ipmin1,i,i1,i2
       real(kind=8):: bdbsqds,coef,bxeff(npd),byeff(npd),bzeff(npd)
       real(kind=8):: vxbx,vxby,vxbz
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       isid = pgroup%sid(is-1) + 1
 
@@ -82,11 +85,15 @@ c       The following are gamma*(v x B) so no further gammas needed
      &             bxeff,byeff,bzeff,pgroup%sq(is),pgroup%sm(is),dtb,ibpush)
 c      print*,"end mugrdb, uxp,uyp,bx = ", pgroup%uxp(ipmin),pgroup%uyp(ipmin),
 c     &  pgroup%bx(ipmin)
+!$OMP MASTER
+      if (lw3dtimesubs) timemugrdbpush = timemugrdbpush + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=========================================================================
       subroutine xpush3dintrp(pgroup,npd,is,ipmin,dt)
 c     3D xpush with interpolation between drift kinetic and full PIC
+      use Subtimersw3d
       use ParticleGroupmodule
       use DKInterp
       use DKInterptmp
@@ -109,6 +116,8 @@ c      use Particles, only: chdtspid
       real(kind=8):: gaminvscratch(npd)
       real(kind=8),pointer:: xold(:),yold(:),zold(:)
       real(kind=8),pointer:: bxold(:),byold(:),bzold(:)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 c     declare some pointers
       if (impinterp == 0) then
          xold => pgroup%pid(:,xoldpid)
@@ -288,11 +297,15 @@ c     &    uxeff(1),uyeff(1),uzeff(1),gaminv(1)
 c      print*,"pushed, xpushintrp,xold,yold,zold,x,y,z = ",ipredcor,xold(1),yold(1),
 c     & zold(1),pgroup%xp(1),pgroup%yp(1),pgroup%zp(1)
 
+!$OMP MASTER
+      if (lw3dtimesubs) timexpush3dintrp = timexpush3dintrp + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 
 c=========================================================================
       subroutine getvperpparsq(pgroup,npd,ipmin)
+      use Subtimersw3d
       use ParticleGroupmodule
       use DKInterptmp
 c     find uperp^2 and upar^2  (momentum/mass **2)
@@ -314,6 +327,8 @@ c     calculate upar dot B
       real(kind=8),pointer:: bxold(:),byold(:),bzold(:),uparBo(:)
       real(kind=8),pointer:: bx(:),by(:),bz(:)
       real(kind=8),pointer:: bxpred(:),bypred(:),bzpred(:),uparoBpred(:)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       ipmin1=ipmin-1
       ipmax=ipmin1+npd
@@ -454,12 +469,16 @@ c.......timesteps
           enddo
         endif
       endif
+!$OMP MASTER
+      if (lw3dtimesubs) timegetvperpparsq = timegetvperpparsq + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 
 c==========================================================================
       subroutine getveff(pgroup,npd,is,ipmin,x,y,z,predcor,dt)
 c     find the effective velocity to use in the xpush.
+      use Subtimersw3d
       use ParticleGroupmodule
       use Particles,Only: uxoldpid,uyoldpid,uzoldpid,
      &  vdxoldpid,vdyoldpid,vdzoldpid,uparBopid,bxoldpid,byoldpid,bzoldpid,
@@ -483,6 +502,8 @@ c     find the effective velocity to use in the xpush.
       real(kind=8),pointer:: ex(:),ey(:),ez(:)
       real(kind=8),pointer:: bx(:),by(:),bz(:)
       real(kind=8),pointer:: bxpred(:),bypred(:),bzpred(:),uparoBpred(:)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       ipmin1=ipmin-1
       ipmax=ipmin1+npd
@@ -651,12 +672,16 @@ c        calculate interpolated velocity
        endif
 
       endif
+!$OMP MASTER
+      if (lw3dtimesubs) timegetveff = timegetveff + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 
 c==========================================================================
       subroutine getvdrift(pgroup,npd,is,ipmin,x,y,z)
 c     Assumes E, B, grad B^2 are pre-computed
+      use Subtimersw3d
       use DKInterp
       use DKInterptmp
       use ParticleGroupmodule
@@ -671,6 +696,8 @@ c     Assumes E, B, grad B^2 are pre-computed
 
       real(kind=8),pointer:: vdxold(:),vdyold(:),vdzold(:)
       real(kind=8),pointer:: gaminv(:),bx(:),by(:),bz(:),ex(:),ey(:),ez(:)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       ipmin1=ipmin-1
       ipmax=ipmin1+npd
@@ -757,6 +784,9 @@ c    1      vex(1),ey(1),bz(1),ez(1),by(1),bsqi(1),vdx(1)
 c      print*,"drifts, x,y,z,ex, bx,bsqi ", x(1),y(1),z(1),ex(1),bx(1),bsqi(1)
 c      print*,"vex,vbx,vdx,vdy,vdz",vex(1),vbx(1),vdx(1),vdy(1),vdz(1)
 c      print*, "ey,ez,by,bz,bsqi,vex",ey(5),ez(5),by(5),bz(5),bsqi(5),vex(5)
+!$OMP MASTER
+      if (lw3dtimesubs) timegetvdrift = timegetvdrift + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 
@@ -784,6 +814,7 @@ c      end
 c=========================================================================
       subroutine setfields(pgroup,npd,is,ipmin,x,y,z,ex,ey,ez,bx,by,bz,dt)
 c     sets ej and bj.
+      use Subtimersw3d
       use ParticleGroupmodule
       use DKInterp
       use DKInterptmp
@@ -801,6 +832,8 @@ c     sets ej and bj.
       integer(ISZ):: i,jsid
       real(kind=8):: dtr
       real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       jsid = pgroup%sid(is-1)
 c     print*,"*****SETTING FIELDS"
 c      print*,"pre-fetche3d1,x,ey,ez = ",x(1),ey(1),ez(1)
@@ -834,6 +867,9 @@ c     bz(:) = 0.
      &             pgroup%sq(is),bendres,bendradi,gammabar,dt)
 c     Now get the gradients of B**2
       call getgradbsq(npd,is,x,y,z,bx,by,bz)
+!$OMP MASTER
+      if (lw3dtimesubs) timesetfields = timesetfields + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 
@@ -854,6 +890,7 @@ c       To use igradb=3 efficiently, should invoke setup of top.bsqgrad
 c         with "zonly" set to true, so that only the dB^2/dz data
 c         is stored and fetched.  In this case also w3d.ngrdb should
 c         be set to 1 and BSQGRADdata gchanged.
+      use Subtimersw3d
       use DKInterp
       use DKInterptmp
 c      use InGen
@@ -863,6 +900,8 @@ c      use InGen
       real(kind=8):: bx(npd),by(npd),bz(npd)
       integer(ISZ):: i,ip
       real(kind=8):: twobbrsqi,bsq_safe
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 c      print*,"entering getalpha from getgradbsq"
 c
 c     Assumes  E and B are already set, either via setfields
@@ -905,11 +944,15 @@ c         Note grdbsq(1,:) directly set by applybsqgrad
           grdbsq(3,i)=twobbrsqi*y(i)
         enddo
       endif
+!$OMP MASTER
+      if (lw3dtimesubs) timegetgradbsq = timegetgradbsq + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 
 c========================================================================
       subroutine getalphas(pgroup,npd,isid,ipmin,dtuse)
+      use Subtimersw3d
       use DKInterp
       use DKInterptmp
       use ParticleGroupmodule
@@ -920,6 +963,8 @@ c      use Picglb
       integer(ISZ):: i,ip
       real(kind=8):: omegacesq,omegadtsq,dtuse
       real(kind=8),pointer:: gaminv(:)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       ipmin1=ipmin-1
       ipmax=ipmin1+npd
@@ -953,6 +998,9 @@ c         calculate interpolation parameter, 0 if magnetized, 1 if not
           alphabar(i)=1.-alpha(i)
        enddo
       endif
+!$OMP MASTER
+      if (lw3dtimesubs) timegetalphas = timegetalphas + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 
@@ -960,6 +1008,7 @@ c=========================================================================
       subroutine geteb(pgroup,npd,is,ipmin,x,y,z,dt,ex,ey,ez,bx,by,bz)
 c      clean fetch of electric and magnetic fields.
 c      bx,by,bz written in bx(i), by(i), bz(i).  Returns ex, ey, ez
+      use Subtimersw3d
       use ParticleGroupmodule
       use DKInterptmp
       use DKInterp
@@ -974,6 +1023,8 @@ c      use InGen
       integer(ISZ):: i,ip
       real(kind=8):: dtr,bsq_safe
       real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       dtr=.5*dt
       bx(:)=0.;by(:)=0.;bz(:)=0.
       call exteb3d(npd,x,y,z,pgroup%uzp(ipmin),pgroup%gaminv(ipmin),-dtr,dtr,
@@ -984,6 +1035,9 @@ c      use InGen
         bsq_safe=bsq(i)+dksmall
         bsqi(i) = 1./bsq_safe
       enddo
+!$OMP MASTER
+      if (lw3dtimesubs) timegeteb = timegeteb + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 
@@ -994,10 +1048,13 @@ c============================================================================
 c    Temporarily sets top.pgroup.xp=x, etc, calls fetch3d, and resets
 c    top.pgroup.xp
       subroutine fetche3d1(pgroup,npd,x,y,z)
+      use Subtimersw3d
       use ParticleGroupmodule
       type(ParticleGroup):: pgroup
       integer(ISZ):: npd,i
       real(kind=8):: x(npd),y(npd),z(npd),xpd(npd),ypd(npd),zpd(npd)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 c     save values of xp, yp, zp and set xp,yp,zp to the x,y,z arrays
       do i=1,npd
          xpd(i)=pgroup%xp(i)
@@ -1014,6 +1071,9 @@ c     reset xp,yp,zp
          pgroup%yp(i)=ypd(i)
          pgroup%zp(i)=zpd(i)
       enddo
+!$OMP MASTER
+      if (lw3dtimesubs) timefetche3d1 = timefetche3d1 + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 
@@ -1023,6 +1083,7 @@ c===========================================================================
       subroutine oldsetup()
 c     Sets up storage in the pid array and makes pointers to its rows for
 c     xold, uxold, etc.
+      use Subtimersw3d
       use Particles,Only: xoldpid,yoldpid,zoldpid,uxoldpid,uyoldpid,uzoldpid,
      &  vdxoldpid,vdyoldpid,vdzoldpid,uparBopid,bxoldpid,byoldpid,bzoldpid,
      &  uparoBpredpid,expredpid,eypredpid,ezpredpid,bxpredpid,bypredpid,
@@ -1030,6 +1091,8 @@ c     xold, uxold, etc.
       use ParticleGroupmodule
       use DKInterp
       integer(ISZ):: nextpid
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 c      call gchange("Particles",0)
       print*,"executing oldsetup with impinterp = ",impinterp
       if (vdxoldpid == 0) vdxoldpid = nextpid()
@@ -1055,6 +1118,9 @@ c      call gchange("Particles",0)
          if (ezpredpid == 0) ezpredpid = nextpid()
          if (uparoBpredpid == 0) uparoBpredpid = nextpid()
       endif
+!$OMP MASTER
+      if (lw3dtimesubs) timeoldsetup = timeoldsetup + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -1069,6 +1135,7 @@ c     while xold is set to the current timestep's x's for use in the
 c     next timestep.
 c     On corrector step it just copies xold into xp
 c     At t=0, it just copies xp into xold.
+      use Subtimersw3d
       use DKInterp
       use ParticleGroupmodule
       use Particles,Only: xoldpid,yoldpid,zoldpid
@@ -1076,6 +1143,8 @@ c     At t=0, it just copies xp into xold.
       type(ParticleGroup):: pgroup
       real(kind=8):: xsave,ysave,zsave
       integer(ISZ):: npd,ipmin,is,i
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       if (ipredcor == 0 .and. it > 1) then
        do i = ipmin,ipmin+npd-1
          xsave=pgroup%xp(i)
@@ -1088,6 +1157,9 @@ c     At t=0, it just copies xp into xold.
          pgroup%pid(i,yoldpid)=ysave
          pgroup%pid(i,zoldpid)=zsave
        enddo
+!$OMP MASTER
+      if (lw3dtimesubs) timeswapxarrays = timeswapxarrays + wtime() - substarttime
+!$OMP END MASTER
        return
       endif
       if (ipredcor > 0) then
@@ -1096,6 +1168,9 @@ c     At t=0, it just copies xp into xold.
             pgroup%yp(i)=pgroup%pid(i,yoldpid)
             pgroup%zp(i)=pgroup%pid(i,zoldpid)
          enddo
+!$OMP MASTER
+      if (lw3dtimesubs) timeswapxarrays = timeswapxarrays + wtime() - substarttime
+!$OMP END MASTER
          return
        endif
        if (it == 1) then
@@ -1105,17 +1180,23 @@ c     At t=0, it just copies xp into xold.
             pgroup%pid(i,zoldpid)=pgroup%zp(i)
          enddo
        endif
+!$OMP MASTER
+      if (lw3dtimesubs) timeswapxarrays = timeswapxarrays + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c===========================================================================
       subroutine storeoldu(pgroup,is)
 c     stores old uxp array in uxold
 c     This routine does nothing if implicit solver
+      use Subtimersw3d
       use ParticleGroupmodule
       use Particles,Only: uxoldpid,uyoldpid,uzoldpid
       use DKInterp,Only: impinterp
       type(ParticleGroup):: pgroup
       integer (ISZ):: i,is
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       if (impinterp == 0) then
          do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
             pgroup%pid(i,uxoldpid) = pgroup%uxp(i)
@@ -1123,11 +1204,15 @@ c     This routine does nothing if implicit solver
             pgroup%pid(i,uzoldpid) = pgroup%uzp(i)
          enddo
       endif
+!$OMP MASTER
+      if (lw3dtimesubs) timestoreoldu = timestoreoldu + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c==========================================================================
       subroutine swapxarr2(pgroup,npd,is,ipmin)
 c     saves current x as xold
+      use Subtimersw3d
       use Particles,Only: xoldpid,yoldpid,zoldpid
       use ParticleGroupmodule
       use DKInterp
@@ -1135,6 +1220,8 @@ c     saves current x as xold
       type(ParticleGroup):: pgroup
       real(kind=8):: xsave,ysave,zsave
       integer(ISZ):: npd,ipmin,is,i
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       if (ipredcor == 0) then
         do i = ipmin,ipmin+npd-1
           pgroup%pid(i,xoldpid)=pgroup%xp(i)
@@ -1148,12 +1235,16 @@ c     saves current x as xold
           pgroup%zp(i)=pgroup%pid(i,zoldpid)
         enddo
       endif
+!$OMP MASTER
+      if (lw3dtimesubs) timeswapxarr2 = timeswapxarr2 + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=========================================================================
       subroutine set_polarization(rho,nx,nz,dx,dz,xmin,zmin)
 c     Sets epsilon and epszfac if there is an intpolated species.
 c     For now this only works with rz solver
+      use Subtimersw3d
       use InPart
       use InGen
       use DKInterp
@@ -1165,6 +1256,8 @@ c     For now this only works with rz solver
       real(kind=8):: Bsq(0:nx,0:nz),alphabar(0:nx,0:nz)
       real(kind=8):: omegapsq(0:nx,0:nz),omegacsq(0:nx,0:nz),rho(0:nx,0:nz)
       logical(ISZ):: check
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 c     Construct a grid of x and z values, so we can get
 c     values of B on it.
 c      print*, "IN SET_POL"
@@ -1238,6 +1331,9 @@ c         print*, "omegacsq, omegapsq ",omegacsq(0,0),omegapsq(0,0)
 c       print*, "epsilon2d = ", epsilon2d(1,1)
       enddo
 
+!$OMP MASTER
+      if (lw3dtimesubs) timeset_polarization = timeset_polarization + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c
@@ -1260,6 +1356,7 @@ c      end
 c===================================================================
       subroutine setTotalE(pgroup,npd,is,ipmin,dtloc)
 c     sets total E at particle positions
+      use Subtimersw3d
       use ParticleGroupmodule
       use Picglb,Only: zbeam,lresetparticlee
       use Z_arrays
@@ -1273,6 +1370,8 @@ c     sets total E at particle positions
       real(kind=8),pointer:: xp(:),yp(:),zp(:),uzp(:),gaminv(:)
       real(kind=8),pointer:: ex(:),ey(:),ez(:)
       real(kind=8),pointer:: sm(:),sq(:),sw(:)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       xp => pgroup%xp
       yp => pgroup%yp
@@ -1310,6 +1409,9 @@ c    --- Set quad, dipole E and B
 
       lresetparticlee = .false.
       deallocate(bendres, bendradi,bx,by,bz)
+!$OMP MASTER
+      if (lw3dtimesubs) timesetTotalE = timesetTotalE + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 

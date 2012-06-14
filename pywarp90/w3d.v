@@ -1464,3 +1464,21 @@ timegetsourcetransfermessagedata real /0./
 timetransfersourceptosource3d real /0./
 
 timerdata(10) real /10*0./
+
+timemugrdbpush real /0./
+timexpush3dintrp real /0./
+timegetvperpparsq real /0./
+timegetveff real /0./
+timegetvdrift real /0./
+timesetfields real /0./
+timegetgradbsq real /0./
+timegetalphas real /0./
+timegeteb real /0./
+timefetche3d1 real /0./
+timeoldsetup real /0./
+timeswapxarrays real /0./
+timestoreoldu real /0./
+timeswapxarr2 real /0./
+timeset_polarization real /0./
+timesetTotalE real /0./
+
