@@ -4056,3 +4056,83 @@ elements don't have the same offsetse, the routine aborts.
              ox=ox,oy=oy,ot=ot,op=op,
              ms=ms,phz=phz,nn=mmlt_n,vv=mmlt_v)
 
+# ----------------------------------------------------------------------------
+def convertmmlttobgrd(imlist=None):
+  """Convert mmlt elements to bgrd elements.
+This assumes RZ for now. Also, it assumes that there is no overlapping elements.
+  """
+  if imlist == None:
+    imlist = range(top.nmmlt + 1)
+  elif not iterable(imlist):
+    imlist = [imlist]
+
+  for im in imlist:
+
+    # --- Create the grid
+    zs = top.mmltzs[im]
+    ze = top.mmltze[im]
+    dz = top.dzmmlt[top.mmltid[im]-1]
+    nz = nint((ze - zs)/dz)
+    dz = (ze - zs)/nz
+
+    xs = 0. #w3d.xmmin
+    dx = w3d.dx
+    nx = nint((w3d.xmmax - w3d.xmmin)/w3d.dx)
+
+    xx,zz = getmesh2d(xs,dx,nx,zs,dz,nz)
+    yy = zeros_like(xx)
+
+    # --- Offset coordinates into the frame of the mmlt element.
+    # --- They should be rotated too (not implemented)
+    xx += top.mmltox[im]
+    yy += top.mmltoy[im]
+
+    # --- Get the B field at the grid locations
+    nn = product(xx.shape)
+    xx.shape = (nn,)
+    yy.shape = (nn,)
+    zz.shape = (nn,)
+    bx = zeros(nn)
+    by = zeros(nn)
+    bz = zeros(nn)
+
+    applymmlt(nn,xx,yy,nn,zz,0.,0.,top.dt,false,bx,by,bz)
+
+    # --- Pass B fields to create new bgrd
+    bx.shape = (nx+1,1,nz+1)
+    by.shape = (nx+1,1,nz+1)
+    bz.shape = (nx+1,1,nz+1)
+
+    addnewbgrd(zs,ze,dx=dx,dy=dx,bx=bx,by=by,bz=bz,rz=true,
+               ox=top.mmltox[im],
+               oy=top.mmltoy[im],
+               ap=top.mmltap[im],
+               ax=top.mmltax[im],
+               ay=top.mmltay[im])
+
+
+  # --- Remove the mmlt elements that have been converted
+  for im in imlist[::-1]:
+    if top.nmmlt > 0 and im < top.nmmlt:
+      # --- Shift the remaining elements downward
+      top.mmltzs[im:-1] = top.mmltzs[im+1:]
+      top.mmltze[im:-1] = top.mmltze[im+1:]
+      top.mmltap[im:-1] = top.mmltap[im+1:]
+      top.mmltax[im:-1] = top.mmltax[im+1:]
+      top.mmltay[im:-1] = top.mmltay[im+1:]
+      top.mmltas[im:-1] = top.mmltas[im+1:]
+      top.mmltae[im:-1] = top.mmltae[im+1:]
+      top.mmltph[im:-1] = top.mmltph[im+1:]
+      top.mmltsf[im:-1] = top.mmltsf[im+1:]
+      top.mmltsc[im:-1] = top.mmltsc[im+1:]
+      top.mmltid[im:-1] = top.mmltid[im+1:]
+      top.mmltox[im:-1] = top.mmltox[im+1:]
+      top.mmltoy[im:-1] = top.mmltoy[im+1:]
+      top.mmltot[im:-1] = top.mmltot[im+1:]
+      top.mmltop[im:-1] = top.mmltop[im+1:]
+
+    top.nmmlt -= 1
+    top.nmerr -= 1
+
+  gchange("Lattice")
+

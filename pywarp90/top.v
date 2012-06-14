@@ -2831,6 +2831,11 @@ resetlatbsqgrad() subroutine # Resizes bsqgrad lattice arrays to their true leng
 setlatt()   subroutine # Sets lattice pointers for the current beam location
 setlattzt(zbeam:real,time:real)
             subroutine # Sets lattice pointers at zbeam and time
+applymmlt(np:integer,xp(np):real,yp(np):real,npz:integer,zp(npz):real,
+          dtl:real,dtr:real,dt:real,lslice:logical,
+          bx(np):real,by(np):real,bz(np):real)
+            subroutine # Calculates the B field components from mmlt elements
+                       # at the given locations.
 species()   subroutine # Sets species related arrays.
 zgapcorr(np:integer,zp(np):real,xp(np):real,uzp(np):real,gaminv(np):real,
          dtl:real,dtr:real,dt:real,m:real,q:real,time:real)
