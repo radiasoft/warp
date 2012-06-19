@@ -176,7 +176,7 @@ a list of colormap names.
 # automatically.
 def setup(makepsfile=0,prefix=None,cgmlog=1,runcomments='',
           cgmfilesize=100000,pnumb=None,writetodatafile=0,
-          lversiontext=1):
+          lversiontext=1,style='work.gs'):
   """
 Does the work needed to start writing plots to a file automatically
   - makepsfile=0: allows the specification of a ps file instead of cgm
@@ -191,6 +191,11 @@ Does the work needed to start writing plots to a file automatically
                        file instead of a gist cgm file.
   - lversiontext=1: When true, write out the version information to the
                     first frame.
+  - style='work.gs': Gist style sheet. The style sheet determines
+                     the number and location of coordinate systems, tick
+                     and label styles, and the like.  Other choices include
+                     "axes.gs", "boxed.gs", "work2.gs", and "boxed2.gs", or
+                     you can create your own version.
   """
   # --- cgmlogfile is needed elsewhere
   global cgmlogfile
@@ -236,7 +241,7 @@ Does the work needed to start writing plots to a file automatically
   if with_gist:
     # --- Create window(0), but have it only dump to the file pname for now.
     # --- Note that only plots made to window(0) are dumped to the file.
-    gist.window(0,display='',hcp=pname,dump=1)
+    gist.window(0,display='',hcp=pname,dump=1,style=style)
     # --- Set so all fma's dump plot to file.
     gist.hcpon()
   else:
@@ -287,7 +292,8 @@ Opens up an X window
   - style='work.gs': Gist style sheet. The style sheet determines
                      the number and location of coordinate systems, tick
                      and label styles, and the like.  Other choices include
-                     "axes.gs", "boxed.gs", "work2.gs", and "boxed2.gs"
+                     "axes.gs", "boxed.gs", "work2.gs", and "boxed2.gs", or
+                     you can create your own version.
   """
   if suffix is None and prefix is None:
     if with_gist:
