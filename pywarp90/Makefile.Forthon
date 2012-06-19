@@ -1,4 +1,4 @@
-DEBUG = #-g
+DEBUG = #-g --farg "-O0"
 FCOMP =
 SO = so
 FORTHON = Forthon

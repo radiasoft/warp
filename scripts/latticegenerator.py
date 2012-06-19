@@ -190,7 +190,7 @@ class LatticeGenerator:
 
   #-----------------------------------------------------------------------
   def advancebeam(s,gapez=None,len=1.):
-    if gapez:
+    if gapez is not None:
       accldt = (s.beamtime[-1] - s.beamtime[0])/s.ngappoints
       acclts = s.beamtime[0] - s.nendpoints*accldt
       ia = ((s.beamtime - acclts)/accldt).astype(long)

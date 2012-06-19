@@ -1,4 +1,5 @@
-from warp import *
+from numpy import *
+from numpy import random
 try:
     # --- Import threading for the ParticleSwarm optimizer
     import threading
@@ -58,7 +59,7 @@ Constructor arguments:
 
     def __init__(self,nparams,params,func,lossfunc,c1,a1,a2=100.,
                  paramsmin=None,paramsmax=None,paramsave=None,paramsrms=None,
-                 verbose=0,errmax=top.largepos,
+                 verbose=0,errmax=1.e36,
                  saveparamhist=false,picklehistfile=None):
         """
     Creates an instance of the Spsa class.
