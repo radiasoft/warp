@@ -47,10 +47,10 @@ Constructor arguments:
                     internally to improve performance
   - paramsrms=None: RMS values of each parameter, used to scale params
                     internally to improve performance
-  - verbose=0: when true, print diagnostics
+  - verbose=False: when true, print diagnostics
   - errmax=+1.e36: Maximum acceptable value of the error. If the error
                    is greater, the iteration is skipped.
-  - saveparamhist=false: When true, saves the history of the parameters in the
+  - saveparamhist=False: When true, saves the history of the parameters in the
                          attribute hparam. Note that the history of the loss is
                          always saved in hloss.
   - picklehistfile=None: When given, save the history of the loss and the
@@ -59,8 +59,8 @@ Constructor arguments:
 
     def __init__(self,nparams,params,func,lossfunc,c1,a1,a2=100.,
                  paramsmin=None,paramsmax=None,paramsave=None,paramsrms=None,
-                 verbose=0,errmax=1.e36,
-                 saveparamhist=false,picklehistfile=None):
+                 verbose=False,errmax=1.e36,
+                 saveparamhist=False,picklehistfile=None):
         """
     Creates an instance of the Spsa class.
         """
@@ -250,7 +250,7 @@ Differential Evolution
             self.paramsmax = +ones(nparams)*1.e+36
         else:
             self.paramsmax = paramsmax
-        self.linitialized = false
+        self.linitialized = False
     def best_params(self):
         "Function to return best set of parameters so far"
         imin = 0
@@ -294,7 +294,7 @@ sample set of parameters.
                It can either be a scalar or an array the same size as sample.
         """
         if self.linitialized: return
-        self.linitialized = true
+        self.linitialized = True
 
         sample = self.initparams
         deltas = self.deltas
@@ -446,7 +446,7 @@ sample set of parameters.
         #while threading.active_count() > 1:
         #  print threading.active_count()
 
-        self.linitialized = true
+        self.linitialized = True
 
     def evolvememberthread(self,i):
 
@@ -612,13 +612,13 @@ Methods:
             self.paramsmax = paramsmax
 
         self.setup_neighborhoods()
-        self.linitialized = false
+        self.linitialized = False
 
     def reset(self):
         """Resets the optimizer to start with a new population, starting from
 the previous best global parameters. The deceleration is also reset."""
         self.initparams = self.globalbestparams.copy()
-        self.linitialized = false
+        self.linitialized = False
         self.count = 0
 
     def getdecel(self):
@@ -700,7 +700,7 @@ set of parameters.
         for i in range(self.npop):
             self.initializeparticle(i)
 
-        self.linitialized = true
+        self.linitialized = True
 
     def initializeparticle(self,i):
 
@@ -887,7 +887,7 @@ set of parameters.
         #while threading.active_count() > 1:
         #  print threading.active_count()
 
-        self.linitialized = true
+        self.linitialized = True
 
     def swarmthread(self,niters=1,nprint=100,maxthreads=1000000):
         """
