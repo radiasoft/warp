@@ -3881,11 +3881,62 @@ Plots b envelope +/- x centroid
   if titles: ptitles("Y Envelope edges","Z")
 
 ##########################################################################
+def setcmincmaxfromarray(array,kw):
+  """Given plot limits, find the min and max of the array within
+those limits. Otherwise, the min and max would be over the whole
+array, including values outside the plot range.
+This also applies the limits. All of the mins and maxes are
+extracted from the kw dictionary."""
+  xplmin = kw.pop('xplmin',None)
+  xplmax = kw.pop('xplmax',None)
+  yplmin = kw.pop('yplmin',None)
+  yplmax = kw.pop('yplmax',None)
+
+  # --- If no plot limits were specified, then do nothing.
+  if xplmin is None and xplmax is None and yplmin is None and yplmax is None: return
+
+  # --- This assumes that the min and max of the data have been specified.
+  xmin = kw['xmin']
+  xmax = kw['xmax']
+  ymin = kw['ymin']
+  ymax = kw['ymax']
+
+  # --- Make sure that all plot limits have actual values
+  if xplmin == 'e' or xplmin is None: xplmin = xmin
+  if xplmax == 'e' or xplmax is None: xplmax = xmax
+  if yplmin == 'e' or yplmin is None: yplmin = ymin
+  if yplmax == 'e' or yplmax is None: yplmax = ymax
+
+  # --- Apply the limits
+  limits(xplmin,xplmax,yplmin,yplmax)
+
+  # --- If cmin and cmax have already been specified, then nothing more needs
+  # --- to be done,
+  if 'cmin' in kw and 'cmax' in kw: return
+
+  # --- Extract the slice of array that is within the plot limits.
+  nxp1,nyp1 = array.shape
+  nx,ny = nxp1-1,nyp1-1
+  dx,dy = (xmax - xmin)/nx,(ymax - ymin)/ny
+  ixmin = max(0,int((xplmin - xmin)/dx))
+  ixmax = min(nx,int((xplmax - xmin)/dx) + 1)
+  iymin = max(0,int((yplmin - ymin)/dy))
+  iymax = min(nx,int((yplmax - ymin)/dy) + 1)
+
+  # --- If the slice is sensible, find the min and max
+  # --- setting cmin and cmax (if not already set).
+  if (ixmin <= ixmax and iymin <= iymax):
+    subarray = array[ixmin:ixmax+1,iymin:iymax+1]
+    kw.setdefault('cmin',minnd(subarray))
+    kw.setdefault('cmax',maxnd(subarray))
+
+##########################################################################
 def pcrhozy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of charge density in the Z-Y plane
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
 For plotting options, see :py:func:`ppgeneric`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
@@ -3912,6 +3963,7 @@ For plotting options, see :py:func:`ppgeneric`.
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   rrr = getrho(ix=ix,solver=solver,local=local)
   if me > 0 and not local: rrr = zeros((solver.ny+1,solver.nz+1),'d')
+  setcmincmaxfromarray(rrr.T,kw)
   ppgeneric(gridt=rrr,kwdict=kw,local=1)
   if fullplane and (solver.l2symtry or solver.l4symtry):
     ppgeneric(gridt=rrr,kwdict=kw,local=1,flipyaxis=1)
@@ -3921,6 +3973,7 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
 For plotting options, see :py:func:`ppgeneric`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
@@ -3947,6 +4000,7 @@ For plotting options, see :py:func:`ppgeneric`.
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   rrr = getrho(iy=iy,solver=solver,local=local)
   if me > 0 and not local: rrr = zeros((solver.nx+1,solver.nz+1),'d')
+  setcmincmaxfromarray(rrr.T,kw)
   ppgeneric(gridt=rrr,kwdict=kw,local=1)
   if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
     ppgeneric(gridt=rrr,kwdict=kw,local=1,flipyaxis=1)
@@ -3954,6 +4008,7 @@ For plotting options, see :py:func:`ppgeneric`.
 def pcrhozr(lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of charge density in the Z-R plane
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
 For plotting options, see :py:func:`ppgeneric`.
   """
   pcrhozx(iy=0,fullplane=0,lbeamframe=lbeamframe,solver=solver,local=local,**kw)
@@ -3985,6 +4040,7 @@ For plotting options, see :py:func:`ppgeneric`.
   settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
   rrr = getrho(iz=iz,solver=solver,local=local)
   if me > 0 and not local: rrr = zeros((solver.nx+1,solver.ny+1),'d')
+  setcmincmaxfromarray(rrr,kw)
   ppgeneric(grid=rrr,kwdict=kw,local=1)
   if fullplane and solver.l4symtry:
     ppgeneric(grid=rrr,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
@@ -3998,6 +4054,7 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
 For plotting options, see :py:func:`ppgeneric`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
@@ -4024,6 +4081,7 @@ For plotting options, see :py:func:`ppgeneric`.
   settitles("Electrostatic potential in z-y plane","Z","Y","ix = "+repr(ix))
   ppp = getphi(ix=ix,solver=solver,local=local)
   if me > 0 and not local: ppp = zeros((solver.ny+1,solver.nz+1),'d')
+  setcmincmaxfromarray(ppp.T,kw)
   ppgeneric(gridt=ppp,kwdict=kw,local=1)
   if fullplane and (solver.l2symtry or solver.l4symtry):
     ppgeneric(gridt=ppp,kwdict=kw,local=1,flipyaxis=1)
@@ -4033,6 +4091,7 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=0,solver=None,local=0,**kw):
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
 For plotting options, see :py:func:`ppgeneric`.
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
@@ -4059,6 +4118,7 @@ For plotting options, see :py:func:`ppgeneric`.
   settitles("Electrostatic potential in z-x plane","Z","X","iy = "+repr(iy))
   ppp = getphi(iy=iy,solver=solver,local=local)
   if me > 0 and not local: ppp = zeros((solver.nx+1,solver.nz+1),'d')
+  setcmincmaxfromarray(ppp.T,kw)
   ppgeneric(gridt=ppp,kwdict=kw,local=1)
   if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
     ppgeneric(gridt=ppp,kwdict=kw,local=1,flipyaxis=1)
@@ -4066,6 +4126,7 @@ For plotting options, see :py:func:`ppgeneric`.
 def pcphizr(lbeamframe=0,solver=None,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-R plane
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
 For plotting options, see :py:func:`ppgeneric`.
   """
   pcphizx(iy=0,fullplane=0,lbeamframe=lbeamframe,solver=solver,local=local,**kw)
@@ -4097,6 +4158,7 @@ For plotting options, see :py:func:`ppgeneric`.
   settitles("Electrostatic potential in x-y plane","X","Y","iz = "+repr(iz))
   ppp = getphi(iz=iz,solver=solver,local=local)
   if me > 0 and not local: ppp = zeros((solver.nx+1,solver.ny+1),'d')
+  setcmincmaxfromarray(ppp,kw)
   ppgeneric(grid=ppp,kwdict=kw,local=1,flipxaxis=0,flipyaxis=0)
   if fullplane and solver.l4symtry:
     ppgeneric(grid=ppp,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
@@ -4113,6 +4175,7 @@ def pcselfezy(comp=None,ix=None,fullplane=1,solver=None,
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
 For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
@@ -4144,6 +4207,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     eee = getselfe(comp=comp,ix=ix,solver=solver,local=local)
     if me > 0 and not local: eee = zeros((solver.ny+1,solver.nz+1),'d')
+    setcmincmaxfromarray(eee.T,kw)
     ppgeneric(gridt=eee,kwdict=kw,local=1)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       ppgeneric(gridt=eee,kwdict=kw,local=1,flipyaxis=1)
@@ -4162,6 +4226,7 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
 For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
@@ -4193,6 +4258,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     eee = getselfe(comp=comp,iy=iy,solver=solver,local=local)
     if me > 0 and not local: eee = zeros((solver.nx+1,solver.nz+1),'d')
+    setcmincmaxfromarray(eee.T,kw)
     ppgeneric(gridt=eee,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(gridt=eee,kwdict=kw,local=1,flipyaxis=1)
@@ -4210,6 +4276,7 @@ def pcselfezr(comp=None,solver=None,
           'r' and 'x' are the same thing.
           Use 'E' to get the field magnitude.
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
   - vec=0: when true, plots E field vectors
   - sz,sr=1: step size in grid for plotting fewer points
 For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
@@ -4253,6 +4320,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     eee = getselfe(comp=comp,iz=iz,solver=solver,local=local)
     if me > 0 and not local: eee = zeros((solver.nx+1,solver.ny+1),'d')
+    setcmincmaxfromarray(eee,kw)
     ppgeneric(grid=eee,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(grid=eee,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
@@ -4278,6 +4346,7 @@ def pcjzy(comp=None,ix=None,fullplane=1,solver=None,
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
 For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
@@ -4309,6 +4378,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     j = getj(comp=comp,ix=ix,solver=solver,local=local)
     if me > 0 and not local: j = zeros((solver.ny+1,solver.nz+1),'d')
+    setcmincmaxfromarray(j.T,kw)
     ppgeneric(gridt=j,kwdict=kw,local=1)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       ppgeneric(gridt=j,kwdict=kw,local=1,flipyaxis=1)
@@ -4327,6 +4397,7 @@ def pcjzx(comp=None,iy=None,fullplane=1,solver=None,
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
 For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
@@ -4358,6 +4429,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     j = getj(comp=comp,iy=iy,solver=solver,local=local)
     if me > 0 and not local: j = zeros((solver.nx+1,solver.nz+1),'d')
+    setcmincmaxfromarray(j.T,kw)
     ppgeneric(gridt=j,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(gridt=j,kwdict=kw,local=1,flipyaxis=1)
@@ -4403,6 +4475,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     j = getj(comp=comp,iz=iz,solver=solver,local=local)
     if me > 0 and not local: j = zeros((solver.nx+1,solver.ny+1),'d')
+    setcmincmaxfromarray(j,kw)
     ppgeneric(grid=j,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(grid=j,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
@@ -4428,6 +4501,7 @@ def pcbzy(comp=None,ix=None,fullplane=1,solver=None,
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
 For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
@@ -4459,6 +4533,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     b = getb(comp=comp,ix=ix,solver=solver,local=local)
     if me > 0 and not local: b = zeros((solver.ny+1,solver.nz+1),'d')
+    setcmincmaxfromarray(b.T,kw)
     ppgeneric(gridt=b,kwdict=kw,local=1)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       ppgeneric(gridt=b,kwdict=kw,local=1,flipyaxis=1)
@@ -4477,6 +4552,7 @@ def pcbzx(comp=None,iy=None,fullplane=1,solver=None,
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
 For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
@@ -4508,6 +4584,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     b = getb(comp=comp,iy=iy,solver=solver,local=local)
     if me > 0 and not local: b = zeros((solver.nx+1,solver.nz+1),'d')
+    setcmincmaxfromarray(b.T,kw)
     ppgeneric(gridt=b,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(gridt=b,kwdict=kw,local=1,flipyaxis=1)
@@ -4553,6 +4630,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     b = getb(comp=comp,iz=iz,solver=solver,local=local)
     if me > 0 and not local: b = zeros((solver.nx+1,solver.ny+1),'d')
+    setcmincmaxfromarray(b,kw)
     ppgeneric(grid=b,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(grid=b,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
@@ -4578,6 +4656,7 @@ def pcazy(comp=None,ix=None,fullplane=1,solver=None,
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
 For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
@@ -4609,6 +4688,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     a = geta(comp=comp,ix=ix,solver=solver,local=local)
     if me > 0 and not local: a = zeros((solver.ny+1,solver.nz+1),'d')
+    setcmincmaxfromarray(a.T,kw)
     ppgeneric(gridt=a,kwdict=kw,local=1)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       ppgeneric(gridt=a,kwdict=kw,local=1,flipyaxis=1)
@@ -4627,6 +4707,7 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=None,
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
+  - xplmin,xplmax,yplmin,yplmax: optional plot limits.
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
 For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
@@ -4658,6 +4739,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     a = geta(comp=comp,iy=iy,solver=solver,local=local)
     if me > 0 and not local: a = zeros((solver.nx+1,solver.nz+1),'d')
+    setcmincmaxfromarray(a.T,kw)
     ppgeneric(gridt=a,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(gridt=a,kwdict=kw,local=1,flipyaxis=1)
@@ -4703,6 +4785,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
       kw.setdefault('contours',20)
     a = geta(comp=comp,iz=iz,solver=solver,local=local)
     if me > 0 and not local: a = zeros((solver.nx+1,solver.ny+1),'d')
+    setcmincmaxfromarray(a,kw)
     ppgeneric(grid=a,kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(grid=a,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
