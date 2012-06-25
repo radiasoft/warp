@@ -1,18 +1,40 @@
-from numpy import *
-from numpy import random
-try:
-    # --- Import threading for the ParticleSwarm optimizer
-    import threading
-except ImportError:
-    pass
-optimizer_version = "$Id: optimizer.py,v 1.21 2010/08/10 00:10:20 dave Exp $"
-"""
-This file contains several optimizers, including:
+"""This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
   Evolution: Genetic based algorithm
   ParticleSwarm: Particle swarm optimizer
   Simpleoptimizer: simple search
 """
+
+from numpy import *
+from numpy import random
+
+try:
+    # --- Import threading for the ParticleSwarm optimizer
+    import threading
+except ImportError:
+    pass
+
+# --- Convenience function
+def convertinputtoarray(p,n,default,name):
+    """
+Given a function input value, convert it to an array.
+ - p: the input value
+ - n: the length of the resulting array
+ - default: default value
+    """
+    if p is None:
+        result = default*ones(n)
+    elif callable(p):
+        result = p
+    else:
+        try:
+            if len(p) == n:
+                result = array(p)
+            else:
+                raise Exception("ERROR: %s does not have the correct length"%name)
+        except TypeError: # p has no len (i.e. it is a scalar)
+            result = ones(n)*p
+    return result
 
 class Spsa:
     """
@@ -55,6 +77,10 @@ Constructor arguments:
                          always saved in hloss.
   - picklehistfile=None: When given, save the history of the loss and the
                          parameters in the given pickle file.
+
+Methods:
+  iter: carry out the iterations.
+  gradloss: return the gradient of the loss function
     """
 
     def __init__(self,nparams,params,func,lossfunc,c1,a1,a2=100.,
@@ -65,7 +91,7 @@ Constructor arguments:
     Creates an instance of the Spsa class.
         """
         self.nparams = nparams
-        self.params = params
+        self.params = array(params)
         self.func = func
         self.loss = lossfunc
         self.k = 1
@@ -76,10 +102,8 @@ Constructor arguments:
         self.hloss = []
         self.errmax = errmax
         self.saveparamhist = saveparamhist
-        if paramsmin is None: self.paramsmin = -ones(nparams)*1.e+36
-        else:                 self.paramsmin = paramsmin
-        if paramsmax is None: self.paramsmax = +ones(nparams)*1.e+36
-        else:                 self.paramsmax = paramsmax
+        self.paramsmin = convertinputtoarray(paramsmin,self.nparams,-1.e+36,'paramsmin')
+        self.paramsmax = convertinputtoarray(paramsmax,self.nparams,+1.e+36,'paramsmax')
         self.paramsave = paramsave
         self.paramsrms = paramsrms
         self.params = self.scaledparams(self.params)
@@ -118,12 +142,12 @@ Constructor arguments:
         for i in range(self.nparams): print '%15.12e'%pp[i]
     def getparamsmin(self,params):
         """Returns the min limit of parameters."""
-        if type(self.paramsmin) is FunctionType:
+        if callable(self.paramsmin):
             return self.paramsmin(self.unscaledparams(params))
         return self.paramsmin
     def getparamsmax(self,params):
         """Returns the max limit of parameters."""
-        if type(self.paramsmax) is FunctionType:
+        if callable(self.paramsmax):
             return self.paramsmax(self.unscaledparams(params))
         return self.paramsmax
     def constrainparams(self,params):
@@ -215,6 +239,7 @@ Input:
                        which takes the params as its single argument.
 
 Methods:
+  evolve: carry out the iteration
   best_params: returns parameters which give the lowest score
 
     """
@@ -242,14 +267,8 @@ Differential Evolution
         self.x2 = zeros((npop,nparams),'d')
         self.cost = zeros(npop,'d')
         self.count = 0
-        if paramsmin is None:
-            self.paramsmin = -ones(nparams)*1.e+36
-        else:
-            self.paramsmin = paramsmin
-        if paramsmax is None:
-            self.paramsmax = +ones(nparams)*1.e+36
-        else:
-            self.paramsmax = paramsmax
+        self.paramsmin = convertinputtoarray(paramsmin,self.nparams,-1.e+36,'paramsmin')
+        self.paramsmax = convertinputtoarray(paramsmax,self.nparams,+1.e+36,'paramsmax')
         self.linitialized = False
     def best_params(self):
         "Function to return best set of parameters so far"
@@ -265,11 +284,11 @@ Differential Evolution
               (self.count,min(self.cost),max(self.cost))
     def getparamsmin(self,params):
         """Returns the min limit of parameters."""
-        if type(self.paramsmin) is FunctionType: return self.paramsmin(params)
+        if callable(self.paramsmin): return self.paramsmin(params)
         return self.paramsmin
     def getparamsmax(self,params):
         """Returns the max limit of parameters."""
-        if type(self.paramsmax) is FunctionType: return self.paramsmax(params)
+        if callable(self.paramsmax): return self.paramsmax(params)
         return self.paramsmax
     def constrainparams(self,params):
         "Makes sure all params are within bounds"
@@ -297,14 +316,8 @@ sample set of parameters.
         self.linitialized = True
 
         sample = self.initparams
-        deltas = self.deltas
-        shifts = self.shifts
-        if deltas is None:             deltas = ones(shape(sample),'d')*0.01
-        elif type(deltas) == type(1.): deltas = ones(shape(sample),'d')*deltas
-        elif type(deltas) == ListType: deltas = array(deltas)
-        if shifts is None:             shifts = ones(shape(sample),'d')*0.
-        elif type(shifts) == type(1.): shifts = ones(shape(sample),'d')*shifts
-        elif type(shifts) == ListType: shifts = array(shifts)
+        deltas = convertinputtoarray(self.deltas,self.nparams,.01,'deltas')
+        shifts = convertinputtoarray(self.shifts,self.nparams,.0,'shifts')
         self.deltas = deltas
         self.shifts = shifts
 
@@ -420,14 +433,8 @@ sample set of parameters.
         if self.linitialized: return
 
         sample = self.initparams
-        deltas = self.deltas
-        shifts = self.shifts
-        if deltas is None:             deltas = ones(shape(sample),'d')*0.01
-        elif type(deltas) == type(1.): deltas = ones(shape(sample),'d')*deltas
-        elif type(deltas) == ListType: deltas = array(deltas)
-        if shifts is None:             shifts = ones(shape(sample),'d')*0.
-        elif type(shifts) == type(1.): shifts = ones(shape(sample),'d')*shifts
-        elif type(shifts) == ListType: shifts = array(shifts)
+        deltas = convertinputtoarray(self.deltas,self.nparams,.01,'deltas')
+        shifts = convertinputtoarray(self.shifts,self.nparams,.0,'shifts')
         self.deltas = deltas
         self.shifts = shifts
 
@@ -602,14 +609,8 @@ Methods:
         # --- Total iteration count
         self.count = 0
 
-        if paramsmin is None:
-            self.paramsmin = -ones(self.nparams)*1.e+36
-        else:
-            self.paramsmin = paramsmin
-        if paramsmax is None:
-            self.paramsmax = +ones(self.nparams)*1.e+36
-        else:
-            self.paramsmax = paramsmax
+        self.paramsmin = convertinputtoarray(paramsmin,self.nparams,-1.e+36,'paramsmin')
+        self.paramsmax = convertinputtoarray(paramsmax,self.nparams,+1.e+36,'paramsmax')
 
         self.setup_neighborhoods()
         self.linitialized = False
@@ -636,11 +637,11 @@ the previous best global parameters. The deceleration is also reset."""
         print "Global best params ",self.globalbestparams
     def getparamsmin(self,params):
         """Returns the min limit of parameters."""
-        if type(self.paramsmin) is FunctionType: return self.paramsmin(params)
+        if callable(self.paramsmin): return self.paramsmin(params)
         return self.paramsmin
     def getparamsmax(self,params):
         """Returns the max limit of parameters."""
-        if type(self.paramsmax) is FunctionType: return self.paramsmax(params)
+        if callable(self.paramsmax): return self.paramsmax(params)
         return self.paramsmax
     def constrainparams(self,params):
         "Makes sure all params are within bounds"
@@ -680,14 +681,8 @@ set of parameters.
                It can either be a scalar or an array
         """
         if self.linitialized: return
-        deltas = self.deltas
-        shifts = self.shifts
-        if deltas is None:             deltas = ones(self.nparams,'d')*0.01
-        elif type(deltas) == type(1.): deltas = ones(self.nparams,'d')*deltas
-        elif type(deltas) == ListType: deltas = array(deltas)
-        if shifts is None:             shifts = ones(self.nparams,'d')*0.
-        elif type(shifts) == type(1.): shifts = ones(self.nparams,'d')*shifts
-        elif type(shifts) == ListType: shifts = array(shifts)
+        deltas = convertinputtoarray(self.deltas,self.nparams,.01,'deltas')
+        shifts = convertinputtoarray(self.shifts,self.nparams,.0,'shifts')
         self.deltas = deltas
         self.shifts = shifts
 
@@ -856,14 +851,8 @@ set of parameters.
                It can either be a scalar or an array
         """
         if self.linitialized: return
-        deltas = self.deltas
-        shifts = self.shifts
-        if deltas is None:             deltas = ones(self.nparams,'d')*0.01
-        elif type(deltas) == type(1.): deltas = ones(self.nparams,'d')*deltas
-        elif type(deltas) == ListType: deltas = array(deltas)
-        if shifts is None:             shifts = ones(self.nparams,'d')*0.
-        elif type(shifts) == type(1.): shifts = ones(self.nparams,'d')*shifts
-        elif type(shifts) == ListType: shifts = array(shifts)
+        deltas = convertinputtoarray(self.deltas,self.nparams,.01,'deltas')
+        shifts = convertinputtoarray(self.shifts,self.nparams,.0,'shifts')
         self.deltas = deltas
         self.shifts = shifts
 
@@ -936,9 +925,11 @@ Do the optimization
 
 
 ##############################################################################
-# Simple optimization over each parameter. Simple means simplistic algorithm
-# not ease of use. This is probably not very robust.
 class Simpleoptimizer:
+    """
+Simple optimization over each parameter. Simple means simplistic algorithm
+not ease of use. This is probably not very robust.
+    """
     def pxpone(self,id):
         return self.params[id] + self.x[id,+1]*abs(self.params[id])
     def pxmone(self,id):
@@ -971,20 +962,8 @@ class Simpleoptimizer:
         self.loss = loss
         self.vary = vary
         self.maxxdisparity = maxxdisparity
-        if not paramsmin:
-            self.paramsmin = -ones(self.nparams)*1.e+36
-        else:
-            if type(paramsmin)==type(array([])) or type(paramsmin)==type(list([])):
-                self.paramsmin = array(paramsmin)
-            else:
-                self.paramsmin = ones(self.nparams)*paramsmin
-        if not paramsmax:
-            self.paramsmax = +ones(self.nparams)*1.e+36
-        else:
-            if type(paramsmax)==type(array([])) or type(paramsmax)==type(list([])):
-                self.paramsmax = array(paramsmax)
-            else:
-                self.paramsmax = ones(self.nparams)*paramsmax
+        self.paramsmin = convertinputtoarray(paramsmin,self.nparams,-1.e+36,'paramsmin')
+        self.paramsmax = convertinputtoarray(paramsmax,self.nparams,+1.e+36,'paramsmax')
         for i in range(self.nparams):
             if not (self.paramsmin[i] < self.params[i] < self.paramsmax[i]):
                 raise Exception("ERROR: Starting value is outside the parameter limits")
