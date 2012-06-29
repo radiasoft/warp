@@ -584,11 +584,22 @@ the diagnostic is of interest and is meaningfull.
       # --- Note that self.grid_overlap must be set by the inheriting class.
       top.grid_overlap = self.grid_overlap
 
-      domaindecomposefields(self.nx,self.nxprocs,self.lfsautodecomp,
+      # --- Check for a user supplied decomposition
+      userfsdecompnx = kw.pop('userfsdecompnx',None)
+      userfsdecompny = kw.pop('userfsdecompny',None)
+      userfsdecompnz = kw.pop('userfsdecompnz',None)
+      lfsautodecompx = (userfsdecompnx is None)
+      lfsautodecompy = (userfsdecompny is None)
+      lfsautodecompz = (userfsdecompnz is None)
+      if not lfsautodecompx: fsdecomp.nx[:] = userfsdecompnx
+      if not lfsautodecompy: fsdecomp.ny[:] = userfsdecompny
+      if not lfsautodecompz: fsdecomp.nz[:] = userfsdecompnz
+
+      domaindecomposefields(self.nx,self.nxprocs,lfsautodecompx,
                             fsdecomp.ix,fsdecomp.nx,self.grid_overlap)
-      domaindecomposefields(self.ny,self.nyprocs,self.lfsautodecomp,
+      domaindecomposefields(self.ny,self.nyprocs,lfsautodecompy,
                             fsdecomp.iy,fsdecomp.ny,self.grid_overlap)
-      domaindecomposefields(self.nz,self.nzprocs,self.lfsautodecomp,
+      domaindecomposefields(self.nz,self.nzprocs,lfsautodecompz,
                             fsdecomp.iz,fsdecomp.nz,self.grid_overlap)
 
       fsdecomp.xmin[:] = self.xmmin + fsdecomp.ix*self.dx
