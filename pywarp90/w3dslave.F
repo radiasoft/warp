@@ -1080,7 +1080,6 @@ c       --- type definitions.
      &                                        messagedata)
         use Subtimersw3d
         use Decompositionmodule
-        use Parallel,Only:nprocs,my_index
         integer(ISZ):: nc
         integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
         type(Decomposition):: fsdecomp,ppdecomp
@@ -1090,6 +1089,7 @@ c Calculate the data needed to do the transfer of sourcep to source.
 c The data is cached, and if already calculated, the cached data is
 c returned, giving a substantial time savings.
 
+        integer(ISZ):: my_index,nprocs
         integer(ISZ):: ic
         integer(ISZ):: pe
         integer(ISZ):: me_fsix,me_fsiy,me_fsiz
@@ -1103,6 +1103,9 @@ c returned, giving a substantial time savings.
         integer(MPIISZ):: mpierror
         real(kind=8):: substarttime,wtime
         if (lw3dtimesubs) substarttime = wtime()
+
+        my_index = ppdecomp%my_index
+        nprocs = ppdecomp%nxprocs*ppdecomp%nyprocs*ppdecomp%nzprocs
 
 c       --- Search through the cached data to see if this data set has
 c       --- already been calculated.
@@ -1396,7 +1399,6 @@ c=============================================================================
      &                                     ppdecomp,fsdecomp)
       use Subtimersw3d
       use Decompositionmodule
-      use Parallel,Only:nprocs,my_index,comm_world
       use sourcetransfermessagedatatypemodule
       integer(ISZ):: nc,nxlocal,nylocal,nzlocal,nxp,nyp,nzp
       integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
@@ -1408,11 +1410,13 @@ c=============================================================================
      &                             -nzguardrho:nzlocal+nzguardrho)
       type(Decomposition):: ppdecomp,fsdecomp
 
-c Exchange the potential on the boundary and/or in the gaurd cells.
+c Exchange the source from the particle decomposition to the field
+c decomposition.
 
       type(messagedatatype):: messagedata
       save messagedata
 
+      integer(ISZ):: my_index,nprocs
       integer(ISZ):: pe,ip
       real(kind=8),pointer:: sourcetemp(:,:,:,:)
       integer(ISZ):: ifs1(0:2),ifs2(0:2)
@@ -1425,7 +1429,10 @@ c Exchange the potential on the boundary and/or in the gaurd cells.
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
-      comm_world_mpiisz = comm_world
+
+      comm_world_mpiisz = ppdecomp%mpi_comm
+      my_index = ppdecomp%my_index
+      nprocs = ppdecomp%nxprocs*ppdecomp%nyprocs*ppdecomp%nzprocs
 
 c     --- Generate the MPI data types needed for the communication.
       call getsourcetransfermessagedata(nc,
@@ -1477,6 +1484,88 @@ c     --- Generate the MPI data types needed for the communication.
 !$OMP MASTER
       if (lw3dtimesubs) timetransfersourceptosource3d =
      &                  timetransfersourceptosource3d + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine transferarray1toarray23d_parallel(nc,nx1,ny1,nz1,array1,
+     &                                    nx2,ny2,nz2,array2,
+     &                                    nxguard,nyguard,nzguard,
+     &                                    decomp1,decomp2)
+      use Subtimersw3d
+      use Decompositionmodule
+      use sourcetransfermessagedatatypemodule
+      integer(ISZ):: nc
+      integer(ISZ):: nx1,ny1,nz1
+      integer(ISZ):: nx2,ny2,nz2
+      integer(ISZ):: nxguard,nyguard,nzguard
+      real(kind=8):: array1(0:nc-1,-nxguard:nx1+nxguard,
+     &                              -nyguard:ny1+nyguard,
+     &                              -nzguard:nz1+nzguard)
+      real(kind=8):: array2(0:nc-1,-nxguard:nx2+nxguard,
+     &                             -nyguard:ny2+nyguard,
+     &                             -nzguard:nz2+nzguard)
+      type(Decomposition):: decomp1,decomp2
+
+c Exchange data from one decomposition to another
+
+      type(messagedatatype):: messagedata
+      save messagedata
+
+      integer(ISZ):: my_index,nprocs
+      integer(ISZ):: pe,ip
+      integer(ISZ):: ifs1(0:2),ifs2(0:2)
+      integer(ISZ):: ipp1(0:2),ipp2(0:2)
+
+      include "mpif.h"
+      integer(MPIISZ):: ipisz
+      integer(MPIISZ):: messid = 64
+      integer(MPIISZ):: mpierror,comm_world_mpiisz
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      comm_world_mpiisz = decomp1%mpi_comm
+      my_index = decomp1%my_index
+      nprocs = decomp1%nxprocs*decomp1%nyprocs*decomp1%nzprocs
+
+c     --- Generate the MPI data types needed for the communication.
+      call getsourcetransfermessagedata(nc,
+     &                                  nxguard,nyguard,nzguard,
+     &                                  decomp1,decomp2,
+     &                                  messagedata)
+
+      array2 = 0.
+
+      do pe=0,nprocs-1
+        ip = nprocs - 1 - my_index - pe
+        ip = mod(ip+nprocs,nprocs)
+        ipisz = ip
+        if (ip .ne. my_index) then
+          if (messagedata%sendcounts(ip) > 0 .or.
+     &        messagedata%recvcounts(ip) > 0) then
+            call MPI_SENDRECV(array1,messagedata%sendcounts(ip),
+     &                        messagedata%sendtypes(ip),ipisz,messid,
+     &                        array2,messagedata%recvcounts(ip),
+     &                        messagedata%recvtypes(ip),ipisz,messid,
+     &                        comm_world_mpiisz,mpistatus,mpierror)
+          endif
+        else
+          if (messagedata%sendcounts(my_index) > 0) then
+            ifs1 = messagedata%ifs1(:,my_index)
+            ifs2 = messagedata%ifs2(:,my_index)
+            ipp1 = messagedata%ipp1
+            ipp2 = messagedata%ipp2
+            array2(:,ifs1(0):ifs2(0),ifs1(1):ifs2(1),ifs1(2):ifs2(2)) =
+     &      array1(:,ipp1(0):ipp2(0),ipp1(1):ipp2(1),ipp1(2):ipp2(2))
+          endif
+        endif
+      enddo
+
+!$OMP MASTER
+      if (lw3dtimesubs) timetransferarray1toarray23d =
+     &                  timetransferarray1toarray23d + wtime() - substarttime
 !$OMP END MASTER
 
       return

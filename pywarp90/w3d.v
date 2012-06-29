@@ -1274,6 +1274,17 @@ initializedecomp(decomp:Decomposition) subroutine
 flagparticlesbysortedssn(flag:real,np:integer,ssn(np):real,pflag(np):real,
                          nflagged:integer,ssnflagged(nflagged):real) subroutine
       # Flag all of the particles listed in the sorted ssnflagged array
+transferarray1toarray23d(nx1:integer,ny1:integer,nz1:integer,
+                         array1(-nxguard:nx1+nxguard,
+                                -nyguard:ny1+nyguard,
+                                -nzguard:nz1+nzguard):real,
+                         nx2:integer,ny2:integer,nz2:integer,
+                         array2(-nxguard:nx2+nxguard,
+                                -nyguard:ny2+nyguard,
+                                -nzguard:nz2+nzguard):real,
+                         nxguard:integer,nyguard:integer,nzguard:integer,
+                         decomp1:Decomposition,decomp2:Decomposition) subroutine
+      # Transfers data from one decomposition to another
 
 
 *********** W3Dload:
@@ -1462,6 +1473,7 @@ timegetphiforparticles3d real /0./
 timegetphiforfields3d real /0./
 timegetsourcetransfermessagedata real /0./
 timetransfersourceptosource3d real /0./
+timetransferarray1toarray23d real /0./
 
 timerdata(10) real /10*0./
 

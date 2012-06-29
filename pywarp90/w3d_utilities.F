@@ -1351,3 +1351,30 @@ c       --- Set the flag if a flagged particle is found
       return
       end subroutine flagparticlesbysortedssn
 c===========================================================================
+      subroutine transferarray1toarray23d(nx1,ny1,nz1,array1,
+     &                                    nx2,ny2,nz2,array2,
+     &                                    nxguard,nyguard,nzguard,
+     &                                    decomp1,decomp2)
+      use Subtimersw3d
+      use Decompositionmodule
+      integer(ISZ):: nx1,ny1,nz1
+      integer(ISZ):: nx2,ny2,nz2
+      integer(ISZ):: nxguard,nyguard,nzguard
+      real(kind=8):: array1(-nxguard:nx1+nxguard,
+     &                      -nyguard:ny1+nyguard,
+     &                      -nzguard:nz1+nzguard)
+      real(kind=8):: array2(-nxguard:nx2+nxguard,
+     &                      -nyguard:ny2+nyguard,
+     &                      -nzguard:nz2+nzguard)
+      type(Decomposition):: decomp1,decomp2
+
+#ifdef MPIPARALLEL
+      call transferarray1toarray23d_parallel(1,nx1,ny1,nz1,array1,
+     &                                       nx2,ny2,nz2,array2,
+     &                                       nxguard,nyguard,nzguard,
+     &                                       decomp1,decomp2)
+#endif
+
+      return
+      end
+c===========================================================================
