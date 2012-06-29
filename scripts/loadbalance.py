@@ -33,6 +33,19 @@ Creation arguments:
  - spreadx,spready,spreadz=1.: The fraction of processors to spread the work
                                over. Do not use this unless you really know
                                what it means!
+ - laligntogrid=False: When true, the resulting domains will align to the grid.
+                       This must be set to True when using the EM solver.
+ - mincellsperdomain=2: When aligning domains to the grid, this specifies the
+                        minimum number of grid cells per domain.
+ - loadbalancefieldsolver=False: When true, include the field solver in the
+                                 load balancing (giving it the same
+                                 decomposition as the particles).
+                                 This must be set to True when using the
+                                 EM solver. The field solver domains will
+                                 end up the same as the particle domains.
+ - fieldtoparticleeffortratio=0.1: Estimate of the amount of effort per grid
+                                   cell per field solve compared to the
+                                   amount of effort per particle per step.
 
 Note, if particles only cover a few grid cells, then the distribution is
 recalculated on a finer mesh to give better balancing.
@@ -41,7 +54,9 @@ recalculated on a finer mesh to give better balancing.
                  padupperx=None,paduppery=None,padupperz=None,
                  padlowerx=None,padlowery=None,padlowerz=None,
                  doitnow=0,doloadrho=0,dofs=0,verbose=0,
-                 spreadx=1.,spready=1.,spreadz=1.):
+                 spreadx=1.,spready=1.,spreadz=1.,
+                 laligntogrid=False,mincellsperdomain=2,
+                 loadbalancefieldsolver=False,fieldtoparticleeffortratio=0.1):
         if when is None:
             self.when = {10:1,100:10,1000000:20}
         else:
@@ -66,10 +81,19 @@ recalculated on a finer mesh to give better balancing.
         self.dofs = dofs
         self.verbose = verbose
 
-
         self.spreadx = spreadx
         self.spready = spready
         self.spreadz = spreadz
+
+        # --- If load balancing the field solver, then the particle domains
+        # --- must be aligned to the grid. This is primarily a requirement
+        # --- of the EM solver.
+        if loadbalancefieldsolver: laligntogrid = True
+
+        self.laligntogrid = laligntogrid
+        self.mincellsperdomain = mincellsperdomain
+        self.loadbalancefieldsolver = loadbalancefieldsolver
+        self.fieldtoparticleeffortratio = fieldtoparticleeffortratio
 
         self.runtime = 0.
 
@@ -78,7 +102,7 @@ recalculated on a finer mesh to give better balancing.
 
         if not lparallel: return
 
-        if doitnow: self.doloadbalance()
+        if doitnow: self.doloadbalance(lforce=True)
 
         # --- Just before scraping is probably the best place to do load
         # --- balancing. The scraping will do the shuffling of the particles
@@ -95,9 +119,10 @@ recalculated on a finer mesh to give better balancing.
         if not isinstalledbeforescraper(self.doloadbalance):
             installbeforescraper(self.doloadbalance)
 
-    def doloadbalance(self,lforce=0,doloadrho=None,dofs=None,
+    def doloadbalance(self,lforce=False,doloadrho=None,dofs=None,
                       doparticleboundaries=0,reorg=None):
         starttime = time.time()
+        if self.when is None: return
 
         # --- Set lloadbalanced flag to false. It will be set to true below
         # --- if the load balancing will be done.
@@ -117,7 +142,7 @@ recalculated on a finer mesh to give better balancing.
         # --- The new version, with this called before scraping, always
         # --- recalculates the quantities needed since the zmoments will
         # --- not be up to date.
-        usemoments = false
+        usemoments = False
 
         # --- Get the current number of live particles.
         if not usemoments:
@@ -249,7 +274,7 @@ recalculated on a finer mesh to give better balancing.
         # --- If so, then force a reloadbalance.
         if ppdecomp.nxprocs > 1 and ppdecomp.xmax[-1] < w3d.xmmax-0.5*w3d.dx:
             if xmaxp > ppdecomp.xmax[-1]-2*w3d.dx:
-                lforce = true
+                lforce = True
                 if self.verbose:
                     print "Load balancing since particles near upper end ",
                     print "of mesh in x ",ppdecomp.xmax[-1],w3d.xmmax,xmaxp,
@@ -259,7 +284,7 @@ recalculated on a finer mesh to give better balancing.
         # --- If so, then force a reloadbalance.
         if ppdecomp.nxprocs > 1 and ppdecomp.xmin[0] > w3d.xmmin+0.5*w3d.dx:
             if xminp < ppdecomp.xmin[0]+2*w3d.dx:
-                lforce = true
+                lforce = True
                 if self.verbose:
                     print "Load balancing since particles near lower end ",
                     print "of mesh in x ",ppdecomp.xmin[0],w3d.xmmin,xminp,
@@ -269,7 +294,7 @@ recalculated on a finer mesh to give better balancing.
         # --- If so, then force a reloadbalance.
         if ppdecomp.nyprocs > 1 and ppdecomp.ymax[-1] < w3d.ymmax-0.5*w3d.dy:
             if ymaxp > ppdecomp.ymax[-1]-2*w3d.dy:
-                lforce = true
+                lforce = True
                 if self.verbose:
                     print "Load balancing since particles near upper end ",
                     print "of mesh in y ",ppdecomp.ymax[-1],w3d.ymmax,ymaxp,
@@ -279,7 +304,7 @@ recalculated on a finer mesh to give better balancing.
         # --- If so, then force a reloadbalance.
         if ppdecomp.nyprocs > 1 and ppdecomp.ymin[0] > w3d.ymmin+0.5*w3d.dy:
             if yminp < ppdecomp.ymin[0]+2*w3d.dy:
-                lforce = true
+                lforce = True
                 if self.verbose:
                     print "Load balancing since particles near lower end ",
                     print "of mesh in y ",ppdecomp.ymin[0],w3d.ymmin,yminp,
@@ -289,7 +314,7 @@ recalculated on a finer mesh to give better balancing.
         # --- If so, then force a reloadbalance.
         if ppdecomp.nzprocs > 1 and ppdecomp.zmax[-1] < w3d.zmmax-0.5*w3d.dz:
             if zmaxp > ppdecomp.zmax[-1]-2*w3d.dz + top.zbeam:
-                lforce = true
+                lforce = True
                 if self.verbose:
                     print "Load balancing since particles near upper end ",
                     print "of mesh in z ",ppdecomp.zmax[-1],w3d.zmmax,zmaxp,
@@ -299,7 +324,7 @@ recalculated on a finer mesh to give better balancing.
         # --- If so, then force a reloadbalance.
         if ppdecomp.nzprocs > 1 and ppdecomp.zmin[0] > w3d.zmmin+0.5*w3d.dz:
             if zminp < ppdecomp.zmin[0]+2*w3d.dz + top.zbeam:
-                lforce = true
+                lforce = True
                 if self.verbose:
                     print "Load balancing since particles near lower end ",
                     print "of mesh in z ",ppdecomp.zmin[0],w3d.zmmin,zminp,
@@ -318,6 +343,36 @@ recalculated on a finer mesh to give better balancing.
         for key,value in self.when.iteritems():
             if top.it < key: ii = min(ii,value)
 
+        # --- Add the padding to the lower and upper end of
+        # --- the grid. This is done here now so that if a
+        # --- spread is given, it will include the domain within
+        # --- the padding.
+        padlowerx = self.calcpadlower(0,ii,self.padlowerx,
+                                     top.pgroup.getpyobject('uxp'),
+                                     w3d.dx,usemoments)
+        padupperx = self.calcpadupper(0,ii,self.padupperx,
+                                     top.pgroup.getpyobject('uxp'),
+                                     w3d.dx,usemoments)
+        padlowery = self.calcpadlower(0,ii,self.padlowery,
+                                     top.pgroup.getpyobject('uyp'),
+                                     w3d.dy,usemoments)
+        paduppery = self.calcpadupper(0,ii,self.paduppery,
+                                     top.pgroup.getpyobject('uyp'),
+                                     w3d.dy,usemoments)
+        padlowerz = self.calcpadlower(0,ii,self.padlowerz,
+                                     top.pgroup.getpyobject('uzp'),
+                                     w3d.dz,usemoments)
+        padupperz = self.calcpadupper(0,ii,self.padupperz,
+                                     top.pgroup.getpyobject('uzp'),
+                                     w3d.dz,usemoments)
+
+        xminp = max(0.,xminp - padlowerx)
+        xmaxp = min(w3d.xmmax - w3d.xmmin,xmaxp + padupperx)
+        yminp = max(0.,yminp - padlowery)
+        ymaxp = min(w3d.ymmax - w3d.ymmin,ymaxp + paduppery)
+        zminp = max(0.,zminp - padlowerz)
+        zmaxp = min(w3d.zmmax - w3d.zmmin,zmaxp + padupperz)
+
         # --- Just return if load balancing not done now.
         if not lforce and (top.it%ii) != 0:
             if self.verbose:
@@ -329,15 +384,23 @@ recalculated on a finer mesh to give better balancing.
         if (top.it%ii) == 0 and self.verbose:
             print "Load balancing based on frequency"
 
+        # --- If including the field solver, setup the spread to include it.
+        if self.loadbalancefieldsolver:
+            Ng = (1. + w3d.nx)*(1. + w3d.ny)*(1. + w3d.nz)
+            Np = globalsum(top.pgroup.nps)
+            spread = 1./(Ng*self.fieldtoparticleeffortratio/Np + 1.)
+            self.spreadx = spread
+            self.spready = spread
+            self.spreadz = spread
+
         if top.nxprocs > 1:
             self.dodecomposition(0,ii,xminp,xmaxp,self.spreadx,
-                                 self.padlowerx,self.padupperx,
                                  w3d.xmmin,w3d.xmmax,w3d.dx,0.,top.nxprocs,
                                  top.pgroup.getpyobject('xp'),
                                  top.pgroup.getpyobject('uxp'),
                                  ppdecomp.nxglobal,
                                  ppdecomp.xmin,ppdecomp.xmax,
-                                 ppdecomp.ix,ppdecomp.nx,usemoments)
+                                 ppdecomp.ix,ppdecomp.nx,usemoments,self.laligntogrid)
             top.xpminlocal = ppdecomp.xmin[top.ixproc]
             top.xpmaxlocal = ppdecomp.xmax[top.ixproc]
             top.xpmin = ppdecomp.xmin[0]
@@ -348,13 +411,12 @@ recalculated on a finer mesh to give better balancing.
 
         if top.nyprocs > 1:
             self.dodecomposition(1,ii,yminp,ymaxp,self.spready,
-                                 self.padlowery,self.paduppery,
                                  w3d.ymmin,w3d.ymmax,w3d.dy,0.,top.nyprocs,
                                  top.pgroup.getpyobject('yp'),
                                  top.pgroup.getpyobject('uyp'),
                                  ppdecomp.nyglobal,
                                  ppdecomp.ymin,ppdecomp.ymax,
-                                 ppdecomp.iy,ppdecomp.ny,usemoments)
+                                 ppdecomp.iy,ppdecomp.ny,usemoments,self.laligntogrid)
             top.ypminlocal = ppdecomp.ymin[top.iyproc]
             top.ypmaxlocal = ppdecomp.ymax[top.iyproc]
             top.ypmin = ppdecomp.ymin[0]
@@ -365,14 +427,13 @@ recalculated on a finer mesh to give better balancing.
 
         if top.nzprocs > 1:
             self.dodecomposition(2,ii,zminp,zmaxp,self.spreadz,
-                                 self.padlowerz,self.padupperz,
                                  w3d.zmmin,w3d.zmmax,w3d.dz,top.zbeam,
                                  top.nzprocs,
                                  top.pgroup.getpyobject('zp'),
                                  top.pgroup.getpyobject('uzp'),
                                  ppdecomp.nzglobal,
                                  ppdecomp.zmin,ppdecomp.zmax,
-                                 ppdecomp.iz,ppdecomp.nz,usemoments)
+                                 ppdecomp.iz,ppdecomp.nz,usemoments,self.laligntogrid)
             top.zpminlocal = ppdecomp.zmin[top.izproc]
             top.zpmaxlocal = ppdecomp.zmax[top.izproc]
             top.zpmin = ppdecomp.zmin[0]
@@ -430,6 +491,9 @@ recalculated on a finer mesh to give better balancing.
             #    for i in range(getnsndtsforsubcycling()):
             #        getphipforparticles(i)
 
+        if self.loadbalancefieldsolver:
+            self.doloadbalancefieldsolver()
+
         # --- Do some additional work if requested
         if doloadrho is None: doloadrho = self.doloadrho
         if doloadrho: loadrho()
@@ -440,10 +504,10 @@ recalculated on a finer mesh to give better balancing.
         endtime = time.time()
         self.runtime += (endtime - starttime)
 
-    def dodecomposition(self,axis,ii,minp,maxp,spread,padlower,padupper,
+    def dodecomposition(self,axis,ii,minp,maxp,spread,
                         mmin,mmax,dd,beam,nprocs,pp,uu,
                         nnglobal,ppdecompmin,ppdecompmax,
-                        ppdecompii,ppdecompnn,usemoments):
+                        ppdecompii,ppdecompnn,usemoments,laligntogrid):
         if (axis < 2 or (maxp - minp)/dd < 10 or not usemoments):
             # --- If the particles only extend over a few grid cells,
             # --- recalculate the distribution on a finer grid to get better
@@ -476,21 +540,41 @@ recalculated on a finer mesh to give better balancing.
         avepnum = ave(pnum)
         pnum = pnum + avepnum*(1./spread - 1.)
 
+        self.dodecompositionusingpnum(pnum,axis,ii,minp,maxp,
+                                      mmin,mmax,dd,pdd,pmin,nprocs,uu,
+                                      nnglobal,ppdecompmin,ppdecompmax,
+                                      ppdecompii,ppdecompnn,usemoments,laligntogrid)
+
+    def dodecompositionusingpnum(self,pnum,axis,ii,minp,maxp,
+                                 mmin,mmax,dd,pdd,pmin,nprocs,uu,
+                                 nnglobal,ppdecompmin,ppdecompmax,
+                                 ppdecompii,ppdecompnn,usemoments,laligntogrid):
         # --- Convert the number of particles to a decomposition
         domain = self.decompose(pnum,nprocs,lfullcoverage=0)
         domain = domain*pdd + pmin
         domain[0] = min(domain[0],minp)
         domain[-1] = max(domain[-1],maxp)
 
+        if laligntogrid:
+            # --- Align the domains to the grid.
+            # --- It makes sure that all domains are at least mincellsperdomain long.
+            idomain = domain/dd
+            idomain[0] = nint(idomain[0])
+            for i in range(1,npes+1):
+                idomain[i] = nint(idomain[i])
+                if idomain[i] - idomain[i-1] < self.mincellsperdomain:
+                    idomain[i] = idomain[i-1] + self.mincellsperdomain
+            if idomain[-1] > nnglobal:
+                idomain[-1] = nnglobal
+                for i in range(npes-1,-1,-1):
+                    if idomain[i+1] - idomain[i] < self.mincellsperdomain:
+                        idomain[i] = idomain[i+1] - self.mincellsperdomain
+
+            domain = dd*idomain
+
         # --- Set domain of each processor.
         ppdecompmin[:] = mmin + domain[:-1]
         ppdecompmax[:] = mmin + domain[1:]
-
-        padlower = self.calcpadlower(axis,ii,padlower,uu,dd,usemoments)
-        padupper = self.calcpadupper(axis,ii,padupper,uu,dd,usemoments)
-
-        ppdecompmin[0] = max(mmin,ppdecompmin[0] - padlower)
-        ppdecompmax[-1] = min(mmax,ppdecompmax[-1] + padupper)
 
         domaindecomposeparticles(nnglobal,nprocs,0,mmin,dd,
                                  zeros(nprocs,'d'),true,
@@ -601,4 +685,264 @@ of the domains.
             domain[-1] = nn
 
         return domain
+
+    def doloadbalancefieldsolver(self):
+        self.domaindecomposefieldstomatchparticles()
+        solver = getregisteredsolver()
+
+        if isinstance(solver,EM3D):
+            savedblock = solver.block
+            savedfsdecomp = solver.fsdecomp
+            uninstallbeforeloadrho(solver.solve2ndhalf)
+
+        solver.__init__(userfsdecompnx=top.ppdecomp.nx,
+                        userfsdecompny=top.ppdecomp.ny,
+                        userfsdecompnz=top.ppdecomp.nz)
+
+        if isinstance(solver,EM3D):
+            # --- The data needs to be redistributed
+            self.redistributeemsolverdata(solver,savedblock,savedfsdecomp)
+
+    def domaindecomposefieldstomatchparticles(self):
+        top.fsdecomp.nx = top.ppdecomp.nx.copy()
+        domaindecomposefields(w3d.nx,top.nxprocs,false,
+                              top.fsdecomp.ix,top.fsdecomp.nx,top.grid_overlap)
+        top.fsdecomp.ny = top.ppdecomp.ny.copy()
+        domaindecomposefields(w3d.ny,top.nyprocs,false,
+                              top.fsdecomp.iy,top.fsdecomp.ny,top.grid_overlap)
+        top.fsdecomp.nz = top.ppdecomp.nz.copy()
+        domaindecomposefields(w3d.nz,top.nzprocs,false,
+                              top.fsdecomp.iz,top.fsdecomp.nz,top.grid_overlap)
+        top.fsdecomp.xmin = w3d.xmmin + top.fsdecomp.ix*w3d.dx
+        top.fsdecomp.ymin = w3d.ymmin + top.fsdecomp.iy*w3d.dy
+        top.fsdecomp.zmin = w3d.zmmin + top.fsdecomp.iz*w3d.dz
+        top.fsdecomp.xmax = w3d.xmmin + (top.fsdecomp.ix + top.fsdecomp.nx)*w3d.dx
+        top.fsdecomp.ymax = w3d.ymmin + (top.fsdecomp.iy + top.fsdecomp.ny)*w3d.dy
+        top.fsdecomp.zmax = w3d.zmmin + (top.fsdecomp.iz + top.fsdecomp.nz)*w3d.dz
+        w3d.nxlocal = top.fsdecomp.nx[top.ixproc]
+        w3d.nylocal = top.fsdecomp.ny[top.iyproc]
+        w3d.nzlocal = top.fsdecomp.nz[top.izproc]
+        w3d.xmminlocal = top.fsdecomp.xmin[top.ixproc]
+        w3d.ymminlocal = top.fsdecomp.ymin[top.iyproc]
+        w3d.zmminlocal = top.fsdecomp.zmin[top.izproc]
+        w3d.xmmaxlocal = top.fsdecomp.xmax[top.ixproc]
+        w3d.ymmaxlocal = top.fsdecomp.ymax[top.iyproc]
+        w3d.zmmaxlocal = top.fsdecomp.zmax[top.izproc]
+        top.izfsslave = top.fsdecomp.iz
+        top.nzfsslave = top.fsdecomp.nz
+
+    def copydecomposition(self,d1,d2):
+        # --- The items commented out are not used.
+        d2.my_index = d1.my_index
+        #d2.nxglobal = d1.nxglobal
+        #d2.nyglobal = d1.nyglobal
+        #d2.nzglobal = d1.nzglobal
+        d2.ixproc = d1.ixproc
+        d2.iyproc = d1.iyproc
+        d2.izproc = d1.izproc
+        d2.nxprocs = d1.nxprocs
+        d2.nyprocs = d1.nyprocs
+        d2.nzprocs = d1.nzprocs
+        d2.mpi_comm = d1.mpi_comm
+        #d2.mpi_comm_x = d1.mpi_comm_x
+        #d2.mpi_comm_y = d1.mpi_comm_y
+        #d2.mpi_comm_z = d1.mpi_comm_z
+        d2.gchange()
+        #d2.iprocgrid[:] = d1.iprocgrid
+        #d2.nprocgrid[:] = d1.nprocgrid
+        d2.ix[:] = d1.ix
+        d2.nx[:] = d1.nx
+        #d2.xmin[:] = d1.xmin
+        #d2.xmax[:] = d1.xmax
+        d2.iy[:] = d1.iy
+        d2.ny[:] = d1.ny
+        #d2.ymin[:] = d1.ymin
+        #d2.ymax[:] = d1.ymax
+        d2.iz[:] = d1.iz
+        d2.nz[:] = d1.nz
+        #d2.zmin[:] = d1.zmin
+        #d2.zmax[:] = d1.zmax
+        #d2.mpistatex[:] = d1.mpistatex
+        #d2.mpistatey[:] = d1.mpistatey
+        #d2.mpistatez[:] = d1.mpistatez
+
+    def redistributeemsolverdata(self,solver,savedblock,savedfsdecomp):
+        # --- Create copies of the decomposition objects.
+        # --- These are used since various things are changed depending
+        # --- on what data is being transferred.
+        olddecomp = Decomposition()
+        newdecomp = Decomposition()
+        self.copydecomposition(savedfsdecomp,olddecomp)
+        self.copydecomposition(solver.fsdecomp,newdecomp)
+
+        def transferarray(old,new,name,nonnodeaxis):
+            # --- Handy function to transfer the array name from the
+            # --- old to the new field type instance.
+            # --- When the data is centered between nodes, the number
+            # --- of data values is 1 less along that dimension.
+            # --- Note that that decomp.ix,iy,iz are still the same.
+            # --- Note that only processors that are exchanging data need to
+            # --- to call the transfer routine since the transfers are done
+            # --- pair-wise, and not as a global alltoall.
+            if 'x' in nonnodeaxis:
+                olddecomp.nx -= 1
+                newdecomp.nx -= 1
+            if 'y' in nonnodeaxis:
+                olddecomp.ny -= 1
+                newdecomp.ny -= 1
+            if 'z' in nonnodeaxis:
+                olddecomp.nz -= 1
+                newdecomp.nz -= 1
+            transferarray1toarray23d(old.nx,old.ny,old.nz,getattr(old,name),
+                                     new.nx,new.ny,new.nz,getattr(new,name),
+                                     old.nxguard,old.nyguard,old.nzguard,
+                                     olddecomp,newdecomp)
+            if 'x' in nonnodeaxis:
+                olddecomp.nx += 1
+                newdecomp.nx += 1
+            if 'y' in nonnodeaxis:
+                olddecomp.ny += 1
+                newdecomp.ny += 1
+            if 'z' in nonnodeaxis:
+                olddecomp.nz += 1
+                newdecomp.nz += 1
+
+        # --- Core
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Ex',['nx'])
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Ey',['ny'])
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Ez',['nz'])
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Bx',['ny','nz'])
+        transferarray(savedblock.core.yf,solver.block.core.yf,'By',['nx','nz'])
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Bz',['nx','ny'])
+        # --- Send the p arrays too - this is easier and more robust then trying
+        # --- to recreate them afterwards.
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Exp',['nx'])
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Eyp',['ny'])
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Ezp',['nz'])
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Bxp',['ny','nz'])
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Byp',['nx','nz'])
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Bzp',['nx','ny'])
+
+        # --- Exchange the PML data. For each direction, the decomposition objects
+        # --- are modified to only include the domains along the appropriate
+        # --- boundary.
+        def transfersplityee(old,new):
+            transferarray(old.syf,new.syf,'exx',['nx'])
+            transferarray(old.syf,new.syf,'exy',['nx'])
+            transferarray(old.syf,new.syf,'exz',['nx'])
+            transferarray(old.syf,new.syf,'eyx',['ny'])
+            transferarray(old.syf,new.syf,'eyy',['ny'])
+            transferarray(old.syf,new.syf,'eyz',['ny'])
+            transferarray(old.syf,new.syf,'ezx',['nz'])
+            transferarray(old.syf,new.syf,'ezy',['nz'])
+            transferarray(old.syf,new.syf,'ezz',['nz'])
+            transferarray(old.syf,new.syf,'bxy',['ny','nz'])
+            transferarray(old.syf,new.syf,'bxz',['ny','nz'])
+            transferarray(old.syf,new.syf,'byx',['nx','nz'])
+            transferarray(old.syf,new.syf,'byz',['nx','nz'])
+            transferarray(old.syf,new.syf,'bzx',['nx','ny'])
+            transferarray(old.syf,new.syf,'bzy',['nx','ny'])
+
+        ixproc = newdecomp.ixproc
+        iyproc = newdecomp.iyproc
+        izproc = newdecomp.izproc
+        nxprocs = newdecomp.nxprocs
+        nyprocs = newdecomp.nyprocs
+        nzprocs = newdecomp.nzprocs
+
+        # --- Sides
+        def transferside(d1,d2,d3,fieldtype):
+            # --- d1 is the normal to the side, d2 and d3 are in the plane
+            eold = getattr(savedblock,fieldtype)
+            enew = getattr(solver.block,fieldtype)
+            # --- The new my_index is calculated relative to the single plane
+            # --- taking part in the exchange.
+            i2proc = getattr(newdecomp,'i%sproc'%d2)
+            i3proc = getattr(newdecomp,'i%sproc'%d3)
+            n2procs = getattr(newdecomp,'n%sprocs'%d2)
+            olddecomp.my_index = newdecomp.my_index = i2proc + i3proc*n2procs
+            # --- The number of processors normal to the plane is set to 1.
+            # --- All processors have the iproc=0 and nprocs=1,
+            # --- the i=0 and the n=n in the normal direction.
+            setattr(olddecomp,'i%sproc'%d1,0)
+            setattr(newdecomp,'i%sproc'%d1,0)
+            setattr(olddecomp,'n%sprocs'%d1,1)
+            setattr(newdecomp,'n%sprocs'%d1,1)
+            setattr(olddecomp,'i%s'%d1,zeros(1))
+            setattr(newdecomp,'i%s'%d1,zeros(1))
+            setattr(olddecomp,'n%s'%d1,zeros(getattr(eold.syf,'n%s'%d1)))
+            setattr(newdecomp,'n%s'%d1,zeros(getattr(enew.syf,'n%s'%d1)))
+            # --- Exchange all of the arrays
+            transfersplityee(eold,enew)
+            # --- Reset the decomp objects to the initial values
+            self.copydecomposition(savedfsdecomp,olddecomp)
+            self.copydecomposition(solver.fsdecomp,newdecomp)
+
+        if solver.bounds[0] == openbc and ixproc == 0 and (nyprocs > 1 or nzprocs > 1):
+            transferside('x','y','z','sidexl')
+        if solver.bounds[1] == openbc and ixproc == nxprocs-1 and (nyprocs > 1 or nzprocs > 1):
+            transferside('x','y','z','sidexr')
+        if solver.bounds[2] == openbc and iyproc == 0 and (nxprocs > 1 or nzprocs > 1):
+            transferside('y','x','z','sideyl')
+        if solver.bounds[3] == openbc and iyproc == nyprocs-1 and (nxprocs > 1 or nzprocs > 1):
+            transferside('y','x','z','sideyr')
+        if solver.bounds[4] == openbc and izproc == 0 and (nxprocs > 1 or nyprocs > 1):
+            transferside('z','x','y','sidezl')
+        if solver.bounds[5] == openbc and izproc == nzprocs-1 and (nxprocs > 1 or nyprocs > 1):
+            transferside('z','x','y','sidezr')
+
+        # --- Edges
+        def transferedge(d1,d2,d3,fieldtype):
+            # --- d1 and d2 are the normals to the edge, and d3 is parallel to it
+            eold = getattr(savedblock,fieldtype)
+            enew = getattr(solver.block,fieldtype)
+            olddecomp.my_index = newdecomp.my_index = getattr(newdecomp,'i%sproc'%d3)
+            setattr(olddecomp,'i%sproc'%d1,0)
+            setattr(newdecomp,'i%sproc'%d1,0)
+            setattr(olddecomp,'i%sproc'%d2,0)
+            setattr(newdecomp,'i%sproc'%d2,0)
+            setattr(olddecomp,'n%sprocs'%d1,1)
+            setattr(newdecomp,'n%sprocs'%d1,1)
+            setattr(olddecomp,'n%sprocs'%d2,1)
+            setattr(newdecomp,'n%sprocs'%d2,1)
+            setattr(olddecomp,'i%s'%d1,zeros(1))
+            setattr(newdecomp,'i%s'%d1,zeros(1))
+            setattr(olddecomp,'n%s'%d1,zeros(getattr(eold.syf,'n%s'%d1)))
+            setattr(newdecomp,'n%s'%d1,zeros(getattr(enew.syf,'n%s'%d1)))
+            setattr(olddecomp,'i%s'%d2,zeros(1))
+            setattr(newdecomp,'i%s'%d2,zeros(1))
+            setattr(olddecomp,'n%s'%d2,zeros(getattr(eold.syf,'n%s'%d2)))
+            setattr(newdecomp,'n%s'%d2,zeros(getattr(enew.syf,'n%s'%d2)))
+            transfersplityee(eold,enew)
+            self.copydecomposition(savedfsdecomp,olddecomp)
+            self.copydecomposition(solver.fsdecomp,newdecomp)
+
+        if (solver.bounds[0] == openbc and solver.bounds[2] == openbc and ixproc == 0 and iyproc == 0 and nzprocs > 1):
+            transferedge('x','y','z','edgexlyl')
+        if (solver.bounds[1] == openbc and solver.bounds[2] == openbc and ixproc == nxprocs-1 and iyproc == 0 and nzprocs > 1):
+            transferedge('x','y','z','edgexryl')
+        if (solver.bounds[0] == openbc and solver.bounds[3] == openbc and ixproc == 0 and iyproc == nyprocs-1 and nzprocs > 1):
+            transferedge('x','y','z','edgexlyr')
+        if (solver.bounds[1] == openbc and solver.bounds[3] == openbc and ixproc == nxprocs-1 and iyproc == nyprocs-1 and nzprocs > 1):
+            transferedge('x','y','z','edgexryr')
+
+        if (solver.bounds[0] == openbc and solver.bounds[4] == openbc and ixproc == 0 and izproc == 0 and nyprocs > 1):
+            transferedge('x','z','y','edgexlzl')
+        if (solver.bounds[1] == openbc and solver.bounds[4] == openbc and ixproc == nxprocs-1 and izproc == 0 and nyprocs > 1):
+            transferedge('x','z','y','edgexrzl')
+        if (solver.bounds[0] == openbc and solver.bounds[5] == openbc and ixproc == 0 and izproc == nzprocs-1 and nyprocs > 1):
+            transferedge('x','z','y','edgexlzr')
+        if (solver.bounds[1] == openbc and solver.bounds[5] == openbc and ixproc == nxprocs-1 and izproc == nzprocs-1 and nyprocs > 1):
+            transferedge('x','z','y','edgexrzr')
+
+        if (solver.bounds[2] == openbc and solver.bounds[4] == openbc and iyproc == 0 and izproc == 0 and nxprocs > 1):
+            transferedge('y','z','x','edgeylzl')
+        if (solver.bounds[3] == openbc and solver.bounds[4] == openbc and iyproc == nyprocs-1 and izproc == 0 and nxprocs > 1):
+            transferedge('y','z','x','edgeyrzl')
+        if (solver.bounds[2] == openbc and solver.bounds[5] == openbc and iyproc == 0 and izproc == nzprocs-1 and nxprocs > 1):
+            transferedge('y','z','x','edgeylzr')
+        if (solver.bounds[3] == openbc and solver.bounds[5] == openbc and iyproc == nyprocs-1 and izproc == nzprocs-1 and nxprocs > 1):
+            transferedge('y','z','x','edgeyrzr')
+
+        # --- Corners - nothing needs to be done, thank goodness
 
