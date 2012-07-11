@@ -1517,8 +1517,13 @@ Note that either the x and y coordinates or the grid must be passed in.
          "the grid specified must be two dimensional"
 
   # --- If there are no particles and no grid to plot, just return
-  if type(x) == ArrayType and type(y) == ArrayType: np = globalsum(x.size)
-  else: np = 0
+  if type(x) == ArrayType and type(y) == ArrayType:
+    if local:
+      np = x.size
+    else:
+      np = globalsum(x.size)
+  else:
+    np = 0
   if np == 0 and grid is None: return
 
   # --- If filled is turned on, but contours is not set, set it to the
@@ -1572,7 +1577,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   if type(x) == ArrayType and type(y) == ArrayType:
     # --- Get slope subtracted value of y
     yms = y - x*slope + (xoffset*slope - yoffset - offset)
-    # --- Get mins and maxs of particles that were not supplied by the user.
+    # --- For the particles, get mins and maxs that were not supplied by the user.
     if lparallel and not local:
       if xmin is None: xmintemp = globalmin(x)
       if xmax is None: xmaxtemp = globalmax(x)
