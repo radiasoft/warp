@@ -6790,7 +6790,7 @@ c         set the variable t_unit to the default integers evolt, joule or kelvin
 
 c       --- loop over particles
       do ip=1,np
-        z_local = zp(ip)-zbeam
+        z_local = zp(ip)!-zbeam
         izl  = 1+int((z_local - tloc_zmin)*tloc_dzi)
 
 c       --- cycle if particle out of zone of calculation
@@ -6993,7 +6993,20 @@ c           --- Compute linear correlations
               yvar  = ysqbart (ixt,iyt,izt) - ybart (ixt,iyt,izt)**2
               zvar  = zsqbart (ixt,iyt,izt) - zbart (ixt,iyt,izt)**2
   
-               if (.not. l_temp_rmcrosscorrelations) then
+              xvxslope = 0.
+              yvxslope = 0.
+              zvxslope = 0.
+              xvyslope = 0.
+              yvyslope = 0.
+              zvyslope = 0.
+              xvzslope = 0.
+              yvzslope = 0.
+              zvzslope = 0.
+              xkeslope = 0.
+              ykeslope = 0.
+              zkeslope = 0.
+
+              if (.not. l_temp_rmcrosscorrelations) then
                 xvxbart (ixt,iyt,izt) = xvxbart (ixt,iyt,izt) * pnumi
                 yvybart (ixt,iyt,izt) = yvybart (ixt,iyt,izt) * pnumi
                 zvzbart (ixt,iyt,izt) = zvzbart (ixt,iyt,izt) * pnumi
@@ -7003,7 +7016,7 @@ c           --- Compute linear correlations
                 if(abs(xvar)>SMALLPOS) vxvar = vxvar - xvxbar**2/xvar
                 if(abs(yvar)>SMALLPOS) vyvar = vyvar - yvybar**2/yvar
                 if(abs(zvar)>SMALLPOS) vzvar = vzvar - zvzbar**2/zvar
-               else ! l_temp_rmcrosscorrelations is true
+              else ! l_temp_rmcrosscorrelations is true
                 xvxbart (ixt,iyt,izt) = xvxbart (ixt,iyt,izt) * pnumi
                 xvybart (ixt,iyt,izt) = xvybart (ixt,iyt,izt) * pnumi
                 xvzbart (ixt,iyt,izt) = xvzbart (ixt,iyt,izt) * pnumi
@@ -7039,7 +7052,9 @@ c           --- Compute linear correlations
                 a2 = xybar; b2 = yvar;  c2 = yzbar; d2x = yvxbar; d2y = yvybar; d2z = yvzbar; d2ke = ykebar
                 a3 = xzbar; b3 = yzbar; c3 = zvar;  d3x = zvxbar; d3y = zvybar; d3z = zvzbar; d3ke = zkebar
                 if (lrtheta) then
-                  d = 1./(a1*c3-a3*c1)
+                 d = (a1*c3-a3*c1)
+                 if (abs(d)>SMALLPOS) then
+                  d=1./d
                   xvxslope = (c1*d3x-d1x*c3)*d
                   yvxslope = 0.
                   zvxslope = -(a3*xvxslope+d3x)/c3
@@ -7052,20 +7067,24 @@ c           --- Compute linear correlations
                   xkeslope = (c1*d3ke-d1ke*c3)*d
                   ykeslope = 0.
                   zkeslope = -(a3*xkeslope+d3ke)/c3
+                 end if
                 else
-                  d = 1./((a1*c2-a2*c1)*(b2*c3-b3*c2)-(a2*c3-a3*c2)*(b1*c2-b2*c1))
+                 d = ((a1*c2-a2*c1)*(b2*c3-b3*c2)-(a2*c3-a3*c2)*(b1*c2-b2*c1))
+                 if (abs(d)>SMALLPOS) then
+                  d=1./d
                   xvxslope = ((d2x*c3-d3x*c2)*(b1*c2-b2*c1)-(d1x*c2-d2x*c1)*(b2*c3-b3*c2))*d
-                  yvxslope = ((a2*c3-a3*c2)*xvxslope+d2x*c3-d3x*c2)/(b3*c2-b2*c3)
-                  zvxslope = -(a1*xvxslope+b1*yvxslope+d1x)/c1
+                  if (abs(b3*c2-b2*c3)>SMALLPOS) yvxslope = ((a2*c3-a3*c2)*xvxslope+d2x*c3-d3x*c2)/(b3*c2-b2*c3)
+                  if (abs(c1)>SMALLPOS) zvxslope = -(a1*xvxslope+b1*yvxslope+d1x)/c1
                   xvyslope = ((d2y*c3-d3y*c2)*(b1*c2-b2*c1)-(d1y*c2-d2y*c1)*(b2*c3-b3*c2))*d
-                  yvyslope = ((a2*c3-a3*c2)*xvyslope+d2y*c3-d3y*c2)/(b3*c2-b2*c3)
-                  zvyslope = -(a1*xvyslope+b1*yvyslope+d1y)/c1
+                  if (abs(b3*c2-b2*c3)>SMALLPOS) yvyslope = ((a2*c3-a3*c2)*xvyslope+d2y*c3-d3y*c2)/(b3*c2-b2*c3)
+                  if (abs(c1)>SMALLPOS) zvyslope = -(a1*xvyslope+b1*yvyslope+d1y)/c1
                   xvzslope = ((d2z*c3-d3z*c2)*(b1*c2-b2*c1)-(d1z*c2-d2z*c1)*(b2*c3-b3*c2))*d
-                  yvzslope = ((a2*c3-a3*c2)*xvzslope+d2z*c3-d3z*c2)/(b3*c2-b2*c3)
-                  zvzslope = -(a1*xvzslope+b1*yvzslope+d1z)/c1
+                  if (abs(b3*c2-b2*c3)>SMALLPOS) yvzslope = ((a2*c3-a3*c2)*xvzslope+d2z*c3-d3z*c2)/(b3*c2-b2*c3)
+                  if (abs(c1)>SMALLPOS) zvzslope = -(a1*xvzslope+b1*yvzslope+d1z)/c1
                   xkeslope = ((d2ke*c3-d3ke*c2)*(b1*c2-b2*c1)-(d1ke*c2-d2ke*c1)*(b2*c3-b3*c2))*d
-                  ykeslope = ((a2*c3-a3*c2)*xkeslope+d2ke*c3-d3ke*c2)/(b3*c2-b2*c3)
-                  zkeslope = -(a1*xkeslope+b1*ykeslope+d1ke)/c1
+                  if (abs(b3*c2-b2*c3)>SMALLPOS) ykeslope = ((a2*c3-a3*c2)*xkeslope+d2ke*c3-d3ke*c2)/(b3*c2-b2*c3)
+                  if (abs(c1)>SMALLPOS) zkeslope = -(a1*xkeslope+b1*ykeslope+d1ke)/c1
+                 end if
                 end if
                 ! --- remove correlations on vx, vy and vz
                 vxvar = vxvar - xvxslope**2*xvar - yvxslope**2*yvar - zvxslope**2*zvar 
