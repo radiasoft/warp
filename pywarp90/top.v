@@ -2995,8 +2995,8 @@ sum_neighbors3d(fin(nx+1,ny+1,nz+1):integer,fout(nx+1,ny+1,nz+1):integer,nx:inte
 reduceisinsidegrid(isinside(0:nx,0:ny,0:nz):real,reducedisinside(0:nx,0:ny,0:nz):real,nx,ny,nz)
               subroutine # Reduces the isinside array, removing redundant data
 digital_filter_1d(f(0:n):real,n:integer,c:real,nt:integer,s:integer) subroutine
-deposeintersect(z1(n1):real,f1(n1):real,ssn1(n1):integer,w1(n1):real,n1:integer,
-                z2(n2):real,f2(n2):real,ssn2(n2):integer,w2(n2):real,n2:integer,
+deposeintersect(z1(n1):real,f1(n1):real,ssn1(n1):real,w1(n1):real,n1:integer,
+                z2(n2):real,f2(n2):real,ssn2(n2):real,w2(n2):real,n2:integer,
                 z0:real,f(0:nf):real,fminmax(2):real,nf:integer,
                 autoscale:logical,overfrac:real) subroutine
 take2dint(a(0:n1-1,0:n2-1):integer,n1:integer,n2:integer,
