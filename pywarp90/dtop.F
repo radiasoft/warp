@@ -4467,7 +4467,8 @@ c           --- point is inside if a conductor can be ignored.
       end subroutine digital_filter_1d
       
       subroutine deposeintersect(z1,f1,ssn1,w1,n1,z2,f2,ssn2,w2,n2,z0,hist,fminmax,nf,autoscale,overfrac)
-      integer(ISZ) :: n1,n2,nf, ssn1(n1), ssn2(n2)
+      integer(ISZ) :: n1,n2,nf
+      real(kind=8) :: ssn1(n1), ssn2(n2)
       real(kind=8) :: z1(n1), f1(n1), w1(n1), z2(n2), f2(n2), w2(n2), z0, fminmax(2), hist(0:nf), overfrac
       logical(ISZ) :: autoscale
 
