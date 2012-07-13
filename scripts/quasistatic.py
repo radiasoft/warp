@@ -56,26 +56,27 @@ class Quasistatic(SubcycledPoissonSolver):
     self.ntgroups=ntgroups
     bucketmpiid=int(me*nbuckets/npes)
     self.bucketid=nbuckets-bucketmpiid
-    if not lparallel or nbuckets==1:
+    if not lparallel:# or nbuckets==1:
       if not lparallel:
         self.mympigroup=None
       else:
         self.mympigroup=comm_world
       self.gme=me/self.ntgroups
       self.gnpes=npes/self.ntgroups
-      mygroup = arange(self.gnpes)[::self.ntgroups]
+      print 'gme = ',self.gme
+      mygroupinit = arange(npes)
+      mygroup = mygroupinit[me%self.ntgroups::self.ntgroups]
     else:
      if lparallel:
       procs = arange(npes)
-      mygroup = compress(int(procs*nbuckets/npes)==bucketmpiid,procs)
+      mygroupinit = compress(int(procs*nbuckets/npes)==bucketmpiid,procs)
+      mygroup = mygroupinit[me%self.ntgroups::self.ntgroups]
       self.mympigroup=comm_world.comm_create(mygroup)
-      self.gme = self.mympigroup.rank/self.ntgroups
-      self.gnpes = self.mympigroup.size/self.ntgroups
-      mygroup = mygroup[::self.ntgroups]
-      self.mympigroup=comm_world.comm_create(mygroup)
+      self.gme = self.mympigroup.rank
+      self.gnpes = self.mympigroup.size
     if ntgroups>1:
-#      mytgroup = ntgroups*(self.gme/ntgroups)+arange(ntgroups)
-      mytgroup = mygroup[self.gme]+arange(ntgroups)
+      mytgroup = mygroupinit[ntgroups*((me-mygroupinit[0])/ntgroups)]+arange(ntgroups)
+      print mygroupinit
       print "me,mygroup,mytgroup = ",me,mygroup,mytgroup
       self.mympitgroup=comm_world.comm_create(mytgroup)
       self.gtme = self.mympitgroup.rank
@@ -458,7 +459,6 @@ class Quasistatic(SubcycledPoissonSolver):
 #     self.itbucket = top.it-(self.bucketid-1)*npes/self.nbuckets
      self.itbucket = top.it-(self.bucketid-1)*npes/self.nbuckets
      if top.it==0 or (me>=(npes-top.it*self.ntgroups) and (self.itbucket-(self.gnpes-self.gme))%top.nhist==0):
-#       print me,top.it,self.itbucket,self.gnpes-self.gme,self.itbucket-(self.gnpes-self.gme)
        if self.l_timing:ptime = wtime()
        if self.l_timing: self.time_getmmnts += wtime()-ptime
 
@@ -777,6 +777,7 @@ class Quasistatic(SubcycledPoissonSolver):
      top.it+=1
 #     self.itbucket+=1
 
+     if self.l_verbose: print me,top.it,self.iz,'me = ',me,';call afterstep functions'
      # --- call afterstep functions
      callafterstepfuncs.callfuncsinlist()
      if self.l_verbose:print me,self.iz,'it = %i, time = %gs.'%(top.it,top.time)
@@ -2095,6 +2096,7 @@ class Quasistatic(SubcycledPoissonSolver):
                                           self.yminelec,self.ymaxelec,zmax,zmax,
                                           1.e-10,1.e-10,1.e-10,
                                           nx=self.nxelec,ny=self.nyelec,spacing=spacing,lallindomain=false)
+           
        if self.l_reuseelec:
          js = self.electrons.jslist[0]
          il = pg.ins[js]-1
@@ -2905,7 +2907,7 @@ class Quasistatic(SubcycledPoissonSolver):
         b = parallelsum(a,comm=self.mympitgroup)
       else:
         b = a.copy()
-      if self.mympigroup is not None:
+      if self.mympigroup is not None and self.gnpes>1:
         # --- update boundary
         if self.gme>0:
           self.mympigroup.send(b[0,:],self.gme-1)
