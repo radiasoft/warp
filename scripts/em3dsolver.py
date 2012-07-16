@@ -22,7 +22,8 @@ class EM3D(SubcycledPoissonSolver):
                     'nxguard':1,'nyguard':1,'nzguard':1,
                     'l_particles_weight':false,'l_usecoeffs':false,
                     'l_pushf':false,'l_pushpot':false,'l_verbose':false,
-                    'laser_amplitude':1.,'laser_profile':None,
+                    'laser_func':None,
+                    'laser_amplitude':1.,'laser_profile':None,'laser_phase':0.,
                     'laser_gauss_widthx':None,'laser_gauss_centerx':0.,
                     'laser_gauss_widthy':None,'laser_gauss_centery':0.,
                     'laser_anglex':0.,'laser_angley':0.,
@@ -423,6 +424,18 @@ class EM3D(SubcycledPoissonSolver):
       self.laser_amplitude_table_i = -1
     elif callable(self.laser_amplitude):
       self.laser_amplitude_func = self.laser_amplitude
+
+    # --- Check if laser_phase is a function, table, or constant
+    self.laser_phase_func = None
+    self.laser_phase_table = None
+    if operator.isSequenceType(self.laser_phase):
+      assert len(self.laser_phase.shape) == 2 and \
+             self.laser_phase.shape[1] == 2,\
+             "The laser_phase table is not formatted properly"
+      self.laser_phase_table = self.laser_phase
+      self.laser_phase_table_i = -1
+    elif callable(self.laser_phase):
+      self.laser_phase_func = self.laser_phase
       
     if self.laser_mode==1:
       # --- sets positions of E fields on Yee mesh == laser_mode 1
@@ -506,7 +519,7 @@ class EM3D(SubcycledPoissonSolver):
 #===============================================================================
   def add_laser(self,field):
 #===============================================================================
-    if self.laser_profile is None: 
+    if self.laser_profile is None and self.laser_func is None:
       self.block.core.yf.E_inz_pos=w3d.zmmin-(self.nzguard*2.)*self.dz
       return
 
@@ -545,6 +558,20 @@ class EM3D(SubcycledPoissonSolver):
     gammafrm = 1./sqrt((1.-betafrm)*(1.+betafrm))
 
     if self.laser_frequency is not None:
+     if self.laser_phase_func is not None:
+      t = top.time*(1.-self.laser_source_v/clight)
+      if self.laser_mode==1:
+        x = self.xxex
+        y = self.yyex
+        phaseex = self.laser_phase_func(x,y,t)
+        x = self.xxey
+        y = self.yyey
+        phaseey = self.laser_phase_func(x,y,t)
+      else:
+        x = self.laser_xx
+        y = self.laser_yy
+        phase = self.laser_phase_func(x,y,t)
+     else:
       if self.laser_mode==1:
         if self.laser_focus_z is not None:
           z0 = self.laser_focus_z
@@ -558,6 +585,10 @@ class EM3D(SubcycledPoissonSolver):
           phaseex = ((self.xxex*sin(self.laser_anglex)+self.yyex*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
           phaseey = ((self.xxey*sin(self.laser_anglex)+self.yyey*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
       elif self.laser_mode==2:
+       if 0:
+          z0 = self.laser_focus_z
+#         phase = sin(-self.laser_frequency*top.time+z0*(self.laser_xx**2+self.laser_yy**2)/(SIGMAR*SIGMAR*(1+X^2))-0.5*atan(X))
+       else:
         if self.laser_focus_z is not None:
           z0 = self.laser_focus_z
           if self.laser_focus_z>0.:
@@ -594,8 +625,14 @@ class EM3D(SubcycledPoissonSolver):
 #        dispmax = 0.01*f.dx
 #        laser_amplitude=self.laser_amplitude/self.laser_emax*dispmax*self.laser_frequency
         dispmax = 0.01*clight
-        laser_amplitude=self.laser_amplitude/self.laser_emax*dispmax
-        laser_amplitude*=self.laser_profile*cos(phase)*(1.-self.laser_source_v/clight)
+        if self.laser_func is not None:
+          x = self.laser_xx
+          y = self.laser_yy
+          t = top.time*(1.-self.laser_source_v/clight)
+          laser_amplitude=self.laser_func(x,y,t)*(1.-self.laser_source_v/clight)/self.laser_emax*dispmax
+        else:
+          laser_amplitude=self.laser_amplitude/self.laser_emax*dispmax
+          laser_amplitude*=self.laser_profile*cos(phase)*(1.-self.laser_source_v/clight)
         self.laser_ux[...] = laser_amplitude*cos(self.laser_polangle)
         self.laser_uy[...] = laser_amplitude*sin(self.laser_polangle)
         self.laser_xdx[...] += self.laser_ux*top.dt
@@ -2557,6 +2594,9 @@ class EM3D(SubcycledPoissonSolver):
     # a version of getrho with default overlap = 1, needed for particleinjection.py
      return self.getrho(guards,overlap)
 
+  def getrhoold(self,guards=0,overlap=0):
+      return self.getarray(self.fields.Rhoold,guards,overlap)
+
   def getf(self,guards=0,overlap=0):
       return self.getarray(self.fields.F,guards,overlap)
 
@@ -2617,6 +2657,24 @@ class EM3D(SubcycledPoissonSolver):
       b2 = self.getarray(self.fields.Bx**2+self.fields.By**2+self.fields.Bz**2,guards,overlap)
       return e2+clight**2*b2
 
+  def gatherexg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getexg(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gathereyg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.geteyg(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherezg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getezg(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherbxg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getbxg(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherbyg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getbyg(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherbzg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getbzg(guards,overlap=direction is None),direction=direction,**kw)
+
   def gatherex(self,guards=0,direction=None,**kw):
       return self.gatherarray(self.getex(guards,overlap=direction is None),direction=direction,**kw)
 
@@ -2646,6 +2704,9 @@ class EM3D(SubcycledPoissonSolver):
 
   def gatherrho(self,guards=0,direction=None,**kw):
       return self.gatherarray(self.getrho(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherrhoold(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getrhoold(guards,overlap=direction is None),direction=direction,**kw)
 
   def gatherf(self,guards=0,direction=None,**kw):
       return self.gatherarray(self.getf(guards,overlap=direction is None),direction=direction,**kw)
