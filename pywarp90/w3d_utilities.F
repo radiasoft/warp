@@ -1131,6 +1131,151 @@ c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or 
         return
       end subroutine smooth3d_121
 c===========================================================================
+      subroutine smooth3d_121withbounds(q,nx,ny,nz,npass,alpha,bounds)
+      use GlobalVars
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: q(0:nx,0:ny,0:nz)
+      integer(ISZ):: npass(3)
+      real(kind=8):: alpha(3)
+      integer(ISZ):: bounds(0:5)
+
+c     --- performs a smoothing sequence of n passes of a three points stencil 
+c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z.      
+
+      integer(ISZ):: j1,j2,k1,k2,l1,l2
+      integer(ISZ):: i,j,k,l
+      real(kind=8):: temp0,temp1,a,b
+      real(kind=8):: savex1,savey1,savez1
+
+      j1 = 0
+      j2 = nx
+      k1 = 0
+      k2 = ny
+      l1 = 0
+      l2 = nz
+
+c     ---- Don't smooth Dirichlet boundaries
+      if (bounds(0) == dirichlet) j1 = 1
+      if (bounds(1) == dirichlet) j2 = nx - 1
+      if (bounds(2) == dirichlet) k1 = 1
+      if (bounds(3) == dirichlet) k2 = ny - 1
+      if (bounds(4) == dirichlet) l1 = 1
+      if (bounds(5) == dirichlet) l2 = nz - 1
+
+c     --- x smoothing
+      a = alpha(1)
+      b = (1.-a)/2.
+      do i=1,npass(1)
+        do  l=l1,l2
+          do  k=k1,k2
+            j = 0
+            if (bounds(0) == neumann) then
+              q(j,k,l) = a*q(j,k,l) + b*(q(1,k,l) + q(j+1,k,l))
+            else if (bounds(0) == periodic) then
+              q(j,k,l) = a*q(j,k,l) + b*(q(nx-1,k,l) + q(j+1,k,l))
+            endif
+
+            if (bounds(1) == neumann) then
+              savex1 = q(nx-1,k,l)
+            else if (bounds(1) == periodic) then
+              savex1 = q(1,k,l)
+            endif
+
+            temp0 = q(0,k,l)
+            do  j=1,nx-1
+              temp1 = q(j,k,l)
+              q(j,k,l) = a*q(j,k,l) + b*(temp0 + q(j+1,k,l))
+              temp0 = temp1
+            end do
+
+            j = nx
+            if (bounds(1) == neumann) then
+              q(j,k,l) = a*q(j,k,l) + b*(temp0 + savex1)
+            else if (bounds(1) == periodic) then
+              q(j,k,l) = a*q(j,k,l) + b*(temp0 + savex1)
+            endif
+
+          end do
+        end do
+      end do
+
+c     --- y smoothing
+      a = alpha(2)
+      b = (1.-a)/2.
+      do i=1,npass(2)
+        do  l=l1,l2
+          do  j=j1,j2
+            k = 0
+            if (bounds(2) == neumann) then
+              q(j,k,l) = a*q(j,k,l) + b*(q(j,1,l) + q(j,k+1,l))
+            else if (bounds(2) == periodic) then
+              q(j,k,l) = a*q(j,k,l) + b*(q(j,ny-1,l) + q(j,k+1,l))
+            endif
+
+            if (bounds(3) == neumann) then
+              savey1 = q(j,ny-1,l)
+            else if (bounds(3) == periodic) then
+              savey1 = q(j,1,l)
+            endif
+
+            temp0 = q(j,0,l)
+            do  k=1,ny-1
+              temp1 = q(j,k,l)
+              q(j,k,l) = a*q(j,k,l) + b*(temp0 + q(j,k+1,l))
+              temp0 = temp1
+            end do
+
+            k = ny
+            if (bounds(3) == neumann) then
+              q(j,k,l) = a*q(j,k,l) + b*(temp0 + savey1)
+            else if (bounds(3) == periodic) then
+              q(j,k,l) = a*q(j,k,l) + b*(temp0 + savey1)
+            endif
+
+          end do
+        end do
+      end do
+
+c     --- z smoothing
+      a = alpha(3)
+      b = (1.-a)/2.
+      do i=1,npass(3)
+        do  k=k1,k2
+          do  j=j1,j2
+            l = 0
+            if (bounds(4) == neumann) then
+              q(j,k,l) = a*q(j,k,l) + b*(q(j,k,1) + q(j,k,l+1))
+            else if (bounds(4) == periodic) then
+              q(j,k,l) = a*q(j,k,l) + b*(q(j,k,nz-1) + q(j,k,l+1))
+            endif
+
+            if (bounds(5) == neumann) then
+              savez1 = q(j,k,nz-1)
+            else if (bounds(5) == periodic) then
+              savez1 = q(j,k,1)
+            endif
+
+            temp0 = q(j,k,0)
+            do  l=1,nz-1
+              temp1 = q(j,k,l)
+              q(j,k,l) = a*q(j,k,l) + b*(temp0 + q(j,k,l+1))
+              temp0 = temp1
+            end do
+
+            l = nz
+            if (bounds(5) == neumann) then
+              q(j,k,l) = a*q(j,k,l) + b*(temp0 + savez1)
+            else if (bounds(5) == periodic) then
+              q(j,k,l) = a*q(j,k,l) + b*(temp0 + savez1)
+            endif
+
+          end do
+        end do
+      end do
+
+      return
+      end subroutine smooth3d_121withbounds
+c===========================================================================
       subroutine smooth3d_121_stride(q,nx,ny,nz,npass,alpha,stride)
 c     --- performs a smoothing sequence of n passes of a three points stencil 
 c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z,

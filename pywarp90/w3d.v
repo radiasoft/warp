@@ -1363,6 +1363,9 @@ te_delta_root_test(sc_param:real,delta_1:real,delta_2:real,tol:real)
 smooth3d_121(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
                npass(3):integer,alpha(3):real) subroutine
    # three points linear smoothing
+smooth3d_121withbounds(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
+               npass(3):integer,alpha(3):real,bounds(0:5):integer) subroutine
+   # three points linear smoothing, taking into account boundary conditions
 smooth3d_121_stride(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
                     npass(3):integer,alpha(3):real,stride(3):integer) subroutine
    # three points linear smoothing with stride
