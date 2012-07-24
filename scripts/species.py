@@ -420,7 +420,11 @@ Creates a new species of particles. All arguments are optional.
             density[:,:,0] += density[:,:,-1]; density[:,:,-1]=density[:,:,0]
     density[...] = parallelsum(density)
     if dens is None: return density
-     
+
+  def fetche(self):
+    """Fetches the self E field, putting it into the self.pgroup.ex etc arrays."""
+    fetche3d(self.pgroup,self.ins,self.nps,self.js+1)
+
   def addparticles(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,js=None,**kw):
     if js is None:
       js=self.jslist[0]
