@@ -193,7 +193,7 @@ c=============================================================================
       use Beam_acc
 
 c Sets up species related quantities which were not set by the user, based
-c on the rest of the user's input.    
+c on the rest of the user's input.
 
 
       integer(ISZ):: is
@@ -372,8 +372,8 @@ c  Sets globally derived quantities that need computation.
       integer(ISZ):: is
       real(kind=8):: ke,u
 
-c     Set species data 
-      call species  
+c     Set species data
+      call species
 
 c     Set constants that are derived from one another
 c     --- Magnetic constant = 4*pi*1.e-7
@@ -489,7 +489,7 @@ c     --- Loop over species with the same emittance construction above.
       do is=1,ns
 
 c       --- Set relativistic gamma factor for this species.
-        if (lrelativ) gammabar = 1./sqrt(1.-(vbeam_s(is)/clight)**2) 
+        if (lrelativ) gammabar = 1./sqrt(1.-(vbeam_s(is)/clight)**2)
 
 c       --- (See comment above.)
         if (emit_s(is) .ne. 0.) then
@@ -509,8 +509,8 @@ c     --- Reset relativistic gamma factor for the whole beam. For the
 c     --- non-relativistic case, it has already been set to 1.
       if (lrelativ) gammabar = 1./sqrt(1.-(vbeam/clight)**2)
 
-c     --- compute geometric factor needed for wave speed and (possibly) 
-c     --- ears calculation 
+c     --- compute geometric factor needed for wave speed and (possibly)
+c     --- ears calculation
       if (rwall > 0. .and. gfactor == 0.) then
          gfactor = log(rwall**2/dvnz(a0*b0))
       endif
@@ -544,7 +544,7 @@ c  Sets moments for species 1 in as a function of z.
 c  Interpolation is done to grid centers
 c  Note that lost particles are to the left of the z grid.
 c  Note: "window zero" includes all particles, and no extrapolation is done
-c  Note: zbar and zsqbar calculations are meaningless except for 
+c  Note: zbar and zsqbar calculations are meaningless except for
 c        window zero (WE SHOULD DELETE ?)
 c  Note: Vectorized over moments.
 c        particle moment calculations are vectorized over particles
@@ -796,17 +796,17 @@ c         enddo
           zmmnts0(20,js) = zmmnts0(20,js) + pmmnts(20,ip)
           zmmnts0(21,js) = zmmnts0(21,js) + pmmnts(21,ip)
           zmmnts0(22,js) = zmmnts0(22,js) + pmmnts(22,ip)
-          zmmnts0(23,js) = zmmnts0(23,js) + pmmnts(23,ip) 
-          zmmnts0(24,js) = zmmnts0(24,js) + pmmnts(24,ip) 
-          zmmnts0(25,js) = zmmnts0(25,js) + pmmnts(25,ip) 
-          zmmnts0(26,js) = zmmnts0(26,js) + pmmnts(26,ip) 
-          zmmnts0(27,js) = zmmnts0(27,js) + pmmnts(27,ip) 
-          zmmnts0(28,js) = zmmnts0(28,js) + pmmnts(28,ip) 
-          zmmnts0(29,js) = zmmnts0(29,js) + pmmnts(29,ip) 
-          zmmnts0(30,js) = zmmnts0(30,js) + pmmnts(30,ip) 
-          zmmnts0(31,js) = zmmnts0(31,js) + pmmnts(31,ip) 
-          zmmnts0(32,js) = zmmnts0(32,js) + pmmnts(32,ip) 
-          zmmnts0(33,js) = zmmnts0(33,js) + pmmnts(33,ip) 
+          zmmnts0(23,js) = zmmnts0(23,js) + pmmnts(23,ip)
+          zmmnts0(24,js) = zmmnts0(24,js) + pmmnts(24,ip)
+          zmmnts0(25,js) = zmmnts0(25,js) + pmmnts(25,ip)
+          zmmnts0(26,js) = zmmnts0(26,js) + pmmnts(26,ip)
+          zmmnts0(27,js) = zmmnts0(27,js) + pmmnts(27,ip)
+          zmmnts0(28,js) = zmmnts0(28,js) + pmmnts(28,ip)
+          zmmnts0(29,js) = zmmnts0(29,js) + pmmnts(29,ip)
+          zmmnts0(30,js) = zmmnts0(30,js) + pmmnts(30,ip)
+          zmmnts0(31,js) = zmmnts0(31,js) + pmmnts(31,ip)
+          zmmnts0(32,js) = zmmnts0(32,js) + pmmnts(32,ip)
+          zmmnts0(33,js) = zmmnts0(33,js) + pmmnts(33,ip)
         enddo
 
 #else
@@ -903,7 +903,7 @@ c       --- Now, accumulate moments onto Z grid.
 
 c         --- Extrapolate quantities onto grid points so all particles
 c         ---   contributing to a moment are at same z.
-c         --- dti and dtip1 calculated by assuming constant Vz and 
+c         --- dti and dtip1 calculated by assuming constant Vz and
 c         ---   computing times at which z crosses the two nearest grid points.
 c         --- V extrapolated using current and previous values of V
 c         ---   (this avoids having to use E and B to extrapolate V).
@@ -1387,8 +1387,8 @@ c       --- Global moments first
           xxpbar(0,js)  = zmmnts0(20,js)*pnumi
           yypbar(0,js)  = zmmnts0(21,js)*pnumi
           zvzbar(0,js)  = zmmnts0(22,js)*pnumi
-          xypbar(0,js)  = zmmnts0(23,js)*pnumi 
-          yxpbar(0,js)  = zmmnts0(24,js)*pnumi 
+          xypbar(0,js)  = zmmnts0(23,js)*pnumi
+          yxpbar(0,js)  = zmmnts0(24,js)*pnumi
           xvzbar(0,js)  = zmmnts0(25,js)*pnumi
           yvzbar(0,js)  = zmmnts0(26,js)*pnumi
           vxvzbar(0,js) = zmmnts0(27,js)*pnumi
@@ -1495,7 +1495,7 @@ c         ---  Z kinetic energy in beam frame (classical), using <(vz-vbeam)^2>;
           ekzbeam(js) = 0.5*zmmntsm(js)*zmmntsw(js)*pnum(0,js)*
      &                  (vzsqbar(0,js) - 2.*vzbar(0,js)*vbeam + vbeam**2)
 
-c         ---  Perp kinetic energy 
+c         ---  Perp kinetic energy
           ekperp(js) =  0.5*zmmntsm(js)*zmmntsw(js)*pnum(0,js)*(vxsqbar(0,js)+
      &                  vysqbar(0,js))
 
@@ -1535,8 +1535,8 @@ c       --- Now scale the full Z moments by particle number
               xxpbarz(izm,js)  = zmmnts(izm,20,js)*pnumi
               yypbarz(izm,js)  = zmmnts(izm,21,js)*pnumi
               zvzbarz(izm,js)  = zmmnts(izm,22,js)*pnumi
-              xypbarz(izm,js)  = zmmnts(izm,23,js)*pnumi 
-              yxpbarz(izm,js)  = zmmnts(izm,24,js)*pnumi 
+              xypbarz(izm,js)  = zmmnts(izm,23,js)*pnumi
+              yxpbarz(izm,js)  = zmmnts(izm,24,js)*pnumi
               xvzbarz(izm,js)  = zmmnts(izm,25,js)*pnumi
               yvzbarz(izm,js)  = zmmnts(izm,26,js)*pnumi
               vxvzbarz(izm,js) = zmmnts(izm,27,js)*pnumi
@@ -1733,7 +1733,7 @@ c  Sets moments for species 1 in as a function of z.
 c  Interpolation is done to grid centers
 c  Note that lost particles are to the left of the z grid.
 c  Note: "window zero" includes all particles, and no extrapolation is done
-c  Note: zbar and zsqbar calculations are meaningless except for 
+c  Note: zbar and zsqbar calculations are meaningless except for
 c        window zero (WE SHOULD DELETE ?)
 c  Note: Vectorized over moments.
 c        particle moment calculations are vectorized over particles
@@ -1960,17 +1960,17 @@ c         enddo
           zmmnts0(20,js) = zmmnts0(20,js) + pmmnts(20,ip)
           zmmnts0(21,js) = zmmnts0(21,js) + pmmnts(21,ip)
           zmmnts0(22,js) = zmmnts0(22,js) + pmmnts(22,ip)
-          zmmnts0(23,js) = zmmnts0(23,js) + pmmnts(23,ip) 
-          zmmnts0(24,js) = zmmnts0(24,js) + pmmnts(24,ip) 
-          zmmnts0(25,js) = zmmnts0(25,js) + pmmnts(25,ip) 
-          zmmnts0(26,js) = zmmnts0(26,js) + pmmnts(26,ip) 
-          zmmnts0(27,js) = zmmnts0(27,js) + pmmnts(27,ip) 
-          zmmnts0(28,js) = zmmnts0(28,js) + pmmnts(28,ip) 
-          zmmnts0(29,js) = zmmnts0(29,js) + pmmnts(29,ip) 
-          zmmnts0(30,js) = zmmnts0(30,js) + pmmnts(30,ip) 
-          zmmnts0(31,js) = zmmnts0(31,js) + pmmnts(31,ip) 
-          zmmnts0(32,js) = zmmnts0(32,js) + pmmnts(32,ip) 
-          zmmnts0(33,js) = zmmnts0(33,js) + pmmnts(33,ip) 
+          zmmnts0(23,js) = zmmnts0(23,js) + pmmnts(23,ip)
+          zmmnts0(24,js) = zmmnts0(24,js) + pmmnts(24,ip)
+          zmmnts0(25,js) = zmmnts0(25,js) + pmmnts(25,ip)
+          zmmnts0(26,js) = zmmnts0(26,js) + pmmnts(26,ip)
+          zmmnts0(27,js) = zmmnts0(27,js) + pmmnts(27,ip)
+          zmmnts0(28,js) = zmmnts0(28,js) + pmmnts(28,ip)
+          zmmnts0(29,js) = zmmnts0(29,js) + pmmnts(29,ip)
+          zmmnts0(30,js) = zmmnts0(30,js) + pmmnts(30,ip)
+          zmmnts0(31,js) = zmmnts0(31,js) + pmmnts(31,ip)
+          zmmnts0(32,js) = zmmnts0(32,js) + pmmnts(32,ip)
+          zmmnts0(33,js) = zmmnts0(33,js) + pmmnts(33,ip)
         enddo
 
 #else
@@ -2067,7 +2067,7 @@ c       --- Now, accumulate moments onto Z grid.
 
 c         --- Extrapolate quantities onto grid points so all particles
 c         ---   contributing to a moment are at same z.
-c         --- dti and dtip1 calculated by assuming constant Vz and 
+c         --- dti and dtip1 calculated by assuming constant Vz and
 c         ---   computing times at which z crosses the two nearest grid points.
 c         --- V extrapolated using current and previous values of V
 c         ---   (this avoids having to use E and B to extrapolate V).
@@ -2496,18 +2496,18 @@ c=============================================================================
       use Particles, only: xoldpid, yoldpid, zoldpid, uxoldpid, uyoldpid, uzoldpid, wpid
       use InGen, only: dt
       use Picglb, only: time
-      
+
 c     --- arguments
       integer(ISZ) :: ns, nstations, jslist(ns)
       real(kind=8) :: zmin, zmax, vfrm
       real(kind=8), dimension(nstations) :: pnum,xbar,ybar,xpbar,ypbar,x2,y2,xp2,yp2,xxp,yyp
       type(ParticleGroup):: pgroup
-      
+
 c     --- local variables
       integer(ISZ) :: j,ip,is,iz,izo,ist
       real(kind=8) :: dz,z,zo,ddz,sw,swo,zs,x,y,xo,yo,vx,vy,vz,xp,yp,w,
      &                vxo,vyo,vzo,xpo,ypo
-      
+
       dz = (zmax-zmin)/nstations
       do j=1,ns
         is=jslist(j)+1
@@ -2527,7 +2527,7 @@ c     --- local variables
             zs = zmin+(ist-1)*dz
             sw = (zo-zs)/ddz
           end if
-          if (ist<1 .or. ist>nstations) cycle 
+          if (ist<1 .or. ist>nstations) cycle
           swo = 1.-sw
           x  = pgroup%xp(ip)
           y  = pgroup%yp(ip)
@@ -2585,7 +2585,7 @@ c positions given (in the lab frame) by zzepwin.
 c The extrapolation is approximate. A better version might use the full
 c advance capabilities (from padvnc3d) but that would probably be overkill.
 c --- az calculated from current and previous Vz and dt
-c --- dti calculated by assuming constant az and 
+c --- dti calculated by assuming constant az and
 c ---   computing times at which z crosses lab window
 c --- V extrapolated using current V and estimated A
 c ---   (this avoids having to use E and B to extrapolate V).
@@ -2876,13 +2876,14 @@ c=============================================================================
       use Z_Moments
       use Z_arrays
       use Lab_Moments
- 
+
 c  Sets moments for species 1 in all axial windows in the lab frame
 c  Also saves appropriate moments in time history arrays.
 c  Get info from z moments
 c  The data is only saved every itlabwn steps, even if the moments
 c  are actually calculated more or less often.
 
+      real(kind=8):: w0t,w1t,w0zt,w1zt
       real(kind=8):: w0,w1,w0z,w1z
       integer(ISZ):: i,ilw,iz,izz,js
 
@@ -2897,22 +2898,50 @@ c     --- number of species as the z moments.
       endif
 
       do i = 1, nlabwn
+
         if (zlw(i) > (zbeam+zmmntmin) .and.
      &      zlw(i) < (zbeam+zmmntmax)) then
           if (maxval(ilabwn(i,:)) == ntlabwn) then
             ntlabwn = ntlabwn + max(10,int(ntlabwn/10))
             call gchange("Lab_Moments",0)
           endif
+
           iz = (zlw(i) - zbeam - zmmntmin)*dzmi
-          w0 = (zlw(i) - zbeam - zmmntmin)*dzmi - iz
-          w1 = 1. - w0
+          w0t = (zlw(i) - zbeam - zmmntmin)*dzmi - iz
+          w1t = 1. - w0t
+
           izz = (zlw(i) - zbeam - zzmin)*dzzi
-          w0z = (zlw(i) - zbeam - zzmin)*dzzi - izz
-          w1z = 1. - w0z
+          w0zt = (zlw(i) - zbeam - zzmin)*dzzi - izz
+          w1zt = 1. - w0zt
+
           do js=0,nslabwn
+
             if (zmomentscalculated(js)) then
               ilabwn(i,js) = ilabwn(i,js) + 1
               ilw = ilabwn(i,js)
+
+c             --- In the interpolation, don't include the data where pnumz == 0
+              w0 = w0t
+              w1 = w1t
+              w0z = w0zt
+              w1z = w1zt
+              if (pnumz(iz,js) == 0.) then
+                w0 = 1.
+                w1 = 0.
+              endif
+              if (pnumz(iz+1,js) == 0.) then
+                w0 = 0.
+                w1 = 1.
+              endif
+              if (pnumz(izz,js) == 0.) then
+                w0z = 1.
+                w1z = 0.
+              endif
+              if (pnumz(izz+1,js) == 0.) then
+                w0z = 0.
+                w1z = 1.
+              endif
+
               timelw(ilw,i,js)    = time
               pnumlw(ilw,i,js)    = w1*pnumz(iz,js)    + w0*pnumz(iz+1,js)
               xbarlw(ilw,i,js)    = w1*xbarz(iz,js)    + w0*xbarz(iz+1,js)
@@ -2967,6 +2996,7 @@ c     --- number of species as the z moments.
               vzrmslw(ilw,i,js)   = w1*vzrmsz(iz,js)   + w0*vzrmsz(iz+1,js)
               currlw(ilw,i,js)    = w1z*curr(izz,js)   + w0z*curr(izz+1,js)
               lostparslw(ilw,i,js)=w1z*lostpars(izz,js)+w0z*lostpars(izz+1,js)
+
               if (js < nslabwn) then
 c               --- This special coding is needed since the linecharge
 c               --- is not calculated for each species.
@@ -2976,6 +3006,7 @@ c               --- is not calculated for each species.
               else
                 linechglw(ilw,i,js) = w1z*linechg(izz  ) + w0z*linechg(izz+1)
               endif
+
             endif
           enddo
         endif
@@ -3036,7 +3067,7 @@ c  Fast gamma advance, version 2, fastest, but least accurate
       integer(ISZ):: np
       real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: uxf(np),uyf(np),uzf(np),gammaf(np)
-      
+
       integer(ISZ) :: ip
       real(kind=8):: gammapr,vx,vy,vz,v,vvp_x,vvp_y,vvp_z,vvp,vvvp_x,vvvp_y,vvvp_z,vvvp
       real(kind=8):: vxp,vyp,vzp,vp_par,vp_perp,vpr_par,vpr_perp,gaminvf,const,invclightsq
@@ -3044,7 +3075,7 @@ c  Fast gamma advance, version 2, fastest, but least accurate
       invclightsq = 1./(clight*clight)
       do ip=1,np
         if(gammaf(ip)<1.00000001) cycle
-        
+
 !  --- get velocities
         vxp = uxp(ip)*gaminv(ip)
         vyp = uyp(ip)*gaminv(ip)
@@ -3054,12 +3085,12 @@ c  Fast gamma advance, version 2, fastest, but least accurate
         vx=uxf(ip)*gaminvf
         vy=uyf(ip)*gaminvf
         vz=uzf(ip)*gaminvf
-        const = 1./(1.-(vxp*vx+vyp*vy+vzp*vz)*invclightsq)         
+        const = 1./(1.-(vxp*vx+vyp*vy+vzp*vz)*invclightsq)
 
 !   --- get unit vector v
         v = sqrt(vx*vx+vy*vy+vz*vz)
         vx = vx/v; vy = vy/v; vz = vz/v
-        
+
 !   --- get unit vector v x vp
         vvp_x = vy*vzp-vz*vyp
         vvp_y = vz*vxp-vx*vzp
@@ -3073,7 +3104,7 @@ c  Fast gamma advance, version 2, fastest, but least accurate
         end if
         if(l_vperp) then
           vvp_x = vvp_x/vvp; vvp_y = vvp_y/vvp; vvp_z = vvp_z/vvp
- 
+
 !   --- get vnit vector v x (v x vp)
           vvvp_x = vy*vvp_z-vz*vvp_y
           vvvp_y = vz*vvp_x-vx*vvp_z
@@ -3081,10 +3112,10 @@ c  Fast gamma advance, version 2, fastest, but least accurate
           vvvp = sqrt(vvvp_x*vvvp_x+vvvp_y*vvvp_y+vvvp_z*vvvp_z)
           vvvp_x = vvvp_x/vvvp; vvvp_y = vvvp_y/vvvp; vvvp_z = vvvp_z/vvvp
         end if
-        
+
  ! get particle velocity vp in base {v,v x (v x vp)}, i.e. {v_par,v_perp}
-        vp_par  = vxp*vx + vyp*vy + vzp*vz 
-        if(l_vperp) vp_perp = vxp*vvvp_x + vyp*vvvp_y + vzp*vvvp_z 
+        vp_par  = vxp*vx + vyp*vy + vzp*vz
+        if(l_vperp) vp_perp = vxp*vvvp_x + vyp*vvvp_y + vzp*vvvp_z
         vpr_par = (vp_par-v)*const
         const = const*gaminvf
         if(l_vperp) then
@@ -3108,7 +3139,7 @@ c  Fast gamma advance, version 2, fastest, but least accurate
       integer(ISZ):: np
       real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: uzf,gammaf
-      
+
       integer(ISZ) :: ip
       real(kind=8):: gammapr,vz,v,vvp_x,vvp_y,vvp,vvvp_x,vvvp_y,vvvp
       real(kind=8):: vxp,vyp,vzp,vp_par,vp_perp,vpr_par,vpr_perp,gaminvf,const,invclightsq
@@ -3116,7 +3147,7 @@ c  Fast gamma advance, version 2, fastest, but least accurate
       invclightsq = 1./(clight*clight)
       if(gammaf<1.00000001) return
       do ip=1,np
-        
+
 !  --- get velocities
         vxp = uxp(ip)*gaminv(ip)
         vyp = uyp(ip)*gaminv(ip)
@@ -3124,12 +3155,12 @@ c  Fast gamma advance, version 2, fastest, but least accurate
 
         gaminvf = 1./gammaf
         vz=uzf*gaminvf
-        const = 1./(1.-(vzp*vz)*invclightsq)         
+        const = 1./(1.-(vzp*vz)*invclightsq)
 
 !   --- get unit vector v
         v = sqrt(vz*vz)
         vz = vz/v
-        
+
 !   --- get unit vector v x vp
         vvp_x = -vz*vyp
         vvp_y = vz*vxp
@@ -3142,7 +3173,7 @@ c  Fast gamma advance, version 2, fastest, but least accurate
         end if
         if(l_vperp) then
           vvp_x = vvp_x/vvp; vvp_y = vvp_y/vvp
- 
+
 !   --- get vnit vector v x (v x vp)
           vvvp_x = -vz*vvp_y
           vvvp_y = vz*vvp_x
@@ -3152,10 +3183,10 @@ c  Fast gamma advance, version 2, fastest, but least accurate
           vvvp_x = 0.
           vvvp_y = 0.
         end if
-        
+
  ! get particle velocity vp in base {v,v x (v x vp)}, i.e. {v_par,v_perp}
-        vp_par  = vzp*vz 
-        if(l_vperp) vp_perp = vxp*vvvp_x + vyp*vvvp_y 
+        vp_par  = vzp*vz
+        if(l_vperp) vp_perp = vxp*vvvp_x + vyp*vvvp_y
         vpr_par = (vp_par-v)*const
         const = const*gaminvf
         if(l_vperp) then
@@ -3789,7 +3820,7 @@ c Impose particles boundary conditions
         call partbndwithdata(n,x,ux,gaminv,xmmax,xmmin,0.,pboundxy,pboundxy)
         call partbndwithdata(n,y,uy,gaminv,ymmax,ymmin,0.,pboundxy,pboundxy)
       endif
-      
+
       call partbndwithdata(n,z,uz,gaminv,zmmax,zmmin,zgrid,pbound0,pboundnz)
 
       return
@@ -3871,11 +3902,11 @@ c=============================================================================
       use InPart
       use SemiTransparentDisc
       type(ParticleGroup):: pgroup
-      real(kind=8), intent(in) :: dz 
+      real(kind=8), intent(in) :: dz
 
 c Random absorption of particles passing through a semitranparent disc.
 c This assumes that no particle travels more than dz in one time step.
-c dz is used only for efficiency purpose: only particles within dz 
+c dz is used only for efficiency purpose: only particles within dz
 c of semi-transparent disc location are checked for disc crossing.
 
       integer(ISZ) :: is, ip, izd, idisc
@@ -3926,7 +3957,7 @@ c                  --- coefficient
           end do
         end do
       end do
-      
+
       end
 c=============================================================================
 c=============================================================================
@@ -4523,7 +4554,7 @@ c     --- Depending on the value of lusespaceabove, particles are first added
 c     --- to either the memory above or below the existing particles. If
 c     --- there is not enough space there, split the new particles, adding
 c     --- some to the other side as well. If there still isn't enough space,
-c     --- call chckpart and increase the size of the arrays.  
+c     --- call chckpart and increase the size of the arrays.
 c     --- This should hopefully minimize the movement of particle data,
 c     --- only shifting the data when absolutely necessary.
 
@@ -4875,7 +4906,7 @@ c the routine which clears out the lost particles is called.
       real(kind=8):: usq
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
-      
+
 c     --- Make sure that 'is' is within the correct range
       if (is < 1 .or. is > pgroup%ns) then
         print*,"processlostpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
@@ -5068,7 +5099,7 @@ c=============================================================================
       integer(ISZ):: ip,ipb,ipid
       integer(ISZ),pointer:: ipblock(:)
       real(kind=8),pointer:: pdata(:)
-      
+
       allocate(ipblock(nn))
 
       npblock = 0
@@ -5516,7 +5547,7 @@ c=============================================================================
       use ParticleGroupmodule
       use Particles, Only: chdtspid
       type(ParticleGroup):: pgroup
-      
+
       integer(ISZ):: ins_init(pgroup%ns),nps_init(pgroup%ns),is,ip,idest,ip0,idest0
       integer(ISZ):: ins_save(pgroup%ns),nps_save(pgroup%ns)
       real(kind=8):: pidtemp(pgroup%npid)
@@ -5642,21 +5673,21 @@ c       --- Move any particles that are left over
           pgroup%xp(idest0:idest) = pgroup%xp(ip0:ip)
           pgroup%yp(idest0:idest) = pgroup%yp(ip0:ip)
           pgroup%zp(idest0:idest) = pgroup%zp(ip0:ip)
-  
+
           pgroup%uxp(idest0:idest) = pgroup%uxp(ip0:ip)
           pgroup%uyp(idest0:idest) = pgroup%uyp(ip0:ip)
           pgroup%uzp(idest0:idest) = pgroup%uzp(ip0:ip)
-  
+
           pgroup%gaminv(idest0:idest) = pgroup%gaminv(ip0:ip)
-  
+
           pgroup%ex(idest0:idest) = pgroup%ex(ip0:ip)
           pgroup%ey(idest0:idest) = pgroup%ey(ip0:ip)
           pgroup%ez(idest0:idest) = pgroup%ez(ip0:ip)
-  
+
           pgroup%bx(idest0:idest) = pgroup%bx(ip0:ip)
           pgroup%by(idest0:idest) = pgroup%by(ip0:ip)
           pgroup%bz(idest0:idest) = pgroup%bz(ip0:ip)
-  
+
           pgroup%pid(idest0:idest,:) = pgroup%pid(ip0:ip,:)
           pgroup%pid(ip0:ip,:) = 0.
         endif
@@ -6274,7 +6305,7 @@ c  xs must be initialized before use (usually to 0)
 c  and preserved between calls.
 c  value is given by bit-reversed counter -compare sorter in cpft.
 c  xs=.000,.100,.010,.110,.001,.101,.011,.111,.0001.. (binary fractions)
-c  is the value of r2rev on the NEXT call. 
+c  is the value of r2rev on the NEXT call.
       real(kind=8):: xsi
       r2rev = xs
       xsi = 1.
@@ -6455,7 +6486,7 @@ c=============================================================================
       real(kind=8) function rm()
 
 c  Crude approximation to a Gaussian with mean 0, standard deviation 1
-c  Advantage is, it cuts off smoothly at 3 root 2. 
+c  Advantage is, it cuts off smoothly at 3 root 2.
 c  A similar one (used in some older AF codes) adds 12 variates, subtracts 6.
 
       real(kind=8):: wranf
@@ -6860,7 +6891,7 @@ c         --- compute location in arrays
 
           if(lw) wpp = wp(ip)
           wt=wpp
-          
+
 c         --- deposit data in arrays
           pnumt  (ixt,iyt,izt) = pnumt  (ixt,iyt,izt) + 1.
           pnumtw (ixt,iyt,izt) = pnumtw (ixt,iyt,izt) + wt
@@ -6992,7 +7023,7 @@ c           --- Compute linear correlations
               xvar  = xsqbart (ixt,iyt,izt) - xbart (ixt,iyt,izt)**2
               yvar  = ysqbart (ixt,iyt,izt) - ybart (ixt,iyt,izt)**2
               zvar  = zsqbart (ixt,iyt,izt) - zbart (ixt,iyt,izt)**2
-  
+
               xvxslope = 0.
               yvxslope = 0.
               zvxslope = 0.
@@ -7087,7 +7118,7 @@ c           --- Compute linear correlations
                  end if
                 end if
                 ! --- remove correlations on vx, vy and vz
-                vxvar = vxvar - xvxslope**2*xvar - yvxslope**2*yvar - zvxslope**2*zvar 
+                vxvar = vxvar - xvxslope**2*xvar - yvxslope**2*yvar - zvxslope**2*zvar
      &                        - 2*xvzslope*yvxslope*xybar
      &                        - 2*xvzslope*zvxslope*xzbar
      &                        - 2*yvzslope*zvxslope*yzbar
@@ -7102,7 +7133,7 @@ c           --- Compute linear correlations
                 vxvar = abs(vxvar)
                 vyvar = abs(vyvar)
                 vzvar = abs(vzvar)
-                kevar = kevar - xkeslope**2*xvar - ykeslope**2*yvar - zkeslope**2*zvar 
+                kevar = kevar - xkeslope**2*xvar - ykeslope**2*yvar - zkeslope**2*zvar
      &                        - 2*xkeslope*ykeslope*xybar
      &                        - 2*xkeslope*zkeslope*xzbar
      &                        - 2*ykeslope*zkeslope*yzbar
