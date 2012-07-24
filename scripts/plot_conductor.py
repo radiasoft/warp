@@ -252,7 +252,7 @@ by the conductor number.
   if ne > 0:
     iexs = evensubgrid.indx[ix,:ne]
     ieys = evensubgrid.indx[iy,:ne]
-    iezs = evensubgrid.indx[iz,:ne] 
+    iezs = evensubgrid.indx[iz,:ne]
     ecdelmx = abs(evensubgrid.dels[2*ix  ,:ne])
     ecdelpx = abs(evensubgrid.dels[2*ix+1,:ne])
     ecdelmy = abs(evensubgrid.dels[2*iy  ,:ne])
@@ -278,7 +278,7 @@ by the conductor number.
   if no > 0:
     ioxs = oddsubgrid.indx[ix,:no]
     ioys = oddsubgrid.indx[iy,:no]
-    iozs = oddsubgrid.indx[iz,:no] 
+    iozs = oddsubgrid.indx[iz,:no]
     ocdelmx = abs(oddsubgrid.dels[2*ix  ,:no])
     ocdelpx = abs(oddsubgrid.dels[2*ix+1,:no])
     ocdelmy = abs(oddsubgrid.dels[2*iy  ,:no])
@@ -511,7 +511,7 @@ by the conductor number.
   if ne > 0:
     iexs = getattr(f3dcond,'iecnd'+xx)[:ne]
     ieys = getattr(f3dcond,'iecnd'+yy)[:ne]
-    iezs = getattr(f3dcond,'iecnd'+zz)[:ne] 
+    iezs = getattr(f3dcond,'iecnd'+zz)[:ne]
     ecdelmx = getattr(f3dcond,'ecdelm'+xx)[:ne]
     ecdelpx = getattr(f3dcond,'ecdelp'+xx)[:ne]
     ecdelmy = getattr(f3dcond,'ecdelm'+yy)[:ne]
@@ -541,7 +541,7 @@ by the conductor number.
   if no > 0:
     ioxs = getattr(f3dcond,'iocnd'+xx)[:no]
     ioys = getattr(f3dcond,'iocnd'+yy)[:no]
-    iozs = getattr(f3dcond,'iocnd'+zz)[:no] 
+    iozs = getattr(f3dcond,'iocnd'+zz)[:no]
     ocdelmx = getattr(f3dcond,'ocdelm'+xx)[:no]
     ocdelpx = getattr(f3dcond,'ocdelp'+xx)[:no]
     ocdelmy = getattr(f3dcond,'ocdelm'+yy)[:no]
@@ -875,7 +875,11 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  if iz is None: iz = nint(-solver.zmmin/solver.dz)
+  if iz is None:
+    if solver.dz != 0.:
+      iz = nint(-solver.zmmin/solver.dz)
+    else:
+      iz = 0
   if w3d.solvergeom<>w3d.XYgeom:
     if iz < 0 or solver.nz < iz: return
   if scale:
@@ -1013,7 +1017,11 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  if iy is None: iy = nint(-solver.ymmin/solver.dy)
+  if iy is None:
+    if solver.dy != 0.:
+      iy = nint(-solver.ymmin/solver.dy)
+    else:
+      iy = 0
   if iy < 0 or solver.ny < iy: return
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -1138,7 +1146,11 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  if ix is None: ix = nint(-solver.xmmin/solver.dx)
+  if ix is None:
+    if solver.dx != 0.:
+      ix = nint(-solver.xmmin/solver.dx)
+    else:
+      ix = 0
   if ix < 0 or solver.nx < ix: return
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -1369,7 +1381,11 @@ in Z-X plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  if not iy: iy = nint(-solver.ymmin/solver.dy)
+  if not iy:
+    if solver.dy != 0.:
+      iy = nint(-solver.ymmin/solver.dy)
+    else:
+      iy = 0
   if iy < 0 or solver.ny < iy: return
   if scale:
     dx = solver.dx*signx
@@ -1441,7 +1457,11 @@ in Z-Y plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  if not ix: ix = nint(-solver.xmmin/solver.dx)
+  if not ix:
+    if solver.dx != 0.:
+      ix = nint(-solver.xmmin/solver.dx)
+    else:
+      ix = 0
   if ix < 0 or solver.nx < ix: return
   if scale:
     dy = solver.dy*signy
@@ -1572,7 +1592,11 @@ def plotcondn(yy,xx,zz,iz,ymmin,xmmin,dy,dx,mglevel,signy,signx,conductors,
 def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
           scale=1,signz=1,signx=1,subgridlen=1.,fullplane=1,mglevel=0,
           inverted=1,conductors=f3d.conductors,solver=w3d,local=0):
-  if iy is None: iy = nint(-solver.ymmin/solver.dy)
+  if iy is None:
+    if solver.dy != 0.:
+      iy = nint(-solver.ymmin/solver.dy)
+    else:
+      iy = 0
   if iy < 0 or solver.ny < iy: return
   if colors is None: colors = color
   if scale:
@@ -1662,7 +1686,11 @@ def pfzxlab(zz=None,iy=None,condcolor='fg',conductors=f3d.conductors,
   - condcolor='fg' color of conductor points inside conductors
   """
   if not zz: zz=top.zbeam
-  if iy is None: iy = nint(-solver.ymmin/solver.dy)
+  if iy is None:
+    if solver.dy != 0.:
+      iy = nint(-solver.ymmin/solver.dy)
+    else:
+      iy = 0
   # --- if zz is not equal to zbeam, then calculate conductors for new location
   if (zz != top.zbeam):
     z = top.zbeam
@@ -1688,7 +1716,7 @@ def pfzxlab(zz=None,iy=None,condcolor='fg',conductors=f3d.conductors,
     xl=take(conductors.interior.indx[0,:],ii)*solver.dx+solver.xmmin
     zl=take(conductors.interior.indx[2,:],ii)*solver.dz+solver.zmmin+zz
     # --- convert to lab frame
-    tolabfrm(zz,len(xl),xl,zl)   
+    tolabfrm(zz,len(xl),xl,zl)
     # --- make plot
     plp(xl,zl,color=condcolor)
   # --- restore original conductor data at zbeam
@@ -2320,7 +2348,7 @@ grid that data is to be used for.
     condvoltnew = condvoltnew + list(take(condvolt,ii))
     icondlxynew = icondlxynew + list(llxy[j]*ones(len(ii),'l'))
     icondlznew = icondlznew + list(llz[j]*ones(len(ii),'l'))
-  
+
     ii = compress(logical_and(iecndlxy >= llxy[j],iecndlz >= llz[j]), \
                   arange(necndbdy))
     icndxnew = icndxnew + list(take(iecndx/llxy[j],ii))
@@ -2341,7 +2369,7 @@ grid that data is to be used for.
     cvoltpznew = cvoltpznew + list(take(ecvoltpz,ii))
     icndlxynew = icndlxynew + list(llxy[j]*ones(len(ii),'l'))
     icndlznew = icndlznew + list(llz[j]*ones(len(ii),'l'))
-  
+
     ii = compress(logical_and(iocndlxy >= llxy[j],iocndlz >= llz[j]), \
                   arange(nocndbdy))
     icndxnew = icndxnew + list(take(iocndx/llxy[j],ii))
@@ -2377,7 +2405,7 @@ grid that data is to be used for.
   f3d.ncond = len(ixcondnew)
   f3d.necndbdy = len(ee)
   f3d.nocndbdy = len(oo)
-  
+
   # --- Copy converted data into WARP arrays.
   f3d.ixcond[:f3d.ncond] = ixcondnew
   f3d.iycond[:f3d.ncond] = iycondnew
@@ -2780,7 +2808,7 @@ the srfrvout routine. Note that the option lz_in_plate is now ignored.
   if iz is None: iz = 0
   if lz_in_plate is None: lz_in_plate = false
   if fuzz is None: fuzz = 1.e-5*w3d.dz
-  
+
   f3d.lsrlinr = true
   f3d.npnts_sr = 2
   gchange("Surface_of_Rev")
@@ -3146,7 +3174,7 @@ Returns the scene use to draw the image
   gridnn = array([nint(solver.nx/conductors.levellx[mglevel]),
                   nint(solver.ny/conductors.levelly[mglevel]),
                   nint(solver.nz/conductors.levellz[mglevel])])
-    
+
   # --- This fortran routine generates the triangulated surface. It was
   # --- converted to fortran for speed.
   f3d.ntriangles = 0
