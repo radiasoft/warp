@@ -6003,6 +6003,10 @@ Or give the quadrupole id to use...
     for d in dels:
       if locals()[d] is None: exec('%s = top.qdel%s[elemid]'%(d,d))
 
+  if condid == 'next':
+    condid = Assembly.nextcondid
+    Assembly.nextcondid += 1
+
   if splitrodids:
     xidsign = +1
     yidsign = -1
