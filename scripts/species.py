@@ -3,7 +3,7 @@ This module contains the definition of the Species class which is used to
 define the species of the simulation particles.  It also defines the particle
 types that are passed into Species. These include all of the atomic elements
 (Hydrogen, etc.) and the following, Electron, Positron, Proton, Neutron,
-Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water 
+Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
 
@@ -25,7 +25,7 @@ class Particle(object):
     if charge is not None:
       self.charge=charge
       self.Q=self.charge
-    
+
 class Atom(Particle):
   def __init__(self,Symbol,A,Z,Group,Period,name=None):
     Particle.__init__(self,mass=A*amu,Symbol=Symbol,name=name)
@@ -243,7 +243,7 @@ Creates a new species of particles. All arguments are optional.
     self.color = color
     self.marker = marker
     self.msize = msize
-        
+
   def __setstate__(self,dict):
     self.__dict__.update(dict)
     import species
@@ -255,7 +255,7 @@ Creates a new species of particles. All arguments are optional.
     except (KeyError,AttributeError):
       pass
 
-  def add_group(self,js=None,charge=None,mass=None,charge_state=None,weight=None):   
+  def add_group(self,js=None,charge=None,mass=None,charge_state=None,weight=None):
     if js is None:
       # --- If there are no species defined or if ns is 1 (the default) and
       # --- the first species has already been setup, then a new species needs
@@ -289,7 +289,7 @@ Creates a new species of particles. All arguments are optional.
     try:
       self.pgroup.sm[js]=type.mass
     except:
-      try: 
+      try:
         self.pgroup.sm[js]=type.A*amu
       except:
         self.pgroup.sm[js]=mass
@@ -301,7 +301,7 @@ Creates a new species of particles. All arguments are optional.
       top.nion_s[js]=type.Z
     except:
       pass
-     
+
   def get_density(self,xmin=None,xmax=None,nx=None,ymin=None,ymax=None,ny=None,zmin=None,zmax=None,
                   nz=None,lost=0,charge=0,dens=None,l_minmax_grid=true,l_dividebyvolume=1,l4symtry=None,l2symtry=None):
     if l_minmax_grid:
@@ -370,7 +370,7 @@ Creates a new species of particles. All arguments are optional.
           w=self.pgroup.sw[js]*ones(np,'d')
         else:
           w=self.pgroup.sw[js]*getpid(js=js,id=top.wpid-1,gather=0)
-        if charge:w*=self.pgroup.sq[js]   
+        if charge:w*=self.pgroup.sq[js]
         if w3d.solvergeom is w3d.XYgeom:
           deposgrid2d(1,np,x,y,w,nx,ny,density,densityc,xmin,xmax,ymin,ymax)
         else:
@@ -425,12 +425,36 @@ Creates a new species of particles. All arguments are optional.
     """Fetches the self E field, putting it into the self.pgroup.ex etc arrays."""
     fetche3d(self.pgroup,self.ins,self.nps,self.js+1)
 
+  def getappliedfields(self):
+    dtl = -0.5*top.dt
+    dtr = +0.5*top.dt
+    bendres = ones(self.nps,'d')
+    bendradi = ones(self.nps,'d')
+    gammabar = 1.
+  # --- getbend not available in Python yet
+  # getbend(self.nps,self.nps,
+  #         self.zp,self.uzp,self.gaminv,
+  #         bendres,bendradi,dtl,dtr,false)
+
+    othere3d(self.nps,self.xp,self.yp,self.zp,
+             top.zbeam,top.zimax,top.zimin,top.straight,top.ifeears,top.eears,
+             top.eearsofz,top.dzzi,top.nzzarr,top.zzmin,
+             top.dedr,top.dexdx,top.deydy,top.dbdr,top.dbxdy,top.dbydx,
+             self.ex,self.ey,self.ez,
+             self.bx,self.by,self.bz)
+
+    exteb3d(self.nps,self.xp,self.yp,self.zp,
+            self.uzp,self.gaminv,dtl,dtr,
+            self.bx,self.by,self.bz,
+            self.ex,self.ey,self.ez,
+            self.sm,self.sq,bendres,bendradi,gammabar,top.dt)
+
   def addparticles(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,js=None,**kw):
     if js is None:
       js=self.jslist[0]
     return addparticles(x,y,z,vx,vy,vz,gi=gi,js=js,**kw)
   addpart = addparticles
-      
+
   def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,
                       vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,
                       lmomentum=0,spacing='random',nx=None,ny=None,nz=None,
@@ -614,7 +638,7 @@ Creates a new species of particles. All arguments are optional.
     kw['lallindomain'] = lallindomain
     kw['lmomentum'] = lmomentum
     return self.addparticles(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
-    
+
   def add_uniform_cylinder(self,np,rmax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,
                            xmean=0.,ymean=0,zmean=0,vxmean=0.,vymean=0.,vzmean=0.,
                            theta=0.,phi=0.,vrmax=0.,vtheta=0.,
@@ -636,7 +660,7 @@ in radius squared.
  - vthx, vthy, vthz: thermal velocity, defaults to 0.
  - xmean,ymean,zmean: center of the cylinder, defaults to 0.
  - vxmean,vymean,vzmean: directed velocity, defaults to 0.
- - theta,phi: angle of cylinder about the center, 
+ - theta,phi: angle of cylinder about the center,
               The transformation to lab frame is a rotation about the x axis by phi,
               followed by a rotation about the new y axis by theta.
               Note that the position mins and maxs and the velocity averages and means
@@ -905,7 +929,7 @@ in radius squared.
     kw['lallindomain'] = lallindomain
     kw['lmomentum'] = lmomentum
     return self.addparticles(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
-    
+
   def add_gaussian_dist(self,np,deltax,deltay,deltaz,vthx=0.,vthy=0.,vthz=0.,
                         xmean=0.,ymean=0.,zmean=0.,vxmean=0.,vymean=0.,vzmean=0.,
                         zdist='random',nz=1000,fourfold=0,js=None,lmomentum=0,**kw):
@@ -954,7 +978,7 @@ Note that the lreturndata option doesn't work.
           else:
             gi=1.
           self.addparticles(xa,ya,za,vxa,vya,vza,gi=gi,js=js,**kw)
-    if zdist=='regular': 
+    if zdist=='regular':
       dz=16.*deltaz/nz
       zmin=-(float(nz/2)-0.5)*dz
       for i in xrange(nz):
@@ -990,7 +1014,7 @@ Note that the lreturndata option doesn't work.
               else:
                 gi=1.
               self.addparticles(xa,ya,za,vxa,vya,vza,gi=gi,js=js,**kw)
-    
+
   def gather_zmmnts_locs(self):
     get_zmmnts_stations(len(self.jslist),
                               array(self.jslist),
@@ -1011,7 +1035,7 @@ Note that the lreturndata option doesn't work.
                               self.zmmnts_locs_xxp,
                               self.zmmnts_locs_yyp)
     self.zmmnts_gathered=false
-    
+
   def gatherall_zmmnts_locs(self):
     self.zmmnts_locs_pnum = parallelsum(self.zmmnts_locs_pnum)
     self.zmmnts_locs_xbar = parallelsum(self.zmmnts_locs_xbar)
@@ -1064,7 +1088,7 @@ Note that the lreturndata option doesn't work.
     if top.uzoldpid == 0: top.uzoldpid = nextpid()
     self.zmmnts_locs_gathered=true
     installafterstep(self.gather_zmmnts_locs)
-   
+
   def set_zmmnts(self):
     self.zmmnts_pnum = AppendableArray(typecode='d')
     self.zmmnts_xbar = AppendableArray(typecode='d')
@@ -1087,7 +1111,7 @@ Note that the lreturndata option doesn't work.
     self.zmmnts_yypn = AppendableArray(typecode='d')
     self.zmmnts_gathered = true
     installafterstep(self.gather_zmmnts)
-   
+
   def gather_zmmnts(self):
     print 'gather_zmmnts'
     self.zmmnts_pnum.append(self.getn(gather=0))
@@ -1125,7 +1149,7 @@ Note that the lreturndata option doesn't work.
         np = iu-il
         x = pg.xp[il:iu]
         y = pg.yp[il:iu]
-        z = pg.zp[il:iu]        
+        z = pg.zp[il:iu]
         xpa[:np] = pg.uxp[il:iu]/pg.uzp[il:iu]
         ypa[:np] = pg.uyp[il:iu]/pg.uzp[il:iu]
         gaminv =  pg.gaminv[il:iu]
@@ -1137,24 +1161,24 @@ Note that the lreturndata option doesn't work.
         xpn=xpna[:np]
         ypn=ypna[:np]
         beta=betaa[:np]
-        xbar+=sum(x)      
-        ybar+=sum(y)      
-        zbar+=sum(z)      
-        xpbar+=sum(xp)      
-        ypbar+=sum(yp)      
-        xpnbar+=sum(xpn)      
-        ypnbar+=sum(ypn)      
-        x2+=sum(x*x)      
-        y2+=sum(y*y)      
-        z2+=sum(z*z)      
-        xp2+=sum(xp*xp)      
-        yp2+=sum(yp*yp)      
-        xpn2+=sum(xpn*xpn)      
-        ypn2+=sum(ypn*ypn)      
-        xxpbar+=sum(x*xp)      
-        yypbar+=sum(y*yp)        
-        xxpnbar+=sum(x*xpn)      
-        yypnbar+=sum(y*ypn)      
+        xbar+=sum(x)
+        ybar+=sum(y)
+        zbar+=sum(z)
+        xpbar+=sum(xp)
+        ypbar+=sum(yp)
+        xpnbar+=sum(xpn)
+        ypnbar+=sum(ypn)
+        x2+=sum(x*x)
+        y2+=sum(y*y)
+        z2+=sum(z*z)
+        xp2+=sum(xp*xp)
+        yp2+=sum(yp*yp)
+        xpn2+=sum(xpn*xpn)
+        ypn2+=sum(ypn*ypn)
+        xxpbar+=sum(x*xp)
+        yypbar+=sum(y*yp)
+        xxpnbar+=sum(x*xpn)
+        yypnbar+=sum(y*ypn)
     self.zmmnts_xbar.append(xbar)
     self.zmmnts_ybar.append(ybar)
     self.zmmnts_zbar.append(zbar)
@@ -1175,7 +1199,7 @@ Note that the lreturndata option doesn't work.
     self.zmmnts_yypn.append(yypnbar)
     self.zmmnts_gathered=false
     print 'gather_zmmnts_done'
-    
+
   def gatherall_zmmnts(self):
     self.zmmnts_pnum.data()[...] = parallelsum(self.zmmnts_pnum.data())
     self.zmmnts_xbar.data()[...] = parallelsum(self.zmmnts_xbar.data())
@@ -1214,93 +1238,93 @@ Note that the lreturndata option doesn't work.
       self.zmmnts_yypn.data()[...]=0.
     self.zmmnts_gathered=true
 
-  def getzmmnts_pnum(self): 
+  def getzmmnts_pnum(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me == 0:
       return self.zmmnts_pnum.data()
     else:
       return None
-      
-  def getzmmnts_xrms(self): 
+
+  def getzmmnts_xrms(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return sqrt(self.zmmnts_x2.data()/pnum)
     else:
       return None
-      
-  def getzmmnts_yrms(self): 
+
+  def getzmmnts_yrms(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return sqrt(self.zmmnts_y2.data()/pnum)
     else:
       return None
-      
-  def getzmmnts_xprms(self): 
+
+  def getzmmnts_xprms(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return sqrt(self.zmmnts_xp2.data()/pnum)
     else:
       return None
-      
-  def getzmmnts_yprms(self): 
+
+  def getzmmnts_yprms(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return sqrt(self.zmmnts_yp2.data()/pnum)
     else:
       return None
-      
-  def getzmmnts_xbar(self): 
+
+  def getzmmnts_xbar(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_xbar.data()/pnum
     else:
       return None
-      
-  def getzmmnts_ybar(self): 
+
+  def getzmmnts_ybar(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_ybar.data()/pnum
     else:
       return None
-      
-  def getzmmnts_xpbar(self): 
+
+  def getzmmnts_xpbar(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_xpbar.data()/pnum
     else:
       return None
-      
-  def getzmmnts_ypbar(self): 
+
+  def getzmmnts_ypbar(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_ypbar.data()/pnum
     else:
       return None
-      
-  def getzmmnts_xxpbar(self): 
+
+  def getzmmnts_xxpbar(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_xxp.data()/pnum
     else:
       return None
-      
-  def getzmmnts_yypbar(self): 
+
+  def getzmmnts_yypbar(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
       return self.zmmnts_yyp.data()/pnum
     else:
       return None
-      
+
   def getzmmnts_emitxrms(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me > 0: return None
@@ -1322,7 +1346,7 @@ Note that the lreturndata option doesn't work.
     y2  = self.zmmnts_y2.data()/pnum
     yp2 = self.zmmnts_yp2.data()/pnum
     return sqrt((y2-ybar*ybar)*(yp2-ypbar*ypbar)-(yyp-ybar*ypbar)**2)
-      
+
   def getzmmnts_emitxnrms(self):
     if not self.zmmnts_gathered:self.gatherall_zmmnts()
     if me > 0: return None
@@ -1350,129 +1374,129 @@ Note that the lreturndata option doesn't work.
       zst = self.zmmnts_locs
       pla(yscale*x,xscale*(zst-xoffset),color=color,width=width)
 
-  def plzmmnts_xbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+  def plzmmnts_xbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_xbar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_ybar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_ybar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_ybar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_xrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_xrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_xrms(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_yrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_yrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_yrms(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_xprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_xprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_xprms(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_yprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_yprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_yprms(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_xpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_xpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_xpbar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_ypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_ypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_ypbar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_xxpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_xxpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_xxpbar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_yypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_yypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_yypbar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_emitx(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_emitx(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_emitxrms(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_emity(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_emity(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_data(self.getzmmnts_emityrms(),color,width,type,xscale,yscale,xoffset)
-    
-  def getzmmnts_locs_pnum(self): 
+
+  def getzmmnts_locs_pnum(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me == 0:
       return self.zmmnts_locs_pnum
     else:
       return None
-      
-  def getzmmnts_locs_xrms(self): 
+
+  def getzmmnts_locs_xrms(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return sqrt(self.zmmnts_locs_x2/pnum)
     else:
       return None
-      
-  def getzmmnts_locs_yrms(self): 
+
+  def getzmmnts_locs_yrms(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return sqrt(self.zmmnts_locs_y2/pnum)
     else:
       return None
-      
-  def getzmmnts_locs_xprms(self): 
+
+  def getzmmnts_locs_xprms(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return sqrt(self.zmmnts_locs_xp2/pnum)
     else:
       return None
-      
-  def getzmmnts_locs_yprms(self): 
+
+  def getzmmnts_locs_yprms(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return sqrt(self.zmmnts_locs_yp2/pnum)
     else:
       return None
-      
-  def getzmmnts_locs_xbar(self): 
+
+  def getzmmnts_locs_xbar(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_xbar/pnum
     else:
       return None
-      
-  def getzmmnts_locs_ybar(self): 
+
+  def getzmmnts_locs_ybar(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_ybar/pnum
     else:
       return None
-      
-  def getzmmnts_locs_xpbar(self): 
+
+  def getzmmnts_locs_xpbar(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_xpbar/pnum
     else:
       return None
-      
-  def getzmmnts_locs_ypbar(self): 
+
+  def getzmmnts_locs_ypbar(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_ypbar/pnum
     else:
       return None
-      
-  def getzmmnts_locs_xxpbar(self): 
+
+  def getzmmnts_locs_xxpbar(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_xxp/pnum
     else:
       return None
-      
-  def getzmmnts_locs_yypbar(self): 
+
+  def getzmmnts_locs_yypbar(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me == 0:
       pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
       return self.zmmnts_locs_yyp/pnum
     else:
       return None
-      
+
   def getzmmnts_locs_emitxrms(self):
     if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
     if me > 0: return None
@@ -1500,42 +1524,42 @@ Note that the lreturndata option doesn't work.
       zst = self.zmmnts_locs
       pla(yscale*x,xscale*(zst-xoffset),color=color,width=width)
 
-  def plzmmnts_locs_xbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+  def plzmmnts_locs_xbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_xbar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_locs_ybar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_locs_ybar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_ybar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_locs_xrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_locs_xrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_xrms(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_locs_yrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_locs_yrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_yrms(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_locs_xprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_locs_xprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_xprms(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_locs_yprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_locs_yprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_yprms(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_locs_xpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_locs_xpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_xpbar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_locs_ypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_locs_ypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_ypbar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_locs_xxpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_locs_xxpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_xxpbar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_locs_yypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_locs_yypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_yypbar(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_locs_emitx(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_locs_emitx(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_emitxrms(),color,width,type,xscale,yscale,xoffset)
-    
-  def plzmmnts_locs_emity(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+
+  def plzmmnts_locs_emity(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
     self.plzmmnts_locs_data(self.getzmmnts_locs_emityrms(),color,width,type,xscale,yscale,xoffset)
-    
+
   def selectparticles(self,**kw):
     # --- This adjusts the indices returned by selectparticles so that they
     # --- are relative to start of the species. The ii returned can then be
@@ -1552,19 +1576,19 @@ Note that the lreturndata option doesn't work.
   def getn(self,**kw):
     """Calls :py:func:`~particles.getn` for this species."""
     return getn(jslist=self.jslist,**kw)
-    
+
   def getx(self,**kw):
     """Calls :py:func:`~particles.getx` for this species."""
     return getx(jslist=self.jslist,**kw)
-    
+
   def gety(self,**kw):
     """Calls :py:func:`~particles.gety` for this species."""
     return gety(jslist=self.jslist,**kw)
-    
+
   def getz(self,**kw):
     """Calls :py:func:`~particles.getz` for this species."""
     return getz(jslist=self.jslist,**kw)
-    
+
   def getr(self,**kw):
     """Calls :py:func:`~particles.getr` for this species."""
     return getr(jslist=self.jslist,**kw)
@@ -1576,79 +1600,79 @@ Note that the lreturndata option doesn't work.
   def getvx(self,**kw):
     """Calls :py:func:`~particles.getvx` for this species."""
     return getvx(jslist=self.jslist,**kw)
-    
+
   def getvy(self,**kw):
     """Calls :py:func:`~particles.getvy` for this species."""
     return getvy(jslist=self.jslist,**kw)
-    
+
   def getvz(self,**kw):
     """Calls :py:func:`~particles.getvz` for this species."""
     return getvz(jslist=self.jslist,**kw)
-    
+
   def getvr(self,**kw):
     """Calls :py:func:`~particles.getvr` for this species."""
     return getvr(jslist=self.jslist,**kw)
-    
+
   def getvtheta(self,**kw):
     """Calls :py:func:`~particles.getvtheta` for this species."""
     return getvtheta(jslist=self.jslist,**kw)
-    
+
   def getux(self,**kw):
     """Calls :py:func:`~particles.getux` for this species."""
     return getux(jslist=self.jslist,**kw)
-    
+
   def getuy(self,**kw):
     """Calls :py:func:`~particles.getuy` for this species."""
     return getuy(jslist=self.jslist,**kw)
-    
+
   def getuz(self,**kw):
     """Calls :py:func:`~particles.getuz` for this species."""
     return getuz(jslist=self.jslist,**kw)
-    
+
   def getex(self,**kw):
     """Calls :py:func:`~particles.getex` for this species."""
     return getex(jslist=self.jslist,**kw)
-    
+
   def getey(self,**kw):
     """Calls :py:func:`~particles.getey` for this species."""
     return getey(jslist=self.jslist,**kw)
-    
+
   def getez(self,**kw):
     """Calls :py:func:`~particles.getez` for this species."""
     return getez(jslist=self.jslist,**kw)
-    
+
   def getbx(self,**kw):
     """Calls :py:func:`~particles.getbx` for this species."""
     return getbx(jslist=self.jslist,**kw)
-    
+
   def getby(self,**kw):
     """Calls :py:func:`~particles.getby` for this species."""
     return getby(jslist=self.jslist,**kw)
-    
+
   def getbz(self,**kw):
     """Calls :py:func:`~particles.getbz` for this species."""
     return getbz(jslist=self.jslist,**kw)
-    
+
   def getxp(self,**kw):
     """Calls :py:func:`~particles.getxp` for this species."""
     return getxp(jslist=self.jslist,**kw)
-    
+
   def getyp(self,**kw):
     """Calls :py:func:`~particles.getyp` for this species."""
     return getyp(jslist=self.jslist,**kw)
-    
+
   def getrp(self,**kw):
     """Calls :py:func:`~particles.getrp` for this species."""
     return getrp(jslist=self.jslist,**kw)
-    
+
   def gettp(self,**kw):
     """Calls :py:func:`~particles.gettp` for this species."""
     return gettp(jslist=self.jslist,**kw)
-    
+
   def getgaminv(self,**kw):
     """Calls :py:func:`~particles.getgaminv` for this species."""
     return getgaminv(jslist=self.jslist,**kw)
-    
+
   def getpid(self,**kw):
     """Calls :py:func:`~particles.getpid` for this species."""
     return getpid(jslist=self.jslist,**kw)
