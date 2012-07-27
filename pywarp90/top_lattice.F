@@ -4270,8 +4270,12 @@ c         --- All particles are in the same z-cell
           iinext = cegrdid(iznext,io)
           idnext = egrdid(iinext)
 c         --- skip field accumulation if particles are outside of axial grid
-          if (zznext < cegrdzs(iznext,io) .or.
-     &                 cegrdze(iznext,io) < zznext) cycle
+          if (zznext < cegrdzs(iznext,io)-zlatbuffer .or.
+     &                 cegrdze(iznext,io)+zlatbuffer < zznext) cycle
+
+c         --- Cycle if this element is turned off
+          if (idnext <= 0) cycle
+
         endif
 
 c       --- Precalculate the indices.
@@ -4298,9 +4302,15 @@ c           --- find the location of the particle in the internal lattice arrays
             iznext = min(nzl,iznext)
             iinext = cegrdid(iznext,io)
             idnext = egrdid(iinext)
-          endif
 
-          if (zz < cegrdzs(iz,io) .or. cegrdze(iz,io) < zz) cycle
+c           --- Check if particle is near or within the element.
+c           --- The zlatbuffer is added to better handle round-off when a particle lands
+c           --- exactly on the edge of the element. Then check below (of i,j,k) is the
+c           --- one that matters. There, particle exactly on the lower edge will be included,
+c           --- while a particle exactly on the upper edge will not.
+            if (zz < cegrdzs(iz,io)-zlatbuffer .or. cegrdze(iz,io)+zlatbuffer < zz) cycle
+
+          endif
 
 c         --- Cycle if this element is turned off
           if (id <= 0) cycle
@@ -4670,8 +4680,12 @@ c         --- All particles are in the same z-cell
           iinext = cbgrdid(iznext,io)
           idnext = bgrdid(iinext)
 c         --- skip field accumulation if particles are outside of axial grid
-          if (zznext < cbgrdzs(iznext,io) .or.
-     &                 cbgrdze(iznext,io) < zznext) cycle
+          if (zznext < cbgrdzs(iznext,io)-zlatbuffer .or.
+     &                 cbgrdze(iznext,io)+zlatbuffer < zznext) cycle
+
+c         --- Cycle if this element is turned off
+          if (idnext <= 0) cycle
+
         endif
 
 c       --- Precalculate the indices.
@@ -4698,9 +4712,15 @@ c           --- find the location of the particle in the internal lattice arrays
             iznext = min(nzl,iznext)
             iinext = cbgrdid(iznext,io)
             idnext = bgrdid(iinext)
-          endif
 
-          if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
+c           --- Check if particle is near or within the element.
+c           --- The zlatbuffer is added to better handle round-off when a particle lands
+c           --- exactly on the edge of the element. Then check below (of i,j,k) is the
+c           --- one that matters. There, particle exactly on the lower edge will be included,
+c           --- while a particle exactly on the upper edge will not.
+            if (zz < cbgrdzs(iz,io)-zlatbuffer .or. cbgrdze(iz,io)+zlatbuffer < zz) cycle
+
+          endif
 
 c         --- Cycle if this element is turned off
           if (id <= 0) cycle
@@ -5033,7 +5053,9 @@ c             + u0 * v1 * w0 * bsqgrad(:,i  ,j+1,k  ,bsqgradid)
 c             + ...
 
       integer(ISZ):: io,ip,i,j,k,iz,ii,id,ic
+      integer(ISZ):: iznext,iinext,idnext
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
+      real(kind=8):: zznext
       real(kind=8):: txp0,typ0
       real(kind=8):: tb(bsqgradnc)
       real(kind=8):: substarttime,wtime
@@ -5048,24 +5070,50 @@ c  Evaluation of B, vectorized over particles
 
         if (lslice) then
 c         --- All particles are in the same z-cell
-          zz = zp(1)
-          iz = 0
-          ii = cbsqgradid(iz,io)
-          id = bsqgradid(ii)
-          k = (zz - cbsqgradzs(iz,io))*bsqgraddzi(id)
+          zznext = zp(1)
+          iznext = 0
+          iinext = cbsqgradid(iznext,io)
+          idnext = bsqgradid(iinext)
 c         --- skip field accumulation if particles are outside of axial grid
-          if (zz < cbsqgradzs(iz,io) .or. cbsqgradze(iz,io) < zz) cycle
+          if (zznext < cbsqgradzs(iznext,io)-zlatbuffer .or.
+     &                 cbsqgradze(iznext,io)+zlatbuffer < zznext) cycle
+
+c         --- Cycle if this element is turned off
+          if (idnext <= 0) cycle
+
+        endif
+
+c       --- Precalculate the indices.
+        if (.not. lslice) then
+          zznext = zp(1)
+c         --- find the location of the particle in the internal lattice arrays
+          iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+          iznext = min(nzl,iznext)
+          iinext = cbsqgradid(iznext,io)
+          idnext = bsqgradid(iinext)
         endif
 
         do ip = 1, np
 
-          if (.not. lslice) then
-            zz = zp(ip)
+          zz = zznext
+          iz = iznext
+          ii = iinext
+          id = idnext
+
+          if (ip < np .and. .not. lslice) then
+            zznext = zp(ip+1)
 c           --- find the location of the particle in the internal lattice arrays
-            iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
-            ii = cbsqgradid(iz,io)
-            id = bsqgradid(ii)
-            if (zz < cbsqgradzs(iz,io) .or. cbsqgradze(iz,io) < zz) cycle
+            iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+            iznext = min(nzl,iznext)
+            iinext = cbsqgradid(iznext,io)
+            idnext = bsqgradid(iinext)
+
+c           --- Check if particle is near or within the element.
+c           --- The zlatbuffer is added to better handle round-off when a particle lands
+c           --- exactly on the edge of the element. Then check below (of i,j,k) is the
+c           --- one that matters. There, particle exactly on the lower edge will be included,
+c           --- while a particle exactly on the upper edge will not.
+            if (zz < cbsqgradzs(iz,io)-zlatbuffer .or. cbsqgradze(iz,io)+zlatbuffer < zz) cycle
           endif
 
 c         --- Cycle if this element is turned off
@@ -5075,6 +5123,7 @@ c         --- find transverse particle coordinate in frame of gridded field
 c         --- transverse offsets
           txp = xp(ip) - bsqgradox(ii)
           typ = yp(ip) - bsqgradoy(ii)
+
 c         --- transverse rotation to take into account an active rotation
 c         --- of the field element.  Particles are rotated in that oposite
 c         --- sense of the element. Later the field components accumulated
@@ -5293,7 +5342,11 @@ c         --- find the location of the particle in the internal lattice arrays
           ii = cpgrdid(iz,io)
           id = pgrdid(ii)
           k = (zz - cpgrdzs(iz,io))*pgrddzi(id)
-          if (zz < cpgrdzs(iz,io) .or. cpgrdze(iz,io) < zz) cycle
+          if (zz < cpgrdzs(iz,io)-zlatbuffer .or. cpgrdze(iz,io)+zlatbuffer < zz) cycle
+
+c         --- Cycle if this element is turned off
+          if (id <= 0) cycle
+
         endif
 
         do ip = 1, np
@@ -5304,8 +5357,12 @@ c           --- find the location of the particle in the internal lattice arrays
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
             ii = cpgrdid(iz,io)
             id = pgrdid(ii)
-c           --- cycle if lost particle
-            if (zz < cpgrdzs(iz,io) .or. cpgrdze(iz,io) < zz) cycle
+c           --- Check if particle is near or within the element.
+c           --- The zlatbuffer is added to better handle round-off when a particle lands
+c           --- exactly on the edge of the element. Then check below (of i,j,k) is the
+c           --- one that matters. There, particle exactly on the lower edge will be included,
+c           --- while a particle exactly on the upper edge will not.
+            if (zz < cpgrdzs(iz,io)-zlatbuffer .or. cpgrdze(iz,io)+zlatbuffer < zz) cycle
           endif
 
 c         --- Cycle if this element is turned off
