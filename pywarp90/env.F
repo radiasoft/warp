@@ -1367,7 +1367,7 @@ c           to its last three arguments.
         eyg = 0.
         ezg = 0.
 c       --- Calculate electric field strengths at index points
-        call applyegrd(5,xpg,ypg,1,z,.true.,exg,eyg,ezg)
+        call applyegrd(5,xpg,ypg,1,z,1.,1.,-0.5*dz,+0.5*dz,dz,.true.,exg,eyg,ezg)
 c       --- Extract total electric field components at central point (x,y)
         ex = ex + exg(3)
         ey = ey + eyg(3)
@@ -1449,7 +1449,7 @@ c           to its last three arguments.
         byg = 0.
         bzg = 0.
 c       --- Calculate magnetic field strengths at index points
-        call applybgrd(5,xpg,ypg,1,z,.true.,bxg,byg,bzg)
+        call applybgrd(5,xpg,ypg,1,z,1.,1.,-0.5*dz,+0.5*dz,dz,.true.,bxg,byg,bzg)
 c       --- Extract magnetic field componenents at central point (x,y)
         bx = bx + bxg(3)
         by = by + byg(3)

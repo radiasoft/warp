@@ -486,6 +486,9 @@ egrdfs(0:negrd)   _real [m]   # Full Z starts of 3-D grid of E field data
                               # including rotation off z-axis (autoset)
 egrdfe(0:negrd)   _real [m]   # Full Z ends of 3-D grid of E field data
                               # including rotation off z-axis (autoset)
+egrdhe(0:negrd)   _logical /0/ # Flags whether the egrd element should be
+                               # treated as hard edged. When true, residence
+                               # corrections are done.
 bgrdzs(0:nbgrd)   _real [m]   # Z starts of 3-D grid of B field data (BGRDdata)
 bgrdze(0:nbgrd)   _real [m]   # Z ends of 3-D grid of B field data (BGRDdata)
 bgrdxs(0:nbgrd)   _real [m]   # X starts of 3-D grid of B field data (BGRDdata)
@@ -513,6 +516,9 @@ bgrdfs(0:nbgrd)   _real [m]   # Full Z starts of 3-D grid of B field data
                               # including rotation off z-axis (autoset)
 bgrdfe(0:nbgrd)   _real [m]   # Full Z ends of 3-D grid of B field data
                               # including rotation off z-axis (autoset)
+bgrdhe(0:nbgrd)   _logical /0/ # Flags whether the bgrd element should be
+                               # treated as hard edged. When true, residence
+                               # corrections are done.
 pgrdzs(0:npgrd)   _real [m]   # Z starts of 3-D grid of potential data(PGRDdata)
 pgrdze(0:npgrd)   _real [m]   # Z ends of 3-D grid of potential data(PGRDdata)
 pgrdxs(0:npgrd)   _real [m]   # X starts of 3-D grid of potential data(PGRDdata)

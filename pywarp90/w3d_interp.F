@@ -1252,6 +1252,7 @@ c     For now this only works with rz solver
       integer(ISZ):: nx,nz,i,ngrd,is,isid
       real(kind=8):: dx,dz,xmin,zmin
       real(kind=8):: xgrid(0:nx,0:nz),zgrid(0:nx,0:nz),ygrid(0:nx,0:nz)
+      real(kind=8):: vzgrid(0:nx,0:nz),gaminvgrid(0:nx,0:nz)
       real(kind=8):: Bx(0:nx,0:nz),By(0:nx,0:nz),Bz(0:nx,0:nz)
       real(kind=8):: Bsq(0:nx,0:nz),alphabar(0:nx,0:nz)
       real(kind=8):: omegapsq(0:nx,0:nz),omegacsq(0:nx,0:nz),rho(0:nx,0:nz)
@@ -1299,7 +1300,9 @@ c     shifted by floors following convention of Dave for density
       By = 0.
       Bz = 0.
 c     get B components on this grid
-      call applybgrd(ngrd,xgrid,ygrid,ngrd,zgrid,.false.,Bx,By,Bz)
+      vzgrid = 0.
+      gaminvgrid = 1.
+      call applybgrd(ngrd,xgrid,ygrid,ngrd,zgrid,vzgrid,gaminvgrid,0.,0.,0.,.false.,Bx,By,Bz)
       Bsq=Bx*Bx+By*By+Bz*Bz
 c     calculate interpolation parameter, 0 if magnetized, 1 if not
 c     For now, nonrelativistic.  Need to think about appropriate

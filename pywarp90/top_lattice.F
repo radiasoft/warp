@@ -1057,7 +1057,10 @@ c       --- handle magnetostatic multipole components
 c       --- handle magnetic fields from 3-D grid
         call applybgrd(nn,bsqgradtemp(:,:,:, 0,id),
      &                 bsqgradtemp(:,:,:, 1,id),nn,
-     &                 bsqgradtemp(:,:,:, 2,id),.false.,
+     &                 bsqgradtemp(:,:,:, 2,id),
+     &                 bsqgradtemp(:,:,:, 3,id),
+     &                 bsqgradtemp(:,:,:, 4,id),
+     &                 0.,0.,0.,.false.,
      &                 bsqgradtemp(:,:,:, 8,id),
      &                 bsqgradtemp(:,:,:, 9,id),
      &                 bsqgradtemp(:,:,:,10,id))
@@ -4203,13 +4206,15 @@ c         --- Saved the coordinates relative to the multiple data.
       return
       end
 c===========================================================================
-      subroutine applyegrd(np,xp,yp,npz,zp,lslice,ex,ey,ez)
+      subroutine applyegrd(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
+     &                     ex,ey,ez)
       use Subtimerstop
       use Lattice
       use LatticeInternal
       use EGRDdata
       integer(ISZ):: np,npz
-      real(kind=8):: xp(np),yp(np),zp(npz)
+      real(kind=8):: xp(np),yp(np),zp(npz),uzp(npz),gaminv(npz)
+      real(kind=8):: dtl,dtr,dt
       logical(ISZ):: lslice
       real(kind=8):: ex(np),ey(np),ez(np)
 
@@ -4230,19 +4235,47 @@ c        + ...
 
       integer(ISZ):: io,ip,i,j,k,iz,ii,id
       integer(ISZ):: iznext,iinext,idnext
+      real(kind=8):: xi,yj,zk
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,efac,xsign,ysign,zsign
       real(kind=8):: zznext
-      real(kind=8):: xt,yt,zt,x1,y1,z1
+      real(kind=8):: xt,yt,zt,xsave,ysave,zsave
       real(kind=8):: xt0,yt0
-      real(kind=8):: ext,eyt,ezt,ex1,ey1,ez1
+      real(kind=8):: ext,eyt,ezt,exsave,eysave,ezsave
       real(kind=8),allocatable:: ca(:),sa(:),ct(:),st(:),cp(:),sp(:)
       real(kind=8),allocatable:: zcent(:,:),zlen(:)
+      real(kind=8),allocatable:: vz(:),dzi(:)
+      real(kind=8):: z1,z2,zl,zr,fl,fr,frac
+      integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
 c  Evaluation of E, vectorized over particles
 
       if (.not. egrds .or. .not. linegrd(0)) return
+
+      if (any(egrdhe .and. egrdot .ne. 0)) then
+        call kaboom("applyegrd: egrdhe is not supported with egrdot nonzero")
+        return
+      endif
+
+      if (any(egrdhe)) then
+c       --- Setup to handling residence corrections for hard
+c       --- edged elements
+        allocate(vz(npz),dzi(npz),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"applyegrd: allocation error ",allocerror,
+     &           ": could not allocate temp arrays to shape ",npz
+          call kaboom("applyegrd: allocation error")
+          return
+        endif
+
+        vz  = uzp*gaminv
+c       --- Note that the absolute value is taken since dzi is used to scale
+c       --- the fraction of the step inside the element and the sign is
+c       --- not needed. This only matters if vz < 0.
+        dzi = abs(1./dvnz(vz*(dtr-dtl)))
+
+      endif
 
 c     --- Precalculate sines and cosines for efficiency
       allocate(ca(0:negrd),sa(0:negrd))
@@ -4263,57 +4296,108 @@ c     --- Precalculate sines and cosines for efficiency
       do io=1,negrdol
         if (.not. linegrd(io)) cycle
 
+c       --- find the location of the first particle in the internal lattice arrays
+        zznext = zp(1)
+        iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+        iznext = min(nzl,iznext)
+        iinext = cegrdid(iznext,io)
+        idnext = egrdid(iinext)
+
         if (lslice) then
 c         --- All particles are in the same z-cell
-          zznext = zp(1)
-          iznext = 0
-          iinext = cegrdid(iznext,io)
-          idnext = egrdid(iinext)
-c         --- skip field accumulation if particles are outside of axial grid
-          if (zznext < cegrdzs(iznext,io)-zlatbuffer .or.
-     &                 cegrdze(iznext,io)+zlatbuffer < zznext) cycle
-
-c         --- Cycle if this element is turned off
-          if (idnext <= 0) cycle
-
-        endif
-
-c       --- Precalculate the indices.
-        if (.not. lslice) then
-          zznext = zp(1)
-c         --- find the location of the particle in the internal lattice arrays
-          iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
-          iznext = min(nzl,iznext)
-          iinext = cegrdid(iznext,io)
-          idnext = egrdid(iinext)
-        endif
-
-        do ip = 1, np
-
           zz = zznext
           iz = iznext
           ii = iinext
           id = idnext
 
-          if (ip < np .and. .not. lslice) then
-            zznext = zp(ip+1)
-c           --- find the location of the particle in the internal lattice arrays
-            iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
-            iznext = min(nzl,iznext)
-            iinext = cegrdid(iznext,io)
-            idnext = egrdid(iinext)
+c         --- Cycle if this element is turned off
+          if (id <= 0) cycle
 
-c           --- Check if particle is near or within the element.
-c           --- The zlatbuffer is added to better handle round-off when a particle lands
-c           --- exactly on the edge of the element. Then check below (of i,j,k) is the
-c           --- one that matters. There, particle exactly on the lower edge will be included,
-c           --- while a particle exactly on the upper edge will not.
-            if (zz < cegrdzs(iz,io)-zlatbuffer .or. cegrdze(iz,io)+zlatbuffer < zz) cycle
+          if (.not. egrdhe(ii)) then
+
+c           --- skip field accumulation if particles are outside of axial grid
+            if (zz < cegrdzs(iz,io)-zlatbuffer .or.
+     &               cegrdze(iz,io)+zlatbuffer < zz) cycle
+            frac = 1.
+
+          else
+
+c           --- Precalculate these quantities. zl is the min of the two and
+c           --- zr is the max. This generalizes the routine, allowing left
+c           --- moving particles, vz < 0.
+            z1 = zp(1) + vz(1)*dtl
+            z2 = zp(1) + vz(1)*dtr
+c           --- "left" end of velocity advance step
+            zl = min(z1,z2)
+            fl = 0.
+            if (zl >= cegrdzs(iz,io) .and. zl < cegrdze(iz,io)) fl = 1.
+c           --- "right" end of velocity advance step
+            zr = max(z1,z2)
+            fr = 0.
+            if (zr >= cegrdzs(iz,io) .and. zr < cegrdze(iz,io)) fr = 1.
+c           --- residence fraction
+            frac = fl
+            if (fl > fr) frac = (cegrdze(iz,io)-zl)*dzi(1)
+            if (fr > fl) frac = (zr-cegrdzs(iz,io))*dzi(1)
+c           --- if frac is zero, no field will be applied
+            if (frac == 0.) cycle
 
           endif
 
-c         --- Cycle if this element is turned off
-          if (id <= 0) cycle
+        endif
+
+        do ip = 1, np
+
+          if (.not. lslice) then
+            zz = zznext
+            iz = iznext
+            ii = iinext
+            id = idnext
+
+            if (ip < np) then
+              zznext = zp(ip+1)
+c             --- find the location of the particle in the internal lattice arrays
+              iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+              iznext = min(nzl,iznext)
+              iinext = cegrdid(iznext,io)
+              idnext = egrdid(iinext)
+            endif
+
+c           --- Cycle if this element is turned off
+            if (id <= 0) cycle
+
+            if (.not. egrdhe(ii)) then
+c             --- Check if particle is near or within the element.
+c             --- The zlatbuffer is added to better handle round-off when a particle lands
+c             --- exactly on the edge of the element. Then check below (of i,j,k) is the
+c             --- one that matters. There, particle exactly on the lower edge will be included,
+c             --- while a particle exactly on the upper edge will not.
+              if (zz < cegrdzs(iz,io)-zlatbuffer .or. cegrdze(iz,io)+zlatbuffer < zz) cycle
+              frac = 1.
+
+            else
+c             --- Precalculate these quantities. zl is the min of the two and
+c             --- zr is the max. This generalizes the routine, allowing left
+c             --- moving particles, vz < 0.
+              z1 = zz + vz(ip)*dtl
+              z2 = zz + vz(ip)*dtr
+c             --- "left" end of velocity advance step
+              zl = min(z1,z2)
+              fl = 0.
+              if (zl >= cegrdzs(iz,io) .and. zl < cegrdze(iz,io)) fl = 1.
+c             --- "right" end of velocity advance step
+              zr = max(z1,z2)
+              fr = 0.
+              if (zr >= cegrdzs(iz,io) .and. zr < cegrdze(iz,io)) fr = 1.
+c             --- residence fraction
+              frac = fl
+              if (fl > fr) frac = (cegrdze(iz,io)-zl)*dzi(ip)
+              if (fr > fl) frac = (zr-cegrdzs(iz,io))*dzi(ip)
+c             --- if frac is zero, no field will be applied
+              if (frac == 0.) cycle
+
+            endif
+          endif
 
 c         zcent = 0.5*(cegrdzs(iz,io) + cegrdze(iz,io))
 c         zlen = egrdze(ii) - egrdzs(ii)
@@ -4329,26 +4413,26 @@ c         --- Particles are rotated to the frame of the element.
 c         --- Later, the field components accumulated are rotated back.
 c         --- First, rotate by egrdph about the z axis.
           if (egrdop(ii) .ne. 0.) then
-            x1 = xt
-            y1 = yt
-            xt = +x1*cp(ii) + y1*sp(ii)
-            yt = -x1*sp(ii) + y1*cp(ii)
+            xsave = xt
+            ysave = yt
+            xt = +xsave*cp(ii) + ysave*sp(ii)
+            yt = -xsave*sp(ii) + ysave*cp(ii)
           endif
 
 c         --- then by egrdot about the new y axis
           if (egrdot(ii) .ne. 0.) then
-            x1 = xt
-            z1 = zt
-            xt = x1*ct(ii) - z1*st(ii)
-            zt = x1*st(ii) + z1*ct(ii)
+            xsave = xt
+            zsave = zt
+            xt = xsave*ct(ii) - zsave*st(ii)
+            zt = xsave*st(ii) + zsave*ct(ii)
           endif
 
 c         --- then by egrdop about the new z axis
           if (egrdph(ii) .ne. 0.) then
-            x1 = xt
-            y1 = yt
-            xt = +x1*ca(ii) + y1*sa(ii)
-            yt = -x1*sa(ii) + y1*ca(ii)
+            xsave = xt
+            ysave = yt
+            xt = +xsave*ca(ii) + ysave*sa(ii)
+            yt = -xsave*sa(ii) + ysave*ca(ii)
           endif
 
 c         --- If data is in RZ, then replace x with the radius and y=ys
@@ -4406,14 +4490,27 @@ cc              yt = temp
           endif
 
 c         --- find location of particle in E field grid
-          i = xt*egrddxi(id)
-          j = yt*egrddyi(id)
-          k = zt*egrddzi(id)
+          xi = xt*egrddxi(id)
+          yj = yt*egrddyi(id)
+          zk = zt*egrddzi(id)
+
+          if (egrdhe(ii)) then
+c           --- This is needed since the particle position may be outside
+c           --- of the grid, but one of the zl or zr may be inside.
+c           --- Put the z-location at the edge of the grid (or just inside
+c           --- the upper edge so that zk < egrdnz)
+            if (zk < 0.) zk = 0.
+            if (zk > egrdnz) zk = egrdnz - 1.e-12
+          endif
 
 c         --- Only calculate for particles inside the E field grid
-          if ((0 <= i .and. i < egrdnx) .and.
-     &        (0 <= j .and. j < egrdny .or. egrdrz(id) .or. egrdny == 0) .and.
-     &        (0 <= k .and. k < egrdnz)) then
+          if ((0 <= xi .and. xi < egrdnx) .and.
+     &        (0 <= yj .and. yj < egrdny .or. egrdrz(id) .or. egrdny == 0) .and.
+     &        (0 <= zk .and. zk < egrdnz)) then
+
+            i = xi
+            j = yj
+            k = zk
 
 c           --- Calculate linear weights
             u1 = xt*egrddxi(id) - i
@@ -4494,30 +4591,30 @@ c           --- Rotate field componets back to the lab frame. These are the
 c           --- same rotations as above but in opposite order with the sign
 c           --- of the angle reversed.
             if (egrdph(ii) .ne. 0.) then
-              ex1 = ext
-              ey1 = eyt
-              ext = +ex1*ca(ii) - ey1*sa(ii)
-              eyt = +ex1*sa(ii) + ey1*ca(ii)
+              exsave = ext
+              eysave = eyt
+              ext = +exsave*ca(ii) - eysave*sa(ii)
+              eyt = +exsave*sa(ii) + eysave*ca(ii)
             endif
 
             if (egrdot(ii) .ne. 0.) then
-              ex1 = ext
-              ez1 = ezt
-              ext = +ex1*ct(ii) + ez1*st(ii)
-              ezt = -ex1*st(ii) + ez1*ct(ii)
+              exsave = ext
+              ezsave = ezt
+              ext = +exsave*ct(ii) + ezsave*st(ii)
+              ezt = -exsave*st(ii) + ezsave*ct(ii)
             endif
 
             if (egrdop(ii) .ne. 0.) then
-              ex1 = ext
-              ey1 = eyt
-              ext = +ex1*cp(ii) - ey1*sp(ii)
-              eyt = +ex1*sp(ii) + ey1*cp(ii)
+              exsave = ext
+              eysave = eyt
+              ext = +exsave*cp(ii) - eysave*sp(ii)
+              eyt = +exsave*sp(ii) + eysave*cp(ii)
             endif
 
 c           --- add in the resulting field
-            ex(ip) = ex(ip) + ext
-            ey(ip) = ey(ip) + eyt
-            ez(ip) = ez(ip) + ezt
+            ex(ip) = ex(ip) + ext*frac
+            ey(ip) = ey(ip) + eyt*frac
+            ez(ip) = ez(ip) + ezt*frac
 
           endif
 
@@ -4529,6 +4626,10 @@ c           --- add in the resulting field
       deallocate(cp,sp)
       deallocate(zcent)
       deallocate(zlen)
+
+      if (any(egrdhe)) then
+        deallocate(vz,dzi)
+      endif
 
 !$OMP MASTER
       if (ltoptimesubs) timeapplyegrd = timeapplyegrd + wtime() - substarttime
@@ -4613,13 +4714,15 @@ c       yl = +x2*sp + y2*cp
       return
       end
 c===========================================================================
-      subroutine applybgrd(np,xp,yp,npz,zp,lslice,bx,by,bz)
+      subroutine applybgrd(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
+     &                     bx,by,bz)
       use Subtimerstop
       use Lattice
       use LatticeInternal
       use BGRDdata
       integer(ISZ):: np,npz
-      real(kind=8):: xp(np),yp(np),zp(npz)
+      real(kind=8):: xp(np),yp(np),zp(npz),uzp(npz),gaminv(npz)
+      real(kind=8):: dtl,dtr,dt
       logical(ISZ):: lslice
       real(kind=8):: bx(np),by(np),bz(np)
 
@@ -4640,19 +4743,47 @@ c        + ...
 
       integer(ISZ):: io,ip,i,j,k,iz,ii,id
       integer(ISZ):: iznext,iinext,idnext
+      real(kind=8):: xi,yj,zk
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign
       real(kind=8):: zznext
-      real(kind=8):: xt,yt,zt,x1,y1,z1
+      real(kind=8):: xt,yt,zt,xsave,ysave,zsave
       real(kind=8):: xt0,yt0
-      real(kind=8):: bxt,byt,bzt,bx1,by1,bz1
+      real(kind=8):: bxt,byt,bzt,bxsave,bysave,bzsave
       real(kind=8),allocatable:: ca(:),sa(:),ct(:),st(:),cp(:),sp(:)
       real(kind=8),allocatable:: zcent(:,:),zlen(:)
+      real(kind=8),allocatable:: vz(:),dzi(:)
+      real(kind=8):: z1,z2,zl,zr,fl,fr,frac
+      integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
 c  Evaluation of B, vectorized over particles
 
       if (.not. bgrds .or. .not. linbgrd(0)) return
+
+      if (any(bgrdhe .and. bgrdot .ne. 0)) then
+        call kaboom("applybgrd: bgrdhe is not supported with bgrdot nonzero")
+        return
+      endif
+
+      if (any(bgrdhe)) then
+c       --- Setup to handling residence corrections for hard
+c       --- edged elements
+        allocate(vz(npz),dzi(npz),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"applybgrd: allocation error ",allocerror,
+     &           ": could not allocate temp arrays to shape ",npz
+          call kaboom("applybgrd: allocation error")
+          return
+        endif
+
+        vz  = uzp*gaminv
+c       --- Note that the absolute value is taken since dzi is used to scale
+c       --- the fraction of the step inside the element and the sign is
+c       --- not needed. This only matters if vz < 0.
+        dzi = abs(1./dvnz(vz*(dtr-dtl)))
+
+      endif
 
 c     --- Precalculate sines and cosines for efficiency
       allocate(ca(0:nbgrd),sa(0:nbgrd))
@@ -4673,57 +4804,108 @@ c     --- Precalculate sines and cosines for efficiency
       do io=1,nbgrdol
         if (.not. linbgrd(io)) cycle
 
+c       --- find the location of the first particle in the internal lattice arrays
+        zznext = zp(1)
+        iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+        iznext = min(nzl,iznext)
+        iinext = cbgrdid(iznext,io)
+        idnext = bgrdid(iinext)
+
         if (lslice) then
 c         --- All particles are in the same z-cell
-          zznext = zp(1)
-          iznext = 0
-          iinext = cbgrdid(iznext,io)
-          idnext = bgrdid(iinext)
-c         --- skip field accumulation if particles are outside of axial grid
-          if (zznext < cbgrdzs(iznext,io)-zlatbuffer .or.
-     &                 cbgrdze(iznext,io)+zlatbuffer < zznext) cycle
-
-c         --- Cycle if this element is turned off
-          if (idnext <= 0) cycle
-
-        endif
-
-c       --- Precalculate the indices.
-        if (.not. lslice) then
-          zznext = zp(1)
-c         --- find the location of the particle in the internal lattice arrays
-          iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
-          iznext = min(nzl,iznext)
-          iinext = cbgrdid(iznext,io)
-          idnext = bgrdid(iinext)
-        endif
-
-        do ip = 1, np
-
           zz = zznext
           iz = iznext
           ii = iinext
           id = idnext
 
-          if (ip < np .and. .not. lslice) then
-            zznext = zp(ip+1)
-c           --- find the location of the particle in the internal lattice arrays
-            iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
-            iznext = min(nzl,iznext)
-            iinext = cbgrdid(iznext,io)
-            idnext = bgrdid(iinext)
+c         --- Cycle if this element is turned off
+          if (id <= 0) cycle
 
-c           --- Check if particle is near or within the element.
-c           --- The zlatbuffer is added to better handle round-off when a particle lands
-c           --- exactly on the edge of the element. Then check below (of i,j,k) is the
-c           --- one that matters. There, particle exactly on the lower edge will be included,
-c           --- while a particle exactly on the upper edge will not.
-            if (zz < cbgrdzs(iz,io)-zlatbuffer .or. cbgrdze(iz,io)+zlatbuffer < zz) cycle
+          if (.not. bgrdhe(ii)) then
+
+c           --- skip field accumulation if particles are outside of axial grid
+            if (zz < cbgrdzs(iz,io)-zlatbuffer .or.
+     &               cbgrdze(iz,io)+zlatbuffer < zz) cycle
+            frac = 1.
+
+          else
+
+c           --- Precalculate these quantities. zl is the min of the two and
+c           --- zr is the max. This generalizes the routine, allowing left
+c           --- moving particles, vz < 0.
+            z1 = zp(1) + vz(1)*dtl
+            z2 = zp(1) + vz(1)*dtr
+c           --- "left" end of velocity advance step
+            zl = min(z1,z2)
+            fl = 0.
+            if (zl >= cbgrdzs(iz,io) .and. zl < cbgrdze(iz,io)) fl = 1.
+c           --- "right" end of velocity advance step
+            zr = max(z1,z2)
+            fr = 0.
+            if (zr >= cbgrdzs(iz,io) .and. zr < cbgrdze(iz,io)) fr = 1.
+c           --- residence fraction
+            frac = fl
+            if (fl > fr) frac = (cbgrdze(iz,io)-zl)*dzi(1)
+            if (fr > fl) frac = (zr-cbgrdzs(iz,io))*dzi(1)
+c           --- if frac is zero, no field will be applied
+            if (frac == 0.) cycle
 
           endif
 
-c         --- Cycle if this element is turned off
-          if (id <= 0) cycle
+        endif
+
+        do ip = 1, np
+
+          if (.not. lslice) then
+            zz = zznext
+            iz = iznext
+            ii = iinext
+            id = idnext
+
+            if (ip < np) then
+              zznext = zp(ip+1)
+c             --- find the location of the particle in the internal lattice arrays
+              iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
+              iznext = min(nzl,iznext)
+              iinext = cbgrdid(iznext,io)
+              idnext = bgrdid(iinext)
+            endif
+
+c           --- Cycle if this element is turned off
+            if (id <= 0) cycle
+
+            if (.not. bgrdhe(ii)) then
+c             --- Check if particle is near or within the element.
+c             --- The zlatbuffer is added to better handle round-off when a particle lands
+c             --- exactly on the edge of the element. Then check below (of i,j,k) is the
+c             --- one that matters. There, particle exactly on the lower edge will be included,
+c             --- while a particle exactly on the upper edge will not.
+              if (zz < cbgrdzs(iz,io)-zlatbuffer .or. cbgrdze(iz,io)+zlatbuffer < zz) cycle
+              frac = 1.
+
+            else
+c             --- Precalculate these quantities. zl is the min of the two and
+c             --- zr is the max. This generalizes the routine, allowing left
+c             --- moving particles, vz < 0.
+              z1 = zz + vz(ip)*dtl
+              z2 = zz + vz(ip)*dtr
+c             --- "left" end of velocity advance step
+              zl = min(z1,z2)
+              fl = 0.
+              if (zl >= cbgrdzs(iz,io) .and. zl < cbgrdze(iz,io)) fl = 1.
+c             --- "right" end of velocity advance step
+              zr = max(z1,z2)
+              fr = 0.
+              if (zr >= cbgrdzs(iz,io) .and. zr < cbgrdze(iz,io)) fr = 1.
+c             --- residence fraction
+              frac = fl
+              if (fl > fr) frac = (cbgrdze(iz,io)-zl)*dzi(ip)
+              if (fr > fl) frac = (zr-cbgrdzs(iz,io))*dzi(ip)
+c             --- if frac is zero, no field will be applied
+              if (frac == 0.) cycle
+
+            endif
+          endif
 
 c         zcent = 0.5*(cbgrdzs(iz,io) + cbgrdze(iz,io))
 c         zlen = bgrdze(ii) - bgrdzs(ii)
@@ -4739,26 +4921,26 @@ c         --- Particles are rotated to the frame of the element.
 c         --- Later, the field components accumulated are rotated back.
 c         --- First, rotate by bgrdop about the z axis.
           if (bgrdop(ii) .ne. 0.) then
-            x1 = xt
-            y1 = yt
-            xt = +x1*cp(ii) + y1*sp(ii)
-            yt = -x1*sp(ii) + y1*cp(ii)
+            xsave = xt
+            ysave = yt
+            xt = +xsave*cp(ii) + ysave*sp(ii)
+            yt = -xsave*sp(ii) + ysave*cp(ii)
           endif
 
 c         --- then by bgrdot about the new y axis
           if (bgrdot(ii) .ne. 0.) then
-            x1 = xt
-            z1 = zt
-            xt = x1*ct(ii) - z1*st(ii)
-            zt = x1*st(ii) + z1*ct(ii)
+            xsave = xt
+            zsave = zt
+            xt = xsave*ct(ii) - zsave*st(ii)
+            zt = xsave*st(ii) + zsave*ct(ii)
           endif
 
 c         --- then by bgrdph about the new z axis
           if (bgrdph(ii) .ne. 0.) then
-            x1 = xt
-            y1 = yt
-            xt = +x1*ca(ii) + y1*sa(ii)
-            yt = -x1*sa(ii) + y1*ca(ii)
+            xsave = xt
+            ysave = yt
+            xt = +xsave*ca(ii) + ysave*sa(ii)
+            yt = -xsave*sa(ii) + ysave*ca(ii)
           endif
 
 c         --- If data is in RZ, then replace x with the radius and y=ys
@@ -4816,14 +4998,27 @@ cc              yt = temp
           endif
 
 c         --- find location of particle in B field grid
-          i = xt*bgrddxi(id)
-          j = yt*bgrddyi(id)
-          k = zt*bgrddzi(id)
+          xi = xt*bgrddxi(id)
+          yj = yt*bgrddyi(id)
+          zk = zt*bgrddzi(id)
+
+          if (bgrdhe(ii)) then
+c           --- This is needed since the particle position may be outside
+c           --- of the grid, but one of the zl or zr may be inside.
+c           --- Put the z-location at the edge of the grid (or just inside
+c           --- the upper edge so that zk < bgrdnz)
+            if (zk < 0.) zk = 0.
+            if (zk > bgrdnz) zk = bgrdnz - 1.e-12
+          endif
 
 c         --- Only calculate for particles inside the B field grid
-          if ((0 <= i .and. i < bgrdnx) .and.
-     &        (0 <= j .and. j < bgrdny .or. bgrdrz(id) .or. bgrdny == 0) .and.
-     &        (0 <= k .and. k < bgrdnz)) then
+          if ((0 <= xi .and. xi < bgrdnx) .and.
+     &        (0 <= yj .and. yj < bgrdny .or. bgrdrz(id) .or. bgrdny == 0) .and.
+     &        (0 <= zk .and. zk < bgrdnz)) then
+
+            i = xi
+            j = yj
+            k = zk
 
 c           --- Calculate linear weights
             u1 = xt*bgrddxi(id) - i
@@ -4904,30 +5099,30 @@ c           --- Rotate field componets back to the lab frame. These are the
 c           --- same rotations as above but in opposite order with the sign
 c           --- of the angle reversed.
             if (bgrdph(ii) .ne. 0.) then
-              bx1 = bxt
-              by1 = byt
-              bxt = +bx1*ca(ii) - by1*sa(ii)
-              byt = +bx1*sa(ii) + by1*ca(ii)
+              bxsave = bxt
+              bysave = byt
+              bxt = +bxsave*ca(ii) - bysave*sa(ii)
+              byt = +bxsave*sa(ii) + bysave*ca(ii)
             endif
 
             if (bgrdot(ii) .ne. 0.) then
-              bx1 = bxt
-              bz1 = bzt
-              bxt = +bx1*ct(ii) + bz1*st(ii)
-              bzt = -bx1*st(ii) + bz1*ct(ii)
+              bxsave = bxt
+              bzsave = bzt
+              bxt = +bxsave*ct(ii) + bzsave*st(ii)
+              bzt = -bxsave*st(ii) + bzsave*ct(ii)
             endif
 
             if (bgrdop(ii) .ne. 0.) then
-              bx1 = bxt
-              by1 = byt
-              bxt = +bx1*cp(ii) - by1*sp(ii)
-              byt = +bx1*sp(ii) + by1*cp(ii)
+              bxsave = bxt
+              bysave = byt
+              bxt = +bxsave*cp(ii) - bysave*sp(ii)
+              byt = +bxsave*sp(ii) + bysave*cp(ii)
             endif
 
 c           --- add in the resulting field
-            bx(ip) = bx(ip) + bxt
-            by(ip) = by(ip) + byt
-            bz(ip) = bz(ip) + bzt
+            bx(ip) = bx(ip) + bxt*frac
+            by(ip) = by(ip) + byt*frac
+            bz(ip) = bz(ip) + bzt*frac
 
           endif
 
@@ -4939,6 +5134,10 @@ c           --- add in the resulting field
       deallocate(cp,sp)
       deallocate(zcent)
       deallocate(zlen)
+
+      if (any(bgrdhe)) then
+        deallocate(vz,dzi)
+      endif
 
 !$OMP MASTER
       if (ltoptimesubs) timeapplybgrd = timeapplybgrd + wtime() - substarttime

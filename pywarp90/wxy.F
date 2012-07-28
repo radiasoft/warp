@@ -869,10 +869,10 @@ c     --- magnetostatic multipole components
       call applymmlt(np,xp,yp,1,zbeam,dtl,dtr,dt,.true.,bx,by,bz)
 
 c     --- handle electric fields from 3-D grid
-      call applyegrd(np,xp,yp,1,zbeam,.true.,ex,ey,ez)
+      call applyegrd(np,xp,yp,1,zbeam,vbeam,1.,dtl,dtr,dt,.true.,ex,ey,ez)
 
 c     --- handle magnetic fields from 3-D grid
-      call applybgrd(np,xp,yp,1,zbeam,.true.,bx,by,bz)
+      call applybgrd(np,xp,yp,1,zbeam,vbeam,1.,dtl,dtr,dt,.true.,bx,by,bz)
 
 c     --- handle electrostatic potential from 3-D grid
       call applypgrd(np,xp,yp,1,zbeam,.true.,ex,ey,ez)

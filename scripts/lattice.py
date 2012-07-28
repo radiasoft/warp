@@ -2712,6 +2712,7 @@ will return the handler for the time dependence.
 def addnewegrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,sf=0.,sc=1.,sy=0,dx=None,dy=None,ex=None,ey=None,ez=None,
                rz=false,nx=None,ny=None,nz=None,pp=None,
+               he=false,
                time=None,data=None,func=None):
   """
 Adds a new egrd element to the lattice. The element will be placed at the
@@ -2728,7 +2729,7 @@ Or, one or more 3-D field arrays may be specified
   - rz=false: set to true if data is RZ only
 The following are all optional and have the same meaning and default as the
 egrd arrays with the same suffices:
-  - xs,ys,ap,ox,oy,ph,sf,sc,sy
+  - xs,ys,ap,ox,oy,ph,sf,sc,sy,he
 Some extra data may be saved,
   - pp: the electrostatic potential associated with the E field data
 The applied field can be made time dependent by supplying a time varying
@@ -2778,7 +2779,8 @@ of dx, dy, nx, ny, nz, must be passed in"""
   edict = {'zs':top.egrdzs,'ze':top.egrdze,'xs':top.egrdxs,'ys':top.egrdys,
            'ap':top.egrdap,'ax':top.egrdax,'ay':top.egrday,
            'ox':top.egrdox,'oy':top.egrdoy,'ph':top.egrdph,
-           'sf':top.egrdsf,'sc':top.egrdsc,'sy':top.egrdsy}
+           'sf':top.egrdsf,'sc':top.egrdsc,'sy':top.egrdsy,
+           'he':top.egrdhe}
 
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element. The element id must be handled seperately.
@@ -2845,6 +2847,7 @@ def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,ot=0.,op=0.,
                sf=0.,sc=1.,sy=0,dx=None,dy=None,bx=None,by=None,bz=None,
                rz=false,nx=None,ny=None,nz=None,
+               he=false,
                time=None,data=None,func=None):
   """
 Adds a new bgrd element to the lattice. The element will be placed at the
@@ -2861,7 +2864,7 @@ Or, one or more 3-D field arrays may be specified
   - rz=false: set to true if data is RZ only
 The following are all optional and have the same meaning and default as the
 bgrd arrays with the same suffices:
-  - xs,ys,ap,ox,oy,ph,ot,op,sf,sc,sy
+  - xs,ys,ap,ox,oy,ph,ot,op,sf,sc,sy,he
 The applied field can be made time dependent by supplying a time varying
 scale factor. One of the following can be supplied:
   - time,data: two 1-D arrays holding the tabulated scale factor (data) as
@@ -2910,7 +2913,8 @@ of dx, dy, nx, ny, nz, must be passed in"""
            'ap':top.bgrdap,'ax':top.bgrdax,'ay':top.bgrday,
            'ox':top.bgrdox,'oy':top.bgrdoy,
            'ph':top.bgrdph,'ot':top.bgrdot,'op':top.bgrdop,
-           'sf':top.bgrdsf,'sc':top.bgrdsc,'sy':top.bgrdsy}
+           'sf':top.bgrdsf,'sc':top.bgrdsc,'sy':top.bgrdsy,
+           'he':top.bgrdhe}
 
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element. The element id must be handled seperately.
