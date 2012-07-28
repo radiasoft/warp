@@ -1155,12 +1155,12 @@ c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or 
       l2 = nz
 
 c     ---- Don't smooth Dirichlet boundaries
-      if (bounds(0) == dirichlet) j1 = 1
-      if (bounds(1) == dirichlet) j2 = nx - 1
-      if (bounds(2) == dirichlet) k1 = 1
-      if (bounds(3) == dirichlet) k2 = ny - 1
-      if (bounds(4) == dirichlet) l1 = 1
-      if (bounds(5) == dirichlet) l2 = nz - 1
+      if (bounds(0) == dirichlet .and. nx > 0) j1 = 1
+      if (bounds(1) == dirichlet .and. nx > 0) j2 = nx - 1
+      if (bounds(2) == dirichlet .and. ny > 0) k1 = 1
+      if (bounds(3) == dirichlet .and. ny > 0) k2 = ny - 1
+      if (bounds(4) == dirichlet .and. nz > 0) l1 = 1
+      if (bounds(5) == dirichlet .and. nz > 0) l2 = nz - 1
 
 c     --- x smoothing
       a = alpha(1)
