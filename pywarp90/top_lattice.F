@@ -5036,12 +5036,10 @@ c           --- Calculate linear weights
      &                          u0*w1*bgrdbx(i  ,0  ,k+1,id) +
      &                          u1*w1*bgrdbx(i+1,0  ,k+1,id))
 
-              if (.not. bgrdrz(id)) then
-                byt = ysign*bfac*(u0*w0*bgrdby(i  ,0  ,k  ,id) +
-     &                            u1*w0*bgrdby(i+1,0  ,k  ,id) +
-     &                            u0*w1*bgrdby(i  ,0  ,k+1,id) +
-     &                            u1*w1*bgrdby(i+1,0  ,k+1,id))
-              endif
+              byt = ysign*bfac*(u0*w0*bgrdby(i  ,0  ,k  ,id) +
+     &                          u1*w0*bgrdby(i+1,0  ,k  ,id) +
+     &                          u0*w1*bgrdby(i  ,0  ,k+1,id) +
+     &                          u1*w1*bgrdby(i+1,0  ,k+1,id))
 
               bzt = zsign*bfac*(u0*w0*bgrdbz(i  ,0  ,k  ,id) +
      &                          u1*w0*bgrdbz(i+1,0  ,k  ,id) +
@@ -5087,10 +5085,12 @@ c            endif
 c             --- For the RZ case, bxt now holds Br. Convert it to Bx and By.
 c             --- Note that this ignores Btheta (in byt) for now.
               if (xt .ne. 0) then
-                byt = bxt*yt0/xt
-                bxt = bxt*xt0/xt
+                bxsave = bxt
+                bysave = byt
+                bxt = bxsave*xt0/xt - bysave*yt0/xt
+                byt = bxsave*yt0/xt + bysave*xt0/xt
               else
-                byt = 0.
+                byt = byt
                 bxt = bxt
               endif
             endif
