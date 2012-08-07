@@ -822,6 +822,14 @@ of the domains.
         transferarray(savedblock.core.yf,solver.block.core.yf,'Bxp',['ny','nz'])
         transferarray(savedblock.core.yf,solver.block.core.yf,'Byp',['nx','nz'])
         transferarray(savedblock.core.yf,solver.block.core.yf,'Bzp',['nx','ny'])
+        # --- If doing damping, then the bar and old need to be exchanged also
+        if solver.theta_damp != 0.:
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Exold',['nx'])
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Eyold',['ny'])
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Ezold',['nz'])
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Exbar',['nx'])
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Eybar',['ny'])
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Ezbar',['nz'])
 
         # --- Exchange the PML data. For each direction, the decomposition objects
         # --- are modified to only include the domains along the appropriate
