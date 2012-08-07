@@ -3483,7 +3483,7 @@ Plots the time dependent field of the accl element
     plg(top.acclet[:,ii]*ascale,tt*oscale,color=color,**kw)
 
 def plotegrd(ie=0,component=None,ix=None,iy=None,iz=None,withbends=1,
-             zlatstrt=None,withscaling=1,**kw):
+             zlatstrt=None,withscaling=1,titles=True,**kw):
   """
 Plots the one of the field components in one of the planes
  - ie: the index of the lattice element to plot
@@ -3575,7 +3575,7 @@ such as contours, and cellarray.
     xm = xs + iota(0,nx)*dx
     color = kw.get('color','fg')
     plg(ee,xm,color=color,**kw)
-    if kw.get('titles',1):
+    if titles:
       if component == 'phi':
         unitstitle = 'Potential %s'%units
       else:
@@ -3607,7 +3607,7 @@ such as contours, and cellarray.
     raise Exception('3-d plot Not yet implemented')
 
 def plotbgrd(ib=0,component=None,ix=None,iy=None,iz=None,withbends=1,
-             zlatstrt=None,withscaling=1,**kw):
+             zlatstrt=None,withscaling=1,titles=True,**kw):
   """
 Plots the one of the field components in one of the planes
  - ib: the index of the lattice element to plot
@@ -3687,7 +3687,7 @@ such as contours, and cellarray.
     color = kw.get('color','fg')
     plg(bb,xm,color=color,**kw)
 
-    if kw.get('titles',1):
+    if titles:
       ptitles('BGRD element #%d'%ib,'%s (m)'%ax[0].upper(),
               'B%s%s'%(component,units))
 
@@ -3716,7 +3716,7 @@ such as contours, and cellarray.
     raise Exception('3-d plot Not yet implemented')
 
 def plotpgrd(ip=0,component=None,ix=None,iy=None,iz=None,withbends=1,
-             zlatstrt=None,withscaling=1,**kw):
+             zlatstrt=None,withscaling=1,titles=True,**kw):
   """
 Plots the one of the field components in one of the planes
  - component: Component to plot, one of 'x', 'y', or 'z'.
@@ -3796,7 +3796,7 @@ such as contours, and cellarray.
     color = kw.get('color','fg')
     plg(pp,xm,color=color,**kw)
 
-    if kw.get('titles',1):
+    if titles:
       ptitles('PGRD element #%d'%ip,'%s (m)'%ax[0].upper(),'phi%s'%units)
 
   elif len(ax) == 2:
