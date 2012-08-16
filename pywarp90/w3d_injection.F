@@ -109,9 +109,13 @@ c Print warning if vbeamfrm is not zero
        call remark("A core dump will result if the emitting surface moves off of the field grid.")
       endif
 
-      if (minval(ainject) <= 0. .or. minval(binject) <= 0.) then
-        call kaboom("inject3d: ainject and binject must be both greater than zero.")
-        return
+      if (.not. l_inj_user_particles) then
+c       --- Unless the user is creating the particles to be injected,
+c       --- make sure that the source radius is nonzero.
+        if (minval(ainject) <= 0. .or. minval(binject) <= 0.) then
+          call kaboom("inject3d: ainject and binject must be both greater than zero.")
+          return
+        endif
       endif
 
 c Clear out the lost particles.
@@ -198,8 +202,8 @@ c         --- loop over injection sources
             inj_ij = ij
             ainj = ainject(ij)
             binj = binject(ij)
-            ainji = 1./ainject(ij)
-            binji = 1./binject(ij)
+            ainji = 1./dvnz(ainject(ij))
+            binji = 1./dvnz(binject(ij))
             zinj = zinject(ij)
             apinj = apinject(ij)
             bpinj = bpinject(ij)
@@ -393,10 +397,14 @@ c                 --- calculate injection surface axial location exactly
 
 c             --- Only save particle if it is within the injection region.
               if (.not. l_inj_zmminmmaxglobal) then
-                if (vzinj > 0.) then
+                if (vzinj > 0. .or. l_inj_user_particles) then
+c                 --- Note that normally, particles are allowed to be exactly
+c                 --- aligned to the lower extent of the grid but not the upper extent.
                   if (zpminlocal+zgrid > zs+zinj .or.
      &                zs+zinj >= zpmaxlocal+zgrid) cycle
                 else
+c                 --- If particles have initially zero Vz, they must not be on
+c                 --- the grid boundary or they will never be accelerated.
                   if (zpminlocal+zgrid >= zs+zinj .or.
      &                zs+zinj > zpmaxlocal+zgrid) cycle
                 endif
