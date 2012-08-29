@@ -1242,6 +1242,8 @@ getichildpositiveonly(gridnumb:integer,np:integer,
                  # Only gathers positive values.
 smooth121nonzero(uin:real,uout:real,nx:integer,ny:integer,nz:integer)
       subroutine # Perform a 1/4-1/2-1/4 smoothing on only the nonzero data
+smooth121nonzerorz(uin:real,uout:real,nx:integer,nz:integer)
+      subroutine # Perform a 1/4-1/2-1/4 smoothing on only the nonzero data for RZ array
 getabsgrad3d(nx:integer,ny:integer,nz:integer,
              f(0:nx,0:ny,0:nz):real,gr(0:nx,0:ny,0:nz):real,
              dx:real,dy:real,dz:real)

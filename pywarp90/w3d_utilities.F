@@ -459,6 +459,79 @@ c=============================================================================
       return
       end
 c=============================================================================
+      subroutine smooth121nonzerorz(uin,uout,nx,nz)
+      integer(ISZ):: nx,nz
+      real(kind=8):: uin(0:nx,0:nz)
+      real(kind=8):: uout(0:nx,0:nz)
+
+      integer(ISZ):: ix,iz,jx,jz
+      integer(ISZ):: ixpjx
+      real(kind=8):: ww(-1:1,-1:1)
+      real(kind=8):: wwsum,w1(-1:1)
+
+      w1 = (/0.25,0.5,0.25/)
+      do jz=-1,1
+        do jx=-1,1
+          ww(jx,jz) = w1(jx)*w1(jz)
+        enddo
+      enddo
+
+      do iz=1,nz-1
+
+        ix = 0
+        uout(ix,iz) = 0.
+        if (uin(ix,iz) .ne. 0.) then
+
+          wwsum = 0.
+          do jz=-1,1
+              do jx=-1,1
+
+                if (jx == -1) then
+                  ixpjx = 1
+                else
+                  ixpjx = ix + jx
+                endif
+                if (uin(ixpjx,iz+jz) .ne. 0.) then
+                  uout(ix,iz) = uout(ix,iz) + ww(jx,jz)*uin(ixpjx,iz+jz)
+                  wwsum = wwsum + ww(jx,jz)
+                endif
+
+              enddo
+          enddo
+
+          if (wwsum .ne. 0.) then
+            uout(ix,iz) = uout(ix,iz)/wwsum
+          endif
+
+        endif
+
+        do ix=1,nx-1
+
+          uout(ix,iz) = 0.
+          if (uin(ix,iz) == 0.) cycle
+
+          wwsum = 0.
+          do jz=-1,1
+              do jx=-1,1
+
+                if (uin(ix+jx,iz+jz) .ne. 0.) then
+                  uout(ix,iz) = uout(ix,iz) + ww(jx,jz)*uin(ix+jx,iz+jz)
+                  wwsum = wwsum + ww(jx,jz)
+                endif
+
+              enddo
+          enddo
+
+          if (wwsum .ne. 0.) then
+            uout(ix,iz) = uout(ix,iz)/wwsum
+          endif
+
+        enddo
+      enddo
+
+      return
+      end
+c=============================================================================
 c=============================================================================
 c=============================================================================
 c=============================================================================
