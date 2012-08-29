@@ -2369,37 +2369,55 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z','B'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver == w3d:
-    bfield = f3d.bfield
-    nxguardb = bfield.nxguardb
-    nyguardb = bfield.nyguardb
-    nzguardb = bfield.nzguardb
-  else:
-    bfield = solver
-    nxguardb = bfield.nxguarde
-    nyguardb = bfield.nyguarde
-    nzguardb = bfield.nzguarde
 
-  b = bfield.b[:,nxguardb:-nxguardb or None,
-                 nyguardb:-nyguardb or None,
-                 nzguardb:-nzguardb or None]
+  import em3dsolver
+  if isinstance(solver,em3dsolver.EM3D):
+    Bx = solver.getbx()
+    By = solver.getby()
+    Bz = solver.getbz()
+    if solver.ny == 0:
+      Bx = Bx[:,0,:]
+      By = By[:,0,:]
+      Bz = Bz[:,0,:]
+
+  else:
+    if solver == w3d:
+      bfield = f3d.bfield
+      nxguardb = bfield.nxguardb
+      nyguardb = bfield.nyguardb
+      nzguardb = bfield.nzguardb
+    else:
+      bfield = solver
+      nxguardb = bfield.nxguarde
+      nyguardb = bfield.nyguarde
+      nzguardb = bfield.nzguarde
+
+    b = bfield.b[:,nxguardb:-nxguardb or None,
+                   nyguardb:-nyguardb or None,
+                   nzguardb:-nzguardb or None]
+    Bx = b[0,...]
+    By = b[1,...]
+    Bz = b[2,...]
 
   if comp == 'B':
-    Bx = getdecomposedarray(b[0,...],ix=ix,iy=iy,iz=iz,
+    Bx = getdecomposedarray(Bx,ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    By = getdecomposedarray(b[1,...],ix=ix,iy=iy,iz=iz,
+    By = getdecomposedarray(By,ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
-    Bz = getdecomposedarray(b[2,...],ix=ix,iy=iy,iz=iz,
+    Bz = getdecomposedarray(Bz,ix=ix,iy=iy,iz=iz,
                             bcast=bcast,local=local,fullplane=fullplane,
                             xyantisymmetric=(ic in [0,1]),
                             solver=solver)
     return sqrt(Bx**2 + By**2 + Bz**2)
   else:
-    return getdecomposedarray(b[ic,...],ix=ix,iy=iy,iz=iz,
+    if   ic == 0: B = Bx
+    elif ic == 1: B = By
+    elif ic == 2: B = Bz
+    return getdecomposedarray(B,ix=ix,iy=iy,iz=iz,
                               bcast=bcast,local=local,fullplane=fullplane,
                               xyantisymmetric=(ic in [0,1]),
                               solver=solver)
