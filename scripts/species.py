@@ -2046,7 +2046,7 @@ of code."""
           # --- Array is unallocated - return a zero length array.
           # --- This avoids the need of code always having to check if
           # --- the arrays are allocated.
-          return zeros((0,0))
+          return zeros((0,self.pgroup.npid))
       else:
         raise NotImplementedError('The species attributes only works with one species')
     def fset(self,value):
