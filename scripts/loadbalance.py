@@ -135,6 +135,27 @@ recalculated on a finer mesh to give better balancing.
             self.runtime += (endtime - starttime)
             return
 
+        # --- Find frequency of load balancing
+        ii = max(self.when.values())
+        for key,value in self.when.iteritems():
+            if top.it < key: ii = min(ii,value)
+
+        ppdecomp = top.ppdecomp
+
+        # --- Just return if load balancing not done now and the particle decomposition
+        # --- fully covers the extent of the field grid. No checks are needed to ensure
+        # --- that particles will go outside of the particle domains since those particles
+        # --- are scraped anyway.
+        if (ppdecomp.ix[0] == 0 and ppdecomp.ix[-1]+ppdecomp.nx[-1] == ppdecomp.nxglobal and
+            ppdecomp.iy[0] == 0 and ppdecomp.iy[-1]+ppdecomp.ny[-1] == ppdecomp.nyglobal and
+            ppdecomp.iz[0] == 0 and ppdecomp.iz[-1]+ppdecomp.nz[-1] == ppdecomp.nzglobal):
+            if not lforce and (top.it%ii) != 0:
+                if self.verbose:
+                    print "Skipping loadbalance since it is not time for it"
+                endtime = time.time()
+                self.runtime += (endtime - starttime)
+                return
+
         # --- Older version sometimes used the precalculated moments to
         # --- avoid recalculating the quantities.
         #usemoments = not (not top.lmoments or top.ifzmmnt == 0
@@ -178,22 +199,22 @@ recalculated on a finer mesh to give better balancing.
                 i2 = i1 + top.pgroup.nps[js]
                 if top.nxprocs > 1:
                     xx = top.pgroup.xp[i1:i2]
-                    xminp = min(xminp,min(xx))
-                    xmaxp = max(xmaxp,max(xx))
+                    xminp = min(xminp,minnd(xx))
+                    xmaxp = max(xmaxp,maxnd(xx))
                 else:
                     xminp = w3d.xmmin
                     xmaxp = w3d.xmmax
                 if top.nyprocs > 1:
                     yy = top.pgroup.yp[i1:i2]
-                    yminp = min(yminp,min(yy))
-                    ymaxp = max(ymaxp,max(yy))
+                    yminp = min(yminp,minnd(yy))
+                    ymaxp = max(ymaxp,maxnd(yy))
                 else:
                     yminp = w3d.ymmin
                     ymaxp = w3d.ymmax
                 if top.nzprocs > 1:
                     zz = top.pgroup.zp[i1:i2]
-                    zminp = min(zminp,min(zz))
-                    zmaxp = max(zmaxp,max(zz))
+                    zminp = min(zminp,minnd(zz))
+                    zmaxp = max(zmaxp,maxnd(zz))
                 else:
                     zminp = w3d.zmmin + top.zbeam
                     zmaxp = w3d.zmmax + top.zbeam
@@ -268,8 +289,6 @@ recalculated on a finer mesh to give better balancing.
             zminp = minimum(zminp,max(w3d.zmmin,zinjectmin))
             zmaxp = maximum(zmaxp,min(w3d.zmmax,zinjectmax))
 
-        ppdecomp = top.ppdecomp
-
         # --- Check if uppermost particle is close to edge of last processor
         # --- If so, then force a reloadbalance.
         if ppdecomp.nxprocs > 1 and ppdecomp.xmax[-1] < w3d.xmmax-0.5*w3d.dx:
@@ -337,11 +356,6 @@ recalculated on a finer mesh to give better balancing.
         ymaxp = ymaxp - w3d.ymmin
         zminp = zminp - w3d.zmmin - top.zbeam
         zmaxp = zmaxp - w3d.zmmin - top.zbeam
-
-        # --- Find frequency of load balancing
-        ii = max(self.when.values())
-        for key,value in self.when.iteritems():
-            if top.it < key: ii = min(ii,value)
 
         # --- Add the padding to the lower and upper end of
         # --- the grid. This is done here now so that if a
@@ -590,7 +604,7 @@ recalculated on a finer mesh to give better balancing.
                     i1 = top.pgroup.ins[js] - 1
                     i2 = i1 + top.pgroup.nps[js]
                     vv = uu[i1:i2]*top.pgroup.gaminv[i1:i2]
-                    vmaxp = max(vmaxp,max(vv))
+                    vmaxp = max(vmaxp,maxnd(vv))
                 vmaxp = globalmax(vmaxp)
             else:
                 vmaxp = max(top.vzmaxp)
@@ -610,7 +624,7 @@ recalculated on a finer mesh to give better balancing.
                     i1 = top.pgroup.ins[js] - 1
                     i2 = i1 + top.pgroup.nps[js]
                     vv = uu[i1:i2]*top.pgroup.gaminv[i1:i2]
-                    vminp = min(vminp,min(vv))
+                    vminp = min(vminp,minnd(vv))
                 vminp = globalmin(vminp)
             else:
                 vminp = min(top.vzminp)
@@ -630,7 +644,7 @@ Converts a weight into the size of the domains.
 Returns an array of the same length which is the relative length of each
 of the domains.
         """
-        assert max(weight) > 0.,"weight must have some positive elements"
+        assert maxnd(weight) > 0.,"weight must have some positive elements"
         # --- Integrate weight, assuming linear variation between grid points
         nn = len(weight) - 1
         np = 0.5*weight[0] + sum(weight[1:-1]) + 0.5*weight[-1]
@@ -822,6 +836,14 @@ of the domains.
         transferarray(savedblock.core.yf,solver.block.core.yf,'Bxp',['ny','nz'])
         transferarray(savedblock.core.yf,solver.block.core.yf,'Byp',['nx','nz'])
         transferarray(savedblock.core.yf,solver.block.core.yf,'Bzp',['nx','ny'])
+        # --- If doing damping, then the bar and old need to be exchanged also
+        if solver.theta_damp != 0.:
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Exold',['nx'])
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Eyold',['ny'])
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Ezold',['nz'])
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Exbar',['nx'])
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Eybar',['ny'])
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Ezbar',['nz'])
 
         # --- Exchange the PML data. For each direction, the decomposition objects
         # --- are modified to only include the domains along the appropriate

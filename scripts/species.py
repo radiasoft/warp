@@ -1997,10 +1997,16 @@ of code."""
   def _getpgroupattribute(name,doc=None):
     def fget(self):
       if len(self.jslist) == 1:
-        js = self.jslist[0]
-        i1 = self.pgroup.ins[js] - 1
-        i2 = i1 + self.pgroup.nps[js]
-        return getattr(self.pgroup,name)[i1:i2]
+        if self.pgroup.npmax > 0:
+          js = self.jslist[0]
+          i1 = self.pgroup.ins[js] - 1
+          i2 = i1 + self.pgroup.nps[js]
+          return getattr(self.pgroup,name)[i1:i2]
+        else:
+          # --- Arrays are unallocated - return a zero length array.
+          # --- This avoids the need of code always having to check if
+          # --- the arrays are allocated.
+          return zeros(0)
       else:
         raise NotImplementedError('The species attributes only works with one species')
     def fset(self,value):
@@ -2031,10 +2037,16 @@ of code."""
   def _getpgroupattribute(name,doc=None):
     def fget(self):
       if len(self.jslist) == 1:
-        js = self.jslist[0]
-        i1 = self.pgroup.ins[js] - 1
-        i2 = i1 + self.pgroup.nps[js]
-        return getattr(self.pgroup,name)[i1:i2,:]
+        if self.pgroup.npmax > 0:
+          js = self.jslist[0]
+          i1 = self.pgroup.ins[js] - 1
+          i2 = i1 + self.pgroup.nps[js]
+          return getattr(self.pgroup,name)[i1:i2,:]
+        else:
+          # --- Array is unallocated - return a zero length array.
+          # --- This avoids the need of code always having to check if
+          # --- the arrays are allocated.
+          return zeros((0,self.pgroup.npid))
       else:
         raise NotImplementedError('The species attributes only works with one species')
     def fset(self,value):

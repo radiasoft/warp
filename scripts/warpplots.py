@@ -47,7 +47,7 @@
 | Plots solution from envelope code.
 |   penv()
 
-| Plots contours of charge density (rho) or electrostatic potential (phi) in
+| Plots contours of charge density (rho) or electrostatic potential (phi) or self E fields in
 | various planes.
 |   pcrhozy(), pcrhozx(), pcrhoxy()
 |   pcphizy(), pcphizx(), pcphixy()
@@ -723,9 +723,9 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
   kw.setdefault('type',linetype)
   if len(shape(y)) == 0: y = [y]
   if x is not None and len(shape(x)) == 0: x = [x]
-  if type(y) is not ArrayType: y = array(y)
+  y = array(y,copy=False)
   if x is not None:
-    if type(x) is not ArrayType: x = array(x)
+    x = array(x,copy=False)
     # --- This is the only constraint on the input arrays.
     assert shape(x)[0]==shape(y)[0],\
       'The first dimensions of the two input arrays must be of the same length'
@@ -735,7 +735,7 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
   if len(shape(x)) > 2:
     # --- Reshape the array, putting all but the 1st dimension into the
     # --- 2nd dimension.
-    xx = reshape(x,(x.shape[0],product(array(x.shape[1:]))))
+    xx = reshape(x,(x.shape[0],product(x.shape[1:])))
   elif len(shape(x)) == 2:
     # --- The input x is usable as is.
     xx = x
@@ -745,7 +745,7 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
   if len(shape(y)) > 2:
     # --- Reshape the array, putting all but the 1st dimension into the
     # --- 2nd dimension.
-    yy = reshape(y,(y.shape[0],product(array(y.shape[1:]))))
+    yy = reshape(y,(y.shape[0],product(y.shape[1:])))
   elif len(shape(y)) == 2:
     # --- The input y is usable as is.
     yy = y
@@ -1996,10 +1996,10 @@ supplied.
     # --- is needed to get 4 points.
     n = len(gridx)
     while n%2 == 1 or n < 4:
-      newgridx = zeros(n+1,dtype=array(gridx).dtype)
-      newgridy = zeros(n+1,dtype=array(gridy).dtype)
-      newxmesh = zeros(n+1,dtype=array(xmesh).dtype)
-      newymesh = zeros(n+1,dtype=array(ymesh).dtype)
+      newgridx = zeros(n+1,dtype=array(gridx,copy=False).dtype)
+      newgridy = zeros(n+1,dtype=array(gridy,copy=False).dtype)
+      newxmesh = zeros(n+1,dtype=array(xmesh,copy=False).dtype)
+      newymesh = zeros(n+1,dtype=array(ymesh,copy=False).dtype)
       newgridx[:n] = gridx
       newgridy[:n] = gridy
       newxmesh[:n] = xmesh
@@ -4174,7 +4174,7 @@ For plotting options, see :py:func:`ppgeneric`.
 ##########################################################################
 def pcselfezy(comp=None,ix=None,fullplane=1,solver=None,
               lbeamframe=0,vec=0,sz=1,sy=1,local=0,**kw):
-  """Plots contours of electrostatic field in the Z-Y plane
+  """Plots contours of self E field in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', 'z' or 'E'.
           Use 'E' to get the field magnitude.
   - ix=nint(-xmmin/dx): X index of plane
@@ -4204,8 +4204,8 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   else:
     kw['pplimits']=(kw['xmin'],kw['xmax'],
                     solver.ymmin,solver.ymmax)
-  if comp == 'E': titlet = 'Electrostatic Emagnitude in z-y plane'
-  else:           titlet = 'Electrostatic E%s in z-y plane'%comp
+  if comp == 'E': titlet = 'Emagnitude in z-y plane'
+  else:           titlet = 'E%s in z-y plane'%comp
   settitles(titlet,"Z","Y","ix = "+repr(ix))
   if not vec:
     if kw.get('cellarray',1):
@@ -4225,7 +4225,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
 ##########################################################################
 def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
               lbeamframe=0,vec=0,sz=1,sx=1,local=0,**kw):
-  """Plots contours of electrostatic potential in the Z-X plane
+  """Plots contours of self E field in the Z-X plane
   - comp: field component to plot, either 'x', 'y', 'z', or 'E'.
           Use 'E' to get the field magnitude.
   - iy=nint(-ymmin/dy): Y index of plane
@@ -4255,8 +4255,8 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
   else:
     kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.xmmin,solver.xmmax)
-  if comp == 'E': titlet = 'Electrostatic Emagnitude in z-x plane'
-  else:           titlet = 'Electrostatic E%s in z-x plane'%comp
+  if comp == 'E': titlet = 'Emagnitude in z-x plane'
+  else:           titlet = 'E%s in z-x plane'%comp
   settitles(titlet,"Z","X","iy = "+repr(iy))
   if not vec:
     if kw.get('cellarray',1):
@@ -4276,7 +4276,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
 ##########################################################################
 def pcselfezr(comp=None,solver=None,
               lbeamframe=0,vec=0,sz=1,sr=1,local=0,**kw):
-  """Plots contours of electrostatic potential in the Z-R plane
+  """Plots contours of self E field the Z-R plane
   - comp: field component to plot, either 'r', 'x', 'y', 'z' or 'E'.
           'r' and 'x' are the same thing.
           Use 'E' to get the field magnitude.
@@ -4292,7 +4292,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
 ##########################################################################
 def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
               local=0,**kw):
-  """Plots contours of electrostatic potential in the X-Y plane
+  """Plots contours of self E field in the X-Y plane
   - comp: field component to plot, either 'x', 'y', 'z' or 'E'.
           Use 'E' to get the field magnitude.
   - iz=nint(-zmmin/dz): Z index of plane
@@ -4317,8 +4317,8 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
-  if comp == 'E': titlet = 'Electrostatic Emagnitude in x-y plane'
-  else:           titlet = 'Electrostatic E%s in x-y plane'%comp
+  if comp == 'E': titlet = 'Emagnitude in x-y plane'
+  else:           titlet = 'E%s in x-y plane'%comp
   settitles(titlet,"X","Y","iz = "+repr(iz))
   if not vec:
     if kw.get('cellarray',1):
