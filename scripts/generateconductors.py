@@ -373,9 +373,11 @@ Should never be directly created by the user.
       print 'drawzy method not implemented for '+self.__class__.__name__
 
   def plotdata(self,r,z,color='fg',filled=None,fullplane=1,
-               xcent=None,zcent=None):
+               xcent=None,zcent=None,xshift=0.,zshift=0.):
     if xcent is None: xcent = self.xcent
     if zcent is None: zcent = self.zcent
+    xcent += xshift
+    zcent += zshift
     z = array(z) + zcent
     r = array(r)
     if color is not None:
@@ -3136,18 +3138,18 @@ Box class
     y = self.ysize/2.*array([-1,+1,+1,-1,-1])
     x = self.xsize/2.*array([-1,-1,+1,+1,-1])
     self.plotdata(y,x,color=color,filled=filled,fullplane=fullplane,
-                  xcent=self.ycent,zcent=self.xcent)
+                  xcent=self.ycent,zcent=self.xcent,**kw)
 
   def drawzx(self,color='fg',filled=None,fullplane=1,**kw):
     r = self.xsize/2.*array([-1,+1,+1,-1,-1])
     z = self.zsize/2.*array([-1,-1,+1,+1,-1])
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
   def drawzy(self,color='fg',filled=None,fullplane=1,**kw):
     r = self.ysize/2.*array([-1,+1,+1,-1,-1])
     z = self.zsize/2.*array([-1,-1,+1,+1,-1])
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,
-                  xcent=self.ycent)
+                  xcent=self.ycent,**kw)
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
@@ -3207,7 +3209,7 @@ Plots the r versus z
     yp =       + 0*cp    + z*sp
     zp = -r*st - 0*ct*sp + z*ct*cp
 
-    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0)
+    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0,**kw)
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
@@ -3336,7 +3338,7 @@ Plots the r versus z
     if rmin is None: rmin = 0.
     r = [self.radius,self.radius,rmin,rmin,self.radius]
     z = self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
   def drawzx(self,color='fg',filled=None,fullplane=1,**kw):
     """
@@ -3363,7 +3365,7 @@ Plots the r versus z
     r = [self.radius,self.radius,rmin,rmin,self.radius]
     z = self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,
-                  xcent=self.ycent)
+                  xcent=self.ycent,**kw)
 
   def drawxy(self,color='fg',filled=None,fullplane=1,nn=101,**kw):
     """
@@ -3384,7 +3386,7 @@ Plots the x versus y
       x = array(list(x) + self.rmin*cos(-theta))
       y = array(list(y) + self.rmin*sin(-theta))
     self.plotdata(y,x,color=color,filled=filled,fullplane=fullplane,
-                  xcent=self.ycent,zcent=self.xcent)
+                  xcent=self.ycent,zcent=self.xcent,**kw)
 
 #============================================================================
 class ZRoundedCylinder(Assembly):
@@ -3506,7 +3508,7 @@ Plots the r versus z
     if rmax is None: rmax = w3d.xmmax
     r = [self.radius,self.radius,rmax,rmax,self.radius]
     z = self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
 #============================================================================
 class ZRoundedCylinderOut(Assembly):
@@ -3594,7 +3596,7 @@ Plots the r versus z
     zrght = +zc + self.radius2*sin(arange(101,dtype='l')/100.*pi/2.)
     r = [rmax] + list(rleft) + list(rrght) + [rmax,rmax]
     z = [-self.length/2.] + list(zleft) + list(zrght) + [self.length/2.,-self.length/2.]
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
 
 #============================================================================
@@ -4000,7 +4002,7 @@ Sphere
     theta = span(0.,2.*pi,narcpoints+1)
     r = self.radius*cos(theta)
     z = self.radius*sin(theta)
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
 #============================================================================
 class ZElliptoid(Sphere,EllipticAssembly):
@@ -4078,12 +4080,12 @@ Plots the r versus z
     xp = +r*ct - 0*st*sp + z*st*cp
     yp =       + 0*cp    + z*sp
     zp = -r*st - 0*ct*sp + z*ct*cp
-    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0)
+    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0,**kw)
 
     xp = -r*ct - 0*st*sp + z*st*cp
     yp =       + 0*cp    + z*sp
     zp = +r*st - 0*ct*sp + z*ct*cp
-    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0)
+    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0,**kw)
 
 #============================================================================
 class ConeSlope(Assembly):
@@ -4247,7 +4249,7 @@ Torus
     theta = span(0.,2.*pi,narcpoints+1)
     r = self.r2*cos(theta) + self.r1
     z = self.r2*sin(theta)
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
 #============================================================================
 class ZGrid(Assembly):
@@ -4283,7 +4285,7 @@ Rectangular grid
     r = [-1.,1.,1.,-1.,-1.]
     w = self.length/2.
     z = [-w,-w,w,w,-w]
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
 #============================================================================
 class Beamletplate(Assembly):
@@ -4636,7 +4638,7 @@ Plots the r versus z
     r,z = self.getplotdata(False,None,None,
                            self.rsrf,self.zsrf,self.rad,
                            self.rc,self.zc,narcpoints)
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
   def createdxobject(self,kwdict={},**kw):
     """
@@ -4792,7 +4794,7 @@ Plots the r versus z
     if rmax is None: rmax = self.rmax
     r = [rmax] + r + [rmax]
     z = [self.zmin-self.zcent] + z + [self.zmax-self.zcent]
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
   def createdxobject(self,rmax=None,kwdict={},**kw):
     """
@@ -4959,7 +4961,7 @@ Plots the r versus z
     if rmin is None: rmin = self.rmin
     r = [rmin] + r + [rmin]
     z = [self.zmin-self.zcent] + z + [self.zmax-self.zcent]
-    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
   def createdxobject(self,kwdict={},**kw):
     """
@@ -5184,7 +5186,7 @@ Plots the r versus z
     r = r + [r[0]]
     z = z + [z[0]]
     if len(r) > 0:
-      self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+      self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
   def createdxobject(self,kwdict={},**kw):
     """
@@ -5667,12 +5669,12 @@ Plots the r versus z
     xp = +r*ct - 0*st*sp + z*st*cp
     yp =       + 0*cp    + z*sp
     zp = -r*st - 0*ct*sp + z*ct*cp
-    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0)
+    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0,**kw)
 
     xp = -r*ct - 0*st*sp + z*st*cp
     yp =       + 0*cp    + z*sp
     zp = +r*st - 0*ct*sp + z*ct*cp
-    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0)
+    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0,**kw)
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
