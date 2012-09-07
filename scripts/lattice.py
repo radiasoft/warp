@@ -43,11 +43,14 @@ addnewdipo: Adds a new dipo element
 addnewquad: Adds a new quadnelement
 addnewsext: Adds a new sext element
 addnewhele: Adds a new hele element
+addnewemltdataset: Adds a new emlt data set
 addnewemlt: Adds a new emlt element
 addnewmmltdataset: Adds a new mmlt data set
 addnewmmlt: Adds a new mmlt element
 addnewaccl: Adds a new accl element
+addnewegrddataset: Adds a new egrd data set
 addnewegrd: Adds a new egrd element
+addnewbgrddataset: Adds a new bgrd data set
 addnewbgrd: Adds a new bgrd element
 addnewbsqgrad: Adds a new bsqgrad element
 addnewpgrd: Adds a new pgrd element
@@ -2235,6 +2238,105 @@ hele arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- EMLT --- XXX
+def addnewemltdataset(zlen,es,esp=None,phz=None,phpz=None,nn=None,vv=None):
+  """
+Adds a new emlt data set.
+Required arguments:
+  - zlen: length, in meters, of the data set
+  - es: 1- or 2-D array containing the multipole data. First dimension is data
+    along z, optional second dimension is number of multipole components.
+
+The following may also be supplied.
+  - nn, vv: the multipole indices. If these are not specified, then it is
+    assumed that the data in the 'es' array is layed out with the ordering of
+    the existing emlt_n and emlt_v. Must have the same len as the second
+    dimension of es (can be scalars is es is 1-D).
+  - esp: first derivative of es along z. Must have the same shape as es.
+  - phz, phpz: phase angle along z and it's derivative. Must have the same
+    shape as es.
+  """
+  # --- Make sure that the data set has the same number of multipole
+  # --- components or less, or that both n and v are passed in.
+  assert ((len(shape(es)) == 1) or (shape(es)[1] <= top.nesmult) or \
+          (nn is not None and vv is not None)),\
+         "The shape of the dataset must be consistent with the data already created or both n and v must be specified"
+
+  # --- Now setup the multipole component dataset.
+  top.nemltsets = top.nemltsets + 1
+
+  # --- Make sure that es is a 2-D array (first dimension is data versus z,
+  # --- second is number of multipole components)
+  if len(shape(es)) == 1:
+    es = transpose(array([es]))
+    if esp is not None: esp = transpose(array([esp]))
+    if phz is not None: phz = transpose(array([phz]))
+    if phpz is not None: phpz = transpose(array([phpz]))
+
+  # --- Make sure that the first dimension of the arrays is long enough
+  if shape(es)[0] > top.nzemltmax+1: top.nzemltmax = shape(es)[0] - 1
+
+  # --- Change the sizes of the arrays
+  gchange("Mult_data")
+
+  # --- Set basic parameters
+  n0 = shape(es)[0] # --- Number of data points along z
+  n1 = shape(es)[1] # --- Number of multipole components
+  top.nzemlt[-1] = n0 - 1
+  top.dzemlt[-1] = zlen/(n0 - 1.)
+
+  if nn is None and vv is None:
+    assert top.nesmult > 0,'There are no emlt data sets, so the nn and vv arguments must be specified'
+    # --- Assume n and v are ordered correctly and just copy the data in
+    top.esemlt[:n0,:n1,-1] = es
+    if esp is not None: top.esemltp[:n0,:n1,-1] = esp
+    if phz is not None: top.esemltph[:n0,:n1,-1] = phz
+    if phpz is not None: top.esemltphp[:n0,:n1,-1] = phpz
+
+  else:
+    # --- Make sure that n and v are lists
+    if len(shape(nn)) == 0: nn = list([nn])
+    else:                   nn = list(nn)
+    if len(shape(vv)) == 0: vv = list([vv])
+    else:                   vv = list(vv)
+
+    # --- Make es a list of arrays
+    es = list(transpose(es))
+    if esp is not None: esp = list(transpose(esp))
+    if phz is not None: phz = list(transpose(phz))
+    if phpz is not None: phpz = list(transpose(phpz))
+
+    # --- Loop over existing multipole components
+    for i in xrange(top.nesmult):
+      # --- Loop over input multipole components checking if any are the same
+      for j in xrange(len(nn)):
+        if nn[j] == top.emlt_n[i] and vv[j] == top.emlt_v[i]:
+          # --- If so, then copy the data to the appropriate place and
+          # --- delete the data from the lists.
+          top.esemlt[:n0,i,-1] = es[j]
+          if esp is not None: top.esemltp[:n0,i,-1] = esp[j]
+          if phz is not None: top.esemltph[:n0,i,-1] = phz[j]
+          if phpz is not None: top.esemltphp[:n0,i,-1] = phpz[j]
+          del nn[j],vv[j],es[j]
+          if esp is not None: del esp[j]
+          if phz is not None: del phz[j]
+          if phpz is not None: del phpz[j]
+          break
+
+    # --- Now copy in any left over data, increasing the number of multipole
+    # --- components.
+    if len(nn) > 0:
+      ln = len(nn)
+      top.nesmult = top.nesmult + ln
+      gchange("Mult_data")
+      top.emlt_n[-ln:] = nn
+      top.emlt_v[-ln:] = vv
+      top.esemlt[:n0,-ln:,-1] = transpose(array(es))
+      if esp is not None: top.esemltp[:n0,-ln:,-1] = transpose(array(esp))
+      if phz is not None: top.esemltph[:n0,-ln:,-1] = transpose(array(phz))
+      if phpz is not None: top.esemltphp[:n0,-ln:,-1] = transpose(array(phpz))
+
+  return top.nemltsets
+
 def addnewemlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,
                ox=0.,oy=0.,ot=0.,op=0.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
                es=None,esp=None,phz=None,phpz=None,nn=None,vv=None,
@@ -2249,7 +2351,9 @@ takes precedence):
   - id: data set ID corresponding to already existing emlt multipole data
         Note that this index is one based - for the first data set, set id=1.
   - es: 1- or 2-D array containing the multipole data. First dimension is data
-    along z, optional second dimension is number of multipole components.
+        along z, optional second dimension is number of multipole components.
+        With this input, :py:func:`addnewemltdataset` will automatically
+        be called.
 If 'es' is supplied, the following may also be supplied.
   - nn, vv: the multipole indices. If these are not specified, then it is
     assumed that the data in the 'es' array is layed out with the ordering of
@@ -2337,71 +2441,7 @@ scale factor. One of the following can be supplied:
     # --- If an 'id' was passed in, then just use that.
     top.emltid[ie] = id
   elif es is not None:
-    # --- Otherwise, create a new dataset.
-    top.nemltsets = top.nemltsets + 1
-    top.emltid[ie] = top.nemltsets
-    # --- Make sure that es is a 2-D array (first dimension is data versus z,
-    # --- second is number of multipole components)
-    if len(shape(es)) == 1:
-      es = transpose(array([es]))
-      if esp is not None: esp = transpose(array([esp]))
-      if phz is not None: phz = transpose(array([phz]))
-      if phpz is not None: phpz = transpose(array([phpz]))
-    # --- Make sure that the first dimension of the arrays is long enough
-    if shape(es)[0] > top.nzemltmax+1: top.nzemltmax = shape(es)[0] - 1
-    # --- Change the sizes of the arrays
-    gchange("Mult_data")
-    # --- Set basic parameters
-    n0 = shape(es)[0] # --- Number of data points along z
-    n1 = shape(es)[1] # --- Number of multipole components
-    top.nzemlt[-1] = n0 - 1
-    top.dzemlt[-1] = (top.emltze[ie] - top.emltzs[ie])/(n0 - 1.)
-    if nn is None and vv is None:
-      assert top.nesmult > 0,'There are no emlt data sets, so the nn and vv arguments must be specified'
-      # --- Assume n and v are ordered correctly and just copy the data in
-      top.esemlt[:n0,:n1,-1] = es
-      if esp is not None: top.esemltp[:n0,:n1,-1] = esp
-      if phz is not None: top.esemltph[:n0,:n1,-1] = phz
-      if phpz is not None: top.esemltphp[:n0,:n1,-1] = phpz
-    else:
-      # --- Make sure that n and v are lists
-      if len(shape(nn)) == 0: nn = list([nn])
-      else:                   nn = list(nn)
-      if len(shape(vv)) == 0: vv = list([vv])
-      else:                   vv = list(vv)
-      # --- Make es a list of arrays
-      es = list(transpose(es))
-      if esp is not None: esp = list(transpose(esp))
-      if phz is not None: phz = list(transpose(phz))
-      if phpz is not None: phpz = list(transpose(phpz))
-      # --- Loop over existing multipole components
-      for i in xrange(top.nesmult):
-        # --- Loop over input multipole components checking if any are the same
-        for j in xrange(len(nn)):
-          if nn[j] == top.emlt_n[i] and vv[j] == top.emlt_v[i]:
-            # --- If so, then copy the data to the appropriate place and
-            # --- delete the data from the lists.
-            top.esemlt[:n0,i,-1] = es[j]
-            if esp is not None: top.esemltp[:n0,i,-1] = esp[j]
-            if phz is not None: top.esemltph[:n0,i,-1] = phz[j]
-            if phpz is not None: top.esemltphp[:n0,i,-1] = phpz[j]
-            del nn[j],vv[j],es[j]
-            if esp is not None: del esp[j]
-            if phz is not None: del phz[j]
-            if phpz is not None: del phpz[j]
-            break
-      # --- Now copy in any left over data, increasing the number of multipole
-      # --- components.
-      if len(nn) > 0:
-        ln = len(nn)
-        top.nesmult = top.nesmult + ln
-        gchange("Mult_data")
-        top.emlt_n[-ln:] = nn
-        top.emlt_v[-ln:] = vv
-        top.esemlt[:n0,-ln:,-1] = transpose(array(es))
-        if esp is not None: top.esemltp[:n0,-ln:,-1] = transpose(array(esp))
-        if phz is not None: top.esemltph[:n0,-ln:,-1] = transpose(array(phz))
-        if phpz is not None: top.esemltphp[:n0,-ln:,-1] = transpose(array(phpz))
+    top.emltid[ie] = addnewemltdataset(ze-zs,es,esp,phz,phpz,nn,vv)
 
   if (time is not None and data is not None) or func is not None:
     TimeDependentLatticeElement('emltsc',ie,time,data,func)
@@ -2709,6 +2749,62 @@ will return the handler for the time dependence.
 
 # ----------------------------------------------------------------------------
 # --- EGRD --- XXX
+def addnewegrddataset(dx=None,dy=None,zlength=None,ex=None,ey=None,ez=None,
+                      rz=false,nx=None,ny=None,nz=None,pp=None):
+  """
+Adds a new data set for egrd elements.
+One or more 3-D field arrays may be specified
+  - ex, ey, ez
+  - dx, dy: transverse grid cell size must be specified
+  - zlength:
+  - rz=false: set to true if data is RZ only
+Some extra data may be saved,
+  - pp: the electrostatic potential associated with the E field data
+  """
+  # --- Make sure that enough input was given to create the E arrays
+  assert (dx is not None and dy is not None and zlength is not None),\
+         "dx, dy and zlength must all be specified"
+  assert ((ex is not None or ey is not None or ez is not None) or \
+          (nx is not None and ny is not None and nz is not None)),\
+         "either a dataset, ex, ey, or ez, or all of nx, ny, nz, must be passed in"
+
+  # --- Setup the 3-D field grid dataset, creating a new dataset.
+  top.egrdns = top.egrdns + 1
+
+  # --- Get array size
+  if ex is not None: nx,ny,nz = array(shape(ex)) - array([1,1,1])
+  if ey is not None: nx,ny,nz = array(shape(ey)) - array([1,1,1])
+  if ez is not None: nx,ny,nz = array(shape(ez)) - array([1,1,1])
+
+  # --- Make sure that the arrays are big enough
+  top.egrdnx = max(nx,top.egrdnx)
+  top.egrdny = max(ny,top.egrdny)
+  top.egrdnz = max(nz,top.egrdnz)
+  gchange("EGRDdata")
+
+  # --- Copy the data in
+  top.egrddx[-1] = dx
+  top.egrddy[-1] = dy
+  top.egrddz[-1] = zlength/nz
+  if ex is not None: top.egrdex[:nx+1,:ny+1,:nz+1,-1] = ex
+  if ey is not None: top.egrdey[:nx+1,:ny+1,:nz+1,-1] = ey
+  if ez is not None: top.egrdez[:nx+1,:ny+1,:nz+1,-1] = ez
+  top.egrdrz[-1] = rz
+
+  # --- If pp was given, make space for it and copy the data.
+  # --- This assumes that pp has the proper shape.
+  if pp is not None:
+    top.egrdnp = 1
+    gchange("EGRDdata")
+    if rz:
+      top.egrdpp[:nx+1,0,:nz+1,-1,0] = pp
+    else:
+      top.egrdpp[:nx+1,:ny+1,:nz+1,-1,0] = pp
+
+  # --- Return the id of the new dataset. This allows the user to refer to
+  # --- this new dataset without having to know its actual number.
+  return top.egrdns
+
 def addnewegrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,sf=0.,sc=1.,sy=0,dx=None,dy=None,ex=None,ey=None,ez=None,
                rz=false,nx=None,ny=None,nz=None,pp=None,
@@ -2800,36 +2896,8 @@ of dx, dy, nx, ny, nz, must be passed in"""
     # --- If an 'id' was passed in, then just use that.
     top.egrdid[ie] = id
   else:
-    # --- Otherwise, create a new dataset.
-    top.egrdns = top.egrdns + 1
-    top.egrdid[ie] = top.egrdns
-    # --- Get array size
-    if ex is not None: nx,ny,nz = array(shape(ex)) - array([1,1,1])
-    if ey is not None: nx,ny,nz = array(shape(ey)) - array([1,1,1])
-    if ez is not None: nx,ny,nz = array(shape(ez)) - array([1,1,1])
-    # --- Make sure that the arrays are big enough
-    top.egrdnx = max(nx,top.egrdnx)
-    top.egrdny = max(ny,top.egrdny)
-    top.egrdnz = max(nz,top.egrdnz)
-    gchange("EGRDdata")
-    # --- Copy the data in
-    top.egrddx[-1] = dx
-    top.egrddy[-1] = dy
-    top.egrddz[-1] = (ze - zs)/nz
-    if ex is not None: top.egrdex[:nx+1,:ny+1,:nz+1,-1] = ex
-    if ey is not None: top.egrdey[:nx+1,:ny+1,:nz+1,-1] = ey
-    if ez is not None: top.egrdez[:nx+1,:ny+1,:nz+1,-1] = ez
-    top.egrdrz[-1] = rz
-
-    # --- If pp was given, make space for it and copy the data.
-    # --- This assumes that pp has the proper shape.
-    if pp is not None:
-      top.egrdnp = 1
-      gchange("EGRDdata")
-      if rz:
-        top.egrdpp[:nx+1,0,:nz+1,-1,0] = pp
-      else:
-        top.egrdpp[:nx+1,:ny+1,:nz+1,-1,0] = pp
+    # --- Otherwise, create a new data set
+    top.egrdid[ie] = addnewegrddataset(dx,dy,(ze-zs),ex,ey,ez,rz,nx,ny,nz,pp)
 
   if (time is not None and data is not None) or func is not None:
     TimeDependentLatticeElement('egrdsc',ie,time,data,func)
@@ -2843,6 +2911,50 @@ of dx, dy, nx, ny, nz, must be passed in"""
 
 # ----------------------------------------------------------------------------
 # --- BGRD --- XXX
+def addnewbgrddataset(dx=None,dy=None,zlength=None,bx=None,by=None,bz=None,
+                      rz=false,nx=None,ny=None,nz=None):
+  """
+Adds a new data set for bgrd elements.
+One or more 3-D field arrays may be specified
+  - bx, by, bz
+  - dx, dy: transverse grid cell size must be specified
+  - zlength:
+  - rz=false: set to true if data is RZ only
+  """
+  # --- Make sure that enough input was given to create the B arrays
+  assert (dx is not None and dy is not None and zlength is not None),\
+         "dx, dy and zlength must all be specified"
+  assert ((bx is not None or by is not None or bz is not None) or \
+          (nx is not None and ny is not None and nz is not None)),\
+         "either a dataset, bx, by, or bz, or all of nx, ny, nz, must be passed in"
+
+  # --- Setup the 3-D field grid dataset, creating a new dataset.
+  top.bgrdns = top.bgrdns + 1
+
+  # --- Get array size
+  if bx is not None: nx,ny,nz = array(shape(bx)) - array([1,1,1])
+  if by is not None: nx,ny,nz = array(shape(by)) - array([1,1,1])
+  if bz is not None: nx,ny,nz = array(shape(bz)) - array([1,1,1])
+
+  # --- Make sure that the arrays are big enough
+  top.bgrdnx = max(nx,top.bgrdnx)
+  top.bgrdny = max(ny,top.bgrdny)
+  top.bgrdnz = max(nz,top.bgrdnz)
+  gchange("BGRDdata")
+
+  # --- Copy the data in
+  top.bgrddx[-1] = dx
+  top.bgrddy[-1] = dy
+  top.bgrddz[-1] = zlength/nz
+  if bx is not None: top.bgrdbx[:nx+1,:ny+1,:nz+1,-1] = bx
+  if by is not None: top.bgrdby[:nx+1,:ny+1,:nz+1,-1] = by
+  if bz is not None: top.bgrdbz[:nx+1,:ny+1,:nz+1,-1] = bz
+  top.bgrdrz[-1] = rz
+
+  # --- Return the id of the new dataset. This allows the user to refer to
+  # --- this new dataset without having to know its actual number.
+  return top.bgrdns
+
 def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,ot=0.,op=0.,
                sf=0.,sc=1.,sy=0,dx=None,dy=None,bx=None,by=None,bz=None,
@@ -2934,26 +3046,8 @@ of dx, dy, nx, ny, nz, must be passed in"""
     # --- If an 'id' was passed in, then just use that.
     top.bgrdid[ie] = id
   else:
-    # --- Otherwise, create a new dataset.
-    top.bgrdns = top.bgrdns + 1
-    top.bgrdid[ie] = top.bgrdns
-    # --- Get array size
-    if bx is not None: nx,ny,nz = array(shape(bx)) - array([1,1,1])
-    if by is not None: nx,ny,nz = array(shape(by)) - array([1,1,1])
-    if bz is not None: nx,ny,nz = array(shape(bz)) - array([1,1,1])
-    # --- Make sure that the arrays are big enough
-    top.bgrdnx = max(nx,top.bgrdnx)
-    top.bgrdny = max(ny,top.bgrdny)
-    top.bgrdnz = max(nz,top.bgrdnz)
-    gchange("BGRDdata")
-    # --- Copy the data in
-    top.bgrddx[-1] = dx
-    top.bgrddy[-1] = dy
-    top.bgrddz[-1] = (ze - zs)/nz
-    if bx is not None: top.bgrdbx[:nx+1,:ny+1,:nz+1,-1] = bx
-    if by is not None: top.bgrdby[:nx+1,:ny+1,:nz+1,-1] = by
-    if bz is not None: top.bgrdbz[:nx+1,:ny+1,:nz+1,-1] = bz
-    top.bgrdrz[-1] = rz
+    # --- Otherwise, create a new data set
+    top.bgrdid[ie] = addnewbgrddataset(dx,dy,(ze-zs),bx,by,bz,rz,nx,ny,nz)
 
   if (time is not None and data is not None) or func is not None:
     TimeDependentLatticeElement('bgrdsc',ie,time,data,func)
