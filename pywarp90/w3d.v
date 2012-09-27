@@ -1285,6 +1285,7 @@ transferarray1toarray23d(nx1:integer,ny1:integer,nz1:integer,
                                 -nyguard:ny2+nyguard,
                                 -nzguard:nz2+nzguard):real,
                          nxguard:integer,nyguard:integer,nzguard:integer,
+                         lsendguards:logical,
                          decomp1:Decomposition,decomp2:Decomposition) subroutine
       # Transfers data from one decomposition to another
 

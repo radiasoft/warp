@@ -433,6 +433,16 @@ c       unscaled residual
 
       enddo
 
+c     --- Set boundary conditions. This is only really needed for the
+c     --- Dirichlet boundaries, but this is convenient to call.
+c     --- Do this before mgexchange_phi so that the Dirichlet guard
+c     --- cells get filled in and can be sent to fill in neighbor guard
+c     --- cells in the overlapping regions.
+      call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,
+     &                               nxguardphi,nyguardphi,nzguardphi,
+     &                               phi,1,
+     &                               localbounds,.true.,.false.)
+
 #ifdef MPIPARALLEL
 c     --- If there are extra guard cells, then make the data consistent
 c     --- across the processors.
@@ -445,13 +455,6 @@ c     --- across the processors.
      &                      0,fsdecomp)
       endif
 #endif
-
-c     --- Set boundary conditions. This is only really needed for the
-c     --- Dirichlet boundaries, but this is convenient to call.
-      call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,
-     &                               nxguardphi,nyguardphi,nzguardphi,
-     &                               phi,1,
-     &                               localbounds,.true.,.false.)
 
 c     --- Make a print out.
       if (mgverbose>=1 .or. (mgverbose>=0 .and. mgerror > mgtol)) then
@@ -893,6 +896,16 @@ c           --- calculate global sorerror
 
       enddo
 
+c     --- Set boundary conditions. This is only really needed for the
+c     --- Dirichlet boundaries, but this is convenient to call.
+c     --- Do this before mgexchange_phi so that the Dirichlet guard
+c     --- cells get filled in and can be sent to fill in neighbor guard
+c     --- cells in the overlapping regions.
+      call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,
+     &                               nxguardphi,nyguardphi,nzguardphi,
+     &                               phi,1,
+     &                               localbounds,.true.,.false.)
+
       if (mglevel == 0) then
 #ifdef MPIPARALLEL
 c       --- If there are extra guard cells, then make the data consistent
@@ -906,16 +919,6 @@ c       --- across the processors.
      &                        0,fsdecomp)
         endif
 #endif
-      endif
-
-c     --- Set boundary conditions. This is only really needed for the
-c     --- Dirichlet boundaries, but this is convenient to call.
-      call applyboundaryconditions3d(nxlocal,nylocal,nzlocal,
-     &                               nxguardphi,nyguardphi,nzguardphi,
-     &                               phi,1,
-     &                               localbounds,.true.,.false.)
-
-      if (mglevel == 0) then
 
 c       --- Note that at the coarse levels, it will almost always be the case
 c       --- that mgerror > mgtol, since the number of vcycles is limited
@@ -5987,6 +5990,15 @@ c         --- calculate global sorerror
 
       enddo
 
+c     --- Set boundary conditions. This is only really needed for the
+c     --- Dirichlet boundaries, but this is convenient to call.
+c     --- Do this before mgexchange_phi so that the Dirichlet guard
+c     --- cells get filled in and can be sent to fill in neighbor guard
+c     --- cells in the overlapping regions.
+      call applyboundaryconditions3d(nxlocal,0,nzlocal,
+     &                               nxguardphi,0,nzguardphi,phi,1,
+     &                               localbounds,.true.,.false.)
+
 #ifdef MPIPARALLEL
 c     --- If there are extra guard cells, then make the data consistent
 c     --- across the processors.
@@ -5998,12 +6010,6 @@ c     --- across the processors.
      &                      0,fsdecomp)
       endif
 #endif
-
-c     --- Set boundary conditions. This is only really needed for the
-c     --- Dirichlet boundaries, but this is convenient to call.
-      call applyboundaryconditions3d(nxlocal,0,nzlocal,
-     &                               nxguardphi,0,nzguardphi,phi,1,
-     &                               localbounds,.true.,.false.)
 
       if (mgverbose>=1 .or. (mgverbose>=0 .and. mgerror > mgtol)) then
 c       --- Make a print out.
@@ -7603,6 +7609,15 @@ c         --- calculate global sorerror
 
       enddo
 
+c     --- Set boundary conditions. This is only really needed for the
+c     --- Dirichlet boundaries, but this is convenient to call.
+c     --- Do this before mgexchange_phi so that the Dirichlet guard
+c     --- cells get filled in and can be sent to fill in neighbor guard
+c     --- cells in the overlapping regions.
+      call applyboundaryconditions3d(nxlocal,0,nzlocal,
+     &                               nxguardphi,0,nzguardphi,phi,1,
+     &                               localbounds,.true.,.false.)
+
 #ifdef MPIPARALLEL
 c     --- If there are extra guard cells, then make the data consistent
 c     --- across the processors.
@@ -7614,12 +7629,6 @@ c     --- across the processors.
      &                      0,fsdecomp)
       endif
 #endif
-
-c     --- Set boundary conditions. This is only really needed for the
-c     --- Dirichlet boundaries, but this is convenient to call.
-      call applyboundaryconditions3d(nxlocal,0,nzlocal,
-     &                               nxguardphi,0,nzguardphi,phi,1,
-     &                               localbounds,.true.,.false.)
 
       if (mgverbose>=1 .or. (mgverbose>=0 .and. mgerror > mgtol)) then
 c       --- Make a print out.
