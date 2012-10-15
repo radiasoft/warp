@@ -727,9 +727,30 @@ most of which get there default values from one of the fortran packages.
                             ymin=None,ymax=None,
                             zmin=None,zmax=None,
                             dfill=top.largepos):
+    'Install the conductor into the field solver'
     # --- This only adds the conductor to the list. The data is only actually
     # --- installed when it is needed, during a call to getconductorobject.
     self.conductordatalist.append((conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill))
+
+  def uninstallconductor(self,conductor):
+    """Uninstall the conductor from the field solver. Note that the conductor
+data will be cleared, and will be regenerated upon the next field solve"""
+    # --- Loop over the list of conductors, removing the desired conductor.
+    # --- Note that if it was installed multiple times, then every instance
+    # --- will be uninstalled. Clear out the conductor data, forcing it to be
+    # --- generated upon the next field solve.
+    conductorfound = False
+    i = 0
+    while i < len(self.conductordatalist):
+      if self.conductordatalist[i][0] is conductor:
+        conductorfound = True
+        del self.conductordatalist[i]
+        self.clearconductors()
+      else:
+        i += 1
+
+    if not conductorfound:
+      raise Exception('conductor was not found')
 
   def _installconductor(self,conductorobject,installedlist,conductordata,
                         fselfb):
@@ -775,7 +796,8 @@ most of which get there default values from one of the fortran packages.
 
   def clearconductors(self,fselfblist=None):
     "Clear out the conductor data"
-    if fselfblist is None: fselfblist = top.fselfb
+    if fselfblist is None:
+      fselfblist = self.conductorobjects.keys()
     for fselfb in fselfblist:
       if fselfb in self.conductorobjects:
         conductorobject = self.conductorobjects[fselfb]
