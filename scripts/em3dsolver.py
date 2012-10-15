@@ -38,6 +38,7 @@ class EM3D(SubcycledPoissonSolver):
                     'laser_depos_order_z':3,
                     'ncyclesperstep':1,'ncyclesperstep':None,
                     'l_2dxz':0,'l_2drz':0,'l_1dz':0,'l_sumjx':0,
+                    'l_lower_order_in_v':True,
                     'npass_smooth':array([[0],[0],[0]]),
                     'alpha_smooth':array([[0.5],[0.5],[0.5]]),
                     'stride_smooth':array([[1],[1],[1]]),
@@ -231,33 +232,33 @@ class EM3D(SubcycledPoissonSolver):
           if self.mode==2 and self.dtcoef>0.5:self.dtcoef/=2
           if self.l_2dxz:
             if self.stencil==0:
-              dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dz**2))
+              self.dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dz**2))
             else:
-              dtcourant=min(self.dx,self.dz)/clight 
+              self.dtcourant=min(self.dx,self.dz)/clight 
               Cx = em3d.alphax -2.*em3d.betaxz
               Cz = em3d.alphaz -2.*em3d.betazx
-              dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cz/self.dz**2))
+              self.dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cz/self.dz**2))
           else:
             if self.stencil==0:
-              dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dy**2+1./self.dz**2))
+              self.dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dy**2+1./self.dz**2))
             else:
-              dtcourant=min(self.dx,self.dy,self.dz)/clight 
+              self.dtcourant=min(self.dx,self.dy,self.dz)/clight 
               Cx = em3d.alphax -2.*(em3d.betaxy+em3d.betaxz)+4.*em3d.gammax
               Cy = em3d.alphay -2.*(em3d.betayx+em3d.betayz)+4.*em3d.gammay
               Cz = em3d.alphaz -2.*(em3d.betazx+em3d.betazy)+4.*em3d.gammaz
-              dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cy/self.dy**2+Cz/self.dz**2))
+              self.dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cy/self.dy**2+Cz/self.dz**2))
           if self.theta_damp>0.:
-            dtcourant*=sqrt((2.+self.theta_damp)/(2.+3.*self.theta_damp))
+            self.dtcourant*=sqrt((2.+self.theta_damp)/(2.+3.*self.theta_damp))
           if top.dt==0.:
-            top.dt=dtcourant*self.dtcoef
+            top.dt=self.dtcourant*self.dtcoef
           else:
-            if top.dt>(self.dtcoef*dtcourant):
-#              self.ncyclesperstep = (nint(top.dt/(self.dtcoef*dtcourant))+0)
-              self.ncyclesperstep = int(top.dt/(self.dtcoef*dtcourant)+1.)
-              print '#1', self.ncyclesperstep,top.dt,self.dtcoef,dtcourant
+            if top.dt>(self.dtcoef*self.dtcourant):
+#              self.ncyclesperstep = (nint(top.dt/(self.dtcoef*self.dtcourant))+0)
+              self.ncyclesperstep = int(top.dt/(self.dtcoef*self.dtcourant)+1.)
+              print '#1', self.ncyclesperstep,top.dt,self.dtcoef,self.dtcourant
             else:
-              self.ncyclesperstep = 1./(nint((self.dtcoef*dtcourant)/top.dt)+0)
-              print '#2', self.ncyclesperstep,top.dt,self.dtcoef,dtcourant
+              self.ncyclesperstep = 1./(nint((self.dtcoef*self.dtcourant)/top.dt)+0)
+              print '#2', self.ncyclesperstep,top.dt,self.dtcoef,self.dtcourant
       else:
         self.ncyclesperstep=sibling.ncyclesperstep
     self.dtinit = top.dt
@@ -413,9 +414,15 @@ class EM3D(SubcycledPoissonSolver):
       assert self.laser_frequency is not None,\
              "One of the frequency, wavenumber, or wavelength must be given"
 
+    # --- Check if laser_func is a dictionary
+    self.laser_func_dict = None
+    if type(self.laser_func)==type({}):
+      self.laser_func_dict = self.laser_func
+
     # --- Check if laser_amplitude is a function, table, or constant
     self.laser_amplitude_func = None
     self.laser_amplitude_table = None
+    self.laser_amplitude_dict = None
     if operator.isSequenceType(self.laser_amplitude):
       assert len(self.laser_amplitude.shape) == 2 and \
              self.laser_amplitude.shape[1] == 2,\
@@ -424,7 +431,9 @@ class EM3D(SubcycledPoissonSolver):
       self.laser_amplitude_table_i = -1
     elif callable(self.laser_amplitude):
       self.laser_amplitude_func = self.laser_amplitude
-
+    elif type(self.laser_amplitude)==type({}):
+      self.laser_amplitude_dict = self.laser_amplitude
+    
     # --- Check if laser_phase is a function, table, or constant
     self.laser_phase_func = None
     self.laser_phase_table = None
@@ -455,20 +464,26 @@ class EM3D(SubcycledPoissonSolver):
         self.laser_xx=self.laser_xx.flatten()
         self.laser_yy=self.laser_yy.flatten()
         self.laser_nn=shape(self.laser_xx)[0]
-        self.laser_xdx=zeros(self.laser_nn)
-        self.laser_ydy=zeros(self.laser_nn)
-        self.laser_ux=zeros(self.laser_nn)
-        self.laser_uy=zeros(self.laser_nn)
-        self.laser_gi=ones(self.laser_nn)
       else:
         self.laser_xx = arange(f.nx)*f.dx + f.xmin + 0.5*f.dx
         self.laser_nn=shape(self.laser_xx)[0]
         self.laser_yy=zeros(self.laser_nn)
+      if self.laser_amplitude_dict is not None:
+        self.laser_xdx={}
+        self.laser_ydy={}
+        self.laser_ux={}
+        self.laser_uy={}
+        for self.laser_key in self.laser_amplitude_dict.keys():
+          self.laser_xdx[self.laser_key]=zeros(self.laser_nn)
+          self.laser_ux[self.laser_key]=zeros(self.laser_nn)
+          self.laser_ydy[self.laser_key]=zeros(self.laser_nn)
+          self.laser_uy[self.laser_key]=zeros(self.laser_nn)
+      else:
         self.laser_xdx=zeros(self.laser_nn)
         self.laser_ydy=zeros(self.laser_nn)
         self.laser_ux=zeros(self.laser_nn)
         self.laser_uy=zeros(self.laser_nn)
-        self.laser_gi=ones(self.laser_nn)
+      self.laser_gi=ones(self.laser_nn)
     else:
       raise Exception("Error: laser_mode was set to %g but needs to be 1 or 2."%self.laser_mode)
 
@@ -518,6 +533,20 @@ class EM3D(SubcycledPoissonSolver):
 
 #===============================================================================
   def add_laser(self,field):
+#===============================================================================
+    if type(self.laser_func_dict)==type({}):
+      for self.laser_key in self.laser_func_dict.keys():
+        self.laser_func = self.laser_func_dict[self.laser_key]
+        self.add_laser_work(field)
+    elif type(self.laser_amplitude_dict)==type({}):
+      for self.laser_key in self.laser_amplitude_dict.keys():
+        self.laser_amplitude_func = self.laser_amplitude_dict[self.laser_key]
+        self.add_laser_work(field)
+    else:    
+      self.add_laser_work(field)
+
+#===============================================================================
+  def add_laser_work(self,field):
 #===============================================================================
     if self.laser_profile is None and self.laser_func is None:
       self.block.core.yf.E_inz_pos=w3d.zmmin-(self.nzguard*2.)*self.dz
@@ -633,10 +662,20 @@ class EM3D(SubcycledPoissonSolver):
         else:
           laser_amplitude=self.laser_amplitude/self.laser_emax*dispmax
           laser_amplitude*=self.laser_profile*cos(phase)*(1.-self.laser_source_v/clight)
-        self.laser_ux[...] = laser_amplitude*cos(self.laser_polangle)
-        self.laser_uy[...] = laser_amplitude*sin(self.laser_polangle)
-        self.laser_xdx[...] += self.laser_ux*top.dt
-        self.laser_ydy[...] += self.laser_uy*top.dt
+        if self.laser_amplitude_dict is not None:
+          laser_xdx=self.laser_xdx[self.laser_key]
+          laser_ux=self.laser_ux[self.laser_key]
+          laser_ydy=self.laser_ydy[self.laser_key]
+          laser_uy=self.laser_uy[self.laser_key]
+        else:
+          laser_xdx=self.laser_xdx
+          laser_ux=self.laser_ux
+          laser_ydy=self.laser_ydy
+          laser_uy=self.laser_uy
+        laser_ux[...] = laser_amplitude*cos(self.laser_polangle)
+        laser_uy[...] = laser_amplitude*sin(self.laser_polangle)
+        laser_xdx[...] += laser_ux*top.dt
+        laser_ydy[...] += laser_uy*top.dt
 #        weights = ones(self.laser_nn)*f.dx*f.dz*eps0/(top.dt)*self.laser_emax*top.dt/(0.1*f.dx)
 #        weights = ones(self.laser_nn)*f.dx*clight*eps0*self.laser_emax/(dispmax*self.laser_frequency)
         weights = ones(self.laser_nn)*f.dx*eps0*self.laser_emax/0.01
@@ -646,11 +685,17 @@ class EM3D(SubcycledPoissonSolver):
 
       elif self.submethod_laser==2.2:
         # --- displaces particles on fixed segment, adjusting weights
-        self.laser_xdx[...] = f.dx/10
-        self.laser_ux[...] = self.laser_xdx[...]/top.dt      
+        if self.laser_amplitude_dict is not None:
+          laser_xdx=self.laser_xdx[self.laser_key]
+          laser_ux=self.laser_ux[self.laser_key]
+          if not self.l_2dxz:
+            laser_ydy=self.laser_ydy[self.laser_key]
+            laser_uy=self.laser_uy[self.laser_key]
+        laser_xdx[...] = f.dx/10
+        laser_ux[...] = laser_xdx[...]/top.dt      
         if not self.l_2dxz:
-          self.laser_ydy[...] = f.dy/10
-          self.laser_uy[...] = self.laser_ydy[...]/top.dt      
+          laser_ydy[...] = f.dy/10
+          laser_uy[...] = laser_ydy[...]/top.dt      
         if self.l_2dxz:
           weights=self.laser_amplitude*self.laser_profile*cos(phase)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
           weights*=f.dx*f.dz*eps0/(gammafrm*f.dx/10)
@@ -663,11 +708,11 @@ class EM3D(SubcycledPoissonSolver):
        if self.l_2dxz:
         depose_jxjyjz_esirkepov_n_2d(f.J,
                                      self.laser_nn,
-                                     self.laser_xx+q*self.laser_xdx,
-                                     self.laser_yy+q*self.laser_ydy,
+                                     self.laser_xx+q*laser_xdx,
+                                     self.laser_yy+q*laser_ydy,
                                      self.laser_source_z*ones(self.laser_nn),
-                                     q*self.laser_ux,
-                                     q*self.laser_uy,
+                                     q*laser_ux,
+                                     q*laser_uy,
                                      self.laser_source_v*ones(self.laser_nn),
                                      self.laser_gi,
                                      weights,
@@ -685,11 +730,11 @@ class EM3D(SubcycledPoissonSolver):
        else:
         depose_jxjyjz_esirkepov_n(f.J,
                                      self.laser_nn,
-                                     self.laser_xx+q*self.laser_xdx,
-                                     self.laser_yy+q*self.laser_ydy,
+                                     self.laser_xx+q*laser_xdx,
+                                     self.laser_yy+q*laser_ydy,
                                      self.laser_source_z*ones(self.laser_nn),
-                                     q*self.laser_ux,
-                                     q*self.laser_uy,
+                                     q*laser_ux,
+                                     q*laser_uy,
                                      self.laser_source_v*ones(self.laser_nn),
                                      self.laser_gi,
                                      weights,
@@ -759,7 +804,8 @@ class EM3D(SubcycledPoissonSolver):
                       f.nxguard,f.nzguard,
                       nox,noz,
                       f.Exp,f.Eyp,f.Ezp,
-                      w3d.l4symtry,self.l_2drz)
+                      w3d.l4symtry,self.l_2drz,
+                      self.l_lower_order_in_v)
       else:
        if nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
         gete3d_linear_energy_conserving(n,x,y,z,ex,ey,ez,
@@ -776,7 +822,8 @@ class EM3D(SubcycledPoissonSolver):
                       f.nxguard,f.nyguard,f.nzguard,
                       nox,noy,noz,
                       f.Exp,f.Eyp,f.Ezp,
-                      w3d.l4symtry)
+                      w3d.l4symtry,
+                      self.l_lower_order_in_v)
     # --- fetch b
     if top.efetch[w3d.jsfsapi] in [1,3,5]:
       if self.l_2dxz:
@@ -806,7 +853,8 @@ class EM3D(SubcycledPoissonSolver):
                     f.nxguard,f.nzguard,
                     nox,noz,
                     f.Bxp,f.Byp,f.Bzp,
-                    w3d.l4symtry,self.l_2drz)
+                    w3d.l4symtry,self.l_2drz,
+                    self.l_lower_order_in_v)
       else:
        if nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
         getb3d_linear_energy_conserving(n,x,y,z,bx,by,bz,
@@ -823,7 +871,8 @@ class EM3D(SubcycledPoissonSolver):
                     f.nxguard,f.nyguard,f.nzguard,
                     nox,noy,noz,
                     f.Bxp,f.Byp,f.Bzp,
-                    w3d.l4symtry)
+                    w3d.l4symtry,
+                    self.l_lower_order_in_v)
 
   def fetchphifrompositions(self,x,z,phi):
     pass
@@ -1792,8 +1841,7 @@ class EM3D(SubcycledPoissonSolver):
       self.__class__.__bases__[1].push_b_part_1(self.field_coarse,dir)
 
   def push_b_part_2(self):
-    if top.efetch[0]<>4 and (self.refinement is None) and not \
-       (self.l_smooth_particle_fields and any(self.npass_smooth>0)):self.node2yee3d()
+    if top.efetch[0]<>4 and (self.refinement is None):self.node2yee3d()
     dt = top.dt/self.ncyclesperstep
     if self.ncyclesperstep<1.:
       self.novercycle = nint(1./self.ncyclesperstep)

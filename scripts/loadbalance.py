@@ -701,21 +701,40 @@ of the domains.
         return domain
 
     def doloadbalancefieldsolver(self):
+
         self.domaindecomposefieldstomatchparticles()
         solver = getregisteredsolver()
 
         if isinstance(solver,EM3D):
+            # --- Save a reference to the old data so that it can be copied to
+            # --- the new arrays.
             savedblock = solver.block
             savedfsdecomp = solver.fsdecomp
-            uninstallbeforeloadrho(solver.solve2ndhalf)
 
-        solver.__init__(userfsdecompnx=top.ppdecomp.nx,
-                        userfsdecompny=top.ppdecomp.ny,
-                        userfsdecompnz=top.ppdecomp.nz)
+        solver.setupdecompparallel(userfsdecompnx=top.ppdecomp.nx,
+                                   userfsdecompny=top.ppdecomp.ny,
+                                   userfsdecompnz=top.ppdecomp.nz)
 
         if isinstance(solver,EM3D):
+            solver.allocatefieldarrays()
+
+            # --- This needs to be called since it creates temporaries that
+            # --- are dependent on the decomposition
+            solver.setuplaser()
+
             # --- The data needs to be redistributed
             self.redistributeemsolverdata(solver,savedblock,savedfsdecomp)
+
+            # --- Regenerate the data for the particles. This needs to be done
+            # --- locally, from the redistributed field grid data.
+            solver.setebp()
+            if top.efetch[0]<>4:solver.yee2node3d()
+            if solver.l_smooth_particle_fields and any(solver.npass_smooth>0):
+                solver.smoothfields()
+
+        else:
+            # --- For static solvers, the arrays only need to be reallocated.
+            solver.allocatedataarrays()
 
     def domaindecomposefieldstomatchparticles(self):
         top.fsdecomp.nx = top.ppdecomp.nx.copy()
@@ -789,7 +808,7 @@ of the domains.
         self.copydecomposition(savedfsdecomp,olddecomp)
         self.copydecomposition(solver.fsdecomp,newdecomp)
 
-        def transferarray(old,new,name,nonnodeaxis):
+        def transferarray(old,new,name,nonnodeaxis,lsendguards):
             # --- Handy function to transfer the array name from the
             # --- old to the new field type instance.
             # --- When the data is centered between nodes, the number
@@ -798,72 +817,74 @@ of the domains.
             # --- Note that only processors that are exchanging data need to
             # --- to call the transfer routine since the transfers are done
             # --- pair-wise, and not as a global alltoall.
-            if 'x' in nonnodeaxis:
+            if 'x' in nonnodeaxis and old.nx > 0:
                 olddecomp.nx -= 1
                 newdecomp.nx -= 1
-            if 'y' in nonnodeaxis:
+            if 'y' in nonnodeaxis and old.ny > 0:
                 olddecomp.ny -= 1
                 newdecomp.ny -= 1
-            if 'z' in nonnodeaxis:
+            if 'z' in nonnodeaxis and old.nz > 0:
                 olddecomp.nz -= 1
                 newdecomp.nz -= 1
             transferarray1toarray23d(old.nx,old.ny,old.nz,getattr(old,name),
                                      new.nx,new.ny,new.nz,getattr(new,name),
-                                     old.nxguard,old.nyguard,old.nzguard,
+                                     old.nxguard,old.nyguard,old.nzguard,lsendguards,
                                      olddecomp,newdecomp)
-            if 'x' in nonnodeaxis:
+            if 'x' in nonnodeaxis and old.nx > 0:
                 olddecomp.nx += 1
                 newdecomp.nx += 1
-            if 'y' in nonnodeaxis:
+            if 'y' in nonnodeaxis and old.ny > 0:
                 olddecomp.ny += 1
                 newdecomp.ny += 1
-            if 'z' in nonnodeaxis:
+            if 'z' in nonnodeaxis and old.nz > 0:
                 olddecomp.nz += 1
                 newdecomp.nz += 1
 
         # --- Core
-        transferarray(savedblock.core.yf,solver.block.core.yf,'Ex',['nx'])
-        transferarray(savedblock.core.yf,solver.block.core.yf,'Ey',['ny'])
-        transferarray(savedblock.core.yf,solver.block.core.yf,'Ez',['nz'])
-        transferarray(savedblock.core.yf,solver.block.core.yf,'Bx',['ny','nz'])
-        transferarray(savedblock.core.yf,solver.block.core.yf,'By',['nx','nz'])
-        transferarray(savedblock.core.yf,solver.block.core.yf,'Bz',['nx','ny'])
-        # --- Send the p arrays too - this is easier and more robust then trying
-        # --- to recreate them afterwards.
-        transferarray(savedblock.core.yf,solver.block.core.yf,'Exp',['nx'])
-        transferarray(savedblock.core.yf,solver.block.core.yf,'Eyp',['ny'])
-        transferarray(savedblock.core.yf,solver.block.core.yf,'Ezp',['nz'])
-        transferarray(savedblock.core.yf,solver.block.core.yf,'Bxp',['ny','nz'])
-        transferarray(savedblock.core.yf,solver.block.core.yf,'Byp',['nx','nz'])
-        transferarray(savedblock.core.yf,solver.block.core.yf,'Bzp',['nx','ny'])
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Ex',['x'],false)
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Ey',['y'],false)
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Ez',['z'],false)
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Bx',['y','z'],false)
+        transferarray(savedblock.core.yf,solver.block.core.yf,'By',['x','z'],false)
+        transferarray(savedblock.core.yf,solver.block.core.yf,'Bz',['x','y'],false)
+
+        # --- Note that the p arrays are regenerated afterwards
+        # --- This code won't work anyway.
+        #transferarray(savedblock.core.yf,solver.block.core.yf,'Exp',['x'],false)
+        #transferarray(savedblock.core.yf,solver.block.core.yf,'Eyp',['y'],false)
+        #transferarray(savedblock.core.yf,solver.block.core.yf,'Ezp',['z'],false)
+        #transferarray(savedblock.core.yf,solver.block.core.yf,'Bxp',['y','z'],false)
+        #transferarray(savedblock.core.yf,solver.block.core.yf,'Byp',['x','z'],false)
+        #transferarray(savedblock.core.yf,solver.block.core.yf,'Bzp',['x','y'],false)
+
         # --- If doing damping, then the bar and old need to be exchanged also
         if solver.theta_damp != 0.:
-            transferarray(savedblock.core.yf,solver.block.core.yf,'Exold',['nx'])
-            transferarray(savedblock.core.yf,solver.block.core.yf,'Eyold',['ny'])
-            transferarray(savedblock.core.yf,solver.block.core.yf,'Ezold',['nz'])
-            transferarray(savedblock.core.yf,solver.block.core.yf,'Exbar',['nx'])
-            transferarray(savedblock.core.yf,solver.block.core.yf,'Eybar',['ny'])
-            transferarray(savedblock.core.yf,solver.block.core.yf,'Ezbar',['nz'])
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Exold',['x'],false)
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Eyold',['y'],false)
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Ezold',['z'],false)
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Exbar',['x'],false)
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Eybar',['y'],false)
+            transferarray(savedblock.core.yf,solver.block.core.yf,'Ezbar',['z'],false)
 
         # --- Exchange the PML data. For each direction, the decomposition objects
         # --- are modified to only include the domains along the appropriate
         # --- boundary.
         def transfersplityee(old,new):
-            transferarray(old.syf,new.syf,'exx',['nx'])
-            transferarray(old.syf,new.syf,'exy',['nx'])
-            transferarray(old.syf,new.syf,'exz',['nx'])
-            transferarray(old.syf,new.syf,'eyx',['ny'])
-            transferarray(old.syf,new.syf,'eyy',['ny'])
-            transferarray(old.syf,new.syf,'eyz',['ny'])
-            transferarray(old.syf,new.syf,'ezx',['nz'])
-            transferarray(old.syf,new.syf,'ezy',['nz'])
-            transferarray(old.syf,new.syf,'ezz',['nz'])
-            transferarray(old.syf,new.syf,'bxy',['ny','nz'])
-            transferarray(old.syf,new.syf,'bxz',['ny','nz'])
-            transferarray(old.syf,new.syf,'byx',['nx','nz'])
-            transferarray(old.syf,new.syf,'byz',['nx','nz'])
-            transferarray(old.syf,new.syf,'bzx',['nx','ny'])
-            transferarray(old.syf,new.syf,'bzy',['nx','ny'])
+            transferarray(old.syf,new.syf,'exx',['nx'],false)
+            transferarray(old.syf,new.syf,'exy',['nx'],false)
+            transferarray(old.syf,new.syf,'exz',['nx'],false)
+            transferarray(old.syf,new.syf,'eyx',['ny'],false)
+            transferarray(old.syf,new.syf,'eyy',['ny'],false)
+            transferarray(old.syf,new.syf,'eyz',['ny'],false)
+            transferarray(old.syf,new.syf,'ezx',['nz'],false)
+            transferarray(old.syf,new.syf,'ezy',['nz'],false)
+            transferarray(old.syf,new.syf,'ezz',['nz'],false)
+            transferarray(old.syf,new.syf,'bxy',['ny','nz'],false)
+            transferarray(old.syf,new.syf,'bxz',['ny','nz'],false)
+            transferarray(old.syf,new.syf,'byx',['nx','nz'],false)
+            transferarray(old.syf,new.syf,'byz',['nx','nz'],false)
+            transferarray(old.syf,new.syf,'bzx',['nx','ny'],false)
+            transferarray(old.syf,new.syf,'bzy',['nx','ny'],false)
 
         ixproc = newdecomp.ixproc
         iyproc = newdecomp.iyproc

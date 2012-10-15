@@ -3323,12 +3323,12 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
  end subroutine geteb3d_linear_energy_conserving
 
   subroutine gete2dxz_n_energy_conserving(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,nz,nxguard,nzguard, &
-                                       nox,noz,exg,eyg,ezg,l4symtry,l_2drz)
+                                       nox,noz,exg,eyg,ezg,l4symtry,l_2drz,l_lower_order_in_v)
    
    implicit none
      integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard
       real(kind=8), dimension(np) :: xp,yp,zp,ex,ey,ez
-      logical(ISZ) :: l4symtry,l_2drz
+      logical(ISZ) :: l4symtry,l_2drz,l_lower_order_in_v
       real(kind=8), dimension(-nxguard:nx+nxguard,1,-nzguard:nz+nzguard) :: exg,eyg,ezg
       real(kind=8) :: xmin,zmin,dx,dz,costheta,sintheta
       integer(ISZ) :: ip, j, l, ixmin, ixmax, izmin, izmax, &
@@ -3337,8 +3337,7 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
                       xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int((nox-1)/2):int(nox/2)) :: sx0
-      real(kind=8), DIMENSION(-int((noz-1)/2):int(noz/2)) :: sz0
+      real(kind=8), dimension(:), allocatable :: sx0,sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
@@ -3349,10 +3348,18 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       izmin = -int(noz/2)
       izmax =  int((noz+1)/2)-1
 
-      ixmin0 = -int((nox-1)/2)
-      ixmax0 =  int((nox)/2)
-      izmin0 = -int((noz-1)/2)
-      izmax0 =  int((noz)/2)
+      if (l_lower_order_in_v) then
+        ixmin0 = -int((nox-1)/2)
+        ixmax0 =  int((nox)/2)
+        izmin0 = -int((noz-1)/2)
+        izmax0 =  int((noz)/2)
+      else
+        ixmin0 = -int((nox)/2)
+        ixmax0 =  int((nox+1)/2)
+        izmin0 = -int((noz)/2)
+        izmax0 =  int((noz+1)/2)
+      end if
+      allocate(sx0(ixmin0:ixmax0),sz0(izmin0:izmax0))
 
       signx = 1.
 
@@ -3385,21 +3392,38 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           end if
         end if
         
-        if (nox==2*(nox/2)) then
-          j=nint(x)
-          j0=floor(x-0.5)
+        if (l_lower_order_in_v) then
+          if (nox==2*(nox/2)) then
+            j=nint(x)
+            j0=floor(x-0.5)
+          else
+            j=floor(x)
+            j0=floor(x)
+          end if
+          if (noz==2*(noz/2)) then
+            l=nint(z)
+            l0=floor(z-0.5)
+          else
+            l=floor(z)
+            l0=floor(z)
+          end if
         else
-          j=floor(x)
-          j0=floor(x)
+          if (nox==2*(nox/2)) then
+            j=nint(x)
+            j0=floor(x)
+          else
+            j=floor(x)
+            j0=floor(x-0.5)
+          end if
+          if (noz==2*(noz/2)) then
+            l=nint(z)
+            l0=floor(z)
+          else
+            l=floor(z)
+            l0=floor(z-0.5)
+          end if
         end if
-        if (noz==2*(noz/2)) then
-          l=nint(z)
-          l0=floor(z-0.5)
-        else
-          l=floor(z)
-          l0=floor(z)
-        end if
-
+        
         xint=x-j
         zint=z-l
 
@@ -3442,28 +3466,70 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
         xint=x-0.5-j0
         zint=z-0.5-l0
 
-        if (nox==1) then
+        if (l_lower_order_in_v) then
+        
+         if (nox==1) then
           sx0( 0) = 1.
-        elseif (nox==2) then
+         elseif (nox==2) then
           sx0( 0) = 1.-xint
           sx0( 1) = xint
-        elseif (nox==3) then
+         elseif (nox==3) then
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
           sx0( 1) = 0.5*(0.5+xint)**2
-        end if
+         end if
 
-        if (noz==1) then
+         if (noz==1) then
           sz0( 0) = 1.
-        elseif (noz==2) then
+         elseif (noz==2) then
           sz0( 0) = 1.-zint
           sz0( 1) = zint
-        elseif (noz==3) then
+         elseif (noz==3) then
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
           sz0( 1) = 0.5*(0.5+zint)**2
+         end if
+
+        else
+
+         if (nox==1) then
+          sx0( 0) = 1.-xint
+          sx0( 1) = xint
+         elseif (nox==2) then
+          xintsq = xint*xint
+          sx0(-1) = 0.5*(0.5-xint)**2
+          sx0( 0) = 0.75-xintsq
+          sx0( 1) = 0.5*(0.5+xint)**2
+         elseif (nox==3) then
+          oxint = 1.-xint
+          xintsq = xint*xint
+          oxintsq = oxint*oxint
+          sx0(-1) = onesixth*oxintsq*oxint
+          sx0( 0) = twothird-xintsq*(1.-xint/2)
+          sx0( 1) = twothird-oxintsq*(1.-oxint/2)
+          sx0( 2) = onesixth*xintsq*xint
+         end if
+
+         if (noz==1) then
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
+         elseif (noz==2) then
+          zintsq = zint*zint
+          sz0(-1) = 0.5*(0.5-zint)**2
+          sz0( 0) = 0.75-zintsq
+          sz0( 1) = 0.5*(0.5+zint)**2
+         elseif (noz==3) then
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz0(-1) = onesixth*ozintsq*ozint
+          sz0( 0) = twothird-zintsq*(1.-zint/2)
+          sz0( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz0( 2) = onesixth*zintsq*zint
+         end if
+
         end if
 
         if (l_2drz) then
@@ -3500,17 +3566,18 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           end do
                      
      end do
-
+     deallocate(sx0,sz0)
+     
    return
  end subroutine gete2dxz_n_energy_conserving
 
   subroutine gete3d_n_energy_conserving(np,xp,yp,zp,ex,ey,ez,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard, &
-                                       nox,noy,noz,exg,eyg,ezg,l4symtry)
+                                       nox,noy,noz,exg,eyg,ezg,l4symtry,l_lower_order_in_v)
    
    implicit none
      integer(ISZ) :: np,nx,ny,nz,nox,noy,noz,nxguard,nyguard,nzguard
       real(kind=8), dimension(np) :: xp,yp,zp,ex,ey,ez
-      logical(ISZ) :: l4symtry
+      logical(ISZ) :: l4symtry,l_lower_order_in_v
       real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: exg,eyg,ezg
       real(kind=8) :: xmin,ymin,zmin,dx,dy,dz
       integer(ISZ) :: ip, j, k, l, ixmin, ixmax, iymin, iymax, izmin, izmax, &
@@ -3520,9 +3587,7 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int((nox-1)/2):int(nox/2)) :: sx0
-      real(kind=8), DIMENSION(-int((noy-1)/2):int(noy/2)) :: sy0
-      real(kind=8), DIMENSION(-int((noz-1)/2):int(noz/2)) :: sz0
+      real(kind=8), dimension(:), allocatable :: sx0,sy0,sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
@@ -3530,18 +3595,28 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       dzi = 1./dz
 
       ixmin = -int(nox/2)
-      ixmax =  int((nox+11)/2)-1
+      ixmax =  int((nox+1)/2)-1
       iymin = -int(noy/2)
-      iymax =  int((noy+11)/2)-1
+      iymax =  int((noy+1)/2)-1
       izmin = -int(noz/2)
-      izmax =  int((noz+11)/2)-1
+      izmax =  int((noz+1)/2)-1
 
-      ixmin0 = -int((nox-1)/2)
-      ixmax0 =  int((nox)/2)
-      iymin0 = -int((noy-1)/2)
-      iymax0 =  int((noy)/2)
-      izmin0 = -int((noz-1)/2)
-      izmax0 =  int((noz)/2)
+      if (l_lower_order_in_v) then
+        ixmin0 = -int((nox-1)/2)
+        ixmax0 =  int((nox)/2)
+        iymin0 = -int((noy-1)/2)
+        iymax0 =  int((noy)/2)
+        izmin0 = -int((noz-1)/2)
+        izmax0 =  int((noz)/2)
+      else
+        ixmin0 = -int((nox)/2)
+        ixmax0 =  int((nox+1)/2)
+        iymin0 = -int((noy)/2)
+        iymax0 =  int((noy+1)/2)
+        izmin0 = -int((noz)/2)
+        izmax0 =  int((noz+1)/2)
+      end if
+      allocate(sx0(ixmin0:ixmax0),sy0(iymin0:iymax0),sz0(izmin0:izmax0))
 
       signx = 1.
       signy = 1.
@@ -3566,27 +3641,51 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
             signy = 1.
           end if
         end if
-        
-        if (nox==2*(nox/2)) then
-          j=nint(x)
-          j0=floor(x-0.5)
+         
+        if (l_lower_order_in_v) then
+          if (nox==2*(nox/2)) then
+            j=nint(x)
+            j0=floor(x-0.5)
+          else
+            j=floor(x)
+            j0=floor(x)
+          end if
+          if (noy==2*(noy/2)) then
+            k=nint(y)
+            k0=floor(y-0.5)
+          else
+            k=floor(y)
+            k0=floor(y)
+          end if
+          if (noz==2*(noz/2)) then
+            l=nint(z)
+            l0=floor(z-0.5)
+          else
+            l=floor(z)
+            l0=floor(z)
+          end if
         else
-          j=floor(x)
-          j0=floor(x)
-        end if
-        if (noy==2*(noy/2)) then
-          k=nint(y)
-          k0=floor(y-0.5)
-        else
-          k=floor(y)
-          k0=floor(y)
-        end if
-        if (noz==2*(noz/2)) then
-          l=nint(z)
-          l0=floor(z-0.5)
-        else
-          l=floor(z)
-          l0=floor(z)
+          if (nox==2*(nox/2)) then
+            j=nint(x)
+            j0=floor(x)
+          else
+            j=floor(x)
+            j0=floor(x-0.5)
+          end if
+          if (noy==2*(noy/2)) then
+            k=nint(y)
+            k0=floor(y)
+          else
+            k=floor(y)
+            k0=floor(y-0.5)
+          end if
+          if (noz==2*(noz/2)) then
+            l=nint(z)
+            l0=floor(z)
+          else
+            l=floor(z)
+            l0=floor(z-0.5)
+          end if
         end if
 
         xint=x-j
@@ -3651,42 +3750,102 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
         yint=y-0.5-k0
         zint=z-0.5-l0
 
-        if (nox==1) then
+        if (l_lower_order_in_v) then
+
+         if (nox==1) then
           sx0( 0) = 1.
-        elseif (nox==2) then
+         elseif (nox==2) then
           sx0( 0) = 1.-xint
           sx0( 1) = xint
-        elseif (nox==3) then
+         elseif (nox==3) then
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
           sx0( 1) = 0.5*(0.5+xint)**2
-        end if
+         end if
 
-        if (noy==1) then
+         if (noy==1) then
           sy0( 0) = 1.
-        elseif (noy==2) then
+         elseif (noy==2) then
           sy0( 0) = 1.-yint
           sy0( 1) = yint
-        elseif (noy==3) then
+         elseif (noy==3) then
           yintsq = yint*yint
           sy0(-1) = 0.5*(0.5-yint)**2
           sy0( 0) = 0.75-yintsq
           sy0( 1) = 0.5*(0.5+yint)**2
-        end if
+         end if
 
-        if (noz==1) then
+         if (noz==1) then
           sz0( 0) = 1.
-        elseif (noz==2) then
+         elseif (noz==2) then
           sz0( 0) = 1.-zint
           sz0( 1) = zint
-        elseif (noz==3) then
+         elseif (noz==3) then
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
           sz0( 1) = 0.5*(0.5+zint)**2
-        end if
+         end if
 
+        else
+
+         if (nox==1) then
+          sx0( 0) = 1.-xint
+          sx0( 1) = xint
+         elseif (nox==2) then
+          xintsq = xint*xint
+          sx0(-1) = 0.5*(0.5-xint)**2
+          sx0( 0) = 0.75-xintsq
+          sx0( 1) = 0.5*(0.5+xint)**2
+         elseif (nox==3) then
+          oxint = 1.-xint
+          xintsq = xint*xint
+          oxintsq = oxint*oxint
+          sx0(-1) = onesixth*oxintsq*oxint
+          sx0( 0) = twothird-xintsq*(1.-xint/2)
+          sx0( 1) = twothird-oxintsq*(1.-oxint/2)
+          sx0( 2) = onesixth*xintsq*xint
+         end if
+
+         if (noy==1) then
+          sy0( 0) = 1.-yint
+          sy0( 1) = yint
+         elseif (noy==2) then
+          yintsq = yint*yint
+          sy0(-1) = 0.5*(0.5-yint)**2
+          sy0( 0) = 0.75-yintsq
+          sy0( 1) = 0.5*(0.5+yint)**2
+         elseif (noy==3) then
+          oyint = 1.-yint
+          yintsq = yint*yint
+          oyintsq = oyint*oyint
+          sy0(-1) = onesixth*oyintsq*oyint
+          sy0( 0) = twothird-yintsq*(1.-yint/2)
+          sy0( 1) = twothird-oyintsq*(1.-oyint/2)
+          sy0( 2) = onesixth*yintsq*yint
+         end if
+
+         if (noz==1) then
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
+         elseif (noz==2) then
+          zintsq = zint*zint
+          sz0(-1) = 0.5*(0.5-zint)**2
+          sz0( 0) = 0.75-zintsq
+          sz0( 1) = 0.5*(0.5+zint)**2
+         elseif (noz==3) then
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz0(-1) = onesixth*ozintsq*ozint
+          sz0( 0) = twothird-zintsq*(1.-zint/2)
+          sz0( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz0( 2) = onesixth*zintsq*zint
+         end if
+
+        end if
+        
         do ll = izmin, izmax+1
           do kk = iymin, iymax+1
             do jj = ixmin0, ixmax0
@@ -3712,10 +3871,10 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
         end do
                      
      end do
+     deallocate(sx0,sy0,sz0)
 
    return
  end subroutine gete3d_n_energy_conserving
-
 
  subroutine getb3d_linear_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz, &
                                             nxguard,nyguard,nzguard,bxg,byg,bzg)
@@ -3768,12 +3927,12 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
  end subroutine getb3d_linear_energy_conserving
 
 subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,nz,nxguard,nzguard, &
-                                       nox,noz,bxg,byg,bzg,l4symtry,l_2drz)
+                                       nox,noz,bxg,byg,bzg,l4symtry,l_2drz,l_lower_order_in_v)
    
       implicit none
       integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard
       real(kind=8), dimension(np) :: xp,yp,zp,bx,by,bz
-      logical(ISZ) :: l4symtry,l_2drz
+      logical(ISZ) :: l4symtry,l_2drz,l_lower_order_in_v
       real(kind=8), dimension(-nxguard:nx+nxguard,1,-nzguard:nz+nzguard) :: bxg,byg,bzg
       real(kind=8) :: xmin,zmin,dx,dz
       integer(ISZ) :: ip, j, l, ixmin, ixmax, izmin, izmax, &
@@ -3783,8 +3942,7 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
                       r, costheta, sintheta
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int((nox-1)/2):int(nox/2)) :: sx0
-      real(kind=8), DIMENSION(-int((noz-1)/2):int(noz/2)) :: sz0
+      real(kind=8), dimension(:), allocatable :: sx0,sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
@@ -3795,10 +3953,18 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
       izmin = -int(noz/2)
       izmax =  int((noz+1)/2)-1
 
-      ixmin0 = -int((nox-1)/2)
-      ixmax0 =  int((nox)/2)
-      izmin0 = -int((noz-1)/2)
-      izmax0 =  int((noz)/2)
+      if (l_lower_order_in_v) then
+        ixmin0 = -int((nox-1)/2)
+        ixmax0 =  int((nox)/2)
+        izmin0 = -int((noz-1)/2)
+        izmax0 =  int((noz)/2)
+      else
+        ixmin0 = -int((nox)/2)
+        ixmax0 =  int((nox+1)/2)
+        izmin0 = -int((noz)/2)
+        izmax0 =  int((noz+1)/2)
+      end if
+      allocate(sx0(ixmin0:ixmax0),sz0(izmin0:izmax0))
 
       signx = 1.
 
@@ -3836,19 +4002,36 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
           end if
         end if
 
-        if (nox==2*(nox/2)) then
-          j=nint(x)
-          j0=floor(x-0.5)
+        if (l_lower_order_in_v) then
+          if (nox==2*(nox/2)) then
+            j=nint(x)
+            j0=floor(x-0.5)
+          else
+            j=floor(x)
+            j0=floor(x)
+          end if
+          if (noz==2*(noz/2)) then
+            l=nint(z)
+            l0=floor(z-0.5)
+          else
+            l=floor(z)
+            l0=floor(z)
+          end if
         else
-          j=floor(x)
-          j0=floor(x)
-        end if
-        if (noz==2*(noz/2)) then
-          l=nint(z)
-          l0=floor(z-0.5)
-        else
-          l=floor(z)
-          l0=floor(z)
+          if (nox==2*(nox/2)) then
+            j=nint(x)
+            j0=floor(x)
+          else
+            j=floor(x)
+            j0=floor(x-0.5)
+          end if
+          if (noz==2*(noz/2)) then
+            l=nint(z)
+            l0=floor(z)
+          else
+            l=floor(z)
+            l0=floor(z-0.5)
+          end if
         end if
 
         xint=x-j
@@ -3893,28 +4076,70 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
         xint=x-0.5-j0
         zint=z-0.5-l0
 
-        if (nox==1) then
+        if (l_lower_order_in_v) then
+        
+         if (nox==1) then
           sx0( 0) = 1.
-        elseif (nox==2) then
+         elseif (nox==2) then
           sx0( 0) = 1.-xint
           sx0( 1) = xint
-        elseif (nox==3) then
+         elseif (nox==3) then
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
           sx0( 1) = 0.5*(0.5+xint)**2
-        end if
+         end if
 
-        if (noz==1) then
+         if (noz==1) then
           sz0( 0) = 1.
-        elseif (noz==2) then
+         elseif (noz==2) then
           sz0( 0) = 1.-zint
           sz0( 1) = zint
-        elseif (noz==3) then
+         elseif (noz==3) then
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
           sz0( 1) = 0.5*(0.5+zint)**2
+         end if
+
+        else
+
+         if (nox==1) then
+          sx0( 0) = 1.-xint
+          sx0( 1) = xint
+         elseif (nox==2) then
+          xintsq = xint*xint
+          sx0(-1) = 0.5*(0.5-xint)**2
+          sx0( 0) = 0.75-xintsq
+          sx0( 1) = 0.5*(0.5+xint)**2
+         elseif (nox==3) then
+          oxint = 1.-xint
+          xintsq = xint*xint
+          oxintsq = oxint*oxint
+          sx0(-1) = onesixth*oxintsq*oxint
+          sx0( 0) = twothird-xintsq*(1.-xint/2)
+          sx0( 1) = twothird-oxintsq*(1.-oxint/2)
+          sx0( 2) = onesixth*xintsq*xint
+         end if
+
+         if (noz==1) then
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
+         elseif (noz==2) then
+          zintsq = zint*zint
+          sz0(-1) = 0.5*(0.5-zint)**2
+          sz0( 0) = 0.75-zintsq
+          sz0( 1) = 0.5*(0.5+zint)**2
+         elseif (noz==3) then
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz0(-1) = onesixth*ozintsq*ozint
+          sz0( 0) = twothird-zintsq*(1.-zint/2)
+          sz0( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz0( 2) = onesixth*zintsq*zint
+         end if
+
         end if
 
         if (l_2drz) then
@@ -3949,17 +4174,18 @@ subroutine getb2dxz_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,zmin,dx,dz,nx,
         end do
                  
      end do
+     deallocate(sx0,sz0)
 
    return
  end subroutine getb2dxz_n_energy_conserving
 
 subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard, &
-                                       nox,noy,noz,bxg,byg,bzg,l4symtry)
+                                       nox,noy,noz,bxg,byg,bzg,l4symtry,l_lower_order_in_v)
    
       implicit none
       integer(ISZ) :: np,nx,ny,nz,nox,noy,noz,nxguard,nyguard,nzguard
       real(kind=8), dimension(np) :: xp,yp,zp,bx,by,bz
-      logical(ISZ) :: l4symtry
+      logical(ISZ) :: l4symtry,l_lower_order_in_v
       real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: bxg,byg,bzg
       real(kind=8) :: xmin,ymin,zmin,dx,dy,dz
       integer(ISZ) :: ip, j, k, l, ixmin, ixmax, iymin, iymax, izmin, izmax, &
@@ -3969,9 +4195,7 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noy/2):int((noy+1)/2)) :: sy
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
-      real(kind=8), DIMENSION(-int((nox-1)/2):int(nox/2)) :: sx0
-      real(kind=8), DIMENSION(-int((noy-1)/2):int(noy/2)) :: sy0
-      real(kind=8), DIMENSION(-int((noz-1)/2):int(noz/2)) :: sz0
+      real(kind=8), dimension(:), allocatable :: sx0,sy0,sz0
       real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
 
       dxi = 1./dx
@@ -3985,12 +4209,23 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
       izmin = -int(noz/2)
       izmax =  int((noz+1)/2)-1
 
-      ixmin0 = -int((nox-1)/2)
-      ixmax0 =  int((nox)/2)
-      iymin0 = -int((noy-1)/2)
-      iymax0 =  int((noy)/2)
-      izmin0 = -int((noz-1)/2)
-      izmax0 =  int((noz)/2)
+
+      if (l_lower_order_in_v) then
+        ixmin0 = -int((nox-1)/2)
+        ixmax0 =  int((nox)/2)
+        iymin0 = -int((noy-1)/2)
+        iymax0 =  int((noy)/2)
+        izmin0 = -int((noz-1)/2)
+        izmax0 =  int((noz)/2)
+      else
+        ixmin0 = -int((nox)/2)
+        ixmax0 =  int((nox+1)/2)
+        iymin0 = -int((noy)/2)
+        iymax0 =  int((noy+1)/2)
+        izmin0 = -int((noz)/2)
+        izmax0 =  int((noz+1)/2)
+      end if
+      allocate(sx0(ixmin0:ixmax0),sy0(iymin0:iymax0),sz0(izmin0:izmax0))
 
       signx = 1.
       signy = 1.
@@ -4023,28 +4258,56 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
           end if
         end if
 
-        if (nox==2*(nox/2)) then
+        if (l_lower_order_in_v) then
+         if (nox==2*(nox/2)) then
           j=nint(x)
           j0=floor(x-0.5)
-        else
+         else
           j=floor(x)
           j0=floor(x)
-        end if
-        if (noy==2*(noy/2)) then
+         end if
+         if (noy==2*(noy/2)) then
           k=nint(y)
           k0=floor(y-0.5)
-        else
+         else
           k=floor(y)
           k0=floor(y)
-        end if
-        if (noz==2*(noz/2)) then
+         end if
+         if (noz==2*(noz/2)) then
           l=nint(z)
           l0=floor(z-0.5)
-        else
+         else
           l=floor(z)
           l0=floor(z)
+         end if
+        else
+          if (nox==2*(nox/2)) then
+            j=nint(x)
+            j0=floor(x)
+          else
+            j=floor(x)
+            j0=floor(x-0.5)
+          end if
+          if (noy==2*(noy/2)) then
+            k=nint(y)
+            k0=floor(y)
+          else
+            k=floor(y)
+            k0=floor(y-0.5)
+          end if
+          if (noz==2*(noz/2)) then
+            l=nint(z)
+            l0=floor(z)
+          else
+            l=floor(z)
+            l0=floor(z-0.5)
+          end if
         end if
 
+        xint=x-j
+        yint=y-k
+        zint=z-l
+        
         if (nox==1) then
           sx( 0) = 1.-xint
           sx( 1) = xint
@@ -4103,42 +4366,102 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
         yint=y-0.5-k0
         zint=z-0.5-l0
 
-        if (nox==1) then
+        if (l_lower_order_in_v) then
+
+         if (nox==1) then
           sx0( 0) = 1.
-        elseif (nox==2) then
+         elseif (nox==2) then
           sx0( 0) = 1.-xint
           sx0( 1) = xint
-        elseif (nox==3) then
+         elseif (nox==3) then
           xintsq = xint*xint
           sx0(-1) = 0.5*(0.5-xint)**2
           sx0( 0) = 0.75-xintsq
           sx0( 1) = 0.5*(0.5+xint)**2
-        end if
+         end if
 
-        if (noy==1) then
+         if (noy==1) then
           sy0( 0) = 1.
-        elseif (noy==2) then
+         elseif (noy==2) then
           sy0( 0) = 1.-yint
           sy0( 1) = yint
-        elseif (noy==3) then
+         elseif (noy==3) then
           yintsq = yint*yint
           sy0(-1) = 0.5*(0.5-yint)**2
           sy0( 0) = 0.75-yintsq
           sy0( 1) = 0.5*(0.5+yint)**2
-        end if
+         end if
 
-        if (noz==1) then
+         if (noz==1) then
           sz0( 0) = 1.
-        elseif (noz==2) then
+         elseif (noz==2) then
           sz0( 0) = 1.-zint
           sz0( 1) = zint
-        elseif (noz==3) then
+         elseif (noz==3) then
           zintsq = zint*zint
           sz0(-1) = 0.5*(0.5-zint)**2
           sz0( 0) = 0.75-zintsq
           sz0( 1) = 0.5*(0.5+zint)**2
-        end if
+         end if
 
+        else
+
+         if (nox==1) then
+          sx0( 0) = 1.-xint
+          sx0( 1) = xint
+         elseif (nox==2) then
+          xintsq = xint*xint
+          sx0(-1) = 0.5*(0.5-xint)**2
+          sx0( 0) = 0.75-xintsq
+          sx0( 1) = 0.5*(0.5+xint)**2
+         elseif (nox==3) then
+          oxint = 1.-xint
+          xintsq = xint*xint
+          oxintsq = oxint*oxint
+          sx0(-1) = onesixth*oxintsq*oxint
+          sx0( 0) = twothird-xintsq*(1.-xint/2)
+          sx0( 1) = twothird-oxintsq*(1.-oxint/2)
+          sx0( 2) = onesixth*xintsq*xint
+         end if
+
+         if (noy==1) then
+          sy0( 0) = 1.-yint
+          sy0( 1) = yint
+         elseif (noy==2) then
+          yintsq = yint*yint
+          sy0(-1) = 0.5*(0.5-yint)**2
+          sy0( 0) = 0.75-yintsq
+          sy0( 1) = 0.5*(0.5+yint)**2
+         elseif (noy==3) then
+          oyint = 1.-yint
+          yintsq = yint*yint
+          oyintsq = oyint*oyint
+          sy0(-1) = onesixth*oyintsq*oyint
+          sy0( 0) = twothird-yintsq*(1.-yint/2)
+          sy0( 1) = twothird-oyintsq*(1.-oyint/2)
+          sy0( 2) = onesixth*yintsq*yint
+         end if
+         
+         if (noz==1) then
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
+         elseif (noz==2) then
+          zintsq = zint*zint
+          sz0(-1) = 0.5*(0.5-zint)**2
+          sz0( 0) = 0.75-zintsq
+          sz0( 1) = 0.5*(0.5+zint)**2
+         elseif (noz==3) then
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz0(-1) = onesixth*ozintsq*ozint
+          sz0( 0) = twothird-zintsq*(1.-zint/2)
+          sz0( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz0( 2) = onesixth*zintsq*zint
+         end if
+
+        end if
+        
         do ll = izmin0, izmax0
           do kk = iymin0, iymax0
             do jj = ixmin, ixmax+1
@@ -4164,6 +4487,7 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
         end do
                 
      end do
+     deallocate(sx0,sz0)
 
    return
  end subroutine getb3d_n_energy_conserving
