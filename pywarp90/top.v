@@ -2767,6 +2767,8 @@ zzzcwin(nzcwin)        _real        # List of lab frame locations where
                                     # crossing particles are saved
 nzcmax                  integer /0/ # Maximum number of crossing particles
 npidzcmax               integer /0/ # Max number of columns in pidzc
+zclfields               logical /.false./ # Flag to swtich on saving of fields
+nzcmaxfields            integer /0/ # Maximum number of crossing particles, for fields arrays
 nzc(nzcwin,ns)         _integer     # Number of crossing particles at each
                                     # location
 tzc(nzcmax,nzcwin,ns)  _real        # Time particles cross the z locations
@@ -2782,6 +2784,12 @@ uzzc(nzcmax,nzcwin,ns) _real        # Z velocities of particles when crossing
                                     # the z locations
 pidzc(nzcmax,npidzcmax,nzcwin,ns) _real # ID of particles when crossing
                                     # the z locations
+exzc(nzcmaxfields,nzcwin,ns) _real  # Ex of particles when crossing the z locations
+eyzc(nzcmaxfields,nzcwin,ns) _real  # Ey of particles when crossing the z locations
+ezzc(nzcmaxfields,nzcwin,ns) _real  # Ez of particles when crossing the z locations
+bxzc(nzcmaxfields,nzcwin,ns) _real  # Bx of particles when crossing the z locations
+byzc(nzcmaxfields,nzcwin,ns) _real  # By of particles when crossing the z locations
+bzzc(nzcmaxfields,nzcwin,ns) _real  # Bz of particles when crossing the z locations
 
 *********** TopPhys:
 # "Physics" subroutines at top level

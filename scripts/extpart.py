@@ -31,6 +31,7 @@ The creator options are:
  - nmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
          otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
+ - lsavefields=False: when true, the fields are also saved
  - name=None: descriptive name for location. It must be unique for each
               instance of the diagnostic.
  - lautodump=0: when true, after the grid moves beyond the z location,
@@ -75,6 +76,7 @@ self.topizwinname
 self.topzzwinname
 self.topwzwinname
 self.topnmaxname
+self.topnmaxfieldsname
 self.topnpidmaxname
 self.topnname
 self.toptname
@@ -84,6 +86,12 @@ self.topuxname
 self.topuyname
 self.topuzname
 self.toppidname
+self.topexname
+self.topeyname
+self.topezname
+self.topbxname
+self.topbyname
+self.topbzname
 self.topgroupname
     """
     name_cache = []
@@ -100,6 +108,7 @@ self.topgroupname
     topzzwin = property(*_topproperties('topzzwinname'))
     topwzwin = property(*_topproperties('topwzwinname'))
     topnmax = property(*_topproperties('topnmaxname'))
+    topnmaxfields = property(*_topproperties('topnmaxfieldsname'))
     topnpidmax = property(*_topproperties('topnpidmaxname'))
     topn = property(*_topproperties('topnname'))
     topt = property(*_topproperties('toptname'))
@@ -109,8 +118,15 @@ self.topgroupname
     topuy = property(*_topproperties('topuyname'))
     topuz = property(*_topproperties('topuzname'))
     toppid = property(*_topproperties('toppidname'))
+    topex = property(*_topproperties('topexname'))
+    topey = property(*_topproperties('topeyname'))
+    topez = property(*_topproperties('topezname'))
+    topbx = property(*_topproperties('topbxname'))
+    topby = property(*_topproperties('topbyname'))
+    topbz = property(*_topproperties('topbzname'))
 
     def __init__(self,iz=-1,zz=0.,nmax=None,laccumulate=0,
+                 lsavefields=False,
                  name=None,lautodump=0,dumptofile=0):
         # --- Save input values, getting default values when needed
         assert type(iz) is IntType,"iz must be an integer"
@@ -118,6 +134,7 @@ self.topgroupname
         self.iz = iz
         self.zz = zz
         self.laccumulate = laccumulate
+        self.lsavefields = lsavefields
         self.lautodump = lautodump
         if name is not None:
           if name in self.name_cache:
@@ -172,23 +189,30 @@ self.topgroupname
             self.ux = []
             self.uy = []
             self.uz = []
+            if self.lsavefields:
+                self.ex = []
+                self.ey = []
+                self.ez = []
+                self.bx = []
+                self.by = []
+                self.bz = []
             self.pid = []
             for js in range(ns):
-                self.t.append(AppendableArray(self.nmax,typecode='d',
-                                                autobump=bump))
-                self.x.append(AppendableArray(self.nmax,typecode='d',
-                                                autobump=bump))
-                self.y.append(AppendableArray(self.nmax,typecode='d',
-                                                autobump=bump))
-                self.ux.append(AppendableArray(self.nmax,typecode='d',
-                                                 autobump=bump))
-                self.uy.append(AppendableArray(self.nmax,typecode='d',
-                                                 autobump=bump))
-                self.uz.append(AppendableArray(self.nmax,typecode='d',
-                                                 autobump=bump))
-                self.pid.append(AppendableArray(self.nmax,typecode='d',
-                                                  autobump=bump,
-                                                  unitshape=(self.topnpidmax,)))
+                self.t.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.x.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.y.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.ux.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.uy.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.uz.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.pid.append(AppendableArray(self.nmax,typecode='d',autobump=bump,
+                                                unitshape=(self.topnpidmax,)))
+                if self.lsavefields:
+                    self.ex.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.ey.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.ez.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.bx.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.by.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.bz.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
         else:
             self.t = ns*[zeros(0,'d')]
             self.x = ns*[zeros(0,'d')]
@@ -197,26 +221,33 @@ self.topgroupname
             self.uy = ns*[zeros(0,'d')]
             self.uz = ns*[zeros(0,'d')]
             self.pid = ns*[zeros((0,self.topnpidmax),'d')]
+            if self.lsavefields:
+                self.ex = ns*[zeros(0,'d')]
+                self.ey = ns*[zeros(0,'d')]
+                self.ez = ns*[zeros(0,'d')]
+                self.bx = ns*[zeros(0,'d')]
+                self.by = ns*[zeros(0,'d')]
+                self.bz = ns*[zeros(0,'d')]
 
     def addspecies(self):
         if self.laccumulate and not self.dumptofile:
             for js in range(self.getns(),top.ns):
                 bump = self.nmax
-                self.t.append(AppendableArray(self.nmax,typecode='d',
-                                                autobump=bump))
-                self.x.append(AppendableArray(self.nmax,typecode='d',
-                                                autobump=bump))
-                self.y.append(AppendableArray(self.nmax,typecode='d',
-                                                autobump=bump))
-                self.ux.append(AppendableArray(self.nmax,typecode='d',
-                                                 autobump=bump))
-                self.uy.append(AppendableArray(self.nmax,typecode='d',
-                                                 autobump=bump))
-                self.uz.append(AppendableArray(self.nmax,typecode='d',
-                                                 autobump=bump))
-                self.pid.append(AppendableArray(self.nmax,typecode='d',
-                                                  autobump=bump,
-                                                  unitshape=(self.topnpidmax,)))
+                self.t.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.x.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.y.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.ux.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.uy.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.uz.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.pid.append(AppendableArray(self.nmax,typecode='d',autobump=bump,
+                                                unitshape=(self.topnpidmax,)))
+                if self.lsavefields:
+                    self.ex.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.ey.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.ez.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.bx.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.by.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.bz.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
         else:
             self.t = top.ns*[zeros(0,'d')]
             self.x = top.ns*[zeros(0,'d')]
@@ -225,6 +256,13 @@ self.topgroupname
             self.uy = top.ns*[zeros(0,'d')]
             self.uz = top.ns*[zeros(0,'d')]
             self.pid = top.ns*[zeros((0,self.topnpidmax),'d')]
+            if self.lsavefields:
+                self.ex = ns*[zeros(0,'d')]
+                self.ey = ns*[zeros(0,'d')]
+                self.ez = ns*[zeros(0,'d')]
+                self.bx = ns*[zeros(0,'d')]
+                self.by = ns*[zeros(0,'d')]
+                self.bz = ns*[zeros(0,'d')]
 
     def clear(self):
         self.setuparrays(top.ns)
@@ -242,7 +280,10 @@ self.topgroupname
 
     def setupid(self):
         self.topnwin = self.topnwin + 1
-        if self.topnmax < self.nmax: self.topnmax = self.nmax
+        if self.topnmax < self.nmax:
+            self.topnmax = self.nmax
+            if self.lsavefields:
+                self.topnmaxfields = self.nmax
         err = gchange(self.topgroupname)
         self.topizwin[-1] = self.iz
         self.topzzwin[-1] = self.zz
@@ -352,6 +393,13 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                 pid = self.toppid[:nn,:,id,js]
             else:
                 pid = zeros((nn,0),'d')
+            if self.lsavefields:
+                ex = self.topex[:nn,id,js]
+                ey = self.topey[:nn,id,js]
+                ez = self.topez[:nn,id,js]
+                bx = self.topbx[:nn,id,js]
+                by = self.topby[:nn,id,js]
+                bz = self.topbz[:nn,id,js]
 
             if not self.dumptofile:
                 # --- Gather the data onto PE0.
@@ -368,6 +416,13 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                     pid = gatherarray(pid,othersempty=1)
                 else:
                     pid = zeros((ntot,0),'d')
+                if self.lsavefields:
+                    ex = gatherarray(ex,othersempty=1)
+                    ey = gatherarray(ey,othersempty=1)
+                    ez = gatherarray(ez,othersempty=1)
+                    bx = gatherarray(bx,othersempty=1)
+                    by = gatherarray(by,othersempty=1)
+                    bz = gatherarray(bz,othersempty=1)
 
             if self.laccumulate and not self.dumptofile:
 
@@ -380,6 +435,13 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                     self.uy[js].append(uy.copy())
                     self.uz[js].append(uz.copy())
                     self.pid[js].append(pid.copy())
+                    if self.lsavefields:
+                        self.ex[js].append(ex.copy())
+                        self.ey[js].append(ey.copy())
+                        self.ez[js].append(ez.copy())
+                        self.bx[js].append(bx.copy())
+                        self.by[js].append(by.copy())
+                        self.bz[js].append(bz.copy())
 
             else:
 
@@ -390,6 +452,13 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                 self.uy[js] = uy
                 self.uz[js] = uz
                 self.pid[js] = pid
+                if self.lsavefields:
+                    self.ex[js] = ex
+                    self.ey[js] = ey
+                    self.ez[js] = ez
+                    self.bx[js] = bx
+                    self.by[js] = by
+                    self.bz[js] = bz
 
         if self.dumptofile: self.dodumptofile()
         # --- Force n to zero to ensure that particles are not saved twice.
@@ -457,6 +526,13 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                 ff.write('uy'+suffix,self.uy[js][:])
                 ff.write('uz'+suffix,self.uz[js][:])
                 ff.write('pid'+suffix,self.pid[js][...])
+                if self.lsavefields:
+                    ff.write('ex'+suffix,self.ex[js][:])
+                    ff.write('ey'+suffix,self.ey[js][:])
+                    ff.write('ez'+suffix,self.ez[js][:])
+                    ff.write('bx'+suffix,self.bx[js][:])
+                    ff.write('by'+suffix,self.by[js][:])
+                    ff.write('bz'+suffix,self.bz[js][:])
         if ff is not None:
             ff.close()
 
@@ -483,6 +559,14 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                 cPickle.dump(('uy'+suffix,self.uy[js][:]),ff,-1)
                 cPickle.dump(('uz'+suffix,self.uz[js][:]),ff,-1)
                 cPickle.dump(('pid'+suffix,self.pid[js][...]),ff,-1)
+                if self.lsavefields:
+                    cPickle.dump(('ex'+suffix,self.ex[js][:]),ff,-1)
+                    cPickle.dump(('ey'+suffix,self.ey[js][:]),ff,-1)
+                    cPickle.dump(('ez'+suffix,self.ez[js][:]),ff,-1)
+                    cPickle.dump(('bx'+suffix,self.bx[js][:]),ff,-1)
+                    cPickle.dump(('by'+suffix,self.by[js][:]),ff,-1)
+                    cPickle.dump(('bz'+suffix,self.bz[js][:]),ff,-1)
+
         if ff is not None:
             ff.close()
 
@@ -625,6 +709,13 @@ feature.
                 self.ux[js].append(datadict['ux%s'%suffix])
                 self.uy[js].append(datadict['uy%s'%suffix])
                 self.uz[js].append(datadict['uz%s'%suffix])
+                if self.lsavefields:
+                    self.ex[js].append(datadict['ex%s'%suffix])
+                    self.ey[js].append(datadict['ey%s'%suffix])
+                    self.ez[js].append(datadict['ez%s'%suffix])
+                    self.bx[js].append(datadict['bx%s'%suffix])
+                    self.by[js].append(datadict['by%s'%suffix])
+                    self.bz[js].append(datadict['bz%s'%suffix])
                 pid = datadict['pid%s'%suffix]
                 if len(pid.shape) == 1:
                     pid.shape = (pid.shape[0],1)
@@ -757,6 +848,9 @@ methods.
     def getns(self):
         """Get the number of species for which data is saved."""
         return len(self.t)
+    def getn(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the number of saved particles. The same options as for :py:func:`selectparticles` apply."""
+        return len(self.gett(js,tc,wt,tp,gather=gather,bcast=bcast))
     def gett(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
         """Get the time that each particle was saved. The same options as for :py:func:`selectparticles` apply."""
         return self.selectparticles(self.t,js,tc,wt,tp,z,1.,
@@ -834,9 +928,30 @@ The same options as for :py:func:`selectparticles` apply."""
         xp = self.getxp(js,tc,wt,tp,gather=gather,bcast=bcast)
         yp = self.getyp(js,tc,wt,tp,gather=gather,bcast=bcast)
         return (xp*cos(theta) + yp*sin(theta))
-    def getn(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
-        """Get the number of saved particles. The same options as for :py:func:`selectparticles` apply."""
-        return len(self.gett(js,tc,wt,tp,gather=gather,bcast=bcast))
+    def getex(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the Ex at the saved particle's locations. The same options as for :py:func:`selectparticles` apply."""
+        assert self.lsavefields,"fields not saved since lsavefields is False"
+        return self.selectparticles(self.ex,js,tc,wt,tp,gather=gather,bcast=bcast)
+    def getey(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the Ey at the saved particle's locations. The same options as for :py:func:`selectparticles` apply."""
+        assert self.lsavefields,"fields not saved since lsavefields is False"
+        return self.selectparticles(self.ey,js,tc,wt,tp,gather=gather,bcast=bcast)
+    def getez(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the Ez at the saved particle's locations. The same options as for :py:func:`selectparticles` apply."""
+        assert self.lsavefields,"fields not saved since lsavefields is False"
+        return self.selectparticles(self.ez,js,tc,wt,tp,gather=gather,bcast=bcast)
+    def getbx(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the Bx at the saved particle's locations. The same options as for :py:func:`selectparticles` apply."""
+        assert self.lsavefields,"fields not saved since lsavefields is False"
+        return self.selectparticles(self.bx,js,tc,wt,tp,gather=gather,bcast=bcast)
+    def getby(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the By at the saved particle's locations. The same options as for :py:func:`selectparticles` apply."""
+        assert self.lsavefields,"fields not saved since lsavefields is False"
+        return self.selectparticles(self.by,js,tc,wt,tp,gather=gather,bcast=bcast)
+    def getbz(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the Bz at the saved particle's locations. The same options as for :py:func:`selectparticles` apply."""
+        assert self.lsavefields,"fields not saved since lsavefields is False"
+        return self.selectparticles(self.bz,js,tc,wt,tp,gather=gather,bcast=bcast)
 
     def xxpslope(self,js=0,tc=None,wt=None,tp=None,z=None):
         """Get the x-x' slope of the saved particles. The same options as for :py:func:`selectparticles` apply."""
@@ -1278,6 +1393,23 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         return ppgeneric(y,t,kwdict=kw)
 
     ############################################################################
+    def ptr(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
+        """
+Plots time-R for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
+        self.checkplotargs(kw)
+        if self.ppmultispecies(self.ptr,(js,tc,wt,tp,z),kw): return
+        t = self.gett(js,tc,wt,tp,z)
+        r = self.getr(js,tc,wt,tp,z)
+        if 'pplimits' in kw:
+            kw['lframe'] = 1
+        else:
+            kw['pplimits'] = ('e','e',top.xplmin,top.xplmax)
+        settitles("R vs time","time","R",self.titleright(tc,wt,z))
+        return ppgeneric(r,t,kwdict=kw)
+
+    ############################################################################
     def ptxp(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
         """
 Plots time-X' for extraploated particles.
@@ -1481,6 +1613,96 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         settitles("X' vs Y'","Y'","X'",titler)
         ppgeneric(xp,yp,kwdict=kw)
 
+    ############################################################################
+    def ptex(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
+        """
+Plots time-Ex for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
+        self.checkplotargs(kw)
+        if self.ppmultispecies(self.ptex,(js,tc,wt,tp,z),kw): return
+        t = self.gett(js,tc,wt,tp,z)
+        ex = self.getex(js,tc,wt,tp)
+        if 'pplimits' in kw:
+            kw['lframe'] = 1
+        settitles("Ex vs time","time","Ex",self.titleright(tc,wt,z))
+        return ppgeneric(ex,t,kwdict=kw)
+
+    ############################################################################
+    def ptey(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
+        """
+Plots time-Ey for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
+        self.checkplotargs(kw)
+        if self.ppmultispecies(self.ptey,(js,tc,wt,tp,z),kw): return
+        t = self.gett(js,tc,wt,tp,z)
+        ey = self.getey(js,tc,wt,tp)
+        if 'pplimits' in kw:
+            kw['lframe'] = 1
+        settitles("Ey vs time","time","Ey",self.titleright(tc,wt,z))
+        return ppgeneric(ey,t,kwdict=kw)
+
+    ############################################################################
+    def ptez(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
+        """
+Plots time-Ez for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
+        self.checkplotargs(kw)
+        if self.ppmultispecies(self.ptez,(js,tc,wt,tp,z),kw): return
+        t = self.gett(js,tc,wt,tp,z)
+        ez = self.getez(js,tc,wt,tp)
+        if 'pplimits' in kw:
+            kw['lframe'] = 1
+        settitles("Ez vs time","time","Ez",self.titleright(tc,wt,z))
+        return ppgeneric(ez,t,kwdict=kw)
+
+    ############################################################################
+    def ptbx(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
+        """
+Plots time-Bx for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
+        self.checkplotargs(kw)
+        if self.ppmultispecies(self.ptbx,(js,tc,wt,tp,z),kw): return
+        t = self.gett(js,tc,wt,tp,z)
+        bx = self.getbx(js,tc,wt,tp)
+        if 'pplimits' in kw:
+            kw['lframe'] = 1
+        settitles("Bx vs time","time","Bx",self.titleright(tc,wt,z))
+        return ppgeneric(bx,t,kwdict=kw)
+
+    ############################################################################
+    def ptby(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
+        """
+Plots time-By for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
+        self.checkplotargs(kw)
+        if self.ppmultispecies(self.ptby,(js,tc,wt,tp,z),kw): return
+        t = self.gett(js,tc,wt,tp,z)
+        by = self.getby(js,tc,wt,tp)
+        if 'pplimits' in kw:
+            kw['lframe'] = 1
+        settitles("By vs time","time","By",self.titleright(tc,wt,z))
+        return ppgeneric(by,t,kwdict=kw)
+
+    ############################################################################
+    def ptbz(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
+        """
+Plots time-Bz for extraploated particles.
+The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgeneric` apply.
+        """
+        self.checkplotargs(kw)
+        if self.ppmultispecies(self.ptbz,(js,tc,wt,tp,z),kw): return
+        t = self.gett(js,tc,wt,tp,z)
+        bz = self.getbz(js,tc,wt,tp)
+        if 'pplimits' in kw:
+            kw['lframe'] = 1
+        settitles("Bz vs time","time","Bz",self.titleright(tc,wt,z))
+        return ppgeneric(bz,t,kwdict=kw)
+
     #pxy.__doc__ = pxy.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
     #pxxp.__doc__ = pxxp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
     #pyyp.__doc__ = pyyp.__doc__ + selectparticles.__doc__[:-4]+'plus all ppgeneric options\n'
@@ -1637,6 +1859,7 @@ The creator options are:
  - nmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
          otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
+ - lsavefields=False: when true, the fields are also saved
  - name=None: descriptive name for location. It must be unique for each
               instance of the diagnostic.
  - lautodump=0: when true, after the grid moves beyond the z location,
@@ -1677,7 +1900,7 @@ routines (such as ppxxp).
     """
     name_cache = []
 
-    def __init__(self,iz=-1,zz=0.,nmax=None,laccumulate=0,
+    def __init__(self,iz=-1,zz=0.,nmax=None,laccumulate=0,lsavefields=False,
                  name=None,lautodump=0,dumptofile=0):
 
         if w3d.dz != 0.:
@@ -1691,6 +1914,7 @@ routines (such as ppxxp).
         self.topzzwinname  = 'zzzcwin'
         self.topwzwinname  = 'wzzcwin'
         self.topnmaxname  = 'nzcmax'
+        self.topnmaxfieldsname  = 'nzcmaxfields'
         self.topnpidmaxname  = 'npidzcmax'
         self.topnname  = 'nzc'
         self.toptname  = 'tzc'
@@ -1700,10 +1924,20 @@ routines (such as ppxxp).
         self.topuyname  = 'uyzc'
         self.topuzname  = 'uzzc'
         self.toppidname  = 'pidzc'
+        self.topexname  = 'exzc'
+        self.topeyname  = 'eyzc'
+        self.topezname  = 'ezzc'
+        self.topbxname  = 'bxzc'
+        self.topbyname  = 'byzc'
+        self.topbzname  = 'bzzc'
         self.topgroupname = 'ZCrossingParticles'
+
+        if lsavefields:
+            top.zclfields = true
 
         ParticleAccumulator.__init__(self,iz=iz,zz=zz,nmax=nmax,
                                      laccumulate=laccumulate,
+                                     lsavefields=lsavefields,
                                      name=name,
                                      lautodump=lautodump,dumptofile=dumptofile)
 
