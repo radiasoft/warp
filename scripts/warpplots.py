@@ -5284,7 +5284,7 @@ will only take affect on the next plot.)
     return (x0,x1,y0,y1)
 
 ##########################################################################
-class getstdout:
+class _getstdout:
     def __init__(self):
         self.out = []
     def write(self,s):
@@ -5297,54 +5297,48 @@ class getstdout:
 ##########################################################################
 def wplq(i):
     """return dictionary of plot options"""
-    s = sys.stdout
-    sys.stdout = getstdout()
-    plq(i)
-    r = sys.stdout.out
-    sys.stdout = s
-    l = {}
-    for j in range(0,len(r)):
-      line = r[j].spplit()
-      if(len(line)>0):
-        k = 0
-        while k <len(line):
-          if(line[k].find('=')>0):
-             arg = line[k].replace('=','')
-             val = line[k+1].replace(',','')
-             try:
-               val=float(val)
-             except:
-               try:
-                 val=int(val)
-               except:
-                 val = val.replace('"','')
-                 val = val.replace("'",'')
-                 pass
-             l[arg]=val
-             k = k+2
-          else:
-            k = k+1
-    return l
+    stdout = _getstdout()
+    sys.stdout = stdout
+    try:
+      plq(i)
+    finally:
+      # --- Make sure that this reassignment happens no matter what.
+      sys.stdout = sys.__stdout__
+    result = {}
+    for line in stdout.out:
+      words = line.split()
+      k = 0
+      while k < len(words):
+        if words[k].find('=') > 0:
+          arg = words[k].replace('=','')
+          val = words[k+1].replace(',','')
+          try:
+            val=float(val)
+          except ValueError:
+            try:
+              val=int(val)
+            except ValueError:
+              val = val.replace('"','')
+              val = val.replace("'",'')
+              pass
+          result[arg] = val
+          k += 2
+        else:
+          k += 1
+    return result
 
 ##########################################################################
 def aplq():
     """return list of dictionaries for all elements in active window"""
-    list = []
-    l = 1
+    result = []
     i = 1
-    while l>0:
-      try:
-        d = wplq(i)
-      except:
-        try:
-          d = gist.get_style()
-        except:
-          return list
-      l = len(d)
-      if l>0:
-        list = list+[d]
-        i = i + 1
-    return list
+    while True:
+      # --- wplq generally will not raise an error (only if i > maxint)
+      d = wplq(i)
+      if len(d) == 0: break
+      result += [d]
+      i += 1
+    return result
 
 ##########################################################################
 def plellipse(l,h,np=100,thetamin=0.,thetamax=2.*pi,xcent=0.,ycent=0.,**kw):
