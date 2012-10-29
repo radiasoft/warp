@@ -225,7 +225,8 @@ gete3d_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                nxguard:integer,nyguard:integer,nzguard:integer,
                nox:integer,noy:integer,noz:integer,
                exg:real,eyg:real,ezg:real,
-                           l4symtry:logical)
+                           l4symtry:logical,
+                           l_lower_order_in_v:logical)
                            subroutine
 getb3d_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                bx(n):real,by(n):real,bz(n):real,
@@ -235,7 +236,8 @@ getb3d_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                nxguard:integer,nyguard:integer,nzguard:integer,
                nox:integer,noy:integer,noz:integer,
                bxg:real,byg:real,bzg:real,
-                           l4symtry:logical)
+                           l4symtry:logical,
+                           l_lower_order_in_v:logical)
                            subroutine
 gete2dxz_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                ex(n):real,ey(n):real,ez(n):real,
@@ -245,7 +247,8 @@ gete2dxz_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                nxguard:integer,nzguard:integer,
                nox:integer,noz:integer,
                exg:real,eyg:real,ezg:real,
-                           l4symtry:logical,l_2drz:logical)
+                           l4symtry:logical,l_2drz:logical,
+                           l_lower_order_in_v:logical)
                            subroutine
 getb2dxz_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                bx(n):real,by(n):real,bz(n):real,
@@ -255,7 +258,8 @@ getb2dxz_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                nxguard:integer,nzguard:integer,
                nox:integer,noz:integer,
                bxg:real,byg:real,bzg:real,
-                           l4symtry:logical,l_2drz:logical)
+                           l4symtry:logical,l_2drz:logical,
+                           l_lower_order_in_v:logical)
                            subroutine
 yee2node3d(f:EM3D_YEEFIELDtype) subroutine
 node2yee3d(f:EM3D_YEEFIELDtype) subroutine

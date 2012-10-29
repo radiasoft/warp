@@ -10,6 +10,8 @@ For each controller, the following three functions are defined.
  - uninstall___: Uninstalls the function (so it won't be called anymore)
  - isinstalled___: Checks if the function is installed
 
+The install can be done using a decorator, which has the prefix "callfrom". See example below.
+
 The functions all take a function or instance method as an argument. Note that
 if an instance method is used, an extra reference to the method's object is saved.
 
@@ -40,6 +42,18 @@ Functions can be called at the following times:
  - :py:func:`userparticlesinjection <installuserparticlesinjection>`: allows directly specifying the particles to be injected
  - :py:func:`userappliedfields <installuserappliedfields>`: allows directly specifying any fields to be applied to the particles
                                                             during the advance
+
+To use a decorator, the syntax is as follows. This will install the function myplots to be called after each step.
+
+@callfromafterstep
+def myplots():
+  ppzx()
+
+This is equivalent to the following:
+
+def myplots():
+  ppzx()
+installafterstep(myplots)
 
 """
 from __future__ import generators
@@ -341,6 +355,9 @@ controllerfunctioncontainer = ControllerFunctionContainer(
 
 #=============================================================================
 # ----------------------------------------------------------------------------
+def callfromaftergenerate(f):
+  installaftergenerate(f)
+  return f
 def installaftergenerate(f):
   "Adds a function to the list of functions called after a generate"
   aftergenerate.installfuncinlist(f)
@@ -352,6 +369,9 @@ def isinstalledaftergenerate(f):
   return aftergenerate.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfrombeforefs(f):
+  installbeforefs(f)
+  return f
 def installbeforefs(f):
   "Adds a function to the list of functions called before a field-solve"
   beforefs.installfuncinlist(f)
@@ -365,6 +385,9 @@ def isinstalledbeforefs(f):
   return beforefs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromafterfs(f):
+  installafterfs(f)
+  return f
 def installafterfs(f):
   "Adds a function to the list of functions called after a field-solve"
   afterfs.installfuncinlist(f)
@@ -378,6 +401,9 @@ def isinstalledafterfs(f):
   return afterfs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfrombeforeloadrho(f):
+  installbeforeloadrho(f)
+  return f
 def installbeforeloadrho(f):
   "Adds a function to the list of functions called before a load rho"
   beforeloadrho.installfuncinlist(f)
@@ -396,6 +422,9 @@ uninstallbeforelr = uninstallbeforeloadrho
 isinstalledbeforelr = isinstalledbeforeloadrho
 
 # ----------------------------------------------------------------------------
+def callfromafterloadrho(f):
+  installafterloadrho(f)
+  return f
 def installafterloadrho(f):
   "Adds a function to the list of functions called after a load rho"
   afterloadrho.installfuncinlist(f)
@@ -409,6 +438,9 @@ def isinstalledafterloadrho(f):
   return afterloadrho.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromothereuser(f):
+  installothereuser(f)
+  return f
 def installothereuser(f):
   "Adds a function to the list of functions called during the electric fields gathering"
   othereuser.installfuncinlist(f)
@@ -422,6 +454,9 @@ def isinstalledothereuser(f):
   return othereuser.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfrombeforescraper(f):
+  installbeforescraper(f)
+  return f
 def installbeforescraper(f):
   "Adds a function to the list of functions called before scraping particles"
   beforescraper.installfuncinlist(f)
@@ -435,6 +470,9 @@ def isinstalledbeforescraper(f):
   return beforescraper.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromafterscraper(f):
+  installafterscraper(f)
+  return f
 def installafterscraper(f):
   "Adds a function to the list of functions called after scraping particles"
   afterscraper.installfuncinlist(f)
@@ -448,6 +486,9 @@ def isinstalledafterscraper(f):
   return afterscraper.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromparticlescraper(f):
+  installparticlescraper(f)
+  return f
 def installparticlescraper(f):
   "Adds a function to the list of functions called to scrape particles"
   callscraper.installfuncinlist(f)
@@ -461,6 +502,9 @@ def isinstalledparticlescraper(f):
   return callscraper.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromparticleloader(f):
+  installparticleloader(f)
+  return f
 def installparticleloader(f):
   "Adds a function to the list of functions called to load particles"
   callparticleloader.installfuncinlist(f)
@@ -475,6 +519,9 @@ def isinstalledparticleloader(f):
   return callparticleloader.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromaddconductor(f):
+  installaddconductor(f)
+  return f
 def installaddconductor(f):
   "Adds a function to the list of functions called to add conductors"
   calladdconductor.installfuncinlist(f)
@@ -488,6 +535,9 @@ def isinstalledaddconductor(f):
   return calladdconductor.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfrombeforestep(f):
+  installbeforestep(f)
+  return f
 def installbeforestep(f):
   "Adds a function to the list of functions called before a step"
   callbeforestepfuncs.installfuncinlist(f)
@@ -499,6 +549,9 @@ def isinstalledbeforestep(f):
   return callbeforestepfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromafterstep(f):
+  installafterstep(f)
+  return f
 def installafterstep(f):
   "Adds a function to the list of functions called after a step"
   callafterstepfuncs.installfuncinlist(f)
@@ -510,6 +563,9 @@ def isinstalledafterstep(f):
   return callafterstepfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfrombeforeplot(f):
+  installbeforeplot(f)
+  return f
 def installbeforeplot(f):
   "Adds a function to the list of functions called before a plot"
   beforeplotfuncs.installfuncinlist(f)
@@ -521,6 +577,9 @@ def isinstalledbeforeplot(f):
   return beforeplotfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromafterplot(f):
+  installafterplot(f)
+  return f
 def installafterplot(f):
   "Adds a function to the list of functions called after a plot"
   callafterplotfuncs.installfuncinlist(f)
@@ -532,6 +591,9 @@ def isinstalledafterplot(f):
   return callafterplotfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromplseldom(f):
+  installplseldom(f)
+  return f
 def installplseldom(f):
   "Adds a function to the list of functions controlled by itplseldom and zzplseldom"
   callplseldomfuncs.installfuncinlist(f)
@@ -543,6 +605,9 @@ def isinstalledplseldom(f):
   return callplseldomfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromplalways(f):
+  installplalways(f)
+  return f
 def installplalways(f):
   "Adds a function to the list of functions controlled by itplalways and zzplalways"
   callplalwaysfuncs.installfuncinlist(f)
@@ -554,6 +619,9 @@ def isinstalledplalways(f):
   return callplalwaysfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromafterrestart(f):
+  installafterrestart(f)
+  return f
 def installafterrestart(f):
   "Adds a function to the list of functions called immediately after a restart"
   callafterrestartfuncs.installfuncinlist(f)
@@ -565,6 +633,9 @@ def isinstalledafterrestart(f):
   return callafterrestartfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromuserinjection(f):
+  installuserinjection(f)
+  return f
 def installuserinjection(f):
   """
 Adds a user defined function that is to be called when particles
@@ -580,6 +651,9 @@ def isinstalleduserinjection(f):
   return userinjection.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromuserparticlesinjection(f):
+  installuserparticlesinjection(f)
+  return f
 def installuserparticlesinjection(f):
   """
 Adds a user defined function that is to be called during injection which
@@ -605,6 +679,9 @@ def isinstalleduserparticlesinjection(f):
   return generateuserparticlesforinjection.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def callfromuserappliedfields(f):
+  installuserappliedfields(f)
+  return f
 def installuserappliedfields(f):
   """
 Adds a user defined function which can specify E and B fields which are applied

@@ -2799,6 +2799,7 @@ c       --- Make sure that there is enough room - assuming that all particles
 c       --- could be saved.
         if (nzc(iw,isid)+np > nzcmax) then
           nzcmax = nzc(iw,isid)+np
+          if (zclfields) nzcmaxfields = nzcmax
           call gchange("ZCrossingParticles",0)
         endif
 
@@ -2826,6 +2827,14 @@ c       --- extrapolate to window if near it
           xzc(nn,iw,isid) = pgroup%xp(ip) + vx*dtstar
           yzc(nn,iw,isid) = pgroup%yp(ip) + vy*dtstar
           if (pgroup%npid > 0) pidzc(nn,:,iw,isid) = pgroup%pid(ip,:)
+          if (zclfields) then
+            exzc(nn,iw,isid) = pgroup%ex(ip)
+            eyzc(nn,iw,isid) = pgroup%ey(ip)
+            ezzc(nn,iw,isid) = pgroup%ez(ip)
+            bxzc(nn,iw,isid) = pgroup%bx(ip)
+            byzc(nn,iw,isid) = pgroup%by(ip)
+            bzzc(nn,iw,isid) = pgroup%bz(ip)
+          endif
 
         enddo
       enddo

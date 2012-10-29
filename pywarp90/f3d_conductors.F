@@ -180,7 +180,8 @@ c           --- Loop over xinetercept points, looping over all points,
 c           --- or stopping if the intercept is LARGEPOS (which may mean
 c           --- that there are no intercepts along the current grid line).
             ii = 1
-            do while (ii <= nxicpt .and. xintercepts(ii,iy,iz) < LARGEPOS)
+            do while (ii <= nxicpt)
+              if (xintercepts(ii,iy,iz) >= LARGEPOS) exit
 
 c             --- x1 and x2 are the intercept points, with the object
 c             --- in between
@@ -263,7 +264,8 @@ c       --- similarly for z.
 
             ii = 0
             xside = -1.
-            do while (ii+1 <= nxicpt .and. xintercepts(ii+1,iy,iz) < LARGEPOS)
+            do while (ii+1 <= nxicpt)
+              if (xintercepts(ii+1,iy,iz) >= LARGEPOS) exit
 
               ii = ii + 1
               xside = -xside
@@ -278,7 +280,9 @@ c                 --- delpx
 c                 --- Make sure that ix is outside the object
                   if (ix < 0) cycle
                   xx = xmmin + ix*dx
-                  if (ii == 1 .or. xx > xintercepts(ii-1,iy,iz)) then
+                  if (ii == 1) then
+                    delx = (xintercepts(ii,iy,iz) - xmmin)*dxi - ix
+                  else if (xx > xintercepts(ii-1,iy,iz)) then
                     delx = (xintercepts(ii,iy,iz) - xmmin)*dxi - ix
                   else
                     delx = LARGEPOS
@@ -290,7 +294,9 @@ c                 --- Make sure that ix is outside the object
                   ix = ix + 1
                   if (ix > nx) cycle
                   xx = xmmin + ix*dx
-                  if (ii == nxicpt .or. xx < xintercepts(ii+1,iy,iz)) then
+                  if (ii == nxicpt) then
+                    delx = ix - (xintercepts(ii,iy,iz) - xmmin)*dxi
+                  else if (xx < xintercepts(ii+1,iy,iz)) then
                     delx = ix - (xintercepts(ii,iy,iz) - xmmin)*dxi
                   else
                     delx = LARGEPOS
@@ -329,11 +335,15 @@ c                   --- Scan over the yintercepts to see if the grid point
 c                   --- is near any.
                     iy1 = 1
                     yside = +1.
-                    do while (iy1 <= nyicpt .and.
-     &                        yintercepts(iy1,ix,iz) < LARGEPOS)
+                    do while (iy1 <= nyicpt)
+                      if (yintercepts(iy1,ix,iz) >= LARGEPOS) exit
                       if (yside > 0.) then
 c                       --- delpy
-                        if (iy1 == 1 .or. yy > yintercepts(iy1-1,ix,iz)) then
+                        if (iy1 == 1) then
+                          dely = (yintercepts(iy1,ix,iz) - yy)*dyi
+                        else if (yy > yintercepts(iy1-1,ix,iz)) then
+c                         --- This is the same statement as with iy1==1,
+c                         --- but is separated out to avoid out of bounds reference.
                           dely = (yintercepts(iy1,ix,iz) - yy)*dyi
                         else
                           dely = LARGEPOS
@@ -341,8 +351,9 @@ c                       --- delpy
                         idel = 3
                       else
 c                       --- delmy
-                        if (iy1 == nyicpt .or.
-     &                      yy < yintercepts(iy1+1,ix,iz)) then
+                        if (iy1 == nyicpt) then
+                          dely = (yy - yintercepts(iy1,ix,iz))*dyi
+                        else if (yy < yintercepts(iy1+1,ix,iz)) then
                           dely = (yy - yintercepts(iy1,ix,iz))*dyi
                         else
                           dely = LARGEPOS
@@ -363,11 +374,13 @@ c                   --- Scan over the zintercepts to see if the grid point
 c                   --- is near any.
                     iz1 = 1
                     zside = +1.
-                    do while (iz1 <= nzicpt .and.
-     &                        zintercepts(iz1,ix,iy) < LARGEPOS)
+                    do while (iz1 <= nzicpt)
+                      if (zintercepts(iz1,ix,iy) >= LARGEPOS) exit
                       if (zside > 0.) then
 c                       --- delpz
-                        if (iz1 == 1 .or. zz > zintercepts(iz1-1,ix,iy)) then
+                        if (iz1 == 1) then
+                          delz = (zintercepts(iz1,ix,iy) - zz)*dzi
+                        else if (zz > zintercepts(iz1-1,ix,iy)) then
                           delz = (zintercepts(iz1,ix,iy) - zz)*dzi
                         else
                           delz = LARGEPOS
@@ -375,8 +388,9 @@ c                       --- delpz
                         idel = 5
                       else
 c                       --- delmz
-                        if (iz1 == nzicpt .or.
-     &                      zz < zintercepts(iz1+1,ix,iy)) then
+                        if (iz1 == nzicpt) then
+                          delz = (zz - zintercepts(iz1,ix,iy))*dzi
+                        else if (zz < zintercepts(iz1+1,ix,iy)) then
                           delz = (zz - zintercepts(iz1,ix,iy))*dzi
                         else
                           delz = LARGEPOS
@@ -426,7 +440,8 @@ c       --- Scan over the yintercepts
 
             ii = 0
             yside = -1.
-            do while (ii+1 <= nyicpt .and. yintercepts(ii+1,ix,iz) < LARGEPOS)
+            do while (ii+1 <= nyicpt)
+              if (yintercepts(ii+1,ix,iz) >= LARGEPOS) exit
 
               ii = ii + 1
               yside = -yside
@@ -439,7 +454,9 @@ c       --- Scan over the yintercepts
 c                 --- delpy
                   if (iy < 0) cycle
                   yy = ymmin + iy*dy
-                  if (ii == 1 .or. yy > yintercepts(ii-1,ix,iz)) then
+                  if (ii == 1) then
+                    dely = (yintercepts(ii,ix,iz) - ymmin)*dyi - iy
+                  else if (yy > yintercepts(ii-1,ix,iz)) then
                     dely = (yintercepts(ii,ix,iz) - ymmin)*dyi - iy
                   else
                     dely = LARGEPOS
@@ -450,7 +467,9 @@ c                 --- delmy
                   iy = iy + 1
                   if (iy > ny) cycle
                   yy = ymmin + iy*dy
-                  if (ii == nyicpt .or. yy < yintercepts(ii+1,ix,iz)) then
+                  if (ii == nyicpt) then
+                    dely = iy - (yintercepts(ii,ix,iz) - ymmin)*dyi
+                  else if (yy < yintercepts(ii+1,ix,iz)) then
                     dely = iy - (yintercepts(ii,ix,iz) - ymmin)*dyi
                   else
                     dely = LARGEPOS
@@ -464,8 +483,9 @@ c               --- x intercepts.
                 ix1 = 1
                 xside = +1.
                 delx = 2.
-                do while (ix1 <= nxicpt .and.
-     &                    xintercepts(ix1,iy,iz) < LARGEPOS .and. delx >= 1.)
+                do while (ix1 <= nxicpt)
+                  if (xintercepts(ix1,iy,iz) >= LARGEPOS) exit
+                  if (delx < 1.) exit
                   if (xside > 0.) then
 c                   --- delpx
                     if (xintercepts(ix1,iy,iz) >= xx) then
@@ -503,11 +523,13 @@ c                   --- delmx
 
                     iz1 = 1
                     zside = +1.
-                    do while (iz1 <= nzicpt .and.
-     &                        zintercepts(iz1,ix,iy) < LARGEPOS)
+                    do while (iz1 <= nzicpt)
+                      if (zintercepts(iz1,ix,iy) >= LARGEPOS) exit
                       if (zside > 0.) then
 c                       --- delpz
-                        if (iz1 == 1 .or. zz > zintercepts(iz1-1,ix,iy)) then
+                        if (iz1 == 1) then
+                          delz = (zintercepts(iz1,ix,iy) - zz)*dzi
+                        else if (zz > zintercepts(iz1-1,ix,iy)) then
                           delz = (zintercepts(iz1,ix,iy) - zz)*dzi
                         else
                           delz = LARGEPOS
@@ -515,8 +537,9 @@ c                       --- delpz
                         idel = 5
                       else
 c                       --- delmz
-                        if (iz1 == nzicpt .or.
-     &                      zz < zintercepts(iz1+1,ix,iy)) then
+                        if (iz1 == nzicpt) then
+                          delz = (zz - zintercepts(iz1,ix,iy))*dzi
+                        else if (zz < zintercepts(iz1+1,ix,iy)) then
                           delz = (zz - zintercepts(iz1,ix,iy))*dzi
                         else
                           delz = LARGEPOS
@@ -565,7 +588,8 @@ c       --- Scan over zintercepts
 
             ii = 0
             zside = -1.
-            do while (ii+1 <= nzicpt .and. zintercepts(ii+1,ix,iy) < LARGEPOS)
+            do while (ii+1 <= nzicpt)
+              if (zintercepts(ii+1,ix,iy) >= LARGEPOS) exit
 
               ii = ii + 1
               zside = -zside
@@ -578,7 +602,9 @@ c       --- Scan over zintercepts
 c                 --- delpz
                   if (iz < 0) cycle
                   zz = zmmin + iz*dz
-                  if (ii == 1 .or. zz > zintercepts(ii-1,ix,iy)) then
+                  if (ii == 1) then
+                    delz = (zintercepts(ii,ix,iy) - zmmin)*dzi - iz
+                  else if (zz > zintercepts(ii-1,ix,iy)) then
                     delz = (zintercepts(ii,ix,iy) - zmmin)*dzi - iz
                   else
                     delz = LARGEPOS
@@ -589,7 +615,9 @@ c                 --- delmz
                   iz = iz + 1
                   if (iz > nz) cycle
                   zz = zmmin + iz*dz
-                  if (ii == nzicpt .or. zz < zintercepts(ii+1,ix,iy)) then
+                  if (ii == nzicpt) then
+                    delz = iz - (zintercepts(ii,ix,iy) - zmmin)*dzi
+                  else if (zz < zintercepts(ii+1,ix,iy)) then
                     delz = iz - (zintercepts(ii,ix,iy) - zmmin)*dzi
                   else
                     delz = LARGEPOS
@@ -603,8 +631,9 @@ c               --- x intercepts.
                 ix1 = 1
                 xside = +1.
                 delx = 2.
-                do while (ix1 <= nxicpt .and.
-     &                    xintercepts(ix1,iy,iz) < LARGEPOS .and. delx >= 1.)
+                do while (ix1 <= nxicpt)
+                  if (xintercepts(ix1,iy,iz) >= LARGEPOS) exit
+                  if (delx < 1.) exit
                   if (xside > 0.) then
 c                   --- delpx
                     if (xintercepts(ix1,iy,iz) >= xx) then
@@ -626,8 +655,9 @@ c               --- y intercepts.
                 iy1 = 1
                 yside = +1.
                 dely = 2.
-                do while (iy1 <= nyicpt .and.
-     &                    yintercepts(iy1,ix,iz) < LARGEPOS .and. dely >= 1.)
+                do while (iy1 <= nyicpt)
+                  if (yintercepts(iy1,ix,iz) >= LARGEPOS) exit
+                  if (dely < 1.) exit
                   if (yside > 0.) then
 c                   --- delpy
                     if (yintercepts(iy1,ix,iz) >= yy) then

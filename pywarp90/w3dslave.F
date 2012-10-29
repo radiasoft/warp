@@ -382,7 +382,7 @@ c  Only first and last processors do anything.
       nguards = (/nxguardrho,nyguardrho,nzguardrho/)
 
       if (iproc == nprocs - 1) then
-        
+
 c       --- Select the chunk of data to send.
         starts(axis) = nlocal(axis) - 1 - 2*nguards(axis)
         sizes(axis) = 1 + 2*nguards(axis)
@@ -437,7 +437,7 @@ c       --- The temp array can be deallocated now that the send is complete.
         deallocate(sourcetemp)
 
       endif
- 
+
 !$OMP MASTER
       if (lw3dtimesubs) timemakesourceperiodic_slave_work = timemakesourceperiodic_slave_work + wtime() - substarttime
 !$OMP END MASTER
@@ -673,7 +673,7 @@ c  Only first and last processors do anything.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
       comm_world_mpiisz = comm_world
- 
+
       nn1 = 1*nc*(nx+1+2*delx)*(ny+1+2*dely)
       nn2 = 2*nc*(nx+1+2*delx)*(ny+1+2*dely)
       pe0 = 0
@@ -685,7 +685,7 @@ c  Only first and last processors do anything.
         call MPI_ISEND(pot(:,:,:,nzlocal-1),nn1,MPI_DOUBLE_PRECISION,
      &                 pe0,messid,comm_world_mpiisz,mpirequest,mpierror)
       endif
- 
+
       if (izproc == 0) then
         call MPI_RECV(pot(:,:,:,-1),nn1,MPI_DOUBLE_PRECISION,
      &                pens,messid,comm_world_mpiisz,mpistatus,mpierror)
@@ -697,7 +697,7 @@ c  Only first and last processors do anything.
       if (izproc == 0 .or. izproc == nzprocs-1) then
         call MPI_WAIT(mpirequest,mpistatus,mpierror)
       endif
- 
+
 !$OMP MASTER
       if (lw3dtimesubs) timeperpot3d_slave = timeperpot3d_slave + wtime() - substarttime
 !$OMP END MASTER
@@ -964,7 +964,7 @@ c     --- Then, gather up the data sent to this processor.
         izrecv(i) = izglobal - izfsslave(izproc)
         nzrecv(i) = min(izmax,izmaxfs) - izglobal + 1
       enddo
- 
+
 c     --- Send the data out to processors that need it.
 c     --- Only even processors first to avoid a lock-up.
       nnxy = (1 + nx + 2*nxguardphi)*(1 + ny + 2*nyguardphi)
@@ -998,7 +998,7 @@ c     --- Then, gather up the data sent to this processor.
           endif
         endif
       enddo
- 
+
 c     --- Now the odd processors
       if (mod(izproc,2) == 1) then
         w = 0
@@ -1027,7 +1027,7 @@ c     call MPI_BARRIER(comm_world_mpiisz,mpierror)
 !$OMP END MASTER
 
       return
-      end                                                                       
+      end
 c===========================================================================
 
 
@@ -1074,14 +1074,16 @@ c       --- type definitions.
         integer:: icache = 0
         type(messagedatatype):: messagedatacache(200)
       contains
-        subroutine getsourcetransfermessagedata(nc,
-     &                                        nxguardrho,nyguardrho,nzguardrho,
-     &                                        ppdecomp,fsdecomp,
-     &                                        messagedata)
+        subroutine getsourcetransfermessagedata(nc,nxpp,nypp,nzpp,nxfs,nyfs,nzfs,
+     &                                          nxguardrho,nyguardrho,nzguardrho,
+     &                                          lsendguards,
+     &                                          ppdecomp,fsdecomp,
+     &                                          messagedata)
         use Subtimersw3d
         use Decompositionmodule
-        integer(ISZ):: nc
+        integer(ISZ):: nc,nxpp,nypp,nzpp,nxfs,nyfs,nzfs
         integer(ISZ):: nxguardrho,nyguardrho,nzguardrho
+        logical(ISZ):: lsendguards
         type(Decomposition):: fsdecomp,ppdecomp
         type(messagedatatype):: messagedata
 
@@ -1096,6 +1098,11 @@ c returned, giving a substantial time savings.
         integer(ISZ):: me_ppix,me_ppiy,me_ppiz
         integer(ISZ):: pe_fsix,pe_fsiy,pe_fsiz
         integer(ISZ):: pe_ppix,pe_ppiy,pe_ppiz
+        integer(ISZ):: me_nxgppl,me_nygppl,me_nzgppl
+        integer(ISZ):: me_nxgppu,me_nygppu,me_nzgppu
+        integer(ISZ):: pe_nxgppl,pe_nygppl,pe_nzgppl
+        integer(ISZ):: pe_nxgppu,pe_nygppu,pe_nzgppu
+        integer(ISZ):: nxgfs,nygfs,nzgfs
         integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
         include "mpif.h"
         integer(MPIISZ):: dims,nlocal(-1:2),nlocalp(-1:2)
@@ -1225,19 +1232,39 @@ c       --- Now, do the actual calculation.
 
         dims = 4
 
+c       --- Note that the array sizes my differ from the decomposition
+c       --- domain sizes.
         me_fsix = fsdecomp%ixproc
         me_fsiy = fsdecomp%iyproc
         me_fsiz = fsdecomp%izproc
-        nlocal = (/nc,1+fsdecomp%nx(me_fsix)+2*nxguardrho,
-     &                1+fsdecomp%ny(me_fsiy)+2*nyguardrho,
-     &                1+fsdecomp%nz(me_fsiz)+2*nzguardrho/)
+        nlocal = (/nc,1 + nxfs + 2*nxguardrho,
+     &                1 + nyfs + 2*nyguardrho,
+     &                1 + nzfs + 2*nzguardrho/)
 
         me_ppix = ppdecomp%ixproc
         me_ppiy = ppdecomp%iyproc
         me_ppiz = ppdecomp%izproc
-        nlocalp = (/nc,1+ppdecomp%nx(me_ppix)+2*nxguardrho,
-     &                 1+ppdecomp%ny(me_ppiy)+2*nyguardrho,
-     &                 1+ppdecomp%nz(me_ppiz)+2*nzguardrho/)
+        nlocalp = (/nc,1 + nxpp + 2*nxguardrho,
+     &                 1 + nypp + 2*nyguardrho,
+     &                 1 + nzpp + 2*nzguardrho/)
+
+        me_nxgppl = nxguardrho
+        me_nygppl = nyguardrho
+        me_nzgppl = nzguardrho
+        me_nxgppu = nxguardrho
+        me_nygppu = nyguardrho
+        me_nzgppu = nzguardrho
+        if (.not. lsendguards) then
+          if (me_ppix > 0) me_nxgppl = 0
+          if (me_ppiy > 0) me_nygppl = 0
+          if (me_ppiz > 0) me_nzgppl = 0
+          if (me_ppix < ppdecomp%nxprocs-1) me_nxgppu = 0
+          if (me_ppiy < ppdecomp%nyprocs-1) me_nygppu = 0
+          if (me_ppiz < ppdecomp%nzprocs-1) me_nzgppu = 0
+        endif
+        nxgfs = nxguardrho
+        nygfs = nyguardrho
+        nzgfs = nzguardrho
 
         messagedata%displs = 0
 
@@ -1256,16 +1283,31 @@ c       --- loop over all processors
           pe_fsiy = mod(pe,fsdecomp%nxprocs*fsdecomp%nyprocs)/fsdecomp%nxprocs
           pe_fsiz = pe/(fsdecomp%nxprocs*fsdecomp%nyprocs)
 
-          ixmin = max(ppdecomp%ix(me_ppix),fsdecomp%ix(pe_fsix)) - nxguardrho
-          iymin = max(ppdecomp%iy(me_ppiy),fsdecomp%iy(pe_fsiy)) - nyguardrho
-          izmin = max(ppdecomp%iz(me_ppiz),fsdecomp%iz(pe_fsiz)) - nzguardrho
+          pe_nxgppl = nxguardrho
+          pe_nygppl = nyguardrho
+          pe_nzgppl = nzguardrho
+          pe_nxgppu = nxguardrho
+          pe_nygppu = nyguardrho
+          pe_nzgppu = nzguardrho
+          if (.not. lsendguards) then
+            if (pe_ppix > 0) pe_nxgppl = 0
+            if (pe_ppiy > 0) pe_nygppl = 0
+            if (pe_ppiz > 0) pe_nzgppl = 0
+            if (pe_ppix < ppdecomp%nxprocs-1) pe_nxgppu = 0
+            if (pe_ppiy < ppdecomp%nyprocs-1) pe_nygppu = 0
+            if (pe_ppiz < ppdecomp%nzprocs-1) pe_nzgppu = 0
+          endif
 
-          ixmax = min(ppdecomp%ix(me_ppix)+ppdecomp%nx(me_ppix),
-     &                fsdecomp%ix(pe_fsix)+fsdecomp%nx(pe_fsix)) + nxguardrho
-          iymax = min(ppdecomp%iy(me_ppiy)+ppdecomp%ny(me_ppiy),
-     &                fsdecomp%iy(pe_fsiy)+fsdecomp%ny(pe_fsiy)) + nyguardrho
-          izmax = min(ppdecomp%iz(me_ppiz)+ppdecomp%nz(me_ppiz),
-     &                fsdecomp%iz(pe_fsiz)+fsdecomp%nz(pe_fsiz)) + nzguardrho
+          ixmin = max(ppdecomp%ix(me_ppix) - me_nxgppl,fsdecomp%ix(pe_fsix) - nxgfs)
+          iymin = max(ppdecomp%iy(me_ppiy) - me_nygppl,fsdecomp%iy(pe_fsiy) - nygfs)
+          izmin = max(ppdecomp%iz(me_ppiz) - me_nzgppl,fsdecomp%iz(pe_fsiz) - nzgfs)
+
+          ixmax = min(ppdecomp%ix(me_ppix) + ppdecomp%nx(me_ppix) + me_nxgppu,
+     &                fsdecomp%ix(pe_fsix) + fsdecomp%nx(pe_fsix) + nxgfs)
+          iymax = min(ppdecomp%iy(me_ppiy) + ppdecomp%ny(me_ppiy) + me_nygppu,
+     &                fsdecomp%iy(pe_fsiy) + fsdecomp%ny(pe_fsiy) + nygfs)
+          izmax = min(ppdecomp%iz(me_ppiz) + ppdecomp%nz(me_ppiz) + me_nzgppu,
+     &                fsdecomp%iz(pe_fsiz) + fsdecomp%nz(pe_fsiz) + nzgfs)
 
 c         --- Note that the starts are zero based.
           starts(0) = ixmin + nxguardrho - ppdecomp%ix(me_ppix)
@@ -1296,16 +1338,16 @@ c         --- Note that the starts are zero based.
             messagedata%sendtypes(pe) = MPI_DOUBLE_PRECISION
           endif
 
-          ixmin = max(ppdecomp%ix(pe_ppix),fsdecomp%ix(me_fsix)) - nxguardrho
-          iymin = max(ppdecomp%iy(pe_ppiy),fsdecomp%iy(me_fsiy)) - nyguardrho
-          izmin = max(ppdecomp%iz(pe_ppiz),fsdecomp%iz(me_fsiz)) - nzguardrho
+          ixmin = max(ppdecomp%ix(pe_ppix) - pe_nxgppl,fsdecomp%ix(me_fsix) - nxgfs)
+          iymin = max(ppdecomp%iy(pe_ppiy) - pe_nygppl,fsdecomp%iy(me_fsiy) - nygfs)
+          izmin = max(ppdecomp%iz(pe_ppiz) - pe_nzgppl,fsdecomp%iz(me_fsiz) - nzgfs)
 
-          ixmax = min(ppdecomp%ix(pe_ppix)+ppdecomp%nx(pe_ppix),
-     &                fsdecomp%ix(me_fsix)+fsdecomp%nx(me_fsix)) + nxguardrho
-          iymax = min(ppdecomp%iy(pe_ppiy)+ppdecomp%ny(pe_ppiy),
-     &                fsdecomp%iy(me_fsiy)+fsdecomp%ny(me_fsiy)) + nyguardrho
-          izmax = min(ppdecomp%iz(pe_ppiz)+ppdecomp%nz(pe_ppiz),
-     &                fsdecomp%iz(me_fsiz)+fsdecomp%nz(me_fsiz)) + nzguardrho
+          ixmax = min(ppdecomp%ix(pe_ppix) + ppdecomp%nx(pe_ppix) + pe_nxgppu,
+     &                fsdecomp%ix(me_fsix) + fsdecomp%nx(me_fsix) + nxgfs)
+          iymax = min(ppdecomp%iy(pe_ppiy) + ppdecomp%ny(pe_ppiy) + pe_nygppu,
+     &                fsdecomp%iy(me_fsiy) + fsdecomp%ny(me_fsiy) + nygfs)
+          izmax = min(ppdecomp%iz(pe_ppiz) + ppdecomp%nz(pe_ppiz) + pe_nzgppu,
+     &                fsdecomp%iz(me_fsiz) + fsdecomp%nz(me_fsiz) + nzgfs)
 
           starts(0) = ixmin + nxguardrho - fsdecomp%ix(me_fsix)
           starts(1) = iymin + nyguardrho - fsdecomp%iy(me_fsiy)
@@ -1435,8 +1477,8 @@ c decomposition.
       nprocs = ppdecomp%nxprocs*ppdecomp%nyprocs*ppdecomp%nzprocs
 
 c     --- Generate the MPI data types needed for the communication.
-      call getsourcetransfermessagedata(nc,
-     &                                  nxguardrho,nyguardrho,nzguardrho,
+      call getsourcetransfermessagedata(nc,nxp,nyp,nzp,nxlocal,nylocal,nzlocal,
+     &                                  nxguardrho,nyguardrho,nzguardrho,.true.,
      &                                  ppdecomp,fsdecomp,
      &                                  messagedata)
 
@@ -1490,9 +1532,10 @@ c     --- Generate the MPI data types needed for the communication.
       end
 c=============================================================================
       subroutine transferarray1toarray23d_parallel(nc,nx1,ny1,nz1,array1,
-     &                                    nx2,ny2,nz2,array2,
-     &                                    nxguard,nyguard,nzguard,
-     &                                    decomp1,decomp2)
+     &                                             nx2,ny2,nz2,array2,
+     &                                             nxguard,nyguard,nzguard,
+     &                                             lsendguards,
+     &                                             decomp1,decomp2)
       use Subtimersw3d
       use Decompositionmodule
       use sourcetransfermessagedatatypemodule
@@ -1501,11 +1544,12 @@ c=============================================================================
       integer(ISZ):: nx2,ny2,nz2
       integer(ISZ):: nxguard,nyguard,nzguard
       real(kind=8):: array1(0:nc-1,-nxguard:nx1+nxguard,
-     &                              -nyguard:ny1+nyguard,
-     &                              -nzguard:nz1+nzguard)
+     &                             -nyguard:ny1+nyguard,
+     &                             -nzguard:nz1+nzguard)
       real(kind=8):: array2(0:nc-1,-nxguard:nx2+nxguard,
      &                             -nyguard:ny2+nyguard,
      &                             -nzguard:nz2+nzguard)
+      logical(ISZ):: lsendguards
       type(Decomposition):: decomp1,decomp2
 
 c Exchange data from one decomposition to another
@@ -1531,8 +1575,8 @@ c Exchange data from one decomposition to another
       nprocs = decomp1%nxprocs*decomp1%nyprocs*decomp1%nzprocs
 
 c     --- Generate the MPI data types needed for the communication.
-      call getsourcetransfermessagedata(nc,
-     &                                  nxguard,nyguard,nzguard,
+      call getsourcetransfermessagedata(nc,nx1,ny1,nz1,nx2,ny2,nz2,
+     &                                  nxguard,nyguard,nzguard,lsendguards,
      &                                  decomp1,decomp2,
      &                                  messagedata)
 

@@ -520,111 +520,16 @@ the diagnostic is of interest and is meaningfull.
       if self.ny > 0: self.dy = (self.ymmax - self.ymmin)/self.ny
       else:           self.dy = self.dx
     if self.dz == 0.: self.dz = (self.zmmax - self.zmmin)/self.nz
-    # --- Set parallel related parameters and calculate mesh sizes
-    self.lparallel = (self.nprocs>1)
-    if not self.lparallel or self.lchild:
-      self.my_index = 0
-      self.nprocs = 1
-      self.nxprocs = 1
-      self.nyprocs = 1
-      self.nzprocs = 1
-      self.ixproc = self.ixproc = self.ixproc = 0
-      self.nxlocal = self.nx
-      self.nylocal = self.ny
-      self.nzlocal = self.nz
-      self.xmminlocal = self.xmmin
-      self.xmmaxlocal = self.xmmax
-      self.ymminlocal = self.ymmin
-      self.ymmaxlocal = self.ymmax
-      self.zmminlocal = self.zmmin
-      self.zmmaxlocal = self.zmmax
-      self.fsdecomp = Decomposition()
-      self.initializeDecomposition(self.fsdecomp)
-      self.fsdecomp.ix = 0
-      self.fsdecomp.nx = self.nx
-      self.fsdecomp.xmin = self.xmmin
-      self.fsdecomp.xmax = self.xmmax
-      self.fsdecomp.iy = 0
-      self.fsdecomp.ny = self.ny
-      self.fsdecomp.ymin = self.ymmin
-      self.fsdecomp.ymax = self.ymmax
-      self.fsdecomp.iz = 0
-      self.fsdecomp.nz = self.nz
-      self.fsdecomp.zmin = self.zmmin
-      self.fsdecomp.zmax = self.zmmax
-      self.nxp = self.nx
-      self.nyp = self.ny
-      self.nzp = self.nz
-      self.xmminp = self.xmmin
-      self.xmmaxp = self.xmmax
-      self.ymminp = self.ymmin
-      self.ymmaxp = self.ymmax
-      self.zmminp = self.zmmin
-      self.zmmaxp = self.zmmax
-      self.ppdecomp = Decomposition()
-      self.initializeDecomposition(self.ppdecomp)
-      self.ppdecomp.ix = 0
-      self.ppdecomp.nx = self.nx
-      self.ppdecomp.xmin = self.xmmin
-      self.ppdecomp.xmax = self.xmmax
-      self.ppdecomp.iy = 0
-      self.ppdecomp.ny = self.ny
-      self.ppdecomp.ymin = self.ymmin
-      self.ppdecomp.ymax = self.ymmax
-      self.ppdecomp.iz = 0
-      self.ppdecomp.nz = self.nz
-      self.ppdecomp.zmin = self.zmmin
-      self.ppdecomp.zmax = self.zmmax
-    else:
-      self.my_index = me
-      self.nprocs = npes
-      self.fsdecomp = Decomposition()
-      fsdecomp = self.fsdecomp
-      self.initializeDecomposition(fsdecomp)
-      # --- Note that self.grid_overlap must be set by the inheriting class.
-      top.grid_overlap = self.grid_overlap
 
-      # --- Check for a user supplied decomposition
+    # --- Set parallel related parameters
+    self.lparallel = (self.nprocs > 1)
+    if not self.lparallel or self.lchild:
+      self.setupdecompserial()
+    else:
       userfsdecompnx = kw.pop('userfsdecompnx',None)
       userfsdecompny = kw.pop('userfsdecompny',None)
       userfsdecompnz = kw.pop('userfsdecompnz',None)
-      lfsautodecompx = (userfsdecompnx is None)
-      lfsautodecompy = (userfsdecompny is None)
-      lfsautodecompz = (userfsdecompnz is None)
-      if not lfsautodecompx: fsdecomp.nx[:] = userfsdecompnx
-      if not lfsautodecompy: fsdecomp.ny[:] = userfsdecompny
-      if not lfsautodecompz: fsdecomp.nz[:] = userfsdecompnz
-
-      domaindecomposefields(self.nx,self.nxprocs,lfsautodecompx,
-                            fsdecomp.ix,fsdecomp.nx,self.grid_overlap)
-      domaindecomposefields(self.ny,self.nyprocs,lfsautodecompy,
-                            fsdecomp.iy,fsdecomp.ny,self.grid_overlap)
-      domaindecomposefields(self.nz,self.nzprocs,lfsautodecompz,
-                            fsdecomp.iz,fsdecomp.nz,self.grid_overlap)
-
-      fsdecomp.xmin[:] = self.xmmin + fsdecomp.ix*self.dx
-      fsdecomp.ymin[:] = self.ymmin + fsdecomp.iy*self.dy
-      fsdecomp.zmin[:] = self.zmmin + fsdecomp.iz*self.dz
-      fsdecomp.xmax[:] = self.xmmin + (fsdecomp.ix + fsdecomp.nx)*self.dx
-      fsdecomp.ymax[:] = self.ymmin + (fsdecomp.iy + fsdecomp.ny)*self.dy
-      fsdecomp.zmax[:] = self.zmmin + (fsdecomp.iz + fsdecomp.nz)*self.dz
-
-      self.nxlocal = fsdecomp.nx[self.ixproc]
-      self.nylocal = fsdecomp.ny[self.iyproc]
-      self.nzlocal = fsdecomp.nz[self.izproc]
-
-      self.xmminlocal = fsdecomp.xmin[self.ixproc]
-      self.xmmaxlocal = fsdecomp.xmax[self.ixproc]
-      self.ymminlocal = fsdecomp.ymin[self.iyproc]
-      self.ymmaxlocal = fsdecomp.ymax[self.iyproc]
-      self.zmminlocal = fsdecomp.zmin[self.izproc]
-      self.zmmaxlocal = fsdecomp.zmax[self.izproc]
-
-      self.ppdecomp = Decomposition()
-      self.initializeDecomposition(self.ppdecomp)
-      # --- This should only be called after the particle decomposition
-      # --- has been done.
-      #self.setparticledomains()
+      self.setupdecompparallel(userfsdecompnx,userfsdecompny,userfsdecompnz)
 
     # --- Check the mesh consistency
     self.checkmeshconsistency(self.xmmin,self.xmmax,self.nx,self.dx,'x')
@@ -680,6 +585,108 @@ the diagnostic is of interest and is meaningfull.
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
       if name in kw: del kw[name]
+
+  def setupdecompserial(self):
+    self.my_index = 0
+    self.nprocs = 1
+    self.nxprocs = 1
+    self.nyprocs = 1
+    self.nzprocs = 1
+    self.ixproc = self.ixproc = self.ixproc = 0
+    self.nxlocal = self.nx
+    self.nylocal = self.ny
+    self.nzlocal = self.nz
+    self.xmminlocal = self.xmmin
+    self.xmmaxlocal = self.xmmax
+    self.ymminlocal = self.ymmin
+    self.ymmaxlocal = self.ymmax
+    self.zmminlocal = self.zmmin
+    self.zmmaxlocal = self.zmmax
+    self.fsdecomp = Decomposition()
+    self.initializeDecomposition(self.fsdecomp)
+    self.fsdecomp.ix = 0
+    self.fsdecomp.nx = self.nx
+    self.fsdecomp.xmin = self.xmmin
+    self.fsdecomp.xmax = self.xmmax
+    self.fsdecomp.iy = 0
+    self.fsdecomp.ny = self.ny
+    self.fsdecomp.ymin = self.ymmin
+    self.fsdecomp.ymax = self.ymmax
+    self.fsdecomp.iz = 0
+    self.fsdecomp.nz = self.nz
+    self.fsdecomp.zmin = self.zmmin
+    self.fsdecomp.zmax = self.zmmax
+    self.nxp = self.nx
+    self.nyp = self.ny
+    self.nzp = self.nz
+    self.xmminp = self.xmmin
+    self.xmmaxp = self.xmmax
+    self.ymminp = self.ymmin
+    self.ymmaxp = self.ymmax
+    self.zmminp = self.zmmin
+    self.zmmaxp = self.zmmax
+    self.ppdecomp = Decomposition()
+    self.initializeDecomposition(self.ppdecomp)
+    self.ppdecomp.ix = 0
+    self.ppdecomp.nx = self.nx
+    self.ppdecomp.xmin = self.xmmin
+    self.ppdecomp.xmax = self.xmmax
+    self.ppdecomp.iy = 0
+    self.ppdecomp.ny = self.ny
+    self.ppdecomp.ymin = self.ymmin
+    self.ppdecomp.ymax = self.ymmax
+    self.ppdecomp.iz = 0
+    self.ppdecomp.nz = self.nz
+    self.ppdecomp.zmin = self.zmmin
+    self.ppdecomp.zmax = self.zmmax
+
+  def setupdecompparallel(self,userfsdecompnx,userfsdecompny,userfsdecompnz):
+    self.my_index = me
+    self.nprocs = npes
+    self.fsdecomp = Decomposition()
+    fsdecomp = self.fsdecomp
+    self.initializeDecomposition(fsdecomp)
+    # --- Note that self.grid_overlap must be set by the inheriting class.
+    top.grid_overlap = self.grid_overlap
+
+    # --- Check for a user supplied decomposition
+    lfsautodecompx = (userfsdecompnx is None)
+    lfsautodecompy = (userfsdecompny is None)
+    lfsautodecompz = (userfsdecompnz is None)
+    if not lfsautodecompx: fsdecomp.nx[:] = userfsdecompnx
+    if not lfsautodecompy: fsdecomp.ny[:] = userfsdecompny
+    if not lfsautodecompz: fsdecomp.nz[:] = userfsdecompnz
+
+    domaindecomposefields(self.nx,self.nxprocs,lfsautodecompx,
+                          fsdecomp.ix,fsdecomp.nx,self.grid_overlap)
+    domaindecomposefields(self.ny,self.nyprocs,lfsautodecompy,
+                          fsdecomp.iy,fsdecomp.ny,self.grid_overlap)
+    domaindecomposefields(self.nz,self.nzprocs,lfsautodecompz,
+                          fsdecomp.iz,fsdecomp.nz,self.grid_overlap)
+
+    fsdecomp.xmin[:] = self.xmmin + fsdecomp.ix*self.dx
+    fsdecomp.ymin[:] = self.ymmin + fsdecomp.iy*self.dy
+    fsdecomp.zmin[:] = self.zmmin + fsdecomp.iz*self.dz
+    fsdecomp.xmax[:] = self.xmmin + (fsdecomp.ix + fsdecomp.nx)*self.dx
+    fsdecomp.ymax[:] = self.ymmin + (fsdecomp.iy + fsdecomp.ny)*self.dy
+    fsdecomp.zmax[:] = self.zmmin + (fsdecomp.iz + fsdecomp.nz)*self.dz
+
+    self.nxlocal = fsdecomp.nx[self.ixproc]
+    self.nylocal = fsdecomp.ny[self.iyproc]
+    self.nzlocal = fsdecomp.nz[self.izproc]
+
+    self.xmminlocal = fsdecomp.xmin[self.ixproc]
+    self.xmmaxlocal = fsdecomp.xmax[self.ixproc]
+    self.ymminlocal = fsdecomp.ymin[self.iyproc]
+    self.ymmaxlocal = fsdecomp.ymax[self.iyproc]
+    self.zmminlocal = fsdecomp.zmin[self.izproc]
+    self.zmmaxlocal = fsdecomp.zmax[self.izproc]
+
+    self.ppdecomp = Decomposition()
+    self.initializeDecomposition(self.ppdecomp)
+    # --- This should only be called after the particle decomposition
+    # --- has been done.
+    #self.setparticledomains()
 
   def initializeDecomposition(self,decomp):
 
