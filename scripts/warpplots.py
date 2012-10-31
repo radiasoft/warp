@@ -994,7 +994,8 @@ Plots any history versus z
 # --- Simple interface to contour plotting. Only requires the 2-D array
 # --- to be plotted.
 def plotc(zz,xx=None,yy=None,ireg=None,color='fg',levs=None,contours=8,
-          filled=0,width=1.,linetype='solid',cmin=None,cmax=None,local=1):
+          filled=0,width=1.,linetype='solid',cmin=None,cmax=None,
+          leveloverlap=None,local=1):
   """
 Simple interface to contour plotting, same arguments as plc
   - zz 2-D array to be plotted
@@ -1004,6 +1005,7 @@ Simple interface to contour plotting, same arguments as plc
   - contours=8 Optional number of levels or list of levels
   - filled=0 When 1, draws filled contours
   - cmin, cmax: min and max of contours levels
+  - leveloverlap=0. fractional overlap of contour levels
   """
   s = shape(zz)
   if len(s) != 2:
@@ -1031,16 +1033,23 @@ Simple interface to contour plotting, same arguments as plc
     if cmin is None: cmin = minnd(zz)*1.
     if cmax is None: cmax = maxnd(zz)*1.
     contours = 1.*iota(0,contours)*(cmax-cmin)/contours + cmin
+  # --- leveloverlap is handled in a keyword dict so that it won't cause
+  # --- problems with older version of pygist that don't support
+  # --- the argument.
+  if leveloverlap is None:
+    kw = {}
+  else:
+    kw = {'leveloverlap':leveloverlap}
   if filled:
     # --- ireg must be of type integer because some legacy code used
     # --- expects it.
     ireg = ireg.astype('i')
-    plfc(zz,xx,yy,ireg,contours=contours,local=local)
+    plfc(zz,xx,yy,ireg,contours=contours,local=local,**kw)
   else:
     plc(zz,xx,yy,ireg,color=color,levs=contours,width=width,type=linetype,
-        local=local)
+        local=local,**kw)
 
-def plotfc(zz,xx=None,yy=None,ireg=None,contours=8,local=1):
+def plotfc(zz,xx=None,yy=None,ireg=None,contours=8,leveloverlap=None,local=1):
   """
 Simple interface to filled contour plotting, same arguments as plfc
   - zz 2-D array to be plotted
@@ -1050,7 +1059,7 @@ Simple interface to filled contour plotting, same arguments as plfc
   - contours Optional number of levels or list of levels
   """
   plotc(zz,xx=xx,yy=yy,ireg=ireg,color=color,contours=contours,filled=1,
-        local=local)
+        leveloverlap=leveloverlap,local=local)
 
 # --- Define variables names for the allowed colors
 fg = 'fg'
@@ -1280,7 +1289,7 @@ _ppgeneric_kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
                 'usepalette':1,'npalette':200,'marker':'\1','msize':1.0,
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':.9,'hcolor':'fg','width':1.0,
-                'contours':None,'filled':0,'ccolor':'fg',
+                'contours':None,'filled':0,'ccolor':'fg','leveloverlap':None,
                 'cellarray':0,'centering':'node','ctop':199,
                 'cmin':None,'cmax':None,'ireg':None,
                 'xbound':dirichlet,'ybound':dirichlet,
@@ -1336,6 +1345,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   - ldensityscale=False: when true, scale the density by its max.
   - ldensitycylindrical=False: when true, the density is calculated on a
                                cylindrical grid
+  - leveloverlap=0.: fractional overlap of filled contour levels
   - lframe=0: when true, the plot limits are set to the plmin and plmax input
               arguments, which default to the plmin and plmax variables from
               the group InDiag
@@ -1444,6 +1454,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   contours = kwvalues['contours']
   filled = kwvalues['filled']
   ccolor = kwvalues['ccolor']
+  leveloverlap = kwvalues['leveloverlap']
   cellarray = kwvalues['cellarray']
   centering = kwvalues['centering']
   ctop = kwvalues['ctop']
@@ -1812,7 +1823,7 @@ Note that either the x and y coordinates or the grid must be passed in.
     if cmax != cmin:
       plotc(transpose(grid),transpose(ymesh),transpose(xmesh),iregt,
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax,
-            local=grid_local)
+            leveloverlap=leveloverlap,local=grid_local)
 
   # --- Make cell-array plot. This also is done early since it covers anything
   # --- done before it. The min and max are adjusted so that the patch for
@@ -1880,7 +1891,7 @@ Note that either the x and y coordinates or the grid must be passed in.
     if cmax != cmin:
       plotc(transpose(grid),transpose(ymesh),transpose(xmesh),iregt,
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax,
-            local=grid_local)
+            leveloverlap=leveloverlap,local=grid_local)
 
   # --- Plot hash last since it easiest seen on top of everything else.
   if hash:
