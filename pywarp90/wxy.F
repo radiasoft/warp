@@ -1820,7 +1820,7 @@ c=============================================================================
       use InDiag
       use Lattice
       use LatticeInternal
-      use Particles,Only: nplive,wpid
+      use Particles,Only: nplive,wpid,xoldpid,yoldpid,zoldpid,uxoldpid,uyoldpid,uzoldpid
       use Particlesxy
       use Fields3d
       use Picglb
@@ -1970,6 +1970,16 @@ c         --- Zero out B field arrays
           bx(i1:i2) = 0.
           by(i1:i2) = 0.
           bz(i1:i2) = 0.
+
+c         --- Save old particle data
+          if (center == "halfv" .or. center == "fullv") then
+            if (xoldpid > 0) pid(i1:i2,xoldpid) = xp(i1:i2)
+            if (yoldpid > 0) pid(i1:i2,yoldpid) = yp(i1:i2)
+            if (zoldpid > 0) pid(i1:i2,zoldpid) = zp(i1:i2)
+            if (uxoldpid > 0) pid(i1:i2,uxoldpid) = uxp(i1:i2)
+            if (uyoldpid > 0) pid(i1:i2,uyoldpid) = uyp(i1:i2)
+            if (uzoldpid > 0) pid(i1:i2,uzoldpid) = uzp(i1:i2)
+          endif
 
 c         --- Compute lag average for experimental damping algorithm
           if (eomdamp .ne. 0.)
