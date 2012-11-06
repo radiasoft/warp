@@ -60,8 +60,8 @@ def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None,
   pgroup.uxp[:] = pgroup.uxp - top.vxbar[0,-1]/gi
   pgroup.uyp[:] = pgroup.uyp - top.vybar[0,-1]/gi
   # --- Then remove any coherent velocity
-  top.xxpbar[0] = ave(getx()*getxp())
-  top.yypbar[0] = ave(gety()*getyp())
+  top.xxpbar[0] = globalave(getx(gather=False)*getxp(gather=False))
+  top.yypbar[0] = globalave(gety(gather=False)*getyp(gather=False))
   slopex = top.xxpbar[0,-1]/(a/2.)**2*top.vbeam
   slopey = top.yypbar[0,-1]/(b/2.)**2*top.vbeam
   pgroup.uxp[:] = pgroup.uxp - slopex*pgroup.xp
