@@ -5172,7 +5172,7 @@ use mpirz
 #endif
 implicit none
 integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard,n,zl,zr
-integer(ISZ), parameter:: otherproc=10, ibuf = 25
+integer(ISZ), parameter:: otherproc=10, ibuf = 950
 real(kind=8) :: f(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) 
 
 f(:,:,-nzguard:nz+nzguard-n) = f(:,:,-nzguard+n:nz+nzguard)
@@ -5201,7 +5201,7 @@ use mpirz
 #endif
 implicit none
 integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard,n,zl,zr
-integer(ISZ), parameter:: otherproc=10, ibuf = 25
+integer(ISZ), parameter:: otherproc=10, ibuf = 950
 real(kind=8) :: f(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) 
 
 f(:,:,-nzguard:nz+nzguard-n) = f(:,:,-nzguard+n:nz+nzguard)
@@ -5365,7 +5365,7 @@ use mpirz
 #endif
 implicit none
 integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard,n,xl,xr
-integer(ISZ), parameter:: otherproc=10, ibuf = 25
+integer(ISZ), parameter:: otherproc=10, ibuf = 950
 real(kind=8) :: f(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) 
 
 if (n>0) then
@@ -5990,7 +5990,7 @@ integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
   return
 end subroutine em3d_applybc_splitb
 
-subroutine em3d_exchange_bnde_x(fl,fu)
+subroutine em3d_exchange_bnde_x(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -5998,8 +5998,9 @@ TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
+integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
-integer(ISZ)   ::ix,ibuf
+integer(ISZ)   ::ix
 integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
@@ -6014,7 +6015,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 1
             call mpi_packbuffer_init((3*yfu%nxguard-2)*size(yfu%ez(0,:,:)),ibuf)
             do ix = yfu%ixmin,yfu%ixmin+yfu%nxguard-1
               call mympi_pack(yfu%ex(ix,:,:),ibuf)
@@ -6030,7 +6030,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
             call mpi_isend_pack(fl%proc,1,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 2
             call mpi_packbuffer_init((3*yfl%nxguard-2)*size(yfl%ez(0,:,:)),ibuf)
             do ix =yfl%ixmax-yfl%nxguard,yfl%ixmax-1
               call mympi_pack(yfl%ex(ix,:,:),ibuf)
@@ -6112,7 +6111,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 3
             call mpi_packbuffer_init( 6*int(size(syfu%ezx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:))) &
                                     + 3*int(size(syfu%exx(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:))) ,ibuf)
 
@@ -6151,7 +6149,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
             mpireqpnt=mpireqpnt+1
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 4
             call mpi_packbuffer_init(6*int(size(syfl%ezx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:))) &
                                     +3*int(size(syfl%exx(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:))),ibuf)
 
@@ -6220,7 +6217,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bnde_x
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bnde_xrecv(fl,fu)
+subroutine em3d_exchange_bnde_xrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -6239,7 +6236,6 @@ integer(ISZ) :: ix,ibuf
           yfu=>fu%yf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            ibuf = 5
             call mpi_packbuffer_init((3*yfu%nxguard-2)*size(yfu%Ez(0,:,:)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
             do ix = yfu%ixming,yfu%ixmin-1
@@ -6255,7 +6251,6 @@ integer(ISZ) :: ix,ibuf
             end if
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 6
             call mpi_packbuffer_init((3*yfl%nxguard-2)*size(yfl%ez(yfl%ixmin,:,:)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
             do ix = yfl%ixmax,yfl%ixmaxg-1
@@ -6278,7 +6273,6 @@ integer(ISZ) :: ix,ibuf
           syfu=>fu%syf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            ibuf = 7
             call mpi_packbuffer_init(6*size(syfu%ezx(syfu%ixming+1:syfu%ixmin-1,:,:)) &
                                     +3*size(syfu%ezx(syfu%ixming  :syfu%ixmin-1,:,:)),ibuf)
             call mpi_recv_pack(fl%proc,4,ibuf)
@@ -6315,7 +6309,6 @@ integer(ISZ) :: ix,ibuf
 
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 8
             call mpi_packbuffer_init(6*size(syfl%ezx(syfl%ixmax+1:syfl%ixmaxg-1,:,:)) &
                                     +3*size(syfl%ezx(syfl%ixmax  :syfl%ixmaxg-1,:,:)),ibuf)
             call mpi_recv_pack(fu%proc,3,ibuf)
@@ -6358,16 +6351,17 @@ integer(ISZ) :: ix,ibuf
 end subroutine em3d_exchange_bnde_xrecv
 #endif
 
-subroutine em3d_exchange_bndb_x(fl,fu)
+subroutine em3d_exchange_bndb_x(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+integer(ISZ) :: ibuf
 #ifdef MPIPARALLEL
 integer(MPIISZ)::mpirequest(2),mpierror
-integer(ISZ) :: ibuf,ix
+integer(ISZ) :: ix
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
@@ -6380,7 +6374,6 @@ integer(ISZ) :: ibuf,ix
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 9
             call mpi_packbuffer_init((3*yfu%nxguard-1)*size(yfu%by(0,:,:)),ibuf)
             do ix=yfu%ixmin+1,yfu%ixmin+yfu%nxguard-1
               call mympi_pack(yfu%bx(ix,:,:),ibuf)
@@ -6394,7 +6387,6 @@ integer(ISZ) :: ibuf,ix
             call mpi_isend_pack(fl%proc,1,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 10
             call mpi_packbuffer_init((3*yfl%nxguard-1)*size(yfl%by(0,:,:)),ibuf)
             do ix=yfl%ixmax-yfl%nxguard+1,yfl%ixmax-1
               call mympi_pack(yfl%bx(ix,:,:),ibuf)
@@ -6458,7 +6450,6 @@ integer(ISZ) :: ibuf,ix
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 11
             call mpi_packbuffer_init(4*size(syfu%byx(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)) &
                                     +2*size(syfu%byx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)),ibuf)
 
@@ -6486,7 +6477,6 @@ integer(ISZ) :: ibuf,ix
             call mpi_isend_pack(fl%proc,3,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 12
             call mpi_packbuffer_init(4*size(syfl%byx(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)) &
                                     +2*size(syfl%byx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)),ibuf)
 
@@ -6537,7 +6527,7 @@ integer(ISZ) :: ibuf,ix
 end subroutine em3d_exchange_bndb_x
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndb_xrecv(fl,fu)
+subroutine em3d_exchange_bndb_xrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -6556,7 +6546,6 @@ integer(ISZ) :: ibuf,ix
           yfu=>fu%yf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            ibuf = 13
             call mpi_packbuffer_init((3*yfu%nxguard-1)*size(yfu%bx(0,:,:)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
             do ix=yfu%ixming+1,yfu%ixmin-1
@@ -6570,7 +6559,6 @@ integer(ISZ) :: ibuf,ix
             end do
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 14
             call mpi_packbuffer_init((3*yfl%nxguard-1)*size(yfl%bx(0,:,:)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
             do ix=yfl%ixmax+1,yfl%ixmaxg-1
@@ -6591,7 +6579,6 @@ integer(ISZ) :: ibuf,ix
         case(splityeefield)
           syfu=>fu%syf
           if (fl%proc/=my_index) then
-            ibuf = 15
             call mpi_packbuffer_init(4*size(syfu%bxy(syfu%ixming  :syfu%ixmin-1,:,:)) &
                                     +2*size(syfu%bxy(syfu%ixming+1:syfu%ixmin-1,:,:)),ibuf)
             call mpi_recv_pack(fl%proc,4,ibuf)
@@ -6616,7 +6603,6 @@ integer(ISZ) :: ibuf,ix
             end do
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 16
             call mpi_packbuffer_init(4*size(syfl%bxy(syfl%ixmax  :syfl%ixmaxg-1,:,:)) &
                                     +2*size(syfl%bxy(syfl%ixmax+1:syfl%ixmaxg-1,:,:)),ibuf)
             call mpi_recv_pack(fu%proc,3,ibuf)
@@ -6646,7 +6632,7 @@ integer(ISZ) :: ibuf,ix
 end subroutine em3d_exchange_bndb_xrecv
 #endif
 
-subroutine em3d_exchange_bndf_x(fl,fu)
+subroutine em3d_exchange_bndf_x(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -6654,8 +6640,9 @@ TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
+integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
-integer(ISZ)   ::ix,ibuf
+integer(ISZ)   ::ix
 integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
@@ -6670,7 +6657,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 1
             if (yfu%nxguard>1) then
               call mpi_packbuffer_init((yfu%nxguard-1)*size(yfu%f(0,:,:)),ibuf)
               do ix = yfu%ixmin+1,yfu%ixmin+yfu%nxguard-1
@@ -6680,7 +6666,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
             end if
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 2
             if (yfl%nxguard>1) then
               call mpi_packbuffer_init((yfl%nxguard-1)*size(yfl%f(0,:,:)),ibuf)
               do ix = yfl%ixmax-yfl%nxguard+1,yfl%ixmax-1
@@ -6728,7 +6713,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index) then
             ! --- send data down in z
             if (syfu%nxguard>1) then
-              ibuf = 3
               call mpi_packbuffer_init( 3*int(size(syfu%fx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:))) ,ibuf)
               do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
                 call mympi_pack(syfu%fx(ix,:,:),ibuf)
@@ -6745,7 +6729,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           else if (fu%proc/=my_index) then
             ! --- send data up in z
             if (syfl%nxguard>1) then
-              ibuf = 4
               call mpi_packbuffer_init(3*int(size(syfl%fx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:))) ,ibuf)
               do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
                 call mympi_pack(syfl%fx(ix,:,:),ibuf)
@@ -6779,7 +6762,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bndf_x
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndf_xrecv(fl,fu)
+subroutine em3d_exchange_bndf_xrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -6799,7 +6782,6 @@ integer(ISZ) :: ix,ibuf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
             if (yfu%nxguard>1) then
-              ibuf = 5
               call mpi_packbuffer_init((yfu%nxguard-1)*size(yfu%Ez(0,:,:)),ibuf)
               call mpi_recv_pack(fl%proc,2,ibuf)
               do ix = yfu%ixming+1,yfu%ixmin-1
@@ -6809,7 +6791,6 @@ integer(ISZ) :: ix,ibuf
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
             if (yfl%nxguard>1) then
-              ibuf = 6
               call mpi_packbuffer_init((yfl%nxguard-1)*size(yfl%ez(yfl%ixmin,:,:)),ibuf)
               call mpi_recv_pack(fu%proc,1,ibuf)
               do ix = yfl%ixmax+1,yfl%ixmaxg-1
@@ -6826,7 +6807,6 @@ integer(ISZ) :: ix,ibuf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
             if (syfu%nxguard>1) then
-              ibuf = 7
               call mpi_packbuffer_init(3*size(syfu%ezx(syfu%ixming+1:syfu%ixmin-1,:,:)),ibuf)
               call mpi_recv_pack(fl%proc,4,ibuf)
 
@@ -6843,7 +6823,6 @@ integer(ISZ) :: ix,ibuf
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
             if (syfl%nxguard>1) then
-              ibuf = 8
               call mpi_packbuffer_init(3*size(syfl%ezx(syfl%ixmax+1:syfl%ixmaxg-1,:,:)),ibuf)
               call mpi_recv_pack(fu%proc,3,ibuf)
               do ix=syfl%ixmax+1,syfl%ixmaxg-1
@@ -6864,7 +6843,7 @@ integer(ISZ) :: ix,ibuf
 end subroutine em3d_exchange_bndf_xrecv
 #endif
 
-subroutine em3d_exchange_bndj_x(fl,fu)
+subroutine em3d_exchange_bndj_x(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -6888,7 +6867,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index) then
 
             ! --- send data down in z
-            ibuf = 17
             nguardinu = yfu%nxguard
             call mpi_packbuffer_init((3*(yfu%nxguard+nguardinu)+2)*size(yfu%J(0,:,:,1)),ibuf)
             do ix = -yfu%nxguard,-1+nguardinu
@@ -6903,7 +6881,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           else if (fu%proc/=my_index) then
 
             ! --- send data up in z
-            ibuf = 18
             nguardinl = yfl%nxguard
             call mpi_packbuffer_init((3*(yfl%nxguard+nguardinl)+2)*size(yfl%J(0,:,:,1)),ibuf)
             do ix = yfl%nx-nguardinl, yfl%nx+yfl%nxguard-1
@@ -6935,7 +6912,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bndj_x
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndj_xrecv(fl,fu)
+subroutine em3d_exchange_bndj_xrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -6955,7 +6932,6 @@ integer(ISZ) :: ix,ibuf,nguardinl,nguardinu
           if (fl%proc/=my_index) then
           
             ! --- recv data from down in z
-            ibuf = 19
             nguardinu = yfu%nxguard
             call mpi_packbuffer_init((3*(yfu%nxguard+nguardinu)+2)*size(yfu%J(0,:,:,1)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
@@ -6973,7 +6949,6 @@ integer(ISZ) :: ix,ibuf,nguardinl,nguardinu
           else if (fu%proc/=my_index) then
 
             ! --- recv data from up in z
-            ibuf = 20
             nguardinl = yfl%nxguard
             call mpi_packbuffer_init((3*(yfl%nxguard+nguardinl)+2)*size(yfl%J(0,:,:,1)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
@@ -6995,7 +6970,7 @@ integer(ISZ) :: ix,ibuf,nguardinl,nguardinu
 end subroutine em3d_exchange_bndj_xrecv
 #endif
 
-subroutine em3d_exchange_bndrho_x(fl,fu)
+subroutine em3d_exchange_bndrho_x(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -7017,7 +6992,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           yfu=>fu%yf
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
-            ibuf=21
             nguardinu = yfu%nxguard            
             ! --- send data down in z
             call mpi_packbuffer_init(size(yfu%rho(-yfu%nxguard:nguardinu,:,:)),ibuf)
@@ -7029,7 +7003,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           else if (fu%proc/=my_index) then
 
             ! --- send data up in z
-            ibuf = 22
             nguardinl = yfl%nxguard
             call mpi_packbuffer_init(size(yfl%rho(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:)),ibuf)
             do ix = yfl%nx-nguardinl,yfl%nx+yfl%nxguard
@@ -7053,7 +7026,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bndrho_x
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndrho_xrecv(fl,fu)
+subroutine em3d_exchange_bndrho_xrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -7073,7 +7046,6 @@ integer(ISZ) :: ix, ibuf,nguardinl,nguardinu
           if (fl%proc/=my_index) then
           
             ! --- recv data from down in z
-            ibuf = 23
             nguardinu = yfu%nxguard            
             call mpi_packbuffer_init(size(yfu%rho(-nguardinu:yfu%nxguard,:,:)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
@@ -7085,7 +7057,6 @@ integer(ISZ) :: ix, ibuf,nguardinl,nguardinu
           else if (fu%proc/=my_index) then
 
             ! --- recv data from up in z
-            ibuf = 24
             nguardinl = yfl%nxguard
             call mpi_packbuffer_init(size(yfl%rho(yfl%nx-yfl%nxguard:yfl%nx+nguardinl,:,:)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
@@ -7101,7 +7072,7 @@ integer(ISZ) :: ix, ibuf,nguardinl,nguardinu
 end subroutine em3d_exchange_bndrho_xrecv
 #endif
 
-subroutine em3d_exchange_bnde_y(fl,fu)
+subroutine em3d_exchange_bnde_y(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -7109,8 +7080,9 @@ TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
+integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
-integer(ISZ)   ::iy,ibuf
+integer(ISZ)   ::iy
 integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
@@ -7125,7 +7097,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 1
             call mpi_packbuffer_init((3*yfu%nyguard-2)*size(yfu%ez(:,0,:)),ibuf)
             if (yfu%nyguard>1) then
               do iy = yfu%iymin+1,yfu%iymin+yfu%nyguard-1
@@ -7143,7 +7114,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
             call mpi_isend_pack(fl%proc,1,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 2
             call mpi_packbuffer_init((3*yfl%nyguard-2)*size(yfl%ez(:,0,:)),ibuf)
             if (yfl%nyguard>1) then
               do iy = yfl%iymax-yfl%nyguard+1,yfl%iymax-1
@@ -7227,7 +7197,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 3
             call mpi_packbuffer_init( 6*int(size(syfu%exx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:))) &
                                     + 3*int(size(syfu%ezx(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:))) ,ibuf)
 
@@ -7266,7 +7235,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
             mpireqpnt=mpireqpnt+1
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 4
             call mpi_packbuffer_init(6*int(size(syfl%ezx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:))) &
                                     +3*int(size(syfl%ezx(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:))),ibuf)
 
@@ -7335,7 +7303,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bnde_y
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bnde_yrecv(fl,fu)
+subroutine em3d_exchange_bnde_yrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -7354,7 +7322,6 @@ integer(ISZ) :: iy,ibuf
           yfu=>fu%yf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            ibuf = 5
             call mpi_packbuffer_init((3*yfu%nyguard-2)*size(yfu%Ez(:,0,:)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
             if (yfu%nyguard>1) then
@@ -7372,7 +7339,6 @@ integer(ISZ) :: iy,ibuf
             end if
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 6
             call mpi_packbuffer_init((3*yfl%nyguard-2)*size(yfl%ez(:,yfl%iymin,:)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
             if (yfl%nyguard>1) then
@@ -7397,7 +7363,6 @@ integer(ISZ) :: iy,ibuf
           syfu=>fu%syf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            ibuf = 7
             call mpi_packbuffer_init(6*size(syfu%ezx(:,syfu%iyming+1:syfu%iymin-1,:)) &
                                     +3*size(syfu%ezx(:,syfu%iyming  :syfu%iymin-1,:)),ibuf)
             call mpi_recv_pack(fl%proc,4,ibuf)
@@ -7434,7 +7399,6 @@ integer(ISZ) :: iy,ibuf
 
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 8
             call mpi_packbuffer_init(6*size(syfl%ezx(:,syfl%iymax+1:syfl%iymaxg-1,:)) &
                                     +3*size(syfl%ezx(:,syfl%iymax  :syfl%iymaxg-1,:)),ibuf)
             call mpi_recv_pack(fu%proc,3,ibuf)
@@ -7477,16 +7441,17 @@ integer(ISZ) :: iy,ibuf
 end subroutine em3d_exchange_bnde_yrecv
 #endif
 
-subroutine em3d_exchange_bndb_y(fl,fu)
+subroutine em3d_exchange_bndb_y(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
+integer(ISZ)   ::iy
 integer(MPIISZ)::mpirequest(2),mpierror
-integer(ISZ) :: ibuf,iy
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
@@ -7499,7 +7464,6 @@ integer(ISZ) :: ibuf,iy
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 9
             call mpi_packbuffer_init((3*yfu%nyguard-1)*size(yfu%by(:,0,:)),ibuf)
             do iy=yfu%iymin,yfu%iymin+yfu%nyguard-1
               call mympi_pack(yfu%bx(:,iy,:),ibuf)
@@ -7513,7 +7477,6 @@ integer(ISZ) :: ibuf,iy
             call mpi_isend_pack(fl%proc,1,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 10
             call mpi_packbuffer_init((3*yfl%nyguard-1)*size(yfl%by(:,0,:)),ibuf)
             do iy=yfl%iymax-yfl%nyguard,yfl%iymax-1
               call mympi_pack(yfl%bx(:,iy,:),ibuf)
@@ -7577,7 +7540,6 @@ integer(ISZ) :: ibuf,iy
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 11
             call mpi_packbuffer_init(4*size(syfu%byx(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)) &
                                     +2*size(syfu%byx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)),ibuf)
 
@@ -7605,7 +7567,6 @@ integer(ISZ) :: ibuf,iy
             call mpi_isend_pack(fl%proc,3,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 12
             call mpi_packbuffer_init(4*size(syfl%byx(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)) &
                                     +2*size(syfl%byx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)),ibuf)
 
@@ -7656,7 +7617,7 @@ integer(ISZ) :: ibuf,iy
 end subroutine em3d_exchange_bndb_y
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndb_yrecv(fl,fu)
+subroutine em3d_exchange_bndb_yrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -7675,7 +7636,6 @@ integer(ISZ) :: ibuf,iy
           yfu=>fu%yf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            ibuf = 13
             call mpi_packbuffer_init((3*yfu%nyguard-1)*size(yfu%bx(:,0,:)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
             do iy=yfu%iyming,yfu%iymin-1
@@ -7689,7 +7649,6 @@ integer(ISZ) :: ibuf,iy
             end do
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 14
             call mpi_packbuffer_init((3*yfl%nyguard-1)*size(yfl%bx(:,0,:)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
             do iy=yfl%iymax,yfl%iymaxg-1
@@ -7710,7 +7669,6 @@ integer(ISZ) :: ibuf,iy
         case(splityeefield)
           syfu=>fu%syf
           if (fl%proc/=my_index) then
-            ibuf = 15
             call mpi_packbuffer_init(4*size(syfu%bxy(:,syfu%iyming  :syfu%iymin-1,:)) &
                                     +2*size(syfu%bxy(:,syfu%iyming+1:syfu%iymin-1,:)),ibuf)
             call mpi_recv_pack(fl%proc,4,ibuf)
@@ -7735,7 +7693,6 @@ integer(ISZ) :: ibuf,iy
             end do
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 16
             call mpi_packbuffer_init(4*size(syfl%bxy(:,syfl%iymax  :syfl%iymaxg-1,:)) &
                                     +2*size(syfl%bxy(:,syfl%iymax+1:syfl%iymaxg-1,:)),ibuf)
             call mpi_recv_pack(fu%proc,3,ibuf)
@@ -7765,7 +7722,7 @@ integer(ISZ) :: ibuf,iy
 end subroutine em3d_exchange_bndb_yrecv
 #endif
 
-subroutine em3d_exchange_bndf_y(fl,fu)
+subroutine em3d_exchange_bndf_y(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -7773,8 +7730,9 @@ TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
+integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
-integer(ISZ)   ::iy,ibuf
+integer(ISZ)   ::iy
 integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
@@ -7789,7 +7747,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 1
             if (yfu%nyguard>1) then
               call mpi_packbuffer_init((yfu%nyguard-1)*size(yfu%f(:,0,:)),ibuf)
               do iy = yfu%iymin+1,yfu%iymin+yfu%nyguard-1
@@ -7799,7 +7756,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
             end if
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 2
             if (yfl%nyguard>1) then
               call mpi_packbuffer_init((yfl%nyguard-1)*size(yfl%f(:,0,:)),ibuf)
               do iy = yfl%iymax-yfl%nyguard+1,yfl%iymax-1
@@ -7847,7 +7803,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index) then
             ! --- send data down in z
             if (syfu%nyguard>1) then
-              ibuf = 3
               call mpi_packbuffer_init( 3*int(size(syfu%fx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:))) ,ibuf)
               do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
                 call mympi_pack(syfu%fx(:,iy,:),ibuf)
@@ -7864,7 +7819,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           else if (fu%proc/=my_index) then
             ! --- send data up in z
             if (syfl%nyguard>1) then
-              ibuf = 4
               call mpi_packbuffer_init(3*int(size(syfl%fx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:))) ,ibuf)
               do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
                 call mympi_pack(syfl%fx(:,iy,:),ibuf)
@@ -7898,7 +7852,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bndf_y
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndf_yrecv(fl,fu)
+subroutine em3d_exchange_bndf_yrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -7918,7 +7872,6 @@ integer(ISZ) :: iy,ibuf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
             if (yfu%nyguard>1) then
-              ibuf = 5
               call mpi_packbuffer_init((yfu%nyguard-1)*size(yfu%Ez(:,0,:)),ibuf)
               call mpi_recv_pack(fl%proc,2,ibuf)
               do iy = yfu%iyming+1,yfu%iymin-1
@@ -7928,7 +7881,6 @@ integer(ISZ) :: iy,ibuf
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
             if (yfl%nyguard>1) then
-              ibuf = 6
               call mpi_packbuffer_init((yfl%nyguard-1)*size(yfl%ez(:,yfl%iymin,:)),ibuf)
               call mpi_recv_pack(fu%proc,1,ibuf)
               do iy = yfl%iymax+1,yfl%iymaxg-1
@@ -7945,7 +7897,6 @@ integer(ISZ) :: iy,ibuf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
             if (syfu%nyguard>1) then
-              ibuf = 7
               call mpi_packbuffer_init(3*size(syfu%ezx(:,syfu%iyming+1:syfu%iymin-1,:)),ibuf)
               call mpi_recv_pack(fl%proc,4,ibuf)
 
@@ -7962,7 +7913,6 @@ integer(ISZ) :: iy,ibuf
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
             if (syfl%nyguard>1) then
-              ibuf = 8
               call mpi_packbuffer_init(3*size(syfl%ezx(:,syfl%iymax+1:syfl%iymaxg-1,:)),ibuf)
               call mpi_recv_pack(fu%proc,3,ibuf)
               do iy=syfl%iymax+1,syfl%iymaxg-1
@@ -7983,7 +7933,7 @@ integer(ISZ) :: iy,ibuf
 end subroutine em3d_exchange_bndf_yrecv
 #endif
 
-subroutine em3d_exchange_bndj_y(fl,fu)
+subroutine em3d_exchange_bndj_y(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -8007,7 +7957,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index) then
 
             ! --- send data down in z
-            ibuf = 17
             nguardinu = yfu%nyguard
             call mpi_packbuffer_init((3*(yfu%nyguard+nguardinu)+2)*size(yfu%J(:,-1,:,1)),ibuf)
             do iy = -yfu%nyguard,nguardinu
@@ -8024,7 +7973,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           else if (fu%proc/=my_index) then
 
             ! --- send data up in z
-            ibuf = 18
             nguardinl = yfl%nyguard
             call mpi_packbuffer_init((3*(yfl%nyguard+nguardinl)+2)*size(yfl%J(:,0,:,1)),ibuf)
             do iy = yfl%ny-nguardinl, yfl%ny+yfl%nyguard
@@ -8058,7 +8006,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bndj_y
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndj_yrecv(fl,fu)
+subroutine em3d_exchange_bndj_yrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -8078,7 +8026,6 @@ integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
           if (fl%proc/=my_index) then
           
             ! --- recv data from down in z
-            ibuf = 19
             nguardinu = yfu%nyguard
             call mpi_packbuffer_init((3*(yfu%nyguard+nguardinu)+2)*size(yfu%J(:,0,:,1)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
@@ -8098,7 +8045,6 @@ integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
           else if (fu%proc/=my_index) then
 
             ! --- recv data from up in z
-            ibuf = 20
             nguardinl = yfl%nyguard
             call mpi_packbuffer_init((3*(yfl%nyguard+nguardinl)+2)*size(yfl%J(:,0,:,1)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
@@ -8122,7 +8068,7 @@ integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
 end subroutine em3d_exchange_bndj_yrecv
 #endif
 
-subroutine em3d_exchange_bndrho_y(fl,fu)
+subroutine em3d_exchange_bndrho_y(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -8144,7 +8090,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           yfu=>fu%yf
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
-            ibuf=21
             nguardinu = yfu%nyguard
             ! --- send data down in y
             call mpi_packbuffer_init(size(yfu%rho(:,-yfu%nyguard:nguardinu,:)),ibuf)
@@ -8156,7 +8101,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           else if (fu%proc/=my_index) then
 
             ! --- send data up in y
-            ibuf = 22
             nguardinl = yfl%nyguard
             call mpi_packbuffer_init(size(yfl%rho(:,-nguardinl:yfl%nyguard,:)),ibuf)
             do iy = -nguardinl,yfl%nyguard
@@ -8180,7 +8124,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bndrho_y
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndrho_yrecv(fl,fu)
+subroutine em3d_exchange_bndrho_yrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -8200,7 +8144,6 @@ integer(ISZ) :: iy, ibuf,nguardinl,nguardinu
           if (fl%proc/=my_index) then
           
             ! --- recv data from down in z
-            ibuf = 23
             nguardinu = yfu%nyguard
             call mpi_packbuffer_init(size(yfu%rho(:,-nguardinu:yfu%nyguard,:)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
@@ -8212,7 +8155,6 @@ integer(ISZ) :: iy, ibuf,nguardinl,nguardinu
           else if (fu%proc/=my_index) then
 
             ! --- recv data from up in z
-            ibuf = 24
             nguardinl = yfl%nyguard
             call mpi_packbuffer_init(size(yfl%rho(:,yfl%ny-yfl%nyguard:yfl%ny+nguardinl,:)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
@@ -8228,7 +8170,7 @@ integer(ISZ) :: iy, ibuf,nguardinl,nguardinu
 end subroutine em3d_exchange_bndrho_yrecv
 #endif
 
-subroutine em3d_exchange_bnde_z(fl,fu)
+subroutine em3d_exchange_bnde_z(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -8236,8 +8178,9 @@ TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
+integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
-integer(ISZ)   ::iz,ibuf
+integer(ISZ)   ::iz
 integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
@@ -8252,7 +8195,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 1
             call mpi_packbuffer_init((3*yfu%nzguard-2)*size(yfu%ez(:,:,0)),ibuf)
             do iz = yfu%izmin,yfu%izmin+yfu%nzguard-1
               call mympi_pack(yfu%ez(:,:,iz),ibuf)
@@ -8268,7 +8210,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
             call mpi_isend_pack(fl%proc,1,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 2
             call mpi_packbuffer_init((3*yfl%nzguard-2)*size(yfl%ez(:,:,0)),ibuf)
             do iz =yfl%izmax-yfl%nzguard,yfl%izmax-1
               call mympi_pack(yfl%ez(:,:,iz),ibuf)
@@ -8350,7 +8291,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 3
             call mpi_packbuffer_init( 6*int(size(syfu%exx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1))) &
                                     + 3*int(size(syfu%ezx(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1))) ,ibuf)
 
@@ -8389,7 +8329,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
             mpireqpnt=mpireqpnt+1
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 4
             call mpi_packbuffer_init(6*int(size(syfl%ezx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1))) &
                                     +3*int(size(syfl%ezx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1))),ibuf)
 
@@ -8458,7 +8397,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bnde_z
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bnde_zrecv(fl,fu)
+subroutine em3d_exchange_bnde_zrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -8477,7 +8416,6 @@ integer(ISZ) :: iz,ibuf
           yfu=>fu%yf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            ibuf = 5
             call mpi_packbuffer_init((3*yfu%nzguard-2)*size(yfu%Ez(:,:,0)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
             do iz = yfu%izming,yfu%izmin-1
@@ -8493,7 +8431,6 @@ integer(ISZ) :: iz,ibuf
             end if
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 6
             call mpi_packbuffer_init((3*yfl%nzguard-2)*size(yfl%ez(:,:,yfl%izmin)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
             do iz = yfl%izmax,yfl%izmaxg-1
@@ -8516,7 +8453,6 @@ integer(ISZ) :: iz,ibuf
           syfu=>fu%syf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            ibuf = 7
             call mpi_packbuffer_init(6*size(syfu%ezx(:,:,syfu%izming+1:syfu%izmin-1)) &
                                     +3*size(syfu%ezx(:,:,syfu%izming  :syfu%izmin-1)),ibuf)
             call mpi_recv_pack(fl%proc,4,ibuf)
@@ -8553,7 +8489,6 @@ integer(ISZ) :: iz,ibuf
 
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 8
             call mpi_packbuffer_init(6*size(syfl%ezx(:,:,syfl%izmax+1:syfl%izmaxg-1)) &
                                     +3*size(syfl%ezx(:,:,syfl%izmax  :syfl%izmaxg-1)),ibuf)
             call mpi_recv_pack(fu%proc,3,ibuf)
@@ -8596,16 +8531,17 @@ integer(ISZ) :: iz,ibuf
 end subroutine em3d_exchange_bnde_zrecv
 #endif
 
-subroutine em3d_exchange_bndb_z(fl,fu)
+subroutine em3d_exchange_bndb_z(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
 TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
+integer(ISZ)   ::iz
 integer(MPIISZ)::mpirequest(2),mpierror
-integer(ISZ) :: ibuf,iz
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
@@ -8618,7 +8554,6 @@ integer(ISZ) :: ibuf,iz
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 9
             call mpi_packbuffer_init((3*yfu%nzguard-1)*size(yfu%by(:,:,0)),ibuf)
             do iz=yfu%izmin,yfu%izmin+yfu%nzguard-1
               call mympi_pack(yfu%bx(:,:,iz),ibuf)
@@ -8632,7 +8567,6 @@ integer(ISZ) :: ibuf,iz
             call mpi_isend_pack(fl%proc,1,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 10
             call mpi_packbuffer_init((3*yfl%nzguard-1)*size(yfl%by(:,:,0)),ibuf)
             do iz=yfl%izmax-yfl%nzguard,yfl%izmax-1
               call mympi_pack(yfl%bx(:,:,iz),ibuf)
@@ -8696,7 +8630,6 @@ integer(ISZ) :: ibuf,iz
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 11
             call mpi_packbuffer_init(4*size(syfu%byx(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)) &
                                     +2*size(syfu%byx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)),ibuf)
 
@@ -8724,7 +8657,6 @@ integer(ISZ) :: ibuf,iz
             call mpi_isend_pack(fl%proc,3,ibuf)
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 12
             call mpi_packbuffer_init(4*size(syfl%byx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)) &
                                     +2*size(syfl%byx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)),ibuf)
 
@@ -8775,7 +8707,7 @@ integer(ISZ) :: ibuf,iz
 end subroutine em3d_exchange_bndb_z
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndb_zrecv(fl,fu)
+subroutine em3d_exchange_bndb_zrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -8794,7 +8726,6 @@ integer(ISZ) :: ibuf,iz
           yfu=>fu%yf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
-            ibuf = 13
             call mpi_packbuffer_init((3*yfu%nzguard-1)*size(yfu%bx(:,:,0)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
             do iz=yfu%izming,yfu%izmin-1
@@ -8808,7 +8739,6 @@ integer(ISZ) :: ibuf,iz
             end do
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 14
             call mpi_packbuffer_init((3*yfl%nzguard-1)*size(yfl%bx(:,:,0)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
             do iz=yfl%izmax,yfl%izmaxg-1
@@ -8829,7 +8759,6 @@ integer(ISZ) :: ibuf,iz
         case(splityeefield)
           syfu=>fu%syf
           if (fl%proc/=my_index) then
-            ibuf = 15
             call mpi_packbuffer_init(4*size(syfu%bxy(:,:,syfu%izming  :syfu%izmin-1)) &
                                     +2*size(syfu%bxy(:,:,syfu%izming+1:syfu%izmin-1)),ibuf)
             call mpi_recv_pack(fl%proc,4,ibuf)
@@ -8854,7 +8783,6 @@ integer(ISZ) :: ibuf,iz
             end do
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
-            ibuf = 16
             call mpi_packbuffer_init(4*size(syfl%bxy(:,:,syfl%izmax  :syfl%izmaxg-1)) &
                                     +2*size(syfl%bxy(:,:,syfl%izmax+1:syfl%izmaxg-1)),ibuf)
             call mpi_recv_pack(fu%proc,3,ibuf)
@@ -8884,7 +8812,7 @@ integer(ISZ) :: ibuf,iz
 end subroutine em3d_exchange_bndb_zrecv
 #endif
 
-subroutine em3d_exchange_bndf_z(fl,fu)
+subroutine em3d_exchange_bndf_z(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -8892,8 +8820,9 @@ TYPE(EM3D_FIELDtype) :: fl, fu
 TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
 TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
+integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
-integer(ISZ)   ::iz,ibuf
+integer(ISZ)   ::iz
 integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
@@ -8908,7 +8837,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
             ! --- send data down in z
-            ibuf = 1
             if (yfu%nzguard>1) then
               call mpi_packbuffer_init((yfu%nzguard-1)*size(yfu%f(:,:,0)),ibuf)
               do iz = yfu%izmin+1,yfu%izmin+yfu%nzguard-1
@@ -8918,7 +8846,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
             end if
           else if (fu%proc/=my_index) then
             ! --- send data up in z
-            ibuf = 2
             if (yfl%nzguard>1) then
               call mpi_packbuffer_init((yfl%nzguard-1)*size(yfl%f(:,:,0)),ibuf)
               do iz = yfl%izmax-yfl%nzguard+1,yfl%izmax-1
@@ -8966,7 +8893,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index) then
             ! --- send data down in z
             if (syfu%nzguard>1) then
-              ibuf = 3
               call mpi_packbuffer_init( 3*int(size(syfu%fx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1))) ,ibuf)
               do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
                 call mympi_pack(syfu%fx(:,:,iz),ibuf)
@@ -8983,7 +8909,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           else if (fu%proc/=my_index) then
             ! --- send data up in z
             if (syfl%nzguard>1) then
-              ibuf = 4
               call mpi_packbuffer_init(3*int(size(syfl%fx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1))) ,ibuf)
               do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
                 call mympi_pack(syfl%fx(:,:,iz),ibuf)
@@ -9017,7 +8942,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bndf_z
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndf_zrecv(fl,fu)
+subroutine em3d_exchange_bndf_zrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -9037,7 +8962,6 @@ integer(ISZ) :: iz,ibuf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
             if (yfu%nzguard>1) then
-              ibuf = 5
               call mpi_packbuffer_init((yfu%nzguard-1)*size(yfu%Ez(:,:,0)),ibuf)
               call mpi_recv_pack(fl%proc,2,ibuf)
               do iz = yfu%izming+1,yfu%izmin-1
@@ -9047,7 +8971,6 @@ integer(ISZ) :: iz,ibuf
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
             if (yfl%nzguard>1) then
-              ibuf = 6
               call mpi_packbuffer_init((yfl%nzguard-1)*size(yfl%ez(:,:,yfl%izmin)),ibuf)
               call mpi_recv_pack(fu%proc,1,ibuf)
               do iz = yfl%izmax+1,yfl%izmaxg-1
@@ -9064,7 +8987,6 @@ integer(ISZ) :: iz,ibuf
           if (fl%proc/=my_index) then
             ! --- recv data from down in z
             if (syfu%nzguard>1) then
-              ibuf = 7
               call mpi_packbuffer_init(3*size(syfu%ezx(:,:,syfu%izming+1:syfu%izmin-1)),ibuf)
               call mpi_recv_pack(fl%proc,4,ibuf)
 
@@ -9081,7 +9003,6 @@ integer(ISZ) :: iz,ibuf
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
             if (syfl%nzguard>1) then
-              ibuf = 8
               call mpi_packbuffer_init(3*size(syfl%ezx(:,:,syfl%izmax+1:syfl%izmaxg-1)),ibuf)
               call mpi_recv_pack(fu%proc,3,ibuf)
               do iz=syfl%izmax+1,syfl%izmaxg-1
@@ -9102,7 +9023,7 @@ integer(ISZ) :: iz,ibuf
 end subroutine em3d_exchange_bndf_zrecv
 #endif
 
-subroutine em3d_exchange_bndj_z(fl,fu)
+subroutine em3d_exchange_bndj_z(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -9126,7 +9047,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           if (fl%proc/=my_index) then
 
             ! --- send data down in z
-            ibuf = 17
             nguardinu = yfu%nzguard
             call mpi_packbuffer_init((3*(yfu%nzguard+nguardinu)+2)*size(yfu%J(:,:,0,1)),ibuf)
             do iz = -yfu%nzguard,nguardinu
@@ -9143,7 +9063,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           else if (fu%proc/=my_index) then
 
             ! --- send data up in z
-            ibuf = 18
             nguardinl = yfl%nzguard
             call mpi_packbuffer_init((3*(yfl%nzguard+nguardinl)+2)*size(yfl%J(:,:,0,1)),ibuf)
             do iz = yfl%nz-nguardinl, yfl%nz+yfl%nzguard
@@ -9180,7 +9099,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bndj_z
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndj_zrecv(fl,fu)
+subroutine em3d_exchange_bndj_zrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -9200,7 +9119,6 @@ integer(ISZ) :: iz,ibuf,nguardinl,nguardinu
           if (fl%proc/=my_index) then
           
             ! --- recv data from down in z
-            ibuf = 19
             nguardinu = yfu%nzguard
             call mpi_packbuffer_init((3*(yfu%nzguard+nguardinu)+2)*size(yfu%J(:,:,0,1)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
@@ -9220,7 +9138,6 @@ integer(ISZ) :: iz,ibuf,nguardinl,nguardinu
           else if (fu%proc/=my_index) then
 
             ! --- recv data from up in z
-            ibuf = 20
             nguardinl = yfl%nzguard
             call mpi_packbuffer_init((3*(yfl%nzguard+nguardinl)+2)*size(yfl%J(:,:,0,1)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
@@ -9244,7 +9161,7 @@ integer(ISZ) :: iz,ibuf,nguardinl,nguardinu
 end subroutine em3d_exchange_bndj_zrecv
 #endif
 
-subroutine em3d_exchange_bndrho_z(fl,fu)
+subroutine em3d_exchange_bndrho_z(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -9266,7 +9183,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           yfu=>fu%yf
 #ifdef MPIPARALLEL
           if (fl%proc/=my_index) then
-            ibuf=21
             nguardinu = yfu%nzguard
             ! --- send data down in z
             call mpi_packbuffer_init(size(yfu%rho(:,:,-yfu%nzguard:nguardinu)),ibuf)
@@ -9278,7 +9194,6 @@ integer(MPIISZ)::mpirequest(2),mpierror
           else if (fu%proc/=my_index) then
 
             ! --- send data up in z
-            ibuf = 22
             nguardinl = yfl%nzguard
             call mpi_packbuffer_init(size(yfl%rho(:,:,-nguardinl:yfl%nzguard)),ibuf)
             do iz = -nguardinl,yfl%nzguard
@@ -9302,7 +9217,7 @@ integer(MPIISZ)::mpirequest(2),mpierror
 end subroutine em3d_exchange_bndrho_z
 
 #ifdef MPIPARALLEL
-subroutine em3d_exchange_bndrho_zrecv(fl,fu)
+subroutine em3d_exchange_bndrho_zrecv(fl,fu,ibuf)
 use mod_emfield3d
 implicit none
 
@@ -9322,7 +9237,6 @@ integer(ISZ) :: iz, ibuf,nguardinl,nguardinu
           if (fl%proc/=my_index) then
           
             ! --- recv data from down in z
-            ibuf = 23
             nguardinu = yfu%nzguard
             call mpi_packbuffer_init(size(yfu%rho(:,:,-nguardinu:yfu%nzguard)),ibuf)
             call mpi_recv_pack(fl%proc,2,ibuf)
@@ -9334,7 +9248,6 @@ integer(ISZ) :: iz, ibuf,nguardinl,nguardinu
           else if (fu%proc/=my_index) then
 
             ! --- recv data from up in z
-            ibuf = 24
             nguardinl = yfl%nzguard
             call mpi_packbuffer_init(size(yfl%rho(:,:,-yfl%nzguard:nguardinl)),ibuf)
             call mpi_recv_pack(fu%proc,1,ibuf)
@@ -9352,213 +9265,217 @@ end subroutine em3d_exchange_bndrho_zrecv
 
 subroutine em3d_exchange_e(b)
 use mod_emfield3d
+use Parallel,Only:my_index
 implicit none
 
 TYPE(EM3D_BLOCKtype) :: b
- 
+integer(ISZ) :: ibuf
+
+  ibuf = 2
+
   ! --- X
   ! core<--->sides
-  call em3d_exchange_bnde_x(b%core,   b%sidexr)
-  call em3d_exchange_bnde_x(b%sidexl, b%core)
+  call em3d_exchange_bnde_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%sidexl, b%core)
-  call em3d_exchange_bnde_xrecv(b%core,   b%sidexr)
+  call em3d_exchange_bnde_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! sides<--->edges
-  call em3d_exchange_bnde_x(b%sideyl,   b%edgexryl)
-  call em3d_exchange_bnde_x(b%edgexlyl, b%sideyl)
+  call em3d_exchange_bnde_x(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_x(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%edgexlyl, b%sideyl)
-  call em3d_exchange_bnde_xrecv(b%sideyl,   b%edgexryl)
+  call em3d_exchange_bnde_xrecv(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_xrecv(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%sideyr,   b%edgexryr)
-  call em3d_exchange_bnde_x(b%edgexlyr, b%sideyr)
+  call em3d_exchange_bnde_x(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_x(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%edgexlyr, b%sideyr)
-  call em3d_exchange_bnde_xrecv(b%sideyr,   b%edgexryr)
+  call em3d_exchange_bnde_xrecv(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_xrecv(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%sidezl,   b%edgexrzl)
-  call em3d_exchange_bnde_x(b%edgexlzl, b%sidezl)
+  call em3d_exchange_bnde_x(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_x(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%edgexlzl, b%sidezl)
-  call em3d_exchange_bnde_xrecv(b%sidezl,   b%edgexrzl)
+  call em3d_exchange_bnde_xrecv(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_xrecv(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%sidezr,   b%edgexrzr)
-  call em3d_exchange_bnde_x(b%edgexlzr, b%sidezr)
+  call em3d_exchange_bnde_x(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_x(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%edgexlzr, b%sidezr)
-  call em3d_exchange_bnde_xrecv(b%sidezr,   b%edgexrzr)
+  call em3d_exchange_bnde_xrecv(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_xrecv(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! edges<--->corners
-  call em3d_exchange_bnde_x(b%edgeylzl,     b%cornerxrylzl)
-  call em3d_exchange_bnde_x(b%cornerxlylzl, b%edgeylzl)
+  call em3d_exchange_bnde_x(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_x(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%cornerxlylzl, b%edgeylzl)
-  call em3d_exchange_bnde_xrecv(b%edgeylzl,     b%cornerxrylzl)
+  call em3d_exchange_bnde_xrecv(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_xrecv(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%edgeyrzl,     b%cornerxryrzl)
-  call em3d_exchange_bnde_x(b%cornerxlyrzl, b%edgeyrzl)
+  call em3d_exchange_bnde_x(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_x(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%cornerxlyrzl, b%edgeyrzl)
-  call em3d_exchange_bnde_xrecv(b%edgeyrzl,     b%cornerxryrzl)
+  call em3d_exchange_bnde_xrecv(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_xrecv(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%edgeylzr,     b%cornerxrylzr)
-  call em3d_exchange_bnde_x(b%cornerxlylzr, b%edgeylzr)
+  call em3d_exchange_bnde_x(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_x(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%cornerxlylzr, b%edgeylzr)
-  call em3d_exchange_bnde_xrecv(b%edgeylzr,     b%cornerxrylzr)
+  call em3d_exchange_bnde_xrecv(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_xrecv(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%edgeyrzr,     b%cornerxryrzr)
-  call em3d_exchange_bnde_x(b%cornerxlyrzr, b%edgeyrzr)
+  call em3d_exchange_bnde_x(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_x(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%cornerxlyrzr, b%edgeyrzr)
-  call em3d_exchange_bnde_xrecv(b%edgeyrzr,     b%cornerxryrzr)
+  call em3d_exchange_bnde_xrecv(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_xrecv(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
 
   ! --- Y
  if (.not.b%core%yf%l_2dxz) then
   ! core<--->sides
-  call em3d_exchange_bnde_y(b%core,   b%sideyr)
-  call em3d_exchange_bnde_y(b%sideyl, b%core)
+  call em3d_exchange_bnde_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%sideyl, b%core)
-  call em3d_exchange_bnde_yrecv(b%core,   b%sideyr)
+  call em3d_exchange_bnde_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! sides<--->edges
-  call em3d_exchange_bnde_y(b%sidexl,   b%edgexlyr)
-  call em3d_exchange_bnde_y(b%edgexlyl, b%sidexl)
+  call em3d_exchange_bnde_y(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_y(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%edgexlyl, b%sidexl)
-  call em3d_exchange_bnde_yrecv(b%sidexl,   b%edgexlyr)
+  call em3d_exchange_bnde_yrecv(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_yrecv(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_y(b%sidexr,   b%edgexryr)
-  call em3d_exchange_bnde_y(b%edgexryl, b%sidexr)
+  call em3d_exchange_bnde_y(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_y(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%edgexryl, b%sidexr)
-  call em3d_exchange_bnde_yrecv(b%sidexr,   b%edgexryr)
+  call em3d_exchange_bnde_yrecv(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_yrecv(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_y(b%sidezl,   b%edgeyrzl)
-  call em3d_exchange_bnde_y(b%edgeylzl, b%sidezl)
+  call em3d_exchange_bnde_y(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_y(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%edgeylzl, b%sidezl)
-  call em3d_exchange_bnde_yrecv(b%sidezl,   b%edgeyrzl)
+  call em3d_exchange_bnde_yrecv(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_yrecv(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_y(b%sidezr,   b%edgeyrzr)
-  call em3d_exchange_bnde_y(b%edgeylzr, b%sidezr)
+  call em3d_exchange_bnde_y(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_y(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%edgeylzr, b%sidezr)
-  call em3d_exchange_bnde_yrecv(b%sidezr,   b%edgeyrzr)
+  call em3d_exchange_bnde_yrecv(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_yrecv(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! edges<--->corners
-  call em3d_exchange_bnde_y(b%edgexlzl,     b%cornerxlyrzl)
-  call em3d_exchange_bnde_y(b%cornerxlylzl, b%edgexlzl)
+  call em3d_exchange_bnde_y(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_y(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%cornerxlylzl, b%edgexlzl)
-  call em3d_exchange_bnde_yrecv(b%edgexlzl,     b%cornerxlyrzl)
+  call em3d_exchange_bnde_yrecv(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_yrecv(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_y(b%edgexrzl,     b%cornerxryrzl)
-  call em3d_exchange_bnde_y(b%cornerxrylzl, b%edgexrzl)
+  call em3d_exchange_bnde_y(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_y(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%cornerxrylzl, b%edgexrzl)
-  call em3d_exchange_bnde_yrecv(b%edgexrzl,     b%cornerxryrzl)
+  call em3d_exchange_bnde_yrecv(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_yrecv(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_y(b%edgexlzr,     b%cornerxlyrzr)
-  call em3d_exchange_bnde_y(b%cornerxlylzr, b%edgexlzr)
+  call em3d_exchange_bnde_y(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_y(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%cornerxlylzr, b%edgexlzr)
-  call em3d_exchange_bnde_yrecv(b%edgexlzr,     b%cornerxlyrzr)
+  call em3d_exchange_bnde_yrecv(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_yrecv(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_y(b%edgexrzr,     b%cornerxryrzr)
-  call em3d_exchange_bnde_y(b%cornerxrylzr, b%edgexrzr)
+  call em3d_exchange_bnde_y(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_y(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%cornerxrylzr, b%edgexrzr)
-  call em3d_exchange_bnde_yrecv(b%edgexrzr,     b%cornerxryrzr)
+  call em3d_exchange_bnde_yrecv(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_yrecv(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   endif
   
   ! --- Z
   ! core<--->sides
-  call em3d_exchange_bnde_z(b%core,   b%sidezr)
-  call em3d_exchange_bnde_z(b%sidezl, b%core)
+  call em3d_exchange_bnde_z(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_z(b%sidezl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_zrecv(b%sidezl, b%core)
-  call em3d_exchange_bnde_zrecv(b%core,   b%sidezr)
+  call em3d_exchange_bnde_zrecv(b%sidezl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_zrecv(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! sides<--->edges
-  call em3d_exchange_bnde_z(b%sidexl,   b%edgexlzr)
-  call em3d_exchange_bnde_z(b%edgexlzl, b%sidexl)
+  call em3d_exchange_bnde_z(b%sidexl,   b%edgexlzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_z(b%edgexlzl, b%sidexl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_zrecv(b%edgexlzl, b%sidexl)
-  call em3d_exchange_bnde_zrecv(b%sidexl,   b%edgexlzr)
+  call em3d_exchange_bnde_zrecv(b%edgexlzl, b%sidexl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_zrecv(b%sidexl,   b%edgexlzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_z(b%sidexr,   b%edgexrzr)
-  call em3d_exchange_bnde_z(b%edgexrzl, b%sidexr)
+  call em3d_exchange_bnde_z(b%sidexr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_z(b%edgexrzl, b%sidexr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_zrecv(b%edgexrzl, b%sidexr)
-  call em3d_exchange_bnde_zrecv(b%sidexr,   b%edgexrzr)
+  call em3d_exchange_bnde_zrecv(b%edgexrzl, b%sidexr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_zrecv(b%sidexr,   b%edgexrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_z(b%sideyl,   b%edgeylzr)
-  call em3d_exchange_bnde_z(b%edgeylzl, b%sideyl)
+  call em3d_exchange_bnde_z(b%sideyl,   b%edgeylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_z(b%edgeylzl, b%sideyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_zrecv(b%edgeylzl, b%sideyl)
-  call em3d_exchange_bnde_zrecv(b%sideyl,   b%edgeylzr)
+  call em3d_exchange_bnde_zrecv(b%edgeylzl, b%sideyl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_zrecv(b%sideyl,   b%edgeylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_z(b%sideyr,   b%edgeyrzr)
-  call em3d_exchange_bnde_z(b%edgeyrzl, b%sideyr)
+  call em3d_exchange_bnde_z(b%sideyr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_z(b%edgeyrzl, b%sideyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_zrecv(b%edgeyrzl, b%sideyr)
-  call em3d_exchange_bnde_zrecv(b%sideyr,   b%edgeyrzr)
+  call em3d_exchange_bnde_zrecv(b%edgeyrzl, b%sideyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_zrecv(b%sideyr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! edges<--->corners
-  call em3d_exchange_bnde_z(b%edgexlyl,     b%cornerxlylzr)
-  call em3d_exchange_bnde_z(b%cornerxlylzl, b%edgexlyl)
+  call em3d_exchange_bnde_z(b%edgexlyl,     b%cornerxlylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_z(b%cornerxlylzl, b%edgexlyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_zrecv(b%cornerxlylzl, b%edgexlyl)
-  call em3d_exchange_bnde_zrecv(b%edgexlyl,     b%cornerxlylzr)
+  call em3d_exchange_bnde_zrecv(b%cornerxlylzl, b%edgexlyl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_zrecv(b%edgexlyl,     b%cornerxlylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_z(b%edgexryl,     b%cornerxrylzr)
-  call em3d_exchange_bnde_z(b%cornerxrylzl, b%edgexryl)
+  call em3d_exchange_bnde_z(b%edgexryl,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_z(b%cornerxrylzl, b%edgexryl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_zrecv(b%cornerxrylzl, b%edgexryl)
-  call em3d_exchange_bnde_zrecv(b%edgexryl,     b%cornerxrylzr)
+  call em3d_exchange_bnde_zrecv(b%cornerxrylzl, b%edgexryl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_zrecv(b%edgexryl,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_z(b%edgexlyr,     b%cornerxlyrzr)
-  call em3d_exchange_bnde_z(b%cornerxlyrzl, b%edgexlyr)
+  call em3d_exchange_bnde_z(b%edgexlyr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_z(b%cornerxlyrzl, b%edgexlyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_zrecv(b%cornerxlyrzl, b%edgexlyr)
-  call em3d_exchange_bnde_zrecv(b%edgexlyr,     b%cornerxlyrzr)
+  call em3d_exchange_bnde_zrecv(b%cornerxlyrzl, b%edgexlyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_zrecv(b%edgexlyr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_z(b%edgexryr,     b%cornerxryrzr)
-  call em3d_exchange_bnde_z(b%cornerxryrzl, b%edgexryr)
+  call em3d_exchange_bnde_z(b%edgexryr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_z(b%cornerxryrzl, b%edgexryr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_zrecv(b%cornerxryrzl, b%edgexryr)
-  call em3d_exchange_bnde_zrecv(b%edgexryr,     b%cornerxryrzr)
+  call em3d_exchange_bnde_zrecv(b%cornerxryrzl, b%edgexryr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bnde_zrecv(b%edgexryr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
 
@@ -9570,210 +9487,213 @@ use mod_emfield3d
 implicit none
 
 TYPE(EM3D_BLOCKtype) :: b
+integer(ISZ) :: ibuf
  
+  ibuf = 200
+  
   ! --- X
   ! core<--->sides
-  call em3d_exchange_bndb_x(b%core,   b%sidexr)
-  call em3d_exchange_bndb_x(b%sidexl, b%core)
+  call em3d_exchange_bndb_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%sidexl, b%core)
-  call em3d_exchange_bndb_xrecv(b%core,   b%sidexr)
+  call em3d_exchange_bndb_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! sides<--->edges
-  call em3d_exchange_bndb_x(b%sideyl,   b%edgexryl)
-  call em3d_exchange_bndb_x(b%edgexlyl, b%sideyl)
+  call em3d_exchange_bndb_x(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_x(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%edgexlyl, b%sideyl)
-  call em3d_exchange_bndb_xrecv(b%sideyl,   b%edgexryl)
+  call em3d_exchange_bndb_xrecv(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_xrecv(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%sideyr,   b%edgexryr)
-  call em3d_exchange_bndb_x(b%edgexlyr, b%sideyr)
+  call em3d_exchange_bndb_x(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_x(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%edgexlyr, b%sideyr)
-  call em3d_exchange_bndb_xrecv(b%sideyr,   b%edgexryr)
+  call em3d_exchange_bndb_xrecv(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_xrecv(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%sidezl,   b%edgexrzl)
-  call em3d_exchange_bndb_x(b%edgexlzl, b%sidezl)
+  call em3d_exchange_bndb_x(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_x(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%edgexlzl, b%sidezl)
-  call em3d_exchange_bndb_xrecv(b%sidezl,   b%edgexrzl)
+  call em3d_exchange_bndb_xrecv(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_xrecv(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%sidezr,   b%edgexrzr)
-  call em3d_exchange_bndb_x(b%edgexlzr, b%sidezr)
+  call em3d_exchange_bndb_x(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_x(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%edgexlzr, b%sidezr)
-  call em3d_exchange_bndb_xrecv(b%sidezr,   b%edgexrzr)
+  call em3d_exchange_bndb_xrecv(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_xrecv(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! edges<--->corners
-  call em3d_exchange_bndb_x(b%edgeylzl,     b%cornerxrylzl)
-  call em3d_exchange_bndb_x(b%cornerxlylzl, b%edgeylzl)
+  call em3d_exchange_bndb_x(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_x(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%cornerxlylzl, b%edgeylzl)
-  call em3d_exchange_bndb_xrecv(b%edgeylzl,     b%cornerxrylzl)
+  call em3d_exchange_bndb_xrecv(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_xrecv(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%edgeyrzl,     b%cornerxryrzl)
-  call em3d_exchange_bndb_x(b%cornerxlyrzl, b%edgeyrzl)
+  call em3d_exchange_bndb_x(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_x(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%cornerxlyrzl, b%edgeyrzl)
-  call em3d_exchange_bndb_xrecv(b%edgeyrzl,     b%cornerxryrzl)
+  call em3d_exchange_bndb_xrecv(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_xrecv(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%edgeylzr,     b%cornerxrylzr)
-  call em3d_exchange_bndb_x(b%cornerxlylzr, b%edgeylzr)
+  call em3d_exchange_bndb_x(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_x(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%cornerxlylzr, b%edgeylzr)
-  call em3d_exchange_bndb_xrecv(b%edgeylzr,     b%cornerxrylzr)
+  call em3d_exchange_bndb_xrecv(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_xrecv(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%edgeyrzr,     b%cornerxryrzr)
-  call em3d_exchange_bndb_x(b%cornerxlyrzr, b%edgeyrzr)
+  call em3d_exchange_bndb_x(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_x(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%cornerxlyrzr, b%edgeyrzr)
-  call em3d_exchange_bndb_xrecv(b%edgeyrzr,     b%cornerxryrzr)
+  call em3d_exchange_bndb_xrecv(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_xrecv(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
 
   ! --- Y
   if (.not.b%core%yf%l_2dxz) then
   ! core<--->sides
-  call em3d_exchange_bndb_y(b%core,   b%sideyr)
-  call em3d_exchange_bndb_y(b%sideyl, b%core)
+  call em3d_exchange_bndb_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%sideyl, b%core)
-  call em3d_exchange_bndb_yrecv(b%core,   b%sideyr)
+  call em3d_exchange_bndb_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! sides<--->edges
-  call em3d_exchange_bndb_y(b%sidexl,   b%edgexlyr)
-  call em3d_exchange_bndb_y(b%edgexlyl, b%sidexl)
+  call em3d_exchange_bndb_y(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_y(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%edgexlyl, b%sidexl)
-  call em3d_exchange_bndb_yrecv(b%sidexl,   b%edgexlyr)
+  call em3d_exchange_bndb_yrecv(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_yrecv(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%sidexr,   b%edgexryr)
-  call em3d_exchange_bndb_y(b%edgexryl, b%sidexr)
+  call em3d_exchange_bndb_y(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_y(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%edgexryl, b%sidexr)
-  call em3d_exchange_bndb_yrecv(b%sidexr,   b%edgexryr)
+  call em3d_exchange_bndb_yrecv(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_yrecv(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%sidezl,   b%edgeyrzl)
-  call em3d_exchange_bndb_y(b%edgeylzl, b%sidezl)
+  call em3d_exchange_bndb_y(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_y(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%edgeylzl, b%sidezl)
-  call em3d_exchange_bndb_yrecv(b%sidezl,   b%edgeyrzl)
+  call em3d_exchange_bndb_yrecv(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_yrecv(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%sidezr,   b%edgeyrzr)
-  call em3d_exchange_bndb_y(b%edgeylzr, b%sidezr)
+  call em3d_exchange_bndb_y(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_y(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%edgeylzr, b%sidezr)
-  call em3d_exchange_bndb_yrecv(b%sidezr,   b%edgeyrzr)
+  call em3d_exchange_bndb_yrecv(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_yrecv(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! edges<--->corners
-  call em3d_exchange_bndb_y(b%edgexlzl,     b%cornerxlyrzl)
-  call em3d_exchange_bndb_y(b%cornerxlylzl, b%edgexlzl)
+  call em3d_exchange_bndb_y(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_y(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%cornerxlylzl, b%edgexlzl)
-  call em3d_exchange_bndb_yrecv(b%edgexlzl,     b%cornerxlyrzl)
+  call em3d_exchange_bndb_yrecv(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_yrecv(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%edgexrzl,     b%cornerxryrzl)
-  call em3d_exchange_bndb_y(b%cornerxrylzl, b%edgexrzl)
+  call em3d_exchange_bndb_y(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_y(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%cornerxrylzl, b%edgexrzl)
-  call em3d_exchange_bndb_yrecv(b%edgexrzl,     b%cornerxryrzl)
+  call em3d_exchange_bndb_yrecv(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_yrecv(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%edgexlzr,     b%cornerxlyrzr)
-  call em3d_exchange_bndb_y(b%cornerxlylzr, b%edgexlzr)
+  call em3d_exchange_bndb_y(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_y(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%cornerxlylzr, b%edgexlzr)
-  call em3d_exchange_bndb_yrecv(b%edgexlzr,     b%cornerxlyrzr)
+  call em3d_exchange_bndb_yrecv(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_yrecv(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%edgexrzr,     b%cornerxryrzr)
-  call em3d_exchange_bndb_y(b%cornerxrylzr, b%edgexrzr)
+  call em3d_exchange_bndb_y(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_y(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%cornerxrylzr, b%edgexrzr)
-  call em3d_exchange_bndb_yrecv(b%edgexrzr,     b%cornerxryrzr)
+  call em3d_exchange_bndb_yrecv(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_yrecv(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   endif
   
   ! --- Z
   ! core<--->sides
-  call em3d_exchange_bndb_z(b%core,   b%sidezr)
-  call em3d_exchange_bndb_z(b%sidezl, b%core)
+  call em3d_exchange_bndb_z(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_z(b%sidezl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_zrecv(b%sidezl, b%core)
-  call em3d_exchange_bndb_zrecv(b%core,   b%sidezr)
+  call em3d_exchange_bndb_zrecv(b%sidezl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_zrecv(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! sides<--->edges
-  call em3d_exchange_bndb_z(b%sidexl,   b%edgexlzr)
-  call em3d_exchange_bndb_z(b%edgexlzl, b%sidexl)
+  call em3d_exchange_bndb_z(b%sidexl,   b%edgexlzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_z(b%edgexlzl, b%sidexl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_zrecv(b%edgexlzl, b%sidexl)
-  call em3d_exchange_bndb_zrecv(b%sidexl,   b%edgexlzr)
+  call em3d_exchange_bndb_zrecv(b%edgexlzl, b%sidexl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_zrecv(b%sidexl,   b%edgexlzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_z(b%sidexr,   b%edgexrzr)
-  call em3d_exchange_bndb_z(b%edgexrzl, b%sidexr)
+  call em3d_exchange_bndb_z(b%sidexr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_z(b%edgexrzl, b%sidexr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_zrecv(b%edgexrzl, b%sidexr)
-  call em3d_exchange_bndb_zrecv(b%sidexr,   b%edgexrzr)
+  call em3d_exchange_bndb_zrecv(b%edgexrzl, b%sidexr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_zrecv(b%sidexr,   b%edgexrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_z(b%sideyl,   b%edgeylzr)
-  call em3d_exchange_bndb_z(b%edgeylzl, b%sideyl)
+  call em3d_exchange_bndb_z(b%sideyl,   b%edgeylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_z(b%edgeylzl, b%sideyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_zrecv(b%edgeylzl, b%sideyl)
-  call em3d_exchange_bndb_zrecv(b%sideyl,   b%edgeylzr)
+  call em3d_exchange_bndb_zrecv(b%edgeylzl, b%sideyl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_zrecv(b%sideyl,   b%edgeylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_z(b%sideyr,   b%edgeyrzr)
-  call em3d_exchange_bndb_z(b%edgeyrzl, b%sideyr)
+  call em3d_exchange_bndb_z(b%sideyr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_z(b%edgeyrzl, b%sideyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_zrecv(b%edgeyrzl, b%sideyr)
-  call em3d_exchange_bndb_zrecv(b%sideyr,   b%edgeyrzr)
+  call em3d_exchange_bndb_zrecv(b%edgeyrzl, b%sideyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_zrecv(b%sideyr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! edges<--->corners
-  call em3d_exchange_bndb_z(b%edgexlyl,     b%cornerxlylzr)
-  call em3d_exchange_bndb_z(b%cornerxlylzl, b%edgexlyl)
+  call em3d_exchange_bndb_z(b%edgexlyl,     b%cornerxlylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_z(b%cornerxlylzl, b%edgexlyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_zrecv(b%cornerxlylzl, b%edgexlyl)
-  call em3d_exchange_bndb_zrecv(b%edgexlyl,     b%cornerxlylzr)
+  call em3d_exchange_bndb_zrecv(b%cornerxlylzl, b%edgexlyl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_zrecv(b%edgexlyl,     b%cornerxlylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_z(b%edgexryl,     b%cornerxrylzr)
-  call em3d_exchange_bndb_z(b%cornerxrylzl, b%edgexryl)
+  call em3d_exchange_bndb_z(b%edgexryl,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_z(b%cornerxrylzl, b%edgexryl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_zrecv(b%cornerxrylzl, b%edgexryl)
-  call em3d_exchange_bndb_zrecv(b%edgexryl,     b%cornerxrylzr)
+  call em3d_exchange_bndb_zrecv(b%cornerxrylzl, b%edgexryl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_zrecv(b%edgexryl,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_z(b%edgexlyr,     b%cornerxlyrzr)
-  call em3d_exchange_bndb_z(b%cornerxlyrzl, b%edgexlyr)
+  call em3d_exchange_bndb_z(b%edgexlyr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_z(b%cornerxlyrzl, b%edgexlyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_zrecv(b%cornerxlyrzl, b%edgexlyr)
-  call em3d_exchange_bndb_zrecv(b%edgexlyr,     b%cornerxlyrzr)
+  call em3d_exchange_bndb_zrecv(b%cornerxlyrzl, b%edgexlyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_zrecv(b%edgexlyr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_z(b%edgexryr,     b%cornerxryrzr)
-  call em3d_exchange_bndb_z(b%cornerxryrzl, b%edgexryr)
+  call em3d_exchange_bndb_z(b%edgexryr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_z(b%cornerxryrzl, b%edgexryr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_zrecv(b%cornerxryrzl, b%edgexryr)
-  call em3d_exchange_bndb_zrecv(b%edgexryr,     b%cornerxryrzr)
+  call em3d_exchange_bndb_zrecv(b%cornerxryrzl, b%edgexryr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndb_zrecv(b%edgexryr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
 
@@ -9785,210 +9705,213 @@ use mod_emfield3d
 implicit none
 
 TYPE(EM3D_BLOCKtype) :: b
+integer(ISZ) :: ibuf
  
+  ibuf = 400
+
   ! --- X
   ! core<--->sides
-  call em3d_exchange_bndf_x(b%core,   b%sidexr)
-  call em3d_exchange_bndf_x(b%sidexl, b%core)
+  call em3d_exchange_bndf_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%sidexl, b%core)
-  call em3d_exchange_bndf_xrecv(b%core,   b%sidexr)
+  call em3d_exchange_bndf_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! sides<--->edges
-  call em3d_exchange_bndf_x(b%sideyl,   b%edgexryl)
-  call em3d_exchange_bndf_x(b%edgexlyl, b%sideyl)
+  call em3d_exchange_bndf_x(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_x(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%edgexlyl, b%sideyl)
-  call em3d_exchange_bndf_xrecv(b%sideyl,   b%edgexryl)
+  call em3d_exchange_bndf_xrecv(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_xrecv(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%sideyr,   b%edgexryr)
-  call em3d_exchange_bndf_x(b%edgexlyr, b%sideyr)
+  call em3d_exchange_bndf_x(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_x(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%edgexlyr, b%sideyr)
-  call em3d_exchange_bndf_xrecv(b%sideyr,   b%edgexryr)
+  call em3d_exchange_bndf_xrecv(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_xrecv(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%sidezl,   b%edgexrzl)
-  call em3d_exchange_bndf_x(b%edgexlzl, b%sidezl)
+  call em3d_exchange_bndf_x(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_x(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%edgexlzl, b%sidezl)
-  call em3d_exchange_bndf_xrecv(b%sidezl,   b%edgexrzl)
+  call em3d_exchange_bndf_xrecv(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_xrecv(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%sidezr,   b%edgexrzr)
-  call em3d_exchange_bndf_x(b%edgexlzr, b%sidezr)
+  call em3d_exchange_bndf_x(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_x(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%edgexlzr, b%sidezr)
-  call em3d_exchange_bndf_xrecv(b%sidezr,   b%edgexrzr)
+  call em3d_exchange_bndf_xrecv(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_xrecv(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! edges<--->corners
-  call em3d_exchange_bndf_x(b%edgeylzl,     b%cornerxrylzl)
-  call em3d_exchange_bndf_x(b%cornerxlylzl, b%edgeylzl)
+  call em3d_exchange_bndf_x(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_x(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%cornerxlylzl, b%edgeylzl)
-  call em3d_exchange_bndf_xrecv(b%edgeylzl,     b%cornerxrylzl)
+  call em3d_exchange_bndf_xrecv(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_xrecv(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%edgeyrzl,     b%cornerxryrzl)
-  call em3d_exchange_bndf_x(b%cornerxlyrzl, b%edgeyrzl)
+  call em3d_exchange_bndf_x(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_x(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%cornerxlyrzl, b%edgeyrzl)
-  call em3d_exchange_bndf_xrecv(b%edgeyrzl,     b%cornerxryrzl)
+  call em3d_exchange_bndf_xrecv(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_xrecv(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%edgeylzr,     b%cornerxrylzr)
-  call em3d_exchange_bndf_x(b%cornerxlylzr, b%edgeylzr)
+  call em3d_exchange_bndf_x(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_x(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%cornerxlylzr, b%edgeylzr)
-  call em3d_exchange_bndf_xrecv(b%edgeylzr,     b%cornerxrylzr)
+  call em3d_exchange_bndf_xrecv(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_xrecv(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%edgeyrzr,     b%cornerxryrzr)
-  call em3d_exchange_bndf_x(b%cornerxlyrzr, b%edgeyrzr)
+  call em3d_exchange_bndf_x(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_x(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%cornerxlyrzr, b%edgeyrzr)
-  call em3d_exchange_bndf_xrecv(b%edgeyrzr,     b%cornerxryrzr)
+  call em3d_exchange_bndf_xrecv(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_xrecv(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
 
   ! --- Y
   if (.not.b%core%yf%l_2dxz) then
   ! core<--->sides
-  call em3d_exchange_bndf_y(b%core,   b%sideyr)
-  call em3d_exchange_bndf_y(b%sideyl, b%core)
+  call em3d_exchange_bndf_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%sideyl, b%core)
-  call em3d_exchange_bndf_yrecv(b%core,   b%sideyr)
+  call em3d_exchange_bndf_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! sides<--->edges
-  call em3d_exchange_bndf_y(b%sidexl,   b%edgexlyr)
-  call em3d_exchange_bndf_y(b%edgexlyl, b%sidexl)
+  call em3d_exchange_bndf_y(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_y(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%edgexlyl, b%sidexl)
-  call em3d_exchange_bndf_yrecv(b%sidexl,   b%edgexlyr)
+  call em3d_exchange_bndf_yrecv(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_yrecv(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%sidexr,   b%edgexryr)
-  call em3d_exchange_bndf_y(b%edgexryl, b%sidexr)
+  call em3d_exchange_bndf_y(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_y(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%edgexryl, b%sidexr)
-  call em3d_exchange_bndf_yrecv(b%sidexr,   b%edgexryr)
+  call em3d_exchange_bndf_yrecv(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_yrecv(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%sidezl,   b%edgeyrzl)
-  call em3d_exchange_bndf_y(b%edgeylzl, b%sidezl)
+  call em3d_exchange_bndf_y(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_y(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%edgeylzl, b%sidezl)
-  call em3d_exchange_bndf_yrecv(b%sidezl,   b%edgeyrzl)
+  call em3d_exchange_bndf_yrecv(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_yrecv(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%sidezr,   b%edgeyrzr)
-  call em3d_exchange_bndf_y(b%edgeylzr, b%sidezr)
+  call em3d_exchange_bndf_y(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_y(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%edgeylzr, b%sidezr)
-  call em3d_exchange_bndf_yrecv(b%sidezr,   b%edgeyrzr)
+  call em3d_exchange_bndf_yrecv(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_yrecv(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! edges<--->corners
-  call em3d_exchange_bndf_y(b%edgexlzl,     b%cornerxlyrzl)
-  call em3d_exchange_bndf_y(b%cornerxlylzl, b%edgexlzl)
+  call em3d_exchange_bndf_y(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_y(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%cornerxlylzl, b%edgexlzl)
-  call em3d_exchange_bndf_yrecv(b%edgexlzl,     b%cornerxlyrzl)
+  call em3d_exchange_bndf_yrecv(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_yrecv(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%edgexrzl,     b%cornerxryrzl)
-  call em3d_exchange_bndf_y(b%cornerxrylzl, b%edgexrzl)
+  call em3d_exchange_bndf_y(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_y(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%cornerxrylzl, b%edgexrzl)
-  call em3d_exchange_bndf_yrecv(b%edgexrzl,     b%cornerxryrzl)
+  call em3d_exchange_bndf_yrecv(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_yrecv(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%edgexlzr,     b%cornerxlyrzr)
-  call em3d_exchange_bndf_y(b%cornerxlylzr, b%edgexlzr)
+  call em3d_exchange_bndf_y(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_y(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%cornerxlylzr, b%edgexlzr)
-  call em3d_exchange_bndf_yrecv(b%edgexlzr,     b%cornerxlyrzr)
+  call em3d_exchange_bndf_yrecv(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_yrecv(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%edgexrzr,     b%cornerxryrzr)
-  call em3d_exchange_bndf_y(b%cornerxrylzr, b%edgexrzr)
+  call em3d_exchange_bndf_y(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_y(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%cornerxrylzr, b%edgexrzr)
-  call em3d_exchange_bndf_yrecv(b%edgexrzr,     b%cornerxryrzr)
+  call em3d_exchange_bndf_yrecv(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_yrecv(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   endif
   
   ! --- Z
   ! core<--->sides
-  call em3d_exchange_bndf_z(b%core,   b%sidezr)
-  call em3d_exchange_bndf_z(b%sidezl, b%core)
+  call em3d_exchange_bndf_z(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_z(b%sidezl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_zrecv(b%sidezl, b%core)
-  call em3d_exchange_bndf_zrecv(b%core,   b%sidezr)
+  call em3d_exchange_bndf_zrecv(b%sidezl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_zrecv(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! sides<--->edges
-  call em3d_exchange_bndf_z(b%sidexl,   b%edgexlzr)
-  call em3d_exchange_bndf_z(b%edgexlzl, b%sidexl)
+  call em3d_exchange_bndf_z(b%sidexl,   b%edgexlzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_z(b%edgexlzl, b%sidexl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_zrecv(b%edgexlzl, b%sidexl)
-  call em3d_exchange_bndf_zrecv(b%sidexl,   b%edgexlzr)
+  call em3d_exchange_bndf_zrecv(b%edgexlzl, b%sidexl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_zrecv(b%sidexl,   b%edgexlzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_z(b%sidexr,   b%edgexrzr)
-  call em3d_exchange_bndf_z(b%edgexrzl, b%sidexr)
+  call em3d_exchange_bndf_z(b%sidexr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_z(b%edgexrzl, b%sidexr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_zrecv(b%edgexrzl, b%sidexr)
-  call em3d_exchange_bndf_zrecv(b%sidexr,   b%edgexrzr)
+  call em3d_exchange_bndf_zrecv(b%edgexrzl, b%sidexr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_zrecv(b%sidexr,   b%edgexrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_z(b%sideyl,   b%edgeylzr)
-  call em3d_exchange_bndf_z(b%edgeylzl, b%sideyl)
+  call em3d_exchange_bndf_z(b%sideyl,   b%edgeylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_z(b%edgeylzl, b%sideyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_zrecv(b%edgeylzl, b%sideyl)
-  call em3d_exchange_bndf_zrecv(b%sideyl,   b%edgeylzr)
+  call em3d_exchange_bndf_zrecv(b%edgeylzl, b%sideyl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_zrecv(b%sideyl,   b%edgeylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_z(b%sideyr,   b%edgeyrzr)
-  call em3d_exchange_bndf_z(b%edgeyrzl, b%sideyr)
+  call em3d_exchange_bndf_z(b%sideyr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_z(b%edgeyrzl, b%sideyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_zrecv(b%edgeyrzl, b%sideyr)
-  call em3d_exchange_bndf_zrecv(b%sideyr,   b%edgeyrzr)
+  call em3d_exchange_bndf_zrecv(b%edgeyrzl, b%sideyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_zrecv(b%sideyr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   ! edges<--->corners
-  call em3d_exchange_bndf_z(b%edgexlyl,     b%cornerxlylzr)
-  call em3d_exchange_bndf_z(b%cornerxlylzl, b%edgexlyl)
+  call em3d_exchange_bndf_z(b%edgexlyl,     b%cornerxlylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_z(b%cornerxlylzl, b%edgexlyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_zrecv(b%cornerxlylzl, b%edgexlyl)
-  call em3d_exchange_bndf_zrecv(b%edgexlyl,     b%cornerxlylzr)
+  call em3d_exchange_bndf_zrecv(b%cornerxlylzl, b%edgexlyl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_zrecv(b%edgexlyl,     b%cornerxlylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_z(b%edgexryl,     b%cornerxrylzr)
-  call em3d_exchange_bndf_z(b%cornerxrylzl, b%edgexryl)
+  call em3d_exchange_bndf_z(b%edgexryl,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_z(b%cornerxrylzl, b%edgexryl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_zrecv(b%cornerxrylzl, b%edgexryl)
-  call em3d_exchange_bndf_zrecv(b%edgexryl,     b%cornerxrylzr)
+  call em3d_exchange_bndf_zrecv(b%cornerxrylzl, b%edgexryl, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_zrecv(b%edgexryl,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_z(b%edgexlyr,     b%cornerxlyrzr)
-  call em3d_exchange_bndf_z(b%cornerxlyrzl, b%edgexlyr)
+  call em3d_exchange_bndf_z(b%edgexlyr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_z(b%cornerxlyrzl, b%edgexlyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_zrecv(b%cornerxlyrzl, b%edgexlyr)
-  call em3d_exchange_bndf_zrecv(b%edgexlyr,     b%cornerxlyrzr)
+  call em3d_exchange_bndf_zrecv(b%cornerxlyrzl, b%edgexlyr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_zrecv(b%edgexlyr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_z(b%edgexryr,     b%cornerxryrzr)
-  call em3d_exchange_bndf_z(b%cornerxryrzl, b%edgexryr)
+  call em3d_exchange_bndf_z(b%edgexryr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_z(b%cornerxryrzl, b%edgexryr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_zrecv(b%cornerxryrzl, b%edgexryr)
-  call em3d_exchange_bndf_zrecv(b%edgexryr,     b%cornerxryrzr)
+  call em3d_exchange_bndf_zrecv(b%cornerxryrzl, b%edgexryr, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndf_zrecv(b%edgexryr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
 
@@ -9999,39 +9922,42 @@ subroutine em3d_exchange_j(b)
 use mod_emfield3d
 implicit none
 TYPE(EM3D_BLOCKtype) :: b
+integer(ISZ) :: ibuf
 #ifdef MPIPARALLEL
 integer(MPIISZ)::mpirequest(2)
 #endif
 
+  ibuf = 600
+
   ! --- X
   ! core<--->sides
-  call em3d_exchange_bndj_x(b%core,   b%sidexr)
-  if(b%xrbnd /= periodic) call em3d_exchange_bndj_x(b%sidexl, b%core)
+  call em3d_exchange_bndj_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+  if(b%xrbnd /= periodic) call em3d_exchange_bndj_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  if(b%xrbnd /= periodic) call em3d_exchange_bndj_xrecv(b%sidexl, b%core)
-  call em3d_exchange_bndj_xrecv(b%core,   b%sidexr)
+  if(b%xrbnd /= periodic) call em3d_exchange_bndj_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndj_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
 
   ! --- Y
   if (.not.b%core%yf%l_2dxz) then
   ! core<--->sides
-  call em3d_exchange_bndj_y(b%core,   b%sideyr)
-  if(b%yrbnd /= periodic) call em3d_exchange_bndj_y(b%sideyl, b%core)
+  call em3d_exchange_bndj_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+  if(b%yrbnd /= periodic) call em3d_exchange_bndj_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  if(b%yrbnd /= periodic) call em3d_exchange_bndj_yrecv(b%sideyl, b%core)
-  call em3d_exchange_bndj_yrecv(b%core,   b%sideyr)
+  if(b%yrbnd /= periodic) call em3d_exchange_bndj_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndj_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   endif
   
   ! --- Z
   ! core<--->sides
-  call em3d_exchange_bndj_z(b%core,   b%sidezr)
-  if(b%zrbnd /= periodic) call em3d_exchange_bndj_z(b%sidezl, b%core)
+  call em3d_exchange_bndj_z(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
+  if(b%zrbnd /= periodic) call em3d_exchange_bndj_z(b%sidezl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  if(b%zrbnd /= periodic) call em3d_exchange_bndj_zrecv(b%sidezl, b%core)
-  call em3d_exchange_bndj_zrecv(b%core,   b%sidezr)
+  if(b%zrbnd /= periodic) call em3d_exchange_bndj_zrecv(b%sidezl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndj_zrecv(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
 
@@ -10043,36 +9969,39 @@ use mod_emfield3d
 implicit none
 
 TYPE(EM3D_BLOCKtype) :: b
+integer(ISZ) :: ibuf
+
+  ibuf = 800
 
   ! --- X
   ! core<--->sides
-  call em3d_exchange_bndrho_x(b%core,   b%sidexr)
-  if(b%xrbnd /= periodic) call em3d_exchange_bndrho_x(b%sidexl, b%core)
+  call em3d_exchange_bndrho_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+  if(b%xrbnd /= periodic) call em3d_exchange_bndrho_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  if(b%xrbnd /= periodic) call em3d_exchange_bndrho_xrecv(b%sidexl, b%core)
-  call em3d_exchange_bndrho_xrecv(b%core,   b%sidexr)
+  if(b%xrbnd /= periodic) call em3d_exchange_bndrho_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndrho_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
 
   ! --- Y
   if (.not.b%core%yf%l_2dxz) then
   ! core<--->sides
-  call em3d_exchange_bndrho_y(b%core,   b%sideyr)
-  if(b%yrbnd /= periodic) call em3d_exchange_bndrho_y(b%sideyl, b%core)
+  call em3d_exchange_bndrho_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+  if(b%yrbnd /= periodic) call em3d_exchange_bndrho_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  if(b%yrbnd /= periodic) call em3d_exchange_bndrho_yrecv(b%sideyl, b%core)
-  call em3d_exchange_bndrho_yrecv(b%core,   b%sideyr)
+  if(b%yrbnd /= periodic) call em3d_exchange_bndrho_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndrho_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   endif
 
   ! --- Z
   ! core<--->sides
-  call em3d_exchange_bndrho_z(b%core,   b%sidezr)
-  if(b%zrbnd /= periodic) call em3d_exchange_bndrho_z(b%sidezl, b%core)
+  call em3d_exchange_bndrho_z(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
+  if(b%zrbnd /= periodic) call em3d_exchange_bndrho_z(b%sidezl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  if(b%zrbnd /= periodic) call em3d_exchange_bndrho_zrecv(b%sidezl, b%core)
-  call em3d_exchange_bndrho_zrecv(b%core,   b%sidezr)
+  if(b%zrbnd /= periodic) call em3d_exchange_bndrho_zrecv(b%sidezl, b%core, ibuf); ibuf=ibuf+1
+  call em3d_exchange_bndrho_zrecv(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
   call mpi_waitall_requests()
 #endif
   return
