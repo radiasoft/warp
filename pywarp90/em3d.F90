@@ -1,5 +1,279 @@
 #include "top.h"
 
+subroutine depose_j_n_1dz(CJ,np,zp,uxp,uyp,uzp,gaminv,w,q,zmin, &
+                                                 dt,dz,nz,nzguard,noz,l_particles_weight)
+   implicit none
+   integer(ISZ) :: np,nz,nzguard,noz
+   real(kind=8), dimension(-nzguard:nz+nzguard,3), intent(in out) :: CJ
+   real(kind=8), dimension(np) :: zp,uxp,uyp,uzp,gaminv,w
+   real(kind=8) :: q,dt,dz,zmin
+   logical(ISZ) :: l_particles_weight
+
+   real(kind=8) :: dzi,dtsdz,zint
+   real(kind=8),dimension(-int(noz/2)-1:int((noz+1)/2)+1) :: wz,sdz
+   real(kind=8) :: zold,zmid,z,wq,wqx,wqy,wqz,tmp,vx,vy,vz,dts2dx,dts2dy,dts2dz, &
+                   s1z,s2z,invvol,invdtdx,invdtdy,invdtdz,ozint,ozintsq,zintsq
+   real(kind=8), DIMENSION(-int(noz/2)-1:int((noz+1)/2)+1) :: sz, sz0, dsz
+   integer(ISZ) :: ikxp0,ikxp,ip,diz,idz,k,izmin,izmax
+   real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
+
+      sz0=0.
+      
+      dzi = 1./dz
+      dtsdz = dt*dzi
+      dts2dz = 0.5*dtsdz
+      invvol = 1./dz
+      invdtdx = 1./(dt*dz)
+      invdtdy = 1./(dt*dz)
+      invdtdz = 1./(dt)
+
+      do ip=1,np
+      
+        ! --- computes current position in grid units
+        z = (zp(ip)-zmin)*dzi
+        
+        ! --- computes velocity
+        vx = uxp(ip)*gaminv(ip)
+        vy = uyp(ip)*gaminv(ip)
+        vz = uzp(ip)*gaminv(ip)
+        
+        ! --- computes old position in grid units
+        zold=z-dtsdz*vz
+
+        if (l_particles_weight) then
+          wq=q*w(ip)
+        else
+          wq=q*w(1)
+        end if
+        wqx = wq*invdtdx
+        wqy = wq*invdtdy
+        wqz = wq*invdtdz
+
+!       computation of current at x(n+1/2),v(n+1/2)
+
+        ikxp0=floor(z)
+
+        ! --- computes distance between particle and node for current positions
+        zint=z-ikxp0
+
+        ! --- computes coefficients for node centered quantities
+        select case(noz)
+         case(0)
+          sz0( 0) = 1.
+         case(1)
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
+         case(2)
+          zintsq = zint*zint
+          sz0(-1) = 0.5*(0.5-zint)**2
+          sz0( 0) = 0.75-zintsq
+          sz0( 1) = 0.5*(0.5+zint)**2
+         case(3)
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz0(-1) = onesixth*ozintsq*ozint
+          sz0( 0) = twothird-zintsq*(1.-zint/2)
+          sz0( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz0( 2) = onesixth*zintsq*zint
+        end select        
+
+        ! --- finds node of cell containing particles for old positions 
+        ! --- (different for odd/even spline orders)
+        if (noz==2*(noz/2)) then
+          ikxp=nint(zold)
+        else
+          ikxp=floor(zold)
+        end if
+         ! --- computes distance between particle and node for old positions
+       zint = zold-ikxp
+
+        ! --- computes node separation between old and current positions
+        diz = ikxp-ikxp0
+
+        ! --- zero out coefficients (needed because of different dix and diz for each particle)
+        sz=0.
+
+        ! --- computes coefficients for quantities centered between nodes
+        select case(noz)
+         case(0)
+          sz( 0+diz) = 1.
+         case(1)
+          sz( 0+diz) = 1.-zint
+          sz( 1+diz) = zint
+         case(2)
+          zintsq = zint*zint
+          sz(-1+diz) = 0.5*(0.5-zint)**2
+          sz( 0+diz) = 0.75-zintsq
+          sz( 1+diz) = 0.5*(0.5+zint)**2
+         case(3)
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz(-1+diz) = onesixth*ozintsq*ozint
+          sz( 0+diz) = twothird-zintsq*(1.-zint/2)
+          sz( 1+diz) = twothird-ozintsq*(1.-ozint/2)
+          sz( 2+diz) = onesixth*zintsq*zint
+        end select        
+
+        ! --- computes coefficients difference
+        dsz = sz - sz0
+        
+        ! --- computes min/max positions of current contributions
+        izmin = min(0,diz)-int(noz/2)
+        izmax = max(0,diz)+int((noz+1)/2)
+
+!        do k=izmin, izmax
+!          cj(ic,kc,1) = cj(ic,kc,1) + wq*vx*invvol*( sz0(k)+0.5*dsz(k) )
+!          cj(ic,kc,2) = cj(ic,kc,2) + wq*vy*invvol*( sz0(k)+0.5*dsz(k) )
+!        end do        
+        do k=izmin, izmax-1
+          sdz(k)  = wqz*dsz(k)
+          if (k>-1) sdz(k)=sdz(k)+sdz(k-1)
+          cj(ikxp0+k,3) = cj(ikxp0+k,3)+sdz(k)
+        end do        
+
+        ! Esirkepov deposition of Jz is over; now starts linear deposition of Jx and Jy
+        zmid=z-dts2dz*vz
+
+        wqx = wq*vx*dzi
+        wqy = wq*vy*dzi
+      
+        if (noz==2*(noz/2)) then
+          ikxp=nint(zmid)
+        else
+          ikxp=floor(zmid)
+        end if
+
+        zint = zmid-ikxp
+
+        select case(noz)
+         case(0)
+          sz( 0) = 1.
+         case(1)
+          sz( 0) = 1.-zint
+          sz( 1) = zint
+         case(2)
+          zintsq = zint*zint
+          sz(-1) = 0.5*(0.5-zint)**2
+          sz( 0) = 0.75-zintsq
+          sz( 1) = 0.5*(0.5+zint)**2
+         case(3)
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz(-1) = onesixth*ozintsq*ozint
+          sz( 0) = twothird-zintsq*(1.-zint/2)
+          sz( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz( 2) = onesixth*zintsq*zint
+        end select        
+
+        ! --- computes min/max positions of current contributions
+        izmin = -int(noz/2)
+        izmax = int((noz+1)/2)
+        do k=izmin, izmax
+          cj(ikxp+k,1) = cj(ikxp+k,1)+sz(k)*wqx
+          cj(ikxp+k,2) = cj(ikxp+k,2)+sz(k)*wqy
+        end do
+        
+    end do
+
+  return
+end subroutine depose_j_n_1dz
+
+subroutine depose_j_serial_1d(CJ,np,zp,uxp,uyp,uzp,gaminv,w,q,zmin, &
+                                                 dt,dz,nz,l_particles_weight)
+   implicit none
+   integer(ISZ) :: np,nz
+   real(kind=8), dimension(-1:nz+1,3), intent(in out) :: CJ
+   real(kind=8), dimension(np) :: zp,uxp,uyp,uzp,gaminv,w
+   real(kind=8) :: q,dt,dz,zmin
+   logical(ISZ) :: l_particles_weight
+
+   real(kind=8) :: dzi,dtsdz,zint
+   real(kind=8),dimension(-1:2) :: wx,wy,wz,sdx,sdy,sdz
+   real(kind=8) :: xold,yold,zold,xmid,ymid,zmid,x,y,z,wq,wqx,wqy,wqz,tmp,vx,vy,vz,dts2dx,dts2dy,dts2dz, &
+                   s1x,s2x,s1y,s2y,s1z,s2z,invvol,invdtdx,invdtdy,invdtdz
+   real(kind=8), DIMENSION(-1:2) :: sx, sy, sz, sx0, sy0, sz0, dsx, dsy, dsz
+   integer(ISZ) :: iixp0,ijxp0,ikxp0,iixp,ijxp,ikxp,ip,dix,diy,diz,idx,idy,idz,i,j,k
+
+      sx0=0.;sy0=0.;sz0=0.
+      
+      dzi = 1./dz
+      dtsdz = dt*dzi
+      dts2dz = 0.5*dtsdz
+      invvol = 1./dz
+      invdtdx = 1./(dt*dz)
+      invdtdy = 1./(dt*dz)
+      invdtdz = 1./(dt)
+
+      do ip=1,np
+      
+        z = (zp(ip)-zmin)*dzi
+        
+        vx = uxp(ip)*gaminv(ip)
+        vy = uyp(ip)*gaminv(ip)
+        vz = uzp(ip)*gaminv(ip)
+        
+        zold=z-dtsdz*vz
+
+        if (l_particles_weight) then
+          wq=q*w(ip)
+        else
+          wq=q
+        end if
+        wqx = wq*invdtdx
+        wqy = wq*invdtdy
+        wqz = wq*invdtdz
+
+!       computation of current at x(n+1/2),v(n+1/2)
+
+        ikxp0=floor(z)
+
+        zint=z-ikxp0
+
+        sz0(0) = 1.-zint
+        sz0(1) = zint
+
+        ikxp=floor(zold)
+        zint = zold-ikxp
+
+        diz = ikxp-ikxp0
+
+        sz(0+diz) = 1.-zint
+        sz(1+diz) = zint
+
+        dsz = sz - sz0
+
+        do k = -1, 1
+          sdz(k)  = wqz*dsz(k)
+          if (k>-1) sdz(k)=sdz(k)+sdz(k-1)
+          cj(ikxp0+K,3) = cj(ikxp0+k,3)+sdz(k)
+        end do        
+
+        ! Esirkepov deposition of Jz is over; now starts linear deposition of Jx and Jy
+        zmid=z-dts2dz*vz
+
+        wqx = wq*vx*dzi
+        wqy = wq*vy*dzi
+      
+        ikxp=floor(zmid)
+
+        zint = zmid-ikxp
+
+        s1z = 1.-zint
+        s2z = zint
+
+        cj(ikxp  ,1)=cj(ikxp  ,1)+s1z*wqx
+        cj(ikxp+1,1)=cj(ikxp+1,1)+s2z*wqx
+        cj(ikxp  ,2)=cj(ikxp  ,2)+s1z*wqy
+        cj(ikxp+1,2)=cj(ikxp+1,2)+s2z*wqy
+        
+    end do
+
+  return
+end subroutine depose_j_serial_1d
+
 subroutine depose_jxjy_esirkepov_linear_serial_2d(j,np,xp,yp,xpold,ypold,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,nx,ny,l_particles_weight)
    implicit none
    integer(ISZ) :: np,nx,ny
@@ -2618,6 +2892,331 @@ subroutine depose_j_n_2dxz(cj,np,xp,zp,ux,uy,uz,gaminv,w,q,xmin,zmin,dt,dx,dz,nx
 
   return
 end subroutine depose_j_n_2dxz
+
+subroutine getf1dz_n(np,zp,ex,ey,ez,zmin,dz,nz,nzguard,noz,exg,eyg,ezg)
+   
+ implicit none
+      integer(ISZ) :: np,nz,nzguard,noz
+      real(kind=8), dimension(np) :: zp,ex,ey,ez
+      real(kind=8), dimension(-nzguard:nz+nzguard) :: exg,eyg,ezg
+      real(kind=8) :: zmin,dz
+      integer(ISZ) :: ip, j, l, izmin, izmax, &
+                      izmin0, izmax0, jj, ll
+      real(kind=8) :: dzi, z, zint
+      real(kind=8) :: zintsq,ozint,ozintsq
+      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
+      real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
+
+      dzi = 1./dz
+
+      izmin = -int(noz/2)
+      izmax =  int((noz+1)/2)
+
+      do ip=1,np
+
+        z = (zp(ip)-zmin)*dzi
+
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+        else
+          l=floor(z)
+        end if
+
+        zint=z-l
+
+        select case(noz)
+         case(0)
+          sz( 0) = 1.
+         case(1)
+          sz( 0) = 1.-zint
+          sz( 1) = zint
+         case(2)
+          zintsq = zint*zint
+          sz(-1) = 0.5*(0.5-zint)**2
+          sz( 0) = 0.75-zintsq
+          sz( 1) = 0.5*(0.5+zint)**2
+         case(3)
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz(-1) = onesixth*ozintsq*ozint
+          sz( 0) = twothird-zintsq*(1.-zint/2)
+          sz( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz( 2) = onesixth*zintsq*zint
+        end select        
+
+        do ll = izmin, izmax
+          ex(ip) = ex(ip) + sz(ll)*exg(l+ll)
+          ey(ip) = ey(ip) + sz(ll)*eyg(l+ll)
+          ez(ip) = ez(ip) + sz(ll)*ezg(l+ll)
+        end do
+
+     end do
+
+   return
+ end subroutine getf1dz_n
+
+  subroutine gete1dz_n_energy_conserving(np,zp,ex,ey,ez,zmin,dz,nz,nzguard, &
+                                       noz,exg,eyg,ezg,l_lower_order_in_v)
+   
+   implicit none
+     integer(ISZ) :: np,nz,noz,nzguard
+      real(kind=8), dimension(np) :: zp,ex,ey,ez
+      logical(ISZ) :: l_lower_order_in_v
+      real(kind=8), dimension(-nzguard:nz+nzguard) :: exg,eyg,ezg
+      real(kind=8) :: zmin,dz
+      integer(ISZ) :: ip, l, izmin, izmax, &
+                      izmin0, izmax0, ll, l0
+      real(kind=8) :: dzi, z, zint, &
+                      zintsq,ozint,ozintsq
+      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
+      real(kind=8), dimension(:), allocatable :: sz0
+      real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
+
+      dzi = 1./dz
+
+      izmin = -int(noz/2)
+      izmax =  int((noz+1)/2)-1
+
+      if (l_lower_order_in_v) then
+        izmin0 = -int((noz-1)/2)
+        izmax0 =  int((noz)/2)
+      else
+        izmin0 = -int((noz)/2)
+        izmax0 =  int((noz+1)/2)
+      end if
+      allocate(sz0(izmin0:izmax0))
+
+      do ip=1,np
+
+        z = (zp(ip)-zmin)*dzi
+
+        if (l_lower_order_in_v) then
+          if (noz==2*(noz/2)) then
+            l=nint(z)
+            l0=floor(z-0.5)
+          else
+            l=floor(z)
+            l0=floor(z)
+          end if
+        else
+          if (noz==2*(noz/2)) then
+            l=nint(z)
+            l0=floor(z)
+          else
+            l=floor(z)
+            l0=floor(z-0.5)
+          end if
+        end if
+
+        zint=z-l
+
+        if (noz==1) then
+          sz( 0) = 1.-zint
+          sz( 1) = zint
+        elseif (noz==2) then
+          zintsq = zint*zint
+          sz(-1) = 0.5*(0.5-zint)**2
+          sz( 0) = 0.75-zintsq
+          sz( 1) = 0.5*(0.5+zint)**2
+        elseif (noz==3) then
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz(-1) = onesixth*ozintsq*ozint
+          sz( 0) = twothird-zintsq*(1.-zint/2)
+          sz( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz( 2) = onesixth*zintsq*zint
+        end if
+
+        zint=z-0.5-l0
+
+        if (l_lower_order_in_v) then
+
+         if (noz==1) then
+          sz0( 0) = 1.
+         elseif (noz==2) then
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
+         elseif (noz==3) then
+          zintsq = zint*zint
+          sz0(-1) = 0.5*(0.5-zint)**2
+          sz0( 0) = 0.75-zintsq
+          sz0( 1) = 0.5*(0.5+zint)**2
+         end if
+
+        else
+
+         if (noz==1) then
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
+         elseif (noz==2) then
+          zintsq = zint*zint
+          sz0(-1) = 0.5*(0.5-zint)**2
+          sz0( 0) = 0.75-zintsq
+          sz0( 1) = 0.5*(0.5+zint)**2
+         elseif (noz==3) then
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz0(-1) = onesixth*ozintsq*ozint
+          sz0( 0) = twothird-zintsq*(1.-zint/2)
+          sz0( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz0( 2) = onesixth*zintsq*zint
+         end if
+
+        end if
+
+          do ll = izmin, izmax+1
+              ex(ip) = ex(ip) + sz(ll)*exg(l+ll)
+          end do
+
+          do ll = izmin, izmax+1
+              ey(ip) = ey(ip) + sz(ll)*eyg(l+ll)
+          end do
+          do ll = izmin0, izmax0
+              ez(ip) = ez(ip) + sz0(ll)*ezg(l0+ll)
+          end do
+                     
+     end do
+     deallocate(sz0)
+     
+   return
+ end subroutine gete1dz_n_energy_conserving
+
+subroutine getb1dz_n_energy_conserving(np,zp,bx,by,bz,zmin,dz,nz,nzguard, &
+                                       noz,bxg,byg,bzg,l_lower_order_in_v)
+   
+      implicit none
+      integer(ISZ) :: np,nz,noz,nzguard
+      real(kind=8), dimension(np) :: zp,bx,by,bz
+      logical(ISZ) :: l_lower_order_in_v
+      real(kind=8), dimension(-nzguard:nz+nzguard) :: bxg,byg,bzg
+      real(kind=8) :: zmin,dz
+      integer(ISZ) :: ip, j, l, izmin, izmax, &
+                       izmin0, izmax0, ll, l0
+      real(kind=8) :: dzi, z, zint, &
+                      zintsq,ozint,ozintsq
+      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
+      real(kind=8), dimension(:), allocatable :: sz0
+      real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
+
+      dzi = 1./dz
+
+      izmin = -int(noz/2)
+      izmax =  int((noz+1)/2)-1
+
+      if (l_lower_order_in_v) then
+        izmin0 = -int((noz-1)/2)
+        izmax0 =  int((noz)/2)
+      else
+        izmin0 = -int((noz)/2)
+        izmax0 =  int((noz+1)/2)
+      end if
+      allocate(sz0(izmin0:izmax0))
+
+      sz=0.
+      sz0=0.
+
+      do ip=1,np
+
+        z = (zp(ip)-zmin)*dzi
+
+        if (l_lower_order_in_v) then
+          if (noz==2*(noz/2)) then
+            l=nint(z)
+            l0=floor(z-0.5)
+          else
+            l=floor(z)
+            l0=floor(z)
+          end if
+        else
+          if (noz==2*(noz/2)) then
+            l=nint(z)
+            l0=floor(z)
+          else
+            l=floor(z)
+            l0=floor(z-0.5)
+          end if
+        end if
+
+        zint=z-l
+
+        if (noz==1) then
+          sz( 0) = 1.-zint
+          sz( 1) = zint
+        elseif (noz==2) then
+          zintsq = zint*zint
+          sz(-1) = 0.5*(0.5-zint)**2
+          sz( 0) = 0.75-zintsq
+          sz( 1) = 0.5*(0.5+zint)**2
+        elseif (noz==3) then
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz(-1) = onesixth*ozintsq*ozint
+          sz( 0) = twothird-zintsq*(1.-zint/2)
+          sz( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz( 2) = onesixth*zintsq*zint
+        end if
+
+        zint=z-0.5-l0
+
+        if (l_lower_order_in_v) then
+
+         if (noz==1) then
+          sz0( 0) = 1.
+         elseif (noz==2) then
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
+         elseif (noz==3) then
+          zintsq = zint*zint
+          sz0(-1) = 0.5*(0.5-zint)**2
+          sz0( 0) = 0.75-zintsq
+          sz0( 1) = 0.5*(0.5+zint)**2
+         end if
+
+        else
+
+         if (noz==1) then
+          sz0( 0) = 1.-zint
+          sz0( 1) = zint
+         elseif (noz==2) then
+          zintsq = zint*zint
+          sz0(-1) = 0.5*(0.5-zint)**2
+          sz0( 0) = 0.75-zintsq
+          sz0( 1) = 0.5*(0.5+zint)**2
+         elseif (noz==3) then
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz0(-1) = onesixth*ozintsq*ozint
+          sz0( 0) = twothird-zintsq*(1.-zint/2)
+          sz0( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz0( 2) = onesixth*zintsq*zint
+         end if
+
+        end if
+
+          do ll = izmin0, izmax0
+              bx(ip) = bx(ip) + sz0(ll)*bxg(l0+ll)
+          end do
+
+          do ll = izmin0, izmax0
+              by(ip) = by(ip) + sz0(ll)*byg(l0+ll)
+          end do
+
+        do ll = izmin, izmax+1
+              bz(ip) = bz(ip) + sz(ll)*bzg(l+ll)
+        end do
+                 
+     end do
+     deallocate(sz0)
+
+   return
+ end subroutine getb1dz_n_energy_conserving
 
  subroutine getf3d_linear(np,xp,yp,zp,ex,ey,ez,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard,exg,eyg,ezg)
    
