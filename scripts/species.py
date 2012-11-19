@@ -330,7 +330,10 @@ Creates a new species of particles. All arguments are optional.
         density = fzeros([nx+1,ny+1],'d')
         densityc = fzeros([nx+1,ny+1],'d')
       else:
-        if w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
+        if w3d.solvergeom in [w3d.Zgeom]:
+          density = fzeros([nz+1],'d')
+          densityc = fzeros([nz+1],'d')
+        elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
           density = fzeros([nx+1,nz+1],'d')
           densityc = fzeros([nx+1,nz+1],'d')
         else:
@@ -341,6 +344,8 @@ Creates a new species of particles. All arguments are optional.
         nx = shape(dens)[0]-1
         ny = shape(dens)[1]-1
       else:
+        if w3d.solvergeom in [w3d.Zgeom]:
+          nz = shape(dens)[0]-1
         if w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
           nx = shape(dens)[0]-1
           nz = shape(dens)[1]-1
@@ -371,14 +376,18 @@ Creates a new species of particles. All arguments are optional.
         else:
           w=self.pgroup.sw[js]*getpid(js=js,id=top.wpid-1,gather=0)
         if charge:w*=self.pgroup.sq[js]
-        if w3d.solvergeom is w3d.XYgeom:
+        if w3d.solvergeom is w3d.Zgeom:
+          deposgrid1d(1,np,z,w,nz,density,densityc,zmin,zmax)
+        elif w3d.solvergeom is w3d.XYgeom:
           deposgrid2d(1,np,x,y,w,nx,ny,density,densityc,xmin,xmax,ymin,ymax)
+        elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
+          deposgrid2d(1,np,x,z,w,nx,nz,density,densityc,xmin,xmax,zmin,zmax)
         else:
-          if w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
-            deposgrid2d(1,np,x,z,w,nx,nz,density,densityc,xmin,xmax,zmin,zmax)
-          else:
-            deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
-    if w3d.solvergeom is w3d.XYgeom:
+          deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
+    if w3d.solvergeom is w3d.Zgeom:
+       if l_dividebyvolume:
+        density*=nz/(zmax-zmin)
+    elif w3d.solvergeom is w3d.XYgeom:
        if l_dividebyvolume:
         density*=nx*ny/((xmax-xmin)*(ymax-ymin))
         if l4symtry:
