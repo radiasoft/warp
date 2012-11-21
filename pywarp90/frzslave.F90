@@ -11,8 +11,9 @@ type mpibuffertype
   integer(MPIISZ) :: pack_pos=0
   integer(MPIISZ) :: pack_size=0
   integer*8, allocatable :: buffer(:)
+  logical(ISZ) :: l_allocated=.false.
 end type mpibuffertype
-type(mpibuffertype), dimension(100), save :: mpibuffers
+type(mpibuffertype), dimension(1000), save :: mpibuffers
 !  integer*8, allocatable :: packbuffer
 
  logical, parameter :: l_mpiverbose=.false.
@@ -175,11 +176,13 @@ contains
  implicit none
  INTEGER(ISZ), INTENT(IN) :: isize,ibuf
    mpibuffers(ibuf)%pack_pos=0
-   IF(ALLOCATED(mpibuffers(ibuf)%buffer)) then
+!   IF(ALLOCATED(mpibuffers(ibuf)%buffer)) then
+   IF(mpibuffers(ibuf)%l_allocated) then
      if (mpibuffers(ibuf)%pack_size==isize) return
      DEALLOCATE(mpibuffers(ibuf)%buffer)
    end if
    ALLOCATE(mpibuffers(ibuf)%buffer(8*isize))
+   mpibuffers(ibuf)%l_allocated=.true.
    mpibuffers(ibuf)%pack_size=isize
  return
  END subroutine mpi_packbuffer_init

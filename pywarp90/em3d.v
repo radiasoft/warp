@@ -76,7 +76,7 @@ init_splitfield(sf:EM3D_SPLITYEEFIELDtype,
                 nnx:integer, smaxx:real, sdeltax:real, 
                 nny:integer, smaxy:real, sdeltay:real, 
                 nnz:integer, smaxz:real, sdeltaz:real, 
-                l_2dxz:logical, l_2drz:logical) subroutine
+                l_2dxz:logical, l_1dz:logical, l_2drz:logical) subroutine
 depose_jxjyjz_esirkepov_linear_serial(j:real,
                            n:integer,x(n):real,y(n):real,z(n):real,
                            ux(n):real,uy(n):real,uz(n):real,
@@ -141,6 +141,17 @@ depose_rho_n_2dxz(rho:real,
                            l_particles_weight:logical,
                            l4symtry:logical,l_2drz:logical)
                            subroutine
+depose_j_n_1dz(cj:real,
+                           n:integer,z(n):real,
+                           ux(n):real,uy(n):real,uz(n):real,
+                           gaminv(n):real,w:real,q:real,
+                           zmin:real,
+                           dt:real,dz:real,
+                           nz:integer,
+                           nzguard:integer,
+                           noz:integer,
+                           l_particles_weight:logical)
+                           subroutine
 depose_j_n_2dxz(cj:real,
                            n:integer,x(n):real,z(n):real,
                            ux(n):real,uy(n):real,uz(n):real,
@@ -173,6 +184,15 @@ getf3d_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
 averagef3d_rz(nx:integer,ny:integer,nz:integer,
               nxguard:integer,nyguard:integer,nzguard:integer,
               fxg:real,fyg:real,fzg:real,ntheta:integer) subroutine
+getf1dz_n(n:integer,zp(n):real,
+         ex(n):real,ey(n):real,ez(n):real,
+         zmin:real,
+         dz:real,
+         nz:integer,
+         nzguard:integer,
+         noz:integer,
+         exg:real,eyg:real,ezg:real)
+                           subroutine
 getf2dxz_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
          ex(n):real,ey(n):real,ez(n):real,
          xmin:real,zmin:real,
@@ -259,6 +279,26 @@ getb2dxz_n_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                nox:integer,noz:integer,
                bxg:real,byg:real,bzg:real,
                            l4symtry:logical,l_2drz:logical,
+                           l_lower_order_in_v:logical)
+                           subroutine
+gete1dz_n_energy_conserving(n:integer,zp(n):real,
+               ex(n):real,ey(n):real,ez(n):real,
+               zmin:real,
+               dz:real,
+               nz:integer,
+               nzguard:integer,
+               noz:integer,
+               exg:real,eyg:real,ezg:real,
+                           l_lower_order_in_v:logical)
+                           subroutine
+getb1dz_n_energy_conserving(n:integer,zp(n):real,
+               bx(n):real,by(n):real,bz(n):real,
+               zmin:real,
+               dz:real,
+               nz:integer,
+               nzguard:integer,
+               noz:integer,
+               bxg:real,byg:real,bzg:real,
                            l_lower_order_in_v:logical)
                            subroutine
 yee2node3d(f:EM3D_YEEFIELDtype) subroutine
@@ -401,6 +441,7 @@ lsz integer
 nnz integer
 smaxz real
 sdeltaz real
+l_1dz logical /.False./
 l_2dxz logical /.False./
 l_2drz logical /.False./
 exx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
@@ -523,6 +564,7 @@ dzi real
 clight real
 mu0    real
 theta_damp real /0./
+l_1dz logical /.False./
 l_2dxz logical /.False./
 l_2drz logical /.False./
 sigmae real /0./ # coefficient for extended solver

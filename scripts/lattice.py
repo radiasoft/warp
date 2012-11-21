@@ -3660,7 +3660,7 @@ such as contours, and cellarray.
     dy = getattr(top,'egrdd'+ax[1])[id]
 
   if component == 'phi':
-    unitstitle = 'Potential %s'%units
+    unitstitle = 'Potential%s'%units
   else:
     unitstitle = 'E%s%s'%(component,units)
 
@@ -3671,7 +3671,7 @@ such as contours, and cellarray.
     plg(ee,xm,color=color,**kw)
     if titles:
       if component == 'phi':
-        unitstitle = 'Potential %s'%units
+        unitstitle = 'Potential%s'%units
       else:
         unitstitle = 'E%s%s'%(component,units)
       ptitles('EGRD element #%d'%ie,'%s (m)'%ax[0].upper(),unitstitle)
@@ -3686,6 +3686,7 @@ such as contours, and cellarray.
 
     kw['xmesh'] = xm
     kw['ymesh'] = ym
+    kw['titles'] = titles
     kw.setdefault('titlet','EGRD element #%d %s'%(ie,unitstitle))
     kw.setdefault('titleb','%s (m)'%ax[0].upper())
     kw.setdefault('titlel','%s (m)'%ax[1].upper())
@@ -3795,6 +3796,7 @@ such as contours, and cellarray.
 
     kw['xmesh'] = xm
     kw['ymesh'] = ym
+    kw['titles'] = titles
     kw.setdefault('titlet','BGRD element #%d B%s%s'%(ib,component,units))
     kw.setdefault('titleb','%s (m)'%ax[0].upper())
     kw.setdefault('titlel','%s (m)'%ax[1].upper())
@@ -3903,6 +3905,7 @@ such as contours, and cellarray.
 
     kw['xmesh'] = xm
     kw['ymesh'] = ym
+    kw['titles'] = titles
     kw.setdefault('titlet','PGRD element #%d phi%s'%(ip,units))
     kw.setdefault('titleb','%s (m)'%ax[0].upper())
     kw.setdefault('titlel','%s (m)'%ax[1].upper())
