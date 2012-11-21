@@ -1450,6 +1450,11 @@ class, but it does provide a nice way of putting this into one spot.
   def __sub__(self,right):
     return ConductorExtent(self.mins,self.maxs)
 
+  def doesoverlap(self,mins,maxs):
+    return (mins[0] <= self.maxs[0] and maxs[0] >= self.mins[0] and
+            mins[1] <= self.maxs[1] and maxs[1] >= self.mins[1] and
+            mins[2] <= self.maxs[2] and maxs[2] >= self.mins[2])
+
 ##############################################################################
 
 class Delta:
