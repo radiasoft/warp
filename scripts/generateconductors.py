@@ -4525,12 +4525,9 @@ data and make sure it is consistent.
       r.append(rdata[-1])
       z.append(zdata[-1])
 
-      # --- zcent needs to be added in when chopping the data at zmin and zmax,
-      # --- but then subtracted out since the base plotting routines adds
-      # --- in zcent.
-      z = array(z) + self.zcent
+      # --- chop the data at zmin and zmax
+      # --- Note that zmin and zmax, as well as z, are relative to zcent
       z = minimum(self.zmax,maximum(self.zmin,array(z)))
-      z = list(z - self.zcent)
 
     return r,z
 
