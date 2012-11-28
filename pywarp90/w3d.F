@@ -8552,7 +8552,10 @@ c  Uses a second order spline with direct deposition (no particle blocks)
 
       if (np == 0) return
 
-      g = wght*q/(dx*dy*dz)
+      g = wght*q
+      if (nx > 0) g = g/dx
+      if (ny > 0) g = g/dy
+      if (nz > 0) g = g/dz
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
