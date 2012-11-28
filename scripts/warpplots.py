@@ -97,6 +97,7 @@ if with_matplotlib:
   pylab.rcParams['figure.subplot.bottom'] = 0.4257
   pylab.rcParams['figure.subplot.top'] = 0.8643
   pylab.rcParams['font.size'] = 16.0
+  maxplotwindows = 64
 
 else:
   try:
@@ -106,6 +107,11 @@ else:
       import gistdummy as gist
   except ImportError:
     import gistdummy as gist
+  try:
+    maxplotwindows = gist.GH_NDEVS
+  except AttributeError:
+    # --- For older versions of pygist
+    maxplotwindows = 8
 
 import controllers
 import re
@@ -123,8 +129,8 @@ always = top.always
 seldom = top.seldom
 never = top.never
 cgmlogfile = None
-numframeslist = ones(8,'l')
-_hcp_frame_number = zeros(8,'l')
+numframeslist = ones(maxplotwindows,'l')
+_hcp_frame_number = zeros(maxplotwindows,'l')
 
 if with_gist:
   gist.pldefault(marks=0) # --- Set plot defaults, no line marks
@@ -435,8 +441,8 @@ def makeplotsdirectly():
 
 # --- This allows writing out all plot data into a data file instead of
 # --- creating the plot with gist. Each window has its own filename and object.
-_plotdatafilenames = 8*[None]
-_plotdatafileobjects = 8*[None]
+_plotdatafilenames = maxplotwindows*[None]
+_plotdatafileobjects = maxplotwindows*[None]
 def setplotdatafilename(filename=None,winnum=None):
   if winnum is None: winnum = active_window()
   _plotdatafilenames[winnum] = filename

@@ -10,6 +10,8 @@ import sys, os	# To be sure expand_path has posixpath and we have sys.path
 #from arrayfns import *
 from types import *
 
+GH_NDEVS = 64
+
 def hcp_file(*x,**xx):
   pass
 def hcpon(*x,**xx):
