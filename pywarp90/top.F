@@ -2571,6 +2571,8 @@ c          vz=(z-zo)/(dt*pgroup%ndts(is))
 c=============================================================================
       subroutine getextrapolatedparticles(ipmin,np,pgroup,npid,
      &                                    dt,uxpo,uypo,uzpo,isid,time,zbeam)
+      use Constant,Only: clight
+      use Beam_acc,Only: lrelativ
       use ParticleGroupmodule
       use Z_Moments,Only: zmmntmin,zmmntmax,dzm
       use ExtPart
@@ -2594,6 +2596,7 @@ c --- X extrapolated using constant V and estimated A
       real(kind=8):: zzep,wzep
       real(kind=8):: oneondt,dtstar,delz,vx,vy,vz,ax,ay,az,dp,dm
       real(kind=8):: vznp1,zznp1,delznp1,dtstarnp1
+      real(kind=8):: gamma
       integer(ISZ):: iw,ip,nn
       integer(ISZ):: nextpid
 
@@ -2654,9 +2657,15 @@ c         --- This only works if multiple windows don't overlap.
             if (pgroup%pid(ip,epflagpid) == iw) cycle
           endif
 
-          vx = pgroup%uxp(ip)*pgroup%gaminv(ip)
-          vy = pgroup%uyp(ip)*pgroup%gaminv(ip)
-          vz = pgroup%uzp(ip)*pgroup%gaminv(ip)
+          if (lrelativ) then
+            vx = pgroup%uxp(ip)*pgroup%gaminv(ip)
+            vy = pgroup%uyp(ip)*pgroup%gaminv(ip)
+            vz = pgroup%uzp(ip)*pgroup%gaminv(ip)
+          else
+            vx = pgroup%uxp(ip)
+            vy = pgroup%uyp(ip)
+            vz = pgroup%uzp(ip)
+          endif
 
           if (dt == 0.) then
             ax = 0.
@@ -2733,9 +2742,21 @@ c           --- dtstarnp1 is way off.
           tep(nn,iw,isid) = time + dtstar
           xep(nn,iw,isid) = pgroup%xp(ip) + vx*dtstar + 0.5*ax*dtstar**2
           yep(nn,iw,isid) = pgroup%yp(ip) + vy*dtstar + 0.5*ay*dtstar**2
-          uxep(nn,iw,isid) = vx + ax*dtstar
-          uyep(nn,iw,isid) = vy + ay*dtstar
-          uzep(nn,iw,isid) = vz + az*dtstar
+          if (lrelativ) then
+            vx = vx + ax*dtstar
+            vy = vy + ay*dtstar
+            vz = vz + az*dtstar
+            gamma = 1./sqrt(1. - (vx**2 + vy**2 + vz**2)/clight**2)
+            uxep(nn,iw,isid) = vx*gamma
+            uyep(nn,iw,isid) = vy*gamma
+            uzep(nn,iw,isid) = vz*gamma
+            gaminvep(nn,iw,isid) = 1./gamma
+          else
+            uxep(nn,iw,isid) = vx + ax*dtstar
+            uyep(nn,iw,isid) = vy + ay*dtstar
+            uzep(nn,iw,isid) = vz + az*dtstar
+            gaminvep(nn,iw,isid) = 1.
+          endif
           if (npid > 0) pidep(nn,:,iw,isid) = pgroup%pid(ip,:)
 
         enddo
@@ -2820,12 +2841,13 @@ c       --- extrapolate to window if near it
           nzc(iw,isid) = nzc(iw,isid) + 1
           nn = nzc(iw,isid)
 
-          uxzc(nn,iw,isid) = vx
-          uyzc(nn,iw,isid) = vy
-          uzzc(nn,iw,isid) = vz
+          uxzc(nn,iw,isid) = pgroup%uxp(ip)
+          uyzc(nn,iw,isid) = pgroup%uyp(ip)
+          uzzc(nn,iw,isid) = pgroup%uzp(ip)
           tzc(nn,iw,isid) = time + dtstar
           xzc(nn,iw,isid) = pgroup%xp(ip) + vx*dtstar
           yzc(nn,iw,isid) = pgroup%yp(ip) + vy*dtstar
+          gaminvzc(nn,iw,isid) = pgroup%gaminv(ip)
           if (pgroup%npid > 0) pidzc(nn,:,iw,isid) = pgroup%pid(ip,:)
           if (zclfields) then
             exzc(nn,iw,isid) = pgroup%ex(ip)

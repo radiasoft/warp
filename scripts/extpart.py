@@ -85,6 +85,7 @@ self.topyname
 self.topuxname
 self.topuyname
 self.topuzname
+self.topgaminvname
 self.toppidname
 self.topexname
 self.topeyname
@@ -117,6 +118,7 @@ self.topgroupname
     topux = property(*_topproperties('topuxname'))
     topuy = property(*_topproperties('topuyname'))
     topuz = property(*_topproperties('topuzname'))
+    topgaminv = property(*_topproperties('topgaminvname'))
     toppid = property(*_topproperties('toppidname'))
     topex = property(*_topproperties('topexname'))
     topey = property(*_topproperties('topeyname'))
@@ -189,6 +191,7 @@ self.topgroupname
             self.ux = []
             self.uy = []
             self.uz = []
+            self.gaminv = []
             if self.lsavefields:
                 self.ex = []
                 self.ey = []
@@ -204,6 +207,7 @@ self.topgroupname
                 self.ux.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
                 self.uy.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
                 self.uz.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.gaminv.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
                 self.pid.append(AppendableArray(self.nmax,typecode='d',autobump=bump,
                                                 unitshape=(self.topnpidmax,)))
                 if self.lsavefields:
@@ -220,6 +224,7 @@ self.topgroupname
             self.ux = ns*[zeros(0,'d')]
             self.uy = ns*[zeros(0,'d')]
             self.uz = ns*[zeros(0,'d')]
+            self.gaminv = ns*[zeros(0,'d')]
             self.pid = ns*[zeros((0,self.topnpidmax),'d')]
             if self.lsavefields:
                 self.ex = ns*[zeros(0,'d')]
@@ -239,6 +244,7 @@ self.topgroupname
                 self.ux.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
                 self.uy.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
                 self.uz.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                self.gaminv.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
                 self.pid.append(AppendableArray(self.nmax,typecode='d',autobump=bump,
                                                 unitshape=(self.topnpidmax,)))
                 if self.lsavefields:
@@ -255,6 +261,7 @@ self.topgroupname
             self.ux = top.ns*[zeros(0,'d')]
             self.uy = top.ns*[zeros(0,'d')]
             self.uz = top.ns*[zeros(0,'d')]
+            self.gaminv = top.ns*[zeros(0,'d')]
             self.pid = top.ns*[zeros((0,self.topnpidmax),'d')]
             if self.lsavefields:
                 self.ex = ns*[zeros(0,'d')]
@@ -389,6 +396,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
             ux = self.topux[:nn,id,js]
             uy = self.topuy[:nn,id,js]
             uz = self.topuz[:nn,id,js]
+            gaminv = self.topgaminv[:nn,id,js]
             if self.topnpidmax > 0:
                 pid = self.toppid[:nn,:,id,js]
             else:
@@ -412,6 +420,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                 ux = gatherarray(ux,othersempty=1)
                 uy = gatherarray(uy,othersempty=1)
                 uz = gatherarray(uz,othersempty=1)
+                gaminv = gatherarray(gaminv,othersempty=1)
                 if self.topnpidmax > 0:
                     pid = gatherarray(pid,othersempty=1)
                 else:
@@ -434,6 +443,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                     self.ux[js].append(ux.copy())
                     self.uy[js].append(uy.copy())
                     self.uz[js].append(uz.copy())
+                    self.gaminv[js].append(gaminv.copy())
                     self.pid[js].append(pid.copy())
                     if self.lsavefields:
                         self.ex[js].append(ex.copy())
@@ -451,6 +461,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                 self.ux[js] = ux
                 self.uy[js] = uy
                 self.uz[js] = uz
+                self.gaminv[js] = gaminv
                 self.pid[js] = pid
                 if self.lsavefields:
                     self.ex[js] = ex
@@ -525,6 +536,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                 ff.write('ux'+suffix,self.ux[js][:])
                 ff.write('uy'+suffix,self.uy[js][:])
                 ff.write('uz'+suffix,self.uz[js][:])
+                ff.write('gaminv'+suffix,self.gaminv[js][:])
                 ff.write('pid'+suffix,self.pid[js][...])
                 if self.lsavefields:
                     ff.write('ex'+suffix,self.ex[js][:])
@@ -558,6 +570,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                 cPickle.dump(('ux'+suffix,self.ux[js][:]),ff,-1)
                 cPickle.dump(('uy'+suffix,self.uy[js][:]),ff,-1)
                 cPickle.dump(('uz'+suffix,self.uz[js][:]),ff,-1)
+                cPickle.dump(('gaminv'+suffix,self.gaminv[js][:]),ff,-1)
                 cPickle.dump(('pid'+suffix,self.pid[js][...]),ff,-1)
                 if self.lsavefields:
                     cPickle.dump(('ex'+suffix,self.ex[js][:]),ff,-1)
@@ -709,6 +722,11 @@ feature.
                 self.ux[js].append(datadict['ux%s'%suffix])
                 self.uy[js].append(datadict['uy%s'%suffix])
                 self.uz[js].append(datadict['uz%s'%suffix])
+                try:
+                    self.gaminv[js].append(datadict['gaminv%s'%suffix])
+                except KeyError:
+                    # --- Older dump files did not have gaminv saved
+                    self.gaminv[js].append(ones_like(datadict['t%s'%suffix]))
                 if self.lsavefields:
                     self.ex[js].append(datadict['ex%s'%suffix])
                     self.ey[js].append(datadict['ey%s'%suffix])
@@ -877,15 +895,31 @@ methods.
                                     gather=gather,bcast=bcast)
     def getvx(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
         """Get the x velocity of the saved particles. The same options as for :py:func:`selectparticles` apply."""
-        return self.selectparticles(self.ux,js,tc,wt,tp,
-                                    gather=gather,bcast=bcast)
+        ux = self.selectparticles(self.ux,js,tc,wt,tp,gather=gather,bcast=bcast)
+        if top.lrelativ:
+            gaminv = self.selectparticles(self.gaminv,js,tc,wt,tp,gather=gather,bcast=bcast)
+            return ux*gaminv
+        else:
+            return ux
     def getvy(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
         """Get the y velocity of the saved particles. The same options as for :py:func:`selectparticles` apply."""
-        return self.selectparticles(self.uy,js,tc,wt,tp,
-                                    gather=gather,bcast=bcast)
+        uy = self.selectparticles(self.uy,js,tc,wt,tp,gather=gather,bcast=bcast)
+        if top.lrelativ:
+            gaminv = self.selectparticles(self.gaminv,js,tc,wt,tp,gather=gather,bcast=bcast)
+            return uy*gaminv
+        else:
+            return uy
     def getvz(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
         """Get the z velocity of the saved particles. The same options as for :py:func:`selectparticles` apply."""
-        return self.selectparticles(self.uz,js,tc,wt,tp,
+        uz = self.selectparticles(self.uz,js,tc,wt,tp,gather=gather,bcast=bcast)
+        if top.lrelativ:
+            gaminv = self.selectparticles(self.gaminv,js,tc,wt,tp,gather=gather,bcast=bcast)
+            return uz*gaminv
+        else:
+            return uz
+    def getgaminv(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the gamma-inverse of the saved particles. The same options as for :py:func:`selectparticles` apply."""
+        return self.selectparticles(self.gaminv,js,tc,wt,tp,
                                     gather=gather,bcast=bcast)
     def getpid(self,js=0,tc=None,wt=None,tp=None,z=None,id=0,gather=1,bcast=1):
         """Get the pid of the saved particles.
@@ -922,6 +956,12 @@ The same options as for :py:func:`selectparticles` apply."""
         vx = self.getvx(js,tc,wt,tp,gather=gather,bcast=bcast)
         vy = self.getvy(js,tc,wt,tp,gather=gather,bcast=bcast)
         return (vx*cos(theta) + vy*sin(theta))
+    def getur(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
+        """Get the radial velocity of the saved particles. The same options as for :py:func:`selectparticles` apply."""
+        theta = self.gettheta(js,tc,wt,tp,gather=gather,bcast=bcast)
+        ux = self.getux(js,tc,wt,tp,gather=gather,bcast=bcast)
+        uy = self.getuy(js,tc,wt,tp,gather=gather,bcast=bcast)
+        return (ux*cos(theta) + uy*sin(theta))
     def getrp(self,js=0,tc=None,wt=None,tp=None,z=None,gather=1,bcast=1):
         """Get the r' of the saved particles. The same options as for :py:func:`selectparticles` apply."""
         theta = self.gettheta(js,tc,wt,tp,gather=gather,bcast=bcast)
@@ -1813,6 +1853,7 @@ routines (such as ppxxp).
         self.topuxname  = 'uxep'
         self.topuyname  = 'uyep'
         self.topuzname  = 'uzep'
+        self.topgaminvname  = 'gaminvep'
         self.toppidname  = 'pidep'
         self.topgroupname = 'ExtPart'
 
@@ -1923,6 +1964,7 @@ routines (such as ppxxp).
         self.topuxname  = 'uxzc'
         self.topuyname  = 'uyzc'
         self.topuzname  = 'uzzc'
+        self.topgaminvname  = 'gaminvzc'
         self.toppidname  = 'pidzc'
         self.topexname  = 'exzc'
         self.topeyname  = 'eyzc'

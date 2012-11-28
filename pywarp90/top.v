@@ -2754,6 +2754,7 @@ yep(nepmax,nepwin,ns)  _real        # Y coordinates at grid cell centers
 uxep(nepmax,nepwin,ns) _real        # X velocities at grid cell centers
 uyep(nepmax,nepwin,ns) _real        # Y velocities at grid cell centers
 uzep(nepmax,nepwin,ns) _real        # Z velocities at grid cell centers
+gaminvep(nepmax,nepwin,ns) _real    # gamma-inverse at grid cell centers
 pidep(nepmax,npidepmax,nepwin,ns) _real # Particle ID 
 
 *********** ZCrossingParticles dump:
@@ -2781,6 +2782,8 @@ uxzc(nzcmax,nzcwin,ns) _real        # X velocities of particles when crossing
 uyzc(nzcmax,nzcwin,ns) _real        # Y velocities of particles when crossing
                                     # the z locations
 uzzc(nzcmax,nzcwin,ns) _real        # Z velocities of particles when crossing
+                                    # the z locations
+gaminvzc(nzcmax,nzcwin,ns) _real    # gamma-inverse of particles when crossing
                                     # the z locations
 pidzc(nzcmax,npidzcmax,nzcwin,ns) _real # ID of particles when crossing
                                     # the z locations
