@@ -431,7 +431,7 @@ c     --- Call script version of this routine.
 c  Write to plot frame
    20 format(1x,a,1pe11.4,a)
    40 format(1x,a,1pe11.4,a,1pe11.4,a)
-   30 format(1x,a,i8,a)
+   30 format(1x,a,i12,a)
       write (textline,20) "Atomic number of ion = ",aion," "
       call remark(trim(textline))
       write (textline,20) "Charge state of ion  = ",zion," "
