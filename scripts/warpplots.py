@@ -1745,6 +1745,10 @@ Note that either the x and y coordinates or the grid must be passed in.
     densitygridmax = maxnd(abs(densitygrid))
     if densitygridmax != 0.:
       densitygrid[:,:] = densitygrid/densitygridmax
+  if ldensityscale and grid is not None:
+    gridmax = maxnd(abs(grid))
+    if gridmax != 0.:
+      grid[:,:] = grid/gridmax
 
   # --- Apply grid scale factor if supplied
   # --- Note that a new array is created so that a grid passed in is not
