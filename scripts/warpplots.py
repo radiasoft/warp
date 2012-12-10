@@ -999,7 +999,7 @@ Plots any history versus z
 
 # --- Simple interface to contour plotting. Only requires the 2-D array
 # --- to be plotted.
-def plotc(zz,xx=None,yy=None,ireg=None,color='fg',levs=None,contours=8,
+def plotc(zz,xx=None,yy=None,ireg=None,color='fg',levs=None,contours=7,
           filled=0,width=1.,linetype='solid',cmin=None,cmax=None,
           leveloverlap=None,local=1):
   """
@@ -1038,7 +1038,7 @@ Simple interface to contour plotting, same arguments as plc
     # --- python floats, instead of zero length numpy arrays.
     if cmin is None: cmin = minnd(zz)*1.
     if cmax is None: cmax = maxnd(zz)*1.
-    contours = 1.*iota(0,contours)*(cmax-cmin)/contours + cmin
+    contours = 1.*iota(1,contours)*(cmax-cmin)/(contours+1) + cmin
   # --- leveloverlap is handled in a keyword dict so that it won't cause
   # --- problems with older version of pygist that don't support
   # --- the argument.
@@ -1923,10 +1923,10 @@ Note that either the x and y coordinates or the grid must be passed in.
       (cellarray))):
     if (contours is not None and filled==1):
       try:
-        nc = contours.size + 1
+        nc = len(contours) + 1
         levs = contours
-      except AttributeError:
-        nc = contours
+      except TypeError:
+        nc = contours + 1
         levs = None
     elif (color == 'density'):
       if ncolor is None: ncolor = top.ncolor
