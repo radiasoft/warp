@@ -1652,14 +1652,14 @@ class EM3D(SubcycledPoissonSolver):
                       solvergeom=self.solvergeom,conductors=conductorobject,
                       mgmaxlevels=mgmaxlevels,decomp=decomp)
                         
-    self.fields.nconds = self.getconductorobject().interior.n
+    self.fields.nconds = conductorobject.interior.n
     self.fields.nxcond = self.fields.nx
     self.fields.nycond = self.fields.ny
     self.fields.nzcond = self.fields.nz
     self.fields.gchange()
     self.fields.incond=False
     if self.fields.nconds>0:
-      set_incond(self.fields,self.fields.nconds,int(self.getconductorobject().interior.indx))
+      set_incond(self.fields,self.fields.nconds,int(conductorobject.interior.indx[:,:self.fields.nconds]))
     if self.block.xlbnd==openbc:self.fields.incond[:3,:,:]=False
     if self.block.xrbnd==openbc:self.fields.incond[-3:,:,:]=False
     if self.block.ylbnd==openbc:self.fields.incond[:,:3,:]=False
