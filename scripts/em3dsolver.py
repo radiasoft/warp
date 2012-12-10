@@ -1791,42 +1791,50 @@ class EM3D(SubcycledPoissonSolver):
       self.xgridcont+=self.vxgrid*top.dt
       while (abs(self.xgrid-self.xgridcont)>=0.5*self.dx):
         self.shift_cells_x(int(sign(self.vxgrid)))
-        dx = self.dx*sign(self.vxgrid)
-        w3d.xmmin+=dx
-        w3d.xmmax+=dx
-        w3d.xmminp+=dx
-        w3d.xmmaxp+=dx
-        w3d.xmminlocal+=dx
-        w3d.xmmaxlocal+=dx
-        w3d.xmminglobal+=dx
-        w3d.xmmaxglobal+=dx
-        top.xpmin+=dx
-        top.xpmax+=dx
-        top.xpminlocal+=dx
-        top.xpmaxlocal+=dx
+        n = sign(self.vxgrid)
+        w3d.xmmin = self.incrementposition(w3d.xmmin,self.dx,n)
+        w3d.xmmax = self.incrementposition(w3d.xmmax,self.dx,n)
+        w3d.xmminp = self.incrementposition(w3d.xmminp,self.dx,n)
+        w3d.xmmaxp = self.incrementposition(w3d.xmmaxp,self.dx,n)
+        w3d.xmminlocal = self.incrementposition(w3d.xmminlocal,self.dx,n)
+        w3d.xmmaxlocal = self.incrementposition(w3d.xmmaxlocal,self.dx,n)
+        w3d.xmminglobal = self.incrementposition(w3d.xmminglobal,self.dx,n)
+        w3d.xmmaxglobal = self.incrementposition(w3d.xmmaxglobal,self.dx,n)
+        top.xpmin = self.incrementposition(top.xpmin,self.dx,n)
+        top.xpmax = self.incrementposition(top.xpmax,self.dx,n)
+        top.xpminlocal = self.incrementposition(top.xpminlocal,self.dx,n)
+        top.xpmaxlocal = self.incrementposition(top.xpmaxlocal,self.dx,n)
       # --- move window in z
 #      while (abs(top.zgrid-self.zgrid)>=0.5*self.dz):
       while ((top.zgrid-self.zgrid)>=0.5*self.dz):
         self.shift_cells_z(1)
 
+  def incrementposition(self,z,dz,n):
+        # --- z is incremented using an integer to avoid round off problems.
+        # --- In the old way, repeatedly doing z += dz, z will drift
+        # --- because of roundoff so that z != nz*dz. Incrementing using
+        # --- integers fixes this problem.
+        nz = int(z/dz)
+        wz = z - nz*dz
+        return (nz + n)*dz + wz
+
   def shift_cells_x(self,n):
         shift_em3dblock_ncells_x(self.block,n)
-        dx = self.dx*n
-        self.xgrid+=dx
-        self.xmmin+=dx
-        self.xmmax+=dx
-        self.xmminlocal+=dx
-        self.xmmaxlocal+=dx
-        self.fields.xmin+=dx
-        self.fields.xmax+=dx
-        self.block.xmin+=dx
-        self.block.xmax+=dx
+        self.xgrid = self.incrementposition(self.xgrid,self.dx,n)
+        self.xmmin = self.incrementposition(self.xmmin,self.dx,n)
+        self.xmmax = self.incrementposition(self.xmmax,self.dx,n)
+        self.xmminlocal = self.incrementposition(self.xmminlocal,self.dx,n)
+        self.xmmaxlocal = self.incrementposition(self.xmmaxlocal,self.dx,n)
+        self.fields.xmin = self.incrementposition(self.fields.xmin,self.dx,n)
+        self.fields.xmax = self.incrementposition(self.fields.xmax,self.dx,n)
+        self.block.xmin = self.incrementposition(self.block.xmin,self.dx,n)
+        self.block.xmax = self.incrementposition(self.block.xmax,self.dx,n)
         self.nxshifts+=n
 
   def shift_cells_z(self,n):
         shift_em3dblock_ncells_z(self.block,n)
-        self.zgrid+=self.dz*n
-        self.nzshifts+=1
+        self.zgrid = self.incrementposition(self.zgrid,self.dz,n)
+        self.nzshifts+=n
 
   def solve2ndhalf(self):
     if self.solveroff:return
