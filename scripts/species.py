@@ -48,6 +48,8 @@ class Molecule(Particle):
 
 periodic_table={}
 periodic_table['Hydrogen']={'A': 1.0079400000000001, 'Symbol': 'H', 'Z': 1, 'Group': 1, 'Period': 1}
+periodic_table['Deuterium']={'A': 2.0141017800000001, 'Symbol': 'D', 'Z': 1, 'Group': 1, 'Period': 1}
+periodic_table['Tritium']={'A': 3.0160492000000001, 'Symbol': 'T', 'Z': 1, 'Group': 1, 'Period': 1}
 periodic_table['Helium']={'A': 4.0026020000000004, 'Symbol': 'He', 'Z': 2, 'Group': 18, 'Period': 1}
 periodic_table['Lithium']={'A': 6.9409999999999998, 'Symbol': 'Li', 'Z': 3, 'Group': 1, 'Period': 2}
 periodic_table['Lithium6']={'A': 6.01512279516, 'Symbol': 'Li6', 'Z': 3, 'Group': 1, 'Period': 2}
@@ -173,6 +175,7 @@ Proton = Particle(mass=1.6726231e-27, charge=echarge, Symbol='P',name='Proton')
 Neutron = Particle(mass=1.6749286e-27, charge=0, Symbol='N',name='Neutron')
 
 Dihydrogen = Molecule(composition=[Hydrogen,Hydrogen], Symbol='H2',name='Dihydrogen')
+Dideuterium= Molecule(composition=[Deuterium,Deuterium], Symbol='D2',name='Dideuterium')
 Dinitrogen = Molecule(composition=[Nitrogen,Nitrogen], Symbol='N2',name='Dinitrogen')
 Dioxygen   = Molecule(composition=[Oxygen,Oxygen], Symbol='O2',name='Dioxygen')
 Carbon_Monoxide = Molecule(composition=[Carbon,Oxygen], Symbol='CO',name='Carbon_Monoxide')
