@@ -5,6 +5,7 @@ from __future__ import generators # needed for yield statement for P2.2
 from warp import *
 import struct # needed for makefortranordered
 import appendablearray
+import re
 
 warputils_version = "$Id: warputils.py,v 1.42 2011/11/04 21:39:11 grote Exp $"
 
@@ -396,25 +397,37 @@ Both produce an array of shape (2,4) that looks like::
   else:
     return data
 
-def getdatafromtextfile(filename,nskip=0,dims=[],dtype='d',fortranordering=1,
-                        converter=float,mode='r',get_header=false,l_checkdims=false):
+def getdatafromtextfile(filename,nskip=0,dims=None,dtype='d',fortranordering=True,
+                        converter=float,mode='r',get_header=False,l_checkdims=False,
+                        separator=None):
   """
 Reads data in from a text file. The data is assumed to be laid out on a
 logically Cartesian mesh.
  - filename: must be supplied
- - nskip=0: numbers of lines at the beginning of the file to skip
-            e.g. lines with file info and comments
- - dims=[]: must be supplied - the size of each dimension
-            The last dimension can be None - it will be calculated
-            automatically based on the amount of data in the file.
- - fortranordering=1: when true, the data will be in fortran ordering, where
-                      the index that varies that fastest in the file will be
-                      the first index. Otherwise use C ordering.
+
  - converter=float: Function which converts the strings into numbers. This should
                     be the type of result desired. It should only be float or int,
                     unless you know what you are doing.
- - if l_checkdims: when true, check that the dimensions of the array in the ascii 
-                   file match the ones provided in dims.
+ - dims=[]: The size of each dimension.
+            The last dimension can be None - it will be determined
+            automatically based on the amount of data in the file.
+            If not supplied, a 2-D array will be returned, with the first dimension
+            determined by the number of values in the first line of data.
+ - fortranordering=True: when true, the data will be in fortran ordering, where
+                         the index that varies that fastest in the file will be
+                         the first index. Otherwise C ordering will be used.
+ - get_header=False: When true, the header is returned as a list of strings along with
+                     the data, in the tuple (data,header).
+ - if l_checkdims=False: when true, check that the dimensions of the array in the ascii 
+                         file match the ones provided in dims.
+ - mode='r': mode used to open the file.
+ - nskip=0: number of lines at the beginning of the file to skip
+            e.g. lines with file info and comments.
+            If get_header is true, the skipped lines will be returned as the header.
+ - separator=' ': separating character between data values. If not specified,
+                  either a space or a comma will be used depending on what is in
+                  the file.
+
 Here's an example data file called 'testdata'::
 
   this line is skipped
@@ -447,8 +460,44 @@ automatically.::
 
   # --- Skip the number of lines at the top of the file as specified
   header = []
+  # --- This attempts to scan through the top lines of a file and skip the
+  # --- lines not containing numbers.
+  # --- This is probably too complicated to do, since the number of possible
+  # --- formats for numbers of very large.
+  #if nskip is None:
+  #  notnumbers = re.compile('[^0-9edED\.\-+ ,\n%s]'%seperator)
+  #  while 1:
+  #    lastpos = ff.tell()
+  #    line = ff.readline()
+  #    if notnumbers.search(line):
+  #      header.append(line)
+  #    else:
+  #      ff.seek(lastpos)
+  #      break
+  #else:
   for i in range(nskip):
     header.append(ff.readline())
+
+  # --- Read the first line to interrogate it if needed.
+  if dims is None or separator is None:
+    lastpos = ff.tell()
+    firstline = ff.readline()
+    ff.seek(lastpos)
+
+  # --- Check which separator to use. Look for commas, and if none found,
+  # --- use a space.
+  if separator is None:
+    if re.search(',',firstline):
+      separator = ','
+    else:
+      separator = ' '
+
+  # --- If dims is not supplied, set it so that a 2-D array is returned.
+  # --- The first dimension is set to the number of values on the first line
+  # --- of the file.
+  if dims is None:
+    nvalues = len(firstline.split(separator))
+    dims = [nvalues,None]
 
   # --- If last dimension is given, calculate the total amount of data to
   # --- be read in to give an exit condition for the loop below.
@@ -466,7 +515,7 @@ automatically.::
   lines=ff.readlines()
   if l_checkdims:assert len(lines)==dims[1],"ERROR reading data from "+filename+": dimensions 2nd axis are incompatible. %g passed as argument, %g found in file."%(dims[1],len(lines))
   for line in lines:
-    words = line.split()
+    words = line.split(separator)
     if l_checkdims:assert len(words)==dims[0],"ERROR reading data from "+filename+": dimensions 1st axis are incompatible. %g passed as argument, %g found in file."%(dims[0],len(words))
     dataline = map(converter,words)
     data.append(dataline)
@@ -498,6 +547,7 @@ automatically.::
     return data,header
   else:
     return data
+
 class RandomStream(object):
   """Used to create independent streams of random numbers. ::
 
