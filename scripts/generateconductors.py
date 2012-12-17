@@ -4793,8 +4793,8 @@ Plots the r versus z
                            self.rofzdata,self.zdata,self.raddata,
                            self.rcdata,self.zcdata,narcpoints)
     if rmax is None: rmax = self.rmax
-    r = [rmax] + r + [rmax]
-    z = [self.zmin-self.zcent] + z + [self.zmax-self.zcent]
+    r = [rmax] + list(r) + [rmax]
+    z = [self.zmin-self.zcent] + list(z) + [self.zmax-self.zcent]
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
   def createdxobject(self,rmax=None,kwdict={},**kw):
@@ -4960,8 +4960,8 @@ Plots the r versus z
                            self.rofzdata,self.zdata,self.raddata,
                            self.rcdata,self.zcdata,narcpoints)
     if rmin is None: rmin = self.rmin
-    r = [rmin] + r + [rmin]
-    z = [self.zmin-self.zcent] + z + [self.zmax-self.zcent]
+    r = [rmin] + list(r) + [rmin]
+    z = [self.zmin-self.zcent] + list(z) + [self.zmax-self.zcent]
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
 
   def createdxobject(self,kwdict={},**kw):
@@ -5181,7 +5181,7 @@ Plots the r versus z
                              nzpoints,
                              self.rmaxofzdata,self.zmaxdata,self.radmaxdata,
                              self.rcmaxdata,self.zcmaxdata,narcpoints)
-    r,z = ri+ro[::-1],zi+zo[::-1]
+    r,z = list(ri)+list(ro[::-1]),list(zi)+list(zo[::-1])
     r = r + [r[0]]
     z = z + [z[0]]
     if len(r) > 0:
