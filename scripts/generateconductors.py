@@ -106,7 +106,6 @@ SRFRVLA_rnd_rectangle(name,c,l,h,r)
 
 from warp import *
 import operator
-from string import *
 from appendablearray import *
 try:
   import Opyndx
@@ -5182,9 +5181,7 @@ Plots the r versus z
                              nzpoints,
                              self.rmaxofzdata,self.zmaxdata,self.radmaxdata,
                              self.rcmaxdata,self.zcmaxdata,narcpoints)
-    ro.reverse()
-    zo.reverse()
-    r,z = ri+ro,zi+zo
+    r,z = ri+ro[::-1],zi+zo[::-1]
     r = r + [r[0]]
     z = z + [z[0]]
     if len(r) > 0:
@@ -6462,7 +6459,7 @@ Class for reading SRFRVLA data from file.
     conds=[]
     condnames = []
     while(cont==1):
-      line=split(f.readline())
+      line=f.readline().split()
       if(line[0]=='Conductor'):
         ic += 1
         condnames += [line[1]]
@@ -6472,7 +6469,7 @@ Class for reading SRFRVLA data from file.
         data = []
         ocont = 1
         while(ocont==1):
-          line=split(f.readline())
+          line=f.readline().split()
           if(line[0]=='End'):
             ocont=0
           elif(line[0]=='Part'):
