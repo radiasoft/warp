@@ -489,8 +489,6 @@ automatically.::
   if separator is None:
     if re.search(',',firstline):
       separator = ','
-    else:
-      separator = ' '
 
   # --- If dims is not supplied, set it so that a 2-D array is returned.
   # --- The first dimension is set to the number of values on the first line
