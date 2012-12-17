@@ -4,7 +4,6 @@ Secondaries: class for generating secondaries
 from warp import *
 from appendablearray import *
 from pos import *
-from species import *
 try:
   from txphysics import txigenelec, txstopping, txrand
   l_txphysics = 1
