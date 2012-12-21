@@ -28,8 +28,6 @@ particle data. It can optionally accumulate the data over multiple time steps.
 The creator options are:
  - iz: grid location where the extrapolated data is saved.
  - zz: lab location where data is saved.
- - nmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
-         otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
  - lsavefields=False: when true, the fields are also saved
  - name=None: descriptive name for location. It must be unique for each
@@ -75,8 +73,6 @@ self.topnwinname
 self.topizwinname
 self.topzzwinname
 self.topwzwinname
-self.topnmaxname
-self.topnmaxfieldsname
 self.topnpidmaxname
 self.topnname
 self.toptname
@@ -108,8 +104,6 @@ self.topgroupname
     topizwin = property(*_topproperties('topizwinname'))
     topzzwin = property(*_topproperties('topzzwinname'))
     topwzwin = property(*_topproperties('topwzwinname'))
-    topnmax = property(*_topproperties('topnmaxname'))
-    topnmaxfields = property(*_topproperties('topnmaxfieldsname'))
     topnpidmax = property(*_topproperties('topnpidmaxname'))
     topn = property(*_topproperties('topnname'))
     topt = property(*_topproperties('toptname'))
@@ -127,8 +121,7 @@ self.topgroupname
     topby = property(*_topproperties('topbyname'))
     topbz = property(*_topproperties('topbzname'))
 
-    def __init__(self,iz=-1,zz=0.,nmax=None,laccumulate=0,
-                 lsavefields=False,
+    def __init__(self,iz=-1,zz=0.,laccumulate=0,lsavefields=False,
                  name=None,lautodump=0,dumptofile=0):
         # --- Save input values, getting default values when needed
         assert type(iz) is IntType,"iz must be an integer"
@@ -146,17 +139,6 @@ self.topgroupname
         self.name = name
         self.dumptofile = dumptofile
         self.dt = top.dt
-
-        if nmax is None:
-            self.nmax = 10000
-            if top.allocated("pnumz") and 0 <= self.getiz() <= top.nzmmnt:
-                if top.pnumz[self.getiz(),-1] > 0:
-                    if top.nszmmnt > 1:
-                        self.nmax = nint(max(top.pnumz[self.getiz(),:-1])*3)
-                    else:
-                        self.nmax = nint(top.pnumz[self.getiz(),-1]*3)
-        else:
-            self.nmax = nmax
 
         # --- Add this new window to the group in top
         self.enabled = 0
@@ -184,7 +166,7 @@ self.topgroupname
     def setuparrays(self,ns,bump=None):
         self.restored = False
         if self.laccumulate and not self.dumptofile:
-            if bump is None: bump = self.nmax
+            if bump is None: bump = 100
             self.t = []
             self.x = []
             self.y = []
@@ -201,22 +183,22 @@ self.topgroupname
                 self.bz = []
             self.pid = []
             for js in range(ns):
-                self.t.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.x.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.y.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.ux.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.uy.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.uz.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.gaminv.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.pid.append(AppendableArray(self.nmax,typecode='d',autobump=bump,
+                self.t.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.x.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.y.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.ux.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.uy.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.uz.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.gaminv.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.pid.append(AppendableArray(bump,typecode='d',autobump=bump,
                                                 unitshape=(self.topnpidmax,)))
                 if self.lsavefields:
-                    self.ex.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                    self.ey.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                    self.ez.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                    self.bx.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                    self.by.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                    self.bz.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.ex.append(AppendableArray(bump,typecode='d',autobump=bump))
+                    self.ey.append(AppendableArray(bump,typecode='d',autobump=bump))
+                    self.ez.append(AppendableArray(bump,typecode='d',autobump=bump))
+                    self.bx.append(AppendableArray(bump,typecode='d',autobump=bump))
+                    self.by.append(AppendableArray(bump,typecode='d',autobump=bump))
+                    self.bz.append(AppendableArray(bump,typecode='d',autobump=bump))
         else:
             self.t = ns*[zeros(0,'d')]
             self.x = ns*[zeros(0,'d')]
@@ -237,23 +219,23 @@ self.topgroupname
     def addspecies(self):
         if self.laccumulate and not self.dumptofile:
             for js in range(self.getns(),top.ns):
-                bump = self.nmax
-                self.t.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.x.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.y.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.ux.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.uy.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.uz.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.gaminv.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                self.pid.append(AppendableArray(self.nmax,typecode='d',autobump=bump,
+                bump = 100
+                self.t.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.x.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.y.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.ux.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.uy.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.uz.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.gaminv.append(AppendableArray(bump,typecode='d',autobump=bump))
+                self.pid.append(AppendableArray(bump,typecode='d',autobump=bump,
                                                 unitshape=(self.topnpidmax,)))
                 if self.lsavefields:
-                    self.ex.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                    self.ey.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                    self.ez.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                    self.bx.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                    self.by.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
-                    self.bz.append(AppendableArray(self.nmax,typecode='d',autobump=bump))
+                    self.ex.append(AppendableArray(bump,typecode='d',autobump=bump))
+                    self.ey.append(AppendableArray(bump,typecode='d',autobump=bump))
+                    self.ez.append(AppendableArray(bump,typecode='d',autobump=bump))
+                    self.bx.append(AppendableArray(bump,typecode='d',autobump=bump))
+                    self.by.append(AppendableArray(bump,typecode='d',autobump=bump))
+                    self.bz.append(AppendableArray(bump,typecode='d',autobump=bump))
         else:
             self.t = top.ns*[zeros(0,'d')]
             self.x = top.ns*[zeros(0,'d')]
@@ -287,10 +269,6 @@ self.topgroupname
 
     def setupid(self):
         self.topnwin = self.topnwin + 1
-        if self.topnmax < self.nmax:
-            self.topnmax = self.nmax
-            if self.lsavefields:
-                self.topnmaxfields = self.nmax
         err = gchange(self.topgroupname)
         self.topizwin[-1] = self.iz
         self.topzzwin[-1] = self.zz
@@ -360,16 +338,19 @@ accumulated. If the data is being accumulated, any existing data is preserved.
         # --- If self.topnwin is 0 then something is really wrong - this routine
         # --- should never be called if self.topnwin is zero.
         if self.topnwin == 0: return
+
         # --- If the data is currently restored from files, which assumes that
         # --- dumptofiles is true, then reset the arrays so that they are
         # --- ready to accumulate more data and are prepared for writing
         # --- that data out to the files.
         if self.restored:
           self.setuparrays(self.getns())
+
         # --- Check if the number of species has changed. This is done to ensure
         # --- crashes don't happen.
         if top.ns > self.getns():
             self.addspecies()
+
         # --- If this windows is outside of the grid, then just return.
         if (self.iz == -1 and
             (self.zz+self.wz < w3d.zmmin+top.zbeam or
@@ -378,6 +359,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
             return
         id = self.getid()
         self.updatenpidmax()
+
         # --- Loop over species, collecting only ones where some particles
         # --- were saved.
         for js in range(top.ns):
@@ -390,24 +372,41 @@ accumulated. If the data is being accumulated, any existing data is preserved.
 
             # --- First, get the local data.
             nn = self.topn[id,js]
-            t = self.topt[:nn,id,js]
-            x = self.topx[:nn,id,js]
-            y = self.topy[:nn,id,js]
-            ux = self.topux[:nn,id,js]
-            uy = self.topuy[:nn,id,js]
-            uz = self.topuz[:nn,id,js]
-            gaminv = self.topgaminv[:nn,id,js]
-            if self.topnpidmax > 0:
-                pid = self.toppid[:nn,:,id,js]
+            if nn > 0:
+                t = self.topt[:nn,id,js]
+                x = self.topx[:nn,id,js]
+                y = self.topy[:nn,id,js]
+                ux = self.topux[:nn,id,js]
+                uy = self.topuy[:nn,id,js]
+                uz = self.topuz[:nn,id,js]
+                gaminv = self.topgaminv[:nn,id,js]
+                if self.topnpidmax > 0:
+                    pid = self.toppid[:nn,:,id,js]
+                else:
+                    pid = zeros((nn,0),'d')
+                if self.lsavefields:
+                    ex = self.topex[:nn,id,js]
+                    ey = self.topey[:nn,id,js]
+                    ez = self.topez[:nn,id,js]
+                    bx = self.topbx[:nn,id,js]
+                    by = self.topby[:nn,id,js]
+                    bz = self.topbz[:nn,id,js]
             else:
-                pid = zeros((nn,0),'d')
-            if self.lsavefields:
-                ex = self.topex[:nn,id,js]
-                ey = self.topey[:nn,id,js]
-                ez = self.topez[:nn,id,js]
-                bx = self.topbx[:nn,id,js]
-                by = self.topby[:nn,id,js]
-                bz = self.topbz[:nn,id,js]
+                t = zeros(0,'d')
+                x = zeros(0,'d')
+                y = zeros(0,'d')
+                ux = zeros(0,'d')
+                uy = zeros(0,'d')
+                uz = zeros(0,'d')
+                gaminv = zeros(0,'d')
+                pid = zeros((0,self.topnpidmax),'d')
+                if self.lsavefields:
+                    ex = zeros(0,'d')
+                    ey = zeros(0,'d')
+                    ez = zeros(0,'d')
+                    bx = zeros(0,'d')
+                    by = zeros(0,'d')
+                    bz = zeros(0,'d')
 
             if not self.dumptofile:
                 # --- Gather the data onto PE0.
@@ -472,6 +471,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                     self.bz[js] = bz
 
         if self.dumptofile: self.dodumptofile()
+
         # --- Force n to zero to ensure that particles are not saved twice.
         self.topn[id,:] = 0
 
@@ -499,7 +499,6 @@ accumulated. If the data is being accumulated, any existing data is preserved.
                  return
             ff.write(self.name+'@pickle',cPickle.dumps(self,dumpsmode))
             ff.close()
-        self.nmax = 1
         self.clear()
         # --- Disable is done last so that the object written out to the
         # --- file is still enabled. That flag is used in restoredata to
@@ -1783,8 +1782,6 @@ The creator options are:
  - iz: grid location where the extrapolated data is saved.
  - zz: lab location where data is saved.
  - wz: width of lab window
- - nepmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
-           otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
  - lepsaveonce=0: when true, particles are saved only once, when they are
                   closest to the z location. Otherwise, extrapolated
@@ -1844,7 +1841,6 @@ routines (such as ppxxp).
         self.topizwinname  = 'izepwin'
         self.topzzwinname  = 'zzepwin'
         self.topwzwinname  = 'wzepwin'
-        self.topnmaxname  = 'nepmax'
         self.topnpidmaxname  = 'npidepmax'
         self.topnname  = 'nep'
         self.toptname  = 'tep'
@@ -1857,7 +1853,7 @@ routines (such as ppxxp).
         self.toppidname  = 'pidep'
         self.topgroupname = 'ExtPart'
 
-        ParticleAccumulator.__init__(self,iz=iz,zz=zz,nmax=nepmax,
+        ParticleAccumulator.__init__(self,iz=iz,zz=zz,
                                      laccumulate=laccumulate,
                                      name=name,
                                      lautodump=lautodump,dumptofile=dumptofile)
@@ -1897,8 +1893,6 @@ The creator options are:
 
  - iz: grid location where the extrapolated data is saved.
  - zz: lab location where data is saved.
- - nmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
-         otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
  - lsavefields=False: when true, the fields are also saved
  - name=None: descriptive name for location. It must be unique for each
@@ -1954,8 +1948,6 @@ routines (such as ppxxp).
         self.topizwinname  = 'izzcwin'
         self.topzzwinname  = 'zzzcwin'
         self.topwzwinname  = 'wzzcwin'
-        self.topnmaxname  = 'nzcmax'
-        self.topnmaxfieldsname  = 'nzcmaxfields'
         self.topnpidmaxname  = 'npidzcmax'
         self.topnname  = 'nzc'
         self.toptname  = 'tzc'
@@ -1977,7 +1969,7 @@ routines (such as ppxxp).
         if lsavefields:
             top.zclfields = true
 
-        ParticleAccumulator.__init__(self,iz=iz,zz=zz,nmax=nmax,
+        ParticleAccumulator.__init__(self,iz=iz,zz=zz,
                                      laccumulate=laccumulate,
                                      lsavefields=lsavefields,
                                      name=name,

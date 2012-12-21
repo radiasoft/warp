@@ -2786,7 +2786,7 @@ c routine only grabs particles that actually are crossing the z location.
 
       real(kind=8):: zzzc
       real(kind=8):: dtstar,vx,vy,vz,zold,znew
-      integer(ISZ):: iw,ip,nn
+      integer(ISZ):: iw,ip,izc,i1,i2,nn
       integer(ISZ):: nextpid
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
@@ -2816,16 +2816,32 @@ c       --- Skip windows that are outside of the grid frame.
         if (zzzc+dzm <= zmmntmin+zbeam .or.
      &      zzzc-dzm >= zmmntmax+zbeam) cycle
 
-c       --- Make sure that there is enough room - assuming that all particles
-c       --- could be saved.
-        if (nzc(iw,isid)+np > nzcmax) then
-          nzcmax = nzc(iw,isid)+np
+c       --- extrapolate to window if near it
+c       --- Count the number of particles that will be added.
+c       --- The start and end are saved for a little optimization.
+        i1 = ipmin+np-1
+        i2 = ipmin
+        nn = 0
+        do ip=ipmin,ipmin+np-1
+          vz = pgroup%uzp(ip)*pgroup%gaminv(ip)
+          zold = pgroup%zp(ip)
+          znew = pgroup%zp(ip) + dt*vz
+          if ((zold <= zzzc .and. zzzc <  znew) .or.
+     &        (znew <  zzzc .and. zzzc <= zold)) then
+            i1 = min(i1,ip)
+            i2 = ip
+            nn = nn + 1
+          endif
+        enddo
+
+c       --- Make sure that there is enough room for the saved particles
+        if (nzc(iw,isid)+nn > nzcmax) then
+          nzcmax = nzc(iw,isid)+nn
           if (zclfields) nzcmaxfields = nzcmax
           call gchange("ZCrossingParticles",0)
         endif
 
-c       --- extrapolate to window if near it
-        do ip=ipmin,ipmin+np-1
+        do ip=i1,i2
           vz = pgroup%uzp(ip)*pgroup%gaminv(ip)
           zold = pgroup%zp(ip)
           znew = pgroup%zp(ip) + dt*vz
@@ -2839,23 +2855,23 @@ c       --- extrapolate to window if near it
           vy = pgroup%uyp(ip)*pgroup%gaminv(ip)
 
           nzc(iw,isid) = nzc(iw,isid) + 1
-          nn = nzc(iw,isid)
+          izc = nzc(iw,isid)
 
-          uxzc(nn,iw,isid) = pgroup%uxp(ip)
-          uyzc(nn,iw,isid) = pgroup%uyp(ip)
-          uzzc(nn,iw,isid) = pgroup%uzp(ip)
-          tzc(nn,iw,isid) = time + dtstar
-          xzc(nn,iw,isid) = pgroup%xp(ip) + vx*dtstar
-          yzc(nn,iw,isid) = pgroup%yp(ip) + vy*dtstar
-          gaminvzc(nn,iw,isid) = pgroup%gaminv(ip)
-          if (pgroup%npid > 0) pidzc(nn,:,iw,isid) = pgroup%pid(ip,:)
+          uxzc(izc,iw,isid) = pgroup%uxp(ip)
+          uyzc(izc,iw,isid) = pgroup%uyp(ip)
+          uzzc(izc,iw,isid) = pgroup%uzp(ip)
+          tzc(izc,iw,isid) = time + dtstar
+          xzc(izc,iw,isid) = pgroup%xp(ip) + vx*dtstar
+          yzc(izc,iw,isid) = pgroup%yp(ip) + vy*dtstar
+          gaminvzc(izc,iw,isid) = pgroup%gaminv(ip)
+          if (pgroup%npid > 0) pidzc(izc,:,iw,isid) = pgroup%pid(ip,:)
           if (zclfields) then
-            exzc(nn,iw,isid) = pgroup%ex(ip)
-            eyzc(nn,iw,isid) = pgroup%ey(ip)
-            ezzc(nn,iw,isid) = pgroup%ez(ip)
-            bxzc(nn,iw,isid) = pgroup%bx(ip)
-            byzc(nn,iw,isid) = pgroup%by(ip)
-            bzzc(nn,iw,isid) = pgroup%bz(ip)
+            exzc(izc,iw,isid) = pgroup%ex(ip)
+            eyzc(izc,iw,isid) = pgroup%ey(ip)
+            ezzc(izc,iw,isid) = pgroup%ez(ip)
+            bxzc(izc,iw,isid) = pgroup%bx(ip)
+            byzc(izc,iw,isid) = pgroup%by(ip)
+            bzzc(izc,iw,isid) = pgroup%bz(ip)
           endif
 
         enddo
