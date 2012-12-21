@@ -3838,72 +3838,116 @@ Plots y versus x with color based in z
 ##########################################################################
 
 ##########################################################################
-def penv(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
+def penv(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1,
+         ascale=None,bscale=None,zscale=None):
   """
-Plots a and b envelope
-  - color='fg' line color
-  - marks=0 turns on identifying marks on the curve
-  - marker=None marker type (see gist manual for the list)
-  - msize=1.0 marker size
-  - lframe=0 specifies whether or not to set plot limits
-  - titles=1 specifies whether or not to plot titles
+Plots a and b envelope from envelope solver
+  - color='fg': line color
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1.0: marker size
+  - lframe=0: specifies whether or not to set plot limits
+  - titles=1: specifies whether or not to plot titles
+  - ascale=1.0: multiplicative scale of a envelope
+  - bscale=1.0: multiplicative scale of b envelope
+                Same as ascale if not specified.
+  - zscale=1.0: multiplicative scale of z locations
   """
   if not me==0: return
-  plg(env.aenv,env.zenv,
-      color=color,marks=marks,marker=marker,msize=msize)
-  plg(env.benv,env.zenv,
-      color=color,marks=marks,marker=marker,msize=msize)
+  aenv = env.aenv
+  benv = env.benv
+  zenv = env.zenv
+  if ascale is not None:
+    aenv = aenv*ascale
+    if bscale is None: bscale = ascale
+  if bscale is not None:
+    benv = benv*bscale
+  if zscale is not None:
+    zenv = zenv*zscale
+  plg(aenv,zenv,color=color,marks=marks,marker=marker,msize=msize)
+  plg(benv,zenv,color=color,marks=marks,marker=marker,msize=msize)
   if titles: ptitles("Envelope","Z")
 ##########################################################################
-def penvp(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
+def penvp(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1,
+          apscale=None,bpscale=None,zscale=None):
   """
-Plots a' and b' of envelope
-  - color='fg' line color
-  - marks=0 turns on identifying marks on the curve
-  - marker=None marker type (see gist manual for the list)
-  - msize=1.0 marker size
-  - lframe=0 specifies whether or not to set plot limits
-  - titles=1 specifies whether or not to plot titles
+Plots a' and b' of envelope from envelope solver
+  - color='fg': line color
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1.0: marker size
+  - lframe=0: specifies whether or not to set plot limits
+  - titles=1: specifies whether or not to plot titles
+  - apscale=1.0: multiplicative scale of a' envelope
+  - bpscale=1.0: multiplicative scale of b' envelope
+                 Same as apscale if not specified.
+  - zscale=1.0: multiplicative scale of z locations
   """
   if not me==0: return
-  plg(env.apenv,env.zenv,
-      color=color,marks=marks,marker=marker,msize=msize)
-  plg(env.bpenv,env.zenv,
-      color=color,marks=marks,marker=marker,msize=msize)
+  apenv = env.apenv
+  bpenv = env.bpenv
+  zenv = env.zenv
+  if apscale is not None:
+    apenv = apenv*apscale
+    if bpscale is None: bpscale = apscale
+  if bpscale is not None:
+    bpenv = bpenv*bpscale
+  if zscale is not None:
+    zenv = zenv*zscale
+  plg(apenv,zenv,color=color,marks=marks,marker=marker,msize=msize)
+  plg(bpenv,zenv,color=color,marks=marks,marker=marker,msize=msize)
   if titles: ptitles("Envelope slope","Z")
 ##########################################################################
-def penvaedge(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
+def penvaedge(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1,
+              ascale=None,zscale=None):
   """
-Plots a envelope +/- x centroid
-  - color='fg' line color
-  - marks=0 turns on identifying marks on the curve
-  - marker=None marker type (see gist manual for the list)
-  - msize=1.0 marker size
-  - lframe=0 specifies whether or not to set plot limits
-  - titles=1 specifies whether or not to plot titles
+Plots a envelope +/- x centroid from envelope solver
+  - color='fg': line color
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1.0: marker size
+  - lframe=0: specifies whether or not to set plot limits
+  - titles=1: specifies whether or not to plot titles
+  - ascale=1.0: multiplicative scale of a envelope
+  - zscale=1.0: multiplicative scale of z locations
   """
   if not me==0: return
-  plg(+env.aenv+env.xenv,env.zenv,
-      color=color,marks=marks,marker=marker,msize=msize)
-  plg(-env.aenv+env.xenv,env.zenv,
-      color=color,marks=marks,marker=marker,msize=msize)
+  aenv = env.aenv
+  xenv = env.xenv
+  zenv = env.zenv
+  if ascale is not None:
+    aenv = aenv*ascale
+    xenv = xenv*ascale
+  if zscale is not None:
+    zenv = zenv*zscale
+  plg(+aenv+xenv,zenv,color=color,marks=marks,marker=marker,msize=msize)
+  plg(-aenv+xenv,zenv,color=color,marks=marks,marker=marker,msize=msize)
   if titles: ptitles("X Envelope edges","Z")
 ##########################################################################
-def penvbedge(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
+def penvbedge(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1,
+              bscale=None,zscale=None):
   """
-Plots b envelope +/- x centroid
-  - color='fg' line color
-  - marks=0 turns on identifying marks on the curve
-  - marker=None marker type (see gist manual for the list)
-  - msize=1.0 marker size
-  - lframe=0 specifies whether or not to set plot limits
-  - titles=1 specifies whether or not to plot titles
+Plots b envelope +/- x centroid from envelope solver
+  - color='fg': line color
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1.0: marker size
+  - lframe=0: specifies whether or not to set plot limits
+  - titles=1: specifies whether or not to plot titles
+  - bscale=1.0: multiplicative scale of b envelope
+  - zscale=1.0: multiplicative scale of z locations
   """
   if not me==0: return
-  plg(+env.benv+env.xenv,env.zenv,
-      color=color,marks=marks,marker=marker,msize=msize)
-  plg(-env.benv+env.xenv,env.zenv,
-      color=color,marks=marks,marker=marker,msize=msize)
+  benv = env.benv
+  yenv = env.yenv
+  zenv = env.zenv
+  if bscale is not None:
+    benv = benv*bscale
+    yenv = yenv*bscale
+  if zscale is not None:
+    zenv = zenv*zscale
+  plg(+benv+xenv,zenv,color=color,marks=marks,marker=marker,msize=msize)
+  plg(-benv+xenv,zenv,color=color,marks=marks,marker=marker,msize=msize)
   if titles: ptitles("Y Envelope edges","Z")
 
 ##########################################################################
