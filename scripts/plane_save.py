@@ -12,9 +12,8 @@ plane_save_version = "$Id: plane_save.py,v 1.24 2009/06/29 18:24:38 dave Exp $"
 
 class PlaneSave:
   """
-Saves the particle data and phi to a file just after the 
-field solve is finished. The positions and velocities are staggered.
-It is automatically called every time step after the field solve
+Saves the particle data and phi to a file so that is can be restored in a
+subsequent simulation.
 Input:
   - zplane: location where simulations are linked together. Units of meters
             relative to the lab frame. Note grid cell nearest zplane is
@@ -26,19 +25,25 @@ Input:
                         at all time step. Default is false: saving starts
                         when first particle cross zplane.
   - deltaz: z grid cell size of simulation where the data will be restored.
-            Defaults to w3d.dz, must be an integer multiple of w3d.dz. 
+            Defaults to w3d.dz, must be an integer multiple of w3d.dz
   - deltat: time step size of simulation where the data will be restored.
-            Defaults to top.dt. top.dt must be an integer multiple of deltat.
-  - newfile=0: When true, creates a new file to save data into, otherwise
+            Defaults to top.dt. deltat must be an integer multiple of top.dt.
+            If deltat < top.dt, particles are saved each time step.
+            If deltat > top.dt, all particles that crossed the plane in the
+            last deltat/top.dt time steps are saved together. It is
+            recommended to set lsavesynchronized=True.
+  - newfile=False: When true, creates a new file to save data into, otherwise
                append to file if it already exists.
-  - lsavephi=1: When true, saves the potential around the zplane.
-  - lsaveparticles=1: When true, save the particles the pass the zplane.
+  - lsavephi=True: When true, saves the potential around the zplane.
+  - lsaveparticles=True: When true, save the particles the pass the zplane.
+  - lsavesynchronized=False: When true, the particles are saved with the
+                             position and velocity synchronized
 
   """
 
   def __init__(self,zplane,filename=None,js=None,allways_save=false,
-                    deltaz=None,deltat=None,newfile=0,
-                    lsavephi=1,lsaveparticles=1):
+                    deltaz=None,deltat=None,newfile=False,
+                    lsavephi=True,lsaveparticles=True,lsavesynchronized=False):
 
     self.zplane = zplane
     self.js = js
@@ -47,6 +52,7 @@ Input:
     self.newfile = newfile
     self.lsavephi = lsavephi
     self.lsaveparticles = lsaveparticles
+    self.lsavesynchronized = lsavesynchronized
 
     if allways_save:
       self.started_saving_particles = True
@@ -57,7 +63,13 @@ Input:
     self.it = 0
 
     # --- Set so data is saved to file immediately after a field solve.
-    installafterfs(self.saveplane)
+    if self.lsavesynchronized:
+      # --- Turn on "all special" so that the particles are synchronized at
+      # --- the end of every step.
+      top.allspecl = true
+      installafterstep(self.saveplane)
+    else:
+      installafterfs(self.saveplane)
 
     # --- Set the name of the file which will hold the data
     if filename is None:
@@ -127,9 +139,9 @@ Input:
     # --- Save the initial old z position
     for js in self.jslist:
       if top.pgroup.nps[js] > 0:
-        j1 = top.pgroup.ins[js] - 1
-        j2 = j1 + top.pgroup.nps[js]
-        top.pgroup.pid[j1:j2,self.zoldpid] = top.pgroup.zp[j1:j2]
+        i1 = top.pgroup.ins[js] - 1
+        i2 = i1 + top.pgroup.nps[js]
+        top.pgroup.pid[i1:i2,self.zoldpid] = top.pgroup.zp[i1:i2]
 
   def initsavephi(self):
 
@@ -146,6 +158,7 @@ Input:
     # --- save some initial data, and plane size and location and time step
     self.write('lsavephi',self.lsavephi)
     self.write('lsaveparticles',self.lsaveparticles)
+    self.write('lsavesynchronized',self.lsavesynchronized)
     self.write('zplane',self.zplane)
     self.write('dt',top.dt)
     self.write('deltat',self.deltat)
@@ -181,10 +194,10 @@ Input:
         sym_plane = 1
       self.write('sym_plane',sym_plane)
 
-      # --- Write out the solver geometry flag
-      # --- This must be the last thing written out before the phi or particle
-      # --- data, since it is used to flag the end of the initial data.
-      self.write('solvergeom',w3d.solvergeom)
+    # --- Write out the solver geometry flag
+    # --- This must be the last thing written out before the phi or particle
+    # --- data, since it is used to flag the end of the initial data.
+    self.write('solvergeom',w3d.solvergeom)
 
   def saveplane(self):
 
@@ -206,6 +219,9 @@ Input:
     for js in self.jslist:
       self.saveplanespecies(js)
 
+    if self.started_saving_particles:
+      self.write('time%09d'%self.it,top.time)
+
     # --- Save phi at the plane
     self.saveplanephi()
 
@@ -215,16 +231,21 @@ Input:
       self.flush()
 
   def saveplanephi(self):
-    if not self.lsavephi: return
-
     # --- phi is saved every time step whether or not there are particles saved
     # --- but only after saving has started.
     if self.started_saving_particles:
-      # --- get the two planes of phi to be saved
-      iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
-      izz = max(1,nint(self.deltaz/w3d.dz))
-      self.phi_save = transpose(array([transpose(getphi(iz=iz-izz)),
-                                       transpose(getphi(iz=iz))]))
+
+      if self.lsavephi:
+        # --- get the two planes of phi to be saved
+        iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
+        izz = max(1,nint(self.deltaz/w3d.dz))
+        self.phi_save = transpose(array([transpose(getphi(iz=iz-izz)),
+                                         transpose(getphi(iz=iz))]))
+      else:
+        # --- If not saving phi, write out None since plane_restore
+        # --- always expects something to be written into pliplane
+        self.phi_save = None
+
       if me == 0:
         self.write('phiplane%09d'%self.it,self.phi_save)
 
@@ -233,24 +254,24 @@ Input:
 
     if top.pgroup.nps[js] > 0:
 
-      j1 = top.pgroup.ins[js] - 1
-      j2 = j1 + top.pgroup.nps[js]
+      i1 = top.pgroup.ins[js] - 1
+      i2 = i1 + top.pgroup.nps[js]
 
-      z = top.pgroup.zp[j1:j2]
-      zold = top.pgroup.pid[j1:j2,self.zoldpid]
+      z = top.pgroup.zp[i1:i2]
+      zold = top.pgroup.pid[i1:i2,self.zoldpid]
 
       # --- Find all of the particles which just crossed zplane.
       ii = logical_and(zold < self.zplane,self.zplane <= z)
 
       # --- Get the data for those particles that crossed the zplane.
-      xx = top.pgroup.xp[j1:j2][ii]
-      yy = top.pgroup.yp[j1:j2][ii]
-      zz = top.pgroup.zp[j1:j2][ii]
-      ux = top.pgroup.uxp[j1:j2][ii]
-      uy = top.pgroup.uyp[j1:j2][ii]
-      uz = top.pgroup.uzp[j1:j2][ii]
-      gi = top.pgroup.gaminv[j1:j2][ii]
-      id = top.pgroup.pid[j1:j2,:][ii,:]
+      xx = top.pgroup.xp[i1:i2][ii]
+      yy = top.pgroup.yp[i1:i2][ii]
+      zz = top.pgroup.zp[i1:i2][ii]
+      ux = top.pgroup.uxp[i1:i2][ii]
+      uy = top.pgroup.uyp[i1:i2][ii]
+      uz = top.pgroup.uzp[i1:i2][ii]
+      gi = top.pgroup.gaminv[i1:i2][ii]
+      id = top.pgroup.pid[i1:i2,:][ii,:]
 
       # --- The old z can now be reset
       zold[:] = z
