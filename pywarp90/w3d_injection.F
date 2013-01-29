@@ -1278,7 +1278,7 @@ c                   --- Taylor-Langmuir ionic emission with space-charge
                     if ( (pgroup%sq(is)*inte) > 0.) then
                       rnncl = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5
                       dw   = sqrt((pgroup%sq(is)**3*inte)/(4.*pi*eps0))
-                      rnns = te_const(jsid)
+                      rnns = te_const(jsid)*inj_lambda(ix,iy,ij,inj_is)
      &                    * exp(-(workinject(ij,is)-dw)/(boltzmann*tempinject(ij)))
                       rnn = rnncl*(1.-exp(-(rnns/rnncl)**fitexpinject(ij)))**(1./fitexpinject(ij))/sphericalcorrection*jton(jsid)
                     else
