@@ -196,7 +196,10 @@ Function to do iterations.
             # --- Increment the counter
             self.k = self.k + 1
             # --- Print out loss value
-            klog = int(log(self.k)/log(kprint))
+            if kprint > 1:
+                klog = int(log(self.k)/log(kprint))
+            else:
+                klog = kprintlogmax
             klog = min(klog,kprintlogmax)
             if ((self.k%(kprint**klog)) == 0):
                 self.printerror(err)
