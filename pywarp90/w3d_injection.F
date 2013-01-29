@@ -1182,24 +1182,6 @@ c               --- rectangular.
 
                 if (.not. linj_cell) cycle
 
-c               --- Check the z extent of the source at the grid cell.
-c               --- This gets the min and max of grid over the region
-c               --- around the cell.
-                zmin_tmp = minval(inj_grid(max(0,ix-1):min(inj_nx,ix+1),
-     &                                     max(0,iy-1):min(inj_ny,iy+1),ij)
-     &                                     + zinj)
-                zmax_tmp = maxval(inj_grid(max(0,ix-1):min(inj_nx,ix+1),
-     &                                     max(0,iy-1):min(inj_ny,iy+1),ij)
-     &                                     + zinj)
-c               --- Check if the z extent is within the domain.
-                if (inj_d(ij) > 0.) then
-                  if(zmin_tmp >= zpmaxlocal+zgrid .or.
-     &               zpminlocal+zgrid > zmax_tmp) cycle
-                else
-                  if(zmin_tmp > zpmaxlocal+zgrid .or.
-     &               zpminlocal+zgrid >= zmax_tmp) cycle
-                endif
-
 c               --- Loop over the species
                 do is=1,pgroup%ns
                   jsid = pgroup%sid(is-1)
@@ -1375,6 +1357,29 @@ c                 --- injected.
                   if (rnn < 0.) inj_npactual(ix,iy,ij,inj_is) = 0.
 
                 enddo
+
+c               --- Check the z extent of the source at the grid cell.
+c               --- This gets the min and max of grid over the region
+c               --- around the cell.
+                zmin_tmp = minval(inj_grid(max(0,ix-1):min(inj_nx,ix+1),
+     &                                     max(0,iy-1):min(inj_ny,iy+1),ij)
+     &                                     + zinj)
+                zmax_tmp = maxval(inj_grid(max(0,ix-1):min(inj_nx,ix+1),
+     &                                     max(0,iy-1):min(inj_ny,iy+1),ij)
+     &                                     + zinj)
+c               --- Check if the z extent is within the domain.
+                if (inj_d(ij) > 0.) then
+                  if(zmin_tmp >= zpmaxlocal+zgrid .or.
+     &               zpminlocal+zgrid > zmax_tmp) then
+                    inj_npactual(ix,iy,ij,:) = 0
+                  endif
+                else
+                  if(zmin_tmp > zpmaxlocal+zgrid .or.
+     &               zpminlocal+zgrid >= zmax_tmp) then
+                    inj_npactual(ix,iy,ij,:) = 0
+                  endif
+                endif
+
               enddo
             enddo
 
