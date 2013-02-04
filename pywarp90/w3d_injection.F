@@ -72,7 +72,7 @@ c injection.  The third part is for space-charge limited injection.
       logical(ISZ):: linj_cell,ltinj_full_circle
       real(kind=8),pointer:: xx(:),yy(:),zz(:),ux(:),uy(:),uz(:),id(:),gg(:)
       real(kind=8),pointer:: ex(:),ey(:),ez(:),bx(:),by(:),bz(:)
-      real(kind=8),pointer:: bendres(:),bendradi(:),mask(:)
+      real(kind=8),pointer:: bendres(:),bendradi(:),mask(:),dtp(:)
       integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       real(kind=8):: uztemp,uztempfloor,invclightsq,uzboost,vzboost
@@ -573,237 +573,192 @@ c           --- Reset pgroup%nps(is).
 
 #endif
 
+c           --- Setup handy pointers to the arrays
+            xx => pgroup%xp(i1:i2)
+            yy => pgroup%yp(i1:i2)
+            zz => pgroup%zp(i1:i2)
+            ux => pgroup%uxp(i1:i2)
+            uy => pgroup%uyp(i1:i2)
+            uz => pgroup%uzp(i1:i2)
+            gg => pgroup%gaminv(i1:i2)
+            ex => pgroup%ex(i1:i2)
+            ey => pgroup%ey(i1:i2)
+            ez => pgroup%ez(i1:i2)
+            bx => pgroup%bx(i1:i2)
+            by => pgroup%by(i1:i2)
+            bz => pgroup%bz(i1:i2)
+            bendres => uxt(1:nn)
+            bendradi => uyt(1:nn)
+            dtp => bpt(1:nn)
+
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
-              call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,
-     &                                   pgroup%xp(i1:i2),pgroup%yp(i1:i2),
-     &                                   pgroup%zp(i1:i2),at,bt,apt,xt,yt,zt)
-              call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,
-     &                                   pgroup%xp(i1:i2),pgroup%yp(i1:i2),
-     &                                   pgroup%zp(i1:i2),xt,yt,zt)
+              call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,ex,ey,ez,bx,by,bz)
+              call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,bx,by,bz)
             else
-              at = 0.
-              bt = 0.
-              apt = 0.
-              xt = 0.
-              yt = 0.
-              zt = 0.
+              ex = 0.
+              ey = 0.
+              ez = 0.
+              bx = 0.
+              by = 0.
+              bz = 0.
             endif
-            call inj_sete3d(nn,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
-     &                      pgroup%zp(i1:i2),
-     &                      pgroup%pid(i1:i2,injpid),at,bt,apt)
+            call inj_sete3d(nn,xx,yy,zz,pgroup%pid(i1:i2,injpid),ex,ey,ez)
 
 c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
 c           --- The reusing of variable makes for very confusing naming!
-            do ip=1,nn
-              uxt(ip) = 0.
-              uyt(ip) = 1.
-            enddo
-            do ipmin = pgroup%ins(is),pgroup%ins(is)+nn-1,nparpgrp
-              ip = min(nparpgrp, pgroup%ins(is)+nn-ipmin)
-              ii = ipmin - pgroup%ins(is) + 1
-              if (boost_gamma==1.) then
-                call exteb3d(ip,pgroup%xp(ipmin:ipmin+ip-1),pgroup%yp(ipmin:ipmin+ip-1),
-     &                       pgroup%zp(ipmin:ipmin+ip-1),pgroup%uzp(ipmin:ipmin+ip-1),
-     &                       pgroup%gaminv(ipmin:ipmin+ip-1),0.,fulldt_s*0.5,
-     &                       xt(ii),yt(ii),zt(ii),at(ii),bt(ii),apt(ii),
-     &                       pgroup%sm(is),pgroup%sq(is),uxt(ii),uyt(ii),
-     &                       1.,fulldt_s)
-              else
-                if (boost_gamma>1.) then
-                  allocate(exlab(ip),eylab(ip),ezlab(ip))
-                  allocate(bxlab(ip),bylab(ip),bzlab(ip))
-                  allocate(zlab(ip),uxlab(ip),uylab(ip),
-     &                     uzlab(ip),ginvlab(ip),tlab(ip))
-                  allocate(tstart(ip),tend(ip))
-                  invclightsq = 1./(clight*clight)
-                endif
-                uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
-                exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
-                bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
-                zlab(1:ip) = boost_gamma*pgroup%zp(ipmin:ipmin+ip-1)+uzboost*time
-                uxlab(1:ip) = pgroup%uxp(ipmin:ipmin+ip-1)
-                uylab(1:ip) = pgroup%uyp(ipmin:ipmin+ip-1)
-                uzlab(1:ip) = pgroup%uzp(ipmin:ipmin+ip-1)
-                ginvlab(1:ip) = pgroup%gaminv(ipmin:ipmin+ip-1)
-                call setu_in_uzboosted_frame3d(ip,uxlab(1),uylab(1),uzlab(1),ginvlab(1),-uzboost,boost_gamma)
-                tstart(1:ip) = boost_gamma*time+uzboost*pgroup%zp(ipmin:ipmin+ip-1)*invclightsq
-                tend  (1:ip) = boost_gamma*(time+fulldt_s*0.5)+uzboost*(pgroup%zp(ipmin:ipmin+ip-1)
-     &                       + pgroup%uzp(ipmin:ipmin+ip-1)*pgroup%gaminv(ipmin:ipmin+ip-1)*fulldt_s*0.5)*invclightsq
-                ! this is an attempt to fool exteb3d. Normally, each particle should have its
-                ! own dt, but this would require to modify all the routines called by exteb3d.
-                ! We are assuming that ginvlab will always be multiplied by dt in its
-                ! usage in the routines called by exteb3d. If this is not the case, then the
-                ! kludge will fail.
-                ginvlab(1:ip) = ginvlab(1:ip)*(tend(1:ip)-tstart(1:ip))/(fulldt_s*0.5)
-c               --- Add in ears and uniform focusing E field pieces
-                call othere3d(ip,pgroup%xp(ipmin:ipmin+ip-1),pgroup%yp(ipmin:ipmin+ip-1),zlab(1),
-     &                      zbeam*boost_gamma+uzboost*time,
+            bendres = 0.
+            bendradi = 1.
+            if (boost_gamma==1.) then
+              call exteb3d(nn,xx,yy,zz,uz,gg,0.,fulldt_s*0.5,bx,by,bz,ex,ey,ez,
+     &                     pgroup%sm(is),pgroup%sq(is),bendres,bendradi,1.,fulldt_s)
+            else
+              if (boost_gamma>1.) then
+                allocate(exlab(nn),eylab(nn),ezlab(nn))
+                allocate(bxlab(nn),bylab(nn),bzlab(nn))
+                allocate(zlab(nn),uxlab(nn),uylab(nn),uzlab(nn),ginvlab(nn),tlab(nn))
+                allocate(tstart(nn),tend(nn))
+                invclightsq = 1./(clight*clight)
+              endif
+              uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
+              exlab=0.;eylab=0.;ezlab=0.
+              bxlab=0.;bylab=0.;bzlab=0.
+              zlab = boost_gamma*zz+uzboost*time
+              uxlab = ux
+              uylab = uy
+              uzlab = uz
+              ginvlab = gg
+              call setu_in_uzboosted_frame3d(nn,uxlab,uylab,uzlab,ginvlab,-uzboost,boost_gamma)
+              tstart = boost_gamma*time+uzboost*zz*invclightsq
+              tend   = boost_gamma*(time+fulldt_s*0.5)+uzboost*(zz + uz*gg*fulldt_s*0.5)*invclightsq
+              ! this is an attempt to fool exteb3d. Normally, each particle should have its
+              ! own dt, but this would require to modify all the routines called by exteb3d.
+              ! We are assuming that ginvlab will always be multiplied by dt in its
+              ! usage in the routines called by exteb3d. If this is not the case, then the
+              ! kludge will fail.
+              ginvlab = ginvlab*(tend-tstart)/(fulldt_s*0.5)
+c             --- Add in ears and uniform focusing E field pieces
+              call othere3d(nn,xx,yy,zlab,zbeam*boost_gamma+uzboost*time,
      &                      zimax,zimin,straight,ifeears,eears,
      &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
-     &                      exlab(1),eylab(1),ezlab(1),
-     &                      bxlab(1),bylab(1),bzlab(1))
-c               --- Set quad, dipole E and B; All: Bz
-                call exteb3d(ip,pgroup%xp(ipmin:ipmin+ip-1),pgroup%yp(ipmin:ipmin+ip-1),zlab(1),uzlab(1),
-     &                       ginvlab(1),0.,fulldt_s*0.5,
-     &                       bxlab(1),bylab(1),bzlab(1),
-     &                       exlab(1),eylab(1),ezlab(1),
-     &                       pgroup%sm(is),pgroup%sq(is),uxt(ii),uyt(ii),
-     &                       1.,fulldt_s)
-                call seteb_in_boosted_frame(ip,exlab(1),eylab(1),ezlab(1),
-     &                                         bxlab(1),bylab(1),bzlab(1),
-     &                                         0.,0.,uzboost,boost_gamma)
-                at (ii:ii+ip-1)=at (ii:ii+ip-1)+exlab
-                bt (ii:ii+ip-1)=bt (ii:ii+ip-1)+eylab
-                apt(ii:ii+ip-1)=apt(ii:ii+ip-1)+ezlab
-                xt (ii:ii+ip-1)=xt (ii:ii+ip-1)+bxlab
-                yt (ii:ii+ip-1)=yt (ii:ii+ip-1)+bylab
-                zt (ii:ii+ip-1)=zt (ii:ii+ip-1)+bzlab
-                if (boost_gamma>1.) then
-                  deallocate(exlab,eylab,ezlab)
-                  deallocate(bxlab,bylab,bzlab)
-                  deallocate(zlab,uxlab,uylab,uzlab,ginvlab,tlab,tstart,tend)
-                endif
+     &                      exlab,eylab,ezlab,bxlab,bylab,bzlab)
+c             --- Set quad, dipole E and B; All: Bz
+              call exteb3d(nn,xx,yy,zlab,uzlab,ginvlab,0.,fulldt_s*0.5,
+     &                     bxlab,bylab,bzlab,exlab,eylab,ezlab,
+     &                     pgroup%sm(is),pgroup%sq(is),bendres,bendradi,1.,fulldt_s)
+              call seteb_in_boosted_frame(nn,exlab,eylab,ezlab,bxlab,bylab,bzlab,
+     &                                    0.,0.,uzboost,boost_gamma)
+              ex = ex + exlab
+              ey = ey + eylab
+              ez = ez + ezlab
+              bx = bx + bxlab
+              by = by + bylab
+              bz = bz + bzlab
+              if (boost_gamma>1.) then
+                deallocate(exlab,eylab,ezlab)
+                deallocate(bxlab,bylab,bzlab)
+                deallocate(zlab,uxlab,uylab,uzlab,ginvlab,tlab,tstart,tend)
               endif
-            enddo
+            endif
 
 c           --- Set fractional time to advance particles
             rnpinjct = 1./dvnz(real(nn,kind=8))
             if (.not.l_inj_user_particles_dt) then
               do ip=1,nn
-                bpt(ip) = (ip - .5)*rnpinjct*fulldt_s
+                dtp(ip) = (ip - .5)*rnpinjct*fulldt_s
               enddo
             else
               ! --- need to reverse order of btp set by user since other components are
               ! --- put in reverse order in internal particle arrays
-              bpt(1:nn) = bpt(nn:1:-1)
+              dtp(1:nn) = dtp(nn:1:-1)
             end if
 
 c           --- Add in a velocity tilt (this is dependent on the fractional
 c           --- time step and so must be done here).
             zmid = 0.5*(zimax_s(jsid+1) - zimin_s(jsid+1)) - vzinj*fulldt_s*(it+1)
             zleni = 1./dvnz(zimax_s(jsid+1) - zimin_s(jsid+1))
-            do ip=1,nn
-              ii = pgroup%ins(is) - 1 + ip
-              ztilt = bpt(ip)*vzinj
-              pgroup%uzp(ii) = pgroup%uzp(ii) -
-     &                         vzinj*vtilt_s(jsid+1)*(zmid+ztilt)*zleni
-            enddo
+            uz = uz - vzinj*vtilt_s(jsid+1)*(zmid + dtp*vzinj)*zleni
             if (pgroup%lebcancel_pusher) then
-              call ebcancelpush3dt(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
-     &                      pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
-     &                               at(1),bt(1),apt(1),
-     &                               xt(1),yt(1),zt(1),
-     &                               pgroup%sq(is),pgroup%sm(is),bpt(1),2)
+              call ebcancelpush3dt(nn,ux,uy,uz,gg,ex,ey,ez,bx,by,bz,
+     &                             pgroup%sq(is),pgroup%sm(is),dtp,2)
             else
 c             --- do half velocity advance with E fields
-              call epusht3d(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
-     &                      pgroup%uzp(i1:i2),
-     &               at(1),bt(1),apt(1),pgroup%sq(is),pgroup%sm(is),bpt(1),0.5)
+              call epusht3d(nn,ux,uy,uz,ex,ey,ez,pgroup%sq(is),pgroup%sm(is),dtp,0.5)
 
 c             --- Advance relativistic Gamma factor
-              call gammaadv(nn,pgroup%gaminv(i1:i2),pgroup%uxp(i1:i2),
-     &                      pgroup%uyp(i1:i2),
-     &                      pgroup%uzp(i1:i2),
-     &                      gamadv,lrelativ)
+              call gammaadv(nn,gg,ux,uy,uz,gamadv,lrelativ)
 
 c             --- do half velocity advance with B fields
-              call bpusht3d(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
-     &                      pgroup%uzp(i1:i2),
-     &                      pgroup%gaminv(i1:i2),xt(1),yt(1),zt(1),
-     &                      pgroup%sq(is),pgroup%sm(is),
-     &                      bpt(1),0.5,ibpush)
+              call bpusht3d(nn,ux,uy,uz,gg,bx,by,bz,
+     &                      pgroup%sq(is),pgroup%sm(is),dtp,0.5,ibpush)
             end if
 c           --- apply linear maps
             if (nn>0 .and. pgroup%l_maps(is-1)) then
               allocate(dtmaps(nn),zbeam_maps(nn),zbeamend_maps(nn),tlab(nn),zend(nn))
               if (boost_gamma==1.) then
-                zbeam_maps(1:nn) = zinject(ij)
-                zbeamend_maps(1:nn) = zinject(IJ)+vbeam*bpt(1:nn)
-                dtmaps(1:nn) = bpt(1:nn)
-                zend(1:nn) = pgroup%zp(i1:i2)+pgroup%uzp(i1:i2)*pgroup%gaminv(i1:i2)*dtmaps(1:nn)
-                call applylmap(nn,pgroup%xp(i1),pgroup%yp(i1),
-     &                            pgroup%uxp(i1),pgroup%uyp(i1),
-     &                         nn,pgroup%zp(i1),pgroup%uzp(i1),pgroup%gaminv(i1),
-     &                         vbeam,gammabar,zbeam_maps(1),zbeamend_maps(1),lmappid)
+                zbeam_maps = zinject(ij)
+                zbeamend_maps = zinject(ij)+vbeam*dtp
+                dtmaps = dtp
+                zend = zz+uz*gg*dtmaps
+                call applylmap(nn,xx,yy,ux,uy,nn,zz,uz,gg,
+     &                         vbeam,gammabar,zbeam_maps,zbeamend_maps,lmappid)
                 if (lmapfillz) then
-                  dtmaps(1:nn) = (zbeamend_maps(1:nn)-zbeam_maps(1:nn))/vbeam
-                  call xpusht3d(nn,pgroup%xp(i1),pgroup%yp(i1),
-     &                             pgroup%zp(i1),pgroup%uxp(i1),
-     &                             pgroup%uyp(i1),pgroup%uzp(i1),
-     &                             pgroup%gaminv(i1),dtmaps(1))
+                  dtmaps = (zbeamend_maps-zbeam_maps)/vbeam
+                  call xpusht3d(nn,xx,yy,zz,ux,uy,uz,gg,dtmaps)
                 endif
                else
                 ! there is some inconsistency for injecting particles using linear maps
                 ! for now, just z is pushed
-                pgroup%zp(i1:i2) = pgroup%zp(i1:i2) + bpt(1:nn)* pgroup%uzp(i1:i2)* pgroup%gaminv(i1:i2)
+                zz = zz + dtp*uz*gg
                 if (.false.) then
                 uzboost = clight*sqrt(boost_gamma*boost_gamma-1.)
                 vzboost = uzboost/boost_gamma
 c               --- get time step in lab frame
-c                dtmaps(1:nn) = boost_gamma*dt*(1.+vbeam*vzboost*invclightsq)
-c                dtmaps(1:nn) = boost_gamma*bpt(1:nn)*(1.+vbeam*vzboost*invclightsq)
-                dtmaps(1:nn) = bpt(1:nn)*gammabar_lab/gammabar
+c                dtmaps = boost_gamma*dt*(1.+vbeam*vzboost*invclightsq)
+c                dtmaps = boost_gamma*dtp*(1.+vbeam*vzboost*invclightsq)
+                dtmaps = dtp*gammabar_lab/gammabar
 c               --- get time for each particle in lab frame
-c                pgroup%zp(i1:i2) = pgroup%zp(i1:i2)-(dt-bpt(1:nn))*pgroup%uzp(i1:i2)*pgroup%gaminv(i1:i2)
-                tlab(1:nn) = boost_gamma*(time)+uzboost*pgroup%zp(i1:i2)*invclightsq
+c                zz = zz-(dt-dtp)*uz*gg
+                tlab = boost_gamma*(time)+uzboost*zz*invclightsq
 c               --- get zbeam for each particle in lab frame
-c                zbeam_maps(1:nn) = (boost_z0/boost_gamma+(vbeam+vzboost)*tlab(1:nn))/(1.+vbeam*vzboost*invclightsq)
-                zbeam_maps(1:nn) = ((time+0.*bpt(1:nn))/dt)*vbeam_lab*dtmaps(1:nn) + pgroup%pid(i1:i2,zbirthlabpid)
+c                zbeam_maps = (boost_z0/boost_gamma+(vbeam+vzboost)*tlab)/(1.+vbeam*vzboost*invclightsq)
+                zbeam_maps = ((time+0.*dtp)/dt)*vbeam_lab*dtmaps + pgroup%pid(i1:i2,zbirthlabpid)
      &          *(boost_gamma*gammabar_lab/gammabar-1.)
      &          +(boost_z0/boost_gamma)/(1.+vbeam*vzboost*invclightsq)
-                zbeamend_maps(1:nn) = zbeam_maps(1:nn) + dtmaps(1:nn)*vbeam_lab
+                zbeamend_maps = zbeam_maps + dtmaps*vbeam_lab
 c               --- get particles position in lab frame
-                pgroup%zp(i1:i2) = boost_gamma*pgroup%zp(i1:i2)+uzboost*(time)
+                zz = boost_gamma*zz+uzboost*(time)
 c               --- get particles momenta in lab frame
-                call setu_in_uzboosted_frame3d(nn,pgroup%uxp(i1),pgroup%uyp(i1),
-     &                                            pgroup%uzp(i1),pgroup%gaminv(i1),
-     &                                            -uzboost,boost_gamma)
-                zend(1:nn) = pgroup%zp(i1:i2)+vbeam_lab*dtmaps(1:nn)
+                call setu_in_uzboosted_frame3d(nn,ux,uy,uz,gg,-uzboost,boost_gamma)
+                zend = zz+vbeam_lab*dtmaps
 c               --- apply maps in lab frame
-                call applylmap(nn,pgroup%xp(i1),pgroup%yp(i1),
-     &                            pgroup%uxp(i1),pgroup%uyp(i1),
-     &                         nn,pgroup%zp(i1),pgroup%uzp(i1),pgroup%gaminv(i1),
-     &                         vbeam_lab,gammabar_lab,zbeam_maps(1),zbeamend_maps(1),
+                call applylmap(nn,xx,yy,ux,uy,nn,zz,uz,gg,
+     &                         vbeam_lab,gammabar_lab,zbeam_maps,zbeamend_maps,
      &                         lmappid)
-                tlab(1:nn) = tlab(1:nn)+dtmaps(1:nn)
+                tlab = tlab+dtmaps
                 if (lmapfillz) then
-                  dtmaps(1:nn) = (zend(1:nn)-pgroup%zp(i1:i2))/vbeam_lab
-                  call xpusht3d(nn,pgroup%xp(i1),pgroup%yp(i1),
-     &                             pgroup%zp(i1),pgroup%uxp(i1),
-     &                             pgroup%uyp(i1),pgroup%uzp(i1),
-     &                             pgroup%gaminv(i1),dtmaps(1))
+                  dtmaps = (zend-zz)/vbeam_lab
+                  call xpusht3d(nn,xx,yy,zz,ux,uy,uz,gg,dtmaps)
                 endif
 c               --- get particles momenta in boosted frame
-                call setu_in_uzboosted_frame3d(nn,pgroup%uxp(i1),pgroup%uyp(i1),
-     &                                            pgroup%uzp(i1),pgroup%gaminv(i1),
-     &                                            uzboost,boost_gamma)
+                call setu_in_uzboosted_frame3d(nn,ux,uy,uz,gg,uzboost,boost_gamma)
 c               --- get particles position in boosted frame
-c                pgroup%zp(i1:i2) = boost_gamma*pgroup%zp(i1:i2)-uzboost*(tlab(1:nn))
-                pgroup%zp(i1:i2) = (pgroup%zp(i1:i2)-uzboost*(time+bpt(1:nn)))/boost_gamma
+c                zz = boost_gamma*zz-uzboost*(tlab(1:nn))
+                zz = (zz-uzboost*(time+dtp))/boost_gamma
               end if
               end if
               deallocate(zbeam_maps,zbeamend_maps,dtmaps,tlab,zend)
             else
 c           --- do full position advance
-              call xpusht3d(nn,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
-     &                      pgroup%zp(i1:i2),
-     &                      pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
-     &                      pgroup%uzp(i1:i2),
-     &                      pgroup%gaminv(i1:i2),bpt(1))
+              call xpusht3d(nn,xx,yy,zz,ux,uy,uz,gg,dtp)
             end if
 
 c           --- Calculate Gamma inverse
 c           if (lrelativ) then
-c             do ip=pgroup%ins(is),pgroup%ins(is)+nn-1
-c               pgroup%gaminv(ip) = 1./sqrt(1. +
-c    & (pgroup%uxp(ip)**2+pgroup%uyp(ip)**2+pgroup%uzp(ip)**2)*clightsqi)
-c             enddo
+c             gg = 1./sqrt(1. + (ux**2+uy**2+uz**2)*clightsqi)
 c           else
-c             do ip=ins(is),ins(is)+nn-1
-c               gaminv(ip) = 1.
-c             enddo
+c             gg = 1.
 c           endif
 
 c           --- setrho is now done by the setrho call in padvnc3d.
@@ -824,7 +779,7 @@ c         loop over species and injection sources
           do is=1,pgroup%ns
             jsid = pgroup%sid(is-1)
             if (.not. pgroup%ldts(is-1)) cycle
-            fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
+            fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
             ipmin = pgroup%ins(is)
             nn = 0
@@ -840,139 +795,123 @@ c             --- Make sure there is enough temp space
                 call gallot("Setpwork3d",0)
               endif
 
+              i1 = ipmin
+              i2 = ipmin + nn - 1
+              xx => pgroup%xp(i1:i2)
+              yy => pgroup%yp(i1:i2)
+              zz => pgroup%zp(i1:i2)
+              ux => pgroup%uxp(i1:i2)
+              uy => pgroup%uyp(i1:i2)
+              uz => pgroup%uzp(i1:i2)
+              gg => pgroup%gaminv(i1:i2)
+              ex => pgroup%ex(i1:i2)
+              ey => pgroup%ey(i1:i2)
+              ez => pgroup%ez(i1:i2)
+              bx => pgroup%bx(i1:i2)
+              by => pgroup%by(i1:i2)
+              bz => pgroup%bz(i1:i2)
+              bendres => uxt(1:nn)
+              bendradi => uyt(1:nn)
+              dtp => bpt(1:nn)
+
 c             --- calculate new E self-fields
               if (linj_efromgrid) then
-                call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,
-     &                                     pgroup%xp(ipmin:ipmin+nn-1),pgroup%yp(ipmin:ipmin+nn-1),
-     &                                     pgroup%zp(ipmin:ipmin+nn-1),at,bt,apt,xt,yt,zt)
-                call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,
-     &                                     pgroup%xp(ipmin:ipmin+nn-1),pgroup%yp(ipmin:ipmin+nn-1),
-     &                                     pgroup%zp(ipmin:ipmin+nn-1),xt,yt,zt)
+                call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,ex,ey,ez,bx,by,bz)
+                call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,bx,by,bz)
               else
-                at = 0.
-                bt = 0.
-                apt = 0.
-                xt = 0.
-                yt = 0.
-                zt = 0.
+                ex = 0.
+                ey = 0.
+                ez = 0.
+                bx = 0.
+                by = 0.
+                bz = 0.
               endif
-              call inj_sete3d(nn,pgroup%xp(ipmin:ipmin+nn-1),pgroup%yp(ipmin:ipmin+nn-1),
-     &                        pgroup%zp(ipmin:ipmin+nn-1),pgroup%pid(ipmin:ipmin+nn-1,injpid),
-     &                        at,bt,apt)
+              call inj_sete3d(nn,xx,yy,zz,pgroup%pid(i1:i2,injpid),ex,ey,ez)
 
 c             --- get external fields at current positions
-              do ip=1,nn
-                uxt(ip) = 0.
-                uyt(ip) = 1.
-              enddo
-              do ip = 1,nn,nparpgrp
-                ii = min(nparpgrp, nn+1-ip)
-                if (boost_gamma==1.) then
-                  call exteb3d(ii,pgroup%xp(ip+ipmin-1),pgroup%yp(ip+ipmin-1),
-     &                         pgroup%zp(ip+ipmin-1),
-     &                         pgroup%uzp(ip+ipmin-1),pgroup%gaminv(ip+ipmin-1),
-     &                         -fulldt_s*0.5,0.,
-     &                         xt(ip),yt(ip),zt(ip),at(ip),bt(ip),apt(ip),
-     &                         pgroup%sm(is),pgroup%sq(is),uxt(ip),uyt(ip),
-     &                         1.,fulldt_s)
-                else
-                  if (boost_gamma>1.) then
-                    allocate(exlab(ip),eylab(ip),ezlab(ip))
-                    allocate(bxlab(ip),bylab(ip),bzlab(ip))
-                    allocate(zlab(ip),uxlab(ip),uylab(ip),
-     &                       uzlab(ip),ginvlab(ip),tlab(ip))
-                    allocate(tstart(ip),tend(ip))
-                    invclightsq = 1./(clight*clight)
-                  endif
-                  if (any(pgroup%l_maps)) then
-                    allocate(dtmaps(ip),zbeam_maps(ip),zbeamend_maps(ip))
-                    allspecl = .true.
-                  end if
+              bendres = 0.
+              bendradi = 1.
 
-                  uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
-                  exlab(1:ip)=0.;eylab(1:ip)=0.;ezlab(1:ip)=0.
-                  bxlab(1:ip)=0.;bylab(1:ip)=0.;bzlab(1:ip)=0.
-                  zlab(1:ip) = boost_gamma*pgroup%zp(ipmin:ipmin+ip-1)+uzboost*time
-                  uxlab(1:ip) = pgroup%uxp(ipmin:ipmin+ip-1)
-                  uylab(1:ip) = pgroup%uyp(ipmin:ipmin+ip-1)
-                  uzlab(1:ip) = pgroup%uzp(ipmin:ipmin+ip-1)
-                  ginvlab(1:ip) = pgroup%gaminv(ipmin:ipmin+ip-1)
-                  call setu_in_uzboosted_frame3d(ip,uxlab(1),uylab(1),uzlab(1),ginvlab(1),-uzboost,boost_gamma)
-                  tstart(1:ip) = boost_gamma*time+uzboost*pgroup%zp(ipmin:ipmin+ip-1)*invclightsq
-                  tend  (1:ip) = boost_gamma*(time+fulldt_s*0.5)+uzboost*(pgroup%zp(ipmin:ipmin+ip-1)
-     &                         + pgroup%uzp(ipmin:ipmin+ip-1)*pgroup%gaminv(ipmin:ipmin+ip-1)*fulldt_s*0.5)*invclightsq
-                  ! this is an attempt to fool exteb3d. Normally, each particle should have its
-                  ! own dt, but this would require to modify all the routines called by exteb3d.
-                  ! We are assuming that ginvlab will always be multiplied by dt in its
-                  ! usage in the routines called by exteb3d. If this is not the case, then the
-                  ! kludge will fail.
-                  ginvlab(1:ip) = ginvlab(1:ip)*(tend(1:ip)-tstart(1:ip))/(fulldt_s*0.5)
-c                 --- Set quad, dipole E and B; All: Bz
-                  call exteb3d(ip,pgroup%xp(ipmin:ipmin+ip-1),pgroup%yp(ipmin:ipmin+ip-1),zlab(1),uzlab(1),
-     &                         ginvlab(1),-fulldt_s*0.5,0.,
-     &                         bxlab(1),bylab(1),bzlab(1),
-     &                         exlab(1),eylab(1),ezlab(1),
-     &                         pgroup%sm(is),pgroup%sq(is),uxt(ip),uyt(ip),
-     &                         1.,fulldt_s)
-                  call seteb_in_boosted_frame(ip,exlab(1),eylab(1),ezlab(1),
-     &                                           bxlab(1),bylab(1),bzlab(1),
-     &                                           0.,0.,uzboost,boost_gamma)
-                  at (ii:ii+ip-1)=at (ii:ii+ip-1)+exlab
-                  bt (ii:ii+ip-1)=bt (ii:ii+ip-1)+eylab
-                  apt(ii:ii+ip-1)=apt(ii:ii+ip-1)+ezlab
-                  xt (ii:ii+ip-1)=xt (ii:ii+ip-1)+bxlab
-                  yt (ii:ii+ip-1)=yt (ii:ii+ip-1)+bylab
-                  zt (ii:ii+ip-1)=zt (ii:ii+ip-1)+bzlab
-                  if (any(pgroup%l_maps)) deallocate(zbeam_maps,zbeamend_maps,dtmaps)
-                  if (boost_gamma>1.) then
-                    deallocate(exlab,eylab,ezlab)
-                    deallocate(bxlab,bylab,bzlab)
-                    deallocate(zlab,uxlab,uylab,uzlab,ginvlab,tlab,tstart,tend)
-                  endif
+              if (boost_gamma==1.) then
+                call exteb3d(nn,xx,yy,zz,uz,gg,-fulldt_s*0.5,0.,bx,by,bz,ex,ey,ez,
+     &                       pgroup%sm(is),pgroup%sq(is),bendres,bendradi,1.,fulldt_s)
+              else
+                if (boost_gamma>1.) then
+                  allocate(exlab(nn),eylab(nn),ezlab(nn))
+                  allocate(bxlab(nn),bylab(nn),bzlab(nn))
+                  allocate(zlab(nn),uxlab(nn),uylab(nn),
+     &                     uzlab(nn),ginvlab(nn),tlab(nn))
+                  allocate(tstart(nn),tend(nn))
+                  invclightsq = 1./(clight*clight)
                 endif
-              enddo
+                if (any(pgroup%l_maps)) then
+                  allocate(dtmaps(nn),zbeam_maps(nn),zbeamend_maps(nn))
+                  allspecl = .true.
+                end if
+
+                uzboost=clight*sqrt(boost_gamma*boost_gamma-1.)
+                exlab=0.;eylab=0.;ezlab=0.
+                bxlab=0.;bylab=0.;bzlab=0.
+                zlab = boost_gamma*zz+uzboost*time
+                uxlab = ux
+                uylab = uy
+                uzlab = uz
+                ginvlab = gg
+                call setu_in_uzboosted_frame3d(nn,uxlab,uylab,uzlab,ginvlab,-uzboost,boost_gamma)
+                tstart = boost_gamma*time+uzboost*zz*invclightsq
+                tend   = boost_gamma*(time+fulldt_s*0.5)+uzboost*(zz + uz*gg*fulldt_s*0.5)*invclightsq
+                ! this is an attempt to fool exteb3d. Normally, each particle should have its
+                ! own dt, but this would require to modify all the routines called by exteb3d.
+                ! We are assuming that ginvlab will always be multiplied by dt in its
+                ! usage in the routines called by exteb3d. If this is not the case, then the
+                ! kludge will fail.
+                ginvlab = ginvlab*(tend-tstart)/(fulldt_s*0.5)
+c               --- Set quad, dipole E and B; All: Bz
+                call exteb3d(nn,xx,yy,zlab,uzlab,ginvlab,-fulldt_s*0.5,0.,
+     &                       bxlab,bylab,bzlab,exlab,eylab,ezlab,
+     &                       pgroup%sm(is),pgroup%sq(is),bendres,bendradi,1.,fulldt_s)
+                call seteb_in_boosted_frame(nn,exlab,eylab,ezlab,bxlab,bylab,bzlab,
+     &                                       0.,0.,uzboost,boost_gamma)
+                ex = ex + exlab
+                ey = ey + eylab
+                ez = ez + ezlab
+                bx = bx + bxlab
+                by = by + bylab
+                bz = bz + bzlab
+                if (any(pgroup%l_maps)) deallocate(zbeam_maps,zbeamend_maps,dtmaps)
+                if (boost_gamma>1.) then
+                  deallocate(exlab,eylab,ezlab)
+                  deallocate(bxlab,bylab,bzlab)
+                  deallocate(zlab,uxlab,uylab,uzlab,ginvlab,tlab,tstart,tend)
+                endif
+              endif
 
 c             --- Set fractional time to advance particles
               rnpinjct = 1./dvnz(real(nn,kind=8))
               do ip=1,nn
-                bpt(ip) = (ip - .5)*rnpinjct*fulldt_s
+                dtp(ip) = (ip - .5)*rnpinjct*fulldt_s
               enddo
 
 c             --- complete B advance
-              call bpusht3d(nn,pgroup%uxp(ipmin:ipmin+nn-1),pgroup%uyp(ipmin:ipmin+nn-1),
-     &                      pgroup%uzp(ipmin:ipmin+nn-1),pgroup%gaminv(ipmin:ipmin+nn-1),
-     &                      xt(1),yt(1),zt(1),pgroup%sq(is),pgroup%sm(is),
-     &                      bpt(1),0.5,ibpush)
+              call bpusht3d(nn,ux,uy,uz,gg,bx,by,bz,pgroup%sq(is),pgroup%sm(is),
+     &                      dtp,0.5,ibpush)
 
 c             --- complete the E advance
-              call epusht3d(nn,pgroup%uxp(ipmin:ipmin+nn-1),pgroup%uyp(ipmin:ipmin+nn-1),
-     &                      pgroup%uzp(ipmin:ipmin+nn-1),
-     &                      at(1),bt(1),apt(1),pgroup%sq(is),pgroup%sm(is),
-     &                      bpt(1),0.5)
+              call epusht3d(nn,ux,uy,uz,ex,ey,ez,pgroup%sq(is),pgroup%sm(is),dtp,0.5)
 
 c             --- Advance relativistic Gamma factor
-              call gammaadv(nn,pgroup%gaminv(ipmin:ipmin+nn-1),pgroup%uxp(ipmin:ipmin+nn-1),
-     &                      pgroup%uyp(ipmin:ipmin+nn-1),pgroup%uzp(ipmin:ipmin+nn-1),
-     &                      gamadv,lrelativ)
+              call gammaadv(nn,gg,ux, uy,uz,gamadv,lrelativ)
 
 c             --- Now, move velocites back one half a step
 c             --- first half of a backward B advance
-              call bpush3d(nn,pgroup%uxp(ipmin:ipmin+nn-1),pgroup%uyp(ipmin:ipmin+nn-1),
-     &                     pgroup%uzp(ipmin:ipmin+nn-1),
-     &                     pgroup%gaminv(ipmin:ipmin+nn-1),xt(1),yt(1),zt(1),
-     &                     pgroup%sq(is),pgroup%sm(is),
+              call bpush3d(nn,ux,uy,uz,gg,bx,by,bz,pgroup%sq(is),pgroup%sm(is),
      &                     -0.5*fulldt_s,ibpush)
 
 c             --- then half of a backward E advance
-              call epush3d(nn,pgroup%uxp(ipmin:ipmin+nn-1),pgroup%uyp(ipmin:ipmin+nn-1),
-     &                     pgroup%uzp(ipmin:ipmin+nn-1),
-     &                     at(1),bt(1),apt(1),pgroup%sq(is),pgroup%sm(is),
-     &                     -0.5*fulldt_s)
+              call epush3d(nn,ux,uy,uz,ex,ey,ez,pgroup%sq(is),pgroup%sm(is),-0.5*fulldt_s)
 
 c             --- Advance relativistic Gamma factor
-              call gammaadv(nn,pgroup%gaminv(ipmin:ipmin+nn-1),pgroup%uxp(ipmin:ipmin+nn-1),
-     &                      pgroup%uyp(ipmin:ipmin+nn-1),pgroup%uzp(ipmin:ipmin+nn-1),
-     &                      gamadv,lrelativ)
+              call gammaadv(nn,gg,ux,uy,uz,gamadv,lrelativ)
 
 c           --- end of loop over species and injection sources
             enddo
@@ -1832,26 +1771,8 @@ c           --- Make sure that there is enough room in the temporary arrays.
             endif
 
 c           --- Make equivalences so names make sense below
-            ex => at
-            ey => bt
-            ez => apt
-            bx => bpt
-            by => xct
-            bz => xpct
             bendres => yct
             bendradi => ypct
-
-c           --- Zero the B field which is accumulated below
-            ex = 0.
-            ey = 0.
-            ez = 0.
-            bx = 0.
-            by = 0.
-            bz = 0.
-
-c           --- Assume that injection will never be done inside a bend.
-            bendres = 0.
-            bendradi = 1.
 
 c           --- Create equivalences
 c           --- In this section of code, this is purely for convenience
@@ -1867,6 +1788,24 @@ c           --- and to make the following code look cleaner.
             uz => pgroup%uzp(i1:i2)
             gg => pgroup%gaminv(i1:i2)
             id => pgroup%pid(i1:i2,injpid)
+            ex => pgroup%ex(i1:i2)
+            ey => pgroup%ey(i1:i2)
+            ez => pgroup%ez(i1:i2)
+            bx => pgroup%bx(i1:i2)
+            by => pgroup%by(i1:i2)
+            bz => pgroup%bz(i1:i2)
+
+c           --- Zero the B field which is accumulated below
+            ex = 0.
+            ey = 0.
+            ez = 0.
+            bx = 0.
+            by = 0.
+            bz = 0.
+
+c           --- Assume that injection will never be done inside a bend.
+            bendres = 0.
+            bendradi = 1.
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
@@ -2013,26 +1952,8 @@ c           --- Make sure that there is enough room in the temporary arrays.
             endif
 
 c           --- Make equivalences so names make sense below
-            ex => at
-            ey => bt
-            ez => apt
-            bx => bpt
-            by => xct
-            bz => xpct
             bendres => yct
             bendradi => ypct
-
-c           --- Zero the B field which is accumulated below
-            ex = 0.
-            ey = 0.
-            ez = 0.
-            bx = 0.
-            by = 0.
-            bz = 0.
-
-c           --- Assume that injection will never be done inside a bend.
-            bendres = 0.
-            bendradi = 1.
 
 #ifndef MPIPARALLEL
 c           --- Fetch time step size
@@ -2049,6 +1970,12 @@ c           --- Create equivalences
             uz => pgroup%uzp(i1:i2)
             gg => pgroup%gaminv(i1:i2)
             id => pgroup%pid(i1:i2,injpid)
+            ex => pgroup%ex(i1:i2)
+            ey => pgroup%ey(i1:i2)
+            ez => pgroup%ez(i1:i2)
+            bx => pgroup%bx(i1:i2)
+            by => pgroup%by(i1:i2)
+            bz => pgroup%bz(i1:i2)
 #else
 c           --- Create equivalences
             xx => xt(1:nn)
@@ -2059,6 +1986,12 @@ c           --- Create equivalences
             uz => uzt(1:nn)
             gg => rt(1:nn)
             id => perpscal(1:nn)
+            ex => at(1:nn)
+            ey => bt(1:nn)
+            ez => apt(1:nn)
+            bx => bpt(1:nn)
+            by => xct(1:nn)
+            bz => xpct(1:nn)
 c           --- Fetch time step size
             tt(1:nn) = fulldt_s*PACK(mask,mask > 0.)
 c           --- Copy particle data into temporary arrays, collecting
@@ -2074,6 +2007,18 @@ c           --- only particles that have been injected this time step.
             gg = PACK(pgroup%gaminv(i1:i2),mask > 0.)
             id = PACK(pgroup%pid(i1:i2,injpid),mask > 0.)
 #endif
+
+c           --- Zero the B field which is accumulated below
+            ex = 0.
+            ey = 0.
+            ez = 0.
+            bx = 0.
+            by = 0.
+            bz = 0.
+
+c           --- Assume that injection will never be done inside a bend.
+            bendres = 0.
+            bendradi = 1.
 
 c           --- calculate new E self-fields
             if (linj_efromgrid) then
