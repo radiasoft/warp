@@ -631,6 +631,44 @@ def getappliedfieldsforspecies(species):
           species.ex,species.ey,species.ez,
           species.sm,species.sq,bendres,bendradi,gammabar,top.dt)
 
+def getparticleextent(xmmin=None,xmmax=None,ymmin=None,ymmax=None,
+                      l2symtry=None,l4symtry=None,solvergeom=None):
+  """Given the system size and the symmetries and geometry, return the full
+extent of the particles. When there are symmetries, the full extent
+goes from -mmax to +mmax. With RZ geometry, the extent in both x and y
+goes from -xmmax to xmmax. In XZ geometry, the extent in y is infinite."""
+
+  if xmmin is None: xmmin = top.xpminlocal
+  if xmmax is None: xmmax = top.xpmaxlocal
+  if ymmin is None: ymmin = top.ypminlocal
+  if ymmax is None: ymmax = top.ypmaxlocal
+  if l2symtry is None: l2symtry = w3d.l2symtry
+  if l4symtry is None: l4symtry = w3d.l4symtry
+  if solvergeom is None: solvergeom = w3d.solvergeom
+
+  xmin = xmmin
+  xmax = xmmax
+  ymin = ymmin
+  ymax = ymmax
+  if l2symtry:
+    ymin = -ymmax
+  elif l4symtry:
+    xmin = -xmmax
+    ymin = -ymmax
+
+  if solvergeom == w3d.RZgeom:
+    xmin = -xmmax
+    ymin = -xmmax
+    ymax =  xmmax
+  elif solvergeom == w3d.XZgeom:
+    if l2symtry or l4symtry:
+      xmin = -xmmax
+    endif
+    ymin = -largepos
+    ymax =  largepos
+
+  return xmin,xmax,ymin,ymax
+
 ##############################################################################
 ##############################################################################
 ##############################################################################
