@@ -893,27 +893,27 @@ vsfty(a:real,work:real,cp:real,cm:real,nx:integer,ny:integer,
      subroutine #  Vectorized Sine Fourier Transform in Y
 vpftx(nx:integer,ny:integer,nz:integer,
       nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
-      a:real,norm:real,esx,esy,nxy,xywork:real)
+      a:real,norm:real,esx:integer,esy:integer,xywork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in X
 vpfty(nx:integer,ny:integer,nz:integer,
       nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
-      a:real,norm:real,esx,esy,nxy,xywork:real)
+      a:real,norm:real,esx:integer,esy:integer,xywork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in Y
 vpftz(nx:integer,ny:integer,nz:integer,
       nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
-      a:real,norm:real,esx,esy,nxy,zwork:real)
+      a:real,norm:real,esx:integer,esy:integer,zwork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in Z
 vpftxi(nx:integer,ny:integer,nz:integer,
        nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
-       a:real,norm:real,esx,esy,nxy,xywork:real)
+       a:real,norm:real,esx:integer,esy:integer,xywork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in X
 vpftyi(nx:integer,ny:integer,nz:integer,
        nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
-       a:real,norm:real,esx,esy,nxy,xywork:real)
+       a:real,norm:real,esx:integer,esy:integer,xywork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in Y
 vpftzi(nx:integer,ny:integer,nz:integer,
        nxguardphi:integer,nyguardphi:integer,nzguardphi:integer,
-       a:real,norm:real,esx,esy,nxy,zwork:real)
+       a:real,norm:real,esx:integer,esy:integer,zwork:real)
      subroutine #  Vectorized Real Periodic Fourier Transform in Z
 cosqx(a:real,w:real,c:real,nx:integer,ny:integer,
       nxguardphi:integer,nyguardphi:integer,
