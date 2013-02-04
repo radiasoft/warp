@@ -803,14 +803,14 @@ c         --- this unsplit structure is less efficient numerically due to the
 c         --- structure of wrandomgauss()
 
         do ip = 1,np 
-          g_dist = wrandomgauss(vtrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
+          g_dist = wrandomgauss(vtrandom,ip+kioff-1,dig5,dig6,1,1,.false.)
           xp(ip) = 0.5*(emit_b/r_b)*g_dist
         enddo 
         if (solvergeom == XZgeom) then
           yp(ip) = 0.
         else
           do ip = 1,np 
-            g_dist = wrandomgauss(vtrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
+            g_dist = wrandomgauss(vtrandom,ip+kioff-1,dig9,dig10,1,1,.false.)
             yp(ip) = 0.5*(emit_b/r_b)*g_dist
           enddo 
         endif
@@ -973,22 +973,22 @@ c         --- this unsplit structure is less efficient numerically due to the
 c         --- structure of wrandomgauss()
 
         do ip = 1,np
-          r = wrandomgauss(xrandom,ip+kioff-1,dig1,dig2,1,1,.true.)
+          r = wrandomgauss(xrandom,ip+kioff-1,dig1,dig2,1,1,.false.)
           x(ip) = 0.5*rx(ip)*r
         enddo 
         do ip = 1,np
-          r = wrandomgauss(xrandom,ip+kioff-1,dig3,dig4,1,1,.true.)
+          r = wrandomgauss(xrandom,ip+kioff-1,dig3,dig4,1,1,.false.)
           y(ip) = 0.5*ry(ip)*r
         enddo 
 
         do ip = 1,np
-          r = wrandomgauss(vtrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
+          r = wrandomgauss(vtrandom,ip+kioff-1,dig5,dig6,1,1,.false.)
           xp(ip) = 0.5*(epsx(ip)/rx(ip))*r + (rxp(ip)/rx(ip))*x(ip) 
         enddo 
         do ip = 1,np
 c         --- Note that dig7 and dig8 are already used for the longitudinal
 c         --- velocity spread.
-          r = wrandomgauss(vtrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
+          r = wrandomgauss(vtrandom,ip+kioff-1,dig9,dig10,1,1,.false.)
           yp(ip) = 0.5*(epsy(ip)/ry(ip))*r + (ryp(ip)/ry(ip))*y(ip)
         enddo 
 
