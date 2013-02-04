@@ -306,97 +306,6 @@ except:
     return tt
 
 # --- Convenience function to read in data from a text file
-def getdatafromtextfileold(filename,nskip=0,dims=[],nquantities=1,dtype='d',
-                        fortranordering=1,converter=float,mode='r',get_header=false):
-  """
-Reads data in from a text file. The data is assumed to be laid out on a
-logically Cartesian mesh.
- - filename: must be supplied
- - nskip=0: numbers of lines at the beginning of the file to skip
-            e.g. lines with file info and comments
- - dims=[]: must be supplied - the size of each dimension
- - nquantities=1: number of quantities in the file
- - fortranordering=1: when true, the data will be in fortran ordering, where
-                      the index that varies that fastest in the file will be
-                      the first index. Otherwise use C ordering.
- - converter=float: Function which converts the strings into numbers. This should
-                    be the type of result desired. It should only be float or int,
-                    unless you know what you are doing.
-
-Here's an example data file called 'testdata'::
-
-  this line is skipped
-  1 0.0379
-  2 0.0583
-  3 0.0768
-  4 0.1201
-
-This can be read in with either::
-
-  dd = getdatafromtextfile('testdata',nskip=1,dims=[2,4])
-
-or::
-
-  dd = getdatafromtextfile('testdata',nskip=1,dims=[4],nquantities=2)
-
-Both produce an array of shape (2,4) that looks like::
-
-  >>> print dd
-  [[ 1.    , 2.    , 3.    , 4.    ,]
-   [ 0.0379, 0.0583, 0.0768, 0.1201,]]
-
-  """
-
-  # --- Get total number of data values and make an array big enough to hold
-  # --- them.
-  ntot = nquantities*product(dims)
-  data = zeros(ntot,dtype)
-  if get_header:header=[]
-  ff = open(filename,mode)
-
-  # --- Skip the number of lines at the top of the file as specified
-  for i in range(nskip):
-    if get_header:
-      header.append(ff.readline())
-    else:
-      ff.readline()
-
-  # --- Loop over the file, reading in one line at a time.
-  # --- Each whole line is put into data at once.
-  # --- For the conversion of the strings into numbers, it is faster to use
-  # --- float or int rather than eval.
-  i = 0
-  while i < ntot:
-    dataline = map(converter,ff.readline().split())
-    nd = len(dataline)
-    data[i:i+nd] = dataline
-    i = i + nd
-
-  if not fortranordering:
-    # --- reverse the order of the dims to prepare the transpose that follows
-    dims = list(dims)
-    dims.reverse()
-
-  # --- If nquantities, then add another dimension to the data array
-  if nquantities > 1:
-    dims0 = dims
-    dims = [nquantities] + list(dims)
-  else:
-    dims = list(dims)
-
-  # --- Set array to have proper shape.
-  dims.reverse()
-  data.shape = tuple(dims)
-  if fortranordering:
-    data = transpose(data)
-  else:
-    data = transpose(data,[len(dims0)]+range(len(dims0)))
-
-  if get_header:
-    return data,header
-  else:
-    return data
-
 def getdatafromtextfile(filename,nskip=0,dims=None,dtype='d',fortranordering=True,
                         converter=float,mode='r',get_header=False,l_checkdims=False,
                         separator=None):
@@ -509,7 +418,7 @@ automatically.::
   # --- Each whole line is put into data at once.
   # --- For the conversion of the strings into numbers, it is faster to use
   # --- float or int rather than eval.
-  data = appendablearray.AppendableArray()
+  data = appendablearray.AppendableArray(typecode=dtype)
   lines=ff.readlines()
   if l_checkdims:assert len(lines)==dims[1],"ERROR reading data from "+filename+": dimensions 2nd axis are incompatible. %g passed as argument, %g found in file."%(dims[1],len(lines))
   for line in lines:
