@@ -3,13 +3,85 @@
 #  - ???
 from warp import *
 from lattice import addnewbgrd,addnewbsqgrad
-import MA
 
 fftsolver_version = "$Id: fftsolver.py,v 1.35 2011/09/22 23:20:02 grote Exp $"
 
 ##############################################################################
+class FFTSolver3D(MultiGrid3D):
+  def dosolve(self,iwhich=0,*args):
+    if not self.l_internal_dosolve: return
+    # --- set for longitudinal relativistic contraction.
+    iselfb = args[2]
+    beta = top.pgroup.fselfb[iselfb]/clight
+    zfact = 1./sqrt((1.-beta)*(1.+beta))
+
+    # --- This is only done for convenience.
+    self._phi = self.potential
+    self._rho = self.source
+    if isinstance(self.potential,FloatType): return
+
+    self.kxsq = (2./self.dx*sin(pi*fft.fftfreq(self.nx)))**2*eps0
+    self.kysq = (2./self.dy*sin(pi*fft.fftfreq(self.ny)))**2*eps0
+    self.kzsq = (2./self.dz*sin(pi*fft.fftfreq(self.nz)))**2*eps0
+
+    self.krho = fft.rfftn(self.source[self.nxguardrho:-self.nxguardrho-1,
+                                 self.nyguardrho:-self.nyguardrho-1,
+                                 self.nzguardrho:-self.nzguardrho-1])
+
+    ksq = self.kxsq[:,newaxis,newaxis] + self.kysq[newaxis,:,newaxis] + self.kzsq[newaxis,newaxis,:self.nz/2+1]
+    ksq[0,0,0] = 1.
+    self.kphi = self.krho/ksq
+
+    phi = fft.irfftn(self.kphi)
+
+    self.potential[self.nxguardphi:-self.nxguardphi-1,
+                   self.nyguardphi:-self.nyguardphi-1,
+                   self.nzguardphi:-self.nzguardphi-1] = phi
+
+    self.mgiters = 1
+    self.mgerror = 0.
+
+##############################################################################
+class FFTSolver2D(MultiGrid3D):
+  def dosolve(self,iwhich=0,*args):
+    if not self.l_internal_dosolve: return
+    # --- set for longitudinal relativistic contraction.
+    iselfb = args[2]
+    beta = top.pgroup.fselfb[iselfb]/clight
+    zfact = 1./sqrt((1.-beta)*(1.+beta))
+
+    # --- This is only done for convenience.
+    self._phi = self.potential
+    self._rho = self.source
+    if isinstance(self.potential,FloatType): return
+
+    self.kxsq = (2./self.dx*sin(pi/2.*fft.fftfreq(self.nx)))**2*eps0
+    self.kzsq = (2./self.dz*sin(pi/2.*fft.fftfreq(self.nz)))**2*eps0
+
+    self.krho = fft.rfftn(self.source[self.nxguardrho:-self.nxguardrho-1,
+                                 0,
+                                 self.nzguardrho:-self.nzguardrho-1])
+
+    ksq = self.kxsq[:,newaxis] + self.kzsq[newaxis,:self.nz/2+1]
+    ksq[0,0] = 1.
+    self.kphi = self.krho/ksq
+
+    phi = fft.irfftn(self.kphi)
+
+    self.potential[self.nxguardphi:-self.nxguardphi-1,
+                   0,
+                   self.nzguardphi:-self.nzguardphi-1] = phi
+
+    self.mgiters = 1
+    self.mgerror = 0.
+
+
+
+##############################################################################
+##############################################################################
+##############################################################################
 class FieldSolver3dBase(object):
-  
+
   __w3dinputs__ = ['nx','ny','nz','nzlocal',
                    'nxguardphi','nyguardphi','nzguardphi',
                    'nxguardrho','nyguardrho','nzguardrho',
@@ -519,7 +591,7 @@ Transverse 2-D field solver, ignores self Ez and Bz.
     # --- Calculate the B field from the phi from the beam and sum the phi's
     # --- of the beam and background
     # --- Also, calculate bsqgrad if needed
-      
+
     self.calcbeambfield()
     self.calcbeambsqgrad()
 
