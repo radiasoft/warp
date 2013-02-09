@@ -2073,9 +2073,6 @@ of code."""
 
   pid = property(*_getpgroupattribute('pid','particle ID information, in local domain'))
 
-  # --- Clean up the name space
-  del _getpgroupattribute
-
   def _gettopattribute(name,doc=None):
     if doc is None:
       doc = top.getvardoc(name)
@@ -2136,6 +2133,80 @@ of code."""
   # LostParticles
   inslost = property(*_gettopattribute('inslost'))
   npslost = property(*_gettopattribute('npslost'))
+
+  # --- This handles the lost particles from the species.
+  # --- Note that this is on for the local domain, no parallel communication
+  # --- is done. If lost particles are needed across parallel domains, use the
+  # --- get methods.
+  def _getpgroupattribute(name,doc=None):
+    def fget(self):
+      if len(self.jslist) == 1:
+        if top.npmaxlost > 0:
+          js = self.jslist[0]
+          i1 = top.inslost[js] - 1
+          i2 = i1 + top.npslost[js]
+          return getattr(top,name)[i1:i2]
+        else:
+          # --- Arrays are unallocated - return a zero length array.
+          # --- This avoids the need of code always having to check if
+          # --- the arrays are allocated.
+          return zeros(0)
+      else:
+        raise NotImplementedError('The species attributes only works with one species')
+    def fset(self,value):
+      if len(self.jslist) == 1:
+        js = self.jslist[0]
+        i1 = top.inslost[js] - 1
+        i2 = i1 + top.npslost[js]
+        getattr(top,name)[i1:i2] = value
+      else:
+        raise NotImplementedError('The species attributes only works with one species')
+    return fget,fset,None,doc
+
+  gaminvlost = property(*_getpgroupattribute('gaminvlost','gamma inverse of lost particles, in local domain'))
+  xplost = property(*_getpgroupattribute('xplost','x position of lost particles, in local domain'))
+  yplost = property(*_getpgroupattribute('yplost','y position of lost particles, in local domain'))
+  zplost = property(*_getpgroupattribute('zplost','z position of lost particles, in local domain'))
+  uxplost = property(*_getpgroupattribute('uxplost','x velocity of lost particles, in local domain'))
+  uyplost = property(*_getpgroupattribute('uyplost','y velocity of lost particles, in local domain'))
+  uzplost = property(*_getpgroupattribute('uzplost','z velocity of lost particles, in local domain'))
+  exlost = property(*_getpgroupattribute('exlost','x E-field of lost particles, in local domain'))
+  eylost = property(*_getpgroupattribute('eylost','y E-field of lost particles, in local domain'))
+  ezlost = property(*_getpgroupattribute('ezlost','z E-field of lost particles, in local domain'))
+  bxlost = property(*_getpgroupattribute('bxlost','x B-field of lost particles, in local domain'))
+  bylost = property(*_getpgroupattribute('bylost','y B-field of lost particles, in local domain'))
+  bzlost = property(*_getpgroupattribute('bzlost','z B-field of lost particles, in local domain'))
+  tplost = property(*_getpgroupattribute('tplost','time particles were lost, in local domain'))
+
+  def _getpgroupattribute(name,doc=None):
+    def fget(self):
+      if len(self.jslist) == 1:
+        if top.npmaxlost > 0:
+          js = self.jslist[0]
+          i1 = top.inslost[js] - 1
+          i2 = i1 + top.npslost[js]
+          return getattr(top,name)[i1:i2,:]
+        else:
+          # --- Arrays are unallocated - return a zero length array.
+          # --- This avoids the need of code always having to check if
+          # --- the arrays are allocated.
+          return zeros((0,top.npidlost))
+      else:
+        raise NotImplementedError('The species attributes only works with one species')
+    def fset(self,value):
+      if len(self.jslist) == 1:
+        js = self.jslist[0]
+        i1 = top.inslost[js] - 1
+        i2 = i1 + top.npslost[js]
+        getattr(top,name)[i1:i2,:] = value
+      else:
+        raise NotImplementedError('The species attributes only works with one species')
+    return fget,fset,None,doc
+
+  pidlost = property(*_getpgroupattribute('pidlost','particle ID information of lost particles, in local domain'))
+
+  # --- Clean up the name space
+  del _getpgroupattribute
 
   # --- For variables that are 2, 3, or 4-D
   def _gettopattribute(name,doc=None):
