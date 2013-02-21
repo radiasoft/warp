@@ -351,7 +351,8 @@ Input:
                      js=js,
                      lallindomain=false,
                      lmomentum=true,
-                     resetrho=false)
+                     resetrho=false,
+                     lnewparticles=false)
 
     def localizeparticles(self,xx,yy,zz,ux,uy,uz,gi,pid):
         "Down select the particles, saving only particles within the local domain."
