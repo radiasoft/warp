@@ -642,6 +642,8 @@ inj_angl(0:inj_nx,0:inj_ny,inj_ninj) _real
    # Grid giving angle of injection sources for each transverse location
 inj_throttle(0:inj_nx,0:inj_ny,inj_ninj,inj_ns) _real /1./
    # Modifies the rate of particle injection
+inj_lambda(0:inj_nx,0:inj_ny,inj_ninj,inj_ns) _real /1./
+  # Spatially varying coefficient for thermionic emission
 inj_np(0:inj_nx,0:inj_ny,inj_ninj,inj_ns)   _real
    # Grid holding number of particles injected on the current time step.
 inj_prev(0:inj_nx,0:inj_ny,inj_ninj,inj_ns) _real

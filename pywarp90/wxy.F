@@ -2033,6 +2033,8 @@ c               --- Save current position and velocity and ez
                   ezo(i) = ez(ipmin+i-1)
                 enddo
               endif
+            else
+              niter_dt_tmp = 1
             endif
 
 

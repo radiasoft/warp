@@ -16,6 +16,7 @@ cross the cell.
         instances of the Species class.
         Note that the radial and scintillator diagnostics can handle only a
         single species and will only include the first species listed.
+        If not supplied, all species currently created will be included.
   - zmmin,zmmax,dz,nz: grid parameters
         zmmin and zmmax default to w3d.zmmin and w3d.zmmax.
         dz defaults to w3d.dz/nzscale.
@@ -78,7 +79,7 @@ be unreliable.
 
     """
 
-    def __init__(self,js,zmmin=None,zmmax=None,dz=None,nz=None,nzscale=1,
+    def __init__(self,js=None,zmmin=None,zmmax=None,dz=None,nz=None,nzscale=1,
                  nhist=None,dthist=None,nr=None,rmmax=None,ztarget=None,
                  scintxmin=None,scintxmax=None,
                  scintymin=None,scintymax=None,
@@ -88,6 +89,8 @@ be unreliable.
                  dumptofile=None,
                  laccumulatedata=true,
                  starttime=None,endtime=None,lmoving_frame=0):
+        if js is None:
+            js = list(arange(top.pgroup.ns))
         try:
             len(js)
             jslist = js
@@ -230,7 +233,7 @@ data will be preserved.
         if (top.getpyobject('gcmoments1') is None and
             top.getpyobject('gcmoments2') is None):
             top.lgcmoments = false
-        
+
         uninstallbeforestep(self.initializegrid)
         uninstallafterstep(self.getdiagnostics)
 
@@ -592,49 +595,7 @@ data will be preserved.
 
     # ----------------------------------------------------------------------
     def dodumptofile(self,zbeam):
-        #self.dodumptofilePDB(zbeam)
         self.dodumptofilePickle(zbeam)
-
-    def dodumptofilePDB(self,zbeam):
-        if me != 0: return
-        ff = PW.PW(self.dumptofile+'_gridcrossing.pdb','a',verbose=0)
-        suffix = "_%08d"%(top.it)
-        ff.write('time'+suffix,self._time[0])
-        ff.write('zbeam'+suffix,self._zbeam[0])
-        ff.write('count'+suffix,self._count[0])
-        ff.write('current'+suffix,self._current[0])
-        ff.write('xbar'+suffix,self._xbar[0])
-        ff.write('ybar'+suffix,self._ybar[0])
-        ff.write('xsqbar'+suffix,self._xsqbar[0])
-        ff.write('ysqbar'+suffix,self._ysqbar[0])
-        ff.write('vxbar'+suffix,self._vxbar[0])
-        ff.write('vybar'+suffix,self._vybar[0])
-        ff.write('vzbar'+suffix,self._vzbar[0])
-        ff.write('vxsqbar'+suffix,self._vxsqbar[0])
-        ff.write('vysqbar'+suffix,self._vysqbar[0])
-        ff.write('vzsqbar'+suffix,self._vzsqbar[0])
-        ff.write('xvxbar'+suffix,self._xvxbar[0])
-        ff.write('yvybar'+suffix,self._yvybar[0])
-        ff.write('xrms'+suffix,self._xrms[0])
-        ff.write('yrms'+suffix,self._yrms[0])
-        ff.write('vxrms'+suffix,self._vxrms[0])
-        ff.write('vyrms'+suffix,self._vyrms[0])
-        ff.write('vzrms'+suffix,self._vzrms[0])
-        ff.write('epsnx'+suffix,self._epsnx[0])
-        ff.write('epsny'+suffix,self._epsny[0])
-        ff.write('rrms'+suffix,self._rrms[0])
-        ff.write('rprms'+suffix,self._rprms[0])
-        ff.write('xmax'+suffix,self._xmax[0])
-        ff.write('ymax'+suffix,self._ymax[0])
-        ff.write('rmax'+suffix,self._rmax[0])
-        if self.ldoradialdiag:
-            ff.write('rprofile'+suffix,self._rprofile[0])
-        if self.ldoscintillator:
-            if maxnd(self._scintillator[0]) > 0.:
-                # --- Note that the data is only saved if it is nonzero
-                ff.write('scinttime'+suffix,top.time)
-                ff.write('scintillator'+suffix,self._scintillator[0])
-        ff.close()
 
     def dodumptofilePickle(self,zbeam):
         if me != 0: return
@@ -658,6 +619,8 @@ data will be preserved.
             cPickle.dump(('endtime',self.endtime),ff,-1)
             cPickle.dump(('ldoradialdiag',self.ldoradialdiag),ff,-1)
             cPickle.dump(('ldoscintillator',self.ldoscintillator),ff,-1)
+            cPickle.dump(('laccumulatedata',self.laccumulatedata),ff,-1)
+            cPickle.dump(('lmoving_frame',self.lmoving_frame),ff,-1)
             if self.ldoscintillator:
                 cPickle.dump(('scintxmin',self.scintxmin),ff,-1)
                 cPickle.dump(('scintxmax',self.scintxmax),ff,-1)
@@ -715,100 +678,7 @@ data will be preserved.
 Restore the data from a dump file. This is used before post processing data
 after simulation when the dumptofile flag was on.
         """
-        #self.restorefromfilePDB(files,readscintillator)
         self.restorefromfilePickle(files,readscintillator=readscintillator)
-
-    def restorefromfilePDB(self,files=[],readscintillator=1):
-        if me != 0: return
-        ff = PR.PR(self.dumptofile+'_gridcrossing.pdb')
-
-        self._time = []
-        self._zbeam = []
-        self._count = []
-        self._current = []
-        self._xbar = []
-        self._ybar = []
-        self._xsqbar = []
-        self._ysqbar = []
-        self._vxbar = []
-        self._vybar = []
-        self._vzbar = []
-        self._vxsqbar = []
-        self._vysqbar = []
-        self._vzsqbar = []
-        self._xvxbar = []
-        self._yvybar = []
-        self._xrms = []
-        self._yrms = []
-        self._vxrms = []
-        self._vyrms = []
-        self._vzrms = []
-        self._epsnx = []
-        self._epsny = []
-        self._rrms = []
-        self._rprms = []
-        self._xmax = []
-        self._ymax = []
-        self._rmax = []
-        # --- At this point, getdiagnostics may not have been executed, so
-        # --- self.ldoradialdiag may not be set. So assume that it is and
-        # --- create the rprofile list.
-        self._rprofile = []
-        self._scintillator = []
-
-        varlist = list(ff.inquire_names())
-        varlist.sort()
-        for var in varlist:
-            if var[0] == 't':
-                name,it = var.split('_')
-                suffix = "_%d"%(it)
-                self._time.append(ff.read('time'+suffix))
-                self._zbeam.append(ff.read('zbeam'+suffix))
-                self._count.append(ff.read('count'+suffix))
-                self._current.append(ff.read('current'+suffix))
-                self._xbar.append(ff.read('xbar'+suffix))
-                self._ybar.append(ff.read('ybar'+suffix))
-                self._xsqbar.append(ff.read('xsqbar'+suffix))
-                self._ysqbar.append(ff.read('ysqbar'+suffix))
-                self._vxbar.append(ff.read('vxbar'+suffix))
-                self._vybar.append(ff.read('vybar'+suffix))
-                self._vzbar.append(ff.read('vzbar'+suffix))
-                self._vxsqbar.append(ff.read('vxsqbar'+suffix))
-                self._vysqbar.append(ff.read('vysqbar'+suffix))
-                self._vzsqbar.append(ff.read('vzsqbar'+suffix))
-                self._xvxbar.append(ff.read('xvxbar'+suffix))
-                self._yvybar.append(ff.read('yvybar'+suffix))
-                self._xrms.append(ff.read('xrms'+suffix))
-                self._yrms.append(ff.read('yrms'+suffix))
-                self._vxrms.append(ff.read('vxrms'+suffix))
-                self._vyrms.append(ff.read('vyrms'+suffix))
-                self._vzrms.append(ff.read('vzrms'+suffix))
-                self._epsnx.append(ff.read('epsnx'+suffix))
-                self._epsny.append(ff.read('epsny'+suffix))
-                self._rrms.append(ff.read('rrms'+suffix))
-                self._rprms.append(ff.read('rprms'+suffix))
-                self._xmax.append(ff.read('xmax'+suffix))
-                self._ymax.append(ff.read('ymax'+suffix))
-                self._rmax.append(ff.read('rmax'+suffix))
-                try:
-                    self._rprofile.append(ff.read('rprofile'+suffix))
-                except:
-                    # --- This just means that there is no rprofile data
-                    pass
-                try:
-                    self._scinttime.append(ff.read('scinttime'+suffix))
-                    self._scintillator.append(ff.read('scintillator'+suffix))
-                except:
-                    # --- This just means that there is no scintillator data
-                    pass
-
-        ff.close()
-
-        # --- If there is no rprofile data, then delete the attribute
-        if len(self._rprofile) == 0:
-            del self._rprofile
-        if len(self._scintillator) == 0:
-            del self._scintillator
 
     def restorefromfilePickle(self,files=[],
                               starttime=-largepos,endtime=+largepos,
@@ -1303,7 +1173,7 @@ Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
         #        else:
         #            d.append(data[i,iz])
         #return array(d),array(t)
-        
+
     def hcount(self,z,js=None):
         """
 Returns the time history of the particle count at the given z location.
@@ -2675,7 +2545,7 @@ around the peak current."""
                 else:
                     d.append(data[i,iz])
         return array(d),array(t)
-        
+
     def hcount(self,**kw):
         return self._gettimehistory(self.count,**kw)
     def hcurrent(self,**kw):
