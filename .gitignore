@@ -16,4 +16,5 @@ ranffortran.c
 
 # Ignore local definitions for building
 Makefile.local
+Makefile.local.pympi
 setup.local.py
