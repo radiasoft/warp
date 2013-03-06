@@ -164,6 +164,30 @@ depose_j_n_2dxz(cj:real,
                            l_particles_weight:logical,
                            l4symtry:logical)
                            subroutine
+depose_j_n_2dxz_spectral(cj:real,
+                           n:integer,x(n):real,z(n):real,
+                           ux(n):real,uy(n):real,uz(n):real,
+                           gaminv(n):real,w:real,q:real,
+                           xmin:real,zmin:real,
+                           dt:real,dx:real,dz:real,
+                           nx:integer,nz:integer,
+                           nxguard:integer,nzguard:integer,
+                           nox:integer,noz:integer,
+                           l_particles_weight:logical,
+                           l4symtry:logical)
+                           subroutine
+depose_drhoodt_n_2dxz(drhoodt:real,
+                           n:integer,x(n):real,z(n):real,
+                           ux(n):real,uy(n):real,uz(n):real,
+                           gaminv(n):real,w:real,q:real,
+                           xmin:real,zmin:real,
+                           dt:real,dx:real,dz:real,
+                           nx:integer,nz:integer,
+                           nxguard:integer,nzguard:integer,
+                           nox:integer,noz:integer,
+                           l_particles_weight:logical,
+                           l4symtry:logical)
+                           subroutine
 getf3d_linear(n:integer,xp(n):real,yp(n):real,zp(n):real,
                ex(n):real,ey(n):real,ez(n):real,
                xmin:real,ymin:real,zmin:real,
@@ -303,6 +327,7 @@ getb1dz_n_energy_conserving(n:integer,zp(n):real,
                            subroutine
 yee2node3d(f:EM3D_YEEFIELDtype) subroutine
 node2yee3d(f:EM3D_YEEFIELDtype) subroutine
+Jyee2node3d(f:EM3D_YEEFIELDtype) subroutine
 em3d_exchange_e(b:EM3D_BLOCKtype) subroutine
 em3d_exchange_b(b:EM3D_BLOCKtype) subroutine
 em3d_exchange_f(b:EM3D_BLOCKtype) subroutine
@@ -489,6 +514,7 @@ bmgz(-nzguard:nz+nzguard) _real
 %%%%%%%% EM3D_YEEFIELDtype:
 fieldtype integer /-1/
 stencil integer /0/ # 0 = Yee; 1 = Yee-enlarged (Karkkainen) on EF,B; 2 = Yee-enlarged (Karkkainen) on E,F
+spectral logical /.false./
 l_nodecentered logical /.false./
 nx integer /0/ # nb of mesh cells of grid interior in the x direction
 ny integer /0/ # nb of mesh cells of grid interior in the y direction
@@ -526,6 +552,9 @@ jzmaxg integer /0/ # position of last node of entire grid (interior+guard nodes)
 nxp integer /0/
 nyp integer /0/
 nzp integer /0/
+nxold integer /0/
+nyold integer /0/
+nzold integer /0/
 nxext integer /0/
 nyext integer /0/
 nzext integer /0/
@@ -544,6 +573,9 @@ nzpo integer /0/
 nxmp integer /0/
 nymp integer /0/
 nzmp integer /0/
+nxdrho integer /0/
+nydrho integer /0/
+nzdrho integer /0/
 ntimes integer /1/
 nconds integer /0/
 nxcond integer /0/
@@ -594,6 +626,7 @@ F(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
 Rho(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
 Rhoold(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
 Rhoarray(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard,ntimes) _real
+DRhoodt(-nxguard:nxdrho+nxguard,-nyguard:nydrho+nyguard,-nzguard:nzdrho+nzguard) _real
 J(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
 Jarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3,ntimes) _real
 incond(-nxguard:nxcond+nxguard,-nyguard:nycond+nyguard,-nzguard:nzcond+nzguard) _logical
@@ -611,42 +644,6 @@ Ezbar(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _
 Excp(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
 Eycp(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
 Ezcp(-nxguard:nxdamp+nxguard,-nyguard:nydamp+nyguard,-nzguard:nzdamp+nzguard) _real
-DEXY(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-DEXZ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-DEYX(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-DEYZ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-DEZX(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-DEZY(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-DBXY(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-DBXZ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-DBYX(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-DBYZ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-DBZX(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-DBZY(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BXYCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BYXCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BXZCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BZXCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BYZCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BZYCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EXYCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EYXCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EXZCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EZXCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EYZCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EZYCJ(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BXYCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BYXCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BXZCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BZXCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BYZCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-BZYCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EXYCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EYXCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EXZCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EZXCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EYZCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
-EZYCJT(-nxguard:nxext+nxguard,-nyguard:nyext+nyguard,-nzguard:nzext+nzguard) _real
 E_inx_pos integer /-1/
 E_inx_angle real  /0./
 E_inx(-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real

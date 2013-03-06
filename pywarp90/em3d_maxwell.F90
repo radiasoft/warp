@@ -367,6 +367,11 @@ dtsdy = f%clight**2*dt/f%dy
 dtsdz = f%clight**2*dt/f%dz
 mudt  = f%mu0*f%clight**2*dt
 
+if (f%spectral) then
+  call callpythonfunc("push_spectral","em3dsolverFFT")
+  return
+end if
+
 if (f%theta_damp/=0.) then
 !  f%exbar = f%theta_damp*f%exbar + f%exold
 !  f%eybar = f%theta_damp*f%eybar + f%eyold
@@ -1494,6 +1499,8 @@ dtsdx = dt/f%dx
 dtsdy = dt/f%dy
 dtsdz = dt/f%dz
 
+if (f%spectral) return
+
 if (f%theta_damp/=0.) then
   f%excp = f%ex
   f%eycp = f%ey
@@ -1782,6 +1789,8 @@ REAL(kind=8), INTENT(IN) :: dt
 
 INTEGER :: j, k, l
 real(kind=8) :: dtsdx,dtsdy,dtsdz,dtsepsi
+
+if (f%spectral) return
 
 dtsdx = f%clight*dt/f%dx
 dtsdy = f%clight*dt/f%dy
@@ -2094,6 +2103,8 @@ REAL(kind=8), INTENT(IN) :: dt
 
 INTEGER :: j, k, l
 real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
+
+if (f%spectral) return
 
 dtsdx = f%clight*dt/f%dx
 dtsdy = f%clight*dt/f%dy
@@ -8414,6 +8425,8 @@ implicit none
 TYPE(EM3D_BLOCKtype) :: b
 integer(ISZ) :: ibuf
  
+  if (b%core%yf%spectral) return
+  
   ibuf = 200
   
   ! --- X
@@ -9095,6 +9108,66 @@ f%l_nodecentered = .false.
 
   return
 end subroutine node2yee3d
+
+subroutine Jyee2node3d(f)
+! puts EM value from Yee grid to nodes
+use mod_emfield3d
+implicit none
+TYPE(EM3D_YEEFIELDtype) :: f
+
+INTEGER :: j,k,l
+
+if (.not.f%l_2dxz) then
+  do l=-f%nzguard,f%nz+f%nzguard
+    do k=-f%nyguard,f%ny+f%nyguard
+      do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
+        f%J(j,k,l,1)=0.5*(f%J(j,k,l,1)+f%J(j-1,k,l,1))
+      enddo
+    enddo
+  enddo
+
+  do l=-f%nzguard,f%nz+f%nzguard
+    do k=f%ny+f%nyguard-1,-f%nyguard+1,-1
+      do j=-f%nxguard,f%nx+f%nxguard
+        f%J(j,k,l,2)=0.5*(f%J(j,k,l,2)+f%J(j,k-1,l,2))
+      enddo
+    enddo
+  enddo
+
+  do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
+    do k=-f%nyguard,f%ny+f%nyguard
+      do j=-f%nxguard,f%nx+f%nxguard
+        f%J(j,k,l,3)=0.5*(f%J(j,k,l,3)+f%J(j,k,l-1,3))
+      enddo
+    enddo
+  enddo
+
+else
+ if (f%l_1dz) then
+  j = 0
+  k = 0
+  do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
+        f%J(j,k,l,3)=0.5*(f%J(j,k,l,3)+f%J(j,k,l-1,3))
+  enddo
+ else
+
+  k = 0
+  do l=-f%nzguard,f%nz+f%nzguard
+      do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
+        f%J(j,k,l,1)=0.5*(f%J(j,k,l,1)+f%J(j-1,k,l,1))
+      enddo
+  enddo
+
+  do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
+      do j=-f%nxguard,f%nx+f%nxguard
+        f%J(j,k,l,3)=0.5*(f%J(j,k,l,3)+f%J(j,k,l-1,3))
+      enddo
+  enddo
+ endif
+endif
+
+  return
+end subroutine Jyee2node3d
 
 subroutine add_current_slice_3d(f,i)
 use mod_emfield3d

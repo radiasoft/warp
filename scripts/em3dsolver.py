@@ -252,7 +252,7 @@ class EM3D(SubcycledPoissonSolver):
           if self.l_1dz:
             self.dtcourant=self.dz/clight
           elif self.l_2dxz:
-            if self.stencil==0 or self.spectral==2:
+            if self.stencil==0:
               self.dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dz**2))
             else:
               self.dtcourant=min(self.dx,self.dz)/clight 
@@ -685,10 +685,19 @@ class EM3D(SubcycledPoissonSolver):
           x = self.laser_xx
           y = self.laser_yy
           t = top.time*(1.-self.laser_source_v/clight)
-          laser_amplitude=self.laser_func(x,y,t)*(1.-self.laser_source_v/clight)/self.laser_emax*dispmax
+          laser_amplitude = self.laser_func(x,y,t)
+          if type(laser_amplitude) is type([]):
+            laser_amplitude_x=laser_amplitude[0]*(1.-self.laser_source_v/clight)/self.laser_emax*dispmax
+            laser_amplitude_y=laser_amplitude[1]*(1.-self.laser_source_v/clight)/self.laser_emax*dispmax
+          else:
+            laser_amplitude=laser_amplitude*(1.-self.laser_source_v/clight)/self.laser_emax*dispmax
+            laser_amplitude_x=laser_amplitude*cos(self.laser_polangle)
+            laser_amplitude_y=laser_amplitude*sin(self.laser_polangle)
         else:
           laser_amplitude=self.laser_amplitude/self.laser_emax*dispmax
           laser_amplitude*=self.laser_profile*cos(phase)*(1.-self.laser_source_v/clight)
+          laser_amplitude_x=laser_amplitude*cos(self.laser_polangle)
+          laser_amplitude_y=laser_amplitude*sin(self.laser_polangle)
         if self.laser_amplitude_dict is not None:
           laser_xdx=self.laser_xdx[self.laser_key]
           laser_ux=self.laser_ux[self.laser_key]
@@ -699,8 +708,8 @@ class EM3D(SubcycledPoissonSolver):
           laser_ux=self.laser_ux
           laser_ydy=self.laser_ydy
           laser_uy=self.laser_uy
-        laser_ux[...] = laser_amplitude*cos(self.laser_polangle)
-        laser_uy[...] = laser_amplitude*sin(self.laser_polangle)
+        laser_ux[...] = laser_amplitude_x
+        laser_uy[...] = laser_amplitude_y
         laser_xdx[...] += laser_ux*top.dt
         laser_ydy[...] += laser_uy*top.dt
 #        weights = ones(self.laser_nn)*f.dx*f.dz*eps0/(top.dt)*self.laser_emax*top.dt/(0.1*f.dx)
@@ -736,6 +745,9 @@ class EM3D(SubcycledPoissonSolver):
 #      print min(self.laser_xdx)/w3d.dx,max(self.laser_xdx)/w3d.dx
 
       if self.laser_source_z<f.zmin+self.zgrid or self.laser_source_z>=f.zmax+self.zgrid:return
+      self.depose_j_laser(f,laser_xdx,laser_ydy,laser_ux,laser_uy,weights,l_particles_weight)
+
+  def depose_j_laser(self,f,laser_xdx,laser_ydy,laser_ux,laser_uy,weights,l_particles_weight):
       for q in [1.,-1.]:
        if self.l_2dxz:
          if self.l_1dz:
