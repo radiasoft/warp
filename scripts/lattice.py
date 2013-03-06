@@ -1751,7 +1751,15 @@ class TimeDependentLatticeElement(object):
     self.hdata = []
 
     self.applydata()
-    installafterfs(self.applydata)
+    self.enable()
+
+  def enable(self):
+    if not isinstalledafterfs(self.applydata):
+      installafterfs(self.applydata)
+
+  def disable(self):
+    if isinstalledafterfs(self.applydata):
+      uninstallafterfs(self.applydata)
 
   def applydata(self,time=None):
     if time is None: time = top.time
