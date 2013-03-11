@@ -39,6 +39,9 @@ c        dsytri
 c        warp_ieeeck
 c        warp_ilaenv
 c        warp_lsame
+c     Based on Numerical Recipes
+c        bessj0array
+c        bessj1array
 c
 c
 c***************************************************************************
@@ -6955,3 +6958,117 @@ c**************************************************************************
 *
       END
 c************************************************************************** 
+
+c=============================================================================
+      subroutine bessj0array(n,x,j0)
+      integer(ISZ):: n
+      real(kind=8):: x(n)
+      real(kind=8):: j0(n)
+
+c     BESSJ0 calculates the Bessel function J0 using matched analytic
+c     approximations.  The routine is taken from Numerical Recipes.
+
+      real(kind=8):: p1 =  1.0
+      real(kind=8):: p2 = -0.1098628627e-02
+      real(kind=8):: p3 =  0.2734510407e-04
+      real(kind=8):: p4 = -0.2073370639e-05
+      real(kind=8):: p5 =  0.2093887211e-06
+      real(kind=8):: q1 = -0.1562499995e-01
+      real(kind=8):: q2 =  0.1430488765e-03
+      real(kind=8):: q3 = -0.6911147651e-05
+      real(kind=8):: q4 =  0.7621095161e-06
+      real(kind=8):: q5 = -0.934945152e-07
+      real(kind=8):: r1 =  57568490574.0
+      real(kind=8):: r2 = -13362590354.0
+      real(kind=8):: r3 =  651619640.7
+      real(kind=8):: r4 = -11214424.18
+      real(kind=8):: r5 =  77392.33017
+      real(kind=8):: r6 = -184.9052456
+      real(kind=8):: s1 =  57568490411.
+      real(kind=8):: s2 =  1029532985.
+      real(kind=8):: s3 =  9494680.718
+      real(kind=8):: s4 =  59272.64853
+      real(kind=8):: s5 =  267.8532712
+      real(kind=8):: s6 =  1.0
+
+      integer(ISZ):: i
+      real(kind=8):: ax,y,z,xx
+
+      do i=1,n
+
+        ax = abs(x(i))
+        if(ax < 8.0)then
+          y = x(i)**2
+          j0(i) = (r1+y*(r2+y*(r3+y*(r4+y*(r5+y*r6)))))
+     .            /(s1+y*(s2+y*(s3+y*(s4+y*(s5+y*s6)))))
+        else
+          z = 8.0/ax
+          y = z**2
+          xx = ax - 0.785398164
+          j0(i) = sqrt(0.636619772/ax)*
+     .               (cos(xx)*(p1+y*(p2+y*(p3+y*(p4+y*p5))))
+     .             - z*sin(xx)*(q1+y*(q2+y*(q3+y*(q4+y*q5)))))
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine bessj1array(n,x,j1)
+      integer(ISZ):: n
+      real(kind=8):: x(n)
+      real(kind=8):: j1(n)
+
+c     BESSJ1 calculates the Bessel function J0 using matched analytic
+c     approximations.  The routine is taken from Numerical Recipes.
+
+      real(kind=8):: r1 = 72362614232.0
+      real(kind=8):: r2 = -7895059235.0
+      real(kind=8):: r3 = 242396853.1
+      real(kind=8):: r4 = -2972611.439
+      real(kind=8):: r5 = 15704.48260
+      real(kind=8):: r6 = -30.16036606
+      real(kind=8):: s1 = 144725228442.0
+      real(kind=8):: s2 = 2300535178.0
+      real(kind=8):: s3 = 18583304.74
+      real(kind=8):: s4 = 99447.43394
+      real(kind=8):: s5 = 376.9991397
+      real(kind=8):: s6 = 1.0
+      real(kind=8):: p1 = 1.0
+      real(kind=8):: p2 = 0.183105e-02
+      real(kind=8):: p3 = -0.3516396496e-04
+      real(kind=8):: p4 = 0.2457520174e-05
+      real(kind=8):: p5 = -.240337019e-06
+      real(kind=8):: q1 = 0.04687499995
+      real(kind=8):: q2 = -0.2002690873e-03
+      real(kind=8):: q3 = 0.8449199096e-05
+      real(kind=8):: q4 = -0.88228987e-06
+      real(kind=8):: q5 = 0.105787412e-06
+
+      integer(ISZ):: i
+      real(kind=8):: ax,y,z,xx
+
+      do i=1,n
+
+        ax = abs(x(i))
+        if(ax < 8.0)then
+          y = x(i)**2
+          j1(i) = x(i)*(r1+y*(r2+y*(r3+y*(r4+y*(r5+y*r6)))))
+     .              /(s1+y*(s2+y*(s3+y*(s4+y*(s5+y*s6)))))
+        else
+
+          z = 8./ax
+          y = z**2
+          xx = ax - 2.356194491
+          j1(i) = sqrt(0.636619772/ax)*
+     .               (cos(xx)*(p1+y*(p2+y*(p3+y*(p4+y*p5))))
+     .               -z*sin(xx)*(q1+y*(q2+y*(q3+y*(q4+y*q5)))))
+     .               *sign(1.0,x(i))
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================

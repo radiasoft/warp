@@ -3240,6 +3240,8 @@ rnormdig(i1,n,nbase1,nbase2,dx:real,x(n):real)
              subroutine # Gaussian random numbers via digit reversed.
 rm()      real function # Pseudo-Gaussian random numbers (6 uniform nos.).
 rma(a(n):real,n) subroutine # rma(&a,n) gives n Pseudo-Gaussian rand numbers.
+bessj0array(n:integer,x(n):real,j0(n):real) subroutine # Fills and array with J0(x)
+bessj1array(n:integer,x(n):real,j1(n):real) subroutine # Fills and array with J1(x)
 dsifa(a:real,lda,n,kpvt,info)
              subroutine # LINPACK matrix reduction routine # (in file UTIL.F)
 dsidi(a:real,lda,n,kpvt,det:real,inert,work:real,job:real)
