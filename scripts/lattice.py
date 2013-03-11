@@ -3466,6 +3466,111 @@ Input arguments:
                     rz=lcylindrical,ap=ap,**kw)
 
 # ----------------------------------------------------------------------------
+pyelemfunctionsdict = {}
+def pyelemfunctions():
+    """This function is called from fortran"""
+    for id in unique(top.idpyelem[:top.nppyelem]):
+        ip = (top.idpyelem[:top.nppyelem] == id)
+        x = top.xpyelem[ip]
+        y = top.ypyelem[ip]
+        z = top.zpyelem[ip]
+        (ex,ey,ez,bx,by,bz) = pyelemfunctionsdict[id](x,y,z)
+        top.expyelem[ip] = ex
+        top.eypyelem[ip] = ey
+        top.ezpyelem[ip] = ez
+        top.bxpyelem[ip] = bx
+        top.bypyelem[ip] = by
+        top.bzpyelem[ip] = bz
+
+def addnewpyelem(zs,ze,fn,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
+                 ph=0.,ot=0.,op=0.,sf=0.,sc=1.,
+                 time=None,data=None,func=None):
+  """
+Adds a new pyelem element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+  - fn: the python function called to calculate the fields.
+        It must take three arguments, (x,y,z), 1-D arrays listing the particle
+        locations. It must return a tuple of 6 arrays (ex,ey,ez,bx,by,bz),
+        the fields at the specified particle locations.
+        The x and y will be relative to the transverse center of the element,
+        which depends on the element offsets and rotations. The z will be
+        relative to the start of the element, also in the rotated frame.
+The following are all optional and have the same meaning and default as the
+pyelem arrays with the same suffices:
+  - ap,ax,ay: Note that if an ot rotation is specified, the aperture is used
+              to calculate the longitudinal extent of the element and should
+              be specifed.
+  - ox,oy,ph,ot,op,sf,sc: Offsets, rotations, and field scalings
+The applied field can be made time dependent by supplying a time varying
+scale factor. One of the following can be supplied:
+  - time,data: two 1-D arrays holding the tabulated scale factor (data) as
+               a function of time (time).
+  - func: a function that takes one argument, the time, and returns the
+          scaling factor.
+  """
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
+
+  # --- Get a dict of the input arguments and their values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already pyelems, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that pyelemid > 0,
+  # --- to determine whether or not a pyelem is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.npyelem and top.pyelemzs[ie] <= zs and top.pyelemid[ie] > 0):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.npyelem or top.pyelemid[-1] != 0:
+    top.npyelem = top.npyelem + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict = {'zs':top.pyelemzs,'ze':top.pyelemze,
+           'ap':top.pyelemap,'ax':top.pyelemax,'ay':top.pyelemay,
+           'ox':top.pyelemox,'oy':top.pyelemoy,
+           'ph':top.pyelemph,'ot':top.pyelemot,'op':top.pyelemop,
+           'sf':top.pyelemsf,'sc':top.pyelemsc}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element. The element id must be handled seperately.
+  if ie <= top.npyelem:
+    top.pyelemid[ie+1:] = top.pyelemid[ie:-1] + 0
+    for e in edict.itervalues():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- their values.
+  for (xx,e) in edict.iteritems():
+    e[ie] = ldict[xx]
+
+  if fn not in pyelemfunctionsdict:
+    pyelemfunctionsdict[id(fn)] = fn
+  top.pyelemid[ie] = id(fn)
+
+  if (time is not None and data is not None) or func is not None:
+    TimeDependentLatticeElement('pyelemsc',ie,time,data,func)
+
+  # --- resetlat must be called before the data can be used
+  top.lresetlat = true
+
+  return ie
+
+# ----------------------------------------------------------------------------
 # --- Convenient plotting functions
 def plotemlt(ie,m=0,p=0,color='fg',scale=1.,zoffset=None,withscaling=1,
              titles=1,**kw):

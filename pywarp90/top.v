@@ -247,7 +247,8 @@ negrd     integer /NELEMENT/  # No. of elements with E field on a 3-D grid
 nbgrd     integer /NELEMENT/  # No. of elements with B field on a 3-D grid
 npgrd     integer /NELEMENT/  # No. of elements with potential on a 3-D grid
 nbsqgrad  integer /NELEMENT/  # No. of elements with grad B^2 field on a 3-D grid
-nlmap    integer /NELEMENT/  # No. of linear maps elements in lattice
+nlmap     integer /NELEMENT/  # No. of linear maps elements in lattice
+npyelem   integer /NELEMENT/  # No. of python defined elements
 drftzs(0:ndrft)   _real [m]   # Z's of drift starts
 drftze(0:ndrft)   _real [m]   # Z's of drift ends
 drftap(0:ndrft)   _real [m]   # Aperture in drifts
@@ -591,6 +592,30 @@ lmaptype(0:nlmap) _integer    # map element type (0=drift, 1=bend, 2=quad, 3=RFk
 lmapol(0:nlmap)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
 lmapfillz logical /.true./    # Flag for completing z-push after application of linear map
+pyelemzs(0:npyelem) _real     # Z start of pyelems
+pyelemze(0:npyelem) _real     # Z start of pyelems
+pyelemid(0:npyelem) _integer  # Python function id for pyelems (auto set)
+pyelemap(0:npyelem)   _real [m]   # Aperture in pyelem elements
+pyelemax(0:npyelem)   _real [m]   # Aperture in pyelem elements in x
+pyelemay(0:npyelem)   _real [m]   # Aperture in pyelem elements in y
+pyelemox(0:npyelem)   _real [m]   # Offset in x of pyelem elements
+pyelemoy(0:npyelem)   _real [m]   # Offset in y of pyelem elements
+pyelemph(0:npyelem)   _real [rad] # Phase angle of pyelem elements
+pyelemot(0:npyelem) _real [rad] /0./ # Offset angle theta relative to the z-axis.
+pyelemop(0:npyelem) _real [rad] /0./ # Offset angle phi, rotation in the
+                                 # transverse plane.
+pyelemsp(0:npyelem)   _real [1]   # Sine   of pyelemph (auto-set) 
+pyelemcp(0:npyelem)   _real [1]   # Cosine of pyelemph (auto-set)  
+pyelemsf(0:npyelem) _real [1] /0./ # Scale factor to multiply pyelem fields.
+                                   # Field is scaled by (pyelemsc+pyelemsf)
+pyelemsc(0:npyelem) _real [1] /1./ # Scale factor to multiply pyelem fields.
+                                   # Field is scaled by (pyelemsc+pyelemsf)
+pyelemol(0:npyelem)   _integer    # Overlap level of the pyelem (autoset).
+                              # Set to -1 to ignore overlaps.
+pyelemfs(0:npyelem)   _real [m]   # Full Z starts of pyelem
+                              # including rotation off z-axis (autoset)
+pyelemfe(0:npyelem)   _real [m]   # Full Z ends of pyelem
+                              # including rotation off z-axis (autoset)
 drfts     logical             # Flag for existence of drfts (auto set)
 bends     logical             # Flag for existence of bends (auto set)
 dipos     logical             # Flag for existence of dipos (auto set)
@@ -605,6 +630,7 @@ bgrds     logical             # Flag for existence of bgrds (auto set)
 pgrds     logical             # Flag for existence of pgrds (auto set)
 bsqgrads  logical             # Flag for existence of bsqgrads (auto set)
 lmaps     logical             # Flag for existence of linear maps (auto set)
+pyelems   logical             # Flag for existence of python elements (auto set)
 diposet   logical  /.true./   # Auto-set dipoles from bend locations and radii 
 ldipocond logical  /.false./  # Auto generate flat dipole plates from the
                               # dipole parameters
@@ -725,6 +751,22 @@ pgrddyi(pgrdns)                     _real [1/m] # 1 over Y cell size (autoset)
 pgrddzi(pgrdns)                     _real [1/m] # 1 over Z cell size (autoset)
 pgrd(0:pgrdnx,0:pgrdny,-1:pgrdnz+1,pgrdns) _real [V] # Potential
 
+******** Pyelemdata:
+nppyelemmax integer # Max number of positions where pyelem field is to be calculated
+nppyelem integer # Number of positions where pyelem field is to be calculated
+xpyelem(nppyelemmax) _real # X positions where pyelem field is calculated
+ypyelem(nppyelemmax) _real # Y positions where pyelem field is calculated
+zpyelem(nppyelemmax) _real # Z positions where pyelem field is calculated
+expyelem(nppyelemmax) _real # Ex from pyelem element
+eypyelem(nppyelemmax) _real # Ey from pyelem element
+ezpyelem(nppyelemmax) _real # Ez from pyelem element
+bxpyelem(nppyelemmax) _real # Bx from pyelem element
+bypyelem(nppyelemmax) _real # By from pyelem element
+bzpyelem(nppyelemmax) _real # Bz from pyelem element
+iipyelem(nppyelemmax) _integer # Element index for particles within the element
+ippyelem(nppyelemmax) _integer # Particle index for particles within the element
+idpyelem(nppyelemmax) _integer # Function id for particles within the element
+
 *********** LatticeInternal dump:
 # Internal lattice arrays, all derived from Lattice data
 # nzl is set to nz by pkg w3d (etc.) at generation
@@ -807,6 +849,11 @@ olmapoi(0:nlmap)   _integer     # Overlap indices for lmap elements
 olmapio(0:nlmap)   _integer     # Overlap indices for lmap elements
 olmapii(nlmapol)   _integer     # Overlap indices for lmap elements
 olmapnn(nlmapol)   _integer     # Number of lmap elements in overlap levels
+npyelemol            integer /0/ # Maximum level of overlapping pyelem elements
+opyelemoi(0:npyelem)   _integer     # Overlap indices for pyelem elements
+opyelemio(0:npyelem)   _integer     # Overlap indices for pyelem elements
+opyelemii(npyelemol)   _integer     # Overlap indices for pyelem elements
+opyelemnn(npyelemol)   _integer     # Number of pyelem elements in overlap levels
 cdrftzs(0:nzlmax,ndrftol)    _real [m]     # by z, Z's of drft starts
 cdrftze(0:nzlmax,ndrftol)    _real [m]     # by z, Z's of drft ends
 cdrftid(0:nzlmax,ndrftol) _integer         # by z, Index to drft arrays
@@ -891,6 +938,9 @@ cbsqgradid(0:nzlmax,nbsqgradol) _integer [1]     # by z, Index of bsqgrad arrays
 clmapzs(0:nzlmax,nlmapol)    _real [m]     # by z, Z's of lmap starts
 clmapze(0:nzlmax,nlmapol)    _real [m]     # by z, Z's of lmap ends
 clmapid(0:nzlmax,nlmapol) _integer         # by z, Index to lmap arrays
+cpyelemzs(0:nzlmax,npyelemol)    _real [m] # by z, Z's of python element start
+cpyelemze(0:nzlmax,npyelemol)    _real [m] # by z, Z's of python element end
+cpyelemid(0:nzlmax,npyelemol) _integer [1] # by z, Index of python element arrays
 lindrft(0:ndrftol)        _logical         # Flag for when drft element in mesh
 linbend                    logical         # Flag for when bend element in mesh
 lindipo(0:ndipool)        _logical         # Flag for when dipo element in mesh
@@ -903,8 +953,9 @@ linaccl(0:nacclol)        _logical         # Flag for when accl element in mesh
 linegrd(0:negrdol)        _logical         # Flag for when egrd element in mesh
 linbgrd(0:nbgrdol)        _logical         # Flag for when bgrd element in mesh
 linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
-linbsqgrad(0:nbsqgradol)        _logical         # Flag for when bsqgrad element in mesh
+linbsqgrad(0:nbsqgradol)  _logical         # Flag for when bsqgrad element in mesh
 linlmap(0:nlmapol)        _logical         # Flag for when drft element in mesh
+linpyelem(0:npyelemol)    _logical         # Flag for when pyelem element in mesh
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
@@ -2845,6 +2896,7 @@ resetlategrd() subroutine # Resizes egrd lattice arrays to their true lengths
 resetlatbgrd() subroutine # Resizes bgrd lattice arrays to their true lengths
 resetlatpgrd() subroutine # Resizes pgrd lattice arrays to their true lengths
 resetlatbsqgrad() subroutine # Resizes bsqgrad lattice arrays to their true lengths
+resetlatpyelem() subroutine # Resizes pyelem lattice arrays to their true lengths
 setlatt()   subroutine # Sets lattice pointers for the current beam location
 setlattzt(zbeam:real,time:real)
             subroutine # Sets lattice pointers at zbeam and time
@@ -3543,6 +3595,7 @@ timezgapcorr           real /0./
 timeapplyacclxy        real /0./
 timezgapcorrxy         real /0./
 timeacclbfrm           real /0./
+timeapplypyelem        real /0./
 
 timegridcrossingmoments real /0./
 

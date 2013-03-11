@@ -1065,6 +1065,17 @@ c       --- handle magnetic fields from 3-D grid
      &                 bsqgradtemp(:,:,:, 9,id),
      &                 bsqgradtemp(:,:,:,10,id))
 
+c       --- handle python implemented element
+        call applypyelem(nn,bsqgradtemp(:,:,:, 0,id),
+     &                   bsqgradtemp(:,:,:, 1,id),nn,
+     &                   bsqgradtemp(:,:,:, 2,id),
+     &                   .false.,
+     &                   bsqgradtemp(:,:,:, 5,id),
+     &                   bsqgradtemp(:,:,:, 6,id),
+     &                   bsqgradtemp(:,:,:, 7,id),
+     &                   bsqgradtemp(:,:,:, 8,id),
+     &                   bsqgradtemp(:,:,:, 9,id),
+     &                   bsqgradtemp(:,:,:,10,id))
 
 c       --- Calculate B dot B
         do iz=0,bsqgradnz
@@ -1175,6 +1186,63 @@ c     --- are specified.
       lmaps = .false.
       do ilmap = 0, nlmap
          if (lmapzs(ilmap) .ne. lmapze(ilmap)) lmaps = .true.
+      enddo
+
+      return
+      end
+c============================================================================
+      subroutine countpyelems()
+      use Lattice
+
+      integer(ISZ):: ip,nnpyelem
+
+c     --- count potential gridded field data sets
+
+      nnpyelem = -1
+      do ip = 0, npyelem
+         if (pyelemzs(ip) .ne. pyelemze(ip) .and. pyelemid(ip) .ne. 0) then
+           nnpyelem = ip
+         endif
+      enddo
+      npyelem = nnpyelem
+
+      return
+      end
+c============================================================================
+      subroutine setuppyelems()
+      use Lattice
+
+      integer(ISZ):: ipyelem
+
+      if (zlatperi > 0.) then
+        if (npyelem >= 0) then
+          if (pyelemzs(0) == pyelemze(0)) then
+             pyelemzs(0) = pyelemzs(npyelem) - zlatperi
+             pyelemze(0) = pyelemze(npyelem) - zlatperi
+             pyelemid(0) = pyelemid(npyelem)
+             pyelemap(0) = pyelemap(npyelem)
+             pyelemax(0) = pyelemax(npyelem)
+             pyelemay(0) = pyelemay(npyelem)
+             pyelemsf(0) = pyelemsf(npyelem)
+             pyelemsc(0) = pyelemsc(npyelem)
+             pyelemox(0) = pyelemox(npyelem)
+             pyelemoy(0) = pyelemoy(npyelem)
+             pyelemph(0) = pyelemph(npyelem)
+             pyelemot(0) = pyelemot(npyelem)
+             pyelemop(0) = pyelemop(npyelem)
+          endif
+        endif
+      endif
+
+c     --- Set flags for existence of the elements - checking if the fields
+c     --- are specified.
+      pyelems = .false.
+      do ipyelem = 0, npyelem
+         if (pyelemzs(ipyelem) .ne. pyelemze(ipyelem) .and.
+     &       pyelemid(ipyelem) .ne. 0) then
+           pyelems = .true.
+           exit
+         endif
       enddo
 
       return
@@ -1461,6 +1529,26 @@ c============================================================================
       return
       end
 c============================================================================
+      subroutine resetlatpyelem()
+      use Lattice
+      use LatticeInternal
+
+      call countpyelems
+      call gchange("Lattice", 0)
+      call setuppyelems
+
+      npyelemol = 0
+
+      if (npyelem < 0) return
+
+      call pyelemgetfulllength()
+      call getelemoverlaps(npyelem,pyelemfs,pyelemfe,pyelemol,zlatbuffer,npyelemol)
+      call gchange("LatticeInternal",0)
+      call getelemoverlapindices(npyelem,pyelemol,npyelemol,opyelemoi,opyelemio,opyelemii,
+     &                           opyelemnn)
+
+      return
+      end
 c============================================================================
       subroutine resetlat()
       use Subtimerstop
@@ -1488,6 +1576,7 @@ c  called after all of the element have been updated.
       call countpgrds
       call countbsqgrads
       call countlmaps
+      call countpyelems
 
 c     --- resize lattice arrays (use corrected ndipo size if autoset dipoles,
 c     --- bends imply dipoles for autoset dipoles, see following code)
@@ -1520,6 +1609,7 @@ c     --- calculation to get the full length of the elements.
       call resetlatmmlt()
       call resetlategrd()
       call resetlatbgrd()
+      call resetlatpyelem()
 
 c     --- resetlat no longer needs to be called, as long as no changes are
 c     --- made to the lattice.
@@ -1551,6 +1641,7 @@ c     --- Note some elements handled seperately.
       nacclol = 0
       npgrdol = 0
       nbsqgradol = 0
+      npyelemol = 0
 
       if (ndrft >= 0)
      &  call getelemoverlaps(ndrft,drftzs,drftze,drftol,zlatbuffer,ndrftol)
@@ -1572,6 +1663,8 @@ c     --- Note some elements handled seperately.
      &  call getelemoverlaps(nbsqgrad,bsqgradzs,bsqgradze,bsqgradol,zlatbuffer,nbsqgradol)
       if (nlmap >= 0)
      &  call getelemoverlaps(nlmap,lmapzs,lmapze,lmapol,zlatbuffer,nlmapol)
+      if (npyelem >= 0)
+     &  call getelemoverlaps(npyelem,pyelemzs,pyelemze,pyelemol,zlatbuffer,npyelemol)
 
 c Now, setup indicing arrays in LatticeInternal
       call gchange("LatticeInternal",0)
@@ -1606,6 +1699,9 @@ c Now, setup indicing arrays in LatticeInternal
       if (nlmap >= 0)
      &  call getelemoverlapindices(nlmap,lmapol,nlmapol,olmapoi,olmapio,olmapii,
      &                             olmapnn)
+      if (npyelem >= 0)
+     &  call getelemoverlapindices(npyelem,pyelemol,npyelemol,opyelemoi,opyelemio,opyelemii,
+     &                             opyelemnn)
 
       return
       end
@@ -1791,6 +1887,7 @@ c     --- Assume at the start that there are not any elements in the mesh.
       linpgrd = .false.
       linbsqgrad = .false.
       linlmap = .false.
+      linpyelem = .false.
 
       do iz = 0, nzl
 c        --- compute z of center of cell (may be off lattice)
@@ -2161,6 +2258,25 @@ c          --- load lattice info into comoving 1d array
      &         linlmap(io) = .true.
          enddo
 
+c        --- find index of nearest pyelem element
+c        --- The cpyelemid array calculated here is needed for the magnetic
+c        --- elements described by B field data on a 3-D grid.
+c        --- Note that the full lengths are used here, in case there is
+c        --- a rotation off the z-axis.
+         do io=1,npyelemol
+           call getelemid(zz,offset,npyelem,pyelemfs,pyelemfe,pyelemol,
+     &                    opyelemnn(io),opyelemoi(opyelemii(io):),opyelemio,
+     &                    cpyelemid(iz,io),io)
+c          --- load lattice info into comoving 1d array
+           cpyelemzs(iz,io) = pyelemfs(cpyelemid(iz,io)) + offset
+           cpyelemze(iz,io) = pyelemfe(cpyelemid(iz,io)) + offset
+c          --- Check whether this grid point is in the element.
+c          --- The grid points intentionally overlap to avoid roundoff errors.
+           if (cpyelemzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
+     &                             zlmin+zlframe-zlatbuffer <= cpyelemze(iz,io))
+     &       linpyelem(io) = .true.
+         enddo
+
       enddo
 
 c     --- For each element type, check to see if any elements are in the mesh.
@@ -2177,6 +2293,7 @@ c     --- For each element type, check to see if any elements are in the mesh.
       linpgrd(0)    = any(linpgrd)
       linbsqgrad(0) = any(linbsqgrad)
       linlmap(0)    = any(linlmap)
+      linpyelem(0)  = any(linpyelem)
 
 c     --- All parallel slave processors must know if any processors
 c     --- are in a bend.  There is probably a better way of doing this.
@@ -2603,6 +2720,44 @@ c       --- z start.
           call getelemid(zz,offset_temp,naccl,acclzs,acclze,acclol,
      &                   oacclnn(ii),oaccloi(oacclii(ii):),oacclio,id_temp,ii)
           if (acclzs(id_temp)+offset_temp < acclzs(id)+offset) then
+            id = id_temp
+            offset = offset_temp
+          endif
+        enddo
+      endif
+      return
+      end
+c=============================================================================
+      subroutine getpyelemid(zz,offset,id,io)
+      use Lattice
+      use LatticeInternal
+      real(kind=8):: zz,offset
+      integer(ISZ):: id,io
+
+c Gets the id and offset for the pyelem at the z location zz and overlap
+c level io. If the overlap level is 0, finds the element with the lowest
+c z start.
+
+      integer(ISZ):: ii,id_temp
+      real(kind=8):: offset_temp
+
+      if (npyelem < 0) return
+
+      if (io > 0) then
+c       --- Just call getelemid.
+        call getelemid(zz,offset,npyelem,pyelemfs,pyelemfe,pyelemol,
+     &                 opyelemnn(io),opyelemoi(opyelemii(io):),opyelemio,id,io)
+      else
+c       --- Call getelemid for overlap level 1 to get first guess.
+        call getelemid(zz,offset,npyelem,pyelemfs,pyelemfe,pyelemol,
+     &                 opyelemnn(1),opyelemoi(opyelemii(1):),opyelemio,id,1)
+c       --- Loop over rest of overlap levels looking for a pyelem with lower
+c       --- z start.
+        id_temp = id
+        do ii=2,npyelemol
+          call getelemid(zz,offset_temp,npyelem,pyelemfs,pyelemfe,pyelemol,
+     &                   opyelemnn(ii),opyelemoi(opyelemii(ii):),opyelemio,id_temp,ii)
+          if (pyelemfs(id_temp)+offset_temp < pyelemfs(id)+offset) then
             id = id_temp
             offset = offset_temp
           endif
@@ -7174,3 +7329,284 @@ c         --- Set the correction to the beam frame position
       return
       end
 c=============================================================================
+      subroutine applypyelem(np,xp,yp,npz,zp,lslice,ex,ey,ez,bx,by,bz)
+      use Subtimerstop
+      use Lattice
+      use LatticeInternal
+      use Pyelemdata
+      integer(ISZ):: np,npz
+      real(kind=8):: xp(np),yp(np),zp(npz)
+      logical(ISZ):: lslice
+      real(kind=8):: ex(np),ey(np),ez(np)
+      real(kind=8):: bx(np),by(np),bz(np)
+
+c  Sets electric and magnetic field for particles from python
+c  implemented fields
+c  Calling arguments:
+c     np          number of particles
+c     npz         number of z position data values (must be either 1 or == np)
+c     xp,yp,zp    coordinates of particles
+c  Output:
+c     ex,ey,ez    electric field
+c     bx,by,bz    magnetic field
+
+      integer(ISZ):: io,ip,iz,ii,ipip
+      real(kind=8):: zz
+      real(kind=8),allocatable:: ca(:),sa(:),ct(:),st(:),cp(:),sp(:)
+      real(kind=8),allocatable:: zcent(:),zlen(:)
+      real(kind=8):: xt,yt,zt,xsave,ysave,zsave
+      real(kind=8):: ext,eyt,ezt,exsave,eysave,ezsave
+      real(kind=8):: bxt,byt,bzt,bxsave,bysave,bzsave
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
+c  Evaluation of E, vectorized over particles
+
+      if (.not. pyelems .or. .not. linpyelem(0)) return
+
+      if (np > nppyelemmax) then
+        nppyelemmax = np
+        call gallot("Pyelemdata",0)
+      endif
+
+      allocate(ca(0:npyelem),sa(0:npyelem))
+      allocate(ct(0:npyelem),st(0:npyelem))
+      allocate(cp(0:npyelem),sp(0:npyelem))
+      ca = cos(pyelemph)
+      sa = sin(pyelemph)
+      ct = cos(pyelemot)
+      st = sin(pyelemot)
+      cp = cos(pyelemop)
+      sp = sin(pyelemop)
+
+      allocate(zcent(0:npyelem),zlen(0:npyelem))
+      zcent = 0.5*(pyelemzs + pyelemze)
+      zlen = pyelemze - pyelemzs
+
+      do io=1,npyelemol
+        if (.not. linpyelem(io)) cycle
+
+        if (lslice) then
+c         --- find the location of the particle in the internal lattice arrays
+          zz = zp(1)
+          iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
+          if (zz < cpyelemzs(iz,io)-zlatbuffer .or. cpyelemze(iz,io)+zlatbuffer < zz) cycle
+
+c         --- Cycle if this element is turned off
+          ii = cpyelemid(iz,io)
+          if (pyelemid(ii) == 0) cycle
+        endif
+
+        nppyelem = 0
+        do ip = 1, np
+
+          if (.not. lslice) then
+c           --- find the location of the particle in the internal lattice arrays
+            zz = zp(ip)
+            iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
+c           --- Check if particle is near or within the element.
+c           --- The zlatbuffer is added to better handle round-off when a particle lands
+c           --- exactly on the edge of the element. Then check below is the
+c           --- one that matters. There, particle exactly on the lower edge will be included,
+c           --- while a particle exactly on the upper edge will not.
+            if (zz < cpyelemzs(iz,io)-zlatbuffer .or. cpyelemze(iz,io)+zlatbuffer < zz) cycle
+
+c           --- Cycle if this element is turned off
+            ii = cpyelemid(iz,io)
+            if (pyelemid(ii) == 0) cycle
+          endif
+
+c         --- find particle coordinates in frame of gridded field
+          xt = xp(ip) - pyelemox(ii)
+          yt = yp(ip) - pyelemoy(ii)
+          zt = zz     - zcent(ii)
+
+c         --- transverse rotation to take into account an active rotation
+c         --- of the field element. Rotation is relative to the z center.
+c         --- Particles are rotated to the frame of the element.
+c         --- Later, the field components accumulated are rotated back.
+c         --- First, rotate by pyelemop about the z axis.
+          if (pyelemop(ii) .ne. 0.) then
+            xsave = xt
+            ysave = yt
+            xt = +xsave*cp(ii) + ysave*sp(ii)
+            yt = -xsave*sp(ii) + ysave*cp(ii)
+          endif
+
+c         --- then by pyelemot about the new y axis
+          if (pyelemot(ii) .ne. 0.) then
+            xsave = xt
+            zsave = zt
+            xt = xsave*ct(ii) - zsave*st(ii)
+            zt = xsave*st(ii) + zsave*ct(ii)
+          endif
+
+c         --- then by pyelemph about the new z axis
+          if (pyelemph(ii) .ne. 0.) then
+            xsave = xt
+            ysave = yt
+            xt = +xsave*ca(ii) + ysave*sa(ii)
+            yt = -xsave*sa(ii) + ysave*ca(ii)
+          endif
+
+          zt = zt + zlen(ii)/2.
+          if (zt < 0. .or. zlen(ii) < zt) cycle
+
+          nppyelem = nppyelem + 1
+          ippyelem(nppyelem) = ip
+          iipyelem(nppyelem) = ii
+          idpyelem(nppyelem) = pyelemid(ii)
+
+          xpyelem(nppyelem) = xt
+          ypyelem(nppyelem) = yt
+          zpyelem(nppyelem) = zt
+
+        enddo
+
+        if (nppyelem == 0) cycle
+
+c       expyelem(1:nppyelem) = 0.
+c       eypyelem(1:nppyelem) = 0.
+c       ezpyelem(1:nppyelem) = 0.
+c       bxpyelem(1:nppyelem) = 0.
+c       bypyelem(1:nppyelem) = 0.
+c       bzpyelem(1:nppyelem) = 0.
+        call callpythonfunc("pyelemfunctions","lattice")
+
+        do ip = 1, nppyelem
+          ii = iipyelem(ip)
+          ext = expyelem(ip)
+          eyt = eypyelem(ip)
+          ezt = ezpyelem(ip)
+          bxt = bxpyelem(ip)
+          byt = bypyelem(ip)
+          bzt = bzpyelem(ip)
+
+c         --- Rotate field componets back to the lab frame. These are the
+c         --- same rotations as above but in opposite order with the sign
+c         --- of the angle reversed.
+          if (pyelemph(ii) .ne. 0.) then
+            exsave = ext
+            eysave = eyt
+            ext = +exsave*ca(ii) - eysave*sa(ii)
+            eyt = +exsave*sa(ii) + eysave*ca(ii)
+            bxsave = bxt
+            bysave = byt
+            bxt = +bxsave*ca(ii) - bysave*sa(ii)
+            byt = +bxsave*sa(ii) + bysave*ca(ii)
+          endif
+
+          if (pyelemot(ii) .ne. 0.) then
+            exsave = ext
+            ezsave = ezt
+            ext = +exsave*ct(ii) + ezsave*st(ii)
+            ezt = -exsave*st(ii) + ezsave*ct(ii)
+            bxsave = bxt
+            bzsave = bzt
+            bxt = +bxsave*ct(ii) + bzsave*st(ii)
+            bzt = -bxsave*st(ii) + bzsave*ct(ii)
+          endif
+
+          if (pyelemop(ii) .ne. 0.) then
+            exsave = ext
+            eysave = eyt
+            ext = +exsave*cp(ii) - eysave*sp(ii)
+            eyt = +exsave*sp(ii) + eysave*cp(ii)
+            bxsave = bxt
+            bysave = byt
+            bxt = +bxsave*cp(ii) - bysave*sp(ii)
+            byt = +bxsave*sp(ii) + bysave*cp(ii)
+          endif
+
+          ipip = ippyelem(ip)
+          ex(ipip) = ex(ipip) + ext
+          ey(ipip) = ey(ipip) + eyt
+          ez(ipip) = ez(ipip) + ezt
+          bx(ipip) = bx(ipip) + bxt
+          by(ipip) = by(ipip) + byt
+          bz(ipip) = bz(ipip) + bzt
+
+        enddo
+
+      enddo
+
+      deallocate(ca,sa)
+      deallocate(ct,st)
+      deallocate(cp,sp)
+      deallocate(zcent,zlen)
+
+!$OMP MASTER
+      if (ltoptimesubs) timeapplypyelem = timeapplypyelem + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c============================================================================
+      subroutine pyelemgetfulllength()
+      use Lattice
+      use LatticeInternal
+
+c Calculate the full axial length of the elements, including the extra length
+c that may be taken up if the element has a rotation away from the z-axis.
+c The results are put in pyelemfs and pyelemfe.
+
+      integer(ISZ):: ip
+      real(kind=8):: zcent,ap
+      real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
+      real(kind=8):: ca,sa,ct,st,cp,sp
+      real(kind=8):: xl(8),yl(8),zl(8)
+      real(kind=8):: xr(8),yr(8),zr(8)
+      real(kind=8):: x1(8),y1(8),z1(8)
+      real(kind=8):: x2(8),y2(8),z2(8)
+
+      do ip = 0,npyelem
+        ap = max(pyelemap(ip),pyelemax(ip),pyelemay(ip))
+
+c       --- The transverse mins and maxs of the grid
+        xmin = -ap
+        xmax = +ap
+        ymin = -ap
+        ymax = +ap
+
+c       --- Get the zmin and zmax relative to the center of the grid.
+        zcent = 0.5*(pyelemzs(ip) + pyelemze(ip))
+        zmin = pyelemzs(ip) - zcent
+        zmax = pyelemze(ip) - zcent
+
+c       --- Generate the locations of the eight corners of the grid in
+c       --- the rotated frame.
+        xr = (/xmin,xmax,xmin,xmax,xmin,xmax,xmin,xmax/)
+        yr = (/ymin,ymin,ymax,ymax,ymin,ymin,ymax,ymax/)
+        zr = (/zmin,zmin,zmin,zmin,zmax,zmax,zmax,zmax/)
+
+c       --- Precalculate the cosines and sines.
+        ca = cos(pyelemph(ip))
+        sa = sin(pyelemph(ip))
+        ct = cos(pyelemot(ip))
+        st = sin(pyelemot(ip))
+c       cp = cos(pyelemop(ip))
+c       sp = sin(pyelemop(ip))
+
+c       --- Convert the corners into the lab frame by three successive
+c       --- rotations, first by pyelemph about the z axis,
+        x1 = +xr*ca - yr*sa
+        y1 = +xr*sa + yr*ca
+        z1 = zr
+c       --- then by pyelemot about the new y axis,
+        x2 = +x1*ct + z1*st
+        y2 = y1
+        z2 = -x1*st + z1*ct
+c       --- then by pyelemop about the new z axis.
+c       --- Note that this rotation is not needed since it does not affect
+c       --- the z values.
+c       xl = +x2*cp - y2*sp
+c       yl = +x2*sp + y2*cp
+        zl = z2
+
+        pyelemfs(ip) = zcent + minval(zl)
+        pyelemfe(ip) = zcent + maxval(zl)
+
+      enddo
+
+      return
+      end
+c===========================================================================
