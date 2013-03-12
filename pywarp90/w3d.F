@@ -1136,7 +1136,7 @@ c     --- handle electrostatic potential from 3-D grid
       call applypgrd(np,xp,yp,np,zp,.false.,ex,ey,ez)
 
 c     --- handle python implemented element
-      call applypyelem(np,xp,yp,np,zp,.false.,ex,ey,ez,bx,by,bz)
+      call applypyelem(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,.false.,ex,ey,ez,bx,by,bz)
 
 c     --- Accumulate time for applying the fields of the lattice
 !$OMP MASTER

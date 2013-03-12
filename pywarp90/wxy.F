@@ -878,7 +878,7 @@ c     --- handle electrostatic potential from 3-D grid
       call applypgrd(np,xp,yp,1,zbeam,.true.,ex,ey,ez)
 
 c     --- handle python implemented element
-      call applypyelem(np,xp,yp,1,zbeam,.true.,ex,ey,ez,bx,by,bz)
+      call applypyelem(np,xp,yp,1,zbeam,vbeam,1.,dtl,dtr,dt,.true.,ex,ey,ez,bx,by,bz)
 
 c     --- Accumulate time for applying fields from the lattice
       latticetime = latticetime + (wtime() - timetemp)

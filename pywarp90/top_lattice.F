@@ -1069,7 +1069,9 @@ c       --- handle python implemented element
         call applypyelem(nn,bsqgradtemp(:,:,:, 0,id),
      &                   bsqgradtemp(:,:,:, 1,id),nn,
      &                   bsqgradtemp(:,:,:, 2,id),
-     &                   .false.,
+     &                   bsqgradtemp(:,:,:, 3,id),
+     &                   bsqgradtemp(:,:,:, 4,id),
+     &                   0.,0.,0.,.false.,
      &                   bsqgradtemp(:,:,:, 5,id),
      &                   bsqgradtemp(:,:,:, 6,id),
      &                   bsqgradtemp(:,:,:, 7,id),
@@ -7329,13 +7331,15 @@ c         --- Set the correction to the beam frame position
       return
       end
 c=============================================================================
-      subroutine applypyelem(np,xp,yp,npz,zp,lslice,ex,ey,ez,bx,by,bz)
+      subroutine applypyelem(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
+     &                       ex,ey,ez,bx,by,bz)
       use Subtimerstop
       use Lattice
       use LatticeInternal
       use Pyelemdata
       integer(ISZ):: np,npz
-      real(kind=8):: xp(np),yp(np),zp(npz)
+      real(kind=8):: xp(np),yp(np),zp(npz),uzp(npz),gaminv(npz)
+      real(kind=8):: dtl,dtr,dt
       logical(ISZ):: lslice
       real(kind=8):: ex(np),ey(np),ez(np)
       real(kind=8):: bx(np),by(np),bz(np)
@@ -7354,9 +7358,12 @@ c     bx,by,bz    magnetic field
       real(kind=8):: zz
       real(kind=8),allocatable:: ca(:),sa(:),ct(:),st(:),cp(:),sp(:)
       real(kind=8),allocatable:: zcent(:),zlen(:)
+      real(kind=8),allocatable:: vz(:),dzi(:)
+      real(kind=8):: z1,z2,zl,zr,fl,fr,frac
       real(kind=8):: xt,yt,zt,xsave,ysave,zsave
       real(kind=8):: ext,eyt,ezt,exsave,eysave,ezsave
       real(kind=8):: bxt,byt,bzt,bxsave,bysave,bzsave
+      integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -7367,6 +7374,30 @@ c  Evaluation of E, vectorized over particles
       if (np > nppyelemmax) then
         nppyelemmax = np
         call gallot("Pyelemdata",0)
+      endif
+
+      if (any(pyelemhe .and. pyelemot .ne. 0)) then
+        call kaboom("applypyelem: pyelemhe is not supported with pyelemot nonzero")
+        return
+      endif
+
+      if (any(pyelemhe)) then
+c       --- Setup to handling residence corrections for hard
+c       --- edged elements
+        allocate(vz(npz),dzi(npz),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"applypyelem: allocation error ",allocerror,
+     &           ": could not allocate temp arrays to shape ",npz
+          call kaboom("applypyelem: allocation error")
+          return
+        endif
+
+        vz  = uzp*gaminv
+c       --- Note that the absolute value is taken since dzi is used to scale
+c       --- the fraction of the step inside the element and the sign is
+c       --- not needed. This only matters if vz < 0.
+        dzi = abs(1./dvnz(vz*(dtr-dtl)))
+
       endif
 
       allocate(ca(0:npyelem),sa(0:npyelem))
@@ -7390,11 +7421,42 @@ c  Evaluation of E, vectorized over particles
 c         --- find the location of the particle in the internal lattice arrays
           zz = zp(1)
           iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
-          if (zz < cpyelemzs(iz,io)-zlatbuffer .or. cpyelemze(iz,io)+zlatbuffer < zz) cycle
 
 c         --- Cycle if this element is turned off
           ii = cpyelemid(iz,io)
           if (pyelemid(ii) == 0) cycle
+
+          if (.not. pyelemhe(ii)) then
+
+c           --- skip field accumulation if particles are outside of axial grid
+            if (zz < cpyelemzs(iz,io)-zlatbuffer .or.
+     &               cpyelemze(iz,io)+zlatbuffer < zz) cycle
+            frac = 1.
+
+          else
+
+c           --- Precalculate these quantities. zl is the min of the two and
+c           --- zr is the max. This generalizes the routine, allowing left
+c           --- moving particles, vz < 0.
+            z1 = zp(1) + vz(1)*dtl
+            z2 = zp(1) + vz(1)*dtr
+c           --- "left" end of velocity advance step
+            zl = min(z1,z2)
+            fl = 0.
+            if (zl >= cpyelemzs(iz,io) .and. zl < cpyelemze(iz,io)) fl = 1.
+c           --- "right" end of velocity advance step
+            zr = max(z1,z2)
+            fr = 0.
+            if (zr >= cpyelemzs(iz,io) .and. zr < cpyelemze(iz,io)) fr = 1.
+c           --- residence fraction
+            frac = fl
+            if (fl > fr) frac = (cpyelemze(iz,io)-zl)*dzi(1)
+            if (fr > fl) frac = (zr-cpyelemzs(iz,io))*dzi(1)
+c           --- if frac is zero, no field will be applied
+            if (frac == 0.) cycle
+
+          endif
+
         endif
 
         nppyelem = 0
@@ -7404,16 +7466,43 @@ c         --- Cycle if this element is turned off
 c           --- find the location of the particle in the internal lattice arrays
             zz = zp(ip)
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
-c           --- Check if particle is near or within the element.
-c           --- The zlatbuffer is added to better handle round-off when a particle lands
-c           --- exactly on the edge of the element. Then check below is the
-c           --- one that matters. There, particle exactly on the lower edge will be included,
-c           --- while a particle exactly on the upper edge will not.
-            if (zz < cpyelemzs(iz,io)-zlatbuffer .or. cpyelemze(iz,io)+zlatbuffer < zz) cycle
 
 c           --- Cycle if this element is turned off
             ii = cpyelemid(iz,io)
             if (pyelemid(ii) == 0) cycle
+
+            if (.not. pyelemhe(ii)) then
+c             --- Check if particle is near or within the element.
+c             --- The zlatbuffer is added to better handle round-off when a particle lands
+c             --- exactly on the edge of the element. Then check below (of i,j,k) is the
+c             --- one that matters. There, particle exactly on the lower edge will be included,
+c             --- while a particle exactly on the upper edge will not.
+              if (zz < cpyelemzs(iz,io)-zlatbuffer .or. cpyelemze(iz,io)+zlatbuffer < zz) cycle
+              frac = 1.
+
+            else
+c             --- Precalculate these quantities. zl is the min of the two and
+c             --- zr is the max. This generalizes the routine, allowing left
+c             --- moving particles, vz < 0.
+              z1 = zz + vz(ip)*dtl
+              z2 = zz + vz(ip)*dtr
+c             --- "left" end of velocity advance step
+              zl = min(z1,z2)
+              fl = 0.
+              if (zl >= cpyelemzs(iz,io) .and. zl < cpyelemze(iz,io)) fl = 1.
+c             --- "right" end of velocity advance step
+              zr = max(z1,z2)
+              fr = 0.
+              if (zr >= cpyelemzs(iz,io) .and. zr < cpyelemze(iz,io)) fr = 1.
+c             --- residence fraction
+              frac = fl
+              if (fl > fr) frac = (cpyelemze(iz,io)-zl)*dzi(ip)
+              if (fr > fl) frac = (zr-cpyelemzs(iz,io))*dzi(ip)
+c             --- if frac is zero, no field will be applied
+              if (frac == 0.) cycle
+
+            endif
+
           endif
 
 c         --- find particle coordinates in frame of gridded field
@@ -7450,12 +7539,18 @@ c         --- then by pyelemph about the new z axis
           endif
 
           zt = zt + zlen(ii)/2.
+          if (pyelemhe(ii)) then
+            if (zt < 0.) zt = 0.
+            if (zt >= zlen(ii)) zt = zlen(ii) - 1.e-12
+          endif
+
           if (zt < 0. .or. zlen(ii) < zt) cycle
 
           nppyelem = nppyelem + 1
           ippyelem(nppyelem) = ip
           iipyelem(nppyelem) = ii
           idpyelem(nppyelem) = pyelemid(ii)
+          fracpyelem(nppyelem) = frac
 
           xpyelem(nppyelem) = xt
           ypyelem(nppyelem) = yt
@@ -7481,6 +7576,7 @@ c       bzpyelem(1:nppyelem) = 0.
           bxt = bxpyelem(ip)
           byt = bypyelem(ip)
           bzt = bzpyelem(ip)
+          frac = fracpyelem(ip)
 
 c         --- Rotate field componets back to the lab frame. These are the
 c         --- same rotations as above but in opposite order with the sign
@@ -7519,12 +7615,12 @@ c         --- of the angle reversed.
           endif
 
           ipip = ippyelem(ip)
-          ex(ipip) = ex(ipip) + ext
-          ey(ipip) = ey(ipip) + eyt
-          ez(ipip) = ez(ipip) + ezt
-          bx(ipip) = bx(ipip) + bxt
-          by(ipip) = by(ipip) + byt
-          bz(ipip) = bz(ipip) + bzt
+          ex(ipip) = ex(ipip) + ext*frac
+          ey(ipip) = ey(ipip) + eyt*frac
+          ez(ipip) = ez(ipip) + ezt*frac
+          bx(ipip) = bx(ipip) + bxt*frac
+          by(ipip) = by(ipip) + byt*frac
+          bz(ipip) = bz(ipip) + bzt*frac
 
         enddo
 
@@ -7534,6 +7630,10 @@ c         --- of the angle reversed.
       deallocate(ct,st)
       deallocate(cp,sp)
       deallocate(zcent,zlen)
+
+      if (any(pyelemhe)) then
+        deallocate(vz,dzi)
+      endif
 
 !$OMP MASTER
       if (ltoptimesubs) timeapplypyelem = timeapplypyelem + wtime() - substarttime

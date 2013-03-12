@@ -616,6 +616,9 @@ pyelemfs(0:npyelem)   _real [m]   # Full Z starts of pyelem
                               # including rotation off z-axis (autoset)
 pyelemfe(0:npyelem)   _real [m]   # Full Z ends of pyelem
                               # including rotation off z-axis (autoset)
+pyelemhe(0:npyelem)   _logical /0/ # Flags whether the pyelem element should be
+                               # treated as hard edged. When true, residence
+                               # corrections are done.
 drfts     logical             # Flag for existence of drfts (auto set)
 bends     logical             # Flag for existence of bends (auto set)
 dipos     logical             # Flag for existence of dipos (auto set)
@@ -766,6 +769,7 @@ bzpyelem(nppyelemmax) _real # Bz from pyelem element
 iipyelem(nppyelemmax) _integer # Element index for particles within the element
 ippyelem(nppyelemmax) _integer # Particle index for particles within the element
 idpyelem(nppyelemmax) _integer # Function id for particles within the element
+fracpyelem(nppyelemmax) _real # Fraction of step within the pyelem
 
 *********** LatticeInternal dump:
 # Internal lattice arrays, all derived from Lattice data

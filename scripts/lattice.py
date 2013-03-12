@@ -3483,7 +3483,7 @@ def pyelemfunctions():
         top.bzpyelem[ip] = bz
 
 def addnewpyelem(zs,ze,fn,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
-                 ph=0.,ot=0.,op=0.,sf=0.,sc=1.,
+                 ph=0.,ot=0.,op=0.,sf=0.,sc=1.,he=false,
                  time=None,data=None,func=None):
   """
 Adds a new pyelem element to the lattice. The element will be placed at the
@@ -3503,6 +3503,7 @@ pyelem arrays with the same suffices:
               to calculate the longitudinal extent of the element and should
               be specifed.
   - ox,oy,ph,ot,op,sf,sc: Offsets, rotations, and field scalings
+  - he: whether or not the element is hard edged
 The applied field can be made time dependent by supplying a time varying
 scale factor. One of the following can be supplied:
   - time,data: two 1-D arrays holding the tabulated scale factor (data) as
@@ -3543,7 +3544,7 @@ scale factor. One of the following can be supplied:
            'ap':top.pyelemap,'ax':top.pyelemax,'ay':top.pyelemay,
            'ox':top.pyelemox,'oy':top.pyelemoy,
            'ph':top.pyelemph,'ot':top.pyelemot,'op':top.pyelemop,
-           'sf':top.pyelemsf,'sc':top.pyelemsc}
+           'sf':top.pyelemsf,'sc':top.pyelemsc,'he':top.pyelemhe}
 
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element. The element id must be handled seperately.
