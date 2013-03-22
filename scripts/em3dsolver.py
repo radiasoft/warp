@@ -32,7 +32,7 @@ class EM3D(SubcycledPoissonSolver):
                     'laser_frequency':None,
                     'laser_source_z':None,'laser_source_v':0.,
                     'laser_focus_z':None,'laser_focus_v':0.,
-                    'laser_mode':1,'laser_emax':None,
+                    'laser_mode':2,'laser_emax':None,
                     'laser_depos_order_x':3,
                     'laser_depos_order_y':3,
                     'laser_depos_order_z':3,
