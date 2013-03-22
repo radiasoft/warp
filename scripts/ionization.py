@@ -64,6 +64,7 @@ Class for generating particles from impact ionization
     self.uy={}
     self.uz={}
     self.gi={}
+    self.w={}
     self.pidtag={}
     # --- This is kind of messy, but the injpid must be handled. When injection
     # --- is being done, it needs to be set properly in order for the emitted
@@ -202,6 +203,7 @@ a value given a velocity. This returns the Appropriate value.
         self.uy[emitted_pgroup]={}
         self.uz[emitted_pgroup]={}
         self.gi[emitted_pgroup]={}
+        self.w[emitted_pgroup]={}
         self.pidtag[emitted_pgroup]={}
         self.injpid[emitted_pgroup]={}
       if js not in self.x[emitted_pgroup]:
@@ -213,6 +215,8 @@ a value given a velocity. This returns the Appropriate value.
         self.uy[emitted_pgroup][js]=fzeros(self.npmax,'d')
         self.uz[emitted_pgroup][js]=fzeros(self.npmax,'d')
         self.gi[emitted_pgroup][js]=fzeros(self.npmax,'d')
+        if top.wpid > 0:
+          self.w[emitted_pgroup][js]=fzeros(self.npmax,'d')
         if emitted_tag is not None:
           self.pidtag[emitted_pgroup][js]=fzeros(self.npmax,'d')
         if top.injpid > 0:
@@ -283,7 +287,7 @@ velocity of the incident particle.
     if not isinstalleduserinjection(self.generate):
       installuserinjection(self.generate)
 
-  def addpart(self,nn,x,y,z,ux,uy,uz,gi,pg,js,tag,injpid):
+  def addpart(self,nn,x,y,z,ux,uy,uz,gi,pg,js,tag,injpid,w=1.):
     ilf=0
     if injpid is not None:
       # --- This is needed in case injection is setup after the interactions
@@ -303,6 +307,7 @@ velocity of the incident particle.
       self.uy[pg][js][il:iu]=uy[ilf:ilf+nf]
       self.uz[pg][js][il:iu]=uz[ilf:ilf+nf]
       self.gi[pg][js][il:iu]=gi[ilf:ilf+nf]
+      if top.wpid>0:self.w[pg][js][il:iu]=w[ilf:ilf+nf]
       if tag is not None:
         self.pidtag[pg][js][il:iu]=tag
       if injpid is not None:
@@ -320,6 +325,7 @@ velocity of the incident particle.
     self.uy[pg][js][il:iu]=uy[ilf:]
     self.uz[pg][js][il:iu]=uz[ilf:]
     self.gi[pg][js][il:iu]=gi[ilf:]
+    if top.wpid>0:self.w[pg][js][il:iu]=w[ilf:]
     if tag is not None:
       self.pidtag[pg][js][il:iu]=tag
     if injpid is not None:
@@ -349,6 +355,10 @@ velocity of the incident particle.
            pass
          if top.injpid > 0:
            pidpairs.append([top.injpid,self.injpid[pg][js][:nn]])
+         if top.wpid==0:
+           w=1.
+         else:
+           w=self.w[pg][js][:nn]
          addparticles(x=self.x[pg][js][:nn],
                       y=self.y[pg][js][:nn],
                       z=self.z[pg][js][:nn],
@@ -356,6 +366,7 @@ velocity of the incident particle.
                       vy=self.uy[pg][js][:nn],
                       vz=self.uz[pg][js][:nn],
                       gi=self.gi[pg][js][:nn],
+                      w=w,
                       pidpairs=pidpairs,
                       lmomentum=True,
                       pgroup=pg,
@@ -529,6 +540,12 @@ velocity of the incident particle.
           uxi=ipg.uxp[i1:i2:self.stride]#.copy()
           uyi=ipg.uyp[i1:i2:self.stride]#.copy()
           uzi=ipg.uzp[i1:i2:self.stride]#.copy()
+          if top.wpid > 0:
+            # --- Save the wpid of the incident particles so that it can be
+            # --- passed to the emitted particles.
+            wi = ipg.pid[i1:i2:self.stride,top.wpid-1]
+          else:
+            wi = 1.
           if top.injpid > 0:
             # --- Save the injpid of the incident particles so that it can be
             # --- passed to the emitted particles.
@@ -662,6 +679,10 @@ velocity of the incident particle.
             xnew = xnewp+(ranf(xnewp)-0.5)*1.e-10*self.dx
             ynew = ynewp+(ranf(ynewp)-0.5)*1.e-10*self.dy
             znew = znewp+(ranf(znewp)-0.5)*1.e-10*self.dz
+            if top.wpid == 0: 
+              w = 1.
+            else:
+              w = wi[io]
 
             # --- The injpid value needs to be copied to the emitted particles
             # --- so that they are handled properly in the region near the source.
@@ -710,10 +731,10 @@ velocity of the incident particle.
               if self.l_verbose:print 'add ',nnew, emitted_species.name,' from by impact ionization:',incident_species.name,'+',((target_species is None and 'background gas') or target_species.name)
               if self.inter[incident_species]['remove_incident'][it] and (emitted_species.type is incident_species.type):
                 self.addpart(nnew,xnewp,ynewp,znewp,uxnew,uynew,uznew,ginew,epg,emitted_species.jslist[0],
-                             self.inter[incident_species]['emitted_tag'][it],injpid)
+                             self.inter[incident_species]['emitted_tag'][it],injpid,w)
               else:
                 self.addpart(nnew,xnew,ynew,znew,uxnew,uynew,uznew,ginew,epg,emitted_species.jslist[0],
-                             self.inter[incident_species]['emitted_tag'][it],injpid)
+                             self.inter[incident_species]['emitted_tag'][it],injpid,w)
             ncoli = ncoli[io] - 1
             io = arange(nnew)[ncoli>0]
             nnew = len(io)
