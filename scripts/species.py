@@ -1689,6 +1689,14 @@ Note that the lreturndata option doesn't work.
     """Calls :py:func:`~particles.getpid` for this species."""
     return getpid(jslist=self.jslist,**kw)
 
+  def getw(self,**kw):
+    """Calls :py:func:`~particles.getw` for this species."""
+    return getw(jslist=self.jslist,**kw)
+
+  def getweights(self,**kw):
+    """Returns the weights of the particles, the product of pid[:,wpid]*sw."""
+    return getw(jslist=self.jslist,**kw)*self.sw
+
   def getke(self,**kw):
     """Calls :py:func:`~particles.getke` for this species."""
     return getke(jslist=self.jslist,**kw)
@@ -2045,7 +2053,7 @@ of code."""
   by = property(*_getpgroupattribute('by','y B-field, in local domain'))
   bz = property(*_getpgroupattribute('bz','z B-field, in local domain'))
 
-  # --- This handles the particles from the species.
+  # --- This handles the particles pid from the species.
   def _getpgroupattribute(name,doc=None):
     def fget(self):
       if len(self.jslist) == 1:
@@ -2071,7 +2079,77 @@ of code."""
         raise NotImplementedError('The species attributes only works with one species')
     return fget,fset,None,doc
 
-  pid = property(*_getpgroupattribute('pid','particle ID information, in local domain'))
+  pid = property(*_getpgroupattribute('pid','particle ID information'))
+
+  # --- This handles the components of the pid for the particles from the species.
+  def _getpgroupattribute(pkg,idname,doc=None):
+    def fget(self):
+      id = getattr(pkg,idname) - 1
+      if id < 0: raise Exception('%s not setup'%idname)
+      if len(self.jslist) == 1:
+        if self.pgroup.npmax > 0:
+          js = self.jslist[0]
+          i1 = self.pgroup.ins[js] - 1
+          i2 = i1 + self.pgroup.nps[js]
+          return self.pgroup.pid[i1:i2,id]
+        else:
+          # --- Array is unallocated - return a zero length array.
+          # --- This avoids the need of code always having to check if
+          # --- the arrays are allocated.
+          return zeros((0))
+      else:
+        raise NotImplementedError('The species attributes only works with one species')
+    def fset(self,value):
+      id = getattr(pkg,idname) - 1
+      if id < 0: raise Exception('%s not setup'%idname)
+      if len(self.jslist) == 1:
+        js = self.jslist[0]
+        i1 = self.pgroup.ins[js] - 1
+        i2 = i1 + self.pgroup.nps[js]
+        self.pgroup.pid[i1:i2,id] = value
+      else:
+        raise NotImplementedError('The species attributes only works with one species')
+    return fget,fset,None,doc
+
+  w = property(*_getpgroupattribute(top,'wpid','particle variable weight'))
+  injdata = property(*_getpgroupattribute(top,'injpid','particle injection data'))
+  ssn = property(*_getpgroupattribute(top,'spid','particle SSNs'))
+  ssnparent = property(*_getpgroupattribute(top,'sppid','particle parent SSNs'))
+  tbirth = property(*_getpgroupattribute(top,'tpid','particle creation time'))
+  rbirth = property(*_getpgroupattribute(top,'rpid','particle initial radius'))
+  xbirth = property(*_getpgroupattribute(top,'xbirthpid','particle birth x'))
+  ybirth = property(*_getpgroupattribute(top,'ybirthpid','particle birth y'))
+  zbirth = property(*_getpgroupattribute(top,'zbirthpid','particle birth z'))
+  zbirthlab = property(*_getpgroupattribute(top,'zbirthlabpid','particle birth z in lab frame'))
+  uxbirth = property(*_getpgroupattribute(top,'uxbirthpid','particle birth ux'))
+  uybirth = property(*_getpgroupattribute(top,'uybirthpid','particle birth uy'))
+  uzbirth = property(*_getpgroupattribute(top,'uzbirthpid','particle birth uz'))
+  xold = property(*_getpgroupattribute(top,'xoldpid','particle previous position in x'))
+  yold = property(*_getpgroupattribute(top,'yoldpid','particle previous position in y'))
+  zold = property(*_getpgroupattribute(top,'zoldpid','particle previous position in z'))
+  uxold = property(*_getpgroupattribute(top,'uxoldpid','particle previous x velocity'))
+  uyold = property(*_getpgroupattribute(top,'uyoldpid','particle previous y velocity'))
+  uzold = property(*_getpgroupattribute(top,'uzoldpid','particle previous z velocity'))
+  vdxold = property(*_getpgroupattribute(top,'vdxoldpid','particle previous x drift velocity'))
+  vdyold = property(*_getpgroupattribute(top,'vdyoldpid','particle previous y drift velocity'))
+  vdzold = property(*_getpgroupattribute(top,'vdzoldpid','particle previous z drift velocity'))
+  dx = property(*_getpgroupattribute(top,'dxpid','dx grid cell size at particle location'))
+  dy = property(*_getpgroupattribute(top,'dypid','dy grid cell size at particle location'))
+  dz = property(*_getpgroupattribute(top,'dzpid','dz grid cell size at particle location'))
+  bxold = property(*_getpgroupattribute(top,'bxoldpid','particle old Bx field'))
+  byold = property(*_getpgroupattribute(top,'byoldpid','particle old By field'))
+  bzold = property(*_getpgroupattribute(top,'bzoldpid','particle old Bz field'))
+  chdts = property(*_getpgroupattribute(top,'chdtspid','particle flag for dts change'))
+  uparBo = property(*_getpgroupattribute(top,'uparBopid','particle uparallel * B'))
+  bxpred = property(*_getpgroupattribute(top,'bxpredpid','particle predicted Bx field'))
+  bypred = property(*_getpgroupattribute(top,'bypredpid','particle predicted By field'))
+  bzpred = property(*_getpgroupattribute(top,'bzpredpid','particle predicted Bz field'))
+  uparoBpred = property(*_getpgroupattribute(top,'uparoBpredpid','particle uparallel * B'))
+  expred = property(*_getpgroupattribute(top,'expredpid','particle predicted Ex field'))
+  eypred = property(*_getpgroupattribute(top,'eypredpid','particle predicted Ey field'))
+  ezpred = property(*_getpgroupattribute(top,'ezpredpid','particle predicted Ez field'))
+  lmap = property(*_getpgroupattribute(top,'lmappid','particle location in lmap lattice'))
+  dt = property(*_getpgroupattribute(wxy,'dtpid','particle time step size for slice code'))
 
   def _gettopattribute(name,doc=None):
     if doc is None:
