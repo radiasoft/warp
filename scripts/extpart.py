@@ -316,7 +316,8 @@ accumulated. If the data is being accumulated, any existing data is preserved.
             for i in range(id,self.topnwin-1):
                 self.topizwin[i] = self.topizwin[i+1]
                 self.topzzwin[i] = self.topzzwin[i+1]
-                self.topwzwin[i] = self.topwzwin[i+1]
+                if self.topwzwinname is not None:
+                    self.topwzwin[i] = self.topwzwin[i+1]
             self.topnwin = self.topnwin - 1
             gchange(self.topgroupname)
         self.enabled = 0
@@ -1947,7 +1948,7 @@ routines (such as ppxxp).
         self.topnwinname  = 'nzcwin'
         self.topizwinname  = 'izzcwin'
         self.topzzwinname  = 'zzzcwin'
-        self.topwzwinname  = 'wzzcwin'
+        self.topwzwinname  = None
         self.topnpidmaxname  = 'npidzcmax'
         self.topnname  = 'nzc'
         self.toptname  = 'tzc'
