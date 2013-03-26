@@ -5148,11 +5148,11 @@ Methods:
     self.zsrf = (list(self.zmindata) + list(self.zmaxdata[::-1]) +
                  [self.zmindata[0]])
     self.rad = (list(self.radmindata) + [largepos] +
-                list(self.radmaxdata) + [largepos])
+                list(self.radmaxdata[::-1]) + [largepos])
     self.rc = (list(self.rcmindata) + [largepos] +
-               list(self.rcmaxdata) + [largepos])
+               list(self.rcmaxdata[::-1]) + [largepos])
     self.zc = (list(self.zcmindata) + [largepos] +
-               list(self.zcmaxdata) + [largepos])
+               list(self.zcmaxdata[::-1]) + [largepos])
     result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
                                      nx,ny,nz,ix,iy,iz,mglevel)
    #result.intercepts.xintercepts.sort(axis=0)
