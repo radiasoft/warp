@@ -4582,6 +4582,9 @@ Methods:
   def __init__(self,rsrf,zsrf,rad=None,rc=None,zc=None,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid='next',**kw):
+
+    assert _lwithnewconductorgeneration,'Use of ZSrfrv requires the new conductor generation technique - call the function usenewconductorgeneration()'
+
     kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       None,zsrfrvconductord,
