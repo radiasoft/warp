@@ -51,7 +51,11 @@ subroutine depose_j_n_1dz(CJ,np,zp,uxp,uyp,uzp,gaminv,w,q,zmin, &
 
 !       computation of current at x(n+1/2),v(n+1/2)
 
-        ikxp0=floor(z)
+        if (noz==2*(noz/2)) then
+          ikxp0=nint(z)
+        else
+          ikxp0=floor(z)
+        end if
 
         ! --- computes distance between particle and node for current positions
         zint=z-ikxp0
@@ -123,13 +127,13 @@ subroutine depose_j_n_1dz(CJ,np,zp,uxp,uyp,uzp,gaminv,w,q,zmin, &
         izmin = min(0,diz)-int(noz/2)
         izmax = max(0,diz)+int((noz+1)/2)
 
-!        do k=izmin, izmax
-!          cj(ic,kc,1) = cj(ic,kc,1) + wq*vx*invvol*( sz0(k)+0.5*dsz(k) )
-!          cj(ic,kc,2) = cj(ic,kc,2) + wq*vy*invvol*( sz0(k)+0.5*dsz(k) )
-!        end do        
+        do k=izmin, izmax
+          cj(ikxp0+k,1) = cj(ikxp0+k,1) + wq*vx*invvol*( sz0(k)+0.5*dsz(k) )
+          cj(ikxp0+k,2) = cj(ikxp0+k,2) + wq*vy*invvol*( sz0(k)+0.5*dsz(k) )
+        end do        
         do k=izmin, izmax-1
           sdz(k)  = wqz*dsz(k)
-          if (k>-1) sdz(k)=sdz(k)+sdz(k-1)
+          if (k>izmin) sdz(k)=sdz(k)+sdz(k-1)
           cj(ikxp0+k,3) = cj(ikxp0+k,3)+sdz(k)
         end do        
 
@@ -169,12 +173,12 @@ subroutine depose_j_n_1dz(CJ,np,zp,uxp,uyp,uzp,gaminv,w,q,zmin, &
         end select        
 
         ! --- computes min/max positions of current contributions
-        izmin = -int(noz/2)
-        izmax = int((noz+1)/2)
-        do k=izmin, izmax
-          cj(ikxp+k,1) = cj(ikxp+k,1)+sz(k)*wqx
-          cj(ikxp+k,2) = cj(ikxp+k,2)+sz(k)*wqy
-        end do
+!        izmin = -int(noz/2)
+!        izmax = int((noz+1)/2)
+!        do k=izmin, izmax
+!          cj(ikxp+k,1) = cj(ikxp+k,1)+sz(k)*wqx
+!          cj(ikxp+k,2) = cj(ikxp+k,2)+sz(k)*wqy
+!        end do
         
     end do
 
@@ -557,7 +561,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
         zold = zold-zmin*dzi
         
         ! computes maximum number of cells traversed by particle in a given dimension
-        ncells = 1+max( int(abs(x-xold)), int(abs(z-zold)))
+        ncells = 1!+max( int(abs(x-xold)), int(abs(z-zold)))
         
         dtsdx = dtsdx0/ncells
         dtsdz = dtsdz0/ncells
@@ -1311,7 +1315,7 @@ subroutine depose_jxjyjz_esirkepov_linear_serial(cj,np,xp,yp,zp,uxp,uyp,uzp,gami
         zold=z-dtsdz0*vz
  
         ! computes maximum number of cells traversed by particle in a given dimension
-        ncells = 1+max( int(abs(x-xold)), int(abs(y-yold)), int(abs(z-zold)))
+        ncells = 1!+max( int(abs(x-xold)), int(abs(y-yold)), int(abs(z-zold)))
         
         dtsdx = dtsdx0/ncells
         dtsdy = dtsdy0/ncells
@@ -1495,7 +1499,7 @@ subroutine depose_jxjyjz_esirkepov_nnew(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
         z = z - zmin*dzi
         
         ! computes maximum number of cells traversed by particle in a given dimension
-        ncells = 1+max( int(abs(x-xold)), int(abs(y-yold)), int(abs(z-zold)))
+        ncells = 1!+max( int(abs(x-xold)), int(abs(y-yold)), int(abs(z-zold)))
         
         dtsdx = dtsdx0/ncells
         dtsdy = dtsdy0/ncells
@@ -1823,7 +1827,7 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
         end if
         
         ! computes maximum number of cells traversed by particle in a given dimension
-        ncells = 1+max( int(abs(x-xold)), int(abs(y-yold)), int(abs(z-zold)))
+        ncells = 1!+max( int(abs(x-xold)), int(abs(y-yold)), int(abs(z-zold)))
         
         dtsdx = dtsdx0/ncells
         dtsdy = dtsdy0/ncells
