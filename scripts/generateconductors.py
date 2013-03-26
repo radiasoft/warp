@@ -5190,13 +5190,13 @@ Methods:
       rminofz.rminofz = self.rminofz
       rminofzdata,zmindata,radmindata,rcmindata,zcmindata = self.generatetabulateddata(rminofz)
     else:
+      rminofzdata,zmindata,radmindata,rcmindata,zcmindata = self.rminofzdata,self.zmindata,self.radmindata,self.rcmindata,self.zcmindata
+    if self.lrmaxofz:
       try:
         self.lrmaxofznoticeprinted
       except AttributeError:
         self.lrmaxofznoticeprinted = True
         print 'Notice: ZSrfrvInOut: the rmaxofz function is being tabulated to generate the conductors. The number of points per dz can be set by the conductor attribute tabulatednperdz. Please check the results and adjust tabulatednperdz as needed'
-      rminofzdata,zmindata,radmindata,rcmindata,zcmindata = self.rminofzdata,self.zmindata,self.radmindata,self.rcmindata,self.zcmindata
-    if self.lrmaxofz:
       rmaxofz.rmaxofz = self.rmaxofz
       rmaxofzdata,zmaxdata,radmaxdata,rcmaxdata,zcmaxdata = self.generatetabulateddata(rmaxofz)
     else:
