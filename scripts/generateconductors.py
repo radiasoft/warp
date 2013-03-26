@@ -120,7 +120,7 @@ def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
 
-_lwithnewconductorgeneration = false
+_lwithnewconductorgeneration = True
 def usenewconductorgeneration():
   """Use the faster, new method for conductor data generation"""
   global _lwithnewconductorgeneration
@@ -4530,6 +4530,28 @@ data and make sure it is consistent.
 
     return r,z
 
+  def generatetabulateddata(self,rofzfunclocal=None):
+    """Calls the rofz function at a range of values between zmin and zmax.
+The function is used with the new conductor generation method to allow
+use of the function method for specifying the surface."""
+    if rofzfunclocal is None: rofzfunclocal = rofzfunc
+    self.griddz = _griddzkludge[0]
+    try:
+      nperdz = self.tabulatednperdz
+    except AttributeError:
+      nperdz = 100
+    np = (self.zmax - self.zmin)/self.griddz*nperdz
+    zdata = span(self.zmin,self.zmax,nperdz+1)
+    rofzdata = zeros(nperdz+1)
+    for i in range(nperdz+1):
+      f3d.srfrv_z = zdata[i]
+      rofzfunclocal()
+      rofzdata[i] = f3d.srfrv_r
+    raddata = zeros(nperdz) + largepos
+    rcdata = zeros(nperdz)
+    zcdata = zeros(nperdz)
+    return rofzdata,zdata,raddata,rcdata,zcdata
+
 #============================================================================
 # --- These handle the callbacks when a python function is used to
 # --- describe the surface of revolution.
@@ -4582,6 +4604,9 @@ Methods:
   def __init__(self,rsrf,zsrf,rad=None,rc=None,zc=None,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid='next',**kw):
+
+    assert _lwithnewconductorgeneration,'Use of ZSrfrv requires the new conductor generation technique - call the function usenewconductorgeneration()'
+
     kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       None,zsrfrvconductord,
@@ -4757,15 +4782,24 @@ Methods:
                      nx,ny,nz,ix,iy,iz,mglevel):
     # --- This converts the ZSrfrvOut data into the format needed
     # --- by the ZSrfrv generator.
-    assert not self.lrofzfunc,'Only tabulated data is supported'
+    if self.lrofzfunc:
+      try:
+        self.lrofznoticeprinted
+      except AttributeError:
+        self.lrofznoticeprinted = True
+        print 'Notice: ZSrfrvOut: the rofzfunc function is being tabulated to generate the conductors. The number of points per dz can be set by the conductor attribute tabulatednperdz. Please check the results and adjust tabulatednperdz as needed'
+      rofzfunc.rofzfunc = self.rofzfunc
+      rofzdata,zdata,raddata,rcdata,zcdata = self.generatetabulateddata()
+    else:
+      rofzdata,zdata,raddata,rcdata,zcdata = self.rofzdata,self.zdata,self.raddata,self.rcdata,self.zcdata
     kwlistsave = self.kwlist
     self.kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
-    self.nn = len(self.zdata)+3
-    self.rsrf = [self.rmax] + list(self.rofzdata) + [self.rmax,self.rmax]
-    self.zsrf = [self.zmin] + list(self.zdata) + [self.zmax,self.zmin]
-    self.rad = [largepos] + list(self.raddata) + [largepos,largepos]
-    self.rc = [largepos] + list(self.rcdata) + [largepos,largepos]
-    self.zc = [largepos] + list(self.zcdata) + [largepos,largepos]
+    self.nn = len(zdata)+3
+    self.rsrf = [self.rmax] + list(rofzdata) + [self.rmax,self.rmax]
+    self.zsrf = [self.zmin] + list(zdata) + [self.zmax,self.zmin]
+    self.rad = [largepos] + list(raddata) + [largepos,largepos]
+    self.rc = [largepos] + list(rcdata) + [largepos,largepos]
+    self.zc = [largepos] + list(zcdata) + [largepos,largepos]
     result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
                                      nx,ny,nz,ix,iy,iz,mglevel)
    #result.intercepts.xintercepts.sort(axis=0)
@@ -4924,15 +4958,24 @@ Methods:
                      nx,ny,nz,ix,iy,iz,mglevel):
     # --- This converts the ZSrfrvIn data into the format needed
     # --- by the ZSrfrv generator.
-    assert not self.lrofzfunc,'Only tabulated data is supported'
+    if self.lrofzfunc:
+      try:
+        self.lrofznoticeprinted
+      except AttributeError:
+        self.lrofznoticeprinted = True
+        print 'Notice: ZSrfrvIn: the rofzfunc function is being tabulated to generate the conductors. The number of points per dz can be set by the conductor attribute tabulatednperdz. Please check the results and adjust tabulatednperdz as needed'
+      rofzfunc.rofzfunc = self.rofzfunc
+      rofzdata,zdata,raddata,rcdata,zcdata = self.generatetabulateddata()
+    else:
+      rofzdata,zdata,raddata,rcdata,zcdata = self.rofzdata,self.zdata,self.raddata,self.rcdata,self.zcdata
     kwlistsave = self.kwlist
     self.kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
-    self.nn = len(self.zdata)+3
-    self.rsrf = [self.rmin] + list(self.rofzdata) + [self.rmin,self.rmin]
-    self.zsrf = [self.zmin] + list(self.zdata) + [self.zmax,self.zmin]
-    self.rad = [largepos] + list(self.raddata) + [largepos,largepos]
-    self.rc = [largepos] + list(self.rcdata) + [largepos,largepos]
-    self.zc = [largepos] + list(self.zcdata) + [largepos,largepos]
+    self.nn = len(zdata)+3
+    self.rsrf = [self.rmin] + list(rofzdata) + [self.rmin,self.rmin]
+    self.zsrf = [self.zmin] + list(zdata) + [self.zmax,self.zmin]
+    self.rad = [largepos] + list(raddata) + [largepos,largepos]
+    self.rc = [largepos] + list(rcdata) + [largepos,largepos]
+    self.zc = [largepos] + list(zcdata) + [largepos,largepos]
     result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
                                      nx,ny,nz,ix,iy,iz,mglevel)
    #result.intercepts.xintercepts.sort(axis=0)
@@ -5138,21 +5181,39 @@ Methods:
                      nx,ny,nz,ix,iy,iz,mglevel):
     # --- This converts the ZSrfrvInOut data into the format needed
     # --- by the ZSrfrv generator.
-    assert not self.lrminofz and not self.lrmaxofz,\
-           'Only tabulated data is supported'
+    if self.lrminofz:
+      try:
+        self.lrminofznoticeprinted
+      except AttributeError:
+        self.lrminofznoticeprinted = True
+        print 'Notice: ZSrfrvInOut: the rminofz function is being tabulated to generate the conductors. The number of points per dz can be set by the conductor attribute tabulatednperdz. Please check the results and adjust tabulatednperdz as needed'
+      rminofz.rminofz = self.rminofz
+      rminofzdata,zmindata,radmindata,rcmindata,zcmindata = self.generatetabulateddata(rminofz)
+    else:
+      rminofzdata,zmindata,radmindata,rcmindata,zcmindata = self.rminofzdata,self.zmindata,self.radmindata,self.rcmindata,self.zcmindata
+    if self.lrmaxofz:
+      try:
+        self.lrmaxofznoticeprinted
+      except AttributeError:
+        self.lrmaxofznoticeprinted = True
+        print 'Notice: ZSrfrvInOut: the rmaxofz function is being tabulated to generate the conductors. The number of points per dz can be set by the conductor attribute tabulatednperdz. Please check the results and adjust tabulatednperdz as needed'
+      rmaxofz.rmaxofz = self.rmaxofz
+      rmaxofzdata,zmaxdata,radmaxdata,rcmaxdata,zcmaxdata = self.generatetabulateddata(rmaxofz)
+    else:
+      rmaxofzdata,zmaxdata,radmaxdata,rcmaxdata,zcmaxdata = self.rmaxofzdata,self.zmaxdata,self.radmaxdata,self.rcmaxdata,self.zcmaxdata
     kwlistsave = self.kwlist
     self.kwlist = ['nn','rsrf','zsrf','rad','rc','zc']
-    self.nn = len(self.zmindata)+len(self.zmaxdata)+1
-    self.rsrf = (list(self.rminofzdata) + list(self.rmaxofzdata[::-1]) +
-                 [self.rminofzdata[0]])
-    self.zsrf = (list(self.zmindata) + list(self.zmaxdata[::-1]) +
-                 [self.zmindata[0]])
-    self.rad = (list(self.radmindata) + [largepos] +
-                list(self.radmaxdata) + [largepos])
-    self.rc = (list(self.rcmindata) + [largepos] +
-               list(self.rcmaxdata) + [largepos])
-    self.zc = (list(self.zcmindata) + [largepos] +
-               list(self.zcmaxdata) + [largepos])
+    self.nn = len(zmindata)+len(zmaxdata)+1
+    self.rsrf = (list(rminofzdata) + list(rmaxofzdata[::-1]) +
+                 [rminofzdata[0]])
+    self.zsrf = (list(zmindata) + list(zmaxdata[::-1]) +
+                 [zmindata[0]])
+    self.rad = (list(radmindata) + [largepos] +
+                list(radmaxdata[::-1]) + [largepos])
+    self.rc = (list(rcmindata) + [largepos] +
+               list(rcmaxdata[::-1]) + [largepos])
+    self.zc = (list(zcmindata) + [largepos] +
+               list(zcmaxdata[::-1]) + [largepos])
     result = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
                                      nx,ny,nz,ix,iy,iz,mglevel)
    #result.intercepts.xintercepts.sort(axis=0)

@@ -602,8 +602,8 @@ c           --- get E self-field at initial positions
               bx = 0.
               by = 0.
               bz = 0.
+              call inj_sete3d(nn,xx,yy,zz,pgroup%pid(i1:i2,injpid),ex,ey,ez)
             endif
-            call inj_sete3d(nn,xx,yy,zz,pgroup%pid(i1:i2,injpid),ex,ey,ez)
 
 c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
@@ -825,8 +825,8 @@ c             --- calculate new E self-fields
                 bx = 0.
                 by = 0.
                 bz = 0.
+                call inj_sete3d(nn,xx,yy,zz,pgroup%pid(i1:i2,injpid),ex,ey,ez)
               endif
-              call inj_sete3d(nn,xx,yy,zz,pgroup%pid(i1:i2,injpid),ex,ey,ez)
 
 c             --- get external fields at current positions
               bendres = 0.
@@ -1818,8 +1818,9 @@ c           --- get E self-field at initial positions
      &                                   ex,ey,ez,bx,by,bz)
               call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   bx,by,bz)
+            else
+              call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
             endif
-            call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
 c           --- get external fields at initial positions
             call exteb3d(nn,xx,yy,zz,uz,gg,0.,fulldt_s*0.5,bx,by,bz,ex,ey,ez,
@@ -2031,8 +2032,9 @@ c           --- calculate new E self-fields
      &                                   ex,ey,ez,bx,by,bz)
               call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   bx,by,bz)
+            else
+              call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
             endif
-            call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
 c           --- Get external fields at current positions.
             call exteb3d(nn,xx,yy,zz,uz,gg,-fulldt_s*0.5,0.,bx,by,bz,ex,ey,ez,
@@ -2561,8 +2563,9 @@ c           --- get E self-field at initial positions
      &                                   ex,ey,ez,bx,by,bz)
               call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   bx,by,bz)
+            else
+              call tinj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
             endif
-            call tinj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
 c           --- get external fields at initial positions
             call exteb3d(nn,xx,yy,zz,uz,gg,0.,fulldt_s*0.5,bx,by,bz,ex,ey,ez,
@@ -2753,8 +2756,9 @@ c           --- calculate new E self-fields
      &                                   ex,ey,ez,bx,by,bz)
               call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   bx,by,bz)
+            else
+              call tinj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
             endif
-            call tinj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
 c           --- Get external fields at current positions.
             call exteb3d(nn,xx,yy,zz,uz,gg,-fulldt_s*0.5,0.,bx,by,bz,ex,ey,ez,
@@ -3680,6 +3684,7 @@ c to get zp.
 
       if (ninject == 0) return
       if (inject < 1 .or. inject > 8 .or. inject == 6) return
+      if (inject == 1 .and. linj_efromgrid) return
 
       allocate(xx((1+inj_nx)*(1+inj_ny)*ninject))
       allocate(yy((1+inj_nx)*(1+inj_ny)*ninject))
