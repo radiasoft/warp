@@ -140,8 +140,11 @@ if with_gist:
   # --- Set GISTPATH environment variable appropriately if it is not already
   # --- set.
   if "GISTPATH" not in os.environ:
-    import warp
-    os.environ["GISTPATH"] = os.path.dirname(warp.__file__)
+    # --- controllers was already imported, so use it since it will be
+    # --- in the same directory as the palette files.
+    # --- "import warp" is broken in Python3 because of problems with
+    # --- relative imports.
+    os.environ["GISTPATH"] = os.path.dirname(controllers.__file__)
 
   def active_window(winnum=None):
     if winnum is None:
@@ -813,7 +816,7 @@ plg = pla
 # --- This replaces functions from gist, filtering through callplotfunction
 def limits(xmin=None,xmax=None,ymin=None,ymax=None,**kw):
   if with_gist:
-    if isinstance(xmin,TupleType):
+    if isinstance(xmin,tuple):
       # --- In this form, gist complains if a keyword dictionary is passed in,
       # --- so pass in None for kw.
       rr = callplotfunction("limits",[xmin],None)
@@ -1031,9 +1034,9 @@ Simple interface to contour plotting, same arguments as plc
     assert shape(ireg) == shape(zz),"Shape of ireg must be the same as zz"
   if contours is 0: contours = None
   if levs is not None: contours = levs
-  if type(contours) == ListType: contours = array(contours)
-  if type(contours) == TupleType: contours = array(contours)
-  if type(contours) == type(1):
+  if isinstance(contours,list): contours = array(contours)
+  if isinstance(contours,tuple): contours = array(contours)
+  if isinstance(contours,type(1)):
     # --- cmin and cmax are multiplied by 1. to force them to be standard
     # --- python floats, instead of zero length numpy arrays.
     if cmin is None: cmin = minnd(zz)*1.
@@ -1516,16 +1519,16 @@ Note that either the x and y coordinates or the grid must be passed in.
     y = None
 
   # --- Do some error checking on the consistency of the input
-  assert (type(grid) == ArrayType or \
-          (type(x) == ArrayType and type(y) == ArrayType)), \
+  assert (isinstance(grid,ndarray) or \
+          (isinstance(x,ndarray) and isinstance(y,ndarray))), \
          "either the grid and/or both x and y must be specified"
-  assert (not particles or (type(x) == ArrayType and type(y) == ArrayType)), \
+  assert (not particles or (isinstance(x,ndarray) and isinstance(y,ndarray))), \
          "both x and y must be specified if particles are to be plotted"
-  assert ((type(x) != ArrayType and type(y) != ArrayType) or x.size == y.size),\
+  assert ((not isinstance(x,ndarray) and not isinstance(y,ndarray)) or x.size == y.size),\
          "both x and y must be of the same length"
-  assert (zz is None) or (type(zz) == ArrayType and zz.size == x.size),\
+  assert (zz is None) or (isinstance(zz,ndarray) and zz.size == x.size),\
          "zz must be the same length as x"
-  assert (type(slope) != StringType),"slope must be a number"
+  assert (not isinstance(slope,type(''))),"slope must be a number"
   assert (zz is None) or (grid is None),\
          "only one of zz and grid can be specified"
   assert (centering == 'node' or centering == 'cell' or centering == 'old'),\
@@ -1534,7 +1537,7 @@ Note that either the x and y coordinates or the grid must be passed in.
          "the grid specified must be two dimensional"
 
   # --- If there are no particles and no grid to plot, just return
-  if type(x) == ArrayType and type(y) == ArrayType:
+  if isinstance(x,ndarray) and isinstance(y,ndarray):
     if local:
       np = x.size
     else:
@@ -1586,12 +1589,12 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   # --- Make sure that the grid size nx and ny are consistent with grid
   # --- is one is input
-  if type(grid) == ArrayType:
+  if isinstance(grid,ndarray):
     nx = shape(grid)[0] - 1
     ny = shape(grid)[1] - 1
 
   # --- Calculate extrema of the particles
-  if type(x) == ArrayType and type(y) == ArrayType:
+  if isinstance(x,ndarray) and isinstance(y,ndarray):
     # --- Get slope subtracted value of y
     yms = y - x*slope + (xoffset*slope - yoffset - offset)
     # --- For the particles, get mins and maxs that were not supplied by the user.
@@ -1662,7 +1665,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- are assumed to be density plots. In this case, grid will be the same
   # --- as densitygrid. The density grid is also needed if chopped or
   # --- denmin or max are specified, which always operate on the density.
-  if (((type(grid) != ArrayType and zz is None) and
+  if (((not isinstance(grid,ndarray) and zz is None) and
        (hash or contours is not None or surface or cellarray or
         color=='density'))
       or chopped or denmin or denmax):
@@ -1690,7 +1693,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       # --- Set grid_local so that grid plots will now be done locally
       grid_local = 1
 
-    if (type(grid) != ArrayType and zz is None): grid = densitygrid
+    if (not isinstance(grid,ndarray) and zz is None): grid = densitygrid
 
   else:
     densitygrid = None
@@ -1951,7 +1954,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   if surface and me == 0 and nx > 1 and ny > 1:
     try:
       import Opyndx
-      if type(color) != ListType: scolor = None
+      if not isinstance(color,list): scolor = None
       else:                       scolor = color
       xrange = 1.5*max(abs(xmin),abs(xmax))
       yrange = 1.5*max(abs(ymin),abs(ymax))
@@ -2480,7 +2483,7 @@ def ppmultispecies(pp,args,kw):
   """
   if 'js' in kw:
     js = kw['js']
-    if js != -1 and type(js) != ListType:
+    if js != -1 and not isinstance(js,list):
       return false
     else:
       if js == -1: js = range(top.ns)
@@ -3084,7 +3087,7 @@ def ppxxp(iw=0,**kw):
   "Plots X-X'. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxxp,(iw,),kw): return
-  if type(kw.get('slope',0.)) == type(''):
+  if isinstance(kw.get('slope',0.),type('')):
     (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope
     kw['yoffset'] = xpoffset
@@ -3105,7 +3108,7 @@ def ppyyp(iw=0,**kw):
   "Plots Y-Y'. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyyp,(iw,),kw): return
-  if type(kw.get('slope',0.)) == type(''):
+  if isinstance(kw.get('slope',0.),type('')):
     (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope
     kw['yoffset'] = ypoffset
@@ -3127,7 +3130,7 @@ def ppxpyp(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxpyp,(iw,),kw): return
   slope = kw.get('slope',0.)
-  if type(slope) == type(''):
+  if isinstance(slope,type('')):
     (xslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     (yslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = 0.
@@ -3155,7 +3158,7 @@ def ppxvx(iw=0,**kw):
   "Plots X-Vx. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxvx,(iw,),kw): return
-  if type(kw.get('slope',0.)) == type(''):
+  if isinstance(kw.get('slope',0.),type('')):
     (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope*vz
     kw['yoffset'] = xpoffset*vz
@@ -3177,7 +3180,7 @@ def ppyvy(iw=0,**kw):
   "Plots Y-Vy. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyvy,(iw,),kw): return
-  if type(kw.get('slope',0.)) == type(''):
+  if isinstance(kw.get('slope',0.),type('')):
     (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope*vz
     kw['yoffset'] = ypoffset*vz
@@ -3235,7 +3238,7 @@ def ppvxvy(iw=0,**kw):
   if ppmultispecies(ppvxvy,(iw,),kw): return
   slope = kw.get('slope',0.)
   kw['slope'] = 0.
-  if type(slope) == type(''):
+  if isinstance(slope,type('')):
     (xslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     (yslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     vxslope = xslope*vz
@@ -3270,7 +3273,7 @@ def ppvxvz(iw=0,**kw):
   (vzmin,vzmax) = getvzrange(kwdict=kw)
   slope = kw.get('slope',0.)
   kw['slope'] = 0.
-  if type(slope) == type(''):
+  if isinstance(slope,type('')):
     (xslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     vxslope = xslope*vz
     vxoffset = xpoffset*vz
@@ -3298,7 +3301,7 @@ def ppvyvz(iw=0,**kw):
   (vzmin,vzmax) = getvzrange(kwdict=kw)
   slope = kw.get('slope',0.)
   kw['slope'] = 0.
-  if type(slope) == type(''):
+  if isinstance(slope,type('')):
     (yslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     vyslope = yslope*vz
     vyoffset = ypoffset*vz
@@ -3368,7 +3371,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
   tt = arctan2(yy,xx)
   rp = xp*cos(tt) + yp*sin(tt)
   slope = kw.get('slope',0.)
-  if type(slope) == type(''):
+  if isinstance(slope,type('')):
     aversq = globalave(rr**2)
     averrp = globalave(rr*rp)
     if aversq > 0.:
@@ -3415,7 +3418,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
   tt = arctan2(yy,xx)
   tp = -xp*sin(tt) + yp*cos(tt)
   slope = kw.get('slope',0.)
-  if type(slope) == type(''):
+  if isinstance(slope,type('')):
     aversq = globalave(rr**2)
     avertp = globalave(rr*tp)
     if aversq > 0.:
@@ -3462,7 +3465,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
   tt = arctan2(yy,xx)
   vr = vx*cos(tt) + vy*sin(tt)
   slope = kw.get('slope',0.)
-  if type(slope) == type(''):
+  if isinstance(slope,type('')):
     aversq = globalave(rr**2)
     avervr = globalave(rr*vr)
     if aversq > 0.:
@@ -3517,7 +3520,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
   yp = getyp(ii=ii,gather=0,**kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   slope = kw.get('slope',0.)
-  if type(slope)==type(''):
+  if isinstance(slope,type('')):
     del kw['slope']
     iz = kw.get('iz',None)
     (xxpslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=iz,kwdict=kw)
@@ -3536,7 +3539,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
     pplimits = defaultpplimits
   else:
     kw['lframe'] = 1
-    if type(pplimits[0]) != type(()):
+    if not isinstance(pplimits[0],tuple):
       pplimits = 4*[pplimits]
     else:
       for i in xrange(4):
@@ -3774,7 +3777,7 @@ Plots y versus x with color based in z
     y = gatherarray(y)
     x = gatherarray(x)
     z = gatherarray(z)
-    if type(uz) == ArrayType: uz = gatherarray(uz)
+    if isinstance(uz,ndarray): uz = gatherarray(uz)
     if me > 0: return
 
   # --- Make sure arrays are 1-D
@@ -5195,7 +5198,7 @@ def set_label(height=None,font=None,bold=0,italic=0,axis='all',system=None):
       gstyle()
 
     if font is not None:
-      if(type(font)==type('string')):
+      if isinstance(font,type('')):
         if font == 'Courier':     font = 0
         if font == 'Times':       font = 1
         if font == 'Helvetica':   font = 2
