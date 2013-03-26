@@ -120,7 +120,7 @@ def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
 
-_lwithnewconductorgeneration = false
+_lwithnewconductorgeneration = True
 def usenewconductorgeneration():
   """Use the faster, new method for conductor data generation"""
   global _lwithnewconductorgeneration
