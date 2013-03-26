@@ -62,8 +62,7 @@ def controllersdoc():
   import controllers
   print controllers.__doc__
 
-#from warp import *
-import warp
+from warp import *
 from types import *
 import copy
 import time
@@ -231,10 +230,10 @@ controllers are restored properly.
   def callfuncsinlist(self,*args,**kw):
     bb = time.time()
     for f in self.controllerfunclist():
-      #warp.barrier()
+      #barrier()
       t1 = time.time()
       f(*args,**kw)
-      #warp.barrier()
+      #barrier()
       t2 = time.time()
       # --- For the timers, use the function (or method) name as the key.
       # --- This is done since instancemethods cannot be pickled.
@@ -320,21 +319,21 @@ Anything that may have already been installed will therefore be unaffected.
     """Prints timings of install functions.
  - tmin=1.: only functions with time greater than tmin will be printed
     """
-    if ff is None: ff = warp.sys.stdout
+    if ff is None: ff = sys.stdout
     for c in self.clist:
       for fname,time in c.timers.items():
-        vlist = warp.array(warp.gather(time))
-        if warp.me > 0: continue
-        vsum = warp.sum(vlist)
+        vlist = array(gather(time))
+        if me > 0: continue
+        vsum = sum(vlist)
         if vsum <= tmin: continue
-        vrms = warp.sqrt(max(0.,warp.ave(vlist**2) - warp.ave(vlist)**2))
-        ff.write('%20s %s %10.4f  %10.4f %10.4f'%(c.name,fname,vsum,vsum/warp.npes,vrms))
+        vrms = sqrt(max(0.,ave(vlist**2) - ave(vlist)**2))
+        ff.write('%20s %s %10.4f  %10.4f %10.4f'%(c.name,fname,vsum,vsum/npes,vrms))
         if lminmax:
           vmin = min(vlist)
           vmax = max(vlist)
           ff.write('  %10.4f  %10.4f'%(vmin,vmax))
-        if warp.top.it > 0:
-          ff.write('   %10.4f'%(vsum/warp.npes/(warp.top.it)))
+        if top.it > 0:
+          ff.write('   %10.4f'%(vsum/npes/(top.it)))
         ff.write('\n')
 
 # --- This is primarily needed by warp.py so that these objects can be removed
@@ -375,11 +374,11 @@ def callfrombeforefs(f):
 def installbeforefs(f):
   "Adds a function to the list of functions called before a field-solve"
   beforefs.installfuncinlist(f)
-  warp.w3d.lbeforefs = warp.true
+  w3d.lbeforefs = true
 def uninstallbeforefs(f):
   "Removes the function from the list of functions called before a field-solve"
   beforefs.uninstallfuncinlist(f)
-  if not beforefs.hasfuncsinstalled(): warp.w3d.lbeforefs = warp.false
+  if not beforefs.hasfuncsinstalled(): w3d.lbeforefs = false
 def isinstalledbeforefs(f):
   "Checks if the function is called before a field-solve"
   return beforefs.isinstalledfuncinlist(f)
@@ -391,11 +390,11 @@ def callfromafterfs(f):
 def installafterfs(f):
   "Adds a function to the list of functions called after a field-solve"
   afterfs.installfuncinlist(f)
-  warp.w3d.lafterfs = warp.true
+  w3d.lafterfs = true
 def uninstallafterfs(f):
   "Removes the function from the list of functions called after a field-solve"
   afterfs.uninstallfuncinlist(f)
-  if not afterfs.hasfuncsinstalled(): warp.w3d.lafterfs = warp.false
+  if not afterfs.hasfuncsinstalled(): w3d.lafterfs = false
 def isinstalledafterfs(f):
   "Checks if the function is called after a field-solve"
   return afterfs.isinstalledfuncinlist(f)
@@ -407,11 +406,11 @@ def callfrombeforeloadrho(f):
 def installbeforeloadrho(f):
   "Adds a function to the list of functions called before a load rho"
   beforeloadrho.installfuncinlist(f)
-  warp.w3d.lbeforelr = warp.true
+  w3d.lbeforelr = true
 def uninstallbeforeloadrho(f):
   "Removes the function from the list of functions called before a load rho"
   beforeloadrho.uninstallfuncinlist(f)
-  if not beforeloadrho.hasfuncsinstalled(): warp.w3d.lbeforelr = warp.false
+  if not beforeloadrho.hasfuncsinstalled(): w3d.lbeforelr = false
 def isinstalledbeforeloadrho(f):
   "Checks if the function is called before a load rho"
   return beforeloadrho.isinstalledfuncinlist(f)
@@ -428,11 +427,11 @@ def callfromafterloadrho(f):
 def installafterloadrho(f):
   "Adds a function to the list of functions called after a load rho"
   afterloadrho.installfuncinlist(f)
-  warp.w3d.lafterloadrho = warp.true
+  w3d.lafterloadrho = true
 def uninstallafterloadrho(f):
   "Removes the function from the list of functions called after a load rho"
   afterloadrho.uninstallfuncinlist(f)
-  if not afterloadrho.hasfuncsinstalled(): warp.w3d.lafterloadrho = warp.false
+  if not afterloadrho.hasfuncsinstalled(): w3d.lafterloadrho = false
 def isinstalledafterloadrho(f):
   "Checks if the function is called after a load rho"
   return afterloadrho.isinstalledfuncinlist(f)
@@ -444,11 +443,11 @@ def callfromothereuser(f):
 def installothereuser(f):
   "Adds a function to the list of functions called during the electric fields gathering"
   othereuser.installfuncinlist(f)
-  warp.w3d.lothereuser = warp.true
+  w3d.lothereuser = true
 def uninstallothereuser(f):
   "Removes the function from the list of functions called during the electric fields gathering"
   othereuser.uninstallfuncinlist(f)
-  if not othereuser.hasfuncsinstalled(): warp.w3d.lothereuser = warp.false
+  if not othereuser.hasfuncsinstalled(): w3d.lothereuser = false
 def isinstalledothereuser(f):
   "Checks if the function is called during the electric fields gathering"
   return othereuser.isinstalledfuncinlist(f)
@@ -460,11 +459,11 @@ def callfrombeforescraper(f):
 def installbeforescraper(f):
   "Adds a function to the list of functions called before scraping particles"
   beforescraper.installfuncinlist(f)
-  warp.w3d.lbeforescraper = warp.true
+  w3d.lbeforescraper = true
 def uninstallbeforescraper(f):
   "Removes the function from the list of functions called before scraping particles"
   beforescraper.uninstallfuncinlist(f)
-  if not beforescraper.hasfuncsinstalled(): warp.w3d.lbeforescraper = warp.false
+  if not beforescraper.hasfuncsinstalled(): w3d.lbeforescraper = false
 def isinstalledbeforescraper(f):
   "Checks if the function is called before scraping particles"
   return beforescraper.isinstalledfuncinlist(f)
@@ -476,11 +475,11 @@ def callfromafterscraper(f):
 def installafterscraper(f):
   "Adds a function to the list of functions called after scraping particles"
   afterscraper.installfuncinlist(f)
-  warp.w3d.lafterscraper = warp.true
+  w3d.lafterscraper = true
 def uninstallafterscraper(f):
   "Removes the function from the list of functions called after scraping particles"
   afterscraper.uninstallfuncinlist(f)
-  if not afterscraper.hasfuncsinstalled(): warp.w3d.lafterscraper = warp.false
+  if not afterscraper.hasfuncsinstalled(): w3d.lafterscraper = false
 def isinstalledafterscraper(f):
   "Checks if the function is called after scraping particles"
   return afterscraper.isinstalledfuncinlist(f)
@@ -492,11 +491,11 @@ def callfromparticlescraper(f):
 def installparticlescraper(f):
   "Adds a function to the list of functions called to scrape particles"
   callscraper.installfuncinlist(f)
-  warp.w3d.lcallscraper = warp.true
+  w3d.lcallscraper = true
 def uninstallparticlescraper(f):
   "Removes the function from the list of functions called to scrape particles"
   callscraper.uninstallfuncinlist(f)
-  if not callscraper.hasfuncsinstalled(): warp.w3d.lcallscraper = warp.false
+  if not callscraper.hasfuncsinstalled(): w3d.lcallscraper = false
 def isinstalledparticlescraper(f):
   "Checks if the function is called to scrape particles"
   return callscraper.isinstalledfuncinlist(f)
@@ -508,12 +507,12 @@ def callfromparticleloader(f):
 def installparticleloader(f):
   "Adds a function to the list of functions called to load particles"
   callparticleloader.installfuncinlist(f)
-  warp.w3d.lcallparticleloader = warp.true
+  w3d.lcallparticleloader = true
 def uninstallparticleloader(f):
   "Removes the function from the list of functions called to load particles"
   callparticleloader.uninstallfuncinlist(f)
   if not callparticleloader.hasfuncsinstalled():
-    warp.w3d.lcallparticleloader = warp.false
+    w3d.lcallparticleloader = false
 def isinstalledparticleloader(f):
   "Checks if the function is called to load particles"
   return callparticleloader.isinstalledfuncinlist(f)
@@ -525,11 +524,11 @@ def callfromaddconductor(f):
 def installaddconductor(f):
   "Adds a function to the list of functions called to add conductors"
   calladdconductor.installfuncinlist(f)
-  warp.f3d.laddconductor = warp.true
+  f3d.laddconductor = true
 def uninstalladdconductor(f):
   "Removes the function from the list of functions called to add conductors"
   calladdconductor.uninstallfuncinlist(f)
-  if not calladdconductor.hasfuncsinstalled(): warp.f3d.laddconductor = warp.false
+  if not calladdconductor.hasfuncsinstalled(): f3d.laddconductor = false
 def isinstalledaddconductor(f):
   "Checks if the function is called to add conductors"
   return calladdconductor.isinstalledfuncinlist(f)
@@ -667,13 +666,13 @@ from the surface. The function will be called once for each species each time
 step, with the variable w3d.inj_js set to the species being injected. Note
 that if no particles are to be injected, set w3d.npgrp=0 to avoid injection
 of bad particles."""
-  warp.w3d.l_inj_user_particles = warp.true
+  w3d.l_inj_user_particles = true
   generateuserparticlesforinjection.installfuncinlist(f)
 def uninstalluserparticlesinjection(f):
   "Removes the function installed by installuserparticlesinjection"
   generateuserparticlesforinjection.uninstallfuncinlist(f)
   if not generateuserparticlesforinjection.hasfuncsinstalled():
-    warp.w3d.l_inj_user_particles = warp.false
+    w3d.l_inj_user_particles = false
 def isinstalleduserparticlesinjection(f):
   "Checks if the function is called during injection"
   return generateuserparticlesforinjection.isinstalledfuncinlist(f)
