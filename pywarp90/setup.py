@@ -54,7 +54,7 @@ if 'install' in dummydist.commands:
   # --- doesn't update an older warpC.so even if there were changes.
   os.system('rm -rf build/lib*')
 
-warppkgs = ['top','env','w3d','f3d','wxy','fxy','wrz','frz','her','cir','cho','em2d','em3d']
+warppkgs = ['top','env','w3d','f3d','wxy','fxy','wrz','frz','her','cir','cho','em2d','em3d','mt19937ar']
 
 def makeobjects(pkg):
   return [pkg+'.o',pkg+'_p.o',pkg+'pymodule.o']

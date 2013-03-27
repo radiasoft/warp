@@ -23,6 +23,7 @@ extern PyMODINIT_FUNC initherpy(void);
 extern PyMODINIT_FUNC initchopy(void);
 extern PyMODINIT_FUNC initem2dpy(void);
 extern PyMODINIT_FUNC initem3dpy(void);
+extern PyMODINIT_FUNC initmt19937arpy(void);
 
 /* ######################################################################### */
 /* # Method list                                                             */
@@ -86,6 +87,7 @@ void initwarpC(void)
   initchopy();
   initem2dpy();
   initem3dpy();
+  initmt19937arpy();
 }
 
 
