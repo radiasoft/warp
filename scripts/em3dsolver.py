@@ -1655,7 +1655,7 @@ class EM3D(SubcycledPoissonSolver):
     # to be updated
     mgmaxlevels=1
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
-                      self.getzgrid(),
+                      self.zgrid,
                       nx,ny,nz,
                       nxlocal,nylocal,nzlocal,
                       xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
