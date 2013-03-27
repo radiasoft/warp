@@ -3452,6 +3452,27 @@ Cylinder with rounded corners aligned with z-axis
                        kwdict=kw)
     self.dxobject = v
 
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+    """
+Plots the r versus z
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 199.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmin=0.: inner range in r to include in plot
+    """
+    rmin = kw.get('rmin',None)
+    if rmin is None: rmin = 0.
+    zc = self.length/2. - self.radius2
+    rc = self.radius - self.radius2
+    rleft = +rc + self.radius2*sin(arange(101,dtype='l')/100.*pi/2.)
+    zleft = -zc - self.radius2*cos(arange(101,dtype='l')/100.*pi/2.)
+    rrght = +rc + self.radius2*cos(arange(101,dtype='l')/100.*pi/2.)
+    zrght = +zc + self.radius2*sin(arange(101,dtype='l')/100.*pi/2.)
+    r = [rmin] + list(rleft) + list(rrght) + [rmin,rmin]
+    z = [-self.length/2.] + list(zleft) + list(zrght) + [self.length/2.,-self.length/2.]
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
+
 #============================================================================
 class ZCylinderOut(Assembly):
   """
@@ -3510,6 +3531,7 @@ Plots the r versus z
     """
     rmax = kw.get('rmax',None)
     if rmax is None: rmax = w3d.xmmax
+    if rmax < self.radius: rmax = self.radius
     r = [self.radius,self.radius,rmax,rmax,self.radius]
     z = self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
@@ -3592,6 +3614,7 @@ Plots the r versus z
     """
     rmax = kw.get('rmax',None)
     if rmax is None: rmax = w3d.xmmax
+    if rmax < self.radius: rmax = self.radius
     zc = self.length/2. - self.radius2
     rc = self.radius + self.radius2
     rleft = +rc - self.radius2*sin(arange(101,dtype='l')/100.*pi/2.)
