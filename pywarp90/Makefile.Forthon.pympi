@@ -14,8 +14,8 @@ all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrz
 	$(PYTHON) setup.py $(FCOMP) --parallel build $(BUILDBASE)
 	mv $(BUILDBASEDIR)/*/warpCparallel.so ../scripts
 
-toppy.$(SO): top.F top_lattice.F top_fsl.F dtop.F top.v topslave.F
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) top top_lattice.F top_fsl.F dtop.F topslave.F $(BUILDBASE)
+toppy.$(SO): top.F top_lattice.F top_fsl.F dtop.F top.v util.F topslave.F
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) top top_lattice.F top_fsl.F dtop.F util.F topslave.F $(BUILDBASE)
 
 envpy.$(SO): toppy.$(SO) env.F env.v
 	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) env $(BUILDBASE)
@@ -23,8 +23,8 @@ envpy.$(SO): toppy.$(SO) env.F env.v
 w3dpy.$(SO): toppy.$(SO) w3d.F dw3d.F w3d.v w3d_interp.F w3d_collisions.F w3d_injection.F w3d_utilities.F w3d_load.F w3dslave.F
 	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) --macros top.v w3d dw3d.F w3d_interp.F w3d_collisions.F w3d_injection.F w3d_utilities.F w3d_load.F w3dslave.F $(BUILDBASE)
 
-f3dpy.$(SO): toppy.$(SO) w3dpy.$(SO) f3d.F f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F util.F fft.F f3d.v f3dslave.F
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F util.F fft.F f3dslave.F $(BUILDBASE)
+f3dpy.$(SO): toppy.$(SO) w3dpy.$(SO) f3d.F f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F fft.F f3d.v f3dslave.F
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F fft.F f3dslave.F $(BUILDBASE)
 
 wxypy.$(SO): toppy.$(SO) wxy.F wxy.v
 	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) wxy $(BUILDBASE)
