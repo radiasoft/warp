@@ -97,8 +97,8 @@ RandomArray = random
 # --- linking dependencies.
 from toppy import *
 from envpy import *
-from f3dpy import *
 from w3dpy import *
+from f3dpy import *
 from fxypy import *
 from wxypy import *
 try:  # RZ code hasn't been installed on all machines yet
