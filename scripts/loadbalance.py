@@ -412,7 +412,7 @@ recalculated on a finer mesh to give better balancing.
                                  w3d.xmmin,w3d.xmmax,w3d.dx,0.,top.nxprocs,
                                  top.pgroup.getpyobject('xp'),
                                  top.pgroup.getpyobject('uxp'),
-                                 ppdecomp.nxglobal,top.nxpextra,
+                                 ppdecomp.nxglobal,w3d.nxpextra,
                                  ppdecomp.xmin,ppdecomp.xmax,
                                  ppdecomp.ix,ppdecomp.nx,usemoments,self.laligntogrid)
             top.xpminlocal = ppdecomp.xmin[top.ixproc]
@@ -428,7 +428,7 @@ recalculated on a finer mesh to give better balancing.
                                  w3d.ymmin,w3d.ymmax,w3d.dy,0.,top.nyprocs,
                                  top.pgroup.getpyobject('yp'),
                                  top.pgroup.getpyobject('uyp'),
-                                 ppdecomp.nyglobal,top.nypextra,
+                                 ppdecomp.nyglobal,w3d.nypextra,
                                  ppdecomp.ymin,ppdecomp.ymax,
                                  ppdecomp.iy,ppdecomp.ny,usemoments,self.laligntogrid)
             top.ypminlocal = ppdecomp.ymin[top.iyproc]
@@ -445,7 +445,7 @@ recalculated on a finer mesh to give better balancing.
                                  top.nzprocs,
                                  top.pgroup.getpyobject('zp'),
                                  top.pgroup.getpyobject('uzp'),
-                                 ppdecomp.nzglobal,top.nzpextra,
+                                 ppdecomp.nzglobal,w3d.nzpextra,
                                  ppdecomp.zmin,ppdecomp.zmax,
                                  ppdecomp.iz,ppdecomp.nz,usemoments,self.laligntogrid)
             top.zpminlocal = ppdecomp.zmin[top.izproc]
