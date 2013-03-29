@@ -357,6 +357,9 @@ zwork(2,0:nx,0:nz)      _real           # Work space used to optimize vsftz
 nxp  integer /0/ # Number of grid cells in x axis for phip and rhop
 nyp  integer /0/ # Number of grid cells in y axis for phip and rhop
 nzp  integer /0/ # Number of grid cells in z axis for phip and rhop
+nxpextra  integer /0/ # Extra number of grid cells in x axis for phip and rhop
+nypextra  integer /0/ # Extra number of grid cells in y axis for phip and rhop
+nzpextra  integer /0/ # Extra number of grid cells in z axis for phip and rhop
 xmminp real      # Lower limit of x for grid for particles
 xmmaxp real      # Upper limit of x for grid for particles
 ymminp real      # Lower limit of y for grid for particles

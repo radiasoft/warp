@@ -412,7 +412,7 @@ recalculated on a finer mesh to give better balancing.
                                  w3d.xmmin,w3d.xmmax,w3d.dx,0.,top.nxprocs,
                                  top.pgroup.getpyobject('xp'),
                                  top.pgroup.getpyobject('uxp'),
-                                 ppdecomp.nxglobal,
+                                 ppdecomp.nxglobal,top.nxpextra,
                                  ppdecomp.xmin,ppdecomp.xmax,
                                  ppdecomp.ix,ppdecomp.nx,usemoments,self.laligntogrid)
             top.xpminlocal = ppdecomp.xmin[top.ixproc]
@@ -428,7 +428,7 @@ recalculated on a finer mesh to give better balancing.
                                  w3d.ymmin,w3d.ymmax,w3d.dy,0.,top.nyprocs,
                                  top.pgroup.getpyobject('yp'),
                                  top.pgroup.getpyobject('uyp'),
-                                 ppdecomp.nyglobal,
+                                 ppdecomp.nyglobal,top.nypextra,
                                  ppdecomp.ymin,ppdecomp.ymax,
                                  ppdecomp.iy,ppdecomp.ny,usemoments,self.laligntogrid)
             top.ypminlocal = ppdecomp.ymin[top.iyproc]
@@ -445,7 +445,7 @@ recalculated on a finer mesh to give better balancing.
                                  top.nzprocs,
                                  top.pgroup.getpyobject('zp'),
                                  top.pgroup.getpyobject('uzp'),
-                                 ppdecomp.nzglobal,
+                                 ppdecomp.nzglobal,top.nzpextra,
                                  ppdecomp.zmin,ppdecomp.zmax,
                                  ppdecomp.iz,ppdecomp.nz,usemoments,self.laligntogrid)
             top.zpminlocal = ppdecomp.zmin[top.izproc]
@@ -520,7 +520,7 @@ recalculated on a finer mesh to give better balancing.
 
     def dodecomposition(self,axis,ii,minp,maxp,spread,
                         mmin,mmax,dd,beam,nprocs,pp,uu,
-                        nnglobal,ppdecompmin,ppdecompmax,
+                        nnglobal,npextra,ppdecompmin,ppdecompmax,
                         ppdecompii,ppdecompnn,usemoments,laligntogrid):
         if (axis < 2 or (maxp - minp)/dd < 10 or not usemoments):
             # --- If the particles only extend over a few grid cells,
@@ -556,12 +556,12 @@ recalculated on a finer mesh to give better balancing.
 
         self.dodecompositionusingpnum(pnum,axis,ii,minp,maxp,
                                       mmin,mmax,dd,pdd,pmin,nprocs,uu,
-                                      nnglobal,ppdecompmin,ppdecompmax,
+                                      nnglobal,npextra,ppdecompmin,ppdecompmax,
                                       ppdecompii,ppdecompnn,usemoments,laligntogrid)
 
     def dodecompositionusingpnum(self,pnum,axis,ii,minp,maxp,
                                  mmin,mmax,dd,pdd,pmin,nprocs,uu,
-                                 nnglobal,ppdecompmin,ppdecompmax,
+                                 nnglobal,npextra,ppdecompmin,ppdecompmax,
                                  ppdecompii,ppdecompnn,usemoments,laligntogrid):
         # --- Convert the number of particles to a decomposition
         domain = self.decompose(pnum,nprocs,lfullcoverage=0)
@@ -590,7 +590,7 @@ recalculated on a finer mesh to give better balancing.
         ppdecompmin[:] = mmin + domain[:-1]
         ppdecompmax[:] = mmin + domain[1:]
 
-        domaindecomposeparticles(nnglobal,nprocs,0,mmin,dd,
+        domaindecomposeparticles(nnglobal,nprocs,npextra,mmin,dd,
                                  zeros(nprocs,'d'),true,
                                  ppdecompii,ppdecompnn,ppdecompmin,ppdecompmax)
 

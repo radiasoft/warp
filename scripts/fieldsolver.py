@@ -943,19 +943,19 @@ the diagnostic is of interest and is meaningfull.
     ppdecomp.zmin[:] = top.ppdecomp.zmin
     ppdecomp.zmax[:] = top.ppdecomp.zmax
 
-    domaindecomposeparticles(self.nx,self.nxprocs,0,
+    domaindecomposeparticles(self.nx,self.nxprocs,w3d.nxpextra,
                              self.xmmin,self.dx,
                              zeros(self.nxprocs,'d'),true,
                              ppdecomp.ix,ppdecomp.nx,
                              ppdecomp.xmin,ppdecomp.xmax)
 
-    domaindecomposeparticles(self.ny,self.nyprocs,0,
+    domaindecomposeparticles(self.ny,self.nyprocs,w3d.nypextra,
                              self.ymmin,self.dy,
                              zeros(self.nyprocs,'d'),true,
                              ppdecomp.iy,ppdecomp.ny,
                              ppdecomp.ymin,ppdecomp.ymax)
 
-    domaindecomposeparticles(self.nz,self.nzprocs,0,
+    domaindecomposeparticles(self.nz,self.nzprocs,w3d.nzpextra,
                              self.zmmin,self.dz,
                              zeros(self.nzprocs,'d'),true,
                              ppdecomp.iz,ppdecomp.nz,

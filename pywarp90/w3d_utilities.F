@@ -1074,15 +1074,15 @@ c     --- of the grid.
       ppdecomp%ymax(nyprocs-1) = fsdecomp%ymax(nyprocs-1)
       ppdecomp%zmax(nzprocs-1) = fsdecomp%zmax(nzprocs-1)
 
-      call domaindecomposeparticles(nx,nxprocs,0,xmmin,dx,
+      call domaindecomposeparticles(nx,nxprocs,nxpextra,xmmin,dx,
      &                              userdecompx,lautodecomp,
      &                              ppdecomp%ix,ppdecomp%nx,
      &                              ppdecomp%xmin,ppdecomp%xmax)
-      call domaindecomposeparticles(ny,nyprocs,0,ymmin,dy,
+      call domaindecomposeparticles(ny,nyprocs,nypextra,ymmin,dy,
      &                              userdecompy,lautodecomp,
      &                              ppdecomp%iy,ppdecomp%ny,
      &                              ppdecomp%ymin,ppdecomp%ymax)
-      call domaindecomposeparticles(nz,nzprocs,0,zmmin,dz,
+      call domaindecomposeparticles(nz,nzprocs,nzpextra,zmmin,dz,
      &                              userdecompz,lautodecomp,
      &                              ppdecomp%iz,ppdecomp%nz,
      &                              ppdecomp%zmin,ppdecomp%zmax)
