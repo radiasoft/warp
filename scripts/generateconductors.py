@@ -4137,6 +4137,7 @@ Cone
     kwlist = ['r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       coneconductorf,coneconductord,coneintercept,
+                      coneconductorfnew,
                       kw=kw)
     self.slope = slope
     self.intercept = intercept
@@ -5719,7 +5720,7 @@ Annulus class
     kwlist = ['rmin','rmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            annulusconductorf,annulusconductord,
-                           annulusintercept,
+                           annulusintercept,cylinderconductorfnew,
                            kw=kw)
     self.rmin   = rmin
     self.rmax   = rmax
@@ -5730,6 +5731,20 @@ Annulus class
     # --- This is the easiest thing to do without thinking.
     ll = sqrt(self.rmax**2 + (self.length/2.)**2)
     self.createextent([-ll,-ll,-ll],[+ll,+ll,+ll])
+
+  def gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                     nx,ny,nz,ix,iy,iz,mglevel):
+    # --- Take advantage of the already written cylinderconductorfnew
+    kwlistsave = self.kwlist
+    self.kwlist = ['rmin','length','theta','phi']
+    cin = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                                  nx,ny,nz,ix,iy,iz,mglevel)
+    self.kwlist = ['rmax','length','theta','phi']
+    cout = Assembly.gridintercepts(self,xmmin,ymmin,zmmin,dx,dy,dz,
+                                   nx,ny,nz,ix,iy,iz,mglevel)
+    result = cout*(-cin)
+    self.kwlist = kwlistsave
+    return result
 
   def draw(self,color='fg',filled=None,fullplane=1,**kw):
     """
