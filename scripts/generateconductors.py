@@ -3180,7 +3180,7 @@ Cylinder class
     kwlist = ['radius','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            cylinderconductorf,cylinderconductord,
-                           cylinderintercept,
+                           cylinderintercept,cylinderconductorfnew,
                            kw=kw)
     self.radius = radius
     self.length = length
@@ -4073,6 +4073,7 @@ Cone
     kwlist = ['r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       coneconductorf,coneconductord,coneintercept,
+                      coneconductorfnew,
                       kw=kw)
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax

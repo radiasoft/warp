@@ -4519,6 +4519,196 @@ c         --- Now, get distances to surface
       return
       end
 c=======================================================================
+      subroutine CylinderConductorFnew(rad,length,theta,phi,xcent,ycent,zcent,
+     &                                 intercepts,fuzz)
+      use ConductorInterceptTypeModule
+      real(kind=8):: rad,length,theta,phi,xcent,ycent,zcent
+      type(ConductorInterceptType):: intercepts
+      real(kind=8):: fuzz
+
+c Finds the intercepts of the object with grid lines along the three axis.
+c A positive zsign means that the conductor is the region above z0.
+
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: ctheta,stheta,cphi,sphi,ss,cci,sci,si,lenhalf
+      real(kind=8):: xx,yy,zz
+      real(kind=8):: a,b,c
+      real(kind=8):: x1,x2,xl,xu,xlend,xuend
+      real(kind=8):: y1,y2,yl,yu,ylend,yuend
+      real(kind=8):: z1,z2,zl,zu,zlend,zuend
+
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+
+      ctheta = cos(theta)
+      stheta = sin(theta)
+      cphi = cos(phi)
+      sphi = sin(phi)
+c     --- In the limiting cases with the angles being exactly zero (or pi/2)
+c     --- the algorithm breaks down. The sign of expressions dependent on
+c     --- the angles is important, and is lost when the angles are exactly
+c     --- zero (or pi/2). So the limiting cases is used where the angle
+c     --- approaches but does not equal to zero (or pi/2).
+      if (ctheta == 0) ctheta = SMALLPOS
+      if (stheta == 0) stheta = SMALLPOS
+      if (cphi == 0) cphi = SMALLPOS
+      if (sphi == 0) sphi = SMALLPOS
+      cci = 1./(ctheta*cphi)
+      sci = 1./(stheta*cphi)
+      si  = 1./(sphi)
+      lenhalf = length*0.5
+
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+
+      intercepts%nxicpt = 2
+      intercepts%nyicpt = 2
+      intercepts%nzicpt = 2
+      call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do iy=0,ny
+          yy = ymmin + iy*dy - ycent
+
+          a = (ctheta)**2 + (stheta*sphi)**2
+          b = -2*zz*stheta*ctheta - 2*(yy*cphi - zz*ctheta*sphi)*stheta*sphi
+          c = (zz*stheta)**2 + (yy*cphi - zz*ctheta*sphi)**2 - rad**2
+          if (b**2 - 4*a*c >= 0) then
+            if (a == 0) then
+              x1 = -c/b
+              x2 = x1
+            else
+              ss = sqrt(max(0.,b**2 - 4*a*c))
+              x1 = (-b-ss)/(2*a)
+              x2 = (-b+ss)/(2*a)
+            endif
+            xl = min(x1,x2)
+            xu = max(x1,x2)
+c           --- Get the point where the x-line intersects the end planes
+            x1 = (-lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+            x2 = (+lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+            xlend = min(x1,x2)
+            xuend = max(x1,x2)
+c           --- Now, get distances to surface
+            if (xl <= xuend .and. xlend <= xu) then
+              xintercepts(1,iy,iz) = max(xl,xlend)
+              xintercepts(2,iy,iz) = min(xu,xuend)
+            else
+              xintercepts(1,iy,iz) = LARGEPOS
+              xintercepts(2,iy,iz) = LARGEPOS
+            endif
+          else
+            xintercepts(1,iy,iz) = LARGEPOS
+            xintercepts(2,iy,iz) = LARGEPOS
+          endif
+
+        enddo
+      enddo
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+
+          a = (cphi)**2
+          b = -2*(zz*ctheta*sphi + xx*stheta*sphi)*cphi
+          c = (xx*ctheta - zz*stheta)**2 + (zz*ctheta*sphi + xx*stheta*sphi)**2
+     &        -rad**2
+          if (b**2 - 4*a*c >= 0) then
+            if (a == 0) then
+              y1 = -c/b
+              y2 = y1
+            else
+              ss = sqrt(max(0.,b**2 - 4*a*c))
+              y1 = (-b-ss)/(2*a)
+              y2 = (-b+ss)/(2*a)
+            endif
+            yl = min(y1,y2)
+            yu = max(y1,y2)
+c           --- Get the point where the z-line intersects the end planes
+            y1 = (-lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+            y2 = (+lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+            ylend = min(y1,y2)
+            yuend = max(y1,y2)
+c           --- Now, get distances to surface
+            if (yl <= yuend .and. ylend <= yu) then
+              yintercepts(1,ix,iz) = max(yl,ylend)
+              yintercepts(2,ix,iz) = min(yu,yuend)
+            else
+              yintercepts(1,ix,iz) = LARGEPOS
+              yintercepts(2,ix,iz) = LARGEPOS
+            endif
+          else
+            yintercepts(1,ix,iz) = LARGEPOS
+            yintercepts(2,ix,iz) = LARGEPOS
+          endif
+
+        enddo
+      enddo
+
+      do iy=0,ny
+        yy = ymmin + iy*dy - ycent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+
+c         --- Coefficients of the quadratic
+          a = stheta**2 + (ctheta*sphi)**2
+          b = -2*xx*ctheta*stheta - 2*(yy*cphi - xx*stheta*sphi)*ctheta*sphi
+          c = (xx*ctheta)**2 + (yy*cphi - xx*stheta*sphi)**2 - rad**2
+c         --- Check if z-line intersects the cylinder
+          if (b**2 - 4*a*c >= 0) then
+c           --- Get the two points of intersection
+            if (a == 0) then
+              z1 = -c/b
+              z2 = z1
+            else
+              ss = sqrt(max(0.,b**2 - 4*a*c))
+              z1 = (-b-ss)/(2*a)
+              z2 = (-b+ss)/(2*a)
+            endif
+            zl = min(z1,z2)
+            zu = max(z1,z2)
+c           --- Get the point where the z-line intersects the end planes
+            z1 = (-lenhalf - xx*stheta*cphi - yy*sphi)*cci
+            z2 = (+lenhalf - xx*stheta*cphi - yy*sphi)*cci
+            zlend = min(z1,z2)
+            zuend = max(z1,z2)
+c           --- Now, get intersections to surface
+            if (zl <= zuend .and. zlend <= zu) then
+              zintercepts(1,ix,iy) = max(zl,zlend)
+              zintercepts(2,ix,iy) = min(zu,zuend)
+            else
+              zintercepts(1,ix,iy) = LARGEPOS
+              zintercepts(2,ix,iy) = LARGEPOS
+            endif
+          else
+            zintercepts(1,ix,iy) = LARGEPOS
+            zintercepts(2,ix,iy) = LARGEPOS
+          endif
+
+        enddo
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine CylinderConductorD(rad,length,theta,phi,xcent,ycent,zcent,
      &                              n,x,y,z,distance)
       real(kind=8):: rad,length,theta,phi,xcent,ycent,zcent
@@ -5075,6 +5265,330 @@ c         --- Now, get distances to surface
           if (yi2 <= yy) delmy(i) = yy - yi2
         endif
 
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ConeConductorFnew(r_zmin,r_zmax,length,theta,phi,
+     &                             xcent,ycent,zcent,
+     &                             intercepts,fuzz)
+      use ConductorInterceptTypeModule
+      real(kind=8):: r_zmin,r_zmax,length,theta,phi,xcent,ycent,zcent
+      type(ConductorInterceptType):: intercepts
+      real(kind=8):: fuzz
+
+c Finds the intercepts of the object with grid lines along the three axis.
+c A positive zsign means that the conductor is the region above z0.
+
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: ctheta,stheta,cphi,sphi,ss,cci,sci,si,lenhalf
+      real(kind=8):: xx,yy,zz
+      real(kind=8):: s1,s2,zcross
+      real(kind=8):: t1,t2,t3
+      real(kind=8):: a,b,c,b2m4ac
+      real(kind=8):: x1,x2,xl,xu,xlend,xuend,xgcross,xi1,xi2
+      real(kind=8):: y1,y2,yl,yu,ylend,yuend,ygcross,yi1,yi2
+      real(kind=8):: z1,z2,zl,zu,zlend,zuend,zgcross,zi1,zi2
+
+      real(kind=8):: xmmin,ymmin,zmmin
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nx,ny,nz
+
+      real(kind=8),pointer:: xintercepts(:,:,:)
+      real(kind=8),pointer:: yintercepts(:,:,:)
+      real(kind=8),pointer:: zintercepts(:,:,:)
+
+      ctheta = cos(theta)
+      stheta = sin(theta)
+      cphi = cos(phi)
+      sphi = sin(phi)
+c     --- In the limiting cases with the angles being exactly zero (or pi/2)
+c     --- the algorithm breaks down. The sign of expressions dependent on
+c     --- the angles is important, and is lost when the angles are exactly
+c     --- zero (or pi/2). So the limiting cases is used where the angle
+c     --- approaches but does not equal to zero (or pi/2).
+c     if (ctheta == 0) ctheta = SMALLPOS
+c     if (stheta == 0) stheta = SMALLPOS
+c     if (cphi == 0) cphi = SMALLPOS
+c     if (sphi == 0) sphi = SMALLPOS
+      if (ctheta .ne. 0. .and. cphi .ne. 0) then
+        cci = 1./(ctheta*cphi)
+      else
+        cci = LARGEPOS
+      endif
+      if (stheta .ne. 0. .and. cphi .ne. 0) then
+        sci = 1./(stheta*cphi)
+      else
+        sci = LARGEPOS
+      endif
+      if (sphi .ne. 0) then
+        si  = 1./(sphi)
+      else
+        si = LARGEPOS
+      endif
+      lenhalf = length*0.5
+
+c     s1 = r_zmin - (-lenhalf)*(r_zmax - r_zmin)/length
+      s1 = 0.5*(r_zmin + r_zmax)
+      s2 = (r_zmax - r_zmin)/length
+      zcross = -s1/dvnz(s2)
+
+      xmmin = intercepts%xmmin
+      ymmin = intercepts%ymmin
+      zmmin = intercepts%zmmin
+      dx = intercepts%dx
+      dy = intercepts%dy
+      dz = intercepts%dz
+      nx = intercepts%nx
+      ny = intercepts%ny
+      nz = intercepts%nz
+
+      intercepts%nxicpt = 2
+      intercepts%nyicpt = 2
+      intercepts%nzicpt = 2
+      call ConductorInterceptTypeallot(intercepts)
+
+      xintercepts => intercepts%xintercepts
+      yintercepts => intercepts%yintercepts
+      zintercepts => intercepts%zintercepts
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do iy=0,ny
+          yy = ymmin + iy*dy - ycent
+
+c         --- delta x
+          t1 = zz*stheta
+          t2 = yy*cphi - zz*ctheta*sphi
+          t3 = zz*ctheta*cphi + yy*sphi
+          a = (ctheta)**2 + (stheta*sphi)**2 - (s2*stheta*cphi)**2
+          b = -2*t1*ctheta - 2*t2*stheta*sphi - 2*(s1+s2*t3)*s2*stheta*cphi
+          c = t1**2 + t2**2 - (s1 + s2*t3)**2
+c         --- The expression is written out since in some odd cases,
+c         --- where terms cancel, there can be round off error.
+          b2m4ac = ((2.*t1*stheta*s2*cphi)**2 - (2.*t1*stheta*sphi)**2 +
+     &             (2.*t2*s2*stheta*cphi)**2 - (2.*t2*ctheta)**2 +
+     &             8*t1*t2*ctheta*stheta*sphi
+     &             +8*(s1+s2*t3)*stheta*cphi*s2*(t1*ctheta + t2*stheta*sphi)
+     &             +4*(s1+s2*t3)**2*(ctheta**2 + stheta**2*sphi**2))
+          if (b2m4ac >= 0) then
+c           --- Get the point where the x-line intersects the end planes
+            x1 = (-lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+            x2 = (+lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+            xlend = min(x1,x2)
+            xuend = max(x1,x2)
+            xgcross = (zcross - zz*ctheta*cphi - yy*sphi)*sci
+c           --- Get the two points of intersection
+            if (a == 0) then
+              x1 = -c/b
+              x2 = x1
+            else
+              ss = sqrt(b2m4ac)
+              x1 = (-b-ss)/(2*a)
+              x2 = (-b+ss)/(2*a)
+              if (ss == 0. .and. abs(x1 - xgcross) < fuzz) then
+                x1 = xgcross
+                x2 = xgcross
+              endif
+            endif
+            xl = min(x1,x2)
+            xu = max(x1,x2)
+c           --- Now, get distances to surface
+            xi1 = +LARGEPOS
+            xi2 = -LARGEPOS
+            if (xl < xgcross .and. xgcross < xu .and.
+     &          (xlend <= xl .or. xu <= xuend)) then
+              if (xl < xlend) then
+                xi1 = max(xu,xlend)
+                xi2 = xuend
+              else if (xu > xuend) then
+                xi1 = xlend
+                xi2 = min(xl,xuend)
+              else if (xx <= xl) then
+                xi1 = xlend
+                xi2 = xl
+              else if (xx <= xu) then
+                xi2 = xl
+                xi1 = xu
+              else if (xu <= xx) then
+                xi1 = xu
+                xi2 = xuend
+              endif
+            else if (((xl <= xgcross .and. xu <= xgcross) .or.
+     &                (xl >= xgcross .and. xu >= xgcross)) .and.
+     &               (xl <= xuend .and. xlend <= xu)) then
+              xi1 = max(xl,xlend)
+              xi2 = min(xu,xuend)
+            endif
+
+            xintercepts(1,iy,iz) = xi1
+            xintercepts(2,iy,iz) = xi2
+          else
+            xintercepts(1,iy,iz) = LARGEPOS
+            xintercepts(2,iy,iz) = LARGEPOS
+          endif
+
+        enddo
+      enddo
+
+      do iz=0,nz
+        zz = zmmin + iz*dz - zcent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+
+c         --- delta y
+          t1 = xx*ctheta - zz*stheta
+          t2 = zz*ctheta*sphi + xx*stheta*sphi
+          t3 = zz*ctheta*cphi + xx*stheta*cphi
+          a = (cphi)**2 - (s2*sphi)**2
+          b = -2*t2*cphi - 2*(s1+s2*t3)*s2*sphi
+          c = t1**2 + t2**2 - (s1+s2*t3)**2
+c         --- The expression is written out since in some odd cases,
+c         --- where terms cancel, there can be round off error.
+          b2m4ac = ( 8*t2*(s1+s2*t3)*s2*sphi*cphi
+     &              -4*cphi**2*t1**2
+     &              +4*cphi**2*(s1+s2*t3)**2
+     &              +4*(s2*sphi)**2*(t1**2 + t2**2))
+          if (b2m4ac >= 0) then
+c           --- Get the point where the z-line intersects the end planes
+            y1 = (-lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+            y2 = (+lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+            ylend = min(y1,y2)
+            yuend = max(y1,y2)
+            ygcross = (zcross - zz*ctheta*cphi - xx*stheta*cphi)*si
+c           --- Get the two points of intersection
+            if (a == 0) then
+              y1 = -c/b
+              y2 = y1
+            else
+              ss = sqrt(b2m4ac)
+              y1 = (-b-ss)/(2*a)
+              y2 = (-b+ss)/(2*a)
+              if (ss == 0. .and. abs(y1 - ygcross) < fuzz) then
+                y1 = ygcross
+                  y2 = ygcross
+              endif
+            endif
+            yl = min(y1,y2)
+            yu = max(y1,y2)
+c           --- Now, get distances to surface
+            yi1 = +LARGEPOS
+            yi2 = -LARGEPOS
+            if (yl < ygcross .and. ygcross < yu .and.
+     &          (ylend <= yl .or. yu <= yuend)) then
+              if (yl < ylend) then
+                yi1 = max(yu,ylend)
+                yi2 = yuend
+              else if (yu > yuend) then
+                yi1 = ylend
+                yi2 = min(yl,yuend)
+              else if (yy <= yl) then
+                yi1 = ylend
+                yi2 = yl
+              else if (yy <= yu) then
+                yi2 = yl
+                yi1 = yu
+              else if (yu <= yy) then
+                yi1 = yu
+                yi2 = yuend
+              endif
+            else if (((yl <= ygcross .and. yu <= ygcross) .or.
+     &                (yl >= ygcross .and. yu >= ygcross)) .and.
+     &               (yl <= yuend .and. ylend <= yu)) then
+              yi1 = max(yl,ylend)
+              yi2 = min(yu,yuend)
+            endif
+
+            yintercepts(1,ix,iz) = yi1
+            yintercepts(2,ix,iz) = yi2
+          else
+            yintercepts(1,ix,iz) = LARGEPOS
+            yintercepts(2,ix,iz) = LARGEPOS
+          endif
+
+        enddo
+      enddo
+
+      do iy=0,ny
+        yy = ymmin + iy*dy - ycent
+        do ix=0,nx
+          xx = xmmin + ix*dx - xcent
+
+c         --- delta z
+          t1 = xx*ctheta
+          t2 = yy*cphi - xx*stheta*sphi
+          t3 = xx*stheta*cphi + yy*sphi
+c         --- Coefficients of the quadratic
+          a = stheta**2 + (ctheta*sphi)**2 - (s2*ctheta*cphi)**2
+          b = -2*t1*stheta - 2*t2*ctheta*sphi - 2*(s1+s2*t3)*s2*ctheta*cphi
+          c = t1**2 + t2**2 - (s1+s2*t3)**2
+c         --- The expression is written out since in some odd cases,
+c         --- where terms cancel, there can be round off error.
+          b2m4ac = ((2.*t1*ctheta*s2*cphi)**2 - (2.*t1*ctheta*sphi)**2 +
+     &             (2.*t2*s2*ctheta*cphi)**2 - (2.*t2*stheta)**2 +
+     &             8*t1*t2*stheta*ctheta*sphi
+     &             +8*(s1+s2*t3)*ctheta*cphi*s2*(t1*stheta + t2*ctheta*sphi)
+     &             +4*(s1+s2*t3)**2*(stheta**2 + ctheta**2*sphi**2))
+c         --- Check if z-line intersects the cylinder
+          if (b2m4ac >= 0) then
+c           --- Get the point where the z-line intersects the end planes
+            z1 = (-lenhalf - xx*stheta*cphi - yy*sphi)*cci
+            z2 = (+lenhalf - xx*stheta*cphi - yy*sphi)*cci
+            zlend = min(z1,z2)
+            zuend = max(z1,z2)
+            zgcross = (zcross - xx*stheta*cphi - yy*sphi)*cci
+c           --- Get the two points of intersection
+            if (a == 0) then
+              z1 = -c/b
+              z2 = z1
+            else
+              ss = sqrt(max(0.,b2m4ac))
+              z1 = (-b-ss)/(2*a)
+              z2 = (-b+ss)/(2*a)
+              if (ss == 0. .and. abs(z1 - zgcross) < fuzz) then
+                z1 = zgcross
+                z2 = zgcross
+              endif
+            endif
+            zl = min(z1,z2)
+            zu = max(z1,z2)
+c           --- Now, get distances to surface
+            zi1 = +LARGEPOS
+            zi2 = +LARGEPOS
+            if (zl <= zgcross .and. zgcross <= zu .and.
+     &          (zlend <= zl .or. zu <= zuend)) then
+              if (zl < zlend) then
+                zi1 = max(zu,zlend)
+                zi2 = zuend
+              else if (zu > zuend) then
+                zi1 = zlend
+                zi2 = min(zl,zuend)
+              else if (zz <= zl) then
+                zi1 = zlend
+                zi2 = zl
+              else if (zz <= zu) then
+                zi2 = zl
+                zi1 = zu
+              else if (zu <= zz) then
+                zi1 = zu
+                zi2 = zuend
+              endif
+            else if (((zl <= zgcross .and. zu <= zgcross) .or.
+     &                (zl >= zgcross .and. zu >= zgcross)) .and.
+     &               (zl <= zuend .and. zlend <= zu)) then
+              zi1 = max(zl,zlend)
+              zi2 = min(zu,zuend)
+            endif
+
+            zintercepts(1,ix,iy) = zi1
+            zintercepts(2,ix,iy) = zi2
+          else
+            zintercepts(1,ix,iy) = LARGEPOS
+            zintercepts(2,ix,iy) = LARGEPOS
+          endif
+
+        enddo
       enddo
 
       return

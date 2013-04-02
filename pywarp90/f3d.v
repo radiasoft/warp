@@ -1053,6 +1053,12 @@ boxconductorfnew(xsize:real,ysize:real,zsize:real,
                  intercepts:ConductorInterceptType,fuzz:real) subroutine
 sphereconductorfnew(rad:real,xcent:real,ycent:real,zcent:real,
                     intercepts:ConductorInterceptType,fuzz:real) subroutine
+cylinderconductorfnew(rad:real,length:real,theta:real,phi:real,
+                      xcent:real,ycent:real,zcent:real,
+                      intercepts:ConductorInterceptType,fuzz:real) subroutine
+coneconductorfnew(r_zmin:real,r_zmax:real,length:real,theta:real,phi:real,
+                      xcent:real,ycent:real,zcent:real,
+                      intercepts:ConductorInterceptType,fuzz:real) subroutine
 zsrfrvconductorfnew(nn:integer,rsrf(nn):real,zsrf(nn):real,
                     rad(nn-1):real,rc(nn-1):real,zc(nn-1):real,
                     xcent:real,ycent:real,zcent:real,
