@@ -138,39 +138,39 @@ subroutine depose_j_n_1dz(CJ,np,zp,uxp,uyp,uzp,gaminv,w,q,zmin, &
         end do        
 
         ! Esirkepov deposition of Jz is over; now starts linear deposition of Jx and Jy
-        zmid=z-dts2dz*vz
+!        zmid=z-dts2dz*vz
 
-        wqx = wq*vx*dzi
-        wqy = wq*vy*dzi
+!        wqx = wq*vx*dzi
+!        wqy = wq*vy*dzi
       
-        if (noz==2*(noz/2)) then
-          ikxp=nint(zmid)
-        else
-          ikxp=floor(zmid)
-        end if
+!        if (noz==2*(noz/2)) then
+!          ikxp=nint(zmid)
+!        else
+!          ikxp=floor(zmid)
+!        end if
 
-        zint = zmid-ikxp
+!        zint = zmid-ikxp
 
-        select case(noz)
-         case(0)
-          sz( 0) = 1.
-         case(1)
-          sz( 0) = 1.-zint
-          sz( 1) = zint
-         case(2)
-          zintsq = zint*zint
-          sz(-1) = 0.5*(0.5-zint)**2
-          sz( 0) = 0.75-zintsq
-          sz( 1) = 0.5*(0.5+zint)**2
-         case(3)
-          ozint = 1.-zint
-          zintsq = zint*zint
-          ozintsq = ozint*ozint
-          sz(-1) = onesixth*ozintsq*ozint
-          sz( 0) = twothird-zintsq*(1.-zint/2)
-          sz( 1) = twothird-ozintsq*(1.-ozint/2)
-          sz( 2) = onesixth*zintsq*zint
-        end select        
+!        select case(noz)
+!         case(0)
+!          sz( 0) = 1.
+!         case(1)
+!          sz( 0) = 1.-zint
+!          sz( 1) = zint
+!         case(2)
+!          zintsq = zint*zint
+!          sz(-1) = 0.5*(0.5-zint)**2
+!          sz( 0) = 0.75-zintsq
+!          sz( 1) = 0.5*(0.5+zint)**2
+!         case(3)
+!          ozint = 1.-zint
+!          zintsq = zint*zint
+!          ozintsq = ozint*ozint
+!          sz(-1) = onesixth*ozintsq*ozint
+!          sz( 0) = twothird-zintsq*(1.-zint/2)
+!          sz( 1) = twothird-ozintsq*(1.-ozint/2)
+!          sz( 2) = onesixth*zintsq*zint
+!        end select        
 
         ! --- computes min/max positions of current contributions
 !        izmin = -int(noz/2)
