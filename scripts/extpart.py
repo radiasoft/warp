@@ -590,8 +590,8 @@ Restores the data that was written out to a file. This is used when doing
 post processing of the saved data when the flag dumptofile was turned on.  
         """
         if self.restored: return
-        #self.restoredataPDB(0,files)
-        self.restoredataPickle(0,files,nprocs=nprocs)
+        #self.restoredataPDB(lforce,files)
+        self.restoredataPickle(lforce,files,nprocs=nprocs)
         self.restored = True
 
     def restoredataPickle(self,lforce=0,files=None,names=None,nprocs=None):
