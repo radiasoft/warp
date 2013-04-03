@@ -370,14 +370,9 @@ velocity of the incident particle.
                       pidpairs=pidpairs,
                       lmomentum=True,
                       pgroup=pg,
+                      lallindomain=True,
                       js=js)
          self.nps[pg][js]=0
-
-         # --- These lines don't do anything
-         #x = self.x[pg][js][:nn]
-         #y = self.y[pg][js][:nn]
-         #r=sqrt(x*x+y*y)
-         #z = self.z[pg][js][:nn]
 
   def printall(self,l_cgm=0):
     swidth=0
@@ -743,7 +738,10 @@ velocity of the incident particle.
     for pg in self.x:
       for js in self.x[pg]:
         self.flushpart(pg,js)
-        processlostpart(pg,js+1,top.clearlostpart,top.time,top.zbeam)
+ 
+    for incident_species in self.inter:
+      for js in incident_species.jslist:
+        processlostpart(top.pgroup,js+1,top.clearlostpart,top.time,top.zbeam)
 
     if self.l_timing:print 'time ionization = ',time.clock()-t1,'s'
 
@@ -1011,4 +1009,5 @@ At least for now, linear interpolation in log-log space is used for simplicity.
         if not iterable(E): result = result[0]
 
         return result
+
 
