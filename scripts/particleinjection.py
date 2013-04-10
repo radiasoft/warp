@@ -522,6 +522,7 @@ the area of the dual cell.
 
     def finishinjection(self):
         """Complete the advance of the velocity, so that the time is at the same level as existing particles."""
+        if top.pgroup.npmax == 0: return
         q = top.pgroup.sq[self.js]
         m = top.pgroup.sm[self.js]
 
@@ -539,6 +540,7 @@ the area of the dual cell.
         uz = top.pgroup.uzp[i1:i2][ii]
         gaminv = top.pgroup.gaminv[i1:i2][ii]
         nn = len(xx)
+        if nn == 0: return
 
         ex,ey,ez = zeros((3,nn),'d')
         bx,by,bz = zeros((3,nn),'d')
