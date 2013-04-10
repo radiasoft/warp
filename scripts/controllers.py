@@ -36,9 +36,11 @@ Functions can be called at the following times:
              synchronized, specified by itplseldom or zzplseldom
  - :py:func:`plalways <installplalways>`: during a special time step, when position and velocity are
              synchronized, specified by itplalways or zzplalways
- - :py:func:`userinjection <installuserinjection>`: called when particles injection happens, after the position
+ - :py:func:`userinjection <installuserinjection>`: called when particle injection happens, after the position
                   advance and before loadrho is called, allowing a user defined
                   particle distribution to be injected each time step
+ - :py:func:`userinjection2 <installuserinjection2>`: called when the 2nd part of particlesinjection happens, after the field solve,
+                  allowing a user defined injected particle velocity synchronization
  - :py:func:`userparticlesinjection <installuserparticlesinjection>`: allows directly specifying the particles to be injected
  - :py:func:`userappliedfields <installuserappliedfields>`: allows directly specifying any fields to be applied to the particles
                                                             during the advance
@@ -263,6 +265,7 @@ callplseldomfuncs = ControllerFunction('callplseldomfuncs')
 callplalwaysfuncs = ControllerFunction('callplalwaysfuncs')
 callafterrestartfuncs = ControllerFunction('callafterrestartfuncs',lcallonce=1)
 userinjection = ControllerFunction('userinjection')
+userinjection2 = ControllerFunction('userinjection2')
 generateuserparticlesforinjection = ControllerFunction('generateuserparticlesforinjection')
 userappliedfields = ControllerFunction('userappliedfields')
 
@@ -347,7 +350,7 @@ controllerfunctioncontainer = ControllerFunctionContainer(
                                 callbeforeplotfuncs,callafterplotfuncs,
                                 callplseldomfuncs,callplalwaysfuncs,
                                 callafterrestartfuncs,
-                                userinjection,
+                                userinjection,userinjection2,
                                 generateuserparticlesforinjection,
                                 userappliedfields])
 
@@ -637,7 +640,7 @@ def callfromuserinjection(f):
   return f
 def installuserinjection(f):
   """
-Adds a user defined function that is to be called when particles
+Adds a user defined function that is to be called when particle
 injection happens, after the position advance and before loadrho is
 called, allowing a user defined particle distribution to be injected
 each time step"""
@@ -648,6 +651,23 @@ def uninstalluserinjection(f):
 def isinstalleduserinjection(f):
   "Checks if the function is called when particles injection happens"
   return userinjection.isinstalledfuncinlist(f)
+
+# ----------------------------------------------------------------------------
+def callfromuserinjection2(f):
+  installuserinjection2(f)
+  return f
+def installuserinjection2(f):
+  """
+Adds a user defined function that is to be called when the second part of
+particle injection happens, after the field solve,
+allowing a user defined injected particle velocity synchronization"""
+  userinjection2.installfuncinlist(f)
+def uninstalluserinjection2(f):
+  "Removes the function installed by installuserinjection2"
+  userinjection2.uninstallfuncinlist(f)
+def isinstalleduserinjection2(f):
+  "Checks if the function is called when particles injection happens"
+  return userinjection2.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromuserparticlesinjection(f):

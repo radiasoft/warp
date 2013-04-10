@@ -989,6 +989,7 @@ c  Complete constant current and axially directed space-charge limited
 c  injection with new fields including injected particles.
       if (caller == "w3dexe") then
         call inject3d(2,pgroup)
+        call callpythonfunc("userinjection2","controllers")
       end if
 
 c  Call this here since getzmmnt needs to have lvdts updated.
